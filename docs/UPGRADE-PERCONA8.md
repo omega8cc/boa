@@ -122,6 +122,33 @@ is deprecated but shipped in 8.4 and removed in MySQL/Percona 9.x, so a box
 hosting `php56`-pool sites could not be upgraded in place to 9.x. When 9.x
 support ever lands, `codebasecheck` is the natural place to gate that.
 
+## Percona telemetry stays off
+
+Percona's 8.x packages bring telemetry in three parts, and BOA switches off
+each of them, on every box, a custom `my.cnf` (`_CUSTOM_CONFIG_SQL=YES`)
+included:
+
+- The server package reports the host to Percona once, from its install
+  script: a host id, the Percona version, the OS, the CPU architecture and the
+  install method. Every Percona install BOA runs carries
+  `PERCONA_TELEMETRY_DISABLE=1`, so the report is not sent. A box installed
+  earlier sent it at its first install; later installs never repeat it.
+- The server loads a telemetry component that writes a daily usage report
+  under `/usr/local/percona/telemetry/ps`. On 8.x every `barracuda up-*` pass
+  keeps `boa-percona-telemetry.cnf` (`loose-percona_telemetry_disable = 1`)
+  in the directory `my.cnf` includes (`/etc/mysql/conf.d` on BOA's own
+  `my.cnf`), so the component no longer loads; `my.cnf` itself is never
+  edited for it. The variable is read-only, so the same pass also unloads the
+  component from a running server, without a restart, and removes the
+  reports it wrote.
+- `percona-telemetry-agent`, which would send those reports, is a hard
+  dependency of the server package and stays installed. It ships only a
+  systemd unit, so it never starts on Devuan.
+
+On 5.7, which has no telemetry, the file is removed. A custom `my.cnf` with no
+`!includedir` gets no file: each pass still unloads the component, but a
+server restart loads it again until the next pass.
+
 ## The MySQL watchdog stands down during the upgrade
 
 BOA runs a MySQL watchdog from cron (`/var/xdrago/monitor/check/mysql.sh`) that

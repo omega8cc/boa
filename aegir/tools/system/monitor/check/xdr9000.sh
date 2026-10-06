@@ -211,7 +211,7 @@ _harvest_pass() {
   _harvest_raw "${_mon}/segfault_alert.archive.log" "inc_segv" "inc" "segv"
   local _b="/var/log/boa"
   local _i
-  for _i in high.load oom nginx mysql mysql.backup php valkey redis unbound java system batch_guard task_guard; do
+  for _i in high.load oom nginx mysql mysql.backup php valkey unbound java system batch_guard task_guard; do
     _harvest_raw "${_b}/${_i}.incident.log" "inc_${_i//./_}" "inc" "${_i}"
   done
   _harvest_raw "${_b}/oom.incident.old.log" "inc_oom_old" "inc" "oom"
@@ -406,7 +406,7 @@ _fact_pass() {
   _svc_check postfix   /var/spool/postfix/pid/master.pid
   _svc_check nginx     /run/nginx.pid
   local _e
-  for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
     _svc_check "php${_e}-fpm" "/run/php${_e}-fpm.pid" "/opt/php${_e}/bin/php"
   done
   _svc_check mysql     /run/mysqld/mysqld.pid

@@ -71,75 +71,32 @@ _fix_core_dgd() {
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
+      ### static/ belongs to the account's users, so any name below it can be
+      ### a link: each core is patched and stamped only from inside its real
+      ### directory (_fix_core_dgd_here).
+      for _File in /data/disk/*/static/*/${_saIncDb} \
+        /data/disk/*/static/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saIncDb}; do
+        [ -e "${_File}" ] || continue
+        _Core="${_File%%/includes*}"
+        _acct_in_real_dir "${_Core}" _fix_core_dgd_here
       done
     fi
     cd
     touch ${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log
   fi
+}
+# The core patch ${_saPatch} applied from inside the current (pinned)
+# platform, then stamped: a core with core/ (D8+) or with the stamp already
+# is left alone, and the stamp is a fresh file put inside the real profiles/,
+# never written through a link the account put on the way.
+_fix_core_dgd_here() {
+  [ ! -e ./core ] || return 0
+  [ ! -e "./profiles/${_saCoreS}-fix.info" ] || return 0
+  patch -p1 < "${_saPatch}" &> /dev/null
+  _acct_in_real_dir "$(pwd -P)/profiles" _acct_put_here "${_saCoreS}-fix.info" fixed
 }
 # Fix for Postfix configuration.
 _fix_cnf_postfix() {

@@ -109,8 +109,9 @@ if [ -e "/root/.standby.cnf" ]; then
         # No replica config AND the DB unlocked: only a cutover does that
         # (its step 11.5 clears super_read_only on the promoted box before
         # step 15 removes the marker), so a marker still here is the
-        # leftover of a step 15 that could not confirm its removal. Drop it.
-        rm -f /root/.standby.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid \
+        # leftover of a step 15 that could not confirm its removal. Drop it,
+        # with the standby preparation mark that goes with it.
+        rm -f /root/.standby.cnf /root/.standby.prep.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid \
           /run/boa_standby_stall_logged.pid
         echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config and its DB is unlocked (promoted) on $(date)" \
           >> /var/log/boa/standby.quiesce.log
@@ -154,6 +155,29 @@ fi
 [ -e "/root/.standby.cnf" ] || rm -f /root/.standby.init.pid \
   /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
   /run/boa_standby_stall_logged.pid /run/boa_standby_noretrofit_logged.pid
+# The standby preparation mark that xmass init marked committed goes once
+# the box reads as promoted, as a leftover standby marker does above: no
+# marker, NO replica config, the DB unlocked. A promotion by hand without
+# post-mig, or a mirror retired by removing its marker, would otherwise
+# keep every account here from converting to its own web group for good.
+# A mark not yet committed is a box still being prepared, which reads the
+# same: it is kept.
+if [ -e "/root/.standby.prep.cnf" ] && [ ! -e "/root/.standby.cnf" ] \
+  && grep -q '^committed' /root/.standby.prep.cnf 2>/dev/null \
+  && mysqladmin ping &> /dev/null; then
+  _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rplRc=$?
+  if [ "${_rplRc}" -ne "0" ]; then
+    _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rplRc=$?
+  fi
+  if [ "${_rplRc}" -eq "0" ] && [ -z "${_rplState}" ] \
+    && [ "$(mysql -N -e 'SELECT @@super_read_only' 2>/dev/null | tr -dc '0-9')" = "0" ]; then
+    rm -f /root/.standby.prep.cnf
+    echo "Removed the committed /root/.standby.prep.cnf: no standby marker, NO replica config and the DB unlocked (promoted or retired) on $(date)" \
+      >> /var/log/boa/standby.quiesce.log
+  fi
+fi
 # Reap the defer-log stamp whenever the deferral condition no longer
 # holds (mysqld back, or the marker itself gone) -- a leaked stamp would
 # silently swallow the log line for the NEXT genuine outage.
@@ -323,7 +347,7 @@ _hold_services() {
   touch /run/boa_second_auto_healing.pid
   sleep 3
   service nginx stop
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit
@@ -370,12 +394,58 @@ _terminate_processes() {
   echo "Action Taken: Long-running processes terminated due to critical load."
 }
 
+# /data/conf is root's, but an Octopus upgrade of an earlier release handed it
+# to the account it upgraded, so a name there can still be a link that account
+# left: the switch below renames only inside the real directory.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way (helper.sh.inc).
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 renamed to ./$2 in the current (pinned) directory, only while ./$1 is a
+# regular file: mv -T renames over a link left at ./$2, never into what it
+# names, and a link at ./$1 is never made the live name.
+_conf_rename_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  mv -f -T -- "./${1}" "./${2}"
+}
+
 # Function to enable nginx high load configuration
 _nginx_high_load_on() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
-  mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
+  # A directory at the live name would refuse the rename below; like a link
+  # or a FIFO there, it is never the switch's own and goes first.
+  if [ -L /data/conf/nginx_high_load.conf ] \
+    || { [ -e /data/conf/nginx_high_load.conf ] \
+      && [ ! -f /data/conf/nginx_high_load.conf ]; }; then
+    _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load.conf
+  fi
+  if ! _acct_in_real_dir /data/conf \
+    _conf_rename_here nginx_high_load_off.conf nginx_high_load.conf; then
+    # Not a regular file (a link, a FIFO or a directory left at the off name)
+    # is never the switch's own: it goes, so the next barracuda pass puts a
+    # fresh one.
+    if [ -L /data/conf/nginx_high_load_off.conf ] \
+      || { [ -e /data/conf/nginx_high_load_off.conf ] \
+        && [ ! -f /data/conf/nginx_high_load_off.conf ]; }; then
+      _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load_off.conf
+    fi
+    return 0
+  fi
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
@@ -388,7 +458,20 @@ _nginx_high_load_on() {
 
 # Function to disable nginx high load configuration
 _nginx_high_load_off() {
-  mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
+  # A directory at the off name would refuse the rename below; like a link or
+  # a FIFO there, it is never the switch's own and goes first.
+  if [ -L /data/conf/nginx_high_load_off.conf ] \
+    || { [ -e /data/conf/nginx_high_load_off.conf ] \
+      && [ ! -f /data/conf/nginx_high_load_off.conf ]; }; then
+    _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load_off.conf
+  fi
+  if ! _acct_in_real_dir /data/conf \
+    _conf_rename_here nginx_high_load.conf nginx_high_load_off.conf; then
+    # Not a regular file (a link, a FIFO or a directory left at the live name)
+    # is never the switch's own: it goes, so protection is really off and the
+    # check stops firing.
+    _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load.conf || return 0
+  fi
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) Disabled Spider Protection Load: ${_O_LOAD}%"
@@ -720,7 +803,7 @@ _load_control() {
     touch /run/normal_load.pid
     [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     # If load is below spider protection threshold, disable spider protection if it's enabled
-    if [ -e "/data/conf/nginx_high_load.conf" ] && \
+    if { [ -e "/data/conf/nginx_high_load.conf" ] || [ -L "/data/conf/nginx_high_load.conf" ]; } && \
        awk "BEGIN {exit !(${_O_LOAD} <= ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_SPIDER_THRESHOLD})}"; then
       echo "Load below spider protection threshold."
       _nginx_high_load_off

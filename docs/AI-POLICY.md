@@ -17,13 +17,19 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | Class | `$is_ai_*` map | Example tokens | Default action |
 |-------|----------------|----------------|----------------|
 | Scrapers / bad bots | `$is_crawler` (pre-existing) | mass scrapers, download tools | **Hard block (444), always** |
-| AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, md-proxy (RetrievableAIAgentProxy) | **Blocked (444)**; per-site opt-in to **allow** |
-| AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
-| AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
+| AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, DeepSeekBot, KimiBot, md-proxy (RetrievableAIAgentProxy) | **Blocked (444)**; per-site opt-in to **allow** |
+| AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot, Kimi-SearchBot, ExaSearchBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
+| AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent, Kimi-User | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
 | AI **user — evasive** (user-triggered but ignores robots.txt and evades blocks) | `$is_ai_evasive` | Perplexity-User | **Blocked (444)**; per-site opt-in to **allow** |
 | AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | **Forged** opt-out tokens | `$is_ai_forged` | Google-Extended, Applebot-Extended | **Hard block (444), always** |
 | Secret-path probes | `$is_secret_path` | `.env` `.git` `.aws` `.ssh`, `*.json` creds, `settings.py`, … | **Hard block (444), always** |
+
+Some allowed agents name a training crawler in the contact part of their user-agent:
+`Claude-User` and `Claude-SearchBot` (with `+claudebot@anthropic.com`) and `Amzn-SearchBot`
+(with `.../support/amazonbot`). The training map checks those three tokens first and leaves
+them out of the training class, so they stay in their own classes (user fetch, search) or,
+for `Amzn-SearchBot`, unclassified and allowed.
 
 The stance: block the worst offenders unconditionally, separate every real AI agent into
 a class, and make each class flippable per site. Training and the **evasive** user-fetch
@@ -104,7 +110,8 @@ so nginx is configured to recover the real client:
 ```
 real_ip_header    CF-Connecting-IP;
 real_ip_recursive on;
-include /data/conf/nginx_cloudflare_real_ip.c*;   # set_real_ip_from <CF ranges>
+include /data/conf/nginx_cloudflare_real_ip.cmi[g];   # set_real_ip_from <migration proxy>
+include /data/conf/nginx_cloudflare_real_ip.con[f];   # set_real_ip_from <CF ranges>
 ```
 
 `/var/xdrago/cloudflare_realip.sh` fetches Cloudflare's published IPv4+IPv6 ranges into
@@ -115,7 +122,8 @@ client even for CF-proxied sites. PHP is still fed the peer (`fastcgi_param REMO
 $realip_remote_addr`) plus the realip answer (`BOA_NGINX_CLIENT`), and `global.inc` takes the
 client from that answer, never from a header a remote peer sent.
 
-The empty-glob include (`*.c*`) means the config is valid before the ranges file exists,
+The includes are one-character-class patterns (`.con[f]`, `.cmi[g]`) that match only their
+own file, so the config is valid before the ranges file exists,
 so there is no chicken-and-egg at first boot.
 
 ## Bans (csf → nginx, IPv4 + IPv6)
@@ -134,7 +142,7 @@ and FTP bans are deliberately excluded — those stay purely csf's job.
 offender can't be banned through the firewall. `scan_nginx` writes it to an nginx-native
 store instead, and `nginx_deny6.sh` mirrors that store into
 `/data/conf/nginx_banned_ips.conf6` — the **same** `geo $remote_addr $is_banned` set (its
-wildcard `nginx_banned_ips.c*` include already covers it) — so an IPv6 attacker gets the
+`nginx_banned_ips.conf[6]` include names it) — so an IPv6 attacker gets the
 same realip-keyed 444. IPv6 can only arrive via the trusted realip proxy (BOA disables IPv6
 server-side and pins realip to the CF ranges), so a banned v6 is always the real client.
 The v6 bans self-expire (default 900s) like the csf temp bans.
@@ -176,6 +184,11 @@ prefix-named site pulling a longer site's fragment).
 so a site with no record keeps the global defaults. Removing a record prunes its fragment
 on the next run.
 
+A subdirectory site's paths (`example.com/blog`) follow the record for the domain that
+serves them: the domain's own site when it is one, and the bare domain when it is not,
+whose placeholder vhost includes `ai_policy/example.com.conf*` as well, with the same
+defaults. A record for the internal name (`blog.example.com`) governs that name only.
+
 ## Generators, lock and serials
 
 | Tool | Schedule | Writes |
@@ -192,6 +205,28 @@ All of these — plus the migration-time realip tool `/var/xdrago/migration_prox
 `configtest`+`reload` cycles never collide on the same host nginx. Each one is a content
 change-gate → atomic write → `configtest` → `reload`, with rollback to the last-good copy
 if `configtest` fails.
+
+The instance owns `config/includes` and `undo/`, so every fragment, marker and change-gate
+file is read, written and pruned from **inside the pinned real directory** through
+no-follow handles: a link or a FIFO left at any of those names is replaced, never followed.
+The control file itself is read only as a copy taken from its own real directory, never
+through a link and never blocking on a FIFO; one that is not a regular file there is skipped.
+
+The per-instance `.nginx_ai_policy.last_good.bak.tar.gz` stays in `undo/` on purpose — that
+tree is replicated to the mirror, so a promoted standby has the last-good copy to restore.
+
+It is never trusted as an archive to extract as root, though: the revert copies it out
+without following a link, unpacks it into a root-only temporary directory taking **no owner
+and no mode** from it (an archive whose files would come to more than 32 MiB written out is
+refused whole), and restores only regular files whose names match the expected
+`<site>.conf` fragments, each put back through the same no-follow handle.
+
+The archive is proved whole before the live fragments are deleted: one that cannot be
+restored leaves the fragments on disk and prints `ALRT:` lines instead (after a failed
+`configtest` they name the control file to fix), as `ip_access` and `user_admin_access` do.
+Cron discards the tools' output, so every `ALRT:` line of the three tools also goes, once a
+day per condition, to `/var/log/boa/nginx.incident.log` as a dated line and, unless
+`_INCIDENT_REPORT` is `OFF`, by mail to `_MY_EMAIL`.
 
 On a passive replication standby whose web tier is held
 (`/root/.standby.cnf` present, no `/root/.standby.serve.cnf`, no promoted latch

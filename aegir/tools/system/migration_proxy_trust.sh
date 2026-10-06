@@ -131,12 +131,15 @@ _cmd_trust() {
   done
   [ "${#_ips[@]}" -gt 0 ] || _die "trust: no IP/CIDR given"
 
-  local _ip
+  local _ip _fail=""
   for _ip in "${_ips[@]}"; do
     _uniq_append "${_csf_ctrl}" "${_ip}"
     _csf_add_ip "${_ip}"
-    if [ "${_csf_only}" != "YES" ]; then
-      _uniq_append "${_realip_ctrl}" "${_ip}"
+    if [ "${_csf_only}" != "YES" ] \
+      && ! _conf_uniq_append "${_realip_ctrl}" "${_ip}"; then
+      _fail="${_fail} ${_ip}"
+      _msg "WARN: ${_ip} not recorded in ${_realip_ctrl}"
+      continue
     fi
     _msg "trusted migration peer ${_ip}"
   done
@@ -152,10 +155,13 @@ _cmd_trust() {
   fi
 
   if [ "${_permanent}" = "YES" ]; then
-    mkdir -p "$(dirname "${_perm_flag}")"
-    : > "${_perm_flag}"
-    _msg "marked migration proxy trust PERMANENT (${_perm_flag})"
+    if _conf_flag_put "${_perm_flag}"; then
+      _msg "marked migration proxy trust PERMANENT (${_perm_flag})"
+    else
+      _fail="${_fail} ${_perm_flag}"
+    fi
   fi
+  [ -z "${_fail}" ] || _die "trust: not recorded:${_fail}"
 }
 
 # Drop the lines equal to $2 from file $1, in place (owner and mode kept).
@@ -193,12 +199,12 @@ _cmd_untrust() {
   done
   [ "${#_ips[@]}" -gt 0 ] || _die "untrust: no IP/CIDR given"
 
-  local _f _v _rc
+  local _v _rc
   for _ip in "${_ips[@]}"; do
-    for _f in "${_realip_ctrl}" "${_csf_ctrl}"; do
-      _drop_line "${_f}" "${_ip}"
-      [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_f}; left as found"
-    done
+    _conf_drop_line "${_realip_ctrl}" "${_ip}"
+    [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_realip_ctrl}; left as found"
+    _drop_line "${_csf_ctrl}" "${_ip}"
+    [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_csf_ctrl}; left as found"
     if _csf_present; then
       for _v in "tcp|in|d=80|s=${_ip} # migration proxy" "tcp|in|d=443|s=${_ip} # migration proxy"; do
         _drop_line "${_csf_allow}" "${_v}"; _rc=$?
@@ -223,20 +229,160 @@ _cmd_teardown() {
     _msg "permanent migration proxy marker present; teardown skipped (use --force)"
     return 0
   fi
-  rm -f "${_realip_ctrl}" "${_csf_ctrl}" "${_perm_flag}"
+  local _dropped=YES
+  _conf_drop_file "${_realip_ctrl}" || _dropped=NO
+  rm -f "${_csf_ctrl}" "${_perm_flag}"
   _csf_strip
   _csf_reload
   # Control file now gone -> the tool removes the .cmig include.
   [ -x "${_realip_tool}" ] && "${_realip_tool}"
+  [ "${_dropped}" = "YES" ] || _die "teardown: could not remove ${_realip_ctrl}"
   _msg "migration proxy trust torn down on this host"
 }
 
 # --- per-account policy records (mirrors xoct's _mig_* primitives) -----------
 
+# A record sits in the account's own log/, so its name can be a link or a
+# FIFO and log/ itself a link: it is read only inside the real directory,
+# never through a link, never blocked on a FIFO, at most 1 MiB.
+_mpt_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+_mpt_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# /data/conf is root's, but an Octopus upgrade of an earlier release handed it
+# to the account it upgraded, so the trust file's and the flag's names there
+# can still be a link or a FIFO that account left: they are read and put only
+# inside the real /data/conf (_mpt_in_real_dir), through these, on a copy in a
+# root-only work directory in /run.
+#
+# stdin as the fresh file $1, owned by uid $2 and gid $3 with the mode $4,
+# through the one handle that created it O_EXCL|O_NOFOLLOW (helper.sh.inc).
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+# The file $1 (root's own, outside /data/conf) put as ./$2 in the current
+# (pinned) directory, root's and 0644: written under a fresh name through one
+# handle (_ACCT_PUT_PL), then renamed over the name, so a link or a FIFO at
+# the name is replaced, never written through or opened; a directory there,
+# which the rename cannot replace, is removed first.
+_conf_put_file_here() {
+  local _t="./.${2}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if [ -d "./${2}" ] && [ ! -L "./${2}" ]; then
+    rm -rf -- "./${2}"
+  fi
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 < "${1}" \
+    && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory copied into the file $2 (root's own,
+# outside /data/conf) while ./$1 is a regular file of at most 32 MiB: read
+# without following a link or blocking on a FIFO. Status 1 when it is not
+# there, not one, or bigger (a file that size is none of these lists, and the
+# copy lands in memory-backed /run).
+_conf_get_file_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  [ "$(stat -c %s -- "./${1}" 2> /dev/null || echo 0)" -le 33554432 ] || return 1
+  dd if="./${1}" of="${2}" iflag=nofollow,nonblock status=none 2> /dev/null
+}
+# Each read-change-put of a /data/conf file below holds this tool's own lock
+# (never the shared nginx one, which the realip tool it runs takes), so two
+# runs cannot lose each other's line; no daemon starts while it is held.
+_CONF_LOCK="/run/.migration_proxy_trust.lock"
+# True when $1 is there as a regular file (not a link): a copy of it that
+# failed is an error, never an empty file.
+_conf_is_plain() {
+  [ -f "${1}" ] && [ ! -L "${1}" ]
+}
+# The line $2 added to the file $1 in /data/conf unless it is there, as
+# _uniq_append adds it.
+_conf_uniq_append() (
+  local _w _rc=0
+  exec 8> "${_CONF_LOCK}"
+  flock -w 30 8 || exit 1
+  _w="$(mktemp -d /run/.migration_proxy_trust.XXXXXX 2> /dev/null)" || exit 1
+  trap 'rm -rf -- "${_w}"' EXIT
+  mkdir -p "${1%/*}"
+  if ! _mpt_in_real_dir "${1%/*}" _conf_get_file_here "${1##*/}" "${_w}/cur"; then
+    _conf_is_plain "${1}" && exit 1
+    : > "${_w}/cur" || exit 1
+  fi
+  if ! grep -qxF -- "${2}" "${_w}/cur" 2> /dev/null; then
+    echo "${2}" >> "${_w}/cur" || exit 1
+    _mpt_in_real_dir "${1%/*}" _conf_put_file_here "${_w}/cur" "${1##*/}" || _rc=1
+  fi
+  exit "${_rc}"
+)
+# The lines equal to $2 dropped from the file $1 in /data/conf, as _drop_line
+# drops them: 0 = dropped, 1 = not there, 2 = the rewrite failed and the file
+# is as found.
+_conf_drop_line() (
+  local _w _rc
+  exec 8> "${_CONF_LOCK}"
+  flock -w 30 8 || exit 2
+  _w="$(mktemp -d /run/.migration_proxy_trust.XXXXXX 2> /dev/null)" || exit 2
+  trap 'rm -rf -- "${_w}"' EXIT
+  if ! _mpt_in_real_dir "${1%/*}" _conf_get_file_here "${1##*/}" "${_w}/cur"; then
+    _conf_is_plain "${1}" && exit 2
+    exit 1
+  fi
+  _drop_line "${_w}/cur" "${2}"
+  _rc=$?
+  if [ "${_rc}" -eq 0 ] \
+    && ! _mpt_in_real_dir "${1%/*}" _conf_put_file_here "${_w}/cur" "${1##*/}"; then
+    _rc=2
+  fi
+  exit "${_rc}"
+)
+# The file $1 in /data/conf removed under the lock _conf_uniq_append takes,
+# so an append in flight cannot bring back what a teardown just removed.
+_conf_drop_file() (
+  exec 8> "${_CONF_LOCK}"
+  flock -w 30 8 || exit 1
+  _mpt_in_real_dir "${1%/*}" _conf_rm_here "${1##*/}"
+)
+_conf_rm_here() {
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rm -rf -- "./${1}"
+  else
+    rm -f -- "./${1}"
+  fi
+}
+# The regular file $1 in /data/conf printed, read as _conf_get_file_here reads
+# it (a link or a FIFO at the name prints nothing and is never opened).
+_conf_cat() (
+  local _w
+  _w="$(mktemp -d /run/.migration_proxy_trust.XXXXXX 2> /dev/null)" || exit 1
+  trap 'rm -rf -- "${_w}"' EXIT
+  _mpt_in_real_dir "${1%/*}" _conf_get_file_here "${1##*/}" "${_w}/cur" && cat "${_w}/cur"
+)
+# The empty flag file $1 in /data/conf put as : > made it.
+_conf_flag_put() {
+  mkdir -p "${1%/*}"
+  _mpt_in_real_dir "${1%/*}" _conf_put_file_here /dev/null "${1##*/}"
+}
+
 _mig_get() {
   local _f="$1" _k="$2"
-  [ -r "${_f}" ] || return 1
-  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+  [ -e "${_f}" ] || return 1
+  _mpt_in_real_dir "${_f%/*}" _mpt_read_here "${_f##*/}" \
+    | grep -m1 "^${_k}=" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
 }
 
 _mig_valid_mode() {
@@ -254,7 +400,7 @@ _my_ipv4s() {
 _cmd_reconcile() {
   local _force="${1:-}"
   local _keep="" _perm=NO _undeclared="" _records=0 _record_ips="" _legacy=""
-  local _cnf _root _acct _mode _peer _peers _hip _role _pid _myips _ip _kept=""
+  local _cnf _root _acct _mode _peer _peers _hip _role _pid _myips _ip _kept="" _fail=""
 
   _myips="$(_my_ipv4s)"
   if [ -z "${_myips}" ]; then
@@ -314,7 +460,8 @@ _cmd_reconcile() {
   # (an old --permanent migration from a pre-record source). The records
   # cannot prove anything about them, so they are preserved -- "the union
   # proves nothing needs it" only ever applies to record-owned entries.
-  for _ip in $(cat "${_csf_ctrl}" "${_realip_ctrl}" 2>/dev/null | sort -u); do
+  for _ip in $( { cat "${_csf_ctrl}" 2> /dev/null
+      _conf_cat "${_realip_ctrl}"; } | sort -u); do
     _is_ipv4_or_cidr "${_ip}" || continue
     echo "${_record_ips}" | tr ' ' '\n' | grep -qxF "${_ip}" && continue
     _legacy="${_legacy} ${_ip}"
@@ -362,21 +509,21 @@ _cmd_reconcile() {
     # left as found (set only if a declared record demands it).
     for _ip in ${_keep}; do
       _uniq_append "${_csf_ctrl}" "${_ip}"
-      _uniq_append "${_realip_ctrl}" "${_ip}"
+      _conf_uniq_append "${_realip_ctrl}" "${_ip}" || _fail="${_fail} ${_ip}"
       _csf_add_ip "${_ip}"
       _kept="${_kept} ${_ip}"
     done
     [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
     [ -n "${_kept}" ] && [ -x "${_realip_tool}" ] && "${_realip_tool}"
     if [ "${_perm}" = "YES" ]; then
-      mkdir -p "$(dirname "${_perm_flag}")"
-      : > "${_perm_flag}"
+      _conf_flag_put "${_perm_flag}" || _fail="${_fail} ${_perm_flag}"
     fi
     _msg "reconcile: UNDECLARED proxied accounts:${_undeclared}"
     _msg "  their trust and the permanent marker are left as found; declare policy on the"
     _msg "  proxying source (xoct proxy-mode <oN> <mode>, then xoct proxy ... --repair) so"
     _msg "  the record propagates here"
     [ -n "${_kept}" ] && _msg "reconcile: declared peers (re)trusted:${_kept}"
+    [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
     return 0
   fi
 
@@ -384,10 +531,12 @@ _cmd_reconcile() {
     # Records exist, none needs trust, and no pre-record entries survive: the
     # union proves nothing needs the marker either, so clear it even though
     # plain teardown would honour it.
-    rm -f "${_realip_ctrl}" "${_csf_ctrl}" "${_perm_flag}"
+    _conf_drop_file "${_realip_ctrl}" || _fail="${_fail} ${_realip_ctrl}"
+    rm -f "${_csf_ctrl}" "${_perm_flag}"
     _csf_strip
     _csf_reload
     [ -x "${_realip_tool}" ] && "${_realip_tool}"
+    [ -z "${_fail}" ] || _die "reconcile: could not remove ${_realip_ctrl}"
     _msg "reconcile: no live permanent/ha-switch peers; migration proxy trust torn down"
     return 0
   fi
@@ -395,19 +544,20 @@ _cmd_reconcile() {
   # Rewrite both control files to exactly keep + legacy; strip every tagged
   # csf entry and re-add that set (no selective strip exists -- strip-all then
   # re-add exploits the existing idempotency).
-  rm -f "${_realip_ctrl}" "${_csf_ctrl}"
+  _conf_drop_file "${_realip_ctrl}" \
+    || _die "reconcile: could not remove ${_realip_ctrl}; nothing changed"
+  rm -f "${_csf_ctrl}"
   _csf_strip
   for _ip in ${_keep} ${_legacy}; do
     _uniq_append "${_csf_ctrl}" "${_ip}"
-    _uniq_append "${_realip_ctrl}" "${_ip}"
+    _conf_uniq_append "${_realip_ctrl}" "${_ip}" || _fail="${_fail} ${_ip}"
     _csf_add_ip "${_ip}"
     _kept="${_kept} ${_ip}"
   done
   _csf_reload
   [ -x "${_realip_tool}" ] && "${_realip_tool}"
   if [ "${_perm}" = "YES" ]; then
-    mkdir -p "$(dirname "${_perm_flag}")"
-    : > "${_perm_flag}"
+    _conf_flag_put "${_perm_flag}" || _fail="${_fail} ${_perm_flag}"
   elif [ -n "${_legacy// /}" ]; then
     # Pre-record entries may belong to an old --permanent proxy this host
     # cannot re-derive; the marker stays exactly as found.
@@ -421,6 +571,7 @@ _cmd_reconcile() {
     _msg "  Remove them with 'teardown --force' once the old proxies are confirmed gone.)"
   fi
   _msg "reconcile: trusted migration peers now:${_kept}"
+  [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
 }
 
 case "${1:-}" in

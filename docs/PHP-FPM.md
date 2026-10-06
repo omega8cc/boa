@@ -13,7 +13,10 @@ BOA allows you to manage the PHP-FPM version across all sites hosted on an Octop
 - If used, this will switch PHP-FPM for **all** Drupal sites hosted on the instance, unless a `multi-fpm.info` control file also exists.
 
 ### Supported Values for Single PHP-FPM Mode:
-- Any installed PHP version from 5.6 to 8.5 (`5.6`, `7.0`, `7.1`, `7.2`, `7.3`, `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`, `8.5`). If the requested version is not installed, the system falls back to the nearest available version.
+- Any installed PHP version from 5.6 to 8.6 (`5.6`, `7.0`, `7.1`, `7.2`, `7.3`, `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`, `8.5`, `8.6`). If the requested version is not installed, the system falls back to the nearest available version.
+- `8.6` is a release candidate. A self-hosted server builds it only when `8.6` is listed in `_PHP_MULTI_INSTALL` (or set as `_PHP_SINGLE_INSTALL`) in `/root/.barracuda.cnf`: it is not part of the default install set there. Hosted and remotely managed servers (an `.aegir.cc` hostname or `/root/.host8.cnf`) install it by default: each Barracuda run adds `8.6` to `_PHP_MULTI_INSTALL` (by default `8.3 8.4 8.5`; with the automatic cleanup on, the versions in use and `8.4`), as it adds `8.4` there, except in single-PHP mode (`_PHP_SINGLE_INSTALL`), during a major OS upgrade (a `/root/.run-to-*.cnf` marker) or on a legacy OpenSSL build, while `8.4` stays the default CLI and FPM version. Once installed it works like any other version, the Ægir Master included. Where it is not installed, `8.6` falls back to `8.5`, then `8.4`.
+- While `8.6` is a release candidate, the extension releases BOA pins that were not shown to build against it (APCu, PhpRedis, Mcrypt, GEOS, Imagick and the MongoDB driver) are not built for it: each upgrade says so once in a NOTE line, and a newer release is tried when BOA pins one. 8.6 runs without them (a site on it has no Valkey cache). An extension that builds but does not load is left out of its php.ini too.
+- New Relic is enabled for it once the New Relic agent ships an 8.6 build, and ionCube once ionCube ships an 8.6 loader; TET has no 8.6 binding. On Devuan Daedalus its GD has no AVIF.
 
 #### **NOTE**:
 - Only one line and one value (e.g., `8.3`) should be present in this file; otherwise, the system will ignore it.
@@ -36,10 +39,17 @@ old.com 5.6
 ```
 
 - **NOTE**: Each line in the `multi-fpm.info` file must start with the **main site name** (not an alias), followed by a single space, and then the PHP-FPM version to use.
+- A line that starts with `#` is a comment and never pins its site, also beside the site's
+  own line. Commenting out a site's line drops its pin: within one pass the site goes back
+  to the version in `fpm.info`.
 - A line applies once its site is installed on the account, its PHP version is installed on
   the server and the account's pool for that version is running. Until then it waits,
   listed in `~/static/control/.multi-fpm-skipped.info`, and is tried again on every pass
   of the system worker, so you can pin a site before you create it.
+- A subdirectory site (one served at `example.com/blog`) is listed by its own site
+  name, for example `blog.example.com 8.3`, and that version serves its paths. An
+  unlisted subdirectory site runs on the `fpm.info` version like any other unlisted
+  site, whatever version its parent domain is pinned to.
 - `fpm.info` and `multi-fpm.info` choose the PHP that serves web requests only. Drush,
   Composer and the Ægir tasks follow the command-line files: `cli.info`, the `phpNN.info`
   switches, and `cli-per-platform.info` for a platform that needs its own version (see
@@ -47,7 +57,7 @@ old.com 5.6
 
 #### **IMPORTANT**:
 
-Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported twelve (12) versions are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.
+Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported thirteen (13) versions, 8.6 a release candidate, are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.
 
 #### PHP CAVEATS for Drupal core 7-10 versions:
 

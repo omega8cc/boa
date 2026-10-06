@@ -43,6 +43,19 @@ It exits `0` when every critical check passes, non-zero otherwise. In the AI and
 rate-limit probes it treats a **5xx** (backend/upstream error — e.g. a proxied 502) and a
 **403** (ip_access deny) as *inconclusive* (`WARN`), not as a policy result.
 
+**Why a refusal can read as 502.** A site without its own certificate is served over HTTPS by
+the wildcard SSL front, which proxies to the site's port-80 vhost. When that vhost refuses the
+request with a 444 it closes the connection without an answer, so the front has nothing to pass
+on and answers the client **502**.
+
+The access log keeps the refusal: the front's line carries the real visitor with 502, and the
+port-80 line carries `127.0.0.1` with 444. There are two such lines when the request rode a
+kept-alive connection, which the front retries once on a fresh one. Read the 444 in the log,
+or probe over http, to judge the policy.
+
+The web IDS counts that request once, from the front's line, and scores it as that 502, not as
+a 444. Every detector skips the `127.0.0.1` copies.
+
 The front
 phase is the exception: it asks the wildcard SSL front and every other HTTPS proxy in `pre.d`
 (each control panel's, any per-site one),
@@ -132,6 +145,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -A '<UA>' https://<SITE>/
 
 "Allowed" below means **any non-444 response** — a real Drupal site may answer a given
 UA/path with `200` or a `301` redirect; only a `444` (curl shows it as `000`) is a block.
+Over HTTPS through the wildcard SSL front a block reaches curl as `502` instead (see
+"Why a refusal can read as 502" above): read the site's log line or repeat over http.
 
 - [ ] `GPTBot/1.1` (training) → **444**
 - [ ] `Perplexity-User/1.0` (evasive) → **444** (blocked by default — see Phase 3 to opt in)
@@ -153,9 +168,9 @@ Tokens per class (any one matches the class):
 
 | Class | Tokens |
 |-------|--------|
-| training | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili |
-| search | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot |
-| user | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent |
+| training | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, DeepSeekBot, KimiBot, md-proxy (RetrievableAIAgentProxy) |
+| search | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot, Kimi-SearchBot, ExaSearchBot |
+| user | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent, Kimi-User |
 | user (evasive) | Perplexity-User — **blocked by default**; per-site `evasive-allow` to permit it |
 | utility | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM |
 | forged | Google-Extended, Applebot-Extended |

@@ -30,6 +30,225 @@ if ! declare -F _provision_running > /dev/null 2>&1; then
   }
 fi
 
+# oN owns its /data/disk/oN (config/, .drush/, .tmp/, distro/ and every
+# platform there), so any name below it can be a link or a FIFO, and any
+# directory on the way can itself be a link. Root reads, edits and sets modes
+# there only through the helpers below, inside the real directory. The
+# _acct_* bodies are the helper.sh.inc and 20-sites.sh ones (the night family
+# never sources helper.sh.inc), carried unless already defined.
+if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
+  # Run "$@" inside the real directory $1, never one reached through a link
+  # an account planted on the way. Below /home and /data/disk (root's) every
+  # name on the path must be a real directory; elsewhere the last name is
+  # checked against its resolved parent. Once entered, ./name stays in that
+  # directory whatever is swapped.
+  _acct_in_real_dir() {
+    local _d="${1}" _a="" _want
+    shift
+    case "${_d}" in
+      /home/?*) _a=/home ;;
+      /data/disk/?*) _a=/data/disk ;;
+    esac
+    if [ -n "${_a}" ]; then
+      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    else
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    fi
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  }
+fi
+if ! declare -F _acct_read_here > /dev/null 2>&1; then
+  # ./$1 in the current (pinned) directory: never through a link, never
+  # blocked on a FIFO, at most 1 MiB. Empty for anything else.
+  _acct_read_here() {
+    timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2> /dev/null
+  }
+fi
+if ! declare -F _acct_put_same_here > /dev/null 2>&1; then
+  # ./$1 in the current (pinned) directory replaced by the exact bytes $2,
+  # only while ./$1 is a regular file below 1 MiB (so a bounded read saw all
+  # of it): a fresh file with the owner, group and read/write bits of the
+  # file it replaces, then renamed over the name. The temp is created,
+  # written, owned and moded through one handle opened O_EXCL|O_NOFOLLOW, so
+  # nothing root owns is ever chowned by name in a directory the account can
+  # write (a hard link renamed over the temp name before a chown by name
+  # would have handed another file to the owner of the file it replaces); a
+  # swap before the rename only lands a file the account could have put
+  # there itself. The mode keeps only the read/write bits of the file it
+  # replaces, as before.
+  _ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+  _acct_put_same_here() {
+    local _t="./.${1}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz
+    _st=$(stat -c '%F|%u|%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
+    IFS='|' read -r _typ _uid _gid _mod _sz <<< "${_st}"
+    case "${_typ}" in
+      "regular file"|"regular empty file") ;;
+      *) return 1 ;;
+    esac
+    [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+    [ "${_sz}" -lt 1048576 ] || return 1
+    rm -f -- "${_t}"
+    if printf '%s' "${2}" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
+      && mv -f -T -- "${_t}" "./${1}"; then
+      return 0
+    fi
+    rm -f -- "${_t}"
+    return 1
+  }
+fi
+if ! declare -F _acct_read_plain_here > /dev/null 2>&1; then
+  # ./$1 of the current (pinned) directory as text: status 1, and nothing,
+  # unless it is a regular file; read as _acct_read_here reads it.
+  _acct_read_plain_here() {
+    [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+    _acct_read_here "${1}"
+  }
+fi
+if ! declare -F _acct_sed_same_here > /dev/null 2>&1; then
+  # ./$1 edited by the sed arguments after it, as sed -i edited it (the same
+  # bytes: the trailing "x" keeps every newline through the substitutions),
+  # and put back as _acct_put_same_here puts it.
+  _acct_sed_same_here() {
+    local _n="${1}" _c
+    shift
+    _c=$(_acct_read_plain_here "${_n}" && echo x) || return 1
+    _c=$(printf '%s' "${_c%x}" | sed "$@"; echo x)
+    _acct_put_same_here "${_n}" "${_c%x}"
+  }
+fi
+
+# A mode set on names in the current (pinned) directory, never through a
+# link: each name is opened without following one and without blocking on a
+# FIFO, checked to be the expected type and changed through the open handle.
+# Run it inside a pinned directory or from find -execdir: O_NOFOLLOW covers
+# the last name only. Args: f|d (regular file or directory), the mode
+# (octal), the names.
+# A directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775, 00755), as chmod(1) does with a numeric mode.
+# A regular file is changed only while it has a single link: a hard link put
+# at a name (or anywhere in a walked tree) is left alone, so the mode never
+# reaches the file it names.
+_NIGHT_FCHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+
+# Each directory and regular file named (find -execdir, or in a pinned
+# directory) made root's, with the mode $1 for a directory (its set-ID bits
+# kept, as chmod 0755 keeps them) and $2 for a file, except xmass's two
+# records, which xmass writes 0600. An entry is checked by lstat before it is
+# opened, so a FIFO or a device is never opened, and is changed through its
+# own handle, never through a link. A hard-linked file is taken back too:
+# /data/conf is never an account's, so a file an account linked there is
+# made root's, as chown -R root:root made it.
+_CONF_ROOT_PL='use Fcntl;
+my ($dm, $fm) = (oct(shift @ARGV), oct(shift @ARGV));
+for my $f (@ARGV) {
+  my @l = lstat($f);
+  next unless @l && (-d _ || -f _);
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && $s[0] == $l[0] && $s[1] == $l[1]) {
+    if (-d _) {
+      chown(0, 0, $h);
+      chmod($dm | ($s[2] & 06000), $h);
+    } elsif (-f _) {
+      chown(0, 0, $h);
+      chmod($f =~ m{(^|/)xmass_(state|solr_used)\.cnf(\.tmp\.\d+)?$} ? 0600 : $fm, $h);
+    }
+  }
+  close($h);
+}'
+# The modes of /data/conf (the current, pinned directory) and everything
+# below it, as the Octopus upgrade sets them: directories 0755, files 0644,
+# each through the entry's own handle (_CONF_ROOT_PL), and the top 0711.
+_global_conf_modes_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  perl -e "${_CONF_ROOT_PL}" 0755 0644 .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
+  chmod 0711 .
+)
+
+# The modes of every account platform's sites/all/{libraries,modules,themes}
+# trees: directories 02775, files 0664. The account owns distro/ and every
+# platform in it, so each tree is walked from inside its real directory and
+# every mode goes through a handle that never follows a link.
+_distro_sites_all_modes() {
+  local _pDis
+  for _pDis in /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes}; do
+    [ -d "${_pDis}" ] || continue
+    _acct_in_real_dir "${_pDis}" find . -type d \
+      -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
+    _acct_in_real_dir "${_pDis}" find . -type f \
+      -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  done
+}
+
+# Every vhost in the current (pinned) vhost.d still carrying TLSv1.1 in its
+# protocol list, edited as sed -i edited it; the others are left untouched.
+# One grep lists them, reading only the regular files under 1 MiB directly
+# there (the ones _acct_sed_same_here edits) for at most 60 seconds; -D skip
+# never blocks on a FIFO or a device put at a name since the listing, and
+# _acct_sed_same_here refuses a link or a FIFO swapped in after it. When the
+# listing or grep cannot tell (an error, a timeout), each vhost is read
+# bounded and edited only when it holds the line. Names in subdirectories
+# and dot-names are not vhosts nginx reads. A record starting with / carries
+# a status: no name listed here holds one.
+_vhost_tls11_drop_here() {
+  local _f _rc=""
+  local -a _n=() _m=()
+  while IFS= read -r -d '' _f; do
+    case "${_f}" in
+      /rc=*) _rc="${_f#/rc=}"; continue ;;
+    esac
+    _f="${_f#./}"
+    case "${_f}" in
+      */*|.*) continue ;;
+    esac
+    _n+=( "${_f}" )
+  done < <(find . -mindepth 1 -maxdepth 1 -type f -size -1048576c -print0 2> /dev/null
+    printf '/rc=%s\0' "$?")
+  # A failed listing is never read as grep's "no match".
+  [ "${_rc}" = "0" ] || _rc="list"
+  if [ "${_rc}" = "0" ] && [ "${#_n[@]}" -gt 0 ]; then
+    _rc=""
+    while IFS= read -r -d '' _f; do
+      case "${_f}" in
+        /rc=*) _rc="${_f#/rc=}" ;;
+        *) _m+=( "${_f}" ) ;;
+      esac
+    done < <(LC_ALL=C timeout 60 grep -lZ -F -d skip -D skip \
+      -e "TLSv1.1 TLSv1.2 TLSv1.3;" -- "${_n[@]}" 2> /dev/null
+      printf '/rc=%s\0' "$?")
+  fi
+  case "${_rc}" in
+    0|1)
+      for _f in "${_m[@]}"; do
+        _acct_sed_same_here "${_f}" "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      done
+      ;;
+    *)
+      for _f in ./*; do
+        _f="${_f#./}"
+        _acct_read_plain_here "${_f}" | grep -qF -- "TLSv1.1 TLSv1.2 TLSv1.3;" || continue
+        _acct_sed_same_here "${_f}" "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      done
+      ;;
+  esac
+}
+
 _delete_this_empty_hostmaster_platform() {
   _run_drush8_hmr_master_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
@@ -93,66 +312,166 @@ _check_old_empty_hostmaster_platforms() {
   fi
 }
 
+# The shared store as root works in it at night, in _gSt: /data/all when it
+# is a real directory; /data/disk/all when a link of root's at /data/all
+# leads there through root's own links and directories only, each closed to
+# others (_ROOT_REAL_PATH_PL, _SAT_STORE_TARGET_PL), or when there is no
+# /data/all. Status 2 for any other link at /data/all, which is never
+# followed (a night.inc.sh without the store rule leaves every link
+# alone): the work waits for the Octopus upgrade that takes the store back,
+# or stops and says how to repair it. Status 1 when there is no store. The
+# rule the cron writers and the post-upgrade modes fix use.
+_global_store_pick() {
+  _gSt=""
+  if [ -L "/data/all" ]; then
+    if [ -n "${_SAT_STORE_TARGET_PL:-}" ] && [ -n "${_ROOT_REAL_PATH_PL:-}" ]; then
+      _gSt="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)"
+      perl -e "${_SAT_STORE_TARGET_PL}" -- "${_gSt}" &> /dev/null && return 0
+    fi
+    _gSt=""
+    return 2
+  elif [ -d "/data/all" ]; then
+    _gSt=/data/all
+  elif [ ! -e "/data/all" ] && [ -d "/data/disk/all" ]; then
+    _gSt=/data/disk/all
+  else
+    return 1
+  fi
+  return 0
+}
+# Why the store is left alone (status 2 above), for a caller's one line.
+_global_store_why() {
+  if declare -F _store_link_why > /dev/null 2>&1; then
+    _store_link_why
+  else
+    echo "/data/all is a link, and this night.inc.sh cannot check where it leads"
+  fi
+}
+# True when the current (pinned) directory is root's and no one else can
+# write in it.
+_global_root_only_here() {
+  local _m
+  _m=$(stat -c '%u %a' . 2> /dev/null) || return 1
+  [ "${_m%% *}" = "0" ] && [[ "${_m##* }" =~ ^[0-7]+$ ]] \
+    && [ "$(( 8#${_m##* } & 8#022 ))" = "0" ]
+}
+
+# A shared codebase no account platform links to is moved out of the store
+# (or only named, the default dry run). The store is used only as the rule
+# above allows, and each serial and codebase only as the real directory
+# found inside it, never through a link; a codebase is moved by its name in
+# its serial, into a directory of root's that no one else can write.
 _shared_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
+  local _gSt _sRc
+  [ -L "/data/all" ] || [ -d "/data/all" ] || return 0
+  _global_store_pick
+  _sRc=$?
+  if [ "${_sRc}" = "2" ]; then
+    echo "ALRT: the shared codebases cleanup waits: $(_global_store_why)"
+    return 0
+  fi
+  [ "${_sRc}" = "0" ] || return 0
   if [ -L "/data/all" ]; then
     _CLD="/data/disk/codebases-cleanup"
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  for i in `dir -d /data/all/*/`; do
-    if [ -d "${i}o_contrib" ]; then
-      for _Codebase in `find ${i}* -maxdepth 1 -mindepth 1 -type d \
-        | grep "/profiles$" 2>&1`; do
-        _CodebaseDir=$(echo ${_Codebase} \
-          | sed 's/\/profiles//g' \
-          | awk '{print $1}' 2> /dev/null)
-        # Defensive: a tree with a detectable docroot is a real codebase of any
-        # version -- never reap it. This loop targets the legacy D6/D7 shared
-        # /data/all store (anchored on a root-level profiles/); D8+ codebases are
-        # self-contained under distro/ and are not managed here.
-        [ -n "$(_detect_real_docroot "${_CodebaseDir}")" ] && continue
-        # 2>&1 belongs to find, not to sort: bound to sort, find's own error
-        # never reached the variable and any failed enumeration read as "no
-        # references". A failed find (glob unexpanded, unreadable tree) is
-        # not evidence the codebase is unused, so it is skipped, not moved.
-        _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
-          -type l -lname ${_Codebase} 2>&1 | sort)
-        if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
-          echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
-          continue
+  _acct_in_real_dir "${_gSt}" _shared_codebases_here
+}
+# Each serial of the current (pinned) store that is a real directory.
+_shared_codebases_here() {
+  local _s
+  for _s in ./*; do
+    _s="${_s#./}"
+    [ -d "./${_s}" ] && [ ! -L "./${_s}" ] || continue
+    _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}"
+  done
+}
+# The codebases of the current (pinned) serial $1, when it holds o_contrib:
+# each real directory holding a real profiles/ directory.
+_shared_codebases_serial_here() {
+  local _p _Codebase _CodebaseDir _CodebaseTest _to
+  [ -d "./o_contrib" ] || return 0
+  for _p in ./*; do
+    _p="${_p#./}"
+    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] \
+      && [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ] || continue
+    # The names platforms link to: the store by its /data/all name.
+    _CodebaseDir="/data/all/${1}/${_p}"
+    _Codebase="${_CodebaseDir}/profiles"
+    # Defensive: a tree with a detectable docroot is a real codebase of any
+    # version -- never reap it. This loop targets the legacy D6/D7 shared
+    # /data/all store (anchored on a root-level profiles/); D8+ codebases are
+    # self-contained under distro/ and are not managed here.
+    [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
+    # 2>&1 belongs to find, not to sort: bound to sort, find's own error
+    # never reached the variable and any failed enumeration read as "no
+    # references". A failed find (glob unexpanded, unreadable tree) is
+    # not evidence the codebase is unused, so it is skipped, not moved.
+    _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
+      -type l -lname "${_Codebase}" 2>&1 | sort)
+    if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
+      echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
+      continue
+    fi
+    if [ -z "${_CodebaseTest}" ]; then
+      if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
+        _to="${_CLD}/data/all/${1}/"
+        if ( umask 022; mkdir -p "${_CLD}" ) \
+          && _acct_in_real_dir "${_CLD}" _global_root_only_here \
+          && ( umask 022; mkdir -p "${_to}" ); then
+          echo "Moving no longer used ${_CodebaseDir} to ${_to}"
+          mv -f -- "./${_p}" "${_to}"
+        else
+          echo "Unused ${_CodebaseDir} not moved: ${_CLD} is not a real directory of root's closed to others"
         fi
-        if [ -z "${_CodebaseTest}" ]; then
-          if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
-            mkdir -p ${_CLD}${i}
-            echo "Moving no longer used ${_CodebaseDir} to ${_CLD}${i}"
-            mv -f ${_CodebaseDir} ${_CLD}${i}
-          else
-            echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
-          fi
-        fi
-      done
+      else
+        echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+      fi
     fi
   done
 }
 
+# The text of every platform alias in the current (pinned) .drush, one
+# after another, each read bounded and never through a link or a FIFO.
+_platform_aliases_text_here() {
+  local _a
+  for _a in ./platform_*.alias.drushrc.php; do
+    _acct_read_plain_here "${_a#./}"
+    echo
+  done
+}
+
+# True when a registered platform alias names the tree $1: the master's
+# aliases as they always were, the accounts' ones in the text $2 holds, read
+# once per run inside each real .drush.
+_platform_alias_names() {
+  grep -qsF -e "'${1}'" -e "'${1}/" \
+    /var/aegir/.drush/platform_*.alias.drushrc.php && return 0
+  grep -qsF -e "'${1}'" -e "'${1}/" -- "${2}"
+}
+
 _ghost_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping ghost-codebases cleanup"; return; }
+  local _aliasText _u
+  # Without the aliases nothing is known to be unused, so nothing is moved.
+  _aliasText=$(mktemp) \
+    || { echo "INFO: no temporary file for the platform aliases -- skipping ghost-codebases cleanup"; return; }
+  for _u in /data/disk/*; do
+    [ -d "${_u}/.drush" ] || continue
+    _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"
+  done
   _CLD="/var/backups/ghost-codebases-cleanup"
   for i in `dir -d /data/disk/*/distro/*/*/`; do
     _CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
       -type d -name vendor | sort 2>&1)
     for _vendor in ${_CodebaseTest}; do
       _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
-      ### The platform root is 02775 and group-writable -- by the account's
-      ### shell identities, and by ANY tenant while the instance still carries
-      ### the box-wide 'users' group -- so a tenant can delete a victim's index.php and
-      ### mkdir a decoy vendor/ to have this reap the victim's whole codebase.
-      ### A tree still named by a registered platform alias is never a ghost,
-      ### whatever it looks like on disk.
-      if grep -qsF -e "'${_ParentDir}'" -e "'${_ParentDir}/" \
-        /data/disk/*/.drush/platform_*.alias.drushrc.php \
-        /var/aegir/.drush/platform_*.alias.drushrc.php; then
+      ### The platform root is group-writable, so what is on disk there is
+      ### not evidence that a tree is unused: a tree still named by a
+      ### registered platform alias is never treated as a ghost.
+      if _platform_alias_names "${_ParentDir}" "${_aliasText}"; then
         continue
       fi
       if [ -n "$(_detect_real_docroot "${_ParentDir}")" ]; then
@@ -164,15 +483,23 @@ _ghost_codebases_cleanup() {
         _CLEAN_THIS="${_ParentDir}"
         _TSTAMP=$(date +%y%m%d-%H%M%S)
         if _cnf_flag_yes /root/.barracuda.cnf _GHOST_CODEBASES_CLEANUP; then
-          mkdir -p ${_CLD}${i}${_TSTAMP}
-          echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
-          mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
+          mkdir -p "${_CLD}${i}${_TSTAMP}"
+          ### Moved from inside its real parent, so a name on the way that
+          ### the account swapped for a link since the checks moves nothing.
+          if _acct_in_real_dir "${_CLEAN_THIS%/*}" \
+            mv -f -- "./${_CLEAN_THIS##*/}" "${_CLD}${i}${_TSTAMP}/"; then
+            echo "Moved ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
+          else
+            rmdir "${_CLD}${i}${_TSTAMP}" 2> /dev/null
+            echo "Ghost ${_CLEAN_THIS} detected and not moved: not a real directory on its path, or the move failed"
+          fi
         else
           echo "Ghost ${_CLEAN_THIS} detected (dry-run; set _GHOST_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
         fi
       fi
     done
   done
+  rm -f -- "${_aliasText}"
 }
 
 _goaccess_vhosts() {
@@ -400,9 +727,14 @@ _fix_nginx_forward_secrecy() {
     ### vhost reaper has (see _cleanup_ghost_vhosts), and long after the last
     ### TLSv1.1 line was gone it still rewrote thousands of files for nothing.
     ### Rewrite only the files that actually still carry the old directive.
+    ### An account's vhost.d is its own: each is read and rewritten only
+    ### inside its real directory, never through a link or a FIFO put there.
     if [ -d "/data/u" ]; then
-      grep -Zl "TLSv1.1 TLSv1.2 TLSv1.3;" /data/disk/*/config/server_*/nginx/vhost.d/* 2>/dev/null \
-        | xargs -0 -r sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      local _vhD
+      for _vhD in /data/disk/*/config/server_*/nginx/vhost.d; do
+        [ -d "${_vhD}" ] || continue
+        _acct_in_real_dir "${_vhD}" _vhost_tls11_drop_here
+      done
     fi
     if [ -e "/var/aegir/config" ]; then
       grep -Zl "TLSv1.1 TLSv1.2 TLSv1.3;" /var/aegir/config/server_*/nginx.conf 2>/dev/null \
@@ -416,15 +748,104 @@ _fix_nginx_forward_secrecy() {
   fi
 }
 
+# The credential backups (.<name>.pass.{txt,php}-pre-*) in the current
+# (pinned) account home: each made 0600 through a handle that never follows
+# a link, only while it has a single link (a hard link the account names to
+# match is left alone), then only the newest 3 per credential file kept, the
+# older ones removed by name here. The globs expand in this directory only.
+_pass_backups_heal_here() (
+  local _live _old
+  local -a _baks
+  shopt -s nullglob
+  perl -e "${_NIGHT_FCHMOD_PL}" f 0600 \
+    ./.*.pass.txt-pre-* ./.*.pass.php-pre-* &> /dev/null
+  for _live in ./.*.pass.txt ./.*.pass.php; do
+    [ -e "${_live}" ] || continue
+    _baks=( "${_live}"-pre-* )
+    [ "${#_baks[@]}" -gt 3 ] || continue
+    ls -t -- "${_baks[@]}" 2> /dev/null | tail -n +4 \
+      | while IFS= read -r _old; do
+          rm -f -- "${_old}"
+        done
+  done
+)
+# The cron and busy markers in the current (pinned) .tmp; the globs expand
+# in this directory only.
+_run_marks_drop_here() {
+  rm -f -- ./.cron.*.pid ./.busy.*.pid
+}
+
+# An owner set through the entry's own handle: each name is opened without
+# following a link and without blocking on a FIFO, and a directory, or a
+# regular file with a single link, is changed through the open handle; a
+# hard-linked file, a link, a FIFO or a socket is left alone. Args: uid, gid
+# (numbers; -1 keeps that id), the names.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# The modes and owners of the shared store (the current, pinned directory)
+# as the path globs this replaces set them: every directory 0755 and every
+# regular file 0644 except what is below a sites/all (pruned), the
+# sites/all/{modules,libraries,themes} of */* and 000/core/* 02775,
+# everything handed to root:root, then every */*/sites,
+# */*/{web,docroot,html}/sites and 000/core/*/sites tree to root and the
+# group $1 (a number; when it is not one, no tree is), as the Octopus pass
+# hands them (_satellite_shared_fix_here), so the D8+ sites tree under the
+# docroot stays the group's, as the plain sites tree does.
+# find follows no link, at the top or below, each entry is changed from the
+# directory find walked, through its own handle (_NIGHT_FCHMOD_PL,
+# _ACCT_REOWN_PL), and dot names at the levels the globs matched are left
+# out as the globs left them. The sites/all/{modules,libraries,themes} trees
+# are group-writable by every account's identities, so a hard link one of
+# them puts there to a file of another account is left alone, never handed
+# to root. Exit 0 once the walk has run.
+_global_store_fix_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  perl -e "${_NIGHT_FCHMOD_PL}" d 0755 .
+  find . -mindepth 1 -path '*/sites/all/*' -prune -o -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} +
+  find . -mindepth 1 -path '*/sites/all/*' -prune -o -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0644 {} +
+  find . -mindepth 5 -maxdepth 6 -regextype posix-extended \
+    \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+      -o -regex '\./000/core/[^/.][^/]*/sites/all/(modules|libraries|themes)' \) \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 02775 {} +
+  perl -e "${_ACCT_REOWN_PL}" 0 0 .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" 0 0 {} +
+  [[ "${1}" =~ ^[0-9]+$ ]] || exit 0
+  find . -mindepth 1 -regextype posix-extended \
+    \( \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \
+        -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)/sites(/.*)?' \
+        -o -regex '\./000/core/[^/.][^/]*/sites(/.*)?' \) \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_ACCT_REOWN_PL}" 0 "${1}" {} + \) \
+    -o -regex '\./[^/]+(/[^/]+)?' \
+    -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)' \
+    -o -regex '\./000/core/[^/]+' -o -prune
+  exit 0
+)
+# The entries of the current (pinned) directory older than a week removed,
+# at any depth, as find -exec rm -rf removed them, each from the directory
+# find walked, so a directory on the way swapped for a link is never
+# followed; nothing is descended once it is removed.
+_global_cld_prune_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  find ./* -mtime +7 -prune -execdir rm -rf -- {} +
+)
+
 _global_cleanup() {
   if [ "${_PERMISSIONS_FIX}" = "YES" ] \
     && [ ! -z "${_X_VERSION}" ] \
     && [ -e "/opt/tmp/barracuda-release.txt" ] \
     && [ ! -e "/var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info" ]; then
     echo "INFO: Fixing permissions in the /data/all tree..."
-    find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-    chown -R root:root /data/conf &> /dev/null
+    ### /data/conf is root's: every site loads its global includes from it.
+    ### chown -R first, which follows no link and takes a file an account
+    ### hard-linked there back to root, then the modes through each entry's
+    ### own handle, never through a name swapped for a link.
+    _acct_in_real_dir /data/conf chown -R root:root . &> /dev/null
+    _acct_in_real_dir /data/conf _global_conf_modes_here &> /dev/null
     ### sites/all/{modules,libraries,themes} stay 02775 group 'users', and
     ### every account's identities carry 'users' (primary on an unconverted
     ### instance, supplementary once it has its per-instance group), so this
@@ -433,56 +854,52 @@ _global_cleanup() {
     ### stat and the chmod it execs, and chmod follows a symlink named on its
     ### command line: that race is a root chmod on an arbitrary path. Prune
     ### those leaves; their own modes are asserted right below, where the
-    ### parent (sites/all, 0755 root:users) is not tenant-writable.
-    if [ -e "/data/all" ]; then
-      find /data/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
-      chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chown -R root:root /data/all &> /dev/null
-      chown -R root:users /data/all/*/*/sites &> /dev/null
-      chown -R root:users /data/all/000/core/*/sites &> /dev/null
-    elif [ -e "/data/disk/all" ]; then
-      find /data/disk/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/disk/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
-      chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chown -R root:root /data/disk/all &> /dev/null
-      chown -R root:users /data/disk/all/*/*/sites &> /dev/null
-      chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
+    ### parent (sites/all, 0755 root:users) is not tenant-writable. The
+    ### owner walks do reach those leaves, so each entry is changed through
+    ### its own handle and a hard-linked file never. The whole store is
+    ### walked only from inside its real directory, as the store rule
+    ### allows (_global_store_pick), and never through a link at a name in
+    ### it (_global_store_fix_here); while /data/all is a link the rule
+    ### refuses, the fix waits and the stamp below is not written, so the
+    ### first night after the store passes runs it.
+    local _usersGid _gSt _sRc
+    _usersGid=$(getent group users 2> /dev/null | cut -d: -f3)
+    _global_store_pick
+    _sRc=$?
+    if [ "${_sRc}" = "2" ]; then
+      echo "ALRT: the /data/all permissions fix waits: $(_global_store_why)"
+    elif [ "${_sRc}" = "0" ] \
+      && ! _acct_in_real_dir "${_gSt}" _global_store_fix_here "${_usersGid}" &> /dev/null; then
+      _sRc=2
     fi
-    ### distro/NNN is 0711 (owner oN), so anything running as the account uid
-    ### (a hostile drush include, a compromised task) can create a whole decoy
-    ### platform dir there and plant these three
-    ### names as symlinks; 02775 on a symlinked FILE also adds o+r. Only ever
-    ### chmod a real directory.
+    ### distro/NNN and every platform in it belong to the account, so any of
+    ### these three names can be a link. Only a real directory is changed,
+    ### as '.' once inside it, so no name on the way is followed through a
+    ### link.
     local _pDis
     for _pDis in /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}; do
-      [ -d "${_pDis}" ] && [ ! -L "${_pDis}" ] \
-        && chmod 02775 "${_pDis}" &> /dev/null
+      [ -d "${_pDis}" ] || continue
+      _acct_in_real_dir "${_pDis}" chmod 02775 . &> /dev/null
     done
     ### Stamp in /var/backups: the gate above reads it there, and /data/all
     ### does not exist on /data/disk/all boxes (the sweep re-ran every night).
-    echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
+    if [ "${_sRc}" != "2" ]; then
+      echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
+    fi
   fi
   if [ ! -e "/var/backups/fix-sites-all-permsissions-${_xSrl}.txt" ]; then
-    ### distro/NNN is 0711 (owner oN): the account uid -- every Ægir task and
-    ### site-local Drush run as it -- can create a decoy platform dir there with its
-    ### own sites/ and point sites/all at any path. Plain chmod follows a
-    ### symlink named on its command line, so 0755 on a planted
-    ### sites/all -> /root/.barracuda.cnf would publish the MySQL root
-    ### credentials to every local user. Only ever chmod a real directory
-    ### (final component, like _chmod_safe in the fix-drupal-* pair). None of
-    ### these three names is ever legitimately a symlink.
+    ### distro/NNN belongs to the account (every Ægir task and site-local
+    ### Drush run as it), so sites/ and the names below it can be links, and
+    ### a plain chmod follows a link named on its command line. Only a real
+    ### directory is changed, as '.' once inside it, so no name on the way is
+    ### followed through a link. None of these names is legitimately a link.
     local _pSit _pSub
     for _pSit in /data/disk/*/distro/*/*/sites; do
-      [ -d "${_pSit}" ] && [ ! -L "${_pSit}" ] || continue
-      chmod 0751 "${_pSit}" &> /dev/null
-      [ -d "${_pSit}/all" ] && [ ! -L "${_pSit}/all" ] || continue
-      chmod 0755 "${_pSit}/all" &> /dev/null
+      [ -d "${_pSit}" ] || continue
+      _acct_in_real_dir "${_pSit}" chmod 0751 . &> /dev/null || continue
+      _acct_in_real_dir "${_pSit}/all" chmod 0755 . &> /dev/null || continue
       for _pSub in modules libraries themes; do
-        [ -d "${_pSit}/all/${_pSub}" ] && [ ! -L "${_pSit}/all/${_pSub}" ] \
-          && chmod 02775 "${_pSit}/all/${_pSub}" &> /dev/null
+        _acct_in_real_dir "${_pSit}/all/${_pSub}" chmod 02775 . &> /dev/null
       done
     done
     echo FIXED > /var/backups/fix-sites-all-permsissions-${_xSrl}.txt
@@ -501,32 +918,45 @@ _global_cleanup() {
   ### the newest 3 per credential file -- only the newest can hold a
   ### half-failed-rotation recovery value; older ones are dead history that
   ### only assists password guessing.
-  ### The account home is 0711 but OWNED by oN -- the identity every Ægir task and
-  ### site-local Drush run as, so a hostile drush include or a compromised
-  ### task can unlink a backup and plant a symlink at its name. chmod follows that link, and 0600 on a shared system
-  ### path (a config file, a bin dir) takes the box down. Heal real files only.
-  local _pBak
-  for _pBak in /data/disk/*/.*.pass.txt-pre-* /data/disk/*/.*.pass.php-pre-* \
-    /var/aegir/backups/system/.*.pass.txt-pre-*; do
+  ### The account home is 0711 but owned by oN, the identity every Ægir task
+  ### and site-local Drush run as, so a backup name there can be a link, and
+  ### chmod follows a link. Only real files are healed, from inside the real
+  ### account home, through a handle that never follows a link, and pruned
+  ### there by name.
+  local _pBak _aHome
+  for _aHome in /data/disk/*; do
+    [ -d "${_aHome}" ] || continue
+    _acct_in_real_dir "${_aHome}" _pass_backups_heal_here
+  done
+  for _pBak in /var/aegir/backups/system/.*.pass.txt-pre-*; do
     [ -f "${_pBak}" ] && [ ! -L "${_pBak}" ] \
       && chmod 0600 "${_pBak}" &> /dev/null
   done
-  for _P_LIVE in /data/disk/*/.*.pass.txt /data/disk/*/.*.pass.php \
-    /var/aegir/backups/system/.*.pass.txt; do
+  for _P_LIVE in /var/aegir/backups/system/.*.pass.txt; do
     [ -e "${_P_LIVE}" ] || continue
     ls -t ${_P_LIVE}-pre-* 2>/dev/null | tail -n +4 | xargs -r rm -f
   done
+  ### The shared codebases moved out of the store keep their group-writable
+  ### sites/all trees, and /data/disk was once open to every account, so
+  ### each is pruned only from inside its real directory.
   if [ "${_hostedSys}" = "YES" ]; then
     if [ -d "/var/backups/codebases-cleanup" ]; then
-      find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
+      _acct_in_real_dir /var/backups/codebases-cleanup \
+        _global_cld_prune_here &> /dev/null
     elif [ -d "/data/disk/codebases-cleanup" ]; then
-      find /data/disk/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
+      _acct_in_real_dir /data/disk/codebases-cleanup \
+        _global_cld_prune_here &> /dev/null
     fi
   fi
   rm -f /tmp/.cron.*.pid
   rm -f /tmp/.busy.*.pid
-  rm -f /data/disk/*/.tmp/.cron.*.pid
-  rm -f /data/disk/*/.tmp/.busy.*.pid
+  ### An account's .tmp is its own: its markers go only from inside the real
+  ### directory, never from wherever a link put there points.
+  local _aTmp
+  for _aTmp in /data/disk/*/.tmp; do
+    [ -d "${_aTmp}" ] || continue
+    _acct_in_real_dir "${_aTmp}" _run_marks_drop_here
+  done
 
   ###
   ### Delete duplicity ghost pid file if older than 2 days
@@ -663,8 +1093,10 @@ _migrate_source_sweep_all() {
     exec {_lockfd}>&-
     return 0
   fi
-  if [ ! -e "${_stop}" ]; then
-    echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES
+  # Created only when absent, so a pause another operation took meanwhile
+  # is never overwritten.
+  if ( set -C; echo "$$" > "${_stop}" ) 2> /dev/null; then
+    _madeStop=YES
   fi
   if [ "${_madeStop}" != "YES" ]; then
     # Another operation already holds the pause; its window is not ours to
@@ -712,4 +1144,25 @@ _migrate_source_sweep_all() {
   fi
   flock -u "${_lockfd}"
   exec {_lockfd}>&-
+}
+
+# The database broker's nightly check, on a box where an account is switched
+# to it or its registry is in use: what a switched account or its panel
+# users hold beyond their own databases, a database of one without the
+# account's grant, a grant on the registry itself, and reservations nothing
+# used (let go). Its ALRT lines go into this night's log. A box with
+# neither runs nothing here, so the broker writes no log line there.
+_dbctl_witness() {
+  local _f _on=NO
+  [ -x "/usr/local/bin/boa-dbctl" ] || return 0
+  for _f in /data/conf/*_db_broker.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    _on=YES
+    break
+  done
+  [ -d "/var/lib/mysql/boa_dbreg" ] && _on=YES
+  [ "${_on}" = "YES" ] || return 0
+  echo "dbctl-witness: start"
+  /usr/local/bin/boa-dbctl witness 2>&1
+  echo "dbctl-witness: done rc=$?"
 }

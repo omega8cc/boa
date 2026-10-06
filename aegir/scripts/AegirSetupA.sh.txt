@@ -150,7 +150,10 @@ _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
 _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
-if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.6" ] \
+  && [ -x "/opt/php86/bin/php" ]; then
+  _T_CLI=/opt/php86/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.5" ] \
   && [ -x "/opt/php85/bin/php" ]; then
   _T_CLI=/opt/php85/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
@@ -197,7 +200,7 @@ if [ -z "${_T_CLI}" ]; then
   _T_CLI="${_T_CLI%/php}"
   if [ -z "${_T_CLI}" ] || [ ! -x "${_T_CLI}/php" ]; then
     _T_CLI=
-    for _fbV in 84 85 83 82 81 80 74; do
+    for _fbV in 84 85 86 83 82 81 80 74; do
       if [ -x "/opt/php${_fbV}/bin/php" ]; then
         _T_CLI="/opt/php${_fbV}/bin"
         break
@@ -293,10 +296,12 @@ _satellite_set_client_login
 _satellite_if_add_update_user_platforms_symlinks
 _satellite_if_add_update_backend_user_dirs_files_clean
 [ ! -e "/root/.silent.update.cnf" ] && _satellite_prepare_setup_email_tpl
+[ ! -e "/root/.silent.update.cnf" ] && _satellite_upgrade_email_skip_once
 [ ! -e "/root/.silent.update.cnf" ] && _satellite_send_welcome_email
 _satellite_letsencrypt_vhost_setup
 _satellite_log_update
 _satellite_batch_cleanup
+_satellite_db_broker_born
 _satellite_display_url_finalize
 
 

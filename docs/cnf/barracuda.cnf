@@ -51,7 +51,7 @@ _SQL_LOW_MAX_TTL=60 #----------- Max TTL for mysql process per problematic user
 _SQL_MAX_CONNECTIONS_FORCE="" #- Pins max_connections count (restart applies; AUTO when empty)
 _SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds); authoritative -- the historical .high_load/.big_db markers are inert
 _SQL_TMP_TABLE_FORCE="" #------- Pins tmp_table_size + max_heap_table_size in MB (AUTO when empty)
-_VALKEY_MAXMEM_FORCE="" #------- Pins Valkey/Redis maxmemory in MB (AUTO when empty)
+_VALKEY_MAXMEM_FORCE="" #------- Pins Valkey maxmemory in MB (AUTO when empty)
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt
@@ -61,13 +61,11 @@ _LOCAL_DEVUAN_MIRROR= #--------- Allows to force non-default Devuan mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 ###
 ### ICU version pin (advanced; single-tenant dedicated boxes only). When set,
-### BOA builds/links ICU at this version on ALL PHP versions and rebuilds PHP
-### 7.4/8.0 with the intl extension against it -- a holding pattern to keep a
-### legacy Drupal 7 site (Transliterator/locale_*) running after a system ICU
-### bump, without forcing a client codebase upgrade. Dashed form, e.g. 73-1.
-### Unset = per-OS default, no behaviour change. Global per box, has a shelf
-### life, and is NOT auto-carried on migration -- set it again explicitly on
-### the new box if the legacy site still needs it.
+### BOA builds/links ICU at this version for the whole box and rebuilds every
+### PHP 7.4 and newer against it. PHP 7.4/8.0 intl does NOT need it: they are
+### built with intl against the default ICU too. A pinned box is refused the
+### prebuilt PHP packages. Dashed form, e.g. 73-1. Unset = per-OS default.
+### NOT auto-carried on migration -- set it again on the new box if wanted.
 ###
 #_ICU_FORCE_VRN="73-1"
 ###
@@ -161,11 +159,11 @@ _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.3 8.4 8.5" #--- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_MULTI_INSTALL="8.3 8.4 8.5" #--- PHP versions to install 8.6/5/4/3/2/1/0 7.4/3/2/1/0 5.6 (8.6 RC: added by default only on hosted and remotely managed systems)
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
-_REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
-_REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7
+_REDIS_LISTEN_MODE=SOCKET #----- Not used any more: BOA installs Valkey only
+_REDIS_MAJOR_RELEASE=7 #-------- Not used any more: BOA installs Valkey only
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
@@ -174,8 +172,8 @@ _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _USE_PREBUILT_PKGS=NO #--------- Prebuilt stack packages when YES; auto-YES on Daedalus
 _BACKDROP_SUPPORT=YES #--------- Backdrop system tools (bee, Drush extension, lshell exposure); NO skips them
-_GRAV_SUPPORT=NO #-------------- Recorded for reference only; the instance cnf is the switch
-_TXP_SUPPORT=NO #--------------- Recorded for reference only; the instance cnf is the switch
+_GRAV_SUPPORT=NO #-------------- Recorded for reference only; the instance cnf is the switch; YES by default on hosted and remotely managed systems
+_TXP_SUPPORT=NO #--------------- Recorded for reference only; the instance cnf is the switch; YES by default on hosted and remotely managed systems
 _XTRIM_MIN_DAYS=14 #------------ Min age in days of log/proxied.pid before xtrim shrinks an account (hard floor 7)
 _MIGRATION_PROXY_CERT_WARN_DAYS=21 #-- Warn when a retained proxy vhost's certificate expires within N days unrefreshed
 _VALKEY_LISTEN_MODE=SOCKET #---- Valkey listen mode: SOCKET (recommended) or PORT
@@ -183,7 +181,7 @@ _VALKEY_MAJOR_RELEASE=9 #------- Valkey major release version: 9, 8, 7
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
-_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
+_CUSTOM_CONFIG_REDIS=NO #------- Not used any more: BOA installs Valkey only
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 _CUSTOM_CONFIG_VALKEY=NO #------ Protects custom Valkey config when YES
 ###
@@ -260,27 +258,22 @@ _BACKEND_ITEMS_LIST=
 ### unneeded tickets, confusion and frustration, we have automated these
 ### updates, so all your meta-installers were updated daily.
 ###
-### Then #drupageddon happened, and we realized that we could make all existing
-### BOA systems secure, auto-magically, in the first 60 minutes after the
-### #drupageddon alert was published. Only if we could have a running mechanism
-### in place to apply very trivial but how important patch to all your D7 sites/
-### /codebases while you were on vacation, out of town, or just AFK anywhere.
-###
-### So we have added Drupal core monitoring and auto-patching to make sure you
-### never run vulnerable codebase again. To make it effective, we have scheduled
-### to run these checks hourly.
-###
-### Then we have added also hourly updates for a few key scripts responsible
+### We have also added hourly updates for a few key scripts responsible
 ### for your system security, self-monitoring and self-healing.
 ###
 ### Gradually it grew into its current incarnation, so at the moment BOA Skynet
 ### auto-updates do these things for you, while you sleep:
 ###
 ### * Daily version/release check and notification
-### * Every 6 minutes update for all meta-installers and related tools
-### * Hourly check for D7 core vulnerability and patching if detected
-### * Hourly update for key BOA tools, monitors and self-healing agents
-### * Hourly check if your DNS #resolver works as expected and repair if not
+### * Every 5 minutes (one and the same tick, the root cron line that runs
+###   clear.sh, whenever no install lock is held): update for all
+###   meta-installers and related tools
+### * The same tick: update for key BOA tools, monitors and self-healing
+###   agents
+### * The same tick: check if your DNS resolver works as expected and
+###   repair if not
+### * Automatic OS security-only updates between BOA upgrades, on modern
+###   systems (see _SYSTEM_AUTO_SECURITY below)
 ###
 ### While it is a very convenient to have all this work done for you, and we
 ### believe that it should be still enabled by default, we should make it
@@ -293,7 +286,7 @@ _BACKEND_ITEMS_LIST=
 ###   _SKYNET_MODE=OFF
 ###
 ### NOTE: Critically important BOA tools will be still auto-updated
-###       every 6 minutes to keep your system ready for upgrade
+###       every 5 minutes to keep your system ready for upgrade
 ###       if/when needed and as initially intended.
 ###
 _SKYNET_MODE=ON
@@ -332,6 +325,37 @@ _SYSTEM_AUTO_SECURITY=YES
 ###   _APT_ACQUIRE_POLICY=NO
 ###
 _APT_ACQUIRE_POLICY=YES
+
+###
+### The account web group (instgrp webconvert): each Octopus account moves
+### from the shared www-data group to its own web group, wg-<account>, so no
+### account's PHP and shell users can read another account's files and
+### settings. It is inert until armed: with _WEB_GROUP_ARM=YES every
+### barracuda pass stamps the box (/var/log/boa/instgrp-web-arm.ready.txt),
+### and only then does the Octopus arm convert an account (phase A, then
+### phase B with _WEB_GROUP_PHASE_B=YES). A per-account opt-out is
+### _WEB_GROUP=NO in /root/.<account>.octopus.cnf, a phase A pin
+### _WEB_GROUP=A. Set both boxes of a standing xmass mirror alike: a box
+### promoted without the stamp converts nothing. Not switched on in this
+### release: the setting stamps only a test box that carries the marker
+### /root/.tenant-isolation-test.cnf. See docs/INSTGRP.md.
+###
+###   _WEB_GROUP_ARM=YES
+###   _WEB_GROUP_PHASE_B=YES
+###
+_WEB_GROUP_ARM=NO
+_WEB_GROUP_PHASE_B=NO
+
+###
+### Every clear.sh run tells BOA's mirror this box's BOA release and OS
+### release (for example "BOA-5.88.855 devuan 5 daedalus"), and nothing else,
+### as the User-Agent of one HEAD request. It is what decides when support for
+### a legacy OS can be dropped, and it lives only in the mirrors' rotated
+### access logs. Enabled by default; to stop it:
+###
+###   _VERSION_REPORT=NO
+###
+_VERSION_REPORT=YES
 
 ###
 ### NOTE: the group of settings displayed below is never stored

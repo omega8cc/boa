@@ -23,6 +23,13 @@
 #   instgrp reclaim <account>|all [--force]
 #   instgrp revert  <account> [--keep-enabled]
 #   instgrp check
+#   instgrp webconvert <account>|aegir [--phase-a|--phase-b] [--force]
+#   instgrp webconvert <account> --from-octopus
+#   instgrp webconvert all [--phase-b]
+#   instgrp webrevert  <account>|aegir [--keep-enabled] [--force]
+#   instgrp webstatus  <account>|aegir|all
+#   instgrp webcheck   [--report]
+#   instgrp webdrift   <account>|aegir [--report [--deep]] [--own night] | --box
 #
 #   status   the marker, the group, every identity's group set, the FPM
 #            assertion and the per-group file counts under the account's
@@ -32,9 +39,18 @@
 #            chown), in no group (a copy from another box), or in another
 #            NAMED group (a numeric gid collision on a copy or a root-run
 #            restore: that group's identities can read the files). Re-run
-#            convert (or reclaim), both are idempotent.
+#            convert (or reclaim), both are idempotent. An 'other:' line
+#            counts what the walk never regroups (a regular file with more
+#            than one link or a FIFO whose owner is not one of the account's
+#            identities in the target group, a socket, a device); never
+#            drift.
 #   convert  identities first (users supplementary, then the primary group),
 #            then a group-only, symlink-safe walk over the account's roots.
+#            The walk changes a directory, a single-link regular file, and a
+#            hard-linked regular file or a FIFO whose owner is one of the
+#            account's identities (the account, <account>.ftp, a sub-user)
+#            that is a member of the target group: that owner could make the
+#            same change itself.
 #            An already converted account costs one read-only traversal
 #            (early-quit on the first path outside the group), no write. A
 #            walk that leaves residue (a write raced it: the hosting
@@ -46,6 +62,9 @@
 #            forever. Only a failed identity move rolls the account back.
 #            Refuses while another BOA run holds /run/boa_run.pid (the octopus
 #            arm passes --from-octopus because it holds that lock itself),
+#            waits a bounded time for a limited-shell worker pass already
+#            running when it takes the lock (refuses while one stays; the
+#            arm skips the account as busy),
 #            waits a bounded time for the account's own provision tasks,
 #            waits up to a minute for every identity still to move that
 #            usermod would call in use (a process in this root whose real,
@@ -60,15 +79,21 @@
 #            tenant out of its shell. With 'all', one account's failure is
 #            logged and the loop goes on.
 #   reclaim  the file half only: every path under the account's roots that
-#            is not in the account's current group (users while unconverted),
-#            not www-data and not root takes the account's group; a marker
+#            the walk changes (see convert) and that is not in the account's
+#            current group (users while unconverted), not www-data, not the
+#            account's own web group (wg-<account>, when it exists) and not
+#            root takes the account's group; a marker
 #            that does not record THIS box's group is dropped. No identity
 #            change, no lock: safe after a root-run restore, on a migration
 #            destination, from the nightly.
-#   revert   the exact inverse, files first so no identity ever loses a group
-#            its files still carry; removes the group only once no path and
-#            no identity carries it; skips (4) while an identity it has to
-#            move back is in use, waits again before each move after the file
+#   revert   the exact inverse (refused while a group wg-<account> exists,
+#            in any state: that goes first), files first so no identity ever
+#            loses a group its files still carry; removes the group only once
+#            no path and no identity carries it (an entry the walk never
+#            changes keeps it too, a symlink excepted: never counted, its
+#            group is never used for access; exit 2, status shows examples,
+#            re-run once they are gone); skips (4) while an identity it has
+#            to move back is in use, waits again before each move after the file
 #            walk and fails (1) naming one still in use then -- recorded in
 #            /var/log/boa/instgrp.revert-pending.<account>, which the
 #            3-minute limited-shell worker finishes (each identity back to
@@ -81,6 +106,39 @@
 #   check    the writer inventory: every fetched root-run writer listed as
 #            group-aware, stale, or absent on this box class -- and whether
 #            the BOA release that carries the Octopus arm has stamped the box.
+#
+# The web verbs move a converted account (or the master, "aegir") from the
+# shared www-data group to its own web group, wg-<account> (wg-aegir):
+#   webconvert  phase A: the group made, every identity and pool user listed
+#               in it, the web paths (files, private, settings) handed to it,
+#               private files 02770/0660, the alias's web_group; phase B
+#               (--phase-b, or the Octopus arm on a box with
+#               _WEB_GROUP_PHASE_B=YES): the pools run in the group and the
+#               tenant identities leave www-data. --phase-a stops at A and
+#               pins the account there: _WEB_GROUP=A in its cnf, which the
+#               migration tools carry as they carry _WEB_GROUP=NO (only
+#               --phase-b and webrevert lift it). Refused for an outbound
+#               share, a site on the shared stores, or a site or a files or private
+#               store outside the account's own places (a store is a real
+#               dir of the site or a link into the account's own
+#               static/files, never into BOA's dot-named folders there).
+#               Never lowers what the account carries; nothing converts
+#               until _WEB_GROUP_ARM=YES has stamped the box.
+#   webrevert   back to www-data, B first, then A, then the group; writes
+#               _WEB_GROUP=NO into the account's cnf first, over a pin
+#               (--keep-enabled writes none and keeps the pin). The only
+#               verb besides --phase-a that lowers.
+#   webstatus   every trait, the intent and the record, the verdict.
+#   webcheck    the web-group writers, the stamp; --report adds each account's
+#               readiness and its shares (read only: no notes written).
+#   webdrift    the drift witnesses the limited-shell worker and the nightly
+#               read: one ALRT or NOTE line per witness that fires; the
+#               nightly passes --own night, so its own hold of the account
+#               is not read as a conversion run, and --deep, so the residue
+#               rule is read in full (the private set in depth).
+# The web verbs exit 0 done, 1 failed, 2 residue or a group kept, 4 busy or
+# frozen, 5 not ready, 6 refused or deferred (opted out, a share, a standby,
+# a revert in progress, a pin, the queue not drained).
 #
 # The octopus upgrade arm runs convert for every account by default; the
 # per-instance opt-out is _INSTANCE_GROUP=NO in /root/.<account>.octopus.cnf
@@ -114,9 +172,14 @@ _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
 # of the account ends by itself, a logged-in shell or SFTP session does not):
 # how long a convert or revert waits for them before skipping.
 _IDS_WAIT_MAX="${_INSTGRP_IDS_WAIT_MAX:-60}"
+# A limited-shell worker pass already running when convert or revert takes
+# the lock: how long they wait for it to end before refusing (the nightly
+# waits the same bound for it).
+_WORKER_WAIT_MAX="${_INSTGRP_WORKER_WAIT_MAX:-180}"
 # A non-numeric override would break the wait loops' tests: take the default.
 [[ "${_WAIT_MAX}" =~ ^[0-9]+$ ]] || _WAIT_MAX=300
 [[ "${_IDS_WAIT_MAX}" =~ ^[0-9]+$ ]] || _IDS_WAIT_MAX=60
+[[ "${_WORKER_WAIT_MAX}" =~ ^[0-9]+$ ]] || _WORKER_WAIT_MAX=180
 _FROM_OCTOPUS=NO
 _FORCE=NO
 _KEEP_ENABLED=NO
@@ -182,21 +245,51 @@ Usage:
   instgrp reclaim <account>|all [--force]
   instgrp revert  <account> [--keep-enabled]
   instgrp check
+  instgrp webconvert <account>|aegir [--phase-a|--phase-b] [--force]
+  instgrp webconvert <account> --from-octopus
+  instgrp webconvert all [--phase-b]
+  instgrp webrevert  <account>|aegir [--keep-enabled] [--force]
+  instgrp webstatus  <account>|aegir|all
+  instgrp webcheck   [--report]
+  instgrp webdrift   <account>|aegir [--report [--deep]] [--own night] | --box
 
   status   marker, group, every identity's group set, the FPM assertion and
            the per-group file counts under the account's roots; one verdict
-           line: CONVERTED, UNCONVERTED, DRIFT or INCONSISTENT.
+           line: CONVERTED, UNCONVERTED, DRIFT or INCONSISTENT. 'other:'
+           counts what the walk leaves alone; never drift.
   convert  identities first (users supplementary, then the primary group),
            then a group-only, symlink-safe walk over the account's roots.
+           The walk changes directories, single-link regular files, and
+           hard-linked regular files and FIFOs owned by one of the account's
+           identities that is in the target group; any other hard-linked
+           file or FIFO, a socket or a device keeps its group.
            Idempotent; re-run it on DRIFT. Residue after the walk is DRIFT,
            never a rollback; only a failed identity move rolls back.
-  reclaim  the file half only: re-group every path under the roots to the
-           account's current group; no identity change, no lock.
+  reclaim  the file half only: re-group every path the walk changes under
+           the roots to the account's current group; no identity change, no
+           lock. convert and reclaim leave the paths of the account's web
+           group (wg-<account>) alone.
   revert   the exact inverse, files first; the group goes once nothing
-           carries it; writes _INSTANCE_GROUP=NO into the account's cnf.
+           carries it (an entry the walk leaves alone keeps it, a symlink
+           excepted: exit 2, see status); writes _INSTANCE_GROUP=NO into the
+           account's cnf. Refused (exit 1) while a group wg-<account>
+           exists, in any state (another identity holding it included).
            An identity in use when its group has to move back is finished
            by the limited-shell worker once idle (exit 1 until then).
   check    are the fetched root-run writers on this box group-aware?
+  webconvert  the account's own web group, wg-<account>: phase A, or B with
+           --phase-b (or the arm on a _WEB_GROUP_PHASE_B=YES box); --phase-a
+           pins it at A (_WEB_GROUP=A in its cnf; --phase-b unpins). all:
+           every account (phase B with --phase-b, a pinned one to A).
+  webrevert   back to www-data; writes _WEB_GROUP=NO first unless
+           --keep-enabled.
+  webstatus   traits, intent, record and verdict of the web group.
+  webcheck    the web-group writers and the arm stamp; --report per account.
+  webdrift    the drift witnesses of one account, the master, or (--box) the
+           box; read-only, one ALRT or NOTE line each. --own night: run
+           from the account's nightly pass, whose own hold does not count.
+           --report --deep: www-data anywhere in the private set counts as
+           residue too, not only in the settings files and store tops.
 
   --from-octopus  the octopus upgrade arm holds /run/boa_run.pid itself.
   --force         convert or reclaim an account frozen for a migration (log/proxied.pid).
@@ -239,6 +332,172 @@ _in_grp_sup() {
     [ "${_m}" = "${_u}" ] && return 0
   done
   return 1
+}
+
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+
+_web_group_policy() {
+  # The account's web-group policy as bash reads its cnf, the file $1
+  # (/root/.<account>.octopus.cnf): the last _WEB_GROUP assignment, with
+  # export, quotes or a trailing comment. NO (opted out of the conversion)
+  # or A (pinned at phase A) is printed; any other value, or none, prints
+  # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
+  # notes and the carry read the line the same way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  case "${_l}" in
+    NO|A) printf '%s\n' "${_l}" ;;
+  esac
+  return 0
+}
+
+_web_group_phase_b() {
+  # YES when /root/.barracuda.cnf turns phase B on as bash reads it: the last
+  # _WEB_GROUP_PHASE_B assignment, with export, quotes or a trailing comment,
+  # is YES. Prints nothing otherwise. Verbatim in instgrp, xoct, xcopy and
+  # xmass: the arm, the notes and the pair comparison read the line the same
+  # way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=" /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=(YES|\"YES\"|'YES')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  [ "${_l}" = "YES" ] && printf '%s\n' YES
+  return 0
+}
+
+# The account's own web group, as the claim passes below keep it: its gid when
+# the group exists and only the account's identities hold it, nothing
+# otherwise. $1 = one of the account's roots (/data/disk/<oN>, /home/<oN>.*,
+# its store on attached storage); a root under neither names no account.
+# Numeric, and emitted only when it resolves: find refuses an unknown group
+# name, and every claim here discards find's errors.
+_wg_keep() {
+  local _g
+  _g=$(_web_group_state "${1}" | cut -d' ' -f2)
+  case "${_g}" in
+    ""|*[!0-9]*) return 0 ;;
+  esac
+  printf '%s\n' "${_g}"
 }
 
 _grant_sup() {
@@ -546,7 +805,7 @@ _do_check() {
 _reap_own_stale_lock() {
   local _held
   [ -s "/run/boa_run.pid" ] || return 0
-  _held=$(tr -cd '0-9' < /run/boa_run.pid 2> /dev/null)
+  _held=$(tr -cd '0-9' 2> /dev/null < /run/boa_run.pid)
   [ -n "${_held}" ] || return 0
   kill -0 "${_held}" 2> /dev/null && return 0
   rm -f /run/boa_run.pid
@@ -554,11 +813,55 @@ _reap_own_stale_lock() {
   _log "reaped a stale run lock left by a killed instgrp (pid ${_held})"
 }
 
+# The limited-shell worker tests /run/boa_run.pid only when a pass starts and
+# then moves primary groups and re-groups account paths for the rest of it, so
+# the lock keeps a new pass out but not one already running. Its pid file
+# names its pid and a killed pass leaves it behind until clear.sh sweeps it:
+# only a live pid counts (the nightly's test).
+_worker_live() {
+  local _wp
+  [ -s "/run/manage_ltd_users.pid" ] || return 1
+  _wp=$(tr -cd '0-9' 2> /dev/null < /run/manage_ltd_users.pid)
+  [ -n "${_wp}" ] && kill -0 "${_wp}" 2> /dev/null
+}
+
+# Called with the lock held: the worker re-tests the lock once its pid is
+# written, so of a pass starting now and this wait one always sees the other.
+_wait_worker() {
+  local _w=0
+  while _worker_live; do
+    if [ "${_w}" -ge "${_WORKER_WAIT_MAX}" ]; then
+      return 1
+    fi
+    [ "${_w}" -eq 0 ] && _msg "the limited-shell worker is running, waiting up to ${_WORKER_WAIT_MAX}s..."
+    sleep 5
+    _w=$((_w + 5))
+  done
+  return 0
+}
+
 # Another BOA run must not overlap an identity change: the wrappers refuse to
 # start while /run/boa_run.pid exists, so holding it here gives the same mutual
 # exclusion and makes run-xdrago defer. The octopus arm already holds it.
 _lock_gate() {
   if [ "${_FROM_OCTOPUS}" = "YES" ]; then
+    # the wrapper takes the lock once and each account's post-cleanup
+    # removes it, so from the second account of a sweep on it is gone: taken
+    # again here, as the operator path takes it, and released at exit only
+    # while it still names this run
+    if [ ! -e "/run/boa_run.pid" ] \
+      && ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
+      _HELD_LOCK=YES
+      trap '[ "${_HELD_LOCK}" = "YES" ] && [ "$(tr -cd 0-9 2> /dev/null < /run/boa_run.pid)" = "$$" ] && rm -f /run/boa_run.pid' EXIT
+    fi
+    # the lock keeps a new worker pass out, not one already running: waited
+    # for the same way, and one still running is a busy account the upgrade
+    # report names (the next pass converts it)
+    if ! _wait_worker; then
+      _alrt "${_TARGET}: the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid), skipped this pass"
+      _log "${_TARGET}: SKIP busy worker"
+      exit 4
+    fi
     return 0
   fi
   _reap_own_stale_lock
@@ -569,6 +872,9 @@ _lock_gate() {
   echo "$$" > /run/boa_run.pid
   _HELD_LOCK=YES
   trap '[ "${_HELD_LOCK}" = "YES" ] && rm -f /run/boa_run.pid' EXIT
+  # the EXIT trap releases the lock on this refusal too
+  _wait_worker \
+    || _die "the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid); retry later"
 }
 
 # A backend task already running as the account bootstraps with the old group
@@ -689,37 +995,105 @@ _chgrp_keeps_dir_setgid() {
   [ "${_m}" = "2770" ]
 }
 
-# Group-only, current-group-scoped, symlink-safe walk, one process per root:
-# GNU chown -R traverses by directory descriptor (fts + fchownat), so a
-# tenant swapping an intermediate component for a symlink between the stat
-# and the change cannot steer root at a path outside the tree; -P never
-# follows a symlink during the walk and -h changes a link's own group, never
-# its target; --from=:<gid> touches only inodes still in the source group,
-# which leaves every www-data path (files/, private/, settings.php, the SSL
-# key dirs -- the FPM read and write paths) untouched; the gid is numeric so
-# a half-migrated nsswitch cannot widen the match. chown names every inode it
-# could not change on stderr (chattr +i: EPERM for root too); those paths are
-# collected for the immutable pass, so nothing walks the tree twice.
+# The uids of the account's identities (the account, <account>.ftp, its
+# sub-users) whose group set holds group $1, as a comma list, empty when
+# none: the owners whose hard-linked files and FIFOs the walk may change.
+# $1 = target group, $2 = account.
+_grp_owner_uids() {
+  local _to="$1" _a="$2" _toGid _u _uid _g _list=""
+  _toGid=$(_gid_of "${_to}")
+  [[ "${_toGid}" =~ ^[0-9]+$ ]] || return 0
+  for _u in "${_a}" "${_a}.ftp" $(_acct_subusers "${_a}" 2> /dev/null); do
+    _uid=$(id -u "${_u}" 2> /dev/null) || continue
+    # Never uid 0: a root-owned inode linked into the tree stays as it is.
+    [[ "${_uid}" =~ ^[1-9][0-9]*$ ]] || continue
+    for _g in $(id -G "${_u}" 2> /dev/null); do
+      if [[ "${_g}" = "${_toGid}" ]]; then
+        _list="${_list:+${_list},}${_uid}"
+        break
+      fi
+    done
+  done
+  printf '%s' "${_list}"
+}
+
+# The find test for "the walk changes this entry" (the rule above
+# _grp_walk), printed as words for read -ra: $1 = the _grp_owner_uids list.
+_grp_changed_expr() {
+  local _uids="$1" _uid _or=""
+  printf '%s' '( -type d -o -type f -links 1'
+  if [[ -n "${_uids}" ]]; then
+    printf ' %s' '-o ( ( -type f -o -type p ) ('
+    for _uid in ${_uids//,/ }; do
+      printf ' %s-uid %s' "${_or}" "${_uid}"
+      _or="-o "
+    done
+    printf ' %s' ') )'
+  fi
+  printf ' %s\n' ')'
+}
+
+# Group-only, current-group-scoped, symlink-safe walk, one find per root and
+# pass: find -P never follows a symlink, and every entry is changed inside
+# the directory find holds, through a handle opened on its bare name without
+# following a link or blocking on a FIFO, never by name; the owner is kept.
+# The account writes this tree, and a hard link it put there to an inode it
+# does not own would have been handed the group by chown -R or chgrp -h. The
+# rule, which every probe and count below follows: a directory and a
+# single-link regular file are changed, and so is a hard-linked regular file
+# or a FIFO whose owner is one of the account's identities that is a member
+# of the target group at walk time (_grp_owner_uids) -- that owner could make
+# the same change itself (chgrp to a group it belongs to), so root doing it
+# through a handle grants nothing. A symlink, any other hard-linked file or
+# FIFO, a socket or a device is left alone, so it is never residue (a probe
+# counting it would fail for ever); all but a symlink is reported apart. The
+# bulk pass takes only inodes still in the source gid, which leaves every
+# www-data path (files/, private/, settings.php, the SSL key dirs -- the FPM
+# read and write paths) untouched; the gids are numeric so a half-migrated
+# nsswitch cannot widen the match. An inode that could not be changed
+# (chattr +i: EPERM for root too) is still outside the target group, so the
+# claim pass below takes it in the same walk.
+# _GRP_REOWN_PL takes the target gid, the allowed owner uids, the from gid,
+# the www-data gid and the web group's gid (-1: none), then names. It reads
+# the group again on the handle, since a path can change group between find
+# listing it and the handle opening it: given a from gid it changes only an
+# entry still in it (the bulk pass); given an empty one (the claim pass) it
+# leaves an entry now in the target group, www-data, root or the web group.
+# Non-zero when an entry it would change could not be changed. Both
+# constants lstat the bare name first and open only a directory, a regular
+# file or a FIFO of an allowed owner: another owner's FIFO, a socket or a
+# device is never opened (opening a FIFO releases a writer blocked on it).
+# _GRP_IMMUTABLE_PL takes an entry the claim pass could not change because it
+# is immutable: the target gid, the allowed owner uids, the www-data and web
+# group gids, then names. Under the same rule and exempt set, the flag is
+# dropped, the group changed and the flag restored through one handle, so
+# no name is opened twice.
 # $1 = from gid (empty: no bulk pass, the claim pass alone), $2 = to group,
-# then roots. Leaves the failed paths in ${_WALK_FAILED} (one per line).
-_WALK_FAILED=""
+# $3 = account, then roots.
+_GRP_REOWN_PL='use Fcntl; my ($g, $ok, $from, $w, $x, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _ || (-p _ && $o{$l[4]})); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && ($from ne "" ? $s[5] == $from : ($s[5] != $g && $s[5] != $w && $s[5] != $x && $s[5] != 0)) && (-d _ || (-f _ && $s[3] == 1) || ((-f _ || -p _) && $o{$s[4]}))) { chown(-1, $g, $h) or $rc = 1; } close($h); } exit $rc'
+_GRP_IMMUTABLE_PL='use Fcntl; my ($g, $ok, $w, $x, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && $s[5] != $g && $s[5] != $w && $s[5] != $x && $s[5] != 0 && (-d _ || (-f _ && ($s[3] == 1 || $o{$s[4]})))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); if ($fl & 0x10) { if (ioctl($h, 0x40086602, pack("L", $fl & ~0x10))) { chown(-1, $g, $h) or $rc = 1; ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } } else { $rc = 1 } } close($h); } exit $rc'
 _grp_walk() {
-  local _from="$1" _to="$2" _r _keep _err
-  shift 2
+  local _from="$1" _to="$2" _a="$3" _toGid _wGid _uids _r _keep _wg _wgX
+  shift 3
+  _toGid=$(_gid_of "${_to}")
+  [[ "${_toGid}" =~ ^[0-9]+$ ]] || return 1
+  _wGid=$(_gid_of "${_WEBG}")
+  [[ "${_wGid}" =~ ^[0-9]+$ ]] || _wGid=-1
+  _uids=$(_grp_owner_uids "${_to}" "${_a}")
   _keep=YES
   _chgrp_keeps_dir_setgid || _keep=NO
-  _err=$(mktemp /root/.instgrp.err.XXXXXX) || _err=/dev/null
-  : > "${_err}"
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
     if [ -n "${_from}" ]; then
       if [ "${_keep}" = "NO" ]; then
+        # chmod has no no-follow form: the bit is set on '.' of each directory
+        # entered from its parent, only when it is the directory find met
+        # there, never on the target of a link swapped in after the test.
         find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
-          -execdir sh -c 'g="$1"; shift; chgrp -h "$g" "$@" 2> /dev/null; chmod g+s "$@" 2> /dev/null' _ "${_to}" {} + 2> /dev/null
+          -execdir sh -c 'p=$(pwd -P); for d; do ( cd -P -- "$d" 2> /dev/null && [ "$(pwd -P)" = "${p%/}/${d#./}" ] && chgrp -h "$0" . 2> /dev/null && chmod g+s . 2> /dev/null ); done' "${_to}" {} + 2> /dev/null
       fi
-      # LC_ALL=C: the error lines are parsed, and a UTF-8 locale would quote
-      # the path with curly quotes.
-      LC_ALL=C chown -R -h -P --from=":${_from}" ":${_to}" "${_r}" 2>> "${_err}" > /dev/null
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_from}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_toGid}" "${_uids}" "${_from}" -1 -1 {} + > /dev/null 2>&1
     fi
     # Everything under the roots is this account's tree. A copy from another
     # box (xoct, xcopy, xmass, a root-run restore of a foreign archive)
@@ -727,88 +1101,211 @@ _grp_walk() {
     # all), or -- the ordinary case, every box allocates account gids from
     # the same system range -- the gid of a DIFFERENT named group on this
     # box, whose identities could then read the copied credential files.
-    # Both take the account's group; only the FPM group and root stay.
-    LC_ALL=C find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root \
-      -execdir chgrp -h "${_to}" {} + 2>> "${_err}"
-  done
-  # Both passes name the inodes they could not change (chattr +i: EPERM for
-  # root too); those go to the immutable pass.
-  _WALK_FAILED=$(sed -n "s/^ch\(own\|grp\): changing group of '\(.*\)': Operation not permitted$/\2/p" "${_err}" 2> /dev/null)
-  rm -f "${_err}"
-}
-
-# The limited-shell homes carry chattr +i on a known set of names (the home
-# itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh sets and
-# clears them around its own writes). Each path chown reported is re-grouped
-# with the flag dropped and restored around the one operation, addressed by
-# bare name from inside its parent directory (cd -P: the parent is entered
-# once, physically, and the name is acted on there -- the same shape find
-# -execdir gives), never through a pathname a tenant can re-point mid-way.
-# $1 = to group; paths on stdin, one per line.
-_grp_fix_immutable() {
-  local _to="$1" _p _d _n
-  while IFS= read -r _p; do
-    [ -n "${_p}" ] || continue
-    _d=$(dirname -- "${_p}")
-    _n=$(basename -- "${_p}")
-    ( cd -P -- "${_d}" 2> /dev/null || exit 1
-      if lsattr -d -- "${_n}" 2> /dev/null | cut -d' ' -f1 | grep -q i; then
-        chattr -i -- "${_n}" 2> /dev/null && chgrp -h "${_to}" -- "${_n}" 2> /dev/null
-        chattr +i -- "${_n}" 2> /dev/null
-      else
-        chgrp -h "${_to}" -- "${_n}" 2> /dev/null
-      fi )
+    # Both take the account's group; only the FPM group, the account's own
+    # web group (its web paths once converted) and root stay.
+    # The limited-shell homes carry chattr +i on a known set of names (the
+    # home itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh
+    # sets and clears them around its own writes): when a batch left an
+    # entry the walk changes outside the group (the handle step's non-zero
+    # exit), each immutable one is re-grouped with the flag dropped and
+    # restored through the same handle (_GRP_IMMUTABLE_PL, under the walk's
+    # rule: a link, a FIFO and a hard-linked file of any other owner are left
+    # alone). Every name is opened inside the directory find holds, by its
+    # bare name, never through a pathname a tenant can re-point mid-way.
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
+      -execdir sh -c 'g=$0 r=$1 c=$2 u=$3 w=$4 x=$5; shift 5
+        perl -e "$r" -- "$g" "$u" "" "$w" "$x" "$@" && exit 0
+        perl -e "$c" -- "$g" "$u" "$w" "$x" "$@"' "${_toGid}" "${_GRP_REOWN_PL}" "${_GRP_IMMUTABLE_PL}" "${_uids}" "${_wGid}" "${_wg:--1}" {} + 2> /dev/null
   done
 }
 
-# Residue = any path under the roots whose group is not the target group,
-# not the FPM group and not root. One early-quit traversal; the probe a
-# converted account pays instead of a walk.
+# A probe's find prints R for an entry the walk changes (and quits) and U
+# for one it leaves alone other than a symlink (the rule above the walk);
+# this reads that as "<R seen> <U count>". The U lines cost no second
+# traversal: the probe a converted account pays stays one read-only find.
+# Every probe takes the target group and the account, and builds its
+# changed-set from the same _grp_owner_uids list the walk to that target
+# uses, and leaves the account's own web group as the claim pass does.
+_UNWALKED=0
+_tally() {
+  awk '$0 == "R" { r = 1 } $0 == "U" { u++ } END { print r + 0, u + 0 }'
+}
+
+# Residue = an entry the walk changes whose group is not the target group,
+# not the FPM group, not the account's own web group and not root. One
+# early-quit traversal; the probe a converted account pays instead of a
+# walk. The rest outside those groups, symlinks aside, is counted into
+# _UNWALKED, complete only when the probe passes.
+# $1 = target group, $2 = account, then roots.
 _grp_residue() {
-  local _to="$1" _r
-  shift
+  local _to="$1" _a="$2" _r _res _n _chg _wg _wgX
+  shift 2
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
+  _UNWALKED=0
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root -print -quit 2> /dev/null | grep -q . && return 0
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    read -r _res _n < <(find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
+      \( "${_chg[@]}" -printf 'R\n' -quit -o ! -type l -printf 'U\n' \) 2> /dev/null | _tally)
+    _UNWALKED=$((_UNWALKED + ${_n:-0}))
+    [[ "${_res}" = "1" ]] && return 0
   done
   return 1
 }
 
+# $1 = target group, $2 = account, then roots.
 _grp_residue_list() {
-  local _to="$1" _r
-  shift
+  local _to="$1" _a="$2" _r _chg _wg _wgX
+  shift 2
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root -printf '%G %p\n' 2> /dev/null | head -5
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    find -P "${_r}" "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -printf '%G %p\n' 2> /dev/null | head -5
   done
 }
 
-# Paths still carrying ONE numeric gid under the roots (the group about to be
-# deleted by revert or purge): an early-quit find, numeric so it works after
-# the name is gone.
+# Entries the walk to group $2 changes still carrying ONE numeric gid under
+# the roots (the group about to be deleted by revert): an early-quit find,
+# numeric so it works after the name is gone. The rest in that gid, symlinks
+# aside (a symlink's group is never used for access), is counted into
+# _UNWALKED, complete only when none is left: revert keeps the group while it
+# is not 0, or those entries would keep a bare number that addgroup can hand
+# to a new account.
+# $1 = gid, $2 = target group, $3 = account, then roots.
 _gid_left() {
-  local _gid="$1" _r
-  shift
+  local _gid="$1" _to="$2" _a="$3" _r _res _n _chg
+  shift 3
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
+  _UNWALKED=0
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" -gid "${_gid}" -print -quit 2> /dev/null | grep -q . && return 0
+    read -r _res _n < <(find -P "${_r}" -gid "${_gid}" \
+      \( "${_chg[@]}" -printf 'R\n' -quit -o ! -type l -printf 'U\n' \) 2> /dev/null | _tally)
+    _UNWALKED=$((_UNWALKED + ${_n:-0}))
+    [[ "${_res}" = "1" ]] && return 0
   done
   return 1
 }
 
-# The marker sits in a directory the account owns, so a planted name there is
-# removed first and the file lands by rename, which never follows a link.
-_write_marker() {
-  local _a="$1" _m="/data/disk/$1/${_MARK_REL}" _t
-  [ -L "${_m}" ] && rm -f "${_m}"
-  if [ -d "${_m}" ]; then
-    rmdir "${_m}" 2> /dev/null || { _fail "${_m} is a non-empty directory; refusing to replace it"; return 1; }
+# For status: the entries the walk leaves alone outside group $1, the FPM
+# group, the account's own web group and root, symlinks aside, as "<count>
+# <up to three example paths>". Informational; no verdict and no return code
+# reads it.
+# $1 = target group, $2 = account, then roots.
+_grp_unwalked() {
+  local _to="$1" _a="$2" _r _chg _wg _wgX
+  shift 2
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    find -P "${_r}" ! -type l ! "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -print0 2> /dev/null
+  done | tr '\n\0' '?\n' | awk 'NR <= 3 { e = e " " $0 } END { print NR + 0 e }'
+}
+
+# One log line for what the last residue probe passed over, when any.
+_log_unwalked() {
+  [[ "${_UNWALKED}" -gt 0 ]] || return 0
+  _log "${1}: ${_UNWALKED} entries outside group ${2} left as they are (hard-linked files and FIFOs not owned by an account identity in that group, sockets, devices: the walk never changes them; instgrp status ${1} shows examples)"
+}
+
+# The marker sits in log/, which the account owns (it owns /data/disk/<oN>),
+# so log/ itself can be a link and any name in it a link or a FIFO. The
+# marker is read, written and removed only inside the real log/.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc.
+_ig_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
   fi
-  _t=$(mktemp /root/.instgrp.mark.XXXXXX) || { _fail "cannot create the marker"; return 1; }
-  printf '%s %s gid=%s\n' "${_a}" "$(date '+%Y-%m-%d %H:%M:%S')" "$(_gid_of "${_a}")" > "${_t}"
-  chown root:root "${_t}"
-  chmod 0644 "${_t}"
-  mv -f "${_t}" "${_m}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_ig_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# ./$1 in the current (pinned) directory with the content $2 (root's, 0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened.
+_ig_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# The marker $1 in the current (pinned) log/: an empty directory at the name is
+# removed first (2 when it is not empty), then the marker is put.
+_marker_put_here() {
+  local _n="${_MARK_REL##*/}"
+  if [ -d "./${_n}" ] && [ ! -L "./${_n}" ]; then
+    rmdir -- "./${_n}" 2> /dev/null || return 2
+  fi
+  _ig_put_here "${_n}" "${1}"
+}
+
+# True when the marker is a regular file in the current (pinned) log/.
+_marker_here() {
+  [ -f "./${_MARK_REL##*/}" ] && [ ! -L "./${_MARK_REL##*/}" ]
+}
+
+# The marker name in the current (pinned) log/ removed when it is a file or a link.
+_marker_drop_here() {
+  if [ -L "./${_MARK_REL##*/}" ] || [ -f "./${_MARK_REL##*/}" ]; then
+    rm -f -- "./${_MARK_REL##*/}"
+  fi
+  return 0
+}
+
+# Account $1's marker: its text, whether it is there, and its removal, each
+# inside the real log/.
+_marker_text() {
+  _ig_in_real_dir "/data/disk/${1}/${_MARK_REL%/*}" _ig_read_here "${_MARK_REL##*/}"
+}
+_marker_present() {
+  _ig_in_real_dir "/data/disk/${1}/${_MARK_REL%/*}" _marker_here
+}
+_marker_drop() {
+  _ig_in_real_dir "/data/disk/${1}/${_MARK_REL%/*}" _marker_drop_here
+}
+
+_write_marker() {
+  local _a="$1" _rc
+  _ig_in_real_dir "/data/disk/${_a}/${_MARK_REL%/*}" _marker_put_here \
+    "$(printf '%s %s gid=%s' "${_a}" "$(date '+%Y-%m-%d %H:%M:%S')" "$(_gid_of "${_a}")")"
+  _rc=$?
+  if [ "${_rc}" = "2" ]; then
+    _fail "/data/disk/${_a}/${_MARK_REL} is a non-empty directory; refusing to replace it"
+    return 1
+  fi
+  return "${_rc}"
 }
 
 # A pre-existing same-named group is adopted only when everything attached to
@@ -854,10 +1351,7 @@ _undo_account() {
   _ids="${_a} ${_a}.ftp ${_subs}"
   if [ -n "${_gid}" ]; then
     # shellcheck disable=SC2086
-    _grp_walk "${_gid}" "${_USRG}" ${_roots}
-    if [ -n "${_WALK_FAILED}" ]; then
-      printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_USRG}"
-    fi
+    _grp_walk "${_gid}" "${_USRG}" "${_a}" ${_roots}
   fi
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || continue
@@ -875,7 +1369,7 @@ _undo_account() {
     fi
     [ -n "${_gid}" ] && _in_grp_sup "${_u}" "${_a}" && gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
   done
-  [ -L "/data/disk/${_a}/${_MARK_REL}" ] || [ -f "/data/disk/${_a}/${_MARK_REL}" ] && rm -f "/data/disk/${_a}/${_MARK_REL}"
+  _marker_drop "${_a}"
   # False with the identities still off the box-wide group in _UNDO_STUCK:
   # a caller must never report a rollback it did not get.
   _UNDO_STUCK="${_stuck# }"
@@ -916,13 +1410,13 @@ _ids_converted() {
 # The marker records THIS box's conversion: its gid must be the gid of the
 # account group here. A copy from another box carries the source's marker.
 _marker_valid() {
-  local _a="$1" _m="/data/disk/$1/${_MARK_REL}" _gid
+  local _a="$1" _gid
   _gid=$(_gid_of "${_a}")
-  [ -n "${_gid}" ] && [ -f "${_m}" ] && [ ! -L "${_m}" ] && grep -q " gid=${_gid}$" "${_m}" 2> /dev/null
+  [ -n "${_gid}" ] && _marker_text "${_a}" | grep -q " gid=${_gid}$"
 }
 
 _do_convert() {
-  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0
+  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0 _wgSt _wgKeep
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # A frozen account is served from another box mid-migration; every other
@@ -949,7 +1443,8 @@ _do_convert() {
   if [ -n "${_aGid}" ] && _group_is_ours "${_a}" && _ids_converted "${_a}" ${_ids}; then
     _assert_fpm_apart "${_a}"
     # shellcheck disable=SC2086
-    if ! _grp_residue "${_a}" ${_roots}; then
+    if ! _grp_residue "${_a}" "${_a}" ${_roots}; then
+      _log_unwalked "${_a}" "${_a}"
       _marker_valid "${_a}" || _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
       rm -f "${_REVERT_PENDING}.${_a}"
       _info "${_a}: already converted (gid ${_aGid}), nothing to re-group"
@@ -997,10 +1492,27 @@ _do_convert() {
   # primary group may move only once every identity is LISTED in it (an
   # identity whose primary group is 'users' is not listed there, and
   # usermod -g would drop it). www-data (files/ write, settings.php read) and
-  # lshellg are listed for the same reason.
+  # lshellg are listed for the same reason; once the account has its own web
+  # group, that group is listed too, and www-data no longer once the
+  # account's identities have left it.
+  _wgSt=$(_web_group_state "${_a}")
+  # While the account holds its own web group, the account's own user out
+  # of www-data is the only evidence of phase B that survives a lost
+  # record: www-data is then granted by the web-group verbs alone.
+  _wgKeep=NO
+  case "${_wgSt%% *}" in
+    held|converted|phaseb) _in_grp_sup "${_a}" "${_WEBG}" || _wgKeep=YES ;;
+  esac
   for _u in ${_ids}; do
     _grant_sup "${_u}" "${_USRG}" || { _fail "${_u}: cannot list it in ${_USRG}; refusing to move its primary group"; return 1; }
-    _grant_sup "${_u}" "${_WEBG}" || _alrt "${_u}: could not list it in ${_WEBG}"
+    if [ "${_wgSt%% *}" != "phaseb" ] && [ "${_wgKeep}" = "NO" ]; then
+      _grant_sup "${_u}" "${_WEBG}" || _alrt "${_u}: could not list it in ${_WEBG}"
+    fi
+    case "${_wgSt%% *}" in
+      held|converted|phaseb)
+        _grant_sup "${_u}" "${_wgSt##* }" || _alrt "${_u}: could not list it in ${_wgSt##* }"
+        ;;
+    esac
     case "${_u}" in
       "${_a}") ;;
       *) _grant_sup "${_u}" lshellg || _alrt "${_u}: could not list it in lshellg" ;;
@@ -1066,12 +1578,9 @@ _do_convert() {
   while :; do
     _pass=$((_pass + 1))
     # shellcheck disable=SC2086
-    _grp_walk "${_uGid}" "${_a}" ${_roots}
-    if [ -n "${_WALK_FAILED}" ]; then
-      printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_a}"
-    fi
+    _grp_walk "${_uGid}" "${_a}" "${_a}" ${_roots}
     # shellcheck disable=SC2086
-    _grp_residue "${_a}" ${_roots} || break
+    _grp_residue "${_a}" "${_a}" ${_roots} || break
     [ "${_pass}" -ge 3 ] && break
     _msg "${_a}: paths were written during the walk, walking again (${_pass})..."
   done
@@ -1080,20 +1589,50 @@ _do_convert() {
   _info "${_a}: converted to per-instance group ${_a} (gid ${_aGid})"
   _msg "NOTE: a shell session logged in before this keeps its old group set until it reconnects"
   # shellcheck disable=SC2086
-  if _grp_residue "${_a}" ${_roots}; then
+  if _grp_residue "${_a}" "${_a}" ${_roots}; then
     # shellcheck disable=SC2086
-    _log "${_a}: DRIFT after ${_pass} walks: $(_grp_residue_list "${_a}" ${_roots} | tr '\n' ' ')"
+    _log "${_a}: DRIFT after ${_pass} walks: $(_grp_residue_list "${_a}" "${_a}" ${_roots} | tr '\n' ' ')"
     _alrt "${_a}: converted, but paths written during the walk are still outside group ${_a} (see ${_LOG}); status reports DRIFT, the next pass finishes them"
     return 2
   fi
+  _log_unwalked "${_a}" "${_a}"
   return 0
+}
+
+# The web leg first (the account's own web group, when it has one or a
+# record names it), then the file half; the worse exit class of the two.
+# The web leg skips where the file half does (a freeze without --force, a
+# live install or upgrade run), with a note and rc 4, so a caller that
+# reclaims for the web residue sees it left.
+_do_reclaim() {
+  local _a="$1" _wrc=0 _rc
+  if _valid_account "${_a}"; then
+    [ "${_FROM_OCTOPUS}" != "YES" ] && _reap_own_stale_lock
+    if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
+      _msg "NOTE: ${_a}: the web group leg skipped: frozen for a migration (log/proxied.pid)"
+      _wrc=4
+    elif [ "${_FROM_OCTOPUS}" != "YES" ] \
+      && { [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
+        || [ -e "/run/octopus_install_run.pid" ]; }; then
+      _msg "NOTE: ${_a}: the web group leg skipped: a BOA install or upgrade run is live (/run/*.pid)"
+      _wrc=4
+    else
+      trap '_wg_on_exit' EXIT
+      _WG_CALLER=reclaim
+      _wg_run "${_a}"
+      _wrc=$?
+    fi
+  fi
+  _do_reclaim_files "${_a}"
+  _rc=$?
+  return "$(_worse_rc "${_rc}" "${_wrc}")"
 }
 
 # The file half alone: every path under the roots takes the account's
 # current group. No identity change and no lock, so it is safe after a
 # root-run restore, on a migration destination and from the nightly.
-_do_reclaim() {
-  local _a="$1" _to _from _uGid _gid _roots _subs _ids _m _u _conv=NO _anyAcct=NO _anyUsers=NO
+_do_reclaim_files() {
+  local _a="$1" _to _from _uGid _gid _roots _subs _ids _u _conv=NO _anyAcct=NO _anyUsers=NO
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # The same freeze convert honours: a frozen account is served from another
@@ -1133,7 +1672,7 @@ _do_reclaim() {
     done
     [ "${_anyAcct}" = "YES" ] && _conv=YES
     # shellcheck disable=SC2086
-    if [ "${_conv}" = "NO" ] && _gid_left "${_gid}" ${_roots}; then _conv=YES; fi
+    if [ "${_conv}" = "NO" ] && _gid_left "${_gid}" "${_USRG}" "${_a}" ${_roots}; then _conv=YES; fi
   fi
   if [ "${_conv}" = "YES" ] && [ "${_anyUsers}" = "YES" ]; then
     _alrt "${_a}: converted by its marker, files or identities, but an identity is not on group ${_a}; refusing to reclaim -- convert (or the identity heal) fixes the identities first"
@@ -1147,16 +1686,14 @@ _do_reclaim() {
     _to="${_USRG}"
     _from="${_gid}"
   fi
-  _m="/data/disk/${_a}/${_MARK_REL}"
   # A clean tree costs one read-only traversal and no write: this is what
   # every automated caller pays on an already consistent account.
   # shellcheck disable=SC2086
-  if ! _grp_residue "${_to}" ${_roots}; then
-    if [ -f "${_m}" ] || [ -L "${_m}" ]; then
-      _marker_valid "${_a}" || rm -f "${_m}"
-    fi
+  if ! _grp_residue "${_to}" "${_a}" ${_roots}; then
+    _log_unwalked "${_a}" "${_to}"
+    _marker_valid "${_a}" || _marker_drop "${_a}"
     # shellcheck disable=SC2086
-    if [ "${_to}" = "${_a}" ] && [ ! -f "${_m}" ] && _ids_converted "${_a}" ${_ids}; then
+    if [ "${_to}" = "${_a}" ] && ! _marker_present "${_a}" && _ids_converted "${_a}" ${_ids}; then
       _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
     fi
     _info "${_a}: files already in group ${_to}, nothing to reclaim"
@@ -1164,35 +1701,39 @@ _do_reclaim() {
   fi
   _msg "${_a}: reclaiming files for group ${_to}..."
   # shellcheck disable=SC2086
-  _grp_walk "${_from}" "${_to}" ${_roots}
-  if [ -n "${_WALK_FAILED}" ]; then
-    printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_to}"
-  fi
+  _grp_walk "${_from}" "${_to}" "${_a}" ${_roots}
   # A marker that does not record this box's group is a lie (it travelled
   # with a copy, or the account is not converted here).
-  if [ -f "${_m}" ] || [ -L "${_m}" ]; then
-    _marker_valid "${_a}" || rm -f "${_m}"
-  fi
+  _marker_valid "${_a}" || _marker_drop "${_a}"
   # shellcheck disable=SC2086
-  if [ "${_to}" = "${_a}" ] && [ ! -f "${_m}" ] && _ids_converted "${_a}" ${_ids}; then
+  if [ "${_to}" = "${_a}" ] && ! _marker_present "${_a}" && _ids_converted "${_a}" ${_ids}; then
     _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
   fi
   # shellcheck disable=SC2086
-  if _grp_residue "${_to}" ${_roots}; then
+  if _grp_residue "${_to}" "${_a}" ${_roots}; then
     # shellcheck disable=SC2086
-    _log "${_a}: RECLAIM group=${_to} DRIFT: $(_grp_residue_list "${_to}" ${_roots} | tr '\n' ' ')"
+    _log "${_a}: RECLAIM group=${_to} DRIFT: $(_grp_residue_list "${_to}" "${_a}" ${_roots} | tr '\n' ' ')"
     _alrt "${_a}: paths are still outside group ${_to} after the reclaim (see ${_LOG})"
     return 2
   fi
+  _log_unwalked "${_a}" "${_to}"
   _log "${_a}: RECLAIMED group=${_to} roots=[$(printf '%s ' ${_roots})]"
   _info "${_a}: files reclaimed for group ${_to}"
   return 0
 }
 
 _do_revert() {
-  local _a="$1" _gid _roots _cnf _u _busy _rc=0
+  local _a="$1" _gid _roots _cnf _u _busy _rc=0 _wgSt
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  # The account group is the base the web group sits on: taking it away
+  # first would claim the web paths into the box-wide group, which the
+  # account's pools are not in. The web group is reverted first.
+  _wgSt=$(_web_group_state "${_a}")
+  if [ "${_wgSt%% *}" != "none" ]; then
+    _fail "${_a} holds its own web group (${_wgSt##* }, ${_wgSt%% *}); revert that first"
+    return 1
+  fi
   _gid=$(_gid_of "${_a}")
   if ! _wait_idle "${_a}"; then
     _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped"
@@ -1225,20 +1766,23 @@ _do_revert() {
     # Files walked first, identities moved after: a writer running as the
     # account during the walk still wrote the account group. Walk once more
     # now that no identity carries it, and never delete a group that paths
-    # still carry -- they would be stranded in a dead numeric gid.
+    # still carry -- they would be stranded in a dead numeric gid, which
+    # addgroup --system can hand to the next account created.
     # shellcheck disable=SC2086
-    if _gid_left "${_gid}" ${_roots}; then
+    if _gid_left "${_gid}" "${_USRG}" "${_a}" ${_roots}; then
       _msg "${_a}: paths were written during the walk, walking again..."
       # shellcheck disable=SC2086
-      _grp_walk "${_gid}" "${_USRG}" ${_roots}
-      if [ -n "${_WALK_FAILED}" ]; then
-        printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_USRG}"
-      fi
+      _grp_walk "${_gid}" "${_USRG}" "${_a}" ${_roots}
     fi
     # shellcheck disable=SC2086
-    if _gid_left "${_gid}" ${_roots}; then
+    if _gid_left "${_gid}" "${_USRG}" "${_a}" ${_roots}; then
       _alrt "group ${_a} (gid ${_gid}) still owns paths under the roots; left in place -- re-run revert"
       _log "${_a}: group kept, paths still in gid ${_gid}"
+      [ "${_rc}" = "1" ] || _rc=2
+    elif [[ "${_UNWALKED}" -gt 0 ]]; then
+      # _UNWALKED is complete here: the last _gid_left found nothing left.
+      _alrt "group ${_a} (gid ${_gid}) kept: ${_UNWALKED} entries under the roots still carry it that the walk never changes (see instgrp status ${_a} for examples; re-run revert once they are gone)"
+      _log "${_a}: group kept, ${_UNWALKED} entries the walk never changes (hard-linked files and FIFOs not owned by an account identity, sockets, devices) still in gid ${_gid}"
       [ "${_rc}" = "1" ] || _rc=2
     elif [ -z "$(getent group "${_a}" | cut -d: -f4)" ] \
       && ! getent passwd | awk -F: -v g="${_gid}" '$4 == g { f=1 } END { exit !f }'; then
@@ -1277,7 +1821,7 @@ _do_revert() {
 }
 
 _do_status() {
-  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _holders="" _gEmpty=NO _held=NO _bad="" _verdict _rc=0
+  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _tgt _ex _chg _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _holders="" _gEmpty=NO _held=NO _bad="" _verdict _rc=0 _wgSt _wgGid="" _nWg=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   _gid=$(_gid_of "${_a}")
@@ -1285,19 +1829,20 @@ _do_status() {
   _wGid=$(_gid_of "${_WEBG}")
   _subs=$(_acct_subusers "${_a}")
   _ids="${_a} ${_a}.ftp ${_subs}"
-  _m="/data/disk/${_a}/${_MARK_REL}"
   _msg "== ${_a}"
   # A marker is a record of THIS box's conversion: its gid must be the gid of
   # the account group here. A copy from another box carries the source's
   # marker (rsync moves it with the tree); such a marker is stale and counts
-  # as absent -- convert rewrites it, revert removes it.
+  # as absent -- convert rewrites it, revert removes it. It is read once,
+  # inside the real log/.
   _mValid=NO
-  if [ -f "${_m}" ] && [ ! -L "${_m}" ]; then
-    if [ -n "${_gid}" ] && grep -q " gid=${_gid}$" "${_m}" 2> /dev/null; then
+  if _marker_present "${_a}"; then
+    _m=$(_marker_text "${_a}")
+    if [ -n "${_gid}" ] && grep -q " gid=${_gid}$" <<< "${_m}"; then
       _mValid=YES
-      _msg "marker:   $(head -1 "${_m}")"
+      _msg "marker:   $(head -1 <<< "${_m}")"
     else
-      _msg "marker:   STALE ($(head -1 "${_m}")) -- not this box's conversion, ignored"
+      _msg "marker:   STALE ($(head -1 <<< "${_m}")) -- not this box's conversion, ignored"
     fi
   else
     _msg "marker:   none"
@@ -1306,6 +1851,13 @@ _do_status() {
     _msg "group:    ${_a} gid=${_gid} members=[$(getent group "${_a}" | cut -d: -f4)]"
   else
     _msg "group:    none"
+  fi
+  # The account's own web group, when it has one: its paths are the web
+  # paths, never drift nor foreign.
+  _wgSt=$(_web_group_state "${_a}")
+  if [ "${_wgSt%% *}" != "none" ]; then
+    _wgGid=$(cut -d' ' -f2 <<< "${_wgSt}")
+    _msg "web:      ${_wgSt##* } gid=${_wgGid} state=${_wgSt%% *} members=[$(getent group "${_wgSt##* }" | cut -d: -f4)]"
   fi
   if [ -s "${_REVERT_PENDING}.${_a}" ]; then
     _msg "revert:   UNFINISHED for [$(tr '\n' ' ' < "${_REVERT_PENDING}.${_a}" | sed 's/ $//')] (in use when a revert, or the rollback of a convert, had to move it back); the limited-shell worker moves them back to ${_USRG} once idle, then instgrp revert ${_a} removes the group (or instgrp convert ${_a} converts again)"
@@ -1329,6 +1881,17 @@ _do_status() {
     _in_grp "${_u}" "${_a}" && { _alrt "${_u} (FPM pool) is in group ${_a}"; _bad="${_bad} ${_u}-in-group"; }
   done
   _roots=$(_acct_roots "${_a}" 2> /dev/null)
+  for _u in ${_ids}; do
+    getent passwd "${_u}" > /dev/null 2>&1 || continue
+    [ "$(_primary_of "${_u}")" = "${_a}" ] || _prim_ok=NO
+  done
+  # The group the verdict is about: the account's once its identities are
+  # converted, the box-wide one before.
+  _tgt="${_USRG}"
+  [[ -n "${_gid}" && "${_prim_ok}" = "YES" ]] && _tgt="${_a}"
+  # Only what the walk to that group changes is counted (the rule above
+  # _grp_walk), as in the residue probes; the rest has its own line below.
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_tgt}" "${_a}")")"
   for _r in ${_roots}; do
     [ -d "${_r}" ] || continue
     while read -r _cnt _g; do
@@ -1336,6 +1899,7 @@ _do_status() {
       if [ "${_g}" = "${_uGid}" ]; then _nUsers=$((_nUsers + _cnt))
       elif [ -n "${_gid}" ] && [ "${_g}" = "${_gid}" ]; then _nAcct=$((_nAcct + _cnt))
       elif [ "${_g}" = "${_wGid}" ]; then _nWeb=$((_nWeb + _cnt))
+      elif [ -n "${_wgGid}" ] && [ "${_g}" = "${_wgGid}" ]; then _nWg=$((_nWg + _cnt))
       elif [ "${_g}" = "0" ]; then _nRoot=$((_nRoot + _cnt))
       elif ! getent group "${_g}" > /dev/null 2>&1; then _nNone=$((_nNone + _cnt))
       else
@@ -1345,13 +1909,15 @@ _do_status() {
         _nOther=$((_nOther + _cnt))
         _foreign="${_foreign} $(getent group "${_g}" | cut -d: -f1)(${_cnt})"
       fi
-    done < <(find -P "${_r}" -printf '%G\n' 2> /dev/null | sort | uniq -c)
+    done < <(find -P "${_r}" "${_chg[@]}" -printf '%G\n' 2> /dev/null | sort | uniq -c)
   done
-  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb} root=${_nRoot} nogroup=${_nNone} foreign=${_nOther}${_foreign:+ [${_foreign# }]} (roots: $(printf '%s ' ${_roots}))"
-  for _u in ${_ids}; do
-    getent passwd "${_u}" > /dev/null 2>&1 || continue
-    [ "$(_primary_of "${_u}")" = "${_a}" ] || _prim_ok=NO
-  done
+  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb}${_wgGid:+ ${_wgSt##* }=${_nWg}} root=${_nRoot} nogroup=${_nNone} foreign=${_nOther}${_foreign:+ [${_foreign# }]} (roots: $(printf '%s ' ${_roots}))"
+  # Outside that group, the FPM group, the account's own web group and root,
+  # yet never changed by the walk (symlinks aside): informational, the
+  # verdict and the return code do not read it.
+  # shellcheck disable=SC2086
+  read -r _cnt _ex <<< "$(_grp_unwalked "${_tgt}" "${_a}" ${_roots})"
+  _msg "other:    ${_cnt:-0} outside ${_tgt}, ${_WEBG}${_wgGid:+, ${_wgSt##* }} and root left as they are by the walk (hard-linked files and FIFOs not owned by an account identity in ${_tgt}, sockets, devices)${_ex:+: ${_ex}}"
   # A group carrying the account's name that someone else holds (a foreign
   # member or a foreign primary user): INIT refused to adopt it and convert
   # refuses too. The account is simply unconverted behind that blocker,
@@ -1416,6 +1982,3458 @@ _do_status() {
   return "${_rc}"
 }
 
+# ---------------------------------------------------------------------------
+# The account's own web group, wg-<account>: webconvert, webrevert,
+# webstatus, webcheck and the reclaim web leg.
+#
+# I, the intent: /var/log/boa/instgrp-web.<a>.txt, root 0600,
+#   "target=<none|A|B> pin=<phase-a|-> by=<verb> run=<pid> rc=<n|-> <time>".
+#   Written at the first step of a leg, after every gate; a refusal or a
+#   skip writes nothing. One copy only: a pin and a revert in progress live
+#   here alone.
+# R, the record: /root/.<a>.web-group.txt, "wg-<a> gid=<n> phase=<A|B>",
+#   valid only while wg-<a> exists and names that gid. A fourth field rb=1
+#   marks a B left by a phase-B rollback that was cut short (_web_group_rb).
+# The master is the profile "aegir": wg-aegir, held by aegir and every
+# wwwNN; its pool line is group = wwwNN.
+#
+# Each run reads the state, picks exactly one row of the decision table
+# (_wg_table), and runs that row's leg; every step tests what it would
+# change first, so a run killed anywhere is finished by the next one.
+
+_WG_PHP_ALL="86 85 84 83 82 81 80 74 73 72 71 70 56"
+_WG_STAMP=/var/log/boa/instgrp-web-arm.ready.txt
+_WG_QSTOP=/run/boa_queue_stop.pid
+_WG_MQSTOP=/run/boa_master_queue_stop.pid
+_WG_STANDBY=/root/.standby.cnf
+_WG_PREP=/root/.standby.prep.cnf
+_WG_RUNNER=/var/xdrago/runner.sh
+_WG_D9=/var/log/boa/manage-ltd-d9
+# how long a run waits for a live nightly or migratefs pass of the account,
+# for the task queue to drain, and for one FPM ping
+_WG_HOLD_WAIT="${_INSTGRP_WG_HOLD_WAIT:-300}"
+_WG_QUEUE_WAIT="${_INSTGRP_WG_QUEUE_WAIT:-120}"
+_WG_PING_WAIT="${_INSTGRP_WG_PING_WAIT:-5}"
+[[ "${_WG_HOLD_WAIT}" =~ ^[0-9]+$ ]] || _WG_HOLD_WAIT=300
+[[ "${_WG_QUEUE_WAIT}" =~ ^[0-9]+$ ]] || _WG_QUEUE_WAIT=120
+[[ "${_WG_PING_WAIT}" =~ ^[0-9]+$ ]] || _WG_PING_WAIT=5
+# The token the account's provision copy carries once its wg- branch covers
+# the civicrm subtrees; checked by the readiness gate on every raise.
+_WG_PROV_TOKEN="provision_drupal_web_group_private"
+# The writers that must be on the box before a first conversion: the
+# fetched copy carries the named token, a function or a constant only its
+# web-group form has.
+_WG_INVENTORY="\
+/opt/local/bin/instgrp:_wg_table \
+/var/xdrago/manage_ltd_users.sh:_ltd_d9_files_here \
+/var/xdrago/night/10-account.sh:_night_web_hit \
+/var/xdrago/night/20-sites.sh:_NIGHT_DENIED_RE \
+/usr/local/bin/fix-drupal-site-permissions.sh:_SITE_DENIED_RE \
+/opt/local/bin/xtrim:_web_group_rb \
+/opt/local/bin/xoct:_web_group_policy \
+/opt/local/bin/xcopy:_web_group_policy \
+/opt/local/bin/xmass:_xmass_wg_promoted \
+/opt/local/bin/aegir2boa-stage2:_a2b_web_group_report"
+# The master's: its queue marker must stop runner.sh, and the site scripts
+# a hostmaster task runs must give its files the master's web group and
+# keep its private set's modes.
+_WG_MINVENTORY="\
+/opt/local/bin/instgrp:_wg_table \
+/var/xdrago/runner.sh:boa_master_queue_stop \
+/usr/local/bin/fix-drupal-site-ownership.sh:_master_web_group \
+/usr/local/bin/fix-drupal-site-permissions.sh:_SITE_DENIED_RE"
+
+_WG_CALLER=""
+_WG_PHASE=""
+_WG_REPORT=NO
+_WG_STOP_AT_U3=NO
+_WG_PING=YES
+_WM_KUNK=NO
+_WG_BOX=NO
+_WG_IWRITTEN=NO
+_WG_START_G=none
+_WG_GID=""
+_WG_WWWGID=""
+
+# ---- the profile ----------------------------------------------------------
+
+# $1 = account, or aegir for the master.
+_wg_profile() {
+  _WP_A="${1}"
+  _WP_NOTES="/var/log/boa/instgrp-web.${1}.notes.txt"
+  _WP_I="/var/log/boa/instgrp-web.${1}.txt"
+  if [ "${1}" = "aegir" ]; then
+    _WP_M=YES
+    _WP_G=wg-aegir
+    _WP_R=/root/.aegir.web-group.txt
+    _WP_HOME=/var/aegir
+  else
+    _WP_M=NO
+    _WP_G="wg-${1}"
+    _WP_R="/root/.${1}.web-group.txt"
+    _WP_HOME="/data/disk/${1}"
+  fi
+}
+
+# The tenant identities whose www-data listing is W: the account, its .ftp
+# user and its sub-users; for the master every wwwNN (a pool user of an
+# account is primary-only and never counts).
+_wg_w_ids() {
+  local _e _u
+  if [ "${_WP_M}" = "YES" ]; then
+    for _e in ${_WG_PHP_ALL}; do
+      getent passwd "www${_e}" > /dev/null 2>&1 && printf '%s\n' "www${_e}"
+    done
+    return 0
+  fi
+  for _u in "${_WP_A}" "${_WP_A}.ftp" $(_acct_subusers "${_WP_A}" 2> /dev/null); do
+    getent passwd "${_u}" > /dev/null 2>&1 && printf '%s\n' "${_u}"
+  done
+}
+
+# Everyone listed in the web group (L): the tenant identities and the pool
+# users; for the master aegir and every wwwNN.
+_wg_members() {
+  if [ "${_WP_M}" = "YES" ]; then
+    getent passwd aegir > /dev/null 2>&1 && printf '%s\n' aegir
+    _wg_w_ids
+    return 0
+  fi
+  _wg_w_ids
+  _acct_fpm_users "${_WP_A}"
+}
+
+# The uids of the profile's own identities, its pool users included (the
+# plant pass, the public set and the narrowing only act on entries these
+# own).
+_wg_own_uids() {
+  local _u _uid _l=""
+  for _u in $(_wg_members); do
+    _uid=$(id -u "${_u}" 2> /dev/null) || continue
+    [[ "${_uid}" =~ ^[1-9][0-9]*$ ]] && _l="${_l:+${_l},}${_uid}"
+  done
+  printf '%s' "${_l}"
+}
+
+# ---- versions and pool files ---------------------------------------------
+
+# An installed FPM version: its init script and its binary are both there.
+# BOA writes a master pool file for all twelve versions, and a parked
+# version keeps its pool.d, so a pool file proves nothing.
+_wg_installed() {
+  [ -e "/etc/init.d/php${1}-fpm" ] && [ -e "/opt/php${1}/bin/php" ]
+}
+
+# The versions the per-version steps cover, one "<e> <pool> <user>" line per
+# pool: an account's pool files in pool.d on installed versions (a file
+# xtrim quarantined is not in pool.d), or the master's installed versions.
+_wg_versions() {
+  local _e
+  for _e in ${_WG_PHP_ALL}; do
+    _wg_installed "${_e}" || continue
+    if [ "${_WP_M}" = "YES" ]; then
+      printf '%s %s %s\n' "${_e}" "www${_e}" "www${_e}"
+      continue
+    fi
+    if [ -f "/opt/php${_e}/etc/pool.d/${_WP_A}.conf" ]; then
+      printf '%s %s %s\n' "${_e}" "${_WP_A}" "${_WP_A}.web"
+    fi
+    if [ -f "/opt/php${_e}/etc/pool.d/${_WP_A}.${_e}.conf" ]; then
+      printf '%s %s %s\n' "${_e}" "${_WP_A}.${_e}" "${_WP_A}.${_e}.web"
+    fi
+  done
+}
+
+# Every pool file of the profile in every pool.d, installed or not, as
+# "<e> <file>": the pool-file edits reach all of them.
+_wg_pool_files() {
+  local _e _f
+  for _e in ${_WG_PHP_ALL}; do
+    if [ "${_WP_M}" = "YES" ]; then
+      _f="/opt/php${_e}/etc/pool.d/www${_e}.conf"
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] && printf '%s %s\n' "${_e}" "${_f}"
+      continue
+    fi
+    for _f in "/opt/php${_e}/etc/pool.d/${_WP_A}.conf" \
+      "/opt/php${_e}/etc/pool.d/${_WP_A}.${_e}.conf"; do
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] && printf '%s %s\n' "${_e}" "${_f}"
+    done
+  done
+}
+
+# The phase-B pool line of version $1.
+_wg_pline() {
+  if [ "${_WP_M}" = "YES" ]; then
+    printf 'group = www%s\n' "${1}"
+  else
+    printf 'group = %s\n' "${_WP_G}"
+  fi
+}
+
+_wg_file_has() {
+  grep -qxF -- "${2}" "${1}" 2> /dev/null
+}
+
+# Removes every line $2 from the root-owned pool file $1 (pool.d is root's),
+# keeping its mode; a new file renamed over the old one.
+_wg_file_strip() {
+  local _f="${1}" _l="${2}" _t
+  _wg_file_has "${_f}" "${_l}" || return 0
+  _t="${_f%/*}/.${_f##*/}.wg.$$"
+  rm -f -- "${_t}"
+  grep -vxF -- "${_l}" "${_f}" > "${_t}" 2> /dev/null
+  chmod --reference="${_f}" -- "${_t}" 2> /dev/null
+  mv -f -- "${_t}" "${_f}" 2> /dev/null || { rm -f -- "${_t}"; return 1; }
+  ! _wg_file_has "${_f}" "${_l}"
+}
+
+# Adds the line $2 to $1 once, after the include; only a group getent
+# resolves is ever written (a missing group fails the whole version).
+_wg_file_add() {
+  local _f="${1}" _l="${2}"
+  _wg_file_has "${_f}" "${_l}" && return 0
+  getent group "${_l#group = }" > /dev/null 2>&1 || return 1
+  printf '%s\n' "${_l}" >> "${_f}" 2> /dev/null
+  _wg_file_has "${_f}" "${_l}"
+}
+
+# ---- workers (K) ---------------------------------------------------------
+
+_wg_fpm_master_pid() {
+  tr -cd '0-9' < "/run/php${1}-fpm.pid" 2> /dev/null
+}
+
+# 0 when the version's php-fpm master runs its own config (the init
+# script's status action exits 0 in every state).
+_wg_fpm_up() {
+  local _pid
+  _pid=$(_wg_fpm_master_pid "${1}")
+  [ -n "${_pid}" ] || return 1
+  case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
+    *"php${1}-fpm.conf"*) return 0 ;;
+  esac
+  return 1
+}
+
+# Asks pool socket $1 for /fpm-ping: the pools are ondemand, so this is what
+# spawns a worker to read; the answer itself is not used.
+_wg_fpm_ping() {
+  [ -S "${1}" ] || return 1
+  command -v cgi-fcgi > /dev/null 2>&1 || return 1
+  SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET \
+    timeout "${_WG_PING_WAIT}" cgi-fcgi -bind -connect "${1}" > /dev/null 2>&1
+}
+
+# The workers of user $2 under version $1's master, one line per worker:
+# its effective gid and its supplementary gids.
+# Every process's status in one read (a process gone meanwhile is skipped),
+# each block starting at its Name: line.
+_wg_proc_status() {
+  cat /proc/[0-9]*/status 2> /dev/null
+}
+
+_wg_fpm_workers() {
+  local _uid _mp
+  _uid=$(id -u "${2}" 2> /dev/null) || return 0
+  _mp=$(_wg_fpm_master_pid "${1}")
+  [ -n "${_mp}" ] || return 0
+  _wg_proc_status | awk -v mp="${_mp}" -v u="${_uid}" '
+    function out() { if (pp == mp && ru == u) print eg " " g; pp = ""; ru = ""; eg = ""; g = "" }
+    /^Name:/ { out() }
+    /^PPid:/ { pp = $2 }
+    /^Uid:/ { ru = $2 }
+    /^Gid:/ { eg = $3 }
+    /^Groups:/ { $1 = ""; g = $0 }
+    END { out() }'
+}
+
+# The pids of every worker of version $1 (to wait for after a reload).
+_wg_fpm_children() {
+  local _mp
+  _mp=$(_wg_fpm_master_pid "${1}")
+  [ -n "${_mp}" ] || return 0
+  _wg_proc_status | awk -v mp="${_mp}" '
+    /^Name:/ { if (pp == mp) print p; pp = ""; p = "" }
+    /^Pid:/ { p = $2 }
+    /^PPid:/ { pp = $2 }
+    END { if (pp == mp) print p }'
+}
+
+# One version's K, read from a worker the ping spawns: sets _K33 and _KWG to
+# Y (every worker has it), N (none has) or M (mixed); both "-" when no
+# worker answered, which counts as not without www-data.
+_wg_k_read() {
+  local _e="${1}" _pool="${2}" _user="${3}" _l _w33 _wwg _n=0 _y33=0 _ywg=0
+  # webstatus outside the token reads a live worker only
+  [ "${_WG_PING:-YES}" = "YES" ] && _wg_fpm_ping "/run/${_pool}.fpm.socket"
+  while read -r _l; do
+    [ -n "${_l}" ] || continue
+    _n=$((_n + 1))
+    [[ " ${_l} " == *" ${_WG_WWWGID} "* ]] && _y33=$((_y33 + 1))
+    [ -n "${_WG_GID}" ] && [[ " ${_l} " == *" ${_WG_GID} "* ]] && _ywg=$((_ywg + 1))
+  done < <(_wg_fpm_workers "${_e}" "${_user}")
+  if [ "${_n}" = "0" ]; then
+    _K33="-"
+    _KWG="-"
+    return 0
+  fi
+  _w33=M
+  [ "${_y33}" = "${_n}" ] && _w33=Y
+  [ "${_y33}" = "0" ] && _w33=N
+  _wwg=M
+  [ "${_ywg}" = "${_n}" ] && _wwg=Y
+  [ "${_ywg}" = "0" ] && _wwg=N
+  _K33="${_w33}"
+  _KWG="${_wwg}"
+}
+
+# process_control_timeout of version $1 in seconds (the wait after a reload
+# is twice this).
+_wg_fpm_pct() {
+  local _v
+  _v=$(awk -F= '/^[[:space:]]*process_control_timeout[[:space:]]*=/ { gsub(/[^0-9]/, "", $2); print $2; exit }' \
+    "/opt/php${1}/etc/php${1}-fpm.conf" 2> /dev/null)
+  [[ "${_v}" =~ ^[0-9]+$ ]] || _v=10
+  printf '%s' "${_v}"
+}
+
+# Version $1: config test, reload, the master up again, and a bounded wait
+# for the workers from before the reload to go. 1 on any failure.
+_wg_fpm_reload() {
+  local _e="${1}" _old _p _w=0 _max _left
+  if ! "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
+    -c "/opt/php${_e}/etc/php${_e}.ini" > /dev/null 2>&1; then
+    _alrt "php${_e}-fpm: the config test failed, not reloaded"
+    _log "${_WP_A}: php${_e}-fpm config test failed"
+    return 1
+  fi
+  _old=$(_wg_fpm_children "${_e}")
+  if ! service "php${_e}-fpm" reload > /dev/null 2>&1; then
+    _alrt "php${_e}-fpm: the reload failed"
+    return 1
+  fi
+  sleep 1
+  if ! _wg_fpm_up "${_e}"; then
+    _alrt "php${_e}-fpm: the master is not running after the reload"
+    return 1
+  fi
+  _max=$((2 * $(_wg_fpm_pct "${_e}")))
+  while :; do
+    _left=""
+    for _p in ${_old}; do
+      [ -d "/proc/${_p}" ] && _left="${_left} ${_p}"
+    done
+    [ -z "${_left}" ] && return 0
+    [ "${_w}" -ge "${_max}" ] && break
+    sleep 1
+    _w=$((_w + 1))
+  done
+  _alrt "php${_e}-fpm: workers from before the reload still run after ${_max}s"
+  return 1
+}
+
+# The pools of version $1 (from _wg_versions) as "<pool> <user>" lines.
+_wg_pools_of() {
+  local _e _p _u
+  while read -r _e _p _u; do
+    [ "${_e}" = "${1}" ] && printf '%s %s\n' "${_p}" "${_u}"
+  done <<< "${_WG_VERS}"
+}
+
+# Every pool of version $1 checked for "$2": b (the web group, no
+# www-data), wg (the web group) or back (www-data).
+_wg_k_check() {
+  local _e="${1}" _want="${2}" _p _u
+  while read -r _p _u; do
+    [ -n "${_p}" ] || continue
+    _wg_k_read "${_e}" "${_p}" "${_u}"
+    case "${_want}" in
+      b) [ "${_K33}" = "N" ] && [ "${_KWG}" = "Y" ] || return 1 ;;
+      wg) [ "${_KWG}" = "Y" ] || return 1 ;;
+      back) [ "${_K33}" = "Y" ] || return 1 ;;
+    esac
+  done < <(_wg_pools_of "${_e}")
+  return 0
+}
+
+# The versions (from _WG_VERS) one per line.
+_wg_vers_list() {
+  printf '%s\n' "${_WG_VERS}" | awk 'NF { print $1 }' | uniq
+}
+
+# ---- intent and record ---------------------------------------------------
+
+# Reads I into _WI_T (none, A or B; empty when absent or not root's regular
+# file), _WI_PIN (phase-a or -), _WI_RC and _WI_RUN.
+_wg_i_read() {
+  local _l _k _v IFS=$' \t\n'
+  _WI_T=""
+  _WI_PIN="-"
+  _WI_RC="-"
+  _WI_RUN=""
+  _WI_BY=""
+  [ -f "${_WP_I}" ] && [ ! -L "${_WP_I}" ] \
+    && [ "$(stat -c %u -- "${_WP_I}" 2> /dev/null)" = "0" ] || return 0
+  _l=$(head -c 512 -- "${_WP_I}" 2> /dev/null | head -n 1)
+  for _k in ${_l}; do
+    _v="${_k#*=}"
+    case "${_k}" in
+      target=none|target=A|target=B) _WI_T="${_v}" ;;
+      pin=phase-a) _WI_PIN=phase-a ;;
+      rc=*) [[ "${_v}" =~ ^([0-9]|-)$ ]] && _WI_RC="${_v}" ;;
+      run=*) [[ "${_v}" =~ ^[0-9]+$ ]] && _WI_RUN="${_v}" ;;
+      by=*) _WI_BY="${_v}" ;;
+    esac
+  done
+}
+
+_wg_by() {
+  case "${_WG_CALLER}" in
+    conv) echo webconvert ;;
+    conv_a) echo webconvert-phase-a ;;
+    conv_b) echo webconvert-phase-b ;;
+    revert) echo webrevert ;;
+    revert_keep) echo webrevert-keep-enabled ;;
+    all) echo webconvert-all ;;
+    all_b) echo webconvert-all-phase-b ;;
+    arm) echo arm ;;
+    *) echo "${_WG_CALLER}" ;;
+  esac
+}
+
+# Root's own file $1 with the line $2: a new file renamed over it.
+_wg_put_root() {
+  local _f="${1}" _t
+  _t="${_f%/*}/.${_f##*/}.$$"
+  rm -f -- "${_t}"
+  ( umask 077; printf '%s\n' "${2}" > "${_t}" ) 2> /dev/null \
+    && chmod 0600 -- "${_t}" 2> /dev/null && mv -f -- "${_t}" "${_f}" 2> /dev/null && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# I := target $1, pin $2 (phase-a or -), rc $3.
+_wg_i_write() {
+  mkdir -p /var/log/boa 2> /dev/null
+  if _wg_put_root "${_WP_I}" "target=${1} pin=${2} by=$(_wg_by) run=$$ rc=${3} $(date '+%Y-%m-%d_%H:%M:%S')"; then
+    _WG_IWRITTEN=YES
+    return 0
+  fi
+  _alrt "${_WP_A}: the intent ${_WP_I} could not be written"
+  return 1
+}
+
+# Every exit after the leg's first step rewrites rc= in I, nothing else.
+_wg_i_rc() {
+  [ "${_WG_IWRITTEN}" = "YES" ] || return 0
+  [ -e "${_WP_I}" ] || return 0
+  _wg_i_read
+  [ -n "${_WI_T}" ] || return 0
+  _wg_put_root "${_WP_I}" "target=${_WI_T} pin=${_WI_PIN} by=$(_wg_by) run=$$ rc=${1} $(date '+%Y-%m-%d_%H:%M:%S')" \
+    || _alrt "${_WP_A}: rc=${1} could not be written to ${_WP_I}"
+}
+
+_wg_i_remove() {
+  rm -f -- "${_WP_I}"
+  _WG_IWRITTEN=NO
+}
+
+# Reads R: _WR_PH (A or B, empty when absent or invalid) and _WR_RB (YES
+# when a B carries rb=1). Valid only while the group is ours and R names its
+# gid.
+_wg_r_read() {
+  local _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _WR_PH=""
+  _WR_RB=NO
+  _WR_ANY=NO
+  [ -f "${_WP_R}" ] && [ ! -L "${_WP_R}" ] \
+    && [ "$(stat -c %u -- "${_WP_R}" 2> /dev/null)" = "0" ] || return 0
+  _WR_ANY=YES
+  read -r _rg _rgid _rph _rtk _ < "${_WP_R}" || :
+  [ "${_WM_G}" = "ours" ] || return 0
+  [ "${_rg}" = "${_WP_G}" ] && [ "${_rgid}" = "gid=${_WG_GID}" ] || return 0
+  case "${_rph}" in
+    phase=A) _WR_PH=A ;;
+    phase=B)
+      _WR_PH=B
+      [ "${_rtk}" = "rb=1" ] && _WR_RB=YES
+      ;;
+  esac
+}
+
+# R := phase $1, with the token when $2 = rb; only for the group this box
+# has now.
+_wg_r_write() {
+  local _gid
+  _gid=$(_gid_of "${_WP_G}")
+  [[ "${_gid}" =~ ^[0-9]+$ ]] || { _alrt "${_WP_A}: ${_WP_G} is gone, the record is not written"; return 1; }
+  if _wg_put_root "${_WP_R}" "${_WP_G} gid=${_gid} phase=${1}${2:+ rb=1}"; then
+    _log "${_WP_A}: record phase=${1}${2:+ rb=1}"
+    return 0
+  fi
+  _alrt "${_WP_A}: the record ${_WP_R} could not be written"
+  return 1
+}
+
+_wg_r_remove() {
+  rm -f -- "${_WP_R}"
+  [ ! -e "${_WP_R}" ]
+}
+
+# ---- notes -----------------------------------------------------------------
+
+# One line into root's notes file and, for an account, a printable copy
+# into its own log/web-group-notes.txt (put through the no-follow writer,
+# the newest 200 lines kept).
+_wg_note() {
+  local _t _old
+  _t="$(date '+%Y-%m-%d %H:%M:%S') $*"
+  ( umask 077; printf '%s\n' "${_t}" >> "${_WP_NOTES}" ) 2> /dev/null
+  [ "${_WP_M}" = "YES" ] && return 0
+  _t=$(printf '%s' "${_t}" | tr -cd '[:print:]')
+  _old=$(_ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_read_here web-group-notes.txt)
+  _ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_put_here web-group-notes.txt \
+    "$(printf '%s\n%s\n' "${_old}" "${_t}" | awk 'NF' | tail -n 200)" > /dev/null 2>&1
+  return 0
+}
+
+# ---- holds -----------------------------------------------------------------
+
+# On every exit, a killed run's included: every hold this run took, and the
+# run lock while this run holds it and it still names this run. Set before
+# a web verb or the reclaim web leg takes anything, whoever holds the lock.
+# shellcheck disable=SC2329
+_wg_on_exit() {
+  _wg_release_all
+  if [ "${_HELD_LOCK}" = "YES" ] \
+    && [ "$(tr -cd 0-9 2> /dev/null < /run/boa_run.pid)" = "$$" ]; then
+    rm -f /run/boa_run.pid
+  fi
+  return 0
+}
+
+# Another BOA run must not overlap a conversion: the lock the wrappers use,
+# taken with the queue pause's idiom (a dead holder reaped, then created
+# exclusively). 0 held, 4 busy. The Octopus arm holds the wrapper's lock.
+_wg_lock() {
+  trap '_wg_on_exit' EXIT
+  if [ "${_FROM_OCTOPUS}" = "YES" ]; then
+    if [ ! -e "/run/boa_run.pid" ] \
+      && ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
+      _HELD_LOCK=YES
+    fi
+  else
+    _reap_own_stale_lock
+    if [ -e "/run/boa_wait.pid" ] || [ -e "/run/octopus_install_run.pid" ] \
+      || ! ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
+      _alrt "a BOA install or upgrade run is live (/run/*.pid); retry later"
+      return 4
+    fi
+    _HELD_LOCK=YES
+  fi
+  if ! _wait_worker; then
+    _alrt "the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid); retry later"
+    return 4
+  fi
+  return 0
+}
+
+# A pid file names a live holder: the pid runs and is root's.
+_wg_pid_live() {
+  local _p
+  _p=$( { tr -dc '0-9' < "${1}"; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ]
+}
+
+# Removed only while it still names the dead pid it was read with.
+_wg_pid_reap() {
+  local _p
+  _p=$( { tr -dc '0-9' < "${1}"; } 2> /dev/null )
+  _wg_pid_live "${1}" && return 1
+  [ "$( { tr -dc '0-9' < "${1}"; } 2> /dev/null )" = "${_p}" ] && rm -f -- "${1}"
+  return 0
+}
+
+# A run killed outright leaves the account's hold and its task queue pause
+# naming its dead pid. runner.sh stops every instance's queue on the box-wide
+# pause whatever its pid, and clear.sh removes both only on its next tick.
+# Every run of an account removes them first, as a run that takes them
+# would, so a pass that skips, refuses or takes no hold leaves none behind.
+# An empty file is left alone: its holder may not have written its pid yet.
+_wg_reap_left() {
+  local _f _p _stop="${_WG_QSTOP}"
+  [ "${_WP_M}" = "YES" ] && _stop="${_WG_MQSTOP}"
+  for _f in "/run/instgrp-web-${_WP_A}.pid" "${_stop}"; do
+    [ -f "${_f}" ] || continue
+    _p=$( { tr -dc '0-9' < "${_f}"; } 2> /dev/null )
+    [ -n "${_p}" ] && [ "${_p}" != "$$" ] || continue
+    _wg_pid_reap "${_f}" || continue
+    [ -e "${_f}" ] || _log "${_WP_A}: ${_f} removed, left by a killed run (pid ${_p})"
+  done
+  return 0
+}
+
+# The account hold /run/instgrp-web-<a>.pid, then a bounded wait for a live
+# nightly or migratefs pass of the account. 0 held, 4 busy, 6 the wait
+# ended. The hold is this run's own when it already names this pid.
+_WG_HOLDS=""
+_wg_hold() {
+  local _a="${1}" _h="/run/instgrp-web-${1}.pid" _w=0 _f
+  if [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" != "$$" ]; then
+    [ -e "${_h}" ] && _wg_pid_reap "${_h}"
+    if ! ( set -C; echo "$$" > "${_h}" ) 2> /dev/null; then
+      _alrt "${_a}: another web-group run holds the account (${_h}), skipped"
+      return 4
+    fi
+    _WG_HOLDS="${_WG_HOLDS} ${_h}"
+  fi
+  [ "${_a}" = "aegir" ] && return 0
+  for _f in "/run/night-account-${_a}.pid" "/run/migratefs-account-${_a}.pid"; do
+    while [ -e "${_f}" ] && _wg_pid_live "${_f}"; do
+      if [ "${_w}" -ge "${_WG_HOLD_WAIT}" ]; then
+        _msg "${_a}: a nightly or migratefs pass still holds the account after ${_WG_HOLD_WAIT}s, deferred"
+        _wg_hold_release "${_a}"
+        return 6
+      fi
+      sleep 5
+      _w=$((_w + 5))
+    done
+  done
+  return 0
+}
+
+_wg_hold_release() {
+  local _h="/run/instgrp-web-${1}.pid"
+  [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" = "$$" ] && rm -f -- "${_h}"
+  _WG_HOLDS="${_WG_HOLDS// ${_h}/}"
+  return 0
+}
+
+# The task queue held around the private-set narrowing, the alias and the
+# record: the pause file with this run's pid (a pause this pid already holds
+# is its own), then a bounded drain of the account's own tasks. 0 held, 6
+# the queue did not drain. The master's is its own marker, with the aegir
+# crontab parked and re-checked after the drain.
+_WG_QMADE=""
+_wg_qhold() {
+  local _stop="${_WG_QSTOP}" _w=0 _who="${_WP_A}"
+  if [ "${_WP_M}" = "YES" ]; then
+    _stop="${_WG_MQSTOP}"
+    # the master's hold means nothing unless runner.sh obeys its marker
+    if ! grep -q boa_master_queue_stop "${_WG_RUNNER}" 2> /dev/null; then
+      _msg "aegir: ${_WG_RUNNER} does not stop on ${_WG_MQSTOP} yet; not ready"
+      return 5
+    fi
+  fi
+  if [ "$( { tr -dc '0-9' < "${_stop}"; } 2> /dev/null )" != "$$" ]; then
+    while [ -e "${_stop}" ] && _wg_pid_live "${_stop}"; do
+      if [ "${_w}" -ge "${_WG_QUEUE_WAIT}" ]; then
+        _msg "${_who}: the task queue pause is held by another operation, deferred to the next run"
+        return 6
+      fi
+      sleep 5
+      _w=$((_w + 5))
+    done
+    [ -e "${_stop}" ] && _wg_pid_reap "${_stop}"
+    if ! ( set -C; echo "$$" > "${_stop}" ) 2> /dev/null; then
+      _msg "${_who}: the task queue pause was taken meanwhile, deferred to the next run"
+      return 6
+    fi
+    _WG_QMADE="${_stop}"
+  fi
+  [ "${_WP_M}" = "YES" ] && _wg_mcron_park
+  _w=0
+  while _acct_busy "${_who}"; do
+    if [ "${_w}" -ge "${_WG_QUEUE_WAIT}" ]; then
+      _msg "${_who}: the task queue did not drain in ${_WG_QUEUE_WAIT}s, deferred to the next run"
+      _wg_qhold_release
+      return 6
+    fi
+    sleep 5
+    _w=$((_w + 5))
+  done
+  # a runner.sh pass that started before the marker can bring the aegir
+  # crontab back after the drain: parked again, and the drain re-checked
+  if [ "${_WP_M}" = "YES" ] && ! _wg_mcron_parked; then
+    _wg_mcron_park
+    if _acct_busy "${_who}"; then
+      _msg "aegir: a master task started while the queue was held, deferred to the next run"
+      _wg_qhold_release
+      return 6
+    fi
+  fi
+  return 0
+}
+
+_wg_qhold_release() {
+  if [ -n "${_WG_QMADE}" ] \
+    && [ "$( { tr -dc '0-9' < "${_WG_QMADE}"; } 2> /dev/null )" = "$$" ]; then
+    rm -f -- "${_WG_QMADE}"
+    [ "${_WG_QMADE}" = "${_WG_MQSTOP}" ] && _wg_mcron_unpark
+  fi
+  _WG_QMADE=""
+  return 0
+}
+
+_WG_MCRON_PARKED=NO
+_wg_mcron_parked() {
+  [ ! -e /var/spool/cron/crontabs/aegir ]
+}
+_wg_mcron_park() {
+  if [ -e /var/spool/cron/crontabs/aegir ]; then
+    mv -f /var/spool/cron/crontabs/aegir /var/spool/cron/crontabs/.aegir 2> /dev/null \
+      && _WG_MCRON_PARKED=YES
+    service cron reload > /dev/null 2>&1
+  fi
+}
+# Back only when this run parked it and the box is no standby (runner.sh
+# keeps a standby's parked).
+_wg_mcron_unpark() {
+  [ "${_WG_MCRON_PARKED}" = "YES" ] || return 0
+  _WG_MCRON_PARKED=NO
+  [ -e "${_WG_STANDBY}" ] && return 0
+  if [ -e /var/spool/cron/crontabs/.aegir ] && [ ! -e /var/spool/cron/crontabs/aegir ]; then
+    mv -f /var/spool/cron/crontabs/.aegir /var/spool/cron/crontabs/aegir 2> /dev/null
+    service cron reload > /dev/null 2>&1
+  fi
+}
+
+# Every hold this run took, on every return.
+_wg_release_all() {
+  local _h
+  _wg_qhold_release
+  for _h in ${_WG_HOLDS}; do
+    [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" = "$$" ] && rm -f -- "${_h}"
+  done
+  _WG_HOLDS=""
+  return 0
+}
+
+# ---- the measured state ----------------------------------------------------
+
+# G: _WM_G none, ours or foreign; _WG_GID the group's gid.
+_wg_m_g() {
+  local _s
+  if [ "${_WP_M}" = "YES" ]; then
+    _s=$(_master_web_group)
+  else
+    _s=$(_web_group_state "${_WP_A}")
+  fi
+  _WG_GID=""
+  case "${_s%% *}" in
+    none) _WM_G=none ;;
+    foreign) _WM_G=foreign; _WG_GID=$(printf '%s' "${_s}" | cut -d' ' -f2) ;;
+    *) _WM_G=ours; _WG_GID=$(printf '%s' "${_s}" | cut -d' ' -f2) ;;
+  esac
+}
+
+# L: every identity and pool user listed in the web group.
+_wg_m_l() {
+  local _u
+  _WM_L=YES
+  for _u in $(_wg_members); do
+    _in_grp_sup "${_u}" "${_WP_G}" || { _WM_L=NO; return 0; }
+  done
+}
+
+# W: 0 every tenant identity listed in www-data, 1 a sub-user (or, on the
+# master, some wwwNN) missing, 2 the account's own user missing but not all,
+# 3 none listed.
+_wg_m_w() {
+  local _u _n=0 _in=0 _on=YES
+  for _u in $(_wg_w_ids); do
+    _n=$((_n + 1))
+    if _in_grp_sup "${_u}" "${_WEBG}"; then
+      _in=$((_in + 1))
+    elif [ "${_u}" = "${_WP_A}" ]; then
+      _on=NO
+    fi
+  done
+  if [ "${_in}" = "${_n}" ]; then
+    _WM_W=0
+  elif [ "${_in}" = "0" ]; then
+    _WM_W=3
+  elif [ "${_on}" = "NO" ] && [ "${_WP_M}" != "YES" ]; then
+    _WM_W=2
+  else
+    _WM_W=1
+  fi
+}
+
+# P: _WM_PF when any pool file of the profile carries its line (every
+# pool.d, installed or not); _WM_PALL when every pool file of the versions
+# carries it (never on an empty list).
+_wg_m_p() {
+  local _e _f _p _u
+  _WM_PF=NO
+  while read -r _e _f; do
+    [ -n "${_f}" ] || continue
+    _wg_file_has "${_f}" "$(_wg_pline "${_e}")" && { _WM_PF=YES; break; }
+  done < <(_wg_pool_files)
+  _WM_PALL=NO
+  [ -n "${_WG_VERS}" ] || return 0
+  _WM_PALL=YES
+  while read -r _e _p _u; do
+    [ -n "${_e}" ] || continue
+    _f="/opt/php${_e}/etc/pool.d/${_p}.conf"
+    [ "${_WP_M}" = "YES" ] && _f="/opt/php${_e}/etc/pool.d/www${_e}.conf"
+    _wg_file_has "${_f}" "$(_wg_pline "${_e}")" || { _WM_PALL=NO; return 0; }
+  done <<< "${_WG_VERS}"
+}
+
+# K over the versions: _WM_KNO33 every version's worker without www-data
+# (never on an empty list, and a version with no answering worker counts as
+# with it), _WM_KANY some version's workers without it, _WM_KWG every
+# version's workers with the web group; _WM_KLIST "<e>:<33>:<wg>" each.
+# Without the ping (a witness, or webstatus outside the token), a version
+# with no live worker is not read at all: _WM_KUNK when none was.
+_wg_m_k() {
+  local _e _p _u _no33=0 _n=0 _wgn=0
+  _WM_KLIST=""
+  _WM_KNO33=NO
+  _WM_KANY=NO
+  _WM_KWG=YES
+  _WM_KUNK=NO
+  while read -r _e _p _u; do
+    [ -n "${_e}" ] || continue
+    _wg_k_read "${_e}" "${_p}" "${_u}"
+    _WM_KLIST="${_WM_KLIST} ${_e}:${_K33}:${_KWG}"
+    [ "${_WG_PING}" = "NO" ] && [ "${_K33}" = "-" ] && continue
+    _n=$((_n + 1))
+    [ "${_K33}" = "N" ] && _no33=$((_no33 + 1))
+    [ "${_K33}" = "N" ] || [ "${_K33}" = "M" ] && _WM_KANY=YES
+    [ "${_KWG}" = "Y" ] && _wgn=$((_wgn + 1))
+  done <<< "${_WG_VERS}"
+  [ "${_n}" -gt 0 ] && [ "${_no33}" = "${_n}" ] && _WM_KNO33=YES
+  [ "${_wgn}" = "${_n}" ] || _WM_KWG=NO
+  [ "${_n}" = "0" ] && [ -n "${_WG_VERS}" ] && [ "${_WG_PING}" = "NO" ] && _WM_KUNK=YES
+  return 0
+}
+
+# S: the alias's web_group value, read inside the real .drush, bounded and
+# never through a link.
+_wg_m_s() {
+  _WM_S=$(_ig_in_real_dir "${_WP_HOME}/.drush" _ig_read_here server_master.alias.drushrc.php \
+    | sed -n "s/^[[:space:]]*'web_group' => '\([^']*\)',.*/\1/p" | head -n 1)
+}
+
+# The web class tops of every site: the settings trio, each accepted files
+# store and private store top. T holds when each is in the web group and
+# each private top is 02770; _WM_RT when any of them is in www-data.
+_wg_m_t() {
+  local _k _p _g _m
+  _WM_T=YES
+  _WM_RT=NO
+  while read -r _k _p; do
+    [ -n "${_p}" ] || continue
+    read -r _g _m < <(stat -c '%g %a' -- "${_p}" 2> /dev/null)
+    [ -n "${_g}" ] || continue
+    [ "${_g}" = "${_WG_WWWGID}" ] && _WM_RT=YES
+    [ "${_g}" = "${_WG_GID}" ] || _WM_T=NO
+    [ "${_k}" = "private" ] && [ "${_m}" != "2770" ] && _WM_T=NO
+  done < <(_wg_tops)
+  return 0
+}
+
+# Measures every trait the table reads and classifies them (lambda):
+# none, betw, A, betwP, betwK, betwB, B.
+_wg_measure() {
+  _WG_WWWGID=$(_gid_of "${_WEBG}")
+  _wg_m_g
+  _WG_VERS=$(_wg_versions)
+  _WM_LAM=none
+  [ "${_WM_G}" = "ours" ] || return 0
+  _wg_m_l
+  _wg_m_w
+  _wg_m_p
+  _wg_m_k
+  _wg_m_s
+  _wg_m_t
+  _wg_classify
+}
+
+_wg_classify() {
+  local _bt=NO _ac=NO
+  if [ "${_WM_G}" != "ours" ]; then
+    _WM_LAM=none
+    return 0
+  fi
+  [ "${_WM_PF}" = "YES" ] && _bt=YES
+  [ "${_WM_KANY}" = "YES" ] && _bt=YES
+  [ "${_WM_W}" != "0" ] && _bt=YES
+  [ "${_WM_L}" = "YES" ] && [ "${_WM_KWG}" = "YES" ] && [ "${_WM_S}" = "${_WP_G}" ] \
+    && [ "${_WM_T}" = "YES" ] && _ac=YES
+  if [ "${_bt}" = "NO" ]; then
+    if [ "${_ac}" = "YES" ]; then _WM_LAM=A; else _WM_LAM=betw; fi
+    return 0
+  fi
+  # K not read (no live worker, no ping) takes nothing from B
+  if [ "${_ac}" = "YES" ] && [ "${_WM_PALL}" = "YES" ] \
+    && { [ "${_WM_KNO33}" = "YES" ] || [ "${_WM_KUNK}" = "YES" ]; } \
+    && [ "${_WM_W}" = "3" ] && [ "${_WM_RT}" = "NO" ]; then
+    _WM_LAM=B
+  elif [ "${_WM_W}" = "2" ] || { [ "${_WM_W}" = "3" ] && [ "${_WP_M}" != "YES" ]; }; then
+    # the account's own user out of www-data: only u13 takes it out
+    _WM_LAM=betwB
+  elif [ "${_WM_KNO33}" = "YES" ]; then
+    _WM_LAM=betwK
+  else
+    _WM_LAM=betwP
+  fi
+}
+
+# ---- the decision table ---------------------------------------------------
+#
+# Inputs (strings, set by _wg_run or by a harness): _D_CALLER (conv conv_a
+# conv_b revert revert_keep all all_b arm reclaim), _D_FOREIGN _D_BUSY
+# _D_FROZEN _D_FORCE _D_STANDBY (YES/NO), _D_I (empty, none, A or B),
+# _D_IPIN (YES/NO), _D_R (empty, A or B: an R naming this group's gid),
+# _D_RB (YES/NO), _D_LAM, _D_FLAGB (YES/NO); the raise gates _D_OPTOUT
+# _D_V1 _D_READY _D_SHARE (YES/NO, or empty: read when a row needs them).
+# Pure shell, no subshell: a harness replays the whole input space.
+
+# _WG_LV := the level of $1 (none 0, A 1, B 2).
+_wg_lv() {
+  case "${1}" in
+    B) _WG_LV=2 ;;
+    A) _WG_LV=1 ;;
+    *) _WG_LV=0 ;;
+  esac
+}
+
+_wg_derive() {
+  local _grp=NO _ie="" _eps=none _base=A _x _ls
+  [ "${_D_LAM}" != "none" ] && _grp=YES
+  _D_RV=""
+  [ "${_grp}" = "YES" ] && _D_RV="${_D_R}"
+  _D_LN=NO
+  [ "${_D_I}" = "none" ] && _D_LN=YES
+  _D_PIN=NO
+  [ "${_D_I}" = "A" ] && [ "${_D_IPIN}" = "YES" ] && _D_PIN=YES
+  # sigma, what the account carries: I (never an I of none, only while the
+  # group is ours), a valid R, and the traits' own evidence
+  case "${_D_I}" in
+    A|B) [ "${_grp}" = "YES" ] && _ie="${_D_I}" ;;
+  esac
+  case "${_D_LAM}" in
+    A) _eps=A ;;
+    betwB|B) _eps=B ;;
+  esac
+  _D_SIGMA=none
+  for _x in "${_ie}" "${_D_RV}" "${_eps}"; do
+    case "${_x}" in
+      B) _D_SIGMA=B ;;
+      A) [ "${_D_SIGMA}" = "none" ] && _D_SIGMA=A ;;
+    esac
+  done
+  if [ "${_D_LN}" = "YES" ]; then
+    _D_RHO=none
+  elif [ "${_D_PIN}" = "YES" ]; then
+    _D_RHO=A
+  else
+    _D_RHO="${_D_SIGMA}"
+  fi
+  # B committed: a valid plain R of B, or the traits (the account's own
+  # user out of www-data, or every version's workers without it). An R of B
+  # left by a cut-short rollback (rb=1) is not a commit on its own.
+  _D_BEV=NO
+  [ "${_D_RV}" = "B" ] && [ "${_D_RB}" != "YES" ] && _D_BEV=YES
+  case "${_D_LAM}" in
+    betwB|B|betwK) _D_BEV=YES ;;
+  esac
+  [ "${_D_RHO}" = "B" ] && _base=B
+  case "${_D_CALLER}" in
+    conv)
+      if [ "${_D_LN}" = "YES" ]; then
+        _D_T=A
+        [ "${_D_SIGMA}" = "B" ] && _D_T=B
+      else
+        _D_T="${_base}"
+      fi
+      ;;
+    conv_b) _D_T=B ;;
+    conv_a) _D_T=A ;;
+    revert|revert_keep) _D_T=none ;;
+    all)
+      _D_T="${_base}"
+      [ "${_D_LN}" = "YES" ] && _D_T=""
+      ;;
+    all_b)
+      _D_T=B
+      { [ "${_D_LN}" = "YES" ] || [ "${_D_PIN}" = "YES" ]; } && _D_T=""
+      ;;
+    arm)
+      if [ "${_D_LN}" = "YES" ]; then
+        _D_T=""
+      elif [ "${_base}" = "A" ] && [ "${_D_FLAGB}" = "YES" ] && [ "${_D_RV}" = "A" ] \
+        && [ "${_D_LAM}" = "A" ] && [ "${_D_PIN}" != "YES" ]; then
+        _D_T=B
+      else
+        _D_T="${_base}"
+      fi
+      ;;
+    *) _D_T="" ;;
+  esac
+  # a raise: T above sigma, for every caller but webrevert
+  _D_RAISE=NO
+  if [ -n "${_D_T}" ]; then
+    case "${_D_CALLER}" in
+      revert|revert_keep) ;;
+      *)
+        _wg_lv "${_D_T}"
+        _ls="${_WG_LV}"
+        _wg_lv "${_D_SIGMA}"
+        [ "${_ls}" -gt "${_WG_LV}" ] && _D_RAISE=YES
+        ;;
+    esac
+  fi
+  _D_FROZENB=NO
+  if [ "${_D_FROZEN}" = "YES" ]; then
+    _D_FROZENB=YES
+    case "${_D_CALLER}" in
+      conv|conv_a|conv_b|revert|revert_keep)
+        [ "${_D_FORCE}" = "YES" ] && _D_FROZENB=NO ;;
+    esac
+  fi
+  _D_STANDBYB="${_D_STANDBY}"
+  case "${_D_CALLER}" in
+    revert|revert_keep) _D_STANDBYB=NO ;;
+  esac
+}
+
+# Reads a raise gate the row needs and the caller left unset.
+_wg_gate() {
+  local _v="${1}"
+  [ -n "${!_v}" ] && return 0
+  case "${_v}" in
+    _D_OPTOUT) { _wg_g_optout || _wg_g_v1_optout; } && _D_OPTOUT=YES || _D_OPTOUT=NO ;;
+    _D_V1) _wg_g_v1 && _D_V1=YES || _D_V1=NO ;;
+    _D_READY) _wg_g_ready && _D_READY=YES || _D_READY=NO ;;
+    _D_SHARE) _wg_g_share && _D_SHARE=YES || _D_SHARE=NO ;;
+  esac
+}
+
+# _D_ROW := the one row that matches; rows are tried in this order and each
+# includes "every row above failed".
+_wg_table() {
+  local _bulk=NO
+  _wg_derive
+  case "${_D_CALLER}" in
+    all|all_b|arm) _bulk=YES ;;
+  esac
+  if [ "${_D_CALLER}" = "reclaim" ]; then
+    if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=RC1
+    elif [ "${_D_STANDBY}" = "YES" ]; then _D_ROW=RC0
+    elif [ "${_D_RV}" = "A" ] || [ "${_D_RV}" = "B" ]; then _D_ROW=RC2
+    elif [ "${_D_LAM}" != "none" ]; then _D_ROW=RC3
+    else _D_ROW=RC4
+    fi
+    return 0
+  fi
+  if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=E1; return 0; fi
+  if [ "${_D_BUSY}" = "YES" ]; then _D_ROW=E2; return 0; fi
+  if [ "${_D_FROZENB}" = "YES" ]; then _D_ROW=E3; return 0; fi
+  if [ "${_D_STANDBYB}" = "YES" ]; then _D_ROW=E4; return 0; fi
+  if [ "${_bulk}" = "YES" ] && [ "${_D_LN}" = "YES" ]; then
+    if [ "${_D_LAM}" != "none" ]; then _D_ROW=S1; else _D_ROW=S2; fi
+    return 0
+  fi
+  if [ "${_D_CALLER}" = "all_b" ] && [ "${_D_PIN}" = "YES" ]; then _D_ROW=S3; return 0; fi
+  if [ "${_D_RAISE}" = "YES" ]; then
+    if [ "${_bulk}" = "YES" ]; then
+      _wg_gate _D_OPTOUT
+      [ "${_D_OPTOUT}" = "YES" ] && { _D_ROW=G1; return 0; }
+    fi
+    _wg_gate _D_V1
+    [ "${_D_V1}" = "YES" ] || { _D_ROW=G2; return 0; }
+    _wg_gate _D_READY
+    [ "${_D_READY}" = "YES" ] || { _D_ROW=G3; return 0; }
+    _wg_gate _D_SHARE
+    [ "${_D_SHARE}" = "YES" ] && { _D_ROW=G4; return 0; }
+  fi
+  case "${_D_T}" in
+    none)
+      case "${_D_LAM}" in
+        none) _D_ROW=N0 ;;
+        betw|A) _D_ROW=N1 ;;
+        *) _D_ROW=N2 ;;
+      esac
+      ;;
+    A)
+      case "${_D_LAM}" in
+        none|betw) if [ "${_D_RAISE}" = "YES" ]; then _D_ROW=A0r; else _D_ROW=A0; fi ;;
+        A) _D_ROW=A1 ;;
+        *) _D_ROW=A2 ;;
+      esac
+      ;;
+    B)
+      if [ "${_D_LAM}" = "B" ]; then
+        _D_ROW=B1
+      elif [ "${_D_RAISE}" = "YES" ]; then
+        _D_ROW=B0r
+      else
+        _D_ROW=B0
+      fi
+      ;;
+  esac
+}
+
+# The row's leg: refuse, skip, finish, down, up, or a reclaim form.
+_wg_leg_of() {
+  case "${1}" in
+    E1|E2|E3|E4|G1|G2|G3|G4) echo refuse ;;
+    S1|S3|RC1|RC0|OFF) echo skip ;;
+    S2) echo finish ;;
+    N0|N1|N2|A2) echo down ;;
+    RC2) echo reclaim-up ;;
+    RC3) echo reclaim-held ;;
+    RC4) echo reclaim-none ;;
+    *) echo up ;;
+  esac
+}
+
+# The exit class of a refusal or skip row.
+_wg_row_rc() {
+  case "${1}" in
+    E1|RC1) echo 1 ;;
+    E2|E3) echo 4 ;;
+    G3) echo 5 ;;
+    E4|S1|S3|G1|G2|G4) echo 6 ;;
+    *) echo 0 ;;
+  esac
+}
+
+# The intent the leg's first step writes: "<target> <pin>". A pin the
+# account's cnf carries (_D_CPIN) is written by a run whose target is A.
+_wg_plan() {
+  local _t _pin=- _cp=NO
+  [ "${_D_CPIN:-NO}" = "YES" ] && [ "${_D_T}" = "A" ] && _cp=YES
+  if [ "$(_wg_leg_of "${_D_ROW}")" = "down" ]; then
+    if [ "${_D_T}" = "A" ] && { [ "${_D_CALLER}" = "conv_a" ] || [ "${_D_PIN}" = "YES" ] || [ "${_cp}" = "YES" ]; }; then
+      _pin=phase-a
+    fi
+    echo "${_D_T} ${_pin}"
+    return 0
+  fi
+  case "${_D_CALLER}" in
+    conv_a) _pin=phase-a ;;
+    conv_b) _pin=- ;;
+    conv)
+      { [ "${_D_LN}" != "YES" ] && [ "${_D_PIN}" = "YES" ]; } && _pin=phase-a
+      [ "${_cp}" = "YES" ] && _pin=phase-a
+      ;;
+    *) { [ "${_D_PIN}" = "YES" ] || [ "${_cp}" = "YES" ]; } && _pin=phase-a ;;
+  esac
+  # max(A, min(T, max(rho, sigma))): never below what the account carries,
+  # and on a raise to B from A or none only A until u9
+  _t=A
+  if [ "${_D_T}" = "B" ] && { [ "${_D_RHO}" = "B" ] || [ "${_D_SIGMA}" = "B" ]; }; then
+    _t=B
+  fi
+  echo "${_t} ${_pin}"
+}
+
+# ---- the pool side ---------------------------------------------------------
+
+# Strips the profile's line from every pool file in every pool.d; the
+# versions whose file carried one go into _WG_CARRIED.
+_wg_p_strip_all() {
+  local _e _f _l _rc=0
+  _WG_CARRIED=""
+  while read -r _e _f; do
+    [ -n "${_f}" ] || continue
+    _l=$(_wg_pline "${_e}")
+    _wg_file_has "${_f}" "${_l}" || continue
+    _WG_CARRIED="${_WG_CARRIED} ${_e}"
+    _wg_file_strip "${_f}" "${_l}" || { _alrt "${_f}: the web group line could not be removed"; _rc=1; }
+  done < <(_wg_pool_files)
+  return "${_rc}"
+}
+
+# Reloads each version that is in _WG_CARRIED or whose pinged worker lacks
+# www-data, and verifies www-data back there. Every version that can get it
+# back gets it; 1 when any could not.
+_wg_reload_back() {
+  local _e _rc=0
+  for _e in $(_wg_vers_list); do
+    if [[ " ${_WG_CARRIED} " != *" ${_e} "* ]] && _wg_k_check "${_e}" back; then
+      continue
+    fi
+    if ! _wg_fpm_reload "${_e}"; then
+      _rc=1
+      continue
+    fi
+    if ! _wg_k_check "${_e}" back; then
+      _alrt "${_WP_A}: php${_e} workers still lack ${_WEBG} after the reload"
+      _rc=1
+    fi
+  done
+  return "${_rc}"
+}
+
+# Re-lists every tenant identity missing from www-data.
+_wg_w_relist() {
+  local _u _rc=0
+  for _u in $(_wg_w_ids); do
+    _in_grp_sup "${_u}" "${_WEBG}" && continue
+    if _grant_sup "${_u}" "${_WEBG}"; then
+      _log "${_WP_A}: ${_u} listed in ${_WEBG} again"
+    else
+      _alrt "${_u}: could not list it in ${_WEBG}"
+      _rc=1
+    fi
+  done
+  return "${_rc}"
+}
+
+# The token strip: every pool line out, every version that carried one or
+# whose worker lacks www-data reloaded, www-data verified back; no I or R
+# written, and an account's W untouched (the master re-lists its wwwNN: its
+# rollback's step 2, which the cut left undone).
+_wg_token_strip() {
+  _msg "${_WP_A}: its record says B left by a phase-B rollback that was cut short; every pool line is taken out first"
+  _log "${_WP_A}: token strip"
+  if [ "${_WP_M}" = "YES" ]; then
+    _wg_w_relist || return 1
+  fi
+  _wg_p_strip_all || return 1
+  _wg_reload_back || return 1
+  _wg_measure_after
+  return 0
+}
+
+# d2, and u2 which runs it: the B traits taken back whatever R says, and R
+# lowered from B to A (on every T = A leg even with no B trait left). W
+# first, then R, then the pool lines, then the reloads and the check that
+# www-data is back; a failure ends the run and nothing after d2 runs.
+_wg_d2() {
+  local _t="${1}"
+  if [ "${_WM_W}" = "0" ] && [ "${_WM_PF}" = "NO" ] && [ "${_WM_KANY}" = "NO" ] \
+    && [ "${_t}" != "A" ]; then
+    return 0
+  fi
+  _wg_w_relist || return 1
+  if [ "${_WR_PH}" = "B" ]; then
+    _wg_r_under_hold A || return $?
+    _WR_PH=A
+    _WR_RB=NO
+  fi
+  _wg_p_strip_all || return 1
+  _wg_reload_back || return 1
+  _wg_measure_after
+  return 0
+}
+
+# Re-reads the cheap traits after a step changed them (no ping).
+_wg_measure_after() {
+  _wg_m_w
+  _wg_m_p
+}
+
+# R := $1 under the queue hold, like every other record write but the
+# rollback's token (u10's commit, d2's lowering): 6 when the queue did not
+# drain (the next run resumes from here), 1 when the write failed.
+_wg_r_under_hold() {
+  local _q
+  _wg_qhold
+  _q=$?
+  [ "${_q}" = "0" ] || return "${_q}"
+  if ! _wg_r_write "${1}"; then
+    _wg_qhold_release
+    return 1
+  fi
+  _wg_qhold_release
+  return 0
+}
+
+# ---- the up leg ------------------------------------------------------------
+
+_wg_u1() {
+  local _t _pin
+  read -r _t _pin <<< "$(_wg_plan)"
+  _wg_i_write "${_t}" "${_pin}" - || return 1
+  case "${_WG_CALLER}" in
+    conv|conv_a|conv_b) _wg_policy_set "${_pin}" ;;
+  esac
+  return 0
+}
+
+# G and L: the group made when it is missing (any record removed first: a
+# stale one would turn valid under a re-used gid), then every identity and
+# pool user listed in it.
+_wg_u3() {
+  local _u _rc=0
+  if [ -z "$(_gid_of "${_WP_G}")" ]; then
+    if [ -e "${_WP_R}" ] || [ -L "${_WP_R}" ]; then
+      _wg_r_remove || { _alrt "${_WP_A}: a stale record ${_WP_R} could not be removed"; return 1; }
+      _log "${_WP_A}: stale record removed before the group is made"
+    fi
+    if ! groupadd --system "${_WP_G}" > /dev/null 2>&1; then
+      _fail "groupadd --system ${_WP_G} failed"
+      return 1
+    fi
+    _log "${_WP_A}: group ${_WP_G} created gid=$(_gid_of "${_WP_G}")"
+    _WR_PH=""
+    _WR_RB=NO
+  fi
+  _wg_m_g
+  [ "${_WM_G}" = "ours" ] || { _fail "${_WP_G} is not ${_WP_A}'s"; return 1; }
+  for _u in $(_wg_members); do
+    _in_grp_sup "${_u}" "${_WP_G}" && continue
+    _grant_sup "${_u}" "${_WP_G}" || { _alrt "${_u}: could not list it in ${_WP_G}"; _rc=1; }
+  done
+  return "${_rc}"
+}
+
+# K: each version whose workers lack the web group reloaded and checked.
+_wg_u4() {
+  local _e _rc=0
+  for _e in $(_wg_vers_list); do
+    _wg_k_check "${_e}" wg && continue
+    if _wg_fpm_reload "${_e}" && _wg_k_check "${_e}" wg; then
+      continue
+    fi
+    _alrt "${_WP_A}: php${_e} workers do not hold ${_WP_G} after the reload"
+    _rc=1
+  done
+  return "${_rc}"
+}
+
+# The private side, under the queue hold (released at u7): the private set
+# to 02770/0660, the secret set narrowed, the outbound share re-scan (a note
+# here, never a refusal), the alias, the D9 stamp.
+_wg_u6() {
+  local _q
+  _wg_qhold
+  _q=$?
+  [ "${_q}" = "0" ] || return "${_q}"
+  _wg_private_modes 02770 0660
+  _wg_secret_narrow
+  _WG_SHARE_MODE=note _wg_g_share
+  _wg_alias_set "${_WP_G}" || return 1
+  _wg_d9 commit
+  return 0
+}
+
+# The record: A when absent or invalid, never lower; the queue hold ends.
+_wg_u7() {
+  if [ -z "${_WR_PH}" ]; then
+    _wg_r_write A || { _wg_qhold_release; return 1; }
+    _WR_PH=A
+    _WR_RB=NO
+  fi
+  _wg_qhold_release
+  return 0
+}
+
+# The B check, when a B trait is still missing: the residue rule in full
+# (5), then, on a raise or while B is not committed, the outbound share
+# re-scan (6). Either stops the run as it is.
+_wg_u8() {
+  [ "${_D_LAM}" = "B" ] && return 0
+  if _wg_residue_full; then
+    _msg "${_WP_A}: www-data paths remain in its private set or tops; phase B waits for the next run"
+    _wg_note "phase B deferred: paths in www-data remain in the private set or the tops"
+    return 5
+  fi
+  if [ "${_D_RAISE}" = "YES" ] || [ "${_D_BEV}" = "NO" ]; then
+    if _WG_SHARE_MODE=refuse _wg_g_share; then
+      _msg "${_WP_A}: an outbound share, a legacy site or a site or store outside the account stops phase B (see ${_WP_NOTES})"
+      return 6
+    fi
+  fi
+  return 0
+}
+
+# P: the line into every pool file lacking it (the group resolving); the
+# master's W leaves www-data here, before the reload. What this run added is
+# kept for the rollback.
+_wg_u11() {
+  local _e _f _l _u
+  _WG_U11_FILES=""
+  _WG_U11_WDEL=""
+  while read -r _e _f; do
+    [ -n "${_f}" ] || continue
+    _l=$(_wg_pline "${_e}")
+    _wg_file_has "${_f}" "${_l}" && continue
+    if _wg_file_add "${_f}" "${_l}"; then
+      _WG_U11_FILES="${_WG_U11_FILES} ${_e}:${_f}"
+    else
+      _alrt "${_f}: the web group line could not be added"
+      return 1
+    fi
+  done < <(_wg_pool_files)
+  if [ "${_WP_M}" = "YES" ]; then
+    for _u in $(_wg_w_ids); do
+      _in_grp_sup "${_u}" "${_WEBG}" || continue
+      gpasswd -d "${_u}" "${_WEBG}" > /dev/null 2>&1
+      if _in_grp_sup "${_u}" "${_WEBG}"; then
+        _alrt "${_u}: could not take it out of ${_WEBG}"
+        return 1
+      fi
+      _WG_U11_WDEL="${_WG_U11_WDEL} ${_u}"
+    done
+  fi
+  return 0
+}
+
+# K to B: every version reloaded and checked, the web group present and
+# www-data gone. Nothing to do when u11 added no line and every version
+# already reads so.
+_wg_u12() {
+  local _e _rc=0 _all=YES
+  if [ -z "${_WG_U11_FILES}" ] && [ -z "${_WG_U11_WDEL}" ] && [ -n "${_WG_VERS}" ]; then
+    for _e in $(_wg_vers_list); do
+      _wg_k_check "${_e}" b || { _all=NO; break; }
+    done
+    [ "${_all}" = "YES" ] && return 0
+  fi
+  for _e in $(_wg_vers_list); do
+    if ! _wg_fpm_reload "${_e}"; then
+      _rc=1
+      break
+    fi
+    if ! _wg_k_check "${_e}" b; then
+      _alrt "${_WP_A}: php${_e} workers still hold ${_WEBG} (or lack ${_WP_G}) after the reload"
+      _rc=1
+      break
+    fi
+  done
+  [ -n "${_WG_VERS}" ] || { _alrt "${_WP_A}: no installed PHP-FPM version serves it; phase B cannot be verified"; _rc=1; }
+  return "${_rc}"
+}
+
+# u12's rollback, in the order that never leaves R lowered while a loaded
+# pool still lacks www-data: the token first (when R before u10 was not a
+# plain B), the pool lines, the master's W, the reloads, www-data verified
+# back, and only then R back, as the last write. A failure or a kill before
+# that last write leaves R at B with rb=1.
+_wg_rollback() {
+  local _e _f _ef _cut=NO _changed="" _u _q _left
+  _log "${_WP_A}: u12 failed, rolling phase B back"
+  # what the record says when the rollback stops short: a plain B it found
+  # (no token is written over a committed B), or the token step 0 wrote
+  _left="its record stays B with rb=1"
+  # step 0: no queue hold, so a busy queue cannot keep the token from R
+  if [ "${_WG_RSAVE}" != "B" ]; then
+    if ! _wg_r_write B rb; then
+      _alrt "${_WP_A}: the rollback token could not be written; rolling back regardless"
+      _left="its record stays as u10 left it (phase=B, no token)"
+    fi
+  else
+    _left="its record stays the plain B it was before this run (no token is written over a committed B)"
+  fi
+  # step 1: a raise that started with B not committed strips every line,
+  # one it found included; any other run puts the pool files back to the
+  # run's start (a line found there may be the engine's own lost commit)
+  if [ "${_D_ROW}" = "B0r" ] && [ "${_D_BEV}" = "NO" ]; then
+    _wg_p_strip_all || _cut=YES
+    _changed="${_WG_CARRIED}"
+  else
+    for _ef in ${_WG_U11_FILES}; do
+      _e="${_ef%%:*}"
+      _f="${_ef#*:}"
+      _wg_file_strip "${_f}" "$(_wg_pline "${_e}")" || _cut=YES
+      _changed="${_changed} ${_e}"
+    done
+  fi
+  # step 2, the master: W back to the run's start (every wwwNN when step 1
+  # stripped every line, else only those this run's u11 took out)
+  if [ "${_WP_M}" = "YES" ]; then
+    if [ "${_D_ROW}" = "B0r" ] && [ "${_D_BEV}" = "NO" ]; then
+      _wg_w_relist || _cut=YES
+    else
+      for _u in ${_WG_U11_WDEL}; do
+        _grant_sup "${_u}" "${_WEBG}" || _cut=YES
+      done
+    fi
+  fi
+  # step 3: the versions changed at u11 or in step 1, or whose worker lacks
+  # www-data; one that fails does not stop the others
+  for _ef in ${_WG_U11_FILES}; do
+    _changed="${_changed} ${_ef%%:*}"
+  done
+  _WG_CARRIED="${_changed}"
+  # step 4 is inside: www-data verified back on every version reloaded
+  _wg_reload_back || _cut=YES
+  for _e in $(_wg_vers_list); do
+    _wg_k_check "${_e}" back || _cut=YES
+  done
+  if [ "${_cut}" = "YES" ]; then
+    if [ "${_WG_RSAVE}" = "B" ]; then
+      _alrt "${_WP_A}: the rollback was cut short; ${_left}"
+      _wg_note "phase B rollback cut short: the record stays the plain B it was before the run; the next run converges B"
+    else
+      _alrt "${_WP_A}: the rollback was cut short; ${_left} (the next run re-checks shares first)"
+      _wg_note "phase B rollback cut short: the record stays B (rb=1); the next run strips the pool lines and re-checks shares"
+    fi
+    return 1
+  fi
+  # step 5: R back to its value before u10, under the queue hold
+  _wg_qhold
+  _q=$?
+  if [ "${_q}" != "0" ]; then
+    _alrt "${_WP_A}: the rollback was cut short at its last write (the queue did not drain); ${_left}"
+    return 1
+  fi
+  case "${_WG_RSAVE}" in
+    A) _wg_r_write A ;;
+    Brb) _wg_r_write B rb ;;
+  esac
+  _wg_qhold_release
+  _log "${_WP_A}: phase B rolled back"
+  return 1
+}
+
+# W: the tenant identities out of www-data, the account's own user first;
+# then the account's processes still holding www-data are counted (reported,
+# never killed).
+_wg_u13() {
+  local _u _rc=0 _uids _n _sw=NO _owed
+  _owed="/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
+  if [ "${_WP_M}" != "YES" ]; then
+    for _u in "${_WP_A}" $(_wg_w_ids | grep -vxF -- "${_WP_A}"); do
+      _in_grp_sup "${_u}" "${_WEBG}" || continue
+      # the sweep below is owed from before the first identity leaves, so a
+      # run killed in between is finished by the next run at B
+      if [ "${_sw}" = "NO" ] && [ ! -e "${_owed}" ]; then
+        _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
+          || _alrt "${_WP_A}: ${_owed} could not be written; this run sweeps all the same"
+      fi
+      _sw=YES
+      gpasswd -d "${_u}" "${_WEBG}" > /dev/null 2>&1
+      if _in_grp_sup "${_u}" "${_WEBG}"; then
+        _alrt "${_u}: could not take it out of ${_WEBG}"
+        _rc=1
+      fi
+    done
+  fi
+  # aegir keeps www-data by design: the master has no such count
+  [ "${_WP_M}" = "YES" ] && return "${_rc}"
+  # an identity still listed could make another file at once: swept by
+  # the run that takes it out
+  if [ "${_rc}" = "0" ] && { [ "${_sw}" = "YES" ] || [ -e "${_owed}" ]; }; then
+    _sw=YES
+    _wg_sgid_sweep || _rc=1
+  fi
+  _uids=$(_wg_own_uids)
+  _n=$(_wg_procs_www "${_uids}")
+  if [ "${_n:-0}" -gt 0 ]; then
+    _msg "NOTE: ${_WP_A}: ${_n} processes still hold ${_WEBG} (sessions started before phase B); they keep it until they end"
+    _wg_note "phase B: ${_n} processes still hold www-data until they end (reconnect shell and SFTP sessions)"
+    printf '%s\n' "${_n}" > "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" 2> /dev/null
+    # one of them could still make such a file: every run at B sweeps
+    # again until none is left
+    [ -e "${_owed}" ] || _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
+      || _alrt "${_WP_A}: ${_owed} could not be written; the next run at B does not sweep again"
+  else
+    rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt"
+    [ "${_sw}" = "YES" ] && [ "${_rc}" = "0" ] && rm -f -- "${_owed}"
+  fi
+  return "${_rc}"
+}
+
+# How many processes of the uids $1 (comma list) hold www-data: in their
+# groups, or as their real, effective, saved or file-system group (a
+# set-group-ID file run before its bit was cleared).
+_wg_procs_www() {
+  [ -n "${1}" ] || { echo 0; return 0; }
+  _wg_proc_status | awk -v ul=",${1}," -v w="${_WG_WWWGID}" '
+    function out() { if (u != "" && index(ul, "," u ",") && index(g " " gi, " " w " ")) n++; u = ""; g = ""; gi = "" }
+    /^Name:/ { out() }
+    /^Uid:/ { u = $2 }
+    /^Gid:/ { gi = " " $2 " " $3 " " $4 " " $5 " " }
+    /^Groups:/ { $1 = ""; g = " " $0 " " }
+    END { out(); print n + 0 }'
+}
+
+# Clears the set-group-ID bit of each regular file named as ./<name> (or a
+# bare <name>) in the current directory (find's -execdir, which runs it
+# inside the directory it walked, so no path is resolved again) through a
+# no-follow handle, only when one of the uids $2 owns it and its group is
+# still $1. One line per such file, "C <dir>/<name>" cleared or
+# "E <dir>/<name>" not cleared (also for an argument that names more than
+# one path component), unprintable bytes shown as "?".
+# shellcheck disable=SC2016
+_WG_SGID_PL='use Fcntl; use Cwd; my ($g, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $d = getcwd(); $d = "?" unless defined($d); for my $x (@f) { my $n = $x; $n =~ s{^\./}{}; my $p = "$d/$n"; $p =~ s/[^[:print:]]/?/g; if ($n !~ m{^[^/]+\z} || $n eq "." || $n eq "..") { print "E $p\n"; next; } my $f = "./$n"; my @l = lstat($f); next unless @l && -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $o{$s[4]} && $s[5] == $g && ($s[2] & 02000)) { print((chmod($s[2] & 05777, $h) ? "C " : "E ") . "$p\n"); } close($h); } exit 0'
+
+# The mount points a file of the account's may sit on and run from with its
+# set-group-ID bit honoured: every mount of a disk or memory file system that
+# is not nosuid (pseudo, network and FUSE mounts left out), decoded as the
+# kernel escapes them. A file on a nosuid mount keeps the bit honoured only
+# through another mount of the same file system, which is walked.
+_wg_sweep_roots() {
+  perl -ne 'my @f = split(/ /); next unless defined($f[3]) && $f[2] =~ /^(ext[234]|xfs|btrfs|zfs|tmpfs|f2fs|jfs|reiserfs|overlay)$/; next if ",$f[3]," =~ /,nosuid,/; my $m = $f[1]; $m =~ s/\\([0-7]{3})/chr(oct($1))/ge; print "$m\n" if $m =~ m{^/} && $m !~ /\n/' \
+    /proc/self/mounts 2> /dev/null | sort -u
+}
+
+# The network and FUSE mounts not mounted nosuid, where the kernel honours
+# the bit too and the sweep does not walk: a server that stops answering
+# would hang root's walk there (with the run lock and the account's hold
+# taken), and NFS squashes root by default, so a clear would fail on every
+# run at B. One line per mount, "<type> <mount point>", decoded and with
+# unprintable bytes shown as "?"; named in the account's notes instead.
+_wg_sweep_unwalked() {
+  perl -ne 'my @f = split(/ /); next unless defined($f[3]) && $f[2] =~ /^(nfs4?|cifs|smb3|smbfs|ceph|glusterfs|9p|afs|lustre|fuse|fuseblk|fuse\..+)$/; next if ",$f[3]," =~ /,nosuid,/; my $m = $f[1]; $m =~ s/\\([0-7]{3})/chr(oct($1))/ge; next unless $m =~ m{^/} && $m !~ m{^/(proc|sys|dev)(/|\z)}; $m =~ s/[^[:print:]]/?/g; print "$f[2] $m\n"' \
+    /proc/self/mounts 2> /dev/null | sort -u
+}
+
+# Phase B leaves no set-group-ID www-data file of the account's own. While
+# its identities and pool users held www-data, any of them could give a
+# file of its own group www-data and the set-group-ID bit wherever it could
+# write, and run it as www-data's group after phase B. Every local file
+# system is walked; the bit is cleared on each such regular file one of the
+# account's uids owns, by name inside the directory find holds open, so a
+# directory the account renames or swaps for a link meanwhile cannot lead
+# root outside the walked tree. The network and FUSE mounts without nosuid
+# are named in the notes, not walked. 1 when one could not be cleared, or
+# when no file system was read to walk.
+_wg_sgid_sweep() {
+  local _uids _r _out _rc=0 _n=0 _u _w=() _l _roots=0 _t _m _un=""
+  _uids=$(_wg_own_uids)
+  [ -n "${_uids}" ] && [[ "${_WG_WWWGID}" =~ ^[0-9]+$ ]] || return 0
+  for _u in ${_uids//,/ }; do
+    _w+=(-o -uid "${_u}")
+  done
+  while IFS= read -r _r; do
+    [ -d "${_r}" ] || continue
+    _roots=$((_roots + 1))
+    # find's own exit is not read: a file gone during the walk is no failure
+    _out=$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -xdev -type f -perm -2000 \
+      -gid "${_WG_WWWGID}" \( "${_w[@]:1}" \) \
+      -execdir perl -e "${_WG_SGID_PL}" "${_WG_WWWGID}" "${_uids}" {} + 2> /dev/null < /dev/null)
+    [ -n "${_out}" ] || continue
+    while IFS= read -r _l; do
+      case "${_l}" in
+        "C "*)
+          _n=$((_n + 1))
+          _log "${_WP_A}: set-group-ID bit cleared: ${_l#C }"
+          ;;
+        "E "*)
+          _rc=1
+          _log "${_WP_A}: set-group-ID bit not cleared: ${_l#E }"
+          ;;
+      esac
+    done <<< "${_out}"
+  done < <(_wg_sweep_roots)
+  if [ "${_roots}" = "0" ]; then
+    _alrt "${_WP_A}: no file system to walk was read from /proc/self/mounts; the set-group-ID sweep of phase B stays owed"
+    return 1
+  fi
+  while read -r _t _m; do
+    [ -n "${_m}" ] || continue
+    _un="${_un} ${_m}"
+    _log "${_WP_A}: set-group-ID sweep: ${_m} (${_t}, no nosuid) not walked"
+    _wg_note "phase B: the set-group-ID sweep does not walk ${_m} (${_t}, a network or FUSE mount without nosuid): a set-group-ID www-data file of the account there keeps its bit; mount it nosuid"
+  done < <(_wg_sweep_unwalked)
+  [ -n "${_un}" ] && _msg "NOTE: ${_WP_A}: network or FUSE mounts without nosuid are not swept for set-group-ID files:${_un} (see ${_WP_NOTES})"
+  if [ "${_n}" -gt 0 ]; then
+    _msg "NOTE: ${_WP_A}: the set-group-ID bit cleared on ${_n} www-data file(s) of the account (${_LOG})"
+    _wg_note "phase B: the set-group-ID bit cleared on ${_n} www-data file(s) of the account"
+  fi
+  [ "${_rc}" = "0" ] || _alrt "${_WP_A}: a set-group-ID www-data file of the account could not be cleared (${_LOG}); the next run at B tries again"
+  return "${_rc}"
+}
+
+# The up leg, rows A0r A0 A1 B0r B0 B1. rc as the table's exit column.
+_wg_leg_up() {
+  local _rc _rw=0
+  _wg_u1 || return 1
+  if [ "${_D_T}" = "A" ] || { [ "${_D_RAISE}" = "YES" ] && [ "${_WG_START_G}" != "ours" ]; }; then
+    _wg_d2 "${_D_T}" || return $?
+  fi
+  _wg_u3 || return 1
+  _WG_VERS=$(_wg_versions)
+  # webconvert all: the first phase ends here, the account hold kept; one
+  # reload per version follows for every account, then this run again
+  if [ "${_WG_STOP_AT_U3}" = "YES" ]; then
+    _WG_STOP_AT_U3=HELD
+    return 0
+  fi
+  _wg_u4 || return 1
+  _wg_walk_up
+  _rw=$?
+  _wg_u6
+  _rc=$?
+  if [ "${_rc}" != "0" ]; then
+    _wg_qhold_release
+    return "${_rc}"
+  fi
+  _wg_u7 || return 1
+  if [ "${_D_T}" = "A" ]; then
+    [ "${_rw}" = "2" ] && return 2
+    return 0
+  fi
+  _wg_u8
+  _rc=$?
+  [ "${_rc}" = "0" ] || return "${_rc}"
+  # u9: the intent to B
+  _wg_i_read
+  if [ "${_WI_T}" != "B" ] || [ "${_WI_PIN}" != "-" ]; then
+    _wg_i_write B - - || return 1
+  fi
+  # u10: the record, B committed here (a plain B: a token is dropped)
+  if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" = "YES" ]; then
+    _WG_RSAVE=Brb
+  else
+    _WG_RSAVE="${_WR_PH:-A}"
+  fi
+  if [ "${_WR_PH}" != "B" ] || [ "${_WR_RB}" = "YES" ]; then
+    _wg_r_under_hold B || return $?
+    _WR_PH=B
+    _WR_RB=NO
+  fi
+  _wg_u11 || return 1
+  if ! _wg_u12; then
+    _wg_rollback
+    return 1
+  fi
+  _wg_u13 || return 1
+  return 0
+}
+
+# ---- the down leg ----------------------------------------------------------
+
+# The down leg, rows N0 N1 N2 A2. d0, the opt-out, ran before the token
+# strip (_wg_run).
+_wg_leg_down() {
+  local _t _pin _rc
+  # d1
+  read -r _t _pin <<< "$(_wg_plan)"
+  _wg_i_write "${_t}" "${_pin}" - || return 1
+  case "${_WG_CALLER}" in
+    conv|conv_a|conv_b) _wg_policy_set "${_pin}" ;;
+  esac
+  # d2
+  _wg_d2 "${_D_T}" || return $?
+  if [ "${_D_T}" = "A" ]; then
+    _wg_u3 || return 1
+    _WG_VERS=$(_wg_versions)
+    _wg_u4 || return 1
+    _wg_walk_up
+    _rc=$?
+    _wg_u6
+    _t=$?
+    if [ "${_t}" != "0" ]; then
+      _wg_qhold_release
+      return "${_t}"
+    fi
+    _wg_u7 || return 1
+    [ "${_rc}" = "2" ] && return 2
+    return 0
+  fi
+  if [ -n "$(_gid_of "${_WP_G}")" ] && [ "${_WM_G}" = "ours" ]; then
+    # d4: the record removed (writers write www-data from here), the alias
+    # back, under the queue hold
+    _wg_qhold
+    _rc=$?
+    [ "${_rc}" = "0" ] || return "${_rc}"
+    if ! _wg_r_remove; then
+      _wg_qhold_release
+      _alrt "${_WP_A}: the record ${_WP_R} could not be removed"
+      return 1
+    fi
+    _WR_PH=""
+    _WR_RB=NO
+    _wg_alias_set "${_WEBG}" || { _wg_qhold_release; return 1; }
+    _wg_qhold_release
+    # d5: the files back to www-data, the private set widened back, the D9
+    # stamp and xtrim's quarantined copies of the line gone
+    _wg_walk_down
+    _wg_private_modes 02775 0664
+    _wg_d9 remove
+    _wg_xtrim_scrub
+    # d6: the group goes only when nothing carries its gid
+    if ! _wg_group_drop; then
+      return 2
+    fi
+  fi
+  # d7
+  _wg_i_remove
+  rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" "/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
+  return 0
+}
+
+# d6: no path and no pool file carrying the gid: delist every member and
+# delete the group together; else 2, the group and its listings kept.
+_wg_group_drop() {
+  local _gid _u _e _f _r
+  _gid=$(_gid_of "${_WP_G}")
+  [ -n "${_gid}" ] || return 0
+  while read -r _e _f; do
+    [ -n "${_f}" ] || continue
+    if grep -qE "^[[:space:]]*group[[:space:]]*=[[:space:]]*(${_WP_G}|${_gid})[[:space:]]*$" "${_f}" 2> /dev/null; then
+      _msg "${_WP_A}: ${_f} still names ${_WP_G}; the group is kept (re-run webrevert)"
+      return 1
+    fi
+  done < <(_wg_pool_files)
+  for _r in $(_wg_roots); do
+    if [ -n "$(find -P "${_r}" -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
+      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
+      return 1
+    fi
+  done
+  for _u in $(getent group "${_WP_G}" | cut -d: -f4 | tr ',' ' '); do
+    gpasswd -d "${_u}" "${_WP_G}" > /dev/null 2>&1
+  done
+  if groupdel "${_WP_G}" > /dev/null 2>&1; then
+    _log "${_WP_A}: group ${_WP_G} removed"
+    return 0
+  fi
+  _alrt "${_WP_A}: groupdel ${_WP_G} failed; the group is kept"
+  return 1
+}
+
+# ---- sites, stores, tops -----------------------------------------------------
+
+# A name or path the account can choose (an alias, a directory a link
+# resolves to) is used only without a control character: a newline would
+# turn one path into two lines for every reader of these lists.
+_wg_clean() {
+  case "${1}" in
+    *[[:cntrl:]]*) return 1 ;;
+  esac
+  return 0
+}
+
+# The profile's registered sites, "<in|out> <alias> <resolved site dir>" per
+# line, each site once: each alias in the real .drush with a site_path, read
+# bounded and never through a link; "in" when the site dir resolves inside
+# the profile's own tree (/data/disk/<a>/ for an account, /var/aegir/ for
+# the master), "out" otherwise. $1 = the home (the profile's by default).
+_wg_site_list() {
+  local _h="${1:-${_WP_HOME}}" _rh _f _t _sp _rs _w
+  _rh=$(realpath -e -- "${_h}" 2> /dev/null) || return 0
+  for _f in "${_h}"/.drush/*.alias.drushrc.php; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    case "${_f##*/}" in
+      server_*|platform_*) continue ;;
+      *[[:cntrl:][:space:]]*) continue ;;
+    esac
+    _t=$(_ig_in_real_dir "${_h}/.drush" _ig_read_here "${_f##*/}")
+    _sp=$(printf '%s\n' "${_t}" | sed -n "s/^[[:space:]]*'site_path' => '\([^']*\)',.*/\1/p" | head -n 1)
+    [ -n "${_sp}" ] || continue
+    _rs=$(realpath -e -- "${_sp}" 2> /dev/null) || continue
+    _wg_clean "${_rs}" || continue
+    case "${_rs}/" in
+      "${_rh}"/?*) _w=in ;;
+      *) _w=out ;;
+    esac
+    [ -d "${_rs}" ] && printf '%s %s %s\n' "${_w}" "${_f##*/}" "${_rs}"
+  done | awk '{ _k = $0; sub(/^[^ ]* [^ ]* /, "", _k) } !_seen[_k]++'
+}
+
+# The sites every walk reads, "<alias> <resolved site dir>": only those
+# inside the profile's own tree, never another account's or the master's,
+# since the account writes its aliases. $1 = the home.
+_wg_sites() {
+  _wg_site_list "$@" | awk '$1 == "in" { sub(/^in /, ""); print }'
+}
+
+# The profile's sites no walk reads, the same way: a site dir resolving
+# outside its own tree (a legacy site on the shared /data/all store among
+# them). Only the share gate and the fleet read take them, to refuse.
+_wg_sites_out() {
+  _wg_site_list | awk '$1 == "out" { sub(/^out /, ""); print }'
+}
+
+# The account a resolved path belongs to: /data/disk/<o>/..., its store on
+# attached storage (no files/ or static/ in the mount part), /var/aegir/...
+# for the master; "-" for anything else.
+_wg_path_owner() {
+  local _p="${1}" _o _m
+  case "${_p}" in
+    /data/disk/?*) _o="${_p#/data/disk/}"; printf '%s' "${_o%%/*}"; return 0 ;;
+    /var/aegir|/var/aegir/*) printf 'aegir'; return 0 ;;
+    /mnt/?*/files/?*/static/files|/mnt/?*/files/?*/static/files/*)
+      _o="${_p#/mnt/}"
+      _m="${_o%%/files/*}"
+      case "/${_m}/" in
+        */files/*|*/static/*) ;;
+        *)
+          _o="${_o#"${_m}"/files/}"
+          printf '%s' "${_o%%/*}"
+          return 0
+          ;;
+      esac
+      ;;
+  esac
+  printf -- '-'
+}
+
+# 0 when the resolved path $1 is where a site's files or private store may
+# lead through a link, as the site scripts take one: strictly below the
+# profile's own real static/files/ (/var/aegir/static/files/ for the
+# master), or for an account below its store on attached storage,
+# /mnt/<m>/files/<a>/static/files/ (no files/ or static/ in the mount
+# part); only letters, digits, dots, underscores, hyphens and slashes. A
+# dot-name right below either store root is BOA's own (.backups,
+# .backup-exports, .archived), never a site's store; $2 names the one such
+# folder a caller reads (the archived private stores, .archived).
+_wg_store_own() {
+  local _p="${1}" _rh _m _top=""
+  case "${_p}" in
+    *[!A-Za-z0-9._/-]*) return 1 ;;
+  esac
+  _rh=$(realpath -e -- "${_WP_HOME}" 2> /dev/null) || return 1
+  case "${_p}" in
+    "${_rh}"/static/files/?*) _top="${_p#"${_rh}"/static/files/}" ;;
+    *)
+      [ "${_WP_M}" = "YES" ] && return 1
+      case "${_p}" in
+        /mnt/?*/files/"${_WP_A}"/static/files/?*)
+          _m="${_p%%/files/"${_WP_A}"/static/files/*}"
+          case "${_m}" in
+            */files/*|*/static/*) return 1 ;;
+          esac
+          _top="${_p#"${_m}"/files/"${_WP_A}"/static/files/}"
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+  esac
+  case "${_top}" in
+    .*)
+      [ -n "${2:-}" ] || return 1
+      case "${_top}" in
+        "${2}"/?*) return 0 ;;
+      esac
+      return 1
+      ;;
+  esac
+  return 0
+}
+
+# The stores and tops of one resolved site dir $1 of the profile, as
+# "<kind> <resolved path>": trio (settings files), store (the files store:
+# it must end in /files and be the profile's own, never the site's private
+# store), private (the private store, and a Drupal 7 files/private), public
+# (the rest of the public set, _wg_public_parts), share (a store in another
+# account's tree), outside (any other place). A store is the profile's own
+# only as a real child of the site dir or a link _wg_store_own takes: the
+# account can own a site dir and plant a link there, so a link anywhere
+# else in its tree (its home, .drush, a hostmaster site dir, BOA's own
+# dot-named folders in its store) is outside, never walked. The stores
+# and the public set are read only from a site dir that carries
+# drushrc.php, as the worker's D9 reads them. A store resolving to a path
+# with a control character is left out. Read-only.
+_wg_site_parts() {
+  local _s="${1}" _f _n _rf _rp _o
+  for _f in settings.php local.settings.php civicrm.settings.php; do
+    [ -f "${_s}/${_f}" ] && [ ! -L "${_s}/${_f}" ] && printf 'trio %s\n' "${_s}/${_f}"
+  done
+  [ -e "${_s}/drushrc.php" ] || return 0
+  _rp=$(realpath -e -- "${_s}/private" 2> /dev/null)
+  _rf=$(realpath -e -- "${_s}/files" 2> /dev/null)
+  _wg_clean "${_rp}" || _rp=""
+  _wg_clean "${_rf}" || _rf=""
+  for _n in files private; do
+    _f="${_rf}"
+    [ "${_n}" = "private" ] && _f="${_rp}"
+    [ -n "${_f}" ] && [ -d "${_f}" ] || continue
+    # a private store that is the files store itself is read once, as that
+    [ "${_n}" = "private" ] && [ "${_f}" = "${_rf}" ] && continue
+    if { [ "${_f}" = "${_s}/${_n}" ] && [ ! -L "${_s}/${_n}" ]; } || _wg_store_own "${_f}"; then
+      _o="${_WP_A}"
+    else
+      _o=$(_wg_path_owner "${_f}")
+      [ "${_o}" = "${_WP_A}" ] && _o="-"
+    fi
+    if [ "${_o}" != "${_WP_A}" ]; then
+      if [ "${_o}" = "-" ]; then
+        printf 'outside %s\n' "${_f}"
+      else
+        printf 'share %s\n' "${_f}"
+      fi
+      continue
+    fi
+    if [ "${_n}" = "files" ]; then
+      [ "${_rf}" != "${_rp}" ] && [ "${_rf##*/}" = "files" ] && printf 'store %s\n' "${_rf}"
+      [ -d "${_rf}/private" ] && [ ! -L "${_rf}/private" ] && printf 'private %s\n' "${_rf}/private"
+    else
+      printf 'private %s\n' "${_rp}"
+    fi
+  done
+  _wg_public_parts "${_s}"
+}
+
+# The resolved $1/$2 when it is a real directory inside the site dir $1
+# (resolved already), with no control character in its path; 1 otherwise.
+_wg_child() {
+  local _r
+  [ -d "${1}/${2}" ] && [ ! -L "${1}/${2}" ] || return 1
+  _r=$(realpath -e -- "${1}/${2}" 2> /dev/null) || return 1
+  _wg_clean "${_r}" || return 1
+  case "${_r}/" in
+    "${1}"/?*) printf '%s' "${_r}" ;;
+    *) return 1 ;;
+  esac
+}
+
+# The public set beyond the files stores, "public <resolved path>" per
+# directory: a Textpattern site's public/{files,images,themes}, a Grav
+# capsule's images, assets and user/pages (each a real child of the site
+# dir), and the Boost cache of the site's platform, cache/normal (a real
+# directory of the profile's own tree). The site classes are told apart as
+# the site ownership scripts tell them.
+_wg_public_parts() {
+  local _s="${1}" _p _r _rh _l=""
+  if [ -f "${_s}/public/index.php" ] && [ -f "${_s}/public/css.php" ] \
+    && [ -d "${_s}/admin" ] && [ ! -f "${_s}/settings.php" ]; then
+    _l="public/files public/images public/themes"
+  elif [ -f "${_s}/bin/grav" ] && [ -f "${_s}/system/defines.php" ] \
+    && [ ! -f "${_s}/settings.php" ]; then
+    _l="images assets user/pages"
+  fi
+  for _p in ${_l}; do
+    _r=$(_wg_child "${_s}" "${_p}") && printf 'public %s\n' "${_r}"
+  done
+  case "${_s}" in
+    */sites/?*) ;;
+    *) return 0 ;;
+  esac
+  _p="${_s%/sites/*}/cache/normal"
+  [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
+  _r=$(realpath -e -- "${_p}" 2> /dev/null) || return 0
+  _rh=$(realpath -e -- "${_WP_HOME}" 2> /dev/null) || return 0
+  _wg_clean "${_r}" || return 0
+  case "${_r}/" in
+    "${_rh}"/?*) printf 'public %s\n' "${_r}" ;;
+  esac
+  return 0
+}
+
+# Every own part of every site of the profile, each once.
+_wg_parts() {
+  local _al _s
+  while read -r _al _s; do
+    [ -n "${_s}" ] || continue
+    _wg_site_parts "${_s}"
+  done < <(_wg_sites) | awk '!_seen[$0]++'
+}
+
+# The tops T reads: the trio, each store top, each private top.
+_wg_tops() {
+  _wg_parts | awk '$1 == "trio" || $1 == "store" || $1 == "private"'
+}
+
+# The walk's roots: an account's roots (instgrp's own list) and its PHP
+# cache dirs; the master's site dirs and their own stores.
+_wg_roots() {
+  local _k _p
+  if [ "${_WP_M}" = "YES" ]; then
+    { _wg_sites | awk '{ print $2 }'
+      _wg_parts | awk '$1 == "store" || $1 == "private" { print $2 }'
+    } | sort -u
+    return 0
+  fi
+  _acct_roots "${_WP_A}" 2> /dev/null
+  [ -d "/var/www/phpcache/${_WP_A}" ] && [ ! -L "/var/www/phpcache/${_WP_A}" ] \
+    && printf '%s\n' "/var/www/phpcache/${_WP_A}"
+  return 0
+}
+
+# ---- the handle idioms the walks use ------------------------------------------
+
+# Modes through a handle opened without following a link or blocking on a
+# FIFO, only on an entry one of the owners in $3 owns: $1 add (bits or'ed
+# in), set (the mode), narrow (bits and'ed: never widens); $2 the octal
+# mode. add and set change a directory or a single-link regular file; narrow
+# also a hard-linked one. A hard-linked file add or set would change is
+# printed "L <name>" for the notes.
+# shellcheck disable=SC2016
+_WG_FMODE_PL='use Fcntl; my ($op, $b, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $m = oct($b); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); unless (@s && $o{$s[4]}) { close($h); next; } my $c = $s[2] & 07777; my $n; if (-d _ || $s[3] == 1 || $op eq "narrow") { $n = $op eq "add" ? ($c | $m) : $op eq "narrow" ? ($c & $m) : $m; } else { print "L $f\n"; close($h); next; } if ($n != $c) { chmod($n, $h) or $rc = 1; } close($h); } exit $rc'
+# The plant pass: an entry whose owner is neither one of the owners in $3
+# nor root is handed to uid $1 and gid $2 through its handle when it is a
+# directory or a single-link regular file; a hard-linked file or a FIFO of
+# another owner is printed "L <name>" and left alone.
+# shellcheck disable=SC2016
+_WG_PLANT_PL='use Fcntl; my ($u, $g, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l; next if $o{$l[4]} || $l[4] == 0; if (-p _ || (-f _ && $l[3] > 1)) { print "L $f\n"; next; } next unless -d _ || -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && !$o{$s[4]} && $s[4] != 0 && (-d _ || (-f _ && $s[3] == 1))) { chown($u, $g, $h) or $rc = 1; } close($h); } exit $rc'
+# shellcheck disable=SC2016
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+
+# The nginx-denied subtrees of a files store (a case-insensitive prefix
+# after any files/), as find -iregex patterns relative to the store, POSIX
+# extended: every find that reads them sets -regextype posix-extended first
+# (GNU find's default syntax reads the parentheses and bars as plain
+# characters, and would match nothing).
+_WG_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+
+# "$@" inside the real directory $1 (resolved just before), as _ig_in_real_dir.
+_wg_in() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# ---- the walks ---------------------------------------------------------------------
+
+# find's tests the walks start perl for, so a settled tree starts none (the
+# handle check in perl stays the one that decides): _WG_OWNED, owned by one
+# of the uids in $1 (a comma list; 1 when there is none); _WG_NOTOWN, owned
+# by none of them and not by root; _WG_OUTSIDE, a mode bit outside the octal
+# mask $1 (what narrowing to $1 changes). Called from the walks run inside
+# a directory (_wg_in).
+# shellcheck disable=SC2329
+_wg_owned_by() {
+  local _u
+  _WG_OWNED=()
+  for _u in ${1//,/ }; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    [ "${#_WG_OWNED[@]}" -gt 0 ] && _WG_OWNED+=( -o )
+    _WG_OWNED+=( -uid "${_u}" )
+  done
+  [ "${#_WG_OWNED[@]}" -gt 0 ] || return 1
+  _WG_OWNED=( \( "${_WG_OWNED[@]}" \) )
+}
+_wg_not_owned() {
+  local _u
+  _WG_NOTOWN=( ! -uid 0 )
+  for _u in ${1//,/ }; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _WG_NOTOWN+=( ! -uid "${_u}" )
+  done
+  return 0
+}
+# shellcheck disable=SC2329
+_wg_bits_outside() {
+  local _m _b _o
+  _m=$(( 07777 & ~(8#${1}) ))
+  _WG_OUTSIDE=()
+  for _b in 2048 1024 512 256 128 64 32 16 8 4 2 1; do
+    (( _m & _b )) || continue
+    printf -v _o '%o' "${_b}"
+    [ "${#_WG_OUTSIDE[@]}" -gt 0 ] && _WG_OUTSIDE+=( -o )
+    _WG_OUTSIDE+=( -perm "-${_o}" )
+  done
+  [ "${#_WG_OUTSIDE[@]}" -gt 0 ] && _WG_OUTSIDE=( \( "${_WG_OUTSIDE[@]}" \) )
+  return 0
+}
+
+# The public set: o+rx on directories, o+r on single-link files the account's
+# identities own; in a files store never in ./private or the nginx-denied
+# subtrees, in the rest of the public set ($2 = public) never a Grav secret
+# (*-private.php, .env). Only an entry that lacks the bits is handed to
+# perl. A hard-linked public file is named in the notes, never opened to the
+# world.
+# shellcheck disable=SC2329
+_wg_public_here() {
+  local _pr=( -path ./private -o -iregex "${_WG_DENIED_RE}" )
+  [ "${2}" = "public" ] && _pr=( -name '*-private.php' -o -name .env )
+  _wg_owned_by "${1}" || return 0
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -regextype posix-extended \( "${_pr[@]}" \) -prune \
+    -o -type d ! -perm -0005 "${_WG_OWNED[@]}" -execdir perl -e "${_WG_FMODE_PL}" add 0005 "${1}" {} + 2> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -regextype posix-extended \( "${_pr[@]}" \) -prune \
+    -o -type f ! -perm -0004 "${_WG_OWNED[@]}" -execdir perl -e "${_WG_FMODE_PL}" add 0004 "${1}" {} + 2> /dev/null
+}
+_wg_public_open() {
+  local _k _p _uids _l _n=0
+  _uids=$(_wg_own_uids)
+  while read -r _k _p; do
+    case "${_k}" in
+      store|public) ;;
+      *) continue ;;
+    esac
+    while read -r _l; do
+      [ -n "${_l}" ] || continue
+      _n=$((_n + 1))
+      _wg_note "a hard-linked public file is left closed to the web server: ${_p}/${_l#L ./}"
+    done < <(_wg_in "${_p}" _wg_public_here "${_uids}" "${_k}")
+  done < <(_wg_parts)
+  [ "${_n}" -gt 0 ] && _msg "NOTE: ${_WP_A}: ${_n} hard-linked public files left closed (see ${_WP_NOTES})"
+  return 0
+}
+
+# Entries another identity owns in the stores (a plant) are handed to the
+# account and its web group; a foreign hard link or FIFO is counted and
+# named in both notes files, never unlinked.
+_wg_plants() {
+  local _k _p _uids _u _g _l _n=0
+  _uids=$(_wg_own_uids)
+  _u=$(id -u "$([ "${_WP_M}" = "YES" ] && echo aegir || echo "${_WP_A}")" 2> /dev/null)
+  _g=$(_gid_of "${_WP_G}")
+  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 0
+  _wg_not_owned "${_uids}"
+  while read -r _k _p; do
+    case "${_k}" in
+      store|private) ;;
+      *) continue ;;
+    esac
+    while read -r _l; do
+      [ -n "${_l}" ] || continue
+      _n=$((_n + 1))
+      _wg_note "a hard link or FIFO another account owns is in the web paths, left as it is: ${_p}/${_l#L ./}"
+    done < <(_wg_in "${_p}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . "${_WG_NOTOWN[@]}" \
+      -execdir perl -e "${_WG_PLANT_PL}" "${_u}" "${_g}" "${_uids}" {} + 2> /dev/null)
+  done < <(_wg_parts)
+  [ "${_n}" -gt 0 ] && _msg "NOTE: ${_WP_A}: ${_n} hard links or FIFOs of other owners in its web paths (see ${_WP_NOTES})"
+  return 0
+}
+
+# www-data -> the web group over the roots (passwords.d pruned: nginx reads
+# it), the gid re-read on each handle; then bare or foreign gids in the
+# stores and the trio claimed; walked again while residue is left (twice at
+# most). 0 clean, 2 residue left.
+_wg_walk_up() {
+  local _g _uids _r _pass=0 _ag
+  _g=$(_gid_of "${_WP_G}")
+  [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  _uids=$(_grp_owner_uids "${_WP_G}" "${_WP_A}")
+  [ "${_WP_M}" = "YES" ] && _uids=$(_wg_own_uids)
+  _ag=$(_gid_of "$([ "${_WP_M}" = "YES" ] && echo aegir || echo "${_WP_A}")")
+  [[ "${_ag}" =~ ^[0-9]+$ ]] || _ag=-1
+  _wg_public_open
+  _wg_plants
+  while :; do
+    _pass=$((_pass + 1))
+    for _r in $(_wg_roots); do
+      [ -d "${_r}" ] || continue
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" \
+        -path '*/config/server_master/nginx/passwords.d' -prune -o -gid "${_WG_WWWGID}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
+    done
+    _wg_claim "${_g}" "${_uids}" "${_WG_WWWGID}" "${_ag}"
+    _wg_web_residue || break
+    [ "${_pass}" -ge 3 ] && break
+    _msg "${_WP_A}: web paths were written during the walk, walking again (${_pass})..."
+  done
+  _wg_d9 next
+  _wg_public_open
+  _wg_sessions_note
+  _wg_web_residue && return 2
+  return 0
+}
+
+# Bare or foreign gids in the stores and the trio take the group $1; the
+# gids $3 and $4 (-1: none), root and $1 itself are left, as is every entry
+# the walk never changes. $2 = the owners whose hard links it may change.
+_wg_claim() {
+  local _k _p _x=()
+  [ "${3}" != "-1" ] && _x+=( ! -gid "${3}" )
+  [ "${4}" != "-1" ] && _x+=( ! -gid "${4}" )
+  while read -r _k _p; do
+    case "${_k}" in
+      trio)
+        _wg_in "${_p%/*}" perl -e "${_GRP_REOWN_PL}" -- "${1}" "${2}" "" "${3}" "${4}" "./${_p##*/}" 2> /dev/null
+        ;;
+      store|private)
+        _wg_in "${_p}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . ! -gid "${1}" "${_x[@]}" ! -gid 0 \
+          -execdir perl -e "${_GRP_REOWN_PL}" -- "${1}" "${2}" "" "${3}" "${4}" {} + 2> /dev/null
+        ;;
+    esac
+  done < <(_wg_parts)
+  return 0
+}
+
+# 0 when an entry the walk changes is still in www-data under the roots.
+_wg_web_residue() {
+  local _r _chg
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_WP_G}" "${_WP_A}")")"
+  for _r in $(_wg_roots); do
+    [ -d "${_r}" ] || continue
+    [ -n "$(find -P "${_r}" -path '*/config/server_master/nginx/passwords.d' -prune -o \
+      -gid "${_WG_WWWGID}" \( "${_chg[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+  done
+  return 1
+}
+
+# The residue rule in full (u8): www-data in the trio, a store top or
+# anywhere in the private set (a store's nginx-denied subtrees included),
+# not counting hard-linked files, FIFOs and entries no account identity
+# owns. 0 when any is left.
+_wg_residue_full() {
+  local _k _p _uids _u _o=()
+  _uids=$(_wg_own_uids)
+  for _u in ${_uids//,/ }; do
+    _o+=( -o -uid "${_u}" )
+  done
+  [ "${#_o[@]}" -gt 0 ] || return 1
+  _o=( "${_o[@]:1}" )
+  while read -r _k _p; do
+    case "${_k}" in
+      trio|store)
+        [ "$(stat -c %g -- "${_p}" 2> /dev/null)" = "${_WG_WWWGID}" ] && return 0
+        [ "${_k}" = "store" ] || continue
+        [ -n "$(_wg_in "${_p}" find -P . -regextype posix-extended \
+          -iregex "(${_WG_DENIED_RE})(/.*)?" -gid "${_WG_WWWGID}" \
+          \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+        ;;
+      private)
+        [ -n "$(find -P "${_p}" -gid "${_WG_WWWGID}" \( -type d -o -type f -links 1 \) \
+          \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+        ;;
+    esac
+  done < <(_wg_parts)
+  return 1
+}
+
+# The private set: every own private store, a Drupal 7 files/private, the
+# archived private stores and the nginx-denied subtrees of the files stores
+# to $1 for directories and $2 for files, through the handle; a file an
+# account identity owns is narrowed even when hard-linked (narrowing never
+# widens), and widened back only with a single link. Only an entry of one
+# of the owners $3 whose mode the step would change is handed to perl.
+# shellcheck disable=SC2329
+_wg_private_here() {
+  local _op=set _fx=()
+  _wg_owned_by "${3}" || return 0
+  if [ "${4}" = "narrow" ]; then
+    _op=narrow
+    _wg_bits_outside "${2}"
+    _fx=( "${_WG_OUTSIDE[@]}" )
+  else
+    _fx=( ! -perm "${2}" )
+  fi
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -type d ! -perm "${1}" "${_WG_OWNED[@]}" \
+    -execdir perl -e "${_WG_FMODE_PL}" set "${1}" "${3}" {} + > /dev/null 2>&1
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -type f "${_fx[@]}" "${_WG_OWNED[@]}" \
+    -execdir perl -e "${_WG_FMODE_PL}" "${_op}" "${2}" "${3}" {} + > /dev/null 2>&1
+}
+# shellcheck disable=SC2329
+_wg_denied_here() {
+  local _d
+  while IFS= read -r -d '' _d; do
+    _wg_in "$(pwd -P)/${_d#./}" _wg_private_here "${1}" "${2}" "${3}" "${4}"
+  done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P . -regextype posix-extended -type d \
+    -iregex "${_WG_DENIED_RE}" -prune -print0 2> /dev/null)
+}
+_wg_private_modes() {
+  local _k _p _uids _how=widen _st _x
+  _uids=$(_wg_own_uids)
+  [ "${1}" = "02770" ] && _how=narrow
+  while read -r _k _p; do
+    case "${_k}" in
+      private) _wg_in "${_p}" _wg_private_here "${1}" "${2}" "${_uids}" "${_how}" ;;
+      store) _wg_in "${_p}" _wg_denied_here "${1}" "${2}" "${_uids}" "${_how}" ;;
+    esac
+  done < <(_wg_parts)
+  [ "${_WP_M}" = "YES" ] && return 0
+  # archived private stores beside the account's own store, only inside
+  # its .archived (a stamp dir below can be a link the account planted)
+  _st="/data/disk/${_WP_A}/static/files/.archived"
+  if [ -d "${_st}" ] && [ ! -L "${_st}" ]; then
+    for _x in "${_st}"/*/*/private; do
+      [ -d "${_x}" ] && [ ! -L "${_x}" ] || continue
+      _x=$(realpath -e -- "${_x}" 2> /dev/null) || continue
+      _wg_store_own "${_x}" .archived || continue
+      _wg_in "${_x}" _wg_private_here "${1}" "${2}" "${_uids}" "${_how}"
+    done
+  fi
+  # legacy Ubercart keys/ of the account's platforms
+  for _x in "/data/disk/${_WP_A}"/distro/*/keys; do
+    [ -d "${_x}" ] && [ ! -L "${_x}" ] || continue
+    _x=$(realpath -e -- "${_x}" 2> /dev/null) || continue
+    [ "$(_wg_path_owner "${_x}")" = "${_WP_A}" ] || continue
+    _wg_in "${_x}" _wg_private_here "${1}" "${2}" "${_uids}" "${_how}"
+  done
+  return 0
+}
+
+# The secret set of every site: the settings trio, the Grav secrets, a .env
+# and the TXP private/ narrowed to their owner and group bits, through the
+# handle, when an account identity owns them; counted in the notes.
+_wg_secret_narrow() {
+  local _al _s _f _r _uids _n=0
+  _uids=$(_wg_own_uids)
+  while read -r _al _s; do
+    [ -n "${_s}" ] || continue
+    for _f in settings.php local.settings.php civicrm.settings.php .env security-private.php; do
+      [ -f "${_s}/${_f}" ] && [ ! -L "${_s}/${_f}" ] || continue
+      _wg_in "${_s}" perl -e "${_WG_FMODE_PL}" narrow 07770 "${_uids}" "./${_f}" > /dev/null 2>&1 \
+        && _n=$((_n + 1))
+    done
+    # the secret directories only inside the site dir itself
+    for _f in user/accounts user/config user/env; do
+      _r=$(_wg_child "${_s}" "${_f}") || continue
+      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin \
+        find -P . \( -type d -o -type f \) -execdir perl -e "${_WG_FMODE_PL}" narrow 07770 "${_uids}" {} + > /dev/null 2>&1 \
+        && _n=$((_n + 1))
+    done
+    if [ -f "${_s}/config.php" ] && _r=$(_wg_child "${_s}" private); then
+      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin \
+        find -P . \( -type d -o -type f \) -execdir perl -e "${_WG_FMODE_PL}" narrow 07770 "${_uids}" {} + > /dev/null 2>&1 \
+        && _n=$((_n + 1))
+    fi
+  done < <(_wg_sites)
+  [ "${_n}" -gt 0 ] && _wg_note "secret files narrowed to their owner and group: ${_n}"
+  return 0
+}
+
+# The web group back to www-data over the roots, with its residue loop.
+_wg_walk_down() {
+  local _g _uids _r _pass=0
+  _g=$(_gid_of "${_WP_G}")
+  [[ "${_g}" =~ ^[0-9]+$ ]] || return 0
+  _uids=$(_grp_owner_uids "${_WEBG}" "${_WP_A}")
+  [ "${_WP_M}" = "YES" ] && _uids=$(_wg_own_uids)
+  while :; do
+    _pass=$((_pass + 1))
+    for _r in $(_wg_roots); do
+      [ -d "${_r}" ] || continue
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_g}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
+    done
+    [ "${_pass}" -ge 3 ] && break
+    _wg_gid_in_roots "${_g}" || break
+  done
+  return 0
+}
+
+# 0 when an entry the walk changes still carries gid $1 under the roots.
+_wg_gid_in_roots() {
+  local _r
+  for _r in $(_wg_roots); do
+    [ -n "$(find -P "${_r}" -gid "${1}" \( -type d -o -type f -links 1 \) -print -quit 2> /dev/null)" ] && return 0
+  done
+  return 1
+}
+
+# The account's identities with a live shell or SFTP session hold the old
+# group set until they reconnect: counted and named in the notes.
+_wg_sessions_note() {
+  local _u
+  [ "${_WP_M}" = "YES" ] && return 0
+  # shellcheck disable=SC2046
+  _ids_with_procs $(_wg_w_ids) || return 0
+  for _u in ${_BUSY_IDS}; do
+    _wg_note "${_u} has a running session: reconnect it to write the web files"
+  done
+  _msg "NOTE: ${_WP_A}: $(wc -w <<< "${_BUSY_IDS}") identities have sessions that keep the old groups until they reconnect"
+  return 0
+}
+
+# The D9 stamp (the worker's per-account reference for public files):
+# next takes .wg-next before the walk (its own name: the worker takes .next
+# at the start of each of its passes, and a commit must never move the
+# worker's), commit makes it the stamp, remove drops every D9 file of the
+# account.
+_wg_d9() {
+  local _s="${_WG_D9}.${_WP_A}.txt"
+  [ "${_WP_M}" = "YES" ] && return 0
+  case "${1}" in
+    next) ( umask 077; : > "${_s}.wg-next" ) 2> /dev/null ;;
+    commit)
+      # the public set was walked whole, with no time bound, since .wg-next:
+      # the worker's walks start from there, and a run of its timeouts ends
+      [ -e "${_s}.wg-next" ] && mv -f -- "${_s}.wg-next" "${_s}" 2> /dev/null \
+        && rm -f -- "${_s}.slow"
+      ;;
+    remove) rm -f -- "${_s}" "${_s}.next" "${_s}.wg-next" "${_s}.slow" "${_s}.rebase" ;;
+  esac
+  return 0
+}
+
+# xtrim's quarantined pool files of the account keep no web group line.
+_wg_xtrim_scrub() {
+  local _f
+  [ "${_WP_M}" = "YES" ] && return 0
+  for _f in /var/backups/xtrim/"${_WP_A}"/quarantine/pools/*.conf; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _wg_file_strip "${_f}" "group = ${_WP_G}"
+  done
+  return 0
+}
+
+# ./server_master.alias.drushrc.php rewritten through sed, as renameaegirhost
+# does: a fresh file with the old owner and the read/write bits of its mode,
+# created through its handle, then renamed over the name. The old file's
+# mtime is kept: xmass's .drush leg copies this file by rsync -u, so a
+# web_group rewrite must never make one box's copy the newer one.
+# shellcheck disable=SC2329
+_wg_alias_here() {
+  local _n=server_master.alias.drushrc.php _st _uid _gid _m _sz _ft _t _mt
+  _st="$(LC_ALL=C stat -c '%u %g %a %s %Y %F' -- "./${_n}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _uid _gid _m _sz _mt _ft <<< "${_st}"
+  [ "${_sz}" -lt 1048576 ] || return 1
+  _t="./.${_n}.wg.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    _ig_read_here "${_n}" | sed "s/^\([[:space:]]*'web_group' => '\)[^']*\(',.*\)/\1${1}\2/" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_m}" ) \
+    && touch -h -d "@${_mt}" -- "${_t}" 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# S: the alias web_group set to $1, only when it differs.
+_wg_alias_set() {
+  _wg_m_s
+  [ "${_WM_S}" = "${1}" ] && return 0
+  if [ -z "${_WM_S}" ]; then
+    _msg "NOTE: ${_WP_A}: no web_group in ${_WP_HOME}/.drush/server_master.alias.drushrc.php; left as it is"
+    return 0
+  fi
+  if _ig_in_real_dir "${_WP_HOME}/.drush" _wg_alias_here "${1}"; then
+    _log "${_WP_A}: alias web_group ${_WM_S} -> ${1}"
+    _WM_S="${1}"
+    return 0
+  fi
+  _alrt "${_WP_A}: the alias web_group could not be set to ${1}"
+  return 1
+}
+
+# ---- the raise gates -----------------------------------------------------------
+
+# G1: _WEB_GROUP=NO in the account's cnf, as bash reads it.
+_wg_g_optout() {
+  [ "${_WP_M}" = "YES" ] && return 1
+  [ "$(_web_group_policy "/root/.${_WP_A}.octopus.cnf")" = "NO" ]
+}
+
+# The account's opt-out of its per-instance group, _INSTANCE_GROUP=NO in its
+# cnf, as the Octopus pass reads it before instgrp convert: the last
+# assignment as bash reads it, or any line that starts _INSTANCE_GROUP=NO.
+# The arm, webconvert all and DR8 read it as the web group's opt-out too,
+# also on an account already on its own group (a line added after its
+# convert: the Octopus pass then skips the convert and does not revert
+# it), so the arm and webconvert all raise such an account no further. A
+# per-account webconvert does not read it.
+_wg_g_v1_optout() {
+  local _c="/root/.${_WP_A}.octopus.cnf" _l
+  [ "${_WP_M}" = "YES" ] && return 1
+  grep -q "^_INSTANCE_GROUP=NO" "${_c}" 2> /dev/null && return 0
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=" "${_c}" 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=(NO|\"NO\"|'NO')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  [ "${_l}" = "NO" ]
+}
+
+# The pin as the account's policy: _WEB_GROUP=A in its cnf, which xoct's and
+# xmass's cnf merges carry as they carry the opt-out, so a box the account
+# lands on (a promoted mirror among them) keeps it at A too.
+_wg_g_pinned() {
+  [ "${_WP_M}" = "YES" ] && return 1
+  [ "$(_web_group_policy "/root/.${_WP_A}.octopus.cnf")" = "A" ]
+}
+
+# The account's cnf (root's) rewritten without any _WEB_GROUP line, and
+# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it.
+_wg_policy_put() {
+  local _cnf="/root/.${_WP_A}.octopus.cnf" _t
+  [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] || return 1
+  _t="/root/.${_WP_A}.octopus.cnf.wg.$$"
+  rm -f -- "${_t}"
+  { grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
+    case "${1}" in
+      NO|A) printf '_WEB_GROUP=%s\n' "${1}" ;;
+    esac
+  } > "${_t}" 2> /dev/null
+  chmod --reference="${_cnf}" -- "${_t}" 2> /dev/null
+  mv -f -- "${_t}" "${_cnf}" 2> /dev/null || { rm -f -- "${_t}"; return 1; }
+}
+
+# d0: the opt-out, written first (over a pin's line); a per-account verb
+# removes it (L1a).
+_wg_optout_write() {
+  _wg_g_optout && return 0
+  _wg_policy_put NO && _wg_g_optout || return 1
+  _msg "NOTE: _WEB_GROUP=NO written to /root/.${_WP_A}.octopus.cnf: the arm and webconvert all leave ${_WP_A} alone until a per-account webconvert"
+  return 0
+}
+
+# A per-account webconvert's policy, written with its intent ($1 the pin
+# the intent carries): pinned, _WEB_GROUP=A (--phase-a, or a plain
+# webconvert keeping the pin); otherwise no _WEB_GROUP line, the opt-out
+# lifted (L1a) and --phase-b unpinning.
+_wg_policy_set() {
+  [ "${_WP_M}" = "YES" ] && return 0
+  if [ "${1}" = "phase-a" ]; then
+    _wg_g_pinned && return 0
+    _wg_policy_put A && _wg_g_pinned || return 1
+    _msg "NOTE: _WEB_GROUP=A written to /root/.${_WP_A}.octopus.cnf: ${_WP_A} stays at phase A here and on every box its cnf travels to (xoct, xmass) until webconvert ${_WP_A} --phase-b or webrevert"
+    return 0
+  fi
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "/root/.${_WP_A}.octopus.cnf" 2> /dev/null || return 0
+  _wg_policy_put REMOVE || return 1
+  _msg "NOTE: _WEB_GROUP removed from /root/.${_WP_A}.octopus.cnf (a per-account verb lifts the opt-out; only --phase-a pins)"
+}
+
+# G2: the account is converted to its own group by instgrp convert.
+_wg_g_v1() {
+  local _subs
+  [ "${_WP_M}" = "YES" ] && return 0
+  _subs=$(_acct_subusers "${_WP_A}" 2> /dev/null)
+  # shellcheck disable=SC2086
+  [ -n "$(_gid_of "${_WP_A}")" ] && _group_is_ours "${_WP_A}" \
+    && _ids_converted "${_WP_A}" "${_WP_A}" "${_WP_A}.ftp" ${_subs}
+}
+
+# An inventory path as the box will run it. A migration's runner park
+# (xoct's and xcopy's pre-mig until post-mig, an xmass cutover until its
+# unpark) moves runner.sh, owl.sh, usage.sh, graceful.sh and the worker to
+# /var/xdrago/.<name>.off and holds the tools refresh off them; the parked
+# copy is the one the park's end puts back, so it is the one read. The park
+# is BOA.sh.txt's own test: the marker, the live name gone, the parked one
+# there. A live copy beside a parked one is the live one.
+_wg_inv_path() {
+  local _d="${1%/*}" _b="${1##*/}"
+  if [ "${_d}" = "/var/xdrago" ] && [ -e "/run/boa_migration_park.pid" ] \
+    && [ ! -e "${1}" ] && [ -f "${_d}/.${_b}.off" ]; then
+    printf '%s\n' "${_d}/.${_b}.off"
+    return 0
+  fi
+  printf '%s\n' "${1}"
+}
+
+# G3: the box is ready: the release stamp, every web-group writer, and (for an
+# account) its provision copy's token; for the master, runner.sh's token.
+_wg_g_ready() {
+  local _t _p _tok _inv="${_WG_INVENTORY}" _prov
+  if [ ! -s "${_WG_STAMP}" ]; then
+    _msg "${_WP_A}: no ${_WG_STAMP}: _WEB_GROUP_ARM is not YES on this box (or the release has not stamped it)"
+    return 1
+  fi
+  [ "${_WP_M}" = "YES" ] && _inv="${_WG_MINVENTORY}"
+  for _t in ${_inv}; do
+    _p=$(_wg_inv_path "${_t%%:*}")
+    _tok="${_t##*:}"
+    if [ ! -f "${_p}" ] || ! grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
+      _msg "${_WP_A}: ${_p} does not carry ${_tok} yet; not ready"
+      return 1
+    fi
+  done
+  [ "${_WP_M}" = "YES" ] && return 0
+  _prov=$(_ig_in_real_dir "/data/disk/${_WP_A}/.drush/sys/provision/platform" \
+    _ig_read_here provision_drupal.drush.inc)
+  if [[ "${_prov}" != *"${_WG_PROV_TOKEN}"* ]]; then
+    _msg "${_WP_A}: its provision copy does not carry ${_WG_PROV_TOKEN} yet; not ready"
+    return 1
+  fi
+  return 0
+}
+
+# G4 (and the notes at u6 and u8): the profile's sites reading another
+# account's store (outbound), a store outside the account's own places, a
+# site on the shared /data/all stores (legacy) or any other site dir
+# outside the profile's tree (read apart, since no walk takes those); a
+# share INTO the profile's store is named to both accounts and never stops
+# anything. 0 when an outbound share, an outside store, a legacy site or a
+# site outside exists. _WG_SHARE_MODE note names them only; silent (the
+# fleet read) answers without writing a note.
+_WG_SHARE_MODE=refuse
+_wg_share_note() {
+  [ "${_WG_SHARE_MODE}" = "silent" ] || _wg_note "$@"
+  return 0
+}
+_wg_g_share() {
+  local _al _s _k _p _hit=1 _x _xh _o _me="${_WP_A}"
+  while read -r _al _s; do
+    [ -n "${_s}" ] || continue
+    _hit=0
+    case "${_s}/" in
+      /data/all/*|/data/disk/all/*)
+        _wg_share_note "legacy site on the shared store (${_al}): convert refused until it moves"
+        ;;
+      *)
+        _wg_share_note "site ${_al} resolves outside the account (${_s}): convert refused until the alias or the site moves"
+        ;;
+    esac
+  done < <(_wg_sites_out)
+  while read -r _al _s; do
+    [ -n "${_s}" ] || continue
+    while read -r _k _p; do
+      case "${_k}" in
+        share)
+          _hit=0
+          _o=$(_wg_path_owner "${_p}")
+          _wg_share_note "outbound share: site ${_al} reads the store of ${_o} (${_p}); remove the share (autosymlink --force-unshare) before the conversion"
+          ;;
+        outside)
+          _hit=0
+          _wg_share_note "site ${_al} uses a store outside the account's own places (${_p}): a real files or private dir of the site, or a link into the account's own static/files; convert refused"
+          ;;
+      esac
+    done < <(_wg_site_parts "${_s}")
+  done < <(_wg_sites)
+  # inbound: another account's site reading this profile's store
+  for _x in $(_all_accounts 2> /dev/null); do
+    [ "${_x}" = "${_WP_A}" ] && continue
+    _xh="/data/disk/${_x}"
+    while read -r _al _s; do
+      [ -n "${_s}" ] || continue
+      for _p in files private; do
+        _k=$(realpath -e -- "${_s}/${_p}" 2> /dev/null) || continue
+        _wg_clean "${_k}" || continue
+        case "${_k}/" in
+          "${_s}"/*) continue ;;
+        esac
+        if [ "$(_wg_path_owner "${_k}")" = "${_WP_A}" ]; then
+          _wg_share_note "inbound share: ${_x}'s site ${_al} reads this account's ${_p} store (${_k}); it loses write (and read on a private store) once converted"
+          [ "${_WG_SHARE_MODE}" = "silent" ] \
+            || ( _wg_profile "${_x}"; _wg_note "outbound share: site ${_al} reads the ${_p} store of ${_me}; it loses write there once ${_me} converts" )
+        fi
+      done
+    done < <(_wg_sites "${_xh}")
+  done
+  [ "${_WG_SHARE_MODE}" = "note" ] && return 1
+  return "${_hit}"
+}
+
+# ---- one run -----------------------------------------------------------------
+
+_wg_reset() {
+  _D_CALLER="${_WG_CALLER}"
+  _D_FOREIGN=NO
+  _D_BUSY=NO
+  _D_FROZEN=NO
+  _D_FORCE="${_FORCE}"
+  _D_STANDBY=NO
+  _D_I=""
+  _D_IPIN=NO
+  _D_CPIN=NO
+  _D_R=""
+  _D_RB=NO
+  _D_LAM=none
+  _D_FLAGB=NO
+  _D_OPTOUT=""
+  _D_V1=""
+  _D_READY=""
+  _D_SHARE=""
+  _D_ROW=""
+  _WG_IWRITTEN=NO
+  _WG_U11_FILES=""
+  _WG_U11_WDEL=""
+  _WG_RSAVE=""
+  _WG_CARRIED=""
+  _WG_E2RC=4
+  _WM_G=none
+  _WM_W=0
+  _WM_PF=NO
+  _WM_PALL=NO
+  _WM_KANY=NO
+  _WM_KNO33=NO
+  _WM_KWG=YES
+  _WM_KLIST=""
+  _WM_L=NO
+  _WM_S=""
+  _WM_T=NO
+  _WM_RT=NO
+  _WM_LAM=none
+  _WR_PH=""
+  _WR_RB=NO
+  _WG_VERS=""
+}
+
+# The arm and both forms of all where every row they can reach refuses and
+# writes nothing, so they take no hold and wait for no nightly pass: on a
+# standby or a box being prepared as one (E4, whatever the account
+# carries); and for an account with no web group, no intent and no record,
+# on a box never armed (the readiness gate at the latest) or when the
+# account is opted out (G1, the first gate a raise from none reads).
+_wg_inert() {
+  case "${_WG_CALLER}" in
+    arm|all|all_b) ;;
+    *) return 1 ;;
+  esac
+  [ "${_WG_NOINERT}" != "YES" ] || return 1
+  { [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; } && return 0
+  [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] && [ ! -e "${_WP_I}" ] \
+    && [ ! -e "${_WP_R}" ] && [ ! -L "${_WP_R}" ] || return 1
+  [ ! -s "${_WG_STAMP}" ] && return 0
+  _wg_g_optout || _wg_g_v1_optout
+}
+
+# The every-run gates and the table's inputs for the current profile, and
+# the row. The account hold is taken here (E2) and kept to the run's end;
+# an inert run (_wg_inert) takes none and waits for no nightly pass, and
+# another run's live hold is still E2.
+_WG_NOINERT=NO
+_WG_INERT=NO
+_wg_decide() {
+  _WG_WWWGID=$(_gid_of "${_WEBG}")
+  _wg_m_g
+  _WG_START_G="${_WM_G}"
+  [ "${_WM_G}" = "foreign" ] && _D_FOREIGN=YES
+  _WG_INERT=NO
+  if [ "${_D_FOREIGN}" = "NO" ] && [ "${_WG_CALLER}" != "reclaim" ]; then
+    if _wg_inert; then
+      _WG_INERT=YES
+      if [ "$( { tr -dc '0-9' < "/run/instgrp-web-${_WP_A}.pid"; } 2> /dev/null )" != "$$" ] \
+        && _wg_pid_live "/run/instgrp-web-${_WP_A}.pid"; then
+        _D_BUSY=YES
+        _WG_E2RC=4
+      fi
+    else
+      _wg_hold "${_WP_A}"
+      case "$?" in
+        0) ;;
+        6) _D_BUSY=YES; _WG_E2RC=6 ;;
+        *) _D_BUSY=YES; _WG_E2RC=4 ;;
+      esac
+    fi
+  fi
+  [ "${_WP_M}" != "YES" ] && [ -e "/data/disk/${_WP_A}/log/proxied.pid" ] && _D_FROZEN=YES
+  { [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; } && _D_STANDBY=YES
+  # a refusal of every run needs no measurement
+  _wg_derive
+  if [ "${_WG_CALLER}" = "reclaim" ]; then
+    if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=RC1; return 0; fi
+    if [ "${_D_STANDBY}" = "YES" ]; then _D_ROW=RC0; return 0; fi
+  else
+    if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=E1; return 0; fi
+    if [ "${_D_BUSY}" = "YES" ]; then _D_ROW=E2; return 0; fi
+    if [ "${_D_FROZENB}" = "YES" ]; then _D_ROW=E3; return 0; fi
+    if [ "${_D_STANDBYB}" = "YES" ]; then _D_ROW=E4; return 0; fi
+  fi
+  if [ "${_WG_CALLER}" = "reclaim" ]; then
+    # the reclaim rows read the group and R only
+    _WG_VERS=""
+    [ "${_WM_G}" = "ours" ] && _WM_LAM=betw
+  else
+    _wg_measure
+  fi
+  _wg_m_w
+  _wg_m_p
+  _wg_r_read
+  _wg_i_read
+  _D_LAM="${_WM_LAM}"
+  _D_I="${_WI_T}"
+  _D_IPIN=NO
+  [ "${_WI_PIN}" = "phase-a" ] && _D_IPIN=YES
+  _D_R="${_WR_PH}"
+  _D_RB="${_WR_RB}"
+  if [ "${_WG_CALLER}" = "arm" ] \
+    && [ "$(_web_group_phase_b)" = "YES" ]; then
+    _D_FLAGB=YES
+  fi
+  # The pin as policy (_WEB_GROUP=A, carried with the cnf): the intent's own
+  # pin where the intent is A, never a raise past A by the arm or by all
+  # (--phase-b runs as all for the account, in each of its phases), and the
+  # pin written by the conversion that takes the account to A (_wg_plan).
+  # Only --phase-b and webrevert lift it.
+  _D_CPIN=NO
+  case "${_WG_CALLER}" in
+    conv|conv_a|arm|all|all_b) _wg_g_pinned && _D_CPIN=YES ;;
+  esac
+  if [ "${_D_CPIN}" = "YES" ]; then
+    [ "${_D_I}" = "A" ] && _D_IPIN=YES
+    _D_FLAGB=NO
+    [ "${_D_CALLER}" = "all_b" ] && _D_CALLER=all
+  fi
+  _wg_table
+}
+
+# Owed at the start of every converging run past the every-run gates: a
+# valid R of B carries the token while the traits do not prove B.
+_wg_strip_owed() {
+  [ "${_WG_CALLER}" != "reclaim" ] || return 1
+  case "${_D_ROW}" in
+    E1|E2|E3|E4) return 1 ;;
+  esac
+  [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" = "YES" ] || return 1
+  case "${_WM_LAM}" in
+    betwK|betwB|B) return 1 ;;
+  esac
+  return 0
+}
+
+# One run of the current caller on account $1 (or aegir): the row, the
+# token strip when owed, the row's leg. rc as the row's exit column.
+_wg_run() {
+  local _rc
+  _ACCT="${1}"
+  _wg_profile "${1}"
+  _wg_reset
+  if [ "${_WP_M}" = "YES" ]; then
+    if ! getent passwd aegir > /dev/null 2>&1 || [ ! -d /var/aegir ]; then
+      _fail "no Aegir master on this box"
+      return 1
+    fi
+  elif ! _valid_account "${1}"; then
+    _fail "${1} is not an Octopus account on this box"
+    return 1
+  fi
+  _wg_reap_left
+  _wg_run_row
+  _rc=$?
+  _wg_qhold_release
+  if [ "${_WG_STOP_AT_U3}" = "HELD" ]; then
+    _log "${1}: web ${_WG_CALLER} row=${_D_ROW:-?} first phase done, held"
+    return 0
+  fi
+  [ "${_WG_IWRITTEN}" = "YES" ] && _wg_i_rc "${_rc}"
+  _wg_hold_release "${1}"
+  _log "${1}: web ${_WG_CALLER} row=${_D_ROW:-?} lam=${_WM_LAM} T=${_D_T:--} rc=${_rc}"
+  return "${_rc}"
+}
+
+# The arm on a switched-off box (no arm stamp: _WEB_GROUP_ARM is not YES)
+# for an account with no web group, intent or record: every row it could
+# reach refuses, and it has nothing to report on every Octopus pass of every
+# account. An armed box whose inventory is stale still says why at G3.
+_wg_off_quiet() {
+  [ "${_WG_CALLER}" = "arm" ] && [ "${_WP_M}" != "YES" ] && [ ! -s "${_WG_STAMP}" ] \
+    && [ ! -e "${_WP_I}" ] && [ ! -e "${_WP_R}" ] && [ ! -L "${_WP_R}" ] || return 1
+  _wg_m_g
+  [ "${_WM_G}" = "none" ]
+}
+
+_wg_run_row() {
+  local _leg _rc
+  # no row read, nothing printed, rc 0: the run's instgrp.log line (row
+  # OFF) is its whole trace
+  if _wg_off_quiet; then
+    _D_ROW=OFF
+    return 0
+  fi
+  _wg_decide
+  _leg=$(_wg_leg_of "${_D_ROW}")
+  # an inert run whose row would write after all (the stamp written
+  # meanwhile) decides again, holding the account first
+  if [ "${_WG_INERT}" = "YES" ]; then
+    case "${_leg}" in
+      refuse|skip) ;;
+      *)
+        _wg_reset
+        _WG_NOINERT=YES
+        _wg_decide
+        _WG_NOINERT=NO
+        _leg=$(_wg_leg_of "${_D_ROW}")
+        ;;
+    esac
+  fi
+  case "${_D_ROW}" in
+    E1|E2|E3|E4)
+      case "${_D_ROW}" in
+        E1) _alrt "${_WP_A}: ${_WP_G} is held by an identity outside it; left alone" ;;
+        E3) _msg "${_WP_A}: frozen for a migration (log/proxied.pid), skipped (--force overrides for a per-account verb)" ;;
+        E4) _msg "NOTE: ${_WP_A}: this box is a standby (${_WG_STANDBY} or ${_WG_PREP}); nothing but webrevert runs here" ;;
+      esac
+      [ "${_D_ROW}" = "E2" ] && return "${_WG_E2RC}"
+      return "$(_wg_row_rc "${_D_ROW}")"
+      ;;
+  esac
+  _msg "${_WP_A}: ${_D_ROW} (level ${_WM_LAM}, carries ${_D_SIGMA}, target ${_D_T:--})"
+  # webrevert writes the opt-out first, before anything else (d0)
+  if [ "${_WG_CALLER}" = "revert" ] && [ "${_leg}" = "down" ] && [ "${_WP_M}" != "YES" ]; then
+    _wg_optout_write || { _fail "${_WP_A}: the opt-out could not be written"; return 1; }
+  fi
+  if _wg_strip_owed; then
+    _wg_token_strip || { _alrt "${_WP_A}: the token strip failed; the pool files are clean, a version still has the line loaded"; return 1; }
+  fi
+  case "${_leg}" in
+    refuse|skip)
+      case "${_D_ROW}" in
+        S1) _msg "NOTE: ${_WP_A}: a revert is in progress (webrevert ${_WP_A} finishes it); skipped" ;;
+        S3) _msg "NOTE: ${_WP_A}: pinned at A (only webconvert ${_WP_A} --phase-b unpins); skipped" ;;
+        G1)
+          if _wg_g_optout; then
+            _msg "NOTE: ${_WP_A}: opted out (_WEB_GROUP=NO); a per-account webconvert lifts it"
+          else
+            _msg "NOTE: ${_WP_A}: opted out of the per-instance group (_INSTANCE_GROUP=NO), so of the web group too"
+          fi
+          ;;
+        G2) _msg "NOTE: ${_WP_A}: not converted to its own group yet (instgrp convert ${_WP_A} first)" ;;
+        G3) _msg "NOTE: ${_WP_A}: this box is not ready for the web group (instgrp webcheck)" ;;
+        G4) _msg "NOTE: ${_WP_A}: an outbound share, a legacy site or a site or store outside the account refuses the conversion (see ${_WP_NOTES})" ;;
+      esac
+      return "$(_wg_row_rc "${_D_ROW}")"
+      ;;
+    finish)
+      _wg_i_remove
+      _msg "${_WP_A}: the revert's last step done"
+      return 0
+      ;;
+    up)
+      _wg_leg_up
+      return $?
+      ;;
+    down)
+      _wg_leg_down
+      return $?
+      ;;
+    reclaim-*)
+      _wg_reclaim_leg
+      return $?
+      ;;
+  esac
+  return 1
+}
+
+# The reclaim web leg (RC2 RC3 RC4); pools and W are never touched. The
+# queue hold covers the private-set and alias writes; the account hold is
+# the caller's.
+_wg_reclaim_leg() {
+  local _rc=0 _ag _uids _wg
+  _ag=$(_gid_of "${_WP_A}")
+  [[ "${_ag}" =~ ^[0-9]+$ ]] || _ag=-1
+  _uids=$(_wg_own_uids)
+  case "${_D_ROW}" in
+    RC2)
+      _wg_walk_up
+      _rc=$?
+      # the walk opened the whole public set: the D9 stamp moves to its start
+      _wg_d9 commit
+      _wg_qhold || return 6
+      _wg_private_modes 02770 0660
+      _wg_alias_set "${_WP_G}"
+      _wg_qhold_release
+      ;;
+    RC3)
+      _wg=$(_gid_of "${_WP_G}")
+      _wg_claim "${_WG_WWWGID}" "${_uids}" "${_wg:--1}" "${_ag}"
+      ;;
+    RC4)
+      _wg_claim "${_WG_WWWGID}" "${_uids}" -1 "${_ag}"
+      _wg_m_s
+      if [ "${_WM_S}" = "${_WP_G}" ]; then
+        _wg_qhold || return 6
+        _wg_alias_set "${_WEBG}"
+        _wg_qhold_release
+      fi
+      ;;
+  esac
+  return "${_rc}"
+}
+
+# ---- webconvert all ------------------------------------------------------------
+
+# Every account, in three phases: each takes its hold and its first steps
+# through u3 (a token strip it owes included), then every PHP version whose
+# workers of one of those accounts lack its web group is reloaded once, then
+# each account runs again from the top (the steps done are no-ops) and on to
+# its end. The row is read again at each phase.
+_wg_all() {
+  local _a _r _rc=0 _e _held="" _vers=""
+  for _a in $(_all_accounts); do
+    _WG_STOP_AT_U3=YES
+    _wg_run "${_a}"
+    _r=$?
+    if [ "${_WG_STOP_AT_U3}" = "HELD" ]; then
+      _held="${_held} ${_a}"
+      for _e in $(_wg_vers_list); do
+        _wg_k_check "${_e}" wg || _vers="${_vers} ${_e}"
+      done
+    else
+      _rc=$(_worse_rc "${_rc}" "${_r}")
+      _msg "-- ${_a}: rc=${_r}"
+    fi
+  done
+  _WG_STOP_AT_U3=NO
+  for _e in $(tr ' ' '\n' <<< "${_vers}" | sort -u); do
+    _wg_fpm_reload "${_e}" || _alrt "php${_e}-fpm: the batched reload failed; each account retries its own"
+  done
+  for _a in ${_held}; do
+    _wg_run "${_a}"
+    _r=$?
+    _rc=$(_worse_rc "${_rc}" "${_r}")
+    _msg "-- ${_a}: rc=${_r}"
+  done
+  return "${_rc}"
+}
+
+# ---- webstatus ------------------------------------------------------------------
+
+_wg_status() {
+  local _v _rc=0 _d="" _e _k _rb="" _s=""
+  _ACCT="${1}"
+  _wg_profile "${1}"
+  _wg_reset
+  if [ "${_WP_M}" != "YES" ] && ! _valid_account "${1}"; then
+    _fail "${1} is not an Octopus account on this box"
+    return 1
+  fi
+  _WG_WWWGID=$(_gid_of "${_WEBG}")
+  _wg_m_g
+  _wg_r_read
+  # K is pinged only while the token stands; otherwise only a live worker
+  # is read
+  _WG_PING=NO
+  [ "${_WR_RB}" = "YES" ] && _WG_PING=YES
+  _wg_measure
+  _wg_m_w
+  _wg_m_p
+  _wg_r_read
+  _wg_i_read
+  _WG_PING=YES
+  _msg "== ${_WP_A} (web group)"
+  _msg "group:    ${_WP_G} ${_WM_G}${_WG_GID:+ gid=${_WG_GID}}"
+  if [ "${_WM_G}" = "foreign" ]; then
+    _msg "STATUS:   FOREIGN (an identity outside ${_WP_A} holds ${_WP_G})"
+    return 3
+  fi
+  _msg "intent:   ${_WI_T:-absent}${_WI_T:+ pin=${_WI_PIN} by=${_WI_BY} run=${_WI_RUN} rc=${_WI_RC}}"
+  if _wg_g_optout; then
+    _msg "policy:   _WEB_GROUP=NO (opted out: the arm and webconvert all leave it alone)"
+  elif _wg_g_v1_optout; then
+    _msg "policy:   _INSTANCE_GROUP=NO (opted out of the per-instance group: the arm and webconvert all leave it alone)"
+  elif _wg_g_pinned; then
+    _msg "policy:   _WEB_GROUP=A (pinned at phase A, here and wherever its cnf travels)"
+  fi
+  if [ "${_WR_RB}" = "YES" ]; then
+    case "${_WM_LAM}" in
+      betwB|B)
+        if [ "${_WP_M}" = "YES" ]; then
+          _rb="the traits prove B (every installed version's wwwNN tool users are out of www-data and their workers without it): the next webconvert aegir completes B and drops the token"
+        else
+          _rb="the traits prove B (the account's own user is out of www-data): the next run completes B and drops the token"
+        fi
+        ;;
+      betwK)
+        if [ "${_WP_M}" = "YES" ]; then
+          _rb="the traits prove B (every installed version's wwwNN workers without www-data): the next webconvert aegir completes B and drops the token; the next full barracuda pass gives www-data back first, and the run after it re-checks shares"
+        else
+          _rb="the traits prove B: a run before the next pool rewrite completes B; on a single-FPM account the next Octopus pass gives www-data back first and its arm then re-checks shares"
+        fi
+        ;;
+      *) _rb="B, u12 rollback cut short: the next run re-checks shares unless the traits prove B" ;;
+    esac
+  fi
+  _msg "record:   ${_WR_PH:-absent}${_WR_RB:+}${_rb:+ (rb=1: ${_rb})}"
+  _msg "members:  $( [ "${_WM_L}" = "YES" ] && echo complete || echo incomplete )"
+  _msg "www-data: $(case "${_WM_W}" in 0) echo every tenant identity listed ;; 1) echo some listed ;; 2) echo "the account's own user out" ;; 3) echo none listed ;; esac)"
+  _msg "pools:    line in a pool file=${_WM_PF} on every version=${_WM_PALL}"
+  for _k in ${_WM_KLIST}; do
+    _e="${_k%%:*}"
+    _v="${_k#*:}"
+    case "${_v%%:*}" in
+      -) _msg "workers:  php${_e} K not measured (no worker answered)" ;;
+      Y) _msg "workers:  php${_e} with www-data, web group=${_v#*:}" ;;
+      N) _msg "workers:  php${_e} without www-data, web group=${_v#*:}" ;;
+      M) _msg "workers:  php${_e} mixed, web group=${_v#*:}" ;;
+    esac
+  done
+  # The measurement stops before the alias on an account with no web group;
+  # the line reads it all the same and leaves the measured value as it was.
+  _s="${_WM_S}"
+  if [ -z "${_s}" ]; then
+    _wg_m_s
+    _s="${_WM_S}"
+    _WM_S=""
+  fi
+  _msg "alias:    ${_s:-unknown}"
+  _msg "tops:     $( [ "${_WM_T}" = "YES" ] && echo "in ${_WP_G}" || echo "not all in ${_WP_G}" )$( [ "${_WM_RT}" = "YES" ] && echo ", www-data residue" )"
+  [ -s "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" ] \
+    && _msg "procs:    B, $(head -c 16 "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" | tr -cd '0-9') processes still hold www-data"
+  [ -e "/var/log/boa/instgrp-web.${_WP_A}.sgid.txt" ] \
+    && _msg "sgid:     the set-group-ID sweep of phase B is owed: the next run at B walks the box again"
+  # lambda, the measured class, and sigma, what the account carries (the
+  # intent while the group is ours, a valid record, the traits' evidence)
+  _D_LAM="${_WM_LAM}"
+  _D_I="${_WI_T}"
+  _D_IPIN=NO
+  [ "${_WI_PIN}" = "phase-a" ] && _D_IPIN=YES
+  _D_R="${_WR_PH}"
+  _D_RB="${_WR_RB}"
+  _wg_derive
+  _msg "level:    ${_WM_LAM}"
+  _msg "carries:  ${_D_SIGMA}"
+  case "${_WM_LAM}" in
+    none)
+      if [ -z "${_WI_T}" ] && [ "${_WR_ANY}" = "NO" ]; then _v=NONE; else _v="BETWEEN(none: intent or record left without the group)"; fi
+      ;;
+    A|B)
+      _v="${_WM_LAM}"
+      [ "${_WI_T}" = "${_WM_LAM}" ] && [ "${_WR_PH}" = "${_WM_LAM}" ] || _v="BETWEEN(${_WM_LAM}: intent ${_WI_T:-absent}, record ${_WR_PH:-absent})"
+      ;;
+    *)
+      _d="members=${_WM_L} www-data=${_WM_W} pool-line=${_WM_PF} alias=${_WM_S:-?} tops=${_WM_T}"
+      _v="BETWEEN(${_WM_LAM}: ${_d})"
+      ;;
+  esac
+  case "${_v}" in
+    BETWEEN*) _rc=2 ;;
+  esac
+  _msg "STATUS:   ${_v}"
+  return "${_rc}"
+}
+
+# ---- the drift witnesses -------------------------------------------------------
+#
+# webdrift <account>|aegir: DR1-DR3, DR5 and DR7 of one profile, read from
+# the cheap traits (no deep walk, no hold taken, nothing written but DR1's
+# first-seen stamp); K from a live worker only, except on the master while
+# its token stands and no hold of it is live, where each installed version
+# is pinged (its pools are ondemand, and only K proves B there). One line per
+# witness that fires, "ALRT <text>" or "NOTE <text>"; with --report a line
+# RESIDUE when the account carries a record and www-data is back in its
+# trio or store tops, and with --deep also anywhere in its private set (the
+# residue rule in full, as the B check reads it; the nightly passes it and
+# then runs instgrp reclaim). With
+# --own night the caller is the account's nightly pass: its own hold (the
+# nightly marker naming a process this run descends from) is not a live
+# hold here.
+# webdrift --box: DR4 (a pool file naming a group getent does not resolve)
+# and DR6 (a stale web inventory while any record exists).
+
+_WG_OWN=""
+_WG_DEEP=NO
+
+# 0 when pid $1 is an ancestor of this run (its parent, or theirs). The
+# walk starts from this shell's own pid, read before any subshell.
+_wg_ancestor() {
+  local _p="${BASHPID:-$$}" _n=0
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  while [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt 1 ] && [ "${_n}" -lt 64 ]; do
+    _p=$(ps -o ppid= -p "${_p}" 2> /dev/null | tr -cd '0-9')
+    [ "${_p}" = "${1}" ] && return 0
+    _n=$((_n + 1))
+  done
+  return 1
+}
+
+_wg_held_live() {
+  local _f
+  for _f in "/run/instgrp-web-${1}.pid" "/run/night-account-${1}.pid" "/run/migratefs-account-${1}.pid"; do
+    if [ ! -e "${_f}" ] || ! _wg_pid_live "${_f}"; then
+      continue
+    fi
+    if [ "${_WG_OWN}" = "night" ] && [ "${_f}" = "/run/night-account-${1}.pid" ] \
+      && _wg_ancestor "$( { tr -dc '0-9' < "${_f}"; } 2> /dev/null )"; then
+      continue
+    fi
+    return 0
+  done
+  return 1
+}
+
+_wg_drift() {
+  local _a="${1}" _dr1="" _dr8="" _dr8v1=NO _cls=ALRT _st _now _first _kind _lv _rl _held=NO
+  _wg_profile "${_a}"
+  _wg_reset
+  _WG_WWWGID=$(_gid_of "${_WEBG}")
+  _wg_m_g
+  if [ "${_WM_G}" = "foreign" ]; then
+    echo "ALRT ${_a}: ${_WP_G} is held by an identity outside it"
+    return 0
+  fi
+  _wg_r_read
+  _wg_i_read
+  _wg_held_live "${_a}" && _held=YES
+  _WG_PING=NO
+  [ "${_WP_M}" = "YES" ] && [ "${_WR_RB}" = "YES" ] && [ "${_held}" = "NO" ] && _WG_PING=YES
+  _wg_measure
+  _wg_m_w
+  _wg_m_p
+  _WG_PING=YES
+  # DR1, when no hold of the account is live, for over an hour
+  if [ "${_held}" = "NO" ]; then
+    if [ -n "${_WI_T}" ]; then
+      case "${_WI_T}:${_WM_LAM}" in
+        none:none|A:A|B:B) ;;
+        *) _dr1="its intent says ${_WI_T} and it reads ${_WM_LAM}" ;;
+      esac
+      if [ -z "${_dr1}" ] && [ "${_WI_T}" != "none" ] && [ "${_WR_PH}" != "${_WI_T}" ]; then
+        _dr1="its intent says ${_WI_T} and no valid record says so"
+      fi
+    elif [ "${_WM_G}" = "ours" ]; then
+      _dr1="it holds ${_WP_G} and has no intent (a lost pin or revert shows here)"
+    fi
+  fi
+  # DR8, on an armed box that is no standby: an account with no web group,
+  # no intent and no record, not opted out and not frozen for a migration,
+  # for over a day (nothing has converted it: a promoted mirror whose
+  # Octopus pass ran under its standby marks, a refusal no one read). Its
+  # first-seen stamp is DR1's file, marked dr8: the two never hold at once.
+  # An account opted out of its per-instance group is opted out of the web
+  # group too: named once, its stamp marked optout, never an alarm.
+  if [ "${_held}" = "NO" ] && [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] \
+    && [ -z "${_WI_T}" ] && [ "${_WR_ANY}" = "NO" ] && [ -s "${_WG_STAMP}" ] \
+    && [ ! -e "${_WG_STANDBY}" ] && [ ! -e "${_WG_PREP}" ] \
+    && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] && ! _wg_g_optout; then
+    if _wg_g_v1_optout; then
+      _dr8v1=YES
+    else
+      _dr8="the box is armed and ${_a} has had no web group for over a day"
+    fi
+  fi
+  _st="/var/log/boa/instgrp-web.${_a}.dr1.txt"
+  if [ "${_dr8v1}" = "YES" ]; then
+    _kind=""
+    read -r _ _kind _ 2> /dev/null < "${_st}" || :
+    if [ "${_kind}" != "optout" ]; then
+      ( umask 077; echo "$(date +%s) optout" > "${_st}" ) 2> /dev/null
+      echo "NOTE DR8 ${_a}: opted out of the per-instance group (_INSTANCE_GROUP=NO in /root/.${_a}.octopus.cnf), so no web group either"
+    fi
+  elif [ -n "${_dr8}" ]; then
+    _now=$(date +%s)
+    _first=""
+    _kind=""
+    read -r _first _kind _ 2> /dev/null < "${_st}" || :
+    _first=$(printf '%s' "${_first}" | tr -cd '0-9')
+    if [ -z "${_first}" ] || [ "${_kind}" != "dr8" ]; then
+      ( umask 077; echo "${_now} dr8" > "${_st}" ) 2> /dev/null
+    elif [ $((_now - _first)) -ge 86400 ]; then
+      if ! _wg_g_v1; then
+        _dr8="${_dr8}: not converted to its own group yet (instgrp convert ${_a})"
+      elif ! _wg_g_ready > /dev/null 2>&1; then
+        _dr8="${_dr8}: this box is not ready for the web group (instgrp webcheck)"
+      else
+        _dr8="${_dr8}: run 'instgrp webconvert ${_a}' (or webconvert all); it names what refuses it"
+      fi
+      echo "ALRT DR8 ${_a}: ${_dr8}; _WEB_GROUP=NO in /root/.${_a}.octopus.cnf leaves it alone for good"
+    fi
+  elif [ -n "${_dr1}" ]; then
+    _now=$(date +%s)
+    _first=""
+    _kind=""
+    read -r _first _kind _ 2> /dev/null < "${_st}" || :
+    _first=$(printf '%s' "${_first}" | tr -cd '0-9')
+    if [ -z "${_first}" ] || [ -n "${_kind}" ]; then
+      ( umask 077; echo "${_now}" > "${_st}" ) 2> /dev/null
+    elif [ $((_now - _first)) -ge 3600 ]; then
+      case "${_WI_RC}" in
+        5|6) _cls=NOTE ;;
+      esac
+      # a run that died before its exit wrote rc=-: an alarm
+      if [ "${_WI_RC}" = "-" ] && [ -n "${_WI_RUN}" ] && kill -0 "${_WI_RUN}" 2> /dev/null; then
+        _cls=NOTE
+      fi
+      [ -z "${_WI_T}" ] && _cls=ALRT
+      [ "${_WR_RB}" = "YES" ] && _cls=ALRT
+      if [ "${_WR_RB}" = "YES" ]; then
+        echo "${_cls} DR1 ${_a}: ${_dr1} (rc=${_WI_RC}, a phase-B rollback was cut short)"
+      else
+        echo "${_cls} DR1 ${_a}: ${_dr1} (rc=${_WI_RC})"
+      fi
+    fi
+  else
+    rm -f -- "${_st}"
+  fi
+  # DR2: the record says more than the traits show
+  if [ -n "${_WR_PH}" ]; then
+    case "${_WM_LAM}" in
+      none|betw) _lv=0 ;;
+      A) _lv=1 ;;
+      B) _lv=3 ;;
+      *) _lv=2 ;;
+    esac
+    _rl=1
+    [ "${_WR_PH}" = "B" ] && _rl=3
+    [ "${_lv}" -lt "${_rl}" ] \
+      && echo "ALRT DR2 ${_a}: the record says ${_WR_PH} and it reads ${_WM_LAM}"
+  fi
+  # DR3: a pool line with a record of A, or a record of B with a line
+  # missing or a tenant identity listed in www-data
+  if [ "${_WR_PH}" = "A" ] && [ "${_WM_PF}" = "YES" ]; then
+    echo "ALRT DR3 ${_a}: the record says A and a pool file carries the web group line"
+  elif [ "${_WR_PH}" = "B" ] && { [ "${_WM_PALL}" = "NO" ] || [ "${_WM_W}" != "3" ]; }; then
+    echo "ALRT DR3 ${_a}: the record says B and $([ "${_WM_PALL}" = "NO" ] && echo 'a pool file lacks the line' || echo 'a tenant identity is listed in www-data')"
+  fi
+  # DR5: the alias against the group and the record
+  if [ "${_WM_G}" = "none" ]; then
+    _wg_m_s
+    [ "${_WM_S}" = "${_WP_G}" ] && echo "ALRT DR5 ${_a}: the alias names ${_WP_G}, which does not exist"
+  elif [ -n "${_WR_PH}" ] && [ "${_WM_S}" = "${_WEBG}" ]; then
+    echo "ALRT DR5 ${_a}: the record says ${_WR_PH} and the alias still names ${_WEBG}"
+  fi
+  # DR7: a tenant identity out of www-data with no valid record of B
+  if [ "${_WP_M}" != "YES" ] && [ "${_WM_W}" != "0" ] && [ "${_WR_PH}" != "B" ]; then
+    echo "ALRT DR7 ${_a}: a tenant identity is missing from www-data and no record says B"
+  fi
+  if [ "${_WG_REPORT}" = "YES" ] && [ -n "${_WR_PH}" ]; then
+    if [ "${_WM_RT}" = "YES" ] || { [ "${_WG_DEEP}" = "YES" ] && _wg_residue_full; }; then
+      echo "RESIDUE"
+    fi
+  fi
+  return 0
+}
+
+_wg_drift_box() {
+  local _f _g _r _any=NO _t _p _tok
+  for _f in /opt/php*/etc/pool.d/*.conf; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while read -r _g; do
+      [ -n "${_g}" ] || continue
+      getent group "${_g}" > /dev/null 2>&1 \
+        || echo "ALRT DR4 box: ${_f##*/} names the group ${_g}, which does not resolve"
+    done < <(sed -n 's/^[[:space:]]*group[[:space:]]*=[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' "${_f}")
+  done
+  # the account inventory while an account holds its record, the master's
+  # while the master holds its own
+  for _r in /root/.*.web-group.txt; do
+    [ -f "${_r}" ] || continue
+    [ "${_r}" = "/root/.aegir.web-group.txt" ] && continue
+    _any=YES
+    break
+  done
+  if [ "${_any}" = "YES" ]; then
+    for _t in ${_WG_INVENTORY}; do
+      _p=$(_wg_inv_path "${_t%%:*}")
+      _tok="${_t##*:}"
+      if [ -f "${_p}" ] && ! grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
+        echo "ALRT DR6 box: ${_p} is stale (no ${_tok}) while an account holds its web-group record"
+      fi
+    done
+  fi
+  # DR9: the standby preparation mark on a box with no standby marker for
+  # over three days: E4 keeps every account from converting. prep-target
+  # writes it ahead of init, the promotion removes it (cutover step 15,
+  # post-mig, second.sh once init committed the box), a retirement or a
+  # hand promotion without post-mig can leave it.
+  if [ -e "${_WG_PREP}" ] && [ ! -e "${_WG_STANDBY}" ] \
+    && [ -n "$(find "${_WG_PREP}" -maxdepth 0 -mmin +4320 2> /dev/null)" ]; then
+    echo "ALRT DR9 box: ${_WG_PREP} has stood for over three days with no ${_WG_STANDBY}: no account converts here; remove it unless this box is being prepared as a standby"
+  fi
+  [ -f /root/.aegir.web-group.txt ] || return 0
+  for _t in ${_WG_MINVENTORY}; do
+    _p=$(_wg_inv_path "${_t%%:*}")
+    _tok="${_t##*:}"
+    if [ -f "${_p}" ] && ! grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
+      echo "ALRT DR6 box: ${_p} is stale (no ${_tok}) while the master holds its web-group record"
+    fi
+  done
+  return 0
+}
+
+# ---- webcheck ----------------------------------------------------------------------
+
+_wg_check() {
+  local _t _p _tok _rc=0 _a
+  for _t in ${_WG_INVENTORY} ${_WG_MINVENTORY}; do
+    _p=$(_wg_inv_path "${_t%%:*}")
+    _tok="${_t##*:}"
+    if [ ! -f "${_p}" ]; then
+      _msg "absent:  ${_p}"
+      _rc=5
+    elif grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
+      _msg "ok:      ${_p}"
+    else
+      _msg "STALE:   ${_p} (no ${_tok})"
+      _rc=5
+    fi
+  done
+  if [ -s "${_WG_STAMP}" ]; then
+    _msg "arm:     $(head -c 80 "${_WG_STAMP}" | tr -d '\n') (${_WG_STAMP})"
+  else
+    _msg "arm:     ABSENT (${_WG_STAMP}): _WEB_GROUP_ARM=YES has not armed this box (not set, or not in this release); nothing converts"
+    _rc=5
+  fi
+  if [ "$(_web_group_phase_b)" = "YES" ]; then
+    _msg "phase B: the arm starts phase B (_WEB_GROUP_PHASE_B=YES)"
+  else
+    _msg "phase B: the arm stops at A (_WEB_GROUP_PHASE_B is not YES)"
+  fi
+  [ "${_WG_REPORT}" = "YES" ] || return "${_rc}"
+  for _a in $(_all_accounts); do
+    _wg_profile "${_a}"
+    _msg "== ${_a}"
+    if _wg_g_v1; then _msg "v1:      converted"; else _msg "v1:      NOT converted (instgrp convert ${_a})"; fi
+    if _wg_g_optout; then _msg "opt-out: _WEB_GROUP=NO"; fi
+    if _wg_g_v1_optout; then _msg "opt-out: _INSTANCE_GROUP=NO"; fi
+    if _wg_g_pinned; then _msg "pin:     _WEB_GROUP=A (phase A only)"; fi
+    if _WG_SHARE_MODE=silent _wg_g_share; then
+      _msg "shares:  REFUSED (an outbound share, a store outside the account's own places, a legacy site or a site outside the account; a conversion run names them in ${_WP_NOTES})"
+    else
+      _msg "shares:  no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
+    fi
+    if [[ "$(_ig_in_real_dir "/data/disk/${_a}/.drush/sys/provision/platform" _ig_read_here provision_drupal.drush.inc)" == *"${_WG_PROV_TOKEN}"* ]]; then
+      _msg "provision: ready"
+    else
+      _msg "provision: its copy lacks ${_WG_PROV_TOKEN}"
+    fi
+  done
+  return "${_rc}"
+}
+
 _all_accounts() {
   local _f _a
   for _f in /root/.*.octopus.cnf; do
@@ -1445,8 +5463,9 @@ _ACTION="$1"
 _TARGET=""
 [ -n "${_ACTION}" ] && shift
 case "${_ACTION}" in
-  status|convert|reclaim|revert)
+  status|convert|reclaim|revert|webconvert|webrevert|webstatus|webdrift)
     case "$1" in
+      --box) _TARGET="$1"; shift ;;
       --*|"") ;;
       *) _TARGET="$1"; shift ;;
     esac
@@ -1457,6 +5476,19 @@ while [ "$#" -gt 0 ]; do
     --from-octopus) _FROM_OCTOPUS=YES; shift ;;
     --force)        _FORCE=YES; shift ;;
     --keep-enabled) _KEEP_ENABLED=YES; shift ;;
+    --phase-a)      _WG_PHASE=A; shift ;;
+    --phase-b)      _WG_PHASE=B; shift ;;
+    --report)       _WG_REPORT=YES; shift ;;
+    --own)
+      [ "${2:-}" = "night" ] && [ "${_ACTION}" = "webdrift" ] || _usage
+      _WG_OWN=night
+      shift 2
+      ;;
+    --deep)
+      [ "${_ACTION}" = "webdrift" ] || _usage
+      _WG_DEEP=YES
+      shift
+      ;;
     *) _usage ;;
   esac
 done
@@ -1522,6 +5554,80 @@ case "${_ACTION}" in
     _lock_gate
     _do_revert "${_TARGET}"
     exit $?
+  ;;
+  webconvert)
+    [ -n "${_TARGET}" ] || _usage
+    # the caller, as the decision table names it: the arm, both forms of
+    # all, and the three per-account verbs (the master takes these only)
+    if [ "${_FROM_OCTOPUS}" = "YES" ]; then
+      [ "${_TARGET}" != "all" ] && [ "${_TARGET}" != "aegir" ] && [ -z "${_WG_PHASE}" ] || _usage
+      _WG_CALLER=arm
+    elif [ "${_TARGET}" = "all" ]; then
+      case "${_WG_PHASE}" in
+        "") _WG_CALLER=all ;;
+        B) _WG_CALLER=all_b ;;
+        *) _usage ;;
+      esac
+    else
+      case "${_WG_PHASE}" in
+        "") _WG_CALLER=conv ;;
+        A) _WG_CALLER=conv_a ;;
+        B) _WG_CALLER=conv_b ;;
+      esac
+    fi
+    _wg_lock
+    _RC=$?
+    [ "${_RC}" = "0" ] || exit "${_RC}"
+    if [ "${_TARGET}" = "all" ]; then
+      _wg_all
+      _RC=$?
+    else
+      _wg_run "${_TARGET}"
+      _RC=$?
+    fi
+    _wg_release_all
+    exit "${_RC}"
+  ;;
+  webrevert)
+    [ -n "${_TARGET}" ] && [ "${_TARGET}" != "all" ] && [ -z "${_WG_PHASE}" ] \
+      && [ "${_FROM_OCTOPUS}" != "YES" ] || _usage
+    _WG_CALLER=revert
+    [ "${_KEEP_ENABLED}" = "YES" ] && _WG_CALLER=revert_keep
+    _wg_lock
+    _RC=$?
+    [ "${_RC}" = "0" ] || exit "${_RC}"
+    _wg_run "${_TARGET}"
+    _RC=$?
+    _wg_release_all
+    exit "${_RC}"
+  ;;
+  webstatus)
+    [ -n "${_TARGET}" ] || _usage
+    _RC=0
+    if [ "${_TARGET}" = "all" ]; then
+      for _A in $(_all_accounts) aegir; do
+        _wg_status "${_A}"
+        _R=$?
+        _RC=$(_worse_rc "${_RC}" "${_R}")
+        echo
+      done
+    else
+      _wg_status "${_TARGET}"
+      _RC=$?
+    fi
+    exit "${_RC}"
+  ;;
+  webcheck)
+    _wg_check
+    exit $?
+  ;;
+  webdrift)
+    if [ "${_TARGET}" = "--box" ] || [ -z "${_TARGET}" ]; then
+      _wg_drift_box
+    else
+      _wg_drift "${_TARGET}"
+    fi
+    exit 0
   ;;
   *)
     _usage

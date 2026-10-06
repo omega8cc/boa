@@ -78,11 +78,18 @@ until it is converted, every component builds from sources, with a
 `NOTE: Split /usr on this system` line.
 
 The Nginx and PHP packages are additionally verified against
-the compiled-in OpenSSL (and, for PHP 8.1+, ICU) versions the box currently
+the compiled-in OpenSSL (and, for PHP 7.4+, ICU) versions the box currently
 expects -- the same tokens the next run's rebuild decision reads -- so a
 stale package published before a pin bump is refused and purged, and that
 component builds from sources instead of silently installing binaries built
-against the previous library. The Pure-FTPd package carries the ten `/usr/local` binaries
+against the previous library.
+
+A PHP 8.4 or newer package that still has `Pdo\Sqlite::loadExtension()` is
+refused the same way. The build the box ran before is put back after the
+purge and keeps serving until the source build replaces it, so a source build
+that fails leaves it in place.
+
+The Pure-FTPd package carries the ten `/usr/local` binaries
 only; the TLS certificate, DH parameters, PAM and configuration files stay
 box-generated or installer-managed on both paths.
 
@@ -150,7 +157,7 @@ Builder box invariants:
 ```sh
 stackbuild check     # installed versions vs published packages
 stackbuild package   # build the missing or stale packages
-stackbuild publish   # gzip + sha256 sidecars into the mirror tree
+stackbuild publish   # gzip + sha256 sidecars into the mirror tree, then sync + purge
 stackbuild sync      # cross-sync fresh packages to the peer active mirror
 stackbuild all       # package missing + stale + publish + sync
 stackbuild force     # rebuild + republish regardless of published state

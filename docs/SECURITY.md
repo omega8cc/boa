@@ -2,7 +2,9 @@
 
 **Do not open a public issue for an exploitable bug.** SKYNET keeps every enabled fleet current on a tight cadence, and a public proof-of-concept is live against every production server for the window between disclosure and the next tagged release reaching it.
 
-Report it privately to the maintainers (Omega8.cc) through the contact form at [omega8.cc/contact](https://omega8.cc/contact). If supporting material is needed, put it in a secret Gist and share the link only in that private ticket. Public issues that turn out to be security-sensitive are pulled, and you will be asked to refile privately.
+Report it privately to the maintainers (Omega8.cc) through the contact form at [omega8.cc/contact](https://omega8.cc/contact), or through GitHub's private vulnerability report on this repository: [Report a vulnerability](https://github.com/omega8cc/boa/security/advisories/new). Attach supporting material to the private GitHub report, or ask for a private upload in the ticket; never put it in a secret Gist, which anyone holding the link can read. Public issues that turn out to be security-sensitive are pulled, and you will be asked to refile privately.
+
+Security fixes go to the current 5.x-lts and 5.x-pro releases; older releases get none.
 
 The full policy is under [Security disclosure](https://docs.boa.io/developing/contributing/contributing#security-disclosure) in the BOA documentation.
 
@@ -20,7 +22,7 @@ In hosted BOA environments, Node/NPM support is available only on dedicated syst
 
 # Security Considerations for Running PHP by Name
 
-Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php85`; any other account typing one gets lshell's own refusal.
+Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php86`; any other account typing one gets lshell's own refusal.
 
 A tool the account runs can also hand `/bin/sh` a command line, a Composer or npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account." A Composer `@php` script entry is one of those.
 
@@ -43,6 +45,7 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 11. **Restricted Admin Access**: Admin account access (uid=1) is unavailable in Ægir to prevent potential misuse. Non-admin main account access provides sufficient privileges for safe management in a multi-Ægir environment.
 12. **Restricted System Binaries Access**: BOA modifies access permissions to system binaries and commands that could potentially be used as attack vectors by web shells and other intrusion methods, significantly limiting damage potential even for sites running older Drupal versions.
 13. **Automatic OS Security Updates**: On modern systems, operating-system security updates are applied automatically between BOA upgrades, so critical patches do not wait for your next manual run. Updates are security-only, and a new security kernel is activated through BOA's own graceful reboot flow rather than an unscheduled reboot. This is on by default and can be turned off with `_SYSTEM_AUTO_SECURITY=NO` in `/root/.barracuda.cnf`.
+14. **Root-Owned Shared Code Store**: The shared legacy code store under `/data/all` belongs to root, and root builds what is in it. The shared Drupal 6 and 7 cores and the shared platform trees are each built in a stage directory and moved into place only when every download for it succeeded, so a site never finds one half-built or missing, and a forced refresh of a contrib bundle is fetched the same way and keeps the bundle as it was when a download fails. The platform build that runs as the instance user only reads the store; nothing in it is handed to an account. The first Octopus upgrade that builds platforms fetches the current contrib bundles again (and the bundle a current core links from an earlier serial), builds the current shared cores and trees again and removes every ACL in the store; what it cannot fetch or build is kept as it was and retried by the next upgrade, until all of it is done once. The shared `sites/all` module, library and theme directories stay group-writable by design.
 
 # Drush Extension (`*.drush.inc`) Loading Restrictions
 
@@ -61,6 +64,11 @@ BOA closes this at the Drush layer. When Drush runs **as an Ægir backend identi
 `~/.drush/`). BOA's own Drush extensions (under `~/.drush/{sys,usr,xts}/` and the
 `aegir/distro/` tree) and everything on the Ægir Master are unaffected, so ordinary
 hosting tasks and all core Drush commands keep working.
+
+The same refusal covers annotated command classes (`*Commands.php`) on those paths,
+including the ones a platform carries in its own `drush/Commands/` directories
+(beside the docroot, inside it, or under `sites/all/drush`): from Drush 8.5.12 the
+backend never loads them either.
 
 **The restriction does not apply to limited-shell sessions.** When a user runs
 Drush themselves in a limited-shell login — `oN.ftp` or a platform developer login
@@ -173,6 +181,12 @@ _PHP_FPM_DENY="system,exec,shell_exec"
 ```
 
 While this improves security, it can also break modules that rely on any disabled functions.
+
+## SQLite extension loading on PHP 8.4 and newer
+
+PHP 8.4 added `Pdo\Sqlite::loadExtension()`, which loads a native shared object from any path: neither `open_basedir` nor `sqlite3.extension_dir` applies to it, so on an instance that denies the functions above it would still let site code run native code. BOA builds PHP 8.4 and newer without that one method, and the next Barracuda upgrade rebuilds an installed 8.4 or newer version that still has it.
+
+The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and the `SQLite3` class keep working, and `SQLite3::loadExtension()` stays off because BOA leaves `sqlite3.extension_dir` unset.
 
 # Strict Binary Permissions
 

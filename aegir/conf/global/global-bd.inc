@@ -66,6 +66,13 @@ if (is_readable('/data/conf/global/global-mode.inc')) {
 }
 
 /**
+ * Include the login/admin lock query-string gate (Backdrop routes on q)
+ */
+if (is_readable('/data/conf/global/global-ua-qlock.inc')) {
+  include_once('/data/conf/global/global-ua-qlock.inc');
+}
+
+/**
  * Install detection. The Drupal chain reads it off the Drush command
  * (provision-install); a Backdrop install runs inside core's own installer
  * process, which defines MAINTENANCE_MODE 'install' before it bootstraps.
@@ -104,13 +111,10 @@ if (is_readable('/data/conf/global/global-front-end.inc')) {
 }
 
 /**
- * If include valkey/redis
+ * If include valkey
  */
 if (is_readable('/data/conf/global/global-if-valkey.inc')) {
   include_once('/data/conf/global/global-if-valkey.inc');
-}
-elseif (is_readable('/data/conf/global/global-if-redis.inc')) {
-  include_once('/data/conf/global/global-if-redis.inc');
 }
 
 /**
@@ -121,7 +125,7 @@ if (is_readable('/data/conf/override.global.inc')) {
 }
 
 /**
- * Include valkey/redis -- the Backdrop wiring
+ * Include valkey -- the Backdrop wiring
  */
 if (is_readable('/data/conf/global/global-bd-valkey.inc')) {
   include_once('/data/conf/global/global-bd-valkey.inc');

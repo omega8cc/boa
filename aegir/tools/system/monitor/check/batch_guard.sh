@@ -589,6 +589,32 @@ _is_safe_ident() {
   [[ "${1}" =~ ^[A-Za-z0-9_]+$ ]]
 }
 
+### An account owns its vhost.d (and the rest of /data/disk/oN), so any name
+### there can be a link or a FIFO, and any directory on the way a link. A
+### vhost is read only inside the real directory: never through a link,
+### never blocked on a FIFO, at most 1 MiB.
+_bg_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+_bg_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+_bg_read_in() {
+  _bg_in_real_dir "${1}" _bg_read_here "${2}"
+}
+
 _db_for_host() {
   # Probed in nginx's own parse order (platform.d/oN.conf — each Octopus
   # instance's vhost.d — is included BEFORE the master's vhost.d, and the
@@ -596,15 +622,17 @@ _db_for_host() {
   # names the vhost that actually served. A host answered by MORE than one
   # db across the roots is ambiguous — skip, never guess: healing the wrong
   # db on a colliding bid is the exact hazard attribution exists to prevent.
-  local _host="$1" _vf _db _found=""
-  for _vf in /data/disk/*/config/server_master/nginx/vhost.d/"${_host}" \
-    "/var/aegir/config/server_master/nginx/vhost.d/${_host}"; do
-    [ -f "${_vf}" ] || continue
-    if grep -qE "root[[:space:]]+/data/disk/.*/aegir/distro/" "${_vf}"; then
+  local _host="$1" _vd _vc _db _found=""
+  for _vd in /data/disk/*/config/server_master/nginx/vhost.d \
+    /var/aegir/config/server_master/nginx/vhost.d; do
+    [ -f "${_vd}/${_host}" ] || continue
+    _vc=$(_bg_read_in "${_vd}" "${_host}")
+    [ -n "${_vc}" ] || continue
+    if grep -qE "root[[:space:]]+/data/disk/.*/aegir/distro/" <<< "${_vc}"; then
       continue
     fi
-    if grep -q "fastcgi_param db_name" "${_vf}"; then
-      _db=$(grep -m1 "fastcgi_param db_name" "${_vf}" | awk '{print $NF}' | tr -d ';')
+    if grep -q "fastcgi_param db_name" <<< "${_vc}"; then
+      _db=$(grep -m1 "fastcgi_param db_name" <<< "${_vc}" | awk '{print $NF}' | tr -d ';')
       if [ -z "${_found}" ]; then
         _found="${_db}"
       elif [ "${_db}" != "${_found}" ]; then

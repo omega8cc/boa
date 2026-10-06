@@ -66,6 +66,14 @@ function drush_provision_hosting_le_post_provision_verify() {
     drush_log('[hosting_le] The optional enable-DEV flag is ' . $yes_dev_ctrl, 'info');
 
     $immutable = $le_ctrl . "/dont-overwrite-" . $main_name . ".pid";
+    // A site redirecting to an alias has two names: the flag counts under
+    // either, as the nightly renewal and the docs name it after the site.
+    $immutable_own = $le_ctrl . "/dont-overwrite-" . $real_name . ".pid";
+    if ($immutable_own != $immutable &&
+        !provision_file()->exists($immutable)->status() &&
+        provision_file()->exists($immutable_own)->status()) {
+      $immutable = $immutable_own;
+    }
     drush_log('[hosting_le] The optional immutable flag is ' . $immutable, 'info');
 
     $demo_mode_ctrl = $le_ctrl . "/ssl-demo-mode.pid";
@@ -340,6 +348,9 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] SSL Certificate for this domain already exists in: " . $cert_dir, 'info');
       drush_log("[hosting_le] You can replace it with any other certificate since it will be left here as-is forever.", 'info');
       drush_log("[hosting_le] To re-activate LE auto-renewals please delete this file: " . $immutable, 'info');
+      if ($immutable_own != $immutable && provision_file()->exists($immutable_own)->status()) {
+        drush_log("[hosting_le] And this one, the same flag under the site's own name: " . $immutable_own, 'info');
+      }
       drush_log("[hosting_le] NOTE: On hosted Ægir service you need to contact your host support for further assistance.", 'info');
     }
     else {

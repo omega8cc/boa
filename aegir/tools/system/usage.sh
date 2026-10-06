@@ -52,6 +52,129 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
+# An account's main login owns static/control and can write static/, and oN
+# owns the rest of /data/disk/oN (log/, .drush/, config/, the site dirs):
+# either can put a link or a FIFO at any name there, or swap a directory for
+# a link.
+# Run "$@" inside the real directory $1 only (every name below /data/disk a
+# real directory), so ./name never leads out of the account.
+_usage_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never
+# blocked on a FIFO, at most 1 MiB; empty for anything else.
+_usage_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _usage_read_here reads it.
+_usage_read_in() {
+  _usage_in_real_dir "${1}" _usage_read_here "${2}"
+}
+# Run "$@" inside the site directory $1 named in an alias, as it resolves
+# now: never a link itself, and strictly below this account's own real root
+# (a link on the way that stays inside the account, such as a platform root
+# the account reaches through its own link, is accepted), entered for real,
+# so ./name stays in it whatever is swapped. Reads _usEr.
+_usage_in_site_dir() {
+  local _d="${1%/}" _rd _ra
+  shift
+  [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
+  _rd=$(realpath -e -- "${_d}" 2> /dev/null) || return 1
+  _ra=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  case "${_rd}/" in
+    "${_ra}"/?*) ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+}
+# The file $2 put as ./$1 in the current (pinned) directory (0644): a fresh
+# name created exclusively, then renamed over the name, so a link or a FIFO
+# put at the name is replaced, never followed or opened.
+_usage_put_file_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask 022
+    dd if="${2}" of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The report directory ./usage in the current (pinned) static/: a link put
+# at the name is removed, and only a real directory root owns will do.
+_usage_log_dir_here() {
+  [ -L ./usage ] && rm -f ./usage &> /dev/null
+  [ -e ./usage ] || mkdir ./usage &> /dev/null
+  [ -d ./usage ] && [ ! -L ./usage ] && [ -O ./usage ]
+}
+# The report is written to root's own temp file while the account is
+# counted, and put in static/usage once, at the end, inside the real
+# directory: a link or FIFO put at the report name, or static/usage swapped
+# for a link mid-count, is never written through.
+_usage_log_put() {
+  if [ "${_uLogFil}" != "/dev/null" ]; then
+    if [ -s "${_uLogFil}" ] \
+      && ! _usage_in_real_dir "${_uLogDir}" \
+        _usage_put_file_here "usage-${_NOW}.log" "${_uLogFil}"; then
+      echo "INFO: Usage log dir ${_uLogDir} is no longer a real directory -- report not written"
+    fi
+    rm -f -- "${_uLogFil}"
+  fi
+  _uLogFil=/dev/null
+}
+
+# What counts besides the account's own tree, which du walks without
+# following any link: each of static/files, backups and src only when it is
+# a link resolving to the account's own store -- static/files to its real
+# static/files or migratefs' /mnt/<mount>/files/<oN>/static/files, backups
+# and src into that store (the backups mover's static/files/.backups) -- never
+# wherever a link put anywhere else in the tree points. Sets _uFiles (the
+# resolved store, empty when none counts) and _uStores (the du operands).
+_usage_stores() {
+  local _acctR _n _r
+  _uFiles=
+  _uStores=()
+  _acctR=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 0
+  _r=$(realpath -e -- "${_usEr}/static/files" 2> /dev/null)
+  # The account's own static/files, or its store in migratefs' layout on
+  # attached storage (/mnt/<mount>/files/<oN>/static/files), as the nightly
+  # decides it.
+  case "${_r}" in
+    *[!A-Za-z0-9._/-]*) ;;
+    "${_acctR}/static/files") _uFiles="${_r}" ;;
+    /mnt/?*/files/"${_THIS_U}"/static/files)
+      case "${_r%/files/"${_THIS_U}"/static/files}" in
+        */files/*|*/static/*) ;;
+        *) _uFiles="${_r}" ;;
+      esac
+      ;;
+  esac
+  if [ -z "${_uFiles}" ]; then
+    # A store in no layout BOA counts (an older migratefs could put one
+    # outside /mnt) is not counted here, nor purged or backed up by the
+    # nightly: said once per pass, so it is seen.
+    case "${_r}" in
+      */files/"${_THIS_U}"/static/files)
+        echo "INFO: files store of ${_THIS_U} is not in a layout BOA counts (its own static/files or /mnt/<mount>/files/${_THIS_U}/static/files): not counted"
+        ;;
+    esac
+    return 0
+  fi
+  [ -L "${_usEr}/static/files" ] && _uStores+=("${_uFiles}")
+  for _n in backups src; do
+    [ -L "${_usEr}/${_n}" ] || continue
+    _r=$(realpath -e -- "${_usEr}/${_n}" 2> /dev/null) || continue
+    case "${_r}/" in
+      "${_uFiles}"/?*) _uStores+=("${_r}") ;;
+    esac
+  done
+}
+
 _fix_clear_cache() {
   if [ -e "${_Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
@@ -59,6 +182,84 @@ _fix_clear_cache() {
   fi
 }
 
+# $1 as its words joined by single spaces, what echo -n $1 printed, but
+# without expanding a glob or taking an option the account wrote there.
+_usage_words() (
+  set -f
+  # shellcheck disable=SC2086
+  set -- ${1}
+  printf '%s' "$*"
+)
+# The addresses in $1 (words, as log/email.txt holds them) that have an
+# e-mail address's form, joined by single spaces: they reach s-nail, run as
+# root, as its recipients, where a word starting with a dash would be an
+# option and one naming a file or a command a delivery to it. The form the
+# octopus pass and the nightly take: a local part of letters, digits and
+# . _ % + = ' - (a letter, a digit or _ first), '@' and a host name. An
+# apostrophe or '=' in the local part is kept: both are literal in every
+# expansion below. Text over 4 KiB holds no address list and gives nothing.
+_usage_mail_list() (
+  local _w _o="" _re _q="'"
+  _re="^[A-Za-z0-9_][A-Za-z0-9._%+=${_q}-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$"
+  [ "${#1}" -le 4096 ] || exit 0
+  set -f
+  # shellcheck disable=SC2086
+  for _w in ${1//\\\@/\@}; do
+    [[ "${_w}" =~ ${_re} ]] || continue
+    _o="${_o}${_o:+ }${_w}"
+  done
+  printf '%s' "${_o}"
+)
+
+# Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
+# mail BOA would send an account's client goes to the one address it holds
+# instead, its subject noting who would have been mailed; a file that anyone
+# but root can write, or that does not hold exactly one plain address, stops
+# that mail (fail closed) with one line saying why. Read through one handle
+# opened without following a link or blocking on a FIFO, and only while it
+# is a regular file of root's, not writable by group or others, with a
+# single link, 1 KiB at most (_MAIL_HOLD_PL: status 2 gone, 3 not root's or
+# writable by others, 4 any other shape, 5 not one plain address). $1 = the
+# client recipients (words). Sets _MAIL_HOLD_RCPT, the recipients to use, and
+# _MAIL_HOLD_SFX, the note for the subject; status 1: send none. Without the
+# file they are $1 and empty. One copy in each tool that mails a client.
+# shellcheck disable=SC2016
+_MAIL_HOLD_PL='use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($!{ENOENT} ? 2 : 4); my @s = stat($h); exit 4 unless @s; exit 3 unless $s[4] == 0 && !($s[2] & 022); exit 4 unless -f _ && $s[3] == 1 && $s[7] <= 1024; my ($d, $r) = (""); while ($r = sysread($h, my $c, 1025)) { $d .= $c; exit 4 if length($d) > 1024; } exit 4 unless defined $r; $d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/ or exit 5; print $1; exit 0'
+_client_mail_hold() {
+  local _f="/data/conf/client_mail_hold.txt" _a _rc _to _q="'"
+  _MAIL_HOLD_RCPT="${1}"
+  _MAIL_HOLD_SFX=""
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  [ -n "${1//[[:space:]]/}" ] || return 0
+  _to="$(printf '%s' "${1//\\\@/@}" | tr -s '[:space:]' ' ' \
+    | LC_ALL=C tr -cd "A-Za-z0-9._%+=@${_q} -" | cut -c1-200)"
+  _to="${_to# }"
+  _to="${_to% }"
+  _to="${_to:-?}"
+  _a="$(perl -e "${_MAIL_HOLD_PL}" "${_f}" 2> /dev/null)"
+  _rc=$?
+  case "${_rc}" in
+    0)
+      _MAIL_HOLD_RCPT="${_a}"
+      _MAIL_HOLD_SFX=" [held for ${_to}]"
+      return 0
+      ;;
+    2)
+      return 0
+      ;;
+    3)
+      echo "ALRT: ${_f} is not root's, or group or others can write it, and cannot be trusted: client mail for ${_to} not sent"
+      ;;
+    5)
+      echo "ALRT: ${_f} does not hold exactly one plain address: client mail for ${_to} not sent"
+      ;;
+    *)
+      echo "ALRT: ${_f} is not a regular file of one link, 1 KiB at most, that this run can read: client mail for ${_to} not sent"
+      ;;
+  esac
+  _MAIL_HOLD_RCPT=""
+  return 1
+}
 _check_account_exceptions() {
   _DEV_EXC=NO
   chckStringA="omega8.cc"
@@ -76,64 +277,80 @@ _check_account_exceptions() {
 }
 
 _read_account_data() {
+  # log/ is oN's and static/control the tenant's: every name is read inside
+  # the real directory, never through a link or blocked on a FIFO
+  local _lg="/data/disk/${_THIS_U}/log"
+  local _ct="/data/disk/${_THIS_U}/static/control"
   _CLIENT_CORES=
   _EXTRA_ENGINE=
   _ENGINE_NR=
   _CLIENT_EMAIL=
   _CLIENT_OPTION=
+  _CLIENT_CLI=
+  _CLIENT_FPM=
+  _DEV_EXC=NO
   _DSK_CLU_LIMIT=1
-  if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
-    _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
-    _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+  if [ -e "${_lg}/email.txt" ]; then
+    # only words in an address's form (_usage_mail_list); a file with none
+    # leaves the notices to the Bcc alone
+    _CLIENT_EMAIL=$(_usage_mail_list "$(_usage_read_in "${_lg}" email.txt)")
     _check_account_exceptions
   fi
   if [ "${_DEBUG_EMAIL}" = "YES" ] \
     || [ -e "/etc/boa/.debug.email.txt" ]; then
     _CLIENT_EMAIL="inbox@boa.io"
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
-    _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>&1)
-    _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+  # the counts below go into shell arithmetic, which would evaluate
+  # anything else as an expression: a whole number or nothing
+  if [ -e "${_lg}/cores.txt" ]; then
+    _CLIENT_CORES=$(_usage_read_in "${_lg}" cores.txt)
+    _CLIENT_CORES=$(_usage_words "${_CLIENT_CORES}")
+    [[ "${_CLIENT_CORES}" =~ ^[0-9]+$ ]] || _CLIENT_CORES=
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/diskspace.txt" ]; then
-    _DSK_CLU_LIMIT=$(cat /data/disk/${_THIS_U}/log/diskspace.txt 2>&1)
-    _DSK_CLU_LIMIT=$(echo -n ${_DSK_CLU_LIMIT} | tr -d "\n" 2>&1)
+  if [ -e "${_lg}/diskspace.txt" ]; then
+    _DSK_CLU_LIMIT=$(_usage_read_in "${_lg}" diskspace.txt)
+    _DSK_CLU_LIMIT=$(_usage_words "${_DSK_CLU_LIMIT}")
+    [[ "${_DSK_CLU_LIMIT}" =~ ^[0-9]+$ ]] || _DSK_CLU_LIMIT=
   fi
-  if [ "${_CLIENT_CORES}" -gt 1 ]; then
+  if [ "${_CLIENT_CORES:-0}" -gt 1 ]; then
     _ENGINE_NR="Engines"
   else
     _ENGINE_NR="Engine"
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/option.txt" ]; then
-    _CLIENT_OPTION=$(cat /data/disk/${_THIS_U}/log/option.txt 2>&1)
-    _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
+  if [ -e "${_lg}/option.txt" ]; then
+    _CLIENT_OPTION=$(_usage_read_in "${_lg}" option.txt)
+    _CLIENT_OPTION=$(_usage_words "${_CLIENT_OPTION}")
+    # a plan name, one word: it goes into the report line, the panel footer
+    # and the notices, and an unknown one takes the default limits
+    [[ "${_CLIENT_OPTION}" =~ ^[A-Za-z0-9_-]+$ ]] || _CLIENT_OPTION=
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ]; then
-    mv -f /data/disk/${_THIS_U}/log/extra.txt /data/disk/${_THIS_U}/log/extra_edge.txt
+  if [ -e "${_lg}/extra.txt" ]; then
+    # renamed, never moved into a directory or link put at the new name
+    _usage_in_real_dir "${_lg}" mv -f -T -- ./extra.txt ./extra_edge.txt
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
-    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_edge.txt 2>&1)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+  if [ -e "${_lg}/extra_edge.txt" ]; then
+    _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_edge.txt)
+    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
+    [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/extra_aero.txt" ]; then
-    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_aero.txt 2>&1)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+  if [ -e "${_lg}/extra_aero.txt" ]; then
+    _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_aero.txt)
+    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
+    [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x AERO"
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
-    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_power.txt 2>&1)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+  if [ -e "${_lg}/extra_power.txt" ]; then
+    _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_power.txt)
+    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
+    [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
-  if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ]; then
-    _CLIENT_CLI=$(cat /data/disk/${_THIS_U}/static/control/cli.info 2>&1)
-    _CLIENT_CLI=$(echo -n ${_CLIENT_CLI} | tr -d "\n" 2>&1)
-  fi
-  if [ -e "/data/disk/${_THIS_U}/static/control/fpm.info" ]; then
-    _CLIENT_FPM=$(cat /data/disk/${_THIS_U}/static/control/fpm.info 2>&1)
-    _CLIENT_FPM=$(echo -n ${_CLIENT_FPM} | tr -d "\n" 2>&1)
-  fi
+  # kept to a version's characters (the first 64 bytes): these go into the
+  # panel footer through a shell command line; reset above, so an account
+  # without them never shows the previous account's
+  _CLIENT_CLI=$(_usage_read_in "${_ct}" cli.info | head -c 64 | tr -cd '0-9.')
+  _CLIENT_FPM=$(_usage_read_in "${_ct}" fpm.info | head -c 64 | tr -cd '0-9.')
 }
 
 _send_notice_php() {
@@ -142,10 +359,11 @@ _send_notice_php() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -161,7 +379,7 @@ and there are no exceptions possible to avoid it.
 
 This means that all Ægir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.2, 8.3, 8.4, 8.5
+supported versions: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
 
 To switch PHP-FPM version on command line, please type:
 
@@ -179,7 +397,7 @@ This email has been sent by your Ægir system monitor
 
 EOF
   fi
-  echo "INFO: PHP notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+  echo "INFO: PHP notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
 }
 
 _detect_deprecated_php() {
@@ -188,8 +406,11 @@ _detect_deprecated_php() {
     && [ ! -e "${_usEr}/log/proxied.pid" ] \
     && [ ! -e "${_usEr}/log/proxy-failed.pid" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
-    _PHP_FPM_VERSION=$(cat ${_usEr}/static/control/fpm.info 2>&1)
-    _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+    # read inside the real control directory, never through a link or
+    # blocked on a FIFO the tenant put there, and kept to a version's
+    # characters
+    _PHP_FPM_VERSION=$(_usage_read_in "${_usEr}/static/control" fpm.info \
+      | head -c 64 | tr -cd '0-9.')
     if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
@@ -209,10 +430,11 @@ _send_notice_core() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
+    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 Our system detected that you are using vanilla Drupal core
@@ -239,7 +461,7 @@ This email has been sent by your Ægir platform core monitor.
 
 EOF
   fi
-  echo "INFO: Pressflow notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+  echo "INFO: Pressflow notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
 }
 
 _detect_vanilla_core() {
@@ -282,12 +504,26 @@ _detect_vanilla_core() {
   fi
 }
 
+# Create the control-INI dir in the current (pinned) site directory: only a
+# Drupal or Backdrop site (it has settings.php) gets it; a Grav or
+# Textpattern site carries no INI.
+_usage_ini_dir_here() {
+  if [ ! -e ./modules ] && [ -f ./settings.php ]; then
+    mkdir ./modules
+  fi
+}
+
 _usage_count() {
-  for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
-    -maxdepth 1 -mindepth 1 -type f | sort`; do
+  local _sStores _n _r _Ali
+  # config/ and .drush/ are oN's: the vhost names are listed, and each alias
+  # read, inside the real directory only; a site directory named by an
+  # alias is read, extended and measured only inside the real directory, and
+  # only when it lies in this account
+  for _Site in $(_usage_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
+    find . -maxdepth 1 -mindepth 1 -type f | sort); do
     #echo Counting Site ${_Site}
     #echo "${_THIS_U},${_Dom},vhost-exists"
-    _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    _Dom="${_Site#./}"
     _DEV_URL=NO
     searchStringB=".dev."
     searchStringC=".devel."
@@ -313,12 +549,13 @@ _usage_count() {
     esac
     if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
       #echo "${_THIS_U},${_Dom},drushrc-exists"
-      _Dir=$(cat ${_usEr}/.drush/${_Dom}.alias.drushrc.php \
+      _Ali=$(_usage_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
+      _Dir=$(printf '%s\n' "${_Ali}" \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      _Plr=$(cat ${_usEr}/.drush/${_Dom}.alias.drushrc.php \
+      _Plr=$(printf '%s\n' "${_Ali}" \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
@@ -326,30 +563,37 @@ _usage_count() {
       _detect_vanilla_core
       _fix_clear_cache
       #echo Dir is ${_Dir}
-      if [ -e "${_Dir}/drushrc.php" ] \
+      case "${_Dir}" in
+        "${_usEr}"/?*) ;;
+        *) _Dir= ;;
+      esac
+      if [ -n "${_Dir}" ] \
+        && [ -e "${_Dir}/drushrc.php" ] \
         && [ -e "${_Dir}/files" ] \
         && [ -e "${_Dir}/private" ] \
         && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-        ### Only a Drupal or Backdrop site (it has settings.php) gets the
-        ### control-INI dir; a Grav or Textpattern site carries no INI.
-        if [ ! -e "${_Dir}/modules" ] && [ -f "${_Dir}/settings.php" ]; then
-          mkdir ${_Dir}/modules
-        fi
+        _usage_in_site_dir "${_Dir}" _usage_ini_dir_here
         #echo "${_THIS_U},${_Dom},sitedir-exists"
-        _Dat=$(cat ${_Dir}/drushrc.php \
+        _Dat=$(_usage_in_site_dir "${_Dir}" _usage_read_here drushrc.php \
           | grep "options\['db_name'\] = " \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,';]//g" 2>&1)
         #echo Dat is ${_Dat}
         if [ ! -z "${_Dat}" ] && [ -e "${_Dir}" ]; then
-          if [ -L "${_Dir}/files" ] \
-            || [ -L "${_Dir}/private" ] \
-            || [ -L "${_usEr}/static/files" ]; then
-            _DirSize=$(du -L -s ${_Dir} 2>/dev/null)
-          else
-            _DirSize=$(du -s ${_Dir} 2>/dev/null)
-          fi
+          # the site directory without following any link, plus its files
+          # and private only where they resolve into the account's own
+          # files store (see _usage_stores)
+          _sStores=()
+          for _n in files private; do
+            [ -n "${_uFiles}" ] && [ -L "${_Dir}/${_n}" ] || continue
+            _r=$(realpath -e -- "${_Dir}/${_n}" 2> /dev/null) || continue
+            case "${_r}/" in
+              "${_uFiles}"/?*) _sStores+=("${_r}") ;;
+            esac
+          done
+          _DirSize=$(_usage_in_site_dir "${_Dir}" \
+            du -s -c -- . "${_sStores[@]}" 2>/dev/null | tail -n 1)
           _DirSize=$(echo "${_DirSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
@@ -359,10 +603,16 @@ _usage_count() {
           [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DirSize:${_DirSize}" >> "${_uLogFil}"
         fi
         if [ ! -z "${_Dat}" ]; then
-          if [ -e "/var/log/boa/.du.local.sql" ]; then
-            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /var/log/boa/.du.local.sql 2>&1)
-          elif [ -e "/var/lib/mysql/${_Dat}" ]; then
-            _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>/dev/null)
+          # reset for every site, and the name (from the site's drushrc.php)
+          # is looked up only as a plain database name, the rule
+          # mysql_backup.sh applies: never a path, a pattern or a glob
+          _DatSize=
+          if [[ "${_Dat}" =~ ^[A-Za-z0-9_]+$ ]]; then
+            if [ -e "/var/log/boa/.du.local.sql" ]; then
+              _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /var/log/boa/.du.local.sql 2>&1)
+            elif [ -e "/var/lib/mysql/${_Dat}" ]; then
+              _DatSize=$(du -s "/var/lib/mysql/${_Dat}" 2>/dev/null)
+            fi
           fi
           _DatSize=$(echo "${_DatSize}" \
             | cut -d'/' -f1 \
@@ -399,10 +649,11 @@ _send_notice_sql() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 You are using more resources than allocated in your subscription.
@@ -444,8 +695,8 @@ This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
-  echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
-  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
 }
 
 _send_notice_disk() {
@@ -454,10 +705,11 @@ _send_notice_disk() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 You are using more resources than allocated in your subscription.
@@ -478,13 +730,18 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all DEV/TEST sites, if they exist,
 even if they are marked as disabled in your Ægir control panel.
 
+The files of a deleted site are kept aside for safety in your account,
+under static/files/.archived, and they keep counting here until that
+archive is pruned. Ask our support team to prune it once you no longer
+need those copies.
+
 --
 This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
-  echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
-  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
 }
 
 
@@ -722,6 +979,7 @@ _sub_count_usr_home() {
 }
 
 _usage_action() {
+  local _THIS_HM_ALI
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
@@ -736,50 +994,32 @@ _usage_action() {
         _TotSiz=0
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _uLogDir="${_usEr}/static/usage"
-        _uLogFil="${_uLogDir}/usage-${_NOW}.log"
+        _uLogFil=/dev/null
         # static/ is tenant-writable (02775, no sticky), so the usage directory
-        # name can be replaced with a symlink: -e dereferences it and mkdir -p
-        # succeeds silently on a link to a directory, after which the report
-        # redirects below would truncate a file of the tenant's choosing as
-        # root. Strip a planted link and write only into a real directory root
-        # owns; the directory itself is not group-writable, so the report name
-        # inside it cannot be pre-planted. Fail closed to /dev/null rather than
-        # write somewhere unverified.
-        [ -L "${_uLogDir}" ] && rm -f "${_uLogDir}" &> /dev/null
-        [ ! -e "${_uLogDir}" ] && mkdir -p "${_uLogDir}"
-        if [ ! -d "${_uLogDir}" ] \
-          || [ -L "${_uLogDir}" ] \
-          || [ ! -O "${_uLogDir}" ]; then
+        # name can be replaced with a symlink, before the check or at any
+        # moment after it. Strip a planted link inside the real static/ and
+        # use only a real directory root owns; the report itself is written
+        # to root's own temp file and put there once the account is counted
+        # (_usage_log_put). Fail closed to /dev/null rather than write
+        # somewhere unverified.
+        if _usage_in_real_dir "${_usEr}/static" _usage_log_dir_here; then
+          _uLogFil=$(mktemp 2> /dev/null) || _uLogFil=/dev/null
+        else
           echo "INFO: Usage log dir ${_uLogDir} is not a root-owned directory -- not writing a report"
-          _uLogFil=/dev/null
         fi
-        _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+        _usage_stores
+        _THIS_HM_ALI=$(_usage_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php)
+        _THIS_HM_SITE=$(printf '%s\n' "${_THIS_HM_ALI}" \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        _THIS_HM_PLR=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+        _THIS_HM_PLR=$(printf '%s\n' "${_THIS_HM_ALI}" \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        if [ ! -e "${_usEr}/log/skip-force-cleanup.txt" ]; then
-          cd ${_usEr}
-          echo "Remove various tmp/dot files breaking du command"
-          find . -name "exclude.tag" -type f | xargs rm -f &> /dev/null
-          find . -name ".DS_Store" -type f | xargs rm -f &> /dev/null
-          find . -name "*~" -type f | xargs rm -f &> /dev/null
-          find . -name "*#" -type f | xargs rm -f &> /dev/null
-          find . -name ".#*" -type f | xargs rm -f &> /dev/null
-          find . -name "*--" -type f | xargs rm -f &> /dev/null
-          find . -name "._*" -type f | xargs rm -f &> /dev/null
-          find . -name "*~" -type l | xargs rm -f &> /dev/null
-          find . -name "*#" -type l | xargs rm -f &> /dev/null
-          find . -name ".#*" -type l | xargs rm -f &> /dev/null
-          find . -name "*--" -type l | xargs rm -f &> /dev/null
-          find . -name "._*" -type l | xargs rm -f &> /dev/null
-        fi
         echo "Counting User ${_usEr}"
         if [ "${_THIS_MODE}" = "verbose" ]; then
           cat << EOF > "${_uLogFil}"
@@ -842,13 +1082,10 @@ EOF
             fi
           done
         fi
-        if [ -L "${_usEr}/backups" ] \
-          || [ -L "${_usEr}/src" ] \
-          || [ -L "${_usEr}/static/files" ]; then
-          _HomSiz=$(du -L -s ${_usEr} 2>/dev/null)
-        else
-          _HomSiz=$(du -s ${_usEr} 2>/dev/null)
-        fi
+        # the account's tree without following any link, plus its own
+        # relocated stores (_usage_stores); du counts a store reached twice
+        # once
+        _HomSiz=$(du -s -c -- "${_usEr}" "${_uStores[@]}" 2>/dev/null | tail -n 1)
         _HomSiz=$(echo "${_HomSiz}" \
           | cut -d'/' -f1 \
           | awk '{ print $1}' \
@@ -895,7 +1132,11 @@ EOF
               && [ ! -e "${_usEr}/log/proxied.pid" ] \
               && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
-              _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
+              # the panel's host name, one per report line: nothing else the
+              # account wrote into domain.txt reaches the operator's report
+              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
+                | tr -d '\r\t ')
+              [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
               if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
                 _Files="!x!FilesAll"
               else
@@ -940,7 +1181,11 @@ EOF
               && [ ! -e "${_usEr}/log/proxied.pid" ] \
               && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
-              _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
+              # the panel's host name, one per report line: nothing else the
+              # account wrote into domain.txt reaches the operator's report
+              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
+                | tr -d '\r\t ')
+              [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
               if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
                 _Files="!x!FilesAll"
               else
@@ -975,6 +1220,7 @@ EOF
         echo "Done for ${_usEr}"
         [ "${_THIS_MODE}" = "verbose" ] && echo " " >> "${_uLogFil}"
         [ "${_THIS_MODE}" = "verbose" ] && echo "Counting Usage for User ${_usEr} completed on $(date)" >> "${_uLogFil}"
+        _usage_log_put
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "...we have to wait..."

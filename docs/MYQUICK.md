@@ -12,7 +12,9 @@ This file is created automatically for every account by a periodic system agent,
 
 It's faster than you would expect! We have observed it speeding up clone and migration tasks that normally take 1-2 hours to just 3-6 minutes. Yes, that's how fast it is!
 
-This file, while present, enables a super fast per-table and parallel database dump and import. However, it will not leave a conventional complete database dump file in the internal safety copies Ægir makes for itself during clone, migrate and delete tasks, so a Restore from one of those archives brings back the files only and keeps the site's current database (the task log says so). A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
+This file, while present, enables a super fast per-table and parallel database dump and import. However, it will not leave a conventional complete database dump file in the internal safety copies Ægir makes for itself during migrate and delete tasks, so a Restore from one of those archives brings back the files only and keeps the site's current database (the task log says so).
+
+A Clone is not affected: its safety copy always carries a classic dump, and the new site's database is loaded from it. A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
 
 We need to emphasize this again: with this control file present, all normally slow tasks will become blazing fast, but at the cost of not keeping an archived complete database dump file in the site directory archive where it would otherwise be included.
 
@@ -38,6 +40,14 @@ A dangling symlink at either canonical path is cleared before anything else look
 
 Nightly backups dump every database with mydumper, which in its default mode refuses to dump a database containing non-transactional tables (for example, a stray MyISAM table). The backup scripts count such tables first and add `--trx-tables=0` only for the affected databases, so mixed-engine databases are always included in the nightly archives, while InnoDB-only databases keep the fastest locking path.
 
+On Percona 5.7 the nightly and cluster dumps sync with `FLUSH TABLES WITH READ LOCK` (`--sync-thread-lock-mode=FTWRL`; on Percona 8.x the mode is `AUTO`) and pass `--no-backup-locks` beside it when the installed `mydumper` lists that option. The global read lock alone still gives each dump its consistent point for row changes; a `mydumper` without the option is called as before.
+
+On 5.7 the `xoct` and `xcopy` site exports, `boa-dbctl dump` and the per-site MyQuick dump Provision takes where no backup mode is set (the safety copies ahead of a Migrate or a Delete, a Restore whose archive carries no database dump, the hostmaster site's own backups and a `provision-backup` run outside the task queue) pass `--no-backup-locks` the same way. They keep mydumper's default lock mode, which takes the same global read lock there; any other server gets the arguments as before.
+
+Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the dump ends, past the release of the global read lock, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so such a dump can stall with its `FLUSH TABLES` waiting for that table, which MySQL does not see as a deadlock, and every write on the box then queues behind it.
+
+A `TRUNCATE` that reaches a table before mydumper has read it completes and leaves that table empty in the dump. Without the option, one that comes while mydumper holds its backup lock stalls the dump instead, and holds its table until it is killed.
+
 A dump that fails (non-zero exit or no final `metadata` marker) is never archived: its debris is kept in the run directory as `<db>.FAILED`, the script logs an `ALRT` line for it, and once per run a dated line is appended to `/var/log/boa/mysql.backup.incident.log` and one e-mail is sent to `_MY_EMAIL` naming every missing database, unless `_INCIDENT_REPORT` is `OFF`.
 
 Large tables are chunked and dumped in parallel by mydumper's adaptive chunker and restored in parallel from those chunks. No caller passes the historical `--rows=50000`: a fixed `--rows=N` puts mydumper into fixed-length chunking, where one step covers N key values of the first primary-key column rather than N rows, so it walks the whole MIN..MAX span of that key without re-anchoring on the next key that exists; a table keyed on a sparse bigint (timestamp-derived IDs) therefore produced one empty chunk file per step until the host ran out of inodes.
@@ -52,5 +62,56 @@ A dump written by one mydumper line and loaded by the other logs schema and stru
 
 The `/root/.my.cnf` credentials file is written with exactly five groups — `[client]`, `[mysql]`, `[mysqldump]`, `[mydumper]` and `[myloader]` — separated by empty lines. mydumper and myloader parse this file with a strict key-file parser, so the separator lines must be genuinely empty, and only groups with real consumers are written.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-lts/docs).
+## Imports Are Written to the Binary Log
+
+Every `myloader` load BOA runs passes `--ignore-set=SQL_LOG_BIN` when the installed `myloader` lists that option: the fast import of an Ægir Migrate task (and of a Restore whose archive carries no database dump), and the per-site imports of `xoct` and `xcopy`.
+
+Without it `myloader` opens every session with `SET SQL_LOG_BIN=0` (its own default, and the packaged `/etc/mydumper.cnf` sets it again for a call without an option file of its own), so on a box running with the binary log on (every box an `xmass` run touched, the active of a standing mirror among them) the loaded tables never reached the replica, and the replica's applier stopped with error 1146 at the first write the site made to them.
+
+With the binary log off, BOA's default, the option changes nothing. `--enable-binlog` is no substitute: the packaged file turns the binary log off again, and the 0.19.3 line refuses the option.
+
+The option also lets a database user without SUPER run `myloader`: the `SET` it removes is refused for such a user (`ERROR 1227`), and `myloader` then exits non-zero although the tables loaded.
+
+A restore you run by hand on such a box takes the same option, with root's option file:
+
+```sh
+myloader --defaults-file=/root/.my.cnf --database=<dbname> \
+  --directory=<dump-dir> --threads=4 --drop-table=DROP --ignore-set=SQL_LOG_BIN
+```
+
+## Triggers, Stored Routines and Events
+
+Every mydumper dump BOA takes carries the database's triggers, stored procedures and functions, and scheduled events along with its tables and views: the nightly and cluster backups, the per-site exports of `xoct` and `xcopy`, and the dump Ægir takes for a Migrate task or for a Restore whose archive carries no database dump. Each of the three options is passed when the installed `mydumper` lists it.
+
+`xoct` and `xcopy` load them as root and keep each object's definer, the site's database user, which the import creates on the target under the same name before the load.
+
+Each object keeps the `sql_mode` it was made under. mydumper writes a whole file under one mode, so after each dump BOA puts each object's own mode, as the server stored it, on a `SET SQL_MODE` line before it and the file's mode after it. Without that, a routine a Drupal site made through its own connection (`ANSI_QUOTES`) failed the fast load, and a trigger using `||` loaded but no longer concatenated. Words MySQL 8 refuses, such as `NO_AUTO_CREATE_USER`, are left out, so a 5.7 dump loads on 8.4.
+
+A dump taken before this keeps the file's one mode for every object. When an object's mode cannot be written, the dump stands as mydumper wrote it and the run says so. The nightly and cluster backups name each such database once per run in `/var/log/boa/mysql.backup.incident.log` and in the notice mail, as they do for a dump that left its routines or events out. The `xoct` and `xcopy` exports print a `WARN` line, `boa-dbctl dump` an `ALRT`, and Provision's fast dump a warning in the task log.
+
+The fast import of a Migrate or of a dump-less Restore gives every view, trigger, routine and event to the site's new database user (`--replace-definer`), as the classic dump path does by loading as that user. Kept as they were, they would name the source database's user, which the task drops when it finishes, and fail from then on. A `myloader` without `--replace-definer` (the 0.19.3 line) loads the tables and views and leaves the triggers, routines and events out; the task log says so.
+
+When the read of the new user's host fails, or gives a host a definer cannot name, and the dump carries triggers, routines or events, the fast import stops with an error saying why, and the task fails instead of finishing without them: left out, they would be lost for good, as the task then drops the database they came from. A dump that carries none loads as before; mydumper writes a trigger file of its header alone for a database without triggers, and that counts as none.
+
+A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
+
+The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Migrate or a Restore on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
+
+An object made while its database had another default collation comes wrapped in `ALTER DATABASE` lines that name the dumped database; Ægir's classic dump drops that name, so the lines apply to the database being loaded.
+
+A classic load also reads every dump it is given for those lines, and for a trigger whose definer is written in double quotes, as an archive taken before the dump dropped them still carries them; the site's database user may run neither (`ERROR 1044`, `ERROR 1227`). When it finds one, the load reads a copy with those lines rewritten the same way, written to the instance's backup directory, readable by its owner only and removed after the load, and the task log says so. A dump without them loads as it is.
+
+The copy is written only when its filesystem keeps, after it, the headroom the space check keeps for a copying task; otherwise the load stops and the task log says why (`/data/conf/disable_space_preflight.cnf` turns that check off, as it does the space check). A copy a killed load left there goes at the instance's next classic load.
+
+`mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
+
+A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log while the box reads 0 when the run looks. The run then says so: set it to 1 on the replica, then on the box with `SET GLOBAL`, and the next run keeps it.
+
+With a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it to that file; where it stays off, the load fails with `ERROR 1418` or `ERROR 1419` and says so.
+
+With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was.
+
+BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself, or, with `_DB_BINARY_LOG=YES`, while a replica reads the binary log and the server reads 0 (see above). Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
+
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 

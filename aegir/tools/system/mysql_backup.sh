@@ -130,13 +130,41 @@ fi
 # itself, but `backchain` runs the basic mode on demand and can land inside the
 # full nightly run, putting two dump chains on the same server. The marker is
 # only believed while the process that wrote it is alive, so a killed backup
-# cannot lock the next one out.
+# cannot lock the next one out; and, as only root writes it, while that pid is
+# a root process (the real uid in /proc/<pid>/status), so a pid another user's
+# process takes after a kill cannot either.
 if [ -s "/run/boa_sql_backup.pid" ]; then
   _RUNNING_PID="$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)"
-  if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
+  if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_RUNNING_PID}/status" 2>/dev/null)" = "0" ]; then
     echo "Another SQL backup (pid ${_RUNNING_PID}) is already running"
     exit 0
   fi
+fi
+
+# The pid in the wait marker, printed while it is another live root
+# process that runs an SQL backup script, matched as executed: a run
+# killed in its wait leaves the marker behind until clear.sh removes it,
+# and a pid reused meanwhile, by another user's process or another
+# command, never counts. Root is read as the real uid in
+# /proc/<pid>/status: /proc/<pid> itself shows root as the owner of any
+# process that is not dumpable.
+_sql_wait_pid() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && [ "${_p}" != "$$" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?mysql_(cluster_)?backup\.sh( |$)' \
+    && echo "${_p}"
+}
+# Nor on top of a run that waits for migratefs to release the archive
+# (below): it holds only its wait marker, and would dump alongside this
+# run once its wait ends.
+_RUNNING_PID="$(_sql_wait_pid)"
+if [ -n "${_RUNNING_PID}" ]; then
+  echo "Another SQL backup (pid ${_RUNNING_PID}) is waiting to start"
+  exit 0
 fi
 
 if [ "${1}" = "full" ] || [ -z "${1}" ]; then
@@ -244,7 +272,72 @@ _check_disk_space() {
 }
 _check_disk_space
 
+# migratefs relocating /data/disk/arch holds it: /run/migratefs-arch.pid
+# names a live root process that runs migratefs, matched as executed,
+# never as a word anywhere on a command line (a pid reused after a kill -9,
+# by another user's process or another command, never holds). Prints that
+# pid while the hold stands.
+_arch_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/migratefs-arch.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)' \
+    && echo "${_p}"
+}
+# The wait for that relocation, on the console and in migratefs's own log,
+# next to the relocation it waits for: cron discards this output, and a
+# wait that ends in a normal run is no incident for the incident log.
+_arch_wait_log() {
+  echo "INFO: $*"
+  mkdir -p /var/log/boa
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $*" >> /var/log/boa/migratefs.log
+}
+# Drops the wait marker while it still names this run.
+_sql_wait_drop() {
+  if [ "$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2> /dev/null )" = "$$" ]; then
+    rm -f /run/boa_sql_backup_wait.pid
+  fi
+}
+# A dump into a held archive would make /data/disk/arch again at the name
+# the relocation's final pass set aside, or fail to write. Checked with the
+# wait marker in place: migratefs writes its hold before it looks for this
+# run, and defers, dropping the hold, when it sees it; so one of the two
+# always goes ahead, and a hold found here is a relocation already under
+# way or one about to defer. Waited for up to 3 hours, checked every 60 s;
+# a hold that outlives the bound skips this run, with a notice. The run
+# marker, which the watchdogs read as a backup in progress, is written only
+# once no hold is left, and before the wait marker goes, so one of the two
+# is always in place: a run that only waits stands none of them down.
+echo $$ > /run/boa_sql_backup_wait.pid
+_mfsPid=$(_arch_mfs_held)
+if [[ -n "${_mfsPid}" ]]; then
+  _mfsWait=0
+  _arch_wait_log "mysql_backup.sh (pid $$) waits for migratefs (pid ${_mfsPid}) to finish relocating /data/disk/arch, up to 3 hours"
+  while [[ -n "${_mfsPid}" ]] && [[ "${_mfsWait}" -lt 10800 ]]; do
+    sleep 60
+    _mfsWait=$(( _mfsWait + 60 ))
+    _mfsPid=$(_arch_mfs_held)
+  done
+  if [[ -n "${_mfsPid}" ]]; then
+    _arch_wait_log "mysql_backup.sh (pid $$) waited ${_mfsWait} s and /data/disk/arch is still held by migratefs (pid ${_mfsPid}); this run is skipped"
+    {
+      echo "The database backup run on ${_hName} did not start: migratefs"
+      echo "(pid ${_mfsPid}) was still relocating /data/disk/arch after this run"
+      echo "had waited 3 hours for it. No database was dumped. Once the"
+      echo "relocation has ended, run:"
+      echo
+      echo "  bash /var/xdrago/mysql_backup.sh"
+      echo
+    } | _backup_notice "Backup SKIPPED on [${_hName}]: /data/disk/arch is being relocated" "migratefs pid ${_mfsPid} still held it after ${_mfsWait} s"
+    _sql_wait_drop
+    exit 0
+  fi
+  _arch_wait_log "mysql_backup.sh (pid $$) waited ${_mfsWait} s; /data/disk/arch is no longer held, the database backup starts"
+fi
 echo $$ > /run/boa_sql_backup.pid
+_sql_wait_drop
 
 # (Previously: _SQL_PSWD=$(cat /root/.my.pass.txt ...). Removed in the
 #  security-audit credential-exposure pass — mydumper now reads creds
@@ -309,6 +402,11 @@ _check_running() {
         echo "  bash /var/xdrago/mysql_backup.sh"
         echo
       } | _backup_notice "Backup ABORTED on [${_hName}]: MySQLD did not become available" "down $(( _dead > 0 ? (_dead - 1) * 3 : 0 ))s, total wait $(( (_tot - 1) * 3 ))s; failed before that: ${_DUMP_FAILED_N:-0}${_DUMP_FAILED_DBS}"
+      ### The databases already archived without their routines or events,
+      ### or under the dump's own sql_mode, are reported as a finished run
+      ### reports them (each notice is silent on an empty list).
+      declare -F _notify_objects_left_out > /dev/null && _notify_objects_left_out
+      declare -F _notify_modes_left > /dev/null && _notify_modes_left
       _remove_locks _check_running_timeout
       ### The run marker is read by the watchdogs as a live backup, so it
       ### must not outlive this exit -- but only when it is ours.
@@ -462,14 +560,130 @@ EOFMYSQL
   done
 }
 
+### Percona 5.7 dumps sync their threads with FLUSH TABLES WITH READ LOCK
+### (FTWRL), and mydumper also takes Percona's backup lock there (LOCK TABLES
+### FOR BACKUP), keeping it until the dump ends, past the FTWRL release. A
+### write to a MyISAM table waits for that lock with its table open, and the
+### event scheduler writes one at every event run (mysql.event is MyISAM on
+### 5.7): the flush ahead of FTWRL then waits for that table, or FTWRL for
+### the writer, and neither side gives way. The server sees no deadlock, so
+### the dump stalls there and every write on the box queues behind it. FTWRL
+### alone still gives the dump its consistent point. Sets _MYDUMPER_BACKUP_LOCKS to
+### --no-backup-locks when the local mydumper lists it, so a build without
+### it gets its arguments as before.
+_mydumper_backup_locks_opts() {
+  local _h
+  _MYDUMPER_BACKUP_LOCKS=()
+  _h=$(mydumper --help 2>&1)
+  if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?--no-backup-locks([[:space:]]|=|$)"; then
+    _MYDUMPER_BACKUP_LOCKS=(--no-backup-locks)
+  fi
+  return 0
+}
+
+### A database's triggers, stored routines and events are dumped with its
+### tables. mydumper writes none of them unless asked, so a site that kept
+### them (a logging trigger, a function its queries call, a scheduled event)
+### found its nightly dumps without them. Each keeps its DEFINER, the site's
+### own database user: a restore as root brings them back as that user, and
+### the user restoring into its own database needs no extra privilege for
+### objects it defines itself. Sets _MYDUMPER_OBJECTS to those of the three
+### options the local mydumper lists, so a build without one gets its
+### arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
+}
+
+### mydumper writes every trigger, routine and event of a database under one
+### file-wide sql_mode, so an object made under another one (Drupal's own
+### connections use ANSI_QUOTES and PIPES_AS_CONCAT) fails its load, or
+### loads and then behaves otherwise. This gives each object back the mode
+### the server stored for it: a plain SET before its CREATE and the file's
+### mode after it (myloader stops on a versioned-comment SET in the middle
+### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
+### there. It reads the file whole, never through a link, and replaces it
+### through a new one in the same directory. Exits 1, the file as it was,
+### when a line cannot be placed; 2 when an object had no mode to give.
+_MYDUMPER_MODES_PL='use strict; use Fcntl;
+my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
+for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
+  my ($t, $h, $s) = split /\t/, $_, 3;
+  next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
+    && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
+  $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+}
+sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
+my @st = stat($in); exit 1 unless @st && -f _;
+my @l = <$in>; close($in);
+my $fm;
+for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
+  $fm = $1 if !defined $fm && $x =~ /^\/\*!40101 SET SQL_MODE=\x27([A-Z0-9_,]*)\x27\*\/;$/;
+}
+exit 1 unless defined $fm;
+for my $i (0 .. $#l) {
+  my $x = $l[$i];
+  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  }
+  push @o, $x;
+  next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
+  my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
+  my $s = $m{$t . " " . unpack("H*", $n)};
+  if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+}
+exit 1 if $p;
+my $w = $f . ".modes";
+sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
+if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
+  || ($> == 0 && !chown($st[4], $st[5], $w)) || !rename($w, $f)) { unlink($w); exit 1; }
+exit($miss ? 2 : 0);'
+
+### Gives every stored object of database $1, dumped by mydumper into the
+### directory $2, its own sql_mode back (see _MYDUMPER_MODES_PL), read with
+### the client command that follows. Returns 0 when done or when there is
+### nothing to do, 1 when the modes could not be read (the files as
+### mydumper wrote them), 2 when an object or a file kept the dump's mode.
+### It never fails a dump: the caller says what was left.
+_mydumper_object_modes() {
+  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  shift 2
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
+  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
+  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  [[ -n "${_modes}" ]] || return 0
+  for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
+    if [[ -L "${_f}" ]]; then
+      _rc=2
+      continue
+    fi
+    [[ -f "${_f}" ]] || continue
+    _MYDUMPER_MODES="${_modes}" perl -e "${_MYDUMPER_MODES_PL}" -- "${_f}" || _rc=2
+  done
+  return "${_rc}"
+}
+
 _backup_this_database_with_mydumper() {
   _check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
     mkdir -p ${_SAVELOCATION}/${_DB}
   fi
   _MYDUMPER_LOCK_MODE="AUTO"
+  _MYDUMPER_BACKUP_LOCKS=()
   if [[ "${_DB_V}" == "5.7" ]]; then
     _MYDUMPER_LOCK_MODE="FTWRL"
+    _mydumper_backup_locks_opts
   fi
   ### Any non-transactional table makes mydumper abort the whole database
   ### unless --trx-tables=0 is passed; InnoDB-only keeps the fast path.
@@ -495,6 +709,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   case "${_MYDUMPER_MAJOR}" in
     [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
   esac
+  _mydumper_objects_opts
   ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cnf \
@@ -503,10 +718,12 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     ${_MYDUMPER_ROWS_OPT} \
+    "${_MYDUMPER_OBJECTS[@]}" \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
+    "${_MYDUMPER_BACKUP_LOCKS[@]}" \
     ${_MYDUMPER_TRX_OPT} \
     --verbose=1 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
   _MYDUMPER_RC=$?
@@ -524,16 +741,70 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     return 1
   fi
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
+  _mydumper_object_modes "${_DB}" "${_SAVELOCATION}/${_DB}" mysql -u root || _MYDUMPER_MODES_LEFT="YES"
+  return 0
+}
+
+### The dumps never carry the server's GTID state. By default
+### (--set-gtid-purged=AUTO) a dump taken while GTID is on (every box an
+### xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf turns it
+### on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+### @@GLOBAL.GTID_PURGED. The account's own database user cannot load such a
+### dump at all (ERROR 1227), root cannot load it back on this box (ERROR
+### 3546 on 8.x, 1840 on 5.7), and on another 8.x box the first load passes
+### unbinlogged and takes this box's GTID history there, so every later one
+### fails. OFF writes neither. Sets _MYSQLDUMP_GTID to the option when the
+### local mysqldump takes it: one that does not (MariaDB's) would refuse it
+### and writes neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
+### A database's stored routines and events are dumped with its tables,
+### views and triggers. mysqldump writes neither unless asked, so a site
+### that kept them (a function its queries call, a scheduled event) found
+### its nightly dumps without them. Each keeps its DEFINER, as the views and
+### triggers always have: a restore as root brings them back as they were.
+### mysqldump stops the whole dump on a routine whose body the dumping login
+### may not read and on events it may not list, so each option is asked
+### first, as that login (the client command given after the database
+### name), and left out when refused or when the question fails: the
+### tables are then dumped as before, and _MYSQLDUMP_LEFT_OUT names what
+### the dump lacks for the run's notice. Sets _MYSQLDUMP_OBJECTS.
+_mysqldump_objects_opts() {
+  local _db="$1" _n
+  shift
+  _MYSQLDUMP_OBJECTS=()
+  _MYSQLDUMP_LEFT_OUT=""
+  _n=$("$@" -B -N -e "SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_DEFINITION IS NULL" "${_db}" 2> /dev/null)
+  if [ "${_n}" = "0" ]; then
+    _MYSQLDUMP_OBJECTS+=(--routines)
+  else
+    _MYSQLDUMP_LEFT_OUT="routines"
+  fi
+  if "$@" -B -N -e "SHOW EVENTS" "${_db}" > /dev/null 2>&1; then
+    _MYSQLDUMP_OBJECTS+=(--events)
+  else
+    _MYSQLDUMP_LEFT_OUT="${_MYSQLDUMP_LEFT_OUT:+${_MYSQLDUMP_LEFT_OUT} and }events"
+  fi
+  return 0
 }
 
 _backup_this_database_with_mysqldump() {
   _check_running
+  _mysqldump_objects_opts "${_DB}" mysql
   mysqldump \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
     --skip-add-locks \
     --no-tablespaces \
+    "${_MYSQLDUMP_OBJECTS[@]}" \
     --hex-blob ${_DB} \
     > ${_SAVELOCATION}/${_DB}.sql 2> "${_SAVELOCATION}/${_DB}.mysqldump.log"
   _MYSQLDUMP_RC=$?
@@ -558,11 +829,12 @@ _backup_mysql_schema() {
   _check_running
   # The mysql system schema uses MyISAM on Percona 5.7 and a mix on 8.x,
   # so mydumper is never appropriate here. mysqldump handles mixed-engine
-  # system schemas correctly. --routines and --events are required to
-  # capture stored procedures and scheduled events which mydumper would miss.
+  # system schemas correctly. --routines and --events dump the schema with
+  # its stored routines and scheduled events.
   # --single-transaction is a no-op for MyISAM tables but harmless and
   # ensures InnoDB system tables (8.x) are captured consistently.
   mysqldump \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -688,6 +960,10 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
 fi
+### Once per run: the mysql schema always goes through mysqldump.
+_mysqldump_gtid_opts
+[ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+  && echo "INFO: this mysqldump takes no --set-gtid-purged: its dumps carry no GTID state"
 
 
 # A dump that failed must never disappear quietly: cron discards this
@@ -738,8 +1014,53 @@ _notify_dump_failures() {
   } | _backup_notice "${_sub}" "in ${_SAVELOCATION}:${_DUMP_FAILED_DBS}${_COMPRESS_FAILED_DBS:+ uncompressed:${_COMPRESS_FAILED_DBS}}"
 }
 
+# A dump the probe had to take without the stored routines or events is
+# archived, but must not pass for a complete one: reported once per run on
+# the same channel.
+_notify_objects_left_out() {
+  [ -z "${_OBJECTS_LEFT_DBS}" ] && return 0
+  local _d
+  {
+    echo "The database backup run on ${_hName} dumped these database(s) without"
+    echo "their stored routines or events (database:left out):"
+    echo
+    for _d in ${_OBJECTS_LEFT_DBS}; do
+      echo "  ${_d}"
+    done
+    echo
+    echo "The dumping login could not read them, and mysqldump would have"
+    echo "stopped the whole dump, so the tables were dumped without them."
+    echo "Check the rights of the login in the option file the run uses."
+    echo
+  } | _backup_notice "Backup without stored routines or events on [${_hName}]" "in ${_SAVELOCATION}:${_OBJECTS_LEFT_DBS}"
+}
+
+# A dump whose stored objects could not each be given the sql_mode they
+# were made under (_mydumper_object_modes) is archived as mydumper wrote
+# it; cron discards the run's WARN line, so it is reported once per run on
+# the same channel.
+_notify_modes_left() {
+  [ -z "${_MODES_LEFT_DBS}" ] && return 0
+  local _d
+  {
+    echo "The database backup run on ${_hName} archived the triggers, routines"
+    echo "or events of these database(s) under the dump's own sql_mode:"
+    echo
+    for _d in ${_MODES_LEFT_DBS}; do
+      echo "  ${_d}"
+    done
+    echo
+    echo "Their own modes could not each be written into the dump, so a load"
+    echo "of one made under another mode (a Drupal site's own, for one) can"
+    echo "fail or work otherwise. The next run writes them again."
+    echo
+  } | _backup_notice "Backup with stored objects under the dump's sql_mode on [${_hName}]" "in ${_SAVELOCATION}:${_MODES_LEFT_DBS}"
+}
+
 _DUMP_FAILED_N=0
 _DUMP_FAILED_DBS=""
+_OBJECTS_LEFT_DBS=""
+_MODES_LEFT_DBS=""
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
@@ -818,6 +1139,8 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
     fi
     _DUMP_RC=0
+    _MYSQLDUMP_LEFT_OUT=""
+    _MYDUMPER_MODES_LEFT=""
     if [ "${_DB}" = "mysql" ]; then
       _backup_mysql_schema &> /dev/null || _DUMP_RC=1
     elif [ "${_MYQUICK_USE}" = "YES" ]; then
@@ -828,6 +1151,14 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _remove_locks ${_DB}
     if [ "${_DUMP_RC}" = "0" ]; then
       echo "INFO: Backup completed for ${_DB}"
+      if [ -n "${_MYSQLDUMP_LEFT_OUT}" ]; then
+        echo "WARN: ${_DB} was dumped without its ${_MYSQLDUMP_LEFT_OUT}: the dumping login could not read them"
+        _OBJECTS_LEFT_DBS="${_OBJECTS_LEFT_DBS} ${_DB}:${_MYSQLDUMP_LEFT_OUT// and /+}"
+      fi
+      if [ -n "${_MYDUMPER_MODES_LEFT}" ]; then
+        echo "WARN: ${_DB}'s stored objects kept the dump's own sql_mode: a load of one made under another mode can fail or work otherwise"
+        _MODES_LEFT_DBS="${_MODES_LEFT_DBS} ${_DB}"
+      fi
     else
       _DUMP_FAILED_N=$(( ${_DUMP_FAILED_N:-0} + 1 ))
       _DUMP_FAILED_DBS="${_DUMP_FAILED_DBS} ${_DB}"
@@ -888,6 +1219,8 @@ echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on $(date)"
 _notify_dump_failures
+_notify_objects_left_out
+_notify_modes_left
 
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}

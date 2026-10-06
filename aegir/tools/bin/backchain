@@ -47,25 +47,52 @@ _check_root() {
   fi
 }
 
+# An entry counts as present only as a whole line: a substring test took
+# another user's line ("xbob ALL=...") for this one's ("bob ALL=..."), so
+# the shorter name never got its rule. The new file is checked with visudo
+# before it replaces the old one, so a line sudo cannot parse never reaches
+# /etc/sudoers.d, where it would stop sudo for every user; the temporary
+# file's dot keeps sudo from reading it meanwhile.
 _add_sudo_rule() {
+  local _tmp=""
   _USER="$1"
   _CMD="$2"
   _SUF="$3"
   _ENTRY="${_USER} ALL=NOPASSWD: ${_CMD}"
   _FILE="/etc/sudoers.d/${_SUF}"
 
-  if ! grep -qF "${_ENTRY}" "${_FILE}" 2>/dev/null; then
+  if grep -qxF -- "${_ENTRY}" "${_FILE}" 2>/dev/null; then
+    _info "Sudoers entry already present in ${_FILE}"
+    return 0
+  fi
+  if ! command -v visudo > /dev/null 2>&1; then
     _info "Adding sudoers entry to ${_FILE}"
     echo "${_ENTRY}" >> "${_FILE}"
     chmod 0440 "${_FILE}"
-  else
-    _info "Sudoers entry already present in ${_FILE}"
+    return 0
   fi
+  _tmp=$(mktemp "/etc/sudoers.d/.${_SUF}.boa.XXXXXX" 2>/dev/null)
+  if [ -z "${_tmp}" ] || [ ! -e "${_tmp}" ]; then
+    _error "Could not stage ${_FILE}: entry not added"
+    return 1
+  fi
+  [ -e "${_FILE}" ] && cat "${_FILE}" > "${_tmp}"
+  echo "${_ENTRY}" >> "${_tmp}"
+  chmod 0440 "${_tmp}"
+  if ! visudo -cf "${_tmp}" > /dev/null 2>&1; then
+    rm -f "${_tmp}"
+    _error "sudo would not accept '${_ENTRY}': ${_FILE} left as it was"
+    return 1
+  fi
+  _info "Adding sudoers entry to ${_FILE}"
+  mv -f "${_tmp}" "${_FILE}"
 }
 
 _set_sudo() {
-  _add_sudo_rule "${_USER}" "/var/xdrago/mysql_backup.sh" mysql_backup
-  _add_sudo_rule "${_USER}" "/opt/local/bin/multiback"   multiback
+  local _rc=0
+  _add_sudo_rule "${_USER}" "/var/xdrago/mysql_backup.sh" mysql_backup || _rc=1
+  _add_sudo_rule "${_USER}" "/opt/local/bin/multiback"   multiback || _rc=1
+  return "${_rc}"
 }
 
 _run_cmd() {
@@ -105,7 +132,10 @@ fi
 if [ "${_THIS_MODE}" = "setup" ]; then
   _check_root
   _check_disk
-  _set_sudo
+  if ! _set_sudo; then
+    _error "Sudoers setup incomplete for user '${_USER}'"
+    exit 1
+  fi
   _info "Sudoers setup complete for user '${_USER}'"
   exit 0
 fi

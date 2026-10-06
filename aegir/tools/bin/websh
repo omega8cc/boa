@@ -205,6 +205,11 @@ _drush_launcher() {
     _LA_PRE+="${BASH_REMATCH[0]}"
     _s="${_s#"${BASH_REMATCH[0]}"}"
   done
+  # the argv form symfony/process renders, which is how a site-local Drush
+  # starts its own children: exec '<root>/vendor/drush/drush/drush.php' ...
+  if [[ "${_s}" =~ ^[[:space:]]*exec[[:space:]]+ ]]; then
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
   _s="${_s#"${_s%%[![:space:]]*}"}"
   if [[ "${_s}" =~ ^${_RE_LAPHP}${_RE_LADRUSH} ]] \
     && _quotes_balance "${BASH_REMATCH[1]}" && _quotes_balance "${BASH_REMATCH[3]}"; then
@@ -350,7 +355,7 @@ _drush_cmd_word() {
 # boot: --root, else the @alias's root, else the Drupal root above the
 # working directory (a "cd DIR &&" earlier in the line moves it). "help
 # COMMAND" runs Drush 8 again through /bin/sh as "helpsingle COMMAND".
-_D8_READONLY_CMDS="uli user-login status st core-status version help helpsingle sa site-alias aliases"
+_D8_READONLY_CMDS="uli user-login status st core-status version help helpsingle sa site-alias aliases sql-dump"
 _GD_CWD=""
 _GD_DOC=""
 _d8plus_root() {
@@ -458,9 +463,11 @@ _drush_refused() {
       done
       read -r _w1 _w2 _rest <<< "${_seg}"
       case "${_w1}" in
-        '!'|'{'|'}'|command|exec|nohup|nice|time|env|if|then|else|elif|while|until|do)
+        '!'|'{'|'}'|command|exec|nohup|nice|time|env|if|then|else|elif|while|until|do|timeout|setsid|stdbuf|ionice)
           _seg="${_w2} ${_rest}"
-          while [[ "${_seg}" =~ ^[[:space:]]*-[^[:space:]]*[[:space:]]* ]]; do
+          # the wrapper's own options and a numeric value (nice -n 5,
+          # timeout 30s), as _php_direct_refused reads them
+          while [[ "${_seg}" =~ ^[[:space:]]*(-[^[:space:]]*|[0-9][0-9.]*[smhd]?)[[:space:]]+ ]]; do
             _seg="${_seg#"${BASH_REMATCH[0]}"}"
           done
           _again=YES
@@ -485,15 +492,14 @@ _drush_refused() {
         ;;
       php|php[0-9][0-9])
         # php's own options before the launcher (-c FILE, -d k=v, -n, ...);
-        # an ini of the tenant's choosing (-c other than the account's own
-        # file, any -d) on a drush launcher is the PHPRC class: refused
+        # an ini of the tenant's choosing (any -c, any -d) on a drush
+        # launcher is the PHPRC class: refused
         _rest="${_w2} ${_rest}"
         _pini=NO
         while [[ "${_rest}" =~ ^[[:space:]]*(-c|-d|-f|-r|-z)[[:space:]]+([^[:space:]]+)[[:space:]]* ]] \
           || [[ "${_rest}" =~ ^[[:space:]]*-[^[:space:]]*[[:space:]]* ]]; do
           case "${BASH_REMATCH[1]}" in
-            -c) [ "${BASH_REMATCH[2]}" = "${HOME}/.drush/php.ini" ] || _pini=YES ;;
-            -d) _pini=YES ;;
+            -c|-d) _pini=YES ;;
           esac
           _rest="${_rest#"${BASH_REMATCH[0]}"}"
         done
@@ -550,7 +556,7 @@ _drush_refused_say() {
   local _lc="" _app="" _doc="" _vnd=""
   echo
   if [ "${_DR_WHY}" = "G" ]; then
-    echo " Drush 8 runs only read-only commands (uli, status) on a Drupal 8+ site."
+    echo " Drush 8 runs only read-only commands (uli, status, sql-dump) on a Drupal 8+ site."
     # vdrush runs vendor/drush from the working directory, or ../vendor/drush
     # from a web/html/docroot directory whose parent has one. From the
     # docroot it therefore reaches: under a web/html/docroot name the
@@ -604,7 +610,7 @@ _drush_refused_say() {
       fi
     else
       echo " This platform has no site-local Drush: Drush 8 read-only commands"
-      echo " (uli, status) only; the Drush window does not apply to it."
+      echo " (uli, status, sql-dump) only; the Drush window does not apply to it."
     fi
     # named only where this box's shell policy already offers it (a box
     # can carry this websh before the template that allows checkmyperms)
@@ -630,6 +636,22 @@ _php_word() {
   case "${1##*/}" in
     php|php[0-9][0-9]|php[0-9].[0-9]|php-cgi*|php-cli*|phpdbg*) return 0 ;;
   esac
+  return 1
+}
+# true when a simple command of the line runs Drush: its program is a drush
+# word or a drush.php, or a PHP interpreter whose script is a drush.php
+_runs_drush() {
+  local _seg _w1 _w2 _rest
+  while IFS= read -r _seg; do
+    while [[ "${_seg}" =~ ${_RE_ASSIGN} ]]; do
+      _seg="${_seg#"${BASH_REMATCH[0]}"}"
+    done
+    read -r _w1 _w2 _rest <<< "${_seg}"
+    case "${_w1##*/}" in
+      drush|drush8|drush10|drush11|vdrush|drush.php) return 0 ;;
+    esac
+    _php_word "${_w1}" && [[ "${_w2##*/}" == "drush.php" ]] && return 0
+  done < <(_drush_segments "$1")
   return 1
 }
 _php_member() {
@@ -893,6 +915,12 @@ fi
 
 ### echo "_ARGS is ${_ARGS}"
 
+# Every php loads the ini its binary was built for, /opt/phpNN/lib/php.ini,
+# unless PHPRC names another. websh sets none, and one inherited from the
+# caller is dropped here, ahead of every route below (the fast lane
+# included): a php started for a line never loads another version's ini.
+unset PHPRC
+
 # Composer >= 2.8.3 (and any symfony/process caller) invokes git/hg/svn/tar/... as
 # argv-arrays, which symfony/process 5.x renders for /bin/sh (= websh) as
 #   exec 'git' 'remote' '-v'
@@ -946,6 +974,12 @@ if [ "${1}" = "-c" ] \
   if _php_word "${_SF_LEAD}" && _is_tenant && ! _php_member; then
     _SF_SKIP=YES
   fi
+  # a codebase's own Drush started by its path (a site-local Drush's
+  # children) runs on the PHP websh selects, never on the shebang's env php,
+  # which is the server default: the dispatch below launches it
+  case "${_SF_LEAD}" in
+    */vendor/drush/drush/drush.php) _SF_SKIP=YES ;;
+  esac
   if [[ "${_SF_LEAD}" == /* ]] && [ "${_SF_SKIP}" = "NO" ]; then
     exec /bin/dash -c "${_SF_ORIG}"
     exit 0
@@ -1050,7 +1084,10 @@ fi
 # rewrote drush8 status sa, drush8 en samlauth and drush8 @site vget sa into
 # the listing (measured); site-alias with an argument passes through as it
 # always did. Which drush answers follows the leading token; a launcher line
-# keeps the tests this rewrite always made.
+# keeps the tests this rewrite always made. The filter matches whole names
+# (@hm, @hostmaster, @none, @self, @server_*, @platform_*; Drush 10+ lists the
+# first four with a .dev suffix), so a site whose name merely contains those
+# letters is listed.
 _DC_W=$(_drush_cmd_word "${_ARR}")
 case "${_DC_W}" in
   sa|aliases)
@@ -1063,9 +1100,9 @@ case "${_DC_W}" in
       elif [[ "${_ALL}" =~ "drush " ]] || [[ "${_ALL}" =~ "drush8 " ]]; then _DC_8=YES; fi
     fi
     if [ "${_DC_1011}" = "YES" ]; then
-      _ARR="sa --format=list | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+      _ARR="sa --format=list | egrep -vx \"@?(none|hm|hostmaster|self)(\.dev)?|@?(server_|platform_).*\""
     elif [ "${_DC_8}" = "YES" ]; then
-      _ARR="sa | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+      _ARR="sa | egrep -vx \"@?(none|hm|hostmaster|self)|@?(server_|platform_).*\""
     fi
     ;;
 esac
@@ -1120,10 +1157,21 @@ if [[ "${HOME}" =~ (^)"/yyydata/disk/" ]]; then
   ### echo _DRUSH_CLI_CTRL has been disabled
 fi
 
+# The temp directory of every process started here is the identity's own
+# ~/.tmp: the login's, else the instance's, else the master's, else /tmp.
+# PHP takes it from TMPDIR as well (the CLI inis set no sys_temp_dir), so a
+# directory this identity cannot write is passed over for the next one.
+_TMP_D="/tmp"
+for _t in "/home/${USER}/.tmp" "/data/disk/${_Y_USR}/.tmp" "/var/${_Y_USR}/.tmp"; do
+  if [ -d "${_t}" ] && [ -w "${_t}" ]; then
+    _TMP_D="${_t}"
+    break
+  fi
+done
+export TMP="${_TMP_D}"
+export TMPDIR="${_TMP_D}"
+export TEMP="${_TMP_D}"
 if [ -d "/home/${USER}/.tmp" ]; then
-  export TMP="/home/${USER}/.tmp"
-  export TMPDIR="/home/${USER}/.tmp"
-  export TEMP="/home/${USER}/.tmp"
   if [[ "${_ARGS}" =~ " id " ]] \
     || [[ "${_ARGS}" =~ (^)"id " ]]; then
     exit 1
@@ -1131,18 +1179,6 @@ if [ -d "/home/${USER}/.tmp" ]; then
     || [[ "${_ARGS}" =~ (^)"nrsysm" ]]; then
     exit 1
   fi
-elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
-  export TMP="/data/disk/${_Y_USR}/.tmp"
-  export TMPDIR="/data/disk/${_Y_USR}/.tmp"
-  export TEMP="/data/disk/${_Y_USR}/.tmp"
-elif [ -d "/var/${_Y_USR}/.tmp" ]; then
-  export TMP="/var/${_Y_USR}/.tmp"
-  export TMPDIR="/var/${_Y_USR}/.tmp"
-  export TEMP="/var/${_Y_USR}/.tmp"
-else
-  export TMP="/tmp"
-  export TMPDIR="/tmp"
-  export TEMP="/tmp"
 fi
 
 export HOME=${HOME}
@@ -1212,63 +1248,17 @@ _ctrl_file() {
     _CTRL_F="${_cp}"
   fi
 }
-# The account's own php.ini: ~/.drush/php.ini, written by the ltd worker from
-# the pinned version's template (open_basedir for the account's own trees, the
-# temp, upload and session paths under ~/.tmp) and applied by the drush
-# launcher as a php OPTION (--php-ini). websh launches Drush 8 and composer
-# itself, so it hands the file to those two the same way, as -c on the
-# interpreter line (_ACCT_INI), when it exists and was built for the PHP just
-# selected: its extension_dir names the version, and a marker can select
-# another version than the pin, where a foreign extension_dir would leave
-# that binary without its extensions. Never through the environment: an
-# exported PHPRC is inherited by every descendant, and a modern Drush
-# (vendor/drush/drush/drush.php, drush10/11) refuses to run with open_basedir
-# set -- a site-local Drush 13 child of the hosting queue did, measured. So
-# PHP_INI and PHPRC stay on the global ini, and the option goes only where
-# _DEST_DRUSH is the Drush 8 launcher, or composer (PHP_INI, which Drush 8's
-# startup passes to the php it re-launches, names the file too; php itself
-# never reads that variable). The ~/.drush/phpNN/php.ini
-# this used to test was an older layout no writer has kept, so every websh
-# launch ran on the global ini, whose sys_temp_dir is /tmp -- which is how a
-# 0700 /tmp took composer away from every tenant while their own ~/.tmp
-# stood ready. Pure bash: this runs for every identity, and applies the file
-# for tenants and sub-accounts only (_is_tenant). The instance user and the
-# master are the backend: the instance user runs the hosting queue every
-# minute (hosting-tasks, hosting-cron, hosting-civicrm_cron) against its
-# hostmaster, and under the account ini's open_basedir php turns its
-# realpath cache off and checks every file operation against every basedir
-# entry uncached -- a hostmaster bootstrap that takes three seconds on the
-# global ini took a hundred, 3.5 million stats, and the per-minute runners
-# piled up on every box of the fleet (measured 2026-09-09). Those two keep
-# the global ini they always ran on.
-_ACCT_INI=""
-_account_ini() {
-  local _ini="${HOME}/.drush/php.ini" _c _v=""
+# A version's ini is its global /opt/phpNN/lib/php.ini, the file its binary
+# loads by itself (PHPRC is unset above), for every identity and every
+# route. There is no per-account ini: the temp, upload and session paths
+# under ~/.tmp that one used to carry come from the TMPDIR set above, which
+# PHP follows because the CLI inis set no sys_temp_dir. So they hold for
+# every version a switch selects and every launcher -- drush10/11, vdrush,
+# Drush 8's own children, composer's @php scripts -- not for a single pinned
+# version of two of them. PHP_INI names the same file for Drush 8's launcher
+# and its status display, next to DRUSH_PHP; php itself never reads it.
+_php_ini() {
   PHP_INI="/opt/php${1}/lib/php.ini"
-  PHPRC="/opt/php${1}/lib"
-  _ACCT_INI=""
-  _is_tenant || return 0
-  [ -f "${_ini}" ] || return 0
-  { _c=$(< "${_ini}"); } 2> /dev/null
-  if [[ "${_c}" =~ (^|$'\n')extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php([0-9][0-9])/ ]]; then
-    _v="${BASH_REMATCH[2]}"
-  fi
-  if [ "${_v}" = "${1}" ]; then
-    _ACCT_INI="${_ini}"
-    # Drush 8's startup re-launches php with -c $PHP_INI, so the option on
-    # the outer interpreter alone is replaced by whatever this names; only
-    # Drush 8's own startup and launcher read it -- php itself reads PHPRC
-    # (left on the global ini), a modern drush reads neither
-    PHP_INI="${_ini}"
-  fi
-}
-# the -c option for the Drush 8 launcher and composer, empty otherwise
-_ini_opt() {
-  _INI_OPT=""
-  [ -n "${_ACCT_INI}" ] || return 0
-  if [ "${1}" = "composer" ] || [ "${_DEST_DRUSH}" = "/opt/tools/drush/8/drush/drush.php" ]; then
-    _INI_OPT="-c ${_ACCT_INI} "
-  fi
 }
 
 # Command-line PHP per platform. ~/static/control/cli-per-platform.info lists
@@ -1576,9 +1566,9 @@ _cpp_match() {
     fi
     _v="${_v//[!0-9]/}"
     case "${_v}" in
-      56|70|71|72|73|74|80|81|82|83|84|85) ;;
+      56|70|71|72|73|74|80|81|82|83|84|85|86) ;;
       *)
-        _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: its version is not one of 5.6 to 8.5"
+        _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: its version is not one of 5.6 to 8.6"
         continue
         ;;
     esac
@@ -1630,8 +1620,8 @@ _cpp_pick() {
   # a matching line replaces the account-wide choice
   [ -n "${_CPP_V}" ] || return 0
   DRUSH_PHP="/opt/php${_CPP_V}/bin/php"
-  _account_ini "${_CPP_V}"
-  export DRUSH_PHP PHP_INI PHPRC
+  _php_ini "${_CPP_V}"
+  export DRUSH_PHP PHP_INI
 }
 _cpp_rel() {
   # $1 = a path; sets _CPP_RP to it as the tenant knows it (static/...,
@@ -1772,7 +1762,7 @@ _cpp_guard() {
       _fl=$(( 10#${BASH_REMATCH[1]} / 100 ))
       _fln="${_fl:0:1}${_fl:2:1}"
       if [ "${_ch}" -lt "${_fln}" ]; then
-        for _e in 70 71 72 73 74 80 81 82 83 84 85; do
+        for _e in 70 71 72 73 74 80 81 82 83 84 85 86; do
           [ "${_e}" -ge "${_fln}" ] && [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
         done
         _cpp_rel "${_app}"
@@ -1947,7 +1937,7 @@ check_php_cli_version() {
     if [ -n "${_CLI_INFO}" ]; then
       _CLI_VRN=$(head -c 8 "${_CLI_INFO}" 2> /dev/null | tr -cd '0-9')
       case "${_CLI_VRN}" in
-        56|70|71|72|73|74|80|81|82|83|84|85)
+        56|70|71|72|73|74|80|81|82|83|84|85|86)
           [ -x "/opt/php${_CLI_VRN}/bin/php" ] && _PHP_CLI="php${_CLI_VRN}"
           _CLI_FROM="cli.info"
           ;;
@@ -1956,22 +1946,21 @@ check_php_cli_version() {
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
 
-  _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
+  _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85 86"
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
-      _account_ini "${e}"
+      _php_ini "${e}"
     fi
   done
   _CLI_WHY="${_CLI_FROM}"
   ### echo CHK 2 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 2 PHP_INI is ${PHP_INI}
-  ### echo CHK 2 PHPRC is ${PHPRC}
 
   for e in ${_PHP_V}; do
     if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
-      _account_ini "${e}"
+      _php_ini "${e}"
       _CLI_FROM="php${e}.info"
       _CLI_WHY="php${e}.info"
     fi
@@ -1982,10 +1971,9 @@ check_php_cli_version() {
   fi
   ### echo CHK 3 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 3 PHP_INI is ${PHP_INI}
-  ### echo CHK 3 PHPRC is ${PHPRC}
 
   if [ ! -z "${PHP_INI}" ]; then
-    export DRUSH_PHP;export PHP_INI;export PHPRC;
+    export DRUSH_PHP;export PHP_INI;
   else
     DRUSH_PHP="/usr/bin/php"
     export DRUSH_PHP;
@@ -2065,7 +2053,8 @@ if _grp_set_is "users www-data" \
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-          if [ -n "${_LA_PATH}" ] && ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; then
+          if [ -n "${_LA_PATH}" ] && { { ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; } \
+            || { [[ "${_LA_PATH}" == /* ]] && [[ "${_LA_PATH}" != /tmp/* ]] && [[ "${_LA_PATH}" != /home/* ]]; }; }; then
             _DEST_DRUSH="${_LA_PATH}"
           elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
             _DEST_DRUSH="../vendor/drush/drush/drush.php"
@@ -2124,7 +2113,7 @@ if _grp_set_is "users www-data" \
             fi
           fi
           if [ -z "${_D_SEL}" ] && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
-            _PHP_V="74 80 81 82 83 84 85"
+            _PHP_V="74 80 81 82 83 84 85 86"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ] \
                 && [ "${e}" -ge "${_D_FLOOR_N}" ]; then
@@ -2139,7 +2128,7 @@ if _grp_set_is "users www-data" \
           if [ -z "${_D_SEL}" ]; then
             # every supported CLI, so a 7.4 or 8.0 floor can be met on a box
             # without PHP 8.1+; the floor test below keeps anything lower out
-            for e in 85 84 83 82 81 80 74; do
+            for e in 86 85 84 83 82 81 80 74; do
               if [ -x "/opt/php${e}/bin/php" ] && [ "${e}" -ge "${_D_FLOOR_N}" ]; then
                 _D_SEL="${e}"
                 # stderr: a NOTE on stdout lands in drush11 ... > file; and
@@ -2153,11 +2142,10 @@ if _grp_set_is "users www-data" \
           fi
           if [ -n "${_D_SEL}" ]; then
             DRUSH_PHP="/opt/php${_D_SEL}/bin/php"
-            _account_ini "${_D_SEL}"
-            export DRUSH_PHP;export PHP_INI;export PHPRC;
+            _php_ini "${_D_SEL}"
+            export DRUSH_PHP;export PHP_INI;
             ### echo INF 3 DRUSH_PHP is ${DRUSH_PHP}
             ### echo INF 3 PHP_INI is ${PHP_INI}
-            ### echo INF 3 PHPRC is ${PHPRC}
             ### echo INF 3 _DEST_DRUSH is ${_DEST_DRUSH}
           else
             echo
@@ -2179,12 +2167,13 @@ if _grp_set_is "users www-data" \
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-            if [ -n "${_LA_PATH}" ] && ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; then
+            if [ -n "${_LA_PATH}" ] && { { ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; } \
+              || { [[ "${_LA_PATH}" == /* ]] && [[ "${_LA_PATH}" != /tmp/* ]] && [[ "${_LA_PATH}" != /home/* ]]; }; }; then
               # an absolute launcher, or one relative to a cd DIR && in front
               # of it: run the launcher as typed (the cwd-derived form below
-              # only fits a launcher relative to where websh runs). Not for a
-              # tenant: an absolute path of theirs under /tmp or /home is what
-              # the fast lane above keeps out on purpose
+              # only fits a launcher relative to where websh runs). A tenant's
+              # absolute launcher only outside /tmp and /home, the paths the
+              # fast lane above keeps out on purpose
               _DEST_DRUSH="${_LA_PATH}"
             # the parent's Drush only where the parent has one: a docroot
             # named web/html/docroot can carry its own vendor/ instead
@@ -2196,20 +2185,19 @@ if _grp_set_is "users www-data" \
             ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]] && [ "${_IS_JENKINS}" = "FALSE" ]; then
-            _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
+            _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85 86"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
-                _account_ini "${e}"
+                _php_ini "${e}"
               fi
             done
           fi
           _cpp_pick
           if [ ! -z "${DRUSH_PHP}" ] && [ ! -z "${PHP_INI}" ] && [ "${_IS_JENKINS}" = "FALSE" ]; then
-            export DRUSH_PHP;export PHP_INI;export PHPRC;
+            export DRUSH_PHP;export PHP_INI;
             ### echo INF 4 DRUSH_PHP is ${DRUSH_PHP}
             ### echo INF 4 PHP_INI is ${PHP_INI}
-            ### echo INF 4 PHPRC is ${PHPRC}
             ### echo INF 4 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
         fi
@@ -2255,6 +2243,9 @@ if _grp_set_is "users www-data" \
             fi
           fi
         else
+          # Which drush command a tenant may not run is decided per segment
+          # by its command word at the exec site (_drush_refused); a word at
+          # the end of the whole line refused a pipe into grep and sql-cli.
           if [[ "${_ARGS}" =~ "drush @" ]] \
             || [[ "${_ARGS}" =~ "drush8 @" ]] \
             || [[ "${_ARGS}" =~ "drush10 @" ]] \
@@ -2267,39 +2258,13 @@ if _grp_set_is "users www-data" \
             || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
             || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php -vvv @" ]] \
             || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
-            if [[ "${2}" =~ "restore"($) ]] \
-              || [[ "${2}" =~ "arr"($) ]] \
-              || [[ "${2}" =~ "cli"($) ]] \
-              || [[ "${2}" =~ "conf"($) ]] \
-              || [[ "${2}" =~ "config"($) ]] \
-              || [[ "${2}" =~ "execute"($) ]] \
-              || [[ "${2}" =~ "core-quick-drupal"($) ]] \
-              || [[ "${2}" =~ "exec"($) ]] \
-              || [[ "${2}" =~ "xstatus"($) ]] \
-              || [[ "${2}" =~ "redis-flush"($) ]] \
-              || [[ "${2}" =~ (^)"qd"($) ]] \
-              || [[ "${2}" =~ (^)"rs"($) ]] \
-              || [[ "${2}" =~ "runserver"($) ]] \
-              || [[ "${2}" =~ (^)"scr"($) ]] \
-              || [[ "${2}" =~ (^)"sha"($) ]] \
-              || [[ "${2}" =~ "shell-alias"($) ]] \
-              || [[ "${2}" =~ (^)"si"($) ]] \
-              || [[ "${2}" =~ "sql-create"($) ]] \
-              || [[ "${2}" =~ (^)"ssh"($) ]] \
-              || [[ "${2}" =~ (^)"sup"($) ]]; then
-              echo
-              echo " This drush command is not available (A)"
-              echo
-              exit 0
-            else
-              _CORRECT=YES
-              ### LSHELL ==> ALL vdrush commands WITH @alias START here
-              ### LSHELL ==> ALL drush8 commands WITH @alias START here
-              _CORRECT_PWD_T=$(pwd 2>&1)
-              _CORRECT_ARGS_T="${_ARGS}"
-              ### echo _CORRECT_PWD_T is ${_CORRECT_PWD_T}
-              ### echo _CORRECT_ARGS_T is ${_CORRECT_ARGS_T}
-            fi
+            _CORRECT=YES
+            ### LSHELL ==> ALL vdrush commands WITH @alias START here
+            ### LSHELL ==> ALL drush8 commands WITH @alias START here
+            _CORRECT_PWD_T=$(pwd 2>&1)
+            _CORRECT_ARGS_T="${_ARGS}"
+            ### echo _CORRECT_PWD_T is ${_CORRECT_PWD_T}
+            ### echo _CORRECT_ARGS_T is ${_CORRECT_ARGS_T}
             ### LSHELL ==> BASIC vdrush commands WITH @alias END here
             ### LSHELL ==> ALL drush8 commands WITH @alias END here
             ### LSHELL ==> RESPAWNED vdrush commands WITH @alias like updatedb CONTINUE here
@@ -2376,31 +2341,6 @@ if _grp_set_is "users www-data" \
         || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
         || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php -vvv @" ]] \
         || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
-        if [[ "${2}" =~ "restore"($) ]] \
-          || [[ "${2}" =~ "arr"($) ]] \
-          || [[ "${2}" =~ "cli"($) ]] \
-          || [[ "${2}" =~ "conf"($) ]] \
-          || [[ "${2}" =~ "config"($) ]] \
-          || [[ "${2}" =~ "execute"($) ]] \
-          || [[ "${2}" =~ "core-quick-drupal"($) ]] \
-          || [[ "${2}" =~ "exec"($) ]] \
-          || [[ "${2}" =~ "xstatus"($) ]] \
-          || [[ "${2}" =~ "redis-flush"($) ]] \
-          || [[ "${2}" =~ (^)"qd"($) ]] \
-          || [[ "${2}" =~ (^)"rs"($) ]] \
-          || [[ "${2}" =~ "runserver"($) ]] \
-          || [[ "${2}" =~ (^)"scr"($) ]] \
-          || [[ "${2}" =~ (^)"sha"($) ]] \
-          || [[ "${2}" =~ "shell-alias"($) ]] \
-          || [[ "${2}" =~ (^)"si"($) ]] \
-          || [[ "${2}" =~ "sql-create"($) ]] \
-          || [[ "${2}" =~ (^)"ssh"($) ]] \
-          || [[ "${2}" =~ (^)"sup"($) ]]; then
-          echo
-          echo " This drush command is not available (B)"
-          echo
-          exit 0
-        fi
         _DEBUG_PWD_X=$(pwd 2>&1)
         _DEBUG_ARGS_X="${_ARGS}"
         ### echo _DEBUG_PWD_X is ${_DEBUG_PWD_X}
@@ -2490,31 +2430,6 @@ if _grp_set_is "users www-data" \
       || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
       || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php -vvv @" ]] \
       || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
-      if [[ "${2}" =~ "restore"($) ]] \
-        || [[ "${2}" =~ "arr"($) ]] \
-        || [[ "${2}" =~ "cli"($) ]] \
-        || [[ "${2}" =~ "conf"($) ]] \
-        || [[ "${2}" =~ "config"($) ]] \
-        || [[ "${2}" =~ "execute"($) ]] \
-        || [[ "${2}" =~ "core-quick-drupal"($) ]] \
-        || [[ "${2}" =~ "exec"($) ]] \
-        || [[ "${2}" =~ "xstatus"($) ]] \
-        || [[ "${2}" =~ "redis-flush"($) ]] \
-        || [[ "${2}" =~ (^)"qd"($) ]] \
-        || [[ "${2}" =~ (^)"rs"($) ]] \
-        || [[ "${2}" =~ "runserver"($) ]] \
-        || [[ "${2}" =~ (^)"scr"($) ]] \
-        || [[ "${2}" =~ (^)"sha"($) ]] \
-        || [[ "${2}" =~ "shell-alias"($) ]] \
-        || [[ "${2}" =~ (^)"si"($) ]] \
-        || [[ "${2}" =~ "sql-create"($) ]] \
-        || [[ "${2}" =~ (^)"ssh"($) ]] \
-        || [[ "${2}" =~ (^)"sup"($) ]]; then
-        echo
-        echo " This drush command is not available (C)"
-        echo
-        exit 0
-      fi
       _DEBUG_PWD_Y=$(pwd 2>&1)
       _DEBUG_ARGS_Y="${_ARGS}"
       ### echo _DEBUG_PWD_Y is ${_DEBUG_PWD_Y}
@@ -2586,6 +2501,7 @@ if _grp_set_is "users www-data" \
           || [[ "${_ARGS}" =~ "php83 " ]] \
           || [[ "${_ARGS}" =~ "php84 " ]] \
           || [[ "${_ARGS}" =~ "php85 " ]] \
+          || [[ "${_ARGS}" =~ "php86 " ]] \
           || [[ "${_ARGS}" =~ "unzip " ]] \
           || [[ "${_ARGS}" =~ "rename " ]] \
           || [[ "${_ARGS}" =~ "rrdtool " ]] \
@@ -2645,8 +2561,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
           _cpp_before_exec drush
-          _ini_opt drush
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -2656,8 +2571,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
           _cpp_before_exec drush
-          _ini_opt drush
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -2667,8 +2581,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
           _cpp_before_exec drush
-          _ini_opt drush
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
@@ -2682,13 +2595,12 @@ if _grp_set_is "users www-data" \
           # server's builds is kept, and the launch stays websh's own
           if [[ "${_CO_PHP}" =~ ^/opt/php([0-9][0-9])/bin/php$ ]] && [ -x "${_CO_PHP}" ]; then
             DRUSH_PHP="${_CO_PHP}"
-            _account_ini "${BASH_REMATCH[1]}"
-            export DRUSH_PHP PHP_INI PHPRC
+            _php_ini "${BASH_REMATCH[1]}"
+            export DRUSH_PHP PHP_INI
           fi
           _cpp_before_exec composer
           _cpp_composer_warn
-          _ini_opt composer
-          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} ${_INI_OPT}/usr/local/bin/composer ${_C_ARR}"
+          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
           # A line dash runs as typed still gets its platform's PHP and the
@@ -2726,8 +2638,10 @@ if _grp_set_is "users www-data" \
   fi
 else
   if [ "${USER}" = "root" ]; then
-    if [[ "${1}" =~ "drush" ]] \
-      || [[ "${2}" =~ "drush" ]]; then
+    # a line that runs Drush, never one whose argument names it (grep -c
+    # drush FILE was refused as root)
+    if { [ "${1}" = "-c" ] && _runs_drush "${2}"; } \
+      || { [ "${1}" != "-c" ] && [[ "${1}" =~ "drush" ]]; }; then
       if [[ "${2}" =~ "uli" ]] \
         || [[ "${2}" =~ "vget" ]] \
         || [[ "${2}" =~ "config-list" ]] \

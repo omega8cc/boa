@@ -42,16 +42,62 @@ if command -v flock >/dev/null 2>&1 && ( : >> "${_runLock}" ) 2>/dev/null; then
   flock -n 9 || exit 0
 fi
 
+# The account's static/control is its main login's and oN owns the rest of
+# /data/disk/oN: either can put a link or a FIFO at any name there, or swap
+# the directory itself for a link. Run "$@" inside the real directory $1
+# only (every name below /data/disk a real directory), so ./name never
+# leads out of the account.
+_run_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# backups is oN's too, and a link by design once the backups mover has put
+# it on the files store (static/files/.backups). Run "$@" inside the
+# directory $1 resolves to, only when that lies in the account's own tree or
+# its own files store moved onto attached storage
+# (/mnt/<mount>/files/<oN>/static/files, the mount itself possibly nested,
+# with no directory named files or static between /mnt and the mount, as
+# migratefs makes it and the nightly decides it).
+_run_in_own_store() {
+  local _a _r _m
+  _a=$(realpath -e -- "/data/disk/${_H_USER}" 2> /dev/null) || return 1
+  _r=$(realpath -e -- "${1}" 2> /dev/null) || return 1
+  shift
+  case "${_r}" in
+    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_a}"/?*) ;;
+    /mnt/?*/files/"${_H_USER}"/static/files/?*)
+      _m="${_r%%/files/"${_H_USER}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
+}
+
+# Empty the current (pinned) .tmp: the glob expands here, and rm -rf removes
+# a link itself, never what it points at.
+_run_tmp_clear_here() {
+  rm -rf -- ./*
+}
+
 _run_cleanup() {
   _buildTest="1"
   _tpDir="/data/disk/${_H_USER}/.tmp"
   _ceDir="${_tpDir}/cache"
-  _dlDir="${_ceDir}/download"
   _gtDir="${_ceDir}/git"
-  _clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
-  _exCtr="/data/disk/${_H_USER}/backups/tmp_expim/metadata"
+  _ctDir="/data/disk/${_H_USER}/static/control"
+  _exDir="/data/disk/${_H_USER}/backups/tmp_expim"
+  _exCtr="${_exDir}/metadata"
   if [ -e "${_tpDir}" ]; then
-    _buildTest=$(ls ${_tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
+    # listed, and emptied below, only inside the real .tmp: oN owns it and
+    # can swap it, or cache/ in it, for a link to anywhere
+    _buildTest=$(_run_in_real_dir "${_tpDir}" ls | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
     _buildTest=${_buildTest//[^0-9]/}
     # A _tmp_ dir with no live Drush behind it is an orphan left by a crashed
     # build/verify, not an active build. Do not let it wedge the queue: this is
@@ -62,21 +108,21 @@ _run_cleanup() {
       _buildTest="0"
     fi
   fi
-  if [ -e "${_clCtr}" ]; then
+  # the trigger counts, and is removed, only in the real control directory
+  if _run_in_real_dir "${_ctDir}" test -e ./clear-drush-cache.info; then
     if [ -e "${_exCtr}" ]; then
-      rm -f ${_exCtr}
-      rm -f ${_clCtr}
+      _run_in_own_store "${_exDir}" rm -f -- ./metadata
+      _run_in_real_dir "${_ctDir}" rm -f -- ./clear-drush-cache.info
       _buildTest="0"
     fi
     if [ -e "${_gtDir}" ] || [ "${_buildTest}" -ge 1 ]; then
-      rm -rf ${_tpDir}/*
-      rm -f ${_clCtr}
+      _run_in_real_dir "${_tpDir}" _run_tmp_clear_here
+      _run_in_real_dir "${_ctDir}" rm -f -- ./clear-drush-cache.info
       _buildTest="0"
     fi
   fi
   if [ "${_buildTest}" = "0" ] && [ -e "${_gtDir}" ]; then
-    rm -rf ${_gtDir}
-    rm -rf ${_dlDir}
+    _run_in_real_dir "${_ceDir}" rm -rf -- ./git ./download
   fi
 }
 _run_cleanup
@@ -86,12 +132,52 @@ _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
+# The new password is delivered in the account's static/control, which the
+# tenant owns. Run in the real directory: the file is made first, as a fresh
+# name (0600, the main login's), the password is set only once that file
+# exists, and the file is renamed over the name only once the password is
+# set -- never through a link or FIFO put at the name, never readable by
+# another account, and never a password set that cannot be delivered. The
+# fresh file is created, written, handed to the main login and moded
+# through one handle opened O_EXCL|O_NOFOLLOW (_ACCT_PUT_PL), never chowned
+# by name: a hard link renamed over the temp name in between would have
+# been handed to the main login. Its group stays the one it was created
+# with, as before. $1 = the password.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_sftp_password_set_here() {
+  local _t="./.new-${_sftpUser}-password.txt.put.$$.${RANDOM}" _uid
+  _uid=$(id -u -- "${_sftpUser}" 2> /dev/null)
+  [[ "${_uid}" =~ ^[0-9]+$ ]] || return 1
+  rm -f -- "${_t}"
+  # a directory at the name would refuse the rename after the change
+  if [ ! -d "./new-${_sftpUser}-password.txt" ] \
+    || [ -L "./new-${_sftpUser}-password.txt" ]; then
+    if printf '%s\n' "${1}" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" -1 600; then
+      chage -I -1 -m 0 -M 99999 -E -1 "${_sftpUser}"
+      if echo "${_sftpUser}:${1}" | chpasswd; then
+        chage -M 90 "${_sftpUser}"
+        chage -W 7 "${_sftpUser}"
+        chage -d "$(date +%Y-%m-%d)" "${_sftpUser}"
+        # the password is set now: the file stays even if the rename fails
+        mv -f -T -- "${_t}" "./new-${_sftpUser}-password.txt"
+        return
+      fi
+    fi
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
 # Generate new sftp password and update expiration date
 _if_sftp_password_update() {
-  _upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
-  if [ -e "${_upCtr}" ]; then
+  local _ctl="/data/disk/${_H_USER}/static/control"
+  # the trigger counts, is removed, and the password is changed and
+  # delivered only in the real control directory, never one reached
+  # through a link
+  if _run_in_real_dir "${_ctl}" test -e ./run-sftp-password-update.pid; then
     _sftpUser="${_H_USER}.ftp"
-    rm -f ${_upCtr}
+    _run_in_real_dir "${_ctl}" rm -f -- ./run-sftp-password-update.pid
     _PWD_CHARS=64
     _RANDPASS_TEST=$(randpass -V 2>&1)
     if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
@@ -110,19 +196,26 @@ _if_sftp_password_update() {
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt 9 ]; then
-      chage -I -1 -m 0 -M 99999 -E -1 ${_sftpUser}
-      echo "${_sftpUser}:${_ESC_PASS}" | chpasswd
-      chage -M 90 ${_sftpUser}
-      chage -W 7 ${_sftpUser}
-      chage -d $(date +%Y-%m-%d) ${_sftpUser}
-      echo "${_ESC_PASS}" > /data/disk/${_H_USER}/static/control/new-${_sftpUser}-password.txt
+      _run_in_real_dir "${_ctl}" _sftp_password_set_here "${_ESC_PASS}"
     fi
   fi
 }
 
+# An upgrade is queued in the current (pinned) control directory.
+_run_upgrade_queued_here() {
+  [ -e ./platforms.info ] && [ -e ./run-upgrade.pid ]
+}
+
+# Put the upgrade trigger back in the current (pinned) control directory:
+# created exclusively, so a link or FIFO put at the name since it was
+# removed is never followed or opened (the name is the tenant's).
+_run_upgrade_keep_here() {
+  ( umask 022
+    dd of=./run-upgrade.pid conv=excl status=none < /dev/null 2> /dev/null )
+}
+
 _if_octopus_upgrade() {
-  _upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
-  _plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
+  local _ctl="/data/disk/${_H_USER}/static/control"
   # Defer, never consume-and-lose: while an install/upgrade is in flight the
   # octopus wrapper refuses to start, so deleting the trigger before a launch
   # that cannot succeed would silently drop the tenant's queued upgrade --
@@ -131,7 +224,9 @@ _if_octopus_upgrade() {
     || [ -e "/run/boa_run.pid" ]; then
     return 0
   fi
-  if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
+  # queued, consumed and put back only in the real control directory, never
+  # one reached through a link
+  if _run_in_real_dir "${_ctl}" _run_upgrade_queued_here; then
     # A proxied account is served elsewhere: octopus refuses it with an ALRT
     # and exits at once, the kept-trigger branch below puts the trigger back,
     # and the next tick does it again -- a refusal, a wrapper log and an
@@ -141,7 +236,7 @@ _if_octopus_upgrade() {
     if [ -e "/data/disk/${_H_USER}/log/proxied.pid" ]; then
       return 0
     fi
-    rm -f ${_upCtr}
+    _run_in_real_dir "${_ctl}" rm -f -- ./run-upgrade.pid
     [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
     _TODAY=$(date +%y%m%d)
     _TODAY=${_TODAY//[^0-9]/}
@@ -170,7 +265,7 @@ _if_octopus_upgrade() {
       if grep -qE 'Another BOA installer is running|Some important system task is running|is still in flight' ${_UP_OCTOPUS_LOG} 2>/dev/null \
         || ! kill -0 "${_upPid}" 2>/dev/null; then
         sleep 1
-        touch ${_upCtr}
+        _run_in_real_dir "${_ctl}" _run_upgrade_keep_here
         echo "${_H_USER}: octopus did not start (BOA lock held or refused), run-upgrade.pid kept for the next tick" >>${_UP_OCTOPUS_LOG}
         break
       fi

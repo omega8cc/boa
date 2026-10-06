@@ -168,7 +168,7 @@ shopt -u nullglob
 #
 # Self-deploy the per-version opcache/APCu probe. Lives under /var/www to
 # satisfy opcache.restrict_api=/var/www; executed via the wwwNN pool, which has
-# no open_basedir. Plain PHP 5.x-compatible (php56..php85 all execute it).
+# no open_basedir. Plain PHP 5.x-compatible (php56..php86 all execute it).
 # World-readable, root-owned, never written by the pool user.
 _ensure_probe_php() {
   # v1.1 deployed the probe under /data/conf, where opcache.restrict_api blocks

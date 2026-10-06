@@ -99,6 +99,101 @@ else
   command -v curl >/dev/null 2>&1 || { echo "--remote needs curl."; exit 1; }
 fi
 
+# --- account files (never through a link or into a FIFO) --------------------
+# An account owns everything under its /data/disk/<oN> (the tenant owns
+# static/control), so any name there can be a link or a FIFO, a directory
+# included. Root reads and writes those names only inside the real directory:
+# _edge_in_real_dir runs "$@" there when every name below /data/disk on the
+# path is a real directory, and ./name then stays in it whatever is swapped.
+_edge_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# The line $2 put as the file ./$1 in the real /data/conf, root's and 0644:
+# written under a fresh name through one handle created O_EXCL|O_NOFOLLOW
+# (_ACCT_PUT_PL) and renamed over the name, so a link an account left there
+# (an Octopus upgrade of an earlier release handed it /data/conf) is replaced,
+# never written through.
+_edge_conf_put() {
+  ( cd -P -- /data/conf 2> /dev/null \
+      && [ "$(pwd -P)" = "$(cd -P -- /data 2> /dev/null && pwd -P)/conf" ] || exit 1
+    _t="./.${1}.put.$$.${RANDOM}"
+    rm -f -- "${_t}"
+    if printf '%s\n' "${2}" | perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 \
+      && mv -f -T -- "${_t}" "./${1}"; then
+      exit 0
+    fi
+    rm -f -- "${_t}"
+    exit 1 )
+}
+# ./$2 in the real directory $1: never through a link, never blocked on a
+# FIFO, at most 1 MiB. Empty for anything else.
+_edge_read_in() {
+  _edge_in_real_dir "${1}" timeout 10 dd if="./${2}" \
+    iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null
+}
+# The test record's directory, ai/ or ip/ in the account's static/control:
+# made when missing, one name at a time inside its real parent (root's, as
+# mkdir -p made it). $1 = ai or ip.
+_edge_ctrl_dir() {
+  local _c="/data/disk/${_OCT}/static/control"
+  _edge_in_real_dir "${_c%/control}" mkdir -p ./control \
+    && _edge_in_real_dir "${_c}" mkdir -p "./${1}" \
+    && _edge_in_real_dir "${_c}/${1}" true
+}
+# The test line appended to, or every test line removed from, ./$1 in the
+# current (pinned) directory, never in place: only a regular file (or, for
+# the append, a missing one) is edited. Its content is read without
+# following a link or blocking on a FIFO, the new content goes to a fresh
+# file with the old file's owner, group and read/write bits, and that file
+# is renamed over the name. The fresh file is created, written, owned and
+# moded through one handle opened O_EXCL|O_NOFOLLOW (_ACCT_PUT_PL), never
+# chowned by name: a hard link renamed over the temp name in between would
+# have been handed to that owner. A missing file is made as >> made it
+# (root's, by root's umask), and nothing acts on it by name.
+# $1 = name, $2 = the line to append, empty to remove the test lines.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_edge_ctrl_edit_here() {
+  local _n="./${1}" _t="./.${1}.edgetest.$$.${RANDOM}"
+  local _own="" _m="" _sz=0 _old=""
+  if [ -e "${_n}" ] || [ -L "${_n}" ]; then
+    [ -f "${_n}" ] && [ ! -L "${_n}" ] || return 1
+    read -r _own _m _sz <<< "$(stat -c '%u:%g %a %s' -- "${_n}" 2> /dev/null)"
+    [[ "${_own}" =~ ^[0-9]+:[0-9]+$ && "${_m}" =~ ^[0-7]+$ \
+      && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+    [ "${_sz}" -le 1048576 ] || return 1
+    # the x keeps the trailing newlines a command substitution would drop
+    _old="$(timeout 10 dd if="${_n}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2> /dev/null && printf x)" || return 1
+    _old="${_old%x}"
+  elif [ -z "${2}" ]; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  if { if [ -n "${2}" ]; then
+      printf '%s%s\n' "${_old}" "${2}"
+    else
+      printf '%s' "${_old}" | sed '/# edge-policy-test$/d'
+    fi; } | if [ -n "${_own}" ]; then
+      perl -e "${_ACCT_PUT_PL}" "${_t}" "${_own%%:*}" "${_own#*:}" "${_m}"
+    else
+      dd of="${_t}" conv=excl status=none 2> /dev/null
+    fi \
+    && mv -f -T -- "${_t}" "${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The same on ai/policy.txt or ip/access.txt of the account under test.
+# $1 = ai or ip, $2 = the name, $3 = the line, empty to remove.
+_edge_ctrl_edit() {
+  _edge_in_real_dir "/data/disk/${_OCT}/static/control/${1}" \
+    _edge_ctrl_edit_here "${2}" "${3}"
+}
+
 # --- cleanup of --full test artifacts (idempotent; runs on any exit) --------
 _emergency_cleanup() {
   # Read-only / remote runs create no artifacts — never touch csf or control files
@@ -107,9 +202,10 @@ _emergency_cleanup() {
   rm -f /data/conf/nginx_cloudflare_real_ip.conf-edgetest 2>/dev/null
   if command -v csf >/dev/null 2>&1; then csf -tr "${_TEST_IP}" >/dev/null 2>&1; fi
   if [[ -n "${_OCT}" ]]; then
-    sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ai/policy.txt" 2>/dev/null
-    sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ip/access.txt" 2>/dev/null
-    rm -f "/data/disk/${_OCT}/config/includes/ip_access/edgetest.example.com.conf" 2>/dev/null
+    _edge_ctrl_edit ai policy.txt ""
+    _edge_ctrl_edit ip access.txt ""
+    _edge_in_real_dir "/data/disk/${_OCT}/config/includes/ip_access" \
+      rm -f -- ./edgetest.example.com.conf 2>/dev/null
   fi
   bash /var/xdrago/ai_policy.sh  >/dev/null 2>&1
   bash /var/xdrago/ip_access.sh  >/dev/null 2>&1
@@ -369,14 +465,16 @@ _phase_front() {
   # so it must refuse the same paths itself.
   local _p _n _sn _ip _url _code _oct _x _hm _e _t _xmap="" _any=""
   # each panel's extra names (log/extra_domain.txt), as name=panel pairs,
-  # read as barracuda's _nginx_ssl_proxy_extra_names reads them
+  # read as barracuda's _nginx_ssl_proxy_extra_names reads them (log/ is the
+  # account's: each file read only inside the real directory, bounded,
+  # never through a link or blocked on a FIFO)
   for _x in /data/disk/*/log/extra_domain.txt; do
     [[ -f "${_x}" ]] || continue
-    _hm=$(head -c 256 "${_x%/extra_domain.txt}/domain.txt" 2>/dev/null | tr -d '\r\n' | tr 'A-Z' 'a-z')
+    _hm=$(_edge_read_in "${_x%/*}" domain.txt | head -c 256 | tr -d '\r\n' | tr 'A-Z' 'a-z')
     [[ "${_hm}" =~ ^[a-z0-9][a-z0-9.-]*$ && "${#_hm}" -le 253 ]] || continue
     while IFS= read -r _e || [[ -n "${_e}" ]]; do
       [[ "${_e}" =~ ^[a-z0-9*][a-z0-9.*-]*$ && "${#_e}" -le 253 ]] && _xmap="${_xmap} ${_e}=${_hm}"
-    done < <(head -c 65536 "${_x}" 2>/dev/null | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
+    done < <(_edge_read_in "${_x%/*}" extra_domain.txt | head -c 65536 | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
   done
   for _p in /var/aegir/config/server_master/nginx/pre.d/*ssl_proxy.conf; do
     [[ -f "${_p}" ]] || continue
@@ -446,8 +544,8 @@ _phase_front() {
     fi
     _oct=$(awk '/^### Secure HTTPS proxy \(START\) / {print $6; exit}' "${_p}")
     [[ -n "${_oct}" && -f "/data/disk/${_oct}/config/includes/ip_access/${_n}.conf" ]] || continue
-    if grep -Eq "^allow (127\.0\.0\.2|127\.[0-9.]+/[0-9]+|0\.0\.0\.0/0|all);" \
-      "/data/disk/${_oct}/config/includes/ip_access/${_n}.conf"; then
+    if _edge_read_in "/data/disk/${_oct}/config/includes/ip_access" "${_n}.conf" \
+      | grep -Eq "^allow (127\.0\.0\.2|127\.[0-9.]+/[0-9]+|0\.0\.0\.0/0|all);"; then
       _note "HTTPS proxy ${_n}: its access.txt admits 127.0.0.2, lock probe skipped"
       continue
     fi
@@ -483,7 +581,8 @@ _phase_regression() {
     local _p _ports="22" _cnf_port _sshd_ports
     _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
       | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
-    _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+    # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
+    _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2}')
     for _p in ${_cnf_port} ${_sshd_ports}; do
       if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
         _ports="${_ports} ${_p}"
@@ -517,7 +616,7 @@ _phase_realip_ban_proof() {
   if _unreachable "$1" "$2" || _server_error "$1"; then _warn "site not cleanly served (code $1) — cannot run the ban proof"; return; fi
   # 1. trust localhost so a CF-Connecting-IP header rewrites $remote_addr
   local _trust="/data/conf/nginx_cloudflare_real_ip.conf-edgetest"
-  echo "set_real_ip_from 127.0.0.1;" > "${_trust}"
+  _edge_conf_put "${_trust##*/}" "set_real_ip_from 127.0.0.1;"
   if ! service nginx configtest >/dev/null 2>&1; then _fail "configtest failed adding localhost trust"; rm -f "${_trust}"; return; fi
   service nginx reload >/dev/null 2>&1
   # 2. web-ban the sentinel IP via csf, mirror into nginx
@@ -556,8 +655,8 @@ _phase_persite_ai() {
   local _o; _o=$(_http "GPTBot/1.1"); set -- $_o
   if _server_error "$1" || _unreachable "$1" "$2"; then _skip "site not cleanly served (code $1) — cannot test the toggle"; return; fi
   if ! _blocked "$1" "$2"; then _skip "GPTBot is already allowed for ${_SITE} (HTTP $1) — cannot test the toggle"; return; fi
-  mkdir -p "$(dirname "${_ctrl}")"
-  echo "${_SITE} train-allow # edge-policy-test" >> "${_ctrl}"
+  _edge_ctrl_dir ai && _edge_ctrl_edit ai policy.txt "${_SITE} train-allow # edge-policy-test" \
+    || { _skip "${_ctrl} is not a regular control file in a real directory"; return; }
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   # nginx's reload is graceful/async — a probe fired immediately races the old
   # workers, so settle first. The >1s wait ALSO advances the control mtime past the
@@ -568,7 +667,7 @@ _phase_persite_ai() {
   _o=$(_http "GPTBot/1.1"); set -- $_o
   if ! _blocked "$1" "$2"; then _pass "train-allow opt-in took effect: GPTBot now allowed (HTTP $1) for ${_SITE}"
   else _fail "train-allow opt-in did NOT take effect: GPTBot still blocked"; fi
-  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  _edge_ctrl_edit ai policy.txt ""
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   sleep 2   # settle the prune reload before re-checking
   _o=$(_http "GPTBot/1.1"); set -- $_o
@@ -584,14 +683,14 @@ _phase_persite_evasive() {
   local _o; _o=$(_http "Perplexity-User/1.0"); set -- $_o
   if _server_error "$1" || _unreachable "$1" "$2"; then _skip "site not cleanly served (code $1) — cannot test the toggle"; return; fi
   if ! _blocked "$1" "$2"; then _skip "Perplexity-User is already allowed for ${_SITE} (HTTP $1) — cannot test the toggle"; return; fi
-  mkdir -p "$(dirname "${_ctrl}")"
-  echo "${_SITE} evasive-allow # edge-policy-test" >> "${_ctrl}"
+  _edge_ctrl_dir ai && _edge_ctrl_edit ai policy.txt "${_SITE} evasive-allow # edge-policy-test" \
+    || { _skip "${_ctrl} is not a regular control file in a real directory"; return; }
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   sleep 2   # settle the graceful reload (see the per-site AI toggle note above)
   _o=$(_http "Perplexity-User/1.0"); set -- $_o
   if ! _blocked "$1" "$2"; then _pass "evasive-allow opt-in took effect: Perplexity-User now allowed (HTTP $1) for ${_SITE}"
   else _fail "evasive-allow opt-in did NOT take effect: Perplexity-User still blocked"; fi
-  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  _edge_ctrl_edit ai policy.txt ""
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   sleep 2   # settle the prune reload before re-checking
   _o=$(_http "Perplexity-User/1.0"); set -- $_o
@@ -605,17 +704,23 @@ _phase_ipaccess_validation() {
   [[ -e "/data/disk/${_OCT}/tools/drush" ]] || { _skip "${_OCT} is not a real instance"; return; }
   local _ctrl="/data/disk/${_OCT}/static/control/ip/access.txt"
   local _frag="/data/disk/${_OCT}/config/includes/ip_access/edgetest.example.com.conf"
-  mkdir -p "$(dirname "${_ctrl}")"
-  echo "edgetest.example.com 198.51.100.7 2001:db8::/32 192.168.1.300 2001:db8::/129 # edge-policy-test" >> "${_ctrl}"
+  local _fragTxt=""
+  _edge_ctrl_dir ip && _edge_ctrl_edit ip access.txt \
+    "edgetest.example.com 198.51.100.7 2001:db8::/32 192.168.1.300 2001:db8::/129 # edge-policy-test" \
+    || { _skip "${_ctrl} is not a regular control file in a real directory"; return; }
   bash /var/xdrago/ip_access.sh >/dev/null 2>&1
   if [[ -f "${_frag}" ]]; then
-    grep -q '^allow 198.51.100.7;' "${_frag}" && ! grep -q '192.168.1.300' "${_frag}" \
+    # config/ is the account's too: the fragment is read once, bounded,
+    # without following a link or blocking on a FIFO
+    _fragTxt="$(_edge_read_in "${_frag%/*}" "${_frag##*/}")"
+    grep -q '^allow 198.51.100.7;' <<< "${_fragTxt}" && ! grep -q '192.168.1.300' <<< "${_fragTxt}" \
       && _pass "kept the valid IPv4 and SKIPPED the out-of-range octet (192.168.1.300)" \
       || _fail "fragment wrong: valid IPv4 missing or bad octet present"
-    grep -q '^allow 2001:db8::/32;' "${_frag}" && ! grep -q '2001:db8::/129' "${_frag}" \
+    grep -q '^allow 2001:db8::/32;' <<< "${_fragTxt}" && ! grep -q '2001:db8::/129' <<< "${_fragTxt}" \
       && _pass "kept the valid IPv6 subnet and SKIPPED the bad prefix (2001:db8::/129)" \
       || _fail "IPv6 handling wrong: valid subnet missing or bad prefix present"
-    grep -q '^allow 127.0.0.1;' "${_frag}" && grep -q '^allow ::1;' "${_frag}" && grep -q '^deny all;' "${_frag}" \
+    grep -q '^allow 127.0.0.1;' <<< "${_fragTxt}" && grep -q '^allow ::1;' <<< "${_fragTxt}" \
+      && grep -q '^deny all;' <<< "${_fragTxt}" \
       && _pass "anti-lockout present (127.0.0.1 + ::1 + deny all)" \
       || _fail "anti-lockout missing (127.0.0.1 / ::1 / deny all)"
   else
@@ -627,8 +732,8 @@ _phase_ipaccess_validation() {
   # Cleanup: remove the control line AND the fragment directly — do not rely on the
   # generator's prune, whose second-granularity change-gate can skip a re-run that
   # lands in the same second as the create.
-  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
-  rm -f "${_frag}"
+  _edge_ctrl_edit ip access.txt ""
+  _edge_in_real_dir "${_frag%/*}" rm -f -- "./${_frag##*/}"
   bash /var/xdrago/ip_access.sh >/dev/null 2>&1
   [[ -f "${_frag}" ]] && _warn "test fragment reappeared (${_frag})" || _pass "test record cleaned up"
 }

@@ -32,68 +32,21 @@ _check_root
 
 # Weekly system-upgrade wrapper, invoked by the weekly auto-update cron as
 #   autoupboa weekly-system up-<tier> system [php-*] noscreen
-# (written by _crontab_update). Runs ONLY where auto-updates are enabled; boxes
-# without auto-updates use the manual procedure (see docs/ICU-PIN.md). If PHP 7.4 is
-# present but its intl is missing (e.g. an ICU 76 bump rebuilt 7.4 without intl),
-# bootstrap it: pin ICU to a 7.4-safe version so 7.4 rebuilds WITH intl on ICU 73,
-# then unpin so 8.x return to the OS-default ICU while 7.4 keeps its ICU-73 intl.
-# Orchestrated HERE (never inside barracuda, which would self-call and loop);
-# barracuda is only ever a leaf call. Self-limiting: once 7.4 carries intl the plain
-# upgrade path runs.
-_php74_intl_missing() {
-  [ -x "/opt/php74/bin/php" ] || return 1
-  /opt/php74/bin/php -m 2>/dev/null | grep -qiE '^intl$' && return 1
-  return 0
-}
+# (written by _crontab_update). barracuda is only ever a leaf call here. PHP
+# 7.4 and 8.0 intl needs nothing from this wrapper: barracuda builds them with
+# intl against the box ICU and rebuilds one that lacks it on any pass.
 _run_weekly_system_upgrade() {
   shift  ### drop the weekly-system keyword; "$@" is now the barracuda upgrade args
   local _bootMark="/var/log/boa/.php74_intl_bootstrap.active"
-  local _phpMax=NO
-  local _intlMissing=NO
-  local _arg=""
-  ### resume safety: a leftover marker means a prior run pinned but did not unpin
-  ### (the pin is ours, not an operator's), so clear it before deciding this run
+  ### an older copy of this wrapper bootstrapped 7.4 intl under a temporary
+  ### ICU 73 pin; a box stopped mid-cycle still carries that pin, and the
+  ### marker says the pin was ours, not an operator's, so clear both
   if [ -e "${_bootMark}" ]; then
     sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
     rm -f "${_bootMark}"
   fi
-  ### php-max keeps every PHP version installed by policy: the builder mirrors,
-  ### and any box that must be able to check or rebuild any version on demand.
-  ### The bootstrap below opens by idling every version no hosted site uses --
-  ### on such a box that is all but the default -- and its two passes would
-  ### then rebuild the whole set from source twice. Neither is wanted there, so
-  ### php-max always takes the plain upgrade; 7.4 intl on such a box is the
-  ### manual procedure in docs/ICU-PIN.md.
-  for _arg in "$@"; do
-    [ "${_arg}" = "php-max" ] && _phpMax=YES
-  done
-  _php74_intl_missing && _intlMissing=YES
-  if [ "${_intlMissing}" = "YES" ] && [ "${_phpMax}" = "YES" ]; then
-    echo "INFO: PHP 7.4 present without intl, but php-max keeps every version -- no idle, no ICU pin cycle (see docs/ICU-PIN.md)"
-    _intlMissing=NO
-  fi
-  if [ "${_intlMissing}" = "YES" ]; then
-    echo "INFO: PHP 7.4 present without intl -- bootstrapping via temporary ICU 73 pin"
-    touch "${_bootMark}"
-    /opt/local/bin/barracuda php-idle disable
-    wait
-    sed -i '/^#\?_ICU_FORCE_VRN=/d' "${_barCnf}"
-    echo '_ICU_FORCE_VRN="73-1"' >> "${_barCnf}"
-    /opt/local/bin/barracuda "$@"   ### pin pass: 7.4 rebuilt with intl on ICU 73
-    wait
-    sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
-    rm -f "${_bootMark}"
-    /opt/local/bin/barracuda "$@"   ### unpin pass: 8.x return to OS-default ICU
-    wait
-    if _php74_intl_missing; then
-      echo "INFO: PHP 7.4 intl bootstrap did not yield intl -- retry on next weekly run"
-    else
-      echo "INFO: PHP 7.4 intl bootstrap completed"
-    fi
-  else
-    /opt/local/bin/barracuda "$@"   ### normal weekly system upgrade
-    wait
-  fi
+  /opt/local/bin/barracuda "$@"   ### normal weekly system upgrade
+  wait
 }
 ### The weekly dispatch sits above every other guard in this file, so it
 ### needs its own pre-flight: the chained install's octopus leg holds only
@@ -659,7 +612,6 @@ _if_disable_not_used_services() {
     [ -e "/run/php83-fpm.pid" ] && killall -9 php-fpm
     [ -e "/run/mysqld/mysqld.pid" ] && service mysql stop
     [ -e "/run/valkey/valkey.pid" ] && service valkey-server stop
-    [ -e "/run/redis/redis.pid" ] && service redis-server stop
     [ -e "/root/.deny.clamav.cnf" ] && touch /root/.deny.clamav.cnf
     [ -e "/root/.deny.java.cnf" ] && touch /root/.deny.java.cnf
     _clearSwap=YES
@@ -1148,10 +1100,9 @@ _status_vm_postinstall() {
       fi
     fi
     if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
-      # Re-enable default MySQL/Valkey/Redis password update logic once
+      # Re-enable default MySQL/Valkey password update logic once
       [ -e "/root/.mysql.no.new.password.cnf" ]  && rm -f /root/.mysql.no.new.password.cnf
       [ -e "/root/.valkey.no.new.password.cnf" ] && rm -f /root/.valkey.no.new.password.cnf
-      [ -e "/root/.redis.no.new.password.cnf" ]  && rm -f /root/.redis.no.new.password.cnf
       touch /var/log/boa/reset_no_new_password.pid
       chattr +i /var/log/boa/reset_no_new_password.pid
     fi

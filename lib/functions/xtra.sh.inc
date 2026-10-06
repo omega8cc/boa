@@ -91,20 +91,222 @@ _if_install_adminer() {
       fi
     fi
   fi
+  # What an earlier top rebuild left beside the tree (an old top a pool
+  # process kept alive, an interrupted run's copy) is never served or
+  # written: removed on every run (_xtra_adminer_top_renew).
+  find /var/www -mindepth 1 -maxdepth 1 \
+    \( -name '.adminer.new.*' -o -name '.adminer.old.*' \) \
+    -exec rm -rf -- {} + &> /dev/null
   if [ -d "/var/www/adminer" ]; then
+    local _admGrp _admOwn _admU _admG _acc="/var/www/adminer/access" _ret
+    _admGrp=$(_xtra_tool_group)
+    _admOwn="www-data:${_admGrp}"
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/adminer
+      _admOwn="${_PHP_CN}:${_admGrp}"
     else
       _msg "NOTE: _PHP_CN not set for Adminer Manager"
-      chown -R www-data:www-data /var/www/adminer
     fi
-    find /var/www/adminer -type d -exec chmod 0755 {} \; &> /dev/null
-    find /var/www/adminer -type f -exec chmod 0644 {} \; &> /dev/null
-    chmod 0440 /var/www/adminer/index.php
+    # The Adminer app files are the master pool's to serve (its owner), like
+    # the sibling web apps. access/ is NOT the app -- goaccess writes it as
+    # root every night -- so access/, and the tree top, stay root's: the pool
+    # must never own a name root writes through, or it could leave a link there
+    # for the nightly write to follow out of the tree. The top goes to root
+    # FIRST, so from here on the pool can add, rename or remove no name in it.
+    chown root:www-data /var/www/adminer &> /dev/null
+    chmod 0755 /var/www/adminer &> /dev/null
+    # chown and chmod never touch a default ACL, and the pool, owning the top
+    # for years, could set one: root's nightly mkdir of access/ and of each
+    # report directory would inherit it, writable by the pool again. No ACL
+    # tool is sure to be there, so a top that still carries an ACL (ls marks
+    # it) is rebuilt: a fresh root directory takes the app names and the name
+    # (_xtra_adminer_top_renew), and the old top goes, access/ with it.
+    if _xtra_has_acl /var/www/adminer; then
+      _xtra_adminer_top_renew
+    fi
+    # Earlier builds handed access/ to the pool, so it may hold a link, a FIFO,
+    # a hard link or a directory the pool still writes, anywhere. It is a cache
+    # weblogx rebuilds (and removes whole when goaccess is off), so one that is
+    # not wholly root's real directories and single-link files, with no ACL, is
+    # retired whole: moved into a fresh directory root makes in the root-owned
+    # top, where the name access can come back only as weblogx makes it (as
+    # root), then removed (rm never follows a link); removed in place if it
+    # could not be moved. A non-directory at the name goes the same way.
+    if [ -L "${_acc}" ] || { [ -e "${_acc}" ] && ! _xtra_adminer_access_clean "${_acc}"; }; then
+      _ret=$(mktemp -d /var/www/adminer/.access.retired.XXXXXX 2> /dev/null)
+      if [ -z "${_ret}" ] || ! mv -f -T -- "${_acc}" "${_ret}/access" &> /dev/null; then
+        rm -rf -- "${_acc}" &> /dev/null
+      fi
+    fi
+    find /var/www/adminer -mindepth 1 -maxdepth 1 -name '.access.retired.*' \
+      -exec rm -rf -- {} + &> /dev/null
+    # The app handed to the pool through a handle (_ACCT_REOWN_PL): a link or
+    # a hard link the pool left at a name it owned is never followed or handed
+    # over.
+    _admU=$(id -u -- "${_admOwn%%:*}" 2> /dev/null)
+    _admG=$(getent group "${_admGrp}" 2> /dev/null | cut -d: -f3)
+    if [[ "${_admU}" =~ ^[0-9]+$ && "${_admG}" =~ ^[0-9]+$ ]]; then
+      _acct_in_real_dir /var/www/adminer \
+        _xtra_adminer_app_reown_here "${_admU}" "${_admG}"
+    fi
+    # 0755 dirs / 0644 files across the tree, set through a handle that never
+    # follows a link (as the sibling apps do); index.php stays read-only, set
+    # the same way.
+    _xtra_app_modes /var/www/adminer
+    _acct_in_real_dir /var/www/adminer \
+      perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f 0440 ./index.php &> /dev/null
   fi
+}
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+# The group of the web tools under /var/www (Adminer, Chive, SQL Buddy,
+# Collectd Graph Panel): www-data, as always, until the master is converted
+# to its own web group (wg-aegir). Then the per-version group of the master
+# pool that owns and serves them (_PHP_CN), or, when that is not known,
+# wg-aegir, which every master pool holds: a master pool that has left
+# www-data still reads Adminer's index.php (0440) through its group.
+_xtra_tool_group() {
+  case "$(_master_web_group)" in
+    converted\ *|phaseb\ *) ;;
+    *) echo "www-data"; return 0 ;;
+  esac
+  if [ -n "${_PHP_CN}" ] && getent group "${_PHP_CN}" > /dev/null 2>&1; then
+    echo "${_PHP_CN}"
+  else
+    echo "wg-aegir"
+  fi
+}
+
+# The opt-in web apps under /var/www (Chive, SQL Buddy, Collectd Graph Panel)
+# run on the master pool, whose user owns them: nothing else writes there,
+# so directories are 0755 and files 0644, as Adminer's always were (0775 and
+# 0664 in group www-data let every account edit PHP the master pool runs).
+# Modes go through a handle that never follows a link, from find -execdir
+# inside the real directory, so a name swapped for a link while the tree was
+# still group-writable is never followed, and a regular file with more than
+# one link is left alone (it may share its inode with a file elsewhere).
+_XTRA_FCHMOD_PL='use Fcntl;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (-d _) { chmod(0755, $h); }
+  elsif (-f _ && $s[3] == 1) { chmod(0644, $h); }
+  close($h);
+}'
+_xtra_app_modes() {
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    find . \( -type d -o -type f \) \
+      -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
+}
+
+# True when the Adminer access/ tree $1 is a real directory holding nothing
+# the pool could have left for root's nightly writes: every entry root's, a
+# directory or a single-link regular file, none writable by anyone else
+# (group root aside), and none carrying an ACL (root made it under a top
+# the pool had given a default ACL). Its top sits in the root-owned
+# /var/www/adminer.
+_xtra_adminer_access_clean() {
+  [ -d "${1}" ] && [ ! -L "${1}" ] || return 1
+  [ -z "$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" \
+    \( ! -uid 0 -o ! \( -type d -o -type f \) -o \( -type f -links +1 \) \
+    -o -perm /002 -o \( -perm /020 ! -gid 0 \) \) -print -quit 2> /dev/null)" ] \
+    || return 1
+  ! env LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" \
+    -exec ls -ld -- {} + 2> /dev/null | grep -q '^.\{10\}+'
+}
+# True when $1 itself (a link is not followed) carries an ACL, access or
+# default: ls marks either with a '+' after the mode, no ACL tool needed.
+_xtra_has_acl() {
+  case "$(env LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin ls -ld -- "${1}" 2> /dev/null)" in
+    ??????????+*) return 0 ;;
+  esac
+  return 1
+}
+# Every name in the real directory $1 but access/ and a retired copy of it
+# moved into $2: renamed, never followed.
+_xtra_adminer_names_move() {
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    find . -mindepth 1 -maxdepth 1 ! -name access ! -name '.access.retired.*' \
+      -exec mv -f -t "${2}" -- {} + ) &> /dev/null
+}
+# The Adminer top rebuilt without its ACL: a fresh root directory beside it
+# takes every app name (the pool can add, rename or remove no name in the
+# root-owned top, so the set holds), the old top is renamed into a fresh
+# root-only directory, and the fresh one takes the name. The old top need
+# not be empty: a pool process still writing in its access/ cannot stop a
+# rename, where it could stop an rm. The old top is then removed as far as
+# that goes; what such a process keeps alive there is off every path root
+# writes or nginx serves, and the next run sweeps it. A step that fails puts
+# the old top and the app names back, and the next run rebuilds.
+_xtra_adminer_top_renew() {
+  local _new _old _left
+  _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 1
+  chown root:www-data "${_new}" &> /dev/null
+  chmod 0755 "${_new}" &> /dev/null
+  _xtra_adminer_names_move /var/www/adminer "${_new}"
+  _left=$(find /var/www/adminer -mindepth 1 -maxdepth 1 ! -name access \
+    ! -name '.access.retired.*' -print -quit 2> /dev/null)
+  if [ -z "${_left}" ]; then
+    _old=$(mktemp -d /var/www/.adminer.old.XXXXXX 2> /dev/null)
+    if [ -n "${_old}" ] \
+      && mv -f -T -- /var/www/adminer "${_old}/adminer" &> /dev/null; then
+      if mv -f -T -- "${_new}" /var/www/adminer &> /dev/null; then
+        rm -rf -- "${_old}" &> /dev/null
+        return 0
+      fi
+      mv -f -T -- "${_old}/adminer" /var/www/adminer &> /dev/null
+    fi
+    [ -n "${_old}" ] && rmdir -- "${_old}" &> /dev/null
+  fi
+  _xtra_adminer_names_move "${_new}" /var/www/adminer
+  rmdir -- "${_new}" &> /dev/null
+  _msg "NOTE: Adminer tree top carries an ACL, rebuild deferred"
+  return 1
+}
+# In the pinned Adminer top: every app name (all but access/ and a retired
+# copy of it) handed to uid $1 and gid $2 through a handle opened without
+# following a link, as _master_reown_here hands a tree: a directory or a
+# single-link regular file only.
+_xtra_adminer_app_reown_here() {
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+    \( -path ./access -o -path './.access.retired.*' \) -prune \
+    -o \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} + 2> /dev/null
 }
 
 _if_install_chive() {
@@ -144,13 +346,12 @@ _if_install_chive() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Chive Manager"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/chive
+      chown -R ${_PHP_CN}:"$(_xtra_tool_group)" /var/www/chive
     else
       _msg "NOTE: _PHP_CN not set for Chive Manager"
-      chown -R www-data:www-data /var/www/chive
+      chown -R www-data:"$(_xtra_tool_group)" /var/www/chive
     fi
-    find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/chive -type f -exec chmod 0664 {} \; &> /dev/null
+    _xtra_app_modes /var/www/chive
   fi
 }
 
@@ -191,13 +392,12 @@ _if_install_sqlbuddy() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for SQL Buddy Manager"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/sqlbuddy
+      chown -R ${_PHP_CN}:"$(_xtra_tool_group)" /var/www/sqlbuddy
     else
       _msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
-      chown -R www-data:www-data /var/www/sqlbuddy
+      chown -R www-data:"$(_xtra_tool_group)" /var/www/sqlbuddy
     fi
-    find /var/www/sqlbuddy -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/sqlbuddy -type f -exec chmod 0664 {} \; &> /dev/null
+    _xtra_app_modes /var/www/sqlbuddy
   fi
 }
 
@@ -303,13 +503,12 @@ _if_install_collectd() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Collectd Graph Panel"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/cgp
+      chown -R ${_PHP_CN}:"$(_xtra_tool_group)" /var/www/cgp
     else
       _msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
-      chown -R www-data:www-data /var/www/cgp
+      chown -R www-data:"$(_xtra_tool_group)" /var/www/cgp
     fi
-    find /var/www/cgp -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/cgp -type f -exec chmod 0664 {} \; &> /dev/null
+    _xtra_app_modes /var/www/cgp
     _fix_collectd_rrd_syslog_flood
     _fix_collectd_nginx
   fi
@@ -404,56 +603,118 @@ _if_install_bind() {
   fi
 }
 
+#
+# Keep the NodeSource apt source and key for one Node major. The key must
+# carry the known NodeSource fingerprint; no downloaded script runs as root.
+_node_source_setup() {
+  local _nMaj="${1}"
+  local _nKey="/etc/apt/keyrings/nodesource.gpg"
+  local _nUrl="https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+  local _nFpr="6F71F525282841EEDAF851B42F59B5F99B1BE0B4"
+  local _nArch _nGpg _tmpRaw _tmpKey _fpAvail
+  _nArch="$(dpkg --print-architecture 2>/dev/null)"
+  if [ "${_nArch}" != "amd64" ] && [ "${_nArch}" != "arm64" ]; then
+    _msg "WARN: NodeSource has no Node packages for ${_nArch}"
+    return 1
+  fi
+  if [ -x "/usr/bin/gpg2" ]; then
+    _nGpg="/usr/bin/gpg2"
+  else
+    _nGpg="$(which gpg 2>/dev/null)"
+  fi
+  if [ ! -x "${_nGpg}" ]; then
+    _msg "WARN: gpg is missing, Node ${_nMaj} can not be installed"
+    return 1
+  fi
+  _tmpRaw=$(mktemp /tmp/nodesource-key-XXXXXX.raw)
+  _tmpKey=$(mktemp /tmp/nodesource-key-XXXXXX.gpg)
+  curl ${_crlGet} "${_nUrl}" -o "${_tmpRaw}"
+  if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_tmpRaw}" 2>/dev/null; then
+    ${_nGpg} --yes --dearmor -o "${_tmpKey}" < "${_tmpRaw}" 2>/dev/null
+  fi
+  _fpAvail=$(${_nGpg} --with-colons --import-options show-only \
+    --import "${_tmpKey}" 2>/dev/null | awk -F: '/^fpr/{print $10}')
+  if ! printf "%s\n" "${_fpAvail}" | grep -qx "${_nFpr}"; then
+    _msg "WARN: NodeSource key not fetched or not the known key"
+    rm -f "${_tmpRaw}" "${_tmpKey}"
+    return 1
+  fi
+  mkdir -p /etc/apt/keyrings
+  mv -f "${_tmpKey}" "${_nKey}"
+  chmod 0644 "${_nKey}"
+  rm -f "${_tmpRaw}"
+  rm -f /etc/apt/sources.list.d/nodesource.list
+  rm -f /usr/share/keyrings/nodesource.gpg
+  {
+    echo "Types: deb"
+    echo "URIs: https://deb.nodesource.com/node_${_nMaj}.x"
+    echo "Suites: nodistro"
+    echo "Components: main"
+    echo "Architectures: ${_nArch}"
+    echo "Signed-By: ${_nKey}"
+  } > /etc/apt/sources.list.d/nodesource.sources
+  # Above the 700 every Devuan package gets, so the NodeSource line is the
+  # candidate even where nodejs is not installed yet; below 1000, so apt never
+  # downgrades to it.
+  {
+    echo "Package: nodejs"
+    echo "Pin: origin deb.nodesource.com"
+    echo "Pin-Priority: 990"
+  } > /etc/apt/preferences.d/nodejs
+  return 0
+}
+
+#
+# Print the major version of the installed node, or nothing.
+_node_major_installed() {
+  local _isNode
+  _isNode="$(which node 2>/dev/null)"
+  if [ -x "${_isNode}" ]; then
+    ${_isNode} --version 2>/dev/null | sed -n 's/^v\([0-9][0-9]*\)\..*/\1/p'
+  fi
+}
+
 _if_install_node() {
+  local _nMaj _nHave _isNode
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_node"
   fi
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
     if [[ "${_XTRAS_LIST}" =~ "NPM" ]]; then
-      _NODE_INSTALL=NO
-      _isNode="$(which node)"
-      if [ -x "${_isNode}" ]; then
-       _NODE_V=$(${_isNode} --version \
-         | cut -d" " -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [ "${_NODE_V}" != "${_NODE_VRN}" ]; then
-          _NODE_INSTALL=YES
-          _L_ST="upgrade"
+      _nMaj="${_NODE_MAJOR}"
+      [ -z "${_nMaj}" ] && _nMaj=24
+      _nHave="$(_node_major_installed)"
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+        # NodeSource builds need a newer glibc than these systems have.
+        _msg "INFO: Node is not installed or upgraded on ${_OS_CODE}"
+      elif [ -n "${_nHave}" ] && [ "${_nHave}" -ge "${_nMaj}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Node ${_nHave} is current"
         fi
       else
-        _NODE_INSTALL=YES
-        _L_ST="install"
-      fi
-      [ ! -d "/opt/user/npm" ] && _NODE_INSTALL=YES
-      [ -d "/opt/user/npm" ] && _NODE_INSTALL=NO
-      if [ "${_NODE_INSTALL}" = "YES" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
-        fi
-        _nSrc="/etc/apt/sources.list.d/nodesource.list"
-        _nSrg="/usr/share/keyrings/nodesource.gpg"
-        rm -f ${_nSrc}
-        rm -f ${_nSrg}
-        _apt_clean_update
-        if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-          _mrun "curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
+        if [ -n "${_nHave}" ]; then
+          _msg "INFO: Upgrading Node ${_nHave} to Node ${_nMaj}..."
         else
-          _mrun "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
+          _msg "INFO: Installing Node ${_nMaj}..."
         fi
-        if [ -e "${_nSrc}" ]; then
-          if grep -q "nodistro" "${_nSrc}"; then
-            _apt_clean_update
-            for _PKG in nodejs; do
-              if ! _pkg_installed "${_PKG}"; then
-                _mrun "${_INSTAPP} ${_PKG}/nodistro"
-              fi
-            done
-          fi
+        if _node_source_setup "${_nMaj}"; then
+          _apt_clean_update
+          _mrun "${_INSTAPP} nodejs/nodistro"
+        fi
+        _nHave="$(_node_major_installed)"
+        if [ "${_nHave}" = "${_nMaj}" ]; then
+          _msg "INFO: Node ${_nMaj} installed"
+        else
+          _msg "WARN: Node ${_nMaj} not installed, the next barracuda run retries"
         fi
       fi
-      [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
-      chown root:root /opt/user/npm
-      chmod 1777 /opt/user/npm
+      # The folder holds the accounts' npm trees: create it once node works,
+      # never remove it.
+      if [ -n "$(_node_major_installed)" ]; then
+        [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+        chown root:root /opt/user/npm
+        chmod 1777 /opt/user/npm
+      fi
     fi
   else
     _isNode="$(which node)"
@@ -461,6 +722,10 @@ _if_install_node() {
       _mrun "apt-get remove nodejs -y --purge --auto-remove -qq"
       _mrun "apt-get remove npm -y --purge --auto-remove -qq"
     fi
+    rm -f /etc/apt/sources.list.d/nodesource.sources
+    rm -f /etc/apt/sources.list.d/nodesource.list
+    rm -f /etc/apt/preferences.d/nodejs
+    rm -f /etc/apt/keyrings/nodesource.gpg
   fi
 }
 

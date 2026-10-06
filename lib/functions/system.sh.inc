@@ -862,20 +862,61 @@ _sftp_ftps_modern_fix() {
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
   fi
-  if [ ! -e "${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
+  # The -ok- marker stands for a build found in /usr/bin; the markers
+  # without it were written whether the build got there or not.
+  if [ ! -e "${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
-    || [ ! -e "/usr/bin/mysecureshell" ] \
-    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ ! -e "/usr/bin/mysecureshell" ]; then
     if [ "${_MSS_BUILD}" != "YES" ]; then
+      local _mss_bin
       _msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
       cd /var/opt
       rm -rf mysecureshell*
       _get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
       cd /var/opt/mysecureshell
-      _mrun "bash ./configure"
+      # The paths are named because newer sources default to /usr/local
+      # (and older ones, given a prefix, move /etc under it), while the
+      # accounts' login shell and every binary path used here is under
+      # /usr/bin. The dialect is named because a configure that picks C23
+      # where the compiler offers it gets a build that stops on the
+      # sources' old-style declarations.
+      _mrun "bash ./configure --prefix=/usr --sysconfdir=/etc CFLAGS='-g -O2 -std=gnu11'"
       _mrun "make -j $(nproc) --quiet"
-      _mrun "sh ./install.sh yesall"
-      touch ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      # install.sh clears the screen, which complains when TERM is unset
+      _mrun "TERM=dumb sh ./install.sh yesall"
+      if cmp -s /var/opt/mysecureshell/mysecureshell /usr/bin/mysecureshell; then
+        # install.sh leaves the shell 755, and a session without the setuid
+        # bit cannot join the root-owned session table: set it now, as the
+        # end of the pass does.
+        chown root:root /usr/bin/mysecureshell
+        chmod 4755 /usr/bin/mysecureshell
+        # A build made without the prefix left its copies in /usr/local,
+        # ahead of /usr in PATH, and its own line in /etc/shells.
+        if [ -e "/usr/local/bin/mysecureshell" ]; then
+          for _mss_bin in mysecureshell sftp-admin sftp-kill sftp-state \
+            sftp-user sftp-verif sftp-who; do
+            # never the file a /usr/bin name resolves to
+            if [ ! "/usr/bin/${_mss_bin}" -ef "/usr/local/bin/${_mss_bin}" ]; then
+              rm -f "/usr/local/bin/${_mss_bin}"
+            fi
+            rm -f "/usr/local/share/man/man8/${_mss_bin}.8"
+          done
+          rm -f /usr/local/share/man/man8/MySecureShell.8
+          sed -i "\|^/usr/local/bin/mysecureshell$|d" /etc/shells
+        fi
+        # Older sources, configured without a prefix, put their pages in
+        # /share/man; this build puts them in /usr/share/man.
+        if [ -d "/share/man/man8" ]; then
+          for _mss_bin in sftp-admin sftp-kill sftp-state sftp-user \
+            sftp-verif sftp-who; do
+            rm -f "/share/man/man8/${_mss_bin}.8"
+          done
+          rmdir /share/man/man8 /share/man /share &> /dev/null
+        fi
+        touch ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      else
+        _msg "OOPS: MySecureShell ${_MSS_VRN} build did not reach /usr/bin/mysecureshell"
+      fi
       cp -af ${_locCnf}/var/sftp_config /etc/ssh/sftp_config
       _mrun "service ssh restart"
       _MSS_BUILD=YES
@@ -922,6 +963,91 @@ _disable_old_purge_cruft_machine() {
 }
 
 #
+# /data/conf is root's, but a run of an earlier release handed it to the
+# account an Octopus run upgraded (and one that stopped early left it so), so
+# any name in it (or in its global/, arch/ and patches/) can still be a link
+# or a FIFO that account put there. Files are put there only inside the real
+# directory, through these.
+#
+# The file $1 put as ./$2 in the current (pinned) directory as cp -a put
+# it (the same bytes, owner, mode and times): copied to a fresh name after
+# removing whatever is there (cp -a sets the attributes on the file it
+# created), then renamed over the name, never written through a link.
+_sys_conf_cp_here() {
+  local _t="./.${2}.put.$$.${RANDOM}"
+  if cp -afT --remove-destination -- "${1}" "${_t}" \
+    && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory edited by the sed script $2 as sed
+# -i edited it (the owner and mode it has), only while it is a regular file
+# under 1 MiB: read never through a link or into a FIFO (_acct_read_here),
+# put under a fresh name through one handle (_ACCT_PUT_MODE_PL,
+# helper.sh.inc) and renamed over the name.
+_sys_conf_sed_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _st _o _m _sz
+  _st="$(stat -c '%u:%g %a %s %F' -- "./${1}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _o _m _sz _ <<< "${_st}"
+  [[ "${_o}" =~ ^[0-9]+:[0-9]+$ && "${_m}" =~ ^[0-7]+$ ]] || return 1
+  [ "${_sz}" -lt 1048576 ] || return 1
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    _acct_read_here "${1}" | sed "${2}" \
+      | perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${_o%%:*}" "${_o#*:}" \
+        "${_m}" ) && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory made an empty file, as touch made
+# a missing one (root's, 0644): put under a fresh name through one handle
+# (_ACCT_PUT_PL, helper.sh.inc) and renamed over the name.
+_sys_conf_touch_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" -1 -1 644 < /dev/null \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# /data/conf (the current, pinned directory): arch/log made where missing
+# and set 0755, and the old global include copies moved into arch/, each
+# directory used only as the real one (a link at arch, log or global is
+# never followed).
+_sys_conf_arch_here() {
+  mkdir -p ./arch
+  _acct_in_real_dir ./arch mkdir -p ./log
+  _acct_in_real_dir ./arch _acct_in_real_dir ./log chmod 0755 . || return 0
+  mv -f ./global.inc-pre* ./arch/ &> /dev/null
+  [ -d ./global ] && [ ! -L ./global ] \
+    && _acct_in_real_dir ./global _sys_conf_pre_here
+  mv -f ./global.inc-before* ./arch/ &> /dev/null
+  mv -f ./global.inc-missing* ./arch/ &> /dev/null
+  return 0
+}
+# The old include copies of the current (pinned) global/ moved into the
+# arch/ beside it (the glob expands here).
+_sys_conf_pre_here() {
+  mv -f ./*inc-pre* ../arch/ &> /dev/null
+  return 0
+}
+# Every name directly in the current (pinned) directory removed, as rm -f
+# dir/* removed them (the glob expands here).
+_sys_conf_rm_all_here() {
+  rm -f -- ./*
+}
+
+#
 # Update BOA INI templates.
 _boa_ini_tpl_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -929,11 +1055,13 @@ _boa_ini_tpl_update() {
   fi
   mkdir -p /data/conf
   if [ -e "${_locCnf}/ini/default.boa_platform_control.ini" ]; then
-    cp -af ${_locCnf}/ini/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
+    _acct_in_real_dir /data/conf _sys_conf_cp_here \
+      "${_locCnf}/ini/default.boa_platform_control.ini" default.boa_platform_control.ini
     rm -f /var/xdrago/conf/default.boa_platform_control.ini
   fi
   if [ -e "${_locCnf}/ini/default.boa_site_control.ini" ]; then
-    cp -af ${_locCnf}/ini/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
+    _acct_in_real_dir /data/conf _sys_conf_cp_here \
+      "${_locCnf}/ini/default.boa_site_control.ini" default.boa_site_control.ini
     rm -f /var/xdrago/conf/default.boa_site_control.ini
   fi
 }
@@ -966,44 +1094,75 @@ _global_inc_conf_update() {
   fi
   _GL_D=/data/conf/global
   [ ! -d "${_GL_D}" ] && mkdir -p ${_GL_D}
+  ### Every include is put inside the real global/ (_sys_conf_cp_here), so
+  ### none when global/ is not a real directory: the dispatcher below never
+  ### lands without the chain.
+  if ! _acct_in_real_dir "${_GL_D}" true; then
+    _msg "OOPS: ${_GL_D} is not a real directory, the global include set was not deployed"
+    return 1
+  fi
   _DR_V="11 10 9 8 7 6"
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
-      cp -af ${_GL_D}/global-${e}.inc ${_GL_D}/global-${e}.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here "./global-${e}.inc" \
+        "global-${e}.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
     fi
-    cp -af ${_locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
+    _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+      "${_locCnf}/global/global-${e}.inc" "global-${e}.inc"
   done
   ### The shared INI parse lands BEFORE global-main.inc, which includes it:
   ### a main without the parse would run every site on the INI defaults.
-  cp -af ${_locCnf}/global/global-ini-parse.inc ${_GL_D}/global-ini-parse.inc
-  cp -af ${_locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
-  cp -af ${_locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
-  cp -af ${_locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
-  cp -af ${_locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
-  cp -af ${_locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-ini-parse.inc" global-ini-parse.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-main.inc" global-main.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-ini.inc" global-ini.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-mode.inc" global-mode.inc
+  ### The login/admin lock query-string gate: the per-core and Backdrop chain
+  ### heads include it after global-mode, so it ships with the chain.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-ua-qlock.inc" global-ua-qlock.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-settings.inc" global-settings.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-front-end.inc" global-front-end.inc
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
+    _acct_in_real_dir "${_GL_D}" _sys_conf_sed_here global-front-end.inc \
+      "s/3600/${_SPEED_VALID_MAX}/g" &> /dev/null
   fi
-  cp -af ${_locCnf}/global/global-if-valkey.inc ${_GL_D}/global-if-valkey.inc
-  cp -af ${_locCnf}/global/global-valkey.inc ${_GL_D}/global-valkey.inc
-  cp -af ${_locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
-  cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
-  cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
-  cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-if-valkey.inc" global-if-valkey.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-valkey.inc" global-valkey.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-newrelic.inc" global-newrelic.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-extra.inc" global-extra.inc
   ### The Backdrop chain: its Valkey wiring partial first, then the chain
   ### head that includes it together with the shared partials above. The
   ### Backdrop settings tpl includes the head only when present, so it ships
   ### inert; it blocks requests, so keep the previous copy like the per-core
   ### chain does.
-  cp -af ${_locCnf}/global/global-bd-valkey.inc ${_GL_D}/global-bd-valkey.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-bd-valkey.inc" global-bd-valkey.inc
   if [ -e "${_GL_D}/global-bd.inc" ]; then
-    cp -af ${_GL_D}/global-bd.inc ${_GL_D}/global-bd.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here ./global-bd.inc \
+      "global-bd.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   fi
-  cp -af ${_locCnf}/global/global-bd.inc ${_GL_D}/global-bd.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-bd.inc" global-bd.inc
   ### The legacy-path dispatcher is deployed LAST: it only hands off to the
   ### per-core chain above, so it must never land without the chain present.
-  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-  cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
+  _acct_in_real_dir /data/conf _sys_conf_cp_here ./global.inc \
+    "global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+  _acct_in_real_dir /data/conf _sys_conf_cp_here \
+    "${_locCnf}/global/global.inc" global.inc
+  ### The Redis server is retired and no chain head above names its includes:
+  ### the copies an earlier release left in the real global/ go (a link or a
+  ### directory at either name too, never followed).
+  _acct_in_real_dir "${_GL_D}" rm -rf -- ./global-redis.inc ./global-if-redis.inc
 }
 
 #
@@ -1012,7 +1171,6 @@ _fix_on_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_on_upgrade"
   fi
-  sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af ${_locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
@@ -1026,8 +1184,6 @@ _fix_on_upgrade() {
   _global_inc_conf_update
   if [ -e "/etc/init.d/valkey-server" ]; then
     _valkey_password_update
-  elif [ -e "/etc/init.d/redis-server" ]; then
-    _redis_password_update
   fi
 }
 
@@ -1214,8 +1370,8 @@ _valkey_ceiling_derive() {
   # _RAM/3 on every busy box while hit/miss/eviction behaviour does not;
   # else the legacy measured guard (peak x4, floored _RAM/16 and 512M,
   # only ever below _RAM/3); else the historical _RAM/3. Any read or
-  # parse failure falls through to the next rung, and Redis-legacy boxes
-  # (no valkey.conf) keep _RAM/3 unconditionally.
+  # parse failure falls through to the next rung, and a box with no
+  # valkey.conf yet keeps _RAM/3 unconditionally.
   _VK_PSW=""
   _VK_MEASURED=""
   _VK_LIVE_USED_MB=""
@@ -1718,6 +1874,7 @@ _tune_memory_limits() {
         if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
+        sed -i "s/64000/128000/g"  /opt/php86/etc/php86.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php85/etc/php85.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
@@ -1812,7 +1969,7 @@ _tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/395/${_USE_FPM}/g"   /opt/php${e}/etc/php${e}.ini &> /dev/null
@@ -1869,6 +2026,7 @@ _tune_memory_limits() {
       sed -i "s/utf8mb4_general_ci/${_SYS_COLLATION_SQL}/g"                       /etc/mysql/my.cnf &> /dev/null
     fi
   fi
+  _percona_telemetry_off
 
   _valkey_ceiling_derive
   if [ -n "${_VALKEY_MAXMEM_PIN}" ]; then
@@ -1908,26 +2066,6 @@ _tune_memory_limits() {
     fi
     if [ -n "${_NEEDS_VALKEY_RESTART}" ]; then
       service valkey-server restart &> /dev/null
-    fi
-  fi
-
-  if [ -e "/etc/redis/redis.conf" ]; then
-    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
-    _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/redis/redis.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/redis/redis.conf &> /dev/null
-      _NEEDS_VALKEY_RESTART=YES
-    fi
-    if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
-      sed -i "s/^# save \"\"/save \"\"/g" /etc/redis/redis.conf &> /dev/null
-      _NEEDS_VALKEY_RESTART=YES
-    fi
-    if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
-      printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/redis/redis.conf
-      _NEEDS_VALKEY_RESTART=YES
-    fi
-    if [ -n "${_NEEDS_VALKEY_RESTART}" ]; then
-      service redis-server restart &> /dev/null
     fi
   fi
 
@@ -2517,15 +2655,100 @@ _php_multi_uniq() {
 # else.
 _php_vrn_dotted() {
   case "$1" in
-    56|70|71|72|73|74|80|81|82|83|84|85) echo "${1:0:1}.${1:1:1}" ;;
+    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${1:0:1}.${1:1:1}" ;;
   esac
+}
+
+#
+# Whether an account asks for PHP 8.6, a release candidate that a box gets
+# only on request: fpm.info or cli.info whose whole value is 8.6 (86 too, as
+# the ltd worker reads them), or a multi-fpm.info row that pins a site to it
+# (its second field; a '#' row is a comment), the worker's own
+# place.holder.dont.remove row included, as for the other versions. 8.6
+# inside a comment, a domain or a longer value does not count, unlike the
+# substring checks of the other versions in _php_if_versions_cleanup_cnf.
+_php_eight_six_asked() {
+  local _c _f _v
+  for _c in /data/disk/*/static/control; do
+    # the account's own directory: never a link, never a FIFO opened
+    _acct_in_real_dir "${_c}" true || continue
+    for _f in fpm.info cli.info; do
+      _v="$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9.')"
+      case "${_v}" in
+        8.6|86) return 0 ;;
+      esac
+    done
+    [ -e "${_c}/multi-fpm.info" ] || continue
+    _v="$(_acct_read_in "${_c}" multi-fpm.info \
+      | awk '$1 !~ /^#/ && NF >= 2 {
+          v = $2; gsub(/[^0-9]/, "", v); if (v == "86") n++ } END { print n + 0 }')"
+    [ "${_v}" -gt 0 ] && return 0
+  done
+  return 1
+}
+
+#
+# Whether PHP 8.6 belongs to this box's PHP set by default: on a hosted or
+# remotely managed system (_if_hosted_sys) it does, under the gates of the 8.4
+# _php_if_versions_cleanup_cnf adds there: no single-PHP mode, no major OS
+# upgrade under way (a run-to-* marker), a modern OpenSSL, and a release that
+# ships an 8.6. A self-hosted system gets 8.6 only when its cnf lists it or an
+# account asks for it (_php_eight_six_asked).
+_php_eight_six_hosted() {
+  _if_hosted_sys
+  [ "${_hostedSys}" = "YES" ] || return 1
+  case "${_PHP_SINGLE_INSTALL}" in
+    8.3|8.4|8.5|8.6) return 1 ;;
+  esac
+  [ -n "${_PHP86_VRN}" ] || return 1
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    return 1
+  fi
+  [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
+    && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]
+}
+
+#
+# The default path of _php_if_versions_cleanup_cnf keeps the cnf's
+# _PHP_MULTI_INSTALL as it is: where _php_eight_six_hosted says so, 8.6 joins
+# that list, in this pass and in /root/.barracuda.cnf, so every reader of the
+# cnf sees the set the pass builds. Once listed, nothing is changed again.
+_php_eight_six_hosted_cnf() {
+  local _cur
+  case " ${_PHP_MULTI_INSTALL} " in
+    *" 8.6 "*) ;;
+    *)
+      _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL:+${_PHP_MULTI_INSTALL} }8.6"
+      export _PHP_MULTI_INSTALL
+      _msg "INFO: PHP 8.6 added to _PHP_MULTI_INSTALL (hosted system default)"
+      ;;
+  esac
+  [ -e "${_barCnf}" ] || return 0
+  case "${_PHP_MULTI_INSTALL}" in
+    *[!0-9.\ ]*) return 1 ;;
+  esac
+  _cur="$(grep "^_PHP_MULTI_INSTALL=" "${_barCnf}" 2> /dev/null | tail -n 1)"
+  _cur="${_cur#_PHP_MULTI_INSTALL=}"
+  _cur="${_cur//[\"\']/}"
+  case " ${_cur} " in
+    *" 8.6 "*) return 0 ;;
+  esac
+  if grep -q "^_PHP_MULTI_INSTALL=" "${_barCnf}" 2> /dev/null; then
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/" "${_barCnf}"
+  else
+    echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> "${_barCnf}"
+  fi
 }
 
 #
 # The PHP versions the accounts pin that the dotted greps of
 # _php_if_versions_cleanup_cnf miss, so the cleanup does not disable them:
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
-#   worker reads 74 as 7.4);
+#   worker reads 74 as 7.4); 8.6 in these files is read by
+#   _php_eight_six_asked only;
 # - of the versions installed now, every one a cli-per-platform.info line
 #   names (read as websh reads the file: its first 64 KiB and 200 lines, '#'
 #   opening a comment, a line counting only as "<folder> <version>"), and the
@@ -2533,24 +2756,32 @@ _php_vrn_dotted() {
 #   whose PHP is installed). A line or switch naming a PHP that is not
 #   installed is ignored by websh, so it adds nothing here either.
 _php_versions_pinned_more() {
-  local _c _f _v _k _dom _rest _line _e _mk _txt _n _out=""
+  local _c _f _v _k _rest _line _e _mk _txt _n _out=""
   for _c in /data/disk/*/static/control; do
-    [ -d "${_c}" ] || continue
-    for _f in "${_c}/fpm.info" "${_c}/cli.info"; do
-      [ -e "${_f}" ] || continue
-      _v="$(_php_vrn_dotted "$(tr -cd '0-9' < "${_f}" 2> /dev/null)")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+    # the account's own directory: never a link, never a FIFO opened
+    _acct_in_real_dir "${_c}" true || continue
+    for _f in fpm.info cli.info; do
+      _v="$(_php_vrn_dotted "$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9')")"
+      [ -n "${_v}" ] && [ "${_v}" != "8.6" ] && _out="${_out} ${_v}"
     done
     if [ -e "${_c}/multi-fpm.info" ]; then
-      while read -r _dom _v _rest; do
-        case "${_dom}" in \#*|"") continue ;; esac
-        _v="$(_php_vrn_dotted "${_v//[^0-9]/}")"
-        [ -n "${_v}" ] && _out="${_out} ${_v}"
-      done < "${_c}/multi-fpm.info"
+      # one row per site: "<site> <version>", '#' opening a comment row, the
+      # version the digits of its field. Taken for the whole file by one
+      # pipeline, each version once: no process per row, and no shell
+      # pattern substitution, whose cost grows with the square of a field's
+      # length.
+      _v="$(_acct_read_in "${_c}" multi-fpm.info \
+        | awk '$1 !~ /^#/ && NF >= 2 { print $2 }' \
+        | tr -cd '0-9\n' \
+        | grep -xE '56|7[0-4]|8[0-5]' \
+        | sort -u \
+        | sed 's/^\(.\)\(.\)$/ \1.\2/' \
+        | tr -d '\n')"
+      _out="${_out}${_v}"
     fi
     if [ -e "${_c}/cli-per-platform.info" ]; then
       _txt=""; _n=0
-      { IFS= read -r -N 65536 _txt < "${_c}/cli-per-platform.info"; } 2> /dev/null
+      _txt="$(_acct_read_in "${_c}" cli-per-platform.info | head -c 65536)"
       while IFS= read -r _line; do
         _n=$(( _n + 1 ))
         [ "${_n}" -gt 200 ] && break
@@ -2564,7 +2795,7 @@ _php_versions_pinned_more() {
       done <<< "${_txt}"
     fi
     _mk=""
-    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_c}/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
     done
     [ -n "${_mk}" ] && _out="${_out} $(_php_vrn_dotted "${_mk}")"
@@ -2578,8 +2809,8 @@ _php_legacy_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_legacy_versions_cleanup_cnf"
   fi
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.2" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.2" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2590,8 +2821,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.2" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.2" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2602,8 +2833,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.3" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.3" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2614,8 +2845,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.3" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.3" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2626,8 +2857,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.4" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.4" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2638,8 +2869,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.4" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.4" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2650,8 +2881,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.5" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.5" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -2662,8 +2893,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.5" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.5" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -2784,7 +3015,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
@@ -2820,15 +3052,19 @@ _php_if_versions_cleanup_cnf() {
           fi
         fi
       fi
+      ### Hosted and managed systems: PHP 8.6 too, under the same gates
+      if _php_eight_six_hosted; then
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} 8.6"
+      fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
         _msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
       fi
 
       ### Add PHP 5.6 if used
-      _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_five_six=$(_acct_read_all static/control multi-fpm.info | grep "5\.6" 2>&1)
+      _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | grep "5\.6" 2>&1)
+      _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | grep "5\.6" 2>&1)
       _is_PHP_five_six=
       if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
         || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
@@ -2838,9 +3074,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.0 if used
-      _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_zero=$(_acct_read_all static/control multi-fpm.info | grep "7\.0" 2>&1)
+      _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | grep "7\.0" 2>&1)
+      _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | grep "7\.0" 2>&1)
       _is_PHP_seven_zero=
       if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
         || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
@@ -2850,9 +3086,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.1 if used
-      _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_one=$(_acct_read_all static/control multi-fpm.info | grep "7\.1" 2>&1)
+      _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | grep "7\.1" 2>&1)
+      _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | grep "7\.1" 2>&1)
       _is_PHP_seven_one=
       if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
         || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
@@ -2862,9 +3098,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.2 if used
-      _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_two=$(_acct_read_all static/control multi-fpm.info | grep "7\.2" 2>&1)
+      _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | grep "7\.2" 2>&1)
+      _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | grep "7\.2" 2>&1)
       _is_PHP_seven_two=
       if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
         || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
@@ -2874,9 +3110,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.3 if used
-      _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_three=$(_acct_read_all static/control multi-fpm.info | grep "7\.3" 2>&1)
+      _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | grep "7\.3" 2>&1)
+      _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | grep "7\.3" 2>&1)
       _is_PHP_seven_three=
       if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
         || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
@@ -2886,9 +3122,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.4 if used
-      _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_four=$(_acct_read_all static/control multi-fpm.info | grep "7\.4" 2>&1)
+      _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | grep "7\.4" 2>&1)
+      _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | grep "7\.4" 2>&1)
       _is_PHP_seven_four=
       if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
         || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
@@ -2898,9 +3134,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.0 if used
-      _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_zero=$(_acct_read_all static/control multi-fpm.info | grep "8\.0" 2>&1)
+      _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | grep "8\.0" 2>&1)
+      _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | grep "8\.0" 2>&1)
       _is_PHP_eight_zero=
       if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
         || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
@@ -2910,9 +3146,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.1 if used
-      _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_one=$(_acct_read_all static/control multi-fpm.info | grep "8\.1" 2>&1)
+      _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | grep "8\.1" 2>&1)
+      _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | grep "8\.1" 2>&1)
       _is_PHP_eight_one=
       if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
         || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
@@ -2922,9 +3158,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.2 if used
-      _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_two=$(_acct_read_all static/control multi-fpm.info | grep "8\.2" 2>&1)
+      _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | grep "8\.2" 2>&1)
+      _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | grep "8\.2" 2>&1)
       _is_PHP_eight_two=
       if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
         || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
@@ -2934,9 +3170,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.3 if used
-      _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_three=$(_acct_read_all static/control multi-fpm.info | grep "8\.3" 2>&1)
+      _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | grep "8\.3" 2>&1)
+      _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | grep "8\.3" 2>&1)
       _is_PHP_eight_three=
       if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
         || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
@@ -2946,9 +3182,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.4 if used
-      _is_PHP_multi_eight_four=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_four=$(grep "8\.4" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_four=$(grep "8\.4" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_four=$(_acct_read_all static/control multi-fpm.info | grep "8\.4" 2>&1)
+      _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | grep "8\.4" 2>&1)
+      _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | grep "8\.4" 2>&1)
       _is_PHP_eight_four=
       if [[ "${_is_PHP_multi_eight_four}" =~ "8.4" ]] \
         || [[ "${_is_PHP_FPM_eight_four}" =~ "8.4" ]] \
@@ -2958,15 +3194,23 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.5 if used
-      _is_PHP_multi_eight_five=$(grep "8\.5" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_five=$(grep "8\.5" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_five=$(grep "8\.5" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_five=$(_acct_read_all static/control multi-fpm.info | grep "8\.5" 2>&1)
+      _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | grep "8\.5" 2>&1)
+      _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | grep "8\.5" 2>&1)
       _is_PHP_eight_five=
       if [[ "${_is_PHP_multi_eight_five}" =~ "8.5" ]] \
         || [[ "${_is_PHP_FPM_eight_five}" =~ "8.5" ]] \
         || [[ "${_is_PHP_CLI_eight_five}" =~ "8.5" ]]; then
         _is_PHP_eight_five=8.5
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_five}"
+      fi
+
+      ### Add PHP 8.6 only if an account asks for it: a release candidate is
+      ### never added for 8.6 inside a comment, a domain or a longer value
+      _is_PHP_eight_six=
+      if _php_eight_six_asked; then
+        _is_PHP_eight_six=8.6
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_six}"
       fi
 
       ### Add the versions the checks above cannot see: a two-digit pin and
@@ -3012,6 +3256,9 @@ _php_if_versions_cleanup_cnf() {
       [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
       [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
     fi
+  elif _php_eight_six_hosted; then
+    ### Hosted and managed systems: PHP 8.6 joins the cnf's list
+    _php_eight_six_hosted_cnf
   fi
 }
 
@@ -3270,6 +3517,13 @@ _convert_etcboa_markers_to_cnf() {
 }
 
 #
+# The PHP CLI stamps in the current (pinned) ~/.drush of an account, removed
+# there: the glob expands in that directory, never in the caller's.
+_php_ctrl_stamps_rm_here() {
+  rm -f -- ./.ctrl.php*
+}
+
+#
 # Read or create Barracuda cnf file.
 _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3299,6 +3553,17 @@ _barracuda_cnf() {
     grep -q "^_GHOST_CODEBASES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_CODEBASES_CLEANUP=YES
     grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
     grep -q "^_GHOST_ALIASES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
+  fi
+  # Hosted and remotely managed systems (_if_hosted_sys: /root/.host8.cnf counts
+  # too) have Grav and Textpattern on by default, as Backdrop is everywhere.
+  # The switches are per Octopus instance (_satellite_cnf); the values here are
+  # recorded for reference and follow the same rule: YES when the line is not in
+  # the cnf yet, and a NO seeded before this default existed flips once (the
+  # _GRAV_TXP_SUPPORT_MIGRATED marker below), so a NO written after it stays.
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    grep -q "^_GRAV_SUPPORT=" "${_barCnf}" 2>/dev/null || _GRAV_SUPPORT=YES
+    grep -q "^_TXP_SUPPORT=" "${_barCnf}" 2>/dev/null || _TXP_SUPPORT=YES
   fi
   # Prebuilt heavy-stack packages default to YES on Devuan Daedalus and
   # Excalibur, where the mirrors publish the complete boa-* set, but ONLY
@@ -3504,6 +3769,10 @@ _barracuda_cnf() {
     echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
     echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                     >> ${_barCnf}
     echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                       >> ${_barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED"                   >> "${_barCnf}"
+    fi
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -3769,18 +4038,25 @@ _barracuda_cnf() {
     if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark; anchored like _BACKDROP_SUPPORT above.
-    ### No _MIGRATED heal: the gate has never defaulted differently.
+    ### Off on self-hosted systems, on by default on hosted ones (see the
+    ### top of this function); anchored like _BACKDROP_SUPPORT above.
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark; anchored like the gates above. No
-    ### _MIGRATED heal: the gate has never defaulted differently (that
-    ### machinery belongs to the commit that ever flips the default).
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_barCnf}
+    fi
+    ### One-shot flip on hosted systems: a NO seeded while both shipped dark
+    ### everywhere predates any operator choice; a NO written after the
+    ### marker lands stays.
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ] \
+      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_barCnf}" 2> /dev/null; then
+      sed -i "s/^_GRAV_SUPPORT=NO$/_GRAV_SUPPORT=YES/g" "${_barCnf}"
+      sed -i "s/^_TXP_SUPPORT=NO$/_TXP_SUPPORT=YES/g" "${_barCnf}"
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED" >> "${_barCnf}"
     fi
     ### One-shot opt-out migration: a NO seeded while the gate briefly
     ### defaulted to NO (2026-07-11..13) predates any operator choice, so
@@ -4493,7 +4769,8 @@ _barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
@@ -4510,20 +4787,27 @@ _barracuda_cnf() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for _Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/fpm.txt"
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/cli.txt"
+          ### each account's own directories: written inside the real
+          ### directory, never through a link or into a FIFO put there
+          for _Ctrl in /data/disk/*/log; do
+            _acct_put_in "${_Ctrl}" fpm.txt "${_PHP_SINGLE_INSTALL}"
+            _acct_put_in "${_Ctrl}" cli.txt "${_PHP_SINGLE_INSTALL}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
-          for _Ctrl in `find /data/disk/*/static/control \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/fpm.info"
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/cli.info"
+          for _Ctrl in /data/disk/*/static/control; do
+            _ctrlUsr="${_Ctrl#/data/disk/}"
+            _ctrlUsr="${_ctrlUsr%%/*}"
+            _ctrlOwn="${_ctrlUsr}.ftp:$(_acct_group "${_ctrlUsr}")"
+            _acct_in_real_dir "${_Ctrl}" _acct_pin_here fpm.info \
+              "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"
+            _acct_in_real_dir "${_Ctrl}" _acct_pin_here cli.info \
+              "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
-          for _Ctrl in `find /data/disk/*/.drush \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            rm -f "${_Ctrl}"/.ctrl.php*
+          ### oN owns its ~/.drush: the stamps go inside the real
+          ### directory, never in one a link put there leads to
+          for _Ctrl in /data/disk/*/.drush; do
+            _acct_in_real_dir "${_Ctrl}" _php_ctrl_stamps_rm_here
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
         fi
@@ -4613,7 +4897,7 @@ _mytop_install() {
         _mrun "cpanm Term::ReadKey --force"
       fi
       cd /var/opt
-      rm -rf git*
+      rm -rf mytop*
       _get_dev_src "mytop-1.6.tar.gz"
       cd /var/opt/mytop-1.6
       _mrun "perl Makefile.PL"
@@ -4663,11 +4947,9 @@ _run_apt_get_dist_upgrade() {
   ### Reload key services if needed early
   if [ -e "/etc/init.d/valkey-server" ]; then
     _mrun "service valkey-server reload"
-  elif [ -e "/etc/init.d/redis-server" ]; then
-    _mrun "service redis-server reload"
   fi
   _mrun "service nginx reload"
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       _mrun "service php${e}-fpm reload"
@@ -4953,6 +5235,25 @@ _resolve_icu_target() {
 }
 
 #
+# The ICU version PHP builds compile against: configure finds it through the
+# icu-uc.pc the last ICU install left in /usr/local, which ICU writes after
+# every library, and the headers it points at must carry the same version.
+# Empty when they disagree (an install that stopped part way) or are missing.
+# A version dir under /usr/local/lib/icu, and so 'current', proves nothing on
+# its own: an earlier install leaves its dir behind.
+_installed_icu_vrn() {
+  local _hdr
+  local _pc
+  _hdr=$(sed -n 's/^#define U_ICU_VERSION "\([0-9.]*\)".*/\1/p' \
+    /usr/local/include/unicode/uvernum.h 2> /dev/null | head -n 1)
+  _pc=$(sed -n 's/^Version: *\([0-9.]*\).*/\1/p' \
+    /usr/local/lib/pkgconfig/icu-uc.pc 2> /dev/null | head -n 1)
+  if [ -n "${_hdr}" ] && [ "${_hdr}" = "${_pc}" ]; then
+    echo "${_hdr}"
+  fi
+}
+
+#
 # Install ICU (modern/newer tiers) from sources. Version comes from
 # _resolve_icu_target via _ICU_TARGET_VRN, so _ICU_FORCE_VRN can pin it. Jessie
 # keeps its own installer (different tarball/source layout).
@@ -5004,11 +5305,14 @@ _install_icu() {
   # _install_icu the target is always the modern/newer tier a correctly built box
   # already resolves to, so a never-pinned box never sees a spurious rebuild
   # (a relative 'current' symlink canonicalises via readlink -f to the same path).
+  # The installed headers carrying another version also (re)builds it: that is
+  # what PHP compiles against, and only a real install changes them.
   _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${_pthIcuLog}" ] \
     || [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
-      != "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+      != "/usr/local/lib/icu/${_ICU_DOT}" ] \
+    || [ "$(_installed_icu_vrn)" != "${_ICU_DOT}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the compile;
@@ -5019,7 +5323,8 @@ _install_icu() {
     _ICU_DEB_INSTALLED=NO
     if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
       if _install_boa_deb "boa-icu" "${_ICU_TARGET_VRN}"; then
-        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ] \
+          && [ "$(_installed_icu_vrn)" = "${_ICU_DOT}" ]; then
           _ICU_DEB_INSTALLED=YES
           _msg "INFO: ICU ${_ICU_TARGET_VRN} installed from prebuilt package"
         else
@@ -5040,14 +5345,20 @@ _install_icu() {
       _mrun "make --quiet install"
     fi
     ldconfig 2> /dev/null
-    if [ -e "/usr/local/lib/icu" ]; then
+    # Only a real install moves the marker and the 'current' symlink (existence-
+    # checked to gate installs/rebuilds) to the target, so installed == resolved
+    # target even when pinned to a version other than the OS default. A failed
+    # download or build leaves both as they were, so the next pass tries again
+    # and no PHP is rebuilt for an ICU that is not there (_check_php_rebuild);
+    # the target's dir alone can be a leftover of an earlier install.
+    _ICU_HDR_VRN="$(_installed_icu_vrn)"
+    if [ "${_ICU_HDR_VRN}" = "${_ICU_DOT}" ]; then
       touch ${_pthIcuLog}
-    fi
-    # Point the 'current' symlink (existence-checked to gate installs/rebuilds)
-    # at the version we just built, so installed == resolved target even when
-    # pinned to a different version than the OS default. _ICU_DOT resolved above.
-    if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
-      ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
+      if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+        ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
+      fi
+    else
+      _msg "ALRT: ICU ${_ICU_TARGET_VRN} did not install (installed: ${_ICU_HDR_VRN:-none or partial}); PHP keeps its builds, the next pass tries again"
     fi
     _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -5136,7 +5447,7 @@ _php_install_deps() {
   ###--------------------###
   _apt_clean_update
 
-  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev; do
+  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev libacl1-dev; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi
@@ -6519,8 +6830,7 @@ _ssl_install_src() {
     _ssl_paths_update "${_THIS_SSL_BINARY}"
     _ssl_apt_locks_update
   else
-    _msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
-    _SSL_INSTALL_REQUIRED=
+    _msg "OOPS: OpenSSL version ${_OPENSSL_BUILD_VRN} was not installed!"
     _SSH_FORCE_REINSTALL=
     _NGX_FORCE_REINSTALL=
     _PHP_FORCE_REINSTALL=
@@ -6602,7 +6912,10 @@ _if_ssl_install_src() {
     if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
-    if grep -i '2019-2026' ${_sslMacros} &> /dev/null; then
+    # The installed headers must be the pinned release's own: opensslv.h
+    # names its version, so this follows the pin with nothing to edit.
+    if grep -qF "OPENSSL_FULL_VERSION_STR \"${_OPENSSL_NEW_VRN}\"" \
+      /usr/local/ssl3/include/openssl/opensslv.h &> /dev/null; then
       _sslIncludesB=YES
     fi
     if [ "${_sslIncludesA}" = "NO" ] || [ "${_sslIncludesB}" = "NO" ]; then
@@ -6644,7 +6957,7 @@ _if_ssl_install_src() {
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
     rm -f ${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log
-    rm -f ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+    rm -f ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: OpenSSL rebuild forced"
     fi
@@ -7220,6 +7533,7 @@ _get_bin_paths() {
                 /opt/php83/bin \
                 /opt/php84/bin \
                 /opt/php85/bin \
+                /opt/php86/bin \
                 /sbin \
                 /usr/bin \
                 /usr/lib/ConsoleKit/run-session.d \
@@ -7366,6 +7680,79 @@ _switch_to_bash() {
 }
 
 #
+# The files type -ap finds for a name, resolved as readlink -f does. The pass
+# used to look its backend and protected items up after its group loops had
+# given every file of theirs an execute bit, so a file already bound for a
+# final state in _sbpFinal (the caller's) counts as found before it has one.
+_sbp_find_item() {
+  local _sbpD=""
+  local _sbpC=""
+  local _sbpR=""
+  local IFS=:
+  for _sbpD in ${PATH}; do
+    _sbpC="${_sbpD:-.}/${1}"
+    [ -f "${_sbpC}" ] || continue
+    _sbpR=$(readlink -f -- "${_sbpC}" 2> /dev/null) || _sbpR="${_sbpC}"
+    if [ -x "${_sbpC}" ] || [ -n "${_sbpFinal["${_sbpR}"]+x}" ]; then
+      echo "${_sbpR}"
+    fi
+  done
+}
+#
+# One file to its final group, owner (when $4 names one) and mode. Of the two
+# moves, the one after which a member of only one of the two groups still has
+# what both states give it goes first; where neither order keeps that, the
+# mode first gains the bits of both. No file is ever less usable than both
+# where it starts and where it ends. A file another of its names (a hard
+# link) has settled in this pass is left: the caller's _sbpDone holds them.
+_sbp_settle() {
+  local _sbpF="${1}"
+  local _sbpG="${2}"
+  local _sbpM="${3}"
+  local _sbpO="${4}"
+  local _sbpCu=""
+  local _sbpCg=""
+  local _sbpCm=""
+  local _sbpGs=0
+  local _sbpOs=0
+  local _sbpGe=0
+  local _sbpOe=0
+  local _sbpId=""
+  read -r _sbpId _sbpCu _sbpCg _sbpCm < <(stat -c '%d:%i %U %G %a' -- "${_sbpF}" 2> /dev/null)
+  [[ "${_sbpCm}" =~ ^[0-7]+$ ]] || return 0
+  if [ -n "${_sbpId}" ] && declare -p _sbpDone &> /dev/null; then
+    [ -z "${_sbpDone["${_sbpId}"]+x}" ] || return 0
+    _sbpDone["${_sbpId}"]=1
+  fi
+  if [ "${_sbpCg}" = "${_sbpG}" ] \
+    && { [ -z "${_sbpO}" ] || [ "${_sbpCu}" = "${_sbpO}" ]; }; then
+    [ "${_sbpCm}" = "${_sbpM}" ] || chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+    return 0
+  fi
+  _sbpGs=$(( (8#${_sbpCm} >> 3) & 7 ))
+  _sbpOs=$(( 8#${_sbpCm} & 7 ))
+  _sbpGe=$(( (8#${_sbpM} >> 3) & 7 ))
+  _sbpOe=$(( 8#${_sbpM} & 7 ))
+  if (( ((_sbpOs & _sbpGe) & ~_sbpGs) == 0 && ((_sbpGs & _sbpOe) & ~_sbpOs) == 0 )); then
+    _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
+    [ "${_sbpCm}" = "${_sbpM}" ] || chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+  elif (( ((_sbpOs & _sbpGe) & ~_sbpOe) == 0 && ((_sbpGs & _sbpOe) & ~_sbpGe) == 0 )); then
+    chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+    _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
+  else
+    chmod "$(printf '%o' $(( (8#${_sbpCm} | 8#${_sbpM}) & 8#777 )))" "${_sbpF}" &> /dev/null
+    _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
+    chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+  fi
+}
+_sbp_regroup() {
+  if [ -n "${3}" ]; then
+    chown "${3}:${2}" "${1}" &> /dev/null
+  else
+    chgrp "${2}" "${1}" &> /dev/null
+  fi
+}
+#
 # Strict Permissions on All Binaries.
 _strict_bin_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7386,6 +7773,7 @@ _strict_bin_permissions() {
               /opt/php83/bin \
               /opt/php84/bin \
               /opt/php85/bin \
+              /opt/php86/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -7398,44 +7786,31 @@ _strict_bin_permissions() {
       chmod 711 $p &> /dev/null
     fi
   done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp root $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
+  # Each file's final group, owner and mode is worked out first and reached in
+  # one move. The loops this replaces moved group users to root, and only a
+  # later loop gave the group back, then took the backend items from users 750
+  # back to root 755: for some seconds aegir and every other member of group
+  # users could not run php, bash and the rest, and nobody outside it could run
+  # the backend items (an upgrade's own master verifies failed with "php:
+  # Permission denied"). The end state is the one those loops left: a file of
+  # group users, lshellg, www-data, root or staff goes to users 750, a pdf tool
+  # and a backend item to root 755, a protected item to root:root 700, the
+  # later of these winning.
+  local -A _sbpFinal=()
+  local _sbpGroups=""
+  local _sbpGrp=""
+  local _sbpFile=""
+  local _sbpItem=""
+  for _sbpGrp in users lshellg www-data root staff; do
+    if getent group "${_sbpGrp}" > /dev/null 2>&1; then
+      _sbpGroups="${_sbpGroups:+${_sbpGroups} -o }-group ${_sbpGrp}"
     fi
   done
   for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group lshellg ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp root $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
-    fi
-  done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group www-data ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp root $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
-    fi
-  done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp users $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
-    fi
-  done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp users $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
+    if [ -e "$p" ] && [ -n "${_sbpGroups}" ]; then
+      while IFS= read -r _sbpFile; do
+        _sbpFinal["${_sbpFile}"]="users 750"
+      done < <(find $p \( ${_sbpGroups} \) ! -perm -4000 ! -perm -2000 -type f)
     fi
   done
 
@@ -7448,12 +7823,11 @@ _strict_bin_permissions() {
                         /usr/sbin"
 
   for p in ${_WEBSERVER_BIN_PATHS}; do
-    for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf`; do
-      if [ -e "$f" ]; then
-        chgrp root $f &> /dev/null
-        chmod 755 $f &> /dev/null
+    while IFS= read -r _sbpFile; do
+      if [ -e "${_sbpFile}" ]; then
+        _sbpFinal["${_sbpFile}"]="root 755"
       fi
-    done
+    done < <(find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf)
   done
 
   _BACKEND_ITEMS="advdef \
@@ -7545,18 +7919,11 @@ _strict_bin_permissions() {
     _BACKEND_ITEMS="${_BACKEND_ITEMS} ${_BACKEND_ITEMS_LIST}"
   fi
   for i in ${_BACKEND_ITEMS}; do
-    # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
-    type -ap -- "${i}" 2>/dev/null \
-      | while IFS= read -r _BIN_ITEM; do
-          readlink -f -- "${_BIN_ITEM}" 2>/dev/null || echo "${_BIN_ITEM}"
-        done \
-      | sort -u \
-      | while IFS= read -r _BIN_ITEM; do
-          if [ -e "${_BIN_ITEM}" ]; then
-            chgrp root ${_BIN_ITEM} &> /dev/null
-            chmod 755 ${_BIN_ITEM} &> /dev/null
-          fi
-        done
+    while IFS= read -r _sbpItem; do
+      if [ -e "${_sbpItem}" ]; then
+        _sbpFinal["${_sbpItem}"]="root 755"
+      fi
+    done < <(_sbp_find_item "${i}" | sort -u)
   done
 
   _PROTECTED_ITEMS="backboa \
@@ -7587,22 +7954,39 @@ _strict_bin_permissions() {
                     valkey-cli"
 
   for i in ${_PROTECTED_ITEMS}; do
-    # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
-    type -ap -- "${i}" 2>/dev/null \
-      | while IFS= read -r _BIN_ITEM; do
-          readlink -f -- "${_BIN_ITEM}" 2>/dev/null || echo "${_BIN_ITEM}"
-        done \
-      | sort -u \
-      | while IFS= read -r _BIN_ITEM; do
-          if [ -e "${_BIN_ITEM}" ]; then
-            chown root:root "${_BIN_ITEM}" &> /dev/null
-            chmod 700 "${_BIN_ITEM}" &> /dev/null
-          fi
-        done
+    while IFS= read -r _sbpItem; do
+      if [ -e "${_sbpItem}" ]; then
+        _sbpFinal["${_sbpItem}"]="root 700 root"
+      fi
+    done < <(_sbp_find_item "${i}" | sort -u)
+  done
+  # The cache's protected check tools (redis-check-aof, valkey-check-aof)
+  # are links to its server, which the lines below set back to root:root
+  # 755: it goes there straight.
+  _sbpItem=$(readlink -f -- /usr/bin/redis-server 2> /dev/null)
+  if [ -n "${_sbpItem}" ] && [ -n "${_sbpFinal["${_sbpItem}"]+x}" ]; then
+    _sbpFinal["${_sbpItem}"]="root 755 root"
+  fi
+  # One move per file, not per name: git's builtins are hard links of
+  # /usr/local/bin/git. A file takes the strongest of its names' rules, as
+  # the later loop won before: those settle first, and _sbp_settle passes
+  # over a file another name has settled.
+  local -A _sbpDone=()
+  local _sbpRule=""
+  for _sbpRule in "root 755 root" "root 700 root" "root 755" "users 750"; do
+    for _sbpFile in "${!_sbpFinal[@]}"; do
+      [ "${_sbpFinal["${_sbpFile}"]}" = "${_sbpRule}" ] || continue
+      # word split on purpose: the group, the mode and the owner, if one
+      _sbp_settle "${_sbpFile}" ${_sbpRule}
+    done
   done
 
-  chown root:root /usr/bin/mysecureshell
-  chmod 4755 /usr/bin/mysecureshell
+  # chown clears the setuid bit, and no session starts without it: touch
+  # the shell only when it is not already as wanted.
+  if [ "$(stat -L -c '%a %U:%G' /usr/bin/mysecureshell 2> /dev/null)" != "4755 root:root" ]; then
+    chown root:root /usr/bin/mysecureshell
+    chmod 4755 /usr/bin/mysecureshell
+  fi
 
   chown root:root /usr/bin/redis-server
   chmod 755 /usr/bin/redis-server
@@ -7683,8 +8067,6 @@ _if_enforce_apparmor_profiles() {
         wait
         if [ -e "/etc/init.d/valkey-server" ]; then
           _mrun "service valkey-server reload"
-        elif [ -e "/etc/init.d/redis-server" ]; then
-          _mrun "service redis-server reload"
         fi
         _mrun "pkill -u unbound -x unbound"
         _mrun "killall pure-ftpd"
@@ -7729,6 +8111,7 @@ _sync_apparmor_profiles() {
                     tcpdump \
                     totem \
                     traceroute \
+                    usr.bin.redis-server \
                     usr.sbin.sshd"
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
@@ -8017,17 +8400,19 @@ _finale() {
   apt-get autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
-  mkdir -p /data/conf/arch/log
   # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
   # not /data/conf/arch/log — the log subdirectory is vestigial and has no
   # current writer. World-writable is wrong on principle, and a future
   # feature that started writing here would inherit the wide-open surface.
-  chmod 0755 /data/conf/arch/log
-  mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
-  mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
-  mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
-  mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
+  # arch, log and global are used only as the real directories
+  # (_sys_conf_arch_here).
+  mkdir -p /data/conf
+  _acct_in_real_dir /data/conf _sys_conf_arch_here
   rm -f /tmp/cache.inc*
+  # A build earlier in the pass may have left the shell in its source
+  # directory under /var/opt: step out before that goes, or every child
+  # started afterwards complains about its missing working directory.
+  cd /var/opt
   rm -f /var/opt/._zendopcache*
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
@@ -8044,7 +8429,14 @@ _finale() {
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
-  [ -d "/data/u" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
+  if [ -d "/data/u" ]; then
+    # removed inside each account's real ~/.drush (oN owns it), never in a
+    # directory a link put there leads to
+    local _uHd
+    for _uHd in /data/disk/*/.drush; do
+      _acct_in_real_dir "${_uHd}" rm -f -- ./.alias.drushrc.php
+    done
+  fi
   rm -f ${_pthLog}/protected-vhosts-clean.log
   rm -f ${_vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
@@ -8195,6 +8587,14 @@ _run_aptitude_deps_install() {
   # must guarantee this dependency.
   if ! _pkg_installed "libfcgi-bin"; then
     _mrun "${_INSTAPP} libfcgi-bin"
+  fi
+  # e2fsprogs carries chattr and lsattr, which BOA uses throughout (the
+  # resolv.conf pin, control and secret files, xmass pre-mig's pin check).
+  # Devuan installs it by default but does not protect it from removal
+  # (required, not essential), and FAST upgrades skip the package section
+  # below, so ensure it on every run.
+  if ! _pkg_installed "e2fsprogs"; then
+    _mrun "${_INSTAPP} e2fsprogs"
   fi
   # rsyslog is the only supported syslogd; the retired legacy selection arms
   # could leave a box with no syslog daemon at all, and FAST upgrades skip
@@ -8950,11 +9350,9 @@ _if_post_major_os_upgrade() {
     ### Reload key services if needed early
     if [ -e "/etc/init.d/valkey-server" ]; then
       _mrun "service valkey-server reload"
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _mrun "service redis-server reload"
     fi
     _mrun "service nginx reload"
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
@@ -9042,6 +9440,11 @@ _if_post_major_os_upgrade() {
       if [ -x "/opt/php85/bin/php" ]; then
         _PHP_VERSION="${_PHP85_VRN}"
         _install_php_multi "85"
+      fi
+      if [ -x "/opt/php86/bin/php" ] && [ -n "${_PHP86_VRN}" ]; then
+        _PHP_VERSION="${_PHP86_VRN}"
+        _install_php_multi "86"
+        _php_rc_cli_restore
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -10031,11 +10434,9 @@ _if_major_os_upgrade() {
     ### Reload key services if needed early
     if [ -e "/etc/init.d/valkey-server" ]; then
       _mrun "service valkey-server reload"
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _mrun "service redis-server reload"
     fi
     _mrun "service nginx reload"
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
@@ -11716,6 +12117,32 @@ _custom_cron_account_group() {
   if [ -n "${_left}" ]; then
     _msg "NOTE: ${_cus}: line(s) ${_left% } still hand an account's directory to the box-wide group users; write the group as \$(id -gn <account>)"
   fi
+  # An account that holds its own web group (wg-<account>) has its web paths
+  # there, and www-data stops reaching them once its identities leave it:
+  # the same reading, for such accounts only, of a chown or chgrp to www-data.
+  local _wgAccts=""
+  for _a in ${_accts}; do
+    case "$(_web_group_state "${_a}" | cut -d' ' -f1)" in
+      converted|phaseb) _wgAccts="${_wgAccts} ${_a}" ;;
+    esac
+  done
+  [ -n "${_wgAccts}" ] || return 0
+  _left=$(_ACCTS="${_wgAccts}" perl -ne '
+    BEGIN {
+      our $A = join("|", map { quotemeta } grep { /^[a-z0-9][a-z0-9-]*$/ } split(" ", $ENV{_ACCTS} // ""));
+    }
+    our $A;
+    next if $A eq "" || /^\s*#/;
+    my $l = $_;
+    $l =~ s/\$(?=["\x27])//g;
+    $l =~ tr/"\x27`\\//d;
+    next unless $l =~ /(?<![-\w.])(?:$A)(?![-\w])/;
+    print "$. " if ($l =~ /\bchown\b/ && $l =~ /[.:](?:www-data|33)(?![-\w])/)
+      || ($l =~ /\bchgrp\b/ && $l =~ /(?<![-\w.])(?:www-data|33)(?![-\w])/);
+  ' "${_cus}" 2> /dev/null)
+  if [ -n "${_left}" ]; then
+    _msg "NOTE: ${_cus}: line(s) ${_left% } hand the web paths of an account that has its own web group to www-data; write the group as wg-<account>"
+  fi
 }
 
 _xdrago_install_upgrade() {
@@ -11738,14 +12165,39 @@ _xdrago_install_upgrade() {
     rm -f ${_pthLog}/blackIP.log
     rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute}
     rm -f /var/xdrago/{firewall.sh,stop-mysql-innodb.sh,firewall_restarter}
-    rm -f /var/xdrago/{FireStart,memcache,redis}
+    rm -f /var/xdrago/{FireStart,memcache,redis} /var/xdrago/monitor/check/redis.sh
     cp -af /var/spool/cron/crontabs/root \
       ${_vBs}/dragon/z/cron-root-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "/var/xdrago/conf/lshell.conf" ]; then
       cp -af /var/xdrago/conf/lshell.conf ${_vBs}/custom_lshell.conf
     fi
-    cp -af ${_bldPth}/aegir/tools/system/* /var/xdrago/ &> /dev/null
+    ### A runner a migration tool parked as /var/xdrago/.<name>.off stays
+    ### parked while its park marker lives (xoct/xcopy pre-mig until
+    ### post-mig, the xmass cutover until its unpark; 24 hours at most), the
+    ### same rule the tools refresh follows: recreating the live name here
+    ### would run the queue and create's armed upgrade in the middle of the
+    ### move.
+    local _sysItm _sysNme _sysPrk=""
+    local -a _sysSrc=()
+    for _sysItm in "${_bldPth}"/aegir/tools/system/*; do
+      _sysNme="${_sysItm##*/}"
+      case "${_sysNme}" in
+        runner.sh|owl.sh|usage.sh|graceful.sh|manage_ltd_users.sh)
+          if [ -e "/run/boa_migration_park.pid" ] \
+            && [ ! -e "/var/xdrago/${_sysNme}" ] \
+            && [ -e "/var/xdrago/.${_sysNme}.off" ]; then
+            _sysPrk="${_sysPrk} ${_sysNme}"
+            continue
+          fi
+          ;;
+      esac
+      _sysSrc+=("${_sysItm}")
+    done
+    if [ -n "${_sysPrk}" ]; then
+      _msg "INFO: Migration park kept, not redeployed:${_sysPrk}"
+    fi
+    cp -af "${_sysSrc[@]}" /var/xdrago/ &> /dev/null
     ### The tree deploy above reverts fetch-delivered tools to the release
     ### tar's vintage, while their fNN ctrl markers survive and block the
     ### re-fetch -- so a box upgrading between a mid-cycle tool wave and
@@ -11761,6 +12213,10 @@ _xdrago_install_upgrade() {
       ! -name "ghost-family-yes.ctrl.*" \
       ! -name "hostmaster-drushrc-0400.ctrl.*" \
       ! -name "hosting.cron.ctrl.*" -delete 2>/dev/null
+    ### The holds a refused install leaves (<name>.mvfail.*.pid, BOA.sh.txt)
+    ### go too: kept, they held the tar's copy of a tool unpinned within the
+    ### hour until they lapsed.
+    find ${_pthLog} -maxdepth 1 -name "*.mvfail.*.pid" -delete 2>/dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
@@ -11891,17 +12347,26 @@ _update_patches_drupal_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _update_patches_drupal_ten"
   fi
-  cp -af ${_bldPth}/aegir/patches/${_tenCorePatchFname} ${_tenCorePatchPath}
-  cp -af ${_bldPth}/aegir/patches/${_tenConsolePatchFname} ${_tenConsolePatchPath}
+  # put inside the real /data/conf/patches (_sys_conf_cp_here), at the names
+  # ${_tenCorePatchPath} and ${_tenConsolePatchPath} give
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_tenCorePatchFname}" "${_tenCorePatchFname}"
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_tenConsolePatchFname}" "${_tenConsolePatchFname}"
 }
 
 _update_patches_drupal_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _update_patches_drupal_eleven"
   fi
-  cp -af ${_bldPth}/aegir/patches/${_elevenCorePatchFname} ${_elevenCorePatchPath}
-  cp -af ${_bldPth}/aegir/patches/${_elevenConsolePatchFname} ${_elevenConsolePatchPath}
-  cp -af ${_bldPth}/aegir/patches/${_elevenValidatorPatchFname} ${_elevenValidatorPatchPath}
+  # put inside the real /data/conf/patches (_sys_conf_cp_here), at the names
+  # the ${_eleven*PatchPath} variables give
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_elevenCorePatchFname}" "${_elevenCorePatchFname}"
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_elevenConsolePatchFname}" "${_elevenConsolePatchFname}"
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_elevenValidatorPatchFname}" "${_elevenValidatorPatchFname}"
 }
 
 _if_drupal_patches_update() {
@@ -11909,17 +12374,21 @@ _if_drupal_patches_update() {
     _msg "PROC: _if_drupal_patches_update"
   fi
   if [ -e "/var/xdrago" ]; then
-    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
-    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    # -D skip: a FIFO or a device put at a name is never opened (the grep
+    # would wait on it); the files are written and removed only inside the
+    # real patches/, never through a link put there or at patches itself
+    _BROKEN_UPDATE_TEST_A=$(grep -D skip "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep -D skip "404 Not Found" /data/conf/patches/* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
       || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
       || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
-      rm -f /data/conf/patches/*
+      _acct_in_real_dir /data/conf/patches _sys_conf_rm_all_here
       _set_drupal_patches_paths
       _update_patches_drupal_ten
       _update_patches_drupal_eleven
-      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
+      _acct_in_real_dir /data/conf/patches \
+        _sys_conf_touch_here "ctrl.f96.${_tRee}.${_xSrl}.pid"
     fi
   fi
 }
@@ -12050,6 +12519,32 @@ _instgrp_arm_stamp() {
   echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
 }
 
+# The web group's arm (instgrp webconvert) takes no account's first
+# conversion without this stamp. Written at the tail of every barracuda pass
+# while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
+# disarms the box; a conversion already under way resumes either way.
+# Tenant isolation is not switched on in this release: the setting arms only
+# a box that carries the test marker, until a later release sets
+# _tiReleased to YES. Kept local so no cnf line can set it.
+_instgrp_web_arm_stamp() {
+  local _tiReleased=NO
+  local _tiTest="/root/.tenant-isolation-test.cnf"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_web_arm_stamp"
+    _debug_proc
+  fi
+  mkdir -p /var/log/boa &> /dev/null
+  if [ "${_WEB_GROUP_ARM}" = "YES" ] \
+    && { [ "${_tiReleased}" = "YES" ] || [ -e "${_tiTest}" ]; }; then
+    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-web-arm.ready.txt
+  else
+    rm -f /var/log/boa/instgrp-web-arm.ready.txt
+    if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
+      _msg "NOTE: _WEB_GROUP_ARM=YES arms nothing in this release: tenant isolation is switched on by a later release"
+    fi
+  fi
+}
+
 _lshell_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _lshell_install_upgrade"
@@ -12078,8 +12573,7 @@ _lshell_install_upgrade() {
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
       _msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
       [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
@@ -12228,8 +12722,7 @@ _if_install_ftpd() {
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
       || [ ! -e "${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -12742,6 +13235,125 @@ _php_fpm_master_up() {
   return 1
 }
 
+# The Ægir master's own task queue is dispatched by the aegir crontab, which
+# no /run/boa_run.pid hold reaches: a Verify the master upgrade had queued
+# ran inside the restarts of an upgrade pass and ended in Warning (Nginx
+# stopped) or Error (its runner lost to the Percona restart). An upgrade
+# pass holds the queue once across every step that restarts services (the
+# limits step, the init step and the enforced AppArmor mode, consecutive in
+# BARRACUDA.sh.txt): the hold takes the master's queue marker, the one a
+# web group conversion of the master takes, and runner.sh keeps the parked
+# crontab parked while the marker names a live root process, and once that
+# process is gone it clears the marker and puts the crontab back, so a pass
+# killed in between cannot leave the queue stopped. A marker another live
+# run holds is left to that run. A task runner already started gets up to
+# two minutes to finish first, so a Verify runs wholly before the restarts
+# or after them unless one already running outlasts that window, and the
+# queue comes back once the restarts are done and Nginx and every PHP-FPM
+# master that ran before them run again: move_sql.sh leaves both to their
+# watchdogs.
+_MQ_HELD=NO
+_MQ_NGX=NO
+_MQ_FPM=""
+_MQ_CRON="/var/spool/cron/crontabs/aegir"
+_MQ_CRON_OFF="/var/spool/cron/crontabs/.aegir"
+_MQ_STOP="/run/boa_master_queue_stop.pid"
+
+# 0 when /run/nginx.pid names a live Nginx master, which the init script's
+# reload needs.
+_mq_nginx_up() {
+  local _pid
+  [ -r "/run/nginx.pid" ] || return 1
+  _pid=$(tr -dc '0-9' < /run/nginx.pid 2> /dev/null)
+  [ -n "${_pid}" ] || return 1
+  case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
+    "nginx: master process"*) return 0 ;;
+  esac
+  return 1
+}
+
+_mq_runner_live() {
+  pgrep -u aegir -f 'drush\.php.*hosting-(dispatch|task)' > /dev/null 2>&1
+}
+
+_mq_cron_park() {
+  if [ -e "${_MQ_CRON}" ]; then
+    mv -f "${_MQ_CRON}" "${_MQ_CRON_OFF}" 2> /dev/null
+    service cron reload > /dev/null 2>&1
+  fi
+}
+
+_master_queue_hold() {
+  local _p _w=0 _r
+  _MQ_HELD=NO
+  [ -e "${_MQ_CRON}" ] || return 0
+  if [ -e "${_MQ_STOP}" ]; then
+    _p=$( { tr -dc '0-9' < "${_MQ_STOP}"; } 2> /dev/null )
+    [ -n "${_p}" ] || return 0
+    if kill -0 "${_p}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ]; then
+      return 0
+    fi
+    [ "$( { tr -dc '0-9' < "${_MQ_STOP}"; } 2> /dev/null )" = "${_p}" ] && rm -f "${_MQ_STOP}"
+  fi
+  ( set -C; echo "$$" > "${_MQ_STOP}" ) 2> /dev/null || return 0
+  _MQ_HELD=YES
+  _MQ_NGX=NO
+  _mq_nginx_up && _MQ_NGX=YES
+  _MQ_FPM=""
+  for _p in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _php_fpm_master_up "${_p}" && _MQ_FPM="${_MQ_FPM} ${_p}"
+  done
+  # A runner.sh pass already past its marker test can put the crontab back
+  # while the first drain runs: parked again, and drained once more. A job
+  # the cron daemon started at the tick just before the park shows up as a
+  # process a moment later: the drain looks after a short settle.
+  for _r in 1 2; do
+    _mq_cron_park
+    sleep 2
+    while _mq_runner_live && [ "${_w}" -lt 120 ]; do
+      sleep 3
+      _w=$(( _w + 3 ))
+    done
+    [ -e "${_MQ_CRON}" ] || break
+  done
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Ægir Master task queue held for the restarts (drain ${_w}s)"
+  fi
+}
+
+_master_queue_release() {
+  local _w=0 _p _up
+  [ "${_MQ_HELD}" = "YES" ] || return 0
+  _MQ_HELD=NO
+  while :; do
+    _up=YES
+    if [ "${_MQ_NGX}" = "YES" ] && ! _mq_nginx_up; then
+      _up=NO
+    fi
+    for _p in ${_MQ_FPM}; do
+      _php_fpm_master_up "${_p}" || _up=NO
+    done
+    [ "${_up}" = "YES" ] && break
+    [ "${_w}" -ge 180 ] && break
+    sleep 3
+    _w=$(( _w + 3 ))
+  done
+  [ "$( { tr -dc '0-9' < "${_MQ_STOP}"; } 2> /dev/null )" = "$$" ] && rm -f "${_MQ_STOP}"
+  if [ ! -e "/root/.standby.cnf" ] \
+    && [ -e "${_MQ_CRON_OFF}" ] && [ ! -e "${_MQ_CRON}" ]; then
+    mv -f "${_MQ_CRON_OFF}" "${_MQ_CRON}" 2> /dev/null
+    service cron reload > /dev/null 2>&1
+  fi
+  if [ "${_up}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Ægir Master task queue released (services up after ${_w}s)"
+    fi
+  else
+    _msg "NOTE: Ægir Master task queue released, Nginx or PHP-FPM still down after ${_w}s"
+  fi
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -12809,11 +13421,8 @@ _initd_update() {
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
         _mrun "service valkey-server start"
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        _msg "INFO: Starting Redis, PHP-FPM and Nginx"
-        _mrun "service redis-server start"
       fi
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
@@ -12947,13 +13556,8 @@ _initd_update() {
           _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
         fi
         _mrun "service valkey-server reload"
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
-        fi
-        _mrun "service redis-server reload"
       fi
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
@@ -13030,6 +13634,11 @@ _initd_update() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
           fi
+        fi
+        # The binary-log switch, applied before the copy compared above.
+        if [ "${_myCnfUpdate}" = "NO" ] && _sql_binlog_switch_pending; then
+          _myCnfUpdate=YES
+          _msg "INFO: ${_DB_SERVER} binary log switched in this run, restart due"
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
@@ -13178,8 +13787,6 @@ _sysctl_update() {
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "valkey soft nofile 65535" > /etc/security/limits.d/valkey.conf
       echo "valkey hard nofile 524288" >> /etc/security/limits.d/valkey.conf
-      echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
-      echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
       echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
       echo "nginx hard nofile 999999" >> /etc/security/limits.d/nginx.conf
       echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
@@ -13192,12 +13799,10 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         _mrun "service valkey-server restart"
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        _mrun "service redis-server restart"
       fi
       _mrun "service nginx restart"
       _mrun "service ssh restart"
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload"

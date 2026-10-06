@@ -4,7 +4,7 @@
 /**
  * Backdrop Valkey/Redis wiring -- the Backdrop sibling of global-valkey.inc.
  *
- * Runs after the shared probe (global-if-valkey.inc / global-if-redis.inc),
+ * Runs after the shared probe (global-if-valkey.inc),
  * so $valkey_up, $use_valkey, the connection targets and $auth_pass are in
  * scope, and every probe-tuning INI key (redis_connect_timeout,
  * redis_read_timeout, redis_backoff_ttl, redis_probe_retry,

@@ -254,8 +254,11 @@
 ;;  system administrator area, which tenants cannot access by default. The paths
 ;;  below are listed only for cross-reference; creating or removing the flag and
 ;;  reading the log are performed by the server administrator, not from here:
-;;    Valkey servers: /data/conf/valkey.debug.flag  ->  /var/tmp/fpm/valkey-fallback.log
-;;    Redis  servers: /data/conf/redis.debug.flag   ->  /var/tmp/fpm/redis-fallback.log
+;;    Valkey servers: /data/conf/valkey.debug.flag  ->
+;;                    /var/tmp/fpm/valkey-fallback.<uid>/valkey-fallback.log
+;;  Every system user that runs the probe (each PHP-FPM pool and each
+;;  command-line user) writes its own log, in a directory named with its
+;;  numeric user ID that only that user and root can open.
 ;;  The administrator removes the flag to stop logging live, with no INI edit
 ;;  or redeploy. Arming redis_debug here simply lets that toggle take effect.
 ```
@@ -456,10 +459,13 @@
 ```text
 ;allow_private_file_downloads = FALSE
 ;;
-;;  When set to TRUE allows to use private files mode, so it is useful only
-;;  for commerce sites which sell files for download or for intranet sites
-;;  where you need to enforce strict access control. All other sites should
-;;  never ever use private files mode for obvious performance reasons.
+;;  On Drupal 6, 7 and Backdrop, BOA forces every site's default download
+;;  method to public; TRUE lifts that force. It has no effect on Drupal 8+,
+;;  where the default download method is the site's own setting. On Drupal 7
+;;  the nightly pass writes it into each site's own INI from the default
+;;  download method the site saved: TRUE when that is private, FALSE when it
+;;  is public or unset. A file field or form element can store its uploads
+;;  privately on any core without it.
 ```
 
 ```text
@@ -525,8 +531,9 @@
 ;;  unless the site has its own custom setting for variable sql_web_max_exec_ms
 ;;  in the site level boa_site_control.ini file, located in the
 ;;  sites/foo.com/modules directory. It is applied as a per-connection
-;;  SET SESSION max_execution_time statement on every web request; CLI (Drush,
-;;  cron, migrations, backups) is never capped.
+;;  SET SESSION max_execution_time statement on every web request except the
+;;  scheduled site cron; CLI (Drush, migrations, backups) and the scheduled
+;;  cron the control panel runs are never capped.
 ;;
 ;;  Set 0 to disable the cap. The statement is sent in a form MariaDB ignores,
 ;;  so a site whose database lives on a MariaDB server needs no override; there

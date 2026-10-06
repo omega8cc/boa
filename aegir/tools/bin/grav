@@ -35,7 +35,7 @@ _alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
 
 _pick_modern() {
   local _c
-  for _c in 84 85 83; do
+  for _c in 84 85 86 83; do
     if [[ -x "/opt/php${_c}/bin/php" ]]; then
       printf '/opt/php%s/bin/php\n' "${_c}"
       return 0
@@ -158,7 +158,7 @@ if [[ -z "${_GRAV_PHP}" ]]; then
     [[ -n "${_v}" ]] && [[ -x "/opt/php${_v}/bin/php" ]] && _GRAV_PHP="/opt/php${_v}/bin/php"
   fi
   if [[ -n "${_GRAV_CTRL}" ]]; then
-    for _c in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _c in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       if [[ -e "${_GRAV_CTRL}/php${_c}.info" ]] && [[ -x "/opt/php${_c}/bin/php" ]]; then
         _GRAV_PHP="/opt/php${_c}/bin/php"
       fi
@@ -186,15 +186,6 @@ fi
 _n="$(printf '%s' "${_GRAV_PHP}" | tr -cd '0-9')"
 PHP_INI="/opt/php${_n}/lib/php.ini"
 PHPRC="/opt/php${_n}/lib"
-# The account ini lives at ~/.drush/php.ini (the ltd worker writes it from
-# the account's own PHP); it applies when its extension_dir names the PHP
-# chosen here, the websh contract. The ~/.drush/phpNN/ layout tested before
-# has no writer, so every run kept the global ini.
-if [[ -n "${HOME}" ]] && [[ -f "${HOME}/.drush/php.ini" ]] \
-  && grep -qE "^extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php${_n}/" "${HOME}/.drush/php.ini" 2>/dev/null; then
-  PHP_INI="${HOME}/.drush/php.ini"
-  PHPRC="${HOME}/.drush"
-fi
 export PHP_INI PHPRC
 
 # Group-writable creations everywhere inside the writable trees.

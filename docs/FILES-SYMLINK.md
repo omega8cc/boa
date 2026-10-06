@@ -109,9 +109,39 @@ autosymlink --site example.com --account o1 --archive-store --apply
 - `--apply` performs the change; without it the narrow run is a read-only DRY for
   that one site. The narrow apply runs its own per-site clean dry-run first and
   only proceeds if it is clean.
+- A new account's install runs the narrow apply before the account's `static/`
+  exists. The site's `files`/`private` then stay real directories, with an
+  `[INFO]` line, until a later run (the install's own) links them. A `static/`
+  that exists but is not a real directory is still an `[ERROR]`.
 - `--force-unshare` breaks an inherited cross-site/cross-account link even if a
   file-sharing control file exists — used by cloning so a fresh clone (which never
   opted into sharing) always gets its own copy.
+
+  The copy is made by the site's own account in its web group, inside a root-owned
+  staging directory the account cannot alter, then renamed onto the store name: it
+  holds only what that account can read, and never keeps the other store's owner, its
+  day stamps or a setuid bit.
+
+  The copy is made only into a per-site store directory (`static/files/<url>`)
+  that root owns and that neither its group nor others can write; any other is
+  refused with an `Un-share copy refused` line, nothing is copied, and the site
+  keeps its current link (it goes on sharing the other store). A site whose
+  name starts with `module` can meet this: the Octopus install and upgrade set 775
+  on every `module*` directory two levels below `static/`, its per-site store
+  directory included.
+
+  `static/files` is resolved once and accepted only when it is the account's own store
+  or its relocated store on attached storage (the `migratefs` layout); any other link
+  there is refused. The account's own `static/files` must be root's (this tool makes
+  it); a relocated one may also be the account's (`migratefs` gives a fresh store the
+  owner of `static/`).
+
+  The directory found is remembered by its identity (device and inode), and every
+  later step checks that it acts inside that very directory, so a directory put at
+  `static/files` meanwhile — a link, or another real one — is refused, never
+  written into. A link found at the store target name (`files`/`private`) is
+  archived aside, never written through; one planted after that step makes the
+  copy fail and leaves the site's existing symlink unchanged.
 - `--archive-store` sets the site's whole store aside into
   `static/files/.archived/<stamp>/<url>/`, never deleting it — the Delete task's
   path, and a rename's for the old-name store.
@@ -242,10 +272,11 @@ updatesymlinks --auto-fix --debug   # explain on stdout WHY a run skips/does not
 When either opt-in is enabled a **single** cron line runs `updatesymlinks --auto-fix`
 hourly at `:47` through the night (`22:00`–`05:59`), clear of the 6-hourly duplicity
 backups (`:00`) and the nightly backup/owl/upgrade cluster. It self-skips any hour a
-heavy task is running (backup, upgrade, provision, high load) and retries the next
-hour; the first un-blocked hour does the work, records a per-night stamp
-(`/var/log/boa/autosymlink.nightok.stamp`), and every later hour that night is a cheap
-no-op.
+heavy task is running (backup, upgrade, provision, high load, `migratefs`
+relocating an account's files store) or another live operation holds the Ægir
+queue pause, and retries the next hour; the first un-blocked hour does the work,
+records a per-night stamp (`/var/log/boa/autosymlink.nightok.stamp`), and every
+later hour that night is a cheap no-op.
 
 The one line serves both opt-ins: with `_AUTOSYMLINK_NIGHTLY=YES` it runs the
 full pause + two-step apply (which folds the orphan report in); with only
@@ -256,22 +287,29 @@ enabling or disabling is purely a `.barracuda.cnf` change with no cron edit.
 
 Because every early exit is otherwise silent, add **`--debug`** (or `-d`, any
 position) to have it print on stdout *why* a run does nothing — e.g. the opt-ins
-are off, the night is already stamped done, a heavy task is running (and which), or
-that it ran and simply found nothing to convert. It changes no behaviour; without
-the flag the run is silent as before.
+are off, the night is already stamped done, a heavy task is running (and which),
+another operation holds the Ægir queue pause (and its pid), or that it ran and
+simply found nothing to convert. It changes no behaviour; without the flag the run
+is silent as before.
 
 ```bash
 updatesymlinks --auto-fix --debug
 #   updatesymlinks[debug]: not acting — both opt-ins are off (…); enable one in /root/.barracuda.cnf
 #   updatesymlinks[debug]: not acting — already completed for this night (stamp …); remove it to force a re-run
 #   updatesymlinks[debug]: not acting — a heavy task is running, retry next hour: duplicity(1)
+#   updatesymlinks[debug]: not acting — the Aegir queue pause is held by pid 12345; its window is not ours
 ```
 
 The reason tokens name what blocked the run: a busy binary with its process
 count (`barracuda(1)`, `provision(2)`, `duplicity(1)`), a lock or load pid
-(`boa_run.pid`, `octopus_install_run.pid`, `max_load.pid`), or a chained
+(`boa_run.pid`, `octopus_install_run.pid`, `max_load.pid`), a chained
 install leg seen by its process form (`BARRACUDA.sh.txt(leg)`,
-`OCTOPUS.sh.txt(leg)`).
+`OCTOPUS.sh.txt(leg)`), or an account's files store that `migratefs` holds
+while it relocates it (`migratefs(migratefs-account-<oN>.pid)`).
+
+A queue pause another live operation holds is not a heavy task: the run takes the
+pause only when it is free, or left by an owner that is gone, and otherwise stops
+before it converts anything, leaves the night un-stamped and retries the next hour.
 
 ### `fix-drupal-site-symlinks.sh` — the privileged entry point
 
@@ -416,6 +454,29 @@ to `_MY_EMAIL`; an entry that cannot be removed is reported once per six hours. 
 reasoning: a clone of a 74 GB site beside a 100 GB pile filled a disk mid-task and took
 nginx and mysqld down with it.
 
+**Only the account's own content goes.** `prune` and the heal remove what root or the
+instance's own users own (`oN`, `oN.ftp`, its client sub-accounts and its PHP-FPM
+users), and nothing below a directory another user owns. A file whose owner no longer
+exists counts as the instance's own, wherever it came from: nothing records which
+instance a removed login served. Since the limited-shell worker hands a sub-account's
+files to the instance when it removes the login, such files come from logins removed
+before that, or removed without the worker (an operator's own deluser).
+
+Once per instance and release, before it makes any login (the nightly's per-account
+pass holding the instance or not), the worker also hands such entries over: each
+directory and single-link file to the instance, a hard-linked file to root, group and
+mode kept. A link keeps the freed number. So a login that later gets that number
+inherits none of the files and directories, only such links. Where the number was given
+out again before that, the entries are that login's: the prune and the heal keep the
+entry in part until an operator hands that login's directories, single-link files and
+links in the stamp they name to the instance (`chown -h oN`) and a hard-linked file to
+root.
+
+An account's users can move content another account left group-writable into an
+entry's site directories; that content stays, with the directories holding it. Such an
+entry is reported as kept in part, by the heal at most once per six hours before it
+moves on to the next oldest, and one NOTE line per instance counts what was left.
+
 ### Disabling deleted-site auto-archiving
 
 The Delete task archives a deleted site's store into `.archived/` at once, a migrate
@@ -487,6 +548,28 @@ link when it was taken, so the restored real directory is converted into the
 site's own store. Only a symlink-preserving or DB-only archive leaves a share
 intact — see *Restore behaviour*.
 
+**Shares and the account web group.** A share between two sites of one
+account is untouched by the account's conversion to its own web group
+(`wg-oN`, see `INSTGRP.md`). A share across accounts is not:
+
+- **Outbound** (a site of this account reads another account's store): the
+  account's conversion is refused, and so is its step into phase B, until
+  the share is gone; the account is told which site reads which store. A
+  site on the shared `/data/all` stores refuses it the same way, and so
+  does a site's `files` or `private` link that leads anywhere but the
+  account's own `static/files/` (or its store on attached storage), or
+  into BOA's own folders there (`.backups`, `.backup-exports`,
+  `.archived`).
+- **Inbound** (another account's site reads this account's store): never
+  refused, and both accounts are told. Once this account is converted, the
+  reading site loses write to the store and, for a private store, read too:
+  the store's files are in this account's web group, which the other
+  account's pools are not in.
+
+Give each account's site its own copy before converting either account. A
+later change is planned to make nginx refuse a site's links into another
+account's store outright.
+
 ## Cloning behaviour in detail
 
 A clone is built from a backup of the source site. Implicit backups preserve
@@ -507,6 +590,14 @@ site may still be sharing the source's data) and **the clone still succeeds**.
 Such a clone is left usable; resolve it later with a manual
 `fix-drupal-site-symlinks.sh --site=<clone> --force-unshare` run once space is
 available.
+
+In a clone into a different account, the deploy and the clone's verify run
+while the deployed copy's links still lead into the source account's store.
+Provision leaves them alone there (`STORE/SKIP` in the task log, see *Safety
+properties*), so those steps end with status Warning; the clone still
+succeeds, and the re-home then gives the copy its own store. A copy whose
+re-home was refused keeps that warning on every Verify until the manual
+`--force-unshare` run.
 
 If the clone reuses a name whose store was left behind by an earlier site of the
 same name, that stale store is archived aside first (see *Orphan / ghost detection
@@ -591,22 +682,92 @@ adjust this:
   hollow — a ~200 KB archive of bare symlinks where gigabytes were expected —
   which is why files-carrying modes now ignore both files.
 
+## Files the web server wrote closed
+
+The backend user packs every backup, and it also makes the store copy of a
+renaming Migrate. A file the web server writes with mode 0600, or a directory
+it makes 0700 (a key pair from a module's key generator, say), is closed to
+that user. Unopened, tar fails the Backup on it, and with it every Clone,
+Restore and Migrate of the site, which start with a backup; the store copy of
+a renaming Migrate fails on it too.
+
+So before every archive, Drupal and Backdrop alike, the backup runs
+`fix-drupal-site-permissions.sh --backup-read` through its sudo entry point.
+In the site's own files and private stores it adds group read to each file,
+and group read and search to each directory, that one of the account's web
+users owns in the account's web group without them.
+
+Nothing else changes: owner, group and the other bits stay as the web server
+set them, so the web server reads them as before and the backend user reads
+them through the web group, like the rest of the store. The site's permission
+pass (daily by default) gives the same entries the store's managed modes
+anyway; the backup only opens them for reading before that.
+
+A deploy (Clone, Restore, Migrate) gives the web group the whole extracted
+`private` dir, not only `private/files`, `config` and `temp`, so the new site's
+web server reads a copied key directory through its group. The copy belongs
+to the backend user; group write comes back with the daily permission pass,
+as for any other restored file.
+
+This is warn-not-fail: without the fixer, or with one that predates
+`--backup-read`, the archive is attempted as before and the task log names
+what tar could not read.
+
 ## Disk space and filesystems
 
 Both local and attached/extra filesystems are supported. Before moving or copying
 data the tools compare the source size against the target's free space (`du`/`df`,
 filesystem-aware for same-FS vs cross-FS), and **skip with a warning** rather than
-fail when space is insufficient. A same-filesystem conversion is a rename (no
-extra space needed); a cross-filesystem one copies, then repoints, then removes
-the source.
+fail when space is insufficient.
+
+A same-filesystem conversion is a rename (no extra space needed). A
+cross-filesystem one (a store relocated onto attached storage) copies **as the
+site's own account** — root never copies the in-site tree by path — then sets the
+source aside, repoints, copies in what was written into the source during the
+copy, and removes the source as the account. The copy and the removal act on the
+very directory the tool entered and recorded first; a directory put at the
+site's `files`/`private` name meanwhile is never set aside or removed.
+
+A cross-filesystem conversion killed after it set the site's directory aside
+leaves that aside (`.files.autosymlink-moved.*` or `.private.autosymlink-moved.*`
+in the site directory). So does a conversion whose catch-up copy failed or found
+a file the store's copy differs from, or whose aside holds an entry the account
+cannot remove. Every run reports it with a `[WARN]` until it is removed by hand.
+
+Such an aside may hold files the store lacks: what the site wrote during the
+copy, if the conversion was killed after the aside rename and before the
+catch-up. Copy it into the store as the site's account (`rsync -a --update`),
+then run the same without `--update` as a dry run (`rsync -ain`), and remove the
+aside only when that lists no file.
+
+A residue aside (`files.autosymlink-residue.*` or `private.autosymlink-residue.*`)
+holds what the site regenerates by itself (the residue the conversion checked
+for), plus any file written into the site directory after that check. Look
+through it, copy any such written file into the store as the site's account, and
+then remove the aside; a dry run against the store lists the regenerated files
+too, so it never comes back empty here.
+
+An un-share copy killed outright leaves a root-owned `.unshare.*` staging
+directory in the site's store. The next un-share into that store removes it when
+root's own marker in it proves this tool made it. A failed un-share copy is
+cleaned up the same way.
+
+What the copy left in a staging directory is removed as the site's account
+(which first makes its own read-only directories writable), so root never
+deletes anything that account could not. Whatever is left, and any other
+directory at such a name, is reported with a `[WARN]` and left for a check by
+hand.
 
 Stale-store **archiving** on name reuse is deliberately placed *under*
 `static/files` (`static/files/.archived/`) so it always shares the store's
 filesystem and stays a free rename — a `static/files-*` sibling could land on a
-small root filesystem and turn the move into a space-consuming copy. Each
-archiving still records a `du`/`df` snapshot; a same-FS rename needs no free
-space, and a secondary check falls back to an in-place rename only if the archive
-would (unexpectedly) cross to a different, too-full device.
+small root filesystem and turn the move into a space-consuming copy.
+
+Because the archive is built **under** the resolved store it is always on that
+same filesystem — a free rename that needs no free space. Each archiving still
+records a `du`/`df` snapshot, and if the archive directory cannot be made or the
+move fails it degrades to an in-place rename aside so a conversion is never
+blocked.
 
 ## Backups on the static filesystem
 
@@ -631,22 +792,37 @@ The Ægir paths are unchanged (the symlinks are transparent), so `backup_path` a
 `aegir_backup_export_path` keep working. Both targets live **under** `static/files`
 so they share one filesystem — the backup-download **hardlinks** between `backups`
 and `backup-exports` keep working (hardlinks cannot cross filesystems) — and the
-leading-dot names are skipped by the site/orphan scan, like `.archived`.
+leading-dot names are skipped by the site/orphan scan, like `.archived`. A site's
+`files` or `private` link into one of these folders, or to `static/files` itself,
+is never taken as the site's store: the nightly permissions pass leaves it as it
+is, and so do the account web group's walks (see `INSTGRP.md`).
 
 - **Gated on a separate filesystem.** On a default single-filesystem box
   `static/files` is on the root device, so there is nowhere better to put backups
   and the relocation is a **deliberate no-op**. It only acts once a large account's
-  `static/files` is on attached storage.
-- **Safe one-time migration.** Existing backups are moved **incrementally**
-  (`rsync --remove-source-files`: ~one file of extra space at a time, per-file
-  safe); on any failure the real directory is left in place and no symlink is made.
-  It never deletes a backup.
+  `static/files` is on attached storage, and only when `static/files` is the
+  account's own directory or migratefs' layout `/mnt/<mount>/files/<account>/static/files`
+  on a plain path (letters, digits, `.`, `_`, `-`), with no directory between `/mnt`
+  and the mount itself named `files` or `static`; any other `static/files` link is
+  skipped with a log line.
+- **Safe one-time migration.** Existing backups are copied whole (`rsync -a`) while
+  the directory and its store copy are closed to the account (root, 0700), then the
+  source is emptied and replaced by the link, so the static filesystem needs a full
+  copy's space while it runs. On any failure the real directory is handed back with
+  its owner and mode and no symlink is made; a pass killed mid-copy is healed by the
+  next nightly, which hands both back and finishes the move. It never deletes a
+  backup.
 - **Task-queue interlock.** While migrating, the run holds the Ægir task queue
   with a dedicated `/run/boa_queue_stop.pid` (honoured by `runner.sh` — the parent
   exits and each per-account child dispatch skips) so no backup task writes into a
   directory being moved. It self-heals: `clear.sh` removes it once its owner PID is
   gone and `/run` clears on reboot, so it can never freeze the queue. The migration
   is serialised across accounts with a `flock`.
+
+  The pause is taken only when it is free, or left by an owner that is gone. While
+  another live operation holds it, that account's move is deferred to the next
+  night: the owner would end the pause when its own work is done, in the middle of
+  the move.
 - **Kill-switch** — see *Configuration → Relocating backups off the root
   partition*.
 
@@ -664,8 +840,11 @@ live name: a store named by a share control file
 (`static/control/share.*.<site>.info`, another site reads it) — the task warns
 `DELETE/STORE/LEFT` and the operator decides; a store some registered site (one that
 still has its alias or vhost — a leftover directory's link is reported and does not
-count) reads through its own `files`/`private` link (a clone whose unshare was refused
-for disk, a renamed site whose re-home did not complete) — the same `DELETE/STORE/LEFT`
+count) reads through its own `files`/`private` link, on any platform: one BOA built
+under `distro/`, the control panel's, or one the account registered anywhere under
+`static/`, at its root or at a Composer build's `web/`, `docroot/` or `html/` docroot
+(a clone whose unshare was refused for disk, a renamed site whose re-home did not
+complete) — the same `DELETE/STORE/LEFT`
 warning, with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to
 re-run that site's unshare, never to move the store; and the orphan-archiving switch
 (`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
@@ -756,6 +935,57 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   data and the missing in-site link is recreated (self-heal). The move is
   rc-checked, so a symlink is never created over a failed/partial move, and the
   source directory survives any move failure.
+- **Root acts only in the directories it resolved.** `static/` and the site
+  directory belong to the account, so any name on a path through them can be
+  swapped at any time. The account's `static/files` is resolved once per run by
+  identity, and every mkdir, move and copy in it checks that it acts inside that
+  very directory: a link or another directory put on its path meanwhile is
+  refused. In-site links and renames are made by name from inside the site
+  directory entered for real, so a link put on the site's path is never followed.
+- **A site task acts only inside the account's own store.** Verify, install
+  and deploy make directories, set modes and groups and write `.htaccess`
+  files in a site's directory only where a path is the site's own: a real
+  directory below the platform's `sites/` with no link on the way, or a link
+  resolving below the account's own `static/files/` (or its store on attached
+  storage), never into BOA's own folders there. A link leading anywhere else
+  is left as it is, with everything below it: the task logs `STORE/SKIP` with
+  where it leads, and ends with status Warning.
+- **The rule covers the whole site directory.** It applies to the site
+  directory itself and the platform's `sites/` above it, to the site's `files`
+  and `private` trees, to its `modules`, `themes`, `libraries` and `vendor`,
+  and to the group change a Clone, Migrate or Restore makes in the deployed
+  `files` and `private` trees. Each act runs inside the directory judged,
+  entered for real, and new directories are made there by name, so a
+  directory swapped for a link after the check is never followed.
+- **Root removes only the directory it checked or copied.** A conversion enters
+  the site's `files`/`private` directory for real and records its identity
+  (device and inode) before anything else. The residue-only check, and the
+  cross-filesystem copy made as the account, run inside that very directory. It
+  is renamed aside only while the name still holds that directory, so one put
+  there since is never set aside or removed. The aside is removed only while it
+  is still that directory.
+- **A residue-only aside is checked again before it is removed.** One the site
+  wrote into after the first check is kept and reported with a `[WARN]`.
+- **An aside is emptied as the account.** Its contents are removed as the site's
+  account, which first makes its own read-only directories writable; root then
+  removes the emptied directory. So root never deletes anything the account
+  could not delete itself. What the account cannot remove, and any other
+  directory at the aside name, is left and reported with a `[WARN]`.
+- **Writes made during a cross-filesystem copy are carried over.** After the
+  aside rename and the link, a catch-up copy (`rsync -a --update`, as the
+  account) brings into the store what was written into the site's directory
+  while it was being copied. A file changed through the new link since is newer
+  in the store and is kept.
+- **A cross-filesystem aside is removed only when the store matches it.** After
+  the catch-up, a dry pass without `--update` compares the aside with the store. If it lists any file (one replaced during the copy by an
+  older-dated version, say), or the catch-up fails, the aside is kept and
+  reported with a `[WARN]`.
+  Killed after the aside rename, before the catch-up: late writes stay in the
+  aside. A write that reaches the aside after the catch-up (through a file held
+  open since before the rename) is not carried over.
+- **An un-share staging directory is removed only when root's own marker proves
+  this tool made it.** What the copy left in it is removed as the site's account,
+  in the same way.
 - **Clean dry-run before any change.** Both the global batch and the narrow apply
   run a dry pass first and only apply when it is clean.
 - **Idempotent.** A site that is already correctly symlinked is a no-op on every
@@ -783,7 +1013,8 @@ ls -l  /data/disk/o1/.../sites/example.com/{files,private}
 readlink /data/disk/o1/.../sites/example.com/files
 #   -> /data/disk/o1/static/files/example.com/files
 
-# The store dir itself must be writable by the web group (account user:www-data):
+# The store dir itself must be writable by the web group (account user and
+# www-data, or wg-<account> once the account is converted to its own):
 ls -ld /data/disk/o1/static/files/example.com/files
 #   -> drwxrwsr-x o1 www-data
 
@@ -895,6 +1126,10 @@ readlink /data/disk/<acct>/backup-exports   # -> .../static/files/.backup-export
 ```
 While it migrates, `/run/boa_queue_stop.pid` is present and `runner.sh` skips the
 queue; it is removed at the end (or self-healed by `clear.sh` if the run crashed).
+While another live operation holds that pause, the move is deferred to the next
+night and the run says so (`backups-on-static: queue pause held by pid <N>;
+relocation for <acct> deferred to the next night`); run it again once that
+operation has ended.
 
 ### Nightly auto-fix
 

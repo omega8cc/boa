@@ -136,7 +136,7 @@
 
    The `nodns` option allows skipping DNS and SMTP checks.
 
-   When `php-min` is defined, then 3 versions will be installed: `8.5`, `8.4`, `8.3`, with `8.4` configured as default.
+   When `php-min` is defined, then 3 versions will be installed: `8.5`, `8.4`, `8.3`, with `8.4` configured as default. On hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`) the release candidate `8.6` is installed as well, as it is by default there.
 
    When `php-max` is defined, then all supported versions will be installed and `8.4` configured as default.
 
@@ -165,6 +165,8 @@
    ```
 
    The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
+
+   PHP 8.6, a release candidate, is kept on hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`), where it is added to the versions installed by default, the default 8.3, 8.4 and 8.5 or, with the automatic cleanup on, the versions in use and 8.4, except in single-PHP mode, during a major OS upgrade or on a legacy OpenSSL build, the same exceptions as for the hosted 8.4. Elsewhere it counts as used only through a real setting: `8.6` as the whole value of an instance's `fpm.info` or `cli.info`, or as the version of a `multi-fpm.info` line, a dummy entry like `place.holder6.dont.remove 8.6` included. A comment line, or a site name that happens to contain `8.6`, does not add it.
 
    You can enable much more verbose reporting in the console during installation and upgrades for either barracuda or octopus (or both with -boa-) by adding these control files before running installation/upgrade:
 

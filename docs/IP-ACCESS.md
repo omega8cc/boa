@@ -30,6 +30,11 @@ The per-site vhost pulls it via `include $server->include_path/ip_access/{uri}.c
 restriction applies to that site only. A site with no record has no fragment and is
 unrestricted.
 
+A subdirectory site's paths (`example.com/blog`) follow the record for the domain that
+serves them: the domain's own site when it is one, and the bare domain when it is not,
+whose placeholder vhost includes `ip_access/example.com.conf*` as well. A record for the
+internal name (`blog.example.com`) restricts that name only.
+
 `/var/xdrago/ip_access.sh` is a **single global generator**. It runs one shared routine
 over two kinds of context:
 
@@ -86,14 +91,34 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 - **Safety** — per context: back up the current fragments, regenerate atomically,
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore
   the last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
-  unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
-  control file to fix, and a freshly written last-good that does not verify is removed.
+  unreadable one leaves the fragments on disk alone and prints `ALRT:` lines (after a failed
+  configtest they name the control file to fix), and a freshly written last-good that does
+  not verify is removed.
+
+  Cron discards the tool's output, so every `ALRT:` line also goes, once a day per
+  condition, to `/var/log/boa/nginx.incident.log` as a dated line and, unless
+  `_INCIDENT_REPORT` is `OFF`, by mail to `_MY_EMAIL`.
 
   On a
   replication standby whose web tier is held, the fragments are written and the change-gate
   markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ai_policy` /
   `nginx_deny` / `cloudflare_realip`.
+- **Account-owned paths** — the instance owns `config/includes` and `undo/`, so every
+  fragment, front copy, marker and change-gate file is read, written and pruned from inside
+  the pinned real directory through no-follow handles; a link or a FIFO left at any of those
+  names is replaced, never followed.
+- **Control file and vhosts** — the control file is read only as a copy taken from its own
+  real directory, never through a link and never blocking on a FIFO; one that is not a
+  regular file there is skipped, and its lists are kept as a deleted file's are. Each
+  rendered vhost the front map reads is copied without following a link at the vhost's own
+  name or blocking on a FIFO (the instance's `vhost.d` itself is read where it leads: the
+  instance writes its own vhosts).
+- **Last-good archive** — `.nginx_access_conf.last_good.bak.tar.gz` stays in the replicated
+  `undo/` (so a promoted standby can restore it) but is never extracted as root: the revert
+  unpacks it into a root-only temporary directory taking no owner and no mode from it,
+  refuses it whole when its files would come to more than 32 MiB written out, and restores
+  only the expected `<site>.conf` fragments.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`
   (decrement its `fNN` on any change).
 
@@ -124,6 +149,8 @@ carries too, stays out, so the front never applies one site's list to another si
   remove a site's line or empty the file. The copies still follow their sites' names: a
   new alias is covered, a name that moved to another site is released, and a site with
   no name of its own left keeps an inert copy.
+- Only a copy the generator wrote is rewritten there; any other file under a copy's name
+  is dropped, and the next pass writes the copy again from the frozen vhost fragment.
 - A site whose control file was deleted before the front copies existed gets one written
   from its frozen vhost fragment, so HTTPS applies the list HTTP already applies.
 - The master's `/var/aegir/control/ip/access.txt` is different: when it is missing, the

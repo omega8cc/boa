@@ -51,10 +51,11 @@
 ###       copies Drush 9+ reads (<aegir-root>/.drush/sites, and for an
 ###       Octopus account /home/<acct>.ftp/.drush/sites), keeping the checksum
 ###       of a copy Drush still manages in step with its new bytes
-###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/,
-###       then rewrite the platform sites/sites.php alias maps (the queued
-###       verifies only ever ADD new-hostname records there; stale
-###       old-hostname records would otherwise survive the rename
+###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/
+###       (a certificate line keeps the pair it named: the rename moves no
+###       certificate), then rewrite the platform sites/sites.php alias maps
+###       (the queued verifies only ever ADD new-hostname records there;
+###       stale old-hostname records would otherwise survive the rename
 ###       indefinitely)
 ###   §5  Rename the hostname inside the Aegir DB with serialize-safe, targeted
 ###       statements: identity rows keyed by hosting_context nid, REPLACE()
@@ -62,7 +63,15 @@
 ###       re-serialize pass over the variable table. Never a blanket dump+sed:
 ###       that corrupts PHP-serialized byte lengths when the FQDN length
 ###       changes, and (with --hex-blob) never reached blob values anyway.
-###       A plain dump is still taken first, as a backup only.
+###       A plain dump is still taken first, as a backup only. A renamed
+###       HTTPS site's own certificate record is renamed with it, so its
+###       first verify moves it to its new name's certificate; a site with
+###       aliases of a client domain keeps its record until a certificate
+###       for its new name exists (§7).
+###       This run's copies (drush and vhost.d dirs, the DB dump, pre-edit
+###       sites.php files, parked panel dirs and vhosts, logs) are kept in
+###       /var/backups/renameaegirhost/<aegir-user>, readable by root only;
+###       backups/rename-hostname/ keeps what §2c parks there.
 ###   §5b /var/aegir only: rename the host-level names written at install --
 ###       postfix myhostname and the mydestination entries naming the box (its
 ###       fqdn and the localhost.<zone> token written beside it), /etc/mailname,
@@ -78,11 +87,16 @@
 ###       operator with curl
 ###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
 ###       all aliases, vhosts, and db-host entries from the updated database,
-###       plus one queued verify per Drupal/Backdrop site §2c renamed
-###       (server verifies regenerate nothing per-site). The Grav and
-###       Textpattern capsules are not queued: §2c re-points their surfaces
-###       itself, and their verify is provision's own class-specific task.
-###       Assumes BOA cron is not running (caller must ensure this).
+###       plus one queued verify per Drupal/Backdrop site §2c renamed or whose
+###       certificate record §5 renamed, a second one in pass 2 for such a
+###       site that redirects to an alias (server verifies regenerate nothing
+###       per-site). Pass 2 also renames a record §5 kept for client aliases
+###       once the site's verify in pass 1 issued its new name's certificate,
+###       and verifies the site again; else it prints the --force-old line to
+###       run and counts the site in the summary. The Grav and Textpattern
+###       capsules are not queued: §2c re-points their surfaces itself, and
+###       their verify is provision's own class-specific task. Assumes BOA
+###       cron is not running (caller must ensure this).
 ###
 
 export HOME=/root
@@ -104,6 +118,9 @@ _UNPARKED_N=0
 _STRAY_LEFT_N=0
 _SETTINGS_SKIPPED_N=0
 _RENAMED_SITE_URIS=()
+_CERT_REVERIFY_URIS=()
+_CERT_HELD=()
+_CERT_HELD_N=0
 _SERVE_CHECK_URIS=()
 _SERVE_N=0
 _SERVE_SKIPPED_N=0
@@ -137,7 +154,7 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     -h|--help)
-      sed -n '/^###/{ s/^### \?//; p }' "$0"
+      awk 'NR > 2 { if (!/^###/) exit; sub(/^### ?/, ""); print }' "$0"
       exit 0
       ;;
     *)
@@ -154,11 +171,39 @@ if [ -z "${_AEGIR_ROOT}" ]; then
   exit 1
 fi
 
+# One spelling of the root: every guard below compares a path built from it
+# with the one pwd -P reports, and it reaches eval and SQL quoted, so a
+# trailing slash is dropped and anything but a plain absolute path is
+# refused before a single name is derived from it.
+while [[ "${_AEGIR_ROOT}" == */ && "${_AEGIR_ROOT}" != / ]]; do
+  _AEGIR_ROOT="${_AEGIR_ROOT%/}"
+done
+case "${_AEGIR_ROOT}/" in
+  *//*|*/./*|*/../*)
+    echo "ERROR: --aegir-root must be a plain path, without '//', '.' or '..' (got ${_AEGIR_ROOT})"
+    exit 1
+  ;;
+esac
+case "${_AEGIR_ROOT}" in
+  /?*) ;;
+  *)
+    echo "ERROR: --aegir-root must be an absolute path (got ${_AEGIR_ROOT})"
+    exit 1
+  ;;
+esac
+if [[ ! "${_AEGIR_ROOT}" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+  echo "ERROR: --aegir-root carries characters outside [A-Za-z0-9._/-] (got ${_AEGIR_ROOT})"
+  exit 1
+fi
+
 # Derive all paths and username from _AEGIR_ROOT now that args are fully parsed
 _DRUSH_DIR=${_AEGIR_ROOT}/.drush
 _VHOSTD=${_AEGIR_ROOT}/config/server_master/nginx/vhost.d
 _BACKUP_DIR=${_AEGIR_ROOT}/backups/rename-hostname
 _AEGIR_USER=$(basename "${_AEGIR_ROOT}")
+# Root's own copies, dumps and logs of a run: the account owns backups/ (an
+# Octopus pass hands it the whole tree), so root writes them only here.
+_PRIV_BK=/var/backups/renameaegirhost/${_AEGIR_USER}
 
 # Account axis: both flags or neither; the tool runs on the already-landed
 # DESTINATION tree, so the root must be the new account's.
@@ -237,10 +282,254 @@ _renamed_already() {
 _file_needs_rename() {
   # Eligible = the file has a line carrying OLD that is not already
   # NEW-carrying (line-level twin of _renamed_already; whole file counts
-  # when no guard regime is active).
-  grep -q "${_OLD_HOST}" "$1" 2>/dev/null || return 1
+  # when no guard regime is active). Read without following a link or
+  # blocking on a FIFO: the account owns most of what this tool reads.
+  _text_needs_rename "$(timeout 10 dd if="$1" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2>/dev/null)"
+}
+
+_text_needs_rename() {
+  # _file_needs_rename for text already read.
+  grep -q "${_OLD_HOST}" <<< "$1" || return 1
   [ -z "${_SED_RENAME_GUARD}" ] && return 0
-  grep -v "${_NEW_HOST}" "$1" 2>/dev/null | grep -q "${_OLD_HOST}"
+  grep -v "${_NEW_HOST}" <<< "$1" | grep -q "${_OLD_HOST}"
+}
+
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account put on the way (the ltd worker's rule): below /data/disk and
+# /home every name on the path must be a real directory; once entered,
+# ./name stays there whatever is swapped.
+_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never
+# blocked on a FIFO, at most 1 MiB; empty for anything else.
+_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# The file $1, read as _read_here reads it inside its real directory.
+_read_file() {
+  _in_real_dir "${1%/*}" _read_here "${1##*/}"
+}
+
+# stdin as the fresh file $1 (a name that must not exist), handed to the
+# numeric uid $2 and gid $3 with the read/write bits of the mode $4, all
+# through the one handle that created it (O_EXCL|O_NOFOLLOW), so nothing is
+# ever chowned or chmoded by name in a directory an account can write (a
+# hard link renamed over the temp name before a chown by name would hand the
+# linked file to that owner).
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+
+# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
+# only a regular file under 1 MiB is read, never through a link or into a
+# FIFO; the result is a fresh file with the source's numeric owner and the
+# read/write bits of its mode, set through its handle (_ACCT_PUT_PL), then
+# renamed over ./$2. For a plain file this writes what sed -i wrote, without
+# its reach through a link the account put at the name.
+_sed_to() {
+  local _s="${1}" _n="${2}" _st _uid _gid _m _sz _ft _t
+  shift 2
+  _st="$(LC_ALL=C stat -c '%u %g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _uid _gid _m _sz _ft <<< "${_st}"
+  [ "${_sz}" -lt 1048576 ] || return 1
+  _t="./.${_n}.rah.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    _read_here "${_s}" | sed "$@" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_m}" ) \
+    && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# ./$1 rewritten in place by sed "${@:2}", as _sed_to does it.
+_sed_here() {
+  local _n="${1}"
+  shift
+  _sed_to "${_n}" "${_n}" "$@"
+}
+
+# $1 printed as the physical path of a directory that is this root's own:
+# resolved through any link, it lies in the root itself or, for an account,
+# in its files store on the attached mount (<mount>/files/<acct>/static/files,
+# the layout migratefs relocates it into) -- where BOA's own links lead:
+# static/files, backups onto the files store, a site's files/ and private/,
+# a platform reached through a link. Nothing, rc 1, for anything else.
+_own_real_path() {
+  local _r _o _m
+  _r="$(readlink -e -- "${1}" 2> /dev/null)" && [ -d "${_r}" ] || return 1
+  _o="$(readlink -e -- "${_AEGIR_ROOT}" 2> /dev/null)" || return 1
+  case "${_r}/" in
+    "${_o}"/*) ;;
+    /mnt/?*/files/"${_AEGIR_USER}"/static/files/*)
+      [[ "${_AEGIR_ROOT}" == /data/disk/?* ]] || return 1
+      # the store rule the nightly keeps: the mount part holds no files/
+      # or static/ of its own (another account's store is never taken
+      # for this one's), and the path only plain characters
+      case "${_r}" in
+        *[!A-Za-z0-9._/-]*) return 1 ;;
+      esac
+      _m="${_r}/"
+      _m="${_m%%/files/"${_AEGIR_USER}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+    ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "${_r}"
+}
+
+# Run "$@" inside the directory at the physical path $1 (as _own_real_path
+# prints it), and only when cd -P lands on exactly that path: a link put on
+# the way since it was resolved is refused.
+_in_path_dir() {
+  local _d="${1}"
+  shift
+  [ -n "${_d}" ] || return 1
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# The file $1 of this root, read as _read_here reads it inside its directory
+# resolved by _own_real_path; empty when that directory is not the root's.
+_read_own_file() {
+  local _d
+  _d="$(_own_real_path "${1%/*}")" || return 0
+  _in_path_dir "${_d}" _read_here "${1##*/}"
+}
+
+# 0 when $1 names a path below this root, spelled without '//', '.' or '..'.
+_under_root() {
+  case "${1}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+    "${_AEGIR_ROOT}"/?*) return 0 ;;
+  esac
+  return 1
+}
+
+# A name moved as it is (same inode, owner and mode) from the directory at
+# the physical path $1 into the current (pinned) one, as $3 (default $2):
+# taken from inside $1 and put here through this shell's /proc cwd, which
+# stays on this directory whatever is renamed meanwhile (the ltd worker's
+# rule), with -T so a link or a file at the new name is never followed.
+_take_here() {
+  local _to="/proc/${BASHPID}/cwd"
+  [ -d "${_to}/" ] || return 1
+  _in_path_dir "${1}" mv -f -T -- "./${2}" "${_to}/${3:-${2}}"
+}
+
+# The names of the real (not linked) directories in the current (pinned)
+# directory, one per line.
+_real_dirs_here() {
+  local _x
+  for _x in ./*; do
+    [ -d "${_x}" ] && [ ! -L "${_x}" ] && printf '%s\n' "${_x#./}"
+  done
+  return 0
+}
+
+# The names of the links in the current (pinned) directory, one per line.
+_links_here() {
+  local _x
+  for _x in ./*; do
+    [ -L "${_x}" ] && printf '%s\n' "${_x#./}"
+  done
+  return 0
+}
+
+# ./$1 in the current (pinned) directory made a link to $2, owned by the
+# numeric owner $3 (uid:gid) when given: the link is made by that owner
+# under a fresh name and renamed over ./$1, so nothing is handed over by
+# name (a hard link renamed over the name before a chown -h would be). A
+# link root makes when that owner cannot write here: nginx never checks a
+# link's owner.
+_relink_here() {
+  local _t="./.${1}.rah.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if [[ "${3}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${3%%:*}" != 0 ]; then
+    setpriv --reuid="${3%%:*}" --regid="${3#*:}" --clear-groups \
+      ln -s -- "${2}" "${_t}" 2> /dev/null
+  fi
+  if [ ! -L "${_t}" ]; then
+    rm -f -- "${_t}"
+    ln -s -- "${2}" "${_t}" || return 1
+  fi
+  mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# ./$1 in the current (pinned) directory, when a regular file under 1 MiB,
+# copied to $2 (a root-private path) as _read_here reads it.
+_copy_out_here() {
+  local _st
+  _st="$(LC_ALL=C stat -c '%s %F' -- "./${1}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [ "${_st%% *}" -lt 1048576 ] || return 1
+  _read_here "${1}" > "${2}"
+}
+
+# The bytes of $2 (a root-private file) written into ./$1 of the current
+# (pinned) directory through its existing inode: an open that follows no
+# link, creates no name and never waits on a FIFO, so the file keeps its
+# inode, owner and mode, and PHP sees the change at its next stat.
+_write_inode_here() {
+  dd if="${2}" of="./${1}" oflag=nofollow,nonblock conv=nocreat \
+    status=none 2> /dev/null
+}
+
+# ./$1 in the current (pinned) directory rewritten by sed "$2" through its
+# existing inode: only a regular file under 1 MiB, read without following a
+# link or opening a FIFO; the new bytes are staged complete, where only root
+# can reach them, before the file is touched, and never written as nothing.
+_rewrite_inode_here() {
+  local _t _rc=1
+  _t="$(mktemp -d /tmp/.rah-rewrite.XXXXXXXX 2> /dev/null)" || return 1
+  if _copy_out_here "${1}" "${_t}/in" \
+    && sed "${2}" "${_t}/in" > "${_t}/out" 2> /dev/null \
+    && [ -s "${_t}/out" ]; then
+    _write_inode_here "${1}" "${_t}/out" && _rc=0
+  fi
+  rm -rf -- "${_t}"
+  return "${_rc}"
+}
+
+# The physical path of the rename's own record directory in the root's tree,
+# backups/rename-hostname (with $1, that subdirectory of it), made when
+# missing. backups may be the backups mover's link onto the files store;
+# anything resolving elsewhere is refused. The directory also records that
+# this root has been renamed, which the mirror sync's prune budget reads.
+_rename_dir_real() {
+  local _p _n
+  _p="$(_own_real_path "${_AEGIR_ROOT}/backups")" || return 1
+  for _n in rename-hostname ${1:+"${1}"}; do
+    _in_path_dir "${_p}" mkdir -p -- "./${_n}" 2> /dev/null || return 1
+    _p="$(_own_real_path "${_p}/${_n}")" || return 1
+  done
+  printf '%s' "${_p}"
 }
 
 ###-------------CHECKS--------------------###
@@ -300,9 +589,10 @@ _detect_old_hostname() {
   fi
 
   # Extract remote_host from server_master alias — this is the authoritative
-  # hostname stored in the Aegir drush config
-  _OLD_HOST=$(grep "remote_host" \
-    "${_DRUSH_DIR}/server_master.alias.drushrc.php" \
+  # hostname stored in the Aegir drush config (read inside the real .drush,
+  # never through a link or into a FIFO)
+  _OLD_HOST=$(_read_file "${_DRUSH_DIR}/server_master.alias.drushrc.php" \
+    | grep "remote_host" \
     | head -1 \
     | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
 
@@ -362,24 +652,119 @@ _detect_new_hostname() {
   fi
 }
 
+###-------------WRITABLE DATABASE--------###
+
+# Every rename writes the Aegir database (§5 and the queue passes after it).
+# A mirror promoted by hand keeps its database read-only (super_read_only)
+# until the SQL watchdog releases its standby hold, within about a minute of
+# /root/.standby.cnf going. A rename in that minute lands its file rewrites
+# while every database write fails (ERROR 1290): server_master keeps the old
+# hostname, the server verify then probes nginx on the old box, and the
+# regenerated nginx.conf no longer loads. So the release is waited for, up
+# to 90 s, before anything changes; a standby, or a hold that stays, is
+# refused with nothing changed.
+_db_read_only() {
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
+    "SELECT @@GLOBAL.super_read_only + @@GLOBAL.read_only" 2>/dev/null
+}
+_wait_db_writable() {
+  local _ro _i=0
+  _ro=$(_db_read_only)
+  [ "${_ro}" = "0" ] && return 0
+  [ -n "${_ro}" ] \
+    || _die "Cannot read whether the database takes writes (is MySQL up?) -- nothing was changed"
+  if [ -e "/root/.standby.cnf" ]; then
+    _die "This box is a standby (/root/.standby.cnf) and its database is read-only:" \
+         "promote it first -- nothing was changed"
+  fi
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _alrt "(dry-run) the database is read-only now; a real run waits up to 90 s for its release"
+    return 0
+  fi
+  _info "The database is still read-only (the standby hold of a box promoted by hand):"
+  _info "  waiting up to 90 s for the SQL watchdog to release it ..."
+  while [ "${_i}" -lt 18 ]; do
+    sleep 5
+    _i=$(( _i + 1 ))
+    _ro=$(_db_read_only)
+    if [ "${_ro}" = "0" ]; then
+      _info "  the database takes writes (after $(( _i * 5 )) s)"
+      return 0
+    fi
+  done
+  _die "The database is still read-only after 90 s -- nothing was changed. On a box" \
+       "promoted by hand the SQL watchdog releases it once /root/.standby.cnf is gone" \
+       "and the box holds no replica config; re-run once it reads 0"
+}
+
 ###-------------BACKUP--------------------###
+
+# Root's copies of earlier runs for this root expire by the stamp in their
+# names (YYYYmmdd_HHMMSS) once older than the days the nightly keeps backups
+# for ($1): an entry without a stamp, or with this run's, is never touched.
+# Run inside the root-only directory.
+_expire_priv_bk_here() {
+  local _days="${1}" _cut _e _n _ts
+  _cut="$(date -d "-${_days} days" +%Y%m%d_%H%M%S 2> /dev/null)" || return 0
+  [ -n "${_cut}" ] || return 0
+  for _e in ./*; do
+    [ -e "${_e}" ] || [ -L "${_e}" ] || continue
+    _n="${_e#./}"
+    _ts="$(printf '%s' "${_n}" | grep -oE '(^|_)[0-9]{8}_[0-9]{6}' | head -n1)"
+    _ts="${_ts#_}"
+    [ -n "${_ts}" ] || continue
+    [ "${_ts}" = "${_TS}" ] && continue
+    [[ "${_ts}" < "${_cut}" ]] || continue
+    rm -rf -- "${_e}"
+  done
+}
 
 _backup_files() {
   if [ "${_DRY_RUN}" = "YES" ]; then
-    _info "(dry-run) Would create backup in ${_BACKUP_DIR}"
+    _info "(dry-run) Would create backup in ${_PRIV_BK}"
     return
   fi
 
-  mkdir -p "${_BACKUP_DIR}"
+  # Only root can reach this directory, so nothing written into it can be
+  # redirected; a live run without it stops here, before any change.
+  if [ ! -e "${_PRIV_BK}" ]; then
+    mkdir -p -- "${_PRIV_BK%/*}" 2> /dev/null
+    mkdir -m 0700 -- "${_PRIV_BK}" 2> /dev/null
+  fi
+  if [ -L "${_PRIV_BK}" ] || [ ! -d "${_PRIV_BK}" ] || [ ! -O "${_PRIV_BK}" ]; then
+    _die "Could not make the root-only backup dir ${_PRIV_BK}"
+  fi
   _TS=$(date +%Y%m%d_%H%M%S)
 
-  cp -a "${_DRUSH_DIR}" "${_BACKUP_DIR}/drush_${_TS}"
-  _info "Drush dir backed up to ${_BACKUP_DIR}/drush_${_TS}"
+  # The dumps and copies of earlier runs are kept for _DEL_OLD_BACKUPS days
+  # as set in /root/.barracuda.cnf (14 when unset), so they never pile up
+  # on the root filesystem.
+  local _KEEP
+  _KEEP=$(grep -m1 '^_DEL_OLD_BACKUPS=' /root/.barracuda.cnf 2> /dev/null \
+    | cut -d= -f2 | tr -dc '0-9')
+  [ -n "${_KEEP}" ] && [ "${_KEEP}" -gt 0 ] 2> /dev/null || _KEEP=14
+  ( cd -P -- "${_PRIV_BK}" 2> /dev/null && _expire_priv_bk_here "${_KEEP}" )
+
+  # Copied from inside the real directories: .drush and vhost.d are the
+  # account's, cp -a keeps a link inside them as a link.
+  if _in_real_dir "${_DRUSH_DIR}" cp -a . "${_PRIV_BK}/drush_${_TS}"; then
+    _info "Drush dir backed up to ${_PRIV_BK}/drush_${_TS}"
+  else
+    _alrt "Drush dir NOT fully backed up (not a real directory, or the copy failed): ${_DRUSH_DIR}"
+  fi
 
   if [ -d "${_VHOSTD}" ]; then
-    cp -a "${_VHOSTD}" "${_BACKUP_DIR}/vhost.d_${_TS}"
-    _info "vhost.d backed up to ${_BACKUP_DIR}/vhost.d_${_TS}"
+    if _in_real_dir "${_VHOSTD}" cp -a . "${_PRIV_BK}/vhost.d_${_TS}"; then
+      _info "vhost.d backed up to ${_PRIV_BK}/vhost.d_${_TS}"
+    else
+      _alrt "vhost.d NOT fully backed up (not a real directory, or the copy failed): ${_VHOSTD}"
+    fi
   fi
+
+  # The rename's record in the root's own tree, where a site dir that is not
+  # a site gets parked (§2c).
+  _rename_dir_real > /dev/null \
+    || _alrt "${_BACKUP_DIR} could not be made in the root's own tree"
 
   _info "Backup timestamp: ${_TS}"
 }
@@ -395,8 +780,8 @@ _rename_hostmaster_site_dir() {
   # source's OLD-named dir over it would clobber the target's correct
   # settings.php.
   local _HM_RAW
-  _HM_RAW=$(grep "site_path'" \
-    "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+  _HM_RAW=$(_read_file "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g" \
     | tr -d ' ')
@@ -404,6 +789,14 @@ _rename_hostmaster_site_dir() {
     _alrt "Could not extract site_path for the site-dir rename; leaving to §5"
     return 0
   fi
+  # The alias is the account's to write: its site_path is used only as a
+  # plain path below this root (it reaches the eval in _maybe_run), and the
+  # rename runs on names inside the real sites directory.
+  if ! _under_root "${_HM_RAW}"; then
+    _alrt "Hostmaster site_path ${_HM_RAW} is not a plain path under ${_AEGIR_ROOT} -- site-dir rename left to §2c"
+    return 0
+  fi
+  _safe_name "${_HM_RAW}" "hostmaster site_path" || return 0
   if _renamed_already "${_HM_RAW}"; then
     # Re-run over a renamed root in the NEW-contains-OLD regime: the forward
     # substitution below would walk the name forward again
@@ -421,12 +814,24 @@ _rename_hostmaster_site_dir() {
     _info "Hostmaster site dir already ${_HM_DIR_NEW##*/} — not renaming"
     return 0
   fi
-  if [ -d "${_HM_DIR_OLD}" ]; then
-    _info "Renaming hostmaster site dir: ${_HM_DIR_OLD##*/} -> ${_HM_DIR_NEW##*/}"
-    _maybe_run mv -f \'"${_HM_DIR_OLD}"\' \'"${_HM_DIR_NEW}"\'
-  else
-    _alrt "Neither ${_HM_DIR_OLD##*/} nor ${_HM_DIR_NEW##*/} found on disk"
+  if [ "${_HM_DIR_OLD%/*}" != "${_HM_DIR_NEW%/*}" ]; then
+    _alrt "Hostmaster site_path carries ${_OLD_HOST} above the site dir -- not renaming ${_HM_DIR_OLD}"
+    return 0
   fi
+  if [ ! -d "${_HM_DIR_OLD}" ]; then
+    _alrt "Neither ${_HM_DIR_OLD##*/} nor ${_HM_DIR_NEW##*/} found on disk"
+    return 0
+  fi
+  local _HM_SITES
+  if ! _HM_SITES="$(_own_real_path "${_HM_DIR_OLD%/*}")"; then
+    _alrt "The sites dir of ${_HM_DIR_OLD} is not a directory of ${_AEGIR_ROOT} -- not renaming"
+    return 0
+  fi
+  _safe_name "${_HM_SITES}" "hostmaster sites dir" || return 0
+  _info "Renaming hostmaster site dir: ${_HM_DIR_OLD##*/} -> ${_HM_DIR_NEW##*/}"
+  _maybe_run _in_path_dir \'"${_HM_SITES}"\' mv -f -T -- \
+    \'"./${_HM_DIR_OLD##*/}"\' \'"./${_HM_DIR_NEW##*/}"\' \
+    || _alrt "Hostmaster site dir NOT renamed: ${_HM_DIR_OLD}"
 }
 
 ###-------------§2c TENANT SITE DIRS-----###
@@ -498,16 +903,30 @@ _parked_capsule_platform_root() {
     "${_DRUSH_DIR}/${_OLDN}.alias.drushrc.php"
     "${_DRUSH_DIR}/${_NEWN}.alias.drushrc.php"
   )
-  local _BK
-  for _BK in $(ls -1d "${_BACKUP_DIR}"/drush_* 2>/dev/null | sort -r); do
+  # Earlier releases kept their copies in the account's own backups, later
+  # ones where only root can reach them: both, newest first by name.
+  local _BK _RHP
+  _RHP="$(_own_real_path "${_BACKUP_DIR}")" || _RHP=""
+  for _BK in $( { ls -1d "${_PRIV_BK}"/drush_*
+      [ -n "${_RHP}" ] && ls -1d "${_RHP}"/drush_*
+    } 2>/dev/null | awk -F/ '{ print $NF "\t" $0 }' | sort -r | cut -f2-); do
     [ -d "${_BK}" ] || continue
-    [ "${_BK}" = "${_BACKUP_DIR}/drush_${_TS}" ] && continue
+    [ "${_BK}" = "${_PRIV_BK}/drush_${_TS}" ] && continue
     _CANDS+=("${_BK}/${_OLDN}.alias.drushrc.php")
     _CANDS+=("${_BK}/${_NEWN}.alias.drushrc.php")
   done
   for _F in "${_CANDS[@]}"; do
     [ -f "${_F}" ] || continue
-    _R=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_F}" 2>/dev/null | head -1)
+    # inside the real directory, never through a link or into a FIFO: the
+    # copies carry whatever the account's .drush held when they were taken
+    case "${_F}" in
+      "${_DRUSH_DIR}"/*|"${_PRIV_BK}"/*)
+        _R=$(_read_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+      ;;
+      *)
+        _R=$(_read_own_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+      ;;
+    esac
     if [ -n "${_R}" ]; then
       printf '%s' "${_R}"
       return 0
@@ -531,14 +950,16 @@ _recover_parked_site_dirs() {
   # stranded, and the run prints "Rename complete" over a parked site.
   #
   # Guarded exactly like the mover it runs before: _safe_name on every value
-  # that reaches an eval, --dry-run through _maybe_run, and a refusal rather
-  # than an overwrite when the destination is taken. The platform root comes
-  # from the site's alias file (helper above), and the capsule is reinstated
-  # only when that root sits UNDER ${_AEGIR_ROOT} and carries an index.php:
-  # this is the one destination in the tool chosen by file CONTENT rather
-  # than computed in place, so a stale or hand-edited value must never move a
-  # tenant into another instance's platform, where no later pass of this run
-  # could see it again while the summary still read "reinstated". On the
+  # that reaches an eval, nothing moved under --dry-run, the move made from
+  # inside the real park into the real sites dir (both the account's), and a
+  # refusal rather than an overwrite when the destination is taken. The
+  # platform root comes from the site's alias file (helper above), and the
+  # capsule is reinstated only when that root sits UNDER ${_AEGIR_ROOT} and
+  # carries an index.php: this is the one destination in the tool chosen by
+  # file CONTENT rather than computed in place, so a stale or hand-edited
+  # value must never move a tenant into another instance's platform, where
+  # no later pass of this run could see it again while the summary still
+  # read "reinstated". On the
   # account axis the recorded root still names /data/disk/<old-account>,
   # which fails the containment test, so the capsule is reported and left
   # parked rather than guessed at.
@@ -546,10 +967,14 @@ _recover_parked_site_dirs() {
   # Anything host-derived down there that this cannot reinstate is named at
   # the end, so the summary can never read as success over a park.
   local _PARK="${_BACKUP_DIR}/stray-sites"
-  local _P _OLDNAME _NEWNAME _CLASS _ROOT _NEWD _UNDER_ROOT _LEFT=""
+  local _P _OLDNAME _NEWNAME _CLASS _ROOT _NEWD _UNDER_ROOT _LEFT="" _PKR
 
   [ -d "${_PARK}" ] || return 0
-  for _P in "${_PARK}"/*; do
+  if ! _PKR="$(_own_real_path "${_PARK}")"; then
+    _alrt "  ${_PARK} is not a directory of ${_AEGIR_ROOT} -- nothing reinstated from it"
+    return 0
+  fi
+  for _P in "${_PKR}"/*; do
     { [ -d "${_P}" ] && [ ! -L "${_P}" ]; } || continue
     _OLDNAME=$(basename "${_P}")
     case "${_OLDNAME}" in
@@ -603,7 +1028,9 @@ _recover_parked_site_dirs() {
       continue
     fi
     _info "  un-park: stray-sites/${_OLDNAME} -> ${_NEWD} (${_CLASS} capsule)"
-    if ! _maybe_run mv -f \'"${_P}"\' \'"${_NEWD}"\'; then
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      echo "DRY:  mv -f -T ${_P} ${_NEWD}"
+    elif ! _unpark_capsule "${_PKR}" "${_OLDNAME}" "${_ROOT}/sites" "${_NEWNAME}"; then
       _alrt "  un-park FAILED — left parked: ${_P}"
       _LEFT="${_LEFT} ${_OLDNAME}"
       _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
@@ -632,10 +1059,31 @@ _recover_parked_site_dirs() {
   return 0
 }
 
+# The parked dir $2 of the park at the physical path $1 put back as $4 into
+# the platform sites dir $3, moved from inside the one real directory into
+# the other, never over a name already there.
+_unpark_capsule() {
+  local _s
+  _s="$(_own_real_path "${3}")" || return 1
+  _in_path_dir "${_s}" test ! -e "./${4}" -a ! -L "./${4}" || return 1
+  _in_path_dir "${_s}" _take_here "${1}" "${2}" "${4}"
+}
+
+# The site dir $2 of the sites dir $1 parked as it is in the rename's
+# stray-sites in the root's own tree, moved from inside the one real
+# directory into the other, never over a name already parked there.
+_park_stray_site_dir() {
+  local _s _p
+  _s="$(_own_real_path "${1}")" || return 1
+  _p="$(_rename_dir_real stray-sites)" || return 1
+  _in_path_dir "${_p}" test ! -e "./${2}" -a ! -L "./${2}" || return 1
+  _in_path_dir "${_p}" _take_here "${_s}" "${2}"
+}
+
 _rename_tenant_site_dirs() {
   _info "§2c Renaming host-derived tenant site dirs under ${_AEGIR_ROOT} ..."
 
-  local _D _SITES _OLDNAME _NEWNAME _NEWD _CLASS _N=0
+  local _D _SITES _OLDNAME _NEWNAME _NEWD _CLASS _SR _N=0
 
   # Before the mover, because a capsule parked by an earlier release is
   # invisible to every find below and to the pre-queue guard.
@@ -667,18 +1115,34 @@ _rename_tenant_site_dirs() {
     # makes.
     _CLASS=$(_site_capsule_class "${_D}")
     if [ ! -f "${_D}/settings.php" ] && [ -z "${_CLASS}" ]; then
-      _maybe_run mkdir -p \'"${_BACKUP_DIR}/stray-sites"\'
-      _maybe_run mv -f \'"${_D}"\' \'"${_BACKUP_DIR}/stray-sites/${_OLDNAME}"\'
+      if [ "${_DRY_RUN}" = "YES" ]; then
+        echo "DRY:  mv -f -T ${_D} ${_BACKUP_DIR}/stray-sites/${_OLDNAME}"
+      elif ! _park_stray_site_dir "${_SITES}" "${_OLDNAME}"; then
+        # Left in place, the pre-queue guard stops the run before §7.
+        _alrt "  ${_OLDNAME} is not a site and could NOT be parked in ${_BACKUP_DIR}/stray-sites/ (not a directory of ${_AEGIR_ROOT}, or the name is taken there)"
+        continue
+      fi
       _alrt "  parked ${_OLDNAME}: no settings.php, no system/defines.php, no private/config.php (not a site) -> ${_BACKUP_DIR}/stray-sites/"
       _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
       continue
     fi
+    # The sites dir is the account's: the move runs on names inside the real
+    # directory, and -T refuses a link or a file put at the new name.
+    if ! _SR="$(_own_real_path "${_SITES}")"; then
+      _alrt "  ${_SITES} is not a directory of ${_AEGIR_ROOT} -- ${_OLDNAME} left in place"
+      continue
+    fi
+    _safe_name "${_SR}" "sites dir" || continue
     if [ -n "${_CLASS}" ]; then
       _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES}, ${_CLASS} capsule)"
     else
       _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
     fi
-    _maybe_run mv -f \'"${_D}"\' \'"${_NEWD}"\'
+    if ! _maybe_run _in_path_dir \'"${_SR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'; then
+      _alrt "  site dir move FAILED -- ${_OLDNAME} left in place in ${_SITES}"
+      continue
+    fi
     _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
     if [ -n "${_CLASS}" ]; then
       _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
@@ -822,7 +1286,7 @@ _rename_site_uri_surfaces() {
   local _NEW_ALIAS="${_DRUSH_DIR}/${_NEWNAME}.alias.drushrc.php"
   local _OLD_FILES="${_AEGIR_ROOT}/static/files/${_OLDNAME}"
   local _NEW_FILES="${_AEGIR_ROOT}/static/files/${_NEWNAME}"
-  local _SD _L _NEWL _TGT _SUF _OWN
+  local _SD _SDR _FS _CLR _C _B _TGT _SUF _OWN
 
   # The dir to read from: the moved one live, the source one under --dry-run
   # (where the move above only printed). Keeps the dry-run report honest
@@ -830,65 +1294,89 @@ _rename_site_uri_surfaces() {
   _SD="${_OLD_D}"
   [ -d "${_NEWD}" ] && _SD="${_NEWD}"
 
+  # .drush is the account's: the rename runs on ./names inside the real
+  # directory, and -T replaces a link put at the new name instead of moving
+  # the alias into whatever directory it points at.
   if [ -f "${_OLD_ALIAS}" ] && [ ! -f "${_NEW_ALIAS}" ]; then
     _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
-    _maybe_run mv -f \'"${_OLD_ALIAS}"\' \'"${_NEW_ALIAS}"\'
+    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}.alias.drushrc.php"\' \'"./${_NEWNAME}.alias.drushrc.php"\'
     _URI_SURFACES_CHANGED=YES
   fi
 
   # The site's files symlink resolves through this store. Leave it behind and
   # the next verify mints an EMPTY store under the new URI and the site loses
-  # its files, so this move is not optional.
+  # its files, so this move is not optional. The store is entered where it
+  # really lies: static/files may be migratefs' link onto the attached store,
+  # never anywhere else.
   if [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
-    _info "    static files store: static/files/${_OLDNAME} -> static/files/${_NEWNAME}"
-    _maybe_run mv -f \'"${_OLD_FILES}"\' \'"${_NEW_FILES}"\'
-    _URI_SURFACES_CHANGED=YES
+    if ! _FS="$(_own_real_path "${_AEGIR_ROOT}/static/files")"; then
+      _alrt "    static/files is not this root's own files store -- static/files/${_OLDNAME} NOT moved"
+    elif _safe_name "${_FS}" "files store"; then
+      _info "    static files store: static/files/${_OLDNAME} -> static/files/${_NEWNAME}"
+      _maybe_run _in_path_dir \'"${_FS}"\' mv -f -T -- \
+        \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'
+      _URI_SURFACES_CHANGED=YES
+    fi
   fi
 
   # ...which leaves the site's own files/private symlinks pointing INTO the
   # store under its old name: dangling, so the site serves without any of
   # its files. Repoint every symlink in the site dir that resolves into the
   # old store; a site whose files are a real directory has none and is left
-  # alone. -h on the chown: the link's own ownership, never the target's.
-  for _L in "${_SD}"/*; do
-    [ -L "${_L}" ] || continue
-    _TGT=$(readlink "${_L}" 2>/dev/null)
+  # alone. The site dir is the account's: its links are read, replaced and
+  # handed back (chown -h: the link, never what it names; the numeric owner
+  # it had) as names inside the real directory. A store that did not move
+  # keeps them: repointed, they would name nothing.
+  _SDR="$(_own_real_path "${_SD}")" && _safe_name "${_SDR}" "site dir" \
+    || _SDR=""
+  if [ -n "${_SDR}" ] && [ "${_DRY_RUN}" != "YES" ] \
+    && [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
+    _alrt "    static/files/${_OLDNAME} did not move -- the site's files links still name it"
+    _SDR=""
+  fi
+  while IFS= read -r _B; do
+    [ -n "${_B}" ] || continue
+    _TGT=$(_in_path_dir "${_SDR}" readlink -- "./${_B}" 2>/dev/null)
     case "${_TGT}" in
       "${_OLD_FILES}"|"${_OLD_FILES}"/*) ;;
       *) continue ;;
     esac
-    _SUF="${_TGT#${_OLD_FILES}}"
+    _SUF="${_TGT#"${_OLD_FILES}"}"
     if [ -n "${_SUF}" ] && ! _safe_name "${_SUF}" "files symlink target suffix"; then
       continue
     fi
-    _safe_name "${_L}" "files symlink" || continue
-    _OWN=$(stat -c '%U:%G' "${_L}" 2>/dev/null)
-    _info "    files symlink: ${_L##*/} -> static/files/${_NEWNAME}${_SUF}"
-    _maybe_run ln -sfn \'"${_NEW_FILES}${_SUF}"\' \'"${_L}"\'
-    [ -n "${_OWN}" ] && _maybe_run chown -h \'"${_OWN}"\' \'"${_L}"\'
+    _safe_name "${_B}" "files symlink" || continue
+    _OWN=$(_in_path_dir "${_SDR}" stat -c '%u:%g' -- "./${_B}" 2>/dev/null)
+    _info "    files symlink: ${_B} -> static/files/${_NEWNAME}${_SUF}"
+    _maybe_run _in_path_dir \'"${_SDR}"\' _relink_here \'"${_B}"\' \
+      \'"${_NEW_FILES}${_SUF}"\' \'"${_OWN}"\'
     _URI_SURFACES_CHANGED=YES
-  done
+  done < <([ -n "${_SDR}" ] && _in_path_dir "${_SDR}" _links_here)
 
   # The client symlink MOVES with the name. Dropping it for provision to
   # recreate cannot work — that only happens in a site verify, and §7 queues
   # server verifies — and a missing one takes the site out of the client's
-  # home directory listing.
-  for _L in "${_AEGIR_ROOT}"/clients/*/"${_OLDNAME}"; do
-    [ -L "${_L}" ] || continue
-    _safe_name "${_L}" "client symlink" || continue
-    _NEWL="$(dirname "${_L}")/${_NEWNAME}"
-    if [ -e "${_NEWL}" ] || [ -L "${_NEWL}" ]; then
-      _info "    client symlink already present: ${_NEWL#${_AEGIR_ROOT}/}"
-      _maybe_run rm -f \'"${_L}"\'
+  # home directory listing. clients/ is the account's: each client dir is
+  # entered as a real directory and its links handled as names there.
+  _CLR="$(_own_real_path "${_AEGIR_ROOT}/clients")" \
+    && _safe_name "${_CLR}" "clients dir" || _CLR=""
+  while IFS= read -r _C; do
+    [ -n "${_C}" ] || continue
+    _safe_name "${_C}" "client dir" || continue
+    _in_path_dir "${_CLR}/${_C}" test -L "./${_OLDNAME}" || continue
+    if _in_path_dir "${_CLR}/${_C}" test -e "./${_NEWNAME}" -o -L "./${_NEWNAME}"; then
+      _info "    client symlink already present: clients/${_C}/${_NEWNAME}"
+      _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' rm -f -- \'"./${_OLDNAME}"\'
       continue
     fi
-    _OWN=$(stat -c '%U:%G' "${_L}" 2>/dev/null)
-    _info "    client symlink: ${_L#${_AEGIR_ROOT}/} -> ${_NEWL#${_AEGIR_ROOT}/}"
-    _maybe_run ln -sfn \'"${_NEWD}"\' \'"${_NEWL}"\'
-    [ -n "${_OWN}" ] && _maybe_run chown -h \'"${_OWN}"\' \'"${_NEWL}"\'
-    _maybe_run rm -f \'"${_L}"\'
+    _OWN=$(_in_path_dir "${_CLR}/${_C}" stat -c '%u:%g' -- "./${_OLDNAME}" 2>/dev/null)
+    _info "    client symlink: clients/${_C}/${_OLDNAME} -> clients/${_C}/${_NEWNAME}"
+    _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' _relink_here \'"${_NEWNAME}"\' \
+      \'"${_NEWD}"\' \'"${_OWN}"\'
+    _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' rm -f -- \'"./${_OLDNAME}"\'
     _URI_SURFACES_CHANGED=YES
-  done
+  done < <([ -n "${_CLR}" ] && _in_path_dir "${_CLR}" _real_dirs_here)
 
   _rewrite_site_settings_uri "${_SD}/settings.php" "${_OLDNAME}" "${_NEWNAME}"
 }
@@ -912,20 +1400,17 @@ _rewrite_site_in_place() {
   # Truncating in place keeps the inode, so opcache's ordinary 2s
   # revalidation applies and the rename takes effect immediately. It also
   # preserves ownership and mode for free.
+  #
+  # The site dir is the account's (and private/ may be its link into the
+  # files store): the file is rewritten as a name inside its real directory
+  # (_rewrite_inode_here), so a link or a FIFO put at the name, or a link
+  # swapped in for a directory on the way, is never written through as root.
+  # $1 = sed expression, $2 = the file.
   local _expr="$1"
   local _f="$2"
-  local _tmp
-  # The site dir is tenant-writable and `>` follows symlinks, so the staging
-  # file is created O_EXCL under a random name: a planted link at the path is
-  # refused rather than written through as root. The inode that matters is the
-  # real file's, and that is preserved by the truncate-in-place cat below.
-  _tmp=$(mktemp "${_f}.xrename.XXXXXX" 2>/dev/null) || return 1
-  sed "${_expr}" "${_f}" > "${_tmp}" 2>/dev/null || { rm -f "${_tmp}"; return 1; }
-  # Never truncate a live settings.php to nothing because sed hiccuped.
-  [ -s "${_tmp}" ] || { rm -f "${_tmp}"; return 1; }
-  cat "${_tmp}" > "${_f}" || { rm -f "${_tmp}"; return 1; }
-  rm -f "${_tmp}"
-  return 0
+  local _d
+  _d="$(_own_real_path "${_f%/*}")" || return 1
+  _in_path_dir "${_d}" _rewrite_inode_here "${_f##*/}" "${_expr}"
 }
 
 _rewrite_site_settings_uri() {
@@ -947,12 +1432,11 @@ _rewrite_site_settings_uri() {
   local _SET="$1"
   local _OLDNAME="$2"
   local _NEWNAME="$3"
-  local _OLD_BS _NEW_BS _RE_BS _RP_BS _RE _EXPR _OWN _MODE
+  local _OLD_BS _NEW_BS _RE_BS _RP_BS _RE _EXPR _T
 
   # A symlink here is never a provision artefact -- provision writes
-  # settings.php as a real file. Everything below dereferences it: the
-  # rewrite, and the chown/chmod that hand the file back. The site dir is
-  # tenant-writable, so refuse rather than re-own whatever a link points at.
+  # settings.php as a real file. The site dir is tenant-writable, so say so
+  # rather than leave it silently stale (the writer below refuses it anyway).
   if [ -L "${_SET}" ]; then
     _alrt "    settings.php is a symlink — refusing to rewrite: ${_SET}"
     _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
@@ -977,9 +1461,11 @@ _rewrite_site_settings_uri() {
     _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
     return 0
   fi
-  grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}" "${_SET}" 2>/dev/null || return 0
+  # Read once, inside the real site dir, never through a link or into a FIFO.
+  _T="$(_read_own_file "${_SET}")"
+  grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}" <<< "${_T}" || return 0
 
-  if grep -E "'(database|username|password)'|db_url" "${_SET}" 2>/dev/null \
+  if grep -E "'(database|username|password)'|db_url" <<< "${_T}" \
     | grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}"; then
     _alrt "    settings.php NOT rewritten — database credentials embed ${_OLDNAME}:"
     _alrt "    ${_SET}"
@@ -996,19 +1482,15 @@ _rewrite_site_settings_uri() {
   _RP_BS=$(printf '%s' "${_NEW_BS}" | sed -e 's/[\]/\\\\/g')
   _EXPR="${_SED_RENAME_GUARD}s/${_RE_BS}/${_RP_BS}/g"
   _EXPR="${_EXPR}; ${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
-  _OWN=$(stat -c '%U:%G' "${_SET}" 2>/dev/null)
-  _MODE=$(stat -c '%a' "${_SET}" 2>/dev/null)
   _info "    settings.php: file paths + trusted_host_patterns -> ${_NEWNAME}"
+  # Written through its own inode, so the account's owner and its 440 mode
+  # stay exactly as they were: nothing is handed back by name.
   if ! _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_SET}"\'; then
     _alrt "    settings.php rewrite FAILED — left untouched: ${_SET}"
     _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
     return 0
   fi
   _URI_SURFACES_CHANGED=YES
-  # The file is mode 440 owned by the account, and root must hand it back
-  # exactly as it found it.
-  [ -n "${_OWN}" ] && _maybe_run chown \'"${_OWN}"\' \'"${_SET}"\'
-  [ -n "${_MODE}" ] && _maybe_run chmod "${_MODE}" \'"${_SET}"\'
   return 0
 }
 
@@ -1110,7 +1592,7 @@ _rewrite_capsule_site_drushrc() {
   local _RC="$1"
   local _OLDNAME="$2"
   local _NEWNAME="$3"
-  local _RE _EXPR
+  local _RE _EXPR _T
 
   [ -f "${_RC}" ] || return 0
   if [ -L "${_RC}" ]; then
@@ -1118,8 +1600,9 @@ _rewrite_capsule_site_drushrc() {
     return 0
   fi
   _safe_name "${_RC}" "drushrc.php path" || return 0
-  grep -qF "${_OLDNAME}" "${_RC}" 2>/dev/null || return 0
-  if grep -E "db_name|db_user|db_passwd|db_url" "${_RC}" 2>/dev/null \
+  _T="$(_read_own_file "${_RC}")"
+  grep -qF "${_OLDNAME}" <<< "${_T}" || return 0
+  if grep -E "db_name|db_user|db_passwd|db_url" <<< "${_T}" \
     | grep -qF "${_OLDNAME}"; then
     _alrt "    drushrc.php NOT rewritten — database credentials embed ${_OLDNAME}:"
     _alrt "    ${_RC}"
@@ -1150,7 +1633,7 @@ _rename_grav_capsule_uri() {
   local _SD="$3"
   local _ENV="${_SD}/.env"
   local _ENV_OK=NO
-  local _BASE _OLD_ENV _NEW_ENV _EXPR _NEW_RE _ENV_N _ENV_OKN
+  local _BASE _BR _OLD_ENV _NEW_ENV _EXPR _NEW_RE _ENV_N _ENV_OKN _ET
 
   # The overlay move is gated on this file, because the pair must never come
   # apart: an .env naming an overlay directory that no longer exists is the
@@ -1165,6 +1648,8 @@ _rename_grav_capsule_uri() {
   # repair by the converge pass. Only the dot needs escaping: the value came
   # through _safe_name, whose charset holds no other ERE metacharacter.
   _NEW_RE=$(printf '%s' "${_NEWNAME}" | sed -e 's/[.]/\\./g')
+  # Read once, inside the real capsule dir, never through a link or a FIFO.
+  _ET="$(_read_own_file "${_ENV}")"
   if [ ! -e "${_ENV}" ] && [ ! -L "${_ENV}" ]; then
     # No .env at all is a stock shape (Grav falls back to user/<uri>), and
     # there is nothing pinning the overlay name, so the move is safe.
@@ -1175,8 +1660,8 @@ _rename_grav_capsule_uri() {
     _alrt "    .env is a symlink — refusing to rewrite: ${_ENV}"
   elif ! _safe_name "${_ENV}" ".env path"; then
     : # _safe_name said why; the overlay stays put with the file
-  elif _ENV_N=$(grep -c "^[[:space:]]*GRAV_ENVIRONMENT=" "${_ENV}" 2>/dev/null); \
-    _ENV_OKN=$(grep -Ec "^[[:space:]]*GRAV_ENVIRONMENT=(\"${_NEW_RE}\"|'${_NEW_RE}'|${_NEW_RE})[[:space:]]*\$" "${_ENV}" 2>/dev/null); \
+  elif _ENV_N=$(grep -c "^[[:space:]]*GRAV_ENVIRONMENT=" <<< "${_ET}"); \
+    _ENV_OKN=$(grep -Ec "^[[:space:]]*GRAV_ENVIRONMENT=(\"${_NEW_RE}\"|'${_NEW_RE}'|${_NEW_RE})[[:space:]]*\$" <<< "${_ET}"); \
     [ "${_ENV_N:-0}" -gt 0 ] && [ "${_ENV_N}" -eq "${_ENV_OKN:-0}" ]; then
     # Dotenv unquotes and trims, so a quoted or padded value that already
     # reads the new uri is an honoured value and not a surface to repair --
@@ -1185,7 +1670,7 @@ _rename_grav_capsule_uri() {
     # reader honours, and the tool cannot prove which, so such a file falls
     # through to the rewrite arm, which replaces every line and converges it.
     _ENV_OK=YES
-  elif grep -q "^[[:space:]]*GRAV_ENVIRONMENT=" "${_ENV}" 2>/dev/null; then
+  elif grep -q "^[[:space:]]*GRAV_ENVIRONMENT=" <<< "${_ET}"; then
     # Whatever the value and whatever the quoting: the line is replaced whole.
     _EXPR='s|^[[:space:]]*GRAV_ENVIRONMENT=.*$|GRAV_ENVIRONMENT='"${_NEWNAME}"'|'
     _info "    .env: GRAV_ENVIRONMENT -> ${_NEWNAME}"
@@ -1200,7 +1685,7 @@ _rename_grav_capsule_uri() {
       # a later edit -- must not be followed by the overlay move. Exact,
       # because the expression above writes the line whole and unquoted.
       if [ "${_DRY_RUN}" != "YES" ] \
-        && ! grep -qxF "GRAV_ENVIRONMENT=${_NEWNAME}" "${_ENV}" 2>/dev/null; then
+        && ! _read_own_file "${_ENV}" | grep -qxF "GRAV_ENVIRONMENT=${_NEWNAME}"; then
         _ENV_OK=NO
         _alrt "    .env does not read GRAV_ENVIRONMENT=${_NEWNAME} after the rewrite — overlay left at ${_OLDNAME}: ${_ENV}"
       fi
@@ -1224,11 +1709,19 @@ _rename_grav_capsule_uri() {
       continue
     fi
     _safe_name "${_OLD_ENV}" "grav env overlay" || continue
+    # The capsule is the account's: the overlay is renamed as a name inside
+    # its real parent directory, -T refusing whatever was put at the new name.
+    if ! _BR="$(_own_real_path "${_BASE}")"; then
+      _alrt "    ${_BASE#${_SD}/} is not a directory of ${_AEGIR_ROOT} -- overlay left at ${_OLDNAME}"
+      continue
+    fi
+    _safe_name "${_BR}" "grav env base" || continue
     _info "    grav env overlay: ${_BASE#${_SD}/}/${_OLDNAME} -> ${_NEWNAME}"
     # The inverse of the stale .env, and just as fatal: the vhost's
     # fastcgi_param already names the new uri, so a failed move breaks the
     # web tier too. provision logs it; so does this.
-    if _maybe_run mv -f \'"${_OLD_ENV}"\' \'"${_NEW_ENV}"\'; then
+    if _maybe_run _in_path_dir \'"${_BR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'; then
       _URI_SURFACES_CHANGED=YES
     else
       _alrt "    grav env overlay move FAILED — .env now names ${_NEWNAME} with no overlay there: ${_OLD_ENV}"
@@ -1264,7 +1757,7 @@ _rename_txp_capsule_uri() {
     return 0
   fi
   _safe_name "${_CFG}" "private/config.php path" || return 0
-  if grep -qF "${_OLDNAME}" "${_CFG}" 2>/dev/null; then
+  if _read_own_file "${_CFG}" | grep -qF "${_OLDNAME}"; then
     # Old-name evidence of the second kind (see the database pass): this file
     # still names the old uri, so the capsule really is mid-rename.
     _EVID=YES
@@ -1277,7 +1770,7 @@ _rename_txp_capsule_uri() {
       # line still carries the old substring inside the new one, so the test
       # is "a line with OLD and without NEW" -- _file_needs_rename's shape.
       if [ "${_DRY_RUN}" != "YES" ] \
-        && grep -vF "${_NEWNAME}" "${_CFG}" 2>/dev/null \
+        && _read_own_file "${_CFG}" | grep -vF "${_NEWNAME}" \
         | grep -qF "${_OLDNAME}"; then
         _alrt "    private/config.php still carries ${_OLDNAME}: ${_CFG}"
       fi
@@ -1313,10 +1806,12 @@ _txp_config_value() {
   # into "empty" is how a host that could not be read becomes "" and then
   # localhost, i.e. this box, for a site whose database is on another one.
   # The sentinel is what keeps the two apart through a command substitution,
-  # which strips nothing but trailing newlines.
+  # which strips nothing but trailing newlines. The file is read inside its
+  # real directory, never through a link or into a FIFO.
   local _V
-  _V=$(sed -n "s/^[[:space:]]*[\$]txpcfg\['$2'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/=\1/p" \
-    "$1" 2>/dev/null | head -1)
+  _V=$(_read_own_file "$1" \
+    | sed -n "s/^[[:space:]]*[\$]txpcfg\['$2'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/=\1/p" \
+    | head -1)
   [ -z "${_V}" ] && return 2
   _V="${_V#=}"
   case "${_V}" in
@@ -1342,14 +1837,15 @@ _txp_drushrc_value() {
   # it answers on a hand-written file only, and the caller separately refuses
   # a root outside ${_AEGIR_ROOT} or without an index.php. The password sits
   # in the same file and is deliberately never parsed: this tool connects as
-  # root through root's own defaults-file.
+  # root through root's own defaults-file. Read as _txp_config_value reads.
   local _V
   case "$2" in
     db_name|db_host|root) ;;
     *) return 2 ;;
   esac
-  _V=$(sed -n "s/^[[:space:]]*[\$]options\['$2'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/=\1/p" \
-    "$1" 2>/dev/null | head -1)
+  _V=$(_read_own_file "$1" \
+    | sed -n "s/^[[:space:]]*[\$]options\['$2'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/=\1/p" \
+    | head -1)
   [ -z "${_V}" ] && return 2
   _V="${_V#=}"
   case "${_V}" in
@@ -1496,6 +1992,22 @@ _txp_repoint_database() {
     _alrt "    ${_DB} has no ${_TBL} table — no preference rows to re-point"
     return 0
   fi
+  # The database name is the capsule's own claim (drushrc.php and
+  # private/config.php are the account's to write), so nothing below runs
+  # unless the database's own path_to_site places it in this root, a value
+  # only that site's owner writes: another account's site database is never
+  # cleared or re-pointed from here.
+  _CUR=$(_txp_sql "${_DB}" "SELECT val FROM ${_TBL} WHERE name = 'path_to_site' LIMIT 1")
+  case "${_CUR}" in
+    "${_AEGIR_ROOT}"/*) ;;
+    *)
+      if [ "${_ACCT_AXIS}" != "YES" ] \
+        || [[ "${_CUR}" != "/data/disk/${_OLD_ACCT}"/* ]]; then
+        _alrt "    ${_DB} is not this root's by its own path_to_site (${_CUR:-none}) — txp_prefs left stale"
+        return 0
+      fi
+    ;;
+  esac
 
   # A name change is a cookie invalidation, which is why provision does this
   # before it re-points anything: a live login cookie authenticates against
@@ -1651,16 +2163,23 @@ _rewrite_fpm_pin_control() {
   # so leaving it stale is what makes the next manage_ltd_users pass see a
   # change, wipe every fpm_include_site_* (the stale old-hostname ones
   # included) and regenerate the lot correctly.
-  local _CTL="${_AEGIR_ROOT}/static/control/multi-fpm.info"
-  local _OWN _MODE
-  [ -f "${_CTL}" ] || return 0
-  _file_needs_rename "${_CTL}" || return 0
+  #
+  # static/control is the tenant's: only a regular file in the real
+  # directory is rewritten, read without following a link or opening a FIFO,
+  # and put back as a fresh file renamed over the name, with the owner and
+  # mode read in that same directory (numeric, so an owner with no name on
+  # this box still lands) -- never sed -i on the name, which reads through a
+  # link put there and leaves an edited copy of its target, owned by the
+  # tenant, in the tenant's directory.
+  local _CTL_D="${_AEGIR_ROOT}/static/control"
+  _in_real_dir "${_CTL_D}" \
+    test -f ./multi-fpm.info -a ! -L ./multi-fpm.info || return 0
+  _text_needs_rename "$(_in_real_dir "${_CTL_D}" _read_here multi-fpm.info)" \
+    || return 0
   _info "§2d Rewriting per-site PHP pins in static/control/multi-fpm.info ..."
-  _OWN=$(stat -c '%U:%G' "${_CTL}" 2>/dev/null)
-  _MODE=$(stat -c '%a' "${_CTL}" 2>/dev/null)
-  _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_CTL}"\'
-  [ -n "${_OWN}" ] && _maybe_run chown \'"${_OWN}"\' \'"${_CTL}"\'
-  [ -n "${_MODE}" ] && _maybe_run chmod "${_MODE}" \'"${_CTL}"\'
+  _maybe_run _in_real_dir \'"${_CTL_D}"\' _sed_here multi-fpm.info \
+    "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \
+    || _alrt "§2d: multi-fpm.info NOT rewritten -- its pins still name ${_OLD_HOST}"
   return 0
 }
 
@@ -1669,12 +2188,22 @@ _rewrite_fpm_pin_control() {
 _rewrite_drush_files() {
   _info "§3 Rewriting Drush alias files in ${_DRUSH_DIR} ..."
 
-  for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' | sort); do
-    if _file_needs_rename "${_F}"; then
-      _info "  sed in-place: ${_F}"
-      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
-    fi
-  done
+  # .drush is the account's: its files are listed, read and rewritten inside
+  # the real directory (owner and mode kept, never through a link or into a
+  # FIFO), and a name outside the hostname/path charset never reaches the
+  # eval in _maybe_run.
+  local _N
+  while IFS= read -r _N; do
+    [ -n "${_N}" ] || continue
+    _safe_name "${_N}" "alias file" || continue
+    _text_needs_rename "$(_in_real_dir "${_DRUSH_DIR}" _read_here "${_N}")" \
+      || continue
+    _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here \'"${_N}"\' \
+      "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \
+      || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
+  done < <(_in_real_dir "${_DRUSH_DIR}" find . -maxdepth 1 -type f \
+    -name '*.drushrc.php' -printf '%f\n' 2>/dev/null | sort)
   _rewrite_site_yml_files
 }
 
@@ -1686,30 +2215,34 @@ _rewrite_drush_files() {
 # alias moved. Rewritten in place, ownership kept. A copy Drush still manages
 # (its checksum matches the old bytes) gets the checksum of the new bytes, so
 # the next conversion keeps managing it instead of treating it as hand-edited.
+# Both stores belong to the account or its shell user: every read and write
+# runs on names inside the real directory (_sed_here keeps owner and mode,
+# never a chown or chmod by a name that can be swapped), and a name outside
+# the hostname/path charset never reaches the eval in _maybe_run.
 _rewrite_site_yml_files() {
-  local _store _F _OWN _MODE _SUM _OLD_SUM _NEW_SUM
+  local _store _F _N _B _OLD_SUM _NEW_SUM
   for _store in "${_DRUSH_DIR}/sites" "/home/${_AEGIR_USER}.ftp/.drush/sites"; do
     [ -d "${_store}" ] || continue
     for _F in "${_store}"/*.site.yml; do
-      [ -f "${_F}" ] && [ ! -L "${_F}" ] || continue
-      _file_needs_rename "${_F}" || continue
+      _N="${_F##*/}"
+      _in_real_dir "${_store}" test -f "./${_N}" -a ! -L "./${_N}" || continue
+      _safe_name "${_N}" "yml alias" || continue
+      _text_needs_rename "$(_in_real_dir "${_store}" _read_here "${_N}")" || continue
       _info "  sed in-place: ${_F}"
-      _SUM="${_store}/.checksums/$(basename "${_F}" .yml).md5"
-      _OLD_SUM=$(md5sum < "${_F}" | cut -c1-32)
-      _OWN=$(stat -c '%u:%g' "${_F}")
-      _MODE=$(stat -c '%a' "${_F}")
-      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+      _B="$(basename "${_N}" .yml).md5"
+      _OLD_SUM=$(_in_real_dir "${_store}" _read_here "${_N}" | md5sum | cut -c1-32)
+      if ! _maybe_run _in_real_dir \'"${_store}"\' _sed_here \'"${_N}"\' \
+        "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"; then
+        _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
+        continue
+      fi
       [ "${_DRY_RUN}" = "YES" ] && continue
-      chown "${_OWN}" "${_F}"
-      chmod "${_MODE}" "${_F}"
-      if [ -f "${_SUM}" ] && [ ! -L "${_SUM}" ] \
-        && grep -q "${_OLD_SUM}" "${_SUM}" 2>/dev/null; then
-        _NEW_SUM=$(md5sum < "${_F}" | cut -c1-32)
-        _OWN=$(stat -c '%u:%g' "${_SUM}")
-        _MODE=$(stat -c '%a' "${_SUM}")
-        sed -i "s/${_OLD_SUM}/${_NEW_SUM}/" "${_SUM}"
-        chown "${_OWN}" "${_SUM}"
-        chmod "${_MODE}" "${_SUM}"
+      if _in_real_dir "${_store}/.checksums" test -f "./${_B}" -a ! -L "./${_B}" \
+        && _in_real_dir "${_store}/.checksums" _read_here "${_B}" \
+          | grep -q "${_OLD_SUM}"; then
+        _NEW_SUM=$(_in_real_dir "${_store}" _read_here "${_N}" | md5sum | cut -c1-32)
+        _in_real_dir "${_store}/.checksums" \
+          _sed_here "${_B}" "s/${_OLD_SUM}/${_NEW_SUM}/"
       fi
     done
   done
@@ -1725,33 +2258,54 @@ _rewrite_vhosts() {
 
   _info "§4 Rewriting vhost files in ${_VHOSTD} ..."
 
-  for _F in $(find "${_VHOSTD}" -maxdepth 1 -type f | sort); do
-    _BASENAME=$(basename "${_F}")
+  # vhost.d is the account's (config/ is oN's): its files are listed, read,
+  # rewritten (owner and mode kept) and renamed as names inside the real
+  # directory, never through a link or into a FIFO put there, and -T keeps a
+  # rename from landing inside a directory a link at the new name points to.
+  if ! _in_real_dir "${_VHOSTD}" true; then
+    _alrt "${_VHOSTD} is not a real directory — skipping vhost step"
+    return
+  fi
+  local _N _NB
+  while IFS= read -r _N; do
+    [ -n "${_N}" ] || continue
+    # the account names these files: a name outside the hostname/path
+    # charset never reaches the eval in _maybe_run
+    _safe_name "${_N}" "vhost file" || continue
 
-    # Rewrite content regardless of filename
-    if _file_needs_rename "${_F}"; then
-      _info "  sed in-place content: ${_F}"
-      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+    # Rewrite content regardless of filename. A certificate line names a
+    # certificate (its record's name, or hosting_le's directory), not the
+    # site, and the rename moves no certificate: rewritten, it named a pair
+    # that did not exist yet and nginx -t failed for the whole box until the
+    # site's verify. It keeps the pair it served; §5 renames the site's own
+    # record, and its first verify moves it to the new name's certificate.
+    if _text_needs_rename "$(_in_real_dir "${_VHOSTD}" _read_here "${_N}")"; then
+      _info "  sed in-place content: ${_VHOSTD}/${_N}"
+      _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_N}"\' \
+        \'"/^[[:space:]]*ssl_\(trusted_\)\{0,1\}certificate\(_key\)\{0,1\}[[:space:]]/!{${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g;}"\' \
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
     fi
 
     # Rename the file if old hostname appears in the filename — unless the
     # name already carries NEW (NEW-contains-OLD re-run would double it)
-    if [[ "${_BASENAME}" == *"${_OLD_HOST}"* ]] \
-      && ! _renamed_already "${_BASENAME}"; then
-      _NEW_BASENAME="${_BASENAME//${_OLD_HOST}/${_NEW_HOST}}"
-      _NEW_F="${_VHOSTD}/${_NEW_BASENAME}"
-      _info "  rename: ${_BASENAME} -> ${_NEW_BASENAME}"
-      _maybe_run mv -f \'"${_F}"\' \'"${_NEW_F}"\'
+    if [[ "${_N}" == *"${_OLD_HOST}"* ]] \
+      && ! _renamed_already "${_N}"; then
+      _NB="${_N//${_OLD_HOST}/${_NEW_HOST}}"
+      _info "  rename: ${_N} -> ${_NB}"
+      _maybe_run _in_real_dir \'"${_VHOSTD}"\' mv -f -T -- \
+        \'"./${_N}"\' \'"./${_NB}"\' \
+        || _alrt "  rename FAILED -- ${_N} keeps its name"
     fi
-  done
+  done < <(_in_real_dir "${_VHOSTD}" find . -maxdepth 1 -type f \
+    -printf '%f\n' 2>/dev/null | sort)
 
   # The panel's SSL proxy include lives under the MASTER root's pre.d, keyed
   # on the panel's old name. The account pass regenerates it for the new name
   # once the new-name certificate exists, but nothing removed the old one: it
   # kept naming a certificate under the old-name LE dir, and once that tree
   # went (a purge, an LE cleanup) nginx failed its configtest box-wide. Park
-  # it with the other backups; never rewrite it in place, the new-name
-  # certificate is not there yet.
+  # it with root's other backups of this run (never in the account's tree);
+  # never rewrite it in place, the new-name certificate is not there yet.
   local _PRX _PRX_ACCT
   case "${_AEGIR_ROOT}" in
     /data/disk/*)
@@ -1759,9 +2313,10 @@ _rewrite_vhosts() {
         [ -n "${_PRX_ACCT}" ] || continue
         _PRX="/var/aegir/config/server_master/nginx/pre.d/z_${_PRX_ACCT}.${_OLD_HOST}_ssl_proxy.conf"
         [ -e "${_PRX}" ] || continue
-        _info "  park old-name panel SSL proxy include: $(basename "${_PRX}") -> ${_BACKUP_DIR}/"
-        _maybe_run mkdir -p \'"${_BACKUP_DIR}"\'
-        _maybe_run mv -f \'"${_PRX}"\' \'"${_BACKUP_DIR}/"\'
+        _info "  park old-name panel SSL proxy include: $(basename "${_PRX}") -> ${_PRIV_BK}/"
+        _maybe_run _in_real_dir \'"${_PRX%/*}"\' mv -f -T -- \
+          \'"./${_PRX##*/}"\' \'"${_PRIV_BK}/parked_${_TS}_${_PRX##*/}"\' \
+          || _alrt "  ${_PRX} NOT parked"
       done
     ;;
   esac
@@ -1797,13 +2352,16 @@ _rewrite_log_stamps() {
   # is the rendered welcome mail kept as the on-disk credentials copy the
   # operator is pointed at (the upgrade resend reads only upgrademail.txt,
   # never this file). Run logs and dated files in log/ are history and
-  # stay untouched.
+  # stay untouched. log/ is the account's: a stamp is read and rewritten
+  # only as a regular file inside the real directory, owner and mode kept
+  # (_sed_here), never through a link or into a FIFO put there.
   [[ "${_AEGIR_ROOT}" == /data/disk/* ]] || return 0
-  local _F _OWN _MODE _NEEDS
-  for _F in "${_AEGIR_ROOT}/log/domain.txt" "${_AEGIR_ROOT}/log/setupmail.txt"; do
-    [ -f "${_F}" ] || continue
+  local _L="${_AEGIR_ROOT}/log" _N _T _NEEDS
+  for _N in domain.txt setupmail.txt; do
+    _in_real_dir "${_L}" test -f "./${_N}" -a ! -L "./${_N}" || continue
+    _T="$(_in_real_dir "${_L}" _read_here "${_N}")"
     _NEEDS=NO
-    if _file_needs_rename "${_F}"; then
+    if _text_needs_rename "${_T}"; then
       _NEEDS=YES
     fi
     # Account axis: the stamps carry the panel FRONT "<acct>.<fqdn>" AND
@@ -1816,27 +2374,29 @@ _rewrite_log_stamps() {
     # no-ops) still qualifies the file, even if the panel-URL wording
     # ever changes.
     if [ "${_ACCT_AXIS}" = "YES" ] \
-      && grep -Eq "${_OLD_ACCT}\.(${_OLD_HOST}|${_NEW_HOST}|ftp\b)" "${_F}" 2>/dev/null; then
+      && grep -Eq "${_OLD_ACCT}\.(${_OLD_HOST}|${_NEW_HOST}|ftp\b)" <<< "${_T}"; then
       _NEEDS=YES
     fi
     [ "${_NEEDS}" = "YES" ] || continue
-    _info "Rewriting identity stamp ${_F} ..."
-    _OWN=$(stat -c '%u:%g' "${_F}")
-    _MODE=$(stat -c '%a' "${_F}")
-    _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+    _info "Rewriting identity stamp ${_L}/${_N} ..."
+    # A root-side rewrite must never leave a backend-user-owned stamp
+    # root:root: _sed_here puts it back with the numeric owner and the mode
+    # it had. The programs are single-quoted for the eval, so their
+    # backslashes (\. and \b) reach sed as written.
+    _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+      \'"${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"\' \
+      || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
     if [ "${_ACCT_AXIS}" = "YES" ]; then
-      _maybe_run sed -i "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" \'"${_F}"\'
+      _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+        \'"s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g"\' \
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.${_NEW_HOST}"
       # The credential lines write the account as "<acct>.ftp" (username:
       # / user: / login wording), a form the front-axis sed above never
       # matches — without this the file mixes the old account in
       # credential lines with the new one in URLs.
-      _maybe_run sed -i "s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g" \'"${_F}"\'
-    fi
-    # A root-side sed -i must never leave a backend-user-owned stamp
-    # root:root — restore the captured identity explicitly.
-    if [ "${_DRY_RUN}" != "YES" ]; then
-      chown "${_OWN}" "${_F}"
-      chmod "${_MODE}" "${_F}"
+      _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+        \'"s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g"\' \
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
     fi
   done
 }
@@ -1852,7 +2412,8 @@ _sites_php_candidates() {
   # probe each variant. The bounded find still sweeps shallow unregistered
   # trees — their records are inert (no vhost roots a request there), but
   # cleaning them is free. Callers filter with [ -f ], which also follows a
-  # symlinked docroot the find would skip.
+  # symlinked docroot the find would skip, and then write only where the
+  # sites dir really lies inside this root.
   {
     local _P _D
     if _sql_table_exists hosting_platform; then
@@ -1902,13 +2463,22 @@ _rewrite_sites_php_files() {
   # rewritten in place. The file is include()d by conf_path() on every
   # bootstrap of the platform, so the write is committed only from a
   # fully-written temp — a failed awk/cp must never truncate it.
+  #
+  # The platform is the account's: sites.php is read and written as a name
+  # inside its real sites dir (a docroot reached through a link included,
+  # when it lies in this root), never through a link or into a FIFO put at
+  # the name, and written through its own inode, so its owner and mode stay
+  # as they were. The pre-edit copy and the temp are root's, kept where only
+  # root can reach them.
   local _O="$1" _N="$2" _G="$3" _LBL="$4"
-  local _F _BAK _TMP _OWN _MODE
+  local _F _D _T _BAK _TMP
   for _F in $(_sites_php_candidates); do
     [ -f "${_F}" ] || continue
-    grep -qF -- "${_O}" "${_F}" 2>/dev/null || continue
+    _D="$(_own_real_path "${_F%/*}")" || continue
+    _T="$(_in_path_dir "${_D}" _read_here sites.php)"
+    grep -qF -- "${_O}" <<< "${_T}" || continue
     if [ -n "${_G}" ]; then
-      grep -F -- "${_O}" "${_F}" 2>/dev/null | grep -qvF -- "${_N}" || continue
+      grep -F -- "${_O}" <<< "${_T}" | grep -qvF -- "${_N}" || continue
     fi
     if [ "${_DRY_RUN}" = "YES" ]; then
       _info "(dry-run) Would rewrite/drop stale ${_LBL} record(s) in ${_F}"
@@ -1918,15 +2488,13 @@ _rewrite_sites_php_files() {
     # stamps that can land in the same second — a per-call index would then
     # overwrite the earlier pass's pre-edit backup of the same file.
     _SITESPHP_N=$((_SITESPHP_N + 1))
-    _BAK="${_BACKUP_DIR}/sitesphp_${_TS}_${_SITESPHP_N}_${_F//\//_}"
-    _TMP="${_BACKUP_DIR}/sitesphp_${_TS}_${_SITESPHP_N}.tmp"
-    if ! cp -a "${_F}" "${_BAK}"; then
-      _alrt "backup copy failed for ${_F} — leaving it untouched"
-      rm -f "${_BAK}"
+    _BAK="${_PRIV_BK}/sitesphp_${_TS}_${_SITESPHP_N}_${_F//\//_}"
+    _TMP="${_PRIV_BK}/sitesphp_${_TS}_${_SITESPHP_N}.tmp"
+    if ! _in_path_dir "${_D}" _copy_out_here sites.php "${_BAK}"; then
+      _alrt "backup copy failed for ${_F} (not a regular file under 1 MiB?) — leaving it untouched"
+      rm -f -- "${_BAK}"
       continue
     fi
-    _OWN=$(stat -c '%u:%g' "${_F}")
-    _MODE=$(stat -c '%a' "${_F}")
     # Tokens are used as awk regexes with loose dots — same laxity as the
     # sed sweeps above; the §1/§2 charset guard keeps hostnames
     # metachar-free, and the account-axis token adds only quotes/=/> (all
@@ -1940,23 +2508,18 @@ _rewrite_sites_php_files() {
         $0 = t
       }
       { print }
-    ' "${_F}" "${_F}" > "${_TMP}" || [ ! -s "${_TMP}" ]; then
+    ' "${_BAK}" "${_BAK}" > "${_TMP}" || [ ! -s "${_TMP}" ]; then
       _alrt "sites.php rewrite failed for ${_F} — left untouched"
-      rm -f "${_TMP}" "${_BAK}"
+      rm -f -- "${_TMP}" "${_BAK}"
       continue
     fi
     _info "  sites.php records (${_LBL}): ${_F}"
-    # cat-over keeps the inode, but a root-side edit must never be able to
-    # leave a backend-user-owned file root:root — restore the captured
-    # identity explicitly.
-    if ! cat "${_TMP}" > "${_F}"; then
-      cat "${_BAK}" > "${_F}" \
+    if ! _in_path_dir "${_D}" _write_inode_here sites.php "${_TMP}"; then
+      _in_path_dir "${_D}" _write_inode_here sites.php "${_BAK}" \
         || _die "write-back AND restore failed for ${_F} — pre-edit copy kept at ${_BAK}"
       _alrt "write-back failed for ${_F} — pre-edit content restored"
     fi
-    rm -f "${_TMP}"
-    chown "${_OWN}" "${_F}"
-    chmod "${_MODE}" "${_F}"
+    rm -f -- "${_TMP}"
   done
 }
 
@@ -1972,17 +2535,67 @@ _rewrite_sites_php() {
 
 ###-------------§5 DATABASE RENAME-------###
 
+# 0 when the database $1 is a live hostmaster DB of this root: it has a
+# server_master context and platform publish paths under the root -- or, on
+# the account axis, under the old account's root, which the imported rows
+# name until §5b re-paths them, unless it is the panel DB of a live account
+# that still holds the old name on this box. The name comes from the panel's
+# drushrc.php, which the account can write, and every §5 statement runs on
+# the database it names.
+_hm_db_owned() {
+  local _sp _live
+  [ -n "$(_sql_on "$1" "SELECT name FROM hosting_context WHERE name='server_master' LIMIT 1")" ] \
+    || return 1
+  [ -n "$(_sql_on "$1" "SELECT publish_path FROM hosting_platform WHERE publish_path LIKE '${_AEGIR_ROOT}/%' LIMIT 1")" ] \
+    && return 0
+  [ "${_ACCT_AXIS}" = "YES" ] || return 1
+  [ -n "$(_sql_on "$1" "SELECT publish_path FROM hosting_platform WHERE publish_path LIKE '/data/disk/${_OLD_ACCT}/%' LIMIT 1")" ] \
+    || return 1
+  [ -e "/data/disk/${_OLD_ACCT}" ] || return 0
+  _sp=$(_read_file "/data/disk/${_OLD_ACCT}/.drush/hostmaster.alias.drushrc.php" \
+    | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g" | tr -d ' ')
+  case "${_sp}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+    "/data/disk/${_OLD_ACCT}"/?*) ;;
+    *) return 1 ;;
+  esac
+  _live=$(_read_file "${_sp}/drushrc.php" | grep "options\['db_name'\]" \
+    | head -1 | sed "s/.*=//; s/[' ,;]//g" | tr -d ' ')
+  [ -n "${_live}" ] && [ "${_live}" != "$1" ]
+}
+
+# One batch query $2 against the database $1, root's defaults-file.
+_sql_on() {
+  mysql --defaults-file=/root/.my.cnf -N -B "$1" -e "$2" 2> /dev/null
+}
+
+# The db_name a hostmaster drushrc.php of this root carries, read inside its
+# real directory, never through a link or into a FIFO.
+_hm_drushrc_db() {
+  local _v
+  _v=$(_read_own_file "$1" | grep "options\['db_name'\]" \
+    | head -1 \
+    | sed "s/.*=//; s/[' ,;]//g" \
+    | tr -d ' ')
+  printf '%s' "${_v//[^a-zA-Z0-9_]/}"
+}
+
 _detect_aegir_db() {
   # The Aegir hostmaster DB name lives in the hostmaster site's drushrc.php
   # Path is derived from the site_path in hostmaster.alias.drushrc.php
-  _HM_SITE_PATH=$(grep "site_path'" \
-    "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+  _HM_SITE_PATH=$(_read_file "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g" \
     | tr -d ' ')
 
   if [ -z "${_HM_SITE_PATH}" ]; then
     _die "Could not extract site_path from hostmaster.alias.drushrc.php"
+  fi
+  # The alias is the account's to write: a panel outside this root is never
+  # read, nor its database renamed from here.
+  if ! _under_root "${_HM_SITE_PATH}"; then
+    _die "Hostmaster site_path ${_HM_SITE_PATH} is not a plain path under ${_AEGIR_ROOT}"
   fi
 
   _HM_DRUSHRC="${_HM_SITE_PATH}/drushrc.php"
@@ -2005,11 +2618,7 @@ _detect_aegir_db() {
     _die "Hostmaster drushrc.php not found: ${_HM_DRUSHRC}"
   fi
 
-  _AEGIR_DB=$(grep "options\['db_name'\]" "${_HM_DRUSHRC}" \
-    | head -1 \
-    | sed "s/.*=//; s/[' ,;]//g" \
-    | tr -d ' ')
-  _AEGIR_DB=${_AEGIR_DB//[^a-zA-Z0-9_]/}
+  _AEGIR_DB=$(_hm_drushrc_db "${_HM_DRUSHRC}")
 
   if [ -z "${_AEGIR_DB}" ]; then
     _die "Could not detect Aegir DB name from ${_HM_DRUSHRC}"
@@ -2022,24 +2631,18 @@ _detect_aegir_db() {
   # drushrc. Never trust a drushrc whose schema is gone; re-derive from the
   # other hostname variant before giving up. (Pre-B3 §5 silently no-op'd
   # here — the mysqldump failure was swallowed and the DB simply kept the
-  # source hostname.)
-  if [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B \
-      -e "SHOW DATABASES LIKE '${_AEGIR_DB}'" 2>/dev/null)" ]; then
-    _alrt "DB '${_AEGIR_DB}' from ${_HM_DRUSHRC} does not exist — trying the other hostname variant"
+  # source hostname.) A named DB that is not a hostmaster DB of this root
+  # (_hm_db_owned) is treated the same way.
+  if ! _hm_db_owned "${_AEGIR_DB}"; then
+    _alrt "DB '${_AEGIR_DB}' from ${_HM_DRUSHRC} is not a live hostmaster DB of ${_AEGIR_ROOT} — trying the other hostname variant"
     _HM_SITE_ALT="${_HM_SITE_PATH//${_NEW_HOST}/${_OLD_HOST}}"
     if [ "${_HM_SITE_ALT}" = "${_HM_SITE_PATH}" ]; then
       _HM_SITE_ALT="${_HM_SITE_PATH//${_OLD_HOST}/${_NEW_HOST}}"
     fi
     _ALT_DB=""
-    if [ -f "${_HM_SITE_ALT}/drushrc.php" ]; then
-      _ALT_DB=$(grep "options\['db_name'\]" "${_HM_SITE_ALT}/drushrc.php" \
-        | head -1 \
-        | sed "s/.*=//; s/[' ,;]//g" \
-        | tr -d ' ')
-      _ALT_DB=${_ALT_DB//[^a-zA-Z0-9_]/}
-      if [ -n "${_ALT_DB}" ] \
-        && [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B \
-            -e "SHOW DATABASES LIKE '${_ALT_DB}'" 2>/dev/null)" ]; then
+    if _under_root "${_HM_SITE_ALT}" && [ -f "${_HM_SITE_ALT}/drushrc.php" ]; then
+      _ALT_DB=$(_hm_drushrc_db "${_HM_SITE_ALT}/drushrc.php")
+      if [ -n "${_ALT_DB}" ] && ! _hm_db_owned "${_ALT_DB}"; then
         _ALT_DB=""
       fi
     fi
@@ -2128,8 +2731,18 @@ _repair_serialized_variables() {
   fi
 
   _info "  Repairing ${_CNT} serialized variable value(s) via php/mysqli ..."
-  _PHP="${_BACKUP_DIR}/varfix_${_TS}.php"
-  _VOUT="${_BACKUP_DIR}/varfix_${_TS}.log"
+  # The script runs as root with the database password in its environment,
+  # so it is written and run in a directory only root can enter: never in
+  # the account's backups/, where the account could swap the file (or the
+  # directory) between the write and the run.
+  local _PRIV
+  _PRIV=$(mktemp -d /var/backups/renameaegirhost.XXXXXXXX 2>/dev/null \
+    || mktemp -d 2>/dev/null) || {
+    _alrt "serialized variable repair NOT run: no private work directory could be made"
+    return 0
+  }
+  _PHP="${_PRIV}/varfix_${_TS}.php"
+  _VOUT="${_PRIV}/varfix_${_TS}.log"
   {
     printf '<?php\n$old = '\''%s'\'';\n$new = '\''%s'\'';\n' "${_OLD_HOST}" "${_NEW_HOST}"
     cat <<'PHPEOF'
@@ -2247,6 +2860,7 @@ PHPEOF
     && grep -q '^RAH-DONE' "${_VOUT}"; then
     grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
     rm -f "${_PHP}" "${_VOUT}"
+    rmdir "${_PRIV}" 2>/dev/null
   else
     _alrt "serialized variable repair did not confirm — last 15 lines:"
     tail -n 15 "${_VOUT}"
@@ -2255,28 +2869,169 @@ PHPEOF
   return 0
 }
 
+# The pre-rename backup never carries this box's GTID state. By default
+# (--set-gtid-purged=AUTO) a dump taken while GTID is on (every box an xmass
+# run touched, the import target of a migration among them: BOA's my.cnf
+# leaves it off, xmass_gtid.cnf turns it on) opens with
+# SET @@SESSION.SQL_LOG_BIN=0 and sets @@GLOBAL.GTID_PURGED, so loading the
+# backup back on this box fails (ERROR 3546 on 8.x, 1840 on 5.7), and where
+# it passes it stays out of the binary log, so a replica of the box never
+# gets the restored panel. OFF writes neither. Sets _MYSQLDUMP_GTID to the
+# option when the local mysqldump takes it: one that does not (MariaDB's)
+# would refuse it and writes neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
+# A Drupal or Backdrop site: settings.php, as _site_capsule_class reads it,
+# below the platform ($1, its publish path) or its docroot as provision finds
+# it, for the site $2. On an import under another account name the platform
+# path still names the old account in §5 (§5b re-paths it later).
+_cert_site_has_settings() {
+  local _pp _dr
+  [ -n "$1" ] && [ "$1" != "NULL" ] || return 1
+  _pp="${1%/}"
+  if [ "${_ACCT_AXIS}" = "YES" ] && [[ "${_pp}/" == "/data/disk/${_OLD_ACCT}/"* ]]; then
+    _pp="/data/disk/${_NEW_ACCT}${_pp#/data/disk/${_OLD_ACCT}}"
+  fi
+  for _dr in "" /docroot /html /web; do
+    [ -f "${_pp}${_dr}/sites/${2}/settings.php" ] && return 0
+  done
+  return 1
+}
+
+# A renamed HTTPS site's certificate record kept its old name: each verify
+# then wrote the old name's pair into its vhost, and the certificate
+# hosting_le issued for the new name went unused. The record is renamed with
+# its site when it is the site's own: named exactly the site's old name, on
+# the current revision of no other site that is not deleted, no record named
+# the new name yet, and not an operator's own certificate (hosting_le's
+# dont-overwrite flag, named after the site or after the alias it redirects
+# to). The site's first verify then moves it to the new name's certificate as
+# a first HTTPS enable does; until then its vhost keeps the pair it served
+# (§4). A site with aliases of a client domain keeps its record until a
+# certificate for its new name exists: on a move those aliases still reach
+# the old box, which answers their challenges, so the new name's order (it
+# carries every alias) fails and the site would be left on a self-signed
+# pair. Its own first verify (§7, pass 1) issues that certificate on an
+# in-place rename, so the hold is tested again after it
+# (_release_held_site_certs). Otherwise the record stays and the site keeps
+# its old certificate, said in an ALRT. Run after the sweeps: the site nodes
+# carry their new names.
+_rename_site_certs() {
+  _sql_table_exists hosting_ssl_cert || return 0
+  _sql_table_exists hosting_ssl_site || return 0
+  _sql_table_exists hosting_site || return 0
+  local _nid _new _cid _name _pub _old _users _taken _redir _flag _a _client _q
+  while IFS=$'\t' read -r _nid _new _cid _name _pub; do
+    [[ "${_nid}" =~ ^[0-9]+$ ]] && [[ "${_cid}" =~ ^[0-9]+$ ]] || continue
+    _safe_name "${_new}" "site uri" || continue
+    _old="${_new%.${_NEW_HOST}}.${_OLD_HOST}"
+    if [ "${_name}" != "${_old}" ]; then
+      case "${_name}" in
+        *"${_OLD_HOST}"*)
+          _alrt "  ${_new}: its certificate record is named $(printf '%s' "${_name}" | tr -cd '[:print:]' | cut -c1-120), not ${_old}: left as it is, the site keeps that certificate"
+        ;;
+      esac
+      continue
+    fi
+    _users=$(_sql "SELECT COUNT(*) FROM hosting_ssl_site s JOIN node n ON n.nid = s.nid AND n.vid = s.vid JOIN hosting_site h ON h.vid = n.vid WHERE s.ssl_key = ${_cid} AND h.status != -2 AND s.nid != ${_nid}")
+    _taken=$(_sql "SELECT COUNT(*) FROM hosting_ssl_cert WHERE ssl_key = '${_new}'")
+    # the alias the site redirects to names hosting_le's flag when one is
+    # set; the sweeps renamed one under this box's name, so its flag carries
+    # the old form
+    _redir="" _flag="" _client=""
+    if _sql_table_exists hosting_site_alias; then
+      _redir=$(_sql "SELECT a.redirection FROM hosting_site_alias a JOIN node n ON n.vid = a.vid WHERE n.nid = ${_nid} AND a.redirection NOT IN ('', '0') LIMIT 1")
+      case "${_redir}" in
+        */*|NULL) _redir="" ;;
+      esac
+      if [ -n "${_redir}" ] && _safe_name "${_redir}" redirection; then
+        for _a in "${_redir}" "${_redir%.${_NEW_HOST}}.${_OLD_HOST}"; do
+          if [ -e "${_AEGIR_ROOT}/tools/le/.ctrl/dont-overwrite-${_a}.pid" ]; then
+            _flag="${_a}"
+            break
+          fi
+        done
+      else
+        _redir=""
+      fi
+      # an alias hosting_le puts on the certificate that is not under this
+      # box's name: a client domain
+      while IFS= read -r _a; do
+        case "${_a}" in
+          ""|*/*|*.nodns.*|*".${_NEW_HOST}") ;;
+          *) _client="${_a}"; break ;;
+        esac
+      done < <(_sql "SELECT a.alias FROM hosting_site_alias a JOIN node n ON n.vid = a.vid WHERE n.nid = ${_nid}")
+    fi
+    if [[ ! "${_users}" =~ ^[0-9]+$ ]] || [[ ! "${_taken}" =~ ^[0-9]+$ ]]; then
+      _alrt "  ${_new}: its certificate record ${_old} could not be checked: left as it is, the site keeps the old name's certificate"
+    elif [ "${_users}" != "0" ]; then
+      _alrt "  ${_new}: its certificate record ${_old} is in use by another site: left as it is, the site keeps the old name's certificate"
+    elif [ "${_taken}" != "0" ]; then
+      _alrt "  ${_new}: a certificate record named ${_new} exists already: ${_old} left as it is, the site keeps the old name's certificate"
+    elif [ -e "${_AEGIR_ROOT}/tools/le/.ctrl/dont-overwrite-${_old}.pid" ]; then
+      _alrt "  ${_new}: ${_old} is an operator's own certificate (tools/le/.ctrl/dont-overwrite-${_old}.pid): left as it is"
+    elif [ -n "${_flag}" ]; then
+      _alrt "  ${_new}: ${_old} is an operator's own certificate (tools/le/.ctrl/dont-overwrite-${_flag}.pid, the alias it redirects to): left as it is"
+    elif [ -n "${_client}" ] && [ ! -s "${_AEGIR_ROOT}/tools/le/certs/${_new}/fullchain.pem" ]; then
+      _q=NO
+      _cert_site_has_settings "${_pub}" "${_new}" && _q=YES
+      _CERT_HELD+=("${_cid} ${_old} ${_new} ${_q}")
+      _info "  ${_new}: it carries client aliases (${_client}) and no certificate for its new name yet: ${_old} kept until its verify has run"
+    elif _sql "UPDATE hosting_ssl_cert SET ssl_key = '${_new}' WHERE cid = ${_cid} AND ssl_key = '${_old}'"; then
+      _info "  ${_new}: its certificate record ${_old} renamed with it"
+      # A Drupal or Backdrop site joins the verifies §7 queues, which move it
+      # to the new name's certificate: on a box renamed before this rule,
+      # nothing else queues one. A capsule switches at its own next verify.
+      if _cert_site_has_settings "${_pub}" "${_new}"; then
+        _RENAMED_SITE_URIS+=("${_new}")
+        # a site redirecting to an alias gets a second verify: the first
+        # links hosting_le's new certificate after the vhost was written,
+        # and hosting_le's own follow-up verify runs only while
+        # tools/le/.ctrl/<redirect target>.pid is absent, which a
+        # client-domain target already has
+        [ -n "${_redir}" ] && _CERT_REVERIFY_URIS+=("${_new}")
+      else
+        _info "  ${_new}: it moves to the new name's certificate at its own next verify"
+      fi
+    else
+      _alrt "  ${_new}: its certificate record ${_old} could NOT be renamed: the site keeps the old name's certificate"
+    fi
+  done < <(_sql "SELECT n.nid, n.title, c.cid, c.ssl_key, p.publish_path FROM node n JOIN hosting_site h ON h.vid = n.vid JOIN hosting_ssl_site s ON s.nid = n.nid AND s.vid = n.vid JOIN hosting_ssl_cert c ON c.cid = s.ssl_key LEFT JOIN node pn ON pn.nid = h.platform LEFT JOIN hosting_platform p ON p.vid = pn.vid WHERE n.type = 'site' AND h.status != -2 AND s.ssl_enabled > 0 AND n.nid != ${_HM_NID} AND n.title LIKE '%.${_NEW_HOST}'")
+  return 0
+}
+
 _rename_in_database() {
   _info "§5 Renaming hostname in Aegir database (${_AEGIR_DB}) ..."
 
   _TS=$(date +%Y%m%d_%H%M%S)
-  _DUMP_ORIG="${_BACKUP_DIR}/aegirdb_${_TS}_orig.sql"
+  _DUMP_ORIG="${_PRIV_BK}/aegirdb_${_TS}_orig.sql"
 
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "(dry-run) Would dump ${_AEGIR_DB} to ${_DUMP_ORIG} (backup only)"
     _info "(dry-run) Would run serialize-safe UPDATEs: '${_OLD_HOST}' -> '${_NEW_HOST}'"
     _info "(dry-run) Would repair serialized variable values via php/mysqli"
+    _info "(dry-run) Would rename each renamed HTTPS site's own certificate record to its new name"
     return
   fi
 
-  mkdir -p "${_BACKUP_DIR}"
-  # Nothing here is secret from the account user — the dumps are the
-  # account's own hostmaster DB.
-  chmod 755 "${_BACKUP_DIR}"
-
-  # Backup only — never sed-patched, never re-imported
+  # Backup only — never sed-patched, never re-imported. Written where only
+  # root can reach it (see _backup_files), never through a name the account
+  # can put a link at.
   _info "  Dumping ${_AEGIR_DB} (pre-rename backup) ..."
+  _mysqldump_gtid_opts
+  [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+    && _info "  this mysqldump takes no --set-gtid-purged: the backup carries no GTID state"
+  # --defaults-file must stay the first option.
   mysqldump \
     --defaults-file=/root/.my.cnf \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -2297,7 +3052,11 @@ _rename_in_database() {
     _die "pre-rename backup of ${_AEGIR_DB} is missing, truncated or failed (rc=${_RAH_DUMP_RC}) -- refusing to rewrite the database without a complete backup: ${_DUMP_ORIG}"
   fi
 
-  _info "  Backup size: $(du -sh "${_DUMP_ORIG}" | cut -f1), kept in ${_BACKUP_DIR}"
+  # Compressed once verified: the panel database can run to hundreds of MB.
+  if gzip -f -- "${_DUMP_ORIG}" 2> /dev/null; then
+    _DUMP_ORIG="${_DUMP_ORIG}.gz"
+  fi
+  _info "  Backup size: $(du -sh "${_DUMP_ORIG}" | cut -f1), kept in ${_PRIV_BK}"
 
   # Identity rows first, keyed by hosting_context nid (aegir2boa-stage2
   # pattern): server verifies regenerate remote_host FROM the server node
@@ -2341,10 +3100,14 @@ _rename_in_database() {
   _sql_replace_col hosting_platform publish_path
   _sql_replace_col hosting_site_alias alias
   _sql_replace_col hosting_site_alias redirection
+  # the panel's path aliases of site nodes (hosting/c/<site>) name the site
+  _sql_replace_col url_alias alias
   _sql_replace_col users mail
   _sql_replace_col users init
 
   _repair_serialized_variables
+
+  _rename_site_certs
 
   # Drop the caches wholesale: cache blobs carried over from the old
   # hostname keep it inside serialized (often hex-dumped) values that no
@@ -2367,7 +3130,7 @@ _rename_in_database() {
   fi
   _info "  Residual '${_OLD_HOST}' refs: variable=${_RES_VAR} task-history=${_RES_TASKS}"
 
-  _info "  DB rename complete. Pre-rename backup kept in ${_BACKUP_DIR}"
+  _info "  DB rename complete. Pre-rename backup kept in ${_PRIV_BK}"
 }
 
 ###-------------§5b ACCOUNT AXIS---------###
@@ -2400,62 +3163,93 @@ _rename_account_on_disk() {
   # with valid credentials for the DB the import landed in — the panel must
   # adopt it. Park the imported <old front> dir instead of leaving it in
   # place: §7's queue imports orphan dirs under a platform as brand-new
-  # sites. Without a fresh dir (no-fresh-install edge) rename instead.
-  local _D _SITES _NEWD
+  # sites. Without a fresh dir (no-fresh-install edge) rename instead. The
+  # sites dir is the account's: the dir is moved as a name inside the real
+  # directory, parked where only root can reach it (never into a name the
+  # account can put a link at), and -T refuses whatever sits at a new name.
+  local _D _SITES _NEWD _SR
   for _D in $(find "${_AEGIR_ROOT}" -maxdepth 5 -type d -path '*/sites/*' -name "${_OLD_FRONT}" 2>/dev/null | sort); do
+    _safe_name "${_D}" "panel site dir" || continue
     _SITES=$(dirname "${_D}")
     _NEWD="${_SITES}/${_NEW_FRONT}"
+    if ! _SR="$(_own_real_path "${_SITES}")"; then
+      _alrt "  ${_SITES} is not a directory of ${_AEGIR_ROOT} -- ${_OLD_FRONT} left there"
+      continue
+    fi
+    _safe_name "${_SR}" "sites dir" || continue
     if [ -d "${_NEWD}" ]; then
-      _info "  parking imported panel dir ${_D} (fresh ${_NEW_FRONT} adopted)"
-      [ "${_DRY_RUN}" = "YES" ] || mkdir -p "${_BACKUP_DIR}"
-      _maybe_run mv -f \'"${_D}"\' \'"${_BACKUP_DIR}/parked_${_TS}_${_OLD_FRONT}"\'
+      _info "  parking imported panel dir ${_D} (fresh ${_NEW_FRONT} adopted) -> ${_PRIV_BK}/"
+      _maybe_run _in_path_dir \'"${_SR}"\' mv -f -T -- \'"./${_OLD_FRONT}"\' \
+        \'"${_PRIV_BK}/parked_${_TS}_${_OLD_FRONT}"\' \
+        || _alrt "  imported panel dir NOT parked: ${_D}"
     else
       _alrt "no fresh ${_NEW_FRONT} dir next to ${_D} — renaming the imported dir instead"
-      _maybe_run mv -f \'"${_D}"\' \'"${_NEWD}"\'
+      _maybe_run _in_path_dir \'"${_SR}"\' mv -f -T -- \'"./${_OLD_FRONT}"\' \
+        \'"./${_NEW_FRONT}"\' \
+        || _alrt "  imported panel dir NOT renamed: ${_D}"
     fi
   done
 
   # Hostmaster aliases (panel-own files ONLY — per-site alias files keep
-  # their URIs): front label plus the path pair.
-  local _F
-  for _F in "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" "${_DRUSH_DIR}/hm.alias.drushrc.php"; do
-    [ -f "${_F}" ] || continue
-    if grep -q "${_OLD_FRONT}\|/data/disk/${_OLD_ACCT}/" "${_F}" 2>/dev/null; then
-      _info "  sed in-place: ${_F}"
-      _maybe_run sed -i \
+  # their URIs): front label plus the path pair. .drush is the account's:
+  # read and rewritten as in §3, inside the real directory, owner and mode
+  # kept, never through a link or into a FIFO put there.
+  local _N
+  for _N in hostmaster.alias.drushrc.php hm.alias.drushrc.php; do
+    _in_real_dir "${_DRUSH_DIR}" test -f "./${_N}" || continue
+    if _in_real_dir "${_DRUSH_DIR}" _read_here "${_N}" \
+      | grep -q "${_OLD_FRONT}\|/data/disk/${_OLD_ACCT}/"; then
+      _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+      _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here "${_N}" \
         -e "\"${_ACCT_SED_GUARD}s/${_OLD_FRONT}/${_NEW_FRONT}/g\"" \
         -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
-        \'"${_F}"\'
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_FRONT}"
     fi
   done
 
   # All .drush files: path pair + home/socket tokens only (URI-safe).
-  for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort); do
-    if grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp" "${_F}" 2>/dev/null; then
-      _info "  sed in-place: ${_F}"
-      _maybe_run sed -i \
+  while IFS= read -r _N; do
+    [ -n "${_N}" ] || continue
+    _safe_name "${_N}" "alias file" || continue
+    if _in_real_dir "${_DRUSH_DIR}" _read_here "${_N}" \
+      | grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp"; then
+      _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+      _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here \'"${_N}"\' \
         -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
         -e "\"s#/home/${_OLD_ACCT}\.ftp#/home/${_NEW_ACCT}.ftp#g\"" \
-        \'"${_F}"\'
+        || _alrt "  ${_N} NOT rewritten -- it still names /data/disk/${_OLD_ACCT}"
     fi
-  done
+  done < <(_in_real_dir "${_DRUSH_DIR}" find . -maxdepth 1 -type f \
+    -name '*.drushrc.php' -printf '%f\n' 2>/dev/null | sort)
 
   # Vhosts: every file gets the URI-safe pairs (paths, ftp home, fpm socket
   # tokens); ONLY the panel's own vhost files (exact <old front> basename,
   # incl. disabled/ssl-prefixed forms) get the front label + a rename. A
-  # customer vhost like shop.<old front> keeps its server_name.
-  if [ -d "${_VHOSTD}" ]; then
-    local _BASE _NEWB
-    for _F in $(find "${_VHOSTD}" -maxdepth 1 -type f 2>/dev/null | sort); do
-      _BASE=$(basename "${_F}")
-      if grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp\|user_socket \"${_OLD_ACCT}[.\"]" "${_F}" 2>/dev/null; then
-        _info "  sed in-place content: ${_F}"
-        _maybe_run sed -i \
-          -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
-          -e "\"s#/home/${_OLD_ACCT}\.ftp#/home/${_NEW_ACCT}.ftp#g\"" \
-          -e "\"s#user_socket \\\"${_OLD_ACCT}\.#user_socket \\\"${_NEW_ACCT}.#g\"" \
-          -e "\"s#user_socket \\\"${_OLD_ACCT}\\\"#user_socket \\\"${_NEW_ACCT}\\\"#g\"" \
-          \'"${_F}"\'
+  # customer vhost like shop.<old front> keeps its server_name. vhost.d is
+  # the account's: handled as in §4, as names inside the real directory; a
+  # parked vhost goes where only root can reach it. The sed programs are
+  # single-quoted for the eval, so their quotes and backslashes reach sed
+  # as written.
+  if [ -d "${_VHOSTD}" ] && ! _in_real_dir "${_VHOSTD}" true; then
+    _alrt "  ${_VHOSTD} is not a real directory -- account-axis vhost pass skipped"
+  elif [ -d "${_VHOSTD}" ]; then
+    local _BASE _NEWB _P1 _P2 _P3 _P4 _PF
+    _P1="s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g"
+    _P2="s#/home/${_OLD_ACCT}\.ftp#/home/${_NEW_ACCT}.ftp#g"
+    _P3="s#user_socket \"${_OLD_ACCT}\.#user_socket \"${_NEW_ACCT}.#g"
+    _P4="s#user_socket \"${_OLD_ACCT}\"#user_socket \"${_NEW_ACCT}\"#g"
+    _PF="${_ACCT_SED_GUARD}s/${_OLD_FRONT}/${_NEW_FRONT}/g"
+    while IFS= read -r _BASE; do
+      [ -n "${_BASE}" ] || continue
+      # the account names these files: a name outside the hostname/path
+      # charset never reaches the eval in _maybe_run
+      _safe_name "${_BASE}" "vhost file" || continue
+      if _in_real_dir "${_VHOSTD}" _read_here "${_BASE}" \
+        | grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp\|user_socket \"${_OLD_ACCT}[.\"]"; then
+        _info "  sed in-place content: ${_VHOSTD}/${_BASE}"
+        _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_BASE}"\' \
+          -e \'"${_P1}"\' -e \'"${_P2}"\' -e \'"${_P3}"\' -e \'"${_P4}"\' \
+          || _alrt "  ${_BASE} NOT rewritten -- it still names ${_OLD_ACCT}"
       fi
       # Exact-label matching is the re-run convergence here: after the
       # first pass the panel vhost is NEW-front-named and matches none of
@@ -2463,18 +3257,24 @@ _rename_account_on_disk() {
       case "${_BASE}" in
         "${_OLD_FRONT}"|".${_OLD_FRONT}"|"https.${_OLD_FRONT}")
           _NEWB="${_BASE/${_OLD_FRONT}/${_NEW_FRONT}}"
-          if [ -e "${_VHOSTD}/${_NEWB}" ]; then
-            _info "  parking panel vhost ${_BASE} (fresh ${_NEWB} present)"
-            [ "${_DRY_RUN}" = "YES" ] || mkdir -p "${_BACKUP_DIR}"
-            _maybe_run mv -f \'"${_F}"\' \'"${_BACKUP_DIR}/parked_${_TS}_vhost_${_BASE}"\'
+          if _in_real_dir "${_VHOSTD}" test -e "./${_NEWB}"; then
+            _info "  parking panel vhost ${_BASE} (fresh ${_NEWB} present) -> ${_PRIV_BK}/"
+            _maybe_run _in_real_dir \'"${_VHOSTD}"\' mv -f -T -- \'"./${_BASE}"\' \
+              \'"${_PRIV_BK}/parked_${_TS}_vhost_${_BASE}"\' \
+              || _alrt "  panel vhost NOT parked: ${_BASE}"
           else
             _info "  sed + rename panel vhost: ${_BASE} -> ${_NEWB}"
-            _maybe_run sed -i "\"${_ACCT_SED_GUARD}s/${_OLD_FRONT}/${_NEW_FRONT}/g\"" \'"${_F}"\'
-            _maybe_run mv -f \'"${_F}"\' \'"${_VHOSTD}/${_NEWB}"\'
+            _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_BASE}"\' \
+              \'"${_PF}"\' \
+              || _alrt "  ${_BASE} NOT rewritten -- it still names ${_OLD_FRONT}"
+            _maybe_run _in_real_dir \'"${_VHOSTD}"\' mv -f -T -- \'"./${_BASE}"\' \
+              \'"./${_NEWB}"\' \
+              || _alrt "  rename FAILED -- ${_BASE} keeps its name"
           fi
         ;;
       esac
-    done
+    done < <(_in_real_dir "${_VHOSTD}" find . -maxdepth 1 -type f \
+      -printf '%f\n' 2>/dev/null | sort)
   fi
 
   # Panel record in the platform alias maps: the same maintain() asymmetry
@@ -2576,9 +3376,16 @@ _repair_account_variables() {
   fi
 
   _info "  Repairing ${_CNT} account-axis variable value(s) via php/mysqli ..."
-  mkdir -p "${_BACKUP_DIR}"
-  _PHP="${_BACKUP_DIR}/acctfix_${_TS}.php"
-  _VOUT="${_BACKUP_DIR}/acctfix_${_TS}.log"
+  # Written and run in a directory only root can enter, as the host-axis
+  # repair above: never in the account's backups/.
+  local _PRIV
+  _PRIV=$(mktemp -d /var/backups/renameaegirhost.XXXXXXXX 2>/dev/null \
+    || mktemp -d 2>/dev/null) || {
+    _alrt "account-axis variable repair NOT run: no private work directory could be made"
+    return 0
+  }
+  _PHP="${_PRIV}/acctfix_${_TS}.php"
+  _VOUT="${_PRIV}/acctfix_${_TS}.log"
   {
     printf '<?php\n$pOld = '\''/data/disk/%s/'\'';\n$pNew = '\''/data/disk/%s/'\'';\n$fOld = '\''%s'\'';\n$fNew = '\''%s'\'';\n' \
       "${_OLD_ACCT}" "${_NEW_ACCT}" "${_OLD_FRONT}" "${_NEW_FRONT}"
@@ -2700,6 +3507,7 @@ PHPEOF
     && grep -q '^RAH-DONE' "${_VOUT}"; then
     grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
     rm -f "${_PHP}" "${_VOUT}"
+    rmdir "${_PRIV}" 2>/dev/null
   else
     _alrt "account-axis variable repair did not confirm — last 15 lines:"
     tail -n 15 "${_VOUT}"
@@ -2758,8 +3566,7 @@ _rename_host_identity() {
       echo "DRY:  openssl req -x509 -new -key ${_key} -subj .../CN=*.${_NEW_HOST} -out ${_crt}"
       _HOST_NAMES_DONE="${_HOST_NAMES_DONE} fallback-certificate"
     else
-      mkdir -p "${_BACKUP_DIR}"
-      cp -a "${_crt}" "${_BACKUP_DIR}/nginx-wild-ssl.crt_${_ts}"
+      cp -a "${_crt}" "${_PRIV_BK}/nginx-wild-ssl.crt_${_ts}"
       _tmp="${_crt}.rename.$$"
       if openssl req -x509 -nodes -sha256 -days 7300 -new -key "${_key}" \
           -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_NEW_HOST}" \
@@ -2885,20 +3692,35 @@ _run_as_aegir() {
 }
 
 _queue_renamed_site_verifies() {
-  # Restored from the old xboa procedure, which scheduled
-  # `hosting-task @<site> verify --force` for every site it moved. The
-  # rewrite dropped it and queued only SERVER verifies, which regenerate no
-  # per-site artefact at all — the whole of B7. §2c now leaves each renamed
-  # site correct on disk without any of this; this queues provision's own
-  # regeneration on top, from the panel node, exactly as the old procedure
-  # did. Bounded by the sites §2c actually moved, so a box whose tenants do
-  # not embed the hostname queues nothing. Grav and Textpattern capsules are
-  # deliberately outside that set: §2c re-points their own uri-bound surfaces
-  # directly, and their verify is provision's class-specific task, carrying
-  # its own PHP floor and its own tree repair.
-  local _U
+  # Restored from the old xboa procedure, which scheduled `hosting-task
+  # @<site> verify --force` for every site it moved. The rewrite dropped it
+  # and queued only SERVER verifies, which regenerate no per-site artefact at
+  # all — the whole of B7. §2c now leaves each renamed site correct on disk
+  # without any of this; this queues provision's own regeneration on top, from
+  # the panel node, exactly as the old procedure did. Bounded by the sites §2c
+  # moved and the sites whose certificate record §5 renamed, so a box whose
+  # tenants do not embed the hostname queues nothing. Grav and Textpattern
+  # capsules are deliberately outside that set: §2c re-points their own
+  # uri-bound surfaces directly, and their verify is provision's
+  # class-specific task, carrying its own PHP floor and its own tree repair.
+  local _U _HMU
   [ "${#_RENAMED_SITE_URIS[@]}" -eq 0 ] && return 0
+  # The account's own panel answers to @hostmaster, never to @<uri>, so
+  # hosting-task refuses @<uri> for it; §8 verifies it synchronously.
+  _HMU=$(_read_file "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | grep "'uri'" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g" \
+    | tr -d ' ')
+  # a dry run applies no §3: the alias still names the old host
+  if [ "${_DRY_RUN}" = "YES" ] && [ -n "${_HMU}" ] && ! _renamed_already "${_HMU}"; then
+    _HMU="${_HMU//${_OLD_HOST}/${_NEW_HOST}}"
+  fi
   for _U in $(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" | sort -u); do
+    if [ -n "${_HMU}" ] && [ "${_U}" = "${_HMU}" ]; then
+      _info "    the panel's own site ${_U} is verified in §8"
+      continue
+    fi
     if [ "${_DRY_RUN}" = "YES" ]; then
       _info "    (dry-run) would queue site verify: ${_U}"
       continue
@@ -2906,6 +3728,62 @@ _queue_renamed_site_verifies() {
     _safe_name "${_U}" "site uri" || continue
     _info "    queueing site verify: ${_U}"
     _run_as_aegir "drush8 @hostmaster hosting-task @${_U} verify --force"
+  done
+  return 0
+}
+
+_queue_cert_reverifies() {
+  # The second verify of a site whose certificate record §5 renamed and that
+  # redirects to an alias: its first verify wrote the vhost before hosting_le
+  # linked the new certificate, so the vhost names the leaf without its
+  # chain, and hosting_le's own follow-up verify runs only while
+  # tools/le/.ctrl/<redirect target>.pid is absent, which a client-domain
+  # target already has.
+  local _U
+  [ "${#_CERT_REVERIFY_URIS[@]}" -eq 0 ] && return 0
+  for _U in $(printf '%s\n' "${_CERT_REVERIFY_URIS[@]}" | sort -u); do
+    _safe_name "${_U}" "site uri" || continue
+    _info "    queueing site verify again: ${_U}"
+    _run_as_aegir "drush8 @hostmaster hosting-task @${_U} verify --force"
+  done
+  return 0
+}
+
+_release_held_site_certs() {
+  # A record §5 kept for a site with client aliases is renamed once its new
+  # name's certificate exists: on an in-place rename the site's own verify in
+  # pass 1 issued it, its aliases reaching this box, and its vhost moves to it
+  # at the verify queued here (a capsule at its own next verify). On a move
+  # the aliases still reach the old box: the record stays, and the run says
+  # how to finish once they reach this one.
+  local _e _cid _old _new _q _taken _again
+  [ "${#_CERT_HELD[@]}" -eq 0 ] && return 0
+  _again="renameaegirhost --aegir-root ${_AEGIR_ROOT} --force-old ${_OLD_HOST}"
+  if [ "${_ACCT_AXIS}" = "YES" ]; then
+    _again="${_again} --old-account ${_OLD_ACCT} --new-account ${_NEW_ACCT}"
+  fi
+  for _e in "${_CERT_HELD[@]}"; do
+    read -r _cid _old _new _q <<< "${_e}"
+    if [ -s "${_AEGIR_ROOT}/tools/le/certs/${_new}/fullchain.pem" ]; then
+      _taken=$(_sql "SELECT COUNT(*) FROM hosting_ssl_cert WHERE ssl_key = '${_new}'")
+      if [ "${_taken}" != "0" ]; then
+        _alrt "  ${_new}: a certificate record named ${_new} exists already: ${_old} left as it is, the site keeps the old name's certificate"
+      elif _sql "UPDATE hosting_ssl_cert SET ssl_key = '${_new}' WHERE cid = ${_cid} AND ssl_key = '${_old}'"; then
+        _info "    ${_new}: its verify issued the new name's certificate: its record ${_old} renamed with it"
+        if [ "${_q}" = "YES" ]; then
+          _info "    queueing site verify again: ${_new}"
+          _run_as_aegir "drush8 @hostmaster hosting-task @${_new} verify --force"
+        else
+          _info "    ${_new}: it moves to the new name's certificate at its own next verify"
+        fi
+      else
+        _alrt "  ${_new}: its certificate record ${_old} could NOT be renamed: the site keeps the old name's certificate"
+      fi
+      continue
+    fi
+    _CERT_HELD_N=$((_CERT_HELD_N + 1))
+    _alrt "  ${_new}: it carries client aliases and no certificate for its new name yet: ${_old} left as it is, the site keeps that certificate;"
+    _alrt "  once its aliases reach this box (after xoct proxy or the DNS switch), verify the site, then run: ${_again}"
   done
   return 0
 }
@@ -2936,6 +3814,9 @@ _run_aegir_tasks() {
 
     if [ "${_pass}" -eq 1 ]; then
       _queue_renamed_site_verifies
+    elif [ "${_pass}" -eq 2 ]; then
+      _release_held_site_certs
+      _queue_cert_reverifies
     fi
 
     _run_as_aegir "drush8 @hostmaster hosting-dispatch"
@@ -2970,8 +3851,7 @@ _verify_hostmaster() {
   # most likely to hiccup, and a bare ALRT with the detail thrown away left
   # nothing to debug with.
   local _VLOG
-  _VLOG="${_BACKUP_DIR}/hm_verify_$(date +%Y%m%d_%H%M%S).log"
-  mkdir -p "${_BACKUP_DIR}"
+  _VLOG="${_PRIV_BK}/hm_verify_$(date +%Y%m%d_%H%M%S).log"
   if _run_as_aegir "drush8 @hostmaster provision-verify" > "${_VLOG}" 2>&1; then
     rm -f "${_VLOG}"
   else
@@ -3058,13 +3938,15 @@ _verify_renamed_sites_serve() {
     # its dir and settings.php but carries the placeholder vhost, whose body
     # IS the catch-all page the probe below calibrates against, so probing it
     # could only end in a false NOT SERVING after the full wait. Judged here,
-    # after §4 and §6, where the vhost under the new name is final.
+    # after §4 and §6, where the vhost under the new name is final, and read
+    # inside the real vhost.d so a FIFO put there cannot stall the gate.
     _VH="${_AEGIR_ROOT}/config/server_master/nginx/vhost.d/${_U}"
     if [ ! -f "${_VH}" ]; then
       _info "    ${_U}: no vhost -- not probed"
       _SERVE_SKIPPED_N=$((_SERVE_SKIPPED_N + 1))
       continue
-    elif grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' "${_VH}" 2>/dev/null; then
+    elif _in_real_dir "${_VHOSTD}" _read_here "${_U}" \
+      | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default'; then
       _info "    ${_U}: disabled -- placeholder vhost by design, not probed"
       _SERVE_SKIPPED_N=$((_SERVE_SKIPPED_N + 1))
       continue
@@ -3145,6 +4027,9 @@ _print_summary() {
   if [ "${_SETTINGS_SKIPPED_N}" -gt 0 ]; then
     echo "  ATTENTION    : ${_SETTINGS_SKIPPED_N} settings.php left untouched — see the ALRT lines above"
   fi
+  if [ "${_CERT_HELD_N}" -gt 0 ]; then
+    echo "  ATTENTION    : ${_CERT_HELD_N} site(s) keep their old name's certificate record — see the ALRT lines above"
+  fi
   if [ -n "${_SERVE_FAILED}" ]; then
     echo "  NOT SERVING  :${_SERVE_FAILED}"
   elif [ "${_SERVE_N}" -gt 0 ] && [ "${_DRY_RUN}" != "YES" ]; then
@@ -3155,6 +4040,9 @@ _print_summary() {
   fi
   if [ -n "${_HOST_NAMES_DONE}" ]; then
     echo "  Host names   :${_HOST_NAMES_DONE}"
+  fi
+  if [ "${_DRY_RUN}" != "YES" ]; then
+    echo "  Backups      : ${_PRIV_BK} (root only)"
   fi
   if [ "${_ACCT_AXIS}" = "YES" ]; then
     echo "  Old account  : ${_OLD_ACCT}"
@@ -3169,6 +4057,7 @@ _print_summary() {
 _check_root
 _detect_old_hostname
 _detect_new_hostname
+_wait_db_writable
 _backup_files
 _rename_hostmaster_site_dir
 _rename_tenant_site_dirs

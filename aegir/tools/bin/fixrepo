@@ -89,24 +89,87 @@ _run_cmd() {
   return 0
 }
 
+# Run "$@" inside the directory $1, a path resolved once in _main: entered
+# with cd -P and checked there with pwd -P, so a name on the way that the
+# account swapped for a link since is never followed, and '.' and ./name then
+# stay in that directory whatever is swapped. Status 1 when it cannot be
+# entered as resolved.
+_in_pinned_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# Group bits added on paths below the current directory, never through a
+# link: each directory on a path is opened without following a link and
+# entered through that handle, and the last name is opened the same way
+# without blocking on a FIFO, checked to be a regular file or a directory
+# and changed through the open handle, so a name swapped for a link at any
+# moment is refused, not followed. A regular file with more than one link is
+# left alone: it may share its inode with a file outside the tree. Run it
+# from find -exec ... {} + inside the pinned tree, which hands one perl the
+# paths of the whole walk. Status 1 when a mode could not be set. $1 = X:
+# g+rwX (x only on a directory or a file that already has an x bit); s:
+# g+rws on a directory. The rest = the paths.
+_FIXREPO_FCHMOD_PL='use Fcntl;
+my ($t, $e) = (shift @ARGV, 0);
+sysopen(my $top, ".", O_RDONLY | O_DIRECTORY) or exit 1;
+my @at;
+for my $p (@ARGV) {
+  my @n = grep { $_ ne "" && $_ ne "." } split(m{/}, $p);
+  next if $p =~ m{^/} || grep { $_ eq ".." } @n;
+  my $f = @n ? pop(@n) : ".";
+  my $i = 0;
+  $i++ while $i < @at && $i < @n && $at[$i] eq $n[$i];
+  if ($i < @at) {
+    chdir($top) or exit 1;
+    $i = 0;
+    @at = ();
+  }
+  for my $c (@n[$i .. $#n]) {
+    my $d;
+    sysopen($d, $c, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+      && chdir($d) or last;
+    push(@at, $c);
+  }
+  next if @at < @n;
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  my $m = $s[2] & 07777;
+  if (-d _) {
+    chmod($m | ($t eq "s" ? 02070 : 0070), $h) or $e = 1;
+  }
+  elsif (-f _ && $s[3] == 1 && $t eq "X") {
+    chmod($m | 0060 | ($m & 0111 ? 0010 : 0), $h) or $e = 1;
+  }
+  close($h);
+}
+exit $e;'
+
 _fix_permissions_tree() {
   _TARGET_DIR="${1}"
 
   [ -n "${_TARGET_DIR}" ] || return 1
-  # chmod -R below follows a symlink given AS ITS ARGUMENT (it only refuses
-  # ones met during the walk), so never hand it one: [ -d ] alone is true for
-  # a symlink to a directory.
+  # Never walk a tree given as a symlink: [ -d ] alone is true for a symlink
+  # to a directory.
   [ -L "${_TARGET_DIR}" ] && return 1
   [ -d "${_TARGET_DIR}" ] || return 1
 
   _msg "Processing tree: ${_TARGET_DIR}"
 
+  # Both passes walk '.' inside the tree, entered for real, and set each mode
+  # through _FIXREPO_FCHMOD_PL: never through a name on the way swapped for a
+  # link after the path was resolved, nor through an entry swapped for one
+  # during the walk (chmod -R before coreutils 9.5 follows such an entry).
   # Add group read/write to all files and dirs; add execute only to dirs and already executable files.
-  _run_cmd "chmod -R g+rwX on ${_TARGET_DIR}" chmod -R g+rwX "${_TARGET_DIR}"
+  _run_cmd "chmod -R g+rwX on ${_TARGET_DIR}" \
+    _in_pinned_dir "${_TARGET_DIR}" \
+    find . \( -type d -o -type f \) -exec perl -e "${_FIXREPO_FCHMOD_PL}" X {} +
 
   # Ensure all directories are group-traversable, writable, and setgid so new files inherit group.
   _run_cmd "setgid on directories in ${_TARGET_DIR}" \
-    find "${_TARGET_DIR}" -type d -exec chmod g+rws {} +
+    _in_pinned_dir "${_TARGET_DIR}" \
+    find . -type d -exec perl -e "${_FIXREPO_FCHMOD_PL}" s {} +
 
   return 0
 }
@@ -126,14 +189,16 @@ _set_git_shared_mode() {
   # Run git as the repo owner: git refuses cross-owner repos ("dubious
   # ownership"), and a root-run config rewrite would leave .git/config
   # root-owned. Best effort by design -- a failure warns, never aborts.
-  _GIT_OWNER="$(stat -c %U "${_REPO_ROOT}/.git" 2>/dev/null)"
+  # The owner is read, and a root-run git runs, inside the real codebase
+  # root (_in_pinned_dir).
+  _GIT_OWNER="$(_in_pinned_dir "${_REPO_ROOT}" stat -c %U ./.git 2>/dev/null)"
   if [ -n "${_GIT_OWNER}" ] && [ "${_GIT_OWNER}" != "root" ] \
     && id -u "${_GIT_OWNER}" >/dev/null 2>&1; then
     _msg "==> git core.sharedRepository=group in ${_REPO_ROOT} (as ${_GIT_OWNER})"
     su -s /bin/bash "${_GIT_OWNER}" -c "git -C '${_REPO_ROOT}' config core.sharedRepository group"
   else
     _msg "==> git core.sharedRepository=group in ${_REPO_ROOT}"
-    git -C "${_REPO_ROOT}" config core.sharedRepository group
+    _in_pinned_dir "${_REPO_ROOT}" git config core.sharedRepository group
   fi
   if [ $? -ne 0 ]; then
     printf 'WARNING: could not set core.sharedRepository=group in %s\n' "${_REPO_ROOT}" >&2
@@ -152,7 +217,12 @@ _show_summary() {
     printf 'Git metadata fixed: %s/.git\n' "${_REPO_ROOT}"
     if command -v git >/dev/null 2>&1; then
       # --file skips repo discovery, so root can read it on any-owner repos.
-      _GIT_SHARED="$(git config --file "${_REPO_ROOT}/.git/config" --get core.sharedRepository 2>/dev/null)"
+      # The config is read inside the real .git, at most 1 MiB and never
+      # through a link or from a FIFO put at the name.
+      _GIT_SHARED="$(_in_pinned_dir "${_REPO_ROOT}/.git" timeout 10 dd \
+        if=./config iflag=nofollow,nonblock,fullblock bs=1048576 count=1 \
+        status=none 2>/dev/null \
+        | git config --file /dev/stdin --get core.sharedRepository 2>/dev/null)"
       if [ -n "${_GIT_SHARED}" ]; then
         printf 'git core.sharedRepository: %s\n' "${_GIT_SHARED}"
       fi
@@ -183,8 +253,8 @@ _main() {
   [ "${_REPO_ROOT}" = "-h" ] && { _usage; exit 0; }
   [ "${_REPO_ROOT}" = "--help" ] && { _usage; exit 0; }
 
-  _require_cmd chmod
   _require_cmd find
+  _require_cmd perl
 
   [ -e "${_REPO_ROOT}" ] || _die "Path does not exist: ${_REPO_ROOT}"
   [ -d "${_REPO_ROOT}" ] || _die "Path is not a directory: ${_REPO_ROOT}"
@@ -214,22 +284,63 @@ _main() {
   # clients likewise, /home/<ltd>/sites -> ~oN/clients/<client>
   # (manage_ltd_users.sh:784) -- and the allowlist below advertises /home/*.
   # So do not refuse a symlinked target outright: always SHOW where it really
-  # went (the summary only says so after the chmod), and refuse only a
-  # resolution that CROSSES accounts or reaches /var/aegir from outside it.
+  # went (the summary only says so after the chmod), and refuse a resolution
+  # that CROSSES accounts, reaches /var/aegir from outside it, or comes
+  # through a link from a path no single account holds.
   _acct_seg() {
     case "$1" in
       /data/disk/*/*) printf '%s' "${1#/data/disk/}" | cut -d/ -f1 ;;
       *)              printf '' ;;
     esac
   }
+  # A /home/<user>/... argument reaches a codebase only through the account's
+  # own BOA-made home link (static -> ~oN/static, sites -> ~oN/clients/<client>).
+  # _acct_seg reads nothing from a /home path, so the account it belongs to is
+  # the home directory's name up to the first dot (oN.ftp, oN.<client>[-dev],
+  # oN[.NN].web -- all the account's own identities): /home is root's and BOA
+  # names each home after its identity, so the tenant cannot change it. A
+  # resolved target must stay inside that account.
+  _home_acct() {
+    local _u
+    case "$1" in
+      /home/*) _u="${1#/home/}"; _u="${_u%%/*}"; printf '%s' "${_u%%.*}" ;;
+      *)       printf '' ;;
+    esac
+  }
   if [ -n "${_GIVEN}" ] && [ "${_GIVEN}" != "${_REPO_ROOT}" ]; then
     printf 'Note: %s resolves to %s\n' "${_GIVEN}" "${_REPO_ROOT}"
     _GIVEN_ACCT="$(_acct_seg "${_GIVEN}")"
     _REAL_ACCT="$(_acct_seg "${_REPO_ROOT}")"
+    case "${_GIVEN}" in
+      /home/*) _GIVEN_ACCT="$(_home_acct "${_GIVEN}")" ;;
+    esac
     if [ "${_ALLOW_SYMLINKED_TARGET:-NO}" != "YES" ]; then
-      if [ -n "${_GIVEN_ACCT}" ] && [ "${_GIVEN_ACCT}" != "${_REAL_ACCT}" ]; then
-        _die "Refusing ${_GIVEN}; it resolves into a different account (${_REPO_ROOT})"
-      fi
+      # A link is followed only from where it stays inside one account: an
+      # argument under /data/disk/<user>/ or /home/<user>/ must resolve inside
+      # that same account, and one under /var/aegir/ inside /var/aegir/ (the
+      # master site's files/ and sites/all/ there are writable by every
+      # account, so a link in them is no proof of aegir's intent). Any
+      # other argument reached through a link (/var/www, /tmp, /opt/user ...)
+      # names no account the link could be held to, so it is refused: the
+      # tenant can put or repoint such a link, and a resolution into another
+      # account hands g+rwX -- and, while the account still carries the
+      # box-wide 'users' group, cross-tenant write -- to a foreign tree.
+      case "${_GIVEN}" in
+        /var/aegir/*)
+          case "${_REPO_ROOT}/" in
+            /var/aegir/*) ;;
+            *) _die "Refusing ${_GIVEN}; it resolves outside /var/aegir (${_REPO_ROOT})" ;;
+          esac
+          ;;
+        /data/disk/?*/*|/home/?*/*)
+          if [ -z "${_GIVEN_ACCT}" ] || [ "${_GIVEN_ACCT}" != "${_REAL_ACCT}" ]; then
+            _die "Refusing ${_GIVEN}; it resolves outside its account (${_REPO_ROOT})"
+          fi
+          ;;
+        *)
+          _die "Refusing ${_GIVEN}; a link from outside /data/disk/<user>, /home/<user> or /var/aegir is not followed (${_REPO_ROOT})"
+          ;;
+      esac
       case "${_GIVEN}" in
         /var/aegir/*) : ;;
         *)
@@ -290,11 +401,9 @@ _main() {
   _fix_permissions_tree "${_REPO_ROOT}" || _die "Failed to fix codebase permissions"
 
   # Explicitly fix .git tree too (clarity + robustness in shared workflows).
-  # .git is a name a tenant can plant in the group-writable codebase root
-  # (~/static is 02775 and group-writable), and chmod -R DOES follow a symlink handed to
-  # it as its argument -- it only refuses ones met during the walk -- so a
-  # planted .git -> / would loosen the whole box. A symlinked .git is never
-  # legitimate here; skip it, the tree pass above already covered everything
+  # .git is a name a tenant can create in the group-writable codebase root
+  # (~/static is 02775 and group-writable), and a symlinked .git is never
+  # legitimate here: skip it, the tree pass above already covered everything
   # that really lives in the tree.
   if [ -L "${_REPO_ROOT}/.git" ]; then
     printf 'WARNING: %s/.git is a symlink; Git-specific steps skipped.\n' "${_REPO_ROOT}" >&2
