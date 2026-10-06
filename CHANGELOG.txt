@@ -1519,7 +1519,9 @@
       and the enforced AppArmor mode), and gives it back once they run
       again: the Verify of the Master's site and of its new hostmaster
       platform that the upgrade queues could run in the middle of the
-      restarts and end in Warning or Error.
+      restarts and end in Warning or Error. The Nginx and PHP-FPM
+      watchdogs look for a database restart once more after their
+      grace, so they no longer start either in the middle of one.
 
     * The Octopus and Master upgrades put their fresh Drush in whole: it
       is made beside the one in place, its launcher already given the

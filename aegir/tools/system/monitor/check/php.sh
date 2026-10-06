@@ -175,6 +175,7 @@ _fpm_listen_conflict_detection() {
       sleep 2
       _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
+        _sql_mutation_began && return 0
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
         mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
         _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
@@ -247,6 +248,7 @@ _fpm_sockets_healing() {
     sleep 2
     _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
+      _sql_mutation_began && return 0
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
       mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
       _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
@@ -300,6 +302,7 @@ _fpm_health_check_fix() {
       fi
 
       if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
+        _sql_mutation_began && break
         # Per-version cooldown: /run/php<ver>-fpm.cooldown, gated by
         # _FPM_COOLDOWN_SECS
         _cd="/run/php${e}-fpm.cooldown"
@@ -586,6 +589,19 @@ _sql_mutation_in_flight() {
     fi
   done
   return 1
+}
+
+# Asked again after a grace and before a restart: move_sql.sh writes its
+# marker and only then stops every PHP-FPM master, so a master or socket
+# gone after the grace may be that stop under way, and a restart now would
+# bring PHP-FPM up in the middle of the database restart. Once seen, the
+# rest of the pass restarts nothing.
+_FPM_SQL_MUT=NO
+_sql_mutation_began() {
+  [ "${_FPM_SQL_MUT}" = "YES" ] && return 0
+  _sql_mutation_in_flight || return 1
+  _FPM_SQL_MUT=YES
+  return 0
 }
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \

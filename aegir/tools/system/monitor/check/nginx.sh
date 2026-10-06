@@ -342,6 +342,7 @@ _nginx_if_up_check_fix() {
       sleep 3
       if [ -z "$(_nginx_master_pids)" ] \
         || [ ! -e "/run/nginx.pid" ]; then
+        _sql_mutation_began && exit 0
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
           _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
@@ -478,6 +479,15 @@ _sql_mutation_in_flight() {
   done
   _NGX_SQL_MUT_RC=1
   return 1
+}
+
+# Asked again past the cached answer, after the grace and before the restart
+# of a stopped Nginx: move_sql.sh writes its marker and only then stops
+# Nginx, so the stop the grace watched may be its own, and a restart now
+# would bring Nginx up in the middle of the database restart.
+_sql_mutation_began() {
+  _NGX_SQL_MUT_RC=""
+  _sql_mutation_in_flight
 }
 
 ###
