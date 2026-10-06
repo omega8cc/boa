@@ -2003,6 +2003,13 @@
       without the database port, which it now takes from the site's
       database server on its next Verify.
 
+    * A new Drupal 6 (Pressflow) site gets an active admin account again:
+      since the welcome mail was switched off, user 1 was left blocked
+      with no password, so the site's one-time login link, from Install
+      or Reset password, answered access denied. The welcome mail stays
+      off. A site installed in between keeps its blocked user 1 until its
+      owner unblocks it.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
