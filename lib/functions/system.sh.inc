@@ -12397,16 +12397,25 @@ _instgrp_arm_stamp() {
 # conversion without this stamp. Written at the tail of every barracuda pass
 # while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
 # disarms the box; a conversion already under way resumes either way.
+# Tenant isolation is not switched on in this release: the setting arms only
+# a box that carries the test marker, until a later release sets
+# _tiReleased to YES. Kept local so no cnf line can set it.
 _instgrp_web_arm_stamp() {
+  local _tiReleased=NO
+  local _tiTest="/root/.tenant-isolation-test.cnf"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _instgrp_web_arm_stamp"
     _debug_proc
   fi
   mkdir -p /var/log/boa &> /dev/null
-  if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
+  if [ "${_WEB_GROUP_ARM}" = "YES" ] \
+    && { [ "${_tiReleased}" = "YES" ] || [ -e "${_tiTest}" ]; }; then
     echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-web-arm.ready.txt
   else
     rm -f /var/log/boa/instgrp-web-arm.ready.txt
+    if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
+      _msg "NOTE: _WEB_GROUP_ARM=YES arms nothing in this release: tenant isolation is switched on by a later release"
+    fi
   fi
 }
 

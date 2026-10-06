@@ -5404,7 +5404,7 @@ _wg_check() {
   if [ -s "${_WG_STAMP}" ]; then
     _msg "arm:     $(head -c 80 "${_WG_STAMP}" | tr -d '\n') (${_WG_STAMP})"
   else
-    _msg "arm:     ABSENT (${_WG_STAMP}): _WEB_GROUP_ARM is not YES here; nothing converts"
+    _msg "arm:     ABSENT (${_WG_STAMP}): _WEB_GROUP_ARM=YES has not armed this box (not set, or not in this release); nothing converts"
     _rc=5
   fi
   if [ "$(_web_group_phase_b)" = "YES" ]; then

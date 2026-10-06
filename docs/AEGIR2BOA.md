@@ -769,8 +769,8 @@ refuses db-import without a `check --accept-scrub-list` run recorded).
 Last, `transfer` reports the account's web group on the target as that
 box's own `instgrp webstatus` reads it (`NONE`, `A` or `B`; anything else is
 an `ALRT` naming the command to run there). A target armed for the account
-web group (`_WEB_GROUP_ARM=YES`, see `INSTGRP.md`) converts the account at
-its `create`; the platform trees this run landed take its web group at the
+web group (it carries the arm stamp; see "Arming" in `INSTGRP.md`) converts
+the account at its `create`; the platform trees this run landed take its web group at the
 import's Verify tasks. Nothing is changed by the report.
 
 ### import, per-site route
