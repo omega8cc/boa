@@ -16,6 +16,14 @@ and no grant option, and its tasks reach the broker through `sudo -n`.
 It ships **switched off**. Nothing changes for any account until an operator
 switches it on, and the commands below are what an operator runs.
 
+In this release `scope oN on` switches no account, forced or not, a new
+account's switch included: it refuses with `ERR 7 not-released`, unless the
+box is a test server that carries the marker
+`/root/.tenant-isolation-test.cnf`. A later release lifts that. `plan`, `off`,
+`status` and an account already switched work as described below, with one
+exception: `scope oN on` run again on a switched account, which the remedies
+below use, is refused too outside a test server with the marker.
+
 ## The switch
 
 An account is switched while a root-owned control file exists for it:
@@ -256,7 +264,10 @@ privilege.
 - To settle such a row, re-point or drop its objects, drop the row, and run
   `scope oN on` again. `scope oN on` alone keeps it as a row in use (on
   `kept=`), but the box-wide check still names a row at a host the account's
-  logins do not use, as it did before the switch.
+  logins do not use, as it did before the switch. In this release `scope oN
+  on` runs only on a test server with the marker; elsewhere re-pointing or
+  dropping the objects and dropping the row is the way, and the next rotation
+  succeeds.
 - A row on `kept=` leaves `rows=` at the first rotation after it defines
   nothing, and is dropped: re-pointing or dropping its objects is enough. Never
   while the stored objects cannot be read, and never the last row. A drop the
@@ -308,6 +319,9 @@ its source instead, switched on the target when it is switched there (where
 the target's own checks allow it). `_DB_BROKER_BORN=NO` in an account's
 `/root/.oN.octopus.cnf` keeps that account out of it.
 
+In this release it switches no account outside a test server (see above): the
+pass prints a NOTE and leaves the account on the direct path.
+
 ## The database count limit
 
 ```
@@ -356,4 +370,5 @@ It logs in as no one and changes nothing.
 
 Every refusal is `ERR <code> <reason>` with that exit code: 2 usage, 3 not the
 account's, 4 taken, 5 at the database count limit, 6 a user it may not touch,
-7 a query or step that failed, 8 not switched, 9 busy (a lock, a standby).
+7 a query or step that failed, or a switch this release does not make
+(`not-released`), 8 not switched, 9 busy (a lock, a standby).
