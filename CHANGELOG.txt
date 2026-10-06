@@ -820,11 +820,11 @@
       listed site's list, keyed by the names only that site's vhost
       serves on the box (a wildcard alias, or a name another instance
       also carries, stays out), and the front judges it against the
-      real visitor. On a
-      whole-site list the ACME challenge and the MTA-STS policy stay
-      open, as they do in the vhosts. The copies appear on the
-      generators' first pass after a barracuda upgrade has updated
-      the front; a site with its own certificate was never affected.
+      real visitor. On a whole-site list the ACME challenge and the
+      MTA-STS policy stay open, as they do in the vhosts. The copies
+      appear on the generators' first pass after a barracuda upgrade
+      has updated the front; a site with its own certificate was
+      never affected.
 
     * The wildcard SSL front also refuses the paths the vhosts keep
       for the box itself (the PHP-FPM status and ping pages, the cron
@@ -848,13 +848,13 @@
       on the box (the wildcard SSL front, BOA's HTTPS proxies) only
       their X-Real-IP; any other peer is the client itself. A site
       behind a CDN or proxy that realip does not trust now sees that
-      proxy's address. A barracuda pass installs the new
-      fastcgi_params. aegir2boa-stage2's peer step on the target now
-      registers its source as a trusted migration source, as xmass and
-      xoct do, so sites relayed from a vanilla Aegir box keep their
-      visitors' addresses (a Cloudflare-fronted one arrives as the edge
-      address, as the vanilla source has no Cloudflare realip). The
-      source now prints the address it reaches the target from, and
+      proxy's address. A barracuda pass installs the new fastcgi_params.
+      aegir2boa-stage2's peer step on the target now registers its
+      source as a trusted migration source, as xmass and xoct do, so
+      sites relayed from a vanilla Aegir box keep their visitors'
+      addresses (a Cloudflare-fronted one arrives as the edge address,
+      as the vanilla source has no Cloudflare realip). The source now
+      prints the address it reaches the target from, and
       migration_proxy_trust.sh gains an untrust verb that removes one
       peer and leaves every other migration's trust in place.
 
@@ -956,21 +956,20 @@
       TLSv1.2 connected. TLSv1.2 and TLSv1.3 are what every site speaks,
       as before; a control file left behind is ignored.
 
-    * Running PHP by name is now for members of the ltd-shell-more
-      group only. For every other shell account websh refuses a command
-      whose program is a PHP interpreter (php, phpNN, php-cli, phpdbg or
-      a path to one) in a line a tool hands to /bin/sh, a Composer @php
-      script included; lshell already refused them in the shell itself.
-      Drush, vdrush, bee and Composer keep running on the PHP the account
-      chose, and a Drush launcher at the head of a line runs on that PHP
+    * Running PHP by name is now for members of the ltd-shell-more group
+      only. For every other shell account websh refuses a command whose
+      program is a PHP interpreter (php, phpNN, php-cli, phpdbg or a path
+      to one) in a line a tool hands to /bin/sh, a Composer @php script
+      included; lshell already refused them in the shell itself. Drush,
+      vdrush, bee and Composer keep running on the PHP the account chose,
+      and a Drush launcher at the head of a line runs on that PHP
       whatever interpreter it names; a Composer @composer script and grav
-      composer run Composer on the named /opt/phpNN/bin/php build.
-      websh also takes the account from the
-      process, not from USER, and refuses an option between -c and the
-      command string for a shell account. A member's php56, php74 and
-      php81 to php85 commands run in the limited shell again: the
-      group's list now carries the /opt/phpNN/bin/php paths the aliases
-      expand to.
+      composer run Composer on the named /opt/phpNN/bin/php build. websh
+      also takes the account from the process, not from USER, and refuses
+      an option between -c and the command string for a shell account. A
+      member's php56, php74 and php81 to php85 commands run in the
+      limited shell again: the group's list now carries the
+      /opt/phpNN/bin/php paths the aliases expand to.
 
     * The far-future path (/cdn/farfuture/...) answers 404 for a site's
       private files, its backup_migrate and config_ files, settings.php
@@ -1295,14 +1294,13 @@
       no longer deployed or read, and the upgrade removes the copies an
       earlier release left there. A box whose _VALKEY_MAJOR_RELEASE holds
       a value Valkey does not have now gets the default Valkey major
-      instead of a Redis build. The phpredis
-      extension, the Drupal and Backdrop redis modules and the redis_*
-      INI keys stay, as they are how sites use Valkey; the _REDIS_*
-      settings stay in /root/.barracuda.cnf but no longer do anything.
-      The Redis watchdog, its dispatch, the Redis AppArmor profile and
-      the Redis branches in setprio, sqlprobe and the incident harvest
-      are gone too; an upgrade moves the old profile aside and removes
-      the old watchdog.
+      instead of a Redis build. The phpredis extension, the Drupal and
+      Backdrop redis modules and the redis_* INI keys stay, as they are
+      how sites use Valkey; the _REDIS_* settings stay in
+      /root/.barracuda.cnf but no longer do anything. The Redis watchdog,
+      its dispatch, the Redis AppArmor profile and the Redis branches in
+      setprio, sqlprobe and the incident harvest are gone too; an upgrade
+      moves the old profile aside and removes the old watchdog.
 
     * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
       training class: it gets 444 by default like GPTBot and ClaudeBot,
@@ -1585,16 +1583,16 @@
       five-second pause on the old platform before its database updates.
 
     * A revert of an account's per-instance group (or the rollback of a
-      convert) that finds an identity in use records it, and the
-      limited-shell worker finishes the move back to the box-wide group on
-      its first idle pass (the nightly per-account pass writes with the
-      box-wide group meanwhile); the worker also rebuilds a tenant's yml
-      alias store (the account's and the tenant's limited-shell copy) when
-      a site's drushrc alias is gone, so a deleted site no longer leaves its
-      converted alias behind; the worker itself is installed through the
-      versioned fetcher, which refuses a mirror that has not caught up yet
-      instead of stamping the new serial on the previous bytes; a primary-group
-      move deferred for over a day is raised through the incident channel.
+      convert) that finds an identity in use records it, and the limited-shell
+      worker finishes the move back to the box-wide group on its first idle
+      pass (the nightly per-account pass writes with the box-wide group
+      meanwhile); the worker also rebuilds a tenant's yml alias store (the
+      account's and the tenant's limited-shell copy) when a site's drushrc
+      alias is gone, so a deleted site no longer leaves its converted alias
+      behind; the worker itself is installed through the versioned fetcher,
+      which refuses a mirror that has not caught up yet instead of stamping the
+      new serial on the previous bytes; a primary-group move deferred for over
+      a day is raised through the incident channel.
 
 
     * Query-mutation spam that grows an "&amp;" chain one layer per
@@ -3354,23 +3352,22 @@
       record of built versions (see above) that still lacks them; the next
       run checks it again.
 
-    * A Composer platform registered with its app root (its Drush
-      alias names the app root while its sites live under web/,
-      docroot/ or html/) is now read at the web root Ægir serves
-      everywhere else it mattered. The nightly ghost-site check
-      reported a site stranded on such a platform by an interrupted
-      migrate as a ghost, which could mail the client and, with
-      _GHOST_SITES_CLEANUP=YES, move its alias and vhost aside. The
-      old-empty-platform cleanup never deleted such a platform once
-      empty; it now does, like any other empty platform, wherever
-      _DEL_OLD_EMPTY_PLATFORMS applies (hosted systems default it to 60
-      days). The limited-shell Drush window could not
-      find its alias, so it never unlocked it and sent a "no platform
-      alias found" notice instead. autosymlink's NOT CLEAN explanation
-      called it a BROKEN PLATFORM, or advised deleting a site whose
-      data still sat on it. xmass did not count its sites in the
-      target-only purge inventory, and its panel alias repair judged
-      it code-less.
+    * A Composer platform registered with its app root (its Drush alias
+      names the app root while its sites live under web/, docroot/ or
+      html/) is now read at the web root Ægir serves everywhere else it
+      mattered. The nightly ghost-site check reported a site stranded
+      on such a platform by an interrupted migrate as a ghost, which
+      could mail the client and, with _GHOST_SITES_CLEANUP=YES, move
+      its alias and vhost aside. The old-empty-platform cleanup never
+      deleted such a platform once empty; it now does, like any other
+      empty platform, wherever _DEL_OLD_EMPTY_PLATFORMS applies (hosted
+      systems default it to 60 days). The limited-shell Drush window
+      could not find its alias, so it never unlocked it and sent a "no
+      platform alias found" notice instead. autosymlink's NOT CLEAN
+      explanation called it a BROKEN PLATFORM, or advised deleting a
+      site whose data still sat on it. xmass did not count its sites in
+      the target-only purge inventory, and its panel alias repair
+      judged it code-less.
 
     * The xmass panel alias repair no longer removes a platform alias
       when the panel database query fails: only an answer of no such
@@ -3755,16 +3752,16 @@
       minute after an init, or a re-init that died between its reset and
       its re-point -- kept serving, with nothing logged, for up to 48
       hours. The box is now released only when it reads as promoted: a
-      clean role probe, no replica config, super_read_only off. The
-      answer is latched (/var/log/boa/.standby_promoted.pid): a definitive
-      read moves it, an ambiguous one changes nothing, absent means held,
-      and it survives a reboot. The nginx watchdog, the nginx init
-      script's start() gate, the csf post hook (on boxes carrying the
-      older block it is removed and the current one appended, only when
-      its own marker pair is intact), the reload-skipping config writers,
-      the upgrade's nginx restart and `webserver up` all read the same
-      rule; cutover step 11.5 publishes the latch the
-      moment its unlock is proven, so step 12 waits for nothing.
+      clean role probe, no replica config, super_read_only off. The answer
+      is latched (/var/log/boa/.standby_promoted.pid): a definitive read
+      moves it, an ambiguous one changes nothing, absent means held, and
+      it survives a reboot. The nginx watchdog, the nginx init script's
+      start() gate, the csf post hook (on boxes carrying the older block
+      it is removed and the current one appended, only when its own marker
+      pair is intact), the reload-skipping config writers, the upgrade's
+      nginx restart and `webserver up` all read the same rule; cutover
+      step 11.5 publishes the latch the moment its unlock is proven, so
+      step 12 waits for nothing.
 
     * xmass init locks the target's database at run time in the same
       command that writes the standby marker and reads the lock back: a
@@ -3777,8 +3774,9 @@
     * A dead xmass run no longer reads as "in flight" in silence: with
       the database still locked and the window signal untouched for 90
       minutes (a dead init, or a cutover parked before its step 11.5),
-      second.sh logs once that no live run owns the box. The reboot-proof twin of the signal now carries the signal's
-      own timestamp, so its 48-hour ceiling no longer restarts when the
+      second.sh logs once that no live run owns the box. The
+      reboot-proof twin of the signal now carries the signal's own
+      timestamp, so its 48-hour ceiling no longer restarts when the
       mirroring stops.
 
     * The FTPS healer stands aside on the standby marker alone: during
@@ -5179,13 +5177,13 @@
     * Prebuilt stack packages reach Devuan Excalibur. Fresh installs and
       upgrades on Excalibur now consume the prebuilt boa-* Debian packages
       by default instead of compiling the heavy stack from source,
-      extending the fast-install path introduced on Daedalus in
-      BOA-5.88.8; an explicit _USE_PREBUILT_PKGS=NO in the cnf still wins.
-      The companion GCC 14 build porting means every PHP version BOA
-      builds, the legacy ones included, now compiles natively on Excalibur.
-      In a timed test on a modest 4-core cloud VM, a fresh single-PHP
-      install reached a serving Ægir master plus first satellite in about
-      25 minutes -- under 40 from a bare Debian VM including the automatic
+      extending the fast-install path introduced on Daedalus in BOA-5.88.8;
+      an explicit _USE_PREBUILT_PKGS=NO in the cnf still wins. The
+      companion GCC 14 build porting means every PHP version BOA builds,
+      the legacy ones included, now compiles natively on Excalibur. In a
+      timed test on a modest 4-core cloud VM, a fresh single-PHP install
+      reached a serving Ægir master plus first satellite in about 25
+      minutes -- under 40 from a bare Debian VM including the automatic
       Devuan conversion.
 
     * The BOA distribution network gains two fresh, redundant package and
@@ -8967,8 +8965,8 @@
 @=> Important changes planned in the next BOA feature release
 
   BOA-3.2.2 is the last release still supporting PHP 5.3, 5.4 and 5.5 versions.
-  These versions will be *removed* in the next release, and instead
-  there will be support for PHP 7.1 and 7.2 added.
+  These versions will be *removed* in the next release, and instead there will
+  be support for PHP 7.1 and 7.2 added.
 
   Future releases will no longer include Pressflow 6 platforms, but Pressflow 6
   will be fully supported, and can still use PHP 5.6 -- We recommend to use
@@ -9035,8 +9033,8 @@
 @=> Important changes planned in the next BOA release
 
   BOA-3.2.1 is the last release still supporting PHP 5.3, 5.4 and 5.5 versions.
-  These versions will be *removed* in the next release, and instead
-  there will be support for PHP 7.1 and 7.2 added.
+  These versions will be *removed* in the next release, and instead there will
+  be support for PHP 7.1 and 7.2 added.
 
   Future releases will no longer include Pressflow 6 platforms, but Pressflow 6
   will be fully supported, and can still use PHP 5.6 -- We recommend to use
@@ -15426,12 +15424,12 @@
   * You can choose both PHP-FPM and PHP-CLI versions per Octopus instance,
     on the same system. And you can change those versions on upgrade.
 
-  * Installing and upgrading BOA system has been greatly simplified.
-    You can still configure and run both installers as before,
-    but you can also use these new, shockingly simple command line tools
-    to install Barracuda and Octopus at once, to install more Octopus
-    instances, to run selective or batch upgrades of all Octopus instances etc.
-    See docs/INSTALL.txt and docs/UPGRADE.txt for details.
+  * Installing and upgrading BOA system has been greatly simplified. You can
+    still configure and run both installers as before, but you can also use
+    these new, shockingly simple command line tools to install Barracuda and
+    Octopus at once, to install more Octopus instances, to run selective or
+    batch upgrades of all Octopus instances etc. See docs/INSTALL.txt and
+    docs/UPGRADE.txt for details.
 
   * We have added an 'easy install' configuration shortcuts for both
     standard (public) and localhost installs. You no longer need
@@ -15441,22 +15439,22 @@
   * Default installs on Debian Squeeze and Ubuntu Precise use
     packages for PHP 5.3, so initial setup takes just 10-15 minutes.
 
-  * You can easily grant limited shell and FTPS access for developers,
-    simply by creating "Clients" in the Ægir control panel and define
-    them as 'owners' of one or more sites. Their access will be limited
-    to only sites they can manage, but only if you will send them their
-    access credentials, which are independent of their Ægir control
-    panel credentials and stored in the ~/users/ directory in your main account.
-    You will find there files with passwords for every "Client" with at least
-    one site attached. For example ~/users/o1.username file means that
-    this Client's username for SSH and FTPS access is 'o1.username' while
-    his password is stored in this file. This means that SSH/FTPS access
-    is not granted automatically, but you can decide who should receive it.
-    How to change any extra user's password? Simply delete his ~/users/o1.username
-    file and wait up to 5 minutes - the system will re-create his account
-    with new password. And how to delete the user completely? Simply
-    delete this user "Client" account in the Ægir control panel and allow
-    the system to delete also his SSH/FTPS access in the next 5 minutes.
+  * You can easily grant limited shell and FTPS access for developers, simply by
+    creating "Clients" in the Ægir control panel and define them as 'owners' of
+    one or more sites. Their access will be limited to only sites they can
+    manage, but only if you will send them their access credentials, which are
+    independent of their Ægir control panel credentials and stored in the
+    ~/users/ directory in your main account. You will find there files with
+    passwords for every "Client" with at least one site attached. For example
+    ~/users/o1.username file means that this Client's username for SSH and FTPS
+    access is 'o1.username' while his password is stored in this file. This
+    means that SSH/FTPS access is not granted automatically, but you can decide
+    who should receive it. How to change any extra user's password? Simply
+    delete his ~/users/o1.username file and wait up to 5 minutes - the system
+    will re-create his account with new password. And how to delete the user
+    completely? Simply delete this user "Client" account in the Ægir control
+    panel and allow the system to delete also his SSH/FTPS access in the next 5
+    minutes.
 
   * We have added segfault monitor for php-fpm and nginx, enabled by default.
     It is pretty aggressive, because it disables vhost of any site causing
@@ -15467,12 +15465,12 @@
     to not run this monitor: `rm -f /var/xdrago/monitor/check/segfault_alert`
 
   * Previously recommended site and platforms re-verify on Clone or Migrate
-    is now fully automated. Ægir will run these extra tasks as a part
-    of Clone or Migrate task, to make sure that there are no errors
-    and that Ægir is using up-to-date information collected about
-    platforms and sites. It also automatically fixes the known problem
-    with domain aliases incorrectly written in the original and cloned sites,
-    as reported in the Ægir queue: http://drupal.org/node/1004526
+    is now fully automated. Ægir will run these extra tasks as a part of
+    Clone or Migrate task, to make sure that there are no errors and that
+    Ægir is using up-to-date information collected about platforms and sites.
+    It also automatically fixes the known problem with domain aliases
+    incorrectly written in the original and cloned sites, as reported in the
+    Ægir queue: http://drupal.org/node/1004526
 
   * Apps are now fully supported. If the App is not downloaded yet, installing
     it via browser only requires write permissions, normally never available
