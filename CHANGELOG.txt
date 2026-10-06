@@ -1957,6 +1957,16 @@
       were not given them. Each now gets its own site's settings, and
       the Upgrade's those of the new copy, never the source's.
 
+    * Reset password and a new Drupal or Backdrop site's Install now log
+      their one-time login line only when Drush returned a link, and the
+      line says where to find it: the "Log in to" link at the top of the
+      site's page in the control panel, which works once within 24
+      hours. A Reset password that gets no link from Drush now fails and
+      says so, instead of claiming a link the site page never offered;
+      an Install warns and carries on. The link the panel keeps no
+      longer ends with a stray newline, and a new Drupal 6 site's link
+      no longer carries a second /login.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
