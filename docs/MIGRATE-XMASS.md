@@ -338,9 +338,11 @@ stale tooling. The tool executing the command itself refreshes on the next
 verb, not mid-run (the fetcher refuses to replace a live process), and the log
 says so.
 
-A tool whose copy cannot be replaced (an immutable or append-only file) gets an
-`ALRT` naming the file and `/var/log/boa/mirror.incident.log` instead, and the
-migration runs on the copy it has.
+A tool whose copy cannot be replaced gets an `ALRT` naming the file instead, and
+the migration runs on the copy it has. That is an immutable or append-only
+file, read from the file itself, so the tool executing the command is named
+too; or one whose last move was refused, as `/var/log/boa/mirror.incident.log`
+records.
 
 In source mode `pre-mig` publishes root's public key on the box's undefined
 vhost and prints the key's fingerprint with the exact command to run on the
