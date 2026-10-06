@@ -1508,6 +1508,13 @@
       hostmaster platform that the upgrade queues could run in the
       middle of the restarts and end in Warning or Error.
 
+    * The Octopus and Master upgrades put their fresh Drush in whole: it
+      is made beside the one in place, its launcher already given the
+      account's (or the Master's) PHP, then swapped in with one rename.
+      For up to a few minutes per pass a Drush started meanwhile found
+      no Drush there, or the stock launcher, and ran on the first PHP on
+      the path.
+
     * A Verify of a site whose aliases redirect to another name, with
       the dont-overwrite flag under both of its names, now names both
       files to delete to turn Let's Encrypt renewals back on; it named
