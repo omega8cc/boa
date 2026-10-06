@@ -1986,6 +1986,12 @@
       @self, matched as whole names, in the Drush 8 and Drush 10+
       listings alike.
 
+    * A site brought in by Import, every site made by Upgrade to Backdrop
+      among them, no longer ends each of its tasks with the warning
+      Undefined array key "db_port": its Drush settings file was written
+      without the database port, which it now takes from the site's
+      database server on its next Verify.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
