@@ -2224,8 +2224,12 @@ _install_php_multi_src() {
   # Re-check 7.4/8.0 intl whenever the default ICU moves. 7.2/7.3 intl does
   # not compile against ICU 70 or newer and 5.6-7.1 stopped building it on
   # newer systems, so 7.3 and older are built without it, pinned or not.
+  # The standard follows the ICU configure will find: the installed headers,
+  # or the target when there are none yet.
   _resolve_icu_target
   _ICU_MAJOR="${_ICU_TARGET_VRN%%[._-]*}"
+  _ICU_HDR_VRN="$(_installed_icu_vrn)"
+  [ -n "${_ICU_HDR_VRN}" ] && _ICU_MAJOR="${_ICU_HDR_VRN%%.*}"
   _ICU_CXX_ENV=""
   if [ "$1" -ge 74 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
@@ -3312,14 +3316,19 @@ _check_php_rebuild() {
     # rebuilt: the expected version comes from the same resolver the build
     # used, so the install-vs-expected rebuild loop cannot form. That holds
     # only once the expected ICU is the installed one: when its install
-    # failed, 'current' still names another version (see _install_icu) and
-    # every build would compile against that one and mismatch again on each
-    # pass. The builds keep serving, the ALRT fails the pass report, and the
-    # next pass tries the ICU install again.
+    # failed (_install_icu says so in its ALRT), every build would compile
+    # against the ICU still there and mismatch again on each pass. Then only
+    # a build without intl at all is rebuilt, against that ICU, once; the
+    # others keep serving until the next pass installs the expected ICU.
     _resolve_icu_target
-    if [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
-      != "/usr/local/lib/icu/${_ICU_TARGET_VRN/[_-]/.}" ]; then
-      _msg "ALRT: ICU ${_ICU_TARGET_VRN} is not installed, PHP ${_PHP_ITD} keeps its build until it is"
+    if [ "$(_installed_icu_vrn)" != "${_ICU_TARGET_VRN/[_-]/.}" ]; then
+      if ! /opt/php$1/bin/php -i 2> /dev/null | grep -q "^ICU version"; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: PHP ${_PHP_ITD} has no intl, rebuilding against the installed ICU"
+        fi
+        _PHP_FORCE_REINSTALL=YES
+        _ownWhy=YES
+      fi
     elif ! _check_php_icu_version "$1"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
@@ -4183,9 +4192,17 @@ _php_check_if_rebuild() {
     _msg "INFO: PHP rebuild required to fix ICU support..."
     _PHP_FORCE_REINSTALL=YES
     _php_install_deps
-    _php_libs_fix
-    _php_if_versions_cleanup_cnf
-    _php_upgrade_all force
+    # Rebuilding every version helps only once the ICU is there: after a
+    # failed install (its ALRT is in the log) the builds would fail or miss
+    # it again on every pass, so they wait for a pass that installs it.
+    _resolve_icu_target
+    if [ "$(_installed_icu_vrn)" = "${_ICU_TARGET_VRN/[_-]/.}" ]; then
+      _php_libs_fix
+      _php_if_versions_cleanup_cnf
+      _php_upgrade_all force
+    else
+      _msg "INFO: ICU ${_ICU_TARGET_VRN} is not installed, the PHP rebuild waits for it"
+    fi
     _PHP_FORCE_REINSTALL=NO
   fi
   if [ -x "/opt/php74/bin/php" ] && [ "${_OS_CODE}" != "jessie" ]; then

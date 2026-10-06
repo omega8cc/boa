@@ -5235,6 +5235,16 @@ _resolve_icu_target() {
 }
 
 #
+# The ICU version PHP builds compile against: the version in the headers the
+# last ICU install left in /usr/local (configure finds them through that
+# install's icu-uc.pc). A version dir under /usr/local/lib/icu, and so
+# 'current', proves nothing on its own: an earlier install leaves its dir.
+_installed_icu_vrn() {
+  sed -n 's/^#define U_ICU_VERSION "\([0-9.]*\)".*/\1/p' \
+    /usr/local/include/unicode/uvernum.h 2> /dev/null | head -n 1
+}
+
+#
 # Install ICU (modern/newer tiers) from sources. Version comes from
 # _resolve_icu_target via _ICU_TARGET_VRN, so _ICU_FORCE_VRN can pin it. Jessie
 # keeps its own installer (different tarball/source layout).
@@ -5286,11 +5296,14 @@ _install_icu() {
   # _install_icu the target is always the modern/newer tier a correctly built box
   # already resolves to, so a never-pinned box never sees a spurious rebuild
   # (a relative 'current' symlink canonicalises via readlink -f to the same path).
+  # The installed headers carrying another version also (re)builds it: that is
+  # what PHP compiles against, and only a real install changes them.
   _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${_pthIcuLog}" ] \
     || [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
-      != "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+      != "/usr/local/lib/icu/${_ICU_DOT}" ] \
+    || [ "$(_installed_icu_vrn)" != "${_ICU_DOT}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the compile;
@@ -5322,14 +5335,20 @@ _install_icu() {
       _mrun "make --quiet install"
     fi
     ldconfig 2> /dev/null
-    if [ -e "/usr/local/lib/icu" ]; then
+    # Only a real install moves the marker and the 'current' symlink (existence-
+    # checked to gate installs/rebuilds) to the target, so installed == resolved
+    # target even when pinned to a version other than the OS default. A failed
+    # download or build leaves both as they were, so the next pass tries again
+    # and no PHP is rebuilt for an ICU that is not there (_check_php_rebuild);
+    # the target's dir alone can be a leftover of an earlier install.
+    _ICU_HDR_VRN="$(_installed_icu_vrn)"
+    if [ "${_ICU_HDR_VRN}" = "${_ICU_DOT}" ]; then
       touch ${_pthIcuLog}
-    fi
-    # Point the 'current' symlink (existence-checked to gate installs/rebuilds)
-    # at the version we just built, so installed == resolved target even when
-    # pinned to a different version than the OS default. _ICU_DOT resolved above.
-    if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
-      ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
+      if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+        ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
+      fi
+    else
+      _msg "ALRT: ICU ${_ICU_TARGET_VRN} did not install (headers: ${_ICU_HDR_VRN:-none}); PHP keeps its builds, the next pass tries again"
     fi
     _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
