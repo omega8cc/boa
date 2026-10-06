@@ -59,9 +59,20 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
+###
+### 8.6 is a release candidate: built only
+### when listed here (or as _PHP_SINGLE_INSTALL)
+### and not in the default list below, except
+### on hosted and managed systems (.aegir.cc
+### hostname or /root/.host8.cnf), where each
+### run adds it to the versions it installs (8.3,
+### 8.4 and 8.5 by default) unless in single-PHP
+### mode, during a major OS upgrade or on a
+### legacy OpenSSL. Once installed it works like
+### any other version; 8.4 stays the default.
 ###
 ### NOTE: 8.4 is required
 ###
@@ -91,7 +102,7 @@ _PHP_MULTI_INSTALL="8.3 8.4 8.5"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
 ###
 ### Example: _PHP_SINGLE_INSTALL=8.5
 ###
@@ -107,7 +118,7 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -127,7 +138,7 @@ _PHP_FPM_VERSION=8.4
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -411,22 +422,9 @@ _VALKEY_MAJOR_RELEASE=9
 ### REDIS LISTEN MODE                      ###
 ###----------------------------------------###
 ###
-### By default this option is set to SOCKET
-### to improve caching backend performance.
-###
-### If set to PORT (old default) Redis will
-### listen on standard port and 127.0.0.1 IP.
-###
-### When set to any other IP address, it will
-### switch ALL your Ægir Satellite Instances
-### along with your Ægir Master Instance from
-### local Redis server to the remote Redis
-### server you have installed in your network.
-### It will also permanently disable your
-### local Redis server. Make sure to specify
-### correct IP when using this mode and also
-### modify /etc/csf/csf.conf to allow outgoing
-### TCP connections via port 6379.
+### Not used any more: BOA installs Valkey
+### only (see VALKEY LISTEN MODE above). The
+### variable stays for existing config files.
 ###
 _REDIS_LISTEN_MODE=SOCKET
 
@@ -435,7 +433,8 @@ _REDIS_LISTEN_MODE=SOCKET
 ### REDIS MAJOR RELEASE                    ###
 ###----------------------------------------###
 ###
-### Supported values: 5, 6 or 7
+### Not used any more: BOA installs Valkey
+### only (see VALKEY MAJOR RELEASE above).
 ###
 _REDIS_MAJOR_RELEASE=7
 
@@ -869,6 +868,8 @@ _EXTRA_PACKAGES=""
 ###
 ### Use YES to avoid overwriting configuration
 ### for listed services on upgrade.
+### (_CUSTOM_CONFIG_REDIS is not used any more:
+### BOA installs Valkey only.)
 ###
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO
@@ -897,7 +898,10 @@ _BACKDROP_SUPPORT=YES
 ### is recorded on this system for reference
 ### only. The grav CLI wrapper and its lshell
 ### entry always ship, and stay inert until a
-### Grav install is in reach.
+### Grav install is in reach. Hosted and
+### managed systems (.aegir.cc hostname or
+### /root/.host8.cnf) default both to YES; a
+### NO set after the first such run stays.
 ###
 ### _GRAV_SUPPORT=YES
 ###
@@ -999,6 +1003,38 @@ _SYSTEM_AUTO_SECURITY=YES
 _APT_ACQUIRE_POLICY=YES
 
 ###
+### The account web group (instgrp webconvert): each Octopus account moves
+### from the shared www-data group to its own web group, wg-<account>, so no
+### account's PHP and shell users can read another account's files and
+### settings. It is inert until armed: with _WEB_GROUP_ARM=YES every
+### barracuda pass stamps the box (/var/log/boa/instgrp-web-arm.ready.txt),
+### and only then does the Octopus arm convert an account (phase A, then
+### phase B with _WEB_GROUP_PHASE_B=YES). A per-account opt-out is
+### _WEB_GROUP=NO in /root/.<account>.octopus.cnf, a phase A pin
+### _WEB_GROUP=A. Set both boxes of a standing xmass mirror alike: a box
+### promoted without the stamp converts nothing. Not switched on in this
+### release: the setting stamps only a test box that carries the marker
+### /root/.tenant-isolation-test.cnf. See docs/INSTGRP.md.
+###
+###   _WEB_GROUP_ARM=YES
+###   _WEB_GROUP_PHASE_B=YES
+###
+_WEB_GROUP_ARM=NO
+_WEB_GROUP_PHASE_B=NO
+
+###
+### Every clear.sh run tells BOA's mirror the
+### BOA release and the OS release of this box,
+### and nothing else, as the User-Agent of one
+### HEAD request. It is what decides when support
+### for a legacy OS can be dropped, and it lives
+### only in the mirrors' rotated access logs.
+###
+### Enabled by default. Set it to NO to stop it.
+###
+_VERSION_REPORT=YES
+
+###
 ### Define the amount of RAM you want to keep
 ### reserved for other services installed which
 ### are not controlled by BOA, so it will
@@ -1017,22 +1053,34 @@ _RESERVED_RAM=0
 ###
 ### CiviCRM 4.2 and newer requires more SQL
 ### privileges (the SUPER which can't be added
-### for obvious security reasons) or binary
-### logging disabled. Otherwise almost all
-### Ægir tasks against any site with CiviCRM
-### system active will fail, so we disable
-### binary logging by default. It will also
+### for obvious security reasons), binary
+### logging disabled, or
+### log_bin_trust_function_creators = 1, which
+### BOA sets with _DB_BINARY_LOG=YES (below).
+### Otherwise almost all Ægir tasks against any
+### site with CiviCRM system active will fail,
+### so we disable binary logging by default. It will also
 ### improve system performance on servers
 ### with slower/lower disks I/O.
 ###
 ### You can still enable it, if you prefer,
 ### by changing it to _DB_BINARY_LOG=YES
-### below or in the /root/.barracuda.cnf file,
-### but you must first stop mysql service
-### and delete or move away all existing files
-### from the /var/log/mysql/ directory, so it
-### will start fresh logs after it has been
-### disabled during previous system upgrade.
+### below or in the /root/.barracuda.cnf file.
+### The next barracuda upgrade writes it
+### into my.cnf and restarts the database server
+### in the same run; NO switches it off the
+### same way. The binary logs go to the database
+### directory, /var/lib/mysql/ON.000001 and on
+### (the log_bin = ON line names them).
+###
+### With it on, BOA also sets
+### log_bin_trust_function_creators = 1, so a
+### site's own database login can create its
+### triggers and stored functions. While a
+### replica reads this box's binary log and
+### this box reads 0, the run leaves it and
+### says so: set it to 1 on the replica, then
+### here with SET GLOBAL; the next run keeps it.
 ###
 ### Note: this option is ignored if the option
 ### _CUSTOM_CONFIG_SQL is set to YES.
@@ -1052,8 +1100,7 @@ _DB_BINARY_LOG=NO
 ### deriving from the unpinned base unless pinned too).
 ### _SQL_MAX_CONNECTIONS_FORCE and _SQL_LOG_FILE_SIZE_FORCE
 ### take effect only with a database restart on the next
-### planned maintenance. _VALKEY_MAXMEM_FORCE also covers
-### Redis on legacy systems. _SOLR_HEAP_FORCE caps the JVM
+### planned maintenance. _SOLR_HEAP_FORCE caps the JVM
 ### heap -Xmx for Solr 7 and Solr 9 alike (not jetty/solr4).
 ### Pins have no effect on Galera cluster nodes.
 ###
@@ -2010,6 +2057,83 @@ _boa_code_tree_is_root_owned() {
 }
 
 
+# A published stamp: two lines, the publish time and "<branch> <short sha>".
+# The mirror answers a missing path with HTTP 200 and an HTML page, so a
+# stamp is judged by its content, never by the status.
+_boa_stamp_valid() {
+  local _svL1=""
+  local _svL2=""
+  [ "$(printf '%s\n' "${1}" | grep -c .)" = "2" ] || return 1
+  _svL1=$(printf '%s\n' "${1}" | sed -n '1p')
+  _svL2=$(printf '%s\n' "${1}" | sed -n '2p')
+  [[ "${_svL1}" =~ [0-9]{4} ]] || return 1
+  [[ "${_svL2}" =~ ^[0-9]+\.x-[a-z]+\ [0-9a-f]{7,40}$ ]]
+}
+
+# The publish writes dev/<tree>/boa.stamp, a copy of the archive's
+# boa/.update.txt. A staged tree whose .update.txt differs was fetched before
+# that publish, or from an edge still holding the older archive: it is
+# fetched again into a side directory and swapped in only when it matches
+# the stamp. One try per stamp within 30 minutes, so a batch walking many
+# instances does not refetch for each. Nothing happens while no stamp is
+# published. Kept in step with the barracuda.sh.cnf and octopus.sh.cnf copies.
+_boa_tree_stamp_check() {
+  local _stQry="?r=$(date +%s)"
+  local _stPub=""
+  local _stTree=""
+  local _stGot=""
+  local _stHave=""
+  local _stPubL=""
+  local _stMark="/opt/tmp/.boa-stamp-refetch"
+  local _stNew="/opt/tmp/boa-stamp-refetch"
+  [ "${_DL_NOCACHE}" = "NO" ] && _stQry=""
+  [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ] || return 0
+  [ -n "${_urlDev}" ] && [ -n "${_tRee}" ] || return 0
+  _stPub=$(curl -L --max-redirs 3 -s --fail --max-time 30 -A iCab \
+    "${_urlDev}/${_tRee}/boa.stamp${_stQry}" 2> /dev/null \
+    | head -c 256 | tr -d '\r' | sed 's/[[:space:]]*$//')
+  _boa_stamp_valid "${_stPub}" || return 0
+  _stTree=$(head -c 256 /opt/tmp/boa/.update.txt 2> /dev/null \
+    | tr -d '\r' | sed 's/[[:space:]]*$//')
+  [ "${_stTree}" = "${_stPub}" ] && return 0
+  _stHave="${_stTree##*$'\n'}"
+  [ -n "${_stHave}" ] || _stHave="unstamped"
+  _stPubL="${_stPub##*$'\n'}"
+  # A republish of the same commit differs only in its time: name both
+  if [ "${_stHave}" = "${_stPubL}" ]; then
+    _stHave="${_stHave}, ${_stTree%%$'\n'*}"
+    _stPubL="${_stPubL}, ${_stPub%%$'\n'*}"
+  fi
+  if [ "$(cat "${_stMark}" 2> /dev/null)" = "${_stPub}" ] \
+    && [ -n "$(find "${_stMark}" -mmin -30 2> /dev/null)" ]; then
+    echo "ALRT: the build tree (${_stHave}) is not the published ${_stPubL}; continuing with it"
+    return 0
+  fi
+  echo "NOTE: the build tree (${_stHave}) is not the published ${_stPubL}; fetching it again"
+  printf '%s\n' "${_stPub}" > "${_stMark}"
+  rm -rf "${_stNew}"
+  mkdir -p "${_stNew}"
+  # shellcheck disable=SC2086
+  ( cd "${_stNew}" \
+    && curl ${_crlGet} "${_urlDev}/${_tRee}/boa.tar.gz${_stQry}" -o boa.tar.gz \
+    && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+  _stGot=$(head -c 256 "${_stNew}/boa/.update.txt" 2> /dev/null \
+    | tr -d '\r' | sed 's/[[:space:]]*$//')
+  if [ "${_stGot}" = "${_stPub}" ] \
+    && [ -e "${_stNew}/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    && [ -e "${_stNew}/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    && [ -e "${_stNew}/boa/lib/functions/helper.sh.inc" ]; then
+    rm -rf /opt/tmp/boa
+    mv -f "${_stNew}/boa" /opt/tmp/boa
+    chown -R root:root /opt/tmp/boa &> /dev/null
+    echo "NOTE: build tree ${_stPub##*$'\n'} in place"
+  else
+    echo "ALRT: the build tree fetched again is not the published ${_stPubL}; continuing with the current one"
+  fi
+  rm -rf "${_stNew}"
+}
+
+
 _download_boa_code() {
   # A staged tree of ANOTHER tree is never reused: every published tar bakes
   # its tree name into the libs (export _tRee=), and a switch at the same
@@ -2054,6 +2178,7 @@ _download_boa_code() {
     && [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
   fi
+  _boa_tree_stamp_check
 }
 
 

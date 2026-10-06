@@ -21,20 +21,19 @@ Note: build a redirect back to the site with `$boa_visitor_scheme`, not `$scheme
 ## Custom rewrites to map legacy content to the Drupal multisite.
 
 ```nginx
-location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
+location ~* ^/(?:download|docs|documents|legacy)/.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   access_log off;
   log_not_found off;
   expires 30d;
-  rewrite ^/files/(.*)$     /sites/$server_name/files/$1 last;
-  rewrite ^/images/(.*)$    /sites/$server_name/files/images/$1 last;
-  rewrite ^/downloads/(.*)$ /sites/$server_name/files/downloads/$1 last;
-  rewrite ^/download/(.*)$  /sites/$server_name/files/download/$1 last;
-  rewrite ^/docs/(.*)$      /sites/$server_name/files/docs/$1 last;
-  rewrite ^/documents/(.*)$ /sites/$server_name/files/documents/$1 last;
-  rewrite ^/legacy/(.*)$    /sites/$server_name/files/legacy/$1 last;
+  rewrite ^/download/(.*)$  /sites/$main_site_name/files/download/$1 last;
+  rewrite ^/docs/(.*)$      /sites/$main_site_name/files/docs/$1 last;
+  rewrite ^/documents/(.*)$ /sites/$main_site_name/files/documents/$1 last;
+  rewrite ^/legacy/(.*)$    /sites/$main_site_name/files/legacy/$1 last;
   try_files $uri =404;
 }
 ```
+
+BOA already maps `/files/...` and `/downloads/...` to the site's own files directory. Keep the pattern anchored to the legacy directories: `nginx_vhost_include.conf` is included before the private download locations, so a location matching on the file extension alone would also serve the private files of every site on the instance.
 
 ## Site specific 301 redirect with parent literal location to stop searching for (and using) other regex based locations.
 
@@ -118,3 +117,13 @@ location ^~ /sites/default/files {
   }
 }
 ```
+
+## Built-in audio and video handling, and a custom media location
+
+The shared vhost body of Drupal and Backdrop sites serves audio and video (`mp3`, `ogg`, `oga`, `ogv`, `opus`, `wav`, `flac`, `aac`, `weba`, `webm`, `avi`, `mpeg`, `mpg`, `mov`, `wmv`, `mkv`, `m4v`, plus the `mp4`/`m4a` and `flv` pseudo-streaming locations) with `send_timeout 3600s;`, because a player or a CDN edge reads far ahead of playback and then reads nothing for many minutes, and the http-level 180 seconds would cut the file. Every other file type keeps 180 seconds.
+
+Short `/files/...` and `/downloads/...` URIs of all these types reach the same locations: the static-file list nested in each shortcut location rewrites them to the site's files directory, where the media locations answer. `vtt` caption files load by short URI too. BOA's own `mime.types` names each type, so none goes out as `application/octet-stream`: `opus` as `audio/ogg`, `flac` as `audio/flac`, `weba` as `audio/webm`, `mkv` as `video/x-matroska`.
+
+HTTPS to a site without a certificate of its own passes BOA's wildcard SSL front first, which proxies it to the site over plain HTTP; the front gives the same audio and video types the same hour, so the reader is not cut there either.
+
+A custom media location added through `nginx_vhost_include.conf` or `nginx_force_include.conf` matches ahead of these and inherits the http-level 180 seconds, so give it its own `send_timeout` if it serves long audio or video.

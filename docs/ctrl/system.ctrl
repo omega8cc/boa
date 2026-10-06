@@ -190,9 +190,7 @@ by the BOA install and upgrade tools exclusively.
 
   Enables the self-service cache-restart sentinel for every account on the box,
   beside the qualifying-plan gate. One variable covers both this file and the
-  older /etc/boa/.allow.redis.restart.cnf. Note for redis-only boxes: the
-  legacy redis watchdog reads only the redis-named file today, so the variable
-  opens a gate there that the valkey-named file alone did not.
+  older /etc/boa/.allow.redis.restart.cnf.
 
  @=> /etc/boa/.debug.email.txt
 
@@ -462,8 +460,9 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.redis.no.new.password.cnf
 
-  This file, if exists, allows to skip the otherwise default procedure
-  designed to generate new Redis password on every barracuda upgrade.
+  RETIRED: BOA installs Valkey only, so there is no Redis password to rotate
+  and no code reads this file. An existing file is harmless and can be
+  deleted at leisure.
 
  @=> /root/.allow.mc.cnf
 
@@ -601,3 +600,10 @@ by the BOA install and upgrade tools exclusively.
   /root/.barracuda.cnf -- the variable is the supported switch; the file stays
   honoured for one release. To switch it off during the transition, set the
   variable to NO *and* remove the file.
+
+ @=> /root/.tenant-isolation-test.cnf
+
+  For test servers only. Tenant isolation is not switched on in this release:
+  this marker lets _WEB_GROUP_ARM=YES write the web group's arm stamp at the
+  next barracuda pass, and lets boa-dbctl scope oN on switch an account, so
+  their drills can run. Never create it on a production box.

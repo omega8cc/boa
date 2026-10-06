@@ -33,7 +33,10 @@ dry-run output first and turn it on only once you are satisfied.
 All three run once per night from `owl.sh` — the platform check per Octopus
 account, the codebase checks once globally after the per-account work. Moves are
 **reversible**: nothing is deleted, the codebase or alias is relocated to the
-backup/`undo` path above, from where you can restore it.
+backup/`undo` path above, from where you can restore it. A move that would pass
+through a link or leave the account (for example a platform on the shared
+`/data/all` store) is refused and logged as `detected and not moved`; the item stays
+in place.
 
 ## Control flags
 
@@ -143,7 +146,8 @@ only there can it be removed for good — the backend reapers can move the
 leftover alias and vhost aside, but any task run on the record re-creates
 them. So when the nightly sweep confirms a ghost site (post-grace, whether or
 not `_GHOST_SITES_CLEANUP` is enabled), it first checks the account's own
-front-end for the site's record (`hosting_context` row).
+front-end for the site's record (`hosting_context` row). A ghost whose move was
+refused (`detected and not moved`) is not included in the notice.
 
 Only when the record
 still exists — so the customer can actually see and remove it — does the
@@ -168,6 +172,17 @@ Nothing is deleted, so recovery is just moving the item back from its backup or
 - ghost codebases — `/var/backups/ghost-codebases-cleanup/…`
 - shared codebases — `/var/backups/codebases-cleanup/…` (or `/data/disk/codebases-cleanup/…` when `/data/all` is a symlink to attached storage)
 - platform aliases — the account's `undo/` dir, or `/var/aegir/undo/` for the Hostmaster instance
+
+On a standing `xmass` pair the nightly runs on the active only, and its
+recovery copies stay on the box that moved them: no sync leg carries the
+cleanup directories, so after a switch a codebase moved before it is
+recovered from the old active.
+
+The mirror's copy of a moved shared codebase goes with the next sync, which
+budgets those deletions out of its delete guard by the moved copy's entries
+while that copy is still in the cleanup directory (see
+[MIGRATE-XMASS.md](MIGRATE-XMASS.md)), so a large codebase does not stop the
+pass.
 
 See also [PLATFORMS.md](PLATFORMS.md) for the Octopus platform layout,
 [MIGRATE-XOCT.md](MIGRATE-XOCT.md) for account migration,

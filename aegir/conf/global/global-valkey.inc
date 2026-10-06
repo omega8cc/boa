@@ -224,6 +224,13 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       $settings['redis.connection']['host']      = '127.0.0.1';
       $settings['redis.connection']['port']      = '6379';
       $settings['redis.connection']['password']  = 'isfoobared';
+      // The password the probe authenticated with, read from pass.inc on
+      // every request: the literal above is cached by OPcache, which kept
+      // the old one for up to revalidate_freq after an upgrade changed it,
+      // and the sites answered 500 meanwhile.
+      if (isset($auth_pass) && $auth_pass !== '') {
+        $settings['redis.connection']['password'] = $auth_pass;
+      }
       $settings['redis.connection']['base']      = '8';
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
@@ -355,6 +362,10 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       $conf['redis_client_host']                = '127.0.0.1';
       $conf['redis_client_port']                = '6379';
       $conf['redis_client_password']            = 'isfoobared';
+      // As for Drupal 8+ above: the password the probe authenticated with.
+      if (isset($auth_pass) && $auth_pass !== '') {
+        $conf['redis_client_password']          = $auth_pass;
+      }
       $conf['redis_client_base']                = '8';
       $conf['cache_prefix']                     = $this_prefix;
       $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode

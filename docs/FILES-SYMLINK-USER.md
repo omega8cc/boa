@@ -53,7 +53,9 @@ and don't need to do anything.
 Deleting a site does not delete its uploaded files. The Delete task sets the
 site's store aside into your account's `static/files/.archived/` area, and a store
 another of your sites reads through a share control file is left in place. If you
-need a copy back, ask your server administrator.
+need a copy back, ask your server administrator. The archive stays in your account,
+so it keeps counting toward your disk usage until it is pruned; ask your server
+administrator to prune it once you no longer need the copy.
 
 ## Reusing a site name
 
@@ -90,3 +92,7 @@ touch /data/disk/<account>/static/control/no_native_files_symlink.info
 New sites in your account will then get plain directories. Remove the file to
 return to the default symlinked behaviour. In almost all cases you should leave
 this alone — the default is recommended.
+
+## Uploaded file names on Drupal 7
+
+Drupal 12 replaces shell metacharacters and similar dangerous characters in the name of a newly uploaded file. Drupal 7 core, BOA's own included, keeps them and only guards the extension. If code on your Drupal 7 site passes file names on to other systems, add the contrib Transliteration module to the site: it cleans the names of new uploads. Try it on a copy of the site first; files already uploaded keep their names.

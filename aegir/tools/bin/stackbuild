@@ -26,7 +26,7 @@
 # upgrade does NOT rebuild on such a bump (the dynamically linked unbound
 # and curl follow the in-place lib) correctly stay untouched.
 #
-# Components (phase 1): ssl3 ssl-legacy icu curl php56..php85 (whatever
+# Components (phase 1): ssl3 ssl-legacy icu curl php56..php86 (whatever
 # /opt/php*/bin/php exists). Phase 2 adds valkey (major 9 only -- the
 # builder always runs the forced-default Valkey 9, and majors 7/8 plus
 # Redis stay source-only by never being published) and nginx (default
@@ -50,12 +50,13 @@
 # Usage:
 #   stackbuild check                report installed versions vs published packages
 #   stackbuild package [name ...]   build the missing/stale (or named) packages
-#   stackbuild publish              gzip + sha256 sidecar into the mirror tree
+#   stackbuild publish              gzip + sha256 sidecar into the mirror tree,
+#                                   then the peer sync and the purge hook
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
 #   stackbuild all                  package missing + stale + publish + sync
 #   stackbuild force [name ...]     rebuild named (all installed if none given)
 #                                   regardless of state + publish + sync
-# Component names: ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd php56 php70 .. php85
+# Component names: ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd php56 php70 .. php86
 #
 # A package rebuilt at an unchanged version is republished under the SAME
 # filename, and a CDN in front of the mirrors keeps the previous .gz for its
@@ -200,7 +201,7 @@ _detect_pub_dir() {
 _all_components() {
   local _c _n
   _c="ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd"
-  for _n in 56 70 71 72 73 74 80 81 82 83 84 85; do
+  for _n in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
     [[ -x "/opt/php${_n}/bin/php" ]] && _c="${_c} php${_n}"
   done
   printf '%s\n' "${_c}"
@@ -815,6 +816,11 @@ main() {
       trap '_cleanup' EXIT
       _acquire_lock
       do_publish
+      # The peer gets the files before anything is purged, as in all/force:
+      # a builder that pulls the mirror master's tree every few minutes
+      # would otherwise take the master's older copy back over the file just
+      # published while the purge hook waits, and the purge would serve it.
+      do_sync
       do_purge_hook
       print_summary
       ;;

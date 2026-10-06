@@ -4,7 +4,7 @@ Octopus can install and/or support the Ægir platforms listed below.
 
 ## Note on required and supported PHP versions
 
-Supported Drupal core versions and distributions have different PHP version requirements, while not all PHP versions out of currently supported twelve versions are installed by default.
+Supported Drupal core versions and distributions have different PHP version requirements, while not all PHP versions out of currently supported thirteen versions, 8.6 a release candidate, are installed by default.
 
 Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions.
 
@@ -20,16 +20,16 @@ percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasechec
 says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.7)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.8)
 - [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
-- [Drupal 11.3.17](https://drupal.org/project/drupal/releases/11.3.17)
-- [Drupal 11.4.7](https://drupal.org/project/drupal/releases/11.4.7)
-- [Drupal CMS 2.2.0](https://drupal.org/project/cms) (11.4.7)
+- [Drupal 11.3.18](https://drupal.org/project/drupal/releases/11.3.18)
+- [Drupal 11.4.8](https://drupal.org/project/drupal/releases/11.4.8)
+- [Drupal CMS 2.2.2](https://drupal.org/project/cms) (11.4.8)
 - [farmOS 4.0.6](https://drupal.org/project/farm) (11.3.17)
-- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.7)
-- [OpenCulturas 3.0.8](https://drupal.org/project/openculturas) (11.3.17)
-- [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.7)
+- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.8)
+- [OpenCulturas 3.1.0](https://drupal.org/project/openculturas) (11.4.8)
+- [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.8)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.6)
 
 ## Drupal 10
@@ -41,11 +41,11 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
 - [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
 - [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
-- [Drupal 10.6.17](https://drupal.org/project/drupal/releases/10.6.17)
+- [Drupal 10.6.18](https://drupal.org/project/drupal/releases/10.6.18)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 13.6.7](https://drupal.org/project/openfed) (10.6.17)
-- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.17)
-- [Social 13.1.0](https://drupal.org/project/social) (10.6.17)
+- [OpenFed 13.6.7](https://drupal.org/project/openfed) (10.6.18)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.18)
+- [Social 13.1.0](https://drupal.org/project/social) (10.6.18)
 
 ## Drupal 9
 
@@ -75,13 +75,13 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 - [Grav 2 (official release, admin bundle)](https://getgrav.org)
 
-* Opt-in: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
+* Opt-in on self-hosted systems: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`) it is on by default: a new instance gets `YES`, an existing one's `NO` seeded before that default flips to `YES` once, and a `NO` set afterwards stays. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
 
 ## Textpattern CMS
 
 - [Textpattern (official release)](https://textpattern.com)
 
-* Opt-in: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
+* Opt-in on self-hosted systems: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems it is on by default, as Grav is. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
 
 * All D7 platforms have been enhanced using [Drupal 7.106.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
@@ -107,6 +107,7 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `CK3` — Commerce v.3
 - `CMS` — Drupal CMS
 - `LGV` — LocalGov
+- `OCS` — OpenCulturas
 - `THR` — Thunder
 - `VBX` — Varbase 11
 
@@ -114,7 +115,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 - `DE3` — Drupal 11.3 prod/stage/dev
 - `FOS` — farmOS
-- `OCS` — OpenCulturas
 
 ### Drupal 11.2
 

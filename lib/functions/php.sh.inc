@@ -11,6 +11,17 @@ _fix_php_ini_ioncube() {
         sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
         wait
       fi
+    elif [ "${_PHP_IONCUBE}" = "YES" ]; then
+      # A template carries its loader line commented while ionCube ships no
+      # loader for that PHP; it is enabled once the loader is there.
+      local _ionSo
+      _ionSo=$(sed -n 's/^;zend_extension="\(\/usr\/local\/ioncube\/ioncube_loader_lin_[0-9.]*\.so\)"[[:space:]]*$/\1/p' \
+        ${_THIS_FILE} 2> /dev/null | head -n 1)
+      if [ -n "${_ionSo}" ] && [ -e "${_ionSo}" ]; then
+        sed -i "s/^;\(zend_extension=\"\/usr\/local\/ioncube\/ioncube_loader_lin_[0-9.]*\.so\"\)/\1/" \
+          ${_THIS_FILE} &> /dev/null
+        wait
+      fi
     fi
   fi
 }
@@ -250,8 +261,13 @@ _fix_php_ini_newrelic_all() {
     if [ -z "${_NEWRELIC_KEY}" ]; then
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
-    _PHP_V="85 84 83 82 81 80 74 73 72"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
+      # no ini line for an agent build that does not exist (8.6 for now)
+      if [ "${e}" = "86" ] \
+        && [ ! -e "/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}/newrelic.so" ]; then
+        continue
+      fi
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic ${e}
       _THIS_FILE=/opt/php${e}/lib/php.ini
@@ -286,7 +302,7 @@ _fix_php_ini_opcache() {
           80|74|73|72|71|70|56)
             echo "opcache.interned_strings_buffer=32"
             ;;
-          81|82|83|84|85)
+          81|82|83|84|85|86)
             echo "opcache.interned_strings_buffer=128"
             ;;
           *)
@@ -318,13 +334,14 @@ _fix_php_ini_opcache_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_opcache_all"
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      86) _P_API="${_PHP86_API}" ;;
       85) _P_API="${_PHP85_API}" ;;
       84) _P_API="${_PHP84_API}" ;;
       83) _P_API="${_PHP83_API}" ;;
@@ -376,10 +393,11 @@ _fix_php_ini_tet_all() {
     _msg "PROC: _fix_php_ini_tet_all"
   fi
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        86) _P_API="${_PHP86_API}" ;;
         85) _P_API="${_PHP85_API}" ;;
         84) _P_API="${_PHP84_API}" ;;
         83) _P_API="${_PHP83_API}" ;;
@@ -397,28 +415,30 @@ _fix_php_ini_tet_all() {
       esac
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
-      if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "85" ]] \
-          || [[ "${e}" =~ "84" ]] \
-          || [[ "${e}" =~ "83" ]] \
-          || [[ "${e}" =~ "82" ]] \
-          || [[ "${e}" =~ "81" ]] \
-          || [[ "${e}" =~ "80" ]] \
-          || [[ "${e}" =~ "74" ]] \
-          || [[ "${e}" =~ "73" ]]; then
-          _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby"
-        else
-          _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
-        fi
+      # only an installed version: /var/opt is emptied every pass, so a
+      # fetch for a version that is not there repeats on every pass
+      if [ ! -e "${_TET_SO}" ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
+        # TET 6.0 binds PHP 8.1 to 8.5, 5.3 binds 7.3, 7.4 and 8.0, 5.2 the
+        # older ones; a version none of them binds gets one NOTE per pass
+        case "${e}" in
+          86|85|84|83|82|81) _TET_VRN="6.0-Linux-x64-Perl-PHP-Python-Ruby" ;;
+          80|74|73) _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby" ;;
+          *) _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby" ;;
+        esac
         if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
           mkdir -p  /var/opt
           cd /var/opt
           _get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
-        if [ -e "${_TET_BASE}-${_P_API}" ] \
-          && [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
+        elif [ "${e}" = 86 ]; then
+          _php86_note_once tet \
+            "TET ${_TET_VRN%%-*} has no PHP 8.6 binding, not enabled for PHP ${_PHP86_VRN}"
+        else
+          _php86_note_once "tet-${e}" \
+            "TET ${_TET_VRN%%-*} has no PHP ${e:0:1}.${e:1} binding, not enabled for it"
         fi
       fi
       if [ -e "${_TET_SO}" ]; then
@@ -453,7 +473,7 @@ _fix_php_ini_geos_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_geos_all"
   fi
-  _PHP_G="70 71 72 73 74 80 81 82 83 84 85"
+  _PHP_G="70 71 72 73 74 80 81 82 83 84 85 86"
   for e in ${_PHP_G}; do
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     _fix_php_ini_geos ${e}
@@ -536,7 +556,7 @@ _apply_php_cli_ini_fixes() {
   fi
 
   case "${e}" in
-    80|81|82|83|84|85)
+    80|81|82|83|84|85|86)
       _remove_php_ini_jsmin "${e}"
       ;;
     *)
@@ -578,7 +598,7 @@ _apply_php_fpm_ini_fixes() {
   fi
 
   case "${e}" in
-    80|81|82|83|84|85)
+    80|81|82|83|84|85|86)
       _remove_php_ini_jsmin "${e}"
       ;;
     *)
@@ -598,6 +618,56 @@ _apply_php_fpm_ini_fixes() {
   _fix_php_ini_imagick "${e}"
 }
 
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_master_web_group_rb() {
+  # "rb" when the master's record says phase B and carries the fourth field
+  # rb=1 (a rollback of its phase B cut short), empty otherwise: the master
+  # pool line group = wwwNN is then left out, whatever W says.
+  local _s _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_master_web_group)
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  if [ -f /root/.aegir.web-group.txt ] && [ ! -L /root/.aegir.web-group.txt ] \
+    && [ "$(stat -c %u -- /root/.aegir.web-group.txt 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < /root/.aegir.web-group.txt || :
+  fi
+  if [ "${_rg}" = "wg-aegir" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
 
 #
 # Update PHP Config.
@@ -619,23 +689,58 @@ _php_conf_update() {
   cp -af ${_locCnf}/php/fpm-pool-common-modern.conf /opt/etc/fpm/fpm-pool-common-modern.conf
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
-  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-commo*.conf
+  # Only nginx (the sockets' owner, www-data) and root speak FastCGI to a
+  # pool: with the group bits every member of www-data -- every account's
+  # users and every pool's workers -- could send requests to any other
+  # account's pool and to the master pools.
+  sed -i "s/mode =.*/mode = 0600/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
+  # A reload keeps a running master's sockets as they were bound: the
+  # live ones take the new mode here (/run is root's; a link is skipped).
+  for _fpmSock in /run/*.fpm.socket; do
+    if [ -S "${_fpmSock}" ] && [ ! -L "${_fpmSock}" ]; then
+      chmod 0600 "${_fpmSock}"
+    fi
+  done
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   fi
+  # 8.6 is opt-in while it is a release candidate: its pool user, config
+  # and pool exist only on a box that has built it
+  if [ -x "/opt/php86/bin/php" ]; then
+    _PHP_V="86 ${_PHP_V}"
+  fi
+  # The master's own web group (wg-aegir): once its record says phase B the
+  # master pools run in their per-version group (the listing gives them
+  # wg-aegir) and have left www-data. A record of B left by a phase-B
+  # rollback that was cut short (rb=1) writes no line, whatever the
+  # listings say: the reload below then gives the pools www-data back until
+  # the next webconvert aegir has re-checked the master's shares.
+  _T_MWGS=$(_master_web_group)
+  _T_MWRB=$(_master_web_group_rb)
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
-      usermod -aG www-data www${e}
+      # a master whose pools have left www-data keeps a new one out of it
+      [ "${_T_MWGS%% *}" = "phaseb" ] || usermod -aG www-data www${e}
     fi
+    case "${_T_MWGS%% *}" in
+      held|converted|phaseb)
+        getent group wg-aegir | cut -d: -f4 | tr ',' '\n' | grep -qxF "www${e}" \
+          || usermod -aG wg-aegir "www${e}" &> /dev/null
+        ;;
+    esac
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then
       mkdir -p /opt/php${e}/etc/pool.d
       cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     fi
     cp -af ${_locCnf}/php/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
+    if [ "${_T_MWGS%% *}" = "phaseb" ] && [ "${_T_MWRB}" != "rb" ] \
+      && getent group "www${e}" > /dev/null 2>&1; then
+      echo "group = www${e}" >> "/opt/php${e}/etc/pool.d/www${e}.conf"
+    fi
     if [ ! -e "/opt/php${e}/lib/php.ini" ]; then
       mkdir -p /opt/php${e}/lib
       cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
@@ -643,6 +748,20 @@ _php_conf_update() {
     cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${_locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    # Only a build installs the init script, so a fix to it never reached a
+    # box until that version was rebuilt. A live one is refreshed here; a
+    # parked copy is refreshed on the pass that enables it again. Put by
+    # rename: a running service call keeps reading the old file.
+    if [ -e "/etc/init.d/php${e}-fpm" ] \
+      && [ -x "/opt/php${e}/sbin/php-fpm" ] \
+      && [ -s "${_locCnf}/php/php${e}-fpm" ] \
+      && ! cmp -s "${_locCnf}/php/php${e}-fpm" "/etc/init.d/php${e}-fpm"; then
+      rm -f "/etc/init.d/.php${e}-fpm.new"
+      cp -f "${_locCnf}/php/php${e}-fpm" "/etc/init.d/.php${e}-fpm.new" \
+        && chmod 755 "/etc/init.d/.php${e}-fpm.new" \
+        && mv -f "/etc/init.d/.php${e}-fpm.new" "/etc/init.d/php${e}-fpm"
+      rm -f "/etc/init.d/.php${e}-fpm.new"
+    fi
 
     _THIS_FILE="/opt/php${e}/etc/php${e}.ini"
     _apply_php_fpm_ini_fixes "${e}"
@@ -670,6 +789,86 @@ _php_conf_update() {
   _fix_php_ini_mongo_all
   _fix_php_ini_tet_all
   _fix_php_ini_opcache_all
+  if [ -x "/opt/php86/bin/php" ]; then
+    _THIS_FILE=/opt/php86/etc/php86.ini
+    _php_ini_drop_unbuilt_ext
+    _THIS_FILE=/opt/php86/lib/php.ini
+    _php_ini_drop_unbuilt_ext
+  fi
+}
+
+#
+# PHP 8.6 is a release candidate, and some extensions do not build against
+# it yet: their extension= line is commented out, or every PHP start logs a
+# load warning. Each pass copies the ini again and runs the fixers first, so
+# an extension that builds later is loaded again with no step of its own.
+# One that builds but does not load is left out the same way.
+_php_ini_drop_unbuilt_ext() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_ini_drop_unbuilt_ext ${_THIS_FILE}"
+  fi
+  local _dir _so _out _bad _try _cut
+  [ -e "${_THIS_FILE}" ] || return 0
+  _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
+  # no extension dir at all is the case where every shared module was left
+  # out (make install creates it only for one): every line goes then
+  [ -n "${_dir}" ] || return 0
+  for _so in $(sed -n 's/^extension=\([a-z0-9_]*\)\.so[[:space:]]*$/\1/p' "${_THIS_FILE}"); do
+    if [ ! -e "${_dir%/}/${_so}.so" ]; then
+      sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
+    fi
+  done
+  [ -x "/opt/php86/bin/php" ] || return 0
+  # PHP names each module it could not load; its own words (paths, linker
+  # errors) stay out of the log. A module whose dependency is left out is
+  # reported on the next try, hence the loop.
+  for _try in 1 2 3; do
+    _out=$(/opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
+      -d error_log=/dev/null -d display_errors=1 \
+      -d display_startup_errors=1 -r '' 2>&1)
+    _bad=$(echo "${_out}" | sed -n \
+      -e "s/.*Unable to load dynamic library '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
+      -e "s/.*Invalid library (maybe not a PHP library) '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
+      -e 's/.*Cannot load module "\([a-z0-9_]*\)".*/\1/p' \
+      -e 's/.*PHP Startup: \([a-z0-9_]*\): Unable to initialize module.*/\1/p' \
+      | sort -u)
+    _cut=NO
+    for _so in ${_bad}; do
+      if grep -q "^extension=${_so}\.so[[:space:]]*$" "${_THIS_FILE}"; then
+        sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
+        _php86_note_once "load-${_so}" \
+          "${_so} does not load in PHP ${_PHP86_VRN}, not enabled for it"
+        _cut=YES
+      fi
+    done
+    [ "${_cut}" = "YES" ] || break
+  done
+}
+
+#
+# One NOTE line per pass for each thing PHP 8.6 is left without.
+_php86_note_once() {
+  case " ${_PHP86_EXT_NOTED} " in
+    *" $1 "*) return 0 ;;
+  esac
+  _PHP86_EXT_NOTED="${_PHP86_EXT_NOTED} $1"
+  _msg "NOTE: $2"
+}
+
+#
+# True (and said once per pass) when PHP $1 is 8.6 and the extension release
+# $2 is listed in _PHP86_EXT_SKIP: a pinned release not shown to build against
+# the pinned release candidate is not built for it. A new pin is not listed,
+# so the next pass tries it. Every other PHP version is never matched.
+_php_ext_rc_skip() {
+  [ "$1" = 86 ] || return 1
+  case " ${_PHP86_EXT_SKIP} " in
+    *" $2 "*) ;;
+    *) return 1 ;;
+  esac
+  _php86_note_once "$2" \
+    "$3 is not built for PHP ${_T_PHP_VRN:-${_PHP86_VRN}}: not shown to build against it yet"
+  return 0
 }
 
 #
@@ -722,9 +921,9 @@ _tune_web_server_config() {
     _msg "TUNE: _LIM_FPM is ${_LIM_FPM}"
     _msg "TUNE: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 8 ]; then
@@ -761,10 +960,6 @@ _tune_web_server_config() {
 
   # Valkey config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/valkey/valkey.conf                                &> /dev/null
-  wait
-
-  # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
   wait
 }
 
@@ -899,6 +1094,10 @@ _php_imagick_build() {
   fi
   local _so="${_THIS_PHP_EXT_DIR}/imagick.so"
   local _prev="/var/backups/php$1-imagick-prev.so"
+  # a release candidate runs without Imagick: a failed try is a warning,
+  # never a failed pass
+  local _bad="OOPS"
+  [ "$1" = 86 ] && _bad="WARN"
   if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     _apt_clean_update
     for _PKG in libmagickwand-dev; do
@@ -929,20 +1128,24 @@ _php_imagick_build() {
     fi
     _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
     if _imagick_broken "$1"; then
-      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load"
+      _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} does not load"
     elif _imagick_links_orphan; then
-      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
+      _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
     fi
   elif _imagick_loads "$1" "${_so}"; then
     touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
     if _imagick_links_orphan; then
-      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
+      _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
     fi
   elif [ -e "${_prev}" ] && _imagick_loads "$1" "${_prev}"; then
     cp -af "${_prev}" "${_so}"
-    _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load, the previous build stays"
+    _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} does not load, the previous build stays"
   else
-    _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load"
+    # 8.6: a build it cannot load goes, so its ini line is left out
+    if [ "$1" = 86 ]; then
+      rm -f "${_so}"
+    fi
+    _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} does not load"
   fi
   rm -f "${_prev}"
 }
@@ -954,7 +1157,8 @@ _install_php_extensions() {
     _msg "PROC: _install_php_extensions $1"
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
     _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
@@ -974,29 +1178,31 @@ _install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
-  _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -rf igbinary*
-  if [ "$1" = "85" ]; then
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
-  else
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
-  fi
-  cd /var/opt/igbinary-${_USE_IGBINARY}
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-    _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+  if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}"; then
+    _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf igbinary*
+    if [ "$1" = "85" ] || [ "$1" = "86" ]; then
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
+    else
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    fi
+    cd /var/opt/igbinary-${_USE_IGBINARY}
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+      _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   _USE_PHPREDIS=
@@ -1010,47 +1216,50 @@ _install_php_extensions() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
     _USE_PHPREDIS="${_PHPREDIS_SIX_MODERN_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
-  _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
-  ldconfig 2> /dev/null
-  cd /var/opt
-  rm -rf phpredis*
-  _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
-  cd /var/opt/phpredis
-  _mrun "${_T_PHP_PTH}/phpize"
-  # the dev package installs the library under /usr/lib, which a split /usr
-  # does not reach through /lib: test both, as a merged /usr already does;
-  # a source tarball made from the git tree has liblzf/ empty (a submodule),
-  # so the build then uses the system liblzf instead of the bundled copy
-  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
-    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
-    :
-  elif [ -e "/usr/include/lzf.h" ] \
-    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
-    _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
-  else
-    _PHPREDIS_BUILD="--enable-redis-igbinary"
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-  fi
-  _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
-    _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+  if ! _php_ext_rc_skip "$1" "phpredis-${_USE_PHPREDIS}" "PhpRedis ${_USE_PHPREDIS}"; then
+    _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
+    ldconfig 2> /dev/null
+    cd /var/opt
+    rm -rf phpredis*
+    _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
+    cd /var/opt/phpredis
+    _mrun "${_T_PHP_PTH}/phpize"
+    # the dev package installs the library under /usr/lib, which a split /usr
+    # does not reach through /lib: test both, as a merged /usr already does;
+    # a source tarball made from the git tree has liblzf/ empty (a submodule),
+    # so the build then uses the system liblzf instead of the bundled copy
+    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      :
+    elif [ -e "/usr/include/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
+    else
+      _PHPREDIS_BUILD="--enable-redis-igbinary"
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
+    fi
+    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
+      _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
-  if [ "$1" -gt 71 ]; then
+  if [ "$1" -gt 71 ] \
+    && ! _php_ext_rc_skip "$1" "mcrypt-${_PHP_MCRYPT}" "MCRYPT ${_PHP_MCRYPT}"; then
     _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
@@ -1085,20 +1294,22 @@ _install_php_extensions() {
       touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
   elif [ "$1" -gt 71 ]; then
-    _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf uploadprogress*
-    _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
-    cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-    _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
-      _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+    if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}"; then
+      _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf uploadprogress*
+      _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+        _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   else
     _msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} for PHP ${_T_PHP_VRN}..."
@@ -1165,7 +1376,8 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "php-geos-${_PHP_GEOS_VRN}" "php-geos ${_PHP_GEOS_VRN}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
@@ -1212,7 +1424,7 @@ _install_php_extensions() {
       else
         touch ${_pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
       fi
-    else
+    elif ! _php_ext_rc_skip "$1" "mongodb-${_MONGODB_VRN}" "MongoDB driver ${_MONGODB_VRN}"; then
       _msg "INFO: Installing MongoDB driver ${_MONGODB_VRN} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongodb*
@@ -1231,7 +1443,7 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 86 ]; then
+  if ! _php_ext_rc_skip "$1" "imagick-${_IMAGICK_VRN}" "Imagick ${_IMAGICK_VRN}"; then
     _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
     _php_imagick_build "$1"
   fi
@@ -1284,35 +1496,37 @@ _install_php_extensions() {
       fi
     fi
   fi
-  cd /var/opt
-  rm -rf yaml*
-  if [ "$1" = "56" ]; then
-    _msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
-  elif [ "$1" = "70" ]; then
-    _msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
-  else
-    _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
-  fi
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
-    _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
-  else
+  if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}"; then
+    cd /var/opt
+    rm -rf yaml*
     if [ "$1" = "56" ]; then
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
     elif [ "$1" = "70" ]; then
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
     else
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
+    fi
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+      _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
+    else
+      if [ "$1" = "56" ]; then
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      elif [ "$1" = "70" ]; then
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
+      else
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
 }
@@ -1324,7 +1538,8 @@ _php_extensions_update() {
     _msg "PROC: _php_extensions_update $1"
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
       || [ ! -e "${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1347,17 +1562,18 @@ _php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
-    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
+  if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}" \
+    && { [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
+    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; }; then
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
-    if [ "$1" = "85" ]; then
+    if [ "$1" = "85" ] || [ "$1" = "86" ]; then
       _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
     else
       _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
@@ -1386,15 +1602,16 @@ _php_extensions_update() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
     _USE_PHPREDIS="${_PHPREDIS_SIX_MODERN_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
-    || [ ! -e "${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
+  if ! _php_ext_rc_skip "$1" "phpredis-${_USE_PHPREDIS}" "PhpRedis ${_USE_PHPREDIS}" \
+    && { [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
+    || [ ! -e "${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; }; then
     _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
     ldconfig 2> /dev/null
     cd /var/opt
@@ -1429,7 +1646,8 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" -gt 71 ]; then
+  if [ "$1" -gt 71 ] \
+    && ! _php_ext_rc_skip "$1" "mcrypt-${_PHP_MCRYPT}" "MCRYPT ${_PHP_MCRYPT}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ] \
       || [ ! -e "${_pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1470,8 +1688,9 @@ _php_extensions_update() {
       fi
     fi
   elif [ "$1" -gt 71 ]; then
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
-      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
+    if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}" \
+      && { [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; }; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -1572,7 +1791,8 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "php-geos-${_PHP_GEOS_VRN}" "php-geos ${_PHP_GEOS_VRN}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
@@ -1624,7 +1844,8 @@ _php_extensions_update() {
   fi
   if [ "$1" != 56 ] \
     && [ ! -e "${_pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log" ]; then
-    if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
+    if { [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; } \
+      && ! _php_ext_rc_skip "$1" "mongodb-${_MONGODB_VRN}" "MongoDB driver ${_MONGODB_VRN}"; then
       _msg "INFO: Installing MongoDB ${_MONGO_VRN} PHP driver upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongodb*
@@ -1643,7 +1864,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 86 ]; then
+  if ! _php_ext_rc_skip "$1" "imagick-${_IMAGICK_VRN}" "Imagick ${_IMAGICK_VRN}"; then
     _magick_orphans_aside
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
       || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ] \
@@ -1743,8 +1964,9 @@ _php_extensions_update() {
       fi
     fi
   else
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
-      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}" \
+      && { [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; }; then
       _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
@@ -1765,6 +1987,65 @@ _php_extensions_update() {
 }
 
 #
+# Keep the PHP $1 build that runs now aside before a prebuilt package goes
+# over it. A package that fails its check is purged with every file it took
+# over, bin/php and sbin/php-fpm included, and the source build that follows
+# can fail silently (_mrun): the FPM reload after it would then leave that
+# version down. Hard links where /var/opt shares the file system: dpkg writes
+# each file new and renames it into place, and the purge only unlinks, so the
+# links keep the previous build whole. etc and lib/php.ini are never in the
+# package and stay out. The copy never outlives _install_php_deb; one left by
+# an interrupted run goes with the next call or the source build's sweep of
+# /var/opt/php*. Returns 1 when the copy could not be made.
+_php_pre_deb_keep() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pre_deb_keep $1"
+  fi
+  local _pre="/var/opt/php${1}-pre-deb"
+  local _lnk=""
+  rm -rf "${_pre}"
+  if [ ! -x "/opt/php${1}/bin/php" ]; then
+    return 0
+  fi
+  mkdir -p "${_pre}" || return 1
+  if [ "$(stat -c %d "${_pre}")" = "$(stat -c %d "/opt/php${1}/bin/php")" ]; then
+    _lnk="l"
+  fi
+  if ! cp -a${_lnk} "/opt/php${1}/." "${_pre}/"; then
+    rm -rf "${_pre}"
+    return 1
+  fi
+  rm -rf "/var/opt/php${1}-pre-deb/etc" "/var/opt/php${1}-pre-deb/lib/php.ini"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 build kept aside in ${_pre} (cp -a${_lnk})"
+  fi
+  return 0
+}
+
+#
+# Put the build _php_pre_deb_keep kept aside back into /opt/phpNN and drop
+# the copy. A file in the way is replaced, never written into: a running
+# FPM may still map it.
+_php_pre_deb_back() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pre_deb_back $1"
+  fi
+  local _pre="/var/opt/php${1}-pre-deb"
+  local _lnk=""
+  if [ -x "${_pre}/bin/php" ]; then
+    mkdir -p "/opt/php${1}"
+    if [ "$(stat -c %d "${_pre}")" = "$(stat -c %d "/opt/php${1}")" ]; then
+      _lnk="l"
+    fi
+    cp -a${_lnk} --remove-destination "${_pre}/." "/opt/php${1}/"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP $1 build put back from ${_pre} (cp -a${_lnk})"
+    fi
+  fi
+  rm -rf "${_pre}"
+}
+
+#
 # Install modern PHP version
 #
 # Install PHP /opt/phpNN from a prebuilt boa-phpNN package (_USE_PREBUILT_PKGS).
@@ -1772,7 +2053,7 @@ _php_extensions_update() {
 # build shapes -- the published packages are built with shipped defaults only,
 # and the package filename cannot encode a custom _PHP_EXTRA_CONF or a pinned
 # ICU linkage, so those boxes must keep the source path. Requires the companion
-# trees PHP links against (BOA OpenSSL, cURL, ICU for 8.1+) to be present
+# trees PHP links against (BOA OpenSSL, cURL, ICU for 7.4+) to be present
 # already: the normal install order provides them (packages or source) before
 # PHP, and BOA's self-heal checks (_check_php_ssl_version, _check_php_icu_version)
 # remain the runtime backstop.
@@ -1796,11 +2077,21 @@ _install_php_deb() {
     _msg "NOTE: Companion libs missing; building PHP ${_PHP_VERSION} from sources"
     return 1
   fi
-  if [ "${1}" -ge 81 ] && [ ! -e "/usr/local/lib/icu/current" ]; then
+  if [ "${1}" -ge 74 ] && [ ! -e "/usr/local/lib/icu/current" ]; then
     _msg "NOTE: BOA ICU missing; building PHP ${_PHP_VERSION} from sources"
     return 1
   fi
+  if ! _php_pre_deb_keep "${1}"; then
+    _msg "NOTE: PHP ${_PHP_VERSION} could not be kept aside; building from sources"
+    return 1
+  fi
   if ! _install_boa_deb "boa-php${1}" "${_PHP_VERSION}"; then
+    # A failed dpkg run purges what it unpacked; a package that is not
+    # published leaves the build in place.
+    if [ ! -x "/opt/php${1}/bin/php" ] || [ ! -x "/opt/php${1}/sbin/php-fpm" ]; then
+      _php_pre_deb_back "${1}"
+    fi
+    rm -rf "/var/opt/php${1}-pre-deb"
     return 1
   fi
   # dpkg unpacks the boa-phpNN payload as group root with the hardened 0750
@@ -1828,25 +2119,34 @@ _install_php_deb() {
     # a forced rebuild must not pass, or a stale package built against a
     # previous OpenSSL/ICU pin reinstalls in a loop on every daily run
     # without the box ever reaching the current headers. The nginx deb
-    # asserts its OpenSSL token the same way. ICU applies to 8.1+ only here:
-    # the _ICU_FORCE_VRN arm of the intl gate was already refused up front
-    # as a custom build shape.
+    # asserts its OpenSSL token the same way. ICU applies to 7.4+, which all
+    # carry intl, so a package built without it (or against another ICU) is
+    # refused too; a box with _ICU_FORCE_VRN set was already refused up front
+    # as a custom build shape. An 8.4 or newer package that still carries
+    # Pdo\Sqlite::loadExtension fails the same way.
     _PHP_DEB_TOKENS_OK=YES
     if ! _check_php_ssl_version "${1}"; then
       _PHP_DEB_TOKENS_OK=NO
     fi
-    if [ "${1}" -gt 80 ]; then
+    if [ "${1}" -ge 74 ]; then
       if ! _check_php_icu_version "${1}"; then
         _PHP_DEB_TOKENS_OK=NO
       fi
     fi
+    if ! _check_php_sqlite_loadext "${1}"; then
+      _PHP_DEB_TOKENS_OK=NO
+    fi
     if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
+      rm -rf "/var/opt/php${1}-pre-deb"
       _PHP_DEB_INSTALLED=YES
       _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
       return 0
     fi
   fi
+  # The purge removes bin/php and sbin/php-fpm with the rest of the package;
+  # the previous build goes back and serves until the source build replaces it.
   dpkg --purge "boa-php${1}" &> /dev/null
+  _php_pre_deb_back "${1}"
   _msg "NOTE: Prebuilt boa-php${1} failed health check; building from sources"
   return 1
 }
@@ -1916,18 +2216,29 @@ _install_php_multi_src() {
   ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  # intl requires ICU. PHP 7.4/8.0 cannot build intl against ICU 76+ but build
-  # cleanly against ICU <= 73. 8.1+ always gets intl. Below 8.1, enable intl
-  # only when ICU is explicitly pinned (via _ICU_FORCE_VRN) to a 7.4-safe
-  # version (major <= 73). So the unset/default behaviour is unchanged on every
-  # OS (no intl below 8.1, including the 73-default OSes, which are not silently
-  # flipped); the feature is strictly opt-in.
+  # intl requires ICU. 7.4 and newer always get intl, against the ICU this
+  # box builds (_resolve_icu_target). 7.4 and 8.0 compile intl as C++11, but
+  # the headers of ICU 75 and newer need C++17: ICU_CXXFLAGS lands after
+  # their forced -std on the intl compile line, so it raises the standard for
+  # the intl sources only, as PHP 8.1 itself does for these ICU versions.
+  # Re-check 7.4/8.0 intl whenever the default ICU moves. 7.2/7.3 intl does
+  # not compile against ICU 70 or newer and 5.6-7.1 stopped building it on
+  # newer systems, so 7.3 and older are built without it, pinned or not.
+  # The standard follows the ICU configure will find: the installed one
+  # (_installed_icu_vrn), or the target when there is none yet.
   _resolve_icu_target
   _ICU_MAJOR="${_ICU_TARGET_VRN%%[._-]*}"
-  if [ "$1" -ge 81 ]; then
+  _ICU_HDR_VRN="$(_installed_icu_vrn)"
+  [ -n "${_ICU_HDR_VRN}" ] && _ICU_MAJOR="${_ICU_HDR_VRN%%.*}"
+  _ICU_CXX_ENV=""
+  if [ "$1" -ge 74 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
-  elif [ -n "${_ICU_FORCE_VRN}" ] && [ "${_ICU_MAJOR}" -le 73 ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
+    if [ "$1" -lt 81 ] && [ "${_ICU_MAJOR}" -ge 75 ]; then
+      _ICU_CXX_ENV="ICU_CXXFLAGS=\"-std=c++17\" "
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: PHP ${_PHP_VERSION} intl is compiled as C++17 for ICU ${_ICU_HDR_VRN:-${_ICU_TARGET_VRN}}"
+      fi
+    fi
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -2010,7 +2321,14 @@ _install_php_multi_src() {
     fi
   fi
   if [ "$1" -gt 80 ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
+    # PHP 8.6 needs libavif 1.0.0 or newer (Daedalus has 0.11): with an
+    # older one it is built without AVIF in GD instead of not at all
+    if [ "$1" -lt 86 ] \
+      || pkg-config --atleast-version=1.0.0 libavif 2> /dev/null; then
+      _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
+    else
+      _msg "NOTE: libavif is older than 1.0.0, PHP ${_PHP_VERSION} is built without AVIF"
+    fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
     || [ "${_OS_CODE}" = "daedalus" ] \
@@ -2067,7 +2385,18 @@ _install_php_multi_src() {
   if [ "${_OS_CODE}" = "excalibur" ] && [ "$1" -lt 74 ]; then
     _LGC_CFL="CFLAGS=\"-g -O2 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch -Wno-error=declaration-missing-parameter-type\" "
   fi
-  _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+  ### PHP 8.4 added Pdo\Sqlite::loadExtension, which loads a native shared
+  ### object from any path: sqlite3.extension_dir and open_basedir do not
+  ### apply to it, so a pool that disables the exec family could still run
+  ### native code through it. Compile that one method out; pdo_sqlite, the
+  ### sqlite: DSN and createFunction stay. The system libsqlite3 supports
+  ### extension loading, so PHP never sets this define on its own.
+  ### _check_php_sqlite_loadext rebuilds a version built before this.
+  _PDO_SQL_CFL=""
+  if [ "$1" -ge 84 ]; then
+    _PDO_SQL_CFL="CPPFLAGS=\"-DPDO_SQLITE_OMIT_LOAD_EXTENSION=1\" "
+  fi
+  _mrun "${_LGC_CFL}${_PDO_SQL_CFL}${_ICU_CXX_ENV}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -2099,7 +2428,7 @@ _install_php_multi_src() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+    _mrun "${_LGC_CFL}${_PDO_SQL_CFL}${_ICU_CXX_ENV}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -2200,12 +2529,29 @@ _install_php_multi() {
   _PHP_DEB_INSTALLED=NO
   if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
     _install_php_deb "$1"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ -e "/var/opt/php$1-pre-deb" ]; then
+        _msg "INFO: PHP $1 pre-deb copy after the package step: left"
+      else
+        _msg "INFO: PHP $1 pre-deb copy after the package step: none"
+      fi
+    fi
   fi
   if [ "${_PHP_DEB_INSTALLED}" = "NO" ]; then
-    # A prebuilt package that failed its check is purged with its binary;
-    # measure what the source build will replace, not what was there before.
+    # A prebuilt package that failed its check was purged and the previous
+    # build put back, as the same files or as a copy with new inodes; measure
+    # what the source build will replace, not what was there before.
     _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
     _install_php_multi_src "$1"
+    # make and make install run under _mrun, which never fails. make install
+    # writes each file new and renames it into place, so a build that
+    # installed nothing leaves no binary or the one it should have replaced.
+    if [ ! -x "/opt/php$1/bin/php" ]; then
+      _msg "ALRT: Building PHP ${_PHP_VERSION} failed, /opt/php$1 has no PHP binary"
+    elif [ -n "${_binIno}" ] \
+      && [ "$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)" = "${_binIno}" ]; then
+      _msg "ALRT: Building PHP ${_PHP_VERSION} failed, the previous build in /opt/php$1 keeps serving"
+    fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     rm -f /usr/bin/php
@@ -2248,6 +2594,8 @@ _install_php_multi() {
       _THIS_PHP_EXT_DIR="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     elif [ "$1" = "85" ]; then
       _THIS_PHP_EXT_DIR="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
+    elif [ "$1" = "86" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
     fi
     if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
       _install_php_extensions "$1"
@@ -2261,8 +2609,6 @@ _install_php_multi() {
     chmod 755 /etc/init.d/php$1-fpm
     _php_note_build "$1" "${_binIno}"
     _mrun "update-rc.d php$1-fpm defaults"
-  else
-    _msg "WARN: Building PHP ${_PHP_VERSION} failed!"
   fi
 }
 
@@ -2300,6 +2646,8 @@ _php_multi_update() {
     _THIS_PHP_EXT_DIR="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
   elif [ "$1" = "85" ]; then
     _THIS_PHP_EXT_DIR="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
+  elif [ "$1" = "86" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
   fi
   if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
     _php_extensions_update "$1"
@@ -2433,6 +2781,7 @@ _newrelic_update() {
       mv -f /etc/newrelic \
         ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       _pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_86="/opt/php86/${_pthNrx}-${_PHP86_API}"
       _PHP_EXT_DIR_85="/opt/php85/${_pthNrx}-${_PHP85_API}"
       _PHP_EXT_DIR_84="/opt/php84/${_pthNrx}-${_PHP84_API}"
       _PHP_EXT_DIR_83="/opt/php83/${_pthNrx}-${_PHP83_API}"
@@ -2461,7 +2810,7 @@ _newrelic_update() {
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin:/opt/php86/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2473,6 +2822,11 @@ _newrelic_update() {
         _SYSTEM_ARCH="x32"
       fi
       _pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "${_PHP_EXT_DIR_86}" ] && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+        && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so" ]; then
+        ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so \
+          ${_PHP_EXT_DIR_86}/newrelic.so
+      fi
       if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
         && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
         ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
@@ -2593,6 +2947,7 @@ _if_install_php_newrelic() {
     fi
     apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
     _newrelic_key_check
+    _PHP_EXT_DIR_86="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
     _PHP_EXT_DIR_85="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
     _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
@@ -2602,6 +2957,11 @@ _if_install_php_newrelic() {
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
+    if [ -e "${_PHP_EXT_DIR_86}" ] \
+      && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+      && ls /usr/lib/newrelic-php5/agent/*/newrelic-${_PHP86_API}.so &> /dev/null; then
+      _MULTI_NR=YES
+    fi
     if [ -e "${_PHP_EXT_DIR_85}" ] \
       && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -2674,7 +3034,7 @@ _if_install_php_newrelic() {
       if [ "${_MULTI_NR}" = "YES" ] \
         || [ "${_NR_KEY_UPDATED}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin:/opt/php86/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2686,6 +3046,11 @@ _if_install_php_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         _pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "${_PHP_EXT_DIR_86}" ] && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+          && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so" ]; then
+          ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so \
+            ${_PHP_EXT_DIR_86}/newrelic.so
+        fi
         if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
           && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
           ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
@@ -2751,6 +3116,12 @@ _if_install_php_newrelic() {
           /etc/newrelic/nrsysmond.cfg &> /dev/null
         wait
       fi
+    fi
+    # the agent's versions are listed above; 8.6 is not one of them
+    if [ -x "/opt/php86/bin/php" ] \
+      && [ ! -e "/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}/newrelic.so" ]; then
+      _php86_note_once newrelic \
+        "New Relic is not enabled for PHP ${_PHP86_VRN}: no agent build for it is checked yet"
     fi
     touch ${_pthLog}/newrelic-${_xSrl}-${_X_VERSION}.log
   fi
@@ -2879,6 +3250,28 @@ _check_php_icu_version() {
 }
 
 #
+# Check that PHP 8.4 or newer has no Pdo\Sqlite::loadExtension method (see
+# _install_php_multi_src); older versions never had it. A binary that does
+# not run passes here: the broken-build checks own that case.
+_check_php_sqlite_loadext() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_sqlite_loadext $1"
+  fi
+  local _lxt
+  if [ "${1}" -lt 84 ]; then
+    return 0
+  fi
+  _lxt=$("/opt/php${1}/bin/php" -r 'echo method_exists("Pdo\\Sqlite", "loadExtension") ? "loadext:on" : "loadext:off";' 2>/dev/null)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 PDO SQLite extension loading probe: ${_lxt:-no answer}"
+  fi
+  if [[ "${_lxt}" =~ "loadext:on" ]]; then
+    return 1  # the method is there, rebuild needed
+  fi
+  return 0
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -2917,18 +3310,43 @@ _check_php_rebuild() {
     _ownWhy=YES
   fi
 
-  if [ "$1" -gt 80 ] \
-    || { [ -n "${_ICU_FORCE_VRN}" ] && [ "$1" -ge 74 ]; }; then
-    # ICU check for 8.1+ always; for pinned 7.4/8.0 too (they carry intl when
-    # ICU is pinned), so they stay self-correcting and the install-vs-expected
-    # rebuild loop cannot form.
-    if ! _check_php_icu_version "$1"; then
+  if [ "$1" -ge 74 ]; then
+    # 7.4 and newer all carry intl (see _install_php_multi_src), so one built
+    # without it, or against an ICU other than the one this box expects, is
+    # rebuilt: the expected version comes from the same resolver the build
+    # used, so the install-vs-expected rebuild loop cannot form. That holds
+    # only once the expected ICU is the installed one: when its install
+    # failed (_install_icu says so in its ALRT), every build would compile
+    # against the ICU still there and mismatch again on each pass. Then only
+    # a build without intl at all is rebuilt, against that ICU when one is
+    # complete, once; the others keep serving until a pass installs the
+    # expected ICU.
+    _resolve_icu_target
+    _icuHave="$(_installed_icu_vrn)"
+    if [ "${_icuHave}" != "${_ICU_TARGET_VRN/[_-]/.}" ]; then
+      if [ -n "${_icuHave}" ] \
+        && ! /opt/php$1/bin/php -i 2> /dev/null | grep -q "^ICU version"; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: PHP ${_PHP_ITD} has no intl, rebuilding against the installed ICU"
+        fi
+        _PHP_FORCE_REINSTALL=YES
+        _ownWhy=YES
+      fi
+    elif ! _check_php_icu_version "$1"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
       fi
       _PHP_FORCE_REINSTALL=YES
       _ownWhy=YES
     fi
+  fi
+
+  if ! _check_php_sqlite_loadext "$1"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP ${_PHP_ITD} can load SQLite extensions via PDO, forcing rebuild"
+    fi
+    _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
   fi
 
   # Check for presence of PHP drivers
@@ -2991,7 +3409,8 @@ _check_php_rebuild() {
       # a major OS upgrade its marker says it was already rebuilt there. Else a
       # version built earlier in this run (recorded by _php_note_build) is not
       # built again for a force alone; its own reason (an OpenSSL or ICU
-      # mismatch or a missing mysqli driver found now) still builds it.
+      # mismatch, a missing mysqli driver or PDO SQLite extension loading
+      # found now) still builds it.
       if [ "${_PHP_ITD}" != "${_PHP_VERSION}" ] \
         || { [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
           && { [ "${_ownWhy}" = "YES" ] \
@@ -3130,7 +3549,7 @@ _php_not_used_enable_again() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_enable_again"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6"
   for e in ${_PHP_V}; do
     _re=
     if [ ! -e "/opt/php${_re}/bin/php" ]; then
@@ -3155,12 +3574,23 @@ _php_not_used_enable_again() {
 }
 
 #
+# Stop version $1's FPM for good. The FPM monitor watches a version while
+# its init script and CLI are in place and restarts a master it finds
+# gone, so the version's monitor cooldown is stamped first: the stop and
+# the parking of the init script that follows land inside it, and the
+# monitor never brings back a version the pass is retiring.
+_php_fpm_retire_stop() {
+  date +%s > "/run/php${1}-fpm.cooldown"
+  _mrun "service php${1}-fpm force-quit"
+}
+
+#
 # Disable not used PHP-FPM versions
 _php_not_used_disable() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_disable"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6"
   _PHP_A="${_PHP_MULTI_OPTIM}"
   for e in ${_PHP_V}; do
     _re=
@@ -3173,7 +3603,7 @@ _php_not_used_disable() {
       _re="${e}"
       _re=${_re//[^0-9]/}
       if [ -e "/etc/init.d/php${_re}-fpm" ]; then
-        _mrun "service php${_re}-fpm force-quit"
+        _php_fpm_retire_stop "${_re}"
         _mrun "update-rc.d -f php${_re}-fpm remove"
         rm -f ${_vBs}/initd-php${_re}-fpm
         mv -f /etc/init.d/php${_re}-fpm ${_vBs}/initd-php${_re}-fpm
@@ -3213,17 +3643,113 @@ _php_deprecated_cleanup() {
 
 #
 # Fix init.d to disable not used PHP-FPM versions
+#
+# Every account's default include names its pool for the version it ran on
+# until the ltd worker's next run rewrites it, and that worker never runs
+# during a pass: the cleanup below stops the other versions' FPM at once, so
+# an account still pointed at one answered 502 until the worker's tick. Point
+# each at its pool for the single version first, where that pool is up, as
+# the worker writes the include, and reload nginx once.
+_php_single_point_accounts() {
+  local _sv="$1" _inc _usr _pool _did=NO
+  for _inc in /data/disk/*/config/server_master/nginx/post.d/fpm_include_default.inc; do
+    [ -f "${_inc}" ] && [ ! -L "${_inc}" ] || continue
+    _usr="${_inc#/data/disk/}"
+    _usr="${_usr%%/*}"
+    _pool="${_usr}.${_sv}"
+    [ -S "/run/${_pool}.fpm.socket" ] || continue
+    [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
+    _acct_put_in "${_inc%/*}" "${_inc##*/}" "set \$user_socket \"${_pool}\";" && _did=YES
+  done
+  # A site pinned in multi-fpm.info to a version that stops keeps its own
+  # include naming that version's pool, and the worker rebuilds an existing
+  # include only when multi-fpm.info changes: that site answered 502 until
+  # then. Its include goes, as the worker's own rebuild drops a pin to a
+  # version that is not installed, and the site falls back to the default
+  # include above.
+  for _inc in /data/disk/*/config/server_master/nginx/post.d/fpm_include_site_*.inc; do
+    [ -f "${_inc}" ] && [ ! -L "${_inc}" ] || continue
+    _usr="${_inc#/data/disk/}"
+    _usr="${_usr%%/*}"
+    _pool="${_usr}.${_sv}"
+    [ -S "/run/${_pool}.fpm.socket" ] || continue
+    [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
+    _acct_in_real_dir "${_inc%/*}" rm -f -- "./${_inc##*/}" && _did=YES
+  done
+  if [ "${_did}" = "YES" ]; then
+    # the reload signals nginx and returns at once: its old workers keep
+    # sending requests to the old pools until they have finished them, so
+    # the old pools stop only once those workers are gone (at most 30 s)
+    local _old _p _try _left
+    _old=$(pgrep -f '^nginx: worker process' 2> /dev/null | tr '\n' ' ')
+    _mrun "service nginx reload"
+    for _try in $(seq 1 60); do
+      _left=
+      for _p in ${_old}; do
+        kill -0 "${_p}" 2> /dev/null && _left=YES && break
+      done
+      [ -z "${_left}" ] && break
+      sleep 0.5
+    done
+  fi
+}
+
+#
+# Each account's task dispatcher (aegir.sh) and its Drush 8 (the drush.php
+# and drush shebangs, the launcher's default) name the CLI they ran on until
+# the ltd worker's next run rewrites them from cli.info, and that worker
+# never runs during a pass: the cleanup below parks the other versions' CLI
+# at once, so the account's queued tasks waited for the worker's tick. Point
+# each account the worker serves (picked as its own loop picks them) at the
+# single version first, edited as the worker edits them, inside the real
+# directory and never through a link.
+_php_single_point_accounts_cli() {
+  local _sv="$1" _home _f
+  for _home in /data/disk/*; do
+    [ -d "${_home}" ] && [ ! -L "${_home}" ] || continue
+    [ -e "${_home}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_home}/log/fpm.txt" ] \
+      && [ ! -e "${_home}/log/proxied.pid" ] \
+      && [ ! -e "${_home}/log/CANCELLED" ] || continue
+    _acct_in_real_dir "${_home}" _ltd_sed_here aegir.sh \
+      "s|/opt/php[0-9][0-9]/bin|/opt/php${_sv}/bin|g"
+    for _f in drush.php drush; do
+      _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here "${_f}" \
+        "1s|^#!/opt/php[0-9][0-9]/bin/php|#!/opt/php${_sv}/bin/php|"
+    done
+    _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here drush.launcher \
+      "/^export DRUSH_PHP=/s|/opt/php[0-9][0-9]/bin/php|/opt/php${_sv}/bin/php|"
+  done
+}
+
 _php_single_initd_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_single_initd_cleanup"
   fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
-    if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+    if [ -x "/opt/php${_PHP_SINGLE_INSTALL//./}/bin/php" ]; then
+      _php_single_point_accounts "${_PHP_SINGLE_INSTALL//./}"
+      _php_single_point_accounts_cli "${_PHP_SINGLE_INSTALL//./}"
+    fi
+    if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
+          _mrun "update-rc.d -f php${e}-fpm remove"
+          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
+        fi
+      done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+      _PHP_V="86 84 83 82 81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -3233,10 +3759,10 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
-      _PHP_V="85 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -3246,10 +3772,10 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-      _PHP_V="85 84 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -3279,7 +3805,9 @@ _re_set_default_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _re_set_default_php_cli ${_PHP_CLI_VERSION}"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _switch_php_cli "86"
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _switch_php_cli "85"
   elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
     _switch_php_cli "84"
@@ -3298,6 +3826,8 @@ _check_php_cli() {
     _PHP_CLI_PATH="/opt/php84/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _PHP_CLI_PATH="/opt/php85/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _PHP_CLI_PATH="/opt/php86/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _PHP_CLI_PATH="/opt/php83/bin/php"
   else
@@ -3310,6 +3840,8 @@ _check_php_cli() {
       _USE_PHP_CLI_PATH="/opt/php84/bin/php"
     elif  [ -x "/opt/php85/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php85/bin/php"
+    elif  [ -x "/opt/php86/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php86/bin/php"
     elif  [ -x "/opt/php83/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php83/bin/php"
     fi
@@ -3354,9 +3886,10 @@ _php_upgrade_all() {
     _msg "PROC: _php_upgrade_all $1"
   fi
   # _check_php_rebuild sets _PHP_FORCE_REINSTALL=YES when this version needs a
-  # rebuild (new release, OpenSSL/ICU header or mysqli driver mismatch) and the
-  # _check_php_broken_* helpers set NO after fixing a broken build, so each
-  # version starts again from the value the caller passed in: one version's
+  # rebuild (new release, OpenSSL/ICU header or mysqli driver mismatch, PDO
+  # SQLite extension loading on 8.4 and newer) and the _check_php_broken_*
+  # helpers set NO after fixing a broken build, so each version starts
+  # again from the value the caller passed in: one version's
   # result must not decide the next one, and a caller force reaches them all.
   local _force_in="${_PHP_FORCE_REINSTALL}"
   if [ ! -z "${1}" ] && [ "${1}" != "force" ]; then
@@ -3366,6 +3899,10 @@ _php_upgrade_all() {
       _PHP_V="56 70 71 72 73 74 80 81"
     else
       _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
+      # a tree that pins no 8.6 release leaves an 8.6 build as it is
+      if [ -n "${_PHP86_VRN}" ]; then
+        _PHP_V="${_PHP_V} 86"
+      fi
     fi
   fi
   for e in ${_PHP_V}; do
@@ -3394,6 +3931,8 @@ _php_upgrade_all() {
         _PHP_VERSION="${_PHP84_VRN}"
       elif [ "${e}" = 85 ]; then
         _PHP_VERSION="${_PHP85_VRN}"
+      elif [ "${e}" = 86 ]; then
+        _PHP_VERSION="${_PHP86_VRN}"
       fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
@@ -3406,6 +3945,13 @@ _php_upgrade_all() {
         _check_php_rebuild "${e}"
       fi
       _php_multi_update "${e}"
+      # a module this step built for 8.6 is checked before the reload
+      if [ "${e}" = 86 ]; then
+        _THIS_FILE=/opt/php86/etc/php86.ini
+        _php_ini_drop_unbuilt_ext
+        _THIS_FILE=/opt/php86/lib/php.ini
+        _php_ini_drop_unbuilt_ext
+      fi
       _mrun "service php${e}-fpm reload"
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -3413,6 +3959,7 @@ _php_upgrade_all() {
     fi
   done
   _PHP_FORCE_REINSTALL="${_force_in}"
+  _php_rc_cli_restore
 }
 
 _get_php_conf_extra() {
@@ -3577,6 +4124,32 @@ _php_install_upgrade() {
       _T_PHP_PTH=""
       _FRESH_PHP85_BUILD=85
     fi
+    # 8.6 is a release candidate: built only when listed, never the default
+    if [[ "${_PHP_MULTI_INSTALL}" =~ "8.6" ]] \
+      && [ -n "${_PHP86_VRN}" ] \
+      && [ ! -x "/opt/php86/bin/php" ]; then
+      _PHP_VERSION="${_PHP86_VRN}"
+      _msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+      _install_php_multi "86"
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+      _FRESH_PHP86_BUILD=86
+      _php_rc_cli_restore
+    fi
+  fi
+}
+
+#
+# PHP 8.6 is a release candidate and never the box's php: a build of it, or
+# a pass over it, points /usr/bin/php at it, so the default goes back.
+_php_rc_cli_restore() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_rc_cli_restore"
+  fi
+  if [ "$(readlink /usr/bin/php 2>/dev/null)" = "/opt/php86/bin/php" ]; then
+    _re_set_default_php_cli
+    _check_php_cli
   fi
 }
 
@@ -3620,12 +4193,23 @@ _php_check_if_rebuild() {
   if [[ "${_isIcu}" =~ "libicuio" ]] \
     || [ ! -e "/usr/local/lib/icu/current" ]; then
     _msg "INFO: PHP rebuild required to fix ICU support..."
+    _icuForceIn="${_PHP_FORCE_REINSTALL}"
     _PHP_FORCE_REINSTALL=YES
     _php_install_deps
-    _php_libs_fix
-    _php_if_versions_cleanup_cnf
-    _php_upgrade_all force
-    _PHP_FORCE_REINSTALL=NO
+    # Rebuilding every version helps only once the ICU is there: after a
+    # failed install (its ALRT is in the log) the builds would fail or miss
+    # it again on every pass, so they wait for a pass that installs it, and
+    # a force set before this check is left for the main PHP pass.
+    _resolve_icu_target
+    if [ "$(_installed_icu_vrn)" = "${_ICU_TARGET_VRN/[_-]/.}" ]; then
+      _php_libs_fix
+      _php_if_versions_cleanup_cnf
+      _php_upgrade_all force
+      _PHP_FORCE_REINSTALL=NO
+    else
+      _msg "INFO: ICU ${_ICU_TARGET_VRN} is not installed, the PHP rebuild waits for it"
+      _PHP_FORCE_REINSTALL="${_icuForceIn}"
+    fi
   fi
   if [ -x "/opt/php74/bin/php" ] && [ "${_OS_CODE}" != "jessie" ]; then
     _isSodium=

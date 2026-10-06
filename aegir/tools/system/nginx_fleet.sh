@@ -115,7 +115,7 @@ _MODE="pass"
 # cnf is sourced so it cannot be clobbered. An operator _NGINX_FLEET_UA_EXEMPT
 # ADDS to it and can never remove a shipped exemption; an invalid addition is
 # dropped and the shipped roster alone applies.
-_FLT_UA_EXEMPT_DEFAULT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake|OAI-SearchBot|Claude-SearchBot|PerplexityBot|MistralAI-Index|YouBot|Google-CloudVertexBot|ChatGPT-User|Claude-User|MistralAI-User|Meta-ExternalFetcher|Google-?Agent|OAI-AdsBot|DuckAssistBot|Google-Read-Aloud|Google-NotebookLM|Chrome Privacy Preserving Prefetch Proxy|WhatsApp|SkypeUriPreview|kakaotalk-scrap"
+_FLT_UA_EXEMPT_DEFAULT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake|OAI-SearchBot|Claude-SearchBot|PerplexityBot|MistralAI-Index|YouBot|Google-CloudVertexBot|Kimi-SearchBot|ExaSearchBot|ChatGPT-User|Claude-User|MistralAI-User|Meta-ExternalFetcher|Google-?Agent|Kimi-User|OAI-AdsBot|DuckAssistBot|Google-Read-Aloud|Google-NotebookLM|Chrome Privacy Preserving Prefetch Proxy|WhatsApp|SkypeUriPreview|kakaotalk-scrap"
 if [[ -n "${_NGINX_FLEET_UA_EXEMPT}" ]]; then
   _NGINX_FLEET_UA_EXEMPT="${_FLT_UA_EXEMPT_DEFAULT}|${_NGINX_FLEET_UA_EXEMPT}"
 else
@@ -384,8 +384,19 @@ sub load_allow {
   if (defined $csf && length $csf && open my $fh, '<', $csf) {
     while (my $l = <$fh>) {
       next if $l =~ /\A\s*#/;
-      next unless $l =~ /s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(?:\/([0-9]+))?/;
-      my ($ad, $bits) = ($1, $2);
+      # An address named only in a comment is not an allow.
+      $l =~ s/#.*//s;
+      # s=A.B.C.D[/N] anywhere, else a plain first-field A.B.C.D[/N]: csf's full
+      # allow for every port and direction, trusted as guest-fire trusts it.
+      # Destination-only d= rules name a server this box calls and stay out.
+      my ($ad, $bits);
+      if ($l =~ /s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(?:\/([0-9]+))?/) {
+        ($ad, $bits) = ($1, $2);
+      } elsif ($l =~ /\A\s*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(?:\/([0-9]+))?(?:\s|\z)/) {
+        ($ad, $bits) = ($1, $2);
+      } else {
+        next;
+      }
       my @o = split /\./, $ad;
       next if grep { $_ > 255 } @o;
       my $n = ($o[0] << 24) + ($o[1] << 16) + ($o[2] << 8) + $o[3];
@@ -990,12 +1001,76 @@ if [[ "${_NGINX_FLEET_DETECT}" = "YES" ]]; then
 fi
 _ANY_BAN=$(( _BAN_A | _BAN_N ))
 
+# /data/conf is root's, but an Octopus upgrade of an earlier release handed it
+# to the account it upgraded, so a name there can still be a link or a FIFO
+# that account left. Files there are read and put only inside the real
+# directory, through these; work files live in a root-only directory in /run.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way (helper.sh.inc).
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# stdin as the fresh file $1, owned by uid $2 and gid $3 with the mode $4,
+# through the one handle that created it O_EXCL|O_NOFOLLOW (helper.sh.inc).
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+# The file $1 (root's own, outside /data/conf) put as ./$2 in the current
+# (pinned) directory, root's and 0644: written under a fresh name through one
+# handle (_ACCT_PUT_PL), then renamed over the name, so a link or a FIFO at
+# the name is replaced, never written through or opened; a directory there,
+# which the rename cannot replace, is removed first.
+_conf_put_file_here() {
+  local _t="./.${2}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if [ -d "./${2}" ] && [ ! -L "./${2}" ]; then
+    rm -rf -- "./${2}"
+  fi
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 < "${1}" \
+    && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory copied into the file $2 (root's own,
+# outside /data/conf) while ./$1 is a regular file of at most 32 MiB: read
+# without following a link or blocking on a FIFO. Status 1 when it is not
+# there, not one, or bigger (a file that size is none of these lists, and the
+# copy lands in memory-backed /run).
+_conf_get_file_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  [ "$(stat -c %s -- "./${1}" 2> /dev/null || echo 0)" -le 33554432 ] || return 1
+  dd if="./${1}" of="${2}" iflag=nofollow,nonblock status=none 2> /dev/null
+}
+
+_WORK="$(mktemp -d /run/.nginx_fleet.XXXXXX 2> /dev/null)" || {
+  _fleet_note "ALERT: cannot create a work directory in /run; fleet maps left untouched"
+  exit 1
+}
+trap 'rm -rf -- "${_WORK}"' EXIT
+
+# The analyser writes the new fragments into the work directory; the live ones
+# (_OUTN in /data/conf) are read, backed up (_BAKN) and replaced only through
+# the pinned helpers above.
 _NAMES=(ua addr net)
-declare -A _TMP _OUT _BAK
+declare -A _TMP _OUT _OUTN _BAKN _LIVE
 for _F in "${_NAMES[@]}"; do
-  _OUT[${_F}]="${_OUT_DIR}/nginx_fleet_${_F}.conf"
-  _TMP[${_F}]="${_OUT_DIR}/.nginx_fleet_${_F}.tmp.$$"
-  _BAK[${_F}]="${_OUT_DIR}/.nginx_fleet_${_F}.last_good.conf"
+  _OUTN[${_F}]="nginx_fleet_${_F}.conf"
+  _OUT[${_F}]="${_OUT_DIR}/${_OUTN[${_F}]}"
+  _TMP[${_F}]="${_WORK}/${_F}.new"
+  _BAKN[${_F}]=".nginx_fleet_${_F}.last_good.conf"
+  _LIVE[${_F}]="${_WORK}/${_F}.live"
 done
 _STORE_TMP="${_STORE}.tmp.$$"
 
@@ -1003,13 +1078,35 @@ _fleet_cleanup() {
   rm -f "${_TMP[ua]}" "${_TMP[addr]}" "${_TMP[net]}" "${_STORE_TMP}"
 }
 
+# True when none of the three fragment names holds anything; a link or a
+# FIFO left there counts as something, so the install below replaces it.
+_fleet_no_fragments() {
+  local _f
+  for _f in "${_NAMES[@]}"; do
+    [[ -e "${_OUT[${_f}]}" || -L "${_OUT[${_f}]}" ]] && return 1
+  done
+  return 0
+}
+
+# True when every fragment name holds a regular file or nothing: a link or a
+# FIFO left at a name is replaced at once, never left for the reload gap.
+_fleet_names_plain() {
+  local _f
+  for _f in "${_NAMES[@]}"; do
+    if [[ -e "${_OUT[${_f}]}" || -L "${_OUT[${_f}]}" ]] && [[ ! -f "${_LIVE[${_f}]}" ]]; then
+      return 1
+    fi
+  done
+  return 0
+}
+
 _fleet_revert() {
   local _f
   for _f in "${_NAMES[@]}"; do
-    if [[ -f "${_BAK[${_f}]}" ]]; then
-      cp -a "${_BAK[${_f}]}" "${_OUT[${_f}]}"
+    if _acct_in_real_dir "${_OUT_DIR}" _conf_get_file_here "${_BAKN[${_f}]}" "${_WORK}/${_f}.back"; then
+      _acct_in_real_dir "${_OUT_DIR}" _conf_put_file_here "${_WORK}/${_f}.back" "${_OUTN[${_f}]}"
     else
-      rm -f "${_OUT[${_f}]}"
+      _acct_in_real_dir "${_OUT_DIR}" rm -f -- "./${_OUTN[${_f}]}"
     fi
   done
 }
@@ -1048,8 +1145,13 @@ else
   rm -f "${_STORE}" "${_STORE_TMP}"
 fi
 
+# The live fragments, as regular files only, read into the work directory.
+for _F in "${_NAMES[@]}"; do
+  _acct_in_real_dir "${_OUT_DIR}" _conf_get_file_here "${_OUTN[${_F}]}" "${_LIVE[${_F}]}"
+done
+
 # Nothing live and nothing stale to clear: leave the include globs empty.
-if (( _CNT_FP == 0 )) && [[ ! -f "${_OUT[ua]}" && ! -f "${_OUT[addr]}" && ! -f "${_OUT[net]}" ]]; then
+if (( _CNT_FP == 0 )) && _fleet_no_fragments; then
   _fleet_cleanup
   exit 0
 fi
@@ -1061,7 +1163,7 @@ fi
 
 _CHANGED=0
 for _F in "${_NAMES[@]}"; do
-  if [[ ! -f "${_OUT[${_F}]}" ]] || ! cmp -s "${_TMP[${_F}]}" "${_OUT[${_F}]}"; then
+  if [[ ! -f "${_LIVE[${_F}]}" ]] || ! cmp -s "${_TMP[${_F}]}" "${_LIVE[${_F}]}"; then
     _CHANGED=1
   fi
 done
@@ -1072,7 +1174,7 @@ fi
 # A live fleet adds members on most runs. A new or expired fingerprint applies
 # at once; a member-only change waits for _NGINX_FLEET_RELOAD_GAP since the
 # last reload, so a long fleet costs one reload per gap, not one per minute.
-if [[ -f "${_OUT[ua]}" ]] && cmp -s "${_TMP[ua]}" "${_OUT[ua]}"; then
+if _fleet_names_plain && [[ -f "${_LIVE[ua]}" ]] && cmp -s "${_TMP[ua]}" "${_LIVE[ua]}"; then
   _LAST=0
   if [[ -f "${_RELOAD_STAMP}" ]]; then
     _LAST=$(tr -cd '0-9' < "${_RELOAD_STAMP}" 2> /dev/null)
@@ -1094,16 +1196,17 @@ fi
 # Back up every live fragment before touching any, so a failed copy (full
 # disk) leaves the live set exactly as it was.
 for _F in "${_NAMES[@]}"; do
-  rm -f "${_BAK[${_F}]}"
-  if [[ -f "${_OUT[${_F}]}" ]] && ! cp -a "${_OUT[${_F}]}" "${_BAK[${_F}]}"; then
+  _acct_in_real_dir "${_OUT_DIR}" rm -f -- "./${_BAKN[${_F}]}"
+  if [[ -f "${_LIVE[${_F}]}" ]] \
+    && ! _acct_in_real_dir "${_OUT_DIR}" _conf_put_file_here "${_LIVE[${_F}]}" "${_BAKN[${_F}]}"; then
     _fleet_note "ALERT: cannot back up ${_OUT[${_F}]}; live maps left untouched"
-    rm -f "${_BAK[ua]}" "${_BAK[addr]}" "${_BAK[net]}"
+    _acct_in_real_dir "${_OUT_DIR}" rm -f -- "./${_BAKN[ua]}" "./${_BAKN[addr]}" "./${_BAKN[net]}"
     _fleet_cleanup
     exit 1
   fi
 done
 for _F in "${_NAMES[@]}"; do
-  if ! mv -f "${_TMP[${_F}]}" "${_OUT[${_F}]}"; then
+  if ! _acct_in_real_dir "${_OUT_DIR}" _conf_put_file_here "${_TMP[${_F}]}" "${_OUTN[${_F}]}"; then
     _fleet_revert
     _fleet_note "ALERT: cannot install ${_OUT[${_F}]}; last good fleet maps restored"
     _fleet_cleanup

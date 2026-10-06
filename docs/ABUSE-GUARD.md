@@ -531,10 +531,18 @@ line cap, the sample is not representative, and the pass writes a `NOTE` line
 and declares nothing. It runs after the guard-404 pass and before the Tier-B
 i18n pass.
 
-**What a cohort is.** One vhost plus one exact User-Agent, IPv4 clients only.
-Query strings are stripped before documents are counted, so cache-busting
-parameters cannot make a visitor's repeated ajax call look like a run of
-distinct documents.
+**What a cohort is.** One vhost plus one exact User-Agent, public IPv4 clients
+only, the client read as the per-line loop reads it (the last token of the
+client field). Query strings are stripped before documents are counted, so
+cache-busting parameters cannot make a visitor's repeated ajax call look like a
+run of distinct documents.
+
+A request that rides the wildcard SSL front is logged twice: at the front with
+the real visitor, and at the site's port-80 vhost as `127.0.0.1`. The harvest
+pass counts it once, from the front's line, as every other detector does.
+Counting the loopback copy would double every proxied request and halve the
+cohort's distinct-URI share, so a harvest over the front would never pass the
+keystone below.
 
 **Two ways in.**
 
@@ -867,6 +875,11 @@ Four layers protect known-good addresses from every detector:
   `_block_ip` — including the bulk DDoS and path-flood passes — so a bulk ban can't drop a
   CDN PoP or a search-engine crawler. The allow is honoured **on every port** regardless of
   the port scope of the `csf.allow` entry (an `s=` record means "trusted source").
+
+  Two entry forms name a trusted source: an advanced `s=` record and a plain first-field
+  address or network (what `csf -a` writes). A `d=`-only rule names a server the box
+  calls, not a client, and an address that appears only in an entry's comment is not an
+  allow. The crawler-fleet guard reads `csf.allow` the same way.
 - **IPv6 allow store.** `csf.allow` cannot hold an IPv6 entry (CSF is IPv4-only), so the
   IPv6 counterpart lives in `/var/xdrago/monitor/log/web6.allow`: `guest-water.sh` mirrors
   the published Googlebot and Google special-case crawler `ipv6Prefix` ranges into it
@@ -1119,8 +1132,8 @@ CSF cannot hold an IPv6 ban, so an IPv6 offender never reaches `nginx_deny.sh`. 
 (`*/2` cron, same shared lock) prunes the expired entries, collapses the refreshed
 duplicates to the max expiry, validates each as a strict IPv6 address, and emits the
 survivors as `<ip6> 1;` into `/data/conf/nginx_banned_ips.conf6`. That file is picked up by
-the **same** `geo $remote_addr $is_banned` set — its wildcard `nginx_banned_ips.c*` include
-already covers it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
+the **same** `geo $remote_addr $is_banned` set — its `nginx_banned_ips.conf[6]` include names
+it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
 like the IPv4 case.
 
 The store is self-expiring (default 900s, `_NGINX_V6_BAN_TTL`), the
@@ -1131,9 +1144,13 @@ The rebuild only disturbs nginx when something actually changed:
 
 - **Change-gate.** The freshly-built file is compared to the live one with `cmp -s`; if
   identical, the run exits with no reload.
-- **Atomic install + validate.** The new file is written to a leading-dot temp in the same
-  directory (so the `.c*` include glob never sees it) and `mv`-d into place; the current
-  file is backed up to `.nginx_banned_ips.last_good.conf` first.
+- **Atomic install + validate.** The new file is built in a root-only work directory under
+  `/run`, written into `/data/conf` under a leading-dot name
+  (`.nginx_banned_ips.conf.put.<pid>.<n>`, so no include ever sees it) through
+  one handle that never follows a link, and renamed into place inside the real
+  `/data/conf`; the current file is backed up to `.nginx_banned_ips.last_good.conf` first,
+  the same way. A link, a FIFO or a directory left at either name is replaced, never
+  written through.
 - **Revert on failure.** After install it runs `service nginx configtest` and
   `service nginx reload`; on any failure it restores the last-good file (and reloads), so a
   bad ban set can never take nginx down.
@@ -1161,7 +1178,7 @@ fragments from its store and installs them the same careful way the geo sets are
   all — the same order-independence contract the `bgp_flood` and `boa_perhost_anon` zones use,
   so no delivery order can reference an undeclared variable.
 - **Nothing-live short-circuit.** With no live fingerprint and no fragment on disk the pass
-  exits leaving the include globs empty; `$boa_fleet_block` is then `0` for everything.
+  exits leaving the includes with nothing to load; `$boa_fleet_block` is then `0` for everything.
 - **Change gate.** Each freshly built fragment is compared with the live one (`cmp -s`); if
   all three are identical the pass exits with no reload.
 - **Hold-down on member-only changes.** A live fleet adds members on most passes. A new or
@@ -1175,8 +1192,11 @@ fragments from its store and installs them the same careful way the geo sets are
   `/run/boa_nginx_fleet.lock` for the whole run, so passes never stack.
 - **Back up all three, then install.** Every live fragment is copied to its
   `.nginx_fleet_<name>.last_good.conf` **before** any is replaced, so a failed copy (a full
-  disk) leaves the live set exactly as it was. Temporary files are leading-dot names in the
-  same directory, so the `.c*` include globs never see a half-written file.
+  disk) leaves the live set exactly as it was. Each fragment is built in a root-only work
+  directory under `/run` and written into `/data/conf` under a leading-dot name, then
+  renamed into place inside the real `/data/conf`, so the includes never see a
+  half-written file and a link, a FIFO or a directory left at a name is replaced, never
+  written through.
 - **Configtest and revert.** After installing, the pass runs `service nginx configtest`; on
   rejection it restores the last-good set and writes an `ALERT` naming the first
   `[emerg]`/`[crit]`/`[error]` line of the output, not whatever warning happened to come
@@ -1261,11 +1281,13 @@ realip module in the shared `http {}` block:
 ```nginx
 real_ip_header    CF-Connecting-IP;
 real_ip_recursive on;
-include /data/conf/nginx_cloudflare_real_ip.c*;
+include /data/conf/nginx_cloudflare_real_ip.cmi[g];
+include /data/conf/nginx_cloudflare_real_ip.con[f];
 ```
 
-The trusted CF source ranges are supplied by the BOA-managed wildcard include (written and
-refreshed by `cloudflare_realip.sh`), so a missing file never breaks `nginx -t`; with no
+The trusted CF source ranges are supplied by the BOA-managed `.con[f]` include (written and
+refreshed by `cloudflare_realip.sh`; the `.cmi[g]` one carries the migration proxy), and each
+matches only its own file, so a missing file never breaks `nginx -t`; with no
 trusted ranges the `CF-Connecting-IP` header is ignored and `$remote_addr` is left unchanged
 (no spoofing risk). After realip runs, `$remote_addr` is the **real visitor** — what the
 `$is_banned` geo and `scan_nginx`'s IP-counting both score.
@@ -1283,7 +1305,8 @@ visitor cannot name the address Drupal sees.
 ```nginx
 geo $remote_addr $is_banned {
   default 0;
-  include /data/conf/nginx_banned_ips.c*;
+  include /data/conf/nginx_banned_ips.con[f];
+  include /data/conf/nginx_banned_ips.conf[6];
 }
 ```
 
@@ -1315,14 +1338,14 @@ strings `/var/xdrago/nginx_fleet.sh` renders into `/data/conf/nginx_fleet_*.conf
 ```nginx
 map $http_user_agent $boa_fleet_uaid {           # "" for every agent not in the set
   default  "";
-  include  /data/conf/nginx_fleet_ua.c*;
+  include  /data/conf/nginx_fleet_ua.con[f];
 }
 map $remote_addr $boa_fleet_net {                # the address collapsed to its /16
   default                           $remote_addr;
   "~^([0-9]{1,3}\.[0-9]{1,3})\."    $1;
 }
-map "$host|$remote_addr|$boa_fleet_uaid" $boa_fleet_addr { … nginx_fleet_addr.c* }
-map "$host|$boa_fleet_net|$boa_fleet_uaid"  $boa_fleet_nt { … nginx_fleet_net.c* }
+map "$host|$remote_addr|$boa_fleet_uaid" $boa_fleet_addr { … nginx_fleet_addr.con[f] }
+map "$host|$boa_fleet_net|$boa_fleet_uaid"  $boa_fleet_nt { … nginx_fleet_net.con[f] }
 map $http_referer $boa_fleet_noref { default 0; "" 1; }
 map $http_cookie  $boa_fleet_anon  { default 1; … session cookies → 0 }
 ### Bits: member network, member address, no Referer, anonymous.
@@ -1349,9 +1372,11 @@ so a banned address still gets its `444` first.
   `$cache_uid`) and the `$boa_grav_admin_cookie` test declared just above it, then adds
   Textpattern's `txp_login` / `txp_login_public` — **keep them in step** when any one of them
   changes.
-- **Absent fragments are safe.** The `.c*` include globs then match nothing, every lookup
-  takes its default, and `$boa_fleet_block` is `0` for every request. The in-flight temp and
-  the last-good backup are leading-dot names, so the glob never picks up a half-written file.
+- **Absent fragments are safe.** Each include is a pattern that matches only its own
+  fragment (`nginx_fleet_ua.con[f]` and so on), so a missing one matches nothing, every lookup
+  takes its default, and `$boa_fleet_block` is `0` for every request; a stray copy with the
+  same prefix is never loaded. The in-flight temp and the last-good backup are leading-dot
+  names, so no include picks up a half-written file.
 - **Self-contained by design.** Every consumer renders its guard **only** when the installed
   zones file contains the exact declaration line `map $boa_fleet_uaid $boa_fleet_block {`, so
   no BOA/provision delivery order can emit a reference to an undeclared variable — which
@@ -1403,22 +1428,24 @@ content segment (404).
   `/etc/nginx/conf.d/limit-req-zones-boa.conf`, and the consumer renders only when that file
   declares the map, so no delivery order can reference an undefined variable.
 
-The static and content chain guards live in the full-domain vhost include and are **not**
-in `subdir.tpl.php`. A subdirectory site under a domain that is a site still passes through
-them, because its conf is included in that site's server block, where the include runs
-them for every path.
+The static and content chain guards are tested in the full-domain vhost include, not in
+`subdir.tpl.php` itself. A subdirectory site under a domain that is a site passes through
+them because its conf is included in that site's server block, before the shared include
+that tests both for every path. The standalone server of a domain that is not a site
+(`subdir_vhost.tpl.php`) tests both right after its subdirectory confs.
 
-A subdir site legitimately serves `/<subdir>/sites/all/...` assets,
-which `$is_static_chain` would match as buried-under-content, so each subdir conf clears
-that flag at server level for `/<subdir>/` followed by the same root directories the map
-lets through at a domain's root (`sites`, `modules`, `misc`, `themes`, `core` and so on),
-and the site's vhost includes the subdir confs before the shared include. Anything deeper
-under `/<subdir>/` stays guarded.
+A subdirectory site legitimately serves `/<subdir>/sites/all/...` assets, which the
+domain-level `$is_static_chain` map reads as buried-under-content. The map also skips a
+two-letter first segment as a language prefix, and a subdirectory named `/de` is one. So
+each subdirectory conf replaces the map's verdict for its own paths: it clears the flag at
+server level for every `/<subdir>/` path, then sets it again when the map's three rules
+match counted from `/<subdir>/`. A chain buried under the subdirectory site's content is
+still refused; its own asset roots are not.
 
-The standalone server of a domain that is not a site
-carries neither chain guard. The node-chain, lang-chain and amp-chain guards (which match
-on `node/<id>` repetition, language-prefix runs and the query, not asset paths) **do**
-apply on subdir vhosts.
+The node-chain and amp-chain guards (which match on `node/<id>` repetition and the query)
+apply to subdirectory paths as they are. The language-chain map keys on the full URI, so
+each subdirectory conf also refuses four language-like prefixes counted from its own root;
+a two-letter subdirectory name still takes one slot of the domain-level count.
 
 ### Print no-referer gate → 404
 
@@ -1531,6 +1558,16 @@ ever a HEAD.
 target. Works whether or not the module is enabled. Together with the flag and print gates,
 the 404s this gate emits are the tell Detector 6 counts (see Part 1).
 
+### The three Referer gates on subdirectory sites
+
+The print, Flag and HybridAuth maps anchor their path shapes at the domain's root, so they
+never match `/<subdir>/print/1`. Each subdirectory conf therefore tests the same three
+shapes counted from its own root, at server level: it composes the method,
+`$has_no_referrer`, `$has_no_session` and the URI into one variable and tests it at once
+against the three shapes, so no subdirectory conf of the same domain reads another's
+value. The answer is the same static 404, on a subdirectory site under a site parent and
+under a domain that is not a site.
+
 ### TLS-on-plain → 444
 
 ```nginx
@@ -1637,12 +1674,15 @@ request per IP) can amplify load far beyond its request rate. BOA defends the `/
 | Tier | Composed map | Signal |
 |---|---|---|
 | Tier 1 | `$block_search_no_referrer` | fulltext params **and** no Referer |
-| Tier 2 | `$has_excessive_facets` | 6+ facets (`f[5]+`), encoded or literal |
+| Tier 2 | `$has_excessive_facets` | 6+ selected facet values (`f[5]+`), encoded or literal, any visitor (no Referer, session or UA condition) |
 | Tier 2 | `$block_search_root_referer` | fulltext **and** bare-root Referer **and** a facet present |
 | login | `$block_login_search_destination` | search payload in `/user/login?destination=` **and** no Referer |
 
 These apply as `return 444` inside the `/search` block, the language-prefixed `/xx/search`
-block, and the `/user/login` block, alongside `limit_req` search-rate zones.
+block, and the `/user/login` block, and in the subdirectory-site twins of all three
+(`/<subdir>/search`, `/<subdir>/xx/search`, `/<subdir>/user/login`), alongside `limit_req`
+search-rate zones. Drupal's Facets module numbers every selected value on a page in one
+list, so the sixth ticked value of any facet is `f[5]`.
 `$block_login_search_destination` closes a bypass where bots send
 `/user/login?destination=search%2F...` so the path is `/user/login` and the `/search` guards
 never run. The family landed in BOA-5.9.3.
@@ -1671,7 +1711,7 @@ returns `444` instantly, before php-fpm. The key is non-empty only when three ma
 ```nginx
 # server.tpl.php (http{})
 limit_conn_zone $boa_i18n_anon_key zone=boa_i18n_anon:10m;
-map $host        $boa_i18n_guard { default 1; include /data/conf/boa_i18n_guard.map*; }  # on by default; map file lists hosts to set 0 (opt-out)
+map $host        $boa_i18n_guard { default 1; include /data/conf/boa_i18n_guard.ma[p]; }  # on by default; map file lists hosts to set 0 (opt-out)
 map $request_uri $boa_i18n_path  { default 0; ~*^/[a-z][a-z](-[a-z]+)?/ 1; ~*[?&]q=/?[a-z][a-z](-[a-z]+)?/ 1; }
 map $cache_uid   $boa_is_anon    { default 0; "" 1; }
 map "$boa_i18n_guard$boa_i18n_path$boa_is_anon" $boa_i18n_anon_key { default ""; "111" $host; }
@@ -1684,7 +1724,7 @@ limit_conn_status 444;
 ```
 
 - **On by default, per-host opt-out.** `$boa_i18n_guard` is `1` for every vhost; the
-  wildcard-included `/data/conf/boa_i18n_guard.map` lists hosts to set to `0` to opt them
+  `/data/conf/boa_i18n_guard.map` (included by the exact-name pattern `boa_i18n_guard.ma[p]`) lists hosts to set to `0` to opt them
   out (an absent/empty file leaves every host guarded). Defaulting on is safe because a
   leading two-letter path prefix is Drupal's URL language-negotiation convention, never a
   content subdirectory — the same assumption the `/[a-z][a-z]/search` and
@@ -1785,9 +1825,17 @@ count keeps render time inside that horizon, which is what keeps the front cache
 
 ```nginx
 # /etc/nginx/conf.d/limit-req-zones-boa.conf — BOA-written, http scope
-map $http_cookie $boa_perhost_anon_key {
+map $http_cookie $boa_perhost_cookie_key {
   default                          $host;
   ~SESS[[:alnum:]]+=[[:graph:]]    "";
+}
+map $http_authorization $boa_perhost_has_auth {
+  default  1;
+  ""       0;
+}
+map $boa_perhost_has_auth $boa_perhost_anon_key {
+  default  "";
+  0        $boa_perhost_cookie_key;
 }
 limit_conn_zone $boa_perhost_anon_key zone=boa_perhost_anon:10m;
 
@@ -1808,8 +1856,28 @@ location = /index.php {
   cookie anonymous to BOTH guardrails — keep the two in step. Caveat worth knowing: the
   anonymous **login POST** carries no session cookie yet, so it is counted like any other
   anonymous request.
+- **Token clients are exempt too.** A client that authenticates per request — a decoupled
+  front end, a mobile app, an API consumer — carries no session cookie, so the cookie test
+  alone would shed it with the visitors. The zone key `$boa_perhost_anon_key` is composed: the
+  cookie test's result (`$boa_perhost_cookie_key`) for a request without an `Authorization`
+  header and EMPTY for one that carries it, the same exemption the Grav zone has had from the
+  start.
+- **A faked header buys nothing new.** A flood that adds one gains only what a fake session
+  cookie already gave it: a pass on this one cap, and nothing from the per-address and
+  crawler controls.
+- **The zone's key variable never changes.** nginx refuses to reload a configuration that
+  binds a live zone to a different key variable, keeps the old configuration running, and
+  every later reload fails the same way until a full restart, while `nginx -t` passes
+  because the test never sees the running zone. New tests go into new variables the key is
+  composed from, never into a new key for the zone.
 - **It counts requests in the location, not FPM occupancy.** Cache hits and slow readers
   occupy a slot too. Size it as a ceiling on concurrency, not on renders.
+- **A new URL's first render.** Requests waiting on the front cache's lock count too
+  (`limit_conn` runs before the cache lookup). The location waits up to 30 s for that render
+  (`fastcgi_cache_lock_timeout 30s`, nginx's default being 5 s), so the waiters get its
+  cached copy instead of each reaching PHP: on a 16-child pool with an 8 s render and 150
+  simultaneous anonymous visitors the shipped cap served 100 from two renders and shed 50
+  (at 24 it shed 126); a warm URL shed none.
 - **Sizing (default 100).** Above the busiest legitimate per-vhost in-flight peak measured
   over a full production day (13-57 across every tenant) and far below an observed flood
   (417). Deliberately loose so it only ever bounds a genuine flood. Tune per instance toward
@@ -1894,7 +1962,7 @@ $tls_on_plain           → 444
 
 The fleet guard fires on every front a fleet can reach, each on the same render gate:
 the Drupal/Backdrop vhost include (above), the Grav location block, the Textpattern plain
-and SSL vhosts, and the subdir location.
+and SSL vhosts, and the standalone subdir server.
 
 It also fires on the **wildcard SSL front**, inside
 marker lines that `_nginx_wild_ssl_fleet_gate` strips whenever the installed zones file does
@@ -1910,9 +1978,15 @@ on the proxied path.
 The Textpattern vhosts and the standalone subdir server carry the ban guard themselves:
 neither pulls in the full-domain vhost include, so each restates the unconditional
 `if ($is_banned) { return 444; }` next to its fleet guard, at server level. For the
-standalone subdir server that is `subdir_vhost.tpl.php`, not the copies inside the subdir
-conf's master location: nginx runs a location's `if` only for requests that end in that
-location, never for the nested ones that serve almost every request.
+standalone subdir server that is `subdir_vhost.tpl.php`: nginx runs a location's `if` only
+for requests that end in that location, never for the nested ones that serve every request
+under a subdirectory, so the subdir conf's master location carries no guard copies.
+
+The standalone server restates, at server level and in a site vhost's order, the whole guard
+set a site gets from the shared include: the subdirectory confs, then the static and
+content chains, the ban and fleet guards, the PHP-version probe, the secret-path, CMS-probe
+and forged-AI denies, the AI training and evasive defaults with that domain's `ai_policy`
+fragment, the crawler, botnet, high-load, method, denied, UA and TLS-on-plain checks.
 
 A banned address is therefore
 dropped at nginx on those vhosts as on every other one — which is what matters on a
@@ -2275,7 +2349,8 @@ Three independent mechanisms, by what you are protecting:
 **Whitelist an IP — use the CSF allow list.** `_is_whitelisted_ip` parses
 `/etc/csf/csf.allow` once at startup into an exact-host map plus a CIDR index, and every call
 path into a block checks it first. An allowed IP is never scored or banned, on every port
-regardless of the entry's port scope.
+regardless of the entry's port scope. Both the plain line `csf -a` writes and an advanced
+`s=` record count; a `d=`-only rule and an address named only in a comment do not.
 
 ```bash
 # Permanently trust an IP (or CIDR) fleet-wide

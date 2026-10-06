@@ -256,8 +256,11 @@
 ;;  system administrator area, which tenants cannot access by default. The paths
 ;;  below are listed only for cross-reference; creating or removing the flag and
 ;;  reading the log are performed by the server administrator, not from here:
-;;    Valkey servers: /data/conf/valkey.debug.flag  ->  /var/tmp/fpm/valkey-fallback.log
-;;    Redis  servers: /data/conf/redis.debug.flag   ->  /var/tmp/fpm/redis-fallback.log
+;;    Valkey servers: /data/conf/valkey.debug.flag  ->
+;;                    /var/tmp/fpm/valkey-fallback.<uid>/valkey-fallback.log
+;;  Every system user that runs the probe (each PHP-FPM pool and each
+;;  command-line user) writes its own log, in a directory named with its
+;;  numeric user ID that only that user and root can open.
 ;;  The administrator removes the flag to stop logging live, with no INI edit
 ;;  or redeploy. Arming redis_debug here simply lets that toggle take effect.
 ```
@@ -432,10 +435,13 @@
 ```text
 ;allow_private_file_downloads = FALSE
 ;;
-;;  When set to TRUE allows to use private files mode, so it is useful only
-;;  for commerce sites which sell files for download or for intranet sites
-;;  where you need to enforce strict access control. All other sites should
-;;  never ever use private files mode for obvious performance reasons.
+;;  On Drupal 6, 7 and Backdrop, BOA forces every site's default download
+;;  method to public; TRUE lifts that force. It has no effect on Drupal 8+,
+;;  where the default download method is the site's own setting. On Drupal 7
+;;  the nightly pass writes it into each site's own INI from the default
+;;  download method the site saved: TRUE when that is private, FALSE when it
+;;  is public or unset. A file field or form element can store its uploads
+;;  privately on any core without it.
 ```
 
 ```text
@@ -501,6 +507,10 @@
 ;;  The system will cleanly delete existing Solr core in 15 minutes.
 ```
 
+The config files uploaded to `sites/foo.com/files/solr/` are applied as one set, whole or not at all, and must include `schema.xml`, `solrconfig.xml` and `solrcore.properties`. Each file must be smaller than 8 MiB, with at most 512 names and 32 MiB in all. A hard-linked file, or one that changes while read, refuses the set; symbolic links, FIFOs and subdirectories are skipped, and so is a file that none of the instance's own users (`oN`, `oN.ftp`, its client sub-accounts, its PHP-FPM users) owns, which also stays in place.
+
+A symbolic link at `sites`, the site directory or `files/solr`, or at `files` other than BOA's own link into the account's files store, blocks the upload. A complete upload also repairs a core without `solrconfig.xml`. See [SOLR.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/SOLR.md) for details.
+
 ```text
 ;solr_update_config = NO
 ;;
@@ -509,9 +519,11 @@
 ;;    schema.xml
 ;;    solrconfig.xml
 ;;
-;;  If there is new release for either apachesolr or search_api_solr, your
-;;  Solr core will not be automatically upgraded to use newer schema.xml and
-;;  solrconfig.xml, unless allowed by switching solr_update_config to YES.
+;;  If BOA ships a newer schema.xml and solrconfig.xml for apachesolr, or for
+;;  search_api_solr on Drupal 7, your Solr core is not upgraded to them unless
+;;  solr_update_config is set to YES. Drupal 8 and later cores are created on
+;;  Solr's own managed schema and take their configuration only from the files
+;;  you upload to files/solr/; BOA ships no template for them.
 ;;
 ;;  This option will be ignored if you will set solr_custom_config to YES.
 ```
@@ -575,7 +587,8 @@
 ;;  defined here will override the value of sql_web_max_exec_ms set in the
 ;;  platform level boa_platform_control.ini file located in the sites/all/modules
 ;;  directory. It is applied as a per-connection SET SESSION max_execution_time
-;;  statement on every web request; CLI (Drush, cron, migrations, backups) is
+;;  statement on every web request except the scheduled site cron; CLI (Drush,
+;;  migrations, backups) and the scheduled cron the control panel runs are
 ;;  never capped.
 ;;
 ;;  Set 0 to disable the cap for this site. The statement is sent in a form

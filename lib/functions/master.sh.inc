@@ -7,10 +7,12 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 
 
 #
-# Update local INI for PHP CLI on the Ægir Master Instance.
-_php_cli_local_ini_update() {
+# The master's own .tmp and .drush: the CLI keeps no php.ini there (its
+# version's global ini applies, the temp paths come from TMPDIR), only the
+# directories and the release serial's stamp.
+_php_cli_local_dirs_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_cli_local_ini_update"
+    _msg "PROC: _php_cli_local_dirs_update"
   fi
   if [ ! -z "${1}" ]; then
     _DRUSH_FILE="/var/aegir/drush/${1}"
@@ -19,22 +21,10 @@ _php_cli_local_ini_update() {
   fi
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
-  _U_II="${_U_HD}/php.ini"
-  _PHP_CLI_UPDATE=NO
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
-      _PHP_CLI_UPDATE=YES
-    fi
-  done
-  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
-    || [ ! -e "${_U_II}" ] \
-    || [ ! -d "${_U_TP}" ] \
+  if [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     # aegir owns /var/aegir and can swap .tmp or .drush for a link: a link
     # there is removed, the age sweep never resolves a path through a name
@@ -52,50 +42,137 @@ _php_cli_local_ini_update() {
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
-    _U_INI=""
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
-        _U_INI=${e}
-      fi
-    done
-    _QTP=${_U_TP//\//\\\/}
+    # the stamp is created exclusively, never through a link at the name
     ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
-      # the old ini stays until the final copy replaces it
-      rm -f -- ./.ctrl.php*
-      [ -n "${_U_INI}" ] || { rm -f -- ./php.ini; exit 0; }
-      # edited in root's own temp directory and put in place once: no link
-      # or FIFO put at php.ini is ever opened, and the stamps are created
-      # exclusively
-      _U_W=$(mktemp -d 2> /dev/null) && [ -d "${_U_W}" ] || exit 0
-      if cp -a /opt/php${_U_INI}/lib/php.ini "${_U_W}/php.ini" 2> /dev/null; then
-        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-        # realpath cache off (every file operation checked against every listed
-        # tree, uncached); lshell users are confined by their own measures, and
-        # the FPM ini keeps its own list
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           "${_U_W}/php.ini"
-        wait
-        if cp -aT --remove-destination "${_U_W}/php.ini" ./php.ini 2> /dev/null; then
-          rm -f -- "./.ctrl.${_tRee}.${_xSrl}.pid"
-          echo | dd of="./.ctrl.php${_U_INI}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
-          echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
-        fi
-      fi
-      rm -rf -- "${_U_W}"
+      rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
+      echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
     )
   fi
   chown -R aegir:aegir ${_U_HD}
   chown -R aegir:aegir ${_U_TP}
+}
+
+#
+# The master's hostmaster tree holds directories every account can write
+# (sites/all/{modules,libraries,themes} in group users, the site's files/
+# in group www-data), so any name there can be a link or a hard link an
+# account planted. The tree is handed to aegir as chown -R did, and files/
+# given its modes (its directories 02775, its files 0664, so never
+# set-ID), only inside the real directory $1, from
+# the directory find walked (-execdir) and through a handle opened without
+# following a link or blocking on a FIFO: a directory, or a regular file
+# with a single link, never a link, a FIFO or a hard-linked file (one root
+# does not own only loses its set-ID bits).
+#
+# $1 handed to $2 (owner[:group] names, as chown -R took them).
+_master_reown_in() {
+  local _u _g=-1
+  _u=$(id -u -- "${2%%:*}" 2> /dev/null)
+  if [[ "${2}" == *:* ]]; then
+    _g=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
+  _acct_in_real_dir "${1}" _master_reown_here "${_u}" "${_g}"
+}
+_master_reown_here() {
+  perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} +
+}
+# A mode set through a handle on each name given (d: a directory, f: a
+# regular file with a single link), as chmod(1) sets a numeric one: a
+# directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775). A hard-linked regular file root does not own only
+# loses those two bits, which never widens it.
+_MASTER_NOFOLLOW_CHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "f" && -f _ && $s[4] != 0 && ($s[2] & 06000)) {
+    chmod($s[2] & 01777, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+# $1 and every directory below it set to $2, every regular file below it
+# to $3. Files take their own mode, never the directories' set-group-ID one:
+# any account can write a file there, and a setgid executable would run
+# with the store's group.
+_master_mode_all_in() {
+  _acct_in_real_dir "${1}" _master_mode_all_here "${2}" "${3}"
+}
+_master_mode_all_here() {
+  perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type d \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+}
+# As _master_mode_all_in, for a files store of a master converted to its own
+# web group: its private set (./private, and the subtrees nginx denies, a
+# case-insensitive prefix after any files/) keeps the modes the conversion
+# gave it, with no world bits. POSIX extended, read after -regextype
+# posix-extended.
+_MASTER_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+_master_mode_pub_in() {
+  _acct_in_real_dir "${1}" _master_mode_pub_here "${2}" "${3}"
+}
+_master_mode_pub_here() {
+  perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -regextype posix-extended \
+    \( -path ./private -o -iregex "${_MASTER_DENIED_RE}" \) -prune -o -type d \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -regextype posix-extended \
+    \( -path ./private -o -iregex "${_MASTER_DENIED_RE}" \) -prune -o -type f \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+}
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+# The group the hostmaster site's files/ take: the master's own web group,
+# wg-aegir, once its record says the master is converted to it; www-data
+# otherwise, as always.
+_master_files_group() {
+  case "$(_master_web_group)" in
+    converted\ *|phaseb\ *) echo "wg-aegir" ;;
+    *) echo "www-data" ;;
+  esac
 }
 
 
@@ -437,6 +514,12 @@ EOFMYSQL
     wait
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+  # Only now, with its rows made for the last time and the server alias
+  # holding the new password: the broker proves aegir_root by a login with
+  # the password that alias holds.
+  case "${_SQL_CONNECT}" in
+    localhost|127.0.0.1) _dbctl_rerecord aegir_root ;;
+  esac
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   wait
   rm -rf /var/aegir/.tmp/cache
@@ -512,6 +595,11 @@ _hostmaster_frontend_dbpass_sync() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g" 2>&1)
+  _THIS_HM_DBNM=$(cat ${_THIS_HM_SPTH}/drushrc.php \
+    | grep "options\['db_name'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1)
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
     && [ ! -z "${_THIS_HM_DBPD}" ]; then
@@ -520,7 +608,18 @@ _hostmaster_frontend_dbpass_sync() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       _SQL_CONNECT=127.0.0.1
     fi
-    _ESC="*.*"
+    ### The panel works in its own database only: grant just that one,
+    ### escaped as provisioning writes it (a bare _ matches any character).
+    ### An unreadable name keeps the old grant rather than locking the panel
+    ### out mid-upgrade.
+    if [[ "${_THIS_HM_DBNM}" =~ ^[A-Za-z0-9_]{1,64}$ ]]; then
+      _ESC="\`${_THIS_HM_DBNM//_/\\_}\`.*"
+      _GOPT=""
+    else
+      _ESC="*.*"
+      _GOPT="WITH GRANT OPTION"
+      _msg "ALRT: master hostmaster db_name not readable, its panel user keeps rights on all databases"
+    fi
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="${_hName}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -548,13 +647,327 @@ PROXYSQL
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
+    _hostmaster_oldhost_dbuser_drop
+    case "${_SQL_CONNECT}" in
+      localhost|127.0.0.1) _dbctl_rerecord master-panel ;;
+    esac
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+}
+
+#
+# Where the files of this box name each of the database users given, one
+# line per mention:
+#   db <user> <alias>         the master_db of a server alias: an instance's
+#                             own backend user
+#   panel <user> <site path>  the drushrc.php of a control panel: the site of
+#                             a hostmaster or hm alias, in its root's
+#                             hostmaster tree
+#   site <user> <site path>   the drushrc.php of any other site
+# Every alias in /var/aegir/.drush and each /data/disk/*/.drush is read, and
+# each site path an alias names inside its own root has its drushrc.php
+# read, both as _acct_read_whole_in reads them; a site path outside that
+# root is no site of that root. Non-zero, the last line "unread <path>",
+# when a file cannot be read whole, or an alias name or a site path inside
+# the root is not a plain one: an unread file never counts as naming
+# nothing. One link is passed over, since it names nothing of its own: an
+# alias name, no server alias's, that is a link whose text is exactly
+# hostmaster.alias.drushrc.php or that file's full path in the same .drush,
+# while that file is there as a regular file. Every other link is unread.
+# One text in master.sh.inc and satellite.sh.inc.
+_hostmaster_db_users_named() {
+  local _a _f _h _t _p _s _k _u _e=()
+  for _u in "$@"; do
+    _e+=( -e "${_u}" )
+  done
+  for _a in /var/aegir /data/disk/*; do
+    [ -d "${_a}/.drush" ] || continue
+    for _f in "${_a}"/.drush/*.alias.drushrc.php; do
+      [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+      case "${_f##*/}" in
+        *[!A-Za-z0-9._-]*)
+          echo "unread ${_f}"
+          return 1
+          ;;
+      esac
+      # the link earlier releases left under the panel's name: what it
+      # leads to is read in this loop under its own name, as a panel's
+      _h="${_a}/.drush/hostmaster.alias.drushrc.php"
+      if [ -L "${_f}" ] && [[ "${_f##*/}" != server_* ]] \
+        && [ -f "${_h}" ] && [ ! -L "${_h}" ]; then
+        _t=$(readlink -n "${_f}" 2> /dev/null; echo .)
+        case "${_t%.}" in
+          hostmaster.alias.drushrc.php|"${_h}") continue ;;
+        esac
+      fi
+      if ! _t=$(_acct_read_whole_in "${_a}/.drush" "${_f##*/}"); then
+        echo "unread ${_f}"
+        return 1
+      fi
+      case "${_f##*/}" in
+        server_*)
+          while IFS= read -r _u; do
+            echo "db ${_u} ${_f}"
+          done < <(printf '%s\n' "${_t}" \
+            | sed -n "s#^ *'master_db' => '[a-z]*://\([^:@']*\):.*#\1#p" \
+            | grep -xF "${_e[@]}")
+          ;;
+      esac
+      while IFS= read -r _p; do
+        case "${_p}" in
+          "${_a}"/*) ;;
+          *) continue ;;
+        esac
+        case "${_p}" in
+          *[!A-Za-z0-9._/-]*|*//*|*/|*/./*|*/../*|*/.|*/..)
+            echo "unread ${_p}"
+            return 1
+            ;;
+        esac
+        [ -e "${_p}/drushrc.php" ] || [ -L "${_p}/drushrc.php" ] || continue
+        if ! _s=$(_acct_read_whole_in "${_p}" drushrc.php); then
+          echo "unread ${_p}/drushrc.php"
+          return 1
+        fi
+        _k=site
+        case "${_f##*/}" in
+          hostmaster.alias.drushrc.php|hm.alias.drushrc.php)
+            case "${_p}" in
+              "${_a}"/aegir/distro/*/sites/?*|/var/aegir/*/sites/?*) _k=panel ;;
+            esac
+            ;;
+        esac
+        while IFS= read -r _u; do
+          echo "${_k} ${_u} ${_p}"
+        done < <(printf '%s\n' "${_s}" | grep -owF "${_e[@]}" | sort -u)
+      done < <(printf '%s\n' "${_t}" \
+        | sed -n "s/^ *'site_path' => '\([^']*\)',.*/\1/p")
+    done
+  done
+  return 0
+}
+# How the log names the database user $1: after the longest of this box's
+# account names, or the first label of the master's uri, that it begins
+# with and then a non-digit, else after $2 (an account's name, or master).
+# One text in master.sh.inc and satellite.sh.inc.
+_hostmaster_db_user_label() {
+  local _a _n _uri _o="${2}" _l=0
+  for _a in /data/disk/*; do
+    [ -d "${_a}/.drush" ] || continue
+    _n="${_a##*/}"
+    [[ "${1}" == "${_n}"[!0-9]* ]] && [ "${#_n}" -gt "${_l}" ] || continue
+    _o="${_n}"
+    _l="${#_n}"
+  done
+  _uri=$(sed -n "s/^ *'uri' => '\([^']*\)',.*/\1/p" \
+    /var/aegir/.drush/hm.alias.drushrc.php 2> /dev/null | head -n 1)
+  _n="${_uri%%.*}"
+  if [ "${_n}" != "${_uri}" ] && [[ "${1}" == "${_n}"[!0-9]* ]] \
+    && [ "${#_n}" -gt "${_l}" ]; then
+    _o=master
+  fi
+  if [ "${_o}" = "master" ]; then
+    echo "earlier master panel database user"
+  else
+    echo "${_o} earlier panel database user"
+  fi
+}
+# The candidates given after $1 (the pass's own: an account's name, or
+# master) are users of this box's own plain server with the shape and
+# prefix of an earlier panel's, none the live panel's user or an account's
+# name, each with SUPER on a host row. One whose host names are not all
+# plain ones is left alone. Then one that the master_db of a server alias
+# or a panel's drushrc.php names stays as it is (an instance's own user, or
+# a panel's that its own pass converges); one that another site's
+# drushrc.php names keeps its database grants and loses its global rights
+# on every row (a site that took over a leftover's name gets a row of its
+# own without them); one with a database of its name, or without SUPER on
+# every row, stays as it is (the files read are this box's only, and a
+# server other boxes keep their databases on holds their panels' users);
+# any other is dropped, the rows a read right before the drop finds, and
+# only while that read still finds SUPER on every row and no database of
+# its name. A read that fails leaves that user alone, and a file that
+# cannot be read leaves every one. One text in master.sh.inc and
+# satellite.sh.inc.
+_hostmaster_db_users_settle() {
+  local _own="${1}" _u _h _s _c _rows _named _ok _all _w _l _list=() _schema=" " _part=" "
+  local _C=(mysql --silent --skip-column-names -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  shift
+  for _u in "$@"; do
+    _rows=$("${_C[@]}" "SELECT Host, Super_priv FROM mysql.user WHERE User='${_u}'" \
+      2> /dev/null) || continue
+    _c=$("${_C[@]}" "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${_u}'" \
+      2> /dev/null) || continue
+    [[ "${_c}" =~ ^[0-9]+$ ]] && [ -n "${_rows}" ] || continue
+    _ok=YES
+    _all=YES
+    while IFS=$'\t' read -r _h _s; do
+      [ "${_s}" = "Y" ] || _all=NO
+      case "${_h}" in
+        ""|*[!A-Za-z0-9._%:-]*) _ok=NO ;;
+      esac
+    done <<< "${_rows}"
+    [ "${_ok}" = "YES" ] || continue
+    _list+=( "${_u}" )
+    [ "${_c}" = "0" ] || _schema+="${_u} "
+    [ "${_all}" = "YES" ] || _part+="${_u} "
+  done
+  [ "${#_list[@]}" -gt 0 ] || return 0
+  if ! _named=$(_hostmaster_db_users_named "${_list[@]}"); then
+    _w=$(printf '%s\n' "${_named}" | sed -n 's/^unread //p' | tail -n 1 \
+      | tr -d '\n' | tr -c 'A-Za-z0-9._/-' '?' | cut -c1-200)
+    case "${_w}" in
+      /data/disk/?*) _l="${_w#/data/disk/}"; _l="account ${_l%%/*}" ;;
+      *) _l="master" ;;
+    esac
+    if [ "${_own}" = "master" ]; then
+      _msg "ALRT: earlier master panel database users kept: ${_w} (${_l}) could not be read"
+    else
+      _msg "ALRT: ${_own} earlier panel database users kept: ${_w} (${_l}) could not be read"
+    fi
+    return 0
+  fi
+  for _u in "${_list[@]}"; do
+    printf '%s\n' "${_named}" | grep -qE "^(db|panel) ${_u} " && continue
+    _l=$(_hostmaster_db_user_label "${_u}" "${_own}")
+    _w=$(printf '%s\n' "${_named}" | sed -n "s#^site ${_u} ##p" | head -n 1)
+    if [ -n "${_w}" ]; then
+      _rows=$("${_C[@]}" "SELECT Host FROM mysql.user WHERE User='${_u}'" \
+        2> /dev/null) || continue
+      [ -n "${_rows}" ] || continue
+      if _hostmaster_db_user_global_revoke "${_u}" "${_rows}"; then
+        _msg "INFO: ${_l} ${_u} kept with its database grants only, global rights revoked (site ${_w} names it)"
+      else
+        _msg "ALRT: ${_l} ${_u} global rights not revoked, or a database grant lost (site ${_w} names it)"
+      fi
+      continue
+    fi
+    [[ "${_schema}${_part}" == *" ${_u} "* ]] && continue
+    # the walk takes seconds, and a site created meanwhile brings a
+    # database of this name and a row without SUPER: read both again
+    _rows=$("${_C[@]}" "SELECT Host, Super_priv FROM mysql.user WHERE User='${_u}'" \
+      2> /dev/null) || continue
+    _c=$("${_C[@]}" "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${_u}'" \
+      2> /dev/null) || continue
+    [ "${_c}" = "0" ] && [ -n "${_rows}" ] || continue
+    _all=YES
+    while IFS=$'\t' read -r _h _s; do
+      [ "${_s}" = "Y" ] || _all=NO
+      case "${_h}" in
+        ""|*[!A-Za-z0-9._%:-]*) _all=NO ;;
+      esac
+    done <<< "${_rows}"
+    [ "${_all}" = "YES" ] || continue
+    while IFS=$'\t' read -r _h _s; do
+      "${_C[@]}" "DROP USER '${_u}'@'${_h}'" &> /dev/null
+    done <<< "${_rows}"
+    _c=$("${_C[@]}" "SELECT COUNT(*) FROM mysql.user WHERE User='${_u}'" 2> /dev/null)
+    if [ "${_c}" = "0" ]; then
+      _msg "INFO: ${_l} ${_u} dropped (every global right, no database, no drushrc.php names it)"
+    else
+      _msg "ALRT: ${_l} ${_u} could not be dropped"
+    fi
+  done
+}
+# Takes from the user $1, on each host row given in $2 (one per line), the
+# global privileges SHOW GRANTS lists for that row, each by name, and its
+# global grant option: a REVOKE ALL on *.* takes the database grants too
+# (measured on Percona 8.4). A database grant that goes all the same is
+# granted back as it read before. Zero when no row keeps a global right and
+# every row has the database grants it had. One text in master.sh.inc and
+# satellite.sh.inc.
+_hostmaster_db_user_global_revoke() {
+  local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  while IFS= read -r _h; do
+    case "${_h}" in
+      ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
+    esac
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _d=$(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -v ' ON \*\.\* TO ')
+    _b=$((_b + $(printf '%s\n' "${_d}" | grep -c .)))
+    while IFS= read -r _p; do
+      _p="${_p#GRANT }"
+      _p="${_p%% ON \*.\* TO *}"
+      [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
+      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
+    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    while IFS= read -r _p; do
+      [ -n "${_p}" ] || continue
+      printf '%s\n' "${_g}" | grep -qxF -- "${_p}" && continue
+      case "${_p}" in
+        *";"*) continue ;;
+      esac
+      "${_C[@]}" "${_p}" &> /dev/null
+    done <<< "${_d}"
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _a=$((_a + $(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -vc ' ON \*\.\* TO ')))
+    _n=$((_n + $(printf '%s\n' "${_g}" | grep ' ON \*\.\* TO ' | grep -vc '^GRANT USAGE ON ')))
+  done <<< "${2}"
+  [ "${_n}" = "0" ] && [ "${_a}" = "${_b}" ]
+}
+
+#  A master panel database user an earlier release left with every global
+# right under a name no upgrade reuses: named from the master's uri before
+# the host was renamed, provisioning never re-grants, re-creates or drops
+# it, and it still answers to the password its old drushrc.php held. A
+# candidate has the shape provisioning gives a panel database (16
+# characters of the uri without dots and dashes, or 14 of them and _0 to
+# _9, or 13 and _10 to _99), begins with the first label of the master's
+# uri (master, as in master.<host>) and then a non-digit, and has SUPER on
+# a host row; the master panel's own user and an account's own user (named
+# as the account) never are. _hostmaster_db_users_settle leaves alone one
+# that a server alias names as its master_db or a panel's drushrc.php
+# names; takes every global right, and nothing else, from one that another
+# site's drushrc.php names, whether or not a database of its name exists;
+# leaves alone any other with a database of its name or without SUPER on
+# every host row; and drops the rest. No box keeps a record of a former
+# panel name for good, so an operator's own user of exactly that shape
+# under that prefix is treated the same: dropped when it holds SUPER on
+# every host row, nothing names it and no database of its name exists,
+# stripped of its global rights when a site names it. Only on the box's
+# own plain server. The files read are this box's only, so a database of
+# its name keeps a user: a server other boxes keep their databases on also
+# holds their panels' users, which no file here names.
+_hostmaster_oldhost_dbuser_drop() {
+  local _uri _b _u _rows _cand=()
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _hostmaster_oldhost_dbuser_drop"
+  fi
+  case "${_SQL_CONNECT}" in
+    localhost|127.0.0.1) ;;
+    *) return 0 ;;
+  esac
+  [ "${_THIS_DB_PORT}" = "3306" ] || return 0
+  [ -e "/root/.my.cluster_root_pwd.txt" ] && return 0
+  _uri=$(sed -n "s/^ *'uri' => '\([^']*\)',.*/\1/p" \
+    /var/aegir/.drush/hm.alias.drushrc.php 2> /dev/null | head -n 1)
+  _b="${_uri%%.*}"
+  [ "${_b}" != "${_uri}" ] || return 0
+  [[ "${_b}" =~ ^[a-z][a-z0-9]{0,14}$ ]] || return 0
+  _rows=$(mysql --silent --skip-column-names -u root -h"${_SQL_CONNECT}" \
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql \
+    -e "SELECT DISTINCT User FROM mysql.user WHERE Super_priv='Y'" 2> /dev/null) \
+    || return 0
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^([a-z0-9]{16}|[a-z0-9]{14}_[0-9]|[a-z0-9]{13}_[1-9][0-9])$ ]] \
+      || continue
+    [[ "${_u}" == "${_b}"[!0-9]* ]] || continue
+    [ "${_u}" = "${_THIS_HM_DBUR}" ] && continue
+    [ -e "/data/disk/${_u}" ] && continue
+    _cand+=( "${_u}" )
+  done <<< "${_rows}"
+  [ "${#_cand[@]}" -gt 0 ] || return 0
+  _hostmaster_db_users_settle master "${_cand[@]}"
 }
 
 #
@@ -647,7 +1060,11 @@ _php_cli_drush_update() {
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ] \
+    && [ -x "/opt/php86/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php86\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ] \
     && [ -x "/opt/php85/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
@@ -675,12 +1092,31 @@ _php_cli_drush_update() {
   # static/control files (cli.info + instant phpNN.info switches), and
   # that runtime choice must always win over the baked pin.
   _DRUSH_LNCH="${_ROOT}/drush/drush.launcher"
-  _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
-  if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
-    sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
-    sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
-    sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" ${_DRUSH_LNCH} &> /dev/null
+  _LNCH_PHP="$(_master_drush_lnch_php)"
+  if [ -e "${_DRUSH_LNCH}" ] && [ -n "${_LNCH_PHP}" ]; then
+    # One edit, put back as one file: a Drush started meanwhile finds the old
+    # default or the new one, never a launcher without it. A copy
+    # _hostmaster_dr_up put in already carries it, so there the same lines
+    # are written again.
+    sed -i "$(_master_drush_lnch_sed "${_LNCH_PHP}")" "${_DRUSH_LNCH}" &> /dev/null
   fi
+}
+
+#
+# The PHP the Master's Drush launcher defaults to: the CLI binary of
+# _PHP_CLI_VERSION, printed only when it is installed.
+_master_drush_lnch_php() {
+  local _p="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
+  [ -x "${_p}" ] || return 1
+  printf '%s\n' "${_p}"
+}
+#
+# The launcher's edit as one sed script, the DRUSH_PHP default $1: made on a
+# fresh copy before it goes in (_hostmaster_dr_up) and on the tree in place
+# (_php_cli_drush_update).
+_master_drush_lnch_sed() {
+  printf '%s\n%s\n%s' "1s/^#\!.*/#\!\/bin\/bash/" "/^export DRUSH_PHP=/d" \
+    "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${1}}\""
 }
 
 #
@@ -779,36 +1215,82 @@ _hostmaster_dr_up() {
   [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] \
     && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] && rm -rf /drush
   [ -d "/backups/system" ] && rm -rf /backups/system/drush-pre-* &> /dev/null
-  local _drCpFail=""
+  ### The fresh Drush is made in a stage beside drush/ and swapped in whole,
+  ### so a Drush started meanwhile finds the old tree or the new one, never
+  ### no tree, and never the stock launcher, which has no DRUSH_PHP default
+  ### and runs on the first PHP on the path: the stage takes the launcher
+  ### edit _php_cli_drush_update repeats later, a download its modes, and,
+  ### run as root, is handed to aegir as the pass hands the tree over after.
+  ### The two names swap in one rename (_SAT_SWAP_PL); where one rename
+  ### cannot do it (no tree in place, or no renameat2 on the box), the tree
+  ### is moved aside first and put back when the stage cannot go in. A copy
+  ### or download that fails leaves the tree in place (a copy cut short can
+  ### still hold a drush.php, so its own status counts too). The tree
+  ### replaced goes to backups/system.
+  local _drS="./drush.new.$$" _drOk=YES _drPhp _drOld="" _drKeep=""
+  # a stage a stopped pass left; a live pass's is never this old
+  find . -mindepth 1 -maxdepth 1 -name "drush.new.*" -mmin +60 \
+    -exec rm -rf -- {} + &> /dev/null
+  rm -rf -- "${_drS}"
+  mkdir -m 0700 -- "${_drS}" || return 1
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
-    mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-    cp -af /opt/tools/drush/8/drush ${_ROOT}/ || _drCpFail=YES
+    cp -af /opt/tools/drush/8/drush "${_drS}/" || _drOk=NO
   else
-    mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-    _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
-    cd ${_ROOT}/drush/
-    find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
-    chmod 755 ${_ROOT}/drush/drush
-    chmod 755 ${_ROOT}/drush/drush.complete.sh
-    chmod 755 ${_ROOT}/drush/drush.launcher
-    chmod 755 ${_ROOT}/drush/drush.php
-    chmod 755 ${_ROOT}/drush/unish.sh
-    chmod 755 ${_ROOT}/drush/examples/drush.wrapper
-    chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
-    chmod 755 ${_ROOT}/drush/examples/helloworld.script
+    # the archive unpacks drush/ in the directory it is fetched to
+    ( cd -- "${_drS}" && _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz" ) || _drOk=NO
+    find "${_drS}/drush" -type d -exec chmod 0755 {} \; &> /dev/null
+    find "${_drS}/drush" -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 "${_drS}/drush/drush"
+    chmod 755 "${_drS}/drush/drush.complete.sh"
+    chmod 755 "${_drS}/drush/drush.launcher"
+    chmod 755 "${_drS}/drush/drush.php"
+    chmod 755 "${_drS}/drush/unish.sh"
+    chmod 755 "${_drS}/drush/examples/drush.wrapper"
+    chmod 755 "${_drS}/drush/examples/git-bisect.example.sh"
+    chmod 755 "${_drS}/drush/examples/helloworld.script"
   fi
-  ### A failed copy or download left the master without Drush: put the tree
-  ### rotated aside above back, rather than run without one until next pass.
-  ### A copy that fails part way still leaves a drush.php behind, so its own
-  ### status counts too; a failed download leaves no tree.
-  if [ -n "${_ROOT}" ] \
-    && { [ -n "${_drCpFail}" ] || [ ! -f "${_ROOT}/drush/drush.php" ]; } \
-    && [ -f "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}/drush.php" ]; then
-    rm -rf ${_ROOT}/drush
-    mv -f ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} ${_ROOT}/drush
+  if [ "${_drOk}" = "YES" ] && [ -f "${_drS}/drush/drush.php" ]; then
+    if _drPhp="$(_master_drush_lnch_php)" \
+      && [ -f "${_drS}/drush/drush.launcher" ]; then
+      sed -i "$(_master_drush_lnch_sed "${_drPhp}")" \
+        "${_drS}/drush/drush.launcher" &> /dev/null
+    fi
+    if [ "$(id -u)" -eq 0 ]; then
+      chown -R aegir:aegir "${_drS}/drush" &> /dev/null
+    fi
+    if [ ! -e "./drush" ] && [ ! -L "./drush" ]; then
+      mv -T -- "${_drS}/drush" ./drush &> /dev/null
+    elif [ -n "${_SAT_SWAP_PL}" ] \
+      && perl -e "${_SAT_SWAP_PL}" -- "${_drS}/drush" ./drush 2> /dev/null; then
+      _drOld="${_drS}/drush"
+    elif mv -T -- ./drush "${_drS}/old" &> /dev/null; then
+      _drOld="${_drS}/old"
+      if ! mv -T -- "${_drS}/drush" ./drush &> /dev/null; then
+        # put back; a tree that cannot go back goes to backups/system below
+        mv -T -- "${_drS}/old" ./drush &> /dev/null && _drOld=""
+      fi
+    fi
+    if [ -n "${_drOld}" ] \
+      && ! mv -f -- "${_drOld}" "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}" &> /dev/null; then
+      _drKeep=YES
+    fi
+  fi
+  # The stage goes only when it holds no tree kept nowhere else.
+  if [ -n "${_drKeep}" ]; then
+    _msg "NOTE: Drush tree left in ${_ROOT}/${_drS#./}, backups/system took no copy"
+  else
+    rm -rf -- "${_drS}"
   fi
 }
+
+#
+# The two names given swapped in one rename (renameat2 with
+# RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
+# when they were. One text wherever it is defined (satellite.sh.inc,
+# master.sh.inc, which BARRACUDA.sh.txt, AegirUpgrade.sh.txt and
+# AegirSetupM.sh.txt source, and BOA.sh.txt).
+# shellcheck disable=SC2016
+_SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
 #
 # Upgrade Ægir Master Instance.
@@ -870,9 +1352,11 @@ _aegir_master_upgrade() {
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
+    _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir
+    # a CLI php.ini an earlier release left (+i) would refuse the chown;
+    # the ltd worker removes it
     _U_HD="/var/aegir/.drush"
-    if [ -e "${_U_HD}/php.ini" ]; then
+    if [ -f "${_U_HD}/php.ini" ] && [ ! -L "${_U_HD}/php.ini" ]; then
       chattr -i ${_U_HD}/php.ini
     fi
     mkdir -p /var/aegir/backups/system
@@ -882,9 +1366,21 @@ _aegir_master_upgrade() {
     chown -R aegir:aegir /var/aegir/clients
     chown -R aegir:aegir /var/aegir/config
     chown -R aegir:aegir /var/aegir/drush
-    chown -R aegir ${_THIS_HM_ROOT}
-    chown -R aegir:www-data ${_THIS_HM_SITE}/files
-    chmod -R 02775 ${_THIS_HM_SITE}/files
+    # every account can write sites/all/* (group users) and the site's
+    # files/ (group www-data) of this tree: walked as _master_reown_in and
+    # _master_mode_all_in walk, never handing over or widening a link or a
+    # file another account hard-linked there; a file there never keeps a
+    # set-ID bit, nor a single-link one an execute bit. Once the master is
+    # converted to its own web group, files/ take that group (wg-aegir) and
+    # keep their private set's modes.
+    _master_reown_in "${_THIS_HM_ROOT}" aegir
+    _MWG_FILES=$(_master_files_group)
+    _master_reown_in "${_THIS_HM_SITE}/files" "aegir:${_MWG_FILES}"
+    if [ "${_MWG_FILES}" = "wg-aegir" ]; then
+      _master_mode_pub_in "${_THIS_HM_SITE}/files" 02775 0664
+    else
+      _master_mode_all_in "${_THIS_HM_SITE}/files" 02775 0664
+    fi
 
     # Never serialize an empty PHP version: the drush shebang update just
     # below hard-exits on an unresolved value, and the appends further down
@@ -897,7 +1393,7 @@ _aegir_master_upgrade() {
       if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
         _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
       else
-        for _fbV in 84 85 83; do
+        for _fbV in 84 85 86 83; do
           if [ -x "/opt/php${_fbV}/bin/php" ]; then
             _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
             break
@@ -1012,9 +1508,6 @@ _aegir_master_upgrade() {
     else
       # Consumed once; kept only on failure for post-mortem reading
       rm -f ${_vBs}/${_hndIncB}
-      if [ -e "${_U_HD}/php.ini" ]; then
-        chattr +i ${_U_HD}/php.ini
-      fi
       _hostmaster_frontend_dbpass_sync
     fi
     if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
@@ -1030,8 +1523,6 @@ _aegir_master_upgrade() {
     fi
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _redis_password_update
     fi
     _force_advanced_nginx_config
     cd /var/aegir
@@ -1095,7 +1586,10 @@ _php_cli_cron_update() {
     | tee -a "${_mCron}" >/dev/null 2>&1
   fi
   if [ -e "${_mCron}" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php86\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        "${_mCron}" &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php85\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         "${_mCron}" &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
@@ -1360,7 +1854,7 @@ EOFMYSQL
       if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
         _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
       else
-        for _fbV in 84 85 83; do
+        for _fbV in 84 85 86 83; do
           if [ -x "/opt/php${_fbV}/bin/php" ]; then
             _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
             break
@@ -1472,7 +1966,7 @@ EOFMYSQL
     fi
     wait
 
-    _php_cli_local_ini_update
+    _php_cli_local_dirs_update
 
     if [ -e "/opt/tmp/state/aegir/status-AegirSetupM-FAIL" ] \
       || [ ! -e "/opt/tmp/state/aegir/status-AegirSetupM-OK" ]; then
@@ -1498,10 +1992,6 @@ EOFMYSQL
         mkdir -p \
           ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
-    fi
-    _U_HD="/var/aegir/.drush"
-    if [ -e "${_U_HD}/php.ini" ]; then
-      chattr +i ${_U_HD}/php.ini
     fi
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     wait
@@ -1533,7 +2023,7 @@ EOFMYSQL
           ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
     fi
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
+    _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir &> /dev/null
 
   ###--------------------###
     if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
@@ -1563,8 +2053,6 @@ EOFMYSQL
     fi
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _redis_password_update
     fi
     _force_advanced_nginx_config
     chmod 0711 ${_mtrInc} &> /dev/null

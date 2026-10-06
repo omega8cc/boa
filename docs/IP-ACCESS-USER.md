@@ -15,7 +15,9 @@ static/control/ip/access.txt
 On a typical box that is `/data/disk/<instance>/static/control/ip/access.txt`, where
 `<instance>` is the Octopus user (e.g. `o1`) that hosts the site — your administrator can
 tell you which one. Add one line per site: the site name, then the IP addresses allowed
-to reach it.
+to reach it. For a site in a subdirectory of a domain (`example.com/blog`), write the line
+for the domain (`example.com`), whether or not the domain is a site of its own: that line
+covers every path of the domain, its subdirectory sites included.
 
 ```
 # static/control/ip/access.txt

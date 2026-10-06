@@ -142,7 +142,9 @@ case "$1" in
 	;;
 
 	configtest)
-		$php_fpm_BIN -t
+		# Same options as start: a bare -t reads the default php-fpm.conf, which BOA never installs.
+		$php_fpm_BIN -t $php_opts
+		exit $?
 	;;
 
 	*)

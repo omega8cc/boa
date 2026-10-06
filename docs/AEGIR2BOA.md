@@ -388,8 +388,10 @@ look on any failure.
   and the site then degrades on the agent's next pass, so fix the
   policy, don't race the probe.
 - **Disk headroom**: per site roughly 2× its DB size free under
-  `/var/aegir` on the source for dumps; the whole estate + 500 MB free
-  under `/data/disk` on the target (`transfer` measures and refuses).
+  `/var/aegir` on the source for dumps; on the target the platform
+  trees + 500 MB free under `/data/disk` and the dumps + 500 MB free
+  under `/var/backups` (one budget when both are one filesystem;
+  `transfer` measures and refuses).
 - **A shared target box can have other provisioning actors** (billing
   automation, another operator). The tools' existence gates catch a
   collision, but never pre-assume the next free `oN` account name —
@@ -711,6 +713,18 @@ site's DB **with the site's own credentials** from its drushrc (no root
 DB access is ever needed on the source) into `/var/aegir/src/a2b/`, and
 writes the site's manifest.
 
+The dump carries the database's views and triggers, and its stored
+routines and events where the site's own login can read them: `--routines`
+only when no routine of the database hides its body from that login (one
+another user defines, on which `mysqldump` would stop), `--events` only
+when `SHOW EVENTS` answers and, when one of the events is enabled, the
+source runs its event scheduler (MariaDB and MySQL 5.7 leave it off by
+default, so an enabled event may never have run there, and a target that
+runs its own would start it), each only when the source's `mysqldump` knows
+the option. What is left out is named in the log, and the dump goes on
+without it. These logins read only the source's own option files and the
+site's: a login root keeps in `~/.my.cnf` is not used.
+
 Skips honestly, per site: missing vhost or
 alias paths, multi-host DB, unparsable credentials, a 443 vhost whose
 cert files are missing, or insufficient dump headroom. A failed dump
@@ -734,13 +748,16 @@ from).
   aegir2boa-stage2 transfer --target <target-ip> --account o1 --all   # dry, then --live
 ```
 
-Measures total size against the target's free `/data/disk` space
-(refuses without need+500 MB), then rsyncs each platform tree to
-`/data/disk/<oN>/static/a2b/<platform>/` (chowned to the account — a
-source-uid tree is unreadable to the account and breaks every later
-import), each site dump + manifest to `/data/disk/<oN>/src/a2b/`, plus
-the ssl.d trees and the nginx configs as reference copies (never into the
-target's live config — vhosts are regenerated natively by verify tasks).
+Measures the platform trees against the target's free `/data/disk` space
+and the dumps against its free `/var/backups` space (one budget when both
+are one filesystem; refuses without need+500 MB), then rsyncs each
+platform tree to `/data/disk/<oN>/static/a2b/<platform>/` (chowned to the
+account — a source-uid tree is unreadable to the account and breaks every
+later import), each site dump + manifest to `/var/backups/a2b/<oN>/src/`
+(root-only, outside the account's tree, which the account can write),
+plus the ssl.d trees and the nginx configs as reference copies there
+(never into the target's live config — vhosts are regenerated natively by
+verify tasks).
 
 Drush aliases are deliberately NOT transferred on either route: vanilla
 aliases carry `/var/aegir` roots that would poison the target; everything
@@ -748,6 +765,13 @@ is regenerated fresh. The route marker ships on every
 transfer; on the db-import route it additionally ships `hostmaster.sql`,
 the acknowledged scrub list, and the source FQDN record (`transfer`
 refuses db-import without a `check --accept-scrub-list` run recorded).
+
+Last, `transfer` reports the account's web group on the target as that
+box's own `instgrp webstatus` reads it (`NONE`, `A` or `B`; anything else is
+an `ALRT` naming the command to run there). A target armed for the account
+web group (it carries the arm stamp; see "Arming" in `INSTGRP.md`) converts
+the account at its `create`; the platform trees this run landed take its web group at the
+import's Verify tasks. Nothing is changed by the report.
 
 ### import, per-site route
 
@@ -799,17 +823,22 @@ The dry run prints the full numbered plan. The live run opens the
 **account freeze window**: the freeze marker (`log/proxied.pid`) makes
 every nightly/periodic BOA agent skip the account, in-flight nightly
 passes are drained, and the account's task dispatcher is **held aside**
+in `/var/backups/a2b/<oN>/`, where the per-minute runner never looks,
 for the duration — a raw DB import must never race task dispatch. If the
 import fails mid-way the dispatcher deliberately STAYS held (a broken
 panel must not dispatch); only success, `--revert-db-import`, or manual
 repair restore it. The steps, each idempotent behind its own marker:
 
-1. **Snapshot**: dump the fresh panel DB to `undo/a2b-pre-import.sql`
-   (the revert point) and capture the enabled-module set into
-   `undo/a2b-enabled-baseline.txt` (the reconciliation source of truth).
-   The import pre-checks roughly 2× the transferred hostmaster dump +
-   200 MB free under the account root for this snapshot — an extra
-   headroom gate on top of the transfer one.
+1. **Snapshot**: dump the fresh panel DB to
+   `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql` (the revert point) and
+   capture the enabled-module set into `undo/a2b-enabled-baseline.txt`
+   beside it (the reconciliation source of truth). The import pre-checks
+   roughly 2× the transferred hostmaster dump + 200 MB free under
+   `/var/backups/a2b/<oN>` for this snapshot — an extra headroom gate on
+   top of the transfer one. The snapshot is taken with
+   `--set-gtid-purged=OFF` when the local `mysqldump` takes that option,
+   so it carries no GTID state and `--revert-db-import` loads it back on a
+   box with GTID on (every box an `xmass` run touched).
 2. **Drop, then load with sandbox strip**: the target panel DB is dropped
    (an overlay import is BOA-to-BOA-only and would leave orphaned tables)
    and the transferred dump streamed in minus the MariaDB ≥ 10.5.25
@@ -1041,11 +1070,33 @@ a fresh export+transfer.
 ```
 
 Source state lives under `/var/aegir/log/a2b/` (state, manifests, per-site
-markers), target state under `/data/disk/<oN>/log/a2b/`; dumps under
-`src/a2b/` on both sides; the pre-import snapshot under
-`/data/disk/<oN>/undo/`. A crashed run's stale lock
+markers), its dumps under `/var/aegir/src/a2b/`. Target state lives under
+`/var/backups/a2b/<oN>/`, root-only and outside the account's tree:
+`state/` and `markers/`, the held-aside dispatcher, the landed dumps,
+manifests and reference copies in `src/`, and the pre-import snapshot and
+baselines in `undo/`. A crashed run's stale lock
 (`/var/run/aegir2boa-stage2.*.lock`) is taken over automatically once its
 recorded pid is dead.
+
+State an earlier release left in the account's tree on the target
+(`/data/disk/<oN>/log/a2b/`, `src/a2b/`, `undo/a2b-pre-import.sql`) is
+never read, because the account can write that tree: a target verb alerts
+when it finds it and no `/var/backups/a2b/<oN>/` exists yet, and a
+`transfer` re-run from the source lands fresh artifacts.
+
+A dispatcher that release held aside there is never moved back: when a
+db-import or `--revert-db-import` restores dispatch and
+`/var/xdrago/run-<oN>` is missing, the tool rebuilds it from another
+account's dispatcher on the box (the same file with this account's
+`_H_USER` line), or alerts that dispatch for the account stays off until
+its next Octopus upgrade rewrites the dispatcher. `--revert-db-import`
+never loads a snapshot left there: it stops and names
+`/var/backups/a2b/<oN>/undo/a2b-pre-import.sql`, where the operator may
+place that snapshot after checking it.
+
+The site databases that release's import loaded are recorded only in its
+markers there, so a revert or `--reset-sites` does not drop them: it
+alerts, and the operator drops them by hand after checking the list.
 
 ## Stage 3 — DNS cutover and source decommission
 
@@ -1083,8 +1134,8 @@ deliberately:
    step reported as trusted; every other migration's trust stays), drop the
    migration key from
    `/root/.ssh/authorized_keys`, and optionally the tool copy and the
-   landed `src/a2b/` artifacts once the estate has run clean past a
-   backup cycle.
+   landed `/var/backups/a2b/<oN>/src/` artifacts once the estate has
+   run clean past a backup cycle.
 
 ## Troubleshooting quick reference
 
@@ -1111,7 +1162,22 @@ deliberately:
 
 - The stage-2 tool takes nothing for granted about the source: per-site
   dumps use each site's own DB credentials, `mysqldump` not mydumper, and
-  every remote action is plain root ssh + rsync.
+  every remote action is plain root ssh + rsync. Those dumps and the panel
+  dump take `--set-gtid-purged=OFF` when the source's `mysqldump` takes that
+  option, so none carries the source's GTID state to the target.
+- On both routes a site's database is loaded as root, with the definer of
+  each view, trigger, stored routine and event set to the site's own user
+  (`'<db>'@'localhost'`), so each runs as the site, as after a clone. A
+  definer naming an account the target lacks would load, then fail when
+  it runs.
+- A MariaDB or MySQL 5.7 source makes its triggers, routines and events
+  under a `sql_mode` holding `NO_AUTO_CREATE_USER` (both servers' default),
+  which MySQL 8 refuses to set (ERROR 1231): the load leaves that mode out
+  of the dump's `sql_mode` lines. A load that fails, or a dump that cannot
+  be read, drops the database it had just made, so a re-run of the import
+  lands that site again; the alert says so, or that it could not be
+  dropped. A target whose event scheduler is not on names each database
+  whose enabled events it loaded: they do not run there.
 - Idempotency and resume: every verb re-run skips what its markers say is
   done; `status`/`target-status` show exactly where a migration stands.
 - Parallel estates: locks and markers are scoped per account and site, so

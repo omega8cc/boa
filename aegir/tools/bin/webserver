@@ -71,7 +71,7 @@ _valkey_health_check_fix() {
 }
 
 _fpm_health_check_fix() {
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -x "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
       _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
@@ -112,11 +112,64 @@ _nginx_health_check_fix() {
   fi
 }
 
-_web_up() {
-  if [ ! -e "/var/tmp/fpm" ]; then
-    mkdir -p /var/tmp/fpm
-    chmod 1777 /var/tmp/fpm
+# /var/tmp/fpm is sticky (1777) and root's: every pool keeps its opcache
+# lockfile there and none may remove another's. valkey/ in it holds the
+# backoff flag every pool and CLI shares and is 0777 without the sticky bit
+# on purpose (any pool must replace or remove a flag another armed), so the
+# kernel's link protections do not cover it: PHP uses it only while it and
+# its parent are real root-owned directories, and root keeps them so. A
+# wrong entry is moved into a fresh root-only directory (mktemp) and removed
+# there, after its replacement exists; a new one is only ever made with a
+# plain mkdir, which fails on any name that exists, a link included, and is
+# then left to the next pass. valkey/ is handled from inside root's own
+# /var/tmp/fpm, and modes are set only on root's own entries, which no other
+# user can move in these sticky root-owned parents.
+_fpm_tmp_enforce() {
+  local _d=/var/tmp/fpm
+  local _old
+  if [ -L "${_d}" ] || { [ -e "${_d}" ] && [ ! -d "${_d}" ]; } \
+    || { [ -d "${_d}" ] && [ "$(stat -c '%u' "${_d}")" != "0" ]; }; then
+    _old="$(mktemp -d /var/tmp/.fpm.old.XXXXXXXX)" || return 1
+    if mv -T -- "${_d}" "${_old}/fpm"; then
+      mkdir "${_d}" && chmod 1777 "${_d}"
+    fi
+    rm -rf --one-file-system -- "${_old}"
   fi
+  if [ ! -e "${_d}" ] && [ ! -L "${_d}" ]; then
+    mkdir "${_d}" && chmod 1777 "${_d}"
+  fi
+  [ -d "${_d}" ] && [ ! -L "${_d}" ] \
+    && [ "$(stat -c '%u' "${_d}")" = "0" ] || return 1
+  if [ "$(stat -c '%g %a' "${_d}")" != "0 1777" ]; then
+    chgrp root "${_d}" && chmod 1777 "${_d}"
+  fi
+  (
+    cd -P -- "${_d}" && [ "$(stat -c '%u' .)" = "0" ] || exit 1
+    if [ -L ./valkey ] || { [ -e ./valkey ] && [ ! -d ./valkey ]; } \
+      || { [ -d ./valkey ] && [ "$(stat -c '%u' ./valkey)" != "0" ]; }; then
+      _old="$(mktemp -d ./.valkey.old.XXXXXXXX)" || exit 1
+      if mv -T -- ./valkey "${_old}/valkey"; then
+        mkdir -m 0777 ./valkey
+      fi
+      rm -rf --one-file-system -- "${_old}"
+    fi
+    if [ ! -e ./valkey ] && [ ! -L ./valkey ]; then
+      mkdir -m 0777 ./valkey || exit 1
+    fi
+    [ -d ./valkey ] && [ ! -L ./valkey ] \
+      && [ "$(stat -c '%u' ./valkey)" = "0" ] || exit 1
+    if [ "$(stat -c '%g %a' ./valkey)" != "0 777" ]; then
+      chgrp root ./valkey && chmod 0777 ./valkey
+    fi
+    # a directory at the flag name keeps every pool from arming the backoff
+    if [ -d ./valkey/disabled.flag ] && [ ! -L ./valkey/disabled.flag ]; then
+      rm -rf --one-file-system -- ./valkey/disabled.flag
+    fi
+  )
+}
+
+_web_up() {
+  _fpm_tmp_enforce
   _valkey_health_check_fix
   _fpm_health_check_fix
   _nginx_health_check_fix

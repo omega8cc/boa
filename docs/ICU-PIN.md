@@ -1,10 +1,6 @@
-# Pinning ICU for PHP 7.4 `intl` (`_ICU_FORCE_VRN`)
+# PHP `intl` and the system ICU (`_ICU_FORCE_VRN`)
 
-## The problem
-
-PHP 7.4 (and 8.0) cannot build the `intl` extension against **ICU 76+** — the build
-fails. They build cleanly only against **ICU ≤ 73**. PHP 8.1+ builds `intl` against
-any ICU version.
+## How BOA builds `intl`
 
 BOA installs one system-wide ICU whose version follows the OS codename
 (`_resolve_icu_target` in `lib/functions/system.sh.inc`):
@@ -15,112 +11,92 @@ BOA installs one system-wide ICU whose version follows the OS codename
 | modern | `_ICU_MODERN_VRN`  | `73-1`  | chimaera, beowulf, bullseye, buster, stretch        |
 | legacy | `_ICU_LEGACY_VRN`  | `52_2`  | (older / jessie)                                    |
 
-On a "newer" OS the system ICU is 76, so a PHP 7.4 rebuilt there loses `intl`. Sites
-on legacy Drupal 7 that need `intl` then break.
+Every PHP 7.4 and newer is built with the `intl` extension against that ICU:
 
-## The fix: pin ICU, build 7.4 with intl, unpin
+- PHP 8.1 and newer build `intl` against any ICU version.
+- PHP 7.4 and 8.0 compile `intl` as C++11, while the headers of ICU 75 and newer
+  need C++17. On such an ICU, barracuda raises the C++ standard for the `intl`
+  sources of these two versions (`ICU_CXXFLAGS=-std=c++17`), the same change PHP 8.1
+  made upstream for these ICU versions. Nothing else in the build changes.
+- PHP 7.3 and older are built without `intl`: the 7.2/7.3 `intl` sources do not
+  compile against ICU 70 or newer, and 5.6 to 7.1 do not build it on current
+  systems either.
 
-`_ICU_FORCE_VRN` (set in `/root/.barracuda.cnf`) overrides the per-OS ICU version for
-the whole box. The trick is to use it **transiently**:
+So on Daedalus and Excalibur, PHP 7.4, 8.0 and every 8.x carry `intl` on the same
+ICU 76, with no pin and no operator step.
 
-1. Pin ICU to a 7.4-safe version (`73-1`) and run a system upgrade. ICU 73 becomes the
-   active version; PHP 7.4 rebuilds **with** `intl` on ICU 73, and 8.x rebuild onto 73
-   too (temporarily).
-2. Remove the pin and run a system upgrade again. ICU returns to the OS default (76),
-   8.x rebuild back onto ICU 76 — but **PHP 7.4 is left alone** (it is not rebuilt when
-   unpinned), so it keeps its working `intl` compiled against ICU 73.
+## It stays that way
 
-End state: **PHP 7.4 + intl on ICU 73, PHP 8.x on ICU 76** — the desired mix for boxes
-hosting both legacy D7 and modern D10/D11 sites.
+Every barracuda pass that checks the installed PHP versions compares the ICU each
+7.4+ build was compiled against (`php -i`, `ICU version`) with the ICU this box
+expects. A version built without `intl`, or against another ICU, is rebuilt,
+normally in the same upgrade pass. That holds on every route that can rebuild PHP:
+a plain `barracuda up-<tier> system`, `php-max` and `php-min` runs, a rebuild forced
+by an OpenSSL update or a new PHP release, and the weekly auto-update run.
 
-This works because ICU shared libraries are version-suffixed
-(`libicuuc.so.73`, `libicuuc.so.76`, …) and coexist: installing ICU 76 does not remove
-the ICU 73 runtime libraries that PHP 7.4's `intl` links against.
+While the ICU this box expects is not installed (its download or build failed, so
+`/usr/local/lib/pkgconfig/icu-uc.pc` and the headers in `/usr/local/include/unicode`
+do not both carry it), no PHP version is rebuilt for it: the existing builds keep
+serving, the pass reports the failure with an `ALRT` line, and the next pass tries the
+ICU install again. Only a build without `intl` at all is rebuilt meanwhile, against
+the ICU that is there when that one is complete.
 
-## Manual procedure (no auto-updates)
-
-Use this on any box where BOA auto-updates are **not** enabled. Substitute your tier
-verb: `up-lts` (free LTS), `up-pro` (PRO), or `up-dev`.
-
-```bash
-# 1. Pin ICU to 73 and rebuild (7.4 gains intl on ICU 73; 8.x temporarily on 73)
-echo '_ICU_FORCE_VRN="73-1"' >> /root/.barracuda.cnf
-barracuda up-<tier> system
-
-# 2. Unpin and rebuild (8.x return to OS-default ICU 76; 7.4 keeps its ICU-73 intl)
-sed -i '/^_ICU_FORCE_VRN=/d' /root/.barracuda.cnf
-barracuda up-<tier> system
-```
+Prebuilt PHP packages (see [PREBUILT.md](PREBUILT.md)) are checked the same way: a
+7.4 or 8.0 package built without `intl`, or against another ICU, is refused and
+purged, and that version builds from sources instead.
 
 ### Verify
 
 ```bash
-readlink /usr/local/lib/icu/current            # -> /usr/local/lib/icu/76.1 (after unpin)
+readlink /usr/local/lib/icu/current            # -> /usr/local/lib/icu/76.1
+grep '^Version' /usr/local/lib/pkgconfig/icu-uc.pc                # -> Version: 76.1
+grep '^#define U_ICU_VERSION ' /usr/local/include/unicode/uvernum.h # -> "76.1"
 /opt/php74/bin/php -m | grep -i intl           # -> intl
-/opt/php74/bin/php -i | grep -i 'ICU version'  # -> ICU version => 73.1
-ldd /opt/php74/bin/php | grep -i icu           # -> libicu*.so.73 all resolve (no "not found")
-/opt/php83/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
+/opt/php74/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
+/opt/php80/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
+/opt/php84/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
 ```
 
-## Automatic handling (auto-updates enabled)
+## A build against another ICU
 
-Where BOA auto-updates are configured, the weekly system-upgrade cron is routed
-through a wrapper in `autoupboa` instead of calling `barracuda` directly:
+A PHP 7.4 or newer build compiled against an ICU other than the one this box
+expects, such as a 7.4 built while ICU was pinned to 73 (`ICU version => 73.1`,
+linked to the ICU 73 libraries in `/usr/local/lib`), is rebuilt against the system
+ICU by the next pass, and from then on does not use those libraries.
 
+## The weekly run
+
+The `autoupboa weekly-system` wrapper runs one plain system upgrade, `php-max`
+lines included: it never pins ICU and never idles PHP versions. Its one ICU step
+concerns the marker `/var/log/boa/.php74_intl_bootstrap.active`, written only by
+the weekly ICU pin cycle of earlier releases. A box still carrying it was left
+pinned when that cycle was cut short, so the wrapper removes the `_ICU_FORCE_VRN`
+line and the marker before its pass. A pin set by an operator carries no marker
+and stays.
+
+## Pinning ICU (`_ICU_FORCE_VRN`)
+
+`_ICU_FORCE_VRN` (set in `/root/.barracuda.cnf`, dashed form such as `73-1`) is an
+advanced, box-wide override of the ICU version. `intl` does not need it.
+
+```bash
+echo '_ICU_FORCE_VRN="73-1"' >> /root/.barracuda.cnf
+barracuda up-<tier> system
 ```
-* * * <weekly>  root  bash /opt/local/bin/autoupboa weekly-system up-<tier> system [php-*] noscreen
+
+- The pin applies to the whole box: ICU is installed at that version, and every PHP
+  7.4 and newer is rebuilt against it, so 8.x lose the newer ICU's Unicode and CLDR
+  data too.
+- A pinned box is a custom build shape: it is refused the prebuilt PHP packages and
+  builds PHP from sources.
+- The pin is per box and is not carried on migration.
+
+To return to the OS default, remove the line and run a system upgrade:
+
+```bash
+sed -i '/^_ICU_FORCE_VRN=/d' /root/.barracuda.cnf
+barracuda up-<tier> system
 ```
 
-On each weekly run `autoupboa weekly-system` checks for the regression and, only if
-PHP 7.4 is installed **without** `intl`, performs the pin → rebuild → unpin → rebuild
-cycle automatically (idling inactive PHP versions first to limit the rebuild surface);
-otherwise it runs the normal system upgrade. Once 7.4 carries `intl`, detection is
-false and the plain upgrade path runs — so it is self-limiting.
-
-**`php-max` boxes are excluded.** When the weekly line carries `php-max` (every PHP
-version kept installed by policy — the builder mirrors, and any box that must be able
-to check or rebuild any version on demand), the wrapper never runs the cycle: the idle
-step would move every version no hosted site uses out of `/opt`, and the two passes
-would then rebuild the whole set from source twice. Such a box always takes the plain
-upgrade and logs one `INFO` line about the skipped cycle; if 7.4 `intl` is wanted
-there, use the manual procedure above.
-
-Notes:
-
-- This applies on **every branch** (dev/pro/lts) — the tier is irrelevant. It runs
-  wherever the weekly upgrade cron is written, i.e. boxes that have auto-updates
-  configured and are **not** flagged as development/scratch servers (`/root/.dev.server.cnf`,
-  which is independent of the BOA branch). Boxes outside that set use the manual
-  procedure above.
-- The orchestration lives in `autoupboa`, never in `barracuda` itself — `barracuda` is
-  only ever invoked as a leaf process, so it cannot self-call and loop.
-- A resume marker (`/var/log/boa/.php74_intl_bootstrap.active`) ensures an interrupted
-  run cannot leave a box stuck pinned.
-- Deploying this behaviour to existing boxes requires the `autoupboa` fetch serial and
-  the hardcoded `ctrl_595vNN` crontab-update marker to be bumped together, so boxes
-  regenerate `/etc/crontab` once and pick up the new weekly line.
-
-## Caveats
-
-- **Durability.** PHP 7.4 keeps `intl` only as long as it is **not rebuilt while
-  unpinned**. The build only adds `--enable-intl` for 7.4 when `_ICU_FORCE_VRN` is set
-  (`lib/functions/php.sh.inc`), so a forced 7.4 rebuild with the pin off (e.g. an
-  OpenSSL change, `php-max`/`php-min`, a version bump) would drop `intl`. PHP 7.4 is
-  EOL, so this is rare — but **re-pin before deliberately rebuilding 7.4**. A 7.4 that
-  is simply left untouched survives ICU upgrades.
-- **Cost.** The pin pass rebuilds all active PHP versions onto ICU 73; the unpin pass
-  rebuilds 8.x back onto ICU 76 — so 8.x are rebuilt twice. The pin pass always
-  compiles from sources (a pinned ICU is a customised build shape, so the prebuilt
-  PHP packages don't apply); the unpin pass can take the prebuilt-package path again.
-  This is a one-time transition cost, but it is real per-rebuild downtime.
-- **ICU 73 runtime libraries must remain.** PHP 7.4's `intl` links against
-  `/usr/local/lib/libicu{i18n,uc,data}.so.73*`. They persist across an ICU 76 install
-  (versioned sonames coexist), but a manual purge of old ICU libraries would break 7.4
-  `intl`.
-
-## Retirement
-
-To return a box fully to the OS-default ICU, just remove the pin and upgrade
-(`sed -i '/^_ICU_FORCE_VRN=/d' /root/.barracuda.cnf; barracuda up-<tier> system`). ICU
-and 8.x return to the default; 7.4 keeps its frozen ICU-73 `intl` until it is next
-rebuilt (see Durability).
+ICU returns to the default version, and every PHP 7.4 and newer is rebuilt against
+it in the same pass.

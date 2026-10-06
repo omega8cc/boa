@@ -43,13 +43,15 @@
 #
 # HTTPS for a site without its own certificate arrives through the wildcard SSL
 # front (nginx_wild_ssl.conf), which proxies to the site's :80 vhost, where the
-# peer is always 127.0.0.1 -- an address the anti-lockout allows.  So once the
-# deployed front includes them, each listed site also gets two front files in
-# user_admin_access_front/: <site>.http.conf (its own geo and $uri map, and a
-# $host map of the server names in the site's rendered vhost that no other
-# vhost on the box also serves) and <site>.srv.conf (the 403 gate).  The front
-# judges them against the real visitor.  A site with no rendered vhost gets no
-# front files.
+# peer is always 127.0.0.1; a panel's HTTPS proxy connects from the box's own
+# address.  The vhost geo trusts those hops to name the visitor (the last
+# X-Forwarded-For address, which each of them appends), so the vhost judges the
+# real visitor on every hop.  Once the deployed front includes them, each
+# listed site also gets two front files in user_admin_access_front/:
+# <site>.http.conf (its own geo and $uri map, and a $host map of the server
+# names in the site's rendered vhost that no other vhost on the box also
+# serves) and <site>.srv.conf (the 403 gate), so the front refuses the clean
+# admin paths itself.  A site with no rendered vhost gets no front files.
 #
 # Grav 2 and Textpattern sites keep their admin surface elsewhere, so a site whose
 # platform root positively reads as one of them gets its own lines in the same
@@ -77,7 +79,7 @@ _server_ip_file="/root/.found_correct_ipv4.cnf"
 
 # Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
-_emit_version="4"
+_emit_version="6"
 
 # The deployed front includes the front files only once it carries these lines;
 # until then none are written, so a front deploy never meets an unvalidated one.
@@ -134,6 +136,270 @@ _nginx_held_down() {
     && [ ! -e "/var/log/boa/.standby_promoted.pid" ]
 }
 
+# oN owns /data/disk/oN (config/, undo/ and every directory in them), so any
+# name there can be a link or a FIFO, and any directory on the way can itself
+# be a link. Root reads and writes those names only through these, inside the
+# real directory; the control file and the front copies are read only as
+# copies taken there, and the drush aliases and every rendered vhost as
+# copies that do not follow a link at their own name (.drush and vhost.d
+# are the instance's own), none blocking on a FIFO, and the fragments,
+# front copies and archives are made in a root-only work directory in /run
+# first. The last-good archive in undo/ is oN's to replace: it is copied
+# out without following a link, unpacked with no owner and no mode taken
+# from it and only whole within 32 MiB, and only a regular file with a
+# fragment's name is put back.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way (helper.sh.inc).
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory with the content $2 (0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# stdin as the fresh file $1, owned by uid $2 and gid $3 with the mode $4,
+# through the one handle that created it O_EXCL|O_NOFOLLOW (helper.sh.inc).
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+# The file $1 (root's own) put as ./$2 in the current (pinned) directory,
+# root's and 0644: written under a fresh name through one handle
+# (_ACCT_PUT_PL), then renamed over the name, so a link or a FIFO at the name
+# is replaced, never written through or opened; a directory there, which the
+# rename cannot replace, is removed first.
+_conf_put_file_here() {
+  local _t="./.${2}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if [ -d "./${2}" ] && [ ! -L "./${2}" ]; then
+    rm -rf -- "./${2}"
+  fi
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 < "${1}" \
+    && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# Each source and destination pair on stdin (NUL-separated) after a byte
+# cap $1: the source opened without following a link or blocking on a
+# FIFO, and copied only while that handle is a regular file of at most $1
+# bytes, into the fresh destination (0600, never through a link), which a
+# write that fails (a full /run) removes again. Exit 1 when a pair was not
+# copied.
+_ACCT_COPY_PL='use Fcntl; my $c = shift; local $/ = "\0"; my $rc = 0; while (defined(my $i = <STDIN>)) { my $o = <STDIN>; defined $o or last; chomp($i); chomp($o); my $ok = 0; if (sysopen(my $h, $i, O_RDONLY|O_NOFOLLOW|O_NONBLOCK)) { my @s = stat($h); if (@s && -f _ && $s[7] <= $c) { my ($d, $b, $n) = (""); while ($n = sysread($h, $b, 1048576)) { $d .= $b; last if length($d) > $c; } if (defined $n && length($d) <= $c && sysopen(my $w, $o, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600)) { $ok = (print {$w} $d) && close($w); unlink($o) unless $ok; } } close($h); } $rc = 1 unless $ok; } exit $rc'
+# ./$1 in the current (pinned) directory copied into the root-only file $2
+# as _ACCT_COPY_PL copies, whole within 32 MiB. Status 1 when it was not.
+_acct_copy_here() {
+  rm -f -- "${2}"
+  printf '%s\0' "./${1}" "${2}" | perl -e "${_ACCT_COPY_PL}" 33554432
+}
+# The names $2... of the current (pinned) directory copied under their own
+# names into the root-only directory $1 as _ACCT_COPY_PL copies, each whole
+# within 1 MiB; a name that is not copied is left out.
+_acct_copies_here() {
+  local _d="${1}" _n
+  shift
+  for _n in "$@"; do
+    printf '%s\0' "./${_n}" "${_d}/${_n}"
+  done | perl -e "${_ACCT_COPY_PL}" 1048576
+  return 0
+}
+# The first line of the root-only file $2 (nothing when there is none) put
+# in the variable named $1.
+_line_get() {
+  local _l=""
+  [[ -f "${2}" ]] && IFS= read -r _l < "${2}"
+  printf -v "${1}" '%s' "${_l}"
+}
+# Each name and value pair given put in the current (pinned) directory as
+# _acct_put_here puts it. Status 1 when one was not.
+_acct_put_pairs_here() {
+  local _rc=0
+  while [[ $# -ge 2 ]]; do
+    _acct_put_here "$1" "$2" || _rc=1
+    shift 2
+  done
+  return "${_rc}"
+}
+# Every regular file with a single link and a fragment's name (<site>.conf,
+# <site>.http.conf, <site>.srv.conf) in the root-only directory $1 put under
+# its own name in the current (pinned) directory, each map (*.http.conf)
+# before the gate (*.srv.conf) that reads it, and no gate whose map was not
+# put. Anything else in $1 is left where it is. Status 1 when $1 is not a
+# real directory or a file was not put.
+_confs_put_here() {
+  local _p _s _n _bad=" " _rc=0
+  [[ -d "${1}" && ! -L "${1}" ]] || return 1
+  for _p in maps rest; do
+    for _s in "${1}"/*.conf; do
+      _n="${_s##*/}"
+      if [[ "${_n}" == *.http.conf ]]; then
+        [[ "${_p}" == "maps" ]] || continue
+      else
+        [[ "${_p}" == "rest" ]] || continue
+      fi
+      [[ -f "${_s}" && ! -L "${_s}" ]] || continue
+      [[ "$(stat -c %h -- "${_s}" 2> /dev/null)" == "1" ]] || continue
+      [[ "${_n%.conf}" =~ ${_site_name_regex} ]] || continue
+      if [[ "${_n}" == *.srv.conf && "${_bad}" == *" ${_n%.srv.conf} "* ]]; then
+        _rc=1
+        continue
+      fi
+      if ! _conf_put_file_here "${_s}" "${_n}"; then
+        _rc=1
+        [[ "${_n}" != *.http.conf ]] || _bad="${_bad}${_n%.http.conf} "
+      fi
+    done
+  done
+  return "${_rc}"
+}
+# Every ./*.conf of the current (pinned) directory removed, the gates
+# (*.srv.conf) before the maps they read. Prints yes when there was one.
+_confs_drop_here() {
+  local _f _any=""
+  for _f in ./*.srv.conf ./*.conf; do
+    [[ -e "${_f}" ]] || continue
+    rm -f -- "${_f}"
+    _any="yes"
+  done
+  [[ -z "${_any}" ]] || echo "yes"
+}
+# Every ./*.conf of the current (pinned) directory that is not kept removed,
+# the gates (*.srv.conf) first: $1 = what the log calls one, $2 = where, $3 =
+# the suffix a kept name leaves off, then the kept names.
+_prune_here() {
+  local _what="$1" _where="$2" _x="$3" _f _base _keep _s
+  shift 3
+  for _f in ./*.srv.conf ./*.conf; do
+    [[ -e "${_f}" ]] || continue
+    _base="${_f#./}"
+    _base="${_base%"${_x}"}"
+    _keep=""
+    for _s in "$@"; do
+      [[ "${_s}" == "${_base}" ]] && _keep="yes" && break
+    done
+    if [[ -z "${_keep}" ]]; then
+      rm -f -- "${_f}"
+      echo "Pruned stale ${_what}: ${_base}${_x} (${_where})"
+    fi
+  done
+}
+# The names $2... of the current (pinned) directory packed as they are (a
+# link stays a link, never followed; holes skipped, not read) into the
+# root-only file $1, whole within 60 seconds and 32 MiB. Status 1 otherwise.
+_snap_here() {
+  local _o="${1}" _rc
+  shift
+  timeout 60 tar --sparse -czf - -- "$@" 2> /dev/null | head -c 33554433 > "${_o}"
+  _rc="${PIPESTATUS[0]}"
+  [[ "${_rc}" == "0" || "${_rc}" == "1" ]] || return 1
+  [[ "$(stat -c %s -- "${_o}" 2> /dev/null || echo 33554433)" -le 33554432 ]]
+}
+# The names $4... of the real directory $1 packed as _snap_here packs them,
+# then put as $3 in the real directory $2.
+_snap_store() {
+  local _s="${1}" _d="${2}" _n="${3}"
+  shift 3
+  rm -f -- "${_work}/snap.tgz"
+  _acct_in_real_dir "${_s}" _snap_here "${_work}/snap.tgz" "$@" \
+    && _acct_in_real_dir "${_d}" _conf_put_file_here "${_work}/snap.tgz" "${_n}"
+}
+# The members $4... of the root-only directory $1 packed, proved readable,
+# then put as $3 in the real directory $2. Status 1 when one step failed.
+_lg_store() {
+  local _s="${1}" _d="${2}" _n="${3}"
+  shift 3
+  rm -f -- "${_s}.tgz"
+  tar -czf "${_s}.tgz" -C "${_s}" -- "$@" 2> /dev/null \
+    && tar -tzf "${_s}.tgz" &> /dev/null \
+    && _acct_in_real_dir "${_d}" _conf_put_file_here "${_s}.tgz" "${_n}"
+}
+# The archive $1 (root's own copy) unpacked into the fresh root-only
+# directory $2: names and contents only, never an owner or a mode, and only
+# when it unpacks whole within 32 MiB, counted as the files it made would
+# be written out, holes included. Status 1 otherwise.
+_lg_unpack() {
+  local _rc _sz
+  rm -rf -- "${2}" "${2}.tar"
+  mkdir -m 0700 -- "${2}" || return 1
+  gzip -dc < "${1}" 2> /dev/null | head -c 33554433 > "${2}.tar"
+  _rc="${PIPESTATUS[0]}"
+  [[ "${_rc}" == "0" ]] || return 1
+  [[ "$(stat -c %s -- "${2}.tar" 2> /dev/null || echo 33554433)" -le 33554432 ]] || return 1
+  tar -tf "${2}.tar" &> /dev/null \
+    && tar -xf "${2}.tar" -C "${2}" --no-same-owner --no-same-permissions &> /dev/null \
+    || return 1
+  _sz="$(du -sbl -- "${2}" 2> /dev/null | cut -f1)"
+  [[ "${_sz}" =~ ^[0-9]+$ ]] && [[ "${_sz}" -le 33554432 ]]
+}
+# The last-good archive $2 of the real directory $1 copied out as
+# _acct_copy_here copies and unpacked as _lg_unpack unpacks into $3.
+# Status 1 when it is not there whole.
+_lg_fetch() {
+  _acct_in_real_dir "${1}" _acct_copy_here "${2}" "${3}.tgz" \
+    && _lg_unpack "${3}.tgz" "${3}"
+}
+
+# An ALRT for the operator: each line $3... printed, and once a day for the
+# condition $1 a dated line with the subject $2 in
+# /var/log/boa/nginx.incident.log and a mail to _MY_EMAIL unless
+# _INCIDENT_REPORT is OFF. Cron discards this tool's output, so the printed
+# lines alone reach nobody. The box config is read with grep: sourcing it
+# would set its variables in this run. Each value is taken as sourcing sets
+# it: the last definition, without the trailing " #..." comment the
+# documented template puts after each setting.
+_policy_alert() {
+  local _stamp="/run/nginx_policy_alert.${1//[^a-zA-Z0-9._-]/_}" _sub="${2}"
+  local _log="/var/log/boa/nginx.incident.log" _l _lvl _mail _host
+  shift 2
+  for _l in "$@"; do
+    echo "ALRT: ${_l}"
+  done
+  [[ -z "$(find "${_stamp}" -mmin -1440 2> /dev/null)" ]] || return 0
+  # a stamp that cannot be written fails open: the alert matters more
+  touch "${_stamp}" 2> /dev/null
+  mkdir -p "${_log%/*}" 2> /dev/null
+  echo "$(date) ${_sub}: $*" >> "${_log}"
+  _lvl="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -cd 'A-Za-z')"
+  _lvl="${_lvl^^}"
+  [[ "${_lvl}" != "OFF" && "${_lvl}" != "NO" ]] || return 0
+  _mail="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' \\\\")"
+  if [[ -z "${_mail}" ]] || ! command -v s-nail > /dev/null 2>&1; then
+    return 0
+  fi
+  _host="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+  [[ -n "${_host}" ]] || _host="$(hostname -f 2> /dev/null)"
+  # the mailer, and a delivery it may leave running, never holds the shared
+  # nginx-config lock (fd 9)
+  printf '%s\n' "${_sub} on ${_host}" "" "$@" "" "Logged to ${_log}" "" "--" \
+    "This email has been sent by a BOA nginx policy tool" \
+    | s-nail -s "ALERT [${_host}]: ${_sub}" "${_mail}" > /dev/null 2>&1 9>&-
+  return 0
+}
+
+
 _valid_ip() {
   local _ip="$1"
   [[ "${_ip}" =~ ${_ipv4_regex} ]] && return 0
@@ -150,11 +416,15 @@ _foreign_cms_kind() {
   # foreign. Every doubt (no alias, a root that does not resolve, an unknown
   # shape) prints nothing, and the site then keeps the plain /user + /admin
   # line -- a miss leaves a site as it was, it never widens what one matches.
+  # The alias is read only as a copy that does not follow a link at its own
+  # name or block on a FIFO (_ACCT_COPY_PL, at most 1 MiB).
   # $1 = instance root, $2 = site name.
-  local _alias="${1}/.drush/${2}.alias.drushrc.php"
+  local _alias="${1}/.drush/${2}.alias.drushrc.php" _c="${_work}/alias.one"
   local _r
   [[ -f "${_alias}" ]] || return 0
-  _r=$(grep "'root' =>" "${_alias}" 2>/dev/null | head -n 1 | cut -d"'" -f4)
+  rm -f -- "${_c}"
+  printf '%s\0' "${_alias}" "${_c}" | perl -e "${_ACCT_COPY_PL}" 1048576 || return 0
+  _r=$(grep "'root' =>" "${_c}" 2>/dev/null | head -n 1 | cut -d"'" -f4)
   [[ -n "${_r}" ]] || return 0
   _r=$(realpath -e -- "${_r}" 2>/dev/null)
   [[ -n "${_r}" && -d "${_r}" && -f "${_r}/index.php" ]] || return 0
@@ -224,10 +494,15 @@ BEGIN {
 
 _site_hosts() {
   # The names nginx routes to a site that the front map may carry, from its
-  # rendered vhost ($1), one per line. Regular files only: a FIFO would hang
-  # the read under the shared lock. No file, no names.
+  # rendered vhost ($1), one per line. Read only as a copy that does not
+  # follow a link at its own name or block on a FIFO (_ACCT_COPY_PL, at most
+  # 1 MiB): a FIFO would hang the read under the shared lock. No file, no
+  # names.
+  local _c="${_work}/vhost.one"
   [[ -f "$1" ]] || return 0
-  awk -v max="${_host_max}" "${_names_awk}" "$1" 2>/dev/null | sort -u
+  rm -f -- "${_c}"
+  printf '%s\0' "$1" "${_c}" | perl -e "${_ACCT_COPY_PL}" 1048576 || return 0
+  awk -v max="${_host_max}" "${_names_awk}" "${_c}" 2>/dev/null | sort -u
 }
 
 # name -> how many rendered vhost files on the box serve it; built by
@@ -258,16 +533,36 @@ _ensure_owners() {
 
 _build_owners() {
   # The box-wide index itself, at most once per run and in the main shell.
-  local _n _h _v
+  # Each rendered vhost is read only as a copy that does not follow a link
+  # at its own name or block on a FIFO (_ACCT_COPY_PL, at most 1 MiB), 32
+  # at a time, each batch parsed and removed before the next, so the copies
+  # never take more of /run than one control file copy may; one that is not
+  # copied drops out of the count, as one removed between the glob and the
+  # read does.
+  local _n _h _v _i=0 _j _c="${_work}/vhosts"
+  local -a _all=()
   [[ -z "${_owners_built}" ]] || return 0
   _owners_built="yes"
+  for _v in /var/aegir/config/server_master/nginx/vhost.d/* \
+    /data/disk/*/config/server_master/nginx/vhost.d/*; do
+    [[ -f "${_v}" ]] && _all+=("${_v}")
+  done
   while read -r _n _h; do
     _host_owners["${_h}"]="${_n}"
-  done < <(for _v in /var/aegir/config/server_master/nginx/vhost.d/* \
-      /data/disk/*/config/server_master/nginx/vhost.d/*; do
-      [[ -f "${_v}" ]] && printf '%s\0' "${_v}"
-    done | xargs -0 -r awk -v max="${_host_max}" "${_names_awk}" 2>/dev/null \
-      | sort | uniq -c)
+  done < <(while [[ "${_i}" -lt "${#_all[@]}" ]]; do
+      rm -rf -- "${_c}"
+      mkdir -m 0700 -- "${_c}" || break
+      _j=0
+      for _v in "${_all[@]:${_i}:32}"; do
+        _j=$((_j + 1))
+        printf '%s\0' "${_v}" "${_c}/${_j}"
+      done | perl -e "${_ACCT_COPY_PL}" 1048576
+      _i=$((_i + 32))
+      for _v in "${_c}"/*; do
+        [[ -f "${_v}" ]] && printf '%s\0' "${_v}"
+      done | xargs -0 -r awk -v max="${_host_max}" "${_names_awk}" 2>/dev/null
+    done | sort | uniq -c
+    rm -rf -- "${_c}")
 }
 
 _front_hosts() {
@@ -289,13 +584,9 @@ _front_clear() {
   # that has since moved to another site. Its marker goes too, so the copies
   # are rebuilt when the context comes back. Each srv.conf goes before the
   # http.conf that defines its variables. $1 = front dir, $2 = its marker.
-  local _f _any=""
-  for _f in "$1"/*.srv.conf "$1"/*.conf; do
-    [[ -e "${_f}" ]] || continue
-    rm -f "${_f}"
-    _any="yes"
-  done
-  rm -f "$2"
+  local _any
+  _any=$(_acct_in_real_dir "$1" _confs_drop_here)
+  _acct_in_real_dir "${2%/*}" rm -f -- "./${2##*/}"
   [[ -n "${_any}" ]] || return 0
   echo "Dropped the front copies of a skipped context: $1"
   _nginx_held_down && return 0
@@ -303,40 +594,59 @@ _front_clear() {
 }
 
 _front_keep_valid() {
-  # A context whose control file is gone keeps its lists exactly as they are,
-  # over HTTP and HTTPS alike: a deletion never travels to a mirror or a
-  # migration target (static/control is copied additively), so lifting here
-  # would lift one box only and the lock would come back after a failover or
-  # cutover. To lift, remove a site's line or empty the file. Nothing here
-  # writes a new copy, so none is ever dropped either: each host map follows
-  # the names only its site's vhost serves, as the vhost fragments follow the
+  # A context whose control file is gone, or is not a regular file in a real
+  # directory, keeps its lists exactly as they are, over HTTP and HTTPS
+  # alike: a deletion never travels to a mirror or a migration target
+  # (static/control is copied additively), so lifting here would lift one box
+  # only and the lock would come back after a failover or cutover. To lift,
+  # remove a site's line or empty the file. Nothing here writes a new copy,
+  # so none of its own is ever dropped either: each host map follows the
+  # names only its site's vhost serves, as the vhost fragments follow the
   # vhost they are included in. A new alias is covered on HTTPS as on HTTP, a
   # name that moved to another site leaves the map, and a site with no such
   # name left keeps an empty map (inert) that a later run can fill again.
   # $1 = front dir, $2 = the context's vhost.d dir, $3 = its front marker.
-  local _f _site _want _have _tmp _changed=""
+  # Each copy is read out (at most 1 MiB) and put back only inside the real
+  # front dir, and only a copy this tool wrote is rewritten: its own first
+  # line and one closed $host map of its own. Any other copy read out is
+  # dropped, gate first, and a frozen list writes it again from its
+  # fragment, so an account's own bytes never come back as root's file; a
+  # copy that cannot be read out is left as it is.
+  local _f _site _want _have _w="${_work}/keep" _changed=""
   for _f in "$1"/*.http.conf; do
     [[ -e "${_f}" ]] || continue
     _build_owners
     _site=$(basename "${_f}" .http.conf)
     _want=$(_front_hosts "$2/${_site}" | tr '\n' ' ')
-    _have=$(awk '/^map \$host /{p=1; next} p && /^}/{exit} p && $2 == "1;" {print $1}' "${_f}" \
-      | sort | tr '\n' ' ')
+    rm -rf -- "${_w}"
+    mkdir -m 0700 -- "${_w}" || return 0
+    _acct_in_real_dir "$1" _acct_copies_here "${_w}" "${_site}.http.conf"
+    [[ -s "${_w}/${_site}.http.conf" ]] || continue
+    if ! _have=$(awk -v h="# Generated by /var/xdrago/user_admin_access.sh — DO NOT EDIT BY HAND." '
+        NR == 1 && $0 != h { bad = 1; exit }
+        /^map \$host / { if (m++ || $0 !~ /^map \$host \$uaf_h_[0-9a-f]+ \{$/) { bad = 1; exit }; p = 1; next }
+        p && /^}/ { p = 0; c = 1; next }
+        p && $2 == "1;" { print $1 }
+        END { exit (bad || !c) }' "${_w}/${_site}.http.conf"); then
+      _acct_in_real_dir "$1" rm -f -- "./${_site}.srv.conf" "./${_site}.http.conf"
+      _changed="yes"
+      echo "The front copy of ${_site} is not one this tool wrote; dropped"
+      continue
+    fi
+    _have=$(printf '%s' "${_have}" | sort | tr '\n' ' ')
     [[ "${_want}" == "${_have}" ]] && continue
-    _tmp="$1/.${_site}.http.tmp.$$"
     if awk -v want="${_want}" '
         /^map \$host / { print; p = 1; next }
         p && /^}/ { n = split(want, w, " "); for (i = 1; i <= n; i++) print "  " w[i] " 1;"; p = 0; print; next }
         p && $2 == "1;" { next }
-        { print }' "${_f}" > "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+        { print }' "${_w}/${_site}.http.conf" > "${_w}/new" \
+      && _acct_in_real_dir "$1" _conf_put_file_here "${_w}/new" "${_site}.http.conf"; then
       _changed="yes"
       echo "The front copy of ${_site} now claims: ${_want:-no name}"
-    else
-      rm -f "${_tmp}"
     fi
   done
   [[ -n "${_changed}" ]] || return 0
-  rm -f "$3"
+  _acct_in_real_dir "${3%/*}" rm -f -- "./${3##*/}"
   _nginx_held_down && return 0
   service nginx configtest &> /dev/null && service nginx reload
 }
@@ -364,8 +674,9 @@ _front_write() {
   # comes first and selects the rest, so an unrelated request costs one
   # lookup. The front copies of every instance share one http{}: their
   # variables are keyed by instance and site, never by the site name alone.
-  # $1 = instance root, $2 = its front dir, $3 = site, $4 = the names (one
-  # per line), $5 = the geo body, $6 = the $uri map body.
+  # $1 = instance root, $2 = the root-only dir the copies are made in,
+  # $3 = site, $4 = the names (one per line), $5 = the geo body, $6 = the
+  # $uri map body.
   local _fhash _e _frag _tmp
   _fhash=$(echo -n "$1/$3" | md5sum | awk '{print $1}' | cut -c1-12)
   _frag="$2/$3.http.conf"
@@ -393,6 +704,12 @@ _front_write() {
     echo "  default 0;"
     echo "  1 \$uaf_d_${_fhash};"
     echo "}"
+    # The lock verdict for this site, judged at the front on the real visitor,
+    # for the PHP ?q= gate: 1 when not allowed, 0 when allowed.
+    echo "map \$uaf_ok_${_fhash} \$uaf_lk_${_fhash} {"
+    echo "  default 1;"
+    echo "  1 0;"
+    echo "}"
   } > "${_tmp}"
   mv -f "${_tmp}" "${_frag}"
   _frag="$2/$3.srv.conf"
@@ -400,6 +717,10 @@ _front_write() {
   {
     echo "# Generated by /var/xdrago/user_admin_access.sh — DO NOT EDIT BY HAND."
     echo "if (\$uaf_deny_${_fhash}) { return 403; }"
+    # Only this site's request publishes its verdict; the front defaults the
+    # shared variable to "0" (allowed) and forwards it to the backend, which
+    # decodes q and gates the ?q= route form the front cannot match on \$uri.
+    echo "if (\$uaf_h_${_fhash}) { set \$boa_ua_lk_fwd \$uaf_lk_${_fhash}; }"
   } > "${_tmp}"
   mv -f "${_tmp}" "${_frag}"
 }
@@ -413,8 +734,10 @@ _front_fill_frozen() {
   # leaves the site alone. As on every other path, a failed configtest drops
   # the new copies. $1 = instance root, $2 = map dir, $3 = srv dir,
   # $4 = front dir, $5 = the instance's vhost.d dir, $6 = its front marker.
+  # Each map is read out, and each copy made in the work dir and put, only
+  # inside the real directory.
   [[ -n "${_front_on}" ]] || return 0
-  local _f _site _hosts _geo _area _l _ok _known _new=""
+  local _f _site _hosts _geo _area _l _ok _known _w="${_work}/fill" _new=""
   _known=$(printf '%s\n' "$(_area_lines "" "")" "$(_area_lines grav "")" \
     "$(_area_lines txp "")" | sort -u)
   for _f in "$2"/*.conf; do
@@ -423,9 +746,14 @@ _front_fill_frozen() {
     [[ ${_site} =~ ${_site_name_regex} ]] || continue
     [[ -f "$3/${_site}.conf" ]] || continue
     [[ -s "$4/${_site}.http.conf" && -s "$4/${_site}.srv.conf" ]] && continue
-    # Each body once per line: nginx refuses a second default in a map.
-    _geo=$(awk '/^geo \$ua_ip_ok_/ { p = 1; next } p && /^}/ { exit } p && !s[$0]++ { print }' "${_f}")
-    _area=$(awk '/^map \$uri \$ua_u_/ { p = 1; next } p && /^}/ { exit } p && !s[$0]++ { print }' "${_f}")
+    rm -rf -- "${_w}"
+    mkdir -m 0700 -- "${_w}" "${_w}/out" || return 0
+    _acct_in_real_dir "$2" _acct_copy_here "${_site}.conf" "${_w}/map" || continue
+    # Each body once per line: nginx refuses a second default in a map. The
+    # vhost geo's trusted-hop proxy lines stay out: the front judges its own
+    # peer, the real visitor, and must never read a forwarded address.
+    _geo=$(awk '/^geo \$ua_ip_ok_/ { p = 1; next } p && /^}/ { exit } p && /^  proxy / { next } p && !s[$0]++ { print }' "${_w}/map")
+    _area=$(awk '/^map \$uri \$ua_u_/ { p = 1; next } p && /^}/ { exit } p && !s[$0]++ { print }' "${_w}/map")
     _ok="yes"
     while IFS= read -r _l; do
       [[ "${_l}" == "  default 0;" ]] && continue
@@ -439,26 +767,28 @@ _front_fill_frozen() {
     _build_owners
     _hosts=$(_front_hosts "$5/${_site}")
     [[ -n "${_hosts}" ]] || continue
-    mkdir -p "$4" 2> /dev/null
-    _front_write "$1" "$4" "${_site}" "${_hosts}" "${_geo}" "${_area}" 2> /dev/null
-    if [[ -f "$4/${_site}.http.conf" && -s "$4/${_site}.http.conf" \
-      && -f "$4/${_site}.srv.conf" && -s "$4/${_site}.srv.conf" ]]; then
+    _acct_in_real_dir "${4%/*}" mkdir -p -- "./${4##*/}" 2> /dev/null
+    _front_write "$1" "${_w}/out" "${_site}" "${_hosts}" "${_geo}" "${_area}" 2> /dev/null
+    if [[ -s "${_w}/out/${_site}.http.conf" && -s "${_w}/out/${_site}.srv.conf" ]] \
+      && _acct_in_real_dir "$4" _confs_put_here "${_w}/out"; then
       _new="${_new} ${_site}"
       echo "The frozen /user + /admin list of ${_site} now holds at the front too"
     else
       # Never leave half a pair: a gate without its maps fails the box-wide
       # configtest, and nothing below tests a site that is not in _new.
-      rm -f "$4/${_site}.srv.conf" "$4/${_site}.http.conf"
+      _acct_in_real_dir "$4" rm -f -- "./${_site}.srv.conf" "./${_site}.http.conf"
       echo "Could not write the front copy of ${_site} in $4; retrying next run"
     fi
   done
   [[ -n "${_new}" ]] || return 0
-  rm -f "$6"
+  _acct_in_real_dir "${6%/*}" rm -f -- "./${6##*/}"
   _nginx_held_down && return 0
   if service nginx configtest &> /dev/null; then
     service nginx reload
   else
-    for _site in ${_new}; do rm -f "$4/${_site}.srv.conf" "$4/${_site}.http.conf"; done
+    for _site in ${_new}; do
+      _acct_in_real_dir "$4" rm -f -- "./${_site}.srv.conf" "./${_site}.http.conf"
+    done
     echo "Nginx configtest failed; dropped the new front copies in $4"
   fi
 }
@@ -517,6 +847,10 @@ if ! flock -w 30 9; then
   exit 0
 fi
 
+_work="$(mktemp -d /run/.user_admin_access.XXXXXX 2> /dev/null)" \
+  || { echo "Cannot create a work directory in /run; skipping this run."; exit 1; }
+trap 'rm -rf -- "${_work}"' EXIT
+
 # Server's own IPv4 (optional) + currently logged-in inbound SSH peers (v4 or v6)
 # feed every context's anti-lockout allow list.
 _server_ip=""
@@ -545,7 +879,8 @@ _get_ssh_ips() {
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
-  _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+  # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
+  _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2}')
   for _p in ${_cnf_port} ${_sshd_ports}; do
     if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
       _ports="${_ports} ${_p}"
@@ -568,13 +903,12 @@ _process_instance() {
   local _front_path="${_root}/config/includes/user_admin_access_front"
   local _vhost_dir="${_root}/config/server_master/nginx/vhost.d"
   local _backup_dir="${_root}/undo"
-  local _current_backup="${_backup_dir}/.nginx_user_admin.current.bak.tar.gz"
-  local _last_good_backup="${_backup_dir}/.nginx_user_admin.last_good.bak.tar.gz"
-  local _timestamp_file="${_srv_path}/.ua_last_mod_time"
-  local _ssh_hash_file="${_srv_path}/.ua_ssh_ips_hash"
-  local _version_file="${_srv_path}/.ua_emit_version"
-  local _kinds_file="${_srv_path}/.ua_cms_kinds_hash"
+  local _current_name=".nginx_user_admin.current.bak.tar.gz"
+  local _last_good_name=".nginx_user_admin.last_good.bak.tar.gz"
+  local _last_good_backup="${_backup_dir}/${_last_good_name}"
   local _front_file="${_srv_path}/.ua_front_hash"
+  local _new="${_work}/new" _front_new="${_work}/front"
+  local _ctrl="${_work}/ctrl" _mk="${_work}/mk"
 
   if [[ ! -f "${_input_file}" ]]; then
     _front_fill_frozen "${_root}" "${_map_path}" "${_srv_path}" "${_front_path}" "${_vhost_dir}" "${_front_file}"
@@ -583,7 +917,16 @@ _process_instance() {
   fi
   [[ -d "${_root}/config/includes" ]] || return 0
 
-  mkdir -p "${_map_path}" "${_srv_path}" "${_front_path}" "${_backup_dir}"
+  # The control file is read only as the copy taken from its real directory.
+  # One that cannot be copied keeps its lists as a deleted one does, and its
+  # front copies still follow their sites' names.
+  local _current_mod_time
+  _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
+  if ! _acct_in_real_dir "${_input_file%/*}" _acct_copy_here "${_input_file##*/}" "${_ctrl}"; then
+    echo "The control file of ${_root} is not a regular file in a real directory; skipped."
+    _front_keep_valid "${_front_path}" "${_vhost_dir}" "${_front_file}"
+    return 0
+  fi
 
   # Change-gate: regenerate only when the control file changed, the host SSH-IP
   # set changed (a newly logged-in admin must propagate), the emit version
@@ -591,18 +934,26 @@ _process_instance() {
   # site's routed names changed.  No change -> no write, no reload.  The kind
   # and the names are baked into the fragments, so a record written before
   # its site exists, a name re-created as another CMS or an alias added later
-  # must regenerate without anyone touching the control file.
-  local _current_mod_time _last_mod_time=0 _previous_ssh_hash="" _last_version=""
-  local _kinds_hash _previous_kinds_hash="" _front_hash _previous_front_hash=""
-  _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
-  _kinds_hash=$(_kinds_signature "${_root}" "${_input_file}" | md5sum | awk '{print $1}')
-  _ensure_owners "${_input_file}" "${_vhost_dir}"
-  _front_hash=$(_front_signature "${_root}" "${_input_file}" | md5sum | awk '{print $1}')
-  [[ -f "${_timestamp_file}" ]] && _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
-  [[ -f "${_ssh_hash_file}" ]] && _previous_ssh_hash=$(cat "${_ssh_hash_file}" 2>/dev/null || echo "")
-  [[ -f "${_version_file}" ]] && _last_version=$(cat "${_version_file}" 2>/dev/null || echo "")
-  [[ -f "${_kinds_file}" ]] && _previous_kinds_hash=$(cat "${_kinds_file}" 2>/dev/null || echo "")
-  [[ -f "${_front_file}" ]] && _previous_front_hash=$(cat "${_front_file}" 2>/dev/null || echo "")
+  # must regenerate without anyone touching the control file. The markers
+  # are copied out of their real directory in one pass; one that is not
+  # there, not a regular file, or in a directory that is not real reads as
+  # none, and so does a time that is not a number: it is compared as a
+  # number.
+  local _last_mod_time _previous_ssh_hash _last_version
+  local _kinds_hash _previous_kinds_hash _front_hash _previous_front_hash
+  _kinds_hash=$(_kinds_signature "${_root}" "${_ctrl}" | md5sum | awk '{print $1}')
+  _ensure_owners "${_ctrl}" "${_vhost_dir}"
+  _front_hash=$(_front_signature "${_root}" "${_ctrl}" | md5sum | awk '{print $1}')
+  rm -rf -- "${_mk}"
+  mkdir -m 0700 -- "${_mk}" || return 1
+  _acct_in_real_dir "${_srv_path}" _acct_copies_here "${_mk}" .ua_last_mod_time \
+    .ua_ssh_ips_hash .ua_emit_version .ua_cms_kinds_hash .ua_front_hash
+  _line_get _last_mod_time "${_mk}/.ua_last_mod_time"
+  [[ "${_last_mod_time}" =~ ^[0-9]+$ ]] || _last_mod_time=0
+  _line_get _previous_ssh_hash "${_mk}/.ua_ssh_ips_hash"
+  _line_get _last_version "${_mk}/.ua_emit_version"
+  _line_get _previous_kinds_hash "${_mk}/.ua_cms_kinds_hash"
+  _line_get _previous_front_hash "${_mk}/.ua_front_hash"
   if [[ "${_current_mod_time}" -le "${_last_mod_time}" \
      && "${_ssh_ips_hash}" == "${_previous_ssh_hash}" \
      && "${_last_version}" == "${_emit_version}" \
@@ -611,16 +962,29 @@ _process_instance() {
     return 0
   fi
 
+  _acct_in_real_dir "${_root}/config/includes" mkdir -p -- ./user_admin_access_map \
+    ./user_admin_access ./user_admin_access_front 2> /dev/null
+  _acct_in_real_dir "${_root}" mkdir -p ./undo 2> /dev/null
+  if ! _acct_in_real_dir "${_map_path}" true || ! _acct_in_real_dir "${_srv_path}" true \
+    || ! _acct_in_real_dir "${_front_path}" true || ! _acct_in_real_dir "${_backup_dir}" true; then
+    echo "A user_admin_access dir or undo/ of ${_root} is not a real directory; skipped."
+    return 0
+  fi
+
   # Back up the site-vhost fragment dirs before regenerating. The front copies
   # are never backed up: a failed run drops them (see below).
-  tar -czf "${_current_backup}" -C "${_root}/config/includes" \
-    user_admin_access_map user_admin_access 2>/dev/null
+  _snap_store "${_root}/config/includes" "${_backup_dir}" "${_current_name}" \
+    user_admin_access_map user_admin_access
 
   # Generate per-site fragments; track configured sites and written front
-  # files for pruning.
+  # files for pruning. The work dirs are 0755 so the last-good archive packed
+  # from them carries the modes the live directories have.
   local -a _configured=() _fields _ip_list _front_kept=()
-  local _line _site _hash _ip _norm _ip_sorted _frag _tmp _e _d _f _base _keep _s
+  local _line _site _hash _ip _norm _ip_sorted _d
   local _kind _api_open _hosts
+  rm -rf -- "${_new}" "${_front_new}"
+  mkdir -m 0755 -- "${_new}" "${_new}/user_admin_access_map" "${_new}/user_admin_access" \
+    "${_front_new}" || return 1
   while IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
@@ -665,22 +1029,33 @@ _process_instance() {
     _ip_sorted=$(printf '%s\n' "${_ip_list[@]}" | sort -u)
 
     # http-scope fragment: geo (IP -> allowed) + area maps + deny map.
-    _frag="${_map_path}/${_site}.conf"
-    _tmp="${_map_path}/.${_site}.tmp.$$"
     {
       echo "# Generated by /var/xdrago/user_admin_access.sh — DO NOT EDIT BY HAND."
       echo "# Per-site /user + /admin IP access for ${_site}."
       echo "geo \$ua_ip_ok_${_hash} {"
+      # The on-box hops, the wildcard SSL front on loopback and the panel's HTTPS
+      # proxy on the box's own address, are trusted to name the visitor: geo then
+      # judges the last X-Forwarded-For address, which each of them appends
+      # itself, so this vhost judges the real visitor on every hop and a remote
+      # client's own header is never read. Not recursive: an address a client
+      # puts earlier in the header can never step past the appended one. A
+      # loopback caller that sends no such header is still judged as loopback.
+      echo "  proxy 127.0.0.1;"
+      echo "  proxy ::1;"
+      [[ -n "${_server_ip}" ]] && echo "  proxy ${_server_ip};"
       _geo_lines "${_ip_sorted}"
       echo "}"
       # BOA enforces Drupal clean URLs, so /user and /admin always arrive as the
       # real request path in \$uri (which nginx percent-decodes and normalises —
-      # /./ , and // under the default merge_slashes on). We match \$uri only: the
-      # legacy ?q=admin query form is not a clean path and is not served by
-      # default on BOA, and \$arg_q cannot be reliably matched at nginx (it is
-      # neither percent-decoded nor de-duplicated the way Drupal reads \$_GET['q']).
+      # /./ , and // under the default merge_slashes on). This nginx layer matches
+      # \$uri only: \$arg_q cannot be matched reliably at nginx (it is neither
+      # percent-decoded nor de-duplicated the way Drupal reads \$_GET['q']).
       # ^/+ (not ^/) also catches a multi-slash //admin even if a vhost ever
-      # disabled merge_slashes.
+      # disabled merge_slashes. The legacy query-string route form (?q=user/…),
+      # which Drupal 6/7 and Backdrop still route on and which arrives with \$uri
+      # '/', is caught in PHP instead: the per-request lock verdict below travels
+      # to the backend and BOA's global settings refuse a \$_GET['q'] that resolves
+      # to the user/admin surface from a locked visitor.
       echo "map \$uri \$ua_u_${_hash} {"
       _area_lines "${_kind}" "${_api_open}"
       echo "}"
@@ -688,70 +1063,68 @@ _process_instance() {
       echo "  default 0;"
       echo "  \"10\" 1;"
       echo "}"
-    } > "${_tmp}"
-    mv -f "${_tmp}" "${_frag}"
+      # The lock verdict for the PHP layer: 1 when this visitor is NOT allowed to
+      # the admin surface, 0 when allowed. The backend gates the ?q= route form on
+      # it. It is the real visitor's verdict on a direct hit and on the proxied
+      # HTTPS hops alike (the geo above reads the address those hops forward).
+      echo "map \$ua_ip_ok_${_hash} \$ua_lk_${_hash} {"
+      echo "  default 1;"
+      echo "  1 0;"
+      echo "}"
+    } > "${_new}/user_admin_access_map/${_site}.conf"
 
-    # server-scope fragment: the 403 gate for the admin surface.
-    _frag="${_srv_path}/${_site}.conf"
-    _tmp="${_srv_path}/.${_site}.tmp.$$"
+    # server-scope fragment: the 403 gate for the clean-path admin surface, and
+    # the lock verdict for the PHP ?q= gate. The fastcgi_param sits at server
+    # level, as the vhost's db_* params do, so it reaches the PHP locations that
+    # declare none of their own (the page route); being in this fragment, it
+    # reaches every listed site as soon as this generator runs, with no vhost
+    # rebuild, and an unlisted site never carries it. The set feeds the proxy
+    # templates that forward the verdict as a header; the panel's HTTPS proxy
+    # includes this file too, where the param is inert.
     {
       echo "# Generated by /var/xdrago/user_admin_access.sh — DO NOT EDIT BY HAND."
       echo "if (\$ua_deny_${_hash}) { return 403; }"
-    } > "${_tmp}"
-    mv -f "${_tmp}" "${_frag}"
+      echo "set \$boa_ua_lk_self \$ua_lk_${_hash};"
+      echo "fastcgi_param BOA_UA_LK_SELF \$ua_lk_${_hash};"
+    } > "${_new}/user_admin_access/${_site}.conf"
 
     # Front copy: the same list, judged at the wildcard SSL front on the real
     # visitor for every name the site's vhost serves.
     _hosts=""
     [[ -n "${_front_on}" ]] && _hosts=$(_front_hosts "${_vhost_dir}/${_site}")
     if [[ -n "${_hosts}" ]]; then
-      _front_write "${_root}" "${_front_path}" "${_site}" "${_hosts}" \
+      _front_write "${_root}" "${_front_new}" "${_site}" "${_hosts}" \
         "$(_geo_lines "${_ip_sorted}")" "$(_area_lines "${_kind}" "${_api_open}")"
       _front_kept+=("${_site}.http.conf" "${_site}.srv.conf")
     fi
 
     _configured+=("${_site}")
-  done < "${_input_file}"
+  done < "${_ctrl}"
+
+  # What this run made goes in place only inside the real directories: every
+  # map before any gate, so a gate never lands without the map it reads.
+  if ! _acct_in_real_dir "${_map_path}" _confs_put_here "${_new}/user_admin_access_map" \
+    || ! _acct_in_real_dir "${_srv_path}" _confs_put_here "${_new}/user_admin_access" \
+    || ! _acct_in_real_dir "${_front_path}" _confs_put_here "${_front_new}"; then
+    echo "Could not put every user_admin_access file of ${_root}; retrying next run."
+    return 1
+  fi
 
   # Prune front files not written by this run: an unlisted site, a site with
   # no rendered vhost, or every one while the front does not include them.
-  for _f in "${_front_path}"/*.srv.conf "${_front_path}"/*.conf; do
-    [[ -e "${_f}" ]] || continue
-    _base=$(basename "${_f}")
-    _keep=""
-    for _s in "${_front_kept[@]}"; do
-      [[ "${_s}" == "${_base}" ]] && _keep="yes" && break
-    done
-    if [[ -z "${_keep}" ]]; then
-      rm -f "${_f}"
-      echo "Pruned stale user_admin_access front file: ${_base} (${_front_path})"
-    fi
-  done
+  _acct_in_real_dir "${_front_path}" _prune_here "user_admin_access front file" \
+    "${_front_path}" "" "${_front_kept[@]}"
 
   # Prune fragments (both dirs) for sites no longer in the control file, the
   # server-scope gate before the map that defines its variable: a gate that
   # outlives its map fails any reload that lands in between.
   for _d in "${_srv_path}" "${_map_path}"; do
-    for _f in "${_d}"/*.conf; do
-      [[ -e "${_f}" ]] || continue
-      _base=$(basename "${_f}" .conf)
-      _keep=""
-      for _s in "${_configured[@]}"; do
-        [[ "${_s}" == "${_base}" ]] && _keep="yes" && break
-      done
-      if [[ -z "${_keep}" ]]; then
-        rm -f "${_f}"
-        echo "Pruned stale user_admin_access fragment: ${_base}.conf (${_d})"
-      fi
-    done
+    _acct_in_real_dir "${_d}" _prune_here "user_admin_access fragment" "${_d}" .conf \
+      "${_configured[@]}"
   done
 
   if _nginx_held_down; then
-    echo "${_current_mod_time}" > "${_timestamp_file}"
-    echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
-    echo "${_emit_version}" > "${_version_file}"
-    echo "${_kinds_hash}" > "${_kinds_file}"
-    echo "${_front_hash}" > "${_front_file}"
+    _ua_markers_put
     echo "user_admin_access written (${_root}); replication standby -- reload skipped (web tier held)."
     return 0
   fi
@@ -764,22 +1137,20 @@ _process_instance() {
   _ct=$(service nginx configtest 2>&1)
   if [[ $? -ne 0 ]]; then
     echo "Nginx configtest failed after user_admin_access update (${_root}): ${_ct}"
-    rm -f "${_front_path}"/*.srv.conf "${_front_path}"/*.conf
+    _acct_in_real_dir "${_front_path}" _confs_drop_here > /dev/null
     if [[ -f "${_last_good_backup}" ]]; then
       echo "Reverting ${_root} user_admin_access to last known good."
       ### Prove the archive is readable BEFORE deleting what is on disk: an
       ### unverified one could leave the instance with no fragments at all.
-      if tar -tzf "${_last_good_backup}" &> /dev/null; then
-        rm -f "${_srv_path}"/*.conf "${_map_path}"/*.conf
-        if ! tar -xzf "${_last_good_backup}" -C "${_root}/config/includes" 2>/dev/null; then
-          echo "ALRT: restoring ${_last_good_backup} FAILED after the fragments were removed."
-        fi
-        rm -f "${_front_path}"/*.srv.conf "${_front_path}"/*.conf
+      if _lg_fetch "${_backup_dir}" "${_last_good_name}" "${_work}/lg"; then
+        _ua_restore
         service nginx reload
       else
-        echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- keeping the"
-        echo "ALRT: fragments now on disk rather than deleting them for an archive"
-        echo "ALRT: that cannot be restored. Fix ${_input_file} and re-run."
+        _policy_alert "user_admin_access.refused.${_root}" \
+          "user_admin_access: last-good backup unreadable, fragments kept (${_root})" \
+          "last-good backup ${_last_good_backup} is unreadable -- keeping the" \
+          "fragments now on disk rather than deleting them for an archive" \
+          "that cannot be restored. Fix ${_input_file} and re-run."
         # With the front copies gone the rest may pass again.
         service nginx configtest &> /dev/null && service nginx reload
       fi
@@ -789,51 +1160,70 @@ _process_instance() {
       # run wrote — otherwise a bad one lingers and keeps EVERY tool's configtest
       # failing box-wide until someone finds and fixes it.
       echo "No last-good backup for ${_root}; removing just-written fragments."
-      rm -f "${_srv_path}"/*.conf "${_map_path}"/*.conf
+      _acct_in_real_dir "${_srv_path}" _confs_drop_here > /dev/null
+      _acct_in_real_dir "${_map_path}" _confs_drop_here > /dev/null
     fi
-    # The front copies were dropped and the markers may have come back from
-    # the archive: forget the front state so the next pass rebuilds them.
-    rm -f "${_front_file}"
+    # The front copies were dropped: forget the front state so the next pass
+    # rebuilds them.
+    _acct_in_real_dir "${_srv_path}" rm -f -- ./.ua_front_hash
     return 1
   fi
 
   if ! service nginx reload; then
     echo "Nginx reload failed after user_admin_access update (${_root}); reverting."
-    rm -f "${_front_path}"/*.srv.conf "${_front_path}"/*.conf
+    _acct_in_real_dir "${_front_path}" _confs_drop_here > /dev/null
     if [[ -f "${_last_good_backup}" ]]; then
-      if tar -tzf "${_last_good_backup}" &> /dev/null; then
-        rm -f "${_srv_path}"/*.conf "${_map_path}"/*.conf
-        if ! tar -xzf "${_last_good_backup}" -C "${_root}/config/includes" 2>/dev/null; then
-          echo "ALRT: restoring ${_last_good_backup} FAILED after the fragments were removed."
-        fi
-        rm -f "${_front_path}"/*.srv.conf "${_front_path}"/*.conf
+      if _lg_fetch "${_backup_dir}" "${_last_good_name}" "${_work}/lg"; then
+        _ua_restore
         service nginx reload
       else
-        echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
+        _policy_alert "user_admin_access.refused.${_root}" \
+          "user_admin_access: last-good backup unreadable, fragments kept (${_root})" \
+          "last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
       fi
     fi
-    rm -f "${_front_file}"
+    _acct_in_real_dir "${_srv_path}" rm -f -- ./.ua_front_hash
     return 1
   fi
 
   # Success: refresh this instance's last-good backup + change-gate markers.
   ### An unverified last-good archive is worse than none: the revert path
-  ### above trusts it enough to delete the live fragments.
-  if tar -czf "${_last_good_backup}" -C "${_root}/config/includes" \
-    user_admin_access_map user_admin_access 2>/dev/null \
-    && tar -tzf "${_last_good_backup}" &> /dev/null; then
-    :
-  else
-    echo "ALRT: could not write a verifiable last-good user_admin_access backup; removing it"
-    rm -f "${_last_good_backup}"
+  ### above trusts it enough to delete the live fragments. It holds what
+  ### this run put, packed from the work dir.
+  if ! _lg_store "${_new}" "${_backup_dir}" "${_last_good_name}" \
+    user_admin_access_map user_admin_access; then
+    _policy_alert "user_admin_access.lgstore.${_root}" \
+      "user_admin_access: last-good backup not written (${_root})" \
+      "could not write a verifiable last-good user_admin_access backup; removing it"
+    _acct_in_real_dir "${_backup_dir}" rm -f -- "./${_last_good_name}"
   fi
-  echo "${_current_mod_time}" > "${_timestamp_file}"
-  echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
-  echo "${_emit_version}" > "${_version_file}"
-  echo "${_kinds_hash}" > "${_kinds_file}"
-  echo "${_front_hash}" > "${_front_file}"
+  _ua_markers_put
   echo "user_admin_access updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."
   return 0
+}
+
+# The change-gate markers of the running _process_instance put in its real
+# srv dir.
+_ua_markers_put() {
+  _acct_in_real_dir "${_srv_path}" _acct_put_pairs_here \
+    .ua_last_mod_time "${_current_mod_time}" .ua_ssh_ips_hash "${_ssh_ips_hash}" \
+    .ua_emit_version "${_emit_version}" .ua_cms_kinds_hash "${_kinds_hash}" \
+    .ua_front_hash "${_front_hash}"
+}
+
+# The fragments of the running _process_instance replaced by those unpacked
+# from its last-good archive into the work dir: every gate dropped before
+# the maps, every map put before the gates.
+_ua_restore() {
+  _acct_in_real_dir "${_srv_path}" _confs_drop_here > /dev/null
+  _acct_in_real_dir "${_map_path}" _confs_drop_here > /dev/null
+  if ! _acct_in_real_dir "${_map_path}" _confs_put_here "${_work}/lg/user_admin_access_map" \
+    || ! _acct_in_real_dir "${_srv_path}" _confs_put_here "${_work}/lg/user_admin_access"; then
+    _policy_alert "user_admin_access.restore.${_root}" \
+      "user_admin_access: restoring the last-good backup FAILED (${_root})" \
+      "restoring ${_last_good_backup} FAILED after the fragments were removed."
+  fi
+  _acct_in_real_dir "${_front_path}" _confs_drop_here > /dev/null
 }
 
 # Octopus instances only. Real instances carry tools/drush; the BOA-canonical

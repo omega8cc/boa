@@ -29,6 +29,11 @@ run `xmass`, or move
 account by account with `xoct`. Neither migration tool upgrades anything; a box
 changes Percona series only through `barracuda`.
 
+Moving a whole box account by account, put `_XOCT_BOX_MOVE=YES` before
+`xoct create`, `export` and `pretransfer` for the hosted service's own
+(internal) accounts: a move of one account refuses them otherwise, and the
+refusal prints that line (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md), step 5).
+
 ## The MySQL watchdog during a migration
 
 BOA's MySQL watchdog (`/var/xdrago/monitor/check/mysql.sh`) restarts a down
@@ -55,7 +60,8 @@ as abandoned, and `/run` is tmpfs, so a reboot clears it.
 - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
   (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
 - **`xcopy`** holds it the same way for `export` and `import`: the panel
-  database dump and restore and every site's `mydumper` or `myloader` run.
+  database dump and restore, `renameaegirhost`'s database work on the target
+  and every site's `mydumper` or `myloader` run.
 
 `xoct` and `xcopy` write their process ID into the marker and keep it fresh
 for as long as their database work runs, however long one dump or load takes.

@@ -131,7 +131,7 @@ _fpm_reload() {
   : > /run/restarting_fmp_wait.pid
   sleep 3
   renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service "php${e}-fpm" reload
@@ -143,7 +143,7 @@ _fpm_reload() {
 }
 
 _fpm_duplicate_instances_detection() {
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     # Count masters for this exact conf path
     _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
@@ -175,9 +175,10 @@ _fpm_listen_conflict_detection() {
       sleep 2
       _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
+        _sql_mutation_began && return 0
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
         mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ ! -S "/run/www${e}.fpm.socket" ]; then
             _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
@@ -247,9 +248,10 @@ _fpm_sockets_healing() {
     sleep 2
     _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
+      _sql_mutation_began && return 0
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
       mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ ! -S "/run/www${e}.fpm.socket" ]; then
           _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
@@ -276,7 +278,7 @@ _fpm_fastcgi_temp() {
 
 _fpm_health_check_fix() {
   _thisErrLog=
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
       _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
@@ -300,6 +302,7 @@ _fpm_health_check_fix() {
       fi
 
       if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
+        _sql_mutation_began && break
         # Per-version cooldown: /run/php<ver>-fpm.cooldown, gated by
         # _FPM_COOLDOWN_SECS
         _cd="/run/php${e}-fpm.cooldown"
@@ -388,7 +391,7 @@ _fpm_logs_empty() {
   # cooldown stamp, so a log that stays absent for a reason a reload does
   # not fix cannot become an APCu-clearing storm.
   local _e _cdE _tsE _nowE
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for _e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${_e}-fpm" ] && [ -x "/opt/php${_e}/bin/php" ] \
       && [ ! -e "/var/log/php/php${_e}-fpm-error.log" ]; then
@@ -490,7 +493,7 @@ _fpm_apcu_reload_sentinel() {
   _fpm_reload "SENTINEL"
 
   # Update cooldown timestamp for all FPM versions
-  local _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  local _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     [ -e "/etc/init.d/php${e}-fpm" ] && date +%s > "/run/php${e}-fpm.cooldown"
   done
@@ -498,13 +501,62 @@ _fpm_apcu_reload_sentinel() {
 }
 
 
-if [ ! -e "/var/tmp/fpm" ]; then
-  mkdir -p /var/tmp/fpm
-  # 1777 (sticky) instead of 777: every PHP-FPM pool (each a per-tenant uid)
-  # still creates its own opcache.lockfile, but cross-tenant deletion of those
-  # lockfiles is prevented. Mirrors /tmp's standard scratch-dir model.
-  chmod 1777 /var/tmp/fpm
-fi
+# /var/tmp/fpm is sticky (1777) and root's: every pool keeps its opcache
+# lockfile there and none may remove another's. valkey/ in it holds the
+# backoff flag every pool and CLI shares and is 0777 without the sticky bit
+# on purpose (any pool must replace or remove a flag another armed), so the
+# kernel's link protections do not cover it: PHP uses it only while it and
+# its parent are real root-owned directories, and root keeps them so. A
+# wrong entry is moved into a fresh root-only directory (mktemp) and removed
+# there, after its replacement exists; a new one is only ever made with a
+# plain mkdir, which fails on any name that exists, a link included, and is
+# then left to the next pass. valkey/ is handled from inside root's own
+# /var/tmp/fpm, and modes are set only on root's own entries, which no other
+# user can move in these sticky root-owned parents.
+_fpm_tmp_enforce() {
+  local _d=/var/tmp/fpm
+  local _old
+  if [ -L "${_d}" ] || { [ -e "${_d}" ] && [ ! -d "${_d}" ]; } \
+    || { [ -d "${_d}" ] && [ "$(stat -c '%u' "${_d}")" != "0" ]; }; then
+    _old="$(mktemp -d /var/tmp/.fpm.old.XXXXXXXX)" || return 1
+    if mv -T -- "${_d}" "${_old}/fpm"; then
+      mkdir "${_d}" && chmod 1777 "${_d}"
+    fi
+    rm -rf --one-file-system -- "${_old}"
+  fi
+  if [ ! -e "${_d}" ] && [ ! -L "${_d}" ]; then
+    mkdir "${_d}" && chmod 1777 "${_d}"
+  fi
+  [ -d "${_d}" ] && [ ! -L "${_d}" ] \
+    && [ "$(stat -c '%u' "${_d}")" = "0" ] || return 1
+  if [ "$(stat -c '%g %a' "${_d}")" != "0 1777" ]; then
+    chgrp root "${_d}" && chmod 1777 "${_d}"
+  fi
+  (
+    cd -P -- "${_d}" && [ "$(stat -c '%u' .)" = "0" ] || exit 1
+    if [ -L ./valkey ] || { [ -e ./valkey ] && [ ! -d ./valkey ]; } \
+      || { [ -d ./valkey ] && [ "$(stat -c '%u' ./valkey)" != "0" ]; }; then
+      _old="$(mktemp -d ./.valkey.old.XXXXXXXX)" || exit 1
+      if mv -T -- ./valkey "${_old}/valkey"; then
+        mkdir -m 0777 ./valkey
+      fi
+      rm -rf --one-file-system -- "${_old}"
+    fi
+    if [ ! -e ./valkey ] && [ ! -L ./valkey ]; then
+      mkdir -m 0777 ./valkey || exit 1
+    fi
+    [ -d ./valkey ] && [ ! -L ./valkey ] \
+      && [ "$(stat -c '%u' ./valkey)" = "0" ] || exit 1
+    if [ "$(stat -c '%g %a' ./valkey)" != "0 777" ]; then
+      chgrp root ./valkey && chmod 0777 ./valkey
+    fi
+    # a directory at the flag name keeps every pool from arming the backoff
+    if [ -d ./valkey/disabled.flag ] && [ ! -L ./valkey/disabled.flag ]; then
+      rm -rf --one-file-system -- ./valkey/disabled.flag
+    fi
+  )
+}
+_fpm_tmp_enforce
 
 ###
 ### Stand down while the database is being deliberately restarted
@@ -537,6 +589,19 @@ _sql_mutation_in_flight() {
     fi
   done
   return 1
+}
+
+# Asked again after a grace and before a restart: move_sql.sh writes its
+# marker and only then stops every PHP-FPM master, so a master or socket
+# gone after the grace may be that stop under way, and a restart now would
+# bring PHP-FPM up in the middle of the database restart. Once seen, the
+# rest of the pass restarts nothing.
+_FPM_SQL_MUT=NO
+_sql_mutation_began() {
+  [ "${_FPM_SQL_MUT}" = "YES" ] && return 0
+  _sql_mutation_in_flight || return 1
+  _FPM_SQL_MUT=YES
+  return 0
 }
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \

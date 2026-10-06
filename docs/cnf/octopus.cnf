@@ -15,9 +15,13 @@ _HM_ONLY=NO #------------------- Allows to upgrade Ægir Hostmaster only
 _PLATFORMS_ONLY=NO #------------ Install only new Ægir platforms when YES
 _BACKDROP_SUPPORT=YES #--------- Set to NO to skip Backdrop CMS platforms - see docs/PLATFORMS.md
 _INSTANCE_GROUP=YES #----------- Per-account private primary group (instgrp); NO keeps the box-wide group - see docs/INSTGRP.md
+### _WEB_GROUP: NO opts the account out of the web group conversion (instgrp
+### webconvert); A pins it at phase A (webconvert <account> --phase-a writes it).
+### Absent means neither, and no default is written - see docs/INSTGRP.md
+#_WEB_GROUP=NO
 _SEND_UPGRADE_EMAIL=YES #------- Mail the client an upgrade notice after each instance upgrade; NO switches it off (the welcome email always sends)
-_GRAV_SUPPORT=NO #-------------- Set to YES to enable Grav 2 platforms and site capsules
-_TXP_SUPPORT=NO #--------------- Set to YES to enable Textpattern platforms and sites
+_GRAV_SUPPORT=NO #-------------- Set to YES to enable Grav 2 platforms and site capsules; YES by default on hosted and remotely managed systems
+_TXP_SUPPORT=NO #--------------- Set to YES to enable Textpattern platforms and sites; YES by default on hosted and remotely managed systems
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
@@ -53,7 +57,10 @@ _SITES_COLLATION_SQL= #--------- By default in sites hosted: utf8mb4_unicode_ci
 ###
 ### NOTE: the group of settings displayed below will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
-### but only on upgrade.
+### but only on upgrade. Each file overrides only in its plain form
+### (domain.txt a host name, email.txt plain addresses, option.txt and
+### subscr.txt one word, cores.txt digits); any other text is ignored with
+### a NOTE and the value here is kept.
 ###
 _DOMAIN="o1.f-q-d-n" #---------- URL of the Ægir control panel
 _CLIENT_EMAIL= #---------------- Create client user if different than _MY_OCTO_EMAIL
@@ -100,6 +107,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.6 (a release candidate, where the server has built it)
 ### 8.5
 ### 8.4
 ### 8.3
@@ -139,6 +147,10 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### NOTE: Each line in the multi-fpm.info file must start with main site name,
 ### followed by single space, and then the PHP-FPM version to use.
 ###
+### NOTE: A line starting with # is a comment and never pins its site.
+### Commenting out a site's line drops its pin, and the site returns to the
+### version in fpm.info within one pass.
+###
 
 ###
 ### /data/disk/${_USER}/static/control/cli.info
@@ -152,6 +164,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.6 (a release candidate, where the server has built it)
 ### 8.5
 ### 8.4
 ### 8.3
@@ -208,6 +221,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
 # LGV — LocalGov
+# OCS — OpenCulturas
 # THR — Thunder
 # VBX — Varbase 11
 
@@ -215,7 +229,6 @@ so both can be used as default versions in the Ægir PHP configuration files:
 #
 # DE3 — Drupal 11.3 prod/stage/dev
 # FOS — farmOS
-# OCS — OpenCulturas
 
 ### Drupal 11.2
 #
@@ -294,7 +307,8 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ###
 ### IMPORTANT: Supported Drupal core versions and distributions have different
 ### PHP versions requirements, while not all PHP versions out of currently
-### supported twelve versions are installed by default.
+### supported thirteen versions (8.6 a release candidate) are installed by
+### default.
 ###
 ### Ensure that you have corresponding PHP versions installed with barracuda
 ### before attempting to install older Drupal versions and distributions.

@@ -42,8 +42,8 @@ _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.10.3
 _CSF_VRN=15.00
 _CURL_VRN=8.22.0
-_DRUSH_EIGHT_TEST_VRN=8.5.9
-_DRUSH_EIGHT_VRN=8.5.9
+_DRUSH_EIGHT_TEST_VRN=8.5.13
+_DRUSH_EIGHT_VRN=8.5.13
 _DRUSH_ELEVEN_VRN=11.6.0
 _DRUSH_TEN_VRN=10.6.2
 _GIT_VRN=2.51.0
@@ -53,7 +53,7 @@ _ICU_MODERN_VRN=73-1
 _ICU_NEWER_VRN=76-1
 _IMAGICK_OLD_VRN=3.1.2
 _IMAGICK_VRN=3.8.1
-_IONCUBE_VRN=15.5.0
+_IONCUBE_VRN=15.5.1
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
 _JETTY_9_VRN=9.2.16.v20160414
@@ -66,13 +66,13 @@ _LSHELL_VRN=0.11.9
 _MAILPARSE_VRN=2.1.6
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
-_MSS_VRN=master-29-06-2024
+_MSS_VRN=master-02-10-2026
 _MYQUICK_VRN_ONE=0.19.3-3
 _MYQUICK_VRN_TWO=1.0.5-1
 _NEW_RELIC_VRN=12.11.0.40
 _NGINX_VRN=1.31.6.1
-_NODE_VRN=v22.21.0
-_OPENSSH_VRN=10.5p1
+_NODE_MAJOR=24
+_OPENSSH_VRN=10.6p1
 _OPENSSL_EOL_VRN=1.1.1w
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_MODERN_VRN=3.5.9
@@ -109,6 +109,10 @@ _PHP84_API=20240924
 _PHP84_VRN=8.4.26
 _PHP85_API=20250925
 _PHP85_VRN=8.5.11
+_PHP86_API=20260924
+# pinned extension releases not shown to build against the pinned 8.6 RC
+_PHP86_EXT_SKIP="apcu-5.1.28 imagick-3.8.1 mcrypt-1.0.9 mongodb-1.2.5 php-geos-1.0.0 phpredis-6.3.0"
+_PHP86_VRN=8.6.0RC2
 _PHPREDIS_FIVE_VRN=5.3.7
 _PHPREDIS_FOUR_VRN=4.3.0
 _PHPREDIS_SIX_LATEST_VRN=6.3.0
@@ -117,10 +121,6 @@ _PHPREDIS_SIX_MODERN_VRN=6.3.0
 _PHPREDIS_THREE_VRN=3.1.6
 _PURE_FTPD_VRN=1.0.54
 _PXC_VRN=1.4.16
-_REDIS_FIVE_VRN=5.0.9
-_REDIS_FOUR_VRN=4.0.14
-_REDIS_SEVEN_VRN=7.0.15
-_REDIS_SIX_VRN=6.2.7
 _RUBY_VRN=3.3.4
 _SLF4J_VRN=1.7.21
 _SMALLCORE7_V=7.106.1
@@ -152,7 +152,6 @@ export _DB_SRC=repo.percona.com
 export _DRUPAL7="drupal-${_SMALLCORE7_V}"
 export _DRUSH_VERSION_TEST="${_DRUSH_EIGHT_TEST_VRN}"
 export _DRUSH_VERSION="${_DRUSH_EIGHT_VRN}"
-export _FORCE_REDIS_RESTART=NO
 export _LOC_OS_CODE=""
 export _PURGE_ALL_THISHTIP=NO
 export _SPINNER=NO
@@ -198,6 +197,9 @@ _saPatch="/var/xdrago/conf/${_saCoreS}.patch"
 ###
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
+# The Percona server package reports the host to Percona once, from its
+# postinst, unless this is set in the environment apt passes down.
+export PERCONA_TELEMETRY_DISABLE=1
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
@@ -280,11 +282,64 @@ fi
 ###
 ### Include shared functions
 ###
-_FL="helper dns system sql valkey redis nginx php solr master xtra firewall hotfix"
+_FL="helper dns system sql valkey nginx php solr master xtra firewall hotfix"
 for f in ${_FL}; do
   [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
   source "${_libFnc}/${f}.sh.inc"
 done
+
+# The master's web group (wg-aegir) is kept by php.sh.inc: its pool line is
+# left out while a phase-B rollback's cut-short token stands. A lib tree
+# without that reader (a stale boa.tar.gz behind a fresh launcher) is fetched
+# fresh once per release; still stale, the run aborts while the master holds
+# its web-group record (the copy would give the master pools the line before
+# the next webconvert aegir re-checked the master's shares), and goes on
+# with a note otherwise.
+if ! declare -F _master_web_group_rb > /dev/null 2>&1; then
+  _libRefetchMark="/opt/tmp/.libtree-refetch-mwg.${_X_VERSION:-unknown}"
+  if [ ! -e "${_libRefetchMark}" ]; then
+    echo "NOTE: the lib tree predates this launcher (_master_web_group_rb missing); fetching a fresh tree"
+    touch "${_libRefetchMark}"
+    rm -rf /opt/tmp/boa-refetch
+    mkdir -p /opt/tmp/boa-refetch
+    # shellcheck disable=SC2086,SC2154
+    ( cd /opt/tmp/boa-refetch \
+      && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
+      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+    if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+      && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
+      && grep -q "^_master_web_group_rb() {" /opt/tmp/boa-refetch/boa/lib/functions/php.sh.inc 2> /dev/null; then
+      rm -rf /opt/tmp/boa
+      mv -f /opt/tmp/boa-refetch/boa /opt/tmp/boa
+      chown -R root:root /opt/tmp/boa &> /dev/null
+      for f in ${_FL}; do
+        [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+        # shellcheck disable=SC1090
+        source "${_libFnc}/${f}.sh.inc"
+      done
+      echo "NOTE: fresh lib tree in place"
+    else
+      echo "NOTE: the fresh tree could not be fetched or verified; keeping the current one"
+    fi
+    rm -rf /opt/tmp/boa-refetch
+  fi
+  if ! declare -F _master_web_group_rb > /dev/null 2>&1; then
+    _libMrec=NO
+    if [ -f /root/.aegir.web-group.txt ] && [ ! -L /root/.aegir.web-group.txt ] \
+      && [ "$(stat -c %u -- /root/.aegir.web-group.txt 2> /dev/null)" = "0" ]; then
+      read -r _libRg _libRgid _ < /root/.aegir.web-group.txt
+      [ "${_libRg}" = "wg-aegir" ] \
+        && [ "gid=$(getent group wg-aegir 2> /dev/null | cut -d: -f3)" = "${_libRgid}" ] \
+        && _libMrec=YES
+    fi
+    if [ "${_libMrec}" = "YES" ]; then
+      echo "ALRT: the lib tree predates the master's web group while the master holds its web-group record; aborting"
+      _clean_pid_exit _stale_lib_tree
+    else
+      echo "NOTE: the lib tree still predates the master's web group (a cached boa.tar.gz on the mirror edge?); the master holds no web-group record, so nothing depends on it this pass"
+    fi
+  fi
+fi
 
 
 ###
@@ -557,13 +612,16 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_install_upgrade
   _nginx_initd_check
   _nginx_mime_check_fix
-  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ] \
-    || [ "${_VALKEY_MAJOR_RELEASE}" = "8" ] \
-    || [ "${_VALKEY_MAJOR_RELEASE}" = "9" ]; then
-    _valkey_install_upgrade
-  else
-    _redis_install_upgrade
-  fi
+  # Valkey is the only cache server BOA installs: a major it does not build
+  # becomes the default one here, whatever build tree the pass sources.
+  case "${_VALKEY_MAJOR_RELEASE}" in
+    7|8|9) ;;
+    *)
+      export _VALKEY_MAJOR_RELEASE=9
+      sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g" ${_barCnf}
+      ;;
+  esac
+  _valkey_install_upgrade
   _lshell_install_upgrade
   _php_install_deps
   _php_libs_fix
@@ -677,6 +735,12 @@ _rsyslog_config_update
 _pam_umask_check_fix
 _pam_many_check_fix
 _avatars_check_fix
+### The Ægir Master's task queue is held from here until the AppArmor step
+### below is done: the limits step, the init step and the enforced AppArmor
+### mode each restart Nginx, PHP-FPM or Percona.
+if [ "${_STATUS}" != "INIT" ]; then
+  _master_queue_hold
+fi
 _sysctl_update
 _initd_update
 
@@ -706,6 +770,7 @@ else
     _if_remove_apparmor
   fi
 fi
+_master_queue_release
 
 
 ### On every pass, heavy or not, and only here: after any Nginx build, after
@@ -716,6 +781,7 @@ _nginx_quic_bpf_sync
 _apticron_update
 _barracuda_log_update
 _instgrp_arm_stamp
+_instgrp_web_arm_stamp
 _find_server_city
 
 

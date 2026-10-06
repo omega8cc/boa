@@ -8,7 +8,7 @@
 ### upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -28,7 +28,7 @@ _PHP_FPM_VERSION=8.4
 ### upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -62,6 +62,7 @@ _PHP_CLI_VERSION=8.4
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
 # LGV — LocalGov
+# OCS — OpenCulturas
 # THR — Thunder
 # VBX — Varbase 11
 
@@ -69,7 +70,6 @@ _PHP_CLI_VERSION=8.4
 #
 # DE3 — Drupal 11.3 prod/stage/dev
 # FOS — farmOS
-# OCS — OpenCulturas
 
 ### Drupal 11.2
 #
@@ -146,7 +146,8 @@ _PHP_CLI_VERSION=8.4
 ###
 ### IMPORTANT: Supported Drupal core versions and distributions have different
 ### PHP versions requirements, while not all PHP versions out of currently
-### supported twelve versions are installed by default.
+### supported thirteen versions (8.6 a release candidate) are installed by
+### default.
 ###
 ### Ensure that you have corresponding PHP versions installed with barracuda
 ### before attempting to install older Drupal versions and distributions.
@@ -211,8 +212,16 @@ _BACKDROP_SUPPORT=YES
 ###----------------------------------------###
 ###
 ### Grav 2 platforms and site capsules
-### ship dark. To enable Grav on this
-### Octopus instance, change this to YES.
+### are off by default on self-hosted
+### systems. To enable Grav on this Octopus
+### instance, change this to YES.
+###
+### On hosted and remotely managed systems
+### (an .aegir.cc hostname or the file
+### /root/.host8.cnf) Grav is on by default:
+### a new instance gets YES, and a NO seeded
+### before that default flips to YES once;
+### a NO you set afterwards stays.
 ###
 ### _GRAV_SUPPORT=YES
 ###
@@ -221,10 +230,13 @@ _GRAV_SUPPORT=NO
 ###--------------------------------------###
 ###
 ### Textpattern platforms and multisite
-### sites ship dark. To enable Textpattern
-### on this Octopus instance, change this
-### to YES. Requires the current BOA
-### release (PHP 8.4).
+### sites are off by default on self-hosted
+### systems. To enable Textpattern on this
+### Octopus instance, change this to YES.
+### Requires the current BOA release (PHP
+### 8.4). On hosted and remotely managed
+### systems it is on by default, as Grav is
+### (see above).
 ###
 ### _TXP_SUPPORT=YES
 ###
@@ -1195,6 +1207,83 @@ _boa_code_tree_is_root_owned() {
 }
 
 
+# A published stamp: two lines, the publish time and "<branch> <short sha>".
+# The mirror answers a missing path with HTTP 200 and an HTML page, so a
+# stamp is judged by its content, never by the status.
+_boa_stamp_valid() {
+  local _svL1=""
+  local _svL2=""
+  [ "$(printf '%s\n' "${1}" | grep -c .)" = "2" ] || return 1
+  _svL1=$(printf '%s\n' "${1}" | sed -n '1p')
+  _svL2=$(printf '%s\n' "${1}" | sed -n '2p')
+  [[ "${_svL1}" =~ [0-9]{4} ]] || return 1
+  [[ "${_svL2}" =~ ^[0-9]+\.x-[a-z]+\ [0-9a-f]{7,40}$ ]]
+}
+
+# The publish writes dev/<tree>/boa.stamp, a copy of the archive's
+# boa/.update.txt. A staged tree whose .update.txt differs was fetched before
+# that publish, or from an edge still holding the older archive: it is
+# fetched again into a side directory and swapped in only when it matches
+# the stamp. One try per stamp within 30 minutes, so a batch walking many
+# instances does not refetch for each. Nothing happens while no stamp is
+# published. Kept in step with the barracuda.sh.cnf and octopus.sh.cnf copies.
+_boa_tree_stamp_check() {
+  local _stQry="?r=$(date +%s)"
+  local _stPub=""
+  local _stTree=""
+  local _stGot=""
+  local _stHave=""
+  local _stPubL=""
+  local _stMark="/opt/tmp/.boa-stamp-refetch"
+  local _stNew="/opt/tmp/boa-stamp-refetch"
+  [ "${_DL_NOCACHE}" = "NO" ] && _stQry=""
+  [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ] || return 0
+  [ -n "${_urlDev}" ] && [ -n "${_tRee}" ] || return 0
+  _stPub=$(curl -L --max-redirs 3 -s --fail --max-time 30 -A iCab \
+    "${_urlDev}/${_tRee}/boa.stamp${_stQry}" 2> /dev/null \
+    | head -c 256 | tr -d '\r' | sed 's/[[:space:]]*$//')
+  _boa_stamp_valid "${_stPub}" || return 0
+  _stTree=$(head -c 256 /opt/tmp/boa/.update.txt 2> /dev/null \
+    | tr -d '\r' | sed 's/[[:space:]]*$//')
+  [ "${_stTree}" = "${_stPub}" ] && return 0
+  _stHave="${_stTree##*$'\n'}"
+  [ -n "${_stHave}" ] || _stHave="unstamped"
+  _stPubL="${_stPub##*$'\n'}"
+  # A republish of the same commit differs only in its time: name both
+  if [ "${_stHave}" = "${_stPubL}" ]; then
+    _stHave="${_stHave}, ${_stTree%%$'\n'*}"
+    _stPubL="${_stPubL}, ${_stPub%%$'\n'*}"
+  fi
+  if [ "$(cat "${_stMark}" 2> /dev/null)" = "${_stPub}" ] \
+    && [ -n "$(find "${_stMark}" -mmin -30 2> /dev/null)" ]; then
+    echo "ALRT: the build tree (${_stHave}) is not the published ${_stPubL}; continuing with it"
+    return 0
+  fi
+  echo "NOTE: the build tree (${_stHave}) is not the published ${_stPubL}; fetching it again"
+  printf '%s\n' "${_stPub}" > "${_stMark}"
+  rm -rf "${_stNew}"
+  mkdir -p "${_stNew}"
+  # shellcheck disable=SC2086
+  ( cd "${_stNew}" \
+    && curl ${_crlGet} "${_urlDev}/${_tRee}/boa.tar.gz${_stQry}" -o boa.tar.gz \
+    && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+  _stGot=$(head -c 256 "${_stNew}/boa/.update.txt" 2> /dev/null \
+    | tr -d '\r' | sed 's/[[:space:]]*$//')
+  if [ "${_stGot}" = "${_stPub}" ] \
+    && [ -e "${_stNew}/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    && [ -e "${_stNew}/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    && [ -e "${_stNew}/boa/lib/functions/helper.sh.inc" ]; then
+    rm -rf /opt/tmp/boa
+    mv -f "${_stNew}/boa" /opt/tmp/boa
+    chown -R root:root /opt/tmp/boa &> /dev/null
+    echo "NOTE: build tree ${_stPub##*$'\n'} in place"
+  else
+    echo "ALRT: the build tree fetched again is not the published ${_stPubL}; continuing with the current one"
+  fi
+  rm -rf "${_stNew}"
+}
+
+
 _download_boa_code() {
   # A staged tree of ANOTHER tree is never reused: every published tar bakes
   # its tree name into the libs (export _tRee=), and a switch at the same
@@ -1239,6 +1328,7 @@ _download_boa_code() {
     && [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
   fi
+  _boa_tree_stamp_check
 }
 
 

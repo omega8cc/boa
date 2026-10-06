@@ -10,6 +10,81 @@ _if_hosted_sys() {
   fi
 }
 
+#
+# Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
+# mail BOA would send an account's client goes to the one address it holds
+# instead, its subject noting who would have been mailed; a file that anyone
+# but root can write, or that does not hold exactly one plain address, stops
+# that mail (fail closed) with one line saying why. Read through one handle
+# opened without following a link or blocking on a FIFO, and only while it
+# is a regular file of root's, not writable by group or others, with a
+# single link, 1 KiB at most (_MAIL_HOLD_PL: status 2 gone, 3 not root's or
+# writable by others, 4 any other shape, 5 not one plain address). $1 = the
+# client recipients (words). Sets _MAIL_HOLD_RCPT, the recipients to use, and
+# _MAIL_HOLD_SFX, the note for the subject; status 1: send none. Without the
+# file they are $1 and empty. One copy in each tool that mails a client.
+# shellcheck disable=SC2016
+_MAIL_HOLD_PL='use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($!{ENOENT} ? 2 : 4); my @s = stat($h); exit 4 unless @s; exit 3 unless $s[4] == 0 && !($s[2] & 022); exit 4 unless -f _ && $s[3] == 1 && $s[7] <= 1024; my ($d, $r) = (""); while ($r = sysread($h, my $c, 1025)) { $d .= $c; exit 4 if length($d) > 1024; } exit 4 unless defined $r; $d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/ or exit 5; print $1; exit 0'
+_client_mail_hold() {
+  local _f="/data/conf/client_mail_hold.txt" _a _rc _to _q="'"
+  _MAIL_HOLD_RCPT="${1}"
+  _MAIL_HOLD_SFX=""
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  [ -n "${1//[[:space:]]/}" ] || return 0
+  _to="$(printf '%s' "${1//\\\@/@}" | tr -s '[:space:]' ' ' \
+    | LC_ALL=C tr -cd "A-Za-z0-9._%+=@${_q} -" | cut -c1-200)"
+  _to="${_to# }"
+  _to="${_to% }"
+  _to="${_to:-?}"
+  _a="$(perl -e "${_MAIL_HOLD_PL}" "${_f}" 2> /dev/null)"
+  _rc=$?
+  case "${_rc}" in
+    0)
+      _MAIL_HOLD_RCPT="${_a}"
+      _MAIL_HOLD_SFX=" [held for ${_to}]"
+      return 0
+      ;;
+    2)
+      return 0
+      ;;
+    3)
+      echo "ALRT: ${_f} is not root's, or group or others can write it, and cannot be trusted: client mail for ${_to} not sent"
+      ;;
+    5)
+      echo "ALRT: ${_f} does not hold exactly one plain address: client mail for ${_to} not sent"
+      ;;
+    *)
+      echo "ALRT: ${_f} is not a regular file of one link, 1 KiB at most, that this run can read: client mail for ${_to} not sent"
+      ;;
+  esac
+  _MAIL_HOLD_RCPT=""
+  return 1
+}
+#
+# The operator copy (Bcc) of a client mail _client_mail_hold let through.
+# $1 = the copy address, $2 = the client recipients given to the hold. Sets
+# _MAIL_HOLD_COPY to $1, or to nothing while the hold is on and a word of $1
+# names one of those client addresses: an instance's admin address travels
+# with the account and can be its client's own. Words split at blanks and
+# commas, compared without backslashes and case.
+_client_mail_copy() {
+  local _c _w IFS=$' \t\n'
+  local -a _ws
+  _MAIL_HOLD_COPY="${1}"
+  [ -n "${_MAIL_HOLD_SFX}" ] || return 0
+  _c=" $(printf '%s' "${2//\\/}" | tr -s ',[:space:]' ' ' \
+    | LC_ALL=C tr 'A-Z' 'a-z') "
+  read -r -a _ws <<< "$(printf '%s' "${1//\\/}" | tr -s ',[:space:]' ' ' \
+    | LC_ALL=C tr 'A-Z' 'a-z')"
+  for _w in "${_ws[@]}"; do
+    if [[ "${_c}" == *" ${_w} "* ]]; then
+      _MAIL_HOLD_COPY=""
+      return 0
+    fi
+  done
+  return 0
+}
+
 ###
 ### Noticeable messages
 ###
@@ -182,7 +257,9 @@ _debug_proc() {
     _msg "DBLS: `ls -la /usr/bin/sh`"
     _msg "DBLS: `ls -la /bin/sh`"
     _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
-    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
+    # the account's own .tmp/cache: listed only inside the real directory
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] \
+      && _msg "DBLS: $(_acct_in_real_dir "/data/disk/${_USER}/.tmp/cache" ls -la .)"
   fi
 }
 
@@ -266,6 +343,338 @@ _acct_group() {
   _g=$(id -gn "${_a}" 2> /dev/null)
   [ "${_g}" = "${_a}" ] || _g="users"
   echo "${_g}"
+}
+
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+_web_group_rb() {
+  # "rb" when the account's record says phase B (_web_group_state phaseb)
+  # and carries the fourth field rb=1: a rollback of phase B was cut short,
+  # so the record says B only because the pools may still lack www-data, and
+  # no share check has passed since. Empty otherwise. The pool line is left
+  # out while it stands and the account's shell user is still listed in
+  # www-data. $1 as _web_group_state.
+  local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_web_group_state "${1}")
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  _a="${_s##* }"
+  _a="${_a#wg-}"
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < "${_r}" || :
+  fi
+  if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_master_web_group_rb() {
+  # "rb" when the master's record says phase B and carries the fourth field
+  # rb=1 (a rollback of its phase B cut short), empty otherwise: the master
+  # pool line group = wwwNN is then left out, whatever W says.
+  local _s _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_master_web_group)
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  if [ -f /root/.aegir.web-group.txt ] && [ ! -L /root/.aegir.web-group.txt ] \
+    && [ "$(stat -c %u -- /root/.aegir.web-group.txt 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < /root/.aegir.web-group.txt || :
+  fi
+  if [ "${_rg}" = "wg-aegir" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+
+#
+# An account owns its static/control (and oN owns the rest of /data/disk/oN),
+# so it can put a link or a FIFO at any name there, or turn static/control
+# itself into a link. Root touches those names only through these: the ltd
+# worker's rule, one copy here for the barracuda and octopus runs.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# ./$1 in the current (pinned) directory with the content $2 (0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened, and a reader
+# never finds the name missing.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# $2 with the content $3 in the real directory $1, as _acct_put_here puts it.
+_acct_put_in() {
+  _acct_in_real_dir "${1}" _acct_put_here "${2}" "${3}"
+}
+# The ltd worker's own in-place edit of a file an account owns, one copy
+# here for the barracuda and octopus runs (the text is the worker's):
+# stdin as ./$1 in the current (pinned) directory, handed to uid $2 and
+# gid $3 with the mode $4 (octal) under a fresh temp name, then renamed
+# over the name; $5 = x keeps the execute bits of the mode.
+_ltd_put_ids_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _pl="${_ACCT_PUT_PL}"
+  [ "${5}" = "x" ] && _pl="${_ACCT_PUT_MODE_PL}"
+  [[ "${2}" =~ ^[0-9]+$ && "${3}" =~ ^[0-9]+$ && "${4}" =~ ^[0-7]+$ ]] \
+    || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_pl}" "${_t}" "${2}" "${3}" "${4}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# A single-link regular file under 1 MiB of the current (pinned) directory
+# edited by the sed script $2, read once, never through a link or from a
+# FIFO, and put back only when it changed, with the owner, group and mode
+# it had (_ltd_put_ids_here). $1 = name.
+_ltd_sed_here() {
+  local LC_ALL=C
+  local _st _typ _uid _gid _mod _sz _nl _w _rc=1
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
+    && [ "${_nl}" = "1" ] || return 1
+  _w=$(mktemp -d /run/.ltd-edit.XXXXXX 2> /dev/null) || return 1
+  if timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none > "${_w}/o" 2> /dev/null \
+    && [ "$(stat -c %s -- "${_w}/o" 2> /dev/null)" = "${_sz}" ]; then
+    if sed "${2}" "${_w}/o" > "${_w}/n" 2> /dev/null; then
+      if cmp -s "${_w}/o" "${_w}/n"; then
+        _rc=0
+      else
+        _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
+          < "${_w}/n" && _rc=0
+      fi
+    fi
+  fi
+  rm -rf -- "${_w}"
+  return "${_rc}"
+}
+# stdin as the fresh file $1 in the current (pinned) directory, handed to uid
+# $2 and gid $3 (numbers) with the mode $4, all through the one handle that
+# created it (O_EXCL|O_NOFOLLOW, 0600 until it is complete); the caller then
+# renames it over the name. Nothing is chowned or chmoded by name in a
+# directory an account can write: a hard link renamed over a name between
+# its creation and a chown by name would hand the linked file over.
+# _ACCT_PUT_PL keeps the read/write bits of the mode (what dd under a umask
+# gave), _ACCT_PUT_MODE_PL every permission bit.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_ACCT_PUT_MODE_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0777, $h) or exit 1; close($h) or exit 1; exit 0'
+# Each name given (from find -execdir, or in a pinned directory) handed to
+# uid $1 and gid $2 (numbers, -1 keeps that id) through a handle opened
+# without following a link or blocking on a FIFO: a directory, or a regular
+# file with a single link. A hard-linked file, a link, a FIFO or a socket is
+# left alone, so a hard link planted in a tree root hands over (what
+# chown -R did) never hands another file over.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# The immutable flag set ($1 = +) or cleared (-) on each directory, or
+# regular file with a single link, named, through a handle opened without
+# following a link or blocking on a FIFO; non-zero when a name was neither
+# or its flag could not be changed. A directory may also be locked or
+# unlocked with chattr on '.' inside it (it cannot be a hard link).
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+# A PHP pin (fpm.info, cli.info) root writes in the current (pinned) control
+# directory, handed to the main login: the content _acct_put_here puts
+# (0644), created, handed over and moded through one handle (_ACCT_PUT_PL),
+# then renamed over the name, so no file is handed over by name. An owner
+# that does not resolve leaves the pin root's, as a failed chown left it.
+# $1 = name, $2 = version, $3 = owner:group.
+_acct_pin_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  _uid=$(id -u -- "${3%%:*}" 2> /dev/null)
+  _gid=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    _acct_put_here "${1}" "${2}"
+    return 1
+  fi
+  rm -f -- "${_t}"
+  if printf '%s\n' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" 644 \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The file $2 of every account (/data/disk/*/$1/$2, $1 = static/control or
+# log), each read as _acct_read_in reads it, one after another: what a grep
+# over /data/disk/*/$1/$2 used to read, without following a link or blocking
+# on a FIFO any account put there.
+_acct_read_all() {
+  local _u
+  for _u in /data/disk/*; do
+    [ -d "${_u}/${1}" ] || continue
+    _acct_read_in "${_u}/${1}" "${2}"
+    echo
+  done
+}
+# $2 in the real directory $1, read as _acct_read_in reads it, whole: every
+# byte kept (a NUL as a space). Non-zero when nothing was read or the read
+# stopped at its 1 MiB bound, so a file cut short never passes for whole.
+_acct_read_whole_in() {
+  local _s _n
+  _s=$(_acct_read_in "${1}" "${2}" | tr '\000' ' '; echo .)
+  _s="${_s%.}"
+  _n=$(printf '%s' "${_s}" | wc -c)
+  [ "${_n}" -gt 0 ] && [ "${_n}" -lt 1048576 ] || return 1
+  printf '%s\n' "${_s}"
 }
 
 _sanitize_string() {
@@ -576,7 +985,9 @@ _get_dev_stc() {
 }
 
 #
-# Download and extract from dev/contrib mirror.
+# Download and extract from dev/contrib mirror. A fetch that fails is
+# counted in _GET_FAILS, so a caller filling a stage can refuse to use it
+# (the shared trees and the forced bundle refresh in satellite.sh.inc).
 _get_dev_contrib() {
   if [ ! -z "${1}" ]; then
     _max_attempts=10
@@ -604,6 +1015,7 @@ _get_dev_contrib() {
       fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
+      _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
       return 1  # Exit the function but continue the script
     fi
   fi
@@ -778,6 +1190,9 @@ _mode_detection() {
         _FULL_FORCE_REINSTALL=YES
         _ZOMBIE_HOME="${_vBs}/zombie/${_X_VERSION}-${_NOW}"
         mkdir -p ${_ZOMBIE_HOME}
+        # root's alone, as every other park: what keeps an old number below
+        # (see the hand-over after deluser) is reachable by nobody else
+        chmod 0700 "${_ZOMBIE_HOME}" &> /dev/null
         mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/ &> /dev/null
         mv -f /var/aegir ${_ZOMBIE_HOME}/ &> /dev/null
         mv -f /var/xdrago ${_ZOMBIE_HOME}/ &> /dev/null
@@ -793,6 +1208,18 @@ _mode_detection() {
         # only this user's agent: -f matched every gpg-agent on the box
         id -u aegir &> /dev/null && pkill -9 -u aegir gpg-agent &> /dev/null
         deluser aegir &> /dev/null
+        # The number deluser just freed could be given to the next account
+        # created, so the moved tree goes to root. It holds directories every
+        # account can write -- sites/all/{modules,libraries,themes} (group
+        # users) and the site's files/ (group www-data) -- so a name there can
+        # be a file an account hard-linked in before the move. Hand it over
+        # through a handle that never follows a link and never hands over a
+        # hard-linked file (a directory, or a regular file with a single link
+        # only), the way _master_reown_in walks the live master, so no
+        # account's file is handed to root. A hard-linked file, a link or a
+        # FIFO keeps its old owner, freed number included, inside the
+        # root-only park.
+        _master_reown_in "${_ZOMBIE_HOME}" root:root &> /dev/null
         rm -f /usr/bin/drush
       else
         ###--------------------###
@@ -1458,7 +1885,8 @@ _check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.5" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.6" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.5" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]]; then
     _DO_NOTHING=YES
@@ -1474,7 +1902,8 @@ _check_boa_php_compatibility() {
 
   if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "8.4" ] \
-    || [ "${_PHP_FPM_VERSION}" = "8.5" ]; then
+    || [ "${_PHP_FPM_VERSION}" = "8.5" ] \
+    || [ "${_PHP_FPM_VERSION}" = "8.6" ]; then
     _SUPPORTED_FPM=YES
   else
     _SUPPORTED_FPM=NO
@@ -1482,7 +1911,8 @@ _check_boa_php_compatibility() {
 
   if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
     || [ "${_PHP_CLI_VERSION}" = "8.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+    || [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+    || [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
     _SUPPORTED_CLI=YES
   else
     _SUPPORTED_CLI=NO
@@ -1683,17 +2113,27 @@ _sudoers_commit() {
 #   match defaults to <line>; pass a shorter prefix (e.g. "<user> ALL=NOPASSWD")
 #   to treat any existing line starting with it as already present, which
 #   preserves the prior per-user grep semantics for /etc/sudoers.
+# A line counts only as a whole line, or with a match as a line starting
+# with it: a substring test took another account's line ("xo1 ALL=...") for
+# this one's ("o1 ALL=..."), so the shorter name never got its lines; the
+# next pass adds them.
 # Returns 0 on append or no-op, 1 on error.
 _sudoers_safe_append() {
   local _file="${1}"
   local _line="${2}"
   local _match="${3:-${2}}"
-  local _tmp
+  local _tmp _have
   if [ -z "${_file}" ] || [ -z "${_line}" ]; then
     return 1
   fi
-  if [ -e "${_file}" ] && grep -qF "${_match}" "${_file}" 2>/dev/null; then
-    return 0
+  if [ -e "${_file}" ]; then
+    if [ "${_match}" = "${_line}" ]; then
+      grep -qxF -- "${_line}" "${_file}" 2>/dev/null && return 0
+    else
+      while IFS= read -r _have || [ -n "${_have}" ]; do
+        [[ "${_have}" == "${_match}"* ]] && return 0
+      done 2>/dev/null < "${_file}"
+    fi
   fi
   if ! command -v visudo >/dev/null 2>&1; then
     echo "${_line}" >> "${_file}"
@@ -1707,6 +2147,70 @@ _sudoers_safe_append() {
   [ -e "${_file}" ] && cat "${_file}" > "${_tmp}" 2>/dev/null
   echo "${_line}" >> "${_tmp}"
   _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# The database broker's (boa-dbctl) sudo line for account $1 in
+# /etc/sudoers.d/boa-dbctl, validated and matched as a whole line as
+# _sudoers_safe_append does. The line alone changes nothing: the broker
+# serves an account only while its root-owned /data/conf/<oN>_db_broker.txt
+# exists.
+_dbctl_sudo_line() {
+  local _u="${1}"
+  local _file="/etc/sudoers.d/boa-dbctl"
+  local _line _tmp
+  [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 1
+  _line="${_u} ALL=NOPASSWD: /usr/local/bin/boa-dbctl"
+  if [[ -e "${_file}" ]] && grep -qxF -- "${_line}" "${_file}" 2> /dev/null; then
+    return 0
+  fi
+  if ! command -v visudo > /dev/null 2>&1; then
+    echo "${_line}" >> "${_file}"
+    chmod 0440 "${_file}" 2> /dev/null
+    return 0
+  fi
+  _tmp=$(mktemp "/etc/sudoers.d/.sudoers.boa.XXXXXX" 2> /dev/null)
+  if [[ -z "${_tmp}" || ! -e "${_tmp}" ]]; then
+    return 1
+  fi
+  [[ -e "${_file}" ]] && cat "${_file}" > "${_tmp}" 2> /dev/null
+  echo "${_line}" >> "${_tmp}"
+  _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# A root tool has just made root's, aegir_root's or the master panel's
+# database login again (a password rotation, a grant an upgrade gives it):
+# where the database broker keeps a baseline of the server's own logins (in
+# its registry's schema), the rows are proven and recorded again as they are
+# now, so the nightly check does not read the tool's own change as one made
+# behind it. A box with no baseline keeps none; a standby takes the rows
+# from its source.
+_dbctl_rerecord() {
+  local _out
+  [[ -x "/usr/local/bin/boa-dbctl" && -d "/var/lib/mysql/boa_dbreg" ]] || return 0
+  [[ -e "/root/.standby.cnf" ]] && return 0
+  if ! _out=$(/usr/local/bin/boa-dbctl baseline rerecord "$@" 2>&1 < /dev/null); then
+    _msg "ALRT: the database broker's record of $* was not renewed: ${_out##*$'\n'}"
+  fi
+  return 0
+}
+
+# The broker's sudo line for every Octopus account, on every barracuda pass:
+# the system-only pass a replication standby runs included. A standby never
+# runs the Octopus pass that also writes it, and once promoted it serves the
+# switched accounts it took over at once.
+_dbctl_sudo_lines() {
+  local _cnf _u _home
+  for _cnf in /root/.*.octopus.cnf; do
+    [[ -f "${_cnf}" && ! -L "${_cnf}" ]] || continue
+    _u="${_cnf#/root/.}"
+    _u="${_u%.octopus.cnf}"
+    [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || continue
+    _home=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+    [[ "${_home%/}" == "/data/disk/${_u}" ]] || continue
+    [[ -d "/data/disk/${_u}" && ! -L "/data/disk/${_u}" ]] || continue
+    _dbctl_sudo_line "${_u}"
+  done
+  return 0
 }
 
 _check_prepare_dirs_permissions() {
@@ -1730,6 +2234,7 @@ _check_prepare_dirs_permissions() {
   # /var/log/php85 — apply the tighter mode to all of them.
   chown root:adm /var/log/php* &> /dev/null
   chmod 0755 /var/log/php* &> /dev/null
+  _dbctl_sudo_lines
   mkdir -p ${_vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \

@@ -27,7 +27,8 @@
 ### together with the database. No alias, no database.
 ###
 ### Classification, in order:
-###   preserved   system schemas; every alias-resolved site db across
+###   preserved   system schemas and boa_dbreg (the database broker's
+###               ownership registry); every alias-resolved site db across
 ###               /var/aegir and all /data/disk/* instances; every instance's
 ###               own hostmaster db; names listed in /root/.sqlclean.protect.cnf
 ###   held        never deleted: panel drift (the panel claims a live site the
@@ -112,16 +113,53 @@ _sql_probe() {
   return 0
 }
 
+# An account owns /data/disk/<oN>, so its .drush, undo/ and site directories
+# can hold a link or a FIFO at any name, and a directory on the way can be
+# one. Root reads the aliases and drushrc files only through these.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. A copy of the helper in
+# lib/functions/helper.sh.inc.
+_sc_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+_sc_read_here() {
+  # ./$1 in the current (pinned) directory: never through a link, never
+  # blocked on a FIFO, at most 1 MiB. Empty for anything else.
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+_sc_read_file() {
+  # 1=file — read as _sc_read_here reads it, inside its real directory.
+  _sc_in_real_dir "${1%/*}" _sc_read_here "${1##*/}"
+}
+
 _alias_get() {
   # 1=alias file 2=key — value of  'key' => 'value'
-  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" "$1" 2>/dev/null | head -n1
+  _sc_read_file "$1" \
+    | sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" 2>/dev/null | head -n1
 }
 
 _drushrc_db_name() {
   # 1=site dir — literal $options['db_name'] from the site drushrc; anchored
   # at line start so a commented copy can never shadow the real assignment.
-  sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-    "$1/drushrc.php" 2>/dev/null | head -n1
+  _sc_read_file "$1/drushrc.php" \
+    | sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" 2>/dev/null \
+    | head -n1
 }
 
 _sane_ident() {
@@ -235,9 +273,10 @@ _interlock_check_full
 ###-------------ENUMERATION---------------###
 
 # Real schemas from the server, never datadir directories: Percona 8.x keeps
-# non-schema entries (#innodb_redo, #innodb_temp) in the datadir.
+# non-schema entries (#innodb_redo, #innodb_temp) in the datadir. boa_dbreg
+# is root's own: the database broker's (boa-dbctl) ownership registry.
 mapfile -t _all_databases < <(_sql_must "SHOW DATABASES" \
-  | grep -vE "^(information_schema|performance_schema|mysql|sys|test)$" \
+  | grep -vE "^(information_schema|performance_schema|mysql|sys|test|boa_dbreg)$" \
   | grep -v "^#" | grep -v "^lost+found$")
 if [ "${#_all_databases[@]}" -eq 0 ]; then
   _die "Schema enumeration returned nothing — refusing to classify"
@@ -280,6 +319,14 @@ _panel_dbs=()          # readable hostmaster schemas for the drift cross-check
 
 for _root in "${_aegir_roots[@]}"; do
 
+  # Every alias is read inside the real .drush: one that is a link here
+  # leaves the whole instance unclassified rather than read another place.
+  if ! _sc_in_real_dir "${_root}/.drush" true; then
+    _alrt "${_root}/.drush is not a real directory — instance unreadable, its databases cannot be classified"
+    _INCOMPLETE=1
+    continue
+  fi
+
   # The instance's own hostmaster frontend db (master carries hm.alias,
   # satellites hostmaster.alias — accept either).
   _root_hm_db=""
@@ -308,8 +355,11 @@ for _root in "${_aegir_roots[@]}"; do
 
   # Every site alias of this instance, by context type — server, platform
   # and artifact aliases (e.g. none.alias) are not sites. Multiple alias
-  # files may resolve to the same site; the map keeps the first reason.
-  for _f in "${_root}"/.drush/*.alias.drushrc.php; do
+  # files may resolve to the same site; the map keeps the first reason. The
+  # names are listed inside the real .drush.
+  mapfile -t _aliases < <(_sc_in_real_dir "${_root}/.drush" compgen -G '*.alias.drushrc.php')
+  for _f in "${_aliases[@]}"; do
+    _f="${_root}/.drush/${_f}"
     [ -e "${_f}" ] || continue
     case "$(basename "${_f}")" in
       hostmaster.alias*|hm.alias*) continue ;;
@@ -340,7 +390,9 @@ for _root in "${_aegir_roots[@]}"; do
   # Aliases the nightly reaper quarantined into undo/ — it deliberately keeps
   # the database, so a still-resolvable quarantined site is an operator
   # decision, not a ghost. Unresolvable undo debris is expected and ignored.
-  for _f in "${_root}"/undo/*.alias.drushrc.php; do
+  mapfile -t _aliases < <(_sc_in_real_dir "${_root}/undo" compgen -G '*.alias.drushrc.php')
+  for _f in "${_aliases[@]}"; do
+    _f="${_root}/undo/${_f}"
     [ -e "${_f}" ] || continue
     _ctx=$(_alias_get "${_f}" context_type)
     [ "${_ctx}" = "site" ] || continue
@@ -501,7 +553,9 @@ _drop_mysql_user() {
   case "${_db_user}" in
     root|aegir|debian-sys-maint) return 0 ;;
   esac
-  _other=$(_sql_probe "SELECT DISTINCT Db FROM mysql.db WHERE User='${_db_user}' AND Db != '${_db_user}' LIMIT 1")
+  # mysql.db stores a grant's escaped name (a\_b): compared without the
+  # escapes, or the user's own grant reads as another db's
+  _other=$(_sql_probe "SELECT DISTINCT Db FROM mysql.db WHERE User='${_db_user}' AND REPLACE(Db,'\\\\','') != '${_db_user}' LIMIT 1")
   if [ -n "${_other}" ]; then
     _alrt "User ${_db_user} also holds grants on '${_other}' — user kept"
     return 0

@@ -75,6 +75,7 @@ In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** t
 
 #### Example Instant Switch Files:
 
+- `~/static/control/php86.info`
 - `~/static/control/php85.info`
 - `~/static/control/php84.info`
 - `~/static/control/php83.info`
@@ -93,7 +94,7 @@ If none of these instant switch files are present, the system will default to th
 
 ### Supported PHP-CLI Versions:
 
-- 8.5, 8.4, 8.3, 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+- 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6 (8.6 is a release candidate, installed only where the server lists it, and by default on hosted and remotely managed servers)
 
 **However:** Some older PHP versions may no longer be available on your system, because BOA automatically deactivates versions not used by any hosted site. If you need to restore some older PHP version previously available, please open a support ticket with your BOA host, or, if you have root access, run `barracuda php-idle enable` command. If you want to re-install all supported but disabled PHP versions, please run `barracuda up-lts php-max` command. For more details, run `barracuda help` command.
 
@@ -300,7 +301,7 @@ the client's sites is not reached, the Drush window, and which Drush to use wher
 
 ### Site-Local Drush is Preserved and Fully Supported
 
-In BOA, Ægir no longer removes the local copy of Drush from platforms during the 'Platform Verify' task. Instead, it locks permissions on the `vendor/drush` directory if present.
+In BOA, Ægir no longer removes the local copy of Drush from platforms during the 'Platform Verify' task. Instead, it locks permissions on the `vendor/drush` directory if present. A `vendor/` that links outside the platform owner's own tree is neither locked nor unlocked; the task log shows `Error: refusing out-of-scope path`.
 
 This change allows you to easily unlock the local Drush using a new task available on the platform node in the Ægir control panel named 'Unlock Local Drush'. This task is now a required step before you use local `vdrush` or run any updates with `composer` on the command line.
 
@@ -325,7 +326,11 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 
 Re-locking a platform unlocked earlier, by that task or by a Verify, also rebuilds every Drupal 8+ site on it with Drupal core's own rebuild. A site whose service container the local Drush compiled (a module installed or removed, a recipe applied) could not run on that container once the local Drush is locked away, so the rebuild replaces it. In the task log, `REBUILD/RELOCK` lines open and close the run, with one `REBUILD/CORE` rebuild per site between them.
 
-The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or a Verify locks it, and that lock then runs the rebuild above.
+The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or an Ægir task locks it, and that lock then runs the rebuild above.
+
+Every task that bootstraps a site on the platform reads the lock from the files themselves before it does (Verify, Clone, Backup, Restore, Migrate, Deploy, Import, Delete, Enable, Login reset and Install alike), and locks the platform first when you left it unlocked, when its psr/log and core logger files are not in the form the lock keeps them in (untyped while a Drush 8 copy on the server still binds the untyped psr/log or the platform waits to be converted, stock after that), or when it still owes the web its stock copies.
+
+Disable and the platform's own Lock and Unlock tasks run on an unlocked platform and leave its local Drush as it is.
 
 ---
 

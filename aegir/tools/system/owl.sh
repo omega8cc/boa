@@ -225,6 +225,33 @@ _night_notice() {
   fi
 }
 
+### The web group's witnesses of the master (its own web group, wg-aegir)
+### and of the box (a pool file naming a group that does not resolve; a
+### stale web-group writer while a record exists), once a night after the
+### account passes: an alarm goes to the incident log and, once a day, to
+### the operator, as the account passes send theirs. An instgrp without the
+### web group reads nothing.
+_night_web_box() {
+  local _t _l _alarm
+  [ -e "/opt/local/bin/instgrp" ] || return 0
+  grep -q "^_wg_drift_box() {" /opt/local/bin/instgrp 2> /dev/null || return 0
+  for _t in aegir --box; do
+    _alarm=""
+    while IFS= read -r _l; do
+      case "${_l}" in
+        "ALRT "*) _alarm="${_alarm:+${_alarm}; }${_l#ALRT }" ;;
+        "NOTE "*) echo "web group (${_t#--}): ${_l#NOTE }" ;;
+      esac
+    done < <(bash /opt/local/bin/instgrp webdrift "${_t}" 2> /dev/null)
+    [ -n "${_alarm}" ] || continue
+    echo "ALRT: web group drift (${_t#--}): ${_alarm}"
+    ( unset _MY_OCTO_EMAIL
+      _night_notice "wg-drift-${_t#--}" \
+        "BOA nightly on $(hostname -f): web group drift (${_t#--})" "${_alarm}" )
+  done
+  return 0
+}
+
 ### An account pass that never ends would hold its fan-out slot (or the
 ### serial loop) into the next night. Bound it, say so, move on: the whole
 ### process group gets the signal, the account's night marker is released
@@ -326,6 +353,7 @@ _daily_action() {
     fi
   done
   [ "${_NIGHT_PARALLEL}" = "YES" ] && wait
+  _night_web_box
   _shared_codebases_cleanup
   _ghost_codebases_cleanup
   _check_old_empty_hostmaster_platforms
@@ -343,6 +371,10 @@ _daily_action() {
   # deliver on independent serials, so a mixed vintage must skip, not fatal.
   if command -v _migrate_source_sweep_all > /dev/null 2>&1; then
     _migrate_source_sweep_all
+  fi
+  # Skew-guarded as the sweep is.
+  if command -v _dbctl_witness > /dev/null 2>&1; then
+    _dbctl_witness
   fi
 }
 
@@ -586,24 +618,43 @@ else
   if [ -z "${_CLEAR_BOOST}" ]; then
     _CLEAR_BOOST=YES
   fi
-  if [ -e "/data/all" ]; then
-    if [ ! -e "/data/all/permissions-fix-post-up-${_xSrl}.info" ]; then
-      rm -f /data/all/permissions-fix*
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type d -exec chmod 02775 {} \; &> /dev/null
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type f -exec chmod 0664 {} \; &> /dev/null
-      echo fixed > /data/all/permissions-fix-post-up-${_xSrl}.info
+  # The account owns distro/ and every platform there, so these trees are
+  # walked only from inside their real directories (_distro_sites_all_modes).
+  # Skew-guarded: the function ships in 90-global-post.sh on its own serial,
+  # so a mixed vintage skips and leaves the stamp for the next run.
+  # The stamp saying this ran for the release lives in the shared store
+  # and is read and written as root writes there: from inside the real
+  # directory (_acct_in_real_dir), a fresh file renamed over the name
+  # (_acct_put_here), never through a link at a name. The store is
+  # /data/all when it is a real directory, /data/disk/all when a link of
+  # root's at /data/all leads there through root's own links and
+  # directories only (_ROOT_REAL_PATH_PL, _SAT_STORE_TARGET_PL), or when
+  # there is no /data/all. Any other link is left alone, never followed:
+  # the fix waits, said once with why (_store_link_why), for the Octopus
+  # upgrade that takes the store back or stops and says how to repair it.
+  # A night.inc.sh without the store rule leaves such a link alone too.
+  _pfSt=""
+  if [ -L "/data/all" ]; then
+    if [ -n "${_SAT_STORE_TARGET_PL:-}" ] && [ -n "${_ROOT_REAL_PATH_PL:-}" ]; then
+      _pfSt="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)"
+      if ! perl -e "${_SAT_STORE_TARGET_PL}" -- "${_pfSt}" &> /dev/null; then
+        _pfSt=""
+        echo "ALRT: the post-upgrade modes fix waits: $(_store_link_why)"
+      fi
     fi
-  elif [ -e "/data/disk/all" ]; then
-    if [ ! -e "/data/disk/all/permissions-fix-post-up-${_xSrl}.info" ]; then
-      rm -f /data/disk/all/permissions-fix*
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type d -exec chmod 02775 {} \; &> /dev/null
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type f -exec chmod 0664 {} \; &> /dev/null
-      echo fixed > /data/disk/all/permissions-fix-post-up-${_xSrl}.info
-    fi
+  elif [ -d "/data/all" ]; then
+    _pfSt=/data/all
+  elif [ ! -e "/data/all" ] && [ -d "/data/disk/all" ]; then
+    _pfSt=/data/disk/all
+  fi
+  if [ -n "${_pfSt}" ] \
+    && _acct_in_real_dir "${_pfSt}" test ! -e "./permissions-fix-post-up-${_xSrl}.info" \
+    && command -v _distro_sites_all_modes > /dev/null 2>&1; then
+    _acct_in_real_dir "${_pfSt}" find . -mindepth 1 -maxdepth 1 \
+      -name 'permissions-fix*' ! -type d -delete &> /dev/null
+    _distro_sites_all_modes
+    _acct_in_real_dir "${_pfSt}" _acct_put_here \
+      "permissions-fix-post-up-${_xSrl}.info" fixed
   fi
 
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null

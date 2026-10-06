@@ -25,7 +25,7 @@ Currently supported versions are listed below:
 
 Note that you still need to add and enable the preferred integration module along with any dependencies to your codebase. This feature doesn't modify your platform or site - it only creates a Solr core with configuration files provided by the integration module: `schema.xml` and `solrconfig.xml`.
 
-> **Important:** `search_api_solr` for D8+ requires Composer to install the module and its dependencies. After installation, configure it and generate customized Solr core config files, which should be uploaded to the path: `sites/foo.com/files/solr/`. The changes will take effect within 5-10 minutes on the Solr core created by the system.
+> **Important:** `search_api_solr` for D8+ requires Composer to install the module and its dependencies. After installation, configure it and generate customized Solr core config files, which should be uploaded to the path: `sites/foo.com/files/solr/`. The changes will take effect within 5-10 minutes on the Solr core created by the system, as described in [Uploaded Solr Core Configuration Files](#uploaded-solr-core-configuration-files).
 >
 > **NOTE:** Set `solr_custom_config = NO` for the changes to take effect. This setting affects the running of the auto-installer every 5-10 minutes, eliminating the need to wait until the next morning to use the new Solr core.
 
@@ -51,7 +51,7 @@ This option allows the auto-update of your Solr core configuration files:
 - `schema.xml`
 - `solrconfig.xml`
 
-If a new release is available for either `apachesolr` or `search_api_solr`, your Solr core will not be automatically upgraded to use the newer `schema.xml` and `solrconfig.xml` unless `solr_update_config` is set to `YES`.
+If BOA ships a newer `schema.xml` and `solrconfig.xml` for `apachesolr`, or for `search_api_solr` on Drupal 7, your Solr core is not upgraded to them unless `solr_update_config` is set to `YES`. Drupal 8 and later cores are created on Solr's own managed schema and take their configuration only from the files you upload to `files/solr/` (see "Uploaded Solr Core Configuration Files" below); BOA ships no template for them.
 
 This option will be ignored if `solr_custom_config` is set to `YES`.
 
@@ -71,7 +71,25 @@ Ensure you use Solr-compatible config files.
 ;solr_custom_config = NO
 ```
 
+A Drupal 8+ core created while `solr_custom_config` is `YES` is protected from the moment it is created: it stays on Solr's own managed schema and takes no upload. An `apachesolr` or Drupal 7 `search_api_solr` core created then first goes through BOA's template check for a new core, as at any creation, and is protected from the next step of the same pass.
+
 > **NOTE:** The `solr.php` file is not used to connect to the Solr core; it is only for information on configuring Solr in the given site. Once you clone the site, the new clone will receive its own Solr core in a few minutes, with the `solr.php` file populated with unique, new credentials. Update the site admin area configuration to use the new Solr core on the cloned site. Cron is not enabled on the cloned site by default, preventing the overwriting of the original site index.
+
+## Uploaded Solr Core Configuration Files
+
+The upload in `sites/foo.com/files/solr/` is applied as one set, whole or not at all. It must include `schema.xml`, `solrconfig.xml` and `solrcore.properties`. The core takes it when any uploaded file differs from the core's copy of it, or the core has no copy, so a change to `schema.xml` alone is applied too, and an upload also repairs a core that lost one of its files.
+
+BOA keeps the core's `solrcore.properties` pointing at the server's own Solr. Unless the uploaded file already does, its `solr.install.dir` and `solr.contrib.dir` lines, and on Solr 9 its `solr.replication.masterUrl` line, are replaced with the server's own values before the set is compared with the core's files or applied. The core's copy of that file therefore differs from the one you uploaded, and uploading the same generated files again still counts as identical.
+
+Once applied, the uploaded files are removed from `files/solr/`, and an upload identical to the core's files is removed as already applied. If copying the set into the core fails, the core keeps its previous files, the upload stays in place for the next pass, and the pass log records `SOLR-UPLOAD-ERROR`.
+
+After an upload is applied the core is reloaded. If Solr refuses the reload, the upload is rolled back: the core's previous files are put back and the core is reloaded on them, the pass log records `SOLR-RELOAD-ERROR` with the HTTP status Solr answered and `SOLR-UPLOAD-ROLLED-BACK`, and the upload is removed from `files/solr/`. Check the files before uploading them again. If Solr does not answer at all, the previous files are put back the same way, but the upload stays in `files/solr/` and is tried again on the next pass (`SOLR-UPLOAD-KEPT`).
+
+Each file must be smaller than 8 MiB, and the upload may hold at most 512 names and 32 MiB in all. Breaking a limit, a file with more than one hard link, or a file that changes while it is read refuses the whole set: nothing reaches the core, and the pass log under `/var/backups/solr/log/` records `SOLR-UPLOAD-REFUSED` with the reason. Symbolic links, FIFOs and subdirectories in `files/solr/` are skipped and never published.
+
+Only files owned by one of the instance's own users are published or removed: its backend user `oN`, its main SSH/SFTP user `oN.ftp`, its client sub-accounts `oN.<client>`, and its PHP-FPM users `oN.web` and `oN.<ver>.web`. A file any other user owns, such as one moved in from another instance, stays in place and is never published, and each pass log records `SOLR-UPLOAD-SKIPPED` for it.
+
+`sites`, the site directory and `files/solr` must be real directories, and `files` a real directory or the link BOA puts there into the account's own files store. Any other symbolic link on the way blocks the upload until it is replaced by a real directory.
 
 ## Handling Errors
 
@@ -113,3 +131,7 @@ every pass. A directory that carries `core.properties` but is not listed by Solr
 tree copied in from elsewhere, an archive taken while Solr was down) is reported by the
 health check as `HEALTH-WARN`: move that file aside and the next pass re-registers the
 core, or restart Solr. Solr 4 cores are not covered (their registry is `solr.xml`).
+
+## Faceted search: five selected values under /search
+
+BOA's abuse guard refuses a search request under `/search` (also `/<language>/search` and a subdirectory site's `/<subdir>/search`) that carries six or more selected facet values, because a crawler flooding faceted search sends exactly that shape; the visitor gets no page, logged in or not. Drupal's Facets module numbers every selected value on the page in one list (`f[0]`, `f[1]` and so on) whatever facet it belongs to, so the sixth ticked value anywhere on the page is the one refused. If visitors need to combine more than five, serve that faceted listing on a path other than `/search`.

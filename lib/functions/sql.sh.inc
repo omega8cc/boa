@@ -6,6 +6,8 @@
 # The move_sql.sh wrapper arrives with /var/xdrago, which a fresh install does
 # not have yet; fall back to the init script until it exists.
 _move_sql() {
+  local _mvPid _mvNow
+  _mvPid=$(pgrep -x mysqld 2> /dev/null | head -n 1)
   if [ -e "/var/xdrago/move_sql.sh" ]; then
     if [ "$1" = "restart" ]; then
       _mrun "bash /var/xdrago/move_sql.sh"
@@ -15,6 +17,63 @@ _move_sql() {
   else
     _mrun "service mysql $1"
   fi
+  # _mrun hides the command's status: a new mysqld is what shows the server
+  # read the my.cnf of this moment. A refused restart, a start of a running
+  # server or a failed start leaves the copy as the running server read it.
+  if [ "$1" != "stop" ]; then
+    _mvNow=$(pgrep -x mysqld 2> /dev/null | head -n 1)
+    if [ -n "${_mvNow}" ] && [ "${_mvNow}" != "${_mvPid}" ]; then
+      _sql_cnf_found_copy renew
+    fi
+  fi
+  return 0
+}
+
+#
+# The binary-log switch (_DB_BINARY_LOG) takes effect only when mysqld
+# restarts. The pass's first my.cnf rewrite applies it (in a series upgrade
+# the upgrade's own _sql_conf_update, on 8.4 outside a replication standby the
+# directives sync of the root password rotation, otherwise the tuning's own
+# first _sql_conf_update), before the restart check takes its my.cnf-pre-*
+# copy, so that check never saw the change and a new setting reached the
+# running server only at some later restart. _sql_cnf_found_copy keeps my.cnf
+# as the running server read it: taken by the pass's first _sql_conf_update,
+# renewed when _move_sql starts a new mysqld. _sql_binlog_switch_pending is
+# true when the binary-log lines of my.cnf differ from that copy. A file of
+# its own: the my.cnf-pre-* copy stays the pass's copy for rollback.
+_sql_cnf_found_copy() {
+  local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
+  if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
+    return 0
+  fi
+  if [ "$1" = "renew" ] || [ ! -e "${_fnd}" ]; then
+    mkdir -p "${_vBs}/dragon/t"
+    cp -af /etc/mysql/my.cnf "${_fnd}"
+  fi
+}
+
+_sql_binlog_lines() {
+  grep -E "^[[:space:]]*(log[-_]bin|skip[-_]log[-_]bin|disable[-_]log[-_]bin)([[:space:]=]|$)" "$1" 2>/dev/null \
+    | tr -d " \t"
+}
+
+_sql_binlog_switch_pending() {
+  local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
+  if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] \
+    || [ ! -e "${_fnd}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
+    return 1
+  fi
+  [ "$(_sql_binlog_lines /etc/mysql/my.cnf)" != "$(_sql_binlog_lines "${_fnd}")" ]
+}
+
+#
+# A password as the debug lines show it: its length and the start of its
+# sha256, so the lines before and after a rotation tell whether it changed
+# while the reports, which a log run mails, never carry the value.
+_sql_pass_fp() {
+  local _fp
+  _fp=$(printf '%s' "${1}" | sha256sum 2>/dev/null | cut -c1-8)
+  printf '%s' "(${#1} chars, sha256 ${_fp:-none})"
 }
 
 _check_mysql_version() {
@@ -721,7 +780,63 @@ _innodb_log_file_size_update() {
 }
 
 #
+# With the binary log on, a site's own database login creates its stored
+# functions only while log_bin_trust_function_creators is 1 (ERROR 1418 for
+# one declared without DETERMINISTIC, NO SQL or READS SQL DATA, ERROR 1419
+# otherwise), so a Clone, Migrate or Restore of such a site fails. Where BOA
+# turns the binary log on, the trust goes with it, in my.cnf and at runtime,
+# as xmass writes it on a pair. Never raised while a replica reads this box's
+# binary log: a replica at 0 behind a source at 1 stops its applier on the
+# first such function a site creates. While one reads it and this box reads 0
+# (or its value cannot be read), or the processlist cannot be read, the trust
+# is left as it is and the run says so; a 1 this box already reads (set on the
+# replica first, then here) is kept in my.cnf. A reader seen once counts for
+# the rest of the run: a series upgrade's own restarts cut the replica, which
+# connects again only at its retry interval, after the tuning's rewrite.
+_sql_binlog_trust_creators() {
+  local _pl
+  if ! _pl=$(mysql -u root -BNe "SHOW PROCESSLIST" 2> /dev/null) || [ -z "${_pl}" ]; then
+    _msg "ALRT: could not read whether a replica reads this box's binary log:"
+    _msg "ALRT: log_bin_trust_function_creators left as it is until the next run"
+    return 0
+  fi
+  if grep -q 'Binlog Dump' <<< "${_pl}"; then
+    _BINLOG_READER_SEEN=YES
+  fi
+  if [ "${_BINLOG_READER_SEEN}" = "YES" ] \
+    && [ "$(mysql -u root -BNe "SELECT @@GLOBAL.log_bin_trust_function_creators" 2> /dev/null)" != "1" ]; then
+    _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is,"
+    _msg "ALRT: a site's stored function can fail (ERROR 1418 or 1419) until it is 1 here too:"
+    _msg "ALRT: set it to 1 on the replica, then here with SET GLOBAL; the next run keeps it in my.cnf"
+    return 0
+  fi
+  # A line of any value, commented or not, becomes the one line; with none,
+  # it goes right after binlog_format, in the same section.
+  local _t="/etc/mysql/my.cnf.trust.$$"
+  local _re='^[[:space:]]*#?[[:space:]]*log_bin_trust_function_creators[[:space:]]*='
+  if grep -qE "${_re}" /etc/mysql/my.cnf; then
+    awk -v l='log_bin_trust_function_creators = 1' -v r="${_re}" \
+      '$0 ~ r { if (!d) print l; d = 1; next } { print }' /etc/mysql/my.cnf > "${_t}"
+  else
+    awk -v l='log_bin_trust_function_creators = 1' \
+      '{ print } /^[[:space:]]*binlog_format[[:space:]]*=/ && !d { print l; d = 1 }' \
+      /etc/mysql/my.cnf > "${_t}"
+  fi
+  if [ -s "${_t}" ] && chmod 644 "${_t}" && mv -f "${_t}" /etc/mysql/my.cnf; then
+    :
+  else
+    rm -f "${_t}"
+  fi
+  if ! grep -qE '^log_bin_trust_function_creators = 1$' /etc/mysql/my.cnf; then
+    _msg "ALRT: log_bin_trust_function_creators = 1 could not be written to /etc/mysql/my.cnf"
+  fi
+  mysql -u root -e "SET GLOBAL log_bin_trust_function_creators = 1" &> /dev/null
+  return 0
+}
+
+#
 # Update SQL Config.
+#
 _sql_conf_update() {
   # Mode "directives" (called via _sql_directives_sync) normalizes only the
   # my.cnf version-compatibility directives and skips innodb sizing plus the
@@ -730,6 +845,8 @@ _sql_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
+  # Before the pass's first rewrite: my.cnf as the running server read it.
+  _sql_cnf_found_copy
   sed -i -e "s/.*innodb_force_recovery/#innodb_force_recovery/g" \
     -e "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" \
     -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
@@ -917,6 +1034,7 @@ _sql_conf_update() {
         -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
+        -e "s/^\s*\(log_bin_trust_function_creators\s*=.*\)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       # Enable binary logging
@@ -927,6 +1045,11 @@ _sql_conf_update() {
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
+      # the directives sync also runs right after a series upgrade's package
+      # install, mysqld down; every pass reaches the full mode with it up
+      if [ "${_CONF_MODE}" != "directives" ]; then
+        _sql_binlog_trust_creators
+      fi
     fi
     if [ "${_CONF_MODE}" != "directives" ] \
       && { [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; }; then
@@ -997,6 +1120,61 @@ _sql_conf_update() {
 #
 _sql_directives_sync() {
   _sql_conf_update directives
+}
+
+#
+# Percona 8.x loads a telemetry component that writes a daily usage report
+# under /usr/local/percona/telemetry/ps for Percona's telemetry agent. BOA
+# keeps it off on every 8.x box, a custom my.cnf included: a file of its own
+# in the dir my.cnf includes stops the component loading at the next start,
+# and as the variable is read-only, a running server is switched off here by
+# unloading the component; the reports it left are dropped. On 5.7, which has
+# no telemetry, the file is removed: 5.7 logs "unknown variable" for it even
+# in the loose- form, and the launcher reads that line in a down server's log
+# as a half-flipped box. The agent package is a hard dependency of the server
+# package, but ships only a systemd unit and never starts on Devuan.
+#
+_percona_telemetry_off() {
+  local _nme="boa-percona-telemetry.cnf"
+  local _urn="file://component_percona_telemetry"
+  local _rDir="/usr/local/percona/telemetry/ps"
+  local _body _inc _isOn _d
+  _check_mysql_version
+  if [ -z "${_DB_V}" ]; then
+    return 0
+  fi
+  # The dir my.cnf actually reads; none means no file, only the unload below
+  _inc=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2> /dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  if [ "${_DB_V}" = "5.7" ]; then
+    for _d in "${_inc}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+      /etc/mysql/mysql.conf.d; do
+      [ -n "${_d}" ] && rm -f "${_d}/${_nme}"
+    done
+    return 0
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _percona_telemetry_off"
+  fi
+  _body="# Written by BOA: Percona telemetry off (8.x)"$'\n'
+  _body+="[mysqld]"$'\n'
+  _body+="loose-percona_telemetry_disable = 1"
+  if [ -n "${_inc}" ] && [ -d "${_inc}" ] \
+    && [ "$(cat "${_inc}/${_nme}" 2> /dev/null)" != "${_body}" ]; then
+    echo "${_body}" > "${_inc}/${_nme}"
+    chmod 644 "${_inc}/${_nme}"
+  fi
+  if [ -n "$(pgrep -x mysqld)" ]; then
+    _isOn=$(mysql -u root -N -e "SELECT COUNT(*) FROM mysql.component \
+      WHERE component_urn='${_urn}';" 2> /dev/null)
+    if [ "${_isOn}" = "1" ]; then
+      mysql -u root -e "UNINSTALL COMPONENT '${_urn}';" &> /dev/null
+    fi
+  fi
+  if [ -d "${_rDir}" ]; then
+    find "${_rDir}" -maxdepth 1 -type f -name "*.json" -delete &> /dev/null
+  fi
 }
 
 #
@@ -1565,7 +1743,7 @@ _forced_mysql_root_password_update() {
   _check_sql_running
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
+      _msg "DBEF: ${_DB_SERVER} _ESC_PASS $(_sql_pass_fp "${_ESC_PASS}")"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
         mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -1633,8 +1811,9 @@ _forced_mysql_root_password_update() {
     fi
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
+    _dbctl_rerecord root
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
+      _msg "DAFT: ${_DB_SERVER} _ESC_PASS $(_sql_pass_fp "${_ESC_PASS}")"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
         mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -1865,6 +2044,11 @@ _db_server_install() {
             _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
           fi
         fi
+        # The binary-log switch, applied before the copy compared above.
+        if [ "${_myCnfUpdate}" = "NO" ] && _sql_binlog_switch_pending; then
+          _myCnfUpdate=YES
+          _msg "INFO: ${_DB_SERVER} binary log switched in this run, restart due"
+        fi
       fi
       if [ ! -e "/root/.run-to-excalibur.cnf" ] \
         && [ ! -e "/root/.run-to-daedalus.cnf" ] \
@@ -2085,7 +2269,7 @@ _sql_root_credentials_update() {
         _msg "CRIT: _DB_V for ${_DB_SERVER} is empty!"
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DBEF: ${_DB_SERVER} PASWD ${_PASWD}"
+          _msg "DBEF: ${_DB_SERVER} PASWD $(_sql_pass_fp "${_PASWD}")"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -2145,7 +2329,7 @@ _sql_root_credentials_update() {
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
+          _msg "DAFT: ${_DB_SERVER} PASWD $(_sql_pass_fp "${_PASWD}")"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
