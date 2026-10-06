@@ -1867,7 +1867,16 @@ _fetch_versioned() {
         rm -f "${_new}"
         return 0
       fi
-      mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
+      # A move that fails (an immutable name, a read-only file system) leaves
+      # the deployed copy as it was: the download goes and no marker is armed,
+      # so the next pass asks again, and the pass's failure report names it.
+      # Arming here recorded the new serial over the old bytes until the
+      # hourly re-check, and every try left its download beside the name.
+      if ! mv -f "${_new}" "${_dst}"; then  # first install or self-heal (atomic)
+        rm -f "${_new}"
+        _fetch_failed_note "${_cnm}" "${_url}" "not installed (mv failed)"
+        return 0
+      fi
     fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."*

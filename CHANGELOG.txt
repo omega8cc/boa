@@ -1491,6 +1491,15 @@
 
 @=> Important Fixes
 
+    * A newer copy of a fetched BOA tool that could not be moved into
+      place (an immutable file, a read-only file system) is no longer
+      recorded as installed: the download is removed, the deployed copy
+      and its marks stay as they were, the next pass tries again, and
+      the pass's failure line in /var/log/boa/mirror.incident.log names
+      it. The new version used to be marked over the old file until the
+      hourly re-check, unreported, and each try left its download beside
+      the tool.
+
     * A Verify of a site whose aliases redirect to another name, with
       the dont-overwrite flag under both of its names, now names both
       files to delete to turn Let's Encrypt renewals back on; it named
