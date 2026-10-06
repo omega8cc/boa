@@ -2221,8 +2221,9 @@ _install_php_multi_src() {
   # the headers of ICU 75 and newer need C++17: ICU_CXXFLAGS lands after
   # their forced -std on the intl compile line, so it raises the standard for
   # the intl sources only, as PHP 8.1 itself does for these ICU versions.
-  # 7.2/7.3 intl does not compile against ICU 70 or newer, and 5.6-7.1 never
-  # had intl here, so 7.3 and older are built without it, pinned or not.
+  # Re-check 7.4/8.0 intl whenever the default ICU moves. 7.2/7.3 intl does
+  # not compile against ICU 70 or newer and 5.6-7.1 stopped building it on
+  # newer systems, so 7.3 and older are built without it, pinned or not.
   _resolve_icu_target
   _ICU_MAJOR="${_ICU_TARGET_VRN%%[._-]*}"
   _ICU_CXX_ENV=""

@@ -1492,20 +1492,15 @@
 @=> Important Fixes
 
     * PHP 7.4 and 8.0 keep the intl extension through every upgrade:
-      they are built with intl against the system ICU, and on ICU 75
-      and newer (Daedalus, Excalibur) their intl is compiled as C++17,
-      the one change PHP 8.1 needed for these ICU versions. They used
-      to get intl only under an ICU pin of 73 or lower, so a rebuild
-      without the pin (an OpenSSL update, a php-max or plain system
-      upgrade, a prebuilt package) dropped it until the weekly
-      auto-update run pinned, upgraded, unpinned and upgraded again,
-      and php-max boxes never got it back. A 7.4 or 8.0 without intl
-      is now rebuilt in the same pass, a prebuilt package without it
-      is refused, and the weekly run is one plain system upgrade that
-      no longer idles PHP versions. A 7.4 built under the old pin is
-      rebuilt once against the system ICU. 7.3 and older stay without
-      intl, pinned or not (7.2/7.3 intl does not compile against ICU 70
-      and newer, and a pin used to make their builds try it).
+      they are built with intl against the system ICU, and on ICU 75 and
+      newer (Daedalus, Excalibur, Bookworm, Trixie) their intl is
+      compiled as C++17, the one change PHP 8.1 needed for these ICU
+      versions. A 7.4 or 8.0 without intl is rebuilt by the upgrade pass
+      that finds it, php-max boxes included, and a prebuilt package
+      without it is refused. They used to get intl only under an ICU pin
+      of 73 or lower, restored by a weekly pin-and-rebuild cycle that
+      skipped php-max; the weekly run is now one plain system upgrade.
+      7.3 and older stay without intl, pinned or not.
 
     * A newer copy of a fetched BOA tool that could not be moved into
       place (an immutable or append-only file) is no longer recorded as

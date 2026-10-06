@@ -19,7 +19,8 @@ Every PHP 7.4 and newer is built with the `intl` extension against that ICU:
   sources of these two versions (`ICU_CXXFLAGS=-std=c++17`), the same change PHP 8.1
   made upstream for these ICU versions. Nothing else in the build changes.
 - PHP 7.3 and older are built without `intl`: the 7.2/7.3 `intl` sources do not
-  compile against ICU 70 or newer, and 5.6 to 7.1 never had `intl` in BOA.
+  compile against ICU 70 or newer, and 5.6 to 7.1 do not build it on current
+  systems either.
 
 So on Daedalus and Excalibur, PHP 7.4, 8.0 and every 8.x carry `intl` on the same
 ICU 76, with no pin and no operator step.
@@ -28,10 +29,10 @@ ICU 76, with no pin and no operator step.
 
 Every barracuda pass that checks the installed PHP versions compares the ICU each
 7.4+ build was compiled against (`php -i`, `ICU version`) with the ICU this box
-expects. A version built without `intl`, or against another ICU, is rebuilt in the
-same pass. That holds on every route that can rebuild PHP: a plain
-`barracuda up-<tier> system`, `php-max` and `php-min` runs, a rebuild forced by an
-OpenSSL update or a new PHP release, and the weekly auto-update run.
+expects. A version built without `intl`, or against another ICU, is rebuilt,
+normally in the same upgrade pass. That holds on every route that can rebuild PHP:
+a plain `barracuda up-<tier> system`, `php-max` and `php-min` runs, a rebuild forced
+by an OpenSSL update or a new PHP release, and the weekly auto-update run.
 
 Prebuilt PHP packages (see [PREBUILT.md](PREBUILT.md)) are checked the same way: a
 7.4 or 8.0 package built without `intl`, or against another ICU, is refused and
