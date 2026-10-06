@@ -68,8 +68,11 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and not in the default list below, except
 ### on hosted and managed systems (.aegir.cc
 ### hostname or /root/.host8.cnf), where each
-### run adds it. Once installed it works like
-### any other version; 8.4 stays the default.
+### run adds it beside 8.3, 8.4 and 8.5 (not in
+### single-PHP mode, during a major OS upgrade
+### or on a legacy OpenSSL). Once installed it
+### works like any other version; 8.4 stays
+### the default.
 ###
 ### NOTE: 8.4 is required
 ###

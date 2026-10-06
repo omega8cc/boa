@@ -946,32 +946,34 @@
 
 @=> New Features
 
-    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list
-      8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
+    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list 8.6
+      in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
       _PHP_SINGLE_INSTALL, or run barracuda with php-8.6 or php-max, and
-      the next pass builds it. It is not part of the default install
-      set (the default _PHP_MULTI_INSTALL, php-min and php-all), and 8.4
-      stays the default version. Once installed, 8.6 works like any
-      other version everywhere: the Aegir master's PHP-FPM and PHP-CLI,
-      an Octopus instance's fpm.info, cli.info, multi-fpm.info and
-      php86.info, the command line tools, the monitors and the prebuilt
-      packages.
+      the next pass builds it. On a self-hosted system it is not part of
+      the default install set of 8.3, 8.4 and 8.5 (the default
+      _PHP_MULTI_INSTALL, php-min and php-all), and 8.4 stays the
+      default version. Once installed, 8.6 works like any other version
+      everywhere: the Aegir master's PHP-FPM and PHP-CLI, an Octopus
+      instance's fpm.info, cli.info, multi-fpm.info and php86.info, the
+      command line tools, the monitors and the prebuilt packages.
 
     * Hosted and remotely managed systems (an .aegir.cc hostname or
-      /root/.host8.cnf) install PHP 8.6 by default, 8.4 staying the
-      default version, and have Grav and Textpattern support on by
-      default, as Backdrop is everywhere: a new Octopus instance gets
+      /root/.host8.cnf) install PHP 8.6 by default beside 8.3, 8.4 and
+      8.5, 8.4 staying the default version (not in single-PHP mode,
+      during a major OS upgrade or on a legacy OpenSSL, as for the
+      hosted 8.4), and have Grav and Textpattern support on by default,
+      as Backdrop is everywhere: a new Octopus instance gets
       _GRAV_SUPPORT=YES and _TXP_SUPPORT=YES, an existing instance's NO
       seeded before this flips to YES once, and a NO set afterwards
       stays. Self-hosted systems keep their defaults.
 
-    * With the automatic PHP cleanup on, only a real setting keeps or
-      adds PHP 8.6 (8.6 as the whole fpm.info or cli.info value, or a
-      multi-fpm.info line's version, the ltd worker's own placeholder
-      row included), never a comment line or a site name that contains
-      8.6. APCu, PhpRedis, Mcrypt, GEOS, Imagick and the MongoDB driver
-      do not build against it yet, so it runs without them, and on
-      Devuan Daedalus its GD has no AVIF.
+    * With the automatic PHP cleanup on, a self-hosted system keeps or
+      adds PHP 8.6 only for a real setting (8.6 as the whole fpm.info or
+      cli.info value, or a multi-fpm.info line's version, the ltd
+      worker's own placeholder row included), never a comment line or a
+      site name that contains 8.6. APCu, PhpRedis, Mcrypt, GEOS, Imagick
+      and the MongoDB driver do not build against it yet, so it runs
+      without them, and on Devuan Daedalus its GD has no AVIF.
 
     * PHP 8.6: the extension releases BOA pins that are not shown to
       build against the release candidate (APCu, PhpRedis, Mcrypt, GEOS,
