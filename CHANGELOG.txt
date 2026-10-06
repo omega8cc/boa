@@ -1515,10 +1515,11 @@
       download beside the tool.
 
     * A barracuda upgrade holds the Ægir Master's own task queue while
-      it restarts Nginx, PHP-FPM and Percona, and gives it back once
-      they run again: the Verify of the Master's site and of its new
-      hostmaster platform that the upgrade queues could run in the
-      middle of the restarts and end in Warning or Error.
+      it restarts Nginx, PHP-FPM and Percona (the limits and init steps,
+      and the enforced AppArmor mode), and gives it back once they run
+      again: the Verify of the Master's site and of its new hostmaster
+      platform that the upgrade queues could run in the middle of the
+      restarts and end in Warning or Error.
 
     * The Octopus and Master upgrades put their fresh Drush in whole: it
       is made beside the one in place, its launcher already given the

@@ -13116,9 +13116,12 @@ _php_fpm_master_up() {
 # The Ægir master's own task queue is dispatched by the aegir crontab, which
 # no /run/boa_run.pid hold reaches: a Verify the master upgrade had queued
 # ran inside the restarts of an upgrade pass and ended in Warning (Nginx
-# stopped) or Error (its runner lost to the Percona restart). The restarts
-# take the master's queue marker, the one a web group conversion of the
-# master takes: runner.sh keeps the parked crontab parked while the marker
+# stopped) or Error (its runner lost to the Percona restart). An upgrade
+# pass holds the queue once across every step that restarts services (the
+# limits step, the init step and the enforced AppArmor mode, consecutive in
+# BARRACUDA.sh.txt): the hold takes the master's queue marker, the one a
+# web group conversion of the master takes, and runner.sh keeps the parked
+# crontab parked while the marker
 # names a live root process, and once that process is gone it clears the
 # marker and puts the crontab back, so a pass killed in between cannot leave
 # the queue stopped. A marker another live run holds is left to that run. A
@@ -13386,7 +13389,6 @@ _initd_update() {
     wait
     _fix_root_locked_shadow
     _mrun "service ssh restart"
-    _master_queue_hold
     _fix_on_upgrade
     _tune_memory_limits
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
@@ -13588,7 +13590,6 @@ _initd_update() {
         fi
       fi
     fi
-    _master_queue_release
   fi
 }
 
