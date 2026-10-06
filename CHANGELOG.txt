@@ -1738,9 +1738,9 @@
       user's name ends in it: an entry counted as present when it was
       part of a longer line, so "bob" never got its rules after "xbob".
       Each /etc/sudoers.d file is checked with visudo before it replaces
-      the old one, so a line sudo would refuse, which made sudo refuse
-      every user on the box, never gets there; setup then says so and
-      exits non-zero.
+      the old one, so a line sudo cannot parse, which it reports on every
+      call and which can stop it altogether, never gets there; setup then
+      says so and exits non-zero.
 
     * A barracuda upgrade no longer leaves Valkey-cached Drupal sites
       answering 500 for up to half a minute after it changes the Valkey
@@ -2613,14 +2613,15 @@
 
     * Stored procedures and functions, and scheduled events, travel
       with a site's database through the classic dumps too: Clone, a
-      Migrate or Restore without MyQuick, the Backup mode with a
-      classic dump, and the nightly and cluster backups in legacy mode.
-      The dump asks first whether its database user may read them and
-      leaves them out with a warning when not, so such a dump still
-      completes. A trigger made under ANSI_QUOTES no longer stops a
-      Clone or Restore on Percona 5.7, and a trigger, routine or
-      event made before its database's default collation changed no
-      longer stops a Clone, Migrate or Restore.
+      Restore's safety copy, a Migrate without MyQuick, the Backup mode
+      with a classic dump, and the nightly and cluster backups in
+      legacy mode. The dump asks first whether its database user may
+      read them and, when not, leaves out all of the routines or all of
+      the events with a warning, so such a dump still completes. A
+      trigger made under ANSI_QUOTES no longer stops a Clone or Restore
+      on Percona 5.7, and a trigger, routine or event made before its
+      database's default collation changed no longer stops a Clone,
+      Migrate or Restore.
 
     * xtrim's safety dump of each database before it drops it carries
       the stored routines and events as well: that dump is the only
