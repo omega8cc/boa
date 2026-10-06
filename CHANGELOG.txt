@@ -1251,6 +1251,12 @@
 
 @=> Improvements
 
+    * Every barracuda pass, FAST upgrades included, installs e2fsprogs
+      when it is missing. Its chattr and lsattr are used throughout BOA
+      (the resolv.conf pin, control and secret files, xmass pre-mig's
+      pin check), and Devuan installs the package by default but does
+      not protect it from removal.
+
     * With the TET xtra on, PHP 8.1 to 8.5 get the PDFlib TET extension
       from TET 6.0 (TET 5.3 has no binding for them, so they had none),
       7.3, 7.4 and 8.0 keep TET 5.3 and older versions TET 5.2, and a
