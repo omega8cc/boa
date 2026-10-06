@@ -13123,12 +13123,13 @@ _php_fpm_master_up() {
 # web group conversion of the master takes, and runner.sh keeps the parked
 # crontab parked while the marker names a live root process, and once that
 # process is gone it clears the marker and puts the crontab back, so a pass
-# killed in between cannot leave the queue stopped. A marker another live run holds is left to that run. A
-# task runner already started gets up to two minutes to finish first, so a
-# Verify runs wholly before the restarts or after them unless one already
-# running outlasts that window, and the queue comes back once the restarts
-# are done and Nginx and every PHP-FPM master that ran before them run
-# again: move_sql.sh leaves both to their watchdogs.
+# killed in between cannot leave the queue stopped. A marker another live
+# run holds is left to that run. A task runner already started gets up to
+# two minutes to finish first, so a Verify runs wholly before the restarts
+# or after them unless one already running outlasts that window, and the
+# queue comes back once the restarts are done and Nginx and every PHP-FPM
+# master that ran before them run again: move_sql.sh leaves both to their
+# watchdogs.
 _MQ_HELD=NO
 _MQ_NGX=NO
 _MQ_FPM=""
