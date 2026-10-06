@@ -524,7 +524,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd ~/static/MONTH-DAY/openculturas-3.1.0-11.4.8/
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
-           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
+           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (kept as the build proven to install)
            # composer update --no-install --no-scripts
            # composer install --no-dev
            # curl -fsS -o /tmp/err.patch https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch
@@ -734,10 +734,10 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   etc., and current Composer blocks any unlisted plugin.
 - **openculturas** — its install profile has a wrong directory tree by default and ships
   no `sites/example.sites.php` (copy one in). Its dependency patches are dropped
-  (`extra.composer-patches.ignore-dependency-patches`): several are stale against the
-  core the distribution itself requires, and composer-patches 2.x cannot apply patches
-  to dist-installed packages at all (its GitPatcher skips any package dir without
-  `.git`, its FreeformPatcher needs per-patch config).
+  (`extra.composer-patches.ignore-dependency-patches`): on the 3.0 line several were
+  stale against the core the distribution itself requires, and composer-patches 2.x did
+  not apply them to dist-installed packages. A stock 3.1.0 build with composer-patches
+  2.0.0 applies all of them, so the drop is kept as the build proven to install.
 
   One patch is load-bearing and is
   applied with GNU `patch` after the build instead, fail-closed: the shipped views

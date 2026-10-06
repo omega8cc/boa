@@ -1605,11 +1605,12 @@ build_culturas() {
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
     || { _record_fail "culturas"; return 1; }
   # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
-  # -dev branch), and build with the dependency patches DROPPED - several are stale
-  # against the core the distribution itself requires, and composer-patches 2.x cannot
-  # apply patches to dist-installed packages at all here (its GitPatcher skips any
-  # package dir without .git, its FreeformPatcher needs per-patch config), so it is
-  # not a usable channel even for the patches that do apply.
+  # -dev branch), and build with the dependency patches DROPPED. On the 3.0 line several
+  # were stale against the core the distribution itself requires, and composer-patches
+  # 2.x did not apply them to dist-installed packages; a stock 3.1.0 build with
+  # composer-patches 2.0.0 applies all of them, so the drop is kept as the build proven
+  # to install, not because the patches cannot apply. The one load-bearing patch is
+  # applied with GNU patch below.
   local _ocrel
   _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
   if ! { _composer_prepare "${_wd}" \
