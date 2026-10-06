@@ -63,16 +63,13 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
-### 8.6 is a release candidate. On a self-
-### hosted system it is built only when listed
-### here (or set as _PHP_SINGLE_INSTALL) and is
-### not part of the default list below. On
-### hosted and remotely managed systems (an
-### .aegir.cc hostname or /root/.host8.cnf) it
-### is installed by default: Barracuda adds it
-### to this list unless _PHP_SINGLE_INSTALL is
-### set. Once installed it works like any other
-### version; 8.4 stays the default CLI and FPM.
+### 8.6 is a release candidate: built only
+### when listed here (or as _PHP_SINGLE_INSTALL)
+### and not in the default list below, except
+### on hosted and managed systems (.aegir.cc
+### hostname or /root/.host8.cnf), where each
+### run adds it. Once installed it works like
+### any other version; 8.4 stays the default.
 ###
 ### NOTE: 8.4 is required
 ###
@@ -898,15 +895,10 @@ _BACKDROP_SUPPORT=YES
 ### is recorded on this system for reference
 ### only. The grav CLI wrapper and its lshell
 ### entry always ship, and stay inert until a
-### Grav install is in reach.
-###
-### On hosted and remotely managed systems (an
-### .aegir.cc hostname or /root/.host8.cnf)
-### Grav and Textpattern are on by default: a
-### new instance gets YES, and a NO seeded
-### before that default flips to YES once; a
-### NO set afterwards stays. The two values
-### below follow the same rule.
+### Grav install is in reach. Hosted and
+### managed systems (.aegir.cc hostname or
+### /root/.host8.cnf) default both to YES; a
+### NO set after the first such run stays.
 ###
 ### _GRAV_SUPPORT=YES
 ###
