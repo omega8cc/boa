@@ -335,8 +335,11 @@ it is. The notices go to the whole list, as the account's own mail does.
 - **After the install settles** it merges the portable values of
   `/root/.<o1>.octopus.cnf` into the target's copy (FPM tuning knobs,
   `_CLIENT_*` plan identity, ghost-cleanup flags, `_RESERVED_RAM` — never the
-  host-specific lines, which BOA re-derives correctly for the new box), force-
-  copies the PHP pin files, and carries the client's shell credentials: the
+  host-specific lines, which BOA re-derives correctly for the new box; a
+  `_GRAV_SUPPORT=NO` or `_TXP_SUPPORT=NO` travels only from a cnf carrying the
+  `### _GRAV_TXP_SUPPORT_MIGRATED` line, a hosted system's, where a `NO` was
+  set by hand; any other one is a seeded default and the target keeps its own),
+  force-copies the PHP pin files, and carries the client's shell credentials: the
   `<o1>.ftp` shadow hash paired with `log/pass.txt`, the sub-account password
   store, and each sub-user's hash and SSH keys.
 - Sub-users that do not exist on the target yet converge when

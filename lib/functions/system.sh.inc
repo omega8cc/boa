@@ -2688,6 +2688,62 @@ _php_eight_six_asked() {
 }
 
 #
+# Whether PHP 8.6 belongs to this box's PHP set by default: on a hosted or
+# remotely managed system (_if_hosted_sys) it does, under the gates of the 8.4
+# _php_if_versions_cleanup_cnf adds there: no single-PHP mode, no major OS
+# upgrade under way (a run-to-* marker), a modern OpenSSL, and a release that
+# ships an 8.6. A self-hosted system gets 8.6 only when its cnf lists it or an
+# account asks for it (_php_eight_six_asked).
+_php_eight_six_hosted() {
+  _if_hosted_sys
+  [ "${_hostedSys}" = "YES" ] || return 1
+  case "${_PHP_SINGLE_INSTALL}" in
+    8.3|8.4|8.5|8.6) return 1 ;;
+  esac
+  [ -n "${_PHP86_VRN}" ] || return 1
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    return 1
+  fi
+  [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
+    && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]
+}
+
+#
+# The default path of _php_if_versions_cleanup_cnf keeps the cnf's
+# _PHP_MULTI_INSTALL as it is: where _php_eight_six_hosted says so, 8.6 joins
+# that list, in this pass and in /root/.barracuda.cnf, so every reader of the
+# cnf sees the set the pass builds. Once listed, nothing is changed again.
+_php_eight_six_hosted_cnf() {
+  local _cur
+  case " ${_PHP_MULTI_INSTALL} " in
+    *" 8.6 "*) ;;
+    *)
+      _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL:+${_PHP_MULTI_INSTALL} }8.6"
+      export _PHP_MULTI_INSTALL
+      _msg "INFO: PHP 8.6 added to _PHP_MULTI_INSTALL (hosted system default)"
+      ;;
+  esac
+  [ -e "${_barCnf}" ] || return 0
+  case "${_PHP_MULTI_INSTALL}" in
+    *[!0-9.\ ]*) return 1 ;;
+  esac
+  _cur="$(grep "^_PHP_MULTI_INSTALL=" "${_barCnf}" 2> /dev/null | tail -n 1)"
+  _cur="${_cur#_PHP_MULTI_INSTALL=}"
+  _cur="${_cur//[\"\']/}"
+  case " ${_cur} " in
+    *" 8.6 "*) return 0 ;;
+  esac
+  if grep -q "^_PHP_MULTI_INSTALL=" "${_barCnf}" 2> /dev/null; then
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/" "${_barCnf}"
+  else
+    echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> "${_barCnf}"
+  fi
+}
+
+#
 # The PHP versions the accounts pin that the dotted greps of
 # _php_if_versions_cleanup_cnf miss, so the cleanup does not disable them:
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
@@ -2996,6 +3052,10 @@ _php_if_versions_cleanup_cnf() {
           fi
         fi
       fi
+      ### Hosted and managed systems: PHP 8.6 too, under the same gates
+      if _php_eight_six_hosted; then
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} 8.6"
+      fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
         _msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
@@ -3196,6 +3256,9 @@ _php_if_versions_cleanup_cnf() {
       [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
       [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
     fi
+  elif _php_eight_six_hosted; then
+    ### Hosted and managed systems: PHP 8.6 joins the cnf's list
+    _php_eight_six_hosted_cnf
   fi
 }
 
@@ -3491,6 +3554,17 @@ _barracuda_cnf() {
     grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
     grep -q "^_GHOST_ALIASES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
+  # Hosted and remotely managed systems (_if_hosted_sys: /root/.host8.cnf counts
+  # too) have Grav and Textpattern on by default, as Backdrop is everywhere.
+  # The switches are per Octopus instance (_satellite_cnf); the values here are
+  # recorded for reference and follow the same rule: YES when the line is not in
+  # the cnf yet, and a NO seeded before this default existed flips once (the
+  # _GRAV_TXP_SUPPORT_MIGRATED marker below), so a NO written after it stays.
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    grep -q "^_GRAV_SUPPORT=" "${_barCnf}" 2>/dev/null || _GRAV_SUPPORT=YES
+    grep -q "^_TXP_SUPPORT=" "${_barCnf}" 2>/dev/null || _TXP_SUPPORT=YES
+  fi
   # Prebuilt heavy-stack packages default to YES on Devuan Daedalus and
   # Excalibur, where the mirrors publish the complete boa-* set, but ONLY
   # when the toggle is not already present in the cnf, so an explicit
@@ -3695,6 +3769,10 @@ _barracuda_cnf() {
     echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
     echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                     >> ${_barCnf}
     echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                       >> ${_barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED"                   >> "${_barCnf}"
+    fi
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -3960,18 +4038,25 @@ _barracuda_cnf() {
     if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark; anchored like _BACKDROP_SUPPORT above.
-    ### No _MIGRATED heal: the gate has never defaulted differently.
+    ### Off on self-hosted systems, on by default on hosted ones (see the
+    ### top of this function); anchored like _BACKDROP_SUPPORT above.
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark; anchored like the gates above. No
-    ### _MIGRATED heal: the gate has never defaulted differently (that
-    ### machinery belongs to the commit that ever flips the default).
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_barCnf}
+    fi
+    ### One-shot flip on hosted systems: a NO seeded while both shipped dark
+    ### everywhere predates any operator choice; a NO written after the
+    ### marker lands stays.
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ] \
+      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_barCnf}" 2> /dev/null; then
+      sed -i "s/^_GRAV_SUPPORT=NO$/_GRAV_SUPPORT=YES/g" "${_barCnf}"
+      sed -i "s/^_TXP_SUPPORT=NO$/_TXP_SUPPORT=YES/g" "${_barCnf}"
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED" >> "${_barCnf}"
     fi
     ### One-shot opt-out migration: a NO seeded while the gate briefly
     ### defaulted to NO (2026-07-11..13) predates any operator choice, so
@@ -5150,6 +5235,25 @@ _resolve_icu_target() {
 }
 
 #
+# The ICU version PHP builds compile against: configure finds it through the
+# icu-uc.pc the last ICU install left in /usr/local, which ICU writes after
+# every library, and the headers it points at must carry the same version.
+# Empty when they disagree (an install that stopped part way) or are missing.
+# A version dir under /usr/local/lib/icu, and so 'current', proves nothing on
+# its own: an earlier install leaves its dir behind.
+_installed_icu_vrn() {
+  local _hdr
+  local _pc
+  _hdr=$(sed -n 's/^#define U_ICU_VERSION "\([0-9.]*\)".*/\1/p' \
+    /usr/local/include/unicode/uvernum.h 2> /dev/null | head -n 1)
+  _pc=$(sed -n 's/^Version: *\([0-9.]*\).*/\1/p' \
+    /usr/local/lib/pkgconfig/icu-uc.pc 2> /dev/null | head -n 1)
+  if [ -n "${_hdr}" ] && [ "${_hdr}" = "${_pc}" ]; then
+    echo "${_hdr}"
+  fi
+}
+
+#
 # Install ICU (modern/newer tiers) from sources. Version comes from
 # _resolve_icu_target via _ICU_TARGET_VRN, so _ICU_FORCE_VRN can pin it. Jessie
 # keeps its own installer (different tarball/source layout).
@@ -5201,11 +5305,14 @@ _install_icu() {
   # _install_icu the target is always the modern/newer tier a correctly built box
   # already resolves to, so a never-pinned box never sees a spurious rebuild
   # (a relative 'current' symlink canonicalises via readlink -f to the same path).
+  # The installed headers carrying another version also (re)builds it: that is
+  # what PHP compiles against, and only a real install changes them.
   _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${_pthIcuLog}" ] \
     || [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
-      != "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+      != "/usr/local/lib/icu/${_ICU_DOT}" ] \
+    || [ "$(_installed_icu_vrn)" != "${_ICU_DOT}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the compile;
@@ -5216,7 +5323,8 @@ _install_icu() {
     _ICU_DEB_INSTALLED=NO
     if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
       if _install_boa_deb "boa-icu" "${_ICU_TARGET_VRN}"; then
-        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ] \
+          && [ "$(_installed_icu_vrn)" = "${_ICU_DOT}" ]; then
           _ICU_DEB_INSTALLED=YES
           _msg "INFO: ICU ${_ICU_TARGET_VRN} installed from prebuilt package"
         else
@@ -5237,14 +5345,20 @@ _install_icu() {
       _mrun "make --quiet install"
     fi
     ldconfig 2> /dev/null
-    if [ -e "/usr/local/lib/icu" ]; then
+    # Only a real install moves the marker and the 'current' symlink (existence-
+    # checked to gate installs/rebuilds) to the target, so installed == resolved
+    # target even when pinned to a version other than the OS default. A failed
+    # download or build leaves both as they were, so the next pass tries again
+    # and no PHP is rebuilt for an ICU that is not there (_check_php_rebuild);
+    # the target's dir alone can be a leftover of an earlier install.
+    _ICU_HDR_VRN="$(_installed_icu_vrn)"
+    if [ "${_ICU_HDR_VRN}" = "${_ICU_DOT}" ]; then
       touch ${_pthIcuLog}
-    fi
-    # Point the 'current' symlink (existence-checked to gate installs/rebuilds)
-    # at the version we just built, so installed == resolved target even when
-    # pinned to a different version than the OS default. _ICU_DOT resolved above.
-    if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
-      ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
+      if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+        ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
+      fi
+    else
+      _msg "ALRT: ICU ${_ICU_TARGET_VRN} did not install (installed: ${_ICU_HDR_VRN:-none or partial}); PHP keeps its builds, the next pass tries again"
     fi
     _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
