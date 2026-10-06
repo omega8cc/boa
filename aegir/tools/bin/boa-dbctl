@@ -66,6 +66,12 @@ _STANDBY="/root/.standby.cnf"
 _STANDBY_INIT="/root/.standby.init.pid"
 _XMASS_INIT="/run/boa_xmass_init.pid"
 
+# Tenant isolation is not switched on in this release: scope on switches no
+# account, forced or not, a new account's switch included, unless the box
+# carries the test marker. A later release sets _TI_RELEASED to YES.
+_TI_RELEASED="NO"
+_TI_TEST="${_RHOME}/.tenant-isolation-test.cnf"
+
 # What the box-wide verbs read and write beside the above: the mark of a
 # standby in the making, the state of a pair this box sources, the task
 # queue's pause and the marks of a running install or upgrade, what a purge
@@ -202,6 +208,8 @@ Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
   witness                                    (root, every switched account)
   scope <oN> plan | status                   (root)
   scope <oN> on --sha <plan sha> [--force] [--accept-refusals]  (root)
+                                     not in this release: a test server only,
+                                     with /root/.tenant-isolation-test.cnf
   scope <oN> off                             (root)
   baseline plan                              (root)
   baseline accept <user>@<host>... | pinned | @persisted        (root)
@@ -5682,6 +5690,11 @@ _main() {
     *) _need_broker ;;
   esac
   _need_not_standby
+  # No switch in this release: refused before anything touches the server.
+  if [[ "${_VERB}" == "scope" && "${_ARGS[1]:-}" == "on" \
+    && "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+    _die 7 "not-released tenant isolation is switched on by a later release"
+  fi
   _TMPD=$(mktemp -d "${_RUNP}.tmp.XXXXXXXX" 2> /dev/null) || _die 7 "tmp-failed"
   _srv_init
   _master_db_init
