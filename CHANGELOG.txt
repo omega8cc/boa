@@ -958,14 +958,16 @@
       command line tools, the monitors and the prebuilt packages.
 
     * Hosted and remotely managed systems (an .aegir.cc hostname or
-      /root/.host8.cnf) install PHP 8.6 by default beside 8.3, 8.4 and
-      8.5, 8.4 staying the default version (not in single-PHP mode,
-      during a major OS upgrade or on a legacy OpenSSL, as for the
-      hosted 8.4), and have Grav and Textpattern support on by default,
-      as Backdrop is everywhere: a new Octopus instance gets
-      _GRAV_SUPPORT=YES and _TXP_SUPPORT=YES, an existing instance's NO
-      seeded before this flips to YES once, and a NO set afterwards
-      stays. Self-hosted systems keep their defaults.
+      /root/.host8.cnf) add PHP 8.6 to the PHP versions they install by
+      default (8.3, 8.4 and 8.5, or with the automatic PHP cleanup on,
+      the versions in use and 8.4), 8.4 staying the default version,
+      except in single-PHP mode, during a major OS upgrade or on a
+      legacy OpenSSL, as for the hosted 8.4, and have Grav and
+      Textpattern support on by default, as Backdrop is everywhere: a
+      new Octopus instance gets _GRAV_SUPPORT=YES and _TXP_SUPPORT=YES,
+      an existing instance's NO seeded before this flips to YES once,
+      and a NO set afterwards stays. Self-hosted systems keep their
+      defaults.
 
     * With the automatic PHP cleanup on, a self-hosted system keeps or
       adds PHP 8.6 only for a real setting (8.6 as the whole fpm.info or
