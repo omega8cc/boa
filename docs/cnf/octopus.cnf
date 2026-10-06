@@ -20,8 +20,8 @@ _INSTANCE_GROUP=YES #----------- Per-account private primary group (instgrp); NO
 ### Absent means neither, and no default is written - see docs/INSTGRP.md
 #_WEB_GROUP=NO
 _SEND_UPGRADE_EMAIL=YES #------- Mail the client an upgrade notice after each instance upgrade; NO switches it off (the welcome email always sends)
-_GRAV_SUPPORT=NO #-------------- Set to YES to enable Grav 2 platforms and site capsules
-_TXP_SUPPORT=NO #--------------- Set to YES to enable Textpattern platforms and sites
+_GRAV_SUPPORT=NO #-------------- Set to YES to enable Grav 2 platforms and site capsules; YES by default on hosted and remotely managed systems
+_TXP_SUPPORT=NO #--------------- Set to YES to enable Textpattern platforms and sites; YES by default on hosted and remotely managed systems
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
