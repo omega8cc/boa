@@ -47,24 +47,27 @@ readlink /usr/local/lib/icu/current            # -> /usr/local/lib/icu/76.1
 /opt/php84/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
 ```
 
-## Boxes upgraded from the temporary ICU 73 pin
+## A build against another ICU
 
-Earlier releases gave PHP 7.4 `intl` only under an ICU pin of 73 or lower: by hand
-(pin, upgrade, unpin, upgrade), or once a week through the `autoupboa weekly-system`
-wrapper on boxes with auto-updates enabled, never on `php-max` boxes. Those builds
-report `ICU version => 73.1` and link the ICU 73 libraries left in `/usr/local/lib`.
+A PHP 7.4 or newer build compiled against an ICU other than the one this box
+expects, such as a 7.4 built while ICU was pinned to 73 (`ICU version => 73.1`,
+linked to the ICU 73 libraries in `/usr/local/lib`), is rebuilt against the system
+ICU by the next pass, and from then on does not use those libraries.
 
-The first barracuda pass after the upgrade rebuilds such a 7.4 (or 8.0) once against
-the system ICU. After that it no longer uses the ICU 73 libraries. The weekly wrapper
-no longer pins ICU, idles PHP versions or runs a second pass: it clears a pin left by
-a cycle that was cut short (the marker `/var/log/boa/.php74_intl_bootstrap.active`
-says the pin was the wrapper's own) and runs the plain system upgrade.
+## The weekly run
+
+The `autoupboa weekly-system` wrapper runs one plain system upgrade, `php-max`
+lines included: it never pins ICU and never idles PHP versions. Its one ICU step
+concerns the marker `/var/log/boa/.php74_intl_bootstrap.active`, written only by
+the weekly ICU pin cycle of earlier releases. A box still carrying it was left
+pinned when that cycle was cut short, so the wrapper removes the `_ICU_FORCE_VRN`
+line and the marker before its pass. A pin set by an operator carries no marker
+and stays.
 
 ## Pinning ICU (`_ICU_FORCE_VRN`)
 
-`_ICU_FORCE_VRN` (set in `/root/.barracuda.cnf`, dashed form such as `73-1`) is still
-available as an advanced, box-wide override of the ICU version. `intl` no longer
-needs it.
+`_ICU_FORCE_VRN` (set in `/root/.barracuda.cnf`, dashed form such as `73-1`) is an
+advanced, box-wide override of the ICU version. `intl` does not need it.
 
 ```bash
 echo '_ICU_FORCE_VRN="73-1"' >> /root/.barracuda.cnf
