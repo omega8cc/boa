@@ -979,6 +979,17 @@ _satellite_cnf() {
     grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
     grep -q "^_GHOST_ALIASES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
+  # Hosted and remotely managed systems (_if_hosted_sys: /root/.host8.cnf counts
+  # too) have Grav and Textpattern on by default, as Backdrop is everywhere: a
+  # new instance's cnf is born with YES, and in an existing one a NO seeded
+  # before this default existed flips once (the _GRAV_TXP_SUPPORT_MIGRATED
+  # marker below), so an operator's NO written after it stays. Self-hosted
+  # systems keep the NO of the settings file.
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    grep -q "^_GRAV_SUPPORT=" "${_octCnf}" 2>/dev/null || _GRAV_SUPPORT=YES
+    grep -q "^_TXP_SUPPORT=" "${_octCnf}" 2>/dev/null || _TXP_SUPPORT=YES
+  fi
   # A hand-seeded cnf -- the documented opt-out creates /root/.oN.octopus.cnf
   # before boa in-octopus with _INSTANCE_GROUP=NO -- carries a line or two,
   # not the forty-odd the creation branch writes, and the append pass below
@@ -1036,6 +1047,10 @@ _satellite_cnf() {
     echo "### _BACKDROP_SUPPORT_MIGRATED"                       >> ${_octCnf}
     echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                       >> ${_octCnf}
     echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                         >> ${_octCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED"                     >> "${_octCnf}"
+    fi
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -1169,14 +1184,14 @@ _satellite_cnf() {
     else
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
     fi
-    ### Ships dark; no _MIGRATED heal by design.
+    ### Off on self-hosted systems, on by default on hosted ones (see the
+    ### top of this function).
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
     fi
-    ### Ships dark; no _MIGRATED heal by design.
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       _DO_NOTHING=YES
@@ -1190,6 +1205,16 @@ _satellite_cnf() {
     if [[ ! "${_BDR_MIGRATED_TEST}" =~ "_BACKDROP_SUPPORT_MIGRATED" ]]; then
       sed -i "s/^_BACKDROP_SUPPORT=NO$/_BACKDROP_SUPPORT=YES/g" ${_octCnf}
       echo "### _BACKDROP_SUPPORT_MIGRATED" >> ${_octCnf}
+    fi
+    ### The same one-shot flip for Grav and Textpattern, on hosted systems
+    ### only (see the top of this function); before the source, too.
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ] \
+      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_octCnf}" 2> /dev/null; then
+      sed -i "s/^_GRAV_SUPPORT=NO$/_GRAV_SUPPORT=YES/g" "${_octCnf}"
+      sed -i "s/^_TXP_SUPPORT=NO$/_TXP_SUPPORT=YES/g" "${_octCnf}"
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED" >> "${_octCnf}"
+      _msg "INFO: Grav and Textpattern support on by default on this hosted system"
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
