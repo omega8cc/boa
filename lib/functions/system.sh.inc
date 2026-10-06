@@ -13109,6 +13109,122 @@ _php_fpm_master_up() {
   return 1
 }
 
+# The Ægir master's own task queue is dispatched by the aegir crontab, which
+# no /run/boa_run.pid hold reaches: a Verify the master upgrade had queued
+# ran inside the restarts of an upgrade pass and ended in Warning (Nginx
+# stopped) or Error (its runner lost to the Percona restart). The restarts
+# take the master's queue marker, the one a web group conversion of the
+# master takes: runner.sh keeps the parked crontab parked while the marker
+# names a live root process, and once that process is gone it clears the
+# marker and puts the crontab back, so a pass killed in between cannot leave
+# the queue stopped. A marker another live run holds is left to that run. A
+# task runner already started gets up to two minutes to finish first, so a
+# Verify runs wholly before the restarts or after them unless one already
+# running outlasts that window, and the queue comes back once the restarts
+# are done and Nginx and every PHP-FPM master that ran before them run
+# again: move_sql.sh leaves both to their watchdogs.
+_MQ_HELD=NO
+_MQ_NGX=NO
+_MQ_FPM=""
+_MQ_CRON="/var/spool/cron/crontabs/aegir"
+_MQ_CRON_OFF="/var/spool/cron/crontabs/.aegir"
+_MQ_STOP="/run/boa_master_queue_stop.pid"
+
+# 0 when /run/nginx.pid names a live Nginx master, which the init script's
+# reload needs.
+_mq_nginx_up() {
+  local _pid
+  [ -r "/run/nginx.pid" ] || return 1
+  _pid=$(tr -dc '0-9' < /run/nginx.pid 2> /dev/null)
+  [ -n "${_pid}" ] || return 1
+  case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
+    "nginx: master process"*) return 0 ;;
+  esac
+  return 1
+}
+
+_mq_runner_live() {
+  pgrep -u aegir -f 'drush\.php.*hosting-(dispatch|task)' > /dev/null 2>&1
+}
+
+_mq_cron_park() {
+  if [ -e "${_MQ_CRON}" ]; then
+    mv -f "${_MQ_CRON}" "${_MQ_CRON_OFF}" 2> /dev/null
+    service cron reload > /dev/null 2>&1
+  fi
+}
+
+_master_queue_hold() {
+  local _p _w=0 _r
+  _MQ_HELD=NO
+  [ -e "${_MQ_CRON}" ] || return 0
+  if [ -e "${_MQ_STOP}" ]; then
+    _p=$( { tr -dc '0-9' < "${_MQ_STOP}"; } 2> /dev/null )
+    [ -n "${_p}" ] || return 0
+    if kill -0 "${_p}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ]; then
+      return 0
+    fi
+    [ "$( { tr -dc '0-9' < "${_MQ_STOP}"; } 2> /dev/null )" = "${_p}" ] && rm -f "${_MQ_STOP}"
+  fi
+  ( set -C; echo "$$" > "${_MQ_STOP}" ) 2> /dev/null || return 0
+  _MQ_HELD=YES
+  _MQ_NGX=NO
+  _mq_nginx_up && _MQ_NGX=YES
+  _MQ_FPM=""
+  for _p in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _php_fpm_master_up "${_p}" && _MQ_FPM="${_MQ_FPM} ${_p}"
+  done
+  # A runner.sh pass already past its marker test can put the crontab back
+  # while the first drain runs: parked again, and drained once more. A job
+  # the cron daemon started at the tick just before the park shows up as a
+  # process a moment later: the drain looks after a short settle.
+  for _r in 1 2; do
+    _mq_cron_park
+    sleep 2
+    while _mq_runner_live && [ "${_w}" -lt 120 ]; do
+      sleep 3
+      _w=$(( _w + 3 ))
+    done
+    [ -e "${_MQ_CRON}" ] || break
+  done
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Ægir Master task queue held for the restarts (drain ${_w}s)"
+  fi
+}
+
+_master_queue_release() {
+  local _w=0 _p _up
+  [ "${_MQ_HELD}" = "YES" ] || return 0
+  _MQ_HELD=NO
+  while :; do
+    _up=YES
+    if [ "${_MQ_NGX}" = "YES" ] && ! _mq_nginx_up; then
+      _up=NO
+    fi
+    for _p in ${_MQ_FPM}; do
+      _php_fpm_master_up "${_p}" || _up=NO
+    done
+    [ "${_up}" = "YES" ] && break
+    [ "${_w}" -ge 180 ] && break
+    sleep 3
+    _w=$(( _w + 3 ))
+  done
+  [ "$( { tr -dc '0-9' < "${_MQ_STOP}"; } 2> /dev/null )" = "$$" ] && rm -f "${_MQ_STOP}"
+  if [ ! -e "/root/.standby.cnf" ] \
+    && [ -e "${_MQ_CRON_OFF}" ] && [ ! -e "${_MQ_CRON}" ]; then
+    mv -f "${_MQ_CRON_OFF}" "${_MQ_CRON}" 2> /dev/null
+    service cron reload > /dev/null 2>&1
+  fi
+  if [ "${_up}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Ægir Master task queue released (services up after ${_w}s)"
+    fi
+  else
+    _msg "NOTE: Ægir Master task queue released, Nginx or PHP-FPM still down after ${_w}s"
+  fi
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -13266,6 +13382,7 @@ _initd_update() {
     wait
     _fix_root_locked_shadow
     _mrun "service ssh restart"
+    _master_queue_hold
     _fix_on_upgrade
     _tune_memory_limits
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
@@ -13467,6 +13584,7 @@ _initd_update() {
         fi
       fi
     fi
+    _master_queue_release
   fi
 }
 

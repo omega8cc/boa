@@ -331,11 +331,16 @@ and sets up root SSH key exchange between the two servers.
 
 On both hosts `pre-mig` forces the migration tool set current before anything
 is parked (on the target, right after the key check below): it drops the
-per-tool control markers for the six migration tools, runs the 5-minute
-housekeeping script synchronously, then logs each tool's resulting version
-line — so a migration is never run on stale tooling. The tool executing the
-command itself refreshes on the next verb, not mid-run (the fetcher refuses to
-replace a live process), and the log says so.
+per-tool control markers for the seven migration tools (and the hold a
+refused install leaves), runs the 5-minute housekeeping script synchronously,
+then logs each tool's resulting version line — so a migration is never run on
+stale tooling. The tool executing the command itself refreshes on the next
+verb, not mid-run (the fetcher refuses to replace a live process), and the log
+says so.
+
+A tool whose copy cannot be replaced (an immutable or append-only file) gets an
+`ALRT` naming the file and `/var/log/boa/mirror.incident.log` instead, and the
+migration runs on the copy it has.
 
 In source mode `pre-mig` publishes root's public key on the box's undefined
 vhost and prints the key's fingerprint with the exact command to run on the
