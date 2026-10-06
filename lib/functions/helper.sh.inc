@@ -557,6 +557,56 @@ _acct_put_here() {
 _acct_put_in() {
   _acct_in_real_dir "${1}" _acct_put_here "${2}" "${3}"
 }
+# The ltd worker's own in-place edit of a file an account owns, one copy
+# here for the barracuda and octopus runs (the text is the worker's):
+# stdin as ./$1 in the current (pinned) directory, handed to uid $2 and
+# gid $3 with the mode $4 (octal) under a fresh temp name, then renamed
+# over the name; $5 = x keeps the execute bits of the mode.
+_ltd_put_ids_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _pl="${_ACCT_PUT_PL}"
+  [ "${5}" = "x" ] && _pl="${_ACCT_PUT_MODE_PL}"
+  [[ "${2}" =~ ^[0-9]+$ && "${3}" =~ ^[0-9]+$ && "${4}" =~ ^[0-7]+$ ]] \
+    || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_pl}" "${_t}" "${2}" "${3}" "${4}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# A single-link regular file under 1 MiB of the current (pinned) directory
+# edited by the sed script $2, read once, never through a link or from a
+# FIFO, and put back only when it changed, with the owner, group and mode
+# it had (_ltd_put_ids_here). $1 = name.
+_ltd_sed_here() {
+  local LC_ALL=C
+  local _st _typ _uid _gid _mod _sz _nl _w _rc=1
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
+    && [ "${_nl}" = "1" ] || return 1
+  _w=$(mktemp -d /run/.ltd-edit.XXXXXX 2> /dev/null) || return 1
+  if timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none > "${_w}/o" 2> /dev/null \
+    && [ "$(stat -c %s -- "${_w}/o" 2> /dev/null)" = "${_sz}" ]; then
+    if sed "${2}" "${_w}/o" > "${_w}/n" 2> /dev/null; then
+      if cmp -s "${_w}/o" "${_w}/n"; then
+        _rc=0
+      else
+        _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
+          < "${_w}/n" && _rc=0
+      fi
+    fi
+  fi
+  rm -rf -- "${_w}"
+  return "${_rc}"
+}
 # stdin as the fresh file $1 in the current (pinned) directory, handed to uid
 # $2 and gid $3 (numbers) with the mode $4, all through the one handle that
 # created it (O_EXCL|O_NOFOLLOW, 0600 until it is complete); the caller then

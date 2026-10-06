@@ -66,6 +66,16 @@ _sql_binlog_switch_pending() {
   [ "$(_sql_binlog_lines /etc/mysql/my.cnf)" != "$(_sql_binlog_lines "${_fnd}")" ]
 }
 
+#
+# A password as the debug lines show it: its length and the start of its
+# sha256, so the lines before and after a rotation tell whether it changed
+# while the reports, which a log run mails, never carry the value.
+_sql_pass_fp() {
+  local _fp
+  _fp=$(printf '%s' "${1}" | sha256sum 2>/dev/null | cut -c1-8)
+  printf '%s' "(${#1} chars, sha256 ${_fp:-none})"
+}
+
 _check_mysql_version() {
   _DB_V=
   if [ -x "/usr/sbin/aa-teardown" ]; then
@@ -1733,7 +1743,7 @@ _forced_mysql_root_password_update() {
   _check_sql_running
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
+      _msg "DBEF: ${_DB_SERVER} _ESC_PASS $(_sql_pass_fp "${_ESC_PASS}")"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
         mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -1803,7 +1813,7 @@ _forced_mysql_root_password_update() {
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     _dbctl_rerecord root
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
+      _msg "DAFT: ${_DB_SERVER} _ESC_PASS $(_sql_pass_fp "${_ESC_PASS}")"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
         mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -2259,7 +2269,7 @@ _sql_root_credentials_update() {
         _msg "CRIT: _DB_V for ${_DB_SERVER} is empty!"
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DBEF: ${_DB_SERVER} PASWD ${_PASWD}"
+          _msg "DBEF: ${_DB_SERVER} PASWD $(_sql_pass_fp "${_PASWD}")"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -2319,7 +2329,7 @@ _sql_root_credentials_update() {
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
+          _msg "DAFT: ${_DB_SERVER} PASWD $(_sql_pass_fp "${_PASWD}")"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"

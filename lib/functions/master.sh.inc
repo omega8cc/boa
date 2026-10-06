@@ -1094,9 +1094,10 @@ _php_cli_drush_update() {
   _DRUSH_LNCH="${_ROOT}/drush/drush.launcher"
   _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
   if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
-    sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
-    sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
-    sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" ${_DRUSH_LNCH} &> /dev/null
+    # One edit, put back as one file: a Drush started meanwhile finds the old
+    # default or the new one, never a launcher without it.
+    sed -i -e "1s/^#\!.*/#\!\/bin\/bash/" -e "/^export DRUSH_PHP=/d" \
+      -e "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" ${_DRUSH_LNCH} &> /dev/null
   fi
 }
 

@@ -1004,7 +1004,9 @@ _APT_ACQUIRE_POLICY=YES
 ### phase B with _WEB_GROUP_PHASE_B=YES). A per-account opt-out is
 ### _WEB_GROUP=NO in /root/.<account>.octopus.cnf, a phase A pin
 ### _WEB_GROUP=A. Set both boxes of a standing xmass mirror alike: a box
-### promoted without the stamp converts nothing. See docs/INSTGRP.md.
+### promoted without the stamp converts nothing. Not switched on in this
+### release: the setting stamps only a test box that carries the marker
+### /root/.tenant-isolation-test.cnf. See docs/INSTGRP.md.
 ###
 ###   _WEB_GROUP_ARM=YES
 ###   _WEB_GROUP_PHASE_B=YES

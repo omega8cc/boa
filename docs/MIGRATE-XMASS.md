@@ -691,8 +691,9 @@ whose sites share another account's files). So:
   hand; the box's watchers report a mark that has stood for over three days
   with no standby marker.
 
-At the promotion the accounts convert by the promoted box's own
-`_WEB_GROUP_ARM` and `_WEB_GROUP_PHASE_B`, gated as any first conversion:
+At the promotion the accounts convert by the promoted box's own arm (its
+stamp; see "Arming" in `INSTGRP.md`) and `_WEB_GROUP_PHASE_B`, gated as any
+first conversion:
 
 - the cutover's last step, after `phase=complete`, runs
   `instgrp webconvert all` on the promoted box (`--phase-b` where it sets

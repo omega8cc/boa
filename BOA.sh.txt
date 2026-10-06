@@ -2297,7 +2297,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f54 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f53 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f91 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -2508,7 +2508,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f66 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f65 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -5302,7 +5302,7 @@ CSFSTANDBY
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f82
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f94
-    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f81
+    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f80
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -5355,7 +5355,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f72 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f71 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
