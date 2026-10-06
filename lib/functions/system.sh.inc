@@ -8588,6 +8588,14 @@ _run_aptitude_deps_install() {
   if ! _pkg_installed "libfcgi-bin"; then
     _mrun "${_INSTAPP} libfcgi-bin"
   fi
+  # e2fsprogs carries chattr and lsattr, which BOA uses throughout (the
+  # resolv.conf pin, control and secret files, xmass pre-mig's pin check).
+  # Devuan installs it by default but does not protect it from removal
+  # (required, not essential), and FAST upgrades skip the package section
+  # below, so ensure it on every run.
+  if ! _pkg_installed "e2fsprogs"; then
+    _mrun "${_INSTAPP} e2fsprogs"
+  fi
   # rsyslog is the only supported syslogd; the retired legacy selection arms
   # could leave a box with no syslog daemon at all, and FAST upgrades skip
   # the big package section below, so ensure it on every run. On a box still

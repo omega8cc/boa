@@ -11970,8 +11970,9 @@ _xmass_force_tool_update() {
         _alrt "  ${_t} was not refreshed: /opt/local/bin/${_t} is immutable or append-only, so no pass can replace it; the next verbs run the copy it has"
       elif [[ " ${_held} " == *" ${_t} "* ]]; then
         ### Not tried now, no pin flag, and a move over it was refused
-        ### before (a file mounted over it, or a pin lifted since): when is
-        ### in mirror.incident.log, as the record has no age.
+        ### before (a file mounted over it, or a pin lifted since). The
+        ### record has no age; the refusing pass's mirror.incident.log line
+        ### counts the refusal, but names only that pass's last failure.
         _alrt "  ${_t} was not refreshed, and an earlier move over /opt/local/bin/${_t} was refused (see /var/log/boa/mirror.incident.log); until a pass can replace it, the next verbs run the copy it has"
       else
         ### No marker otherwise means the fetch declined because that tool
