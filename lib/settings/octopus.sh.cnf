@@ -212,8 +212,16 @@ _BACKDROP_SUPPORT=YES
 ###----------------------------------------###
 ###
 ### Grav 2 platforms and site capsules
-### ship dark. To enable Grav on this
-### Octopus instance, change this to YES.
+### are off by default on self-hosted
+### systems. To enable Grav on this Octopus
+### instance, change this to YES.
+###
+### On hosted and remotely managed systems
+### (an .aegir.cc hostname or the file
+### /root/.host8.cnf) Grav is on by default:
+### a new instance gets YES, and a NO seeded
+### before that default flips to YES once;
+### a NO you set afterwards stays.
 ###
 ### _GRAV_SUPPORT=YES
 ###
@@ -222,10 +230,13 @@ _GRAV_SUPPORT=NO
 ###--------------------------------------###
 ###
 ### Textpattern platforms and multisite
-### sites ship dark. To enable Textpattern
-### on this Octopus instance, change this
-### to YES. Requires the current BOA
-### release (PHP 8.4).
+### sites are off by default on self-hosted
+### systems. To enable Textpattern on this
+### Octopus instance, change this to YES.
+### Requires the current BOA release (PHP
+### 8.4). On hosted and remotely managed
+### systems it is on by default, as Grav is
+### (see above).
 ###
 ### _TXP_SUPPORT=YES
 ###

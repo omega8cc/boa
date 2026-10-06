@@ -946,24 +946,36 @@
 
 @=> New Features
 
-    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list
-      8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
+    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list 8.6
+      in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
       _PHP_SINGLE_INSTALL, or run barracuda with php-8.6 or php-max, and
-      the next pass builds it. It is not part of the default install
-      set (the default _PHP_MULTI_INSTALL, php-min and php-all), and 8.4
-      stays the default version. Once installed, 8.6 works like any
-      other version everywhere: the Aegir master's PHP-FPM and PHP-CLI,
-      an Octopus instance's fpm.info, cli.info, multi-fpm.info and
-      php86.info, the command line tools, the monitors and the prebuilt
-      packages.
+      the next pass builds it. On a self-hosted system it is not part of
+      the default install set of 8.3, 8.4 and 8.5 (the default
+      _PHP_MULTI_INSTALL, php-min and php-all), and 8.4 stays the
+      default version. Once installed, 8.6 works like any other version
+      everywhere: the Aegir master's PHP-FPM and PHP-CLI, an Octopus
+      instance's fpm.info, cli.info, multi-fpm.info and php86.info, the
+      command line tools, the monitors and the prebuilt packages.
 
-    * With the automatic PHP cleanup on, only a real setting keeps or
-      adds PHP 8.6 (8.6 as the whole fpm.info or cli.info value, or a
-      multi-fpm.info line's version, the ltd worker's own placeholder
-      row included), never a comment line or a site name that contains
-      8.6. APCu, PhpRedis, Mcrypt, GEOS, Imagick and the MongoDB driver
-      do not build against it yet, so it runs without them, and on
-      Devuan Daedalus its GD has no AVIF.
+    * Hosted and remotely managed systems (an .aegir.cc hostname or
+      /root/.host8.cnf) add PHP 8.6 to the PHP versions they install by
+      default (8.3, 8.4 and 8.5, or with the automatic PHP cleanup on,
+      the versions in use and 8.4), 8.4 staying the default version,
+      except in single-PHP mode, during a major OS upgrade or on a
+      legacy OpenSSL, as for the hosted 8.4, and have Grav and
+      Textpattern support on by default, as Backdrop is everywhere: a
+      new Octopus instance gets _GRAV_SUPPORT=YES and _TXP_SUPPORT=YES,
+      an existing instance's NO seeded before this flips to YES once,
+      and a NO set afterwards stays. Self-hosted systems keep their
+      defaults.
+
+    * With the automatic PHP cleanup on, a self-hosted system keeps or
+      adds PHP 8.6 only for a real setting (8.6 as the whole fpm.info or
+      cli.info value, or a multi-fpm.info line's version, the ltd
+      worker's own placeholder row included), never a comment line or a
+      site name that contains 8.6. APCu, PhpRedis, Mcrypt, GEOS, Imagick
+      and the MongoDB driver do not build against it yet, so it runs
+      without them, and on Devuan Daedalus its GD has no AVIF.
 
     * PHP 8.6: the extension releases BOA pins that are not shown to
       build against the release candidate (APCu, PhpRedis, Mcrypt, GEOS,
@@ -1491,6 +1503,15 @@
 
 @=> Important Fixes
 
+    * While the ICU a box expects fails to install (a failed download or
+      build), PHP builds that carry intl are no longer rebuilt on every
+      pass against the ICU still installed, only to mismatch again, and
+      no leftover ICU directory can make a failed install count as done:
+      the installed ICU is judged by its icu-uc.pc and headers, the
+      builds keep serving, the pass reports the failure with an ALRT,
+      and the next pass retries the ICU install, a prebuilt ICU package
+      included.
+
     * PHP 7.4 and 8.0 keep the intl extension through every upgrade:
       they are built with intl against the system ICU, and on ICU 75 and
       newer (Daedalus, Excalibur, Bookworm, Trixie) their intl is
@@ -1508,11 +1529,13 @@
       marks stay as they were, its link is kept, and the pass's failure
       line in /var/log/boa/mirror.incident.log counts it. The next try
       waits for the hourly re-check, a new serial, a barracuda system
-      pass or xmass pre-mig's forced refresh, which now names such a
-      tool in an ALRT, where it used to log the new version as if
-      installed. The new version used to be marked over the old file
-      until the hourly re-check, unreported, and each try left its
-      download beside the tool.
+      pass or xmass pre-mig's forced refresh. That refresh now names
+      such a tool in an ALRT, xmass itself too when its file is pinned
+      or a move over it was refused: it used to log the new version as
+      if installed, and xmass as a refresh deferred to the next pass.
+      The new version used to be marked over the old file until the
+      hourly re-check, unreported, and each try left its download
+      beside the tool.
 
     * A barracuda upgrade holds the Ægir Master's own task queue while
       it restarts Nginx, PHP-FPM and Percona (the limits and init steps,
@@ -1956,6 +1979,29 @@
       config.php, the helpers that open the site from the command line
       were not given them. Each now gets its own site's settings, and
       the Upgrade's those of the new copy, never the source's.
+
+    * Reset password and a new Drupal or Backdrop site's Install now log
+      their one-time login line only when Drush returned a link, and the
+      line says where to find it: the "Log in to" link at the top of the
+      site's page in the control panel, which works once within 24
+      hours. A Reset password that gets no link from Drush now fails and
+      says so, instead of claiming a link the site page never offered;
+      an Install warns and carries on. The link the panel keeps no
+      longer ends with a stray newline, and a new Drupal 6 site's link
+      no longer carries a second /login.
+
+    * The limited shell's drush aliases listing shows every site again:
+      it hid any site whose name merely contained hm or none (a name with
+      "rhythm" or "nonesuch" in it, or one starting with "hm."). It now
+      hides only the panel's own, server and platform aliases, @none and
+      @self, matched as whole names, in the Drush 8 and Drush 10+
+      listings alike.
+
+    * A site brought in by Import, every site made by Upgrade to Backdrop
+      among them, no longer ends each of its tasks with the warning
+      Undefined array key "db_port": its Drush settings file was written
+      without the database port, which it now takes from the site's
+      database server on its next Verify.
 
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
