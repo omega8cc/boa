@@ -9494,7 +9494,7 @@ _satellite_child_b_install_drush() {
   ### download that fails leaves the tree in place (a copy cut short can
   ### still hold a drush.php, so its own status counts too). The tree
   ### replaced goes to backups/system.
-  local _drS="./drush.new.$$" _drOk=YES _drPhp _drOld=""
+  local _drS="./drush.new.$$" _drOk=YES _drPhp _drOld="" _drKeep=""
   # Checked cd: every name below is relative to the real tools/.
   cd -P "${_ROOT}/tools" || return 1
   # a stage a stopped pass left; a live pass's is never this old
@@ -9535,15 +9535,21 @@ _satellite_child_b_install_drush() {
     elif mv -T -- ./drush "${_drS}/old" &> /dev/null; then
       _drOld="${_drS}/old"
       if ! mv -T -- "${_drS}/drush" ./drush &> /dev/null; then
-        mv -T -- "${_drS}/old" ./drush &> /dev/null
-        _drOld=""
+        # put back; a tree that cannot go back goes to backups/system below
+        mv -T -- "${_drS}/old" ./drush &> /dev/null && _drOld=""
       fi
     fi
-    if [ -n "${_drOld}" ]; then
-      mv -f -- "${_drOld}" "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}" &> /dev/null
+    if [ -n "${_drOld}" ] \
+      && ! mv -f -- "${_drOld}" "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}" &> /dev/null; then
+      _drKeep=YES
     fi
   fi
-  rm -rf -- "${_drS}"
+  # The stage goes only when it holds no tree kept nowhere else.
+  if [ -n "${_drKeep}" ]; then
+    _msg "NOTE: Drush tree left in ${_ROOT}/tools/${_drS#./}, backups/system took no copy"
+  else
+    rm -rf -- "${_drS}"
+  fi
   cd "${_ROOT}/tools/drush/" || return 1
 }
 

@@ -1227,7 +1227,7 @@ _hostmaster_dr_up() {
   ### or download that fails leaves the tree in place (a copy cut short can
   ### still hold a drush.php, so its own status counts too). The tree
   ### replaced goes to backups/system.
-  local _drS="./drush.new.$$" _drOk=YES _drPhp _drOld=""
+  local _drS="./drush.new.$$" _drOk=YES _drPhp _drOld="" _drKeep=""
   # a stage a stopped pass left; a live pass's is never this old
   find . -mindepth 1 -maxdepth 1 -name "drush.new.*" -mmin +60 \
     -exec rm -rf -- {} + &> /dev/null
@@ -1266,23 +1266,29 @@ _hostmaster_dr_up() {
     elif mv -T -- ./drush "${_drS}/old" &> /dev/null; then
       _drOld="${_drS}/old"
       if ! mv -T -- "${_drS}/drush" ./drush &> /dev/null; then
-        mv -T -- "${_drS}/old" ./drush &> /dev/null
-        _drOld=""
+        # put back; a tree that cannot go back goes to backups/system below
+        mv -T -- "${_drS}/old" ./drush &> /dev/null && _drOld=""
       fi
     fi
-    if [ -n "${_drOld}" ]; then
-      mv -f -- "${_drOld}" "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}" &> /dev/null
+    if [ -n "${_drOld}" ] \
+      && ! mv -f -- "${_drOld}" "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}" &> /dev/null; then
+      _drKeep=YES
     fi
   fi
-  rm -rf -- "${_drS}"
+  # The stage goes only when it holds no tree kept nowhere else.
+  if [ -n "${_drKeep}" ]; then
+    _msg "NOTE: Drush tree left in ${_ROOT}/${_drS#./}, backups/system took no copy"
+  else
+    rm -rf -- "${_drS}"
+  fi
 }
 
 #
 # The two names given swapped in one rename (renameat2 with
 # RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
 # when they were. One text wherever it is defined (satellite.sh.inc,
-# master.sh.inc, which AegirUpgrade.sh.txt and AegirSetupM.sh.txt source,
-# and BOA.sh.txt).
+# master.sh.inc, which BARRACUDA.sh.txt, AegirUpgrade.sh.txt and
+# AegirSetupM.sh.txt source, and BOA.sh.txt).
 # shellcheck disable=SC2016
 _SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
