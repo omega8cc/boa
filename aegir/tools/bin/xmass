@@ -2469,6 +2469,13 @@ _xmass_push_account_cnf() {
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
     [ -n "${_l}" ] || continue
+    # a Grav or Textpattern NO from a cnf the hosted default never reached
+    # (no _GRAV_TXP_SUPPORT_MIGRATED line) is a seeded default, not a choice:
+    # it stays here, and the target keeps its own default
+    if [[ "${_l}" =~ ^_(GRAV|TXP)_SUPPORT=[\"\']?NO[\"\']?$ ]] \
+      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
+      continue
+    fi
     # the target sources this cnf as root, and some values began as the
     # account's own text: a line travels only as a plain assignment
     if ! _xmass_cnf_line_ok "${_l}"; then

@@ -957,6 +957,14 @@
       php86.info, the command line tools, the monitors and the prebuilt
       packages.
 
+    * Hosted and remotely managed systems (an .aegir.cc hostname or
+      /root/.host8.cnf) install PHP 8.6 by default, 8.4 staying the
+      default version, and have Grav and Textpattern support on by
+      default, as Backdrop is everywhere: a new Octopus instance gets
+      _GRAV_SUPPORT=YES and _TXP_SUPPORT=YES, an existing instance's NO
+      seeded before this flips to YES once, and a NO set afterwards
+      stays. Self-hosted systems keep their defaults.
+
     * With the automatic PHP cleanup on, only a real setting keeps or
       adds PHP 8.6 (8.6 as the whole fpm.info or cli.info value, or a
       multi-fpm.info line's version, the ltd worker's own placeholder

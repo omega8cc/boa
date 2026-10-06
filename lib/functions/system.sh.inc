@@ -2688,6 +2688,62 @@ _php_eight_six_asked() {
 }
 
 #
+# Whether PHP 8.6 belongs to this box's PHP set by default: on a hosted or
+# remotely managed system (_if_hosted_sys) it does, under the gates of the 8.4
+# _php_if_versions_cleanup_cnf adds there: no single-PHP mode, no major OS
+# upgrade under way (a run-to-* marker), a modern OpenSSL, and a release that
+# ships an 8.6. A self-hosted system gets 8.6 only when its cnf lists it or an
+# account asks for it (_php_eight_six_asked).
+_php_eight_six_hosted() {
+  _if_hosted_sys
+  [ "${_hostedSys}" = "YES" ] || return 1
+  case "${_PHP_SINGLE_INSTALL}" in
+    8.3|8.4|8.5|8.6) return 1 ;;
+  esac
+  [ -n "${_PHP86_VRN}" ] || return 1
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    return 1
+  fi
+  [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
+    && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]
+}
+
+#
+# The default path of _php_if_versions_cleanup_cnf keeps the cnf's
+# _PHP_MULTI_INSTALL as it is: where _php_eight_six_hosted says so, 8.6 joins
+# that list, in this pass and in /root/.barracuda.cnf, so every reader of the
+# cnf sees the set the pass builds. Once listed, nothing is changed again.
+_php_eight_six_hosted_cnf() {
+  local _cur
+  case " ${_PHP_MULTI_INSTALL} " in
+    *" 8.6 "*) ;;
+    *)
+      _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL:+${_PHP_MULTI_INSTALL} }8.6"
+      export _PHP_MULTI_INSTALL
+      _msg "INFO: PHP 8.6 added to _PHP_MULTI_INSTALL (hosted system default)"
+      ;;
+  esac
+  [ -e "${_barCnf}" ] || return 0
+  case "${_PHP_MULTI_INSTALL}" in
+    *[!0-9.\ ]*) return 1 ;;
+  esac
+  _cur="$(grep "^_PHP_MULTI_INSTALL=" "${_barCnf}" 2> /dev/null | tail -n 1)"
+  _cur="${_cur#_PHP_MULTI_INSTALL=}"
+  _cur="${_cur//[\"\']/}"
+  case " ${_cur} " in
+    *" 8.6 "*) return 0 ;;
+  esac
+  if grep -q "^_PHP_MULTI_INSTALL=" "${_barCnf}" 2> /dev/null; then
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/" "${_barCnf}"
+  else
+    echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> "${_barCnf}"
+  fi
+}
+
+#
 # The PHP versions the accounts pin that the dotted greps of
 # _php_if_versions_cleanup_cnf miss, so the cleanup does not disable them:
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
@@ -2996,6 +3052,10 @@ _php_if_versions_cleanup_cnf() {
           fi
         fi
       fi
+      ### Hosted and managed systems: PHP 8.6 too, under the same gates
+      if _php_eight_six_hosted; then
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} 8.6"
+      fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
         _msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
@@ -3196,6 +3256,9 @@ _php_if_versions_cleanup_cnf() {
       [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
       [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
     fi
+  elif _php_eight_six_hosted; then
+    ### Hosted and managed systems: PHP 8.6 joins the cnf's list
+    _php_eight_six_hosted_cnf
   fi
 }
 
@@ -3491,6 +3554,17 @@ _barracuda_cnf() {
     grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
     grep -q "^_GHOST_ALIASES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
+  # Hosted and remotely managed systems (_if_hosted_sys: /root/.host8.cnf counts
+  # too) have Grav and Textpattern on by default, as Backdrop is everywhere.
+  # The switches are per Octopus instance (_satellite_cnf); the values here are
+  # recorded for reference and follow the same rule: YES when the line is not in
+  # the cnf yet, and a NO seeded before this default existed flips once (the
+  # _GRAV_TXP_SUPPORT_MIGRATED marker below), so a NO written after it stays.
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    grep -q "^_GRAV_SUPPORT=" "${_barCnf}" 2>/dev/null || _GRAV_SUPPORT=YES
+    grep -q "^_TXP_SUPPORT=" "${_barCnf}" 2>/dev/null || _TXP_SUPPORT=YES
+  fi
   # Prebuilt heavy-stack packages default to YES on Devuan Daedalus and
   # Excalibur, where the mirrors publish the complete boa-* set, but ONLY
   # when the toggle is not already present in the cnf, so an explicit
@@ -3695,6 +3769,10 @@ _barracuda_cnf() {
     echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
     echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                     >> ${_barCnf}
     echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                       >> ${_barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED"                   >> "${_barCnf}"
+    fi
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -3960,18 +4038,25 @@ _barracuda_cnf() {
     if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark; anchored like _BACKDROP_SUPPORT above.
-    ### No _MIGRATED heal: the gate has never defaulted differently.
+    ### Off on self-hosted systems, on by default on hosted ones (see the
+    ### top of this function); anchored like _BACKDROP_SUPPORT above.
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark; anchored like the gates above. No
-    ### _MIGRATED heal: the gate has never defaulted differently (that
-    ### machinery belongs to the commit that ever flips the default).
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_barCnf}
+    fi
+    ### One-shot flip on hosted systems: a NO seeded while both shipped dark
+    ### everywhere predates any operator choice; a NO written after the
+    ### marker lands stays.
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ] \
+      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_barCnf}" 2> /dev/null; then
+      sed -i "s/^_GRAV_SUPPORT=NO$/_GRAV_SUPPORT=YES/g" "${_barCnf}"
+      sed -i "s/^_TXP_SUPPORT=NO$/_TXP_SUPPORT=YES/g" "${_barCnf}"
+      echo "### _GRAV_TXP_SUPPORT_MIGRATED" >> "${_barCnf}"
     fi
     ### One-shot opt-out migration: a NO seeded while the gate briefly
     ### defaulted to NO (2026-07-11..13) predates any operator choice, so
