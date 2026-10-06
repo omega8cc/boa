@@ -34,6 +34,10 @@ normally in the same upgrade pass. That holds on every route that can rebuild PH
 a plain `barracuda up-<tier> system`, `php-max` and `php-min` runs, a rebuild forced
 by an OpenSSL update or a new PHP release, and the weekly auto-update run.
 
+While the ICU this box expects is not installed (its download or build failed), no
+PHP version is rebuilt for it: the existing builds keep serving, each pass reports the
+failure with an `ALRT` line, and the next pass tries the ICU install again.
+
 Prebuilt PHP packages (see [PREBUILT.md](PREBUILT.md)) are checked the same way: a
 7.4 or 8.0 package built without `intl`, or against another ICU, is refused and
 purged, and that version builds from sources instead.

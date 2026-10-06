@@ -3310,8 +3310,17 @@ _check_php_rebuild() {
     # 7.4 and newer all carry intl (see _install_php_multi_src), so one built
     # without it, or against an ICU other than the one this box expects, is
     # rebuilt: the expected version comes from the same resolver the build
-    # used, so the install-vs-expected rebuild loop cannot form.
-    if ! _check_php_icu_version "$1"; then
+    # used, so the install-vs-expected rebuild loop cannot form. That holds
+    # only once the expected ICU is the installed one: when its install
+    # failed, 'current' still names another version (see _install_icu) and
+    # every build would compile against that one and mismatch again on each
+    # pass. The builds keep serving, the ALRT fails the pass report, and the
+    # next pass tries the ICU install again.
+    _resolve_icu_target
+    if [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
+      != "/usr/local/lib/icu/${_ICU_TARGET_VRN/[_-]/.}" ]; then
+      _msg "ALRT: ICU ${_ICU_TARGET_VRN} is not installed, PHP ${_PHP_ITD} keeps its build until it is"
+    elif ! _check_php_icu_version "$1"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
       fi

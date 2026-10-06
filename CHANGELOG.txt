@@ -1501,6 +1501,12 @@
 
 @=> Important Fixes
 
+    * While the ICU a box expects fails to install (a failed download or
+      build), PHP 7.4 and newer are no longer rebuilt on every pass
+      against the ICU still installed, only to mismatch again: the
+      builds keep serving, the pass reports the failure with an ALRT,
+      and the next pass retries the ICU install.
+
     * PHP 7.4 and 8.0 keep the intl extension through every upgrade:
       they are built with intl against the system ICU, and on ICU 75 and
       newer (Daedalus, Excalibur, Bookworm, Trixie) their intl is
