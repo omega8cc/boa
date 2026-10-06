@@ -735,6 +735,12 @@ _rsyslog_config_update
 _pam_umask_check_fix
 _pam_many_check_fix
 _avatars_check_fix
+### The Ægir Master's task queue is held from here until the AppArmor step
+### below is done: the limits step, the init step and the enforced AppArmor
+### mode each restart Nginx, PHP-FPM or Percona.
+if [ "${_STATUS}" != "INIT" ]; then
+  _master_queue_hold
+fi
 _sysctl_update
 _initd_update
 
@@ -764,6 +770,7 @@ else
     _if_remove_apparmor
   fi
 fi
+_master_queue_release
 
 
 ### On every pass, heavy or not, and only here: after any Nginx build, after
