@@ -2053,7 +2053,7 @@ _php_pre_deb_back() {
 # build shapes -- the published packages are built with shipped defaults only,
 # and the package filename cannot encode a custom _PHP_EXTRA_CONF or a pinned
 # ICU linkage, so those boxes must keep the source path. Requires the companion
-# trees PHP links against (BOA OpenSSL, cURL, ICU for 8.1+) to be present
+# trees PHP links against (BOA OpenSSL, cURL, ICU for 7.4+) to be present
 # already: the normal install order provides them (packages or source) before
 # PHP, and BOA's self-heal checks (_check_php_ssl_version, _check_php_icu_version)
 # remain the runtime backstop.
@@ -2077,7 +2077,7 @@ _install_php_deb() {
     _msg "NOTE: Companion libs missing; building PHP ${_PHP_VERSION} from sources"
     return 1
   fi
-  if [ "${1}" -ge 81 ] && [ ! -e "/usr/local/lib/icu/current" ]; then
+  if [ "${1}" -ge 74 ] && [ ! -e "/usr/local/lib/icu/current" ]; then
     _msg "NOTE: BOA ICU missing; building PHP ${_PHP_VERSION} from sources"
     return 1
   fi
@@ -2119,15 +2119,16 @@ _install_php_deb() {
     # a forced rebuild must not pass, or a stale package built against a
     # previous OpenSSL/ICU pin reinstalls in a loop on every daily run
     # without the box ever reaching the current headers. The nginx deb
-    # asserts its OpenSSL token the same way. ICU applies to 8.1+ only here:
-    # the _ICU_FORCE_VRN arm of the intl gate was already refused up front
+    # asserts its OpenSSL token the same way. ICU applies to 7.4+, which all
+    # carry intl, so a package built without it (or against another ICU) is
+    # refused too; a box with _ICU_FORCE_VRN set was already refused up front
     # as a custom build shape. An 8.4 or newer package that still carries
     # Pdo\Sqlite::loadExtension fails the same way.
     _PHP_DEB_TOKENS_OK=YES
     if ! _check_php_ssl_version "${1}"; then
       _PHP_DEB_TOKENS_OK=NO
     fi
-    if [ "${1}" -gt 80 ]; then
+    if [ "${1}" -ge 74 ]; then
       if ! _check_php_icu_version "${1}"; then
         _PHP_DEB_TOKENS_OK=NO
       fi
@@ -2215,18 +2216,25 @@ _install_php_multi_src() {
   ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  # intl requires ICU. PHP 7.4/8.0 cannot build intl against ICU 76+ but build
-  # cleanly against ICU <= 73. 8.1+ always gets intl. Below 8.1, enable intl
-  # only when ICU is explicitly pinned (via _ICU_FORCE_VRN) to a 7.4-safe
-  # version (major <= 73). So the unset/default behaviour is unchanged on every
-  # OS (no intl below 8.1, including the 73-default OSes, which are not silently
-  # flipped); the feature is strictly opt-in.
+  # intl requires ICU. 7.4 and newer always get intl, against the ICU this
+  # box builds (_resolve_icu_target). 7.4 and 8.0 compile intl as C++11, but
+  # the headers of ICU 75 and newer need C++17: ICU_CXXFLAGS lands after
+  # their forced -std on the intl compile line, so it raises the standard for
+  # the intl sources only, as PHP 8.1 itself does for these ICU versions.
+  # Re-check 7.4/8.0 intl whenever the default ICU moves. 7.2/7.3 intl does
+  # not compile against ICU 70 or newer and 5.6-7.1 stopped building it on
+  # newer systems, so 7.3 and older are built without it, pinned or not.
   _resolve_icu_target
   _ICU_MAJOR="${_ICU_TARGET_VRN%%[._-]*}"
-  if [ "$1" -ge 81 ]; then
+  _ICU_CXX_ENV=""
+  if [ "$1" -ge 74 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
-  elif [ -n "${_ICU_FORCE_VRN}" ] && [ "${_ICU_MAJOR}" -le 73 ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
+    if [ "$1" -lt 81 ] && [ "${_ICU_MAJOR}" -ge 75 ]; then
+      _ICU_CXX_ENV="ICU_CXXFLAGS=\"-std=c++17\" "
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: PHP ${_PHP_VERSION} intl is compiled as C++17 for ICU ${_ICU_TARGET_VRN}"
+      fi
+    fi
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -2384,7 +2392,7 @@ _install_php_multi_src() {
   if [ "$1" -ge 84 ]; then
     _PDO_SQL_CFL="CPPFLAGS=\"-DPDO_SQLITE_OMIT_LOAD_EXTENSION=1\" "
   fi
-  _mrun "${_LGC_CFL}${_PDO_SQL_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+  _mrun "${_LGC_CFL}${_PDO_SQL_CFL}${_ICU_CXX_ENV}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -2416,7 +2424,7 @@ _install_php_multi_src() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    _mrun "${_LGC_CFL}${_PDO_SQL_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+    _mrun "${_LGC_CFL}${_PDO_SQL_CFL}${_ICU_CXX_ENV}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -3298,11 +3306,11 @@ _check_php_rebuild() {
     _ownWhy=YES
   fi
 
-  if [ "$1" -gt 80 ] \
-    || { [ -n "${_ICU_FORCE_VRN}" ] && [ "$1" -ge 74 ]; }; then
-    # ICU check for 8.1+ always; for pinned 7.4/8.0 too (they carry intl when
-    # ICU is pinned), so they stay self-correcting and the install-vs-expected
-    # rebuild loop cannot form.
+  if [ "$1" -ge 74 ]; then
+    # 7.4 and newer all carry intl (see _install_php_multi_src), so one built
+    # without it, or against an ICU other than the one this box expects, is
+    # rebuilt: the expected version comes from the same resolver the build
+    # used, so the install-vs-expected rebuild loop cannot form.
     if ! _check_php_icu_version "$1"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
