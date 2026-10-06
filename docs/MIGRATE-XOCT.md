@@ -87,8 +87,8 @@ For full-server migrations where Percona versions match, consider
 >
 > Nothing else of the account's web-group state travels: its intent (a revert in
 > progress, a pin made without its cnf line) and its record stay on the source, and the
-> account converts on the target by that box's own `_WEB_GROUP_ARM` and
-> `_WEB_GROUP_PHASE_B`. `transfer` prints a `NOTE`, never a refusal, naming the command to
+> account converts on the target by that box's own arm (its stamp; see "Arming" in
+> `INSTGRP.md`) and `_WEB_GROUP_PHASE_B`. `transfer` prints a `NOTE`, never a refusal, naming the command to
 > run on the target (`<dst>` is the account there, the new name on a rename) when:
 >
 > - the account uses its own web group here and not yet there (a target that is not armed

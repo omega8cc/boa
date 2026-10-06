@@ -20,7 +20,9 @@ In this release `scope oN on` switches no account, forced or not, a new
 account's switch included: it refuses with `ERR 7 not-released`, unless the
 box is a test server that carries the marker
 `/root/.tenant-isolation-test.cnf`. A later release lifts that. `plan`, `off`,
-`status` and an account already switched work as described below.
+`status` and an account already switched work as described below, with one
+exception: `scope oN on` run again on a switched account, which the remedies
+below use, is refused too outside a test server with the marker.
 
 ## The switch
 
@@ -262,7 +264,10 @@ privilege.
 - To settle such a row, re-point or drop its objects, drop the row, and run
   `scope oN on` again. `scope oN on` alone keeps it as a row in use (on
   `kept=`), but the box-wide check still names a row at a host the account's
-  logins do not use, as it did before the switch.
+  logins do not use, as it did before the switch. In this release `scope oN
+  on` runs only on a test server with the marker; elsewhere re-pointing or
+  dropping the objects and dropping the row is the way, and the next rotation
+  succeeds.
 - A row on `kept=` leaves `rows=` at the first rotation after it defines
   nothing, and is dropped: re-pointing or dropping its objects is enough. Never
   while the stored objects cannot be read, and never the last row. A drop the

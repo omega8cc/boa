@@ -107,7 +107,9 @@
       database count reported against an optional limit that is only
       enforced when asked. New accounts can start switched on where the
       box asks for it, and moved accounts keep their state. Still
-      switched off: no account uses it until an operator switches it.
+      switched off: in this release no account, a new or moved one
+      included, is switched outside a test server (see the first
+      Security entry).
 
     * The master pass has the root database helper record aegir_root
       again only once the master's server alias holds the new password:
@@ -182,27 +184,30 @@
 
     * Each Octopus account can now move out of the shared web server
       group into its own, wg-<account> (instgrp webconvert): its sites'
-      files, private files and settings, its PHP pools and its shell users
-      no longer reach another account's, nor are reached by them. Inert
-      until _WEB_GROUP_ARM=YES in /root/.barracuda.cnf; phase B, which
-      takes the account's identities out of www-data, needs
-      _WEB_GROUP_PHASE_B=YES as well.
+      files, private files and settings, its PHP pools and its shell
+      users no longer reach another account's, nor are reached by them.
+      Inert until _WEB_GROUP_ARM=YES in /root/.barracuda.cnf, and in
+      this release only on a test server (see the first Security entry);
+      phase B, which takes the account's identities out of www-data,
+      needs _WEB_GROUP_PHASE_B=YES as well.
     * _WEB_GROUP=NO in an account's octopus cnf opts it out, as does
-      _INSTANCE_GROUP=NO, and a site reading another account's files store
-      refuses the conversion. The master converts the same way (instgrp
-      webconvert aegir), by hand only. instgrp webstatus, webcheck
-      --report and the limited-shell worker's and the nightly's drift
-      alarms show where each account stands; see docs/INSTGRP.md.
+      _INSTANCE_GROUP=NO, and a site reading another account's files
+      store refuses the conversion. The master converts the same way on
+      an armed box (instgrp webconvert aegir), by hand only. instgrp
+      webstatus, webcheck --report and the limited-shell worker's and
+      the nightly's drift alarms show where each account stands; see
+      docs/INSTGRP.md.
     * xoct, xcopy and xmass carry the web-group policy to the target, the
       opt-out _WEB_GROUP=NO and the phase A pin _WEB_GROUP=A (written by
       instgrp webconvert --phase-a), and print a NOTE for what does not
       travel (a revert in progress, phase B onto a box with it off, a
       target that is not armed); an xmass standby keeps its accounts
       unconverted until the promotion.
-    * An xmass promotion converts the promoted box's accounts by that
-      box's own settings at the end of the cutover and again in post-mig,
-      the master as the old box ran it; xmass compares the two boxes' arm,
-      phase B and master at every sync, prep-target, verify and status.
+    * An xmass promotion converts the promoted box's accounts, where
+      that box is armed, by its own settings at the end of the cutover
+      and again in post-mig, the master as the old box ran it; xmass
+      compares the two boxes' arm, phase B and master at every sync,
+      prep-target, verify and status.
     * Phase B also clears the set-group-ID bit of every www-data file the
       account's identities own, on every local file system that honours
       the bit: a file made while they were in www-data no longer gives
