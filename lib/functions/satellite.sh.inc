@@ -2026,12 +2026,10 @@ _satellite_update_drush_php_cli() {
   _DRUSH_LNCH="${_ROOT}/tools/drush/drush.launcher"
   _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
   if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
+    # One edit, put back as one file: a Drush started meanwhile finds the old
+    # default or the new one, never a launcher without it.
     _satellite_tools_drush_edit drush.launcher \
-      "1s/^#\!.*/#\!\/bin\/bash/" &> /dev/null
-    _satellite_tools_drush_edit drush.launcher \
-      "/^export DRUSH_PHP=/d" &> /dev/null
-    _satellite_tools_drush_edit drush.launcher \
-      "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" &> /dev/null
+      "1s/^#\!.*/#\!\/bin\/bash/"$'\n'"/^export DRUSH_PHP=/d"$'\n'"1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" &> /dev/null
   fi
 }
 

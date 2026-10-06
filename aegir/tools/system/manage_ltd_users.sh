@@ -4200,12 +4200,10 @@ _php_cli_drush_update() {
     # that runtime choice must always win over the baked pin.
     _DRUSH_LNCH="${_dscUsr}/tools/drush/drush.launcher"
     if [ -e "${_DRUSH_LNCH}" ]; then
+      # One edit, put back as one file: a Drush started meanwhile finds the
+      # old default or the new one, never a launcher without it.
       _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here drush.launcher \
-        "1s/^#\!.*/#\!\/bin\/bash/"
-      _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here drush.launcher \
-        "/^export DRUSH_PHP=/d"
-      _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here drush.launcher \
-        "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_T_CLI}/php}\""
+        "1s/^#\!.*/#\!\/bin\/bash/"$'\n'"/^export DRUSH_PHP=/d"$'\n'"1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_T_CLI}/php}\""
     fi
   fi
   _ltd_ctrl_rm '.ctrl.cli.*.pid'
