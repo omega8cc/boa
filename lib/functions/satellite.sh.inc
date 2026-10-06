@@ -1972,6 +1972,23 @@ _satellite_tools_drush_edit() {
 }
 
 #
+# The PHP the account's Drush launcher defaults to: the CLI binary of
+# _PHP_CLI_VERSION, printed only when it is installed.
+_satellite_drush_lnch_php() {
+  local _p="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
+  [ -x "${_p}" ] || return 1
+  printf '%s\n' "${_p}"
+}
+#
+# The launcher's edit as one sed script, the DRUSH_PHP default $1: made on a
+# fresh copy before it goes in (_satellite_child_b_install_drush) and on the
+# tree in place after AegirSetupB (_satellite_update_drush_php_cli).
+_satellite_drush_lnch_sed() {
+  printf '%s\n%s\n%s' "1s/^#\!.*/#\!\/bin\/bash/" "/^export DRUSH_PHP=/d" \
+    "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${1}}\""
+}
+
+#
 # Update php-cli for Drush.
 _satellite_update_drush_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2024,12 +2041,13 @@ _satellite_update_drush_php_cli() {
   # static/control files (cli.info + instant phpNN.info switches), and
   # that runtime choice must always win over the baked pin.
   _DRUSH_LNCH="${_ROOT}/tools/drush/drush.launcher"
-  _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
-  if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
+  _LNCH_PHP="$(_satellite_drush_lnch_php)"
+  if [ -e "${_DRUSH_LNCH}" ] && [ -n "${_LNCH_PHP}" ]; then
     # One edit, put back as one file: a Drush started meanwhile finds the old
-    # default or the new one, never a launcher without it.
+    # default or the new one, never a launcher without it. A copy AegirSetupB
+    # put in already carries it, so there the same lines are written again.
     _satellite_tools_drush_edit drush.launcher \
-      "1s/^#\!.*/#\!\/bin\/bash/"$'\n'"/^export DRUSH_PHP=/d"$'\n'"1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" &> /dev/null
+      "$(_satellite_drush_lnch_sed "${_LNCH_PHP}")" &> /dev/null
   fi
 }
 
@@ -3982,7 +4000,8 @@ _satellite_all_fetched_here() {
 # The two names given swapped in one rename (renameat2 with
 # RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
 # when they were. One text wherever it is defined (satellite.sh.inc, which
-# AegirSetupC.sh.txt sources, and BOA.sh.txt).
+# AegirSetupB.sh.txt and AegirSetupC.sh.txt source, master.sh.inc and
+# BOA.sh.txt).
 # shellcheck disable=SC2016
 _SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
@@ -9464,41 +9483,74 @@ _satellite_child_b_install_drush() {
       fi
     fi
   fi
-  # Checked cd: a relative mv after a failed cd acts on the wrong tree.
-  local _drCpFail=""
+  ### The fresh Drush is made in a stage beside tools/drush and swapped in
+  ### whole, so a Drush started meanwhile finds the old tree or the new one,
+  ### never no tree, and never the stock launcher, which has no DRUSH_PHP
+  ### default and runs on the first PHP on the path: the stage takes the
+  ### launcher edit the pass repeats after this child, and its modes. The
+  ### two names swap in one rename (_SAT_SWAP_PL); where one rename cannot
+  ### do it (no tree in place, or no renameat2 on the box), the tree is moved
+  ### aside first and put back when the stage cannot go in. A copy or
+  ### download that fails leaves the tree in place (a copy cut short can
+  ### still hold a drush.php, so its own status counts too). The tree
+  ### replaced goes to backups/system.
+  local _drS="./drush.new.$$" _drOk=YES _drPhp _drOld="" _drKeep=""
+  # Checked cd: every name below is relative to the real tools/.
+  cd -P "${_ROOT}/tools" || return 1
+  # a stage a stopped pass left; a live pass's is never this old
+  find . -mindepth 1 -maxdepth 1 -name "drush.new.*" -mmin +60 \
+    -exec rm -rf -- {} + &> /dev/null
+  rm -rf -- "${_drS}"
+  mkdir -m 0700 -- "${_drS}" || return 1
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
-    cd ${_ROOT}/tools || return 1
-    mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-    cp -af /opt/tools/drush/8/drush ${_ROOT}/tools/ || _drCpFail=YES
+    cp -af /opt/tools/drush/8/drush "${_drS}/" || _drOk=NO
   else
-    cd ${_ROOT}/tools || return 1
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
     fi
-    _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+    # the archive unpacks drush/ in the directory it is fetched to
+    ( cd -- "${_drS}" && _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz" ) || _drOk=NO
   fi
-  ### Restore to the real path: a mv into the existing tools/ dir parked the
-  ### backup beside a missing or partial tools/drush instead of replacing it,
-  ### and the live instance then dropped out of every tools/drush check. A
-  ### copy that fails part way still leaves a drush.php behind, so its own
-  ### status counts too.
-  if [ -n "${_ROOT}" ] \
-    && { [ -n "${_drCpFail}" ] || [ ! -f "${_ROOT}/tools/drush/drush.php" ]; } \
-    && [ -f "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}/drush.php" ]; then
-    rm -rf ${_ROOT}/tools/drush
-    mv -f ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} ${_ROOT}/tools/drush
+  if [ "${_drOk}" = "YES" ] && [ -f "${_drS}/drush/drush.php" ]; then
+    if _drPhp="$(_satellite_drush_lnch_php)" \
+      && [ -f "${_drS}/drush/drush.launcher" ]; then
+      sed -i "$(_satellite_drush_lnch_sed "${_drPhp}")" \
+        "${_drS}/drush/drush.launcher" &> /dev/null
+    fi
+    find "${_drS}/drush" -type d -exec chmod 0755 {} \; &> /dev/null
+    find "${_drS}/drush" -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 "${_drS}/drush/drush"
+    chmod 755 "${_drS}/drush/drush.complete.sh"
+    chmod 755 "${_drS}/drush/drush.launcher"
+    chmod 755 "${_drS}/drush/drush.php"
+    chmod 755 "${_drS}/drush/unish.sh"
+    chmod 755 "${_drS}/drush/examples/drush.wrapper"
+    chmod 755 "${_drS}/drush/examples/git-bisect.example.sh"
+    chmod 755 "${_drS}/drush/examples/helloworld.script"
+    if [ ! -e "./drush" ] && [ ! -L "./drush" ]; then
+      mv -T -- "${_drS}/drush" ./drush &> /dev/null
+    elif [ -n "${_SAT_SWAP_PL}" ] \
+      && perl -e "${_SAT_SWAP_PL}" -- "${_drS}/drush" ./drush 2> /dev/null; then
+      _drOld="${_drS}/drush"
+    elif mv -T -- ./drush "${_drS}/old" &> /dev/null; then
+      _drOld="${_drS}/old"
+      if ! mv -T -- "${_drS}/drush" ./drush &> /dev/null; then
+        # put back; a tree that cannot go back goes to backups/system below
+        mv -T -- "${_drS}/old" ./drush &> /dev/null && _drOld=""
+      fi
+    fi
+    if [ -n "${_drOld}" ] \
+      && ! mv -f -- "${_drOld}" "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}" &> /dev/null; then
+      _drKeep=YES
+    fi
   fi
-  cd ${_ROOT}/tools/drush/
-  find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \; &> /dev/null
-  chmod 755 ${_ROOT}/tools/drush/drush
-  chmod 755 ${_ROOT}/tools/drush/drush.complete.sh
-  chmod 755 ${_ROOT}/tools/drush/drush.launcher
-  chmod 755 ${_ROOT}/tools/drush/drush.php
-  chmod 755 ${_ROOT}/tools/drush/unish.sh
-  chmod 755 ${_ROOT}/tools/drush/examples/drush.wrapper
-  chmod 755 ${_ROOT}/tools/drush/examples/git-bisect.example.sh
-  chmod 755 ${_ROOT}/tools/drush/examples/helloworld.script
+  # The stage goes only when it holds no tree kept nowhere else.
+  if [ -n "${_drKeep}" ]; then
+    _msg "NOTE: Drush tree left in ${_ROOT}/tools/${_drS#./}, backups/system took no copy"
+  else
+    rm -rf -- "${_drS}"
+  fi
+  cd "${_ROOT}/tools/drush/" || return 1
 }
 
 _satellite_child_b_drush_xts_cleanup() {
