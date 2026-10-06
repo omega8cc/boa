@@ -50,7 +50,8 @@
 # Usage:
 #   stackbuild check                report installed versions vs published packages
 #   stackbuild package [name ...]   build the missing/stale (or named) packages
-#   stackbuild publish              gzip + sha256 sidecar into the mirror tree
+#   stackbuild publish              gzip + sha256 sidecar into the mirror tree,
+#                                   then the peer sync and the purge hook
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
 #   stackbuild all                  package missing + stale + publish + sync
 #   stackbuild force [name ...]     rebuild named (all installed if none given)
@@ -815,6 +816,11 @@ main() {
       trap '_cleanup' EXIT
       _acquire_lock
       do_publish
+      # The peer gets the files before anything is purged, as in all/force:
+      # a builder that pulls the mirror master's tree every few minutes
+      # would otherwise take the master's older copy back over the file just
+      # published while the purge hook waits, and the purge would serve it.
+      do_sync
       do_purge_hook
       print_summary
       ;;

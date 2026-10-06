@@ -338,9 +338,11 @@ stale tooling. The tool executing the command itself refreshes on the next
 verb, not mid-run (the fetcher refuses to replace a live process), and the log
 says so.
 
-A tool whose copy cannot be replaced (an immutable or append-only file) gets an
-`ALRT` naming the file and `/var/log/boa/mirror.incident.log` instead, and the
-migration runs on the copy it has.
+A tool whose copy cannot be replaced gets an `ALRT` naming the file instead, and
+the migration runs on the copy it has. That is an immutable or append-only
+file, read from the file itself, so the tool executing the command is named
+too; or one whose last move was refused, as `/var/log/boa/mirror.incident.log`
+records.
 
 In source mode `pre-mig` publishes root's public key on the box's undefined
 vhost and prints the key's fingerprint with the exact command to run on the
@@ -1059,7 +1061,7 @@ Syncs the following to the target on each run:
 | Sub-account registry + backups/undo | `/data/disk/oN/clients/`, `backups/`, `undo/` (`clients/` drives sub-user creation on the target; `backups/` is required by `renameaegirhost`'s Ægir-root validation and is space-gated like the Solr trees) |
 | Client toolchains | `/opt/user/gems/oN.ftp`, `/opt/user/npm/oN.ftp` |
 | Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` (a sub-user absent on the target gets its `.ssh` staged at `/var/backups/migrate-subuser-ssh/<oN>.<name>/`, adopted and removed by `manage_ltd_users.sh` when it creates the user from `clients/`) |
-| Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
+| Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy; a Grav or Textpattern `NO` only from a cnf carrying the `### _GRAV_TXP_SUPPORT_MIGRATED` line, else the target keeps its own default), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
 | Suspension flag | `/data/conf/suspended/<oN>.pid` (mirrored, presence and absence) |
 | Mail hold and test-run records | `/data/conf/client_mail_hold.txt`, other boxes' test-run marks `/data/conf/xmass_test_run.*.txt`, and the `xoct` test-run records `/data/conf/xoct_admail.<oN>.txt` of the accounts the run carries (mirrored, presence and absence; see below the table) |
 | Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |

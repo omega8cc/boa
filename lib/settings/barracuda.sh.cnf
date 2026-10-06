@@ -63,11 +63,16 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
-### 8.6 is a release candidate, for testing:
-### it is built only when listed here (or set
-### as _PHP_SINGLE_INSTALL) and is not part of
-### the default list below; once installed it
-### works like any other version.
+### 8.6 is a release candidate: built only
+### when listed here (or as _PHP_SINGLE_INSTALL)
+### and not in the default list below, except
+### on hosted and managed systems (.aegir.cc
+### hostname or /root/.host8.cnf), where each
+### run adds it to the versions it installs (8.3,
+### 8.4 and 8.5 by default) unless in single-PHP
+### mode, during a major OS upgrade or on a
+### legacy OpenSSL. Once installed it works like
+### any other version; 8.4 stays the default.
 ###
 ### NOTE: 8.4 is required
 ###
@@ -893,7 +898,10 @@ _BACKDROP_SUPPORT=YES
 ### is recorded on this system for reference
 ### only. The grav CLI wrapper and its lshell
 ### entry always ship, and stay inert until a
-### Grav install is in reach.
+### Grav install is in reach. Hosted and
+### managed systems (.aegir.cc hostname or
+### /root/.host8.cnf) default both to YES; a
+### NO set after the first such run stays.
 ###
 ### _GRAV_SUPPORT=YES
 ###
