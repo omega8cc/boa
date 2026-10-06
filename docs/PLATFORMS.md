@@ -75,13 +75,13 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 - [Grav 2 (official release, admin bundle)](https://getgrav.org)
 
-* Opt-in: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
+* Opt-in on self-hosted systems: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`) it is on by default: a new instance gets `YES`, an existing one's `NO` seeded before that default flips to `YES` once, and a `NO` set afterwards stays. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
 
 ## Textpattern CMS
 
 - [Textpattern (official release)](https://textpattern.com)
 
-* Opt-in: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
+* Opt-in on self-hosted systems: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems it is on by default, as Grav is. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
 
 * All D7 platforms have been enhanced using [Drupal 7.106.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 

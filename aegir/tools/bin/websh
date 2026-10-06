@@ -1084,7 +1084,10 @@ fi
 # rewrote drush8 status sa, drush8 en samlauth and drush8 @site vget sa into
 # the listing (measured); site-alias with an argument passes through as it
 # always did. Which drush answers follows the leading token; a launcher line
-# keeps the tests this rewrite always made.
+# keeps the tests this rewrite always made. The filter matches whole names
+# (@hm, @hostmaster, @none, @self, @server_*, @platform_*; Drush 10+ lists the
+# first four with a .dev suffix), so a site whose name merely contains those
+# letters is listed.
 _DC_W=$(_drush_cmd_word "${_ARR}")
 case "${_DC_W}" in
   sa|aliases)
@@ -1097,9 +1100,9 @@ case "${_DC_W}" in
       elif [[ "${_ALL}" =~ "drush " ]] || [[ "${_ALL}" =~ "drush8 " ]]; then _DC_8=YES; fi
     fi
     if [ "${_DC_1011}" = "YES" ]; then
-      _ARR="sa --format=list | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+      _ARR="sa --format=list | egrep -vx \"@?(none|hm|hostmaster|self)(\.dev)?|@?(server_|platform_).*\""
     elif [ "${_DC_8}" = "YES" ]; then
-      _ARR="sa | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+      _ARR="sa | egrep -vx \"@?(none|hm|hostmaster|self)|@?(server_|platform_).*\""
     fi
     ;;
 esac

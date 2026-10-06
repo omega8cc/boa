@@ -4013,6 +4013,13 @@ _xoct_push_target_octopus_cnf() {
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
     [ -n "${_l}" ] || continue
+    # a Grav or Textpattern NO from a cnf the hosted default never reached
+    # (no _GRAV_TXP_SUPPORT_MIGRATED line) is a seeded default, not a choice:
+    # it stays here, and the target keeps its own default
+    if [[ "${_l}" =~ ^_(GRAV|TXP)_SUPPORT=[\"\']?NO[\"\']?$ ]] \
+      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
+      continue
+    fi
     # the database count limit travels only as a plain value
     if [ "${_v}" = "_DB_COUNT_MAX" ] \
       && ! [[ "${_l}" =~ ^_DB_COUNT_MAX=(AUTO|[0-9]{1,6}|\"(AUTO|[0-9]{1,6})\"|\'(AUTO|[0-9]{1,6})\')$ ]]; then

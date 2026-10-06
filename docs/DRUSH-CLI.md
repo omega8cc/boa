@@ -94,7 +94,7 @@ If none of these instant switch files are present, the system will default to th
 
 ### Supported PHP-CLI Versions:
 
-- 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6 (8.6 is a release candidate, installed only where the server lists it)
+- 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6 (8.6 is a release candidate, installed only where the server lists it, and by default on hosted and remotely managed servers)
 
 **However:** Some older PHP versions may no longer be available on your system, because BOA automatically deactivates versions not used by any hosted site. If you need to restore some older PHP version previously available, please open a support ticket with your BOA host, or, if you have root access, run `barracuda php-idle enable` command. If you want to re-install all supported but disabled PHP versions, please run `barracuda up-lts php-max` command. For more details, run `barracuda help` command.
 

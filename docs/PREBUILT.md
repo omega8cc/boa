@@ -157,7 +157,7 @@ Builder box invariants:
 ```sh
 stackbuild check     # installed versions vs published packages
 stackbuild package   # build the missing or stale packages
-stackbuild publish   # gzip + sha256 sidecars into the mirror tree
+stackbuild publish   # gzip + sha256 sidecars into the mirror tree, then sync + purge
 stackbuild sync      # cross-sync fresh packages to the peer active mirror
 stackbuild all       # package missing + stale + publish + sync
 stackbuild force     # rebuild + republish regardless of published state
