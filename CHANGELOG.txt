@@ -59,6 +59,10 @@
 
 @=> Security
 
+    * With debug mode on, the upgrade reports no longer carry the database
+      root password: the lines before and after its rotation show its
+      length and the start of its sha256 instead.
+
     * Tenant isolation is not switched on in this release: the account
       web group setting (_WEB_GROUP_ARM) arms nothing, and the database
       broker (boa-dbctl scope on) switches no account, forced or not, a
