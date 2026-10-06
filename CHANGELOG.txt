@@ -1979,6 +1979,13 @@
       longer ends with a stray newline, and a new Drupal 6 site's link
       no longer carries a second /login.
 
+    * The limited shell's drush aliases listing shows every site again:
+      it hid any site whose name merely contained hm or none (a name with
+      "rhythm" or "nonesuch" in it, or one starting with "hm."). It now
+      hides only the panel's own, server and platform aliases, @none and
+      @self, matched as whole names, in the Drush 8 and Drush 10+
+      listings alike.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
