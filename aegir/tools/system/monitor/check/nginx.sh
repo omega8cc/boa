@@ -228,6 +228,15 @@ _nginx_quic_bpf_shed() {
 _restart_nginx() {
   touch /run/boa_nginx_auto_healing.pid
   sleep 3
+  # A database restart begun during the grace stops Nginx itself, and a
+  # restart now would bring it up in the middle of that one; the symptom is
+  # found again on a later pass. A requested restart goes ahead, its request
+  # already consumed.
+  if [ "$2" != "requested" ] && _sql_mutation_began; then
+    echo "$(date) INFO: NGX $1 but a database restart began; standing down" >> ${_pthOml}
+    [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
+    exit 0
+  fi
   echo "$(date) NGX $1 detected" >> ${_pthOml}
   # The hard-restart entry used by the OOM/bind/state detectors carried no
   # cooldown at all, so a symptom that survives a restart re-ran the whole
@@ -428,7 +437,7 @@ _if_nginx_restart() {
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"
       echo "${_thisErrLog}" >> ${_pthOml}
-      _restart_nginx "Nginx Server Restart Requested"
+      _restart_nginx "Nginx Server Restart Requested" requested
     fi
   fi
 }

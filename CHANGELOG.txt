@@ -1521,7 +1521,8 @@
       platform that the upgrade queues could run in the middle of the
       restarts and end in Warning or Error. The Nginx and PHP-FPM
       watchdogs look for a database restart once more after their
-      grace, so they no longer start either in the middle of one.
+      grace, so they no longer start either in the middle of one
+      unless a restart was requested.
 
     * The Octopus and Master upgrades put their fresh Drush in whole: it
       is made beside the one in place, its launcher already given the
