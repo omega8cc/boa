@@ -12091,6 +12091,10 @@ _xdrago_install_upgrade() {
       ! -name "ghost-family-yes.ctrl.*" \
       ! -name "hostmaster-drushrc-0400.ctrl.*" \
       ! -name "hosting.cron.ctrl.*" -delete 2>/dev/null
+    ### The holds a refused install leaves (<name>.mvfail.*.pid, BOA.sh.txt)
+    ### go too: kept, they held the tar's copy of a tool unpinned within the
+    ### hour until they lapsed.
+    find ${_pthLog} -maxdepth 1 -name "*.mvfail.*.pid" -delete 2>/dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
@@ -13112,17 +13116,20 @@ _php_fpm_master_up() {
 # The Ægir master's own task queue is dispatched by the aegir crontab, which
 # no /run/boa_run.pid hold reaches: a Verify the master upgrade had queued
 # ran inside the restarts of an upgrade pass and ended in Warning (Nginx
-# stopped) or Error (its runner lost to the Percona restart). The restarts
-# take the master's queue marker, the one a web group conversion of the
-# master takes: runner.sh keeps the parked crontab parked while the marker
-# names a live root process, and once that process is gone it clears the
-# marker and puts the crontab back, so a pass killed in between cannot leave
-# the queue stopped. A marker another live run holds is left to that run. A
-# task runner already started gets up to two minutes to finish first, so a
-# Verify runs wholly before the restarts or after them unless one already
-# running outlasts that window, and the queue comes back once the restarts
-# are done and Nginx and every PHP-FPM master that ran before them run
-# again: move_sql.sh leaves both to their watchdogs.
+# stopped) or Error (its runner lost to the Percona restart). An upgrade
+# pass holds the queue once across every step that restarts services (the
+# limits step, the init step and the enforced AppArmor mode, consecutive in
+# BARRACUDA.sh.txt): the hold takes the master's queue marker, the one a
+# web group conversion of the master takes, and runner.sh keeps the parked
+# crontab parked while the marker names a live root process, and once that
+# process is gone it clears the marker and puts the crontab back, so a pass
+# killed in between cannot leave the queue stopped. A marker another live
+# run holds is left to that run. A task runner already started gets up to
+# two minutes to finish first, so a Verify runs wholly before the restarts
+# or after them unless one already running outlasts that window, and the
+# queue comes back once the restarts are done and Nginx and every PHP-FPM
+# master that ran before them run again: move_sql.sh leaves both to their
+# watchdogs.
 _MQ_HELD=NO
 _MQ_NGX=NO
 _MQ_FPM=""
@@ -13382,7 +13389,6 @@ _initd_update() {
     wait
     _fix_root_locked_shadow
     _mrun "service ssh restart"
-    _master_queue_hold
     _fix_on_upgrade
     _tune_memory_limits
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
@@ -13584,7 +13590,6 @@ _initd_update() {
         fi
       fi
     fi
-    _master_queue_release
   fi
 }
 
