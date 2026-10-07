@@ -1624,6 +1624,19 @@
 
 @=> Important Fixes
 
+    * The nightly database backup is no longer cut short by the
+      self-update. autoupboa's cleanup of a hanging backup counted the
+      command lines that name the script, and cron's own launcher shell
+      plus one subshell of a healthy run read as a stuck duplicate: the
+      run was killed mid-dump without a word, mostly on slow boxes with
+      large datasets, where the dumps take long enough to be sampled.
+      The cleanup now judges the age of the backup's own processes (12
+      hours; _SQL_BACKUP_MAX_HOURS in /root/.barracuda.cnf changes it),
+      writes a kill to /var/log/boa/mysql.backup.incident.log and mails
+      it, and the self-update, the weekly system pass and the staged
+      reboot stand down while a backup runs. The hourly database cleanup
+      gets the same age rule, and no reaper counts a launcher shell.
+
     * A Percona series upgrade writes the new series' my.cnf directives
       before the package swap. The package's post-install step starts
       the new server at once, and on 5.7 to 8.0 that first start

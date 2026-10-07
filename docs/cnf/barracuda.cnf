@@ -44,6 +44,7 @@ _USE_SQLPROBE=YES #------------- Log-only SQL sensor feeding the memorytuner adv
 _USE_BATCH_GUARD=YES #---------- Batch storm guard; _BATCH_GUARD_DETECT_ONLY=YES alerts without deleting
 _USE_TASK_GUARD=YES #----------- Crashed-task reaper; _TASK_GUARD_DETECT_ONLY=YES alerts without writing
 _XDR9000=YES #------------------ Permanent read-only health and attack archive under /var/log/boa/xdr9000/
+_SQL_BACKUP_MAX_HOURS=12 #------ Hours a nightly database backup may run before it counts as hanging and is ended with a notice; the self-update holds for a younger one
 _SQL_BUFFER_POOL_FORCE="" #----- Pins innodb_buffer_pool_size in MB (plain integer; AUTO when empty)
 _SQL_KEY_BUFFER_FORCE="" #------ Pins key_buffer_size in MB (AUTO when empty)
 _SQL_LOG_FILE_SIZE_FORCE="" #--- Pins innodb_log_file_size / redo capacity in MB (restart applies)

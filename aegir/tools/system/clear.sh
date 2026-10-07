@@ -81,6 +81,43 @@ _installer_alive() {
   return 1
 }
 
+# The nightly backup's own processes: the script and the subshells it
+# forks, never the cron launcher's shell, whose command line names the
+# script as well (SHELL=/bin/bash and the redirections on the crontab line
+# keep that shell alive for the whole run).
+_SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
+
+# Seconds the oldest process of the form has run; empty when none runs.
+_exec_age() {
+  local _pat="$1" _p="" _e="" _max=""
+  for _p in $(pgrep -f "${_pat}" 2> /dev/null); do
+    _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
+    [ -z "${_e}" ] && continue
+    if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
+      _max="${_e}"
+    fi
+  done
+  echo "${_max}"
+}
+
+# A backup is hanging once its oldest process is older than this many
+# hours: 12, or _SQL_BACKUP_MAX_HOURS in /root/.barracuda.cnf.
+_sql_backup_limit() {
+  local _h="${_SQL_BACKUP_MAX_HOURS:-12}"
+  [[ "${_h}" =~ ^[0-9]+$ ]] || _h=12
+  echo $(( _h * 3600 ))
+}
+
+# 0 while a nightly backup runs within its limit. The self-update and
+# autoupboa hold for it as for an install, so nothing is replaced, restarted
+# or reaped under a running dump; past the limit the hold lifts and
+# autoupboa's reaper ends the hanging run and reports it.
+_sql_backup_live() {
+  local _a=""
+  _a=$(_exec_age "${_SQL_BACKUP_EXEC}")
+  [ -n "${_a}" ] && [ "${_a}" -le "$(_sql_backup_limit)" ]
+}
+
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
 find /run/mysql_restart_running.pid  -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
 if ! _installer_alive; then
@@ -408,10 +445,12 @@ _self_lock_release() {
   [ "$(_self_lock_pid)" = "$$" ] && rm -f "${_SELF_LOCK}"
   [ "${_got}" = "YES" ] && rmdir "${_c}" 2>/dev/null
 }
-# An install or upgrade in flight holds the self-update too (see below).
+# An install or upgrade in flight holds the self-update too (see below),
+# and so does a live nightly backup.
 _install_held() {
   [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
-    || [ -e "/run/octopus_install_run.pid" ] || _installer_alive
+    || [ -e "/run/octopus_install_run.pid" ] || _installer_alive \
+    || _sql_backup_live
 }
 # A wait-mode run checks the install holds again after every pause: an install
 # can start while it waits, even from the run it waits for.
@@ -479,6 +518,8 @@ else
   if [ -z "${_held}" ]; then
     if _installer_alive; then
       _held=" installer-alive"
+    elif _sql_backup_live; then
+      _held=" mysql_backup.sh"
     else
       # Another self-update is running: routine when the two schedules
       # overlap, so it is only said here; the log records a holder only once
