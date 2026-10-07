@@ -224,9 +224,8 @@ _sql_table_walk() {
   fi
   _dbs=$(mysql -u root -N -e "SHOW DATABASES" 2> /dev/null | sort)
   _ndb=$(printf '%s\n' "${_dbs}" | grep -c .)
-  _msg "INFO: database up, sites served: ${_what}: ${_tbl} tables in ${_ndb}"
-  _msg "INFO: databases. Minutes to tens of minutes on a large datadir; a status"
-  _msg "INFO: line follows every minute."
+  _msg "INFO: database up, sites served: ${_what}: ${_tbl} tables in ${_ndb} databases."
+  _msg "INFO: Minutes to tens of minutes on a large datadir; a status line follows every minute."
   _mrun "${_cmd}" &
   _pid=$!
   while kill -0 "${_pid}" 2> /dev/null; do
@@ -234,9 +233,10 @@ _sql_table_walk() {
     _n=$(( _n + 1 ))
     if [ $(( _n % 12 )) -eq 0 ]; then
       [ -e "/run/boa_sql_maintenance.pid" ] && touch /run/boa_sql_maintenance.pid
+      # the db column of the row running the statement: mysqlcheck selects
+      # the database first and names the tables bare
       _cur=$(mysql -u root -N -e "SHOW FULL PROCESSLIST" 2> /dev/null \
-        | grep -oE '(CHECK|REPAIR|OPTIMIZE|ANALYZE|ALTER) TABLE +`[^`]+`' \
-        | head -n 1 | grep -oE '`[^`]+`' | head -n 1 | tr -d '`')
+        | awk -F'\t' '$8 ~ /^(CHECK|REPAIR|OPTIMIZE|ANALYZE|ALTER) TABLE/ && $4 != "NULL" {print $4; exit}')
       if [ -n "${_cur}" ]; then
         _k=$(printf '%s\n' "${_dbs}" | grep -n -x -F "${_cur}" | head -n 1 | cut -d: -f1)
         _msg "WAIT: database up, sites served: ${_what}: database ${_cur} (${_k:-?} of ${_ndb}), $(( _n / 12 )) min so far."
