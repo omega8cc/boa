@@ -296,14 +296,20 @@ _sql_restart() {
   if _mysql_is_answering; then
     return 0
   fi
-  # Not answering by design: an 8.x server converting a 5.7 datadir accepts
-  # no connection until it is done, minutes to hours on a big one, and keeps
-  # its stage file in the datadir exactly that long. A restart here would
-  # throw the work away and the next tick would do it again, whatever the
-  # maintenance marker's age. Logged once a tick, no incident, no heal.
-  if [ -s "/var/lib/mysql/mysql_dd_upgrade_info" ] \
-    && pgrep -x mysqld > /dev/null 2>&1; then
-    echo "$(date) INFO: mysqld is converting the data dictionary (stage $(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9') of 6), not answering by design; standing down" >> ${_pthOml}
+  # Not answering by design: a server that has not written its pid file yet
+  # is still starting -- crash recovery, the conversion of a 5.7 datadir
+  # (its stage file in the datadir says which stage), or the server-side
+  # upgrade that follows it -- minutes to hours on a big datadir, and it
+  # accepts no connection until it is done. A hung server that once served
+  # has its pid file. A restart here would throw the work away and the next
+  # tick would do it again, whatever the maintenance marker's age. Logged
+  # once a tick, no incident, no heal.
+  if pgrep -x mysqld > /dev/null 2>&1 && [ ! -e "/run/mysqld/mysqld.pid" ]; then
+    if [ -s "/var/lib/mysql/mysql_dd_upgrade_info" ]; then
+      echo "$(date) INFO: mysqld is converting the data dictionary (stage $(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9') of 6), not answering by design; standing down" >> ${_pthOml}
+    else
+      echo "$(date) INFO: mysqld is starting (no pid file yet: recovery or upgrade), not answering by design; standing down" >> ${_pthOml}
+    fi
     return 0
   fi
   # Flap control. A database that was just auto-restarted and is down AGAIN is

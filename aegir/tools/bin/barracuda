@@ -510,6 +510,9 @@ _check_sql_running() {
           _idle=$(( _idle + 1 ))
         fi
         _ddprev="${_ddnow}"
+        # the watchdog stands down while the marker is fresh (four hours):
+        # a conversion that outlives it must keep it fresh
+        [ -e "/run/boa_sql_maintenance.pid" ] && touch /run/boa_sql_maintenance.pid
       fi
     else
       _dead=$(( _dead + 1 ))

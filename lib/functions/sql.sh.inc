@@ -233,6 +233,7 @@ _sql_table_walk() {
     sleep 5
     _n=$(( _n + 1 ))
     if [ $(( _n % 12 )) -eq 0 ]; then
+      [ -e "/run/boa_sql_maintenance.pid" ] && touch /run/boa_sql_maintenance.pid
       _cur=$(mysql -u root -N -e "SHOW FULL PROCESSLIST" 2> /dev/null \
         | grep -oE '(CHECK|REPAIR|OPTIMIZE|ANALYZE|ALTER) TABLE +`[^`]+`' \
         | head -n 1 | grep -oE '`[^`]+`' | head -n 1 | tr -d '`')
@@ -314,6 +315,9 @@ _check_sql_running() {
         else
           _idle=$(( _idle + 1 ))
         fi
+        # the watchdog stands down while the marker is fresh (four hours):
+        # a conversion that outlives it must keep it fresh
+        [ -e "/run/boa_sql_maintenance.pid" ] && touch /run/boa_sql_maintenance.pid
       fi
     else
       _dead=$(( _dead + 1 ))
@@ -1431,6 +1435,7 @@ _check_mysqld_running() {
         else
           _idle=$(( _idle + 1 ))
         fi
+        [ -e "/run/boa_sql_maintenance.pid" ] && touch /run/boa_sql_maintenance.pid
       fi
     else
       _dead=$(( _dead + 1 ))
