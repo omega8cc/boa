@@ -472,6 +472,7 @@ _check_sql_running() {
   local _ddnow=0
   local _stg=""
   local _tbl=""
+  local _lc0=0
   while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
@@ -507,6 +508,16 @@ _check_sql_running() {
       _dead=$(( _dead + 1 ))
       _alive=0
       _idle=0
+      # A started server that lived and ended inside the start helper's own
+      # wait (the cleanup run of a half-done conversion takes seconds on a
+      # fast box) was never sampled alive: its exit lines in the error log,
+      # written since the start, say it ran and ended by design.
+      if [ "${_ran}" = "NO" ] && [ "${_starts}" -gt 0 ] \
+        && [ -s "/var/log/mysql/error.log" ] \
+        && tail -n +$(( _lc0 + 1 )) /var/log/mysql/error.log 2>/dev/null \
+          | grep -q -e "partially upgraded DD" -e "Aborting upgrade and deleting all DD tables"; then
+        _ran=YES
+      fi
       if [ "${_starts}" -lt 3 ] \
         && { [ "${_starts}" -eq 0 ] || [ "${_ran}" = "YES" ]; } \
         && ! _sql_maint_foreign; then
@@ -518,6 +529,8 @@ _check_sql_running() {
           echo "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
+        _lc0=$(wc -l < /var/log/mysql/error.log 2>/dev/null)
+        _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           bash /var/xdrago/move_sql.sh start &> /dev/null
         else

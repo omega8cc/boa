@@ -187,6 +187,17 @@ _sql_startup_progress() {
   fi
 }
 
+# True when the error log, from line $1 on, carries the lines of an 8.x
+# server that found a half-done datadir conversion, removed it and exited by
+# design. The waits below start a server after such an exit; on a fast box
+# that run lives seconds, inside the start helper's own wait, so no sample
+# ever sees it alive and only its log proves it ran.
+_sql_exited_by_design() {
+  [ -s "/var/log/mysql/error.log" ] || return 1
+  tail -n +$(( ${1:-0} + 1 )) /var/log/mysql/error.log 2> /dev/null \
+    | grep -q -e "partially upgraded DD" -e "Aborting upgrade and deleting all DD tables"
+}
+
 # The last lines of the error log, for the diagnostics of an aborted wait.
 _sql_error_log_lines() {
   local _l
@@ -232,6 +243,7 @@ _check_sql_running() {
   local _idle=0
   local _ddprev=0
   local _down=0
+  local _lc0=0
   while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
@@ -257,6 +269,10 @@ _check_sql_running() {
       _dead=$(( _dead + 1 ))
       _alive=0
       _idle=0
+      if [ "${_ran}" = "NO" ] && [ "${_starts}" -gt 0 ] \
+        && _sql_exited_by_design "${_lc0}"; then
+        _ran=YES
+      fi
       if [ "${_starts}" -lt 3 ] \
         && { [ "${_starts}" -eq 0 ] || [ "${_ran}" = "YES" ]; } \
         && ! _sql_maint_foreign; then
@@ -270,6 +286,8 @@ _check_sql_running() {
           _msg "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
+        _lc0=$(wc -l < /var/log/mysql/error.log 2> /dev/null)
+        _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
         else
@@ -1342,6 +1360,7 @@ _check_mysqld_running() {
   local _idle=0
   local _ddprev=0
   local _down=0
+  local _lc0=0
   while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
@@ -1367,6 +1386,10 @@ _check_mysqld_running() {
       _dead=$(( _dead + 1 ))
       _alive=0
       _idle=0
+      if [ "${_ran}" = "NO" ] && [ "${_starts}" -gt 0 ] \
+        && _sql_exited_by_design "${_lc0}"; then
+        _ran=YES
+      fi
       if [ "${_starts}" -lt 3 ] \
         && { [ "${_starts}" -eq 0 ] || [ "${_ran}" = "YES" ]; } \
         && ! _sql_maint_foreign; then
@@ -1378,6 +1401,8 @@ _check_mysqld_running() {
           _msg "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
+        _lc0=$(wc -l < /var/log/mysql/error.log 2> /dev/null)
+        _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
         else
