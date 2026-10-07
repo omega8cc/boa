@@ -71,7 +71,10 @@ touched. A standing
 - **Sets up a clean stop** (`innodb_fast_shutdown = 0`), so the old server's
   stop in the package swap is a full, clean shutdown.
 - **Checks the old tables first.** On the 5.7 → 8.0 run, `mysql_upgrade --force`
-  runs against the still-running 5.7 server before anything is swapped.
+  runs against the still-running 5.7 server before anything is swapped. Every
+  such walk over the tables (this one, the `mysqlcheck` after the swap) is
+  announced with the table and database counts and reports once a minute
+  which database it is on; the server keeps serving while it runs.
 - **Stops the watchdog from interfering.** The MySQL watchdog stands down for
   the whole package window (see below), so it does not start a competing
   `mysqld` while the new server is coming up.

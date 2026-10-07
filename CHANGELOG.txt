@@ -1251,7 +1251,10 @@
       kill it. A server that writes nothing for thirty minutes ends the
       run as stalled, and a conversion may otherwise take twelve hours;
       the run used to print a bare waiting line every five seconds and
-      give up after an hour.
+      give up after an hour. The table walks of a series upgrade (the
+      check before the swap, mysqlcheck and mysql_upgrade after it) are
+      announced with the table and database counts and report once a
+      minute which database they are on, instead of minutes of silence.
 
     * boa info shows a Percona server that is converting the datadir or
       recovering as starting, with the conversion stage, instead of as

@@ -183,14 +183,14 @@ _sql_startup_progress() {
       # InnoDB tablespace, each written once, newer than the stage file
       _ibd=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2> /dev/null | wc -l)
       _wrt=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2> /dev/null | wc -l)
-      _msg "WAIT: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, tablespaces written ${_wrt} of ${_ibd}, $(( _secs / 60 )) min so far."
+      _msg "WAIT: database down: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, tablespaces written ${_wrt} of ${_ibd}, $(( _secs / 60 )) min so far."
     else
-      _msg "WAIT: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
+      _msg "WAIT: database down: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
     fi
     _msg "WAIT: Do not stop or kill mysqld: the upgrade would start over."
   else
     _last=$(tail -n 1 /var/log/mysql/error.log 2> /dev/null | cut -c1-160)
-    _msg "WAIT: MySQLD is running but not serving yet (recovery or upgrade), $(( _secs / 60 )) min so far."
+    _msg "WAIT: database down: MySQLD is running but not serving yet (recovery or upgrade), $(( _secs / 60 )) min so far."
     [ -n "${_last}" ] && _msg "WAIT: Last log line: ${_last}"
   fi
 }
@@ -204,6 +204,48 @@ _sql_exited_by_design() {
   [ -s "/var/log/mysql/error.log" ] || return 1
   tail -n +$(( ${1:-0} + 1 )) /var/log/mysql/error.log 2> /dev/null \
     | grep -q -e "partially upgraded DD" -e "Aborting upgrade and deleting all DD tables"
+}
+
+# Runs a command that walks every table (mysqlcheck, mysql_upgrade) with a
+# notice first and a status line a minute while it runs: on a large datadir
+# such a walk takes minutes to tens of minutes and prints nothing, and an
+# operator who sees no line for that long reaches for the kill. The server
+# keeps serving meanwhile. The database the walk is on comes from the
+# server's process list, its place from the sorted database list; the
+# counts come from the datadir, cheap on every series. $1 = what, $* = the
+# command, run through _mrun as before.
+_sql_table_walk() {
+  local _what="$1"
+  shift
+  local _cmd="$*" _pid _n=0 _tbl _ndb _cur _k _dbs
+  _tbl=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
+  if [ "${_tbl}" -eq 0 ]; then
+    _tbl=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 \( -name '*.ibd' -o -name '*.MYD' \) 2> /dev/null | wc -l)
+  fi
+  _dbs=$(mysql -u root -N -e "SHOW DATABASES" 2> /dev/null | sort)
+  _ndb=$(printf '%s\n' "${_dbs}" | grep -c .)
+  _msg "INFO: database up, sites served: ${_what}: ${_tbl} tables in ${_ndb}"
+  _msg "INFO: databases. Minutes to tens of minutes on a large datadir; a status"
+  _msg "INFO: line follows every minute."
+  _mrun "${_cmd}" &
+  _pid=$!
+  while kill -0 "${_pid}" 2> /dev/null; do
+    sleep 5
+    _n=$(( _n + 1 ))
+    if [ $(( _n % 12 )) -eq 0 ]; then
+      _cur=$(mysql -u root -N -e "SHOW FULL PROCESSLIST" 2> /dev/null \
+        | grep -oE '(CHECK|REPAIR|OPTIMIZE|ANALYZE|ALTER) TABLE +`[^`]+`' \
+        | head -n 1 | grep -oE '`[^`]+`' | head -n 1 | tr -d '`')
+      if [ -n "${_cur}" ]; then
+        _k=$(printf '%s\n' "${_dbs}" | grep -n -x -F "${_cur}" | head -n 1 | cut -d: -f1)
+        _msg "WAIT: database up, sites served: ${_what}: database ${_cur} (${_k:-?} of ${_ndb}), $(( _n / 12 )) min so far."
+      else
+        _msg "WAIT: database up, sites served: ${_what}: running, $(( _n / 12 )) min so far."
+      fi
+    fi
+  done
+  wait "${_pid}" 2> /dev/null
+  return 0
 }
 
 # The last lines of the error log, for the diagnostics of an aborted wait.
@@ -263,7 +305,7 @@ _check_sql_running() {
       _alive=$(( _alive + 1 ))
       if [ "${_alive}" -eq 1 ]; then
         _ddprev=$(_sql_dd_size)
-        _msg "INFO: MySQLD is running but not serving yet; a status line follows every minute."
+        _msg "INFO: database down: MySQLD is running but not serving yet; a status line follows every minute."
       elif [ $(( _alive % 12 )) -eq 0 ]; then
         _sql_startup_progress $(( _alive * 5 )) "${_ddprev}"
         _ddprev=$(_sql_dd_size)
@@ -302,7 +344,7 @@ _check_sql_running() {
           _mrun "service mysql start"
         fi
       fi
-      _msg "WAIT: Waiting for MySQLD to start (down $(( _dead * 5 ))s)..."
+      _msg "WAIT: database down: waiting for MySQLD to start (down $(( _dead * 5 ))s)..."
     fi
     _tot=$(( _tot + 1 ))
     if [ -n "$(_sql_dd_upgrade_stage)" ]; then
@@ -1380,7 +1422,7 @@ _check_mysqld_running() {
       _alive=$(( _alive + 1 ))
       if [ "${_alive}" -eq 1 ]; then
         _ddprev=$(_sql_dd_size)
-        _msg "INFO: MySQLD is running but not serving yet; a status line follows every minute."
+        _msg "INFO: database down: MySQLD is running but not serving yet; a status line follows every minute."
       elif [ $(( _alive % 12 )) -eq 0 ]; then
         _sql_startup_progress $(( _alive * 5 )) "${_ddprev}"
         _ddprev=$(_sql_dd_size)
@@ -1418,7 +1460,7 @@ _check_mysqld_running() {
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "WAIT: Waiting for MySQLD to start before _tune_sql_memory_limits (down $(( _dead * 5 ))s)..."
+        _msg "WAIT: database down: waiting for MySQLD to start before _tune_sql_memory_limits (down $(( _dead * 5 ))s)..."
       fi
     fi
     _tot=$(( _tot + 1 ))
@@ -1904,13 +1946,16 @@ _install_with_aptitude_sql() {
     _mrun "service mysql restart"
     _check_sql_running
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    _mrun "mysqlcheck -u root -A --auto-repair --silent"
+    _sql_table_walk "Checking every table after the upgrade (mysqlcheck)" \
+      "mysqlcheck -u root -A --auto-repair --silent"
     if [ "${_DB_V}" = "5.7" ]; then
-      _mrun "mysql_upgrade -u root --force"
+      _sql_table_walk "Upgrading the system tables (mysql_upgrade)" \
+        "mysql_upgrade -u root --force"
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
-      _mrun "mysql_upgrade -u root --force"
+      _sql_table_walk "Upgrading the system tables again (mysql_upgrade)" \
+        "mysql_upgrade -u root --force"
     fi
   fi
   usermod -aG users mysql
@@ -2191,7 +2236,8 @@ _db_server_install() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _mrun "mysql_upgrade -u root --force"
+            _sql_table_walk "Checking every table before the upgrade (mysql_upgrade)" \
+              "mysql_upgrade -u root --force"
           fi
         fi
       fi
@@ -2224,8 +2270,10 @@ _db_server_install() {
         fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _mrun "mysql_upgrade -u root --force"
-          _mrun "mysql_upgrade -u root --force"
+          _sql_table_walk "Upgrading the system tables (mysql_upgrade)" \
+            "mysql_upgrade -u root --force"
+          _sql_table_walk "Upgrading the system tables again (mysql_upgrade)" \
+            "mysql_upgrade -u root --force"
         fi
       fi
       _tune_memory_limits

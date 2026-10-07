@@ -486,7 +486,7 @@ _check_sql_running() {
       _ddnow="${_ddnow:-0}"
       if [ "${_alive}" -eq 1 ]; then
         _ddprev="${_ddnow}"
-        echo "INFO: MySQLD is running but not serving yet; a status line follows every minute."
+        echo "INFO: database down: MySQLD is running but not serving yet; a status line follows every minute."
       elif [ $(( _alive % 12 )) -eq 0 ]; then
         _stg=$(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9')
         if [ -n "${_stg}" ]; then
@@ -495,13 +495,13 @@ _check_sql_running() {
             # the dictionary stops growing here: the metadata goes into
             # every InnoDB tablespace, each written once, newer than the
             # stage file
-            echo "WAIT: Data dictionary upgrade, stage 5 of 6: ${_tbl} tables, tablespaces written $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | wc -l) of $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2>/dev/null | wc -l), $(( _alive / 12 )) min so far."
+            echo "WAIT: database down: Data dictionary upgrade, stage 5 of 6: ${_tbl} tables, tablespaces written $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | wc -l) of $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2>/dev/null | wc -l), $(( _alive / 12 )) min so far."
           else
-            echo "WAIT: Data dictionary upgrade, stage ${_stg} of 6: ${_tbl} tables, dictionary $(( _ddnow / 1048576 )) MB (+$(( (_ddnow - _ddprev) / 1048576 )) MB), $(( _alive / 12 )) min so far."
+            echo "WAIT: database down: Data dictionary upgrade, stage ${_stg} of 6: ${_tbl} tables, dictionary $(( _ddnow / 1048576 )) MB (+$(( (_ddnow - _ddprev) / 1048576 )) MB), $(( _alive / 12 )) min so far."
           fi
           echo "WAIT: Do not stop or kill mysqld: the upgrade would start over."
         else
-          echo "WAIT: MySQLD is running but not serving yet (recovery or upgrade), $(( _alive / 12 )) min so far."
+          echo "WAIT: database down: MySQLD is running but not serving yet (recovery or upgrade), $(( _alive / 12 )) min so far."
         fi
         if [ -n "$(find /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2>/dev/null)" ] \
           || [ -n "$(find /var/log/mysql/error.log -mmin -5 2>/dev/null)" ]; then
@@ -544,7 +544,7 @@ _check_sql_running() {
           service mysql start &> /dev/null
         fi
       fi
-      echo "INFO: Waiting for MySQLD to start (down $(( _dead * 5 ))s)..."
+      echo "INFO: database down: waiting for MySQLD to start (down $(( _dead * 5 ))s)..."
     fi
     _tot=$(( _tot + 1 ))
     [ -s "/var/lib/mysql/mysql_dd_upgrade_info" ] && _cap=8640
