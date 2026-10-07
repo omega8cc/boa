@@ -95,7 +95,7 @@ When the read of the new user's host fails, or gives a host a definer cannot nam
 
 A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
 
-The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Migrate or a Restore on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
+The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Restore's safety copy (on every account), of a Migrate on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
 
 An object made while its database had another default collation comes wrapped in `ALTER DATABASE` lines that name the dumped database; Ægir's classic dump drops that name, so the lines apply to the database being loaded.
 
@@ -103,7 +103,7 @@ A classic load also reads every dump it is given for those lines, and for a trig
 
 The copy is written only when its filesystem keeps, after it, the headroom the space check keeps for a copying task; otherwise the load stops and the task log says why (`/data/conf/disable_space_preflight.cnf` turns that check off, as it does the space check). A copy a killed load left there goes at the instance's next classic load.
 
-`mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
+`mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without that kind of object: all of the database's routines, or all of its events. The task log carries a warning, and the nightly names the database in its backup notice.
 
 A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log while the box reads 0 when the run looks. The run then says so: set it to 1 on the replica, then on the box with `SET GLOBAL`, and the next run keeps it.
 
