@@ -122,6 +122,81 @@ _sql_maint_foreign() {
   return 0
 }
 
+#
+# The 8.x server keeps a stage file in the datadir while it converts a 5.7
+# datadir: 1 started, 2 InnoDB converted and the dictionary tablespace
+# created, 3 dictionary tables created, 4 dictionary ready and the user
+# tables being migrated (the long part), 5 tables migrated, 6 tablespace
+# metadata written; the file goes away when the conversion completes. The
+# server accepts no connection and writes no pid file until then. Prints
+# the stage number, nothing when no conversion is on.
+_sql_dd_upgrade_stage() {
+  local _f="/var/lib/mysql/mysql_dd_upgrade_info"
+  [ -s "${_f}" ] || return 1
+  od -An -tu4 "${_f}" 2> /dev/null | tr -dc '0-9'
+}
+
+_sql_dd_upgrade_stage_name() {
+  case "$1" in
+    1) echo "1 of 6, started" ;;
+    2) echo "2 of 6, InnoDB converted" ;;
+    3) echo "3 of 6, dictionary tables created" ;;
+    4) echo "4 of 6, migrating the tables (the long part)" ;;
+    5) echo "5 of 6, tables migrated, writing tablespace metadata" ;;
+    6) echo "6 of 6, finishing" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+# Size of the dictionary tablespace in bytes, 0 when absent: the one number
+# that keeps growing through the long stage of the conversion, so a change
+# between two readings proves the server is working.
+_sql_dd_size() {
+  local _s
+  _s=$(stat -c %s /var/lib/mysql/mysql.ibd 2> /dev/null)
+  echo "${_s:-0}"
+}
+
+# True when a file under the datadir, or the error log, was written in the
+# last five minutes: the activity test behind the stall ceiling of the waits.
+_sql_datadir_active() {
+  [ -n "$(find /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2> /dev/null)" ] && return 0
+  [ -n "$(find /var/log/mysql/error.log -mmin -5 2> /dev/null)" ] && return 0
+  return 1
+}
+
+# One line a minute while mysqld is alive but not yet serving. A series
+# upgrade's first start converts the whole datadir, minutes to hours on a
+# large one, and prints nothing while it does; operators have killed such a
+# server as hung, which makes it start over. $1 seconds alive so far, $2 the
+# dictionary size at the previous line.
+_sql_startup_progress() {
+  local _secs="$1" _prev="$2" _stg _tbl _now _mb _dmb _last
+  _stg=$(_sql_dd_upgrade_stage)
+  if [ -n "${_stg}" ]; then
+    _tbl=$(find /var/lib/mysql -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
+    _now=$(_sql_dd_size)
+    _mb=$(( _now / 1048576 ))
+    _dmb=$(( (_now - _prev) / 1048576 ))
+    _msg "WAIT: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
+    _msg "WAIT: Do not stop or kill mysqld: the upgrade would start over."
+  else
+    _last=$(tail -n 1 /var/log/mysql/error.log 2> /dev/null | cut -c1-160)
+    _msg "WAIT: MySQLD is running but not serving yet (recovery or upgrade), $(( _secs / 60 )) min so far."
+    [ -n "${_last}" ] && _msg "WAIT: Last log line: ${_last}"
+  fi
+}
+
+# The last lines of the error log, for the diagnostics of an aborted wait.
+_sql_error_log_lines() {
+  local _l
+  [ -s "/var/log/mysql/error.log" ] || return 0
+  _msg "INFO: Last lines of /var/log/mysql/error.log:"
+  tail -n 8 /var/log/mysql/error.log 2> /dev/null | cut -c1-200 | while IFS= read -r _l; do
+    _msg "  ${_l}"
+  done
+}
+
 _check_sql_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_sql_running"
@@ -131,21 +206,32 @@ _check_sql_running() {
   # decoupled from sizing, start it explicitly here when it is down -- e.g.
   # right after the Percona package install on a 5.7->8.0 upgrade, where
   # nothing else brings it back up.
-  # Bounded two ways: ~2 min of CONSECUTIVE dead samples catches a mysqld
-  # that died on its config or datadir (a live process with no socket yet is
-  # normal -- the first 8.x start runs the data-dictionary upgrade, minutes
-  # on a big datadir -- and resets the dead counter), while the total-time
-  # ceiling catches a flapping mysqld that a per-sample reset alone would
-  # wait on forever. ONE start attempt via the blessed move_sql.sh path
-  # (a bare `service mysql start` is a no-op on a stale pidfile), skipped
-  # while a fresh SQL-maintenance marker is held by another operation. The
-  # marker is deliberately NOT removed on abort here: this generic wait
-  # cannot know who owns it (xoct/xcopy/xmass/mysql_repair hold it too) and the
-  # watchdog age-reaps a stale one on its own.
+  # Bounded three ways. ~2 min of CONSECUTIVE dead samples catches a mysqld
+  # that died on its config or datadir; a live process with no socket yet is
+  # normal (the first 8.x start converts the datadir, minutes to hours on a
+  # big one) and resets that counter while a status line a minute shows it
+  # working. A stall ceiling catches a live server that writes nothing for
+  # half an hour. A total ceiling catches a flapping one: an hour, twelve
+  # while a conversion is on. Up to three start attempts via the blessed
+  # move_sql.sh path (a bare `service mysql start` is a no-op on a stale
+  # pidfile): the first when it is found down, each further one only after
+  # a server was seen running and exited -- the 8.x server that finds a
+  # half-done conversion cleans it up and EXITS by design, and must be
+  # started again to redo it -- never while a fresh SQL-maintenance marker
+  # is held by another operation. The marker is deliberately NOT removed on
+  # abort here: this generic wait cannot know who owns it (xoct/xcopy/xmass/
+  # mysql_repair hold it too) and the watchdog age-reaps a stale one on its
+  # own.
   [ -e "/root/.proxy.cnf" ] && return 0
   local _dead=0
   local _tot=0
-  local _started=NO
+  local _cap=720
+  local _alive=0
+  local _ran=NO
+  local _starts=0
+  local _idle=0
+  local _ddprev=0
+  local _down=0
   while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
@@ -153,30 +239,65 @@ _check_sql_running() {
     fi
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
       _dead=0
+      _ran=YES
+      _alive=$(( _alive + 1 ))
+      if [ "${_alive}" -eq 1 ]; then
+        _ddprev=$(_sql_dd_size)
+        _msg "INFO: MySQLD is running but not serving yet; a status line follows every minute."
+      elif [ $(( _alive % 12 )) -eq 0 ]; then
+        _sql_startup_progress $(( _alive * 5 )) "${_ddprev}"
+        _ddprev=$(_sql_dd_size)
+        if _sql_datadir_active; then
+          _idle=0
+        else
+          _idle=$(( _idle + 1 ))
+        fi
+      fi
     else
       _dead=$(( _dead + 1 ))
-      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
-        _started=YES
-        _msg "INFO: MySQLD not running -- starting it..."
+      _alive=0
+      _idle=0
+      if [ "${_starts}" -lt 3 ] \
+        && { [ "${_starts}" -eq 0 ] || [ "${_ran}" = "YES" ]; } \
+        && ! _sql_maint_foreign; then
+        _starts=$(( _starts + 1 ))
+        if [ "${_ran}" = "YES" ]; then
+          _msg "INFO: MySQLD ran and exited -- starting it again (attempt ${_starts} of 3)."
+          _msg "INFO: An 8.x server that found a half-done data dictionary upgrade"
+          _msg "INFO: cleans it up and exits by design; the next start redoes it."
+          _sql_error_log_lines
+        else
+          _msg "INFO: MySQLD not running -- starting it..."
+        fi
+        _ran=NO
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
         else
           _mrun "service mysql start"
         fi
       fi
+      _msg "WAIT: Waiting for MySQLD to start (down $(( _dead * 5 ))s)..."
     fi
     _tot=$(( _tot + 1 ))
-    if [ "${_dead}" -gt 24 ] || [ "${_tot}" -gt 720 ]; then
-      _msg "FATAL ERROR: MySQLD did not become available (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
+    if [ -n "$(_sql_dd_upgrade_stage)" ]; then
+      _cap=8640
+    fi
+    if [ "${_dead}" -gt 24 ] || [ "${_idle}" -gt 30 ] || [ "${_tot}" -gt "${_cap}" ]; then
+      _down=$(( _dead > 0 ? (_dead - 1) * 5 : 0 ))
+      if [ "${_idle}" -gt 30 ]; then
+        _msg "FATAL ERROR: MySQLD is running but wrote nothing for 30 minutes (stalled; total wait $(( (_tot - 1) * 5 ))s)."
+      else
+        _msg "FATAL ERROR: MySQLD did not become available (down ${_down}s, total wait $(( (_tot - 1) * 5 ))s, ${_starts} start attempt(s))."
+      fi
       _msg "FATAL ERROR: Check /var/log/mysql/error.log for the reason, and on a"
       _msg "FATAL ERROR: 5.7 box the mysqld lines in /var/log/syslog (or"
       _msg "FATAL ERROR: /var/log/daemon.log) instead -- 5.7 is configured with"
       _msg "FATAL ERROR: log_syslog, 8.x with log_error. Typically a bad my.cnf"
       _msg "FATAL ERROR: directive or a datadir problem. Aborting instead of"
       _msg "FATAL ERROR: waiting forever; fix it and run the upgrade again."
+      _sql_error_log_lines
       _clean_pid_exit _check_sql_running_dead
     fi
-    _msg "WAIT: Waiting for MySQLD availability..."
     sleep 5
   done
 }
@@ -598,6 +719,9 @@ _sql_strict_upgrade_path() {
     _DB_SERIES=8.0
     export _DB_SERIES=8.0
     export _SQL_UPGRADE=YES
+    # The install messages name the version this run installs, not the
+    # cnf's final target.
+    _DBS_VRN="${_PERCONA_8_0_VRN}"
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
@@ -841,7 +965,12 @@ _sql_conf_update() {
   # Mode "directives" (called via _sql_directives_sync) normalizes only the
   # my.cnf version-compatibility directives and skips innodb sizing plus the
   # mysqld restart it triggers. Default (no arg) runs the full config.
+  # A second argument names the series to write the directives for instead
+  # of the installed one: a series upgrade writes the target's directives
+  # BEFORE its package install, because the package's post-install step
+  # starts the new server at once with whatever my.cnf holds.
   local _CONF_MODE="${1}"
+  local _CONF_SERIES="${2}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
@@ -852,6 +981,10 @@ _sql_conf_update() {
     -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   _if_hosted_sys
   _check_mysql_version
+  if [ "${_CONF_MODE}" = "directives" ] && [ -n "${_CONF_SERIES}" ]; then
+    _DB_V="${_CONF_SERIES}"
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: writing the directives for the ${_DB_V} series ahead of its install"
+  fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [ "${_hostedSys}" = "YES" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
@@ -1108,6 +1241,11 @@ _sql_conf_update() {
       fi
     fi
   fi
+  # Written for a series that is not installed yet: _DB_V goes back to the
+  # installed binary for whatever reads it next.
+  if [ "${_CONF_MODE}" = "directives" ] && [ -n "${_CONF_SERIES}" ]; then
+    _check_mysql_version
+  fi
 }
 
 #
@@ -1186,15 +1324,24 @@ _check_mysqld_running() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
-  # Mirrors the doubly-bounded wait in _check_sql_running (kept separate by
+  # Mirrors the triply-bounded wait in _check_sql_running (kept separate by
   # design -- mirror fixes, don't unify): consecutive-dead cap for a mysqld
-  # that died on config/datadir, total-time ceiling for a flapping one, ONE
-  # start attempt via the blessed move_sql.sh path gated on no fresh foreign
-  # SQL-maintenance marker, and no marker removal on abort (unowned here).
+  # that died on config/datadir, stall ceiling for a live one that writes
+  # nothing, total-time ceiling for a flapping one, a status line a minute
+  # while it is alive without a socket, up to three start attempts via the
+  # blessed move_sql.sh path (further ones only after a server was seen
+  # running and exited) gated on no fresh foreign SQL-maintenance marker,
+  # and no marker removal on abort (unowned here).
   [ -e "/root/.proxy.cnf" ] && return 0
   local _dead=0
   local _tot=0
-  local _started=NO
+  local _cap=720
+  local _alive=0
+  local _ran=NO
+  local _starts=0
+  local _idle=0
+  local _ddprev=0
+  local _down=0
   while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
@@ -1202,30 +1349,64 @@ _check_mysqld_running() {
     fi
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
       _dead=0
+      _ran=YES
+      _alive=$(( _alive + 1 ))
+      if [ "${_alive}" -eq 1 ]; then
+        _ddprev=$(_sql_dd_size)
+        _msg "INFO: MySQLD is running but not serving yet; a status line follows every minute."
+      elif [ $(( _alive % 12 )) -eq 0 ]; then
+        _sql_startup_progress $(( _alive * 5 )) "${_ddprev}"
+        _ddprev=$(_sql_dd_size)
+        if _sql_datadir_active; then
+          _idle=0
+        else
+          _idle=$(( _idle + 1 ))
+        fi
+      fi
     else
       _dead=$(( _dead + 1 ))
-      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
-        _started=YES
-        _msg "INFO: MySQLD not running -- starting it..."
+      _alive=0
+      _idle=0
+      if [ "${_starts}" -lt 3 ] \
+        && { [ "${_starts}" -eq 0 ] || [ "${_ran}" = "YES" ]; } \
+        && ! _sql_maint_foreign; then
+        _starts=$(( _starts + 1 ))
+        if [ "${_ran}" = "YES" ]; then
+          _msg "INFO: MySQLD ran and exited -- starting it again (attempt ${_starts} of 3)."
+          _sql_error_log_lines
+        else
+          _msg "INFO: MySQLD not running -- starting it..."
+        fi
+        _ran=NO
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
         else
           _mrun "service mysql start"
         fi
       fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "WAIT: Waiting for MySQLD to start before _tune_sql_memory_limits (down $(( _dead * 5 ))s)..."
+      fi
     fi
     _tot=$(( _tot + 1 ))
-    if [ "${_dead}" -gt 24 ] || [ "${_tot}" -gt 720 ]; then
-      _msg "FATAL ERROR: MySQLD did not become available before"
-      _msg "FATAL ERROR: _tune_sql_memory_limits (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
+    if [ -n "$(_sql_dd_upgrade_stage)" ]; then
+      _cap=8640
+    fi
+    if [ "${_dead}" -gt 24 ] || [ "${_idle}" -gt 30 ] || [ "${_tot}" -gt "${_cap}" ]; then
+      _down=$(( _dead > 0 ? (_dead - 1) * 5 : 0 ))
+      if [ "${_idle}" -gt 30 ]; then
+        _msg "FATAL ERROR: MySQLD is running but wrote nothing for 30 minutes before"
+        _msg "FATAL ERROR: _tune_sql_memory_limits (stalled; total wait $(( (_tot - 1) * 5 ))s)."
+      else
+        _msg "FATAL ERROR: MySQLD did not become available before"
+        _msg "FATAL ERROR: _tune_sql_memory_limits (down ${_down}s, total wait $(( (_tot - 1) * 5 ))s, ${_starts} start attempt(s))."
+      fi
       _msg "FATAL ERROR: Check /var/log/mysql/error.log, and on a 5.7 box the"
       _msg "FATAL ERROR: mysqld lines in /var/log/syslog (or /var/log/daemon.log)"
       _msg "FATAL ERROR: instead -- 5.7 is configured with log_syslog, 8.x with"
       _msg "FATAL ERROR: log_error. Fix the reported error and run the upgrade again."
+      _sql_error_log_lines
       _clean_pid_exit _check_mysqld_running_dead
-    fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     fi
     sleep 5
   done
@@ -1577,6 +1758,29 @@ _install_with_aptitude_sql() {
   # watchdog self-ignores a stale marker, so a crash can never wedge it.
   echo "$$" > /run/boa_sql_maintenance.pid
   _prep_for_install_db_sql
+  # The package's post-install step starts the NEW server at once, with
+  # whatever my.cnf holds. On a series change write the target's directives
+  # first, so that first start -- the one that converts a 5.7 datadir, minutes
+  # to hours on a big one -- parses a config its series accepts and reports to
+  # the error log from its first line. Carried-over directives of the old
+  # series left it logging nowhere (log_error off, stderr discarded) and
+  # aborting at the very end on a directive it does not know, after all the
+  # work. The running server reads nothing until the package swap stops it,
+  # so this is safe before the install; the fail-closed aborts below put the
+  # installed series' directives back.
+  _SQL_SERIES_FLIP=NO
+  if [ "${_SQL_UPGRADE}" = "YES" ] && [ -n "${_DB_SERIES}" ] \
+    && [ -n "${_NOW_DB_V}" ] && [ "${_NOW_DB_V}" != "${_DB_SERIES}" ]; then
+    _SQL_SERIES_FLIP=YES
+    _msg "INFO: Writing the ${_DB_SERVER} ${_DB_SERIES} directives to my.cnf ahead of the package install..."
+    _sql_conf_update directives "${_DB_SERIES}"
+    _msg "NOTE: The package install stops the ${_NOW_DB_V} server and starts the ${_DB_SERIES} one."
+    if [ "${_NOW_DB_V}" = "5.7" ]; then
+      _msg "NOTE: That first start converts the data dictionary of every table, which"
+      _msg "NOTE: takes minutes to hours on a large datadir. A status line follows"
+      _msg "NOTE: every minute. Do not stop or kill mysqld meanwhile."
+    fi
+  fi
   if [ "${_SQL_SCR}" = "APT" ]; then
     _mrun "${_INSTAPP} ${_SQLDEB}"
     _mrun "${_INSTAPP} ${_SQLADD}"
@@ -1614,6 +1818,7 @@ _install_with_aptitude_sql() {
         _msg "FATAL ERROR: dpkg also left packages unconfigured: ${_unconf}-- apt cannot install"
         _msg "FATAL ERROR: anything on this box until they are fixed: run dpkg --configure -a first."
       fi
+      [ "${_SQL_SERIES_FLIP}" = "YES" ] && _sql_directives_sync
       rm -f /run/boa_sql_maintenance.pid
       _clean_pid_exit _db_server_install_5_7_unavailable
     fi
@@ -1638,6 +1843,7 @@ _install_with_aptitude_sql() {
       _msg "FATAL ERROR: $(dpkg-query -W -f='${Package} ${Status} ${Version}\n' 'percona-server-server*' 2>/dev/null | tr '\n' ';')"
       _msg "FATAL ERROR: Aborting now, before any config tuning by this run."
       _msg "FATAL ERROR: Check the apt errors in the log, then run the upgrade again."
+      [ "${_SQL_SERIES_FLIP}" = "YES" ] && _sql_directives_sync
       rm -f /run/boa_sql_maintenance.pid
       _clean_pid_exit _db_server_install_pkg_missing
     fi

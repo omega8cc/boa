@@ -296,6 +296,16 @@ _sql_restart() {
   if _mysql_is_answering; then
     return 0
   fi
+  # Not answering by design: an 8.x server converting a 5.7 datadir accepts
+  # no connection until it is done, minutes to hours on a big one, and keeps
+  # its stage file in the datadir exactly that long. A restart here would
+  # throw the work away and the next tick would do it again, whatever the
+  # maintenance marker's age. Logged once a tick, no incident, no heal.
+  if [ -s "/var/lib/mysql/mysql_dd_upgrade_info" ] \
+    && pgrep -x mysqld > /dev/null 2>&1; then
+    echo "$(date) INFO: mysqld is converting the data dictionary (stage $(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9') of 6), not answering by design; standing down" >> ${_pthOml}
+    return 0
+  fi
   # Flap control. A database that was just auto-restarted and is down AGAIN is
   # not one another restart will fix; repeating the heal is what turned a 1s blip
   # into nine whole-stack teardowns in fourteen minutes on one busy hosted box

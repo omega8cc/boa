@@ -1244,6 +1244,24 @@
 
 @=> Improvements
 
+    * A Percona server that runs without serving yet, converting a 5.7
+      datadir or recovering, is reported by barracuda every minute: the
+      conversion stage, the number of tables, the growing size of the
+      data dictionary and the time so far, with the note not to stop or
+      kill it. A server that writes nothing for thirty minutes ends the
+      run as stalled, and a conversion may otherwise take twelve hours;
+      the run used to print a bare waiting line every five seconds and
+      give up after an hour.
+
+    * boa info shows a Percona server that is converting the datadir or
+      recovering as starting, with the conversion stage, instead of as
+      not running for want of a PID file, and the init script keeps the
+      server's own startup messages in the error log.
+
+    * The MySQL watchdog never restarts a server that is converting the
+      datadir, whatever the age of the maintenance marker; it logs the
+      stage and stands down.
+
     * Every barracuda pass, FAST upgrades included, installs e2fsprogs
       when it is missing. Its chattr and lsattr are used throughout BOA
       (the resolv.conf pin, control and secret files, xmass pre-mig's
@@ -1602,6 +1620,19 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A Percona series upgrade writes the new series' my.cnf directives
+      before the package swap. The package's post-install step starts
+      the new server at once, and on 5.7 to 8.0 that first start
+      converts the whole datadir; with the old series' directives still
+      in place it logged nowhere and aborted at the very end, after all
+      the work, on a directive it does not know.
+
+    * The wait for a server that is coming up starts it again, up to
+      three times, after it was seen running and exited: an 8.x server
+      that finds a half-done datadir conversion removes it and exits by
+      design, and the next start redoes the conversion. One start was
+      allowed before, so that cleanup ended the run with a FATAL.
 
     * While the ICU a box expects fails to install (a failed download or
       build), PHP builds that carry intl are no longer rebuilt on every
