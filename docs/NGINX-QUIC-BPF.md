@@ -148,6 +148,16 @@ front carries no QUIC listener and answers `Alt-Svc: clear`. Hosted sites keep
 HTTP/3, and this setting is what keeps their HTTP/3 transfers alive across
 reloads.
 
+## The firewall keeps UDP flows long enough
+
+BOA's `sysctl.conf` keeps UDP flows tracked for 180 s (300 s for a stream), longer
+than the 70 s an idle HTTP/3 connection lives on the server (`keepalive_timeout`), so
+the close notice Nginx sends to a browser's idle QUIC connection at a reload still finds
+its conntrack entry and reaches the browser. With the kernel defaults (30 s for a flow
+younger than two seconds, 120 s otherwise) the entry is already gone, the firewall
+rejects the notice and the browser keeps a dead connection until its own timeout
+(`aegir/conf/var/sysctl.conf`, `net.netfilter.nf_conntrack_udp_timeout`).
+
 ## The provider firewall must pass UDP 443
 
 HTTP/3 runs over UDP, so the shipped `csf.conf` opens inbound UDP 443 next to
