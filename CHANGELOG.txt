@@ -147,8 +147,7 @@
       table it cannot open), so no login is dropped on it, and the
       Octopus pass prints every alert of the helper's answer. Its
       leftovers list reads site database users only for an account whose
-      purge parked its home. Still switched off: no account uses the
-      helper.
+      purge parked its home. Still switched off: no account uses the helper.
 
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
@@ -386,8 +385,8 @@
       stays inside one account, or inside /var/aegir for a /var/aegir
       path; a link from anywhere else is refused.
 
-    * The account purge locks an account's identities before ending its
-      processes.
+    * The account purge locks an account's identities before ending
+      its processes.
 
     * perftest builds, fetches and runs its helpers in a private root-only
       directory, never a predictable /tmp path.
@@ -489,8 +488,7 @@
     * The migration tools grant an imported site's database user on the
       escaped database name, as provision does, and revoke a wildcard grant
       an earlier run left; site users no longer get WITH GRANT OPTION, and
-      the control panel credential heal resets both of the panel user's
-      rows.
+      the control panel credential heal resets both of the panel user's rows.
 
     * The nightly llms.txt and robots.txt refreshers no longer write into
       another account's files store that either account has converted to its
@@ -545,8 +543,7 @@
       the groundwork for taking tenants out of the shared web server
       group. Nothing changes until an account is converted to it; xoct,
       xcopy and xmass refuse to move a converted account to a box whose
-      tools predate it. Account names may not begin with wg- or hold a
-      dot.
+      tools predate it. Account names may not begin with wg- or hold a dot.
 
     * xoct, xcopy and xmass map an account's own group onto the target
       account's on every leg as they copy, and on a rename xoct maps each
@@ -1022,8 +1019,7 @@
       Textpattern support on by default, as Backdrop is everywhere: a
       new Octopus instance gets _GRAV_SUPPORT=YES and _TXP_SUPPORT=YES,
       an existing instance's NO seeded before this flips to YES once,
-      and a NO set afterwards stays. Self-hosted systems keep their
-      defaults.
+      and a NO set afterwards stays. Self-hosted systems keep their defaults.
 
     * With the automatic PHP cleanup on, a self-hosted system keeps or
       adds PHP 8.6 only for a real setting (8.6 as the whole fpm.info or
@@ -1055,8 +1051,7 @@
       client notice of the run (start, completion, forwarding change,
       withdrawal) goes to that address alone, with no copy to the client
       or the operator, and is logged as a test send that no later notice
-      takes for what the client was told. The accounts keep their own
-      addresses.
+      takes for what the client was told. The accounts keep their own addresses.
 
     * Under admail= a create installs only with the install's welcome
       mail held back, and create, transfer and import switch the
@@ -1186,8 +1181,7 @@
       distribution's own constraints allow, before any of the build's
       own corrections, keeping its core and the package that names the
       platform, and records what it could not fix and why; a fixed lock
-      that does not install fails the build and the published copy
-      stays.
+      that does not install fails the build and the published copy stays.
 
     * The pinned EzContent and Commerce v.2 catalogue platforms are
       staticbuild targets again: each is rebuilt from its own published
@@ -1304,8 +1298,7 @@
 
     * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
       training class: it gets 444 by default like GPTBot and ClaudeBot,
-      and a site's train-allow record admits it with the rest of the
-      class.
+      and a site's train-allow record admits it with the rest of the class.
 
     * Kimi's three crawlers are classified as Moonshot AI documents them:
       KimiBot, which gathers content that may train Kimi's models, joins
@@ -1457,11 +1450,11 @@
       copy is counted at its full size (the safety copy, the unpacked copy,
       the database dump, a renamed site's own copy of the store, a clone's
       store on a separate filesystem), the copies on one filesystem are
-      summed, and a headroom of 2 GB or 2% of the filesystem is required
-      on top, so a passing task never lands the box at the 90% where BOA's
-      own scripts stop. PROVISION_INSUFFICIENT_SPACE names the filesystem,
-      the need, the headroom and the free figure with nothing written; the
-      free space is measured again at the deploy seam once the safety copy
+      summed, and a headroom of 2 GB or 2% of the filesystem is required on
+      top, so a passing task never lands the box at the 90% where BOA's own
+      scripts stop. PROVISION_INSUFFICIENT_SPACE names the filesystem, the
+      need, the headroom and the free figure with nothing written; the free
+      space is measured again at the deploy seam once the safety copy
       exists, and a task whose room went elsewhere meanwhile rolls back
       there, archive included; the deploy also refuses an archive larger
       than the free space before its first member. A site the measure
@@ -1471,8 +1464,7 @@
       deploy side alike, now reaches the task log in tar's own words
       (capped at twenty lines, the first one on the failure line with the
       free space at that moment) instead of the bare "could not be
-      extracted" that read the same for a full disk and a truncated
-      archive.
+      extracted" that read the same for a full disk and a truncated archive.
 
     * xoct proxy-retire now keeps the withdrawal date it was given in the
       account's policy record, on both ends of the pair, so the policy table
@@ -1549,8 +1541,7 @@
     * The promotion window's signal is written twice at the cutover: the
       tmpfs /run/boa_xmass_init.pid and its on-disk twin
       /root/.standby.init.pid, so a target rebooted inside the window keeps
-      its write gates armed; both are removed together when the window
-      closes.
+      its write gates armed; both are removed together when the window closes.
 
     * xmass cutover hands xoct the target's hostname, and the old name of a
       site the cutover renamed (a site under the box's own hostname) now
@@ -1618,8 +1609,8 @@
       no leftover ICU directory can make a failed install count as done:
       the installed ICU is judged by its icu-uc.pc and headers, the
       builds keep serving, the pass reports the failure with an ALRT,
-      and the next pass retries the ICU install, a prebuilt ICU package
-      included.
+      and the next pass retries the ICU install, a prebuilt ICU
+      package included.
 
     * PHP 7.4 and 8.0 keep the intl extension through every upgrade:
       they are built with intl against the system ICU, and on ICU 75 and
@@ -1747,9 +1738,9 @@
       user's name ends in it: an entry counted as present when it was
       part of a longer line, so "bob" never got its rules after "xbob".
       Each /etc/sudoers.d file is checked with visudo before it replaces
-      the old one, so a line sudo would refuse, which made sudo refuse
-      every user on the box, never gets there; setup then says so and
-      exits non-zero.
+      the old one, so a line sudo cannot parse, which it reports on every
+      call and which can stop it altogether, never gets there; setup then
+      says so and exits non-zero.
 
     * A barracuda upgrade no longer leaves Valkey-cached Drupal sites
       answering 500 for up to half a minute after it changes the Valkey
@@ -1917,8 +1908,7 @@
       consistent point for row changes. A TRUNCATE that reaches a table
       before mydumper has read it now completes and leaves that table
       empty in the dump; while mydumper held the backup lock, such a
-      TRUNCATE stalled the dump instead, holding its table until it was
-      killed.
+      TRUNCATE stalled the dump instead, holding its table until it was killed.
 
     * A Textpattern Upgrade onto a name whose earlier copy left a stale
       alias behind (a rollback that stopped before removing it) no longer
@@ -1961,8 +1951,7 @@
     * A nightly backup that gives up waiting for MySQLD now also reports,
       right after its ABORTED notice, the databases it had already
       archived without their routines or events, or with their stored
-      objects under the dump's own sql_mode; it sent only the ABORTED
-      notice.
+      objects under the dump's own sql_mode; it sent only the ABORTED notice.
 
     * A Restore of an archive that carries no database dump keeps the
       site's triggers, routines and events when its database takes
@@ -2051,8 +2040,7 @@
       left the copy's database and its login on the other server with
       nothing recording them. The copy now counts as the source's
       database only when it has the same name on the same server, and a
-      failed Upgrade drops the copy's database on whichever server holds
-      it.
+      failed Upgrade drops the copy's database on whichever server holds it.
 
     * A PHP build from sources that fails after configure is now
       reported: make and make install ran without their result being
@@ -2153,8 +2141,7 @@
       removes the gate file by hand: 'xoct abandon o1' lifts it there,
       purges the cached 503 answers, takes the control panel out of
       maintenance mode, and clears the export latch and the panel dump,
-      so proxy refuses the account until a fresh export takes a new
-      one.
+      so proxy refuses the account until a fresh export takes a new one.
 
       It refuses while any of the account's sites answer, or may
       answer, from the target: once it is proxied, after a conversion
@@ -2334,8 +2321,7 @@
     * A mirror built as an xmass test run (admail=) now has its own way
       out: xmass go-live, while the pair stands at phase syncing, makes it
       a real pair without mailing anyone. post-mig names a mail hold and
-      the test runs it finds on a promoted box, with the lines that remove
-      them.
+      the test runs it finds on a promoted box, with the lines that remove them.
 
     * A test run's record now names its target, and xmass prep-target
       toward another target refuses while it stands, instead of leaving
@@ -2544,8 +2530,7 @@
       migration log shows the client was really told of a move from that
       box, a retarget's earlier target included, and refuses without
       admail= on a box in an xmass test run: after a test run no client
-      is told of a withdrawal. On the target it mails the client, as
-      before.
+      is told of a withdrawal. On the target it mails the client, as before.
 
     * xoct refuses to start moving one internal account (create, export,
       pretransfer) before the target is contacted, as xcopy does, and
@@ -2557,8 +2542,7 @@
       does: log/email.txt, or root's _CLIENT_EMAIL when the file holds
       no plain address. An account with no plain address in either place
       is refused at create, export and pretransfer before the target is
-      contacted; it used to be installed and mailed under a stand-in
-      address.
+      contacted; it used to be installed and mailed under a stand-in address.
 
     * A re-notify of a proxied account whose client never received the
       completion notice (a test run, a failed or suppressed first
@@ -2629,14 +2613,15 @@
 
     * Stored procedures and functions, and scheduled events, travel
       with a site's database through the classic dumps too: Clone, a
-      Migrate or Restore without MyQuick, the Backup mode with a
-      classic dump, and the nightly and cluster backups in legacy mode.
-      The dump asks first whether its database user may read them and
-      leaves them out with a warning when not, so such a dump still
-      completes. A trigger made under ANSI_QUOTES no longer stops a
-      Clone or Restore on Percona 5.7, and a trigger, routine or
-      event made before its database's default collation changed no
-      longer stops a Clone, Migrate or Restore.
+      Restore's safety copy, a Migrate without MyQuick, the Backup mode
+      with a classic dump, and the nightly and cluster backups in
+      legacy mode. The dump asks first whether its database user may
+      read them and, when not, leaves out all of the routines or all of
+      the events with a warning, so such a dump still completes. A
+      trigger made under ANSI_QUOTES no longer stops a Clone or Restore
+      on Percona 5.7, and a trigger, routine or event made before its
+      database's default collation changed no longer stops a Clone,
+      Migrate or Restore.
 
     * xtrim's safety dump of each database before it drops it carries
       the stored routines and events as well: that dump is the only
@@ -2706,8 +2691,7 @@
       reload, and prints ALRT lines instead (after a failed configtest
       they name the control file to fix), as ip_access and
       user_admin_access do; it used to remove them and restore nothing.
-      A restore that fails after the fragments were removed now alerts
-      too.
+      A restore that fails after the fragments were removed now alerts too.
 
     * ai_policy, ip_access and user_admin_access now send each ALRT line
       on, once a day per condition: a dated line in
@@ -2735,8 +2719,7 @@
     * A directory an interrupted conversion left beside the site is
       reported on every run until it is removed by hand, with the store
       directory to copy it into first: a cross-filesystem one may hold
-      files the store lacks, and a residue one a file written after its
-      check.
+      files the store lacks, and a residue one a file written after its check.
 
     * A staging directory left by a killed un-share copy is removed by the
       next copy into that store once root's marker proves the tool made
@@ -2795,8 +2778,8 @@
       pass treats it; it kept them as if on a remote server.
 
     * A server verify's database probes use one name per account: two
-      accounts verifying at the same time no longer remove each other's probe
-      database.
+      accounts verifying at the same time no longer remove each other's
+      probe database.
 
     * A new account name that starts with a digit is refused at install, as
       intended: the check never matched.
@@ -2833,10 +2816,10 @@
       account as skipped. The worker creates its pid file exclusively and
       removes only its own.
 
-    * The PHP-FPM init scripts are refreshed on every upgrade pass when they
-      differ from the shipped ones: only a rebuild of that PHP version
-      installed them, so their fixes never reached a box whose PHP was not
-      rebuilt.
+    * The PHP-FPM init scripts are refreshed on every upgrade pass when
+      they differ from the shipped ones: only a rebuild of that PHP
+      version installed them, so their fixes never reached a box whose PHP
+      was not rebuilt.
 
     * service phpNN-fpm configtest now tests the configuration the service
       starts with: it read the compiled-in default php-fpm.conf, which BOA
@@ -2979,8 +2962,7 @@
 
     * The hourly refresh of the Let's Encrypt include and dehydrated
       replaces what it finds instead of writing through it, and a
-      registration stopped at its time limit is no longer recorded as
-      done.
+      registration stopped at its time limit is no longer recorded as done.
 
     * instgrp changes a hard-linked file or FIFO only when its owner is
       one of the account's identities in the target group; status lists
@@ -3079,8 +3061,7 @@
       the upload; the incomplete D8+ templates are retired.
 
     * After an xoct or xcopy import the panel keeps the front page its
-      database carries, instead of answering 403 until the next Octopus
-      upgrade.
+      database carries, instead of answering 403 until the next Octopus upgrade.
 
     * A refused or failed xoct or xcopy verb sets the .ftp home's
       immutable flags again, instead of leaving them cleared until the
@@ -3261,8 +3242,7 @@
 
     * The AppArmor profiles (PHP, PHP-FPM, lshell, MySecureShell, node,
       ClamAV, Pure-FTPd) now match their binaries on a merged /usr too; in
-      enforce mode on a merged /usr they refused every exec they meant to
-      allow.
+      enforce mode on a merged /usr they refused every exec they meant to allow.
 
     * AppArmor in enforce or complain mode is on again when a barracuda
       upgrade ends: the pass loaded the profiles before its last MySQL
@@ -3394,8 +3374,7 @@
       it names the in-place Percona runs this server needs, if any, and
       sets the variable to NO, so those runs go ahead; set it to YES
       again once the server runs Percona 8.4. autoexcalibur already
-      refused. A php-idle run is never refused: it stops before the
-      upgrade.
+      refused. A php-idle run is never refused: it stops before the upgrade.
 
     * That check and autoexcalibur's own read the version from the
       installed server binary, not the client, and refuse when the
@@ -3485,8 +3464,7 @@
       and yoast_seo, Opigno without calendar and h5p, and a site install
       on either failed. Each distribution build now checks every package
       its installed.json lists, installs the missing ones again from the
-      lock, and fails if any is still missing, so the published copy
-      stays.
+      lock, and fails if any is still missing, so the published copy stays.
 
     * The limited-shell worker no longer removes Composer's own home and
       cache (.config/composer, .cache/composer, .composer) from every
@@ -3504,8 +3482,7 @@
 
     * staticbuild keeps its own Composer home and cache, apart from the
       account's. A build that fails on the newest core and on every older
-      one now ends its log with the newest core's failure, not the last
-      retry's.
+      one now ends its log with the newest core's failure, not the last retry's.
 
     * staticbuild holds twig/twig below 3.30 in every distribution build
       that resolves its own dependencies: Twig 3.30.0 breaks every page of
@@ -3649,10 +3626,9 @@
       while a TCP transfer drains on its old worker -- and a BOA system
       reloads every few minutes. The control panel front no longer offers
       HTTP/3 and answers Alt-Svc: clear, so a browser returns to HTTP/2 on
-      its next request; an existing front is regenerated once. The
-      "Remove export backup" task that follows every download is the
-      download's own clean-up of its temporary link and was never the
-      cause.
+      its next request; an existing front is regenerated once. The "Remove
+      export backup" task that follows every download is the download's
+      own clean-up of its temporary link and was never the cause.
 
     * HTTP/3 transfers on hosted sites now survive Nginx reloads: quic_bpf
       routes every QUIC packet to the worker that owns its connection. It
@@ -3996,11 +3972,10 @@
       ends with "OCTOPUS upgrade completed WITH ERRORS -- review <log>"
       instead of a plain "OCTOPUS upgrade completed". An installer that
       refused to run in seconds used to read as a completed upgrade. The
-      console run mails nothing, as before, and it now writes its pass
-      log under /var/backups/reports/up/octopus/ like a silent run does;
-      it never did, whatever the console showed. The "... upgrade
-      completed" prefix is unchanged, so a watcher waiting on it still
-      terminates.
+      console run mails nothing, as before, and it now writes its pass log
+      under /var/backups/reports/up/octopus/ like a silent run does; it
+      never did, whatever the console showed. The "... upgrade completed"
+      prefix is unchanged, so a watcher waiting on it still terminates.
 
     * "octopus up-<tree> all" states the verdict of every account, not of
       the last one: the completion line names each pass log that failed,
@@ -4804,8 +4779,7 @@
     * admail= install token names the admin (uid-1) panel address; a
       self-hosted install otherwise derives a distinct root@<fqdn>.
 
-    * Single-email chained installs complete with both panel accounts
-      created.
+    * Single-email chained installs complete with both panel accounts created.
 
     * sqlclean rebuilt on Drush aliases as the source of truth; report
       by default, never invoked by automation.
@@ -5132,8 +5106,7 @@
   compiles natively on Excalibur. Backdrop support gains its first round
   of real-world polish, automatic OS security updates arrive on by
   default for modern systems, the distribution network gains two fresh
-  mirrors, and the whole live tree now points at the new documentation
-  home.
+  mirrors, and the whole live tree now points at the new documentation home.
 
   As always, this entry highlights only the most significant changes. For
   the full picture please refer to the commit history on GitHub.
@@ -5251,8 +5224,7 @@
       handling now falls through to the front controller when js.php is
       absent, so Backdrop core's admin-bar cache callback is served; and a
       stale menu router after a Drupal 7 to Backdrop conversion is cured by
-      rebuilding the registries in a fresh process at the end of the
-      conversion.
+      rebuilding the registries in a fresh process at the end of the conversion.
 
     * Backdrop restore reloads its database credentials before the restore
       maintenance settings re-render, so the live credentials are no longer
@@ -5264,14 +5236,12 @@
       re-run under the wrong PHP.
 
     * clearwebbans no longer sends its own error output to /dev/null, so
-      its "already running" notice and any later error reach the operator
-      again.
+      its "already running" notice and any later error reach the operator again.
 
     * The per-domain ssl_proxy vhost sync on satellites now strips kernel
       TLS from the regenerated front when a box has opted out via
       /etc/nginx/no_ktls.conf, so the sync converges cleanly for any
-      fetched-tool vintage -- self-healing hardening for a real staleness
-      class.
+      fetched-tool vintage -- self-healing hardening for a real staleness class.
 
     * websh no longer runs its prefix-strip sed on a non-match, removing
       the stray "no previous regular expression" noise from task logs for
@@ -5452,11 +5422,11 @@
       preserved through migration, and migrated Drupal 8+ sites arrive
       with a cold Valkey flush plus PHP-FPM restart.
 
-    * Working control-panel logins in welcome emails. A new client account
-      is tied to the instance's SSH identity, so the recipient can sign
-      into Ægir from day one. Password reset requests route to host
-      support, and every BOA-sent email is vendor-agnostic, pointing at
-      docs.boa.io.
+    * Working control-panel logins in welcome emails. A new client
+      account is tied to the instance's SSH identity, so the recipient
+      can sign into Ægir from day one. Password reset requests route to
+      host support, and every BOA-sent email is vendor-agnostic, pointing
+      at docs.boa.io.
 
     * codebasecheck gains a box-wide Percona 8 upgrade-readiness report
       and a --deep contrib/schema analysis that cuts false-OK results
@@ -5552,8 +5522,7 @@
 
     * Composer works for shell users again: Composer 2.8.3+ switched its
       subprocess model and collided with the safe-shell wrapper; websh now
-      executes those calls correctly, unblocking the Composer 2.10.2
-      update.
+      executes those calls correctly, unblocking the Composer 2.10.2 update.
 
     * _SMTP_RELAY_HOST was never written to Postfix main.cf -- the
       outbound relay opt-in now actually configures the relay, and the
@@ -5590,15 +5559,15 @@
 @=> Watchtower Edition
 
   BOA-5.10.3 PRO/LTS is a hardening-and-fixes release built around the Nginx
-  Abuse Guard and the self-healing monitor stack. It advances the web IDS with
-  several new detectors -- an HTTP/1.0 registration-spam auto-ban, a webshell
-  *.php fast-ban, a multi-tier distributed translation-flood defence, and
-  webhook/API exemptions -- while retuning the over-aggressive 5.10.1 defaults
-  that were false-banning real visitors on busy sites, and ships a one-shot
-  clearwebbans release valve. Alongside it land new read-only operator tools
-  (loadreport, floodreport), an idle monitor fan-out throttle, load-auto-pause
-  refinements, and PHP-FPM capacity allocation that stops upgrade-time
-  throttling.
+  Abuse Guard and the self-healing monitor stack. It advances the web IDS
+  with several new detectors -- an HTTP/1.0 registration-spam auto-ban, a
+  webshell *.php fast-ban, a multi-tier distributed translation-flood
+  defence, and webhook/API exemptions -- while retuning the over-aggressive
+  5.10.1 defaults that were false-banning real visitors on busy sites, and
+  ships a one-shot clearwebbans release valve. Alongside it land new
+  read-only operator tools (loadreport, floodreport), an idle monitor fan-out
+  throttle, load-auto-pause refinements, and PHP-FPM capacity allocation that
+  stops upgrade-time throttling.
 
   The standout workflow win is the Local Drush lock/unlock subsystem: the
   "Lock Local Drush" task is now a reliable, visible, idempotent platform
@@ -5628,21 +5597,20 @@
     * New multi-tier defence against a distributed translation (i18n) flood. A
       scraper crawling localized pages drives each uncached page through
       Drupal's synchronous on-the-fly translation, holding a PHP-FPM worker for
-      tens of seconds; spread over thousands of IPs at one or two requests
-      each, per-IP limits never trip and a shared FPM pool saturates. Tier A is
-      a per-vhost limit_conn at the location = /index.php chokepoint, keyed on a
+      tens of seconds; spread over thousands of IPs at one or two requests each,
+      per-IP limits never trip and a shared FPM pool saturates. Tier A is a
+      per-vhost limit_conn at the location = /index.php chokepoint, keyed on a
       constant per vhost (not the client IP), that caps in-flight anonymous
-      localized requests (default 24) and sheds excess instantly with 444
-      before php-fpm. English, static and authenticated traffic is never
-      counted.
+      localized requests (default 24) and sheds excess instantly with 444 before
+      php-fpm. English, static and authenticated traffic is never counted.
 
     * Webshell *.php probe fast-ban by content. On a Drupal/Backdrop docroot a
-      non-entry *.php that 404s is never a real page, so scan_nginx now weights
-      such a 404 heavily and bans a shell scanner after ~3 hits instead of
-      ~140. The match is path-anchored (status 404 AND a *.php in the request
-      path only), so one stale .php link from a real visitor stays below the
-      ban floor; the genuine entry points (index/update/install/cron/...) are
-      excluded.
+      non-entry *.php that 404s is never a real page, so scan_nginx now
+      weights such a 404 heavily and bans a shell scanner after ~3 hits
+      instead of ~140. The match is path-anchored (status 404 AND a *.php in
+      the request path only), so one stale .php link from a real visitor stays
+      below the ban floor; the genuine entry points
+      (index/update/install/cron/...) are excluded.
 
     * Static- and content-path chain-flood guards plus a Referer-less /print*
       block. A distributed botnet floods D7-era sites with malformed
@@ -5659,9 +5627,9 @@
       every proxied request logged as HTTP/1.0 at origin. Each now sets
       proxy_http_version 1.1 and clears the upstream Connection header, so a
       correctly-updated BOA front proxy / PX0 tier no longer downgrades real
-      visitors -- which is what makes the new HTTP/1.0 auth-spam detector safe
-      to ship on. Already-deployed proxies migrate via idempotent regeneration
-      markers.
+      visitors -- which is what makes the new HTTP/1.0 auth-spam detector
+      safe to ship on. Already-deployed proxies migrate via idempotent
+      regeneration markers.
 
     * New webhook/API IDS exemption list. Token/HMAC-authenticated endpoints
       can bypass all three aggregate scorers; the default ships the common
@@ -5692,9 +5660,9 @@
 
     * loadreport -- a new read-only, dependency-free /proc CPU+RSS profiler
       that attributes recurring load to each BOA script (by command and by
-      cron-launcher subtree) and prints the box's live monitor-throttle class.
-      Runs on demand, as --json, or as an idle-priority cron writing pruned
-      JSONL.
+      cron-launcher subtree) and prints the box's live monitor-throttle
+      class. Runs on demand, as --json, or as an idle-priority cron writing
+      pruned JSONL.
 
     * floodreport -- a new read-only summariser for the distributed
       translation-flood detector's output: per-vhost flood events, the pool-wide
@@ -5725,21 +5693,21 @@
 @=> Improvements
 
     * Web IDS aggregate detector defaults retuned upward to stop false
-      positives on busy sites. Each scan scores only the ~5s of log lines since
-      the previous run, so the old shared-UA DDoS defaults (20 IPs / 200 reqs /
-      3-req block) and path-flood defaults (5 / 15 / 10) sat below real peak: a
-      single popular mobile-browser UA shared by many visitors was mistaken for
-      a botnet fingerprint and every visitor making 3+ requests under it was
-      banned (search sessions hit hardest). New defaults are DDoS 100 / 1000 /
-      20 and path-flood 30 / 100 / 20; genuinely abusive single IPs are still
-      caught by the per-IP weighted scorer, and every knob stays per-box
-      overridable.
+      positives on busy sites. Each scan scores only the ~5s of log lines
+      since the previous run, so the old shared-UA DDoS defaults (20 IPs / 200
+      reqs / 3-req block) and path-flood defaults (5 / 15 / 10) sat below real
+      peak: a single popular mobile-browser UA shared by many visitors was
+      mistaken for a botnet fingerprint and every visitor making 3+ requests
+      under it was banned (search sessions hit hardest). New defaults are DDoS
+      100 / 1000 / 20 and path-flood 30 / 100 / 20; genuinely abusive single
+      IPs are still caught by the per-IP weighted scorer, and every knob stays
+      per-box overridable.
 
     * The path-flood firewall ban now gates on backend-reaching 200s only: an
       IP that received only 444s is already free-blocked by Nginx's realtime
       map, so csf-banning it was redundant and risked banning shared-egress
-      (CGNAT / Private Relay) clients. Aggregate flood detection still counts
-      200+444.
+      (CGNAT / Private Relay) clients. Aggregate flood detection still
+      counts 200+444.
 
     * Idle monitor fan-out is throttled on small, slow and CI hosts, where the
       per-minute second.sh/minute.sh self-loops fanning out ~20 short-lived
@@ -5807,10 +5775,10 @@
     * cURL updated 8.20.0 -> 8.21.0 (the only component-version bump this
       cycle; all other bundled components are unchanged since 5.10.1).
 
-    * Continued Perl-to-Bash cleanup: the very old scan_nginx.pl, locked_nginx.pl
-      and locked_java.pl Perl monitors are removed on update. Several stale
-      path-flood and _NGINX_DOS_* doc-comments were corrected with no behaviour
-      change.
+    * Continued Perl-to-Bash cleanup: the very old scan_nginx.pl,
+      locked_nginx.pl and locked_java.pl Perl monitors are removed on update.
+      Several stale path-flood and _NGINX_DOS_* doc-comments were corrected
+      with no behaviour change.
 
 @=> Important Fixes
 
@@ -5989,10 +5957,10 @@
 
     * edgetest -- a guided, one-command pass/fail checker for the whole edge
       stack (AI bot policy, Cloudflare realip, CSF->nginx web bans, per-site
-      AI/IP controls). Read-only by default; --full runs state-changing proofs
-      reverted by an idempotent trap, and --remote does cross-box ip_access
-      checks. It asserts the evasive Perplexity block and the Google-Agent
-      allow.
+      AI/IP controls). Read-only by default; --full runs state-changing
+      proofs reverted by an idempotent trap, and --remote does cross-box
+      ip_access checks. It asserts the evasive Perplexity block and the
+      Google-Agent allow.
 
     * Per-site AI policy subsystem (ai_policy.sh): reads each site's
       static/control/ai/policy.txt and writes per-site nginx fragments for
@@ -6008,10 +5976,10 @@
       shared nginx-config reload lock serialises ip_access, cloudflare_realip,
       nginx-deny, and ai_policy to close configtest/reload races.
 
-    * fpm_tune -- a read-only adaptive PHP-FPM sampler (pm.status, opcache/APCu
-      fill, worker memory) that changes no tuning, with a companion fpmreport
-      tool that aggregates per-version/per-pool starvation and cache-growth
-      analysis.
+    * fpm_tune -- a read-only adaptive PHP-FPM sampler (pm.status,
+      opcache/APCu fill, worker memory) that changes no tuning, with a
+      companion fpmreport tool that aggregates per-version/per-pool starvation
+      and cache-growth analysis.
 
     * PHP GEOS extension now installed by default for PHP 7.x and 8.x.
 
@@ -6192,8 +6160,8 @@
 
     * Privilege escalation: block tar-symlink to root via sudo helpers
       A path existed where NOPASSWD-sudo tar helpers could be coaxed into
-      following a symlink to write into root-owned locations. This has been
-      closed.
+      following a symlink to write into root-owned locations. This has
+      been closed.
 
     * Shell injection: HTTPS mirrors, certificate validation, identifier
       allowlists
@@ -15448,13 +15416,13 @@
     passwords for every "Client" with at least one site attached. For example
     ~/users/o1.username file means that this Client's username for SSH and FTPS
     access is 'o1.username' while his password is stored in this file. This
-    means that SSH/FTPS access is not granted automatically, but you can decide
-    who should receive it. How to change any extra user's password? Simply
-    delete his ~/users/o1.username file and wait up to 5 minutes - the system
-    will re-create his account with new password. And how to delete the user
-    completely? Simply delete this user "Client" account in the Ægir control
-    panel and allow the system to delete also his SSH/FTPS access in the next 5
-    minutes.
+    means that SSH/FTPS access is not granted automatically, but you can
+    decide who should receive it. How to change any extra user's password?
+    Simply delete his ~/users/o1.username file and wait up to 5 minutes - the
+    system will re-create his account with new password. And how to delete the
+    user completely? Simply delete this user "Client" account in the Ægir
+    control panel and allow the system to delete also his SSH/FTPS access in
+    the next 5 minutes.
 
   * We have added segfault monitor for php-fpm and nginx, enabled by default.
     It is pretty aggressive, because it disables vhost of any site causing
@@ -16490,8 +16458,7 @@ Added/Fixed: (upgrade for all pre-A14.A required)
     is now available, if someone needs it.
 
 7.  Octopus can now turn off local Memcache and Redis
-    caches and switch all sites to use defined remote
-    caches.
+    caches and switch all sites to use defined remote caches.
 
 8.  Forced /etc/apt/sources.list rewrite also before
     the Barracuda system upgrade.
