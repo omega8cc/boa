@@ -2009,6 +2009,13 @@ already travel over ssh.
 `_XMASS_PLAIN_REPLICATION=YES` runs the stream in the clear deliberately and loudly --
 for a source that cannot serve TLS; never the default.
 
+Only `init` creates the `REQUIRE SSL` replication user and configures the replica with
+`SOURCE_SSL=1` (`_xmass_create_repl_user`, `_xmass_setup_slave`, both called from the
+init path alone); no `sync` or `autosync` pass changes a replica that already runs. A
+standing pair whose replica was set up before `init` required TLS therefore keeps
+replicating in the clear after both boxes are upgraded, and `xmass status` shows its
+transport as `PLAIN`. Run `init` toward the mirror again to rebuild the pair over TLS.
+
 ## MySQL Credentials
 
 xtrabackup replaces the entire `/var/lib/mysql` directory on the target,
