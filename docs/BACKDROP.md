@@ -36,7 +36,12 @@ octopus up-{dev|lts|pro} <user>
 To opt an instance out, set `_BACKDROP_SUPPORT=NO` in its Octopus
 config (and mirror it in `/root/.barracuda.cnf` to skip the system
 tools as well); the persisted value always wins over the shipped
-default. Migration note for boxes upgraded while the gate still
+default.
+
+`NO` stops BOA building the Backdrop platforms and enabling the panel
+module; it never disables a module that is already on, so a panel
+switched on earlier keeps `hosting_backdrop` and its Upgrade to Backdrop
+tasks until the operator disables the module by hand. Migration note for boxes upgraded while the gate still
 defaulted to `NO`: that value is persisted in their control files, so
 flip it to `YES` (or delete the line) to adopt the new default.
 
@@ -49,12 +54,15 @@ After the run the instance has:
   newest release — there is no per-version pin to maintain (see
   `PLATFORMS.md`).
 - **The `hosting_backdrop` frontend module** enabled on the hostmaster
-  (the `backdropcms` hosting feature). Enabling it queues a one-time
-  verify of every existing platform so each platform's Backdrop marker
-  is fresh — on a box that already had Backdrop platforms before the
-  module, that sweep is what makes them visible as upgrade targets. It
-  also grants the `create backdrop_upgrade task` permission to the
-  `aegir administrator` role.
+  (the `backdropcms` hosting feature). On a panel with 25 platforms or
+  fewer, enabling it queues a one-time verify of every existing platform
+  so each platform's Backdrop marker is fresh — on a box that already had
+  Backdrop platforms before the module, that sweep is what makes them
+  visible as upgrade targets. A larger panel gets no sweep (its warning
+  is discarded with the enable's output): run a Verify on each
+  pre-existing Backdrop platform yourself. Enabling it also grants the
+  `create backdrop_upgrade task` permission to the `aegir administrator`
+  role.
 - **`bee`**, the native Backdrop CLI, at `/opt/local/bin/bee`, plus the
   backdrop-drush-extension wired into the backend Drush 8.
 

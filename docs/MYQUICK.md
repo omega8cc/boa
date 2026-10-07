@@ -16,13 +16,13 @@ This file, while present, enables a super fast per-table and parallel database d
 
 A Clone is not affected: its safety copy always carries a classic dump, and the new site's database is loaded from it. A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
 
-We need to emphasize this again: with this control file present, all normally slow tasks will become blazing fast, but at the cost of not keeping an archived complete database dump file in the site directory archive where it would otherwise be included.
+We need to emphasize this again: with this control file present, the normally slow Migrate and Delete tasks become blazing fast, at the cost of not keeping a complete database dump file inside the safety copies those two tasks make for themselves.
 
 ## Important Considerations
 
-Of course, the system still maintains nightly backups of all your sites using the new split SQL dump archives. However, with this control file present, the restore task cannot use those split archives, because they do not include a single database dump. You can still find that SQL dump split into per-table files in the backups directory, though, in a subdirectory with a timestamp added, so you can still access it manually if needed.
+The system still maintains nightly backups of all your sites as split SQL dump archives. The Restore task does not read those, so to wind a database back to a nightly's moment, load the per-table files from the timestamped subdirectory in the backups directory with `myloader` by hand.
 
-If you need a Restore-capable archive without opting out of super-fast dumps for the whole account, run the site Backup task and choose the **Site files with classic mysqldump DB** option under Backup Mode. That one archive bypasses `MyQuick.info` and produces a conventional single-file mysqldump that the Restore task can use, while `MyQuick.info` continues to provide fast dumps for all other Ægir tasks. A Backup task queued without a mode gets this one by default. Each mode restores exactly what it contains, and this is the only one that carries the database.
+Every Backup task you run from the panel is Restore-capable whatever `MyQuick.info` says: the Backups form opens on **Site files with classic mysqldump DB**, a task queued without a mode gets that one, and the Restore and Clone safety copies are forced to it; only the Migrate and Delete safety copies are dump-less. Each mode restores exactly what it contains, and the classic mysqldump mode is the only one that carries the database.
 
 ## mydumper and myloader Compatibility
 
