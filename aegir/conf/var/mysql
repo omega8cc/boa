@@ -79,12 +79,22 @@ stop_mysql() {
     fi
 
     kill `cat $PIDFILE`
-    sleep 5
+    # A clean shutdown flushes the buffer pool: seconds on a small server,
+    # minutes on a large one. Wait for the process to go, so that a restart
+    # never starts the next server beside the old one (the start refuses a
+    # server that is still running).
+    _i=0
+    while pgrep -x mysqld > /dev/null 2>&1 && [ $_i -lt 600 ]; do
+        sleep 1
+        _i=$((_i + 1))
+    done
 
-    if [ -f $PIDFILE ]; then
-        echo "Percona MySQL failed to stop."
+    if pgrep -x mysqld > /dev/null 2>&1; then
+        echo "Percona MySQL failed to stop within 10 minutes."
         return 1
     else
+        # a server that was killed hard leaves its pid file behind
+        rm -f $PIDFILE
         echo "Percona MySQL stopped successfully."
     fi
 }

@@ -171,14 +171,22 @@ _sql_datadir_active() {
 # server as hung, which makes it start over. $1 seconds alive so far, $2 the
 # dictionary size at the previous line.
 _sql_startup_progress() {
-  local _secs="$1" _prev="$2" _stg _tbl _now _mb _dmb _last
+  local _secs="$1" _prev="$2" _stg _tbl _now _mb _dmb _last _ibd _wrt
   _stg=$(_sql_dd_upgrade_stage)
   if [ -n "${_stg}" ]; then
     _tbl=$(find /var/lib/mysql -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
     _now=$(_sql_dd_size)
     _mb=$(( _now / 1048576 ))
     _dmb=$(( (_now - _prev) / 1048576 ))
-    _msg "WAIT: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
+    if [ "${_stg}" = "5" ]; then
+      # the dictionary stops growing here: the metadata goes into every
+      # InnoDB tablespace, each written once, newer than the stage file
+      _ibd=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2> /dev/null | wc -l)
+      _wrt=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2> /dev/null | wc -l)
+      _msg "WAIT: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, tablespaces written ${_wrt} of ${_ibd}, $(( _secs / 60 )) min so far."
+    else
+      _msg "WAIT: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
+    fi
     _msg "WAIT: Do not stop or kill mysqld: the upgrade would start over."
   else
     _last=$(tail -n 1 /var/log/mysql/error.log 2> /dev/null | cut -c1-160)

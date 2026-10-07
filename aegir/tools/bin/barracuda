@@ -491,7 +491,14 @@ _check_sql_running() {
         _stg=$(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9')
         if [ -n "${_stg}" ]; then
           _tbl=$(find /var/lib/mysql -maxdepth 2 -name '*.frm' 2>/dev/null | wc -l)
-          echo "WAIT: Data dictionary upgrade, stage ${_stg} of 6: ${_tbl} tables, dictionary $(( _ddnow / 1048576 )) MB (+$(( (_ddnow - _ddprev) / 1048576 )) MB), $(( _alive / 12 )) min so far."
+          if [ "${_stg}" = "5" ]; then
+            # the dictionary stops growing here: the metadata goes into
+            # every InnoDB tablespace, each written once, newer than the
+            # stage file
+            echo "WAIT: Data dictionary upgrade, stage 5 of 6: ${_tbl} tables, tablespaces written $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | wc -l) of $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2>/dev/null | wc -l), $(( _alive / 12 )) min so far."
+          else
+            echo "WAIT: Data dictionary upgrade, stage ${_stg} of 6: ${_tbl} tables, dictionary $(( _ddnow / 1048576 )) MB (+$(( (_ddnow - _ddprev) / 1048576 )) MB), $(( _alive / 12 )) min so far."
+          fi
           echo "WAIT: Do not stop or kill mysqld: the upgrade would start over."
         else
           echo "WAIT: MySQLD is running but not serving yet (recovery or upgrade), $(( _alive / 12 )) min so far."
