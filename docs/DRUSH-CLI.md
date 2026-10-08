@@ -245,7 +245,8 @@ Drush is the primary tool for managing Drupal sites within BOA, allowing you to 
 3. PHP-CLI version switching for Drush and Composer is instantaneous using the **instant switch configuration files**.
 4. Using standalone Drush versions newer than version 8 is deprecated.
 5. Drush 8 remains available as `drush8` or simply `drush` — on a Drupal 8+ site for
-   read-only commands only (`uli`, `status`).
+   read-only commands only (`uli`, `status`, `version`, `help`, the alias listing and
+   `sql-dump`).
 6. Drush 10 is available as standalone `drush10`.
 7. Drush 11 is available as standalone `drush11`.
 8. Drush 12 or newer is available only as **site-local**, invoked via `vdrush`.
@@ -285,10 +286,12 @@ On a **Drupal 8+** platform, use the site-local `vdrush` (see below) for anythin
 changes a site — updates, a cache rebuild, enabling a module.
 
 The system `drush` (Drush 8) starts a Drupal 8/9/10/11 site only while its platform is
-locked, and there it runs read-only commands alone: `drush @site-alias uli` and `drush
-@site-alias status` answer (the control panel's one-time login links on Drupal 8+ come from
-the same Drush 8). Every other Drush 8 command on a Drupal 8+ codebase is refused in the
-limited shell, with a pointer to `vdrush`.
+locked, and there it runs read-only commands alone: `drush @site-alias uli`, `drush
+@site-alias status`, `drush @site-alias sql-dump`, `version`, `help` and the alias listing
+answer (the control panel's one-time login links on Drupal 8+ come from the same Drush 8).
+Every other Drush 8 command on a Drupal 8+ codebase is refused in the limited shell with
+`Drush 8 runs only read-only commands (uli, status, sql-dump) on a Drupal 8+ site` and a
+pointer to `vdrush`.
 
 On legacy Drupal 6/7 sites Drush 8 runs everything as before, `drush @site-alias updb` (or
 `updatedb`) included.

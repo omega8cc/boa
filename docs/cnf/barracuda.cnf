@@ -44,6 +44,7 @@ _USE_SQLPROBE=YES #------------- Log-only SQL sensor feeding the memorytuner adv
 _USE_BATCH_GUARD=YES #---------- Batch storm guard; _BATCH_GUARD_DETECT_ONLY=YES alerts without deleting
 _USE_TASK_GUARD=YES #----------- Crashed-task reaper; _TASK_GUARD_DETECT_ONLY=YES alerts without writing
 _XDR9000=YES #------------------ Permanent read-only health and attack archive under /var/log/boa/xdr9000/
+_SQL_BACKUP_MAX_HOURS=12 #------ Hours a nightly database backup may run before it counts as hanging and is ended with a notice; the self-update holds for a younger one
 _SQL_BUFFER_POOL_FORCE="" #----- Pins innodb_buffer_pool_size in MB (plain integer; AUTO when empty)
 _SQL_KEY_BUFFER_FORCE="" #------ Pins key_buffer_size in MB (AUTO when empty)
 _SQL_LOG_FILE_SIZE_FORCE="" #--- Pins innodb_log_file_size / redo capacity in MB (restart applies)
@@ -112,7 +113,9 @@ _DENY_JETTY9=NO #-------------------- Tear down the Jetty 9 service when YES
 _DENY_SOLR7=NO #--------------------- Tear down the Solr 7 service when YES
 _DENY_SOLR9=NO #--------------------- Tear down the Solr 9 service when YES
 _DISABLE_AUDITD_LOGS=NO #------------ Stop auditd writing logs when YES
+_DISABLE_COPYDBACKUP=NO #------------ Never copy the nightly db dumps into the accounts' trees when YES; the tool stays updated (set automatically where its file was made immutable)
 _DISABLE_MYSQL_CLEANUP=NO #---------- Disable hourly db cleanup + nightly giant-table truncations when YES (replaces /etc/boa/.disable_mysql_cleanup.cnf)
+_DISABLE_USAGE_ACCOUNTING=NO #------- Never run the nightly usage accounting pass (usage.sh) when YES; the tool stays updated (set automatically where its file was made immutable)
 _DONT_USE_FANCY_BASH_LOGIN=NO #------ Plain root login banner, no toilet/figlet when YES
 _ENABLE_NEWRELIC_SYSMOND=NO #-------- Keep nrsysmond running when YES; stopped when NO
 _FORCE_CI_BOX=NO #------------------- Force the CI box classification when YES (replaces /etc/boa/.look.like.jenkins.cnf)

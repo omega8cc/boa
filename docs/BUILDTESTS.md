@@ -315,8 +315,10 @@ stays what the copies made it.
 Distributions, published to `/var/www/static/distro`:
 
 ```sh
+  commerce_base-2.40-10.1.8
   commerce_kickstart-5.1.0-11.4.8
-  drupal_cms_installer-2.2.2-11.4.8
+  drupal_cms_installer-2.2.3-11.4.8
+  ezcontent-2.2.15-10.3.6
   farm-4.0.6-11.3.17
   localgov-4.0.5-11.4.8
   openculturas-3.1.0-11.4.8
@@ -510,8 +512,8 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.2.2-11.4.8 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.2-11.4.8
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.3-11.4.8 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.3-11.4.8
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts

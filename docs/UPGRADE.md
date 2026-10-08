@@ -163,6 +163,20 @@ place.holder3.dont.remove 5.6
 
 The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
 
+## NOTE on the Verify tasks an Octopus upgrade queues
+
+The shared nginx include takes a site's database credentials through variables the site
+vhost sets after the include line. A vhost rendered before those variables existed passes
+empty credentials to the locations that declare their own `fastcgi_param` set (`cron`,
+`update.php`, `authorize.php`, ESI), and only the site's own Verify re-renders it, so an
+Octopus upgrade queues one Verify for every Drupal and Backdrop site whose vhost predates
+the variables (`_satellite_queue_dbvars_site_verifies` in `lib/functions/satellite.sh.inc`).
+
+The sweep is self-limiting: a re-rendered vhost is never queued again, Grav, Textpattern
+and the control panel itself are skipped, the Verifies run one at a time under the runner
+lock, and the pass log says how many were queued. Let them finish before judging other
+task results.
+
 ## NOTE on Ægir Platforms
 
 Since BOA no longer installs all bundled Ægir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/static/control/README.txt` within your Octopus account.

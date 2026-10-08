@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=588855devT01
+export _xSrl=588866devT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
@@ -29,6 +29,45 @@ _check_root() {
   fi
 }
 _check_root
+
+# The nightly backup's own processes: the script and the subshells it
+# forks, never the cron launcher's shell. SHELL=/bin/bash and the
+# ">/dev/null 2>&1" on the crontab line make bash keep a
+# "bash -c ... bash /var/xdrago/mysql_backup.sh ..." parent for the whole
+# run, whose command line names the script too. A count that took it in
+# read a healthy run as a stuck duplicate the moment one subshell of the
+# backup was sampled, and killed the run mid-dump without a word.
+_SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
+_SQL_CLEANUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cleanup\.sh( |$)'
+
+# Seconds the oldest process of the form has run; empty when none runs.
+_exec_age() {
+  local _pat="$1" _p="" _e="" _max=""
+  for _p in $(pgrep -f "${_pat}" 2> /dev/null); do
+    _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
+    [ -z "${_e}" ] && continue
+    if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
+      _max="${_e}"
+    fi
+  done
+  echo "${_max}"
+}
+
+# A backup is hanging once its oldest process is older than this many
+# hours: 12, or _SQL_BACKUP_MAX_HOURS in /root/.barracuda.cnf.
+_sql_backup_limit() {
+  local _h="${_SQL_BACKUP_MAX_HOURS:-12}"
+  [[ "${_h}" =~ ^[0-9]+$ ]] || _h=12
+  echo $(( _h * 3600 ))
+}
+
+# 0 while a nightly backup runs within its limit: the weekly pass and the
+# staged reboot wait, nothing restarts the database under a dump.
+_sql_backup_live() {
+  local _a=""
+  _a=$(_exec_age "${_SQL_BACKUP_EXEC}")
+  [ -n "${_a}" ] && [ "${_a}" -le "$(_sql_backup_limit)" ]
+}
 
 # Weekly system-upgrade wrapper, invoked by the weekly auto-update cron as
 #   autoupboa weekly-system up-<tier> system [php-*] noscreen
@@ -90,7 +129,15 @@ if [ "$1" = "weekly-system" ]; then
   ### delayed rather than lost; if still busy after the bounded wait, skip
   ### -- the next weekly run retries
   _wCnt=0
-  while _weekly_install_in_flight; do
+  while _weekly_install_in_flight || _sql_backup_live; do
+    # A live nightly backup holds the weekly without using up its wait:
+    # the pass restarts the database, and a dump under a restart is lost.
+    # The hold ends with the backup, or with the reaper once it hangs.
+    if ! _weekly_install_in_flight; then
+      echo "INFO: nightly database backup in flight -- weekly-system waiting"
+      sleep 60
+      continue
+    fi
     _wCnt=$(( _wCnt + 1 ))
     if (( _wCnt > 90 )); then
       echo "INFO: install or pass still in flight after 90 min -- weekly-system skipped"
@@ -102,6 +149,31 @@ if [ "$1" = "weekly-system" ]; then
   _run_weekly_system_upgrade "$@"
   exit 0
 fi
+
+#
+# A tool switched off by making its file immutable (the attribute kept every
+# update out, so the box ran a stale copy or nothing): the switch moves into
+# /root/.barracuda.cnf and the attribute goes, so the file is updated like
+# every other tool while its variable keeps it from running. Each tool reads
+# its own variable; the comment line is the record BOA keeps of a conversion.
+_immutable_tool_to_switch() {
+  local _f="$1" _var="$2" _attr=""
+  [ -e "${_f}" ] || return 0
+  _attr=$(lsattr -d "${_f}" 2>/dev/null | awk '{print $1}')
+  [[ "${_attr}" =~ [ia] ]] || return 0
+  [ -n "$(tail -c1 "${_barCnf}" 2>/dev/null)" ] && echo >> "${_barCnf}"
+  if grep -qE "^[[:space:]]*(export[[:space:]]+)?${_var}=" "${_barCnf}" 2>/dev/null; then
+    sed -i -E "s/^([[:space:]]*(export[[:space:]]+)?${_var}=).*/\1YES/" "${_barCnf}"
+  else
+    echo "${_var}=YES" >> "${_barCnf}"
+  fi
+  grep -q "^### ${_var} converted" "${_barCnf}" 2>/dev/null \
+    || echo "### ${_var} converted from the immutable attribute on ${_f}" >> "${_barCnf}"
+  chattr -i -a "${_f}" 2>/dev/null
+  echo "${_f} was immutable: ${_var}=YES written to ${_barCnf}, the attribute lifted"
+}
+_immutable_tool_to_switch /var/xdrago/usage.sh _DISABLE_USAGE_ACCOUNTING
+_immutable_tool_to_switch /opt/local/bin/copydbackup _DISABLE_COPYDBACKUP
 
 #
 # Fix for Sequel (Pro/Ace/Ace fork) support
@@ -990,6 +1062,90 @@ _is_protected_run() {
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+  if _sql_backup_live; then
+    echo "The nightly database backup is running!"
+    _protectedRun=TRUE
+  fi
+}
+
+# A backup ended by the reaper is said where the backup's own notices go,
+# and mailed: a run killed in silence left incomplete sets nobody heard of.
+_sql_backup_reaped_notice() {
+  local _hrs="$1" _hostN="" _mailTo="" _sub="" _body=""
+  _hostN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  _sub="Backup KILLED on [${_hostN}]: the nightly run was still going after ${_hrs} h"
+  _body="$(date) ${_sub}: mysql_backup.sh and mydumper were ended by autoupboa. The dumps already written tonight stay in /data/disk/arch/sql; the databases after them are missing until the next run. For a complete set now, run: bash /var/xdrago/mysql_backup.sh"
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  echo "${_body}" >> /var/log/boa/mysql.backup.incident.log
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    _mailTo="$(basename "$0")@omega8.cc"
+  else
+    _mailTo="${_MY_EMAIL}"
+  fi
+  if [ ! -z "${_mailTo}" ] && [ -x "$(command -v s-nail)" ]; then
+    echo "${_body}" \
+      | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_sub}" "${_mailTo}" &> /dev/null
+  fi
+}
+
+# Stuck runs of the SQL helpers, judged by the age of the executor, never
+# by a count of command lines: the cron launcher's shell and the script's
+# own subshells all carry the script's name (see _SQL_BACKUP_EXEC). The
+# kill is what it was; what changed is when it fires, and that it is said.
+_reap_stuck_sql_helpers() {
+  local _age="" _lim="" _cnt=0
+  _lim=$(_sql_backup_limit)
+
+  # move_sql.sh runs from the watchdog and the backup, never from cron:
+  # three executors of it is a pile-up, as before
+  _cnt=$(pgrep -fc '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)')
+  if (( _cnt > 2 )); then
+    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)'
+    rm -f /run/mysql_restart_running.pid
+    rm -f /run/boa_wait.pid
+    rm -f /var/log/boa/.move_sql_ctrl*
+    touch /var/log/boa/.move_sql_ctrl.${_tRee}.${_xSrl}.pid
+  fi
+
+  # mysql_cleanup.sh runs hourly from cron, under the same launcher shell
+  _age=$(_exec_age "${_SQL_CLEANUP_EXEC}")
+  if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
+    pkill -9 -f "${_SQL_CLEANUP_EXEC}"
+    rm -f /run/mysql_backup_running.pid
+    rm -f /var/log/boa/.sqlcleanup_ctrl*
+    touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
+  fi
+
+  _cnt=$(pgrep -fc "solr start")
+  if (( _cnt > 2 )); then
+    pkill -9 -f 'solr start'
+    touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
+  fi
+
+  _cnt=$(pgrep -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
+  if (( _cnt > 1 )); then
+    pkill -9 -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
+    touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
+  fi
+
+  rm -f /run/fmp_wait.pid
+
+  _age=$(_exec_age "${_SQL_BACKUP_EXEC}")
+  if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
+    pkill -9 -f "${_SQL_BACKUP_EXEC}"
+    pkill -9 -f '^[^ ]*mydumper( |$)'
+    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
+    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
+    rm -f /run/boa_sql_backup.pid
+    rm -f /run/mysql_backup_running.pid
+    rm -f /run/boa_wait.pid
+    rm -f /run/daily-fix.pid
+    rm -f /var/log/boa/.sqlbackup_ctrl*
+    touch /var/log/boa/.sqlbackup_ctrl.${_tRee}.${_xSrl}.pid
+    _sql_backup_reaped_notice "$(( _age / 3600 ))"
+  fi
 }
 
 # At most one completion attempt per hour, whatever the manufacturer reads
@@ -1649,14 +1805,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588855v02.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588866v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588855v02.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588866v01.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588855v02.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588866v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1664,7 +1820,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588855v02.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588866v01.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
@@ -1755,65 +1911,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     touch /var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _IS_MOVESQL_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/move_sql\.sh( |$)')
-  if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/move_sql\.sh( |$)')
-    if (( _CNT > 2 )); then
-      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/move_sql\.sh( |$)'
-      rm -f /run/mysql_restart_running.pid
-      rm -f /run/boa_wait.pid
-      rm -f /var/log/boa/.move_sql_ctrl*
-      touch /var/log/boa/.move_sql_ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-
-  _IS_SQLCLEANUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cleanup\.sh( |$)')
-  if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cleanup\.sh( |$)')
-    if (( _CNT > 2 )); then
-      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cleanup\.sh( |$)'
-      rm -f /run/mysql_backup_running.pid
-      rm -f /var/log/boa/.sqlcleanup_ctrl*
-      touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-
-  _IS_SOLRSTART_RUNNING=$(pgrep -f 'solr start')
-  if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "solr start")
-    if (( _CNT > 2 )); then
-      pkill -9 -f 'solr start'
-      touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-
-  _IS_PROCTRL_RUNNING=$(pgrep -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
-  if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
-    if (( _CNT > 1 )); then
-      pkill -9 -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
-      touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-
-  rm -f /run/fmp_wait.pid
-
-  _IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
-  if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
-    if (( _CNT > 2 )); then
-      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)'
-      pkill -9 -f '^[^ ]*mydumper( |$)'
-      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/usage\.sh( |$)'
-      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
-      rm -f /run/boa_sql_backup.pid
-      rm -f /run/mysql_backup_running.pid
-      rm -f /run/boa_wait.pid
-      rm -f /run/daily-fix.pid
-      rm -f /var/log/boa/.sqlbackup_ctrl*
-      touch /var/log/boa/.sqlbackup_ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
+  _reap_stuck_sql_helpers
 fi
 
 exit 0

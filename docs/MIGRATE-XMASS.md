@@ -341,8 +341,9 @@ says so.
 A tool whose copy cannot be replaced gets an `ALRT` naming the file instead, and
 the migration runs on the copy it has. That is an immutable or append-only
 file, read from the file itself, so the tool executing the command is named
-too; or one whose last move was refused, as `/var/log/boa/mirror.incident.log`
-records.
+too; or one whose last move was refused. The refusing pass's line in
+`/var/log/boa/mirror.incident.log` counts each refusal and names its last
+failure only.
 
 In source mode `pre-mig` publishes root's public key on the box's undefined
 vhost and prints the key's fingerprint with the exact command to run on the
@@ -2007,6 +2008,13 @@ already travel over ssh.
 
 `_XMASS_PLAIN_REPLICATION=YES` runs the stream in the clear deliberately and loudly --
 for a source that cannot serve TLS; never the default.
+
+Only `init` creates the `REQUIRE SSL` replication user and configures the replica with
+`SOURCE_SSL=1` (`_xmass_create_repl_user`, `_xmass_setup_slave`, both called from the
+init path alone); no `sync` or `autosync` pass changes a replica that already runs. A
+standing pair whose replica was set up before `init` required TLS therefore keeps
+replicating in the clear after both boxes are upgraded, and `xmass status` shows its
+transport as `PLAIN`. Run `init` toward the mirror again to rebuild the pair over TLS.
 
 ## MySQL Credentials
 
