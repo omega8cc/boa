@@ -10064,7 +10064,7 @@ _xmass_prepare_target_reach() {
 
 _xmass_boa_release() {
   ### The release number and the release digits of the tree serial out of
-  ### `boa info`'s stamp, e.g. BOA-5.88.855-lts-588855ltsT01 -> "5.88.855
+  ### `boa info`'s stamp, e.g. BOA-5.88.866-lts-588855ltsT01 -> "5.88.855
   ### 588855". The label and the serial come from two sources and can
   ### disagree. Empty when the stamp cannot be read, which the caller treats
   ### as fatal rather than as "probably fine".
