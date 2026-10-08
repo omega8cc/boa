@@ -1744,6 +1744,15 @@ _SQL_MAX_TTL=3600
 ###
 _SQL_LOW_MAX_TTL=60
 
+###
+### Hours a nightly database backup may run before autoupboa counts it as
+### hanging, ends it, and reports the kill in
+### /var/log/boa/mysql.backup.incident.log and by mail. The self-update,
+### the weekly system pass and the staged reboot hold for a backup younger
+### than this.
+###
+_SQL_BACKUP_MAX_HOURS=12
+
 
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
