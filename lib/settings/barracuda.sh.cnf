@@ -1782,8 +1782,8 @@ _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
-export _tRee=dev
-export _xSrl=588866devT01
+export _tRee=lts
+export _xSrl=588866ltsT01
 
 
 ###
