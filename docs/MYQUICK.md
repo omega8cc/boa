@@ -113,5 +113,5 @@ With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses 
 
 BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself, or, with `_DB_BINARY_LOG=YES`, while a replica reads the binary log and the server reads 0 (see above). Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-pro/docs).
 
