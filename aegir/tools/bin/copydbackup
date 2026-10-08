@@ -34,6 +34,15 @@ _check_root() {
 }
 _check_root
 
+# Switched off for good on this box: no copies of the nightly dumps into the
+# accounts' trees, while the file stays updated like every other tool (no
+# immutable attribute needed; one found on the file is turned into this
+# switch by autoupboa).
+if grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_COPYDBACKUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+  echo "copydbackup is switched off by _DISABLE_COPYDBACKUP=YES in /root/.barracuda.cnf"
+  exit 0
+fi
+
 # Log file shared with the remote_backups config validators -- the nightly
 # caller discards both stdout and stderr, so refusals must land somewhere
 # durable. Callers pass an already bounded, printable message: this log is

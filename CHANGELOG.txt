@@ -999,6 +999,14 @@
 
 @=> New Features
 
+    * The nightly usage accounting pass and copydbackup can be switched off
+      for good on a box: _DISABLE_USAGE_ACCOUNTING=YES and
+      _DISABLE_COPYDBACKUP=YES in /root/.barracuda.cnf. Each tool reads its
+      own switch and exits, so the files stay updated like every other tool.
+      A box where either file had been made immutable to stop it is
+      converted by autoupboa: the switch is written, the attribute lifted,
+      and the next tools pass brings the file current.
+
     * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list 8.6
       in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
       _PHP_SINGLE_INSTALL, or run barracuda with php-8.6 or php-max, and
