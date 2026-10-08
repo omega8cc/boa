@@ -2,55 +2,71 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-Here is what this one means for you and your sites.
+This is the Griffin release, the largest BOA has ever shipped, and a surprising amount of it shows up right where you work: in your control panel and in what your visitors feel. One thing you will notice first: this upgrade queues a single automatic Verify for each of your Drupal and Backdrop sites so they pick up the new server settings, and as tasks now run one after another, your own tasks wait their turn behind them. Here is the tour.
 
 ----------------------------------------
-RESTORE YOUR OFF-SITE BACKUPS ON YOUR OWN COMPUTER
+TWO MORE SYSTEMS, ONE CONTROL PANEL
 ----------------------------------------
 
-boa-restore, a small free tool, opens the encrypted off-site backups written for your sites on your own Mac, Linux machine or Windows PC (via WSL), with no server involved at all. It lists what is there, restores a single file or a whole site to a chosen moment, never overwrites anything, and physically cannot write to the backup storage. The guide walks you through a fire drill that turns "we have backups" into "we have tested restores": https://docs.boa.io/using/backups/disaster-proof-restore
-
-One related note: if your off-site backups go to Google Cloud Storage or IBM Cloud Object Storage, both destinations work again and now use a different kind of access key. Rewrite the credentials file in your account with the variable names its README lists, or ask your server administrator; until then, a run to that destination stops with a clear message instead of failing silently.
+Grav 2 and Textpattern now live in the same Ægir control panel as your Drupal and Backdrop sites, with the tasks you already know: install, verify, backup, restore, clone and upgrade. Grav is a fast flat-file system that needs no database at all, so a Grav site is as light as a website gets; Textpattern is a long-loved publishing system with a loyal following. Both can be upgraded on a copy first, so you test the new version beside the live one and switch it over only when you are happy. Where your server administrator has them switched on, their platforms are built along with the others your account's list of platforms asks for: ALL includes them, and a list of your own needs GRV and TXP added. You do not have to wait for the next scheduled upgrade: the README.txt in your account's static/control folder shows how an empty run-upgrade.pid beside platforms.info starts your instance upgrade within a few minutes.
 
 ----------------------------------------
-MIGRATIONS BECOME A TASK, NOT A PROJECT
+A SITE IN A FOLDER OF YOUR DOMAIN
 ----------------------------------------
 
-A new Migration source task appears on your Drupal 8+ sites: pick another of your own sites, and its database is instantly readable by Drupal's migration tools as the standard 'migrate' connection -- no credentials to collect, no connection strings to assemble. The access is read-only, covers exactly that one database, and lasts until you set it back to None; deleting either site removes it, and a clone never inherits it.
+A Drupal or Backdrop site can now live under a path of one of your domains, such as example.com/blog, and it gets everything a site of its own gets: its own files and images, its own cron and database updates, even its own PHP version. Add it in the panel with the address including the path; the main domain may be a site or not, and several such sites can share one domain. The panel refuses an address that could not work and prepares the main domain for its new neighbour by itself.
 
 ----------------------------------------
-A QUEUE THAT HEALS ITSELF
+TOMORROW'S PHP TODAY, AND PHP PER PLATFORM
 ----------------------------------------
 
-A task whose runner was killed mid-flight -- a restart, an interrupted upgrade -- used to sit at Processing forever and block everything queued behind it. Such tasks are now detected and marked Failed with an honest log entry within minutes, your running counts stay true, and nothing is ever re-run behind your back: a failed migrate or clone is yours to re-fire when you choose. Tasks still running when your instance is upgraded are finished first instead of being cut off by the upgrade itself.
+PHP 8.6 is still a release candidate, but where your server has it installed you can already point a copy of a site at it and see how your code will behave on the next PHP long before it becomes the norm; keep it to copies for now, since until its final release it runs without the Valkey cache and a few extensions such as Imagick. Each platform in your account can now run its command-line tools and panel tasks on its own PHP version, so an older and a newer codebase live happily side by side. And a task that would run a site's code on a PHP version it cannot handle now stops before it starts and tells you exactly why and what to change, instead of failing half way.
 
 ----------------------------------------
-YOUR BACKUPS KNOW WHAT THEY ARE
+COPIES AND RESTORES THAT CHECK THE ROOM FIRST
 ----------------------------------------
 
-Every backup is now recorded with the kind of archive it really is -- complete, database-only or files-only -- including the automatic safety copy taken before every Restore, ready for your Backups list to show and sort on. And the safety copy can no longer be quietly downgraded by another backup task running at the same moment: what the task asked for is what gets saved.
+Before a Clone, Migrate or Restore takes its safety copy, it measures everything it is about to copy and checks that the disk has room for all of it with a margin to spare. If it does not, the task stops right away with the numbers in its log and nothing is written. A copy that fails half way tidies up after itself and leaves the original site as it was, the automatic backup taken before a clone carries the site's database, and database triggers, stored procedures and scheduled events now travel with a site through every backup, copy and move. If one of your sites uses them, take a fresh backup now: archives made before this upgrade may lack them.
 
 ----------------------------------------
-CERTIFICATES BEHAVE, EVEN UNDER PRESSURE
+YOUR SITES STAY UP WHILE THE SERVER WORKS
 ----------------------------------------
 
-When several certificate tasks run at once, a Verify that could not get its certificate now says so and asks for one more Verify, instead of reporting success and leaving the site's HTTPS broken. A certificate is wired in only when every file it needs is really there, and a custom certificate you installed yourself now survives the nightly renewal untouched.
+Maintenance moments that used to cost your visitors a burst of errors no longer do: switching the server to a single PHP version, adding a PHP version, changing how your account assigns PHP to its sites, the routine password change of the cache service during an upgrade, all of them now keep your sites online. Drush keeps working on the PHP version chosen for you while an upgrade swaps in its fresh copy, and from the next upgrade on your panel is free for your own work sooner, because it no longer re-checks platforms that hold no sites.
 
 ----------------------------------------
-A DELETED SITE LEAVES NO GHOST BEHIND
+DRUPAL 10 AND 11, SMOOTHER DAY TO DAY
 ----------------------------------------
 
-Deleting a site and creating a new one under the same name used to occasionally serve leftovers of the old site from the shared cache. The old site's cache namespace is now purged at Delete and again before the new site installs, on Drupal and Backdrop alike, so a recreated site always starts clean.
+Every Clone, Migrate and Restore of a Drupal or Backdrop site now applies its database updates, Drupal 10 and 11 included, and the old option to skip them is retired; the Run db updates task either completes with the site's own Drush or puts the site back as it was. Sites that use modern logging modules such as Monolog, and Drupal 11 sites with Webform, now verify, back up, clone and migrate without trouble. Your sites keep their hash salt through every Verify, Backup, Restore and Migrate, so login links and open forms keep working after maintenance, a new Drupal 11 site installs in the language you choose, and Composer can update Drupal core in your own codebases without tripping over the scaffold files.
 
 ----------------------------------------
-FRESHER FOUNDATIONS FOR YOUR NEXT PROJECT
+ONE CHANGE OF POLICY WORTH KNOWING
 ----------------------------------------
 
-Four distributions return to the platform catalogue rebuilt on current cores: Varbase 10.1.2, OpenFed 13.6.6, Opigno LMS 3.2.7 and Open Social 13.0.2. The Drupal CMS platform now carries everything needed to act as a Drupal 7 upgrade target out of the box. And sites still running on the oldest supported PHP keep their database connection everywhere, including on servers running the newest database version -- nothing to change on your side. If you pin which platforms get built in your account's platforms.info file, note that these four distributions moved to new core groups, so check the symbols there still say what you mean.
+The ready-made Drupal 8 and newer platforms BOA provides, every distribution and the plain Drupal 9, 10 and 11 cores, are now meant for demonstration and compatibility testing, with security updates on a best-effort basis. Production sites belong on a platform you build in your own account: if one of yours still runs on a ready-made platform, plan its move, and the guide at https://docs.boa.io/using/deploying-code/building-a-platform shows how.
 
-Two housekeeping notes. If you turn Solr search off for a site by clearing its search setting in the site's control file, that now really does remove the site's search index rather than leaving it in place -- the index is archived on the server first, and a control file the system itself rewrites never triggers a removal. And nightly cleanups now defer while one of your tasks is running, logging that they deferred; the work simply runs on the next pass.
+----------------------------------------
+DRUSH ON DRUPAL 8 AND NEWER: USE VDRUSH
+----------------------------------------
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-855
+On your Drupal 8 and newer sites, run Drush commands with vdrush, the site's own Drush. The older Drush 8 still answers uli, status, sql-dump and a few other read-only commands there; anything else now points you to vdrush instead of running a tool that does not fit the site.
+
+Shell logins made for a single client now look after that client's files and themes only, while Drush, Composer and the database tools stay with your main login and the control panel. For a client's developer who needs those tools, your server administrator can now set up a platform developer login, with Drush and Composer on the platforms that hold only that client's sites.
+
+----------------------------------------
+A CONTROL PANEL THAT TAKES TURNS
+----------------------------------------
+
+Tasks in your panel now run one after another, so two tasks can never trip over the same site, and duplicate waiting tasks are folded into one. Every task shows which login started it, and a new site operator role lets a colleague run everyday site work without being able to back up, restore, delete or reset passwords. The one-time administrator login link of a new or reset site now appears on the site's own page, next to the house icon, for 24 hours, and big backup downloads from your panel now finish in the browser, however large.
+
+----------------------------------------
+FASTER, STEADIER PAGES FOR YOUR VISITORS
+----------------------------------------
+
+HTTP/3 connections now ride through the routine reloads every BOA server makes, so big uploads and downloads complete, and HTTP/3 moves large files as fast as HTTP/2. Audio and video play through to the end for listeners whose players read far ahead, AVIF images reach browsers as images and are cached like WebP, and when a crowd lands on a brand-new page at once, your visitors wait a moment for its first copy instead of all hitting PHP together: in our test, two page builds instead of seventy-one. A new shield turns away crawler networks that spread one scraper over hundreds of addresses, while real visitors pass as before.
+
+Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-866
 
 ----------------------------------------
 YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL
