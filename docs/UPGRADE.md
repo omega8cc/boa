@@ -129,7 +129,7 @@ octopus up-lts all platforms
 
 ## NOTE on Percona SQL Server versions management
 
-**Drupal 11 needs MySQL 8**, which on BOA means Percona 8.4 -- so a server that will host Drupal 11 has to leave the default Percona 5.7. BOA upgrades Percona **in place**, on the same server: no account, site or database moves, and no migration is involved. The upgrade is two runs, never a direct jump, on Devuan Daedalus only, after a whole-server snapshot and a `codebasecheck --box --deep` run that says READY (or REVIEW, with every finding checked) (see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md) and [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CODEBASECHECK.md)).
+**Drupal 11 needs MySQL 8**, which on BOA means Percona 8.4 -- so a server that will host Drupal 11 has to leave the default Percona 5.7. BOA upgrades Percona **in place**, on the same server: no account, site or database moves, and no migration is involved. The upgrade is two runs, never a direct jump, on Devuan Daedalus only, after a whole-server snapshot and a `codebasecheck --box --deep` run that says READY (or REVIEW, with every finding checked) (see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/UPGRADE-PERCONA8.md) and [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CODEBASECHECK.md)).
 
 You can upgrade Percona from default 5.7 to 8.0, or once you run 8.0 to 8.4 LTS during `barracuda` upgrade with commands like:
 
@@ -162,6 +162,20 @@ place.holder3.dont.remove 5.6
 ```
 
 The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
+
+## NOTE on the Verify tasks an Octopus upgrade queues
+
+The shared nginx include takes a site's database credentials through variables the site
+vhost sets after the include line. A vhost rendered before those variables existed passes
+empty credentials to the locations that declare their own `fastcgi_param` set (`cron`,
+`update.php`, `authorize.php`, ESI), and only the site's own Verify re-renders it, so an
+Octopus upgrade queues one Verify for every Drupal and Backdrop site whose vhost predates
+the variables (`_satellite_queue_dbvars_site_verifies` in `lib/functions/satellite.sh.inc`).
+
+The sweep is self-limiting: a re-rendered vhost is never queued again, Grav, Textpattern
+and the control panel itself are skipped, the Verifies run one at a time under the runner
+lock, and the pass log says how many were queued. Let them finish before judging other
+task results.
 
 ## NOTE on Ægir Platforms
 

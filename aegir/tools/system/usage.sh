@@ -12,6 +12,13 @@ grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.ba
 # /var/log/boa/usage tree, sweeps account trees, and issues hostmaster drush
 # writes. Until now this was gated only in the caller (mysql_backup.sh).
 [ -e "/root/.standby.cnf" ] && exit 0
+# Switched off for good on this box: the pass never runs, while the file
+# stays updated like every other tool (no immutable attribute needed; one
+# found on the file is turned into this switch by autoupboa).
+if grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_USAGE_ACCOUNTING=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+  [ "${1}" = "verbose" ] && echo "usage.sh is switched off by _DISABLE_USAGE_ACCOUNTING=YES in /root/.barracuda.cnf"
+  exit 0
+fi
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

@@ -73,7 +73,7 @@ split system does not have -- the PHP packages' `phpize` and `php-config`
 call `/usr/bin/sed`, so every extension build failed there.
 
 Barracuda converts such a Devuan Daedalus system to merged `/usr` early in its system
-pass (see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md));
+pass (see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MAJORUPGRADE.md));
 until it is converted, every component builds from sources, with a
 `NOTE: Split /usr on this system` line.
 

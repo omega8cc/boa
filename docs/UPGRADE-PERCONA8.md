@@ -71,17 +71,29 @@ touched. A standing
 - **Sets up a clean stop** (`innodb_fast_shutdown = 0`), so the old server's
   stop in the package swap is a full, clean shutdown.
 - **Checks the old tables first.** On the 5.7 → 8.0 run, `mysql_upgrade --force`
-  runs against the still-running 5.7 server before anything is swapped.
+  runs against the still-running 5.7 server before anything is swapped. Every
+  such walk over the tables (this one, the `mysqlcheck` after the swap) is
+  announced with the table and database counts and reports once a minute
+  which database it is on; the server keeps serving while it runs.
 - **Stops the watchdog from interfering.** The MySQL watchdog stands down for
   the whole package window (see below), so it does not start a competing
   `mysqld` while the new server is coming up.
+- **Writes the new series' directives first.** Before the package swap,
+  `my.cnf` gets the logging, authentication and InnoDB directives the new
+  series accepts, so the very first start of the new server reads a config it
+  understands and reports to `/var/log/mysql/error.log` from its first line.
 - **Swaps the packages.** The install stops the old server and starts the new
-  one. The first 8.0 start also upgrades the data dictionary, which the code
-  notes can take minutes on a large datadir.
+  one. The first 8.0 start also converts the data dictionary, which takes
+  minutes to hours on a large datadir (see the next section).
 - **Fails closed.** If the server package is not installed at the series this
   run is going for after the package phase, the run stops with a FATAL before
   any `my.cnf` tuning for the new series and before it waits for a server that
-  cannot start.
+  cannot start; the installed series' directives go back into `my.cnf`.
+- **Waits for the new server, reporting.** While the server runs without a
+  socket, the run prints a status line every minute. A server that ran and
+  exited is started again, up to three times; a server that writes nothing
+  for thirty minutes, or a flapping one, ends the run with a FATAL and the
+  last lines of the error log.
 - **Writes what the new series needs** into `my.cnf` (the authentication lane
   below among it), restarts the server, and runs `mysqlcheck --auto-repair`
   over every database.
@@ -92,6 +104,39 @@ that needs the database fails while `mysqld` is down, from the slow shutdown to
 the first start of the new server, and briefly again at the restarts after it.
 BOA puts up no maintenance page for this, and a 5.7 → 8.4 upgrade is two such
 windows, one per run. Plan them.
+
+## The first 8.0 start is long on a large datadir
+
+The first 8.0 start converts every table's definition from the 5.7 `.frm`
+files into the 8.0 data dictionary, a single-threaded pass over the whole
+datadir. On a box with tens of thousands of tables it takes from several
+minutes to a few hours, longer on slow storage. Until it is done the server
+accepts no connection and writes no pid file, so `boa info` shows `mysql is
+starting` and the run prints a line like this every minute:
+
+```
+WAIT: Data dictionary upgrade, stage 4 of 6, migrating the tables (the long
+part): 74783 tables, dictionary 641 MB (+23 MB), 25 min so far.
+WAIT: Do not stop or kill mysqld: the upgrade would start over.
+```
+
+The stages come from the server's own stage file in the datadir
+(`mysql_dd_upgrade_info`): 1 started, 2 InnoDB converted, 3 dictionary tables
+created, 4 tables being migrated, 5 tables migrated, 6 finishing. The
+growing dictionary size proves the server is working; a server that writes
+nothing for thirty minutes is reported as stalled and the run stops.
+
+**Never stop or kill the server during this.** A killed conversion leaves a
+half-done dictionary. The next 8.0 start finds it, logs `Found partially
+upgraded DD`, removes the half-done dictionary, the new undo and redo files
+and the metadata it had written, and **exits**: this cleanup is itself
+minutes long and must not be interrupted either. The start after that redoes
+the whole conversion from the beginning. The run does both starts by itself;
+done by hand, each start is `service mysql start` and then waiting for the
+error log's `Shutdown complete` or for the socket.
+
+The MySQL watchdog never restarts a server that is converting the datadir,
+whatever the maintenance marker says.
 
 ## Sites on the PHP 5.6 pool keep working on 8.0 and 8.4
 

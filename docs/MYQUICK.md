@@ -16,13 +16,13 @@ This file, while present, enables a super fast per-table and parallel database d
 
 A Clone is not affected: its safety copy always carries a classic dump, and the new site's database is loaded from it. A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
 
-We need to emphasize this again: with this control file present, all normally slow tasks will become blazing fast, but at the cost of not keeping an archived complete database dump file in the site directory archive where it would otherwise be included.
+We need to emphasize this again: with this control file present, the normally slow Migrate and Delete tasks become blazing fast, at the cost of not keeping a complete database dump file inside the safety copies those two tasks make for themselves.
 
 ## Important Considerations
 
-Of course, the system still maintains nightly backups of all your sites using the new split SQL dump archives. However, with this control file present, the restore task cannot use those split archives, because they do not include a single database dump. You can still find that SQL dump split into per-table files in the backups directory, though, in a subdirectory with a timestamp added, so you can still access it manually if needed.
+The system still maintains nightly backups of all your sites as split SQL dump archives. The Restore task does not read those, so to wind a database back to a nightly's moment, load the per-table files from the timestamped subdirectory in the backups directory with `myloader` by hand.
 
-If you need a Restore-capable archive without opting out of super-fast dumps for the whole account, run the site Backup task and choose the **Site files with classic mysqldump DB** option under Backup Mode. That one archive bypasses `MyQuick.info` and produces a conventional single-file mysqldump that the Restore task can use, while `MyQuick.info` continues to provide fast dumps for all other Ægir tasks. A Backup task queued without a mode gets this one by default. Each mode restores exactly what it contains, and this is the only one that carries the database.
+Every Backup task you run from the panel is Restore-capable whatever `MyQuick.info` says: the Backups form opens on **Site files with classic mysqldump DB**, a task queued without a mode gets that one, and the Restore and Clone safety copies are forced to it; only the Migrate and Delete safety copies are dump-less. Each mode restores exactly what it contains, and the classic mysqldump mode is the only one that carries the database.
 
 ## mydumper and myloader Compatibility
 
@@ -95,7 +95,7 @@ When the read of the new user's host fails, or gives a host a definer cannot nam
 
 A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
 
-The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Migrate or a Restore on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
+The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Restore's safety copy (on every account), of a Migrate on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
 
 An object made while its database had another default collation comes wrapped in `ALTER DATABASE` lines that name the dumped database; Ægir's classic dump drops that name, so the lines apply to the database being loaded.
 
@@ -103,7 +103,7 @@ A classic load also reads every dump it is given for those lines, and for a trig
 
 The copy is written only when its filesystem keeps, after it, the headroom the space check keeps for a copying task; otherwise the load stops and the task log says why (`/data/conf/disable_space_preflight.cnf` turns that check off, as it does the space check). A copy a killed load left there goes at the instance's next classic load.
 
-`mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
+`mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without that kind of object: all of the database's routines, or all of its events. The task log carries a warning, and the nightly names the database in its backup notice.
 
 A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log while the box reads 0 when the run looks. The run then says so: set it to 1 on the replica, then on the box with `SET GLOBAL`, and the next run keeps it.
 
@@ -113,5 +113,5 @@ With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses 
 
 BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself, or, with `_DB_BINARY_LOG=YES`, while a replica reads the binary log and the server reads 0 (see above). Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-pro/docs).
 

@@ -1744,6 +1744,30 @@ _SQL_MAX_TTL=3600
 ###
 _SQL_LOW_MAX_TTL=60
 
+###
+### Hours a nightly database backup may run before autoupboa counts it as
+### hanging, ends it, and reports the kill in
+### /var/log/boa/mysql.backup.incident.log and by mail. The self-update,
+### the weekly system pass and the staged reboot hold for a backup younger
+### than this.
+###
+_SQL_BACKUP_MAX_HOURS=12
+
+###
+### Switches the nightly usage accounting pass (usage.sh) off for good on
+### this box; the tool itself stays updated. Written automatically, with the
+### attribute lifted, where the tool's file was made immutable to stop it.
+###
+_DISABLE_USAGE_ACCOUNTING=NO
+
+###
+### Switches copydbackup off for good on this box: no copies of the nightly
+### database dumps into the accounts' trees; the tool itself stays updated.
+### Written automatically, with the attribute lifted, where the tool's file
+### was made immutable to stop it.
+###
+_DISABLE_COPYDBACKUP=NO
+
 
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
@@ -1759,7 +1783,7 @@ _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
 export _tRee=pro
-export _xSrl=588855proT01
+export _xSrl=588866proT01
 
 
 ###

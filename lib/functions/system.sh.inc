@@ -8381,9 +8381,9 @@ _finale() {
     fi
   fi
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-    _MTD_VR="BOA-5.88.855-omm"
+    _MTD_VR="BOA-5.88.866-omm"
   elif [ -e "/root/.host8.cnf" ]; then
-    _MTD_VR="BOA-5.88.855-aln"
+    _MTD_VR="BOA-5.88.866-aln"
   else
     _MTD_VR="${_X_VERSION}"
   fi
@@ -8587,6 +8587,14 @@ _run_aptitude_deps_install() {
   # must guarantee this dependency.
   if ! _pkg_installed "libfcgi-bin"; then
     _mrun "${_INSTAPP} libfcgi-bin"
+  fi
+  # e2fsprogs carries chattr and lsattr, which BOA uses throughout (the
+  # resolv.conf pin, control and secret files, xmass pre-mig's pin check).
+  # Devuan installs it by default but does not protect it from removal
+  # (required, not essential), and FAST upgrades skip the package section
+  # below, so ensure it on every run.
+  if ! _pkg_installed "e2fsprogs"; then
+    _mrun "${_INSTAPP} e2fsprogs"
   fi
   # rsyslog is the only supported syslogd; the retired legacy selection arms
   # could leave a box with no syslog daemon at all, and FAST upgrades skip
