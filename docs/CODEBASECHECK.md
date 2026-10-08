@@ -9,7 +9,7 @@ MySQL 8 blocks the upgrade for every site on the box until it is made compatible
 `codebasecheck` answers, before you run the upgrade, *which codebases — if any — block it*,
 so you can bring those up to their MySQL-8 floor first. The upgrade itself is done in place
 with `barracuda` and needs no migration — see
-[docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
+[docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/UPGRADE-PERCONA8.md).
 
 ## What counts as compatible
 
@@ -124,4 +124,4 @@ tree and every database, so it takes longer.
    module) on a test clone.
 5. When **READY**, or **REVIEW** with every finding checked: run the in-place upgrade `barracuda up-lts system percona-8.0` then
    `barracuda up-lts system percona-8.4` (`up-pro`/`up-dev` on those trees)
-   ([docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md)).
+   ([docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/UPGRADE-PERCONA8.md)).

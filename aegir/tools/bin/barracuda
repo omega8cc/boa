@@ -434,11 +434,18 @@ _check_sql_running() {
   # diagnostics in _check_sql_access -- never hang here forever holding the
   # run lock, which starved that fail-fast one call behind this gate and
   # made a died Percona upgrade leg unrecoverable without manual surgery.
-  # Consecutive-dead samples bound the config-death case (a live process
-  # with no socket yet is a recovery/DD upgrade in progress and resets the
-  # counter); the total ceiling bounds a flapping mysqld. ONE start attempt
-  # via the blessed move_sql.sh path (a bare service start is a no-op on a
-  # stale pidfile), skipped while a fresh SQL-maintenance marker is held.
+  # Consecutive-dead samples bound the config-death case; a live process
+  # with no socket yet is a recovery or a data dictionary upgrade in
+  # progress (minutes to hours on a big datadir), resets that counter and
+  # gets a status line a minute, so nobody kills a working server as hung.
+  # A stall ceiling bounds a live server that writes nothing for half an
+  # hour; the total ceiling bounds a flapping one (an hour, twelve while a
+  # conversion is on). Up to three start attempts via the blessed
+  # move_sql.sh path (a bare service start is a no-op on a stale pidfile),
+  # further ones only after a server was seen running and exited -- the 8.x
+  # server that finds a half-done conversion cleans it up and exits by
+  # design, and must be started again to redo it -- skipped while a fresh
+  # SQL-maintenance marker is held.
   # When a series UPGRADE is pending (installed server older than the
   # configured _DB_SERIES) AND the outage matches the half-flip signature,
   # a dead mysqld is EXPECTED: proceed loudly so the SQL phase can
@@ -456,7 +463,16 @@ _check_sql_running() {
   fi
   local _dead=0
   local _tot=0
-  local _started=NO
+  local _cap=720
+  local _alive=0
+  local _ran=NO
+  local _starts=0
+  local _idle=0
+  local _ddprev=0
+  local _ddnow=0
+  local _stg=""
+  local _tbl=""
+  local _lc0=0
   while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
@@ -464,24 +480,85 @@ _check_sql_running() {
     fi
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
       _dead=0
+      _ran=YES
+      _alive=$(( _alive + 1 ))
+      _ddnow=$(stat -c %s /var/lib/mysql/mysql.ibd 2>/dev/null)
+      _ddnow="${_ddnow:-0}"
+      if [ "${_alive}" -eq 1 ]; then
+        _ddprev="${_ddnow}"
+        echo "INFO: database down: MySQLD is running but not serving yet; a status line follows every minute."
+      elif [ $(( _alive % 12 )) -eq 0 ]; then
+        _stg=$(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9')
+        if [ -n "${_stg}" ]; then
+          _tbl=$(find /var/lib/mysql -maxdepth 2 -name '*.frm' 2>/dev/null | wc -l)
+          if [ "${_stg}" = "5" ]; then
+            # the dictionary stops growing here: the metadata goes into
+            # every InnoDB tablespace, each written once, newer than the
+            # stage file
+            echo "WAIT: database down: Data dictionary upgrade, stage 5 of 6: ${_tbl} tables, tablespaces written $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | wc -l) of $(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2>/dev/null | wc -l), $(( _alive / 12 )) min so far."
+          else
+            echo "WAIT: database down: Data dictionary upgrade, stage ${_stg} of 6: ${_tbl} tables, dictionary $(( _ddnow / 1048576 )) MB (+$(( (_ddnow - _ddprev) / 1048576 )) MB), $(( _alive / 12 )) min so far."
+          fi
+          echo "WAIT: Do not stop or kill mysqld: the upgrade would start over."
+        else
+          echo "WAIT: database down: MySQLD is running but not serving yet (recovery or upgrade), $(( _alive / 12 )) min so far."
+        fi
+        if [ -n "$(find /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2>/dev/null)" ] \
+          || [ -n "$(find /var/log/mysql/error.log -mmin -5 2>/dev/null)" ]; then
+          _idle=0
+        else
+          _idle=$(( _idle + 1 ))
+        fi
+        _ddprev="${_ddnow}"
+        # the watchdog stands down while the marker is fresh (four hours):
+        # a conversion that outlives it must keep it fresh
+        [ -e "/run/boa_sql_maintenance.pid" ] && touch /run/boa_sql_maintenance.pid
+      fi
     else
       _dead=$(( _dead + 1 ))
-      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
-        _started=YES
-        echo "INFO: MySQLD not running -- starting it..."
+      _alive=0
+      _idle=0
+      # A started server that lived and ended inside the start helper's own
+      # wait (the cleanup run of a half-done conversion takes seconds on a
+      # fast box) was never sampled alive: its exit lines in the error log,
+      # written since the start, say it ran and ended by design.
+      if [ "${_ran}" = "NO" ] && [ "${_starts}" -gt 0 ] \
+        && [ -s "/var/log/mysql/error.log" ] \
+        && tail -n +$(( _lc0 + 1 )) /var/log/mysql/error.log 2>/dev/null \
+          | grep -q -e "partially upgraded DD" -e "Aborting upgrade and deleting all DD tables"; then
+        _ran=YES
+      fi
+      if [ "${_starts}" -lt 3 ] \
+        && { [ "${_starts}" -eq 0 ] || [ "${_ran}" = "YES" ]; } \
+        && ! _sql_maint_foreign; then
+        _starts=$(( _starts + 1 ))
+        if [ "${_ran}" = "YES" ]; then
+          echo "INFO: MySQLD ran and exited -- starting it again (attempt ${_starts} of 3)."
+          echo "INFO: An 8.x server that found a half-done data dictionary upgrade cleans it up and exits by design; the next start redoes it."
+        else
+          echo "INFO: MySQLD not running -- starting it..."
+        fi
+        _ran=NO
+        _lc0=$(wc -l < /var/log/mysql/error.log 2>/dev/null)
+        _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           bash /var/xdrago/move_sql.sh start &> /dev/null
         else
           service mysql start &> /dev/null
         fi
       fi
+      echo "INFO: database down: waiting for MySQLD to start (down $(( _dead * 5 ))s)..."
     fi
     _tot=$(( _tot + 1 ))
-    if [ "${_dead}" -gt 12 ] || [ "${_tot}" -gt 720 ]; then
-      echo "ALERT: MySQLD did not become available (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
+    [ -s "/var/lib/mysql/mysql_dd_upgrade_info" ] && _cap=8640
+    if [ "${_dead}" -gt 12 ] || [ "${_idle}" -gt 30 ] || [ "${_tot}" -gt "${_cap}" ]; then
+      if [ "${_idle}" -gt 30 ]; then
+        echo "ALERT: MySQLD is running but wrote nothing for 30 minutes (stalled; total wait $(( (_tot - 1) * 5 ))s)."
+      else
+        echo "ALERT: MySQLD did not become available (down $(( _dead > 0 ? (_dead - 1) * 5 : 0 ))s, total wait $(( (_tot - 1) * 5 ))s, ${_starts} start attempt(s))."
+      fi
       break
     fi
-    echo "INFO: Waiting for MySQLD availability..."
     sleep 5
   done
   local _dbSn=$(sed -n 's/^_DB_SERIES=[[:space:]]*//p' "${_barCnf}" 2>/dev/null \
@@ -2580,7 +2657,7 @@ _set_tree_vars() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.88.855"
+  export _rLsn="BOA-5.88.866"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"

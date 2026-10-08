@@ -369,6 +369,13 @@ _svc_check() {
     (( _svc_total++ ))
     return
   fi
+  # mysqld writes its pid file only once it serves: a server converting a
+  # 5.7 datadir or recovering runs without one for minutes to hours, and is
+  # starting, not down (boa's _display_time reads it the same way).
+  if [ "${_n}" = "mysql" ] && pgrep -x mysqld > /dev/null 2>&1; then
+    (( _svc_total++ ))
+    return
+  fi
   if [ -n "${_m}" ] && [ ! -e "${_m}" ]; then
     return
   fi

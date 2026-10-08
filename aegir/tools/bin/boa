@@ -2063,7 +2063,7 @@ _init_setup() {
   _check_etc_apt_preferences
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.88.855"
+  export _rLsn="BOA-5.88.866"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"
@@ -2802,8 +2802,21 @@ _sanitize_pid() {
 _display_time() {
   local _service=$1
   local _pidfile=$2
+  local _stg=""
 
   if [ ! -f "${_pidfile}" ]; then
+    # mysqld writes its pid file only once it serves. A server converting
+    # a 5.7 datadir, or recovering, runs without one for minutes to hours
+    # and is starting, not down; the datadir's stage file tells which.
+    if [ "${_service}" = "mysql" ] && pgrep -x mysqld > /dev/null 2>&1; then
+      _stg=$(od -An -tu4 /var/lib/mysql/mysql_dd_upgrade_info 2>/dev/null | tr -dc '0-9')
+      if [ -n "${_stg}" ]; then
+        _running_services+=("  _XSE ${_service} is starting: data dictionary upgrade in progress (stage ${_stg} of 6), not serving yet; do not stop or kill it.")
+      else
+        _running_services+=("  _XSE ${_service} is starting: no PID file yet (recovery or upgrade), not serving yet; see /var/log/mysql/error.log.")
+      fi
+      return
+    fi
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
