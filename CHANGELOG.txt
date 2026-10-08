@@ -1244,6 +1244,27 @@
 
 @=> Improvements
 
+    * A Percona server that runs without serving yet, converting a 5.7
+      datadir or recovering, is reported by barracuda every minute: the
+      conversion stage, the number of tables, the growing size of the
+      data dictionary and the time so far, with the note not to stop or
+      kill it. A server that writes nothing for thirty minutes ends the
+      run as stalled, and a conversion may otherwise take twelve hours;
+      the run used to print a bare waiting line every five seconds and
+      give up after an hour. The table walks of a series upgrade (the
+      check before the swap, mysqlcheck and mysql_upgrade after it) are
+      announced with the table and database counts and report once a
+      minute which database they are on, instead of minutes of silence.
+
+    * boa info shows a Percona server that is converting the datadir or
+      recovering as starting, with the conversion stage, instead of as
+      not running for want of a PID file, and the init script keeps the
+      server's own startup messages in the error log.
+
+    * The MySQL watchdog never restarts a server that is converting the
+      datadir, whatever the age of the maintenance marker; it logs the
+      stage and stands down.
+
     * Every barracuda pass, FAST upgrades included, installs e2fsprogs
       when it is missing. Its chattr and lsattr are used throughout BOA
       (the resolv.conf pin, control and secret files, xmass pre-mig's
@@ -1602,6 +1623,32 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * The nightly database backup is no longer cut short by the
+      self-update. autoupboa's cleanup of a hanging backup counted the
+      command lines that name the script, and cron's own launcher shell
+      plus one subshell of a healthy run read as a stuck duplicate: the
+      run was killed mid-dump without a word, mostly on slow boxes with
+      large datasets, where the dumps take long enough to be sampled.
+      The cleanup now judges the age of the backup's own processes (12
+      hours; _SQL_BACKUP_MAX_HOURS in /root/.barracuda.cnf changes it),
+      writes a kill to /var/log/boa/mysql.backup.incident.log and mails
+      it, and the self-update, the weekly system pass and the staged
+      reboot stand down while a backup runs. The hourly database cleanup
+      gets the same age rule, and no reaper counts a launcher shell.
+
+    * A Percona series upgrade writes the new series' my.cnf directives
+      before the package swap. The package's post-install step starts
+      the new server at once, and on 5.7 to 8.0 that first start
+      converts the whole datadir; with the old series' directives still
+      in place it logged nowhere and aborted at the very end, after all
+      the work, on a directive it does not know.
+
+    * The wait for a server that is coming up starts it again, up to
+      three times, after it was seen running and exited: an 8.x server
+      that finds a half-done datadir conversion removes it and exits by
+      design, and the next start redoes the conversion. One start was
+      allowed before, so that cleanup ended the run with a FATAL.
 
     * While the ICU a box expects fails to install (a failed download or
       build), PHP builds that carry intl are no longer rebuilt on every

@@ -34,15 +34,38 @@ start_mysql() {
         echo "Percona MySQL is already running."
         return 1
     fi
+    # The pid file appears only when the server is ready to serve. A server
+    # converting a 5.7 datadir, or recovering, runs for minutes to hours
+    # without one, and a second server started beside it would fight it for
+    # the datadir.
+    if pgrep -x mysqld > /dev/null 2>&1; then
+        echo "Percona MySQL is already running: starting up, no PID file yet."
+        return 1
+    fi
+
+    # The server writes its startup messages to the error log once it has
+    # read that directive; before that, and when the directive is missing,
+    # they go to stderr. Keep them: a start nobody can read cannot be
+    # diagnosed. The file is created as the server itself creates it.
+    [ -d "$(dirname $ERRORLOG)" ] || mkdir -p "$(dirname $ERRORLOG)"
+    if [ ! -e "$ERRORLOG" ]; then
+        touch "$ERRORLOG"
+        chown mysql:adm "$ERRORLOG" 2> /dev/null
+        chmod 0640 "$ERRORLOG"
+    fi
 
     # Start MySQL
-    $DAEMON --defaults-file=$MYCNF $MYSQL_OPTS > /dev/null 2>&1 &
+    $DAEMON --defaults-file=$MYCNF $MYSQL_OPTS > /dev/null 2>> "$ERRORLOG" &
     sleep 5
 
     if [ -f $PIDFILE ]; then
         echo "Percona MySQL started successfully."
+    elif pgrep -x mysqld > /dev/null 2>&1; then
+        echo "Percona MySQL is starting; no PID file yet. A data dictionary upgrade"
+        echo "or a crash recovery may be running, minutes to hours on a large datadir:"
+        echo "follow $ERRORLOG and do not stop or kill mysqld."
     else
-        echo "Percona MySQL failed to start."
+        echo "Percona MySQL failed to start, see $ERRORLOG."
         return 1
     fi
 }
@@ -56,12 +79,22 @@ stop_mysql() {
     fi
 
     kill `cat $PIDFILE`
-    sleep 5
+    # A clean shutdown flushes the buffer pool: seconds on a small server,
+    # minutes on a large one. Wait for the process to go, so that a restart
+    # never starts the next server beside the old one (the start refuses a
+    # server that is still running).
+    _i=0
+    while pgrep -x mysqld > /dev/null 2>&1 && [ $_i -lt 600 ]; do
+        sleep 1
+        _i=$((_i + 1))
+    done
 
-    if [ -f $PIDFILE ]; then
-        echo "Percona MySQL failed to stop."
+    if pgrep -x mysqld > /dev/null 2>&1; then
+        echo "Percona MySQL failed to stop within 10 minutes."
         return 1
     else
+        # a server that was killed hard leaves its pid file behind
+        rm -f $PIDFILE
         echo "Percona MySQL stopped successfully."
     fi
 }
