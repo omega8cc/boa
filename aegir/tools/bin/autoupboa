@@ -151,6 +151,31 @@ if [ "$1" = "weekly-system" ]; then
 fi
 
 #
+# A tool switched off by making its file immutable (the attribute kept every
+# update out, so the box ran a stale copy or nothing): the switch moves into
+# /root/.barracuda.cnf and the attribute goes, so the file is updated like
+# every other tool while its variable keeps it from running. Each tool reads
+# its own variable; the comment line is the record BOA keeps of a conversion.
+_immutable_tool_to_switch() {
+  local _f="$1" _var="$2" _attr=""
+  [ -e "${_f}" ] || return 0
+  _attr=$(lsattr -d "${_f}" 2>/dev/null | awk '{print $1}')
+  [[ "${_attr}" =~ [ia] ]] || return 0
+  [ -n "$(tail -c1 "${_barCnf}" 2>/dev/null)" ] && echo >> "${_barCnf}"
+  if grep -qE "^[[:space:]]*(export[[:space:]]+)?${_var}=" "${_barCnf}" 2>/dev/null; then
+    sed -i -E "s/^([[:space:]]*(export[[:space:]]+)?${_var}=).*/\1YES/" "${_barCnf}"
+  else
+    echo "${_var}=YES" >> "${_barCnf}"
+  fi
+  grep -q "^### ${_var} converted" "${_barCnf}" 2>/dev/null \
+    || echo "### ${_var} converted from the immutable attribute on ${_f}" >> "${_barCnf}"
+  chattr -i -a "${_f}" 2>/dev/null
+  echo "${_f} was immutable: ${_var}=YES written to ${_barCnf}, the attribute lifted"
+}
+_immutable_tool_to_switch /var/xdrago/usage.sh _DISABLE_USAGE_ACCOUNTING
+_immutable_tool_to_switch /opt/local/bin/copydbackup _DISABLE_COPYDBACKUP
+
+#
 # Fix for Sequel (Pro/Ace/Ace fork) support
 _fix_allow_tcp_forwarding() {
   if grep -q "^AllowTcpForwarding no" /etc/ssh/sshd_config; then
