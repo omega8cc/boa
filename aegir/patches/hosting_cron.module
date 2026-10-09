@@ -196,24 +196,23 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
  * Implements hook_node_load().
  */
 function hosting_cron_node_load($nodes, $types) {
-  foreach ($nodes as $nid => &$node) {
-    if ($node->type == 'site') {
-
-      $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
-      if ($this_cron_interval) {
-        $this_cron_interval = array('cron_interval' => $this_cron_interval);
-      }
-
-      if (isset($node->cron_interval) && $node->cron_interval > -1) {
-        $cron_interval_ok = TRUE;
-      }
-      else {
-        if (isset($this_cron_interval) && $this_cron_interval > -1) {
-          $node->cron_interval = $this_cron_interval;
-        }
-      }
-
-      return $this_cron_interval;
+  foreach ($nodes as $nid => $node) {
+    if ($node->type != 'site') {
+      continue;
+    }
+    // Every site of a multi-load gets its interval, as an integer. The
+    // Drupal 6 form of this hook returned the row to be merged into the node
+    // and stopped at the first site, which left the other sites of a
+    // multi-load without an interval and gave the first one an array (the
+    // writes and the form survived that by accident: the database layer
+    // expands a one-element array into its element, the select accepts an
+    // array value).
+    $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+    if ($this_cron_interval === FALSE || $this_cron_interval === NULL) {
+      continue;
+    }
+    if (!isset($node->cron_interval) || !is_numeric($node->cron_interval) || $node->cron_interval < 0) {
+      $node->cron_interval = (int) $this_cron_interval;
     }
   }
 }
@@ -259,8 +258,8 @@ function hosting_cron_node_update($node) {
     $use_cron_interval = ADV_CRON_TURNED_OFF;
     $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
 
-    if ($node->cron_interval > -1) {
-      $use_cron_interval = $node->cron_interval;
+    if (isset($node->cron_interval) && is_numeric($node->cron_interval) && $node->cron_interval > -1) {
+      $use_cron_interval = (int) $node->cron_interval;
     }
     else {
       if ($this_cron_interval > -1) {
