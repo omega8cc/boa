@@ -10052,10 +10052,6 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
       WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-      WHERE task_type='delete' AND task_status='-1'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-      WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
 
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache

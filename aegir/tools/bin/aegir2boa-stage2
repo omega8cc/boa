@@ -2343,11 +2343,13 @@ _import_db_route() {
     _info "step 3: vanilla hostmaster db imported"
   fi
 
-  # 4. queue hygiene + neutering, immediately
+  # 4. queue hygiene + neutering, immediately: every task the imported panel
+  # still had queued or running is marked failed, on the current revision
+  # (hosting_task is keyed per revision and a queued row carries executed
+  # NULL, so the old "executed='0'" tests matched nothing). Marked, never
+  # deleted: a raw row delete leaves the task node without its rows.
   if [[ ! -e "${_step}.4.done" ]]; then
-    _tsql "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'"
-    _tsql "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'"
-    _tsql "UPDATE hosting_task SET task_status='2' WHERE task_status='0' AND executed='0'"
+    _tsql "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE t.task_status IN ('0','-1')"
     _as_octo "drush8 @hostmaster vset --always-set hosting_client_send_welcome 0" >>"${_LOG}" 2>&1
     _as_octo "drush8 @hostmaster vset --always-set site_frontpage 'hosting/sites'" >>"${_LOG}" 2>&1
     touch "${_step}.4.done"
