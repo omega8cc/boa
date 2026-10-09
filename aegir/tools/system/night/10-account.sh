@@ -1272,15 +1272,20 @@ _account_process() {
     SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
   _check_old_empty_platforms
   _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
-  _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-    SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'\""
-  # The platform root goes into the SQL text: a path only.
+  # The platform root goes into the SQL text: a path only. It is read first
+  # and left out of the parking write: parking every distro platform and
+  # setting the live one back afterwards left it recorded as deleted in
+  # between, and until the next night when the read failed. Without a
+  # readable root nothing is parked.
   _THIS_HM_PLR=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
     | grep "root'" \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
   if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+    _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+      SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%' \
+      AND publish_path <> '${_THIS_HM_PLR}'\""
     _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
       SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
   fi
