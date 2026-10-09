@@ -1,4 +1,21 @@
 ###
+### In development - changes since BOA-5.88.866
+###
+
+@=> Important Fixes
+
+    * The Ægir control panel's Drupal 7 core now follows the pinned
+      release. The panel is built from the prebuilt make_local tree,
+      and that tree's core directory had stayed on 7.105 after the pin
+      moved to 7.106.1, so every panel, master and account alike, was
+      rebuilt on the old core while the shared platform core and the
+      box markers had moved on; a tree cached from an earlier pin had
+      the same effect. The panel build now compares the core string in
+      the tree with the pin and replaces the directory from the pinned
+      core tarball when they differ, on the master and on every
+      Octopus instance.
+
+###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
 ### Date: Thu 08 Oct 2026 16:52:19 CEST in Warsaw
 ### Enjoy the flight of the Griffin
