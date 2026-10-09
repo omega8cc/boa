@@ -1263,10 +1263,10 @@ _account_process() {
   _night_web_hit
   _daily_process
   _night_web_d9
-  _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
-    WHERE task_type='delete' AND task_status='-1'\""
-  _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
-    WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+  # Stuck or stale delete tasks are the panel's own business now: the task
+  # watchdog marks a dead runner's task failed and the task_gc queue collects
+  # finished tasks of deleted sites and platforms; a raw row delete here left
+  # task nodes without their rows.
   _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
   _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
     SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
