@@ -4636,13 +4636,17 @@ _xoct_panel_platform_name() {
 ### or platform_hostmaster while the panel is still on its install platform:
 ### _xoct_panel_platform_name), the one the panel's next upgrade registers on
 ### it in its resume. An aged source panel can hold that name on a platform
-### it deleted long ago: a deleted node keeps its context row, and the
-### resume's register then fails on the unique name and stops before it moves
-### the panel, so the account's panel and its task queue break at the first
-### upgrade here. Mirror of xmass's panel repoint (kept separate by design): a
-### deleted holder's leftover context is dropped and the live platform takes
-### the name; a holder that is not a deleted platform keeps it, the live
-### platform keeps its own, and an ALRT says the next upgrade stops on it, as
+### it deleted long ago: a deleted node keeps its context row. The panel's
+### register releases such a holder itself when another node needs the name
+### (a gone node, a deleted site, server or platform no live site runs on),
+### and the resume moves the panel's site record whatever happens to the
+### name; a holder that is live keeps the name, the new platform keeps the
+### one the panel gave it, and the resume reports the naming error. The row
+### is still dropped here, so the first upgrade on this box starts clean.
+### Mirror of xmass's panel repoint (kept separate by design): a deleted
+### holder's leftover context is dropped and the live platform takes the
+### name; a holder that is not a deleted platform keeps it, the live
+### platform keeps its own, and an ALRT says what the next upgrade does, as
 ### one does for a write that fails.
 _xoct_panel_context_name() {
   local _hdb="$1" _name="$2" _pn _holder _hst
@@ -4676,13 +4680,13 @@ _xoct_panel_context_name() {
         echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}"
         _holder=""
       else
-        echo "ALRT: the leftover context ${_name} of deleted platform ${_holder} could not be dropped in ${_hdb}: the account's next Octopus upgrade stops on the duplicate name"
+        echo "ALRT: the leftover context ${_name} of deleted platform ${_holder} could not be dropped in ${_hdb}: the account's next Octopus upgrade releases it itself, if its panel carries the current hosting"
         return 0
       fi
     fi
   fi
   if [ -n "${_holder}" ]; then
-    echo "ALRT: context name ${_name} is held by platform ${_holder}, which is not a deleted platform: platform ${_pn} keeps its own name, and the account's next Octopus upgrade stops on the duplicate name"
+    echo "ALRT: context name ${_name} is held by platform ${_holder}, which is not a deleted platform: platform ${_pn} keeps its own name, and the account's next Octopus upgrade keeps the panel on the name it gives the new platform and reports the clash"
     return 0
   fi
   if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
@@ -4690,7 +4694,7 @@ _xoct_panel_context_name() {
     WHERE nid=${_pn}" 2>/dev/null; then
     echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
   else
-    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: if another platform holds that name, the account's next Octopus upgrade stops on it"
+    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: if a live platform holds that name, the account's next Octopus upgrade keeps the panel on the name it gives the new platform and reports the clash"
   fi
   return 0
 }
