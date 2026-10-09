@@ -1268,15 +1268,12 @@ _account_process() {
   # finished tasks of deleted sites and platforms; a raw row delete here left
   # task nodes without their rows.
   _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
-  _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-    SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
-  _check_old_empty_platforms
-  _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
-  # The platform root goes into the SQL text: a path only. It is read first
-  # and left out of the parking write: parking every distro platform and
-  # setting the live one back afterwards left it recorded as deleted in
-  # between, and until the next night when the read failed. Without a
-  # readable root nothing is parked.
+  # The platform root goes into the SQL text: a path only. It is read before
+  # anything changes: parking every distro platform and setting the live one
+  # back afterwards left it recorded as deleted in between, and until the
+  # next night when the read failed. Without a readable root the old panel
+  # platforms are neither un-parked for the empty-platform check nor parked
+  # again: their status stays as it is.
   _THIS_HM_PLR=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
     | grep "root'" \
     | cut -d: -f2 \
@@ -1284,10 +1281,16 @@ _account_process() {
     | sed "s/[\,']//g" 2>&1)
   if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
     _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+      SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
+    _check_old_empty_platforms
+    _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
+    _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
       SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%' \
       AND publish_path <> '${_THIS_HM_PLR}'\""
     _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
       SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
+  else
+    echo "ALRT: the panel's root could not be read from hostmaster.alias.drushrc.php; the old panel platforms stay as they are"
   fi
   # the purge's legs remove only what root or the account's identities own,
   # and what they leave because another user owns it is said once, below
