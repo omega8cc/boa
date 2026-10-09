@@ -15,6 +15,13 @@
       core tarball when they differ, on the master and on every
       Octopus instance.
 
+@=> Improvements
+
+    * The Ægir control panel's sites list keeps one line per site: a
+      long domain is trimmed to 40 characters with the full name on
+      hover, the way the Platform column has always been trimmed, and
+      no cell wraps in a narrow window.
+
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
 ### Date: Thu 08 Oct 2026 16:52:19 CEST in Warsaw
