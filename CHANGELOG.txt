@@ -18,9 +18,9 @@
 @=> Improvements
 
     * The Ægir control panel's sites list keeps one line per site: a
-      long domain is trimmed to 40 characters with the full name on
-      hover, the way the Platform column has always been trimmed, and
-      no cell wraps in a narrow window.
+      long domain is trimmed to 40 characters, the way the Platform
+      column has always been trimmed, every name carries its full form
+      on hover, and no cell wraps; the name gives instead.
 
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
