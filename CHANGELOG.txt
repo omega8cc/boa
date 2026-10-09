@@ -13,7 +13,8 @@
       the same effect. The panel build now compares the core string in
       the tree with the pin and replaces the directory from the pinned
       core tarball when they differ, on the master and on every
-      Octopus instance.
+      Octopus instance, also where a box with fewer than three
+      Barracuda passes reuses the tree without downloading it.
 
 @=> Improvements
 
