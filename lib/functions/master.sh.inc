@@ -971,6 +971,42 @@ _hostmaster_oldhost_dbuser_drop() {
 }
 
 #
+# Keep the panel core on the pinned Drupal 7 release. In BATCH mode the panel
+# core comes only from make_local.tar.gz, whose drupal directory can lag the
+# _SMALLCORE7_V pin: on 2026-10-09 every published tarball still carried 7.105
+# while the pin was 7.106.1, so panels were rebuilt on the old core while the
+# shared platform core and the box markers had moved. When the core string in
+# the tarball differs from the pin, the directory is replaced from the pinned
+# core tarball, which this box fetches for its platforms anyway.
+_master_pin_panel_core() {
+  local _hv _pin
+  _mL="/opt/tmp/make_local"
+  [ -e "${_mL}/drupal/includes/bootstrap.inc" ] || return 0
+  [ -z "${_SMALLCORE7_V}" ] && return 0
+  _pin=$(echo "${_SMALLCORE7_V}" | cut -d. -f1-2)
+  _hv=$(grep "define('VERSION'" "${_mL}/drupal/includes/bootstrap.inc" 2>/dev/null \
+    | cut -d"'" -f4)
+  [ "${_hv}" = "${_pin}" ] && return 0
+  _msg "INFO: Panel core ${_hv} in make_local differs from the pinned ${_pin}, replacing it with ${_DRUPAL7}"
+  cd ${_mL}
+  rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
+  _get_core_ext "${_DRUPAL7}.tar.gz"
+  if [ -e "${_mL}/${_DRUPAL7}/includes/bootstrap.inc" ]; then
+    rm -rf "${_mL}/drupal"
+    mv -f "${_mL}/${_DRUPAL7}" "${_mL}/drupal"
+    rm -f "${_mL}/${_DRUPAL7}.tar.gz"
+    find ${_mL}/drupal -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_mL}/drupal -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R root:root ${_mL}/drupal
+    _msg "INFO: Panel core replaced with ${_DRUPAL7}"
+  else
+    rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
+    _msg "ALRT: ${_DRUPAL7}.tar.gz did not unpack, the panel keeps core ${_hv}"
+  fi
+  cd /opt/tmp
+}
+
+#
 # Download for Drush Make Local build.
 _master_download_for_local_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1048,6 +1084,7 @@ _master_download_for_local_build() {
     find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
     chown -R root:root ${_mL}
   fi
+  _master_pin_panel_core
 }
 
 #

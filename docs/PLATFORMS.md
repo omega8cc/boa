@@ -85,6 +85,8 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 * All D7 platforms have been enhanced using [Drupal 7.106.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
+* The Ægir control panel runs on the same pinned Drupal 7 core. Its code is built from the prebuilt `make_local` tree; when the Drupal core directory in that tree carries a different release than the pin, BOA replaces it from the pinned core tarball before building the panel, so a panel can no longer stay on an older core than the platforms.
+
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 
 * All D6 and D7 platforms include some useful and performance-related contrib modules. See [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/MODULES.md) for details.
