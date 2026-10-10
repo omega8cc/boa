@@ -27,6 +27,17 @@
       (drush @hostmaster rq as the instance user), where they read the
       backend's own home.
 
+    * The weekly system upgrade no longer collides with the full upgrade
+      when both fall on the same day. Their cron lines started at the
+      same minute, so the weekly pass either raced the full Barracuda
+      upgrade for the run lock or waited for it and ran afterwards,
+      holding the box when the Octopus upgrade was due, which then
+      refused to start. The weekly line now starts five minutes after
+      the full upgrade's time, and the weekly pass does not run on the
+      full upgrade's date at all, since the full upgrade does everything
+      it would. Boxes with auto-upgrade enabled rewrite the line once,
+      at their next self-update.
+
 @=> Security
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
