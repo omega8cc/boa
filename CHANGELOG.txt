@@ -64,9 +64,11 @@
       panel page, the site form, the settings page and the cron list hit.
 
     * The control panel's theme fits phones: a viewport, and below 960
-      pixels the columns stack while wide tables scroll inside the page.
-      Each page title is the page's h1, and the task buttons' white text
-      reaches 4.5:1 contrast.
+      pixels the columns stack, wide tables scroll inside the page with
+      the site and task names kept readable, and the admin toolbar, the
+      header and the tab rows take one compact line each instead of half
+      the screen. Each page title is the page's h1, and the task buttons'
+      white text reaches 4.5:1 contrast.
 
     * The control panel's lists of sites, platforms, servers, packages
       and tasks carry each row's status as text for screen readers, not
