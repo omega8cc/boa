@@ -221,6 +221,7 @@ function cfg_plan(pool,   user, cf, line, val) {
   CFG_PLAN = "-"; CFG_CORES = ""
   user = pool
   sub(/\.[0-9]+$/, "", user)
+  sub(/\.hm$/, "", user)
   cf = "/root/." user ".octopus.cnf"
   while ((getline line < cf) > 0) {
     if (line ~ /^[ \t]*_CLIENT_OPTION[ \t]*=/) {

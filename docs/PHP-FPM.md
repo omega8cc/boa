@@ -55,6 +55,23 @@ old.com 5.6
   switches, and `cli-per-platform.info` for a platform that needs its own version (see
   [DRUSH-CLI.md](DRUSH-CLI.md)).
 
+### The control panel's own pool
+
+The Ægir control panel of each Octopus instance is served from a pool of its own, `oN.hm`,
+on the PHP version BOA chooses, not from the account's pool: a `multi-fpm.info` line for
+the panel domain is dropped, and `fpm.info` does not reach it. The pool runs as the identity
+of the account's pool for that version (`oN.web`, or `oN.<php>.web` in multi-FPM mode), so
+no new identity appears.
+
+nginx sends the panel domain to that pool through
+`~/config/server_master/nginx/post.d/fpm_include_panel.inc`, written by the system worker
+only while the pool's socket answers. Without it the panel falls back to the account's pool.
+
+Two settings in `/root/.barracuda.cnf` control it: `_HM_FPM_POOL=YES` (default; `NO` serves
+the panel from the account's pool as before) and `_HM_FPM_VERSION` (empty by default, which
+means `_PHP_FPM_VERSION`; a version that is not installed falls back to the default). The
+panel's command line has a floor of its own, `_HM_CLI_FLOOR`, see [DRUSH-CLI.md](DRUSH-CLI.md).
+
 #### **IMPORTANT**:
 
 Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported thirteen (13) versions, 8.6 a release candidate, are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.

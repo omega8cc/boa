@@ -203,6 +203,11 @@ if [ -z "${_T_CLI}" ]; then
     done
   fi
 fi
+### The control panel's own command line runs on the account's version
+### raised to the panel floor (_HM_CLI_FLOOR from the sealed include): this
+### leg, the dispatcher it writes and every @hostmaster call below, while
+### the account's Drush pins stay on _PHP_CLI_VERSION for the tenant.
+_T_CLI=$(_satellite_hm_cli_bin "${_T_CLI}")
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash

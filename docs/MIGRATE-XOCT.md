@@ -584,14 +584,16 @@ alias here references for it (`platform_NNN`, or `platform_hostmaster`
 while the panel is still on its install platform): the one the panel's next
 upgrade registers on it. A source that deleted a platform of that name long
 ago can still hold the name in the deleted platform's leftover context row.
-That row is dropped first; left in place, the upgrade stops on the
-duplicate name before it moves the panel, and the account's panel and task
-queue break.
+That row is dropped first; left in place, the upgrade's own register
+releases it, when the panel carries the current hosting: a name whose holder
+is a gone node, a deleted site or server, or a deleted platform no live site
+runs on is taken over.
 
-A holder that is not a deleted platform keeps the name, and an `ALRT` line
-says that the next upgrade stops on it; so does a drop that fails. A rename
-that fails is an `ALRT` too: the next upgrade stops on it only when another
-platform holds the name. `xcopy` does the same.
+A live holder keeps the name: the upgrade keeps the panel on the name it
+gives the new platform, reports the clash, and the panel's site record still
+moves with its files. An `ALRT` line says so; so does a drop that fails. A
+rename that fails is an `ALRT` too: the next upgrade reports the clash only
+when another live node holds the name. `xcopy` does the same.
 
 The imported panel names the source's login for its database server. Before
 the rename, `import` gives that row the account's own name on this box (the

@@ -6645,7 +6645,9 @@ _xmass_sync_account() {
       _info "  no ${_subdir} on this account — nothing to send"
       continue
     fi
-    _xmass_rsync -aEAXqu ${_ieni} \
+    # the control panel's own pool include (post.d) stays behind: the
+    # target's worker writes its own once the pool is up there
+    _xmass_rsync -aEAXqu ${_ieni} --exclude=fpm_include_panel.inc \
       -e ssh "${_ngxW}/${_subdir}" \
       "root@${_tgt}:${_dst}/config/server_master/nginx/"
   done
