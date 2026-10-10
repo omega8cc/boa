@@ -10251,7 +10251,10 @@ _satellite_child_b_aegir_build() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
       _hmNow="${_hmNow%/}"
-      if [ "${_hmNow}" = "${_HM_ROOT}" ]; then
+      ### The alias is saved before the deploy, so it alone does not say the
+      ### site is there: the deploy's settings.php in the new root does.
+      if [ "${_hmNow}" = "${_HM_ROOT}" ] \
+        && [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
         _msg "${_STATUS} B: ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review ${_hmLog}"
       else
         _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}; review ${_hmLog}"
