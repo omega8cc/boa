@@ -395,7 +395,8 @@ _hostmaster_mi_up() {
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
     _hmNow="${_hmNow%/}"
-    if [ "${_hmNow}" = "${_HM_ROOT}" ]; then
+    if [ "${_hmNow}" = "${_HM_ROOT}" ] \
+      && [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
       _msg "ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review ${_hmLog}"
     else
       _msg "FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays where it was; review ${_hmLog}"

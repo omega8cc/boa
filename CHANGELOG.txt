@@ -16,6 +16,19 @@
       Octopus instance, also where a box with fewer than three
       Barracuda passes reuses the tree without downloading it.
 
+@=> Security
+
+    * The Ægir control panel's Drupal 7 core refuses or renames uploads of
+      the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
+      includes, a few other script types, .htaccess and Drupal's own code
+      files, as Backdrop does; BOA's web server never ran them anyway.
+
+    * The control panel no longer ships the two-factor modules it never
+      enabled, nor the unused Vue library.
+
+    * A hosting page that could only end in an error is gone from the
+      control panel.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
@@ -38,10 +51,42 @@
     * The official Grav release the Upgrade task installs from is kept
       once per server, under /data/all/000/grav-releases, root's alone,
       and no longer in every account's static directory, which is the
-      account's own space. The copy an earlier release put there is
-      removed on the account's next Octopus run, once its backend reads
-      the shared shelf; anything else in that directory, and the
-      directory itself then, is left as it is.
+      account's own space. The grav-releases directory an earlier
+      release put there is removed whole on the account's next Octopus
+      run, once its backend reads the shared shelf and the shelf holds
+      a release.
+
+    * The Ægir control panel, Ægir's Drush 8 and Provision avoid what PHP
+      8.5 and 8.6 deprecate wherever the fix also runs on PHP 5.6:
+      non-canonical casts, ${var} in strings, the is_integer() and
+      is_double() aliases, values returned from constructors, the date
+      constant PHP retires, and the null array keys and missing objects a
+      panel page, the site form, the settings page and the cron list hit.
+
+    * The control panel's theme fits phones: a viewport, and below 960
+      pixels the columns stack, wide tables scroll inside the page with
+      the site and task names kept readable, and the admin toolbar, the
+      header and the tab rows take one compact line each instead of half
+      the screen. Each page title is the page's h1, and the task buttons'
+      white text reaches 4.5:1 contrast.
+
+    * The control panel's lists of sites, platforms, servers, packages
+      and tasks carry each row's status as text for screen readers, not
+      only as a colour and an icon, and queued sites, platforms and
+      servers get the queued row style.
+
+    * The Expand links of a running task's log keep working while the
+      log grows; each new block of lines used to add another handler, so
+      a click could open and close a line at once.
+
+    * An Octopus upgrade refreshes the control panel's welcome page
+      instead of adding another one; every panel rebuild used to leave
+      one more behind. Copies already there stay.
+
+@=> Changes and Upgrades
+
+    * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above.
 
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
