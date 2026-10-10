@@ -76,6 +76,10 @@
       log grows; each new block of lines used to add another handler, so
       a click could open and close a line at once.
 
+    * An Octopus upgrade refreshes the control panel's welcome page
+      instead of adding another one; every panel rebuild used to leave
+      one more behind. Copies already there stay.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
