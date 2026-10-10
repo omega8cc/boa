@@ -21,10 +21,11 @@
       Backdrop Drush extension and the Grav and Textpattern provision
       layers were not detected. The checks looked for the backend's
       ~/.drush in the home of the web user serving the panel, which can
-      never reach it, so every panel showed the three warnings with a
-      /home/oN.NN.web path whatever the backend carried. They now run
-      from the command line only (drush @hostmaster rq as the instance
-      user), where they read the backend's own home.
+      never reach it, so each panel warned, with a /home/oN.NN.web
+      path, for every one of these modules it had enabled, whatever
+      the backend carried. They now run from the command line only
+      (drush @hostmaster rq as the instance user), where they read the
+      backend's own home.
 
 @=> Security
 
@@ -69,6 +70,12 @@
       module list and the Views list, in the hosting, tasks-extra and
       CiviCRM front-end modules. Names other code matches on, such as
       the Ægir Hostmaster platform, keep their ASCII form.
+
+    * The Ægir control panel's status report no longer warns that update
+      notifications are not enabled: BOA keeps the update manager off on
+      the panel and rebuilds the panel with each Octopus upgrade, and the
+      row now says so, as information. The install profile row reads
+      Hostmaster (hostmaster) instead of ending in a bare dash.
 
     * The CiviCRM front-end module's Ansible inventory no longer uses
       a PHP 7 operator, the one hostmaster file that failed to parse on
