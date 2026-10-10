@@ -73,9 +73,10 @@
 
     * The Ægir control panel's status report no longer warns that update
       notifications are not enabled: BOA keeps the update manager off on
-      the panel and rebuilds the panel with each Octopus upgrade, and the
-      row now says so, as information. The install profile row reads
-      Hostmaster (hostmaster) instead of ending in a bare dash.
+      the panel and upgrades the panel itself, Barracuda the master's and
+      Octopus each instance's, and the row now says so, as information.
+      The install profile row reads Hostmaster (hostmaster) instead of
+      ending in a bare dash.
 
     * The CiviCRM front-end module's Ansible inventory no longer uses
       a PHP 7 operator, the one hostmaster file that failed to parse on
