@@ -51,10 +51,10 @@
     * The official Grav release the Upgrade task installs from is kept
       once per server, under /data/all/000/grav-releases, root's alone,
       and no longer in every account's static directory, which is the
-      account's own space. The copy an earlier release put there is
-      removed on the account's next Octopus run, once its backend reads
-      the shared shelf; anything else in that directory, and the
-      directory itself then, is left as it is.
+      account's own space. The grav-releases directory an earlier
+      release put there is removed whole on the account's next Octopus
+      run, once its backend reads the shared shelf and the shelf holds
+      a release.
 
     * The Ægir control panel, Ægir's Drush 8 and Provision avoid what PHP
       8.5 and 8.6 deprecate wherever the fix also runs on PHP 5.6:
