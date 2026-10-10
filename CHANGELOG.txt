@@ -10,9 +10,10 @@
       moved to 7.106.1, so every panel, master and account alike, was
       rebuilt on the old core while the shared platform core and the
       box markers had moved on; a tree cached from an earlier pin had
-      the same effect. The panel build now compares the core string in
-      the tree with the pin and replaces the directory from the pinned
-      core tarball when they differ, on the master and on every
+      the same effect. The panel build now compares the tree's core
+      with the pinned core tarball file by file, since D7ES keeps the
+      version string at 7.106 across its patch releases, and replaces
+      the directory from it when they differ, on the master and on every
       Octopus instance, also where a box with fewer than three
       Barracuda passes reuses the tree without downloading it.
 
