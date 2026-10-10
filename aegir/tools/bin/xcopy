@@ -406,24 +406,25 @@ REMOTE
   return "${_X_RC}"
 }
 
-# xcopy refuses a rename (_xcopy_refuse_rename; xoct is the rename tool), so
-# this map stays empty; it is kept as a second line of defence.
-# On a rename the account's identities here map onto the destination's of
-# the same suffix (<src> onto <dst>, <src>.ftp onto <dst>.ftp, a client's
-# <src>.<name> onto <dst>.<name>): by name alone the copy would be owned by
-# the target's own identity of the source's name (another tenant's) or by
-# this box's numbers, for good: xcopy has
+# The account's identities here map onto the target's: each onto its own
+# name there (xcopy copies under the same name only, _xcopy_refuse_rename;
+# on a rename, kept as a second line of defence, onto the destination's of
+# the same suffix: <src> onto <dst>, <src>.ftp onto <dst>.ftp, a client's
+# <src>.<name> onto <dst>.<name>). By name alone a name the target does not
+# have lands on this box's number, which can be another account's identity
+# there, and on a rename the copy would be owned by the target's own
+# identity of the source's name (another tenant's), for good: xcopy has
 # no owner pass after the copy.
-# An identity whose new name the target does not have (yet: a client's
-# login comes with the limited-shell worker) maps onto <dst> itself, so the
+# An identity whose name the target does not have (yet: a client's login
+# comes with the limited-shell worker; a PHP-FPM user oN.<ver>.web exists
+# only for a version that box runs) maps onto <dst> itself, so the
 # target's identities are asked; a list that cannot be read is refused,
 # never guessed (a DENY, the dry run is not clean, a live run stops). The
 # map names every identity: no wildcard, which an older rsync would hand
-# to the receiving shell. Sets _XCOPY_UMAP; empty when the names are the same.
+# to the receiving shell. Sets _XCOPY_UMAP.
 _xcopy_acct_umap() {   # 1 account here 2 account on the target 3 target
   local _n _t _have="" _m=""
   _XCOPY_UMAP=""
-  [ "${1}" != "${2}" ] || return 0
   if [[ "${1}" =~ ^[a-zA-Z0-9_-]+$ ]] && [[ "${2}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     _have=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
       "getent passwd | cut -d: -f1 | grep -E '^${2}(\.[a-zA-Z0-9._-]+)?\$' | sed 's/^/XMID:/'" \
@@ -3355,8 +3356,8 @@ _xcopy_rsync() {
     # -D; rsync honours the LAST matching option, so these must follow -a to
     # actually drop device/fifo/socket nodes. Never transfer specials.
     # _XCOPY_GMAP maps the account's own group and its web group (see
-    # _xcopy_acct_gmap, _xcopy_webgroup_gate); _XCOPY_UMAP its identities on a
-    # rename (see _xcopy_acct_umap).
+    # _xcopy_acct_gmap, _xcopy_webgroup_gate); _XCOPY_UMAP its identities
+    # (see _xcopy_acct_umap).
     rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
