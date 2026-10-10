@@ -1564,8 +1564,10 @@ _crontab_update() {
       _wkMin=$(( _wkTot % 60 ))
       _wkHour=$(( _wkTot / 60 % 24 ))
       _wkDow="${_AUTO_UP_WEEKLY}"
-      if [ "${_wkTot}" -ge 1440 ] && [[ "${_wkDow}" =~ ^[0-7]$ ]]; then
-        _wkDow=$(( _wkDow % 7 + 1 ))
+      ### 10#, as for hour and minute: cron takes a zero-padded weekday too
+      if [ "${_wkTot}" -ge 1440 ] && [[ "${_wkDow}" =~ ^[0-9]+$ ]] \
+        && (( 10#${_wkDow} <= 7 )); then
+        _wkDow=$(( 10#${_wkDow} % 7 + 1 ))
       fi
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
       echo "${_wkMin} ${_wkHour}    * * ${_wkDow}   root    bash /opt/local/bin/autoupboa weekly-system ${_BCDA_SYST}" >> /etc/crontab

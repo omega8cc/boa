@@ -232,8 +232,9 @@ _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ### Octopus based Ægir instances, unless _AUTO_UP_HOUR, _AUTO_UP_MINUTE,
 ### _AUTO_OCT_UP_HOUR and _AUTO_OCT_UP_MINUTE set other times. The weekly
 ### system upgrade starts five minutes after the day/month Barracuda time
-### on the specified weekday, and is skipped on the day/month date, since
-### the full upgrade does everything it would.
+### on the specified weekday (on the next weekday when that time is 23:55
+### or later), and is skipped on the day/month date, since the full upgrade
+### does everything it would.
 ###
 ### NOTE: All three _AUTO_UP_* variables must be defined to enable auto-upgrade.
 ###

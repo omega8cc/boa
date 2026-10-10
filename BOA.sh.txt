@@ -5358,7 +5358,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f85 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f84 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f63 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f29 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f30 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f71 --guard duplicity
