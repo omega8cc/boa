@@ -3525,6 +3525,20 @@ _php_ctrl_stamps_rm_here() {
 
 #
 # Read or create Barracuda cnf file.
+# The control panel's command-line floor (_HM_CLI_FLOOR, docs/cnf) published
+# where the account users can read it: websh raises a drush line aimed at
+# the panel from this file, since /root is closed to it. Written by the
+# barracuda pass after the cnf is sourced, and by the ltd worker on every
+# run, so a cnf edit reaches the panels within minutes. The file holds the
+# floor (7.4) or NO; an unset key means the shipped default.
+_hm_cli_floor_publish() {
+  local _f="${_HM_CLI_FLOOR:-7.4}"
+  [ -d /data/conf ] || return 0
+  printf '%s\n' "${_f}" > /data/conf/.hm-cli-floor.txt.new 2> /dev/null || return 0
+  chmod 0644 /data/conf/.hm-cli-floor.txt.new
+  mv -f /data/conf/.hm-cli-floor.txt.new /data/conf/hm-cli-floor.txt
+}
+
 _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
@@ -3730,6 +3744,9 @@ _barracuda_cnf() {
     echo "_NGINX_WORKERS=${_NGINX_WORKERS}"                   >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_HM_CLI_FLOOR=${_HM_CLI_FLOOR:-7.4}"                >> ${_barCnf}
+    echo "_HM_FPM_POOL=${_HM_FPM_POOL:-YES}"                  >> ${_barCnf}
+    echo "_HM_FPM_VERSION=${_HM_FPM_VERSION}"                 >> ${_barCnf}
     echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"               >> ${_barCnf}
     echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\""             >> ${_barCnf}
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
@@ -4095,6 +4112,19 @@ _barracuda_cnf() {
     _DENY_SOLR7_TEST=$(grep "^_DENY_SOLR7=" ${_barCnf} 2>&1)
     if [[ ! "${_DENY_SOLR7_TEST}" =~ "_DENY_SOLR7=" ]]; then
       echo "_DENY_SOLR7=${_DENY_SOLR7:-NO}" >> ${_barCnf}
+    fi
+    ### The control panel's own PHP (on by default; an explicit NO stays)
+    _HM_CLI_FLOOR_TEST=$(grep "^_HM_CLI_FLOOR=" ${_barCnf} 2>&1)
+    if [[ ! "${_HM_CLI_FLOOR_TEST}" =~ "_HM_CLI_FLOOR=" ]]; then
+      echo "_HM_CLI_FLOOR=${_HM_CLI_FLOOR:-7.4}" >> ${_barCnf}
+    fi
+    _HM_FPM_POOL_TEST=$(grep "^_HM_FPM_POOL=" ${_barCnf} 2>&1)
+    if [[ ! "${_HM_FPM_POOL_TEST}" =~ "_HM_FPM_POOL=" ]]; then
+      echo "_HM_FPM_POOL=${_HM_FPM_POOL:-YES}" >> ${_barCnf}
+    fi
+    _HM_FPM_VERSION_TEST=$(grep "^_HM_FPM_VERSION=" ${_barCnf} 2>&1)
+    if [[ ! "${_HM_FPM_VERSION_TEST}" =~ "_HM_FPM_VERSION=" ]]; then
+      echo "_HM_FPM_VERSION=${_HM_FPM_VERSION}" >> ${_barCnf}
     fi
     _DENY_SOLR9_TEST=$(grep "^_DENY_SOLR9=" ${_barCnf} 2>&1)
     if [[ ! "${_DENY_SOLR9_TEST}" =~ "_DENY_SOLR9=" ]]; then
@@ -4687,6 +4717,7 @@ _barracuda_cnf() {
     if [ -e "${_barCnf}" ]; then
       source ${_barCnf}
     fi
+    _hm_cli_floor_publish
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FF=$(grep "devuan/merged" ${_ffList} 2>&1)

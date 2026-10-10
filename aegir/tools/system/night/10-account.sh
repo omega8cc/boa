@@ -1279,6 +1279,8 @@ _account_process() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
+  ### hosting stores the path without a trailing slash: compare that form
+  _THIS_HM_PLR="${_THIS_HM_PLR%/}"
   if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
     _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
       SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
