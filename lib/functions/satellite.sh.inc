@@ -10174,14 +10174,26 @@ _satellite_child_b_aegir_build() {
       _hmRc=$?
     fi
     if [ "${_hmRc}" != "0" ]; then
-      ### The migrate stopped: the panel still runs on the previous root and
-      ### nothing below may point the account at the new one. Reported the
-      ### way a missing settings.php is, so the pass ends WITH ERRORS and the
-      ### next run is not skipped as already upgraded.
-      _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}"
-      _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-      touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
-      exit 1
+      ### A non-zero exit means an error was logged, not that nothing moved:
+      ### a post hook (the resume's name report) can fail after the panel is
+      ### on the new root. The alias says where the panel is. Moved: the pass
+      ### goes on and ends WITH ERRORS. Not moved: nothing below may point the
+      ### account at the new root, so the setup aborts the way a missing
+      ### settings.php does, and the next run is not skipped as upgraded.
+      _hmNow=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+      _hmNow="${_hmNow%/}"
+      if [ "${_hmNow}" = "${_HM_ROOT}" ]; then
+        _msg "${_STATUS} B: ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review its log"
+      else
+        _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}"
+        _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+        touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
+        exit 1
+      fi
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster registry-rebuild

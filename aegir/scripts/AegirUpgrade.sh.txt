@@ -383,9 +383,21 @@ _hostmaster_mi_up() {
     _hmRc=$?
   fi
   if [ "${_hmRc}" != "0" ]; then
-    _msg "FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays where it was"
-    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-    exit 1
+    ### Reported, not aborted: the master upgrade's log carries the line and
+    ### the launcher alerts on it, while the run completes and stamps, so
+    ### every octopus upgrade on the box is not refused afterwards. The alias
+    ### says whether the panel moved; the steps below work on wherever it is.
+    _hmNow=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    _hmNow="${_hmNow%/}"
+    if [ "${_hmNow}" = "${_HM_ROOT}" ]; then
+      _msg "ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review its log"
+    else
+      _msg "FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays where it was"
+    fi
   fi
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
