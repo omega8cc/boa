@@ -90,6 +90,17 @@
       instead of adding another one; every panel rebuild used to leave
       one more behind. Copies already there stay.
 
+    * The control panel's welcome page says what the panel runs today:
+      the ready-made Drupal platforms from Pressflow 6 to Drupal 11 and
+      the distributions Octopus provides (the Drupal 11 ones need Percona
+      8.4), Backdrop CMS with the Drupal 7 to Backdrop upgrade (Drupal 6
+      by way of Drupal 7), and Grav CMS and Textpattern CMS where they are
+      switched on. It names the ready-made Drupal 9, 10 and 11 platforms
+      as platforms for trying and testing, points a production site at a
+      platform you build, and links the documentation. The host count and
+      the Twitter comparisons are gone. The page reaches every panel on
+      its next Octopus upgrade.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
