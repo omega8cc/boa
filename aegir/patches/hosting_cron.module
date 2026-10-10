@@ -383,6 +383,8 @@ function hosting_cron_node_insert($node) {
  * Retrieves a list of sites for which to run cron.
  */
 function hosting_cron_get_sites($count) {
+  // No site due returns an empty list, not an undefined variable.
+  $sites = array();
   $result = db_query('SELECT n.nid, hs.last_cron, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
   $counter = 0;
   foreach ($result as $site) {
