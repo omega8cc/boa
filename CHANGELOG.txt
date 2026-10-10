@@ -16,6 +16,19 @@
       Octopus instance, also where a box with fewer than three
       Barracuda passes reuses the tree without downloading it.
 
+@=> Security
+
+    * The Ægir control panel's Drupal 7 core refuses or renames uploads of
+      the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
+      includes, a few other script types, .htaccess and Drupal's own code
+      files, as Backdrop does; BOA's web server never ran them anyway.
+
+    * The control panel no longer ships the two-factor modules it never
+      enabled, nor the unused Vue library.
+
+    * A hosting page that could only end in an error is gone from the
+      control panel.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
@@ -42,6 +55,18 @@
       removed on the account's next Octopus run, once its backend reads
       the shared shelf; anything else in that directory, and the
       directory itself then, is left as it is.
+
+    * The Ægir control panel, Ægir's Drush 8 and Provision avoid what PHP
+      8.5 and 8.6 deprecate wherever the fix also runs on PHP 5.6:
+      non-canonical casts, ${var} in strings, the is_integer() and
+      is_double() aliases, values returned from constructors, the date
+      constant PHP retires, and the null array keys and missing objects a
+      panel page, the site form, the settings page and the cron list hit.
+
+@=> Changes and Upgrades
+
+    * Classic Drush 8.5.14 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above.
 
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
