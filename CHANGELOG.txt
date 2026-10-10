@@ -57,6 +57,11 @@
       the account's own users own, never on files another account placed
       in its tree.
 
+    * The nightly cleanup of old database dumps in an account's dbackup
+      and the account runner's removal of its export metadata delete
+      only what root or the account's own users own, never files another
+      account placed in its tree.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
