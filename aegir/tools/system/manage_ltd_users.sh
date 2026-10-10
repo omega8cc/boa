@@ -4956,6 +4956,7 @@ _ltd_hm_switches() {
     printf -v "${_k}" '%s' "${_v}"
   done
   [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
+  _HM_FPM_POOL=$(printf '%s' "${_HM_FPM_POOL}" | tr '[:lower:]' '[:upper:]')
   [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
   if [ -d /data/conf ] \
     && [ "$(head -c 8 /data/conf/hm-cli-floor.txt 2>/dev/null | tr -d '\n')" != "${_HM_CLI_FLOOR}" ]; then
@@ -5035,26 +5036,26 @@ _ltd_hm_pool_apply() {
 # the pool and the include. Runs after the account's own pools are set up,
 # on every pass, standbys included.
 _ltd_hm_pool() {
-  local _hv _web _pool _pTpl _pNew _pFile _dom _inc _incTxt _old _e _chg=NO _rld=" " _pWt
+  local _hv _web _pool _pTpl _pNew _pFile _dom _inc _incTxt _old _e _chg=NO _rld=" " _rldOld=" " _pWt
   _pool="${_USER}.hm"
   _inc="${_dscUsr}/config/server_master/nginx/post.d"
   _dom=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php 2>/dev/null \
     | grep "'uri'" | head -n 1 | cut -d"'" -f4 | tr -cd 'a-zA-Z0-9.-')
   if [ "${_HM_FPM_POOL}" = "NO" ] || [ -z "${_dom}" ]; then
+    # the include goes first: nginx stops naming the socket before the
+    # pool behind it is dropped, so the panel never waits on a dead socket
+    if [ -e "${_inc}/fpm_include_panel.inc" ]; then
+      _ltd_rm_in "${_inc}" fpm_include_panel.inc
+      _ltd_hm_pool_apply
+    fi
     for _pFile in /opt/php*/etc/pool.d/"${_pool}".conf; do
       [ -e "${_pFile}" ] || [ -L "${_pFile}" ] || continue
       _e="${_pFile#/opt/php}"
       _e="${_e%%/*}"
       rm -f -- "${_pFile}"
       [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
-      _chg=YES
     done
-    if [ -e "${_inc}/fpm_include_panel.inc" ]; then
-      _ltd_rm_in "${_inc}" fpm_include_panel.inc
-      _chg=YES
-    fi
     [ -d "/var/www/phpcache/${_USER}/${_pool}" ] && rm -rf "/var/www/phpcache/${_USER}/${_pool}"
-    [ "${_chg}" = "YES" ] && _ltd_hm_pool_apply
     return 0
   fi
   _hv="${_HM_FPM_VERSION//[^0-9]/}"
@@ -5096,6 +5097,11 @@ _ltd_hm_pool() {
   wait
   sed -i "s/foo/${_USER}/g" "${_pNew}" &> /dev/null
   wait
+  # the single template's header is the account's own pool name, which the
+  # line above has just written: this pool keeps its own name, or it would
+  # redefine the account pool on the account socket
+  sed -i "s/^\[${_USER}\]$/[${_pool}]/" "${_pNew}" &> /dev/null
+  wait
   # the template names its user after the pool (\$pool.web): this pool runs
   # as the identity of the version's existing pool, named outright
   sed -i "s/^user = .*/user = ${_web}/" "${_pNew}" &> /dev/null
@@ -5118,14 +5124,18 @@ _ltd_hm_pool() {
       && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
     echo "group = ${_T_WGS##* }" >> "${_pNew}"
   fi
-  # the panel pool of another version goes: the version moved
+  # the panel pool of another version goes: the version moved. That master
+  # keeps the listener until its reload has gone through, so its reload
+  # runs first and the socket is waited out before the new version is
+  # reloaded onto the same path; a socket file left by a master that died
+  # unclean is removed, or the new master would refuse to listen
   for _old in /opt/php*/etc/pool.d/"${_pool}".conf; do
     [ -e "${_old}" ] || [ -L "${_old}" ] || continue
     _e="${_old#/opt/php}"
     _e="${_e%%/*}"
     [ "${_e}" = "${_hv}" ] && continue
     rm -f -- "${_old}"
-    _rld="${_rld}${_e} "
+    _rldOld="${_rldOld}${_e} "
     _chg=YES
   done
   if [ -f "${_pFile}" ] && [ ! -L "${_pFile}" ] && cmp -s -- "${_pNew}" "${_pFile}"; then
@@ -5134,6 +5144,18 @@ _ltd_hm_pool() {
     mv -f -- "${_pNew}" "${_pFile}"
     _rld="${_rld}${_hv} "
     _chg=YES
+  fi
+  if [ "${_rldOld}" != " " ]; then
+    for _e in $(printf '%s\n' ${_rldOld} | sort -u); do
+      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+    done
+    _pWt=0
+    while [ -S "/run/${_pool}.fpm.socket" ] && [ "${_pWt}" -lt 20 ]; do
+      sleep 0.5
+      _pWt=$(( _pWt + 1 ))
+    done
+    [ -S "/run/${_pool}.fpm.socket" ] && rm -f -- "/run/${_pool}.fpm.socket"
+    _rld="${_rld}${_hv} "
   fi
   [ -S "/run/${_pool}.fpm.socket" ] || _rld="${_rld}${_hv} "
   mkdir -p "/var/www/phpcache/${_USER}/${_pool}"
