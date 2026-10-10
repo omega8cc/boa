@@ -53,9 +53,9 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 ## Drupal 7
 
-- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.106.1)
-- [Drupal 7.106.1](https://docs.tag1.com/faqs/)
-- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.106.1)
+- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.106.2)
+- [Drupal 7.106.2](https://docs.tag1.com/faqs/)
+- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.106.2)
 
 ## Drupal 6
 
@@ -83,7 +83,9 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 * Opt-in on self-hosted systems: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems it is on by default, as Grav is. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
 
-* All D7 platforms have been enhanced using [Drupal 7.106.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
+* All D7 platforms have been enhanced using [Drupal 7.106.2 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
+
+* The Ægir control panel runs on the same pinned Drupal 7 core. Its code is built from the prebuilt `make_local` tree; when the Drupal core directory in that tree carries a different release than the pin, BOA replaces it from the pinned core tarball before building the panel, so a panel can no longer stay on an older core than the platforms.
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 

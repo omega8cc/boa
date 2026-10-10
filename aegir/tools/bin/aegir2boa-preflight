@@ -566,7 +566,12 @@ probe_hosting_state() {
   # Every value below is an attacker-controlled variable-table blob -> _int_only
   # BEFORE any arithmetic (root RCE otherwise).
   _hb="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='hosting_queued_process_started'" | head -n1)")")"
-  _lr="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='hosting_queue_tasks_last_run'" | head -n1)")")"
+  # hosting keeps the queues' last-run times in hosting_queue_run since its
+  # update 7306; older panels still carry the variable.
+  _lr="$(_int_only "$(_sql "SELECT last_run FROM \`${_HM_DB}\`.hosting_queue_run WHERE queue='tasks'" 2>/dev/null | head -n1)")"
+  if [[ -z "${_lr}" ]]; then
+    _lr="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='hosting_queue_tasks_last_run'" | head -n1)")")"
+  fi
   _HM_SITE_NID="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='aegir_hostmaster_site_nid'" | head -n1)")")"
 
   _now="$(date +%s 2>/dev/null)"

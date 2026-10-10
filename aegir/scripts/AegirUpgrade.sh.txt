@@ -375,14 +375,32 @@ _hostmaster_mi_up() {
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
     WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
-  ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-    WHERE task_type='delete' AND task_status='-1'" &> /dev/null
-  ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-    WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
+  _hmLog="${_ROOT}/log/hostmaster-migrate-${_NOW}.log"
+  mkdir -p ${_ROOT}/log
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
+    ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d 2>&1 | tee ${_hmLog}
+    _hmRc=${PIPESTATUS[0]}
   else
-    ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+    ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y > ${_hmLog} 2>&1
+    _hmRc=$?
+  fi
+  if [ "${_hmRc}" != "0" ]; then
+    ### Reported, not aborted: the master upgrade's log carries the line and
+    ### the launcher alerts on it, while the run completes and stamps, so
+    ### every octopus upgrade on the box is not refused afterwards. The alias
+    ### says whether the panel moved; the steps below work on wherever it is.
+    _hmNow=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    _hmNow="${_hmNow%/}"
+    if [ "${_hmNow}" = "${_HM_ROOT}" ] \
+      && [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
+      _msg "ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review ${_hmLog}"
+    else
+      _msg "FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays where it was; review ${_hmLog}"
+    fi
   fi
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \

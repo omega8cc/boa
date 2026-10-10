@@ -21,7 +21,7 @@ read" mean "this account's identities", nothing wider.
 | Group on the account's files (`~/static`, `~/.drush`, platforms, `sites/<uri>/drushrc.php`, …) | `users` | `oN` |
 | `users` on those identities | primary | kept, supplementary |
 | `settings.php`, `files/`, `private/` | `oN:www-data` | unchanged |
-| FPM pool identities `oN.web`, `oN.<php>.web` | `www-data` only | unchanged, never join `oN` |
+| FPM pool identities `oN.web`, `oN.<php>.web` (the control panel's pool `oN.hm` runs as one of them) | `www-data` only | unchanged, never join `oN` |
 | Shared codebases under `/data/all` | `root:users` | unchanged, by design |
 
 `users` stays on every identity on purpose: on a BOA server it is the

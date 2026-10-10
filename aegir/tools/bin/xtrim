@@ -1090,9 +1090,11 @@ _nginx_reload_locked() {
 ### put back the same way, never through a link put at post.d.
 _park_postd_here() {
   local _p _r=0
-  for _p in ./fpm_include_default.inc ./fpm_include_site_*; do
+  for _p in ./fpm_include_default.inc ./fpm_include_panel.inc ./fpm_include_site_*; do
     [ -e "${_p}" ] || [ -L "${_p}" ] || continue
+    # a local panel keeps its default include and its own pool's include
     [ "${2}" = "YES" ] && [ "${_p}" = "./fpm_include_default.inc" ] && continue
+    [ "${2}" = "YES" ] && [ "${_p}" = "./fpm_include_panel.inc" ] && continue
     mv -f -T -- "${_p}" "${1}/${_p#./}" 2> /dev/null || _r=1
   done
   return "${_r}"
@@ -1155,6 +1157,8 @@ _stage_a() {
       www*) continue ;;
     esac
     [ -n "${_panel_pool}" ] && [ "$(basename "${_p}")" = "${_oN}.${_panel_pool}.conf" ] && continue
+    # a local panel also keeps the pool of its own (oN.hm), on any version
+    [ "${_MAP_PANEL_LOCAL}" = "YES" ] && [ "$(basename "${_p}")" = "${_oN}.hm.conf" ] && continue
     _m=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
     mv -f "${_p}" "${_q}/pools/" && _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
   done
@@ -1219,6 +1223,13 @@ _restore_stage_a() {
   local _nn _left=0
   for _p in "${_q}"/pools/*; do
     [ -e "${_p}" ] || continue
+    ### The panel pool (oN.hm.conf) is rebuilt by the ltd worker on its next
+    ### pass, in the tree the box switch names: the saved copy is dropped,
+    ### never moved into the tree of the account's fpm.info.
+    if [ "$(basename "${_p}")" = "${_oN}.hm.conf" ]; then
+      rm -f "${_p}"
+      continue
+    fi
     ### Multi pool oN.NN.conf encodes its tree in the filename; the single
     ### pool oN.conf is pinned by the ACCOUNT's static/control/fpm.info --
     ### the box-level _PHP_FPM_VERSION is a different knob and lands the
@@ -1508,6 +1519,14 @@ _finalize() {
     _v=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_n}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
     [ -n "${_v}" ] && _keep_masters="${_keep_masters} ${_v}"
   done
+  ### A local panel answers through its own pool (oN.hm), which lives in
+  ### the tree the box switch names, else the box default: that master
+  ### stays too.
+  if [ -n "${_keep_sql}" ]; then
+    _v=$(grep -m1 '^_HM_FPM_VERSION=' /root/.barracuda.cnf 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
+    [ -n "${_v}" ] && [ -x "/opt/php${_v}/bin/php" ] || _v="${_panel}"
+    _keep_masters="${_keep_masters} ${_v}"
+  fi
   _keep_masters=$(echo ${_keep_masters} | tr ' ' '\n' | sort -u | tr '\n' ' ')
   if [ -n "${_keep_sql}" ] && [ "${_drop_datadir}" = "YES" ]; then
     _die "finalize: --drop-datadir refused -- local control panel(s) keep their databases here:${_keep_sql}"
