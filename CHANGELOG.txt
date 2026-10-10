@@ -35,6 +35,14 @@
       column has always been trimmed, every name carries its full form
       on hover, and no cell wraps; the name gives instead.
 
+    * The official Grav release the Upgrade task installs from is kept
+      once per server, under /data/all/000/grav-releases, root's alone,
+      and no longer in every account's static directory, which is the
+      account's own space. The copy an earlier release put there is
+      removed on the account's next Octopus run, once its backend reads
+      the shared shelf; anything else in that directory, and the
+      directory itself then, is left as it is.
+
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
 ### Date: Thu 08 Oct 2026 16:52:19 CEST in Warsaw
