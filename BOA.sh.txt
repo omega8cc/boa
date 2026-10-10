@@ -3227,7 +3227,7 @@ _update_agents() {
   fi
 
   _Dir="/data/all/000/modules"
-  _REDIS_L_VERSION=7.x-3.19.1
+  _REDIS_L_VERSION=7.x-3.19.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if _shared_module_stale redis_edge "ver-${_REDIS_L_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_edge "${_REDIS_L_VERSION}"
