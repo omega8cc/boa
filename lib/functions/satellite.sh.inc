@@ -10524,15 +10524,24 @@ MKCLIENTEOF
       fi
       rm -f make_client.php
     else
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+      ### The live panel platform is read first and left out of the parking
+      ### write: parking every distro platform and setting the live one back a
+      ### moment later left it recorded as deleted in between, and for good
+      ### when the read failed. Without a readable root nothing is parked.
       _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
+      if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+          SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%' \
+          AND publish_path <> '${_THIS_HM_PLR}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
+      else
+        _msg "ALRT: the panel's root could not be read from hostmaster.alias.drushrc.php; the old panel platforms stay as they are"
+      fi
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
