@@ -65,7 +65,7 @@
 
 @=> Changes and Upgrades
 
-    * Classic Drush 8.5.14 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+    * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
       items above.
 
 ###
