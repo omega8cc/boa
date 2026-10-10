@@ -3031,6 +3031,15 @@ _php_if_versions_cleanup_cnf() {
       fi
       _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
+      ### The control panels' own pools run on the version _HM_FPM_VERSION
+      ### names while it is installed: that version stays
+      _hmFpmV="${_HM_FPM_VERSION//[^0-9]/}"
+      if [ -n "${_hmFpmV}" ] && [ -x "/opt/php${_hmFpmV}/bin/php" ] \
+        && [ "$(echo "${_HM_FPM_POOL}" | tr '[:lower:]' '[:upper:]')" != "NO" ]; then
+        _hmFpmV="$(_php_vrn_dotted "${_hmFpmV}")"
+        [ -n "${_hmFpmV}" ] && _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_hmFpmV}"
+      fi
+
       ### Include only used PHP versions on major automated OS upgrades
       _STRICT_LIMIT_PHP=NO
       if [ -e "/root/.run-to-excalibur.cnf" ] \
