@@ -5053,6 +5053,7 @@ _ltd_hm_pool() {
       _ltd_rm_in "${_inc}" fpm_include_panel.inc
       _chg=YES
     fi
+    [ -d "/var/www/phpcache/${_USER}/${_pool}" ] && rm -rf "/var/www/phpcache/${_USER}/${_pool}"
     [ "${_chg}" = "YES" ] && _ltd_hm_pool_apply
     return 0
   fi
