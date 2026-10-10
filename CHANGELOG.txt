@@ -63,6 +63,19 @@
       constant PHP retires, and the null array keys and missing objects a
       panel page, the site form, the settings page and the cron list hit.
 
+    * The control panel's theme fits phones: a viewport, and below 960
+      pixels the columns stack while wide tables scroll inside the page.
+      Each page title is the page's h1, and the task buttons' white text
+      reaches 4.5:1 contrast.
+
+    * The control panel's task lists carry each task's status as text
+      for screen readers, not only as a colour and an icon, and queued
+      sites, platforms and servers get the queued row style.
+
+    * The Expand links of a running task's log keep working while the
+      log grows; each new block of lines used to add another handler, so
+      a click could open and close a line at once.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
