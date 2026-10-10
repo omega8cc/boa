@@ -66,6 +66,10 @@
       root owns it and neither group nor others can write it, and makes a
       missing one that way whatever the umask.
 
+    * The site Verify's ownership and permission fixes and the nightly
+      permission pass leave files another account's users own as they
+      are, with everything below them, and count them on one line.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
