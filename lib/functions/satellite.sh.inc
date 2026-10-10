@@ -108,70 +108,53 @@ _stage_d6d7_kit() {
 }
 
 #
-# Stage the newest official Grav admin-bundle release zip for the
-# per-instance upgrade channel: provision-grav-upgrade resolves the newest
-# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (the channel is
-# mirror-fed; this box never talks to getgrav.org). Version from the same
-# mirror stamp the platform build resolves; presence-gated for idempotency
-# and re-checked on every up-* run. The resolver always picks the newest by
-# version sort; the three newest staged zips are kept (a rollback restores
-# the registered safety copy, never an old zip), older ones are pruned so
-# the shelf does not grow by one release archive per Grav release forever.
+# Stage the newest official Grav admin-bundle release zip for the upgrade
+# channel: provision-grav-upgrade resolves the newest grav-admin-v*.zip
+# under /data/all/000/grav-releases/ (mirror-fed; this box never talks to
+# getgrav.org). One shelf of root's for the whole box, as the D6->D7 kit
+# above: this pass's AegirSetupA checked the store and 000 before
+# (_satellite_store_dirs_back), so no account can change a name in 000
+# while this runs, and the shelf counts as in place only when no entry of
+# it, the shelf itself included, is a link, is not root's or is writable
+# by others (_satellite_not_root_alone); otherwise it is removed before
+# the fetch, never followed. Version from the same mirror stamp the
+# platform build resolves; presence-gated for idempotency and re-checked
+# on every up-* run. The fetch lands under a temp name in the shelf and is
+# renamed over its name once the unzip -l probe accepts it, so a truncated
+# fetch is never resolvable as the newest artefact. The resolver always
+# picks the newest by version sort; the three newest staged zips are kept
+# (a rollback restores the registered safety copy, never an old zip),
+# older ones are pruned so the shelf does not grow by one release archive
+# per Grav release forever.
 _stage_grav_releases() {
-  local _gVrn _gZip _gDir
-  if [ "${_GRAV_SUPPORT}" != "YES" ] || [ -z "${_ROOT}" ]; then
+  local _gVrn _gZip _gDir="/data/all/000/grav-releases" _gTmp
+  if [ "${_GRAV_SUPPORT}" != "YES" ] || [ ! -d "/data/all/000" ]; then
     return 0
   fi
   _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
   [ -z "${_gVrn}" ] && _gVrn="${_GRAV_V_FALLBACK}"
   _gZip="grav-admin-v${_gVrn}.zip"
-  _gDir="${_ROOT}/static/grav-releases"
-  if [ -e "${_gDir}/${_gZip}" ]; then
+  if [ -n "$(_satellite_not_root_alone "${_gDir}")" ]; then
+    _msg "ALRT: ${_gDir} was not root's alone: removed before the Grav admin bundle is staged"
+    rm -rf -- "${_gDir}"
+  fi
+  if [ -f "${_gDir}/${_gZip}" ]; then
     return 0
   fi
   _msg "INFO: Staging the official Grav admin bundle ${_gVrn} for the upgrade channel"
-  ### static/ is group-writable: grav-releases is made a real directory and
-  ### everything below runs inside it, so a link put at any name there is
-  ### never written through, chowned or pruned into.
-  _acct_in_real_dir "${_ROOT}/static" _satellite_grav_dir_here
-  if _acct_in_real_dir "${_gDir}" _satellite_grav_fetch_here "${_gZip}"; then
+  [ -d "${_gDir}" ] || mkdir -m 0755 -- "${_gDir}"
+  _gTmp="${_gDir}/.${_gZip}.tmp"
+  rm -f -- "${_gTmp}"
+  curl ${_crlGet} --max-time 600 -o "${_gTmp}" \
+    "https://${_USE_MIR}/core/${_gZip}" 2> /dev/null
+  if [ -s "${_gTmp}" ] && unzip -l "${_gTmp}" > /dev/null 2>&1 \
+    && chmod 0644 "${_gTmp}" && mv -f -T -- "${_gTmp}" "${_gDir}/${_gZip}"; then
     _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
+    _prune_grav_releases "${_gDir}"
   else
-    _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task refuses until staged"
+    rm -f -- "${_gTmp}"
+    _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task installs from what is staged, if anything"
   fi
-}
-
-#
-# ./grav-releases made a real directory, run inside the real static/.
-_satellite_grav_dir_here() {
-  [ -L ./grav-releases ] && rm -f ./grav-releases
-  [ -d ./grav-releases ] || mkdir -p ./grav-releases
-}
-
-#
-# Fetch the bundle $1 into the current (pinned) grav-releases directory.
-### Downloaded and checked in root's own temp directory, then put in place
-### once: a truncated fetch must never be resolvable as the newest artefact
-### (the unzip -l probe rejects short/garbage bodies too), and the directory
-### is the account's, so the bundle is created there exclusively under a
-### fresh name and renamed over the name, never written through a link or a
-### FIFO put at either.
-_satellite_grav_fetch_here() {
-  local _w _rc=1
-  rm -f -- "./.${1}.tmp"
-  _w="$(mktemp -d /opt/tmp/.grav-stage.XXXXXX 2> /dev/null)" \
-    && [ -d "${_w}" ] || return 1
-  curl ${_crlGet} --max-time 600 -o "${_w}/${1}" \
-    "https://${_USE_MIR}/core/${1}" 2> /dev/null
-  if [ -s "${_w}/${1}" ] && unzip -l "${_w}/${1}" > /dev/null 2>&1 \
-    && _satellite_put_stdin_here "${1}" 0644 "${_USER}:${_ACCG:-users}" \
-    < "${_w}/${1}"; then
-    chown -h "${_USER}:${_ACCG:-users}" . 2> /dev/null
-    _prune_grav_releases .
-    _rc=0
-  fi
-  rm -rf -- "${_w}"
-  return "${_rc}"
 }
 
 #
@@ -189,6 +172,83 @@ _prune_grav_releases() {
     rm -f "${_pDir}/grav-admin-v${_pZip}.zip"
     _msg "INFO: Pruned the staged Grav admin bundle ${_pZip} (three newest kept)"
   done
+}
+
+#
+# The shelf an earlier release staged in each account's static/ is retired
+# on every pass once the account's own backend reads the shelf of root's
+# (its provision names it) and that shelf, root's alone, holds a bundle at
+# least as new as the newest one in the account's: the bundles BOA put there
+# that are not newer than it are removed, and the directory with them when
+# nothing else is in it. Nothing goes while the shelf of root's has nothing
+# to offer in its place (a fetch that failed, an instance switched to NO):
+# the Upgrade task never loses the one bundle it had. static/ is the
+# account's space, so root removes only inside the real directories, never
+# through a link put at either name; only a regular file named as a staged
+# bundle (or as the temp name of a fetch), never a link at such a name,
+# never anything else the account kept there, nor the directory then.
+_retire_static_grav_releases() {
+  local _gOld _gV _gNew
+  [ -n "${_ROOT}" ] || return 0
+  _gOld="${_ROOT}/static/grav-releases"
+  [ -d "${_gOld}" ] && [ ! -L "${_gOld}" ] || return 0
+  _acct_read_in "${_ROOT}/.drush/sys/provision/grav" provision_grav.drush.inc \
+    | grep -q "PROVISION_GRAV_RELEASES_DIR" || return 0
+  _gNew="$(_satellite_grav_shelf_newest)"
+  [ -n "${_gNew}" ] || return 0
+  _gV="$(_acct_in_real_dir "${_gOld}" _satellite_grav_retire_here "${_gNew}")"
+  if [ -n "${_gV}" ]; then
+    _msg "INFO: Removed the Grav admin bundle ${_gV} an earlier release staged in ${_gOld}; the shelf is /data/all/000/grav-releases now"
+  fi
+  _acct_in_real_dir "${_ROOT}/static" _satellite_grav_rmdir_here
+}
+
+#
+# The newest version on the shelf of root's, from the names of its regular
+# files; nothing when the shelf is not there, holds no bundle, or has an
+# entry that is not root's alone (then it is not trusted either).
+_satellite_grav_shelf_newest() {
+  local _gDir="/data/all/000/grav-releases"
+  [ -d "${_gDir}" ] && [ ! -L "${_gDir}" ] || return 0
+  [ -z "$(_satellite_not_root_alone "${_gDir}")" ] || return 0
+  find -P "${_gDir}" -mindepth 1 -maxdepth 1 -type f -name 'grav-admin-v*.zip' \
+    2> /dev/null | sed 's#.*/grav-admin-v##; s#\.zip$##' | grep '^[0-9]' \
+    | sort -V | tail -n 1
+}
+
+#
+# The staged bundles in the current (pinned) directory removed when their
+# version is not newer than $1 (the temp name of a fetch always): a regular
+# file named as a staged bundle, never a link at such a name. Prints the
+# versions removed.
+_satellite_grav_retire_here() {
+  local _f _n _v=""
+  for _f in ./grav-admin-v*.zip ./.grav-admin-v*.zip.tmp; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _n="${_f#./}"
+    _n="${_n#.}"
+    _n="${_n#grav-admin-v}"
+    _n="${_n%.tmp}"
+    _n="${_n%.zip}"
+    if [ "${_f}" = "${_f%.tmp}" ] \
+      && [ "$(printf '%s\n%s\n' "${_n}" "${1}" | sort -V | tail -n 1)" != "${1}" ]; then
+      continue
+    fi
+    rm -f -- "${_f}" || continue
+    _v="${_v:+${_v} }${_n}"
+  done
+  echo "${_v}"
+}
+
+#
+# ./grav-releases in the current (pinned) static/ removed when it is a real
+# directory with nothing left in it; rmdir leaves a link, and a directory
+# the account kept anything in, as they are.
+_satellite_grav_rmdir_here() {
+  if [ -d ./grav-releases ] && [ ! -L ./grav-releases ]; then
+    rmdir -- ./grav-releases 2> /dev/null
+  fi
+  return 0
 }
 
 #
@@ -7325,6 +7385,7 @@ _satellite_make() {
   ### behind _BACKDROP_SUPPORT. Stamp-gated no-op when current.
   _stage_d6d7_kit
   _stage_grav_releases
+  _retire_static_grav_releases
   ### Backstop bee for octopus-only boxes; no-op when already installed.
   _stage_bee
 
