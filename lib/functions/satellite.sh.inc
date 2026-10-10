@@ -6174,22 +6174,44 @@ _satellite_if_add_update_user_symlinks() {
     fi
     ln -sfn ${_ROOT}/clients ${_USER_HD}/clients
   fi
-  _acct_in_real_dir "${_ROOT}/clients" _satellite_clients_clean_here &> /dev/null
+  _T_N=$(_acct_in_real_dir "${_ROOT}/clients" _satellite_clients_clean_here 2> /dev/null)
+  _T_N=$(printf '%s\n' "${_T_N}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  if [ "${_T_N}" -gt 0 ]; then
+    _msg "${_STATUS} A: NOTE: ${_T_N} entries owned by another user left in place in ${_ROOT}/clients"
+  fi
 }
 
 #
 # The instance user's clients/ (the current, pinned directory) cleaned: the
 # legacy client dirs removed, each client's backups/ removed inside that
-# client's real directory, dangling links dropped; nothing is reached
-# through a link put at clients or at a client name.
+# client's real directory, dangling links dropped by find, which walks
+# without following a link; nothing is reached through a link put at
+# clients or at a client name. Only what root or the instance's own
+# identities own is removed (_satellite_rm_own_here): the account can rename
+# into clients/ what another account left group-writable. Prints dev:ino of
+# each entry left because another user owns it.
 _satellite_clients_clean_here() {
   local _c
-  rm -rf -- ./admin ./omega8ccgmailcom ./nocomega8cc
+  _satellite_rm_own_here admin
+  _satellite_rm_own_here omega8ccgmailcom
+  _satellite_rm_own_here nocomega8cc
   for _c in ./*; do
     [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
-    _acct_in_real_dir "$(pwd -P)/${_c#./}" rm -rf -- ./backups
+    _acct_in_real_dir "$(pwd -P)/${_c#./}" _satellite_rm_own_here backups
   done
-  symlinks -dr . &> /dev/null
+  find . -xdev -mindepth 1 -xtype l -delete 2> /dev/null
+  return 0
+}
+# ./$1 in the current (pinned) directory removed as rm -rf removed it,
+# through _ACCT_RM_OWN_PL: only what root or the instance's own identities
+# own (_acct_walk_uids), never through a link, and nothing below a directory
+# another user owns. Prints dev:ino of each entry left for another owner.
+_satellite_rm_own_here() {
+  local _o
+  [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${1}" 2> /dev/null
+  return 0
 }
 
 _satellite_if_add_update_user_dot_dirs() {
@@ -7764,6 +7786,137 @@ for my $f (@ARGV) {
   close($h);
 }
 exit 0;'
+# Root's removals in an account's trees, run inside the directory they act
+# in: only what the uids given second own (_acct_walk_uids), or a uid no
+# passwd entry names (sub own), is removed or unlocked, and nothing below a
+# directory another named uid owns. The account's identities can rename into
+# their own trees what another account left group-writable, a whole
+# directory with everything nested in it, so such a directory stays whole.
+# Nothing is done unless the current directory and every directory above it,
+# up to /, are owned by those uids or by one no passwd entry names, read
+# through '..' from where the walk stands. A directory is entered through a
+# handle opened without following a link, only as the directory lstat saw,
+# and its entries are acted on by name from inside it. The first argument is
+# the act, on the names after the third:
+#   r  each removed, a directory depth first, then itself once empty
+#   u  each unlocked (+i cleared through a handle), a directory with
+#      everything below it the walk reaches
+#   h  each removed unless it is a directory (find's hits)
+# or, the third argument a number of days, on the current directory:
+#   d  every entry below it older than that (find -mtime +N) removed as r
+#      removes it, younger directories searched alike, top-level dot
+#      names kept
+#   a  as d, the top-level dot names included
+#   f  as d, regular files only, every directory searched
+# Prints dev:ino of each entry left because another uid owns it, and of
+# the directory another uid owns above the place when the walk refuses
+# it; status 3 when one was, 1 when a removal failed.
+_ACCT_RM_OWN_PL='use Fcntl;
+my ($op, $ul, $days, @f) = @ARGV;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, defined($ul) ? $ul : "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($left, $bad, $now) = (0, 0, time);
+sub left { my ($l) = @_; print "$l->[0]:$l->[1]\n"; $left++; }
+sub done { exit($bad ? 1 : $left ? 3 : 0); }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) { left(\@x) if @x && !own($x[4]); $left = 1; done(); }
+sub kids {
+  opendir(my $h, ".") or do { $bad = 1; return (); };
+  my @n = grep { $_ ne "." && $_ ne ".." } readdir($h);
+  closedir($h);
+  return @n;
+}
+sub into {
+  my ($n, $l, $cb) = @_;
+  sysopen(my $up, ".", O_RDONLY | O_DIRECTORY) or do { $bad = 1; return 0; };
+  sysopen(my $dn, $n, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+    or do { $bad = 1; return 0; };
+  my @s = stat($dn);
+  unless (@s && $s[0] == $l->[0] && $s[1] == $l->[1] && chdir($dn)) {
+    $bad = 1;
+    return 0;
+  }
+  close($dn);
+  $cb->();
+  chdir($up) or die "no way back\n";
+  return 1;
+}
+sub rmown {
+  my ($n) = @_;
+  my @l = lstat($n) or return;
+  unless (own($l[4])) { left(\@l); return; }
+  if (-d _) {
+    into($n, \@l, sub { rmown($_) for kids(); }) or return;
+    rmdir($n) or $!{ENOTEMPTY} or $!{EEXIST} or $bad = 1;
+  } else {
+    unlink($n) or $bad = 1;
+  }
+}
+sub noimm {
+  my ($n, $l) = @_;
+  sysopen(my $h, $n, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or return;
+  my @s = stat($h);
+  if (@s && $s[0] == $l->[0] && $s[1] == $l->[1] && own($s[4])) {
+    my $b = pack("L", 0);
+    if (ioctl($h, 0x80086601, $b)) {
+      my $fl = unpack("L", $b);
+      ioctl($h, 0x40086602, pack("L", $fl & ~0x10)) if $fl & 0x10;
+    }
+  }
+  close($h);
+}
+sub unown {
+  my ($n) = @_;
+  my @l = lstat($n) or return;
+  return unless own($l[4]);
+  if (-d _) {
+    noimm($n, \@l);
+    into($n, \@l, sub { unown($_) for kids(); });
+  } elsif (-f _ && $l[3] == 1) {
+    noimm($n, \@l);
+  }
+}
+sub aged { return int(($now - $_[0]->[9]) / 86400) > $days; }
+sub sel {
+  my ($n, $top) = @_;
+  return if $top && $op ne "a" && substr($n, 0, 1) eq ".";
+  my @l = lstat($n) or return;
+  unless (own($l[4])) { left(\@l); return; }
+  if ($op eq "f") {
+    if (-d _) {
+      into($n, \@l, sub { sel($_, 0) for kids(); });
+    } elsif (-f _ && aged(\@l)) {
+      unlink($n) or $bad = 1;
+    }
+  } elsif (aged(\@l)) {
+    rmown($n);
+  } elsif (-d _) {
+    into($n, \@l, sub { sel($_, 0) for kids(); });
+  }
+}
+if ($op eq "r") {
+  rmown($_) for @f;
+} elsif ($op eq "u") {
+  unown($_) for @f;
+} elsif ($op eq "h") {
+  for my $n (@f) {
+    my @l = lstat($n) or next;
+    next if -d _;
+    if (own($l[4])) { unlink($n) or $bad = 1; } else { left(\@l); }
+  }
+} elsif ($op =~ /^[adf]$/ && defined($days) && $days =~ /^[0-9]+$/) {
+  sel($_, 1) for kids();
+} else {
+  exit 2;
+}
+done();'
 # ./$1 in the current (pinned) directory made from stdin: a fresh file
 # created exclusively (0600 until it is complete), handed to $3 (owner:group,
 # names or numbers; empty leaves it root's) and given the mode $2, both
