@@ -155,6 +155,10 @@ _NGINX_QUIC_BPF=YES #----------- HTTP/3 survives Nginx reloads when YES (default
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
+_HM_CLI_FLOOR=7.4 #------------- Every control panel's own command line (its dispatcher, upgrade and drush calls) runs on the account's CLI version raised to this floor, never lowered; NO keeps the account's version
+_HM_FPM_POOL=YES #-------------- YES serves every control panel domain from its own pool oN.hm; NO serves it from the account's pool
+_HM_FPM_VERSION= #-------------- PHP version of the control panel pool (empty: _PHP_FPM_VERSION)
+###
 _PHP_CLI_VERSION=8.4 #---------- PHP-CLI for Master Instance
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
