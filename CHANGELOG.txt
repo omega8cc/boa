@@ -104,6 +104,20 @@
       the screen. Each page title is the page's h1, and the task buttons'
       white text reaches 4.5:1 contrast.
 
+    * The Ægir control panel's queue settings fit their pop-up again. A
+      long queue description could not wrap and pushed the Frequency and
+      Last run columns out of the window, and each queue's frequency
+      stacked its fields one per line. Descriptions now wrap, and every
+      queue's frequency reads as two lines: how many items, then how often.
+
+    * The control panel's pop-up windows fit the browser window at every
+      width. A window between 960 and about 1045 pixels wide cut off a
+      pop-up's right edge, below 960 the content sat against the box's
+      right edge, and phones now get a 10 pixel side margin instead of
+      40. A pop-up also no longer shows its content too low, with a
+      second table header, after the window grows from narrow to wide in
+      one step.
+
     * The control panel's lists of sites, platforms, servers, packages
       and tasks carry each row's status as text for screen readers, not
       only as a colour and an icon, and queued sites, platforms and
