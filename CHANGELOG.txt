@@ -62,6 +62,10 @@
       only what root or the account's own users own, never files another
       account placed in its tree.
 
+    * autosymlink takes an account's static/files as its store only when
+      root owns it and neither group nor others can write it, and makes a
+      missing one that way whatever the umask.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
