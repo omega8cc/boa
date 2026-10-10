@@ -973,25 +973,38 @@ _hostmaster_oldhost_dbuser_drop() {
 #
 # Keep the panel core on the pinned Drupal 7 release. In BATCH mode the panel
 # core comes only from make_local.tar.gz, whose drupal directory can lag the
-# _SMALLCORE7_V pin: on 2026-10-09 every published tarball still carried 7.105
-# while the pin was 7.106.2, so panels were rebuilt on the old core while the
-# shared platform core and the box markers had moved. When the core string in
-# the tarball differs from the pin, the directory is replaced from the pinned
-# core tarball, which this box fetches for its platforms anyway.
+# _SMALLCORE7_V pin: once every published tarball still carried the previous
+# core after the pin had moved to the next release, so panels were rebuilt on
+# the old core while the shared platform core and the box markers had moved.
+# The tree's core is compared with the pinned core tarball file by file and
+# replaced from it when they differ: the core's VERSION string cannot tell,
+# because D7ES keeps it at the major and minor release (7.106 for 7.106.1 and
+# 7.106.2 alike). A tree found equal, or replaced, is stamped with the pin, so
+# the other accounts of the same run do not fetch the core again; a tree
+# fetched again loses the stamp with the rest of make_local.
 _master_pin_panel_core() {
-  local _hv _pin
+  local _hv _stamp
   _mL="/opt/tmp/make_local"
   [ -e "${_mL}/drupal/includes/bootstrap.inc" ] || return 0
   [ -z "${_SMALLCORE7_V}" ] && return 0
-  _pin=$(echo "${_SMALLCORE7_V}" | cut -d. -f1-2)
+  _stamp="${_mL}/.core-pin-checked"
+  [ "$(cat "${_stamp}" 2> /dev/null)" = "${_SMALLCORE7_V}" ] && return 0
   _hv=$(grep "define('VERSION'" "${_mL}/drupal/includes/bootstrap.inc" 2>/dev/null \
     | cut -d"'" -f4)
-  [ "${_hv}" = "${_pin}" ] && return 0
-  _msg "INFO: Panel core ${_hv} in make_local differs from the pinned ${_pin}, replacing it with ${_DRUPAL7}"
   cd ${_mL}
   rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
   _get_core_ext "${_DRUPAL7}.tar.gz"
-  if [ -e "${_mL}/${_DRUPAL7}/includes/bootstrap.inc" ]; then
+  if [ ! -e "${_mL}/${_DRUPAL7}/includes/bootstrap.inc" ]; then
+    rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
+    _msg "ALRT: ${_DRUPAL7}.tar.gz did not unpack, the panel keeps core ${_hv} unchecked"
+    cd /opt/tmp
+    return 0
+  fi
+  # The tarball's build-date file is the one file allowed to differ.
+  if diff -rq -x .update.txt "${_mL}/drupal" "${_mL}/${_DRUPAL7}" > /dev/null 2>&1; then
+    rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
+  else
+    _msg "INFO: Panel core ${_hv} in make_local differs from ${_DRUPAL7}, replacing it"
     rm -rf "${_mL}/drupal"
     mv -f "${_mL}/${_DRUPAL7}" "${_mL}/drupal"
     rm -f "${_mL}/${_DRUPAL7}.tar.gz"
@@ -999,10 +1012,8 @@ _master_pin_panel_core() {
     find ${_mL}/drupal -type f -exec chmod 0644 {} \; &> /dev/null
     chown -R root:root ${_mL}/drupal
     _msg "INFO: Panel core replaced with ${_DRUPAL7}"
-  else
-    rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
-    _msg "ALRT: ${_DRUPAL7}.tar.gz did not unpack, the panel keeps core ${_hv}"
   fi
+  echo "${_SMALLCORE7_V}" > "${_stamp}"
   cd /opt/tmp
 }
 
