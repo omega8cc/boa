@@ -55,6 +55,16 @@
       development, links to the licence and Ægir pages on omega8.cc,
       and stays out of client accounts' sight, as before.
 
+    * The Ægir control panel spells the project name Ægir in its own
+      texts: form descriptions, task and feature descriptions, the
+      module list and the Views list, in the hosting, tasks-extra and
+      CiviCRM front-end modules. Names other code matches on, such as
+      the Ægir Hostmaster platform, keep their ASCII form.
+
+    * The CiviCRM front-end module's Ansible inventory no longer uses
+      a PHP 7 operator, the one hostmaster file that failed to parse on
+      PHP 5.6.
+
     * The official Grav release the Upgrade task installs from is kept
       once per server, under /data/all/000/grav-releases, root's alone,
       and no longer in every account's static directory, which is the
