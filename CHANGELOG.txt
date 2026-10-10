@@ -18,6 +18,18 @@
 
 @=> Improvements
 
+    * The Ægir control panel runs on PHP that BOA chooses. Every panel
+      domain is served from a pool of its own, oN.hm, on the version
+      _HM_FPM_VERSION names (the box default when empty), running as the
+      identity of the account's pool for that version and listed by
+      instgrp like any other pool; the panel's own command line, its
+      task dispatcher, its upgrade and every drush call aimed at it,
+      runs on the account's CLI version raised to the floor _HM_CLI_FLOOR
+      (7.4 by default), never lowered. Tenant sites keep the PHP their
+      control files choose. Both switches ship on in /root/.barracuda.cnf;
+      NO keeps the account's pool or version. Until now a panel followed
+      the account's fpm.info and cli.info, 5.6 included.
+
     * The Ægir control panel's sites list keeps one line per site: a
       long domain is trimmed to 40 characters, the way the Platform
       column has always been trimmed, every name carries its full form

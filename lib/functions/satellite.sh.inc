@@ -7092,6 +7092,12 @@ _satellite_make() {
   echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   _satellite_inc_put _PHP_CLI_VERSION
   _satellite_inc_put _PHP_FPM_VERSION
+  # the control panel's own PHP switches, read from the box cnf the children
+  # cannot read (/root is theirs to see only through this sealed include)
+  _satellite_hm_switches
+  _satellite_inc_put _HM_CLI_FLOOR
+  _satellite_inc_put _HM_FPM_POOL
+  _satellite_inc_put _HM_FPM_VERSION
   echo "export _PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""       >> ${_writeTo}
   echo "export _PLATFORMS_ONLY=\"${_PLATFORMS_ONLY}\""       >> ${_writeTo}
   echo "export _PURGE_MODE=\"${_PURGE_MODE}\""               >> ${_writeTo}
@@ -7171,7 +7177,9 @@ _satellite_make() {
   # result to AegirSetupC alone via its sealed copy below. A/B keep the
   # cli.info value: the hostmaster leg must never follow client markers,
   # and the durable pins (drush shebang, launcher, octopus cnf) stay
-  # cli.info-based so removing the marker leaves no trace. The forced
+  # cli.info-based so removing the marker leaves no trace. A and B then
+  # raise their own _T_CLI to the panel floor (_HM_CLI_FLOOR, through
+  # _satellite_hm_cli_bin), which touches the hostmaster leg alone. The forced
   # path_alias_cache 5.6 pin also outranks markers -- that pin exists
   # because a newer CLI breaks such platforms.
   _MRK_CLI_VERSION=
@@ -7919,6 +7927,69 @@ _satellite_hm_alias_get() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1
+}
+
+# The control panel's own PHP switches (docs/cnf/barracuda.cnf), read from
+# the box cnf as bash reads it: the last assignment wins, export, quotes
+# and a trailing comment are tolerated, and a key that is not there yet
+# (a box whose barracuda pass has not appended it) takes the shipped
+# default, on. The children see them through the sealed include only.
+_satellite_hm_switches() {
+  local _k _v
+  for _k in _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION; do
+    _v=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' " | tr -d '\n')
+    printf -v "${_k}" '%s' "${_v}"
+  done
+  [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
+  [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
+  export _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION
+}
+
+# $1 = the CLI directory (/opt/phpNN/bin) the account's version resolved
+# to; prints the directory the control panel's own command line runs on:
+# $1 itself when the floor is off, when the version is not below it, or
+# when the account's panel still carries path_alias_cache (a newer CLI
+# breaks such platforms, the worker pins them to 5.6 for that reason);
+# otherwise the lowest installed version at or above the floor. The
+# account's own value is never written anywhere by this: tenant sites keep
+# cli.info, phpNN.info and cli-per-platform.info as they are.
+_satellite_hm_cli_bin() {
+  local _d="${1}" _v _f _c
+  _f="${_HM_CLI_FLOOR:-7.4}"
+  case "${_f}" in
+    NO|no|No) echo "${_d}"; return 0 ;;
+  esac
+  _f="${_f//[^0-9]/}"
+  case "${_f}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  _v=$(readlink -f "${_d}/php" 2>/dev/null)
+  _v="${_v#/opt/php}"
+  _v="${_v%%/*}"
+  case "${_v}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  if [ "${_v}" -ge "${_f}" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  if [ -n "${_ROOT}" ] && [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
+    _c=$(_satellite_hm_alias_get "root'")
+    if [ -n "${_c}" ] && [ -e "${_c}/modules/path_alias_cache" ]; then
+      echo "${_d}"
+      return 0
+    fi
+  fi
+  for _c in 74 80 81 82 83 84 85 86; do
+    if [ "${_c}" -ge "${_f}" ] && [ -x "/opt/php${_c}/bin/php" ]; then
+      echo "/opt/php${_c}/bin"
+      return 0
+    fi
+  done
+  echo "${_d}"
 }
 # True when $1 names one of the account's own hostmaster roots
 # (<root>/aegir/distro/<name>) or, with $2 = site, a site in one

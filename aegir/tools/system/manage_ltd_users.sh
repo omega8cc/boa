@@ -4183,11 +4183,20 @@ _php_cli_drush_update() {
       ;;
   esac
   if [ -x "${_T_CLI}/php" ]; then
+    # The dispatcher alone runs on the account's version raised to the
+    # control panel floor (_ltd_hm_cli_bin): the shebangs above and the
+    # launcher default below stay on the account's own value, so a tenant's
+    # drush keeps its PHP. log/hm.cli.txt names what the panel runs on.
+    _T_HM_CLI=$(_ltd_hm_cli_bin "${_T_CLI}")
+    _T_HM_VRN="${_T_HM_CLI#/opt/php}"
+    _T_HM_VRN="${_T_HM_VRN%%/*}"
+    [ -n "${_T_HM_VRN}" ] && _T_HM_VRN="${_T_HM_VRN:0:1}.${_T_HM_VRN:1:1}"
+    _ltd_put_in "${_dscUsr}/log" hm.cli.txt "${_T_HM_VRN:-${_T_CLI_VRN}}"
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
-    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
+    _DRUSH_HOSTING_DISPATCH_CMD="${_T_HM_CLI}/php ${_dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
     # aegir.sh sits in oN's own home: put in place as a fresh file inside the
     # real directory, never through a link at the name
-    _ltd_in_real_dir "${_dscUsr}" _ltd_aegir_sh_put "$(echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
+    _ltd_in_real_dir "${_dscUsr}" _ltd_aegir_sh_put "$(echo -e "#!/bin/bash\n\nPATH=.:${_T_HM_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
       \n${_DRUSH_HOSTING_DISPATCH_CMD} \
       \ntouch ${_dscUsr}/${_USER}-task.done" | fmt -su -w 2500)"
     # The shebang pin on drush.php is bypassed whenever the drush 8 finder
@@ -4208,6 +4217,10 @@ _php_cli_drush_update() {
   fi
   _ltd_ctrl_rm '.ctrl.cli.*.pid'
   _ltd_ctrl_stamp ".ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid" "${_T_CLI_VRN}"
+  # the floor's own stamp: a changed floor rewrites aegir.sh on the next
+  # pass, with cli.info unchanged
+  _ltd_ctrl_rm '.ctrl.hmcli.*.pid'
+  _ltd_ctrl_stamp ".ctrl.hmcli.${_T_HM_VRN:-${_T_CLI_VRN}}.${_xSrl}.pid" "${_T_HM_VRN:-${_T_CLI_VRN}}"
 }
 
 #
@@ -4930,11 +4943,232 @@ _site_socket_inc_gen() {
 }
 
 #
+# The control panel's own PHP switches (docs/cnf/barracuda.cnf), read from
+# the box cnf as bash reads it (the last assignment wins; export, quotes
+# and a trailing comment tolerated); a key not there yet means the shipped
+# default, on. The floor is published to /data/conf/hm-cli-floor.txt for
+# websh, which runs as the account user and cannot read /root.
+_ltd_hm_switches() {
+  local _k _v
+  for _k in _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION; do
+    _v=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' " | tr -d '\n')
+    printf -v "${_k}" '%s' "${_v}"
+  done
+  [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
+  [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
+  if [ -d /data/conf ] \
+    && [ "$(head -c 8 /data/conf/hm-cli-floor.txt 2>/dev/null | tr -d '\n')" != "${_HM_CLI_FLOOR}" ]; then
+    printf '%s\n' "${_HM_CLI_FLOOR}" > /data/conf/.hm-cli-floor.txt.new 2>/dev/null \
+      && chmod 0644 /data/conf/.hm-cli-floor.txt.new \
+      && mv -f /data/conf/.hm-cli-floor.txt.new /data/conf/hm-cli-floor.txt
+  fi
+}
+
+# $1 = the CLI directory (/opt/phpNN/bin) the account's cli.info resolved
+# to; prints the directory the control panel's own command line (aegir.sh,
+# the dispatcher) runs on: $1 when the floor is off, when the version is
+# not below it, or when the panel still carries path_alias_cache (pinned
+# to 5.6 below, a newer CLI breaks such platforms); otherwise the lowest
+# installed version at or above the floor. The account's own pins (the
+# drush shebangs, the launcher default, cli.info) are never raised.
+_ltd_hm_cli_bin() {
+  local _d="${1}" _v _f _c
+  _f="${_HM_CLI_FLOOR:-7.4}"
+  case "${_f}" in
+    NO|no|No) echo "${_d}"; return 0 ;;
+  esac
+  _f="${_f//[^0-9]/}"
+  case "${_f}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  _v=$(readlink -f "${_d}/php" 2>/dev/null)
+  _v="${_v#/opt/php}"
+  _v="${_v%%/*}"
+  case "${_v}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  if [ "${_v}" -ge "${_f}" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  _c=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php 2>/dev/null \
+    | grep "'root'" | head -n 1 | cut -d"'" -f4)
+  if [ -n "${_c}" ] && [ -e "${_c}/modules/path_alias_cache" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  for _c in 74 80 81 82 83 84 85 86; do
+    if [ "${_c}" -ge "${_f}" ] && [ -x "/opt/php${_c}/bin/php" ]; then
+      echo "/opt/php${_c}/bin"
+      return 0
+    fi
+  done
+  echo "${_d}"
+}
+
+# nginx sent to the panel pool, or away from it: only a config that passes
+# its own test is reloaded (an invalid one on disk would turn the next
+# unrelated restart into a box-wide outage).
+_ltd_hm_pool_apply() {
+  if nginx -t &> /dev/null; then
+    service nginx reload &> /dev/null
+  else
+    _ltd_notice "nginx-configtest-${_USER}" \
+      "nginx -t FAILED after the control panel pool include of ${_USER} changed -- NOT reloaded" \
+      "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+  fi
+}
+
+#
+# The control panel's own pool (_HM_FPM_POOL): oN.hm on the version
+# _HM_FPM_VERSION names (empty: the box's _PHP_FPM_VERSION; one not
+# installed falls back to the box default, then to the newest installed),
+# running as the identity of that version's existing pool (oN.web in
+# single-FPM mode, oN.<ver>.web in multi-FPM mode), so no new identity
+# appears and instgrp lists it like any other pool. nginx sends the panel
+# domain to it through post.d/fpm_include_panel.inc, which is written only
+# while the pool's socket answers and removed when it does not: the panel
+# then falls back to the account's own pool, never to nothing. NO removes
+# the pool and the include. Runs after the account's own pools are set up,
+# on every pass, standbys included.
+_ltd_hm_pool() {
+  local _hv _web _pool _pTpl _pNew _pFile _dom _inc _incTxt _old _e _chg=NO _rld=" " _pWt
+  _pool="${_USER}.hm"
+  _inc="${_dscUsr}/config/server_master/nginx/post.d"
+  _dom=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php 2>/dev/null \
+    | grep "'uri'" | head -n 1 | cut -d"'" -f4 | tr -cd 'a-zA-Z0-9.-')
+  if [ "${_HM_FPM_POOL}" = "NO" ] || [ -z "${_dom}" ]; then
+    for _pFile in /opt/php*/etc/pool.d/"${_pool}".conf; do
+      [ -e "${_pFile}" ] || [ -L "${_pFile}" ] || continue
+      _e="${_pFile#/opt/php}"
+      _e="${_e%%/*}"
+      rm -f -- "${_pFile}"
+      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+      _chg=YES
+    done
+    if [ -e "${_inc}/fpm_include_panel.inc" ]; then
+      _ltd_rm_in "${_inc}" fpm_include_panel.inc
+      _chg=YES
+    fi
+    [ "${_chg}" = "YES" ] && _ltd_hm_pool_apply
+    return 0
+  fi
+  _hv="${_HM_FPM_VERSION//[^0-9]/}"
+  [ -n "${_hv}" ] && [ -x "/opt/php${_hv}/bin/php" ] || _hv=""
+  if [ -z "${_hv}" ]; then
+    _hv=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?_PHP_FPM_VERSION=" /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -cd '0-9')
+    [ -n "${_hv}" ] && [ -x "/opt/php${_hv}/bin/php" ] || _hv=""
+  fi
+  if [ -z "${_hv}" ]; then
+    for _e in 86 85 84 83 82 81 80 74; do
+      if [ -x "/opt/php${_e}/bin/php" ]; then
+        _hv="${_e}"
+        break
+      fi
+    done
+  fi
+  [ -n "${_hv}" ] || return 0
+  if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; then
+    _web="${_USER}.${_hv}.web"
+    _pTpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
+  else
+    _web="${_USER}.web"
+    _pTpl=/var/xdrago/conf/fpm-pool-foo.conf
+  fi
+  getent passwd "${_web}" > /dev/null 2>&1 || return 0
+  [ -e "${_pTpl}" ] || return 0
+  _pFile="/opt/php${_hv}/etc/pool.d/${_pool}.conf"
+  _pNew="/opt/php${_hv}/etc/pool.d/.${_pool}.conf.new"
+  rm -f -- "${_pNew}"
+  cp -af "${_pTpl}" "${_pNew}"
+  sed -i "s/.ftp/.web/g" "${_pNew}" &> /dev/null
+  wait
+  sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" "${_pNew}" &> /dev/null
+  wait
+  sed -i "s/foo.web/${_web}/g" "${_pNew}" &> /dev/null
+  wait
+  sed -i "s/THISPOOL/${_pool}/g" "${_pNew}" &> /dev/null
+  wait
+  sed -i "s/foo/${_USER}/g" "${_pNew}" &> /dev/null
+  wait
+  # the template names its user after the pool (\$pool.web): this pool runs
+  # as the identity of the version's existing pool, named outright
+  sed -i "s/^user = .*/user = ${_web}/" "${_pNew}" &> /dev/null
+  wait
+  if [[ "${_hv}" == 8* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-modern.conf" ]; then
+    sed -i "s/fpm-pool-common.conf/fpm-pool-common-modern.conf/g" "${_pNew}" &> /dev/null
+    wait
+  elif [[ "${_hv}" == 7* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-legacy.conf" ]; then
+    sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" "${_pNew}" &> /dev/null
+    wait
+  fi
+  [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" "${_pNew}" &> /dev/null
+  wait
+  # the pool runs in the account's web group once its identities have left
+  # www-data, on the same terms as its other pools (see the pool loop)
+  _T_WGS=$(_web_group_state "${_USER}")
+  if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+    && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
+    && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
+      && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
+    echo "group = ${_T_WGS##* }" >> "${_pNew}"
+  fi
+  # the panel pool of another version goes: the version moved
+  for _old in /opt/php*/etc/pool.d/"${_pool}".conf; do
+    [ -e "${_old}" ] || [ -L "${_old}" ] || continue
+    _e="${_old#/opt/php}"
+    _e="${_e%%/*}"
+    [ "${_e}" = "${_hv}" ] && continue
+    rm -f -- "${_old}"
+    _rld="${_rld}${_e} "
+    _chg=YES
+  done
+  if [ -f "${_pFile}" ] && [ ! -L "${_pFile}" ] && cmp -s -- "${_pNew}" "${_pFile}"; then
+    rm -f -- "${_pNew}"
+  else
+    mv -f -- "${_pNew}" "${_pFile}"
+    _rld="${_rld}${_hv} "
+    _chg=YES
+  fi
+  [ -S "/run/${_pool}.fpm.socket" ] || _rld="${_rld}${_hv} "
+  mkdir -p "/var/www/phpcache/${_USER}/${_pool}"
+  _T_WG=$(_web_group "${_USER}")
+  [ -n "${_T_WG}" ] && chgrp "${_T_WG}" "/var/www/phpcache/${_USER}/${_pool}"
+  chmod 770 "/var/www/phpcache/${_USER}/${_pool}"
+  for _e in $(printf '%s\n' ${_rld} | sort -u); do
+    [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+  done
+  _pWt=0
+  while [ ! -S "/run/${_pool}.fpm.socket" ] && [ "${_pWt}" -lt 30 ]; do
+    sleep 0.5
+    _pWt=$(( _pWt + 1 ))
+  done
+  _incTxt="if ( \$main_site_name = ${_dom} ) {"$'\n'"  set \$user_socket \"${_pool}\";"$'\n'"}"
+  if [ -S "/run/${_pool}.fpm.socket" ]; then
+    _old=$(_ltd_read_in "${_inc}" fpm_include_panel.inc 2>/dev/null)
+    if [ "${_old}" != "${_incTxt}" ]; then
+      _ltd_put_in "${_inc}" fpm_include_panel.inc "${_incTxt}"
+      _chg=YES
+    fi
+  elif [ -e "${_inc}/fpm_include_panel.inc" ]; then
+    _ltd_rm_in "${_inc}" fpm_include_panel.inc
+    _chg=YES
+  fi
+  [ "${_chg}" = "YES" ] && _ltd_hm_pool_apply
+  return 0
+}
+
+#
 # Switch PHP Version.
 _switch_php() {
   _FORCE_FPM_SETUP=NO
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
+  _ltd_hm_switches
 
   if [ -e "${_dscUsr}/static/control/fpm.info" ] || [ -e "${_dscUsr}/static/control/cli.info" ]; then
     echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
@@ -5035,7 +5269,14 @@ _switch_php() {
         echo "_T_CLI_VRN ELSE is EMPTY"
       else
         echo "_T_CLI_VRN is ${_T_CLI_VRN}"
-        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid" ]; then
+        # the version the panel's dispatcher runs on (the floor applied), so
+        # a changed floor alone rewrites aegir.sh
+        _T_HM_VRN=$(_ltd_hm_cli_bin "/opt/php${_T_CLI_VRN//./}/bin")
+        _T_HM_VRN="${_T_HM_VRN#/opt/php}"
+        _T_HM_VRN="${_T_HM_VRN%%/*}"
+        [ -n "${_T_HM_VRN}" ] && _T_HM_VRN="${_T_HM_VRN:0:1}.${_T_HM_VRN:1:1}"
+        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid" ] \
+          || [ ! -e "${_dscUsr}/static/control/.ctrl.hmcli.${_T_HM_VRN:-${_T_CLI_VRN}}.${_xSrl}.pid" ]; then
           _DRUSH_FILES="drush.php drush"
           for _df in ${_DRUSH_FILES}; do
             _php_cli_drush_update "${_df}"
@@ -5254,6 +5495,8 @@ _switch_php() {
           _PHP_M_V="${_PHP_SV}"
           _pUp="/run/${_USER}.fpm.socket"
           for _pf in /opt/php*/etc/pool.d/"${_USER}".*.conf; do
+            # the control panel's own pool is not the other mode's
+            case "${_pf}" in */"${_USER}".hm.conf) continue ;; esac
             if [ -e "${_pf}" ] || [ -L "${_pf}" ]; then
               _pOld="${_pOld}${_pf} "
             fi
@@ -5404,6 +5647,8 @@ _switch_php() {
       fi
     fi
   fi
+  # the control panel's own pool, after the account's pools are final
+  _ltd_hm_pool
 }
 
 #
