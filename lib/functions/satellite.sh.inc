@@ -10166,11 +10166,15 @@ _satellite_child_b_aegir_build() {
 
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
+    ### The migrate's own output is kept either way: the lines below point
+    ### at it when the exit status is not zero.
+    _hmLog="${_ROOT}/log/hostmaster-migrate-${_NOW}.log"
+    mkdir -p ${_ROOT}/log
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
-      _hmRc=$?
+      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d 2>&1 | tee ${_hmLog}
+      _hmRc=${PIPESTATUS[0]}
     else
-      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y > ${_hmLog} 2>&1
       _hmRc=$?
     fi
     if [ "${_hmRc}" != "0" ]; then
@@ -10187,9 +10191,9 @@ _satellite_child_b_aegir_build() {
           | sed "s/[\,']//g" 2>&1)
       _hmNow="${_hmNow%/}"
       if [ "${_hmNow}" = "${_HM_ROOT}" ]; then
-        _msg "${_STATUS} B: ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review its log"
+        _msg "${_STATUS} B: ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review ${_hmLog}"
       else
-        _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}"
+        _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}; review ${_hmLog}"
         _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
         touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
         exit 1
