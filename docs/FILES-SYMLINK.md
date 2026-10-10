@@ -132,9 +132,14 @@ autosymlink --site example.com --account o1 --archive-store --apply
 
   `static/files` is resolved once and accepted only when it is the account's own store
   or its relocated store on attached storage (the `migratefs` layout); any other link
-  there is refused. The account's own `static/files` must be root's (this tool makes
-  it); a relocated one may also be the account's (`migratefs` gives a fresh store the
-  owner of `static/`).
+  there is refused. A relocated store may be root's or the account's (`migratefs`
+  gives a fresh store the owner of `static/`).
+
+  The account's own `static/files` must be root's and writable by neither group nor
+  others; this tool makes it so, whatever the run's umask. A root-owned directory
+  that group or others can write is refused: only such a directory can have been
+  moved in from another folder by the account's own users, since moving a folder
+  elsewhere needs write access to the folder itself.
 
   The directory found is remembered by its identity (device and inode), and every
   later step checks that it acts inside that very directory, so a directory put at
