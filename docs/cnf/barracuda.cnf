@@ -227,10 +227,13 @@ _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ### with _AUTO_VER variable, plus you can include all supported PHP versions
 ### with _AUTO_PHP variable set to "php-min" -- otherwise it will be ignored.
 ###
-### Note that weekly system upgrade will start shortly after midnight on the
-### specified weekday, while the day/month upgrades for both Barracuda
-### and all Octopus instances will start at ~3 AM for system and Ægir Master
-### instance, and ~4 AM for all Octopus based Ægir instances.
+### Note that the day/month upgrade starts shortly after midnight (00:15) for
+### system and Ægir Master instance, and about an hour later (01:15) for all
+### Octopus based Ægir instances, unless _AUTO_UP_HOUR, _AUTO_UP_MINUTE,
+### _AUTO_OCT_UP_HOUR and _AUTO_OCT_UP_MINUTE set other times. The weekly
+### system upgrade starts five minutes after the day/month Barracuda time
+### on the specified weekday, and is skipped on the day/month date, since
+### the full upgrade does everything it would.
 ###
 ### NOTE: All three _AUTO_UP_* variables must be defined to enable auto-upgrade.
 ###

@@ -26,7 +26,9 @@ Remember that day/month upgrades will include a complete upgrade to the latest B
 
 You can further modify the auto-upgrade by specifying the upgrade tier — `dev`, `pro`, or `lts` — with the `_AUTO_VER` variable. Additionally, you can control which PHP versions are installed during the upgrade with the `_AUTO_PHP` variable: `php-min` (or its alias `php-all`) installs PHP 8.3, 8.4, and 8.5 with 8.4 as the default, while `php-max` installs all supported PHP versions; any other value is ignored.
 
-Note that the start times are governed by the `_AUTO_UP_*` hour/minute variables below. On an ordinary operator box, if you leave those unset, the defaults place the Barracuda pass (weekly system as well as the day/month system and Ægir Master upgrade) shortly after midnight (00:15) and the Octopus pass (all Octopus-based Ægir instances) about an hour later (01:15). On hosted BOA systems these are forced to a fixed later schedule — approximately 3 AM for the Barracuda pass and 4 AM for the Octopus pass — regardless of the values above.
+Note that the start times are governed by the `_AUTO_UP_*` hour/minute variables below. On an ordinary operator box, if you leave those unset, the defaults place the day/month Barracuda pass (system and Ægir Master upgrade) shortly after midnight (00:15), the weekly system pass five minutes later (00:20), and the Octopus pass (all Octopus-based Ægir instances) about an hour later (01:15). On hosted BOA systems these are forced to a fixed later schedule — approximately 3 AM for the Barracuda passes and 4 AM for the Octopus pass — regardless of the values above.
+
+The weekly system pass always starts five minutes after the time set for the day/month Barracuda pass (on the next weekday when that time is 23:55 or later), and it does not run at all on the day/month date: the full upgrade does everything it would, and a weekly pass run after it would keep the Octopus pass from starting.
 
 > **NOTE:** All three main `_AUTO_UP_*` variables must be defined to enable auto-upgrade.
 
