@@ -164,6 +164,22 @@ the Let's Encrypt client-notice model: it goes to the account's
 by `_GHOST_CLIENT_NOTIFY` (default `YES`; set `NO` in `/root/.barracuda.cnf`
 fleet-wide or in an account's `octopus.cnf` to disable).
 
+## The panel's own records
+
+The filesystem sweeps above never touch the control panel's database. What a
+deleted site or platform leaves there is collected by Ægir's own `task_gc`
+queue, which BOA runs every five minutes on every instance: the tasks of
+deleted sites and platforms (with their logs and arguments), tasks whose node
+is gone, task log entries older than `hosting_task_gc_log_age` (three months
+by default, `0` keeps everything) and the package instances of deleted
+platforms, which used to survive their platform and grew to hundreds of
+thousands of rows on long-lived instances.
+
+Every leg is bounded per run (`hosting_task_gc_tasks_per_run` 200,
+`hosting_task_gc_logs_per_run` 5000, `hosting_task_gc_instances_per_run` 2000;
+all are panel variables set with `drush @hostmaster vset`), so a large backlog
+drains over hours without ever holding a table.
+
 ## Recovering a moved item
 
 Nothing is deleted, so recovery is just moving the item back from its backup or
