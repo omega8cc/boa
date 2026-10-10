@@ -116,11 +116,14 @@
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
       items above.
 
-    * Redis integration for Drupal 7 (redis_edge) 7.x-3.19.2. A path
+    * Redis integration for Drupal 7 (redis_edge) 7.x-3.19.3. A path
       without an alias raised two PHP 8.5 warnings at every lookup, and
       on a site whose language is not neutral, English on most sites, it
       was never answered from Redis: every page queried the alias table
-      again for each such path. The miss is now cached in its language.
+      again for each such path. The miss is now cached in its language,
+      and an alias saved or deleted is seen by the rest of the same
+      request, as in Drupal core. The module also no longer triggers
+      PHP 8.4's deprecation of an implicitly nullable parameter.
 
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
