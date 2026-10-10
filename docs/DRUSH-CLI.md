@@ -165,10 +165,17 @@ A `drush` behind a pipe or after another command runs on the server's default PH
 the control files say, so start the line with it.
 
 A platform line **outranks the `phpNN.info` switch**. Renaming `php74.info` to `php84.info`
-to work on your Drupal 10 platform no longer moves the Drupal 7 platform you listed. The
-Ægir control panel itself never takes a line: it follows `phpNN.info`, else `cli.info`.
+to work on your Drupal 10 platform no longer moves the Drupal 7 platform you listed.
 PHP-FPM (the web) is never changed by this file. Plain `php` / `phpNN` commands are not
 changed either.
+
+The Ægir control panel itself never takes a line: it follows `phpNN.info`, else `cli.info`,
+raised to the control panel floor when that is lower (PHP 7.4 by default: `_HM_CLI_FLOOR`
+in `/root/.barracuda.cnf`, `NO` to keep the account's version; the lowest installed version
+at or above the floor serves when the floor itself is not installed). The floor reaches the
+panel's own command line only: its task dispatcher, its upgrade and every `drush @hostmaster`
+line. Your sites keep the PHP your files choose, and the task log names the floor when it
+applied.
 
 How to write the folder:
 

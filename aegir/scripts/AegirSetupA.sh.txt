@@ -208,6 +208,11 @@ if [ -z "${_T_CLI}" ]; then
     done
   fi
 fi
+### The control panel's own command line runs on the account's version
+### raised to the panel floor (_HM_CLI_FLOOR from the sealed include):
+### every @hostmaster call of this leg, while the account's Drush pins
+### stay on _PHP_CLI_VERSION for the tenant.
+_T_CLI=$(_satellite_hm_cli_bin "${_T_CLI}")
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -258,6 +263,12 @@ if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; 
     || [ ! -e "/opt/tmp/make_local/hosting/server/hosting_server.install" ] \
     || [ ! -e "/opt/tmp/make_local/drupal/includes/database/mysql/schema.inc" ]; then
     _satellite_download_for_local_build
+  else
+    # A reused tree must still follow the pinned core: on a box with fewer
+    # than three Barracuda passes the download is skipped, and with it the
+    # check inside it, so the stale-core case this branch exists for would
+    # otherwise go unguarded.
+    _satellite_pin_panel_core
   fi
 else
   _satellite_download_for_local_build

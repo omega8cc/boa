@@ -196,24 +196,23 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
  * Implements hook_node_load().
  */
 function hosting_cron_node_load($nodes, $types) {
-  foreach ($nodes as $nid => &$node) {
-    if ($node->type == 'site') {
-
-      $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
-      if ($this_cron_interval) {
-        $this_cron_interval = array('cron_interval' => $this_cron_interval);
-      }
-
-      if (isset($node->cron_interval) && $node->cron_interval > -1) {
-        $cron_interval_ok = TRUE;
-      }
-      else {
-        if (isset($this_cron_interval) && $this_cron_interval > -1) {
-          $node->cron_interval = $this_cron_interval;
-        }
-      }
-
-      return $this_cron_interval;
+  foreach ($nodes as $nid => $node) {
+    if ($node->type != 'site') {
+      continue;
+    }
+    // Every site of a multi-load gets its interval, as an integer. The
+    // Drupal 6 form of this hook returned the row to be merged into the node
+    // and stopped at the first site, which left the other sites of a
+    // multi-load without an interval and gave the first one an array (the
+    // writes and the form survived that by accident: the database layer
+    // expands a one-element array into its element, the select accepts an
+    // array value).
+    $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+    if ($this_cron_interval === FALSE || $this_cron_interval === NULL) {
+      continue;
+    }
+    if (!isset($node->cron_interval) || !is_numeric($node->cron_interval) || $node->cron_interval < 0) {
+      $node->cron_interval = (int) $this_cron_interval;
     }
   }
 }
@@ -225,11 +224,11 @@ function hosting_cron_node_view($node, $view_mode, $langcode) {
   if ($node->type == 'site') {
     if ($view_mode != 'teaser') {
       $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
-      if (!$node->cron_interval && $this_cron_interval) {
-        $node->cron_interval = $this_cron_interval;
+      if (empty($node->cron_interval) && $this_cron_interval) {
+        $node->cron_interval = (int) $this_cron_interval;
       }
       $cron_text = $this_cron_interval == ADV_CRON_TURNED_OFF ? t('Disabled') : t('Every !interval', array('!interval' => format_interval($this_cron_interval)));
-      $cron_text .= '<br />' . t('(Last run: !interval)', array('!interval' => hosting_format_interval($node->last_cron)));
+      $cron_text .= '<br />' . t('(Last run: !interval)', array('!interval' => hosting_format_interval(isset($node->last_cron) ? $node->last_cron : 0)));
       $node->content['info']['last_cron'] = array(
         '#type' => 'item',
         '#title' => t('Cron'),
@@ -259,8 +258,8 @@ function hosting_cron_node_update($node) {
     $use_cron_interval = ADV_CRON_TURNED_OFF;
     $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
 
-    if ($node->cron_interval > -1) {
-      $use_cron_interval = $node->cron_interval;
+    if (isset($node->cron_interval) && is_numeric($node->cron_interval) && $node->cron_interval > -1) {
+      $use_cron_interval = (int) $node->cron_interval;
     }
     else {
       if ($this_cron_interval > -1) {
@@ -268,13 +267,13 @@ function hosting_cron_node_update($node) {
       }
     }
 
-    if ($node->nid == 10) {
-      if ($node->cron_interval == ADV_CRON_TURNED_OFF) {
-        db_update('hosting_cron')
-          ->fields(array('cron_interval' => '3600'))
-          ->condition('nid', '10')
-          ->execute();
-      }
+    // The panel's own cron is never switched off: a saved interval of 0 on
+    // the hostmaster site becomes the hourly default. The site is the one
+    // the install recorded, not the stock install's node 10; the value goes
+    // into $use_cron_interval so the writes below carry it (a direct row
+    // write here was undone by them).
+    if (hosting_cron_is_hostmaster_site($node) && $use_cron_interval == ADV_CRON_TURNED_OFF) {
+      $use_cron_interval = 3600;
     }
 
     if ($this_cron_interval > -1) {
@@ -317,6 +316,22 @@ function hosting_cron_node_update($node) {
 }
 
 /**
+ * Is this site node the panel's own (hostmaster) site?
+ *
+ * Read from the nid the install recorded; a panel without that variable has
+ * no hostmaster site to protect.
+ */
+function hosting_cron_is_hostmaster_site($node) {
+  // The install puts the context name on the node before its first save and
+  // records the nid only afterwards.
+  if (isset($node->hosting_name) && $node->hosting_name === 'hostmaster') {
+    return TRUE;
+  }
+  $hostmaster = hosting_get_hostmaster_site_nid();
+  return !empty($hostmaster) && isset($node->nid) && (int) $node->nid === (int) $hostmaster;
+}
+
+/**
  * Implements hook_node_insert().
  */
 function hosting_cron_node_insert($node) {
@@ -324,8 +339,8 @@ function hosting_cron_node_insert($node) {
     $use_cron_interval = ADV_CRON_TURNED_OFF;
     $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
 
-    if (isset($node->cron_interval) && $node->cron_interval > -1) {
-      $use_cron_interval = $node->cron_interval;
+    if (isset($node->cron_interval) && is_numeric($node->cron_interval) && $node->cron_interval > -1) {
+      $use_cron_interval = (int) $node->cron_interval;
     }
     else {
       if ($this_cron_interval > -1) {
@@ -333,8 +348,8 @@ function hosting_cron_node_insert($node) {
       }
     }
 
-    if ($node->nid == 10) {
-      $use_cron_interval = '3600';
+    if (hosting_cron_is_hostmaster_site($node) && $use_cron_interval == ADV_CRON_TURNED_OFF) {
+      $use_cron_interval = 3600;
     }
 
     if ($use_cron_interval == ADV_CRON_TURNED_OFF) {
@@ -368,6 +383,8 @@ function hosting_cron_node_insert($node) {
  * Retrieves a list of sites for which to run cron.
  */
 function hosting_cron_get_sites($count) {
+  // No site due returns an empty list, not an undefined variable.
+  $sites = array();
   $result = db_query('SELECT n.nid, hs.last_cron, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
   $counter = 0;
   foreach ($result as $site) {

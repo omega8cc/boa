@@ -3581,7 +3581,40 @@ _php_not_used_enable_again() {
 # monitor never brings back a version the pass is retiring.
 _php_fpm_retire_stop() {
   date +%s > "/run/php${1}-fpm.cooldown"
+  _php_panel_include_off "${1}"
   _mrun "service php${1}-fpm force-quit"
+}
+
+#
+# The control panel's own pool (oN.hm) lives in the tree of the version
+# _HM_FPM_VERSION names, else the box default, and the ltd worker that moves
+# it never runs during a pass: a panel whose pool lives in version $1, which
+# is about to stop, would answer 502 until the worker's next run. Its include
+# goes first, so the panel falls back to the account's default include, and
+# nginx reloads once, its old workers waited for; the worker builds the pool
+# again where the switch points and writes the include back.
+_php_panel_include_off() {
+  local _pf _usr _inc _did=NO _old _p _try _left
+  for _pf in /opt/php"${1}"/etc/pool.d/*.hm.conf; do
+    [ -f "${_pf}" ] || continue
+    _usr="${_pf##*/}"
+    _usr="${_usr%.hm.conf}"
+    [[ "${_usr}" =~ ^[a-zA-Z0-9._-]+$ ]] || continue
+    _inc="/data/disk/${_usr}/config/server_master/nginx/post.d"
+    [ -f "${_inc}/fpm_include_panel.inc" ] && [ ! -L "${_inc}/fpm_include_panel.inc" ] || continue
+    _acct_in_real_dir "${_inc}" rm -f -- ./fpm_include_panel.inc && _did=YES
+  done
+  [ "${_did}" = "YES" ] || return 0
+  _old=$(pgrep -f '^nginx: worker process' 2> /dev/null | tr '\n' ' ')
+  _mrun "service nginx reload"
+  for _try in $(seq 1 60); do
+    _left=
+    for _p in ${_old}; do
+      kill -0 "${_p}" 2> /dev/null && _left=YES && break
+    done
+    [ -z "${_left}" ] && break
+    sleep 0.5
+  done
 }
 
 #

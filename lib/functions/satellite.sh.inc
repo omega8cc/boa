@@ -108,70 +108,53 @@ _stage_d6d7_kit() {
 }
 
 #
-# Stage the newest official Grav admin-bundle release zip for the
-# per-instance upgrade channel: provision-grav-upgrade resolves the newest
-# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (the channel is
-# mirror-fed; this box never talks to getgrav.org). Version from the same
-# mirror stamp the platform build resolves; presence-gated for idempotency
-# and re-checked on every up-* run. The resolver always picks the newest by
-# version sort; the three newest staged zips are kept (a rollback restores
-# the registered safety copy, never an old zip), older ones are pruned so
-# the shelf does not grow by one release archive per Grav release forever.
+# Stage the newest official Grav admin-bundle release zip for the upgrade
+# channel: provision-grav-upgrade resolves the newest grav-admin-v*.zip
+# under /data/all/000/grav-releases/ (mirror-fed; this box never talks to
+# getgrav.org). One shelf of root's for the whole box, as the D6->D7 kit
+# above: this pass's AegirSetupA checked the store and 000 before
+# (_satellite_store_dirs_back), so no account can change a name in 000
+# while this runs, and the shelf counts as in place only when no entry of
+# it, the shelf itself included, is a link, is not root's or is writable
+# by others (_satellite_not_root_alone); otherwise it is removed before
+# the fetch, never followed. Version from the same mirror stamp the
+# platform build resolves; presence-gated for idempotency and re-checked
+# on every up-* run. The fetch lands under a temp name in the shelf and is
+# renamed over its name once the unzip -l probe accepts it, so a truncated
+# fetch is never resolvable as the newest artefact. The resolver always
+# picks the newest by version sort; the three newest staged zips are kept
+# (a rollback restores the registered safety copy, never an old zip),
+# older ones are pruned so the shelf does not grow by one release archive
+# per Grav release forever.
 _stage_grav_releases() {
-  local _gVrn _gZip _gDir
-  if [ "${_GRAV_SUPPORT}" != "YES" ] || [ -z "${_ROOT}" ]; then
+  local _gVrn _gZip _gDir="/data/all/000/grav-releases" _gTmp
+  if [ "${_GRAV_SUPPORT}" != "YES" ] || [ ! -d "/data/all/000" ]; then
     return 0
   fi
   _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
   [ -z "${_gVrn}" ] && _gVrn="${_GRAV_V_FALLBACK}"
   _gZip="grav-admin-v${_gVrn}.zip"
-  _gDir="${_ROOT}/static/grav-releases"
-  if [ -e "${_gDir}/${_gZip}" ]; then
+  if [ -n "$(_satellite_not_root_alone "${_gDir}")" ]; then
+    _msg "ALRT: ${_gDir} was not root's alone: removed before the Grav admin bundle is staged"
+    rm -rf -- "${_gDir}"
+  fi
+  if [ -f "${_gDir}/${_gZip}" ]; then
     return 0
   fi
   _msg "INFO: Staging the official Grav admin bundle ${_gVrn} for the upgrade channel"
-  ### static/ is group-writable: grav-releases is made a real directory and
-  ### everything below runs inside it, so a link put at any name there is
-  ### never written through, chowned or pruned into.
-  _acct_in_real_dir "${_ROOT}/static" _satellite_grav_dir_here
-  if _acct_in_real_dir "${_gDir}" _satellite_grav_fetch_here "${_gZip}"; then
+  [ -d "${_gDir}" ] || mkdir -m 0755 -- "${_gDir}"
+  _gTmp="${_gDir}/.${_gZip}.tmp"
+  rm -f -- "${_gTmp}"
+  curl ${_crlGet} --max-time 600 -o "${_gTmp}" \
+    "https://${_USE_MIR}/core/${_gZip}" 2> /dev/null
+  if [ -s "${_gTmp}" ] && unzip -l "${_gTmp}" > /dev/null 2>&1 \
+    && chmod 0644 "${_gTmp}" && mv -f -T -- "${_gTmp}" "${_gDir}/${_gZip}"; then
     _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
+    _prune_grav_releases "${_gDir}"
   else
-    _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task refuses until staged"
+    rm -f -- "${_gTmp}"
+    _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task installs from what is staged, if anything"
   fi
-}
-
-#
-# ./grav-releases made a real directory, run inside the real static/.
-_satellite_grav_dir_here() {
-  [ -L ./grav-releases ] && rm -f ./grav-releases
-  [ -d ./grav-releases ] || mkdir -p ./grav-releases
-}
-
-#
-# Fetch the bundle $1 into the current (pinned) grav-releases directory.
-### Downloaded and checked in root's own temp directory, then put in place
-### once: a truncated fetch must never be resolvable as the newest artefact
-### (the unzip -l probe rejects short/garbage bodies too), and the directory
-### is the account's, so the bundle is created there exclusively under a
-### fresh name and renamed over the name, never written through a link or a
-### FIFO put at either.
-_satellite_grav_fetch_here() {
-  local _w _rc=1
-  rm -f -- "./.${1}.tmp"
-  _w="$(mktemp -d /opt/tmp/.grav-stage.XXXXXX 2> /dev/null)" \
-    && [ -d "${_w}" ] || return 1
-  curl ${_crlGet} --max-time 600 -o "${_w}/${1}" \
-    "https://${_USE_MIR}/core/${1}" 2> /dev/null
-  if [ -s "${_w}/${1}" ] && unzip -l "${_w}/${1}" > /dev/null 2>&1 \
-    && _satellite_put_stdin_here "${1}" 0644 "${_USER}:${_ACCG:-users}" \
-    < "${_w}/${1}"; then
-    chown -h "${_USER}:${_ACCG:-users}" . 2> /dev/null
-    _prune_grav_releases .
-    _rc=0
-  fi
-  rm -rf -- "${_w}"
-  return "${_rc}"
 }
 
 #
@@ -189,6 +172,54 @@ _prune_grav_releases() {
     rm -f "${_pDir}/grav-admin-v${_pZip}.zip"
     _msg "INFO: Pruned the staged Grav admin bundle ${_pZip} (three newest kept)"
   done
+}
+
+#
+# The shelf an earlier release staged in each account's static/ is removed
+# whole on every pass once the account's own backend reads the shelf of
+# root's (its provision names it) and that shelf, root's alone, holds a
+# bundle: static/grav-releases is BOA's own directory in the account's
+# space, and nothing of it is left behind. Nothing goes while the shelf of
+# root's has nothing to offer in its place (a fetch that failed, an
+# instance switched to NO): the Upgrade task never loses the one bundle it
+# had. Root removes only inside the real static/, never through a link put
+# at that name; a link put at grav-releases itself is removed as a name,
+# never followed.
+_retire_static_grav_releases() {
+  local _gOld
+  [ -n "${_ROOT}" ] || return 0
+  _gOld="${_ROOT}/static/grav-releases"
+  [ -e "${_gOld}" ] || [ -L "${_gOld}" ] || return 0
+  _acct_read_in "${_ROOT}/.drush/sys/provision/grav" provision_grav.drush.inc \
+    | grep -q "PROVISION_GRAV_RELEASES_DIR" || return 0
+  [ -n "$(_satellite_grav_shelf_newest)" ] || return 0
+  if _acct_in_real_dir "${_ROOT}/static" _satellite_grav_retire_here; then
+    _msg "INFO: Removed ${_gOld}, the shelf an earlier release staged there; the shelf is /data/all/000/grav-releases now"
+  fi
+}
+
+#
+# The newest version on the shelf of root's, from the names of its regular
+# files; nothing when the shelf is not there, holds no bundle, or has an
+# entry that is not root's alone (then it is not trusted either).
+_satellite_grav_shelf_newest() {
+  local _gDir="/data/all/000/grav-releases"
+  [ -d "${_gDir}" ] && [ ! -L "${_gDir}" ] || return 0
+  [ -z "$(_satellite_not_root_alone "${_gDir}")" ] || return 0
+  find -P "${_gDir}" -mindepth 1 -maxdepth 1 -type f -name 'grav-admin-v*.zip' \
+    2> /dev/null | sed 's#.*/grav-admin-v##; s#\.zip$##' | grep '^[0-9]' \
+    | sort -V | tail -n 1
+}
+
+#
+# ./grav-releases in the current (pinned) static/ removed whole: a real
+# directory with everything in it (an entry that is a link is removed as a
+# name, never followed), or a link at the name, removed as a name. Returns
+# 0 when the name is gone.
+_satellite_grav_retire_here() {
+  { [ -e ./grav-releases ] || [ -L ./grav-releases ]; } || return 1
+  rm -rf -- ./grav-releases
+  [ ! -e ./grav-releases ] && [ ! -L ./grav-releases ]
 }
 
 #
@@ -5218,6 +5249,45 @@ _satellite_run_pre_install() {
 }
 
 #
+# Keep the panel core on the pinned Drupal 7 release. In BATCH mode the panel
+# core comes only from make_local.tar.gz, whose drupal directory can lag the
+# _SMALLCORE7_V pin: on 2026-10-09 every published tarball still carried 7.105
+# while the pin was 7.106.2, so panels were rebuilt on the old core while the
+# shared platform core and the box markers had moved. When the core string in
+# the tarball differs from the pin, the directory is replaced from the pinned
+# core tarball, which this box fetches for its platforms anyway.
+_satellite_pin_panel_core() {
+  local _hv _pin
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_pin_panel_core"
+  fi
+  _mL="/opt/tmp/make_local"
+  [ -e "${_mL}/drupal/includes/bootstrap.inc" ] || return 0
+  [ -z "${_SMALLCORE7_V}" ] && return 0
+  _pin=$(echo "${_SMALLCORE7_V}" | cut -d. -f1-2)
+  _hv=$(grep "define('VERSION'" "${_mL}/drupal/includes/bootstrap.inc" 2>/dev/null \
+    | cut -d"'" -f4)
+  [ "${_hv}" = "${_pin}" ] && return 0
+  _msg "INFO: Panel core ${_hv} in make_local differs from the pinned ${_pin}, replacing it with ${_DRUPAL7}"
+  cd ${_mL}
+  rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
+  _get_core_ext "${_DRUPAL7}.tar.gz"
+  if [ -e "${_mL}/${_DRUPAL7}/includes/bootstrap.inc" ]; then
+    rm -rf "${_mL}/drupal"
+    mv -f "${_mL}/${_DRUPAL7}" "${_mL}/drupal"
+    rm -f "${_mL}/${_DRUPAL7}.tar.gz"
+    find ${_mL}/drupal -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_mL}/drupal -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R root:root ${_mL}/drupal
+    _msg "INFO: Panel core replaced with ${_DRUPAL7}"
+  else
+    rm -rf "${_mL}/${_DRUPAL7}" "${_mL}/${_DRUPAL7}.tar.gz"
+    _msg "ALRT: ${_DRUPAL7}.tar.gz did not unpack, the panel keeps core ${_hv}"
+  fi
+  cd /opt/tmp
+}
+
+#
 # Download for Drush Make Local build.
 _satellite_download_for_local_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5296,6 +5366,7 @@ _satellite_download_for_local_build() {
     find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
     chown -R root:root ${_mL}
   fi
+  _satellite_pin_panel_core
 }
 
 #
@@ -7052,6 +7123,12 @@ _satellite_make() {
   echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   _satellite_inc_put _PHP_CLI_VERSION
   _satellite_inc_put _PHP_FPM_VERSION
+  # the control panel's own PHP switches, read from the box cnf the children
+  # cannot read (/root is theirs to see only through this sealed include)
+  _satellite_hm_switches
+  _satellite_inc_put _HM_CLI_FLOOR
+  _satellite_inc_put _HM_FPM_POOL
+  _satellite_inc_put _HM_FPM_VERSION
   echo "export _PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""       >> ${_writeTo}
   echo "export _PLATFORMS_ONLY=\"${_PLATFORMS_ONLY}\""       >> ${_writeTo}
   echo "export _PURGE_MODE=\"${_PURGE_MODE}\""               >> ${_writeTo}
@@ -7131,7 +7208,9 @@ _satellite_make() {
   # result to AegirSetupC alone via its sealed copy below. A/B keep the
   # cli.info value: the hostmaster leg must never follow client markers,
   # and the durable pins (drush shebang, launcher, octopus cnf) stay
-  # cli.info-based so removing the marker leaves no trace. The forced
+  # cli.info-based so removing the marker leaves no trace. A and B then
+  # raise their own _T_CLI to the panel floor (_HM_CLI_FLOOR, through
+  # _satellite_hm_cli_bin), which touches the hostmaster leg alone. The forced
   # path_alias_cache 5.6 pin also outranks markers -- that pin exists
   # because a newer CLI breaks such platforms.
   _MRK_CLI_VERSION=
@@ -7277,6 +7356,7 @@ _satellite_make() {
   ### behind _BACKDROP_SUPPORT. Stamp-gated no-op when current.
   _stage_d6d7_kit
   _stage_grav_releases
+  _retire_static_grav_releases
   ### Backstop bee for octopus-only boxes; no-op when already installed.
   _stage_bee
 
@@ -7879,6 +7959,69 @@ _satellite_hm_alias_get() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1
+}
+
+# The control panel's own PHP switches (docs/cnf/barracuda.cnf), read from
+# the box cnf as bash reads it: the last assignment wins, export, quotes
+# and a trailing comment are tolerated, and a key that is not there yet
+# (a box whose barracuda pass has not appended it) takes the shipped
+# default, on. The children see them through the sealed include only.
+_satellite_hm_switches() {
+  local _k _v
+  for _k in _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION; do
+    _v=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' " | tr -d '\n')
+    printf -v "${_k}" '%s' "${_v}"
+  done
+  [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
+  [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
+  export _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION
+}
+
+# $1 = the CLI directory (/opt/phpNN/bin) the account's version resolved
+# to; prints the directory the control panel's own command line runs on:
+# $1 itself when the floor is off, when the version is not below it, or
+# when the account's panel still carries path_alias_cache (a newer CLI
+# breaks such platforms, the worker pins them to 5.6 for that reason);
+# otherwise the lowest installed version at or above the floor. The
+# account's own value is never written anywhere by this: tenant sites keep
+# cli.info, phpNN.info and cli-per-platform.info as they are.
+_satellite_hm_cli_bin() {
+  local _d="${1}" _v _f _c
+  _f="${_HM_CLI_FLOOR:-7.4}"
+  case "${_f}" in
+    NO|no|No) echo "${_d}"; return 0 ;;
+  esac
+  _f="${_f//[^0-9]/}"
+  case "${_f}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  _v=$(readlink -f "${_d}/php" 2>/dev/null)
+  _v="${_v#/opt/php}"
+  _v="${_v%%/*}"
+  case "${_v}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  if [ "${_v}" -ge "${_f}" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  if [ -n "${_ROOT}" ] && [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
+    _c=$(_satellite_hm_alias_get "root'")
+    if [ -n "${_c}" ] && [ -e "${_c}/modules/path_alias_cache" ]; then
+      echo "${_d}"
+      return 0
+    fi
+  fi
+  for _c in 74 80 81 82 83 84 85 86; do
+    if [ "${_c}" -ge "${_f}" ] && [ -x "/opt/php${_c}/bin/php" ]; then
+      echo "/opt/php${_c}/bin"
+      return 0
+    fi
+  done
+  echo "${_d}"
 }
 # True when $1 names one of the account's own hostmaster roots
 # (<root>/aegir/distro/<name>) or, with $2 = site, a site in one
@@ -10052,18 +10195,48 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
       WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-      WHERE task_type='delete' AND task_status='-1'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-      WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
 
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
+    ### The migrate's own output is kept either way: the lines below point
+    ### at it when the exit status is not zero.
+    _hmLog="${_ROOT}/log/hostmaster-migrate-${_NOW}.log"
+    mkdir -p ${_ROOT}/log
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
+      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d 2>&1 | tee ${_hmLog}
+      _hmRc=${PIPESTATUS[0]}
+    else
+      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y > ${_hmLog} 2>&1
+      _hmRc=$?
+    fi
+    if [ "${_hmRc}" != "0" ]; then
+      ### A non-zero exit means an error was logged, not that nothing moved:
+      ### a post hook (the resume's name report) can fail after the panel is
+      ### on the new root. The alias says where the panel is. Moved: the pass
+      ### goes on and ends WITH ERRORS. Not moved: nothing below may point the
+      ### account at the new root, so the setup aborts the way a missing
+      ### settings.php does, and the next run is not skipped as upgraded.
+      _hmNow=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+      _hmNow="${_hmNow%/}"
+      ### The alias is saved before the deploy, so it alone does not say the
+      ### site is there: the deploy's settings.php in the new root does.
+      if [ "${_hmNow}" = "${_HM_ROOT}" ] \
+        && [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
+        _msg "${_STATUS} B: ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review ${_hmLog}"
+      else
+        _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}; review ${_hmLog}"
+        _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+        touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
+        exit 1
+      fi
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
-      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
     cd ${_HM_ROOT}
@@ -10488,15 +10661,26 @@ MKCLIENTEOF
       fi
       rm -f make_client.php
     else
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+      ### The live panel platform is read first and left out of the parking
+      ### write: parking every distro platform and setting the live one back a
+      ### moment later left it recorded as deleted in between, and for good
+      ### when the read failed. Without a readable root nothing is parked.
       _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
+      ### hosting stores the path without a trailing slash: compare that form
+      _THIS_HM_PLR="${_THIS_HM_PLR%/}"
+      if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+          SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%' \
+          AND publish_path <> '${_THIS_HM_PLR}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
+      else
+        _msg "ALRT: the panel's root could not be read from hostmaster.alias.drushrc.php; the old panel platforms stay as they are"
+      fi
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./

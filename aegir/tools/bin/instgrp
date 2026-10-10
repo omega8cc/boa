@@ -2141,6 +2141,15 @@ _wg_versions() {
     if [ -f "/opt/php${_e}/etc/pool.d/${_WP_A}.${_e}.conf" ]; then
       printf '%s %s %s\n' "${_e}" "${_WP_A}.${_e}" "${_WP_A}.${_e}.web"
     fi
+    # the control panel's own pool runs as the identity of the version's
+    # pool (oN.web or oN.NN.web), named in its file; never a user of its own
+    if [ -f "/opt/php${_e}/etc/pool.d/${_WP_A}.hm.conf" ]; then
+      _u=$(sed -n 's/^user = //p' "/opt/php${_e}/etc/pool.d/${_WP_A}.hm.conf" 2>/dev/null | head -n 1 | tr -d ' ')
+      case "${_u}" in
+        "${_WP_A}.web"|"${_WP_A}".[0-9][0-9].web)
+          printf '%s %s %s\n' "${_e}" "${_WP_A}.hm" "${_u}" ;;
+      esac
+    fi
   done
 }
 
@@ -2155,7 +2164,8 @@ _wg_pool_files() {
       continue
     fi
     for _f in "/opt/php${_e}/etc/pool.d/${_WP_A}.conf" \
-      "/opt/php${_e}/etc/pool.d/${_WP_A}.${_e}.conf"; do
+      "/opt/php${_e}/etc/pool.d/${_WP_A}.${_e}.conf" \
+      "/opt/php${_e}/etc/pool.d/${_WP_A}.hm.conf"; do
       [ -f "${_f}" ] && [ ! -L "${_f}" ] && printf '%s %s\n' "${_e}" "${_f}"
     done
   done
