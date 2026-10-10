@@ -2072,6 +2072,9 @@ _rst_staged_here() {
     _RST_GIVEN="${1}"
     _RST_DONE="${_RST_LAST}"
     _rst_links "./${2}"
+    # what the restore wrote is handed to the account here, in the stage,
+    # before the tree is moved into place (see _acct_own_restored)
+    _acct_own_restored "${_want%/*}/${2}" "${2}"
     if [ -e "../${2}" ] || [ -L "../${2}" ] || ! mv -T -- "./${2}" "../${2}"; then
       echo "Error: the restored tree is left in ${_want}/${2}"
       return 1
@@ -2480,6 +2483,92 @@ _acct_reclaim_restored() {
     || grep -qE '^[[:space:]]*_web_group_state\(\) \{' /opt/local/bin/instgrp; }; then
     bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
   fi
+  return 0
+}
+
+# The uids of root (0) and of every identity of the account $1 as passwd
+# names them, comma-separated: oN and oN.<name>, that is its .ftp login,
+# its client sub-accounts oN.<client> and oN.<client>-dev and its PHP-FPM
+# users oN.web and oN.<ver>.web. An account name holds no dot, so the match
+# is exact: o1 never takes o10's. Status 1, and nothing, unless the account
+# itself is in passwd. The same text as root's walks over account trees
+# (its _x is a string; other functions here hold an array of that name).
+# shellcheck disable=SC2128,SC2178
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+
+# A root-run restore lands the owners its archive recorded: duplicity sets
+# them by name, or by number where the name is not here, so an archive made
+# on another box (another host's bucket) can land entries on another
+# account's identity here, or on a number no passwd entry names. What the
+# restore wrote under any owner but root and the account's own identities
+# (_acct_walk_uids) is handed to the account, owner only (the group is
+# _acct_reclaim_restored's once the tree is in place): each directory and
+# single-link regular file through a handle opened without following a link
+# (_ACCT_REOWN_PL), never a link, a FIFO or a hard-linked file.
+# Only what the restore wrote: the pass runs in root's own staging
+# directory (root's, mode 0700, checked here), where the restore is written
+# and no one else can put or move anything, before the tree is renamed to
+# where it lands, so find's owner tests there cannot be raced. Once the
+# tree is in place, the account's identities can move another account's
+# files into it or beside it, and an owner pass over the landed path could
+# not tell those from the restore's own, so none runs there; a restore made
+# as given (outside every account's ground) has no stage and gets none.
+# Verbatim in backboa, duobackboa and multiback. Run in the stage; $1 = the
+# canonical path the restore lands at (it names the account), $2 = the
+# restored file or directory's name in the stage.
+_acct_own_restored() {
+  local _p="${1}" _n="${2}" _a _m _k _u _o _i=() _w=() _x=()
+  case "${_n}" in
+    ''|.|..|*/*) return 0 ;;
+  esac
+  [ "$(stat -c '%u %a' . 2> /dev/null)" = "0 700" ] || return 0
+  case "${_p}" in
+    /data/disk/?*) _a="${_p#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/?*)      _a="${_p#/home/}"; _a="${_a%%/*}"; _a="${_a%%.*}" ;;
+    /mnt/?*/files/?*/static/files/?*)
+      _m="${_p#/mnt/}"
+      _m="${_m%%/*}"
+      _a="${_p#/mnt/"${_m}"/files/}"
+      _a="${_a%%/*}"
+      case "${_p}" in
+        /mnt/"${_m}"/files/"${_a}"/static/files/?*) ;;
+        *) return 0 ;;
+      esac
+      _root_only "/mnt/${_m}/files/${_a}/static" || return 0
+      ;;
+    *) return 0 ;;
+  esac
+  [ "${_a}" != "all" ] || return 0
+  _o=$(_acct_walk_uids "${_a}") || return 0
+  _u=$(getent passwd "${_a}" 2> /dev/null | cut -d: -f3)
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || return 0
+  if [ -d "./${_n}" ] && [ ! -L "./${_n}" ]; then
+    _w=("./${_n}")
+  elif [ -f "./${_n}" ] && [ ! -L "./${_n}" ]; then
+    _w=("./${_n}" -maxdepth 0)
+  else
+    return 0
+  fi
+  IFS=, read -r -a _i <<< "${_o}"
+  for _k in "${_i[@]}"; do
+    _x+=(! -uid "${_k}")
+  done
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
+    \( -type d -o -type f \) "${_x[@]}" \
+    -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" -1 {} + 2> /dev/null
   return 0
 }
 
