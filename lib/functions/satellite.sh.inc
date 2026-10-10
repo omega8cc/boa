@@ -175,32 +175,27 @@ _prune_grav_releases() {
 }
 
 #
-# The shelf an earlier release staged in each account's static/ is retired
-# on every pass once the account's own backend reads the shelf of root's
-# (its provision names it) and that shelf, root's alone, holds a bundle at
-# least as new as the newest one in the account's: the bundles BOA put there
-# that are not newer than it are removed, and the directory with them when
-# nothing else is in it. Nothing goes while the shelf of root's has nothing
-# to offer in its place (a fetch that failed, an instance switched to NO):
-# the Upgrade task never loses the one bundle it had. static/ is the
-# account's space, so root removes only inside the real directories, never
-# through a link put at either name; only a regular file named as a staged
-# bundle (or as the temp name of a fetch), never a link at such a name,
-# never anything else the account kept there, nor the directory then.
+# The shelf an earlier release staged in each account's static/ is removed
+# whole on every pass once the account's own backend reads the shelf of
+# root's (its provision names it) and that shelf, root's alone, holds a
+# bundle: static/grav-releases is BOA's own directory in the account's
+# space, and nothing of it is left behind. Nothing goes while the shelf of
+# root's has nothing to offer in its place (a fetch that failed, an
+# instance switched to NO): the Upgrade task never loses the one bundle it
+# had. Root removes only inside the real static/, never through a link put
+# at that name; a link put at grav-releases itself is removed as a name,
+# never followed.
 _retire_static_grav_releases() {
-  local _gOld _gV _gNew
+  local _gOld
   [ -n "${_ROOT}" ] || return 0
   _gOld="${_ROOT}/static/grav-releases"
-  [ -d "${_gOld}" ] && [ ! -L "${_gOld}" ] || return 0
+  [ -e "${_gOld}" ] || [ -L "${_gOld}" ] || return 0
   _acct_read_in "${_ROOT}/.drush/sys/provision/grav" provision_grav.drush.inc \
     | grep -q "PROVISION_GRAV_RELEASES_DIR" || return 0
-  _gNew="$(_satellite_grav_shelf_newest)"
-  [ -n "${_gNew}" ] || return 0
-  _gV="$(_acct_in_real_dir "${_gOld}" _satellite_grav_retire_here "${_gNew}")"
-  if [ -n "${_gV}" ]; then
-    _msg "INFO: Removed the Grav admin bundle ${_gV} an earlier release staged in ${_gOld}; the shelf is /data/all/000/grav-releases now"
+  [ -n "$(_satellite_grav_shelf_newest)" ] || return 0
+  if _acct_in_real_dir "${_ROOT}/static" _satellite_grav_retire_here; then
+    _msg "INFO: Removed ${_gOld}, the shelf an earlier release staged there; the shelf is /data/all/000/grav-releases now"
   fi
-  _acct_in_real_dir "${_ROOT}/static" _satellite_grav_rmdir_here
 }
 
 #
@@ -217,38 +212,14 @@ _satellite_grav_shelf_newest() {
 }
 
 #
-# The staged bundles in the current (pinned) directory removed when their
-# version is not newer than $1 (the temp name of a fetch always): a regular
-# file named as a staged bundle, never a link at such a name. Prints the
-# versions removed.
+# ./grav-releases in the current (pinned) static/ removed whole: a real
+# directory with everything in it (an entry that is a link is removed as a
+# name, never followed), or a link at the name, removed as a name. Returns
+# 0 when the name is gone.
 _satellite_grav_retire_here() {
-  local _f _n _v=""
-  for _f in ./grav-admin-v*.zip ./.grav-admin-v*.zip.tmp; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    _n="${_f#./}"
-    _n="${_n#.}"
-    _n="${_n#grav-admin-v}"
-    _n="${_n%.tmp}"
-    _n="${_n%.zip}"
-    if [ "${_f}" = "${_f%.tmp}" ] \
-      && [ "$(printf '%s\n%s\n' "${_n}" "${1}" | sort -V | tail -n 1)" != "${1}" ]; then
-      continue
-    fi
-    rm -f -- "${_f}" || continue
-    _v="${_v:+${_v} }${_n}"
-  done
-  echo "${_v}"
-}
-
-#
-# ./grav-releases in the current (pinned) static/ removed when it is a real
-# directory with nothing left in it; rmdir leaves a link, and a directory
-# the account kept anything in, as they are.
-_satellite_grav_rmdir_here() {
-  if [ -d ./grav-releases ] && [ ! -L ./grav-releases ]; then
-    rmdir -- ./grav-releases 2> /dev/null
-  fi
-  return 0
+  { [ -e ./grav-releases ] || [ -L ./grav-releases ]; } || return 1
+  rm -rf -- ./grav-releases
+  [ ! -e ./grav-releases ] && [ ! -L ./grav-releases ]
 }
 
 #
@@ -5281,7 +5252,7 @@ _satellite_run_pre_install() {
 # Keep the panel core on the pinned Drupal 7 release. In BATCH mode the panel
 # core comes only from make_local.tar.gz, whose drupal directory can lag the
 # _SMALLCORE7_V pin: on 2026-10-09 every published tarball still carried 7.105
-# while the pin was 7.106.1, so panels were rebuilt on the old core while the
+# while the pin was 7.106.2, so panels were rebuilt on the old core while the
 # shared platform core and the box markers had moved. When the core string in
 # the tarball differs from the pin, the directory is replaced from the pinned
 # core tarball, which this box fetches for its platforms anyway.
@@ -10251,7 +10222,10 @@ _satellite_child_b_aegir_build() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
       _hmNow="${_hmNow%/}"
-      if [ "${_hmNow}" = "${_HM_ROOT}" ]; then
+      ### The alias is saved before the deploy, so it alone does not say the
+      ### site is there: the deploy's settings.php in the new root does.
+      if [ "${_hmNow}" = "${_HM_ROOT}" ] \
+        && [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
         _msg "${_STATUS} B: ALRT: hostmaster-migrate exited ${_hmRc} with the panel moved to ${_HM_ROOT}; review ${_hmLog}"
       else
         _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}; review ${_hmLog}"

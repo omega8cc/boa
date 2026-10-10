@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.13
+export _DRUSH_VERSION=8.5.15
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -77,7 +77,7 @@ export _SMALLCORE11_2_V=11.2.14
 export _SMALLCORE11_3_V=11.3.18
 export _SMALLCORE11_4_V=11.4.8
 export _SMALLCORE6_V=6.60.1
-export _SMALLCORE7_V=7.106.1
+export _SMALLCORE7_V=7.106.2
 export _SMALLCORE9_V=9.5.11
 
 ###

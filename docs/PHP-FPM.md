@@ -69,8 +69,11 @@ only while the pool's socket answers. Without it the panel falls back to the acc
 
 Two settings in `/root/.barracuda.cnf` control it: `_HM_FPM_POOL=YES` (default; `NO` serves
 the panel from the account's pool as before) and `_HM_FPM_VERSION` (empty by default, which
-means `_PHP_FPM_VERSION`; a version that is not installed falls back to the default). The
-panel's command line has a floor of its own, `_HM_CLI_FLOOR`, see [DRUSH-CLI.md](DRUSH-CLI.md).
+means `_PHP_FPM_VERSION`; a version that is not installed falls back to the default). A
+version `_HM_FPM_VERSION` names stays installed when unused PHP versions are cleaned up.
+While the pool moves to another version, or the version it lives on is retired, the panel is
+served from the account's pool. The panel's command line has a floor of its own,
+`_HM_CLI_FLOOR`, see [DRUSH-CLI.md](DRUSH-CLI.md).
 
 #### **IMPORTANT**:
 

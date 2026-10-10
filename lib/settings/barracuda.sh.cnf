@@ -2303,9 +2303,9 @@ _download_helpers_libs() {
 ### _HM_FPM_POOL: YES serves every panel
 ### domain from a dedicated pool of its own,
 ### oN.hm, on the version _HM_FPM_VERSION
-### names (empty: _PHP_FPM_VERSION above).
-### NO serves the panel from the account's
-### pool, as before.
+### names (empty: _PHP_FPM_VERSION above),
+### kept installed by the cleanup. NO serves
+### the panel from the account's pool.
 ###
 _HM_CLI_FLOOR=7.4
 _HM_FPM_POOL=YES
