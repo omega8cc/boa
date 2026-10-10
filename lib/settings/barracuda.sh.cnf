@@ -2276,3 +2276,37 @@ _download_helpers_libs() {
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}
 }
+
+
+###----------------------------------------###
+### CONTROL PANEL PHP                      ###
+###----------------------------------------###
+###
+### The Ægir control panel of every Octopus
+### instance runs on PHP that BOA chooses,
+### whatever the account's own cli.info and
+### fpm.info say, so a panel never follows a
+### tenant onto an old PHP or a busy pool.
+###
+### _HM_CLI_FLOOR: the panel's own command
+### line (its task dispatcher, its upgrade,
+### every drush call aimed at the panel) runs
+### on the account's CLI version raised to
+### this floor when it is lower, never
+### lowered; the lowest installed version at
+### or above the floor is used when the floor
+### itself is not installed. NO keeps the
+### account's CLI version. Tenant sites keep
+### their own PHP (cli.info, phpNN.info and
+### cli-per-platform.info are not touched).
+###
+### _HM_FPM_POOL: YES serves every panel
+### domain from a dedicated pool of its own,
+### oN.hm, on the version _HM_FPM_VERSION
+### names (empty: _PHP_FPM_VERSION above).
+### NO serves the panel from the account's
+### pool, as before.
+###
+_HM_CLI_FLOOR=7.4
+_HM_FPM_POOL=YES
+_HM_FPM_VERSION=

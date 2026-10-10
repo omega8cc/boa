@@ -3980,10 +3980,13 @@ _migrate_init() {
               _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/pre.d" '*' \
               -aEAXqu ${_ieni}
 
+          # the control panel's own pool include stays behind: the target's
+          # worker writes its own once the pool is up there, and a carried
+          # one would name a socket the target does not have yet
           _xcopy_leg_ok "${_USR}/config/server_master/nginx/post.d" \
             && _xcopy_in_real_dir "${_USR}/config/server_master/nginx/post.d" \
               _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/post.d" '*' \
-              -aEAXqu ${_ieni}
+              -aEAXqu ${_ieni} --exclude=fpm_include_panel.inc
 
           _xcopy_leg_ok "${_USR}/config/server_master/nginx/subdir.d" \
             && _xcopy_in_real_dir "${_USR}/config/server_master/nginx/subdir.d" \

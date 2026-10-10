@@ -1285,6 +1285,9 @@ _php_ini() {
 # hostmaster lives outside ~/static and /data/all, so no line reaches it.
 _CPP_FILE=""; _CPP_V=""; _CPP_LN=""; _CPP_KEY=""; _CPP_WARN=""; _CPP_NK=""; _CPP_WHY=""
 _CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_ACCT=""; _CPP_FROM=""; _CPP_DONE=NO
+# YES when the line is aimed at the account's own control panel (@hostmaster,
+# @hm, or a root in its aegir/ tree): the panel floor below applies
+_CPP_HM=NO
 _CPP_PROBE=NO
 # the launcher a drush line runs: "vendor" for a codebase's own
 # vendor/drush/drush/drush.php (vdrush), empty for BOA's Drush 8 and 10/11
@@ -1332,7 +1335,7 @@ _cpp_target() {
   # _CPP_CTX (site, platform or empty), _CPP_NAME (the @alias) and _CPP_CMD
   # (the command word)
   local _ws _w _next="" _root="" _rset=NO _uri="" _al="" _wd="" _cmd=NO _f _c _p="" _fromal=NO _cwd _optver=NO
-  _CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_PROBE=NO
+  _CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_PROBE=NO; _CPP_HM=NO
   read -r -a _ws <<< "$1"
   for _w in "${_ws[@]}"; do
     if [ -n "${_next}" ]; then
@@ -1394,7 +1397,8 @@ _cpp_target() {
   if [ -z "${_root}" ] && [ -n "${_al}" ]; then
     [[ "${_al}" =~ ^[A-Za-z0-9._-]+$ ]] || return 0
     case "${_al}" in
-      none|hostmaster|hm|server_*) return 0 ;;
+      hostmaster|hm) _CPP_HM=YES; return 0 ;;
+      none|server_*) return 0 ;;
       self|sites) ;;
       *)
         _CPP_NAME="@${_al}"
@@ -1465,9 +1469,11 @@ _cpp_target() {
     esac
   fi
   [ -n "${_uri}" ] && _CPP_CTX=site
-  # the hostmaster's own tree never takes a line, nor the guard below
+  # the hostmaster's own tree never takes a line, nor the guard below; a
+  # line that runs in it is aimed at the panel (the floor applies)
   case "${_CPP_ROOT}/" in
-    "/data/disk/${_Y_USR}/aegir/"*|/var/aegir/*) _CPP_ROOT=""; _CPP_CTX="" ;;
+    "/data/disk/${_Y_USR}/aegir/"*) _CPP_ROOT=""; _CPP_CTX=""; _CPP_HM=YES ;;
+    /var/aegir/*) _CPP_ROOT=""; _CPP_CTX="" ;;
   esac
 }
 _cpp_safe() {
@@ -1820,6 +1826,47 @@ _cpp_guard() {
 # BOA_CLI_PHP_FROM / BOA_CLI_PHP_WARN in the process's environment, which
 # provision writes into the task log. That is a report, not configuration:
 # nothing reads it to choose anything, and every websh clears it on entry.
+# The control panel's own command line runs on the account's version raised
+# to the panel floor: _HM_CLI_FLOOR in the box cnf, which the barracuda pass
+# and the worker publish to /data/conf/hm-cli-floor.txt for this user to
+# read. Only a drush line aimed at the panel takes it (@hostmaster, @hm, a
+# root in the account's aegir/ tree), never a tenant site's; it raises
+# whatever cli.info and the phpNN.info markers chose, never lowers it, uses
+# the lowest installed version at or above the floor when the floor itself
+# is not installed, and leaves a panel that still carries path_alias_cache
+# on its version (a newer CLI breaks such platforms). The task log names
+# the floor through _CPP_FROM.
+_hm_cli_floor() {
+  local _f _v _c _r
+  _f=$(head -c 8 /data/conf/hm-cli-floor.txt 2> /dev/null | tr -cd '0-9A-Za-z')
+  case "${_f}" in
+    NO|no|No|"") return 0 ;;
+  esac
+  _f="${_f//[^0-9]/}"
+  case "${_f}" in
+    [0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  _v=$(readlink -f "${DRUSH_PHP}" 2> /dev/null)
+  _v="${_v#/opt/php}"
+  _v="${_v%%/*}"
+  case "${_v}" in
+    [0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  [ "${_v}" -ge "${_f}" ] && return 0
+  _r=$(grep "'root'" "${HOME}/.drush/hostmaster.alias.drushrc.php" 2> /dev/null | head -n 1 | cut -d"'" -f4)
+  [ -n "${_r}" ] && [ -e "${_r}/modules/path_alias_cache" ] && return 0
+  for _c in 74 80 81 82 83 84 85 86; do
+    if [ "${_c}" -ge "${_f}" ] && [ -x "/opt/php${_c}/bin/php" ]; then
+      DRUSH_PHP="/opt/php${_c}/bin/php"
+      _php_ini "${_c}"
+      export DRUSH_PHP PHP_INI
+      _CPP_FROM="the control panel floor (${_CLI_WHY:-the server default} is below ${_f:0:1}.${_f:1:1})"
+      return 0
+    fi
+  done
+}
 _cpp_before_exec() {
   local _w
   if [ "$1" = "drush" ] && [ "${_CPP_DONE}" != "YES" ]; then
@@ -1827,6 +1874,7 @@ _cpp_before_exec() {
     _cpp_resolve "${_ARR}" drush "${_LA_CD:-${_DL_CD}}"
     _cpp_pick
   fi
+  [ "$1" = "drush" ] && [ "${_CPP_HM}" = "YES" ] && _hm_cli_floor
   if [ -n "${_CPP_V}" ] && [ "${DRUSH_PHP}" = "/opt/php${_CPP_V}/bin/php" ]; then
     _CPP_FROM="cli-per-platform.info line ${_CPP_LN}"
     [ "${_CPP_ACCT}" != "${DRUSH_PHP}" ] && [ -n "${_CLI_FROM}" ] && _CPP_FROM+=" (outranks ${_CLI_FROM})"

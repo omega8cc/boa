@@ -10,7 +10,7 @@ Please also note that the LTS branch is **kept up to date alongside PRO**: frequ
 
 ## IN PROGRESS
 
-- **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS
+- **Ægir Admin Interface**: A new control-panel interface over the proven Ægir engine, which stays in place behind it; Backdrop CMS remains an option for the engine itself, decided later
 
 ## RELEASED IN BOA PRO only
 

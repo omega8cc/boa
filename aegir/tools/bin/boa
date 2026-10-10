@@ -3966,6 +3966,12 @@ _octopus_cleanup() {
             rm -f /opt/php${e}/etc/pool.d/${_usEr}.conf
             echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
+          # the control panel's own pool runs as one of the users above:
+          # its file goes with the version's reload, no user of its own
+          if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.hm.conf" ]; then
+            rm -f /opt/php${e}/etc/pool.d/${_usEr}.hm.conf
+            _dfltV="${_dfltV} ${e}"
+          fi
         done
         # Pool files gone, workers still up: deluser refuses a user with
         # running processes (the home is already removed by then), so the
