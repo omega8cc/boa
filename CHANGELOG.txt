@@ -17,6 +17,15 @@
       Octopus instance, also where a box with fewer than three
       Barracuda passes reuses the tree without downloading it.
 
+    * The Ægir control panel's status report no longer warns that the
+      Backdrop Drush extension and the Grav and Textpattern provision
+      layers were not detected. The checks looked for the backend's
+      ~/.drush in the home of the web user serving the panel, which can
+      never reach it, so every panel showed the three warnings with a
+      /home/oN.NN.web path whatever the backend carried. They now run
+      from the command line only (drush @hostmaster rq as the instance
+      user), where they read the backend's own home.
+
 @=> Security
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
