@@ -974,7 +974,7 @@ _hostmaster_oldhost_dbuser_drop() {
 # Keep the panel core on the pinned Drupal 7 release. In BATCH mode the panel
 # core comes only from make_local.tar.gz, whose drupal directory can lag the
 # _SMALLCORE7_V pin: on 2026-10-09 every published tarball still carried 7.105
-# while the pin was 7.106.1, so panels were rebuilt on the old core while the
+# while the pin was 7.106.2, so panels were rebuilt on the old core while the
 # shared platform core and the box markers had moved. When the core string in
 # the tarball differs from the pin, the directory is replaced from the pinned
 # core tarball, which this box fetches for its platforms anyway.
