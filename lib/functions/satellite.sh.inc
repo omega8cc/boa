@@ -5438,13 +5438,27 @@ _satellite_run_child_b() {
       ### handed over inside each real directory, so the walk never follows
       ### a link the account put at .drush, backups, clients, config or
       ### tools, and never hands over a link, a FIFO or a hard-linked file
-      ### the account left in the tree (_satellite_reown_here)
-      _acct_in_real_dir "${_ROOT}/.drush" \
-        _satellite_reown_here "${_USER}:${_ACCG:-users}"
-      _acct_in_real_dir "${_ROOT}/backups" \
-        _satellite_reown_here "${_USER}:${_ACCG:-users}"
-      _acct_in_real_dir "${_ROOT}/clients" \
-        _satellite_reown_here "${_USER}:${_ACCG:-users}"
+      ### the account left in the tree; only what root or the account's own
+      ### identities own (_satellite_reown_own_here): the account can rename
+      ### into these trees what another account left group-writable. What
+      ### stays another user's is counted on one NOTE line after AegirSetupB,
+      ### each entry once though tools and tools/drush both meet it.
+      _T_ACC=""
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/.drush" \
+          _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/backups" \
+          _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/clients" \
+          _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
       # nginx reads the basic auth password files on every request: their
       # group is the web server's, so the hand-over leaves that subtree to
       # the setter below and never takes them out of it for a moment.
@@ -5452,12 +5466,18 @@ _satellite_run_child_b() {
       # find entered without following a link, through a handle, so no
       # directory between is looked up again by path (the account could
       # have swapped it for a link by then). -execdir wants an absolute PATH.
-      _acct_in_real_dir "${_ROOT}/config" \
-        _satellite_reown_here "${_USER}:${_ACCG:-users}" \
-        -path ./server_master/nginx/passwords.d -prune -o
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/config" \
+          _satellite_reown_own_here "${_USER}:${_ACCG:-users}" \
+          -path ./server_master/nginx/passwords.d -prune -o
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
       _satellite_server_master_modes basic_auth &> /dev/null
-      _acct_in_real_dir "${_ROOT}/tools" \
-        _satellite_reown_here "${_USER}:${_ACCG:-users}"
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/tools" \
+          _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
       ### The hostmaster root and site come from the account's own alias:
       ### handed over only inside its own real hostmaster tree, and only
       ### what root or the account's own identities own: the account can
@@ -5508,8 +5528,15 @@ _satellite_run_child_b() {
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
-      _acct_in_real_dir "${_ROOT}/tools/drush" \
-        _satellite_reown_here "${_USER}:${_ACCG:-users}"
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/tools/drush" \
+          _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
+      _T_ACC=$(printf '%s' "${_T_ACC}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+      if [ "${_T_ACC}" -gt 0 ]; then
+        _msg "${_STATUS} A: NOTE: ${_T_ACC} entries owned by another user left as they were in .drush, backups, clients, config and tools"
+      fi
       _satellite_update_drush_php_cli
       _satellite_update_local_dirs_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
@@ -5704,8 +5731,10 @@ _satellite_set_permissions_for_all() {
     _acct_in_real_dir "${_hmP}/sites/all" \
       _satellite_tree_modes_here 0755 0644 &> /dev/null
   done
+  ### only what root or the account's own identities own is handed over
+  ### (the upgrade arm counts what it leaves on its NOTE line)
   _acct_in_real_dir "${_ROOT}/.drush" \
-    _satellite_reown_here "${_USER}:${_ACCG:-users}" &> /dev/null
+    _satellite_reown_own_here "${_USER}:${_ACCG:-users}" &> /dev/null
   _acct_in_real_dir "${_ROOT}/.drush" _satellite_drush_modes_here &> /dev/null
 }
 
@@ -7579,8 +7608,9 @@ _satellite_ctrl_dir_here() {
 # The control directory on install and upgrade (run inside it): fpm.info
 # and cli.info where missing (cli.info from a regular fpm.info), the README
 # and this serial's stamp on its first pass, the tree handed to the main
-# login as _satellite_reown_here hands it (never a link, nor a file the
-# login hard-linked there).
+# login as _satellite_reown_own_here hands it (never a link, nor a file the
+# login hard-linked there, nor what another user owns: the login can rename
+# into it what another account left group-writable).
 _satellite_ctrl_make_here() {
   local _v
   [ -e ./fpm.info ] || _acct_put_here fpm.info "${_PHP_FPM_VERSION}"
@@ -7599,7 +7629,7 @@ _satellite_ctrl_make_here() {
     rm -f -- ./.ctrl.*
     _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
   fi
-  _satellite_reown_here "${_USER}.ftp:${_ACCG:-users}"
+  _satellite_reown_own_here "${_USER}.ftp:${_ACCG:-users}" > /dev/null
 }
 
 #
@@ -8212,10 +8242,11 @@ _satellite_ftp_tmp_here() (
 )
 # A login's ~/.bazaar (the current, pinned directory) seeded: bazaar.conf
 # put as a fresh file, the tree handed to $1 (owner:group) as
-# _satellite_reown_here hands it, the directory 0700.
+# _satellite_reown_own_here hands it (what another user owns stays its),
+# the directory 0700.
 _satellite_bzr_seed_here() {
   _acct_put_here bazaar.conf ignore_missing_extensions=True
-  _satellite_reown_here "${1}"
+  _satellite_reown_own_here "${1}"
   chmod 700 .
 }
 # The main login's ~/.drush (the current, pinned directory) and its usr/
