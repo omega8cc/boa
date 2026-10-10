@@ -51,6 +51,12 @@
     * A hosting page that could only end in an error is gone from the
       control panel.
 
+    * The Octopus upgrade's ownership pass over .drush, backups, clients,
+      config, tools and static/control, and the clean-up of the retired
+      client directories and client backups, act only on what root or
+      the account's own users own, never on files another account placed
+      in its tree.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
