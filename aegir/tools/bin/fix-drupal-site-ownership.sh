@@ -371,10 +371,11 @@ _acct_walk_uids() {
 }
 # The uids the walks below act for, comma-separated, from the site path as
 # resolved, never from argv: under /data/disk/<account>/ that account's
-# (_acct_walk_uids); under /var/aegir/ root's, aegir's and those of the
-# master's pool users wwwNN, the holders _master_web_group allows. Status
-# 1, and nothing, for any other path, or when the account or aegir is not
-# in passwd. A uid no passwd entry names counts as the site's own too
+# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
+# master's pool users wwwNN, the holders _master_web_group allows, and
+# www-data's, the web server's user, which no account's login can be and a
+# plain Aegir server's PHP runs as. Status 1, and nothing, for any other
+# path, or when the account or aegir is not in passwd. A uid no passwd entry names counts as the site's own too
 # (_SAT_REOWN_OWN_PL, _SAT_CHMOD_OWN_PL): a login removed before its files
 # were handed to its account left those.
 _site_walk_uids() {
@@ -387,7 +388,7 @@ _site_walk_uids() {
       ;;
     /var/aegir/*)
       while IFS=: read -r _n _p _u _r; do
-        [[ "${_n}" =~ ^(aegir|www[0-9][0-9])$ ]] || continue
+        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
         [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
         _x="${_x},${_u}"
         [ "${_n}" = "aegir" ] && _self=YES
