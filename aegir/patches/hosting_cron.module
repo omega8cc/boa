@@ -322,6 +322,11 @@ function hosting_cron_node_update($node) {
  * no hostmaster site to protect.
  */
 function hosting_cron_is_hostmaster_site($node) {
+  // The install puts the context name on the node before its first save and
+  // records the nid only afterwards.
+  if (isset($node->hosting_name) && $node->hosting_name === 'hostmaster') {
+    return TRUE;
+  }
   $hostmaster = hosting_get_hostmaster_site_nid();
   return !empty($hostmaster) && isset($node->nid) && (int) $node->nid === (int) $hostmaster;
 }
