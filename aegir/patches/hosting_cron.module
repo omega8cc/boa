@@ -267,13 +267,13 @@ function hosting_cron_node_update($node) {
       }
     }
 
-    if ($node->nid == 10) {
-      if ($node->cron_interval == ADV_CRON_TURNED_OFF) {
-        db_update('hosting_cron')
-          ->fields(array('cron_interval' => '3600'))
-          ->condition('nid', '10')
-          ->execute();
-      }
+    // The panel's own cron is never switched off: a saved interval of 0 on
+    // the hostmaster site becomes the hourly default. The site is the one
+    // the install recorded, not the stock install's node 10; the value goes
+    // into $use_cron_interval so the writes below carry it (a direct row
+    // write here was undone by them).
+    if (hosting_cron_is_hostmaster_site($node) && $use_cron_interval == ADV_CRON_TURNED_OFF) {
+      $use_cron_interval = 3600;
     }
 
     if ($this_cron_interval > -1) {
@@ -316,6 +316,17 @@ function hosting_cron_node_update($node) {
 }
 
 /**
+ * Is this site node the panel's own (hostmaster) site?
+ *
+ * Read from the nid the install recorded; a panel without that variable has
+ * no hostmaster site to protect.
+ */
+function hosting_cron_is_hostmaster_site($node) {
+  $hostmaster = hosting_get_hostmaster_site_nid();
+  return !empty($hostmaster) && isset($node->nid) && (int) $node->nid === (int) $hostmaster;
+}
+
+/**
  * Implements hook_node_insert().
  */
 function hosting_cron_node_insert($node) {
@@ -332,8 +343,8 @@ function hosting_cron_node_insert($node) {
       }
     }
 
-    if ($node->nid == 10) {
-      $use_cron_interval = '3600';
+    if (hosting_cron_is_hostmaster_site($node) && $use_cron_interval == ADV_CRON_TURNED_OFF) {
+      $use_cron_interval = 3600;
     }
 
     if ($use_cron_interval == ADV_CRON_TURNED_OFF) {
