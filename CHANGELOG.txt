@@ -49,6 +49,12 @@
       column has always been trimmed, every name carries its full form
       on hover, and no cell wraps; the name gives instead.
 
+    * The Ægir control panel's front page asks its administrators for
+      a BOA PRO licence instead of a donation to the upstream project:
+      the note says a licence is what funds continued Ægir 3
+      development, links to the licence and Ægir pages on omega8.cc,
+      and stays out of client accounts' sight, as before.
+
     * The official Grav release the Upgrade task installs from is kept
       once per server, under /data/all/000/grav-releases, root's alone,
       and no longer in every account's static directory, which is the
