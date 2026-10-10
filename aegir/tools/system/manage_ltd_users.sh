@@ -4956,6 +4956,7 @@ _ltd_hm_switches() {
     printf -v "${_k}" '%s' "${_v}"
   done
   [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
+  _HM_FPM_POOL=$(printf '%s' "${_HM_FPM_POOL}" | tr '[:lower:]' '[:upper:]')
   [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
   if [ -d /data/conf ] \
     && [ "$(head -c 8 /data/conf/hm-cli-floor.txt 2>/dev/null | tr -d '\n')" != "${_HM_CLI_FLOOR}" ]; then
@@ -5013,13 +5014,41 @@ _ltd_hm_cli_bin() {
 # its own test is reloaded (an invalid one on disk would turn the next
 # unrelated restart into a box-wide outage).
 _ltd_hm_pool_apply() {
+  local _ngx _ngxW _w _live _wt=0
   if nginx -t &> /dev/null; then
+    # with "wait": nginx reloads in the background and its old workers keep
+    # sending the panel where the old config said until they exit, so they
+    # are waited for (15 s at most) before the caller drops a pool
+    _ngx=$( { tr -dc '0-9' < /run/nginx.pid; } 2> /dev/null )
+    _ngxW=""
+    [ "$1" = "wait" ] && [ -n "${_ngx}" ] && _ngxW=$(pgrep -P "${_ngx}" 2> /dev/null | tr '\n' ' ')
     service nginx reload &> /dev/null
-  else
-    _ltd_notice "nginx-configtest-${_USER}" \
-      "nginx -t FAILED after the control panel pool include of ${_USER} changed -- NOT reloaded" \
-      "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+    while [ -n "${_ngxW}" ] && [ "${_wt}" -lt 30 ]; do
+      _live=""
+      for _w in ${_ngxW}; do
+        kill -0 "${_w}" 2> /dev/null && _live=YES && break
+      done
+      [ -z "${_live}" ] && break
+      sleep 0.5
+      _wt=$(( _wt + 1 ))
+    done
+    return 0
   fi
+  _ltd_notice "nginx-configtest-${_USER}" \
+    "nginx -t FAILED after the control panel pool include of ${_USER} changed -- NOT reloaded" \
+    "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+  return 1
+}
+
+#
+# The panel pool's socket answers: a master accepts a connection on it. A
+# socket file alone also stays behind a master that died unclean.
+_ltd_hm_sock_ok() {
+  [ -S "/run/$1.fpm.socket" ] || return 1
+  [ -x "/opt/php$2/bin/php" ] || return 1
+  "/opt/php$2/bin/php" -n -r \
+    '$c = @stream_socket_client("unix://" . $argv[1], $n, $s, 2); exit($c ? 0 : 1);' \
+    "/run/$1.fpm.socket" 2> /dev/null
 }
 
 #
@@ -5035,26 +5064,35 @@ _ltd_hm_pool_apply() {
 # the pool and the include. Runs after the account's own pools are set up,
 # on every pass, standbys included.
 _ltd_hm_pool() {
-  local _hv _web _pool _pTpl _pNew _pFile _dom _inc _incTxt _old _e _chg=NO _rld=" " _pWt
+  local _hv _web _pool _pTpl _pNew _pFile _dom _inc _incTxt _old _e _chg=NO _rld=" " _rldOld=" " _pWt
   _pool="${_USER}.hm"
   _inc="${_dscUsr}/config/server_master/nginx/post.d"
   _dom=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php 2>/dev/null \
     | grep "'uri'" | head -n 1 | cut -d"'" -f4 | tr -cd 'a-zA-Z0-9.-')
   if [ "${_HM_FPM_POOL}" = "NO" ] || [ -z "${_dom}" ]; then
+    # the include goes first, and the pool only once nginx has reloaded
+    # without it and its old workers are gone, so the panel never waits on
+    # a dead socket; a config nginx refuses keeps the pool, as nginx keeps
+    # its running config, which may still name it
+    _old=""
     for _pFile in /opt/php*/etc/pool.d/"${_pool}".conf; do
       [ -e "${_pFile}" ] || [ -L "${_pFile}" ] || continue
-      _e="${_pFile#/opt/php}"
-      _e="${_e%%/*}"
-      rm -f -- "${_pFile}"
-      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
-      _chg=YES
+      _old="${_old}${_pFile} "
     done
     if [ -e "${_inc}/fpm_include_panel.inc" ]; then
       _ltd_rm_in "${_inc}" fpm_include_panel.inc
       _chg=YES
     fi
+    if [ "${_chg}" = "YES" ] || [ -n "${_old}" ]; then
+      _ltd_hm_pool_apply wait || return 0
+    fi
+    for _pFile in ${_old}; do
+      _e="${_pFile#/opt/php}"
+      _e="${_e%%/*}"
+      rm -f -- "${_pFile}"
+      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+    done
     [ -d "/var/www/phpcache/${_USER}/${_pool}" ] && rm -rf "/var/www/phpcache/${_USER}/${_pool}"
-    [ "${_chg}" = "YES" ] && _ltd_hm_pool_apply
     return 0
   fi
   _hv="${_HM_FPM_VERSION//[^0-9]/}"
@@ -5096,6 +5134,11 @@ _ltd_hm_pool() {
   wait
   sed -i "s/foo/${_USER}/g" "${_pNew}" &> /dev/null
   wait
+  # the single template's header is the account's own pool name, which the
+  # line above has just written: this pool keeps its own name, or it would
+  # redefine the account pool on the account socket
+  sed -i "s/^\[${_USER}\]$/[${_pool}]/" "${_pNew}" &> /dev/null
+  wait
   # the template names its user after the pool (\$pool.web): this pool runs
   # as the identity of the version's existing pool, named outright
   sed -i "s/^user = .*/user = ${_web}/" "${_pNew}" &> /dev/null
@@ -5118,14 +5161,27 @@ _ltd_hm_pool() {
       && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
     echo "group = ${_T_WGS##* }" >> "${_pNew}"
   fi
-  # the panel pool of another version goes: the version moved
+  # the panel pool of another version goes: the version moved. Both
+  # versions' pools listen on the same socket path, and a master refuses
+  # one another master still answers on, so the move runs in order: the
+  # include goes and nginx reloads without it (the panel is served by the
+  # account's own pool meanwhile), the old version reloads without the pool
+  # and stops answering on the socket, then the new version reloads onto
+  # it; a socket file nothing answers on is removed
   for _old in /opt/php*/etc/pool.d/"${_pool}".conf; do
     [ -e "${_old}" ] || [ -L "${_old}" ] || continue
     _e="${_old#/opt/php}"
     _e="${_e%%/*}"
     [ "${_e}" = "${_hv}" ] && continue
-    rm -f -- "${_old}"
-    _rld="${_rld}${_e} "
+    _rldOld="${_rldOld}${_e} "
+  done
+  if [ "${_rldOld}" != " " ]; then
+    [ -e "${_inc}/fpm_include_panel.inc" ] && _ltd_rm_in "${_inc}" fpm_include_panel.inc
+    # a config nginx refuses keeps both pools until a reload goes through
+    _ltd_hm_pool_apply wait || { rm -f -- "${_pNew}"; return 0; }
+  fi
+  for _e in ${_rldOld}; do
+    rm -f -- "/opt/php${_e}/etc/pool.d/${_pool}.conf"
     _chg=YES
   done
   if [ -f "${_pFile}" ] && [ ! -L "${_pFile}" ] && cmp -s -- "${_pNew}" "${_pFile}"; then
@@ -5135,7 +5191,19 @@ _ltd_hm_pool() {
     _rld="${_rld}${_hv} "
     _chg=YES
   fi
-  [ -S "/run/${_pool}.fpm.socket" ] || _rld="${_rld}${_hv} "
+  if [ "${_rldOld}" != " " ]; then
+    for _e in $(printf '%s\n' ${_rldOld} | sort -u); do
+      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+    done
+    _pWt=0
+    while _ltd_hm_sock_ok "${_pool}" "${_hv}" && [ "${_pWt}" -lt 20 ]; do
+      sleep 0.5
+      _pWt=$(( _pWt + 1 ))
+    done
+    _ltd_hm_sock_ok "${_pool}" "${_hv}" || rm -f -- "/run/${_pool}.fpm.socket"
+    _rld="${_rld}${_hv} "
+  fi
+  _ltd_hm_sock_ok "${_pool}" "${_hv}" || _rld="${_rld}${_hv} "
   mkdir -p "/var/www/phpcache/${_USER}/${_pool}"
   _T_WG=$(_web_group "${_USER}")
   [ -n "${_T_WG}" ] && chgrp "${_T_WG}" "/var/www/phpcache/${_USER}/${_pool}"
@@ -5144,12 +5212,12 @@ _ltd_hm_pool() {
     [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
   done
   _pWt=0
-  while [ ! -S "/run/${_pool}.fpm.socket" ] && [ "${_pWt}" -lt 30 ]; do
+  while ! _ltd_hm_sock_ok "${_pool}" "${_hv}" && [ "${_pWt}" -lt 30 ]; do
     sleep 0.5
     _pWt=$(( _pWt + 1 ))
   done
   _incTxt="if ( \$main_site_name = ${_dom} ) {"$'\n'"  set \$user_socket \"${_pool}\";"$'\n'"}"
-  if [ -S "/run/${_pool}.fpm.socket" ]; then
+  if _ltd_hm_sock_ok "${_pool}" "${_hv}"; then
     _old=$(_ltd_read_in "${_inc}" fpm_include_panel.inc 2>/dev/null)
     if [ "${_old}" != "${_incTxt}" ]; then
       _ltd_put_in "${_inc}" fpm_include_panel.inc "${_incTxt}"
