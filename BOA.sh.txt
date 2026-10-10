@@ -2464,7 +2464,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f67
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f64
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f41
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f42
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f41
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f65
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f71
@@ -2845,7 +2845,7 @@ _update_agents() {
           | md5sum | cut -d' ' -f1 > "${_hQueueR}"
       fi
     fi
-    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f97 --mode 644
+    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f96 --mode 644
     if [ "${_hQueueA}" = "YES" ] && [ -s "${_hQueueP}" ]; then
       _hQueueL="$(grep -xE '[0-9a-f]{32}' "${_hQueueR}" 2> /dev/null | tail -n 20)"
       _hQueueN="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \

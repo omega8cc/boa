@@ -377,8 +377,15 @@ _hostmaster_mi_up() {
   ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
+    _hmRc=$?
   else
     ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+    _hmRc=$?
+  fi
+  if [ "${_hmRc}" != "0" ]; then
+    _msg "FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays where it was"
+    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+    exit 1
   fi
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \

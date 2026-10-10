@@ -10168,9 +10168,24 @@ _satellite_child_b_aegir_build() {
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
-      ${_DRUSHCMD} @hostmaster registry-rebuild
+      _hmRc=$?
     else
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+      _hmRc=$?
+    fi
+    if [ "${_hmRc}" != "0" ]; then
+      ### The migrate stopped: the panel still runs on the previous root and
+      ### nothing below may point the account at the new one. Reported the
+      ### way a missing settings.php is, so the pass ends WITH ERRORS and the
+      ### next run is not skipped as already upgraded.
+      _msg "${_STATUS} B: FATAL ERROR: hostmaster-migrate exited ${_hmRc}; the panel stays on ${_PREV_HM_ROOT}"
+      _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+      touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
+      exit 1
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster registry-rebuild
+    else
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
     cd ${_HM_ROOT}
@@ -10604,6 +10619,8 @@ MKCLIENTEOF
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
+      ### hosting stores the path without a trailing slash: compare that form
+      _THIS_HM_PLR="${_THIS_HM_PLR%/}"
       if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%' \
