@@ -108,6 +108,14 @@ platform, tracked by marker files under `~/log/ctrl/`):
   and `private/` child entries are handled on the resolved store path
   only, never through a planted link.
 
+  Every site-level leg, in the nightly and in the helpers Verify runs,
+  hands over and sets modes only on what root or the account's own users
+  own (for a site of the master, aegir and its pool users), and nothing
+  below a directory another user owns. Another account's files renamed
+  into the site's tree or its stores keep their owner and modes, counted
+  on one `NOTE:` line per site in the nightly log and one `Notice:` line
+  from each helper.
+
 Group-write for the shell pair survives all of this — the lock manages the
 **ownership axis**, and with it the owner-only rights: chmod, git's
 repository-ownership trust, and replacing read-only paths. The web identity
