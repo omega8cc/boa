@@ -70,6 +70,15 @@
       permission pass leave files another account's users own as they
       are, with everything below them, and count them on one line.
 
+    * Files that arrive from another server owned by a user the account
+      does not have here are given to the account. An xcopy or xoct copy
+      under the same account name maps a client login or PHP-FPM user
+      the target lacks onto the account, as a rename already did,
+      instead of leaving the source server's user number; backboa,
+      duobackboa and multiback hand what a restore into an account's
+      tree wrote under another owner to the account before moving it
+      into place, never what was there already.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
