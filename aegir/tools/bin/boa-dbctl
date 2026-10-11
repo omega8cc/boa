@@ -174,6 +174,7 @@ _BOX_READ="NO"
 _PAIR_READ="NO"
 _REF_READ="NO"
 _REF_STATE=""
+_SRV_REFV=""
 _REC_LOADED="NO"
 _AL_LOADED="NO"
 _AL_FOR=""
@@ -588,6 +589,9 @@ _srv_init() {
   esac
   [[ "${_ver}" =~ ^[A-Za-z0-9._+~-]{1,64}$ ]] || _die 7 "unsupported-server"
   _SRV_VER="${_ver}"
+  # 5.7 ends its version with -log while a log was on at its start: the
+  # same server, so its reference is keyed without that word.
+  _SRV_REFV="${_ver%-log}"
   [[ "${_SRV_PORT}" =~ ^[0-9]{1,5}$ ]] || _SRV_PORT="3306"
   [[ "${_SRV_SOCKET}" =~ ^/[A-Za-z0-9._/-]{1,200}$ ]] || _SRV_SOCKET=""
   _BS=$(_sql_str "\\")
@@ -3477,8 +3481,8 @@ _ref_load() {
   _REF=$'\n'
   _REF_HAS="NO"
   while IFS= read -r _l; do
-    [[ "${_l}" == "${_SRV_VER} "* ]] || continue
-    _REF="${_REF}${_l#"${_SRV_VER} "}"$'\n'
+    [[ "${_l}" == "${_SRV_REFV} "* ]] || continue
+    _REF="${_REF}${_l#"${_SRV_REFV} "}"$'\n'
     _REF_HAS="YES"
   done < <(_ref_data)
   return 0
@@ -4545,11 +4549,11 @@ _al_judge() {
   done <<< "${_AL_DEF}"
   _ref_load
   if [[ "${_REF_HAS}" != "YES" ]]; then
-    _al_stop "reference no reference for ${_SRV_VER}: its locked system logins and system objects are not proven"
+    _al_stop "reference no reference for ${_SRV_REFV}: its locked system logins and system objects are not proven"
   else
     _sysobj
     if ! _ref_objects "${_SYSOBJ_N}" "${_SYSOBJ_H}"; then
-      _al_stop "reference the stored objects of sys and mysql differ from the reference for ${_SRV_VER}"
+      _al_stop "reference the stored objects of sys and mysql differ from the reference for ${_SRV_REFV}"
     fi
   fi
   if [[ -n "${_AL_R4}" ]]; then
@@ -4882,7 +4886,8 @@ _v_baseline_rerecord() {
 _v_baseline_reference() {
   local _u _n=0 _ux _hx
   [[ "${#_ARGS[@]}" -eq 2 ]] || _die 2 "usage baseline reference <version>"
-  [[ "${_ARGS[1]}" == "${_SRV_VER}" ]] || _die 2 "not-this-server's-version ${_SRV_VER}"
+  [[ "${_ARGS[1]}" == "${_SRV_VER}" || "${_ARGS[1]}" == "${_SRV_REFV}" ]] \
+    || _die 2 "not-this-server's-version ${_SRV_VER}"
   for _u in mysql.infoschema mysql.session mysql.sys percona.telemetry debian-sys-maint; do
     _ux=$(_hex "${_u}")
     _hx=$(_hex localhost)
@@ -4893,12 +4898,12 @@ _v_baseline_reference() {
       continue
     fi
     _fp "${_ux}" "${_hx}" || _die 7 "sql-failed fp"
-    printf '%s row %s@localhost %s %s\n' "${_SRV_VER}" "${_u}" "${_FP_PRIV}" "${_FP_GRANTS}"
+    printf '%s row %s@localhost %s %s\n' "${_SRV_REFV}" "${_u}" "${_FP_PRIV}" "${_FP_GRANTS}"
     _n=$(( _n + 1 ))
   done
   _sysobj
-  printf '%s objects %s %s\n' "${_SRV_VER}" "${_SYSOBJ_N}" "${_SYSOBJ_H}"
-  _info "baseline reference ${_SRV_VER} rows=${_n} objects=${_SYSOBJ_N}"
+  printf '%s objects %s %s\n' "${_SRV_REFV}" "${_SYSOBJ_N}" "${_SYSOBJ_H}"
+  _info "baseline reference ${_SRV_REFV} rows=${_n} objects=${_SYSOBJ_N}"
 }
 
 _v_baseline() {
