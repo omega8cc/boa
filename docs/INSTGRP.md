@@ -488,9 +488,18 @@ because in phase A the account's users and pools are still in `www-data`.
 A store linked elsewhere inside the account's own tree stays in `www-data`
 with everything below it. The one exception is a link to a path that holds,
 or lies inside, a site or a store of the account's own: those are the
-account's own web files, and the path converts with them. Phase B would
-take `www-data` away from the pools that read a left path, so phase B
-waits.
+account's own web files, and the path converts with them. The account's
+notes say which it is for each path: `left as it is`, or `part of the
+account's own files and converted with them`. Phase B would take
+`www-data` away from the pools that read a left path, so phase B waits.
+
+What is left is the path a note names and everything below it, and it is
+the conversion's own walks that leave it. A contrived layout can step
+outside that: a link into the middle of an archived private store or of a
+platform's `keys` directory (the conversion narrows those directories as a
+whole), a link to one of the account's top directories, or a store link
+that resolves inside its own site's directory, which the nightly takes for
+that site's store.
 
 - `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
   account to phase A, exit 0. The account's notes
