@@ -1032,10 +1032,13 @@ _WEB_GROUP_PHASE_B=NO
 ### pass stamps the box (/var/log/boa/linkguard-arm.ready.txt); linkguard
 ### then makes BOA's own links pass and switches the check on
 ### (/etc/nginx/conf.d/link-guard-boa.conf) once its scan finds no link it
-### would break, and the nightly reports what it finds. Once on, it stays on;
-### NO switches it off at the next pass. Not switched on in this release:
-### the setting stamps only a test box that carries the marker
-### /root/.tenant-isolation-test.cnf. See docs/NGINX-LINKS.md.
+### would break other than one inside an account's own tree, and the
+### nightly reports what it finds. Once on, it stays on; NO switches it off
+### at the next pass. Not switched on in this release: the setting stamps
+### only a test box that carries the marker
+### /root/.tenant-isolation-test.cnf. The release that switches it on also
+### writes _NGINX_LINK_GUARD=YES where /root/.barracuda.cnf has no such
+### line, so a NO set there today keeps a box out. See docs/NGINX-LINKS.md.
 ###
 ###   _NGINX_LINK_GUARD=YES
 ###

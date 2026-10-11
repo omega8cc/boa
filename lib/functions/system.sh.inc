@@ -3950,6 +3950,7 @@ _barracuda_cnf() {
     _convert_etcboa_markers_to_cnf
     _sql_series_never_downgrade
     _instgrp_web_arm_seed
+    _nginx_link_guard_seed
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -4728,6 +4729,7 @@ _barracuda_cnf() {
       source ${_barCnf}
     fi
     _instgrp_web_arm_seed
+    _nginx_link_guard_seed
     _hm_cli_floor_publish
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"

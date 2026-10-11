@@ -1516,6 +1516,25 @@ _nginx_quic_bpf_sync() {
   fi
 }
 
+# The link check's default, written the way the account web group's is
+# (_instgrp_web_seed_line): a pass writes _NGINX_LINK_GUARD=YES into a cnf
+# that carries no such line, so an operator's own line, NO included, always
+# stays, and a box no stage has reached yet gets no line at all. Staged by
+# release on its own switch, behind the web group's: NO writes nothing,
+# HOSTED writes on the omega8.cc-hosted fleet, ALL on every box. Nothing is
+# written in this release. Kept local so no cnf line can set it; it stays NO
+# wherever _nginx_link_guard_sync's _lgReleased is NO.
+_nginx_link_guard_seed() {
+  local _lgSeed=NO
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_link_guard_seed"
+  fi
+  if _instgrp_web_seed_line _NGINX_LINK_GUARD "${_lgSeed}"; then
+    _NGINX_LINK_GUARD=YES
+    _msg "INFO: The nginx link check is armed by default: _NGINX_LINK_GUARD=YES written to ${_barCnf} (NO there opts this box out)"
+  fi
+}
+
 # Nginx follows symbolic links by default, so an account that can write a
 # docroot can link another account's files into it and have them served.
 # With _NGINX_LINK_GUARD=YES the box is armed for linkguard, which makes
