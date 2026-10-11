@@ -5214,7 +5214,7 @@ _save_create() {
 # that fails is said, and the call ends ERR 7 once the rest is done.
 _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _r _k _c _subj _why
-  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _pb _ps _seen=$'\n' _far=$'\n'
+  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _stale=0 _pins _pb _ps _seen=$'\n' _far=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
   # Refused where a switch is: on a box being prepared as a standby, and
   # while the box's pair is being switched over.
@@ -5275,6 +5275,9 @@ _v_baseline_settle() {
     # under the lock: a record made since the check above read it stays as
     # the call that made it left it.
     if _base_get "${_ux}@${_hx}" && [[ "${_B_CLASS}" == "pinned" ]]; then
+      # made since the check read it: what the check said of the box is
+      # stale, and it is read again below
+      [[ "${_pb}" != "none" ]] || _stale=1
       continue
     fi
     # root at the address the cnf names, which the box does not hold: no
@@ -5443,7 +5446,7 @@ _v_baseline_settle() {
   done <<< "${_LO_B}"
   flock -u 7 2> /dev/null
   # what the box-wide check says now, read again after a change
-  if [[ "$(( _nacc + _nrev + _ndrop + _bad ))" -gt 0 ]]; then
+  if [[ "$(( _nacc + _nrev + _ndrop + _bad + _stale ))" -gt 0 ]]; then
     _AL_LOADED="NO"
     _al_judge ""
   fi
