@@ -189,7 +189,7 @@
       that path left exactly as it is and still working; only phase B
       waits until it is gone. instgrp webcheck --report counts what
       holds an account's phase B, and on a box that starts phase B the
-      watchers note such an account once a day (docs/INSTGRP.md).
+      nightly notes such an account in its own log (docs/INSTGRP.md).
 
 @=> Improvements
 
