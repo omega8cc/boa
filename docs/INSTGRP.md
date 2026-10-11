@@ -341,6 +341,9 @@ meets (it covers `/var/www` too) keeps its gid, as `<gid>-purged`.
   or through its own database user's grants; both need code running as that
   account's backend user. Within one account, every site and sub-account
   still shares the one web group.
+- Neither group stops nginx serving another account's file through a link
+  an account put in its own site. The nginx link check closes that
+  (`NGINX-LINKS.md`); it is not switched on in this release.
 - Processes already running with `www-data` when an account enters phase B
   (a shell session, a long Drush run) keep it until they end: the run counts
   them and tells the account to reconnect, and never kills them.
