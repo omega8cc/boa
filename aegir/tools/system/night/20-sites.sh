@@ -462,56 +462,21 @@ _reown_tree_here() {
     -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
   return 0
 }
-### The hand-over walks (the lock and unlock.info legs) as _reown_tree_here
-### walks them, logging one line per walked root when a regular file with
-### more than one link kept its old owner (_ACCT_REOWN_PL leaves it alone):
-### the count and the first. The walk's own find writes those names to a
-### temp file in root's /run (-fprint0), so the report adds no second pass
-### over the tree; without that file the walk runs unreported. Only a file
-### not already at the target owner (and group, when one is named) is
-### written: one already there lost nothing to being left alone.
-_handover_tree_here() {
-  local _o="${1}" _ids _u _g _tmp _n _first _here _off
-  _ids=$(_night_ids "${_o}") || return 0
-  read -r _u _g <<< "${_ids}"
-  shift
-  [ "$#" -gt 0 ] || return 0
-  _tmp=$(mktemp /run/.night-links.XXXXXX 2> /dev/null) || _tmp=""
-  if [ -z "${_tmp}" ]; then
-    _reown_tree_here "${_o}" "$@"
-    return 0
-  fi
-  _off=(! -uid "${_u}")
-  if [[ "${_g}" != "-1" ]]; then
-    _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
-  fi
-  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
-    \( -type f -links +1 "${_off[@]}" -fprint0 "${_tmp}" -o -true \) \
-    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
-  _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
-  if [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 0 ]; then
-    _here="$(pwd -P)"
-    _first=$(head -z -n 1 -- "${_tmp}" | tr -d '\0')
-    _first="${_here}/${_first#./}"
-    echo "SKIP: ${_n} file(s) with more than one link not handed to ${_o} in ${_here}, first: ${_first//[[:cntrl:]]/?}"
-  fi
-  rm -f -- "${_tmp}"
-  return 0
-}
 
-### The walks of the permissions pass over a site (its directory, its files
-### and private stores) hand over and set modes only on what root or the
-### site's account's own identities own, and on nothing below a directory
-### another user owns: the account's identities can rename into their trees
-### what another account left group-writable, a whole directory with
-### everything in it, and that keeps its owner and modes. Another account's
-### store reached through a share is that account's own pass's to set. The
-### identity set as satellite.sh.inc and night/10-account.sh read it (one
-### text in each): root's own (0) and the uid of every passwd name oN and
-### oN.<name> (its .ftp login, its client sub-accounts and their -dev
-### logins, its PHP-FPM users oN.web and oN.<ver>.web); status 1, and
-### nothing, unless the account itself is in passwd. A uid no passwd entry
-### names counts as the account's own in the walkers below.
+### The walks of the permissions pass over a platform and a site (the
+### platform tree, the site's directory, its files and private stores) hand
+### over and set modes only on what root or the site's account's own
+### identities own, and on nothing below a directory another user owns: the
+### account's identities can rename into their trees what another account
+### left group-writable, a whole directory with everything in it, and that
+### keeps its owner and modes. Another account's store reached through a
+### share is that account's own pass's to set. The identity set as
+### satellite.sh.inc and night/10-account.sh read it (one text in each):
+### root's own (0) and the uid of every passwd name oN and oN.<name> (its
+### .ftp login, its client sub-accounts and their -dev logins, its PHP-FPM
+### users oN.web and oN.<ver>.web); status 1, and nothing, unless the
+### account itself is in passwd. A uid no passwd entry names counts as the
+### account's own in the walkers below.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -592,8 +557,9 @@ for my $f (@ARGV) {
 }
 exit 0;'
 ### What the walks below leave for another owner, by dev:ino, kept in root's
-### /run while the pass is on a site and said on one NOTE line for it, each
-### entry counted once (_perm_left_note).
+### /run while the pass is on a site (its platform's legs, when they run for
+### it, included) and said on one NOTE line for it, each entry counted once
+### (_perm_left_note).
 _perm_left_open() {
   _PERM_LEFT_F="/run/night-perm-left-${_usEr##*/}"
   : > "${_PERM_LEFT_F}" 2> /dev/null || _PERM_LEFT_F=""
@@ -640,8 +606,15 @@ _night_reown_own_tree_here() {
   _perm_left_add "${_x}"
   return 0
 }
-### As _handover_tree_here, through _SAT_REOWN_OWN_PL with the uids $1: the
-### trees after $2 handed to $2, a hard-linked file left logged the same way.
+### The hand-over walks (the lock and unlock.info legs): the trees after $2
+### handed to $2 as _night_reown_own_tree_here walks them, logging one line
+### per walked root when a regular file with more than one link kept its old
+### owner (_SAT_REOWN_OWN_PL leaves it alone): the count and the first. The
+### walk's own find writes those names to a temp file in root's /run
+### (-fprint0), so the report adds no second pass over the tree; without that
+### file the walk runs unreported. Only a file not already at the target
+### owner (and group, when one is named) is written: one already there lost
+### nothing to being left alone.
 _night_handover_own_here() {
   local _o="${1}" _w="${2}" _ids _u _g _tmp _n _x _first _here _off
   _ids=$(_night_ids "${_w}") || return 0
@@ -672,7 +645,10 @@ _night_handover_own_here() {
   return 0
 }
 ### Every entry of the current (pinned) directory handed to $2 with the uids
-### $1, recursively (_night_handover_own_here), the glob expanded here.
+### $1, recursively, as chown -h -R handed it: find follows no link, at the
+### top or below, and each directory and single-link regular file is changed
+### through its own handle; a hard-linked file is left alone and logged
+### (_night_handover_own_here). The glob expands here.
 _night_chown_own_all_here() {
   _night_handover_own_here "${1}" "${2}" ./*
   return 0
@@ -701,6 +677,29 @@ _night_mode_own_here() {
   _x=$(find "$@" -type "${_t}" \
     -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "${_t}" "${_m}" {} + 2> /dev/null)
   _perm_left_add "${_x}"
+  return 0
+}
+### Status 1 when the current (pinned) directory is another user's or below
+### one (that one noted), and with no uids ($1 empty): the climb of
+### _SAT_CHMOD_OWN_PL alone, which given . as a regular file sets nothing
+### on a directory.
+_night_place_own_here() {
+  [ -n "${1}" ] || return 1
+  _night_chmod_own_here "${1}" f 0644 .
+}
+### Every entry of the current (pinned) directory itself handed to $2 with
+### the uids $1 (_night_reown_own_here), the glob expanded here.
+_night_reown_own_each_here() {
+  _night_reown_own_here "${1}" "${2}" ./*
+  return 0
+}
+### The names after $1 made as directories in the current (pinned) directory
+### (mkdir -p), unless it is another user's or below one: root makes nothing
+### in a tree it then leaves as it is.
+_night_mkdir_own_here() {
+  _night_place_own_here "${1}" || return 0
+  shift
+  mkdir -p "$@" 2> /dev/null
   return 0
 }
 
@@ -1361,39 +1360,27 @@ _rm_glob_here() {
   done
   return 0
 }
-### The regular files matching the glob $3 in the current (pinned)
-### directory handed to $1 and given the mode $2, never through a link and
-### never by name: each through its own handle, only while it has a single
-### link (_reown_here, _chmod_nofollow_here), so a hard link put or renamed
-### at a matching name is left alone.
+### The regular files matching the glob $4 in the current (pinned)
+### directory handed to $2 and given the mode $3 with the uids $1, never
+### through a link and never by name: each through its own handle, only
+### while it has a single link and is root's or one of those uids'
+### (_night_reown_own_here, _night_chmod_own_here), so a hard link put or
+### renamed at a matching name, and another user's file, are left alone.
 _own_glob_here() {
-  local _f _l=()
+  local _o="${1}" _f _l=()
   # unquoted on purpose: the glob is the point
-  for _f in ./${3}; do
+  for _f in ./${4}; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] && _l+=("${_f}")
   done
   [ "${#_l[@]}" -gt 0 ] || return 0
-  _reown_here "${1}" "${_l[@]}"
-  _chmod_nofollow_here f "${2}" "${_l[@]}"
+  _night_reown_own_here "${_o}" "${2}" "${_l[@]}"
+  _night_chmod_own_here "${_o}" f "${3}" "${_l[@]}"
 }
 ### The archives a tenant left in the current (pinned) code dir: every
 ### regular file of *.tar, *.tar.gz and *.zip, removed by find -delete from
 ### the directory it walked, never through a link.
 _archive_sweep_here() {
   find ./*.tar ./*.tar.gz ./*.zip -type f -delete &> /dev/null
-  return 0
-}
-### Every entry of the current (pinned) directory handed to $1, recursively,
-### as chown -h -R handed it: find follows no link, at the top or below, and
-### each directory and single-link regular file is changed through its own
-### handle; a hard-linked file is left alone and logged (_handover_tree_here).
-_chown_all_here() {
-  _handover_tree_here "${1}" ./*
-  return 0
-}
-### The same for the entries themselves only (_reown_here).
-_chown_h_all_here() {
-  _reown_here "${1}" ./*
   return 0
 }
 ### ./$1 handed to $2 and, only if it is a regular file, given the mode $3,
@@ -2324,12 +2311,13 @@ _cleanup_ghost_platforms() {
 }
 
 _fix_seven_core_patch() {
+  ### $1 = the account's own uids (_acct_walk_uids).
   ### Derive the owning group from the PLATFORM PATH, never a literal and never
   ### the account: _Plr may resolve under the shared /data/all or /data/disk/all
   ### store a legacy instance still hosts sites on, and the helper answers
   ### 'users' for those (and on an unconverted box), the account's own group
   ### only for a tree under /data/disk/<account>.
-  local _grp
+  local _grp _o="${1}"
   _grp=$(_acct_group "$(_night_phys "${_Plr}")")
   ### profiles/ is 0775 and group-writable on a static platform, so this marker path
   ### is tenant-plantable, and -f is FALSE for a dangling link. The marker is
@@ -2344,6 +2332,9 @@ _fix_seven_core_patch() {
   _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
     _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
   if [ ! -f "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+    ### Nothing is patched, put or handed over in a platform root that is
+    ### another user's or below a directory of one (noted once).
+    _in_pinned_dir "${_rPlr}" _night_place_own_here "${_o}" || return 0
     ### database.inc is the tenant's: read bounded, never through a link at
     ### its name and never blocked on a FIFO, so a link to a huge or endless
     ### file cannot hold the pass.
@@ -2360,18 +2351,19 @@ _fix_seven_core_patch() {
       ### names, and includes/ and database/ on the way, can be swapped for a
       ### link at any moment: the *.inc files are handed over and given their
       ### mode only inside the real includes/database, only as regular files
-      ### with a single link, never through a link or by name.
+      ### with a single link, never through a link or by name, and never
+      ### another user's.
       _in_pinned_dir "${_rPlr}" _in_real_sub includes/database \
-        _own_glob_here "${_HM_U}:${_grp}" 0664 '*.inc'
+        _own_glob_here "${_o}" "${_HM_U}:${_grp}" 0664 '*.inc'
       _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
         _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
     fi
     ### profiles/ is 0775 and group-writable, so *-fix.info matches
     ### tenant-created names: handed over and given their mode only inside
     ### the real profiles/, only as regular files with a single link, never
-    ### through a link or by name.
+    ### through a link or by name, and never another user's.
     _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
-      _own_glob_here "${_HM_U}:${_grp}" 0664 '*-fix.info'
+      _own_glob_here "${_o}" "${_HM_U}:${_grp}" 0664 '*-fix.info'
   fi
 }
 
@@ -2383,39 +2375,44 @@ _fix_seven_core_patch() {
 ### The top directory is the docroot, or the composer app root one level
 ### above it. find walks without following a link, and each mode is set from
 ### inside the directory walked through a no-follow handle, so a name swapped
-### for a link at any moment is never followed.
+### for a link at any moment is never followed; only what root or the
+### account's own uids own is changed, and nothing in a tree that is another
+### user's or below a directory of one (_night_mode_own_here).
 _static_perm_here() {
-  ### $1 = the platform's web group. Once the account has its own, a site's
-  ### private files keep no world bits (its private store takes them in the
-  ### site leg), so a real sites/<uri>/private or files/private is left out,
-  ### and so are the subtrees nginx denies in a real files/ (only there: a
-  ### config_* directory of the platform itself is walked).
-  local _pr=()
+  ### $1 = the platform's web group, $2 = the account's own uids. Once the
+  ### account has its own web group, a site's private files keep no world
+  ### bits (its private store takes them in the site leg), so a real
+  ### sites/<uri>/private or files/private is left out, and so are the
+  ### subtrees nginx denies in a real files/ (only there: a config_*
+  ### directory of the platform itself is walked).
+  local _o="${2}" _pr=()
   [[ "${1}" == wg-* ]] && _pr=( -regextype posix-extended \
     \( -regex '\./([^/]+/)?sites/[^/]+/(files/)?private' -o -iregex "${_NIGHT_DENIED_SUB_RE}" \) \
     -prune -o )
-  _chmod_nofollow_here d 0775 .
-  find . -mindepth 1 "${_pr[@]}" -type d \
+  _night_chmod_own_here "${_o}" d 0775 . || return 0
+  _night_mode_own_here "${_o}" d 0775 . -mindepth 1 "${_pr[@]}" \
     ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-    -o -path "*/vendor/symfony/console/Style" \) \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
-  find . "${_pr[@]}" -type f -regextype posix-extended \
-    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php' \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+    -o -path "*/vendor/symfony/console/Style" \)
+  _night_mode_own_here "${_o}" f 0664 . "${_pr[@]}" -regextype posix-extended \
+    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php'
   return 0
 }
 ### The credential files of every site dir of the platform (the current,
-### real platform root) narrowed back to 0440, the same way.
+### real platform root) narrowed back to 0440, the same way, with the
+### account's own uids $1.
 _sites_cred_modes_here() {
-  find ./sites -mindepth 2 -maxdepth 2 -type f \
+  _night_mode_own_here "${1}" f 0440 ./sites -mindepth 2 -maxdepth 2 \
     \( -name settings.php -o -name local.settings.php \
     -o -name civicrm.settings.php -o -name solr.php -o -name drushrc.php \) \
-    ! -path "./sites/all/*" \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0440 {} + &> /dev/null
+    ! -path "./sites/all/*"
   return 0
 }
 
 _fix_static_permissions() {
+  ### $1 = the platform's web group, $2 = the account's own uids
+  ### (_acct_walk_uids): every hand-over and mode below goes through the
+  ### owner-checked walkers with them.
+  local _o="${2}"
   _cleanup_ghost_platforms
   ### ~/static is 02775 and every platform dir under it 0775 (the find below),
   ### both group-writable by the account's shell identities, so the platform
@@ -2438,7 +2435,7 @@ _fix_static_permissions() {
   esac
   if [ -e "${_Plr}/profiles" ]; then
     if [ -e "${_Plr}/web.config" ] && [ ! -e "${_Plr}/core" ]; then
-      _fix_seven_core_patch
+      _fix_seven_core_patch "${_o}"
     fi
     _use_Plr="${_rPlr}"
     ### composer.json is the tenant's: read bounded inside the real parent
@@ -2459,19 +2456,22 @@ _fix_static_permissions() {
       esac
     fi
     ### The whole tree is the tenant's to write, so any name in it can be a
-    ### hard link to a file of another owner: the owner is set through each
-    ### entry's own handle, never on a hard-linked file, and one left alone
-    ### is logged (_handover_tree_here).
+    ### hard link to a file of another owner, or what another account left
+    ### group-writable, renamed in: the owner is set through each entry's
+    ### own handle, never on a hard-linked file (one left alone is logged)
+    ### and never on what another user owns, with everything below it
+    ### (_night_handover_own_here).
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
-        _in_pinned_dir "${_use_Plr}" _handover_tree_here "${_HM_U}" .
+        _in_pinned_dir "${_use_Plr}" _night_handover_own_here "${_o}" "${_HM_U}" .
         _log_ctrl_mark "plr.${_PlrID}.ctm-lock-${_NOW}.info"
       fi
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
-        _in_pinned_dir "${_use_Plr}" _handover_tree_here "${_HM_U}.ftp" .
+        _in_pinned_dir "${_use_Plr}" \
+          _night_handover_own_here "${_o}" "${_HM_U}.ftp" .
         _log_ctrl_mark "plr.${_PlrID}.ctm-unlock-${_NOW}.info"
       fi
     fi
@@ -2486,7 +2486,7 @@ _fix_static_permissions() {
       ### skipped that rebuild too. Only the three directories themselves are
       ### skipped (their contents are still walked), and nothing here names
       ### them on a command line, so a link planted at one is never followed.
-      _in_pinned_dir "${_use_Plr}" _static_perm_here "${1}"
+      _in_pinned_dir "${_use_Plr}" _static_perm_here "${1}" "${_o}"
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
       ### level). A site the per-site loop refuses -- a symlinked modules at
@@ -2498,7 +2498,7 @@ _fix_static_permissions() {
       ### find -P never descends a symlinked sites/ or sites/<uri>, -type f
       ### skips a planted link, so nothing here follows a tenant-plantable
       ### name; the scaffold's default.* copies and sites/all are not named.
-      _in_pinned_dir "${_rPlr}" _sites_cred_modes_here
+      _in_pinned_dir "${_rPlr}" _sites_cred_modes_here "${_o}"
     fi
   fi
 }
@@ -2526,21 +2526,28 @@ _fix_expected_symlinks() {
 ### from the directory walked, so no name the tenant can swap -- sites,
 ### sites/all, a code dir under it, anything a walk meets -- ever takes a
 ### root chown or chmod elsewhere. $1 = the group, $2 = the account's web
-### group (empty: none; the tcpdf cache takes it). Reads _plrCodeLink.
+### group (empty: none; the tcpdf cache takes it), $3 = the account's own
+### uids (_acct_walk_uids). Reads _plrCodeLink.
+### Every owner and mode below goes through the owner-checked walkers with
+### those uids: nothing is done in a platform root that is another user's or
+### below a directory of one, what another user owns in the tree keeps its
+### owner and mode with everything below it, and no directory is made in one
+### of those (_night_mkdir_own_here).
 _plr_perm_here() {
-  local _grp="${1}" _d
+  local _grp="${1}" _o="${3}" _d
+  _night_place_own_here "${_o}" || return 0
   if [ -n "${_plrCodeLink}" ]; then
     echo "SKIP: symlinked sites/all code dir on ${_Plr}:${_plrCodeLink}"
   else
     mkdir -p ./sites 2> /dev/null
-    _in_real_sub sites mkdir -p ./all 2> /dev/null
+    _in_real_sub sites _night_mkdir_own_here "${_o}" ./all
     if [ "${_FOREIGN_CMS}" = "YES" ]; then
       ### A Grav or Textpattern platform has no Drupal sites/all/{modules,
       ### themes,libraries}; sites/all/drush is where its drushrc renders.
-      _in_real_sub sites/all mkdir -p ./drush 2> /dev/null
+      _in_real_sub sites/all _night_mkdir_own_here "${_o}" ./drush
     else
       _in_real_sub sites/all \
-        mkdir -p ./modules ./themes ./libraries ./drush 2> /dev/null
+        _night_mkdir_own_here "${_o}" ./modules ./themes ./libraries ./drush
     fi
   fi
   ### Drupal's sites/all/{modules,themes,libraries} carry nothing on a Grav or
@@ -2550,14 +2557,16 @@ _plr_perm_here() {
     for _d in modules themes libraries drush; do
       _in_real_sub "sites/all/${_d}" _archive_sweep_here
     done
-    ### The walk inside each real code dir (_chown_all_here): every entry
-    ### there is a tenant-plantable name, the walk never follows a link into
-    ### the shared distro tree, and a hard-linked file is never handed over.
+    ### The walk inside each real code dir (_night_chown_own_all_here):
+    ### every entry there is a tenant-plantable name, the walk never follows
+    ### a link into the shared distro tree, and neither a hard-linked file
+    ### nor what another user owns is ever handed over.
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e ./skip.info ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
         for _d in modules themes libraries; do
-          _in_real_sub "sites/all/${_d}" _chown_all_here "${_HM_U}:${_grp}"
+          _in_real_sub "sites/all/${_d}" \
+            _night_chown_own_all_here "${_o}" "${_HM_U}:${_grp}"
         done
         _log_ctrl_mark "plr.${_PlrID}.lock-${_NOW}.info"
       fi
@@ -2567,7 +2576,8 @@ _plr_perm_here() {
         ### here the planted target would be handed straight to the
         ### tenant's shell user
         for _d in modules themes libraries; do
-          _in_real_sub "sites/all/${_d}" _chown_all_here "${_HM_U}.ftp:${_grp}"
+          _in_real_sub "sites/all/${_d}" \
+            _night_chown_own_all_here "${_o}" "${_HM_U}.ftp:${_grp}"
         done
         _log_ctrl_mark "plr.${_PlrID}.unlock-${_NOW}.info"
       fi
@@ -2577,31 +2587,31 @@ _plr_perm_here() {
   ### tenant-creatable names once sites/ takes group write below, so none of
   ### them may be followed, and none is changed by name (a hard link put or
   ### renamed at one, sites and the sites/all dirs just made included, is
-  ### left alone: _reown_here). drushrc.php sits BELOW drush, so it is
-  ### withheld with the code-dir legs above.
+  ### left alone, as is one another user owns: _night_reown_own_here).
+  ### drushrc.php sits BELOW drush, so it is withheld with the code-dir legs
+  ### above.
   if [ -z "${_plrCodeLink}" ]; then
     _in_real_sub sites/all/drush \
-      _reown_here "${_HM_U}:${_grp}" ./drushrc.php
+      _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" ./drushrc.php
   fi
-  _reown_here "${_HM_U}:${_grp}" ./sites
-  _in_real_sub sites _chown_h_all_here "${_HM_U}:${_grp}"
-  _in_real_sub sites/all _reown_here "${_HM_U}:${_grp}" \
+  _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" ./sites
+  _in_real_sub sites _night_reown_own_each_here "${_o}" "${_HM_U}:${_grp}"
+  _in_real_sub sites/all _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" \
     ./modules ./themes ./libraries ./drush
-  _chmod_nofollow_here d 0751 ./sites
-  _in_real_sub sites find . -mindepth 1 -maxdepth 1 -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} + &> /dev/null
-  _in_real_sub sites find . -mindepth 1 -maxdepth 1 -type f \
-    \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \) \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0644 {} + &> /dev/null
-  _chmod_nofollow_here f 0664 ./autoload.php
-  _in_real_sub sites/all _chmod_nofollow_here d 0755 ./drush
+  _night_chmod_own_here "${_o}" d 0751 ./sites
+  _in_real_sub sites _night_mode_own_here "${_o}" d 0755 . \
+    -mindepth 1 -maxdepth 1
+  _in_real_sub sites _night_mode_own_here "${_o}" f 0644 . \
+    -mindepth 1 -maxdepth 1 \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \)
+  _night_chmod_own_here "${_o}" f 0664 ./autoload.php
+  _in_real_sub sites/all _night_chmod_own_here "${_o}" d 0755 ./drush
   ### Tenant composer codebases: the two directories core's composer
   ### scaffold writes into stay group-writable for the shell user
   ### (omega8cc/boa#1936); mirrors fix-drupal-platform-permissions.sh.
   if [[ "${_Plr}" =~ "/static/" ]] \
     && [ -e ./core/lib/Drupal.php ]; then
-    _chmod_nofollow_here d 02771 ./sites
-    _in_real_sub sites _chmod_nofollow_here d 02775 ./default
+    _night_chmod_own_here "${_o}" d 02771 ./sites
+    _in_real_sub sites _night_chmod_own_here "${_o}" d 02775 ./default
   fi
   ### Group write is the shell pair's free-ride territory under ~/static
   ### only. A hostmaster tree (aegir/distro) takes none at all; a built-in
@@ -2620,43 +2630,44 @@ _plr_perm_here() {
   ### A Grav or Textpattern root keeps the modes its own platform script
   ### sets: this Drupal code-dir pass stripped Grav's vendor/bin exec bits.
   if [[ ! "${_Plr}" =~ /static/ ]] && [ "${_FOREIGN_CMS}" != "YES" ]; then
-    _chmod_nofollow_here d 0755 .
+    _night_chmod_own_here "${_o}" d 0755 .
     ### The three Drush-lock dirs keep whatever mode the lock state gave
     ### them (0400 locked, 0775 after Unlock Local Drush): prune, never
     ### widen or narrow them here.
-    find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
+    _night_mode_own_here "${_o}" d 0755 \
+      ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
       ./vendor ../vendor \
       \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-      -o -path "*/vendor/symfony/console/Style" \) -prune \
-      -o -type d -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} + &> /dev/null
-    find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
+      -o -path "*/vendor/symfony/console/Style" \) -prune -o
+    _night_mode_own_here "${_o}" f 0644 \
+      ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
       ./vendor ../vendor \
       \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-      -o -path "*/vendor/symfony/console/Style" \) -prune \
-      -o -type f -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0644 {} + &> /dev/null
+      -o -path "*/vendor/symfony/console/Style" \) -prune -o
   fi
-  _in_real_sub sites/all find ./modules ./themes ./libraries -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d "${_pDm}" {} + &> /dev/null
-  _in_real_sub sites/all find ./modules ./themes ./libraries -type f \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f "${_pFm}" {} + &> /dev/null
+  _in_real_sub sites/all _night_mode_own_here "${_o}" d "${_pDm}" \
+    ./modules ./themes ./libraries
+  _in_real_sub sites/all _night_mode_own_here "${_o}" f "${_pFm}" \
+    ./modules ./themes ./libraries
   ### expected symlinks
   _fix_expected_symlinks
   ### known exceptions: the tcpdf cache, entered for real (tcpdf and its
   ### cache child are names the tenant can plant in sites/all/libraries);
   ### every mode and owner below it set through a no-follow handle from the
-  ### directory walked, never on a hard-linked file.
+  ### directory walked, never on a hard-linked file and never on what
+  ### another user owns.
   if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
-    _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here "${2}"
+    _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here "${2}" "${_o}"
   fi
   return 0
 }
+### $1 = the account's web group, $2 = its own uids.
 _tcpdf_cache_here() {
-  _chmod_nofollow_here d 0775 .
-  find . -mindepth 1 -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
-  find . -mindepth 1 -type f \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0775 {} + &> /dev/null
-  _reown_tree_here "${_HM_U}${1:+:${1}}" .
+  local _o="${2}"
+  _night_chmod_own_here "${_o}" d 0775 . || return 0
+  _night_mode_own_here "${_o}" d 0775 . -mindepth 1
+  _night_mode_own_here "${_o}" f 0775 . -mindepth 1
+  _night_reown_own_tree_here "${_o}" "${_HM_U}${1:+:${1}}" .
   return 0
 }
 
@@ -2810,16 +2821,22 @@ _fix_permissions() {
   ### instance still hosts sites on, and the helper answers 'users' there (and
   ### on an unconverted box), the account's own group only for a tree under
   ### /data/disk/<account>. Local, so nothing leaks across the per-site loop.
-  local _grp _drTxt _wgP _wgS _wgF
+  local _grp _drTxt _wgP _wgS _wgF _own
   _grp=$(_acct_group "$(_night_phys "${_Plr}")")
   ### The web group the same way: www-data on the shared stores and until
   ### the account is converted to its own.
   _wgP=$(_web_group "$(_night_phys "${_Plr}")")
+  ### The account's own uids, read once for the platform legs: they hand
+  ### over and set modes only on what root or those uids own (with none
+  ### read, on nothing). What every leg below leaves as another user's is
+  ### said on one NOTE line at the end.
+  _own=$(_acct_walk_uids "${_HM_U}") || _own=""
+  _perm_left_open
   ### modules,themes,libraries - profile level in ~/static
   searchStringT="/static/"
   case ${_Plr} in
   *"$searchStringT"*)
-  _fix_static_permissions "${_wgP}"
+  _fix_static_permissions "${_wgP}" "${_own}"
   ;;
   esac
   ### modules,themes,libraries - platform level
@@ -2858,7 +2875,7 @@ _fix_permissions() {
     && [ -e "${_Plr}" ] \
     && [ ! -L "${_Plr}/sites" ] \
     && [ ! -L "${_Plr}/sites/all" ]; then
-    _site_in_resolved_dir "${_Plr}" _plr_perm_here "${_grp}" "${_wgP}"
+    _site_in_resolved_dir "${_Plr}" _plr_perm_here "${_grp}" "${_wgP}" "${_own}"
     _log_ctrl_mark "plr.${_PlrID}.perm-fix-${_NOW}.info"
   fi
   ### sites/ is 02771 and group-writable on tenant composer codebases (the
@@ -2901,8 +2918,6 @@ _fix_permissions() {
     ### variable does not.
     _grp=$(_acct_group "$(_night_phys "${_Dir}")")
     _wgS=$(_web_group "$(_night_phys "${_Dir}")")
-    ### What the legs below leave as another user's: one NOTE line after them.
-    _perm_left_open
     _site_in_resolved_dir "${_Dir}" _site_perm_here "${_grp}" "${_wgS}"
     ### files/ and private/ are legitimately symlinks into a per-account
     ### static store (a shared store may sit under another account), so each
@@ -2958,7 +2973,6 @@ _fix_permissions() {
         _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
       fi
     fi
-    _perm_left_note "${_Dir}"
   ### Neither a Grav capsule nor a Textpattern site has a site-level files/
   ### store (a TXP site does have private/, its credential store), so the
   ### Drupal-shaped test above skips them and they get no nightly hygiene
@@ -2990,6 +3004,7 @@ _fix_permissions() {
     fi
     echo "Foreign-CMS site hygiene applied for ${_Dom}"
   fi
+  _perm_left_note "${_Dir:-${_Plr}}"
 }
 
 _convert_controls_orig() {
