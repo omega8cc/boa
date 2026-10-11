@@ -513,8 +513,8 @@ _links_left_note() {
 }
 # Mode $1 on every regular file the find start points and tests after it
 # select (any tests apply first), walked from the current (pinned) directory
-# through _FCHMOD_PL, then _links_left_note on the same selection. The
-# platform script walks with it; this one walks with _fwalk_own_here.
+# through _FCHMOD_PL, then _links_left_note on the same selection. Kept as
+# the platform script's copy; both walk with _fwalk_own_here.
 _fwalk_here() {
   local _m="${1}" _rc
   shift
