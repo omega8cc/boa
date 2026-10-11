@@ -268,6 +268,16 @@
       same version. boa-dbctl census says how a box stands against its
       reference (docs/DBCTL.md).
 
+    * The nightly permissions pass starts its perl walker only where
+      it has something to change. Its walks over a platform's code, a
+      site's modules, themes and libraries, and the files and private
+      stores handed every file and directory to perl each night, one
+      start per directory, whatever state they were in. find now hands
+      over only an entry whose mode, owner or group differs from what
+      the pass sets, and every entry another user owns, which is left
+      and counted on the NOTE line as before, so a tree already at its
+      state is walked by find alone.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
