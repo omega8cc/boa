@@ -5185,6 +5185,61 @@ _save_create() {
   return 0
 }
 
+# The credential the parked home of each purged account records for the
+# rows settle may drop: its instance user's from its server alias, its last
+# panel user's as _leftovers_build read it. Read before the lock (a parked
+# tarball is read slowly) and kept in memory only: _ST_CK holds "<kind>
+# <account> <user>", _ST_CP the password at the same place.
+_settle_creds_read() {
+  local _l _uh _u _o _kd _i _seen=$'\n'
+  _ST_CK=()
+  _ST_CP=()
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    _uh="${_l#A }"
+    _uh="${_uh%% *}"
+    _u="${_uh%@*}"
+    _o="${_l#* account=}"
+    _kd="${_o#* }"
+    _kd="${_kd%% *}"
+    _o="${_o%% *}"
+    [[ "${_seen}" == *$'\n'"${_kd} ${_o} ${_u}"$'\n'* ]] && continue
+    _seen="${_seen}${_kd} ${_o} ${_u}"$'\n'
+    case "${_kd}" in
+      instance)
+        [[ "${_u}" == "${_o}" ]] || continue
+        _zombie_inst "${_o}" || continue
+        _ST_CK+=("${_kd} ${_o} ${_u}")
+        _ST_CP+=("${_PW}")
+        _PW=""
+        ;;
+      panel)
+        for (( _i = 0; _i < ${#_LO_ZK[@]}; _i++ )); do
+          [[ "${_LO_ZK[${_i}]}" == "${_o} ${_u}" && -n "${_LO_ZP[${_i}]}" ]] || continue
+          _ST_CK+=("${_kd} ${_o} ${_u}")
+          _ST_CP+=("${_LO_ZP[${_i}]}")
+          break
+        done
+        ;;
+    esac
+  done <<< "${_LO_A}"
+  return 0
+}
+
+# The password read for the login $3 of the purged account $2 (kind $1),
+# into _PW; 1 when its parked home gave none.
+_settle_cred() {
+  local _i
+  _PW=""
+  for (( _i = 0; _i < ${#_ST_CK[@]}; _i++ )); do
+    [[ "${_ST_CK[${_i}]}" == "${1} ${2} ${3}" ]] || continue
+    _PW="${_ST_CP[${_i}]}"
+    [[ -n "${_PW}" ]]
+    return
+  done
+  return 1
+}
+
 # baseline settle: the box settles what it can name exactly, with no ruling
 # asked of anyone, in this order.
 #   1  each login of the server's own that is proven and not in the
@@ -5204,11 +5259,13 @@ _save_create() {
 #      would cut a remote web head off. A login that exists only at this
 #      box's own hosts cannot be anyone else's. One that defines a stored
 #      object keeps its rights too: the object runs with them
-#   3  each row "leftovers list" puts in section A, at any host: dropped,
-#      its grants and its CREATE USER line saved first, only while the
-#      account's purge parked its home, no root cnf of the account is
-#      there, the row's password was not set after the purge and the row
-#      defines no stored object
+#   3  each instance or panel row "leftovers list" puts in section A, at
+#      any host: dropped, its grants and its CREATE USER line saved first,
+#      only while the account's purge parked its home, no root cnf of the
+#      account is there, the row's password was not set after the purge,
+#      the row defines no stored object, and the credential the parked
+#      home records for it opens that very row. A purged account's site
+#      users are left to "leftovers drop"
 # Never touched in 2 either: a name two accounts' records claim, and every
 # login of another class. A database is never touched. Whatever it leaves
 # is said in a "left" line, and so is every finding the box-wide check
@@ -5216,7 +5273,7 @@ _save_create() {
 # says the same lines. A read that fails ends the call at once; a change
 # that fails is said, and the call ends ERR 7 once the rest is done.
 _v_baseline_settle() {
-  local _ux _hx _u _h _g _lk _sec _key _l _uh _o _r _k _c _subj _why
+  local _ux _hx _u _h _g _lk _sec _key _l _uh _o _kd _r _k _c _subj _why
   local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _stale=0 _pins _pb _ps _seen=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
   # Refused where a switch is: on a box being prepared as a standby, and
@@ -5247,6 +5304,7 @@ _v_baseline_settle() {
   # homes. A root tool that records its own row again waits for this lock
   # for a minute at most. What a write depends on is read again under it.
   _leftovers_build
+  _settle_creds_read
   _settle_defs_read
   _pins=$'\n'"${_AL_PINS}"
   _base_lock
@@ -5369,8 +5427,14 @@ _v_baseline_settle() {
   # of the name. The row's password was not set after the purge: a row
   # touched since is in use by something made since, another box's account
   # of the name served from here included. It defines no stored object: the
-  # drop would leave that without its definer. Its grants and its CREATE
-  # USER line are saved first, so a wrong drop can be put back.
+  # drop would leave that without its definer. The credential the parked
+  # home records for it opens that very row, proven as a live account's
+  # login is: the times only order what happened on one server, and a box
+  # seeded from another server's data can hold a park younger than rows
+  # another box's account still uses. Its grants and its CREATE USER line
+  # are saved first, so a wrong drop can be put back. A purged account's
+  # site users are never dropped here: the parked home proves none of
+  # them, and the operator's verb keeps them, with its list and its hash.
   while IFS= read -r _l; do
     [[ -n "${_l}" ]] || continue
     _uh="${_l#A }"
@@ -5378,11 +5442,20 @@ _v_baseline_settle() {
     _u="${_uh%@*}"
     _h="${_uh##*@}"
     _o="${_l#* account=}"
+    _kd="${_o#* }"
+    _kd="${_kd%% *}"
     _o="${_o%% *}"
     _ux=$(_hex "${_u}")
     _hx=$(_hex "${_h}")
     _settle_class "${_u}" "${_h}"
     _c="${_ST_C}"
+    case "${_kd}" in
+      instance|panel) ;;
+      *)
+        _settle_note "${_uh}" "${_c}" "a site user of the purged ${_o} is not dropped here: leftovers list shows it and leftovers drop takes it"
+        continue
+        ;;
+    esac
     if [[ ! -d "${_ZOMBIE}/${_o}" || -L "${_ZOMBIE}/${_o}" ]]; then
       _settle_note "${_uh}" "${_c}" "the purge of ${_o} parked no home: its login is not dropped on root's record alone"
       continue
@@ -5415,6 +5488,23 @@ _v_baseline_settle() {
       _settle_note "${_uh}" "${_c}" "it defines ${_ST_OBJ}: a drop would leave that without its definer"
       continue
     fi
+    if ! _settle_cred "${_kd}" "${_o}" "${_u}"; then
+      _settle_note "${_uh}" "${_c}" "the parked home of ${_o} holds no credential of it that can be read"
+      continue
+    fi
+    _proof_cnf "${_u}"
+    _row_login "${_u}" "${_h}" "${_PCNF}"
+    case "$?" in
+      0) ;;
+      2)
+        _settle_note "${_uh}" "${_c}" "no login of this box reaches the row, so the credential ${_o} recorded cannot be tried on it"
+        continue
+        ;;
+      *)
+        _settle_note "${_uh}" "${_c}" "the credential ${_o} recorded does not open it: it is someone else's by now"
+        continue
+        ;;
+    esac
     if ! _save_grants "${_ux}" "${_hx}" || ! _save_create "${_u}" "${_h}"; then
       _bad=$(( _bad + 1 ))
       _alrt "${_u}@${_h}: its grants and its row could not be saved, so it is not dropped"
@@ -6101,6 +6191,7 @@ _v_scope() {
 _zombie_panel() {
   local _p="${1}" _tb="${_ZOMBIE}/${1}/home/${1}.tar.gz" _t _sp _dr _du _dn
   _ZP=""
+  _ZP_PW=""
   [[ -f "${_tb}" && ! -L "${_tb}" ]] || return 1
   _t=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/hostmaster.alias.drushrc.php" \
     2> /dev/null 7>&- 8>&- 9>&- | head -c 1048576)
@@ -6119,6 +6210,32 @@ _zombie_panel() {
   _dn="${_VAL}"
   [[ "${_du}" =~ ^[A-Za-z0-9_]{1,32}$ && "${_du}" == "${_dn}" && "${_du}" != "${_p}" ]] || return 1
   _ZP="${_du}"
+  # the password that file records for it, kept in memory for the one verb
+  # that proves a parked panel's login before it drops it
+  if _drc_lit "${_dr}" db_passwd; then
+    _php_lit "${_VAL}"
+    _ZP_PW="${_PW}"
+    _PW=""
+  fi
+}
+
+# The password the parked home of the purged account $1 records for its
+# instance user: the server alias in it that names that user, read as a
+# live account's is (_root_login). Into _PW; 1 when the parked home holds
+# none that can be read.
+_zombie_inst() {
+  local _p="${1}" _tb="${_ZOMBIE}/${1}/home/${1}.tar.gz" _c _t
+  _PW=""
+  [[ -f "${_tb}" && ! -L "${_tb}" ]] || return 1
+  for _c in server_localhost server_master; do
+    _t=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/${_c}.alias.drushrc.php" \
+      2> /dev/null 7>&- 8>&- 9>&- | head -c 1048576)
+    [[ -n "${_t}" ]] || continue
+    _master_db "${_t}" || continue
+    [[ "${_MDB_USER}" == "${_p}" ]] && return 0
+  done
+  _PW=""
+  return 1
 }
 
 _leftovers_build() {
@@ -6136,8 +6253,13 @@ _leftovers_build() {
       _peerok="NO"
     fi
   fi
+  _LO_ZK=()
+  _LO_ZP=()
   for _p in ${_AL_PURGED}; do
     _zombie_panel "${_p}" || continue
+    _LO_ZK+=("${_p} ${_ZP}")
+    _LO_ZP+=("${_ZP_PW}")
+    _ZP_PW=""
     _u_claim "${_ZP}"
     case "${_UC_K}:${_UC_O}" in
       PURGED:"${_p}") _zp="${_zp}${_ZP} ${_p}"$'\n' ;;
