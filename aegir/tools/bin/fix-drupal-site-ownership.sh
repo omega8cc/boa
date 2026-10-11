@@ -464,8 +464,8 @@ exit 0;'
 # entry keeps its own, as chown <owner> keeps it), then each ./name, or with
 # -R every entry at or below each name, walked by find (any find tests after
 # the names apply first) and handed over from -execdir, one ./name in the
-# directory find holds; a walk ends with _links_left_note. The platform
-# script hands over with it; this one with _reown_own_here.
+# directory find holds; a walk ends with _links_left_note. Kept as the
+# platform script's copy; both hand over with _reown_own_here.
 _reown_here() {
   local _r="" _uid _gid=-1 _rc
   if [ "${1}" = "-R" ]; then
@@ -521,6 +521,21 @@ _reown_own_here() {
   else
     perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" "$@"
   fi
+}
+# Status 0 while the current (pinned) directory and every directory above
+# it are root's or the site's own users' (_SAT_REOWN_OWN_PL given . to hand
+# to nobody: -1 keeps the owner and the group); otherwise the directory
+# another user owns is printed (dev:ino) and the status is 1.
+_place_ours_here() {
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" -1 -1 .
+}
+# "$@" in the current (pinned) directory only while that place is root's
+# or the site's own users' (_place_ours_here): nothing is made, renamed or
+# removed in a directory another user owns, or below one.
+_in_ours_here() {
+  _place_ours_here > /dev/null || return 0
+  "$@"
 }
 
 # Each name in the current (pinned) directory that matches a pattern after
@@ -823,8 +838,13 @@ if ! _in_pinned_dir "${site_path}" true; then
   exit 1
 fi
 
+### Nothing is made or removed in the site directory, its modules or its
+### libraries while that place is another user's (_in_ours_here): the walks
+### below refuse such a place, so the old marker, the services files and
+### libraries/ must not be written there first.
 if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
-  _in_pinned_dir "${site_path}/libraries" rm -f -- ./ownership-fixed.pid
+  _in_pinned_dir "${site_path}/libraries" \
+    _in_ours_here rm -f -- ./ownership-fixed.pid
 fi
 
 _TODAY=$(date +%y%m%d)
@@ -833,18 +853,18 @@ _TODAY=${_TODAY//[^0-9]/}
 ### Read and written only inside the real directories (_copy_new_here).
 if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
   if [ ! -e "${site_path}/modules/default.services.yml" ]; then
-    _in_pinned_dir "${site_path}/modules" \
+    _in_pinned_dir "${site_path}/modules" _in_ours_here \
       _copy_new_here "${site_path%/*}/sites/default" default.services.yml
   fi
 fi
 if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.yml" ]; then
-  _in_pinned_dir "${site_path}" \
+  _in_pinned_dir "${site_path}" _in_ours_here \
     ln -sfn "${site_path}/modules/services.yml" ./services.yml
 fi
 
 printf 'Setting ownership of key files and directories inside %s to: user => %s group => %s\n' "${site_path}" "${script_user}" "${_code_group}"
 if [ ! -e "${site_path}/libraries" ]; then
-  _in_pinned_dir "${site_path}" mkdir ./libraries
+  _in_pinned_dir "${site_path}" _in_ours_here mkdir ./libraries
 fi
 ### What the walks leave as another user's, by dev:ino, for one Notice.
 _LEFT=$(_in_pinned_dir "${site_path}" _site_own_here 2> /dev/null)
