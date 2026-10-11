@@ -51,6 +51,34 @@
     * A hosting page that could only end in an error is gone from the
       control panel.
 
+    * The Octopus upgrade's ownership pass over .drush, backups, clients,
+      config, tools and static/control, and the clean-up of the retired
+      client directories and client backups, act only on what root or
+      the account's own users own, never on files another account placed
+      in its tree.
+
+    * The nightly cleanup of old database dumps in an account's dbackup
+      and the account runner's removal of its export metadata delete
+      only what root or the account's own users own, never files another
+      account placed in its tree.
+
+    * autosymlink takes an account's static/files as its store only when
+      root owns it and neither group nor others can write it, and makes a
+      missing one that way whatever the umask.
+
+    * The site Verify's ownership and permission fixes and the nightly
+      permission pass leave files another account's users own as they
+      are, with everything below them, and count them on one line.
+
+    * Files that arrive from another server owned by a user the account
+      does not have here are given to the account. An xcopy or xoct copy
+      under the same account name maps a client login or PHP-FPM user
+      the target lacks onto the account, as a rename already did,
+      instead of leaving the source server's user number; backboa,
+      duobackboa and multiback hand what a restore into an account's
+      tree wrote under another owner to the account before moving it
+      into place, never what was there already.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
@@ -152,6 +180,13 @@
       platform you build, and links the documentation. The host count and
       the Twitter comparisons are gone. The page reaches every panel on
       its next Octopus upgrade.
+
+    * The _DEL_OLD_BACKUPS, _DEL_OLD_TMP and _DEL_OLD_EMPTY_PLATFORMS
+      notes in the Octopus settings template and on docs.boa.io say what
+      "0" does: backups are still deleted after 14 days (7 on hosted
+      systems) and temporary files once they are a day old; only empty
+      platforms are kept, except on hosted systems, where "0" means 60
+      days.
 
 @=> Changes and Upgrades
 
