@@ -17,12 +17,15 @@ It ships **switched off**. Nothing changes for any account until an operator
 switches it on, and the commands below are what an operator runs.
 
 In this release `scope oN on` switches no account, forced or not, a new
-account's switch and a pass's switch (`--pass`) included: it refuses with
-`ERR 7 not-released`, unless the box is a test server that carries the marker
-`/root/.tenant-isolation-test.cnf`. A later release lifts that. `plan`, `off`,
-`status` and an account already switched work as described below, with one
-exception: `scope oN on` run again on a switched account, which the remedies
-below use, is refused too outside a test server with the marker.
+account's switch and a pass's switch (`--pass`) included, and `baseline
+settle` settles nothing: each refuses with `ERR 7 not-released`, unless the
+box is a test server that carries the marker
+`/root/.tenant-isolation-test.cnf`. A later release lifts that.
+
+`plan`, `off`, `status` and an account already switched work as described
+below, with one exception: `scope oN on` run again on a switched account,
+which the remedies below use, is refused too outside a test server with the
+marker.
 
 ## The switch
 
@@ -67,7 +70,7 @@ row and every stored object of the server and judges each one:
 | The server's own logins: `root` at `localhost`, `127.0.0.1`, `::1` and the box's own address; `aegir_root` at `localhost` and `%`; the master panel's database user at `localhost` and `%`; `mysql.session`, `mysql.sys`, `mysql.infoschema`, `percona.telemetry` and `debian-sys-maint` at `localhost` | proven, and kept in the box's baseline (below) |
 | An account's instance user and current panel user | at a host its logins use; while the account is not switched, proven by a login with the credential its own files hold |
 | An account's site users, and its panel's earlier database users | holding no global privilege |
-| A login no record names, holding no global privilege (an operator's own user, a test user) | accepted once by an operator into the baseline |
+| A login no record names, holding no global privilege (an operator's own user, a test user) | accepted once into the baseline, by an operator or by `baseline settle` (below) |
 | A login that holds nothing at all | always (listed in the counts for cleanup) |
 | A grant row | the grantee belongs to the owner of the schema |
 | A view, trigger, routine or event | its definer belongs to the owner of its schema and keeps no global privilege |
@@ -133,29 +136,54 @@ user, or the replication login of a standing pair.
 boa-dbctl baseline settle
 ```
 
-does, with no ruling asked of anyone and under the same lock as the commands
-above, what the box can name exactly, in this order:
+does, with no ruling asked of anyone, what the box can name exactly, in this
+order:
 
 1. every login of the server's own that is proven and not in the baseline
    yet: recorded, as `accept pinned` records it;
 2. every login no record names (`UNCLASSIFIED` in `baseline plan`) that
    exists only at the box's own hosts: one that holds a global privilege
    loses it, as `revoke-global` takes it, its grants saved first, and is then
-   accepted; one that holds none and waits for a ruling is accepted;
-3. every row `leftovers list` (below) puts in section A, for an account whose
-   purge parked its home: dropped, unless the row defines a stored object.
+   accepted, unless it then holds nothing, which needs no ruling; one that
+   holds none and waits for a ruling is accepted;
+3. every row `leftovers list` (below) puts in section A, at any host:
+   dropped, its grants and its `CREATE USER` line saved first, only while
+   every test listed under step 3 below holds.
+
+It runs where a switch would. It is under the release rule above (`ERR 7
+not-released`, nothing read or written). It is refused on a standby and while
+one is being seeded (`ERR 9 busy standby`), on a box being prepared as a
+standby (`ERR 9 busy standby-prep`), and while the box's pair is being
+switched over, with a switch's own words (`refused pair a switch to <address>
+is under way`, `ERR 7 not-ready 1`).
+
+On a box where no account is ever switched it changes nothing, says why in one
+line and ends with exit code 0: `OK baseline settle skipped proxysql` (a
+ProxySQL box) or `OK baseline settle skipped cluster` (a database cluster).
+
+It reads the box first and takes the baseline lock after, as `leftovers drop`
+does: a root tool that records its own row again waits for that lock for a
+minute at most. What a write depends on is read again under the lock.
 
 In step 1 an own login that changed since it was accepted is never recorded
 again, whether a login still proves it or not: it is left (`left pinned
-<login>: changed since it was accepted`) and keeps stopping a switch. The root
-tools that change those rows record them again themselves; an operator does
-it with `baseline accept`.
+<login>: changed since it was accepted`) and keeps stopping a switch. One that
+no login proves any more says both (`changed since it was accepted, and not
+proven (<why>)`). The root tools that change those rows record them again
+themselves; an operator does it with `baseline accept`.
+
+A `root` row at the address `_MY_OWNIP` names in `/root/.barracuda.cnf` takes
+root's password and is recorded only while the box holds that address
+(`hostname -I` lists it). Where it does not, the row is left: `left pinned
+root@<address>: its address is the cnf's, not one this box holds`.
 
 In step 2 the box's own hosts are `localhost`, `127.0.0.1`, `::1` and the
-box's own addresses. A login is settled only when every row of its user name
-is at one of them, whatever the name is: `monitor` made at `localhost` alone
-is taken and accepted. Such a login cannot be anyone else's, since no other
-box can reach the server through it.
+addresses the box holds; the address `_MY_OWNIP` names counts only while the
+box holds it. A login is settled only when every row of its user name is at
+one of them, whatever the name is: `monitor` made at `localhost` alone is
+taken and accepted. Such a login cannot be anyone else's, since no other box
+can reach the server through it. The user's rows are read from the server
+again, under the lock, before a right is taken or a ruling recorded.
 
 A user with any row at `%` or at any other host (another address, a pattern,
 a name, the box's own name included) is left, every row of it: `left
@@ -165,19 +193,45 @@ taking its rights would cut that box's sites off. A row left this way that
 holds a global privilege, or waits for a ruling, keeps stopping a switch
 until an operator revokes, accepts or drops it.
 
+A login that defines a view, trigger, routine or event keeps its rights too:
+the server checks a definer's rights when its object runs, so taking them
+would stop the object (`left UNCLASSIFIED <login>: it defines <object>:
+taking its rights would stop that object`). The definers are read with the
+client's warnings shown. When that read carries a warning (on 5.7 the server
+skips, with a warning, the triggers of a table it cannot open), no right is
+taken and no row is dropped in that run.
+
+In step 3 the row's host says nothing: BOA makes every account's instance user
+at `localhost` and at `%`. A purged account's row is dropped only while each
+of these holds, and is left otherwise, with the reason on its `left` line:
+
+- the account's purge parked its home (`/var/backups/zombie/purged/oN`, a real
+  directory);
+- no `/root/.oN.octopus.cnf` is there: the purge moves it away, so one that is
+  there is a later account of the name, or a half state;
+- the row's password was not set after the purge, by the server's own
+  comparison of `password_last_changed` with the time of the list the purge
+  writes in the parked home (`home/.purge.list`) before it drops the
+  account's own users. A row touched since is in use by something made since,
+  another box's account of that name served from here included. No such list,
+  or no such time on the row: left;
+- the row defines no stored object;
+- its grants and its `SHOW CREATE USER` line are saved under
+  `/var/backups/boa/dbrights/`, in a file only root reads (it holds the row's
+  stored password); a save that fails drops nothing.
+
 A name two accounts' records claim and every login of any other class are
 left too, and so is everything that is not a login: a stored object `root`
 defines in an account's database, a grant on another account's database,
 persisted variables, a mandatory role, a server off its version's reference.
-In step 3 it never drops a row of an account with a root cnf and no parked
-home, a row section B lists, or a database.
+It never drops a row section B lists, or a database.
 
 It prints one line per change and one per thing it left, then the counts:
 
 ```
 settled accepted <user>@<host>
 settled revoked <user>@<host> saved=<file under /var/backups/boa/dbrights/>
-settled dropped <user>@<host>
+settled dropped <user>@<host> saved=<the same file>
 left <class or kind> <subject>: <why>
 OK baseline settle accepted=N revoked=N dropped=N left=N stops=N
 ```
@@ -188,7 +242,8 @@ switch. A second run on the same box settles nothing and prints the same
 `baseline revoke-global`, `leftovers drop`, or the object or grant itself.
 
 A read that fails ends it at once. A change that fails is said in an `ALRT`
-line and ends it with `ERR 7 settle-incomplete` once the rest is done.
+line and ends it with `ERR 7 baseline-settle-incomplete N` once the rest is
+done.
 
 Nothing calls `baseline settle` in this release.
 
@@ -243,10 +298,10 @@ boa-dbctl leftovers drop --sha <the list's hash>
   leaves them without a definer).
 
 A purged account's site users are read only when its purge parked its home
-(`/var/backups/zombie/purged/oN`). An account with a root cnf and neither a
-home nor a parked home (a `/data/disk` not mounted, an account half made)
-still has its own name listed in A, never its site users: read the list before
-a drop.
+(`/var/backups/zombie/purged/oN`) and moved its root cnf away, as a purge
+does. An account with a root cnf and no home (a `/data/disk` not mounted, an
+account half made, a name made again after a purge) still has its own name
+listed in A, never its site users: read the list before a drop.
 
 `drop` drops exactly the rows of section A, and only while the list is still
 the one whose hash it is given. Databases are never touched. On the active box
@@ -263,6 +318,7 @@ itself waits for a ruling (drop it here, or accept it into the baseline).
 boa-dbctl scope oN plan
 boa-dbctl scope oN on --sha <the plan's hash> [--force] [--accept-refusals]
 boa-dbctl scope oN on --pass                    a pass's switch (below)
+boa-dbctl scope oN on --born                    a new account's switch (below)
 boa-dbctl scope oN off
 boa-dbctl scope oN status
 ```
@@ -297,10 +353,18 @@ plan's hash.
 
 `on` reads the plan again and goes on only while it is still the plan whose
 hash it is given. It refuses while a finding stands, unless `--force`, which
-the log notes. It pauses the task queue (`/run/boa_queue_stop.pid`), waits for
-the account's running tasks to end, saves every grant it is about to change
-under `/var/backups/boa/dbrights/`, and then, in an order that never leaves
-the account without a way to its databases:
+the log notes.
+
+A finding the switch was forced over stays open, so the account is only as
+closed as that finding allows. A routine `root` defines in the account's own
+schema, for one, gives the account's instance user every right back when the
+account calls it. The nightly witness keeps naming such a finding until it is
+settled, and the switch a pass makes is never forced.
+
+`on` pauses the task queue (`/run/boa_queue_stop.pid`), waits for the
+account's running tasks to end, saves every grant it is about to change under
+`/var/backups/boa/dbrights/`, and then, in an order that never leaves the
+account without a way to its databases:
 
 1. the registry entries;
 2. the instance user's grant on each of them, on every row in use;
@@ -405,8 +469,9 @@ the target's own checks allow it). `_DB_BROKER_BORN=NO` in an account's
 `/root/.oN.octopus.cnf` keeps that account out of it.
 
 The pass makes it with `boa-dbctl scope oN on --born`, which reads the plan
-itself: with `--sha`, `--force` or `--accept-refusals` it is a usage error. It
-takes no pause of the task queue and waits for no task, the account being new.
+itself: with `--sha`, `--force` or `--accept-refusals`, or on `plan`, `off` or
+`status`, it is a usage error. It takes no pause of the task queue and waits
+for no task, the account being new.
 
 In this release it switches no account outside a test server (see above): the
 pass prints a NOTE and leaves the account on the direct path.
@@ -424,11 +489,27 @@ of an unforced switch stands (`not-ready`, `sites-unregistered`,
 `not-proven`), and so does the release rule above. It is refused on a standby
 and on a box being prepared as one.
 
-A pass holds the task runner itself, so `--pass` takes no pause of the task
-queue and does not refuse while a pass's own run markers are there. It still
-waits for the account's running tasks to end (`ERR 9 busy tasks` when they do
-not). On an account already switched it makes the same switch again. Its line
-in the broker's log ends with `note=pass`.
+It runs only inside a pass. While the pass's wrapper keeps `/run/boa_wait.pid`,
+every account's task dispatcher leaves at once, so no task starts under the
+switch; without that file the queue is live, and the call is refused (`ERR 9
+busy not-in-a-pass`). It takes no pause of the task queue and does not refuse
+while a pass's own run markers are there. An operator's own pause of the
+queue (`/run/boa_queue_stop.pid`) is not looked at: the call follows the pass,
+which the operator started.
+
+It waits for the account's running tasks to end before it reads the plan
+(`ERR 9 busy tasks` when they do not), so a database a task made a moment ago
+is in the plan.
+
+An account already switched, with no global privilege on any row of its
+instance user, is left as it is: `OK scope on oN already server=<context>
+rows=<rows>`, with no statement sent, no new file of saved grants and the
+control file untouched. One whose control file is valid and whose instance
+user holds a global privilege again goes through the switch. A step that
+fails then leaves it switched (`ERR 7 scope-failed <step>`): it is never put
+back on the direct path unattended.
+
+Its line in the broker's log ends with `note=pass`.
 
 Nothing calls it in this release: no pass switches an account that is not new,
 and a new account's switch stays as described above.
@@ -456,13 +537,20 @@ box-wide check would stop its switch. `ready` means its plan refuses nothing.
 
 Three reasons come from outside the plan: `not-released` where this release
 switches no account on the box, `opted-out` for an account whose
-`/root/.oN.octopus.cnf` says `_DB_BROKER_ARM=NO` (its plan is then not read),
-and `control-file-invalid` for a control file that is there and not valid.
+`/root/.oN.octopus.cnf` says `_DB_BROKER_ARM=NO` (its plan is then not read;
+the last such line of the cnf counts, as when the cnf is sourced), and
+`control-file-invalid` for a control file that is there and not valid.
+
+The accounts are the census's by name only. A control file that is there and
+not valid has three words: `not-switched control-file-invalid` here,
+`switched=invalid` in `scope oN status`, and `switched=yes` in the census,
+which reads only whether the file is there. Such an account's tasks take the
+direct path.
 
 It reads the box once for all accounts, logs in as a plan does (each account's
 own login, each site's recorded login) and changes nothing. On a standby it
-answers `OK report standby` and reads nothing. Nothing calls it in this
-release.
+answers `OK report standby` and reads nothing; a call with any other word
+after `report` is a usage error there too. Nothing calls it in this release.
 
 ## The database count limit
 
@@ -515,4 +603,5 @@ against its version's reference. It logs in as no one and changes nothing.
 Every refusal is `ERR <code> <reason>` with that exit code: 2 usage, 3 not the
 account's, 4 taken, 5 at the database count limit, 6 a user it may not touch,
 7 a query or step that failed, or a switch this release does not make
-(`not-released`), 8 not switched, 9 busy (a lock, a standby).
+(`not-released`), 8 not switched, 9 busy (a lock, a standby, a pass's switch
+with no pass running).
