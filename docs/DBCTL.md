@@ -589,6 +589,24 @@ against its version's reference. It logs in as no one and changes nothing.
 
 `/root/.barracuda.cnf` is each box's own: set a standing pair's two boxes alike.
 
+A dump or a load holds its account's I/O lock and one of the box's two slots
+for as long as it runs, and `_DB_BROKER_IO_LIMIT` is what frees them from a
+child that never ends. One past it ends with `ERR 7 time-limit`. A loader
+that something else killed before the limit is said as that, never as the
+limit: `ERR 7 load-failed 137`, with an `ALRT` line.
+
+A load reads the account's own store (`backups/tmp_expim`), so before the
+loader starts the broker walks that store with the account's own rights,
+never root's. An entry that is not a real directory or a regular file the
+account can open for reading ends the call with `ERR 7 store-entry-refused`:
+nothing is loaded and the store is left as it is. A link is such an entry,
+whatever it points to (a dump holds plain files only), and so are a FIFO, a
+socket and a device. The loader never ends on a link to a file the account
+cannot read.
+
+An entry swapped in after that walk can still hold the account's lock and one
+slot until the limit: the limit is the bound.
+
 ## Where things are
 
 | | |
