@@ -212,8 +212,9 @@ _in_pinned_dir() {
 # $2 through a handle opened without following a link or blocking on a FIFO.
 # A file with more than one link, a link, a FIFO or a socket is left alone:
 # a hard link planted in a tree the account can write shares its file with a
-# name elsewhere, which a chown by name would hand over too, and nothing
-# checks who owns a link. The names are ./names in the current directory.
+# name elsewhere, which a chown by name would hand over too, and a link
+# keeps the owner it was made with (linkguard makes BOA's links pass the
+# nginx link check). The names are ./names in the current directory.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 
 # A walk leaves a regular file with more than one link as it was (a hard
@@ -496,6 +497,20 @@ for _d in modules themes libraries drush; do
   fi
 done
 
+### While the box is armed for the nginx link check (linkguard), every run
+### makes BOA's links into the shared code root's and links inside the
+### account their target owner's: the check refuses a link whose owner
+### differs from its target's. Called where the script ends, after the
+### hand-over below has settled who owns what a link leads to, and before
+### the once-a-day exit, which hands nothing over.
+_link_guard_fix() {
+  if [ -e "/var/log/boa/linkguard-arm.ready.txt" ] \
+    && [ -e "/opt/local/bin/linkguard" ]; then
+    bash /opt/local/bin/linkguard fix --root="${drupal_root}" >&3 2>&1
+  fi
+  return 0
+}
+
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
@@ -505,6 +520,7 @@ if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; th
     || [ ! -e "${drupal_root}/core/themes/classy" ]; then
     _drupal_eight_nine_ten=TRUE
   else
+    _link_guard_fix
     exit 0
   fi
 fi
@@ -608,5 +624,7 @@ if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
     _reown_here -R "${script_user}${_wg:+:${_wg}}" . &> /dev/null
 fi
+
+_link_guard_fix
 
 echo "Done setting proper ownership of platform files and directories."
