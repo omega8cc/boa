@@ -506,7 +506,9 @@ that read that path, so phase B waits.
   own `static/files/`. The next run then goes on to phase B.
 - `instgrp webcheck --report` says `shares:  phase B held` for such an
   account, with a count for each of the four kinds, without running a
-  conversion and without writing a note.
+  conversion and without writing a note. For an account whose record
+  already says phase B it says `phase B on record, not held` with the same
+  counts: a layout made after phase B holds nothing back.
 
 A share INTO the account's store never holds anything; both accounts are
 told (see `FILES-SYMLINK.md`). When the account that owns the store
@@ -602,7 +604,9 @@ there converts.
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
 on its next pass (world read and directory search added, only to a file
-with one link, never in the private set). When its walk of an account runs
+with one link, never in the private set). It never opens a files store
+that is not the account's own (above): at phase A it says nothing about
+one, at phase B it reports it. When its walk of an account runs
 out of time three passes in a row it says so, and the nightly then walks
 the account's public set whole (`instgrp reclaim`, after the site loop),
 which also moves the worker's starting point forward.
