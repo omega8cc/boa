@@ -97,7 +97,7 @@ A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
 password, as the root rotation gives it to every root row. The locked system
 logins hold no credential: each must be locked and hold exactly what the same
-login holds on a fresh install of the box's exact server version (its
+login holds on an untouched server of the box's exact server version (its
 **reference**). So must the stored objects of the `sys` and `mysql` schemas.
 
 The baseline (`boa_dbreg.baseline`) keeps, per accepted login, three
@@ -133,11 +133,24 @@ user, or the replication login of a standing pair.
 boa-dbctl baseline reference <version>
 ```
 
-prints, on a fresh install of exactly that server version (what `SELECT
+prints, on an untouched server of exactly that server version (what `SELECT
 VERSION()` returns), the lines that version's reference is made of. The
-references ship inside the tool, one block per version. A box whose exact
-version has none cannot prove its locked system logins: no account is switched
-there unforced, and the nightly check says so every night.
+references ship inside the tool.
+
+One version has more than one untouched state, and the reference holds each
+one known: a server installed on that version and one upgraded into it differ
+(the server's own upgrade gives the system logins the dynamic privileges later
+versions introduced, and writes some `sys` views in other words), and
+`percona.telemetry` is there on some servers only. A login or the stored
+objects are proven by any one state's line.
+
+A box whose exact version has no line cannot prove its locked system logins: no
+account is switched there unforced, and the nightly check says so every night.
+A box of a known version that matches none of its states reads `off-reference`
+in `baseline plan`, with the same effect. `boa-dbctl census` ends with
+`reference=ok`, `reference=off` or `reference=none` for the box it runs on.
+Before a new state's lines are added, what `baseline reference <version>`
+prints there is compared with a server known to be untouched.
 
 ### Leftovers of purged accounts
 
@@ -343,7 +356,8 @@ boa-dbctl census [--peak <days>]
 prints the server's exact version, and per account whether it is switched, how
 many live databases its site records name, its registry counts and its limit,
 and with `--peak` the highest count the broker's log shows for it in that time.
-It logs in as no one and changes nothing.
+Its last line says whether the box enforces the limit and how the server stands
+against its version's reference. It logs in as no one and changes nothing.
 
 ## Settings
 
