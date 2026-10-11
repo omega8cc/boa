@@ -112,6 +112,9 @@ _REG_WAIT=60
 _SLOTS=2
 _KILL_GRACE=30
 _IO_LIMIT_DEFAULT=86400
+# The walk of a store before a load ends after _WALK_LIMIT seconds, and the
+# load is then refused: a store is walked in seconds.
+_WALK_LIMIT=300
 
 # The per-account database count limit: _DB_COUNT_MAX in the account's root
 # cnf, a number, or AUTO or nothing for the built-in default, read and never
@@ -2369,31 +2372,38 @@ _store_objects_here() {
 
 # In the account's (pinned) tmp_expim, with the account's own rights (the
 # identity its myloader gets, never root's, which can open anything): every
-# entry, at any depth, is a real directory or a regular file the account
-# can open for reading. The first that is not is printed and the walk ends
-# there, status 1; so does a walk that cannot finish. A link is not one,
-# to a file the account can read too (the store a dump makes holds plain
-# files only), nor a FIFO, a socket or a device: myloader waits on such an
-# entry for as long as it may run, holding the account's I/O lock and one
-# of the box's slots. Nothing is opened for longer than the test, and
-# nothing is read.
+# entry, at any depth, is a real directory the account can open or a
+# regular file it can open for reading. The first that is not ends the walk
+# with status 1 and one line: "dir <path>" for a directory the account
+# cannot open ("dir ." the store itself), "entry <path>" for anything else.
+# A link is such an entry, to a file the account can read too (the store a
+# dump makes holds plain files only), and so are a FIFO, a socket and a
+# device: myloader waits on one for as long as it may run, holding the
+# account's I/O lock and one of the box's slots. A path that is not plain
+# is printed as ?, whole: never a part of it, which could be another name.
+# A walk that cannot run or passes _WALK_LIMIT ends with another status and
+# no line. Nothing is opened for longer than the test, and nothing is read.
 _store_walk_here() {
-  timeout -k "${_KILL_GRACE}" 300 runuser -u "${_ACCT}" -- \
+  timeout -k "${_KILL_GRACE}" "${_WALK_LIMIT}" runuser -u "${_ACCT}" -- \
     env -i HOME="${_DISK}/${_ACCT}" PATH="${_STD_PATH}" LC_ALL=C perl -e '
       use strict;
       use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK);
-      sub bad { print "$_[0]\n"; exit 1; }
+      sub bad {
+        my ($w, $p) = @_;
+        print $w, " ", (($p eq "." || $p =~ m{\A\./[A-Za-z0-9_.,+=/-]{1,200}\z}) ? $p : "?"), "\n";
+        exit 1;
+      }
       my @d = (".");
       while (defined(my $d = shift @d)) {
-        opendir(my $h, $d) or bad($d);
+        opendir(my $h, $d) or bad("dir", $d);
         while (defined(my $n = readdir($h))) {
           next if $n eq "." || $n eq "..";
           my $p = "$d/$n";
-          lstat($p) or bad($p);
+          lstat($p) or bad("entry", $p);
           if (-d _) { push @d, $p; next; }
-          -f _ or bad($p);
-          sysopen(my $f, $p, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or bad($p);
-          -f $f or bad($p);
+          -f _ or bad("entry", $p);
+          sysopen(my $f, $p, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or bad("entry", $p);
+          -f $f or bad("entry", $p);
           close($f);
         }
         closedir($h);
@@ -2503,15 +2513,16 @@ _prove() {
 # databases only. It loads into <db> whatever database the store names (a
 # migrate from another server names the source's). The store is walked
 # first, as the account (_store_walk_here): one entry its loader would wait
-# on or cannot read ends the call before the loader starts, the store left
-# as it is. An entry swapped in after the walk can still hold the loader
-# until the wall-clock limit, which is the bound. timeout answers 124 when
-# its limit ended the child, and hands on 137 both when its own KILL had to
-# (after the grace) and when anything else killed the child: only the time
-# the child ran tells those two apart, and a kill the limit did not cause
-# is never reported as the limit.
+# on or cannot read, or a walk that cannot be made, ends the call before
+# the loader starts, the store left as it is. An entry whose name is not
+# plain is said as that. An entry swapped in after the walk can still hold
+# the loader until the wall-clock limit, which is the bound. timeout
+# answers 124 when its limit ended the child, and hands on 137 both when
+# its own KILL had to (after the grace) and when anything else killed the
+# child: only the time the child ran tells those two apart, and a kill the
+# limit did not cause is never reported as the limit.
 _v_load() {
-  local _db _rc _st _thr _store _x _t0 _re='^[.]/[A-Za-z0-9_.,+=/-]{1,200}$'
+  local _db _rc _st _thr _store _x _t0 _why
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage load <db>"
   _db="${_ARGS[0]}"
   _LOG_DB="${_db}"
@@ -2549,12 +2560,20 @@ _v_load() {
   _x=$(_in_backups _acct_in_real_dir ./tmp_expim _store_walk_here)
   _st=$?
   if [[ "${_st}" -ne 0 || -n "${_x}" ]]; then
-    _x="${_x%%$'\n'*}"
-    if [[ "${_x}" =~ ${_re} ]]; then
-      _alrt "load of ${_db} for ${_ACCT}: the store holds ${_x#./}, which is not a directory or a regular file the account can read; nothing is loaded"
-    else
-      _alrt "load of ${_db} for ${_ACCT}: the store could not be walked as the account, or holds an entry that is not a directory or a regular file the account can read; nothing is loaded"
-    fi
+    case "${_x%%$'\n'*}" in
+      "dir .") _why="the account cannot open its store" ;;
+      "dir ./"?*) _why="the account cannot open ${_x#dir ./} in its store" ;;
+      "entry ./"?*) _why="the store holds ${_x#entry ./}, which is not a directory or a regular file the account can read" ;;
+      "dir ?"|"entry ?") _why="the store holds an entry whose name is not plain, and it is not a directory or a regular file the account can read" ;;
+      *)
+        if [[ "${_st}" -eq 124 || "${_st}" -eq 137 ]]; then
+          _why="the walk of the store as the account passed ${_WALK_LIMIT}s"
+        else
+          _why="the store could not be walked as the account"
+        fi
+        ;;
+    esac
+    _alrt "load of ${_db} for ${_ACCT}: ${_why}; nothing is loaded"
     _die 7 "store-entry-refused"
   fi
   _transport_args "${_PROOF_T}" loader
