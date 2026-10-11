@@ -3512,8 +3512,11 @@ _ref_objects() {
 }
 
 # How this server stands against its version's reference, into _REF_STATE:
-# none (no line for the version), ok (every locked system login it has and
-# its system schemas' stored objects are each on a line), or off.
+# none (no line for the version), ok (every system login it has is locked
+# and on a line, and its system schemas' stored objects are on a line), or
+# off. A system login that is not locked is on no line, as baseline plan
+# reads it; the maintenance login the box holds a client file for is proven
+# by a login there, so it is not judged here.
 _ref_state() {
   local _u _ux _hx
   _ref_load
@@ -3524,7 +3527,12 @@ _ref_state() {
   for _u in mysql.infoschema mysql.session mysql.sys percona.telemetry debian-sys-maint; do
     _ux=$(_hex "${_u}")
     _sql_or_die "SELECT /*q:reflock*/ IFNULL(account_locked, 'N') FROM mysql.user WHERE HEX(User) = '${_ux}' AND HEX(Host) = '${_hx}'" reflock
-    [[ "${_SQL_OUT}" == "Y" ]] || continue
+    [[ -n "${_SQL_OUT}" ]] || continue
+    if [[ "${_SQL_OUT}" != "Y" ]]; then
+      [[ "${_u}" == "debian-sys-maint" && -f "${_DEBCNF}" && ! -L "${_DEBCNF}" ]] \
+        || _REF_STATE="off"
+      continue
+    fi
     _fp "${_ux}" "${_hx}" || _die 7 "sql-failed fp"
     _ref_row "${_u}" localhost "${_FP_PRIV}" "${_FP_GRANTS}" || _REF_STATE="off"
   done
@@ -5585,8 +5593,8 @@ _v_leftovers() {
 # census: what each account holds, for the database count limit's
 # measure: the distinct live databases its site records name, its registry
 # entries, its limit, and with --peak <days> the highest count the log
-# shows for it in that time. The server's exact version is the one a
-# reference is recorded for.
+# shows for it in that time. The server's exact version, without a
+# trailing -log, is the one a reference is recorded for.
 _v_census() {
   local _a _sp _ds _dn _du _seen _n _c _r _p _st _peaks="" _cut _sw _f _k _all
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
