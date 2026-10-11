@@ -1981,6 +1981,7 @@ _satellite_force_advanced_nginx_config() {
 # there (its version's global ini applies, the temp paths come from TMPDIR),
 # only the directories and the release serial's stamp.
 _satellite_update_local_dirs_cli() {
+  local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_update_local_dirs_cli"
     _debug_proc
@@ -2002,12 +2003,17 @@ _satellite_update_local_dirs_cli() {
     mkdir -p ${_U_HD}
     _U_REAL="$(cd -P -- "${_ROOT}" 2> /dev/null && pwd -P)"
     # aged out only when .tmp is the instance user's own (or the empty one just made):
-    # a root-owned directory of the tree renamed onto the name is left alone
-    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+    # a root-owned directory of the tree renamed onto the name is left alone.
+    # Only what root or the account's own identities own is removed
+    # (_satellite_aged_rm_own_here): the account can rename into .tmp what
+    # another account left group-writable, which stays whole and is counted
+    # on one NOTE line
+    _T_N=$( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
       [ "$(stat -c %U .)" = "${_USER}" ] \
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
-      find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
+      _satellite_aged_rm_own_here 0 )
+    _satellite_left_note "${_T_N}" "in place in ${_U_TP}"
     # the stamp is created exclusively, never through a link at the name
     ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       mkdir -p ./sys ./xts ./usr
@@ -6249,6 +6255,18 @@ _satellite_unlink_own_here() {
   local _o
   _o=$(_acct_walk_uids "${_USER}") || return 0
   perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null
+  return 0
+}
+# Every entry below the current (pinned) directory older than $1 days removed
+# as find -mindepth 1 -mtime +$1 -execdir rm -rf removed it, the top-level
+# dot names too, through _ACCT_RM_OWN_PL: only what root or the instance's
+# own identities own (_acct_walk_uids), never through a link, and nothing
+# below a directory another user owns. Prints dev:ino of each entry left for
+# another owner.
+_satellite_aged_rm_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o}" "${1}" 2> /dev/null
   return 0
 }
 
