@@ -78,6 +78,12 @@
       permission pass leave files another account's users own as they
       are, with everything below them, and count them on one line.
 
+    * The nightly permission pass leaves files another account's users
+      own as they are at the platform level too, with everything below
+      them: in the whole tree of a platform built under ~/static, and in
+      the code and sites directories of every platform. They are counted
+      on the site's one line.
+
     * Files that arrive from another server owned by a user the account
       does not have here are given to the account. An xcopy or xoct copy
       under the same account name maps a client login or PHP-FPM user
