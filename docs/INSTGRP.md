@@ -388,6 +388,16 @@ stamp only on a test server that carries the marker
 and prints a NOTE, so no account converts. A conversion already under way
 resumes either way. A later release switches it on.
 
+From the release that switches it on, a box is armed by default. A barracuda
+pass then writes `_WEB_GROUP_ARM=YES` into a `/root/.barracuda.cnf` that has
+no `_WEB_GROUP_ARM` line, on omega8.cc-hosted systems first and on every box
+one release later; on an armed box `_WEB_GROUP_PHASE_B=YES` follows the same
+way, once phase A has run across those systems.
+
+Only a missing line is written, and only as YES. A line of your own always
+stays, so `_WEB_GROUP_ARM=NO` keeps a box out and `_WEB_GROUP_PHASE_B=NO`
+keeps it at phase A; either can be set today.
+
 On a box that is not armed, the arm prints nothing for an account with no
 web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
 it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
