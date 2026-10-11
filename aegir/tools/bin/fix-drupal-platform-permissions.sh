@@ -30,14 +30,21 @@ exec 3>&2
 # and the account owns the names under ${drupal_root}, so any of them can be
 # a link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
-#  2. Every mode is set through _FCHMOD_PL, on the name itself (_chmod_here)
-#     or from a find walk: a link is never followed (root-managed legacy
-#     symlinks stay untouched, and symlinks put there cannot carry a mode to
-#     another file), whether it was there before or put there during the
-#     run. find's -type test alone would not stop a later chmod by path.
+#  2. Every mode is set through _SAT_CHMOD_OWN_PL, on the name itself
+#     (_chmod_own_here) or from a find walk (_fwalk_own_here): a link is
+#     never followed (root-managed legacy symlinks stay untouched, and
+#     symlinks put there cannot carry a mode to another file), whether it
+#     was there before or put there during the run. find's -type test alone
+#     would not stop a later chmod by path.
 #  3. Every step runs inside a directory entered for real (_in_pinned_dir),
 #     on ./names there, so a name on the way swapped for a link after the
 #     root was resolved is never followed.
+#  4. The account's users can rename into the platform what another account
+#     left group-writable, a whole directory or a single file, so only what
+#     root or the platform's own users own gets a mode (_site_walk_uids,
+#     from the root as resolved): another user's entry is left as it is
+#     with everything below it, and nothing is made, renamed or removed in
+#     a place it owns.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -170,26 +177,189 @@ for my $p (@ARGV) {
   close($h);
 }'
 
-# The mode $1 on each regular file or directory in the current (pinned)
-# directory that matches a pattern after it (expanded here, nowhere else),
-# set through _FCHMOD_PL. A pattern that matches nothing is skipped.
-_chmod_here() {
-  local _mode="${1}" _pat _p
-  local -a _n=()
-  shift
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# The uids the walks below act for, comma-separated, from the root as
+# resolved, never from argv: under /data/disk/<account>/ that account's
+# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
+# master's pool users wwwNN and www-data's, the web server's user, which no
+# account's login can be and a plain Aegir server's PHP runs as. Status 1,
+# and nothing, for any other path, or when the account or aegir is not in
+# passwd. A uid no passwd entry names counts as the platform's own too
+# (_SAT_CHMOD_OWN_PL): a login removed before its files were handed to its
+# account left those.
+_site_walk_uids() {
+  local _a _n _p _u _r _x="0" _self=NO
+  case "${1}/" in
+    /data/disk/*/*)
+      _a="${1#/data/disk/}"
+      _acct_walk_uids "${_a%%/*}"
+      return "$?"
+      ;;
+    /var/aegir/*)
+      while IFS=: read -r _n _p _u _r; do
+        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        _x="${_x},${_u}"
+        [ "${_n}" = "aegir" ] && _self=YES
+      done < <(getent passwd 2> /dev/null)
+      [ "${_self}" = "YES" ] || return 1
+      echo "${_x}"
+      return 0
+      ;;
+  esac
+  return 1
+}
+# The uids the walks act for in _OWN_UIDS (_site_walk_uids); a root in
+# neither an account's tree nor the master's is left as it is, with one
+# Notice and nothing changed.
+_root_uids_or_leave() {
+  _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] && return 0
+  printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
+    "${drupal_root}" >&2
+  exit 0
+}
+# One line for what the walks left as another user's, each entry once by
+# the dev:ino the walkers print ($1, all they printed), on fd 3 beside the
+# other notes.
+_root_owners_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
+  printf "Notice: %s entries owned by another user left as they were in the platform %s\n" \
+    "${_n}" "${drupal_root}" >&3
+  return 0
+}
+# What "$@" prints kept in _LEFT, for that line: the walkers print the
+# dev:ino of each entry they leave.
+_left_add() {
+  _LEFT="${_LEFT}"$'\n'"$("$@")"
+}
+# The root's place first, tested by $1: nothing is done in a platform that
+# is, or is below, a directory another user owns; the run then ends with
+# its Notice and its last line ($2).
+_root_place_or_leave() {
+  _LEFT=$(_in_pinned_dir "${drupal_root}" "${1}") && return 0
+  _root_owners_left_note "${_LEFT}"
+  echo "${2}"
+  exit 0
+}
+
+# As _FCHMOD_PL on names in the current directory (f or d, the mode, the
+# names), given first the uids it acts for (_site_walk_uids): a name
+# another named uid owns keeps its mode and is printed (dev:ino), and
+# nothing is changed unless the current directory and every directory
+# above it, up to /, are owned by those uids (read through '..' from where
+# find stands), so nothing below a directory another named uid owns gets a
+# mode. Given . as a name, a directory another uid owns above the place is
+# printed when it is refused; status 1 when it is.
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
+
+# The mode $2 on each directory ($1 d) or single-link regular file ($1 f)
+# in the current (pinned) directory that matches a pattern after it
+# (expanded here, nowhere else; . stays .), set through _SAT_CHMOD_OWN_PL
+# with the platform's own uids (_OWN_UIDS). A pattern that matches nothing
+# is skipped. Prints dev:ino of each entry left for another owner; status 1
+# when the directory is below one another user owns.
+_chmod_own_here() {
+  local _t="${1}" _mode="${2}" _pat _p
+  local -a _names=()
+  shift 2
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
   for _pat in "$@"; do
     for _p in ${_pat}; do
-      _n+=("./${_p#./}")
+      [ "${_p}" = "." ] || _p="./${_p#./}"
+      _names+=("${_p}")
     done
   done
-  [ "${#_n[@]}" -gt 0 ] || return 0
-  perl -e "${_FCHMOD_PL}" a "${_mode}" "${_n[@]}"
+  [ "${#_names[@]}" -gt 0 ] || return 0
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_OWN_UIDS}" "${_t}" "${_mode}" "${_names[@]}"
 }
-# _chmod_here inside the directory $1 (resolved once above), entered for real.
-_chmod_in() {
+# _chmod_own_here inside the directory $1 (resolved once above), entered for
+# real.
+_chmod_own_in() {
   local _d="${1}"
   shift
-  _in_pinned_dir "${_d}" _chmod_here "$@"
+  _in_pinned_dir "${_d}" _chmod_own_here "$@"
+}
+# The mode $1 on each directory and each single-link regular file in the
+# current (pinned) directory that matches a pattern after it: both kinds,
+# as one chmod by name set either.
+_chmod_any_own_here() {
+  local _mode="${1}"
+  shift
+  _chmod_own_here d "${_mode}" "$@"
+  _chmod_own_here f "${_mode}" "$@"
+}
+# _chmod_any_own_here inside the directory $1 (resolved once above), entered
+# for real.
+_chmod_any_own_in() {
+  local _d="${1}"
+  shift
+  _in_pinned_dir "${_d}" _chmod_any_own_here "$@"
+}
+# Status 0 while the current (pinned) directory and every directory above
+# it are root's or the platform's own users' (_SAT_CHMOD_OWN_PL given . as a
+# file, which sets nothing on a directory); otherwise the directory another
+# user owns is printed (dev:ino) and the status is 1.
+_place_own_here() {
+  _chmod_own_here f 0644 .
+}
+# "$@" in the current (pinned) directory only while that place is root's
+# or the platform's own users' (_place_own_here): nothing is made, renamed
+# or removed in a directory another user owns, or below one.
+_in_own_here() {
+  _place_own_here > /dev/null || return 0
+  "$@"
 }
 # A walk leaves a regular file with more than one link as it was (a hard
 # link planted in a tree the account can write would carry the change to the
@@ -215,7 +385,8 @@ _links_left_note() {
 }
 # Mode $1 on every regular file the find start points and tests after it
 # select (any tests apply first), walked from the current (pinned) directory
-# through _FCHMOD_PL, then _links_left_note on the same selection.
+# through _FCHMOD_PL, then _links_left_note on the same selection. Kept as
+# the site script's copy; every walk below goes through _fwalk_own_here.
 _fwalk_here() {
   local _m="${1}" _rc
   shift
@@ -224,8 +395,25 @@ _fwalk_here() {
   _links_left_note "$@"
   return "${_rc}"
 }
+# Mode $2 on every directory ($1 d) or single-link regular file ($1 f) the
+# find start points and tests after it select (any tests apply first), set
+# from the directory find holds (-execdir) through _SAT_CHMOD_OWN_PL with
+# the platform's own uids (_OWN_UIDS): what another user owns, and
+# everything below a directory another user owns, keeps its mode, its
+# dev:ino printed. A file walk ends with _links_left_note on the same
+# selection.
+_fwalk_own_here() {
+  local _t="${1}" _m="${2}" _rc
+  shift 2
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  find "$@" -type "${_t}" \
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_OWN_UIDS}" "${_t}" "${_m}" {} +
+  _rc=$?
+  [ "${_t}" != "f" ] || _links_left_note "$@"
+  return "${_rc}"
+}
 # Mode $2 on every entry of type $1 (d or f) below the start points after
-# them, walked from the current (pinned) directory through _FCHMOD_PL. Only
+# them, walked from the current (pinned) directory by _fwalk_own_here. Only
 # start points that are real directories here are walked: a Drupal 7 root
 # has no core/, a Drupal 8+ root no includes/ or misc/, and find printed an
 # error into the task log for each one missing. A link was never walked.
@@ -237,11 +425,7 @@ _walk_here() {
     [ -d "${_d}" ] && [ ! -L "${_d}" ] && _s+=("${_d}")
   done
   [ "${#_s[@]}" -gt 0 ] || return 0
-  if [ "${_t}" = "f" ]; then
-    _fwalk_here "${_m}" "${_s[@]}"
-  else
-    find "${_s[@]}" -type "${_t}" -exec perl -e "${_FCHMOD_PL}" "${_t}" "${_m}" {} +
-  fi
+  _fwalk_own_here "${_t}" "${_m}" "${_s[@]}"
 }
 
 # ./$1 in the current (pinned) directory as a fresh empty file, created
@@ -271,6 +455,8 @@ _off_drush_here() {
 }
 
 # Each Grav capsule in the current (pinned) sites/, entered for real.
+# Nothing is done in a capsule that is, or is below, a directory another
+# user owns.
 _grav_capsules_perm_here() {
   local _c _here
   _here="$(pwd -P)"
@@ -283,26 +469,25 @@ _grav_capsule_perm_here() {
   local _wd _sd _here
   [ -f ./system/defines.php ] || return 0
   _here="$(pwd -P)"
+  _place_own_here || return 0
   # The capsule's own bin/ must stay executable (the enforced-PHP wrapper
   # and the upgrade engine exec bin/grav and bin/gpm).
-  _chmod_in "${_here}/bin" 0755 '*'
+  _chmod_any_own_in "${_here}/bin" 0755 '*'
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    find "./${_wd}" -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
-    _fwalk_here 0664 "./${_wd}" 2> /dev/null
+    _fwalk_own_here d 02775 "./${_wd}" 2> /dev/null
+    _fwalk_own_here f 0664 "./${_wd}" 2> /dev/null
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # otherwise: group-rw for FPM, owner-rw for the CLI, NO world
   # bits; the root .env keeps FPM's read via group.
   for _sd in accounts config env; do
     [ -d "./user/${_sd}" ] || continue
-    _in_pinned_dir "${_here}/user" find "./${_sd}" -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02770 {} + 2> /dev/null
-    _in_pinned_dir "${_here}/user" _fwalk_here 0660 "./${_sd}" 2> /dev/null
+    _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
+    _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
   done
-  _chmod_here 0640 .env
-  _chmod_here 0440 drushrc.php
+  _chmod_any_own_here 0640 .env
+  _chmod_any_own_here 0440 drushrc.php
 }
 
 _SCOPE_ROOT=""
@@ -341,20 +526,18 @@ if [ -n "${drupal_root}" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
   && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
   _validate_path_prefix "${drupal_root}"
+  _root_uids_or_leave
   # Capsule permission model (spike-proven): code 0755/0644; the writable
   # set 02775 dirs + g+rw files (FPM writes via GROUP; setgid keeps the
   # group on web-created entries).
-  # Each pass runs inside the real root or capsule (_in_pinned_dir).
+  # Each pass runs inside the real root or capsule (_in_pinned_dir). A
+  # capsule is a site: what another user owns in it, or a capsule another
+  # user owns, is left whole.
   printf "Setting Grav permissions of %s\n" "${drupal_root}"
-  _in_pinned_dir "${drupal_root}" find . -path "./sites/*/user" -prune \
-    -o -path "./sites/*/cache" -prune \
-    -o -path "./sites/*/logs" -prune \
-    -o -path "./sites/*/tmp" -prune \
-    -o -path "./sites/*/backup" -prune \
-    -o -path "./sites/*/images" -prune \
-    -o -path "./sites/*/assets" -prune \
-    -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
-  _in_pinned_dir "${drupal_root}" _fwalk_here 0644 . -path "./sites/*/user" -prune \
+  _root_place_or_leave _place_own_here \
+    "Done setting proper permissions of files and directories (Grav)."
+  _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
+    -path "./sites/*/user" -prune \
     -o -path "./sites/*/cache" -prune \
     -o -path "./sites/*/logs" -prune \
     -o -path "./sites/*/tmp" -prune \
@@ -362,8 +545,18 @@ if [ -n "${drupal_root}" ] \
     -o -path "./sites/*/images" -prune \
     -o -path "./sites/*/assets" -prune \
     -o 2> /dev/null
-  _in_pinned_dir "${drupal_root}/sites" _grav_capsules_perm_here
-  _chmod_in "${drupal_root}/bin" 0755 '*'
+  _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here f 0644 . \
+    -path "./sites/*/user" -prune \
+    -o -path "./sites/*/cache" -prune \
+    -o -path "./sites/*/logs" -prune \
+    -o -path "./sites/*/tmp" -prune \
+    -o -path "./sites/*/backup" -prune \
+    -o -path "./sites/*/images" -prune \
+    -o -path "./sites/*/assets" -prune \
+    -o 2> /dev/null
+  _left_add _in_pinned_dir "${drupal_root}/sites" _grav_capsules_perm_here
+  _left_add _chmod_any_own_in "${drupal_root}/bin" 0755 '*'
+  _root_owners_left_note "${_LEFT}"
   echo "Done setting proper permissions of files and directories (Grav)."
   exit 0
 fi
@@ -378,16 +571,20 @@ if [ -n "${drupal_root}" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
   && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
   _validate_path_prefix "${drupal_root}"
+  _root_uids_or_leave
   # Shared-core permission model: pristine core 0755/0644. Everything under
   # sites/* is the SITE scripts' territory -- those trees carry 0440 secrets
   # (config.php, drushrc.php) and 02775 setgid writable dirs; a platform-wide
   # chmod would widen the secrets and strip the setgid bits (the drushrc
   # lesson: never fight the writer), so sites/* is pruned outright.
   printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
-  _in_pinned_dir "${drupal_root}" find . -path "./sites/*" -prune \
-    -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
-  _in_pinned_dir "${drupal_root}" _fwalk_here 0644 . -path "./sites/*" -prune \
-    -o 2> /dev/null
+  _root_place_or_leave _place_own_here \
+    "Done setting proper permissions of files and directories (Textpattern platform)."
+  _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
+    -path "./sites/*" -prune -o 2> /dev/null
+  _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here f 0644 . \
+    -path "./sites/*" -prune -o 2> /dev/null
+  _root_owners_left_note "${_LEFT}"
   echo "Done setting proper permissions of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -404,18 +601,19 @@ if [ -z "${drupal_root}" ] \
 fi
 
 _validate_path_prefix "${drupal_root}"
+_root_uids_or_leave
 
 ### sites and sites/all are names a tenant can plant as symlinks (the docroot
 ### is group-writable) and the find/chmod passes below walk THROUGH them;
-### _chmod_here protects only the final component. A symlinked skeleton is
-### never legitimate.
+### _chmod_own_here protects only the final component. A symlinked skeleton
+### is never legitimate.
 if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
   printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
   exit 1
 fi
 ### The four names under sites/all are plantable the same way, and the day
 ### marker's rm glob and touch, the mkdir and the tcpdf leg below resolve
-### through them; _chmod_here protects only the final component. Never
+### through them; _chmod_own_here protects only the final component. Never
 ### legitimately symlinks (the o_contrib* links live under the platform
 ### root's own modules/, never under sites/all): refuse, as the site-level
 ### helper does; the nightly withholds the same legs instead. Inside a
@@ -475,33 +673,41 @@ if ! _in_pinned_dir "${drupal_root}" true; then
 fi
 
 printf 'Setting main permissions inside %s...\n' "${drupal_root}"
-_in_pinned_dir "${drupal_root}/sites" mkdir -p ./all
+_root_place_or_leave _place_own_here \
+  "Done setting proper permissions on platform files and directories."
+### Nothing is made in a directory another user owns (_in_own_here), here
+### and below; what the walks leave as another user's is kept in _LEFT for
+### the one Notice.
+_in_pinned_dir "${drupal_root}/sites" _in_own_here mkdir -p ./all
 _in_pinned_dir "${drupal_root}/sites/all" \
-  mkdir -p ./modules ./themes ./libraries ./drush
+  _in_own_here mkdir -p ./modules ./themes ./libraries ./drush
 
 ### Create ctrl pid
-_in_pinned_dir "${drupal_root}/sites/all/libraries" _perm_marker_here
+_in_pinned_dir "${drupal_root}/sites/all/libraries" \
+  _in_own_here _perm_marker_here
 
 printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}"
-_in_pinned_dir "${drupal_root}" _walk_here d "${_MODE_DIR}" \
+_left_add _in_pinned_dir "${drupal_root}" _walk_here d "${_MODE_DIR}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}"
-_in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
+_left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 if [ -e "${drupal_root}/vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/vendor"
-  _in_pinned_dir "${drupal_root}" find ./vendor -type d \
-    -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
+  _left_add _in_pinned_dir "${drupal_root}" \
+    _fwalk_own_here d "${_MODE_DIR}" ./vendor
   printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/vendor"
-  _in_pinned_dir "${drupal_root}" _fwalk_here "${_MODE_FILE}" ./vendor
+  _left_add _in_pinned_dir "${drupal_root}" \
+    _fwalk_own_here f "${_MODE_FILE}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/../vendor"
-  _in_pinned_dir "${drupal_root%/*}" find ./vendor -type d \
-    -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
+  _left_add _in_pinned_dir "${drupal_root%/*}" \
+    _fwalk_own_here d "${_MODE_DIR}" ./vendor
   printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/../vendor"
-  _in_pinned_dir "${drupal_root%/*}" _fwalk_here "${_MODE_FILE}" ./vendor
+  _left_add _in_pinned_dir "${drupal_root%/*}" \
+    _fwalk_own_here f "${_MODE_FILE}" ./vendor
 fi
 
 ### vendor is never symlink-prechecked (a link to elsewhere in the caller's
@@ -509,52 +715,53 @@ fi
 ### inside the directory it resolves to, held to the caller's tree
 ### (_in_scoped_dir).
 if [ -e "${drupal_root}/vendor/bin/drush" ]; then
-  _in_scoped_dir "${drupal_root}/vendor/bin" _off_drush_here
+  _in_scoped_dir "${drupal_root}/vendor/bin" _in_own_here _off_drush_here
 elif [ -e "${drupal_root}/../vendor/bin/drush" ]; then
-  _in_scoped_dir "${drupal_root%/*}/vendor/bin" _off_drush_here
+  _in_scoped_dir "${drupal_root%/*}/vendor/bin" _in_own_here _off_drush_here
 fi
 
 if [ -e "${drupal_root}/vendor/drush/drush/drush" ]; then
-  _in_scoped_dir "${drupal_root}/vendor/drush/drush" _off_drush_here
+  _in_scoped_dir "${drupal_root}/vendor/drush/drush" \
+    _in_own_here _off_drush_here
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush" ]; then
-  _in_scoped_dir "${drupal_root%/*}/vendor/drush/drush" _off_drush_here
+  _in_scoped_dir "${drupal_root%/*}/vendor/drush/drush" \
+    _in_own_here _off_drush_here
 fi
 
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
-  _in_scoped_dir "${drupal_root}/vendor/drush/drush" \
-    _chmod_here 0775 drush.php
+  _left_add _in_scoped_dir "${drupal_root}/vendor/drush/drush" \
+    _chmod_any_own_here 0775 drush.php
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
-  _in_scoped_dir "${drupal_root%/*}/vendor/drush/drush" \
-    _chmod_here 0775 drush.php
+  _left_add _in_scoped_dir "${drupal_root%/*}/vendor/drush/drush" \
+    _chmod_any_own_here 0775 drush.php
 fi
 
-_in_pinned_dir "${drupal_root}" chmod "${_MODE_DIR}" .
+_left_add _chmod_own_in "${drupal_root}" d "${_MODE_DIR}" .
 
 if [ -d "${drupal_root}/web" ]; then
-  _chmod_in "${drupal_root}" "${_MODE_DIR}" web
+  _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" web
 elif [ -d "${drupal_root}/docroot" ]; then
-  _chmod_in "${drupal_root}" "${_MODE_DIR}" docroot
+  _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" docroot
 elif [ -d "${drupal_root}/html" ]; then
-  _chmod_in "${drupal_root}" "${_MODE_DIR}" html
+  _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" html
 fi
 
 printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/sites/all"
-_in_pinned_dir "${drupal_root}/sites/all" \
-  find ./modules ./themes ./libraries -type d \
-  -exec perl -e "${_FCHMOD_PL}" d "${_SA_DIR}" {} +
+_left_add _in_pinned_dir "${drupal_root}/sites/all" \
+  _fwalk_own_here d "${_SA_DIR}" ./modules ./themes ./libraries
 
 printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/sites/all"
-_in_pinned_dir "${drupal_root}/sites/all" \
-  _fwalk_here "${_SA_FILE}" ./modules ./themes ./libraries
+_left_add _in_pinned_dir "${drupal_root}/sites/all" \
+  _fwalk_own_here f "${_SA_FILE}" ./modules ./themes ./libraries
 
-_chmod_in "${drupal_root}" 0644 '*.php'
-_chmod_in "${drupal_root}" "${_MODE_FILE}" autoload.php
-_chmod_in "${drupal_root}" 0751 sites
-_chmod_in "${drupal_root}/sites" 0755 '*'
-_chmod_in "${drupal_root}/sites" 0644 '*.php'
-_chmod_in "${drupal_root}/sites" 0644 '*.txt'
-_chmod_in "${drupal_root}/sites" 0644 '*.yml'
-_chmod_in "${drupal_root}/sites/all" 0755 drush
+_left_add _chmod_any_own_in "${drupal_root}" 0644 '*.php'
+_left_add _chmod_any_own_in "${drupal_root}" "${_MODE_FILE}" autoload.php
+_left_add _chmod_any_own_in "${drupal_root}" 0751 sites
+_left_add _chmod_any_own_in "${drupal_root}/sites" 0755 '*'
+_left_add _chmod_any_own_in "${drupal_root}/sites" 0644 '*.php'
+_left_add _chmod_any_own_in "${drupal_root}/sites" 0644 '*.txt'
+_left_add _chmod_any_own_in "${drupal_root}/sites" 0644 '*.yml'
+_left_add _chmod_any_own_in "${drupal_root}/sites/all" 0755 drush
 
 ### Tenant composer codebases (~/static, D8+): core's composer scaffold, run
 ### by the oN.ftp shell user (a group member, never the owner), rewrites its
@@ -565,22 +772,24 @@ _chmod_in "${drupal_root}/sites/all" 0755 drush
 ### and provision's verify exit hook.
 if [[ "${drupal_root}" =~ "/static/" ]] \
   && [ -e "${drupal_root}/core/lib/Drupal.php" ]; then
-  _chmod_in "${drupal_root}" 02771 sites
-  _chmod_in "${drupal_root}/sites" 02775 default
+  _left_add _chmod_any_own_in "${drupal_root}" 02771 sites
+  _left_add _chmod_any_own_in "${drupal_root}/sites" 02775 default
 fi
 
 ### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/vendor"
-    _in_scoped_dir "${drupal_root}/vendor" _chmod_here 0400 drush
-    _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
-      _chmod_here 0400 Input Style
+    _left_add _in_scoped_dir "${drupal_root}/vendor" \
+      _chmod_any_own_here 0400 drush
+    _left_add _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
+      _chmod_any_own_here 0400 Input Style
   elif [ -e "${drupal_root}/../vendor" ]; then
     printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/../vendor"
-    _in_scoped_dir "${drupal_root%/*}/vendor" _chmod_here 0400 drush
-    _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \
-      _chmod_here 0400 Input Style
+    _left_add _in_scoped_dir "${drupal_root%/*}/vendor" \
+      _chmod_any_own_here 0400 drush
+    _left_add _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \
+      _chmod_any_own_here 0400 Input Style
   fi
 fi
 
@@ -588,17 +797,17 @@ fi
 ### tcpdf and its cache child are both names the tenant can plant under the
 ### 02775 libraries/. Precheck both, as the nightly does, and walk cache from
 ### inside it, entered for real, setting 775 on every file and directory
-### there as chmod -R did, through _FCHMOD_PL from find (chmod -R before
-### coreutils 9.5 follows an entry swapped for a link during its walk); a
-### real directory is treated exactly as before.
+### there as chmod -R did, through _SAT_CHMOD_OWN_PL from find (chmod -R
+### before coreutils 9.5 follows an entry swapped for a link during its
+### walk); a real directory is treated exactly as before.
 if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
-  _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
-    find . \( -type d -o -type f \) \
-      -exec perl -e "${_FCHMOD_PL}" a 775 {} + &> /dev/null
-  _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
-    _links_left_note .
+  _left_add _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
+    _fwalk_own_here d 775 . 2> /dev/null
+  _left_add _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
+    _fwalk_own_here f 775 . 2> /dev/null
 fi
-_chmod_in "${drupal_root}" 0644 .htaccess
+_left_add _chmod_any_own_in "${drupal_root}" 0644 .htaccess
+_root_owners_left_note "${_LEFT}"
 
 echo "Done setting proper permissions on platform files and directories."

@@ -36,8 +36,8 @@ exec 3>&2
 # and the account owns the names under ${drupal_root}, so any of them can be
 # a link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
-#  2. Every hand-over below goes through _reown_here: each directory and
-#     single-link regular file is changed through a handle opened without
+#  2. Every hand-over below goes through _reown_own_here: each directory
+#     and single-link regular file is changed through a handle opened without
 #     following a link, so no symlink target is ever reached (legacy BOA
 #     platforms that legitimately use a root-managed symlink for shared
 #     core/ are skipped, not broken), and a hard link planted in the tree is
@@ -47,6 +47,11 @@ exec 3>&2
 #  3. Every hand-over runs inside a directory entered for real (_in_pinned_dir),
 #     on ./names there, so a name on the way swapped for a link after the
 #     root was resolved is never followed.
+#  4. The account's users can rename into the platform what another account
+#     left group-writable, a whole directory or a single file, so only what
+#     root or the platform's own users own is handed over (_site_walk_uids,
+#     from the root as resolved): another user's entry is left as it is
+#     with everything below it, and nothing is made in a place it owns.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -272,6 +277,177 @@ _reown_here() {
   fi
 }
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# The uids the walks below act for, comma-separated, from the root as
+# resolved, never from argv: under /data/disk/<account>/ that account's
+# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
+# master's pool users wwwNN and www-data's, the web server's user, which no
+# account's login can be and a plain Aegir server's PHP runs as. Status 1,
+# and nothing, for any other path, or when the account or aegir is not in
+# passwd. A uid no passwd entry names counts as the platform's own too
+# (_SAT_REOWN_OWN_PL): a login removed before its files were handed to its
+# account left those.
+_site_walk_uids() {
+  local _a _n _p _u _r _x="0" _self=NO
+  case "${1}/" in
+    /data/disk/*/*)
+      _a="${1#/data/disk/}"
+      _acct_walk_uids "${_a%%/*}"
+      return "$?"
+      ;;
+    /var/aegir/*)
+      while IFS=: read -r _n _p _u _r; do
+        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        _x="${_x},${_u}"
+        [ "${_n}" = "aegir" ] && _self=YES
+      done < <(getent passwd 2> /dev/null)
+      [ "${_self}" = "YES" ] || return 1
+      echo "${_x}"
+      return 0
+      ;;
+  esac
+  return 1
+}
+# The uids the walks act for in _OWN_UIDS (_site_walk_uids); a root in
+# neither an account's tree nor the master's is left as it is, with one
+# Notice and nothing changed.
+_root_uids_or_leave() {
+  _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] && return 0
+  printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
+    "${drupal_root}" >&2
+  exit 0
+}
+# One line for what the walks left as another user's, each entry once by
+# the dev:ino the walkers print ($1, all they printed), on fd 3 beside the
+# other notes.
+_root_owners_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
+  printf "Notice: %s entries owned by another user left as they were in the platform %s\n" \
+    "${_n}" "${drupal_root}" >&3
+  return 0
+}
+# What "$@" prints kept in _LEFT, for that line: the walkers print the
+# dev:ino of each entry they leave.
+_left_add() {
+  _LEFT="${_LEFT}"$'\n'"$("$@")"
+}
+# The root's place first, tested by $1: nothing is done in a platform that
+# is, or is below, a directory another user owns; the run then ends with
+# its Notice and its last line ($2).
+_root_place_or_leave() {
+  _LEFT=$(_in_pinned_dir "${drupal_root}" "${1}") && return 0
+  _root_owners_left_note "${_LEFT}"
+  echo "${2}"
+  exit 0
+}
+
+# As _ACCT_REOWN_PL, given first the uids it acts for (_site_walk_uids),
+# then the uid and gid to hand each name to: a name another named uid owns
+# keeps its owner and is printed (dev:ino), and nothing is changed unless
+# the current directory and every directory above it, up to /, are owned
+# by those uids (read through '..' from where find stands), so nothing
+# below a directory another named uid owns is handed over. Given . as a
+# name, a directory another uid owns above the place is printed when it
+# is refused; status 1 when it is.
+_SAT_REOWN_OWN_PL='use Fcntl;
+my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
+    chown($u, $g, $h);
+  }
+  close($h);
+}
+exit 0;'
+
+# As _reown_here, through _SAT_REOWN_OWN_PL with the platform's own uids
+# (_OWN_UIDS): only what root or the platform's own users own is handed
+# over, and nothing below a directory another user owns. Prints dev:ino of
+# each entry left for another owner; status 1 when the current directory is
+# below a directory another user owns (given . as a name, that directory
+# is printed too), or the owner does not resolve.
+_reown_own_here() {
+  local _r="" _uid _gid=-1 _rc
+  if [ "${1}" = "-R" ]; then
+    _r="-R"
+    shift
+  fi
+  _uid=$(id -u -- "${1%%:*}" 2> /dev/null)
+  [[ "${1}" != *:* ]] \
+    || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]] \
+    || [[ ! "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]]; then
+    printf "Error: invalid owner %s\n" "${1}" >&2
+    return 1
+  fi
+  shift
+  if [ -n "${_r}" ]; then
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" {} +
+    _rc=$?
+    _links_left_note "$@"
+    return "${_rc}"
+  else
+    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" "$@"
+  fi
+}
+# Status 0 while the current (pinned) directory and every directory above
+# it are root's or the platform's own users' (_SAT_REOWN_OWN_PL given . to
+# hand to nobody: -1 keeps the owner and the group); otherwise the
+# directory another user owns is printed (dev:ino) and the status is 1.
+_place_ours_here() {
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" -1 -1 .
+}
+# "$@" in the current (pinned) directory only while that place is root's
+# or the platform's own users' (_place_ours_here): nothing is made, renamed
+# or removed in a directory another user owns, or below one.
+_in_ours_here() {
+  _place_ours_here > /dev/null || return 0
+  "$@"
+}
+
 # ./$1 in the current (pinned) directory as a fresh empty file, created
 # exclusively and renamed over the name (root's, as touch made it): a link or
 # a FIFO put at the name is replaced, never followed or opened.
@@ -334,7 +510,8 @@ _copy_new_here() {
 }
 
 # Each Grav capsule in the current (pinned) sites/, entered for real: its
-# writable set and its .env handed to the web group.
+# writable set and its .env handed to the web group. Nothing is done in a
+# capsule that is, or is below, a directory another user owns.
 _grav_capsules_own_here() {
   local _c _here
   _here="$(pwd -P)"
@@ -346,14 +523,15 @@ _grav_capsules_own_here() {
 _grav_capsule_own_here() {
   local _wd
   [ -f ./system/defines.php ] || return 0
+  _place_ours_here || return 0
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    _reown_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
+    _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
   done
   # The secret root .env drops its world bit, so FPM's read comes via
   # the web group -- the code pass above homed it to the account group.
   if [ -f ./.env ]; then
-    _reown_here "${script_user}${_wg:+:${_wg}}" ./.env
+    _reown_own_here "${script_user}${_wg:+:${_wg}}" ./.env
   fi
 }
 
@@ -405,6 +583,7 @@ if [ -n "${drupal_root}" ] \
       exit 1
   fi
   _validate_path_prefix "${drupal_root}"
+  _root_uids_or_leave
   _code_group=$(_acct_group "${drupal_root}")
   _wg=$(_web_group "${drupal_root}")
   # Capsule ownership model (spike-proven): code <user>:<account group>; the
@@ -412,10 +591,15 @@ if [ -n "${drupal_root}" ] \
   # -- and web-created files are re-homed to the instance user, healing the
   # web-owned residue the lifecycle verbs otherwise have to park.
   # Each pass runs inside the real root or capsule (_in_pinned_dir), and the
-  # owner and group stay one quoted argument.
+  # owner and group stay one quoted argument. A capsule is a site: what
+  # another user owns in it, or a capsule another user owns, is left whole.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
-  _in_pinned_dir "${drupal_root}" _reown_here -R "${script_user}:${_code_group}" .
-  _in_pinned_dir "${drupal_root}/sites" _grav_capsules_own_here
+  _root_place_or_leave _place_ours_here \
+    "Done setting proper ownership of files and directories (Grav)."
+  _left_add _in_pinned_dir "${drupal_root}" \
+    _reown_own_here -R "${script_user}:${_code_group}" .
+  _left_add _in_pinned_dir "${drupal_root}/sites" _grav_capsules_own_here
+  _root_owners_left_note "${_LEFT}"
   echo "Done setting proper ownership of files and directories (Grav)."
   exit 0
 fi
@@ -435,6 +619,7 @@ if [ -n "${drupal_root}" ] \
       exit 1
   fi
   _validate_path_prefix "${drupal_root}"
+  _root_uids_or_leave
   _code_group=$(_acct_group "${drupal_root}")
   # Shared-core ownership model: the pristine core is <user>:<account group>
   # throughout.
@@ -443,11 +628,14 @@ if [ -n "${drupal_root}" ] \
   # writable dirs the site pass owns; a platform-wide chown would re-home
   # their groups and break FPM's group-read path, so sites/* is pruned
   # outright (only the sites/ directory itself takes core ownership). Each
-  # name is handed over from -execdir (_reown_here), one ./name in the
+  # name is handed over from -execdir (_reown_own_here), one ./name in the
   # directory find holds open, so no directory on the way is resolved again.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
-  _in_pinned_dir "${drupal_root}" _reown_here -R \
+  _root_place_or_leave _place_ours_here \
+    "Done setting proper ownership of files and directories (Textpattern platform)."
+  _left_add _in_pinned_dir "${drupal_root}" _reown_own_here -R \
     "${script_user}:${_code_group}" . -path "./sites/*" -prune -o 2> /dev/null
+  _root_owners_left_note "${_LEFT}"
   echo "Done setting proper ownership of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -473,6 +661,7 @@ if [ -z "${script_user}" ] \
 fi
 
 _validate_path_prefix "${drupal_root}"
+_root_uids_or_leave
 _code_group=$(_acct_group "${drupal_root}")
 _wg=$(_web_group "${drupal_root}")
 
@@ -534,15 +723,20 @@ if ! _in_pinned_dir "${drupal_root}" true; then
 fi
 
 printf 'Setting ownership of %s to: user => %s group => %s\n' "${drupal_root}" "${script_user}" "${_code_group}"
-_in_pinned_dir "${drupal_root}" chown -h "${script_user}:${_code_group}" .
+_root_place_or_leave _place_ours_here \
+  "Done setting proper ownership of platform files and directories."
+_left_add _in_pinned_dir "${drupal_root}" \
+  _reown_own_here "${script_user}:${_code_group}" .
 
-### Make sure that expected sites/all sub-directories exist
-_in_pinned_dir "${drupal_root}/sites" mkdir -p ./all
+### Make sure that expected sites/all sub-directories exist; nothing is made
+### in a directory another user owns (_in_ours_here), here and below
+_in_pinned_dir "${drupal_root}/sites" _in_ours_here mkdir -p ./all
 _in_pinned_dir "${drupal_root}/sites/all" \
-  mkdir -p ./modules ./themes ./libraries ./drush
+  _in_ours_here mkdir -p ./modules ./themes ./libraries ./drush
 
 ### Create ctrl pid
-_in_pinned_dir "${drupal_root}/sites/all/libraries" _own_marker_here
+_in_pinned_dir "${drupal_root}/sites/all/libraries" \
+  _in_ours_here _own_marker_here
 
 ### sites/development.services.yml is a core scaffold file. Deleting it
 ### here (2019) made every later composer run re-scaffold it into the
@@ -556,18 +750,19 @@ if [[ "${drupal_root}" =~ "/static/" ]] \
   && [ ! -e "${drupal_root}/sites/development.services.yml" ] \
   && [ ! -L "${drupal_root}/sites/development.services.yml" ]; then
   _in_pinned_dir "${drupal_root}/sites" \
-    _copy_new_here "${_scaffold_yml%/*}" development.services.yml
+    _in_ours_here _copy_new_here "${_scaffold_yml%/*}" development.services.yml
 fi
 
-### Every hand-over goes through _reown_here: symlinks under the account tree
-### are never dereferenced (legacy BOA-managed shared-core symlinks under
-### /var/aegir/distro/ stay untouched) and hard links are left alone.
+### Every hand-over goes through _reown_own_here: symlinks under the account
+### tree are never dereferenced (legacy BOA-managed shared-core symlinks under
+### /var/aegir/distro/ stay untouched), hard links are left alone, and so is
+### what another user owns, kept in _LEFT for the one Notice.
 if [ -e "${drupal_root}/vendor" ]; then
-  _in_pinned_dir "${drupal_root}" \
-    _reown_here -R "${script_user}:${_code_group}" ./vendor
+  _left_add _in_pinned_dir "${drupal_root}" \
+    _reown_own_here -R "${script_user}:${_code_group}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
-  _in_pinned_dir "${drupal_root%/*}" \
-    _reown_here -R "${script_user}:${_code_group}" ./vendor
+  _left_add _in_pinned_dir "${drupal_root%/*}" \
+    _reown_own_here -R "${script_user}:${_code_group}" ./vendor
 fi
 
 ### The lists below span every core generation: a D7 tree has includes/ and
@@ -575,7 +770,7 @@ fi
 ### or sites/all/drush/drushrc.php may not exist yet. chown reports each
 ### absent path as an error, which put a dozen "cannot access" lines into
 ### every install and upgrade report and trained readers to skip them. Hand
-### over what is there (_reown_here, which leaves a link alone). Runs inside
+### over what is there (_reown_own_here, which leaves a link alone). Runs inside
 ### a directory entered for real: each argument is a ./name or a pattern,
 ### expanded there and nowhere else.
 _own_existing() {
@@ -597,21 +792,21 @@ _own_existing() {
   done
   [ "${#_list[@]}" -gt 0 ] || return 0
   if [ "${_mode}" = "recursive" ]; then
-    _reown_here -R "${script_user}:${_code_group}" "${_list[@]}"
+    _reown_own_here -R "${script_user}:${_code_group}" "${_list[@]}"
   else
-    _reown_here "${script_user}:${_code_group}" "${_list[@]}"
+    _reown_own_here "${script_user}:${_code_group}" "${_list[@]}"
   fi
 }
 
-_in_pinned_dir "${drupal_root}/sites/all" _own_existing recursive \
+_left_add _in_pinned_dir "${drupal_root}/sites/all" _own_existing recursive \
   ./modules ./themes ./libraries ./drush
-_in_pinned_dir "${drupal_root}" _own_existing recursive \
+_left_add _in_pinned_dir "${drupal_root}" _own_existing recursive \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
-_in_pinned_dir "${drupal_root}/sites/all/drush" _own_existing single \
+_left_add _in_pinned_dir "${drupal_root}/sites/all/drush" _own_existing single \
   ./drushrc.php
-_in_pinned_dir "${drupal_root}" _own_existing single ./sites
-_in_pinned_dir "${drupal_root}/sites" _own_existing single \
+_left_add _in_pinned_dir "${drupal_root}" _own_existing single ./sites
+_left_add _in_pinned_dir "${drupal_root}/sites" _own_existing single \
   './*' ./sites.php ./all
 
 ### known exceptions
@@ -621,9 +816,10 @@ _in_pinned_dir "${drupal_root}/sites" _own_existing single \
 ### again; a real directory is treated exactly as before.
 if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
-  _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
-    _reown_here -R "${script_user}${_wg:+:${_wg}}" . &> /dev/null
+  _left_add _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
+    _reown_own_here -R "${script_user}${_wg:+:${_wg}}" . 2> /dev/null
 fi
+_root_owners_left_note "${_LEFT}"
 
 _link_guard_fix
 
