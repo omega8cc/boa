@@ -499,6 +499,211 @@ _handover_tree_here() {
   return 0
 }
 
+### The walks of the permissions pass over a site (its directory, its files
+### and private stores) hand over and set modes only on what root or the
+### site's account's own identities own, and on nothing below a directory
+### another user owns: the account's identities can rename into their trees
+### what another account left group-writable, a whole directory with
+### everything in it, and that keeps its owner and modes. Another account's
+### store reached through a share is that account's own pass's to set. The
+### identity set as satellite.sh.inc and night/10-account.sh read it (one
+### text in each): root's own (0) and the uid of every passwd name oN and
+### oN.<name> (its .ftp login, its client sub-accounts and their -dev
+### logins, its PHP-FPM users oN.web and oN.<ver>.web); status 1, and
+### nothing, unless the account itself is in passwd. A uid no passwd entry
+### names counts as the account's own in the walkers below.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+### As _NIGHT_FCHMOD_PL, given first the uids it acts for (_acct_walk_uids):
+### a name another named uid owns keeps its mode and is printed (dev:ino),
+### and nothing is changed unless the current directory and every directory
+### above it, up to /, are owned by those uids, read through '..' from where
+### find stands. Given . as a name, a directory another uid owns above the
+### place is printed when it is refused; status 1 when it is.
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
+### As _ACCT_REOWN_PL, the same way: the uids, then the uid and gid to hand
+### each name to.
+_SAT_REOWN_OWN_PL='use Fcntl;
+my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
+    chown($u, $g, $h);
+  }
+  close($h);
+}
+exit 0;'
+### What the walks below leave for another owner, by dev:ino, kept in root's
+### /run while the pass is on a site and said on one NOTE line for it, each
+### entry counted once (_perm_left_note).
+_perm_left_open() {
+  _PERM_LEFT_F="/run/night-perm-left-${_usEr##*/}"
+  : > "${_PERM_LEFT_F}" 2> /dev/null || _PERM_LEFT_F=""
+}
+_perm_left_add() {
+  [ -n "${_PERM_LEFT_F:-}" ] && [ -n "${1}" ] || return 0
+  printf '%s\n' "${1}" >> "${_PERM_LEFT_F}" 2> /dev/null
+  return 0
+}
+_perm_left_note() {
+  local _n
+  [ -n "${_PERM_LEFT_F:-}" ] || return 0
+  _n=$(grep -E '^[0-9]+:[0-9]+$' "${_PERM_LEFT_F}" 2> /dev/null | sort -u | grep -c .)
+  rm -f -- "${_PERM_LEFT_F}"
+  _PERM_LEFT_F=""
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
+  echo "NOTE: ${1}: the permissions pass left ${_n} entries owned by another user as they were"
+}
+### The names after $2 in the current (pinned) directory handed to $2 (owner
+### or owner:group) through _SAT_REOWN_OWN_PL with the uids $1; status 1 when
+### the directory is below one another user owns (given ., that one noted).
+_night_reown_own_here() {
+  local _o="${1}" _ids _u _g _x _rc
+  _ids=$(_night_ids "${2}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift 2
+  [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _x=$(perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" "$@" 2> /dev/null)
+  _rc=$?
+  _perm_left_add "${_x}"
+  return "${_rc}"
+}
+### The trees after $2 (start points in the current, pinned directory) handed
+### to $2 the same way, as _reown_tree_here walks them, each entry from
+### inside the directory walked.
+_night_reown_own_tree_here() {
+  local _o="${1}" _ids _u _g _x
+  _ids=$(_night_ids "${2}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift 2
+  [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _x=$(env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+    -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} + 2> /dev/null)
+  _perm_left_add "${_x}"
+  return 0
+}
+### As _handover_tree_here, through _SAT_REOWN_OWN_PL with the uids $1: the
+### trees after $2 handed to $2, a hard-linked file left logged the same way.
+_night_handover_own_here() {
+  local _o="${1}" _w="${2}" _ids _u _g _tmp _n _x _first _here _off
+  _ids=$(_night_ids "${_w}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift 2
+  [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _tmp=$(mktemp /run/.night-links.XXXXXX 2> /dev/null) || _tmp=""
+  if [ -z "${_tmp}" ]; then
+    _night_reown_own_tree_here "${_o}" "${_w}" "$@"
+    return 0
+  fi
+  _off=(! -uid "${_u}")
+  if [[ "${_g}" != "-1" ]]; then
+    _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
+  fi
+  _x=$(env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+    \( -type f -links +1 "${_off[@]}" -fprint0 "${_tmp}" -o -true \) \
+    -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} + 2> /dev/null)
+  _perm_left_add "${_x}"
+  _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
+  if [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 0 ]; then
+    _here="$(pwd -P)"
+    _first=$(head -z -n 1 -- "${_tmp}" | tr -d '\0')
+    _first="${_here}/${_first#./}"
+    echo "SKIP: ${_n} file(s) with more than one link not handed to ${_w} in ${_here}, first: ${_first//[[:cntrl:]]/?}"
+  fi
+  rm -f -- "${_tmp}"
+  return 0
+}
+### Every entry of the current (pinned) directory handed to $2 with the uids
+### $1, recursively (_night_handover_own_here), the glob expanded here.
+_night_chown_own_all_here() {
+  _night_handover_own_here "${1}" "${2}" ./*
+  return 0
+}
+### $2 (f or d) and the mode $3 on the names after them in the current
+### (pinned) directory through _SAT_CHMOD_OWN_PL with the uids $1; status 1
+### when the directory is below one another user owns (given ., that one
+### noted).
+_night_chmod_own_here() {
+  local _o="${1}" _x _rc
+  shift
+  [ -n "${_o}" ] && [ "$#" -gt 2 ] || return 0
+  _x=$(perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "$@" 2> /dev/null)
+  _rc=$?
+  _perm_left_add "${_x}"
+  return "${_rc}"
+}
+### $2 (f or d) and the mode $3 on every regular file or directory the find
+### start points and tests after them select (tests first), each set from
+### inside the directory walked (-execdir) through _SAT_CHMOD_OWN_PL with the
+### uids $1.
+_night_mode_own_here() {
+  local _o="${1}" _t="${2}" _m="${3}" _x
+  shift 3
+  [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _x=$(find "$@" -type "${_t}" \
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "${_t}" "${_m}" {} + 2> /dev/null)
+  _perm_left_add "${_x}"
+  return 0
+}
+
 ### Run "$@" inside the directory $1 as it resolves now, entered for real: $1
 ### is never a link itself and resolves strictly below this account root, and
 ### the resolved path is checked again once entered, so a name on the way
@@ -2458,33 +2663,37 @@ _tcpdf_cache_here() {
 ### The site level of the permissions pass, inside the real site dir (the
 ### current directory; _site_in_resolved_dir), the same way as
 ### _plr_perm_here. $1 = the group, $2 = the web group. Reads _siteCodeLink.
+### Every owner and mode below goes through the owner-checked walkers with
+### the account's own uids: nothing is done in a site dir below a directory
+### another user owns, and what another user owns keeps its owner and mode.
 _site_perm_here() {
-  local _grp="${1}" _wg="${2}" _d
+  local _grp="${1}" _wg="${2}" _d _o
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  ### The site dir is owned by the tenant's shell user in unlock.info mode,
+  ### so each of these names can be a link or a hard link, and a bare chown
+  ### follows a link at the name: each is changed through a no-follow handle,
+  ### never on a hard-linked file (_night_reown_own_here). No-op on the
+  ### regular files they normally are.
+  _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" . || return 0
   ### Cleanup
   _rm_glob_here '*.codebasecheck*.info' '*.hm-fix-*.info' \
     '*.ctm-lock-*.info' '*.lock-*.info' '*.perm-fix-*.info'
   ### directory and settings files - site level
   [ -e ./modules ] || mkdir ./modules &> /dev/null
   [ -e ./aegir.services.yml ] && rm -f -- ./aegir.services.yml
-  ### The site dir is owned by the tenant's shell user in unlock.info mode,
-  ### so each of these names can be a link or a hard link, and a bare chown
-  ### follows a link at the name: each is changed through a no-follow handle,
-  ### never on a hard-linked file (_reown_here). No-op on the regular files
-  ### they normally are.
-  chown -h "${_HM_U}:${_grp}" . &> /dev/null
-  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php ./settings.php \
-    ./civicrm.settings.php
+  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php \
+    ./settings.php ./civicrm.settings.php
   ### solr.php holds the site's Solr core details for its owner; no web
   ### reader opens it, so it stays in the code group its writer gives it.
-  _reown_here "${_HM_U}:${_grp}" ./solr.php
-  _chmod_nofollow_here f 0440 ./*.php
+  _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" ./solr.php
+  _night_chmod_own_here "${_o}" f 0440 ./*.php
   ### The hostmaster site's drushrc.php carries the instance DB user (ALL
   ### PRIVILEGES) and only the backend user, its owner, ever reads it:
   ### no group read at all, box-wide 'users' or the account's own group alike.
   if [[ "${_Dir}" =~ /aegir/(distro|host_master)/ ]]; then
-    _chmod_nofollow_here f 0400 ./drushrc.php
+    _night_chmod_own_here "${_o}" f 0400 ./drushrc.php
   fi
-  _chmod_nofollow_here f 0640 ./civicrm.settings.php
+  _night_chmod_own_here "${_o}" f 0640 ./civicrm.settings.php
   ### modules,themes,libraries - site level
   ### A symlink at any of the three would redirect the legs below into
   ### whatever was planted: withhold exactly these four and nothing else in
@@ -2498,32 +2707,30 @@ _site_perm_here() {
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
-        _in_real_sub "${_d}" _chown_all_here "${_HM_U}:${_grp}"
+        _in_real_sub "${_d}" _night_chown_own_all_here "${_o}" "${_HM_U}:${_grp}"
       done
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
-        _in_real_sub "${_d}" _chown_all_here "${_HM_U}.ftp:${_grp}"
+        _in_real_sub "${_d}" _night_chown_own_all_here "${_o}" "${_HM_U}.ftp:${_grp}"
       done
     fi
   fi
   ### All four are names in a site dir the tenant owns under unlock.info
   ### (modules maybe just made above); none is ever legitimately a symlink,
   ### each is changed through a no-follow handle and never as a hard-linked
-  ### file (_reown_here), and find takes the three as starting points
-  ### without following one.
-  _reown_here "${_HM_U}:${_grp}" ./drushrc.php \
+  ### file (_night_reown_own_here), and find takes the three as starting
+  ### points without following one.
+  _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" ./drushrc.php \
     ./modules ./themes ./libraries
-  find ./modules ./themes ./libraries -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
-  find ./modules ./themes ./libraries -type f \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  _night_mode_own_here "${_o}" d 02775 ./modules ./themes ./libraries
+  _night_mode_own_here "${_o}" f 0664 ./modules ./themes ./libraries
   ### files and private - site level. Each is legitimately a link into the
   ### account's static store, handled by its resolved leg below; the walk
   ### here leaves a link alone and walks only a real child dir, without
   ### following a link planted inside it (a tar archive a tenant unpacked can
   ### carry one), and never hands over a hard-linked file.
-  _reown_tree_here "${_HM_U}${_wg:+:${_wg}}" ./files ./private
+  _night_reown_own_tree_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./files ./private
   return 0
 }
 ### The site's files store, inside the real directory it resolves to (the
@@ -2531,20 +2738,22 @@ _site_perm_here() {
 ### inside the directory walked through a no-follow handle, the store handed
 ### to the account and the web group, and its known children through their
 ### own handles (each is a name in a dir every web-group member can write, so
-### a hard link put there is left alone: _reown_here), the nested ones only
-### inside their real parent.
+### a hard link put there is left alone: _night_reown_own_here), the nested
+### ones only inside their real parent; only what root or the account's own
+### identities own, and nothing in a store below a directory another user
+### owns (another account's store on a share is that account's pass's).
 _files_store_perm_here() {
   ### $1 = the web group; once the account has its own, a Drupal 7
   ### files/private takes the private store's modes (no world bits), and so
   ### does each subtree nginx denies (_NIGHT_DENIED_RE), inside its own real
   ### directory.
-  local _wg="${1}" _pr=() _dn
+  local _wg="${1}" _pr=() _dn _o
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _night_chmod_own_here "${_o}" d 02775 . || return 0
   [[ "${_wg}" == wg-* ]] && _pr=( -regextype posix-extended \
     \( -path ./private -o -iregex "${_NIGHT_DENIED_RE}" \) -prune -o )
-  find . -mindepth 1 "${_pr[@]}" -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
-  find . -mindepth 1 "${_pr[@]}" -type f \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  _night_mode_own_here "${_o}" d 02775 . -mindepth 1 "${_pr[@]}"
+  _night_mode_own_here "${_o}" f 0664 . -mindepth 1 "${_pr[@]}"
   if [[ "${_wg}" == wg-* ]]; then
     _in_real_sub private _private_modes_here "${_wg}"
     while IFS= read -r -d '' _dn; do
@@ -2552,44 +2761,45 @@ _files_store_perm_here() {
     done < <(find . -mindepth 1 -regextype posix-extended -path ./private -prune \
       -o -type d -iregex "${_NIGHT_DENIED_RE}" -prune -print0 2> /dev/null)
   fi
-  _chmod_nofollow_here d 02775 .
-  chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
-  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./tmp ./images ./pictures ./css ./js \
-    ./advagg_css ./advagg_js ./ctools ./imagecache ./locations \
-    ./xmlsitemap ./deployment ./styles ./private ./civicrm
-  _in_real_sub ctools _reown_here "${_HM_U}${_wg:+:${_wg}}" ./css
-  _in_real_sub civicrm _reown_here "${_HM_U}${_wg:+:${_wg}}" ./templates_c \
-    ./upload ./persist ./custom ./dynamic
+  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" . ./tmp ./images \
+    ./pictures ./css ./js ./advagg_css ./advagg_js ./ctools ./imagecache \
+    ./locations ./xmlsitemap ./deployment ./styles ./private ./civicrm
+  _in_real_sub ctools _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./css
+  _in_real_sub civicrm _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" \
+    ./templates_c ./upload ./persist ./custom ./dynamic
   return 0
 }
 ### Private files' modes in the current (real) directory: every directory
 ### 02770 and regular file 0660 once the account has its own web group
-### ($1 wg-*), 02775 and 0664 otherwise, as always.
+### ($1 wg-*), 02775 and 0664 otherwise, as always; only on what root or the
+### account's own identities own, nothing below another user's directory.
 _private_modes_here() {
-  local _d=02775 _f=0664
+  local _d=02775 _f=0664 _o
   if [[ "${1}" == wg-* ]]; then
     _d=02770
     _f=0660
   fi
-  find . -mindepth 1 -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d "${_d}" {} + &> /dev/null
-  find . -mindepth 1 -type f \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f "${_f}" {} + &> /dev/null
-  _chmod_nofollow_here d "${_d}" .
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _night_chmod_own_here "${_o}" d "${_d}" . || return 0
+  _night_mode_own_here "${_o}" d "${_d}" . -mindepth 1
+  _night_mode_own_here "${_o}" f "${_f}" . -mindepth 1
   return 0
 }
 ### The site's private store, the same way; config/ is walked as chown -h -R
-### walked it, never handing over a hard-linked file (_reown_tree_here).
+### walked it, never handing over a hard-linked file
+### (_night_reown_own_tree_here).
 _private_store_perm_here() {
   ### $1 = the web group.
-  local _wg="${1}"
+  local _wg="${1}" _o
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
   _private_modes_here "${_wg}"
-  chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
-  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./files ./temp
-  _in_real_sub files _reown_here "${_HM_U}${_wg:+:${_wg}}" ./backup_migrate
-  _in_real_sub files/backup_migrate _reown_here "${_HM_U}${_wg:+:${_wg}}" \
-    ./manual ./scheduled
-  _reown_tree_here "${_HM_U}${_wg:+:${_wg}}" ./config
+  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" . || return 0
+  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./files ./temp
+  _in_real_sub files _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" \
+    ./backup_migrate
+  _in_real_sub files/backup_migrate _night_reown_own_here "${_o}" \
+    "${_HM_U}${_wg:+:${_wg}}" ./manual ./scheduled
+  _night_reown_own_tree_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./config
   return 0
 }
 
@@ -2691,6 +2901,8 @@ _fix_permissions() {
     ### variable does not.
     _grp=$(_acct_group "$(_night_phys "${_Dir}")")
     _wgS=$(_web_group "$(_night_phys "${_Dir}")")
+    ### What the legs below leave as another user's: one NOTE line after them.
+    _perm_left_open
     _site_in_resolved_dir "${_Dir}" _site_perm_here "${_grp}" "${_wgS}"
     ### files/ and private/ are legitimately symlinks into a per-account
     ### static store (a shared store may sit under another account), so each
@@ -2746,6 +2958,7 @@ _fix_permissions() {
         _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
       fi
     fi
+    _perm_left_note "${_Dir}"
   ### Neither a Grav capsule nor a Textpattern site has a site-level files/
   ### store (a TXP site does have private/, its credential store), so the
   ### Drupal-shaped test above skips them and they get no nightly hygiene

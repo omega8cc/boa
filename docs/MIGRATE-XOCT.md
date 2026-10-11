@@ -71,12 +71,18 @@ For full-server migrations where Percona versions match, consider
 > answer about that group that cannot be read is a `DENY` too (the dry run is `NOT
 > CLEAN`, `--live` and `create` stop).
 >
-> On a rename (`{o2}`) every leg also maps each of the account's identities onto the new
-> name's (`o1.ftp` onto `o2.ftp`, and so on; one the target does not have yet, such as a
-> client's login, onto `o2` itself), so the copy is never owned by an account the target
-> has under the old name. A list of the target's identities that cannot be read, or that
-> has no `o2` yet, is a `DENY` too (the dry run is `NOT CLEAN`, `--live` and `create`
-> stop; re-run `create` once the target answers).
+> Every leg also maps each of the account's identities onto the target account's: onto
+> the same name when the account keeps its name, onto the new name's on a rename (`{o2}`:
+> `o1.ftp` onto `o2.ftp`, and so on). An identity the target does not have yet, such as a
+> client's login the limited-shell worker has not made there, or the PHP-FPM user of a
+> PHP version the target does not run, maps onto the account itself (`o1`, or `o2` on a
+> rename).
+>
+> By name alone such a file would land on the source box's number, which on the target
+> can belong to another account's identity, and on a rename the copy would be owned by
+> an account the target has under the old name. A list of the target's identities that
+> cannot be read, or that has no such account yet, is a `DENY` too (the dry run is `NOT
+> CLEAN`, `--live` and `create` stop; re-run `create` once the target answers).
 >
 > **What travels of the web group, and what does not.** The account's policy travels: the
 > opt-out `_WEB_GROUP=NO` and the `--phase-a` pin `_WEB_GROUP=A`, read as bash reads the
@@ -109,7 +115,7 @@ For full-server migrations where Percona versions match, consider
 > account's `log/web-group-notes.txt` (what the conversion told the account on this box)
 > never travels.
 >
-> `xcopy` maps the account's group and its web group the same way. It never renames: a
+> `xcopy` maps the account's group, its web group and its identities the same way. It never renames: a
 > fourth argument naming another account is a `DENY` before the account is read, the
 > target is contacted or anything of the account is changed (the dry run is `NOT CLEAN`,
 > every verb stops), because `xcopy` rewrites no reference to the old account name in the
