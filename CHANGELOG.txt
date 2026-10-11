@@ -69,9 +69,10 @@
       only what root or the account's own users own, never files another
       account placed in its tree.
 
-    * autosymlink takes an account's static/files as its store only when
-      root owns it and neither group nor others can write it, and makes a
-      missing one that way whatever the umask.
+    * autosymlink takes an account's own static/files as its store only
+      when root owns it and neither group nor others can write it (a store
+      migratefs relocated to attached storage keeps its own rule), and
+      makes a missing one that way whatever the umask.
 
     * The site Verify's ownership and permission fixes and the nightly
       permission pass leave files another account's users own as they
