@@ -4976,7 +4976,11 @@ _settle_class() {
 # baseline settle: the box settles what it can name exactly, with no ruling
 # asked of anyone, in this order.
 #   1  each login of the server's own that is proven and not in the
-#      baseline as it is: recorded, as "accept pinned" records it
+#      baseline yet: recorded, as "accept pinned" records it. One that
+#      changed since it was accepted is left, proven or not, and keeps
+#      stopping a switch: the root tools that change those rows record
+#      them again themselves, and nothing else may accept what was done to
+#      them in between
 #   2  each login no record names: one that holds a global privilege loses
 #      it, its grants saved first, and is accepted; one that holds none and
 #      waits for a ruling is accepted
@@ -4991,7 +4995,7 @@ _settle_class() {
 # the rest is done.
 _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _ty _sx _nx _def _r _k _c _subj _why _obj
-  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _seen=$'\n'
+  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _pb _seen=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
   _base_lock
   _ST_LEFT=$'\n'
@@ -5002,7 +5006,15 @@ _v_baseline_settle() {
     [[ -n "${_g}" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
     _pair_class "${_u}" "${_h}" "${_g}" "${_ux}@${_hx}"
     [[ "${_PC_K}" == "SYSPIN" ]] || continue
-    [[ "${_pins}" == *$'\n'"pinned ${_u}@${_h} global=${_g} proof=ok baseline=ok"$'\n'* ]] && continue
+    # its place in the baseline, as the check above read it
+    _r="${_pins#*$'\n'"pinned ${_u}@${_h} global=${_g} proof="}"
+    [[ "${_r}" != "${_pins}" ]] || continue
+    _r="${_r%%$'\n'*}"
+    _pb="${_r##* baseline=}"
+    if [[ "${_pb}" == "changed" ]]; then
+      _settle_note "${_u}@${_h}" pinned "changed since it was accepted"
+    fi
+    [[ "${_pb}" == "none" ]] || continue
     if _base_pin "${_u}" "${_h}" "${_lk}" "${_sec}" rekey settle; then
       _nacc=$(( _nacc + 1 ))
       printf 'settled accepted %s@%s\n' "${_u}" "${_h}"
