@@ -87,6 +87,12 @@
       tree wrote under another owner to the account before moving it
       into place, never what was there already.
 
+    * A whole-box migration and a standing mirror's file passes (xmass)
+      map a client login or PHP-FPM user the target server lacks onto
+      the account on every account leg too, instead of leaving the
+      source server's user number; once that user exists on the target,
+      the next pass gives its files back to it.
+
     * The per-account web group gets its default, switched off like the
       conversion itself: from the release that switches it on, a
       barracuda pass writes _WEB_GROUP_ARM=YES where /root/.barracuda.cnf
