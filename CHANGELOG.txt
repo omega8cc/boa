@@ -117,6 +117,16 @@
       delete only what root or the account's own users own, never a
       directory another account placed in its tree.
 
+    * A platform Verify's ownership and permission fixes leave files
+      another account's users own as they are, with everything below them,
+      and count them on one line: in a Drupal platform's code, vendor and
+      sites directories, in a Textpattern core and in every Grav site. They
+      create nothing in a directory another account's users own.
+
+    * The site Verify's ownership fix no longer creates libraries/ or the
+      services files in a site directory another account's users own, nor
+      removes its old marker there, before leaving that directory as it is.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
