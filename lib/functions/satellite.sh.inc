@@ -6138,6 +6138,7 @@ _satellite_if_add_ftps_lshell_access() {
 }
 
 _satellite_if_add_update_user_symlinks() {
+  local _T_N _T_DS
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_user_symlinks"
     _debug_proc
@@ -6158,16 +6159,23 @@ _satellite_if_add_update_user_symlinks() {
   ###---### Remove legacy symlinks.
   #
   ### ~/.drush is the main login's (never immutable while this runs): the
-  ### names are removed inside the real directory.
-  _acct_in_real_dir "${_USER_DS}" rm -f -- ./drush_make ./registry_rebuild \
-    ./clean_missing_modules ./drush_ecl ./make_local \
-    ./safe_cache_form_clear ./mydropwizard ./utf8mb4_convert &> /dev/null
+  ### names are removed inside the real directory, only where root or the
+  ### account's own identities own them (_satellite_unlink_own_here): the
+  ### login can rename to .drush, or into it, what another account left
+  ### group-writable. What stays joins the NOTE line below.
+  _T_DS=$(_acct_in_real_dir "${_USER_DS}" _satellite_unlink_own_here \
+    ./drush_make ./registry_rebuild ./clean_missing_modules ./drush_ecl \
+    ./make_local ./safe_cache_form_clear ./mydropwizard ./utf8mb4_convert \
+    2> /dev/null)$'\n'
 
   ###---### Add symlinks to the system drush extensions.
   #
   ### ~/.drush and ~/.drush/usr are made real directories (a link put at
   ### either name is removed first) and handed to the main login, and each
-  ### link is made, inside the real directory.
+  ### link is made, inside the real directory. A ~/.drush or a usr/ another
+  ### user owns keeps its owner and mode, and nothing is made or linked in
+  ### it (_satellite_user_ds_link_here): the login then has no link to that
+  ### extension until the directory is moved away, and the run goes on.
   for _dsX in registry_rebuild clean_missing_modules drupalgeddon \
     drush_ecl safe_cache_form_clear utf8mb4_convert; do
     if [ ! -L "${_USER_DS}/usr/${_dsX}" ] \
@@ -6177,10 +6185,12 @@ _satellite_if_add_update_user_symlinks() {
       fi
       [ -L "${_USER_DS}" ] && rm -f "${_USER_DS}"
       mkdir -p "${_USER_DS}"
-      _acct_in_real_dir "${_USER_DS}" \
-        _satellite_user_ds_link_here "${_dsX}" &> /dev/null
+      _T_N=$(_acct_in_real_dir "${_USER_DS}" \
+        _satellite_user_ds_link_here "${_dsX}" 2> /dev/null)
+      _T_DS="${_T_DS}${_T_N}"$'\n'
     fi
   done
+  _satellite_left_note "${_T_DS}" "in place in ${_USER_DS}"
 
   ###---### Add symlink to the clients directory.
   #
@@ -6227,6 +6237,18 @@ _satellite_rm_own_here() {
   [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
   _o=$(_acct_walk_uids "${_USER}") || return 0
   perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${1}" 2> /dev/null
+  return 0
+}
+# The names given (./name) in the current (pinned) directory removed as
+# rm -f removed them (a link as a link, never a directory), through
+# _ACCT_RM_OWN_PL: only what root or the instance's own identities own
+# (_acct_walk_uids), and nothing in a directory another user owns. Prints
+# dev:ino of each entry left for another owner, the directory itself when
+# it is another user's.
+_satellite_unlink_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null
   return 0
 }
 
@@ -8145,18 +8167,19 @@ _satellite_edit_all_here() (
   done
 )
 # The current (pinned) directory handed to $1 (owner:group) with the mode
-# $2, through _SAT_REOWN_OWN_PL: only when root or one of the instance's own
-# identities (_acct_walk_uids) owns it and every directory above it. The
-# account can rename to any name in its tree a directory another account
-# left group-writable: such a directory keeps its owner and mode. Prints
-# dev:ino of the directory left for another owner; status 1 when one is.
+# $2 (empty: its mode kept), through _SAT_REOWN_OWN_PL: only when root or
+# one of the instance's own identities (_acct_walk_uids) owns it and every
+# directory above it. The account can rename to any name in its tree a
+# directory another account left group-writable: such a directory keeps its
+# owner and mode. Prints dev:ino of the directory left for another owner;
+# status 1 when one is.
 _satellite_own_dir_here() {
   local _u _g _o
   read -r _u _g <<< "$(_satellite_ids "${1}")"
   [ -n "${_g}" ] || return 1
   _o=$(_acct_walk_uids "${_USER}") || return 1
-  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . \
-    && chmod "${2}" .
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . || return 1
+  [ -z "${2}" ] || chmod "${2}" .
 }
 # One NOTE line for what the owner-checked helpers left to another owner:
 # $1 the dev:ino lines they printed, each entry counted once though more
@@ -8464,13 +8487,19 @@ _satellite_bzr_seed_here() {
 # linked to the instance user's own copy of that drush extension: a link
 # put at usr is removed first, and usr/ is handed over from inside it (on
 # '.', once entered as the real directory), so no owner or mode is set
-# through a link or on a file put at the name.
+# through a link or on a file put at the name. Each is handed over only
+# where root or one of the instance's own identities owns it
+# (_satellite_own_dir_here), ~/.drush before anything is made in it: the
+# login can rename to .drush or to usr a directory another account left
+# group-writable, which keeps its owner and mode, with no usr/ made and no
+# link put in it. Prints dev:ino of the directory left for another owner;
+# status 1 when one is.
 _satellite_user_ds_link_here() {
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 || return 1
   [ -L ./usr ] && rm -f ./usr
   mkdir -p ./usr
-  chown -h "${_USERFTP}:${_ACCG:-users}" .
-  _acct_in_real_dir ./usr chown -h "${_USERFTP}:${_ACCG:-users}" .
-  chmod 700 .
+  _acct_in_real_dir ./usr _satellite_own_dir_here \
+    "${_USERFTP}:${_ACCG:-users}" "" || return 1
   _acct_in_real_dir ./usr ln -sfn "${_ROOT}/.drush/usr/${1}" "./${1}"
 }
 # ./$2 in the current (pinned) directory made a link to $1 where no name
