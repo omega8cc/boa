@@ -110,6 +110,16 @@
       delete only what root or the account's own users own, never a
       directory another account placed in its tree.
 
+    * Octopus runs hand the main login's ~/.drush and its usr directory
+      to that login, and remove the retired extension links from it,
+      only when root or the account's own users own them: a directory
+      another account placed there keeps its owner and mode, and nothing
+      is made or linked in it.
+
+    * The Octopus upgrade's removal of entries older than a day from the
+      account's .tmp deletes only what root or the account's own users
+      own, never a directory another account placed there.
+
     * A platform Verify's ownership and permission fixes leave files
       another account's users own as they are, with everything below them,
       and count them on one line: in a Drupal platform's code, vendor and
