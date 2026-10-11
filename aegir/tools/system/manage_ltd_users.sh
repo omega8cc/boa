@@ -206,8 +206,10 @@ _ltd_d9_walk_here() {
 # static/files/, no files/ or static/ in the mount part). The account can
 # own a site dir and plant the link, so a link anywhere else in its tree is
 # not a store, nor is a dot-name right below either store root, BOA's own
-# (.backups, .backup-exports, .archived); that and a share are left alone
-# with a notice.
+# (.backups, .backup-exports, .archived); that and a share are left alone:
+# with a notice at phase B ($4 = phaseb), where the account's pools reach
+# it without www-data; at phase A it only holds phase B back, which instgrp
+# webdrift notes once a day, so nothing is raised here.
 _ltd_d9_own_store() {
   local _a="${1}" _m _top=""
   [ "${3}" = "${2}/files" ] && [ ! -L "${2}/files" ] && return 0
@@ -228,6 +230,7 @@ _ltd_d9_own_store() {
     ""|.*) ;;
     *) return 0 ;;
   esac
+  [ "${4:-}" = "phaseb" ] || return 1
   _ltd_notice "d9-share-${_a}" "D9 on ${_a}" "a site's files store is neither a real dir of the site nor a link into the account's own static/files (outside BOA's dot-named folders there); left alone"
   return 1
 }
@@ -302,7 +305,7 @@ _ltd_d9_files_here() {
     _rf=$(realpath -e -- "${_rs}/files" 2> /dev/null)
     _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
     if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
-      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}"; then
+      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}" "${_s%% *}"; then
       ( cd -P -- "${_rf}" 2> /dev/null && [ "$(pwd -P)" = "${_rf}" ] \
         && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
       [ "$?" = "124" ] && _ok=NO
