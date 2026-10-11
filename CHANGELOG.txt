@@ -53,9 +53,11 @@
 
     * Nginx can refuse to serve through a link whose owner differs from
       its target's, so an account cannot link another account's files
-      into its own site; linkguard first makes BOA's own links pass and
-      switches the check on only when nothing would break. It is in the
-      tree but ships switched off (_NGINX_LINK_GUARD=NO) until a later
+      into its own site; linkguard first makes BOA's own links pass, and
+      a link inside one account its target owner's, and switches the
+      check on only when nothing else would break. A link an account
+      keeps in its own tree never holds the check off. It is in the tree
+      but ships switched off (_NGINX_LINK_GUARD=NO) until a later
       release; see docs/NGINX-LINKS.md.
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
