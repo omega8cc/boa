@@ -503,7 +503,7 @@ that read that path, so phase B waits.
   `FILES-SYMLINK.md`); a site on the shared stores or outside the account
   moves to a platform in the account's own tree; a store becomes a real
   `files` or `private` directory of its site, or a link into the account's
-  own `static/files/`. The next run then goes on to phase B.
+  own `static/files/`. The next run toward phase B then goes through.
 - `instgrp webcheck --report` says `shares:  phase B held` for such an
   account, with a count for each of the four kinds, without running a
   conversion and without writing a note. For an account whose record
