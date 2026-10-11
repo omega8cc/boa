@@ -36,9 +36,17 @@ alone, inside the shared store (`/data/all`, or `/data/disk/all` where
 `/data/all` is root's link to it), so such a link can lead nowhere but
 shared code.
 
+A link at one of these places whose text has another form (a relative one,
+one with `..` in it) but still ends inside the shared store is written in
+the plain form, `/data/all/...`, when root makes it again.
+
 A link inside one account whose owner differs from its target's (the files
 link of a site whose owner has changed, a link root made into the account's
-own store) is made again by the owner of what it leads to, the same way.
+own store, a link one of the account's logins made to a file of its backend
+user) is made again by the owner of what it leads to, the same way. That
+works in a directory this owner cannot write as well, such as one a login
+keeps for itself: the link is still made by its owner, never handed over by
+name.
 
 ## When it switches itself on
 
@@ -52,7 +60,12 @@ and runs `linkguard apply`, which
    above them, and the directories their links lead to;
 3. writes `/etc/nginx/conf.d/link-guard-boa.conf` with the one directive,
    tests the configuration and reloads Nginx, but only when the scan finds
-   no link the check would break.
+   nothing `BLOCKING` (see below).
+
+A link inside an account's own tree never keeps the check off, so no
+account can hold a system back by leaving one in place: linkguard makes it
+its target owner's where it can, and a link it cannot make so is refused
+for that account only once the check is on, and reported.
 
 Once on, the check stays on whatever a later scan finds: a link an account
 plants must never switch it off. `_NGINX_LINK_GUARD=NO` switches it off at
@@ -67,27 +80,39 @@ link the check refuses when its Verify ends. The nightly maintenance (owl.sh)
 runs `linkguard apply` once a night, so a system switches itself on the night
 its scan comes out clean.
 
-A link inside an account can start to be refused in between: when BOA hands
-the files it leads to over to the account's backend user (the nightly's and
-a site Verify's hand-over of uploaded code), the link keeps the owner it was
-made with. It is made its target owner's by the next Verify of its platform
-or by that night's pass.
+When BOA hands files over to the account's backend user (the nightly's and
+a Verify's hand-over of uploaded code), a link to them keeps the owner it
+was made with. The same run makes it its target owner's: a site Verify runs
+`linkguard fix --tree=<site>` when it ends, and once a day, right after it
+has handed the site's files and private stores over, the same for each
+store.
+
+During the nightly the stores are left to the night's own pass, which
+covers every one of them when it ends; a link inside a store whose target
+the night handed over is refused until then.
 
 Not switched on in this release: the setting arms only a test system that
-carries the marker `/root/.tenant-isolation-test.cnf`. A later release lets
-it arm every system.
+carries the marker `/root/.tenant-isolation-test.cnf`. The release that
+switches it on also writes `_NGINX_LINK_GUARD=YES` into a
+`/root/.barracuda.cnf` that has no such line, on the hosted systems first
+and on every system in a later release, both after the account web group's
+(docs/INSTGRP.md). A `NO` set there keeps a system out.
 
 ## What the scan reports
 
 The scan writes `/var/log/boa/linkguard.report.txt`, one line per link whose
 owner differs from its target's:
 
-- `BLOCKING` keeps the check off: a link root made, a link of a system user
-  or of a user that no longer exists, a BOA link that could not be made
-  root's, or a link inside one account that could not be made its target
-  owner's. Turning the check on would break each of these.
-- `REFUSED` never keeps it off: a link an account made that leads out of
-  that account. That is exactly what the check is there to refuse.
+- `BLOCKING` keeps the check off: a link root made (outside an account's
+  tree, or leading out of the account it is in), a link of a system user or
+  of a user that no longer exists, or a BOA link at one of the places BOA
+  itself makes them that could not be made root's (something on its way
+  into the shared store is not root's alone). Turning the check on would
+  break each of these, and none is something an account can make.
+- `REFUSED` never keeps it off: a link inside one account that is not its
+  target owner's and could not be made so, or a link an account made that
+  leads out of that account, which is exactly what the check is there to
+  refuse. Either is refused once the check is on, for that account only.
 - `NOTE` names a configuration file that sets `disable_symlinks` itself; a
   server or location that sets it overrides the box-wide setting there.
 
@@ -108,7 +133,9 @@ grep -c '^BLOCKING' /var/log/boa/linkguard.report.txt
 
 A system stays off while the report lists anything `BLOCKING`. Remove or
 replace each such link, or make its owner match its target's, and the next
-barracuda pass or night switches the check on.
+barracuda pass or night switches the check on. It also stays off, with
+`reason=no-heal`, on a system where `setpriv` cannot make a link as another
+user at all: every link inside an account would then be refused.
 
 ## What it does not change
 
