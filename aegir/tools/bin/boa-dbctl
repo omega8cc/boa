@@ -5146,6 +5146,28 @@ _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _r _k _c _subj _why
   local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _pb _seen=$'\n' _far=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
+  # Refused where a switch is: on a box being prepared as a standby, and
+  # while the box's pair is being switched over.
+  if [[ -e "${_PREP}" || -L "${_PREP}" ]]; then
+    _die 9 "busy standby-prep"
+  fi
+  _pair_state
+  case "${_PAIR_PHASE}" in
+    cutover|rename-failed)
+      _msg "refused pair a switch to ${_PAIR_IP} is under way"
+      _die 7 "not-ready 1"
+      ;;
+  esac
+  # A box on which no account is ever switched has nothing to settle for:
+  # said, and no error (a pass asks on every run).
+  if [[ -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+    _info "baseline settle skipped proxysql"
+    return 0
+  fi
+  if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+    _info "baseline settle skipped cluster"
+    return 0
+  fi
   _base_lock
   _ST_LEFT=$'\n'
   # What purged accounts left is read first: 2 leaves those rows to 3.
@@ -6379,6 +6401,11 @@ _main() {
   _need_not_standby
   # No switch in this release: refused before anything touches the server.
   if [[ "${_VERB}" == "scope" && "${_ARGS[1]:-}" == "on" \
+    && "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+    _die 7 "not-released tenant isolation is switched on by a later release"
+  fi
+  # Nor does a box settle its logins by itself before that release.
+  if [[ "${_VERB}" == "baseline" && "${_ARGS[0]:-}" == "settle" \
     && "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
     _die 7 "not-released tenant isolation is switched on by a later release"
   fi
