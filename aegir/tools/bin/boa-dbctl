@@ -75,13 +75,15 @@ _TI_TEST="${_RHOME}/.tenant-isolation-test.cnf"
 
 # What the box-wide verbs read and write beside the above: the mark of a
 # standby in the making, the state of a pair this box sources, the task
-# queue's pause and the marks of a running install or upgrade, what a purge
-# parked, where a login's grants are saved before they change, and the
-# system maintenance login's client file where the server package made one.
+# queue's pause, the marks of a running install or upgrade and the one a
+# pass's wrapper keeps every task dispatcher out with, what a purge parked,
+# where a login's grants are saved before they change, and the system
+# maintenance login's client file where the server package made one.
 _PREP="${_RHOME}/.standby.prep.cnf"
 _XSTATE="${_CONF}/xmass_state.cnf"
 _QSTOP="${_RUNP%/*}/boa_queue_stop.pid"
 _BRUN="${_RUNP%/*}/boa_run.pid"
+_BWAIT="${_RUNP%/*}/boa_wait.pid"
 _OINST="${_RUNP%/*}/octopus_install_run.pid"
 _VBK="/var/backups"
 _ZOMBIE="${_VBK}/zombie/purged"
@@ -171,6 +173,7 @@ _OPT_FORCE="NO"
 _OPT_REFUSALS="NO"
 _OPT_BORN="NO"
 _OPT_PASS="NO"
+_SP_KEEP="NO"
 _HAS_SHA="NO"
 _PEER_DOWN="NO"
 _QHELD="NO"
@@ -5790,8 +5793,15 @@ _scope_off_apply() {
 }
 
 # A step of the switch failed after the account's rights began to change:
-# it goes back to the direct path, and the call says which step.
+# it goes back to the direct path, and the call says which step. Not so an
+# account a pass found switched and was only bringing back in line: giving
+# it every right on all databases again, unattended, is never the remedy
+# for a step that failed, so it stays switched and the call says which.
 _scope_back() {
+  if [[ "${_SP_KEEP}" == "YES" ]]; then
+    _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched"
+    _die 7 "scope-failed ${1}"
+  fi
   _alrt "${_ACCT}: the switch stopped at ${1}: the account is put back on the direct path"
   if ! _scope_off_apply; then
     _alrt "${_ACCT}: its rights on all databases could not all be given back: run syncpass fix ${_ACCT}"
@@ -5809,20 +5819,47 @@ _scope_back() {
 # and a server verify of the account as its proof.
 # A pass's own switch (--pass, and --born for a new account's first pass)
 # reads the plan here instead of being given its hash, and takes none of
-# the options that let a switch past a refusal (_main). A pass holds the
-# task runner itself, so neither takes the queue's pause, which a switch
-# that is killed would leave behind. --pass still waits for the account's
-# running tasks: an account that is not new can have one from before the
-# pass.
+# the options that let a switch past a refusal (_main). Neither takes the
+# queue's pause, which a switch that is killed would leave behind.
+# --pass runs only while the pass's wrapper keeps its marker: every
+# account's task dispatcher leaves at once while that file is there, so no
+# task starts under the switch; without it the queue is live, and the call
+# is refused. It waits for the account's running tasks before it reads the
+# plan, so a database a task made a moment ago is in it. An account it
+# finds switched, with no global privilege on any row of its instance
+# user, is left as it is: no statement, no new file of saved grants. One
+# with a valid control file and a global privilege back on some row goes
+# through the switch again, and a step that fails then leaves it switched
+# (_scope_back). The operator's own pause of the queue is not looked at:
+# the call follows the pass, which the operator started.
 _v_scope_on() {
   local _d _rc _x _h _l _ux _hx _u _k _t _dp _dx _keep _n=0 _drop=0 _who _lit
+  _SP_KEEP="NO"
+  if [[ "${_OPT_PASS}" == "YES" ]]; then
+    [[ -e "${_BWAIT}" ]] || _die 9 "busy not-in-a-pass"
+    [[ ! -e "${_PREP}" && ! -L "${_PREP}" ]] || _die 9 "busy standby-prep"
+    _broker_mode
+    _rc=$?
+    if [[ "${_rc}" -eq 0 ]]; then
+      if ! _global_privs "${_ACCT}" ""; then
+        _l=""
+        for _h in "${_ROWS[@]}"; do
+          _l="${_l:+${_l},}${_h}"
+        done
+        _info "scope on ${_ACCT} already server=${_SERVER} rows=${_l}"
+        return 0
+      fi
+      _SP_KEEP="YES"
+    fi
+    _tasks_wait
+  fi
   _scope_plan
-  if [[ "${_OPT_BORN}" == "YES" || "${_OPT_PASS}" == "YES" ]]; then
-    # a pass's switch: never on a standby in the making
+  if [[ "${_OPT_BORN}" == "YES" ]]; then
+    # a new account's first pass: never on a standby in the making
     if [[ -e "${_PREP}" || -L "${_PREP}" ]]; then
       _die 9 "busy standby-prep"
     fi
-  else
+  elif [[ "${_OPT_PASS}" != "YES" ]]; then
     [[ "${_OPT_SHA}" =~ ^[0-9a-f]{64}$ ]] || _die 2 "usage scope <oN> on --sha <the plan's sha>"
     [[ "${_OPT_SHA}" == "${_SP_SHA}" ]] || _die 2 "plan-changed read scope ${_ACCT} plan again"
   fi
@@ -5837,9 +5874,7 @@ _v_scope_on() {
     _die 6 "not-proven ${_AL_NSTOP}"
   fi
   [[ "${_AL_NSTOP}" -eq 0 ]] || _log_note "forced-over=${_AL_NSTOP}"
-  if [[ "${_OPT_PASS}" == "YES" ]]; then
-    _tasks_wait
-  elif [[ "${_OPT_BORN}" != "YES" ]]; then
+  if [[ "${_OPT_PASS}" != "YES" && "${_OPT_BORN}" != "YES" ]]; then
     _queue_hold
   fi
   _reg_lock
