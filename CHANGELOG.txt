@@ -100,6 +100,17 @@
       before then. _WEB_GROUP_ARM=NO set there today keeps a box out
       (docs/INSTGRP.md).
 
+    * The Octopus upgrade hands backups/system and its old_hostmaster to
+      the account, and every Octopus run hands over static, only when
+      root or the account's own users own them: a directory another
+      account placed at those names keeps its owner and mode, and nothing
+      is made in it.
+
+    * The Octopus upgrade's removal of the retired drush_make directories
+      from .drush, and the removal of ~/.bazaar on servers without bzr,
+      delete only what root or the account's own users own, never a
+      directory another account placed in its tree.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
