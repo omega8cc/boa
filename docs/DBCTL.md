@@ -148,9 +148,13 @@ objects are proven by any one state's line.
 
 A box whose exact version has no line cannot prove its locked system logins: no
 account is switched there unforced, and the nightly check says so every night.
-A box of a known version that matches none of its states reads `off-reference`
-in `baseline plan`, with the same effect. `boa-dbctl census` ends with
-`reference=ok`, `reference=off` or `reference=none` for the box it runs on.
+
+A box of a known version that matches none of its states has the same effect:
+`baseline plan` reads the login `off-reference` (`not-in-reference` for a locked
+login its version has no line for, `not-locked` for one that is not locked), or
+stops on the stored objects of `sys` and `mysql`. `boa-dbctl census` ends with
+`reference=ok`, `reference=off` (any of those) or `reference=none` for the box
+it runs on.
 Before a new state's lines are added, what `baseline reference <version>`
 prints there is compared with a server known to be untouched.
 
