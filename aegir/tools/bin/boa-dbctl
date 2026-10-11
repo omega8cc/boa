@@ -5271,16 +5271,17 @@ _v_baseline_settle() {
     elif [[ "${_pb}" == "changed" ]]; then
       _settle_note "${_u}@${_h}" pinned "changed since it was accepted, and not proven (${_ps})"
     fi
-    [[ "${_pb}" == "none" ]] || continue
+    # Only one that is not in the baseline, as the baseline reads now,
+    # under the lock: a record made since the check above read it stays as
+    # the call that made it left it.
+    if _base_get "${_ux}@${_hx}" && [[ "${_B_CLASS}" == "pinned" ]]; then
+      continue
+    fi
     # root at the address the cnf names, which the box does not hold: no
     # login of this box reaches the row, and it is not this box's to give
     # root's password to
     if [[ "${_u}" == "root" ]] && _own_ip "${_h}" && ! _held_ip "${_h}"; then
       _settle_note "${_u}@${_h}" pinned "its address is the cnf's, not one this box holds"
-      continue
-    fi
-    # recorded by another call since the check read it
-    if _base_get "${_ux}@${_hx}" && [[ "${_B_CLASS}" == "pinned" ]]; then
       continue
     fi
     if _base_pin "${_u}" "${_h}" "${_lk}" "${_sec}" rekey settle; then
