@@ -529,7 +529,9 @@ that site's store.
   account, with a count for each of the four kinds, without running a
   conversion and without writing a note. For an account whose record
   already says phase B it says `phase B on record, not held` with the same
-  counts: a layout made after phase B holds nothing back.
+  counts: a layout made after phase B holds nothing back. A record left by
+  a phase B rollback that could not finish (marked `rb=1`, below) still
+  reads `phase B held`: the next run checks the layouts again.
 
 A share INTO the account's store never holds anything; both accounts are
 told (see `FILES-SYMLINK.md`). When the account that owns the store
