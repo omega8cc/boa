@@ -222,6 +222,8 @@ Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
   scope <oN> on --pass                       (root, the switch an Octopus pass
                                      makes: the plan read here, never forced,
                                      under the same release rule)
+  scope <oN> on --born                       (root, a new account's switch at
+                                     the end of its first pass: the same)
   scope <oN> off                             (root)
   baseline plan                              (root)
   baseline accept <user>@<host>... | pinned | @persisted        (root)
@@ -852,6 +854,7 @@ _need_not_standby() {
       esac
       ;;
     report)
+      [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
       if [[ -e "${_STANDBY}" || -L "${_STANDBY}" || -e "${_XMASS_INIT}" || -L "${_XMASS_INIT}" \
         || -e "${_STANDBY_INIT}" || -L "${_STANDBY_INIT}" ]]; then
         _info "report standby"
@@ -5150,7 +5153,7 @@ _save_create() {
 # that fails is said, and the call ends ERR 7 once the rest is done.
 _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _r _k _c _subj _why
-  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _pb _seen=$'\n' _far=$'\n'
+  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _pb _ps _seen=$'\n' _far=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
   # Refused where a switch is: on a box being prepared as a standby, and
   # while the box's pair is being switched over.
@@ -5201,8 +5204,11 @@ _v_baseline_settle() {
     [[ "${_r}" != "${_pins}" ]] || continue
     _r="${_r%%$'\n'*}"
     _pb="${_r##* baseline=}"
-    if [[ "${_pb}" == "changed" ]]; then
+    _ps="${_r%% baseline=*}"
+    if [[ "${_pb}" == "changed" && "${_ps}" == "ok" ]]; then
       _settle_note "${_u}@${_h}" pinned "changed since it was accepted"
+    elif [[ "${_pb}" == "changed" ]]; then
+      _settle_note "${_u}@${_h}" pinned "changed since it was accepted, and not proven (${_ps})"
     fi
     [[ "${_pb}" == "none" ]] || continue
     # root at the address the cnf names, which the box does not hold: no
@@ -5429,7 +5435,7 @@ _v_baseline_settle() {
     _nleft=$(( _nleft + 1 ))
     printf 'left %s %s: %s\n' "${_c}" "${_subj}" "${_why}"
   done <<< "${_ST_LEFT}"
-  [[ "${_bad}" -eq 0 ]] || _die 7 "settle-incomplete ${_bad}"
+  [[ "${_bad}" -eq 0 ]] || _die 7 "baseline-settle-incomplete ${_bad}"
   _info "baseline settle accepted=${_nacc} revoked=${_nrev} dropped=${_ndrop} left=${_nleft} stops=${_AL_NSTOP}"
 }
 
@@ -6280,7 +6286,7 @@ _report_plan() {
 # changes nothing. On a standby it has already answered
 # (_need_not_standby).
 _v_report() {
-  local _a _rc _l _x _u _h _subj _why _own=$'\n' _k _n=0 _sw=0 _un=0
+  local _a _rc _l _x _u _h _subj _why _own=$'\n' _k _oo _n=0 _sw=0 _un=0
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
   _box_facts
@@ -6317,8 +6323,9 @@ _v_report() {
     if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
       _why="${_why:+${_why}, }not-released"
     fi
-    if grep -qE "^_DB_BROKER_ARM=[\"']?NO[\"']?[[:space:]]*$" \
-      "${_RHOME}/.${_a}.octopus.cnf" 2> /dev/null; then
+    # the last assignment counts, as it does when the cnf is sourced
+    _oo=$(grep -E '^_DB_BROKER_ARM=' "${_RHOME}/.${_a}.octopus.cnf" 2> /dev/null | tail -n 1)
+    if printf '%s\n' "${_oo}" | grep -qE "^_DB_BROKER_ARM=[\"']?NO[\"']?[[:space:]]*$"; then
       # kept out by its own cnf: its plan is not read
       _why="${_why:+${_why}, }opted-out"
     else
@@ -6431,10 +6438,11 @@ _main() {
     [[ "${_OPT_FORCE}" == "NO" && "${_OPT_REFUSALS}" == "NO" ]] \
       || _die 2 "usage scope <oN> on --pass"
   elif [[ "${_OPT_BORN}" == "YES" ]]; then
+    [[ "${_ARGS[1]:-}" == "on" ]] || _die 2 "usage scope <oN> on --born"
     [[ "${_HAS_SHA}" == "NO" && "${_OPT_FORCE}" == "NO" && "${_OPT_REFUSALS}" == "NO" ]] \
       || _die 2 "usage scope <oN> on --born"
   fi
-  if [[ -n "${_OPT_SHA}" && "${_VERB}" != "scope" && "${_VERB}" != "leftovers" ]]; then
+  if [[ "${_HAS_SHA}" == "YES" && "${_VERB}" != "scope" && "${_VERB}" != "leftovers" ]]; then
     _die 2 "usage unknown-option"
   fi
   if [[ "${_HAS_PEAK}" == "YES" && "${_VERB}" != "census" ]]; then
