@@ -5639,7 +5639,14 @@ _wg_check() {
     if _wg_g_v1_optout; then _msg "opt-out: _INSTANCE_GROUP=NO"; fi
     if _wg_g_pinned; then _msg "pin:     _WEB_GROUP=A (phase A only)"; fi
     if _WG_SHARE_MODE=silent _wg_g_share; then
-      _msg "shares:  phase B held: $(_wg_grounds) (the account goes to phase A, each left as it is; a conversion run names them in ${_WP_NOTES})"
+      # a ground holds nothing back once the record says B
+      _wg_m_g
+      _wg_r_read
+      if [ "${_WR_PH}" = "B" ]; then
+        _msg "shares:  phase B on record, not held: $(_wg_grounds) (a conversion run names them in ${_WP_NOTES})"
+      else
+        _msg "shares:  phase B held: $(_wg_grounds) (phase A only, each left as it is; a conversion run names them in ${_WP_NOTES})"
+      fi
     else
       _msg "shares:  no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
     fi
