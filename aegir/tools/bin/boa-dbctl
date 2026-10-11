@@ -5562,12 +5562,12 @@ _scope_back() {
 # but for one that defines a stored object, which stays as a row in use;
 # and a server verify of the account as its proof.
 # A pass's own switch (--pass, and --born for a new account's first pass)
-# reads the plan here instead of being given its hash. A pass holds the
+# reads the plan here instead of being given its hash, and takes none of
+# the options that let a switch past a refusal (_main). A pass holds the
 # task runner itself, so neither takes the queue's pause, which a switch
 # that is killed would leave behind. --pass still waits for the account's
 # running tasks: an account that is not new can have one from before the
-# pass. It takes none of the options that let a switch past a refusal
-# (_main).
+# pass.
 _v_scope_on() {
   local _d _rc _x _h _l _ux _hx _u _k _t _dp _dx _keep _n=0 _drop=0 _who _lit
   _scope_plan
@@ -6141,13 +6141,17 @@ _main() {
     || "${_OPT_PASS}" == "YES" ) ]]; then
     _die 2 "usage unknown-option"
   fi
-  # A pass's switch reads the plan itself and is never forced: it takes no
-  # hash and none of the options that let a switch go past a refusal.
+  # A pass's own switch (--pass, or --born for a new account's first pass)
+  # reads the plan itself and is never forced: it takes no hash and none of
+  # the options that let a switch go past a refusal.
   if [[ "${_OPT_PASS}" == "YES" ]]; then
     [[ "${_ARGS[1]:-}" == "on" && "${_HAS_SHA}" == "NO" && "${_OPT_BORN}" == "NO" ]] \
       || _die 2 "usage scope <oN> on --pass"
     [[ "${_OPT_FORCE}" == "NO" && "${_OPT_REFUSALS}" == "NO" ]] \
       || _die 2 "usage scope <oN> on --pass"
+  elif [[ "${_OPT_BORN}" == "YES" ]]; then
+    [[ "${_HAS_SHA}" == "NO" && "${_OPT_FORCE}" == "NO" && "${_OPT_REFUSALS}" == "NO" ]] \
+      || _die 2 "usage scope <oN> on --born"
   fi
   if [[ -n "${_OPT_SHA}" && "${_VERB}" != "scope" && "${_VERB}" != "leftovers" ]]; then
     _die 2 "usage unknown-option"
