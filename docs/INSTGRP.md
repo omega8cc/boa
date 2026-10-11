@@ -497,10 +497,19 @@ waits.
   (`/var/log/boa/instgrp-web.oN.notes.txt`, and a copy in its own
   `log/web-group-notes.txt`) name each path and what clears it.
 - `--phase-b` on an account below phase A takes it to A and stops there,
-  exit 6. On an account already at A it is refused before anything is
-  written, exit 6, so a pin stays. On a box with
-  `_WEB_GROUP_PHASE_B=YES` the Octopus arm is refused the same way on
-  every upgrade of such an account, and the upgrade prints a NOTE.
+  exit 6. A run that stops before phase A is complete (the task queue not
+  drained, exit 6) is finished by the same command run again. On an
+  account already at A it is refused before anything is written, exit 6,
+  so a pin stays. On a box with `_WEB_GROUP_PHASE_B=YES` the Octopus arm
+  is refused the same way on every upgrade of such an account, and the
+  upgrade prints a NOTE.
+- Each of these runs says where the account stands: `stays at phase A;
+  phase B waits (...)` with a count of each kind. An account that carries
+  a trait of phase B no record explains (a pool line left in a pool file;
+  `webstatus` reads `betwP` or `betwK`) is not at phase A, and the NOTE
+  says so: `reads betwP, not phase A ('instgrp webconvert oN' brings it
+  there)`. `--phase-b` never takes such a trait back; `instgrp webconvert
+  oN` does.
 - Nothing clears these for you. A share is removed with the documented tool
   (`autosymlink --site <url> --apply --force-unshare`, see
   `FILES-SYMLINK.md`); a site on the shared stores or outside the account
