@@ -192,16 +192,17 @@
       notes in the Octopus settings template and on docs.boa.io say what
       "0" does: backups are still deleted after 14 days (7 on hosted
       systems) and temporary files once they are a day old; only empty
-      platforms are kept, except on hosted systems, where "0" means 60
-      days.
+      platforms are kept, except on hosted systems, where "0" means 60 days.
 
     * The database broker (boa-dbctl), still switched off, carries the
       references it proves a server's locked system logins and the
       stored objects of the sys and mysql schemas against, for Percona
       8.4.11-11 and 5.7.44-48. A server installed on a version and one
       upgraded into it differ, so a version's reference holds each known
-      state and any one of them proves a box; boa-dbctl census says how
-      a box stands against it (docs/DBCTL.md).
+      state and any one of them proves a box; a 5.7 server whose version
+      ends with -log, as it does with the binary log on, is read as the
+      same version. boa-dbctl census says how a box stands against its
+      reference (docs/DBCTL.md).
 
 @=> Changes and Upgrades
 
