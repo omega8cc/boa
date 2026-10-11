@@ -349,7 +349,10 @@ _APT_ACQUIRE_POLICY=YES
 ### _WEB_GROUP=A. Set both boxes of a standing xmass mirror alike: a box
 ### promoted without the stamp converts nothing. Not switched on in this
 ### release: the setting stamps only a test box that carries the marker
-### /root/.tenant-isolation-test.cnf. See docs/INSTGRP.md.
+### /root/.tenant-isolation-test.cnf. The release that switches it on
+### also writes _WEB_GROUP_ARM=YES where /root/.barracuda.cnf has no such
+### line, and _WEB_GROUP_PHASE_B=YES later the same way, so a NO set there
+### today keeps a box out (or at phase A). See docs/INSTGRP.md.
 ###
 ###   _WEB_GROUP_ARM=YES
 ###   _WEB_GROUP_PHASE_B=YES
