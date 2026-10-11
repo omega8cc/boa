@@ -99,13 +99,6 @@
       source server's user number; once that user exists on the target,
       the next pass gives its files back to it.
 
-    * The per-account web group gets its default, switched off like the
-      conversion itself: from the release that switches it on, a
-      barracuda pass writes _WEB_GROUP_ARM=YES where /root/.barracuda.cnf
-      has no such line, on hosted systems first, and nothing is written
-      before then. _WEB_GROUP_ARM=NO set there today keeps a box out
-      (docs/INSTGRP.md).
-
     * The Octopus upgrade hands backups/system and its old_hostmaster to
       the account, and every Octopus run hands over static, only when
       root or the account's own users own them: a directory another
@@ -126,6 +119,13 @@
     * The site Verify's ownership fix no longer creates libraries/ or the
       services files in a site directory another account's users own, nor
       removes its old marker there, before leaving that directory as it is.
+
+    * The per-account web group gets its default, switched off like the
+      conversion itself: from the release that switches it on, a
+      barracuda pass writes _WEB_GROUP_ARM=YES where /root/.barracuda.cnf
+      has no such line, on hosted systems first, and nothing is written
+      before then. _WEB_GROUP_ARM=NO set there today keeps a box out
+      (docs/INSTGRP.md).
 
 @=> Improvements
 

@@ -122,10 +122,10 @@ platform, tracked by marker files under `~/log/ctrl/`):
   below a directory another user owns.
 
   Another account's files renamed into the site's tree or its stores keep
-  their owner and modes, counted on one `NOTE:` line per Drupal site in the
-  nightly log and one `Notice:` line from each helper (for a Grav or
-  Textpattern site only the helpers' `Notice:`, which the nightly does not
-  log).
+  their owner and modes, counted on one `NOTE:` line per site in the nightly
+  log and one `Notice:` line from each helper. For a Grav or Textpattern
+  site the nightly's line holds the platform level only: its site-level
+  count is the helpers' own `Notice:`, which the nightly does not log.
 
 Group-write for the shell pair survives all of this — the lock manages the
 **ownership axis**, and with it the owner-only rights: chmod, git's
