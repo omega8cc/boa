@@ -138,10 +138,10 @@ above, what the box can name exactly, in this order:
 
 1. every login of the server's own that is proven and not in the baseline
    yet: recorded, as `accept pinned` records it;
-2. every login no record names (`UNCLASSIFIED` in `baseline plan`): one that
-   holds a global privilege loses it, as `revoke-global` takes it, its grants
-   saved first, and is then accepted; one that holds none and waits for a
-   ruling is accepted;
+2. every login no record names (`UNCLASSIFIED` in `baseline plan`) that
+   exists only at the box's own hosts: one that holds a global privilege
+   loses it, as `revoke-global` takes it, its grants saved first, and is then
+   accepted; one that holds none and waits for a ruling is accepted;
 3. every row `leftovers list` (below) puts in section A, for an account whose
    purge parked its home: dropped, unless the row defines a stored object.
 
@@ -151,18 +151,19 @@ again, whether a login still proves it or not: it is left (`left pinned
 tools that change those rows record them again themselves; an operator does
 it with `baseline accept`.
 
-In step 2 it never touches `root`, `aegir_root` and any login whose name has
-the shape of an account's name (a lower-case letter, then up to 31 lower-case
-letters, digits or `_`), at any host. On a box that serves another box's
-databases such a login can be that box's own, which no record here names, and
-taking its rights would cut that box's sites off.
+In step 2 the box's own hosts are `localhost`, `127.0.0.1`, `::1` and the
+box's own addresses. A login is settled only when every row of its user name
+is at one of them, whatever the name is: `monitor` made at `localhost` alone
+is taken and accepted. Such a login cannot be anyone else's, since no other
+box can reach the server through it.
 
-That shape is most names: `backup`, `monitor`, `app_user` and `o5` all have
-it. So step 2 takes and accepts only a login whose name is outside it (a
-capital letter, a dash, a dot, a leading digit or `_`): `App-Admin`,
-`backup.user`, `9lives`. Every other login no record names is left as it is.
-One that holds a global privilege, or waits for a ruling, keeps stopping a
-switch until an operator revokes, accepts or drops it.
+A user with any row at `%` or at any other host (another address, a pattern,
+a name, the box's own name included) is left, every row of it: `left
+UNCLASSIFIED <login>: it can be used from another host`. On a box that serves
+another box's databases, that box's account always has a row at `%`, and
+taking its rights would cut that box's sites off. A row left this way that
+holds a global privilege, or waits for a ruling, keeps stopping a switch
+until an operator revokes, accepts or drops it.
 
 A name two accounts' records claim and every login of any other class are
 left too, and so is everything that is not a login: a stored object `root`
