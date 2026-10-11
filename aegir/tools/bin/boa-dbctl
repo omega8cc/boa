@@ -3851,6 +3851,9 @@ _al_psites() {
     # parked home is a box whose /data/disk is not mounted, or an account
     # half made, never a purge: its site users are not read as purged.
     [[ -d "${_ZOMBIE}/${_a}" && ! -L "${_ZOMBIE}/${_a}" ]] || continue
+    # The purge moves the account's root cnf away with its home: one that
+    # is there is a later account of the name, or a half state.
+    [[ ! -e "${_RHOME}/.${_a}.octopus.cnf" && ! -L "${_RHOME}/.${_a}.octopus.cnf" ]] || continue
     case "${_st}" in
       created|purged) ;;
       *) continue ;;
@@ -4972,6 +4975,100 @@ _settle_class() {
   return 0
 }
 
+# Every stored object's definer, read with the client's warnings shown, as
+# the switch reads its own (_defs_read): 5.7 skips, with a warning, the
+# triggers of a table it cannot open, so an answer that carries a warning,
+# or any line that is no object's, is not the whole list. Fills _ST_DEFS
+# with "<kind>|<hex schema>|<hex name>|<hex definer in lower case>" lines;
+# _ST_DEFS_OK is YES only for a whole answer.
+_settle_defs_read() {
+  local _k _sx _nx _dx _q
+  _ST_DEFS=""
+  _ST_DEFS_OK="NO"
+  _q="SELECT /*q:settledefs*/ CONCAT_WS('|', 'routine', HEX(ROUTINE_SCHEMA), HEX(ROUTINE_NAME), HEX(LOWER(DEFINER))) FROM information_schema.ROUTINES"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'view', HEX(TABLE_SCHEMA), HEX(TABLE_NAME), HEX(LOWER(DEFINER))) FROM information_schema.VIEWS"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'trigger', HEX(TRIGGER_SCHEMA), HEX(TRIGGER_NAME), HEX(LOWER(DEFINER))) FROM information_schema.TRIGGERS"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'event', HEX(EVENT_SCHEMA), HEX(EVENT_NAME), HEX(LOWER(DEFINER))) FROM information_schema.EVENTS"
+  _sql_warn "${_q}" || return 1
+  while IFS='|' read -r _k _sx _nx _dx; do
+    [[ -n "${_k}${_sx}${_nx}${_dx}" ]] || continue
+    case "${_k}" in
+      routine|view|trigger|event) ;;
+      *)
+        _ST_DEFS=""
+        return 1
+        ;;
+    esac
+    if [[ ! "${_sx}" =~ ^[0-9A-F]+$ || ! "${_nx}" =~ ^[0-9A-F]*$ || ! "${_dx}" =~ ^[0-9A-F]*$ ]]; then
+      _ST_DEFS=""
+      return 1
+    fi
+    _ST_DEFS="${_ST_DEFS}${_k}|${_sx}|${_nx}|${_dx}"$'\n'
+  done <<< "${_SQL_OUT}"
+  _ST_DEFS_OK="YES"
+  return 0
+}
+
+# The first stored object the login $1@$2 defines, as the server keeps a
+# definer (compared without case, as the switch compares its own), into
+# _ST_OBJ as "<kind> <schema>.<name>"; 1 when it defines none.
+_settle_defines() {
+  local _x _r _k _sx _nx
+  _ST_OBJ=""
+  _x=$(_hex "$(printf '%s@%s' "${1}" "${2}" | tr '[:upper:]' '[:lower:]')")
+  [[ $'\n'"${_ST_DEFS}" == *"|${_x}"$'\n'* ]] || return 1
+  _r="${_ST_DEFS%%"|${_x}"$'\n'*}"
+  _r="${_r##*$'\n'}"
+  IFS='|' read -r _k _sx _nx <<< "${_r}"
+  _ST_OBJ="${_k} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")")"
+  return 0
+}
+
+# When account $1 was purged, into _ST_PT (epoch seconds): the time of the
+# list its purge writes in the parked home, which the purge finishes before
+# it drops the account's own database users. 1 when there is no such plain
+# file of root's.
+_settle_purge_time() {
+  local _d="${_ZOMBIE}/${1}/home" _t
+  _ST_PT=""
+  [[ -d "${_d}" && ! -L "${_d}" && -f "${_d}/.purge.list" && ! -L "${_d}/.purge.list" ]] || return 1
+  [[ "$(stat -c %u -- "${_d}/.purge.list" 2> /dev/null)" == "${_ROOT_UID}" ]] || return 1
+  _t=$(stat -c %Y -- "${_d}/.purge.list" 2> /dev/null)
+  [[ "${_t}" =~ ^[0-9]{1,12}$ ]] || return 1
+  _ST_PT="${_t}"
+  return 0
+}
+
+# When the password of the login whose hex user and host are $1 and $2 was
+# last set, as the server keeps it, into _ST_PLC (epoch seconds, empty when
+# the server keeps none or the row is gone), and whether that is no later
+# than the time $3 into _ST_OLD (Y or N), compared by the server.
+_settle_plc() {
+  _ST_PLC=""
+  _ST_OLD="N"
+  [[ "${1}" =~ ^[0-9A-F]*$ && "${2}" =~ ^[0-9A-F]*$ && "${3}" =~ ^[0-9]{1,12}$ ]] || return 1
+  _sql_or_die "SELECT /*q:plc*/ CONCAT_WS('|', IFNULL(UNIX_TIMESTAMP(password_last_changed), ''), IF(password_last_changed IS NOT NULL AND UNIX_TIMESTAMP(password_last_changed) <= ${3}, 'Y', 'N')) FROM mysql.user WHERE HEX(User) = '${1}' AND HEX(Host) = '${2}'" plc
+  [[ "${_SQL_OUT}" =~ ^[0-9]+\|[YN]$ ]] || return 0
+  _ST_PLC="${_SQL_OUT%%|*}"
+  _ST_OLD="${_SQL_OUT#*|}"
+  return 0
+}
+
+# "SHOW CREATE USER" of the login $1@$2 appended to the file _SAVEF names,
+# beside its saved grants: with both, a dropped row can be made again as it
+# was. Its stored password is in that line (as hex on 8.x), in a file only
+# root reads. Not prepared: the names are plain (the rows' own test, made
+# again here), so they are quoted as they are.
+_save_create() {
+  local _q=""
+  [[ "${1}" =~ ^[A-Za-z0-9_.-]{1,32}$ && "${2}" =~ ^[A-Za-z0-9_.:%-]{1,255}$ ]] || return 1
+  [[ "${_SRV_8}" != "YES" ]] || _q="SET SESSION print_identified_with_as_hex = 1;"$'\n'
+  _sql "/*q:showc*/ ${_q}SHOW CREATE USER \`${1}\`@\`${2}\`;" || return 1
+  [[ -n "${_SQL_OUT}" ]] || return 1
+  printf '%s;\n' "${_SQL_OUT}" >> "${_SAVEF}" 2> /dev/null || return 1
+  return 0
+}
+
 # baseline settle: the box settles what it can name exactly, with no ruling
 # asked of anyone, in this order.
 #   1  each login of the server's own that is proven and not in the
@@ -4989,8 +5086,11 @@ _settle_class() {
 #      that box's account always has a row at %, and taking its rights
 #      would cut a remote web head off. A login that exists only at this
 #      box's own hosts cannot be anyone else's
-#   3  each row "leftovers list" puts in section A: dropped, for an account
-#      whose purge parked its home, unless the row defines a stored object
+#   3  each row "leftovers list" puts in section A, at any host: dropped,
+#      its grants and its CREATE USER line saved first, only while the
+#      account's purge parked its home, no root cnf of the account is
+#      there, the row's password was not set after the purge and the row
+#      defines no stored object
 # Never touched in 2 either: a name two accounts' records claim, and every
 # login of another class. A database is never touched. Whatever it leaves
 # is said in a "left" line, and so is every finding the box-wide check
@@ -4998,13 +5098,14 @@ _settle_class() {
 # says the same lines. A read that fails ends the call at once; a change
 # that fails is said, and the call ends ERR 7 once the rest is done.
 _v_baseline_settle() {
-  local _ux _hx _u _h _g _lk _sec _key _l _uh _o _ty _sx _nx _def _r _k _c _subj _why _obj
+  local _ux _hx _u _h _g _lk _sec _key _l _uh _o _r _k _c _subj _why
   local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _pb _seen=$'\n' _far=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
   _base_lock
   _ST_LEFT=$'\n'
   # What purged accounts left is read first: 2 leaves those rows to 3.
   _leftovers_build
+  _settle_defs_read
   _pins=$'\n'"${_AL_PINS}"
   while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
     [[ -n "${_g}" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
@@ -5082,11 +5183,17 @@ _v_baseline_settle() {
       _alrt "${_u}@${_h} is not accepted: baseline-write-failed"
     fi
   done <<< "${_AL_PAIRS}"
-  # A root cnf with no home and no parked home is a disk not mounted or an
-  # account half made, never a purge: its logins are live. A row that
-  # defines a stored object stays too: the drop would leave the object
-  # without its definer (the host compared without case, as the server
-  # compares host names).
+  # 3. BOA makes every account's instance user at localhost and at %, so
+  # where a row sits says nothing here: a row of a purged account goes at
+  # any host, and only while each of these holds. Its purge parked the home
+  # (a root cnf with no home and no parked home is a disk not mounted or an
+  # account half made: its logins are live). No root cnf of the account is
+  # there: the purge moves it away, so one that is there is a later account
+  # of the name. The row's password was not set after the purge: a row
+  # touched since is in use by something made since, another box's account
+  # of the name served from here included. It defines no stored object: the
+  # drop would leave that without its definer. Its grants and its CREATE
+  # USER line are saved first, so a wrong drop can be put back.
   while IFS= read -r _l; do
     [[ -n "${_l}" ]] || continue
     _uh="${_l#A }"
@@ -5095,33 +5202,51 @@ _v_baseline_settle() {
     _h="${_uh##*@}"
     _o="${_l#* account=}"
     _o="${_o%% *}"
+    _ux=$(_hex "${_u}")
+    _hx=$(_hex "${_h}")
     _settle_class "${_u}" "${_h}"
     _c="${_ST_C}"
     if [[ ! -d "${_ZOMBIE}/${_o}" || -L "${_ZOMBIE}/${_o}" ]]; then
       _settle_note "${_uh}" "${_c}" "the purge of ${_o} parked no home: its login is not dropped on root's record alone"
       continue
     fi
-    _obj=""
-    _lc "${_h}"
-    _r="${_LC}"
-    while IFS='|' read -r _ty _sx _nx _def; do
-      [[ -n "${_ty}" && "${_def%@*}" == "${_u}" ]] || continue
-      _lc "${_def##*@}"
-      [[ "${_LC}" == "${_r}" ]] || continue
-      _obj="${_ty} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")")"
-      break
-    done <<< "${_AL_DEF}"
-    if [[ -n "${_obj}" ]]; then
-      _settle_note "${_uh}" "${_c}" "it defines ${_obj}: a drop would leave that without its definer"
+    if [[ -e "${_RHOME}/.${_o}.octopus.cnf" || -L "${_RHOME}/.${_o}.octopus.cnf" ]]; then
+      _settle_note "${_uh}" "${_c}" "a root cnf of ${_o} is there: a later account of the name, or a half state"
       continue
     fi
-    if _sql_prepared "'DROP USER ', $(_sql_qid "$(_hex "${_u}")"), '@', $(_sql_qid "$(_hex "${_h}")")"; then
+    if ! _settle_purge_time "${_o}"; then
+      _settle_note "${_uh}" "${_c}" "the time of the purge of ${_o} cannot be read from its parked home"
+      continue
+    fi
+    _settle_plc "${_ux}" "${_hx}" "${_ST_PT}"
+    if [[ -z "${_ST_PLC}" ]]; then
+      _settle_note "${_uh}" "${_c}" "the server keeps no time of its last password change"
+      continue
+    fi
+    if [[ "${_ST_OLD}" != "Y" ]]; then
+      _settle_note "${_uh}" "${_c}" "its password was set after the purge of ${_o}: something made since uses it"
+      continue
+    fi
+    if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
+      _settle_note "${_uh}" "${_c}" "the stored objects could not all be read: nothing is dropped on a guess"
+      continue
+    fi
+    if _settle_defines "${_u}" "${_h}"; then
+      _settle_note "${_uh}" "${_c}" "it defines ${_ST_OBJ}: a drop would leave that without its definer"
+      continue
+    fi
+    if ! _save_grants "${_ux}" "${_hx}" || ! _save_create "${_u}" "${_h}"; then
+      _bad=$(( _bad + 1 ))
+      _alrt "${_u}@${_h}: its grants and its row could not be saved, so it is not dropped"
+      continue
+    fi
+    if _sql_prepared "'DROP USER ', $(_sql_qid "${_ux}"), '@', $(_sql_qid "${_hx}")"; then
       _ndrop=$(( _ndrop + 1 ))
       _log_note "leftover-dropped ${_u}@${_h}"
       if [[ "${_BASE_HAS}" == "YES" ]]; then
-        _sql "/*q:basedel*/ DELETE FROM ${_BASE_TBL} WHERE pair = '$(_hex "${_u}")@$(_hex "${_h}")';"
+        _sql "/*q:basedel*/ DELETE FROM ${_BASE_TBL} WHERE pair = '${_ux}@${_hx}';"
       fi
-      printf 'settled dropped %s@%s\n' "${_u}" "${_h}"
+      printf 'settled dropped %s@%s saved=%s\n' "${_u}" "${_h}" "${_SAVEF##*/}"
     else
       _bad=$(( _bad + 1 ))
       _alrt "${_u}@${_h} could not be dropped (${_SQL_ERRNO})"
