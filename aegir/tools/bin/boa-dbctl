@@ -4761,7 +4761,11 @@ _revoke_global() {
 
 # The grants of the login whose hex user and host are $1 and $2 saved in
 # root's own directory before they change, in the file named in _SAVEF.
+# With $3 = replay (settle) the entry can be run again as it is written:
+# the login's CREATE USER line $4 first, when one is given, then its
+# grants, every statement ended.
 _save_grants() {
+  local _l
   _show_grants "${1}" "${2}" || return 1
   if [[ ! -d "${_SAVED}" ]]; then
     mkdir -p -- "${_SAVED}" 2> /dev/null || return 1
@@ -4769,7 +4773,14 @@ _save_grants() {
   [[ -d "${_SAVED}" && ! -L "${_SAVED}" ]] || return 1
   chmod 0700 "${_SAVED}" 2> /dev/null
   { printf -- '-- %s %s@%s\n' "$(_now)" "$(_log_safe "$(_unhex "${1}")")" "$(_log_safe "$(_unhex "${2}")")"
-    printf '%s\n' "${_SG}"; } >> "${_SAVEF}" 2> /dev/null || return 1
+    if [[ "${3:-}" == "replay" ]]; then
+      [[ -z "${4:-}" ]] || printf '%s;\n' "${4}"
+      while IFS= read -r _l; do
+        [[ -n "${_l}" ]] && printf '%s;\n' "${_l}"
+      done <<< "${_SG}"
+    else
+      printf '%s\n' "${_SG}"
+    fi; } >> "${_SAVEF}" 2> /dev/null || return 1
   chmod 0600 "${_SAVEF}" 2> /dev/null
   return 0
 }
@@ -5180,18 +5191,19 @@ _settle_plc() {
   return 0
 }
 
-# "SHOW CREATE USER" of the login $1@$2 appended to the file _SAVEF names,
-# beside its saved grants: with both, a dropped row can be made again as it
-# was. Its stored password is in that line (as hex on 8.x), in a file only
-# root reads. Not prepared: the names are plain (the rows' own test, made
-# again here), so they are quoted as they are.
-_save_create() {
+# "SHOW CREATE USER" of the login $1@$2 into _SC, one line: saved before
+# the row's grants, it makes a dropped row again as it was. Its stored
+# password is in that line (as hex on 8.x), so it goes only into the file
+# root alone reads. Not prepared: the names are plain (the rows' own test,
+# made again here), so they are quoted as they are.
+_show_create() {
   local _q=""
+  _SC=""
   [[ "${1}" =~ ^[A-Za-z0-9_.-]{1,32}$ && "${2}" =~ ^[A-Za-z0-9_.:%-]{1,255}$ ]] || return 1
   [[ "${_SRV_8}" != "YES" ]] || _q="SET SESSION print_identified_with_as_hex = 1;"$'\n'
   _sql "/*q:showc*/ ${_q}SHOW CREATE USER \`${1}\`@\`${2}\`;" || return 1
-  [[ -n "${_SQL_OUT}" ]] || return 1
-  printf '%s;\n' "${_SQL_OUT}" >> "${_SAVEF}" 2> /dev/null || return 1
+  [[ "${_SQL_OUT}" == "CREATE USER "* && "${_SQL_OUT}" != *$'\n'* ]] || return 1
+  _SC="${_SQL_OUT}"
   return 0
 }
 
@@ -5404,7 +5416,7 @@ _v_baseline_settle() {
         _settle_note "${_u}@${_h}" UNCLASSIFIED "it defines ${_ST_OBJ}: taking its rights would stop that object"
         continue
       fi
-      if ! _save_grants "${_ux}" "${_hx}"; then
+      if ! _save_grants "${_ux}" "${_hx}" replay; then
         _bad=$(( _bad + 1 ))
         _alrt "${_u}@${_h}: its grants could not be saved, so nothing of it is taken"
         continue
@@ -5522,7 +5534,7 @@ _v_baseline_settle() {
         continue
         ;;
     esac
-    if ! _save_grants "${_ux}" "${_hx}" || ! _save_create "${_u}" "${_h}"; then
+    if ! _show_create "${_u}" "${_h}" || ! _save_grants "${_ux}" "${_hx}" replay "${_SC}"; then
       _bad=$(( _bad + 1 ))
       _alrt "${_u}@${_h}: its grants and its row could not be saved, so it is not dropped"
       continue
