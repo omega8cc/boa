@@ -189,6 +189,11 @@ mid-upgrade who runs a platform Verify will find the code handed back to
 the backend user on the spot. This is by design: Verify's job is to
 converge the platform to the managed state.
 
+Both platform helpers act only on what root or the account's own users
+own: a file or directory another account's users own in the platform is
+left as it is with everything below it, counted on one `Notice:` line
+from each helper.
+
 The nightly ownership flip and `fixrepo` solve different axes: the lock
 manages *who owns* registered platforms on a schedule; `fixrepo` repairs
 *group-write and setgid* on a tree (typically an unregistered one) once, by
