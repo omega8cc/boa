@@ -173,6 +173,7 @@ _QHELD="NO"
 _BOX_READ="NO"
 _PAIR_READ="NO"
 _REF_READ="NO"
+_REF_STATE=""
 _REC_LOADED="NO"
 _AL_LOADED="NO"
 _AL_FOR=""
@@ -215,7 +216,7 @@ Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
   baseline accept <user>@<host>... | pinned | @persisted        (root)
   baseline revoke-global <user>@<host>       (root)
   baseline rerecord root|aegir_root|master-panel...             (root)
-  baseline reference <version>               (root, on a fresh install)
+  baseline reference <version>               (root, on an untouched server)
   leftovers list | drop --sha <list sha>     (root)
   census [--peak <days>]                     (root)
 EOF
@@ -3438,15 +3439,34 @@ SELECT /*q:fp*/ CONCAT_WS('|', (SELECT SHA2(CONCAT_WS('|', IFNULL(plugin, ''), H
 }
 
 # The reference for a server version: what the locked system logins hold
-# and what the system schemas' stored objects are on a fresh install of
+# and what the system schemas' stored objects are on an untouched server of
 # exactly that version, recorded there with "baseline reference <version>"
 # and shipped here as data, one line each:
 #   <version> row <user>@<host> <privileges> <grants>
 #   <version> objects <count> <hash>
+# One version has more than one such state. A data directory made on it and
+# one upgraded into it differ: the server's own upgrade gives the system
+# logins the dynamic privileges later versions introduced, and it writes
+# some sys views in other words. A login the server package makes is there
+# on some servers only. So a version carries a line per state, each recorded
+# on an untouched server, and a login or the objects are proven by any one
+# of them.
 # A server whose exact version has no line here has nothing to prove those
 # rows and objects against, and no account is switched on it unforced.
 _ref_data() {
   cat <<'REF'
+8.4.11-11 row mysql.infoschema@localhost 8941273913c91805afd34f3747e52a80b62d371f5ea2ae8fea9f608a06de21ff e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+8.4.11-11 row mysql.session@localhost 9d0945c608b068996ef4b7e58fc8ac1e738ac64e2aa90382517455ef30dec2a1 5ae9190fa1f527e60d3167dd5cdb75c972eca3a181b39a5c00b021c0ecaf5095
+8.4.11-11 row mysql.sys@localhost 55c04f9ddab8c21d2e34e69fdc475b4f76d2c8d007ea1f7d032a38c9e0d8fd48 46e95e53675c5a329ba4febc07fa3d5833593dad9ec0854340c538d64d314725
+8.4.11-11 objects 150 846464885fbd346b05ed83d7f032c1714208ee0576cd1402c6442de868321f5b
+8.4.11-11 row mysql.infoschema@localhost e5593754d387af8d3a34fe427b06ac97882dea855e7d8ed54cb03c6f342b3fd6 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+8.4.11-11 row mysql.session@localhost 278149f0bdf431990cfb634c43add05bd7791d3ff1e6820cea744c3bb7601c6f 5ae9190fa1f527e60d3167dd5cdb75c972eca3a181b39a5c00b021c0ecaf5095
+8.4.11-11 row mysql.sys@localhost 324e34d9dc87fdc36ab7abdb37f22d62ba5a4bbc915b7dc441fc9ff3c67d9ecc 46e95e53675c5a329ba4febc07fa3d5833593dad9ec0854340c538d64d314725
+8.4.11-11 row percona.telemetry@localhost 814c60ac96ad59b992a564e771f338cbd8c216b4d657ea4a42913118d7012e2b e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+8.4.11-11 objects 150 37921471a408230e73c9ee604594d9c4a0e4d322da93fa1b1af6f13001528047
+5.7.44-48 row mysql.session@localhost b9e11618df1fd0853f08dad85cd52a78542fe9d17d585f4d65eda84734a02b03 5ae9190fa1f527e60d3167dd5cdb75c972eca3a181b39a5c00b021c0ecaf5095
+5.7.44-48 row mysql.sys@localhost dff3cad8de3d11d14da0a0a4cd1311d5cf6019401b1e6e925ff6591d38d32973 46e95e53675c5a329ba4febc07fa3d5833593dad9ec0854340c538d64d314725
+5.7.44-48 objects 150 67e0aba5e78b0055a417dbc31d1c0d424fa5b2c3e264e5d40da49f4ab5300b2c
 REF
 }
 
@@ -3464,16 +3484,49 @@ _ref_load() {
   return 0
 }
 
-# The reference's privileges and grants of the locked login $1@$2 into
-# _REF_P and _REF_G; 1 when the reference has no such row.
+# Whether the reference holds the locked login $1@$2 with the privileges
+# $3 and the grants $4: 0 when one of its lines says exactly that, 1 when
+# it has no line for the login, 2 when it has and none says that.
 _ref_row() {
-  local _r
+  local _l _rc=1
   _ref_load
-  [[ "${_REF}" == *$'\n'"row ${1}@${2} "* ]] || return 1
-  _r="${_REF#*$'\n'"row ${1}@${2} "}"
-  _r="${_r%%$'\n'*}"
-  read -r _REF_P _REF_G <<< "${_r}"
-  [[ "${_REF_P}" =~ ^[0-9a-f]{64}$ && "${_REF_G}" =~ ^[0-9a-f]{64}$ ]]
+  [[ "${3}" =~ ^[0-9a-f]{64}$ && "${4}" =~ ^[0-9a-f]{64}$ ]] || return 2
+  while IFS= read -r _l; do
+    [[ "${_l}" == "row ${1}@${2} "* ]] || continue
+    [[ "${_l}" == "row ${1}@${2} ${3} ${4}" ]] && return 0
+    _rc=2
+  done <<< "${_REF}"
+  return "${_rc}"
+}
+
+# Whether the reference holds $1 stored objects with the hash $2 for the
+# system schemas, on any of its objects lines.
+_ref_objects() {
+  _ref_load
+  [[ "${1}" =~ ^[0-9]+$ && "${2}" =~ ^[0-9a-f]{64}$ ]] || return 1
+  [[ "${_REF}" == *$'\n'"objects ${1} ${2}"$'\n'* ]]
+}
+
+# How this server stands against its version's reference, into _REF_STATE:
+# none (no line for the version), ok (every locked system login it has and
+# its system schemas' stored objects are each on a line), or off.
+_ref_state() {
+  local _u _ux _hx
+  _ref_load
+  _REF_STATE="none"
+  [[ "${_REF_HAS}" == "YES" ]] || return 0
+  _REF_STATE="ok"
+  _hx=$(_hex localhost)
+  for _u in mysql.infoschema mysql.session mysql.sys percona.telemetry debian-sys-maint; do
+    _ux=$(_hex "${_u}")
+    _sql_or_die "SELECT /*q:reflock*/ IFNULL(account_locked, 'N') FROM mysql.user WHERE HEX(User) = '${_ux}' AND HEX(Host) = '${_hx}'" reflock
+    [[ "${_SQL_OUT}" == "Y" ]] || continue
+    _fp "${_ux}" "${_hx}" || _die 7 "sql-failed fp"
+    _ref_row "${_u}" localhost "${_FP_PRIV}" "${_FP_GRANTS}" || _REF_STATE="off"
+  done
+  _sysobj
+  _ref_objects "${_SYSOBJ_N}" "${_SYSOBJ_H}" || _REF_STATE="off"
+  return 0
 }
 
 # How many stored objects the system schemas hold and their hash, as the
@@ -4297,14 +4350,19 @@ _pin_status() {
   elif [[ "${_login}" == "LOCKED" ]]; then
     if [[ "${5}" != "Y" ]]; then
       _PS="${_PS:-not-locked}"
-    elif ! _ref_row "${_u}" "${_h}"; then
-      if [[ "${_REF_HAS}" == "YES" ]]; then
-        _PS="${_PS:-not-in-reference}"
-      else
-        _PS="${_PS:-no-reference}"
-      fi
-    elif [[ "${_REF_P}" != "${_FP_PRIV}" || "${_REF_G}" != "${_FP_GRANTS}" ]]; then
-      _PS="${_PS:-off-reference}"
+    else
+      _ref_row "${_u}" "${_h}" "${_FP_PRIV}" "${_FP_GRANTS}"
+      case "$?" in
+        0) : ;;
+        2) _PS="${_PS:-off-reference}" ;;
+        *)
+          if [[ "${_REF_HAS}" == "YES" ]]; then
+            _PS="${_PS:-not-in-reference}"
+          else
+            _PS="${_PS:-no-reference}"
+          fi
+          ;;
+      esac
     fi
   else
     _PS="${_PS:-no-credential}"
@@ -4490,8 +4548,7 @@ _al_judge() {
     _al_stop "reference no reference for ${_SRV_VER}: its locked system logins and system objects are not proven"
   else
     _sysobj
-    _r="${_REF#*$'\n'"objects "}"
-    if [[ "${_REF}" != *$'\n'"objects "* || "${_r%%$'\n'*}" != "${_SYSOBJ_N} ${_SYSOBJ_H}" ]]; then
+    if ! _ref_objects "${_SYSOBJ_N}" "${_SYSOBJ_H}"; then
       _al_stop "reference the stored objects of sys and mysql differ from the reference for ${_SRV_VER}"
     fi
   fi
@@ -4819,8 +4876,8 @@ _v_baseline_rerecord() {
   _info "baseline rerecord ${_n}"
 }
 
-# baseline reference: on a fresh install of exactly <version>, what its
-# locked system logins hold and what its system schemas' stored objects
+# baseline reference: on an untouched server of exactly <version>, what
+# its locked system logins hold and what its system schemas' stored objects
 # are, printed as the lines _ref_data ships. Nothing is written here.
 _v_baseline_reference() {
   local _u _n=0 _ux _hx
@@ -5590,7 +5647,8 @@ _v_census() {
   done
   _f="no"
   _cap_enforced && _f="yes"
-  _info "census accounts=${_all} version=${_SRV_VER} cap-enforced=${_f}"
+  _ref_state
+  _info "census accounts=${_all} version=${_SRV_VER} cap-enforced=${_f} reference=${_REF_STATE}"
 }
 
 _parse_args() {
