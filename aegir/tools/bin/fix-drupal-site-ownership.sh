@@ -491,14 +491,33 @@ _reown_here() {
   fi
 }
 
+# find's tests, in _NOT_OWN, for an entry another user owns as the walkers
+# read it: its uid is none of _OWN_UIDS and a passwd entry names it
+# (-nouser is true for a uid no entry names). A walk hands such an entry to
+# its walker whatever state it is in, so it is left and counted as before.
+_not_own_tests() {
+  local _u
+  local -a _ids=()
+  _NOT_OWN=()
+  IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
+  for _u in "${_ids[@]}"; do
+    _NOT_OWN+=( ! -uid "${_u}" )
+  done
+  _NOT_OWN+=( ! -nouser )
+}
 # As _reown_here, through _SAT_REOWN_OWN_PL with the site's own uids
 # (_OWN_UIDS): only what root or the site's own users own is handed over,
 # and nothing below a directory another user owns. Prints dev:ino of each
 # entry left for another owner; status 1 when the current directory is
 # below a directory another user owns (given . as a name, that directory
-# is printed too), or the owner does not resolve.
+# is printed too), or the owner does not resolve. A walk (-R) starts perl
+# only in a directory that holds an entry not yet the owner's and the
+# group's, a regular file with a set-ID bit (a change of owner clears
+# those, even one that changes nothing), or another user's entry
+# (_not_own_tests): a tree already handed over costs the walk alone.
 _reown_own_here() {
   local _r="" _uid _gid=-1 _rc
+  local -a _need=()
   if [ "${1}" = "-R" ]; then
     _r="-R"
     shift
@@ -513,7 +532,12 @@ _reown_own_here() {
   fi
   shift
   if [ -n "${_r}" ]; then
+    _need=( ! -uid "${_uid}" )
+    [ "${_gid}" = "-1" ] || _need+=( -o ! -gid "${_gid}" )
+    _not_own_tests
     env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+      \( "${_need[@]}" -o -type f \( -perm -4000 -o -perm -2000 \) \
+      -o "${_NOT_OWN[@]}" \) \
       -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" {} +
     _rc=$?
     _links_left_note "$@"
