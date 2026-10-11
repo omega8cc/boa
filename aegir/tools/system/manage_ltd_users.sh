@@ -208,8 +208,9 @@ _ltd_d9_walk_here() {
 # not a store, nor is a dot-name right below either store root, BOA's own
 # (.backups, .backup-exports, .archived); that and a share are left alone:
 # with a notice at phase B ($4 = phaseb), where the account's pools reach
-# it without www-data; at phase A it only holds phase B back, which instgrp
-# webdrift notes once a day, so nothing is raised here.
+# it without www-data; at phase A it only holds phase B back, which the
+# nightly notes in the account's log (instgrp webdrift --own night), so
+# nothing is raised here.
 _ltd_d9_own_store() {
   local _a="${1}" _m _top=""
   [ "${3}" = "${2}/files" ] && [ ! -L "${2}/files" ] && return 0
