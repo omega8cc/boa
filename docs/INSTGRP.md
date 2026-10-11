@@ -605,9 +605,22 @@ account alone for good; an account opted out of its per-instance group
 (`_INSTANCE_GROUP=NO`) is named once in the pass's log, never reported.
 
 An account at phase A whose phase B is held back (above), on a box with
-`_WEB_GROUP_PHASE_B=YES`, gets one line a day in the pass's log, with the
-count of each kind. It is a note, never an alarm and never a mail. There is
-none while phase B is off on the box, and none for an account pinned at A.
+`_WEB_GROUP_PHASE_B=YES`, gets one line a night in its own nightly log,
+`/var/log/boa/daily/acct-oN-<YYMMDD-HHMMSS>.log`, with the count of each
+kind:
+
+    oN: web group: DR10 oN: at phase A; phase B waits (outbound shares 1, ...)
+
+The nightly's pass of the account writes it; the 3-minute worker does not.
+It is a note, never an alarm and never a mail. There is none while phase B
+is off on the box, and none for an account pinned at A. To list the
+accounts held last night:
+
+    grep -h 'web group: DR10' /var/log/boa/daily/acct-*.log
+
+(logs of earlier months are kept under `/var/log/boa/daily/<MM-YYYY>/`),
+and to read the line for one account now: `instgrp webdrift oN --own
+night`.
 
 On any box, `/root/.standby.prep.cnf` standing for over three days
 without `/root/.standby.cnf` is reported too: while it stands, no account
