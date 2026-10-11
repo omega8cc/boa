@@ -499,11 +499,11 @@ that read that path, so phase B waits.
   `_WEB_GROUP_PHASE_B=YES` the Octopus arm is refused the same way on
   every upgrade of such an account, and the upgrade prints a NOTE.
 - Nothing clears these for you. A share is removed with the documented tool
-  (`autosymlink --force-unshare`, see `FILES-SYMLINK.md`); a site on the
-  shared stores or outside the account moves to a platform in the
-  account's own tree; a store becomes a real `files` or `private`
-  directory of its site, or a link into the account's own `static/files/`.
-  The next run then goes on to phase B.
+  (`autosymlink --site <url> --apply --force-unshare`, see
+  `FILES-SYMLINK.md`); a site on the shared stores or outside the account
+  moves to a platform in the account's own tree; a store becomes a real
+  `files` or `private` directory of its site, or a link into the account's
+  own `static/files/`. The next run then goes on to phase B.
 - `instgrp webcheck --report` says `shares:  phase B held` for such an
   account, with a count for each of the four kinds, without running a
   conversion and without writing a note.
