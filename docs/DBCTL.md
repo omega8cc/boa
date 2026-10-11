@@ -136,8 +136,8 @@ boa-dbctl baseline settle
 does, with no ruling asked of anyone and under the same lock as the commands
 above, what the box can name exactly, in this order:
 
-1. every login of the server's own that is proven and not in the baseline as
-   it is: recorded, as `accept pinned` records it;
+1. every login of the server's own that is proven and not in the baseline
+   yet: recorded, as `accept pinned` records it;
 2. every login no record names (`UNCLASSIFIED` in `baseline plan`): one that
    holds a global privilege loses it, as `revoke-global` takes it, its grants
    saved first, and is then accepted; one that holds none and waits for a
@@ -145,11 +145,24 @@ above, what the box can name exactly, in this order:
 3. every row `leftovers list` (below) puts in section A, for an account whose
    purge parked its home: dropped, unless the row defines a stored object.
 
+In step 1 an own login that changed since it was accepted is never recorded
+again, whether a login still proves it or not: it is left (`left pinned
+<login>: changed since it was accepted`) and keeps stopping a switch. The root
+tools that change those rows record them again themselves; an operator does
+it with `baseline accept`.
+
 In step 2 it never touches `root`, `aegir_root` and any login whose name has
-the shape of an account's name (a lower-case letter, then lower-case letters,
-digits or `_`), at any host. On a box that serves another box's databases such
-a login can be that box's own, which no record here names, and taking its
-rights would cut that box's sites off.
+the shape of an account's name (a lower-case letter, then up to 31 lower-case
+letters, digits or `_`), at any host. On a box that serves another box's
+databases such a login can be that box's own, which no record here names, and
+taking its rights would cut that box's sites off.
+
+That shape is most names: `backup`, `monitor`, `app_user` and `o5` all have
+it. So step 2 takes and accepts only a login whose name is outside it (a
+capital letter, a dash, a dot, a leading digit or `_`): `App-Admin`,
+`backup.user`, `9lives`. Every other login no record names is left as it is.
+One that holds a global privilege, or waits for a ruling, keeps stopping a
+switch until an operator revokes, accepts or drops it.
 
 A name two accounts' records claim and every login of any other class are
 left too, and so is everything that is not a login: a stored object `root`
@@ -389,6 +402,10 @@ here (`xoct create`) is never switched by this setting: it takes its state from
 its source instead, switched on the target when it is switched there (where
 the target's own checks allow it). `_DB_BROKER_BORN=NO` in an account's
 `/root/.oN.octopus.cnf` keeps that account out of it.
+
+The pass makes it with `boa-dbctl scope oN on --born`, which reads the plan
+itself: with `--sha`, `--force` or `--accept-refusals` it is a usage error. It
+takes no pause of the task queue and waits for no task, the account being new.
 
 In this release it switches no account outside a test server (see above): the
 pass prints a NOTE and leaves the account on the direct path.
