@@ -5044,14 +5044,16 @@ _settle_near() {
   _held_ip "${1}"
 }
 
-# True when every row of user $1 that the server has now is at such a host:
-# the rows were read before the login proofs, the standby's answer and the
-# parked homes, and one made meanwhile at another host changes whose the
-# name can be.
+# Every row user $1 has on the server now: 0 when each is at such a host, 1
+# when one is not (a host that is not plain counts so), 2 when the user has
+# no row left. Asked of the server each time, under the baseline lock: the
+# box was read before the lock, and through the login proofs, the standby's
+# answer and the parked homes; a row made meanwhile at another host changes
+# whose the name can be.
 _settle_near_now() {
   local _x _h
   _user_hosts_hex "${1}"
-  [[ -n "${_HOSTS_HEX}" ]] || return 1
+  [[ -n "${_HOSTS_HEX}" ]] || return 2
   while IFS= read -r _x; do
     [[ -n "${_x}" ]] || continue
     _h=$(_unhex "${_x}") || return 1
@@ -5192,9 +5194,10 @@ _save_create() {
 #      them again themselves, and nothing else may accept what was done to
 #      them in between
 #   2  each login no record names whose every row is at one of this box's
-#      own hosts (_settle_near), whatever its name: one that holds a global
-#      privilege loses it, its grants saved first, and is accepted; one
-#      that holds none and waits for a ruling is accepted. A user with any
+#      own hosts (_settle_near_now: its rows as the server has them under
+#      the lock), whatever its name: one that holds a global privilege
+#      loses it, its grants saved first, and is accepted; one that holds
+#      none and waits for a ruling is accepted. A user with any
 #      row at another host (%, a pattern, another address or name) is
 #      left, every row of it: on a box that serves another box's databases
 #      that box's account always has a row at %, and taking its rights
@@ -5214,7 +5217,7 @@ _save_create() {
 # that fails is said, and the call ends ERR 7 once the rest is done.
 _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _r _k _c _subj _why
-  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _stale=0 _pins _pb _ps _seen=$'\n' _far=$'\n'
+  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _stale=0 _pins _pb _ps _seen=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
   # Refused where a switch is: on a box being prepared as a standby, and
   # while the box's pair is being switched over.
@@ -5246,13 +5249,6 @@ _v_baseline_settle() {
   _leftovers_build
   _settle_defs_read
   _pins=$'\n'"${_AL_PINS}"
-  # the user names with a row at a host that is not this box's own
-  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
-    [[ -n "${_g}" ]] || continue
-    if [[ "${_h}" == "?" ]] || ! _settle_near "${_h}"; then
-      [[ "${_far}" == *$'\n'"${_ux}"$'\n'* ]] || _far="${_far}${_ux}"$'\n'
-    fi
-  done <<< "${_AL_PAIRS}"
   _base_lock
   _base_ready
   _base_load
@@ -5314,10 +5310,21 @@ _v_baseline_settle() {
       _settle_note "${_u}@${_h}" UNCLASSIFIED "two accounts' records name it: it is neither's, and not settled here"
       continue
     fi
-    if [[ "${_far}" == *$'\n'"${_ux}"$'\n'* ]]; then
-      _settle_note "${_u}@${_h}" UNCLASSIFIED "it can be used from another host"
-      continue
-    fi
+    # the user's rows as they are now, read again before a right is taken
+    # and before a ruling is recorded
+    _settle_near_now "${_u}"
+    case "$?" in
+      0) ;;
+      2)
+        # no row of it is left: the box is read again below
+        _stale=1
+        continue
+        ;;
+      *)
+        _settle_note "${_u}@${_h}" UNCLASSIFIED "it can be used from another host"
+        continue
+        ;;
+    esac
     if [[ "${_PC_V}" == "stop" ]]; then
       # The server checks a definer's rights when its object runs: a
       # trigger, view, routine or event this login defines would stop.
@@ -5327,10 +5334,6 @@ _v_baseline_settle() {
       fi
       if _settle_defines "${_u}" "${_h}"; then
         _settle_note "${_u}@${_h}" UNCLASSIFIED "it defines ${_ST_OBJ}: taking its rights would stop that object"
-        continue
-      fi
-      if ! _settle_near_now "${_u}"; then
-        _settle_note "${_u}@${_h}" UNCLASSIFIED "it can be used from another host"
         continue
       fi
       if ! _save_grants "${_ux}" "${_hx}"; then
