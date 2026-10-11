@@ -3785,9 +3785,11 @@ _wg_leg_down() {
     _WR_RB=NO
     _wg_alias_set "${_WEBG}" || { _wg_qhold_release; return 1; }
     _wg_qhold_release
-    # d5: the files back to www-data, the private set widened back, the D9
-    # stamp and xtrim's quarantined copies of the line gone
+    # d5: the files back to www-data, the private set widened back (never a
+    # left-alone path: the conversion did not narrow it), the D9 stamp and
+    # xtrim's quarantined copies of the line gone
     _wg_walk_down
+    _WG_LEFT=$(_wg_left)
     _wg_private_modes 02775 0664
     _wg_d9 remove
     _wg_xtrim_scrub
@@ -4138,6 +4140,20 @@ _wg_left_prune() {
   return 0
 }
 
+# 0 when the resolved path $1 is a left-alone path or lies below one
+# (_WG_LEFT as the run last read it).
+_wg_is_left() {
+  local _p
+  [ -n "${_WG_LEFT}" ] || return 1
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] || continue
+    case "${1}/" in
+      "${_p}"/*) return 0 ;;
+    esac
+  done <<< "${_WG_LEFT}"
+  return 1
+}
+
 # ---- the handle idioms the walks use ------------------------------------------
 
 # Modes through a handle opened without following a link or blocking on a
@@ -4378,7 +4394,9 @@ _wg_residue_full() {
 
 # The private set: every own private store, a Drupal 7 files/private, the
 # archived private stores and the nginx-denied subtrees of the files stores
-# to $1 for directories and $2 for files, through the handle; a file an
+# to $1 for directories and $2 for files, through the handle (an archived
+# store or a keys/ directory that a site's store link names from outside
+# its accepted places is a left-alone path, and stays as it is); a file an
 # account identity owns is narrowed even when hard-linked (narrowing never
 # widens), and widened back only with a single link. Only an entry of one
 # of the owners $3 whose mode the step would change is handed to perl.
@@ -4425,6 +4443,7 @@ _wg_private_modes() {
       [ -d "${_x}" ] && [ ! -L "${_x}" ] || continue
       _x=$(realpath -e -- "${_x}" 2> /dev/null) || continue
       _wg_store_own "${_x}" .archived || continue
+      _wg_is_left "${_x}" && continue
       _wg_in "${_x}" _wg_private_here "${1}" "${2}" "${_uids}" "${_how}"
     done
   fi
@@ -4433,6 +4452,7 @@ _wg_private_modes() {
     [ -d "${_x}" ] && [ ! -L "${_x}" ] || continue
     _x=$(realpath -e -- "${_x}" 2> /dev/null) || continue
     [ "$(_wg_path_owner "${_x}")" = "${_WP_A}" ] || continue
+    _wg_is_left "${_x}" && continue
     _wg_in "${_x}" _wg_private_here "${1}" "${2}" "${_uids}" "${_how}"
   done
   return 0
