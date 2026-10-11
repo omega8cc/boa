@@ -135,7 +135,9 @@ boa-dbctl baseline reference <version>
 
 prints, on an untouched server of exactly that server version (what `SELECT
 VERSION()` returns), the lines that version's reference is made of. The
-references ship inside the tool.
+references ship inside the tool. A 5.7 server ends its version with `-log`
+while a log (the binary log of a standing pair, for one) was on at its start:
+it is the same server, and its reference is the one without that word.
 
 One version has more than one untouched state, and the reference holds each
 one known: a server installed on that version and one upgraded into it differ
