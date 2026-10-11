@@ -594,14 +594,24 @@ _night_reown_own_here() {
 }
 ### The trees after $2 (start points in the current, pinned directory) handed
 ### to $2 the same way, as _reown_tree_here walks them, each entry from
-### inside the directory walked.
+### inside the directory walked. find hands the walker only what it has
+### something to do with, so a tree already handed over starts no perl: an
+### entry not at that owner (and group, when one is named), which covers
+### every entry another user owns, still left and counted by the walker;
+### and a regular file with a set-ID bit, which a chown takes off even
+### when the file is at that owner already.
 _night_reown_own_tree_here() {
-  local _o="${1}" _ids _u _g _x
+  local _o="${1}" _ids _u _g _x _off
   _ids=$(_night_ids "${2}") || return 0
   read -r _u _g <<< "${_ids}"
   shift 2
   [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _off=(! -uid "${_u}")
+  if [[ "${_g}" != "-1" ]]; then
+    _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
+  fi
   _x=$(env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+    \( "${_off[@]}" -o -type f \( -perm -4000 -o -perm -2000 \) \) \
     -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} + 2> /dev/null)
   _perm_left_add "${_x}"
   return 0
@@ -614,7 +624,8 @@ _night_reown_own_tree_here() {
 ### (-fprint0), so the report adds no second pass over the tree; without that
 ### file the walk runs unreported. Only a file not already at the target
 ### owner (and group, when one is named) is written: one already there lost
-### nothing to being left alone.
+### nothing to being left alone. The walker gets the entries that test
+### passes and the set-ID regular files, as in _night_reown_own_tree_here.
 _night_handover_own_here() {
   local _o="${1}" _w="${2}" _ids _u _g _tmp _n _x _first _here _off
   _ids=$(_night_ids "${_w}") || return 0
@@ -631,7 +642,8 @@ _night_handover_own_here() {
     _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
   fi
   _x=$(env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
-    \( -type f -links +1 "${_off[@]}" -fprint0 "${_tmp}" -o -true \) \
+    \( "${_off[@]}" \( -type f -links +1 -fprint0 "${_tmp}" -o -true \) \
+    -o -type f \( -perm -4000 -o -perm -2000 \) \) \
     -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} + 2> /dev/null)
   _perm_left_add "${_x}"
   _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
@@ -669,12 +681,32 @@ _night_chmod_own_here() {
 ### $2 (f or d) and the mode $3 on every regular file or directory the find
 ### start points and tests after them select (tests first), each set from
 ### inside the directory walked (-execdir) through _SAT_CHMOD_OWN_PL with the
-### uids $1.
+### uids $1. find hands the walker only what it has something to do with,
+### so a tree already at its modes starts no perl: an entry not at the mode
+### (a directory under a mode of fewer than five digits is at it with any
+### set-ID bits, which that mode keeps), or one whose owner is neither one of
+### the uids nor a uid no passwd entry names, which the walker leaves and
+### counts whatever its mode. A mode or a uid list in any other form than
+### the plain one is not tested: every entry then goes to the walker.
 _night_mode_own_here() {
-  local _o="${1}" _t="${2}" _m="${3}" _x
+  local _o="${1}" _t="${2}" _m="${3}" _x _i _l _at=() _in=() _off=()
   shift 3
   [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
-  _x=$(find "$@" -type "${_t}" \
+  if [[ "${_t}" == [df] ]] && [[ "${_m}" =~ ^([0-7]{3,4}|0[0-7]{4})$ ]] \
+    && [[ "${_o}" =~ ^(0|[1-9][0-9]*)(,(0|[1-9][0-9]*))*$ ]]; then
+    _at=(-perm "${_m}")
+    if [[ "${_t}" == "d" ]] && [ "${#_m}" -lt 5 ]; then
+      for _i in 2000 4000 6000; do
+        _at+=(-o -perm "$(printf '%o' "$(( 8#${_m} | 8#${_i} ))")")
+      done
+    fi
+    IFS=, read -r -a _l <<< "${_o}"
+    for _i in "${_l[@]}"; do
+      _in+=(-uid "${_i}" -o)
+    done
+    _off=(\( ! \( "${_at[@]}" \) -o ! \( "${_in[@]}" -nouser \) \))
+  fi
+  _x=$(find "$@" -type "${_t}" "${_off[@]}" \
     -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "${_t}" "${_m}" {} + 2> /dev/null)
   _perm_left_add "${_x}"
   return 0
