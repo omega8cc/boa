@@ -79,6 +79,13 @@
       tree wrote under another owner to the account before moving it
       into place, never what was there already.
 
+    * The per-account web group gets its default, switched off like the
+      conversion itself: from the release that switches it on, a
+      barracuda pass writes _WEB_GROUP_ARM=YES where /root/.barracuda.cnf
+      has no such line, on hosted systems first, and nothing is written
+      before then. _WEB_GROUP_ARM=NO set there today keeps a box out
+      (docs/INSTGRP.md).
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
