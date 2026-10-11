@@ -1026,6 +1026,22 @@ _WEB_GROUP_ARM=NO
 _WEB_GROUP_PHASE_B=NO
 
 ###
+### The nginx link check (linkguard): nginx follows symbolic links, so an
+### account that can write a docroot can link another account's files into
+### it and have nginx serve them. With _NGINX_LINK_GUARD=YES every barracuda
+### pass stamps the box (/var/log/boa/linkguard-arm.ready.txt); linkguard
+### then makes BOA's own links pass and switches the check on
+### (/etc/nginx/conf.d/link-guard-boa.conf) once its scan finds no link it
+### would break, and the nightly reports what it finds. Once on, it stays on;
+### NO switches it off at the next pass. Not switched on in this release:
+### the setting stamps only a test box that carries the marker
+### /root/.tenant-isolation-test.cnf. See docs/NGINX-LINKS.md.
+###
+###   _NGINX_LINK_GUARD=YES
+###
+_NGINX_LINK_GUARD=NO
+
+###
 ### Every clear.sh run tells BOA's mirror the
 ### BOA release and the OS release of this box,
 ### and nothing else, as the User-Agent of one

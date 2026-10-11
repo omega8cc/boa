@@ -1516,6 +1516,56 @@ _nginx_quic_bpf_sync() {
   fi
 }
 
+# Nginx follows symbolic links by default, so an account that can write a
+# docroot can link another account's files into it and have them served.
+# With _NGINX_LINK_GUARD=YES the box is armed for linkguard, which makes
+# BOA's own links pass and switches "disable_symlinks if_not_owner;" on once
+# its scan finds no link the check would break (docs/NGINX-LINKS.md). The
+# stamp is written here, at the tail of every barracuda pass, never by the
+# fetched channel, and removed whenever the setting or the release does not
+# arm the box. Tenant isolation is not switched on in this release: the
+# setting arms only a box that carries the test marker, until a later release
+# sets _lgReleased to YES. Kept local so no cnf line can set it.
+_nginx_link_guard_sync() {
+  local _lgReleased=NO
+  local _tiTest="/root/.tenant-isolation-test.cnf"
+  local _lgStamp="/var/log/boa/linkguard-arm.ready.txt"
+  local _lgTool="/opt/local/bin/linkguard"
+  local _lgConf="/etc/nginx/conf.d/link-guard-boa.conf"
+  local _lgOut _lgSum
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_link_guard_sync"
+  fi
+  mkdir -p /var/log/boa &> /dev/null
+  if [ "${_NGINX_LINK_GUARD}" = "YES" ] \
+    && { [ "${_lgReleased}" = "YES" ] || [ -e "${_tiTest}" ]; }; then
+    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > "${_lgStamp}"
+    if [ -e "${_lgTool}" ]; then
+      _lgOut=$(bash "${_lgTool}" apply 2>&1 | grep -E "^(ALERT|SUMMARY)" | tr -cd '[:print:]\n')
+      if printf '%s\n' "${_lgOut}" | grep -q "^ALERT"; then
+        _msg "$(printf '%s\n' "${_lgOut}" | grep -m1 "^ALERT")"
+      fi
+      _lgSum=$(printf '%s\n' "${_lgOut}" | grep -m1 "^SUMMARY" | cut -c9-)
+      _msg "INFO: nginx link guard: ${_lgSum:-no summary from linkguard}"
+    else
+      _msg "NOTE: nginx link guard: ${_lgTool} is missing; the link check stays off"
+    fi
+  else
+    rm -f "${_lgStamp}"
+    if [ -e "${_lgTool}" ]; then
+      bash "${_lgTool}" off > /dev/null 2>&1
+    elif [ -e "${_lgConf}" ]; then
+      rm -f "${_lgConf}"
+      if nginx -t > /dev/null 2>&1; then
+        _mrun "service nginx reload"
+      fi
+    fi
+    if [ "${_NGINX_LINK_GUARD}" = "YES" ]; then
+      _msg "NOTE: _NGINX_LINK_GUARD=YES arms nothing in this release: tenant isolation is switched on by a later release"
+    fi
+  fi
+}
+
 _nginx_ssl_proxy_local_refusal() {
   ### Every HTTPS proxy in pre.d (a control panel's, or a per-site one made by
   ### xoct ssl-gen) connects to its vhost from the box's own address, which
