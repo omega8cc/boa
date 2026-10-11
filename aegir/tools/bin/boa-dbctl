@@ -3812,7 +3812,7 @@ _rec_load() {
       _AL_BASES="${_AL_BASES}${_GB} 1 PURGEDGEN:${_a}"$'\n'
     fi
   done
-  _sql_or_die "SELECT /*q:alsch*/ CONCAT_WS('|', HEX(SCHEMA_NAME), IF(SCHEMA_NAME REGEXP '^[A-Za-z0-9_]{1,64}\$', SCHEMA_NAME, '?')) FROM information_schema.SCHEMATA" alsch
+  _sql_or_die "SELECT /*q:alsch*/ CONCAT_WS('|', HEX(SCHEMA_NAME), IF(SCHEMA_NAME REGEXP '^[A-Za-z0-9_]{1,64}\$' AND LOCATE(0x0A, SCHEMA_NAME) = 0, SCHEMA_NAME, '?')) FROM information_schema.SCHEMATA" alsch
   _AL_SCH=$'\n'
   _AL_SCHN=""
   while IFS='|' read -r _x _s; do
@@ -3838,17 +3838,14 @@ _rec_load() {
 # Everything the box-wide check reads, once per call: the records, the
 # baseline, and from the server every login, grant row and stored object.
 _al_load() {
-  local _u _hh _up _hp _g _lk _sec _t _d _dp _f _go _q
-  # a grant row's database as the queries below pass it: a plain name or
-  # pattern, or ? already
-  local _redb='^([A-Za-z0-9_%\]{1,128}|[?])$'
+  local _u _hh _up _hp _g _lk _sec _t _d _dp _f _go _q _du _dh
   [[ "${_AL_LOADED}" == "YES" ]] && return 0
   _AL_LOADED="YES"
   _rec_load
   _need_priv_cols
   _base_ready
   _base_load
-  _q="SELECT /*q:alpairs*/ CONCAT_WS('|', HEX(u.User), HEX(u.Host), IF(u.User REGEXP '^[A-Za-z0-9_.-]{1,32}\$', u.User, '?'), IF(u.Host REGEXP '^[A-Za-z0-9_.:%-]{1,255}\$', u.Host, '?'),"
+  _q="SELECT /*q:alpairs*/ CONCAT_WS('|', HEX(u.User), HEX(u.Host), IF(u.User REGEXP '^[A-Za-z0-9_.-]{1,32}\$' AND LOCATE(0x0A, u.User) = 0, u.User, '?'), IF(u.Host REGEXP '^[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, u.Host) = 0, u.Host, '?'),"
   if [[ "${_SRV_8}" == "YES" ]]; then
     _q="${_q} IF('Y' IN (${_USER_PRIVS}) OR EXISTS (SELECT 1 FROM mysql.global_grants g WHERE g.USER = u.User AND g.HOST = u.Host), 'Y', 'N'), IFNULL(u.account_locked, 'N'), IF(JSON_CONTAINS_PATH(IFNULL(u.User_attributes, '{}'), 'one', '\$.additional_password'), 'Y', 'N'))"
   else
@@ -3856,26 +3853,29 @@ _al_load() {
   fi
   _sql_or_die "${_q} FROM mysql.user u ORDER BY u.User, u.Host" alpairs
   # On 8.x the server's REGEXP lets $ match before a final line end, so a
-  # name that ends with one passes it. Every name is tested again here,
-  # where $ is the true end; one that fails reads ?, as every other name
-  # that is not plain does, and travels as hex only.
+  # name that ends with one passes it. A line feed is refused by the
+  # server's own test in every list read here: a row that carried one raw
+  # would reach this loop as two lines. Every name is then tested again
+  # here, by its characters and its length, for the other line ends; one
+  # that fails reads ?, as every other name that is not plain does, and
+  # travels as hex only.
   _AL_PAIRS=""
   _AL_PG=$'\n'
   while IFS='|' read -r _u _hh _up _hp _g _lk _sec; do
     [[ -n "${_g}" ]] || continue
-    [[ "${_up}" =~ ^[A-Za-z0-9_.-]{1,32}$ ]] || _up="?"
-    [[ "${_hp}" =~ ^[A-Za-z0-9_.:%-]{1,255}$ ]] || _hp="?"
+    [[ -n "${_up}" && "${#_up}" -le 32 && "${_up}" != *[!A-Za-z0-9_.-]* ]] || _up="?"
+    [[ -n "${_hp}" && "${#_hp}" -le 255 && "${_hp}" != *[!A-Za-z0-9_.:%-]* ]] || _hp="?"
     _AL_PAIRS="${_AL_PAIRS}${_u}|${_hh}|${_up}|${_hp}|${_g}|${_lk}|${_sec}"$'\n'
     [[ "${_up}" != "?" && "${_hp}" != "?" ]] && _AL_PG="${_AL_PG}${_up}@${_hp} ${_g}"$'\n'
   done <<< "${_SQL_OUT}"
-  _d="IF(User REGEXP '^[A-Za-z0-9_.-]{1,32}\$', User, '?'), IF(Host REGEXP '^[A-Za-z0-9_.:%-]{1,255}\$', Host, '?')"
-  _q="SELECT /*q:algrants*/ CONCAT_WS('|', 'db', HEX(User), HEX(Host), ${_d}, HEX(Db), IF(Db REGEXP '^[A-Za-z0-9_%\\\\\\\\]{1,128}\$', Db, '?'), IF('N' IN ($(printf '%s' "${_DB_PRIVS}" | sed -e 's/Grant_priv, //' -e 's/, Grant_priv//')), 'P', 'F'), Grant_priv) FROM mysql.db"
+  _d="IF(User REGEXP '^[A-Za-z0-9_.-]{1,32}\$' AND LOCATE(0x0A, User) = 0, User, '?'), IF(Host REGEXP '^[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, Host) = 0, Host, '?')"
+  _q="SELECT /*q:algrants*/ CONCAT_WS('|', 'db', HEX(User), HEX(Host), ${_d}, HEX(Db), IF(Db REGEXP '^[A-Za-z0-9_%\\\\\\\\]{1,128}\$' AND LOCATE(0x0A, Db) = 0, Db, '?'), IF('N' IN ($(printf '%s' "${_DB_PRIVS}" | sed -e 's/Grant_priv, //' -e 's/, Grant_priv//')), 'P', 'F'), Grant_priv) FROM mysql.db"
   for _t in tables_priv procs_priv columns_priv; do
-    _q="${_q} UNION ALL SELECT CONCAT_WS('|', '${_t}', HEX(User), HEX(Host), ${_d}, HEX(Db), IF(Db REGEXP '^[A-Za-z0-9_]{1,64}\$', Db, '?'), 'P', 'N') FROM mysql.${_t}"
+    _q="${_q} UNION ALL SELECT CONCAT_WS('|', '${_t}', HEX(User), HEX(Host), ${_d}, HEX(Db), IF(Db REGEXP '^[A-Za-z0-9_]{1,64}\$' AND LOCATE(0x0A, Db) = 0, Db, '?'), 'P', 'N') FROM mysql.${_t}"
   done
   _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'proxies_priv', HEX(User), HEX(Host), ${_d}, HEX(Proxied_user), '?', 'P', 'N') FROM mysql.proxies_priv"
   if [[ "${_SRV_8}" == "YES" ]]; then
-    _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'role_edges', HEX(TO_USER), HEX(TO_HOST), IF(TO_USER REGEXP '^[A-Za-z0-9_.-]{1,32}\$', TO_USER, '?'), IF(TO_HOST REGEXP '^[A-Za-z0-9_.:%-]{1,255}\$', TO_HOST, '?'), HEX(FROM_USER), '?', 'P', 'N') FROM mysql.role_edges"
+    _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'role_edges', HEX(TO_USER), HEX(TO_HOST), IF(TO_USER REGEXP '^[A-Za-z0-9_.-]{1,32}\$' AND LOCATE(0x0A, TO_USER) = 0, TO_USER, '?'), IF(TO_HOST REGEXP '^[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, TO_HOST) = 0, TO_HOST, '?'), HEX(FROM_USER), '?', 'P', 'N') FROM mysql.role_edges"
     _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'default_roles', HEX(USER), HEX(HOST), ${_d}, HEX(DEFAULT_ROLE_USER), '?', 'P', 'N') FROM mysql.default_roles"
   fi
   _sql_or_die "${_q}" algrants
@@ -3883,21 +3883,25 @@ _al_load() {
   _AL_HOLDS=$'\n'
   while IFS='|' read -r _t _u _hh _up _hp _d _dp _f _go; do
     [[ -n "${_t}" ]] || continue
-    [[ "${_up}" =~ ^[A-Za-z0-9_.-]{1,32}$ ]] || _up="?"
-    [[ "${_hp}" =~ ^[A-Za-z0-9_.:%-]{1,255}$ ]] || _hp="?"
-    [[ "${_dp}" =~ ${_redb} ]] || _dp="?"
+    [[ -n "${_up}" && "${#_up}" -le 32 && "${_up}" != *[!A-Za-z0-9_.-]* ]] || _up="?"
+    [[ -n "${_hp}" && "${#_hp}" -le 255 && "${_hp}" != *[!A-Za-z0-9_.:%-]* ]] || _hp="?"
+    # a plain name or pattern (128, the widest the queries pass), or ? already
+    [[ "${_dp}" == "?" || ( -n "${_dp}" && "${#_dp}" -le 128 && "${_dp}" != *[!A-Za-z0-9_%\\]* ) ]] || _dp="?"
     _AL_GR="${_AL_GR}${_t}|${_u}|${_hh}|${_up}|${_hp}|${_d}|${_dp}|${_f}|${_go}"$'\n'
     [[ "${_AL_HOLDS}" == *$'\n'"${_u}@${_hh}"$'\n'* ]] || _AL_HOLDS="${_AL_HOLDS}${_u}@${_hh}"$'\n'
   done <<< "${_SQL_OUT}"
-  _q="SELECT /*q:aldefs*/ CONCAT_WS('|', 'routine', HEX(ROUTINE_SCHEMA), HEX(ROUTINE_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$', DEFINER, '?')) FROM information_schema.ROUTINES"
-  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'view', HEX(TABLE_SCHEMA), HEX(TABLE_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$', DEFINER, '?')) FROM information_schema.VIEWS"
-  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'trigger', HEX(TRIGGER_SCHEMA), HEX(TRIGGER_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$', DEFINER, '?')) FROM information_schema.TRIGGERS"
-  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'event', HEX(EVENT_SCHEMA), HEX(EVENT_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$', DEFINER, '?')) FROM information_schema.EVENTS"
+  _q="SELECT /*q:aldefs*/ CONCAT_WS('|', 'routine', HEX(ROUTINE_SCHEMA), HEX(ROUTINE_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, DEFINER) = 0, DEFINER, '?')) FROM information_schema.ROUTINES"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'view', HEX(TABLE_SCHEMA), HEX(TABLE_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, DEFINER) = 0, DEFINER, '?')) FROM information_schema.VIEWS"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'trigger', HEX(TRIGGER_SCHEMA), HEX(TRIGGER_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, DEFINER) = 0, DEFINER, '?')) FROM information_schema.TRIGGERS"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'event', HEX(EVENT_SCHEMA), HEX(EVENT_NAME), IF(DEFINER REGEXP '^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}\$' AND LOCATE(0x0A, DEFINER) = 0, DEFINER, '?')) FROM information_schema.EVENTS"
   _sql_or_die "${_q}" aldefs
   _AL_DEF=""
   while IFS='|' read -r _t _u _hh _up; do
     [[ -n "${_t}" ]] || continue
-    [[ "${_up}" =~ ^[A-Za-z0-9_.-]{1,32}@[A-Za-z0-9_.:%-]{1,255}$ ]] || _up="?"
+    _du="${_up%%@*}"
+    _dh="${_up#*@}"
+    [[ "${_up}" == *@* && -n "${_du}" && "${#_du}" -le 32 && "${_du}" != *[!A-Za-z0-9_.-]* \
+      && -n "${_dh}" && "${#_dh}" -le 255 && "${_dh}" != *[!A-Za-z0-9_.:%-]* ]] || _up="?"
     _AL_DEF="${_AL_DEF}${_t}|${_u}|${_hh}|${_up}"$'\n'
   done <<< "${_SQL_OUT}"
   _AL_R4=""
