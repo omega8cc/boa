@@ -5127,16 +5127,21 @@ _settle_class() {
 # triggers of a table it cannot open, so an answer that carries a warning,
 # or any line that is no object's, is not the whole list. Fills _ST_DEFS
 # with "<kind>|<hex schema>|<hex name>|<hex definer in lower case>" lines;
-# _ST_DEFS_OK is YES only for a whole answer.
+# _ST_DEFS_OK is YES only for a whole answer, and _ST_DEFS_WHY says which
+# way it was not one. A read that is not whole does not end the call:
+# nothing is taken and nothing dropped in that run, and each row left for
+# it says why.
 _settle_defs_read() {
   local _k _sx _nx _dx _q
   _ST_DEFS=""
   _ST_DEFS_OK="NO"
+  _ST_DEFS_WHY="the read of the stored objects failed"
   _q="SELECT /*q:settledefs*/ CONCAT_WS('|', 'routine', HEX(ROUTINE_SCHEMA), HEX(ROUTINE_NAME), HEX(LOWER(DEFINER))) FROM information_schema.ROUTINES"
   _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'view', HEX(TABLE_SCHEMA), HEX(TABLE_NAME), HEX(LOWER(DEFINER))) FROM information_schema.VIEWS"
   _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'trigger', HEX(TRIGGER_SCHEMA), HEX(TRIGGER_NAME), HEX(LOWER(DEFINER))) FROM information_schema.TRIGGERS"
   _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'event', HEX(EVENT_SCHEMA), HEX(EVENT_NAME), HEX(LOWER(DEFINER))) FROM information_schema.EVENTS"
   _sql_warn "${_q}" || return 1
+  _ST_DEFS_WHY="the read of the stored objects came with a warning"
   while IFS='|' read -r _k _sx _nx _dx; do
     [[ -n "${_k}${_sx}${_nx}${_dx}" ]] || continue
     case "${_k}" in
@@ -5335,8 +5340,9 @@ _settle_gate() {
 # login of another class. A database is never touched. Whatever it leaves
 # is said in a "left" line, and so is every finding the box-wide check
 # still has afterwards; a second run on the same box settles nothing and
-# says the same lines. A read that fails ends the call at once; a change
-# that fails is said, and the call ends ERR 7 once the rest is done.
+# says the same lines. A read that fails ends the call at once, but for
+# the read of the stored objects (_settle_defs_read); a change that fails
+# is said, and the call ends ERR 7 once the rest is done.
 _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _kd _r _k _c _subj _why
   local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _stale=0 _pins _pb _ps _seen=$'\n'
@@ -5436,7 +5442,7 @@ _v_baseline_settle() {
       # The server checks a definer's rights when its object runs: a
       # trigger, view, routine or event this login defines would stop.
       if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
-        _settle_note "${_u}@${_h}" UNCLASSIFIED "the stored objects could not all be read: nothing is taken on a guess"
+        _settle_note "${_u}@${_h}" UNCLASSIFIED "${_ST_DEFS_WHY}: nothing is taken on a guess"
         continue
       fi
       if _settle_defines "${_u}" "${_h}"; then
@@ -5537,7 +5543,7 @@ _v_baseline_settle() {
     fi
     _k="${_ST_SIG}"
     if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
-      _settle_note "${_uh}" "${_c}" "the stored objects could not all be read: nothing is dropped on a guess"
+      _settle_note "${_uh}" "${_c}" "${_ST_DEFS_WHY}: nothing is dropped on a guess"
       continue
     fi
     if _settle_defines "${_u}" "${_h}"; then
