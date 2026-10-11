@@ -486,8 +486,11 @@ The conversion leaves such a path exactly as it is: it is never walked,
 moved or re-linked, its owner, group and modes stay, and it keeps working,
 because in phase A the account's users and pools are still in `www-data`.
 A store linked elsewhere inside the account's own tree stays in `www-data`
-with everything below it. Phase B would take `www-data` away from the pools
-that read that path, so phase B waits.
+with everything below it. The one exception is a link to a path that holds,
+or lies inside, a site or a store of the account's own: those are the
+account's own web files, and the path converts with them. Phase B would
+take `www-data` away from the pools that read a left path, so phase B
+waits.
 
 - `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
   account to phase A, exit 0. The account's notes
