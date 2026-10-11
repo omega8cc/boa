@@ -712,6 +712,20 @@ _priv_own_here() {
   _reown_own_here -R "${_o}" ./config
 }
 
+### While the box is armed for the nginx link check (linkguard), a link
+### inside the account is made its target owner's wherever this run handed
+### something over, so the check does not refuse it until the night: the
+### site's own tree on every run, a store right after its daily hand-over.
+### Not a store while the nightly runs, whose own pass covers every store
+### when it ends.
+_link_guard_tree() {
+  if [ -n "${1}" ] && [ -e "/var/log/boa/linkguard-arm.ready.txt" ] \
+    && [ -e "/opt/local/bin/linkguard" ]; then
+    bash /opt/local/bin/linkguard fix --tree="${1}" >&3 2>&1
+  fi
+  return 0
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 
@@ -767,6 +781,7 @@ if [ -n "${site_path}" ] \
   # group stay one quoted argument.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _grav_site_own_here)"
+  _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Grav site)."
   exit 0
 fi
@@ -798,6 +813,7 @@ if [ -n "${site_path}" ] \
   # group stay one quoted argument.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _txp_site_own_here)"
+  _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Textpattern site)."
   exit 0
 fi
@@ -888,7 +904,12 @@ if [ -n "${_files_dir}" ] \
   if [ -n "${_priv_dir}" ]; then
     _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_own_here 2> /dev/null)"
   fi
+  if [ ! -e "/run/daily-fix.pid" ]; then
+    _link_guard_tree "${_files_dir}"
+    _link_guard_tree "${_priv_dir}"
+  fi
 fi
 _owners_left_note "${_LEFT}"
+_link_guard_tree "${site_path}"
 
 echo "Done setting proper ownership of site files and directories."
