@@ -17,8 +17,8 @@ It ships **switched off**. Nothing changes for any account until an operator
 switches it on, and the commands below are what an operator runs.
 
 In this release `scope oN on` switches no account, forced or not, a new
-account's switch included: it refuses with `ERR 7 not-released`, unless the
-box is a test server that carries the marker
+account's switch and a pass's switch (`--pass`) included: it refuses with
+`ERR 7 not-released`, unless the box is a test server that carries the marker
 `/root/.tenant-isolation-test.cnf`. A later release lifts that. `plan`, `off`,
 `status` and an account already switched work as described below, with one
 exception: `scope oN on` run again on a switched account, which the remedies
@@ -127,6 +127,57 @@ boa-dbctl baseline revoke-global <user>@<host>  every global privilege taken, it
 `revoke-global` never takes the server's own logins, an account's instance
 user, or the replication login of a standing pair.
 
+### What the box settles by itself
+
+```
+boa-dbctl baseline settle
+```
+
+does, with no ruling asked of anyone and under the same lock as the commands
+above, what the box can name exactly, in this order:
+
+1. every login of the server's own that is proven and not in the baseline as
+   it is: recorded, as `accept pinned` records it;
+2. every login no record names (`UNCLASSIFIED` in `baseline plan`): one that
+   holds a global privilege loses it, as `revoke-global` takes it, its grants
+   saved first, and is then accepted; one that holds none and waits for a
+   ruling is accepted;
+3. every row `leftovers list` (below) puts in section A, for an account whose
+   purge parked its home: dropped, unless the row defines a stored object.
+
+In step 2 it never touches `root`, `aegir_root` and any login whose name has
+the shape of an account's name (a lower-case letter, then lower-case letters,
+digits or `_`), at any host. On a box that serves another box's databases such
+a login can be that box's own, which no record here names, and taking its
+rights would cut that box's sites off.
+
+A name two accounts' records claim and every login of any other class are
+left too, and so is everything that is not a login: a stored object `root`
+defines in an account's database, a grant on another account's database,
+persisted variables, a mandatory role, a server off its version's reference.
+In step 3 it never drops a row of an account with a root cnf and no parked
+home, a row section B lists, or a database.
+
+It prints one line per change and one per thing it left, then the counts:
+
+```
+settled accepted <user>@<host>
+settled revoked <user>@<host> saved=<file under /var/backups/boa/dbrights/>
+settled dropped <user>@<host>
+left <class or kind> <subject>: <why>
+OK baseline settle accepted=N revoked=N dropped=N left=N stops=N
+```
+
+`stops` is what `baseline plan` says after it: at 0 nothing on the box stops a
+switch. A second run on the same box settles nothing and prints the same
+`left` lines. Whatever it leaves is an operator's: `baseline accept`,
+`baseline revoke-global`, `leftovers drop`, or the object or grant itself.
+
+A read that fails ends it at once. A change that fails is said in an `ALRT`
+line and ends it with `ERR 7 settle-incomplete` once the rest is done.
+
+Nothing calls `baseline settle` in this release.
+
 ### References
 
 ```
@@ -197,6 +248,7 @@ itself waits for a ruling (drop it here, or accept it into the baseline).
 ```
 boa-dbctl scope oN plan
 boa-dbctl scope oN on --sha <the plan's hash> [--force] [--accept-refusals]
+boa-dbctl scope oN on --pass                    a pass's switch (below)
 boa-dbctl scope oN off
 boa-dbctl scope oN status
 ```
@@ -321,8 +373,8 @@ privilege.
 - A cutover's dry run refuses a target without the broker's sudo line for a
   switched account, and names settings that differ between the two boxes.
 - On a standby, and while one is being seeded, the broker refuses everything
-  that writes (`ERR 9 busy standby`); its reads stay open, and the witness reads
-  nothing there.
+  that writes (`ERR 9 busy standby`); its reads stay open, and the witness and
+  the report read nothing there.
 - The pair's replication login is one of the server's own while the pair
   stands. A replication login no standing pair of the box names stops an
   unforced switch: drop it by hand where no replica uses it.
@@ -340,6 +392,59 @@ the target's own checks allow it). `_DB_BROKER_BORN=NO` in an account's
 
 In this release it switches no account outside a test server (see above): the
 pass prints a NOTE and leaves the account on the direct path.
+
+## A pass's switch
+
+```
+boa-dbctl scope oN on --pass
+```
+
+is the switch an Octopus pass makes for an account, new or not. It reads the
+plan itself, so it takes no `--sha`, and it is never forced: with `--sha`,
+`--force`, `--accept-refusals` or `--born` it is a usage error. Every refusal
+of an unforced switch stands (`not-ready`, `sites-unregistered`,
+`not-proven`), and so does the release rule above. It is refused on a standby
+and on a box being prepared as one.
+
+A pass holds the task runner itself, so `--pass` takes no pause of the task
+queue and does not refuse while a pass's own run markers are there. It still
+waits for the account's running tasks to end (`ERR 9 busy tasks` when they do
+not). On an account already switched it makes the same switch again. Its line
+in the broker's log ends with `note=pass`.
+
+Nothing calls it in this release: no pass switches an account that is not new,
+and a new account's switch stays as described above.
+
+## The report
+
+```
+boa-dbctl report
+```
+
+prints one line per account the census lists, then every finding of the
+box-wide check, once, and how the server stands against its reference:
+
+```
+o1 switched
+o2 not-switched <reason>[, <reason>...]
+box stop <finding>
+OK report accounts=N switched=N unswitched=N stops=N reference=ok|off|none
+```
+
+An account's reasons are the ones its own `scope oN plan` gives: each refusal
+in the plan's words, `unregistered <database> <why>` for each site left out,
+and `box-not-proven N` when nothing of its own holds it and N findings of the
+box-wide check would stop its switch. `ready` means its plan refuses nothing.
+
+Three reasons come from outside the plan: `not-released` where this release
+switches no account on the box, `opted-out` for an account whose
+`/root/.oN.octopus.cnf` says `_DB_BROKER_ARM=NO` (its plan is then not read),
+and `control-file-invalid` for a control file that is there and not valid.
+
+It reads the box once for all accounts, logs in as a plan does (each account's
+own login, each site's recorded login) and changes nothing. On a standby it
+answers `OK report standby` and reads nothing. Nothing calls it in this
+release.
 
 ## The database count limit
 
@@ -374,6 +479,7 @@ against its version's reference. It logs in as no one and changes nothing.
 | `_DB_BROKER_BORN_SCOPED` | `/root/.barracuda.cnf` | `NO` |
 | `_DB_COUNT_MAX` | `/root/.oN.octopus.cnf` | `AUTO` (no limit) |
 | `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch) |
+| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO`: `report` says `opted-out`; nothing else reads it in this release) |
 
 `/root/.barracuda.cnf` is each box's own: set a standing pair's two boxes alike.
 
