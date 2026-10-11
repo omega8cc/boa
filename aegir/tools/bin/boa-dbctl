@@ -2367,6 +2367,40 @@ _store_objects_here() {
   return 1
 }
 
+# In the account's (pinned) tmp_expim, with the account's own rights (the
+# identity its myloader gets, never root's, which can open anything): every
+# entry, at any depth, is a real directory or a regular file the account
+# can open for reading. The first that is not is printed and the walk ends
+# there, status 1; so does a walk that cannot finish. A link is not one,
+# to a file the account can read too (the store a dump makes holds plain
+# files only), nor a FIFO, a socket or a device: myloader waits on such an
+# entry for as long as it may run, holding the account's I/O lock and one
+# of the box's slots. Nothing is opened for longer than the test, and
+# nothing is read.
+_store_walk_here() {
+  timeout -k "${_KILL_GRACE}" 300 runuser -u "${_ACCT}" -- \
+    env -i HOME="${_DISK}/${_ACCT}" PATH="${_STD_PATH}" LC_ALL=C perl -e '
+      use strict;
+      use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK);
+      sub bad { print "$_[0]\n"; exit 1; }
+      my @d = (".");
+      while (defined(my $d = shift @d)) {
+        opendir(my $h, $d) or bad($d);
+        while (defined(my $n = readdir($h))) {
+          next if $n eq "." || $n eq "..";
+          my $p = "$d/$n";
+          lstat($p) or bad($p);
+          if (-d _) { push @d, $p; next; }
+          -f _ or bad($p);
+          sysopen(my $f, $p, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or bad($p);
+          -f $f or bad($p);
+          close($f);
+        }
+        closedir($h);
+      }
+    ' < /dev/null 2> /dev/null 7>&- 8>&- 9>&-
+}
+
 # The load's [client] file: the site user's name and password, read by the
 # account's own myloader through an inherited descriptor. It is the
 # account's (so that reading works) inside root's private directory, which
@@ -2467,9 +2501,17 @@ _prove() {
 # fixed environment) in its own pinned tmp_expim, as the site's own database
 # user, proven first, and that user may hold rights on this account's
 # databases only. It loads into <db> whatever database the store names (a
-# migrate from another server names the source's).
+# migrate from another server names the source's). The store is walked
+# first, as the account (_store_walk_here): one entry its loader would wait
+# on or cannot read ends the call before the loader starts, the store left
+# as it is. An entry swapped in after the walk can still hold the loader
+# until the wall-clock limit, which is the bound. timeout answers 124 when
+# its limit ended the child, and hands on 137 both when its own KILL had to
+# (after the grace) and when anything else killed the child: only the time
+# the child ran tells those two apart, and a kill the limit did not cause
+# is never reported as the limit.
 _v_load() {
-  local _db _rc _st _thr _store
+  local _db _rc _st _thr _store _x _t0 _re='^[.]/[A-Za-z0-9_.,+=/-]{1,200}$'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage load <db>"
   _db="${_ARGS[0]}"
   _LOG_DB="${_db}"
@@ -2504,8 +2546,20 @@ _v_load() {
     && _in_backups _acct_in_real_dir ./tmp_expim _store_objects_here; then
     _alrt "the dump carries triggers, routines or events, and this myloader cannot hand them to ${_LD_USER}: they are left out of the load"
   fi
+  _x=$(_in_backups _acct_in_real_dir ./tmp_expim _store_walk_here)
+  _st=$?
+  if [[ "${_st}" -ne 0 || -n "${_x}" ]]; then
+    _x="${_x%%$'\n'*}"
+    if [[ "${_x}" =~ ${_re} ]]; then
+      _alrt "load of ${_db} for ${_ACCT}: the store holds ${_x#./}, which is not a directory or a regular file the account can read; nothing is loaded"
+    else
+      _alrt "load of ${_db} for ${_ACCT}: the store could not be walked as the account, or holds an entry that is not a directory or a regular file the account can read; nothing is loaded"
+    fi
+    _die 7 "store-entry-refused"
+  fi
   _transport_args "${_PROOF_T}" loader
   _thr=$(_threads)
+  _t0="${SECONDS}"
   _in_backups _acct_in_real_dir ./tmp_expim \
     timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" \
     runuser -u "${_ACCT}" -- \
@@ -2521,11 +2575,18 @@ _v_load() {
     "${_MYLOADER_DEFINER[@]}" \
     --verbose=2 < /dev/null 5< "${_CNF}" >&2 7>&- 8>&- 9>&-
   _rc=$?
+  if [[ "${_rc}" -eq 137 && "$(( SECONDS - _t0 ))" -ge "${_IO_LIMIT}" ]]; then
+    _rc=124
+  fi
   case "${_rc}" in
     0) ;;
-    124|137)
+    124)
       _alrt "load of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
       _die 7 "time-limit"
+      ;;
+    137)
+      _alrt "load of ${_db} for ${_ACCT}: its child ended on a kill signal after $(( SECONDS - _t0 ))s, which the ${_IO_LIMIT}s limit did not cause"
+      _die 7 "load-failed ${_rc}"
       ;;
     *) _die 7 "load-failed ${_rc}" ;;
   esac
