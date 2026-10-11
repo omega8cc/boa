@@ -3094,6 +3094,8 @@ _box_facts() {
   for _ip in $(hostname -I 2> /dev/null); do
     [[ "${_ip}" =~ ^[0-9A-Fa-f.:]{2,45}$ ]] && _OWN_IPS="${_OWN_IPS}${_ip}"$'\n'
   done
+  # what the kernel reports, apart from the address the cnf names
+  _OWN_HELD="${_OWN_IPS}"
   _ip=$(grep -E '^_MY_OWNIP=' "${_BCNF}" 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d "\"' ")
   [[ "${_ip}" =~ ^[0-9A-Fa-f.:]{2,45}$ ]] && _OWN_IPS="${_OWN_IPS}${_ip}"$'\n'
   return 0
@@ -3101,6 +3103,13 @@ _box_facts() {
 
 _own_ip() {
   [[ "${_OWN_IPS}" == *$'\n'"${1}"$'\n'* ]]
+}
+
+# An address this box holds now, as the kernel reports it. The address the
+# cnf names can be one the box no longer has, or never had (a forwarded
+# one): what the box settles by itself goes by this list only.
+_held_ip() {
+  [[ "${_OWN_HELD}" == *$'\n'"${1}"$'\n'* ]]
 }
 
 # The standing pair this box is the active of, from the migration tool's
@@ -4941,13 +4950,29 @@ _v_baseline_reference() {
 }
 
 # True when the row host $1 is one no other box can reach this server
-# through: the socket's, a loopback address, or one of this box's own
-# addresses.
+# through: the socket's, a loopback address, or an address this box holds.
 _settle_near() {
   case "${1}" in
     localhost|127.0.0.1|::1) return 0 ;;
   esac
-  _own_ip "${1}"
+  _held_ip "${1}"
+}
+
+# True when every row of user $1 that the server has now is at such a host:
+# the rows were read before the login proofs, the standby's answer and the
+# parked homes, and one made meanwhile at another host changes whose the
+# name can be.
+_settle_near_now() {
+  local _x _h
+  _user_hosts_hex "${1}"
+  [[ -n "${_HOSTS_HEX}" ]] || return 1
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _h=$(_unhex "${_x}") || return 1
+    [[ "${_h}" =~ ^[A-Za-z0-9_.:%-]{1,255}$ ]] || return 1
+    _settle_near "${_h}" || return 1
+  done <<< "${_HOSTS_HEX}"
+  return 0
 }
 
 # Why settle leaves the login $1 ($2 its class, $3 the reason), kept once
@@ -5085,7 +5110,8 @@ _save_create() {
 #      left, every row of it: on a box that serves another box's databases
 #      that box's account always has a row at %, and taking its rights
 #      would cut a remote web head off. A login that exists only at this
-#      box's own hosts cannot be anyone else's
+#      box's own hosts cannot be anyone else's. One that defines a stored
+#      object keeps its rights too: the object runs with them
 #   3  each row "leftovers list" puts in section A, at any host: dropped,
 #      its grants and its CREATE USER line saved first, only while the
 #      account's purge parked its home, no root cnf of the account is
@@ -5120,6 +5146,13 @@ _v_baseline_settle() {
       _settle_note "${_u}@${_h}" pinned "changed since it was accepted"
     fi
     [[ "${_pb}" == "none" ]] || continue
+    # root at the address the cnf names, which the box does not hold: no
+    # login of this box reaches the row, and it is not this box's to give
+    # root's password to
+    if [[ "${_u}" == "root" ]] && _own_ip "${_h}" && ! _held_ip "${_h}"; then
+      _settle_note "${_u}@${_h}" pinned "its address is the cnf's, not one this box holds"
+      continue
+    fi
     if _base_pin "${_u}" "${_h}" "${_lk}" "${_sec}" rekey settle; then
       _nacc=$(( _nacc + 1 ))
       printf 'settled accepted %s@%s\n' "${_u}" "${_h}"
@@ -5159,6 +5192,20 @@ _v_baseline_settle() {
       continue
     fi
     if [[ "${_PC_V}" == "stop" ]]; then
+      # The server checks a definer's rights when its object runs: a
+      # trigger, view, routine or event this login defines would stop.
+      if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
+        _settle_note "${_u}@${_h}" UNCLASSIFIED "the stored objects could not all be read: nothing is taken on a guess"
+        continue
+      fi
+      if _settle_defines "${_u}" "${_h}"; then
+        _settle_note "${_u}@${_h}" UNCLASSIFIED "it defines ${_ST_OBJ}: taking its rights would stop that object"
+        continue
+      fi
+      if ! _settle_near_now "${_u}"; then
+        _settle_note "${_u}@${_h}" UNCLASSIFIED "it can be used from another host"
+        continue
+      fi
       if ! _save_grants "${_ux}" "${_hx}"; then
         _bad=$(( _bad + 1 ))
         _alrt "${_u}@${_h}: its grants could not be saved, so nothing of it is taken"
