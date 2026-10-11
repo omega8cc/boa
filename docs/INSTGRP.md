@@ -546,7 +546,7 @@ whatever the reading account's own state.
     instgrp webrevert  <oN> [--keep-enabled] [--force]
     instgrp webstatus  <oN>|aegir|all
     instgrp webcheck   [--report]
-    instgrp webdrift   <oN>|aegir [--report [--deep]] | --box
+    instgrp webdrift   <oN>|aegir [--report [--deep]] [--own night] | --box
 
 - `webconvert <oN>` takes the account as far as it already goes or to
   phase A, whichever is higher; `--phase-b` takes it to phase B; `--phase-a`
@@ -568,7 +568,8 @@ whatever the reading account's own state.
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
   what differs, or `FOREIGN` (someone outside the account holds `wg-oN`).
 - `webcheck` is the readiness report above.
-- `webdrift` is what the watchers read (below).
+- `webdrift` is what the watchers read (below); `--own night` is the
+  nightly's own form of it.
 
 Exit codes: 0 done, 1 failed, 2 residue or a group kept, 4 busy or frozen,
 5 not ready, 6 refused or deferred (opted out, phase B held by a share or
