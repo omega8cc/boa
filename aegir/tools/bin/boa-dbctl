@@ -5266,6 +5266,24 @@ _settle_cred() {
   return 1
 }
 
+# Where a switch is refused, settle is, in a switch's own code and words: on
+# a box being prepared as a standby, and while the box's pair is being
+# switched over. The pair's state is read fresh each time this is asked.
+_settle_gate() {
+  if [[ -e "${_PREP}" || -L "${_PREP}" ]]; then
+    _die 9 "busy standby-prep"
+  fi
+  _PAIR_READ="NO"
+  _pair_state
+  case "${_PAIR_PHASE}" in
+    cutover|rename-failed)
+      _msg "refused pair a switch to ${_PAIR_IP} is under way"
+      _die 7 "not-ready 1"
+      ;;
+  esac
+  return 0
+}
+
 # baseline settle: the box settles what it can name exactly, with no ruling
 # asked of anyone, in this order.
 #   1  each login of the server's own that is proven and not in the
@@ -5292,6 +5310,8 @@ _settle_cred() {
 #      the purge, the row defines no stored object, and the credential the
 #      parked home records for it opens that very row. A purged account's
 #      site users are left to "leftovers drop"
+# It is refused where a switch is (_settle_gate), at its start and again
+# once it holds the baseline lock.
 # Never touched in 2 either: a name two accounts' records claim, and every
 # login of another class. A database is never touched. Whatever it leaves
 # is said in a "left" line, and so is every finding the box-wide check
@@ -5302,28 +5322,7 @@ _v_baseline_settle() {
   local _ux _hx _u _h _g _lk _sec _key _l _uh _o _kd _r _k _c _subj _why
   local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _stale=0 _pins _pb _ps _seen=$'\n'
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
-  # Refused where a switch is: on a box being prepared as a standby, and
-  # while the box's pair is being switched over.
-  if [[ -e "${_PREP}" || -L "${_PREP}" ]]; then
-    _die 9 "busy standby-prep"
-  fi
-  _pair_state
-  case "${_PAIR_PHASE}" in
-    cutover|rename-failed)
-      _msg "refused pair a switch to ${_PAIR_IP} is under way"
-      _die 7 "not-ready 1"
-      ;;
-  esac
-  # A box on which no account is ever switched has nothing to settle for:
-  # said, and no error (a pass asks on every run).
-  if [[ -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
-    _info "baseline settle skipped proxysql"
-    return 0
-  fi
-  if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
-    _info "baseline settle skipped cluster"
-    return 0
-  fi
+  _settle_gate
   _ST_LEFT=$'\n'
   # Everything slow is read before the lock is taken, as leftovers drop
   # reads its list: the login proofs, the standby's answer and the parked
@@ -5334,6 +5333,11 @@ _v_baseline_settle() {
   _settle_defs_read
   _pins=$'\n'"${_AL_PINS}"
   _base_lock
+  # The reads above can take minutes. A standby marker, a standby in the
+  # making or a switch of the pair that began meanwhile ends the call here
+  # as it would have at its start, with nothing written.
+  _need_not_standby
+  _settle_gate
   _base_ready
   _base_load
   while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
@@ -6696,6 +6700,19 @@ _main() {
   if [[ "${_VERB}" == "baseline" && "${_ARGS[0]:-}" == "settle" \
     && "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
     _die 7 "not-released tenant isolation is switched on by a later release"
+  fi
+  # A box on which no account is ever switched has nothing to settle for.
+  # It says so before anything asks the server, and ends without an error:
+  # a pass asks on every run, whatever the local server answers there.
+  if [[ "${_VERB}" == "baseline" && "${_ARGS[0]:-}" == "settle" && "${#_ARGS[@]}" -eq 1 ]]; then
+    if [[ -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+      _info "baseline settle skipped proxysql"
+      exit 0
+    fi
+    if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+      _info "baseline settle skipped cluster"
+      exit 0
+    fi
   fi
   _TMPD=$(mktemp -d "${_RUNP}.tmp.XXXXXXXX" 2> /dev/null) || _die 7 "tmp-failed"
   _srv_init
