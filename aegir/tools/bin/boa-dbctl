@@ -24,8 +24,9 @@
 #
 # Root's box-wide verbs switch an account and judge the whole server: scope
 # (an account switched on, off, planned and shown), baseline (the record of
-# the server's own logins and of the rows an operator accepted), leftovers
-# (the users purged accounts left) and census (what each account holds).
+# the server's own logins and of the rows an operator accepted, or the box
+# settled by itself), leftovers (the users purged accounts left), census
+# (what each account holds) and report (each account switched, or why not).
 #
 # No verb takes free SQL. A password comes on stdin, one line, never on the
 # command line. Output: "OK <verb> <fields>" on stdout and exit 0, or
@@ -169,6 +170,9 @@ _HAS_PEAK="NO"
 _OPT_FORCE="NO"
 _OPT_REFUSALS="NO"
 _OPT_BORN="NO"
+_OPT_PASS="NO"
+_HAS_SHA="NO"
+_PEER_DOWN="NO"
 _QHELD="NO"
 _BOX_READ="NO"
 _PAIR_READ="NO"
@@ -212,14 +216,21 @@ Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
   scope <oN> on --sha <plan sha> [--force] [--accept-refusals]  (root)
                                      not in this release: a test server only,
                                      with /root/.tenant-isolation-test.cnf
+  scope <oN> on --pass                       (root, the switch an Octopus pass
+                                     makes: the plan read here, never forced,
+                                     under the same release rule)
   scope <oN> off                             (root)
   baseline plan                              (root)
   baseline accept <user>@<host>... | pinned | @persisted        (root)
   baseline revoke-global <user>@<host>       (root)
+  baseline settle                            (root, what the box can name
+                                     exactly, with no ruling asked)
   baseline rerecord root|aegir_root|master-panel...             (root)
   baseline reference <version>               (root, on an untouched server)
   leftovers list | drop --sha <list sha>     (root)
   census [--peak <days>]                     (root)
+  report                                     (root, each account switched or
+                                     why not, and what stops the box)
 EOF
 }
 
@@ -274,7 +285,7 @@ _log_note() {
 }
 
 _on_exit() {
-  local _rc=$? _n="-"
+  local _rc=$? _n="-" _note=""
   if [[ -n "${_STG}" && -d "${_STG}" && ! -L "${_STG}" ]]; then
     rm -rf -- "${_STG}"
   fi
@@ -292,8 +303,12 @@ _on_exit() {
     rm -rf -- "${_TMPD}"
   fi
   [[ -n "${_RESULT}" ]] || _RESULT="exit ${_rc}"
+  # a pass's switch says so on its line, whatever its result
+  if [[ "${_VERB}" == "scope" && "${_OPT_PASS}" == "YES" ]]; then
+    _note=" note=pass"
+  fi
   if [[ -n "${_VERB}" ]]; then
-    _log_line "caller=$(_log_safe "${_CALLER}") account=$(_log_safe "${_ACCT}") verb=$(_log_safe "${_VERB}") db=$(_log_safe "${_LOG_DB}") user=$(_log_safe "${_LOG_UH}") result=$(_log_safe "${_RESULT// /_}") count=${_n}"
+    _log_line "caller=$(_log_safe "${_CALLER}") account=$(_log_safe "${_ACCT}") verb=$(_log_safe "${_VERB}") db=$(_log_safe "${_LOG_DB}") user=$(_log_safe "${_LOG_UH}") result=$(_log_safe "${_RESULT// /_}") count=${_n}${_note}"
   fi
   return 0
 }
@@ -726,7 +741,7 @@ _identity() {
     _CALLER="root"
     [[ -n "${SUDO_USER+x}" ]] && _CALLER="root:${SUDO_USER}"
     case "${_VERB}" in
-      witness|baseline|leftovers|census)
+      witness|baseline|leftovers|census|report)
         # box-wide: it names no account
         [[ -z "${_OPT_ACCOUNT}" ]] || _die 2 "usage ${_VERB} takes no account"
         return 0
@@ -816,8 +831,8 @@ _need_broker() {
 # would differ from the source's at promotion. Every verb that writes the
 # server, the registry or an account's backups/ is refused; the reads
 # (exists, grants, grants-scan, list, a plan, a status, a list, the census)
-# stay open. The witness reads nothing there: what a standby holds arrives
-# from its source, whose own witness reads it.
+# stay open. The witness and the report read nothing there: what a standby
+# holds arrives from its source, whose own witness and report read it.
 _need_not_standby() {
   case "${_VERB}" in
     exists|grants|grants-scan|list|census) return 0 ;;
@@ -829,9 +844,17 @@ _need_not_standby() {
       ;;
     baseline)
       case "${_ARGS[0]:-}" in
-        accept|revoke-global|rerecord) ;;
+        accept|revoke-global|rerecord|settle) ;;
         *) return 0 ;;
       esac
+      ;;
+    report)
+      if [[ -e "${_STANDBY}" || -L "${_STANDBY}" || -e "${_XMASS_INIT}" || -L "${_XMASS_INIT}" \
+        || -e "${_STANDBY_INIT}" || -L "${_STANDBY_INIT}" ]]; then
+        _info "report standby"
+        exit 0
+      fi
+      return 0
       ;;
     leftovers)
       [[ "${_ARGS[0]:-}" == "drop" ]] || return 0
@@ -3055,11 +3078,11 @@ _wit_registry() {
 
 # Root's box-wide verbs: scope (an account switched on and off), baseline
 # (the record of the server's own logins and of the rows an operator
-# accepted), leftovers (the users purged accounts left) and census (what
-# each account holds). They read what every account and the master keep on
-# disk and what the server holds, and judge every login, grant row and
-# stored object: once an account is switched, nothing left on the server
-# may hand it its former rights back.
+# accepted), leftovers (the users purged accounts left), census (what each
+# account holds) and report (each account switched, or why not). They read
+# what every account and the master keep on disk and what the server holds,
+# and judge every login, grant row and stored object: once an account is
+# switched, nothing left on the server may hand it its former rights back.
 
 # This box's own addresses, one per line in _OWN_IPS, and its name in _BOX.
 _box_facts() {
@@ -4914,6 +4937,241 @@ _v_baseline_reference() {
   _info "baseline reference ${_SRV_REFV} rows=${_n} objects=${_SYSOBJ_N}"
 }
 
+# A login name settle never touches, whatever host its row is at: root,
+# aegir_root, and every name of an account's shape. On a box that serves
+# another box's databases such a row can be that box's own login, which no
+# record here names: taking its rights would cut a remote web head off.
+_settle_spares() {
+  case "${1}" in
+    root|aegir_root) return 0 ;;
+  esac
+  [[ "${1}" =~ ^[a-z][a-z0-9_]{0,31}$ ]]
+}
+
+# Why settle leaves the login $1 ($2 its class, $3 the reason), kept once
+# per login in _ST_LEFT; _settle_why reads it back into _ST_Y.
+_settle_note() {
+  [[ "${_ST_LEFT}" == *$'\n'"${1}|"* ]] && return 0
+  _ST_LEFT="${_ST_LEFT}${1}|${2}|${3}"$'\n'
+}
+
+_settle_why() {
+  local _r
+  [[ "${_ST_LEFT}" == *$'\n'"${1}|"* ]] || return 1
+  _r="${_ST_LEFT#*$'\n'"${1}|"}"
+  _r="${_r%%$'\n'*}"
+  _ST_Y="${_r#*|}"
+}
+
+# The class of the login $1@$2 as the box-wide check has it, into _ST_C
+# (pinned for one of the server's own, as a plan prints it).
+_settle_class() {
+  _pair_glob "${1}" "${2}"
+  _pair_class "${1}" "${2}" "${_PGL}" "$(_hex "${1}")@$(_hex "${2}")"
+  _ST_C="${_PC_K}"
+  [[ "${_ST_C}" != "SYSPIN" ]] || _ST_C="pinned"
+  return 0
+}
+
+# baseline settle: the box settles what it can name exactly, with no ruling
+# asked of anyone, in this order.
+#   1  each login of the server's own that is proven and not in the
+#      baseline as it is: recorded, as "accept pinned" records it
+#   2  each login no record names: one that holds a global privilege loses
+#      it, its grants saved first, and is accepted; one that holds none and
+#      waits for a ruling is accepted
+#   3  each row "leftovers list" puts in section A: dropped, for an account
+#      whose purge parked its home, unless the row defines a stored object
+# Never touched in 2: a name _settle_spares knows, a name two accounts'
+# records claim, and every login of another class. A database is never
+# touched. Whatever it leaves is said in a "left" line, and so is every
+# finding the box-wide check still has afterwards; a second run on the same
+# box settles nothing and says the same lines. A read that fails ends the
+# call at once; a change that fails is said, and the call ends ERR 7 once
+# the rest is done.
+_v_baseline_settle() {
+  local _ux _hx _u _h _g _lk _sec _key _l _uh _o _ty _sx _nx _def _r _k _c _subj _why _obj
+  local _nacc=0 _nrev=0 _ndrop=0 _nleft=0 _bad=0 _pins _seen=$'\n'
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage baseline settle"
+  _base_lock
+  _ST_LEFT=$'\n'
+  # What purged accounts left is read first: 2 leaves those rows to 3.
+  _leftovers_build
+  _pins=$'\n'"${_AL_PINS}"
+  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
+    [[ -n "${_g}" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
+    _pair_class "${_u}" "${_h}" "${_g}" "${_ux}@${_hx}"
+    [[ "${_PC_K}" == "SYSPIN" ]] || continue
+    [[ "${_pins}" == *$'\n'"pinned ${_u}@${_h} global=${_g} proof=ok baseline=ok"$'\n'* ]] && continue
+    if _base_pin "${_u}" "${_h}" "${_lk}" "${_sec}" rekey settle; then
+      _nacc=$(( _nacc + 1 ))
+      printf 'settled accepted %s@%s\n' "${_u}" "${_h}"
+      continue
+    fi
+    # not proven: the box-wide check says why below
+    case "${_WHY}" in
+      rekey-failed|baseline-write-failed)
+        _bad=$(( _bad + 1 ))
+        _alrt "${_u}@${_h} is not accepted: ${_WHY}"
+        ;;
+    esac
+  done <<< "${_AL_PAIRS}"
+  _SAVEF="${_SAVED}/revoke-$(date -u +%Y%m%dT%H%M%SZ)-$$.sql"
+  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
+    [[ -n "${_g}" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
+    _key="${_ux}@${_hx}"
+    _pair_class "${_u}" "${_h}" "${_g}" "${_key}"
+    [[ "${_PC_K}" == "UNCLASSIFIED" ]] || continue
+    # a purged account's last panel user: 3 drops it, or says why not
+    [[ "${_LO_A}${_LO_B}" == *" ${_u}@${_h} account="* ]] && continue
+    # accepted already, and as it was then
+    [[ $'\n'"${_AL_RULES}" == *$'\n'"ruling UNCLASSIFIED ${_u}@${_h} baseline=ok"$'\n'* ]] && continue
+    if [[ "${_UC_K}" == "CONFLICT" ]]; then
+      _settle_note "${_u}@${_h}" UNCLASSIFIED "two accounts' records name it: it is neither's, and not settled here"
+      continue
+    fi
+    if _settle_spares "${_u}"; then
+      _settle_note "${_u}@${_h}" UNCLASSIFIED "a name of an account's shape is never settled here: it can be the login of another box this one serves"
+      continue
+    fi
+    if [[ "${_PC_V}" == "stop" ]]; then
+      if ! _save_grants "${_ux}" "${_hx}"; then
+        _bad=$(( _bad + 1 ))
+        _alrt "${_u}@${_h}: its grants could not be saved, so nothing of it is taken"
+        continue
+      fi
+      if ! _revoke_global "${_ux}" "${_hx}"; then
+        _bad=$(( _bad + 1 ))
+        _alrt "${_u}@${_h}: its global privileges could not all be taken (its grants are in ${_SAVEF##*/})"
+        continue
+      fi
+      _nrev=$(( _nrev + 1 ))
+      _log_note "settle-revoked ${_u}@${_h}"
+      printf 'settled revoked %s@%s saved=%s\n' "${_u}" "${_h}" "${_SAVEF##*/}"
+      # with no grant row left it holds nothing at all: no ruling to record
+      [[ "${_AL_HOLDS}" == *$'\n'"${_key}"$'\n'* ]] || continue
+    fi
+    if _fp "${_ux}" "${_hx}" && _base_put "${_key}" ruled settle; then
+      _nacc=$(( _nacc + 1 ))
+      printf 'settled accepted %s@%s\n' "${_u}" "${_h}"
+    else
+      _bad=$(( _bad + 1 ))
+      _alrt "${_u}@${_h} is not accepted: baseline-write-failed"
+    fi
+  done <<< "${_AL_PAIRS}"
+  # A root cnf with no home and no parked home is a disk not mounted or an
+  # account half made, never a purge: its logins are live. A row that
+  # defines a stored object stays too: the drop would leave the object
+  # without its definer (the host compared without case, as the server
+  # compares host names).
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    _uh="${_l#A }"
+    _uh="${_uh%% *}"
+    _u="${_uh%@*}"
+    _h="${_uh##*@}"
+    _o="${_l#* account=}"
+    _o="${_o%% *}"
+    _settle_class "${_u}" "${_h}"
+    _c="${_ST_C}"
+    if [[ ! -d "${_ZOMBIE}/${_o}" || -L "${_ZOMBIE}/${_o}" ]]; then
+      _settle_note "${_uh}" "${_c}" "the purge of ${_o} parked no home: its login is not dropped on root's record alone"
+      continue
+    fi
+    _obj=""
+    _lc "${_h}"
+    _r="${_LC}"
+    while IFS='|' read -r _ty _sx _nx _def; do
+      [[ -n "${_ty}" && "${_def%@*}" == "${_u}" ]] || continue
+      _lc "${_def##*@}"
+      [[ "${_LC}" == "${_r}" ]] || continue
+      _obj="${_ty} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")")"
+      break
+    done <<< "${_AL_DEF}"
+    if [[ -n "${_obj}" ]]; then
+      _settle_note "${_uh}" "${_c}" "it defines ${_obj}: a drop would leave that without its definer"
+      continue
+    fi
+    if _sql_prepared "'DROP USER ', $(_sql_qid "$(_hex "${_u}")"), '@', $(_sql_qid "$(_hex "${_h}")")"; then
+      _ndrop=$(( _ndrop + 1 ))
+      _log_note "leftover-dropped ${_u}@${_h}"
+      if [[ "${_BASE_HAS}" == "YES" ]]; then
+        _sql "/*q:basedel*/ DELETE FROM ${_BASE_TBL} WHERE pair = '$(_hex "${_u}")@$(_hex "${_h}")';"
+      fi
+      printf 'settled dropped %s@%s\n' "${_u}" "${_h}"
+    else
+      _bad=$(( _bad + 1 ))
+      _alrt "${_u}@${_h} could not be dropped (${_SQL_ERRNO})"
+    fi
+  done <<< "${_LO_A}"
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    _uh="${_l#B }"
+    _uh="${_uh%% *}"
+    _r="${_l#* global=}"
+    _settle_class "${_uh%@*}" "${_uh##*@}"
+    _settle_note "${_uh}" "${_ST_C}" "${_r#* }"
+  done <<< "${_LO_B}"
+  flock -u 7 2> /dev/null
+  # what the box-wide check says now, read again after a change
+  if [[ "$(( _nacc + _nrev + _ndrop + _bad ))" -gt 0 ]]; then
+    _AL_LOADED="NO"
+    _al_judge ""
+  fi
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    _r="${_l#stop }"
+    _k="${_r%% *}"
+    _r="${_r#* }"
+    _c="${_k}"
+    _subj="-"
+    _why="${_r}"
+    case "${_k}" in
+      login)
+        _subj="${_r%% *}"
+        _why="${_r#* }"
+        if [[ "${_subj}" != hex:* ]]; then
+          _settle_class "${_subj%@*}" "${_subj##*@}"
+          _c="${_ST_C}"
+          _why="${_why#"(${_PC_K}) "}"
+          if _settle_why "${_subj}"; then
+            _why="${_ST_Y}"
+            _seen="${_seen}${_subj}"$'\n'
+          fi
+        fi
+        ;;
+      grant)
+        _subj="${_r% (*}"
+        _why="${_r##* (}"
+        _why="${_why%)}"
+        ;;
+      object)
+        _subj="${_r%% *}"
+        _why="${_r#* }"
+        _subj="${_subj} ${_why%% *}"
+        _why="${_why#* }"
+        ;;
+      reference) _subj="${_SRV_REFV}" ;;
+      roles)
+        _subj="mandatory_roles"
+        _why="${_r#mandatory_roles }"
+        ;;
+      variables) _subj="persisted" ;;
+    esac
+    _nleft=$(( _nleft + 1 ))
+    printf 'left %s %s: %s\n' "${_c}" "${_subj}" "${_why}"
+  done <<< "${_AL_OUT}"
+  # a row 3 left that stops nothing (accepted once by an operator)
+  while IFS='|' read -r _subj _c _why; do
+    [[ -n "${_subj}" ]] || continue
+    [[ "${_seen}" == *$'\n'"${_subj}"$'\n'* ]] && continue
+    _nleft=$(( _nleft + 1 ))
+    printf 'left %s %s: %s\n' "${_c}" "${_subj}" "${_why}"
+  done <<< "${_ST_LEFT}"
+  [[ "${_bad}" -eq 0 ]] || _die 7 "settle-incomplete ${_bad}"
+  _info "baseline settle accepted=${_nacc} revoked=${_nrev} dropped=${_ndrop} left=${_nleft} stops=${_AL_NSTOP}"
+}
+
 _v_baseline() {
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   case "${_ARGS[0]:-}" in
@@ -4923,9 +5181,10 @@ _v_baseline() {
       ;;
     accept) _v_baseline_accept ;;
     revoke-global) _v_baseline_revoke_global ;;
+    settle) _v_baseline_settle ;;
     rerecord) _v_baseline_rerecord ;;
     reference) _v_baseline_reference ;;
-    *) _die 2 "usage baseline plan|accept|revoke-global|rerecord|reference" ;;
+    *) _die 2 "usage baseline plan|accept|revoke-global|settle|rerecord|reference" ;;
   esac
 }
 
@@ -5011,8 +5270,14 @@ _scope_pre() {
     case "${_PAIR_PHASE}" in
       cutover|rename-failed) _sp_refuse "pair a switch to ${_PAIR_IP} is under way" ;;
     esac
-    _out=$(_peer "[ -e /root/.standby.cnf ] && echo PF-STANDBY; sudo -n -l -U ${_a} /usr/local/bin/boa-dbctl > /dev/null 2>&1 && echo PF-SUDO; mysql --defaults-file=/root/.my.cnf -BNe 'SELECT CONCAT(\"PF-TRUST=\", @@GLOBAL.log_bin_trust_function_creators)' 2> /dev/null; echo PF-READ")
+    # A standby that gave no answer is not asked again in the same call
+    # (the report reads every account's plan in one).
+    _out=""
+    if [[ "${_PEER_DOWN}" != "YES" ]]; then
+      _out=$(_peer "[ -e /root/.standby.cnf ] && echo PF-STANDBY; sudo -n -l -U ${_a} /usr/local/bin/boa-dbctl > /dev/null 2>&1 && echo PF-SUDO; mysql --defaults-file=/root/.my.cnf -BNe 'SELECT CONCAT(\"PF-TRUST=\", @@GLOBAL.log_bin_trust_function_creators)' 2> /dev/null; echo PF-READ")
+    fi
     if [[ "${_out}" != *PF-READ* ]]; then
+      _PEER_DOWN="YES"
       _sp_refuse "pair its standby ${_PAIR_IP} could not be read"
     else
       [[ "${_out}" == *PF-STANDBY* ]] \
@@ -5189,12 +5454,23 @@ _acct_busy() {
   return 1
 }
 
+# The account's own running tasks waited out: a task that began on the
+# direct path must not end on the broker's.
+_tasks_wait() {
+  local _w=0
+  while _acct_busy; do
+    [[ "${_w}" -lt "${_TASK_TRIES}" ]] || _die 9 "busy tasks"
+    sleep "${_WAIT_SEC}" 7>&- 8>&- 9>&-
+    _w=$(( _w + 1 ))
+  done
+  return 0
+}
+
 # The task queue held for the switch, as a maintenance move holds it: the
 # pause file with this call's pid (a leaked one whose owner is gone is
 # cleared, never obeyed), then the account's own running tasks waited out.
-# A task that began on the direct path must not end on the broker's.
 _queue_hold() {
-  local _p _w=0
+  local _p
   if [[ -e "${_BRUN}" || -e "${_OINST}" ]]; then
     _die 9 "busy boa-run"
   fi
@@ -5210,12 +5486,7 @@ _queue_hold() {
     _die 9 "busy queue-held"
   fi
   _QHELD="YES"
-  while _acct_busy; do
-    [[ "${_w}" -lt "${_TASK_TRIES}" ]] || _die 9 "busy tasks"
-    sleep "${_WAIT_SEC}" 7>&- 8>&- 9>&-
-    _w=$(( _w + 1 ))
-  done
-  return 0
+  _tasks_wait
 }
 
 # The control file, written whole beside its name and moved over it. kept=
@@ -5278,11 +5549,18 @@ _scope_back() {
 # rows and from every panel user it has had; the rows not in use dropped,
 # but for one that defines a stored object, which stays as a row in use;
 # and a server verify of the account as its proof.
+# A pass's own switch (--pass, and --born for a new account's first pass)
+# reads the plan here instead of being given its hash. A pass holds the
+# task runner itself, so neither takes the queue's pause, which a switch
+# that is killed would leave behind. --pass still waits for the account's
+# running tasks: an account that is not new can have one from before the
+# pass. It takes none of the options that let a switch past a refusal
+# (_main).
 _v_scope_on() {
   local _d _rc _x _h _l _ux _hx _u _k _t _dp _dx _keep _n=0 _drop=0 _who _lit
   _scope_plan
-  if [[ "${_OPT_BORN}" == "YES" ]]; then
-    # a new account's first pass: never on a standby in the making
+  if [[ "${_OPT_BORN}" == "YES" || "${_OPT_PASS}" == "YES" ]]; then
+    # a pass's switch: never on a standby in the making
     if [[ -e "${_PREP}" || -L "${_PREP}" ]]; then
       _die 9 "busy standby-prep"
     fi
@@ -5301,7 +5579,11 @@ _v_scope_on() {
     _die 6 "not-proven ${_AL_NSTOP}"
   fi
   [[ "${_AL_NSTOP}" -eq 0 ]] || _log_note "forced-over=${_AL_NSTOP}"
-  [[ "${_OPT_BORN}" == "YES" ]] || _queue_hold
+  if [[ "${_OPT_PASS}" == "YES" ]]; then
+    _tasks_wait
+  elif [[ "${_OPT_BORN}" != "YES" ]]; then
+    _queue_hold
+  fi
   _reg_lock
   _SAVEF="${_SAVED}/${_ACCT}-$(date -u +%Y%m%dT%H%M%SZ)-$$.sql"
   _user_hosts_hex "${_ACCT}"
@@ -5664,6 +5946,106 @@ _v_census() {
   _info "census accounts=${_all} version=${_SRV_VER} cap-enforced=${_f} reference=${_REF_STATE}"
 }
 
+# Why account ${_ACCT} is not switched, as its own plan says it, into
+# _RP_WHY: each refusal, each site left unregistered, and, when nothing of
+# its own holds it, how many findings of the box-wide check its switch
+# would stop at. $1 = how many of those findings are global privileges of
+# its own instance and panel users, which its switch takes and its own plan
+# does not count.
+_report_plan() {
+  local _l _r _n
+  _RP_WHY=""
+  _SP_PLAN=""
+  _SP_NPRE=0
+  _scope_pre
+  _scope_sites
+  _scope_rows
+  if [[ "${#_SP_ROWS[@]}" -eq 0 ]]; then
+    _sp_refuse "login the account's own database login opens no row of it"
+  fi
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "refused "*) _RP_WHY="${_RP_WHY:+${_RP_WHY}, }${_l#refused }" ;;
+      "unregistered "*)
+        _r="${_l#unregistered }"
+        _RP_WHY="${_RP_WHY:+${_RP_WHY}, }unregistered ${_r%% *} ${_r##* }"
+        ;;
+    esac
+  done <<< "${_SP_PLAN}"
+  [[ -z "${_RP_WHY}" ]] || return 0
+  _n=$(( _AL_NSTOP - ${1} ))
+  if [[ "${_n}" -gt 0 ]]; then
+    _RP_WHY="box-not-proven ${_n}"
+  fi
+  return 0
+}
+
+# report: each account the census lists, switched or why not; then every
+# finding of the box-wide check, once, and how the server stands against
+# its version's reference. The box is read once for all accounts, each
+# account's own part of its plan once. It logs in as a plan does and
+# changes nothing. On a standby it has already answered
+# (_need_not_standby).
+_v_report() {
+  local _a _rc _l _x _u _h _subj _why _own=$'\n' _k _n=0 _sw=0 _un=0
+  [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
+  _box_facts
+  _pair_state
+  _al_judge ""
+  # An account's own instance and panel users that still hold a global
+  # privilege stop the box as it stands, never that account's own switch.
+  while IFS= read -r _l; do
+    [[ "${_l}" == "stop login "* ]] || continue
+    _subj="${_l#stop login }"
+    _subj="${_subj%% *}"
+    [[ "${_subj}" != hex:* && "${_subj}" == *@* ]] || continue
+    _u="${_subj%@*}"
+    _h="${_subj##*@}"
+    _pair_class "${_u}" "${_h}" Y "$(_hex "${_u}")@$(_hex "${_h}")"
+    case "${_PC_K}" in
+      INST|PANEL|PANELGEN) _own="${_own}${_PC_O}"$'\n' ;;
+    esac
+  done <<< "${_AL_OUT}"
+  for _a in ${_AL_ACCTS}; do
+    _n=$(( _n + 1 ))
+    _ACCT="${_a}"
+    _broker_mode
+    _rc=$?
+    if [[ "${_rc}" -eq 0 ]]; then
+      _sw=$(( _sw + 1 ))
+      printf '%s switched\n' "${_a}"
+      continue
+    fi
+    _un=$(( _un + 1 ))
+    _why=""
+    # a control file that is not valid: its tasks take the direct path
+    [[ "${_rc}" -eq 1 ]] || _why="control-file-invalid"
+    if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+      _why="${_why:+${_why}, }not-released"
+    fi
+    if grep -qE "^_DB_BROKER_ARM=[\"']?NO[\"']?[[:space:]]*$" \
+      "${_RHOME}/.${_a}.octopus.cnf" 2> /dev/null; then
+      # kept out by its own cnf: its plan is not read
+      _why="${_why:+${_why}, }opted-out"
+    else
+      _k=0
+      while IFS= read -r _x; do
+        [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
+      done <<< "${_own}"
+      _report_plan "${_k}"
+      [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
+    fi
+    printf '%s not-switched %s\n' "${_a}" "${_why:-ready}"
+  done
+  _ACCT=""
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] && printf 'box %s\n' "${_l}"
+  done <<< "${_AL_OUT}"
+  _ref_state
+  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} stops=${_AL_NSTOP} reference=${_REF_STATE}"
+}
+
 _parse_args() {
   _ARGS=()
   while [[ "$#" -gt 0 ]]; do
@@ -5680,12 +6062,19 @@ _parse_args() {
         _OPT_BORN="YES"
         shift
         ;;
+      --pass)
+        _OPT_PASS="YES"
+        shift
+        ;;
       --account|--via|--user|--db|--server|--sha|--peak)
         [[ "$#" -ge 2 ]] || _die 2 "usage ${1} needs a value"
         case "${1}" in
           --account) _OPT_ACCOUNT="${2}" ;;
           --via) _OPT_VIA="${2}" ;;
-          --sha) _OPT_SHA="${2}" ;;
+          --sha)
+            _OPT_SHA="${2}"
+            _HAS_SHA="YES"
+            ;;
           --peak)
             _OPT_PEAK="${2}"
             _HAS_PEAK="YES"
@@ -5732,12 +6121,21 @@ _main() {
   _parse_args "$@"
   case "${_VERB}" in
     exists|reserve|create|drop|grant|revoke|grants|grant-select|revoke-select|grants-scan|selftest|dump|load|list|register|regrant|rekey|purge|witness) ;;
-    scope|baseline|leftovers|census) ;;
+    scope|baseline|leftovers|census|report) ;;
     *) _die 2 "usage unknown-verb" ;;
   esac
   if [[ "${_VERB}" != "scope" && ( "${_OPT_FORCE}" == "YES" \
-    || "${_OPT_REFUSALS}" == "YES" || "${_OPT_BORN}" == "YES" ) ]]; then
+    || "${_OPT_REFUSALS}" == "YES" || "${_OPT_BORN}" == "YES" \
+    || "${_OPT_PASS}" == "YES" ) ]]; then
     _die 2 "usage unknown-option"
+  fi
+  # A pass's switch reads the plan itself and is never forced: it takes no
+  # hash and none of the options that let a switch go past a refusal.
+  if [[ "${_OPT_PASS}" == "YES" ]]; then
+    [[ "${_ARGS[1]:-}" == "on" && "${_HAS_SHA}" == "NO" && "${_OPT_BORN}" == "NO" ]] \
+      || _die 2 "usage scope <oN> on --pass"
+    [[ "${_OPT_FORCE}" == "NO" && "${_OPT_REFUSALS}" == "NO" ]] \
+      || _die 2 "usage scope <oN> on --pass"
   fi
   if [[ -n "${_OPT_SHA}" && "${_VERB}" != "scope" && "${_VERB}" != "leftovers" ]]; then
     _die 2 "usage unknown-option"
@@ -5755,7 +6153,7 @@ _main() {
   # The root-only verbs refuse an account's call here, before anything
   # touches the server; every other verb needs broker mode first.
   case "${_VERB}" in
-    register|regrant|rekey|purge|witness|scope|baseline|leftovers|census)
+    register|regrant|rekey|purge|witness|scope|baseline|leftovers|census|report)
       [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
       ;;
     *) _need_broker ;;
@@ -5794,6 +6192,7 @@ _main() {
     baseline) _v_baseline ;;
     leftovers) _v_leftovers ;;
     census) _v_census ;;
+    report) _v_report ;;
   esac
   exit 0
 }
