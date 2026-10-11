@@ -6013,14 +6013,32 @@ _scope_owes() {
   return 1
 }
 
+# The account's grant on each database it has created, given to its row at
+# host $1 alone, with the helper the switch gives them with. It runs in a
+# shell of its own, so nothing in it ends the call: 1 when it could not all
+# be done.
+_scope_row_grants() {
+  _host_ok "${1}" || return 1
+  ( _ROWS=("${1}")
+    _regrant_all ) > /dev/null 2>&1
+}
+
 # A step of the switch failed after the account's rights began to change:
 # it goes back to the direct path, and the call says which step. Not so an
 # account a pass found switched and was only bringing back in line: giving
 # it every right on all databases again, unattended, is never the remedy
 # for a step that failed, so it stays switched and the call says which.
+# The step may have taken, with the rights it was after, the grants the
+# instance row it was at ($2, where it was at one) holds on the account's
+# own databases: a row in use without them fails every task, and a row
+# kept for its stored objects stops those. They are given back to that row
+# first, as far as that goes.
 _scope_back() {
   if [[ "${_SP_KEEP}" == "YES" ]]; then
-    _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched"
+    if [[ -n "${2:-}" ]] && ! _scope_row_grants "${2}"; then
+      _alrt "${_ACCT}: the grants of its row at ${2} on its own databases could not all be given back"
+    fi
+    _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched (boa-dbctl regrant --account ${_ACCT} gives its rows in use their grants on its own databases again)"
     _die 7 "scope-failed ${1}"
   fi
   _alrt "${_ACCT}: the switch stopped at ${1}: the account is put back on the direct path"
@@ -6169,7 +6187,7 @@ _v_scope_on() {
     [[ -n "${_x}" ]] || continue
     _h=$(_unhex "${_x}") || _scope_back instance-row
     if [[ "${_keep}" == *$'\n'"$(printf '%s' "${_h}" | tr '[:upper:]' '[:lower:]')"$'\n'* ]]; then
-      _revoke_global "$(_hex "${_ACCT}")" "${_x}" || _scope_back revoke-global
+      _revoke_global "$(_hex "${_ACCT}")" "${_x}" || _scope_back revoke-global "${_h}"
       _n=$(( _n + 1 ))
       continue
     fi
@@ -6188,8 +6206,8 @@ _v_scope_on() {
     # Not prepared: 5.7 refuses REVOKE ALL PRIVILEGES, GRANT OPTION as a
     # prepared statement; _host_ok above kept the host to plain characters.
     _sql "/*q:dcl*/ REVOKE ALL PRIVILEGES, GRANT OPTION FROM \`${_ACCT}\`@\`${_h}\`;" \
-      || _scope_back revoke-kept
-    _global_privs "${_ACCT}" "${_x}" && _scope_back revoke-kept
+      || _scope_back revoke-kept "${_h}"
+    _global_privs "${_ACCT}" "${_x}" && _scope_back revoke-kept "${_h}"
     _SP_ROWS+=("${_h}")
     _SP_KEPT+=("${_h}")
     _ROWS=("${_SP_ROWS[@]}")
