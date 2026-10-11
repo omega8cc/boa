@@ -4088,18 +4088,21 @@ _wg_roots() {
 # The paths the walks leave as they are, one resolved path per line: what
 # a ground of the share and store gate names (a site dir outside the
 # profile's tree, a files or private store in another account's tree or
-# outside the account's accepted places), unless a site or a store of the
-# profile's own lies at or below it: the walk could not leave that and
-# still convert the account.
+# outside the account's accepted places). Never one that holds a site or a
+# store of the profile's own, and never one inside a store of the
+# profile's own: that is the account's own web files, which the walks
+# take whole.
 _wg_left() {
-  local _al _s _p _x _own _in _cand
+  local _al _s _p _x _own _dirs _in _cand _parts
   _cand=$( { _wg_sites_out | sed 's/^[^ ]* //'
     while read -r _al _s; do
       [ -n "${_s}" ] || continue
       _wg_site_parts "${_s}" | sed -n -e 's/^outside //p' -e 's/^share //p'
     done < <(_wg_sites); } | awk '!_seen[$0]++')
   [ -n "${_cand}" ] || return 0
-  _own=$( { _wg_sites; _wg_parts | grep -v -e '^outside ' -e '^share '; } | sed 's/^[^ ]* //')
+  _parts=$(_wg_parts | grep -v -e '^outside ' -e '^share ')
+  _own=$( { _wg_sites; printf '%s\n' "${_parts}"; } | sed 's/^[^ ]* //')
+  _dirs=$(printf '%s\n' "${_parts}" | sed -n -e 's/^store //p' -e 's/^private //p' -e 's/^public //p')
   while IFS= read -r _p; do
     [ -n "${_p}" ] || continue
     _in=NO
@@ -4109,6 +4112,14 @@ _wg_left() {
         "${_p}"/*) _in=YES; break ;;
       esac
     done <<< "${_own}"
+    if [ "${_in}" = "NO" ]; then
+      while IFS= read -r _x; do
+        [ -n "${_x}" ] || continue
+        case "${_p}/" in
+          "${_x}"/*) _in=YES; break ;;
+        esac
+      done <<< "${_dirs}"
+    fi
     [ "${_in}" = "NO" ] && printf '%s\n' "${_p}"
   done <<< "${_cand}"
   return 0
