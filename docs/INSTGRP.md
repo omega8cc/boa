@@ -631,9 +631,8 @@ accounts held last night:
 
     grep -h 'web group: DR10' /var/log/boa/daily/acct-*.log
 
-(logs of earlier months are kept under `/var/log/boa/daily/<MM-YYYY>/`),
-and to read the line for one account now: `instgrp webdrift oN --own
-night`.
+Logs of earlier months are kept under `/var/log/boa/daily/<MM-YYYY>/`. To
+read the line for one account now: `instgrp webdrift oN --own night`.
 
 On any box, `/root/.standby.prep.cnf` standing for over three days
 without `/root/.standby.cnf` is reported too: while it stands, no account
