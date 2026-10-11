@@ -5085,13 +5085,16 @@ _settle_purge_time() {
 
 # When the password of the login whose hex user and host are $1 and $2 was
 # last set, as the server keeps it, into _ST_PLC (epoch seconds, empty when
-# the server keeps none or the row is gone), and whether that is no later
-# than the time $3 into _ST_OLD (Y or N), compared by the server.
+# the server keeps none or the row is gone: _ST_ROW says which), and
+# whether that is no later than the time $3 into _ST_OLD (Y or N), compared
+# by the server.
 _settle_plc() {
   _ST_PLC=""
   _ST_OLD="N"
+  _ST_ROW="NO"
   [[ "${1}" =~ ^[0-9A-F]*$ && "${2}" =~ ^[0-9A-F]*$ && "${3}" =~ ^[0-9]{1,12}$ ]] || return 1
   _sql_or_die "SELECT /*q:plc*/ CONCAT_WS('|', IFNULL(UNIX_TIMESTAMP(password_last_changed), ''), IF(password_last_changed IS NOT NULL AND UNIX_TIMESTAMP(password_last_changed) <= ${3}, 'Y', 'N')) FROM mysql.user WHERE HEX(User) = '${1}' AND HEX(Host) = '${2}'" plc
+  [[ -z "${_SQL_OUT}" ]] || _ST_ROW="YES"
   [[ "${_SQL_OUT}" =~ ^[0-9]+\|[YN]$ ]] || return 0
   _ST_PLC="${_SQL_OUT%%|*}"
   _ST_OLD="${_SQL_OUT#*|}"
@@ -5168,12 +5171,24 @@ _v_baseline_settle() {
     _info "baseline settle skipped cluster"
     return 0
   fi
-  _base_lock
   _ST_LEFT=$'\n'
-  # What purged accounts left is read first: 2 leaves those rows to 3.
+  # Everything slow is read before the lock is taken, as leftovers drop
+  # reads its list: the login proofs, the standby's answer and the parked
+  # homes. A root tool that records its own row again waits for this lock
+  # for a minute at most. What a write depends on is read again under it.
   _leftovers_build
   _settle_defs_read
   _pins=$'\n'"${_AL_PINS}"
+  # the user names with a row at a host that is not this box's own
+  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
+    [[ -n "${_g}" ]] || continue
+    if [[ "${_h}" == "?" ]] || ! _settle_near "${_h}"; then
+      [[ "${_far}" == *$'\n'"${_ux}"$'\n'* ]] || _far="${_far}${_ux}"$'\n'
+    fi
+  done <<< "${_AL_PAIRS}"
+  _base_lock
+  _base_ready
+  _base_load
   while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
     [[ -n "${_g}" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
     _pair_class "${_u}" "${_h}" "${_g}" "${_ux}@${_hx}"
@@ -5194,6 +5209,10 @@ _v_baseline_settle() {
       _settle_note "${_u}@${_h}" pinned "its address is the cnf's, not one this box holds"
       continue
     fi
+    # recorded by another call since the check read it
+    if _base_get "${_ux}@${_hx}" && [[ "${_B_CLASS}" == "pinned" ]]; then
+      continue
+    fi
     if _base_pin "${_u}" "${_h}" "${_lk}" "${_sec}" rekey settle; then
       _nacc=$(( _nacc + 1 ))
       printf 'settled accepted %s@%s\n' "${_u}" "${_h}"
@@ -5206,13 +5225,6 @@ _v_baseline_settle() {
         _alrt "${_u}@${_h} is not accepted: ${_WHY}"
         ;;
     esac
-  done <<< "${_AL_PAIRS}"
-  # the user names with a row at a host that is not this box's own
-  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
-    [[ -n "${_g}" ]] || continue
-    if [[ "${_h}" == "?" ]] || ! _settle_near "${_h}"; then
-      [[ "${_far}" == *$'\n'"${_ux}"$'\n'* ]] || _far="${_far}${_ux}"$'\n'
-    fi
   done <<< "${_AL_PAIRS}"
   _SAVEF="${_SAVED}/revoke-$(date -u +%Y%m%dT%H%M%SZ)-$$.sql"
   while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
@@ -5307,6 +5319,8 @@ _v_baseline_settle() {
       continue
     fi
     _settle_plc "${_ux}" "${_hx}" "${_ST_PT}"
+    # gone since the list was read
+    [[ "${_ST_ROW}" == "YES" ]] || continue
     if [[ -z "${_ST_PLC}" ]]; then
       _settle_note "${_uh}" "${_c}" "the server keeps no time of its last password change"
       continue
@@ -5315,6 +5329,7 @@ _v_baseline_settle() {
       _settle_note "${_uh}" "${_c}" "its password was set after the purge of ${_o}: something made since uses it"
       continue
     fi
+    _k="${_ST_PLC}"
     if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
       _settle_note "${_uh}" "${_c}" "the stored objects could not all be read: nothing is dropped on a guess"
       continue
@@ -5326,6 +5341,13 @@ _v_baseline_settle() {
     if ! _save_grants "${_ux}" "${_hx}" || ! _save_create "${_u}" "${_h}"; then
       _bad=$(( _bad + 1 ))
       _alrt "${_u}@${_h}: its grants and its row could not be saved, so it is not dropped"
+      continue
+    fi
+    # the row as it was judged: one whose password was set while its
+    # grants were being saved stays
+    _settle_plc "${_ux}" "${_hx}" "${_ST_PT}"
+    if [[ "${_ST_PLC}" != "${_k}" ]]; then
+      _settle_note "${_uh}" "${_c}" "it changed while this ran"
       continue
     fi
     if _sql_prepared "'DROP USER ', $(_sql_qid "${_ux}"), '@', $(_sql_qid "${_hx}")"; then
@@ -5971,7 +5993,7 @@ _zombie_panel() {
   local _p="${1}" _tb="${_ZOMBIE}/${1}/home/${1}.tar.gz" _t _sp _dr _du _dn
   _ZP=""
   [[ -f "${_tb}" && ! -L "${_tb}" ]] || return 1
-  _t=$(timeout 300 tar -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/hostmaster.alias.drushrc.php" \
+  _t=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/hostmaster.alias.drushrc.php" \
     2> /dev/null 7>&- 8>&- 9>&- | head -c 1048576)
   _alias_val "${_t}" site_path
   _sp="${_VAL}"
@@ -5980,7 +6002,7 @@ _zombie_panel() {
     "${_DISK}/${_p}"/aegir/distro/*/sites/?*) ;;
     *) return 1 ;;
   esac
-  _dr=$(timeout 300 tar -xzOf "${_tb}" "${_sp#/}/drushrc.php" 2> /dev/null 7>&- 8>&- 9>&- \
+  _dr=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_sp#/}/drushrc.php" 2> /dev/null 7>&- 8>&- 9>&- \
     | head -c 1048576)
   _drc_lit "${_dr}" db_user
   _du="${_VAL}"
