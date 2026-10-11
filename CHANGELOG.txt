@@ -4,6 +4,17 @@
 
 @=> Important Fixes
 
+    * A migration cutover, a planned switch of a mirror pair and a
+      promotion by hand no longer stop at the master control panel of
+      a target whose master has been upgraded at least once. The step
+      that points each control panel at the database the promoted box
+      serves took the master's panel directory only where a fresh
+      install puts it and refused the /var/aegir/host_master/<number>
+      directory every upgrade moves it to, so the run parked with the
+      target already promoted, before the renames, and the master
+      panel stayed unusable. Both places are now taken; the panels of
+      the Octopus instances were not affected.
+
     * The Ægir control panel's Drupal 7 core now follows the pinned
       release. The panel is built from the prebuilt make_local tree,
       and that tree's core directory had stayed on 7.105 after the pin

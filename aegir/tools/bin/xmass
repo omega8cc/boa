@@ -8414,15 +8414,22 @@ if [ -z "${_SP}" ]; then
 fi
 # The alias is the account's file: the panel dir it names is used only when
 # it is this root's own, <root>/aegir/distro/<n>/sites/<name> for an Octopus
-# root and <root>/<platform>/sites/<name> for the master, written in the
-# plain characters the rewrites below put into sed programs and SQL.
+# root and, for the master, <root>/<platform>/sites/<name> as installed or
+# <root>/host_master/<n>/sites/<name> once it has been upgraded, written in
+# the plain characters the rewrites below put into sed programs and SQL.
 _sp_own() {
   local _t
   case "${1}" in
     *[!A-Za-z0-9/._-]*|*/../*|*/..|*/./*|*//*) return 1 ;;
   esac
   case "${_R}" in
-    /var/aegir) _t="${1#/var/aegir/}" ;;
+    /var/aegir)
+      _t="${1#/var/aegir/}"
+      [ "${_t}" != "${1}" ] || return 1
+      case "${_t}" in
+        host_master/[0-9]*/sites/*) _t="${_t#host_master/}" ;;
+      esac
+      ;;
     *) _t="${1#"${_R}"/aegir/distro/}" ;;
   esac
   [ "${_t}" != "${1}" ] || return 1
