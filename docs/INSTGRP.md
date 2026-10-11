@@ -534,7 +534,8 @@ that site's store.
   reads `phase B held`: the next run checks the layouts again.
 
 A share INTO the account's store never holds anything; both accounts are
-told (see `FILES-SYMLINK.md`). When the account that owns the store
+told (see `FILES-SYMLINK.md`), before the conversion's first write and
+again once its private side is done. When the account that owns the store
 converts, the reading site loses write there (and read on a private store),
 whatever the reading account's own state.
 
