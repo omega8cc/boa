@@ -278,6 +278,14 @@
       and counted on the NOTE line as before, so a tree already at its
       state is walked by find alone.
 
+    * A site or platform Verify's ownership and permissions steps cost
+      far less on a tree that is already in order. Their walks started a
+      helper process in every directory they met; each now looks at an
+      entry first and hands over only one whose owner, group or mode is
+      not yet what the walk sets, a set-ID file, or one another account's
+      users own, which is left and counted on the Notice line as before.
+      What a Verify sets and prints is unchanged.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
