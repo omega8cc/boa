@@ -559,15 +559,15 @@ account is untouched by the account's conversion to its own web group
 (`wg-oN`, see `INSTGRP.md`). A share across accounts is not:
 
 - **Outbound** (a site of this account reads another account's store): the
-  account's conversion is refused, and so is its step into phase B, until
-  the share is gone; the account is told which site reads which store. A
-  site on the shared `/data/all` stores refuses it the same way, and so
-  does a site's `files` or `private` link that leads anywhere but the
-  account's own `static/files/` (or its store on attached storage), or
-  into BOA's own folders there (`.backups`, `.backup-exports`,
-  `.archived`).
+  account converts to phase A and the share is left exactly as it is,
+  still working; only its step into phase B waits until the share is gone,
+  and the account's notes say which site reads which store. A site on the
+  shared `/data/all` stores holds phase B back the same way, and so does a
+  site's `files` or `private` link that leads anywhere but the account's
+  own `static/files/` (or its store on attached storage), or into BOA's
+  own folders there (`.backups`, `.backup-exports`, `.archived`).
 - **Inbound** (another account's site reads this account's store): never
-  refused, and both accounts are told. Once this account is converted, the
+  held back, and both accounts are told. Once this account is converted, the
   reading site loses write to the store and, for a private store, read too:
   the store's files are in this account's web group, which the other
   account's pools are not in.
@@ -576,9 +576,11 @@ The reading account's nightly permissions pass leaves the other account's
 store as it is, converted or not: it sets modes only below directories its
 own users own, so that store keeps what its own account's pass gives it.
 
-Give each account's site its own copy before converting either account. A
-later change is planned to make nginx refuse a site's links into another
-account's store outright.
+The reading account reaches phase B only once each such site has its own
+copy (`autosymlink --site <url> --apply --force-unshare`), and the reading
+site keeps its write to the other store only until that store's account
+converts. A later change is planned to make nginx refuse a site's links
+into another account's store outright.
 
 ## Cloning behaviour in detail
 

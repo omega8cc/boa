@@ -405,8 +405,8 @@ On a box that is not armed, the arm prints nothing for an account with no
 web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
 it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
 the writers that must be current on the box, the stamp, and for each
-account whether it is ready and which of its sites share a files store
-with another account.
+account whether it is ready and what would hold its phase B back, counted
+by kind (below).
 
 A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
@@ -455,28 +455,63 @@ changes nothing and names its reason:
   which the arm and `webconvert all` honour as the web group's opt-out too;
 - an account not yet on its per-instance group;
 - the box not ready (above);
-- a site of the account reading another account's files store (an outbound
-  share), a site on the shared `/data/all` stores or any other site whose
-  directory lies outside the account's tree, or a site's `files` or
-  `private` store outside the account's own places: converting would cut
-  those sites off from the files they read, or point root's walks where no
-  store belongs.
-
-  A store is the account's own only as a real directory of
-  the site, or as a link into the account's own `static/files/` (or its
-  store on attached storage), as the site scripts take it, never into
-  BOA's own folders there (`.backups`, `.backup-exports`, `.archived`); a
-  store link anywhere else, even inside the account's tree, refuses the
-  conversion.
-  A share INTO the account's store never stops anything; both accounts are
-  told (see `FILES-SYMLINK.md`);
 - www-data left in the account's settings files, store tops or private set
-  before phase B.
+  before phase B;
+- before phase B only, one of the four things the next section lists.
 
 A frozen account (`log/proxied.pid`, a migration in flight) is skipped,
 exit 4, unless an operator passes `--force`. A standby box (xmass's
 `/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
 prepared as one) refuses every verb but `webrevert`.
+
+### What holds phase B back
+
+Four layouts do not stop an account from converting. It goes to phase A
+like any other, and only its step into phase B waits while one of them
+stands:
+
+- a site of the account reading another account's files store (an outbound
+  share);
+- a site on the shared `/data/all` stores;
+- any other site whose directory lies outside the account's tree;
+- a site's `files` or `private` store outside the account's own places.
+
+A store is the account's own only as a real directory of the site, or as a
+link into the account's own `static/files/` (or its store on attached
+storage), as the site scripts take it, never into BOA's own folders there
+(`.backups`, `.backup-exports`, `.archived`). A store link anywhere else,
+even inside the account's tree, is one of the four.
+
+The conversion leaves such a path exactly as it is: it is never walked,
+moved or re-linked, its owner, group and modes stay, and it keeps working,
+because in phase A the account's users and pools are still in `www-data`.
+A store linked elsewhere inside the account's own tree stays in `www-data`
+with everything below it. Phase B would take `www-data` away from the pools
+that read that path, so phase B waits.
+
+- `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
+  account to phase A, exit 0. The account's notes
+  (`/var/log/boa/instgrp-web.oN.notes.txt`, and a copy in its own
+  `log/web-group-notes.txt`) name each path and what clears it.
+- `--phase-b` on an account below phase A takes it to A and stops there,
+  exit 6. On an account already at A it is refused before anything is
+  written, exit 6, so a pin stays. On a box with
+  `_WEB_GROUP_PHASE_B=YES` the Octopus arm is refused the same way on
+  every upgrade of such an account, and the upgrade prints a NOTE.
+- Nothing clears these for you. A share is removed with the documented tool
+  (`autosymlink --force-unshare`, see `FILES-SYMLINK.md`); a site on the
+  shared stores or outside the account moves to a platform in the
+  account's own tree; a store becomes a real `files` or `private`
+  directory of its site, or a link into the account's own `static/files/`.
+  The next run then goes on to phase B.
+- `instgrp webcheck --report` says `shares:  phase B held` for such an
+  account, with a count for each of the four kinds, without running a
+  conversion and without writing a note.
+
+A share INTO the account's store never holds anything; both accounts are
+told (see `FILES-SYMLINK.md`). When the account that owns the store
+converts, the reading site loses write there (and read on a private store),
+whatever the reading account's own state.
 
 ### The verbs
 
@@ -510,8 +545,9 @@ prepared as one) refuses every verb but `webrevert`.
 - `webdrift` is what the watchers read (below).
 
 Exit codes: 0 done, 1 failed, 2 residue or a group kept, 4 busy or frozen,
-5 not ready, 6 refused or deferred (opted out, a share, a standby, a revert
-in progress, a pin, the task queue not drained). Only `webrevert` and
+5 not ready, 6 refused or deferred (opted out, phase B held by a share or
+by a site or store outside the account, a standby, a revert in progress, a
+pin, the task queue not drained). Only `webrevert` and
 `--phase-a` ever lower an account; nothing else does, whatever it finds.
 
 ### Intent and record
@@ -530,8 +566,8 @@ Both stay on the box: a migration carries neither (below), and a backup of
 watchers then report. A phase B whose final check fails is rolled back;
 when that rollback cannot finish, the record keeps phase B with a mark
 (`rb=1`), and the next run checks the account's shares again before it
-completes phase B, so a share made in between is refused rather than cut
-off.
+completes phase B, so a share made in between holds phase B back rather
+than being cut off.
 
 ### Watching for drift
 
@@ -553,6 +589,11 @@ with what holds it back: nothing has converted it, for instance a box
 promoted by hand from a mirror. `_WEB_GROUP=NO` in its cnf leaves such an
 account alone for good; an account opted out of its per-instance group
 (`_INSTANCE_GROUP=NO`) is named once in the pass's log, never reported.
+
+An account at phase A whose phase B is held back (above), on a box with
+`_WEB_GROUP_PHASE_B=YES`, gets one line a day in the pass's log, with the
+count of each kind. It is a note, never an alarm and never a mail. There is
+none while phase B is off on the box, and none for an account pinned at A.
 
 On any box, `/root/.standby.prep.cnf` standing for over three days
 without `/root/.standby.cnf` is reported too: while it stands, no account
