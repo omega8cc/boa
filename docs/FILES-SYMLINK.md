@@ -132,9 +132,14 @@ autosymlink --site example.com --account o1 --archive-store --apply
 
   `static/files` is resolved once and accepted only when it is the account's own store
   or its relocated store on attached storage (the `migratefs` layout); any other link
-  there is refused. The account's own `static/files` must be root's (this tool makes
-  it); a relocated one may also be the account's (`migratefs` gives a fresh store the
-  owner of `static/`).
+  there is refused. A relocated store may be root's or the account's (`migratefs`
+  gives a fresh store the owner of `static/`).
+
+  The account's own `static/files` must be root's and writable by neither group nor
+  others; this tool makes it so, whatever the run's umask. A root-owned directory
+  that group or others can write is refused: only such a directory can have been
+  moved in from another folder by the account's own users, since moving a folder
+  elsewhere needs write access to the folder itself.
 
   The directory found is remembered by its identity (device and inode), and every
   later step checks that it acts inside that very directory, so a directory put at
@@ -566,6 +571,10 @@ account is untouched by the account's conversion to its own web group
   the store's files are in this account's web group, which the other
   account's pools are not in.
 
+The reading account's nightly permissions pass leaves the other account's
+store as it is, converted or not: it sets modes only below directories its
+own users own, so that store keeps what its own account's pass gives it.
+
 Give each account's site its own copy before converting either account. A
 later change is planned to make nginx refuse a site's links into another
 account's store outright.
@@ -957,6 +966,21 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   `files` and `private` trees. Each act runs inside the directory judged,
   entered for real, and new directories are made there by name, so a
   directory swapped for a link after the check is never followed.
+- **Root's ownership and mode fixes leave another account's files.** The
+  site Verify's two fixers (`fix-drupal-site-ownership.sh`,
+  `fix-drupal-site-permissions.sh`) and the nightly permissions pass hand
+  over and set modes only on what root or the site's own users own: the
+  account's backend user, `.ftp` login, client sub-accounts and PHP-FPM
+  users, or, for a site of the master, aegir and the master's pool users,
+  read from the site's resolved path, never from the arguments. A file whose
+  owner no longer exists counts as the account's own.
+
+  A file or directory another account's users own is left as it is, with
+  everything below it, and never followed through a link: an account's users
+  can rename into their own store what another account left group-writable.
+  Each fixer counts what it left on one `Notice:` line, the nightly on one
+  `NOTE:` line per site. A fixer run on a path in neither an account's tree
+  nor the master's changes nothing and says so.
 - **Root removes only the directory it checked or copied.** A conversion enters
   the site's `files`/`private` directory for real and records its identity
   (device and inode) before anything else. The residue-only check, and the

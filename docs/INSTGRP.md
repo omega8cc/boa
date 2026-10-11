@@ -682,6 +682,16 @@ keeps.
   restored file included); a restore staged anywhere else is the
   operator's to follow with `instgrp reclaim oN` once the files are in
   place.
+
+  `backboa`, `duobackboa` and `multiback` restore a path inside an
+  account's tree in a directory only root can open and then move it into
+  place. Before the move they give the account what the restore wrote
+  under any owner but root and the account's own identities (an archive
+  from another box lands its owners' names or numbers, which here can be
+  another account's), owner only: directories and single-link regular
+  files, never a link, a FIFO or a hard-linked file. What the destination
+  already held, or what is moved into the tree once it is in place, keeps
+  its owner.
 - GIDs are allocated per box from the system range, so the same account
   name has different GIDs on two boxes. rsync maps ids by name, and the
   source account's group has no name on a destination whose account is not
