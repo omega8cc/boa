@@ -4097,7 +4097,7 @@ _wg_left() {
       _wg_site_parts "${_s}" | sed -n -e 's/^outside //p' -e 's/^share //p'
     done < <(_wg_sites); } | awk '!_seen[$0]++')
   [ -n "${_cand}" ] || return 0
-  _own=$( { _wg_sites; _wg_parts; } | sed 's/^[^ ]* //')
+  _own=$( { _wg_sites; _wg_parts | grep -v -e '^outside ' -e '^share '; } | sed 's/^[^ ]* //')
   while IFS= read -r _p; do
     [ -n "${_p}" ] || continue
     _in=NO
