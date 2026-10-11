@@ -5993,6 +5993,26 @@ _scope_off_apply() {
   [[ "${_bad}" -eq 0 ]]
 }
 
+# True when a login the account's switch takes its global privileges from
+# holds one: its instance user, at any row, or one of the rows the box-wide
+# check, read as that account's switch, gives the verdict "revoke" (its
+# instance rows, its panel user and every earlier name of it). The lists
+# are read here without any login proof.
+_scope_owes() {
+  local _ux _hx _u _h _g _lk _sec
+  _global_privs "${_ACCT}" "" && return 0
+  _box_facts
+  _pair_state
+  _AL_FOR="${_ACCT}"
+  _al_load
+  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
+    [[ "${_g}" == "Y" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
+    _pair_class "${_u}" "${_h}" "${_g}" "${_ux}@${_hx}"
+    [[ "${_PC_V}" == "revoke" ]] && return 0
+  done <<< "${_AL_PAIRS}"
+  return 1
+}
+
 # A step of the switch failed after the account's rights began to change:
 # it goes back to the direct path, and the call says which step. Not so an
 # account a pass found switched and was only bringing back in line: giving
@@ -6027,12 +6047,13 @@ _scope_back() {
 # task starts under the switch; without it the queue is live, and the call
 # is refused. It waits for the account's running tasks before it reads the
 # plan, so a database a task made a moment ago is in it. An account it
-# finds switched, with no global privilege on any row of its instance
-# user, is left as it is: no statement, no new file of saved grants. One
-# with a valid control file and a global privilege back on some row goes
-# through the switch again, and a step that fails then leaves it switched
-# (_scope_back). The operator's own pause of the queue is not looked at:
-# the call follows the pass, which the operator started.
+# finds switched is left as it is when nothing its switch takes rights
+# from holds a global privilege (_scope_owes: its instance user, its panel
+# user, every earlier name of that): nothing is changed, no new file of
+# saved grants. One with a valid control file and such a privilege back
+# goes through the switch again, and a step that fails then leaves it
+# switched (_scope_back). The operator's own pause of the queue is not
+# looked at: the call follows the pass, which the operator started.
 _v_scope_on() {
   local _d _rc _x _h _l _ux _hx _u _k _t _dp _dx _keep _n=0 _drop=0 _who _lit
   _SP_KEEP="NO"
@@ -6042,7 +6063,7 @@ _v_scope_on() {
     _broker_mode
     _rc=$?
     if [[ "${_rc}" -eq 0 ]]; then
-      if ! _global_privs "${_ACCT}" ""; then
+      if ! _scope_owes; then
         _l=""
         for _h in "${_ROWS[@]}"; do
           _l="${_l:+${_l},}${_h}"
@@ -6051,6 +6072,10 @@ _v_scope_on() {
         return 0
       fi
       _SP_KEEP="YES"
+      # what that answer read is read again after the wait, with the plan
+      _AL_LOADED="NO"
+      _REC_LOADED="NO"
+      _PN_ROOT=""
     fi
     _tasks_wait
   fi
