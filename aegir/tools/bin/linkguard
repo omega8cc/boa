@@ -14,12 +14,15 @@
 # The restriction is switched on only on a box BOA has armed (the barracuda
 # pass writes /var/log/boa/linkguard-arm.ready.txt while _NGINX_LINK_GUARD=YES
 # and the release allows it), and only once a scan finds no link it would
-# break. Once on, it stays on whatever a later scan finds: a link an account
-# plants must never switch it off.
+# break other than one inside an account's own tree. Once on, it stays on
+# whatever a later scan finds: a link an account makes must never switch it
+# off, nor keep it off.
 #
 # Usage:
 #   linkguard fix [--root=DIR]  make BOA's links and links inside an account
 #                               pass the check (box-wide, or one platform)
+#   linkguard fix --tree=DIR    one site or store directory of an account:
+#                               the links inside the account only
 #   linkguard scan              list the links the check would refuse
 #                               (read-only; report in the file below)
 #   linkguard apply             fix, scan, and switch the check on when
@@ -50,9 +53,15 @@ _NGX_LOCK="/run/boa_nginx_config.lock"
 # leads to (/data/disk/all on boxes that keep it there).
 _LG_STORE="$(readlink -f -- /data/all 2> /dev/null)"
 # One platform (fix --root): its own tree only; the sites' file stores and
-# what directory links lead to are left to the box-wide runs.
+# what directory links lead to are left to the box-wide runs. One site or
+# store directory (fix --tree): that tree only, and no BOA place in it.
 _LG_ONE=""
+_LG_TREE=""
 _LG_SKIP_WALK=""
+# Links inside an account that could not be made (not: were not ours to
+# make), and whether a link can be made as another user here at all.
+_LG_ERR_ACCT=0
+_LG_HEAL_BROKEN=""
 
 _msg() { echo "$*"; }
 _alrt() { echo "$*" >&2; }
@@ -74,14 +83,15 @@ _in_pinned_dir() {
 
 # The path given resolved one entry at a time, as the kernel does: status 0
 # only when every entry visited on the way (each directory, each link and
-# what it names) is root's and no directory is writable by its group or by
-# others, and it ends at something root owns inside the shared store. The
-# store is /data/all resolved the same way, so on a box where that name is
-# root's link (to /data/disk/all) the store is where the link leads. A link
-# with such a text can lead nowhere but root's shared code whatever any
-# account does, now or later.
+# what it names) is root's and no directory is writable by others or by a
+# group other than root's, and it ends at something root owns inside the
+# shared store. The store is /data/all resolved the same way, so on a box
+# where that name is root's link (to /data/disk/all) the store is where the
+# link leads. A link with such a text can lead nowhere but root's shared
+# code whatever any account does, now or later.
 _LG_SHARED_PL='use strict; my $p = shift; exit 1 unless defined $p && $p =~ m{^/};
-my @r = lstat("/") or exit 1; exit 1 unless $r[4] == 0 && !($r[2] & 022);
+sub wr { return ($_[2] & 002) || (($_[2] & 020) && $_[5] != 0); }
+my @r = lstat("/") or exit 1; exit 1 unless $r[4] == 0 && !wr(@r);
 sub res { my @todo = grep { length } split m{/}, shift; my ($cur, $hops) = ("", 0);
   while (@todo) {
     my $c = shift @todo;
@@ -98,7 +108,7 @@ sub res { my @todo = grep { length } split m{/}, shift; my ($cur, $hops) = ("", 
       next;
     }
     return undef if @todo && !-d _;
-    return undef if -d _ && ($s[2] & 022);
+    return undef if -d _ && wr(@s);
     $cur = $n;
   }
   return $cur; }
@@ -126,13 +136,25 @@ _lg_shared_text_ok() {
 # ./$1 in the current (pinned) directory made root's: a link that is not
 # root's, whose text passes _lg_shared_text_ok, made anew by root under a
 # fresh name with the same text and renamed over the name, never chowned by
-# name. Status 0 changed, 2 nothing to do, 1 left as it is.
+# name. A text of another form that still ends inside the shared store (a
+# relative one, one with .. in it, one through another name of the store)
+# is written in the plain form instead, /data/all/<the rest of its real
+# path>, and must pass the same test: root's link then no longer depends on
+# any name the account can change. Status 0 changed, 2 nothing to do, 1
+# left as it is.
 _lg_reroot_here() {
-  local _n="${1}" _t="./.${1}.lgr.$$.${RANDOM}" _l
+  local _n="${1}" _t="./.${1}.lgr.$$.${RANDOM}" _l _r _s="${_LG_STORE:-/data/all}"
   [ -L "./${_n}" ] || return 2
   [ "$(stat -c %u -- "./${_n}" 2> /dev/null)" = "0" ] && return 2
   _l="$(readlink -- "./${_n}" 2> /dev/null)" || return 1
-  _lg_shared_text_ok "${_l}" || return 1
+  if ! _lg_shared_text_ok "${_l}"; then
+    _r="$(readlink -f -- "./${_n}" 2> /dev/null)" || return 1
+    case "${_r}" in
+      "${_s}"/?*) _l="/data/all/${_r#"${_s}"/}" ;;
+      *) return 1 ;;
+    esac
+    _lg_shared_text_ok "${_l}" || return 1
+  fi
   rm -f -- "${_t}"
   if ln -s -T -- "${_l}" "${_t}" 2> /dev/null && [ -L "${_t}" ] \
     && mv -f -T -- "${_t}" "./${_n}"; then
@@ -163,8 +185,11 @@ _lg_acct_of() {
 # the owner of what it leads to: a link that is root's or an identity of the
 # account, leading to what a named identity of the same account owns and not
 # into /data/all, made anew by that owner (setpriv) under a fresh name with
-# the same text and renamed over the name. Left as it is when that owner
-# cannot write the directory. Status 0 changed, 2 nothing to do, 1 left.
+# the same text and renamed over the name. Where that owner cannot write the
+# directory (one a login of the account keeps for itself) the same one call
+# runs again with the single capability that lets it, so the link is still
+# made by its owner and nothing is ever chowned by name. Status 0 changed,
+# 2 nothing to do, 1 not ours to make, 3 could not be made.
 _lg_reown_here() {
   local _n="${1}" _a="${2}" _t="./.${1}.lgo.$$.${RANDOM}" _l _r _lu _tu _ta _la _g
   [ -L "./${_n}" ] || return 2
@@ -187,12 +212,37 @@ _lg_reown_here() {
   rm -f -- "${_t}"
   setpriv --reuid="${_tu}" --regid="${_g}" --clear-groups \
     ln -s -T -- "${_l}" "${_t}" < /dev/null > /dev/null 2>&1 8>&- 9>&-
+  if [ ! -L "${_t}" ]; then
+    setpriv --reuid="${_tu}" --regid="${_g}" --clear-groups \
+      --inh-caps=-all,+dac_override --ambient-caps=-all,+dac_override \
+      ln -s -T -- "${_l}" "${_t}" < /dev/null > /dev/null 2>&1 8>&- 9>&-
+  fi
   if [ -L "${_t}" ] && [ "$(stat -c %u -- "${_t}" 2> /dev/null)" = "${_tu}" ] \
-    && mv -f -T -- "${_t}" "./${_n}"; then
+    && mv -f -T -- "${_t}" "./${_n}" 2> /dev/null; then
     return 0
   fi
   rm -f -- "${_t}"
-  return 1
+  return 3
+}
+
+# Whether a link can be made as another user here at all: one made by
+# nobody in a scratch directory handed to nobody alone. Asked only after a
+# link inside an account could not be made; where this fails the tool is at
+# fault, not an account's link, and the check is not switched on.
+_lg_heal_selftest() {
+  local _d _u _g _rc=1
+  _u="$(id -u nobody 2> /dev/null)" || return 1
+  _g="$(id -g nobody 2> /dev/null)" || return 1
+  _d="$(mktemp -d /run/linkguard.selftest.XXXXXX 2> /dev/null)" || return 1
+  chown "${_u}:${_g}" "${_d}" 2> /dev/null
+  if _in_pinned_dir "${_d}" setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+    ln -s -T -- /dev/null ./probe < /dev/null > /dev/null 2>&1 8>&- 9>&- \
+    && [ "$(stat -c %u -- "${_d}/probe" 2> /dev/null)" = "${_u}" ]; then
+    _rc=0
+  fi
+  rm -f -- "${_d}/probe"
+  rmdir -- "${_d}" 2> /dev/null
+  return "${_rc}"
 }
 
 # The roots and aliases nginx serves, from nginx -T: one "R<TAB>path" line
@@ -218,25 +268,38 @@ print "R\t$_\n" for sort keys %r;'
 # from its target's: class, reason, path, link uid, target uid, real target,
 # then a last record "SUMMARY", entries, roots walked, roots missing, extra
 # directories walked, complete (1 or 0).
-#   BLOCKING  the check would break a link that is meant to work: root's, a
-#             system or unnamed user's, at a BOA place, or inside one account
-#   REFUSED   an account's link leading out of that account: what the check
-#             is there to refuse, never a reason to keep it off
+#   BLOCKING  the check would break a link no account could have made that
+#             way: root's (outside an account's tree, or leading out of it),
+#             a system or unnamed user's, or a BOA link at one of the places
+#             BOA makes them that could not be made root's
+#   REFUSED   an account's own doing, never a reason to keep the check off:
+#             a link inside the account that is not its target owner's
+#             (made so by fix where it can be), or an account's link leading
+#             out of that account, which the check is there to refuse
+# A BOA place is a name BOA itself links on a platform directory (the
+# shapes _lg_platform_dirs lists, and each root given): the same places
+# _lg_fix_boa_places makes root's, and no other name that looks like one.
 # With LG_ONE set (one platform) no directory link is followed and a site's
-# files and private directories are not entered.
+# files and private directories are not entered; with LG_TREE (one site or
+# store directory) the directory given is no platform.
 _LG_WALK_PL='use strict; use warnings; use File::Find (); use Cwd ();
 my ($max, $maxent) = (50000, 50000000); my (%uname, %home, %walked, @queue, @recs);
 my ($entries, $nroots, $missing, $extra, $complete) = (0, 0, 0, 0, 1);
-my $store = Cwd::abs_path("/data/all"); my $one = $ENV{LG_ONE} ? 1 : 0;
+my $store = Cwd::abs_path("/data/all"); my $one = $ENV{LG_ONE} ? 1 : 0; my $tree = $ENV{LG_TREE} ? 1 : 0; my %rr;
 setpwent(); while (my @p = getpwent()) { $uname{$p[2]} = $p[0]; $home{$p[0]} = $p[7]; } endpwent();
+sub is_acct { my $a = shift; my $h = $home{$a}; return 0 unless defined $h; $h =~ s{/+$}{}; return $h eq "/data/disk/$a" ? 1 : 0; }
 sub acct_of { my $u = shift; return undef unless defined $u && $u > 0; my $n = $uname{$u}; return undef unless defined $n;
   return undef unless $n =~ /^([a-z0-9-]+)(?:\.[a-z0-9]+(?:-dev)?|\.[0-9]+\.web)?$/; my $a = $1;
-  my $h = $home{$a}; return undef unless defined $h; $h =~ s{/+$}{}; return $h eq "/data/disk/$a" ? $a : undef; }
+  return is_acct($a) ? $a : undef; }
+sub path_acct { my $p = shift; return undef unless $p =~ m{^/data/disk/([^/]+)/.}; my $a = $1; return is_acct($a) ? $a : undef; }
 my %farm = map { $_ => 1 } qw(.htaccess authorize.php boost_stats.php cron.php crossdomain.xml includes index.php install.php js.php misc modules themes update.php web.config xmlrpc.php profiles);
+sub is_pdir { my $d = shift; return 1 if !$tree && $rr{$d};
+  return 1 if $d =~ m{^/data/disk/[^/.][^/]*/distro/[^/.][^/]*/[^/.][^/]*$} || $d =~ m{^/data/disk/[^/.][^/]*/aegir/distro/[^/.][^/]*$} || $d =~ m{^/var/aegir/host_master/[^/.][^/]*$};
+  return 0; }
 sub boa_place { my $p = shift; my ($d, $b) = $p =~ m{^(.*)/([^/]+)$} or return 0;
-  return 1 if $b =~ /^\.?o_contrib/ && $d =~ m{/modules$};
-  return 1 if $p =~ m{/modules/o_contrib_seven/redis_edge$};
-  return 1 if $farm{$b} && -d "$d/sites" && !-l "$d/sites";
+  return 1 if $farm{$b} && is_pdir($d) && -d "$d/sites" && !-l "$d/sites";
+  if ($b =~ /^\.?o_contrib/) { return 1 if $d =~ m{^(.*)/modules$} && is_pdir($1); return 1 if $d =~ m{^(.*)/(?:web|docroot|html)/modules$} && is_pdir($1); }
+  return 1 if $b eq "redis_edge" && $d =~ m{^(.*)/modules/o_contrib_seven$} && is_pdir($1);
   return 0; }
 sub under_walked { my $p = shift; while (length $p) { return 1 if $walked{$p}; last unless $p =~ s{/[^/]*$}{}; } return 0; }
 sub follow { my $r = shift; return if $one || $r =~ m{^/(?:proc|sys|dev|run)(?:/|$)} || under_walked($r);
@@ -244,22 +307,25 @@ sub follow { my $r = shift; return if $one || $r =~ m{^/(?:proc|sys|dev|run)(?:/
 sub link_rec { my $p = shift; my @l = lstat($p) or return; my $r = Cwd::abs_path($p); return unless defined $r;
   my @t = stat($p) or return; my ($lu, $tu, $isdir) = ($l[4], $t[4], -d _ ? 1 : 0);
   if ($lu == $tu) { follow($r) if $isdir; return; }
-  my ($c, $why); my $shared = (defined $store && index($r, "$store/") == 0) ? 1 : 0; my $la = acct_of($lu); my $ta = acct_of($tu);
-  if ($lu == 0) { ($c, $why) = ("BLOCKING", "a link root made") }
+  my ($c, $why, $in) = ("", "", 0); my $shared = (defined $store && index($r, "$store/") == 0) ? 1 : 0;
+  my $la = acct_of($lu); my $ta = acct_of($tu); my $pa = path_acct($p);
+  my $inside = "a link inside the account, not its target owner\x27s";
+  if ($lu == 0) { if (defined $pa && defined $ta && $ta eq $pa) { ($c, $why, $in) = ("REFUSED", $inside, 1) } else { ($c, $why) = ("BLOCKING", "a link root made") } }
   elsif (!defined $la) { ($c, $why) = ("BLOCKING", "a link of a system or unnamed user") }
   elsif ($shared && boa_place($p)) { ($c, $why) = ("BLOCKING", "a BOA link not made root\x27s") }
-  elsif (defined $ta && $ta eq $la) { ($c, $why) = ("BLOCKING", "a link inside the account") }
+  elsif (defined $ta && $ta eq $la) { ($c, $why, $in) = ("REFUSED", $inside, 1) }
   else { ($c, $why) = ("REFUSED", "an account\x27s link leading out of it") }
-  follow($r) if $isdir && $c eq "BLOCKING";
+  follow($r) if $isdir && ($c eq "BLOCKING" || $in);
   push @recs, join("\0", $c, $why, $p, $lu, $tu, $r); }
-my @roots = grep { length } @ARGV; my %rr;
+my @roots = grep { length } @ARGV; my %top;
+for my $root (@roots) { my $r = Cwd::abs_path($root); $rr{$r} = 1 if defined $r && -d $r; }
 for my $root (@roots) { my $p = ""; for my $c (grep { length } split m{/}, $root) { $p .= "/$c"; link_rec($p) if -l $p; }
-  my $r = Cwd::abs_path($root); if (!defined $r || !-d $r) { $missing++; next; } $rr{$r} = 1; }
+  my $r = Cwd::abs_path($root); if (!defined $r || !-d $r) { $missing++; next; } }
 my @keep; for my $r (sort keys %rr) { push @keep, $r unless grep { index("$r/", "$_/") == 0 } @keep; }
-$walked{$_} = 1 for @keep;
+$walked{$_} = 1 for @keep; $top{$_} = 1 for @keep;
 my $wanted = sub { if (++$entries > $maxent) { $complete = 0; $File::Find::prune = 1; return; }
   if (-l $File::Find::name) { link_rec($File::Find::name); return; }
-  $File::Find::prune = 1 if $one && $File::Find::name =~ m{/sites/[^/]+/(?:files|private)$} && -d $File::Find::name; };
+  $File::Find::prune = 1 if $one && !$top{$File::Find::name} && $File::Find::name =~ m{/sites/[^/]+/(?:files|private)$} && -d $File::Find::name; };
 for my $r (@keep) { $nroots++; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $r); }
 while (defined(my $d = shift @queue)) { next if under_walked($d); $walked{$d} = 1; $extra++; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $d); }
 print "$_\0" for @recs; print join("\0", "SUMMARY", $entries, $nroots, $missing, $extra, $complete), "\0";'
@@ -363,15 +429,15 @@ _lg_walk() {
       _LG_REC_REAL+=("${_f[5]}")
       _f=()
     fi
-  done < <(LG_ONE="${_LG_ONE}" nice -n 19 ionice -c3 perl -e "${_LG_WALK_PL}" -- "$@" 2> /dev/null)
+  done < <(LG_ONE="${_LG_ONE}" LG_TREE="${_LG_TREE}" nice -n 19 ionice -c3 perl -e "${_LG_WALK_PL}" -- "$@" 2> /dev/null)
   [ -n "${_LG_SUM}" ]
 }
 
 # Links inside one account made their target's owner's (_lg_reown_here), for
 # every mixed link the last walk found in an account's tree. Prints
-# "<changed> <left>".
+# "<changed> <left> <of those left, could not be made>".
 _lg_fix_accounts() {
-  local _i _p _d _a _c=0 _x=0 _rc
+  local _i _p _d _a _c=0 _x=0 _e=0 _rc
   for _i in "${!_LG_REC_PATH[@]}"; do
     _p="${_LG_REC_PATH[${_i}]}"
     case "${_p}" in
@@ -385,23 +451,29 @@ _lg_fix_accounts() {
     _rc=$?
     [ "${_rc}" = "0" ] && _c=$(( _c + 1 ))
     [ "${_rc}" = "1" ] && _x=$(( _x + 1 ))
+    if [ "${_rc}" = "3" ]; then
+      _x=$(( _x + 1 ))
+      _e=$(( _e + 1 ))
+    fi
   done
-  echo "${_c} ${_x}"
+  echo "${_c} ${_x} ${_e}"
 }
 
 # fix: BOA's places on every platform (or the one given), then the links
-# inside each account among those the walk finds.
+# inside each account among those the walk finds. $2 = one site or store
+# directory instead: no BOA place is touched there.
 _lg_fix() {
-  local _root="${1}" _d _r _c=0 _x=0 _a _b
+  local _root="${1}" _tree="${2}" _d _r _c=0 _x=0 _a _b _e
   local -a _dirs=() _walk=()
-  if [ -n "${_root}" ]; then
-    _r="$(realpath -e -- "${_root}" 2> /dev/null)" || _die "no such directory: ${_root}"
+  if [ -n "${_root}${_tree}" ]; then
+    _r="$(realpath -e -- "${_root}${_tree}" 2> /dev/null)" || _die "no such directory: ${_root}${_tree}"
     case "${_r}/" in
       /data/disk/?*/?*|/var/aegir/?*) ;;
-      *) _die "not a platform under /data/disk or /var/aegir: ${_r}" ;;
+      *) _die "not a directory under /data/disk/<account> or /var/aegir: ${_r}" ;;
     esac
     [ -d "${_r}" ] || _die "not a directory: ${_r}"
-    _dirs=("${_r}")
+    [ -n "${_root}" ] && _dirs=("${_r}")
+    [ -n "${_tree}" ] && _LG_TREE=1
     _walk=("${_r}")
     _LG_ONE=1
   else
@@ -422,10 +494,16 @@ _lg_fix() {
   _LG_LEFT_BOA="${_x}"
   _LG_FIXED_ACCT=0
   _LG_LEFT_ACCT=0
+  _LG_ERR_ACCT=0
+  _LG_HEAL_BROKEN=""
   if [ -z "${_LG_SKIP_WALK}" ] && [ "${#_walk[@]}" -gt 0 ] && _lg_walk "${_walk[@]}"; then
-    read -r _a _b <<< "$(_lg_fix_accounts)"
+    read -r _a _b _e <<< "$(_lg_fix_accounts)"
     _LG_FIXED_ACCT="${_a}"
     _LG_LEFT_ACCT="${_b}"
+    _LG_ERR_ACCT="${_e:-0}"
+    if [ "${_LG_ERR_ACCT}" != "0" ] && ! _lg_heal_selftest; then
+      _LG_HEAL_BROKEN=1
+    fi
   fi
   return 0
 }
@@ -533,13 +611,14 @@ _lg_state() {
 }
 
 _lg_cmd_fix() {
-  local _root="" _fixed
+  local _root="" _tree="" _fixed
   case "${1}" in
-    --root=*) _root="${1#--root=}" ;;
+    --root=?*) _root="${1#--root=}" ;;
+    --tree=?*) _tree="${1#--tree=}" ;;
     "") ;;
     *) _die "unknown argument: ${1}" ;;
   esac
-  if [ -n "${_root}" ]; then
+  if [ -n "${_root}${_tree}" ]; then
     # BOA's links on the platform are made root's whoever holds the run
     # lock (one rename each, the same result from any run); only the walk
     # for links inside the account waits for it, and not for long.
@@ -548,14 +627,21 @@ _lg_cmd_fix() {
     _lg_nginx_ok || _die "nginx is not installed"
     _lg_lock_run || _die "another linkguard run holds ${_LG_RUN_LOCK}"
   fi
-  _lg_fix "${_root}"
+  _lg_fix "${_root}" "${_tree}"
   _fixed=$(( _LG_FIXED_BOA + _LG_FIXED_ACCT ))
-  if [ -z "${_root}" ] \
+  if [ -n "${_tree}" ]; then
+    if [ "$(( _fixed + _LG_LEFT_ACCT ))" != "0" ]; then
+      _msg "linkguard: ${_LG_FIXED_ACCT} links inside the account made their target owner's (${_LG_LEFT_ACCT} left)"
+    fi
+  elif [ -z "${_root}" ] \
     || [ "$(( _fixed + _LG_LEFT_BOA + _LG_LEFT_ACCT ))" != "0" ]; then
     _msg "linkguard: ${_LG_FIXED_BOA} BOA links made root's (${_LG_LEFT_BOA} left), ${_LG_FIXED_ACCT} links inside an account made their target owner's (${_LG_LEFT_ACCT} left)"
   fi
+  if [ -n "${_LG_HEAL_BROKEN}" ]; then
+    _msg "linkguard: no link could be made as another user here (setpriv); links inside an account stay as they are"
+  fi
   if [ -n "${_LG_SKIP_WALK}" ]; then
-    _msg "linkguard: another run holds ${_LG_RUN_LOCK}; links inside the account under ${_root} wait for the nightly pass"
+    _msg "linkguard: another run holds ${_LG_RUN_LOCK}; links inside the account under ${_root}${_tree} wait for the nightly pass"
   fi
   # Links made to pass while the check is on: a worker keeps a refusal
   # cached up to open_file_cache_valid; a reload starts the workers afresh.
@@ -620,6 +706,13 @@ _lg_cmd_apply() {
     [ "${_LG_BLOCKING}" = "0" ] && _why=incomplete
     _msg "SUMMARY state=OFF reason=${_why} blocking=${_LG_BLOCKING} refused=${_LG_REFUSED} complete=${_LG_COMPLETE} report=${_LG_REPORT}"
     return 3
+  fi
+  # Links inside an account are no reason to stay off, a tool that cannot
+  # make any link as another user is: every such link would be refused.
+  if [ -n "${_LG_HEAL_BROKEN}" ]; then
+    _msg "ALERT: linkguard: no link can be made as another user on this box (setpriv); the check stays off"
+    _msg "SUMMARY state=OFF reason=no-heal blocking=0 refused=${_LG_REFUSED} report=${_LG_REPORT}"
+    return 1
   fi
   if ! _lg_switch_on; then
     _msg "ALERT: linkguard: nginx rejected ${_LG_CONF}, removed: ${_LG_WHY}"
