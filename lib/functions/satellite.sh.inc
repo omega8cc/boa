@@ -5533,14 +5533,12 @@ _satellite_run_child_b() {
           _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
       )
       _T_ACC="${_T_ACC}${_T_N}"$'\n'
-      _T_ACC=$(printf '%s' "${_T_ACC}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-      if [ "${_T_ACC}" -gt 0 ]; then
-        _msg "${_STATUS} A: NOTE: ${_T_ACC} entries owned by another user left as they were in .drush, backups, clients, config and tools"
-      fi
+      _T_IN="as they were in .drush, backups, clients, config and tools"
       _satellite_update_drush_php_cli
       _satellite_update_local_dirs_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
         || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
+        _satellite_left_note "${_T_ACC}" "${_T_IN}"
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
@@ -5549,9 +5547,16 @@ _satellite_run_child_b() {
         ### Old hostmaster backups go to backups/system/old_hostmaster: both
         ### directories are made and handed over by root inside their real
         ### directories (backups may be a link into the account's store),
-        ### and the instance user moves its own files there.
-        _satellite_in_store_dir "${_ROOT}/backups" \
-          _satellite_sys_dir_here old_hostmaster &> /dev/null
+        ### and the instance user moves its own files there. A backups,
+        ### system or old_hostmaster another user owns keeps its owner and
+        ### mode and nothing is made in it (_satellite_sys_dir_here): the
+        ### files the instance user cannot move then stay in backups, and
+        ### the directory left joins the NOTE line.
+        _T_N=$(
+          _satellite_in_store_dir "${_ROOT}/backups" \
+            _satellite_sys_dir_here old_hostmaster 2> /dev/null
+        )
+        _satellite_left_note "${_T_ACC}${_T_N}" "${_T_IN}"
         _satellite_as_user "_d=${_ROOT}/backups/system/old_hostmaster; \
           mv -f ${_ROOT}/backups/*host8* \${_d}/; \
           mv -f ${_ROOT}/backups/*o8.io* \${_d}/; \
@@ -5580,7 +5585,7 @@ _satellite_if_create_local_bin() {
   if [ ! -d "${_L_BIN}" ]; then
     mkdir -p ${_L_BIN}
     _acct_in_real_dir "${_L_BIN}" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 700
+      "${_USER}:${_ACCG:-users}" 700 > /dev/null
   fi
   if [ ! -L "${_L_BIN}/drush" ]; then
     _acct_in_real_dir "${_L_BIN}" \
@@ -6476,6 +6481,7 @@ _satellite_pl_data_here() {
 }
 
 _satellite_if_add_update_backend_user_dirs_files_clean() {
+  local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_backend_user_dirs_files_clean"
     _debug_proc
@@ -6488,9 +6494,14 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   fi
   ### static/ is the account's and group-writable: its owner and mode are set
   ### and EMPTY.txt is put inside the real directory, never through a link
-  ### put at static or at EMPTY.txt.
-  _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
-    "${_USER}:${_ACCG:-users}" 02775 &> /dev/null
+  ### put at static or at EMPTY.txt. A directory another user owns, renamed
+  ### to static, keeps its owner and mode (_satellite_own_dir_here) and is
+  ### named on a NOTE line.
+  _T_N=$(
+    _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
+      "${_USER}:${_ACCG:-users}" 02775 2> /dev/null
+  )
+  _satellite_left_note "${_T_N}" "in place at ${_ROOT}/static"
   _acct_put_in "${_ROOT}/static" EMPTY.txt empty
 
   ###---### Create ~/.tmp dir if not exists.
@@ -6499,7 +6510,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
     _acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 02775
+      "${_USER}:${_ACCG:-users}" 02775 > /dev/null
   fi
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
@@ -8114,9 +8125,29 @@ _satellite_edit_all_here() (
     _satellite_copy_here "${_f#./}" "${_f#./}" "${1}"
   done
 )
-# The current (pinned) directory handed to $1 (owner:group) with the mode $2.
+# The current (pinned) directory handed to $1 (owner:group) with the mode
+# $2, through _SAT_REOWN_OWN_PL: only when root or one of the instance's own
+# identities (_acct_walk_uids) owns it and every directory above it. The
+# account can rename to any name in its tree a directory another account
+# left group-writable: such a directory keeps its owner and mode. Prints
+# dev:ino of the directory left for another owner; status 1 when one is.
 _satellite_own_dir_here() {
-  chown -h "${1}" . && chmod "${2}" .
+  local _u _g _o
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . \
+    && chmod "${2}" .
+}
+# One NOTE line for what the owner-checked helpers left to another owner:
+# $1 the dev:ino lines they printed, each entry counted once though more
+# than one of them met it, $2 the end of the sentence (how and where it was
+# left). Nothing when none was left.
+_satellite_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [ "${_n}" -gt 0 ] || return 0
+  _msg "${_STATUS} A: NOTE: ${_n} entries owned by another user left ${2}"
 }
 # The link ./$1 in the current (pinned) directory handed to $2 (owner[:group]
 # names; an owner alone keeps the link's group), as chown -h handed it: made
@@ -8376,8 +8407,15 @@ _satellite_tree_mode_all_here() (
 # The current (pinned) backups directory's system/ (and system/$1 when
 # given) made where missing, handed to the instance user and set 0700,
 # each inside its real directory: the instance user moves its own old
-# backups there.
+# backups there. Only where root or the instance's own identities own the
+# directory (_satellite_own_dir_here): nothing is made in a backups or a
+# system another user owns, which is tested before the first mkdir (the
+# same walker with no owner to give changes nothing). Prints dev:ino of the
+# directory left for another owner.
 _satellite_sys_dir_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 . || return 1
   _satellite_sub_here system _satellite_own_dir_here \
     "${_USER}:${_ACCG:-users}" 0700 || return 1
   [ -z "${1}" ] || _acct_in_real_dir ./system _satellite_sub_here "${1}" \
