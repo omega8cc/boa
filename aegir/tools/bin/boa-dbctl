@@ -5152,21 +5152,31 @@ _settle_purge_time() {
   return 0
 }
 
-# When the password of the login whose hex user and host are $1 and $2 was
-# last set, as the server keeps it, into _ST_PLC (epoch seconds, empty when
-# the server keeps none or the row is gone: _ST_ROW says which), and
-# whether that is no later than the time $3 into _ST_OLD (Y or N), compared
-# by the server.
+# The row whose hex user and host are $1 and $2, and every row of that user,
+# against the time $3, each comparison made by the server. _ST_ROW is YES
+# while the row is there; _ST_PLC when its own password was last set (epoch
+# seconds, empty when the server keeps none); _ST_NULL how many rows of the
+# user have no such time; _ST_LATER how many rows of the user had their
+# password set after $3; _ST_SIG the row's own time with the latest over
+# the user's rows, what a second read is compared with.
 _settle_plc() {
+  local _w="HEX(User) = '${1}'" _r _a _b _c _d _e
   _ST_PLC=""
-  _ST_OLD="N"
+  _ST_NULL=""
+  _ST_LATER=""
+  _ST_SIG=""
   _ST_ROW="NO"
   [[ "${1}" =~ ^[0-9A-F]*$ && "${2}" =~ ^[0-9A-F]*$ && "${3}" =~ ^[0-9]{1,12}$ ]] || return 1
-  _sql_or_die "SELECT /*q:plc*/ CONCAT_WS('|', IFNULL(UNIX_TIMESTAMP(password_last_changed), ''), IF(password_last_changed IS NOT NULL AND UNIX_TIMESTAMP(password_last_changed) <= ${3}, 'Y', 'N')) FROM mysql.user WHERE HEX(User) = '${1}' AND HEX(Host) = '${2}'" plc
-  [[ -z "${_SQL_OUT}" ]] || _ST_ROW="YES"
-  [[ "${_SQL_OUT}" =~ ^[0-9]+\|[YN]$ ]] || return 0
-  _ST_PLC="${_SQL_OUT%%|*}"
-  _ST_OLD="${_SQL_OUT#*|}"
+  _r="${_w} AND HEX(Host) = '${2}'"
+  _sql_or_die "SELECT /*q:plc*/ CONCAT_WS('|', (SELECT COUNT(*) FROM mysql.user WHERE ${_r}), IFNULL((SELECT UNIX_TIMESTAMP(password_last_changed) FROM mysql.user WHERE ${_r}), ''), (SELECT COUNT(*) FROM mysql.user WHERE ${_w} AND password_last_changed IS NULL), IFNULL((SELECT MAX(UNIX_TIMESTAMP(password_last_changed)) FROM mysql.user WHERE ${_w}), ''), (SELECT COUNT(*) FROM mysql.user WHERE ${_w} AND UNIX_TIMESTAMP(password_last_changed) > ${3}))" plc
+  IFS='|' read -r _a _b _c _d _e <<< "${_SQL_OUT}"
+  [[ "${_a}" =~ ^[01]$ && "${_b}" =~ ^[0-9]*$ && "${_c}" =~ ^[0-9]+$ \
+    && "${_d}" =~ ^[0-9]*$ && "${_e}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed plc"
+  [[ "${_a}" == "1" ]] && _ST_ROW="YES"
+  _ST_PLC="${_b}"
+  _ST_NULL="${_c}"
+  _ST_LATER="${_e}"
+  _ST_SIG="${_b}|${_d}"
   return 0
 }
 
@@ -5262,10 +5272,10 @@ _settle_cred() {
 #   3  each instance or panel row "leftovers list" puts in section A, at
 #      any host: dropped, its grants and its CREATE USER line saved first,
 #      only while the account's purge parked its home, no root cnf of the
-#      account is there, the row's password was not set after the purge,
-#      the row defines no stored object, and the credential the parked
-#      home records for it opens that very row. A purged account's site
-#      users are left to "leftovers drop"
+#      account is there, no row of its user had its password set after
+#      the purge, the row defines no stored object, and the credential the
+#      parked home records for it opens that very row. A purged account's
+#      site users are left to "leftovers drop"
 # Never touched in 2 either: a name two accounts' records claim, and every
 # login of another class. A database is never touched. Whatever it leaves
 # is said in a "left" line, and so is every finding the box-wide check
@@ -5424,10 +5434,11 @@ _v_baseline_settle() {
   # (a root cnf with no home and no parked home is a disk not mounted or an
   # account half made: its logins are live). No root cnf of the account is
   # there: the purge moves it away, so one that is there is a later account
-  # of the name. The row's password was not set after the purge: a row
-  # touched since is in use by something made since, another box's account
-  # of the name served from here included. It defines no stored object: the
-  # drop would leave that without its definer. The credential the parked
+  # of the name. No row of its user had its password set after the purge:
+  # one set since, and the name is in use by something made since, another
+  # box's account of the name served from here included, whichever row is
+  # at hand. It defines no stored object: the drop would leave that
+  # without its definer. The credential the parked
   # home records for it opens that very row, proven as a live account's
   # login is: the times only order what happened on one server, and a box
   # seeded from another server's data can hold a park younger than rows
@@ -5469,17 +5480,23 @@ _v_baseline_settle() {
       continue
     fi
     _settle_plc "${_ux}" "${_hx}" "${_ST_PT}"
-    # gone since the list was read
-    [[ "${_ST_ROW}" == "YES" ]] || continue
-    if [[ -z "${_ST_PLC}" ]]; then
-      _settle_note "${_uh}" "${_c}" "the server keeps no time of its last password change"
+    # gone since the list was read: the box is read again below, so the
+    # last lines do not count a row that is no longer there
+    if [[ "${_ST_ROW}" != "YES" ]]; then
+      _stale=1
       continue
     fi
-    if [[ "${_ST_OLD}" != "Y" ]]; then
-      _settle_note "${_uh}" "${_c}" "its password was set after the purge of ${_o}: something made since uses it"
+    # the time test goes by every row of the user: one row set since the
+    # purge, and the name is in use, whichever row is at hand
+    if [[ -z "${_ST_PLC}" || "${_ST_NULL}" -gt 0 ]]; then
+      _settle_note "${_uh}" "${_c}" "the server keeps no time of the last password change of each row of this user"
       continue
     fi
-    _k="${_ST_PLC}"
+    if [[ "${_ST_LATER}" -gt 0 ]]; then
+      _settle_note "${_uh}" "${_c}" "the password of a row of this user was set after the purge of ${_o}: something made since uses the name"
+      continue
+    fi
+    _k="${_ST_SIG}"
     if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
       _settle_note "${_uh}" "${_c}" "the stored objects could not all be read: nothing is dropped on a guess"
       continue
@@ -5513,7 +5530,7 @@ _v_baseline_settle() {
     # the row as it was judged: one whose password was set while its
     # grants were being saved stays
     _settle_plc "${_ux}" "${_hx}" "${_ST_PT}"
-    if [[ "${_ST_PLC}" != "${_k}" ]]; then
+    if [[ "${_ST_ROW}" != "YES" || "${_ST_SIG}" != "${_k}" ]]; then
       _settle_note "${_uh}" "${_c}" "it changed while this ran"
       continue
     fi
