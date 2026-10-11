@@ -181,6 +181,16 @@
       it would prove stays unproven. The MySQL 5.7 client reads a longer
       option line in pieces, each further piece as a line of its own.
 
+    * The per-account web group conversion, still switched off, no longer
+      leaves out an account with a site that reads another account's
+      files store, a site on the shared /data/all stores or outside the
+      account, or a files or private store outside the account's own
+      places. Such an account converts to phase A like any other, with
+      that path left exactly as it is and still working; only phase B
+      waits until it is gone. instgrp webcheck --report counts what
+      holds an account's phase B, and on a box that starts phase B the
+      watchers note such an account once a day (docs/INSTGRP.md).
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
