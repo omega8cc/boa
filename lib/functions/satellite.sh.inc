@@ -5422,8 +5422,20 @@ _satellite_run_child_b() {
           ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
           ${_ROOT}/.drush/sys/provision" &> /dev/null
       fi
-      _acct_in_real_dir "${_ROOT}/.drush" rm -rf -- ./drush_make
-      _acct_in_real_dir "${_ROOT}/.drush/sys" rm -rf -- ./drush_make
+      ### drush_make, long out of the layout, is removed only where root or
+      ### the account's own identities own it (_satellite_rm_own_here): the
+      ### account can rename into .drush what another account left
+      ### group-writable. What stays joins the NOTE line after AegirSetupB.
+      _T_ACC=""
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/.drush" _satellite_rm_own_here drush_make
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/.drush/sys" \
+          _satellite_rm_own_here drush_make
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
       _hostmaster_frontend_dbpass_sync
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Switching user and running AegirSetupB..."
@@ -5443,7 +5455,6 @@ _satellite_run_child_b() {
       ### into these trees what another account left group-writable. What
       ### stays another user's is counted on one NOTE line after AegirSetupB,
       ### each entry once though tools and tools/drush both meet it.
-      _T_ACC=""
       _T_N=$(
         _acct_in_real_dir "${_ROOT}/.drush" \
           _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
@@ -6220,6 +6231,7 @@ _satellite_rm_own_here() {
 }
 
 _satellite_if_add_update_user_dot_dirs() {
+  local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_user_dot_dirs"
     _debug_proc
@@ -6264,8 +6276,12 @@ _satellite_if_add_update_user_dot_dirs() {
         "${_USERFTP}:${_ACCG:-users}" &> /dev/null
     fi
   else
+    ### removed only where root or the account's own identities own it
+    ### (_satellite_rm_own_here): the login can rename to .bazaar a
+    ### directory another account left group-writable
     if [ -d "${_USER_BZR}" ]; then
-      rm -rf ${_USER_BZR}
+      _T_N=$(_acct_in_real_dir "${_USER_HD}" _satellite_rm_own_here .bazaar)
+      _satellite_left_note "${_T_N}" "in place in ${_USER_BZR}"
     fi
   fi
 
@@ -6564,8 +6580,11 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
         "${_USER}:${_ACCG:-users}" &> /dev/null
     fi
   else
+    ### removed only where root or the account's own identities own it
+    ### (_satellite_rm_own_here), as in the main login's home
     if [ -d "${_SYSTEM_USER_BZR}" ]; then
-      rm -rf ${_SYSTEM_USER_BZR}
+      _T_N=$(_acct_in_real_dir "${_ROOT}" _satellite_rm_own_here .bazaar)
+      _satellite_left_note "${_T_N}" "in place in ${_SYSTEM_USER_BZR}"
     fi
   fi
 
