@@ -3937,7 +3937,13 @@ _rec_load() {
   while IFS='|' read -r _x _s; do
     [[ "${_x}" =~ ^[0-9A-F]+$ ]] || continue
     if [[ "${_s}" == "?" ]]; then
-      _s=$(_unhex "${_x}") || continue
+      # As it is, a line feed at its end too, which $( ) alone would drop:
+      # the name would then read as the plain one before it. A line feed
+      # in it is kept as ?, which no plain name holds and which a pattern
+      # grant's _ still matches.
+      _s=$(_unhex "${_x}" && printf x) || continue
+      _s="${_s%x}"
+      _s="${_s//$'\n'/?}"
     fi
     _AL_SCHN="${_AL_SCHN}${_s}"$'\n'
     _rk "${_s}"
