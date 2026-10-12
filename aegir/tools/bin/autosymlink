@@ -2316,6 +2316,47 @@ _rm_tree_as_here() {
   return 0
 }
 
+# The store paths nginx never serves, as the site fixers prune them
+# (fix-drupal-site-permissions.sh _SITE_DENIED_RE and ./private, matched
+# case-insensitively): the store owner's private set, which its own web
+# group closes to every other account.
+_UNSHARE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+
+_unshare_closed_ex() {
+  # The files the account (uid $1, gid $2) cannot read, and the directories
+  # it can neither read nor enter, of source store $3, as that account sees
+  # them (setpriv with its own groups; find never follows a link: the copy
+  # keeps a link as a link and skips specials, so neither counts). Each must be the store owner's
+  # private set (_UNSHARE_DENIED_RE, or ./private), plainly named: the copy
+  # then leaves it out (an anchored exclude in _UNSHARE_EX), and logs it. A
+  # store whose owner converted to its own web group closes exactly these to
+  # other accounts, and the site never served them. Any other closed entry,
+  # or more than 200, and nothing is copied (status 1).
+  local _p _r _l _n=0
+  _UNSHARE_EX=()
+  while IFS= read -r -d '' _p; do
+    _r="${_p#"${3%/}"/}"
+    [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
+    # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS)
+    case "${_r}" in
+      ownership-fixed-*.pid|permissions-fixed-*.pid) continue ;;
+    esac
+    _l=$(printf '%s' "./${_r}" | tr 'A-Z' 'a-z')
+    if [[ ! "${_r}" =~ ^[A-Za-z0-9._/-]+$ ]] \
+      || { [ "${_l}" != "./private" ] && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})$ ]]; }; then
+      _log "[ERROR] Un-share copy: ${_r} is closed to $(id -nu "${1}" 2>/dev/null) and is not the store owner's private set; nothing copied"
+      return 1
+    fi
+    _n=$((_n + 1))
+    [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of ${3} are closed to $(id -nu "${1}" 2>/dev/null); nothing copied"; return 1; }
+    _UNSHARE_EX+=("--exclude=/${_r}")
+    _log "[INFO] Un-share copy leaves out ${_r}: closed to $(id -nu "${1}" 2>/dev/null), the store owner's private set (nginx never serves it)"
+  done < <(setpriv --reuid="${1}" --regid="${2}" --init-groups \
+    find "${3%/}/" -mindepth 1 \( \( -type f ! -readable \) -o \( -type d \( ! -readable -o ! -executable \) \) \) \
+    -prune -print0 2>/dev/null)
+  return 0
+}
+
 _unshare_copy() {
   # The un-share copy, made by the site's own account in its web group, so
   # the new store is <account>:<web group> as the ownership pass gives it.
@@ -2324,7 +2365,9 @@ _unshare_copy() {
   # (ownership-/permissions-fixed-<day>.pid), which make that day's
   # ownership and permissions passes skip the new store. As the account, the
   # copy holds only what the account itself can read (never another
-  # account's closed private store), every entry is the account's from the
+  # account's closed private store; the owner's private set inside a files
+  # store, closed to it once the owner has its own web group, is left out,
+  # see _unshare_closed_ex), every entry is the account's from the
   # start, and root writes nothing in a tree other tenants' identities can
   # write. The copy is staged only in a base root owns that no other identity
   # can write (a base its group or others can write is refused, see below),
@@ -2421,8 +2464,11 @@ _unshare_copy() {
             rsync "${_UNSHARE_RSYNC_ARGS[@]}" -- ./ "/proc/self/fd/9/${_type}/" >&2 ) || exit 1
         exec 9<&-
       else
+        # what of another account's store is closed to this one
+        _unshare_closed_ex "${_uid}" "${_gid}" "${_src}" || exit 1
         setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
-          rsync "${_UNSHARE_RSYNC_ARGS[@]}" -- "${_src}/" "./${_type}/" >&2 || exit 1
+          rsync "${_UNSHARE_RSYNC_ARGS[@]}" ${_UNSHARE_EX[@]+"${_UNSHARE_EX[@]}"} \
+          -- "${_src}/" "./${_type}/" >&2 || exit 1
       fi
       _ino=$([ -d "./${_type}" ] && [ ! -L "./${_type}" ] \
         && stat -c '%d:%i' -- "./${_type}") || exit 1
