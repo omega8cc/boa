@@ -5331,7 +5331,8 @@ _settle_purge_time() {
 # seconds, empty when the server keeps none); _ST_NULL how many rows of the
 # user have no such time; _ST_LATER how many rows of the user had their
 # password set after $3; _ST_SIG the row's own time with the latest over
-# the user's rows, what a second read is compared with.
+# the user's rows and the count of those that have none, what a later read
+# is compared with.
 _settle_plc() {
   local _w="HEX(User) = '${1}'" _r _a _b _c _d _e
   _ST_PLC=""
@@ -5349,7 +5350,7 @@ _settle_plc() {
   _ST_PLC="${_b}"
   _ST_NULL="${_c}"
   _ST_LATER="${_e}"
-  _ST_SIG="${_b}|${_d}"
+  _ST_SIG="${_b}|${_d}|${_c}"
   return 0
 }
 
