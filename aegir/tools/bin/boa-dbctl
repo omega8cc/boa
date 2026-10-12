@@ -194,6 +194,8 @@ _AL_FOR=""
 _PO_FOR=""
 _PN_ROOT=""
 _SRV_VER=""
+_KO=""
+_NS=""
 
 _usage() {
   cat <<'EOF' >&2
@@ -6934,6 +6936,63 @@ _v_census() {
   _info "census accounts=${_all} version=${_SRV_VER} cap-enforced=${_f} reference=${_REF_STATE}"
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. The Octopus pass reads an
+# account's lines with this same text.
+_cnf_last() {
+  local _v
+  _v=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+# The setting of account $1's own cnf that keeps it out of every switch a
+# pass makes, into _KO: _DB_BROKER_ARM=NO, its operator's, or
+# _DB_BROKER_BORN=NO, a migration tool's while a move's line is there. In
+# the order, and with the reading, of the pass. 1 when neither.
+_kept_out() {
+  local _k
+  _KO=""
+  for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
+    if [[ "$(_cnf_last "${_RHOME}/.${1}.octopus.cnf" "${_k}")" == "NO" ]]; then
+      _KO="${_k}=NO"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Why the broker does not serve account $1, into _NS, in the words its plan
+# refuses with: a box behind ProxySQL or an account that is (proxysql), a
+# database cluster (cluster: the two words a settle skips such a box with),
+# databases on another server (remote-database-server). Read from the
+# box's files alone, after _box_facts: nothing asks the server. 1 when it
+# is served.
+_not_served() {
+  local _h
+  _NS=""
+  if [[ -e "${_CONF}/${1}_use_proxysql.txt" || -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+    _NS="proxysql"
+  elif [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+    _NS="cluster"
+  else
+    _h=$(grep -s "^_THIS_DB_HOST=" "${_RHOME}/.${1}.octopus.cnf" | tail -n 1 \
+      | cut -d= -f2 | tr -d "\"' ")
+    case "${_h}" in
+      ""|localhost|127.0.0.1|FQDN) ;;
+      *) _own_ip "${_h}" || _NS="remote-database-server" ;;
+    esac
+  fi
+  [[ -n "${_NS}" ]]
+}
+
 # Why account ${_ACCT} is not switched, as its own plan says it, into
 # _RP_WHY: each refusal, each site left unregistered, and, when nothing of
 # its own holds it, how many findings of the box-wide check its switch
@@ -6970,12 +7029,15 @@ _report_plan() {
 
 # report: each account the census lists, switched or why not; then every
 # finding of the box-wide check, once, and how the server stands against
-# its version's reference. The box is read once for all accounts, each
-# account's own part of its plan once. It logs in as a plan does and
-# changes nothing. On a standby it has already answered
+# its version's reference. An account its own cnf keeps out (kept-out) and
+# one the broker does not serve (not-served) are told apart from the ones
+# the box could switch and has not (not-switched): only these are counted
+# as unswitched, and only their plans are read. The box is read once for
+# all accounts, each account's own part of its plan once. It logs in as a
+# plan does and changes nothing. On a standby it has already answered
 # (_need_not_standby).
 _v_report() {
-  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _oo _n=0 _sw=0 _un=0
+  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _n=0 _sw=0 _un=0 _ko=0 _ns=0
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
   _box_facts
@@ -7024,27 +7086,34 @@ _v_report() {
       fi
       continue
     fi
-    _un=$(( _un + 1 ))
     _why=""
     # a control file that is not valid: its tasks take the direct path
     [[ "${_rc}" -eq 1 ]] || _why="control-file-invalid"
+    # Kept out by its own cnf, or not served by the broker: no pass asks
+    # for its switch and nothing the box does changes that, so its plan is
+    # not read and it is not counted as unswitched. The cnf first, as the
+    # pass reads it first.
+    if _kept_out "${_a}"; then
+      _ko=$(( _ko + 1 ))
+      printf '%s kept-out %s%s\n' "${_a}" "${_KO}" "${_why:+ ${_why}}"
+      continue
+    fi
+    if _not_served "${_a}"; then
+      _ns=$(( _ns + 1 ))
+      printf '%s not-served %s%s\n' "${_a}" "${_NS}" "${_why:+ ${_why}}"
+      continue
+    fi
+    _un=$(( _un + 1 ))
     if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
       _why="${_why:+${_why}, }not-released"
     fi
-    # the last assignment counts, as it does when the cnf is sourced
-    _oo=$(grep -E '^_DB_BROKER_ARM=' "${_RHOME}/.${_a}.octopus.cnf" 2> /dev/null | tail -n 1)
-    if printf '%s\n' "${_oo}" | grep -qE "^_DB_BROKER_ARM=[\"']?NO[\"']?[[:space:]]*$"; then
-      # kept out by its own cnf: its plan is not read
-      _why="${_why:+${_why}, }opted-out"
-    else
-      _k=0
-      while IFS= read -r _x; do
-        [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
-      done <<< "${_own}"
-      _report_plan "$(( _k + _kr ))"
-      [[ "${_kr}" -eq 0 ]] || _why="${_why:+${_why}, }role-or-proxy-grant ${_kr}"
-      [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
-    fi
+    _k=0
+    while IFS= read -r _x; do
+      [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
+    done <<< "${_own}"
+    _report_plan "$(( _k + _kr ))"
+    [[ "${_kr}" -eq 0 ]] || _why="${_why:+${_why}, }role-or-proxy-grant ${_kr}"
+    [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
     printf '%s not-switched %s\n' "${_a}" "${_why:-ready}"
   done
   _ACCT=""
@@ -7052,7 +7121,7 @@ _v_report() {
     [[ -n "${_l}" ]] && printf 'box %s\n' "${_l}"
   done <<< "${_AL_OUT}"
   _ref_state
-  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} stops=${_AL_NSTOP} reference=${_REF_STATE}"
+  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} kept-out=${_ko} not-served=${_ns} stops=${_AL_NSTOP} reference=${_REF_STATE}"
 }
 
 _parse_args() {
