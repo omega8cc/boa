@@ -12555,15 +12555,18 @@ _fix_php_in_lshell_access() {
 # libraries; instgrp (fetched, can land weeks earlier on a staged publish)
 # lets no account take its FIRST conversion until this stamp says the arm is
 # on the box. Written at the tail of every barracuda pass that runs this
-# release (next to the barracuda log line), never by the fetched channel.
-# .txt: the /var/log/boa sweeps match *.pid and *.log only.
+# release (next to the barracuda log line), never by the fetched channel,
+# under /etc/boa/control. A stamp an earlier release wrote in /var/log/boa
+# is copied there by BOA.sh.txt and stays for an instgrp not yet replaced.
 _instgrp_arm_stamp() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _instgrp_arm_stamp"
     _debug_proc
   fi
-  mkdir -p /var/log/boa &> /dev/null
-  echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
+  if ! _boa_control_put instgrp-arm.ready.txt \
+    "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"; then
+    _msg "ALRT: /etc/boa/control/instgrp-arm.ready.txt cannot be written; without it instgrp holds every first conversion"
+  fi
 }
 
 # $1 the setting, $2 its stage: YES is appended to the cnf when the stage
@@ -12617,10 +12620,12 @@ _instgrp_web_arm_seed() {
 # The web group's arm (instgrp webconvert) takes no account's first
 # conversion without this stamp. Written at the tail of every barracuda pass
 # while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
-# disarms the box; a conversion already under way resumes either way.
-# Tenant isolation is not switched on in this release: the setting arms only
-# a box that carries the test marker, until a later release sets
-# _tiReleased to YES. Kept local so no cnf line can set it.
+# disarms the box; a conversion already under way resumes either way. It
+# lives under /etc/boa/control; the disarm also removes the one an earlier
+# release wrote in /var/log/boa, which an instgrp or a migration tool not yet
+# replaced still reads. Tenant isolation is not switched on in this release:
+# the setting arms only a box that carries the test marker, until a later
+# release sets _tiReleased to YES. Kept local so no cnf line can set it.
 _instgrp_web_arm_stamp() {
   local _tiReleased=NO
   local _tiTest="/root/.tenant-isolation-test.cnf"
@@ -12628,12 +12633,15 @@ _instgrp_web_arm_stamp() {
     _msg "PROC: _instgrp_web_arm_stamp"
     _debug_proc
   fi
-  mkdir -p /var/log/boa &> /dev/null
   if [ "${_WEB_GROUP_ARM}" = "YES" ] \
     && { [ "${_tiReleased}" = "YES" ] || [ -e "${_tiTest}" ]; }; then
-    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-web-arm.ready.txt
+    if ! _boa_control_put instgrp-web-arm.ready.txt \
+      "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"; then
+      _msg "ALRT: /etc/boa/control/instgrp-web-arm.ready.txt cannot be written; without it no account takes its first web group conversion"
+    fi
   else
-    rm -f /var/log/boa/instgrp-web-arm.ready.txt
+    rm -f /etc/boa/control/instgrp-web-arm.ready.txt \
+      /var/log/boa/instgrp-web-arm.ready.txt
     if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
       _msg "NOTE: _WEB_GROUP_ARM=YES arms nothing in this release: tenant isolation is switched on by a later release"
     fi

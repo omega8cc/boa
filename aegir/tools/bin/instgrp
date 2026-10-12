@@ -170,9 +170,10 @@ _MARK_REL=log/instance-group.txt
 # writers can land on a box weeks before its upgrade -- a staged publish --
 # and every writer this tool inventories is fetched, so without this stamp
 # "ready" would read true on a box whose Octopus and system libraries still
-# flatten trees to the box-wide group. .txt: the /var/log/boa sweeps match
-# *.pid and *.log only.
-_ARM_STAMP=/var/log/boa/instgrp-arm.ready.txt
+# flatten trees to the box-wide group. Read only here, where /var/log/boa's
+# sweeps never reach; BOA.sh.txt copies a stamp an earlier release wrote in
+# /var/log/boa before it fetches this tool.
+_ARM_STAMP=/etc/boa/control/instgrp-arm.ready.txt
 _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
 # The identities of an account with a process of their own (a minute cron run
 # of the account ends by itself, a logged-in shell or SFTP session does not):
@@ -2009,7 +2010,7 @@ _do_status() {
 # change first, so a run killed anywhere is finished by the next one.
 
 _WG_PHP_ALL="86 85 84 83 82 81 80 74 73 72 71 70 56"
-_WG_STAMP=/var/log/boa/instgrp-web-arm.ready.txt
+_WG_STAMP=/etc/boa/control/instgrp-web-arm.ready.txt
 _WG_QSTOP=/run/boa_queue_stop.pid
 _WG_MQSTOP=/run/boa_master_queue_stop.pid
 _WG_STANDBY=/root/.standby.cnf

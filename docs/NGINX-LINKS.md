@@ -51,7 +51,7 @@ name.
 ## When it switches itself on
 
 `_NGINX_LINK_GUARD=YES` in `/root/.barracuda.cnf` arms the system: every
-barracuda pass then writes the arm stamp `/var/log/boa/linkguard-arm.ready.txt`
+barracuda pass then writes the arm stamp `/etc/boa/control/linkguard-arm.ready.txt`
 and runs `linkguard apply`, which
 
 1. makes BOA's links pass on every platform BOA builds and in every root

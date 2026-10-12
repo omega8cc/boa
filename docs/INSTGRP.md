@@ -116,7 +116,7 @@ marker every other root writer honours; `--force` overrides), and defers
 a FIRST conversion (exit 5, a note in the upgrade report) while any fetched
 root-run writer on the box still carries the box-wide form, or while the BOA
 release that carries the Octopus arm has not stamped the box yet
-(`/var/log/boa/instgrp-arm.ready.txt`, written at the tail of that release's
+(`/etc/boa/control/instgrp-arm.ready.txt`, written at the tail of that release's
 barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
 nightly worker would write `users` back on its next pass, an old `websh` would
 lock the tenant out of its shell, and on a box that only received the fetched
@@ -380,7 +380,7 @@ a dot.
 
 Nothing converts until the box is armed: `_WEB_GROUP_ARM=YES` in
 `/root/.barracuda.cnf`. Every barracuda pass then writes the stamp
-`/var/log/boa/instgrp-web-arm.ready.txt`, and removes it while the setting
+`/etc/boa/control/instgrp-web-arm.ready.txt`, and removes it while the setting
 is NO. `_WEB_GROUP_PHASE_B=YES` beside it lets the Octopus arm go on to
 phase B (below), read as bash reads the file (the last assignment counts;
 `export`, quotes and a trailing comment are fine). Both are NO by default.

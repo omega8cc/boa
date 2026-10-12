@@ -12,7 +12,7 @@
 # root's here; a link inside one account is made its target's owner's.
 #
 # The restriction is switched on only on a box BOA has armed (the barracuda
-# pass writes /var/log/boa/linkguard-arm.ready.txt while _NGINX_LINK_GUARD=YES
+# pass writes /etc/boa/control/linkguard-arm.ready.txt while _NGINX_LINK_GUARD=YES
 # and the release allows it), and only once a scan lists nothing BLOCKING: a
 # link inside one account is fixed where it can be and never keeps the check
 # off. Once on, it stays on whatever a later scan finds: a link an account
@@ -39,7 +39,7 @@
 #
 # Files:
 #   /etc/nginx/conf.d/link-guard-boa.conf   the switch (BOA-written)
-#   /var/log/boa/linkguard-arm.ready.txt    the arm stamp (barracuda-written,
+#   /etc/boa/control/linkguard-arm.ready.txt    the arm stamp (barracuda-written,
 #                                           removed by "off")
 #   /var/log/boa/linkguard.report.txt       the last scan
 #   /var/log/boa/linkguard/count.log        one line per count, kept (a
@@ -53,7 +53,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 umask 022
 
 _LG_CONF="/etc/nginx/conf.d/link-guard-boa.conf"
-_LG_STAMP="/var/log/boa/linkguard-arm.ready.txt"
+_LG_STAMP="/etc/boa/control/linkguard-arm.ready.txt"
 _LG_REPORT="/var/log/boa/linkguard.report.txt"
 _LG_RUN_LOCK="/run/linkguard.lock"
 _LG_COUNT_LOG="/var/log/boa/linkguard/count.log"
@@ -828,17 +828,19 @@ _lg_cmd_apply() {
 
 # off also removes the arm stamp: the nightly and a Verify act only while
 # it exists, so the check stays off until a barracuda pass arms the box
-# again.
+# again. The stamp an earlier release wrote in /var/log/boa goes with it: a
+# nightly or a fixer not yet replaced reads that one.
 _lg_cmd_off() {
+  local _old="/var/log/boa/linkguard-arm.ready.txt"
   if [ ! -e "${_LG_CONF}" ]; then
-    rm -f -- "${_LG_STAMP}"
+    rm -f -- "${_LG_STAMP}" "${_old}"
     _msg "SUMMARY state=OFF"
     return 0
   fi
   # The stamp goes only with the switch file: a box left on stays armed, so
   # the nightly and every Verify keep its links passing.
   _lg_lock_nginx || { _msg "SUMMARY state=ON reason=nginx-config-lock-busy"; return 1; }
-  rm -f -- "${_LG_CONF}" "${_LG_STAMP}"
+  rm -f -- "${_LG_CONF}" "${_LG_STAMP}" "${_old}"
   _lg_test_reload > /dev/null 2>&1 \
     || _msg "NOTE: linkguard: ${_LG_CONF} removed; nginx: ${_LG_WHY}"
   _msg "SUMMARY state=OFF switched=now"

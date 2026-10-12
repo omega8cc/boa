@@ -187,6 +187,21 @@ if [ ! -e "${_pthEtc}/.migrated.newrelic.txt" ]; then
   [ -e "/root/.enable.newrelic.sysmond.cnf" ] && cp -a /root/.enable.newrelic.sysmond.cnf "${_pthEtc}/" 2>/dev/null
   touch "${_pthEtc}/.migrated.newrelic.txt"
 fi
+# The per-instance group's arm stamp lives in /etc/boa/control. A box an
+# earlier release stamped in /var/log/boa gets a copy here, before this run
+# fetches an instgrp that reads only the new place; the original stays for an
+# instgrp not yet replaced. Checked on every run: a failed copy is made
+# again, and a stamp already there, the library's own included, stays.
+if [ -s "${_pthLog}/instgrp-arm.ready.txt" ] \
+  && [ ! -s "${_pthEtc}/control/instgrp-arm.ready.txt" ]; then
+  mkdir -p "${_pthEtc}/control"
+  chmod 0755 "${_pthEtc}" "${_pthEtc}/control" 2> /dev/null
+  if ! { cp -f "${_pthLog}/instgrp-arm.ready.txt" "${_pthEtc}/control/.instgrp-arm.carry" 2> /dev/null \
+    && chmod 0644 "${_pthEtc}/control/.instgrp-arm.carry" \
+    && mv -f "${_pthEtc}/control/.instgrp-arm.carry" "${_pthEtc}/control/instgrp-arm.ready.txt"; }; then
+    rm -f "${_pthEtc}/control/.instgrp-arm.carry"
+  fi
+fi
 ### One-shot fleet switch: on omega8.cc-hosted systems (hostname ends in
 ### .aegir.cc) normalize the whole ghost-cleanup family to YES -- every mover
 ### is a reversible move to an undo/-family location, proven by the 2026-07
@@ -2467,7 +2482,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f40
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f65
     _runner_parked owl.sh \
-      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f68
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f67
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -5346,8 +5361,8 @@ CSFSTANDBY
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f78
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f73
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f81
-    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f77
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f80
+    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f76
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f94
     _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f32
@@ -5403,8 +5418,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f63 --guard /local/bin/instgrp
-    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f95 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f62 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f94 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
@@ -5426,9 +5441,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f15 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f88 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f49 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f14 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f87 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f48 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f64 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f86 --guard /local/bin/autochimaera

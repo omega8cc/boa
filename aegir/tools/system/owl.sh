@@ -260,7 +260,7 @@ _night_web_box() {
 ### report linkguard leaves in /var/log/boa.
 _night_link_guard() {
   local _s _b _r _sum _body
-  [ -e "/var/log/boa/linkguard-arm.ready.txt" ] || return 0
+  [ -e "/etc/boa/control/linkguard-arm.ready.txt" ] || return 0
   [ -e "/opt/local/bin/linkguard" ] || return 0
   _s=$(bash /opt/local/bin/linkguard apply 2> /dev/null \
     | grep -E "^(ALERT|SUMMARY)" | tr -cd '[:print:]\n')

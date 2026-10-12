@@ -374,7 +374,7 @@ _web_group_facts_here() {
   _s=$(_web_group_state "${1}")
   [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
-  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _r=YES
   { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
   echo "XMWF:${_s%% *}:${_b}:${_p:--}:${_r}:${_sb}"
 }
@@ -6421,7 +6421,7 @@ _xmass_wg_notes() {
 # shellcheck disable=SC2329
 _web_group_box_facts_here() {
   local _r=NO _b=NO _m
-  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _r=YES
   [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _m=$(_master_web_group 2> /dev/null)
   echo "XMWB:${_r}:${_b}:${_m%% *}"
@@ -6507,7 +6507,7 @@ _xmass_wg_promoted_here() {
     echo "XMWP:ALRT:a standby mark is still here (/root/.standby.cnf or /root/.standby.prep.cnf): no account converts to its own web group until it goes"
     return 0
   fi
-  if [ ! -s /var/log/boa/instgrp-web-arm.ready.txt ]; then
+  if [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ]; then
     [ "${_how}" = "loud" ] && echo "XMWP:NOTE:this box is not armed for the web group (no _WEB_GROUP_ARM=YES stamp): no account converts here"
     return 0
   fi
@@ -14293,7 +14293,7 @@ REMOTE
     phaseb) _wgm=B; _wgl=loud ;;
     *) _wgm=none ;;
   esac
-  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _wgl=loud
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _wgl=loud
   for _wga in ${_ELIGIBLE_ACCOUNTS}; do
     case "$(_web_group_state "${_wga}" | cut -d' ' -f1)" in
       converted|phaseb) _wgl=loud ;;
