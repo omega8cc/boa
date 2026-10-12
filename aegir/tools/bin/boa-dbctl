@@ -4687,6 +4687,7 @@ _al_judge() {
   _AL_DEAD=""
   _AL_CONV=""
   _AL_LEFT=""
+  _AL_ROLED=$'\n'
   while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
     [[ -n "${_g}" ]] || continue
     [[ "${_ux}" =~ ^[0-9A-F]*$ && "${_hx}" =~ ^[0-9A-F]*$ ]] || _die 7 "sql-failed alpairs"
@@ -4777,7 +4778,27 @@ _al_judge() {
         # counted with its login: accepted or dropped as one row
         _AL_RULES="${_AL_RULES}  grant ${_t} ${_u}@${_h} on ${_dp} (${_GV_SO})"$'\n'
         ;;
-      *) _al_stop "grant ${_t} ${_u}@${_h} on ${_dp} (schema of ${_GV_SO:-none}, grantee of ${_PO:-none})" ;;
+      *)
+        # A role, a default role or a proxy grant of an account's own
+        # instance or panel login: a switch takes privileges on all
+        # databases only, so the login would still hold a global right
+        # after it, and the switch would end at its last test on every
+        # run. Said once per login, as that login's own stop.
+        _r=""
+        case "${_t}" in
+          proxies_priv|role_edges|default_roles)
+            case "${_PO_K}" in
+              INST|PANEL|PANELGEN) _r="${_ux}@${_hx}" ;;
+            esac
+            ;;
+        esac
+        if [[ -z "${_r}" ]]; then
+          _al_stop "grant ${_t} ${_u}@${_h} on ${_dp} (schema of ${_GV_SO:-none}, grantee of ${_PO:-none})"
+        elif [[ "${_AL_ROLED}" != *$'\n'"${_r}"$'\n'* ]]; then
+          _AL_ROLED="${_AL_ROLED}${_r}"$'\n'
+          _al_stop "login ${_u}@${_h} holds a role or a proxy grant the switch does not take"
+        fi
+        ;;
     esac
   done <<< "${_AL_GR}"
   while IFS='|' read -r _ty _sx _nx _def; do
@@ -6776,7 +6797,7 @@ _report_plan() {
 # changes nothing. On a standby it has already answered
 # (_need_not_standby).
 _v_report() {
-  local _a _rc _l _x _u _h _subj _why _own=$'\n' _k _oo _n=0 _sw=0 _un=0
+  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _oo _n=0 _sw=0 _un=0
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
   _box_facts
@@ -6784,6 +6805,8 @@ _v_report() {
   _al_judge ""
   # An account's own instance and panel users that still hold a global
   # privilege stop the box as it stands, never that account's own switch.
+  # Not so a role or a proxy grant on one of them, which no switch takes:
+  # that stops the account's own switch too, and is said for it.
   while IFS= read -r _l; do
     [[ "${_l}" == "stop login "* ]] || continue
     _subj="${_l#stop login }"
@@ -6793,7 +6816,13 @@ _v_report() {
     _h="${_subj##*@}"
     _pair_class "${_u}" "${_h}" Y "$(_hex "${_u}")@$(_hex "${_h}")"
     case "${_PC_K}" in
-      INST|PANEL|PANELGEN) _own="${_own}${_PC_O}"$'\n' ;;
+      INST|PANEL|PANELGEN)
+        if [[ "${_l}" == *" holds a role or a proxy grant the switch does not take" ]]; then
+          _roled="${_roled}${_PC_O}"$'\n'
+        else
+          _own="${_own}${_PC_O}"$'\n'
+        fi
+        ;;
     esac
   done <<< "${_AL_OUT}"
   for _a in ${_AL_ACCTS}; do
@@ -6823,7 +6852,12 @@ _v_report() {
       while IFS= read -r _x; do
         [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
       done <<< "${_own}"
-      _report_plan "${_k}"
+      _kr=0
+      while IFS= read -r _x; do
+        [[ "${_x}" == "${_a}" ]] && _kr=$(( _kr + 1 ))
+      done <<< "${_roled}"
+      _report_plan "$(( _k + _kr ))"
+      [[ "${_kr}" -eq 0 ]] || _why="${_why:+${_why}, }role-or-proxy-grant ${_kr}"
       [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
     fi
     printf '%s not-switched %s\n' "${_a}" "${_why:-ready}"
