@@ -345,6 +345,15 @@
       users own, which is left and counted on the Notice line as before.
       What a Verify sets and prints is unchanged.
 
+    * The usage logs in /var/log/boa/usage are kept by month, the way
+      the nightly logs in /var/log/boa/daily are. Each usage pass moves
+      the dated logs of earlier months into MM-YYYY subdirectories, by
+      the date in the file name, so the top level holds the current
+      month and the two usage-latest files; nothing is deleted. The
+      directory had grown by two files a day with no bound. memorytuner
+      reads its 92-day growth series from both levels, and a server move
+      carries the tree as before.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
