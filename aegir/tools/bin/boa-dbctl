@@ -6368,6 +6368,15 @@ _scope_back() {
   _die 7 "scope-failed ${1}"
 }
 
+# The answer of a pass's switch for an account it leaves as it is.
+_scope_already() {
+  local _h _l=""
+  for _h in "${_ROWS[@]}"; do
+    _l="${_l:+${_l},}${_h}"
+  done
+  _info "scope on ${_ACCT} already server=${_SERVER} rows=${_l}"
+}
+
 # scope on: the plan again (it must still be the plan the operator read),
 # then, in an order that never leaves the account without a way to its
 # databases: the registry entries; the instance user's grant on each of
@@ -6388,7 +6397,8 @@ _scope_back() {
 # finds switched is left as it is when its switch would change nothing
 # (_scope_owes: no global privilege on its instance user, its panel user
 # or an earlier name of that, no grant row to revoke or rewrite): nothing
-# is changed, no new file of saved grants. One with a valid control file
+# is changed, no new file of saved grants. That is asked before the wait
+# for its tasks and again after it. One with a valid control file
 # and something left for its switch to do goes through the switch again,
 # and a step that fails then leaves it
 # switched (_scope_back). The operator's own pause of the queue is not
@@ -6403,11 +6413,7 @@ _v_scope_on() {
     _rc=$?
     if [[ "${_rc}" -eq 0 ]]; then
       if ! _scope_owes; then
-        _l=""
-        for _h in "${_ROWS[@]}"; do
-          _l="${_l:+${_l},}${_h}"
-        done
-        _info "scope on ${_ACCT} already server=${_SERVER} rows=${_l}"
+        _scope_already
         return 0
       fi
       _SP_KEEP="YES"
@@ -6421,6 +6427,14 @@ _v_scope_on() {
       _PAIR_READ="NO"
     fi
     _tasks_wait
+    # Asked again once the account's tasks are over: one of them can leave
+    # a grant row on a name with no schema for a moment (a site's database
+    # dropped, its user's grant not revoked yet), and once it has ended
+    # there is nothing for the switch to do.
+    if [[ "${_SP_KEEP}" == "YES" ]] && ! _scope_owes; then
+      _scope_already
+      return 0
+    fi
   fi
   _scope_plan
   if [[ "${_OPT_BORN}" == "YES" ]]; then
