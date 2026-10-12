@@ -291,28 +291,22 @@ _night_link_guard() {
 ### counted by kind once a night on every box, armed or not: linkguard walks
 ### what nginx serves at the lowest priority and appends one dated line to
 ### /var/log/boa/linkguard/count.log. It fixes, switches and mails nothing.
-### The night's last step, so nothing waits on the walk; a linkguard without
-### the count skips.
+### Started detached at the end of the account steps and not waited for:
+### while owl.sh lives every account's task queue is held, and a walk can
+### take long on a big box. A linkguard without the count is not started.
 _night_link_count() {
-  local _s
   [ -e "/opt/local/bin/linkguard" ] || return 0
   grep -q "^_lg_cmd_count() {" /opt/local/bin/linkguard 2> /dev/null || return 0
-  _s=$(bash /opt/local/bin/linkguard count 2> /dev/null \
-    | grep -m1 "^SUMMARY" | tr -cd '[:print:]')
-  echo "nginx link count: ${_s:-no summary from linkguard}"
+  # a grandchild, so no later bare wait in this script waits for it
+  if command -v setsid > /dev/null 2>&1; then
+    ( setsid bash /opt/local/bin/linkguard count < /dev/null > /dev/null 2>&1 & )
+  else
+    ( bash /opt/local/bin/linkguard count < /dev/null > /dev/null 2>&1 & )
+  fi
+  echo "nginx link count: started; its line goes to /var/log/boa/linkguard/count.log"
   return 0
 }
 
-### An account pass that never ends would hold its fan-out slot (or the
-### serial loop) into the next night. Bound it, say so, move on: the whole
-### process group gets the signal, the account's night marker is released
-### (the ltd worker tests the marker's pid anyway), and the ltd worker
-### re-asserts the account's locks on its next tick. _NIGHT_ACCOUNT_MAX is
-### seconds in /root/.barracuda.cnf; 0 disables the bound; anything that is
-### not a whole number, or a non-zero value under five minutes, is ignored
-### for the default with a notice, never turned into a tiny bound. While the
-### pass runs, the nightly's own marker is kept fresh so clear.sh's age
-### sweep never removes it from under a live nightly.
 _night_account_run() {
   local _usr="$1" _rc _max _job
   _max="${_NIGHT_ACCOUNT_MAX:-21600}"

@@ -57,8 +57,9 @@ _LG_STAMP="/var/log/boa/linkguard-arm.ready.txt"
 _LG_REPORT="/var/log/boa/linkguard.report.txt"
 _LG_RUN_LOCK="/run/linkguard.lock"
 _LG_COUNT_LOG="/var/log/boa/linkguard/count.log"
+_LG_COUNT_LOCK="/run/linkguard.count.lock"
 # The kinds a count line carries, in its order (the walk's second field).
-_LG_KINDS="root-out system-in share store root system boa inside out"
+_LG_KINDS="root-out system-in share store root-in root system boa boa-fix inside in-other out"
 _NGX_LOCK="/run/boa_nginx_config.lock"
 # The shared store: /data/all, or the directory root's link of that name
 # leads to (/data/disk/all on boxes that keep it there).
@@ -146,6 +147,25 @@ _lg_shared_text_ok() {
   perl -e "${_LG_SHARED_PL}" -- "${_x}" 2> /dev/null
 }
 
+# The text root writes when it makes the link $1 its own (_lg_reroot_here),
+# printed: the link's own text when it passes _lg_shared_text_ok, else the
+# plain form of its real path inside the shared store when that passes.
+# Status 1 when neither does: such a link cannot be made root's. Read-only,
+# so the count asks it too.
+_lg_reroot_text() {
+  local _l _r _s="${_LG_STORE:-/data/all}"
+  _l="$(readlink -- "${1}" 2> /dev/null)" || return 1
+  if ! _lg_shared_text_ok "${_l}"; then
+    _r="$(readlink -f -- "${1}" 2> /dev/null)" || return 1
+    case "${_r}" in
+      "${_s}"/?*) _l="/data/all/${_r#"${_s}"/}" ;;
+      *) return 1 ;;
+    esac
+    _lg_shared_text_ok "${_l}" || return 1
+  fi
+  printf '%s\n' "${_l}"
+}
+
 # ./$1 in the current (pinned) directory made root's: a link that is not
 # root's, whose text passes _lg_shared_text_ok, made anew by root under a
 # fresh name with the same text and renamed over the name, never chowned by
@@ -156,18 +176,10 @@ _lg_shared_text_ok() {
 # any name the account can change. Status 0 changed, 2 nothing to do, 1
 # left as it is.
 _lg_reroot_here() {
-  local _n="${1}" _t="./.${1}.lgr.$$.${RANDOM}" _l _r _s="${_LG_STORE:-/data/all}"
+  local _n="${1}" _t="./.${1}.lgr.$$.${RANDOM}" _l
   [ -L "./${_n}" ] || return 2
   [ "$(stat -c %u -- "./${_n}" 2> /dev/null)" = "0" ] && return 2
-  _l="$(readlink -- "./${_n}" 2> /dev/null)" || return 1
-  if ! _lg_shared_text_ok "${_l}"; then
-    _r="$(readlink -f -- "./${_n}" 2> /dev/null)" || return 1
-    case "${_r}" in
-      "${_s}"/?*) _l="/data/all/${_r#"${_s}"/}" ;;
-      *) return 1 ;;
-    esac
-    _lg_shared_text_ok "${_l}" || return 1
-  fi
+  _l="$(_lg_reroot_text "./${_n}")" || return 1
   rm -f -- "${_t}"
   if ln -s -T -- "${_l}" "${_t}" 2> /dev/null && [ -L "${_t}" ] \
     && mv -f -T -- "${_t}" "./${_n}"; then
@@ -319,18 +331,22 @@ print "R\t$_\n" for sort keys %r;'
 # links are walked in, and never making a scan incomplete. With LG_DEADLINE
 # set (epoch seconds) the walk stops there and is incomplete.
 #   BLOCKING  the check would break a link no account could have made that
-#             way: root's (root-out in an account's tree, leading out of it;
-#             root outside any account's tree), a system or unnamed user's
+#             way: root's (in an account's tree, root-out to a file outside
+#             it, root-in to a file there none of its identities owns; root
+#             outside any account's tree), a system or unnamed user's
 #             (system-in in an account's tree, system elsewhere), or a BOA
-#             link at one of the places BOA makes them that could not be made
-#             root's (boa)
+#             link at one of the places BOA makes them that is not root's
+#             (boa; fix makes it root's where it can)
 #   REFUSED   an account's own doing, never a reason to keep the check off:
 #             a link inside the account that is not its target owner's
-#             (inside; made so by fix where it can be), or an account's link
-#             leading out of that account, which the check is there to
-#             refuse: into the shared store (store), into another account's
-#             tree or to a file of another account (share), anywhere else
-#             (out)
+#             (inside; made so by fix where it can be), an account's link to
+#             a file in its own tree none of its identities owns (in-other),
+#             or an account's link leading out of that account, which the
+#             check is there to refuse: into the shared store (store), into
+#             another account's tree or to a file of another account (share),
+#             anywhere else (out)
+# Where a target is (in which account's tree) decides between root-in and
+# root-out, and between in-other and out; who owns it decides inside.
 # An account's tree is /data/disk/<account>, its files store on attached
 # storage (_lg_tree_acct) and the home of each of its identities
 # (/home/<identity>), where root's own links lead back into the account.
@@ -376,6 +392,7 @@ sub link_rec { my $p = shift; my @l = lstat($p) or return; my $r = Cwd::abs_path
   my $la = acct_of($lu); my $ta = acct_of($tu); my $pa = path_acct($p); my $ra = path_acct($r);
   my $inside = "a link inside the account, not its target owner\x27s"; my $out = "an account\x27s link leading out of it";
   if ($lu == 0) { if (defined $pa && defined $ta && $ta eq $pa) { ($c, $k, $why, $in) = ("REFUSED", "inside", $inside, 1) }
+    elsif (defined $pa && defined $ra && $ra eq $pa) { ($c, $k, $why) = ("BLOCKING", "root-in", "a link root made in an account\x27s tree, to a file there none of its identities owns") }
     elsif (defined $pa) { ($c, $k, $why) = ("BLOCKING", "root-out", "a link root made in an account\x27s tree, leading out of it") }
     else { ($c, $k, $why) = ("BLOCKING", "root", "a link root made") } }
   elsif (!defined $la) { if (defined $pa) { ($c, $k, $why) = ("BLOCKING", "system-in", "a link of a system or unnamed user, in an account\x27s tree") }
@@ -383,7 +400,8 @@ sub link_rec { my $p = shift; my @l = lstat($p) or return; my $r = Cwd::abs_path
   elsif ($shared && boa_place($p)) { ($c, $k, $why) = ("BLOCKING", "boa", "a BOA link not made root\x27s") }
   elsif (defined $ta && $ta eq $la) { ($c, $k, $why, $in) = ("REFUSED", "inside", $inside, 1) }
   elsif ($shared) { ($c, $k, $why) = ("REFUSED", "store", "$out, into the shared store") }
-  elsif ((defined $ra && $ra ne $la) || (defined $ta && $ta ne $la)) { ($c, $k, $why) = ("REFUSED", "share", "$out, into another account\x27s tree") }
+  elsif ((defined $ra && $ra ne $la) || (defined $ta && $ta ne $la)) { ($c, $k, $why) = ("REFUSED", "share", "$out, to another account\x27s tree or files") }
+  elsif (defined $ra && $ra eq $la) { ($c, $k, $why) = ("REFUSED", "in-other", "an account\x27s link to a file in its own tree none of its identities owns") }
   else { ($c, $k, $why) = ("REFUSED", "out", $out) }
   follow($r, $in) if $isdir && ($c eq "BLOCKING" || $in);
   push @recs, join("\0", $c, $k, $why, $p, $lu, $tu, $r); }
@@ -684,6 +702,12 @@ _lg_lock_run() {
   flock -w "${1:-600}" 8
 }
 
+# One count at a time, apart from the run lock; $1 = seconds to wait.
+_lg_lock_count() {
+  exec 7> "${_LG_COUNT_LOCK}"
+  flock -w "${1:-60}" 7
+}
+
 _lg_state() {
   [ -e "${_LG_CONF}" ] && echo ON || echo OFF
 }
@@ -854,57 +878,76 @@ _lg_count_put() {
 
 # count: the walk scan makes, its links counted by kind, read-only. Nothing
 # is fixed, switched or mailed and the report is not rewritten (an operator
-# may be reading it); nginx is asked for nginx -T only. The walk stops after
-# LG_COUNT_SECS seconds (default 3600, so a night's count never runs into
-# the next) and the line then says result=deadline complete=0. A night that
-# could not count says why in a line of its own; it waits a minute at most
-# for another run, the next night counts again.
+# may be reading it); nginx is asked for nginx -T only. A BOA link that is
+# not root's yet counts as boa-fix when fix would make it root's (the text
+# _lg_reroot_text finds for it), as boa when it would not; blocking counts
+# what would still keep the check off after that, so on a box never armed
+# (where nothing has made BOA's links root's) it is not inflated by them.
+# The walk stops after LG_COUNT_SECS seconds (default 3600, so a night's
+# count never runs into the next) and the line then says result=deadline
+# complete=0. A count waits a minute at most for another count (a lock of
+# its own: a read-only walk holds up no fix, scan or apply); a night that
+# could not count says why in a line of its own.
 _lg_cmd_count() {
-  local _secs="${LG_COUNT_SECS:-3600}" _t0 _i _k _line _res=ok _n
+  local _secs="${LG_COUNT_SECS:-3600}" _t0 _i _k _line _res=ok _n _w
   local _ent _nr _miss _xd _cpl _skip _b=0 _r=0 _armed=no
+  local -A _kn=()
   _lg_nginx_ok || { _msg "SUMMARY count reason=no-nginx"; return 0; }
-  [[ "${_secs}" =~ ^[0-9]+$ ]] || _secs=3600
-  if ! _lg_lock_run 60; then
-    _lg_count_put "result=busy"
-    _msg "SUMMARY count result=busy log=${_LG_COUNT_LOG}"
+  [[ "${_secs}" =~ ^[0-9]{1,9}$ ]] || _secs=3600
+  _secs=$(( 10#${_secs} ))
+  if ! _lg_lock_count 60; then
+    _lg_count_say "result=busy"
     return 1
   fi
   if ! _lg_read_roots; then
-    _lg_count_put "result=no-nginx-config"
-    _msg "SUMMARY count result=no-nginx-config log=${_LG_COUNT_LOG}"
+    _lg_count_say "result=no-nginx-config"
     return 1
   fi
   _t0="${SECONDS}"
   _LG_DEADLINE=$(( $(date +%s) + _secs ))
   if ! _lg_walk "${_LG_ROOTS[@]}"; then
-    _lg_count_put "result=no-scan"
-    _msg "SUMMARY count result=no-scan log=${_LG_COUNT_LOG}"
+    _lg_count_say "result=no-scan"
     return 1
   fi
   read -r _ent _nr _miss _xd _cpl _skip <<< "${_LG_SUM}"
   [ "${_cpl}" = "1" ] || [ "$(date +%s)" -lt "${_LG_DEADLINE}" ] || _res=deadline
   [ -e "${_LG_STAMP}" ] && _armed=yes
-  _line="result=${_res} state=$(_lg_state) armed=${_armed}"
   for _k in ${_LG_KINDS}; do
-    _n=0
-    for _i in "${!_LG_REC_KIND[@]}"; do
-      [ "${_LG_REC_KIND[${_i}]}" = "${_k}" ] && _n=$(( _n + 1 ))
-    done
-    _line="${_line} ${_k}=${_n}"
+    _kn[${_k}]=0
   done
-  for _i in "${!_LG_REC_CLASS[@]}"; do
-    case "${_LG_REC_CLASS[${_i}]}" in
-      BLOCKING) _b=$(( _b + 1 )) ;;
-      REFUSED) _r=$(( _r + 1 )) ;;
+  for _i in "${!_LG_REC_KIND[@]}"; do
+    _w="${_LG_REC_KIND[${_i}]}"
+    if [ "${_w}" = "boa" ] && _lg_reroot_text "${_LG_REC_PATH[${_i}]}" > /dev/null; then
+      _w="boa-fix"
+    fi
+    [ -n "${_kn[${_w}]+x}" ] || continue
+    _kn[${_w}]=$(( _kn[${_w}] + 1 ))
+    case "${_LG_REC_CLASS[${_i}]}:${_w}" in
+      *:boa-fix) ;;
+      BLOCKING:*) _b=$(( _b + 1 )) ;;
+      REFUSED:*) _r=$(( _r + 1 )) ;;
     esac
   done
+  _line="result=${_res} state=$(_lg_state) armed=${_armed}"
+  for _k in ${_LG_KINDS}; do
+    _line="${_line} ${_k}=${_kn[${_k}]}"
+  done
   _line="${_line} blocking=${_b} refused=${_r} complete=${_cpl} roots=${_nr} missing=${_miss} entries=${_ent} unwalked=${_skip:-0} secs=$(( SECONDS - _t0 ))"
-  if ! _lg_count_put "${_line}"; then
-    _msg "SUMMARY count ${_line} log=none"
-    return 1
+  _lg_count_say "${_line}"
+}
+
+# The line appended, and the SUMMARY saying so; log=none and status 1 when
+# it could not be appended.
+_lg_count_say() {
+  if _lg_count_put "${1}"; then
+    _msg "SUMMARY count ${1} log=${_LG_COUNT_LOG}"
+    case "${1}" in
+      result=busy|result=no-*) return 1 ;;
+    esac
+    return 0
   fi
-  _msg "SUMMARY count ${_line} log=${_LG_COUNT_LOG}"
-  return 0
+  _msg "SUMMARY count ${1} log=none"
+  return 1
 }
 
 _lg_need_root
