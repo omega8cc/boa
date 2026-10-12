@@ -245,12 +245,13 @@
       www-data yet, as not ready; instgrp webcheck --report names the
       token that copy lacks, provision_path_web_group (docs/INSTGRP.md).
 
-    * The web group's revert walks an account's files store on attached
-      storage back to www-data, and checks it before it removes the
-      group, when root owns the store, as migratefs leaves the one BOA
-      made in the account's home. The conversion is still switched off;
-      the per-instance group's walks take that store only when the
-      account owns it and no link is on the way to it (docs/INSTGRP.md).
+    * The web group conversion, still switched off, takes an account's
+      files store on attached storage whether root or the account owns
+      it (migratefs leaves the one BOA made in the account's home
+      root's), and its revert walks that store back to www-data and
+      checks it before it removes the group. The per-instance group's
+      walks are unchanged: they take that store only when the account
+      owns it and no link is on the way to it (docs/INSTGRP.md).
 
     * The web group's revert also walks and checks the files and
       private stores of the account's sites on attached storage when

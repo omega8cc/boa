@@ -448,6 +448,13 @@ beside a parked one is the one read.
   sub-accounts) leave `www-data`. From then on no pool and no shell user of
   another account can read the account's web paths.
 
+An account's store on attached storage (`<mount>/files/oN/static/files`,
+where migratefs moves `~/static/files`) is part of its web paths whether
+root or the account owns it: phase A walks it into `wg-oN` as it walks
+the home, and `webrevert` walks it back. The per-instance group's own walks
+take that store only when the account owns it and no link is on the way to
+it.
+
 The Octopus upgrade runs the conversion for every account (the arm, after
 the per-instance group's own step): phase A on an armed box, and phase B
 where `_WEB_GROUP_PHASE_B=YES`. A new account is converted right after its
@@ -605,11 +612,11 @@ whatever the reading account's own state.
   keeps a pin.
 - Beyond the account's roots, `webrevert` walks back its store on attached
   storage when root owns it (as migratefs leaves the one BOA made in the
-  home; the roots take it when the account owns it), and the stores of the
-  account's sites there when that store is not one of the walk's roots (no
-  single mount point under `/mnt`, an owner other than root or the
-  account, or a link on the way). The group goes only once none of them
-  carries it.
+  home; the conversion takes it the same way, and the roots take it when
+  the account owns it), and the stores of the account's sites there when
+  that store is not one of the walk's roots (no single mount point under
+  `/mnt`, an owner other than root or the account, or a link on the way).
+  The group goes only once none of them carries it.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
