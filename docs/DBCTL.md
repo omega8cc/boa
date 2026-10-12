@@ -146,24 +146,28 @@ order:
    loses it, as `revoke-global` takes it, its grants saved first, and is then
    accepted, unless it then holds nothing, which needs no ruling; one that
    holds none and waits for a ruling is accepted;
-3. every row `leftovers list` (below) puts in section A, at any host:
-   dropped, its grants and its `CREATE USER` line saved first, only while
-   every test listed under step 3 below holds.
+3. every instance or panel row `leftovers list` (below) puts in section A,
+   at any host: dropped, its `CREATE USER` line and its grants saved first,
+   only while every test listed under step 3 below holds. A purged account's
+   site users are left to `leftovers drop`.
 
 It runs where a switch would. It is under the release rule above (`ERR 7
-not-released`, nothing read or written). It is refused on a standby and while
-one is being seeded (`ERR 9 busy standby`), on a box being prepared as a
-standby (`ERR 9 busy standby-prep`), and while the box's pair is being
-switched over, with a switch's own words (`refused pair a switch to <address>
-is under way`, `ERR 7 not-ready 1`).
+not-released`, nothing read or written). It is refused on a standby (`ERR 9
+busy standby`), while one is being seeded (`ERR 9 busy standby-init`), on a
+box being prepared as a standby (`ERR 9 busy standby-prep`), and while the
+box's pair is being switched over, with a switch's own words (`refused pair a
+switch to <address> is under way`, `ERR 7 not-ready 1`).
 
 On a box where no account is ever switched it changes nothing, says why in one
 line and ends with exit code 0: `OK baseline settle skipped proxysql` (a
 ProxySQL box) or `OK baseline settle skipped cluster` (a database cluster).
+That is decided before anything asks the local server, whatever it answers.
 
 It reads the box first and takes the baseline lock after, as `leftovers drop`
 does: a root tool that records its own row again waits for that lock for a
-minute at most. What a write depends on is read again under the lock.
+minute at most. What a write depends on is read again under the lock, and so
+are the refusals above: a standby marker or a switch of the pair that appears
+during the reads ends the call there, with nothing written.
 
 In step 1 an own login that changed since it was accepted is never recorded
 again, whether a login still proves it or not: it is left (`left pinned
@@ -196,29 +200,51 @@ until an operator revokes, accepts or drops it.
 A login that defines a view, trigger, routine or event keeps its rights too:
 the server checks a definer's rights when its object runs, so taking them
 would stop the object (`left UNCLASSIFIED <login>: it defines <object>:
-taking its rights would stop that object`). The definers are read with the
-client's warnings shown. When that read carries a warning (on 5.7 the server
-skips, with a warning, the triggers of a table it cannot open), no right is
-taken and no row is dropped in that run.
+taking its rights would stop that object`).
+
+The definers are read with the client's warnings shown. When that read comes
+with a warning (on 5.7 the server skips, with a warning, the triggers of a
+table it cannot open), or fails, the call goes on, but no right is taken and
+no row is dropped in that run, on the whole box. Each row left for it says
+which: `the read of the stored objects came with a warning` or `the read of
+the stored objects failed`.
 
 In step 3 the row's host says nothing: BOA makes every account's instance user
-at `localhost` and at `%`. A purged account's row is dropped only while each
-of these holds, and is left otherwise, with the reason on its `left` line:
+at `localhost` and at `%`. A purged account's instance or panel row is dropped
+only while each of these holds, and is left otherwise, with the reason on its
+`left` line:
 
 - the account's purge parked its home (`/var/backups/zombie/purged/oN`, a real
   directory);
 - no `/root/.oN.octopus.cnf` is there: the purge moves it away, so one that is
   there is a later account of the name, or a half state;
-- the row's password was not set after the purge, by the server's own
-  comparison of `password_last_changed` with the time of the list the purge
-  writes in the parked home (`home/.purge.list`) before it drops the
-  account's own users. A row touched since is in use by something made since,
-  another box's account of that name served from here included. No such list,
-  or no such time on the row: left;
+- no row of its user had its password set after the purge, by the server's
+  own comparison of `password_last_changed` with the time of the list the
+  purge writes in the parked home (`home/.purge.list`) before it drops the
+  account's own users. One row set since, and the name is in use by something
+  made since. No such list, or a row with no such time: left;
 - the row defines no stored object;
-- its grants and its `SHOW CREATE USER` line are saved under
+- the credential the parked home records for it opens that very row, by a
+  login over the row's own transport, as a live account's login is proven:
+  the instance user's from the server alias in the parked tarball, the panel
+  user's from the parked panel's `drushrc.php`. No such credential, no
+  transport of this box that reaches the row, or a login the row does not
+  accept: left;
+- its `SHOW CREATE USER` line and its grants are saved under
   `/var/backups/boa/dbrights/`, in a file only root reads (it holds the row's
   stored password); a save that fails drops nothing.
+
+The times order two events only on one server's own history. A box seeded from
+another server's data (a standby built from a clone, a restore) can hold a
+parked home younger than rows another box's account still uses; the login
+with the parked account's own credential is what tells such a row apart.
+
+A purged account's site users are never dropped here: the parked home proves
+none of them. Each is left with a line that names `leftovers`, whose `drop`
+takes them under its list's hash.
+
+Each entry of the saved file can be run again as it is written: the row's
+`CREATE USER` line first, then its grants, every statement ended.
 
 A name two accounts' records claim and every login of any other class are
 left too, and so is everything that is not a login: a stored object `root`
@@ -241,9 +267,9 @@ switch. A second run on the same box settles nothing and prints the same
 `left` lines. Whatever it leaves is an operator's: `baseline accept`,
 `baseline revoke-global`, `leftovers drop`, or the object or grant itself.
 
-A read that fails ends it at once. A change that fails is said in an `ALRT`
-line and ends it with `ERR 7 baseline-settle-incomplete N` once the rest is
-done.
+A read that fails ends it at once, but for the read of the definers (above).
+A change that fails is said in an `ALRT` line and ends it with `ERR 7
+baseline-settle-incomplete N` once the rest is done.
 
 Nothing calls `baseline settle` in this release.
 
@@ -358,8 +384,9 @@ the log notes.
 A finding the switch was forced over stays open, so the account is only as
 closed as that finding allows. A routine `root` defines in the account's own
 schema, for one, gives the account's instance user every right back when the
-account calls it. The nightly witness keeps naming such a finding until it is
-settled, and the switch a pass makes is never forced.
+account calls it. Where the box keeps a baseline, the nightly witness keeps
+naming such a finding until it is settled. The switch a pass makes is never
+forced.
 
 `on` pauses the task queue (`/run/boa_queue_stop.pid`), waits for the
 account's running tasks to end, saves every grant it is about to change under
@@ -501,13 +528,19 @@ It waits for the account's running tasks to end before it reads the plan
 (`ERR 9 busy tasks` when they do not), so a database a task made a moment ago
 is in the plan.
 
-An account already switched, with no global privilege on any row of its
-instance user, is left as it is: `OK scope on oN already server=<context>
-rows=<rows>`, with no statement sent, no new file of saved grants and the
-control file untouched. One whose control file is valid and whose instance
-user holds a global privilege again goes through the switch. A step that
-fails then leaves it switched (`ERR 7 scope-failed <step>`): it is never put
-back on the direct path unattended.
+An account already switched is left as it is when nothing its switch takes
+rights from holds a global privilege: its instance user at any row, its panel
+user, and every earlier name of that user. It answers `OK scope on oN already
+server=<context> rows=<rows>`: nothing was changed (the call only read), no
+new file of saved grants, the control file untouched.
+
+One whose control file is valid and where one of those logins holds a global
+privilege again goes through the switch. A step that fails then leaves it
+switched (`ERR 7 scope-failed <step>`): it is never put back on the direct
+path unattended. Where the step was at a row of the instance user, that row
+first gets the account's grant on each of its own databases again, and the
+`ALRT` line names `boa-dbctl regrant --account oN`, which gives them to every
+row in use.
 
 Its line in the broker's log ends with `note=pass`.
 
@@ -603,6 +636,11 @@ nothing is loaded and the store is left as it is. A link is such an entry,
 whatever it points to (a dump holds plain files only), and so are a FIFO, a
 socket and a device. The loader never ends on a link to a file the account
 cannot read.
+
+The `ALRT` line names the entry when its name is plain, and says it is not
+otherwise. The load ends the same way when the account cannot open the store
+or a directory in it, when the walk cannot be made, and when it takes more
+than 300 seconds; the line says which.
 
 An entry swapped in after that walk can still hold the account's lock and one
 slot until the limit: the limit is the bound.
