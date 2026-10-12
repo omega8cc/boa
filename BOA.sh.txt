@@ -187,21 +187,6 @@ if [ ! -e "${_pthEtc}/.migrated.newrelic.txt" ]; then
   [ -e "/root/.enable.newrelic.sysmond.cnf" ] && cp -a /root/.enable.newrelic.sysmond.cnf "${_pthEtc}/" 2>/dev/null
   touch "${_pthEtc}/.migrated.newrelic.txt"
 fi
-# The per-instance group's arm stamp lives in /etc/boa/control. A box an
-# earlier release stamped in /var/log/boa gets a copy here, before this run
-# fetches an instgrp that reads only the new place; the original stays for an
-# instgrp not yet replaced. Checked on every run: a failed copy is made
-# again, and a stamp already there, the library's own included, stays.
-if [ -s "${_pthLog}/instgrp-arm.ready.txt" ] \
-  && [ ! -s "${_pthEtc}/control/instgrp-arm.ready.txt" ]; then
-  mkdir -p "${_pthEtc}/control"
-  chmod 0755 "${_pthEtc}" "${_pthEtc}/control" 2> /dev/null
-  if ! { cp -f "${_pthLog}/instgrp-arm.ready.txt" "${_pthEtc}/control/.instgrp-arm.carry" 2> /dev/null \
-    && chmod 0644 "${_pthEtc}/control/.instgrp-arm.carry" \
-    && mv -f "${_pthEtc}/control/.instgrp-arm.carry" "${_pthEtc}/control/instgrp-arm.ready.txt"; }; then
-    rm -f "${_pthEtc}/control/.instgrp-arm.carry"
-  fi
-fi
 ### One-shot fleet switch: on omega8.cc-hosted systems (hostname ends in
 ### .aegir.cc) normalize the whole ghost-cleanup family to YES -- every mover
 ### is a reversible move to an undo/-family location, proven by the 2026-07
@@ -5418,8 +5403,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f62 --guard /local/bin/instgrp
-    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f94 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f61 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f93 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport

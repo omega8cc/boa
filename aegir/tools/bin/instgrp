@@ -171,9 +171,9 @@ _MARK_REL=log/instance-group.txt
 # and every writer this tool inventories is fetched, so without this stamp
 # "ready" would read true on a box whose Octopus and system libraries still
 # flatten trees to the box-wide group. Read only here, where /var/log/boa's
-# sweeps never reach; BOA.sh.txt copies a stamp an earlier release wrote in
-# /var/log/boa before it fetches this tool.
+# sweeps never reach.
 _ARM_STAMP=/etc/boa/control/instgrp-arm.ready.txt
+_ARM_STAMP_OLD=/var/log/boa/instgrp-arm.ready.txt
 _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
 # The identities of an account with a process of their own (a minute cron run
 # of the account ends by itself, a logged-in shell or SFTP session does not):
@@ -314,6 +314,24 @@ _check_root() {
     printf 'ERROR: instgrp must run as root\n' >&2
     exit 1
   fi
+}
+
+# A box an earlier release armed holds the stamp in /var/log/boa only. It is
+# copied to the control directory before anything here reads it, whichever
+# BOA.sh.txt fetched this tool, and the original stays for an instgrp not
+# yet replaced; a stamp already there, the library's own, stays. The
+# directory 0755 and the stamp 0644 whatever the umask.
+_arm_stamp_carry() {
+  local _d="${_ARM_STAMP%/*}" _t
+  [ -s "${_ARM_STAMP_OLD}" ] && [ ! -s "${_ARM_STAMP}" ] || return 0
+  _t="${_d}/.instgrp-arm.carry.$$"
+  mkdir -p "${_d}" 2> /dev/null
+  chmod 0755 "${_d%/*}" "${_d}" 2> /dev/null
+  if ! { cp -f "${_ARM_STAMP_OLD}" "${_t}" 2> /dev/null \
+    && chmod 0644 "${_t}" && mv -f "${_t}" "${_ARM_STAMP}"; }; then
+    rm -f "${_t}" 2> /dev/null
+  fi
+  return 0
 }
 
 # Two different questions, never confused:
@@ -5764,6 +5782,7 @@ _rc_rank() {
 }
 
 _check_root
+_arm_stamp_carry
 _ACTION="$1"
 _TARGET=""
 [ -n "${_ACTION}" ] && shift

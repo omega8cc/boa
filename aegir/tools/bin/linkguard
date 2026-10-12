@@ -12,11 +12,11 @@
 # root's here; a link inside one account is made its target's owner's.
 #
 # The restriction is switched on only on a box BOA has armed (the barracuda
-# pass writes /etc/boa/control/linkguard-arm.ready.txt while _NGINX_LINK_GUARD=YES
-# and the release allows it), and only once a scan lists nothing BLOCKING: a
-# link inside one account is fixed where it can be and never keeps the check
-# off. Once on, it stays on whatever a later scan finds: a link an account
-# makes must never switch it off.
+# pass writes /etc/boa/control/linkguard-arm.ready.txt while
+# _NGINX_LINK_GUARD=YES and the release allows it), and only once a scan
+# lists nothing BLOCKING: a link inside one account is fixed where it can be
+# and never keeps the check off. Once on, it stays on whatever a later scan
+# finds: a link an account makes must never switch it off.
 #
 # Usage:
 #   linkguard fix [--root=DIR]  make BOA's links and links inside an account
@@ -38,13 +38,13 @@
 #                               box, armed or not
 #
 # Files:
-#   /etc/nginx/conf.d/link-guard-boa.conf   the switch (BOA-written)
-#   /etc/boa/control/linkguard-arm.ready.txt    the arm stamp (barracuda-written,
-#                                           removed by "off")
-#   /var/log/boa/linkguard.report.txt       the last scan
-#   /var/log/boa/linkguard/count.log        one line per count, kept (a
-#                                           directory, so the upgrade's
-#                                           clean-up of *.log spares it)
+#   /etc/nginx/conf.d/link-guard-boa.conf      the switch (BOA-written)
+#   /etc/boa/control/linkguard-arm.ready.txt   the arm stamp (barracuda-written,
+#                                              removed by "off")
+#   /var/log/boa/linkguard.report.txt          the last scan
+#   /var/log/boa/linkguard/count.log           one line per count, kept (a
+#                                              directory, so the upgrade's
+#                                              clean-up of *.log spares it)
 #
 # Exit: 0 done, 1 error, 3 blocking links found (scan, apply), 4 not armed.
 

@@ -12556,17 +12556,22 @@ _fix_php_in_lshell_access() {
 # lets no account take its FIRST conversion until this stamp says the arm is
 # on the box. Written at the tail of every barracuda pass that runs this
 # release (next to the barracuda log line), never by the fetched channel,
-# under /etc/boa/control. A stamp an earlier release wrote in /var/log/boa
-# is copied there by BOA.sh.txt and stays for an instgrp not yet replaced.
+# under /etc/boa/control. instgrp copies one an earlier release wrote in
+# /var/log/boa. Written there too while an instgrp from before the move can
+# still be fetched beside this library (a fresh install whose mirrors
+# disagree): nothing removes this stamp, so the copy never arms a box wrongly.
 _instgrp_arm_stamp() {
+  local _st
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _instgrp_arm_stamp"
     _debug_proc
   fi
-  if ! _boa_control_put instgrp-arm.ready.txt \
-    "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"; then
+  _st="${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"
+  if ! _boa_control_put instgrp-arm.ready.txt "${_st}"; then
     _msg "ALRT: /etc/boa/control/instgrp-arm.ready.txt cannot be written; without it instgrp holds every first conversion"
   fi
+  mkdir -p /var/log/boa &> /dev/null
+  echo "${_st}" > /var/log/boa/instgrp-arm.ready.txt
 }
 
 # $1 the setting, $2 its stage: YES is appended to the cnf when the stage
