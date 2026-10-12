@@ -24,21 +24,21 @@ For a professionally supported stack — the PRO support levels, monitoring and 
 
 **LTS** is kept **1:1** with **PRO**: both branches receive the same improvements, bug fixes, and new features. The only functional difference is the **extended backup sub-system**, available exclusively in **BOA PRO**.
 
-The **PRO** will be available in three main variants, and while all **BOA PRO** licenses will grant access to the same **BOA PRO** branch and features, they will differ in terms of available support levels.
+The **PRO** is available in three variants, and while all **BOA PRO** licenses grant access to the same **BOA PRO** branch and features, they differ in terms of available support levels. The names are new; the tiers are not: **PRO Self** was Basic Support, **PRO Assisted** was Advanced Support, and **PRO Hands-Off** was Hands-Off Experience.
 
-### **PRO** with **Basic Support**
+### **PRO Self**
 
 This license is designed for **BOA** users familiar with managing and monitoring their own systems who don't need extended support, monitoring, or assistance in managing their **BOA** installation and updates. Our support is limited to the Issue Queue on GitHub without any kind of SLA or Best Effort guarantee.
 
 Ideal for: Small businesses or developers who need basic support and can handle issues independently or with community help.
 
-### **PRO** with **Advanced Support**
+### **PRO Assisted**
 
 This license is designed for **BOA** users who are familiar with managing their own server but need assistance in handling their custom needs or fixing individual problems privately via our helpdesk at [Ægir Helpdesk](https://aegir.happyfox.com), without posting details on GitHub. There is no SLA guarantee, only a Best Effort guarantee. System local and remote uptime monitoring with Site24x7 is included.
 
 Ideal for: Medium to large businesses needing reliable support during business hours with quick response times for critical issues.
 
-### **PRO** with **Hands-Off Experience**
+### **PRO Hands-Off**
 
 This license is for **BOA** users who prefer to delegate all the work needed to maintain their **BOA** server, including regular upgrades (both **BOA** and major OS upgrades), active monitoring, and responding to DoS incidents. It comes with a fully managed **BOA PRO** installation you can use without worrying about anything else, with our general SLA guarantee applied: [Omega8.cc SLA](https://omega8.cc/sla). System local and remote uptime monitoring with Site24x7 is included.
 

@@ -37,9 +37,13 @@ exec 3>&2
 # link. Defence is the same shape used by the sibling fix-drupal-* helpers:
 # the resolved path is held to the caller's own tree, every step runs inside
 # a directory entered for real (_in_pinned_dir) on ./names there, and every
-# mode is set through _FCHMOD_PL, on the name itself or from a find walk, so
-# no link is followed, whether it was there before or put there during
-# the run.
+# mode is set through _SAT_CHMOD_OWN_PL, on the name itself or from the
+# directory a find walk holds, so no link is followed, whether it was there
+# before or put there during the run. Only what root or the site's own users
+# own (_site_walk_uids) gets a mode, and nothing below a directory another
+# user owns: the account's users can rename into their own tree what
+# another account left group-writable, a whole directory with everything in
+# it; that keeps its modes, and one Notice counts it (_owners_left_note).
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -336,26 +340,154 @@ for my $p (@ARGV) {
   close($h);
 }'
 
-# The mode $1 on each regular file or directory in the current (pinned)
-# directory that matches a pattern after it (expanded here, nowhere else),
-# set through _FCHMOD_PL. A pattern that matches nothing is skipped.
-_chmod_here() {
-  local _mode="${1}" _pat _p
-  local -a _n=()
-  shift
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# The uids the walks below act for, comma-separated, from the site path as
+# resolved, never from argv: under /data/disk/<account>/ that account's
+# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
+# master's pool users wwwNN, the holders _master_web_group allows, and
+# www-data's, the web server's user, which no account's login can be and a
+# plain Aegir server's PHP runs as. Status 1, and nothing, for any other
+# path, or when the account or aegir is not in passwd. A uid no passwd entry names counts as the site's own too
+# (_SAT_REOWN_OWN_PL, _SAT_CHMOD_OWN_PL): a login removed before its files
+# were handed to its account left those.
+_site_walk_uids() {
+  local _a _n _p _u _r _x="0" _self=NO
+  case "${1}/" in
+    /data/disk/*/*)
+      _a="${1#/data/disk/}"
+      _acct_walk_uids "${_a%%/*}"
+      return "$?"
+      ;;
+    /var/aegir/*)
+      while IFS=: read -r _n _p _u _r; do
+        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        _x="${_x},${_u}"
+        [ "${_n}" = "aegir" ] && _self=YES
+      done < <(getent passwd 2> /dev/null)
+      [ "${_self}" = "YES" ] || return 1
+      echo "${_x}"
+      return 0
+      ;;
+  esac
+  return 1
+}
+# The uids the walks act for in _OWN_UIDS (_site_walk_uids); a site path in
+# neither an account's tree nor the master's is left as it is, with one
+# Notice and nothing changed.
+_own_uids_or_leave() {
+  _OWN_UIDS=$(_site_walk_uids "${site_path}") || _OWN_UIDS=""
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] && return 0
+  printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
+    "${site_path}" >&2
+  exit 0
+}
+# One line for what the walks left as another user's, each entry once by
+# the dev:ino the walkers print ($1, all they printed), on fd 3 beside the
+# other notes.
+_owners_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
+  printf "Notice: %s entries owned by another user left as they were in the site %s and its stores\n" \
+    "${_n}" "${site_path}" >&3
+  return 0
+}
+
+# As _FCHMOD_PL on names in the current directory (f or d, the mode, the
+# names), given first the uids it acts for (_site_walk_uids): a name
+# another named uid owns keeps its mode and is printed (dev:ino), and
+# nothing is changed unless the current directory and every directory
+# above it, up to /, are owned by those uids (read through '..' from where
+# find stands), so nothing below a directory another named uid owns gets a
+# mode. Given . as a name, a directory another uid owns above the place is
+# printed when it is refused; status 1 when it is.
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
+
+# The mode $2 on each directory ($1 d) or single-link regular file ($1 f)
+# in the current (pinned) directory that matches a pattern after it
+# (expanded here, nowhere else; . stays .), set through _SAT_CHMOD_OWN_PL
+# with the site's own uids (_OWN_UIDS). A pattern that matches nothing is
+# skipped. Prints dev:ino of each entry left for another owner; status 1
+# when the directory is below one another user owns.
+_chmod_own_here() {
+  local _t="${1}" _mode="${2}" _pat _p
+  local -a _names=()
+  shift 2
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
   for _pat in "$@"; do
     for _p in ${_pat}; do
-      _n+=("./${_p#./}")
+      [ "${_p}" = "." ] || _p="./${_p#./}"
+      _names+=("${_p}")
     done
   done
-  [ "${#_n[@]}" -gt 0 ] || return 0
-  perl -e "${_FCHMOD_PL}" a "${_mode}" "${_n[@]}"
+  [ "${#_names[@]}" -gt 0 ] || return 0
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_OWN_UIDS}" "${_t}" "${_mode}" "${_names[@]}"
 }
-# _chmod_here inside the directory $1 (resolved once above), entered for real.
-_chmod_in() {
+# _chmod_own_here inside the directory $1 (resolved once above), entered for
+# real.
+_chmod_own_in() {
   local _d="${1}"
   shift
-  _in_pinned_dir "${_d}" _chmod_here "$@"
+  _in_pinned_dir "${_d}" _chmod_own_here "$@"
+}
+# Status 0 while the current (pinned) directory and every directory above
+# it are root's or the site's own users' (_SAT_CHMOD_OWN_PL given . as a
+# file, which sets nothing on a directory); otherwise the directory another
+# user owns is printed (dev:ino) and the status is 1. Every leg below
+# starts with it: nothing is done in a place below another user's
+# directory.
+_place_own_here() {
+  _chmod_own_here f 0644 .
 }
 # A walk leaves a regular file with more than one link as it was (a hard
 # link planted in a tree the account can write would carry the change to the
@@ -381,13 +513,66 @@ _links_left_note() {
 }
 # Mode $1 on every regular file the find start points and tests after it
 # select (any tests apply first), walked from the current (pinned) directory
-# through _FCHMOD_PL, then _links_left_note on the same selection.
+# through _FCHMOD_PL, then _links_left_note on the same selection. Kept as
+# the platform script's copy; both walk with _fwalk_own_here.
 _fwalk_here() {
   local _m="${1}" _rc
   shift
   find "$@" -type f -exec perl -e "${_FCHMOD_PL}" f "${_m}" {} +
   _rc=$?
   _links_left_note "$@"
+  return "${_rc}"
+}
+# find's tests, in _NOT_OWN, for an entry another user owns as the walkers
+# read it: its uid is none of _OWN_UIDS and a passwd entry names it
+# (-nouser is true for a uid no entry names). A walk hands such an entry to
+# its walker whatever state it is in, so it is left and counted as before.
+_not_own_tests() {
+  local _u
+  local -a _ids=()
+  _NOT_OWN=()
+  IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
+  for _u in "${_ids[@]}"; do
+    _NOT_OWN+=( ! -uid "${_u}" )
+  done
+  _NOT_OWN+=( ! -nouser )
+}
+# Mode $2 on every directory ($1 d) or single-link regular file ($1 f) the
+# find start points and tests after it select (any tests apply first), set
+# from the directory find holds (-execdir) through _SAT_CHMOD_OWN_PL with
+# the site's own uids (_OWN_UIDS): what another user owns, and everything
+# below a directory another user owns, keeps its mode, its dev:ino
+# printed. A file walk ends with _links_left_note on the same selection.
+# Perl starts only in a directory that holds an entry whose mode is not yet
+# the walk's, or another user's entry (_not_own_tests): a tree already at
+# its modes costs the walk alone. A directory keeps its set-ID bits under a
+# mode of fewer than five digits, so any of them may stand beside that
+# mode. A mode that is not three or four octal digits, or five with a
+# leading 0, is walked as before: every entry goes to perl.
+_fwalk_own_here() {
+  local _t="${1}" _m="${2}" _rc _v _s _p
+  local -a _need=()
+  shift 2
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  if [[ "${_t}" =~ ^[df]$ && "${_m}" =~ ^0?[0-7]{3,4}$ ]]; then
+    _v=$(( 8#${_m} ))
+    if [[ "${_t}" == "d" && "${#_m}" -lt 5 ]]; then
+      for _s in 0 02000 04000 06000; do
+        (( (_v & 06000 & ~_s) == 0 )) || continue
+        printf -v _p '%04o' "$(( (_v & 01777) | _s ))"
+        _need+=( ! -perm "${_p}" )
+      done
+    else
+      printf -v _p '%04o' "${_v}"
+      _need=( ! -perm "${_p}" )
+    fi
+    _not_own_tests
+    _need=( \( "${_need[@]}" -o "${_NOT_OWN[@]}" \) )
+  fi
+  find "$@" -type "${_t}" "${_need[@]}" \
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_OWN_UIDS}" "${_t}" "${_m}" {} +
+  _rc=$?
+  [ "${_t}" != "f" ] || _links_left_note "$@"
   return "${_rc}"
 }
 
@@ -407,15 +592,8 @@ _mark_here() {
 _grav_site_perm_here() {
   local _wd _sd _here
   _here="$(pwd -P)"
-  find . -path ./user -prune \
-    -o -path ./cache -prune \
-    -o -path ./logs -prune \
-    -o -path ./tmp -prune \
-    -o -path ./backup -prune \
-    -o -path ./images -prune \
-    -o -path ./assets -prune \
-    -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
-  _fwalk_here 0644 . -path ./user -prune \
+  _place_own_here || return 0
+  _fwalk_own_here d 0755 . -path ./user -prune \
     -o -path ./cache -prune \
     -o -path ./logs -prune \
     -o -path ./tmp -prune \
@@ -423,12 +601,20 @@ _grav_site_perm_here() {
     -o -path ./images -prune \
     -o -path ./assets -prune \
     -o 2> /dev/null
-  _chmod_in "${_here}/bin" 0755 '*'
+  _fwalk_own_here f 0644 . -path ./user -prune \
+    -o -path ./cache -prune \
+    -o -path ./logs -prune \
+    -o -path ./tmp -prune \
+    -o -path ./backup -prune \
+    -o -path ./images -prune \
+    -o -path ./assets -prune \
+    -o 2> /dev/null
+  _chmod_own_in "${_here}/bin" d 0755 '*'
+  _chmod_own_in "${_here}/bin" f 0755 '*'
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    find "./${_wd}" -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
-    _fwalk_here 0664 "./${_wd}" 2> /dev/null
+    _fwalk_own_here d 02775 "./${_wd}" 2> /dev/null
+    _fwalk_own_here f 0664 "./${_wd}" 2> /dev/null
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # (same class as the TXP private/ store): accounts hold
@@ -437,26 +623,26 @@ _grav_site_perm_here() {
   # bits. The root .env (phase 2: DB credentials) keeps FPM's read via group.
   for _sd in accounts config env; do
     [ -d "./user/${_sd}" ] || continue
-    _in_pinned_dir "${_here}/user" find "./${_sd}" -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02770 {} + 2> /dev/null
-    _in_pinned_dir "${_here}/user" _fwalk_here 0660 "./${_sd}" 2> /dev/null
+    _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
+    _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
   done
-  _chmod_here 0640 .env
-  _chmod_here 0440 drushrc.php
+  _chmod_own_here f 0640 .env
+  _chmod_own_here f 0440 drushrc.php
 }
 
 # The Textpattern model, run inside the real site directory.
 _txp_site_perm_here() {
   local _wd _here
   _here="$(pwd -P)"
-  find . -path ./private -prune \
+  _place_own_here || return 0
+  _fwalk_own_here d 0755 . -path ./private -prune \
     -o -path ./tmp -prune \
     -o -path ./admin/plugins -prune \
     -o -path ./public/files -prune \
     -o -path ./public/images -prune \
     -o -path ./public/themes -prune \
-    -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
-  _fwalk_here 0644 . -path ./private -prune \
+    -o 2> /dev/null
+  _fwalk_own_here f 0644 . -path ./private -prune \
     -o -path ./tmp -prune \
     -o -path ./admin/plugins -prune \
     -o -path ./public/files -prune \
@@ -465,25 +651,42 @@ _txp_site_perm_here() {
     -o 2> /dev/null
   for _wd in tmp admin/plugins public/files public/images public/themes; do
     [ -d "./${_wd}" ] || continue
-    _in_pinned_dir "${_here}/${_wd}" find . -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
-    _in_pinned_dir "${_here}/${_wd}" _fwalk_here 0664 . 2> /dev/null
+    _in_pinned_dir "${_here}/${_wd}" _fwalk_own_here d 02775 . 2> /dev/null
+    _in_pinned_dir "${_here}/${_wd}" _fwalk_own_here f 0664 . 2> /dev/null
   done
   # Credential store: group-traversable (FPM reads config.php through the
   # web group), unreadable to everyone else.
-  _chmod_here 0750 private
-  _in_pinned_dir "${_here}/private" _fwalk_here 0440 . 2> /dev/null
+  _chmod_own_here d 0750 private
+  _in_pinned_dir "${_here}/private" _fwalk_own_here f 0440 . 2> /dev/null
   # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
   # carries the db credentials, so the generic 0644 pass above widens it to
   # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
   # never fight the writer. (Same class as the private/ prune.)
-  _chmod_here 0440 drushrc.php
+  _chmod_own_here f 0440 drushrc.php
 }
 
 # The site's own PHP files made 0440, the glob expanded inside the real site
-# directory, each set through _FCHMOD_PL.
+# directory, each set through _SAT_CHMOD_OWN_PL.
 _site_php_here() {
-  _fwalk_here 0440 ./*.php
+  _fwalk_own_here f 0440 ./*.php
+}
+
+# The site directory's own modes, run inside it (entered for real): its PHP
+# files, the panel's drushrc.php, civicrm.settings.php, and modules, themes
+# and libraries with everything in them.
+_site_dir_perm_here() {
+  _place_own_here || return 0
+  _site_php_here
+  ### The hostmaster site's drushrc.php carries the instance DB user (ALL
+  ### PRIVILEGES) and only the backend user, its owner, ever reads it: no
+  ### group read at all, box-wide 'users' or the account's own group alike.
+  if [[ "${site_path}" =~ /aegir/(distro|host_master)/ ]]; then
+    _chmod_own_here f 0400 drushrc.php
+  fi
+  _chmod_own_here f 0640 civicrm.settings.php
+  ### modules,themes,libraries - site level
+  _fwalk_own_here d 02775 ./modules ./themes ./libraries
+  _fwalk_own_here f 0664 ./modules ./themes ./libraries
 }
 
 # The subtrees of a files store nginx never serves (a case-insensitive
@@ -494,8 +697,9 @@ _site_php_here() {
 _SITE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
 
 # The files store, run inside it (entered for real): the day marker, then the
-# whole store.
+# whole store; nothing is done in a store below another user's directory.
 _files_perm_here() {
+  _place_own_here || return 0
   ### ctrl pid
   rm -f -- ./permissions-fixed*.pid
   _mark_here "permissions-fixed-${_TODAY}.pid"
@@ -504,24 +708,30 @@ _files_perm_here() {
   ### so do the subtrees nginx denies (_SITE_DENIED_RE): a store walk must
   ### never open them again
   if [ "${_priv_d}" = "02775" ]; then
-    find . -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
-    _fwalk_here 0664 .
+    _fwalk_own_here d 02775 .
+    _fwalk_own_here f 0664 .
   else
-    find . -regextype posix-extended \( -path ./private -o -iregex "${_SITE_DENIED_RE}" \) \
-      -prune -o -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
-    _fwalk_here 0664 . -regextype posix-extended \
+    _fwalk_own_here d 02775 . -regextype posix-extended \
+      \( -path ./private -o -iregex "${_SITE_DENIED_RE}" \) -prune -o
+    _fwalk_own_here f 0664 . -regextype posix-extended \
       \( -path ./private -o -iregex "${_SITE_DENIED_RE}" \) -prune -o
     if [ -d ./private ] && [ ! -L ./private ]; then
-      find ./private -type d -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} +
-      _fwalk_here "${_priv_f}" ./private
+      _fwalk_own_here d "${_priv_d}" ./private
+      _fwalk_own_here f "${_priv_f}" ./private
     fi
-    find . -regextype posix-extended -path ./private -prune -o \
-      -iregex "(${_SITE_DENIED_RE})(/.*)?" -type d \
-      -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} +
-    _fwalk_here "${_priv_f}" . -regextype posix-extended -path ./private -prune -o \
+    _fwalk_own_here d "${_priv_d}" . -regextype posix-extended -path ./private -prune -o \
+      -iregex "(${_SITE_DENIED_RE})(/.*)?"
+    _fwalk_own_here f "${_priv_f}" . -regextype posix-extended -path ./private -prune -o \
       -iregex "(${_SITE_DENIED_RE})(/.*)?"
   fi
-  chmod 02775 .
+  _chmod_own_here d 02775 .
+}
+
+# The private store, run inside it (entered for real), the same way.
+_priv_perm_here() {
+  _place_own_here || return 0
+  _fwalk_own_here d "${_priv_d}" .
+  _fwalk_own_here f "${_priv_f}" .
 }
 
 # Group read for an entry the account's web server wrote closed, set through
@@ -671,13 +881,14 @@ if [ -n "${site_path}" ] \
   && [ -f "${site_path}/system/defines.php" ] \
   && [ ! -f "${site_path}/settings.php" ]; then
   _validate_path_prefix "${site_path}"
+  _own_uids_or_leave
   # Capsule permission model (spike-proven): code 0755/0644; the writable
   # set 02775 dirs + g+rw files (FPM writes via GROUP; setgid keeps the
   # group on web-created entries); the capsule's own bin/ stays executable
   # (the enforced-PHP wrapper and the upgrade engine exec bin/grav, bin/gpm).
   # Runs inside the real site directory (_in_pinned_dir, _grav_site_perm_here).
   printf "Setting Grav permissions of %s\n" "${site_path}"
-  _in_pinned_dir "${site_path}" _grav_site_perm_here
+  _owners_left_note "$(_in_pinned_dir "${site_path}" _grav_site_perm_here)"
   echo "Done setting proper permissions of files and directories (Grav site)."
   exit 0
 fi
@@ -692,6 +903,7 @@ if [ -n "${site_path}" ] \
   && [ -d "${site_path}/admin" ] \
   && [ ! -f "${site_path}/settings.php" ]; then
   _validate_path_prefix "${site_path}"
+  _own_uids_or_leave
   # Code 0755/0644; the writable set 02775 dirs + g+rw files (FPM writes via
   # GROUP; setgid keeps the group on web-created entries).
   #
@@ -704,7 +916,7 @@ if [ -n "${site_path}" ] \
   # never touched from here. Runs inside the real site directory
   # (_in_pinned_dir, _txp_site_perm_here).
   printf "Setting Textpattern permissions of %s\n" "${site_path}"
-  _in_pinned_dir "${site_path}" _txp_site_perm_here
+  _owners_left_note "$(_in_pinned_dir "${site_path}" _txp_site_perm_here)"
   echo "Done setting proper permissions of files and directories (Textpattern site)."
   exit 0
 fi
@@ -715,6 +927,7 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
 fi
 
 _validate_path_prefix "${site_path}"
+_own_uids_or_leave
 
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
@@ -732,7 +945,7 @@ esac
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the
 ### site-level code dirs are 02775 and group-writable. The rm below and the find start
-### points walk THROUGH them, while _chmod_here protects only the final
+### points walk THROUGH them, while _chmod_own_here protects only the final
 ### component. None is ever legitimately a symlink at site level.
 for _d in modules themes libraries; do
   if [ -L "${site_path}/${_d}" ]; then
@@ -757,21 +970,10 @@ printf 'Setting correct permissions on key files and directories inside %s...\n'
 if [ -e "${site_path}/aegir.services.yml" ]; then
   _in_pinned_dir "${site_path}" rm -f -- ./aegir.services.yml
 fi
-### Every find walk below sets modes through _FCHMOD_PL: a name swapped for
-### a link during the walk is refused, not followed.
-_in_pinned_dir "${site_path}" _site_php_here &> /dev/null
-### The hostmaster site's drushrc.php carries the instance DB user (ALL
-### PRIVILEGES) and only the backend user, its owner, ever reads it: no group
-### read at all, box-wide 'users' or the account's own group alike.
-if [[ "${site_path}" =~ /aegir/(distro|host_master)/ ]]; then
-  _chmod_in "${site_path}" 0400 drushrc.php
-fi
-_chmod_in "${site_path}" 0640 civicrm.settings.php
-### modules,themes,libraries - site level
-_in_pinned_dir "${site_path}" find ./modules ./themes ./libraries -type d \
-  -exec perl -e "${_FCHMOD_PL}" d 02775 {} + &> /dev/null
-_in_pinned_dir "${site_path}" _fwalk_here 0664 ./modules ./themes ./libraries \
-  &> /dev/null
+### Every find walk below sets modes through _SAT_CHMOD_OWN_PL: a name
+### swapped for a link during the walk is refused, not followed. What the
+### walks leave as another user's, by dev:ino, for one Notice.
+_LEFT=$(_in_pinned_dir "${site_path}" _site_dir_perm_here 2> /dev/null)
 
 ### files/ and private/ are legitimately symlinks into the per-account static
 ### store, and a walk through such a link goes wherever it points. Each store
@@ -786,15 +988,14 @@ fi
 
 if [ -n "${_files_dir}" ] \
   && [ ! -e "${_files_dir}/permissions-fixed-${_TODAY}.pid" ]; then
-  _in_pinned_dir "${_files_dir}" _files_perm_here &> /dev/null
+  _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_files_dir}" _files_perm_here 2> /dev/null)"
   ### private - site level
   if [ -n "${_priv_dir}" ]; then
-    _in_pinned_dir "${_priv_dir}" find . -type d \
-      -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} + &> /dev/null
-    _in_pinned_dir "${_priv_dir}" _fwalk_here "${_priv_f}" . &> /dev/null
+    _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_perm_here 2> /dev/null)"
   fi
   ### known exceptions
-  _chmod_in "${_files_dir}" 0644 .htaccess
+  _LEFT="${_LEFT}"$'\n'"$(_chmod_own_in "${_files_dir}" f 0644 .htaccess)"
 fi
+_owners_left_note "${_LEFT}"
 
 echo "Done setting proper permissions on site files and directories."

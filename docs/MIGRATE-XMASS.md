@@ -1087,6 +1087,14 @@ the same account is a canary it sends away (the target is that canary's
 own). With no hold on the active, the target keeps its hold only while a
 test run is still recorded there after the pass.
 
+**Every account leg maps the account's identities** (`oN`, `oN.ftp`, client
+logins, PHP-FPM users) onto the same names on the target, and one the target
+does not have yet (a client's login not made there, the PHP-FPM user of a PHP
+version it does not run) onto the account itself, never onto the source's
+user number, which there can be another account's. The pass after the name
+appears there hands its files back, and a target whose users cannot be read
+fails that account's legs for the pass (a `DENY`).
+
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
 That covers what the active writes to its binary log. BOA's own database loads

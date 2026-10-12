@@ -69,6 +69,118 @@ _sql_backup_live() {
   [ -n "${_a}" ] && [ "${_a}" -le "$(_sql_backup_limit)" ]
 }
 
+_cron_names_to_numbers() {
+  # crontab(5) accepts three-letter names in the month and dow fields
+  echo "$1" | tr 'A-Z' 'a-z' | sed \
+    -e 's/sun/0/g' -e 's/mon/1/g' -e 's/tue/2/g' -e 's/wed/3/g' \
+    -e 's/thu/4/g' -e 's/fri/5/g' -e 's/sat/6/g' \
+    -e 's/jan/1/g' -e 's/feb/2/g' -e 's/mar/3/g' -e 's/apr/4/g' \
+    -e 's/may/5/g' -e 's/jun/6/g' -e 's/jul/7/g' -e 's/aug/8/g' \
+    -e 's/sep/9/g' -e 's/oct/10/g' -e 's/nov/11/g' -e 's/dec/12/g'
+}
+
+_cron_field_matches() {
+  # Does one crontab date field (dom/mon/dow) cover the given value?
+  # Handles *, N, A-B, */S, A-B/S and comma lists; names are already
+  # normalized by the caller. Anything unparseable counts as a match:
+  # a strange hand-edited entry must block the reboot, not be ignored.
+  local _fLd="$1" _vAl="$2" _mIn="$3"
+  local _aTom="" _rNge="" _sTep="" _lOw="" _hIgh="" _rEst=""
+  [ "${_fLd}" = "*" ] && return 0
+  [[ "${_vAl}" =~ ^[0-9]+$ ]] || return 0
+  ### 10# everywhere a field value enters arithmetic: crontab accepts
+  ### zero-padded values (08/09) which bash $(( )) reads as invalid octal,
+  ### and the arithmetic abort would discard the whole caller block
+  _vAl=$((10#${_vAl}))
+  _rEst="${_fLd},"
+  while [ -n "${_rEst}" ]; do
+    _aTom="${_rEst%%,*}"
+    _rEst="${_rEst#*,}"
+    [ -z "${_aTom}" ] && continue
+    _sTep=1
+    _rNge="${_aTom}"
+    if [[ "${_aTom}" == */* ]]; then
+      _rNge="${_aTom%%/*}"
+      _sTep="${_aTom#*/}"
+      [[ "${_sTep}" =~ ^[0-9]+$ ]] || return 0
+      _sTep=$((10#${_sTep}))
+      [ "${_sTep}" -eq 0 ] && return 0
+    fi
+    if [ "${_rNge}" = "*" ]; then
+      _lOw="${_mIn}"
+      _hIgh=99
+    elif [[ "${_rNge}" =~ ^[0-9]+-[0-9]+$ ]]; then
+      _lOw=$((10#${_rNge%%-*}))
+      _hIgh=$((10#${_rNge#*-}))
+    elif [[ "${_rNge}" =~ ^[0-9]+$ ]]; then
+      _lOw=$((10#${_rNge}))
+      _hIgh="${_lOw}"
+    else
+      return 0
+    fi
+    [ "${_lOw}" -gt "${_hIgh}" ] && return 0
+    if [ "${_vAl}" -ge "${_lOw}" ] && [ "${_vAl}" -le "${_hIgh}" ] \
+      && [ $(( (_vAl - _lOw) % _sTep )) -eq 0 ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+_upgrade_scheduled_today() {
+  # TRUE when any active /etc/crontab entry that runs a barracuda or
+  # octopus upgrade -- directly or via the autoupboa weekly wrapper --
+  # is scheduled for today's date. The kernel-activation reboot must
+  # never share a day with a scheduled upgrade run, so a staged kernel
+  # waits for the next free night instead. crontab(5) semantics: dom
+  # and dow combine as OR when both are restricted, otherwise all date
+  # fields must agree. $1 narrows the entries that count (an ERE the
+  # line must match) and $2 tests another day than today (a date -d
+  # expression).
+  local _rUns="${1:-((barracuda|octopus)[[:space:]]+up-|autoupboa[[:space:]]+weekly-system)}"
+  local _wHen="${2:-now}"
+  local _cMin="" _cHour="" _cDom="" _cMon="" _cDow="" _cRest="" _domOk="" _dowOk=""
+  local _dNow="" _mNow="" _wNow=""
+  ### one date call, so the three fields cannot straddle midnight
+  read -r _dNow _mNow _wNow < <(date -d "${_wHen}" '+%-d %-m %w')
+  [ -e "/etc/crontab" ] || return 1
+  ### read-splitting, never `set -- $line`: an unquoted * field would
+  ### glob-expand against the current directory
+  while read -r _cMin _cHour _cDom _cMon _cDow _cRest; do
+    if [[ "${_cMin}" == @* ]]; then
+      ### @daily/@weekly/... carry no date fields to test -- fail closed,
+      ### treat the upgrade as scheduled today
+      return 0
+    fi
+    [ -n "${_cRest}" ] || continue
+    _cDom=$(_cron_names_to_numbers "${_cDom}")
+    _cMon=$(_cron_names_to_numbers "${_cMon}")
+    _cDow=$(_cron_names_to_numbers "${_cDow}")
+    _cron_field_matches "${_cMon}" "${_mNow}" 1 || continue
+    _domOk=1
+    _cron_field_matches "${_cDom}" "${_dNow}" 1 && _domOk=0
+    _dowOk=1
+    if _cron_field_matches "${_cDow}" "${_wNow}" 0; then
+      _dowOk=0
+    elif [ "${_wNow}" -eq 0 ] && _cron_field_matches "${_cDow}" "7" 0; then
+      _dowOk=0
+    fi
+    ### Vixie cron flags a dom/dow field as unrestricted from its FIRST
+    ### character, so */N counts as star and keeps the AND rule; only
+    ### two genuinely restricted fields combine as OR
+    if [[ "${_cDom}" != \** ]] && [[ "${_cDow}" != \** ]]; then
+      if [ "${_domOk}" -eq 0 ] || [ "${_dowOk}" -eq 0 ]; then
+        return 0
+      fi
+    else
+      if [ "${_domOk}" -eq 0 ] && [ "${_dowOk}" -eq 0 ]; then
+        return 0
+      fi
+    fi
+  done < <(grep -iE "^[[:space:]]*[^#[:space:]].*${_rUns}" /etc/crontab 2>/dev/null)
+  return 1
+}
+
 # Weekly system-upgrade wrapper, invoked by the weekly auto-update cron as
 #   autoupboa weekly-system up-<tier> system [php-*] noscreen
 # (written by _crontab_update). barracuda is only ever a leaf call here. PHP
@@ -125,6 +237,16 @@ _weekly_install_in_flight() {
   return 1
 }
 if [ "$1" = "weekly-system" ]; then
+  ### A full barracuda upgrade due today does everything this pass would,
+  ### and a pass run after it holds the run lock the scheduled Octopus
+  ### upgrade needs: skip, never wait. The weekly line runs five minutes
+  ### after the full upgrade's slot, so that slot's day counts too: from
+  ### a 23:55 or later slot the weekly runs past midnight.
+  if _upgrade_scheduled_today "barracuda[[:space:]]+up-" \
+    || _upgrade_scheduled_today "barracuda[[:space:]]+up-" "5 minutes ago"; then
+    echo "INFO: full upgrade scheduled today -- weekly-system skipped"
+    exit 0
+  fi
   ### Defer, don't collide: wait for a clear box so the weekly window is
   ### delayed rather than lost; if still busy after the bounded wait, skip
   ### -- the next weekly run retries
@@ -1290,112 +1412,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   fi
 fi
 
-_cron_names_to_numbers() {
-  # crontab(5) accepts three-letter names in the month and dow fields
-  echo "$1" | tr 'A-Z' 'a-z' | sed \
-    -e 's/sun/0/g' -e 's/mon/1/g' -e 's/tue/2/g' -e 's/wed/3/g' \
-    -e 's/thu/4/g' -e 's/fri/5/g' -e 's/sat/6/g' \
-    -e 's/jan/1/g' -e 's/feb/2/g' -e 's/mar/3/g' -e 's/apr/4/g' \
-    -e 's/may/5/g' -e 's/jun/6/g' -e 's/jul/7/g' -e 's/aug/8/g' \
-    -e 's/sep/9/g' -e 's/oct/10/g' -e 's/nov/11/g' -e 's/dec/12/g'
-}
-
-_cron_field_matches() {
-  # Does one crontab date field (dom/mon/dow) cover the given value?
-  # Handles *, N, A-B, */S, A-B/S and comma lists; names are already
-  # normalized by the caller. Anything unparseable counts as a match:
-  # a strange hand-edited entry must block the reboot, not be ignored.
-  local _fLd="$1" _vAl="$2" _mIn="$3"
-  local _aTom="" _rNge="" _sTep="" _lOw="" _hIgh="" _rEst=""
-  [ "${_fLd}" = "*" ] && return 0
-  [[ "${_vAl}" =~ ^[0-9]+$ ]] || return 0
-  ### 10# everywhere a field value enters arithmetic: crontab accepts
-  ### zero-padded values (08/09) which bash $(( )) reads as invalid octal,
-  ### and the arithmetic abort would discard the whole caller block
-  _vAl=$((10#${_vAl}))
-  _rEst="${_fLd},"
-  while [ -n "${_rEst}" ]; do
-    _aTom="${_rEst%%,*}"
-    _rEst="${_rEst#*,}"
-    [ -z "${_aTom}" ] && continue
-    _sTep=1
-    _rNge="${_aTom}"
-    if [[ "${_aTom}" == */* ]]; then
-      _rNge="${_aTom%%/*}"
-      _sTep="${_aTom#*/}"
-      [[ "${_sTep}" =~ ^[0-9]+$ ]] || return 0
-      _sTep=$((10#${_sTep}))
-      [ "${_sTep}" -eq 0 ] && return 0
-    fi
-    if [ "${_rNge}" = "*" ]; then
-      _lOw="${_mIn}"
-      _hIgh=99
-    elif [[ "${_rNge}" =~ ^[0-9]+-[0-9]+$ ]]; then
-      _lOw=$((10#${_rNge%%-*}))
-      _hIgh=$((10#${_rNge#*-}))
-    elif [[ "${_rNge}" =~ ^[0-9]+$ ]]; then
-      _lOw=$((10#${_rNge}))
-      _hIgh="${_lOw}"
-    else
-      return 0
-    fi
-    [ "${_lOw}" -gt "${_hIgh}" ] && return 0
-    if [ "${_vAl}" -ge "${_lOw}" ] && [ "${_vAl}" -le "${_hIgh}" ] \
-      && [ $(( (_vAl - _lOw) % _sTep )) -eq 0 ]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-_upgrade_scheduled_today() {
-  # TRUE when any active /etc/crontab entry that runs a barracuda or
-  # octopus upgrade -- directly or via the autoupboa weekly wrapper --
-  # is scheduled for today's date. The kernel-activation reboot must
-  # never share a day with a scheduled upgrade run, so a staged kernel
-  # waits for the next free night instead. crontab(5) semantics: dom
-  # and dow combine as OR when both are restricted, otherwise all date
-  # fields must agree.
-  local _cMin="" _cHour="" _cDom="" _cMon="" _cDow="" _cRest="" _domOk="" _dowOk=""
-  local _dNow="$(date +%-d)" _mNow="$(date +%-m)" _wNow="$(date +%w)"
-  [ -e "/etc/crontab" ] || return 1
-  ### read-splitting, never `set -- $line`: an unquoted * field would
-  ### glob-expand against the current directory
-  while read -r _cMin _cHour _cDom _cMon _cDow _cRest; do
-    if [[ "${_cMin}" == @* ]]; then
-      ### @daily/@weekly/... carry no date fields to test -- fail closed,
-      ### treat the upgrade as scheduled today
-      return 0
-    fi
-    [ -n "${_cRest}" ] || continue
-    _cDom=$(_cron_names_to_numbers "${_cDom}")
-    _cMon=$(_cron_names_to_numbers "${_cMon}")
-    _cDow=$(_cron_names_to_numbers "${_cDow}")
-    _cron_field_matches "${_cMon}" "${_mNow}" 1 || continue
-    _domOk=1
-    _cron_field_matches "${_cDom}" "${_dNow}" 1 && _domOk=0
-    _dowOk=1
-    if _cron_field_matches "${_cDow}" "${_wNow}" 0; then
-      _dowOk=0
-    elif [ "${_wNow}" -eq 0 ] && _cron_field_matches "${_cDow}" "7" 0; then
-      _dowOk=0
-    fi
-    ### Vixie cron flags a dom/dow field as unrestricted from its FIRST
-    ### character, so */N counts as star and keeps the AND rule; only
-    ### two genuinely restricted fields combine as OR
-    if [[ "${_cDom}" != \** ]] && [[ "${_cDow}" != \** ]]; then
-      if [ "${_domOk}" -eq 0 ] || [ "${_dowOk}" -eq 0 ]; then
-        return 0
-      fi
-    else
-      if [ "${_domOk}" -eq 0 ] && [ "${_dowOk}" -eq 0 ]; then
-        return 0
-      fi
-    fi
-  done < <(grep -iE '^[[:space:]]*[^#[:space:]].*((barracuda|octopus)[[:space:]]+up-|autoupboa[[:space:]]+weekly-system)' /etc/crontab 2>/dev/null)
-  return 1
-}
-
 _announce_kernel_reboot() {
   # An unattended kernel-activation reboot must never be silent: log it
   # in /var/log/boa/ and alert the admin by email before firing, so an
@@ -1539,8 +1555,22 @@ _crontab_update() {
     ### but _upgrade_scheduled_today must treat as scheduled forever
     if [ ! -z "${_BCDA_SYST}" ] && [ ! -z "${_AUTO_UP_WEEKLY}" ] \
       && [ ! -z "${_AUTO_UP_MINUTE}" ] && [ ! -z "${_AUTO_UP_HOUR}" ]; then
+      ### five minutes after the full upgrade's slot: at the same minute
+      ### the two raced for the run lock; this way the full upgrade holds
+      ### the box first and the weekly pass finds its day taken and skips.
+      ### Past midnight the weekly line moves to the next weekday.
+      local _wkTot="" _wkMin="" _wkHour="" _wkDow=""
+      _wkTot=$(( 10#${_AUTO_UP_HOUR} * 60 + 10#${_AUTO_UP_MINUTE} + 5 ))
+      _wkMin=$(( _wkTot % 60 ))
+      _wkHour=$(( _wkTot / 60 % 24 ))
+      _wkDow="${_AUTO_UP_WEEKLY}"
+      ### 10#, as for hour and minute: cron takes a zero-padded weekday too
+      if [ "${_wkTot}" -ge 1440 ] && [[ "${_wkDow}" =~ ^[0-9]+$ ]] \
+        && (( 10#${_wkDow} <= 7 )); then
+        _wkDow=$(( 10#${_wkDow} % 7 + 1 ))
+      fi
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-      echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/autoupboa weekly-system ${_BCDA_SYST}" >> /etc/crontab
+      echo "${_wkMin} ${_wkHour}    * * ${_wkDow}   root    bash /opt/local/bin/autoupboa weekly-system ${_BCDA_SYST}" >> /etc/crontab
     fi
 
     if [ ! -z "${_BCDA_FULL}" ] && [ ! -z "${_AUTO_UP_DAY}" ] && [ ! -z "${_AUTO_UP_MONTH}" ] \
@@ -1805,14 +1835,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588866v01.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588866v02.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588866v01.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588866v02.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588866v01.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588866v02.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1820,7 +1850,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588866v01.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588866v02.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
