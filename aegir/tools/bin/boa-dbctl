@@ -2560,6 +2560,7 @@ _v_load() {
     && _in_backups _acct_in_real_dir ./tmp_expim _store_objects_here; then
     _alrt "the dump carries triggers, routines or events, and this myloader cannot hand them to ${_LD_USER}: they are left out of the load"
   fi
+  _t0="${SECONDS}"
   _x=$(_in_backups _acct_in_real_dir ./tmp_expim _store_walk_here)
   _st=$?
   if [[ "${_st}" -ne 0 || -n "${_x}" ]]; then
@@ -2579,7 +2580,10 @@ _v_load() {
       "entry ./"?*) _why="the store holds ${_x#entry ./}, which is not a directory or a regular file the account can read" ;;
       "dir ?"|"entry ?") _why="the store holds an entry whose name is not plain, and it is not a directory or a regular file the account can read" ;;
       *)
-        if [[ "${_st}" -eq 124 || "${_st}" -eq 137 ]]; then
+        # 137 is the limit's own kill only when the time ran out: anything
+        # else that killed the walk is not said to be the limit
+        if [[ "${_st}" -eq 124 ]] \
+          || [[ "${_st}" -eq 137 && "$(( SECONDS - _t0 ))" -ge "${_WALK_LIMIT}" ]]; then
           _why="the walk of the store as the account passed ${_WALK_LIMIT}s"
         else
           _why="the store could not be walked as the account"
