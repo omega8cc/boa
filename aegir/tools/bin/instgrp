@@ -4649,7 +4649,7 @@ _wg_walk_down() {
 }
 
 # 0 when an entry the walk changes still carries gid $1 under the roots or
-# in a site's store beyond them.
+# in what the way down walks beyond them (_wg_parts_beyond).
 _wg_gid_in_roots() {
   local _r
   for _r in $(_wg_roots); do
