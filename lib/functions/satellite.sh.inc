@@ -6180,8 +6180,11 @@ _satellite_if_add_update_user_symlinks() {
   ### either name is removed first) and handed to the main login, and each
   ### link is made, inside the real directory. A ~/.drush or a usr/ another
   ### user owns keeps its owner and mode, and nothing is made or linked in
-  ### it (_satellite_user_ds_link_here): the login then has no link to that
-  ### extension until the directory is moved away, and the run goes on.
+  ### it; a file or a directory another user owns at a link's name in usr/
+  ### stays as it is too, and no link is made inside a directory there
+  ### (_satellite_user_ds_link_here). The login then has no link to that
+  ### extension until the entry is moved away, and the run goes on; what
+  ### stays joins the NOTE line below.
   for _dsX in registry_rebuild clean_missing_modules drupalgeddon \
     drush_ecl safe_cache_form_clear utf8mb4_convert; do
     if [ ! -L "${_USER_DS}/usr/${_dsX}" ] \
@@ -8502,23 +8505,47 @@ _satellite_bzr_seed_here() {
 }
 # The main login's ~/.drush (the current, pinned directory) and its usr/
 # made real directories and handed to the login, ~/.drush 0700, and usr/$1
-# linked to the instance user's own copy of that drush extension: a link
-# put at usr is removed first, and usr/ is handed over from inside it (on
-# '.', once entered as the real directory), so no owner or mode is set
-# through a link or on a file put at the name. Each is handed over only
-# where root or one of the instance's own identities owns it
-# (_satellite_own_dir_here), ~/.drush before anything is made in it: the
-# login can rename to .drush or to usr a directory another account left
-# group-writable, which keeps its owner and mode, with no usr/ made and no
-# link put in it. Prints dev:ino of the directory left for another owner;
-# status 1 when one is.
+# linked to the instance user's own copy of that drush extension
+# (_satellite_user_ds_usr_here): a link put at usr is removed first, and
+# usr/ is entered once, as the real directory, for all that is done in it.
+# ~/.drush is handed over only where root or one of the instance's own
+# identities owns it (_satellite_own_dir_here), before anything is made in
+# it: the login can rename to .drush a directory another account left
+# group-writable, which keeps its owner and mode, with no usr/ made in it.
+# Prints dev:ino of each directory or entry left for another owner; status
+# 1 when the link was not made.
 _satellite_user_ds_link_here() {
   _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 || return 1
   [ -L ./usr ] && rm -f ./usr
   mkdir -p ./usr
-  _acct_in_real_dir ./usr _satellite_own_dir_here \
-    "${_USERFTP}:${_ACCG:-users}" "" || return 1
-  _acct_in_real_dir ./usr ln -sfn "${_ROOT}/.drush/usr/${1}" "./${1}"
+  _acct_in_real_dir ./usr _satellite_user_ds_usr_here "${1}"
+}
+# The main login's ~/.drush/usr (the current, pinned directory) handed to
+# the login, its mode kept, and ./$1 linked to the instance user's own copy
+# of that drush extension, all from inside the one directory: its owner
+# test, the test of what holds the name and the link meet the same usr/
+# whatever is renamed onto that name meanwhile, and no owner is set through
+# a link or on a file put at it. The login can rename to usr, or to an
+# extension's name in it, what another account left group-writable. A usr/
+# another user owns keeps its owner and mode and gets no link. At the name,
+# a file or a link root or one of the instance's own identities owns is
+# removed (_satellite_unlink_own_here), a directory never, and the link is
+# made only where the name is then free (-T: never inside a directory at
+# the name, nor where a link there points), so another user's entry stays
+# as it is. Prints dev:ino of the directory or entry left for another
+# owner; status 1 when the link was not made.
+_satellite_user_ds_usr_here() {
+  local _o
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" "" || return 1
+  _satellite_unlink_own_here "./${1}"
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    # the walker with no owner to give changes nothing: it prints a
+    # directory another user owns
+    _o=$(_acct_walk_uids "${_USER}") || return 1
+    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 "./${1}"
+    return 1
+  fi
+  ln -s -T -- "${_ROOT}/.drush/usr/${1}" "./${1}"
 }
 # ./$2 in the current (pinned) directory made a link to $1 where no name
 # there resolves.
