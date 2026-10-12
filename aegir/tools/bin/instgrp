@@ -711,9 +711,10 @@ _mnt_point() {
 # reached with no link on the way below the mountpoint (its real path is
 # the mountpoint's own files/<acct>/static/files, as autosymlink takes the
 # store) and owned by the account. With $2 = root, one root owns is taken
-# too: the web group's view (migratefs keeps a moved store's owner, root's
-# for the one BOA made in the home); the per-instance group's roots take
-# the account's own store only. Printed when there is one.
+# too: the web group's view, its site list and what its walks take beyond
+# the roots (migratefs keeps a moved store's owner, root's for the one BOA
+# made in the home); the per-instance group's roots take the account's own
+# store only. Printed when there is one.
 _acct_store() {
   local _a="$1" _mp _st _uid _ou _rm
   _mp=$(_mnt_point)
@@ -4186,6 +4187,9 @@ _wg_under() {
 # store and private parts of the profile's sites (_wg_parts) the roots
 # leave out (no single mountpoint under /mnt). Those took the web group
 # from the nightly, the site fixers, provision or the conversion's claim.
+# $1 = store: that store alone, what the walk up takes beyond the roots
+# and the B check reads (never another account's store, never one a third
+# uid owns), so the way up and the way down cover it alike.
 _wg_parts_beyond() {
   local _k _p _r _x _st _rr=""
   while IFS= read -r _r; do
@@ -4199,6 +4203,7 @@ _wg_parts_beyond() {
     printf '%s\n' "${_st}"
     _rr="${_rr}${_st}"$'\n'
   fi
+  [ "${1:-}" = "store" ] && return 0
   while read -r _k _p; do
     case "${_k}" in
       store|private) ;;
@@ -4253,7 +4258,8 @@ _wg_left() {
 # read once per walk) that lie inside the root $1: a store linked
 # elsewhere in the account's own tree stays in www-data with everything
 # below it, as it was before the conversion. find's pattern characters in
-# a path are escaped.
+# a path are escaped. $2 = the name find is given for the root ($1 by
+# default; . for a walk run inside the root, _wg_in).
 _wg_left_prune() {
   local _r="${1}" _rr _p _q
   _WG_PRUNE=()
@@ -4265,7 +4271,7 @@ _wg_left_prune() {
       "${_rr}"/?*) ;;
       *) continue ;;
     esac
-    _q="${_r}${_p#"${_rr}"}"
+    _q="${2:-${_r}}${_p#"${_rr}"}"
     _q="${_q//\\/\\\\}"
     _q="${_q//\*/\\*}"
     _q="${_q//\?/\\?}"
@@ -4426,10 +4432,12 @@ _wg_plants() {
 }
 
 # www-data -> the web group over the roots (passwords.d pruned: nginx reads
-# it; the left-alone paths pruned: _wg_left), the gid re-read on each
-# handle; then bare or foreign gids in the stores and the trio claimed;
-# walked again while residue is left (twice at most). 0 clean, 2 residue
-# left.
+# it; the left-alone paths pruned: _wg_left) and over the account's store
+# on attached storage when no root covers it (_wg_parts_beyond store: root
+# owns it, as migratefs leaves the one BOA made in the home; the way down
+# walks it back), the gid re-read on each handle; then bare or foreign
+# gids in the stores and the trio claimed; walked again while residue is
+# left (twice at most). 0 clean, 2 residue left.
 _wg_walk_up() {
   local _g _uids _r _pass=0 _ag
   _WG_LEFT=$(_wg_left)
@@ -4450,6 +4458,13 @@ _wg_walk_up() {
         -path '*/config/server_master/nginx/passwords.d' -prune -o -gid "${_WG_WWWGID}" \
         -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
     done
+    while IFS= read -r _r; do
+      [ -n "${_r}" ] || continue
+      _wg_is_left "${_r}" && continue
+      _wg_left_prune "${_r}" .
+      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
+    done < <(_wg_parts_beyond store)
     _wg_claim "${_g}" "${_uids}" "${_WG_WWWGID}" "${_ag}"
     _wg_web_residue || break
     [ "${_pass}" -ge 3 ] && break
@@ -4483,8 +4498,9 @@ _wg_claim() {
   return 0
 }
 
-# 0 when an entry the walk changes is still in www-data under the roots
-# (never in a left-alone path: the walk left that on purpose).
+# 0 when an entry the walk changes is still in www-data under the roots or
+# in the account's store the walk takes beyond them (never in a left-alone
+# path: the walk left that on purpose).
 _wg_web_residue() {
   local _r _chg
   read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_WP_G}" "${_WP_A}")")"
@@ -4494,6 +4510,13 @@ _wg_web_residue() {
     [ -n "$(find -P "${_r}" "${_WG_PRUNE[@]}" -path '*/config/server_master/nginx/passwords.d' -prune -o \
       -gid "${_WG_WWWGID}" \( "${_chg[@]}" \) -print -quit 2> /dev/null)" ] && return 0
   done
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    _wg_is_left "${_r}" && continue
+    _wg_left_prune "${_r}" .
+    [ -n "$(_wg_in "${_r}" find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \( "${_chg[@]}" \) \
+      -print -quit 2> /dev/null)" ] && return 0
+  done < <(_wg_parts_beyond store)
   return 1
 }
 
