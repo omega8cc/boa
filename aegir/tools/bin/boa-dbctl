@@ -3850,9 +3850,10 @@ _row_login() {
 # loopback addresses and the addresses the box holds are used (_held_ip),
 # never the address the cnf names when the box does not hold it: another
 # server can answer there, and its answer says nothing about this one's
-# row. 0 proven, 1 refused, 2 no login of this box reaches the row, 3 the
-# login could not be tried (_login_cu), 4 each login opened another row of
-# the user.
+# row. A row at the box's own name is not tried either: a name can lead
+# elsewhere. 0 proven, 1 refused, 2 no login of this box reaches the row,
+# 3 the login could not be tried (_login_cu), 4 each login opened another
+# row of the user, 5 the row is at the box's name.
 _row_login_held() {
   local _u="${1}" _h="${2}" _t _cu _rc _res=2 _ip
   local -a _tr=()
@@ -3866,6 +3867,7 @@ _row_login_held() {
       done <<< "${_OWN_HELD}"
       ;;
     *)
+      [[ -n "${_BOX}" && "${_h}" == "${_BOX}" ]] && return 5
       _held_ip "${_h}" || return 2
       _tr=("tcp:${_h}")
       ;;
@@ -5547,6 +5549,7 @@ _settle_proofs() {
         2) _v="unreach" ;;
         3) _v="untried" ;;
         4) _v="elsewhere" ;;
+        5) _v="name" ;;
         *)
           _v="refused"
           # A login over TCP is matched to the narrowest row of the user:
@@ -5590,6 +5593,7 @@ _settle_proof_why() {
     long) _ST_WHY="the password ${2} recorded for it is longer than 1024 bytes: no login is tried with it" ;;
     unreach) _ST_WHY="no login of this box reaches the row, so the credential ${2} recorded cannot be tried on it" ;;
     elsewhere) _ST_WHY="each login with the credential ${2} recorded opens another row of its user, never this one" ;;
+    name) _ST_WHY="it is at this box's own name, and a name can lead to another server: no login is tried on it" ;;
     untried) _ST_WHY="the credential ${2} recorded could not be tried on it now: the server gave no answer about it" ;;
     refused) _ST_WHY="the credential ${2} recorded does not open it: it is someone else's by now" ;;
     refusedany) _ST_WHY="a login of this user with the credential ${2} recorded was refused, and another row of the user may have answered it: nothing is known of this one" ;;
