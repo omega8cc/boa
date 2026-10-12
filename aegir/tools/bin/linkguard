@@ -13,10 +13,10 @@
 #
 # The restriction is switched on only on a box BOA has armed (the barracuda
 # pass writes /var/log/boa/linkguard-arm.ready.txt while _NGINX_LINK_GUARD=YES
-# and the release allows it), and only once a scan finds no link it would
-# break other than one inside an account's own tree. Once on, it stays on
-# whatever a later scan finds: a link an account makes must never switch it
-# off, nor keep it off.
+# and the release allows it), and only once a scan lists nothing BLOCKING: a
+# link inside one account is fixed where it can be and never keeps the check
+# off. Once on, it stays on whatever a later scan finds: a link an account
+# makes must never switch it off.
 #
 # Usage:
 #   linkguard fix [--root=DIR]  make BOA's links and links inside an account
@@ -181,6 +181,38 @@ _lg_acct_of() {
   echo "${_a}"
 }
 
+# The account whose tree a real path is in: /data/disk/<account>/..., or that
+# account's files store on attached storage as the files tools lay it out,
+# /mnt/<mount>/files/<account>/static/files/..., where no directory of the
+# mount part is itself named files or static. Nothing for any other path: a
+# login's home is not made here, root's own tools make the links in it.
+_lg_tree_acct() {
+  local _p="${1}" _a="" _m
+  case "${_p}" in
+    /data/disk/?*/?*)
+      _a="${_p#/data/disk/}"
+      _a="${_a%%/*}"
+      ;;
+    /mnt/?*/files/?*/static/files/?*)
+      _m="${_p%%/files/*}"
+      case "${_m}/" in
+        */static/*) return 1 ;;
+      esac
+      _a="${_p#"${_m}"/files/}"
+      case "${_a}" in
+        ?*/static/files/?*) _a="${_a%%/*}" ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ "$(getent passwd "${_a}" 2> /dev/null | cut -d: -f6 | sed 's#/*$##')" = "/data/disk/${_a}" ] || return 1
+  echo "${_a}"
+}
+
 # ./$1 in the current (pinned) directory, in the tree of account $2, made
 # the owner of what it leads to: a link that is root's or an identity of the
 # account, leading to what a named identity of the same account owns and not
@@ -267,7 +299,11 @@ print "R\t$_\n" for sort keys %r;'
 # by its real path. One NUL-separated record per link whose owner differs
 # from its target's: class, reason, path, link uid, target uid, real target,
 # then a last record "SUMMARY", entries, roots walked, roots missing, extra
-# directories walked, complete (1 or 0).
+# directories walked, complete (1 or 0), directories reached only through an
+# account's own links and left unwalked. The same target is queued once, and
+# an account's links have a bound of their own: past it their targets are
+# left out, never taking the room root's and the system's links are walked
+# in, and never making a scan incomplete.
 #   BLOCKING  the check would break a link no account could have made that
 #             way: root's (outside an account's tree, or leading out of it),
 #             a system or unnamed user's, or a BOA link at one of the places
@@ -276,6 +312,9 @@ print "R\t$_\n" for sort keys %r;'
 #             a link inside the account that is not its target owner's
 #             (made so by fix where it can be), or an account's link leading
 #             out of that account, which the check is there to refuse
+# An account's tree is /data/disk/<account>, its files store on attached
+# storage (_lg_tree_acct) and the home of each of its identities
+# (/home/<identity>), where root's own links lead back into the account.
 # A BOA place is a name BOA itself links on a platform directory (the
 # shapes _lg_platform_dirs lists, and each root given): the same places
 # _lg_fix_boa_places makes root's, and no other name that looks like one.
@@ -284,14 +323,19 @@ print "R\t$_\n" for sort keys %r;'
 # store directory) the directory given is no platform.
 _LG_WALK_PL='use strict; use warnings; use File::Find (); use Cwd ();
 my ($max, $maxent) = (50000, 50000000); my (%uname, %home, %walked, @queue, @recs);
-my ($entries, $nroots, $missing, $extra, $complete) = (0, 0, 0, 0, 1);
+my ($entries, $nroots, $missing, $extra, $complete, $skipped, $qown, $qsys) = (0, 0, 0, 0, 1, 0, 0, 0); my (%queued, %homeacct);
 my $store = Cwd::abs_path("/data/all"); my $one = $ENV{LG_ONE} ? 1 : 0; my $tree = $ENV{LG_TREE} ? 1 : 0; my %rr;
 setpwent(); while (my @p = getpwent()) { $uname{$p[2]} = $p[0]; $home{$p[0]} = $p[7]; } endpwent();
 sub is_acct { my $a = shift; my $h = $home{$a}; return 0 unless defined $h; $h =~ s{/+$}{}; return $h eq "/data/disk/$a" ? 1 : 0; }
 sub acct_of { my $u = shift; return undef unless defined $u && $u > 0; my $n = $uname{$u}; return undef unless defined $n;
   return undef unless $n =~ /^([a-z0-9-]+)(?:\.[a-z0-9]+(?:-dev)?|\.[0-9]+\.web)?$/; my $a = $1;
   return is_acct($a) ? $a : undef; }
-sub path_acct { my $p = shift; return undef unless $p =~ m{^/data/disk/([^/]+)/.}; my $a = $1; return is_acct($a) ? $a : undef; }
+for my $u (keys %uname) { my $n = $uname{$u}; my $h = $home{$n}; next unless defined $h && $h eq "/home/$n"; my $a = acct_of($u); $homeacct{$h} = $a if defined $a; }
+sub path_acct { my $p = shift;
+  if ($p =~ m{^/data/disk/([^/]+)/.}) { my $a = $1; return is_acct($a) ? $a : undef; }
+  if ($p =~ m{^(/home/[^/]+)/.}) { return $homeacct{$1}; }
+  if ($p =~ m{^(/mnt/.+?)/files/([^/]+)/static/files/.}) { my ($m, $a) = ($1, $2); return undef if "$m/" =~ m{/(?:files|static)/}; return is_acct($a) ? $a : undef; }
+  return undef; }
 my %farm = map { $_ => 1 } qw(.htaccess authorize.php boost_stats.php cron.php crossdomain.xml includes index.php install.php js.php misc modules themes update.php web.config xmlrpc.php profiles);
 sub is_pdir { my $d = shift; return 1 if !$tree && $rr{$d};
   return 1 if $d =~ m{^/data/disk/[^/.][^/]*/distro/[^/.][^/]*/[^/.][^/]*$} || $d =~ m{^/data/disk/[^/.][^/]*/aegir/distro/[^/.][^/]*$} || $d =~ m{^/var/aegir/host_master/[^/.][^/]*$};
@@ -302,11 +346,12 @@ sub boa_place { my $p = shift; my ($d, $b) = $p =~ m{^(.*)/([^/]+)$} or return 0
   return 1 if $b eq "redis_edge" && $d =~ m{^(.*)/modules/o_contrib_seven$} && is_pdir($1);
   return 0; }
 sub under_walked { my $p = shift; while (length $p) { return 1 if $walked{$p}; last unless $p =~ s{/[^/]*$}{}; } return 0; }
-sub follow { my $r = shift; return if $one || $r =~ m{^/(?:proc|sys|dev|run)(?:/|$)} || under_walked($r);
-  if (@queue + $extra < $max) { push @queue, $r; } else { $complete = 0; } }
+sub follow { my ($r, $own) = @_; return if $one || $r =~ m{^/(?:proc|sys|dev|run)(?:/|$)} || under_walked($r) || $queued{$r}++;
+  if ($own) { if ($qown < $max) { $qown++; push @queue, $r; } else { $skipped++; } }
+  elsif ($qsys < $max) { $qsys++; push @queue, $r; } else { $complete = 0; } }
 sub link_rec { my $p = shift; my @l = lstat($p) or return; my $r = Cwd::abs_path($p); return unless defined $r;
   my @t = stat($p) or return; my ($lu, $tu, $isdir) = ($l[4], $t[4], -d _ ? 1 : 0);
-  if ($lu == $tu) { follow($r) if $isdir; return; }
+  if ($lu == $tu) { follow($r, defined acct_of($lu) ? 1 : 0) if $isdir; return; }
   my ($c, $why, $in) = ("", "", 0); my $shared = (defined $store && index($r, "$store/") == 0) ? 1 : 0;
   my $la = acct_of($lu); my $ta = acct_of($tu); my $pa = path_acct($p);
   my $inside = "a link inside the account, not its target owner\x27s";
@@ -315,7 +360,7 @@ sub link_rec { my $p = shift; my @l = lstat($p) or return; my $r = Cwd::abs_path
   elsif ($shared && boa_place($p)) { ($c, $why) = ("BLOCKING", "a BOA link not made root\x27s") }
   elsif (defined $ta && $ta eq $la) { ($c, $why, $in) = ("REFUSED", $inside, 1) }
   else { ($c, $why) = ("REFUSED", "an account\x27s link leading out of it") }
-  follow($r) if $isdir && ($c eq "BLOCKING" || $in);
+  follow($r, $in) if $isdir && ($c eq "BLOCKING" || $in);
   push @recs, join("\0", $c, $why, $p, $lu, $tu, $r); }
 my @roots = grep { length } @ARGV; my %top;
 for my $root (@roots) { my $r = Cwd::abs_path($root); $rr{$r} = 1 if defined $r && -d $r; }
@@ -328,7 +373,7 @@ my $wanted = sub { if (++$entries > $maxent) { $complete = 0; $File::Find::prune
   $File::Find::prune = 1 if $one && !$top{$File::Find::name} && $File::Find::name =~ m{/sites/[^/]+/(?:files|private)$} && -d $File::Find::name; };
 for my $r (@keep) { $nroots++; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $r); }
 while (defined(my $d = shift @queue)) { next if under_walked($d); $walked{$d} = 1; $extra++; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $d); }
-print "$_\0" for @recs; print join("\0", "SUMMARY", $entries, $nroots, $missing, $extra, $complete), "\0";'
+print "$_\0" for @recs; print join("\0", "SUMMARY", $entries, $nroots, $missing, $extra, $complete, $skipped), "\0";'
 
 _lg_need_root() {
   [ "$(id -u)" = "0" ] || _die "run this as root"
@@ -393,6 +438,7 @@ _lg_fix_boa_places() {
       [ -L "${_n}" ] || continue
       case "${_n##*/}" in
         redis_edge) [ "${_d##*/}" = "o_contrib_seven" ] || continue ;;
+        *) [ "${_d##*/}" = "o_contrib_seven" ] && continue ;;
       esac
       _in_pinned_dir "${_d}" _lg_reroot_here "${_n##*/}"
       _rc=$?
@@ -417,7 +463,7 @@ _lg_walk() {
   _LG_SUM=""
   while IFS= read -r -d '' _x; do
     _f+=("${_x}")
-    if [ "${_f[0]}" = "SUMMARY" ] && [ "${#_f[@]}" -eq 6 ]; then
+    if [ "${_f[0]}" = "SUMMARY" ] && [ "${#_f[@]}" -eq 7 ]; then
       _LG_SUM="${_f[*]:1}"
       _f=()
     elif [ "${_f[0]}" != "SUMMARY" ] && [ "${#_f[@]}" -eq 6 ]; then
@@ -440,12 +486,7 @@ _lg_fix_accounts() {
   local _i _p _d _a _c=0 _x=0 _e=0 _rc
   for _i in "${!_LG_REC_PATH[@]}"; do
     _p="${_LG_REC_PATH[${_i}]}"
-    case "${_p}" in
-      /data/disk/?*/?*) ;;
-      *) continue ;;
-    esac
-    _a="${_p#/data/disk/}"
-    _a="${_a%%/*}"
+    _a="$(_lg_tree_acct "${_p}")" || continue
     _d="${_p%/*}"
     _in_pinned_dir "${_d}" _lg_reown_here "${_p##*/}" "${_a}"
     _rc=$?
@@ -469,7 +510,11 @@ _lg_fix() {
     _r="$(realpath -e -- "${_root}${_tree}" 2> /dev/null)" || _die "no such directory: ${_root}${_tree}"
     case "${_r}/" in
       /data/disk/?*/?*|/var/aegir/?*) ;;
-      *) _die "not a directory under /data/disk/<account> or /var/aegir: ${_r}" ;;
+      *)
+        # a store on attached storage is an account's tree for --tree only
+        { [ -n "${_tree}" ] && _lg_tree_acct "${_r}/" > /dev/null; } \
+          || _die "not a directory under /data/disk/<account> or /var/aegir: ${_r}"
+        ;;
     esac
     [ -d "${_r}" ] || _die "not a directory: ${_r}"
     [ -n "${_root}" ] && _dirs=("${_r}")
@@ -511,13 +556,13 @@ _lg_fix() {
 # scan: the walk over every root nginx serves, the report written. Sets
 # _LG_BLOCKING, _LG_REFUSED, _LG_COMPLETE.
 _lg_scan() {
-  local _i _ent _nr _miss _xd _tmp _l
+  local _i _ent _nr _miss _xd _skip _tmp _l
   _LG_BLOCKING=0
   _LG_REFUSED=0
   _LG_COMPLETE=0
   _lg_read_roots || { _alrt "linkguard: nginx -T failed; no scan"; return 1; }
   _lg_walk "${_LG_ROOTS[@]}" || { _alrt "linkguard: the walk failed; no scan"; return 1; }
-  read -r _ent _nr _miss _xd _LG_COMPLETE <<< "${_LG_SUM}"
+  read -r _ent _nr _miss _xd _LG_COMPLETE _skip <<< "${_LG_SUM}"
   for _i in "${!_LG_REC_CLASS[@]}"; do
     case "${_LG_REC_CLASS[${_i}]}" in
       BLOCKING) _LG_BLOCKING=$(( _LG_BLOCKING + 1 )) ;;
@@ -534,6 +579,9 @@ _lg_scan() {
     for _l in "${_LG_FOREIGN[@]}"; do
       printf 'NOTE\tdisable_symlinks set outside BOA'\''s file\t%s\n' "${_l}"
     done
+    if [ "${_skip:-0}" != "0" ]; then
+      printf 'NOTE\tdirectories reached only through an account'\''s own links, not walked (too many)\t%s\n' "${_skip}"
+    fi
     for _i in "${!_LG_REC_CLASS[@]}"; do
       printf '%s\t%s\t%s\tlink uid %s\ttarget uid %s\t%s\n' \
         "${_LG_REC_CLASS[${_i}]}" "${_LG_REC_WHY[${_i}]}" \
@@ -618,6 +666,7 @@ _lg_cmd_fix() {
     "") ;;
     *) _die "unknown argument: ${1}" ;;
   esac
+  [ -z "${2:-}" ] || _die "one argument only: ${2}"
   if [ -n "${_root}${_tree}" ]; then
     # BOA's links on the platform are made root's whoever holds the run
     # lock (one rename each, the same result from any run); only the walk
