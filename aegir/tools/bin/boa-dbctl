@@ -6300,11 +6300,23 @@ _scope_row_grants() {
 # instance row it was at ($2, where it was at one) holds on the account's
 # own databases: a row in use without them fails every task, and a row
 # kept for its stored objects stops those. They are given back to that row
-# first, as far as that goes.
+# first, as far as that goes; where that fails on a row that is not among
+# the rows in use yet, the call says which call reaches it.
 _scope_back() {
+  local _r _in="NO"
   if [[ "${_SP_KEEP}" == "YES" ]]; then
     if [[ -n "${2:-}" ]] && ! _scope_row_grants "${2}"; then
       _alrt "${_ACCT}: the grants of its row at ${2} on its own databases could not all be given back"
+      # regrant goes by the rows in use the control file lists: a row the
+      # switch was still making one of them is not there, and the call
+      # named for it is one that reaches it
+      for _r in "${_SP_ROWS[@]}"; do
+        [[ "${_r}" == "${2}" ]] && _in="YES"
+      done
+      if [[ "${_in}" != "YES" ]]; then
+        _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched (its row at ${2} is not among its rows in use, so boa-dbctl regrant does not reach it: boa-dbctl scope ${_ACCT} plan, then scope ${_ACCT} on --sha with that plan's hash, takes the row through the switch again)"
+        _die 7 "scope-failed ${1}"
+      fi
     fi
     _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched (boa-dbctl regrant --account ${_ACCT} gives its rows in use their grants on its own databases again)"
     _die 7 "scope-failed ${1}"
