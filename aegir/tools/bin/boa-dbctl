@@ -3354,14 +3354,25 @@ _php_lit() {
   _PW="${_PW//"${_b}${_b}"/${_b}}"
 }
 
+# Why _master_db refused a password ($1, its word), into _MW.
+_mdb_why() {
+  case "${1}" in
+    ctl) _MW="holds a control character" ;;
+    *) _MW="has a % that begins no two hex digits, or a NUL" ;;
+  esac
+}
+
 # The alias text $1 names its database login as
 # 'master_db' => 'mysql://<user>:<password>@<host>': _MDB_USER, _MDB_HOST
 # and the password, decoded, in _PW. 1 when there is none to read, and when
-# what is there decodes to a control character.
+# what is there is refused: _MDB_WHY then says which way (enc for its
+# encoding, ctl for a control character it decodes to), with the user and
+# the host it names still set.
 _master_db() {
   local _l _enc
   _MDB_USER=""
   _MDB_HOST=""
+  _MDB_WHY=""
   _PW=""
   _alias_val "${1}" master_db || return 1
   _l="${_VAL#mysql://}"
@@ -3376,7 +3387,10 @@ _master_db() {
   # Every % begins two hex digits, and never a NUL: the shell would cut the
   # password short at one, and what follows it would be lost unseen.
   case "${_enc}" in
-    *%|*%?|*%[!0-9A-Fa-f]*|*%?[!0-9A-Fa-f]*|*%00*) return 1 ;;
+    *%|*%?|*%[!0-9A-Fa-f]*|*%?[!0-9A-Fa-f]*|*%00*)
+      _MDB_WHY="enc"
+      return 1
+      ;;
   esac
   printf -v _PW '%b' "${_enc//%/\\x}"
   # The alias is the account's to write, and %0A decodes to a line feed: a
@@ -3384,6 +3398,7 @@ _master_db() {
   # reaches the option file root's client reads.
   if [[ "${_PW}" == *[[:cntrl:]]* ]]; then
     _PW=""
+    _MDB_WHY="ctl"
     return 1
   fi
   [[ -n "${_PW}" ]]
@@ -3391,16 +3406,23 @@ _master_db() {
 
 # The instance login of the Aegir root $1 (an account's home, or the
 # master's) for user $2, from the server alias that names it: _CTX the
-# alias context, _MDB_HOST its host, _PW its password.
+# alias context, _MDB_HOST its host, _PW its password. 1 when no alias
+# gives one; _RL_WHY then holds the word of _master_db's refusal when an
+# alias names the user and its password is refused.
 _root_login() {
   local _c _t
   _CTX=""
+  _RL_WHY=""
   for _c in server_localhost server_master; do
     _t=$(_acct_read_in "${1}/.drush" "${_c}.alias.drushrc.php")
     [[ -n "${_t}" ]] || continue
-    _master_db "${_t}" || continue
+    if ! _master_db "${_t}"; then
+      [[ -n "${_MDB_WHY}" && "${_MDB_USER}" == "${2}" ]] && _RL_WHY="${_MDB_WHY}"
+      continue
+    fi
     [[ "${_MDB_USER}" == "${2}" ]] || continue
     _CTX="@${_c}"
+    _RL_WHY=""
     return 0
   done
   _PW=""
@@ -4624,6 +4646,8 @@ _pin_status() {
       if _root_login "${_AEGIR}" aegir_root; then
         _login="NOTPLAIN"
         _proof_cnf aegir_root && _login="YES"
+      elif [[ -n "${_RL_WHY}" ]]; then
+        _login="NOTPLAIN"
       fi
       ;;
     *)
@@ -4709,7 +4733,13 @@ _repl_shape() {
 _acct_proof() {
   _AP_WHY=""
   if [[ "${3}" == "INST" ]]; then
-    _root_login "${_DISK}/${4}" "${1}" || return 1
+    if ! _root_login "${_DISK}/${4}" "${1}"; then
+      if [[ -n "${_RL_WHY}" ]]; then
+        _mdb_why "${_RL_WHY}"
+        _AP_WHY="the password its server alias records ${_MW}"
+      fi
+      return 1
+    fi
   else
     _panel_of "${_DISK}/${4}" && [[ "${_PN_USER}" == "${1}" && -n "${_PN_PW}" ]] || return 1
     _PW="${_PN_PW}"
@@ -5420,20 +5450,26 @@ _show_create() {
 # (a parked tarball is read slowly); its last panel user's as
 # _leftovers_build read it. Kept in memory only: _ST_CK holds "<kind>
 # <account> <user>", _ST_CP the password at the same place, empty when the
-# parked home gave none. 1 then.
+# parked home gave none, and _ST_CW why not where its server alias records
+# one that is refused. 1 then, with that word in _SC_WHY.
 _settle_cred() {
   local _i
   _PW=""
+  _SC_WHY=""
   for (( _i = 0; _i < ${#_ST_CK[@]}; _i++ )); do
     [[ "${_ST_CK[${_i}]}" == "${1} ${2} ${3}" ]] || continue
     _PW="${_ST_CP[${_i}]}"
+    _SC_WHY="${_ST_CW[${_i}]}"
     [[ -n "${_PW}" ]]
     return
   done
   case "${1}" in
     instance)
-      if [[ "${3}" != "${2}" ]] || ! _zombie_inst "${2}"; then
+      if [[ "${3}" != "${2}" ]]; then
         _PW=""
+      elif ! _zombie_inst "${2}"; then
+        _PW=""
+        _SC_WHY="${_ZI_WHY}"
       fi
       ;;
     panel)
@@ -5446,6 +5482,7 @@ _settle_cred() {
   esac
   _ST_CK+=("${1} ${2} ${3}")
   _ST_CP+=("${_PW}")
+  _ST_CW+=("${_SC_WHY}")
   [[ -n "${_PW}" ]]
 }
 
@@ -5517,6 +5554,7 @@ _settle_proofs() {
   _ST_PR=$'\n'
   _ST_CK=()
   _ST_CP=()
+  _ST_CW=()
   while IFS= read -r _l; do
     [[ -n "${_l}" ]] || continue
     _uh="${_l#A }"
@@ -5538,7 +5576,11 @@ _settle_proofs() {
     if _settle_flim "${_ux}"; then
       _v="limit"
     elif ! _settle_cred "${_kd}" "${_o}" "${_u}"; then
-      _v="nocred"
+      case "${_SC_WHY}" in
+        ctl) _v="aliasctl" ;;
+        enc) _v="aliasenc" ;;
+        *) _v="nocred" ;;
+      esac
     elif ! _proof_cnf "${_u}"; then
       case "${_CNF_TOK}" in
         password-too-long) _v="long" ;;
@@ -5591,6 +5633,8 @@ _settle_proof_why() {
   case "${1}" in
     limit) _ST_WHY="a row of this user carries a failed-login limit of its own: no login is tried on it" ;;
     nocred) _ST_WHY="the parked home of ${2} holds no credential of it that can be read" ;;
+    aliasctl) _ST_WHY="the password the parked server alias of ${2} records for it holds a control character: no login is tried with it" ;;
+    aliasenc) _ST_WHY="the password the parked server alias of ${2} records for it has a % that begins no two hex digits, or a NUL: no login is tried with it" ;;
     ctl) _ST_WHY="the password ${2} recorded for it holds a control character: no login is tried with it" ;;
     long) _ST_WHY="the password ${2} recorded for it is longer than 1024 bytes: no login is tried with it" ;;
     unreach) _ST_WHY="no login of this box reaches the row, so the credential ${2} recorded cannot be tried on it" ;;
@@ -6007,6 +6051,10 @@ _scope_pre() {
         fi
         ;;
     esac
+  elif [[ -n "${_RL_WHY}" ]]; then
+    _PW=""
+    _mdb_why "${_RL_WHY}"
+    _sp_refuse "server-alias-password the password its server alias records ${_MW}: no login is tried with it"
   else
     _PW=""
     _sp_refuse "no-server-alias no server alias of the account names its own database login"
@@ -6665,17 +6713,25 @@ _zombie_panel() {
 # The password the parked home of the purged account $1 records for its
 # instance user: the server alias in it that names that user, read as a
 # live account's is (_root_login). Into _PW; 1 when the parked home holds
-# none that can be read.
+# none that can be read, with _ZI_WHY the word of _master_db's refusal
+# when an alias there names the user and its password is refused.
 _zombie_inst() {
   local _p="${1}" _tb="${_ZOMBIE}/${1}/home/${1}.tar.gz" _c _t
   _PW=""
+  _ZI_WHY=""
   [[ -f "${_tb}" && ! -L "${_tb}" ]] || return 1
   for _c in server_localhost server_master; do
     _t=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/${_c}.alias.drushrc.php" \
       2> /dev/null 7>&- 8>&- 9>&- | head -c 1048576)
     [[ -n "${_t}" ]] || continue
-    _master_db "${_t}" || continue
-    [[ "${_MDB_USER}" == "${_p}" ]] && return 0
+    if ! _master_db "${_t}"; then
+      [[ -n "${_MDB_WHY}" && "${_MDB_USER}" == "${_p}" ]] && _ZI_WHY="${_MDB_WHY}"
+      continue
+    fi
+    if [[ "${_MDB_USER}" == "${_p}" ]]; then
+      _ZI_WHY=""
+      return 0
+    fi
   done
   _PW=""
   return 1
