@@ -7265,6 +7265,22 @@ _main() {
       exit 0
     fi
   fi
+  # An account the broker does not serve has no switch a pass could make,
+  # on this pass or the next: a pass's switch says so in its OK line, before
+  # anything asks the server, and ends without an error, as a settle does
+  # on such a box. One that is switched goes on to its switch, which may
+  # still have something to take. The box's addresses are read again when
+  # the plan is.
+  if [[ "${_VERB}" == "scope" && "${_OPT_PASS}" == "YES" && "${#_ARGS[@]}" -eq 2 ]]; then
+    if ! _broker_mode; then
+      _box_facts
+      if _not_served "${_ACCT}"; then
+        _info "scope on ${_ACCT} skipped ${_NS}"
+        exit 0
+      fi
+      _BOX_READ="NO"
+    fi
+  fi
   _TMPD=$(mktemp -d "${_RUNP}.tmp.XXXXXXXX" 2> /dev/null) || _die 7 "tmp-failed"
   _srv_init
   _master_db_init
