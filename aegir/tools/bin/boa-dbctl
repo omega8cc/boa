@@ -5445,13 +5445,16 @@ _settle_cred() {
   [[ -n "${_PW}" ]]
 }
 
-# True when the row whose hex user and host are $1 and $2 carries a
-# failed-login limit of its own (8.x keeps it in the row's attributes): a
-# login tried on it and refused would count against it, and the row may be
-# someone's. Anything but a plain no reads as such a limit. 5.7 has none.
+# True when a row of the user whose hex is $1 carries a failed-login limit
+# of its own (8.x keeps it in the row's attributes): a login tried and
+# refused would count against it, and the row may be someone's. Asked over
+# every row of the user, as the time test is: a login through a row at %
+# can be matched to a narrower row of the same user and counted there. A
+# limit whose two values are both 0 is none. Anything but a plain no reads
+# as a limit. 5.7 has none.
 _settle_flim() {
   [[ "${_SRV_8}" == "YES" ]] || return 1
-  _sql_or_die "SELECT /*q:flim*/ IF(JSON_CONTAINS_PATH(IFNULL(User_attributes, '{}'), 'one', '\$.Password_locking'), 'Y', 'N') FROM mysql.user WHERE HEX(User) = '${1}' AND HEX(Host) = '${2}'" flim
+  _sql_or_die "SELECT /*q:flim*/ IF(COUNT(*) = 0, 'N', 'Y') FROM mysql.user WHERE HEX(User) = '${1}' AND JSON_CONTAINS_PATH(IFNULL(User_attributes, '{}'), 'one', '\$.Password_locking') AND NOT IFNULL(JSON_CONTAINS(User_attributes, '{\"failed_login_attempts\": 0, \"password_lock_time_days\": 0}', '\$.Password_locking'), 0)" flim
   [[ "${_SQL_OUT}" != "N" ]]
 }
 
@@ -5528,7 +5531,7 @@ _settle_proofs() {
     _hx=$(_hex "${_h}")
     _settle_row_tests "${_u}" "${_h}" "${_o}" "${_ux}" "${_hx}" || continue
     _sig="${_ST_SIG}"
-    if _settle_flim "${_ux}" "${_hx}"; then
+    if _settle_flim "${_ux}"; then
       _v="limit"
     elif ! _settle_cred "${_kd}" "${_o}" "${_u}"; then
       _v="nocred"
@@ -5571,7 +5574,7 @@ _settle_proof_of() {
 # Why a row whose proof answered $1 is left ($2 its account), into _ST_WHY.
 _settle_proof_why() {
   case "${1}" in
-    limit) _ST_WHY="it carries a failed-login limit of its own: no login is tried on it" ;;
+    limit) _ST_WHY="a row of this user carries a failed-login limit of its own: no login is tried on it" ;;
     nocred) _ST_WHY="the parked home of ${2} holds no credential of it that can be read" ;;
     ctl) _ST_WHY="the password ${2} recorded for it holds a control character: no login is tried with it" ;;
     long) _ST_WHY="the password ${2} recorded for it is longer than 1024 bytes: no login is tried with it" ;;
