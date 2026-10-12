@@ -7008,9 +7008,20 @@ _v_report() {
     _ACCT="${_a}"
     _broker_mode
     _rc=$?
+    # its own instance and panel logins that hold a role or a proxy grant
+    _kr=0
+    while IFS= read -r _x; do
+      [[ "${_x}" == "${_a}" ]] && _kr=$(( _kr + 1 ))
+    done <<< "${_roled}"
     if [[ "${_rc}" -eq 0 ]]; then
       _sw=$(( _sw + 1 ))
-      printf '%s switched\n' "${_a}"
+      # said for a switched account too: a pass's switch of it ends
+      # not proven while one of them holds such a grant
+      if [[ "${_kr}" -gt 0 ]]; then
+        printf '%s switched role-or-proxy-grant %s\n' "${_a}" "${_kr}"
+      else
+        printf '%s switched\n' "${_a}"
+      fi
       continue
     fi
     _un=$(( _un + 1 ))
@@ -7030,10 +7041,6 @@ _v_report() {
       while IFS= read -r _x; do
         [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
       done <<< "${_own}"
-      _kr=0
-      while IFS= read -r _x; do
-        [[ "${_x}" == "${_a}" ]] && _kr=$(( _kr + 1 ))
-      done <<< "${_roled}"
       _report_plan "$(( _k + _kr ))"
       [[ "${_kr}" -eq 0 ]] || _why="${_why:+${_why}, }role-or-proxy-grant ${_kr}"
       [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
