@@ -5509,7 +5509,7 @@ _settle_row_tests() {
 # the row's as it was when the proof was made, and 3 drops only a row that
 # still reads so under the lock.
 _settle_proofs() {
-  local _l _uh _u _h _o _kd _ux _hx _v _sig
+  local _l _uh _u _h _o _kd _ux _hx _v _sig _a _b _c _d
   _ST_PR=$'\n'
   _ST_CK=()
   _ST_CP=()
@@ -5547,7 +5547,17 @@ _settle_proofs() {
         2) _v="unreach" ;;
         3) _v="untried" ;;
         4) _v="elsewhere" ;;
-        *) _v="refused" ;;
+        *)
+          _v="refused"
+          # A login over TCP is matched to the narrowest row of the user:
+          # where the user has another row, the refusal may be that
+          # row's, and this one was not shown to refuse anything.
+          if [[ "${_h}" == "%" ]]; then
+            while IFS='|' read -r _a _b _c _d; do
+              [[ "${_c}" == "${_u}" && "${_b}" != "25" ]] && _v="refusedany"
+            done <<< "${_AL_PAIRS}"
+          fi
+          ;;
       esac
     fi
     _PW=""
@@ -5582,6 +5592,7 @@ _settle_proof_why() {
     elsewhere) _ST_WHY="each login with the credential ${2} recorded opens another row of its user, never this one" ;;
     untried) _ST_WHY="the credential ${2} recorded could not be tried on it now: the server gave no answer about it" ;;
     refused) _ST_WHY="the credential ${2} recorded does not open it: it is someone else's by now" ;;
+    refusedany) _ST_WHY="a login of this user with the credential ${2} recorded was refused, and another row of the user may have answered it: nothing is known of this one" ;;
     *) _ST_WHY="it changed while this ran" ;;
   esac
 }
