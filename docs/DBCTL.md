@@ -343,7 +343,8 @@ A read that fails ends it at once, but for the read of the definers (above).
 A change that fails is said in an `ALRT` line and ends it with `ERR 7
 baseline-settle-incomplete N` once the rest is done.
 
-Nothing calls `baseline settle` in this release.
+The passes of a box armed for the broker call `baseline settle` (see "A box
+armed for the broker"); nothing else does.
 
 ### References
 
@@ -625,8 +626,79 @@ fails puts the account back on the direct path.
 
 Its line in the broker's log ends with `note=pass`.
 
-Nothing calls it in this release: no pass switches an account that is not new,
-and a new account's switch stays as described above.
+An Octopus pass makes it on a box armed for the broker (below). On any other
+box no pass switches an account that is not new, and a new account's switch
+stays as described above.
+
+## A box armed for the broker
+
+With `_DB_BROKER_ARM=YES` in `/root/.barracuda.cnf` (off unless set) BOA's own
+passes call the broker, with no ruling asked of anyone:
+
+- every barracuda pass calls `boa-dbctl baseline settle` once, after it has
+  made the server's own logins for the last time and had them recorded again;
+- every Octopus pass, an account's install and each of its upgrades alike,
+  calls `boa-dbctl baseline settle` and then `boa-dbctl scope oN on --pass`,
+  once the account's own work is done and before its verifies are queued;
+- the nightly run calls `boa-dbctl report` (see "The daily mail").
+
+The setting is read as the cnf is when it is sourced: its last
+`_DB_BROKER_ARM` line counts, and anything but `YES` there, no line included,
+does not arm the box. A box that is not armed gets none of these calls.
+
+No call is made on a standby, nor on a box being prepared as one
+(`/root/.standby.cnf`, `/root/.standby.prep.cnf`).
+
+`_DB_BROKER_ARM=NO` in an account's `/root/.oN.octopus.cnf`, read the same
+way, keeps that account out: its passes call nothing and say so in one line.
+`_DB_BROKER_BORN=NO` there does the same. `xoct create` puts that line there
+before it installs a moved account, which takes its state from its source
+instead, and the line stays in the account's cnf afterwards.
+
+Each call is one line of the pass. An answer that ends well is the broker's
+own `OK` line:
+
+```
+INFO: database broker: OK baseline settle accepted=0 revoked=0 dropped=0 left=1 stops=1
+INFO: database broker: OK scope on o1 already server=@server_localhost rows=localhost,%
+```
+
+Anything else is a NOTE that names the call and carries the broker's own
+`ERR` line:
+
+```
+NOTE: database broker: scope o1 on --pass: ERR 6 not-proven 1
+```
+
+A NOTE is not an alarm and does not fail the pass, which goes on and is
+reported as any other. The pass tries nothing again, forces nothing and
+repairs nothing: what the broker refused stays as it was, and the next pass
+asks anew. `boa-dbctl baseline plan` and `boa-dbctl scope oN plan` say what
+stands in the way, and the daily mail lists it. An answer whose last line is
+neither of the two is said as `no answer line, exit N`. A line that carries a
+word the pass launchers read as an alarm is not repeated: the pass's line
+then names the broker's log.
+
+The pass's switch runs only under a pass launcher (`octopus up-...`, `boa
+in-octopus`), which keeps `/run/boa_wait.pid`. The Octopus leg of a chained
+install (`boa in-dev` and the like) runs without that file, so a new
+account's first pass there ends with the NOTE `ERR 9 busy not-in-a-pass`, and
+the upgrade the chain runs after it, where it runs one, makes the switch. A
+pass started by hand from the pass script itself, with no launcher, gets the
+same NOTE.
+
+Where the box also switches new accounts (`_DB_BROKER_BORN_SCOPED=YES`), an
+install makes the new account's switch first, as described above, and the
+pass's switch then answers `already`.
+
+In this release no pass writes the setting, and the broker still refuses
+outside a test server with the marker: on a box an operator arms today each
+call a pass makes ends with the NOTE `ERR 7 not-released`, the nightly's
+report is mailed to no one, and nothing else happens. The release that
+switches the broker on also writes `_DB_BROKER_ARM=YES` into a
+`/root/.barracuda.cnf` that has no such line, on omega8.cc-hosted systems
+first and on every box one release later. A line that is there, `NO`
+included, always stays, so `_DB_BROKER_ARM=NO` set today keeps a box out.
 
 ## The report
 
@@ -670,7 +742,25 @@ direct path.
 It reads the box once for all accounts, logs in as a plan does (each account's
 own login, each site's recorded login) and changes nothing. On a standby it
 answers `OK report standby` and reads nothing; a call with any other word
-after `report` is a usage error there too. Nothing calls it in this release.
+after `report` is a usage error there too.
+
+### The daily mail
+
+On a box armed for the broker the nightly run calls `boa-dbctl report` after
+the witness, and its lines go into that night's log between `dbctl-report:
+start` and `dbctl-report: done rc=N`. While the last line counts an account
+that is not switched (`unswitched` above 0) or a finding that stops the box
+(`stops` above 0), the same lines are mailed to the box operator, once a day,
+the way the nightly's other notices are (`_MY_EMAIL`, one mail a day per
+notice, none with `_INCIDENT_REPORT=OFF`; each night's lines also go to
+`/var/log/boa/nightly.incident.log`). The line of an account that is switched
+with nothing said of it is left out; every other line of the report is in the
+mail, its counts last, and nothing else of the box.
+
+Nothing is mailed while every account is switched and nothing stops the box,
+for a report that fails, while the report says `not-released` (this release
+switches no account there, and no operator can), nor from a standby or a box
+being prepared as one, where the report is not asked for.
 
 ## The database count limit
 
@@ -703,9 +793,10 @@ against its version's reference. It logs in as no one and changes nothing.
 | `_DB_BROKER_IO_LIMIT` | `/root/.barracuda.cnf` | 86400: the seconds one dump or load may run before its process group is stopped |
 | `_DB_COUNT_ENFORCE` | `/root/.barracuda.cnf` | `NO` |
 | `_DB_BROKER_BORN_SCOPED` | `/root/.barracuda.cnf` | `NO` |
+| `_DB_BROKER_ARM` | `/root/.barracuda.cnf` | `NO`: `YES` arms the box, its passes then settle it and switch each account |
 | `_DB_COUNT_MAX` | `/root/.oN.octopus.cnf` | `AUTO` (no limit) |
-| `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch) |
-| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO`: `report` says `opted-out`; nothing else reads it in this release) |
+| `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch, and of a pass's switch on an armed box) |
+| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a pass's switch on an armed box; `report` says `opted-out`) |
 
 `/root/.barracuda.cnf` is each box's own: set a standing pair's two boxes alike.
 
