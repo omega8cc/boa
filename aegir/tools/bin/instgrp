@@ -3875,6 +3875,14 @@ _wg_group_drop() {
       return 1
     fi
   done
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
+      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
+      return 1
+    fi
+  done < <(_wg_parts_beyond)
   for _u in $(getent group "${_WP_G}" | cut -d: -f4 | tr ',' ' '); do
     gpasswd -d "${_u}" "${_WP_G}" > /dev/null 2>&1
   done
@@ -4133,6 +4141,35 @@ _wg_roots() {
   _acct_roots "${_WP_A}" 2> /dev/null
   [ -d "/var/www/phpcache/${_WP_A}" ] && [ ! -L "/var/www/phpcache/${_WP_A}" ] \
     && printf '%s\n' "/var/www/phpcache/${_WP_A}"
+  return 0
+}
+
+# The store and private parts of the profile's sites (_wg_parts) that lie
+# below none of the walk's roots, one resolved path per line: a store on
+# attached storage the roots leave out (no single mountpoint under /mnt)
+# still took the web group from the nightly, the site fixers or the
+# conversion's claim, so the way down walks and checks it too.
+_wg_parts_beyond() {
+  local _k _p _r _x _in _rr=""
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    _x=$(realpath -e -- "${_r}" 2> /dev/null) || continue
+    _rr="${_rr}${_x}"$'\n'
+  done < <(_wg_roots)
+  while read -r _k _p; do
+    case "${_k}" in
+      store|private) ;;
+      *) continue ;;
+    esac
+    _in=NO
+    while IFS= read -r _x; do
+      [ -n "${_x}" ] || continue
+      case "${_p}/" in
+        "${_x}"/*) _in=YES; break ;;
+      esac
+    done <<< "${_rr}"
+    [ "${_in}" = "NO" ] && printf '%s\n' "${_p}"
+  done < <(_wg_parts)
   return 0
 }
 
@@ -4564,18 +4601,28 @@ _wg_walk_down() {
       env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_g}" \
         -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
     done
+    while IFS= read -r _r; do
+      [ -n "${_r}" ] || continue
+      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . -gid "${_g}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
+    done < <(_wg_parts_beyond)
     [ "${_pass}" -ge 3 ] && break
     _wg_gid_in_roots "${_g}" || break
   done
   return 0
 }
 
-# 0 when an entry the walk changes still carries gid $1 under the roots.
+# 0 when an entry the walk changes still carries gid $1 under the roots or
+# in a site's store beyond them.
 _wg_gid_in_roots() {
   local _r
   for _r in $(_wg_roots); do
     [ -n "$(find -P "${_r}" -gid "${1}" \( -type d -o -type f -links 1 \) -print -quit 2> /dev/null)" ] && return 0
   done
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    [ -n "$(_wg_in "${_r}" find -P . -gid "${1}" \( -type d -o -type f -links 1 \) -print -quit 2> /dev/null)" ] && return 0
+  done < <(_wg_parts_beyond)
   return 1
 }
 
