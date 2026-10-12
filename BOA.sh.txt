@@ -2554,7 +2554,7 @@ _update_agents() {
     # not caught up kept the previous tool under the new marker for good.
     # The post-install step runs only when the file actually changed.
     _slrSum="$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f55
+    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f54
     if [ -s "/var/xdrago/manage_solr_config.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)" != "${_slrSum}" ]; then
       rm -f /run/manage_solr_config.pid
@@ -3979,44 +3979,60 @@ MYLOADEREOF
   echo "INFO: MyQuick ${_MYQUICK_VRN_TWO} installed from the ${_mqCode} package"
 }
 
+### A Drupal 8 or newer core is created on Solr's stock configset and stays
+### there until the site uploads its own files. That configset guesses the
+### type of every unknown field from the first documents it takes, and the
+### schema uploaded later can never write to an index typed that way. With
+### update.autoCreateFields off, such a core refuses an unknown field with
+### a 400 before anything is written, so the site sees at once that its
+### configuration is not in place. Cores on uploaded or template configs
+### name no such property and run as before. The stamp of the rewrite is a
+### one-shot fact, so it lives under /etc/boa/control; a box carrying the
+### earlier line rewrites it once and restarts Solr for it.
 _fix_start_stop_ports_solr() {
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
     _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099" /etc/default/solr9.in.sh 2>&1)
     _SOLR9_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr9.in.sh 2>&1)
-    if [ ! -e "/var/log/boa/solr9.in.004.fixed.pid" ] \
+    _SOLR9_FIELDS_TEST=$(grep "update\.autoCreateFields=false" /etc/default/solr9.in.sh 2>&1)
+    if [ ! -e "/etc/boa/control/solr9.in.005.fixed.pid" ] \
       || [[ ! "${_SOLR9_STOP_TEST}" =~ "19099" ]] \
-      || [[ ! "${_SOLR9_WAIT_TEST}" =~ "10" ]]; then
+      || [[ ! "${_SOLR9_WAIT_TEST}" =~ "10" ]] \
+      || [[ ! "${_SOLR9_FIELDS_TEST}" =~ "autoCreateFields=false" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       sed -i "s/.*mycustomkey9.*//g" /etc/default/solr9.in.sh
       sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr9.in.sh
       echo "SOLR_START_WAIT=\"10\"" >> /etc/default/solr9.in.sh
       echo "SOLR_STOP_WAIT=\"10\"" >> /etc/default/solr9.in.sh
       echo "SOLR_WAIT_FOR_ZK=\"10\"" >> /etc/default/solr9.in.sh
       sed -i "/^$/d" /etc/default/solr9.in.sh
       echo "_restartSolr9 at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
-      touch /var/log/boa/solr9.in.004.fixed.pid
+      mkdir -p /etc/boa/control
+      touch /etc/boa/control/solr9.in.005.fixed.pid
       service solr9 restart
     fi
   fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     _SOLR7_STOP_TEST=$(grep "STOP\.PORT=19077" /etc/default/solr7.in.sh 2>&1)
     _SOLR7_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr7.in.sh 2>&1)
-    if [ ! -e "/var/log/boa/solr7.in.004.fixed.pid" ] \
+    _SOLR7_FIELDS_TEST=$(grep "update\.autoCreateFields=false" /etc/default/solr7.in.sh 2>&1)
+    if [ ! -e "/etc/boa/control/solr7.in.005.fixed.pid" ] \
       || [[ ! "${_SOLR7_STOP_TEST}" =~ "19077" ]] \
-      || [[ ! "${_SOLR7_WAIT_TEST}" =~ "10" ]]; then
+      || [[ ! "${_SOLR7_WAIT_TEST}" =~ "10" ]] \
+      || [[ ! "${_SOLR7_FIELDS_TEST}" =~ "autoCreateFields=false" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*mycustomkey7.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr7.in.sh
       echo "SOLR_START_WAIT=\"10\"" >> /etc/default/solr7.in.sh
       echo "SOLR_STOP_WAIT=\"10\"" >> /etc/default/solr7.in.sh
       echo "SOLR_WAIT_FOR_ZK=\"10\"" >> /etc/default/solr7.in.sh
       sed -i "/^$/d" /etc/default/solr7.in.sh
       echo "_restartSolr7 at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
-      touch /var/log/boa/solr7.in.004.fixed.pid
+      mkdir -p /etc/boa/control
+      touch /etc/boa/control/solr7.in.005.fixed.pid
       service solr7 restart
     fi
   fi
