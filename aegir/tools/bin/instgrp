@@ -708,16 +708,20 @@ _mnt_point() {
 # <mount>/files/<acct>/static/files under the single real mountpoint: that
 # path is taken from the root-owned mount layout, never from the
 # tenant-writable ~/static/files link, and only when it is a real directory
-# owned by the account. With $2 = root, one root owns is taken too: the web
-# group's view (migratefs keeps a moved store's owner, root's for the one
-# BOA made in the home); the per-instance group's roots take the account's
-# own store only. Printed when there is one.
+# reached with no link on the way below the mountpoint (its real path is
+# the mountpoint's own files/<acct>/static/files, as autosymlink takes the
+# store) and owned by the account. With $2 = root, one root owns is taken
+# too: the web group's view (migratefs keeps a moved store's owner, root's
+# for the one BOA made in the home); the per-instance group's roots take
+# the account's own store only. Printed when there is one.
 _acct_store() {
-  local _a="$1" _mp _st _uid _ou
+  local _a="$1" _mp _st _uid _ou _rm
   _mp=$(_mnt_point)
   [ -n "${_mp}" ] || return 1
   _st="${_mp}/files/${_a}/static/files"
   [ -d "${_st}" ] && [ ! -L "${_st}" ] || return 1
+  _rm=$(realpath -e -- "${_mp}" 2> /dev/null) || return 1
+  [ "$(realpath -e -- "${_st}" 2> /dev/null)" = "${_rm}/files/${_a}/static/files" ] || return 1
   _uid=$(id -u "${_a}" 2> /dev/null)
   [ -n "${_uid}" ] || return 1
   _ou=$(stat -c '%u' "${_st}" 2> /dev/null)
