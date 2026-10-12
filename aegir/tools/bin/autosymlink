@@ -2345,10 +2345,11 @@ _unshare_closed_ex() {
   # (_UNSHARE_DENIED_RE matched case-insensitively, or ./private as the
   # fixers' -path takes it, case and all, or an entry below either, as the
   # fixers close the whole of each), plainly named: the copy then leaves it
-  # out (an anchored exclude in _UNSHARE_EX), and logs it. A store whose
-  # owner converted to its own web group closes exactly these to other
-  # accounts, and the site never served them. Any other closed entry, or
-  # more than 200, and nothing is copied (status 1).
+  # out (an anchored exclude in _UNSHARE_EX), said once the copy is made
+  # (_unshare_copy_other). A store whose owner converted to its own web
+  # group closes exactly these to other accounts, and the site never served
+  # them. Any other closed entry, or more than 200, and nothing is copied
+  # (status 1).
   local _p _r _l _n=0 _who
   _who=$(id -nu "${1}" 2>/dev/null)
   _UNSHARE_EX=()
@@ -2381,9 +2382,22 @@ _unshare_closed_ex() {
   done < <(setpriv --reuid="${1}" --regid="${2}" --init-groups \
     find "${3%/}/" -mindepth 1 \( \( -type f ! -readable \) -o \( -type d \( ! -readable -o ! -executable \) \) \) \
     -prune -print0 2>/dev/null)
-  # said only once every closed entry is the owner's private set
+  return 0
+}
+
+_unshare_copy_other() {
+  # cwd = the staging dir _unshare_copy entered and checked. Copy another
+  # account's store $3 (type $4) as uid $1, gid $2 into ./$4, the dir handed
+  # to that account, leaving out what _unshare_closed_ex finds closed to it.
+  # What was left out is said, naming account $5, only once the copy is
+  # made: a copy that fails says nothing of it.
+  local _p
+  _unshare_closed_ex "${1}" "${2}" "${3}" "${4}" || return 1
+  setpriv --reuid="${1}" --regid="${2}" --init-groups \
+    rsync "${_UNSHARE_RSYNC_ARGS[@]}" ${_UNSHARE_EX[@]+"${_UNSHARE_EX[@]}"} \
+    -- "${3}/" "./${4}/" >&2 || return 1
   for _p in ${_UNSHARE_EX[@]+"${_UNSHARE_EX[@]}"}; do
-    _log "[INFO] Un-share copy leaves out ${_p#--exclude=/}: closed to ${_who}, the store owner's private set (nginx never serves it)"
+    _log "[INFO] Un-share copy leaves out ${_p#--exclude=/}: closed to ${5}, the store owner's private set (nginx never serves it)"
   done
   return 0
 }
@@ -2495,11 +2509,8 @@ _unshare_copy() {
             rsync "${_UNSHARE_RSYNC_ARGS[@]}" -- ./ "/proc/self/fd/9/${_type}/" >&2 ) || exit 1
         exec 9<&-
       else
-        # what of another account's store is closed to this one
-        _unshare_closed_ex "${_uid}" "${_gid}" "${_src}" "${_type}" || exit 1
-        setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
-          rsync "${_UNSHARE_RSYNC_ARGS[@]}" ${_UNSHARE_EX[@]+"${_UNSHARE_EX[@]}"} \
-          -- "${_src}/" "./${_type}/" >&2 || exit 1
+        # another account's store, less what is closed to this one
+        _unshare_copy_other "${_uid}" "${_gid}" "${_src}" "${_type}" "${_acct}" || exit 1
       fi
       _ino=$([ -d "./${_type}" ] && [ ! -L "./${_type}" ] \
         && stat -c '%d:%i' -- "./${_type}") || exit 1
