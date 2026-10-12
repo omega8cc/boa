@@ -216,6 +216,15 @@ _log() {
   echo "${_LINE}" | tee -a "${_LOG_FILE}"
 }
 
+_log_name() {
+  # $1 as a log line may carry it: every byte outside [A-Za-z0-9._/-] made
+  # '?'. For a name another identity chose (a link target, an entry of a
+  # store): a newline in it never starts a forged line of its own, and no
+  # control sequence reaches the terminal.
+  local LC_ALL=C
+  printf '%s' "${1//[^A-Za-z0-9._\/-]/?}"
+}
+
 _record_anomaly() {
   # Capture one not-clean finding WITH its identity, next to the flag it raises.
   # Args: 1: CODE, 2..: k=v context fields.
@@ -1999,10 +2008,10 @@ _check_symlink_sharing() {
     *)
       # Unknown layout; in REPORT we just note it, in DRY we treat as edge case.
       if [ "${_MODE}" = "REPORT" ]; then
-        _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} has non-standard target: ${_LINK_TARGET}"
+        _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} has non-standard target: $(_log_name "${_LINK_TARGET}")"
         return
       fi
-      _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} points to unknown pattern: ${_LINK_TARGET} – skipping"
+      _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} points to unknown pattern: $(_log_name "${_LINK_TARGET}") – skipping"
       if [ "${_MODE}" = "DRY" ]; then
         _DRY_HAS_EDGE_CASES="YES"
         # The only edge-case (rather than error) finding in the script.
@@ -2019,7 +2028,7 @@ _check_symlink_sharing() {
   if [ "${_MODE}" = "REPORT" ]; then
     if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
       # Proper, non-shared symlink.
-      _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → self (${_TARGET_SITE_NAME}), OK, target='${_LINK_TARGET}'"
+      _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → self ($(_log_name "${_TARGET_SITE_NAME}")), OK, target='$(_log_name "${_LINK_TARGET}")'"
       return
     fi
 
@@ -2035,7 +2044,7 @@ _check_symlink_sharing() {
       _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
     fi
 
-    _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → ${_TARGET_SITE_NAME} (${_INTENT}), target='${_LINK_TARGET}'"
+    _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → $(_log_name "${_TARGET_SITE_NAME}") (${_INTENT}), target='$(_log_name "${_LINK_TARGET}")'"
     return
   fi
 
@@ -2054,11 +2063,11 @@ _check_symlink_sharing() {
     # inherited cross-account symlink even when a share control file exists for
     # the source/target site (it belongs to the source, not this new clone).
     if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
-      _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to ${_TARGET_SITE_NAME} with a share control file present, but --force-unshare is set – breaking sharing for this site"
+      _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to $(_log_name "${_TARGET_SITE_NAME}") with a share control file present, but --force-unshare is set – breaking sharing for this site"
     fi
   elif [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
     _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
-    _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with ${_TARGET_SITE_NAME} (control file present) – leaving as is"
+    _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with $(_log_name "${_TARGET_SITE_NAME}") (control file present) – leaving as is"
     return
   fi
 
@@ -2085,7 +2094,7 @@ _check_symlink_sharing() {
     *)                  _LINK_PREFIX_OK="NO" ;;
   esac
   if [ "${_LINK_PREFIX_OK}" != "YES" ]; then
-    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a non-account store prefix: ${_LINK_PREFIX} – refusing to break sharing"
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a non-account store prefix: $(_log_name "${_LINK_PREFIX}") – refusing to break sharing"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_EDGE_CASES="YES"
       _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
@@ -2097,8 +2106,8 @@ _check_symlink_sharing() {
   _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
   _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
 
-  _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to ${_LINK_TARGET} (owned by ${_TARGET_SITE_NAME})"
-  _log "[PLAN] Break sharing: copy from ${_ORIGINAL_TOP} to ${_NEW_TARGET} and update symlink at ${_PATH}"
+  _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to $(_log_name "${_LINK_TARGET}") (owned by $(_log_name "${_TARGET_SITE_NAME}"))"
+  _log "[PLAN] Break sharing: copy from $(_log_name "${_ORIGINAL_TOP}") to ${_NEW_TARGET} and update symlink at ${_PATH}"
 
   if [ "${_MODE}" = "LIVE" ] && [ "${_LIVE_SITE_APPROVED}" != "YES" ]; then
     if ! _ask_confirm_site "${_SITE_NAME}"; then
@@ -2111,7 +2120,7 @@ _check_symlink_sharing() {
 
   if [ "${_MODE}" = "DRY" ]; then
     if [ ! -d "${_ORIGINAL_TOP}" ]; then
-      _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – would fail breaking sharing"
+      _log "[WARN] Original ${_TYPE} directory not found at $(_log_name "${_ORIGINAL_TOP}") – would fail breaking sharing"
       _DRY_HAS_ERRORS="YES"
       # No inline mode test here on purpose: this whole block is already DRY-only.
       _record_anomaly "BREAK_SHARING_SOURCE_MISSING" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
@@ -2128,7 +2137,7 @@ _check_symlink_sharing() {
   fi
 
   if [ ! -d "${_ORIGINAL_TOP}" ]; then
-    _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – cannot break sharing for ${_SITE_NAME}"
+    _log "[WARN] Original ${_TYPE} directory not found at $(_log_name "${_ORIGINAL_TOP}") – cannot break sharing for ${_SITE_NAME}"
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
@@ -2165,9 +2174,9 @@ _check_symlink_sharing() {
     _archive_existing_store_target "${_TYPE}" "${_STORE_FILES_H}" "${_BASE_REAL}" "${_ACCOUNT_DIR}" "${_SITE_NAME}"
   fi
 
-  _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
+  _log "[APPLY] Copying $(_log_name "${_ORIGINAL_TOP}") -> ${_NEW_TARGET}"
   if ! _unshare_copy "${_ORIGINAL_TOP}" "${_BASE_REAL}" "${_TYPE}" "${_ACCOUNT_DIR}" "${_STORE_FILES_H}"; then
-    _log "[ERROR] Copy failed for site ${_SITE_NAME} (${_TYPE}: ${_ORIGINAL_TOP} -> ${_NEW_TARGET}) – leaving symlink unchanged."
+    _log "[ERROR] Copy failed for site ${_SITE_NAME} (${_TYPE}: $(_log_name "${_ORIGINAL_TOP}") -> ${_NEW_TARGET}) – leaving symlink unchanged."
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
@@ -2347,11 +2356,11 @@ _unshare_closed_ex() {
     _l=$(printf '%s' "./${_r}" | tr 'A-Z' 'a-z')
     if [[ ! "${_r}" =~ ^[A-Za-z0-9._/-]+$ ]] \
       || { [ "./${_r}" != "./private" ] && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})$ ]]; }; then
-      _log "[ERROR] Un-share copy: ${_r} is closed to ${_who} and is not the store owner's private set; nothing copied"
+      _log "[ERROR] Un-share copy: $(_log_name "${_r}") is closed to ${_who} and is not the store owner's private set; nothing copied"
       return 1
     fi
     _n=$((_n + 1))
-    [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of ${3} are closed to ${_who}; nothing copied"; return 1; }
+    [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of $(_log_name "${3%/}") are closed to ${_who}; nothing copied"; return 1; }
     _UNSHARE_EX+=("--exclude=/${_r}")
   done < <(setpriv --reuid="${1}" --regid="${2}" --init-groups \
     find "${3%/}/" -mindepth 1 \( \( -type f ! -readable \) -o \( -type d \( ! -readable -o ! -executable \) \) \) \
