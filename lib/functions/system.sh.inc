@@ -3761,7 +3761,6 @@ _barracuda_cnf() {
     echo "_HM_FPM_VERSION=${_HM_FPM_VERSION}"                 >> ${_barCnf}
     echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"               >> ${_barCnf}
     echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\""             >> ${_barCnf}
-    echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${_barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${_barCnf}
     echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
@@ -3887,6 +3886,9 @@ _barracuda_cnf() {
     wait
     ### Retired: OpenSSH is an always-on component now (since 2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
+    wait
+    ### Retired: every PHP-FPM pool keeps one disable_functions list (since 2026-10-12)
+    sed -i "/^_PHP_FPM_DENY=/d"                                  ${_barCnf}
     wait
     sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
@@ -4337,11 +4339,6 @@ _barracuda_cnf() {
       echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${_barCnf}
     fi
 
-    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${_barCnf} 2>&1)
-    if [[ ! "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
-      echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${_barCnf}
-    fi
-
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${_barCnf} 2>&1)
     if [[ ! "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
       echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${_barCnf}
@@ -4629,6 +4626,9 @@ _barracuda_cnf() {
     wait
     ### Retired: OpenSSH is an always-on component now (since 2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
+    wait
+    ### Retired: every PHP-FPM pool keeps one disable_functions list (since 2026-10-12)
+    sed -i "/^_PHP_FPM_DENY=/d"                                  ${_barCnf}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait

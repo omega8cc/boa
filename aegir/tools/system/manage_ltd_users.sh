@@ -4879,6 +4879,61 @@ _ltd_fpm_new_version() {
   return 1
 }
 #
+# The account's own pools (not the panel pool, which _ltd_hm_pool writes
+# again on every pass) disable exactly the functions their template does:
+# a pool written with the retired per-account deny option, or edited by
+# hand, gets the template's disable_functions line back, its other lines
+# kept, and its version is reloaded. Every pool of a PHP master shares its
+# opcache, and PHP 8.4 and newer compile a call to a built-in function as
+# its position in the function table, which a different list shifts: code
+# compiled in one pool then calls the wrong function in another. Runs on
+# every pass, whatever the account's control files say, so a pool the
+# setup below would not rewrite is put right too.
+_ltd_pool_deny_heal() {
+  local _pf _v _tpl _ref _n _cur _new _rld=" "
+  for _pf in /opt/php*/etc/pool.d/"${_USER}".conf /opt/php*/etc/pool.d/"${_USER}".*.conf; do
+    [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || continue
+    case "${_pf}" in */"${_USER}".hm.conf) continue ;; esac
+    _v="${_pf#/opt/php}"
+    _v="${_v%%/*}"
+    [ -x "/opt/php${_v}/bin/php" ] || continue
+    _tpl=/var/xdrago/conf/fpm-pool-foo.conf
+    [ "${_pf##*/}" = "${_USER}.conf" ] || _tpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
+    _ref=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_tpl}" 2> /dev/null)
+    [ -n "${_ref}" ] || continue
+    _n=$(grep -c '^php_admin_value\[disable_functions\]' "${_pf}" 2> /dev/null)
+    _cur=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_pf}" 2> /dev/null)
+    [ "${_n}" = "1" ] && [ "${_cur}" = "${_ref}" ] && continue
+    # made aside, outside the pool.d/*.conf include, and put in place by
+    # rename: the first such line becomes the template's, any other goes
+    _new="${_pf%/*}/.${_pf##*/}.deny.new"
+    rm -f -- "${_new}"
+    if ! _LTD_DENY_REF="${_ref}" awk '
+      /^php_admin_value\[disable_functions\]/ { if (!done) { print ENVIRON["_LTD_DENY_REF"]; done = 1 } next }
+      { print }
+      END { if (!done) print ENVIRON["_LTD_DENY_REF"] }
+    ' "${_pf}" > "${_new}" 2> /dev/null; then
+      rm -f -- "${_new}"
+      continue
+    fi
+    chown --reference="${_pf}" "${_new}" 2> /dev/null
+    chmod --reference="${_pf}" "${_new}" 2> /dev/null
+    if mv -f -- "${_new}" "${_pf}"; then
+      echo "Pool ${_pf} of ${_USER} disabled other functions than its template, set back"
+      case "${_rld}" in
+        *" ${_v} "*) ;;
+        *) _rld="${_rld}${_v} " ;;
+      esac
+    else
+      rm -f -- "${_new}"
+    fi
+  done
+  for _v in ${_rld}; do
+    [ -e "/etc/init.d/php${_v}-fpm" ] && service "php${_v}-fpm" reload &> /dev/null
+  done
+  return 0
+}
+#
 # A PHP version (its digits) whose FPM _switch_php reloads once, after every
 # pool file of the account is final.
 _ltd_fpm_reload_mark() {
@@ -5326,8 +5381,6 @@ _ltd_hm_pool() {
     sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" "${_pNew}" &> /dev/null
     wait
   fi
-  [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" "${_pNew}" &> /dev/null
-  wait
   # the pool runs in the account's web group once its identities have left
   # www-data, on the same terms as its other pools (see the pool loop)
   _T_WGS=$(_web_group_state "${_USER}")
@@ -5414,6 +5467,7 @@ _switch_php() {
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   _ltd_hm_switches
+  _ltd_pool_deny_heal
 
   if [ -e "${_dscUsr}/static/control/fpm.info" ] || [ -e "${_dscUsr}/static/control/cli.info" ]; then
     echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
@@ -5789,9 +5843,6 @@ _switch_php() {
               sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" "${_pNew}" &> /dev/null
               wait
             fi
-
-            [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" "${_pNew}" &> /dev/null
-            wait
 
             if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge 60 ]; then
               _PHP_TO="${_PHP_FPM_TIMEOUT}s"
@@ -6486,7 +6537,6 @@ _manage_user() {
       _PHP_FPM_MEMORY_LIMIT_FORCE=""
       _PHP_FPM_RAM_PCT=""
       _PHP_FPM_CPU_FACTOR=""
-      _PHP_FPM_DENY=""
       _RESERVED_RAM=""
       _CLIENT_EMAIL=""
       _CLIENT_OPTION=""

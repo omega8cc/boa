@@ -4,6 +4,21 @@
 
 @=> Important Fixes
 
+    * An Octopus control panel no longer fails with a blank page when
+      another account on the same server uses a different list of
+      disabled PHP functions. Since the control panels run in pools of
+      their own on the server's default PHP, all of them share one PHP
+      version and its opcache, and PHP 8.4 and newer compile a call to
+      a built-in function as its position in the function table, which
+      each disabled function shifts. A panel whose account set its own
+      list through _PHP_FPM_DENY then ran code compiled by another
+      account's panel, called the wrong function and stopped. The
+      option is retired: every PHP-FPM pool keeps the same list, the
+      option's line is removed from the cnf files at the next upgrade,
+      the system worker puts the template's list back into any pool of
+      an instance that still carries another one, and the next Barracuda
+      upgrade writes the master pools again from their template.
+
     * A Solr core created for a Drupal 8 or newer site no longer takes
       documents before the site's own configuration is uploaded. Such
       a core starts on Solr's stock configuration, which guessed the
