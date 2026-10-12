@@ -3565,8 +3565,10 @@ _wg_procs_www() {
 # still $1. One line per such file, "C <dir>/<name>" cleared or
 # "E <dir>/<name>" not cleared (also for an argument that names more than
 # one path component), unprintable bytes shown as "?".
+# No "{}" anywhere in the text: GNU find refuses an -execdir ... + whose
+# arguments carry it more than once, and runs nothing.
 # shellcheck disable=SC2016
-_WG_SGID_PL='use Fcntl; use Cwd; my ($g, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $d = getcwd(); $d = "?" unless defined($d); for my $x (@f) { my $n = $x; $n =~ s{^\./}{}; my $p = "$d/$n"; $p =~ s/[^[:print:]]/?/g; if ($n !~ m{^[^/]+\z} || $n eq "." || $n eq "..") { print "E $p\n"; next; } my $f = "./$n"; my @l = lstat($f); next unless @l && -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $o{$s[4]} && $s[5] == $g && ($s[2] & 02000)) { print((chmod($s[2] & 05777, $h) ? "C " : "E ") . "$p\n"); } close($h); } exit 0'
+_WG_SGID_PL='use Fcntl; use Cwd; my ($g, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $d = getcwd(); $d = "?" unless defined($d); for my $x (@f) { my $n = $x; $n =~ s#^\./##; my $p = "$d/$n"; $p =~ s/[^[:print:]]/?/g; if ($n !~ m{^[^/]+\z} || $n eq "." || $n eq "..") { print "E $p\n"; next; } my $f = "./$n"; my @l = lstat($f); next unless @l && -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $o{$s[4]} && $s[5] == $g && ($s[2] & 02000)) { print((chmod($s[2] & 05777, $h) ? "C " : "E ") . "$p\n"); } close($h); } exit 0'
 
 # The mount points a file of the account's may sit on and run from with its
 # set-group-ID bit honoured: every mount of a disk or memory file system that
