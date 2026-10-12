@@ -4,6 +4,22 @@
 
 @=> Important Fixes
 
+    * A Solr core created for a Drupal 8 or newer site no longer takes
+      documents before the site's own configuration is uploaded. Such
+      a core starts on Solr's stock configuration, which guessed the
+      type of every field from the first documents it received, and
+      the schema uploaded later could never write to an index typed
+      that way: every item was refused with "cannot change DocValues
+      type", and clearing the index from the site did not help,
+      because the running index writer kept the guessed types until
+      the core was reloaded by hand. Solr 7 and Solr 9 now run with
+      schemaless mode off, so a core without its configuration answers
+      the first document with a plain "unknown field" error and writes
+      nothing. The upload step also archives and empties an index a
+      core built on the stock schema before this change, records it in
+      the pass log and the incident log and mails the server admin, so
+      the site only has to re-index.
+
     * A migration cutover, a planned switch of a mirror pair and a
       promotion by hand no longer stop at the master control panel of
       a target whose master has been upgraded at least once. The step
