@@ -533,8 +533,8 @@ that site's store.
 - The tool cannot undo one share: a share of a `private` store whose owner
   runs in its own web group. That store is closed to every other account as
   a whole, so the un-share is refused, with an `[ERROR]` line that names the
-  store. The two accounts settle it between them; BOA never moves a
-  customer's files.
+  store. The two accounts settle it between them; BOA does not move the
+  files for them.
 - `instgrp webcheck --report` says `shares:  phase B held` for such an
   account, with a count for each of the four kinds, without running a
   conversion and without writing a note. For an account whose record
