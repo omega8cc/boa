@@ -513,8 +513,8 @@ _links_left_note() {
 }
 # Mode $1 on every regular file the find start points and tests after it
 # select (any tests apply first), walked from the current (pinned) directory
-# through _FCHMOD_PL, then _links_left_note on the same selection. The
-# platform script walks with it; this one walks with _fwalk_own_here.
+# through _FCHMOD_PL, then _links_left_note on the same selection. Kept as
+# the platform script's copy; both walk with _fwalk_own_here.
 _fwalk_here() {
   local _m="${1}" _rc
   shift
@@ -523,17 +523,53 @@ _fwalk_here() {
   _links_left_note "$@"
   return "${_rc}"
 }
+# find's tests, in _NOT_OWN, for an entry another user owns as the walkers
+# read it: its uid is none of _OWN_UIDS and a passwd entry names it
+# (-nouser is true for a uid no entry names). A walk hands such an entry to
+# its walker whatever state it is in, so it is left and counted as before.
+_not_own_tests() {
+  local _u
+  local -a _ids=()
+  _NOT_OWN=()
+  IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
+  for _u in "${_ids[@]}"; do
+    _NOT_OWN+=( ! -uid "${_u}" )
+  done
+  _NOT_OWN+=( ! -nouser )
+}
 # Mode $2 on every directory ($1 d) or single-link regular file ($1 f) the
 # find start points and tests after it select (any tests apply first), set
 # from the directory find holds (-execdir) through _SAT_CHMOD_OWN_PL with
 # the site's own uids (_OWN_UIDS): what another user owns, and everything
 # below a directory another user owns, keeps its mode, its dev:ino
 # printed. A file walk ends with _links_left_note on the same selection.
+# Perl starts only in a directory that holds an entry whose mode is not yet
+# the walk's, or another user's entry (_not_own_tests): a tree already at
+# its modes costs the walk alone. A directory keeps its set-ID bits under a
+# mode of fewer than five digits, so any of them may stand beside that
+# mode. A mode that is not three or four octal digits, or five with a
+# leading 0, is walked as before: every entry goes to perl.
 _fwalk_own_here() {
-  local _t="${1}" _m="${2}" _rc
+  local _t="${1}" _m="${2}" _rc _v _s _p
+  local -a _need=()
   shift 2
   [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
-  find "$@" -type "${_t}" \
+  if [[ "${_t}" =~ ^[df]$ && "${_m}" =~ ^0?[0-7]{3,4}$ ]]; then
+    _v=$(( 8#${_m} ))
+    if [[ "${_t}" == "d" && "${#_m}" -lt 5 ]]; then
+      for _s in 0 02000 04000 06000; do
+        (( (_v & 06000 & ~_s) == 0 )) || continue
+        printf -v _p '%04o' "$(( (_v & 01777) | _s ))"
+        _need+=( ! -perm "${_p}" )
+      done
+    else
+      printf -v _p '%04o' "${_v}"
+      _need=( ! -perm "${_p}" )
+    fi
+    _not_own_tests
+    _need=( \( "${_need[@]}" -o "${_NOT_OWN[@]}" \) )
+  fi
+  find "$@" -type "${_t}" "${_need[@]}" \
     -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_OWN_UIDS}" "${_t}" "${_m}" {} +
   _rc=$?
   [ "${_t}" != "f" ] || _links_left_note "$@"

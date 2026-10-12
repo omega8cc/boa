@@ -252,6 +252,41 @@ _night_web_box() {
   return 0
 }
 
+### The nginx link check, once a night on a box armed for it (the stamp only
+### a barracuda pass writes): linkguard makes BOA's links pass, scans, and
+### switches the check on the night its scan finds nothing it would break. A
+### link the check refuses, or one that keeps it off, goes to the incident
+### log and, once a day, to the box operator, with the full list in the
+### report linkguard leaves in /var/log/boa.
+_night_link_guard() {
+  local _s _b _r _sum _body
+  [ -e "/var/log/boa/linkguard-arm.ready.txt" ] || return 0
+  [ -e "/opt/local/bin/linkguard" ] || return 0
+  _s=$(bash /opt/local/bin/linkguard apply 2> /dev/null \
+    | grep -E "^(ALERT|SUMMARY)" | tr -cd '[:print:]\n')
+  if [ -z "${_s}" ]; then
+    echo "nginx link guard: no summary from linkguard"
+    return 0
+  fi
+  echo "nginx link guard: ${_s//$'\n'/; }"
+  _sum=$(printf '%s\n' "${_s}" | grep -m1 "^SUMMARY")
+  _b=$(printf '%s\n' "${_sum}" | grep -o "blocking=[0-9]*" | cut -d= -f2)
+  _r=$(printf '%s\n' "${_sum}" | grep -o "refused=[0-9]*" | cut -d= -f2)
+  _body="${_sum#SUMMARY }"
+  if printf '%s\n' "${_s}" | grep -q "^ALERT"; then
+    _body="$(printf '%s\n' "${_s}" | grep -m1 "^ALERT" | cut -c8-); ${_body}"
+  fi
+  if [ "${_b:-0}" != "0" ] || [ "${_r:-0}" != "0" ]; then
+    _body="${_body}; the links are listed in /var/log/boa/linkguard.report.txt"
+  elif ! printf '%s\n' "${_s}" | grep -q "^ALERT"; then
+    return 0
+  fi
+  ( unset _MY_OCTO_EMAIL
+    _night_notice "linkguard" \
+      "BOA nightly on $(hostname -f): nginx link check" "${_body}" )
+  return 0
+}
+
 ### An account pass that never ends would hold its fan-out slot (or the
 ### serial loop) into the next night. Bound it, say so, move on: the whole
 ### process group gets the signal, the account's night marker is released
@@ -354,6 +389,7 @@ _daily_action() {
   done
   [ "${_NIGHT_PARALLEL}" = "YES" ] && wait
   _night_web_box
+  _night_link_guard
   _shared_codebases_cleanup
   _ghost_codebases_cleanup
   _check_old_empty_hostmaster_platforms
