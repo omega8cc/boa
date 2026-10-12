@@ -2332,7 +2332,8 @@ _unshare_closed_ex() {
   # store whose owner converted to its own web group closes exactly these to
   # other accounts, and the site never served them. Any other closed entry,
   # or more than 200, and nothing is copied (status 1).
-  local _p _r _l _n=0
+  local _p _r _l _n=0 _who
+  _who=$(id -nu "${1}" 2>/dev/null)
   _UNSHARE_EX=()
   while IFS= read -r -d '' _p; do
     _r="${_p#"${3%/}"/}"
@@ -2344,16 +2345,19 @@ _unshare_closed_ex() {
     _l=$(printf '%s' "./${_r}" | tr 'A-Z' 'a-z')
     if [[ ! "${_r}" =~ ^[A-Za-z0-9._/-]+$ ]] \
       || { [ "${_l}" != "./private" ] && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})$ ]]; }; then
-      _log "[ERROR] Un-share copy: ${_r} is closed to $(id -nu "${1}" 2>/dev/null) and is not the store owner's private set; nothing copied"
+      _log "[ERROR] Un-share copy: ${_r} is closed to ${_who} and is not the store owner's private set; nothing copied"
       return 1
     fi
     _n=$((_n + 1))
-    [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of ${3} are closed to $(id -nu "${1}" 2>/dev/null); nothing copied"; return 1; }
+    [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of ${3} are closed to ${_who}; nothing copied"; return 1; }
     _UNSHARE_EX+=("--exclude=/${_r}")
-    _log "[INFO] Un-share copy leaves out ${_r}: closed to $(id -nu "${1}" 2>/dev/null), the store owner's private set (nginx never serves it)"
   done < <(setpriv --reuid="${1}" --regid="${2}" --init-groups \
     find "${3%/}/" -mindepth 1 \( \( -type f ! -readable \) -o \( -type d \( ! -readable -o ! -executable \) \) \) \
     -prune -print0 2>/dev/null)
+  # said only once every closed entry is the owner's private set
+  for _p in ${_UNSHARE_EX[@]+"${_UNSHARE_EX[@]}"}; do
+    _log "[INFO] Un-share copy leaves out ${_p#--exclude=/}: closed to ${_who}, the store owner's private set (nginx never serves it)"
+  done
   return 0
 }
 
