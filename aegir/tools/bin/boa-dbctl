@@ -6313,6 +6313,10 @@ _scope_owes() {
   _PO_FOR=""
   while IFS='|' read -r _t _ux _hx _u _h _d _dp _f _go; do
     [[ -n "${_t}" ]] || continue
+    # only a row whose grantee is one of the account's own users can read
+    # so for it: no other row is judged here
+    _pair_owner "${_u}" "${_h}" "${_ux}@${_hx}"
+    [[ "${_PO}" == "${_ACCT}" ]] || continue
     _grant_verdict "${_t}" "${_u}" "${_h}" "${_ux}@${_hx}" "${_dp}" "${_f}" "${_go}"
     case "${_GV}" in
       converge|dead) return 0 ;;
