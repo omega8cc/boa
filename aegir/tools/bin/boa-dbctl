@@ -115,6 +115,9 @@ _IO_LIMIT_DEFAULT=86400
 # The walk of a store before a load ends after _WALK_LIMIT seconds, and the
 # load is then refused: a store is walked in seconds.
 _WALK_LIMIT=300
+# One login of a proof ends after _LOGIN_LIMIT seconds, whatever the server
+# does once the client has reached it.
+_LOGIN_LIMIT=30
 
 # The per-account database count limit: _DB_COUNT_MAX in the account's root
 # cnf, a number, or AUTO or nothing for the built-in default, read and never
@@ -3720,8 +3723,12 @@ _proof_cnf() {
 }
 
 # One login with the client file $1 over transport $2 (socket, or tcp:<host>):
-# prints the login the server matched it to. 1 refused, 2 no such transport
-# on this box.
+# prints the login the server matched it to. 1 the server refused the
+# credential (its errors 1045, 1130 and 1698), 2 no such transport on this
+# box, 3 the login could not be tried: anything else, which says nothing
+# about the credential (too many connections, a blocked host, a handshake
+# lost, a locked or expired account, a plugin that wants TLS, a server that
+# stalls until the time given to one login is over).
 _login_cu() {
   local _out _rc _errno
   local -a _a
@@ -3732,7 +3739,8 @@ _login_cu() {
     _a=(--protocol=TCP --host="${2#tcp:}" --port="${_SRV_PORT}")
   fi
   _out=$(printf '%s\n' "SELECT /*q:rowproof*/ CURRENT_USER();" \
-    | mysql --defaults-file=/dev/fd/5 "${_a[@]}" --connect-timeout=10 -N -B -r \
+    | timeout -k "${_KILL_GRACE}" "${_LOGIN_LIMIT}" \
+      mysql --defaults-file=/dev/fd/5 "${_a[@]}" --connect-timeout=10 -N -B -r \
       5< "${1}" 2> "${_TMPD}/proof.err" 7>&- 8>&- 9>&-)
   _rc=$?
   if [[ "${_rc}" -eq 0 ]]; then
@@ -3744,14 +3752,16 @@ _login_cu() {
   : > "${_TMPD}/proof.err"
   case "${_errno}" in
     2002|2003|2005) return 2 ;;
+    1045|1130|1698) return 1 ;;
   esac
-  return 1
+  return 3
 }
 
 # The proof of the login $1@$2 with the client file $3: a login over that
 # row's own transport lands on exactly that row (a login the server matches
-# to another row proves nothing about this one). 0 proven, 1 not, 2 this
-# box offers no transport that reaches the row.
+# to another row proves nothing about this one). 0 proven, 1 not (a login
+# that could not be tried counts so here), 2 this box offers no transport
+# that reaches the row.
 _row_login() {
   local _u="${1}" _h="${2}" _t _cu _rc _res=2 _ip
   local -a _tr=()
@@ -3778,7 +3788,7 @@ _row_login() {
     if [[ "${_rc}" -eq 0 ]]; then
       [[ "${_cu}" == "${_u}@${_h}" ]] && return 0
       _res=1
-    elif [[ "${_rc}" -eq 1 ]]; then
+    elif [[ "${_rc}" -ne 2 ]]; then
       _res=1
     fi
   done
@@ -3792,8 +3802,9 @@ _row_login() {
 # loopback addresses and the addresses the box holds are used (_held_ip),
 # never the address the cnf names when the box does not hold it: another
 # server can answer there, and its answer says nothing about this one's
-# row. 0 proven, 1 refused, 2 no login of this box reaches the row, 4 each
-# login opened another row of the user.
+# row. 0 proven, 1 refused, 2 no login of this box reaches the row, 3 the
+# login could not be tried (_login_cu), 4 each login opened another row of
+# the user.
 _row_login_held() {
   local _u="${1}" _h="${2}" _t _cu _rc _res=2 _ip
   local -a _tr=()
@@ -3822,7 +3833,7 @@ _row_login_held() {
         _res=4
         ;;
       2) ;;
-      *) return 1 ;;
+      *) return "${_rc}" ;;
     esac
   done
   return "${_res}"
@@ -5452,6 +5463,7 @@ _settle_proofs() {
       case "$?" in
         0) _v="ok" ;;
         2) _v="unreach" ;;
+        3) _v="untried" ;;
         4) _v="elsewhere" ;;
         *) _v="refused" ;;
       esac
@@ -5485,6 +5497,7 @@ _settle_proof_why() {
     ctl) _ST_WHY="the password ${2} recorded for it holds a control character: no login is tried with it" ;;
     unreach) _ST_WHY="no login of this box reaches the row, so the credential ${2} recorded cannot be tried on it" ;;
     elsewhere) _ST_WHY="each login with the credential ${2} recorded opens another row of its user, never this one" ;;
+    untried) _ST_WHY="the credential ${2} recorded could not be tried on it now: the server gave no answer about it" ;;
     refused) _ST_WHY="the credential ${2} recorded does not open it: it is someone else's by now" ;;
     *) _ST_WHY="it changed while this ran" ;;
   esac
