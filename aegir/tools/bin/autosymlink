@@ -2317,21 +2317,23 @@ _rm_tree_as_here() {
 }
 
 # The store paths nginx never serves, as the site fixers prune them
-# (fix-drupal-site-permissions.sh _SITE_DENIED_RE and ./private, matched
-# case-insensitively): the store owner's private set, which its own web
-# group closes to every other account.
+# (fix-drupal-site-permissions.sh: _SITE_DENIED_RE, matched
+# case-insensitively, and ./private): the store owner's private set, which
+# its own web group closes to every other account.
 _UNSHARE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
 
 _unshare_closed_ex() {
   # The files the account (uid $1, gid $2) cannot read, and the directories
   # it can neither read nor enter, of source store $3, as that account sees
   # them (setpriv with its own groups; find never follows a link: the copy
-  # keeps a link as a link and skips specials, so neither counts). Each must be the store owner's
-  # private set (_UNSHARE_DENIED_RE, or ./private), plainly named: the copy
-  # then leaves it out (an anchored exclude in _UNSHARE_EX), and logs it. A
-  # store whose owner converted to its own web group closes exactly these to
-  # other accounts, and the site never served them. Any other closed entry,
-  # or more than 200, and nothing is copied (status 1).
+  # keeps a link as a link and skips specials, so neither counts). Each
+  # must be the store owner's private set (_UNSHARE_DENIED_RE matched
+  # case-insensitively, or ./private as the fixers' -path takes it, case
+  # and all), plainly named: the copy then leaves it out (an anchored
+  # exclude in _UNSHARE_EX), and logs it. A store whose owner converted to
+  # its own web group closes exactly these to other accounts, and the site
+  # never served them. Any other closed entry, or more than 200, and
+  # nothing is copied (status 1).
   local _p _r _l _n=0 _who
   _who=$(id -nu "${1}" 2>/dev/null)
   _UNSHARE_EX=()
@@ -2344,7 +2346,7 @@ _unshare_closed_ex() {
     esac
     _l=$(printf '%s' "./${_r}" | tr 'A-Z' 'a-z')
     if [[ ! "${_r}" =~ ^[A-Za-z0-9._/-]+$ ]] \
-      || { [ "${_l}" != "./private" ] && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})$ ]]; }; then
+      || { [ "./${_r}" != "./private" ] && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})$ ]]; }; then
       _log "[ERROR] Un-share copy: ${_r} is closed to ${_who} and is not the store owner's private set; nothing copied"
       return 1
     fi
