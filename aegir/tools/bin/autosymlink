@@ -1718,9 +1718,9 @@ _store_live_readers() {
     _SLR_RURI="${_SLR_RDIR##*/}"
     if [ -n "$(_site_alias_file "/data/disk/${_SLR_RACCT}" "${_SLR_RURI}")" ] \
       || [ -e "/data/disk/${_SLR_RACCT}/config/server_master/nginx/vhost.d/${_SLR_RURI}" ]; then
-      _SLR_LIVE="${_SLR_LIVE}${_SLR_LIVE:+ }${_SLR_LINK} -> $(_log_name "${_SLR_TGT}")"
+      _SLR_LIVE="${_SLR_LIVE}${_SLR_LIVE:+ }$(_log_name "${_SLR_LINK}") -> $(_log_name "${_SLR_TGT}")"
     else
-      _SLR_STALE="${_SLR_STALE}${_SLR_STALE:+ }${_SLR_LINK} -> $(_log_name "${_SLR_TGT}")"
+      _SLR_STALE="${_SLR_STALE}${_SLR_STALE:+ }$(_log_name "${_SLR_LINK}") -> $(_log_name "${_SLR_TGT}")"
     fi
   done <<EOT
 ${_SLR_INDEX}
@@ -2348,7 +2348,8 @@ _unshare_closed_ex() {
   # (setpriv with its own groups; find never follows a link: the copy keeps a
   # link as a link and skips specials, so neither counts). A directory it can
   # read but not enter is one closed entry too when it holds anything (no
-  # entry in it can be read or typed through it); an empty one is not listed:
+  # entry in it can be stat'ed or read through it, so the copy can take none
+  # of them); an empty one is not listed:
   # the copy makes it, as it always did. A store the account cannot read or
   # cannot enter as a whole (a private store, once its owner runs in its own
   # web group) is named, and nothing is copied. Only a files store leaves an
