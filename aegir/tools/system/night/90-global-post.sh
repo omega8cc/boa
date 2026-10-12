@@ -1291,13 +1291,16 @@ _dbctl_witness() {
 # The database broker's daily report, on a box armed for it: the last
 # _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything else, no
 # line included, runs nothing here). One line per account, switched or why
-# not, and what stops the box, into this night's log. While an account is
-# not switched or something stops the box, the report's lines that say so
-# and its counts go to the box operator once a day, as the web group's
-# notices do. Never from a replication standby or a box being prepared as
-# one, where no pass switches an account, nor while the broker says the
-# release switches none (not-released): an operator can do nothing about
-# either.
+# not, and what stops the box, into this night's log. While the box could
+# switch an account and has not, or something stops the box, the lines that
+# say so (not-switched, box) and the report's counts go to the box operator
+# once a day, as the web group's notices do. An account its own cnf keeps
+# out and one the broker does not serve are neither counted as unswitched
+# nor mailed: nothing the box or its operator does there changes them.
+# Never from a replication standby or a box being prepared as one, where no
+# pass switches an account, nor while the broker says the release switches
+# none (not-released). The counts are read from a broker that does not tell
+# those two classes apart yet as well: the two files arrive on their own.
 _dbctl_report() {
   local _arm _out _rc _l _last="" _un _st _body=""
   [[ -x "/usr/local/bin/boa-dbctl" ]] || return 0
@@ -1323,19 +1326,17 @@ _dbctl_report() {
     case "${_l}" in
       *" not-released"*) return 0 ;;
     esac
-    # an account that is switched, with nothing said of it, is not news
-    [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ switched$ ]] && continue
-    if [[ -n "${_body}" ]]; then
-      _body="${_body}"$'\n'" ${_l}"
-    else
-      _body="${_l}"
-    fi
+    # what an operator can act on: an account the box could switch and has
+    # not, and what stops the box
+    [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ not-switched\  || "${_l}" == "box "* ]] || continue
+    _body="${_body}${_l}"$'\n'" "
   done <<< "${_out}"
-  [[ "${_last}" =~ ^OK\ report\ accounts=[0-9]+\ switched=[0-9]+\ unswitched=([0-9]+)\ stops=([0-9]+)\  ]] \
+  [[ "${_last}" =~ ^OK\ report\ accounts=[0-9]+\ switched=[0-9]+\ unswitched=([0-9]+)\ (kept-out=[0-9]+\ not-served=[0-9]+\ )?stops=([0-9]+)\  ]] \
     || return 0
   _un="${BASH_REMATCH[1]}"
-  _st="${BASH_REMATCH[2]}"
+  _st="${BASH_REMATCH[3]}"
   [[ "${_un}" -gt 0 || "${_st}" -gt 0 ]] || return 0
+  _body="${_body}${_last}"
   declare -F _night_notice > /dev/null 2>&1 || return 0
   ( unset _MY_OCTO_EMAIL
     _night_notice "dbctl-report" \
