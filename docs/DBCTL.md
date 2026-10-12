@@ -56,8 +56,18 @@ root-only table `boa_dbreg.owners`: one row per database, the database name its
 key, so two accounts can never hold the same name. No account login is ever
 granted anything on that schema.
 
-Not served, and refused by `scope`: an account on a remote database server, an
-account behind ProxySQL, a database cluster.
+Not served, and refused by `scope`: an account whose databases are on another
+server (a web head: `_THIS_DB_HOST` in its `/root/.oN.octopus.cnf` names a
+host that is not this box), an account behind ProxySQL, a database cluster.
+`report` reads such an account `not-served`, and a pass's switch answers
+`skipped` for it.
+
+A box that is the database server of other boxes' web heads holds those
+accounts' logins too. The broker never touches them: they can be used from
+another host, so `baseline settle` leaves every row of them and no switch
+takes their rights. While one of them holds a global privilege or waits for a
+ruling, it stops the switch of that box's own accounts. Such a box is better
+kept out, with `_DB_BROKER_ARM=NO` in its `/root/.barracuda.cnf`.
 
 ## Before the first switch on a box
 
@@ -562,16 +572,24 @@ privilege.
 With `_DB_BROKER_BORN_SCOPED=YES` in `/root/.barracuda.cnf` (off unless set),
 a new account is switched at the end of its first Octopus pass, unforced: a box
 that is not ready leaves it on the direct path, and the pass says why. Never on
-a standby or a box being prepared as one. An account a migration tool installs
-here (`xoct create`) is never switched by this setting: it takes its state from
-its source instead, switched on the target when it is switched there (where
-the target's own checks allow it). `_DB_BROKER_BORN=NO` in an account's
-`/root/.oN.octopus.cnf` keeps that account out of it.
+a standby or a box being prepared as one.
+
+An account a migration tool installs here (`xoct create`) is never switched by
+this setting: it takes its state from its source instead, switched on the
+target when it is switched there (where the target's own checks allow it).
+
+`_DB_BROKER_BORN=NO` in an account's `/root/.oN.octopus.cnf` keeps that
+account out of it. `xoct create` puts that line there before it installs a
+moved account and takes its own line back once the account is installed and
+its source's settings and switch are carried. A line the cnf held before is
+its operator's and stays.
 
 The pass makes it with `boa-dbctl scope oN on --born`, which reads the plan
 itself: with `--sha`, `--force` or `--accept-refusals`, or on `plan`, `off` or
 `status`, it is a usage error. It takes no pause of the task queue and waits
-for no task, the account being new.
+for no task, the account being new. On a box armed for the broker (below) the
+pass calls `boa-dbctl baseline settle` right before it, so the new account's
+switch finds a settled box.
 
 In this release it switches no account outside a test server (see above): the
 pass prints a NOTE and leaves the account on the direct path.
@@ -601,6 +619,23 @@ It waits for the account's running tasks to end before it reads the plan
 (`ERR 9 busy tasks` when they do not), so a database a task made a moment ago
 is in the plan, and a switch of the box's pair that began meanwhile refuses
 it: the box's addresses and its pair's state are read after the wait.
+
+For an account the broker does not serve it changes nothing, says why in one
+line and ends with exit code 0, as a settle does on a box it skips:
+
+```
+OK scope on oN skipped proxysql                 a ProxySQL box, or an account
+                                                behind ProxySQL
+OK scope on oN skipped cluster                  a database cluster
+OK scope on oN skipped remote-database-server   its databases are on another
+                                                server
+```
+
+That is decided from the box's files alone, before anything asks the local
+server and before any wait, with or without a pass running. The usage errors,
+the standby answers and the release rule still come first. Only an account
+that is not switched gets it: one with a valid control file goes on to its
+switch.
 
 An account already switched is left as it is when its switch would change
 nothing: no global privilege on its instance user at any row, on its panel
@@ -651,9 +686,24 @@ No call is made on a standby, nor on a box being prepared as one
 
 `_DB_BROKER_ARM=NO` in an account's `/root/.oN.octopus.cnf`, read the same
 way, keeps that account out: its passes call nothing and say so in one line.
-`_DB_BROKER_BORN=NO` there does the same. `xoct create` puts that line there
-before it installs a moved account, which takes its state from its source
-instead, and the line stays in the account's cnf afterwards.
+`_DB_BROKER_BORN=NO` there does the same.
+
+A moved account takes its state from its source. `xoct create` puts
+`_DB_BROKER_BORN=NO` into the target's cnf before it installs the account, so
+neither the install's pass nor the upgrade pass that follows it switches the
+account before its source's settings are there. Once the account is installed
+and its source's settings and switch are carried, the tool takes its own line
+back, under an `xmass` run too; a line the target's cnf held before is its
+operator's and stays.
+
+Where the merge of the source's settings failed, or the target could not be
+reached for the take-back, the line stays, the tool prints an `ALRT` that
+names it, and `report` reads the account `kept-out _DB_BROKER_BORN=NO` until
+an operator removes it.
+
+The account's own `_DB_BROKER_ARM` line travels with its other settings in
+`xoct` and in `xmass`: an account kept out on its source is kept out on the
+target, and on a standby once it is promoted.
 
 Each call is one line of the pass. An answer that ends well is the broker's
 own `OK` line:
@@ -662,6 +712,9 @@ own `OK` line:
 INFO: database broker: OK baseline settle accepted=0 revoked=0 dropped=0 left=1 stops=1
 INFO: database broker: OK scope on o1 already server=@server_localhost rows=localhost,%
 ```
+
+An account the broker does not serve gets that one INFO line too, on every
+pass (`OK scope on o3 skipped remote-database-server`).
 
 Anything else is a NOTE that names the call and carries the broker's own
 `ERR` line:
@@ -688,10 +741,11 @@ pass started by hand from the pass script itself, with no launcher, gets the
 same NOTE.
 
 Where the box also switches new accounts (`_DB_BROKER_BORN_SCOPED=YES`), an
-install makes the new account's switch first, as described above. The pass's
-switch then answers `already`; where the first was refused, it is the one
-that switches the account once the settle between the two has cleared what
-stood in the way, or it is refused in its turn, with a NOTE.
+install settles the box and makes the new account's switch first, as
+described above, and the pass's own two calls follow at its end. The pass's
+switch then answers `already`; where the first was refused, it asks again,
+and is refused in its turn, with a NOTE, while the same thing stands in the
+way.
 
 In this release no pass writes the setting, and the broker still refuses
 outside a test server with the marker: on a box an operator arms today each
@@ -714,26 +768,49 @@ box-wide check, once, and how the server stands against its reference:
 ```
 o1 switched[ role-or-proxy-grant N]
 o2 not-switched <reason>[, <reason>...]
+o3 kept-out <setting>=NO
+o4 not-served <reason>
 box stop <finding>
-OK report accounts=N switched=N unswitched=N stops=N reference=ok|off|none
+OK report accounts=N switched=N unswitched=N kept-out=N not-served=N stops=N reference=ok|off|none
 ```
 
-An account's reasons are the ones its own `scope oN plan` gives: each refusal
-in the plan's words, `unregistered <database> <why>` for each site left out,
-and `box-not-proven N` when nothing of its own holds it and N findings of the
-box-wide check would stop its switch. `role-or-proxy-grant N` names N of its
-own logins that hold a role or a proxy grant, which no switch takes: its
-instance user and its panel users, earlier panel names included, are
-counted alike. A switched account's line carries it too. A pass's switch of
-a switched account ends not proven only where the instance user holds one;
-where a panel user alone does, the pass answers `already`. `ready` means its
-plan refuses nothing.
+`not-switched` is an account the box could switch and has not, and
+`unswitched` counts only those. Its reasons are the ones its own `scope oN
+plan` gives: each refusal in the plan's words, `unregistered <database>
+<why>` for each site left out, and `box-not-proven N` when nothing of its own
+holds it and N findings of the box-wide check would stop its switch. `ready`
+means its plan refuses nothing.
 
-Three reasons come from outside the plan: `not-released` where this release
-switches no account on the box, `opted-out` for an account whose
-`/root/.oN.octopus.cnf` says `_DB_BROKER_ARM=NO` (its plan is then not read;
-the last such line of the cnf counts, as when the cnf is sourced), and
-`control-file-invalid` for a control file that is there and not valid.
+`role-or-proxy-grant N` names N of its own logins that hold a role or a proxy
+grant, which no switch takes: its instance user and its panel users, earlier
+panel names included, are counted alike. A switched account's line carries it
+too. A pass's switch of a switched account ends not proven only where the
+instance user holds one; where a panel user alone does, the pass answers
+`already`.
+
+Two reasons come from outside the plan: `not-released` where this release
+switches no account on the box, and `control-file-invalid` for a control file
+that is there and not valid.
+
+Two kinds of account are told apart from those. No pass asks for their
+switch and nothing the box does changes that, so their plans are not read,
+`unswitched` does not count them, and their lines never say `not-released`
+(`control-file-invalid` follows the reason where it applies):
+
+- `kept-out <setting>=NO`: the account's own `/root/.oN.octopus.cnf` keeps it
+  out, with `_DB_BROKER_ARM=NO` (its operator's) or `_DB_BROKER_BORN=NO` (a
+  migration tool's, while a move's line is there). The line names the
+  setting, the operator's where both are there. Each is read as a pass reads
+  it and as the cnf is when it is sourced: the last assignment counts, and
+  `export`, an indent, quotes and a trailing comment are read through.
+- `not-served <reason>`: the broker does not serve the account. `proxysql` or
+  `cluster` on a box where `baseline settle` answers `skipped` with that
+  word, `proxysql` for an account behind ProxySQL by its own control file,
+  `remote-database-server` for an account whose databases are on another
+  server. The cnf is read first: an account both kept out and not served
+  reads `kept-out`.
+
+An account that is switched reads `switched` whatever its cnf says.
 
 The accounts are the census's by name only. A control file that is there and
 not valid has three words: `not-switched control-file-invalid` here,
@@ -751,18 +828,24 @@ after `report` is a usage error there too.
 On a box armed for the broker the nightly run calls `boa-dbctl report` after
 the witness, and its lines go into that night's log between `dbctl-report:
 start` and `dbctl-report: done rc=N`. While the last line counts an account
-that is not switched (`unswitched` above 0) or a finding that stops the box
-(`stops` above 0), the same lines are mailed to the box operator, once a day,
-the way the nightly's other notices are (`_MY_EMAIL`, one mail a day per
-notice, none with `_INCIDENT_REPORT=OFF`; each night's lines also go to
-`/var/log/boa/nightly.incident.log`). The line of an account that is switched
-with nothing said of it is left out; every other line of the report is in the
-mail, its counts last, and nothing else of the box.
+the box could switch and has not (`unswitched` above 0) or a finding that
+stops the box (`stops` above 0), the box operator is mailed, once a day, the
+way the nightly's other notices are (`_MY_EMAIL`, one mail a day per notice,
+none with `_INCIDENT_REPORT=OFF`; each night's lines also go to
+`/var/log/boa/nightly.incident.log`).
 
-Nothing is mailed while every account is switched and nothing stops the box,
-for a report that fails, while the report says `not-released` (this release
-switches no account there, and no operator can), nor from a standby or a box
-being prepared as one, where the report is not asked for.
+The mail carries what an operator can act on: each `not-switched` line, each
+`box` line and the last line with its counts, and nothing else of the box.
+The lines of switched, kept-out and not-served accounts are in the night's
+log only.
+
+Nothing is mailed while every account the box could switch is switched and
+nothing stops the box: an account kept out by its cnf or not served by the
+broker causes no mail, as nothing changes that from one night to the next.
+Nor is anything mailed for a report that fails, while the report says
+`not-released` (this release switches no account there, and no operator can),
+or from a standby or a box being prepared as one, where the report is not
+asked for.
 
 ## The database count limit
 
@@ -797,8 +880,8 @@ against its version's reference. It logs in as no one and changes nothing.
 | `_DB_BROKER_BORN_SCOPED` | `/root/.barracuda.cnf` | `NO` |
 | `_DB_BROKER_ARM` | `/root/.barracuda.cnf` | `NO`: `YES` arms the box, its passes then settle it and switch each account |
 | `_DB_COUNT_MAX` | `/root/.oN.octopus.cnf` | `AUTO` (no limit) |
-| `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch, and of a pass's switch on an armed box) |
-| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a pass's switch on an armed box; `report` says `opted-out`) |
+| `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch, and of a pass's switch on an armed box; `xoct create` sets it for a moved account's install and takes it back; `report` says `kept-out _DB_BROKER_BORN=NO`) |
+| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a pass's switch on an armed box; it travels with the account in `xoct` and `xmass`; `report` says `kept-out _DB_BROKER_ARM=NO`) |
 
 `/root/.barracuda.cnf` is each box's own: set a standing pair's two boxes alike.
 
