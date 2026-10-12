@@ -1981,6 +1981,7 @@ _satellite_force_advanced_nginx_config() {
 # there (its version's global ini applies, the temp paths come from TMPDIR),
 # only the directories and the release serial's stamp.
 _satellite_update_local_dirs_cli() {
+  local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_update_local_dirs_cli"
     _debug_proc
@@ -2002,12 +2003,17 @@ _satellite_update_local_dirs_cli() {
     mkdir -p ${_U_HD}
     _U_REAL="$(cd -P -- "${_ROOT}" 2> /dev/null && pwd -P)"
     # aged out only when .tmp is the instance user's own (or the empty one just made):
-    # a root-owned directory of the tree renamed onto the name is left alone
-    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+    # a root-owned directory of the tree renamed onto the name is left alone.
+    # Only what root or the account's own identities own is removed
+    # (_satellite_aged_rm_own_here): the account can rename into .tmp what
+    # another account left group-writable, which stays whole and is counted
+    # on one NOTE line
+    _T_N=$( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
       [ "$(stat -c %U .)" = "${_USER}" ] \
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
-      find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
+      _satellite_aged_rm_own_here 0 )
+    _satellite_left_note "${_T_N}" "in place in ${_U_TP}"
     # the stamp is created exclusively, never through a link at the name
     ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       mkdir -p ./sys ./xts ./usr
@@ -5422,8 +5428,20 @@ _satellite_run_child_b() {
           ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
           ${_ROOT}/.drush/sys/provision" &> /dev/null
       fi
-      _acct_in_real_dir "${_ROOT}/.drush" rm -rf -- ./drush_make
-      _acct_in_real_dir "${_ROOT}/.drush/sys" rm -rf -- ./drush_make
+      ### drush_make, long out of the layout, is removed only where root or
+      ### the account's own identities own it (_satellite_rm_own_here): the
+      ### account can rename into .drush what another account left
+      ### group-writable. What stays joins the NOTE line after AegirSetupB.
+      _T_ACC=""
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/.drush" _satellite_rm_own_here drush_make
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
+      _T_N=$(
+        _acct_in_real_dir "${_ROOT}/.drush/sys" \
+          _satellite_rm_own_here drush_make
+      )
+      _T_ACC="${_T_ACC}${_T_N}"$'\n'
       _hostmaster_frontend_dbpass_sync
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Switching user and running AegirSetupB..."
@@ -5443,7 +5461,6 @@ _satellite_run_child_b() {
       ### into these trees what another account left group-writable. What
       ### stays another user's is counted on one NOTE line after AegirSetupB,
       ### each entry once though tools and tools/drush both meet it.
-      _T_ACC=""
       _T_N=$(
         _acct_in_real_dir "${_ROOT}/.drush" \
           _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
@@ -5533,14 +5550,12 @@ _satellite_run_child_b() {
           _satellite_reown_own_here "${_USER}:${_ACCG:-users}"
       )
       _T_ACC="${_T_ACC}${_T_N}"$'\n'
-      _T_ACC=$(printf '%s' "${_T_ACC}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-      if [ "${_T_ACC}" -gt 0 ]; then
-        _msg "${_STATUS} A: NOTE: ${_T_ACC} entries owned by another user left as they were in .drush, backups, clients, config and tools"
-      fi
+      _T_IN="as they were in .drush, backups, clients, config and tools"
       _satellite_update_drush_php_cli
       _satellite_update_local_dirs_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
         || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
+        _satellite_left_note "${_T_ACC}" "${_T_IN}"
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
@@ -5549,9 +5564,16 @@ _satellite_run_child_b() {
         ### Old hostmaster backups go to backups/system/old_hostmaster: both
         ### directories are made and handed over by root inside their real
         ### directories (backups may be a link into the account's store),
-        ### and the instance user moves its own files there.
-        _satellite_in_store_dir "${_ROOT}/backups" \
-          _satellite_sys_dir_here old_hostmaster &> /dev/null
+        ### and the instance user moves its own files there. A backups,
+        ### system or old_hostmaster another user owns keeps its owner and
+        ### mode and nothing is made in it (_satellite_sys_dir_here): the
+        ### files the instance user cannot move then stay in backups, and
+        ### the directory left joins the NOTE line.
+        _T_N=$(
+          _satellite_in_store_dir "${_ROOT}/backups" \
+            _satellite_sys_dir_here old_hostmaster 2> /dev/null
+        )
+        _satellite_left_note "${_T_ACC}${_T_N}" "${_T_IN}"
         _satellite_as_user "_d=${_ROOT}/backups/system/old_hostmaster; \
           mv -f ${_ROOT}/backups/*host8* \${_d}/; \
           mv -f ${_ROOT}/backups/*o8.io* \${_d}/; \
@@ -5580,7 +5602,7 @@ _satellite_if_create_local_bin() {
   if [ ! -d "${_L_BIN}" ]; then
     mkdir -p ${_L_BIN}
     _acct_in_real_dir "${_L_BIN}" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 700
+      "${_USER}:${_ACCG:-users}" 700 > /dev/null
   fi
   if [ ! -L "${_L_BIN}/drush" ]; then
     _acct_in_real_dir "${_L_BIN}" \
@@ -6122,6 +6144,7 @@ _satellite_if_add_ftps_lshell_access() {
 }
 
 _satellite_if_add_update_user_symlinks() {
+  local _T_N _T_DS
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_user_symlinks"
     _debug_proc
@@ -6142,16 +6165,26 @@ _satellite_if_add_update_user_symlinks() {
   ###---### Remove legacy symlinks.
   #
   ### ~/.drush is the main login's (never immutable while this runs): the
-  ### names are removed inside the real directory.
-  _acct_in_real_dir "${_USER_DS}" rm -f -- ./drush_make ./registry_rebuild \
-    ./clean_missing_modules ./drush_ecl ./make_local \
-    ./safe_cache_form_clear ./mydropwizard ./utf8mb4_convert &> /dev/null
+  ### names are removed inside the real directory, only where root or the
+  ### account's own identities own them (_satellite_unlink_own_here): the
+  ### login can rename to .drush, or into it, what another account left
+  ### group-writable. What stays joins the NOTE line below.
+  _T_DS=$(_acct_in_real_dir "${_USER_DS}" _satellite_unlink_own_here \
+    ./drush_make ./registry_rebuild ./clean_missing_modules ./drush_ecl \
+    ./make_local ./safe_cache_form_clear ./mydropwizard ./utf8mb4_convert \
+    2> /dev/null)$'\n'
 
   ###---### Add symlinks to the system drush extensions.
   #
   ### ~/.drush and ~/.drush/usr are made real directories (a link put at
   ### either name is removed first) and handed to the main login, and each
-  ### link is made, inside the real directory.
+  ### link is made, inside the real directory. A ~/.drush or a usr/ another
+  ### user owns keeps its owner and mode, and nothing is made or linked in
+  ### it; a file or a directory another user owns at a link's name in usr/
+  ### stays as it is too, and no link is made inside a directory there
+  ### (_satellite_user_ds_link_here). The login then has no link to that
+  ### extension until the entry is moved away, and the run goes on; what
+  ### stays joins the NOTE line below.
   for _dsX in registry_rebuild clean_missing_modules drupalgeddon \
     drush_ecl safe_cache_form_clear utf8mb4_convert; do
     if [ ! -L "${_USER_DS}/usr/${_dsX}" ] \
@@ -6161,10 +6194,12 @@ _satellite_if_add_update_user_symlinks() {
       fi
       [ -L "${_USER_DS}" ] && rm -f "${_USER_DS}"
       mkdir -p "${_USER_DS}"
-      _acct_in_real_dir "${_USER_DS}" \
-        _satellite_user_ds_link_here "${_dsX}" &> /dev/null
+      _T_N=$(_acct_in_real_dir "${_USER_DS}" \
+        _satellite_user_ds_link_here "${_dsX}" 2> /dev/null)
+      _T_DS="${_T_DS}${_T_N}"$'\n'
     fi
   done
+  _satellite_left_note "${_T_DS}" "in place in ${_USER_DS}"
 
   ###---### Add symlink to the clients directory.
   #
@@ -6213,8 +6248,33 @@ _satellite_rm_own_here() {
   perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${1}" 2> /dev/null
   return 0
 }
+# The names given (./name) in the current (pinned) directory removed as
+# rm -f removed them (a link as a link, never a directory), through
+# _ACCT_RM_OWN_PL: only what root or the instance's own identities own
+# (_acct_walk_uids), and nothing in a directory another user owns. Prints
+# dev:ino of each entry left for another owner, the directory itself when
+# it is another user's.
+_satellite_unlink_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null
+  return 0
+}
+# Every entry below the current (pinned) directory older than $1 days removed
+# as find -mindepth 1 -mtime +$1 -execdir rm -rf removed it, the top-level
+# dot names too, through _ACCT_RM_OWN_PL: only what root or the instance's
+# own identities own (_acct_walk_uids), never through a link, and nothing
+# below a directory another user owns. Prints dev:ino of each entry left for
+# another owner.
+_satellite_aged_rm_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o}" "${1}" 2> /dev/null
+  return 0
+}
 
 _satellite_if_add_update_user_dot_dirs() {
+  local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_user_dot_dirs"
     _debug_proc
@@ -6259,8 +6319,12 @@ _satellite_if_add_update_user_dot_dirs() {
         "${_USERFTP}:${_ACCG:-users}" &> /dev/null
     fi
   else
+    ### removed only where root or the account's own identities own it
+    ### (_satellite_rm_own_here): the login can rename to .bazaar a
+    ### directory another account left group-writable
     if [ -d "${_USER_BZR}" ]; then
-      rm -rf ${_USER_BZR}
+      _T_N=$(_acct_in_real_dir "${_USER_HD}" _satellite_rm_own_here .bazaar)
+      _satellite_left_note "${_T_N}" "in place in ${_USER_BZR}"
     fi
   fi
 
@@ -6476,6 +6540,7 @@ _satellite_pl_data_here() {
 }
 
 _satellite_if_add_update_backend_user_dirs_files_clean() {
+  local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_backend_user_dirs_files_clean"
     _debug_proc
@@ -6488,9 +6553,14 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   fi
   ### static/ is the account's and group-writable: its owner and mode are set
   ### and EMPTY.txt is put inside the real directory, never through a link
-  ### put at static or at EMPTY.txt.
-  _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
-    "${_USER}:${_ACCG:-users}" 02775 &> /dev/null
+  ### put at static or at EMPTY.txt. A directory another user owns, renamed
+  ### to static, keeps its owner and mode (_satellite_own_dir_here) and is
+  ### named on a NOTE line.
+  _T_N=$(
+    _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
+      "${_USER}:${_ACCG:-users}" 02775 2> /dev/null
+  )
+  _satellite_left_note "${_T_N}" "in place at ${_ROOT}/static"
   _acct_put_in "${_ROOT}/static" EMPTY.txt empty
 
   ###---### Create ~/.tmp dir if not exists.
@@ -6499,7 +6569,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
     _acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 02775
+      "${_USER}:${_ACCG:-users}" 02775 > /dev/null
   fi
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
@@ -6553,8 +6623,11 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
         "${_USER}:${_ACCG:-users}" &> /dev/null
     fi
   else
+    ### removed only where root or the account's own identities own it
+    ### (_satellite_rm_own_here), as in the main login's home
     if [ -d "${_SYSTEM_USER_BZR}" ]; then
-      rm -rf ${_SYSTEM_USER_BZR}
+      _T_N=$(_acct_in_real_dir "${_ROOT}" _satellite_rm_own_here .bazaar)
+      _satellite_left_note "${_T_N}" "in place in ${_SYSTEM_USER_BZR}"
     fi
   fi
 
@@ -8114,9 +8187,30 @@ _satellite_edit_all_here() (
     _satellite_copy_here "${_f#./}" "${_f#./}" "${1}"
   done
 )
-# The current (pinned) directory handed to $1 (owner:group) with the mode $2.
+# The current (pinned) directory handed to $1 (owner:group) with the mode
+# $2 (empty: its mode kept), through _SAT_REOWN_OWN_PL: only when root or
+# one of the instance's own identities (_acct_walk_uids) owns it and every
+# directory above it. The account can rename to any name in its tree a
+# directory another account left group-writable: such a directory keeps its
+# owner and mode. Prints dev:ino of the directory left for another owner;
+# status 1 when one is.
 _satellite_own_dir_here() {
-  chown -h "${1}" . && chmod "${2}" .
+  local _u _g _o
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . || return 1
+  [ -z "${2}" ] || chmod "${2}" .
+}
+# One NOTE line for what the owner-checked helpers left to another owner:
+# $1 the dev:ino lines they printed, each entry counted once though more
+# than one of them met it, $2 the end of the sentence (how and where it was
+# left). Nothing when none was left.
+_satellite_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [ "${_n}" -gt 0 ] || return 0
+  _msg "${_STATUS} A: NOTE: ${_n} entries owned by another user left ${2}"
 }
 # The link ./$1 in the current (pinned) directory handed to $2 (owner[:group]
 # names; an owner alone keeps the link's group), as chown -h handed it: made
@@ -8376,8 +8470,15 @@ _satellite_tree_mode_all_here() (
 # The current (pinned) backups directory's system/ (and system/$1 when
 # given) made where missing, handed to the instance user and set 0700,
 # each inside its real directory: the instance user moves its own old
-# backups there.
+# backups there. Only where root or the instance's own identities own the
+# directory (_satellite_own_dir_here): nothing is made in a backups or a
+# system another user owns, which is tested before the first mkdir (the
+# same walker with no owner to give changes nothing). Prints dev:ino of the
+# directory left for another owner.
 _satellite_sys_dir_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 . || return 1
   _satellite_sub_here system _satellite_own_dir_here \
     "${_USER}:${_ACCG:-users}" 0700 || return 1
   [ -z "${1}" ] || _acct_in_real_dir ./system _satellite_sub_here "${1}" \
@@ -8404,17 +8505,47 @@ _satellite_bzr_seed_here() {
 }
 # The main login's ~/.drush (the current, pinned directory) and its usr/
 # made real directories and handed to the login, ~/.drush 0700, and usr/$1
-# linked to the instance user's own copy of that drush extension: a link
-# put at usr is removed first, and usr/ is handed over from inside it (on
-# '.', once entered as the real directory), so no owner or mode is set
-# through a link or on a file put at the name.
+# linked to the instance user's own copy of that drush extension
+# (_satellite_user_ds_usr_here): a link put at usr is removed first, and
+# usr/ is entered once, as the real directory, for all that is done in it.
+# ~/.drush is handed over only where root or one of the instance's own
+# identities owns it (_satellite_own_dir_here), before anything is made in
+# it: the login can rename to .drush a directory another account left
+# group-writable, which keeps its owner and mode, with no usr/ made in it.
+# Prints dev:ino of each directory or entry left for another owner; status
+# 1 when the link was not made.
 _satellite_user_ds_link_here() {
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 || return 1
   [ -L ./usr ] && rm -f ./usr
   mkdir -p ./usr
-  chown -h "${_USERFTP}:${_ACCG:-users}" .
-  _acct_in_real_dir ./usr chown -h "${_USERFTP}:${_ACCG:-users}" .
-  chmod 700 .
-  _acct_in_real_dir ./usr ln -sfn "${_ROOT}/.drush/usr/${1}" "./${1}"
+  _acct_in_real_dir ./usr _satellite_user_ds_usr_here "${1}"
+}
+# The main login's ~/.drush/usr (the current, pinned directory) handed to
+# the login, its mode kept, and ./$1 linked to the instance user's own copy
+# of that drush extension, all from inside the one directory: its owner
+# test, the test of what holds the name and the link meet the same usr/
+# whatever is renamed onto that name meanwhile, and no owner is set through
+# a link or on a file put at it. The login can rename to usr, or to an
+# extension's name in it, what another account left group-writable. A usr/
+# another user owns keeps its owner and mode and gets no link. At the name,
+# a file or a link root or one of the instance's own identities owns is
+# removed (_satellite_unlink_own_here), a directory never, and the link is
+# made only where the name is then free (-T: never inside a directory at
+# the name, nor where a link there points), so another user's entry stays
+# as it is. Prints dev:ino of the directory or entry left for another
+# owner; status 1 when the link was not made.
+_satellite_user_ds_usr_here() {
+  local _o
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" "" || return 1
+  _satellite_unlink_own_here "./${1}"
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    # the walker with no owner to give changes nothing: it prints a
+    # directory another user owns
+    _o=$(_acct_walk_uids "${_USER}") || return 1
+    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 "./${1}"
+    return 1
+  fi
+  ln -s -T -- "${_ROOT}/.drush/usr/${1}" "./${1}"
 }
 # ./$2 in the current (pinned) directory made a link to $1 where no name
 # there resolves.
