@@ -230,16 +230,16 @@
       account chooses, could write a line of its own into the log that
       symlinkinfo reads.
 
-    * A site Verify of an account in its own web group, still switched
-      off, no longer gives that group to a site whose directory lies
-      outside the account's tree, on the shared /data/all stores or in
-      another account's tree: such a site gets www-data and the modes
-      an account without its own web group gets (one an older provision
-      copy narrowed is widened back at its next Verify), so reverting
-      the account leaves no path in a group that no longer exists. Its
-      store linked into the account's own files still takes the
-      account's group. The conversion now waits for the provision copy
-      that does this (docs/INSTGRP.md).
+    * Provision no longer gives an account's own web group, still
+      switched off, to a site whose directory lies outside the
+      account's tree (the shared /data/all stores, another account's
+      tree): an install, a deploy (Restore, Clone, Migrate) and the
+      settings writers give such a site www-data and the modes of an
+      account without its own web group, so reverting the account
+      leaves no path in a dead group. On a Verify, BOA leaves the
+      directory pass to the root site scripts, which take the group
+      from the path. The conversion waits for the provision copy that
+      does this (docs/INSTGRP.md).
 
     * instgrp takes an account's files store on attached storage
       whether root or the account owns it. migratefs keeps the owner a

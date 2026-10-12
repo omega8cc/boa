@@ -512,13 +512,16 @@ whole), a link to one of the account's top directories, or a store link
 that resolves inside its own site's directory, which the nightly takes for
 that site's store.
 
-A site Verify keeps a site whose directory lies outside the account's tree
-(on the shared `/data/all` stores, or in another account's tree) in
-`www-data` too. Provision gives each of its paths `www-data` and the modes
-it gives an account without a web group of its own, never `wg-oN`: the
-settings files, the `files` and `private` stores and what the Verify makes
-below them. A deploy (Restore, Clone, Migrate) and the Backdrop, Grav and
-Textpattern writers do the same.
+Provision keeps a site whose directory lies outside the account's tree (on
+the shared `/data/all` stores, or in another account's tree) in `www-data`
+too. Wherever it sets a group or a group-keyed mode on such a site, it gives
+`www-data` and the modes it gives an account without a web group of its
+own, never `wg-oN`: its directory pass at an install and a deploy (Restore,
+Clone, Migrate), the settings writers, and the Backdrop, Grav and
+Textpattern writers.
+
+On a Verify, BOA leaves the directory pass to the root site scripts, which
+take the group from the path and leave a site outside the account alone.
 
 A path is outside when its real place, all links followed, is neither in
 the account's home nor in its store on attached storage. A store of such a
@@ -527,10 +530,9 @@ is inside, so it takes `wg-oN` as every store of the account does, and
 `webrevert` walks it with the rest of the account: no path of such a site
 is left in a group that no longer exists.
 
-A provision copy older than this gave such a site `wg-oN` on a Verify: that
-site keeps it until its next Verify, or, on the shared stores, until the
-nightly gives it `www-data` back. This is why the readiness check asks for
-the copy that carries `provision_path_web_group`.
+A provision copy older than this gives such a site `wg-oN` wherever it sets
+a group. This is why the readiness check asks for the copy that carries
+`provision_path_web_group`: no account converts before its copy does this.
 
 - `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
   account to phase A, exit 0. The account's notes
