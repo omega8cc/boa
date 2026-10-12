@@ -3785,6 +3785,49 @@ _row_login() {
   return "${_res}"
 }
 
+# The same proof for a row settle may drop, made with one try at most: the
+# first transport that reaches the row decides. A password the server
+# refuses is refused over every transport, and a second try would only add
+# a failed login to a row that may be someone's. Only the socket, the
+# loopback addresses and the addresses the box holds are used (_held_ip),
+# never the address the cnf names when the box does not hold it: another
+# server can answer there, and its answer says nothing about this one's
+# row. 0 proven, 1 refused, 2 no login of this box reaches the row, 4 each
+# login opened another row of the user.
+_row_login_held() {
+  local _u="${1}" _h="${2}" _t _cu _rc _res=2 _ip
+  local -a _tr=()
+  case "${_h}" in
+    localhost) _tr=(socket) ;;
+    127.0.0.1|::1) _tr=("tcp:${_h}") ;;
+    %)
+      _tr=(tcp:127.0.0.1)
+      while IFS= read -r _ip; do
+        [[ -n "${_ip}" ]] && _tr+=("tcp:${_ip}")
+      done <<< "${_OWN_HELD}"
+      ;;
+    *)
+      _held_ip "${_h}" || return 2
+      _tr=("tcp:${_h}")
+      ;;
+  esac
+  for _t in "${_tr[@]}"; do
+    _cu=$(_login_cu "${3}" "${_t}")
+    _rc=$?
+    case "${_rc}" in
+      0)
+        [[ "${_cu}" == "${_u}@${_h}" ]] && return 0
+        # it opened another row of the user: nothing was refused, and
+        # nothing is known of this row yet
+        _res=4
+        ;;
+      2) ;;
+      *) return 1 ;;
+    esac
+  done
+  return "${_res}"
+}
+
 # What the accounts and the master keep on disk, once per call: every live
 # account, its panel and site records, the master's panel, the purged
 # accounts; and from the server every schema and registry entry.
@@ -5280,49 +5323,13 @@ _show_create() {
   return 0
 }
 
-# The credential the parked home of each purged account records for the
-# rows settle may drop: its instance user's from its server alias, its last
-# panel user's as _leftovers_build read it. Read before the lock (a parked
-# tarball is read slowly) and kept in memory only: _ST_CK holds "<kind>
-# <account> <user>", _ST_CP the password at the same place.
-_settle_creds_read() {
-  local _l _uh _u _o _kd _i _seen=$'\n'
-  _ST_CK=()
-  _ST_CP=()
-  while IFS= read -r _l; do
-    [[ -n "${_l}" ]] || continue
-    _uh="${_l#A }"
-    _uh="${_uh%% *}"
-    _u="${_uh%@*}"
-    _o="${_l#* account=}"
-    _kd="${_o#* }"
-    _kd="${_kd%% *}"
-    _o="${_o%% *}"
-    [[ "${_seen}" == *$'\n'"${_kd} ${_o} ${_u}"$'\n'* ]] && continue
-    _seen="${_seen}${_kd} ${_o} ${_u}"$'\n'
-    case "${_kd}" in
-      instance)
-        [[ "${_u}" == "${_o}" ]] || continue
-        _zombie_inst "${_o}" || continue
-        _ST_CK+=("${_kd} ${_o} ${_u}")
-        _ST_CP+=("${_PW}")
-        _PW=""
-        ;;
-      panel)
-        for (( _i = 0; _i < ${#_LO_ZK[@]}; _i++ )); do
-          [[ "${_LO_ZK[${_i}]}" == "${_o} ${_u}" && -n "${_LO_ZP[${_i}]}" ]] || continue
-          _ST_CK+=("${_kd} ${_o} ${_u}")
-          _ST_CP+=("${_LO_ZP[${_i}]}")
-          break
-        done
-        ;;
-    esac
-  done <<< "${_LO_A}"
-  return 0
-}
-
-# The password read for the login $3 of the purged account $2 (kind $1),
-# into _PW; 1 when its parked home gave none.
+# The password the parked home of the purged account $2 records for its
+# login $3 (kind $1), into _PW: its instance user's from the server alias
+# in the parked tarball, read when a row first needs it and once per run
+# (a parked tarball is read slowly); its last panel user's as
+# _leftovers_build read it. Kept in memory only: _ST_CK holds "<kind>
+# <account> <user>", _ST_CP the password at the same place, empty when the
+# parked home gave none. 1 then.
 _settle_cred() {
   local _i
   _PW=""
@@ -5332,7 +5339,155 @@ _settle_cred() {
     [[ -n "${_PW}" ]]
     return
   done
-  return 1
+  case "${1}" in
+    instance)
+      if [[ "${3}" != "${2}" ]] || ! _zombie_inst "${2}"; then
+        _PW=""
+      fi
+      ;;
+    panel)
+      for (( _i = 0; _i < ${#_LO_ZK[@]}; _i++ )); do
+        [[ "${_LO_ZK[${_i}]}" == "${2} ${3}" ]] || continue
+        _PW="${_LO_ZP[${_i}]}"
+        break
+      done
+      ;;
+  esac
+  _ST_CK+=("${1} ${2} ${3}")
+  _ST_CP+=("${_PW}")
+  [[ -n "${_PW}" ]]
+}
+
+# True when the row whose hex user and host are $1 and $2 carries a
+# failed-login limit of its own (8.x keeps it in the row's attributes): a
+# login tried on it and refused would count against it, and the row may be
+# someone's. Anything but a plain no reads as such a limit. 5.7 has none.
+_settle_flim() {
+  [[ "${_SRV_8}" == "YES" ]] || return 1
+  _sql_or_die "SELECT /*q:flim*/ IF(JSON_CONTAINS_PATH(IFNULL(User_attributes, '{}'), 'one', '\$.Password_locking'), 'Y', 'N') FROM mysql.user WHERE HEX(User) = '${1}' AND HEX(Host) = '${2}'" flim
+  [[ "${_SQL_OUT}" != "N" ]]
+}
+
+# The tests of a purged account's row that cost one query at most, in the
+# order their reasons are given: $1 its user, $2 its host, $3 the account,
+# $4 and $5 the hex of the first two. 0 when each holds, with the row's
+# signature in _ST_SIG; 1 with the reason in _ST_WHY; 2 when the row is no
+# longer there. Asked twice of a row settle drops: before the lock, so that
+# no login is tried on a row that stays anyway and no parked tarball is
+# read for it, and again under the lock, where the reasons are given.
+_settle_row_tests() {
+  _ST_WHY=""
+  if [[ ! -d "${_ZOMBIE}/${3}" || -L "${_ZOMBIE}/${3}" ]]; then
+    _ST_WHY="the purge of ${3} parked no home: its login is not dropped on root's record alone"
+    return 1
+  fi
+  if [[ -e "${_RHOME}/.${3}.octopus.cnf" || -L "${_RHOME}/.${3}.octopus.cnf" ]]; then
+    _ST_WHY="a root cnf of ${3} is there: a later account of the name, or a half state"
+    return 1
+  fi
+  if ! _settle_purge_time "${3}"; then
+    _ST_WHY="the time of the purge of ${3} cannot be read from its parked home"
+    return 1
+  fi
+  _settle_plc "${4}" "${5}" "${_ST_PT}"
+  [[ "${_ST_ROW}" == "YES" ]] || return 2
+  # the time test goes by every row of the user: one row set since the
+  # purge, and the name is in use, whichever row is at hand
+  if [[ -z "${_ST_PLC}" || "${_ST_NULL}" -gt 0 ]]; then
+    _ST_WHY="the server keeps no time of the last password change of each row of this user"
+    return 1
+  fi
+  if [[ "${_ST_LATER}" -gt 0 ]]; then
+    _ST_WHY="the password of a row of this user was set after the purge of ${3}: something made since uses the name"
+    return 1
+  fi
+  if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
+    _ST_WHY="${_ST_DEFS_WHY}: nothing is dropped on a guess"
+    return 1
+  fi
+  if _settle_defines "${1}" "${2}"; then
+    _ST_WHY="it defines ${_ST_OBJ}: a drop would leave that without its definer"
+    return 1
+  fi
+  return 0
+}
+
+# The proof of each row 3 may drop, made before the lock is taken (a login
+# can take seconds): once per row and run, and only for a row every other
+# test lets go and that carries no failed-login limit of its own. Keeps
+# "<user>@<host> <answer> <signature>" lines in _ST_PR: the signature is
+# the row's as it was when the proof was made, and 3 drops only a row that
+# still reads so under the lock.
+_settle_proofs() {
+  local _l _uh _u _h _o _kd _ux _hx _v _sig
+  _ST_PR=$'\n'
+  _ST_CK=()
+  _ST_CP=()
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    _uh="${_l#A }"
+    _uh="${_uh%% *}"
+    _u="${_uh%@*}"
+    _h="${_uh##*@}"
+    _o="${_l#* account=}"
+    _kd="${_o#* }"
+    _kd="${_kd%% *}"
+    _o="${_o%% *}"
+    case "${_kd}" in
+      instance|panel) ;;
+      *) continue ;;
+    esac
+    _ux=$(_hex "${_u}")
+    _hx=$(_hex "${_h}")
+    _settle_row_tests "${_u}" "${_h}" "${_o}" "${_ux}" "${_hx}" || continue
+    _sig="${_ST_SIG}"
+    if _settle_flim "${_ux}" "${_hx}"; then
+      _v="limit"
+    elif ! _settle_cred "${_kd}" "${_o}" "${_u}"; then
+      _v="nocred"
+    elif ! _proof_cnf "${_u}"; then
+      _v="ctl"
+    else
+      _row_login_held "${_u}" "${_h}" "${_PCNF}"
+      case "$?" in
+        0) _v="ok" ;;
+        2) _v="unreach" ;;
+        4) _v="elsewhere" ;;
+        *) _v="refused" ;;
+      esac
+    fi
+    _PW=""
+    _ST_PR="${_ST_PR}${_uh} ${_v} ${_sig}"$'\n'
+  done <<< "${_LO_A}"
+  return 0
+}
+
+# The answer of that proof for the login $1 into _ST_PV, with the signature
+# the row had then in _ST_PS; both empty when no proof of it was made (a
+# test that left it then holds now, or the row is new).
+_settle_proof_of() {
+  local _r
+  _ST_PV=""
+  _ST_PS=""
+  [[ "${_ST_PR}" == *$'\n'"${1} "* ]] || return 1
+  _r="${_ST_PR#*$'\n'"${1} "}"
+  _r="${_r%%$'\n'*}"
+  _ST_PV="${_r%% *}"
+  _ST_PS="${_r#* }"
+  return 0
+}
+
+# Why a row whose proof answered $1 is left ($2 its account), into _ST_WHY.
+_settle_proof_why() {
+  case "${1}" in
+    limit) _ST_WHY="it carries a failed-login limit of its own: no login is tried on it" ;;
+    nocred) _ST_WHY="the parked home of ${2} holds no credential of it that can be read" ;;
+    ctl) _ST_WHY="the password ${2} recorded for it holds a control character: no login is tried with it" ;;
+    unreach) _ST_WHY="no login of this box reaches the row, so the credential ${2} recorded cannot be tried on it" ;;
+    elsewhere) _ST_WHY="each login with the credential ${2} recorded opens another row of its user, never this one" ;;
+    refused) _ST_WHY="the credential ${2} recorded does not open it: it is someone else's by now" ;;
+    *) _ST_WHY="it changed while this ran" ;;
+  esac
 }
 
 # Where a switch is refused, settle is, in a switch's own code and words: on
@@ -5377,8 +5532,12 @@ _settle_gate() {
 #      only while the account's purge parked its home, no root cnf of the
 #      account is there, no row of its user had its password set after
 #      the purge, the row defines no stored object, and the credential the
-#      parked home records for it opens that very row. A purged account's
-#      site users are left to "leftovers drop"
+#      parked home records for it opens that very row. That credential is
+#      tried before the lock, once per row and run, over the socket, a
+#      loopback address or an address the box holds, and never on a row
+#      another of these tests leaves or that carries a failed-login limit
+#      of its own; the row must read under the lock as it did when it was
+#      tried. A purged account's site users are left to "leftovers drop"
 # It is refused where a switch is (_settle_gate), at its start and again
 # once it holds the baseline lock.
 # Never touched in 2 either: a name two accounts' records claim, and every
@@ -5395,12 +5554,13 @@ _v_baseline_settle() {
   _settle_gate
   _ST_LEFT=$'\n'
   # Everything slow is read before the lock is taken, as leftovers drop
-  # reads its list: the login proofs, the standby's answer and the parked
-  # homes. A root tool that records its own row again waits for this lock
-  # for a minute at most. What a write depends on is read again under it.
+  # reads its list: the login proofs (those of the rows 3 may drop too),
+  # the standby's answer and the parked homes. A root tool that records
+  # its own row again waits for this lock for a minute at most. What a
+  # write depends on is read again under it.
   _leftovers_build
-  _settle_creds_read
   _settle_defs_read
+  _settle_proofs
   _pins=$'\n'"${_AL_PINS}"
   _base_lock
   # The reads above can take minutes. A standby marker, a standby in the
@@ -5528,14 +5688,15 @@ _v_baseline_settle() {
   # one set since, and the name is in use by something made since, another
   # box's account of the name served from here included, whichever row is
   # at hand. It defines no stored object: the drop would leave that
-  # without its definer. The credential the parked
-  # home records for it opens that very row, proven as a live account's
-  # login is: the times only order what happened on one server, and a box
-  # seeded from another server's data can hold a park younger than rows
-  # another box's account still uses. Its grants and its CREATE USER line
-  # are saved first, so a wrong drop can be put back. A purged account's
-  # site users are never dropped here: the parked home proves none of
-  # them, and the operator's verb keeps them, with its list and its hash.
+  # without its definer. The credential the parked home records for it
+  # opens that very row (_settle_proofs: made before the lock, the row
+  # read again under it and unchanged since): the times only order what
+  # happened on one server, and a box seeded from another server's data
+  # can hold a park younger than rows another box's account still uses.
+  # Its grants and its CREATE USER line are saved first, so a wrong drop
+  # can be put back. A purged account's site users are never dropped
+  # here: the parked home proves none of them, and the operator's verb
+  # keeps them, with its list and its hash.
   while IFS= read -r _l; do
     [[ -n "${_l}" ]] || continue
     _uh="${_l#A }"
@@ -5557,64 +5718,33 @@ _v_baseline_settle() {
         continue
         ;;
     esac
-    if [[ ! -d "${_ZOMBIE}/${_o}" || -L "${_ZOMBIE}/${_o}" ]]; then
-      _settle_note "${_uh}" "${_c}" "the purge of ${_o} parked no home: its login is not dropped on root's record alone"
-      continue
-    fi
-    if [[ -e "${_RHOME}/.${_o}.octopus.cnf" || -L "${_RHOME}/.${_o}.octopus.cnf" ]]; then
-      _settle_note "${_uh}" "${_c}" "a root cnf of ${_o} is there: a later account of the name, or a half state"
-      continue
-    fi
-    if ! _settle_purge_time "${_o}"; then
-      _settle_note "${_uh}" "${_c}" "the time of the purge of ${_o} cannot be read from its parked home"
-      continue
-    fi
-    _settle_plc "${_ux}" "${_hx}" "${_ST_PT}"
-    # gone since the list was read: the box is read again below, so the
-    # last lines do not count a row that is no longer there
-    if [[ "${_ST_ROW}" != "YES" ]]; then
-      _stale=1
-      continue
-    fi
-    # the time test goes by every row of the user: one row set since the
-    # purge, and the name is in use, whichever row is at hand
-    if [[ -z "${_ST_PLC}" || "${_ST_NULL}" -gt 0 ]]; then
-      _settle_note "${_uh}" "${_c}" "the server keeps no time of the last password change of each row of this user"
-      continue
-    fi
-    if [[ "${_ST_LATER}" -gt 0 ]]; then
-      _settle_note "${_uh}" "${_c}" "the password of a row of this user was set after the purge of ${_o}: something made since uses the name"
-      continue
-    fi
-    _k="${_ST_SIG}"
-    if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
-      _settle_note "${_uh}" "${_c}" "${_ST_DEFS_WHY}: nothing is dropped on a guess"
-      continue
-    fi
-    if _settle_defines "${_u}" "${_h}"; then
-      _settle_note "${_uh}" "${_c}" "it defines ${_ST_OBJ}: a drop would leave that without its definer"
-      continue
-    fi
-    if ! _settle_cred "${_kd}" "${_o}" "${_u}"; then
-      _settle_note "${_uh}" "${_c}" "the parked home of ${_o} holds no credential of it that can be read"
-      continue
-    fi
-    if ! _proof_cnf "${_u}"; then
-      _settle_note "${_uh}" "${_c}" "the password ${_o} recorded for it holds a control character: no login is tried with it"
-      continue
-    fi
-    _row_login "${_u}" "${_h}" "${_PCNF}"
+    _settle_row_tests "${_u}" "${_h}" "${_o}" "${_ux}" "${_hx}"
     case "$?" in
       0) ;;
       2)
-        _settle_note "${_uh}" "${_c}" "no login of this box reaches the row, so the credential ${_o} recorded cannot be tried on it"
+        # gone since the list was read: the box is read again below, so
+        # the last lines do not count a row that is no longer there
+        _stale=1
         continue
         ;;
       *)
-        _settle_note "${_uh}" "${_c}" "the credential ${_o} recorded does not open it: it is someone else's by now"
+        _settle_note "${_uh}" "${_c}" "${_ST_WHY}"
         continue
         ;;
     esac
+    _k="${_ST_SIG}"
+    # the proof made before the lock: its answer, and the row as it was
+    # then, which it must still be
+    _settle_proof_of "${_uh}"
+    if [[ "${_ST_PV}" != "ok" ]]; then
+      _settle_proof_why "${_ST_PV}" "${_o}"
+      _settle_note "${_uh}" "${_c}" "${_ST_WHY}"
+      continue
+    fi
+    if [[ "${_ST_PS}" != "${_k}" ]]; then
+      _settle_note "${_uh}" "${_c}" "it changed while this ran"
+      continue
+    fi
     if ! _show_create "${_u}" "${_h}" || ! _save_grants "${_ux}" "${_hx}" replay "${_SC}"; then
       _bad=$(( _bad + 1 ))
       _alrt "${_u}@${_h}: its grants and its row could not be saved, so it is not dropped"
