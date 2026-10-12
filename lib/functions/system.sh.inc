@@ -2101,7 +2101,10 @@ _tune_memory_limits() {
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       wait
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
+      ### The same line BOA.sh.txt's _fix_start_stop_ports_solr keeps: a core
+      ### on Solr's stock configset guesses no field types, so a site cannot
+      ### index before its own configuration is uploaded.
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr9.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
@@ -2124,7 +2127,7 @@ _tune_memory_limits() {
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       wait
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr7.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
