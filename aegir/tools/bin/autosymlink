@@ -2334,20 +2334,29 @@ _UNSHARE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_
 
 _unshare_closed_ex() {
   # The files the account (uid $1, gid $2) cannot read, and the directories
-  # it can neither read nor enter, of source store $3, as that account sees
-  # them (setpriv with its own groups; find never follows a link: the copy
-  # keeps a link as a link and skips specials, so neither counts). Each
-  # must be the store owner's private set (_UNSHARE_DENIED_RE matched
-  # case-insensitively, or ./private as the fixers' -path takes it, case
-  # and all, or an entry below either, as the fixers close the whole of
-  # each), plainly named: the copy then leaves it out (an anchored
-  # exclude in _UNSHARE_EX), and logs it. A store whose owner converted to
-  # its own web group closes exactly these to other accounts, and the site
-  # never served them. Any other closed entry, or more than 200, and
-  # nothing is copied (status 1).
+  # it cannot read or cannot enter, of source store $3 (type $4: files or
+  # private), as that account sees them (setpriv with its own groups; find
+  # never follows a link: the copy keeps a link as a link and skips
+  # specials, so neither counts). A store the account cannot read or cannot
+  # enter as a whole (a private store, once its owner runs in its own web
+  # group) is named, and nothing is copied. Only a files store leaves an
+  # entry out (the fixers close the whole of a private store, so any closed
+  # entry there stops the copy): each must be the store owner's private set
+  # (_UNSHARE_DENIED_RE matched case-insensitively, or ./private as the
+  # fixers' -path takes it, case and all, or an entry below either, as the
+  # fixers close the whole of each), plainly named: the copy then leaves it
+  # out (an anchored exclude in _UNSHARE_EX), and logs it. A store whose
+  # owner converted to its own web group closes exactly these to other
+  # accounts, and the site never served them. Any other closed entry, or
+  # more than 200, and nothing is copied (status 1).
   local _p _r _l _n=0 _who
   _who=$(id -nu "${1}" 2>/dev/null)
   _UNSHARE_EX=()
+  if ! setpriv --reuid="${1}" --regid="${2}" --init-groups \
+    test -r "${3%/}/" -a -x "${3%/}/" 2>/dev/null; then
+    _log "[ERROR] Un-share copy: the ${4} store $(_log_name "${3%/}") is closed to ${_who} as a whole; nothing copied"
+    return 1
+  fi
   while IFS= read -r -d '' _p; do
     _r="${_p#"${3%/}"/}"
     [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
@@ -2355,6 +2364,10 @@ _unshare_closed_ex() {
     case "${_r}" in
       ownership-fixed-*.pid|permissions-fixed-*.pid) continue ;;
     esac
+    if [ "${4}" != "files" ]; then
+      _log "[ERROR] Un-share copy: $(_log_name "${_r}") of the ${4} store is closed to ${_who}; nothing copied"
+      return 1
+    fi
     _l=$(printf '%s' "./${_r}" | tr 'A-Z' 'a-z')
     if [[ ! "${_r}" =~ ^[A-Za-z0-9._/-]+$ ]] \
       || { [[ "${_r}" != private && "${_r}" != private/* ]] \
@@ -2483,7 +2496,7 @@ _unshare_copy() {
         exec 9<&-
       else
         # what of another account's store is closed to this one
-        _unshare_closed_ex "${_uid}" "${_gid}" "${_src}" || exit 1
+        _unshare_closed_ex "${_uid}" "${_gid}" "${_src}" "${_type}" || exit 1
         setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
           rsync "${_UNSHARE_RSYNC_ARGS[@]}" ${_UNSHARE_EX[@]+"${_UNSHARE_EX[@]}"} \
           -- "${_src}/" "./${_type}/" >&2 || exit 1
