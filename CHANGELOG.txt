@@ -241,15 +241,22 @@
       from the path. The conversion waits for the provision copy that
       does this (docs/INSTGRP.md).
 
-    * instgrp takes an account's files store on attached storage
-      whether root or the account owns it. migratefs keeps the owner a
-      store had in the account's home, which is root's, so such a store
-      was left out of the per-instance group's walks and of the web
-      group's (still switched off), while the nightly and the site
-      scripts take it as the account's. The web group's revert also
-      walks and checks the stores of the account's sites there when the
-      box has no single mount point under /mnt, and a site dir inside
-      the store is the account's own (docs/INSTGRP.md).
+    * The web group's revert walks an account's files store on attached
+      storage back to www-data, and checks it before it removes the
+      group, when root owns the store, as migratefs leaves the one BOA
+      made in the account's home. The conversion is still switched off;
+      the per-instance group's walks take that store only when the
+      account owns it, as before (docs/INSTGRP.md).
+
+    * The web group's revert also walks and checks the files and
+      private stores of the account's sites on attached storage when
+      the box has no single mount point under /mnt, so none of them
+      keeps a group that no longer exists (docs/INSTGRP.md).
+
+    * A site dir inside the account's files store on attached storage,
+      owned by root or by the account, counts as the account's own for
+      the web group conversion, still switched off, not as a site
+      outside the account that holds its phase B (docs/INSTGRP.md).
 
 @=> Improvements
 

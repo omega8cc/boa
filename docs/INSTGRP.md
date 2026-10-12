@@ -484,7 +484,9 @@ stands:
 - a site of the account reading another account's files store (an outbound
   share);
 - a site on the shared `/data/all` stores;
-- any other site whose directory lies outside the account's tree;
+- any other site whose directory lies outside the account's tree (a site
+  dir inside the account's store on attached storage, whether root or the
+  account owns that store, is the account's own);
 - a site's `files` or `private` store outside the account's own places.
 
 A store is the account's own only as a real directory of the site, or as a
@@ -601,6 +603,11 @@ whatever the reading account's own state.
   then the group removed. It writes the opt-out first (over a pin), so the
   arm does not convert the account again; `--keep-enabled` writes none and
   keeps a pin.
+- Beyond the account's roots, `webrevert` walks back its store on attached
+  storage when root owns it (as migratefs leaves the one BOA made in the
+  home; the roots take it when the account owns it), and the stores of the
+  account's sites there when the box has no single mount point under
+  `/mnt`. The group goes only once none of them carries it.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
