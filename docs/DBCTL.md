@@ -688,8 +688,10 @@ pass started by hand from the pass script itself, with no launcher, gets the
 same NOTE.
 
 Where the box also switches new accounts (`_DB_BROKER_BORN_SCOPED=YES`), an
-install makes the new account's switch first, as described above, and the
-pass's switch then answers `already`.
+install makes the new account's switch first, as described above. The pass's
+switch then answers `already`; where the first was refused, it is the one
+that switches the account once the settle between the two has cleared what
+stood in the way, or it is refused in its turn, with a NOTE.
 
 In this release no pass writes the setting, and the broker still refuses
 outside a test server with the marker: on a box an operator arms today each
