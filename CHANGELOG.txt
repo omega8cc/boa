@@ -236,9 +236,9 @@
       tree): an install, a deploy (Restore, Clone, Migrate) and the
       settings writers give such a site www-data and the modes of an
       account without its own web group, so reverting the account
-      leaves no path in a dead group. On a Verify, BOA leaves the
-      directory pass to the root site scripts, which take the group
-      from the path (docs/INSTGRP.md).
+      leaves no path of such a site in a dead group. On a Verify, BOA
+      leaves the directory pass to the root site scripts, which take
+      the group from the path (docs/INSTGRP.md).
 
     * The web group conversion, still switched off, refuses an account
       whose provision copy does not keep a site outside the account in
