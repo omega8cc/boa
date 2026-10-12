@@ -114,7 +114,7 @@ owner differs from its target's:
   leads out of that account, which is exactly what the check is there to
   refuse. Either is refused once the check is on, for that account only.
   A link leading out says where it leads: into the shared store, or into
-  another account's tree (a share between two accounts).
+  another account's tree or to its files (a share between two accounts).
 - `NOTE` names a configuration file that sets `disable_symlinks` itself; a
   server or location that sets it overrides the box-wide setting there.
 
@@ -136,34 +136,46 @@ is listed (unless `_INCIDENT_REPORT=OFF`), and logs it in
 ## The nightly count
 
 Every night, on every system whether it is armed or not, the nightly
-maintenance runs `linkguard count` as its last step. It walks what Nginx
-serves the way the scan does, at the lowest CPU and disk priority, and
-appends one dated line to `/var/log/boa/linkguard/count.log`. It changes
-nothing: no link is fixed, the check is not switched, no mail is sent, the
-scan's report is left as it is, and Nginx is only asked for its
-configuration (`nginx -T`). A count stops after an hour; its line then says
-`result=deadline complete=0`.
+maintenance starts `linkguard count` once its account steps are done, and
+does not wait for it. It walks what Nginx serves the way the scan does, at
+the lowest CPU and disk priority, and appends one dated line to
+`/var/log/boa/linkguard/count.log`. It changes nothing: no link is fixed,
+the check is not switched, no mail is sent, the scan's report is left as it
+is, and Nginx is only asked for its configuration (`nginx -T`).
 
-A line counts the links whose owner differs from their target's, by kind:
+A count stops after an hour; its line then says `result=deadline
+complete=0`. Only one count runs at a time, and it holds up no other
+linkguard run; a count that waited a minute for another one says
+`result=busy`.
+
+A line counts the links whose owner differs from their target's, by kind.
+Where the target is decides between the kinds that say "in" and "out":
 
 | key | class | the link |
 |---|---|---|
-| `root-out` | BLOCKING | root's, in an account's tree, leading out of that account |
+| `root-out` | BLOCKING | root's, in an account's tree, to a file outside that tree |
 | `system-in` | BLOCKING | a system user's or an unknown user's, in an account's tree |
 | `share` | REFUSED | an account's, into another account's tree or to its files |
 | `store` | REFUSED | an account's, into the shared store at a place BOA does not link |
+| `root-in` | BLOCKING | root's, in an account's tree, to a file there none of its identities owns |
 | `root` | BLOCKING | root's, outside any account's tree |
 | `system` | BLOCKING | a system user's or an unknown user's, outside any account's tree |
-| `boa` | BLOCKING | a BOA link at a BOA place that could not be made root's |
-| `inside` | REFUSED | inside one account, not its target owner's |
+| `boa` | BLOCKING | a BOA link at a BOA place that `linkguard fix` cannot make root's |
+| `boa-fix` | | a BOA link at a BOA place that is not root's yet, and that `apply` makes root's before it switches the check on |
+| `inside` | REFUSED | inside one account, not its target owner's (`fix` makes it so where it can) |
+| `in-other` | REFUSED | an account's, to a file in its own tree none of its identities owns |
 | `out` | REFUSED | an account's, leading anywhere else out of it |
 
-followed by the totals (`blocking`, `refused`), whether the walk finished
-(`complete`), what it walked (`roots`, `missing`, `entries`, `unwalked`) and
-how long it took (`secs`). `state` and `armed` say whether the check was on
-and the system armed; on an armed system the count comes after the night's
-`apply`, so it counts what that left. A night that could not count says why
-instead (`result=busy`, `result=no-nginx-config`, `result=no-scan`).
+On a system never armed nothing has made BOA's own links root's, so most of
+them show up as `boa-fix`. After the kinds come the totals: `blocking`, the
+links that would still keep the check off once `apply` has made BOA's links
+root's (`boa-fix` is not in it), and `refused`; then whether the walk
+finished (`complete`), what it walked (`roots`, `missing`, `entries`,
+`unwalked`) and how long it took (`secs`). `state` and `armed` say whether
+the check was on and the system armed; on an armed system the count runs
+after the night's `apply`, so it counts what that left. A night that could
+not count says why instead (`result=busy`, `result=no-nginx-config`,
+`result=no-scan`).
 
 ```
 tail -n 7 /var/log/boa/linkguard/count.log   # the last week
