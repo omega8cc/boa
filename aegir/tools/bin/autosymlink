@@ -2327,8 +2327,9 @@ _rm_tree_as_here() {
 
 # The store paths nginx never serves, as the site fixers prune them
 # (fix-drupal-site-permissions.sh: _SITE_DENIED_RE, matched
-# case-insensitively, and ./private): the store owner's private set, which
-# its own web group closes to every other account.
+# case-insensitively, and ./private), and everything below them, as the
+# fixers close them: the store owner's private set, which its own web group
+# closes to every other account.
 _UNSHARE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
 
 _unshare_closed_ex() {
@@ -2338,7 +2339,8 @@ _unshare_closed_ex() {
   # keeps a link as a link and skips specials, so neither counts). Each
   # must be the store owner's private set (_UNSHARE_DENIED_RE matched
   # case-insensitively, or ./private as the fixers' -path takes it, case
-  # and all), plainly named: the copy then leaves it out (an anchored
+  # and all, or an entry below either, as the fixers close the whole of
+  # each), plainly named: the copy then leaves it out (an anchored
   # exclude in _UNSHARE_EX), and logs it. A store whose owner converted to
   # its own web group closes exactly these to other accounts, and the site
   # never served them. Any other closed entry, or more than 200, and
@@ -2355,7 +2357,8 @@ _unshare_closed_ex() {
     esac
     _l=$(printf '%s' "./${_r}" | tr 'A-Z' 'a-z')
     if [[ ! "${_r}" =~ ^[A-Za-z0-9._/-]+$ ]] \
-      || { [ "./${_r}" != "./private" ] && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})$ ]]; }; then
+      || { [[ "${_r}" != private && "${_r}" != private/* ]] \
+        && [[ ! "${_l}" =~ ^(${_UNSHARE_DENIED_RE})(/.*)?$ ]]; }; then
       _log "[ERROR] Un-share copy: $(_log_name "${_r}") is closed to ${_who} and is not the store owner's private set; nothing copied"
       return 1
     fi
