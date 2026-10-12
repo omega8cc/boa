@@ -108,7 +108,7 @@ owner differs from its target's:
   of a user that no longer exists, or a BOA link at one of the places BOA
   itself makes them that could not be made root's (something on its way
   into the shared store is not root's alone). Turning the check on would
-  break each of these, and none is something an account can make.
+  break each of these; a link inside one account is never among them.
 - `REFUSED` never keeps it off: a link inside one account that is not its
   target owner's and could not be made so, or a link an account made that
   leads out of that account, which is exactly what the check is there to
@@ -117,7 +117,15 @@ owner differs from its target's:
   server or location that sets it overrides the box-wide setting there.
 
 The check also stays off while a scan could not finish: the report's third
-line then says `complete=0`, and `apply` says `reason=incomplete`.
+line then says `complete=0`, and `apply` says `reason=incomplete`. Directories
+reached only through an account's own links never cause that: past the walk's
+bound they are left out and counted in a `NOTE` line.
+
+An account's tree is `/data/disk/<account>`, its files store on attached
+storage (`/mnt/<mount>/files/<account>/static/files`) and the home of each of
+its logins. Root's own links in a login's home (`static`, `backups`,
+`clients`) are left as they are; reached through a link the account made to
+that home they are refused, and never keep the check off.
 
 The nightly mails the operator once a day while anything blocking or refused
 is listed (unless `_INCIDENT_REPORT=OFF`), and logs it in
@@ -134,8 +142,9 @@ grep -c '^BLOCKING' /var/log/boa/linkguard.report.txt
 A system stays off while the report lists anything `BLOCKING`. Remove or
 replace each such link, or make its owner match its target's, and the next
 barracuda pass or night switches the check on. It also stays off, with
-`reason=no-heal`, on a system where `setpriv` cannot make a link as another
-user at all: every link inside an account would then be refused.
+`reason=no-heal`, when a link inside an account could not be made and a test
+then shows that `setpriv` cannot make a link as another user on this system
+at all: every such link would be refused.
 
 ## What it does not change
 
