@@ -307,6 +307,16 @@ _night_link_count() {
   return 0
 }
 
+### An account pass that never ends would hold its fan-out slot (or the
+### serial loop) into the next night. Bound it, say so, move on: the whole
+### process group gets the signal, the account's night marker is released
+### (the ltd worker tests the marker's pid anyway), and the ltd worker
+### re-asserts the account's locks on its next tick. _NIGHT_ACCOUNT_MAX is
+### seconds in /root/.barracuda.cnf; 0 disables the bound; anything that is
+### not a whole number, or a non-zero value under five minutes, is ignored
+### for the default with a notice, never turned into a tiny bound. While the
+### pass runs, the nightly's own marker is kept fresh so clear.sh's age
+### sweep never removes it from under a live nightly.
 _night_account_run() {
   local _usr="$1" _rc _max _job
   _max="${_NIGHT_ACCOUNT_MAX:-21600}"

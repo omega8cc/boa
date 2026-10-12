@@ -58,7 +58,8 @@ _LG_REPORT="/var/log/boa/linkguard.report.txt"
 _LG_RUN_LOCK="/run/linkguard.lock"
 _LG_COUNT_LOG="/var/log/boa/linkguard/count.log"
 _LG_COUNT_LOCK="/run/linkguard.count.lock"
-# The kinds a count line carries, in its order (the walk's second field).
+# The kinds a count line carries, in its order: the walk's second field,
+# and boa-fix, which the count tells apart from boa.
 _LG_KINDS="root-out system-in share store root-in root system boa boa-fix inside in-other out"
 _NGX_LOCK="/run/boa_nginx_config.lock"
 # The shared store: /data/all, or the directory root's link of that name
