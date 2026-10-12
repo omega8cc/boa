@@ -127,9 +127,9 @@ autosymlink --site example.com --account o1 --archive-store --apply
   all below them) are its owner's private set. Once that owner runs in its own web
   group they are closed to every other account; the copy leaves out those the
   account cannot read, with an `[INFO] Un-share copy leaves out <path>` line each,
-  written once the copy is made. Any other entry the account cannot read still
-  stops the copy, named in an `[ERROR]` line, and nothing is copied; so do more
-  than 200 closed entries.
+  written once the copy itself is made. Any other entry the account cannot read
+  still stops the copy, named in an `[ERROR]` line, and nothing is copied; so do
+  more than 200 closed entries.
 
   What is left out stays in the other account's store only, and it can hold the
   site's own uploads made into that store while it shared it (CiviCRM custom

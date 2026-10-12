@@ -196,11 +196,11 @@
       serves (the CiviCRM log, custom, upload and template stores,
       config sync, backup_migrate, private, and all below them) closed
       to other accounts, so the un-share copy, made as the reading
-      account, failed. The copy leaves those out, logged once it is
-      made; they stay in the other store, with any uploads the site
-      made there. Any other closed entry still stops it, named. Such an
-      owner's private store still cannot be un-shared; the refusal
-      names it.
+      account, failed. The copy leaves those out, logged once the copy
+      itself is made; they stay in the other store, with any uploads
+      the site made there. Any other closed entry still stops it, named.
+      Such an owner's private store still cannot be un-shared; the
+      refusal names it.
 
     * autosymlink logs a link target, and an entry of another account's
       store closed to an un-share copy, with each byte outside letters,
