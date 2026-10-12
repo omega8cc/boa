@@ -16,9 +16,11 @@
       schemaless mode off, so a core without its configuration answers
       the first document with a plain "unknown field" error and writes
       nothing. The upload step also archives and empties an index a
-      core built on the stock schema before this change, records it in
-      the pass log and the incident log and mails the server admin, so
-      the site only has to re-index.
+      core built on the stock schema before this change, reloads the
+      core on the empty index, records it in the pass log and the
+      incident log and mails the server admin, so the site only has to
+      re-index; an index it has to leave in place is reported the same
+      way.
 
     * A migration cutover, a planned switch of a mirror pair and a
       promotion by hand no longer stop at the master control panel of
