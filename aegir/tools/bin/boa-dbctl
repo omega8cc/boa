@@ -6230,13 +6230,15 @@ _scope_off_apply() {
   [[ "${_bad}" -eq 0 ]]
 }
 
-# True when a login the account's switch takes its global privileges from
-# holds one: its instance user, at any row, or one of the rows the box-wide
-# check, read as that account's switch, gives the verdict "revoke" (its
-# instance rows, its panel user and every earlier name of it). The lists
-# are read here without any login proof.
+# True when the account's switch would change something: a login it takes
+# its global privileges from holds one (its instance user, at any row, or
+# one of the rows the box-wide check, read as that account's switch, gives
+# the verdict "revoke": its instance rows, its panel user and every earlier
+# name of it), or a grant row is one it would revoke (on a name with no
+# schema) or rewrite (in the old spelling), judged as the plan judges it.
+# The lists are read here without any login proof.
 _scope_owes() {
-  local _ux _hx _u _h _g _lk _sec
+  local _ux _hx _u _h _g _lk _sec _t _d _dp _f _go
   _global_privs "${_ACCT}" "" && return 0
   _box_facts
   _pair_state
@@ -6247,6 +6249,14 @@ _scope_owes() {
     _pair_class "${_u}" "${_h}" "${_g}" "${_ux}@${_hx}"
     [[ "${_PC_V}" == "revoke" ]] && return 0
   done <<< "${_AL_PAIRS}"
+  _PO_FOR=""
+  while IFS='|' read -r _t _ux _hx _u _h _d _dp _f _go; do
+    [[ -n "${_t}" ]] || continue
+    _grant_verdict "${_t}" "${_u}" "${_h}" "${_ux}@${_hx}" "${_dp}" "${_f}" "${_go}"
+    case "${_GV}" in
+      converge|dead) return 0 ;;
+    esac
+  done <<< "${_AL_GR}"
   return 1
 }
 
@@ -6302,11 +6312,12 @@ _scope_back() {
 # task starts under the switch; without it the queue is live, and the call
 # is refused. It waits for the account's running tasks before it reads the
 # plan, so a database a task made a moment ago is in it. An account it
-# finds switched is left as it is when nothing its switch takes rights
-# from holds a global privilege (_scope_owes: its instance user, its panel
-# user, every earlier name of that): nothing is changed, no new file of
-# saved grants. One with a valid control file and such a privilege back
-# goes through the switch again, and a step that fails then leaves it
+# finds switched is left as it is when its switch would change nothing
+# (_scope_owes: no global privilege on its instance user, its panel user
+# or an earlier name of that, no grant row to revoke or rewrite): nothing
+# is changed, no new file of saved grants. One with a valid control file
+# and something left for its switch to do goes through the switch again,
+# and a step that fails then leaves it
 # switched (_scope_back). The operator's own pause of the queue is not
 # looked at: the call follows the pass, which the operator started.
 _v_scope_on() {
