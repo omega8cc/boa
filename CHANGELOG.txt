@@ -230,6 +230,15 @@
       account chooses, could write a line of its own into the log that
       symlinkinfo reads.
 
+    * A site Verify of an account in its own web group, still switched
+      off, no longer gives that group to a site whose directory lies
+      outside the account's tree, on the shared /data/all stores or in
+      another account's tree: such a site keeps www-data and its modes,
+      so reverting the account leaves no path in a group that no longer
+      exists. Its store linked into the account's own files still takes
+      the account's group. The conversion now waits for the provision
+      copy that does this (docs/INSTGRP.md).
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
