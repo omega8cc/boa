@@ -2333,23 +2333,23 @@ _rm_tree_as_here() {
 _UNSHARE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
 
 _unshare_closed_ex() {
-  # The files the account (uid $1, gid $2) cannot read, and the directories
-  # it cannot read or cannot enter, of source store $3 (type $4: files or
-  # private), as that account sees them (setpriv with its own groups; find
-  # never follows a link: the copy keeps a link as a link and skips
-  # specials, so neither counts). A store the account cannot read or cannot
-  # enter as a whole (a private store, once its owner runs in its own web
-  # group) is named, and nothing is copied. Only a files store leaves an
-  # entry out (the fixers close the whole of a private store, so any closed
-  # entry there stops the copy): each must be the store owner's private set
-  # (_UNSHARE_DENIED_RE matched case-insensitively, or ./private as the
-  # fixers' -path takes it, case and all, or an entry below either, as the
-  # fixers close the whole of each), plainly named: the copy then leaves it
-  # out (an anchored exclude in _UNSHARE_EX), said once the copy is made
-  # (_unshare_copy_other). A store whose owner converted to its own web
-  # group closes exactly these to other accounts, and the site never served
-  # them. Any other closed entry, or more than 200, and nothing is copied
-  # (status 1).
+  # The files and the directories the account (uid $1, gid $2) cannot read of
+  # source store $3 (type $4: files or private), as that account sees them
+  # (setpriv with its own groups; find never follows a link: the copy keeps a
+  # link as a link and skips specials, so neither counts). A directory it can
+  # read but not enter is not listed: the copy alone decides on it, as it
+  # always did. A store the account cannot read or cannot enter as a whole (a
+  # private store, once its owner runs in its own web group) is named, and
+  # nothing is copied. Only a files store leaves an entry out (the fixers
+  # close the whole of a private store, so any closed entry there stops the
+  # copy): each must be the store owner's private set (_UNSHARE_DENIED_RE
+  # matched case-insensitively, or ./private as the fixers' -path takes it,
+  # case and all, or an entry below either, as the fixers close the whole of
+  # each), plainly named: the copy then leaves it out (an anchored exclude in
+  # _UNSHARE_EX), said once the copy is made (_unshare_copy_other). A store
+  # whose owner converted to its own web group closes exactly these to other
+  # accounts, and the site never served them. Any other closed entry, or more
+  # than 200, and nothing is copied (status 1).
   local _p _r _l _n=0 _who
   _who=$(id -nu "${1}" 2>/dev/null)
   _UNSHARE_EX=()
@@ -2361,8 +2361,10 @@ _unshare_closed_ex() {
   while IFS= read -r -d '' _p; do
     _r="${_p#"${3%/}"/}"
     [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
-    # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS)
+    # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS): a
+    # top-level name only, as those anchored excludes match
     case "${_r}" in
+      */*) ;;
       ownership-fixed-*.pid|permissions-fixed-*.pid) continue ;;
     esac
     if [ "${4}" != "files" ]; then
@@ -2380,8 +2382,7 @@ _unshare_closed_ex() {
     [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of $(_log_name "${3%/}") are closed to ${_who}; nothing copied"; return 1; }
     _UNSHARE_EX+=("--exclude=/${_r}")
   done < <(setpriv --reuid="${1}" --regid="${2}" --init-groups \
-    find "${3%/}/" -mindepth 1 \( \( -type f ! -readable \) -o \( -type d \( ! -readable -o ! -executable \) \) \) \
-    -prune -print0 2>/dev/null)
+    find "${3%/}/" -mindepth 1 \( -type f -o -type d \) ! -readable -prune -print0 2>/dev/null)
   return 0
 }
 
