@@ -3302,7 +3302,8 @@ _php_lit() {
 
 # The alias text $1 names its database login as
 # 'master_db' => 'mysql://<user>:<password>@<host>': _MDB_USER, _MDB_HOST
-# and the password, decoded, in _PW. 1 when there is none to read.
+# and the password, decoded, in _PW. 1 when there is none to read, and when
+# what is there decodes to a control character.
 _master_db() {
   local _l _enc
   _MDB_USER=""
@@ -3318,7 +3319,19 @@ _master_db() {
   [[ "${_MDB_USER}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 1
   [[ "${_MDB_HOST}" =~ ^[A-Za-z0-9._:-]{1,255}$ ]] || return 1
   [[ "${#_enc}" -le 3072 && "${_enc}" =~ ^[A-Za-z0-9%._~/-]+$ ]] || return 1
+  # Every % begins two hex digits, and never a NUL: the shell would cut the
+  # password short at one, and what follows it would be lost unseen.
+  case "${_enc}" in
+    *%|*%?|*%[!0-9A-Fa-f]*|*%?[!0-9A-Fa-f]*|*%00*) return 1 ;;
+  esac
   printf -v _PW '%b' "${_enc//%/\\x}"
+  # The alias is the account's to write, and %0A decodes to a line feed: a
+  # password with a control character in it is no credential, and never
+  # reaches the option file root's client reads.
+  if [[ "${_PW}" == *[[:cntrl:]]* ]]; then
+    _PW=""
+    return 1
+  fi
   [[ -n "${_PW}" ]]
 }
 
@@ -3676,15 +3689,34 @@ SELECT /*q:alsysobj*/ CONCAT_WS('|', COUNT(*), SHA2(IFNULL(GROUP_CONCAT(o.x ORDE
 }
 
 # A root-only client file for user $1 with the password in _PW, read by a
-# login proof through an inherited descriptor. Sets _PCNF.
+# login proof through an inherited descriptor. Sets _PCNF. Every proof goes
+# through here, and what it is handed was read from files an account, or a
+# purged account's parked home, wrote. A password with a control character
+# in it writes no file (a line feed would add lines of its writer's choosing
+# to the options root's client reads), nor does a name that is not plain: 1
+# then, with why in _PCNF_WHY, no file left from an earlier proof, and the
+# login is not tried.
 _proof_cnf() {
   local _e
   _PCNF="${_TMPD}/proof.cnf"
+  _PCNF_WHY=""
+  rm -f -- "${_PCNF}"
+  if [[ -z "${1}" || "${#1}" -gt 32 || "${1}" == *[!A-Za-z0-9_.-]* ]]; then
+    _PW=""
+    _PCNF_WHY="its name is not plain"
+    return 1
+  fi
+  if [[ "${_PW}" == *[[:cntrl:]]* ]]; then
+    _PW=""
+    _PCNF_WHY="the password recorded for it holds a control character"
+    return 1
+  fi
   _e=$(printf '%s' "${_PW}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
   printf '[client]\nuser=%s\npassword="%s"\n' "${1}" "${_e}" > "${_PCNF}" \
     || _die 7 "credentials-file-failed"
   _e=""
   _PW=""
+  return 0
 }
 
 # One login with the client file $1 over transport $2 (socket, or tcp:<host>):
@@ -4480,16 +4512,16 @@ _pin_status() {
       ;;
     aegir_root)
       if _root_login "${_AEGIR}" aegir_root; then
-        _proof_cnf aegir_root
-        _login="YES"
+        _login="NOTPLAIN"
+        _proof_cnf aegir_root && _login="YES"
       fi
       ;;
     *)
       if [[ -n "${_AL_MPANEL}" && "${_u}" == "${_AL_MPANEL}" ]] \
         && _panel_of "${_AEGIR}" && [[ -n "${_PN_PW}" ]]; then
         _PW="${_PN_PW}"
-        _proof_cnf "${_u}"
-        _login="YES"
+        _login="NOTPLAIN"
+        _proof_cnf "${_u}" && _login="YES"
       fi
       ;;
   esac
@@ -4520,6 +4552,9 @@ _pin_status() {
           ;;
       esac
     fi
+  elif [[ "${_login}" == "NOTPLAIN" ]]; then
+    # read, but never written to a client file (_proof_cnf)
+    _PS="${_PS:-credential-not-plain}"
   else
     _PS="${_PS:-no-credential}"
   fi
@@ -4559,15 +4594,20 @@ _repl_shape() {
 # The login proof of an account's instance or panel user $1@$2 that still
 # holds a global privilege (an account not switched): the credential the
 # account's own files hold opens exactly that row. $3 = INST or PANEL, $4
-# the account.
+# the account. _AP_WHY says why when the credential was read and no login
+# was tried with it (_proof_cnf).
 _acct_proof() {
+  _AP_WHY=""
   if [[ "${3}" == "INST" ]]; then
     _root_login "${_DISK}/${4}" "${1}" || return 1
   else
     _panel_of "${_DISK}/${4}" && [[ "${_PN_USER}" == "${1}" && -n "${_PN_PW}" ]] || return 1
     _PW="${_PN_PW}"
   fi
-  _proof_cnf "${1}"
+  if ! _proof_cnf "${1}"; then
+    _AP_WHY="${_PCNF_WHY}"
+    return 1
+  fi
   _row_login "${1}" "${2}" "${_PCNF}"
 }
 
@@ -4635,8 +4675,13 @@ _al_judge() {
         if [[ "${_sec}" == "Y" && "${_g}" == "Y" ]]; then
           _al_stop "login ${_u}@${_h} holds a global privilege and keeps a second password"
         elif [[ "${_g}" == "Y" ]]; then
-          _acct_proof "${_u}" "${_h}" "${_PC_K}" "${_PC_O}" \
-            || _al_stop "login ${_u}@${_h} holds a global privilege and ${_PC_O}'s own credential does not open it"
+          if ! _acct_proof "${_u}" "${_h}" "${_PC_K}" "${_PC_O}"; then
+            if [[ -n "${_AP_WHY}" ]]; then
+              _al_stop "login ${_u}@${_h} holds a global privilege and ${_AP_WHY}: no login is tried with it"
+            else
+              _al_stop "login ${_u}@${_h} holds a global privilege and ${_PC_O}'s own credential does not open it"
+            fi
+          fi
         fi
         ;;
       revoke)
@@ -5554,7 +5599,10 @@ _v_baseline_settle() {
       _settle_note "${_uh}" "${_c}" "the parked home of ${_o} holds no credential of it that can be read"
       continue
     fi
-    _proof_cnf "${_u}"
+    if ! _proof_cnf "${_u}"; then
+      _settle_note "${_uh}" "${_c}" "the password ${_o} recorded for it holds a control character: no login is tried with it"
+      continue
+    fi
     _row_login "${_u}" "${_h}" "${_PCNF}"
     case "$?" in
       0) ;;
@@ -5852,7 +5900,7 @@ _scope_rows() {
   local -a _tr=(socket tcp:127.0.0.1)
   _SP_ROWS=()
   _root_login "${_DISK}/${_ACCT}" "${_ACCT}" || return 0
-  _proof_cnf "${_ACCT}"
+  _proof_cnf "${_ACCT}" || return 0
   [[ -n "${_BOX}" ]] && _tr+=("tcp:${_BOX}")
   for _t in "${_tr[@]}"; do
     _cu=$(_login_cu "${_PCNF}" "${_t}") || continue
