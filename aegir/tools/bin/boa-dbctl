@@ -6378,7 +6378,7 @@ _scope_back() {
         [[ "${_r}" == "${2}" ]] && _in="YES"
       done
       if [[ "${_in}" != "YES" ]]; then
-        _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched (its row at ${2} is not among its rows in use, so boa-dbctl regrant does not reach it: boa-dbctl scope ${_ACCT} plan, then scope ${_ACCT} on --sha with that plan's hash, takes the row through the switch again)"
+        _alrt "${_ACCT}: the switch stopped at ${1}: the account was switched before and stays switched (its row at ${2} is not among its rows in use, so boa-dbctl regrant does not reach it: boa-dbctl scope ${_ACCT} plan, then scope ${_ACCT} on --sha with that plan's hash, takes the row through the switch again; that is an operator's switch, and a step of it that fails puts the account back on the direct path)"
         _die 7 "scope-failed ${1}"
       fi
     fi
