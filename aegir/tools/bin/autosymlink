@@ -229,8 +229,10 @@ _record_anomaly() {
   # Capture one not-clean finding WITH its identity, next to the flag it raises.
   # Args: 1: CODE, 2..: k=v context fields.
   # '|' separates fields, so strip it from values ("${_SRC_DEV}|${_TGT_DEV}" pair
-  # keys are the one real source of a stray pipe); values are single log-line
-  # fragments already, so no newline can reach here.
+  # keys are the one real source of a stray pipe). A value the account chose
+  # (a link target, the target site, the copy source) can carry a newline or
+  # any other byte: it is kept as it is, for the explainers to probe, and
+  # every [EXPLAINED] line passes it through _log_name to print it.
   _REC="$1"
   shift
   for _RECF in "$@"; do
@@ -629,7 +631,7 @@ _exp_client_symlink() {
     if [ -d "${_EXP_CS_LINK}" ]; then
       echo "present and resolves: ${_EXP_CS_LINK}"
     else
-      echo "present but DANGLING: ${_EXP_CS_LINK} -> $(readlink "${_EXP_CS_LINK}" 2>/dev/null)"
+      echo "present but DANGLING: ${_EXP_CS_LINK} -> $(_log_name "$(readlink "${_EXP_CS_LINK}" 2>/dev/null)")"
     fi
     return
   fi
@@ -875,7 +877,7 @@ _explain_symlink_broken() {
   _explain_log "  Seen: the in-site ${_EXP_SB_TYPE} path is a symlink whose target could not be"
   _explain_log "    read, so it was skipped and the run was marked NOT CLEAN."
   _explain_log "  Symlink    : ${_EXP_SB_PATH}"
-  _explain_log "  Reads back : '$(readlink "${_EXP_SB_PATH}" 2>&1)'"
+  _explain_log "  Reads back : '$(_log_name "$(readlink "${_EXP_SB_PATH}" 2>&1)")'"
   if [ -L "${_EXP_SB_PATH}" ]; then
     _explain_log "  Still a symlink now: yes"
   else
@@ -903,7 +905,7 @@ _explain_symlink_unknown() {
   _explain_log "    the expected .../static/files/<site>/${_EXP_SU_TYPE} store layout, so the"
   _explain_log "    script refused to guess who owns the target and marked the run NOT CLEAN."
   _explain_log "  Symlink    : ${_EXP_SU_PATH}"
-  _explain_log "  Points at  : ${_EXP_SU_TGT}"
+  _explain_log "  Points at  : $(_log_name "${_EXP_SU_TGT}")"
   # readlink hands back the link text verbatim, and a hand-made link -- exactly
   # the population that lands here -- is often relative. Resolve it against the
   # link's own directory before probing: this script never chdir's, so testing
@@ -950,13 +952,18 @@ _explain_break_sharing_source() {
   _EXP_BS_TGT="$5"
   _EXP_BS_TSITE="$6"
   _EXP_BS_ORIG="$7"
+  # 5 to 7 come from the link, the account's choice: probed as they are,
+  # printed through _log_name (_L)
+  _EXP_BS_TGT_L=$(_log_name "${_EXP_BS_TGT}")
+  _EXP_BS_TSITE_L=$(_log_name "${_EXP_BS_TSITE}")
+  _EXP_BS_ORIG_L=$(_log_name "${_EXP_BS_ORIG}")
 
   _explain_log "  Seen: this site's ${_EXP_BS_TYPE} are shared from another site's store, and the"
   _explain_log "    source to copy from is missing, so un-sharing would fail and the run was"
   _explain_log "    marked NOT CLEAN."
   _explain_log "  Symlink    : ${_EXP_BS_PATH}"
-  _explain_log "  Points at  : ${_EXP_BS_TGT} (store owned by ${_EXP_BS_TSITE})"
-  _explain_log "  Copy source: ${_EXP_BS_ORIG} -- MISSING"
+  _explain_log "  Points at  : ${_EXP_BS_TGT_L} (store owned by ${_EXP_BS_TSITE_L})"
+  _explain_log "  Copy source: ${_EXP_BS_ORIG_L} -- MISSING"
 
   # The store's owner can live in ANOTHER account: an inherited cross-account
   # symlink (a clone of a shared site into a different account) points into the
@@ -969,16 +976,17 @@ _explain_break_sharing_source() {
   if [ -z "${_EXP_BS_OWNACCT}" ] || [ "${_EXP_BS_OWNACCT}" = "${_EXP_BS_TGT}" ]; then
     _EXP_BS_OWNACCT="${_EXP_BS_ACCT}"
   fi
+  _EXP_BS_OWNACCT_L=$(_log_name "$(basename "${_EXP_BS_OWNACCT}")")
 
   _EXP_BS_OWNER_ALIAS=$(_site_alias_file "${_EXP_BS_OWNACCT}" "${_EXP_BS_TSITE}")
   if [ -n "${_EXP_BS_OWNER_ALIAS}" ]; then
-    _explain_log "  Owner site : ${_EXP_BS_TSITE} still has an alias in $(basename "${_EXP_BS_OWNACCT}")"
+    _explain_log "  Owner site : ${_EXP_BS_TSITE_L} still has an alias in ${_EXP_BS_OWNACCT_L}"
   else
-    _explain_log "  Owner site : ${_EXP_BS_TSITE} has NO alias in $(basename "${_EXP_BS_OWNACCT}") -- it looks deleted"
+    _explain_log "  Owner site : ${_EXP_BS_TSITE_L} has NO alias in ${_EXP_BS_OWNACCT_L} -- it looks deleted"
   fi
   if [ "${_EXP_BS_OWNACCT}" != "${_EXP_BS_ACCT}" ]; then
     _explain_log "  Note       : this is a CROSS-ACCOUNT share -- the store belongs to account"
-    _explain_log "    $(basename "${_EXP_BS_OWNACCT}"), not to $(basename "${_EXP_BS_ACCT}")"
+    _explain_log "    ${_EXP_BS_OWNACCT_L}, not to $(basename "${_EXP_BS_ACCT}")"
   fi
 
   # The nightly sweep archives a deleted site's leftover store into .archived, so
@@ -992,22 +1000,22 @@ _explain_break_sharing_source() {
   if [ -n "${_EXP_BS_ARCH}" ]; then
     _EXP_BS_AKB=$(du -sk "${_EXP_BS_ARCH}" 2>/dev/null | awk 'NR==1 {print $1}')
     _explain_log "  Archived   : the owner's store WAS archived by an earlier sweep and is still"
-    _explain_log "    on disk: ${_EXP_BS_ARCH} (${_EXP_BS_AKB:-?}K)"
-    _explain_log "  Diagnosis  : SHARED FROM AN ARCHIVED STORE -- ${_EXP_BS_TSITE} was deleted and"
+    _explain_log "    on disk: $(_log_name "${_EXP_BS_ARCH}") (${_EXP_BS_AKB:-?}K)"
+    _explain_log "  Diagnosis  : SHARED FROM AN ARCHIVED STORE -- ${_EXP_BS_TSITE_L} was deleted and"
     _explain_log "    its leftover store archived aside, which pulled the data out from under"
     _explain_log "    this site's symlink. The data is not lost; it is in the archive above."
-    _explain_log "  Fix        : restore the archived copy to ${_EXP_BS_ORIG}, or copy it straight"
+    _explain_log "  Fix        : restore the archived copy to ${_EXP_BS_ORIG_L}, or copy it straight"
     _explain_log "    to ${_EXP_BS_ACCT}/static/files/${_EXP_BS_SITE}/${_EXP_BS_TYPE} and repoint"
     _explain_log "    the link, then re-run the dry run."
   else
-    _explain_log "  Archived   : no archived copy of ${_EXP_BS_TSITE} found under $(basename "${_EXP_BS_OWNACCT}")"
+    _explain_log "  Archived   : no archived copy of ${_EXP_BS_TSITE_L} found under ${_EXP_BS_OWNACCT_L}"
     _explain_log "  Diagnosis  : SHARED FROM A MISSING STORE -- this site's ${_EXP_BS_TYPE} link"
     _explain_log "    points into a store that no longer exists, so the site has no ${_EXP_BS_TYPE}"
     _explain_log "    right now and the un-share has nothing to copy."
-    _explain_log "  Fix        : restore ${_EXP_BS_ORIG} from backup if the data is wanted, or"
+    _explain_log "  Fix        : restore ${_EXP_BS_ORIG_L} from backup if the data is wanted, or"
     _explain_log "    remove/repoint the dangling link and Verify the site in the Aegir front-end."
   fi
-  _explain_log "    History for both names: symlinkinfo ${_EXP_BS_SITE} ${_EXP_BS_TSITE}"
+  _explain_log "    History for both names: symlinkinfo ${_EXP_BS_SITE} ${_EXP_BS_TSITE_L}"
 }
 
 _explain_space() {
@@ -1027,7 +1035,7 @@ _explain_space() {
   _EXP_SP_RES=$(_anom_field "${_EXP_SP_REC}" "reserved_kb")
 
   _explain_log "  Operation  : ${_EXP_SP_DESC:-?} for site ${_EXP_SP_SITE}"
-  _explain_log "  Source     : ${_EXP_SP_SRC:-?}"
+  _explain_log "  Source     : $(_log_name "${_EXP_SP_SRC:-?}")"
 
   case "${_EXP_SP_CODE}" in
     SPACE_SRC_DIR_MISSING)
@@ -1048,7 +1056,7 @@ _explain_space() {
       _EXP_SP_NOW=$(du -sk "${_EXP_SP_SRC}" 2>&1 | awk 'NR==1 {print $1}')
       _explain_log "  Seen: the source size could not be measured (du returned nothing)."
       _explain_log "  Now        : du reports '${_EXP_SP_NOW:-nothing}'"
-      _explain_log "  Owner/mode : $(ls -ld "${_EXP_SP_SRC}" 2>&1 | awk '{print $3":"$4" "$1}')"
+      _explain_log "  Owner/mode : $(ls -ld "${_EXP_SP_SRC}" 2>&1 | awk 'NR==1 {print $3":"$4" "$1}')"
       _explain_log "  Diagnosis  : the source could not be read. An unreadable directory is the"
       _explain_log "    usual cause -- for example ownership changed to root by an edit made as"
       _explain_log "    root -- or it vanished mid-sweep."
@@ -1568,7 +1576,7 @@ _archive_site_store_now() {
     return 0
   fi
   if [ -L "${_ASN_SRC}" ]; then
-    _log "[APPLY] Archive-store: ${_ASN_CANON} is a symlink ($(readlink "${_ASN_SRC}" 2>/dev/null)); unlinking, the data stays where it points"
+    _log "[APPLY] Archive-store: ${_ASN_CANON} is a symlink ($(_log_name "$(readlink "${_ASN_SRC}" 2>/dev/null)")); unlinking, the data stays where it points"
     if _store_in_bound "${_ASN_H}" "${_ASN_STORE}" rm -f -- "./${_SITE}" \
       && [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
       return 0
@@ -1667,10 +1675,12 @@ _store_live_readers() {
   # (its account still has the site's Drush alias or vhost, so a merely
   # disabled site counts, a stale leftover directory does not) that resolves
   # into the store $1, except the links of site $2 in account $3 itself (the
-  # site going away); links of unregistered leftovers go to _SLR_STALE. Such a
-  # store is never moved from under its reader: a clone whose unshare was
-  # refused (disk), a renamed site whose re-home did not complete, or a
-  # hand-made link still serves its uploads through that link. The link text
+  # site going away); links of unregistered leftovers go to _SLR_STALE. Each
+  # is "<link> -> <target>", the target (the account's choice) as _log_name
+  # prints it; their text is only ever logged. Such a store is never moved
+  # from under its reader: a clone whose unshare was refused (disk), a
+  # renamed site whose re-home did not complete, or a hand-made link still
+  # serves its uploads through that link. The link text
   # is tested first; a target outside /data/disk (a hand-made link onto the
   # attached storage behind a static/files symlink) is resolved. Limits: only
   # the two in-site link names of a site directory on a platform that
@@ -1708,9 +1718,9 @@ _store_live_readers() {
     _SLR_RURI="${_SLR_RDIR##*/}"
     if [ -n "$(_site_alias_file "/data/disk/${_SLR_RACCT}" "${_SLR_RURI}")" ] \
       || [ -e "/data/disk/${_SLR_RACCT}/config/server_master/nginx/vhost.d/${_SLR_RURI}" ]; then
-      _SLR_LIVE="${_SLR_LIVE}${_SLR_LIVE:+ }${_SLR_LINK} -> ${_SLR_TGT}"
+      _SLR_LIVE="${_SLR_LIVE}${_SLR_LIVE:+ }${_SLR_LINK} -> $(_log_name "${_SLR_TGT}")"
     else
-      _SLR_STALE="${_SLR_STALE}${_SLR_STALE:+ }${_SLR_LINK} -> ${_SLR_TGT}"
+      _SLR_STALE="${_SLR_STALE}${_SLR_STALE:+ }${_SLR_LINK} -> $(_log_name "${_SLR_TGT}")"
     fi
   done <<EOT
 ${_SLR_INDEX}
@@ -1808,7 +1818,7 @@ _check_space_for_transfer() {
   _FORCE_DETAILED_CHECK="$5"
 
   if [ ! -d "${_SRC_DIR}" ]; then
-    _log "[WARN] Source directory missing for ${_DESC} of site ${_SITE}: ${_SRC_DIR}"
+    _log "[WARN] Source directory missing for ${_DESC} of site ${_SITE}: $(_log_name "${_SRC_DIR}")"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
       # Returns before the target device/space is resolved, so there is no
@@ -1892,7 +1902,7 @@ _check_space_for_transfer() {
   # Per-site detailed size check (fallback when FS pair is TIGHT or devs unknown)
   _SIZE_KB=$(du -sk "${_SRC_DIR}" 2>/dev/null | awk '{print $1}')
   if [ -z "${_SIZE_KB}" ]; then
-    _log "[WARN] Unable to determine size for ${_SRC_DIR} (${_DESC} of site ${_SITE})"
+    _log "[WARN] Unable to determine size for $(_log_name "${_SRC_DIR}") (${_DESC} of site ${_SITE})"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
       _record_anomaly "SPACE_SIZE_UNKNOWN" "site=${_SITE}" "account_dir=${_ACCOUNT_DIR}" \
