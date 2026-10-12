@@ -113,6 +113,8 @@ owner differs from its target's:
   target owner's and could not be made so, or a link an account made that
   leads out of that account, which is exactly what the check is there to
   refuse. Either is refused once the check is on, for that account only.
+  A link leading out says where it leads: into the shared store, or into
+  another account's tree (a share between two accounts).
 - `NOTE` names a configuration file that sets `disable_symlinks` itself; a
   server or location that sets it overrides the box-wide setting there.
 
@@ -130,6 +132,47 @@ that home they are refused, and never keep the check off.
 The nightly mails the operator once a day while anything blocking or refused
 is listed (unless `_INCIDENT_REPORT=OFF`), and logs it in
 `/var/log/boa/nightly.incident.log`.
+
+## The nightly count
+
+Every night, on every system whether it is armed or not, the nightly
+maintenance runs `linkguard count` as its last step. It walks what Nginx
+serves the way the scan does, at the lowest CPU and disk priority, and
+appends one dated line to `/var/log/boa/linkguard/count.log`. It changes
+nothing: no link is fixed, the check is not switched, no mail is sent, the
+scan's report is left as it is, and Nginx is only asked for its
+configuration (`nginx -T`). A count stops after an hour; its line then says
+`result=deadline complete=0`.
+
+A line counts the links whose owner differs from their target's, by kind:
+
+| key | class | the link |
+|---|---|---|
+| `root-out` | BLOCKING | root's, in an account's tree, leading out of that account |
+| `system-in` | BLOCKING | a system user's or an unknown user's, in an account's tree |
+| `share` | REFUSED | an account's, into another account's tree or to its files |
+| `store` | REFUSED | an account's, into the shared store at a place BOA does not link |
+| `root` | BLOCKING | root's, outside any account's tree |
+| `system` | BLOCKING | a system user's or an unknown user's, outside any account's tree |
+| `boa` | BLOCKING | a BOA link at a BOA place that could not be made root's |
+| `inside` | REFUSED | inside one account, not its target owner's |
+| `out` | REFUSED | an account's, leading anywhere else out of it |
+
+followed by the totals (`blocking`, `refused`), whether the walk finished
+(`complete`), what it walked (`roots`, `missing`, `entries`, `unwalked`) and
+how long it took (`secs`). `state` and `armed` say whether the check was on
+and the system armed; on an armed system the count comes after the night's
+`apply`, so it counts what that left. A night that could not count says why
+instead (`result=busy`, `result=no-nginx-config`, `result=no-scan`).
+
+```
+tail -n 7 /var/log/boa/linkguard/count.log   # the last week
+linkguard status                             # ends with the last count
+```
+
+The log lives in a directory of its own, which the clean-up of
+`/var/log/boa/*.log` during a major system upgrade leaves alone, and is
+kept.
 
 ## Verify, and find out why it is off
 
