@@ -2525,7 +2525,7 @@ _prove() {
 # child: only the time the child ran tells those two apart, and a kill the
 # limit did not cause is never reported as the limit.
 _v_load() {
-  local _db _rc _st _thr _store _x _t0 _why
+  local _db _rc _st _thr _store _x _t0 _why _n
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage load <db>"
   _db="${_ARGS[0]}"
   _LOG_DB="${_db}"
@@ -2563,7 +2563,17 @@ _v_load() {
   _x=$(_in_backups _acct_in_real_dir ./tmp_expim _store_walk_here)
   _st=$?
   if [[ "${_st}" -ne 0 || -n "${_x}" ]]; then
-    case "${_x%%$'\n'*}" in
+    # One line, as the walk prints one. The walk runs as the account, so
+    # what it printed is tested here before a name from it is said: one
+    # that is not plain reads as the walk's own "?".
+    _x="${_x%%$'\n'*}"
+    case "${_x}" in
+      "dir ./"?*|"entry ./"?*)
+        _n="${_x#* ./}"
+        [[ "${#_n}" -le 200 && "${_n}" != *[!A-Za-z0-9_.,+=/-]* ]] || _x="${_x%% *} ?"
+        ;;
+    esac
+    case "${_x}" in
       "dir .") _why="the account cannot open its store" ;;
       "dir ./"?*) _why="the account cannot open ${_x#dir ./} in its store" ;;
       "entry ./"?*) _why="the store holds ${_x#entry ./}, which is not a directory or a regular file the account can read" ;;
