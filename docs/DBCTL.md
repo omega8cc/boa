@@ -108,21 +108,29 @@ keep no second password (`RETAIN CURRENT PASSWORD`).
 
 A password becomes a line of a client file only when it may: no control
 character in it, and no more than 1024 bytes, the bound of a password given
-on standard input. The client reads an option file line by line through a
-buffer of a few kilobytes, and a longer line is read as several. The name it
-goes with must be plain. That holds for every client file the broker writes:
-for these logins, for an account's instance and panel users, for a parked
-home's, for a site's recorded login in a plan, and for a load. Otherwise no
-file is written and no login tried, and the reason is said:
+on standard input. The MySQL 5.7 client reads an option file line by line
+through a buffer of a few kilobytes and reads a longer line in pieces, each
+piece after the first as a line of its own (a password line of 5000 bytes
+gave it one more option line; the 8.4 client read the same line whole). The
+name it goes with must be plain. That holds for every client file the broker
+writes: for these logins, for an account's instance and panel users, for a
+parked home's, for a site's recorded login in a plan, and for a load.
+Otherwise no file is written and no login tried, and the reason is said:
 `credential-not-plain` for one of the server's own logins, `unregistered
 <database> <site> its-recorded-password-too-long` or
 `...-control-character` for a site in a plan, `ERR 2 bad-password` for a
-load.
+load. One line does not say it: where an account's server alias records a
+password longer than 1024 bytes, that account's own plan says only `refused
+login the account's own database login opens no row of it`.
 
 A server alias whose encoded password decodes to a control character, or in
 which a `%` does not begin two hex digits, is said as that and not as an
 alias that is missing: `refused server-alias-password ...` in a plan, the
-same words on the box-wide check's line and on settle's `left` line.
+same words on the box-wide check's line and on settle's `left` line. An
+alias whose password holds a character outside the URL-safe set, or is
+longer than 3072 bytes as the alias spells it, is read as an alias that
+gives no credential (`no-server-alias` in a plan, a parked home that holds
+no credential in settle).
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
@@ -285,6 +293,13 @@ only while each of these holds, and is left otherwise, with the reason on its
 - its `SHOW CREATE USER` line and its grants are saved under
   `/var/backups/boa/dbrights/`, in a file only root reads (it holds the row's
   stored password); a save that fails drops nothing.
+
+A purged account is known as one by its parked home, or by a root cnf of its
+name with no home. With neither, nothing records it: its logins are then
+logins no record names, and step 2 judges them so (one whose rows are all at
+the box's own hosts is settled and accepted, one with a row at `%` is left
+as a login that can be used from another host). The reason `the purge of oN
+parked no home` is said only while a root cnf of the name is there.
 
 The times order two events only on one server's own history. A box seeded from
 another server's data (a standby built from a clone, a restore) can hold a
@@ -633,9 +648,12 @@ An account's reasons are the ones its own `scope oN plan` gives: each refusal
 in the plan's words, `unregistered <database> <why>` for each site left out,
 and `box-not-proven N` when nothing of its own holds it and N findings of the
 box-wide check would stop its switch. `role-or-proxy-grant N` names N of its
-own instance or panel logins that hold a role or a proxy grant, which no
-switch takes; a switched account's line carries it too, as a pass's switch
-of it ends not proven meanwhile. `ready` means its plan refuses nothing.
+own logins that hold a role or a proxy grant, which no switch takes: its
+instance user and its panel users, earlier panel names included, are
+counted alike. A switched account's line carries it too. A pass's switch of
+a switched account ends not proven only where the instance user holds one;
+where a panel user alone does, the pass answers `already`. `ready` means its
+plan refuses nothing.
 
 Three reasons come from outside the plan: `not-released` where this release
 switches no account on the box, `opted-out` for an account whose
