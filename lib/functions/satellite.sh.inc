@@ -4436,7 +4436,9 @@ EOFMYSQL
 # a moved account: such an account takes its state from its source), nor on
 # a replication standby or a box being prepared as one. The broker's own
 # checks decide, unforced; a refusal leaves the account on the direct path,
-# as every account is without the switch, and says why.
+# as every account is without the switch, and says why. On a box armed for
+# the broker (_satellite_if_db_broker) the box settles first, so the new
+# account's switch finds a settled box.
 _satellite_db_broker_born() {
   local _out
   [ "${_STATUS}" = "INIT" ] || return 0
@@ -4454,6 +4456,9 @@ _satellite_db_broker_born() {
   if [ ! -x "/usr/local/bin/boa-dbctl" ]; then
     _msg "ALRT: ${_USER} is not switched to the database broker: it is not installed here"
     return 0
+  fi
+  if [[ "$(_satellite_db_broker_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]]; then
+    _satellite_db_broker_call baseline settle
   fi
   if _out=$(/usr/local/bin/boa-dbctl scope "${_USER}" on --born 2>&1 < /dev/null); then
     _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
