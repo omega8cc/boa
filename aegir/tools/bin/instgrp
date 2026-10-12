@@ -2046,6 +2046,13 @@ _WG_PING_WAIT="${_INSTGRP_WG_PING_WAIT:-5}"
 # The token the account's provision copy carries once its wg- branch covers
 # the civicrm subtrees; checked by the readiness gate on every raise.
 _WG_PROV_TOKEN="provision_drupal_web_group_private"
+# The token its provision.inc carries once a site Verify gives a path whose
+# real place is outside the account's tree (a site on the shared trees or in
+# another account's tree) the shared web group and its modes, never the
+# account's own: a revert walks the account's tree only, so such a path left
+# in the account's group would keep a number with no group behind it.
+# Checked beside the one above.
+_WG_PROV_PATH_TOKEN="provision_path_web_group"
 # The writers that must be on the box before a first conversion: the
 # fetched copy carries the named token, a function or a constant only its
 # web-group form has.
@@ -4757,7 +4764,7 @@ _wg_inv_path() {
 }
 
 # G3: the box is ready: the release stamp, every web-group writer, and (for an
-# account) its provision copy's token; for the master, runner.sh's token.
+# account) its provision copy's two tokens; for the master, runner.sh's token.
 _wg_g_ready() {
   local _t _p _tok _inv="${_WG_INVENTORY}" _prov
   if [ ! -s "${_WG_STAMP}" ]; then
@@ -4778,6 +4785,12 @@ _wg_g_ready() {
     _ig_read_here provision_drupal.drush.inc)
   if [[ "${_prov}" != *"${_WG_PROV_TOKEN}"* ]]; then
     _msg "${_WP_A}: its provision copy does not carry ${_WG_PROV_TOKEN} yet; not ready"
+    return 1
+  fi
+  _prov=$(_ig_in_real_dir "/data/disk/${_WP_A}/.drush/sys/provision" \
+    _ig_read_here provision.inc)
+  if [[ "${_prov}" != *"${_WG_PROV_PATH_TOKEN}"* ]]; then
+    _msg "${_WP_A}: its provision copy does not carry ${_WG_PROV_PATH_TOKEN} yet; not ready"
     return 1
   fi
   return 0
@@ -5748,10 +5761,12 @@ _wg_check() {
     else
       _msg "shares:  no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
     fi
-    if [[ "$(_ig_in_real_dir "/data/disk/${_a}/.drush/sys/provision/platform" _ig_read_here provision_drupal.drush.inc)" == *"${_WG_PROV_TOKEN}"* ]]; then
-      _msg "provision: ready"
-    else
+    if [[ "$(_ig_in_real_dir "/data/disk/${_a}/.drush/sys/provision/platform" _ig_read_here provision_drupal.drush.inc)" != *"${_WG_PROV_TOKEN}"* ]]; then
       _msg "provision: its copy lacks ${_WG_PROV_TOKEN}"
+    elif [[ "$(_ig_in_real_dir "/data/disk/${_a}/.drush/sys/provision" _ig_read_here provision.inc)" != *"${_WG_PROV_PATH_TOKEN}"* ]]; then
+      _msg "provision: its copy lacks ${_WG_PROV_PATH_TOKEN}"
+    else
+      _msg "provision: ready"
     fi
   done
   return "${_rc}"
