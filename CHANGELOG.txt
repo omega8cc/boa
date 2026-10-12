@@ -74,6 +74,13 @@
 
 @=> Security
 
+    * A site task's Verify, install or deploy no longer follows a link
+      the account put in three more places: at the name of a .htaccess
+      file it writes anew, in place of a file whose mode it changes in a
+      recursive pass, and above the platform's root. A platform root now
+      counts as the site's own place only inside the account's home or
+      the shared platform trees (docs/FILES-SYMLINK.md).
+
     * Nginx can refuse to serve through a link whose owner differs from
       its target's, so an account cannot link another account's files
       into its own site; linkguard first makes BOA's own links pass, and

@@ -982,6 +982,12 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   storage), never into BOA's own folders there. A link leading anywhere else
   is left as it is, with everything below it: the task logs `STORE/SKIP` with
   where it leads, and ends with status Warning.
+- **The platform root counts only where it belongs.** A path below `sites/`
+  is the site's own by place only when the platform root resolves inside the
+  account's home or the shared platform trees (`/data/all`,
+  `/data/disk/all`), as the nightly judges a platform. A root that a link
+  above it leads elsewhere, into another account's tree say, leaves the site's
+  own store alone to decide, and everything else is `STORE/SKIP`.
 - **The rule covers the whole site directory.** It applies to the site
   directory itself and the platform's `sites/` above it, to the site's `files`
   and `private` trees, to its `modules`, `themes`, `libraries` and `vendor`,
@@ -989,6 +995,11 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   `files` and `private` trees. Each act runs inside the directory judged,
   entered for real, and new directories are made there by name, so a
   directory swapped for a link after the check is never followed.
+- **Files are written and changed without following a link.** A `.htaccess`
+  file is created in the directory judged with the Drupal core's lines and
+  mode, refusing any name already there, a link included. A recursive mode
+  change sets each file's mode through a handle that does not follow a link,
+  so a file swapped for one is left alone.
 - **Root's ownership and mode fixes leave another account's files.** The
   site Verify's two fixers (`fix-drupal-site-ownership.sh`,
   `fix-drupal-site-permissions.sh`), the platform Verify's two
