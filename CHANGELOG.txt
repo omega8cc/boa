@@ -241,6 +241,16 @@
       account's group. The conversion now waits for the provision copy
       that does this (docs/INSTGRP.md).
 
+    * instgrp takes an account's files store on attached storage
+      whether root or the account owns it. migratefs keeps the owner a
+      store had in the account's home, which is root's, so such a store
+      was left out of the per-instance group's walks and of the web
+      group's (still switched off), while the nightly and the site
+      scripts take it as the account's. The web group's revert also
+      walks and checks the stores of the account's sites there when the
+      box has no single mount point under /mnt, and a site dir inside
+      the store is the account's own (docs/INSTGRP.md).
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
