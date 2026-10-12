@@ -607,5 +607,8 @@ by the BOA install and upgrade tools exclusively.
   For test servers only. Tenant isolation is not switched on in this release:
   this marker lets _WEB_GROUP_ARM=YES write the web group's arm stamp at the
   next barracuda pass, lets _NGINX_LINK_GUARD=YES write the nginx link
-  check's arm stamp there, and lets boa-dbctl scope oN on switch an account,
-  so their drills can run. Never create it on a production box.
+  check's arm stamp there, and lets boa-dbctl switch an account (scope oN
+  on, typed by an operator or asked by a pass) and settle the box's logins
+  (baseline settle): the two calls every barracuda and octopus pass makes
+  on a box with _DB_BROKER_ARM=YES, which the broker refuses without it. So
+  their drills can run. Never create it on a production box.
