@@ -149,6 +149,12 @@ backup never reads a source file through a link or waits on a FIFO.
   tree must not exist yet; it is staged and renamed into place, and refused when a
   link on the way leads outside that account's own tree or store.
 
+  While it is still staged, what it restored under any owner but root and the
+  account's own users (a backup of another server can carry another account's uid)
+  is given to the account (its directories and single-link regular files; a link, a
+  FIFO or a hard-linked file keeps its owner); what the destination already held is
+  never touched.
+
   Restoring a single file to `tmp/`
 
 ```sh

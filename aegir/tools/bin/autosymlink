@@ -1183,15 +1183,20 @@ _store_files_dir() {
   # "<real path>|<dev>:<ino>", or nothing (status 1): only the account's own
   # static/files, or its store on attached storage
   # (/mnt/<m>/files/<oN>/static/files, no path component named files or
-  # static). The account's own static/files must be owned by root: this tool
-  # makes it, as root, and static/ is group-writable (02775), so a directory
-  # anyone else made or owns at the name (a co-tenant's own, or one the
-  # account's own uid made and renamed there) is never the store. On attached
-  # storage the account may own it too: migratefs gives a fresh store the
-  # owner of static/. The owner and the dev:ino come from one stat; every later
-  # act checks the dev:ino (_store_in_bound, _store_move_here, _unshare_copy),
-  # so a directory put at the name after this point is refused, never used.
-  local _acct="${1}" _a _r _m _st _u _mnt="NO"
+  # static). The account's own static/files must be owned by root and closed
+  # to group and other: this tool makes it, as root, 0755, and static/ is
+  # group-writable (02775), so a directory anyone else made or owns at the
+  # name (a co-tenant's own, or one the account's own uid made and renamed
+  # there) is never the store. Nor is a root-owned directory that group or
+  # other can write: an identity can move a directory into static/ from
+  # another parent only when it can write that directory (its '..' is
+  # rewritten), so any root-owned directory moved in carries that write. On
+  # attached storage the account may own it too: migratefs gives a fresh
+  # store the owner of static/, below directories only root can change. The
+  # owner, the mode and the dev:ino come from one stat; every later act checks
+  # the dev:ino (_store_in_bound, _store_move_here, _unshare_copy), so a
+  # directory put at the name after this point is refused, never used.
+  local _acct="${1}" _a _r _m _st _md _u _mnt="NO"
   _a=$(realpath -e -- "${_acct}" 2>/dev/null) || return 1
   _r=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 1
   case "${_r}" in
@@ -1206,15 +1211,23 @@ _store_files_dir() {
       ;;
     *) return 1 ;;
   esac
-  # "<uid> <dev>:<ino> <type>" of the name as it is now, never through a link
-  _st=$(stat -c '%u %d:%i %F' -- "${_r}" 2>/dev/null) || return 1
-  [ "${_st#* * }" = "directory" ] || return 1
+  # "<uid> <mode> <dev>:<ino> <type>" of the name as it is now, never through
+  # a link
+  _st=$(stat -c '%u %a %d:%i %F' -- "${_r}" 2>/dev/null) || return 1
+  [ "${_st#* * * }" = "directory" ] || return 1
+  _md="${_st#* }"
+  _md="${_md%% *}"
   if [ "${_st%% *}" != "0" ]; then
     [ "${_mnt}" = "YES" ] || return 1
     _u=$(id -u -- "${_acct##*/}" 2>/dev/null)
     { [ -n "${_u}" ] && [ "${_st%% *}" = "${_u}" ]; } || return 1
+  elif [ "${_mnt}" != "YES" ]; then
+    case "${_md}" in
+      ''|*[!0-7]*) return 1 ;;
+    esac
+    [ $(( 8#${_md} & 022 )) -eq 0 ] || return 1
   fi
-  _st="${_st#* }"
+  _st="${_st#* * }"
   printf '%s|%s\n' "${_r}" "${_st%% *}"
 }
 
@@ -1408,9 +1421,11 @@ _store_files_dir_create() {
   _a=$(realpath -e -- "${_acct}" 2>/dev/null) || return 1
   if [ ! -e "${_a}/static/files" ] && [ ! -L "${_a}/static/files" ]; then
     _sdir=$(_store_in_pinned "${_a}" _store_real_sub "static") || return 1
-    # one bare mkdir, so a link a co-tenant plants in the race fails EEXIST and
-    # is then judged by identity below -- never created over, never renamed aside
-    _store_in_pinned "${_sdir}" mkdir -- "./files" 2>/dev/null
+    # one mkdir, never -p, so a link a co-tenant plants in the race fails
+    # EEXIST and is then judged by identity below -- never created over, never
+    # renamed aside; 0755 whatever the run's umask, as _store_files_dir
+    # refuses a root-owned store that group or other can write
+    _store_in_pinned "${_sdir}" mkdir -m 0755 -- "./files" 2>/dev/null
   fi
   _store_files_dir "${_acct}"
 }
@@ -1531,7 +1546,7 @@ _archive_site_store_now() {
   _ASN_H=$(_store_files_dir "${_ACCOUNT_DIR}")
   if [ -z "${_ASN_H}" ]; then
     if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
-      _log "[ALERT] Archive-store: ${_ACCOUNT_DIR}/static/files is not the account's own store (root-made, or the migratefs layout); ${_ASN_CANON} left in place, manual review required"
+      _log "[ALERT] Archive-store: ${_ACCOUNT_DIR}/static/files is not the account's own store (root's and closed to group and other, or the migratefs layout); ${_ASN_CANON} left in place, manual review required"
       return 3
     fi
     _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
@@ -3244,7 +3259,7 @@ _process_account() {
     _SWEEP_STORE="${_SWEEP_H%|*}"
     if [ -z "${_SWEEP_H}" ]; then
       if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
-        _log "[ALERT] Orphan scan skipped for account ${_ACCOUNT_NAME}: ${_ACCOUNT_DIR}/static/files is not the account's own store (root-made, or the migratefs layout)"
+        _log "[ALERT] Orphan scan skipped for account ${_ACCOUNT_NAME}: ${_ACCOUNT_DIR}/static/files is not the account's own store (root's and closed to group and other, or the migratefs layout)"
       fi
     else
       # Archive in the apply modes only, and only if the operator has not disabled it.
