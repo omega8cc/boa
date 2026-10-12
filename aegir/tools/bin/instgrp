@@ -708,8 +708,10 @@ _mnt_point() {
 # <mount>/files/<acct>/static/files under the single real mountpoint: that
 # path is taken from the root-owned mount layout, never from the
 # tenant-writable ~/static/files link, and only when it is a real directory
-# owned by root or by the account (migratefs keeps a moved store's owner,
-# root's for the one BOA made in the home). Printed when there is one.
+# owned by the account. With $2 = root, one root owns is taken too: the web
+# group's view (migratefs keeps a moved store's owner, root's for the one
+# BOA made in the home); the per-instance group's roots take the account's
+# own store only. Printed when there is one.
 _acct_store() {
   local _a="$1" _mp _st _uid _ou
   _mp=$(_mnt_point)
@@ -719,13 +721,15 @@ _acct_store() {
   _uid=$(id -u "${_a}" 2> /dev/null)
   [ -n "${_uid}" ] || return 1
   _ou=$(stat -c '%u' "${_st}" 2> /dev/null)
-  [ "${_ou}" = "0" ] || [ "${_ou}" = "${_uid}" ] || return 1
+  if [ "${_ou}" != "${_uid}" ]; then
+    [ "${2:-}" = "root" ] && [ "${_ou}" = "0" ] || return 1
+  fi
   printf '%s\n' "${_st}"
 }
 
 # Roots the group walk covers. /home/<acct>.ftp/clients is a symlink into the
 # account root (covered there); the store on attached storage is
-# _acct_store's.
+# _acct_store's, when the account owns it.
 _acct_roots() {
   local _a="$1" _r _u
   printf '%s\n' "/data/disk/${_a}"
@@ -3911,7 +3915,8 @@ _wg_clean() {
 # bounded and never through a link; "in" when the site dir resolves inside
 # the profile's own tree (/data/disk/<a>/ for an account, /var/aegir/ for
 # the master) or, for an account, inside its store on attached storage
-# (_acct_store), "out" otherwise. $1 = the home (the profile's by default).
+# (_acct_store, root's or its own), "out" otherwise. $1 = the home (the
+# profile's by default).
 _wg_site_list() {
   local _h="${1:-${_WP_HOME}}" _rh _f _t _sp _rs _w _st _rst=""
   _rh=$(realpath -e -- "${_h}" 2> /dev/null) || return 0
@@ -3919,7 +3924,7 @@ _wg_site_list() {
   case "${_st}" in
     /data/disk/*/*) ;;
     /data/disk/?*)
-      _st=$(_acct_store "${_st##*/}" 2> /dev/null) \
+      _st=$(_acct_store "${_st##*/}" root 2> /dev/null) \
         && _rst=$(realpath -e -- "${_st}" 2> /dev/null)
       ;;
   esac
@@ -4158,31 +4163,44 @@ _wg_roots() {
   return 0
 }
 
-# The store and private parts of the profile's sites (_wg_parts) that lie
-# below none of the walk's roots, one resolved path per line: a store on
-# attached storage the roots leave out (no single mountpoint under /mnt)
-# still took the web group from the nightly, the site fixers or the
-# conversion's claim, so the way down walks and checks it too.
+# 0 when the resolved path $1 is one of the resolved paths in $2 (one per
+# line) or lies below one.
+_wg_under() {
+  local _x
+  while IFS= read -r _x; do
+    [ -n "${_x}" ] || continue
+    case "${1}/" in
+      "${_x}"/*) return 0 ;;
+    esac
+  done <<< "${2}"
+  return 1
+}
+
+# What the way down walks and checks below none of the walk's roots, one
+# resolved path per line: the account's store on attached storage when
+# root owns it (the roots take a store the account owns only), and the
+# store and private parts of the profile's sites (_wg_parts) the roots
+# leave out (no single mountpoint under /mnt). Those took the web group
+# from the nightly, the site fixers, provision or the conversion's claim.
 _wg_parts_beyond() {
-  local _k _p _r _x _in _rr=""
+  local _k _p _r _x _st _rr=""
   while IFS= read -r _r; do
     [ -n "${_r}" ] || continue
     _x=$(realpath -e -- "${_r}" 2> /dev/null) || continue
     _rr="${_rr}${_x}"$'\n'
   done < <(_wg_roots)
+  if [ "${_WP_M}" != "YES" ] && _st=$(_acct_store "${_WP_A}" root 2> /dev/null) \
+    && _st=$(realpath -e -- "${_st}" 2> /dev/null) && _wg_clean "${_st}" \
+    && ! _wg_under "${_st}" "${_rr}"; then
+    printf '%s\n' "${_st}"
+    _rr="${_rr}${_st}"$'\n'
+  fi
   while read -r _k _p; do
     case "${_k}" in
       store|private) ;;
       *) continue ;;
     esac
-    _in=NO
-    while IFS= read -r _x; do
-      [ -n "${_x}" ] || continue
-      case "${_p}/" in
-        "${_x}"/*) _in=YES; break ;;
-      esac
-    done <<< "${_rr}"
-    [ "${_in}" = "NO" ] && printf '%s\n' "${_p}"
+    _wg_under "${_p}" "${_rr}" || printf '%s\n' "${_p}"
   done < <(_wg_parts)
   return 0
 }
