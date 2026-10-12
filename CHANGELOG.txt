@@ -202,6 +202,12 @@
       owner's private store still cannot be un-shared; the refusal
       names it.
 
+    * autosymlink logs a link target, and an entry of another account's
+      store closed to an un-share copy, with each byte outside letters,
+      digits and ._/- shown as '?'. A newline in such a name, which an
+      account chooses, could write a line of its own into the log that
+      symlinkinfo reads.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
