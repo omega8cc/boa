@@ -2337,16 +2337,18 @@ _unshare_closed_ex() {
   # source store $3 (type $4: files or private), as that account sees them
   # (setpriv with its own groups; find never follows a link: the copy keeps a
   # link as a link and skips specials, so neither counts). A directory it can
-  # read but not enter is not listed: the copy alone decides on it, as it
-  # always did. A store the account cannot read or cannot enter as a whole (a
-  # private store, once its owner runs in its own web group) is named, and
-  # nothing is copied. Only a files store leaves an entry out (the fixers
-  # close the whole of a private store, so any closed entry there stops the
-  # copy): each must be the store owner's private set (_UNSHARE_DENIED_RE
-  # matched case-insensitively, or ./private as the fixers' -path takes it,
-  # case and all, or an entry below either, as the fixers close the whole of
-  # each), plainly named: the copy then leaves it out (an anchored exclude in
-  # _UNSHARE_EX), said once the copy is made (_unshare_copy_other). A store
+  # read but not enter is one closed entry too when it holds anything (no
+  # entry in it can be read or typed through it); an empty one is not listed:
+  # the copy makes it, as it always did. A store the account cannot read or
+  # cannot enter as a whole (a private store, once its owner runs in its own
+  # web group) is named, and nothing is copied. Only a files store leaves an
+  # entry out (the fixers close the whole of a private store, so any closed
+  # entry there stops the copy): each must be the store owner's private set
+  # (_UNSHARE_DENIED_RE matched case-insensitively, or ./private as the
+  # fixers' -path takes it, case and all, or an entry below either, as the
+  # fixers close the whole of each), plainly named: the copy then leaves it
+  # out (an anchored exclude in _UNSHARE_EX), said once the copy is made
+  # (_unshare_copy_other). A store
   # whose owner converted to its own web group closes exactly these to other
   # accounts, and the site never served them. Any other closed entry, or more
   # than 200, and nothing is copied (status 1).
@@ -2382,7 +2384,8 @@ _unshare_closed_ex() {
     [ "${_n}" -le 200 ] || { _log "[ERROR] Un-share copy: more than 200 entries of $(_log_name "${3%/}") are closed to ${_who}; nothing copied"; return 1; }
     _UNSHARE_EX+=("--exclude=/${_r}")
   done < <(setpriv --reuid="${1}" --regid="${2}" --init-groups \
-    find "${3%/}/" -mindepth 1 \( -type f -o -type d \) ! -readable -prune -print0 2>/dev/null)
+    find "${3%/}/" -mindepth 1 \( \( -type f ! -readable \) \
+    -o \( -type d \( ! -readable -o \( ! -executable ! -empty \) \) \) \) -prune -print0 2>/dev/null)
   return 0
 }
 
