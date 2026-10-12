@@ -1387,7 +1387,7 @@
       once per row, over the socket or an address the box holds, and never
       while a row of the user carries a failed-login limit of its own; a
       login that could not be tried leaves the row as a refused one does.
-      Nothing calls it in this release (docs/DBCTL.md).
+      Only the passes of a box armed for the broker call it (docs/DBCTL.md).
 
     * The broker's scope oN on --pass is the unforced switch an Octopus pass
       makes. It runs only while a pass is running, waits for the account's
@@ -1396,16 +1396,46 @@
       would change nothing. One whose instance or panel user holds a global
       privilege again, or that has a grant row the switch revokes or
       rewrites, is switched again, and stays switched when a step of that
-      fails. Nothing calls it in this release (docs/DBCTL.md).
+      fails. Only an Octopus pass on a box armed for the broker makes it
+      (docs/DBCTL.md).
 
     * The broker's report says for each account whether it is switched, or
-      why not, and lists what stops the box. Nothing calls it in this
-      release (docs/DBCTL.md).
+      why not, and lists what stops the box. Only the nightly of a box armed
+      for the broker asks for it (docs/DBCTL.md).
 
     * The broker's box-wide check names a role or a proxy grant on an
       account's own database login as that login's finding: no switch
       takes one, so it stops the account's own switch too, and report
       says it for that account (docs/DBCTL.md).
+
+    * A box can be armed for the database broker (boa-dbctl), still switched
+      off: with _DB_BROKER_ARM=YES in /root/.barracuda.cnf every Octopus
+      install and upgrade has the box settle its database logins (baseline
+      settle) and then asks for the pass's switch of its account (scope oN
+      on --pass), unforced. Each call is one line of the pass: the broker's
+      own OK line, or a NOTE with its refusal, which never fails the pass
+      and leaves everything as it was until the next pass asks again. No
+      call is made on a standby or a box being prepared as one, nor for an
+      account whose cnf says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO. The
+      broker still refuses outside a test server, so a box armed today only
+      prints those NOTE lines (docs/DBCTL.md).
+
+    * On a box armed for the broker a barracuda pass has it settle the
+      box's database logins once, after the pass has made the server's own
+      logins for the last time and had them recorded again (docs/DBCTL.md).
+
+    * On a box armed for the broker the nightly asks for the broker's
+      report and mails the box operator, once a day, the lines of the
+      accounts that are not switched and of what stops the box, with the
+      report's counts. Nothing is mailed while every account is switched
+      and nothing stops the box, nor while the release switches no account
+      (docs/DBCTL.md).
+
+    * The _DB_BROKER_ARM default is written the way the web group's is: a
+      barracuda pass writes _DB_BROKER_ARM=YES only into a cnf that has no
+      such line, so an operator's own line, NO included, always stays. It
+      is staged by release and off in this one: no pass writes the setting
+      (docs/DBCTL.md).
 
     * A load through the broker, still switched off, walks the account's
       dump store with the account's own rights before its loader starts,
