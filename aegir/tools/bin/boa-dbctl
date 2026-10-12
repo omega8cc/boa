@@ -6306,10 +6306,14 @@ _v_scope_on() {
         return 0
       fi
       _SP_KEEP="YES"
-      # what that answer read is read again after the wait, with the plan
+      # what that answer read is read again after the wait, with the plan:
+      # the box's addresses and its pair's state too, so that a switch of
+      # the pair that began meanwhile refuses this one
       _AL_LOADED="NO"
       _REC_LOADED="NO"
       _PN_ROOT=""
+      _BOX_READ="NO"
+      _PAIR_READ="NO"
     fi
     _tasks_wait
   fi
