@@ -3969,6 +3969,7 @@ _barracuda_cnf() {
     _sql_series_never_downgrade
     _instgrp_web_arm_seed
     _nginx_link_guard_seed
+    _db_broker_arm_seed
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -4750,6 +4751,7 @@ _barracuda_cnf() {
     fi
     _instgrp_web_arm_seed
     _nginx_link_guard_seed
+    _db_broker_arm_seed
     _hm_cli_floor_publish
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
@@ -13182,6 +13184,25 @@ _instgrp_web_arm_seed() {
     && _instgrp_web_seed_line _WEB_GROUP_PHASE_B "${_tiSeedPhaseB}"; then
     _WEB_GROUP_PHASE_B=YES
     _msg "INFO: The account web group goes on to phase B by default: _WEB_GROUP_PHASE_B=YES written to ${_barCnf} (NO there stops at phase A)"
+  fi
+}
+
+# The database broker's default, written the way the account web group's is
+# (_instgrp_web_seed_line): a pass writes _DB_BROKER_ARM=YES into a cnf that
+# carries no such line, so an operator's own line, NO included, always stays,
+# and a box no stage has reached yet gets no line at all. Staged by release:
+# NO writes nothing, HOSTED writes on the omega8.cc-hosted fleet, ALL on
+# every box. Nothing is written in this release. Kept local so no cnf line
+# can set it; it stays NO wherever the broker's own release switch
+# (_TI_RELEASED in boa-dbctl) is NO.
+_db_broker_arm_seed() {
+  local _dbSeedArm=NO
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _db_broker_arm_seed"
+  fi
+  if _instgrp_web_seed_line _DB_BROKER_ARM "${_dbSeedArm}"; then
+    _DB_BROKER_ARM=YES
+    _msg "INFO: The database broker is armed by default: _DB_BROKER_ARM=YES written to ${_barCnf} (NO there opts this box out)"
   fi
 }
 
