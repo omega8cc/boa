@@ -33,7 +33,7 @@ exec 3>&2
 # and the account owns the names under ${site_path}, so any of them can be a
 # link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
-#  2. Every hand-over below goes through _reown_here (replaces the prior
+#  2. Every hand-over below goes through _reown_own_here (replaces the prior
 #     chown -L -R which explicitly dereferenced symlinks during traversal):
 #     each directory and single-link regular file is changed through a handle
 #     opened without following a link, so no link target is ever reached,
@@ -43,6 +43,11 @@ exec 3>&2
 #  3. Every hand-over runs inside a directory entered for real (_in_pinned_dir),
 #     on ./names there, so a name on the way swapped for a link after the
 #     path was resolved is never followed.
+#  4. Only what root or the site's own users own (_site_walk_uids) is
+#     handed over, and nothing below a directory another user owns: the
+#     account's users can rename into their own tree what another account
+#     left group-writable, a whole directory with everything in it; that
+#     stays its owner's, and one Notice counts it (_owners_left_note).
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -343,13 +348,124 @@ _links_left_note() {
   return 0
 }
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# The uids the walks below act for, comma-separated, from the site path as
+# resolved, never from argv: under /data/disk/<account>/ that account's
+# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
+# master's pool users wwwNN, the holders _master_web_group allows, and
+# www-data's, the web server's user, which no account's login can be and a
+# plain Aegir server's PHP runs as. Status 1, and nothing, for any other
+# path, or when the account or aegir is not in passwd. A uid no passwd entry names counts as the site's own too
+# (_SAT_REOWN_OWN_PL, _SAT_CHMOD_OWN_PL): a login removed before its files
+# were handed to its account left those.
+_site_walk_uids() {
+  local _a _n _p _u _r _x="0" _self=NO
+  case "${1}/" in
+    /data/disk/*/*)
+      _a="${1#/data/disk/}"
+      _acct_walk_uids "${_a%%/*}"
+      return "$?"
+      ;;
+    /var/aegir/*)
+      while IFS=: read -r _n _p _u _r; do
+        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        _x="${_x},${_u}"
+        [ "${_n}" = "aegir" ] && _self=YES
+      done < <(getent passwd 2> /dev/null)
+      [ "${_self}" = "YES" ] || return 1
+      echo "${_x}"
+      return 0
+      ;;
+  esac
+  return 1
+}
+# The uids the walks act for in _OWN_UIDS (_site_walk_uids); a site path in
+# neither an account's tree nor the master's is left as it is, with one
+# Notice and nothing changed.
+_own_uids_or_leave() {
+  _OWN_UIDS=$(_site_walk_uids "${site_path}") || _OWN_UIDS=""
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] && return 0
+  printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
+    "${site_path}" >&2
+  exit 0
+}
+# One line for what the walks left as another user's, each entry once by
+# the dev:ino the walkers print ($1, all they printed), on fd 3 beside the
+# other notes.
+_owners_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
+  printf "Notice: %s entries owned by another user left as they were in the site %s and its stores\n" \
+    "${_n}" "${site_path}" >&3
+  return 0
+}
+
+# As _ACCT_REOWN_PL, given first the uids it acts for (_site_walk_uids),
+# then the uid and gid to hand each name to: a name another named uid owns
+# keeps its owner and is printed (dev:ino), and nothing is changed unless
+# the current directory and every directory above it, up to /, are owned
+# by those uids (read through '..' from where find stands), so nothing
+# below a directory another named uid owns is handed over. Given . as a
+# name, a directory another uid owns above the place is printed when it
+# is refused; status 1 when it is.
+_SAT_REOWN_OWN_PL='use Fcntl;
+my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
+    chown($u, $g, $h);
+  }
+  close($h);
+}
+exit 0;'
+
 # chown -h [-R] <owner[:group]> <names> as _ACCT_REOWN_PL hands them over,
 # in the current (pinned) directory: the owner and group resolved to numbers
 # first (a name that does not resolve is refused; no group named is -1, each
 # entry keeps its own, as chown <owner> keeps it), then each ./name, or with
 # -R every entry at or below each name, walked by find (any find tests after
 # the names apply first) and handed over from -execdir, one ./name in the
-# directory find holds; a walk ends with _links_left_note.
+# directory find holds; a walk ends with _links_left_note. Kept as the
+# platform script's copy; both hand over with _reown_own_here.
 _reown_here() {
   local _r="" _uid _gid=-1 _rc
   if [ "${1}" = "-R" ]; then
@@ -375,9 +491,80 @@ _reown_here() {
   fi
 }
 
+# find's tests, in _NOT_OWN, for an entry another user owns as the walkers
+# read it: its uid is none of _OWN_UIDS and a passwd entry names it
+# (-nouser is true for a uid no entry names). A walk hands such an entry to
+# its walker whatever state it is in, so it is left and counted as before.
+_not_own_tests() {
+  local _u
+  local -a _ids=()
+  _NOT_OWN=()
+  IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
+  for _u in "${_ids[@]}"; do
+    _NOT_OWN+=( ! -uid "${_u}" )
+  done
+  _NOT_OWN+=( ! -nouser )
+}
+# As _reown_here, through _SAT_REOWN_OWN_PL with the site's own uids
+# (_OWN_UIDS): only what root or the site's own users own is handed over,
+# and nothing below a directory another user owns. Prints dev:ino of each
+# entry left for another owner; status 1 when the current directory is
+# below a directory another user owns (given . as a name, that directory
+# is printed too), or the owner does not resolve. A walk (-R) starts perl
+# only in a directory that holds an entry not yet the owner's and the
+# group's, a regular file with a set-ID bit (a change of owner clears
+# those, even one that changes nothing), or another user's entry
+# (_not_own_tests): a tree already handed over costs the walk alone.
+_reown_own_here() {
+  local _r="" _uid _gid=-1 _rc
+  local -a _need=()
+  if [ "${1}" = "-R" ]; then
+    _r="-R"
+    shift
+  fi
+  _uid=$(id -u -- "${1%%:*}" 2> /dev/null)
+  [[ "${1}" != *:* ]] \
+    || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]] \
+    || [[ ! "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]]; then
+    printf "Error: invalid owner %s\n" "${1}" >&2
+    return 1
+  fi
+  shift
+  if [ -n "${_r}" ]; then
+    _need=( ! -uid "${_uid}" )
+    [ "${_gid}" = "-1" ] || _need+=( -o ! -gid "${_gid}" )
+    _not_own_tests
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+      \( "${_need[@]}" -o -type f \( -perm -4000 -o -perm -2000 \) \
+      -o "${_NOT_OWN[@]}" \) \
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" {} +
+    _rc=$?
+    _links_left_note "$@"
+    return "${_rc}"
+  else
+    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" "$@"
+  fi
+}
+# Status 0 while the current (pinned) directory and every directory above
+# it are root's or the site's own users' (_SAT_REOWN_OWN_PL given . to hand
+# to nobody: -1 keeps the owner and the group); otherwise the directory
+# another user owns is printed (dev:ino) and the status is 1.
+_place_ours_here() {
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" -1 -1 .
+}
+# "$@" in the current (pinned) directory only while that place is root's
+# or the site's own users' (_place_ours_here): nothing is made, renamed or
+# removed in a directory another user owns, or below one.
+_in_ours_here() {
+  _place_ours_here > /dev/null || return 0
+  "$@"
+}
+
 # Each name in the current (pinned) directory that matches a pattern after
-# $2 (expanded here, nowhere else) handed to $2 by _reown_here (with -R when
-# $1 is -R), as ./name so no name is read as an option; a pattern that
+# $2 (expanded here, nowhere else) handed to $2 by _reown_own_here (with -R
+# when $1 is -R), as ./name so no name is read as an option; a pattern that
 # matches nothing is skipped.
 _chown_here() {
   local _r="${1}" _o="${2}" _pat _p
@@ -391,7 +578,7 @@ _chown_here() {
     done
   done
   [ "${#_list[@]}" -gt 0 ] || return 0
-  _reown_here ${_r:+"${_r}"} "${_o}" "${_list[@]}"
+  _reown_own_here ${_r:+"${_r}"} "${_o}" "${_list[@]}"
 }
 
 # ./$1 in the current (pinned) directory as a fresh empty file, created
@@ -450,17 +637,21 @@ _copy_new_here() {
 
 # The Grav capsule model, run inside the real site directory: code
 # <user>:<account group>, the writable set and the .env <user>:<web group>.
+# Every leg below starts with the directory it runs in, handed over as its
+# walk hands it: nothing is done there when it is below a directory
+# another user owns.
 _grav_site_own_here() {
   local _wd
-  _reown_here -R "${script_user}:${_code_group}" .
+  _reown_own_here "${script_user}:${_code_group}" . || return 0
+  _reown_own_here -R "${script_user}:${_code_group}" .
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    _reown_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
+    _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
   done
   # The secret root .env drops its world bit, so FPM's read comes via
   # the web group -- the code pass above homed it to the account group.
   if [ -f ./.env ]; then
-    _reown_here "${script_user}${_wg:+:${_wg}}" ./.env
+    _reown_own_here "${script_user}${_wg:+:${_wg}}" ./.env
   fi
 }
 
@@ -469,16 +660,17 @@ _grav_site_own_here() {
 _txp_site_own_here() {
   local _wd _here
   _here="$(pwd -P)"
-  _reown_here -R "${script_user}:${_code_group}" .
+  _reown_own_here "${script_user}:${_code_group}" . || return 0
+  _reown_own_here -R "${script_user}:${_code_group}" .
   for _wd in tmp admin/plugins public/files public/images public/themes private; do
     [ -d "./${_wd}" ] || continue
     case "${_wd}" in
       */*)
         _in_pinned_dir "${_here}/${_wd%/*}" \
-          _reown_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd##*/}"
+          _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd##*/}"
         ;;
       *)
-        _reown_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
+        _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
         ;;
     esac
   done
@@ -489,57 +681,73 @@ _site_own_here() {
   local _d _here
   _here="$(pwd -P)"
   ### directory and settings files - site level
-  chown -h "${script_user}:${_code_group}" .
-  _reown_here "${script_user}${_wg:+:${_wg}}" \
+  _reown_own_here "${script_user}:${_code_group}" . || return 0
+  _reown_own_here "${script_user}${_wg:+:${_wg}}" \
     ./local.settings.php ./settings.php ./civicrm.settings.php
   # solr.php holds the site's Solr core details for its owner; no web reader
   # opens it, so it stays in the code group its writer gives it.
-  _reown_here "${script_user}:${_code_group}" ./solr.php
+  _reown_own_here "${script_user}:${_code_group}" ./solr.php
   ### modules,themes,libraries - site level
   for _d in modules themes libraries; do
     _in_pinned_dir "${_here}/${_d}" \
       _chown_here -R "${script_user}:${_code_group}" '*'
   done
-  _reown_here "${script_user}:${_code_group}" ./drushrc.php
+  _reown_own_here "${script_user}:${_code_group}" ./drushrc.php
   _in_pinned_dir "${_here}/modules" \
     _chown_here "" "${script_user}:${_code_group}" '*.yml'
-  _reown_here "${script_user}:${_code_group}" ./modules ./themes ./libraries
+  _reown_own_here "${script_user}:${_code_group}" ./modules ./themes ./libraries
 }
 
-# The files store, run inside it (entered for real): the day marker, then the
-# whole store and its known children handed to <user>:<web group>.
+# The files store, run inside it (entered for real): the store itself, then
+# the day marker, the whole store and its known children handed to
+# <user>:<web group>; nothing is done in a store below a directory another
+# user owns.
 _files_own_here() {
   local _o="${script_user}${_wg:+:${_wg}}" _here
   _here="$(pwd -P)"
+  _reown_own_here "${_o}" . || return 0
   ### ctrl pid
   rm -f -- ./ownership-fixed*.pid
   _mark_here "ownership-fixed-${_TODAY}.pid"
   ### files - site level
-  ### The walk (_reown_here) never dereferences a symlink in the store and
-  ### leaves a hard link alone.
-  _reown_here -R "${_o}" .
-  chown -h "${_o}" .
-  _reown_here "${_o}" ./tmp ./images ./pictures ./css ./js
-  _reown_here "${_o}" ./advagg_css ./advagg_js ./ctools
-  _reown_here "${_o}" ./imagecache ./locations
-  _reown_here "${_o}" ./xmlsitemap ./deployment ./styles ./private
-  _reown_here "${_o}" ./civicrm
-  _in_pinned_dir "${_here}/ctools" _reown_here "${_o}" ./css
-  _in_pinned_dir "${_here}/civicrm" _reown_here "${_o}" \
+  ### The walk (_reown_own_here) never dereferences a symlink in the store
+  ### and leaves a hard link alone.
+  _reown_own_here -R "${_o}" .
+  _reown_own_here "${_o}" ./tmp ./images ./pictures ./css ./js
+  _reown_own_here "${_o}" ./advagg_css ./advagg_js ./ctools
+  _reown_own_here "${_o}" ./imagecache ./locations
+  _reown_own_here "${_o}" ./xmlsitemap ./deployment ./styles ./private
+  _reown_own_here "${_o}" ./civicrm
+  _in_pinned_dir "${_here}/ctools" _reown_own_here "${_o}" ./css
+  _in_pinned_dir "${_here}/civicrm" _reown_own_here "${_o}" \
     ./templates_c ./upload ./persist ./custom ./dynamic
 }
 
-# The private store, run inside it (entered for real).
+# The private store, run inside it (entered for real), the same way.
 _priv_own_here() {
   local _o="${script_user}${_wg:+:${_wg}}" _here
   _here="$(pwd -P)"
-  _reown_here -R "${_o}" .
-  chown -h "${_o}" .
-  _reown_here "${_o}" ./files ./temp
-  _in_pinned_dir "${_here}/files" _reown_here "${_o}" ./backup_migrate
-  _in_pinned_dir "${_here}/files/backup_migrate" _reown_here "${_o}" \
+  _reown_own_here "${_o}" . || return 0
+  _reown_own_here -R "${_o}" .
+  _reown_own_here "${_o}" ./files ./temp
+  _in_pinned_dir "${_here}/files" _reown_own_here "${_o}" ./backup_migrate
+  _in_pinned_dir "${_here}/files/backup_migrate" _reown_own_here "${_o}" \
     ./manual ./scheduled
-  _reown_here -R "${_o}" ./config
+  _reown_own_here -R "${_o}" ./config
+}
+
+### While the box is armed for the nginx link check (linkguard), a link
+### inside the account is made its target owner's wherever this run handed
+### something over, so the check does not refuse it until the night: the
+### site's own tree on every run, a store right after its daily hand-over.
+### Not a store while the nightly runs, whose own pass covers every store
+### when it ends.
+_link_guard_tree() {
+  if [ -n "${1}" ] && [ -e "/var/log/boa/linkguard-arm.ready.txt" ] \
+    && [ -e "/opt/local/bin/linkguard" ]; then
+    bash /opt/local/bin/linkguard fix --tree="${1}" >&3 2>&1
+  fi
+  return 0
 }
 
 site_path=${1%/}
@@ -588,6 +796,7 @@ if [ -n "${site_path}" ] \
     exit 1
   fi
   _validate_path_prefix "${site_path}"
+  _own_uids_or_leave
   _code_group=$(_acct_group "${site_path}")
   _wg=$(_site_web_group "${site_path}")
   # Capsule ownership model (spike-proven): code <user>:<account group>; the
@@ -595,7 +804,8 @@ if [ -n "${site_path}" ] \
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
   # group stay one quoted argument.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
-  _in_pinned_dir "${site_path}" _grav_site_own_here
+  _owners_left_note "$(_in_pinned_dir "${site_path}" _grav_site_own_here)"
+  _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Grav site)."
   exit 0
 fi
@@ -615,17 +825,19 @@ if [ -n "${site_path}" ] \
     exit 1
   fi
   _validate_path_prefix "${site_path}"
+  _own_uids_or_leave
   _code_group=$(_acct_group "${site_path}")
   _wg=$(_site_web_group "${site_path}")
   # Code <user>:<account group>; the writable set and the credential store
   # <user>:<web group> so FPM reaches them via GROUP (version-flip-immune: a
   # box-default PHP bump changes the pool USER, never its group).
-  # The walk (_reown_here) leaves the four load-bearing admin symlinks as
+  # The walk (_reown_own_here) leaves the four load-bearing admin symlinks as
   # they are and never follows them into the shared core.
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
   # group stay one quoted argument.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
-  _in_pinned_dir "${site_path}" _txp_site_own_here
+  _owners_left_note "$(_in_pinned_dir "${site_path}" _txp_site_own_here)"
+  _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Textpattern site)."
   exit 0
 fi
@@ -642,6 +854,7 @@ if [ -z "${script_user}" ] \
 fi
 
 _validate_path_prefix "${site_path}"
+_own_uids_or_leave
 _code_group=$(_acct_group "${site_path}")
 _wg=$(_site_web_group "${site_path}")
 
@@ -665,8 +878,13 @@ if ! _in_pinned_dir "${site_path}" true; then
   exit 1
 fi
 
+### Nothing is made or removed in the site directory, its modules or its
+### libraries while that place is another user's (_in_ours_here): the walks
+### below refuse such a place, so the old marker, the services files and
+### libraries/ must not be written there first.
 if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
-  _in_pinned_dir "${site_path}/libraries" rm -f -- ./ownership-fixed.pid
+  _in_pinned_dir "${site_path}/libraries" \
+    _in_ours_here rm -f -- ./ownership-fixed.pid
 fi
 
 _TODAY=$(date +%y%m%d)
@@ -675,20 +893,21 @@ _TODAY=${_TODAY//[^0-9]/}
 ### Read and written only inside the real directories (_copy_new_here).
 if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
   if [ ! -e "${site_path}/modules/default.services.yml" ]; then
-    _in_pinned_dir "${site_path}/modules" \
+    _in_pinned_dir "${site_path}/modules" _in_ours_here \
       _copy_new_here "${site_path%/*}/sites/default" default.services.yml
   fi
 fi
 if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.yml" ]; then
-  _in_pinned_dir "${site_path}" \
+  _in_pinned_dir "${site_path}" _in_ours_here \
     ln -sfn "${site_path}/modules/services.yml" ./services.yml
 fi
 
 printf 'Setting ownership of key files and directories inside %s to: user => %s group => %s\n' "${site_path}" "${script_user}" "${_code_group}"
 if [ ! -e "${site_path}/libraries" ]; then
-  _in_pinned_dir "${site_path}" mkdir ./libraries
+  _in_pinned_dir "${site_path}" _in_ours_here mkdir ./libraries
 fi
-_in_pinned_dir "${site_path}" _site_own_here &> /dev/null
+### What the walks leave as another user's, by dev:ino, for one Notice.
+_LEFT=$(_in_pinned_dir "${site_path}" _site_own_here 2> /dev/null)
 
 ### files/ and private/ are LEGITIMATELY symlinks into the per-account static
 ### store, and chown -h protects only the final name, so a path through such
@@ -704,11 +923,17 @@ fi
 
 if [ -n "${_files_dir}" ] \
   && [ ! -e "${_files_dir}/ownership-fixed-${_TODAY}.pid" ]; then
-  _in_pinned_dir "${_files_dir}" _files_own_here &> /dev/null
+  _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_files_dir}" _files_own_here 2> /dev/null)"
   ### private - site level
   if [ -n "${_priv_dir}" ]; then
-    _in_pinned_dir "${_priv_dir}" _priv_own_here &> /dev/null
+    _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_own_here 2> /dev/null)"
+  fi
+  if [ ! -e "/run/daily-fix.pid" ]; then
+    _link_guard_tree "${_files_dir}"
+    _link_guard_tree "${_priv_dir}"
   fi
 fi
+_owners_left_note "${_LEFT}"
+_link_guard_tree "${site_path}"
 
 echo "Done setting proper ownership of site files and directories."

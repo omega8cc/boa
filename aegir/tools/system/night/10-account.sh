@@ -1300,10 +1300,13 @@ _account_process() {
   _purge_cruft_machine
   # clients/ and every client dir in it are oN's, and the main login owns its
   # home: each removal runs inside the real directory, and a dangling link is
-  # removed by find, which walks without following a link.
+  # removed by find, which walks without following a link. The retired
+  # client dirs go as the purge's legs go: only what root or the account's
+  # identities own, counted on the same NOTE line when another user's stays.
   if [ "${_hostedSys}" = "YES" ]; then
-    _acct_in_real_dir "${_usEr}/clients" \
-      rm -rf -- ./admin ./omega8ccgmailcom ./nocomega8cc &> /dev/null
+    _acct_in_real_dir "${_usEr}/clients" _night_rm_own_here admin
+    _acct_in_real_dir "${_usEr}/clients" _night_rm_own_here omega8ccgmailcom
+    _acct_in_real_dir "${_usEr}/clients" _night_rm_own_here nocomega8cc
   fi
   _acct_in_real_dir "${_usEr}/clients" _night_clients_bak_here rm
   _purge_left_note

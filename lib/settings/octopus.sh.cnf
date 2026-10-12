@@ -531,7 +531,11 @@ _USE_CURRENT=YES
 ### no sites hosted, during daily cleanup,
 ### if verified more than X days ago, where X
 ### is a number of days defined below.
-### If "0" then this option is disabled.
+### If "0" then this option is disabled,
+### except on hosted systems (.aegir.cc
+### hostname or /root/.host8.cnf), where "0"
+### means 60 days unless the account keeps
+### static/control/platforms.info.
 ###
 _DEL_OLD_EMPTY_PLATFORMS="0"
 
@@ -643,8 +647,10 @@ _INSTANCE_GROUP=YES
 ### hosted sites backup_migrate directories,
 ### during daily cleanup, if created more
 ### than X days ago, where X is a number
-### of days defined below. If "0" then
-### this option is disabled.
+### of days defined below. "0" keeps the
+### built-in age: 14 days, or 7 on hosted
+### systems (.aegir.cc hostname or
+### /root/.host8.cnf).
 ###
 _DEL_OLD_BACKUPS="0"
 
@@ -659,7 +665,8 @@ _DEL_OLD_BACKUPS="0"
 ### private/temp/ directories, during daily
 ### cleanup, if created more than X days ago,
 ### where X is a number of days defined below.
-### If "0" then this option is disabled.
+### With "0" they are deleted once they are
+### a day old.
 ###
 _DEL_OLD_TMP="0"
 
