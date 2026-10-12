@@ -2554,7 +2554,7 @@ _update_agents() {
     # not caught up kept the previous tool under the new marker for good.
     # The post-install step runs only when the file actually changed.
     _slrSum="$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f54
+    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f53
     if [ -s "/var/xdrago/manage_solr_config.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)" != "${_slrSum}" ]; then
       rm -f /run/manage_solr_config.pid
