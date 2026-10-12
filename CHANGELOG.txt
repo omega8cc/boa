@@ -246,7 +246,7 @@
       group, when root owns the store, as migratefs leaves the one BOA
       made in the account's home. The conversion is still switched off;
       the per-instance group's walks take that store only when the
-      account owns it, as before (docs/INSTGRP.md).
+      account owns it and no link is on the way to it (docs/INSTGRP.md).
 
     * The web group's revert also walks and checks the files and
       private stores of the account's sites on attached storage when
