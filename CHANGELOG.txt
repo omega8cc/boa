@@ -4,6 +4,29 @@
 
 @=> Important Fixes
 
+    * A Solr core created for a Drupal 8 or newer site no longer takes
+      documents before the site's own configuration is uploaded. Such
+      a core starts on Solr's stock configuration, which guessed the
+      type of every field from the first documents it received, and
+      the schema uploaded later could never write to an index typed
+      that way: every item was refused with "cannot change DocValues
+      type", and clearing the index from the site did not help,
+      because the running index writer kept the guessed types until
+      the core was reloaded by hand. Solr 7 and Solr 9 now run with
+      schemaless mode off, so a core without its configuration answers
+      the first document with a plain "unknown field" error and writes
+      nothing. A server that already runs Solr 7 or Solr 9 gets the
+      new line once and restarts that Solr once at its next pass; a
+      replication standby is left alone.
+
+    * The configuration upload now takes care of an index a core built
+      on Solr's stock schema before the change above: it archives the
+      index with the schema that typed it, empties the core, reloads it
+      on the empty index, records it in the pass log and the incident
+      log and mails the server admin, so the site only has to queue its
+      items for reindexing and index. An index it has to leave in place
+      is reported the same way.
+
     * A migration cutover, a planned switch of a mirror pair and a
       promotion by hand no longer stop at the master control panel of
       a target whose master has been upgraded at least once. The step
@@ -344,6 +367,15 @@
       not yet what the walk sets, a set-ID file, or one another account's
       users own, which is left and counted on the Notice line as before.
       What a Verify sets and prints is unchanged.
+
+    * The usage logs in /var/log/boa/usage are kept by month, the way
+      the nightly logs in /var/log/boa/daily are. Each usage pass moves
+      the dated logs of earlier months into MM-YYYY subdirectories, by
+      the date in the file name, so the top level holds the current
+      month and the two usage-latest files; nothing is deleted. The
+      directory had grown by two files a day with no bound. memorytuner
+      reads its 92-day growth series from both levels, and a server move
+      carries the tree as before.
 
 @=> Changes and Upgrades
 
