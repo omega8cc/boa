@@ -457,6 +457,9 @@ if ! declare -F _satellite_if_web_group > /dev/null 2>&1 \
     fi
   fi
 fi
+# The database broker's step on a box armed for it: a lib tree without it
+# has nothing to ask this pass, and the next pass asks.
+declare -F _satellite_if_db_broker > /dev/null 2>&1 || _satellite_if_db_broker() { return 0; }
 
 
 ###
@@ -542,6 +545,7 @@ _satellite_if_instance_group pre
 _satellite_make
 _satellite_if_instance_group post
 _satellite_if_web_group post
+_satellite_if_db_broker post
 _satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
 
