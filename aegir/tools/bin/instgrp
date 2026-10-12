@@ -704,13 +704,30 @@ _mnt_point() {
   [ "${_n}" = "1" ] && printf '%s' "${_hit}"
 }
 
+# A static store relocated by migratefs lives at
+# <mount>/files/<acct>/static/files under the single real mountpoint: that
+# path is taken from the root-owned mount layout, never from the
+# tenant-writable ~/static/files link, and only when it is a real directory
+# owned by root or by the account (migratefs keeps a moved store's owner,
+# root's for the one BOA made in the home). Printed when there is one.
+_acct_store() {
+  local _a="$1" _mp _st _uid _ou
+  _mp=$(_mnt_point)
+  [ -n "${_mp}" ] || return 1
+  _st="${_mp}/files/${_a}/static/files"
+  [ -d "${_st}" ] && [ ! -L "${_st}" ] || return 1
+  _uid=$(id -u "${_a}" 2> /dev/null)
+  [ -n "${_uid}" ] || return 1
+  _ou=$(stat -c '%u' "${_st}" 2> /dev/null)
+  [ "${_ou}" = "0" ] || [ "${_ou}" = "${_uid}" ] || return 1
+  printf '%s\n' "${_st}"
+}
+
 # Roots the group walk covers. /home/<acct>.ftp/clients is a symlink into the
-# account root (covered there). A static store relocated by migratefs lives
-# at <mount>/files/<acct>/static/files: that path is taken from the
-# root-owned mount layout, never from the tenant-writable ~/static/files
-# link, and only when it is a real directory owned by the account.
+# account root (covered there); the store on attached storage is
+# _acct_store's.
 _acct_roots() {
-  local _a="$1" _r _u _mp _st _uid
+  local _a="$1" _r _u
   printf '%s\n' "/data/disk/${_a}"
   [ -d "/home/${_a}.ftp" ] && printf '%s\n' "/home/${_a}.ftp"
   for _u in $(_acct_subusers "${_a}" 2> /dev/null); do
@@ -719,15 +736,8 @@ _acct_roots() {
   for _r in /opt/user/gems/"${_a}" /opt/user/gems/"${_a}".* /opt/user/npm/"${_a}" /opt/user/npm/"${_a}".*; do
     [ -d "${_r}" ] && [ ! -L "${_r}" ] && printf '%s\n' "${_r}"
   done
-  _mp=$(_mnt_point)
-  if [ -n "${_mp}" ]; then
-    _st="${_mp}/files/${_a}/static/files"
-    _uid=$(id -u "${_a}" 2> /dev/null)
-    if [ -d "${_st}" ] && [ ! -L "${_st}" ] \
-      && [ -n "${_uid}" ] && [ "$(stat -c '%u' "${_st}" 2> /dev/null)" = "${_uid}" ]; then
-      printf '%s\n' "${_st}"
-    fi
-  fi
+  _acct_store "${_a}"
+  return 0
 }
 
 # Every fetched root-run writer that touches account trees must carry the
