@@ -5017,7 +5017,7 @@ _wg_g_share() {
           _WG_GN_SHARE=$((_WG_GN_SHARE + 1))
           _o=$(_wg_path_owner "${_p}")
           _wg_ground_note "outbound share: site ${_al} reads the store of ${_o} (${_p})" \
-            "the share is removed (autosymlink --force-unshare)" "${_p}"
+            "the share is removed (autosymlink --force-unshare; a private store whose owner runs in its own web group: the two accounts settle it)" "${_p}"
           ;;
         outside)
           _hit=0
