@@ -823,17 +823,25 @@ _solr_index_alert() {
 # mail say so, and every exit that leaves the index in place says so the
 # same way, since the upload is consumed and no pass comes back to it. The
 # stock schema is a managed-schema (Solr 7) or managed-schema.xml (Solr 9)
-# with no schema.xml beside it; a core that had a schema.xml keeps its
-# index, as before. An index that cannot be archived is left as it is.
+# named default-config, with no schema.xml beside it; a core that had a
+# schema.xml keeps its index, as before, and so does one whose previous set
+# Solr had converted to a managed schema of its own name, since that index
+# is typed by that set. The archive holds the previous conf files too, as
+# conf/, so the index can be loaded back as it was. An index that cannot be
+# archived is left as it is.
 # $1 = port  $2 = core name  $3 = core path  $4 = the previous conf files
 _drop_stock_schema_index() {
   local _port="${1}" _core="${2}" _path="${3}" _old="${4}"
-  local _st _nd _md _ts _bkp _arch="" _need _free _code
+  local _st _nd _md _ts _bkp _arch="" _need _free _code _ms=""
   [ -n "${_port}" ] && [ -n "${_core}" ] && [ -d "${_path}" ] \
     && [ -d "${_old}" ] || return 0
   [ -e "${_old}/schema.xml" ] && return 0
-  [ -e "${_old}/managed-schema" ] || [ -e "${_old}/managed-schema.xml" ] \
-    || return 0
+  for _ms in "${_old}/managed-schema" "${_old}/managed-schema.xml"; do
+    [ -f "${_ms}" ] && break
+    _ms=""
+  done
+  [ -n "${_ms}" ] || return 0
+  grep -q '<schema name="default-config"' "${_ms}" 2> /dev/null || return 0
   _st=$(curl -s --max-time 15 \
     "http://127.0.0.1:${_port}/solr/admin/cores?action=STATUS&core=${_core}&wt=json" 2> /dev/null)
   _nd=$(printf '%s' "${_st}" | tr -d ' \n' | grep -o '"numDocs":[0-9]*' | head -n 1 | cut -d: -f2)
@@ -850,7 +858,14 @@ _drop_stock_schema_index() {
     return 0
   fi
   _nd="${_nd:-0}"
-  if [ "${_nd}" != "0" ] && [ -d "${_path}/data/index" ]; then
+  if [ "${_nd}" != "0" ]; then
+    if [ ! -d "${_path}/data/index" ] || [ -L "${_path}/data/index" ]; then
+      echo "SOLR-INDEX-KEPT: ${_Dom} the ${_nd} documents of ${_core} indexed on Solr's stock schema are not in a plain data/index directory, so they were not archived; the index is left in place and the site cannot index until it is cleared and the core reloaded"
+      _solr_index_alert "Solr index kept for ${_Dom}" \
+        "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded, and the uploaded schema cannot write to such an index." \
+        "Its index is not in a plain data/index directory, so it was not archived and was left in place: the site cannot index until its index is cleared from the site and the core is reloaded."
+      return 0
+    fi
     _bkp="/var/backups/solr-archive"
     _need=$(du -sk "${_path}/data/index" 2> /dev/null | cut -f1)
     _need="${_need//[^0-9]/}"
@@ -868,7 +883,10 @@ _drop_stock_schema_index() {
     mkdir -p "${_bkp}" &> /dev/null
     chmod 0700 "${_bkp}" &> /dev/null
     _arch="${_bkp}/${_core}-stock-index-${_ts}.tar.gz"
-    if tar -czf "${_arch}.tmp" -C "${_path}/data" index 2> /dev/null \
+    # index/ as it is on disk, and the previous conf files as conf/: the
+    # managed schema Solr built for those segments is what loads them back.
+    if tar -czf "${_arch}.tmp" -C "${_path}/data" index \
+      -C "${_old%/*}" --transform "s,^${_old##*/}\(/\|\$\),conf\1," "${_old##*/}" 2> /dev/null \
       && [ -s "${_arch}.tmp" ] \
       && mv -f "${_arch}.tmp" "${_arch}" 2> /dev/null; then
       echo "INFO: ${_Dom} the ${_nd} documents of ${_core} archived to ${_arch}"
@@ -900,11 +918,11 @@ _drop_stock_schema_index() {
       "The site cannot index until the core is reloaded."
     return 0
   fi
-  echo "SOLR-INDEX-DROPPED: ${_Dom} ${_nd} documents indexed on Solr's stock schema removed from ${_core}; re-index from the site"
+  echo "SOLR-INDEX-DROPPED: ${_Dom} ${_nd} documents indexed on Solr's stock schema removed from ${_core}; in the site, queue all items for reindexing, then index"
   _solr_index_alert "Solr index dropped for ${_Dom}" \
     "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded." \
     "Solr guessed the field types from them, and the uploaded schema cannot write to such an index, so the index was removed${_arch:+ (archived to ${_arch})} and the core reloaded." \
-    "The site has to re-index."
+    "The site has to re-index: Search API still counts the removed items as indexed, so queue all items for reindexing there, then index."
   return 0
 }
 
