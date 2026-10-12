@@ -191,15 +191,16 @@
       holds an account's phase B, and on a box that starts phase B the
       nightly notes such an account in its own log (docs/INSTGRP.md).
 
-    * A files share can be undone again once the account that owns the
-      shared store runs in its own web group. The un-share copy is made
-      as the reading account, and that owner's store keeps the paths
-      nginx never serves (the CiviCRM log and custom stores every site
-      gets, config sync, backup_migrate, private) closed to every other
-      account, so the copy failed and the site stayed linked to the
-      other account's files. The copy now leaves exactly those out, one
-      line each in the autosymlink log; any other entry the account
-      cannot read still stops it.
+    * A files share can be undone again once the shared store's owner
+      runs in its own web group. That store keeps the paths nginx never
+      serves (the CiviCRM log, custom, upload and template stores,
+      config sync, backup_migrate, private, and all below them) closed
+      to other accounts, so the un-share copy, made as the reading
+      account, failed. The copy leaves those out, logged once it is
+      made; they stay in the other store, with any uploads the site
+      made there. Any other closed entry still stops it, named. Such an
+      owner's private store still cannot be un-shared; the refusal
+      names it.
 
 @=> Improvements
 

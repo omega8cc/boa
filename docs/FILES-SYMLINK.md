@@ -122,13 +122,25 @@ autosymlink --site example.com --account o1 --archive-store --apply
   holds only what that account can read, and never keeps the other store's owner, its
   day stamps or a setuid bit.
 
-  When the other store belongs to an account that runs in its own web group, the
-  paths nginx never serves in it (the CiviCRM log, custom, upload and template
-  stores, `backup_migrate`, config sync directories, `private`) are closed to every
-  other account. The copy leaves those out, with an `[INFO] Un-share copy leaves
-  out <path>` line each; a Drupal site's next Verify makes its own empty CiviCRM stores.
-  Any other entry the account cannot read still stops the copy, named in an
-  `[ERROR]` line, and nothing is copied.
+  The paths nginx never serves in a files store (the CiviCRM log, custom, upload
+  and template stores, `backup_migrate`, config sync directories, `private`, and
+  all below them) are its owner's private set. Once that owner runs in its own web
+  group they are closed to every other account; the copy leaves out those the
+  account cannot read, with an `[INFO] Un-share copy leaves out <path>` line each,
+  written once the copy is made. Any other entry the account cannot read still
+  stops the copy, named in an `[ERROR]` line, and nothing is copied; so do more
+  than 200 closed entries.
+
+  What is left out stays in the other account's store only, and it can hold the
+  site's own uploads made into that store while it shared it (CiviCRM custom
+  files, `backup_migrate` archives, config sync). A Drupal site's next Verify makes
+  its own empty CiviCRM log and custom stores, and none of the other paths left
+  out.
+
+  A private store is never copied in part: any entry in it the account cannot read
+  stops the copy, named. The private store of an account that runs in its own web
+  group is closed to every other account as a whole, so a share of it cannot be
+  undone: the copy is refused with an `[ERROR]` line that names the store.
 
   The copy is made only into a per-site store directory (`static/files/<url>`)
   that root owns and that neither its group nor others can write; any other is
