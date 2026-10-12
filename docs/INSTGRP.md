@@ -417,8 +417,14 @@ A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
 limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
 `xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
-carries the web-group branch that keeps its private files closed. A box
-that is not ready refuses with exit 5 and changes nothing.
+carries two tokens: `provision_drupal_web_group_private`, the branch that
+keeps its private files closed, and `provision_path_web_group`, which keeps
+a site outside the account's tree in `www-data` (see "What holds phase B
+back").
+
+A box that is not ready refuses with exit 5, names what its check missed,
+and changes nothing. `webcheck --report` prints `provision: ready` for an
+account whose copy carries both, or the token it lacks.
 
 While a
 migration has the box's runners parked (`xoct` and `xcopy` from `pre-mig`
@@ -505,6 +511,26 @@ platform's `keys` directory (the conversion narrows those directories as a
 whole), a link to one of the account's top directories, or a store link
 that resolves inside its own site's directory, which the nightly takes for
 that site's store.
+
+A site Verify keeps a site whose directory lies outside the account's tree
+(on the shared `/data/all` stores, or in another account's tree) in
+`www-data` too. Provision gives each of its paths `www-data` and the modes
+it gives an account without a web group of its own, never `wg-oN`: the
+settings files, the `files` and `private` stores and what the Verify makes
+below them. A deploy (Restore, Clone, Migrate) and the Backdrop, Grav and
+Textpattern writers do the same.
+
+A path is outside when its real place, all links followed, is neither in
+the account's home nor in its store on attached storage. A store of such a
+site that is a link into the account's own `static/files/` (or that store)
+is inside, so it takes `wg-oN` as every store of the account does, and
+`webrevert` walks it with the rest of the account: no path of such a site
+is left in a group that no longer exists.
+
+A provision copy older than this gave such a site `wg-oN` on a Verify: that
+site keeps it until its next Verify, or, on the shared stores, until the
+nightly gives it `www-data` back. This is why the readiness check asks for
+the copy that carries `provision_path_web_group`.
 
 - `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
   account to phase A, exit 0. The account's notes
