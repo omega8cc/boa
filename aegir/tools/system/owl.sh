@@ -287,6 +287,22 @@ _night_link_guard() {
   return 0
 }
 
+### The links the nginx link check would refuse or that keep it off,
+### counted by kind once a night on every box, armed or not: linkguard walks
+### what nginx serves at the lowest priority and appends one dated line to
+### /var/log/boa/linkguard/count.log. It fixes, switches and mails nothing.
+### The night's last step, so nothing waits on the walk; a linkguard without
+### the count skips.
+_night_link_count() {
+  local _s
+  [ -e "/opt/local/bin/linkguard" ] || return 0
+  grep -q "^_lg_cmd_count() {" /opt/local/bin/linkguard 2> /dev/null || return 0
+  _s=$(bash /opt/local/bin/linkguard count 2> /dev/null \
+    | grep -m1 "^SUMMARY" | tr -cd '[:print:]')
+  echo "nginx link count: ${_s:-no summary from linkguard}"
+  return 0
+}
+
 ### An account pass that never ends would hold its fan-out slot (or the
 ### serial loop) into the next night. Bound it, say so, move on: the whole
 ### process group gets the signal, the account's night marker is released
@@ -412,6 +428,7 @@ _daily_action() {
   if command -v _dbctl_witness > /dev/null 2>&1; then
     _dbctl_witness
   fi
+  _night_link_count
 }
 
 ###--------------------###
