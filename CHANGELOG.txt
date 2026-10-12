@@ -401,9 +401,10 @@
       would refuse or that would keep it off, by kind, and appends one
       dated line to /var/log/boa/linkguard/count.log (linkguard count),
       armed for the check or not. The count changes nothing: no link is
-      fixed, the check is not switched and no mail is sent. Each line
-      shows what switching the check on would refuse on that server;
-      see docs/NGINX-LINKS.md.
+      fixed, the check is not switched and no mail is sent, and the
+      nightly does not wait for it. Each line shows, by kind, what the
+      check would refuse on that server and what would still keep it
+      off once BOA's own links are made root's; see docs/NGINX-LINKS.md.
 
 @=> Changes and Upgrades
 
