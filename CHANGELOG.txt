@@ -377,6 +377,14 @@
       reads its 92-day growth series from both levels, and a server move
       carries the tree as before.
 
+    * Every server counts, once a night, the links the Nginx link check
+      would refuse or that would keep it off, by kind, and appends one
+      dated line to /var/log/boa/linkguard/count.log (linkguard count),
+      armed for the check or not. The count changes nothing: no link is
+      fixed, the check is not switched and no mail is sent. Each line
+      shows what switching the check on would refuse on that server;
+      see docs/NGINX-LINKS.md.
+
 @=> Changes and Upgrades
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
