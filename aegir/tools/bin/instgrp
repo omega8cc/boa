@@ -3433,8 +3433,8 @@ _wg_u7() {
 _wg_u8() {
   [ "${_D_LAM}" = "B" ] && return 0
   if _wg_residue_full; then
-    _msg "${_WP_A}: www-data paths remain in its private set or tops; phase B waits for the next run"
-    _wg_note "phase B deferred: paths in www-data remain in the private set or the tops"
+    _msg "${_WP_A}: www-data paths remain in its private set, tops or attached store; phase B waits for the next run"
+    _wg_note "phase B deferred: paths in www-data remain in the private set, the tops or the store on attached storage"
     return 5
   fi
   if [ "${_D_RAISE}" = "YES" ] || [ "${_D_BEV}" = "NO" ]; then
@@ -4520,12 +4520,15 @@ _wg_web_residue() {
   return 1
 }
 
-# The residue rule in full (u8): www-data in the trio, a store top or
-# anywhere in the private set (a store's nginx-denied subtrees included),
-# not counting hard-linked files, FIFOs and entries no account identity
-# owns. 0 when any is left.
+# The residue rule in full (u8): www-data in the trio, a store top,
+# anywhere in the private set (a store's nginx-denied subtrees included)
+# or anywhere in the account's store on attached storage that the walk
+# takes beyond the roots (_wg_parts_beyond store: a partial walk, or a
+# writer after it; a left-alone path there excepted), not counting
+# hard-linked files, FIFOs and entries no account identity owns. 0 when
+# any is left.
 _wg_residue_full() {
-  local _k _p _uids _u _o=()
+  local _k _p _uids _u _o=() _WG_LEFT="" _WG_PRUNE=() _lr=NO
   _uids=$(_wg_own_uids)
   for _u in ${_uids//,/ }; do
     _o+=( -o -uid "${_u}" )
@@ -4547,6 +4550,17 @@ _wg_residue_full() {
         ;;
     esac
   done < <(_wg_parts)
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] || continue
+    if [ "${_lr}" = "NO" ]; then
+      _WG_LEFT=$(_wg_left)
+      _lr=YES
+    fi
+    _wg_is_left "${_p}" && continue
+    _wg_left_prune "${_p}" .
+    [ -n "$(_wg_in "${_p}" find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
+      \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+  done < <(_wg_parts_beyond store)
   return 1
 }
 
