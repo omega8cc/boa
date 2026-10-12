@@ -473,8 +473,8 @@ changes nothing and names its reason:
   which the arm and `webconvert all` honour as the web group's opt-out too;
 - an account not yet on its per-instance group;
 - the box not ready (above);
-- www-data left in the account's settings files, store tops or private set
-  before phase B;
+- www-data left in the account's settings files, store tops or private set,
+  or anywhere in its store on attached storage, before phase B;
 - before phase B only, one of the four things the next section lists.
 
 A frozen account (`log/proxied.pid`, a migration in flight) is skipped,

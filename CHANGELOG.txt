@@ -253,6 +253,12 @@
       walks are unchanged: they take that store only when the account
       owns it and no link is on the way to it (docs/INSTGRP.md).
 
+    * Phase B of the web group conversion, still switched off, waits
+      while a directory or file of the account's in its files store on
+      attached storage is still in www-data, not only in the store
+      tops and the private files, so no directory there loses the
+      pools' write when the pools leave www-data (docs/INSTGRP.md).
+
     * The web group's revert also walks and checks the files and
       private stores of the account's sites on attached storage when
       the account's store is not one of the walk's roots (no single
