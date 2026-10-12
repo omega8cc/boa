@@ -4893,7 +4893,14 @@ _xoct_wg_unseed() {
 ### when absent; only while the name is free there, as the web group's seed
 ### above), and once it is installed it is switched there when it is
 ### switched here. Under xmass the account's switch travels with every live
-### pass instead.
+### pass instead. The line covers the install's own pass and the upgrade
+### pass it chains, which both run before the source's settings are merged.
+### Once they are merged and the source's switch is carried, the line this
+### run put is taken back (_xoct_dbctl_seed_back), under xmass too, so the
+### target's later passes treat the account as any other of the box. A line
+### the target's cnf held before the seed is its operator's and stays. A
+### merge that failed leaves the line where it is, and says so: without the
+### source's settings the target cannot know an account its source kept out.
 # 1 = account on the target 2 = target
 _XOCT_DBCTL_SEED=""
 _xoct_dbctl_seed() {
@@ -4919,6 +4926,25 @@ _xoct_dbctl_unseed() {
     line)
       # shellcheck disable=SC2029
       ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null
+      ;;
+  esac
+  _XOCT_DBCTL_SEED=""
+  return 0
+}
+# 1 = account on the target 2 = target 3 = what the merge of the source's
+# settings returned
+_xoct_dbctl_seed_back() {
+  case "${_XOCT_DBCTL_SEED}" in
+    made|line)
+      if [ "${3}" != "0" ]; then
+        echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}"
+        echo "ALRT: remove that line there once a re-run of this create has merged them"
+      else
+        # shellcheck disable=SC2029
+        if ! ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null; then
+          echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there"
+        fi
+      fi
       ;;
   esac
   _XOCT_DBCTL_SEED=""
@@ -5768,7 +5794,9 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _TGT_CNF_MERGED=$?
       _xoct_dbctl_from_source "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_dbctl_seed_back "${_TGT_HM_USER}" "${_tgt}" "${_TGT_CNF_MERGED}"
       ### After the merge, which carries the source's switch: under admail=
       ### a target that keeps the notice on refuses the create, before the
       ### transfer can bring the setup mail it would send. The record put
