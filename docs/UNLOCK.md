@@ -66,6 +66,13 @@ platform, tracked by marker files under `~/log/ctrl/`):
   permission helpers Verify runs refuse the same shape; both also leave
   `sites/all/libraries/tcpdf` alone when it or its `cache` child is a
   symlink.
+
+  Both platform passes, the whole-tree one under `~/static` and this
+  one, hand over and set modes only on what root or the account's own
+  users own, and nothing below a directory another user owns; a platform
+  root that is another user's, or sits below such a directory, is left
+  untouched. What they leave is counted on the `NOTE:` line of the site
+  whose pass ran them.
 - **Built-in platforms** (`~/distro/NNN/<platform>`): the tenant-writable
   `sites/all/{modules,themes,libraries}` keep `02775`/`0664`; core,
   profiles, includes, vendor and the platform root take `0755`/`0644`, no
@@ -110,11 +117,15 @@ platform, tracked by marker files under `~/log/ctrl/`):
 
   Every site-level leg, in the nightly and in the helpers Verify runs,
   hands over and sets modes only on what root or the account's own users
-  own (for a site of the master, aegir and its pool users), and nothing
-  below a directory another user owns. Another account's files renamed
-  into the site's tree or its stores keep their owner and modes, counted
-  on one `NOTE:` line per site in the nightly log and one `Notice:` line
-  from each helper.
+  own (for a site of the master, aegir, its pool users and www-data, the
+  web server's user, which runs PHP on a plain Aegir server), and nothing
+  below a directory another user owns.
+
+  Another account's files renamed into the site's tree or its stores keep
+  their owner and modes, counted on one `NOTE:` line per site in the nightly
+  log and one `Notice:` line from each helper. For a Grav or Textpattern
+  site the nightly's line holds the platform level only: its site-level
+  count is the helpers' own `Notice:`, which the nightly does not log.
 
 Group-write for the shell pair survives all of this — the lock manages the
 **ownership axis**, and with it the owner-only rights: chmod, git's
@@ -177,6 +188,11 @@ remains in place the next nightly run restores the unlock; but a tenant
 mid-upgrade who runs a platform Verify will find the code handed back to
 the backend user on the spot. This is by design: Verify's job is to
 converge the platform to the managed state.
+
+Both platform helpers act only on what root or the account's own users
+own: a file or directory another account's users own in the platform is
+left as it is with everything below it, counted on one `Notice:` line
+from each helper.
 
 The nightly ownership flip and `fixrepo` solve different axes: the lock
 manages *who owns* registered platforms on a schedule; `fixrepo` repairs

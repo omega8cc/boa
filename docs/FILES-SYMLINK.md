@@ -136,8 +136,9 @@ autosymlink --site example.com --account o1 --archive-store --apply
   gives a fresh store the owner of `static/`).
 
   The account's own `static/files` must be root's and writable by neither group nor
-  others; this tool makes it so, whatever the run's umask. A root-owned directory
-  that group or others can write is refused: only such a directory can have been
+  others; this tool makes a missing one so, whatever the run's umask, and an
+  existing one that group or others can write is refused, not changed: only such a
+  directory can have been
   moved in from another folder by the account's own users, since moving a folder
   elsewhere needs write access to the folder itself.
 
@@ -968,19 +969,27 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   directory swapped for a link after the check is never followed.
 - **Root's ownership and mode fixes leave another account's files.** The
   site Verify's two fixers (`fix-drupal-site-ownership.sh`,
-  `fix-drupal-site-permissions.sh`) and the nightly permissions pass hand
-  over and set modes only on what root or the site's own users own: the
-  account's backend user, `.ftp` login, client sub-accounts and PHP-FPM
-  users, or, for a site of the master, aegir and the master's pool users,
-  read from the site's resolved path, never from the arguments. A file whose
-  owner no longer exists counts as the account's own.
+  `fix-drupal-site-permissions.sh`), the platform Verify's two
+  (`fix-drupal-platform-ownership.sh`, `fix-drupal-platform-permissions.sh`)
+  and the nightly permissions pass, at the site and the platform level, hand
+  over and set modes only on what root or the account's own users own.
+
+  Those users are the account's backend user, `.ftp` login, client
+  sub-accounts and PHP-FPM users, or, under the master, aegir, the master's
+  pool users and www-data (the web server's user, which runs PHP on a plain
+  Aegir server), read from the resolved path, never from the arguments. A
+  file whose owner no longer exists counts as the account's own.
 
   A file or directory another account's users own is left as it is, with
   everything below it, and never followed through a link: an account's users
-  can rename into their own store what another account left group-writable.
+  can rename into their own trees what another account left group-writable.
   Each fixer counts what it left on one `Notice:` line, the nightly on one
-  `NOTE:` line per site. A fixer run on a path in neither an account's tree
-  nor the master's changes nothing and says so.
+  `NOTE:` line per site. For a Grav or Textpattern site that line holds the
+  platform level only: its site-level count is the fixers' own `Notice:`,
+  which the nightly does not log.
+
+  A fixer run on a path in neither an account's tree nor the master's changes
+  nothing and says so.
 - **Root removes only the directory it checked or copied.** A conversion enters
   the site's `files`/`private` directory for real and records its identity
   (device and inode) before anything else. The residue-only check, and the

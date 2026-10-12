@@ -462,7 +462,8 @@ done();'
 
 # The cleanup of the current (pinned) dbackup directory for the account
 # whose set (_acct_walk_uids) is $1: every regular file below it older than
-# $2 days removed, as find -type f -mtime +N -delete removed it, then each
+# $2 days removed, as find -type f -mtime +N -delete removed it, except the
+# dot names right below dbackup, which the walk keeps (op f), then each
 # empty directory right below it, the dated directories that pass emptied.
 # Both go through _ACCT_RM_OWN_PL: the account's .ftp login owns the dated
 # directories and can rename into one what another account left
