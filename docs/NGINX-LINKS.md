@@ -105,7 +105,8 @@ The scan writes `/var/log/boa/linkguard.report.txt`, one line per link whose
 owner differs from its target's:
 
 - `BLOCKING` keeps the check off: a link root made (outside an account's
-  tree, or leading out of the account it is in), a link of a system user or
+  tree, leading out of the account it is in, or to a file in that account's
+  tree none of the account's identities owns), a link of a system user or
   of a user that no longer exists, or a BOA link at one of the places BOA
   itself makes them that could not be made root's (something on its way
   into the shared store is not root's alone). Turning the check on would
@@ -150,7 +151,9 @@ linkguard run; a count that waited a minute for another one says
 `result=busy`.
 
 A line counts the links whose owner differs from their target's, by kind.
-Where the target is decides between the kinds that say "in" and "out":
+Where the target is decides between `root-in` and `root-out`, and between
+`in-other` and `out`; where the link is decides `system-in`; who owns the
+target decides `inside`:
 
 | key | class | the link |
 |---|---|---|
