@@ -297,7 +297,7 @@ multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME
    - Default: `/var/backups/restored/`
    - You may specify a custom restore target directory.
    - The target must not contain `..` names. A target inside an account's tree or relocated store is accepted only where it leads into that account's own tree or store; a missing one is created only below an existing account directory or store. A full restore (no `RESTORE_PATH`) must go to a directory outside the accounts' trees. The restored name must not already exist in the target.
-   - A path restored into an account's tree or store is restored in a directory only root can open and then moved into place. Before the move, what it restored under any owner but root and the account's own users (a backup of another server can carry another account's uid) is given to the account; what the target already held is never touched.
+   - A path restored into an account's tree or store is restored in a directory only root can open and then moved into place. Before the move, what it restored under any owner but root and the account's own users (a backup of another server can carry another account's uid) is given to the account (its directories and single-link regular files; a link, a FIFO or a hard-linked file keeps its owner); what the target already held is never touched.
 
 3. **Default Behavior**:
    - If `[RESTORE_PATH]` is omitted, the entire backup is restored.

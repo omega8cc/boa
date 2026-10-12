@@ -464,8 +464,8 @@ exit 0;'
 # entry keeps its own, as chown <owner> keeps it), then each ./name, or with
 # -R every entry at or below each name, walked by find (any find tests after
 # the names apply first) and handed over from -execdir, one ./name in the
-# directory find holds; a walk ends with _links_left_note. The platform
-# script hands over with it; this one with _reown_own_here.
+# directory find holds; a walk ends with _links_left_note. Kept as the
+# platform script's copy; both hand over with _reown_own_here.
 _reown_here() {
   local _r="" _uid _gid=-1 _rc
   if [ "${1}" = "-R" ]; then
@@ -491,14 +491,33 @@ _reown_here() {
   fi
 }
 
+# find's tests, in _NOT_OWN, for an entry another user owns as the walkers
+# read it: its uid is none of _OWN_UIDS and a passwd entry names it
+# (-nouser is true for a uid no entry names). A walk hands such an entry to
+# its walker whatever state it is in, so it is left and counted as before.
+_not_own_tests() {
+  local _u
+  local -a _ids=()
+  _NOT_OWN=()
+  IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
+  for _u in "${_ids[@]}"; do
+    _NOT_OWN+=( ! -uid "${_u}" )
+  done
+  _NOT_OWN+=( ! -nouser )
+}
 # As _reown_here, through _SAT_REOWN_OWN_PL with the site's own uids
 # (_OWN_UIDS): only what root or the site's own users own is handed over,
 # and nothing below a directory another user owns. Prints dev:ino of each
 # entry left for another owner; status 1 when the current directory is
 # below a directory another user owns (given . as a name, that directory
-# is printed too), or the owner does not resolve.
+# is printed too), or the owner does not resolve. A walk (-R) starts perl
+# only in a directory that holds an entry not yet the owner's and the
+# group's, a regular file with a set-ID bit (a change of owner clears
+# those, even one that changes nothing), or another user's entry
+# (_not_own_tests): a tree already handed over costs the walk alone.
 _reown_own_here() {
   local _r="" _uid _gid=-1 _rc
+  local -a _need=()
   if [ "${1}" = "-R" ]; then
     _r="-R"
     shift
@@ -513,7 +532,12 @@ _reown_own_here() {
   fi
   shift
   if [ -n "${_r}" ]; then
+    _need=( ! -uid "${_uid}" )
+    [ "${_gid}" = "-1" ] || _need+=( -o ! -gid "${_gid}" )
+    _not_own_tests
     env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
+      \( "${_need[@]}" -o -type f \( -perm -4000 -o -perm -2000 \) \
+      -o "${_NOT_OWN[@]}" \) \
       -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" {} +
     _rc=$?
     _links_left_note "$@"
@@ -521,6 +545,21 @@ _reown_own_here() {
   else
     perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" "$@"
   fi
+}
+# Status 0 while the current (pinned) directory and every directory above
+# it are root's or the site's own users' (_SAT_REOWN_OWN_PL given . to hand
+# to nobody: -1 keeps the owner and the group); otherwise the directory
+# another user owns is printed (dev:ino) and the status is 1.
+_place_ours_here() {
+  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" -1 -1 .
+}
+# "$@" in the current (pinned) directory only while that place is root's
+# or the site's own users' (_place_ours_here): nothing is made, renamed or
+# removed in a directory another user owns, or below one.
+_in_ours_here() {
+  _place_ours_here > /dev/null || return 0
+  "$@"
 }
 
 # Each name in the current (pinned) directory that matches a pattern after
@@ -697,6 +736,20 @@ _priv_own_here() {
   _reown_own_here -R "${_o}" ./config
 }
 
+### While the box is armed for the nginx link check (linkguard), a link
+### inside the account is made its target owner's wherever this run handed
+### something over, so the check does not refuse it until the night: the
+### site's own tree on every run, a store right after its daily hand-over.
+### Not a store while the nightly runs, whose own pass covers every store
+### when it ends.
+_link_guard_tree() {
+  if [ -n "${1}" ] && [ -e "/var/log/boa/linkguard-arm.ready.txt" ] \
+    && [ -e "/opt/local/bin/linkguard" ]; then
+    bash /opt/local/bin/linkguard fix --tree="${1}" >&3 2>&1
+  fi
+  return 0
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 
@@ -752,6 +805,7 @@ if [ -n "${site_path}" ] \
   # group stay one quoted argument.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _grav_site_own_here)"
+  _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Grav site)."
   exit 0
 fi
@@ -783,6 +837,7 @@ if [ -n "${site_path}" ] \
   # group stay one quoted argument.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _txp_site_own_here)"
+  _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Textpattern site)."
   exit 0
 fi
@@ -823,8 +878,13 @@ if ! _in_pinned_dir "${site_path}" true; then
   exit 1
 fi
 
+### Nothing is made or removed in the site directory, its modules or its
+### libraries while that place is another user's (_in_ours_here): the walks
+### below refuse such a place, so the old marker, the services files and
+### libraries/ must not be written there first.
 if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
-  _in_pinned_dir "${site_path}/libraries" rm -f -- ./ownership-fixed.pid
+  _in_pinned_dir "${site_path}/libraries" \
+    _in_ours_here rm -f -- ./ownership-fixed.pid
 fi
 
 _TODAY=$(date +%y%m%d)
@@ -833,18 +893,18 @@ _TODAY=${_TODAY//[^0-9]/}
 ### Read and written only inside the real directories (_copy_new_here).
 if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
   if [ ! -e "${site_path}/modules/default.services.yml" ]; then
-    _in_pinned_dir "${site_path}/modules" \
+    _in_pinned_dir "${site_path}/modules" _in_ours_here \
       _copy_new_here "${site_path%/*}/sites/default" default.services.yml
   fi
 fi
 if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.yml" ]; then
-  _in_pinned_dir "${site_path}" \
+  _in_pinned_dir "${site_path}" _in_ours_here \
     ln -sfn "${site_path}/modules/services.yml" ./services.yml
 fi
 
 printf 'Setting ownership of key files and directories inside %s to: user => %s group => %s\n' "${site_path}" "${script_user}" "${_code_group}"
 if [ ! -e "${site_path}/libraries" ]; then
-  _in_pinned_dir "${site_path}" mkdir ./libraries
+  _in_pinned_dir "${site_path}" _in_ours_here mkdir ./libraries
 fi
 ### What the walks leave as another user's, by dev:ino, for one Notice.
 _LEFT=$(_in_pinned_dir "${site_path}" _site_own_here 2> /dev/null)
@@ -868,7 +928,12 @@ if [ -n "${_files_dir}" ] \
   if [ -n "${_priv_dir}" ]; then
     _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_own_here 2> /dev/null)"
   fi
+  if [ ! -e "/run/daily-fix.pid" ]; then
+    _link_guard_tree "${_files_dir}"
+    _link_guard_tree "${_priv_dir}"
+  fi
 fi
 _owners_left_note "${_LEFT}"
+_link_guard_tree "${site_path}"
 
 echo "Done setting proper ownership of site files and directories."

@@ -773,6 +773,159 @@ _reload_core_cnf() {
   return 1
 }
 
+# A line in the incident log and a mail to _MY_EMAIL unless _INCIDENT_REPORT
+# is OFF, in the shape ai_policy.sh and ip_access.sh use: the box config is
+# read with grep, never sourced, and s-nail may be absent. Cron keeps this
+# pass's output only in its log under /var/backups/solr/log, so a printed
+# line alone reaches nobody. $1 = subject  $2.. = the lines of the body
+_solr_index_alert() {
+  local _sub="${1}" _log="/var/log/boa/solr.incident.log" _lvl _mail _host
+  shift
+  mkdir -p "${_log%/*}" 2> /dev/null
+  echo "$(date) ${_sub}: $*" >> "${_log}"
+  _lvl="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -cd 'A-Za-z')"
+  _lvl="${_lvl^^}"
+  [[ "${_lvl}" != "OFF" && "${_lvl}" != "NO" ]] || return 0
+  _mail="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' \\\\")"
+  if [[ -z "${_mail}" ]] || ! command -v s-nail > /dev/null 2>&1; then
+    return 0
+  fi
+  _host="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+  [[ -n "${_host}" ]] || _host="$(hostname -f 2> /dev/null)"
+  printf '%s\n' "${_sub} on ${_host}" "" "$@" "" "Logged to ${_log}" "" "--" \
+    "This email has been sent by the BOA Solr config tool" \
+    | s-nail -s "ALERT [${_host}]: ${_sub}" "${_mail}" > /dev/null 2>&1
+  return 0
+}
+
+# After an upload replaced Solr's stock managed schema and the core reloaded
+# on the uploaded set (the call sits right after that reload, while the
+# previous files are still aside in $4): an index the core built on the
+# stock schema is typed by Solr's guesses from its first documents (a date
+# is a multi-valued pdates with SORTED_NUMERIC doc values, where the
+# module's schema has a single-valued pdate with NUMERIC), and Lucene never
+# changes a field's doc-values type inside an index, so the schema just
+# loaded cannot add one document to it: every add answers 400 "cannot
+# change DocValues type". The site's own clear deletes its documents but
+# leaves the index writer's field registry as it was, so the core stays
+# dead until it is reloaded on an empty index. So, here: an index holding
+# documents is archived (a tar of data/index under /var/backups/solr-archive,
+# kept 30 days by the tail of this script, under the free-space check
+# _archive_solr_core applies), then the index is emptied with a *:* delete
+# and a commit, and the core is reloaded once more: a core with an update
+# log runs that delete as a versioned delete-by-query, which never reaches
+# Lucene's deleteAll, so the writer keeps its registry until a new writer
+# opens on the empty index. The pass log, the incident log and the incident
+# mail say so, and every exit that leaves the index in place says so the
+# same way, since the upload is consumed and no pass comes back to it. The
+# stock schema is a managed-schema (Solr 7) or managed-schema.xml (Solr 9)
+# named default-config, with no schema.xml beside it; a core that had a
+# schema.xml keeps its index, as before, and so does one whose previous set
+# Solr had converted to a managed schema of its own name, since that index
+# is typed by that set. The archive holds the previous conf files too, as
+# conf/, so the index can be loaded back as it was. An index that cannot be
+# archived is left as it is.
+# $1 = port  $2 = core name  $3 = core path  $4 = the previous conf files
+_drop_stock_schema_index() {
+  local _port="${1}" _core="${2}" _path="${3}" _old="${4}"
+  local _st _nd _md _ts _bkp _arch="" _need _free _code _ms=""
+  [ -n "${_port}" ] && [ -n "${_core}" ] && [ -d "${_path}" ] \
+    && [ -d "${_old}" ] || return 0
+  [ -e "${_old}/schema.xml" ] && return 0
+  for _ms in "${_old}/managed-schema" "${_old}/managed-schema.xml"; do
+    [ -f "${_ms}" ] && break
+    _ms=""
+  done
+  [ -n "${_ms}" ] || return 0
+  grep -q '<schema name="default-config"' "${_ms}" 2> /dev/null || return 0
+  _st=$(curl -s --max-time 15 \
+    "http://127.0.0.1:${_port}/solr/admin/cores?action=STATUS&core=${_core}&wt=json" 2> /dev/null)
+  _nd=$(printf '%s' "${_st}" | tr -d ' \n' | grep -o '"numDocs":[0-9]*' | head -n 1 | cut -d: -f2)
+  _md=$(printf '%s' "${_st}" | tr -d ' \n' | grep -o '"maxDoc":[0-9]*' | head -n 1 | cut -d: -f2)
+  if [ -z "${_md}" ]; then
+    echo "SOLR-INDEX-UNREAD: ${_Dom} the index of ${_core} could not be read after Solr's stock schema was replaced; if the site cannot index, reload the core once its index is clear"
+    _solr_index_alert "Solr index not checked for ${_Dom}" \
+      "The core ${_core} came off Solr's stock schema, but its index could not be read after the reload, so nothing was removed." \
+      "If the site cannot index, clear its index from the site, then reload the core."
+    return 0
+  fi
+  if [ "${_md}" = "0" ]; then
+    echo "INFO: ${_Dom} the index of ${_core} was empty when Solr's stock schema was replaced"
+    return 0
+  fi
+  _nd="${_nd:-0}"
+  if [ "${_nd}" != "0" ]; then
+    if [ ! -d "${_path}/data/index" ] || [ -L "${_path}/data/index" ]; then
+      echo "SOLR-INDEX-KEPT: ${_Dom} the ${_nd} documents of ${_core} indexed on Solr's stock schema are not in a plain data/index directory, so they were not archived; the index is left in place and the site cannot index until it is cleared and the core reloaded"
+      _solr_index_alert "Solr index kept for ${_Dom}" \
+        "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded, and the uploaded schema cannot write to such an index." \
+        "Its index is not in a plain data/index directory, so it was not archived and was left in place: the site cannot index until its index is cleared from the site and the core is reloaded."
+      return 0
+    fi
+    _bkp="/var/backups/solr-archive"
+    _need=$(du -sk "${_path}/data/index" 2> /dev/null | cut -f1)
+    _need="${_need//[^0-9]/}"
+    _free=$(df -Pk /var/backups 2> /dev/null | awk 'NR==2 {print $4}')
+    _free="${_free//[^0-9]/}"
+    if [ -z "${_need}" ] || [ -z "${_free}" ] \
+      || [ "${_free}" -lt $(( _need + 262144 )) ]; then
+      echo "SOLR-INDEX-KEPT: ${_Dom} not enough free space under /var/backups to archive the ${_nd} documents of ${_core} indexed on Solr's stock schema; the index is left in place and the site cannot index until it is cleared and the core reloaded"
+      _solr_index_alert "Solr index kept for ${_Dom}" \
+        "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded, and the uploaded schema cannot write to such an index." \
+        "There is not enough free space under /var/backups to archive it, so it was left in place: the site cannot index until its index is cleared from the site and the core is reloaded."
+      return 0
+    fi
+    _ts=$(date +%Y%m%d-%H%M%S)
+    mkdir -p "${_bkp}" &> /dev/null
+    chmod 0700 "${_bkp}" &> /dev/null
+    _arch="${_bkp}/${_core}-stock-index-${_ts}.tar.gz"
+    # index/ as it is on disk, and the previous conf files as conf/: the
+    # managed schema Solr built for those segments is what loads them back.
+    if tar -czf "${_arch}.tmp" -C "${_path}/data" index \
+      -C "${_old%/*}" --transform "s,^${_old##*/}\(/\|\$\),conf\1," "${_old##*/}" 2> /dev/null \
+      && [ -s "${_arch}.tmp" ] \
+      && mv -f "${_arch}.tmp" "${_arch}" 2> /dev/null; then
+      echo "INFO: ${_Dom} the ${_nd} documents of ${_core} archived to ${_arch}"
+    else
+      rm -f "${_arch}.tmp" &> /dev/null
+      echo "SOLR-INDEX-KEPT: ${_Dom} the ${_nd} documents of ${_core} indexed on Solr's stock schema could not be archived; the index is left in place and the site cannot index until it is cleared and the core reloaded"
+      _solr_index_alert "Solr index kept for ${_Dom}" \
+        "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded, and the uploaded schema cannot write to such an index." \
+        "Its archive under /var/backups/solr-archive could not be written, so it was left in place: the site cannot index until its index is cleared from the site and the core is reloaded."
+      return 0
+    fi
+  fi
+  _code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+    -H 'Content-Type: text/xml' \
+    --data-binary '<delete><query>*:*</query></delete>' \
+    "http://127.0.0.1:${_port}/solr/${_core}/update?commit=true" 2> /dev/null)
+  if [ "${_code}" != "200" ]; then
+    echo "SOLR-INDEX-ERROR: ${_Dom} Solr answered HTTP ${_code:-000} to emptying ${_core}; the site cannot index until it is cleared and the core reloaded"
+    _solr_index_alert "Solr index not emptied for ${_Dom}" \
+      "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded, and the uploaded schema cannot write to such an index." \
+      "Solr answered HTTP ${_code:-000} to emptying it${_arch:+ (the index is archived at ${_arch})}: the site cannot index until its index is cleared from the site and the core is reloaded."
+    return 0
+  fi
+  # The writer that holds the guessed types goes only with this reload.
+  if ! _reload_core_cnf "${_port}" "${_core}"; then
+    echo "SOLR-INDEX-ERROR: ${_Dom} ${_core} was emptied but Solr answered HTTP ${_slrReloadCode:-000} to the reload after it; the site cannot index until the core is reloaded"
+    _solr_index_alert "Solr core not reloaded for ${_Dom}" \
+      "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded; they were removed${_arch:+ (archived to ${_arch})}, but Solr answered HTTP ${_slrReloadCode:-000} to the reload that follows." \
+      "The site cannot index until the core is reloaded."
+    return 0
+  fi
+  echo "SOLR-INDEX-DROPPED: ${_Dom} ${_nd} documents indexed on Solr's stock schema removed from ${_core}; in the site, queue all items for reindexing, then index"
+  _solr_index_alert "Solr index dropped for ${_Dom}" \
+    "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded." \
+    "Solr guessed the field types from them, and the uploaded schema cannot write to such an index, so the index was removed${_arch:+ (archived to ${_arch})} and the core reloaded." \
+    "The site has to re-index: Search API still counts the removed items as indexed, so queue all items for reindexing there, then index."
+  return 0
+}
+
 _update_solr() {
   # ${1} is module
   # ${2} is solr core path (auto) == _SOLR_DIR
@@ -917,6 +1070,11 @@ _update_solr() {
                 || _reload_core_cnf "${_upPort}" "${_SolrCoreID}"; then
                 touch "${2}/conf/.yes-custom.txt"
                 _solr_upload_clear
+                # The previous files are still aside here, so they say
+                # whether the core came off Solr's stock schema, whose
+                # index the set just loaded can never write to.
+                [ -n "${_upPort}" ] \
+                  && _drop_stock_schema_index "${_upPort}" "${_SolrCoreID}" "${2}" "${_upOld}"
               else
                 _upCode="${_slrReloadCode:-000}"
                 if _solr_upload_restore "${2}/conf" "${_upOld}"; then

@@ -29,6 +29,12 @@ Note that you still need to add and enable the preferred integration module alon
 >
 > **NOTE:** Set `solr_custom_config = NO` for the changes to take effect. This setting affects the running of the auto-installer every 5-10 minutes, eliminating the need to wait until the next morning to use the new Solr core.
 
+Until the uploaded files are applied, a Drupal 8+ core runs on Solr's stock configuration with its schemaless mode switched off (`update.autoCreateFields=false` on the `SOLR_OPTS` line of the Solr 7 and Solr 9 services). A document carrying a field that configuration does not know, which is every Search API document, is refused with a 400 "unknown field" answer and nothing is written. Index only once the Search API server page shows the schema version of your uploaded files.
+
+That line is written at install time and kept by every BOA pass under the stamp `/etc/boa/control/solrN.in.005.fixed.pid`. A server that carried the earlier line rewrites it once and restarts that Solr once; a replication standby and a server under the migration Solr hold are left alone.
+
+A core that took documents on the stock configuration before this release keeps the field types Solr guessed for them and still accepts documents with those fields, but a new field name is refused until the files are uploaded.
+
 Once the Solr core is ready, a special file, `sites/foo.com/solr.php`, will provide details on accessing your new Solr core with the correct credentials.
 
 Sites with enabled Solr cores can be safely migrated between platforms. The integration module can be moved within your codebase and even upgraded, provided it uses compatible `schema.xml` and `solrconfig.xml` files.
@@ -84,6 +90,12 @@ BOA keeps the core's `solrcore.properties` pointing at the server's own Solr. Un
 Once applied, the uploaded files are removed from `files/solr/`, and an upload identical to the core's files is removed as already applied. If copying the set into the core fails, the core keeps its previous files, the upload stays in place for the next pass, and the pass log records `SOLR-UPLOAD-ERROR`.
 
 After an upload is applied the core is reloaded. If Solr refuses the reload, the upload is rolled back: the core's previous files are put back and the core is reloaded on them, the pass log records `SOLR-RELOAD-ERROR` with the HTTP status Solr answered and `SOLR-UPLOAD-ROLLED-BACK`, and the upload is removed from `files/solr/`. Check the files before uploading them again. If Solr does not answer at all, the previous files are put back the same way, but the upload stays in `files/solr/` and is tried again on the next pass (`SOLR-UPLOAD-KEPT`).
+
+A core that took documents on Solr's stock configuration before the upload (possible on a server that ran before schemaless mode was switched off) holds an index the uploaded schema can never write to: Lucene never changes a field's type inside an index, so every add would fail with its doc-values type error (`cannot change DocValues type` on Solr 7, `cannot change field ... doc values type` on Solr 9). BOA knows such a core by the files the upload replaced: Solr's stock managed schema, named `default-config`, with no `schema.xml` beside it. A set Solr had converted to a managed schema of its own name keeps its index.
+
+After the reload BOA archives such an index to `/var/backups/solr-archive/<core>-stock-index-<timestamp>.tar.gz` (kept for 30 days; `index/` as it was on disk and the replaced conf files as `conf/`, so it can be loaded back as it was), empties the core and reloads it once more (the index writer forgets the guessed types only when a new one opens on the empty index), records `SOLR-INDEX-DROPPED` in the pass log and in `/var/log/boa/solr.incident.log`, and mails the server admin unless `_INCIDENT_REPORT` is `OFF`. Search API still counts the removed items as indexed, so queue all items for reindexing in the site, then index.
+
+An index that cannot be archived, for lack of space under `/var/backups`, a failed write or an index that is not in a plain `data/index` directory, is left in place (`SOLR-INDEX-KEPT`); an index Solr does not empty or a core it does not reload afterwards is `SOLR-INDEX-ERROR`, an index whose size could not be read is `SOLR-INDEX-UNREAD`. Each of those is logged and mailed the same way: clear the index from the site and ask for a core reload. A core whose previous files were an uploaded or template `schema.xml` keeps its index, as before.
 
 Each file must be smaller than 8 MiB, and the upload may hold at most 512 names and 32 MiB in all. Breaking a limit, a file with more than one hard link, or a file that changes while it is read refuses the whole set: nothing reaches the core, and the pass log under `/var/backups/solr/log/` records `SOLR-UPLOAD-REFUSED` with the reason. Symbolic links, FIFOs and subdirectories in `files/solr/` are skipped and never published.
 

@@ -2101,7 +2101,10 @@ _tune_memory_limits() {
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       wait
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
+      ### The same line BOA.sh.txt's _fix_start_stop_ports_solr keeps: a core
+      ### on Solr's stock configset guesses no field types, so a site cannot
+      ### index before its own configuration is uploaded.
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr9.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
@@ -2124,7 +2127,7 @@ _tune_memory_limits() {
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       wait
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr7.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
@@ -3949,6 +3952,8 @@ _barracuda_cnf() {
     fi
     _convert_etcboa_markers_to_cnf
     _sql_series_never_downgrade
+    _instgrp_web_arm_seed
+    _nginx_link_guard_seed
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -4726,6 +4731,8 @@ _barracuda_cnf() {
     if [ -e "${_barCnf}" ]; then
       source ${_barCnf}
     fi
+    _instgrp_web_arm_seed
+    _nginx_link_guard_seed
     _hm_cli_floor_publish
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
@@ -12557,6 +12564,54 @@ _instgrp_arm_stamp() {
   fi
   mkdir -p /var/log/boa &> /dev/null
   echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
+}
+
+# $1 the setting, $2 its stage: YES is appended to the cnf when the stage
+# reaches this box (HOSTED: the hostname ends in .aegir.cc, the key the
+# nightly symlink seed uses; ALL: every box) and the cnf assigns the setting
+# nowhere. Returns 0 only when it wrote the line; a cnf that cannot be read
+# is left alone.
+_instgrp_web_seed_line() {
+  local _key="$1"
+  local _stage="$2"
+  local _rc
+  case "${_stage}" in
+    ALL) ;;
+    HOSTED) [[ "${_hName}" =~ ".aegir.cc"($) ]] || return 1 ;;
+    *) return 1 ;;
+  esac
+  [ -f "${_barCnf}" ] || return 1
+  grep -q -E "^[[:space:]]*(export[[:space:]]+)?${_key}=" "${_barCnf}" 2> /dev/null
+  _rc=$?
+  [ "${_rc}" = "1" ] || return 1
+  [ -n "$(tail -c1 "${_barCnf}" 2> /dev/null)" ] && echo >> "${_barCnf}"
+  echo "${_key}=YES" >> "${_barCnf}"
+}
+
+# The web group's defaults. A pass writes _WEB_GROUP_ARM=YES into a cnf that
+# carries no _WEB_GROUP_ARM line, and _WEB_GROUP_PHASE_B=YES likewise on a
+# box that is armed. Only a missing line is written and only as YES, so an
+# operator's own line, NO included, always stays, and a box no stage has
+# reached yet gets no line at all. Staged by release: NO writes nothing,
+# HOSTED writes on the omega8.cc-hosted fleet, ALL on every box. Nothing is
+# written in this release. Kept local so no cnf line can set them; the arm's
+# stage stays NO wherever _instgrp_web_arm_stamp's _tiReleased is NO, and
+# phase B's never runs ahead of the arm's.
+_instgrp_web_arm_seed() {
+  local _tiSeedArm=NO
+  local _tiSeedPhaseB=NO
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_web_arm_seed"
+  fi
+  if _instgrp_web_seed_line _WEB_GROUP_ARM "${_tiSeedArm}"; then
+    _WEB_GROUP_ARM=YES
+    _msg "INFO: The account web group is armed by default: _WEB_GROUP_ARM=YES written to ${_barCnf} (NO there opts this box out)"
+  fi
+  if [ "${_WEB_GROUP_ARM}" = "YES" ] \
+    && _instgrp_web_seed_line _WEB_GROUP_PHASE_B "${_tiSeedPhaseB}"; then
+    _WEB_GROUP_PHASE_B=YES
+    _msg "INFO: The account web group goes on to phase B by default: _WEB_GROUP_PHASE_B=YES written to ${_barCnf} (NO there stops at phase A)"
+  fi
 }
 
 # The web group's arm (instgrp webconvert) takes no account's first
