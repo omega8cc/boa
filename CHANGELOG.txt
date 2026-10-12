@@ -408,6 +408,17 @@
 
 @=> Changes and Upgrades
 
+    * The arm stamps of the per-instance group, the account web group
+      and the Nginx link check live in /etc/boa/control instead of the
+      top of /var/log/boa, out of reach of the clean-ups that delete
+      there by file name. The directory is 0755 and each stamp 0644
+      whatever the umask, and a stamp that cannot be written is
+      reported in the barracuda log. A server that an earlier release
+      armed for the per-instance group keeps that arm: BOA.sh.txt copies
+      its stamp before it fetches the instgrp that reads only the new
+      place. Disarming, by a barracuda pass or with linkguard off, also
+      removes the web group's and the link check's old stamps.
+
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
       items above.
 
