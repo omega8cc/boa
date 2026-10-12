@@ -4879,21 +4879,35 @@ _ltd_fpm_new_version() {
   return 1
 }
 #
-# The account's own pools (not the panel pool, which _ltd_hm_pool writes
-# again on every pass) disable exactly the functions their template does:
-# a pool written with the retired per-account deny option, or edited by
-# hand, gets the template's disable_functions line back, its other lines
-# kept, and its version is reloaded. Every pool of a PHP master shares its
-# opcache, and PHP 8.4 and newer compile a call to a built-in function as
-# its position in the function table, which a different list shifts: code
-# compiled in one pool then calls the wrong function in another. Runs on
-# every pass, whatever the account's control files say, so a pool the
-# setup below would not rewrite is put right too.
+# The FPM config of PHP version $1 (its digits) passes the master's own test,
+# with the options its init script starts it with.
+_ltd_fpm_conftest() {
+  [ -x "/opt/php${1}/sbin/php-fpm" ] || return 1
+  "/opt/php${1}/sbin/php-fpm" -t --fpm-config "/opt/php${1}/etc/php${1}-fpm.conf" \
+    -c "/opt/php${1}/etc/php${1}.ini" &> /dev/null
+}
+#
+# The account's pools disable exactly the functions their template does. A
+# pool written with the retired per-account deny option, or edited by hand,
+# gets the template's disable_functions line back in place of every line FPM
+# reads as one (php_admin_value or php_value, indented or not), the rest of
+# the file kept. Every pool of a PHP master shares its opcache, and PHP 8.4
+# and newer compile a call to a built-in function as its position in the
+# function table, which a different list shifts: code compiled in one pool
+# then calls the wrong function in another. A version whose config already
+# fails its test is left alone; the files are made aside and put in place
+# by rename, the config is tested again before the reload and put back when
+# it fails. With "hm" the panel pool is included (an account the pass skips,
+# whose panel _ltd_hm_pool does not rewrite). Runs whatever the account's
+# control files say, so a pool the setup would not rewrite is put right too.
 _ltd_pool_deny_heal() {
-  local _pf _v _tpl _ref _n _cur _new _rld=" "
+  local _hm="${1:-}" _re _pf _v _tpl _ref _n _cur _new _old _t _vers=" " _todo="" _done
+  _re=$'^[ \t]*php_(admin_)?value\\[[ \t]*disable_functions[ \t]*\\]'
   for _pf in /opt/php*/etc/pool.d/"${_USER}".conf /opt/php*/etc/pool.d/"${_USER}".*.conf; do
     [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || continue
-    case "${_pf}" in */"${_USER}".hm.conf) continue ;; esac
+    if [ "${_pf##*/}" = "${_USER}.hm.conf" ] && [ "${_hm}" != "hm" ]; then
+      continue
+    fi
     _v="${_pf#/opt/php}"
     _v="${_v%%/*}"
     [ -x "/opt/php${_v}/bin/php" ] || continue
@@ -4901,36 +4915,90 @@ _ltd_pool_deny_heal() {
     [ "${_pf##*/}" = "${_USER}.conf" ] || _tpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
     _ref=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_tpl}" 2> /dev/null)
     [ -n "${_ref}" ] || continue
-    _n=$(grep -c '^php_admin_value\[disable_functions\]' "${_pf}" 2> /dev/null)
-    _cur=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_pf}" 2> /dev/null)
+    _n=$(grep -cE "${_re}" "${_pf}" 2> /dev/null)
+    _cur=$(grep -m 1 -E "${_re}" "${_pf}" 2> /dev/null)
     [ "${_n}" = "1" ] && [ "${_cur}" = "${_ref}" ] && continue
-    # made aside, outside the pool.d/*.conf include, and put in place by
-    # rename: the first such line becomes the template's, any other goes
-    _new="${_pf%/*}/.${_pf##*/}.deny.new"
-    rm -f -- "${_new}"
-    if ! _LTD_DENY_REF="${_ref}" awk '
-      /^php_admin_value\[disable_functions\]/ { if (!done) { print ENVIRON["_LTD_DENY_REF"]; done = 1 } next }
-      { print }
-      END { if (!done) print ENVIRON["_LTD_DENY_REF"] }
-    ' "${_pf}" > "${_new}" 2> /dev/null; then
-      rm -f -- "${_new}"
+    _todo="${_todo}${_v}|${_tpl}|${_pf} "
+    case "${_vers}" in
+      *" ${_v} "*) ;;
+      *) _vers="${_vers}${_v} " ;;
+    esac
+  done
+  for _v in ${_vers}; do
+    if ! _ltd_fpm_conftest "${_v}"; then
+      echo "The PHP ${_v} FPM config fails its own test, the pools of ${_USER} on it are left as they are"
       continue
     fi
-    chown --reference="${_pf}" "${_new}" 2> /dev/null
-    chmod --reference="${_pf}" "${_new}" 2> /dev/null
-    if mv -f -- "${_new}" "${_pf}"; then
-      echo "Pool ${_pf} of ${_USER} disabled other functions than its template, set back"
-      case "${_rld}" in
-        *" ${_v} "*) ;;
-        *) _rld="${_rld}${_v} " ;;
-      esac
+    _done=""
+    for _t in ${_todo}; do
+      [ "${_t%%|*}" = "${_v}" ] || continue
+      _pf="${_t##*|}"
+      _tpl="${_t#*|}"
+      _tpl="${_tpl%%|*}"
+      _ref=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_tpl}" 2> /dev/null)
+      [ -n "${_ref}" ] || continue
+      _new="${_pf%/*}/.${_pf##*/}.deny.new"
+      _old="${_pf%/*}/.${_pf##*/}.deny.old"
+      rm -f -- "${_new}" "${_old}"
+      # the line goes only into a pool section: a file whose first such line,
+      # or whose end, comes before any [section] header is not rewritten
+      if ! _LTD_DENY_RE="${_re}" _LTD_DENY_REF="${_ref}" awk '
+        /^[ \t]*\[/ { hdr = 1 }
+        $0 ~ ENVIRON["_LTD_DENY_RE"] {
+          if (!hdr) { bad = 1; exit 3 }
+          if (!done) { print ENVIRON["_LTD_DENY_REF"]; done = 1 }
+          next
+        }
+        { print }
+        END {
+          if (bad) exit 3
+          if (!done) { if (!hdr) exit 3; print ENVIRON["_LTD_DENY_REF"] }
+        }
+      ' "${_pf}" > "${_new}" 2> /dev/null; then
+        rm -f -- "${_new}"
+        _ltd_notice "pool-deny-${_USER}-${_v}" \
+          "Pool ${_pf} of ${_USER} disables other functions than its template and was not rewritten" \
+          "no pool section before its disable_functions line"
+        continue
+      fi
+      chown --reference="${_pf}" "${_new}" 2> /dev/null
+      chmod --reference="${_pf}" "${_new}" 2> /dev/null
+      if [ -f "${_pf}" ] && [ ! -L "${_pf}" ] && cp -a -- "${_pf}" "${_old}" \
+        && mv -f -- "${_new}" "${_pf}"; then
+        _done="${_done}${_pf} "
+      else
+        rm -f -- "${_new}" "${_old}"
+      fi
+    done
+    [ -n "${_done}" ] || continue
+    if _ltd_fpm_conftest "${_v}"; then
+      for _pf in ${_done}; do
+        rm -f -- "${_pf%/*}/.${_pf##*/}.deny.old"
+        echo "Pool ${_pf} of ${_USER} disabled other functions than its template, set back"
+      done
+      [ -e "/etc/init.d/php${_v}-fpm" ] && service "php${_v}-fpm" reload &> /dev/null 9>&-
     else
-      rm -f -- "${_new}"
+      for _pf in ${_done}; do
+        mv -f -- "${_pf%/*}/.${_pf##*/}.deny.old" "${_pf}"
+      done
+      _ltd_notice "pool-deny-${_USER}-${_v}" \
+        "The pools of ${_USER} on PHP ${_v} were not set back to the template's disable_functions list" \
+        "the FPM config test failed with the new files, the old ones are back"
     fi
   done
-  for _v in ${_rld}; do
-    [ -e "/etc/init.d/php${_v}-fpm" ] && service "php${_v}-fpm" reload &> /dev/null
-  done
+  return 0
+}
+#
+# The same for an account the pass skips (proxied after a migration, or
+# cancelled): its panel stays local and still runs PHP. Only while no xtrim
+# or sqlclean runs, as xtrim moves such an account's pool files.
+_ltd_pool_deny_heal_skipped() {
+  exec 9> /run/sqlclean.lock || return 0
+  if flock -n 9; then
+    _ltd_pool_deny_heal hm
+    flock -u 9
+  fi
+  exec 9>&-
   return 0
 }
 #
@@ -6279,6 +6347,16 @@ _prune_psr_log_stash() {
 _manage_user() {
   _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    # a proxied or cancelled account is left alone below, but its pools
+    # still run PHP (its panel stays local), so their deny list is checked
+    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
+      && { [ -e "${_pthParentUsr}/log/proxied.pid" ] \
+        || [ -e "${_pthParentUsr}/log/CANCELLED" ]; }; then
+      _USER="${_pthParentUsr##*/}"
+      [[ "${_USER}" =~ ^[a-z0-9-]+$ ]] && _ltd_pool_deny_heal_skipped
+      _USER=""
+    fi
     if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
       && [ ! -e "${_pthParentUsr}/log/proxied.pid" ] \
