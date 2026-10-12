@@ -152,6 +152,12 @@
       before then. _WEB_GROUP_ARM=NO set there today keeps a box out
       (docs/INSTGRP.md).
 
+    * The database broker (boa-dbctl) writes a database password into a
+      client file only when it holds no control character and is no
+      longer than 1024 bytes; otherwise no file is written, and the login
+      it would prove stays unproven. The MySQL 5.7 client reads a longer
+      option line in pieces, each further piece as a line of its own.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
@@ -269,6 +275,57 @@
       ends with -log, as it does with the binary log on, is read as the
       same version. boa-dbctl census says how a box stands against its
       reference (docs/DBCTL.md).
+
+    * The database broker (boa-dbctl), still switched off, has a verb that
+      settles a box's database logins with no ruling asked: baseline settle.
+      It records the server's own logins that are not in the baseline yet.
+      It takes the global privileges of a login no record names that exists
+      only at the box's own hosts and defines no stored object, its grants
+      saved first; one with a row at % or at any other host is left, as it
+      can be another box's. It drops a purged account's instance and panel
+      rows, each saved first, only while the purge parked the account's
+      home and moved its root cnf away, no row of the user had its password
+      set since, the row defines no stored object, and the credential the
+      parked home records opens that very row. That credential is tried
+      once per row, over the socket or an address the box holds, and never
+      while a row of the user carries a failed-login limit of its own; a
+      login that could not be tried leaves the row as a refused one does.
+      Nothing calls it in this release (docs/DBCTL.md).
+
+    * The broker's scope oN on --pass is the unforced switch an Octopus pass
+      makes. It runs only while a pass is running, waits for the account's
+      running tasks before it reads its plan, and takes no pause of the task
+      queue. An account already switched is left as it is when its switch
+      would change nothing. One whose instance or panel user holds a global
+      privilege again, or that has a grant row the switch revokes or
+      rewrites, is switched again, and stays switched when a step of that
+      fails. Nothing calls it in this release (docs/DBCTL.md).
+
+    * The broker's report says for each account whether it is switched, or
+      why not, and lists what stops the box. Nothing calls it in this
+      release (docs/DBCTL.md).
+
+    * The broker's box-wide check names a role or a proxy grant on an
+      account's own database login as that login's finding: no switch
+      takes one, so it stops the account's own switch too, and report
+      says it for that account (docs/DBCTL.md).
+
+    * A load through the broker, still switched off, walks the account's
+      dump store with the account's own rights before its loader starts,
+      and refuses a store that holds anything but directories and plain
+      files the account can read: a loader started on a link to a file the
+      account cannot read would never end, and would hold one of the box's
+      two dump and load slots until the time limit, a day by default
+      (docs/DBCTL.md).
+
+    * A loader of the broker, still switched off, that something other
+      than the time limit killed is reported as killed, not as past the
+      limit (docs/DBCTL.md).
+
+    * The walk of a dump store before a load through the broker, still
+      switched off, that something other than its time limit killed is
+      reported as a walk that could not be made, not as past the limit
+      (docs/DBCTL.md).
 
     * The nightly permissions pass starts its perl walker only where
       it has something to change. Its walks over a platform's code, a
