@@ -1396,12 +1396,17 @@
       would change nothing. One whose instance or panel user holds a global
       privilege again, or that has a grant row the switch revokes or
       rewrites, is switched again, and stays switched when a step of that
-      fails. Only an Octopus pass on a box armed for the broker makes it
-      (docs/DBCTL.md).
+      fails. For an account the broker does not serve (a ProxySQL box or
+      account, a database cluster, databases on another server) it changes
+      nothing and answers OK scope on oN skipped with the reason. Only an
+      Octopus pass on a box armed for the broker makes it (docs/DBCTL.md).
 
     * The broker's report says for each account whether it is switched, or
-      why not, and lists what stops the box. Only the nightly of a box armed
-      for the broker asks for it (docs/DBCTL.md).
+      why not, and lists what stops the box. An account its own cnf keeps
+      out reads kept-out with the setting that does it, one the broker does
+      not serve reads not-served with the reason, and the last line counts
+      both apart from the accounts the box could switch and has not. Only
+      the nightly of a box armed for the broker asks for it (docs/DBCTL.md).
 
     * The broker's box-wide check names a role or a proxy grant on an
       account's own database login as that login's finding: no switch
@@ -1416,9 +1421,10 @@
       own OK line, or a NOTE with its refusal, which never fails the pass
       and leaves everything as it was until the next pass asks again. No
       call is made on a standby or a box being prepared as one, nor for an
-      account whose cnf says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO. The
-      broker still refuses outside a test server, so a box armed today only
-      prints those NOTE lines (docs/DBCTL.md).
+      account whose cnf says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO. Where
+      the box also switches new accounts, an install settles the box before
+      that switch too. The broker still refuses outside a test server, so a
+      box armed today only prints those NOTE lines (docs/DBCTL.md).
 
     * On a box armed for the broker a barracuda pass has it settle the
       box's database logins once, after the pass has made the server's own
@@ -1426,16 +1432,28 @@
 
     * On a box armed for the broker the nightly asks for the broker's
       report and mails the box operator, once a day, the lines of the
-      accounts that are not switched and of what stops the box, with the
-      report's counts. Nothing is mailed while every account is switched
-      and nothing stops the box, nor while the release switches no account
-      (docs/DBCTL.md).
+      accounts the box could switch and has not and of what stops the box,
+      with the report's counts. Nothing is mailed while every such account
+      is switched and nothing stops the box, for an account kept out by
+      its cnf or not served by the broker, nor while the release switches
+      no account (docs/DBCTL.md).
 
     * The _DB_BROKER_ARM default is written the way the web group's is: a
       barracuda pass writes _DB_BROKER_ARM=YES only into a cnf that has no
       such line, so an operator's own line, NO included, always stays. It
       is staged by release and off in this one: no pass writes the setting
       (docs/DBCTL.md).
+
+    * xoct create keeps a moved account out of the broker's switches only
+      while it installs it on the target: it puts _DB_BROKER_BORN=NO into
+      the account's cnf there before the install and takes its own line
+      back once the account is installed and its source's settings and
+      switch are carried, under an xmass run too. A line the cnf held
+      before is its operator's and stays (docs/DBCTL.md).
+
+    * xoct and xmass carry an account's _DB_BROKER_ARM line with its other
+      settings, so an account its operator kept out of the broker stays
+      out on the target and on a promoted standby (docs/DBCTL.md).
 
     * A load through the broker, still switched off, walks the account's
       dump store with the account's own rights before its loader starts,
