@@ -1287,3 +1287,58 @@ _dbctl_witness() {
   /usr/local/bin/boa-dbctl witness 2>&1
   echo "dbctl-witness: done rc=$?"
 }
+
+# The database broker's daily report, on a box armed for it: the last
+# _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything else, no
+# line included, runs nothing here). One line per account, switched or why
+# not, and what stops the box, into this night's log. While an account is
+# not switched or something stops the box, the report's lines that say so
+# and its counts go to the box operator once a day, as the web group's
+# notices do. Never from a replication standby or a box being prepared as
+# one, where no pass switches an account, nor while the broker says the
+# release switches none (not-released): an operator can do nothing about
+# either.
+_dbctl_report() {
+  local _arm _out _rc _l _last="" _un _st _body=""
+  [[ -x "/usr/local/bin/boa-dbctl" ]] || return 0
+  _arm=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" /root/.barracuda.cnf 2> /dev/null | tail -n 1)
+  _arm="${_arm#*=}"
+  case "${_arm}" in
+    \"*) _arm="${_arm#\"}"; _arm="${_arm%%\"*}" ;;
+    \'*) _arm="${_arm#\'}"; _arm="${_arm%%\'*}" ;;
+    *) _arm="${_arm%%[[:space:];]*}" ;;
+  esac
+  [[ "${_arm}" == "YES" ]] || return 0
+  if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
+    return 0
+  fi
+  echo "dbctl-report: start"
+  _out=$(/usr/local/bin/boa-dbctl report < /dev/null)
+  _rc=$?
+  [[ -z "${_out}" ]] || printf '%s\n' "${_out}"
+  echo "dbctl-report: done rc=${_rc}"
+  [[ "${_rc}" == "0" ]] || return 0
+  while IFS= read -r _l; do
+    _last="${_l}"
+    case "${_l}" in
+      *" not-released"*) return 0 ;;
+    esac
+    # an account that is switched, with nothing said of it, is not news
+    [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ switched$ ]] && continue
+    if [[ -n "${_body}" ]]; then
+      _body="${_body}"$'\n'" ${_l}"
+    else
+      _body="${_l}"
+    fi
+  done <<< "${_out}"
+  [[ "${_last}" =~ ^OK\ report\ accounts=[0-9]+\ switched=[0-9]+\ unswitched=([0-9]+)\ stops=([0-9]+)\  ]] \
+    || return 0
+  _un="${BASH_REMATCH[1]}"
+  _st="${BASH_REMATCH[2]}"
+  [[ "${_un}" -gt 0 || "${_st}" -gt 0 ]] || return 0
+  declare -F _night_notice > /dev/null 2>&1 || return 0
+  ( unset _MY_OCTO_EMAIL
+    _night_notice "dbctl-report" \
+      "BOA nightly on $(hostname -f): database broker report" "${_body}" )
+  return 0
+}
