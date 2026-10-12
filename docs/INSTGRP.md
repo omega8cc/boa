@@ -606,8 +606,10 @@ whatever the reading account's own state.
 - Beyond the account's roots, `webrevert` walks back its store on attached
   storage when root owns it (as migratefs leaves the one BOA made in the
   home; the roots take it when the account owns it), and the stores of the
-  account's sites there when the box has no single mount point under
-  `/mnt`. The group goes only once none of them carries it.
+  account's sites there when that store is not one of the walk's roots (no
+  single mount point under `/mnt`, an owner other than root or the
+  account, or a link on the way). The group goes only once none of them
+  carries it.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming

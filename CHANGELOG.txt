@@ -250,8 +250,10 @@
 
     * The web group's revert also walks and checks the files and
       private stores of the account's sites on attached storage when
-      the box has no single mount point under /mnt, so none of them
-      keeps a group that no longer exists (docs/INSTGRP.md).
+      the account's store is not one of the walk's roots (no single
+      mount point under /mnt, an owner other than root or the account,
+      or a link on the way), so none of them keeps a group that no
+      longer exists (docs/INSTGRP.md).
 
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
