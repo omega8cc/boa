@@ -264,6 +264,12 @@
       the web group conversion, still switched off, not as a site
       outside the account that holds its phase B (docs/INSTGRP.md).
 
+    * The note that holds an account's phase B for a share of another
+      account's store names, beside autosymlink --force-unshare, the
+      one share that tool refuses: a private store whose owner runs in
+      its own web group, which the two accounts settle between them
+      (docs/INSTGRP.md).
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
