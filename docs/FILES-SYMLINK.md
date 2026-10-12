@@ -122,6 +122,14 @@ autosymlink --site example.com --account o1 --archive-store --apply
   holds only what that account can read, and never keeps the other store's owner, its
   day stamps or a setuid bit.
 
+  When the other store belongs to an account that runs in its own web group, the
+  paths nginx never serves in it (the CiviCRM log, custom, upload and template
+  stores, `backup_migrate`, config sync directories, `private`) are closed to every
+  other account. The copy leaves those out, with an `[INFO] Un-share copy leaves
+  out <path>` line each; a Drupal site's next Verify makes its own empty CiviCRM stores.
+  Any other entry the account cannot read still stops the copy, named in an
+  `[ERROR]` line, and nothing is copied.
+
   The copy is made only into a per-site store directory (`static/files/<url>`)
   that root owns and that neither its group nor others can write; any other is
   refused with an `Un-share copy refused` line, nothing is copied, and the site

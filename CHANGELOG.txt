@@ -191,6 +191,16 @@
       holds an account's phase B, and on a box that starts phase B the
       nightly notes such an account in its own log (docs/INSTGRP.md).
 
+    * A files share can be undone again once the account that owns the
+      shared store runs in its own web group. The un-share copy is made
+      as the reading account, and that owner's store keeps the paths
+      nginx never serves (the CiviCRM log and custom stores every site
+      gets, config sync, backup_migrate, private) closed to every other
+      account, so the copy failed and the site stayed linked to the
+      other account's files. The copy now leaves exactly those out, one
+      line each in the autosymlink log; any other entry the account
+      cannot read still stops it.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
