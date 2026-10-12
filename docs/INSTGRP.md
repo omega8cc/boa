@@ -121,7 +121,12 @@ barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
 nightly worker would write `users` back on its next pass, an old `websh` would
 lock the tenant out of its shell, and on a box that only received the fetched
 tools ahead of its upgrade (a staged publish) the tar's own Octopus and system
-libraries still write the box-wide group.
+libraries still write the box-wide group. The arm stamps live in
+`/etc/boa/control` (0755, each stamp 0644), out of reach of the clean-ups that
+sweep `/var/log/boa` by name; on a box an earlier release stamped in
+`/var/log/boa`, `instgrp` copies the per-instance group's stamp before it reads
+it, and the barracuda pass writes that stamp in `/var/log/boa` too while an
+older `instgrp` can still be fetched.
 
 An account that is already
 converted takes its read-only re-pass regardless of the stamp. A skipped or
