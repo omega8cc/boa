@@ -91,11 +91,12 @@
       permission pass leave files another account's users own as they
       are, with everything below them, and count them on one line.
 
-    * The nightly permission pass leaves files another account's users
-      own as they are at the platform level too, with everything below
-      them: in the whole tree of a platform built under ~/static, and in
-      the code and sites directories of every platform. They are counted
-      on the site's one line.
+    * The nightly permission pass hands over and sets modes at the
+      platform level too only on what root or the account's own users
+      own: files another account's users own keep their owner and mode,
+      with everything below them, in the whole tree of a platform built
+      under ~/static and in the code and sites directories of every
+      platform. They are counted on the site's one line.
 
     * Files that arrive from another server owned by a user the account
       does not have here are given to the account. An xcopy or xoct copy
@@ -116,7 +117,7 @@
       the account, and every Octopus run hands over static, only when
       root or the account's own users own them: a directory another
       account placed at those names keeps its owner and mode, and nothing
-      is made in it.
+      is made in a backups/system left that way.
 
     * The Octopus upgrade's removal of the retired drush_make directories
       from .drush, and the removal of ~/.bazaar on servers without bzr,
@@ -127,7 +128,8 @@
       to that login, and remove the retired extension links from it,
       only when root or the account's own users own them: a directory
       another account placed there keeps its owner and mode, and nothing
-      is made or linked in it.
+      is made or linked in it. A file or directory another account
+      placed at the name of an extension link in usr also stays as it is.
 
     * The Octopus upgrade's removal of entries older than a day from the
       account's .tmp deletes only what root or the account's own users
