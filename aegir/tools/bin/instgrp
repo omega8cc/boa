@@ -3910,10 +3910,19 @@ _wg_clean() {
 # line, each site once: each alias in the real .drush with a site_path, read
 # bounded and never through a link; "in" when the site dir resolves inside
 # the profile's own tree (/data/disk/<a>/ for an account, /var/aegir/ for
-# the master), "out" otherwise. $1 = the home (the profile's by default).
+# the master) or, for an account, inside its store on attached storage
+# (_acct_store), "out" otherwise. $1 = the home (the profile's by default).
 _wg_site_list() {
-  local _h="${1:-${_WP_HOME}}" _rh _f _t _sp _rs _w
+  local _h="${1:-${_WP_HOME}}" _rh _f _t _sp _rs _w _st _rst=""
   _rh=$(realpath -e -- "${_h}" 2> /dev/null) || return 0
+  _st="${_h%/}"
+  case "${_st}" in
+    /data/disk/*/*) ;;
+    /data/disk/?*)
+      _st=$(_acct_store "${_st##*/}" 2> /dev/null) \
+        && _rst=$(realpath -e -- "${_st}" 2> /dev/null)
+      ;;
+  esac
   for _f in "${_h}"/.drush/*.alias.drushrc.php; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     case "${_f##*/}" in
@@ -3925,10 +3934,15 @@ _wg_site_list() {
     [ -n "${_sp}" ] || continue
     _rs=$(realpath -e -- "${_sp}" 2> /dev/null) || continue
     _wg_clean "${_rs}" || continue
+    _w=out
     case "${_rs}/" in
       "${_rh}"/?*) _w=in ;;
-      *) _w=out ;;
     esac
+    if [ "${_w}" = "out" ] && [ -n "${_rst}" ]; then
+      case "${_rs}/" in
+        "${_rst}"/?*) _w=in ;;
+      esac
+    fi
     [ -d "${_rs}" ] && printf '%s %s %s\n' "${_w}" "${_f##*/}" "${_rs}"
   done | awk '{ _k = $0; sub(/^[^ ]* [^ ]* /, "", _k) } !_seen[_k]++'
 }
