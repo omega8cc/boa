@@ -92,8 +92,10 @@ user stops a switch too, that account's own included: a switch takes
 privileges on all databases, never one of these, and the login would still
 hold a global right after it. The check prints it once per login, as `stop
 login <user>@<host> holds a role or a proxy grant the switch does not take`;
-it is taken away by hand. A forced switch goes through its steps and ends at
-its last test (`ERR 7 scope-failed global-left`).
+it is taken away by hand. A forced switch ends at the revoke step of an
+instance row that holds one (`ERR 7 scope-failed revoke-global`, or
+`revoke-kept` for a row kept for its stored objects) and, being an
+operator's switch, puts the account back on the direct path.
 
 ### The server's own logins: proof and baseline
 
@@ -104,12 +106,23 @@ maintenance client file where the server package made one). The login goes
 over that row's own transport, must land on exactly that row, and the row may
 keep no second password (`RETAIN CURRENT PASSWORD`).
 
-A recorded password that holds a control character is never used, for these
-logins or for an account's: no client file is written with it and no login is
-tried. A server alias whose encoded password decodes to one, or in which a
-`%` does not begin two hex digits, reads as an alias with no credential; a
-password with one in any other record leaves the login not proven, said as
-that (`credential-not-plain` for one of the server's own logins).
+A password becomes a line of a client file only when it may: no control
+character in it, and no more than 1024 bytes, the bound of a password given
+on standard input. The client reads an option file line by line through a
+buffer of a few kilobytes, and a longer line is read as several. The name it
+goes with must be plain. That holds for every client file the broker writes:
+for these logins, for an account's instance and panel users, for a parked
+home's, for a site's recorded login in a plan, and for a load. Otherwise no
+file is written and no login tried, and the reason is said:
+`credential-not-plain` for one of the server's own logins, `unregistered
+<database> <site> its-recorded-password-too-long` or
+`...-control-character` for a site in a plan, `ERR 2 bad-password` for a
+load.
+
+A server alias whose encoded password decodes to a control character, or in
+which a `%` does not begin two hex digits, is said as that and not as an
+alias that is missing: `refused server-alias-password ...` in a plan, the
+same words on the box-wide check's line and on settle's `left` line.
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
@@ -250,17 +263,23 @@ only while each of these holds, and is left otherwise, with the reason on its
   user's from the parked panel's `drushrc.php`. The login is tried once per
   row and run, before the baseline lock is taken, and only on a row every
   test above lets go: over the socket for a row at `localhost`, a loopback
-  address for a row there, and for a row at `%` over `127.0.0.1` and then
-  the addresses the box holds, the first that reaches the row deciding. The
-  address `_MY_OWNIP` names is never used when the box does not hold it,
-  and a row at such an address is left. A row that carries a failed-login
-  limit of its own (`FAILED_LOGIN_ATTEMPTS`, `PASSWORD_LOCK_TIME`) is not
-  tried and is left. So is a row with no such credential or with a control
-  character in it, one no login of this box reaches, one whose login opens
-  another row of the user, one the server refuses the credential for
-  (`it is someone else's by now`), and one whose login could not be tried:
-  too many connections, a blocked host, a locked or expired account, no
-  answer within 30 seconds. Each has its own reason on the `left` line;
+  address for a row there, the address itself for a row at an address the
+  box holds, and for a row at `%` over `127.0.0.1` and then the addresses
+  the box holds, the first that reaches the row deciding. The address
+  `_MY_OWNIP` names is never used when the box does not hold it, and a row
+  at such an address is left; so is a row at the box's own name, since a
+  name can lead to another server. No row of a user is tried while any row
+  of that user carries a failed-login limit (`FAILED_LOGIN_ATTEMPTS`,
+  `PASSWORD_LOCK_TIME`; both 0 is none): a login through a row at `%` can
+  be matched to a narrower row and counted there. Left too: a row with no
+  such credential, with a control character in it or longer than 1024
+  bytes, one no login of this box reaches, one whose login opens another
+  row of the user, one the server refuses the credential for (`it is
+  someone else's by now`; for a row at `%` of a user that has another row
+  the line says only that a login of the user was refused, as the narrower
+  row may have answered), and one whose login could not be tried: too many
+  connections, a blocked host, a locked or expired account, no answer
+  within 30 seconds. Each has its own reason on the `left` line;
 - the row reads under the lock as it did when that login was tried (it is
   there, the password times of its user's rows unchanged);
 - its `SHOW CREATE USER` line and its grants are saved under
@@ -572,7 +591,10 @@ nothing: no global privilege on its instance user at any row, on its panel
 user or on an earlier name of that user, and no grant row of the account on a
 name that has no schema or in the old unescaped spelling. It answers `OK scope
 on oN already server=<context> rows=<rows>`: nothing was changed (the call
-only read), no new file of saved grants, the control file untouched.
+only read), no new file of saved grants, the control file untouched. That is
+asked before the wait for the account's tasks and again after it: a task can
+leave such a grant row for a moment, between a database's drop and the
+revoke of its user's grant.
 
 One whose control file is valid and whose switch has something to do goes
 through the switch. A step that fails then leaves it switched (`ERR 7
@@ -583,7 +605,8 @@ account's grant on each of its own databases again, and the `ALRT` line names
 that put-back fails on a row the switch was still making a row in use (one
 kept for the stored objects it defines), `regrant` does not reach the row:
 the line then names `scope oN plan` and `scope oN on --sha`, which take it
-through the switch again.
+through the switch again. That is an operator's switch: a step of it that
+fails puts the account back on the direct path.
 
 Its line in the broker's log ends with `note=pass`.
 
@@ -600,7 +623,7 @@ prints one line per account the census lists, then every finding of the
 box-wide check, once, and how the server stands against its reference:
 
 ```
-o1 switched
+o1 switched[ role-or-proxy-grant N]
 o2 not-switched <reason>[, <reason>...]
 box stop <finding>
 OK report accounts=N switched=N unswitched=N stops=N reference=ok|off|none
@@ -611,7 +634,8 @@ in the plan's words, `unregistered <database> <why>` for each site left out,
 and `box-not-proven N` when nothing of its own holds it and N findings of the
 box-wide check would stop its switch. `role-or-proxy-grant N` names N of its
 own instance or panel logins that hold a role or a proxy grant, which no
-switch takes. `ready` means its plan refuses nothing.
+switch takes; a switched account's line carries it too, as a pass's switch
+of it ends not proven meanwhile. `ready` means its plan refuses nothing.
 
 Three reasons come from outside the plan: `not-released` where this release
 switches no account on the box, `opted-out` for an account whose
