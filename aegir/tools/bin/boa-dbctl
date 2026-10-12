@@ -2414,19 +2414,56 @@ _store_walk_here() {
     ' < /dev/null 2> /dev/null 7>&- 8>&- 9>&-
 }
 
+# What may become two lines of a client file: user $1 and the password in
+# _PW. The client reads an option file line by line through a buffer of a
+# few kilobytes, and what does not fit in it is read as lines of its own;
+# and a line feed ends a line. So: no name that is not plain, no password
+# with a control character in it, and none longer than a password given on
+# standard input may be (1024 bytes). 1 otherwise, with why in _CNF_WHY and
+# as one word in _CNF_TOK. Both writers of a client file ask here, whatever
+# record or call the password came from.
+_cnf_tests() {
+  _CNF_WHY=""
+  _CNF_TOK=""
+  if [[ -z "${1}" || "${#1}" -gt 32 || "${1}" == *[!A-Za-z0-9_.-]* ]]; then
+    _CNF_TOK="name-not-plain"
+    _CNF_WHY="its name is not plain"
+    return 1
+  fi
+  if [[ "${_PW}" == *[[:cntrl:]]* ]]; then
+    _CNF_TOK="password-control-character"
+    _CNF_WHY="the password recorded for it holds a control character"
+    return 1
+  fi
+  if [[ "${#_PW}" -gt 1024 ]]; then
+    _CNF_TOK="password-too-long"
+    _CNF_WHY="the password recorded for it is longer than 1024 bytes"
+    return 1
+  fi
+  return 0
+}
+
 # The load's [client] file: the site user's name and password, read by the
 # account's own myloader through an inherited descriptor. It is the
 # account's (so that reading works) inside root's private directory, which
-# no one else can enter, and goes with it.
+# no one else can enter, and goes with it. The plan's proof of a site's
+# recorded login is read from such a file too. 1, with no file left, when
+# the name or the password may not become its lines (_cnf_tests).
 _write_cnf() {
   local _e
   _CNF="${_TMPD}/client.cnf"
+  rm -f -- "${_CNF}"
+  if ! _cnf_tests "${1}"; then
+    _PW=""
+    return 1
+  fi
   _e=$(printf '%s' "${_PW}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
   printf '[client]\nuser=%s\npassword="%s"\n' "${1}" "${_e}" > "${_CNF}" \
     || _die 7 "credentials-file-failed"
   _e=""
   chown -- "${_ACCT}" "${_CNF}" 2> /dev/null || _die 7 "credentials-file-failed"
   chmod 0600 "${_CNF}" 2> /dev/null
+  return 0
 }
 
 _box_name() {
@@ -2549,7 +2586,7 @@ _v_load() {
     1) _die 7 "store-incomplete" ;;
     *) _die 7 "store-not-one-database" ;;
   esac
-  _write_cnf "${_LD_USER}"
+  _write_cnf "${_LD_USER}" || _die 2 "bad-password"
   _PW=""
   _prove "${_LD_USER}" "${_db}" || _die 6 "refused-user credential-proof-failed"
   _LOG_UH="${_LD_USER}@${_PROOF_HOST}"
@@ -3706,26 +3743,23 @@ SELECT /*q:alsysobj*/ CONCAT_WS('|', COUNT(*), SHA2(IFNULL(GROUP_CONCAT(o.x ORDE
 }
 
 # A root-only client file for user $1 with the password in _PW, read by a
-# login proof through an inherited descriptor. Sets _PCNF. Every proof goes
-# through here, and what it is handed was read from files an account, or a
-# purged account's parked home, wrote. A password with a control character
-# in it writes no file (a line feed would add lines of its writer's choosing
-# to the options root's client reads), nor does a name that is not plain: 1
-# then, with why in _PCNF_WHY, no file left from an earlier proof, and the
-# login is not tried.
+# login proof through an inherited descriptor. Sets _PCNF. Every proof of a
+# login's own row goes through here (a load's proof and the plan's proof
+# of a site's login go through _write_cnf), and what it is handed was read
+# from files an account, or a purged account's parked home, wrote. A name
+# or a password that may not become lines of a client file (_cnf_tests: a
+# line feed, or a line too long for the client's buffer, would add lines
+# of its writer's choosing to the options root's client reads) writes no
+# file: 1 then, with why in _PCNF_WHY, no file left from an earlier proof,
+# and the login is not tried.
 _proof_cnf() {
   local _e
   _PCNF="${_TMPD}/proof.cnf"
   _PCNF_WHY=""
   rm -f -- "${_PCNF}"
-  if [[ -z "${1}" || "${#1}" -gt 32 || "${1}" == *[!A-Za-z0-9_.-]* ]]; then
+  if ! _cnf_tests "${1}"; then
     _PW=""
-    _PCNF_WHY="its name is not plain"
-    return 1
-  fi
-  if [[ "${_PW}" == *[[:cntrl:]]* ]]; then
-    _PW=""
-    _PCNF_WHY="the password recorded for it holds a control character"
+    _PCNF_WHY="${_CNF_WHY}"
     return 1
   fi
   _e=$(printf '%s' "${_PW}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
@@ -5499,7 +5533,10 @@ _settle_proofs() {
     elif ! _settle_cred "${_kd}" "${_o}" "${_u}"; then
       _v="nocred"
     elif ! _proof_cnf "${_u}"; then
-      _v="ctl"
+      case "${_CNF_TOK}" in
+        password-too-long) _v="long" ;;
+        *) _v="ctl" ;;
+      esac
     else
       _row_login_held "${_u}" "${_h}" "${_PCNF}"
       case "$?" in
@@ -5537,6 +5574,7 @@ _settle_proof_why() {
     limit) _ST_WHY="it carries a failed-login limit of its own: no login is tried on it" ;;
     nocred) _ST_WHY="the parked home of ${2} holds no credential of it that can be read" ;;
     ctl) _ST_WHY="the password ${2} recorded for it holds a control character: no login is tried with it" ;;
+    long) _ST_WHY="the password ${2} recorded for it is longer than 1024 bytes: no login is tried with it" ;;
     unreach) _ST_WHY="no login of this box reaches the row, so the credential ${2} recorded cannot be tried on it" ;;
     elsewhere) _ST_WHY="each login with the credential ${2} recorded opens another row of its user, never this one" ;;
     untried) _ST_WHY="the credential ${2} recorded could not be tried on it now: the server gave no answer about it" ;;
@@ -6059,8 +6097,10 @@ _scope_sites() {
     if [[ -z "${_why}" ]]; then
       if [[ "${_du}" == "-" ]] || ! _site_pw "${_sp}"; then
         _why="no-recorded-login"
+      elif ! _write_cnf "${_du}"; then
+        # no client file is written with it, and no login tried
+        _why="its-recorded-${_CNF_TOK}"
       else
-        _write_cnf "${_du}"
         _PW=""
         _prove "${_du}" "${_dn}" || _why="its-recorded-login-does-not-open-it"
       fi
