@@ -4838,8 +4838,10 @@ _al_judge() {
         # A role, a default role or a proxy grant of an account's own
         # instance or panel login: a switch takes privileges on all
         # databases only, so the login would still hold a global right
-        # after it, and the switch would end at its last test on every
-        # run. Said once per login, as that login's own stop.
+        # after it. A forced switch ends at the revoke step of such an
+        # instance row (_revoke_global looks for what is left) and, an
+        # operator's, gives the direct path back. Said once per login, as
+        # that login's own stop.
         _r=""
         case "${_t}" in
           proxies_priv|role_edges|default_roles)
