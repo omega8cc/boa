@@ -87,6 +87,14 @@ A login named like an account, or a system name at a host the server's own
 logins do not use, is never accepted with a global privilege: it is revoked
 (`baseline revoke-global`) or dropped (`leftovers`, or by hand).
 
+A role, a default role or a proxy grant on an account's own instance or panel
+user stops a switch too, that account's own included: a switch takes
+privileges on all databases, never one of these, and the login would still
+hold a global right after it. The check prints it once per login, as `stop
+login <user>@<host> holds a role or a proxy grant the switch does not take`;
+it is taken away by hand. A forced switch goes through its steps and ends at
+its last test (`ERR 7 scope-failed global-left`).
+
 ### The server's own logins: proof and baseline
 
 Each of the server's own logins is proven by a login with the credential the
@@ -95,6 +103,13 @@ box holds for it (`/root/.my.cnf` for `root`, the master's server alias for
 maintenance client file where the server package made one). The login goes
 over that row's own transport, must land on exactly that row, and the row may
 keep no second password (`RETAIN CURRENT PASSWORD`).
+
+A recorded password that holds a control character is never used, for these
+logins or for an account's: no client file is written with it and no login is
+tried. A server alias whose encoded password decodes to one, or in which a
+`%` does not begin two hex digits, reads as an alias with no credential; a
+password with one in any other record leaves the login not proven, said as
+that (`credential-not-plain` for one of the server's own logins).
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
@@ -162,10 +177,16 @@ On a box where no account is ever switched it changes nothing, says why in one
 line and ends with exit code 0: `OK baseline settle skipped proxysql` (a
 ProxySQL box) or `OK baseline settle skipped cluster` (a database cluster).
 That is decided before anything asks the local server, whatever it answers.
+On such a box the standby answers and the release rule still come first; the
+skip line comes before the other two refusals, so a ProxySQL or cluster box
+that is being prepared as a standby, or whose pair is being switched over,
+answers with the skip line and exit code 0.
 
 It reads the box first and takes the baseline lock after, as `leftovers drop`
 does: a root tool that records its own row again waits for that lock for a
-minute at most. What a write depends on is read again under the lock, and so
+minute at most. The logins that prove a purged account's row (step 3) are
+tried before the lock too. What a write depends on is read again under the
+lock, and so
 are the refusals above: a standby marker or a switch of the pair that appears
 during the reads ends the call there, with nothing written.
 
@@ -224,12 +245,24 @@ only while each of these holds, and is left otherwise, with the reason on its
   account's own users. One row set since, and the name is in use by something
   made since. No such list, or a row with no such time: left;
 - the row defines no stored object;
-- the credential the parked home records for it opens that very row, by a
-  login over the row's own transport, as a live account's login is proven:
-  the instance user's from the server alias in the parked tarball, the panel
-  user's from the parked panel's `drushrc.php`. No such credential, no
-  transport of this box that reaches the row, or a login the row does not
-  accept: left;
+- the credential the parked home records for it opens that very row: the
+  instance user's from a server alias in the parked tarball, the panel
+  user's from the parked panel's `drushrc.php`. The login is tried once per
+  row and run, before the baseline lock is taken, and only on a row every
+  test above lets go: over the socket for a row at `localhost`, a loopback
+  address for a row there, and for a row at `%` over `127.0.0.1` and then
+  the addresses the box holds, the first that reaches the row deciding. The
+  address `_MY_OWNIP` names is never used when the box does not hold it,
+  and a row at such an address is left. A row that carries a failed-login
+  limit of its own (`FAILED_LOGIN_ATTEMPTS`, `PASSWORD_LOCK_TIME`) is not
+  tried and is left. So is a row with no such credential or with a control
+  character in it, one no login of this box reaches, one whose login opens
+  another row of the user, one the server refuses the credential for
+  (`it is someone else's by now`), and one whose login could not be tried:
+  too many connections, a blocked host, a locked or expired account, no
+  answer within 30 seconds. Each has its own reason on the `left` line;
+- the row reads under the lock as it did when that login was tried (it is
+  there, the password times of its user's rows unchanged);
 - its `SHOW CREATE USER` line and its grants are saved under
   `/var/backups/boa/dbrights/`, in a file only root reads (it holds the row's
   stored password); a save that fails drops nothing.
@@ -237,14 +270,19 @@ only while each of these holds, and is left otherwise, with the reason on its
 The times order two events only on one server's own history. A box seeded from
 another server's data (a standby built from a clone, a restore) can hold a
 parked home younger than rows another box's account still uses; the login
-with the parked account's own credential is what tells such a row apart.
+with the parked account's own credential is what tells such a row apart. It
+does not tell apart a box cloned from the very server that holds the parked
+home: there the parked credential opens the row. Settle's proof does not
+cover that case.
 
 A purged account's site users are never dropped here: the parked home proves
 none of them. Each is left with a line that names `leftovers`, whose `drop`
 takes them under its list's hash.
 
-Each entry of the saved file can be run again as it is written: the row's
-`CREATE USER` line first, then its grants, every statement ended.
+Each entry of the saved file can be run again as it is written, every
+statement ended. An entry of step 3 begins with the row's `CREATE USER` line,
+then its grants; an entry of step 2 holds the grants alone, as its row
+stays.
 
 A name two accounts' records claim and every login of any other class are
 left too, and so is everything that is not a login: a stored object `root`
@@ -526,21 +564,26 @@ which the operator started.
 
 It waits for the account's running tasks to end before it reads the plan
 (`ERR 9 busy tasks` when they do not), so a database a task made a moment ago
-is in the plan.
+is in the plan, and a switch of the box's pair that began meanwhile refuses
+it: the box's addresses and its pair's state are read after the wait.
 
-An account already switched is left as it is when nothing its switch takes
-rights from holds a global privilege: its instance user at any row, its panel
-user, and every earlier name of that user. It answers `OK scope on oN already
-server=<context> rows=<rows>`: nothing was changed (the call only read), no
-new file of saved grants, the control file untouched.
+An account already switched is left as it is when its switch would change
+nothing: no global privilege on its instance user at any row, on its panel
+user or on an earlier name of that user, and no grant row of the account on a
+name that has no schema or in the old unescaped spelling. It answers `OK scope
+on oN already server=<context> rows=<rows>`: nothing was changed (the call
+only read), no new file of saved grants, the control file untouched.
 
-One whose control file is valid and where one of those logins holds a global
-privilege again goes through the switch. A step that fails then leaves it
-switched (`ERR 7 scope-failed <step>`): it is never put back on the direct
-path unattended. Where the step was at a row of the instance user, that row
-first gets the account's grant on each of its own databases again, and the
-`ALRT` line names `boa-dbctl regrant --account oN`, which gives them to every
-row in use.
+One whose control file is valid and whose switch has something to do goes
+through the switch. A step that fails then leaves it switched (`ERR 7
+scope-failed <step>`): it is never put back on the direct path unattended.
+Where the step was at a row of the instance user, that row first gets the
+account's grant on each of its own databases again, and the `ALRT` line names
+`boa-dbctl regrant --account oN`, which gives them to every row in use. Where
+that put-back fails on a row the switch was still making a row in use (one
+kept for the stored objects it defines), `regrant` does not reach the row:
+the line then names `scope oN plan` and `scope oN on --sha`, which take it
+through the switch again.
 
 Its line in the broker's log ends with `note=pass`.
 
@@ -566,7 +609,9 @@ OK report accounts=N switched=N unswitched=N stops=N reference=ok|off|none
 An account's reasons are the ones its own `scope oN plan` gives: each refusal
 in the plan's words, `unregistered <database> <why>` for each site left out,
 and `box-not-proven N` when nothing of its own holds it and N findings of the
-box-wide check would stop its switch. `ready` means its plan refuses nothing.
+box-wide check would stop its switch. `role-or-proxy-grant N` names N of its
+own instance or panel logins that hold a role or a proxy grant, which no
+switch takes. `ready` means its plan refuses nothing.
 
 Three reasons come from outside the plan: `not-released` where this release
 switches no account on the box, `opted-out` for an account whose
@@ -637,10 +682,12 @@ whatever it points to (a dump holds plain files only), and so are a FIFO, a
 socket and a device. The loader never ends on a link to a file the account
 cannot read.
 
-The `ALRT` line names the entry when its name is plain, and says it is not
-otherwise. The load ends the same way when the account cannot open the store
-or a directory in it, when the walk cannot be made, and when it takes more
-than 300 seconds; the line says which.
+The `ALRT` line names the entry when its name is plain, by the broker's own
+test of it, and says it is not otherwise. The load ends the same way when the
+account cannot open the store or a directory in it, when the walk cannot be
+made, and when it takes more than 300 seconds; the line says which. A walk a
+kill ends before that time is one that could not be made, never one past its
+time.
 
 An entry swapped in after that walk can still hold the account's lock and one
 slot until the limit: the limit is the bound.
