@@ -191,9 +191,15 @@ backup never reads a source file through a link or waits on a FIFO.
   fact in `/etc/boa/control/<bucket>.chain.txt` (written after every run;
   a box whose archive log is older than the marker gets it from the log at
   its first run), not in the `/var/log/boa/<bucket>.archive.log` history,
-  which the clean-up of a major OS upgrade deletes: with only the history
-  lost, the next run stays incremental. To start a new full chain on
-  purpose, remove the `.chain.txt` marker as well as the archive log.
+  which the clean-up of a major OS upgrade deleted until this release (it
+  keeps `*.archive.log` now): with only the history lost, the next run stays
+  incremental (while the box's local duplicity
+  cache is there too). To start a new full chain on
+  purpose, remove the `.chain.txt` marker as well as the archive log. A
+  run that fails says so in the emailed report: duplicity's own error lines
+  and an `ALERT:` line with its exit code. An incremental that duplicity
+  refuses because the bucket lost its signature files is retried once in
+  full mode, as `multiback` does.
 
   The `srv.foo.bar` is a hostname of the BOA system backed up before.
   In the `retrieve` mode it will use the `_AWS_*` variables configured

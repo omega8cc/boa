@@ -515,12 +515,16 @@ _grav_capsule_perm_here() {
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # otherwise: group-rw for FPM, owner-rw for the CLI, NO world
-  # bits; the root .env keeps FPM's read via group.
+  # bits, the premium licence keys in user/data/licenses.yaml included;
+  # the root .env keeps FPM's read via group.
   for _sd in accounts config env; do
     [ -d "./user/${_sd}" ] || continue
     _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
     _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
   done
+  if [ -d "./user/data" ]; then
+    _in_pinned_dir "${_here}/user/data" _chmod_any_own_here 0660 licenses.yaml
+  fi
   _chmod_any_own_here 0640 .env
   _chmod_any_own_here 0440 drushrc.php
 }

@@ -28,6 +28,244 @@ _check_root() {
 }
 _check_root
 
+# A Grav store (KahunaCart) needs its worker every minute: it sends the order
+# mail a request did not get to, mints download grants and runs the sweeps,
+# the reminders and the renewals. Each enabled site of this instance whose
+# capsule carries KahunaCart and names its database in drushrc.php gets one
+# `bin/plugin kahunacart work`, the one job KahunaCart registers with Grav's
+# scheduler (its add-ons work through its queue). Grav's whole scheduler is
+# never run: it would also run the custom jobs a site's admins can define,
+# which are shell commands. A store kept in its own SQLite file is left
+# alone: the copy safeguards (signing key, pause, hold) act on the database
+# on record. A copy of a store (its capsule carries .boa-copy) is left alone
+# too until Cutover makes it the live store or the account releases it with
+# static/control/kahunacart-run.<domain>.info: a copy must not mail or bill
+# the source's customers. Only a release file newer than the copy's marker
+# counts: it is keyed by the domain alone, and an older one, left by an
+# earlier copy at the same staging domain, must not release a new copy.
+#
+# The worker runs inside the site's own PHP-FPM pool: root sends one FastCGI
+# request straight to the pool's socket (never through the web server) for
+# an entry script BOA keeps in /data/conf, so the worker runs as the pool
+# user under the pool's own limits, exactly as a web request of the site
+# does. Nothing the pool cannot already do is handed to the plugin code it
+# loads from the web-writable user/ tree. The instance user only reads the
+# capsule's drushrc.php and the hold (never root, which could be pointed at
+# another account's file), and root passes the validated database settings
+# as request parameters, as the site's vhost does, never on a command line.
+#
+# The scan runs in a detached pass with a lock of its own, started before
+# this script's own lock, so a long Aegir task never holds a store's queue;
+# each store's tick is detached again under a lock of its own, so one slow
+# store never delays another, and the pool's own size bounds how many run.
+
+_GRAV_TICK_ENTRY="/data/conf/grav-store-tick.php"
+
+# The entry script, kept identical to the copy below; written only when it
+# differs, root's, readable by the pools (/data/conf is in each one's
+# open_basedir).
+_grav_tick_entry() {
+  # A temp name of this instance's own: every instance's runner keeps the
+  # one shared entry, and they may run in the same second.
+  local _new="/data/conf/.grav-store-tick.php.${_H_USER}.new"
+  [[ -d /data/conf ]] && [[ ! -L /data/conf ]] || return 1
+  ( umask 022; cat > "${_new}" ) <<'PHP' || return 1
+<?php
+/**
+ * BOA: one KahunaCart worker tick for a Grav store.
+ *
+ * Sent by BOA's minute runner (run-xdrago) straight to the site's own PHP-FPM
+ * pool socket, never through the web server, so the worker runs as the site's
+ * pool user under the pool's own limits. The store's database settings arrive
+ * as request parameters, as the site's vhost passes them. Written by
+ * run-xdrago; an edit here is overwritten.
+ */
+if (PHP_SAPI !== 'fpm-fcgi' || !isset($_SERVER['BOA_GRAV_TICK_ROOT'])) {
+  exit;
+}
+$root = (string) $_SERVER['BOA_GRAV_TICK_ROOT'];
+if (!preg_match('#^/data/disk/[a-z0-9]+/[A-Za-z0-9._/-]+$#', $root) || strpos($root, '..') !== FALSE) {
+  exit;
+}
+if (!is_file($root . '/system/defines.php') || !is_file($root . '/bin/plugin')
+  || !is_file($root . '/user/plugins/kahunacart/kahunacart.php') || !@chdir($root)) {
+  exit;
+}
+// BOA's pools disable getmypid(), and KahunaCart names its worker and its
+// leases with it. A stand-in for this request only, never the real pid (the
+// pool keeps that hidden), lets the worker run here.
+if (!function_exists('getmypid')) {
+  function getmypid() {
+    static $id = 0;
+    if ($id === 0) {
+      $id = random_int(100000, 2147483646);
+    }
+    return $id;
+  }
+}
+foreach (array('STDIN' => 'r', 'STDOUT' => 'w', 'STDERR' => 'w') as $name => $mode) {
+  if (!defined($name)) {
+    define($name, fopen('php://' . strtolower($name), $mode));
+  }
+}
+$argv = array('bin/plugin', 'kahunacart', 'work', '--quiet');
+$argc = count($argv);
+$_SERVER['argv'] = $argv;
+$_SERVER['argc'] = $argc;
+require $root . '/bin/plugin';
+PHP
+  if [[ -f "${_GRAV_TICK_ENTRY}" ]] && [[ ! -L "${_GRAV_TICK_ENTRY}" ]] \
+    && cmp -s "${_new}" "${_GRAV_TICK_ENTRY}"; then
+    rm -f "${_new}"
+    return 0
+  fi
+  chmod 0644 "${_new}" && mv -f "${_new}" "${_GRAV_TICK_ENTRY}"
+}
+
+# The pool socket one site's PHP runs on: the one its vhost passes PHP to (as
+# provision last rendered it), else the pool the Grav vhost template picks
+# now: the first socket among 8.4, 8.5, 8.6 and 8.3, else the bare one. Sets
+# _GRAV_SOCK.
+_grav_site_socket() {
+  local _uri="${1}" _vh _sock="" _v
+  _GRAV_SOCK=""
+  _vh="/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}"
+  if [[ -f "${_vh}" ]] && [[ ! -L "${_vh}" ]]; then
+    _sock="$(timeout 5 grep -m1 -o "fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;" "${_vh}" 2> /dev/null)"
+    _sock="${_sock#fastcgi_pass unix:}"
+    _sock="${_sock%;}"
+  fi
+  if [[ "${_sock}" =~ ^/run/${_H_USER}(\.8[3-6])?\.fpm\.socket$ ]] && [[ -S "${_sock}" ]]; then
+    _GRAV_SOCK="${_sock}"
+    return 0
+  fi
+  for _v in 84 85 86 83; do
+    if [[ -S "/run/${_H_USER}.${_v}.fpm.socket" ]]; then
+      _GRAV_SOCK="/run/${_H_USER}.${_v}.fpm.socket"
+      return 0
+    fi
+  done
+  if [[ -S "/run/${_H_USER}.fpm.socket" ]]; then
+    _GRAV_SOCK="/run/${_H_USER}.fpm.socket"
+    return 0
+  fi
+  return 1
+}
+
+# One store's tick: $1 the capsule, $2 its domain. Runs in a subshell of its
+# own, so the environment it clears and the exports below reach nothing else.
+_grav_store_tick() {
+  local _sp="${1}" _uri="${2}" _rc _n _u _p _h _o _v _k _e
+  _grav_site_socket "${_uri}" || return 0
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null 7>&-)" || return 0
+  _n="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _u="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _p="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _h="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_host'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _o="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_port'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _rc=""
+  [[ -n "${_n}" ]] && [[ -n "${_u}" ]] && [[ -n "${_p}" ]] || return 0
+  [[ -n "${_o}" ]] || _o=3306
+  [[ -n "${_h}" ]] || _h=localhost
+  if [[ "${_h}" = "localhost" ]] && [[ "${_o}" != "3306" ]]; then
+    _h=127.0.0.1
+  fi
+  for _v in "${_n}" "${_u}" "${_p}" "${_h}" "${_o}"; do
+    [[ "${_v}" =~ ^[A-Za-z0-9._:-]+$ ]] || return 0
+  done
+  # cgi-fcgi sends its whole environment as the request's parameters: only
+  # what the entry script and the store need reaches the pool.
+  for _e in $(compgen -e); do
+    unset "${_e}"
+  done
+  export PATH=/usr/bin:/bin
+  export SCRIPT_FILENAME="${_GRAV_TICK_ENTRY}"
+  export SCRIPT_NAME=/grav-store-tick.php
+  export REQUEST_METHOD=GET
+  export QUERY_STRING=
+  export BOA_GRAV_TICK_ROOT="${_sp}"
+  _k="GRAV_CONFIG__plugins__kahunacart__database__"
+  export GRAV_CONFIG=1
+  export "${_k}type=mysql"
+  export "${_k}auto_migrate=manual"
+  export "${_k}mysql__host=${_h}"
+  export "${_k}mysql__port=${_o}"
+  export "${_k}mysql__dbname=${_n}"
+  export "${_k}mysql__username=${_u}"
+  export "${_k}mysql__password=${_p}"
+  /usr/bin/timeout 200 /usr/bin/cgi-fcgi -bind -connect "${_GRAV_SOCK}" \
+    > /dev/null 2>&1 < /dev/null 7>&-
+}
+
+_grav_store_ticks() {
+  local _a _sp _uri _lk
+  local -a _files=()
+  _grav_tick_entry || return 0
+  for _a in /data/disk/${_H_USER}/.drush/*.alias.drushrc.php; do
+    [[ -f "${_a}" ]] && [[ ! -L "${_a}" ]] && _files+=("${_a}")
+  done
+  if [[ "${#_files[@]}" -gt 0 ]]; then
+    # One pass over every alias: an enabled site's site_path and uri, each
+    # a whole quoted value on its own two-space-indented line, the first
+    # match per file.
+    while IFS=$'\t' read -r _sp _uri; do
+      [[ "${_sp}" =~ ^/data/disk/${_H_USER}/[A-Za-z0-9._/-]+$ ]] || continue
+      [[ "${_sp}" != *..* ]] || continue
+      [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
+      [[ -f "${_sp}/system/defines.php" ]] || continue
+      [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
+      _lk="/run/grav-tick-${_H_USER}-${_uri}.lock"
+      ( umask 077; : >> "${_lk}" ) 2> /dev/null || continue
+      (
+        exec 8>&-
+        exec 7>"${_lk}"
+        flock -n 7 || exit 0
+        _grav_store_tick "${_sp}" "${_uri}"
+      ) < /dev/null > /dev/null 2>&1 &
+    done < <(timeout 60 awk -v q="'" '
+      function val(line, key,   p, v) {
+        p = "  " q key q " => " q
+        if (index(line, p) != 1) return ""
+        v = substr(line, length(p) + 1)
+        if (substr(v, length(v) - 1) != q ",") return ""
+        v = substr(v, 1, length(v) - 2)
+        if (index(v, q) > 0) return ""
+        return v
+      }
+      function emit() {
+        if (ctx == "site" && en == "true" && sp != "" && uri != "") print sp "\t" uri
+        ctx = ""; en = ""; sp = ""; uri = ""
+      }
+      FNR == 1 && NR > 1 { emit() }
+      $0 == "  " q "context_type" q " => " q "site" q "," { ctx = "site" }
+      $0 == "  " q "site_enabled" q " => true," && en == "" { en = "true" }
+      $0 == "  " q "site_enabled" q " => false," && en == "" { en = "false" }
+      sp == "" { v = val($0, "site_path"); if (v != "") sp = v }
+      uri == "" { v = val($0, "uri"); if (v != "") uri = v }
+      END { emit() }
+    ' "${_files[@]}" 2> /dev/null)
+  fi
+  touch /var/log/boa/grav-ticks-${_H_USER}
+}
+
+_grav_store_ticks_detached() {
+  local _gl="/run/grav-ticks-${_H_USER}.lock"
+  [[ -e "/run/boa_wait.pid" ]] && return 0
+  grep -q "^_GRAV_SUPPORT=YES" "/root/.${_H_USER}.octopus.cnf" 2>/dev/null || return 0
+  [[ -x "/opt/local/bin/grav" ]] || return 0
+  [[ -x "/usr/bin/cgi-fcgi" ]] || return 0
+  command -v flock > /dev/null 2>&1 || return 0
+  ( umask 077; : >> "${_gl}" ) 2>/dev/null || return 0
+  # Started from a command substitution so this script's own bare `wait`
+  # calls never wait for it (it is never one of this shell's jobs).
+  _GRAV_TICKS_PID="$( (
+    exec 8>"${_gl}"
+    flock -n 8 || exit 0
+    _grav_store_ticks
+  ) < /dev/null > /dev/null 2>&1 & echo "$!" )"
+}
+_grav_store_ticks_detached
+
 # Serialise per instance. Overlapping cron runner.sh passes, the fast-schedule
 # loop, and the accelerated install/upgrade loop can all invoke run-xdrago for
 # the same instance at once; each would fire hosting-dispatch and waste a parallel

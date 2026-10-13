@@ -2456,6 +2456,11 @@ _handle_i18n_flood() {
 _check_fpm_saturation() {
   [[ "${_NGINX_FPM_SAT_DETECT}" == "YES" ]] || return 0
   local _posfile="${_I18N_DIR}/fpm_maxchildren.pos" _tmp _f _sz _off _new _hits _hitf _snap
+  # Worker output in the same logs (catch_workers_output), tagged by the master
+  #   WARNING: [pool NAME] child PID said into stderr: "..."
+  # is the site's own text: it is dropped before the pattern is matched. Not a
+  # setting, so no cnf can turn the filter off.
+  local _wl=' child [0-9]+ said into std(err|out): '
   [[ -d "${_I18N_DIR}" ]] || mkdir -p "${_I18N_DIR}" 2>/dev/null
   declare -A _POS
   if [[ -f "${_posfile}" ]]; then
@@ -2473,7 +2478,8 @@ _check_fpm_saturation() {
     _off="${_POS["${_f}"]:-0}"
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
-      _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
+      _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null \
+        | grep -v -E "${_wl}" | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))
