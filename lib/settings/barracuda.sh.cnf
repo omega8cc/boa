@@ -182,7 +182,6 @@ _PHP_CLI_VERSION=8.4
 ### SR4 --- Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
 ### SR7 --- Apache Solr 7 (not supported on Devuan Excalibur)
 ### SR9 --- Apache Solr 9
-### WMN --- Webmin Control Panel (deprecated)
 ###
 ### Examples:
 ###

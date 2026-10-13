@@ -4,6 +4,14 @@
 
 @=> Important Fixes
 
+    * Webmin is retired. BOA no longer installs it (WMN in _XTRAS_LIST is
+      ignored) or refreshes its package source, and a server that still
+      has it loses it at its next Barracuda run: the service is stopped,
+      the package purged, /etc/webmin and /usr/share/webmin removed with
+      BOA's Webmin apt source. Its signing key had gone to root's keyring,
+      never apt's, so that source kept apt accepting unverified packages
+      from every repository on the server.
+
     * multiback no longer marks a failed run as a good one when the run
       before it was killed after duplicity printed its statistics and
       before the log was archived: its repair and success checks now read
@@ -50,15 +58,6 @@
       cannot write that list now stops with a DENY, instead of copying
       from whatever list an earlier run left there, or copying nothing
       from a list a full disk left empty while the pass reported clean.
-
-    * Barracuda no longer hangs when the Webmin signing key cannot be
-      downloaded from the BOA mirror, both when it installs Webmin and
-      when it refreshes the Webmin package source. The download used to
-      be repeated until it worked, with no limit, so a mirror without
-      the file, or one answering with an error page, held the upgrade
-      for as long as that lasted. It is now tried five times; when the
-      key still does not arrive, Barracuda prints a warning naming the
-      address and goes on, and the next upgrade tries again.
 
     * A major OS upgrade pass that stops before it is done no longer
       leaves the server without most of its BOA cron jobs. The pass sets

@@ -739,15 +739,8 @@ _if_running_as_root_barracuda() {
       if [ -e "/sbin/hdparm" ]; then
         _mrun "apt-get remove hdparm -y --purge --auto-remove -qq"
       fi
-      if [ -d "/etc/webmin" ]; then
-        _mrun "dpkg --configure --force-all -a"
-        _apt_clean_update
-        _mrun "apt-get remove webmin -y --purge --auto-remove -qq"
-        rm -rf /usr/share/webmin
-      fi
       rm -f /etc/apt/sources.list.d/ksplice.list
       rm -f /etc/apt/sources.list.d/longview.list
-      rm -f /etc/apt/sources.list.d/webmin.list
     fi
     sleep 1
   else
@@ -7570,7 +7563,6 @@ _get_bin_paths() {
                 /etc/sv/ssh \
                 /etc/sv/ssh/log \
                 /etc/update-motd.d \
-                /etc/webmin \
                 /etc/X11 \
                 /lib/apparmor \
                 /lib/init \
@@ -10756,53 +10748,25 @@ _if_major_os_upgrade() {
 }
 
 #
-# Fetch the Webmin signing key from the BOA mirror into the working directory
-# and import it. The tries are counted: a mirror that answers with an error
-# page or without the file must not hold the pass. 1 when no key arrived, so
-# the caller leaves its marker unwritten and the next barracuda run retries.
-_webmin_key_import() {
-  local _wKeyUrl="${_urlDev}/jcameron-key.gpg"
-  local _max_attempts=5
-  local _attempt_num=1
-  local _wGpg=gpg
-  [ -x "/usr/bin/gpg2" ] && _wGpg=gpg2
-  while [ "${_attempt_num}" -le "${_max_attempts}" ]; do
-    rm -f jcameron-key.gpg*
-    # two tries and a 30-second timeout each: _wgetGet alone allows nine
-    # tries of up to 15 minutes, five times over
-    wget ${_wgetGet} --tries=2 --timeout=30 "${_wKeyUrl}"
-    if grep -q GnuPG jcameron-key.gpg 2> /dev/null; then
-      ${_wGpg} --import < jcameron-key.gpg &> /dev/null
-      rm -f jcameron-key.gpg*
-      return 0
-    fi
-    _attempt_num=$((_attempt_num+1))
-    if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
-      sleep 9
-    fi
-  done
-  rm -f jcameron-key.gpg*
-  _msg "WARN: Webmin key not fetched from ${_wKeyUrl} after ${_max_attempts} attempts, the next barracuda run retries"
-  return 1
-}
-
-_webmin_apt_update() {
+# Webmin is retired: BOA no longer installs or updates it, and a server that
+# still carries it loses it at its next pass. Its signing key went to root's
+# keyring, never apt's, so its package source kept apt accepting unverified
+# repositories, and the panel itself was left untested for years.
+_webmin_retire() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _webmin_apt_update"
+    _msg "PROC: _webmin_retire"
   fi
-  if [ -d "/etc/webmin" ]; then
-    if [ ! -e "${_pthLog}/webmin_update_apt_src.log" ]; then
-      cd /var/opt
-      echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
-      echo "deb http://download.webmin.com/download/repository \
-        sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-      echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-        sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-      if _webmin_key_import; then
-        touch ${_pthLog}/webmin_update_apt_src.log
-      fi
+  if [ -d "/etc/webmin" ] || [ -d "/usr/share/webmin" ] || _pkg_installed webmin; then
+    _msg "INFO: Removing the retired Webmin Control Panel..."
+    service webmin stop &> /dev/null
+    if _pkg_installed webmin; then
+      # no --auto-remove: it would take any other orphaned package with it
+      _mrun "apt-get remove webmin -y --purge -qq"
     fi
+    rm -rf /etc/webmin /usr/share/webmin
   fi
+  rm -f /etc/apt/sources.list.d/webmin.list
+  rm -f ${_pthLog}/webmin_update_apt_src.log
 }
 
 _early_sys_ctrl_mark() {
@@ -10857,7 +10821,7 @@ _sys_packages_update() {
     echo "percona-release hold" | dpkg --set-selections &> /dev/null
     echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
-  _webmin_apt_update
+  _webmin_retire
   _apt_clean_update
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
