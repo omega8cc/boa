@@ -97,6 +97,20 @@
       before, and the AI recipe still applies with vdrush, with no
       Composer step.
 
+    * PHP errors raised inside a site's PHP-FPM pool are logged again.
+      With /var/log/php writable by root only, a pool's worker could not
+      create the error_log file its php.ini names, so PHP handed the
+      message to Nginx, which keeps only critical lines: a fatal error
+      before the site's own error handler left no trace anywhere. The
+      pools now pass their workers' output to the master's own log,
+      /var/log/php/phpNN-fpm-error.log, which only root can read, each
+      line tagged with the pool's name by the master itself (the PHP 5.6
+      to 7.2 masters log at notice level for this, the level their
+      PHP-FPM uses for a worker's errors). BOA's monitors skip those
+      worker lines when they look for PHP-FPM's own messages, so a site
+      cannot set off a restart or an alert by printing them, and these
+      logs and the pools' slow logs are rotated daily, seven kept.
+
 @=> Security
 
     * A site task's Verify, install or deploy no longer follows a link
