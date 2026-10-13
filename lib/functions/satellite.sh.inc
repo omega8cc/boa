@@ -840,10 +840,6 @@ _satellite_tune_fpm_config() {
         sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         wait
       fi
-      if [ ! -z "${_PHP_FPM_DENY}" ]; then
-        sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-        wait
-      fi
     fi
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     sed -i "s/180s/${_PHP_TO}/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
@@ -1110,7 +1106,6 @@ _satellite_cnf() {
     echo "_PHP_FPM_MEMORY_LIMIT_FORCE=${_PHP_FPM_MEMORY_LIMIT_FORCE:-AUTO}" >> ${_octCnf}
     echo "_PHP_FPM_RAM_PCT=${_PHP_FPM_RAM_PCT:-AUTO}"           >> ${_octCnf}
     echo "_PHP_FPM_CPU_FACTOR=${_PHP_FPM_CPU_FACTOR:-AUTO}"     >> ${_octCnf}
-    echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                   >> ${_octCnf}
     echo "_LTD_PLATFORM_CLIENTS=\"${_LTD_PLATFORM_CLIENTS}\""   >> ${_octCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"               >> ${_octCnf}
     echo "_SQL_CONVERT=${_SQL_CONVERT}"                         >> ${_octCnf}
@@ -1179,12 +1174,9 @@ _satellite_cnf() {
     else
       echo "_PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT}" >> ${_octCnf}
     fi
-    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${_octCnf} 2>&1)
-    if [[ "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${_octCnf}
-    fi
+    ### Retired: every PHP-FPM pool keeps one disable_functions list (since 2026-10-12)
+    sed -i "/^_PHP_FPM_DENY=/d" ${_octCnf}
+    wait
      _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${_octCnf} 2>&1)
     if [[ "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       _DO_NOTHING=YES
@@ -6008,8 +6000,8 @@ _satellite_if_web_group() {
   # refusal the tool explains is a note
   case "${_wGrc}" in
     0) ;;
-    2) _msg "NOTE: instgrp webconvert ${_USER} left web paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
-    5) _msg "NOTE: instgrp webconvert ${_USER} deferred: this box is not ready for the web group (instgrp webcheck)" ;;
+    2) _msg "NOTE: instgrp webconvert ${_USER} left web paths in www-data (see /var/log/boa/instgrp.log)" ;;
+    5) _msg "NOTE: instgrp webconvert ${_USER} deferred (see /var/log/boa/instgrp.log)" ;;
     6) _msg "NOTE: instgrp webconvert ${_USER} refused or deferred (opted out, a share, a standby, a revert in progress, or the task queue busy), see /var/log/boa/instgrp.log" ;;
     *)
       case "${_wGrc}" in

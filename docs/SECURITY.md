@@ -127,65 +127,17 @@ To confirm on a real box that the protection holds for the Ægir backend while
 limited-shell (`oN.ftp`) CLI use is unaffected, follow the step-by-step runbook in
 [DRUSH-FILTER-TESTING.md](DRUSH-FILTER-TESTING.md).
 
-# Customizing PHP Function Restrictions
+# PHP Function Restrictions
 
-## Option in `/root/.barracuda.cnf`
+Every PHP-FPM pool disables the same functions: the system-level `disable_functions` list in each version's `php.ini`, plus the pool template's own list, which adds `passthru`. There is no per-host or per-instance list.
 
-You can define a custom list of functions to disable in addition to those already denied in the system-level `disable_functions`.
+The pools of one PHP version run under one FPM master and share its opcache. PHP 8.4 and newer compile a call to a built-in function as that function's position in the function table, and every disabled function shifts the positions after it. Two pools that disabled different functions would therefore run each other's compiled code against a different table: a shared file (a module under `/data/all`, BOA's global settings include) compiled in one pool calls the wrong built-in function in the other, and the site or the control panel there fails with a blank page.
 
-```ini
-_PHP_FPM_DENY=""
-```
-
-**Note:** If this option is left empty, BOA will deny access to the function:
-
-```ini
-passthru
-```
-
-If `_PHP_FPM_DENY` is **not** empty, its value will **replace** the default `passthru`, so any denied function must be listed explicitly.
-
-**WARNING!** Do not add `shell_exec` here, or you will break cron for all sites, including those hosted on all Satellite Instances. The `shell_exec` function is also required by Collectd Graph Panel, if installed.
-
-This option affects only the Ægir Master Instance plus all scripts running outside of Octopus Satellite Instances.
-
-**Example:**
-
-```ini
-_PHP_FPM_DENY="passthru,popen,system"
-```
-
-While this improves security, it can also break modules that rely on any disabled functions.
-
-## Option in `/root/.USER.octopus.cnf`
-
-You can define a custom list of functions to disable in addition to those already denied in the system-level `disable_functions`.
-
-```ini
-_PHP_FPM_DENY=""
-```
-
-**Note:** If this option is left empty, BOA will deny access to the function:
-
-```ini
-passthru
-```
-
-If `_PHP_FPM_DENY` is **not** empty, its value will **replace** `passthru`, so any denied function must be listed explicitly.
-
-This option affects only this Satellite Instance and is not influenced by the same option set in the Barracuda Master.
-
-**Example:**
-
-```ini
-_PHP_FPM_DENY="system,exec,shell_exec"
-```
-
-While this improves security, it can also break modules that rely on any disabled functions.
+BOA no longer applies a `_PHP_FPM_DENY` line: the next Barracuda and Octopus upgrade delete it from `/root/.barracuda.cnf` and `/root/.USER.octopus.cnf`. Within minutes the system worker puts the template's list back into any pool of an instance that carries another one, and the next Barracuda upgrade writes the `wwwNN` pools of the Ægir Master Instance again from their template. What site code can start through the functions that stay enabled is limited by `_STRICT_BIN_PERMISSIONS` below.
 
 ## SQLite extension loading on PHP 8.4 and newer
 
-PHP 8.4 added `Pdo\Sqlite::loadExtension()`, which loads a native shared object from any path: neither `open_basedir` nor `sqlite3.extension_dir` applies to it, so on an instance that denies the functions above it would still let site code run native code. BOA builds PHP 8.4 and newer without that one method, and the next Barracuda upgrade rebuilds an installed 8.4 or newer version that still has it.
+PHP 8.4 added `Pdo\Sqlite::loadExtension()`, which loads a native shared object from any path: neither `open_basedir` nor `sqlite3.extension_dir` applies to it, so it would let site code run native code even where every function that starts a process is disabled. BOA builds PHP 8.4 and newer without that one method, and the next Barracuda upgrade rebuilds an installed 8.4 or newer version that still has it.
 
 The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and the `SQLite3` class keep working, and `SQLite3::loadExtension()` stays off because BOA leaves `sqlite3.extension_dir` unset.
 
@@ -193,7 +145,7 @@ The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and t
 
 ## Option in `/root/.barracuda.cnf`
 
-We highly recommend enabling this option to improve system security when certain PHP functions, especially `exec`, `passthru`, `shell_exec`, `system`, `proc_open`, `popen`, are not disabled via the `_PHP_FPM_DENY` option above.
+Every Barracuda upgrade sets this option to `YES`: PHP functions like `exec`, `shell_exec`, `system`, `proc_open` and `popen` stay enabled in every PHP-FPM pool, and this option limits the binaries they can start.
 
 ```ini
 _STRICT_BIN_PERMISSIONS=YES

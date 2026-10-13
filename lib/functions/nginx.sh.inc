@@ -1541,14 +1541,16 @@ _nginx_link_guard_seed() {
 # BOA's own links pass and switches "disable_symlinks if_not_owner;" on once
 # its scan finds no link the check would break (docs/NGINX-LINKS.md). The
 # stamp is written here, at the tail of every barracuda pass, never by the
-# fetched channel, and removed whenever the setting or the release does not
-# arm the box. Tenant isolation is not switched on in this release: the
-# setting arms only a box that carries the test marker, until a later release
-# sets _lgReleased to YES. Kept local so no cnf line can set it.
+# fetched channel, under /etc/boa/control, and removed whenever the setting
+# or the release does not arm the box, together with the one an earlier
+# release wrote in /var/log/boa, which a linkguard, nightly or fixer not yet
+# replaced still reads. Tenant isolation is not switched on in this release:
+# the setting arms only a box that carries the test marker, until a later
+# release sets _lgReleased to YES. Kept local so no cnf line can set it.
 _nginx_link_guard_sync() {
   local _lgReleased=NO
   local _tiTest="/root/.tenant-isolation-test.cnf"
-  local _lgStamp="/var/log/boa/linkguard-arm.ready.txt"
+  local _lgStamp="/etc/boa/control/linkguard-arm.ready.txt"
   local _lgTool="/opt/local/bin/linkguard"
   local _lgConf="/etc/nginx/conf.d/link-guard-boa.conf"
   local _lgOut _lgSum
@@ -1558,7 +1560,10 @@ _nginx_link_guard_sync() {
   mkdir -p /var/log/boa &> /dev/null
   if [ "${_NGINX_LINK_GUARD}" = "YES" ] \
     && { [ "${_lgReleased}" = "YES" ] || [ -e "${_tiTest}" ]; }; then
-    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > "${_lgStamp}"
+    if ! _boa_control_put linkguard-arm.ready.txt \
+      "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"; then
+      _msg "ALRT: ${_lgStamp} cannot be written; without it linkguard, the nightly and every Verify act as on a box not armed"
+    fi
     if [ -e "${_lgTool}" ]; then
       _lgOut=$(bash "${_lgTool}" apply 2>&1 | grep -E "^(ALERT|SUMMARY)" | tr -cd '[:print:]\n')
       if printf '%s\n' "${_lgOut}" | grep -q "^ALERT"; then
@@ -1570,7 +1575,7 @@ _nginx_link_guard_sync() {
       _msg "NOTE: nginx link guard: ${_lgTool} is missing; the link check stays off"
     fi
   else
-    rm -f "${_lgStamp}"
+    rm -f "${_lgStamp}" /var/log/boa/linkguard-arm.ready.txt
     if [ -e "${_lgTool}" ]; then
       bash "${_lgTool}" off > /dev/null 2>&1
     elif [ -e "${_lgConf}" ]; then

@@ -743,7 +743,7 @@ _priv_own_here() {
 ### Not a store while the nightly runs, whose own pass covers every store
 ### when it ends.
 _link_guard_tree() {
-  if [ -n "${1}" ] && [ -e "/var/log/boa/linkguard-arm.ready.txt" ] \
+  if [ -n "${1}" ] && [ -e "/etc/boa/control/linkguard-arm.ready.txt" ] \
     && [ -e "/opt/local/bin/linkguard" ]; then
     bash /opt/local/bin/linkguard fix --tree="${1}" >&3 2>&1
   fi
