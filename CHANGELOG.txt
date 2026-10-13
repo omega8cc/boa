@@ -298,6 +298,13 @@
       back. A revert then walks the store and removes the group
       (docs/INSTGRP.md).
 
+    * Phase B of the web group conversion, still switched off, waits
+      when the raise's own walk still finds www-data in the account's
+      web paths after its last pass, written during the walk, instead
+      of going ahead on its final check, which reads a files store in
+      the account's home only at its tops and private files
+      (docs/INSTGRP.md).
+
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
       the web group conversion, still switched off, not as a site

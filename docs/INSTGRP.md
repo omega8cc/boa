@@ -476,6 +476,9 @@ changes nothing and names its reason:
 - www-data left in the account's settings files, store tops or private set,
   or anywhere in its store on attached storage (root's or its own), before
   phase B;
+- www-data still left after the last pass of the walk of a raise to phase
+  B (written during the walk, wherever it walks): phase B waits for the
+  next run;
 - www-data left anywhere in a `files` or `private` store of its sites that
   no walk takes, before phase B: with no single mount point under `/mnt`,
   or with its store on attached storage owned by another user, the
