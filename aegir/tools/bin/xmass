@@ -5966,15 +5966,27 @@ EOF
       _XMASS_STORE_RC=3
     elif [ -n "${_acct}" ]; then
       _xmass_materialise_own_files "${_root}" "${_dstRoot}" "${_files}" "${_acct}"
+    elif [ "${_MODE}" != "LIVE" ]; then
+      # a dry run writes nothing here: the list is a live pass's input
+      _n="$(printf '%s' "${_files}" | grep -c .)"
+      _info "[DRY-PLAN] would materialise ${_n} out-of-root file link(s) under ${_root} (${_fkb}K) at ${_dstRoot} in one batch"
     else
       _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
       _list="/var/log/boa/xmass.outlinks.${_key}.list"
+      _n="$(printf '%s' "${_files}" | grep -c .)"
       mkdir -p /var/log/boa 2>/dev/null
-      printf '%s' "${_files}" > "${_list}"
-      _n="$(grep -c . "${_list}" 2>/dev/null)"
-      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
-      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
-        "${_root}/" "root@${_tgt}:${_dstRoot}/"
+      # The batch reads only the list this pass wrote: one it could not
+      # rewrite (an older pass's, or one a full disk emptied) would copy the
+      # wrong set or nothing, and the batch would still exit 0.
+      if ! printf '%s' "${_files}" > "${_list}"; then
+        _alrt "DENY: could not write ${_list} -- the ${_n} out-of-root file link(s) under ${_root} were NOT copied; re-run once it can be written"
+        _XMASS_RSYNC_RC=23
+        _XMASS_NOT_CLEAN=YES
+      else
+        _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
+        _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
+          "${_root}/" "root@${_tgt}:${_dstRoot}/"
+      fi
     fi
   fi
   return 0

@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * A dry run of xmass sync or cutover no longer writes its list of
+      out-of-root file links to /var/log/boa: it prints the batch a live
+      pass would copy and leaves the source untouched. A live pass that
+      cannot write that list now stops with a DENY, instead of copying
+      from whatever list an earlier run left there, or copying nothing
+      from a list a full disk left empty while the pass reported clean.
+
     * Barracuda no longer hangs when the Webmin signing key cannot be
       downloaded from the BOA mirror, both when it installs Webmin and
       when it refreshes the Webmin package source. The download used to
