@@ -3426,20 +3426,21 @@ _wg_u7() {
 }
 
 # The B check, when a B trait is still missing: the account's static/files
-# resolving (5: a link to attached storage that is not mounted, which no
-# walk and no read reaches), the residue rule in full (5), then, on a raise
-# or while B is not committed, the share and store re-scan (6). Either
-# stops the run as it is: the account stays at A (or, when the run started
-# from a pool-side level, at that level with its phase A traits complete;
-# the NOTE names the level read now). What the walk left in www-data
-# elsewhere does not stop it: the pools write www-data until u12 reloads
-# them, so the run walks again after u13 (_wg_leg_up).
+# resolving (5: a link to attached storage that is not mounted, or a link
+# changed, which no walk and no read reaches), the residue rule in full
+# (5), then, on a raise or while B is not committed, the share and store
+# re-scan (6). Either stops the run as it is: the account stays at A (or,
+# when the run started from a pool-side level, at that level with its
+# phase A traits complete; the NOTE names the level read now). What the
+# walk left in www-data elsewhere does not stop it: the pools write
+# www-data until u12 reloads them, so the run walks again after u13
+# (_wg_leg_up).
 _wg_u8() {
   local _l
   [ "${_D_LAM}" = "B" ] && return 0
   if _l=$(_wg_store_gone); then
-    _msg "${_WP_A}: ${_l} is a link that does not resolve; phase B waits until the storage it names is mounted"
-    _wg_note "phase B deferred: ${_l} is a link that does not resolve (its attached storage is not mounted)"
+    _msg "${_WP_A}: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed); phase B waits until it resolves"
+    _wg_note "phase B deferred: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed)"
     return 5
   fi
   if _wg_residue_full beyond; then
@@ -3923,8 +3924,9 @@ _wg_mnt_stores() {
 }
 
 # The account's ~/static/files when it is a link that does not resolve:
-# the attached storage it names is not mounted, so neither the walks nor
-# the checks reach the store there. Printed when so; never the master's.
+# the attached storage it names is not mounted (or the link changed, which
+# the account can do), so neither the walks nor the checks reach the store
+# there. Printed when so; never the master's.
 _wg_store_gone() {
   local _l="/data/disk/${_WP_A}/static/files"
   [ "${_WP_M}" != "YES" ] || return 1
@@ -3949,7 +3951,7 @@ _wg_group_drop() {
     fi
   done < <(_wg_pool_files)
   if _x=$(_wg_store_gone); then
-    _msg "${_WP_A}: ${_x} is a link that does not resolve; the group is kept (re-run webrevert once the storage it names is mounted)"
+    _msg "${_WP_A}: ${_x} is a link that does not resolve (its attached storage not mounted, or the link changed); the group is kept (re-run webrevert once it resolves)"
     _log "${_WP_A}: web group kept, ${_x} does not resolve"
     return 1
   fi
