@@ -319,13 +319,12 @@
       it (docs/INSTGRP.md).
 
     * Phase B of the web group conversion, still switched off, no
-      longer commits unnoticed with a path in www-data in a files or
-      private store of the account's sites that the conversion does not
-      walk (with no single mount point under /mnt, or the account's
-      store owned by a user other than root or the account), written by
-      a pool after the check before phase B: every run at phase B reads
-      those stores after its walk and notes such a path, exit 2, until
-      it is given the web group or the layout is one BOA makes
+      longer commits unnoticed with a path in www-data that a pool wrote
+      after the check before phase B into a files or private store of
+      the account's sites that the conversion does not walk (no single
+      mount point under /mnt, or the account's store owned by a user
+      other than root or the account): every run at phase B reads those
+      stores after its walk and notes such a path, exit 2
       (docs/INSTGRP.md).
 
     * The web group conversion, still switched off, writes each note of

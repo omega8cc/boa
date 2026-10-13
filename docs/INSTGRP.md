@@ -682,6 +682,7 @@ not walk), 6 refused or deferred (opted out, phase B held by a share or
 by a site or store outside the account, a standby, a revert in progress, a
 pin, the task queue not drained). Only `webrevert` and
 `--phase-a` ever lower an account; nothing else does, whatever it finds.
+
 The Octopus upgrade's note for an exit 2 or 5 points at
 `/var/log/boa/instgrp.log`, which names the reason.
 
