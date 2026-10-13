@@ -160,6 +160,15 @@
       it would. Boxes with auto-upgrade enabled rewrite the line once,
       at their next self-update.
 
+    * Drupal 6 and 7 forms opened before the hourly or nightly database
+      cleanup keep working. The cleanup emptied every cache table but
+      three, cache_form among them, and that table holds the state of
+      forms still open in a browser: a file field's upload or the next
+      step of a multi-step form then failed with "Invalid form POST data",
+      the Aegir panel's own forms included. cache_form is now kept, and
+      only its expired rows are removed, the rows Drupal's own cron
+      removes, so it stays small on a copy whose cron is switched off.
+
     * The Drupal CMS platform keeps its site templates and add-on
       recipes. Drupal CMS 2.2.4 no longer requires Starter, Blank or the
       AI, multilingual, forms, accessibility tools and Google Analytics
