@@ -328,6 +328,12 @@
       it is given the web group or the layout is one BOA makes
       (docs/INSTGRP.md).
 
+    * The web group conversion, still switched off, writes each note of
+      its walks once per run (a hard-linked public file left closed,
+      another account's hard link or FIFO in the web paths, a session to
+      reconnect), in root's notes file and the account's own copy, where
+      a raise to phase B wrote it up to four times.
+
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
       the web group conversion, still switched off, not as a site
