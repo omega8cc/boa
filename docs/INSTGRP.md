@@ -676,10 +676,14 @@ whatever the reading account's own state.
   nightly's own form of it.
 
 Exit codes: 0 done, 1 failed, 2 residue or a group kept, 4 busy or frozen,
-5 not ready, 6 refused or deferred (opted out, phase B held by a share or
+5 not ready, or phase B waiting (`~/static/files` a link that does not
+resolve, or `www-data` in a store of its sites that the conversion does
+not walk), 6 refused or deferred (opted out, phase B held by a share or
 by a site or store outside the account, a standby, a revert in progress, a
 pin, the task queue not drained). Only `webrevert` and
 `--phase-a` ever lower an account; nothing else does, whatever it finds.
+The Octopus upgrade's note for an exit 2 or 5 points at
+`/var/log/boa/instgrp.log`, which names the reason.
 
 ### Intent and record
 

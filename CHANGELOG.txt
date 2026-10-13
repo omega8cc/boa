@@ -334,6 +334,13 @@
       reconnect), in root's notes file and the account's own copy, where
       a raise to phase B wrote it up to four times.
 
+    * The Octopus upgrade's note for a web group conversion that waits
+      (exit 5) or leaves paths in www-data (exit 2) points at
+      /var/log/boa/instgrp.log, which now names why: the box not ready,
+      what holds phase B, or what a run at phase B left there. The note
+      no longer gives the box's readiness as the reason for every wait
+      (docs/INSTGRP.md).
+
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
       the web group conversion, still switched off, not as a site
