@@ -87,6 +87,16 @@
       it would. Boxes with auto-upgrade enabled rewrite the line once,
       at their next self-update.
 
+    * The Drupal CMS platform keeps its site templates and add-on
+      recipes. Drupal CMS 2.2.4 no longer requires Starter, Blank or the
+      AI, multilingual, forms, accessibility tools and Google Analytics
+      recipes, and its installer fetches a missing template with
+      Composer in the middle of the site install, which a packaged
+      platform must never do. The catalogue build now requires the seven
+      itself, so a site installed from the panel starts from Starter as
+      before, and the AI recipe still applies with vdrush, with no
+      Composer step.
+
 @=> Security
 
     * A site task's Verify, install or deploy no longer follows a link

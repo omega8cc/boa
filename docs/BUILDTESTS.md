@@ -153,8 +153,8 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   is put back (a newer core is a new platform name, a catalogue move with a BOA
   release); the build's distribution package and any module it patches by hand are
   left alone; the result installs once, and if it does not, the build fails and the
-  published copy stays. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
-  that one platform requirement is ignored, as for varbase.
+  published copy stays. amazee.io provider releases 1.4.0 to 1.4.5 declare `ext-pdo_pgsql`
+  (1.4.6 no longer does), so that one platform requirement is ignored, as for varbase.
 
   Then every package the tree's `vendor/composer/installed.json` lists must be on disk.
   Composer's patch plugin can remove a package to patch it again, and a later partial
@@ -317,7 +317,7 @@ Distributions, published to `/var/www/static/distro`:
 ```sh
   commerce_base-2.40-10.1.8
   commerce_kickstart-5.1.0-11.4.9
-  drupal_cms_installer-2.2.3-11.4.8
+  drupal_cms_installer-2.2.4-11.4.9
   ezcontent-2.2.15-10.3.6
   farm-4.0.7-11.3.18
   localgov-4.0.5-11.4.9
@@ -512,10 +512,11 @@ farmos     # farm-4.0.7-11.3.18  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.2.3-11.4.8 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.3-11.4.8
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.4-11.4.9
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
+           # composer require --no-update --no-scripts drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2   # drupal/cms 2.2.4 no longer requires its site templates and add-on recipes; its installer would fetch a missing template with Composer during the site install
            # composer update --no-install --no-scripts
            # composer install --no-dev
            # composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --no-interaction --update-no-dev   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require; migration pipeline contribs absent upstream; --update-no-dev keeps require-dev out of the platform, as the builds ending in install --no-dev do
@@ -757,6 +758,12 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
   of them, and core's migrate stack lives in drupal/core; inert until a site enables them.
+
+  Since 2.2.4, drupal/cms no longer requires its site templates (Starter, Blank) or the
+  add-on recipes (AI, multilingual, forms, accessibility tools, Google Analytics); its
+  installer fetches a missing template with Composer during the site install. The build
+  requires the seven packages before the resolve, so a command-line install finds
+  Starter, its default there, in the packaged codebase.
 
   The build also corrects pathauto's `d7_pathauto_patterns` migration definition
   (adds `source_module: pathauto`, upstream pathauto #3588684): Drupal 11 prefers the
