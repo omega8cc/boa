@@ -448,6 +448,14 @@ beside a parked one is the one read.
   sub-accounts) leave `www-data`. From then on no pool and no shell user of
   another account can read the account's web paths.
 
+The run that takes an account to phase B walks its web paths into `wg-oN`
+once more after its pools run in `wg-oN` and its identities have left
+`www-data`. Until then a pool writes in `www-data`: an upload PHP moves
+into a files store from the pool's temporary directory keeps it. What a
+site wrote that way during the first walk is taken by the second.
+Anything still left after it is noted, with exit 2, and the next run at
+phase B walks it.
+
 An account's store on attached storage (`<mount>/files/oN/static/files`,
 where migratefs moves `~/static/files`) is part of its web paths whether
 root or the account owns it: phase A walks it into `wg-oN` as it walks
@@ -476,9 +484,6 @@ changes nothing and names its reason:
 - www-data left in the account's settings files, store tops or private set,
   or anywhere in its store on attached storage (root's or its own), before
   phase B;
-- www-data still left after the last pass of the walk of a raise to phase
-  B (written during the walk, wherever it walks): phase B waits for the
-  next run;
 - www-data left anywhere in a `files` or `private` store of its sites that
   the conversion does not walk, before phase B: with no single mount point
   under `/mnt`, or with its store on attached storage owned by a user
