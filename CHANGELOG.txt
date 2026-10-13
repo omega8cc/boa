@@ -253,12 +253,13 @@
       group's walks are unchanged: they take that store only when the
       account owns it and no link is on the way to it (docs/INSTGRP.md).
 
-    * Phase B of the web group conversion, still switched off, waits
-      while a directory or file of the account's in its files store on
-      attached storage, whether root or the account owns it, is still
-      in www-data, not only in the store tops and the private files,
-      so no directory there loses the pools' write when the pools
-      leave www-data (docs/INSTGRP.md).
+    * Phase B of the web group conversion, still switched off, no
+      longer waits while a directory or file of the account's is in
+      www-data in its settings files, store tops, private files or its
+      files store on attached storage (root's or its own): the run
+      walks those again once its pools leave www-data (below), so
+      uploads landing there during the raise no longer hold phase B on
+      every run for as long as they go on (docs/INSTGRP.md).
 
     * Phase B of the web group conversion, still switched off, also
       waits while a directory or file of the account's is still in

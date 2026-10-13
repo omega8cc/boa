@@ -456,6 +456,11 @@ site wrote that way during the first walk is taken by the second.
 Anything still left after it is noted, with exit 2, and the next run at
 phase B walks it.
 
+`www-data` left during the raise in the account's settings files, store
+tops, private files or its store on attached storage does not hold phase
+B: the second walk takes it in the same run, so uploads there do not keep
+phase B waiting while they go on.
+
 An account's store on attached storage (`<mount>/files/oN/static/files`,
 where migratefs moves `~/static/files`) is part of its web paths whether
 root or the account owns it: phase A walks it into `wg-oN` as it walks
@@ -481,9 +486,6 @@ changes nothing and names its reason:
   which the arm and `webconvert all` honour as the web group's opt-out too;
 - an account not yet on its per-instance group;
 - the box not ready (above);
-- www-data left in the account's settings files, store tops or private set,
-  or anywhere in its store on attached storage (root's or its own), before
-  phase B;
 - www-data left anywhere in a `files` or `private` store of its sites that
   the conversion does not walk, before phase B: with no single mount point
   under `/mnt`, or with its store on attached storage owned by a user
