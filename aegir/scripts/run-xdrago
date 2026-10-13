@@ -37,7 +37,9 @@ _check_root
 # A copy of a store (its capsule carries .boa-copy) is left alone too until
 # Cutover makes it the live store or the account releases it with
 # static/control/kahunacart-run.<domain>.info: a copy must not mail or bill
-# the source's customers.
+# the source's customers. Only a release file newer than the copy's marker
+# counts: it is keyed by the domain alone, and an older one, left by an
+# earlier copy at the same staging domain, must not release a new copy.
 #
 # The tick runs as the site's own web pool user, the identity its PHP already
 # runs as, never as the instance user: Grav runs the custom jobs its admins
@@ -83,7 +85,7 @@ _grav_web_identity() {
 # own, so the exports below never reach anything else.
 _grav_store_tick() {
   local _sp="${1}" _uri="${2}" _rc _n _u _p _h _o _v _k
-  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && [ ! -e '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null)" || return 0
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null)" || return 0
   _n="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" | head -1)"
   _u="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" | head -1)"
   _p="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" | head -1)"
