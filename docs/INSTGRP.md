@@ -481,6 +481,9 @@ changes nothing and names its reason:
   or with its store on attached storage owned by another user, the
   conversion leaves those stores as they are, so phase B waits until the
   layout is one BOA makes;
+- the account's `~/static/files` a link that does not resolve, before
+  phase B: while its attached storage is not mounted, no walk and no check
+  reaches the store, so phase B waits until it is;
 - before phase B only, one of the four things the next section lists.
 
 A frozen account (`log/proxied.pid`, a migration in flight) is skipped,
@@ -630,6 +633,11 @@ whatever the reading account's own state.
   conversion walked may be in none of the walks above: while it carries
   `wg-oN`, the group is kept and the message names the store. A `webrevert`
   once the layout is back walks it and removes the group.
+- While the account's `~/static/files` is a link that does not resolve
+  (its attached storage not mounted), `webrevert` walks back what it
+  reaches but keeps the group, and the message names the link: the
+  store's paths may still carry `wg-oN`. A `webrevert` once the storage is
+  mounted walks the store and removes the group.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming

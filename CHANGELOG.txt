@@ -283,6 +283,21 @@
       that no longer exists, and a revert once the layout is back
       removes the group (docs/INSTGRP.md).
 
+    * Phase B of the web group conversion, still switched off, waits
+      while the account's ~/static/files is a link that does not
+      resolve, as it is while its attached storage is not mounted: no
+      walk and no check reaches the store then, so phase B no longer
+      commits with paths there left in www-data. The message names the
+      link, and the next run once the storage is mounted goes ahead
+      (docs/INSTGRP.md).
+
+    * The web group's revert keeps the group, and names the link, while
+      the account's ~/static/files does not resolve because its
+      attached storage is not mounted, so the store's paths are no
+      longer left on a group that no longer exists once the storage is
+      back. A revert then walks the store and removes the group
+      (docs/INSTGRP.md).
+
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
       the web group conversion, still switched off, not as a site
