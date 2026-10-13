@@ -935,11 +935,6 @@ _tune_web_server_config() {
          /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
       wait
     fi
-    if [ ! -z "${_PHP_FPM_DENY}" ]; then
-      sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-        /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
-      wait
-    fi
   done
 
   # PHP-FPM INI

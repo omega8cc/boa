@@ -104,6 +104,7 @@
   /{,usr/}bin/chown mrix,
   /{,usr/}bin/cp mrix,
   /{,usr/}bin/dash mrix,
+  /{,usr/}bin/perl mrix,
   /{,usr/}bin/date mrix,
   /{,usr/}bin/egrep mrix,
   /{,usr/}bin/grep mrix,
