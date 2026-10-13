@@ -275,6 +275,14 @@
       or a link on the way), so none of them keeps a group that no
       longer exists (docs/INSTGRP.md).
 
+    * The web group's revert keeps the group, and names the store,
+      while a files store of the account's name on any mount under
+      /mnt still carries it, whatever the mount count or the store's
+      owner: a layout changed since the conversion (a second mount
+      point, another owner) no longer leaves paths there on a group
+      that no longer exists, and a revert once the layout is back
+      removes the group (docs/INSTGRP.md).
+
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
       the web group conversion, still switched off, not as a site

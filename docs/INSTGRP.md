@@ -623,6 +623,13 @@ whatever the reading account's own state.
   that store is not one of the walk's roots (no single mount point under
   `/mnt`, an owner other than root or the account, or a link on the way).
   The group goes only once none of them carries it.
+- Before it removes the group, `webrevert` also reads every files store of
+  the account's name on a mount under `/mnt` (`<mount>/files/oN/static/files`),
+  whatever the mount count or the store's owner. When the layout changed
+  since the conversion (a second mount point, another owner), a store the
+  conversion walked may be in none of the walks above: while it carries
+  `wg-oN`, the group is kept and the message names the store. A `webrevert`
+  once the layout is back walks it and removes the group.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
