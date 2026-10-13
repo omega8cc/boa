@@ -759,17 +759,8 @@ _construct_bucket_name() {
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
   export _LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
-  # A chain this box wrote while /etc/hostname was empty went to the bucket
-  # without the host part; this run starts a new one under the full name.
-  if [ -n "${_hst_dash}" ] \
-    && [ -e "/etc/boa/control/back-to-${_user}--${_service_dash}.chain.txt" ]; then
-    { echo "NOTE: this server's earlier chain is in back-to-${_user}--${_service_dash},"
-      echo "NOTE: written while /etc/hostname was empty; backups now go to ${_BUCKET_NAME},"
-      echo "NOTE: starting with a full one. Where the provider needs a bucket created by"
-      echo "NOTE: hand, create it first. Restore from or remove the old bucket by hand, then"
-      echo "NOTE: remove /etc/boa/control/back-to-${_user}--${_service_dash}.chain.txt to end this note."
-    } >> ${_LOGFILE}
-  fi
+  # the name a server with an empty /etc/hostname used before the fallback
+  export _BUCKET_NOHOST="back-to-${_user}--${_service_dash}"
   _print_env "multiback_construct_bucket_name"
 }
 
@@ -1276,7 +1267,8 @@ _repair() {
 
 # Function to check if repair incomplete backup sets is needed
 _check_if_repair() {
-  if grep -q "found incomplete backup sets" "${_LOGFILE}"; then
+  if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+    | grep -q "found incomplete backup sets"; then
     _repair_only
   fi
 }
@@ -1314,7 +1306,8 @@ _check_if_worked_cleanly_or_log_err() {
     done
   fi
   local _sentinel
-  if grep -q "Backup Statistics" "${_LOGFILE}"; then
+  if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+    | grep -q "Backup Statistics"; then
     _sentinel="${_logs_dir}/OK-${_BUCKET_NAME}.log"
   else
     _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
@@ -1595,7 +1588,37 @@ _chain_known() {
 }
 
 # Function to prepare backup
+# A chain this box wrote while /etc/hostname was empty went to the bucket
+# without the host part; this run starts a new one under the full name. Said
+# once per bucket, in this run's report: the release left the archive log or
+# the OK/ERR sentinel of that name, a later build its chain marker.
+_note_hostless_chain() {
+  local _ldir="/data/disk/${_USER}/static/control/remote_backups/logs"
+  local _seen="" _f
+  case "${_USER}" in global|data|custom) _ldir="/root/.remote_backups/logs" ;; esac
+  [ -n "${_hst_dash}" ] && [ -n "${_BUCKET_NOHOST}" ] || return 0
+  [ -e "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt" ] && return 0
+  for _f in "${_LOGPTH}/${_BUCKET_NOHOST}.archive.log" "/etc/boa/control/${_BUCKET_NOHOST}.chain.txt" \
+    "${_ldir}/OK-${_BUCKET_NOHOST}.log" "${_ldir}/ERR-${_BUCKET_NOHOST}.log"; do
+    [ -e "${_f}" ] && _seen="${_seen} ${_f}"
+  done
+  [ -n "${_seen}" ] || return 0
+  { echo "NOTE: this server's earlier chain is in ${_BUCKET_NOHOST}, written while"
+    echo "NOTE: /etc/hostname was empty (found:${_seen}); backups now go to"
+    echo "NOTE: ${_BUCKET_NAME}, starting with a full one. Where the provider needs"
+    echo "NOTE: a bucket created by hand, create it first. Restore from or remove the"
+    echo "NOTE: old bucket by hand. This note is given once."
+  } >> ${_LOGFILE}
+  mkdir -p /etc/boa/control 2> /dev/null
+  { date > "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt" \
+      && chmod 0644 "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt"; } 2> /dev/null
+}
+
 _backup() {
+  # the length before this run: a run killed before its log was archived
+  # leaves its lines behind, and only this run's may decide repair or OK
+  _bupRun0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
+  _note_hostless_chain
   _backup_prepare
   _set_mode
   _set_cmd

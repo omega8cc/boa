@@ -4,6 +4,11 @@
 
 @=> Important Fixes
 
+    * multiback no longer marks a failed run as a good one when the run
+      before it was killed after duplicity printed its statistics and
+      before the log was archived: its repair and success checks now read
+      only the lines of the run in progress.
+
     * A major OS upgrade pass that has to fetch the Percona signing key
       again now converts it with the server's own gpg. That step named no
       gpg program in this pass, so the key was not written and apt could
