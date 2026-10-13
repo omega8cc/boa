@@ -2561,6 +2561,20 @@ _wg_note() {
   return 0
 }
 
+# A note the walks would write again in the same run (each walk reads the
+# public set twice, and a raise to B walks twice): written once per run
+# and notes file, 0 when it is new (and written now), 1 when it was
+# written already. _wg_run empties the set.
+_WG_NOTED=$'\n'
+_wg_note_once() {
+  case "${_WG_NOTED}" in
+    *$'\n'"${_WP_NOTES} $*"$'\n'*) return 1 ;;
+  esac
+  _WG_NOTED="${_WG_NOTED}${_WP_NOTES} $*"$'\n'
+  _wg_note "$@"
+  return 0
+}
+
 # ---- holds -----------------------------------------------------------------
 
 # On every exit, a killed run's included: every hold this run took, and the
@@ -4492,8 +4506,8 @@ _wg_public_open() {
     esac
     while read -r _l; do
       [ -n "${_l}" ] || continue
-      _n=$((_n + 1))
-      _wg_note "a hard-linked public file is left closed to the web server: ${_p}/${_l#L ./}"
+      _wg_note_once "a hard-linked public file is left closed to the web server: ${_p}/${_l#L ./}" \
+        && _n=$((_n + 1))
     done < <(_wg_in "${_p}" _wg_public_here "${_uids}" "${_k}")
   done < <(_wg_parts)
   [ "${_n}" -gt 0 ] && _msg "NOTE: ${_WP_A}: ${_n} hard-linked public files left closed (see ${_WP_NOTES})"
@@ -4517,8 +4531,8 @@ _wg_plants() {
     esac
     while read -r _l; do
       [ -n "${_l}" ] || continue
-      _n=$((_n + 1))
-      _wg_note "a hard link or FIFO another account owns is in the web paths, left as it is: ${_p}/${_l#L ./}"
+      _wg_note_once "a hard link or FIFO another account owns is in the web paths, left as it is: ${_p}/${_l#L ./}" \
+        && _n=$((_n + 1))
     done < <(_wg_in "${_p}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . "${_WG_NOTOWN[@]}" \
       -execdir perl -e "${_WG_PLANT_PL}" "${_u}" "${_g}" "${_uids}" {} + 2> /dev/null)
   done < <(_wg_parts)
@@ -4821,16 +4835,19 @@ _wg_gid_in_roots() {
 }
 
 # The account's identities with a live shell or SFTP session hold the old
-# group set until they reconnect: counted and named in the notes.
+# group set until they reconnect: counted and named in the notes, once per
+# run.
 _wg_sessions_note() {
-  local _u
+  local _u _n=0
   [ "${_WP_M}" = "YES" ] && return 0
   # shellcheck disable=SC2046
   _ids_with_procs $(_wg_w_ids) || return 0
   for _u in ${_BUSY_IDS}; do
-    _wg_note "${_u} has a running session: reconnect it to write the web files"
+    _wg_note_once "${_u} has a running session: reconnect it to write the web files" \
+      && _n=$((_n + 1))
   done
-  _msg "NOTE: ${_WP_A}: $(wc -w <<< "${_BUSY_IDS}") identities have sessions that keep the old groups until they reconnect"
+  [ "${_n}" -gt 0 ] \
+    && _msg "NOTE: ${_WP_A}: $(wc -w <<< "${_BUSY_IDS}") identities have sessions that keep the old groups until they reconnect"
   return 0
 }
 
@@ -5376,6 +5393,7 @@ _wg_run() {
   _ACCT="${1}"
   _wg_profile "${1}"
   _wg_reset
+  _WG_NOTED=$'\n'
   if [ "${_WP_M}" = "YES" ]; then
     if ! getent passwd aegir > /dev/null 2>&1 || [ ! -d /var/aegir ]; then
       _fail "no Aegir master on this box"
