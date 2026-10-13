@@ -32,8 +32,9 @@ these thresholds only flag a customer's frozen custom platform pinned to an old 
 - **Drupal 8**: **8.6.0+**. Older is flagged.
 - **Drupal 9 / 10 / 11 and Backdrop**: supported.
 - **Textpattern**: reported as MySQL-8 compatible.
-- **Grav**: always `OK`, worded "MySQL-8 review not applicable" -- a flat-file site has no
-  database.
+- **Grav**: always `OK`, worded "MySQL-8 review not applicable" -- a Grav platform's code
+  holds no SQL, and KahunaCart, which gives a Grav shop its database, requires MySQL 8 or
+  later itself.
 - **Unrecognised codebase**: flagged for manual review (fail-safe).
 
 A flagged codebase has to be fixed before this box can upgrade — one below its floor, or

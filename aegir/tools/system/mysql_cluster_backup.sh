@@ -133,7 +133,9 @@ fi
 _BACKUPDIR=/data/disk/arch/cluster
 _DATE=$(date +%y%m%d-%H%M%S)
 _DOW=$(date +%u)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}

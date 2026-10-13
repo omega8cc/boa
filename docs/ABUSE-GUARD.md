@@ -677,6 +677,8 @@ Detector 1.
 - **FPM saturation trigger.** Byte-offset-tails the per-version PHP-FPM error logs
   (`/var/log/php/php*-fpm-error.log`) for **new** `reached max_children setting` lines — the
   authoritative "a pool just ran out of workers" signal, captured the instant it happens.
+  Lines the pools' workers write into the same logs (tagged `child PID said into stderr`
+  by the master) are dropped first, so a site cannot raise the trigger by printing them.
   (`php.sh` now byte-offset-tails the **same** `reached max_children setting` string, but
   emits only a plain capacity NOTE — no alert, no snapshot — so scan_nginx keeps its own
   Tier-B trigger; the periodic `fpmreport` sampler misses the live peak too.) On a new hit it

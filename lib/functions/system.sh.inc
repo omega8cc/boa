@@ -1,6 +1,8 @@
 
 export _tRee=lts
-export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 
 _pkg_installed() {
   # Return 0 if package is installed, 1 otherwise.
@@ -688,6 +690,10 @@ _if_running_as_root_barracuda() {
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
     mkdir -p ${_pthLog}
+    # A major OS upgrade pass killed or crashed while /var/xdrago was parked
+    # left it at /var/xdrago_wait, and no later pass redeploys a missing
+    # /var/xdrago: put it back before the post-install probe below reads it.
+    _xdrago_wait_restore
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
@@ -9873,6 +9879,37 @@ _major_os_upgrade_percona_check() {
   _clean_pid_exit _major_os_upgrade_percona_check
 }
 
+#
+# Put back /var/xdrago that _if_major_os_upgrade parked as /var/xdrago_wait.
+# When /var/xdrago was rebuilt meanwhile (a tools refresh run by hand, an
+# install), it keeps every name it holds, the parked tree fills in only what
+# it lacks (cron/custom.txt and the other per-box files) and goes to the
+# dragon store with the list of what it filled in: a mv onto the existing
+# name would move it inside instead.
+_xdrago_wait_restore() {
+  local _xdrArc _xdrAdd _xdrF
+  if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
+    return 0
+  fi
+  if [ ! -e "/var/xdrago" ] && [ ! -L "/var/xdrago" ]; then
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+  elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
+    _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
+    # the names only the parked tree holds, read before the copy: cp -v
+    # lists skipped names too on some systems
+    _xdrAdd="$(cd /var/xdrago_wait 2> /dev/null && find . ! -type d 2> /dev/null \
+      | while IFS= read -r _xdrF; do
+          [ -e "/var/xdrago/${_xdrF}" ] || [ -L "/var/xdrago/${_xdrF}" ] || echo "${_xdrF#./}"
+        done)"
+    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
+    mkdir -p "${_vBs}/dragon/x"
+    mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
+    [ -d "${_xdrArc}" ] && printf '%s\n' "${_xdrAdd}" > "${_xdrArc}.added.txt"
+    _msg "INFO: /var/xdrago_wait merged into /var/xdrago ($(printf '%s' "${_xdrAdd}" | grep -c .) names it alone held added), kept as ${_xdrArc}"
+  fi
+  return 0
+}
+
 _if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_major_os_upgrade"
@@ -9961,7 +9998,13 @@ _if_major_os_upgrade() {
     fi
     _check_dns_settings
     rm -f ${_pthLog}/ruby-sys-clean-reload.log
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    # Parked so no BOA cron job runs while the packages move; put back at the
+    # end of this pass, or by _clean_pid_exit when it stops before. Never onto
+    # an existing name, where mv would move the tree inside it.
+    _xdrago_wait_restore
+    if [ -d "/var/xdrago" ] && [ ! -e "/var/xdrago_wait" ]; then
+      mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    fi
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
@@ -10696,7 +10739,7 @@ _if_major_os_upgrade() {
     echo rotate > /var/log/syslog
     find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
       ! -name '*.archive.log' -delete 2> /dev/null
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    _xdrago_wait_restore
     ###
     ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.
     touch /root/.run_post_major_os_upgrade.info
@@ -10712,6 +10755,37 @@ _if_major_os_upgrade() {
   fi
 }
 
+#
+# Fetch the Webmin signing key from the BOA mirror into the working directory
+# and import it. The tries are counted: a mirror that answers with an error
+# page or without the file must not hold the pass. 1 when no key arrived, so
+# the caller leaves its marker unwritten and the next barracuda run retries.
+_webmin_key_import() {
+  local _wKeyUrl="${_urlDev}/jcameron-key.gpg"
+  local _max_attempts=5
+  local _attempt_num=1
+  local _wGpg=gpg
+  [ -x "/usr/bin/gpg2" ] && _wGpg=gpg2
+  while [ "${_attempt_num}" -le "${_max_attempts}" ]; do
+    rm -f jcameron-key.gpg*
+    # two tries and a 30-second timeout each: _wgetGet alone allows nine
+    # tries of up to 15 minutes, five times over
+    wget ${_wgetGet} --tries=2 --timeout=30 "${_wKeyUrl}"
+    if grep -q GnuPG jcameron-key.gpg 2> /dev/null; then
+      ${_wGpg} --import < jcameron-key.gpg &> /dev/null
+      rm -f jcameron-key.gpg*
+      return 0
+    fi
+    _attempt_num=$((_attempt_num+1))
+    if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
+      sleep 9
+    fi
+  done
+  rm -f jcameron-key.gpg*
+  _msg "WARN: Webmin key not fetched from ${_wKeyUrl} after ${_max_attempts} attempts, the next barracuda run retries"
+  return 1
+}
+
 _webmin_apt_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _webmin_apt_update"
@@ -10724,21 +10798,9 @@ _webmin_apt_update() {
         sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
       echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
         sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f jcameron-key.gpg*
-        wget ${_wgetGet} "${_urlDev}/jcameron-key.gpg"
-        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
-        sleep 2
-      done
-      if [ -x "/usr/bin/gpg2" ]; then
-        _GPG=gpg2
-      else
-        _GPG=gpg
+      if _webmin_key_import; then
+        touch ${_pthLog}/webmin_update_apt_src.log
       fi
-      cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
-      rm -f jcameron-key.gpg*
-      touch ${_pthLog}/webmin_update_apt_src.log
     fi
   fi
 }

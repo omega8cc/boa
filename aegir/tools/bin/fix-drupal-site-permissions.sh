@@ -619,13 +619,17 @@ _grav_site_perm_here() {
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # (same class as the TXP private/ store): accounts hold
   # password hashes and live reset tokens, config holds the session salt and
-  # SMTP/API credentials. Group-rw for FPM, owner-rw for the CLI, NO world
-  # bits. The root .env (phase 2: DB credentials) keeps FPM's read via group.
+  # SMTP/API credentials, and user/data/licenses.yaml holds premium licence
+  # keys. Group-rw for FPM, owner-rw for the CLI, NO world bits, as the
+  # hosting backend sets them. The root .env keeps FPM's read via group.
   for _sd in accounts config env; do
     [ -d "./user/${_sd}" ] || continue
     _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
     _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
   done
+  if [ -d "./user/data" ]; then
+    _in_pinned_dir "${_here}/user/data" _chmod_own_here f 0660 licenses.yaml
+  fi
   _chmod_own_here f 0640 .env
   _chmod_own_here f 0440 drushrc.php
 }

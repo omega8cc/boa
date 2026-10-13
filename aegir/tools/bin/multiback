@@ -204,7 +204,21 @@ _check_root() {
     i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
     *) _PRN_VLV="notice" ;;
   esac
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
+  # The old `|| hostname -f` bound to tr (rc 0 on empty input) and never
+  # fired; an empty /etc/hostname then dropped the host part of every
+  # bucket name, so one account name on two boxes shared one chain. A
+  # fallback that answers only localhost would name a bucket every such
+  # server shares. No case folding: BOA.sh.txt derives the sentinel names
+  # from this same read.
+  if [ -z "${_hName}" ]; then
+    _hName="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+    case "${_hName}" in localhost|localhost.*) _hName="" ;; esac
+  fi
+  if [ -z "${_hName}" ]; then
+    echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
+    exit 1
+  fi
   _cpuNr="$(cat /data/all/cpuinfo 2>/dev/null | tr -d '\n' || nproc 2>/dev/null)"
   if [ -n "${_cpuNr}" ]; then
     [ "${_cpuNr}" -gt 8 ] && _useCpu=4
@@ -745,6 +759,8 @@ _construct_bucket_name() {
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
   export _LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
+  # the name a server with an empty /etc/hostname used before the fallback
+  export _BUCKET_NOHOST="back-to-${_user}--${_service_dash}"
   _print_env "multiback_construct_bucket_name"
 }
 
@@ -1251,7 +1267,8 @@ _repair() {
 
 # Function to check if repair incomplete backup sets is needed
 _check_if_repair() {
-  if grep -q "found incomplete backup sets" "${_LOGFILE}"; then
+  if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+    | grep -q "found incomplete backup sets"; then
     _repair_only
   fi
 }
@@ -1289,7 +1306,8 @@ _check_if_worked_cleanly_or_log_err() {
     done
   fi
   local _sentinel
-  if grep -q "Backup Statistics" "${_LOGFILE}"; then
+  if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+    | grep -q "Backup Statistics"; then
     _sentinel="${_logs_dir}/OK-${_BUCKET_NAME}.log"
   else
     _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
@@ -1507,21 +1525,28 @@ _run_backup() {
   # below has nothing to detect. The operands are word-split but never
   # globbed by the shell: a pattern there is duplicity's, and an account's
   # regexp operand must not expand to the names it keeps in its own tree.
+  # the length before this run's output: a run killed before its log was
+  # archived leaves its lines behind, and only this run's may decide a retry
+  _bupLog0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
   set -f
   ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
   _BUP_RC=$?
   set +f
   wait
   # An explicit incremental against a remote with no signatures is a
-  # fatal in duplicity, never a promotion -- only the implied-inc backup
-  # verb switches to full there. After an emptied remote (provider
-  # account swap, bucket wipe) the local chain marker keeps voting
-  # incremental, so every leg would fatal forever. Retry once as full;
-  # _MODE is corrected first so the per-mode day log, the monthly-full
-  # gate and the emailed subject describe the run that happened.
+  # fatal in duplicity. With --full-if-older-than, as in the default
+  # command, an EMPTY remote is promoted to full; a remote that kept a
+  # full's volumes but lost its signatures is refused all the same, and the
+  # hosted global, data and custom commands carry no such flag at all. After
+  # an emptied remote (provider account swap, bucket wipe) the local chain
+  # marker keeps voting incremental, so every leg would fatal forever.
+  # Retry once as full; _MODE is corrected first so the per-mode day log,
+  # the monthly-full gate and the emailed subject describe the run that
+  # happened.
   if [ "${_BUP_RC}" -ne 0 ] \
     && [ "${_MODE}" = "incremental" ] \
-    && grep -q "Old signatures not found and incremental specified" "${_LOGFILE}"; then
+    && tail -n +$(( ${_bupLog0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+      | grep -q "Old signatures not found and incremental specified"; then
     export _MODE="full"
     _set_cmd
     echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
@@ -1563,7 +1588,37 @@ _chain_known() {
 }
 
 # Function to prepare backup
+# A chain this box wrote while /etc/hostname was empty went to the bucket
+# without the host part; this run starts a new one under the full name. Said
+# once per bucket, in this run's report: the release left the archive log or
+# the OK/ERR sentinel of that name, a later build its chain marker.
+_note_hostless_chain() {
+  local _ldir="/data/disk/${_USER}/static/control/remote_backups/logs"
+  local _seen="" _f
+  case "${_USER}" in global|data|custom) _ldir="/root/.remote_backups/logs" ;; esac
+  [ -n "${_hst_dash}" ] && [ -n "${_BUCKET_NOHOST}" ] || return 0
+  [ -e "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt" ] && return 0
+  for _f in "${_LOGPTH}/${_BUCKET_NOHOST}.archive.log" "/etc/boa/control/${_BUCKET_NOHOST}.chain.txt" \
+    "${_ldir}/OK-${_BUCKET_NOHOST}.log" "${_ldir}/ERR-${_BUCKET_NOHOST}.log"; do
+    [ -e "${_f}" ] && _seen="${_seen} ${_f}"
+  done
+  [ -n "${_seen}" ] || return 0
+  { echo "NOTE: this server's earlier chain is in ${_BUCKET_NOHOST}, written while"
+    echo "NOTE: /etc/hostname was empty (found:${_seen}); backups now go to"
+    echo "NOTE: ${_BUCKET_NAME}, starting with a full one. Where the provider needs"
+    echo "NOTE: a bucket created by hand, create it first. Restore from or remove the"
+    echo "NOTE: old bucket by hand. This note is given once."
+  } >> ${_LOGFILE}
+  mkdir -p /etc/boa/control 2> /dev/null
+  { date > "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt" \
+      && chmod 0644 "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt"; } 2> /dev/null
+}
+
 _backup() {
+  # the length before this run: a run killed before its log was archived
+  # leaves its lines behind, and only this run's may decide repair or OK
+  _bupRun0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
+  _note_hostless_chain
   _backup_prepare
   _set_mode
   _set_cmd
