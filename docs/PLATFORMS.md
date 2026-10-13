@@ -25,7 +25,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
 - [Drupal 11.3.18](https://drupal.org/project/drupal/releases/11.3.18)
 - [Drupal 11.4.9](https://drupal.org/project/drupal/releases/11.4.9)
-- [Drupal CMS 2.2.3](https://drupal.org/project/cms) (11.4.8)
+- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.9)
 - [farmOS 4.0.7](https://drupal.org/project/farm) (11.3.18)
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.9)
 - [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.9)
