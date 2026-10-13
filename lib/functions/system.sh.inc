@@ -10775,6 +10775,11 @@ _webmin_pkg_known() {
   [ -n "${_st}" ] && [[ ! "${_st}" =~ not-installed$ ]]
 }
 
+# installed whatever its selection: an operator may hold it
+_webmin_pkg_installed() {
+  [[ "$(dpkg-query -W -f='${Status}' webmin 2> /dev/null)" =~ " ok installed"$ ]]
+}
+
 _webmin_present() {
   [ -d "/etc/webmin" ] || [ -d "/usr/share/webmin" ] || [ -d "/var/webmin" ] \
     || _webmin_pkg_known
@@ -10845,7 +10850,7 @@ _webmin_key_fetch() {
 _webmin_keep() {
   local _g _want
   rm -f ${_pthLog}/webmin_update_apt_src.log
-  if ! _pkg_installed webmin; then
+  if ! _webmin_pkg_installed; then
     _webmin_source_drop
     return 0
   fi
@@ -10899,16 +10904,20 @@ _webmin_remove() {
       return 1
     fi
   fi
-  service webmin stop &> /dev/null
   if _webmin_pkg_known; then
-    # no --auto-remove: it would take any other orphaned package with it
+    # its own scripts stop it; no --auto-remove: that would take any other
+    # orphaned package with it
     _mrun "apt-get remove webmin -y --purge -qq"
   fi
   if _webmin_pkg_known; then
-    _msg "WARN: Webmin could not be removed (held, or a dpkg problem); its files"
-    _msg "WARN: stay and the next barracuda run tries again"
+    # a held package, or a dpkg problem: Webmin stays as it was, running
+    _msg "WARN: Webmin could not be removed (held, or a dpkg problem); it stays"
+    _msg "WARN: as it was and the next barracuda run tries again"
     return 1
   fi
+  # what is left without the package: its server, if it still runs
+  service webmin stop &> /dev/null
+  pkill -f '^[^ ]*perl /usr/share/webmin/miniserv\.pl' &> /dev/null
   rm -rf /etc/webmin /usr/share/webmin /var/webmin
   _webmin_source_drop
   rm -f ${_pthLog}/webmin_update_apt_src.log "${_wmNote}"
