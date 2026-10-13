@@ -488,6 +488,11 @@ done <<< "${_LAGG}"
 ### /var/log/boa/usage/usage-YYMMDD-HHMMSS.log (written by the daily
 ### usage.sh runs), account attributed via its "Counting User" marker,
 ### values from the "_TotSiz is X kB or Y MB" / "_SumDat is ..." lines.
+### usage.sh keeps the current month at the top level and earlier months
+### one level down in MM-YYYY, so both levels are read, in the order of
+### the date in the file name (the endpoints below depend on it), and a
+### log present at both levels, as on a box that received another box's
+### series, counts once.
 ### The horizon is fixed at 92d regardless of --days so a short advisory
 ### window cannot flatten a real trend. Three robustness gates, each
 ### earned on fleet evidence: a zero files-value is a collapsed du run
@@ -502,7 +507,7 @@ done <<< "${_LAGG}"
 _LGROW=""
 if [ "${_LN}" -gt 0 ]; then
   _USAGE_STREAM=""
-  for _uf in $(find /var/log/boa/usage -maxdepth 1 -name 'usage-[0-9]*.log' -mtime -92 2>/dev/null | sort); do
+  for _uf in $(find /var/log/boa/usage -maxdepth 2 -name 'usage-[0-9]*.log' -mtime -92 -printf '%f %p\n' 2>/dev/null | sort -u -k1,1 | cut -d' ' -f2-); do
     _ufd=${_uf##*/}; _ufd=${_ufd#usage-}; _ufd=${_ufd%%-*}
     [ "${#_ufd}" -eq 6 ] || continue
     _ufe=$(date -d "20${_ufd:0:2}-${_ufd:2:2}-${_ufd:4:2}" +%s 2>/dev/null)

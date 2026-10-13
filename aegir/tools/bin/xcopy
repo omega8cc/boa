@@ -219,7 +219,7 @@ _web_group_facts_here() {
   _s=$(_web_group_state "${1}")
   [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
-  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _r=YES
   { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
   echo "XMWF:${_s%% *}:${_b}:${_p:--}:${_r}:${_sb}"
 }
