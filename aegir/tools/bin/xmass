@@ -13447,6 +13447,22 @@ _xmass_autosync_off() {
   fi
 }
 
+# Whether this box finished installing lives in /etc/boa/control. A stamp an
+# earlier release wrote in /var/log/boa is copied there first, and still counts
+# when the copy cannot be made: a box never reads as not installed.
+_rnp_installed() {
+  local _n="/etc/boa/control/reset_no_new_password.pid"
+  local _o="/var/log/boa/reset_no_new_password.pid"
+  [ -e "${_n}" ] && return 0
+  [ -e "${_o}" ] || return 1
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  { cp "${_o}" "${_n}.$$" && chmod 0644 "${_n}.$$" \
+    && mv -f "${_n}.$$" "${_n}"; } 2> /dev/null || rm -f "${_n}.$$" 2> /dev/null
+  return 0
+}
+
+
 _xmass_autosync_show_status() {
   if [ ! -e "${_XMASS_AUTOSYNC_CNF}" ]; then
     _info "autosync: not armed on this box"
@@ -13465,7 +13481,7 @@ _xmass_autosync_show_status() {
   local _park="" _rt
   if [ "${_USE_XMASS_AUTOSYNC}" = "NO" ]; then
     _park="_USE_XMASS_AUTOSYNC=NO in /root/.barracuda.cnf"
-  elif [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+  elif ! _rnp_installed; then
     _park="this system has not finished installing"
   elif [ -e "/root/.standby.cnf" ]; then
     _park="this box is a passive standby"

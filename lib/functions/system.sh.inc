@@ -8337,6 +8337,22 @@ _if_remove_apparmor() {
   fi
 }
 
+# Whether this box finished installing lives in /etc/boa/control. A stamp an
+# earlier release wrote in /var/log/boa is copied there first, and still counts
+# when the copy cannot be made: a box never reads as not installed.
+_rnp_installed() {
+  local _n="/etc/boa/control/reset_no_new_password.pid"
+  local _o="/var/log/boa/reset_no_new_password.pid"
+  [ -e "${_n}" ] && return 0
+  [ -e "${_o}" ] || return 1
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  { cp "${_o}" "${_n}.$$" && chmod 0644 "${_n}.$$" \
+    && mv -f "${_n}.$$" "${_n}"; } 2> /dev/null || rm -f "${_n}.$$" 2> /dev/null
+  return 0
+}
+
+
 #
 # Final cleanup.
 _web_tier_up_while_unarmed() {
@@ -8344,7 +8360,7 @@ _web_tier_up_while_unarmed() {
     _msg "PROC: _web_tier_up_while_unarmed"
   fi
   # The auto-healing watchdogs stay dormant until autoupboa stamps
-  # /var/log/boa/reset_no_new_password.pid on its first quiet tick after a
+  # /etc/boa/control/reset_no_new_password.pid on its first quiet tick after a
   # fresh install's chain, and the chain's last pass ends with the web tier
   # down (move_sql only stops it, by design). Until the stamp nothing brings
   # the tier back: one tick plus a minute, 3-15 min measured on fresh boxes.
@@ -8355,7 +8371,7 @@ _web_tier_up_while_unarmed() {
   # never answers before the hostmaster vhost exists (the Let's Encrypt
   # challenge needs the vhost, not a 404).
   local _hmUri=""
-  if [ -e "/var/log/boa/reset_no_new_password.pid" ] \
+  if _rnp_installed \
     || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     || [ ! -x "/opt/local/bin/webserver" ]; then
     return 0
@@ -10517,7 +10533,11 @@ _if_major_os_upgrade() {
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ] \
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
-      rm -f /var/log/boa/*.log
+      # every build and version marker goes, so the stack is rebuilt; the
+      # backup tools' archive logs are the history an operator reads, and
+      # dot-named files never matched the glob this replaces
+      find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
+        ! -name '*.archive.log' -delete 2> /dev/null
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
@@ -10674,7 +10694,8 @@ _if_major_os_upgrade() {
     ###
     ### Final cleanup.
     echo rotate > /var/log/syslog
-    rm -f /var/log/boa/*.log
+    find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
+      ! -name '*.archive.log' -delete 2> /dev/null
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     ###
     ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.

@@ -44,6 +44,12 @@ The flags live in the live control files and default to `NO` (dry-run). BOA seed
 that default into the control files on install and on the next `barracuda up-*`
 upgrade; a value you have already set is never overwritten.
 
+One exception, on omega8.cc-hosted servers (hostname ending in `.aegir.cc`): once per
+box, BOA writes the whole ghost-cleanup family as `YES` into `/root/.barracuda.cnf` and
+every `/root/.<account>.octopus.cnf`. Its stamp is
+`/etc/boa/control/ghost-family-yes.f<serial>.txt`, so a toggle set after it stays,
+through later releases too.
+
 | Flag | Control file | Scope |
 |------|--------------|-------|
 | `_SHARED_CODEBASES_CLEANUP` | `/root/.barracuda.cnf` | system-wide |
