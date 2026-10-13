@@ -4638,10 +4638,12 @@ _wg_b_beyond() {
 # $1 = beyond (the B check, u8, only): also anywhere in what _wg_b_beyond
 # prints (a partial walk, a writer after it, or a part the conversion does
 # not walk; a left-alone path there excepted), and _WG_B_HIT names the
-# kind of a hit there (store or part; empty for one before it); webdrift's
-# --deep read stays on the private set. 0 when any is left.
+# kind of a hit there (store or part; empty for one before it, but part
+# for a top or private-set hit inside a part, which the walk never takes
+# either); webdrift's --deep read stays on the private set. 0 when any is
+# left.
 _wg_residue_full() {
-  local _k _p _uids _u _o=() _WG_LEFT="" _WG_PRUNE=() _lr=NO
+  local _k _p _uids _u _o=() _WG_LEFT="" _WG_PRUNE=() _lr=NO _hit=""
   _WG_B_HIT=""
   _uids=$(_wg_own_uids)
   for _u in ${_uids//,/ }; do
@@ -4652,18 +4654,32 @@ _wg_residue_full() {
   while read -r _k _p; do
     case "${_k}" in
       trio|store)
-        [ "$(stat -c %g -- "${_p}" 2> /dev/null)" = "${_WG_WWWGID}" ] && return 0
+        if [ "$(stat -c %g -- "${_p}" 2> /dev/null)" = "${_WG_WWWGID}" ]; then
+          _hit="${_p}"
+          break
+        fi
         [ "${_k}" = "store" ] || continue
-        [ -n "$(_wg_in "${_p}" find -P . -regextype posix-extended \
+        if [ -n "$(_wg_in "${_p}" find -P . -regextype posix-extended \
           -iregex "(${_WG_DENIED_RE})(/.*)?" -gid "${_WG_WWWGID}" \
-          \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+          \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ]; then
+          _hit="${_p}"
+          break
+        fi
         ;;
       private)
-        [ -n "$(find -P "${_p}" -gid "${_WG_WWWGID}" \( -type d -o -type f -links 1 \) \
-          \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+        if [ -n "$(find -P "${_p}" -gid "${_WG_WWWGID}" \( -type d -o -type f -links 1 \) \
+          \( "${_o[@]}" \) -print -quit 2> /dev/null)" ]; then
+          _hit="${_p}"
+          break
+        fi
         ;;
     esac
   done < <(_wg_parts)
+  if [ -n "${_hit}" ]; then
+    [ "${1:-}" = "beyond" ] && _wg_under "${_hit}" "$(_wg_b_beyond | sed -n 's/^part //p')" \
+      && _WG_B_HIT=part
+    return 0
+  fi
   [ "${1:-}" = "beyond" ] || return 1
   while read -r _k _p; do
     [ -n "${_p}" ] || continue
