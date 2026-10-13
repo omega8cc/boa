@@ -1522,12 +1522,14 @@ _run_backup() {
   set +f
   wait
   # An explicit incremental against a remote with no signatures is a
-  # fatal in duplicity, never a promotion -- only the implied-inc backup
-  # verb switches to full there. After an emptied remote (provider
-  # account swap, bucket wipe) the local chain marker keeps voting
-  # incremental, so every leg would fatal forever. Retry once as full;
-  # _MODE is corrected first so the per-mode day log, the monthly-full
-  # gate and the emailed subject describe the run that happened.
+  # fatal in duplicity when the command carries no --full-if-older-than
+  # (the hosted global, data and custom commands); with it, as in the
+  # default command, duplicity promotes the run to full itself. After an
+  # emptied remote (provider account swap, bucket wipe) the local chain
+  # marker keeps voting incremental, so every leg would fatal forever.
+  # Retry once as full; _MODE is corrected first so the per-mode day log,
+  # the monthly-full gate and the emailed subject describe the run that
+  # happened.
   if [ "${_BUP_RC}" -ne 0 ] \
     && [ "${_MODE}" = "incremental" ] \
     && grep -q "Old signatures not found and incremental specified" "${_LOGFILE}"; then

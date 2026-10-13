@@ -4,6 +4,12 @@
 
 @=> Important Fixes
 
+    * A failed backboa or duobackboa run now says so in its emailed
+      report and archive log: duplicity's own error lines, which went
+      only to the cron job's discarded stderr, and an ALERT line with the
+      exit code. Until now a run that failed sent the same report as one
+      that worked, with no word of why.
+
     * Off-site backups no longer lose the server's name from their bucket
       names when /etc/hostname is empty. The fallback to hostname -f never
       ran, so multiback named such a server's buckets back-to-USER--PROVIDER,

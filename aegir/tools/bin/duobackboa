@@ -1066,7 +1066,13 @@ _run_backup() {
     ${_USER_EXCLUDE} \
     ${_INCLUDE} \
     ${_USER_INCLUDE} \
-    --exclude '**' / ${_TARGET} >> ${_LOGFILE}
+    --exclude '**' / ${_TARGET} >> ${_LOGFILE} 2>&1
+  _BUP_RC=$?
+  # duplicity writes its errors to stderr, which cron discards: without it
+  # and the exit code the emailed report never says that, or why, it failed
+  if [ "${_BUP_RC}" -ne 0 ]; then
+    echo "ALERT: the ${_MODE} backup to ${_TARGET} ended with exit code ${_BUP_RC} on $(date)" >> ${_LOGFILE}
+  fi
 }
 
 _remove_older_than() {
