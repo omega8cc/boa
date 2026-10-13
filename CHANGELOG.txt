@@ -285,12 +285,13 @@
       removes the group (docs/INSTGRP.md).
 
     * The web group's revert says what clears a group it keeps for a
-      store under /mnt. With no single mount point there, or with the
-      account's store owned by a user other than root or the account,
-      from the conversion on, a path there that no revert walks (the
-      store of a site removed since) keeps the group on every revert
-      until it is given www-data or the layout is one BOA makes, as the
-      message now says (docs/INSTGRP.md).
+      store under /mnt that no revert walks: the store of a site
+      removed since the conversion, with no single mount point there or
+      the account's store owned by a user other than root or the
+      account, or a copy of the account's store outside the single
+      mount point. Those paths keep the group until they are given
+      www-data or the store holding them is the account's store at the
+      single mount point, as the message now says (docs/INSTGRP.md).
 
     * Phase B of the web group conversion, still switched off, waits
       while the account's ~/static/files is a link that does not
