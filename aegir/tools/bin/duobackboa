@@ -982,7 +982,7 @@ _monthly_cleanup() {
     _RCL=${_RCL//[^1-5]/}
     echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+  if _chain_known \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
@@ -1026,7 +1026,7 @@ _set_mode() {
       _AWS_FLC="1M"
     fi
   else
-    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    if _chain_known \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
       _MODE="incremental"
     else
@@ -1091,6 +1091,32 @@ _collection_status() {
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
+# Whether this box has a duplicity chain in the bucket lives in
+# /etc/boa/control: the archive log is the history the operator reads, and
+# the major OS upgrade's clean-up of /var/log/boa/*.log takes it, after which
+# the next run started a new FULL chain and skipped that day's retention.
+# A box whose archive log predates the marker gets it from the log here, at
+# the first read.
+_chain_put() {
+  local _c="/etc/boa/control/${_BUCKET_NAME}.chain.txt"
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  if { echo "$(date '+%F %T') ${1}" > "${_c}.tmp.$$"; } 2> /dev/null \
+    && chmod 0644 "${_c}.tmp.$$" && mv -f "${_c}.tmp.$$" "${_c}"; then
+    return 0
+  fi
+  rm -f "${_c}.tmp.$$" 2> /dev/null
+  echo "ALERT: ${_c} cannot be written; a lost archive log would start a new full chain" >> ${_LOGFILE}
+  return 1
+}
+
+_chain_known() {
+  [ -e "/etc/boa/control/${_BUCKET_NAME}.chain.txt" ] && return 0
+  [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] || return 1
+  _chain_put "from the archive log"
+  return 0
+}
+
 _backup() {
   _backup_prepare
   _monthly_cleanup
@@ -1098,12 +1124,13 @@ _backup() {
   _set_mode
   _set_cmd
   _run_backup
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+  if _chain_known \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     _remove_older_than
     _collection_status
   fi
+  _chain_put "${_MODE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
