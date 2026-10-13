@@ -10816,27 +10816,28 @@ _webmin_key_is_pinned() {
 # The key comes from Webmin itself (BOA's mirror has no copy): five tries of
 # at most 30 seconds, and only the pinned key reaches the keyring.
 _webmin_key_fetch() {
-  local _g="${1}" _raw _bin _try=1
+  local _g="${1}" _raw _bin _gh _try=1
   _raw="$(mktemp /tmp/webmin-key-XXXXXX.asc)" || return 1
   _bin="$(mktemp /tmp/webmin-key-XXXXXX.gpg)" || { rm -f "${_raw}"; return 1; }
+  _gh="$(mktemp -d /tmp/webmin-gpg-XXXXXX)" || { rm -f "${_raw}" "${_bin}"; return 1; }
   while [ "${_try}" -le 5 ]; do
     : > "${_raw}"
     rm -f "${_bin}"
     curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_raw}"
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_raw}" 2> /dev/null \
-      && ${_g} --yes --dearmor -o "${_bin}" < "${_raw}" 2> /dev/null \
+      && ${_g} --homedir "${_gh}" --yes --dearmor -o "${_bin}" < "${_raw}" 2> /dev/null \
       && _webmin_key_is_pinned "${_g}" "${_bin}"; then
       mkdir -p /etc/apt/keyrings
       chmod 0755 /etc/apt/keyrings
       chmod 0644 "${_bin}"
       mv -f "${_bin}" "${_wmKey}"
-      rm -f "${_raw}"
+      rm -rf "${_raw}" "${_gh}"
       return 0
     fi
     _try=$((_try + 1))
     [ "${_try}" -le 5 ] && sleep 9
   done
-  rm -f "${_raw}" "${_bin}"
+  rm -rf "${_raw}" "${_bin}" "${_gh}"
   return 1
 }
 
