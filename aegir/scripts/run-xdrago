@@ -65,7 +65,9 @@ _GRAV_TICK_ENTRY="/data/conf/grav-store-tick.php"
 # differs, root's, readable by the pools (/data/conf is in each one's
 # open_basedir).
 _grav_tick_entry() {
-  local _new="/data/conf/.grav-store-tick.php.new"
+  # A temp name of this instance's own: every instance's runner keeps the
+  # one shared entry, and they may run in the same second.
+  local _new="/data/conf/.grav-store-tick.php.${_H_USER}.new"
   [[ -d /data/conf ]] && [[ ! -L /data/conf ]] || return 1
   ( umask 022; cat > "${_new}" ) <<'PHP' || return 1
 <?php
@@ -253,7 +255,7 @@ _grav_store_ticks_detached() {
   [[ -x "/opt/local/bin/grav" ]] || return 0
   [[ -x "/usr/bin/cgi-fcgi" ]] || return 0
   command -v flock > /dev/null 2>&1 || return 0
-  ( : >> "${_gl}" ) 2>/dev/null || return 0
+  ( umask 077; : >> "${_gl}" ) 2>/dev/null || return 0
   # Started from a command substitution so this script's own bare `wait`
   # calls never wait for it (it is never one of this shell's jobs).
   _GRAV_TICKS_PID="$( (
