@@ -283,6 +283,14 @@
       that no longer exists, and a revert once the layout is back
       removes the group (docs/INSTGRP.md).
 
+    * The web group's revert says what clears a group it keeps for a
+      store under /mnt. With no single mount point there, or with the
+      account's store owned by a user other than root or the account,
+      from the conversion on, a path there that no revert walks (the
+      store of a site removed since) keeps the group on every revert
+      until it is given www-data or the layout is one BOA makes, as the
+      message now says (docs/INSTGRP.md).
+
     * Phase B of the web group conversion, still switched off, waits
       while the account's ~/static/files is a link that does not
       resolve, as it is while its attached storage is not mounted: no

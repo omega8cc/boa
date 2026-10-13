@@ -634,8 +634,16 @@ whatever the reading account's own state.
   whatever the mount count or the store's owner. When the layout changed
   since the conversion (a second mount point, another owner), a store the
   conversion walked may be in none of the walks above: while it carries
-  `wg-oN`, the group is kept and the message names the store. A `webrevert`
-  once the layout is back walks it and removes the group.
+  `wg-oN`, the group is kept and the message names the store and what
+  clears it. A `webrevert` once the layout is back walks it and removes
+  the group.
+- With no single mount point under `/mnt`, or with the account's store
+  owned by a user other than root or the account, from the conversion on,
+  a path there that no revert walks (the store of a site removed since
+  the conversion, which the nightly gave `wg-oN`) keeps the group the same
+  way on every `webrevert`, until an operator gives it `www-data` or the
+  layout is one BOA makes (one mount point, the store root's or the
+  account's).
 - While the account's `~/static/files` is a link that does not resolve
   (its attached storage not mounted), `webrevert` walks back what it
   reaches but keeps the group, and the message names the link: the
