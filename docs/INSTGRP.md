@@ -461,6 +461,14 @@ tops, private files or its store on attached storage does not hold phase
 B: the second walk takes it in the same run, so uploads there do not keep
 phase B waiting while they go on.
 
+The stores of its sites that the conversion does not walk (with no single
+mount point under `/mnt`, or its store on attached storage owned by a user
+other than root or the account) are read again after the second walk, and
+after the walk of every run at phase B: a path a pool left there in
+`www-data` is noted, with exit 2, on each such run until it is given
+`wg-oN` or the layout is one BOA makes, when the next run at phase B walks
+it.
+
 An account's store on attached storage (`<mount>/files/oN/static/files`,
 where migratefs moves `~/static/files`) is part of its web paths whether
 root or the account owns it: phase A walks it into `wg-oN` as it walks

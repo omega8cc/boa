@@ -318,6 +318,16 @@
       is still left is noted, exit 2, and the next run at phase B walks
       it (docs/INSTGRP.md).
 
+    * Phase B of the web group conversion, still switched off, no
+      longer commits unnoticed with a path in www-data in a files or
+      private store of the account's sites that the conversion does not
+      walk (with no single mount point under /mnt, or the account's
+      store owned by a user other than root or the account), written by
+      a pool after the check before phase B: every run at phase B reads
+      those stores after its walk and notes such a path, exit 2, until
+      it is given the web group or the layout is one BOA makes
+      (docs/INSTGRP.md).
+
     * A site dir inside the account's files store on attached storage,
       owned by root or by the account, counts as the account's own for
       the web group conversion, still switched off, not as a site
