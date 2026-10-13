@@ -2389,9 +2389,8 @@ _unshare_closed_ex() {
     _r="${_p#"${3%/}"/}"
     [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
     # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS): a
-    # top-level name only, as those anchored excludes match
-    case "${_r}" in
-      */*) ;;
+    # top-level name, as those anchored excludes match, and all below it
+    case "${_r%%/*}" in
       ownership-fixed-*.pid|permissions-fixed-*.pid) continue ;;
     esac
     if [ "${4}" != "files" ]; then
