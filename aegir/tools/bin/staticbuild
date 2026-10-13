@@ -251,6 +251,12 @@ _WEBFORM_B_TAG=""
 # is mostly irrelevant and sometimes a -dev alias.
 _CMS_SPEC="drupal/cms"
 _CMS_DISTPKG=""                                  # cms: template == distribution version
+# drupal/cms 2.2.4 stopped requiring its site templates and add-on recipes; its
+# installer fetches a missing template with Composer in the middle of a site
+# install, which a packaged platform must never do. Require the set 2.2.3
+# carried, with the constraint it used, so a command-line install finds Starter
+# (its default there) in the codebase and the add-ons stay one recipe away.
+_CMS_RECIPES="drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2"
 _CULTURAS_SPEC="drupal/openculturas_project"
 _CULTURAS_DISTPKG="openculturas/openculturas-distribution"
 _CULTURAS_PROJECT="openculturas"                 # drupal.org project (for the release-number pin)
@@ -1569,6 +1575,7 @@ build_cms() {
   # lock's require-dev packages too, and the platform must ship without them, as the
   # builds ending in install --no-dev do.
   if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_CMS_RECIPES}" \
          && _with_core_fallback "${_wd}" "cms" _composer_build \
          && _run_as_o8 "cd '${_wd}' && composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --update-no-dev"; }; then
     _record_fail "cms"

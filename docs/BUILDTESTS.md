@@ -516,6 +516,7 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.2.3-11.4.
            # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.3-11.4.8
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
+           # composer require --no-update --no-scripts drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2   # drupal/cms 2.2.4 no longer requires its site templates and add-on recipes; its installer would fetch a missing template with Composer during the site install
            # composer update --no-install --no-scripts
            # composer install --no-dev
            # composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --no-interaction --update-no-dev   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require; migration pipeline contribs absent upstream; --update-no-dev keeps require-dev out of the platform, as the builds ending in install --no-dev do
@@ -757,6 +758,12 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
   of them, and core's migrate stack lives in drupal/core; inert until a site enables them.
+
+  Since 2.2.4, drupal/cms no longer requires its site templates (Starter, Blank) or the
+  add-on recipes (AI, multilingual, forms, accessibility tools, Google Analytics); its
+  installer fetches a chosen template with Composer during the site install. The build
+  requires the seven packages before the resolve, so a command-line install finds
+  Starter, its default there, in the packaged codebase.
 
   The build also corrects pathauto's `d7_pathauto_patterns` migration definition
   (adds `source_module: pathauto`, upstream pathauto #3588684): Drupal 11 prefers the
