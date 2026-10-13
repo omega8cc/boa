@@ -10517,7 +10517,11 @@ _if_major_os_upgrade() {
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ] \
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
-      rm -f /var/log/boa/*.log
+      # every build and version marker goes, so the stack is rebuilt; the
+      # backup tools' archive logs are the history an operator reads, and
+      # dot-named files never matched the glob this replaces
+      find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
+        ! -name '*.archive.log' -delete 2> /dev/null
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
@@ -10674,7 +10678,8 @@ _if_major_os_upgrade() {
     ###
     ### Final cleanup.
     echo rotate > /var/log/syslog
-    rm -f /var/log/boa/*.log
+    find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
+      ! -name '*.archive.log' -delete 2> /dev/null
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     ###
     ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.

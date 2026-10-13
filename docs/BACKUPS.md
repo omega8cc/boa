@@ -186,6 +186,15 @@ backup never reads a source file through a link or waits on a FIFO.
   The gates release the moment the marker goes, so a promoted box resumes
   its backups on the next cron pass with no operator step.
 
+  Whether a run is incremental depends on whether this box already has a
+  chain in the bucket. `backboa`, `duobackboa` and `multiback` keep that
+  fact in `/etc/boa/control/<bucket>.chain.txt` (written after every run;
+  a box whose archive log is older than the marker gets it from the log at
+  its first run), not in the `/var/log/boa/<bucket>.archive.log` history,
+  which the clean-up of a major OS upgrade deletes: with only the history
+  lost, the next run stays incremental. To start a new full chain on
+  purpose, remove the `.chain.txt` marker as well as the archive log.
+
   The `srv.foo.bar` is a hostname of the BOA system backed up before.
   In the `retrieve` mode it will use the `_AWS_*` variables configured
   in the current system `/root/.barracuda.cnf` file - so make sure to edit

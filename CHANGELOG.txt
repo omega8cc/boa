@@ -571,6 +571,17 @@
       pass that disarms removes the old stamps of the web group and of
       the link check as well, and linkguard off the link check's.
 
+    * The Duplicity backups (backboa, duobackboa and multiback) keep the
+      fact that a server has a chain in its bucket in
+      /etc/boa/control/<bucket>.chain.txt instead of reading it from the
+      archive log in /var/log/boa. The clean-up of a major OS upgrade
+      deleted that log, after which the next backup started a new full
+      chain and skipped that day's retention; it now stays incremental,
+      and that clean-up leaves the archive logs, the backup history
+      boa info shows, in place. A server takes the marker from its
+      archive log at its first run; to start a new full chain on
+      purpose, remove both.
+
     * On omega8.cc-hosted servers the one-shot that writes the whole
       ghost-cleanup family as YES runs once per server, as its own notes
       always said. Its stamp lives in /etc/boa/control and names no
