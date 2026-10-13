@@ -284,9 +284,9 @@ _VARBASE_SPEC="Vardot/varbase-project:11.0.7"
 _VARBASE_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 _VARBASE_DISTPKG="vardot/varbase"
 # The advisory fix step moves an affected package to its fixed release. The same one
-# platform requirement is ignored there, for the same reason: the fixed amazee.io
-# provider releases declare ext-pdo_pgsql too, so without it Drupal CMS stays on the
-# affected 1.3.x line it resolves to today.
+# platform requirement is ignored there, for the same reason: amazee.io provider
+# releases 1.4.0 to 1.4.5 declare ext-pdo_pgsql (1.4.6 no longer does), so a fix that
+# has to land on one of them, as a lock pinned to that range does, needs it.
 _FIX_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 # Open Social ships NO create-project template for its current major: goalgorilla/social_template
 # has not been touched since 2024-05-21 and its committed lock pins open_social 12.4.2 on core
