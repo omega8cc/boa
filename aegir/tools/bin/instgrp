@@ -3427,17 +3427,24 @@ _wg_u7() {
 
 # The B check, when a B trait is still missing: the account's static/files
 # resolving (5: a link to attached storage that is not mounted, which no
-# walk and no read reaches), the residue rule in full (5), then, on a raise
-# or while B is not committed, the share and store re-scan (6). Either
-# stops the run as it is: the account stays at A (or, when the run started
-# from a pool-side level, at that level with its phase A traits complete;
-# the NOTE names the level read now).
+# walk and no read reaches), the walk's own verdict ($1, 2: www-data left
+# after its last pass, written during it, wherever it walks; 5), the
+# residue rule in full (5), then, on a raise or while B is not committed,
+# the share and store re-scan (6). Either stops the run as it is: the
+# account stays at A (or, when the run started from a pool-side level, at
+# that level with its phase A traits complete; the NOTE names the level
+# read now).
 _wg_u8() {
   local _l
   [ "${_D_LAM}" = "B" ] && return 0
   if _l=$(_wg_store_gone); then
     _msg "${_WP_A}: ${_l} is a link that does not resolve; phase B waits until the storage it names is mounted"
     _wg_note "phase B deferred: ${_l} is a link that does not resolve (its attached storage is not mounted)"
+    return 5
+  fi
+  if [ "${1:-0}" = "2" ]; then
+    _msg "${_WP_A}: www-data paths remain after the walk, written during it; phase B waits for the next run"
+    _wg_note "phase B deferred: paths in www-data remain after the walk, written during it"
     return 5
   fi
   if _wg_residue_full beyond; then
@@ -3780,7 +3787,7 @@ _wg_leg_up() {
     [ "${_rw}" = "2" ] && return 2
     return 0
   fi
-  _wg_u8
+  _wg_u8 "${_rw}"
   _rc=$?
   [ "${_rc}" = "0" ] || return "${_rc}"
   # u9: the intent to B
