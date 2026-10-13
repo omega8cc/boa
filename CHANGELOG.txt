@@ -571,6 +571,15 @@
       pass that disarms removes the old stamps of the web group and of
       the link check as well, and linkguard off the link check's.
 
+    * The fact that a server finished installing lives in
+      /etc/boa/control/reset_no_new_password.pid. The watchdogs, loadguard,
+      updatesymlinks and autoupboa read it: without it every watchdog
+      stops, and autoupboa deletes the operator's password opt-out files
+      again. At the top of /var/log/boa only an immutable attribute, not
+      set on every server, kept the clean-up after a broken tool fetch
+      from deleting it. The first tool that reads the stamp an earlier
+      release wrote copies it to the new place.
+
     * The Duplicity backups (backboa, duobackboa and multiback) keep the
       fact that a server has a chain in its bucket in
       /etc/boa/control/<bucket>.chain.txt instead of reading it from the
