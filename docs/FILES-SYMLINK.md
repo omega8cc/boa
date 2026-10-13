@@ -122,6 +122,26 @@ autosymlink --site example.com --account o1 --archive-store --apply
   holds only what that account can read, and never keeps the other store's owner, its
   day stamps or a setuid bit.
 
+  The paths nginx never serves in a files store (the CiviCRM log, custom, upload
+  and template stores, `backup_migrate`, config sync directories, `private`, and
+  all below them) are its owner's private set. Once that owner runs in its own web
+  group they are closed to every other account; the copy leaves out those the
+  account cannot read, with an `[INFO] Un-share copy leaves out <path>` line each,
+  written once the copy itself is made. Any other entry the account cannot read
+  still stops the copy, named in an `[ERROR]` line, and nothing is copied; so do
+  more than 200 closed entries.
+
+  What is left out stays in the other account's store only, and it can hold the
+  site's own uploads made into that store while it shared it (CiviCRM custom
+  files, `backup_migrate` archives, config sync). A Drupal site's next Verify makes
+  its own empty CiviCRM log and custom stores, and none of the other paths left
+  out.
+
+  A private store is never copied in part: any entry in it the account cannot read
+  stops the copy, named. The private store of an account that runs in its own web
+  group is closed to every other account as a whole, so a share of it cannot be
+  undone: the copy is refused with an `[ERROR]` line that names the store.
+
   The copy is made only into a per-site store directory (`static/files/<url>`)
   that root owns and that neither its group nor others can write; any other is
   refused with an `Un-share copy refused` line, nothing is copied, and the site
@@ -559,15 +579,15 @@ account is untouched by the account's conversion to its own web group
 (`wg-oN`, see `INSTGRP.md`). A share across accounts is not:
 
 - **Outbound** (a site of this account reads another account's store): the
-  account's conversion is refused, and so is its step into phase B, until
-  the share is gone; the account is told which site reads which store. A
-  site on the shared `/data/all` stores refuses it the same way, and so
-  does a site's `files` or `private` link that leads anywhere but the
-  account's own `static/files/` (or its store on attached storage), or
-  into BOA's own folders there (`.backups`, `.backup-exports`,
-  `.archived`).
+  account converts to phase A and the share is left exactly as it is,
+  still working; only its step into phase B waits until the share is gone,
+  and the account's notes say which site reads which store. A site on the
+  shared `/data/all` stores holds phase B back the same way, and so does a
+  site's `files` or `private` link that leads anywhere but the account's
+  own `static/files/` (or its store on attached storage), or into BOA's
+  own folders there (`.backups`, `.backup-exports`, `.archived`).
 - **Inbound** (another account's site reads this account's store): never
-  refused, and both accounts are told. Once this account is converted, the
+  held back, and both accounts are told. Once this account is converted, the
   reading site loses write to the store and, for a private store, read too:
   the store's files are in this account's web group, which the other
   account's pools are not in.
@@ -576,9 +596,11 @@ The reading account's nightly permissions pass leaves the other account's
 store as it is, converted or not: it sets modes only below directories its
 own users own, so that store keeps what its own account's pass gives it.
 
-Give each account's site its own copy before converting either account. A
-later change is planned to make nginx refuse a site's links into another
-account's store outright.
+The reading account reaches phase B only once each such site has its own
+copy (`autosymlink --site <url> --apply --force-unshare`), and the reading
+site keeps its write to the other store only until that store's account
+converts. A later change is planned to make nginx refuse a site's links
+into another account's store outright.
 
 ## Cloning behaviour in detail
 
@@ -960,6 +982,12 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   storage), never into BOA's own folders there. A link leading anywhere else
   is left as it is, with everything below it: the task logs `STORE/SKIP` with
   where it leads, and ends with status Warning.
+- **The platform root counts only where it belongs.** A path below `sites/`
+  is the site's own by place only when the platform root resolves inside the
+  account's home or the shared platform trees (`/data/all`,
+  `/data/disk/all`), as the nightly judges a platform. A root that a link
+  above it leads elsewhere, into another account's tree say, leaves the site's
+  own store alone to decide, and everything else is `STORE/SKIP`.
 - **The rule covers the whole site directory.** It applies to the site
   directory itself and the platform's `sites/` above it, to the site's `files`
   and `private` trees, to its `modules`, `themes`, `libraries` and `vendor`,
@@ -967,6 +995,21 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   `files` and `private` trees. Each act runs inside the directory judged,
   entered for real, and new directories are made there by name, so a
   directory swapped for a link after the check is never followed.
+- **Files are written and changed without following a link.** A `.htaccess`
+  file is created in the directory judged with the Drupal core's lines and
+  mode, refusing any name already there, a link included; the old file is
+  removed only once the new lines are made. A recursive mode change sets each
+  file's mode through a handle that does not follow a link, so a file swapped
+  for one is left alone. What could not be written or changed is a warning in
+  the task log.
+- **Site configuration is written where the site dir really is.**
+  `settings.php` and `drushrc.php` are written into a temporary file in the
+  site dir judged, entered for real, and renamed over the name, so a link at
+  the name is replaced, never followed, and a site dir that leads out of the
+  account's own places is `STORE/SKIP`. `local.settings.php` is made only
+  where no name is there; its group and mode are set by name. A Grav
+  capsule's writable dirs and its secret trees are judged the same way and
+  changed from inside; `.env` and `drushrc.php` by name.
 - **Root's ownership and mode fixes leave another account's files.** The
   site Verify's two fixers (`fix-drupal-site-ownership.sh`,
   `fix-drupal-site-permissions.sh`), the platform Verify's two

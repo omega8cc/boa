@@ -51,8 +51,9 @@ name.
 ## When it switches itself on
 
 `_NGINX_LINK_GUARD=YES` in `/root/.barracuda.cnf` arms the system: every
-barracuda pass then writes the arm stamp `/var/log/boa/linkguard-arm.ready.txt`
-and runs `linkguard apply`, which
+barracuda pass then writes the arm stamp `/etc/boa/control/linkguard-arm.ready.txt`
+(an earlier release wrote it in `/var/log/boa`; a pass that disarms and `linkguard
+off` remove that one too) and runs `linkguard apply`, which
 
 1. makes BOA's links pass on every platform BOA builds and in every root
    Nginx serves;
@@ -104,7 +105,8 @@ The scan writes `/var/log/boa/linkguard.report.txt`, one line per link whose
 owner differs from its target's:
 
 - `BLOCKING` keeps the check off: a link root made (outside an account's
-  tree, or leading out of the account it is in), a link of a system user or
+  tree, leading out of the account it is in, or to a file in that account's
+  tree none of the account's identities owns), a link of a system user or
   of a user that no longer exists, or a BOA link at one of the places BOA
   itself makes them that could not be made root's (something on its way
   into the shared store is not root's alone). Turning the check on would
@@ -113,6 +115,8 @@ owner differs from its target's:
   target owner's and could not be made so, or a link an account made that
   leads out of that account, which is exactly what the check is there to
   refuse. Either is refused once the check is on, for that account only.
+  A link leading out says where it leads: into the shared store, or into
+  another account's tree or to its files (a share between two accounts).
 - `NOTE` names a configuration file that sets `disable_symlinks` itself; a
   server or location that sets it overrides the box-wide setting there.
 
@@ -130,6 +134,61 @@ that home they are refused, and never keep the check off.
 The nightly mails the operator once a day while anything blocking or refused
 is listed (unless `_INCIDENT_REPORT=OFF`), and logs it in
 `/var/log/boa/nightly.incident.log`.
+
+## The nightly count
+
+Every night, on every system whether it is armed or not, the nightly
+maintenance starts `linkguard count` once its account steps are done, and
+does not wait for it. It walks what Nginx serves the way the scan does, at
+the lowest CPU and disk priority, and appends one dated line to
+`/var/log/boa/linkguard/count.log`. It changes nothing: no link is fixed,
+the check is not switched, no mail is sent, the scan's report is left as it
+is, and Nginx is only asked for its configuration (`nginx -T`).
+
+A count stops after an hour; its line then says `result=deadline
+complete=0`. Only one count runs at a time, and it holds up no other
+linkguard run; a count that waited a minute for another one says
+`result=busy`.
+
+A line counts the links whose owner differs from their target's, by kind.
+Where the target is decides between `root-in` and `root-out`, and between
+`in-other` and `out`; where the link is decides `system-in`; who owns the
+target decides `inside`:
+
+| key | class | the link |
+|---|---|---|
+| `root-out` | BLOCKING | root's, in an account's tree, to a file outside that tree |
+| `system-in` | BLOCKING | a system user's or an unknown user's, in an account's tree |
+| `share` | REFUSED | an account's, into another account's tree or to its files |
+| `store` | REFUSED | an account's, into the shared store at a place BOA does not link |
+| `root-in` | BLOCKING | root's, in an account's tree, to a file there none of its identities owns |
+| `root` | BLOCKING | root's, outside any account's tree |
+| `system` | BLOCKING | a system user's or an unknown user's, outside any account's tree |
+| `boa` | BLOCKING | a BOA link at a BOA place that `linkguard fix` cannot make root's |
+| `boa-fix` | | a BOA link at a BOA place that is not root's yet, and that `apply` makes root's before it switches the check on |
+| `inside` | REFUSED | inside one account, not its target owner's (`fix` makes it so where it can) |
+| `in-other` | REFUSED | an account's, to a file in its own tree none of its identities owns |
+| `out` | REFUSED | an account's, leading anywhere else out of it |
+
+On a system never armed nothing has made BOA's own links root's, so most of
+them show up as `boa-fix`. After the kinds come the totals: `blocking`, the
+links that would still keep the check off once `apply` has made BOA's links
+root's (`boa-fix` is not in it), and `refused`; then whether the walk
+finished (`complete`), what it walked (`roots`, `missing`, `entries`,
+`unwalked`) and how long it took (`secs`). `state` and `armed` say whether
+the check was on and the system armed; on an armed system the count runs
+after the night's `apply`, so it counts what that left. A night that could
+not count says why instead (`result=busy`, `result=no-nginx-config`,
+`result=no-scan`).
+
+```
+tail -n 7 /var/log/boa/linkguard/count.log   # the last week
+linkguard status                             # ends with the last count
+```
+
+The log lives in a directory of its own, which the clean-up of
+`/var/log/boa/*.log` during a major system upgrade leaves alone, and is
+kept.
 
 ## Verify, and find out why it is off
 
