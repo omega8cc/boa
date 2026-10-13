@@ -31,37 +31,137 @@ _check_root
 # A Grav store (KahunaCart) needs Grav's scheduler every minute: its worker
 # sends the order mail, mints download grants and runs the sweeps and the
 # renewals. Each enabled site of this instance whose capsule carries
-# KahunaCart gets one `grav scheduler` tick, as the instance user through the
-# Grav launcher (which gives it the site's database). The ticks run in a
-# detached pass with a lock of their own, started before this script's own
-# lock, so a long Aegir task never holds a store's queue. A copy of a store
-# (its capsule carries .boa-copy) is left alone until Cutover makes it the
-# live store or the account releases it with
+# KahunaCart and names its database in drushrc.php gets one `bin/grav
+# scheduler` tick. A store kept in its own SQLite file is left alone: the
+# copy safeguards (signing key, pause, hold) act on the database on record.
+# A copy of a store (its capsule carries .boa-copy) is left alone too until
+# Cutover makes it the live store or the account releases it with
 # static/control/kahunacart-run.<domain>.info: a copy must not mail or bill
-# the source's customers. Root only reads the instance's site aliases and
-# tests names: a value read there is used only when it is a path inside this
-# instance or a domain, and the tick runs as the instance user.
-_grav_store_ticks() {
-  local _a _sp _uri _en
-  for _a in /data/disk/${_H_USER}/.drush/*.alias.drushrc.php; do
-    [[ -f "${_a}" ]] && [[ ! -L "${_a}" ]] || continue
-    grep -q "^  'context_type' => 'site',$" "${_a}" || continue
-    _sp="$(sed -n "s/^  'site_path' => '\([^']*\)',$/\1/p" "${_a}" | head -1)"
-    _uri="$(sed -n "s/^  'uri' => '\([^']*\)',$/\1/p" "${_a}" | head -1)"
-    _en="$(sed -n "s/^  'site_enabled' => \(true\|false\),$/\1/p" "${_a}" | head -1)"
-    [[ "${_en}" = "true" ]] || continue
-    [[ "${_sp}" =~ ^/data/disk/${_H_USER}/[A-Za-z0-9._/-]+$ ]] || continue
-    [[ "${_sp}" != *..* ]] || continue
-    [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
-    [[ -f "${_sp}/system/defines.php" ]] || continue
-    [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
-    # Only a store with a database on record: the copy safeguards (signing
-    # key, pause, hold) act on that database, and a store on its own SQLite
-    # file gets none of them.
-    [[ -f "${_sp}/drushrc.php" ]] && [[ ! -L "${_sp}/drushrc.php" ]] || continue
-    grep -Eq "\\\$options *\[ *['\"]db_name['\"] *\] *= *['\"][^'\"]+['\"]" "${_sp}/drushrc.php" || continue
-    su -s /bin/bash - "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 0; if [ -e .boa-copy ] && [ ! -e \"\${HOME}/static/control/kahunacart-run.${_uri}.info\" ]; then exit 0; fi; timeout 240 /opt/local/bin/grav scheduler" > /dev/null 2>&1 < /dev/null 8>&-
+# the source's customers.
+#
+# The tick runs as the site's own web pool user, the identity its PHP already
+# runs as, never as the instance user: Grav runs the custom jobs its admins
+# define and loads the plugins under user/, both writable from the web. The
+# instance user only reads the capsule's drushrc.php (never root, which could
+# be pointed at another account's file) and root hands the validated database
+# settings to the tick through its environment, never its command line.
+#
+# The scan runs in a detached pass with a lock of its own, started before
+# this script's own lock, so a long Aegir task never holds a store's queue;
+# each store's tick is detached again under a lock of its own, so one slow
+# store never delays another.
+
+# The pool user and PHP the Grav vhost pins for this instance: the first
+# socket among 8.4, 8.5, 8.6 and 8.3, else the bare one (as provision's
+# vhost_grav.tpl.php chooses it).
+_grav_web_identity() {
+  local _v
+  _GRAV_WU=""
+  _GRAV_PHP=""
+  for _v in 84 85 86 83; do
+    if [[ -e "/run/${_H_USER}.${_v}.fpm.socket" ]]; then
+      _GRAV_WU="${_H_USER}.${_v}.web"
+      _GRAV_PHP="/opt/php${_v}/bin/php"
+      break
+    fi
   done
+  if [[ -z "${_GRAV_WU}" ]] && [[ -e "/run/${_H_USER}.fpm.socket" ]]; then
+    _GRAV_WU="${_H_USER}.web"
+    for _v in 84 85 86 83; do
+      if [[ -x "/opt/php${_v}/bin/php" ]]; then
+        _GRAV_PHP="/opt/php${_v}/bin/php"
+        break
+      fi
+    done
+  fi
+  [[ -n "${_GRAV_WU}" ]] && [[ -x "${_GRAV_PHP}" ]] || return 1
+  id -u "${_GRAV_WU}" > /dev/null 2>&1 || return 1
+  return 0
+}
+
+# One store's tick: $1 the capsule, $2 its domain. Runs in a subshell of its
+# own, so the exports below never reach anything else.
+_grav_store_tick() {
+  local _sp="${1}" _uri="${2}" _rc _n _u _p _h _o _v _k
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && [ ! -e '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null)" || return 0
+  _n="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _u="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _p="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _h="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_host'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _o="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_port'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _rc=""
+  [[ -n "${_n}" ]] && [[ -n "${_u}" ]] && [[ -n "${_p}" ]] || return 0
+  [[ -n "${_o}" ]] || _o=3306
+  [[ -n "${_h}" ]] || _h=localhost
+  if [[ "${_h}" = "localhost" ]] && [[ "${_o}" != "3306" ]]; then
+    _h=127.0.0.1
+  fi
+  for _v in "${_n}" "${_u}" "${_p}" "${_h}" "${_o}"; do
+    [[ "${_v}" =~ ^[A-Za-z0-9._:-]+$ ]] || return 0
+  done
+  _k="GRAV_CONFIG__plugins__kahunacart__database__"
+  export GRAV_CONFIG=1
+  export "${_k}type=mysql"
+  export "${_k}auto_migrate=manual"
+  export "${_k}mysql__host=${_h}"
+  export "${_k}mysql__port=${_o}"
+  export "${_k}mysql__dbname=${_n}"
+  export "${_k}mysql__username=${_u}"
+  export "${_k}mysql__password=${_p}"
+  timeout 250 su - -s /bin/bash \
+    -w "GRAV_CONFIG,${_k}type,${_k}auto_migrate,${_k}mysql__host,${_k}mysql__port,${_k}mysql__dbname,${_k}mysql__username,${_k}mysql__password" \
+    "${_GRAV_WU}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 0; exec timeout 240 '${_GRAV_PHP}' bin/grav scheduler" \
+    > /dev/null 2>&1 < /dev/null
+}
+
+_grav_store_ticks() {
+  local _a _sp _uri _lk
+  local -a _files=()
+  _grav_web_identity || return 0
+  for _a in /data/disk/${_H_USER}/.drush/*.alias.drushrc.php; do
+    [[ -f "${_a}" ]] && [[ ! -L "${_a}" ]] && _files+=("${_a}")
+  done
+  if [[ "${#_files[@]}" -gt 0 ]]; then
+    # One pass over every alias: an enabled site's site_path and uri, each
+    # a whole quoted value on its own two-space-indented line, the first
+    # match per file.
+    while IFS=$'\t' read -r _sp _uri; do
+      [[ "${_sp}" =~ ^/data/disk/${_H_USER}/[A-Za-z0-9._/-]+$ ]] || continue
+      [[ "${_sp}" != *..* ]] || continue
+      [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
+      [[ -f "${_sp}/system/defines.php" ]] || continue
+      [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
+      _lk="/run/grav-tick-${_H_USER}-${_uri}.lock"
+      ( : >> "${_lk}" ) 2> /dev/null || continue
+      (
+        exec 8>&-
+        exec 7>"${_lk}"
+        flock -n 7 || exit 0
+        _grav_store_tick "${_sp}" "${_uri}"
+      ) < /dev/null > /dev/null 2>&1 &
+    done < <(timeout 60 awk -v q="'" '
+      function val(line, key,   p, v) {
+        p = "  " q key q " => " q
+        if (index(line, p) != 1) return ""
+        v = substr(line, length(p) + 1)
+        if (substr(v, length(v) - 1) != q ",") return ""
+        v = substr(v, 1, length(v) - 2)
+        if (index(v, q) > 0) return ""
+        return v
+      }
+      function emit() {
+        if (ctx == "site" && en == "true" && sp != "" && uri != "") print sp "\t" uri
+        ctx = ""; en = ""; sp = ""; uri = ""
+      }
+      FNR == 1 && NR > 1 { emit() }
+      $0 == "  " q "context_type" q " => " q "site" q "," { ctx = "site" }
+      $0 == "  " q "site_enabled" q " => true," && en == "" { en = "true" }
+      $0 == "  " q "site_enabled" q " => false," && en == "" { en = "false" }
+      sp == "" { v = val($0, "site_path"); if (v != "") sp = v }
+      uri == "" { v = val($0, "uri"); if (v != "") uri = v }
+      END { emit() }
+    ' "${_files[@]}" 2> /dev/null)
+  fi
   touch /var/log/boa/grav-ticks-${_H_USER}
 }
 
