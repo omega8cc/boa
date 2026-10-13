@@ -10910,7 +10910,9 @@ _webmin_remove() {
     _mrun "apt-get remove webmin -y --purge -qq"
   fi
   if _webmin_pkg_known; then
-    # a held package, or a dpkg problem: Webmin stays as it was, running
+    # a held package, or a dpkg problem: Webmin stays as it was, running,
+    # and the copy goes, or a held one would gather a copy every pass
+    [ -n "${_bak}" ] && rm -f "${_bak}"
     _msg "WARN: Webmin could not be removed (held, or a dpkg problem); it stays"
     _msg "WARN: as it was and the next barracuda run tries again"
     return 1
