@@ -204,7 +204,16 @@ _check_root() {
     i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
     *) _PRN_VLV="notice" ;;
   esac
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  # The old `|| hostname -f` bound to tr (rc 0 on empty input) and never
+  # fired; an empty /etc/hostname then dropped the host part of every
+  # bucket name, so one account name on two boxes shared one chain.
+  # The raw value is kept: BOA.sh.txt derives the sentinel names from it.
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+  if [ -z "${_hName}" ]; then
+    echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
+    exit 1
+  fi
   _cpuNr="$(cat /data/all/cpuinfo 2>/dev/null | tr -d '\n' || nproc 2>/dev/null)"
   if [ -n "${_cpuNr}" ]; then
     [ "${_cpuNr}" -gt 8 ] && _useCpu=4

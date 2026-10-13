@@ -1,6 +1,8 @@
 
 export _tRee=dev
-export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 
 _pkg_installed() {
   # Return 0 if package is installed, 1 otherwise.

@@ -310,7 +310,7 @@ For more detailed information, please refer to Akamai's official [Object Storage
 - Buckets are associated with the Octopus system user running the command.
 - User-specific bucket names follow the convention: `back-to-USER-HOSTNAME-PROVIDER`.
 - The `USER` is your Ægir system user as visible in the `/data/disk/USER/static` path.
-- The `HOSTNAME` is your system hostname, but with dots replaced by hyphens.
+- The `HOSTNAME` is your system hostname, read from `/etc/hostname` (with `hostname -f` when that file is empty), but with dots replaced by hyphens. With neither giving a name the backup refuses to run.
 - The `PROVIDER` is the short name of the vendor, with underscores replaced by hyphens:
 
 ```sh

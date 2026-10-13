@@ -1730,7 +1730,9 @@ _blanket=NO
 grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _blanket=YES
 _hosted=NO
 [ -e /root/.host8.cnf ] && _hosted=YES
-case "$(cat /etc/hostname 2>/dev/null)" in
+_hn="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hn}" ] || _hn="$(hostname -f 2>/dev/null)"
+case "${_hn}" in
   *.aegir.cc) _hosted=YES ;;
 esac
 _j11=NO; [ -e /usr/bin/java11 ] && _j11=YES
@@ -3366,7 +3368,9 @@ _check_root() {
     && [ "${_cmd}" != "autosync" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
   fi
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
   _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
   _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
 }

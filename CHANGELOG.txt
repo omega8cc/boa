@@ -4,6 +4,18 @@
 
 @=> Important Fixes
 
+    * Off-site backups no longer lose the server's name from their bucket
+      names when /etc/hostname is empty. The fallback to hostname -f never
+      ran, so multiback named such a server's buckets back-to-USER--PROVIDER,
+      the same name for one account on every such server, and two servers
+      could write into one backup chain. The name now falls back to
+      hostname -f, and multiback and mybackup refuse to run when neither
+      gives one. The same fallback now applies wherever the server's name
+      decides an identity or a path: the license check, the hosted-server
+      test, the database host of a new instance, the Octopus control panel
+      name, the migration tools' source and target test, and the directory
+      of the nightly database dumps.
+
     * A dry run of xmass sync or cutover no longer writes its list of
       out-of-root file links to /var/log/boa: it prints the batch a live
       pass would copy and leaves the source untouched. A live pass that
