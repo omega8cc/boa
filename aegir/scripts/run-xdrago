@@ -28,6 +28,55 @@ _check_root() {
 }
 _check_root
 
+# A Grav store (KahunaCart) needs Grav's scheduler every minute: its worker
+# sends the order mail, mints download grants and runs the sweeps and the
+# renewals. Each enabled site of this instance whose capsule carries
+# KahunaCart gets one `grav scheduler` tick, as the instance user through the
+# Grav launcher (which gives it the site's database). The ticks run in a
+# detached pass with a lock of their own, started before this script's own
+# lock, so a long Aegir task never holds a store's queue. A copy of a store
+# (its capsule carries .boa-copy) is left alone until Cutover makes it the
+# live store or the account releases it with
+# static/control/kahunacart-run.<domain>.info: a copy must not mail or bill
+# the source's customers. Root only reads the instance's site aliases and
+# tests names: a value read there is used only when it is a path inside this
+# instance or a domain, and the tick runs as the instance user.
+_grav_store_ticks() {
+  local _a _sp _uri _en
+  for _a in /data/disk/${_H_USER}/.drush/*.alias.drushrc.php; do
+    [[ -f "${_a}" ]] && [[ ! -L "${_a}" ]] || continue
+    grep -q "^  'context_type' => 'site',$" "${_a}" || continue
+    _sp="$(sed -n "s/^  'site_path' => '\([^']*\)',$/\1/p" "${_a}" | head -1)"
+    _uri="$(sed -n "s/^  'uri' => '\([^']*\)',$/\1/p" "${_a}" | head -1)"
+    _en="$(sed -n "s/^  'site_enabled' => \(true\|false\),$/\1/p" "${_a}" | head -1)"
+    [[ "${_en}" = "true" ]] || continue
+    [[ "${_sp}" =~ ^/data/disk/${_H_USER}/[A-Za-z0-9._/-]+$ ]] || continue
+    [[ "${_sp}" != *..* ]] || continue
+    [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
+    [[ -f "${_sp}/system/defines.php" ]] || continue
+    [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
+    su -s /bin/bash - "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 0; if [ -e .boa-copy ] && [ ! -e \"\${HOME}/static/control/kahunacart-run.${_uri}.info\" ]; then exit 0; fi; timeout 240 /opt/local/bin/grav scheduler" > /dev/null 2>&1 < /dev/null 8>&-
+  done
+  touch /var/log/boa/grav-ticks-${_H_USER}
+}
+
+_grav_store_ticks_detached() {
+  local _gl="/run/grav-ticks-${_H_USER}.lock"
+  [[ -e "/run/boa_wait.pid" ]] && return 0
+  grep -q "^_GRAV_SUPPORT=YES" "/root/.${_H_USER}.octopus.cnf" 2>/dev/null || return 0
+  [[ -x "/opt/local/bin/grav" ]] || return 0
+  command -v flock > /dev/null 2>&1 || return 0
+  ( : >> "${_gl}" ) 2>/dev/null || return 0
+  # Started from a command substitution so this script's own bare `wait`
+  # calls never wait for it (it is never one of this shell's jobs).
+  _GRAV_TICKS_PID="$( (
+    exec 8>"${_gl}"
+    flock -n 8 || exit 0
+    _grav_store_ticks
+  ) < /dev/null > /dev/null 2>&1 & echo "$!" )"
+}
+_grav_store_ticks_detached
+
 # Serialise per instance. Overlapping cron runner.sh passes, the fast-schedule
 # loop, and the accelerated install/upgrade loop can all invoke run-xdrago for
 # the same instance at once; each would fire hosting-dispatch and waste a parallel
