@@ -3904,7 +3904,9 @@ _wg_leg_down() {
 # mount point, another owner) takes such a store out of the walks, so the
 # revert's last check reads it; with no single mount point or such an
 # owner from the start, a path there that no revert walks (a removed
-# site's store) keeps the group the same way.
+# site's store) keeps the group the same way, as does a store of that name
+# in a directory under /mnt that is not the single mount point (a copy),
+# which no revert walks either.
 _wg_mnt_stores() {
   local _m _rm _st
   [ "${_WP_M}" != "YES" ] || return 0
@@ -3972,7 +3974,7 @@ _wg_group_drop() {
     [ -n "${_r}" ] || continue
     _wg_under "${_r}" "${_seen}" && continue
     if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
-      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}) where no revert walks in this layout; the group is kept (give those paths www-data, or re-run webrevert once /mnt has a single mount point and root or the account owns the store)"
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}) where no revert walks in this layout; the group is kept: give those paths www-data, or re-run webrevert once it is the account's store at the single mount point under /mnt (root's or the account's)"
       _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
       return 1
     fi
