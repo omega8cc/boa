@@ -89,6 +89,18 @@ if (!is_file($root . '/system/defines.php') || !is_file($root . '/bin/plugin')
   || !is_file($root . '/user/plugins/kahunacart/kahunacart.php') || !@chdir($root)) {
   exit;
 }
+// BOA's pools disable getmypid(), and KahunaCart names its worker and its
+// leases with it. A stand-in for this request only, never the real pid (the
+// pool keeps that hidden), lets the worker run here.
+if (!function_exists('getmypid')) {
+  function getmypid() {
+    static $id = 0;
+    if ($id === 0) {
+      $id = random_int(100000, 2147483646);
+    }
+    return $id;
+  }
+}
 foreach (array('STDIN' => 'r', 'STDOUT' => 'w', 'STDERR' => 'w') as $name => $mode) {
   if (!defined($name)) {
     define($name, fopen('php://' . strtolower($name), $mode));
