@@ -3432,7 +3432,7 @@ _wg_u7() {
 # phase A traits complete; the NOTE names the level read now).
 _wg_u8() {
   [ "${_D_LAM}" = "B" ] && return 0
-  if _wg_residue_full; then
+  if _wg_residue_full beyond; then
     _msg "${_WP_A}: www-data paths remain in its private set, tops or attached store; phase B waits for the next run"
     _wg_note "phase B deferred: paths in www-data remain in the private set, the tops or the store on attached storage"
     return 5
@@ -4187,8 +4187,8 @@ _wg_under() {
 # store and private parts of the profile's sites (_wg_parts) the roots
 # leave out (no single mountpoint under /mnt). Those took the web group
 # from the nightly, the site fixers, provision or the conversion's claim.
-# $1 = store: that store alone, what the walk up takes beyond the roots
-# and the B check reads (never another account's store, never one a third
+# $1 = store: that store alone, what the walk up and its residue test
+# take beyond the roots (never another account's store, never one a third
 # uid owns), so the way up and the way down cover it alike.
 _wg_parts_beyond() {
   local _k _p _r _x _st _rr=""
@@ -4520,13 +4520,26 @@ _wg_web_residue() {
   return 1
 }
 
-# The residue rule in full (u8): www-data in the trio, a store top,
-# anywhere in the private set (a store's nginx-denied subtrees included)
-# or anywhere in the account's store on attached storage that the walk
-# takes beyond the roots (_wg_parts_beyond store: a partial walk, or a
-# writer after it; a left-alone path there excepted), not counting
-# hard-linked files, FIFOs and entries no account identity owns. 0 when
-# any is left.
+# What the B check reads whole beyond the private set, one resolved path
+# per line: the account's own store on attached storage, root's or its
+# own, whether a root covers it or not (_acct_store root; never the
+# master's).
+_wg_b_beyond() {
+  local _st
+  [ "${_WP_M}" != "YES" ] || return 0
+  _st=$(_acct_store "${_WP_A}" root 2> /dev/null) || return 0
+  _st=$(realpath -e -- "${_st}" 2> /dev/null) || return 0
+  _wg_clean "${_st}" && printf '%s\n' "${_st}"
+  return 0
+}
+
+# The residue rule in full: www-data in the trio, a store top or anywhere
+# in the private set (a store's nginx-denied subtrees included), not
+# counting hard-linked files, FIFOs and entries no account identity owns.
+# $1 = beyond (the B check, u8, only): also anywhere in what _wg_b_beyond
+# prints (a partial walk, or a writer after it; a left-alone path there
+# excepted); webdrift's --deep read stays on the private set. 0 when any
+# is left.
 _wg_residue_full() {
   local _k _p _uids _u _o=() _WG_LEFT="" _WG_PRUNE=() _lr=NO
   _uids=$(_wg_own_uids)
@@ -4550,6 +4563,7 @@ _wg_residue_full() {
         ;;
     esac
   done < <(_wg_parts)
+  [ "${1:-}" = "beyond" ] || return 1
   while IFS= read -r _p; do
     [ -n "${_p}" ] || continue
     if [ "${_lr}" = "NO" ]; then
@@ -4560,7 +4574,7 @@ _wg_residue_full() {
     _wg_left_prune "${_p}" .
     [ -n "$(_wg_in "${_p}" find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
       \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
-  done < <(_wg_parts_beyond store)
+  done < <(_wg_b_beyond)
   return 1
 }
 
@@ -5574,8 +5588,8 @@ _wg_status() {
 # witness that fires, "ALRT <text>" or "NOTE <text>"; with --report a line
 # RESIDUE when the account carries a record and www-data is back in its
 # trio or store tops, and with --deep also anywhere in its private set (the
-# residue rule in full, as the B check reads it; the nightly passes it and
-# then runs instgrp reclaim). With
+# residue rule in full; only the B check also reads the store on attached
+# storage whole; the nightly passes it and then runs instgrp reclaim). With
 # --own night the caller is the account's nightly pass: its own hold (the
 # nightly marker naming a process this run descends from) is not a live
 # hold here, and DR10 is read for this caller alone.
