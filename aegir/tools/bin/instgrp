@@ -2561,6 +2561,13 @@ _wg_note() {
   return 0
 }
 
+# A note that also goes into instgrp.log: why phase B waits, or what a run
+# at B left in www-data (the Octopus arm points at that log).
+_wg_note_log() {
+  _wg_note "$@"
+  _log "${_WP_A}: $*"
+}
+
 # A note the walks would write again in the same run (each walk reads the
 # public set twice, and a raise to B walks twice): written once per run
 # and notes file, 0 when it is new (and written now), 1 when it was
@@ -3456,12 +3463,12 @@ _wg_u8() {
   [ "${_D_LAM}" = "B" ] && return 0
   if _l=$(_wg_store_gone); then
     _msg "${_WP_A}: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed); phase B waits until it resolves"
-    _wg_note "phase B deferred: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed)"
+    _wg_note_log "phase B deferred: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed)"
     return 5
   fi
   if _wg_residue_full part; then
     _msg "${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout; phase B waits until the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
-    _wg_note "phase B deferred: paths in www-data remain in the sites' stores that the conversion does not walk in this layout; it waits until the layout is one BOA makes"
+    _wg_note_log "phase B deferred: paths in www-data remain in the sites' stores that the conversion does not walk in this layout; it waits until the layout is one BOA makes"
     return 5
   fi
   if [ "${_D_RAISE}" = "YES" ] || [ "${_D_BEV}" = "NO" ]; then
@@ -3839,7 +3846,7 @@ _wg_leg_up() {
   _rc=0
   if [ "${_rw}" = "2" ]; then
     _msg "NOTE: ${_WP_A}: www-data paths remain after the walk at phase B, written during it; the next run at phase B walks them"
-    _wg_note "phase B: paths in www-data remain after the walk at phase B, written during it; the next run at phase B walks them"
+    _wg_note_log "phase B: paths in www-data remain after the walk at phase B, written during it; the next run at phase B walks them"
     _rc=2
   fi
   # the parts no walk takes, read again on every run at B: what a pool
@@ -3847,7 +3854,7 @@ _wg_leg_up() {
   # process that still holds www-data since, stays there
   if _wg_residue_full part; then
     _msg "NOTE: ${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
-    _wg_note "phase B: paths in www-data remain in the sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes"
+    _wg_note_log "phase B: paths in www-data remain in the sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes"
     _rc=2
   fi
   return "${_rc}"
@@ -5487,7 +5494,10 @@ _wg_run_row() {
           fi
           ;;
         G2) _msg "NOTE: ${_WP_A}: not converted to its own group yet (instgrp convert ${_WP_A} first)" ;;
-        G3) _msg "NOTE: ${_WP_A}: this box is not ready for the web group (instgrp webcheck)" ;;
+        G3)
+          _msg "NOTE: ${_WP_A}: this box is not ready for the web group (instgrp webcheck)"
+          _log "${_WP_A}: not ready for the web group (instgrp webcheck)"
+          ;;
         G4) _msg "NOTE: ${_WP_A}: $(_wg_held_where "${_WM_LAM}") ($(_wg_grounds); see ${_WP_NOTES})" ;;
       esac
       return "$(_wg_row_rc "${_D_ROW}")"
