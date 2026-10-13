@@ -4,6 +4,20 @@
 
 @=> Important Fixes
 
+    * A major OS upgrade pass that stops before it is done no longer
+      leaves the server without its BOA cron jobs. The pass sets the
+      /var/xdrago directory aside as /var/xdrago_wait while the packages
+      move and used to put it back only at its very end, so a pass that
+      stopped on an unclean dpkg audit or on held packages started cron
+      again with every job gone: the five-minute cleanup and self-update,
+      the service watchdogs and the nightly database backups. A pass that
+      stops now puts the directory back on its way out, and the next
+      Barracuda run puts back one that a killed or crashed pass left
+      aside, before anything else reads it. If /var/xdrago was rebuilt
+      in the meantime, the rebuilt copy is kept, the one set aside only
+      adds the files it lacks, such as cron/custom.txt, and is kept in
+      /var/backups/dragon/x.
+
     * An Octopus control panel no longer fails with a blank page when
       another account on the same server uses a different list of
       disabled PHP functions. Since the control panels run in pools of

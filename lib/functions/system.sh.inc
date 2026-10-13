@@ -688,6 +688,10 @@ _if_running_as_root_barracuda() {
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
     mkdir -p ${_pthLog}
+    # A major OS upgrade pass killed or crashed while /var/xdrago was parked
+    # left it at /var/xdrago_wait, and no later pass redeploys a missing
+    # /var/xdrago: put it back before the post-install probe below reads it.
+    _xdrago_wait_restore
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
@@ -9873,6 +9877,29 @@ _major_os_upgrade_percona_check() {
   _clean_pid_exit _major_os_upgrade_percona_check
 }
 
+#
+# Put back /var/xdrago that _if_major_os_upgrade parked as /var/xdrago_wait.
+# When /var/xdrago was rebuilt meanwhile (a tools refresh run by hand, an
+# install), it keeps every name it holds, the parked tree fills in only what
+# it lacks (cron/custom.txt and the other per-box files) and is kept in the
+# dragon store: a mv onto the existing name would move it inside instead.
+_xdrago_wait_restore() {
+  local _xdrArc
+  if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
+    return 0
+  fi
+  if [ ! -e "/var/xdrago" ] && [ ! -L "/var/xdrago" ]; then
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+  elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
+    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
+    _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
+    mkdir -p "${_vBs}/dragon/x"
+    mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
+    _msg "INFO: /var/xdrago_wait merged into /var/xdrago, kept as ${_xdrArc}"
+  fi
+  return 0
+}
+
 _if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_major_os_upgrade"
@@ -9961,7 +9988,13 @@ _if_major_os_upgrade() {
     fi
     _check_dns_settings
     rm -f ${_pthLog}/ruby-sys-clean-reload.log
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    # Parked so no BOA cron job runs while the packages move; put back at the
+    # end of this pass, or by _clean_pid_exit when it stops before. Never onto
+    # an existing name, where mv would move the tree inside it.
+    _xdrago_wait_restore
+    if [ -d "/var/xdrago" ] && [ ! -e "/var/xdrago_wait" ]; then
+      mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    fi
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
@@ -10696,7 +10729,7 @@ _if_major_os_upgrade() {
     echo rotate > /var/log/syslog
     find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
       ! -name '*.archive.log' -delete 2> /dev/null
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    _xdrago_wait_restore
     ###
     ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.
     touch /root/.run_post_major_os_upgrade.info

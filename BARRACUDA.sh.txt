@@ -227,6 +227,13 @@ _clean_pid_exit() {
     && grep -q '^true$' /bin/systemctl 2>/dev/null; then
     rm -f /bin/systemctl
   fi
+  # A major OS upgrade parks /var/xdrago, where every BOA cron job lives, as
+  # /var/xdrago_wait while the packages move; an abort inside that window
+  # must put it back before cron starts again below. The helper comes with
+  # system.sh.inc, not loaded yet when an abort comes before the libs.
+  if declare -F _xdrago_wait_restore > /dev/null 2>&1; then
+    _xdrago_wait_restore
+  fi
   service cron start &> /dev/null
   _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then

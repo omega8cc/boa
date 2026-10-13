@@ -171,6 +171,8 @@ Each driver runs its `barracuda up-<tree> system` passes in turn and expects eve
 
 Fix the cause, then run the driver again, or reboot: the `/root/.run-to-<codename>.cnf` trigger is still in place and `clean-boa-env` relaunches the driver at boot. It starts over from the codename the box is on. Before EACH `barracuda up-<tree> system` attempt the driver also waits for another BOA run to finish: while any of `/run/boa_run.pid`, `/run/boa_wait.pid`, `/run/boa_system_wait.pid` or `/run/octopus_install_run.pid` exists it polls every 30 seconds for up to 60 minutes, noting the wait in its log, then proceeds.
 
+While a major upgrade pass moves the packages it sets `/var/xdrago`, where every BOA cron job lives, aside as `/var/xdrago_wait`. A pass that stops before it is done (an unclean `dpkg --audit`, held packages) puts it back on its way out, and the next Barracuda run puts back one that a killed or crashed pass left aside. If `/var/xdrago` was rebuilt meanwhile, the rebuilt copy is kept, the set-aside one only adds the files it lacks (such as `cron/custom.txt`) and is kept in `/var/backups/dragon/x/`.
+
 ### NOTE on the licence check when the key server is unreachable
 
 On the `pro` and `dev` trees every pass verifies the hostname key against the BOA mirror. Hostnames that need no key (the managed fleet domains on both trees, `*.sslip.io` on `dev`) used to be refused all the same when the mirror could not be reached, which happens on a pass launched seconds after a reboot with the resolver still down. Such a pass now logs `NOTE: the key server could not be reached; <host> is allowed on the <tree> tree by its hostname` and continues. Every other hostname is still refused until the mirror answers.
