@@ -4523,13 +4523,24 @@ _wg_web_residue() {
 # What the B check reads whole beyond the private set, one resolved path
 # per line: the account's own store on attached storage, root's or its
 # own, whether a root covers it or not (_acct_store root; never the
-# master's).
+# master's), then every store or private part of the profile's sites that
+# the way down walks beyond the roots and that store does not hold
+# (_wg_parts_beyond: no single mountpoint under /mnt, a store a third uid
+# owns). The walk up never takes those, so phase B waits while one of
+# them keeps www-data, never commits with it there.
 _wg_b_beyond() {
-  local _st
-  [ "${_WP_M}" != "YES" ] || return 0
-  _st=$(_acct_store "${_WP_A}" root 2> /dev/null) || return 0
-  _st=$(realpath -e -- "${_st}" 2> /dev/null) || return 0
-  _wg_clean "${_st}" && printf '%s\n' "${_st}"
+  local _st="" _p
+  if [ "${_WP_M}" != "YES" ] && _st=$(_acct_store "${_WP_A}" root 2> /dev/null) \
+    && _st=$(realpath -e -- "${_st}" 2> /dev/null) && _wg_clean "${_st}"; then
+    printf '%s\n' "${_st}"
+  else
+    _st=""
+  fi
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] || continue
+    [ -n "${_st}" ] && _wg_under "${_p}" "${_st}" && continue
+    printf '%s\n' "${_p}"
+  done < <(_wg_parts_beyond)
   return 0
 }
 
@@ -4537,9 +4548,9 @@ _wg_b_beyond() {
 # in the private set (a store's nginx-denied subtrees included), not
 # counting hard-linked files, FIFOs and entries no account identity owns.
 # $1 = beyond (the B check, u8, only): also anywhere in what _wg_b_beyond
-# prints (a partial walk, or a writer after it; a left-alone path there
-# excepted); webdrift's --deep read stays on the private set. 0 when any
-# is left.
+# prints (a partial walk, a writer after it, or a part no walk takes; a
+# left-alone path there excepted); webdrift's --deep read stays on the
+# private set. 0 when any is left.
 _wg_residue_full() {
   local _k _p _uids _u _o=() _WG_LEFT="" _WG_PRUNE=() _lr=NO
   _uids=$(_wg_own_uids)
