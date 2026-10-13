@@ -571,6 +571,12 @@
       pass that disarms removes the old stamps of the web group and of
       the link check as well, and linkguard off the link check's.
 
+    * On omega8.cc-hosted servers the one-shot that writes the whole
+      ghost-cleanup family as YES runs once per server, as its own notes
+      always said. Its stamp lives in /etc/boa/control and names no
+      release, so a toggle the operator sets afterwards is no longer put
+      back to YES at every release.
+
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
       items above.
 
