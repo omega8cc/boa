@@ -3822,12 +3822,21 @@ _wg_leg_up() {
     [ "${_rw}" = "1" ] && return 1
     _wg_d9 commit
   fi
+  _rc=0
   if [ "${_rw}" = "2" ]; then
     _msg "NOTE: ${_WP_A}: www-data paths remain after the walk at phase B, written during it; the next run at phase B walks them"
     _wg_note "phase B: paths in www-data remain after the walk at phase B, written during it; the next run at phase B walks them"
-    return 2
+    _rc=2
   fi
-  return 0
+  # the parts no walk takes, read again on every run at B: what a pool
+  # wrote there after the B check read them, before u12 reloaded it, or a
+  # process that still holds www-data since, stays there
+  if _wg_residue_full part; then
+    _msg "NOTE: ${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
+    _wg_note "phase B: paths in www-data remain in the sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes"
+    _rc=2
+  fi
+  return "${_rc}"
 }
 
 # ---- the down leg ----------------------------------------------------------
@@ -4612,7 +4621,8 @@ _wg_web_residue() {
 # a root covers it or not: _acct_store root; never the master's) does not
 # hold (_wg_parts_beyond: no single mountpoint under /mnt, a store a third
 # uid owns). The walk up never takes a part, so phase B waits while one
-# keeps www-data at the B check, until the layout is one BOA makes.
+# keeps www-data at the B check, until the layout is one BOA makes, and a
+# run at B that finds one there after its walk says so (exit 2).
 _wg_b_beyond() {
   local _st="" _p
   if [ "${_WP_M}" = "YES" ] || ! _st=$(_acct_store "${_WP_A}" root 2> /dev/null) \
