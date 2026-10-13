@@ -3864,10 +3864,34 @@ _wg_leg_down() {
   return 0
 }
 
+# Every files store of the account's name on attached storage, one
+# resolved path per line, whatever the mount count under /mnt or the
+# store's owner: <m>/files/<acct>/static/files for each <m> under /mnt, a
+# real directory reached with no link below <m>, as _acct_store takes it;
+# none for the master. A layout changed since the conversion (a second
+# mount point, another owner) takes such a store out of the walks, so the
+# revert's last check reads it.
+_wg_mnt_stores() {
+  local _m _rm _st
+  [ "${_WP_M}" != "YES" ] || return 0
+  for _m in /mnt/*; do
+    [ -d "${_m}" ] || continue
+    _st="${_m}/files/${_WP_A}/static/files"
+    [ -d "${_st}" ] && [ ! -L "${_st}" ] || continue
+    _rm=$(realpath -e -- "${_m}" 2> /dev/null) || continue
+    _st="${_rm}/files/${_WP_A}/static/files"
+    [ "$(realpath -e -- "${_m}/files/${_WP_A}/static/files" 2> /dev/null)" = "${_st}" ] || continue
+    _wg_clean "${_st}" && printf '%s\n' "${_st}"
+  done
+  return 0
+}
+
 # d6: no path and no pool file carrying the gid: delist every member and
-# delete the group together; else 2, the group and its listings kept.
+# delete the group together; else 2, the group and its listings kept. The
+# roots, what the way down walks beyond them, and every store of the
+# account's name under /mnt that those do not hold are read.
 _wg_group_drop() {
-  local _gid _u _e _f _r
+  local _gid _u _e _f _r _x _seen=""
   _gid=$(_gid_of "${_WP_G}")
   [ -n "${_gid}" ] || return 0
   while read -r _e _f; do
@@ -3883,6 +3907,7 @@ _wg_group_drop() {
       _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
       return 1
     fi
+    _x=$(realpath -e -- "${_r}" 2> /dev/null) && _seen="${_seen}${_x}"$'\n'
   done
   while IFS= read -r _r; do
     [ -n "${_r}" ] || continue
@@ -3891,7 +3916,17 @@ _wg_group_drop() {
       _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
       return 1
     fi
+    _seen="${_seen}${_r}"$'\n'
   done < <(_wg_parts_beyond)
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    _wg_under "${_r}" "${_seen}" && continue
+    if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
+      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
+      return 1
+    fi
+  done < <(_wg_mnt_stores)
   for _u in $(getent group "${_WP_G}" | cut -d: -f4 | tr ',' ' '); do
     gpasswd -d "${_u}" "${_WP_G}" > /dev/null 2>&1
   done
