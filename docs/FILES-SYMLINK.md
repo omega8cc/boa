@@ -1002,6 +1002,14 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   file's mode through a handle that does not follow a link, so a file swapped
   for one is left alone. What could not be written or changed is a warning in
   the task log.
+- **Site configuration is written where the site dir really is.**
+  `settings.php` and `drushrc.php` are written into a temporary file in the
+  site dir judged, entered for real, and renamed over the name, so a link at
+  the name is replaced, never followed, and a site dir that leads out of the
+  account's own places is `STORE/SKIP`. `local.settings.php` is made only
+  where no name is there; its group and mode are set by name. A Grav
+  capsule's writable dirs and its secret trees are judged the same way and
+  changed from inside; `.env` and `drushrc.php` by name.
 - **Root's ownership and mode fixes leave another account's files.** The
   site Verify's two fixers (`fix-drupal-site-ownership.sh`,
   `fix-drupal-site-permissions.sh`), the platform Verify's two
