@@ -582,6 +582,11 @@
       archive log at its first run; to start a new full chain on
       purpose, remove both.
 
+    * An account's log/hosting_cron_use_backend.txt, the switch for
+      Ægir's backend cron, stays where the operator put it. Every release,
+      and every refresh of the cron module, deleted it from all accounts,
+      so the next nightly put the account back on cron over HTTP.
+
     * On omega8.cc-hosted servers the one-shot that writes the whole
       ghost-cleanup family as YES runs once per server, as its own notes
       always said. Its stamp lives in /etc/boa/control and names no

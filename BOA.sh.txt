@@ -2904,10 +2904,6 @@ _update_agents() {
         _tUsr=
         _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
-          if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-            _acct_in_real_dir "${_pthSysUsr}/log" \
-              rm -f -- ./hosting_cron_use_backend.txt
-          fi
           ### The account owns its alias and the whole platform it names: the
           ### root is taken only when it is one of the account's own
           ### hostmaster platforms (_acct_hm_root), and the module is put
@@ -2927,20 +2923,12 @@ _update_agents() {
     fi
   fi
 
-  if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      _tUsr=
-      _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
-        if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-          _acct_in_real_dir "${_pthSysUsr}/log" \
-            rm -f -- ./hosting_cron_use_backend.txt
-        fi
-      fi
-    done
-    touch ${_pthLog}/hosting.cron.ctrl.f99.${_tRee}.${_xSrl}.pid
-  fi
+  # An account's log/hosting_cron_use_backend.txt is the operator's switch
+  # for Aegir's backend cron (the nightly and every Octopus pass set the
+  # Hostmaster variable from it): BOA never removes it. Both the loop above
+  # and a once-per-release block took it from every account, which undid
+  # BOA's own default writes of one night in 2024 and then, at every
+  # release and template change, every operator's choice.
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
