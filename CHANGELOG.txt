@@ -186,6 +186,10 @@
 
 @=> Security
 
+    * A Grav site's premium licence file, user/data/licenses.yaml, is kept
+      at 0660 by Verify and by the site and platform permission heals,
+      which used to leave it world-readable like the rest of user/data.
+
     * A site task's Verify, install or deploy no longer follows a link
       the account put in five more places: at the name of a .htaccess
       file it writes anew, in place of a file whose mode it changes in a
@@ -449,6 +453,21 @@
       one share that tool refuses: a private store whose owner runs in
       its own web group, which the two accounts settle between them
       (docs/INSTGRP.md).
+
+@=> New Features
+
+    * Grav shops: a Grav site can now be created on a database server for
+      a KahunaCart shop (KahunaCart 1.5.4 or later, Percona 8.4). The
+      panel creates its database and carries it through every task, the
+      dump included in its backups; the site gets its database settings
+      from its vhost and the grav command, never from a file its PHP can
+      read; Verify applies the store's schema changes; and BOA runs the
+      store's worker every minute inside the site's own PHP-FPM pool, never
+      Grav's whole scheduler. A copy made by Clone or Upgrade a copy is held
+      until Cutover or until the account creates
+      ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
+      signing secret of its own and a paused store. A store kept in its own
+      SQLite file is warned about and is not cloned.
 
 @=> Improvements
 
