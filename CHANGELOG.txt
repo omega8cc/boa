@@ -249,9 +249,9 @@
       files store on attached storage whether root or the account owns
       it (migratefs keeps root as the owner of the one BOA made in the
       account's home), and its revert walks that store back to www-data
-      and checks it before it removes the group. The per-instance group's
-      walks are unchanged: they take that store only when the account
-      owns it and no link is on the way to it (docs/INSTGRP.md).
+      and checks it before it removes the group. The per-instance
+      group's walks are unchanged: they take that store only when the
+      account owns it and no link is on the way to it (docs/INSTGRP.md).
 
     * Phase B of the web group conversion, still switched off, waits
       while a directory or file of the account's in its files store on
