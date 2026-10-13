@@ -492,9 +492,9 @@ changes nothing and names its reason:
   other than root or the account, the conversion leaves those stores as
   they are, so phase B waits until the layout is one BOA makes;
 - the account's `~/static/files` a link that does not resolve (its
-  attached storage not mounted, or the link changed), before phase B: no
-  walk and no check reaches the store then, so phase B waits until it
-  resolves;
+  attached storage not mounted, or the link changed), before phase B:
+  while the storage is not mounted, no walk and no check reaches the
+  store, so phase B waits until the link resolves;
 - before phase B only, one of the four things the next section lists.
 
 A frozen account (`log/proxied.pid`, a migration in flight) is skipped,
