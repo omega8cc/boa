@@ -4,6 +4,12 @@
 
 @=> Important Fixes
 
+    * backboa and duobackboa retry an incremental run once in full mode
+      when duplicity refuses it because the bucket lost its signature
+      files while keeping the backup volumes. Such a bucket failed every
+      daily run until the weekly full backup; multiback already retried
+      this way.
+
     * A failed backboa or duobackboa run now says so in its emailed
       report and archive log: duplicity's own error lines, which went
       only to the cron job's discarded stderr, and an ALERT line with the

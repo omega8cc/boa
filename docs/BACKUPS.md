@@ -196,7 +196,9 @@ backup never reads a source file through a link or waits on a FIFO.
   local duplicity cache is there too). To start a new full chain on
   purpose, remove the `.chain.txt` marker as well as the archive log. A
   run that fails says so in the emailed report: duplicity's own error lines
-  and an `ALERT:` line with its exit code.
+  and an `ALERT:` line with its exit code. An incremental that duplicity
+  refuses because the bucket lost its signature files is retried once in
+  full mode, as `multiback` does.
 
   The `srv.foo.bar` is a hostname of the BOA system backed up before.
   In the `retrieve` mode it will use the `_AWS_*` variables configured

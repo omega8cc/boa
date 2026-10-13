@@ -1099,6 +1099,18 @@ _backup() {
   _set_mode
   _set_cmd
   _run_backup
+  # A remote that keeps a full's volumes but lost its signature files fails
+  # every explicit incremental (rc 17) until the weekly full, even with
+  # --full-if-older-than: retry once as full, as multiback does, so the run
+  # and its report describe a backup that happened.
+  if [ "${_BUP_RC}" -ne 0 ] \
+    && [ "${_MODE}" = "incremental" ] \
+    && grep -q "Old signatures not found and incremental specified" "${_LOGFILE}"; then
+    _MODE="full"
+    _set_cmd
+    echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+    _run_backup
+  fi
   if _chain_known \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
