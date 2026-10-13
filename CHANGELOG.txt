@@ -170,6 +170,12 @@
       before, and the AI recipe still applies with vdrush, with no
       Composer step.
 
+    * The Varbase platform is built from the 11.0.10 project template,
+      whose lock carries Drupal core 11.4.8 and Canvas 1.12.0, instead of
+      11.0.7, which locked core 11.4.6. The 11.0.11 template ships without
+      its lock files, and the Varbase build installs from upstream's lock,
+      so it stays on the newest template that carries them.
+
     * PHP errors raised inside a site's PHP-FPM pool are logged again.
       With /var/log/php writable by root only, a pool's worker could not
       create the error_log file its php.ini names, so PHP handed the
