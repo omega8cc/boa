@@ -5,11 +5,14 @@
 @=> Important Fixes
 
     * Webmin is retired. BOA no longer installs it (WMN in _XTRAS_LIST is
-      ignored) or refreshes its package source, and a server that still
-      has it loses it at its next Barracuda run: the service is stopped,
-      the package purged, /etc/webmin and /usr/share/webmin removed with
-      BOA's Webmin apt source. Its signing key had gone to root's keyring,
-      never apt's, so that source kept apt accepting unverified packages
+      ignored), and a Barracuda run removes it from a server that still
+      has it unless _WEBMIN_RETIRE=NO is set in /root/.barracuda.cnf. The
+      first run that finds Webmin writes _WEBMIN_RETIRE=YES there and only
+      warns in its report; a run six or more days later removes it, saving
+      /etc/webmin and /var/webmin to /var/backups first. A kept Webmin gets
+      its apt repository with Webmin's own signing key, pinned by its
+      fingerprint, so apt verifies it: the old key went to root's keyring,
+      which apt never reads, and kept apt accepting unverified packages
       from every repository on the server.
 
     * multiback no longer marks a failed run as a good one when the run

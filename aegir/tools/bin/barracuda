@@ -1738,6 +1738,7 @@ _up_finish() {
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
+    service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
   if [ -x "/usr/sbin/csf" ] \

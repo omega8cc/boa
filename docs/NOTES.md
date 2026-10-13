@@ -20,7 +20,7 @@
 - **SR4**: Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
 - **SR7**: Apache Solr 7 (not supported on Devuan Excalibur)
 - **SR9**: Apache Solr 9
-- **WMN**: retired: Webmin is no longer installed, and a server that still has it loses it at its next Barracuda run
+- **WMN**: retired: Webmin is never installed, and a Barracuda run removes it from a server that still has it, unless `_WEBMIN_RETIRE=NO` is set in `/root/.barracuda.cnf` (see `docs/cnf/barracuda.cnf`)
 
 ### Examples:
 
