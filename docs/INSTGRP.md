@@ -480,10 +480,10 @@ changes nothing and names its reason:
   B (written during the walk, wherever it walks): phase B waits for the
   next run;
 - www-data left anywhere in a `files` or `private` store of its sites that
-  no walk takes, before phase B: with no single mount point under `/mnt`,
-  or with its store on attached storage owned by another user, the
-  conversion leaves those stores as they are, so phase B waits until the
-  layout is one BOA makes;
+  the conversion does not walk, before phase B: with no single mount point
+  under `/mnt`, or with its store on attached storage owned by a user
+  other than root or the account, the conversion leaves those stores as
+  they are, so phase B waits until the layout is one BOA makes;
 - the account's `~/static/files` a link that does not resolve, before
   phase B: while its attached storage is not mounted, no walk and no check
   reaches the store, so phase B waits until it is;

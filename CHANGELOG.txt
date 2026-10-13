@@ -264,9 +264,10 @@
       waits while a directory or file of the account's is still in
       www-data in a files or private store of its sites that the
       conversion does not take: with no single mount point under /mnt,
-      or with the account's store on attached storage owned by another
-      user, the conversion leaves those stores as they are, and phase B
-      now holds there instead of going ahead (docs/INSTGRP.md).
+      or with the account's store on attached storage owned by a user
+      other than root or the account, the conversion leaves those
+      stores as they are, and phase B now holds there instead of going
+      ahead (docs/INSTGRP.md).
 
     * The web group's revert also walks and checks the files and
       private stores of the account's sites on attached storage when
