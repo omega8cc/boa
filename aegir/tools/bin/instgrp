@@ -3448,8 +3448,13 @@ _wg_u8() {
     return 5
   fi
   if _wg_residue_full beyond; then
-    _msg "${_WP_A}: www-data paths remain in its private set, tops or attached store; phase B waits for the next run"
-    _wg_note "phase B deferred: paths in www-data remain in the private set, the tops or the store on attached storage"
+    if [ "${_WG_B_HIT}" = "part" ]; then
+      _msg "${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout; phase B waits until the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
+      _wg_note "phase B deferred: paths in www-data remain in the sites' stores that the conversion does not walk in this layout; it waits until the layout is one BOA makes"
+    else
+      _msg "${_WP_A}: www-data paths remain in its private set, tops or attached store; phase B waits for the next run"
+      _wg_note "phase B deferred: paths in www-data remain in the private set, the tops or the store on attached storage"
+    fi
     return 5
   fi
   if [ "${_D_RAISE}" = "YES" ] || [ "${_D_BEV}" = "NO" ]; then
@@ -3885,7 +3890,9 @@ _wg_leg_down() {
 # real directory reached with no link below <m>, as _acct_store takes it;
 # none for the master. A layout changed since the conversion (a second
 # mount point, another owner) takes such a store out of the walks, so the
-# revert's last check reads it.
+# revert's last check reads it; with no single mount point or such an
+# owner from the start, a path there that no revert walks (a removed
+# site's store) keeps the group the same way.
 _wg_mnt_stores() {
   local _m _rm _st
   [ "${_WP_M}" != "YES" ] || return 0
@@ -3953,7 +3960,7 @@ _wg_group_drop() {
     [ -n "${_r}" ] || continue
     _wg_under "${_r}" "${_seen}" && continue
     if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
-      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}) where no revert walks in this layout; the group is kept (give those paths www-data, or re-run webrevert once /mnt has a single mount point and root or the account owns the store)"
       _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
       return 1
     fi
@@ -4586,26 +4593,27 @@ _wg_web_residue() {
   return 1
 }
 
-# What the B check reads whole beyond the private set, one resolved path
-# per line: the account's own store on attached storage, root's or its
-# own, whether a root covers it or not (_acct_store root; never the
-# master's), then every store or private part of the profile's sites that
-# the way down walks beyond the roots and that store does not hold
-# (_wg_parts_beyond: no single mountpoint under /mnt, a store a third uid
-# owns). The walk up never takes those, so phase B waits while one of
-# them keeps www-data, never commits with it there.
+# What the B check reads whole beyond the private set, a kind and one
+# resolved path per line: store, the account's own store on attached
+# storage, root's or its own, whether a root covers it or not (_acct_store
+# root; never the master's); part, every store or private part of the
+# profile's sites that the way down walks beyond the roots and that store
+# does not hold (_wg_parts_beyond: no single mountpoint under /mnt, a store
+# a third uid owns). The walk up never takes a part, so phase B waits
+# while one keeps www-data, never commits with it there, until the layout
+# is one BOA makes.
 _wg_b_beyond() {
   local _st="" _p
   if [ "${_WP_M}" != "YES" ] && _st=$(_acct_store "${_WP_A}" root 2> /dev/null) \
     && _st=$(realpath -e -- "${_st}" 2> /dev/null) && _wg_clean "${_st}"; then
-    printf '%s\n' "${_st}"
+    printf 'store %s\n' "${_st}"
   else
     _st=""
   fi
   while IFS= read -r _p; do
     [ -n "${_p}" ] || continue
     [ -n "${_st}" ] && _wg_under "${_p}" "${_st}" && continue
-    printf '%s\n' "${_p}"
+    printf 'part %s\n' "${_p}"
   done < <(_wg_parts_beyond)
   return 0
 }
@@ -4614,11 +4622,13 @@ _wg_b_beyond() {
 # in the private set (a store's nginx-denied subtrees included), not
 # counting hard-linked files, FIFOs and entries no account identity owns.
 # $1 = beyond (the B check, u8, only): also anywhere in what _wg_b_beyond
-# prints (a partial walk, a writer after it, or a part no walk takes; a
-# left-alone path there excepted); webdrift's --deep read stays on the
-# private set. 0 when any is left.
+# prints (a partial walk, a writer after it, or a part the conversion does
+# not walk; a left-alone path there excepted), and _WG_B_HIT names the
+# kind of a hit there (store or part; empty for one before it); webdrift's
+# --deep read stays on the private set. 0 when any is left.
 _wg_residue_full() {
   local _k _p _uids _u _o=() _WG_LEFT="" _WG_PRUNE=() _lr=NO
+  _WG_B_HIT=""
   _uids=$(_wg_own_uids)
   for _u in ${_uids//,/ }; do
     _o+=( -o -uid "${_u}" )
@@ -4641,7 +4651,7 @@ _wg_residue_full() {
     esac
   done < <(_wg_parts)
   [ "${1:-}" = "beyond" ] || return 1
-  while IFS= read -r _p; do
+  while read -r _k _p; do
     [ -n "${_p}" ] || continue
     if [ "${_lr}" = "NO" ]; then
       _WG_LEFT=$(_wg_left)
@@ -4649,8 +4659,11 @@ _wg_residue_full() {
     fi
     _wg_is_left "${_p}" && continue
     _wg_left_prune "${_p}" .
-    [ -n "$(_wg_in "${_p}" find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
-      \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ] && return 0
+    if [ -n "$(_wg_in "${_p}" find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
+      \( -type d -o -type f -links 1 \) \( "${_o[@]}" \) -print -quit 2> /dev/null)" ]; then
+      _WG_B_HIT="${_k}"
+      return 0
+    fi
   done < <(_wg_b_beyond)
   return 1
 }
@@ -5665,11 +5678,11 @@ _wg_status() {
 # witness that fires, "ALRT <text>" or "NOTE <text>"; with --report a line
 # RESIDUE when the account carries a record and www-data is back in its
 # trio or store tops, and with --deep also anywhere in its private set (the
-# residue rule in full; only the B check also reads the store on attached
-# storage whole; the nightly passes it and then runs instgrp reclaim). With
-# --own night the caller is the account's nightly pass: its own hold (the
-# nightly marker naming a process this run descends from) is not a live
-# hold here, and DR10 is read for this caller alone.
+# residue rule in full; only the B check also reads the attached stores
+# (_wg_b_beyond) whole; the nightly passes it and then runs instgrp
+# reclaim). With --own night the caller is the account's nightly pass: its
+# own hold (the nightly marker naming a process this run descends from) is
+# not a live hold here, and DR10 is read for this caller alone.
 # webdrift --box: DR4 (a pool file naming a group getent does not resolve)
 # and DR6 (a stale web inventory while any record exists).
 
