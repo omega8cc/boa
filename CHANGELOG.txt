@@ -4,6 +4,15 @@
 
 @=> Important Fixes
 
+    * Barracuda no longer hangs when the Webmin signing key cannot be
+      downloaded from the BOA mirror, both when it installs Webmin and
+      when it refreshes the Webmin package source. The download used to
+      be repeated until it worked, with no limit, so a mirror without
+      the file, or one answering with an error page, held the upgrade
+      for as long as that lasted. It is now tried five times; when the
+      key still does not arrive, Barracuda prints a warning naming the
+      address and goes on, and the next upgrade tries again.
+
     * A major OS upgrade pass that stops before it is done no longer
       leaves the server without its BOA cron jobs. The pass sets the
       /var/xdrago directory aside as /var/xdrago_wait while the packages

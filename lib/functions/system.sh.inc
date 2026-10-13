@@ -10745,6 +10745,35 @@ _if_major_os_upgrade() {
   fi
 }
 
+#
+# Fetch the Webmin signing key from the BOA mirror into the working directory
+# and import it. The tries are counted: a mirror that answers with an error
+# page or without the file must not hold the pass. 1 when no key arrived, so
+# the caller leaves its marker unwritten and the next barracuda run retries.
+_webmin_key_import() {
+  local _wKeyUrl="${_urlDev}/jcameron-key.gpg"
+  local _max_attempts=5
+  local _attempt_num=1
+  local _wGpg=gpg
+  [ -x "/usr/bin/gpg2" ] && _wGpg=gpg2
+  while [ "${_attempt_num}" -le "${_max_attempts}" ]; do
+    rm -f jcameron-key.gpg*
+    wget ${_wgetGet} "${_wKeyUrl}"
+    if grep -q GnuPG jcameron-key.gpg 2> /dev/null; then
+      ${_wGpg} --import < jcameron-key.gpg &> /dev/null
+      rm -f jcameron-key.gpg*
+      return 0
+    fi
+    _attempt_num=$((_attempt_num+1))
+    if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
+      sleep 9
+    fi
+  done
+  rm -f jcameron-key.gpg*
+  _msg "WARN: Webmin key not fetched from ${_wKeyUrl} after ${_max_attempts} attempts, the next barracuda run retries"
+  return 1
+}
+
 _webmin_apt_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _webmin_apt_update"
@@ -10757,21 +10786,9 @@ _webmin_apt_update() {
         sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
       echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
         sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f jcameron-key.gpg*
-        wget ${_wgetGet} "${_urlDev}/jcameron-key.gpg"
-        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
-        sleep 2
-      done
-      if [ -x "/usr/bin/gpg2" ]; then
-        _GPG=gpg2
-      else
-        _GPG=gpg
+      if _webmin_key_import; then
+        touch ${_pthLog}/webmin_update_apt_src.log
       fi
-      cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
-      rm -f jcameron-key.gpg*
-      touch ${_pthLog}/webmin_update_apt_src.log
     fi
   fi
 }
