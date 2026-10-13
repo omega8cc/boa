@@ -1238,6 +1238,31 @@ EOF
   done
 }
 
+# Dated logs of earlier months go into MM-YYYY subdirectories, the layout
+# /var/log/boa/daily uses, so the top level holds the current month only.
+# Nothing is deleted. The month is the one in the file name
+# (usage-YYMMDD-HHMMSS.log), which a copy to another box keeps, not the
+# file's mtime; usage-latest-*.log carry no date and stay where their
+# readers look. Safe to run on every pass and from two passes at once.
+_usage_archive_old_logs() {
+  local _logDir="/var/log/boa/usage"
+  local _curYM _f _d _sub
+  [ -d "${_logDir}" ] || return 0
+  _curYM=$(date +%y%m)
+  for _f in "${_logDir}"/usage-[0-9]*.log; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _d=${_f##*/usage-}
+    _d=${_d%%-*}
+    [[ "${_d}" =~ ^[0-9]{2}(0[1-9]|1[0-2])[0-9]{2}$ ]] || continue
+    [ "${_d:0:4}" = "${_curYM}" ] && continue
+    _sub="${_logDir}/${_d:2:2}-20${_d:0:2}"
+    [ -L "${_sub}" ] && continue
+    [ -d "${_sub}" ] || mkdir "${_sub}" 2> /dev/null
+    [ -d "${_sub}" ] && mv -f -- "${_f}" "${_sub}/" 2> /dev/null
+  done
+  return 0
+}
+
 ###--------------------###
 echo "INFO: Starting usage monitoring on $(date)"
 _NOW=$(date +%y%m%d-%H%M%S)
@@ -1253,6 +1278,7 @@ elif [ "${1}" = "silent" ]; then
   rm -f /var/log/boa/usage/usage-latest-silent.log
 fi
 _usage_action >/var/log/boa/usage/usage-${_NOW}.log 2>&1
+_usage_archive_old_logs
 echo "INFO: Completing usage monitoring on $(date)"
 exit 0
 

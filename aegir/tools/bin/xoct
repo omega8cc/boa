@@ -210,7 +210,7 @@ _web_group_facts_here() {
   _s=$(_web_group_state "${1}")
   [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
-  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _r=YES
   { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
   echo "XMWF:${_s%% *}:${_b}:${_p:--}:${_r}:${_sb}"
 }
@@ -4005,7 +4005,7 @@ _xoct_push_target_octopus_cnf() {
   fi
   _lst="_PHP_FPM_VERSION _PHP_CLI_VERSION _PHP_FPM_WORKERS _PHP_FPM_TIMEOUT \
     _PHP_FPM_MAX_CHILDREN_FORCE _PHP_FPM_MEMORY_LIMIT_FORCE _PHP_FPM_RAM_PCT \
-    _PHP_FPM_CPU_FACTOR _PHP_FPM_DENY _RESERVED_RAM _MY_OCTO_EMAIL \
+    _PHP_FPM_CPU_FACTOR _RESERVED_RAM _MY_OCTO_EMAIL \
     _CLIENT_EMAIL _CLIENT_OPTION _CLIENT_SUBSCR _CLIENT_CORES \
     _GHOST_PLATFORMS_CLEANUP _GHOST_VHOSTS_CLEANUP _GHOST_SITES_CLEANUP \
     _GHOST_SITE_FILES_CLEANUP _GHOST_ALIASES_CLEANUP _SEND_UPGRADE_EMAIL \

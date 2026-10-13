@@ -717,7 +717,7 @@ done
 ### hand-over below has settled who owns what a link leads to, and before
 ### the once-a-day exit, which hands nothing over.
 _link_guard_fix() {
-  if [ -e "/var/log/boa/linkguard-arm.ready.txt" ] \
+  if [ -e "/etc/boa/control/linkguard-arm.ready.txt" ] \
     && [ -e "/opt/local/bin/linkguard" ]; then
     bash /opt/local/bin/linkguard fix --root="${drupal_root}" >&3 2>&1
   fi

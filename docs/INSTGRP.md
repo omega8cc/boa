@@ -116,12 +116,17 @@ marker every other root writer honours; `--force` overrides), and defers
 a FIRST conversion (exit 5, a note in the upgrade report) while any fetched
 root-run writer on the box still carries the box-wide form, or while the BOA
 release that carries the Octopus arm has not stamped the box yet
-(`/var/log/boa/instgrp-arm.ready.txt`, written at the tail of that release's
+(`/etc/boa/control/instgrp-arm.ready.txt`, written at the tail of that release's
 barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
 nightly worker would write `users` back on its next pass, an old `websh` would
 lock the tenant out of its shell, and on a box that only received the fetched
 tools ahead of its upgrade (a staged publish) the tar's own Octopus and system
-libraries still write the box-wide group.
+libraries still write the box-wide group. The arm stamps live in
+`/etc/boa/control` (0755, each stamp 0644), out of reach of the clean-ups that
+sweep `/var/log/boa` by name; on a box an earlier release stamped in
+`/var/log/boa`, `instgrp` copies the per-instance group's stamp before it reads
+it, and the barracuda pass writes that stamp in `/var/log/boa` too while an
+older `instgrp` can still be fetched.
 
 An account that is already
 converted takes its read-only re-pass regardless of the stamp. A skipped or
@@ -380,7 +385,7 @@ a dot.
 
 Nothing converts until the box is armed: `_WEB_GROUP_ARM=YES` in
 `/root/.barracuda.cnf`. Every barracuda pass then writes the stamp
-`/var/log/boa/instgrp-web-arm.ready.txt`, and removes it while the setting
+`/etc/boa/control/instgrp-web-arm.ready.txt`, and removes it while the setting
 is NO. `_WEB_GROUP_PHASE_B=YES` beside it lets the Octopus arm go on to
 phase B (below), read as bash reads the file (the last assignment counts;
 `export`, quotes and a trailing comment are fine). Both are NO by default.
@@ -405,15 +410,21 @@ On a box that is not armed, the arm prints nothing for an account with no
 web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
 it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
 the writers that must be current on the box, the stamp, and for each
-account whether it is ready and which of its sites share a files store
-with another account.
+account whether it is ready and what would hold its phase B back, counted
+by kind (below).
 
 A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
 limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
 `xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
-carries the web-group branch that keeps its private files closed. A box
-that is not ready refuses with exit 5 and changes nothing.
+carries two tokens: `provision_drupal_web_group_private`, the branch that
+keeps its private files closed, and `provision_path_web_group`, which keeps
+a site outside the account's tree in `www-data` (see "What holds phase B
+back").
+
+A box that is not ready refuses with exit 5, names what its check missed,
+and changes nothing. `webcheck --report` prints `provision: ready` for an
+account whose copy carries both, or the token it lacks.
 
 While a
 migration has the box's runners parked (`xoct` and `xcopy` from `pre-mig`
@@ -437,6 +448,34 @@ beside a parked one is the one read.
   sub-accounts) leave `www-data`. From then on no pool and no shell user of
   another account can read the account's web paths.
 
+The run that takes an account to phase B walks its web paths into `wg-oN`
+once more after its pools run in `wg-oN` and its identities have left
+`www-data`. Until then a pool writes in `www-data`: an upload PHP moves
+into a files store from the pool's temporary directory keeps it. What a
+site wrote that way during the first walk is taken by the second.
+Anything still left after it is noted, with exit 2, and the next run at
+phase B walks it.
+
+`www-data` left during the raise in the account's settings files, store
+tops, private files or its store on attached storage does not hold phase
+B: the second walk takes it in the same run, so uploads there do not keep
+phase B waiting while they go on.
+
+The stores of its sites that the conversion does not walk (with no single
+mount point under `/mnt`, or its store on attached storage owned by a user
+other than root or the account) are read again after the second walk, and
+after the walk of every run at phase B: a path a pool left there in
+`www-data` is noted, with exit 2, on each such run until it is given
+`wg-oN` or the layout is one BOA makes, when the next run at phase B walks
+it.
+
+An account's store on attached storage (`<mount>/files/oN/static/files`,
+where migratefs moves `~/static/files`) is part of its web paths whether
+root or the account owns it: phase A walks it into `wg-oN` as it walks
+the home, and `webrevert` walks it back. The per-instance group's own walks
+take that store only when the account owns it and no link is on the way to
+it.
+
 The Octopus upgrade runs the conversion for every account (the arm, after
 the per-instance group's own step): phase A on an armed box, and phase B
 where `_WEB_GROUP_PHASE_B=YES`. A new account is converted right after its
@@ -455,28 +494,125 @@ changes nothing and names its reason:
   which the arm and `webconvert all` honour as the web group's opt-out too;
 - an account not yet on its per-instance group;
 - the box not ready (above);
-- a site of the account reading another account's files store (an outbound
-  share), a site on the shared `/data/all` stores or any other site whose
-  directory lies outside the account's tree, or a site's `files` or
-  `private` store outside the account's own places: converting would cut
-  those sites off from the files they read, or point root's walks where no
-  store belongs.
-
-  A store is the account's own only as a real directory of
-  the site, or as a link into the account's own `static/files/` (or its
-  store on attached storage), as the site scripts take it, never into
-  BOA's own folders there (`.backups`, `.backup-exports`, `.archived`); a
-  store link anywhere else, even inside the account's tree, refuses the
-  conversion.
-  A share INTO the account's store never stops anything; both accounts are
-  told (see `FILES-SYMLINK.md`);
-- www-data left in the account's settings files, store tops or private set
-  before phase B.
+- www-data left anywhere in a `files` or `private` store of its sites that
+  the conversion does not walk, before phase B: with no single mount point
+  under `/mnt`, or with its store on attached storage owned by a user
+  other than root or the account, the conversion leaves those stores as
+  they are, so phase B waits until the layout is one BOA makes;
+- the account's `~/static/files` a link that does not resolve (its
+  attached storage not mounted, or the link changed), before phase B:
+  while the storage is not mounted, no walk and no check reaches the
+  store, so phase B waits until the link resolves;
+- before phase B only, one of the four things the next section lists.
 
 A frozen account (`log/proxied.pid`, a migration in flight) is skipped,
 exit 4, unless an operator passes `--force`. A standby box (xmass's
 `/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
 prepared as one) refuses every verb but `webrevert`.
+
+### What holds phase B back
+
+Four layouts do not stop an account from converting. It goes to phase A
+like any other, and only its step into phase B waits while one of them
+stands:
+
+- a site of the account reading another account's files store (an outbound
+  share);
+- a site on the shared `/data/all` stores;
+- any other site whose directory lies outside the account's tree (a site
+  dir inside the account's store on attached storage, whether root or the
+  account owns that store, is the account's own);
+- a site's `files` or `private` store outside the account's own places.
+
+A store is the account's own only as a real directory of the site, or as a
+link into the account's own `static/files/` (or its store on attached
+storage), as the site scripts take it, never into BOA's own folders there
+(`.backups`, `.backup-exports`, `.archived`). A store link anywhere else,
+even inside the account's tree, is one of the four.
+
+The conversion leaves such a path exactly as it is: it is never walked,
+moved or re-linked, its owner, group and modes stay, and it keeps working,
+because in phase A the account's users and pools are still in `www-data`.
+A store linked elsewhere inside the account's own tree stays in `www-data`
+with everything below it. The one exception is a link to a path that holds,
+or lies inside, a site or a store of the account's own: those are the
+account's own web files, and the path converts with them. The account's
+notes say which it is for each path: `left as it is`, or `part of the
+account's own files and converted with them`. Phase B would take
+`www-data` away from the pools that read a left path, so phase B waits.
+
+What is left is the path a note names and everything below it, and it is
+the conversion's own walks that leave it. A contrived layout can step
+outside that: a link into the middle of an archived private store or of a
+platform's `keys` directory (the conversion narrows those directories as a
+whole), a link to one of the account's top directories, or a store link
+that resolves inside its own site's directory, which the nightly takes for
+that site's store.
+
+Provision keeps a site whose directory lies outside the account's tree (on
+the shared `/data/all` stores, or in another account's tree) in `www-data`
+too. Wherever it sets a group or a group-keyed mode on such a site, it gives
+`www-data` and the modes it gives an account without a web group of its
+own, never `wg-oN`: its directory pass at an install and a deploy (Restore,
+Clone, Migrate), the settings writers, and the Backdrop, Grav and
+Textpattern writers.
+
+On a Verify, BOA leaves the directory pass to the root site scripts, which
+take the group from the path and leave a site outside the account alone.
+
+A path is outside when its real place, all links followed, is neither in
+the account's home nor in its store on attached storage. A store of such a
+site that is a link into the account's own `static/files/` (or that store)
+is inside, so it takes `wg-oN` as every store of the account does, and
+`webrevert` walks it with the rest of the account: no path of such a site
+is left in a group that no longer exists.
+
+A provision copy older than this gives such a site `wg-oN` wherever it sets
+a group. This is why the readiness check asks for the copy that carries
+`provision_path_web_group`: no account converts before its copy does this.
+
+- `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
+  account to phase A, exit 0. The account's notes
+  (`/var/log/boa/instgrp-web.oN.notes.txt`, and a copy in its own
+  `log/web-group-notes.txt`) name each path and what clears it.
+- `--phase-b` on an account below phase A takes it to A and stops there,
+  exit 6. A run that stops before phase A is complete (the task queue not
+  drained, exit 6) is finished by the same command run again. On an
+  account already at A it is refused before anything is written, exit 6,
+  so a pin stays. On a box with `_WEB_GROUP_PHASE_B=YES` the Octopus arm
+  is refused the same way on every upgrade of such an account, and the
+  upgrade prints a NOTE.
+- Each of these runs says where the account stands: `stays at phase A;
+  phase B waits (...)` with a count of each kind. An account that carries
+  a trait of phase B no record explains (a pool line left in a pool file;
+  `webstatus` reads `betwP` or `betwK`) is not at phase A, and the NOTE
+  says so: `reads betwP, not phase A ('instgrp webconvert oN' brings it
+  there)`. `--phase-b` never takes such a trait back; `instgrp webconvert
+  oN` does.
+- Nothing clears these for you. A share is removed with the documented tool
+  (`autosymlink --site <url> --apply --force-unshare`, see
+  `FILES-SYMLINK.md`); a site on the shared stores or outside the account
+  moves to a platform in the account's own tree; a store becomes a real
+  `files` or `private` directory of its site, or a link into the account's
+  own `static/files/`. The next run toward phase B then goes through.
+- The tool cannot undo one share: a share of a `private` store whose owner
+  runs in its own web group. That store is closed to every other account as
+  a whole, so the un-share is refused, with an `[ERROR]` line that names the
+  store. The two accounts settle it between them; BOA does not move the
+  files for them.
+- `instgrp webcheck --report` says `shares:  phase B held` for such an
+  account, with a count for each of the four kinds, without running a
+  conversion and without writing a note. For an account whose record
+  already says phase B it says `phase B on record, not held` with the same
+  counts: a layout made after phase B holds nothing back. A record left by
+  a phase B rollback that could not finish (marked `rb=1`, below) still
+  reads `phase B held`: the next run checks the layouts again.
+
+A share INTO the account's store never holds anything; both accounts are
+told (see `FILES-SYMLINK.md`), before the conversion's first write and
+again once its private side is done. When the account that owns the store
+converts, the reading site loses write there (and read on a private store),
+whatever the reading account's own state.
 
 ### The verbs
 
@@ -485,7 +621,7 @@ prepared as one) refuses every verb but `webrevert`.
     instgrp webrevert  <oN> [--keep-enabled] [--force]
     instgrp webstatus  <oN>|aegir|all
     instgrp webcheck   [--report]
-    instgrp webdrift   <oN>|aegir [--report [--deep]] | --box
+    instgrp webdrift   <oN>|aegir [--report [--deep]] [--own night] | --box
 
 - `webconvert <oN>` takes the account as far as it already goes or to
   phase A, whichever is higher; `--phase-b` takes it to phase B; `--phase-a`
@@ -502,17 +638,53 @@ prepared as one) refuses every verb but `webrevert`.
   then the group removed. It writes the opt-out first (over a pin), so the
   arm does not convert the account again; `--keep-enabled` writes none and
   keeps a pin.
+- Beyond the account's roots, `webrevert` walks back its store on attached
+  storage when root owns it (as migratefs leaves the one BOA made in the
+  home; the conversion takes it the same way, and the roots take it when
+  the account owns it), and the stores of the account's sites there when
+  that store is not one of the walk's roots (no single mount point under
+  `/mnt`, an owner other than root or the account, or a link on the way).
+  The group goes only once none of them carries it.
+- Before it removes the group, `webrevert` also reads every files store of
+  the account's name on a mount under `/mnt` (`<mount>/files/oN/static/files`),
+  whatever the mount count or the store's owner. When the layout changed
+  since the conversion (a second mount point, another owner), a store the
+  conversion walked may be in none of the walks above: while it carries
+  `wg-oN`, the group is kept and the message names the store and what
+  clears it. A `webrevert` once the layout is back walks it and removes
+  the group.
+- A path under `/mnt` that no revert walks keeps the group on every
+  `webrevert`: the store of a site removed since the conversion, with no
+  single mount point under `/mnt` or the account's store owned by a user
+  other than root or the account from the conversion on; or a copy of the
+  account's store in a directory under `/mnt` that is not the single
+  mount point. The message says what clears it: an operator gives those
+  paths `www-data`, or the store holding them becomes the account's store
+  at the single mount point (root's or the account's), which `webrevert`
+  walks.
+- While the account's `~/static/files` is a link that does not resolve
+  (its attached storage not mounted, or the link changed), `webrevert`
+  walks back what it reaches but keeps the group, and the message names
+  the link: the store's paths may still carry `wg-oN`. A `webrevert` once
+  it resolves walks the store and removes the group.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
   what differs, or `FOREIGN` (someone outside the account holds `wg-oN`).
 - `webcheck` is the readiness report above.
-- `webdrift` is what the watchers read (below).
+- `webdrift` is what the watchers read (below); `--own night` is the
+  nightly's own form of it.
 
 Exit codes: 0 done, 1 failed, 2 residue or a group kept, 4 busy or frozen,
-5 not ready, 6 refused or deferred (opted out, a share, a standby, a revert
-in progress, a pin, the task queue not drained). Only `webrevert` and
+5 not ready, or phase B waiting (`~/static/files` a link that does not
+resolve, or `www-data` in a store of its sites that the conversion does
+not walk), 6 refused or deferred (opted out, phase B held by a share or
+by a site or store outside the account, a standby, a revert in progress, a
+pin, the task queue not drained). Only `webrevert` and
 `--phase-a` ever lower an account; nothing else does, whatever it finds.
+
+The Octopus upgrade's note for an exit 2 or 5 points at
+`/var/log/boa/instgrp.log`, which names the reason.
 
 ### Intent and record
 
@@ -530,8 +702,8 @@ Both stay on the box: a migration carries neither (below), and a backup of
 watchers then report. A phase B whose final check fails is rolled back;
 when that rollback cannot finish, the record keeps phase B with a mark
 (`rb=1`), and the next run checks the account's shares again before it
-completes phase B, so a share made in between is refused rather than cut
-off.
+completes phase B, so a share made in between holds phase B back rather
+than being cut off.
 
 ### Watching for drift
 
@@ -554,6 +726,23 @@ promoted by hand from a mirror. `_WEB_GROUP=NO` in its cnf leaves such an
 account alone for good; an account opted out of its per-instance group
 (`_INSTANCE_GROUP=NO`) is named once in the pass's log, never reported.
 
+An account at phase A whose phase B is held back (above), on a box with
+`_WEB_GROUP_PHASE_B=YES`, gets one line a night in its own nightly log,
+`/var/log/boa/daily/acct-oN-<YYMMDD-HHMMSS>.log`, with the count of each
+kind:
+
+    oN: web group: DR10 oN: at phase A; phase B waits (outbound shares 1, ...)
+
+The nightly's pass of the account writes it; the 3-minute worker does not.
+It is a note, never an alarm and never a mail. There is none while phase B
+is off on the box, and none for an account pinned at A. To list the
+accounts held last night:
+
+    grep -h 'web group: DR10' /var/log/boa/daily/acct-*.log
+
+Logs of earlier months are kept under `/var/log/boa/daily/<MM-YYYY>/`. To
+read the line for one account now: `instgrp webdrift oN --own night`.
+
 On any box, `/root/.standby.prep.cnf` standing for over three days
 without `/root/.standby.cnf` is reported too: while it stands, no account
 there converts.
@@ -561,7 +750,9 @@ there converts.
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
 on its next pass (world read and directory search added, only to a file
-with one link, never in the private set). When its walk of an account runs
+with one link, never in the private set). It never opens a files store
+that is not the account's own (above): at phase A it says nothing about
+one, at phase B it reports it. When its walk of an account runs
 out of time three passes in a row it says so, and the nightly then walks
 the account's public set whole (`instgrp reclaim`, after the site loop),
 which also moves the worker's starting point forward.
