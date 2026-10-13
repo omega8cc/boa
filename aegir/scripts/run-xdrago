@@ -44,71 +44,106 @@ _check_root
 # counts: it is keyed by the domain alone, and an older one, left by an
 # earlier copy at the same staging domain, must not release a new copy.
 #
-# The worker runs as the site's own web pool user, the identity its PHP
-# already runs as, with the users group added because only that group may run
-# the PHP command line; never as the instance user, whose database account
-# holds every grant, while the plugins it loads live in the web-writable
-# user/ tree. The instance user only reads the capsule's drushrc.php and the
-# hold (never root, which could be pointed at another account's file), and
-# root hands the validated database settings to the worker through a clean
-# environment, never a command line.
+# The worker runs inside the site's own PHP-FPM pool: root sends one FastCGI
+# request straight to the pool's socket (never through the web server) for
+# an entry script BOA keeps in /data/conf, so the worker runs as the pool
+# user under the pool's own limits, exactly as a web request of the site
+# does. Nothing the pool cannot already do is handed to the plugin code it
+# loads from the web-writable user/ tree. The instance user only reads the
+# capsule's drushrc.php and the hold (never root, which could be pointed at
+# another account's file), and root passes the validated database settings
+# as request parameters, as the site's vhost does, never on a command line.
 #
 # The scan runs in a detached pass with a lock of its own, started before
 # this script's own lock, so a long Aegir task never holds a store's queue;
 # each store's tick is detached again under a lock of its own, so one slow
-# store never delays another, and at most four run at once per instance.
+# store never delays another, and the pool's own size bounds how many run.
 
-# The pool user and PHP of one site: the socket its vhost passes PHP to (as
+_GRAV_TICK_ENTRY="/data/conf/grav-store-tick.php"
+
+# The entry script, kept identical to the copy below; written only when it
+# differs, root's, readable by the pools (/data/conf is in each one's
+# open_basedir).
+_grav_tick_entry() {
+  local _new="/data/conf/.grav-store-tick.php.new"
+  [[ -d /data/conf ]] && [[ ! -L /data/conf ]] || return 1
+  ( umask 022; cat > "${_new}" ) <<'PHP' || return 1
+<?php
+/**
+ * BOA: one KahunaCart worker tick for a Grav store.
+ *
+ * Sent by BOA's minute runner (run-xdrago) straight to the site's own PHP-FPM
+ * pool socket, never through the web server, so the worker runs as the site's
+ * pool user under the pool's own limits. The store's database settings arrive
+ * as request parameters, as the site's vhost passes them. Written by
+ * run-xdrago; an edit here is overwritten.
+ */
+if (PHP_SAPI !== 'fpm-fcgi' || !isset($_SERVER['BOA_GRAV_TICK_ROOT'])) {
+  exit;
+}
+$root = (string) $_SERVER['BOA_GRAV_TICK_ROOT'];
+if (!preg_match('#^/data/disk/[a-z0-9]+/[A-Za-z0-9._/-]+$#', $root) || strpos($root, '..') !== FALSE) {
+  exit;
+}
+if (!is_file($root . '/system/defines.php') || !is_file($root . '/bin/plugin')
+  || !is_file($root . '/user/plugins/kahunacart/kahunacart.php') || !@chdir($root)) {
+  exit;
+}
+foreach (array('STDIN' => 'r', 'STDOUT' => 'w', 'STDERR' => 'w') as $name => $mode) {
+  if (!defined($name)) {
+    define($name, fopen('php://' . strtolower($name), $mode));
+  }
+}
+$argv = array('bin/plugin', 'kahunacart', 'work', '--quiet');
+$argc = count($argv);
+$_SERVER['argv'] = $argv;
+$_SERVER['argc'] = $argc;
+require $root . '/bin/plugin';
+PHP
+  if [[ -f "${_GRAV_TICK_ENTRY}" ]] && [[ ! -L "${_GRAV_TICK_ENTRY}" ]] \
+    && cmp -s "${_new}" "${_GRAV_TICK_ENTRY}"; then
+    rm -f "${_new}"
+    return 0
+  fi
+  chmod 0644 "${_new}" && mv -f "${_new}" "${_GRAV_TICK_ENTRY}"
+}
+
+# The pool socket one site's PHP runs on: the one its vhost passes PHP to (as
 # provision last rendered it), else the pool the Grav vhost template picks
 # now: the first socket among 8.4, 8.5, 8.6 and 8.3, else the bare one. Sets
-# _GRAV_WU and _GRAV_PHP.
-_grav_site_identity() {
+# _GRAV_SOCK.
+_grav_site_socket() {
   local _uri="${1}" _vh _sock="" _v
-  _GRAV_WU=""
-  _GRAV_PHP=""
+  _GRAV_SOCK=""
   _vh="/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}"
   if [[ -f "${_vh}" ]] && [[ ! -L "${_vh}" ]]; then
     _sock="$(timeout 5 grep -m1 -o "fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;" "${_vh}" 2> /dev/null)"
     _sock="${_sock#fastcgi_pass unix:}"
     _sock="${_sock%;}"
   fi
-  if [[ "${_sock}" =~ ^/run/${_H_USER}\.(8[3-6])\.fpm\.socket$ ]]; then
-    _v="${BASH_REMATCH[1]}"
-    _GRAV_WU="${_H_USER}.${_v}.web"
-    _GRAV_PHP="/opt/php${_v}/bin/php"
-  elif [[ "${_sock}" = "/run/${_H_USER}.fpm.socket" ]]; then
-    _GRAV_WU="${_H_USER}.web"
-  else
-    for _v in 84 85 86 83; do
-      if [[ -e "/run/${_H_USER}.${_v}.fpm.socket" ]]; then
-        _GRAV_WU="${_H_USER}.${_v}.web"
-        _GRAV_PHP="/opt/php${_v}/bin/php"
-        break
-      fi
-    done
-    if [[ -z "${_GRAV_WU}" ]] && [[ -e "/run/${_H_USER}.fpm.socket" ]]; then
-      _GRAV_WU="${_H_USER}.web"
+  if [[ "${_sock}" =~ ^/run/${_H_USER}(\.8[3-6])?\.fpm\.socket$ ]] && [[ -S "${_sock}" ]]; then
+    _GRAV_SOCK="${_sock}"
+    return 0
+  fi
+  for _v in 84 85 86 83; do
+    if [[ -S "/run/${_H_USER}.${_v}.fpm.socket" ]]; then
+      _GRAV_SOCK="/run/${_H_USER}.${_v}.fpm.socket"
+      return 0
     fi
+  done
+  if [[ -S "/run/${_H_USER}.fpm.socket" ]]; then
+    _GRAV_SOCK="/run/${_H_USER}.fpm.socket"
+    return 0
   fi
-  if [[ -n "${_GRAV_WU}" ]] && [[ -z "${_GRAV_PHP}" ]]; then
-    for _v in 84 85 86 83; do
-      if [[ -x "/opt/php${_v}/bin/php" ]]; then
-        _GRAV_PHP="/opt/php${_v}/bin/php"
-        break
-      fi
-    done
-  fi
-  [[ -n "${_GRAV_WU}" ]] && [[ -x "${_GRAV_PHP}" ]] || return 1
-  id -u "${_GRAV_WU}" > /dev/null 2>&1 || return 1
-  return 0
+  return 1
 }
 
 # One store's tick: $1 the capsule, $2 its domain. Runs in a subshell of its
 # own, so the environment it clears and the exports below reach nothing else.
 _grav_store_tick() {
-  local _sp="${1}" _uri="${2}" _rc _n _u _p _h _o _v _k _e _wgid _grps _ugid
-  _grav_site_identity "${_uri}" || return 0
-  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null 6>&- 7>&-)" || return 0
+  local _sp="${1}" _uri="${2}" _rc _n _u _p _h _o _v _k _e
+  _grav_site_socket "${_uri}" || return 0
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null 7>&-)" || return 0
   _n="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" | head -1)"
   _u="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" | head -1)"
   _p="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" | head -1)"
@@ -124,17 +159,17 @@ _grav_store_tick() {
   for _v in "${_n}" "${_u}" "${_p}" "${_h}" "${_o}"; do
     [[ "${_v}" =~ ^[A-Za-z0-9._:-]+$ ]] || return 0
   done
-  _wgid="$(id -g "${_GRAV_WU}" 2> /dev/null)"
-  _grps="$(id -G "${_GRAV_WU}" 2> /dev/null)"
-  _ugid="$(getent group users 2> /dev/null | cut -d: -f3)"
-  [[ "${_wgid}" =~ ^[0-9]+$ ]] && [[ "${_grps}" =~ ^[0-9\ ]+$ ]] && [[ "${_ugid}" =~ ^[0-9]+$ ]] || return 0
-  _grps="${_grps// /,},${_ugid}"
-  # A clean environment: only what the worker needs reaches it.
+  # cgi-fcgi sends its whole environment as the request's parameters: only
+  # what the entry script and the store need reaches the pool.
   for _e in $(compgen -e); do
     unset "${_e}"
   done
-  export PATH=/usr/local/bin:/usr/bin:/bin
-  export HOME=/tmp
+  export PATH=/usr/bin:/bin
+  export SCRIPT_FILENAME="${_GRAV_TICK_ENTRY}"
+  export SCRIPT_NAME=/grav-store-tick.php
+  export REQUEST_METHOD=GET
+  export QUERY_STRING=
+  export BOA_GRAV_TICK_ROOT="${_sp}"
   _k="GRAV_CONFIG__plugins__kahunacart__database__"
   export GRAV_CONFIG=1
   export "${_k}type=mysql"
@@ -144,15 +179,14 @@ _grav_store_tick() {
   export "${_k}mysql__dbname=${_n}"
   export "${_k}mysql__username=${_u}"
   export "${_k}mysql__password=${_p}"
-  /usr/bin/timeout 250 /usr/bin/setpriv --reuid="${_GRAV_WU}" --regid="${_wgid}" \
-    --groups="${_grps}" --no-new-privs -- \
-    /bin/bash -c "cd -P -- '${_sp}' 2>/dev/null || exit 0; exec /usr/bin/timeout 240 '${_GRAV_PHP}' bin/plugin kahunacart work" \
-    > /dev/null 2>&1 < /dev/null 6>&- 7>&-
+  /usr/bin/timeout 200 /usr/bin/cgi-fcgi -bind -connect "${_GRAV_SOCK}" \
+    > /dev/null 2>&1 < /dev/null 7>&-
 }
 
 _grav_store_ticks() {
-  local _a _sp _uri _lk _slot _i
+  local _a _sp _uri _lk
   local -a _files=()
+  _grav_tick_entry || return 0
   for _a in /data/disk/${_H_USER}/.drush/*.alias.drushrc.php; do
     [[ -f "${_a}" ]] && [[ ! -L "${_a}" ]] && _files+=("${_a}")
   done
@@ -167,21 +201,11 @@ _grav_store_ticks() {
       [[ -f "${_sp}/system/defines.php" ]] || continue
       [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
       _lk="/run/grav-tick-${_H_USER}-${_uri}.lock"
-      ( : >> "${_lk}" ) 2> /dev/null || continue
+      ( umask 077; : >> "${_lk}" ) 2> /dev/null || continue
       (
         exec 8>&-
         exec 7>"${_lk}"
         flock -n 7 || exit 0
-        _slot=""
-        for _i in 1 2 3 4; do
-          exec 6>"/run/grav-tick-${_H_USER}-slot${_i}.lock" || continue
-          if flock -n 6; then
-            _slot="${_i}"
-            break
-          fi
-          exec 6>&-
-        done
-        [[ -n "${_slot}" ]] || exit 0
         _grav_store_tick "${_sp}" "${_uri}"
       ) < /dev/null > /dev/null 2>&1 &
     done < <(timeout 60 awk -v q="'" '
@@ -215,6 +239,7 @@ _grav_store_ticks_detached() {
   [[ -e "/run/boa_wait.pid" ]] && return 0
   grep -q "^_GRAV_SUPPORT=YES" "/root/.${_H_USER}.octopus.cnf" 2>/dev/null || return 0
   [[ -x "/opt/local/bin/grav" ]] || return 0
+  [[ -x "/usr/bin/cgi-fcgi" ]] || return 0
   command -v flock > /dev/null 2>&1 || return 0
   ( : >> "${_gl}" ) 2>/dev/null || return 0
   # Started from a command substitution so this script's own bare `wait`
