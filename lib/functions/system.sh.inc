@@ -9887,7 +9887,7 @@ _major_os_upgrade_percona_check() {
 # dragon store with the list of what it filled in: a mv onto the existing
 # name would move it inside instead.
 _xdrago_wait_restore() {
-  local _xdrArc _xdrAdd
+  local _xdrArc _xdrAdd _xdrF
   if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
     return 0
   fi
@@ -9895,7 +9895,13 @@ _xdrago_wait_restore() {
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
     _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
-    _xdrAdd="$(cp -anv /var/xdrago_wait/. /var/xdrago/ 2> /dev/null)"
+    # the names only the parked tree holds, read before the copy: cp -v
+    # lists skipped names too on some systems
+    _xdrAdd="$(cd /var/xdrago_wait 2> /dev/null && find . ! -type d 2> /dev/null \
+      | while IFS= read -r _xdrF; do
+          [ -e "/var/xdrago/${_xdrF}" ] || [ -L "/var/xdrago/${_xdrF}" ] || echo "${_xdrF#./}"
+        done)"
+    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
     mkdir -p "${_vBs}/dragon/x"
     mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
     [ -d "${_xdrArc}" ] && printf '%s\n' "${_xdrAdd}" > "${_xdrArc}.added.txt"
