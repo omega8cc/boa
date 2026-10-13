@@ -14,7 +14,9 @@ _verify_boa_keys() {
     _allw=NO
     _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
     _urlEnc="https://files.boa.io/enc/2024"
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    # A test, not ||: tr exits 0 on an empty /etc/hostname
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+    [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \

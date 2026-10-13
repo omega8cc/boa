@@ -188,6 +188,42 @@ PHP_INI="/opt/php${_n}/lib/php.ini"
 PHPRC="/opt/php${_n}/lib"
 export PHP_INI PHPRC
 
+# A Grav site with a database (a shop): its connection, read from the
+# site's own drushrc.php, as the config overrides the hosting backend and
+# the vhost give it -- the same names and the same rule that sends a port
+# other than 3306 over TCP (PDO takes 'localhost' as the socket). Readable
+# by the instance user and the account's own shell; nothing is exported for
+# a site that names no database, or when a value is not a plain one.
+_grav_db_env() {
+  local _rc="${_GRAV_ROOT}/drushrc.php"
+  local _n _u _p _h _o _v _k
+  [[ -f "${_rc}" ]] && [[ -r "${_rc}" ]] || return 0
+  _n="$(sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" "${_rc}" | head -1)"
+  _u="$(sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" "${_rc}" | head -1)"
+  _p="$(sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" "${_rc}" | head -1)"
+  _h="$(sed -n "s/^.*\$options\['db_host'\] = '\([^']*\)';.*$/\1/p" "${_rc}" | head -1)"
+  _o="$(sed -n "s/^.*\$options\['db_port'\] = '\([^']*\)';.*$/\1/p" "${_rc}" | head -1)"
+  [[ -n "${_n}" ]] && [[ -n "${_u}" ]] && [[ -n "${_p}" ]] || return 0
+  [[ -n "${_o}" ]] || _o=3306
+  [[ -n "${_h}" ]] || _h=localhost
+  if [[ "${_h}" = "localhost" ]] && [[ "${_o}" != "3306" ]]; then
+    _h=127.0.0.1
+  fi
+  for _v in "${_n}" "${_u}" "${_p}" "${_h}" "${_o}"; do
+    [[ "${_v}" =~ ^[A-Za-z0-9._:-]+$ ]] || return 0
+  done
+  _k="GRAV_CONFIG__plugins__kahunacart__database__"
+  export GRAV_CONFIG=1
+  export "${_k}type=mysql"
+  export "${_k}auto_migrate=manual"
+  export "${_k}mysql__host=${_h}"
+  export "${_k}mysql__port=${_o}"
+  export "${_k}mysql__dbname=${_n}"
+  export "${_k}mysql__username=${_u}"
+  export "${_k}mysql__password=${_p}"
+}
+_grav_db_env
+
 # Group-writable creations everywhere inside the writable trees.
 umask 0002
 
