@@ -333,11 +333,12 @@
       Such an owner's private store still cannot be un-shared; the
       refusal names it.
 
-    * autosymlink logs a link target, and an entry of another account's
-      store closed to an un-share copy, with each byte outside letters,
-      digits and ._/- shown as '?'. A newline in such a name, which an
-      account chooses, could write a line of its own into the log that
-      symlinkinfo reads.
+    * autosymlink logs a link target, an entry of another account's
+      store closed to an un-share copy, the name of a store in the
+      account's own static/files and the values of a finding it has no
+      explanation for, with each byte outside letters, digits and ._/-
+      shown as '?'. A newline in such a name, which an account chooses,
+      could write a line of its own into the log that symlinkinfo reads.
 
     * Provision no longer gives an account's own web group, still
       switched off, to a site whose directory lies outside the
