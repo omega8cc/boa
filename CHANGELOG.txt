@@ -596,8 +596,8 @@
       the link check as well, and linkguard off the link check's.
 
     * The fact that a server finished installing lives in
-      /etc/boa/control/reset_no_new_password.pid. The watchdogs, loadguard,
-      updatesymlinks and autoupboa read it: without it every watchdog
+      /etc/boa/control/reset_no_new_password.pid. The watchdogs,
+      updatesymlinks, xmass and autoupboa read it: without it every watchdog
       stops, and autoupboa deletes the operator's password opt-out files
       again. At the top of /var/log/boa only an immutable attribute, not
       set on every server, kept the clean-up after a broken tool fetch
