@@ -55,6 +55,11 @@ _grav_store_ticks() {
     [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
     [[ -f "${_sp}/system/defines.php" ]] || continue
     [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
+    # Only a store with a database on record: the copy safeguards (signing
+    # key, pause, hold) act on that database, and a store on its own SQLite
+    # file gets none of them.
+    [[ -f "${_sp}/drushrc.php" ]] && [[ ! -L "${_sp}/drushrc.php" ]] || continue
+    grep -Eq "\\\$options *\[ *['\"]db_name['\"] *\] *= *['\"][^'\"]+['\"]" "${_sp}/drushrc.php" || continue
     su -s /bin/bash - "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 0; if [ -e .boa-copy ] && [ ! -e \"\${HOME}/static/control/kahunacart-run.${_uri}.info\" ]; then exit 0; fi; timeout 240 /opt/local/bin/grav scheduler" > /dev/null 2>&1 < /dev/null 8>&-
   done
   touch /var/log/boa/grav-ticks-${_H_USER}
