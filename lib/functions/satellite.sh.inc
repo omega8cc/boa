@@ -6000,8 +6000,8 @@ _satellite_if_web_group() {
   # refusal the tool explains is a note
   case "${_wGrc}" in
     0) ;;
-    2) _msg "NOTE: instgrp webconvert ${_USER} left web paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
-    5) _msg "NOTE: instgrp webconvert ${_USER} deferred: this box is not ready for the web group (instgrp webcheck)" ;;
+    2) _msg "NOTE: instgrp webconvert ${_USER} left web paths in www-data (see /var/log/boa/instgrp.log)" ;;
+    5) _msg "NOTE: instgrp webconvert ${_USER} deferred (see /var/log/boa/instgrp.log)" ;;
     6) _msg "NOTE: instgrp webconvert ${_USER} refused or deferred (opted out, a share, a standby, a revert in progress, or the task queue busy), see /var/log/boa/instgrp.log" ;;
     *)
       case "${_wGrc}" in
