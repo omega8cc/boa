@@ -4,6 +4,21 @@
 
 @=> Important Fixes
 
+    * An Octopus control panel no longer fails with a blank page when
+      another account on the same server uses a different list of
+      disabled PHP functions. Since the control panels run in pools of
+      their own on the server's default PHP, all of them share one PHP
+      version and its opcache, and PHP 8.4 and newer compile a call to
+      a built-in function as its position in the function table, which
+      each disabled function shifts. A panel whose account set its own
+      list through _PHP_FPM_DENY then ran code compiled by another
+      account's panel, called the wrong function and stopped. The
+      option is retired: every PHP-FPM pool keeps the same list, the
+      option's line is removed from the cnf files at the next upgrade,
+      the system worker puts the template's list back into any pool of
+      an instance that still carries another one, and the next Barracuda
+      upgrade writes the master pools again from their template.
+
     * A Solr core created for a Drupal 8 or newer site no longer takes
       documents before the site's own configuration is uploaded. Such
       a core starts on Solr's stock configuration, which guessed the
@@ -73,6 +88,15 @@
       at their next self-update.
 
 @=> Security
+
+    * A site task's Verify, install or deploy no longer follows a link
+      the account put in five more places: at the name of a .htaccess
+      file it writes anew, in place of a file whose mode it changes in a
+      recursive pass, above the platform's root, at settings.php,
+      drushrc.php or local.settings.php or the site dir they are written
+      into, and in a Grav capsule's writable and secret trees. A platform
+      root now counts as the site's own place only inside the account's
+      home or the shared platform trees (docs/FILES-SYMLINK.md).
 
     * Nginx can refuse to serve through a link whose owner differs from
       its target's, so an account cannot link another account's files
@@ -180,6 +204,154 @@
       longer than 1024 bytes; otherwise no file is written, and the login
       it would prove stays unproven. The MySQL 5.7 client reads a longer
       option line in pieces, each further piece as a line of its own.
+
+    * The per-account web group conversion, still switched off, no longer
+      leaves out an account with a site that reads another account's
+      files store, a site on the shared /data/all stores or outside the
+      account, or a files or private store outside the account's own
+      places. Such an account converts to phase A like any other, with
+      that path left exactly as it is and still working; only phase B
+      waits until it is gone. instgrp webcheck --report counts what
+      holds an account's phase B, and on a box that starts phase B the
+      nightly notes such an account in its own log (docs/INSTGRP.md).
+
+    * A files share can be undone again once the shared store's owner
+      runs in its own web group. That store keeps the paths nginx never
+      serves (the CiviCRM log, custom, upload and template stores,
+      config sync, backup_migrate, private, and all below them) closed
+      to other accounts, so the un-share copy, made as the reading
+      account, failed. The copy leaves those out, logged once the copy
+      itself is made; they stay in the other store, with any uploads
+      the site made there. Any other closed entry still stops it, named.
+      Such an owner's private store still cannot be un-shared; the
+      refusal names it.
+
+    * autosymlink logs a link target, and an entry of another account's
+      store closed to an un-share copy, with each byte outside letters,
+      digits and ._/- shown as '?'. A newline in such a name, which an
+      account chooses, could write a line of its own into the log that
+      symlinkinfo reads.
+
+    * Provision no longer gives an account's own web group, still
+      switched off, to a site whose directory lies outside the
+      account's tree (the shared /data/all stores, another account's
+      tree): it gives such a site www-data wherever it sets a group (an
+      install, a deploy, the settings writers) and the modes of an
+      account without its own web group, so reverting the account
+      leaves no path of such a site in a dead group. On a Verify, BOA
+      leaves the directory pass to the root site scripts, which take
+      the group from the path (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, refuses an account
+      whose provision copy does not keep a site outside the account in
+      www-data yet, as not ready; instgrp webcheck --report names the
+      token that copy lacks, provision_path_web_group (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, takes an account's
+      files store on attached storage whether root or the account owns
+      it (migratefs keeps root as the owner of the one BOA made in the
+      account's home), and its revert walks that store back to www-data
+      and checks it before it removes the group. The per-instance
+      group's walks are unchanged: they take that store only when the
+      account owns it and no link is on the way to it (docs/INSTGRP.md).
+
+    * Phase B of the web group conversion, still switched off, no
+      longer waits while a directory or file of the account's is in
+      www-data in its settings files, store tops, private files or its
+      files store on attached storage (root's or its own): the run
+      walks those again once its pools leave www-data (below), so
+      uploads landing there during the raise no longer hold phase B on
+      every run for as long as they go on (docs/INSTGRP.md).
+
+    * Phase B of the web group conversion, still switched off, also
+      waits while a directory or file of the account's is still in
+      www-data in a files or private store of its sites that the
+      conversion does not take: with no single mount point under /mnt,
+      or with the account's store on attached storage owned by a user
+      other than root or the account, the conversion leaves those
+      stores as they are, and phase B now holds there instead of going
+      ahead (docs/INSTGRP.md).
+
+    * The web group's revert also walks and checks the files and
+      private stores of the account's sites on attached storage when
+      the account's store is not one of the walk's roots (no single
+      mount point under /mnt, an owner other than root or the account,
+      or a link on the way), so none of them keeps a group that no
+      longer exists (docs/INSTGRP.md).
+
+    * The web group's revert keeps the group, and names the store,
+      while a files store of the account's name on any mount under
+      /mnt still carries it, whatever the mount count or the store's
+      owner: a layout changed since the conversion (a second mount
+      point, another owner) no longer leaves paths there on a group
+      that no longer exists, and a revert once the layout is back
+      removes the group (docs/INSTGRP.md).
+
+    * The web group's revert says what clears a group it keeps for a
+      store under /mnt that no revert walks: the store of a site
+      removed since the conversion, with no single mount point there or
+      the account's store owned by a user other than root or the
+      account, or a copy of the account's store outside the single
+      mount point. Those paths keep the group until they are given
+      www-data or the store holding them is the account's store at the
+      single mount point, as the message now says (docs/INSTGRP.md).
+
+    * Phase B of the web group conversion, still switched off, waits
+      while the account's ~/static/files is a link that does not
+      resolve (its attached storage not mounted, or the link changed):
+      while the storage is not mounted, no walk and no check reaches the
+      store, so phase B no longer commits with paths there left in
+      www-data. The message names the link, and the next run once it
+      resolves goes ahead (docs/INSTGRP.md).
+
+    * The web group's revert keeps the group, and names the link, while
+      the account's ~/static/files does not resolve (its attached
+      storage not mounted, or the link changed), so the store's paths
+      are no longer left on a group that no longer exists once it
+      resolves again. A revert then walks the store and removes the
+      group (docs/INSTGRP.md).
+
+    * Phase B of the web group conversion, still switched off, walks
+      the account's web paths again in the same run once its pools run
+      in the web group and its identities have left www-data. Until
+      then a pool writes in www-data (an upload PHP moves in from the
+      pool's temporary directory keeps it), so what a site wrote during
+      the first walk is no longer left in www-data after phase B. What
+      is still left is noted, exit 2, and the next run at phase B walks
+      it (docs/INSTGRP.md).
+
+    * Phase B of the web group conversion, still switched off, no
+      longer commits unnoticed with a path in www-data that a pool wrote
+      after the check before phase B into a files or private store of
+      the account's sites that the conversion does not walk (no single
+      mount point under /mnt, or the account's store owned by a user
+      other than root or the account): every run at phase B reads those
+      stores after its walk and notes such a path, exit 2
+      (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, writes each note of
+      its walks once per run (a hard-linked public file left closed,
+      another account's hard link or FIFO in the web paths, a session to
+      reconnect), in root's notes file and the account's own copy, where
+      a raise to phase B wrote it up to four times.
+
+    * The Octopus upgrade's note for a web group conversion that waits
+      (exit 5) or leaves paths in www-data (exit 2) points at
+      /var/log/boa/instgrp.log, which now names why: the box not ready,
+      what holds phase B, or what a run at phase B left there. The note
+      no longer gives the box's readiness as the reason for every wait
+      (docs/INSTGRP.md).
+
+    * A site dir inside the account's files store on attached storage,
+      owned by root or by the account, counts as the account's own for
+      the web group conversion, still switched off, not as a site
+      outside the account that holds its phase B (docs/INSTGRP.md).
+
+    * The note that holds an account's phase B for a share of another
+      account's store names, beside autosymlink --force-unshare, the
+      one share that tool refuses: a private store whose owner runs in
+      its own web group, which the two accounts settle between them
+      (docs/INSTGRP.md).
 
 @=> Improvements
 
@@ -377,7 +549,27 @@
       reads its 92-day growth series from both levels, and a server move
       carries the tree as before.
 
+    * Every server counts, once a night, the links the Nginx link check
+      would refuse or that would keep it off, by kind, and appends one
+      dated line to /var/log/boa/linkguard/count.log (linkguard count),
+      armed for the check or not. The count changes nothing: no link is
+      fixed, the check is not switched and no mail is sent, and the
+      nightly does not wait for it. Each line shows, by kind, what the
+      check would refuse on that server and what would still keep it
+      off once BOA's own links are made root's; see docs/NGINX-LINKS.md.
+
 @=> Changes and Upgrades
+
+    * The arm stamps of the per-instance group, the account web group
+      and the Nginx link check live in /etc/boa/control instead of the
+      top of /var/log/boa, out of reach of the clean-ups that delete
+      there by file name. The directory is 0755 and each stamp 0644
+      whatever the umask, and a stamp that cannot be written is
+      reported in the barracuda log. A server that an earlier release
+      armed for the per-instance group keeps that arm: instgrp copies
+      the old stamp to the new place before it reads it. A barracuda
+      pass that disarms removes the old stamps of the web group and of
+      the link check as well, and linkguard off the link check's.
 
     * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
       items above.

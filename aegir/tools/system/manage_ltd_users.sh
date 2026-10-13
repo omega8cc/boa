@@ -206,8 +206,11 @@ _ltd_d9_walk_here() {
 # static/files/, no files/ or static/ in the mount part). The account can
 # own a site dir and plant the link, so a link anywhere else in its tree is
 # not a store, nor is a dot-name right below either store root, BOA's own
-# (.backups, .backup-exports, .archived); that and a share are left alone
-# with a notice.
+# (.backups, .backup-exports, .archived); that and a share are left alone:
+# with a notice at phase B ($4 = phaseb), where the account's pools reach
+# it without www-data; at phase A it only holds phase B back, which the
+# nightly notes in the account's log (instgrp webdrift --own night), so
+# nothing is raised here.
 _ltd_d9_own_store() {
   local _a="${1}" _m _top=""
   [ "${3}" = "${2}/files" ] && [ ! -L "${2}/files" ] && return 0
@@ -228,6 +231,7 @@ _ltd_d9_own_store() {
     ""|.*) ;;
     *) return 0 ;;
   esac
+  [ "${4:-}" = "phaseb" ] || return 1
   _ltd_notice "d9-share-${_a}" "D9 on ${_a}" "a site's files store is neither a real dir of the site nor a link into the account's own static/files (outside BOA's dot-named folders there); left alone"
   return 1
 }
@@ -302,7 +306,7 @@ _ltd_d9_files_here() {
     _rf=$(realpath -e -- "${_rs}/files" 2> /dev/null)
     _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
     if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
-      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}"; then
+      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}" "${_s%% *}"; then
       ( cd -P -- "${_rf}" 2> /dev/null && [ "$(pwd -P)" = "${_rf}" ] \
         && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
       [ "$?" = "124" ] && _ok=NO
@@ -4875,6 +4879,129 @@ _ltd_fpm_new_version() {
   return 1
 }
 #
+# The FPM config of PHP version $1 (its digits) passes the master's own test,
+# with the options its init script starts it with.
+_ltd_fpm_conftest() {
+  [ -x "/opt/php${1}/sbin/php-fpm" ] || return 1
+  "/opt/php${1}/sbin/php-fpm" -t --fpm-config "/opt/php${1}/etc/php${1}-fpm.conf" \
+    -c "/opt/php${1}/etc/php${1}.ini" &> /dev/null
+}
+#
+# The account's pools disable exactly the functions their template does. A
+# pool written with the retired per-account deny option, or edited by hand,
+# gets the template's disable_functions line back in place of every line FPM
+# reads as one (php_admin_value or php_value, indented or not), the rest of
+# the file kept. Every pool of a PHP master shares its opcache, and PHP 8.4
+# and newer compile a call to a built-in function as its position in the
+# function table, which a different list shifts: code compiled in one pool
+# then calls the wrong function in another. A version whose config already
+# fails its test is left alone; the files are made aside and put in place
+# by rename, the config is tested again before the reload and put back when
+# it fails. With "hm" the panel pool is included (an account the pass skips,
+# whose panel _ltd_hm_pool does not rewrite). Runs whatever the account's
+# control files say, so a pool the setup would not rewrite is put right too.
+_ltd_pool_deny_heal() {
+  local _hm="${1:-}" _re _pf _v _tpl _ref _n _cur _new _old _t _vers=" " _todo="" _done
+  _re=$'^[ \t]*php_(admin_)?value\\[[ \t]*disable_functions[ \t]*\\]'
+  for _pf in /opt/php*/etc/pool.d/"${_USER}".conf /opt/php*/etc/pool.d/"${_USER}".*.conf; do
+    [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || continue
+    if [ "${_pf##*/}" = "${_USER}.hm.conf" ] && [ "${_hm}" != "hm" ]; then
+      continue
+    fi
+    _v="${_pf#/opt/php}"
+    _v="${_v%%/*}"
+    [ -x "/opt/php${_v}/bin/php" ] || continue
+    _tpl=/var/xdrago/conf/fpm-pool-foo.conf
+    [ "${_pf##*/}" = "${_USER}.conf" ] || _tpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
+    _ref=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_tpl}" 2> /dev/null)
+    [ -n "${_ref}" ] || continue
+    _n=$(grep -cE "${_re}" "${_pf}" 2> /dev/null)
+    _cur=$(grep -m 1 -E "${_re}" "${_pf}" 2> /dev/null)
+    [ "${_n}" = "1" ] && [ "${_cur}" = "${_ref}" ] && continue
+    _todo="${_todo}${_v}|${_tpl}|${_pf} "
+    case "${_vers}" in
+      *" ${_v} "*) ;;
+      *) _vers="${_vers}${_v} " ;;
+    esac
+  done
+  for _v in ${_vers}; do
+    if ! _ltd_fpm_conftest "${_v}"; then
+      echo "The PHP ${_v} FPM config fails its own test, the pools of ${_USER} on it are left as they are"
+      continue
+    fi
+    _done=""
+    for _t in ${_todo}; do
+      [ "${_t%%|*}" = "${_v}" ] || continue
+      _pf="${_t##*|}"
+      _tpl="${_t#*|}"
+      _tpl="${_tpl%%|*}"
+      _ref=$(grep -m 1 '^php_admin_value\[disable_functions\]' "${_tpl}" 2> /dev/null)
+      [ -n "${_ref}" ] || continue
+      _new="${_pf%/*}/.${_pf##*/}.deny.new"
+      _old="${_pf%/*}/.${_pf##*/}.deny.old"
+      rm -f -- "${_new}" "${_old}"
+      # the line goes only into a pool section: a file whose first such line,
+      # or whose end, comes before any [section] header is not rewritten
+      if ! _LTD_DENY_RE="${_re}" _LTD_DENY_REF="${_ref}" awk '
+        /^[ \t]*\[/ { hdr = 1 }
+        $0 ~ ENVIRON["_LTD_DENY_RE"] {
+          if (!hdr) { bad = 1; exit 3 }
+          if (!done) { print ENVIRON["_LTD_DENY_REF"]; done = 1 }
+          next
+        }
+        { print }
+        END {
+          if (bad) exit 3
+          if (!done) { if (!hdr) exit 3; print ENVIRON["_LTD_DENY_REF"] }
+        }
+      ' "${_pf}" > "${_new}" 2> /dev/null; then
+        rm -f -- "${_new}"
+        _ltd_notice "pool-deny-${_USER}-${_v}" \
+          "Pool ${_pf} of ${_USER} disables other functions than its template and was not rewritten" \
+          "no pool section before its disable_functions line"
+        continue
+      fi
+      chown --reference="${_pf}" "${_new}" 2> /dev/null
+      chmod --reference="${_pf}" "${_new}" 2> /dev/null
+      if [ -f "${_pf}" ] && [ ! -L "${_pf}" ] && cp -a -- "${_pf}" "${_old}" \
+        && mv -f -- "${_new}" "${_pf}"; then
+        _done="${_done}${_pf} "
+      else
+        rm -f -- "${_new}" "${_old}"
+      fi
+    done
+    [ -n "${_done}" ] || continue
+    if _ltd_fpm_conftest "${_v}"; then
+      for _pf in ${_done}; do
+        rm -f -- "${_pf%/*}/.${_pf##*/}.deny.old"
+        echo "Pool ${_pf} of ${_USER} disabled other functions than its template, set back"
+      done
+      [ -e "/etc/init.d/php${_v}-fpm" ] && service "php${_v}-fpm" reload &> /dev/null 9>&-
+    else
+      for _pf in ${_done}; do
+        mv -f -- "${_pf%/*}/.${_pf##*/}.deny.old" "${_pf}"
+      done
+      _ltd_notice "pool-deny-${_USER}-${_v}" \
+        "The pools of ${_USER} on PHP ${_v} were not set back to the template's disable_functions list" \
+        "the FPM config test failed with the new files, the old ones are back"
+    fi
+  done
+  return 0
+}
+#
+# The same for an account the pass skips (proxied after a migration, or
+# cancelled): its panel stays local and still runs PHP. Only while no xtrim
+# or sqlclean runs, as xtrim moves such an account's pool files.
+_ltd_pool_deny_heal_skipped() {
+  exec 9> /run/sqlclean.lock || return 0
+  if flock -n 9; then
+    _ltd_pool_deny_heal hm
+    flock -u 9
+  fi
+  exec 9>&-
+  return 0
+}
+#
 # A PHP version (its digits) whose FPM _switch_php reloads once, after every
 # pool file of the account is final.
 _ltd_fpm_reload_mark() {
@@ -5322,8 +5449,6 @@ _ltd_hm_pool() {
     sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" "${_pNew}" &> /dev/null
     wait
   fi
-  [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" "${_pNew}" &> /dev/null
-  wait
   # the pool runs in the account's web group once its identities have left
   # www-data, on the same terms as its other pools (see the pool loop)
   _T_WGS=$(_web_group_state "${_USER}")
@@ -5410,6 +5535,7 @@ _switch_php() {
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   _ltd_hm_switches
+  _ltd_pool_deny_heal
 
   if [ -e "${_dscUsr}/static/control/fpm.info" ] || [ -e "${_dscUsr}/static/control/cli.info" ]; then
     echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
@@ -5785,9 +5911,6 @@ _switch_php() {
               sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" "${_pNew}" &> /dev/null
               wait
             fi
-
-            [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" "${_pNew}" &> /dev/null
-            wait
 
             if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge 60 ]; then
               _PHP_TO="${_PHP_FPM_TIMEOUT}s"
@@ -6224,6 +6347,16 @@ _prune_psr_log_stash() {
 _manage_user() {
   _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    # a proxied or cancelled account is left alone below, but its pools
+    # still run PHP (its panel stays local), so their deny list is checked
+    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
+      && { [ -e "${_pthParentUsr}/log/proxied.pid" ] \
+        || [ -e "${_pthParentUsr}/log/CANCELLED" ]; }; then
+      _USER="${_pthParentUsr##*/}"
+      [[ "${_USER}" =~ ^[a-z0-9-]+$ ]] && _ltd_pool_deny_heal_skipped
+      _USER=""
+    fi
     if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
       && [ ! -e "${_pthParentUsr}/log/proxied.pid" ] \
@@ -6482,7 +6615,6 @@ _manage_user() {
       _PHP_FPM_MEMORY_LIMIT_FORCE=""
       _PHP_FPM_RAM_PCT=""
       _PHP_FPM_CPU_FACTOR=""
-      _PHP_FPM_DENY=""
       _RESERVED_RAM=""
       _CLIENT_EMAIL=""
       _CLIENT_OPTION=""

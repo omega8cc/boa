@@ -260,7 +260,7 @@ _night_web_box() {
 ### report linkguard leaves in /var/log/boa.
 _night_link_guard() {
   local _s _b _r _sum _body
-  [ -e "/var/log/boa/linkguard-arm.ready.txt" ] || return 0
+  [ -e "/etc/boa/control/linkguard-arm.ready.txt" ] || return 0
   [ -e "/opt/local/bin/linkguard" ] || return 0
   _s=$(bash /opt/local/bin/linkguard apply 2> /dev/null \
     | grep -E "^(ALERT|SUMMARY)" | tr -cd '[:print:]\n')
@@ -284,6 +284,26 @@ _night_link_guard() {
   ( unset _MY_OCTO_EMAIL
     _night_notice "linkguard" \
       "BOA nightly on $(hostname -f): nginx link check" "${_body}" )
+  return 0
+}
+
+### The links the nginx link check would refuse or that keep it off,
+### counted by kind once a night on every box, armed or not: linkguard walks
+### what nginx serves at the lowest priority and appends one dated line to
+### /var/log/boa/linkguard/count.log. It fixes, switches and mails nothing.
+### Started detached at the end of the account steps and not waited for:
+### while owl.sh lives every account's task queue is held, and a walk can
+### take long on a big box. A linkguard without the count is not started.
+_night_link_count() {
+  [ -e "/opt/local/bin/linkguard" ] || return 0
+  grep -q "^_lg_cmd_count() {" /opt/local/bin/linkguard 2> /dev/null || return 0
+  # a grandchild, so no later bare wait in this script waits for it
+  if command -v setsid > /dev/null 2>&1; then
+    ( setsid bash /opt/local/bin/linkguard count < /dev/null > /dev/null 2>&1 & )
+  else
+    ( bash /opt/local/bin/linkguard count < /dev/null > /dev/null 2>&1 & )
+  fi
+  echo "nginx link count: started; its line goes to /var/log/boa/linkguard/count.log"
   return 0
 }
 
@@ -412,6 +432,7 @@ _daily_action() {
   if command -v _dbctl_witness > /dev/null 2>&1; then
     _dbctl_witness
   fi
+  _night_link_count
 }
 
 ###--------------------###
