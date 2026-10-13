@@ -3425,13 +3425,21 @@ _wg_u7() {
   return 0
 }
 
-# The B check, when a B trait is still missing: the residue rule in full
-# (5), then, on a raise or while B is not committed, the share and store
-# re-scan (6). Either stops the run as it is: the account stays at A (or,
-# when the run started from a pool-side level, at that level with its
-# phase A traits complete; the NOTE names the level read now).
+# The B check, when a B trait is still missing: the account's static/files
+# resolving (5: a link to attached storage that is not mounted, which no
+# walk and no read reaches), the residue rule in full (5), then, on a raise
+# or while B is not committed, the share and store re-scan (6). Either
+# stops the run as it is: the account stays at A (or, when the run started
+# from a pool-side level, at that level with its phase A traits complete;
+# the NOTE names the level read now).
 _wg_u8() {
+  local _l
   [ "${_D_LAM}" = "B" ] && return 0
+  if _l=$(_wg_store_gone); then
+    _msg "${_WP_A}: ${_l} is a link that does not resolve; phase B waits until the storage it names is mounted"
+    _wg_note "phase B deferred: ${_l} is a link that does not resolve (its attached storage is not mounted)"
+    return 5
+  fi
   if _wg_residue_full beyond; then
     _msg "${_WP_A}: www-data paths remain in its private set, tops or attached store; phase B waits for the next run"
     _wg_note "phase B deferred: paths in www-data remain in the private set, the tops or the store on attached storage"
@@ -3886,10 +3894,21 @@ _wg_mnt_stores() {
   return 0
 }
 
+# The account's ~/static/files when it is a link that does not resolve:
+# the attached storage it names is not mounted, so neither the walks nor
+# the checks reach the store there. Printed when so; never the master's.
+_wg_store_gone() {
+  local _l="/data/disk/${_WP_A}/static/files"
+  [ "${_WP_M}" != "YES" ] || return 1
+  [ -L "${_l}" ] && [ ! -e "${_l}" ] || return 1
+  printf '%s\n' "${_l}"
+}
+
 # d6: no path and no pool file carrying the gid: delist every member and
 # delete the group together; else 2, the group and its listings kept. The
 # roots, what the way down walks beyond them, and every store of the
-# account's name under /mnt that those do not hold are read.
+# account's name under /mnt that those do not hold are read; while the
+# account's static/files does not resolve, the group is kept unread.
 _wg_group_drop() {
   local _gid _u _e _f _r _x _seen=""
   _gid=$(_gid_of "${_WP_G}")
@@ -3901,6 +3920,11 @@ _wg_group_drop() {
       return 1
     fi
   done < <(_wg_pool_files)
+  if _x=$(_wg_store_gone); then
+    _msg "${_WP_A}: ${_x} is a link that does not resolve; the group is kept (re-run webrevert once the storage it names is mounted)"
+    _log "${_WP_A}: web group kept, ${_x} does not resolve"
+    return 1
+  fi
   for _r in $(_wg_roots); do
     if [ -n "$(find -P "${_r}" -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
       _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
