@@ -997,9 +997,11 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   directory swapped for a link after the check is never followed.
 - **Files are written and changed without following a link.** A `.htaccess`
   file is created in the directory judged with the Drupal core's lines and
-  mode, refusing any name already there, a link included. A recursive mode
-  change sets each file's mode through a handle that does not follow a link,
-  so a file swapped for one is left alone.
+  mode, refusing any name already there, a link included; the old file is
+  removed only once the new lines are made. A recursive mode change sets each
+  file's mode through a handle that does not follow a link, so a file swapped
+  for one is left alone. What could not be written or changed is a warning in
+  the task log.
 - **Root's ownership and mode fixes leave another account's files.** The
   site Verify's two fixers (`fix-drupal-site-ownership.sh`,
   `fix-drupal-site-permissions.sh`), the platform Verify's two
