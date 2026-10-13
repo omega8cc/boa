@@ -3427,24 +3427,19 @@ _wg_u7() {
 
 # The B check, when a B trait is still missing: the account's static/files
 # resolving (5: a link to attached storage that is not mounted, which no
-# walk and no read reaches), the walk's own verdict ($1, 2: www-data left
-# after its last pass, written during it, wherever it walks; 5), the
-# residue rule in full (5), then, on a raise or while B is not committed,
-# the share and store re-scan (6). Either stops the run as it is: the
-# account stays at A (or, when the run started from a pool-side level, at
-# that level with its phase A traits complete; the NOTE names the level
-# read now).
+# walk and no read reaches), the residue rule in full (5), then, on a raise
+# or while B is not committed, the share and store re-scan (6). Either
+# stops the run as it is: the account stays at A (or, when the run started
+# from a pool-side level, at that level with its phase A traits complete;
+# the NOTE names the level read now). What the walk left in www-data
+# elsewhere does not stop it: the pools write www-data until u12 reloads
+# them, so the run walks again after u13 (_wg_leg_up).
 _wg_u8() {
   local _l
   [ "${_D_LAM}" = "B" ] && return 0
   if _l=$(_wg_store_gone); then
     _msg "${_WP_A}: ${_l} is a link that does not resolve; phase B waits until the storage it names is mounted"
     _wg_note "phase B deferred: ${_l} is a link that does not resolve (its attached storage is not mounted)"
-    return 5
-  fi
-  if [ "${1:-0}" = "2" ]; then
-    _msg "${_WP_A}: www-data paths remain after the walk, written during it; phase B waits for the next run"
-    _wg_note "phase B deferred: paths in www-data remain after the walk, written during it"
     return 5
   fi
   if _wg_residue_full beyond; then
@@ -3792,7 +3787,7 @@ _wg_leg_up() {
     [ "${_rw}" = "2" ] && return 2
     return 0
   fi
-  _wg_u8 "${_rw}"
+  _wg_u8
   _rc=$?
   [ "${_rc}" = "0" ] || return "${_rc}"
   # u9: the intent to B
@@ -3817,6 +3812,23 @@ _wg_leg_up() {
     return 1
   fi
   _wg_u13 || return 1
+  # the walk once more, in the same run: until u12 reloaded the pools they
+  # wrote www-data (an upload PHP renames in from the pool's upload_tmp_dir
+  # keeps it), and now only a process that still holds www-data can (u13
+  # counts them), so what the walk above left is taken here, as the next
+  # run at B would take it. A run that started at B with a clean walk has
+  # nothing to take
+  if [ "${_D_LAM}" != "B" ] || [ "${_rw}" = "2" ]; then
+    _wg_walk_up
+    _rw=$?
+    [ "${_rw}" = "1" ] && return 1
+    _wg_d9 commit
+  fi
+  if [ "${_rw}" = "2" ]; then
+    _msg "NOTE: ${_WP_A}: www-data paths remain after the walk at phase B, written during it; the next run at phase B walks them"
+    _wg_note "phase B: paths in www-data remain after the walk at phase B, written during it; the next run at phase B walks them"
+    return 2
+  fi
   return 0
 }
 
