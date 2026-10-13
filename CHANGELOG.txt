@@ -233,8 +233,8 @@
     * Provision no longer gives an account's own web group, still
       switched off, to a site whose directory lies outside the
       account's tree (the shared /data/all stores, another account's
-      tree): an install, a deploy (Restore, Clone, Migrate) and the
-      settings writers give such a site www-data and the modes of an
+      tree): it gives such a site www-data wherever it sets a group (an
+      install, a deploy, the settings writers) and the modes of an
       account without its own web group, so reverting the account
       leaves no path of such a site in a dead group. On a Verify, BOA
       leaves the directory pass to the root site scripts, which take
