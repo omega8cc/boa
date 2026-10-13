@@ -3761,7 +3761,6 @@ _barracuda_cnf() {
     echo "_HM_FPM_VERSION=${_HM_FPM_VERSION}"                 >> ${_barCnf}
     echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"               >> ${_barCnf}
     echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\""             >> ${_barCnf}
-    echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${_barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${_barCnf}
     echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
@@ -3887,6 +3886,9 @@ _barracuda_cnf() {
     wait
     ### Retired: OpenSSH is an always-on component now (since 2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
+    wait
+    ### Retired: every PHP-FPM pool keeps one disable_functions list (since 2026-10-12)
+    sed -i "/^_PHP_FPM_DENY=/d"                                  ${_barCnf}
     wait
     sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
@@ -4337,11 +4339,6 @@ _barracuda_cnf() {
       echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${_barCnf}
     fi
 
-    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${_barCnf} 2>&1)
-    if [[ ! "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
-      echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${_barCnf}
-    fi
-
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${_barCnf} 2>&1)
     if [[ ! "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
       echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${_barCnf}
@@ -4629,6 +4626,9 @@ _barracuda_cnf() {
     wait
     ### Retired: OpenSSH is an always-on component now (since 2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
+    wait
+    ### Retired: every PHP-FPM pool keeps one disable_functions list (since 2026-10-12)
+    sed -i "/^_PHP_FPM_DENY=/d"                                  ${_barCnf}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
@@ -12555,15 +12555,23 @@ _fix_php_in_lshell_access() {
 # libraries; instgrp (fetched, can land weeks earlier on a staged publish)
 # lets no account take its FIRST conversion until this stamp says the arm is
 # on the box. Written at the tail of every barracuda pass that runs this
-# release (next to the barracuda log line), never by the fetched channel.
-# .txt: the /var/log/boa sweeps match *.pid and *.log only.
+# release (next to the barracuda log line), never by the fetched channel,
+# under /etc/boa/control. instgrp copies one an earlier release wrote in
+# /var/log/boa. Written there too while an instgrp from before the move can
+# still be fetched beside this library (a fresh install whose mirrors
+# disagree): nothing removes this stamp, so the copy never arms a box wrongly.
 _instgrp_arm_stamp() {
+  local _st
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _instgrp_arm_stamp"
     _debug_proc
   fi
+  _st="${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"
+  if ! _boa_control_put instgrp-arm.ready.txt "${_st}"; then
+    _msg "ALRT: /etc/boa/control/instgrp-arm.ready.txt cannot be written; without it instgrp holds every first conversion"
+  fi
   mkdir -p /var/log/boa &> /dev/null
-  echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
+  echo "${_st}" > /var/log/boa/instgrp-arm.ready.txt
 }
 
 # $1 the setting, $2 its stage: YES is appended to the cnf when the stage
@@ -12617,10 +12625,12 @@ _instgrp_web_arm_seed() {
 # The web group's arm (instgrp webconvert) takes no account's first
 # conversion without this stamp. Written at the tail of every barracuda pass
 # while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
-# disarms the box; a conversion already under way resumes either way.
-# Tenant isolation is not switched on in this release: the setting arms only
-# a box that carries the test marker, until a later release sets
-# _tiReleased to YES. Kept local so no cnf line can set it.
+# disarms the box; a conversion already under way resumes either way. It
+# lives under /etc/boa/control; the disarm also removes the one an earlier
+# release wrote in /var/log/boa, which an instgrp or a migration tool not yet
+# replaced still reads. Tenant isolation is not switched on in this release:
+# the setting arms only a box that carries the test marker, until a later
+# release sets _tiReleased to YES. Kept local so no cnf line can set it.
 _instgrp_web_arm_stamp() {
   local _tiReleased=NO
   local _tiTest="/root/.tenant-isolation-test.cnf"
@@ -12628,12 +12638,15 @@ _instgrp_web_arm_stamp() {
     _msg "PROC: _instgrp_web_arm_stamp"
     _debug_proc
   fi
-  mkdir -p /var/log/boa &> /dev/null
   if [ "${_WEB_GROUP_ARM}" = "YES" ] \
     && { [ "${_tiReleased}" = "YES" ] || [ -e "${_tiTest}" ]; }; then
-    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-web-arm.ready.txt
+    if ! _boa_control_put instgrp-web-arm.ready.txt \
+      "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)"; then
+      _msg "ALRT: /etc/boa/control/instgrp-web-arm.ready.txt cannot be written; without it no account takes its first web group conversion"
+    fi
   else
-    rm -f /var/log/boa/instgrp-web-arm.ready.txt
+    rm -f /etc/boa/control/instgrp-web-arm.ready.txt \
+      /var/log/boa/instgrp-web-arm.ready.txt
     if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
       _msg "NOTE: _WEB_GROUP_ARM=YES arms nothing in this release: tenant isolation is switched on by a later release"
     fi

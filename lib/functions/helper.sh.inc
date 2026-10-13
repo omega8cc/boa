@@ -2213,6 +2213,24 @@ _dbctl_sudo_lines() {
   return 0
 }
 
+# A control file whose loss makes BOA act wrongly lives in /etc/boa/control,
+# not in /var/log/boa, which is swept by name. The directory is 0755 and
+# each file 0644 whatever the umask, so every reader that knows the path can
+# open it. _boa_control_put <name> <line>: written through a temp file and
+# renamed in place; 1 when it could not be written.
+_boa_control_put() {
+  local _f="/etc/boa/control/${1}"
+  mkdir -p /etc/boa/control &> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control &> /dev/null
+  if { printf '%s\n' "${2}" > "${_f}.tmp.$$"; } 2> /dev/null \
+    && chmod 0644 "${_f}.tmp.$$" \
+    && mv -f "${_f}.tmp.$$" "${_f}"; then
+    return 0
+  fi
+  rm -f "${_f}.tmp.$$" 2> /dev/null
+  return 1
+}
+
 _check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_prepare_dirs_permissions"

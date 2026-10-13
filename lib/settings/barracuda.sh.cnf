@@ -925,46 +925,11 @@ _GRAV_SUPPORT=NO
 _TXP_SUPPORT=NO
 
 ###
-### You can define custom list of functions
-### to disable besides those already denied
-### in the system level 'disable_functions'.
-###
-### Note: If this option is left empty, BOA
-### will deny access also to function:
-###
-###   passthru
-###
-### If _PHP_FPM_DENY is *not* empty, its value
-### will *replace* default 'passthru', so any
-### denied function must be listed explicitly.
-###
-### WARNING! Do not add here 'shell_exec'
-### or you will break cron for all sites
-### including all hosted on all Satellite
-### Instances. The 'shell_exec' function is
-### also required by Collectd Graph Panel,
-### if installed.
-###
-### This option affects only Ægir Master
-### Instance plus all scripts running outside
-### of Octopus Satellite Instances.
-###
-### Example:
-###
-### _PHP_FPM_DENY="passthru,popen,system"
-###
-### Note that while it will improve security
-### it will also break modules which rely
-### on any of disabled functions.
-###
-_PHP_FPM_DENY=""
-
-###
-### We highly recommend to enable this option
-### to improve system security when certain
-### PHP functions, especially: exec, passthru,
-### shell_exec,system,proc_open,popen are not
-### disabled via option _PHP_FPM_DENY above.
+### Every Barracuda upgrade sets this option
+### to YES: PHP functions like exec,
+### shell_exec, system, proc_open and popen
+### stay enabled in every PHP-FPM pool, and
+### this limits the binaries they can start.
 ###
 ### WARNING! This option is very aggressive
 ### and can break any extra service or binary
@@ -1007,7 +972,7 @@ _APT_ACQUIRE_POLICY=YES
 ### from the shared www-data group to its own web group, wg-<account>, so no
 ### account's PHP and shell users can read another account's files and
 ### settings. It is inert until armed: with _WEB_GROUP_ARM=YES every
-### barracuda pass stamps the box (/var/log/boa/instgrp-web-arm.ready.txt),
+### barracuda pass stamps the box (/etc/boa/control/instgrp-web-arm.ready.txt),
 ### and only then does the Octopus arm convert an account (phase A, then
 ### phase B with _WEB_GROUP_PHASE_B=YES). A per-account opt-out is
 ### _WEB_GROUP=NO in /root/.<account>.octopus.cnf, a phase A pin
@@ -1029,7 +994,7 @@ _WEB_GROUP_PHASE_B=NO
 ### The nginx link check (linkguard): nginx follows symbolic links, so an
 ### account that can write a docroot can link another account's files into
 ### it and have nginx serve them. With _NGINX_LINK_GUARD=YES every barracuda
-### pass stamps the box (/var/log/boa/linkguard-arm.ready.txt); linkguard
+### pass stamps the box (/etc/boa/control/linkguard-arm.ready.txt); linkguard
 ### then makes BOA's own links pass and switches the check on
 ### (/etc/nginx/conf.d/link-guard-boa.conf) once its scan finds no link it
 ### would break other than one inside an account's own tree, and the

@@ -161,7 +161,6 @@ _HM_FPM_VERSION= #-------------- PHP version of the control panel pool (empty: _
 ###
 _PHP_CLI_VERSION=8.4 #---------- PHP-CLI for Master Instance
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
-_PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
 _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
@@ -342,7 +341,7 @@ _APT_ACQUIRE_POLICY=YES
 ### from the shared www-data group to its own web group, wg-<account>, so no
 ### account's PHP and shell users can read another account's files and
 ### settings. It is inert until armed: with _WEB_GROUP_ARM=YES every
-### barracuda pass stamps the box (/var/log/boa/instgrp-web-arm.ready.txt),
+### barracuda pass stamps the box (/etc/boa/control/instgrp-web-arm.ready.txt),
 ### and only then does the Octopus arm convert an account (phase A, then
 ### phase B with _WEB_GROUP_PHASE_B=YES). A per-account opt-out is
 ### _WEB_GROUP=NO in /root/.<account>.octopus.cnf, a phase A pin
@@ -364,7 +363,7 @@ _WEB_GROUP_PHASE_B=NO
 ### The nginx link check (linkguard): nginx follows symbolic links, so an
 ### account that can write a docroot can link another account's files into
 ### it and have nginx serve them. With _NGINX_LINK_GUARD=YES every barracuda
-### pass stamps the box (/var/log/boa/linkguard-arm.ready.txt); linkguard
+### pass stamps the box (/etc/boa/control/linkguard-arm.ready.txt); linkguard
 ### then makes BOA's own links pass and switches the check on
 ### (/etc/nginx/conf.d/link-guard-boa.conf) once its scan finds no link it
 ### would break other than one inside an account's own tree, and the
