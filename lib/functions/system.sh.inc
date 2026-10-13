@@ -10750,21 +10750,23 @@ _if_major_os_upgrade() {
 #
 # Webmin is retired: BOA no longer installs it, and a barracuda pass removes
 # it from a server that still has it unless /root/.barracuda.cnf says
-# _WEBMIN_RETIRE=NO; any value but YES keeps it. The first pass that finds
-# Webmin writes _WEBMIN_RETIRE=YES there and only warns in its mailed report,
-# and the removal waits six days after that notice, so two passes in a row
-# never remove it before the operator could answer. A kept Webmin gets its
-# repository with Webmin's own key, pinned by fingerprint, in an apt keyring:
-# the key BOA used to import went to root's own keyring, which apt never reads,
-# so apt could not verify the repository and the daily trust probe kept
-# unverified repositories allowed for the whole server. A Linux-VServer guest
-# never kept Webmin.
+# _WEBMIN_RETIRE=NO; Webmin is removed only when every _WEBMIN_RETIRE line
+# there says YES. The first pass that finds Webmin writes _WEBMIN_RETIRE=YES
+# there and only warns in its mailed report, and the removal waits six days
+# after that notice, so two passes in a row never remove it before the
+# operator could answer. A kept Webmin gets its repository with Webmin's own
+# key, pinned by fingerprint, in an apt keyring, and a pass that cannot verify
+# it leaves it out: the key BOA used to import went to root's own keyring,
+# which apt never reads, so apt could not verify the repository and the daily
+# trust probe kept unverified repositories allowed for the whole server. A
+# Linux-VServer guest never kept Webmin.
 _webmin_paths() {
   _wmList="/etc/apt/sources.list.d/webmin.list"
+  _wmHead="## Webmin APT Repository"
   _wmKey="/etc/apt/keyrings/webmin.gpg"
   _wmKeyUrl="https://download.webmin.com/developers-key.asc"
   _wmFpr="7D1AE915F3DCFADA344A4FCB2D223B918916F2A2"
-  _wmRepo="https://download.webmin.com/download/newkey/repository"
+  _wmRepo="http://download.webmin.com/download/newkey/repository"
   _wmNote="/etc/boa/control/webmin-retire-notice.txt"
 }
 
@@ -10785,24 +10787,43 @@ _webmin_present() {
     || _webmin_pkg_known
 }
 
-# BOA's own source and keyring go; the next BOA.sh.txt run probes apt's trust
-# again instead of keeping the verdict this pass's probe gave the old source.
-_webmin_source_drop() {
-  if [ -e "${_wmList}" ] || [ -e "${_wmKey}" ]; then
-    rm -f "${_wmList}" "${_wmKey}"
-    rm -f ${_pthLog}/.apt-trust-probe.stamp
-  fi
+# BOA's webmin.list is the one with BOA's header line; any other file at that
+# path is the operator's
+_webmin_list_is_boas() {
+  [ "$(head -n 1 "${_wmList}" 2> /dev/null)" = "${_wmHead}" ]
 }
 
-# Any apt source other than BOA's own that names Webmin's host
-_webmin_other_source() {
+# $1 = a pattern: any apt source but BOA's own that carries it
+_webmin_sources_name() {
   local _f
   for _f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list \
     /etc/apt/sources.list.d/*.sources; do
-    [ -f "${_f}" ] && [ "${_f}" != "${_wmList}" ] || continue
-    grep -qE '^[^#]*download\.webmin\.com' "${_f}" 2> /dev/null && return 0
+    [ -f "${_f}" ] || continue
+    [ "${_f}" = "${_wmList}" ] && _webmin_list_is_boas && continue
+    grep -qE "^[^#]*${1}" "${_f}" 2> /dev/null && return 0
   done
   return 1
+}
+
+_webmin_other_source() {
+  _webmin_sources_name 'download\.webmin\.com'
+}
+
+# BOA's own source goes, and its keyring unless another source names it; the
+# next BOA.sh.txt run probes apt's trust again instead of keeping the verdict
+# this pass's probe gave the old source.
+_webmin_source_drop() {
+  local _chg=""
+  if [ -e "${_wmList}" ] && _webmin_list_is_boas; then
+    rm -f "${_wmList}"
+    _chg=yes
+  fi
+  if [ -e "${_wmKey}" ] && ! _webmin_sources_name "${_wmKey//./\\.}"; then
+    rm -f "${_wmKey}"
+    _chg=yes
+  fi
+  [ -n "${_chg}" ] && rm -f ${_pthLog}/.apt-trust-probe.stamp
+  return 0
 }
 
 # $1 = gpg, $2 = a binary keyring: exactly one key, and it is Webmin's
@@ -10819,44 +10840,64 @@ _webmin_key_is_pinned() {
 }
 
 # The key comes from Webmin itself (BOA's mirror has no copy): five tries of
-# at most 30 seconds, and only the pinned key reaches the keyring.
+# at most 30 seconds, and only the pinned key reaches the keyring. The files
+# live in a private directory, never under a name others can see in /tmp.
 _webmin_key_fetch() {
-  local _g="${1}" _raw _bin _gh _try=1
-  _raw="$(mktemp /tmp/webmin-key-XXXXXX.asc)" || return 1
-  _bin="$(mktemp /tmp/webmin-key-XXXXXX.gpg)" || { rm -f "${_raw}"; return 1; }
-  _gh="$(mktemp -d /tmp/webmin-gpg-XXXXXX)" || { rm -f "${_raw}" "${_bin}"; return 1; }
+  local _g="${1}" _d _try=1
+  _d="$(mktemp -d /tmp/webmin-key-XXXXXX)" || return 1
+  mkdir -m 0700 "${_d}/gpg"
   while [ "${_try}" -le 5 ]; do
-    : > "${_raw}"
-    rm -f "${_bin}"
-    curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_raw}"
-    if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_raw}" 2> /dev/null \
-      && ${_g} --homedir "${_gh}" --yes --dearmor -o "${_bin}" < "${_raw}" 2> /dev/null \
-      && _webmin_key_is_pinned "${_g}" "${_bin}"; then
+    rm -f "${_d}/key.asc" "${_d}/key.gpg"
+    curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_d}/key.asc"
+    if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_d}/key.asc" 2> /dev/null \
+      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" < "${_d}/key.asc" 2> /dev/null \
+      && _webmin_key_is_pinned "${_g}" "${_d}/key.gpg"; then
       mkdir -p /etc/apt/keyrings
       chmod 0755 /etc/apt/keyrings
-      chmod 0644 "${_bin}"
-      mv -f "${_bin}" "${_wmKey}"
-      rm -rf "${_raw}" "${_gh}"
+      chmod 0644 "${_d}/key.gpg"
+      mv -f "${_d}/key.gpg" "${_wmKey}"
+      rm -rf "${_d}"
       return 0
     fi
     _try=$((_try + 1))
     [ "${_try}" -le 5 ] && sleep 9
   done
-  rm -rf "${_raw}" "${_bin}" "${_gh}"
+  rm -rf "${_d}"
   return 1
+}
+
+# A strict apt update of BOA's Webmin source alone, in its own lists dir, so
+# the server's lists and lock are not touched: 0 verified, 1 a signature
+# failure, 2 not reached.
+_webmin_repo_verifies() {
+  local _d _out _rc
+  _d="$(mktemp -d /tmp/webmin-apt-XXXXXX)" || return 2
+  mkdir -p "${_d}/lists/partial" "${_d}/cache/archives/partial"
+  _out="$(LC_ALL=C apt-get update -o Dir::Etc::sourcelist="${_wmList}" \
+    -o Dir::Etc::sourceparts="-" -o Dir::State::Lists="${_d}/lists" \
+    -o Dir::Cache="${_d}/cache" -o APT::List-Cleanup=0 \
+    -o Acquire::AllowInsecureRepositories=false \
+    -o Acquire::AllowDowngradeToInsecureRepositories=false \
+    -o Acquire::AllowWeakRepositories=false 2>&1)"
+  _rc=$?
+  rm -rf "${_d}"
+  if echo "${_out}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG|BADSIG|not signed|signature"; then
+    return 1
+  fi
+  [ "${_rc}" = "0" ] && return 0
+  return 2
 }
 
 # Webmin stays: its repository is kept verified, or left out until it can be.
 _webmin_keep() {
-  local _g _want
+  local _g _want _vr
   rm -f ${_pthLog}/webmin_update_apt_src.log
   if ! _webmin_pkg_installed; then
     _webmin_source_drop
     return 0
   fi
   if _webmin_other_source; then
-    # the operator's own source serves it; two Signed-By values for one
-    # repository would stop every apt update on the server
+    # the operator's own source serves it
     _webmin_source_drop
     return 0
   fi
@@ -10870,34 +10911,62 @@ _webmin_keep() {
     _webmin_source_drop
     return 1
   fi
-  if ! _webmin_key_is_pinned "${_g}" "${_wmKey}" && ! _webmin_key_fetch "${_g}"; then
-    _msg "WARN: Webmin's signing key not fetched from ${_wmKeyUrl}, or not the known"
-    _msg "WARN: key; its repository is left out and the next barracuda run tries again"
+  # a key in place is fetched again once a month, for a changed expiry or
+  # subkey; a failed refresh keeps it
+  if ! _webmin_key_is_pinned "${_g}" "${_wmKey}" \
+    || [ -n "$(find "${_wmKey}" -mtime +30 2> /dev/null)" ]; then
+    if ! _webmin_key_fetch "${_g}" && ! _webmin_key_is_pinned "${_g}" "${_wmKey}"; then
+      _msg "WARN: Webmin's signing key not fetched from ${_wmKeyUrl}, or not the known"
+      _msg "WARN: key; its repository is left out and the next barracuda run tries again"
+      _webmin_source_drop
+      return 1
+    fi
+  fi
+  _want="deb [signed-by=${_wmKey}] ${_wmRepo} stable contrib"
+  if [ "$(cat "${_wmList}" 2> /dev/null)" != "$(printf '%s\n%s' "${_wmHead}" "${_want}")" ]; then
+    printf '%s\n%s\n' "${_wmHead}" "${_want}" > "${_wmList}"
+    chmod 0644 "${_wmList}"
+    rm -f ${_pthLog}/.apt-trust-probe.stamp
+  fi
+  _webmin_repo_verifies
+  _vr=$?
+  if [ "${_vr}" = "1" ]; then
+    # once more with the key fetched again, then left out: an unverified
+    # source would keep unverified repositories allowed for the whole server
+    _webmin_key_fetch "${_g}" > /dev/null 2>&1
+    _webmin_repo_verifies
+    _vr=$?
+  fi
+  if [ "${_vr}" = "1" ]; then
+    _msg "WARN: Webmin's repository does not verify with its known key, so it is left"
+    _msg "WARN: out; Webmin stays, without apt updates, until a BOA update knows the key"
     _webmin_source_drop
     return 1
   fi
-  _want="deb [signed-by=${_wmKey}] ${_wmRepo} stable contrib"
-  if [ "$(cat "${_wmList}" 2> /dev/null)" != "$(printf '%s\n%s' '## Webmin APT Repository' "${_want}")" ]; then
-    printf '%s\n%s\n' '## Webmin APT Repository' "${_want}" > "${_wmList}"
-    chmod 0644 "${_wmList}"
-    rm -f ${_pthLog}/.apt-trust-probe.stamp
-    _msg "INFO: Webmin kept, its repository verified with Webmin's own key"
-  fi
+  [ "${_vr}" = "0" ] && _msg "INFO: Webmin kept, its repository verified with Webmin's own key"
   return 0
 }
 
 # Webmin goes, its configuration saved first: Webmin's own package scripts
 # delete /etc/webmin and /var/webmin on any removal.
 _webmin_remove() {
-  local _bak="" _dirs=""
+  local _bak="" _dirs="" _trc _d _left=""
+  if [[ "$(dpkg-query -W -f='${Status}' webmin 2> /dev/null)" =~ ^hold\  ]]; then
+    _msg "WARN: Webmin is held (apt-mark hold), so it stays as it is; set"
+    _msg "WARN: _WEBMIN_RETIRE=NO in ${_barCnf} to keep it without this warning"
+    return 1
+  fi
   _msg "INFO: Removing the retired Webmin Control Panel..."
   [ -d "/etc/webmin" ] && _dirs="etc/webmin"
   [ -d "/var/webmin" ] && _dirs="${_dirs} var/webmin"
   if [ -n "${_dirs}" ]; then
     _bak="${_vBs:-/var/backups}/webmin-retired-$(date +%y%m%d-%H%M%S).tar.gz"
+    # tar says 1 when a file changed while it was read (a running Webmin's
+    # logs); the copy is whole all the same
     # shellcheck disable=SC2086  # one or two fixed relative names, split on purpose
-    if ! ( umask 077; tar -czf "${_bak}" -C / ${_dirs} ) 2> /dev/null \
-      || [ ! -s "${_bak}" ]; then
+    ( umask 077; tar -czf "${_bak}" -C / ${_dirs} ) 2> /dev/null
+    _trc=$?
+    if [ "${_trc}" -gt 1 ] || [ ! -s "${_bak}" ]; then
       rm -f "${_bak}"
       _msg "WARN: Webmin's configuration could not be saved in ${_vBs:-/var/backups},"
       _msg "WARN: so Webmin stays and the next barracuda run tries again"
@@ -10910,11 +10979,18 @@ _webmin_remove() {
     _mrun "apt-get remove webmin -y --purge -qq"
   fi
   if _webmin_pkg_known; then
-    # a held package, or a dpkg problem: Webmin stays as it was, running,
-    # and the copy goes, or a held one would gather a copy every pass
-    [ -n "${_bak}" ] && rm -f "${_bak}"
-    _msg "WARN: Webmin could not be removed (held, or a dpkg problem); it stays"
-    _msg "WARN: as it was and the next barracuda run tries again"
+    # the copy goes only while everything it holds is still in place
+    for _d in ${_dirs}; do
+      [ -d "/${_d}" ] || _left=yes
+    done
+    if [ -n "${_bak}" ] && [ -z "${_left}" ]; then
+      rm -f "${_bak}"
+      _msg "WARN: Webmin could not be removed (a dpkg problem); it stays as it was"
+    else
+      _msg "WARN: Webmin could not be removed (a dpkg problem); its configuration is"
+      _msg "WARN: kept in ${_bak:-no copy}"
+    fi
+    _msg "WARN: and the next barracuda run tries again"
     return 1
   fi
   # what is left without the package: its server, if it still runs
@@ -10931,35 +11007,61 @@ _webmin_remove() {
   return 0
 }
 
+# YES only when the sourced value and every _WEBMIN_RETIRE line of the cnf say
+# YES: the last line wins when the cnf is sourced, and an operator's NO above
+# the line BOA added must still keep Webmin
+_webmin_retire_set() {
+  local _v
+  [ "${_WEBMIN_RETIRE}" = "YES" ] || return 1
+  while read -r _v; do
+    _v="${_v#\"}"
+    _v="${_v#\'}"
+    _v="${_v%%[!A-Za-z0-9]*}"
+    [ "${_v}" = "YES" ] || return 1
+  done < <(sed -n -E 's/^[[:space:]]*(export[[:space:]]+)?_WEBMIN_RETIRE=//p' "${_barCnf}" 2> /dev/null)
+  return 0
+}
+
 _webmin_manage() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _webmin_manage"
   fi
   _webmin_paths
+  # the 2002 key boxes set up before 2019 gave apt for every repository; kept
+  # while an operator's own Webmin source may still rely on it
+  if command -v apt-key > /dev/null 2>&1 && ! _webmin_other_source; then
+    apt-key del D97A3AE911F63C51 &> /dev/null
+  fi
   if ! _webmin_present; then
     _webmin_source_drop
-    rm -f ${_pthLog}/webmin_update_apt_src.log
+    rm -f ${_pthLog}/webmin_update_apt_src.log "${_wmNote}"
     return 0
-  fi
-  # the 2002 key boxes set up before 2019 gave apt for every repository
-  if command -v apt-key > /dev/null 2>&1; then
-    apt-key del D97A3AE911F63C51 &> /dev/null
   fi
   if [[ "$(uname -a)" =~ "-beng" ]]; then
     _webmin_remove
     return
   fi
-  if [[ ! "${_WEBMIN_RETIRE}" =~ ^[Yy][Ee][Ss]$ ]]; then
+  if ! _webmin_retire_set; then
+    rm -f "${_wmNote}"
     _webmin_keep
     return
   fi
   if ! grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEBMIN_RETIRE=" "${_barCnf}" 2> /dev/null \
     || [ ! -e "${_wmNote}" ]; then
+    # the six days start at this warning, whatever an older notice said
     _instgrp_web_seed_line _WEBMIN_RETIRE ALL
-    [ -e "${_wmNote}" ] || _boa_control_put "${_wmNote##*/}" "$(date)"
-    _msg "WARN: Webmin is retired: a barracuda run six or more days from now removes it,"
-    _msg "WARN: keeping a copy of its configuration in ${_vBs:-/var/backups}. To keep"
-    _msg "WARN: Webmin, set _WEBMIN_RETIRE=NO in ${_barCnf}"
+    if ! grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEBMIN_RETIRE=" "${_barCnf}" 2> /dev/null; then
+      _msg "WARN: Webmin is retired, but _WEBMIN_RETIRE=YES could not be written into"
+      _msg "WARN: ${_barCnf}, so Webmin stays until it can be"
+    elif ! _boa_control_put "${_wmNote##*/}" "$(date)"; then
+      _msg "WARN: Webmin is retired, but ${_wmNote} could not be written,"
+      _msg "WARN: so Webmin stays until it can be"
+    else
+      _msg "WARN: Webmin is retired: a barracuda run six or more days from now removes it,"
+      _msg "WARN: keeping a copy of its configuration in ${_vBs:-/var/backups}. To keep"
+      _msg "WARN: Webmin, change the _WEBMIN_RETIRE=YES line BOA added at the end of"
+      _msg "WARN: ${_barCnf} to _WEBMIN_RETIRE=NO"
+    fi
     _webmin_keep
     return
   fi
