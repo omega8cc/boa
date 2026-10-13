@@ -204,12 +204,17 @@ _check_root() {
     i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
     *) _PRN_VLV="notice" ;;
   esac
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
   # The old `|| hostname -f` bound to tr (rc 0 on empty input) and never
   # fired; an empty /etc/hostname then dropped the host part of every
-  # bucket name, so one account name on two boxes shared one chain.
-  # The raw value is kept: BOA.sh.txt derives the sentinel names from it.
-  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+  # bucket name, so one account name on two boxes shared one chain. A
+  # fallback that answers only localhost would name a bucket every such
+  # server shares. No case folding: BOA.sh.txt derives the sentinel names
+  # from this same read.
+  if [ -z "${_hName}" ]; then
+    _hName="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+    case "${_hName}" in localhost|localhost.*) _hName="" ;; esac
+  fi
   if [ -z "${_hName}" ]; then
     echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
     exit 1
@@ -754,6 +759,17 @@ _construct_bucket_name() {
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
   export _LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
+  # A chain this box wrote while /etc/hostname was empty went to the bucket
+  # without the host part; this run starts a new one under the full name.
+  if [ -n "${_hst_dash}" ] \
+    && [ -e "/etc/boa/control/back-to-${_user}--${_service_dash}.chain.txt" ]; then
+    { echo "NOTE: this server's earlier chain is in back-to-${_user}--${_service_dash},"
+      echo "NOTE: written while /etc/hostname was empty; backups now go to ${_BUCKET_NAME},"
+      echo "NOTE: starting with a full one. Where the provider needs a bucket created by"
+      echo "NOTE: hand, create it first. Restore from or remove the old bucket by hand, then"
+      echo "NOTE: remove /etc/boa/control/back-to-${_user}--${_service_dash}.chain.txt to end this note."
+    } >> ${_LOGFILE}
+  fi
   _print_env "multiback_construct_bucket_name"
 }
 
@@ -1516,23 +1532,28 @@ _run_backup() {
   # below has nothing to detect. The operands are word-split but never
   # globbed by the shell: a pattern there is duplicity's, and an account's
   # regexp operand must not expand to the names it keeps in its own tree.
+  # the length before this run's output: a run killed before its log was
+  # archived leaves its lines behind, and only this run's may decide a retry
+  _bupLog0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
   set -f
   ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
   _BUP_RC=$?
   set +f
   wait
   # An explicit incremental against a remote with no signatures is a
-  # fatal in duplicity when the command carries no --full-if-older-than
-  # (the hosted global, data and custom commands); with it, as in the
-  # default command, duplicity promotes the run to full itself. After an
-  # emptied remote (provider account swap, bucket wipe) the local chain
+  # fatal in duplicity. With --full-if-older-than, as in the default
+  # command, an EMPTY remote is promoted to full; a remote that kept a
+  # full's volumes but lost its signatures is refused all the same, and the
+  # hosted global, data and custom commands carry no such flag at all. After
+  # an emptied remote (provider account swap, bucket wipe) the local chain
   # marker keeps voting incremental, so every leg would fatal forever.
   # Retry once as full; _MODE is corrected first so the per-mode day log,
   # the monthly-full gate and the emailed subject describe the run that
   # happened.
   if [ "${_BUP_RC}" -ne 0 ] \
     && [ "${_MODE}" = "incremental" ] \
-    && grep -q "Old signatures not found and incremental specified" "${_LOGFILE}"; then
+    && tail -n +$(( ${_bupLog0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+      | grep -q "Old signatures not found and incremental specified"; then
     export _MODE="full"
     _set_cmd
     echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}

@@ -9883,21 +9883,23 @@ _major_os_upgrade_percona_check() {
 # Put back /var/xdrago that _if_major_os_upgrade parked as /var/xdrago_wait.
 # When /var/xdrago was rebuilt meanwhile (a tools refresh run by hand, an
 # install), it keeps every name it holds, the parked tree fills in only what
-# it lacks (cron/custom.txt and the other per-box files) and is kept in the
-# dragon store: a mv onto the existing name would move it inside instead.
+# it lacks (cron/custom.txt and the other per-box files) and goes to the
+# dragon store with the list of what it filled in: a mv onto the existing
+# name would move it inside instead.
 _xdrago_wait_restore() {
-  local _xdrArc
+  local _xdrArc _xdrAdd
   if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
     return 0
   fi
   if [ ! -e "/var/xdrago" ] && [ ! -L "/var/xdrago" ]; then
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
-    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
     _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
+    _xdrAdd="$(cp -anv /var/xdrago_wait/. /var/xdrago/ 2> /dev/null)"
     mkdir -p "${_vBs}/dragon/x"
     mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
-    _msg "INFO: /var/xdrago_wait merged into /var/xdrago, kept as ${_xdrArc}"
+    [ -d "${_xdrArc}" ] && printf '%s\n' "${_xdrAdd}" > "${_xdrArc}.added.txt"
+    _msg "INFO: /var/xdrago_wait merged into /var/xdrago ($(printf '%s' "${_xdrAdd}" | grep -c .) names it alone held added), kept as ${_xdrArc}"
   fi
   return 0
 }
@@ -10760,7 +10762,9 @@ _webmin_key_import() {
   [ -x "/usr/bin/gpg2" ] && _wGpg=gpg2
   while [ "${_attempt_num}" -le "${_max_attempts}" ]; do
     rm -f jcameron-key.gpg*
-    wget ${_wgetGet} "${_wKeyUrl}"
+    # two tries and a 30-second timeout each: _wgetGet alone allows nine
+    # tries of up to 15 minutes, five times over
+    wget ${_wgetGet} --tries=2 --timeout=30 "${_wKeyUrl}"
     if grep -q GnuPG jcameron-key.gpg 2> /dev/null; then
       ${_wGpg} --import < jcameron-key.gpg &> /dev/null
       rm -f jcameron-key.gpg*

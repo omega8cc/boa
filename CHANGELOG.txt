@@ -4,6 +4,11 @@
 
 @=> Important Fixes
 
+    * A major OS upgrade pass that has to fetch the Percona signing key
+      again now converts it with the server's own gpg. That step named no
+      gpg program in this pass, so the key was not written and apt could
+      not verify the Percona packages.
+
     * backboa and duobackboa retry an incremental run once in full mode
       when duplicity refuses it because the bucket lost its signature
       files while keeping the backup volumes. Such a bucket failed every
@@ -21,16 +26,22 @@
       ran, so multiback named such a server's buckets back-to-USER--PROVIDER,
       the same name for one account on every such server, and two servers
       could write into one backup chain. The name now falls back to
-      hostname -f, and multiback and mybackup refuse to run when neither
-      gives one. The same fallback now applies wherever the server's name
-      decides an identity or a path: the license check, the hosted-server
-      test, the database host of a new instance, the Octopus control panel
-      name, the migration tools' source and target test, and the directory
-      of the nightly database dumps.
+      hostname -f, a fallback that answers only localhost counts as no
+      name, and multiback, mybackup, backboa and duobackboa refuse to run
+      without one. The same fallback now applies wherever the server's
+      name decides an identity or a path: the license check, the
+      hosted-server test, the database host of a new instance and of
+      syncpass, the Octopus control panel name, the migration tools'
+      source and target test, and the directory of the nightly database
+      dumps. Action needed on a server whose /etc/hostname is empty: its
+      next multiback run starts a new full chain in the bucket named with
+      the server's name, and its report says so; where the provider needs
+      a bucket created by hand, create it first, then restore from or
+      remove the old bucket by hand.
 
     * A dry run of xmass sync or cutover no longer writes its list of
-      out-of-root file links to /var/log/boa: it prints the batch a live
-      pass would copy and leaves the source untouched. A live pass that
+      out-of-root file links to /var/log/boa: it prints how many links a
+      live pass would copy and leaves the source untouched. A live pass that
       cannot write that list now stops with a DENY, instead of copying
       from whatever list an earlier run left there, or copying nothing
       from a list a full disk left empty while the pass reported clean.
@@ -45,18 +56,21 @@
       address and goes on, and the next upgrade tries again.
 
     * A major OS upgrade pass that stops before it is done no longer
-      leaves the server without its BOA cron jobs. The pass sets the
-      /var/xdrago directory aside as /var/xdrago_wait while the packages
-      move and used to put it back only at its very end, so a pass that
-      stopped on an unclean dpkg audit or on held packages started cron
-      again with every job gone: the five-minute cleanup and self-update,
-      the service watchdogs and the nightly database backups. A pass that
-      stops now puts the directory back on its way out, and the next
-      Barracuda run puts back one that a killed or crashed pass left
-      aside, before anything else reads it. If /var/xdrago was rebuilt
-      in the meantime, the rebuilt copy is kept, the one set aside only
-      adds the files it lacks, such as cron/custom.txt, and is kept in
-      /var/backups/dragon/x.
+      leaves the server without most of its BOA cron jobs. The pass sets
+      the /var/xdrago directory aside as /var/xdrago_wait while the
+      packages move and used to put it back only at its very end, so a
+      pass that stopped on an unclean dpkg audit or on held packages
+      started cron again with those jobs gone: the five-minute cleanup and
+      self-update, the service watchdogs and the nightly database dumps. A
+      pass that stops now puts the directory back on its way out, and the
+      next Barracuda run puts back one that a killed or crashed pass left
+      aside, early in the pass. If /var/xdrago was rebuilt in the
+      meantime, the rebuilt copy is kept, the one set aside only adds the
+      files it lacks, such as cron/custom.txt, and is kept for a week in
+      /var/backups/dragon/x with a list of what it added. Action needed
+      on a server an earlier release left with /var/xdrago_wait and no
+      /var/xdrago: it no longer updates itself, so run barracuda up-<tree>
+      system once by hand, or move /var/xdrago_wait back to /var/xdrago.
 
     * An Octopus control panel no longer fails with a blank page when
       another account on the same server uses a different list of

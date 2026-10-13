@@ -5399,15 +5399,15 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f85 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f84 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f50 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f28 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f67 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f66 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f47 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f28 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f67 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f66 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
@@ -5431,8 +5431,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f03 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f09 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f02 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f08 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f63 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f57 --guard /local/bin/renameaegirhost
@@ -5448,8 +5448,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f83 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f13 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f83 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f46 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f64 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f92 --guard /local/bin/solrtrim
@@ -6335,8 +6335,11 @@ if [ "$(id -u)" -eq 0 ]; then
     [ "${_bupFailH}" -lt 30 ] && _bupFailH=30
     _bupDeadH=$(( _bupIntH * 8 ))
     [ "${_bupDeadH}" -lt 48 ] && _bupDeadH=48
-    _bupHstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
-    [ -n "${_bupHstN}" ] || _bupHstN="$(hostname -f 2>/dev/null)"
+    _bupHstN="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
+    if [ -z "${_bupHstN}" ]; then
+      _bupHstN="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+      case "${_bupHstN}" in localhost|localhost.*) _bupHstN="" ;; esac
+    fi
     # The sentinel name must be derived exactly as its WRITER derives it.
     # multiback builds the bucket name -- and so the OK/ERR log filename --
     # from the raw hostname with no case folding, so folding here made the

@@ -84,12 +84,16 @@ _DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
-_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+_HST="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
 # The old `|| hostname -f` bound to tr (rc 0 on empty input) and never
 # fired; an empty /etc/hostname then collapsed the bucket name to the
 # SHARED literal prefix, and --allow-source-mismatch let two boxes
-# interleave and force-prune one duplicity chain.
-[ -n "${_HST}" ] || _HST="$(hostname -f 2>/dev/null)"
+# interleave and force-prune one duplicity chain. A fallback that answers
+# only localhost would name a bucket every such server shares.
+if [ -z "${_HST}" ]; then
+  _HST="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+  case "${_HST}" in localhost|localhost.*) _HST="" ;; esac
+fi
 if [ -z "${_HST}" ]; then
   echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
   exit 1
@@ -1016,12 +1020,17 @@ _set_cmd() {
 }
 
 _run_backup() {
-  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+  # the retry as full runs at once: its run already waited
+  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] \
+    && [ "${_BUP_RETRY}" != "YES" ]; then
     _n=$((RANDOM%300+8))
     echo "Waiting ${_n} seconds on $(date) before running ${_MODE} backup" >> ${_LOGFILE}
     sleep ${_n}
   fi
   echo "Running ${_MODE} backup on $(date)" >> ${_LOGFILE}
+  # the length before this run's output: a run killed before its log was
+  # archived leaves its lines behind, and only this run's may decide a retry
+  _BUP_LOG0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
   echo "Command is ${_DCY_UP_CMD} \
     ${_NAME} \
     ${_EXCLUDE} \
@@ -1105,10 +1114,12 @@ _backup() {
   # and its report describe a backup that happened.
   if [ "${_BUP_RC}" -ne 0 ] \
     && [ "${_MODE}" = "incremental" ] \
-    && grep -q "Old signatures not found and incremental specified" "${_LOGFILE}"; then
+    && tail -n +$(( ${_BUP_LOG0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+      | grep -q "Old signatures not found and incremental specified"; then
     _MODE="full"
     _set_cmd
     echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+    _BUP_RETRY=YES
     _run_backup
   fi
   if _chain_known \

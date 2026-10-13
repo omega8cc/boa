@@ -530,8 +530,9 @@ _if_install_webmin() {
           sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
         echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
           sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-        # Without the key the install goes on; the missing marker makes
-        # the next pass's _webmin_apt_update fetch it again.
+        # Without the key the install goes on; apt may then refuse the
+        # repository, and the next pass tries again: this install while
+        # /etc/webmin is missing, _webmin_apt_update once it is there.
         if _webmin_key_import; then
           touch ${_pthLog}/webmin_update_apt_src.log
         fi
@@ -541,8 +542,12 @@ _if_install_webmin() {
             _mrun "${_INSTAPP} ${_PKG}"
           fi
         done
-        _mrun "update-rc.d webmin defaults"
-        _msg "INFO: Webmin Control Panel installed"
+        if _pkg_installed webmin; then
+          _mrun "update-rc.d webmin defaults"
+          _msg "INFO: Webmin Control Panel installed"
+        else
+          _msg "WARN: Webmin Control Panel not installed, the next barracuda run tries again"
+        fi
       else
         _msg "INFO: Webmin Control Panel installation skipped"
       fi
