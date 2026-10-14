@@ -2526,7 +2526,7 @@ _update_agents() {
     _runner_parked graceful.sh \
       || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
     _runner_parked usage.sh \
-      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f55
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f56
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \

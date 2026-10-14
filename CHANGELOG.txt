@@ -573,6 +573,12 @@
       pass, as deleting one site's line always did; before, the per-site
       refusals and opt-ins the file had set stayed in force.
 
+    * The notice a hosted account gets when its live databases pass the
+      plan's space now lists, for each of its ten largest live databases,
+      the five largest tables and the room their files hold free, and says
+      that deleted rows give their space back only after OPTIMIZE TABLE,
+      with a link to the docs page on database space.
+
     * codebasecheck words its Grav verdict for shops: a Grav platform's
       code holds no SQL, and a KahunaCart shop's database requires
       MySQL 8 itself; it no longer calls every Grav site flat-file.
