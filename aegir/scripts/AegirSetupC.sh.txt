@@ -166,7 +166,9 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_THIS_DB_HOST}" ] || _THIS_DB_HOST="$(hostname -f 2>/dev/null)"
 fi
 export _USE_AEGIR_VER=SRC
 export _T_BUILD=SRC
@@ -1851,18 +1853,18 @@ declare -A _distros_names=(
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="2.2.3"
+  ["CMS"]="2.2.4"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
   ["CK3"]="5.1.0"
   ["EZC"]="2.2.15"
-  ["FOS"]="4.0.6"
+  ["FOS"]="4.0.7"
   ["LGV"]="4.0.5"
-  ["OCS"]="3.1.0"
-  ["OFD"]="13.6.7"
+  ["OCS"]="3.1.2"
+  ["OFD"]="13.6.8"
   ["OPG"]="3.2.7"
   ["SOC"]="13.1.0"
-  ["THR"]="8.4.4"
+  ["THR"]="8.4.6"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
   ["VBX"]="11.0.0"
@@ -1892,7 +1894,7 @@ declare -A _distros_drupal_cores=(
   ["CK2"]="${_SMALLCORE10_1_V}"
   ["CK3"]="${_SMALLCORE11_4_V}"
   ["EZC"]="10.3.6"
-  ["FOS"]="11.3.17"
+  ["FOS"]="11.3.18"
   ["LGV"]="${_SMALLCORE11_4_V}"
   ["OCS"]="${_SMALLCORE11_4_V}"
   ["OFD"]="${_SMALLCORE10_6_V}"
@@ -1901,7 +1903,7 @@ declare -A _distros_drupal_cores=(
   ["THR"]="${_SMALLCORE11_4_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VBX"]="11.4.6"
+  ["VBX"]="11.4.8"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -2670,6 +2672,18 @@ _d_dist_loop() {
     _d_name="${_distros_names[${_dist}]}"
     _d_vers="${_distros_versions[${_dist}]}"
     _d_core="${_distros_drupal_cores[${_dist}]}"
+    # Retired from the catalogue: Drupal 11.1 and 11.2 and Drupal 10.0 to
+    # 10.5 have no security support and cannot update to Drupal 12 (its
+    # floor is 11.3.0). No new platform is built from them; the platforms
+    # already on the box keep their sites. Said only when a list names one.
+    case "${_dist}" in
+      DE1|DE2|DX0|DX1|DX2|DX3|DX4|DX5)
+        if [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+          _msg "NOTE! ${_dist} (${_d_name} ${_d_vers}) is retired from the catalogue: not built; platforms already here keep their sites"
+        fi
+        continue
+        ;;
+    esac
     if [[ "${_d_core%%.*}" =~ ^[0-9]+$ ]] \
       && [ "${_d_core%%.*}" -ge 11 ] \
       && [ -n "${_d_db_v}" ] \

@@ -87,7 +87,7 @@ testing only, not production, and their security updates are best
 effort. Run production sites on a platform you build yourself in
 ~/static (docs.boa.io: Building a platform).
 
-Drupal 11 symbols (DE4 DE3 DE2 DE1 and the Drupal 11 distributions CMS CK3
+Drupal 11 symbols (DE4 DE3 and the Drupal 11 distributions CMS CK3
 LGV THR VBX FOS OCS) need MySQL 8, which on BOA means Percona 8.4. On a
 Percona 5.7 server they are skipped with a NOTE in the upgrade log, and a
 Drupal 11 site Install stops with that one reason; ask your host to upgrade
@@ -117,37 +117,21 @@ Platform symbols:
     DE3 — Drupal 11.3 prod/stage/dev
     FOS — farmOS
 
-  Drupal 11.2
-    DE2 — Drupal 11.2 prod/stage/dev
-
-  Drupal 11.1
-    DE1 — Drupal 11.1 prod/stage/dev
-
   Drupal 10.6
     DX6 — Drupal 10.6 prod/stage/dev
     OFD — OpenFed
     OPG — Opigno LMS
     SOC — Social
 
-  Drupal 10.5
-    DX5 — Drupal 10.5 prod/stage/dev
-
-  Drupal 10.4
-    DX4 — Drupal 10.4 prod/stage/dev
-
   Drupal 10.3
-    DX3 — Drupal 10.3 prod/stage/dev
     EZC — EzContent
 
-  Drupal 10.2
-    DX2 — Drupal 10.2 prod/stage/dev
-
   Drupal 10.1
-    DX1 — Drupal 10.1 prod/stage/dev
     CK2 — Commerce v.2
 
-  Drupal 10.0
-    DX0 — Drupal 10.0 prod/stage/dev
+  Retired, no longer built (platforms already on a server keep their sites):
+    DE2 DE1 — Drupal 11.2 and 11.1
+    DX5 DX4 DX3 DX2 DX1 DX0 — Drupal 10.5 to 10.0
 
   Drupal 9
     DL9 — Drupal 9 prod/stage/dev

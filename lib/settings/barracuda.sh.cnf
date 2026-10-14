@@ -182,7 +182,7 @@ _PHP_CLI_VERSION=8.4
 ### SR4 --- Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
 ### SR7 --- Apache Solr 7 (not supported on Devuan Excalibur)
 ### SR9 --- Apache Solr 9
-### WMN --- Webmin Control Panel (deprecated)
+### WMN --- Webmin Control Panel (retired: never installed, see _WEBMIN_RETIRE)
 ###
 ### Examples:
 ###
@@ -191,6 +191,21 @@ _PHP_CLI_VERSION=8.4
 ### _XTRAS_LIST="ALL SR9 CSS NPM"
 ###
 _XTRAS_LIST=""
+
+
+###----------------------------------------###
+### WEBMIN (RETIRED)                       ###
+###----------------------------------------###
+###
+### BOA no longer installs Webmin, and a barracuda run removes it from
+### a server that still has it, keeping a copy of /etc/webmin and
+### /var/webmin in /var/backups first. The first run that finds Webmin
+### writes _WEBMIN_RETIRE=YES into /root/.barracuda.cnf and only warns;
+### a run six or more days later removes it. Set _WEBMIN_RETIRE=NO there
+### to keep Webmin: BOA then keeps its apt repository verified with
+### Webmin's own signing key. Any value but YES keeps Webmin.
+###
+_WEBMIN_RETIRE=YES
 
 
 ###----------------------------------------###
@@ -1210,6 +1225,12 @@ _ALLOW_VALKEY_RESTART=NO
 ### Replaces /etc/boa/.debug.email.txt
 _DEBUG_EMAIL=NO
 ###
+### Nightly GoAccess also writes ai-visibility.txt beside each report:
+### requests by the AI agent classes the vhosts act on (search / index,
+### assistant, evasive assistant, training, utility) and visits referred
+### by AI assistants. Needs GoAccess itself switched on.
+_GOACCESS_AI_REPORT=NO
+###
 ### Nightly GoAccess builds the aggregate ALL-sites report as well as
 ### the per-site ones. Needs GoAccess itself switched on.
 ### Replaces /etc/boa/.goaccess.all.cnf
@@ -1876,7 +1897,9 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _urlEnc="https://${_USE_MIR}/enc/2024"
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    # A test, not ||: tr exits 0 on an empty /etc/hostname
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+    [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \

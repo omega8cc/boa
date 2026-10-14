@@ -4,6 +4,94 @@
 
 @=> Important Fixes
 
+    * Every Drupal 8+ distribution platform staticbuild builds (LocalGov,
+      Varbase, Thunder and the rest, not only Drupal CMS) carries the
+      correction to pathauto's Drupal 7 migration definition, so Drupal's
+      upgrade wizard no longer refuses a Drupal 7 site at its credentials
+      step with "The pathauto_pattern plugin must define the source_module
+      property" when the target runs on one of them.
+
+    * Webmin is retired. BOA no longer installs it (WMN in _XTRAS_LIST is
+      ignored), and a Barracuda run removes it from a server that still
+      has it unless _WEBMIN_RETIRE=NO is set in /root/.barracuda.cnf; only
+      YES removes it, and only when every _WEBMIN_RETIRE line there says
+      so. The first run that finds Webmin writes _WEBMIN_RETIRE=YES at the
+      end of that file and only warns in its report; a run six or more
+      days later removes it, saving /etc/webmin and /var/webmin to
+      /var/backups first. A held package, or one dpkg fails to remove,
+      stays, its repository looked after as a kept Webmin's. A kept Webmin
+      gets its apt repository with Webmin's own signing key, pinned by its
+      fingerprint; a run that reaches the repository but cannot use it
+      leaves it out, and one that cannot reach it keeps it: the old key
+      went to root's keyring, which apt never reads, and kept apt
+      accepting unverified packages from every repository on the server.
+      An operator's own Webmin source, a webmin.list without BOA's header
+      line included, is left alone.
+
+    * multiback no longer marks a failed run as a good one when the run
+      before it was killed after duplicity printed its statistics and
+      before the log was archived: its repair and success checks now read
+      only the lines of the run in progress.
+
+    * A major OS upgrade pass that has to fetch the Percona signing key
+      again now converts it with the server's own gpg. That step named no
+      gpg program in this pass, so the key was not written and apt could
+      not verify the Percona packages.
+
+    * backboa and duobackboa retry an incremental run once in full mode
+      when duplicity refuses it because the bucket lost its signature
+      files while keeping the backup volumes. Such a bucket failed every
+      daily run until the weekly full backup; multiback already retried
+      this way.
+
+    * A failed backboa or duobackboa run now says so in its emailed
+      report and archive log: duplicity's own error lines, which went
+      only to the cron job's discarded stderr, and an ALERT line with the
+      exit code. Until now a run that failed sent the same report as one
+      that worked, with no word of why.
+
+    * Off-site backups no longer lose the server's name from their bucket
+      names when /etc/hostname is empty. The fallback to hostname -f never
+      ran, so multiback named such a server's buckets back-to-USER--PROVIDER,
+      the same name for one account on every such server, and two servers
+      could write into one backup chain. The name now falls back to
+      hostname -f, a fallback that answers only localhost counts as no
+      name, and multiback, mybackup, backboa and duobackboa refuse to run
+      without one. The same fallback now applies wherever the server's
+      name decides an identity or a path: the license check, the
+      hosted-server test, the database host of a new instance and of
+      syncpass, the Octopus control panel name, the migration tools'
+      source and target test, and the directory of the nightly database
+      dumps. Action needed on a server whose /etc/hostname is empty: its
+      next multiback run starts a new full chain in the bucket named with
+      the server's name, and its report says so; where the provider needs
+      a bucket created by hand, create it first, then restore from or
+      remove the old bucket by hand.
+
+    * A dry run of xmass sync or cutover no longer writes its list of
+      out-of-root file links to /var/log/boa: it prints how many links a
+      live pass would copy and leaves the source untouched. A live pass that
+      cannot write that list now stops with a DENY, instead of copying
+      from whatever list an earlier run left there, or copying nothing
+      from a list a full disk left empty while the pass reported clean.
+
+    * A major OS upgrade pass that stops before it is done no longer
+      leaves the server without most of its BOA cron jobs. The pass sets
+      the /var/xdrago directory aside as /var/xdrago_wait while the
+      packages move and used to put it back only at its very end, so a
+      pass that stopped on an unclean dpkg audit or on held packages
+      started cron again with those jobs gone: the five-minute cleanup and
+      self-update, the service watchdogs and the nightly database dumps. A
+      pass that stops now puts the directory back on its way out, and the
+      next Barracuda run puts back one that a killed or crashed pass left
+      aside, early in the pass. If /var/xdrago was rebuilt in the
+      meantime, the rebuilt copy is kept, the one set aside only adds the
+      files it lacks, such as cron/custom.txt, and is kept for a week in
+      /var/backups/dragon/x with a list of what it added. Action needed
+      on a server an earlier release left with /var/xdrago_wait and no
+      /var/xdrago: it no longer updates itself, so run barracuda up-<tree>
+      system once by hand, or move /var/xdrago_wait back to /var/xdrago.
+
     * An Octopus control panel no longer fails with a blank page when
       another account on the same server uses a different list of
       disabled PHP functions. Since the control panels run in pools of
@@ -87,7 +175,75 @@
       it would. Boxes with auto-upgrade enabled rewrite the line once,
       at their next self-update.
 
+    * Drupal 6 and 7 forms opened before the hourly or nightly database
+      cleanup keep working. The cleanup emptied every cache table but
+      three, cache_form among them, and that table holds the state of
+      forms still open in a browser: a file field's upload or the next
+      step of a multi-step form then failed with "Invalid form POST data",
+      the Aegir panel's own forms included. cache_form is now kept, and
+      only its expired rows are removed, the rows Drupal's own cron
+      removes, so it stays small on a copy whose cron is switched off.
+
+    * The Drupal CMS platform keeps its site templates and add-on
+      recipes. Drupal CMS 2.2.4 no longer requires Starter, Blank or the
+      AI, multilingual, forms, accessibility tools and Google Analytics
+      recipes, and its installer fetches a missing template with
+      Composer in the middle of the site install, which a packaged
+      platform must never do. The catalogue build now requires the seven
+      itself, so a site installed from the panel starts from Starter as
+      before, and the AI recipe still applies with vdrush, with no
+      Composer step.
+
+    * The Varbase platform is built from the 11.0.10 project template,
+      whose lock carries Drupal core 11.4.8 and Canvas 1.12.0, instead of
+      11.0.7, which locked core 11.4.6. The 11.0.11 template ships without
+      its lock files, and the Varbase build installs from upstream's lock,
+      so it stays on the newest template that carries them.
+
+    * PHP errors raised inside a site's PHP-FPM pool are logged again.
+      With /var/log/php writable by root only, a pool's worker could not
+      create the error_log file its php.ini names, so PHP handed the
+      message to Nginx, which keeps only critical lines: a fatal error
+      before the site's own error handler left no trace anywhere. The
+      pools now pass their workers' output to the master's own log,
+      /var/log/php/phpNN-fpm-error.log, which only root can read, each
+      line tagged with the pool's name by the master itself (the PHP 5.6
+      to 7.2 masters log at notice level for this, the level their
+      PHP-FPM uses for a worker's errors). BOA's monitors skip those
+      worker lines when they look for PHP-FPM's own messages, so a site
+      cannot set off a restart or an alert by printing them, and these
+      logs and the pools' slow logs are rotated daily, seven kept.
+
+    * Import reads a Drupal 8 or newer site's profile, language and
+      database settings through Drupal's own APIs. It ran Drupal 7 code
+      that found nothing there, so the site's records took the standard
+      profile and English; a site that runs without a profile, as Drupal
+      CMS does, keeps the one it was recorded with.
+
+    * The Cloudflare DNS-01 Python hook (cloudflare-dns-ssl-py.info)
+      installs its requirements into a virtual environment inside its
+      clone and runs on it. Root's pip3 refused the system Python, which
+      is externally managed from Devuan 5 on, so the hook could not load
+      its modules and a wildcard certificate through it never issued. A
+      clone left that way gets its environment on the next nightly run.
+
+    * A cli.info that names a PHP version the server does not have is
+      rewritten to the version its fallback picked also when that is the
+      version the account already runs. The file was left as written in
+      that case, and the shell wrapper, which reads it itself, ran drush
+      and composer on the server default until the next release.
+
 @=> Security
+
+    * The per-account lock of the minute task runner (run-xdrago) is kept
+      in /run/run-xdrago, which only root can enter. It was created
+      world-readable in /run, and a lock needs nothing more than read
+      access, so any local user could hold it and keep that account's
+      panel tasks from running.
+
+    * A Grav site's premium licence file, user/data/licenses.yaml, is kept
+      at 0660 by Verify and by the site and platform permission heals,
+      which used to leave it world-readable like the rest of user/data.
 
     * A site task's Verify, install or deploy no longer follows a link
       the account put in five more places: at the name of a .htaccess
@@ -106,6 +262,21 @@
       keeps in its own tree never holds the check off. It is in the tree
       but ships switched off (_NGINX_LINK_GUARD=NO) until a later
       release; see docs/NGINX-LINKS.md.
+
+    * Drupal and Backdrop sites no longer serve hidden files and
+      directories, those whose name starts with a dot, as Drupal's own
+      .htaccess refuses them; .well-known/ at a site's root is still
+      served, and text typed into a Drupal 7 or Backdrop autocomplete
+      field still reaches the site. Until now a hidden file other than
+      .git, .htaccess and the secret-path names was served when it
+      existed, through the /files/ and /downloads/ shortcuts and on
+      subdirectory sites too.
+
+    * Drupal and Backdrop sites no longer serve package.json,
+      package-lock.json or yarn.lock, the far-future CDN path included.
+      composer.json and composer.lock are now refused on every public
+      path: one with a word such as captcha or aggregator in it still
+      served them. Private files under system/files/ still go to Drupal.
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
       the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
@@ -226,11 +397,12 @@
       Such an owner's private store still cannot be un-shared; the
       refusal names it.
 
-    * autosymlink logs a link target, and an entry of another account's
-      store closed to an un-share copy, with each byte outside letters,
-      digits and ._/- shown as '?'. A newline in such a name, which an
-      account chooses, could write a line of its own into the log that
-      symlinkinfo reads.
+    * autosymlink logs a link target, an entry of another account's
+      store closed to an un-share copy, the name of a store in the
+      account's own static/files and the values of a finding it has no
+      explanation for, with each byte outside letters, digits and ._/-
+      shown as '?'. A newline in such a name, which an account chooses,
+      could write a line of its own into the log that symlinkinfo reads.
 
     * Provision no longer gives an account's own web group, still
       switched off, to a site whose directory lies outside the
@@ -353,7 +525,63 @@
       its own web group, which the two accounts settle between them
       (docs/INSTGRP.md).
 
+@=> New Features
+
+    * Grav shops: a Grav site can now be created on a database server for
+      a KahunaCart shop (KahunaCart 1.5.4 or later, Percona 8.4). The
+      panel creates its database and carries it through every task, the
+      dump included in its backups; the site gets its database settings
+      from its vhost and the grav command, never from a file its PHP can
+      read; Verify applies the store's schema changes; and BOA runs the
+      store's worker every minute inside the site's own PHP-FPM pool, one
+      or two at a time per pool, never Grav's whole scheduler. A copy made
+      by Clone or Upgrade a copy is held until a Cutover retires its
+      store, the site at the store's domain when that carries a store and
+      is neither a held copy nor a copy of another store (unless a store
+      then runs at the domain the copy was made from), or a released
+      copy of that store at the domain the copy was made from, or until
+      the account creates
+      ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
+      signing secret of its own and a paused store. A store kept in its own
+      SQLite file is warned about and is not cloned.
+
+    * AI agents report, switched off by default: with _GOACCESS_AI_REPORT=YES
+      in /root/.barracuda.cnf (GoAccess itself on), every nightly GoAccess
+      report gets ai-visibility.txt beside it, so a site owner who asked for
+      a report finds it in ~/static/goaccess/<domain>/. It counts requests by
+      the AI agent classes the server's nginx acts on (search / index,
+      assistant, evasive assistant, training, utility) as served, refused or
+      other, per day, per agent and per page, read from the class maps nginx
+      loads, a request refused behind the HTTPS front counted once and as
+      refused; and the visits AI assistants referred, by referrer or
+      utm_source, with the pages they landed on.
+
 @=> Improvements
+
+    * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
+      and its assistant fetcher (Amzn-User) the AI user class, each with a
+      rate limit of its own vendor, refused on a site whose policy.txt
+      line says search-block or user-block, and exempt from crawler-fleet
+      declarations like the other allowed AI agents. Amzn-SearchBot was
+      kept out of the training class but taken into no other, so it was
+      neither paced nor refusable; Amzn-User is kept out of the training
+      class the same way, since its user agent can name Amazon's training
+      crawler in its contact link.
+
+    * Deleting an account's whole AI policy file (static/control/ai/
+      policy.txt) now puts every site back on the AI defaults at the next
+      pass, as deleting one site's line always did; before, the per-site
+      refusals and opt-ins the file had set stayed in force.
+
+    * The notice a hosted account gets when its live databases pass the
+      plan's space now lists, for each of its ten largest live databases,
+      the five largest tables and the room their files hold free, and says
+      that deleted rows give their space back only after OPTIMIZE TABLE,
+      with a link to the docs page on database space.
+
+    * codebasecheck words its Grav verdict for shops: a Grav platform's
+      code holds no SQL, and a KahunaCart shop's database requires
+      MySQL 8 itself; it no longer calls every Grav site flat-file.
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel
       domain is served from a pool of its own, oN.hm, on the version
@@ -558,6 +786,35 @@
       check would refuse on that server and what would still keep it
       off once BOA's own links are made root's; see docs/NGINX-LINKS.md.
 
+    * JSON:API, HAL and problem+json answers are compressed like other
+      JSON: Nginx's gzip types gain application/vnd.api+json,
+      application/hal+json and application/problem+json.
+
+    * The Add site form offers every language Drupal core knows on a
+      Drupal 8 or newer platform, Drupal CMS included: the list held only
+      the languages a profile ships translations for, and these profiles
+      ship none, so English was the only choice.
+
+    * The anonymous render cap follows each account's PHP pool: 1.5 times
+      its largest pm.max_children, kept between 64 and 300, applied to a
+      site the next time a Verify writes its configuration. It was a
+      fixed 100, above what a small pool can serve at once, so a flood
+      filled the pool long before the cap shed anything. An instance's
+      nginx_perhost_anon_conn still wins.
+
+    * OpenAI's ads checker (OAI-AdsBot) gets a rate allowance of its own
+      for each site. It shared one allowance of one request per second
+      across the whole server, so one site's ad review could shed the
+      checks of every other site's ads. The other AI agents keep one
+      allowance per vendor for the whole server.
+
+    * The web IDS no longer scores Drupal Commerce's payment notify route
+      (/payment/notify), added to _NGINX_DOS_IGNORE_PATHS beside the
+      other webhooks. A payment gateway's notification servers, answered
+      with errors, read as a shared user-agent flood and were banned
+      whole; an operator's own list in /root/.barracuda.cnf replaces the
+      default, so add the route there too.
+
 @=> Changes and Upgrades
 
     * The arm stamps of the per-instance group, the account web group
@@ -571,8 +828,42 @@
       pass that disarms removes the old stamps of the web group and of
       the link check as well, and linkguard off the link check's.
 
-    * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above.
+    * The fact that a server finished installing lives in
+      /etc/boa/control/reset_no_new_password.pid. The watchdogs,
+      updatesymlinks, xmass and autoupboa read it: without it every watchdog
+      stops, and autoupboa deletes the operator's password opt-out files
+      again. At the top of /var/log/boa only an immutable attribute, not
+      set on every server, kept the clean-up after a broken tool fetch
+      from deleting it. The first tool that reads the stamp an earlier
+      release wrote copies it to the new place.
+
+    * The Duplicity backups (backboa, duobackboa and multiback) keep the
+      fact that a server has a chain in its bucket in
+      /etc/boa/control/<bucket>.chain.txt instead of reading it from the
+      archive log in /var/log/boa. The clean-up of a major OS upgrade
+      deleted that log, after which the next backup started a new full
+      chain and skipped that day's retention; it now stays incremental,
+      and that clean-up leaves the archive logs, the backup history
+      boa info shows, in place. A server takes the marker from its
+      archive log at its first run; to start a new full chain on
+      purpose, remove both.
+
+    * An account's log/hosting_cron_use_backend.txt, the switch for
+      Ægir's backend cron, stays where the operator put it. Every release,
+      and every refresh of the cron module, deleted it from all accounts,
+      so the next nightly put the account back on cron over HTTP.
+
+    * On omega8.cc-hosted servers the one-shot that writes the whole
+      ghost-cleanup family as YES runs once per server, as its own notes
+      always said. Its stamp lives in /etc/boa/control and names no
+      release, so a toggle the operator sets afterwards is no longer put
+      back to YES at every release.
+
+    * Classic Drush 8.5.16 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above. On Drupal 10 and 11 pm-updatestatus no longer dies on
+      drupal_get_path(), and core-requirements lists the status report's
+      own checks: on 11.4 it crashed on the first severity reported as an
+      enum, and before that showed 18 of the report's 51.
 
     * Redis integration for Drupal 7 (redis_edge) 7.x-3.19.3. A path
       without an alias raised two PHP 8.5 warnings at every lookup, and
@@ -582,6 +873,13 @@
       and an alias saved or deleted is seen by the rest of the same
       request, as in Drupal core. The module also no longer triggers
       PHP 8.4's deprecation of an implicitly nullable parameter.
+
+    * A new Ægir instance no longer scans <account>.beanstalkapp.com and
+      <account>.unfuddle.com, two names built from its own account name,
+      for host keys. They belong to whoever holds that name at each
+      service, so the scan told a stranger's host the account name and
+      kept its key as known. The nine general Git hosts are still
+      scanned once, when the instance's key pair is made.
 
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION

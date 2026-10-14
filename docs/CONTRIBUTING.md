@@ -25,6 +25,10 @@ It is also a good idea to search our deprecated issue queues for Barracuda and O
 - **Legacy issue queue for Barracuda:** [Drupal.org Barracuda Issues](https://drupal.org/project/issues/barracuda)
 - **Legacy issue queue for Octopus:** [Drupal.org Octopus Issues](https://drupal.org/project/issues/octopus)
 
+## Pull Requests
+
+Open pull requests against the `5.x-dev` branch, one concern per pull request. The full rules are on [docs.boa.io](https://docs.boa.io/developing/contributing/contributing#pull-requests).
+
 ## Help Options
 
 - **Documentation and How-to:** [BOA Documentation](https://docs.boa.io)

@@ -153,8 +153,8 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   is put back (a newer core is a new platform name, a catalogue move with a BOA
   release); the build's distribution package and any module it patches by hand are
   left alone; the result installs once, and if it does not, the build fails and the
-  published copy stays. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
-  that one platform requirement is ignored, as for varbase.
+  published copy stays. amazee.io provider releases 1.4.0 to 1.4.5 declare `ext-pdo_pgsql`
+  (1.4.6 no longer does), so that one platform requirement is ignored, as for varbase.
 
   Then every package the tree's `vendor/composer/installed.json` lists must be on disk.
   Composer's patch plugin can remove a package to patch it again, and a later partial
@@ -316,17 +316,17 @@ Distributions, published to `/var/www/static/distro`:
 
 ```sh
   commerce_base-2.40-10.1.8
-  commerce_kickstart-5.1.0-11.4.8
-  drupal_cms_installer-2.2.3-11.4.8
+  commerce_kickstart-5.1.0-11.4.9
+  drupal_cms_installer-2.2.4-11.4.9
   ezcontent-2.2.15-10.3.6
-  farm-4.0.6-11.3.17
-  localgov-4.0.5-11.4.8
-  openculturas-3.1.0-11.4.8
-  openfed-13.6.7-10.6.18
+  farm-4.0.7-11.3.18
+  localgov-4.0.5-11.4.9
+  openculturas-3.1.2-11.4.9
+  openfed-13.6.8-10.6.18
   opigno_lms-3.2.7-10.6.18
   social-13.1.0-10.6.18
-  thunder-8.4.4-11.4.8
-  varbase-11.0.0-11.4.6
+  thunder-8.4.6-11.4.9
+  varbase-11.0.0-11.4.8
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -335,7 +335,7 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
   drupal-10.2.12    drupal-11.1.10
   drupal-10.3.14    drupal-11.2.14
   drupal-10.4.10    drupal-11.3.18
-  drupal-10.5.12    drupal-11.4.8
+  drupal-10.5.12    drupal-11.4.9
   drupal-10.6.18
 ```
 
@@ -500,11 +500,11 @@ held releases (see "Held releases") to the project's `composer.json`, as the too
 `"conflict": {"twig/twig": ">=3.30"}`.
 
 ```sh
-farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
+farmos     # farm-4.0.7-11.3.18  (farmOS caps core at 11.3)
            # visit: https://github.com/farmOS/farmOS/releases
-           # wget https://github.com/farmOS/farmOS/releases/download/4.0.6/farmOS-4.0.6.tar.gz
-           # tar -xzf farmOS-4.0.6.tar.gz && mv farmOS farm-4.0.6-11.3.17
-           # cd ~/static/MONTH-DAY/farm-4.0.6-11.3.17
+           # wget https://github.com/farmOS/farmOS/releases/download/4.0.7/farmOS-4.0.7.tar.gz
+           # tar -xzf farmOS-4.0.7.tar.gz && mv farmOS farm-4.0.7-11.3.18
+           # cd ~/static/MONTH-DAY/farm-4.0.7-11.3.18
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -512,18 +512,19 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.2.3-11.4.8 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.3-11.4.8
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.4-11.4.9
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
+           # composer require --no-update --no-scripts drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2   # drupal/cms 2.2.4 no longer requires its site templates and add-on recipes; its installer would fetch a missing template with Composer during the site install
            # composer update --no-install --no-scripts
            # composer install --no-dev
            # composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --no-interaction --update-no-dev   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require; migration pipeline contribs absent upstream; --update-no-dev keeps require-dev out of the platform, as the builds ending in install --no-dev do
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.1.0-11.4.8 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.1.0-11.4.8/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.1.2-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.1.2-11.4.9/
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (kept as the build proven to install)
@@ -534,13 +535,13 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.6-11.3.17/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.1.0-11.4.8/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.7-11.3.18/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.1.2-11.4.9/web/sites/
 ```
 
 ```sh
-commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.8 --no-dev --no-interaction --no-install --no-scripts
+commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.9 --no-dev --no-interaction --no-install --no-scripts
            # name by centarro/commerce_kickstart (the profile, 5.1.0); the project template stays dev-only
-           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.8
+           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.9
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false   # commerce_kickstart blocks advisory-affected deps
            # composer install --no-dev
@@ -550,9 +551,9 @@ commerce   # composer create-project -s dev centarro/commerce-kickstart-project 
 ```
 
 ```sh
-localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.5-11.4.8 --no-dev --no-interaction --no-install --no-scripts
+localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.5-11.4.9 --no-dev --no-interaction --no-install --no-scripts
            # name by drupal/localgov (the distribution, 4.0.5); localgov_project versions separately
-           # cd ~/static/MONTH-DAY/localgov-4.0.5-11.4.8
+           # cd ~/static/MONTH-DAY/localgov-4.0.5-11.4.9
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -572,14 +573,14 @@ openfed    # The openfed-project template requires only three composer helpers; 
            # (measured): plugin event subscribers still run under --no-scripts and the
            # nested update they dispatch re-enables scripts on its own. The explicit
            # resolve+install pair after it is the real gate and must exit 0.
-           # composer create-project openfed/openfed-project:^13 openfed-13.6.7-10.6.18 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openfed-13.6.7-10.6.18
+           # composer create-project openfed/openfed-project:^13 openfed-13.6.8-10.6.18 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openfed-13.6.8-10.6.18
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer install --no-dev                    # bootstrap; rc 4 EXPECTED, tolerated
            # composer update --no-install --no-scripts    # complete lock incl. include-file libraries
            # composer install --no-dev
-           # The profile pins drupal/entity_browser exactly: 2.16 in 13.6.7, the release
+           # The profile pins drupal/entity_browser exactly: 2.16 in 13.6.8, the release
            # that fixes SA-CONTRIB-2026-094.
            # name by openfed/openfed read from the LOCK (the drupal.org release number);
            # profile openfed, docroot docroot/; the profile pins core-recommended ~10.6,
@@ -634,9 +635,9 @@ social     # Open Social ships NO create-project template for its current major:
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.4.4-11.4.8 --no-dev --no-interaction --no-install --no-scripts
-           # name by thunder/thunder-distribution (8.4.4); thunder/thunder-project versions separately (5.0.0)
-           # cd ~/static/MONTH-DAY/thunder-8.4.4-11.4.8
+thunder    # composer create-project thunder/thunder-project thunder-8.4.6-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+           # name by thunder/thunder-distribution (8.4.6); thunder/thunder-project versions separately (5.0.0)
+           # cd ~/static/MONTH-DAY/thunder-8.4.6-11.4.9
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -649,11 +650,13 @@ varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (co
            # build uninstallable. Builds the 11 line since 2026-09-10 (stable upstream
            # since 2026-09-08; web/ layout, the catalogue VBX web_dir moved with it);
            # the 10 line's last build stays on the mirror for existing platforms.
-           # PINNED to the 11.0.7 template (2026-09-17): 11.0.8's lock moves canvas
-           # 1.10.1 -> 1.11.0 and a fresh install on it drops canvas_page_template_component
-           # from core.extension while its config stays -- every page 500s, clones fail
-           # updatedb. Move the pin only after a rig proves install AND clone.
-           # composer create-project Vardot/varbase-project:11.0.7 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # PINNED to the 11.0.10 template (core 11.4.8, canvas 1.12.0). 11.0.8's lock
+           # moved canvas 1.10.1 -> 1.11.0 and a fresh install on it dropped
+           # canvas_page_template_component from core.extension while its config stayed --
+           # every page 500ed, clones failed updatedb. 11.0.11 ships without its lock
+           # files on purpose, so it cannot be built from upstream's lock. Move the pin
+           # only after a test install AND clone of the newer template pass.
+           # composer create-project Vardot/varbase-project:11.0.10 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
            # (NO composer update: varbase installs from upstream's shipped lock; a
@@ -673,7 +676,7 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require drush/drush
            # then audit the lock as under "By hand" above (never fatal)
-           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.18 11.1.10 11.2.14 11.3.18 11.4.8
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.18 11.1.10 11.2.14 11.3.18 11.4.9
 ```
 
 ### Clean up artefacts before packaging
@@ -725,7 +728,7 @@ tarballs and stamps come only from their own actions.
 
 ## Add them all as platforms in Ægir
 
-Use paths like `MONTH-DAY/drupal-11.4.8` and run tests for site install, clone and migration.
+Use paths like `MONTH-DAY/drupal-11.4.9` and run tests for site install, clone and migration.
 
 ## Notes on non-standard issues
 
@@ -752,11 +755,17 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   installs from upstream's lock, which Composer does not filter) and the audit records
   what shipped instead (see "Advisories: audited, not blocked").
 - **thunder** — `thunder/thunder-project` (the template) versions independently (e.g. 5.0.0)
-  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.4); name by the latter.
+  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.6); name by the latter.
 - **cms** — drupal_cms's post-update-cmd cleanup script exits non-zero; run its drush
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
   of them, and core's migrate stack lives in drupal/core; inert until a site enables them.
+
+  Since 2.2.4, drupal/cms no longer requires its site templates (Starter, Blank) or the
+  add-on recipes (AI, multilingual, forms, accessibility tools, Google Analytics); its
+  installer fetches a missing template with Composer during the site install. The build
+  requires the seven packages before the resolve, so a command-line install finds
+  Starter, its default there, in the packaged codebase.
 
   The build also corrects pathauto's `d7_pathauto_patterns` migration definition
   (adds `source_module: pathauto`, upstream pathauto #3588684): Drupal 11 prefers the

@@ -600,9 +600,17 @@ _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
   _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
-  # dead-fallback fix: || bound to tr, see backboa
-  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
+  # dead-fallback fix: || bound to tr, see backboa; a fallback that answers
+  # only localhost would name a bucket every such server shares
+  if [ -z "${_hName}" ]; then
+    _hName="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+    case "${_hName}" in localhost|localhost.*) _hName="" ;; esac
+  fi
+  if [ -z "${_hName}" ]; then
+    echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
+    exit 1
+  fi
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"

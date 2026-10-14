@@ -97,7 +97,9 @@ done
 ### Local settings
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_THIS_DB_HOST}" ] || _THIS_DB_HOST="$(hostname -f 2>/dev/null)"
 fi
 if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
   && [ -x "/opt/php84/bin/php" ]; then

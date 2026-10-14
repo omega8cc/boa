@@ -1901,7 +1901,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.22.0
+  _CURL_VRN=8.23.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -2124,7 +2124,9 @@ _check_root() {
     fi
 
     _find_correct_ip
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    # A test, not ||: tr exits 0 on an empty /etc/hostname
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+    [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}

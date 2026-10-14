@@ -3,7 +3,9 @@ export _tRee=lts
 export _rLsn="BOA-5.88.866"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 
 #
 # Download and extract from core archive.
@@ -5976,9 +5978,10 @@ _satellite_if_instance_group() {
 # The account's own web group, wg-<account> (instgrp webconvert, delivered by
 # BOA.sh.txt), right after the per-instance group on every INIT and UPGRADE
 # pass. The tool decides what this pass does: a first conversion only past
-# the opt-out (_WEB_GROUP=NO in the octopus cnf), the per-instance group, the
-# box's readiness stamp (written while _WEB_GROUP_ARM=YES) and the share
-# scan; phase B only on a box with _WEB_GROUP_PHASE_B=YES; nothing on a
+# the opt-out (_WEB_GROUP=NO in the octopus cnf), the per-instance group and
+# the box's readiness stamp (written while _WEB_GROUP_ARM=YES); phase B only
+# on a box with _WEB_GROUP_PHASE_B=YES, held while an outbound share, or a
+# site or store outside the account, stands (phase A goes on); nothing on a
 # standby. It resumes or verifies what the account already carries.
 _satellite_if_web_group() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6568,10 +6571,6 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   #
   if [ ! -e "${_ROOT}/.ssh/id_ed25519.pub" ]; then
     su -s /bin/bash - ${_USER} -c "ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519" &> /dev/null
-    wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
-    wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
     wait

@@ -91,7 +91,21 @@ _check_root() {
 _check_root
 
 # Run only on a fully installed system (same guard the sibling monitors use).
-[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
+# Whether this box finished installing lives in /etc/boa/control. A stamp an
+# earlier release wrote in /var/log/boa is copied there first, and still counts
+# when the copy cannot be made: a box never reads as not installed.
+_rnp_installed() {
+  local _n="/etc/boa/control/reset_no_new_password.pid"
+  local _o="/var/log/boa/reset_no_new_password.pid"
+  [ -e "${_n}" ] && return 0
+  [ -e "${_o}" ] || return 1
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  { cp "${_o}" "${_n}.$$" && chmod 0644 "${_n}.$$" \
+    && mv -f "${_n}.$$" "${_n}"; } 2> /dev/null || rm -f "${_n}.$$" 2> /dev/null
+  return 0
+}
+_rnp_installed || exit 0
 
 # Opt-out (policy: default ON fleet-wide; NO disables).
 [ "${_USE_SQLPROBE}" = "NO" ] && exit 0

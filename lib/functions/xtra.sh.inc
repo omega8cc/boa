@@ -514,52 +514,6 @@ _if_install_collectd() {
   fi
 }
 
-_if_install_webmin() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_install_webmin"
-  fi
-  if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
-    if [ ! -d "/etc/webmin" ] && [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
-      if [ -x "/usr/bin/gpg2" ]; then
-        _GPG=gpg2
-      else
-        _GPG=gpg
-      fi
-      echo " "
-      if _prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
-        true
-        _msg "INFO: Installing Webmin Control Panel..."
-        cd /var/opt
-        echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
-        echo "deb http://download.webmin.com/download/repository \
-          sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-        echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-          sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-        _KEYS_SERVER_TEST=FALSE
-        until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-          rm -f jcameron-key.gpg*
-          wget ${_wgetGet} "${_urlDev}/jcameron-key.gpg"
-          _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
-          sleep 2
-        done
-        cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
-        rm -f jcameron-key.gpg*
-        touch ${_pthLog}/webmin_update_apt_src.log
-        _apt_clean_update
-        for _PKG in webmin libxml-simple-perl libcrypt-ssleay-perl; do
-          if ! _pkg_installed "${_PKG}"; then
-            _mrun "${_INSTAPP} ${_PKG}"
-          fi
-        done
-        _mrun "update-rc.d webmin defaults"
-        _msg "INFO: Webmin Control Panel installed"
-      else
-        _msg "INFO: Webmin Control Panel installation skipped"
-      fi
-    fi
-  fi
-}
-
 _if_install_bind() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_bind"

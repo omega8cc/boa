@@ -2567,7 +2567,9 @@ _find_correct_ip() {
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     _find_correct_ip
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    # A test, not ||: tr exits 0 on an empty /etc/hostname
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+    [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _system_check_ready

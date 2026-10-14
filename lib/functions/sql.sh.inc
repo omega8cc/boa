@@ -486,6 +486,11 @@ _if_sql_keyring_apt_update() {
       fi
       apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+        # the major OS upgrade calls this without the callers that set _GPG
+        if [ -z "${_GPG}" ]; then
+          _GPG=gpg
+          [ -x "/usr/bin/gpg2" ] && _GPG=gpg2
+        fi
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /etc/apt/keyrings/percona.gpg
