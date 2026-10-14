@@ -235,6 +235,12 @@
 
 @=> Security
 
+    * The per-account lock of the minute task runner (run-xdrago) is kept
+      in /run/run-xdrago, which only root can enter. It was created
+      world-readable in /run, and a lock needs nothing more than read
+      access, so any local user could hold it and keep that account's
+      panel tasks from running.
+
     * A Grav site's premium licence file, user/data/licenses.yaml, is kept
       at 0660 by Verify and by the site and platform permission heals,
       which used to leave it world-readable like the rest of user/data.
@@ -527,8 +533,9 @@
       dump included in its backups; the site gets its database settings
       from its vhost and the grav command, never from a file its PHP can
       read; Verify applies the store's schema changes; and BOA runs the
-      store's worker every minute inside the site's own PHP-FPM pool, never
-      Grav's whole scheduler. A copy made by Clone or Upgrade a copy is held
+      store's worker every minute inside the site's own PHP-FPM pool, at
+      most two of an account's stores at once, never Grav's whole
+      scheduler. A copy made by Clone or Upgrade a copy is held
       until Cutover or until the account creates
       ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
       signing secret of its own and a paused store. A store kept in its own
