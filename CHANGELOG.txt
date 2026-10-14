@@ -533,10 +533,10 @@
       dump included in its backups; the site gets its database settings
       from its vhost and the grav command, never from a file its PHP can
       read; Verify applies the store's schema changes; and BOA runs the
-      store's worker every minute inside the site's own PHP-FPM pool, at
-      most two of an account's stores at once, never Grav's whole
-      scheduler. A copy made by Clone or Upgrade a copy is held
-      until Cutover or until the account creates
+      store's worker every minute inside the site's own PHP-FPM pool, one
+      or two at a time per pool, never Grav's whole scheduler. A copy made
+      by Clone or Upgrade a copy is held until a Cutover takes over from
+      its store or until the account creates
       ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
       signing secret of its own and a paused store. A store kept in its own
       SQLite file is warned about and is not cloned.
