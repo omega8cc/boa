@@ -5471,7 +5471,9 @@ _wg_off_quiet() {
 # the outside holder is changed, and the account's own notes name no one. A
 # journal in /etc/boa/control is written before the rename: the next run of
 # a web verb of the account finishes a free a kill cut short, and it dates
-# the free, which happens once per account in _WG_FREE_DAYS days. A guard
+# the free, which happens once per account in _WG_FREE_DAYS days. Every
+# check reads a group by its name: a second group entry can share the held
+# number, and a lookup by number answers whichever entry comes first. A guard
 # that fails keeps E1's alarm and is named in it. The master's free waits
 # for its own caller.
 _WG_FREE_DAYS=30
@@ -5649,7 +5651,7 @@ _wg_free() {
   # meanwhile: what a kill still cuts is the journal's to finish
   trap '' TERM INT HUP
   if [ "$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)" = "${_old}" ]; then
-    for _u in $(getent group "${_old}" 2> /dev/null | cut -d: -f4 | tr ',' ' ') \
+    for _u in $(getent group | awk -F: -v g="${_old}" '$3 == g { print $4 }' | tr ',' ' ') \
       $(getent passwd | awk -F: -v g="${_old}" '$4 == g { print $1 }'); do
       _wg_own_name "${_u}" || _out="${_out:+${_out},}${_u}"
     done
@@ -5660,7 +5662,7 @@ _wg_free() {
       return 1
     fi
     groupmod -n "${_held}" "${_WP_G}" > /dev/null 2>&1
-    if [ "$(getent group "${_old}" 2> /dev/null | cut -d: -f1)" != "${_held}" ]; then
+    if [ "$(getent group "${_held}" 2> /dev/null | cut -d: -f3)" != "${_old}" ]; then
       trap - TERM INT HUP
       rm -f -- "$(_wg_free_journal)"
       _fail "${_WP_A}: groupmod -n ${_held} ${_WP_G} failed; ${_WP_G} not freed"
@@ -5677,7 +5679,7 @@ _wg_free() {
       || [ "$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)" != "${_new}" ]; then
       getent group "${_WP_G}" > /dev/null 2>&1 || groupmod -n "${_WP_G}" "${_held}" > /dev/null 2>&1
       trap - TERM INT HUP
-      if [ "$(getent group "${_old}" 2> /dev/null | cut -d: -f1)" = "${_WP_G}" ]; then
+      if [ "$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)" = "${_old}" ]; then
         rm -f -- "$(_wg_free_journal)"
         _fail "${_WP_A}: groupadd -g ${_new:-?} ${_WP_G} failed; the held group has its name back"
       else
@@ -5747,7 +5749,7 @@ _wg_free_resume() {
     rm -f -- "$(_wg_free_journal)"
     return 0
   fi
-  if [ "$(getent group "${_FJ_H}" 2> /dev/null | cut -d: -f1)" != "${_FJ_H}-wgheld" ]; then
+  if [ "$(getent group "${_FJ_H}-wgheld" 2> /dev/null | cut -d: -f3)" != "${_FJ_H}" ]; then
     _alrt "${_WP_A}: the journal $(_wg_free_journal) names gid ${_FJ_H}, which is not ${_FJ_H}-wgheld now; left as it is"
     return 0
   fi
