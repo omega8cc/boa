@@ -28,6 +28,20 @@ _check_root() {
 }
 _check_root
 
+# Every lock this script takes lives in a directory only root can enter:
+# flock needs no more than read access, so a lock file another identity can
+# open is one it can hold for good, stopping this account's runner or its
+# store ticks.
+_XDRAGO_LOCKS="/run/run-xdrago"
+_xdrago_lock_dir() {
+  [[ -L "${_XDRAGO_LOCKS}" ]] && return 1
+  if [[ ! -d "${_XDRAGO_LOCKS}" ]]; then
+    ( umask 077; mkdir -p "${_XDRAGO_LOCKS}" ) 2> /dev/null || return 1
+  fi
+  [[ "$(stat -c '%u' "${_XDRAGO_LOCKS}" 2> /dev/null)" = "0" ]] || return 1
+  chmod 0700 "${_XDRAGO_LOCKS}" 2> /dev/null
+}
+
 # A Grav store (KahunaCart) needs its worker every minute: it sends the order
 # mail a request did not get to, mints download grants and runs the sweeps,
 # the reminders and the renewals. Each enabled site of this instance whose
@@ -49,27 +63,39 @@ _check_root
 # an entry script BOA keeps in /data/conf, so the worker runs as the pool
 # user under the pool's own limits, exactly as a web request of the site
 # does. Nothing the pool cannot already do is handed to the plugin code it
-# loads from the web-writable user/ tree. The instance user only reads the
-# capsule's drushrc.php and the hold (never root, which could be pointed at
-# another account's file), and root passes the validated database settings
-# as request parameters, as the site's vhost does, never on a command line.
+# loads from the web-writable user/ tree. The instance user reads the
+# account's site aliases, a capsule's drushrc.php and hold and the site's
+# vhost (never root, which could be pointed at another account's file or a
+# device), and root passes the validated database settings as request
+# parameters, as the site's vhost does, never on a command line.
 #
 # The scan runs in a detached pass with a lock of its own, started before
-# this script's own lock, so a long Aegir task never holds a store's queue;
-# each store's tick is detached again under a lock of its own, so one slow
-# store never delays another, and the pool's own size bounds how many run.
+# this script's own lock, so a long Aegir task never holds a store's queue,
+# and takes the stores in a new order every minute; each store's tick is
+# detached again under a lock of its own, so one slow store never delays
+# another. A tick takes one of its pool's tick slots before it is sent, one
+# on a pool of fewer than eight children and two on a larger one, so the
+# sites on that pool keep children for their visitors; a tick that finds them
+# taken waits up to about two minutes, then leaves its store to the next
+# minute. The entry script runs only a request sent within the last fifteen
+# seconds: the pool ends a request 180 seconds after it starts, plus the few
+# seconds between its own checks, and root waits 200, so one that waited
+# longer in a busy pool could run beside the next minute's tick. The
+# instance user's reads are size-bound and never follow a link or wait on a
+# FIFO.
 
-_GRAV_TICK_ENTRY="/data/conf/grav-store-tick.php"
+# The entry script of this instance's ticks: each instance keeps its own, so
+# instances whose runners come from different BOA releases never replace
+# each other's.
+_GRAV_TICK_ENTRY="/data/conf/grav-store-tick-${_H_USER}.php"
 
-# The entry script, kept identical to the copy below; written only when it
-# differs, root's, readable by the pools (/data/conf is in each one's
+# Write the entry script, kept identical to the copy below, only when it
+# differs: root's, readable by the pools (/data/conf is in each one's
 # open_basedir).
 _grav_tick_entry() {
-  # A temp name of this instance's own: every instance's runner keeps the
-  # one shared entry, and they may run in the same second.
-  local _new="/data/conf/.grav-store-tick.php.${_H_USER}.new"
+  local _new="/data/conf/.grav-store-tick-${_H_USER}.php.new" _php
   [[ -d /data/conf ]] && [[ ! -L /data/conf ]] || return 1
-  ( umask 022; cat > "${_new}" ) <<'PHP' || return 1
+  _php="$(cat <<'PHP'
 <?php
 /**
  * BOA: one KahunaCart worker tick for a Grav store.
@@ -81,6 +107,12 @@ _grav_tick_entry() {
  * run-xdrago; an edit here is overwritten.
  */
 if (PHP_SAPI !== 'fpm-fcgi' || !isset($_SERVER['BOA_GRAV_TICK_ROOT'])) {
+  exit;
+}
+// Only a request sent within the last fifteen seconds runs: one that waited
+// longer in a busy pool could still run beside the next minute's tick.
+$sent = isset($_SERVER['BOA_GRAV_TICK_SENT']) ? (int) $_SERVER['BOA_GRAV_TICK_SENT'] : 0;
+if ($sent <= 0 || time() - $sent > 15) {
   exit;
 }
 $root = (string) $_SERVER['BOA_GRAV_TICK_ROOT'];
@@ -114,27 +146,22 @@ $_SERVER['argv'] = $argv;
 $_SERVER['argc'] = $argc;
 require $root . '/bin/plugin';
 PHP
+)" || return 1
   if [[ -f "${_GRAV_TICK_ENTRY}" ]] && [[ ! -L "${_GRAV_TICK_ENTRY}" ]] \
-    && cmp -s "${_new}" "${_GRAV_TICK_ENTRY}"; then
-    rm -f "${_new}"
+    && printf '%s\n' "${_php}" | cmp -s - "${_GRAV_TICK_ENTRY}"; then
     return 0
   fi
+  ( umask 022; printf '%s\n' "${_php}" > "${_new}" ) || return 1
   chmod 0644 "${_new}" && mv -f "${_new}" "${_GRAV_TICK_ENTRY}"
 }
 
-# The pool socket one site's PHP runs on: the one its vhost passes PHP to (as
-# provision last rendered it), else the pool the Grav vhost template picks
-# now: the first socket among 8.4, 8.5, 8.6 and 8.3, else the bare one. Sets
-# _GRAV_SOCK.
+# The pool socket one site's PHP runs on: $1, the one its vhost passes PHP to
+# (as provision last rendered it, read by the instance user), else the pool
+# the Grav vhost template picks now: the first socket among 8.4, 8.5, 8.6 and
+# 8.3, else the bare one. Sets _GRAV_SOCK.
 _grav_site_socket() {
-  local _uri="${1}" _vh _sock="" _v
+  local _sock="${1}" _v
   _GRAV_SOCK=""
-  _vh="/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}"
-  if [[ -f "${_vh}" ]] && [[ ! -L "${_vh}" ]]; then
-    _sock="$(timeout 5 grep -m1 -o "fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;" "${_vh}" 2> /dev/null)"
-    _sock="${_sock#fastcgi_pass unix:}"
-    _sock="${_sock%;}"
-  fi
   if [[ "${_sock}" =~ ^/run/${_H_USER}(\.8[3-6])?\.fpm\.socket$ ]] && [[ -S "${_sock}" ]]; then
     _GRAV_SOCK="${_sock}"
     return 0
@@ -155,15 +182,20 @@ _grav_site_socket() {
 # One store's tick: $1 the capsule, $2 its domain. Runs in a subshell of its
 # own, so the environment it clears and the exports below reach nothing else.
 _grav_store_tick() {
-  local _sp="${1}" _uri="${2}" _rc _n _u _p _h _o _v _k _e
-  _grav_site_socket "${_uri}" || return 0
-  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; exec cat -- drushrc.php" 2> /dev/null < /dev/null 7>&-)" || return 0
-  _n="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" | head -1)"
-  _u="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" | head -1)"
-  _p="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" | head -1)"
-  _h="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_host'\] = '\([^']*\)';.*$/\1/p" | head -1)"
-  _o="$(printf '%s\n' "${_rc}" | sed -n "s/^.*\$options\['db_port'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  local _sp="${1}" _uri="${2}" _rc _rcd _vs _n _u _p _h _o _v _k _e
+  # As the instance user: the hold, drushrc.php, then after a separator line
+  # the PHP socket line of the site's vhost.
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; timeout 10 dd if=./drushrc.php iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none || exit 1; echo; echo '#boa-grav-vhost'; timeout 10 dd if='/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}' iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep -m1 -o 'fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;'; exit 0" 2> /dev/null < /dev/null 6>&- 7>&-)" || return 0
+  _rcd="$(printf '%s\n' "${_rc}" | sed '/^#boa-grav-vhost$/,$d')"
+  _vs="$(printf '%s\n' "${_rc}" | sed -n '/^#boa-grav-vhost$/,$p' | sed -n 's/^fastcgi_pass unix:\(.*\);$/\1/p' | head -1)"
   _rc=""
+  _grav_site_socket "${_vs}" || return 0
+  _n="$(printf '%s\n' "${_rcd}" | sed -n "s/^.*\$options\['db_name'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _u="$(printf '%s\n' "${_rcd}" | sed -n "s/^.*\$options\['db_user'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _p="$(printf '%s\n' "${_rcd}" | sed -n "s/^.*\$options\['db_passwd'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _h="$(printf '%s\n' "${_rcd}" | sed -n "s/^.*\$options\['db_host'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _o="$(printf '%s\n' "${_rcd}" | sed -n "s/^.*\$options\['db_port'\] = '\([^']*\)';.*$/\1/p" | head -1)"
+  _rcd=""
   [[ -n "${_n}" ]] && [[ -n "${_u}" ]] && [[ -n "${_p}" ]] || return 0
   [[ -n "${_o}" ]] || _o=3306
   [[ -n "${_h}" ]] || _h=localhost
@@ -173,6 +205,12 @@ _grav_store_tick() {
   for _v in "${_n}" "${_u}" "${_p}" "${_h}" "${_o}"; do
     [[ "${_v}" =~ ^[A-Za-z0-9._:-]+$ ]] || return 0
   done
+  _grav_tick_slot "${_GRAV_SOCK}" || return 0
+  # A wait for the slot can outlast the hold read above: an owner may hold
+  # the copy again meanwhile, so read the hold once more.
+  if [[ "${_GRAV_SLOT_WAITED}" = "YES" ]]; then
+    timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; exit 0" > /dev/null 2>&1 < /dev/null 6>&- 7>&- || return 0
+  fi
   # cgi-fcgi sends its whole environment as the request's parameters: only
   # what the entry script and the store need reaches the pool.
   for _e in $(compgen -e); do
@@ -193,36 +231,84 @@ _grav_store_tick() {
   export "${_k}mysql__dbname=${_n}"
   export "${_k}mysql__username=${_u}"
   export "${_k}mysql__password=${_p}"
+  BOA_GRAV_TICK_SENT="$(date +%s)"
+  export BOA_GRAV_TICK_SENT
   /usr/bin/timeout 200 /usr/bin/cgi-fcgi -bind -connect "${_GRAV_SOCK}" \
-    > /dev/null 2>&1 < /dev/null 7>&-
+    > /dev/null 2>&1 < /dev/null 6>&- 7>&-
+}
+
+# The tick slots of the pool behind socket $1, read from its pool file
+# (root's own, /opt/phpNN/etc/pool.d/<pool>.conf): one on a pool of fewer
+# than eight children, two on a larger one.
+_grav_tick_slots() {
+  local _pool="${1#/run/}" _f _n=""
+  _pool="${_pool%.fpm.socket}"
+  for _f in /opt/php*/etc/pool.d/"${_pool}".conf; do
+    [[ -f "${_f}" ]] && [[ ! -L "${_f}" ]] || continue
+    _n="$(sed -n 's/^pm\.max_children = \([0-9]*\)$/\1/p' "${_f}" 2> /dev/null | tail -n 1)"
+    break
+  done
+  if [[ "${_n}" =~ ^[0-9]+$ ]] && [[ "${_n}" -ge 8 ]]; then
+    echo 2
+  else
+    echo 1
+  fi
+}
+
+# Take one of the tick slots of the pool behind socket $1 on fd 6, held until
+# the tick's subshell ends. All taken: try again every two seconds for up to
+# 110, then leave this store to the next minute. Sets _GRAV_SLOT_WAITED to
+# YES when it had to wait.
+_grav_tick_slot() {
+  local _pool="${1#/run/}" _max _i _t=0 _sl
+  _pool="${_pool%.fpm.socket}"
+  _GRAV_SLOT_WAITED=NO
+  _max="$(_grav_tick_slots "${1}")"
+  for (( _i = 1; _i <= _max; _i++ )); do
+    ( umask 077; : >> "${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock" ) 2> /dev/null || return 1
+  done
+  while [[ "${_t}" -lt 110 ]]; do
+    for (( _i = 1; _i <= _max; _i++ )); do
+      _sl="${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock"
+      exec 6>"${_sl}"
+      if flock -n 6; then
+        return 0
+      fi
+      exec 6>&-
+    done
+    _GRAV_SLOT_WAITED=YES
+    sleep 2
+    _t=$(( _t + 2 ))
+  done
+  return 1
 }
 
 _grav_store_ticks() {
-  local _a _sp _uri _lk
-  local -a _files=()
+  local _sp _uri _lk _shuf
   _grav_tick_entry || return 0
-  for _a in /data/disk/${_H_USER}/.drush/*.alias.drushrc.php; do
-    [[ -f "${_a}" ]] && [[ ! -L "${_a}" ]] && _files+=("${_a}")
-  done
-  if [[ "${#_files[@]}" -gt 0 ]]; then
-    # One pass over every alias: an enabled site's site_path and uri, each
-    # a whole quoted value on its own two-space-indented line, the first
-    # match per file.
-    while IFS=$'\t' read -r _sp _uri; do
-      [[ "${_sp}" =~ ^/data/disk/${_H_USER}/[A-Za-z0-9._/-]+$ ]] || continue
-      [[ "${_sp}" != *..* ]] || continue
-      [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
-      [[ -f "${_sp}/system/defines.php" ]] || continue
-      [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
-      _lk="/run/grav-tick-${_H_USER}-${_uri}.lock"
-      ( umask 077; : >> "${_lk}" ) 2> /dev/null || continue
-      (
-        exec 8>&-
-        exec 7>"${_lk}"
-        flock -n 7 || exit 0
-        _grav_store_tick "${_sp}" "${_uri}"
-      ) < /dev/null > /dev/null 2>&1 &
-    done < <(timeout 60 awk -v q="'" '
+  _shuf="$(command -v shuf || echo cat)"
+  # One pass over every alias, listed by the instance user (the account's
+  # .drush is its own, so root opens no name there), one separator line
+  # before each file: an enabled site's site_path and uri, each a whole
+  # quoted value on its own two-space-indented line, the first match per
+  # file, in a new order every minute so that busy stores never keep the
+  # same others waiting for a slot.
+  while IFS=$'\t' read -r _sp _uri; do
+    [[ "${_sp}" =~ ^/data/disk/${_H_USER}/[A-Za-z0-9._/-]+$ ]] || continue
+    [[ "${_sp}" != *..* ]] || continue
+    [[ "${_uri}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || continue
+    [[ -f "${_sp}/system/defines.php" ]] || continue
+    [[ -f "${_sp}/user/plugins/kahunacart/kahunacart.php" ]] || continue
+    _lk="${_XDRAGO_LOCKS}/grav-tick-${_H_USER}-${_uri}.lock"
+    ( umask 077; : >> "${_lk}" ) 2> /dev/null || continue
+    (
+      exec 8>&-
+      exec 7>"${_lk}"
+      flock -n 7 || exit 0
+      _grav_store_tick "${_sp}" "${_uri}"
+    ) < /dev/null > /dev/null 2>&1 &
+  done < <(timeout 60 su -s /bin/bash "${_H_USER}" -c "cd -P -- '/data/disk/${_H_USER}/.drush' 2>/dev/null || exit 0; for _f in *.alias.drushrc.php; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; echo; echo '#boa-alias-file'; timeout 10 dd if=\"./\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none; done" 2> /dev/null < /dev/null 7>&- 8>&- \
+    | awk -v q="'" '
       function val(line, key,   p, v) {
         p = "  " q key q " => " q
         if (index(line, p) != 1) return ""
@@ -236,25 +322,25 @@ _grav_store_ticks() {
         if (ctx == "site" && en == "true" && sp != "" && uri != "") print sp "\t" uri
         ctx = ""; en = ""; sp = ""; uri = ""
       }
-      FNR == 1 && NR > 1 { emit() }
+      $0 == "#boa-alias-file" { emit(); next }
       $0 == "  " q "context_type" q " => " q "site" q "," { ctx = "site" }
       $0 == "  " q "site_enabled" q " => true," && en == "" { en = "true" }
       $0 == "  " q "site_enabled" q " => false," && en == "" { en = "false" }
       sp == "" { v = val($0, "site_path"); if (v != "") sp = v }
       uri == "" { v = val($0, "uri"); if (v != "") uri = v }
       END { emit() }
-    ' "${_files[@]}" 2> /dev/null)
-  fi
+    ' 2> /dev/null | "${_shuf}" 2> /dev/null)
   touch /var/log/boa/grav-ticks-${_H_USER}
 }
 
 _grav_store_ticks_detached() {
-  local _gl="/run/grav-ticks-${_H_USER}.lock"
+  local _gl="${_XDRAGO_LOCKS}/grav-ticks-${_H_USER}.lock"
   [[ -e "/run/boa_wait.pid" ]] && return 0
   grep -q "^_GRAV_SUPPORT=YES" "/root/.${_H_USER}.octopus.cnf" 2>/dev/null || return 0
   [[ -x "/opt/local/bin/grav" ]] || return 0
   [[ -x "/usr/bin/cgi-fcgi" ]] || return 0
   command -v flock > /dev/null 2>&1 || return 0
+  _xdrago_lock_dir || return 0
   ( umask 077; : >> "${_gl}" ) 2>/dev/null || return 0
   # Started from a command substitution so this script's own bare `wait`
   # calls never wait for it (it is never one of this shell's jobs).
@@ -274,8 +360,9 @@ _grav_store_ticks_detached
 # non-blocking per-user lock on fd 9 (released automatically on exit, no stale
 # lockfile); a concurrent run exits cleanly. If the lockfile cannot be created
 # (e.g. /run not writable) fall through and run unlocked rather than stall.
-_runLock="/run/run-xdrago-${_H_USER}.lock"
-if command -v flock >/dev/null 2>&1 && ( : >> "${_runLock}" ) 2>/dev/null; then
+_runLock="${_XDRAGO_LOCKS}/run-xdrago-${_H_USER}.lock"
+if command -v flock >/dev/null 2>&1 && _xdrago_lock_dir \
+  && ( umask 077; : >> "${_runLock}" ) 2>/dev/null; then
   exec 9>"${_runLock}"
   flock -n 9 || exit 0
 fi

@@ -1367,12 +1367,50 @@ _fix_step() {
   _restore_missing_packages "$1" "$2"
 }
 
+_pathauto_source_module_fix() {
+  # Drupal 11 prefers a plugin's PHP attribute over its legacy annotation, and
+  # pathauto's attribute lost source_module in the conversion (the core attribute
+  # class cannot even express it), so migrate_drupal validation refuses every
+  # Drupal 7 crossing with "The pathauto_pattern plugin must define the
+  # source_module property", on any platform that carries pathauto. Upstream sets
+  # it in the migration definition instead (pathauto #3588684); apply that
+  # one-liner until a tagged release carries it - the grep guard makes this a
+  # no-op once it does. Every touch runs as the build user like the rest of the
+  # tree: root must never read or write a path the o8 account - or a composer
+  # plugin executing as it during this very build - can turn into a symlink
+  # first. $1 workdir, $2 result label.
+  local _wd="$1" _label="$2" _root _pa_yml=""
+  for _root in web docroot html; do
+    if _run_as_o8 "test -f '${_wd}/${_root}/modules/contrib/pathauto/migrations/d7_pathauto_patterns.yml'"; then
+      _pa_yml="${_wd}/${_root}/modules/contrib/pathauto/migrations/d7_pathauto_patterns.yml"
+      break
+    fi
+  done
+  [[ -n "${_pa_yml}" ]] || return 0
+  _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'" && return 0
+  _run_as_o8 "sed -i 's|^  plugin: pathauto_pattern$|  plugin: pathauto_pattern\n  source_module: pathauto|' '${_pa_yml}'"
+  if ! _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'"; then
+    _alrt "${_label}: pathauto source_module correction did not apply"
+    _record_fail "${_label}"
+    return 1
+  fi
+}
+
 _finalize_distro() {
   # Rename the working dir to <nameprefix>-<distroVer>-<coreVer> using the detected
   # versions, record the row, then audit the finished platform (never fatal); the
-  # row carries what the build's _fix_step did. $1 name prefix, $2 workdir, $3 distro
-  # version, $4 result label.
+  # row carries what the build's _fix_step did. Every distribution first gets the
+  # pathauto migration correction, whose absence stops a Drupal 7 upgrade into it.
+  # $1 name prefix, $2 workdir, $3 distro version, $4 result label.
   local _np="$1" _wd="$2" _dver="$3" _label="$4" _core _final
+  if ! _pathauto_source_module_fix "${_wd}" "${_label}"; then
+    _FALLBACK_NOTE=""
+    _FIX_NOTE=""
+    _FIX_BEFORE=""
+    _FIX_LINES=()
+    _PENDING_NOTE=""
+    return 1
+  fi
   _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
   # Never allow whitespace into a platform name (a dev-branch alias could carry it).
   _dver="${_dver//[[:space:]]/}"
@@ -1583,27 +1621,7 @@ build_cms() {
     _record_fail "cms"
     return 1
   fi
-  # Drupal 11 prefers a plugin's PHP attribute over its legacy annotation, and
-  # pathauto's attribute lost source_module in the conversion (the core attribute
-  # class cannot even express it), so migrate_drupal validation refuses every
-  # Drupal 7 crossing with "The pathauto_pattern plugin must define the
-  # source_module property". Upstream sets it in the migration definition
-  # instead (pathauto #3588684); apply that one-liner until a tagged release
-  # carries it - the grep guard makes this a no-op once it does. Every touch
-  # runs as the build user like the rest of the tree: root must never read or
-  # write a path the o8 account - or a composer plugin executing as it during
-  # this very build - can turn into a symlink first.
   _fix_step "${_wd}" "cms" "" || return 1
-  local _pa_yml="${_wd}/web/modules/contrib/pathauto/migrations/d7_pathauto_patterns.yml"
-  if _run_as_o8 "test -f '${_pa_yml}'" \
-     && ! _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'"; then
-    _run_as_o8 "sed -i 's|^  plugin: pathauto_pattern$|  plugin: pathauto_pattern\n  source_module: pathauto|' '${_pa_yml}'"
-    if ! _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'"; then
-      _alrt "cms: pathauto source_module correction did not apply"
-      _record_fail "cms"
-      return 1
-    fi
-  fi
   _finalize_distro "drupal_cms_installer" "${_wd}" "${_dver}" "cms"
 }
 
