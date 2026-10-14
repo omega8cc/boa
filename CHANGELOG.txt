@@ -568,6 +568,11 @@
       class the same way, since its user agent can name Amazon's training
       crawler in its contact link.
 
+    * Deleting an account's whole AI policy file (static/control/ai/
+      policy.txt) now puts every site back on the AI defaults at the next
+      pass, as deleting one site's line always did; before, the per-site
+      refusals and opt-ins the file had set stayed in force.
+
     * codebasecheck words its Grav verdict for shops: a Grav platform's
       code holds no SQL, and a KahunaCart shop's database requires
       MySQL 8 itself; it no longer calls every Grav site flat-file.
