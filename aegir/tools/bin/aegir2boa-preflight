@@ -285,6 +285,7 @@ _php_band_for_core() {
     9*) echo "7.3-8.1" ;;
     10*) echo "8.1-8.3" ;;
     11*) echo "8.3+" ;;
+    12*) echo "8.5+" ;;
     *) echo "?" ;;
   esac
 }
@@ -844,7 +845,7 @@ probe_platforms() {
       "${_ws:-?}" "$(_php_band_for_core "${_core}")"
     _N_PLATFORMS=$((_N_PLATFORMS + 1))
     case "${_core}" in
-      8*|9*|10*|11*) _D8PLUS_SEEN=YES ;;
+      8*|9*|10*|11*|12*) _D8PLUS_SEEN=YES ;;
     esac
   done
   # DB side for drift check

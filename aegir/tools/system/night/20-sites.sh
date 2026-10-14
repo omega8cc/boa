@@ -122,12 +122,30 @@ if ! declare -F _web_group_state > /dev/null 2>&1; then
     # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
     # group and never hands a path to a login group. Run as any user but root,
     # which cannot read root's record, a held group answers empty: the group
-    # each path has is kept. $1 as _web_group_state.
-    local _s
+    # each path has is kept. A converted account's group that an identity
+    # outside the account has come to hold too (foreign) still answers
+    # wg-<account> to root while root's record names that gid at phase A or
+    # B: the account's pools read its paths through that group, at phase B
+    # through it alone, so www-data there would take them away. $1 as
+    # _web_group_state.
+    local _s _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
     _s=$(_web_group_state "${1}")
     case "${_s%% *}" in
       converted|phaseb) echo "${_s##* }" ;;
       held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+      foreign)
+        _r="/root/.${_s##* wg-}.web-group.txt"
+        if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+          && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+          read -r _rg _rgid _rph _ < "${_r}" || :
+        fi
+        if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+          && { [ "${_rph}" = "phase=A" ] || [ "${_rph}" = "phase=B" ]; }; then
+          echo "${_rg}"
+        else
+          echo "www-data"
+        fi
+        ;;
       *) echo "www-data" ;;
     esac
   }
@@ -1691,6 +1709,14 @@ _plr_mod_ln() {
   _site_in_resolved_dir "${_Plr}/modules" ln -sfn -- "${1}" "./${2}" &> /dev/null
 }
 
+### The major version in core/lib/Drupal.php of the platform, read as
+### _acct_read_in reads it (never through a link, never blocking on a
+### FIFO); empty when there is none.
+_plr_core_major() {
+  _acct_read_in "${_Plr}/core/lib" Drupal.php 2> /dev/null | head -c 8192 \
+    | grep -m1 -oE "const VERSION = '[0-9]+" | grep -oE "[0-9]+$"
+}
+
 _fix_o_contrib_symlink() {
   if [ "${_O_CONTRIB_SEVEN}" != "NO" ]; then
     _site_in_resolved_dir "${_Plr}/modules" symlinks -d . &> /dev/null
@@ -1720,6 +1746,11 @@ _fix_o_contrib_symlink() {
         _plr_mod_rm o_contrib_eleven
         _plr_mod_rm .o_contrib_eleven_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_twelve" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_twelve_dont_use" ]; then
+        _plr_mod_rm o_contrib_twelve
+        _plr_mod_rm .o_contrib_twelve_dont_use
+      fi
       # Attach only when the platform has no modules/redis copy: two copies of
       # the module in one scan dir make the winner readdir-order dependent.
       # The verify task owns demoting a baked copy (BOA-built platforms only);
@@ -1736,6 +1767,41 @@ _fix_o_contrib_symlink() {
       && [ ! -e "${_Plr}/core" ]; then
       if [ ! -e "${_Plr}/modules/o_contrib_seven" ]; then
         _plr_mod_ln "${_O_CONTRIB_SEVEN}" o_contrib_seven
+      fi
+    elif [ -e "${_Plr}/core" ] \
+      && [ "$(_plr_core_major)" = "12" ]; then
+      # Drupal 12 dropped Olivero, Claro and Stable 9, so every theme marker
+      # below misses it: core's version constant claims the tree, and the
+      # shelf is attached only when it exists. No other shelf belongs here,
+      # o_contrib (Drupal 6) included, which the last arm once linked.
+      if [ -e "${_Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        _plr_mod_rm o_contrib_eight
+        _plr_mod_rm .o_contrib_eight_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        _plr_mod_rm o_contrib_nine
+        _plr_mod_rm .o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        _plr_mod_rm o_contrib_ten
+        _plr_mod_rm .o_contrib_ten_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        _plr_mod_rm o_contrib_eleven
+        _plr_mod_rm .o_contrib_eleven_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib" ]; then
+        _plr_mod_rm o_contrib
+      fi
+      if [ ! -e "${_Plr}/modules/o_contrib_twelve" ] \
+        && [ ! -z "${_O_CONTRIB_TWELVE}" ] \
+        && [ "${_O_CONTRIB_TWELVE}" != "NO" ] \
+        && [ -e "${_O_CONTRIB_TWELVE}" ]; then
+        _plr_mod_ln "${_O_CONTRIB_TWELVE}" o_contrib_twelve
       fi
     elif [ -e "${_Plr}/core" ] \
       && [ ! -e "${_Plr}/core/themes/olivero" ] \
@@ -1756,6 +1822,11 @@ _fix_o_contrib_symlink() {
         || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
         _plr_mod_rm o_contrib_eleven
         _plr_mod_rm .o_contrib_eleven_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_twelve" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_twelve_dont_use" ]; then
+        _plr_mod_rm o_contrib_twelve
+        _plr_mod_rm .o_contrib_twelve_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_eight" ]; then
         _plr_mod_ln "${_O_CONTRIB_EIGHT}" o_contrib_eight
@@ -1779,6 +1850,11 @@ _fix_o_contrib_symlink() {
         _plr_mod_rm o_contrib_eleven
         _plr_mod_rm .o_contrib_eleven_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_twelve" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_twelve_dont_use" ]; then
+        _plr_mod_rm o_contrib_twelve
+        _plr_mod_rm .o_contrib_twelve_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_nine" ]; then
         _plr_mod_ln "${_O_CONTRIB_NINE}" o_contrib_nine
       fi
@@ -1800,6 +1876,11 @@ _fix_o_contrib_symlink() {
         || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
         _plr_mod_rm o_contrib_eleven
         _plr_mod_rm .o_contrib_eleven_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_twelve" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_twelve_dont_use" ]; then
+        _plr_mod_rm o_contrib_twelve
+        _plr_mod_rm .o_contrib_twelve_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
         _plr_mod_ln "${_O_CONTRIB_TEN}" o_contrib_ten
@@ -1823,6 +1904,11 @@ _fix_o_contrib_symlink() {
         _plr_mod_rm o_contrib_ten
         _plr_mod_rm .o_contrib_ten_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_twelve" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_twelve_dont_use" ]; then
+        _plr_mod_rm o_contrib_twelve
+        _plr_mod_rm .o_contrib_twelve_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_eleven" ]; then
         _plr_mod_ln "${_O_CONTRIB_ELEVEN}" o_contrib_eleven
       fi
@@ -1832,7 +1918,10 @@ _fix_o_contrib_symlink() {
           _plr_mod_rm o_contrib
         fi
       else
+        # Drupal 6 only: a tree with a core/ folder (Drupal 8 and newer, a
+        # major no arm above knows yet) never takes this shelf.
         if [ ! -e "${_Plr}/modules/o_contrib" ] \
+          && [ ! -e "${_Plr}/core" ] \
           && [ -e "${_O_CONTRIB}" ]; then
           _plr_mod_ln "${_O_CONTRIB}" o_contrib
         fi
