@@ -77,10 +77,12 @@ _xdrago_lock_dir() {
 # on a pool of fewer than eight children and two on a larger one, so the
 # sites on that pool keep children for their visitors; a tick that finds them
 # taken waits up to about two minutes, then leaves its store to the next
-# minute. The entry script runs only a request sent within the last twenty
-# seconds: the pool ends a request after 180 seconds at most and root waits
-# 200, so one that waited longer in a busy pool could run beside the next
-# minute's tick.
+# minute. The entry script runs only a request sent within the last fifteen
+# seconds: the pool ends a request 180 seconds after it starts, plus the few
+# seconds between its own checks, and root waits 200, so one that waited
+# longer in a busy pool could run beside the next minute's tick. The
+# instance user's reads are size-bound and never follow a link or wait on a
+# FIFO.
 
 # The entry script of this instance's ticks: each instance keeps its own, so
 # instances whose runners come from different BOA releases never replace
@@ -107,10 +109,10 @@ _grav_tick_entry() {
 if (PHP_SAPI !== 'fpm-fcgi' || !isset($_SERVER['BOA_GRAV_TICK_ROOT'])) {
   exit;
 }
-// Only a request sent within the last twenty seconds runs: one that waited
+// Only a request sent within the last fifteen seconds runs: one that waited
 // longer in a busy pool could still run beside the next minute's tick.
 $sent = isset($_SERVER['BOA_GRAV_TICK_SENT']) ? (int) $_SERVER['BOA_GRAV_TICK_SENT'] : 0;
-if ($sent <= 0 || time() - $sent > 20) {
+if ($sent <= 0 || time() - $sent > 15) {
   exit;
 }
 $root = (string) $_SERVER['BOA_GRAV_TICK_ROOT'];
@@ -183,7 +185,7 @@ _grav_store_tick() {
   local _sp="${1}" _uri="${2}" _rc _rcd _vs _n _u _p _h _o _v _k _e
   # As the instance user: the hold, drushrc.php, then after a separator line
   # the PHP socket line of the site's vhost.
-  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; cat -- drushrc.php || exit 1; echo; echo '#boa-grav-vhost'; grep -m1 -o 'fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;' -- '/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}' 2>/dev/null; exit 0" 2> /dev/null < /dev/null 6>&- 7>&-)" || return 0
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; timeout 10 dd if=./drushrc.php iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none || exit 1; echo; echo '#boa-grav-vhost'; timeout 10 dd if='/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}' iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep -m1 -o 'fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;'; exit 0" 2> /dev/null < /dev/null 6>&- 7>&-)" || return 0
   _rcd="$(printf '%s\n' "${_rc}" | sed '/^#boa-grav-vhost$/,$d')"
   _vs="$(printf '%s\n' "${_rc}" | sed -n '/^#boa-grav-vhost$/,$p' | sed -n 's/^fastcgi_pass unix:\(.*\);$/\1/p' | head -1)"
   _rc=""
@@ -204,6 +206,11 @@ _grav_store_tick() {
     [[ "${_v}" =~ ^[A-Za-z0-9._:-]+$ ]] || return 0
   done
   _grav_tick_slot "${_GRAV_SOCK}" || return 0
+  # A wait for the slot can outlast the hold read above: an owner may hold
+  # the copy again meanwhile, so read the hold once more.
+  if [[ "${_GRAV_SLOT_WAITED}" = "YES" ]]; then
+    timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; exit 0" > /dev/null 2>&1 < /dev/null 6>&- 7>&- || return 0
+  fi
   # cgi-fcgi sends its whole environment as the request's parameters: only
   # what the entry script and the store need reaches the pool.
   for _e in $(compgen -e); do
@@ -250,10 +257,12 @@ _grav_tick_slots() {
 
 # Take one of the tick slots of the pool behind socket $1 on fd 6, held until
 # the tick's subshell ends. All taken: try again every two seconds for up to
-# 110, then leave this store to the next minute.
+# 110, then leave this store to the next minute. Sets _GRAV_SLOT_WAITED to
+# YES when it had to wait.
 _grav_tick_slot() {
   local _pool="${1#/run/}" _max _i _t=0 _sl
   _pool="${_pool%.fpm.socket}"
+  _GRAV_SLOT_WAITED=NO
   _max="$(_grav_tick_slots "${1}")"
   for (( _i = 1; _i <= _max; _i++ )); do
     ( umask 077; : >> "${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock" ) 2> /dev/null || return 1
@@ -267,6 +276,7 @@ _grav_tick_slot() {
       fi
       exec 6>&-
     done
+    _GRAV_SLOT_WAITED=YES
     sleep 2
     _t=$(( _t + 2 ))
   done
@@ -297,7 +307,7 @@ _grav_store_ticks() {
       flock -n 7 || exit 0
       _grav_store_tick "${_sp}" "${_uri}"
     ) < /dev/null > /dev/null 2>&1 &
-  done < <(timeout 60 su -s /bin/bash "${_H_USER}" -c "cd -P -- '/data/disk/${_H_USER}/.drush' 2>/dev/null || exit 0; for _f in *.alias.drushrc.php; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; echo '#boa-alias-file'; cat -- \"\${_f}\"; done" 2> /dev/null < /dev/null 7>&- 8>&- \
+  done < <(timeout 60 su -s /bin/bash "${_H_USER}" -c "cd -P -- '/data/disk/${_H_USER}/.drush' 2>/dev/null || exit 0; for _f in *.alias.drushrc.php; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; echo; echo '#boa-alias-file'; timeout 10 dd if=\"./\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none; done" 2> /dev/null < /dev/null 7>&- 8>&- \
     | awk -v q="'" '
       function val(line, key,   p, v) {
         p = "  " q key q " => " q

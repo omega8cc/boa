@@ -536,7 +536,9 @@
       store's worker every minute inside the site's own PHP-FPM pool, one
       or two at a time per pool, never Grav's whole scheduler. A copy made
       by Clone or Upgrade a copy is held until a Cutover takes over from
-      its store or until the account creates
+      its store (unless the copy it was made from still runs as a store)
+      or from the released copy of that store it was made from, or until
+      the account creates
       ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
       signing secret of its own and a paused store. A store kept in its own
       SQLite file is warned about and is not cloned.
