@@ -300,9 +300,10 @@ classify_codebase() {
   # Backdrop: supported on MySQL/Percona 8.x.
   case "${_version}" in
     grav-*)
-      # Truthful for a flat-file CMS: not "compatible" — the question does
-      # not arise, and the verdict should never imply a database exists.
-      printf 'OK\t%s\tGrav is flat-file (no database) — MySQL-8 review not applicable\n' "${_version}"
+      # Not "compatible": the question does not arise. A Grav platform's
+      # code holds no SQL, and KahunaCart, which gives a Grav shop its
+      # database, requires MySQL 8 itself.
+      printf 'OK\t%s\tGrav code holds no SQL; a KahunaCart shop requires MySQL 8 itself — MySQL-8 review not applicable\n' "${_version}"
       return 0
       ;;
     textpattern-*)
