@@ -23,6 +23,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ### both on initial install and upgrade.
 ###
 _XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
+_WEBMIN_RETIRE=YES #------------ Remove a still-installed Webmin when YES; NO keeps it
 ###
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable verbose BOA mode when YES

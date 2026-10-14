@@ -326,7 +326,7 @@ Distributions, published to `/var/www/static/distro`:
   opigno_lms-3.2.7-10.6.18
   social-13.1.0-10.6.18
   thunder-8.4.6-11.4.9
-  varbase-11.0.0-11.4.6
+  varbase-11.0.0-11.4.8
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -650,11 +650,13 @@ varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (co
            # build uninstallable. Builds the 11 line since 2026-09-10 (stable upstream
            # since 2026-09-08; web/ layout, the catalogue VBX web_dir moved with it);
            # the 10 line's last build stays on the mirror for existing platforms.
-           # PINNED to the 11.0.7 template (2026-09-17): 11.0.8's lock moves canvas
-           # 1.10.1 -> 1.11.0 and a fresh install on it drops canvas_page_template_component
-           # from core.extension while its config stays -- every page 500s, clones fail
-           # updatedb. Move the pin only after a rig proves install AND clone.
-           # composer create-project Vardot/varbase-project:11.0.7 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # PINNED to the 11.0.10 template (core 11.4.8, canvas 1.12.0). 11.0.8's lock
+           # moved canvas 1.10.1 -> 1.11.0 and a fresh install on it dropped
+           # canvas_page_template_component from core.extension while its config stayed --
+           # every page 500ed, clones failed updatedb. 11.0.11 ships without its lock
+           # files on purpose, so it cannot be built from upstream's lock. Move the pin
+           # only after a test install AND clone of the newer template pass.
+           # composer create-project Vardot/varbase-project:11.0.10 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
            # (NO composer update: varbase installs from upstream's shipped lock; a

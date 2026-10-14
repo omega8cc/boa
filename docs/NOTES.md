@@ -20,7 +20,7 @@
 - **SR4**: Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
 - **SR7**: Apache Solr 7 (not supported on Devuan Excalibur)
 - **SR9**: Apache Solr 9
-- **WMN**: Webmin Control Panel (deprecated)
+- **WMN**: retired: Webmin is never installed, and a Barracuda run removes it from a server that still has it, unless `_WEBMIN_RETIRE=NO` is set in `/root/.barracuda.cnf` (see `docs/cnf/barracuda.cnf`)
 
 ### Examples:
 
@@ -62,7 +62,6 @@ With `_EASY_SETUP=PUBLIC` option (default), Barracuda will install automatically
 - Your (optional) MultiCore Apache Solr 4.9.1 with Jetty 9 will listen on `127.0.0.1:8099`
 - Your (optional) MultiCore Apache Solr 7.7.3 will listen on `127.0.0.1:9077`
 - Your (optional) MultiCore Apache Solr 9.10.1 will listen on `127.0.0.1:9099`
-- Your (optional) Webmin Control Panel will be available at `https://f-q-d-n:10000` (deprecated)
 
 ### Barracuda EASY_SETUP=LOCAL
 
