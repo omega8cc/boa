@@ -1100,7 +1100,10 @@ _global_inc_conf_update() {
     _msg "OOPS: ${_GL_D} is not a real directory, the global include set was not deployed"
     return 1
   fi
-  _DR_V="11 10 9 8 7 6"
+  # 12 first: provision's Drupal 12 settings template includes global-12.inc
+  # directly, and a site whose partial is missing would run with no BOA
+  # globals at all, which a plain page load does not show
+  _DR_V="12 11 10 9 8 7 6"
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
       _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here "./global-${e}.inc" \
