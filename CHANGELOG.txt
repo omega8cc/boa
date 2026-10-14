@@ -220,6 +220,12 @@
       its modules and a wildcard certificate through it never issued. A
       clone left that way gets its environment on the next nightly run.
 
+    * A cli.info that names a PHP version the server does not have is
+      rewritten to the version its fallback picked also when that is the
+      version the account already runs. The file was left as written in
+      that case, and the shell wrapper, which reads it itself, ran drush
+      and composer on the server default until the next release.
+
 @=> Security
 
     * A Grav site's premium licence file, user/data/licenses.yaml, is kept
