@@ -23,7 +23,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.10)
 - [Drupal 11.3.19](https://drupal.org/project/drupal/releases/11.3.19)
 - [Drupal 11.4.10](https://drupal.org/project/drupal/releases/11.4.10)
-- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.9)
+- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.10)
 - [farmOS 4.0.7](https://drupal.org/project/farm) (11.3.18)
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.10)
 - [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.10)
