@@ -2084,7 +2084,10 @@ build_cores() {
     fi
     _drush=""
     if _core_from_12 "${_m}"; then
-      _drush="$(_run_as_o8 "cd '${_wd}' && composer show drush/drush 2>/dev/null" | sed -n 's/^versions : \* //p')"
+      # A development branch moves: name the commit the line resolved, too.
+      _drush="$(_run_as_o8 "cd '${_wd}' && composer show drush/drush 2>/dev/null" \
+        | sed -n -e 's/^versions : \* //p' -e 's/^source *: \[git\] [^ ]* \([0-9a-f]\{7\}\).*/\1/p' | tr '\n' ' ')"
+      _drush="${_drush% }"
       _msg "drupal-${_m}: drush ${_drush:-<unknown>}"
     fi
     _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
