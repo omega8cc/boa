@@ -26,8 +26,9 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | Secret-path probes | `$is_secret_path` | `.env` `.git` `.aws` `.ssh`, `*.json` creds, `settings.py`, … | **Hard block (444), always** |
 
 Some allowed agents name a training crawler in the contact part of their user-agent:
-`Claude-User` and `Claude-SearchBot` (with `+claudebot@anthropic.com`), `Amzn-SearchBot`
-and `Amzn-User` (with `.../support/amazonbot`). The training map checks those four tokens
+`Claude-User` and `Claude-SearchBot` (with `+claudebot@anthropic.com`) and `Amzn-SearchBot`
+(with `.../support/amazonbot`). `Amzn-User` is listed with them for a string that carries
+the same link (the one Amazon documents has none). The training map checks those four tokens
 first and leaves them out of the training class, so they stay in their own classes (user
 fetch, search).
 
