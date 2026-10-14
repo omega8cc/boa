@@ -316,16 +316,16 @@ Distributions, published to `/var/www/static/distro`:
 
 ```sh
   commerce_base-2.40-10.1.8
-  commerce_kickstart-5.1.0-11.4.9
-  drupal_cms_installer-2.2.4-11.4.9
+  commerce_kickstart-5.1.0-11.4.10
+  drupal_cms_installer-2.2.4-11.4.10
   ezcontent-2.2.15-10.3.6
   farm-4.0.7-11.3.18
-  localgov-4.0.5-11.4.9
-  openculturas-3.1.2-11.4.9
-  openfed-13.6.8-10.6.18
-  opigno_lms-3.2.7-10.6.18
-  social-13.1.0-10.6.18
-  thunder-8.4.6-11.4.9
+  localgov-4.0.5-11.4.10
+  openculturas-3.1.2-11.4.10
+  openfed-13.6.8-10.6.19
+  opigno_lms-3.2.7-10.6.19
+  social-13.1.0-10.6.19
+  thunder-8.4.6-11.4.10
   varbase-11.0.0-11.4.8
 ```
 
@@ -334,9 +334,9 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
 ```sh
   drupal-10.2.12    drupal-11.1.10
   drupal-10.3.14    drupal-11.2.14
-  drupal-10.4.10    drupal-11.3.18
-  drupal-10.5.12    drupal-11.4.9
-  drupal-10.6.18
+  drupal-10.4.10    drupal-11.3.19
+  drupal-10.5.12    drupal-11.4.10
+  drupal-10.6.19
 ```
 
 ## Backdrop family
@@ -512,8 +512,8 @@ farmos     # farm-4.0.7-11.3.18  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.9 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.4-11.4.9
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.10 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.4-11.4.10
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer require --no-update --no-scripts drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2   # drupal/cms 2.2.4 no longer requires its site templates and add-on recipes; its installer would fetch a missing template with Composer during the site install
@@ -523,8 +523,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.1.2-11.4.9 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.1.2-11.4.9/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.1.2-11.4.10 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.1.2-11.4.10/
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (kept as the build proven to install)
@@ -535,13 +535,13 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.7-11.3.18/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.1.2-11.4.9/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.7-11.3.18/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.1.2-11.4.10/web/sites/
 ```
 
 ```sh
-commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.10 --no-dev --no-interaction --no-install --no-scripts
            # name by centarro/commerce_kickstart (the profile, 5.1.0); the project template stays dev-only
-           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.9
+           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.10
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false   # commerce_kickstart blocks advisory-affected deps
            # composer install --no-dev
@@ -551,9 +551,9 @@ commerce   # composer create-project -s dev centarro/commerce-kickstart-project 
 ```
 
 ```sh
-localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.5-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.5-11.4.10 --no-dev --no-interaction --no-install --no-scripts
            # name by drupal/localgov (the distribution, 4.0.5); localgov_project versions separately
-           # cd ~/static/MONTH-DAY/localgov-4.0.5-11.4.9
+           # cd ~/static/MONTH-DAY/localgov-4.0.5-11.4.10
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -573,8 +573,8 @@ openfed    # The openfed-project template requires only three composer helpers; 
            # (measured): plugin event subscribers still run under --no-scripts and the
            # nested update they dispatch re-enables scripts on its own. The explicit
            # resolve+install pair after it is the real gate and must exit 0.
-           # composer create-project openfed/openfed-project:^13 openfed-13.6.8-10.6.18 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openfed-13.6.8-10.6.18
+           # composer create-project openfed/openfed-project:^13 openfed-13.6.8-10.6.19 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openfed-13.6.8-10.6.19
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer install --no-dev                    # bootstrap; rc 4 EXPECTED, tolerated
@@ -597,8 +597,8 @@ opigno     # Opigno's documented create-project is broken as shipped, in three w
            # (inside the module's own ^1.27). (3) Twig 3.22+ rejects
            # opigno_learning_path's empty getOperators() on the first front-page render
            # (#3561556, RTBC, in no release): apply the issue patch, fail closed.
-           # composer create-project opigno/opigno-composer opigno_lms-3.2.7-10.6.18 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/opigno_lms-3.2.7-10.6.18
+           # composer create-project opigno/opigno-composer opigno_lms-3.2.7-10.6.19 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/opigno_lms-3.2.7-10.6.19
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer config --unset replace
@@ -620,8 +620,8 @@ social     # Open Social ships NO create-project template for its current major:
            # template as the chassis - it owns the html/ docroot, the scaffold locations
            # and the installer-paths upstream itself defined - and move only the
            # distribution to the current major.
-           # composer create-project goalgorilla/social_template:dev-master social-13.1.0-10.6.18 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/social-13.1.0-10.6.18
+           # composer create-project goalgorilla/social_template:dev-master social-13.1.0-10.6.19 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/social-13.1.0-10.6.19
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer require --no-update --no-scripts goalgorilla/open_social:^13
@@ -635,9 +635,9 @@ social     # Open Social ships NO create-project template for its current major:
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.4.6-11.4.9 --no-dev --no-interaction --no-install --no-scripts
+thunder    # composer create-project thunder/thunder-project thunder-8.4.6-11.4.10 --no-dev --no-interaction --no-install --no-scripts
            # name by thunder/thunder-distribution (8.4.6); thunder/thunder-project versions separately (5.0.0)
-           # cd ~/static/MONTH-DAY/thunder-8.4.6-11.4.9
+           # cd ~/static/MONTH-DAY/thunder-8.4.6-11.4.10
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -676,7 +676,14 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require drush/drush
            # then audit the lock as under "By hand" above (never fatal)
-           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.18 11.1.10 11.2.14 11.3.18 11.4.9
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.19 11.1.10 11.2.14 11.3.19 11.4.10
+prerelease # each _CORE_PRERELEASE version whose minor has no stable release among the
+           # minors (the list ships empty; name only a pre-release that carries every
+           # core security fix released so far), under php85 like every Drupal 12 line:
+           # composer create-project drupal/recommended-project:<version> drupal-<version> --no-dev --no-interaction
+           # cd drupal-<version> && composer require grasmash/yaml-cli:4.x-dev \
+           #   chi-teck/drupal-code-generator:^4@dev drush/drush:^14@dev
+           # a failed Drush require fails the line: no Drush, no platform
 ```
 
 ### Clean up artefacts before packaging
@@ -728,7 +735,7 @@ tarballs and stamps come only from their own actions.
 
 ## Add them all as platforms in Ægir
 
-Use paths like `MONTH-DAY/drupal-11.4.9` and run tests for site install, clone and migration.
+Use paths like `MONTH-DAY/drupal-11.4.10` and run tests for site install, clone and migration.
 
 ## Notes on non-standard issues
 

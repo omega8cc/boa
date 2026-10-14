@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.16
+export _DRUSH_VERSION=8.5.17
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.3
 export _REDIS_N_VERSION=com-19-04-2021
@@ -71,11 +71,11 @@ export _SMALLCORE10_2_V=10.2.12
 export _SMALLCORE10_3_V=10.3.14
 export _SMALLCORE10_4_V=10.4.10
 export _SMALLCORE10_5_V=10.5.12
-export _SMALLCORE10_6_V=10.6.18
+export _SMALLCORE10_6_V=10.6.19
 export _SMALLCORE11_1_V=11.1.10
 export _SMALLCORE11_2_V=11.2.14
-export _SMALLCORE11_3_V=11.3.18
-export _SMALLCORE11_4_V=11.4.9
+export _SMALLCORE11_3_V=11.3.19
+export _SMALLCORE11_4_V=11.4.10
 export _SMALLCORE6_V=6.60.1
 export _SMALLCORE7_V=7.106.2
 export _SMALLCORE9_V=9.5.11
@@ -165,7 +165,7 @@ export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 ### make time.
 ###
 export _BACKDROP_V_FALLBACK=1.35.1
-export _GRAV_V_FALLBACK=2.2.7
+export _GRAV_V_FALLBACK=2.2.8
 export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
 export _BACKDROP="backdrop-${_BACKDROP_V}"
