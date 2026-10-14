@@ -5090,7 +5090,7 @@ _check_and_move() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.22.0
+  _CURL_VRN=8.23.0
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
