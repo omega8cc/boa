@@ -71,14 +71,6 @@ _PHP_CLI_VERSION=8.4
 # DE3 — Drupal 11.3 prod/stage/dev
 # FOS — farmOS
 
-### Drupal 11.2
-#
-# DE2 — Drupal 11.2 prod/stage/dev
-
-### Drupal 11.1
-#
-# DE1 — Drupal 11.1 prod/stage/dev
-
 ### Drupal 10.6
 #
 # DX6 — Drupal 10.6 prod/stage/dev
@@ -86,31 +78,18 @@ _PHP_CLI_VERSION=8.4
 # OPG — Opigno LMS
 # SOC — Social
 
-### Drupal 10.5
-#
-# DX5 — Drupal 10.5 prod/stage/dev
-
-### Drupal 10.4
-#
-# DX4 — Drupal 10.4 prod/stage/dev
-
 ### Drupal 10.3
 #
-# DX3 — Drupal 10.3 prod/stage/dev
 # EZC — EzContent
-
-### Drupal 10.2
-#
-# DX2 — Drupal 10.2 prod/stage/dev
 
 ### Drupal 10.1
 #
-# DX1 — Drupal 10.1 prod/stage/dev
 # CK2 — Commerce v.2
 
-### Drupal 10.0
+### Retired, no longer built (platforms already on a server keep their sites)
 #
-# DX0 — Drupal 10.0 prod/stage/dev
+# DE2 DE1 — Drupal 11.2 and 11.1
+# DX5 DX4 DX3 DX2 DX1 DX0 — Drupal 10.5 to 10.0
 
 ### Drupal 9
 #
@@ -994,7 +973,9 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _urlEnc="https://${_USE_MIR}/enc/2024"
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    # A test, not ||: tr exits 0 on an empty /etc/hostname
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+    [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \

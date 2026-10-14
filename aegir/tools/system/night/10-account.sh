@@ -2328,7 +2328,9 @@ if [ "${0##*/}" = "10-account.sh" ]; then
     exit 1
   fi
   night_load_run_env
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
   _usEr="$1"
   if [ -z "${_usEr}" ] || [ ! -d "${_usEr}" ]; then
     echo "FATAL ERROR: 10-account.sh requires a valid account path argument"

@@ -202,6 +202,14 @@ _confs_drop_here() {
   done
   [[ -z "${_any}" ]] || echo "yes"
 }
+# Status 0 when the current (pinned) directory holds a ./*.conf.
+_confs_any_here() {
+  local _f
+  for _f in ./*.conf; do
+    [[ -e "${_f}" ]] && return 0
+  done
+  return 1
+}
 # Every ./*.conf of the current (pinned) directory that is not kept removed,
 # the gates (*.srv.conf) first: $1 = what the log calls one, $2 = where, $3 =
 # the suffix a kept name leaves off, then the kept names.
@@ -333,24 +341,36 @@ _process_instance() {
   local _last_good_backup="${_backup_dir}/${_last_good_name}"
   local _new="${_work}/new" _ctrl="${_work}/ctrl" _mk="${_work}/mk"
 
-  # Only instances with an activated control file and a real includes dir.
-  [[ -f "${_input_file}" ]] || return 0
+  # Only instances with a real includes dir. An instance without the control
+  # file keeps the global defaults: the fragments a file since deleted left
+  # are removed as a file with no site lines would remove them, and one that
+  # never had a file has none and stops here. A missing control folder is
+  # not a deletion (an instance being moved or restored), so nothing is
+  # touched then.
   [[ -d "${_root}/config/includes" ]] || return 0
+  local _nofile=""
+  if [[ ! -f "${_input_file}" ]]; then
+    [[ -d "${_root}/static/control" ]] || return 0
+    _acct_in_real_dir "${_ai_path}" _confs_any_here || return 0
+    _nofile="yes"
+  fi
 
   # Change-gate: control-file mtime + emit version. The markers are copied
   # out of their real directory in one pass; one that is not there, not a
   # regular file, or in a directory that is not real reads as none, and so
   # does a time that is not a number: it is compared as a number.
   local _current_mod_time _last_mod_time _last_version
-  _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
-  rm -rf -- "${_mk}"
-  mkdir -m 0700 -- "${_mk}" || return 1
-  _acct_in_real_dir "${_ai_path}" _acct_copies_here "${_mk}" .policy_last_mod_time .emit_version
-  _line_get _last_mod_time "${_mk}/.policy_last_mod_time"
-  [[ "${_last_mod_time}" =~ ^[0-9]+$ ]] || _last_mod_time=0
-  _line_get _last_version "${_mk}/.emit_version"
-  if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_last_version}" == "${_emit_version}" ]]; then
-    return 0
+  if [[ -z "${_nofile}" ]]; then
+    _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
+    rm -rf -- "${_mk}"
+    mkdir -m 0700 -- "${_mk}" || return 1
+    _acct_in_real_dir "${_ai_path}" _acct_copies_here "${_mk}" .policy_last_mod_time .emit_version
+    _line_get _last_mod_time "${_mk}/.policy_last_mod_time"
+    [[ "${_last_mod_time}" =~ ^[0-9]+$ ]] || _last_mod_time=0
+    _line_get _last_version "${_mk}/.emit_version"
+    if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_last_version}" == "${_emit_version}" ]]; then
+      return 0
+    fi
   fi
 
   _acct_in_real_dir "${_root}/config/includes" mkdir -p ./ai_policy 2> /dev/null
@@ -359,8 +379,11 @@ _process_instance() {
     echo "ai_policy/ or undo/ of ${_root} is not a real directory; skipped."
     return 0
   fi
-  # The control file is read only as the copy taken from its real directory.
-  if ! _acct_in_real_dir "${_input_file%/*}" _acct_copy_here "${_input_file##*/}" "${_ctrl}"; then
+  # The control file is read only as the copy taken from its real directory;
+  # no file reads as an empty one.
+  if [[ -n "${_nofile}" ]]; then
+    : > "${_ctrl}" || return 1
+  elif ! _acct_in_real_dir "${_input_file%/*}" _acct_copy_here "${_input_file##*/}" "${_ctrl}"; then
     echo "The control file of ${_root} is not a regular file in a real directory; skipped."
     return 0
   fi
@@ -417,8 +440,13 @@ _process_instance() {
     "${_configured[@]}"
 
   if _nginx_held_down; then
-    _acct_in_real_dir "${_ai_path}" _acct_put_pairs_here \
-      .policy_last_mod_time "${_current_mod_time}" .emit_version "${_emit_version}"
+    if [[ -n "${_nofile}" ]]; then
+      # no file, no markers: a file put back later is always read
+      _acct_in_real_dir "${_ai_path}" rm -f -- ./.policy_last_mod_time ./.emit_version
+    else
+      _acct_in_real_dir "${_ai_path}" _acct_put_pairs_here \
+        .policy_last_mod_time "${_current_mod_time}" .emit_version "${_emit_version}"
+    fi
     echo "AI policy written (${_root}); replication standby -- reload skipped (web tier held)."
     return 0
   fi
@@ -459,6 +487,11 @@ _process_instance() {
 
   # Success: refresh this instance's last-good backup + change-gate markers.
   _lg_store "${_new}" "${_backup_dir}" "${_last_good_name}" .
+  if [[ -n "${_nofile}" ]]; then
+    _acct_in_real_dir "${_ai_path}" rm -f -- ./.policy_last_mod_time ./.emit_version
+    echo "AI policy removed (${_root}): no control file, the global defaults apply; Nginx reloaded."
+    return 0
+  fi
   _acct_in_real_dir "${_ai_path}" _acct_put_pairs_here \
     .policy_last_mod_time "${_current_mod_time}" .emit_version "${_emit_version}"
   echo "AI policy updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."

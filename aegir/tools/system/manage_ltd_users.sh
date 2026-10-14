@@ -4513,6 +4513,37 @@ _php_fpm_apply_dynamic_children() {
 }
 
 #
+# The per-vhost cap on in-flight anonymous page renders (the nginx zone
+# boa_perhost_anon) follows the account's PHP pool: 1.5 x the largest
+# pm.max_children its pool files carry, kept between 64 and 300. The vhost
+# render reads it from this file unless the instance sets the provision option
+# nginx_perhost_anon_conn; with no file it keeps the fixed 100. Written only
+# when the value changes, atomically, readable by the account's render.
+_perhost_anon_cap_write() {
+  local _u="$1" _pf _n _max _cap _file
+  _max=0
+  for _pf in /opt/php*/etc/pool.d/"${_u}".conf /opt/php*/etc/pool.d/"${_u}".[0-9]*.conf; do
+    [ -f "${_pf}" ] || continue
+    _n=$(sed -n 's/^pm\.max_children[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' "${_pf}" | head -n 1)
+    if [ -n "${_n}" ] && [ "${_n}" -gt "${_max}" ]; then
+      _max="${_n}"
+    fi
+  done
+  [ "${_max}" -ge 1 ] || return 0
+  _cap=$(( (_max * 3 + 1) / 2 ))
+  [ "${_cap}" -lt 64 ] && _cap=64
+  [ "${_cap}" -gt 300 ] && _cap=300
+  _file="/data/conf/${_u}_perhost_anon_conn.txt"
+  if [ -f "${_file}" ] && [ "$(cat "${_file}" 2> /dev/null)" = "${_cap}" ]; then
+    return 0
+  fi
+  [ -d /data/conf ] || return 0
+  echo "${_cap}" > "${_file}.new" \
+    && chmod 644 "${_file}.new" \
+    && mv -f "${_file}.new" "${_file}"
+}
+
+#
 # Per-pool PHP-FPM memory_limit (MB) for SHARED plans (POWER and below): a
 # strictly restricted per-plan band, capped at a RAM-scaled box ceiling so a
 # shared pool never exceeds box capacity on small VMs. Dedicated plans (PHANTOM
@@ -5534,6 +5565,7 @@ _switch_php() {
   _FORCE_FPM_SETUP=NO
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
+  _T_CLI_ASKED=""
   _ltd_hm_switches
   _ltd_pool_deny_heal
 
@@ -5604,6 +5636,8 @@ _switch_php() {
         echo "ALRT: cli.info of ${_USER} is not one PHP version, ignored"
         _T_CLI_VRN=""
       fi
+      # the version the file asks for, before any fallback
+      _T_CLI_ASKED="${_T_CLI_VRN}"
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
@@ -5654,6 +5688,14 @@ _switch_php() {
             _ltd_put_in "${_dscUsr}/log" cli.txt "${_T_CLI_VRN}"
             _ltd_ctrl_put cli.info "${_T_CLI_VRN}"
           fi
+        elif [ "${_T_CLI_ASKED}" != "${_T_CLI_VRN}" ] \
+          && [ -x "/opt/php${_T_CLI_VRN//./}/bin/php" ]; then
+          # The file names a version the server does not have and its
+          # fallback is the version already in use, so nothing above ran;
+          # websh reads cli.info itself and would run drush and composer on
+          # the server default. The file takes the version the tools run on.
+          _ltd_put_in "${_dscUsr}/log" cli.txt "${_T_CLI_VRN}"
+          _ltd_ctrl_put cli.info "${_T_CLI_VRN}"
         fi
       fi
     fi
@@ -5963,6 +6005,7 @@ _switch_php() {
             chmod 770 /var/www/phpcache/${_USER}/${_POOL}
           fi
         done
+        _perhost_anon_cap_write "${_USER}"
         for m in ${_FPM_RLD}; do
           [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
         done

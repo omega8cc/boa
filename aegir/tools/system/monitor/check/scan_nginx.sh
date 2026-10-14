@@ -522,12 +522,15 @@ _NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 # token/HMAC-authenticated API roots (/graphql, /public-api, /oauth2): a
 # non-Drupal SaaS on this box drives heavy bursts to these from a single client
 # or a rotating pool, and the cross-path IDS must never IP-ban an
-# app-authenticated API client. Shipping them in the default (not only the
-# per-box override) keeps the exemption working even if /root/.barracuda.cnf is
-# regenerated. Add your own site-specific routes here per box. Add paths WITHOUT
-# a trailing slash (/shopify/webhook, not /shopify/webhook/). Empty disables.
+# app-authenticated API client. /payment/notify is Drupal Commerce's route for
+# a payment gateway's notifications: a gateway's pool, answered with errors,
+# reads as a shared-UA flood and was banned whole on a test box. Shipping them
+# in the default (not only the per-box override) keeps the exemption working
+# even if /root/.barracuda.cnf is regenerated. Add your own site-specific
+# routes here per box. Add paths WITHOUT a trailing slash (/shopify/webhook,
+# not /shopify/webhook/). Empty disables.
 # Override (replaces this list) in /root/.barracuda.cnf.
-_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2"
+_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2 /payment/notify"
 
 # ---- IPv6 adaptive web-ban (ON by default, opt-out) ----
 # BOA disables IPv6 server-side and pins realip to the trusted Cloudflare ranges,
@@ -2456,6 +2459,11 @@ _handle_i18n_flood() {
 _check_fpm_saturation() {
   [[ "${_NGINX_FPM_SAT_DETECT}" == "YES" ]] || return 0
   local _posfile="${_I18N_DIR}/fpm_maxchildren.pos" _tmp _f _sz _off _new _hits _hitf _snap
+  # Worker output in the same logs (catch_workers_output), tagged by the master
+  #   WARNING: [pool NAME] child PID said into stderr: "..."
+  # is the site's own text: it is dropped before the pattern is matched. Not a
+  # setting, so no cnf can turn the filter off.
+  local _wl=' child [0-9]+ said into std(err|out): '
   [[ -d "${_I18N_DIR}" ]] || mkdir -p "${_I18N_DIR}" 2>/dev/null
   declare -A _POS
   if [[ -f "${_posfile}" ]]; then
@@ -2473,7 +2481,8 @@ _check_fpm_saturation() {
     _off="${_POS["${_f}"]:-0}"
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
-      _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
+      _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null \
+        | grep -v -E "${_wl}" | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))

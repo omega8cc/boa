@@ -121,7 +121,7 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-_SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
+_SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config cache_form"
 
 if [ -e "/root/.my.cache.exceptions.cnf" ]; then
   _SQL_CACHE_EXC_ADD=$(cat /root/.my.cache.exceptions.cnf 2>&1)
@@ -133,7 +133,9 @@ fi
 _BACKUPDIR=/data/disk/arch/cluster
 _DATE=$(date +%y%m%d-%H%M%S)
 _DOW=$(date +%u)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
@@ -295,6 +297,16 @@ TRUNCATE \`${C}\`;
 EOFMYSQL
     fi
   done
+  # cache_form holds the state of forms still open in a browser on Drupal 6
+  # and 7, so it is excepted above: emptying it breaks a file field's upload
+  # and every multi-step form opened before the run. Only its expired rows go,
+  # the rows Drupal's own cron removes, so the table stays bounded on a copy
+  # whose cron is switched off.
+  if grep -qx "cache_form" <<< "${_TABLES}"; then
+    ${_C_SQL} ${_DB}<<EOFMYSQL
+DELETE FROM \`cache_form\` WHERE \`expire\` <> 0 AND \`expire\` < UNIX_TIMESTAMP();
+EOFMYSQL
+  fi
 }
 
 _truncate_watchdog_tables() {

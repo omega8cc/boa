@@ -197,9 +197,27 @@ fi
 ### Runs once per box per stamp serial; operator toggles set afterwards
 ### stick. Decrement the serial in the stamp name to re-run fleet-wide.
 ### Accounts created later are covered by the hosted cnf seeding instead.
-if [ ! -e "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-  _ghHn="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-  if [[ "${_ghHn}" =~ ".aegir.cc"($) ]] && [ -e "${_barCnf}" ]; then
+### The stamp is a one-shot fact, so it lives in /etc/boa/control and its
+### name carries the stamp serial only (_ghSrl): named after the release as
+### well, in /var/log/boa, it ran again at every release, and the *.pid
+### clean-up of a broken fetch could take it. A hosted box that ran it under
+### that old name with the same stamp serial keeps its toggles: the old stamp
+### counts, and stays where it is (this block runs before the once-per-release
+### sweep of old *.ctrl.*.pid, which spares these stamps). A box that is not
+### hosted writes no stamp, so one renamed into the fleet later gets the run.
+### When the stamp cannot be written, the old name with this release is
+### written instead, and counts at the next tick.
+_ghSrl="f99"
+_ghStamp="${_pthEtc}/control/ghost-family-yes.${_ghSrl}.txt"
+_ghHn=$(tr -d '\n' < /etc/hostname 2> /dev/null)
+[ -n "${_ghHn}" ] || _ghHn=$(hostname -f 2> /dev/null)
+if [ ! -e "${_ghStamp}" ] \
+  && [[ "${_ghHn}" =~ ".aegir.cc"($) ]] && [ -e "${_barCnf}" ]; then
+  _ghOld=NO
+  for _ghPrev in "${_pthLog}"/ghost-family-yes.ctrl.${_ghSrl}.*.pid; do
+    [ -e "${_ghPrev}" ] && _ghOld=YES && break
+  done
+  if [ "${_ghOld}" = "NO" ]; then
     for _ghFlag in _GHOST_CODEBASES_CLEANUP _GHOST_PLATFORMS_CLEANUP \
       _GHOST_VHOSTS_CLEANUP _GHOST_SITES_CLEANUP _GHOST_SITE_FILES_CLEANUP \
       _GHOST_ALIASES_CLEANUP _GHOST_CLIENT_NOTIFY; do
@@ -215,7 +233,17 @@ if [ ! -e "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
       done
     done
   fi
-  touch "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid"
+  mkdir -p "${_pthEtc}/control" 2> /dev/null
+  chmod 0755 "${_pthEtc}" "${_pthEtc}/control" &> /dev/null
+  if ! { { echo "${_tRee} ${_xSrl} $(date +%Y-%m-%d)" > "${_ghStamp}.tmp.$$"; } 2> /dev/null \
+    && chmod 0644 "${_ghStamp}.tmp.$$" && mv -f "${_ghStamp}.tmp.$$" "${_ghStamp}"; }; then
+    rm -f "${_ghStamp}.tmp.$$" 2> /dev/null
+    _ghFb="${_pthLog}/ghost-family-yes.ctrl.${_ghSrl}.${_tRee}.${_xSrl}.pid"
+    if [ ! -e "${_ghFb}" ]; then
+      touch "${_ghFb}"
+      echo "GHOST-FAMILY-ERROR: ${_ghStamp} could not be written at $(date)" >> "${_pthLog}/ghost-family-yes.log"
+    fi
+  fi
 fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
@@ -585,7 +613,9 @@ _apt_clean_update() {
 }
 
 _if_hosted_sys() {
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
@@ -2135,6 +2165,9 @@ _update_agents() {
         [ -e "${_ctlOld}" ] || continue
         case "${_ctlOld}" in
           *".${_tRee}.${_xSrl}.pid") continue ;;
+          # the ghost-cleanup one-shot's old stamps: a launcher from before
+          # its move, served by a mirror that has not pulled yet, reads them
+          */ghost-family-yes.ctrl.*) continue ;;
         esac
         [ -e "${_ctlOld%%.ctrl.*}.compared.pid" ] && continue
         rm -f "${_ctlOld}"
@@ -2318,7 +2351,7 @@ _update_agents() {
   # refuses vendor-less trees); the gated surfaces are the platforms and the
   # release staging, not this launcher. Canonical path /opt/local/bin/grav
   # (no /usr/bin symlink; websh's PATH resolves it).
-  _fetch_versioned ${_optBin}/grav "${_urlHmr}/tools/bin/grav" f93 --mode 755 --guard /local/bin/grav
+  _fetch_versioned ${_optBin}/grav "${_urlHmr}/tools/bin/grav" f92 --mode 755 --guard /local/bin/grav
   # Mirror-source build boxes only, marked by /root/.stackbuild.cnf (even an
   # empty file opts a box in): staticbuild (distribution catalogue, core and
   # Backdrop-family builder) and stackbuild (heavy stack-component packager).
@@ -2326,7 +2359,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f53 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f49 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f90 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -2369,20 +2402,20 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f37
-    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f79
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f58
-    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f71
-    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f70
-    _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f97
-    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f93
-    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f93
-    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f93
-    _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f00
-    _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f01
-    _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f77
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f68
-    _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f79
+    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f78
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f57
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f70
+    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f92
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f68
+    _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f96
+    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f92
+    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f92
+    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f92
+    _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
+    _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f76
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f67
+    _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f78
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f94
@@ -2404,10 +2437,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f94
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f69 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f67 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
-    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f84
-    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f74 --guard mysql_cluster_backup.sh
+    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f83
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f72 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f60
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f77
@@ -2424,10 +2457,10 @@ _update_agents() {
     [ -e "/var/xdrago/cloudflare_realip.sh" ] \
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f91
+    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f92
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f95
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f95
-    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f91
+    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f92
     # The per-minute line otherwise arrives only with the crontab template on a
     # full up-* run, so a fetched detector would sit idle until then; ensure it
     # whenever the script is present. A line an operator commented out still
@@ -2463,11 +2496,11 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f67
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f64
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f38
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f40
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f39
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f39
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f65
     _runner_parked owl.sh \
-      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f66
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f65
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2537,7 +2570,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f55 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f57 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2613,7 +2646,7 @@ _update_agents() {
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       _lshSum="$(md5sum /var/xdrago/conf/lshell.conf.dist 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f79 --mode 644
+      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f80 --mode 644
       if _source_due /var/xdrago/conf/lshell.conf.dist "${_lshSum}" \
         "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid"; then
         mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -2679,7 +2712,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f99 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f98 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common.conf.dist "${_poolSum}" \
       "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
@@ -2699,7 +2732,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-legacy.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f99 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f98 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_poolSum}" \
       "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
@@ -2719,7 +2752,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-modern.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f99 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f98 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_poolSum}" \
       "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
@@ -2798,7 +2831,7 @@ _update_agents() {
     # is named like this file's fetch marker: the fetcher takes it for
     # another serial's marker and would hold the unchanged readme an hour.
     rm -f "${_pthLog}/control-readme.txt.ctrl.${_tRee}."*".pid"
-    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f96 --mode 644
+    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f97 --mode 644
   fi
 
   # The queue template is fetched through _fetch_versioned, which holds a
@@ -2873,10 +2906,6 @@ _update_agents() {
         _tUsr=
         _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
-          if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-            _acct_in_real_dir "${_pthSysUsr}/log" \
-              rm -f -- ./hosting_cron_use_backend.txt
-          fi
           ### The account owns its alias and the whole platform it names: the
           ### root is taken only when it is one of the account's own
           ### hostmaster platforms (_acct_hm_root), and the module is put
@@ -2896,20 +2925,12 @@ _update_agents() {
     fi
   fi
 
-  if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      _tUsr=
-      _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
-        if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-          _acct_in_real_dir "${_pthSysUsr}/log" \
-            rm -f -- ./hosting_cron_use_backend.txt
-        fi
-      fi
-    done
-    touch ${_pthLog}/hosting.cron.ctrl.f99.${_tRee}.${_xSrl}.pid
-  fi
+  # An account's log/hosting_cron_use_backend.txt is the operator's switch
+  # for Aegir's backend cron (the nightly and every Octopus pass set the
+  # Hostmaster variable from it): BOA never removes it. Both the loop above
+  # and a once-per-release block took it from every account, which undid
+  # BOA's own default writes of one night in 2024 and then, at every
+  # release and template change, every operator's choice.
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
@@ -4957,6 +4978,7 @@ _fix_wiped_nginx_config() {
       case "$(date +%H)" in
         02|03|04)
           _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
+          [ -n "${_hName}" ] || _hName="$(hostname -f 2> /dev/null)"
           if [ -e "/root/.allow.auto.reboot.cnf" ] || [ -e "/root/.host8.cnf" ] \
             || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
             if { [ -e "/run/reboot-required.pkgs" ] \
@@ -5068,7 +5090,7 @@ _check_and_move() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.22.0
+  _CURL_VRN=8.23.0
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
@@ -5344,8 +5366,8 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f78
-    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f73
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f77
+    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f72
     _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f80
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f76
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
@@ -5376,16 +5398,16 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f85 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f84 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f50 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f30 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f48 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f70 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f48 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f29 --guard /local/bin/boa
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f66 --guard duplicity
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f47 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f28 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f70 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f66 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
@@ -5409,13 +5431,13 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f06 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f10 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f64 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f01 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f08 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f63 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f57 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
-    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f81 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f80 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
     _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f82 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
@@ -5426,18 +5448,18 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f14 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f86 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f47 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f13 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f82 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f46 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f64 --guard /local/bin/xtrim
-    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
+    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f92 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f86 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f86 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f76 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f90 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f94 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
-    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f91 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f92 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f82 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
@@ -5452,7 +5474,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f98 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f91 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f97 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f90 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f89 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f98 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f98 --guard /local/bin/vhostcheck
@@ -5461,7 +5483,7 @@ CSFSTANDBY
     _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
-      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f92 --guard /local/bin/weblogx
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f93 --guard /local/bin/weblogx
     else
       echo "The weblogx and owl.sh is running!"
     fi
@@ -6313,8 +6335,11 @@ if [ "$(id -u)" -eq 0 ]; then
     [ "${_bupFailH}" -lt 30 ] && _bupFailH=30
     _bupDeadH=$(( _bupIntH * 8 ))
     [ "${_bupDeadH}" -lt 48 ] && _bupDeadH=48
-    _bupHstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
-    [ -n "${_bupHstN}" ] || _bupHstN="$(hostname -f 2>/dev/null)"
+    _bupHstN="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
+    if [ -z "${_bupHstN}" ]; then
+      _bupHstN="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+      case "${_bupHstN}" in localhost|localhost.*) _bupHstN="" ;; esac
+    fi
     # The sentinel name must be derived exactly as its WRITER derives it.
     # multiback builds the bucket name -- and so the OK/ERR log filename --
     # from the raw hostname with no case folding, so folding here made the

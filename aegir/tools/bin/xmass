@@ -1730,7 +1730,9 @@ _blanket=NO
 grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _blanket=YES
 _hosted=NO
 [ -e /root/.host8.cnf ] && _hosted=YES
-case "$(cat /etc/hostname 2>/dev/null)" in
+_hn="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hn}" ] || _hn="$(hostname -f 2>/dev/null)"
+case "${_hn}" in
   *.aegir.cc) _hosted=YES ;;
 esac
 _j11=NO; [ -e /usr/bin/java11 ] && _j11=YES
@@ -3366,7 +3368,9 @@ _check_root() {
     && [ "${_cmd}" != "autosync" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
   fi
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
   _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
   _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
 }
@@ -5966,15 +5970,27 @@ EOF
       _XMASS_STORE_RC=3
     elif [ -n "${_acct}" ]; then
       _xmass_materialise_own_files "${_root}" "${_dstRoot}" "${_files}" "${_acct}"
+    elif [ "${_MODE}" != "LIVE" ]; then
+      # a dry run writes nothing here: the list is a live pass's input
+      _n="$(printf '%s' "${_files}" | grep -c .)"
+      _info "[DRY-PLAN] would materialise ${_n} out-of-root file link(s) under ${_root} (${_fkb}K) at ${_dstRoot} in one batch"
     else
       _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
       _list="/var/log/boa/xmass.outlinks.${_key}.list"
+      _n="$(printf '%s' "${_files}" | grep -c .)"
       mkdir -p /var/log/boa 2>/dev/null
-      printf '%s' "${_files}" > "${_list}"
-      _n="$(grep -c . "${_list}" 2>/dev/null)"
-      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
-      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
-        "${_root}/" "root@${_tgt}:${_dstRoot}/"
+      # The batch reads only the list this pass wrote: one it could not
+      # rewrite (an older pass's, or one a full disk emptied) would copy the
+      # wrong set or nothing, and the batch would still exit 0.
+      if ! printf '%s' "${_files}" > "${_list}"; then
+        _alrt "DENY: could not write ${_list} -- the ${_n} out-of-root file link(s) under ${_root} were NOT copied; re-run once it can be written"
+        _XMASS_RSYNC_RC=23
+        _XMASS_NOT_CLEAN=YES
+      else
+        _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
+        _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
+          "${_root}/" "root@${_tgt}:${_dstRoot}/"
+      fi
     fi
   fi
   return 0
@@ -6489,8 +6505,9 @@ _xmass_wg_box_tell() {
 ### the accounts converted by this box's own policy, now that no standby
 ### mark holds them, as the arm would on their next Octopus pass:
 ### 'instgrp webconvert all', with --phase-b where _WEB_GROUP_PHASE_B=YES,
-### each account gated as any first conversion (its opt-out, its pin, the
-### share scan); only on an armed box. Then the master, which no arm
+### each account gated as any first conversion (its opt-out, its pin; an
+### outbound share, or a site or store outside the account, holds its
+### phase B only); only on an armed box. Then the master, which no arm
 ### converts, when the box it was promoted from ran it at A or B ($1; -
 ### when that is not known: told only). $2 loud names a box that is not
 ### armed (the box it was promoted from uses the web group); quiet says
@@ -6532,7 +6549,8 @@ _xmass_wg_promoted_here() {
 ### The promotion's web groups: $1 the promoted box (here: post-mig on it),
 ### $2 the master's level on the box it was promoted from (A, B, none, or -
 ### when not known), $3 loud or quiet (see above). Never fatal: the arm's
-### Octopus passes and the drift witness (DR8) take what this leaves.
+### next Octopus pass runs each account again (no arm runs the master),
+### and instgrp's lines say what this leaves and why.
 _xmass_wg_promoted() {
   local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b
   if [ "${_h}" = "here" ]; then
@@ -6560,7 +6578,7 @@ _xmass_wg_promoted() {
         IFS=: read -r _ _ _k _rc _b <<< "${_l}"
         case "${_rc}" in
           0) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: done" ;;
-          2|5|6) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc} (some deferred, refused or left to finish, see above); the arm's next Octopus pass and the drift witness take it from here" ;;
+          2|5|6) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc} (some deferred, refused or left in www-data; the lines above say which and why)" ;;
           4) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends" ;;
           *) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc}; see /var/log/boa/instgrp.log there" ;;
         esac
@@ -13447,6 +13465,22 @@ _xmass_autosync_off() {
   fi
 }
 
+# Whether this box finished installing lives in /etc/boa/control. A stamp an
+# earlier release wrote in /var/log/boa is copied there first, and still counts
+# when the copy cannot be made: a box never reads as not installed.
+_rnp_installed() {
+  local _n="/etc/boa/control/reset_no_new_password.pid"
+  local _o="/var/log/boa/reset_no_new_password.pid"
+  [ -e "${_n}" ] && return 0
+  [ -e "${_o}" ] || return 1
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  { cp "${_o}" "${_n}.$$" && chmod 0644 "${_n}.$$" \
+    && mv -f "${_n}.$$" "${_n}"; } 2> /dev/null || rm -f "${_n}.$$" 2> /dev/null
+  return 0
+}
+
+
 _xmass_autosync_show_status() {
   if [ ! -e "${_XMASS_AUTOSYNC_CNF}" ]; then
     _info "autosync: not armed on this box"
@@ -13465,7 +13499,7 @@ _xmass_autosync_show_status() {
   local _park="" _rt
   if [ "${_USE_XMASS_AUTOSYNC}" = "NO" ]; then
     _park="_USE_XMASS_AUTOSYNC=NO in /root/.barracuda.cnf"
-  elif [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+  elif ! _rnp_installed; then
     _park="this system has not finished installing"
   elif [ -e "/root/.standby.cnf" ]; then
     _park="this box is a passive standby"

@@ -710,8 +710,9 @@ first conversion:
 - `post-mig` runs `webconvert all` again on the box it runs on, which is the
   only run after a promotion by hand, and names an unconverted master;
 - on a box that is not armed both print a NOTE and convert nothing. A
-  failure never parks the cutover: the next Octopus pass and the box's
-  watchers take what is left.
+  failure never parks the cutover: the next Octopus pass runs each
+  account's conversion again (the master's only by `webconvert aegir` or
+  `post-mig`), and instgrp's lines say what was left and why.
 
 Every sync (and the cutover's final one) also:
 
@@ -1298,8 +1299,12 @@ every symlink:
   `<mount>/files/<account>/`, or files its identities own) materialise; any
   other is reported and fails the pass with a `DENY`. Dir links transfer
   one store each; file links ride one batched, space-gated `rsync
-  --copy-links` per tree. Nested links inside a materialised tree are handled
-  the same way, a few levels deep.
+  --copy-links` per tree (a live pass writes the batch's list to
+  `/var/log/boa/xmass.outlinks.<root>.list`, the root's path with every other
+  character than letters, digits, `.`, `_` and `-` turned into `_`, and stops
+  with a `DENY` when it cannot; a dry run writes nothing and prints how many
+  links the batch would copy). Nested links inside
+  a materialised tree are handled the same way, a few levels deep.
 - **Reported, never a DENY by itself**: dangling links (a cluster under one
   `/mnt` prefix usually means the volume is not mounted — the report says so;
   the target's last materialised copy is left in place), link chains that

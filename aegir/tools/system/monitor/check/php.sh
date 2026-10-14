@@ -24,7 +24,21 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
+# Whether this box finished installing lives in /etc/boa/control. A stamp an
+# earlier release wrote in /var/log/boa is copied there first, and still counts
+# when the copy cannot be made: a box never reads as not installed.
+_rnp_installed() {
+  local _n="/etc/boa/control/reset_no_new_password.pid"
+  local _o="/var/log/boa/reset_no_new_password.pid"
+  [ -e "${_n}" ] && return 0
+  [ -e "${_o}" ] || return 1
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  { cp "${_o}" "${_n}.$$" && chmod 0644 "${_n}.$$" \
+    && mv -f "${_n}.$$" "${_n}"; } 2> /dev/null || rm -f "${_n}.$$" 2> /dev/null
+  return 0
+}
+_rnp_installed || exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -42,6 +56,23 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
+
+# A pool's worker output reaches these master logs as
+#   WARNING: [pool NAME] child PID said into stderr: "..."
+# (catch_workers_output). That text is the site's own, so no check below may
+# act on it: each one drops worker lines before matching the master's messages.
+_FPM_WORKER_LINE=' child [0-9]+ said into std(err|out): '
+
+# The last 500 lines each master wrote itself. Read from a wider tail, so a
+# burst of worker output cannot push a master message out of the window.
+_fpm_master_tail() {
+  local _f
+  for _f in /var/log/php/php*-fpm-error.log; do
+    [ -f "${_f}" ] || continue
+    tail --lines=20000 "${_f}" 2>/dev/null \
+      | grep -v -E "${_FPM_WORKER_LINE}" | tail --lines=500
+  done
+}
 
 : "${_FPM_COOLDOWN_SECS:=30}"
 
@@ -170,10 +201,10 @@ _fpm_giant_log_detection() {
 
 _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
-    _hit=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
+    _hit=$(_fpm_master_tail | grep -c "already listen on")
     if [ "${_hit}" -gt 0 ]; then
       sleep 2
-      _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
+      _hit2=$(_fpm_master_tail | grep -c "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
         _sql_mutation_began && return 0
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
@@ -225,7 +256,7 @@ _fpm_proc_max_detection() {
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
       _new=$(tail -c +"$(( _off + 1 ))" "${_f}" 2>/dev/null \
-        | grep -c -- "reached max_children setting")
+        | grep -v -E "${_FPM_WORKER_LINE}" | grep -c -- "reached max_children setting")
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))
@@ -243,10 +274,10 @@ _fpm_proc_max_detection() {
 }
 
 _fpm_sockets_healing() {
-  _hit=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
+  _hit=$(_fpm_master_tail | grep -c "Address already in use")
   if [ "${_hit}" -gt 0 ]; then
     sleep 2
-    _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
+    _hit2=$(_fpm_master_tail | grep -c "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
       _sql_mutation_began && return 0
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
