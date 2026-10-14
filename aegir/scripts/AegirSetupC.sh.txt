@@ -1889,7 +1889,7 @@ declare -A _distros_versions=(
 
 # Define distros Drupal cores versions for configuration
 declare -A _distros_drupal_cores=(
-  ["CMS"]="${_SMALLCORE11_4_V}"
+  ["CMS"]="11.4.9"
   ["CK1"]="${_SMALLCORE7_V}"
   ["CK2"]="${_SMALLCORE10_1_V}"
   ["CK3"]="${_SMALLCORE11_4_V}"
