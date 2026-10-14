@@ -272,13 +272,13 @@
 ;;
 ;;  Speed Booster uses Nginx microcaching mode by default, with just 10 seconds
 ;;  both for anonymous visitors and logged in users. All known robots/crawlers
-;;  and search engines spiders are forced to accept up to 24 hours cache TTL.
-;;  Below you can modify the (10 seconds) default for human, anonymous visitors.
-;;  Uncomment the line above and set any numeric value you prefer (in seconds)
-;;  to override system default (10 seconds). You may want to enable Purge and
-;;  Expire modules in this site modules admin area, so any new or modified node,
-;;  comment added etc will selectively auto-purge related cache entries to avoid
-;;  serving stale content for extended time (depending on the TTL configured).
+;;  and search engines spiders get a one hour (3600 seconds) cache TTL instead,
+;;  whatever is set here. Below you can modify the (10 seconds) default for
+;;  human, anonymous visitors. Uncomment the line above and set any numeric
+;;  value you prefer (in seconds) to override system default (10 seconds).
+;;  Nothing removes a cached page before its TTL runs out, so a long TTL means
+;;  visitors see new or modified content late; the Purge and Expire modules
+;;  cannot help with that, the Nginx side they need is no longer installed.
 ;;  Note that the value must be higher than 10 or it will be ignored.
 ```
 
@@ -557,14 +557,18 @@ A symbolic link at `sites`, the site directory or `files/solr`, or at `files` ot
 ;sql_conversion_mode = NO
 ;;
 ;;  This option allows to activate and/or customize DB tables conversion mode
-;;  for this site only, and the value defined here will override the value of
-;;  sql_conversion_mode set in the platform level boa_platform_control.ini
-;;  file located in the sites/all/modules directory.
+;;  for this site only. A value of innodb or myisam set here replaces the
+;;  value of sql_conversion_mode set in the platform level
+;;  boa_platform_control.ini file located in the sites/all/modules directory.
+;;  NO set here does not cancel a conversion the platform level file enables,
+;;  so a site cannot opt out of it: when not every site of the platform should
+;;  convert, enable the conversion per site instead.
 ;;
 ;;  It can be also set (and forced) automatically for all sites on all platforms
 ;;  if there is special _SQL_CONVERT variable defined for this Octopus instance
-;;  in its .USER.octopus.cnf config file, but it may require submitting support
-;;  request if you are using hosted Ægir BOA service without root access.
+;;  in its .USER.octopus.cnf config file; set to YES or innodb there, it wins
+;;  over both INI files. On the hosted Ægir BOA service the conversion never
+;;  runs, whatever is set here.
 ;;
 ;;  Supported values are: innodb and myisam (lowercase only!)
 ;;
@@ -589,7 +593,8 @@ A symbolic link at `sites`, the site directory or `files/solr`, or at `files` ot
 ;;  directory. It is applied as a per-connection SET SESSION max_execution_time
 ;;  statement on every web request except the scheduled site cron; CLI (Drush,
 ;;  migrations, backups) and the scheduled cron the control panel runs are
-;;  never capped.
+;;  never capped. Drupal 6 sites are not capped at all, and the cron of a site
+;;  installed in a subdirectory is capped like any other request of it.
 ;;
 ;;  Set 0 to disable the cap for this site. The statement is sent in a form
 ;;  MariaDB ignores, so a site whose database lives on a MariaDB server needs
