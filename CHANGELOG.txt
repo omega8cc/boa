@@ -728,6 +728,13 @@
       the languages a profile ships translations for, and these profiles
       ship none, so English was the only choice.
 
+    * The anonymous render cap follows each account's PHP pool: 1.5 times
+      its largest pm.max_children, kept between 64 and 300, applied to a
+      site the next time a Verify writes its configuration. It was a
+      fixed 100, above what a small pool can serve at once, so a flood
+      filled the pool long before the cap shed anything. An instance's
+      nginx_perhost_anon_conn still wins.
+
 @=> Changes and Upgrades
 
     * The arm stamps of the per-instance group, the account web group
