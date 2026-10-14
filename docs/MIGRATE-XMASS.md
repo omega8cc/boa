@@ -710,8 +710,9 @@ first conversion:
 - `post-mig` runs `webconvert all` again on the box it runs on, which is the
   only run after a promotion by hand, and names an unconverted master;
 - on a box that is not armed both print a NOTE and convert nothing. A
-  failure never parks the cutover: the next Octopus pass and the box's
-  watchers take what is left.
+  failure never parks the cutover: the next Octopus pass runs each
+  account's conversion again (the master's only by `webconvert aegir` or
+  `post-mig`), and instgrp's lines say what was left and why.
 
 Every sync (and the cutover's final one) also:
 

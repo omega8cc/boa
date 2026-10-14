@@ -2359,7 +2359,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f51 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f50 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f90 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -2437,10 +2437,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f94
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f68 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f67 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
-    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f84
-    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f73 --guard mysql_cluster_backup.sh
+    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f83
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f72 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f60
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f77
@@ -5398,7 +5398,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f85 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f84 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f50 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f48 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
@@ -5449,7 +5449,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f13 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f83 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f82 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f46 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f64 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f92 --guard /local/bin/solrtrim

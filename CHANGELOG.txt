@@ -4,6 +4,19 @@
 
 @=> Important Fixes
 
+    * Webmin is retired. BOA no longer installs it (WMN in _XTRAS_LIST is
+      ignored), and a Barracuda run removes it from a server that still
+      has it unless _WEBMIN_RETIRE=NO is set in /root/.barracuda.cnf; only
+      YES removes it, and only when every _WEBMIN_RETIRE line there says
+      so. The first run that finds Webmin writes _WEBMIN_RETIRE=YES at the
+      end of that file and only warns in its report; a run six or more
+      days later removes it, saving /etc/webmin and /var/webmin to
+      /var/backups first. A held package is left as it is. A kept Webmin
+      gets its apt repository with Webmin's own signing key, pinned by its
+      fingerprint, and a run that cannot verify it leaves it out: the old
+      key went to root's keyring, which apt never reads, and kept apt
+      accepting unverified packages from every repository on the server.
+
     * multiback no longer marks a failed run as a good one when the run
       before it was killed after duplicity printed its statistics and
       before the log was archived: its repair and success checks now read
@@ -50,15 +63,6 @@
       cannot write that list now stops with a DENY, instead of copying
       from whatever list an earlier run left there, or copying nothing
       from a list a full disk left empty while the pass reported clean.
-
-    * Barracuda no longer hangs when the Webmin signing key cannot be
-      downloaded from the BOA mirror, both when it installs Webmin and
-      when it refreshes the Webmin package source. The download used to
-      be repeated until it worked, with no limit, so a mirror without
-      the file, or one answering with an error page, held the upgrade
-      for as long as that lasted. It is now tried five times; when the
-      key still does not arrive, Barracuda prints a warning naming the
-      address and goes on, and the next upgrade tries again.
 
     * A major OS upgrade pass that stops before it is done no longer
       leaves the server without most of its BOA cron jobs. The pass sets
@@ -160,6 +164,15 @@
       it would. Boxes with auto-upgrade enabled rewrite the line once,
       at their next self-update.
 
+    * Drupal 6 and 7 forms opened before the hourly or nightly database
+      cleanup keep working. The cleanup emptied every cache table but
+      three, cache_form among them, and that table holds the state of
+      forms still open in a browser: a file field's upload or the next
+      step of a multi-step form then failed with "Invalid form POST data",
+      the Aegir panel's own forms included. cache_form is now kept, and
+      only its expired rows are removed, the rows Drupal's own cron
+      removes, so it stays small on a copy whose cron is switched off.
+
     * The Drupal CMS platform keeps its site templates and add-on
       recipes. Drupal CMS 2.2.4 no longer requires Starter, Blank or the
       AI, multilingual, forms, accessibility tools and Google Analytics
@@ -169,6 +182,12 @@
       itself, so a site installed from the panel starts from Starter as
       before, and the AI recipe still applies with vdrush, with no
       Composer step.
+
+    * The Varbase platform is built from the 11.0.10 project template,
+      whose lock carries Drupal core 11.4.8 and Canvas 1.12.0, instead of
+      11.0.7, which locked core 11.4.6. The 11.0.11 template ships without
+      its lock files, and the Varbase build installs from upstream's lock,
+      so it stays on the newest template that carries them.
 
     * PHP errors raised inside a site's PHP-FPM pool are logged again.
       With /var/log/php writable by root only, a pool's worker could not
@@ -207,6 +226,18 @@
       keeps in its own tree never holds the check off. It is in the tree
       but ships switched off (_NGINX_LINK_GUARD=NO) until a later
       release; see docs/NGINX-LINKS.md.
+
+    * Drupal and Backdrop sites no longer serve hidden files and
+      directories, those whose name starts with a dot, as Drupal's own
+      .htaccess refuses them; .well-known/ is still served. Until now a
+      hidden file other than .git, .htaccess and the secret-path names
+      was served when it existed, through the /files/ and /downloads/
+      shortcuts and on subdirectory sites too.
+
+    * Drupal and Backdrop sites no longer serve package.json,
+      package-lock.json or yarn.lock, the far-future CDN path included.
+      composer.json and composer.lock are now refused on every path: one
+      with a word such as captcha or aggregator in it still served them.
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
       the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
@@ -327,11 +358,12 @@
       Such an owner's private store still cannot be un-shared; the
       refusal names it.
 
-    * autosymlink logs a link target, and an entry of another account's
-      store closed to an un-share copy, with each byte outside letters,
-      digits and ._/- shown as '?'. A newline in such a name, which an
-      account chooses, could write a line of its own into the log that
-      symlinkinfo reads.
+    * autosymlink logs a link target, an entry of another account's
+      store closed to an un-share copy, the name of a store in the
+      account's own static/files and the values of a finding it has no
+      explanation for, with each byte outside letters, digits and ._/-
+      shown as '?'. A newline in such a name, which an account chooses,
+      could write a line of its own into the log that symlinkinfo reads.
 
     * Provision no longer gives an account's own web group, still
       switched off, to a site whose directory lies outside the
@@ -673,6 +705,10 @@
       nightly does not wait for it. Each line shows, by kind, what the
       check would refuse on that server and what would still keep it
       off once BOA's own links are made root's; see docs/NGINX-LINKS.md.
+
+    * JSON:API, HAL and problem+json answers are compressed like other
+      JSON: Nginx's gzip types gain application/vnd.api+json,
+      application/hal+json and application/problem+json.
 
 @=> Changes and Upgrades
 

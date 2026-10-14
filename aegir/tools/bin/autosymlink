@@ -1156,7 +1156,18 @@ _explain_anomalies() {
         _explain_space "${_EXP_CODE}" "${_EXP_REC}"
         ;;
       *)
-        _explain_log "  No explainer for this code; raw record: ${_EXP_REC}"
+        # A value can be the account's (SITE_PATH_OUTSIDE_ACCOUNT's site_path
+        # is read from its Drush alias): each key and value through
+        # _log_name, the code and the '|' between fields as they are.
+        _EXP_RAW="${_EXP_CODE}"
+        _EXP_RF="${_EXP_REC#"${_EXP_CODE}"}"
+        while [ -n "${_EXP_RF}" ]; do
+          _EXP_RF="${_EXP_RF#|}"
+          _EXP_F="${_EXP_RF%%|*}"
+          _EXP_RF="${_EXP_RF#"${_EXP_F}"}"
+          _EXP_RAW="${_EXP_RAW}|$(_log_name "${_EXP_F%%=*}")=$(_log_name "${_EXP_F#*=}")"
+        done
+        _explain_log "  No explainer for this code; raw record: ${_EXP_RAW}"
         ;;
     esac
   done
@@ -1482,7 +1493,8 @@ _archive_existing_store_target() {
   # UNDER the resolved store, so it is always the SAME filesystem (a free
   # rename, never a disk-filling cross-FS copy). Degrades to a pinned in-place
   # rename aside if the archive dir cannot be made or the move fails, so it
-  # never blocks the conversion.
+  # never blocks the conversion. The store's name and each path that holds
+  # it are logged through _log_name, as the orphan archive logs them.
   # Args: 1 type label (files|private)
   #       2 store handle (resolved static/files of the account, _store_files_dir)
   #       3 base real (<store real>/<site>, the live per-site store)
@@ -1506,7 +1518,7 @@ _archive_existing_store_target() {
   _ARCH_SRC_KB="${_ARCH_SRC_KB:-?}"
   _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_STORE%|*}" 2>/dev/null | awk 'NR==2 {print $4}')
   _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
-  _log "[REPORT] ORPHAN archive incident: ${_ARCH_SITE}/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
+  _log "[REPORT] ORPHAN archive incident: $(_log_name "${_ARCH_SITE}")/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
 
   # No reader guard here, by design: refusing would block the conversion that
   # needs this name. So a stale store some registered site still reads through
@@ -1519,15 +1531,15 @@ _archive_existing_store_target() {
   _ARCH_CANON="${_ARCH_ACCOUNT_DIR}/static/files/${_ARCH_SITE}"
   _store_live_readers "${_ARCH_CANON}" "${_ARCH_SITE}" "${_ARCH_ACCOUNT_DIR}"
   if [ -n "${_SLR_LIVE}" ]; then
-    _log "[ALERT] Stale store ${_ARCH_CANON} is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
+    _log "[ALERT] Stale store $(_log_name "${_ARCH_CANON}") is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
   elif [ -n "${_SLR_STALE}" ]; then
-    _log "[REPORT] Stale store ${_ARCH_CANON}: link(s) into it belong to no registered site: ${_SLR_STALE}"
+    _log "[REPORT] Stale store $(_log_name "${_ARCH_CANON}"): link(s) into it belong to no registered site: ${_SLR_STALE}"
   fi
 
   # Build the archive dir under the pinned store and hand back its real path.
   _ARCH_DIR_REAL=$(_store_arch_dir "${_ARCH_STORE}" "${_ARCH_STAMP}" "${_ARCH_SITE}")
   if [ -z "${_ARCH_DIR_REAL}" ]; then
-    _log "[WARN] Could not create archive dir static/files/.archived/${_ARCH_STAMP}/${_ARCH_SITE}; renaming ${_ARCH_BASE}/${_ARCH_TYPE} aside in place instead"
+    _log "[WARN] Could not create archive dir static/files/.archived/${_ARCH_STAMP}/$(_log_name "${_ARCH_SITE}"); renaming $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} aside in place instead"
     _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
     return 0
   fi
@@ -1537,9 +1549,9 @@ _archive_existing_store_target() {
   # overwrites a prior archived copy.
   _store_in_bound "${_ARCH_STORE}" "${_ARCH_DIR_REAL}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}"
 
-  _log "[APPLY] Archiving stale store target: ${_ARCH_BASE}/${_ARCH_TYPE} -> ${_ARCH_DIR_REAL}/${_ARCH_TYPE}"
+  _log "[APPLY] Archiving stale store target: $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} -> $(_log_name "${_ARCH_DIR_REAL}")/${_ARCH_TYPE}"
   if ! _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _store_move_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}" any "${_ARCH_STORE}"; then
-    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_BASE}/${_ARCH_TYPE} aside in place instead"
+    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site $(_log_name "${_ARCH_SITE}"); renaming $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} aside in place instead"
     _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
   fi
   return 0
@@ -1742,6 +1754,8 @@ _archive_orphan_store() {
   # directory swapped at the store name). The CALLER only invokes this for a
   # store whose name has NEITHER a drush alias NOR a vhost (a genuinely deleted
   # site) -- a merely-disabled site keeps its alias and is left untouched.
+  # The entry's name is the account's choice: every line prints it, and each
+  # path that holds it, through _log_name.
   # Args: 1 store handle (_store_files_dir), 2 account dir, 3 site name, 4 size KB
   _ORPH_H="$1"
   _ORPH_STORE="${_ORPH_H%|*}"
@@ -1758,7 +1772,7 @@ _archive_orphan_store() {
   # tests this first with its own line; the nightly sweep honours it here).
   for _ORPH_SHARE in "${_ORPH_ACCT}"/static/control/share.*."${_ORPH_SITE}".info; do
     if [ -e "${_ORPH_SHARE}" ]; then
-      _log "[ALERT] Orphan store ${_ORPH_CANON} is named by share control file ${_ORPH_SHARE}; left in place, NOT archived, manual review required"
+      _log "[ALERT] Orphan store $(_log_name "${_ORPH_CANON}") is named by share control file $(_log_name "${_ORPH_SHARE}"); left in place, NOT archived, manual review required"
       return 0
     fi
   done
@@ -1771,11 +1785,11 @@ _archive_orphan_store() {
   # a reader is found on a migratefs box too.
   _store_live_readers "${_ORPH_CANON}" "${_ORPH_SITE}" "${_ORPH_ACCT}"
   if [ -n "${_SLR_LIVE}" ]; then
-    _log "[ALERT] Orphan store ${_ORPH_CANON} is still read through a live site's link; left in place, NOT archived, manual review required: ${_SLR_LIVE}"
+    _log "[ALERT] Orphan store $(_log_name "${_ORPH_CANON}") is still read through a live site's link; left in place, NOT archived, manual review required: ${_SLR_LIVE}"
     return 0
   fi
   if [ -n "${_SLR_STALE}" ]; then
-    _log "[REPORT] Orphan store ${_ORPH_CANON}: link(s) into it belong to no registered site and do not hold the archive: ${_SLR_STALE}"
+    _log "[REPORT] Orphan store $(_log_name "${_ORPH_CANON}"): link(s) into it belong to no registered site and do not hold the archive: ${_SLR_STALE}"
   fi
 
   # Run/account-scoped stamp so all orphans of one sweep land under one archive dir.
@@ -1783,12 +1797,12 @@ _archive_orphan_store() {
 
   _ORPH_AVAIL_KB=$(df -Pk "${_ORPH_STORE}" 2>/dev/null | awk 'NR==2 {print $4}')
   _ORPH_AVAIL_KB="${_ORPH_AVAIL_KB:-?}"
-  _log "[REPORT] ORPHAN archive incident: ${_ORPH_SITE} deleted-site leftover size=${_ORPH_KB}K -> static/files/.archived/${_ORPH_STAMP}/ (target FS avail=${_ORPH_AVAIL_KB}K)"
+  _log "[REPORT] ORPHAN archive incident: $(_log_name "${_ORPH_SITE}") deleted-site leftover size=${_ORPH_KB}K -> static/files/.archived/${_ORPH_STAMP}/ (target FS avail=${_ORPH_AVAIL_KB}K)"
 
   # Build .archived/<stamp> under the pinned store and hand back its real path.
   _ORPH_DIR_REAL=$(_store_arch_stamp "${_ORPH_H}" "${_ORPH_STAMP}")
   if [ -z "${_ORPH_DIR_REAL}" ]; then
-    _log "[WARN] Could not create archive dir static/files/.archived/${_ORPH_STAMP}; leaving orphan store ${_ORPH_CANON} in place"
+    _log "[WARN] Could not create archive dir static/files/.archived/${_ORPH_STAMP}; leaving orphan store $(_log_name "${_ORPH_CANON}") in place"
     return 0
   fi
   # A collision at the archive <site> (a same stamp+site seen twice) is renamed
@@ -1796,9 +1810,9 @@ _archive_orphan_store() {
   # archived copy.
   _store_in_bound "${_ORPH_H}" "${_ORPH_DIR_REAL}" _make_unique_target_here "${_ORPH_SITE}" "${_ORPH_DIR_REAL}"
 
-  _log "[APPLY] Archiving orphan store (deleted-site leftover): ${_ORPH_CANON} -> ${_ORPH_DIR_REAL}/${_ORPH_SITE}"
+  _log "[APPLY] Archiving orphan store (deleted-site leftover): $(_log_name "${_ORPH_CANON}") -> $(_log_name "${_ORPH_DIR_REAL}/${_ORPH_SITE}")"
   if ! _store_in_bound "${_ORPH_H}" "${_ORPH_STORE}" _store_move_here "${_ORPH_SITE}" "${_ORPH_DIR_REAL}" any "${_ORPH_H}"; then
-    _log "[WARN] Archive move failed for orphan store ${_ORPH_SITE}; leaving ${_ORPH_CANON} in place"
+    _log "[WARN] Archive move failed for orphan store $(_log_name "${_ORPH_SITE}"); leaving $(_log_name "${_ORPH_CANON}") in place"
     return 0
   fi
   return 0
@@ -2375,9 +2389,8 @@ _unshare_closed_ex() {
     _r="${_p#"${3%/}"/}"
     [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
     # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS): a
-    # top-level name only, as those anchored excludes match
-    case "${_r}" in
-      */*) ;;
+    # top-level name, as those anchored excludes match, and all below it
+    case "${_r%%/*}" in
       ownership-fixed-*.pid|permissions-fixed-*.pid) continue ;;
     esac
     if [ "${4}" != "files" ]; then
@@ -3383,7 +3396,8 @@ _process_account() {
         _CAND_NAME="${_CAND##*/}"
         # The operator-facing, canonical path for this entry (the resolved store
         # is …/static/files or the migratefs mount); reported and reader-scanned
-        # by the name an in-site link carries.
+        # by the name an in-site link carries. The account chose the name, so
+        # it is logged through _log_name.
         _CAND_CANON="${_ACCOUNT_DIR}/static/files/${_CAND_NAME}"
 
         # Skip known non-site entries
@@ -3413,7 +3427,7 @@ _process_account() {
               _CAND_ALIAS=$(_site_alias_file "${_ACCOUNT_DIR}" "${_CAND_NAME}")
               _CAND_VHOST="${_VHOST_DIR}/${_CAND_NAME}"
               if [ -n "${_CAND_ALIAS}" ] || [ -e "${_CAND_VHOST}" ]; then
-                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND_CANON} (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: $(_log_name "${_CAND_CANON}") (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
               elif [ "${_ORPHAN_ARCHIVE}" = "YES" ]; then
                 _archive_orphan_store "${_SWEEP_H}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
               else
@@ -3424,7 +3438,7 @@ _process_account() {
                 # left by unregistered leftovers do not hold the archive.
                 _ORPH_RD=""
                 for _ORPH_SHARE in "${_ACCOUNT_DIR}"/static/control/share.*."${_CAND_NAME}".info; do
-                  [ -e "${_ORPH_SHARE}" ] && _ORPH_RD="; named by share control file ${_ORPH_SHARE} (the sweep would leave it)"
+                  [ -e "${_ORPH_SHARE}" ] && _ORPH_RD="; named by share control file $(_log_name "${_ORPH_SHARE}") (the sweep would leave it)"
                 done
                 if [ -z "${_ORPH_RD}" ]; then
                   _store_live_readers "${_CAND_CANON}" "${_CAND_NAME}" "${_ACCOUNT_DIR}"
@@ -3434,7 +3448,7 @@ _process_account() {
                     _ORPH_RD="; link(s) into it belong to no registered site (they would not hold the archive): ${_SLR_STALE}"
                   fi
                 fi
-                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND_CANON} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found${_ORPH_RD}"
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: $(_log_name "${_CAND_CANON}") (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found${_ORPH_RD}"
               fi
             fi
           fi

@@ -5978,9 +5978,10 @@ _satellite_if_instance_group() {
 # The account's own web group, wg-<account> (instgrp webconvert, delivered by
 # BOA.sh.txt), right after the per-instance group on every INIT and UPGRADE
 # pass. The tool decides what this pass does: a first conversion only past
-# the opt-out (_WEB_GROUP=NO in the octopus cnf), the per-instance group, the
-# box's readiness stamp (written while _WEB_GROUP_ARM=YES) and the share
-# scan; phase B only on a box with _WEB_GROUP_PHASE_B=YES; nothing on a
+# the opt-out (_WEB_GROUP=NO in the octopus cnf), the per-instance group and
+# the box's readiness stamp (written while _WEB_GROUP_ARM=YES); phase B only
+# on a box with _WEB_GROUP_PHASE_B=YES, held while an outbound share, or a
+# site or store outside the account, stands (phase A goes on); nothing on a
 # standby. It resumes or verifies what the account already carries.
 _satellite_if_web_group() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
