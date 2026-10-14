@@ -1100,7 +1100,10 @@ _global_inc_conf_update() {
     _msg "OOPS: ${_GL_D} is not a real directory, the global include set was not deployed"
     return 1
   fi
-  _DR_V="11 10 9 8 7 6"
+  # 12 first: provision's Drupal 12 settings template includes global-12.inc
+  # directly, and a site whose partial is missing would run with no BOA
+  # globals at all, which a plain page load does not show
+  _DR_V="12 11 10 9 8 7 6"
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
       _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here "./global-${e}.inc" \
@@ -3841,6 +3844,7 @@ _barracuda_cnf() {
     echo "_ALLOW_NGINX_RESTART=${_ALLOW_NGINX_RESTART:-NO}"  >> ${_barCnf}
     echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}"  >> ${_barCnf}
     echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}"               >> ${_barCnf}
+    echo "_GOACCESS_AI_REPORT=${_GOACCESS_AI_REPORT:-NO}" >> ${_barCnf}
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
     echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
     echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
@@ -4156,6 +4160,10 @@ _barracuda_cnf() {
     _DEBUG_EMAIL_TEST=$(grep "^_DEBUG_EMAIL=" ${_barCnf} 2>&1)
     if [[ ! "${_DEBUG_EMAIL_TEST}" =~ "_DEBUG_EMAIL=" ]]; then
       echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_AI_REPORT_TEST=$(grep "^_GOACCESS_AI_REPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_AI_REPORT_TEST}" =~ "_GOACCESS_AI_REPORT=" ]]; then
+      echo "_GOACCESS_AI_REPORT=${_GOACCESS_AI_REPORT:-NO}" >> ${_barCnf}
     fi
     _GOACCESS_ALL_TEST=$(grep "^_GOACCESS_ALL=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_ALL_TEST}" =~ "_GOACCESS_ALL=" ]]; then

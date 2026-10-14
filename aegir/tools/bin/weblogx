@@ -271,6 +271,332 @@ _if_install() {
     exit 1
   fi
 }
+
+###
+### The AI report (_GOACCESS_AI_REPORT=YES): requests by the AI agent classes
+### the vhosts act on, and visits referred by AI assistants, as plain text
+### beside the GoAccess HTML, so the night copies both into the account.
+### The classes come from the maps nginx loads, so the report counts what
+### the box enforces: each map's regex lines are tried in order and the
+### first match decides, an empty value keeping the agent out of that class.
+###
+_AI_REPORT=ai-visibility.txt
+_AI_MAPS=/etc/nginx/conf.d/aegir.conf
+
+_ai_report() {
+  local _log="${1}"
+  local _site="${2}"
+  local _maps="${_AI_MAPS}"
+  local _tab
+  _tab="$(printf '\t')"
+  [ -r "${_log}" ] || return 1
+  [ -r "${_maps}" ] || _maps=/dev/null
+  LC_ALL=C awk -v site="${_site}" -v mapf="${_maps}" '
+    function classify(lua,   k, c, i) {
+      agent = ""
+      for (k = 1; k <= nchk; k++) {
+        c = chk[k]
+        for (i = 1; i <= np; i++) {
+          if (pc[i] != c) continue
+          if (match(lua, pp[i])) {
+            if (!pv[i]) break
+            agent = substr(ua, RSTART, RLENGTH)
+            return c
+          }
+        }
+      }
+      return ""
+    }
+    function verdict(s) {
+      if (s ~ /^2/ || s == "304") return "served"
+      if (s == "401" || s == "403" || s == "429" || s == "444" || s == "503") return "refused"
+      return "other"
+    }
+    function clip(s) {
+      gsub(/\t/, " ", s)
+      return (length(s) > 100) ? substr(s, 1, 97) "..." : s
+    }
+    function page(u,   i) {
+      if (u == "") return "(no path)"
+      i = index(u, "?")
+      if (i) u = substr(u, 1, i - 1)
+      return clip((all ? host : "") u)
+    }
+    function refhost(r,   h, i) {
+      if (r == "" || r == "-") return ""
+      h = tolower(r)
+      sub(/^[a-z][a-z0-9+.-]*:\/\//, "", h)
+      i = index(h, "/")
+      if (i) h = substr(h, 1, i - 1)
+      sub(/^[^@]*@/, "", h)
+      sub(/:[0-9]*$/, "", h)
+      return h
+    }
+    function utm(q,   s, i) {
+      s = "&" tolower(q)
+      i = index(s, "&utm_source=")
+      if (!i) return ""
+      s = substr(s, i + 12)
+      i = index(s, "&")
+      if (i) s = substr(s, 1, i - 1)
+      return substr(s, 1, 60)
+    }
+    BEGIN {
+      split("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", mn, " ")
+      for (i = 1; i <= 12; i++) mon[mn[i]] = sprintf("%02d", i)
+      nord = split("search user evasive training utility", ord, " ")
+      for (i = 1; i <= nord; i++) rank[ord[i]] = i
+      # The vhost guards refuse training and evasive agents before the
+      # served classes are paced, so an agent two maps claim is counted
+      # where it was refused.
+      nchk = split("training evasive user search utility", chk, " ")
+      all = (index(site, "ALL") > 0)
+      site = tolower(site)
+      aisrc = "[.](chatgpt[.]com|chat[.]openai[.]com|perplexity[.]ai|claude[.]ai|copilot[.]microsoft[.]com|gemini[.]google[.]com|chat[.]mistral[.]ai)$"
+      aiutm = "^(chatgpt([.]com)?|openai|perplexity([.]ai)?|claude([.]ai)?|copilot([.]microsoft[.]com)?|gemini([.]google[.]com)?|mistral([.]ai)?)$"
+      botre = "bot[-/;.) ]|robot|crawl|spider|slurp|preview|scan|probe|monitor|fetch|feed|reader|curl|wget|python|go-http|libwww|httpclient|java/|okhttp|headless|lighthouse|pingdom|uptime|validator|archive|facebookexternalhit|whatsapp|mastodon|http[.]rb|axios|guzzle|faraday|dalvik|node([.]js|js|/)|rss-parser|barkrowler|research|auditor|on-behalf-of|drupal [(]"
+      assetre = "[.](css|js|mjs|map|jpe?g|png|gif|ico|svg|webp|avif|bmp|tiff?|woff2?|ttf|otf|eot|mp3|mp4|m4a|webm|ogg|wav)$"
+    }
+    FILENAME == mapf {
+      if ($1 == "map" && $2 == "$http_user_agent" \
+        && $3 ~ /^[$]is_ai_(training|search|user|evasive|utility)$/) {
+        cur = substr($3, 8)
+        inmap = 1
+        nmaps++
+        next
+      }
+      if (!inmap) next
+      if ($1 == "}") { inmap = 0; next }
+      if (NF == 0 || $1 == "default" || $1 ~ /^#/) next
+      # Only case-blind regex keys made of plain tokens read the same in
+      # awk as in nginx; any other key is reported, never guessed at.
+      if ($1 !~ /^~[*]/ || substr($1, 3) !~ /^[A-Za-z0-9_.|?()-]+$/) {
+        skipped++
+        next
+      }
+      val = $2
+      sub(/;.*/, "", val)
+      np++
+      pc[np] = cur
+      pp[np] = tolower(substr($1, 3))
+      pv[np] = (val != "" && val != "\047\047" && val != "\"\"")
+      next
+    }
+    {
+      if (!ready) {
+        anyre = ""
+        for (i = 1; i <= np; i++) anyre = anyre (i > 1 ? "|" : "") pp[i]
+        ready = 1
+      }
+      if (split($0, f, "\"") < 9) next
+      if (split(f[3], hs, " ") < 2) next
+      host = tolower(hs[1])
+      if (!all && host != site) next
+      ts = hs[2]
+      mo = substr(ts, 5, 3)
+      if (length(ts) < 21 || !(mo in mon)) next
+      dk = substr(ts, 9, 4) mon[mo] substr(ts, 2, 2)
+      if (first == "" || dk < first) first = dk
+      if (last == "" || dk > last) last = dk
+      # Over HTTPS through the front proxy one request is logged twice: by
+      # the site vhost from 127.0.0.1, then by the front with the visitor.
+      # A request the site refuses with 444 reaches the front as a closed
+      # connection and is logged there as 502, a moment after the site
+      # line, so a site 444 is kept for its own clock minute and the next.
+      mnum = substr(ts, 14, 2) * 60 + substr(ts, 17, 2)
+      if (dk != cdk || mnum != cmnum) {
+        if (dk == cdk && mnum == cmnum + 1) {
+          if (cg) { split("", in0); cg = 0 } else { split("", in1); cg = 1 }
+        } else {
+          split("", in0)
+          split("", in1)
+        }
+        cdk = dk
+        cmnum = mnum
+      }
+      # The two lines of one request differ in protocol (the front speaks
+      # HTTP/2 or 3 to the visitor, HTTP/1.1 to the site), so they pair on
+      # the method and the path.
+      nrq = split(f[4], rq, " ")
+      rk = rq[1] " " rq[2]
+      ua = f[8]
+      split(f[5], st, " ")
+      status = st[1]
+      loop = (f[2] == "127.0.0.1" || f[2] == "::1")
+      lua = tolower(ua)
+      cls = ""
+      if (anyre != "" && lua ~ anyre) cls = classify(lua)
+      if (cls != "") {
+        pk = host SUBSEP rk SUBSEP agent
+        if (loop) {
+          if (status == "444") { if (cg) in1[pk] = 1; else in0[pk] = 1 }
+          next
+        }
+        v = verdict(status)
+        if (status == "502" && ((pk in in0) || (pk in in1))) v = "refused"
+        act[dk] = 1
+        dc[dk, cls]++
+        tot[cls]++
+        tv[cls, v]++
+        ak = agent SUBSEP cls
+        an[ak]++
+        av[ak, v]++
+        pg[cls, page(rq[2])]++
+        next
+      }
+      if (loop) next
+      if (nrq < 2 || rq[1] != "GET") next
+      if (status != "200" && status != "304") next
+      if ((lua " ") ~ botre) next
+      uri = rq[2]
+      q = ""
+      i = index(uri, "?")
+      if (i) { q = substr(uri, i + 1); uri = substr(uri, 1, i - 1) }
+      if (tolower(uri) ~ assetre) next
+      rh = refhost(f[6])
+      src = ""
+      if (rh != "") {
+        if (("." rh) ~ aisrc) src = rh
+      } else if (q != "") {
+        u = utm(q)
+        if (u != "" && u ~ aiutm) src = "utm_source=" u
+      }
+      if (src == "") next
+      act[dk] = 1
+      rd[dk]++
+      rtot++
+      rs[clip(src)]++
+      rl[clip((all ? host : "") uri)]++
+    }
+    END {
+      printf "0hdr\t0\t%s\t%s\t%d\t%d\t%d\n", first, last, nmaps, np, skipped
+      for (k = 1; k <= nord; k++) {
+        c = ord[k]
+        printf "1tot\t%d\t%s\t%d\t%d\t%d\t%d\n", 9 - k, c, tot[c], \
+          tv[c, "served"], tv[c, "refused"], tv[c, "other"]
+      }
+      printf "1tot\t0\treferred\t%d\n", rtot
+      for (d in act) {
+        printf "2day\t%s\t%s-%s-%s", d, substr(d, 1, 4), substr(d, 5, 2), substr(d, 7, 2)
+        for (k = 1; k <= nord; k++) printf "\t%d", dc[d, ord[k]]
+        printf "\t%d\n", rd[d]
+      }
+      for (x in an) {
+        split(x, a, SUBSEP)
+        printf "3agt\t%d\t%s\t%s\t%d\t%d\t%d\n", an[x], a[1], a[2], \
+          av[x, "served"], av[x, "refused"], av[x, "other"]
+      }
+      for (x in pg) {
+        split(x, a, SUBSEP)
+        printf "4p%d\t%d\t%s\n", rank[a[1]], pg[x], a[2]
+      }
+      for (x in rs) printf "5src\t%d\t%s\n", rs[x], x
+      for (x in rl) printf "6lnd\t%d\t%s\n", rl[x], x
+    }
+  ' "${_maps}" "${_log}" \
+    | LC_ALL=C sort -t "${_tab}" -k1,1 -k2,2nr -k3,3 \
+    | LC_ALL=C awk -F "${_tab}" -v site="${_site}" \
+      -v built="$(date '+%Y-%m-%d %H:%M %Z')" '
+    function day(d) {
+      return substr(d, 1, 4) "-" substr(d, 5, 2) "-" substr(d, 7, 2)
+    }
+    BEGIN {
+      lab["search"] = "Search / index"
+      lab["user"] = "Assistant"
+      lab["evasive"] = "Evasive assistant"
+      lab["training"] = "Training"
+      lab["utility"] = "Utility"
+      split("Search / index,Assistant,Evasive assistant,Training,Utility", pl, ",")
+      all = (index(site, "ALL") > 0)
+    }
+    $1 == "0hdr" {
+      hdr = 1
+      printf "AI agents and AI-referred visits: %s\n", (all ? "all sites on this server" : site)
+      if ($3 == "") {
+        printf "Built %s. The access logs hold no requests for it.\n", built
+      } else {
+        printf "Built %s from this server'\''s access logs, %s to %s.\n", built, day($3), day($4)
+      }
+      print ""
+      print "Served: the page or file was sent. Refused: the server turned the request"
+      print "away (a class blocked by default, or the site'\''s line in policy.txt)."
+      print "Other: redirects, missing pages and errors. Referred visits are page views"
+      print "that came from an AI assistant'\''s site or a link tagged utm_source with an"
+      print "assistant'\''s name. A fetch is not a citation, and an agent that hides what"
+      print "it is cannot be counted."
+      if ($5 == 0) {
+        print ""
+        print "This server'\''s web configuration lists no AI agent classes, so only"
+        print "referred visits are counted."
+      } else if ($7 > 0) {
+        print ""
+        printf "%d agent pattern(s) in the web configuration could not be read here\n", $7
+        print "and their requests are not counted."
+      }
+      next
+    }
+    $1 == "1tot" && $3 == "referred" {
+      printf "\nVisits referred by AI assistants: %d\n", $4
+      next
+    }
+    $1 == "1tot" {
+      if (!th) {
+        printf "\n%-20s %9s %9s %9s %9s\n", "Class", "Requests", "Served", "Refused", "Other"
+        th = 1
+      }
+      printf "%-20s %9d %9d %9d %9d\n", lab[$3], $4, $5, $6, $7
+      next
+    }
+    $1 == "2day" {
+      if (!dh) {
+        print "\nPer day, newest first"
+        printf "%-11s %8s %9s %8s %9s %8s %9s\n", "Day", "Search", "Assistant", "Evasive", \
+          "Training", "Utility", "Referred"
+        dh = 1
+      }
+      if (++dn > 62) {
+        if (dn == 63) print "(older days left out)"
+        next
+      }
+      printf "%-11s %8d %9d %8d %9d %8d %9d\n", $3, $4, $5, $6, $7, $8, $9
+      next
+    }
+    $1 == "3agt" {
+      if (!ah) {
+        print "\nAgents"
+        printf "%-26s %-18s %9s %9s %9s %9s\n", "Agent", "Class", "Requests", "Served", \
+          "Refused", "Other"
+        ah = 1
+      }
+      printf "%-26s %-18s %9d %9d %9d %9d\n", substr($3, 1, 26), lab[$4], $2, $5, $6, $7
+      next
+    }
+    $1 ~ /^4p[1-5]$/ {
+      k = substr($1, 3)
+      if (k != pk) {
+        printf "\nMost requested by %s agents\n", pl[k]
+        pk = k
+        pn = 0
+      }
+      if (++pn <= 10) printf "%9d  %s\n", $2, $3
+      next
+    }
+    $1 == "5src" {
+      if (!sh) { print "\nReferred visits by source"; sh = 1 }
+      printf "%9d  %s\n", $2, $3
+      next
+    }
+    $1 == "6lnd" {
+      if (!lh) { print "\nPages the referred visits landed on"; lh = 1 }
+      if (++ln <= 10) printf "%9d  %s\n", $2, $3
+      next
+    }
+    END {
+      if (!hdr) exit 1
+    }
+  '
+}
+
 _if_install
 
 for i in "$@"; do
@@ -392,6 +718,22 @@ if [[ ${_GOVER} = 1 ]]; then
   goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" "${_xIps[@]}" -a -o "${_TARGET}/index.html"
 else
   goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" "${_xIps[@]}" > "${_TARGET}/index.html"
+fi
+
+### Written whole or not at all, and withdrawn when switched off, so the
+### night never copies a stale or half-written report into the account.
+if [ "${_GOACCESS_AI_REPORT}" = "YES" ]; then
+  echo "[+] WRITING THE AI AGENTS REPORT"
+  if _ai_report "${_TARGET}/mrgd_nginx.log" "${_SITE}" \
+    > "${_TARGET}/.${_AI_REPORT}.new"; then
+    mv -f "${_TARGET}/.${_AI_REPORT}.new" "${_TARGET}/${_AI_REPORT}"
+  else
+    echo "[-] The AI agents report could not be built"
+    rm -f "${_TARGET}/${_AI_REPORT}"
+  fi
+  rm -f "${_TARGET}/.${_AI_REPORT}.new"
+else
+  rm -f "${_TARGET}/${_AI_REPORT}"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
