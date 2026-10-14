@@ -4,6 +4,25 @@
 
 @=> Important Fixes
 
+    * A same-name Migrate that fails after its copy was built no longer
+      leaves the site down. The copy shares the site's cache namespace in
+      Valkey, which is keyed by the site name without a leading www., and
+      what a newer Drupal core writes there does not load under the old
+      one: Drupal 11.4 caches its theme list with a class 11.3 lacks. The
+      site came back on its old platform answering 500, and every Verify
+      of it failed, until its cache was flushed. The rollback now purges
+      the namespace once the site is back, also after a Migrate that
+      renamed the site to its www. twin.
+
+    * A same-name Migrate of an HTTPS site no longer verifies the site on
+      its old platform after the copy is built. Encryption was switched
+      off before the move and back on after it; the switch-off never took
+      effect, and the switch-on ran a Verify that put the site back on its
+      old platform and failed there when the copy runs a newer core,
+      rolling the Migrate back. Both steps are gone: the copy is verified
+      with the site's own encryption settings, also when they changed
+      while the Migrate waited in the queue.
+
     * Every Drupal 8+ distribution platform staticbuild builds (LocalGov,
       Varbase, Thunder and the rest, not only Drupal CMS) carries the
       correction to pathauto's Drupal 7 migration definition, so Drupal's
@@ -384,6 +403,21 @@
       has no such line, on hosted systems first, and nothing is written
       before then. _WEB_GROUP_ARM=NO set there today keeps a box out
       (docs/INSTGRP.md).
+
+    * The per-account web group conversion, still switched off, frees an
+      account's group name that someone outside the account holds too (a
+      member, or a user whose primary group it is) on a box that is
+      ready: the Octopus pass and instgrp webconvert rename that group to
+      <gid>-wgheld with its number and members kept, give the account a
+      new wg-oN at once, reload its pools into it, move the account's
+      paths to it and take the account's identities out of the renamed
+      group; the outside holder is not changed. A standby, a frozen
+      account, a box not ready, a group a directory service holds, a file
+      under /etc naming it or a free of the same account in the last 30
+      days keeps the alarm instead, which says why. Root's writers keep a
+      converted account's group for its paths while root's record names
+      its number; they gave such paths www-data, which the account's
+      phase B pools no longer hold (docs/INSTGRP.md).
 
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no
