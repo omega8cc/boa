@@ -3677,12 +3677,19 @@ _le_hook_root_here() {
 _le_hook_exec_here() {
   _le_hook_root_here "${1}" && _chmod_nofollow_here f 0755 "./${1}"
 }
-### The Python hook made executable, and its requirements installed by root's
-### pip3 only from that root-owned clone.
+### The Python hook made executable, and its requirements installed by root
+### only from that root-owned clone. Python is externally managed (PEP 668)
+### from Devuan 5 on, so pip3 refuses the system site: the requirements go
+### into a venv inside the clone, and hook.py runs on that venv's python.
+### dehydrated runs the hook as the instance user, never as root.
 _le_hook_py_here() {
+  local _here
   _le_hook_exec_here hook.py || return 1
-  _le_hook_root_here requirements.txt \
-    && pip3 install -r ./requirements.txt 2> /dev/null
+  _le_hook_root_here requirements.txt || return 1
+  _here="$(pwd -P)"
+  python3 -m venv ./venv 2> /dev/null \
+    && ./venv/bin/pip install -q -r ./requirements.txt 2> /dev/null \
+    && sed -i "1s|^#!.*|#!${_here}/venv/bin/python3|" ./hook.py
 }
 
 _le_ssl_check_update() {
@@ -3816,12 +3823,19 @@ _le_ssl_check_update() {
             fi
             if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
               _apt_clean_update
-              apt-get install python3-pip python-is-python3 ${_aptYesUnth} 2> /dev/null
+              apt-get install python3-pip python3-venv python-is-python3 ${_aptYesUnth} 2> /dev/null
               if _le_hook_clone cloudflare-py \
                 https://github.com/omega8cc/letsencrypt-cloudflare-hook; then
                 _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
                   _le_hook_py_here
               fi
+            elif [ ! -x "${_usEr}/tools/le/hooks/cloudflare-py/venv/bin/python3" ]; then
+              ### A clone whose requirements never installed (the system pip3
+              ### refused them) gets its venv now, inside the same checks.
+              _apt_clean_update
+              apt-get install python3-venv ${_aptYesUnth} 2> /dev/null
+              _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
+                _le_hook_py_here
             fi
             if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"

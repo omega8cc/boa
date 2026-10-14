@@ -213,6 +213,13 @@
       profile and English; a site that runs without a profile, as Drupal
       CMS does, keeps the one it was recorded with.
 
+    * The Cloudflare DNS-01 Python hook (cloudflare-dns-ssl-py.info)
+      installs its requirements into a virtual environment inside its
+      clone and runs on it. Root's pip3 refused the system Python, which
+      is externally managed from Devuan 5 on, so the hook could not load
+      its modules and a wildcard certificate through it never issued. A
+      clone left that way gets its environment on the next nightly run.
+
 @=> Security
 
     * A Grav site's premium licence file, user/data/licenses.yaml, is kept
