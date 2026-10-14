@@ -797,6 +797,13 @@
       request, as in Drupal core. The module also no longer triggers
       PHP 8.4's deprecation of an implicitly nullable parameter.
 
+    * A new Ægir instance no longer scans <account>.beanstalkapp.com and
+      <account>.unfuddle.com, two names built from its own account name,
+      for host keys. They belong to whoever holds that name at each
+      service, so the scan told a stranger's host the account name and
+      kept its key as known. The nine general Git hosts are still
+      scanned once, when the instance's key pair is made.
+
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
 ### Date: Thu 08 Oct 2026 16:52:19 CEST in Warsaw
