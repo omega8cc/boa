@@ -735,6 +735,12 @@
       filled the pool long before the cap shed anything. An instance's
       nginx_perhost_anon_conn still wins.
 
+    * OpenAI's ads checker (OAI-AdsBot) gets a rate allowance of its own
+      for each site. It shared one allowance of one request per second
+      across the whole server, so one site's ad review could shed the
+      checks of every other site's ads. The other AI agents keep one
+      allowance per vendor for the whole server.
+
 @=> Changes and Upgrades
 
     * The arm stamps of the per-instance group, the account web group
