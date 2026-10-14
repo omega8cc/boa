@@ -11,11 +11,15 @@
       so. The first run that finds Webmin writes _WEBMIN_RETIRE=YES at the
       end of that file and only warns in its report; a run six or more
       days later removes it, saving /etc/webmin and /var/webmin to
-      /var/backups first. A held package is left as it is. A kept Webmin
+      /var/backups first. A held package, or one dpkg fails to remove,
+      stays, its repository looked after as a kept Webmin's. A kept Webmin
       gets its apt repository with Webmin's own signing key, pinned by its
-      fingerprint, and a run that cannot verify it leaves it out: the old
-      key went to root's keyring, which apt never reads, and kept apt
+      fingerprint; a run that reaches the repository but cannot use it
+      leaves it out, and one that cannot reach it keeps it: the old key
+      went to root's keyring, which apt never reads, and kept apt
       accepting unverified packages from every repository on the server.
+      An operator's own Webmin source, a webmin.list without BOA's header
+      line included, is left alone.
 
     * multiback no longer marks a failed run as a good one when the run
       before it was killed after duplicity printed its statistics and
@@ -203,6 +207,12 @@
       cannot set off a restart or an alert by printing them, and these
       logs and the pools' slow logs are rotated daily, seven kept.
 
+    * Import reads a Drupal 8 or newer site's profile, language and
+      database settings through Drupal's own APIs. It ran Drupal 7 code
+      that found nothing there, so the site's records took the standard
+      profile and English; a site that runs without a profile, as Drupal
+      CMS does, keeps the one it was recorded with.
+
 @=> Security
 
     * A Grav site's premium licence file, user/data/licenses.yaml, is kept
@@ -229,15 +239,18 @@
 
     * Drupal and Backdrop sites no longer serve hidden files and
       directories, those whose name starts with a dot, as Drupal's own
-      .htaccess refuses them; .well-known/ is still served. Until now a
-      hidden file other than .git, .htaccess and the secret-path names
-      was served when it existed, through the /files/ and /downloads/
-      shortcuts and on subdirectory sites too.
+      .htaccess refuses them; .well-known/ at a site's root is still
+      served, and text typed into a Drupal 7 or Backdrop autocomplete
+      field still reaches the site. Until now a hidden file other than
+      .git, .htaccess and the secret-path names was served when it
+      existed, through the /files/ and /downloads/ shortcuts and on
+      subdirectory sites too.
 
     * Drupal and Backdrop sites no longer serve package.json,
       package-lock.json or yarn.lock, the far-future CDN path included.
-      composer.json and composer.lock are now refused on every path: one
-      with a word such as captcha or aggregator in it still served them.
+      composer.json and composer.lock are now refused on every public
+      path: one with a word such as captcha or aggregator in it still
+      served them. Private files under system/files/ still go to Drupal.
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
       the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
@@ -709,6 +722,24 @@
     * JSON:API, HAL and problem+json answers are compressed like other
       JSON: Nginx's gzip types gain application/vnd.api+json,
       application/hal+json and application/problem+json.
+
+    * The Add site form offers every language Drupal core knows on a
+      Drupal 8 or newer platform, Drupal CMS included: the list held only
+      the languages a profile ships translations for, and these profiles
+      ship none, so English was the only choice.
+
+    * The anonymous render cap follows each account's PHP pool: 1.5 times
+      its largest pm.max_children, kept between 64 and 300, applied to a
+      site the next time a Verify writes its configuration. It was a
+      fixed 100, above what a small pool can serve at once, so a flood
+      filled the pool long before the cap shed anything. An instance's
+      nginx_perhost_anon_conn still wins.
+
+    * OpenAI's ads checker (OAI-AdsBot) gets a rate allowance of its own
+      for each site. It shared one allowance of one request per second
+      across the whole server, so one site's ad review could shed the
+      checks of every other site's ads. The other AI agents keep one
+      allowance per vendor for the whole server.
 
 @=> Changes and Upgrades
 

@@ -12,7 +12,7 @@ most sites, and you can change them for any individual site.
 | **Search / index** bots (OAI-SearchBot, PerplexityBot, …) | **Allowed** | Bots that index your site so it can appear in AI search answers are let in (gently rate-limited). |
 | **Assistant** fetchers (ChatGPT-User, Claude-User, …) | **Allowed** | When a person asks an AI assistant to read a page on your site, that fetch is allowed (gently rate-limited). |
 | **Evasive** assistant (Perplexity-User) | **Blocked** | A user-fetch agent that ignores no-crawl rules and disguises itself when blocked is turned away by default; you can allow it per site. |
-| **Utility** bots (read-aloud, ads, notebook tools) | **Allowed** | Allowed, rate-limited. |
+| **Utility** bots (read-aloud, ads, notebook tools) | **Allowed** | Allowed, rate-limited; OpenAI's ads checker gets an allowance of its own for each site. |
 
 Aggressive scrapers, download tools and obvious credential probes are always blocked and
 are not configurable — that protection is on for every site.
@@ -57,6 +57,9 @@ blog.example.com    user-block
 # A research site that wants even the evasive Perplexity assistant allowed:
 research.example.com    evasive-allow
 ```
+
+The shop's `utility-block` also turns away OpenAI's ads checker (OAI-AdsBot), so a shop that
+advertises in ChatGPT leaves that flag off.
 
 Lines starting with `#`, and anything after a `#`, are ignored.
 

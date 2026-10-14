@@ -30,6 +30,10 @@ You can enable multiple PHP versions for different sites using the `multi-fpm.in
 
 - **File Location**: `~/static/control/multi-fpm.info`
 - If this file exists, it will override the default `fpm.info` configuration for the sites listed in the `multi-fpm.info` file.
+- BOA writes this file on every account with one line of its own, `place.holder.dont.remove`
+  followed by a version; that line stays. Add your sites below it. Deleting the file drops
+  every pinned site to the `fpm.info` version, and the system worker writes it again within
+  three minutes with only its own line.
 
 Example of `multi-fpm.info`:
 ```

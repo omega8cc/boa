@@ -21,7 +21,7 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot, Kimi-SearchBot, ExaSearchBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent, Kimi-User | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
 | AI **user — evasive** (user-triggered but ignores robots.txt and evades blocks) | `$is_ai_evasive` | Perplexity-User | **Blocked (444)**; per-site opt-in to **allow** |
-| AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
+| AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + per-vendor aggregate rate-limit (1r/s), OAI-AdsBot per site**; per-site opt-in to **block** |
 | **Forged** opt-out tokens | `$is_ai_forged` | Google-Extended, Applebot-Extended | **Hard block (444), always** |
 | Secret-path probes | `$is_secret_path` | `.env` `.git` `.aws` `.ssh`, `*.json` creds, `settings.py`, … | **Hard block (444), always** |
 
@@ -101,6 +101,11 @@ and vhost — the right primitive for an assistant whose single prompt fans out 
 IPs, which a per-IP limit never catches — and gives each vendor its own bucket so one
 cannot starve another. Each `$ai_*_limit_key` roster must track the matching `$is_ai_*`
 class map; they are kept adjacent in `server.tpl.php` for that reason.
+
+One exception is keyed per site: OpenAI's ads checker (`OAI-AdsBot`) emits
+`oai_adsbot:$host`. It fetches the landing pages of one advertiser's ads, so one bucket for
+the whole box let one site's ad review shed the checks of every other site's ads. Each
+site now has its own 1r/s allowance for it, burst 10; the zone's key variable is unchanged.
 
 ## Real client IP (realip)
 
