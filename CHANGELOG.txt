@@ -233,6 +233,14 @@
       that case, and the shell wrapper, which reads it itself, ran drush
       and composer on the server default until the next release.
 
+    * A failed Migrate of a Drupal 8 site, or of any site whose tasks run on
+      PHP 7, no longer ends with a warning that its codebase needs PHP
+      8.1. That floor is BOA's own Drush 10, which the rollback uses to
+      rewrite the account's Drush 9+ aliases: the rewrite now runs on the
+      newest installed PHP that clears it and names that PHP in the task
+      log; with none installed it is skipped with a note and the site's
+      alias file is kept.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
