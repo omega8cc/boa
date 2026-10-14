@@ -2672,6 +2672,18 @@ _d_dist_loop() {
     _d_name="${_distros_names[${_dist}]}"
     _d_vers="${_distros_versions[${_dist}]}"
     _d_core="${_distros_drupal_cores[${_dist}]}"
+    # Retired from the catalogue: Drupal 11.1 and 11.2 and Drupal 10.0 to
+    # 10.5 have no security support and cannot update to Drupal 12 (its
+    # floor is 11.3.0). No new platform is built from them; the platforms
+    # already on the box keep their sites. Said only when a list names one.
+    case "${_dist}" in
+      DE1|DE2|DX0|DX1|DX2|DX3|DX4|DX5)
+        if [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+          _msg "NOTE! ${_dist} (${_d_name} ${_d_vers}) is retired from the catalogue: not built; platforms already here keep their sites"
+        fi
+        continue
+        ;;
+    esac
     if [[ "${_d_core%%.*}" =~ ^[0-9]+$ ]] \
       && [ "${_d_core%%.*}" -ge 11 ] \
       && [ -n "${_d_db_v}" ] \
