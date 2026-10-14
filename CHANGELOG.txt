@@ -535,11 +535,12 @@
       read; Verify applies the store's schema changes; and BOA runs the
       store's worker every minute inside the site's own PHP-FPM pool, one
       or two at a time per pool, never Grav's whole scheduler. A copy made
-      by Clone or Upgrade a copy is held until a Cutover takes over from
-      its store (unless the copy it was made from still runs as a store)
-      or from the copy it was made from while that copy ran as a store,
-      each known by its database, which a Rename keeps, or until the
-      account creates
+      by Clone or Upgrade a copy is held until a Cutover retires its
+      store, the site at the store's domain when that carries a store and
+      is neither a held copy nor a copy of another store (unless a store
+      then runs at the domain the copy was made from), or a released
+      copy of that store at the domain the copy was made from, or until
+      the account creates
       ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
       signing secret of its own and a paused store. A store kept in its own
       SQLite file is warned about and is not cloned.
