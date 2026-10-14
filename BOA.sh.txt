@@ -2646,7 +2646,7 @@ _update_agents() {
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       _lshSum="$(md5sum /var/xdrago/conf/lshell.conf.dist 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f79 --mode 644
+      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f80 --mode 644
       if _source_due /var/xdrago/conf/lshell.conf.dist "${_lshSum}" \
         "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid"; then
         mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
