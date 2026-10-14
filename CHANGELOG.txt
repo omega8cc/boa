@@ -207,6 +207,12 @@
       cannot set off a restart or an alert by printing them, and these
       logs and the pools' slow logs are rotated daily, seven kept.
 
+    * Import reads a Drupal 8 or newer site's profile, language and
+      database settings through Drupal's own APIs. It ran Drupal 7 code
+      that found nothing there, so the site's records took the standard
+      profile and English; a site that runs without a profile, as Drupal
+      CMS does, keeps the one it was recorded with.
+
 @=> Security
 
     * A Grav site's premium licence file, user/data/licenses.yaml, is kept
@@ -716,6 +722,11 @@
     * JSON:API, HAL and problem+json answers are compressed like other
       JSON: Nginx's gzip types gain application/vnd.api+json,
       application/hal+json and application/problem+json.
+
+    * The Add site form offers every language Drupal core knows on a
+      Drupal 8 or newer platform, Drupal CMS included: the list held only
+      the languages a profile ships translations for, and these profiles
+      ship none, so English was the only choice.
 
 @=> Changes and Upgrades
 
