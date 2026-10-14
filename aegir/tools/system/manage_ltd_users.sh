@@ -117,12 +117,30 @@ _web_group() {
   # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
   # group and never hands a path to a login group. Run as any user but root,
   # which cannot read root's record, a held group answers empty: the group
-  # each path has is kept. $1 as _web_group_state.
-  local _s
+  # each path has is kept. A converted account's group that an identity
+  # outside the account has come to hold too (foreign) still answers
+  # wg-<account> to root while root's record names that gid at phase A or
+  # B: the account's pools read its paths through that group, at phase B
+  # through it alone, so www-data there would take them away. $1 as
+  # _web_group_state.
+  local _s _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
   _s=$(_web_group_state "${1}")
   case "${_s%% *}" in
     converted|phaseb) echo "${_s##* }" ;;
     held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+        && { [ "${_rph}" = "phase=A" ] || [ "${_rph}" = "phase=B" ]; }; then
+        echo "${_rg}"
+      else
+        echo "www-data"
+      fi
+      ;;
     *) echo "www-data" ;;
   esac
 }
