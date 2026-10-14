@@ -161,12 +161,14 @@ This exists because machine/API endpoints authenticate per request at the applic
 layer (HMAC, OAuth tokens), not by IP — so IP-counting them is always wrong. A webhook
 provider (Shopify, QuickBooks, Stripe…) delivers in bursts from a rotating pool; an API
 client is simply high-volume. Either pattern otherwise reads as a per-IP or shared-UA
-flood and self-bans a legitimate caller. Default list:
+flood and self-bans a legitimate caller. `/payment/notify` is Drupal Commerce's route
+for a payment gateway's notifications: a gateway's servers answered with errors would
+otherwise trip the shared-UA detector. Default list:
 
 ```
 /shopify/webhook /quickbooks/webhook /stripe/webhook
 /paypal/webhook /github/webhook /gitlab/webhook
-/graphql /public-api /oauth2
+/graphql /public-api /oauth2 /payment/notify
 ```
 
 The match is deliberately strict and laundering-proof:
@@ -2126,7 +2128,7 @@ These two knobs exempt at **different scopes**:
 | `_NGINX_DOS_IGNORE_PATHS` | see below | Space-separated URI prefixes exempt from **all** IDS scoring. |
 
 ```
-_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2"
+_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2 /payment/notify"
 ```
 
 `_NGINX_DOS_IGNORE_PATHS` rules: paths are space-separated, each a leading-slash absolute
@@ -2393,7 +2395,7 @@ chasing rotating IPs:
 # Override REPLACES the default list — include the shipped defaults you still need
 _NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook \
 /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2 \
-/my/custom/webhook"
+/payment/notify /my/custom/webhook"
 ```
 
 ### Opting a host out of the i18n guardrail

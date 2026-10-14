@@ -748,6 +748,13 @@
       checks of every other site's ads. The other AI agents keep one
       allowance per vendor for the whole server.
 
+    * The web IDS no longer scores Drupal Commerce's payment notify route
+      (/payment/notify), added to _NGINX_DOS_IGNORE_PATHS beside the
+      other webhooks. A payment gateway's notification servers, answered
+      with errors, read as a shared user-agent flood and were banned
+      whole; an operator's own list in /root/.barracuda.cnf replaces the
+      default, so add the route there too.
+
 @=> Changes and Upgrades
 
     * The arm stamps of the per-instance group, the account web group
