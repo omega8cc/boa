@@ -229,15 +229,18 @@
 
     * Drupal and Backdrop sites no longer serve hidden files and
       directories, those whose name starts with a dot, as Drupal's own
-      .htaccess refuses them; .well-known/ is still served. Until now a
-      hidden file other than .git, .htaccess and the secret-path names
-      was served when it existed, through the /files/ and /downloads/
-      shortcuts and on subdirectory sites too.
+      .htaccess refuses them; .well-known/ at a site's root is still
+      served, and text typed into a Drupal 7 or Backdrop autocomplete
+      field still reaches the site. Until now a hidden file other than
+      .git, .htaccess and the secret-path names was served when it
+      existed, through the /files/ and /downloads/ shortcuts and on
+      subdirectory sites too.
 
     * Drupal and Backdrop sites no longer serve package.json,
       package-lock.json or yarn.lock, the far-future CDN path included.
-      composer.json and composer.lock are now refused on every path: one
-      with a word such as captcha or aggregator in it still served them.
+      composer.json and composer.lock are now refused on every public
+      path: one with a word such as captcha or aggregator in it still
+      served them. Private files under system/files/ still go to Drupal.
 
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
       the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
