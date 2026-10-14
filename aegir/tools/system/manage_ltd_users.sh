@@ -5565,6 +5565,7 @@ _switch_php() {
   _FORCE_FPM_SETUP=NO
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
+  _T_CLI_ASKED=""
   _ltd_hm_switches
   _ltd_pool_deny_heal
 
@@ -5635,6 +5636,8 @@ _switch_php() {
         echo "ALRT: cli.info of ${_USER} is not one PHP version, ignored"
         _T_CLI_VRN=""
       fi
+      # the version the file asks for, before any fallback
+      _T_CLI_ASKED="${_T_CLI_VRN}"
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
@@ -5685,6 +5688,14 @@ _switch_php() {
             _ltd_put_in "${_dscUsr}/log" cli.txt "${_T_CLI_VRN}"
             _ltd_ctrl_put cli.info "${_T_CLI_VRN}"
           fi
+        elif [ "${_T_CLI_ASKED}" != "${_T_CLI_VRN}" ] \
+          && [ -x "/opt/php${_T_CLI_VRN//./}/bin/php" ]; then
+          # The file names a version the server does not have and its
+          # fallback is the version already in use, so nothing above ran;
+          # websh reads cli.info itself and would run drush and composer on
+          # the server default. The file takes the version the tools run on.
+          _ltd_put_in "${_dscUsr}/log" cli.txt "${_T_CLI_VRN}"
+          _ltd_ctrl_put cli.info "${_T_CLI_VRN}"
         fi
       fi
     fi

@@ -1225,6 +1225,12 @@ _ALLOW_VALKEY_RESTART=NO
 ### Replaces /etc/boa/.debug.email.txt
 _DEBUG_EMAIL=NO
 ###
+### Nightly GoAccess also writes ai-visibility.txt beside each report:
+### requests by the AI agent classes the vhosts act on (search / index,
+### assistant, evasive assistant, training, utility) and visits referred
+### by AI assistants. Needs GoAccess itself switched on.
+_GOACCESS_AI_REPORT=NO
+###
 ### Nightly GoAccess builds the aggregate ALL-sites report as well as
 ### the per-site ones. Needs GoAccess itself switched on.
 ### Replaces /etc/boa/.goaccess.all.cnf
