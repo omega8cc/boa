@@ -514,47 +514,6 @@ _if_install_collectd() {
   fi
 }
 
-_if_install_webmin() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_install_webmin"
-  fi
-  if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
-    if [ ! -d "/etc/webmin" ] && [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
-      echo " "
-      if _prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
-        true
-        _msg "INFO: Installing Webmin Control Panel..."
-        cd /var/opt
-        echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
-        echo "deb http://download.webmin.com/download/repository \
-          sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-        echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-          sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-        # Without the key the install goes on; apt may then refuse the
-        # repository, and the next pass tries again: this install while
-        # /etc/webmin is missing, _webmin_apt_update once it is there.
-        if _webmin_key_import; then
-          touch ${_pthLog}/webmin_update_apt_src.log
-        fi
-        _apt_clean_update
-        for _PKG in webmin libxml-simple-perl libcrypt-ssleay-perl; do
-          if ! _pkg_installed "${_PKG}"; then
-            _mrun "${_INSTAPP} ${_PKG}"
-          fi
-        done
-        if _pkg_installed webmin; then
-          _mrun "update-rc.d webmin defaults"
-          _msg "INFO: Webmin Control Panel installed"
-        else
-          _msg "WARN: Webmin Control Panel not installed, the next barracuda run tries again"
-        fi
-      else
-        _msg "INFO: Webmin Control Panel installation skipped"
-      fi
-    fi
-  fi
-}
-
 _if_install_bind() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_bind"

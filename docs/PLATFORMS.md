@@ -30,7 +30,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.9)
 - [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.9)
 - [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.9)
-- [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.6)
+- [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.8)
 
 ## Drupal 10
 
