@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * Every Drupal 8+ distribution platform staticbuild builds (LocalGov,
+      Varbase, Thunder and the rest, not only Drupal CMS) carries the
+      correction to pathauto's Drupal 7 migration definition, so Drupal's
+      upgrade wizard no longer refuses a Drupal 7 site at its credentials
+      step with "The pathauto_pattern plugin must define the source_module
+      property" when the target runs on one of them.
+
     * Webmin is retired. BOA no longer installs it (WMN in _XTRAS_LIST is
       ignored), and a Barracuda run removes it from a server that still
       has it unless _WEBMIN_RETIRE=NO is set in /root/.barracuda.cnf; only
