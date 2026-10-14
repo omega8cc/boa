@@ -512,6 +512,49 @@ exit 4, unless an operator passes `--force`. A standby box (xmass's
 `/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
 prepared as one) refuses every verb but `webrevert`.
 
+### A group name held outside the account
+
+A group `wg-oN` that an identity outside the account holds too (listed in
+it, or with it as its primary group) is never joined or written to as it
+is: `webstatus` says `FOREIGN`, and the watchers raise it every pass. On a
+box that is ready (above), the Octopus pass and `webconvert` free the name
+instead.
+
+The held group is renamed `<gid>-wgheld` (for example `1002-wgheld`),
+keeping its number and its members, so whatever that number grants
+outside the account stays as it is. The account gets a new `wg-oN` at
+once, on a number no group and no user's primary group has, and root's
+record follows it.
+
+The account's PHP-FPM pools are reloaded into the new group before any
+path moves. Every path of the account in the old number then moves to
+the new one, and the account's own identities leave the renamed group.
+The run then goes on as for any account.
+
+Nothing of the outside holder is changed: it keeps its memberships, its
+primary group and the renamed group, and loses only the account's files.
+A deliberate grant through the group, such as a deploy or backup user
+added to `wg-oN`, therefore stops reaching the account's files. Give such
+a user its own login under the account instead.
+
+The name is not freed, and the alarm stays and says why, on a standby or
+a box being prepared as one, for a frozen account, on a box that is not
+ready, or when `wg-oN` is not a group of `/etc/group` (a directory service
+holds it). It stays held too when one of the account's identities has it
+as its primary group, when a file under `/etc` names it (a sudoers rule,
+sshd's `Match Group`, a systemd `Group=` line), or when the account's
+name was freed once already in the last 30 days.
+
+`webrevert` and `reclaim` never free a name, and the master's own group
+(`wg-aegir`) is not freed this way.
+
+A run killed during a free is finished by the next run of a web verb of
+the account, from root's journal `/etc/boa/control/instgrp-web.oN.free.txt`,
+which also dates the free. While a converted account's name stays held,
+root's writers (the nightly, the site fixers, the worker) keep giving its
+paths its group as long as root's record names that group's number, so
+its pools keep reading them.
+
 ### What holds phase B back
 
 Four layouts do not stop an account from converting. It goes to phase A
