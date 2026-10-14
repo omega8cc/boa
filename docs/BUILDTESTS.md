@@ -677,6 +677,13 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # cd drupal-<version> && composer require drush/drush
            # then audit the lock as under "By hand" above (never fatal)
            # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.18 11.1.10 11.2.14 11.3.18 11.4.9
+prerelease # each _CORE_PRERELEASE version whose minor has no stable release among the
+           # minors (the list ships empty; name only a pre-release that carries every
+           # core security fix released so far), under php85 like every Drupal 12 line:
+           # composer create-project drupal/recommended-project:<version> drupal-<version> --no-dev --no-interaction
+           # cd drupal-<version> && composer require grasmash/yaml-cli:4.x-dev \
+           #   chi-teck/drupal-code-generator:^4@dev drush/drush:^14@dev
+           # a failed Drush require fails the line: no Drush, no platform
 ```
 
 ### Clean up artefacts before packaging
