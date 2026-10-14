@@ -233,6 +233,21 @@
       that case, and the shell wrapper, which reads it itself, ran drush
       and composer on the server default until the next release.
 
+    * A Clone, Migrate, Restore or Verify of a Drupal 8+ site whose code
+      cannot start now names the cause in the task log ("The Drupal kernel
+      did not boot:" with the exception, the file and the line), for
+      instance a module whose code needs a newer PHP than the task runs on.
+      The task log said only "Drush command terminated abnormally due to an
+      unrecoverable error.", and the message itself went nowhere.
+
+    * A failed Migrate of a Drupal 8 site, or of any site whose tasks run on
+      PHP 7, no longer ends with a warning that its codebase needs PHP
+      8.1. That floor is BOA's own Drush 10, which the rollback uses to
+      rewrite the account's Drush 9+ aliases: the rewrite now runs on the
+      newest installed PHP that clears it and names that PHP in the task
+      log; with none installed it is skipped with a note and the site's
+      alias file is kept.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
@@ -859,8 +874,9 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.16 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above. On Drupal 10 and 11 pm-updatestatus no longer dies on
+    * Classic Drush 8.5.17 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above and the named kernel boot error under Important Fixes.
+      On Drupal 10 and 11 pm-updatestatus no longer dies on
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an
       enum, and before that showed 18 of the report's 51.

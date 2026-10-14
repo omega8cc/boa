@@ -20,24 +20,24 @@ percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasechec
 says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.9)
-- [Drupal 11.3.18](https://drupal.org/project/drupal/releases/11.3.18)
-- [Drupal 11.4.9](https://drupal.org/project/drupal/releases/11.4.9)
-- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.9)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.10)
+- [Drupal 11.3.19](https://drupal.org/project/drupal/releases/11.3.19)
+- [Drupal 11.4.10](https://drupal.org/project/drupal/releases/11.4.10)
+- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.10)
 - [farmOS 4.0.7](https://drupal.org/project/farm) (11.3.18)
-- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.9)
-- [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.9)
-- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.9)
+- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.10)
+- [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.10)
+- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.10)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.8)
 
 ## Drupal 10
 
 - [Commerce v.2](https://drupal.org/project/commerce) (10.1.8)
-- [Drupal 10.6.18](https://drupal.org/project/drupal/releases/10.6.18)
+- [Drupal 10.6.19](https://drupal.org/project/drupal/releases/10.6.19)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.18)
-- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.18)
-- [Social 13.1.0](https://drupal.org/project/social) (10.6.18)
+- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.19)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.19)
+- [Social 13.1.0](https://drupal.org/project/social) (10.6.19)
 
 ## Drupal 9
 
