@@ -161,12 +161,14 @@ This exists because machine/API endpoints authenticate per request at the applic
 layer (HMAC, OAuth tokens), not by IP — so IP-counting them is always wrong. A webhook
 provider (Shopify, QuickBooks, Stripe…) delivers in bursts from a rotating pool; an API
 client is simply high-volume. Either pattern otherwise reads as a per-IP or shared-UA
-flood and self-bans a legitimate caller. Default list:
+flood and self-bans a legitimate caller. `/payment/notify` is Drupal Commerce's route
+for a payment gateway's notifications: a gateway's servers answered with errors would
+otherwise trip the shared-UA detector. Default list:
 
 ```
 /shopify/webhook /quickbooks/webhook /stripe/webhook
 /paypal/webhook /github/webhook /gitlab/webhook
-/graphql /public-api /oauth2
+/graphql /public-api /oauth2 /payment/notify
 ```
 
 The match is deliberately strict and laundering-proof:
@@ -677,6 +679,8 @@ Detector 1.
 - **FPM saturation trigger.** Byte-offset-tails the per-version PHP-FPM error logs
   (`/var/log/php/php*-fpm-error.log`) for **new** `reached max_children setting` lines — the
   authoritative "a pool just ran out of workers" signal, captured the instant it happens.
+  Lines the pools' workers write into the same logs (tagged `child PID said into stderr`
+  by the master) are dropped first, so a site cannot raise the trigger by printing them.
   (`php.sh` now byte-offset-tails the **same** `reached max_children setting` string, but
   emits only a plain capacity NOTE — no alert, no snapshot — so scan_nginx keeps its own
   Tier-B trigger; the periodic `fpmreport` sampler misses the live peak too.) On a new hit it
@@ -1841,7 +1845,7 @@ limit_conn_zone $boa_perhost_anon_key zone=boa_perhost_anon:10m;
 
 # Inc/vhost_include.tpl.php — rendered ONLY when that file declares the zone
 location = /index.php {
-  limit_conn boa_perhost_anon 100;   # nginx_perhost_anon_conn
+  limit_conn boa_perhost_anon 64;    # the account's cap, see Sizing
   limit_conn_status 444;             # location-wide, shared with the i18n cap
 }
 ```
@@ -1876,15 +1880,21 @@ location = /index.php {
   (`limit_conn` runs before the cache lookup). The location waits up to 30 s for that render
   (`fastcgi_cache_lock_timeout 30s`, nginx's default being 5 s), so the waiters get its
   cached copy instead of each reaching PHP: on a 16-child pool with an 8 s render and 150
-  simultaneous anonymous visitors the shipped cap served 100 from two renders and shed 50
+  simultaneous anonymous visitors a cap of 100 served 100 from two renders and shed 50
   (at 24 it shed 126); a warm URL shed none.
-- **Sizing (default 100).** Above the busiest legitimate per-vhost in-flight peak measured
-  over a full production day (13-57 across every tenant) and far below an observed flood
-  (417). Deliberately loose so it only ever bounds a genuine flood. Tune per instance toward
-  ~1.5x that instance's FPM pool `pm.max_children` via `nginx_perhost_anon_conn`; the render
-  cannot read the pool size, so this cannot be derived automatically. **Known limitation:**
-  on the small pools (16-28 children) FPM saturates long before 100 in-flight is reached, so
-  the shipped default is effectively inert there until tuned down.
+- **Sizing (per account, 64 to 300).** When `manage_ltd_users.sh` writes an account's FPM
+  pools, it also writes 1.5x the largest `pm.max_children` across them, kept between 64 and
+  300, to `/data/conf/<account>_perhost_anon_conn.txt`. The render cannot read the pool
+  itself, so the vhost include reads that file, and a site takes a new value the next time
+  a Verify writes its configuration.
+- **Why 64 and 300.** The floor keeps a tiny pool (2 to 8 children, where 1.5x alone would
+  give 3 to 12) from cutting a visitor's first image-style renders, and it stays above the
+  busiest legitimate per-vhost in-flight peak measured over a full production day (13-57
+  across every tenant). The ceiling stays far below an observed flood (417).
+- **Override and fallback.** `nginx_perhost_anon_conn` still sets the cap per instance and
+  wins over the file; with neither, the cap is 100. The file holds a value, not an nginx
+  include, so a missing or out-of-range one falls back to that default instead of failing
+  a reload.
 - **Composes with the i18n cap.** A localized anonymous request consumes a slot in both
   zones and is bounded by the lower of the two (24 by default). On a multilingual vhost the
   i18n cap therefore binds first for that traffic class.
@@ -2118,7 +2128,7 @@ These two knobs exempt at **different scopes**:
 | `_NGINX_DOS_IGNORE_PATHS` | see below | Space-separated URI prefixes exempt from **all** IDS scoring. |
 
 ```
-_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2"
+_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2 /payment/notify"
 ```
 
 `_NGINX_DOS_IGNORE_PATHS` rules: paths are space-separated, each a leading-slash absolute
@@ -2385,7 +2395,7 @@ chasing rotating IPs:
 # Override REPLACES the default list — include the shipped defaults you still need
 _NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook \
 /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2 \
-/my/custom/webhook"
+/payment/notify /my/custom/webhook"
 ```
 
 ### Opting a host out of the i18n guardrail

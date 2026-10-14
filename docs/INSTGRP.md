@@ -121,7 +121,9 @@ barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
 nightly worker would write `users` back on its next pass, an old `websh` would
 lock the tenant out of its shell, and on a box that only received the fetched
 tools ahead of its upgrade (a staged publish) the tar's own Octopus and system
-libraries still write the box-wide group. The arm stamps live in
+libraries still write the box-wide group.
+
+The arm stamps live in
 `/etc/boa/control` (0755, each stamp 0644), out of reach of the clean-ups that
 sweep `/var/log/boa` by name; on a box an earlier release stamped in
 `/var/log/boa`, `instgrp` copies the per-instance group's stamp before it reads
@@ -534,12 +536,14 @@ The conversion leaves such a path exactly as it is: it is never walked,
 moved or re-linked, its owner, group and modes stay, and it keeps working,
 because in phase A the account's users and pools are still in `www-data`.
 A store linked elsewhere inside the account's own tree stays in `www-data`
-with everything below it. The one exception is a link to a path that holds,
-or lies inside, a site or a store of the account's own: those are the
-account's own web files, and the path converts with them. The account's
-notes say which it is for each path: `left as it is`, or `part of the
-account's own files and converted with them`. Phase B would take
-`www-data` away from the pools that read a left path, so phase B waits.
+with everything below it.
+
+The one exception is a link to a path that holds, or lies inside, a site or
+a store of the account's own: those are the account's own web files, and
+the path converts with them. The account's notes say which it is for each
+path: `left as it is`, or `part of the account's own files and converted
+with them`. Phase B would take `www-data` away from the pools that read a
+left path, so phase B waits.
 
 What is left is the path a note names and everything below it, and it is
 the conversion's own walks that leave it. A contrived layout can step
@@ -582,13 +586,18 @@ a group. This is why the readiness check asks for the copy that carries
   so a pin stays. On a box with `_WEB_GROUP_PHASE_B=YES` the Octopus arm
   is refused the same way on every upgrade of such an account, and the
   upgrade prints a NOTE.
-- Each of these runs says where the account stands: `stays at phase A;
-  phase B waits (...)` with a count of each kind. An account that carries
-  a trait of phase B no record explains (a pool line left in a pool file;
-  `webstatus` reads `betwP` or `betwK`) is not at phase A, and the NOTE
-  says so: `reads betwP, not phase A ('instgrp webconvert oN' brings it
-  there)`. `--phase-b` never takes such a trait back; `instgrp webconvert
-  oN` does.
+- Each of these runs says where the account stands in a NOTE, with a
+  count of each kind. A run that takes the account to phase A says first
+  `goes to phase A only; phase B waits (...)`, or `reads betw: this run
+  completes phase A only; phase B waits (...)` when it finishes a phase A
+  cut short. A run toward phase B that stops at phase A says `stays at
+  phase A; phase B waits (...)`.
+
+  An account that carries a trait of phase B no record explains (a pool
+  line left in a pool file; `webstatus` reads `betwP` or `betwK`) is not
+  at phase A, and the NOTE says so: `reads betwP, not phase A ('instgrp
+  webconvert oN' brings it there)`. `--phase-b` never takes such a trait
+  back; `instgrp webconvert oN` does.
 - Nothing clears these for you. A share is removed with the documented tool
   (`autosymlink --site <url> --apply --force-unshare`, see
   `FILES-SYMLINK.md`); a site on the shared stores or outside the account
@@ -609,10 +618,11 @@ a group. This is why the readiness check asks for the copy that carries
   reads `phase B held`: the next run checks the layouts again.
 
 A share INTO the account's store never holds anything; both accounts are
-told (see `FILES-SYMLINK.md`), before the conversion's first write and
-again once its private side is done. When the account that owns the store
-converts, the reading site loses write there (and read on a private store),
-whatever the reading account's own state.
+told (see `FILES-SYMLINK.md`) before the conversion's first write, again
+once its private side is done, and once more by a run that goes on toward
+phase B. When the account that owns the store converts, the reading site
+loses write there (and read on a private store), whatever the reading
+account's own state.
 
 ### The verbs
 
@@ -736,12 +746,14 @@ kind:
 The nightly's pass of the account writes it; the 3-minute worker does not.
 It is a note, never an alarm and never a mail. There is none while phase B
 is off on the box, and none for an account pinned at A. To list the
-accounts held last night:
+accounts held on one night, put the date of its run in the pattern (the
+nightly starts at 04:15, so last night's run carries today's date):
 
-    grep -h 'web group: DR10' /var/log/boa/daily/acct-*.log
+    grep -h 'web group: DR10' /var/log/boa/daily/acct-*-<YYMMDD>-*.log
 
-Logs of earlier months are kept under `/var/log/boa/daily/<MM-YYYY>/`. To
-read the line for one account now: `instgrp webdrift oN --own night`.
+With `acct-*.log` alone it lists every night of this month. Logs of
+earlier months are kept under `/var/log/boa/daily/<MM-YYYY>/`. To read the
+line for one account now: `instgrp webdrift oN --own night`.
 
 On any box, `/root/.standby.prep.cnf` standing for over three days
 without `/root/.standby.cnf` is reported too: while it stands, no account
@@ -752,10 +764,12 @@ upload) would be refused by nginx in phase B. The worker opens such files
 on its next pass (world read and directory search added, only to a file
 with one link, never in the private set). It never opens a files store
 that is not the account's own (above): at phase A it says nothing about
-one, at phase B it reports it. When its walk of an account runs
-out of time three passes in a row it says so, and the nightly then walks
-the account's public set whole (`instgrp reclaim`, after the site loop),
-which also moves the worker's starting point forward.
+one, at phase B it reports it.
+
+When its walk of an account runs out of time three passes in a row it says
+so, and the nightly then walks the account's public set whole (`instgrp
+reclaim`, after the site loop), which also moves the worker's starting
+point forward.
 
 When the worker
 still finishes no pass after that (a store too large for its time bound),

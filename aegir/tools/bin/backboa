@@ -84,12 +84,16 @@ _DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
-_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+_HST="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
 # The old `|| hostname -f` bound to tr (rc 0 on empty input) and never
 # fired; an empty /etc/hostname then collapsed the bucket name to the
 # SHARED literal prefix, and --allow-source-mismatch let two boxes
-# interleave and force-prune one duplicity chain.
-[ -n "${_HST}" ] || _HST="$(hostname -f 2>/dev/null)"
+# interleave and force-prune one duplicity chain. A fallback that answers
+# only localhost would name a bucket every such server shares.
+if [ -z "${_HST}" ]; then
+  _HST="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+  case "${_HST}" in localhost|localhost.*) _HST="" ;; esac
+fi
 if [ -z "${_HST}" ]; then
   echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
   exit 1
@@ -951,7 +955,7 @@ _monthly_cleanup() {
     _RCL=${_RCL//[^1-5]/}
     echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+  if _chain_known \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
@@ -995,7 +999,7 @@ _set_mode() {
       _AWS_FLC="1M"
     fi
   else
-    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    if _chain_known \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
       _MODE="incremental"
     else
@@ -1016,12 +1020,17 @@ _set_cmd() {
 }
 
 _run_backup() {
-  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+  # the retry as full runs at once: its run already waited
+  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] \
+    && [ "${_BUP_RETRY}" != "YES" ]; then
     _n=$((RANDOM%300+8))
     echo "Waiting ${_n} seconds on $(date) before running ${_MODE} backup" >> ${_LOGFILE}
     sleep ${_n}
   fi
   echo "Running ${_MODE} backup on $(date)" >> ${_LOGFILE}
+  # the length before this run's output: a run killed before its log was
+  # archived leaves its lines behind, and only this run's may decide a retry
+  _BUP_LOG0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
   echo "Command is ${_DCY_UP_CMD} \
     ${_NAME} \
     ${_EXCLUDE} \
@@ -1035,7 +1044,13 @@ _run_backup() {
     ${_USER_EXCLUDE} \
     ${_INCLUDE} \
     ${_USER_INCLUDE} \
-    --exclude '**' / ${_TARGET} >> ${_LOGFILE}
+    --exclude '**' / ${_TARGET} >> ${_LOGFILE} 2>&1
+  _BUP_RC=$?
+  # duplicity writes its errors to stderr, which cron discards: without it
+  # and the exit code the emailed report never says that, or why, it failed
+  if [ "${_BUP_RC}" -ne 0 ]; then
+    echo "ALERT: the ${_MODE} backup to ${_TARGET} ended with exit code ${_BUP_RC} on $(date)" >> ${_LOGFILE}
+  fi
 }
 
 _remove_older_than() {
@@ -1060,6 +1075,32 @@ _collection_status() {
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
+# Whether this box has a duplicity chain in the bucket lives in
+# /etc/boa/control: the archive log is the history the operator reads, and
+# the major OS upgrade's clean-up of /var/log/boa/*.log takes it, after which
+# the next run started a new FULL chain and skipped that day's retention.
+# A box whose archive log predates the marker gets it from the log here, at
+# the first read.
+_chain_put() {
+  local _c="/etc/boa/control/${_BUCKET_NAME}.chain.txt"
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  if { echo "$(date '+%F %T') ${1}" > "${_c}.tmp.$$"; } 2> /dev/null \
+    && chmod 0644 "${_c}.tmp.$$" && mv -f "${_c}.tmp.$$" "${_c}"; then
+    return 0
+  fi
+  rm -f "${_c}.tmp.$$" 2> /dev/null
+  echo "ALERT: ${_c} cannot be written; a lost archive log would start a new full chain" >> ${_LOGFILE}
+  return 1
+}
+
+_chain_known() {
+  [ -e "/etc/boa/control/${_BUCKET_NAME}.chain.txt" ] && return 0
+  [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] || return 1
+  _chain_put "from the archive log"
+  return 0
+}
+
 _backup() {
   _backup_prepare
   _monthly_cleanup
@@ -1067,12 +1108,27 @@ _backup() {
   _set_mode
   _set_cmd
   _run_backup
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+  # A remote that keeps a full's volumes but lost its signature files fails
+  # every explicit incremental (rc 17) until the weekly full, even with
+  # --full-if-older-than: retry once as full, as multiback does, so the run
+  # and its report describe a backup that happened.
+  if [ "${_BUP_RC}" -ne 0 ] \
+    && [ "${_MODE}" = "incremental" ] \
+    && tail -n +$(( ${_BUP_LOG0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+      | grep -q "Old signatures not found and incremental specified"; then
+    _MODE="full"
+    _set_cmd
+    echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+    _BUP_RETRY=YES
+    _run_backup
+  fi
+  if _chain_known \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     _remove_older_than
     _collection_status
   fi
+  _chain_put "${_MODE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}

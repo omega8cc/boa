@@ -20,30 +20,22 @@ percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasechec
 says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.8)
-- [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
-- [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.9)
 - [Drupal 11.3.18](https://drupal.org/project/drupal/releases/11.3.18)
-- [Drupal 11.4.8](https://drupal.org/project/drupal/releases/11.4.8)
-- [Drupal CMS 2.2.3](https://drupal.org/project/cms) (11.4.8)
-- [farmOS 4.0.6](https://drupal.org/project/farm) (11.3.17)
-- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.8)
-- [OpenCulturas 3.1.0](https://drupal.org/project/openculturas) (11.4.8)
-- [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.8)
-- [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.6)
+- [Drupal 11.4.9](https://drupal.org/project/drupal/releases/11.4.9)
+- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.9)
+- [farmOS 4.0.7](https://drupal.org/project/farm) (11.3.18)
+- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.9)
+- [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.9)
+- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.9)
+- [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.8)
 
 ## Drupal 10
 
 - [Commerce v.2](https://drupal.org/project/commerce) (10.1.8)
-- [Drupal 10.0.11](https://drupal.org/project/drupal/releases/10.0.11)
-- [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
-- [Drupal 10.2.12](https://drupal.org/project/drupal/releases/10.2.12)
-- [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
-- [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
-- [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
 - [Drupal 10.6.18](https://drupal.org/project/drupal/releases/10.6.18)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 13.6.7](https://drupal.org/project/openfed) (10.6.18)
+- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.18)
 - [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.18)
 - [Social 13.1.0](https://drupal.org/project/social) (10.6.18)
 
@@ -76,6 +68,11 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Grav 2 (official release, admin bundle)](https://getgrav.org)
 
 * Opt-in on self-hosted systems: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`) it is on by default: a new instance gets `YES`, an existing one's `NO` seeded before that default flips to `YES` once, and a `NO` set afterwards stays. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
+* A Grav site keeps everything in files on the "None (flat-file sites)" database server, or, for a KahunaCart shop, gets a database when it is created on a MySQL 8 server (Percona 8.4). The panel carries that database through every task and passes its credentials through the vhost and the `grav` command, never a file the site's PHP can read. Verify brings the store schema up to date.
+* BOA runs the shop's worker (`bin/plugin kahunacart work`) every minute as the site's web server user, one shop at a time on a PHP pool of fewer than eight workers and two on a larger one; Grav's own scheduler, and the custom jobs a site's admin can define, never run.
+* A copy made by Clone or Upgrade a copy is held until a Cutover retires the store it stands in for, or a released copy of that store at the domain the copy was made from. The store is the site at the store's domain when it carries a store and is neither a held copy nor a copy of another store, and the hold stays while a store runs at the domain the copy was made from: the copy's marker keeps domains only. A released copy keeps running through a Cutover.
+* A copy is also released once `~/static/control/kahunacart-run.<domain>.info` exists and is newer than the copy: one left by an earlier copy at the same domain, or made before a Rename or Cutover of the held copy, releases nothing.
+* A Clone also gets its own signing key and a paused store.
 
 ## Textpattern CMS
 
@@ -118,14 +115,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DE3` — Drupal 11.3 prod/stage/dev
 - `FOS` — farmOS
 
-### Drupal 11.2
-
-- `DE2` — Drupal 11.2 prod/stage/dev
-
-### Drupal 11.1
-
-- `DE1` — Drupal 11.1 prod/stage/dev
-
 ### Drupal 10.6
 
 - `DX6` — Drupal 10.6 prod/stage/dev
@@ -133,31 +122,19 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `OPG` — Opigno LMS
 - `SOC` — Social
 
-### Drupal 10.5
-
-- `DX5` — Drupal 10.5 prod/stage/dev
-
-### Drupal 10.4
-
-- `DX4` — Drupal 10.4 prod/stage/dev
-
 ### Drupal 10.3
 
-- `DX3` — Drupal 10.3 prod/stage/dev
 - `EZC` — EzContent
-
-### Drupal 10.2
-
-- `DX2` — Drupal 10.2 prod/stage/dev
 
 ### Drupal 10.1
 
-- `DX1` — Drupal 10.1 prod/stage/dev
 - `CK2` — Commerce v.2
 
-### Drupal 10.0
+### Retired, no longer built
 
-- `DX0` — Drupal 10.0 prod/stage/dev
+`DE2` and `DE1` (Drupal 11.2 and 11.1) and `DX5` to `DX0` (Drupal 10.5 to
+10.0): an Octopus upgrade builds no new platform from them, and a list that
+names one says so in the log. Platforms already on a server keep their sites.
 
 ### Drupal 9
 
@@ -188,7 +165,7 @@ You can also use the special keyword `ALL` instead of any other symbols to have 
 ### Examples:
 
 ```
-DE2 DX5 SOC UC7
+DE4 DX6 SOC UC7
 ```
 
 ```

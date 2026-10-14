@@ -330,11 +330,14 @@ _classify() {
 ### test is INVERTED (it fires wherever solr9 is absent), needing java17
 ### or java21 -- which the same hosted pass installs.
 _would_reinstall() {
-  local _sv="${1}" _hosted=NO _os _trig
+  local _sv="${1}" _hosted=NO _os _trig _hn
   [ -e "${_BLANKET_MARKER}" ] && { echo NO; return; }
   grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" "${_BAR_CNF}" 2>/dev/null && { echo NO; return; }
   [ -e "/root/.host8.cnf" ] && _hosted=YES
-  case "$(cat /etc/hostname 2>/dev/null)" in
+  # as BOA's hosted test, which falls back to hostname -f
+  _hn="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hn}" ] || _hn="$(hostname -f 2>/dev/null)"
+  case "${_hn}" in
     *.aegir.cc) _hosted=YES ;;
   esac
   _os=$(. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-unknown}")

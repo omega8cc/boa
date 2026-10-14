@@ -1,6 +1,8 @@
 
 export _tRee=pro
-export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 
 _pkg_installed() {
   # Return 0 if package is installed, 1 otherwise.
@@ -298,7 +300,7 @@ _if_reinstall_curl_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_reinstall_curl_src"
   fi
-  _CURL_VRN=8.22.0
+  _CURL_VRN=8.23.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
     _mrun "apt-get install lsb-release ${_aptYesUnth} -qq"
@@ -688,6 +690,10 @@ _if_running_as_root_barracuda() {
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
     mkdir -p ${_pthLog}
+    # A major OS upgrade pass killed or crashed while /var/xdrago was parked
+    # left it at /var/xdrago_wait, and no later pass redeploys a missing
+    # /var/xdrago: put it back before the post-install probe below reads it.
+    _xdrago_wait_restore
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
@@ -733,15 +739,8 @@ _if_running_as_root_barracuda() {
       if [ -e "/sbin/hdparm" ]; then
         _mrun "apt-get remove hdparm -y --purge --auto-remove -qq"
       fi
-      if [ -d "/etc/webmin" ]; then
-        _mrun "dpkg --configure --force-all -a"
-        _apt_clean_update
-        _mrun "apt-get remove webmin -y --purge --auto-remove -qq"
-        rm -rf /usr/share/webmin
-      fi
       rm -f /etc/apt/sources.list.d/ksplice.list
       rm -f /etc/apt/sources.list.d/longview.list
-      rm -f /etc/apt/sources.list.d/webmin.list
     fi
     sleep 1
   else
@@ -1101,7 +1100,10 @@ _global_inc_conf_update() {
     _msg "OOPS: ${_GL_D} is not a real directory, the global include set was not deployed"
     return 1
   fi
-  _DR_V="11 10 9 8 7 6"
+  # 12 first: provision's Drupal 12 settings template includes global-12.inc
+  # directly, and a site whose partial is missing would run with no BOA
+  # globals at all, which a plain page load does not show
+  _DR_V="12 11 10 9 8 7 6"
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
       _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here "./global-${e}.inc" \
@@ -3842,6 +3844,7 @@ _barracuda_cnf() {
     echo "_ALLOW_NGINX_RESTART=${_ALLOW_NGINX_RESTART:-NO}"  >> ${_barCnf}
     echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}"  >> ${_barCnf}
     echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}"               >> ${_barCnf}
+    echo "_GOACCESS_AI_REPORT=${_GOACCESS_AI_REPORT:-NO}" >> ${_barCnf}
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
     echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
     echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
@@ -4157,6 +4160,10 @@ _barracuda_cnf() {
     _DEBUG_EMAIL_TEST=$(grep "^_DEBUG_EMAIL=" ${_barCnf} 2>&1)
     if [[ ! "${_DEBUG_EMAIL_TEST}" =~ "_DEBUG_EMAIL=" ]]; then
       echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_AI_REPORT_TEST=$(grep "^_GOACCESS_AI_REPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_AI_REPORT_TEST}" =~ "_GOACCESS_AI_REPORT=" ]]; then
+      echo "_GOACCESS_AI_REPORT=${_GOACCESS_AI_REPORT:-NO}" >> ${_barCnf}
     fi
     _GOACCESS_ALL_TEST=$(grep "^_GOACCESS_ALL=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_ALL_TEST}" =~ "_GOACCESS_ALL=" ]]; then
@@ -7564,7 +7571,6 @@ _get_bin_paths() {
                 /etc/sv/ssh \
                 /etc/sv/ssh/log \
                 /etc/update-motd.d \
-                /etc/webmin \
                 /etc/X11 \
                 /lib/apparmor \
                 /lib/init \
@@ -8337,6 +8343,22 @@ _if_remove_apparmor() {
   fi
 }
 
+# Whether this box finished installing lives in /etc/boa/control. A stamp an
+# earlier release wrote in /var/log/boa is copied there first, and still counts
+# when the copy cannot be made: a box never reads as not installed.
+_rnp_installed() {
+  local _n="/etc/boa/control/reset_no_new_password.pid"
+  local _o="/var/log/boa/reset_no_new_password.pid"
+  [ -e "${_n}" ] && return 0
+  [ -e "${_o}" ] || return 1
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  { cp "${_o}" "${_n}.$$" && chmod 0644 "${_n}.$$" \
+    && mv -f "${_n}.$$" "${_n}"; } 2> /dev/null || rm -f "${_n}.$$" 2> /dev/null
+  return 0
+}
+
+
 #
 # Final cleanup.
 _web_tier_up_while_unarmed() {
@@ -8344,7 +8366,7 @@ _web_tier_up_while_unarmed() {
     _msg "PROC: _web_tier_up_while_unarmed"
   fi
   # The auto-healing watchdogs stay dormant until autoupboa stamps
-  # /var/log/boa/reset_no_new_password.pid on its first quiet tick after a
+  # /etc/boa/control/reset_no_new_password.pid on its first quiet tick after a
   # fresh install's chain, and the chain's last pass ends with the web tier
   # down (move_sql only stops it, by design). Until the stamp nothing brings
   # the tier back: one tick plus a minute, 3-15 min measured on fresh boxes.
@@ -8355,7 +8377,7 @@ _web_tier_up_while_unarmed() {
   # never answers before the hostmaster vhost exists (the Let's Encrypt
   # challenge needs the vhost, not a 404).
   local _hmUri=""
-  if [ -e "/var/log/boa/reset_no_new_password.pid" ] \
+  if _rnp_installed \
     || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     || [ ! -x "/opt/local/bin/webserver" ]; then
     return 0
@@ -9857,6 +9879,37 @@ _major_os_upgrade_percona_check() {
   _clean_pid_exit _major_os_upgrade_percona_check
 }
 
+#
+# Put back /var/xdrago that _if_major_os_upgrade parked as /var/xdrago_wait.
+# When /var/xdrago was rebuilt meanwhile (a tools refresh run by hand, an
+# install), it keeps every name it holds, the parked tree fills in only what
+# it lacks (cron/custom.txt and the other per-box files) and goes to the
+# dragon store with the list of what it filled in: a mv onto the existing
+# name would move it inside instead.
+_xdrago_wait_restore() {
+  local _xdrArc _xdrAdd _xdrF
+  if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
+    return 0
+  fi
+  if [ ! -e "/var/xdrago" ] && [ ! -L "/var/xdrago" ]; then
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+  elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
+    _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
+    # the names only the parked tree holds, read before the copy: cp -v
+    # lists skipped names too on some systems
+    _xdrAdd="$(cd /var/xdrago_wait 2> /dev/null && find . ! -type d 2> /dev/null \
+      | while IFS= read -r _xdrF; do
+          [ -e "/var/xdrago/${_xdrF}" ] || [ -L "/var/xdrago/${_xdrF}" ] || echo "${_xdrF#./}"
+        done)"
+    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
+    mkdir -p "${_vBs}/dragon/x"
+    mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
+    [ -d "${_xdrArc}" ] && printf '%s\n' "${_xdrAdd}" > "${_xdrArc}.added.txt"
+    _msg "INFO: /var/xdrago_wait merged into /var/xdrago ($(printf '%s' "${_xdrAdd}" | grep -c .) names it alone held added), kept as ${_xdrArc}"
+  fi
+  return 0
+}
+
 _if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_major_os_upgrade"
@@ -9945,7 +9998,13 @@ _if_major_os_upgrade() {
     fi
     _check_dns_settings
     rm -f ${_pthLog}/ruby-sys-clean-reload.log
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    # Parked so no BOA cron job runs while the packages move; put back at the
+    # end of this pass, or by _clean_pid_exit when it stops before. Never onto
+    # an existing name, where mv would move the tree inside it.
+    _xdrago_wait_restore
+    if [ -d "/var/xdrago" ] && [ ! -e "/var/xdrago_wait" ]; then
+      mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    fi
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
@@ -10517,7 +10576,11 @@ _if_major_os_upgrade() {
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ] \
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
-      rm -f /var/log/boa/*.log
+      # every build and version marker goes, so the stack is rebuilt; the
+      # backup tools' archive logs are the history an operator reads, and
+      # dot-named files never matched the glob this replaces
+      find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
+        ! -name '*.archive.log' -delete 2> /dev/null
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
@@ -10674,8 +10737,9 @@ _if_major_os_upgrade() {
     ###
     ### Final cleanup.
     echo rotate > /var/log/syslog
-    rm -f /var/log/boa/*.log
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    find /var/log/boa -maxdepth 1 ! -type d -name '*.log' ! -name '.*' \
+      ! -name '*.archive.log' -delete 2> /dev/null
+    _xdrago_wait_restore
     ###
     ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.
     touch /root/.run_post_major_os_upgrade.info
@@ -10691,35 +10755,406 @@ _if_major_os_upgrade() {
   fi
 }
 
-_webmin_apt_update() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _webmin_apt_update"
+#
+# Webmin is retired: BOA no longer installs it, and a barracuda pass removes
+# it from a server that still has it unless /root/.barracuda.cnf says
+# _WEBMIN_RETIRE=NO; Webmin is removed only when every _WEBMIN_RETIRE line
+# there says YES. The first pass that finds Webmin writes _WEBMIN_RETIRE=YES
+# there and only warns in its mailed report, and the removal waits six days
+# after that notice, so two passes in a row never remove it before the
+# operator could answer. A kept Webmin gets its repository with Webmin's own
+# key, pinned by fingerprint, in an apt keyring, and a pass that reaches it but
+# cannot use it leaves it out: the key BOA used to import went to root's own
+# keyring, which apt never reads, so apt could not verify the repository and
+# the daily trust probe kept unverified repositories allowed for the whole
+# server. A Webmin that a removal had to leave in place gets the same upkeep. A
+# Linux-VServer guest never kept Webmin.
+_webmin_paths() {
+  _wmList="/etc/apt/sources.list.d/webmin.list"
+  _wmHead="## Webmin APT Repository"
+  _wmKey="/etc/apt/keyrings/webmin.gpg"
+  _wmKeyUrl="https://download.webmin.com/developers-key.asc"
+  _wmFpr="7D1AE915F3DCFADA344A4FCB2D223B918916F2A2"
+  _wmRepo="http://download.webmin.com/download/newkey/repository"
+  _wmNote="/etc/boa/control/webmin-retire-notice.txt"
+}
+
+# dpkg knows webmin in any state but not-installed (rc and half-configured too)
+_webmin_pkg_known() {
+  local _st
+  _st="$(dpkg-query -W -f='${Status}' webmin 2> /dev/null)"
+  [ -n "${_st}" ] && [[ ! "${_st}" =~ not-installed$ ]]
+}
+
+# installed whatever its selection: an operator may hold it
+_webmin_pkg_installed() {
+  [[ "$(dpkg-query -W -f='${Status}' webmin 2> /dev/null)" =~ " ok installed"$ ]]
+}
+
+_webmin_present() {
+  [ -d "/etc/webmin" ] || [ -d "/usr/share/webmin" ] || [ -d "/var/webmin" ] \
+    || _webmin_pkg_known
+}
+
+# BOA's webmin.list is the one with BOA's header line; any other file at that
+# path is the operator's
+_webmin_list_is_boas() {
+  [ "$(head -n 1 "${_wmList}" 2> /dev/null)" = "${_wmHead}" ]
+}
+
+# $1 = a pattern: any apt source but BOA's own that carries it
+_webmin_sources_name() {
+  local _f
+  for _f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list \
+    /etc/apt/sources.list.d/*.sources; do
+    [ -f "${_f}" ] || continue
+    [ "${_f}" = "${_wmList}" ] && _webmin_list_is_boas && continue
+    grep -qE "^[^#]*${1}" "${_f}" 2> /dev/null && return 0
+  done
+  return 1
+}
+
+# an apt source for Webmin that is not BOA's: a webmin.list without BOA's
+# header line, whatever it holds (lines commented out, a mirror, nothing), or
+# any other source naming Webmin's repository
+_webmin_other_source() {
+  if [ -e "${_wmList}" ] || [ -L "${_wmList}" ]; then
+    _webmin_list_is_boas || return 0
   fi
-  if [ -d "/etc/webmin" ]; then
-    if [ ! -e "${_pthLog}/webmin_update_apt_src.log" ]; then
-      cd /var/opt
-      echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
-      echo "deb http://download.webmin.com/download/repository \
-        sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-      echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-        sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f jcameron-key.gpg*
-        wget ${_wgetGet} "${_urlDev}/jcameron-key.gpg"
-        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
-        sleep 2
-      done
-      if [ -x "/usr/bin/gpg2" ]; then
-        _GPG=gpg2
-      else
-        _GPG=gpg
-      fi
-      cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
-      rm -f jcameron-key.gpg*
-      touch ${_pthLog}/webmin_update_apt_src.log
+  _webmin_sources_name 'download\.webmin\.com'
+}
+
+# an active source that may still verify with the 2002 key: a line naming
+# Webmin's repository in any source but BOA's own list, or any active line in
+# an operator's webmin.list (a mirror of the old repository); a file with
+# every line commented out, an empty one or a dangling link uses none
+_webmin_old_key_used() {
+  _webmin_sources_name 'download\.webmin\.com' && return 0
+  [ -f "${_wmList}" ] && ! _webmin_list_is_boas \
+    && grep -qE '^[[:space:]]*deb(-src)?[[:space:]]' "${_wmList}" 2> /dev/null
+}
+
+# BOA's own source goes, and its keyring unless another source names it; the
+# next BOA.sh.txt run probes apt's trust again instead of keeping the verdict
+# this pass's probe gave the old source.
+_webmin_source_drop() {
+  local _chg=""
+  if [ -e "${_wmList}" ] && _webmin_list_is_boas; then
+    rm -f "${_wmList}"
+    _chg=yes
+  fi
+  if [ -e "${_wmKey}" ] && ! _webmin_sources_name "${_wmKey//./\\.}"; then
+    rm -f "${_wmKey}"
+    _chg=yes
+  fi
+  [ -n "${_chg}" ] && rm -f ${_pthLog}/.apt-trust-probe.stamp
+  return 0
+}
+
+# $1 = gpg, $2 = a binary keyring: exactly one key, and it is Webmin's
+_webmin_key_is_pinned() {
+  local _gh _out _pubs _pfp
+  [ -s "${2}" ] || return 1
+  _gh="$(mktemp -d /tmp/webmin-gpg-XXXXXX)" || return 1
+  _out="$(${1} --homedir "${_gh}" --with-colons --import-options show-only \
+    --import "${2}" 2> /dev/null)"
+  rm -rf "${_gh}"
+  _pubs="$(printf '%s\n' "${_out}" | grep -c '^pub:')"
+  _pfp="$(printf '%s\n' "${_out}" | awk -F: '/^pub:/ { p = 1; next } p && /^fpr:/ { print $10; exit }')"
+  [ "${_pubs}" = "1" ] && [ "${_pfp}" = "${_wmFpr}" ]
+}
+
+# The key comes from Webmin itself (BOA's mirror has no copy): five tries of
+# at most 30 seconds, and only the pinned key reaches the keyring. The files
+# live in a private directory, never under a name others can see in /tmp.
+_webmin_key_fetch() {
+  local _g="${1}" _d _try=1
+  _d="$(mktemp -d /tmp/webmin-key-XXXXXX)" || return 1
+  mkdir -m 0700 "${_d}/gpg"
+  while [ "${_try}" -le 5 ]; do
+    rm -f "${_d}/key.asc" "${_d}/key.gpg"
+    curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_d}/key.asc"
+    if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_d}/key.asc" 2> /dev/null \
+      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" < "${_d}/key.asc" 2> /dev/null \
+      && _webmin_key_is_pinned "${_g}" "${_d}/key.gpg"; then
+      mkdir -p /etc/apt/keyrings
+      chmod 0755 /etc/apt/keyrings
+      chmod 0644 "${_d}/key.gpg"
+      mv -f "${_d}/key.gpg" "${_wmKey}"
+      rm -rf "${_d}"
+      return 0
+    fi
+    _try=$((_try + 1))
+    [ "${_try}" -le 5 ] && sleep 9
+  done
+  rm -rf "${_d}"
+  return 1
+}
+
+# A strict apt update of BOA's Webmin source alone, in its own lists dir, so
+# the server's lists and lock are not touched. 0 verified: apt stored the
+# signed release file and printed none of the words the server's trust probe
+# refuses (a warning such as a signature policy notice does not count); 1
+# refused naming a key or a signature; 2 not reached: apt reports a host it
+# cannot reach only as a warning, exits 0 and stores nothing, and the trust
+# probe passes such a source too; 3 refused otherwise (no release file, an
+# expired one, a hash mismatch), which the trust probe refuses as well.
+_webmin_repo_verifies() {
+  local _d _out _rc _f _got=""
+  _d="$(mktemp -d /tmp/webmin-apt-XXXXXX)" || return 2
+  mkdir -p "${_d}/lists/partial" "${_d}/cache/archives/partial"
+  _out="$(LC_ALL=C apt-get update -o Dir::Etc::sourcelist="${_wmList}" \
+    -o Dir::Etc::sourceparts="-" -o Dir::State::Lists="${_d}/lists" \
+    -o Dir::Cache="${_d}/cache" -o APT::List-Cleanup=0 \
+    -o Acquire::AllowInsecureRepositories=false \
+    -o Acquire::AllowDowngradeToInsecureRepositories=false \
+    -o Acquire::AllowWeakRepositories=false 2>&1)"
+  _rc=$?
+  for _f in "${_d}"/lists/*_InRelease "${_d}"/lists/*_Release.gpg; do
+    [ -s "${_f}" ] && _got=yes
+  done
+  rm -rf "${_d}"
+  if [ "${_rc}" = "0" ]; then
+    [ -n "${_got}" ] || return 2
+    if echo "${_out}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG"; then
+      return 1
+    fi
+    return 0
+  fi
+  if echo "${_out}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG|BADSIG|signature|missing key"; then
+    return 1
+  fi
+  return 3
+}
+
+# Webmin stays: its repository is kept verified, or left out until it can be.
+_webmin_keep() {
+  local _g _want _vr
+  rm -f ${_pthLog}/webmin_update_apt_src.log
+  if ! _webmin_pkg_installed; then
+    _webmin_source_drop
+    return 0
+  fi
+  if _webmin_other_source; then
+    # the operator's own source serves it, or a webmin.list BOA did not write
+    _webmin_source_drop
+    return 0
+  fi
+  if [ -x "/usr/bin/gpg2" ]; then
+    _g="/usr/bin/gpg2"
+  else
+    _g="$(command -v gpg 2> /dev/null)"
+  fi
+  if [ -z "${_g}" ] || [ ! -x "${_g}" ]; then
+    _msg "WARN: gpg is missing, so Webmin's repository is left out until it is there"
+    _webmin_source_drop
+    return 1
+  fi
+  # a key in place is fetched again once a month, for a changed expiry or
+  # subkey; a failed refresh keeps it
+  if ! _webmin_key_is_pinned "${_g}" "${_wmKey}" \
+    || [ -n "$(find "${_wmKey}" -mtime +30 2> /dev/null)" ]; then
+    if ! _webmin_key_fetch "${_g}" && ! _webmin_key_is_pinned "${_g}" "${_wmKey}"; then
+      _msg "WARN: Webmin's signing key not fetched from ${_wmKeyUrl}, or not the known"
+      _msg "WARN: key; its repository is left out and the next barracuda run tries again"
+      _webmin_source_drop
+      return 1
     fi
   fi
+  _want="deb [signed-by=${_wmKey}] ${_wmRepo} stable contrib"
+  if [ "$(cat "${_wmList}" 2> /dev/null)" != "$(printf '%s\n%s' "${_wmHead}" "${_want}")" ]; then
+    if ! { printf '%s\n%s\n' "${_wmHead}" "${_want}" > "${_wmList}"; } 2> /dev/null \
+      || ! chmod 0644 "${_wmList}"; then
+      # never left cut short: without BOA's header it would pass for the
+      # operator's from then on
+      rm -f "${_wmList}"
+      _msg "WARN: ${_wmList} could not be written, so Webmin's repository is left"
+      _msg "WARN: out and the next barracuda run tries again"
+      _webmin_source_drop
+      return 1
+    fi
+    rm -f ${_pthLog}/.apt-trust-probe.stamp
+  fi
+  _webmin_repo_verifies
+  _vr=$?
+  if [ "${_vr}" = "1" ]; then
+    # once more with the key fetched again, then left out: an unverified
+    # source would keep unverified repositories allowed for the whole server
+    _webmin_key_fetch "${_g}" > /dev/null 2>&1
+    _webmin_repo_verifies
+    _vr=$?
+  fi
+  case "${_vr}" in
+    0)
+      _msg "INFO: Webmin kept, its repository verified with Webmin's own key"
+      ;;
+    2)
+      _msg "INFO: Webmin kept, its repository not reached; the next barracuda run checks it"
+      ;;
+    1)
+      _msg "WARN: Webmin's repository does not verify with its known key, so it is left"
+      _msg "WARN: out; Webmin stays, without apt updates, until a BOA update knows the key"
+      _webmin_source_drop
+      return 1
+      ;;
+    *)
+      # reached but refused: a source left in place would turn the trust
+      # probe to allowing unverified repositories for the whole server
+      _msg "WARN: Webmin's repository refused a strict apt update, so it is left out;"
+      _msg "WARN: Webmin stays, without apt updates, and the next barracuda run tries again"
+      _webmin_source_drop
+      return 1
+      ;;
+  esac
+  return 0
+}
+
+# $1 = the copy: every file and directory it holds is still on disk; a copy
+# tar cannot list counts as not. Names are listed as stored: tar's default
+# style escapes a backslash, a tab and, in the C locale, any byte past ASCII.
+_webmin_copy_intact() {
+  local _lst
+  _lst="$(tar --quoting-style=literal -tzf "${1}" 2> /dev/null)" || return 1
+  [ -n "${_lst}" ] || return 1
+  printf '%s\n' "${_lst}" | while IFS= read -r _p; do
+    [ -e "/${_p}" ] || [ -L "/${_p}" ] || exit 1
+  done
+}
+
+# Webmin goes, its configuration saved first: Webmin's own package scripts
+# delete /etc/webmin and /var/webmin on any removal. $1 = guest on a
+# Linux-VServer guest, which cannot keep it. 1 when Webmin stays.
+_webmin_remove() {
+  local _guest="${1:-}" _bak="" _dirs="" _trc
+  if [[ "$(dpkg-query -W -f='${Status}' webmin 2> /dev/null)" =~ ^hold\  ]]; then
+    if [ -n "${_guest}" ]; then
+      _msg "WARN: Webmin is held (apt-mark hold), so it stays as it is; a Linux-VServer"
+      _msg "WARN: guest cannot keep it: release the hold and a barracuda run removes it"
+    else
+      _msg "WARN: Webmin is held (apt-mark hold), so it stays as it is; set"
+      _msg "WARN: _WEBMIN_RETIRE=NO in ${_barCnf} to keep it without this warning"
+    fi
+    return 1
+  fi
+  _msg "INFO: Removing the retired Webmin Control Panel..."
+  [ -d "/etc/webmin" ] && _dirs="etc/webmin"
+  [ -d "/var/webmin" ] && _dirs="${_dirs} var/webmin"
+  if [ -n "${_dirs}" ]; then
+    _bak="${_vBs:-/var/backups}/webmin-retired-$(date +%y%m%d-%H%M%S).tar.gz"
+    # tar says 1 when a file changed while it was read (a running Webmin's
+    # logs); the copy is whole all the same
+    # shellcheck disable=SC2086  # one or two fixed relative names, split on purpose
+    ( umask 077; tar -czf "${_bak}" -C / ${_dirs} ) 2> /dev/null
+    _trc=$?
+    if [ "${_trc}" -gt 1 ] || [ ! -s "${_bak}" ]; then
+      rm -f "${_bak}"
+      _msg "WARN: Webmin's configuration could not be saved in ${_vBs:-/var/backups},"
+      _msg "WARN: so Webmin stays and the next barracuda run tries again"
+      return 1
+    fi
+  fi
+  if _webmin_pkg_known; then
+    # its own scripts stop it; no --auto-remove: that would take any other
+    # orphaned package with it
+    _mrun "apt-get remove webmin -y --purge -qq"
+  fi
+  if _webmin_pkg_known; then
+    # the copy goes only while everything it holds is still in place: the
+    # package's scripts may have deleted part of the tree before dpkg failed
+    if [ -n "${_bak}" ] && _webmin_copy_intact "${_bak}"; then
+      rm -f "${_bak}"
+      _msg "WARN: Webmin could not be removed (a dpkg problem); it stays as it was"
+    else
+      _msg "WARN: Webmin could not be removed (a dpkg problem); its configuration is"
+      _msg "WARN: kept in ${_bak:-no copy}"
+    fi
+    _msg "WARN: and the next barracuda run tries again"
+    return 1
+  fi
+  # what is left without the package: its server, if it still runs
+  service webmin stop &> /dev/null
+  pkill -f '^[^ ]*perl /usr/share/webmin/miniserv\.pl' &> /dev/null
+  rm -rf /etc/webmin /usr/share/webmin /var/webmin
+  _webmin_source_drop
+  rm -f ${_pthLog}/webmin_update_apt_src.log "${_wmNote}"
+  if [ -n "${_bak}" ]; then
+    _msg "INFO: Webmin removed, its configuration kept in ${_bak}"
+  else
+    _msg "INFO: Webmin removed"
+  fi
+  return 0
+}
+
+# YES only when the sourced value and every _WEBMIN_RETIRE line of the cnf say
+# YES: the last line wins when the cnf is sourced, and an operator's NO above
+# the line BOA added must still keep Webmin
+_webmin_retire_set() {
+  local _v
+  [ "${_WEBMIN_RETIRE}" = "YES" ] || return 1
+  while read -r _v; do
+    _v="${_v#\"}"
+    _v="${_v#\'}"
+    _v="${_v%%[!A-Za-z0-9]*}"
+    [ "${_v}" = "YES" ] || return 1
+  done < <(sed -n -E 's/^[[:space:]]*(export[[:space:]]+)?_WEBMIN_RETIRE=//p' "${_barCnf}" 2> /dev/null)
+  return 0
+}
+
+_webmin_manage() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _webmin_manage"
+  fi
+  _webmin_paths
+  # the 2002 key boxes set up before 2019 gave apt for every repository; kept
+  # only while an active source may still verify with it
+  if command -v apt-key > /dev/null 2>&1 && ! _webmin_old_key_used; then
+    apt-key del D97A3AE911F63C51 &> /dev/null
+  fi
+  if ! _webmin_present; then
+    _webmin_source_drop
+    rm -f ${_pthLog}/webmin_update_apt_src.log "${_wmNote}"
+    return 0
+  fi
+  if [[ "$(uname -a)" =~ "-beng" ]]; then
+    _webmin_remove guest || _webmin_source_drop
+    return
+  fi
+  if ! _webmin_retire_set; then
+    rm -f "${_wmNote}"
+    _webmin_keep
+    return
+  fi
+  if ! grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEBMIN_RETIRE=" "${_barCnf}" 2> /dev/null \
+    || [ ! -e "${_wmNote}" ]; then
+    # the six days start at this warning, whatever an older notice said; it
+    # goes first, so a fresh one that cannot be written leaves none to count
+    # from
+    rm -f "${_wmNote}"
+    _instgrp_web_seed_line _WEBMIN_RETIRE ALL
+    if ! grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEBMIN_RETIRE=" "${_barCnf}" 2> /dev/null; then
+      _msg "WARN: Webmin is retired, but _WEBMIN_RETIRE=YES could not be written into"
+      _msg "WARN: ${_barCnf}, so Webmin stays until it can be"
+    elif ! _boa_control_put "${_wmNote##*/}" "$(date)"; then
+      _msg "WARN: Webmin is retired, but ${_wmNote} could not be written,"
+      _msg "WARN: so Webmin stays until it can be"
+    else
+      _msg "WARN: Webmin is retired: a barracuda run six or more days from now removes it,"
+      _msg "WARN: keeping a copy of its configuration in ${_vBs:-/var/backups}. To keep"
+      _msg "WARN: Webmin, change the _WEBMIN_RETIRE=YES line BOA added at the end of"
+      _msg "WARN: ${_barCnf} to _WEBMIN_RETIRE=NO"
+    fi
+    _webmin_keep
+    return
+  fi
+  if [ -z "$(find "${_wmNote}" -mmin +8640 2> /dev/null)" ]; then
+    _msg "WARN: Webmin is retired and a barracuda run removes it from six days after"
+    _msg "WARN: $(cat "${_wmNote}" 2> /dev/null); _WEBMIN_RETIRE=NO in ${_barCnf} keeps it"
+    _webmin_keep
+    return
+  fi
+  # a Webmin the removal has to leave (held, no room for the copy, a dpkg
+  # problem) is kept as a kept one is: a verified source or none
+  _webmin_remove || _webmin_keep
 }
 
 _early_sys_ctrl_mark() {
@@ -10774,7 +11209,7 @@ _sys_packages_update() {
     echo "percona-release hold" | dpkg --set-selections &> /dev/null
     echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
-  _webmin_apt_update
+  _webmin_manage
   _apt_clean_update
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"

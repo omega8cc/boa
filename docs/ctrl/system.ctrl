@@ -524,7 +524,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.my.batch_innodb.cnf
 
   This file, if exists, will enable non-standard procedure during nightly
-  (global) databases backup, which normally starts at 3:01 AM.
+  (global) databases backup, which cron starts at 1:15 AM.
 
   This special procedure will be run only once per week, on Saturday.
 
@@ -535,9 +535,10 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.my.optimize.cnf
 
   This file, if exists, will enable non-standard procedure during nightly
-  (global) databases backup, which normally starts at 3:01 AM.
+  (global) databases backup, which cron starts at 1:15 AM.
 
-  This special procedure will be run only once per month, on the last Sunday.
+  This special procedure will be run only once per month, on the Sunday
+  whose day of the month falls from 24 to 30.
 
   It will run a three-step sequence on every database: repair/rebuild all
   tables, truncate all cache* tables, and optimize all tables.
@@ -555,8 +556,8 @@ by the BOA install and upgrade tools exclusively.
   performed via 'sqlmagic' tool, and since it uses the 'ALTER TABLE' command,
   in turn it performs auto-optimization on the fly.
 
-  This optional conversion starts every Saturday at 3:01 AM and runs until
-  the agent completes all tasks included in the /var/xdrago/daily.sh script.
+  This optional conversion runs on Tuesdays, during the nightly per-site
+  pass (owl.sh, which cron starts at 4:15 AM), and never on hosted systems.
 
   If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled
   and more precisely configured with variable:

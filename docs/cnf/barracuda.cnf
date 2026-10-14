@@ -23,6 +23,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ### both on initial install and upgrade.
 ###
 _XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
+_WEBMIN_RETIRE=YES #------------ Remove a still-installed Webmin when YES; NO keeps it
 ###
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable verbose BOA mode when YES
@@ -119,6 +120,7 @@ _DISABLE_USAGE_ACCOUNTING=NO #------- Never run the nightly usage accounting pas
 _DONT_USE_FANCY_BASH_LOGIN=NO #------ Plain root login banner, no toilet/figlet when YES
 _ENABLE_NEWRELIC_SYSMOND=NO #-------- Keep nrsysmond running when YES; stopped when NO
 _FORCE_CI_BOX=NO #------------------- Force the CI box classification when YES (replaces /etc/boa/.look.like.jenkins.cnf)
+_GOACCESS_AI_REPORT=NO #------------- AI agents and AI-referred visits report beside each GoAccess report when YES (needs GoAccess on)
 _GOACCESS_ALL=NO #------------------- Nightly ALL-sites GoAccess report when YES (needs GoAccess on)
 _GOACCESS_EXCLUDE_IPS="" #----------- Space-separated visitor IPs/dash-ranges left out of GoAccess reports (operator/monitoring addresses; no CIDR)
 _GOACCESS_VHOSTS=NO #---------------- Nightly GoAccess reports for standalone sites-enabled vhosts when YES (needs GoAccess on)

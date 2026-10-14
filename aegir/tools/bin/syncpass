@@ -534,7 +534,9 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  # A test, not ||: tr exits 0 on an empty /etc/hostname
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 }
 
 case "$1" in

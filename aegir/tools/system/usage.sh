@@ -631,6 +631,9 @@ _usage_count() {
             [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat},skip" >> "${_uLogFil}"
           else
             _SumDat=$(( _SumDat + _DatSize ))
+            # kept for the notice's largest tables; a name the size
+            # lookup refused is never queried
+            [[ "${_Dat}" =~ ^[A-Za-z0-9_]+$ ]] && _LIVE_DBS+=("${_DatSize:-0}:${_Dat}")
             echo "${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat}"
             [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat}" >> "${_uLogFil}"
           fi
@@ -640,6 +643,32 @@ _usage_count() {
       fi
     fi
   done
+}
+
+# For the LIVE notice: the five largest tables of each of the account's ten
+# largest live databases and the room their files hold free, from the database
+# server's own statistics (estimates), and how to give that room back. Empty
+# when there is nothing to list.
+_sql_top_section() {
+  local _e _db _rows _body=""
+  while IFS= read -r _e; do
+    _db="${_e#*:}"
+    [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || continue
+    _rows=$(timeout 60 mysql -u root -s -N -e "SELECT CONCAT('  ', LEFT(TABLE_NAME, 64), ': ', ROUND((DATA_LENGTH + INDEX_LENGTH) / 1048576), ' MB, ', ROUND(DATA_FREE / 1048576), ' MB free') FROM information_schema.TABLES WHERE TABLE_SCHEMA = '${_db}' ORDER BY DATA_LENGTH + INDEX_LENGTH DESC LIMIT 5" 2> /dev/null \
+      | tr -cd '[:print:]\n')
+    [ -n "${_rows}" ] || continue
+    _body+="${_db}:"$'\n'"${_rows}"$'\n\n'
+  done < <(printf '%s\n' "${_LIVE_DBS[@]}" | sort -t: -k1,1nr | awk -F: '!seen[$2]++' | head -n 10)
+  [ -n "${_body}" ] || return 0
+  printf '%s' "The largest tables of your live databases (the database server's
+estimates; \"free\" is room inside a table's file that removed rows
+left behind):
+
+${_body}Rows you delete inside a site give their space back only after the
+table is rebuilt with OPTIMIZE TABLE. How to find what to remove, and how
+to rebuild a table:
+
+  https://docs.boa.io/using/backups/database-space"
 }
 
 _send_notice_sql() {
@@ -657,6 +686,9 @@ _send_notice_sql() {
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _client_mail_hold "${_CLIENT_EMAIL}" || return 1
+  _TOP_SECTION=""
+  [ "${_MODE}" = "LIVE" ] && _TOP_SECTION="$(_sql_top_section)"
+  [ -n "${_TOP_SECTION}" ] && _TOP_SECTION="${_TOP_SECTION}"$'\n\n'
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
@@ -672,7 +704,7 @@ but you are currently using ${_SQL_NOW} MB of databases space.
 Please reduce your usage by deleting no longer used sites, or purchase
 enough Ægir Engines to cover your current usage.
 
-You can purchase more Ægir Engines easily online:
+${_TOP_SECTION}You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/pricing
 
@@ -997,6 +1029,7 @@ _usage_action() {
         _HxmSiz=0
         _SkipDt=0
         _SumDat=0
+        _LIVE_DBS=()
         _SumDir=0
         _TotSiz=0
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -1268,7 +1301,9 @@ echo "INFO: Starting usage monitoring on $(date)"
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# A test, not ||: tr exits 0 on an empty /etc/hostname
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 mkdir -p /var/log/boa/usage
 if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
   _THIS_MODE="verbose"
