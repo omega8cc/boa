@@ -6572,10 +6572,6 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   if [ ! -e "${_ROOT}/.ssh/id_ed25519.pub" ]; then
     su -s /bin/bash - ${_USER} -c "ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
-    wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
-    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts" &> /dev/null
