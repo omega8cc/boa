@@ -227,6 +227,18 @@
       but ships switched off (_NGINX_LINK_GUARD=NO) until a later
       release; see docs/NGINX-LINKS.md.
 
+    * Drupal and Backdrop sites no longer serve hidden files and
+      directories, those whose name starts with a dot, as Drupal's own
+      .htaccess refuses them; .well-known/ is still served. Until now a
+      hidden file other than .git, .htaccess and the secret-path names
+      was served when it existed, through the /files/ and /downloads/
+      shortcuts and on subdirectory sites too.
+
+    * Drupal and Backdrop sites no longer serve package.json,
+      package-lock.json or yarn.lock, the far-future CDN path included.
+      composer.json and composer.lock are now refused on every path: one
+      with a word such as captcha or aggregator in it still served them.
+
     * The Ægir control panel's Drupal 7 core refuses or renames uploads of
       the other PHP extensions (pht, phps, php2 to php8, phtm), server-side
       includes, a few other script types, .htaccess and Drupal's own code
@@ -693,6 +705,10 @@
       nightly does not wait for it. Each line shows, by kind, what the
       check would refuse on that server and what would still keep it
       off once BOA's own links are made root's; see docs/NGINX-LINKS.md.
+
+    * JSON:API, HAL and problem+json answers are compressed like other
+      JSON: Nginx's gzip types gain application/vnd.api+json,
+      application/hal+json and application/problem+json.
 
 @=> Changes and Upgrades
 
