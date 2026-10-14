@@ -534,6 +534,17 @@
       signing secret of its own and a paused store. A store kept in its own
       SQLite file is warned about and is not cloned.
 
+    * AI agents report, switched off by default: with _GOACCESS_AI_REPORT=YES
+      in /root/.barracuda.cnf (GoAccess itself on), every nightly GoAccess
+      report gets ai-visibility.txt beside it, so a site owner who asked for
+      a report finds it in ~/static/goaccess/<domain>/. It counts requests by
+      the AI agent classes the server's nginx acts on (search / index,
+      assistant, evasive assistant, training, utility) as served, refused or
+      other, per day, per agent and per page, read from the class maps nginx
+      loads, a request refused behind the HTTPS front counted once and as
+      refused; and the visits AI assistants referred, by referrer or
+      utm_source, with the pages they landed on.
+
 @=> Improvements
 
     * The Ægir control panel runs on PHP that BOA chooses. Every panel

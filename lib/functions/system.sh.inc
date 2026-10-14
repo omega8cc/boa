@@ -3844,6 +3844,7 @@ _barracuda_cnf() {
     echo "_ALLOW_NGINX_RESTART=${_ALLOW_NGINX_RESTART:-NO}"  >> ${_barCnf}
     echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}"  >> ${_barCnf}
     echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}"               >> ${_barCnf}
+    echo "_GOACCESS_AI_REPORT=${_GOACCESS_AI_REPORT:-NO}" >> ${_barCnf}
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
     echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
     echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
@@ -4159,6 +4160,10 @@ _barracuda_cnf() {
     _DEBUG_EMAIL_TEST=$(grep "^_DEBUG_EMAIL=" ${_barCnf} 2>&1)
     if [[ ! "${_DEBUG_EMAIL_TEST}" =~ "_DEBUG_EMAIL=" ]]; then
       echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_AI_REPORT_TEST=$(grep "^_GOACCESS_AI_REPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_AI_REPORT_TEST}" =~ "_GOACCESS_AI_REPORT=" ]]; then
+      echo "_GOACCESS_AI_REPORT=${_GOACCESS_AI_REPORT:-NO}" >> ${_barCnf}
     fi
     _GOACCESS_ALL_TEST=$(grep "^_GOACCESS_ALL=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_ALL_TEST}" =~ "_GOACCESS_ALL=" ]]; then
