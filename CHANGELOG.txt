@@ -823,8 +823,11 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.15 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above.
+    * Classic Drush 8.5.16 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above. On Drupal 10 and 11 pm-updatestatus no longer dies on
+      drupal_get_path(), and core-requirements lists the status report's
+      own checks: on 11.4 it crashed on the first severity reported as an
+      enum, and before that showed 18 of the report's 51.
 
     * Redis integration for Drupal 7 (redis_edge) 7.x-3.19.3. A path
       without an alias raised two PHP 8.5 warnings at every lookup, and
