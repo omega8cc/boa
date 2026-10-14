@@ -47,6 +47,17 @@ if (file_exists('web.config') || file_exists('index.php')) {
       }
       if (file_exists('core/modules/workspaces_ui') && !file_exists('web.config')) {
         $_boa_core_probe = '11';
+        // Drupal 12 dropped Olivero, so the markers above call it 11: core's
+        // version constant, near the head of core/lib/Drupal.php, decides.
+        // Only a tree without Olivero is read, so an 11 site pays nothing.
+        if (!file_exists('core/themes/olivero')
+          && is_readable('/data/conf/global/global-12.inc')
+          && is_readable('core/lib/Drupal.php')) {
+          $_boa_core_head = @file_get_contents('core/lib/Drupal.php', FALSE, NULL, 0, 4096);
+          if (is_string($_boa_core_head) && preg_match("/const VERSION = '12\\./", $_boa_core_head)) {
+            $_boa_core_probe = '12';
+          }
+        }
       }
     }
     else {
