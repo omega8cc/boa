@@ -341,11 +341,13 @@ function _valkey_window_mark($scope = 'box', $flag_path = NULL) {
   return _valkey_window_start($id);
 }
 
-/* The earliest start among the windows pending for this request's scopes:
- * every database cache entry this site wrote since then was written on the
- * database, so only older ones are refused. */
-function _valkey_window_threshold($flag_path, $scopes) {
-  $start = 0.0;
+/* The earliest start among the windows pending for this request's scopes and
+ * the one it already holds: every database cache entry this site wrote since
+ * then was written on the database, so only older ones are refused. Holding
+ * the start keeps a window a concurrent recovery just closed from leaving the
+ * request on the database with no threshold at all. */
+function _valkey_window_threshold($flag_path, $scopes, $held = 0.0) {
+  $start = (float) $held;
   foreach ($scopes as $scope) {
     $s = _valkey_window_start(_valkey_window_pending($flag_path, $scope));
     if ($s > 0 && ($start == 0 || $s < $start)) {
@@ -501,11 +503,16 @@ if ($use_valkey) {
         // A site's window waits out the backoff TTL before its clear, as the
         // box's does: a site whose own connection keeps failing then reopens
         // one at most that often, and the requests meanwhile cache on the
-        // database inside it.
-        if ($vw_scope !== 'box' && microtime(TRUE) - _valkey_window_start($vw_id) < $backoff_ttl_s) {
+        // database inside it. It also waits while requests of the site whose
+        // PHP has no phpredis keep coming (win.<site>.seen): those can only
+        // run on the database, so the site's other requests stay there with
+        // them rather than on a cache those never update.
+        $vw_seen = ($vw_scope !== 'box') ? _valkey_backoff_mtime(_valkey_window_file($flag_path, $vw_scope, 'seen')) : FALSE;
+        if ($vw_scope !== 'box' && (microtime(TRUE) - _valkey_window_start($vw_id) < $backoff_ttl_s
+            || ($vw_seen !== FALSE && time() - $vw_seen < $backoff_ttl_s))) {
           $valkey_up = FALSE;
           $last_reason = 'window-recovery';
-          $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
+          $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes, _valkey_window_start($vw_id));
           break;
         }
         if (_valkey_window_recover($flag_path, $vw_scope, $vw_id, $valkey_socket_path, $valkey_host, $valkey_port, $auth_pass, $connect_timeout_s, $read_timeout_s, $valkey_transport)) {
@@ -514,7 +521,7 @@ if ($use_valkey) {
         else {
           $valkey_up = FALSE;
           $last_reason = 'window-recovery';
-          $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
+          $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes, _valkey_window_start($vw_id));
           _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY WINDOW action=wait scope='.$vw_scope.' id='.$vw_id);
           break;
         }
@@ -525,10 +532,22 @@ if ($use_valkey) {
         }
         _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
       }
+    } elseif ($last_reason === 'no-phpredis') {
+      // This PHP has no phpredis: a condition of this request, not of Valkey,
+      // so the box's backoff and its window stay untouched (one such site set
+      // them on every request and kept every site of the box on its database,
+      // then cleared Valkey for all of them). The site runs on its database in
+      // a window of its own, kept pending while such requests keep coming.
+      if (isset($valkey_window_scopes[1])) {
+        $vw_start = _valkey_window_mark($valkey_window_scopes[1], $flag_path);
+        _valkey_backoff_touch(_valkey_window_file($flag_path, $valkey_window_scopes[1], 'seen'));
+        $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes, $vw_start);
+      }
+      _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY NOPHPREDIS action=site-window flag='.$flag_path);
     } else {
       _valkey_backoff_touch($flag_path);
-      _valkey_window_mark('box', $flag_path);
-      $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
+      $vw_start = _valkey_window_mark('box', $flag_path);
+      $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes, $vw_start);
       _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
     }
   } else {
@@ -536,8 +555,8 @@ if ($use_valkey) {
     // an earlier release) opens one now.
     $valkey_up = FALSE;
     $last_reason = 'backoff-active';
-    _valkey_window_mark('box', $flag_path);
-    $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
+    $vw_start = _valkey_window_mark('box', $flag_path);
+    $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes, $vw_start);
     _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY SKIP reason=backoff-active flag='.$flag_path);
   }
 }

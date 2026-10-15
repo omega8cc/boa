@@ -105,6 +105,12 @@
       outage the database cache refuses entries older than the outage. On
       Drupal 7, Drupal 8 and later, and Backdrop.
 
+    * A site on PHP 8.6, which BOA builds without the Valkey extension, no
+      longer sends every site on its server to the database. Each of its
+      requests failed BOA's Valkey check and set the server-wide backoff,
+      so all sites ran on their database cache 15 seconds at a time for as
+      long as it had visitors; now only that site runs on its database.
+
     * Sites keep their Valkey cache when the local socket cannot be used but
       TCP can. BOA's check per request fell back to TCP while the redis
       module was still handed the socket: Drupal 8 and later sites ran on
