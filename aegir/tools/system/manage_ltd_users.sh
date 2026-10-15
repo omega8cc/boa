@@ -886,15 +886,34 @@ _ltd_drush_strip_usr() {
   rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
   rm -f -- ./mydropwizard ./utf8mb4_convert ./backdrop
 }
-# The instance's Drush 8 extensions linked into the real ~/.drush/usr.
-# $1 = the instance's .drush/usr.
+# The instance's Drush 8 extensions linked into the real ~/.drush/usr (the
+# current, pinned directory), all from inside it. The login can rename to
+# usr, or to an extension's name in it, what another account left
+# group-writable: nothing is done unless usr/ and every directory above it
+# are root's or the account's own identities' (_acct_walk_uids); a link at
+# the name is kept as before; a file there that root or the account's own
+# identities own is removed (_ACCT_RM_OWN_PL), another user's left; a
+# directory there is never removed nor written into; and the link is made
+# only where the name is then free (-T). Prints dev:ino of each entry left
+# for another owner. $1 = the instance's .drush/usr, $2 = the account.
 _ltd_drush_usr_links() {
-  local _t
+  local _t _o _u
+  _o=$(_acct_walk_uids "${2}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - 2> /dev/null || return 0
   for _t in registry_rebuild clean_missing_modules drupalgeddon drush_ecl \
     safe_cache_form_clear utf8mb4_convert backdrop; do
-    if [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ]; then
-      ln -sfn "${1}/${_t}" "./${_t}"
+    [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ] || continue
+    if [ -d "./${_t}" ]; then
+      _u=$(stat -c %u -- "./${_t}" 2> /dev/null) || continue
+      if [[ ",${_o}," != *",${_u},"* ]] && getent passwd "${_u}" > /dev/null 2>&1; then
+        stat -c '%d:%i' -- "./${_t}"
+      fi
+      continue
     fi
+    if [ -e "./${_t}" ]; then
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "./${_t}" 2> /dev/null
+    fi
+    ln -s -T -- "${1}/${_t}" "./${_t}" 2> /dev/null
   done
 }
 # The release serial's stamp of an account's ~/.drush, written inside the
@@ -1929,7 +1948,7 @@ _enable_chattr() {
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     # Group owning this account's tree, derived from the user this call
     # handles -- never the script-scope default, which is box-wide.
-    local _accGrp _hdRefused=NO
+    local _accGrp _hdRefused=NO _ltdLeft
     _accGrp=$(_acct_group "$1")
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
@@ -1972,8 +1991,12 @@ _enable_chattr() {
       _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "$1:${_accGrp}" 02755 YES
       # ~/.drush was handed over and given its mode by the reset above
       if [ "${_hdRefused}" = "NO" ]; then
-        _ltd_in_real_dir "${_U_HD}" \
-          _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
+        _ltdLeft=$(_ltd_in_real_dir "${_U_HD}" _ltd_in_real_dir ./usr \
+          _ltd_drush_usr_links "${_dscUsr}/.drush/usr" "${_USER}")
+        _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+        if [ "${_ltdLeft}" -gt 0 ]; then
+          echo "NOTE: ${_USER}: the Drush extension links left ${_ltdLeft} entries owned by another user in place in ${_U_HD}/usr"
+        fi
       fi
     fi
 
