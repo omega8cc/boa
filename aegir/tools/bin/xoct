@@ -4895,12 +4895,21 @@ _xoct_wg_unseed() {
 ### switched here. Under xmass the account's switch travels with every live
 ### pass instead. The line covers the install's own pass and the upgrade
 ### pass it chains, which both run before the source's settings are merged.
-### Once they are merged and the source's switch is carried, the line this
-### run put is taken back (_xoct_dbctl_seed_back), under xmass too, so the
-### target's later passes treat the account as any other of the box. A line
-### the target's cnf held before the seed is its operator's and stays. A
-### merge that failed leaves the line where it is, and says so: without the
-### source's settings the target cannot know an account its source kept out.
+### Once they are merged and the source's switch is carried, the line is
+### taken back (_xoct_dbctl_seed_back), under xmass too, so the target's
+### later passes treat the account as any other of the box. A merge that
+### failed leaves the line where it is, and says so: without the source's
+### settings the target cannot know an account its source kept out.
+### The seed says what it did in a root-only note beside the cnf there,
+### /root/.<account>.dbctl-seed.txt, one word: made (the cnf made for the
+### line), line (the line added to a cnf that was there) or operator (the
+### cnf already assigns _DB_BROKER_BORN, in any spelling: nothing is added,
+### and that line is its operator's for good). The take-back, and the unseed
+### of an install that did not happen, act on that note as read on the
+### target, so a re-run after any exit takes back what an earlier run put;
+### each removes the note with the line, an operator note stays. The unseed
+### leaves an account the target holds alone: its line is taken back with
+### the merge, by the create's re-run.
 # 1 = account on the target 2 = target
 _XOCT_DBCTL_SEED=""
 _xoct_dbctl_seed() {
@@ -4909,42 +4918,70 @@ _xoct_dbctl_seed() {
   # shellcheck disable=SC2029
   _XOCT_DBCTL_SEED=$(ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
     _c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    _w=\$(cat \${_n} 2> /dev/null)
+    case \${_w} in
+      operator) grep -qE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
+      made|line) grep -qx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
+    esac
+    _w=
     if [ ! -e \${_c} ]; then
-      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && echo made
-    elif ! grep -qx '_DB_BROKER_BORN=NO' \${_c}; then
-      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && echo line
-    fi" 2> /dev/null)
+      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && _w=made
+    elif grep -qE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c}; then
+      _w=operator
+    else
+      [ -z \"\$(tail -c 1 \${_c})\" ] || echo >> \${_c}
+      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && _w=line
+    fi
+    [ -n \"\${_w}\" ] && ( umask 077; printf '%s\\n' \${_w} > \${_n} ) && echo \${_w}" 2> /dev/null)
   return 0
 }
 # 1 = account on the target 2 = target
 _xoct_dbctl_unseed() {
-  case "${_XOCT_DBCTL_SEED}" in
-    made)
-      # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ] && rm -f \${_c}" 2> /dev/null
-      ;;
-    line)
-      # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null
-      ;;
-  esac
+  # shellcheck disable=SC2029
+  ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+    _c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    _w=\$(cat \${_n} 2> /dev/null)
+    case \${_w} in
+      made|line) ;;
+      *) exit 0 ;;
+    esac
+    if [ \${_w} = made ] && [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ]; then
+      rm -f \${_c}
+    elif [ -e \${_c} ]; then
+      grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+      [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c}
+      rm -f \${_c}.dbseed
+    fi
+    rm -f \${_n}" 2> /dev/null
   _XOCT_DBCTL_SEED=""
   return 0
 }
 # 1 = account on the target 2 = target 3 = what the merge of the source's
 # settings returned
 _xoct_dbctl_seed_back() {
-  case "${_XOCT_DBCTL_SEED}" in
-    made|line)
-      if [ "${3}" != "0" ]; then
-        echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}"
-        echo "ALRT: remove that line there once a re-run of this create has merged them"
-      else
-        # shellcheck disable=SC2029
-        if ! ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null; then
-          echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there"
-        fi
-      fi
+  local _r
+  # shellcheck disable=SC2029
+  _r=$(ssh root@"${2}" "_c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    case \"\$(cat \${_n} 2> /dev/null)\" in
+      made|line) ;;
+      *) echo none; exit 0 ;;
+    esac
+    [ '${3}' = 0 ] || { echo kept; exit 0; }
+    grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+    [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
+    rm -f \${_c}.dbseed
+    echo failed" 2> /dev/null)
+  case "${_r}" in
+    none|back) ;;
+    kept)
+      echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}"
+      echo "ALRT: a re-run of this create takes it back once it has merged them"
+      ;;
+    *)
+      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt"
       ;;
   esac
   _XOCT_DBCTL_SEED=""
@@ -5718,8 +5755,9 @@ _migrate_prepare() {
         ### here leaves ${_XOCT_LOCK_FILE} behind with a dead owner. The
         ### signal handler exits (bash would otherwise resume at the next
         ### statement and run the rest of the create unlocked); exiting runs
-        ### the EXIT handler, which does the removals.
-        trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        ### the EXIT handler, which does the removals; it also takes back the
+        ### broker seed of an account the install did not make.
+        trap '_xoct_chattr_back; _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"' > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
