@@ -315,7 +315,11 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
             'arguments' => ['container'],
           ],
           'cache_tags_provider.container' => [
-            'class' => 'Drupal\redis\Cache\RedisCacheTagsChecksum',
+            // With the failover wired, the proxy: when Valkey cannot be
+            // reached after the probe, a module copy that has the bootstrap
+            // fallback answers from the database and the request compiles its
+            // container instead of failing.
+            'class' => !empty($settings['redis.failover']) ? 'Drupal\redis\Cache\RedisCacheTagsChecksumProxy' : 'Drupal\redis\Cache\RedisCacheTagsChecksum',
             'arguments' => ['@redis.factory'],
           ],
           'serialization.phpserialize' => [
