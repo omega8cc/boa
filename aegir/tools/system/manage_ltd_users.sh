@@ -7328,6 +7328,256 @@ _NOW=${_NOW//[^0-9-]/}
 [ -d "/var/backups/ltd/old" ] || mkdir -p /var/backups/ltd/{conf,log,old}
 [ -d "/var/backups/zombie/deleted" ] || mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands without its done marker. Root's
+# /var/backups/a2b only: a link on the way reads as no state. One text
+# wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+# The freeze route. A db-import killed in its freeze window (SIGKILL, a
+# crash, a reboot) runs no EXIT trap and leaves aegir2boa's freeze marker,
+# log/proxied.pid, which keeps the account out of every Octopus, nightly
+# and limited-shell pass and its web group from converting. On a box armed
+# for the web group that is no standby, the marker goes a day after this
+# worker first sees it with no migration running. The half-imported panel's
+# dispatcher stays held (the Octopus pass and BOA.sh.txt read the same
+# aegir2boa state) until the import is re-run or reverted, and while that
+# state stands with no import running the operator is told every day. Any
+# other marker (one the account made, a relay record, one put by hand) is
+# left as it is.
+#
+# ./proxied.pid in the current (real) log/, read through one handle that
+# never follows a link or blocks on a FIFO, the handle proven to be the
+# entry lstat saw: "a2b <dev>:<ino>:<mtime>" for aegir2boa's own freeze
+# (root's single-link regular file reading A2B-IMPORT-FREEZE, a second line
+# verb=<db-import|revert-db> pid=<n> allowed), "relay" for a relay record
+# (COMPLETE), else the entry's kind: link, dir, special or file. Nothing
+# when there is none. $1 = root's uid.
+_LTD_FREEZE_CLASS_PL='use Fcntl;
+my ($ru) = @ARGV;
+my $n = "./proxied.pid";
+my @l = lstat($n);
+exit 0 unless @l;
+if (-l _) { print "link\n"; exit 0 }
+if (-d _) { print "dir\n"; exit 0 }
+if (! -f _) { print "special\n"; exit 0 }
+sysopen(my $h, $n, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or do { print "file\n"; exit 0 };
+my @s = stat($h);
+unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { print "file\n"; exit 0 }
+my $d = "";
+sysread($h, $d, 4097);
+close($h);
+my @ln = split(/\n/, $d, -1);
+pop @ln if @ln && $ln[-1] eq "";
+if (@ln && $ln[0] eq "COMPLETE") { print "relay\n"; exit 0 }
+if (length($d) <= 4096 && $s[4] == $ru && $s[3] == 1 && (@ln == 1 || @ln == 2)
+  && $ln[0] eq "A2B-IMPORT-FREEZE"
+  && (@ln == 1 || $ln[1] =~ /^verb=(db-import|revert-db) pid=[1-9][0-9]*$/)) {
+  print "a2b $s[0]:$s[1]:$s[9]\n";
+  exit 0;
+}
+print "file\n";
+exit 0'
+# Unlink ./proxied.pid only while it is still the freeze classified: root's
+# single-link regular file of that dev:ino:mtime. $1 = root's uid, $2 = the
+# dev:ino:mtime.
+_LTD_FREEZE_RM_PL='my ($ru, $id) = @ARGV;
+my @l = lstat("./proxied.pid");
+exit 1 unless @l && -f _ && $l[4] == $ru && $l[3] == 1 && "$l[0]:$l[1]:$l[9]" eq $id;
+unlink("./proxied.pid") or exit 1;
+exit 0'
+# A relay record's other half in the current (real) log/: root's
+# single-link migproxy.cnf of the source role, read without following a
+# link or blocking on a FIFO. $1 = root's uid.
+_LTD_FREEZE_REC_PL='use Fcntl;
+my ($ru) = @ARGV;
+sysopen(my $h, "./migproxy.cnf", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit 1;
+my @s = stat($h);
+exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == $ru;
+my $d = "";
+sysread($h, $d, 1048576);
+exit(($d =~ /^_MIG_ROLE=source$/m) ? 0 : 1)'
+# A proxy vhost in the current (real) vhost.d, by the marks xoct's proxy
+# templates carry: every regular file but a dot file (a saved original),
+# read through one handle, 1 MiB at most each, never through a link.
+_LTD_FREEZE_PROXY_PL='use Fcntl;
+opendir(my $d, ".") or exit 2;
+for my $n (readdir($d)) {
+  next if $n =~ /^\./;
+  my @l = lstat("./$n");
+  next unless @l && -f _;
+  sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  next unless @s && -f _ && $s[0] == $l[0] && $s[1] == $l[1];
+  my $c = "";
+  sysread($h, $c, 1048576);
+  close($h);
+  exit 0 if index($c, "Plain HTTP proxy (START)") >= 0 || index($c, "Secure HTTPS proxy") >= 0;
+}
+exit 1'
+# The process table, read once a pass: "tool <name>" for each of
+# aegir2boa-stage2, xoct, xcopy, xmass and xtrim a process runs (the name in
+# any word of its argv, so bash -x or sh -c counts), "held <account>" for
+# each account a process holds a file or its working directory under $2
+# (/var/backups/a2b: a dump load the killed import orphaned counts). $1 =
+# the proc root.
+_LTD_FREEZE_PS_PL='my ($p, $base) = @ARGV;
+opendir(my $d, $p) or exit 2;
+my (%t, %a);
+for my $n (readdir($d)) {
+  next unless $n =~ /^[0-9]+$/ && $n != $$;
+  if (open(my $h, "<", "$p/$n/cmdline")) {
+    local $/;
+    my $c = <$h>;
+    close($h);
+    for my $w (split(/[\0\s]+/, defined $c ? $c : "")) {
+      $w =~ s{.*/}{};
+      $t{$w} = 1 if $w =~ /^(aegir2boa-stage2|xoct|xcopy|xmass|xtrim)$/;
+    }
+  }
+  my @f = ("$p/$n/cwd");
+  if (opendir(my $fd, "$p/$n/fd")) {
+    push @f, map { "$p/$n/fd/$_" } grep { /^[0-9]+$/ } readdir($fd);
+    closedir($fd);
+  }
+  for my $f (@f) {
+    my $r = readlink($f);
+    next unless defined $r && index($r, "$base/") == 0;
+    $a{$1} = 1 if substr($r, length($base) + 1) =~ m{^([^/]+)};
+  }
+}
+print "tool $_\n" for sort keys %t;
+print "held $_\n" for sort keys %a;
+exit 0'
+# Relay evidence beside a freeze of the account $1: root's source-role
+# record, or a proxy vhost (a vhost.d that is no real directory, or one not
+# read in time, counts as one).
+_ltd_freeze_relay() {
+  local _d="/data/disk/${1}"
+  _ltd_in_real_dir "${_d}/log" perl -e "${_LTD_FREEZE_REC_PL}" 0 2> /dev/null && return 0
+  [ -e "${_d}/config/server_master/nginx/vhost.d" ] || return 1
+  _ltd_in_real_dir "${_d}/config/server_master/nginx/vhost.d" true || return 0
+  _ltd_in_real_dir "${_d}/config/server_master/nginx/vhost.d" \
+    timeout 60 perl -e "${_LTD_FREEZE_PROXY_PL}" 2> /dev/null
+  [ "$?" != "1" ]
+}
+# One pass of the route over every account served from this box. The age
+# is this worker's own first sighting, /var/log/boa/manage-ltd-freeze.<a>.seen
+# (the epoch and the marker's dev:ino:mtime, root's), never the marker's
+# mtime: a new marker starts it again, and so does every pass that finds a
+# migration running or relay evidence. A line per account it looks at goes
+# to the pass log.
+_ltd_freeze_route() {
+  local _d _a _c _id _seen _se _sid _now _u _live _ps="" _psread=NO
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] || return 0
+  [ -e /root/.standby.cnf ] && return 0
+  [ -e /root/.standby.prep.cnf ] && return 0
+  _now=$(date +%s)
+  for _d in /data/disk/*; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    _a="${_d##*/}"
+    case "${_a}" in
+      ""|*[!a-z0-9-]*) continue ;;
+    esac
+    [ -e "${_d}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_d}/log/fpm.txt" ] || continue
+    _seen="/var/log/boa/manage-ltd-freeze.${_a}.seen"
+    _c=""
+    if _ltd_in_real_dir "${_d}/log" true; then
+      _c=$(_ltd_in_real_dir "${_d}/log" perl -e "${_LTD_FREEZE_CLASS_PL}" 0 2> /dev/null)
+    elif [ -e "${_d}/log/proxied.pid" ] || [ -L "${_d}/log/proxied.pid" ]; then
+      _c="log"
+    fi
+    _u=NO
+    _a2b_import_unfinished "${_a}" && _u=YES
+    if [ -z "${_c}" ] && [ "${_u}" = "NO" ]; then
+      rm -f -- "${_seen}"
+      continue
+    fi
+    if [ "${_psread}" = "NO" ]; then
+      _ps=$(perl -e "${_LTD_FREEZE_PS_PL}" /proc /var/backups/a2b 2> /dev/null) \
+        || _ps="tool ?"
+      _psread=YES
+    fi
+    # an import of the account runs: any stage 2 run, or a process holding
+    # a file of its state
+    _live=NO
+    case $'\n'"${_ps}"$'\n' in
+      *$'\n'"tool aegir2boa-stage2"$'\n'*|*$'\n'"tool ?"$'\n'*|*$'\n'"held ${_a}"$'\n'*)
+        _live=YES
+        ;;
+    esac
+    if [ "${_u}" = "YES" ] && [ "${_live}" = "NO" ]; then
+      _ltd_notice "a2b-unfinished-${_a}" "aegir2boa import unfinished on ${_a}" \
+        "aegir2boa's state in /var/backups/a2b/${_a} shows its db-import, or the revert of one, unfinished with none running: the account's task dispatcher stays held and no Octopus pass hands it back. Finish it with aegir2boa-stage2 import --account ${_a} --route db-import, or undo it with aegir2boa-stage2 import --account ${_a} --revert-db-import (each dry first, then with --live)"
+    fi
+    case "${_c}" in
+      "")
+        rm -f -- "${_seen}"
+        continue
+        ;;
+      log)
+        rm -f -- "${_seen}"
+        echo "freeze route: ${_a} KEEP-LOG log-not-real"
+        continue
+        ;;
+      a2b\ *) ;;
+      *)
+        rm -f -- "${_seen}"
+        echo "freeze route: ${_a} KEEP-OTHER ${_c}"
+        continue
+        ;;
+    esac
+    _id="${_c#a2b }"
+    if [ -e /run/boa_migration_park.pid ] || [ "${_live}" = "YES" ] \
+      || [[ "${_ps}" == *"tool "* ]]; then
+      rm -f -- "${_seen}"
+      echo "freeze route: ${_a} KEEP-LIVE a2b"
+      continue
+    fi
+    if _ltd_freeze_relay "${_a}"; then
+      rm -f -- "${_seen}"
+      echo "freeze route: ${_a} KEEP-RELAY a2b"
+      continue
+    fi
+    _se=""
+    _sid=""
+    if [ -f "${_seen}" ] && [ ! -L "${_seen}" ]; then
+      read -r _se _sid _ < "${_seen}"
+    fi
+    if [ "${_sid}" != "${_id}" ] || [[ ! "${_se}" =~ ^[0-9]+$ ]]; then
+      printf '%s %s\n' "${_now}" "${_id}" > "${_seen}"
+      echo "freeze route: ${_a} KEEP-YOUNG a2b (first seen now)"
+      continue
+    fi
+    if [ $(( _now - _se )) -le 86400 ]; then
+      echo "freeze route: ${_a} KEEP-YOUNG a2b (first seen $(( (_now - _se) / 3600 )) h ago)"
+      continue
+    fi
+    if _ltd_in_real_dir "${_d}/log" perl -e "${_LTD_FREEZE_RM_PL}" 0 "${_id}" 2> /dev/null; then
+      rm -f -- "${_seen}"
+      echo "freeze route: ${_a} REAP a2b"
+      _ltd_notice "a2b-freeze-${_a}" "freeze of a killed aegir2boa import removed on ${_a}" \
+        "log/proxied.pid (A2B-IMPORT-FREEZE) stood for over a day since this worker first saw it, with no migration running and no relay record or proxy vhost beside it: ${_a} rejoins the Octopus, nightly and limited-shell passes, and its task dispatcher stays held until the import ends. Finish it with aegir2boa-stage2 import --account ${_a} --route db-import, or undo it with aegir2boa-stage2 import --account ${_a} --revert-db-import (each dry first, then with --live)"
+    else
+      echo "freeze route: ${_a} KEEP-RACE a2b"
+    fi
+  done
+  return 0
+}
 # Only instgrp writes its pid into /run/boa_run.pid; the barracuda, octopus
 # and boa wrappers create it empty and refuse to start while it exists. A
 # pid-carrying lock whose process is gone (or is not root's) is therefore a
@@ -7438,6 +7688,9 @@ else
   _add_allow_snail_if_not_exists
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _ltd_gone_hand_over_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  # before the account loop, which skips a frozen account: one the route
+  # clears rejoins this very pass
+  _ltd_freeze_route >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
     _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
