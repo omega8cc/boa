@@ -322,7 +322,9 @@ print "R\t$_\n" for sort keys %r;'
 
 # The walk: every component above each root and every link inside each root
 # (never followed), then the directories directory-links lead to, each once
-# by its real path. One NUL-separated record per link whose owner differs
+# by its real path: a directory already walked is not entered again from a
+# parent walked after it, and a link reached twice (above one root and inside
+# another) is one record. One NUL-separated record per link whose owner differs
 # from its target's: class, kind, reason, path, link uid, target uid, real
 # target, then a last record "SUMMARY", entries, roots walked, roots missing,
 # extra directories walked, complete (1 or 0), directories reached only
@@ -359,7 +361,7 @@ print "R\t$_\n" for sort keys %r;'
 # store directory) the directory given is no platform.
 _LG_WALK_PL='use strict; use warnings; use File::Find (); use Cwd ();
 my ($max, $maxent) = (50000, 50000000); my (%uname, %home, %walked, @queue, @recs);
-my ($entries, $nroots, $missing, $extra, $complete, $skipped, $qown, $qsys) = (0, 0, 0, 0, 1, 0, 0, 0); my (%queued, %homeacct);
+my ($entries, $nroots, $missing, $extra, $complete, $skipped, $qown, $qsys) = (0, 0, 0, 0, 1, 0, 0, 0); my (%queued, %homeacct, %seen); my $cur = "";
 my $dl = ($ENV{LG_DEADLINE} // "") =~ /^[0-9]+$/ ? $ENV{LG_DEADLINE} : 0; my $stop = 0;
 my $store = Cwd::abs_path("/data/all"); my $one = $ENV{LG_ONE} ? 1 : 0; my $tree = $ENV{LG_TREE} ? 1 : 0; my %rr;
 setpwent(); while (my @p = getpwent()) { $uname{$p[2]} = $p[0]; $home{$p[0]} = $p[7]; } endpwent();
@@ -386,7 +388,7 @@ sub under_walked { my $p = shift; while (length $p) { return 1 if $walked{$p}; l
 sub follow { my ($r, $own) = @_; return if $one || $r =~ m{^/(?:proc|sys|dev|run)(?:/|$)} || under_walked($r) || $queued{$r}++;
   if ($own) { if ($qown < $max) { $qown++; push @queue, $r; } else { $skipped++; } }
   elsif ($qsys < $max) { $qsys++; push @queue, $r; } else { $complete = 0; } }
-sub link_rec { my $p = shift; my @l = lstat($p) or return; my $r = Cwd::abs_path($p); return unless defined $r;
+sub link_rec { my $p = shift; return if $seen{$p}++; my @l = lstat($p) or return; my $r = Cwd::abs_path($p); return unless defined $r;
   my @t = stat($p) or return; my ($lu, $tu, $isdir) = ($l[4], $t[4], -d _ ? 1 : 0);
   if ($lu == $tu) { follow($r, defined acct_of($lu) ? 1 : 0) if $isdir; return; }
   my ($c, $k, $why, $in) = ("", "", "", 0); my $shared = (defined $store && index($r, "$store/") == 0) ? 1 : 0;
@@ -413,12 +415,13 @@ for my $root (@roots) { my $p = ""; for my $c (grep { length } split m{/}, $root
 my @keep; for my $r (sort keys %rr) { push @keep, $r unless grep { index("$r/", "$_/") == 0 } @keep; }
 $walked{$_} = 1 for @keep; $top{$_} = 1 for @keep;
 my $wanted = sub { if ($stop) { $File::Find::prune = 1; return; }
+  if ($walked{$File::Find::name} && $File::Find::name ne $cur && !-l $File::Find::name) { $File::Find::prune = 1; return; }
   if (++$entries > $maxent) { $complete = 0; $File::Find::prune = 1; return; }
   if ($dl && ($entries == 1 || $entries % 256 == 0) && time() >= $dl) { ($stop, $complete) = (1, 0); $File::Find::prune = 1; return; }
   if (-l $File::Find::name) { link_rec($File::Find::name); return; }
   $File::Find::prune = 1 if $one && !$top{$File::Find::name} && $File::Find::name =~ m{/sites/[^/]+/(?:files|private)$} && -d $File::Find::name; };
-for my $r (@keep) { $nroots++; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $r); }
-while (defined(my $d = shift @queue)) { last if $stop; next if under_walked($d); $walked{$d} = 1; $extra++; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $d); }
+for my $r (@keep) { $nroots++; $cur = $r; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $r); }
+while (defined(my $d = shift @queue)) { last if $stop; next if under_walked($d); $walked{$d} = 1; $extra++; $cur = $d; File::Find::find({ wanted => $wanted, no_chdir => 1, follow => 0 }, $d); }
 print "$_\0" for @recs; print join("\0", "SUMMARY", $entries, $nroots, $missing, $extra, $complete, $skipped), "\0";'
 
 _lg_need_root() {
