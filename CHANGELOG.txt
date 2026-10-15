@@ -599,7 +599,8 @@
       login's ~/.ssh and ~/.tmp, its removal of old entries from a login's
       ~/.tmp and the account's .tmp, and its 0600 on key files act only on
       what root, the login or the account's own users own; what another
-      account placed there stays as it is and is counted.
+      account placed there stays as it is, and the hand-over counts what it
+      left on a NOTE line in its own log.
 
     * A platform Verify's ownership and permission fixes leave files
       another account's users own as they are, with everything below them,

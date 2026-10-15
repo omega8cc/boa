@@ -711,7 +711,7 @@ _perm_left_note() {
   rm -f -- "${_PERM_LEFT_F}"
   _PERM_LEFT_F=""
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
-  echo "NOTE: ${1}: the permissions pass left ${_n} entries owned by another user as they were"
+  echo "NOTE: ${1}: ${2:-the permissions pass} left ${_n} entries owned by another user as they were"
 }
 ### The names after $2 in the current (pinned) directory handed to $2 (owner
 ### or owner:group) through _SAT_REOWN_OWN_PL with the uids $1; status 1 when
@@ -1653,7 +1653,25 @@ _store_put_copy_here() {
   return 1
 }
 
+### The llms.txt, robots.txt and Boost cache legs run outside the permissions
+### pass, so each counts what it leaves for another owner on a NOTE line of
+### its own.
 _fix_llms_txt() {
+  _perm_left_open
+  _llms_txt_legs
+  _perm_left_note "${_Dir}" "the llms.txt leg"
+}
+_fix_robots_txt() {
+  _perm_left_open
+  _robots_txt_legs
+  _perm_left_note "${_Dir}" "the robots.txt leg"
+}
+_fix_boost_cache() {
+  _perm_left_open
+  _boost_cache_legs
+  _perm_left_note "${_Plr}/cache" "the Boost cache leg"
+}
+_llms_txt_legs() {
   # The site files/ dir is tenant-writable (oN:www-data 02775; the shell user is
   # in www-data), so a tenant can plant files/llms.txt as a symlink, and
   # files/ itself is a link the tenant can repoint. curl -o follows a link and
@@ -1768,15 +1786,15 @@ _fix_llms_txt() {
   fi
 }
 
-_fix_robots_txt() {
-  # See _fix_llms_txt: files/ is tenant-writable and a link the tenant can
+_robots_txt_legs() {
+  # See _llms_txt_legs: files/ is tenant-writable and a link the tenant can
   # repoint, so every leg acts only inside the store as it resolves once here
   # (_site_files_store), entered for real, on ./robots.txt -- strip the leaf,
   # fetch only into the root-only staging dir and put the copy over the leaf
   # (_store_fetch), read it bounded and never through a link, and never
   # follow one nor act by name in the owner and mode legs.
   local _fls _wg _o
-  # as in _fix_llms_txt: another user's file at these names is left as it is
+  # as in _llms_txt_legs: another user's file at these names is left as it is
   _o=$(_acct_walk_uids "${_HM_U}") || return 0
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
@@ -1784,7 +1802,7 @@ _fix_robots_txt() {
     return 0
   fi
   _wg=$(_store_web_group "${_R_FLS}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
-  # as in _fix_llms_txt: nothing is written into a converted share
+  # as in _llms_txt_legs: nothing is written into a converted share
   [ "${_wg}" = "SKIP" ] && return 0
   _fls="${_R_FLS}"
   _in_pinned_dir "${_fls}" _desymlink_planted ./robots.txt
@@ -1810,7 +1828,7 @@ _fix_robots_txt() {
   fi
 }
 
-_fix_boost_cache() {
+_boost_cache_legs() {
   # ${_Plr} is the docroot, 02775 and group-writable (by the account's shell
   # identities; by ANY tenant while the instance still carries the box-wide
   # 'users' group), so cache is a name a tenant can plant as a symlink, or
