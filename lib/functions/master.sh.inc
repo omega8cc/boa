@@ -1238,9 +1238,6 @@ _provision_backend_up() {
 
 #
 _hostmaster_dr_up() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
-  fi
   # Master-only helper: resolve the master home when the caller exported no
   # _ROOT (the barracuda process), and never run against an empty, missing
   # or '/' root -- the relative mv and the copy below would otherwise act on
@@ -1286,6 +1283,9 @@ _hostmaster_dr_up() {
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
     cp -af /opt/tools/drush/8/drush "${_drS}/" || _drOk=NO
   else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
+    fi
     # the archive unpacks drush/ in the directory it is fetched to
     ( cd -- "${_drS}" && _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz" ) || _drOk=NO
     find "${_drS}/drush" -type d -exec chmod 0755 {} \; &> /dev/null
