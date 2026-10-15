@@ -48,6 +48,11 @@
       names count as files, a link inside the store counts once, and a
       store that is itself a link is counted, bytes too, through it.
 
+    * A Clone, Migrate or upgrade whose un-share copy was made for files
+      but not for private, or the other way round, is reported as not
+      completed (an ALERT, and a warning in the task log) instead of as
+      un-shared: a link into the other site's store was still there.
+
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
       Valkey, which is keyed by the site name without a leading www., and

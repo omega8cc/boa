@@ -3649,8 +3649,9 @@ _run_one_site() {
   # account (explicit --account preferred; otherwise by locating the valid
   # vhost+alias pair), validates tokens fail-closed, and converts exactly that
   # one site via _process_site. It never reads or writes the global CLEAN-DRY
-  # state file and never sweeps other accounts. Always returns 0 (done or
-  # safe-skip); the caller treats any internal warning as non-fatal.
+  # state file and never sweeps other accounts. Returns 0 (done or
+  # safe-skip), or 3 when a requested un-share or store archive was left
+  # undone; the caller treats either as non-fatal.
   _SITE="${_ONE_SITE}"
   _ACCOUNT_DIR=""
   _ACCOUNT_NAME=""
@@ -3769,12 +3770,14 @@ _run_one_site() {
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
 
     # A clone explicitly requested --force-unshare but the inherited share could
-    # not be broken (missing source / no space / rsync fail): the in-site link
-    # may still point at another site's store. Surface it loudly and signal the
-    # caller (non-zero, still non-fatal to the clone).
+    # not be broken, or was broken for files and not for private or the other
+    # way round (missing source / no space or inodes / rsync fail): an in-site
+    # link may still point at another site's store. Surface it loudly and
+    # signal the caller (non-zero, still non-fatal to the clone).
     if [ "${_FORCE_UNSHARE}" = "YES" ] \
       && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
-      && [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ]; then
+      && { [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ] \
+        || [ "${_SITE_SHARED_SYMLINK_FIX_SKIPPED}" = "YES" ]; }; then
       _log "[ALERT] Clone unshare for ${_SITE} not completed; files may still be shared with the source - manual review required"
       return 3
     fi
