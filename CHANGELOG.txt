@@ -17,13 +17,14 @@
     * On Drupal 10 and 11 each copy of a site now has a cache namespace of
       its own in Valkey: the redis module, now 8.x-1.11.3, adds a segment
       taken from the copy's database host, name and table prefix to the
-      name-based prefix. A same-name Migrate no longer gets 500s from the live site
-      while its copy, running a newer core, is built. The deploy's purge
-      spares the live site's namespace, so the site keeps its cache during
-      the move and a busy site's Migrate no longer ends in a Warning about
-      the purge's sweep bound; the old copy's namespace is removed once
-      the new one serves the site. Every Drupal 10 and 11 site starts with
-      a cold cache once, when its server takes the new module.
+      name-based prefix. A same-name Migrate no longer gets 500s from the
+      live site while its copy, running a newer core, is built. The
+      deploy's purge spares the live site's namespace, so the site keeps
+      its cache during the move and a busy site's Migrate no longer ends
+      in a Warning about the purge's sweep bound; the old copy's namespace
+      is removed once the new one serves the site. Every Drupal 10 and 11
+      site starts with a cold cache once, when its server takes the new
+      module.
 
     * A same-name Migrate of an HTTPS site no longer verifies the site on
       its old platform after the copy is built. Encryption was switched
