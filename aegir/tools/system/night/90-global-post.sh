@@ -1310,7 +1310,11 @@ _dbctl_cnf_last() {
 # The database broker's daily report, on a box armed for it: the last
 # _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything else, no
 # line included, runs nothing here). One line per account, switched or why
-# not, and what stops the box, into this night's log. While the box could
+# not, and what stops the box, into /var/log/boa/dbctl-report.txt (root
+# only, rewritten each night, with whatever else the broker said); into
+# this night's log only the report's last line, its counts and words, and
+# that path: a login or a host an account chose never reaches the night's
+# incident scan. While the box could
 # switch an account and has not, or something stops a box that has an
 # account switched or one it could switch, the lines that say so
 # (not-switched, box) and the report's counts go to the box operator once
@@ -1325,17 +1329,29 @@ _dbctl_cnf_last() {
 # The counts are read from a broker that does not tell the two classes
 # apart yet as well: the two files arrive on their own.
 _dbctl_report() {
-  local _out _rc _l _last="" _sw _un _st _nr=NO _body=""
+  local _out _err _rc _l _last="" _sw _un _st _nr=NO _body=""
+  local _rep="/var/log/boa/dbctl-report.txt"
   [[ -x "/usr/local/bin/boa-dbctl" ]] || return 0
   [[ "$(_dbctl_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] || return 0
   if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
     return 0
   fi
   echo "dbctl-report: start"
-  _out=$(/usr/local/bin/boa-dbctl report < /dev/null)
+  mkdir -p /var/log/boa
+  rm -f -- "${_rep}"
+  _out=$(umask 077; /usr/local/bin/boa-dbctl report 2> "${_rep}" < /dev/null)
   _rc=$?
-  [[ -z "${_out}" ]] || printf '%s\n' "${_out}"
-  echo "dbctl-report: done rc=${_rc}"
+  _err=$(cat -- "${_rep}" 2> /dev/null)
+  { [[ -z "${_out}" ]] || printf '%s\n' "${_out}"
+    [[ -z "${_err}" ]] || printf '%s\n' "${_err}"; } > "${_rep}"
+  # the last line: the counts, or the ERR line of a report that failed
+  if [[ "${_rc}" == "0" ]]; then
+    _l="${_out##*$'\n'}"
+  else
+    _l="${_err##*$'\n'}"
+  fi
+  printf 'dbctl-report: %s\n' "$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)"
+  echo "dbctl-report: done rc=${_rc}, the whole report in ${_rep}"
   [[ "${_rc}" == "0" ]] || return 0
   while IFS= read -r _l; do
     _last="${_l}"
