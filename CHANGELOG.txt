@@ -23,8 +23,9 @@
       than the start's check leaves room for, so the run checks again
       before the hostmaster build and before the shared code and platforms
       build (a FATAL that says why), and before each requested platform
-      (skipped, with an ALRT line); a catalogue refresh counts the old
-      tree's inodes before it fetches the new one.
+      symbol, a core's dev, stage and prod set (skipped, with an ALRT
+      line), so it ends at most one set past the line; a catalogue refresh
+      counts the old tree's inodes before it fetches the new one.
 
     * Install, Clone, Migrate, Restore, Deploy and the Backdrop, Grav and
       TXP upgrade and rename tasks refuse before writing anything while a

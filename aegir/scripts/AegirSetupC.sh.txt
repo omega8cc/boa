@@ -2693,10 +2693,11 @@ _d_dist_loop() {
   # Every requested platform is a whole codebase, tens of thousands of
   # files; on a filesystem out of inodes each write fails as "No space left
   # on device" while df -h still shows room, and the half-extracted trees
-  # stay behind. A platform is built only while the filesystem holding the
-  # account has at most 90% of its inodes in use, the line at which BOA's
-  # own scripts refuse to run; the rest are named and left for a run after
-  # inodes are freed.
+  # stay behind. A requested symbol (for a core, its dev, stage and prod
+  # platforms) is started only while the filesystem holding the account
+  # has at most 90% of its inodes in use, the line at which BOA's own
+  # scripts refuse to run, so a run ends at most one symbol past it; the
+  # rest are named and left for a run after inodes are freed.
   local _d_iuse _d_isaid=NO
   # Drupal 11 needs MySQL 8. On a Percona 5.7 box its platforms built and
   # verified without a word, and every site Install then died inside the
