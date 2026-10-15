@@ -4561,6 +4561,32 @@ _satellite_db_broker_call() {
 }
 
 #
+# A migration tool's _DB_BROKER_BORN=NO left in a moved account's cnf. The
+# tool takes its own line back once the account's settings are merged, so
+# one still there a day after the account's create is a leftover: of a tool
+# from before that take-back, or of a create that ended early and was never
+# run again. It is taken back here, the exact line only, where the account
+# carries the create marker (/root/.<oN>.migration-create.txt, a regular
+# file of root's, not a link, older than a day) and the seed's note
+# (/root/.<oN>.dbctl-seed.txt) does not say the cnf held an operator's line
+# before; the note goes with it. An operator's _DB_BROKER_ARM=NO, which
+# nothing takes back, keeps the account out. One INFO line says so.
+_satellite_db_broker_born_leftover() {
+  local _c="/root/.${_USER}.octopus.cnf" _m="/root/.${_USER}.migration-create.txt"
+  local _n="/root/.${_USER}.dbctl-seed.txt"
+  [[ -n "$(find "${_m}" -maxdepth 0 -type f -user root -mmin +1440 2> /dev/null)" ]] || return 0
+  [[ "$(cat "${_n}" 2> /dev/null)" != "operator" ]] || return 0
+  grep -qx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
+  grep -vx "_DB_BROKER_BORN=NO" "${_c}" > "${_c}.dbseed" 2> /dev/null
+  if [[ "$?" -le 1 ]] && cat "${_c}.dbseed" > "${_c}"; then
+    rm -f "${_n}"
+    _msg "INFO: database broker: _DB_BROKER_BORN=NO taken back from ${_c}: a migration's line, left a day after the account's create"
+  fi
+  rm -f "${_c}.dbseed"
+  return 0
+}
+
+#
 # The database broker on a box armed for it, at the end of every INIT and
 # UPGRADE pass: the last _DB_BROKER_ARM line of /root/.barracuda.cnf says
 # YES (anything else, no line included, does not arm the box). The box
@@ -4569,10 +4595,11 @@ _satellite_db_broker_call() {
 # for an account whose cnf says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO, the
 # last assignment counting (a migration tool puts the second there before it
 # installs a moved account: such an account takes its state from its
-# source), nor on a replication standby or a box being prepared as one. The
-# broker's own checks decide; a call it refuses is a NOTE and the pass goes
-# on. The switch runs only under a pass launcher, which keeps
-# /run/boa_wait.pid and with it every task dispatcher off.
+# source; one left a day after its create is taken back first), nor on a
+# replication standby or a box being prepared as one. The broker's own
+# checks decide; a call it refuses is a NOTE and the pass goes on. The
+# switch runs only under a pass launcher, which keeps /run/boa_wait.pid and
+# with it every task dispatcher off.
 _satellite_if_db_broker() {
   local _k
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4586,6 +4613,9 @@ _satellite_if_db_broker() {
   esac
   [[ "$(_satellite_db_broker_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] \
     || return 0
+  if [[ ! -e "/root/.standby.cnf" && ! -e "/root/.standby.prep.cnf" ]]; then
+    _satellite_db_broker_born_leftover
+  fi
   for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
     if [[ "$(_satellite_db_broker_cnf_last "/root/.${_USER}.octopus.cnf" "${_k}")" == "NO" ]]; then
       _msg "INFO: ${_USER} is kept out of the database broker (${_k}=NO)"
