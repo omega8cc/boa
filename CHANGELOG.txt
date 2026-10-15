@@ -574,6 +574,33 @@
       account's .tmp deletes only what root or the account's own users
       own, never a directory another account placed there.
 
+    * The nightly's removals at fixed names (archives left in a code
+      directory, the cleanup markers, llms.txt, robots.txt and their
+      marker, the Boost cache's contents) and its hand-over of llms.txt,
+      robots.txt and the Boost cache act only on what root or the
+      account's own users own: a file or directory another account placed
+      there stays as it is, with everything below it, and is counted.
+
+    * The nightly's Drupal 7 core patch leg strips, patches and marks
+      nothing in a profiles or includes/database directory another
+      account owns, and leaves another account's database.inc unpatched.
+
+    * The once-per-release modes of every BOA-built platform's sites/all
+      modules, themes and libraries leave a directory another account
+      placed there, with everything in it, as it is.
+
+    * The Octopus upgrade sets the main login's key files to 0600, hands
+      a new ~/.ssh and ~/.tmp to it, hands a ghost revision's undo stamp
+      to the account and puts EMPTY.txt in ~/static only where root or the
+      account's own users own them: another account's file or directory
+      there keeps its owner and mode.
+
+    * The limited-shell worker's once-per-release hand-over of every
+      login's ~/.ssh and ~/.tmp, its removal of old entries from a login's
+      ~/.tmp and the account's .tmp, and its 0600 on key files act only on
+      what root, the login or the account's own users own; what another
+      account placed there stays as it is and is counted.
+
     * A platform Verify's ownership and permission fixes leave files
       another account's users own as they are, with everything below them,
       and count them on one line: in a Drupal platform's code, vendor and

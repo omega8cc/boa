@@ -996,6 +996,69 @@ _ltd_chmod_nofollow_here() (
 # and a link, a FIFO or a socket is left alone (nothing checks who owns a
 # link).
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# The owner-checked twins, one text with night/20-sites.sh's: given first
+# the uids they act for (_acct_walk_uids), a name another named uid owns is
+# left and printed (dev:ino), and nothing is changed unless the current
+# directory and every directory above it, up to /, are owned by those uids.
+_SAT_REOWN_OWN_PL='use Fcntl;
+my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
+    chown($u, $g, $h);
+  }
+  close($h);
+}
+exit 0;'
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
 # chown -h [-R] <owner:group> <names> the way _ACCT_REOWN_PL hands names
 # over, in the current (pinned) directory: the owner and group taken as
 # numbers or resolved to numbers first (one that does not resolve is
@@ -1104,16 +1167,52 @@ _ltd_own_dir_here() {
   chown -h "${1}" . || return 1
   if [ "${3}" = "YES" ]; then
     touch .
-    find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
+    _ltd_age_rm_here "${1%%:*}"
   fi
   chmod "${2}" .
 }
 # Entries older than a day aged out of an account's own temp directory, from
-# inside the real directory (-execdir: rm never resolves a path through a
-# name), and only when _ltd_mine_here holds. $1 = the account.
+# inside the real directory, and only when _ltd_mine_here holds. $1 = the
+# account.
 _ltd_age_out_here() {
   _ltd_mine_here "${1}" || return 1
-  find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
+  _ltd_age_rm_here "${1}"
+}
+# Every entry below the current (pinned) directory older than a day removed
+# as find -mindepth 1 -mtime +0 -execdir rm -rf removed it, through
+# _ACCT_RM_OWN_PL (op a): only what root, the owner $1 (a login name) or the
+# identities of its account own, never through a link, and nothing below a
+# directory another user owns, which the login can rename in from what
+# another account left group-writable.
+_ltd_age_rm_here() {
+  local _o _u
+  _u=$(id -u -- "${1}" 2> /dev/null) || return 0
+  _o=$(_acct_walk_uids "${1%%.*}") || _o=0
+  perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o},${_u}" 0 &> /dev/null
+  return 0
+}
+# The current (pinned) directory and everything below it handed to $2
+# (uid:gid numbers) through _SAT_REOWN_OWN_PL with the uids $1: only what root
+# or those uids own, nothing below a directory another named uid owns, never
+# through a link nor on a hard-linked file; perl starts only where an entry
+# is not yet that owner's and group's, or is a set-ID file, or another
+# user's. Prints dev:ino of each entry left for another owner.
+_ltd_reown_own_here() {
+  local _o="${1}" _u="${2%%:*}" _g="${2#*:}"
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . || return 1
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \( -type d -o -type f \) \
+    \( ! -uid "${_u}" -o ! -gid "${_g}" -o -type f \( -perm -4000 -o -perm -2000 \) \) \
+    -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} +
+}
+# The names after the uids $1 and the mode $2 in the current (pinned)
+# directory given that mode (regular files only) through _SAT_CHMOD_OWN_PL:
+# another user's file at the name keeps its mode. Nothing printed.
+_ltd_chmod_own_here() {
+  local _o="${1}" _m="${2}"
+  shift 2
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f "${_m}" "$@" &> /dev/null
+  return 0
 }
 # A dot directory root seeds in a home its account owns and can change while
 # this runs: created, then handed over and given its mode only inside the
@@ -3583,10 +3682,13 @@ _fix_dot_dirs() {
     _usrSsh="/home/${_usrLtd}/.ssh"
     _ltd_dot_dir "${_usrSsh}" 700 "${_usrLtd}:${_accGrp}"
     # authorized_keys too: one written over SFTP (umask 0002) or in the shell
-    # is group-writable, and sshd's StrictModes refuses every key in it
+    # is group-writable, and sshd's StrictModes refuses every key in it; only
+    # the account's own: another account's file renamed to a key name keeps
+    # its mode
+    _ltdKeyOwn=$(_acct_walk_uids "${_usrLtd%%.*}") || _ltdKeyOwn=0
     _ltd_in_real_dir "${_usrSsh}" \
-      _ltd_chmod_nofollow 600 ./id_rsa ./id_dsa ./known_hosts \
-      ./authorized_keys ./authorized_keys2
+      _ltd_chmod_own_here "${_ltdKeyOwn},$(id -u -- "${_usrLtd}" 2> /dev/null)" 600 \
+      ./id_rsa ./id_dsa ./known_hosts ./authorized_keys ./authorized_keys2
     _usrBzr="/home/${_usrLtd}/.bazaar"
     if [ -x "/usr/local/bin/bzr" ]; then
       if [ ! -z "${_usrLtd}" ] && [ ! -e "${_usrBzr}/bazaar.conf" ]; then
@@ -6872,8 +6974,9 @@ _manage_user() {
             # a shell session arrives group-writable, and sshd's StrictModes
             # then refuses every key in it: the key files stay owner-only, set
             # through handles inside the real directory, like the private keys
+            _ltdKeyOwn=$(_acct_walk_uids "${_USER}") || _ltdKeyOwn=0
             _ltd_in_real_dir "/home/${_USER}.ftp/.ssh" \
-              _ltd_chmod_nofollow 600 ./authorized_keys ./authorized_keys2
+              _ltd_chmod_own_here "${_ltdKeyOwn}" 600 ./authorized_keys ./authorized_keys2
           fi
           if [ ! -L "/home/${_USER}.ftp/static" ]; then
             rm -f /home/${_USER}.ftp/{backups,clients,static}
@@ -7009,16 +7112,29 @@ if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         # swap either name or leave a hard link in either tree: each is
         # unlocked from inside the real directory and handed over by a walk
         # that changes a directory or a single-link regular file through its
-        # handle, never a hard link and never through a link
+        # handle, never a hard link and never through a link, and only what
+        # root, the login or its account's identities own: what the login
+        # renamed in from another account's group-writable trees, or another
+        # account's directory at either name, keeps its owner, and is counted
+        _hOwn=$(_acct_walk_uids "${_login%%.*}") || _hOwn=0
+        _hOwn="${_hOwn},${_uid}"
+        _hLeft=""
         if [ -d "${_homedir}/.ssh" ]; then
           _ltd_in_real_dir "${_homedir}/.ssh" chattr -i .
-          _ltd_in_real_dir "${_homedir}/.ssh" \
-            _ltd_reown_here -R "${_uid}:${_gid}" . &> /dev/null
+          _hLeft=$(_ltd_in_real_dir "${_homedir}/.ssh" \
+            _ltd_reown_own_here "${_hOwn}" "${_uid}:${_gid}" 2> /dev/null)
         fi
         if [ -d "${_homedir}/.tmp" ]; then
           _ltd_in_real_dir "${_homedir}/.tmp" chattr -i .
-          _ltd_in_real_dir "${_homedir}/.tmp" \
-            _ltd_reown_here -R "${_uid}:${_gid}" . &> /dev/null
+          _hLeft="${_hLeft}"$'\n'"$(_ltd_in_real_dir "${_homedir}/.tmp" \
+            _ltd_reown_own_here "${_hOwn}" "${_uid}:${_gid}" 2> /dev/null)"
+        fi
+        _hLeft=$(printf '%s\n' "${_hLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+        # this pass runs before the run's report is opened: its own log
+        if [ "${_hLeft}" -gt 0 ]; then
+          mkdir -p /var/backups/ltd/log
+          echo "$(date) NOTE: ${_login}: the release's ~/.ssh and ~/.tmp hand-over left ${_hLeft} entries owned by another user in place" \
+            >> /var/backups/ltd/log/release-home-pass.log
         fi
         if [ -d "${_homedir}/.drush" ]; then
           # a link at ~/.drush (a main login's home is never immutable) must
