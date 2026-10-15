@@ -39,6 +39,15 @@
       the free space. /data/conf/disable_space_preflight.cnf turns these
       checks off with the space checks.
 
+    * autosymlink counts the files a store copy will create, not only its
+      bytes (#1947). The un-share copy after a Migrate or Clone and a
+      conversion onto a store on another filesystem now skip, with their
+      warning, when they would leave less than 2% of the target's inodes,
+      at least 50,000, free; a dry run records it as
+      SPACE_INODES_INSUFFICIENT. The count matches the copy: hard-linked
+      names count as files, a link inside the store counts once, and a
+      store that is itself a link is counted, bytes too, through it.
+
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
       Valkey, which is keyed by the site name without a leading www., and
