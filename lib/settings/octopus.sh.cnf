@@ -1073,6 +1073,10 @@ _extract_archive_pre() {
 #
 # Extract archive.
 _extract_archive() {
+  # The extractor's own status (0 when it extracted), the archive removed
+  # either way unless $2 is given. unzip's 1 and gunzip's 2 are warnings
+  # after a complete extract, so they read 0.
+  local _xRc=0
   if [ ! -z "${1}" ]; then
     case $1 in
       *.tar.bz2)   tar xjf ${1}    ;;
@@ -1080,17 +1084,19 @@ _extract_archive() {
       *.tar.xz)    tar xvf ${1}    ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
-      *.gz)        gunzip -q ${1}  ;;
+      *.gz)        gunzip -q ${1} || [ "$?" = "2" ] ;;
       *.tar)       tar xf ${1}     ;;
       *.tbz2)      tar xjf ${1}    ;;
       *.tgz)       tar xzf ${1}    ;;
-      *.zip)       unzip -qq ${1}  ;;
+      *.zip)       unzip -qq ${1} || [ "$?" = "1" ] ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
-      *)           echo "'${1}' cannot be extracted via >extract<" ;;
+      *)           echo "'${1}' cannot be extracted via >extract<"; false ;;
     esac
+    _xRc=$?
     [ -z "${2}" ] && rm -f "${1}"
   fi
+  return "${_xRc}"
 }
 
 
