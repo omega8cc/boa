@@ -1320,7 +1320,7 @@ _xmass_target_tree() {
 ### Extend the target's _PHP_MULTI_INSTALL with missing versions and run one
 ### barracuda system pass there to build them. Idempotent.
 _xmass_fix_target_php() {
-  local _t="$1" _add="$2" _cur _new _v _nv _tree
+  local _t="$1" _add="$2" _cur _new _v _nv _tree _rc
   # Normalise the fetched value token by token: the raw line may carry an
   # inline comment or quotes, and anything not a known PHP version must
   # never reach the remote root shell that rewrites the cnf.
@@ -1369,8 +1369,16 @@ _xmass_fix_target_php() {
   esac
   _info "Driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
   _info "this is a full system pass and typically takes ~30 minutes"
-  ssh root@"${_t}" "barracuda up-${_tree} system noscreen" \
-    || { _alrt "barracuda system run on ${_t} returned non-zero"; return 1; }
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen"
+  _rc=$?
+  # 3: the pass ran to its end WITH ERRORS (its log on the target says
+  # why); what this step needs is checked by the caller right after
+  if [ "${_rc}" = "3" ]; then
+    _alrt "barracuda system run on ${_t} completed WITH ERRORS; checking the PHP versions it was run for"
+  elif [ "${_rc}" != "0" ]; then
+    _alrt "barracuda system run on ${_t} returned ${_rc}"
+    return 1
+  fi
   return 0
 }
 
@@ -1915,7 +1923,7 @@ REMOTE
 ### ones are parked again within minutes. Re-probes first, so a pass already
 ### driven for the PHP set satisfies this without a second one.
 _xmass_solr_drive_install_pass() {
-  local _t="$1" _sv _missing="" _tree _ts _hosted _os _fires
+  local _t="$1" _sv _missing="" _tree _ts _hosted _os _fires _rc
   _xmass_solr_target_state "${_t}" \
     || { _alrt "cannot re-read the target Solr state"; return 1; }
   for _sv in ${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}; do
@@ -1974,8 +1982,16 @@ _xmass_solr_drive_install_pass() {
   esac
   _info "Driving 'barracuda up-${_tree} system noscreen' on ${_t} to install: ${_missing};"
   _info "this is a full system pass and typically takes ~30 minutes"
-  ssh root@"${_t}" "barracuda up-${_tree} system noscreen" \
-    || { _alrt "barracuda system run on ${_t} returned non-zero"; return 1; }
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen"
+  _rc=$?
+  # 3: the pass ran to its end WITH ERRORS (its log on the target says
+  # why); the Solr versions it was run for are checked right below
+  if [ "${_rc}" = "3" ]; then
+    _alrt "barracuda system run on ${_t} completed WITH ERRORS; checking the Solr versions it was run for"
+  elif [ "${_rc}" != "0" ]; then
+    _alrt "barracuda system run on ${_t} returned ${_rc}"
+    return 1
+  fi
   _xmass_solr_target_state "${_t}" \
     || { _alrt "cannot re-read the target Solr state after the pass"; return 1; }
   for _sv in ${_missing}; do
