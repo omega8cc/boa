@@ -317,11 +317,11 @@ Distributions, published to `/var/www/static/distro`:
 ```sh
   commerce_base-2.40-10.1.8
   commerce_kickstart-5.1.0-11.4.10
-  drupal_cms_installer-2.2.4-11.4.10
+  drupal_cms_installer-2.2.5-11.4.10
   ezcontent-2.2.15-10.3.6
-  farm-4.0.7-11.3.18
+  farm-4.0.8-11.3.19
   localgov-4.0.5-11.4.10
-  openculturas-3.1.2-11.4.10
+  openculturas-3.1.3-11.4.10
   openfed-13.6.8-10.6.19
   opigno_lms-3.2.7-10.6.19
   social-13.1.0-10.6.19
@@ -500,11 +500,11 @@ held releases (see "Held releases") to the project's `composer.json`, as the too
 `"conflict": {"twig/twig": ">=3.30"}`.
 
 ```sh
-farmos     # farm-4.0.7-11.3.18  (farmOS caps core at 11.3)
+farmos     # farm-4.0.8-11.3.19  (farmOS caps core at 11.3)
            # visit: https://github.com/farmOS/farmOS/releases
-           # wget https://github.com/farmOS/farmOS/releases/download/4.0.7/farmOS-4.0.7.tar.gz
-           # tar -xzf farmOS-4.0.7.tar.gz && mv farmOS farm-4.0.7-11.3.18
-           # cd ~/static/MONTH-DAY/farm-4.0.7-11.3.18
+           # wget https://github.com/farmOS/farmOS/releases/download/4.0.8/farmOS-4.0.8.tar.gz
+           # tar -xzf farmOS-4.0.8.tar.gz && mv farmOS farm-4.0.8-11.3.19
+           # cd ~/static/MONTH-DAY/farm-4.0.8-11.3.19
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -512,8 +512,8 @@ farmos     # farm-4.0.7-11.3.18  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.10 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.4-11.4.10
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.5-11.4.10 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.5-11.4.10
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer require --no-update --no-scripts drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2   # drupal/cms 2.2.4 no longer requires its site templates and add-on recipes; its installer would fetch a missing template with Composer during the site install
@@ -523,8 +523,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.2.4-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.1.2-11.4.10 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.1.2-11.4.10/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.1.3-11.4.10 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.1.3-11.4.10/
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (kept as the build proven to install)
@@ -535,7 +535,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.7-11.3.18/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.1.2-11.4.10/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.8-11.3.19/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.1.3-11.4.10/web/sites/
 ```
 
 ```sh
