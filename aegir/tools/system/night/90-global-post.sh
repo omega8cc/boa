@@ -1311,17 +1311,21 @@ _dbctl_cnf_last() {
 # _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything else, no
 # line included, runs nothing here). One line per account, switched or why
 # not, and what stops the box, into this night's log. While the box could
-# switch an account and has not, or something stops the box, the lines that
-# say so (not-switched, box) and the report's counts go to the box operator
-# once a day, as the web group's notices do. An account its own cnf keeps
-# out and one the broker does not serve are neither counted as unswitched
-# nor mailed: nothing the box or its operator does there changes them.
-# Never from a replication standby or a box being prepared as one, where no
-# pass switches an account, nor while the broker says the release switches
-# none (not-released). The counts are read from a broker that does not tell
-# those two classes apart yet as well: the two files arrive on their own.
+# switch an account and has not, or something stops a box that has an
+# account switched or one it could switch, the lines that say so
+# (not-switched, box) and the report's counts go to the box operator once
+# a day, as the web group's notices do. An account its own cnf keeps out
+# and one the broker does not serve are neither counted as unswitched nor
+# mailed, and a box with nothing else has no stop worth a mail: nothing the
+# box or its operator does there changes them. Never from a replication
+# standby or a box being prepared as one, where no pass switches an
+# account, nor from a box the report skips (ProxySQL, a cluster), nor while
+# the release switches none: the report's last line says released=no, or,
+# from a broker without that field, an account's own line not-released.
+# The counts are read from a broker that does not tell the two classes
+# apart yet as well: the two files arrive on their own.
 _dbctl_report() {
-  local _out _rc _l _last="" _un _st _body=""
+  local _out _rc _l _last="" _sw _un _st _nr=NO _body=""
   [[ -x "/usr/local/bin/boa-dbctl" ]] || return 0
   [[ "$(_dbctl_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] || return 0
   if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
@@ -1335,19 +1339,27 @@ _dbctl_report() {
   [[ "${_rc}" == "0" ]] || return 0
   while IFS= read -r _l; do
     _last="${_l}"
-    case "${_l}" in
-      *" not-released"*) return 0 ;;
-    esac
+    # a broker without the release field says it on an account's own line,
+    # right after control-file-invalid where that is there
+    if [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ not-switched\ (control-file-invalid,\ )?not-released(,|$) ]]; then
+      _nr=YES
+    fi
     # what an operator can act on: an account the box could switch and has
     # not, and what stops the box
     [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ not-switched\  || "${_l}" == "box "* ]] || continue
     _body="${_body}${_l}"$'\n'" "
   done <<< "${_out}"
-  [[ "${_last}" =~ ^OK\ report\ accounts=[0-9]+\ switched=[0-9]+\ unswitched=([0-9]+)\ (kept-out=[0-9]+\ not-served=[0-9]+\ )?stops=([0-9]+)\  ]] \
+  [[ "${_last}" =~ ^OK\ report\ accounts=[0-9]+\ switched=([0-9]+)\ unswitched=([0-9]+)\ (kept-out=[0-9]+\ not-served=[0-9]+\ )?stops=([0-9]+)\  ]] \
     || return 0
-  _un="${BASH_REMATCH[1]}"
-  _st="${BASH_REMATCH[3]}"
-  [[ "${_un}" -gt 0 || "${_st}" -gt 0 ]] || return 0
+  _sw="${BASH_REMATCH[1]}"
+  _un="${BASH_REMATCH[2]}"
+  _st="${BASH_REMATCH[4]}"
+  case "${_last} " in
+    *" released=no "*) return 0 ;;
+    *" released=yes "*) ;;
+    *) [[ "${_nr}" == "NO" ]] || return 0 ;;
+  esac
+  [[ "${_un}" -gt 0 || ( "${_st}" -gt 0 && "$(( _sw + _un ))" -gt 0 ) ]] || return 0
   _body="${_body}${_last}"
   declare -F _night_notice > /dev/null 2>&1 || return 0
   ( unset _MY_OCTO_EMAIL

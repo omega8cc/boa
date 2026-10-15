@@ -7034,14 +7034,19 @@ _report_plan() {
 # its version's reference. An account its own cnf keeps out (kept-out) and
 # one the broker does not serve (not-served) are told apart from the ones
 # the box could switch and has not (not-switched): only these are counted
-# as unswitched, and only their plans are read. The box is read once for
-# all accounts, each account's own part of its plan once. It logs in as a
-# plan does and changes nothing. On a standby it has already answered
-# (_need_not_standby).
+# as unswitched, and only their plans are read. The last line says whether
+# this release switches accounts here (released=yes, the test marker
+# counting), so a reader needs no account's line for it. The box is read
+# once for all accounts, each account's own part of its plan once. It logs
+# in as a plan does and changes nothing. On a standby, and on a box settle
+# skips, it has already answered.
 _v_report() {
-  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _n=0 _sw=0 _un=0 _ko=0 _ns=0
+  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _n=0 _sw=0 _un=0 _ko=0 _ns=0 _rel=yes
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
+  if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+    _rel=no
+  fi
   _box_facts
   _pair_state
   _al_judge ""
@@ -7106,7 +7111,7 @@ _v_report() {
       continue
     fi
     _un=$(( _un + 1 ))
-    if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+    if [[ "${_rel}" == "no" ]]; then
       _why="${_why:+${_why}, }not-released"
     fi
     _k=0
@@ -7123,7 +7128,7 @@ _v_report() {
     [[ -n "${_l}" ]] && printf 'box %s\n' "${_l}"
   done <<< "${_AL_OUT}"
   _ref_state
-  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} kept-out=${_ko} not-served=${_ns} stops=${_AL_NSTOP} reference=${_REF_STATE}"
+  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} kept-out=${_ko} not-served=${_ns} stops=${_AL_NSTOP} reference=${_REF_STATE} released=${_rel}"
 }
 
 _parse_args() {
@@ -7264,6 +7269,19 @@ _main() {
     fi
     if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
       _info "baseline settle skipped cluster"
+      exit 0
+    fi
+  fi
+  # Nor has such a box anything to report: no account there is ever
+  # switched and its stops are never settled. report says so the same way,
+  # in the same word, and reads nothing further.
+  if [[ "${_VERB}" == "report" && "${#_ARGS[@]}" -eq 0 ]]; then
+    if [[ -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+      _info "report skipped proxysql"
+      exit 0
+    fi
+    if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+      _info "report skipped cluster"
       exit 0
     fi
   fi
