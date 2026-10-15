@@ -292,6 +292,12 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
       $settings['cache']['bins']['state']        = 'cache.backend.redis';
       $settings['state_cache']                   = TRUE;
+      // The module's 2.x line (Drupal 12) keeps the container, bootstrap,
+      // config and discovery bins with no expiry by default, and the shared
+      // instance evicts only keys that have one, so a namespace no site uses
+      // any more would stay for good. With no permanent bins every entry has
+      // the module's one-year expiry, as on the 8.x line, which ignores this.
+      $settings['redis_permanent_bins']          = [];
       $settings['bootstrap_container_definition'] = [
         'parameters' => [],
         'services' => [
@@ -303,7 +309,8 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
             'arguments' => ['@redis.factory', '@cache_tags_provider.container', '@serialization.phpserialize'],
           ],
           'cache.container' => [
-            'class' => '\Drupal\redis\Cache\PhpRedis',
+            // Not read when a factory is set; named for the line in use.
+            'class' => ($drupal_core >= 12) ? 'Drupal\redis\Cache\RedisBackend' : '\Drupal\redis\Cache\PhpRedis',
             'factory' => ['@cache.backend.redis', 'get'],
             'arguments' => ['container'],
           ],
