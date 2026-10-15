@@ -56,6 +56,10 @@
       its plain dirs, or a Clone that un-shared files but not private, was
       logged as moved into the store.
 
+    * autosymlink refuses to break a site's sharing when the store its link
+      names resolves outside the account stores, instead of copying
+      whatever tree the link reaches.
+
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
       Valkey, which is keyed by the site name without a leading www., and

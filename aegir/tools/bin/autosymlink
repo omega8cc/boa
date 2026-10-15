@@ -2276,6 +2276,24 @@ _check_symlink_sharing() {
   _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
   _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
 
+  # The copy follows its source to the directory it resolves to (rsync of
+  # "<source>/"), as the account. That must be a store's files or private
+  # dir: a name on the way an account turned into a link elsewhere would have
+  # the copy take any tree the account can read, uncounted by the space check.
+  _ORIGINAL_REAL=$(realpath -e -- "${_ORIGINAL_TOP}" 2>/dev/null)
+  if [ -n "${_ORIGINAL_REAL}" ] \
+    && ! [[ "${_ORIGINAL_REAL}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] \
+    && ! [[ "${_ORIGINAL_REAL}" =~ ^/mnt/[^/]+/files/[^/]+/static/files/[^/]+/(files|private)$ ]]; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a store that resolves outside the account stores: $(_log_name "${_ORIGINAL_REAL}") – refusing to break sharing"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_EDGE_CASES="YES"
+      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
+    fi
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+
   _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to $(_log_name "${_LINK_TARGET}") (owned by $(_log_name "${_TARGET_SITE_NAME}"))"
   _log "[PLAN] Break sharing: copy from $(_log_name "${_ORIGINAL_TOP}") to ${_NEW_TARGET} and update symlink at ${_PATH}"
 
