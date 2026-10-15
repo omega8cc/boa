@@ -220,7 +220,7 @@ Every finding carries a code:
 | `SITE_PATH_DIR_ABSENT` | The alias names a `site_path` that is not on disk — **the common one**, expanded below. |
 | `ALIAS_NO_SITE_PATH` | No `site_path` line could be read from the alias at all (truncated, malformed, or a non-site context that happens to have a vhost). |
 | `SYMLINK_EMPTY_OR_BROKEN` | The in-site `files`/`private` path is a symlink whose target `readlink` could not read. |
-| `SYMLINK_UNKNOWN_PATTERN` | The link resolves but points outside the expected `…/static/files/<site>/<type>` store layout, so ownership cannot be inferred and it is reported rather than touched. |
+| `SYMLINK_UNKNOWN_PATTERN` | The link resolves but points outside the expected `…/static/files/<site>/<type>` store layout, so ownership cannot be inferred and it is reported rather than touched; or it names another site's store whose path resolves outside the account stores (`A LINK ON THE WAY`, with where it resolves), so it is not un-shared. |
 | `BREAK_SHARING_SOURCE_MISSING` | The site shares another site's store and the source to copy from is gone, so the un-share would fail. |
 | `SPACE_SRC_DIR_MISSING` | The directory to move/copy does not exist. |
 | `SPACE_SIZE_UNKNOWN` | `du` could not measure the source (usually unreadable — check ownership). |
