@@ -178,8 +178,8 @@ Arming `rename-failed` re-runs the cutover tail from its head: the resume
 replication user, and re-proves the target's web layer before the panel
 rewire and the renames.
 
-`reset-phase` is exempt from the 90%-disk precondition, because a stalled
-migration is a likely reason the disk filled in the first place.
+`reset-phase` is exempt from the 90%-disk precondition (space or inodes of `/`),
+because a stalled migration is a likely reason the disk filled in the first place.
 
 To abandon and start over, remove the state file — but only do so if
 replication has already been torn down on the target.

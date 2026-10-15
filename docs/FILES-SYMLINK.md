@@ -462,8 +462,10 @@ dry run. `list` and `prune` run from a root shell only; neither runs from the ni
 **Disk pressure does prune automatically.** `runner.sh` runs `boa archived heal all`
 every minute, after its standby, proxy, maintenance, queue-stop and load holds and
 ahead of its own disk gate: while the filesystem holding an entry is used above the
-heal threshold — **85% by default**, deliberately below the 90% at which `runner.sh`,
-the backup scripts and some twenty other BOA scripts refuse to run at all — the oldest
+heal threshold, in space or in inodes, whichever is fuller (a pile of many small
+files fills the inodes first) — **85% by default**, deliberately below the 90% at
+which `runner.sh`, the backup scripts and some twenty other BOA scripts refuse to run
+at all — the oldest
 entry across all instances goes, then the next, until the filesystem is back under the
 threshold or the pile is empty.
 

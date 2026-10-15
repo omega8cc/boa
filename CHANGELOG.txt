@@ -4,6 +4,40 @@
 
 @=> Important Fixes
 
+    * BOA refuses to run a server out of inodes (#1947). Every file takes
+      an inode, and a filesystem out of them fails every write with "No
+      space left on device" while df -h still shows free space; BOA's
+      refusals looked at space only, so an Octopus upgrade on a box at 68%
+      space ran on through failed extractions until nothing on it could
+      write. Every tool that refuses above 90% of / used now also refuses
+      above 90% of its inodes in use, and names inodes and df -i /:
+      Barracuda, Octopus and the boa installers, the OS upgrade tools, the
+      backup tools, the nightly database dumps (which mail the refusal as
+      they do for space), the migration tools and xtrim. backboa and
+      duobackboa refuse instead of printing a warning cron threw away. The
+      task queue and the nightly keep running: the Delete tasks and purges
+      that free inodes ride them.
+
+    * An Octopus upgrade stops near 90% of the inodes in use instead of at
+      none left. One platform generation can take two million inodes, more
+      than the start's check leaves room for, so the run checks again
+      before the hostmaster build and before the shared code and platforms
+      build (a FATAL that says why), and before each requested platform
+      (skipped, with an ALRT line); a catalogue refresh counts the old
+      tree's inodes before it fetches the new one.
+
+    * Install, Clone, Migrate, Restore, Deploy and the Backdrop, Grav and
+      TXP upgrade and rename tasks refuse before writing anything while a
+      filesystem they write to (/, the account home, the platform) has
+      more than 90% of its inodes in use; Delete, Verify and Backup still
+      run, so unused platforms and sites can be removed. The space
+      pre-flight of Clone, Migrate and Restore counts the site's files
+      too, following links, and refuses a copy that would leave less than
+      2% of the inodes, at least 50,000, free; the check before the deploy
+      does the same, and a failed extraction names the free inodes beside
+      the free space. /data/conf/disable_space_preflight.cnf turns these
+      checks off with the space checks.
+
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
       Valkey, which is keyed by the site name without a leading www., and
@@ -669,6 +703,20 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The archived-store heal (boa archived heal, run by runner.sh every
+      minute) treats inode pressure as disk pressure: a filesystem used
+      above the heal threshold, in space or in inodes, prunes the pile of
+      deleted sites' last copies oldest first, and the log line and the
+      mail say so.
+
+    * The minute monitor mails an ALERT when / or the filesystem holding
+      /data/disk has more than 85% of its inodes in use, at most once in
+      six hours, before BOA's upgrades, backups and copying tasks refuse
+      at 90%. Nothing on the box said so before.
+
+    * boa info shows the inode use of each filesystem (_INO lines) beside
+      its space (_DSK lines), so a disk out of inodes reads as full.
 
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
