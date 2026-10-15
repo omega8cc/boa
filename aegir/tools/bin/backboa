@@ -45,23 +45,19 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
-  # With zero free inodes duplicity cannot create even a temp file, so
-  # backups die with an obscure traceback while df -h still looks fine.
-  # A run itself needs only dozens of inodes, so warn -- never refuse:
-  # a false refusal here would itself stop working backups. Under 5000
-  # free a multi-million-inode filesystem is >99.9% used and one platform
-  # extraction away from killing the backup chain. Filesystems without
-  # inode accounting (btrfs totals read zero) never warn.
-  _DF_INO_TOT=""
-  _DF_INO=""
-  read -r _DF_INO_TOT _DF_INO <<< "$(LC_ALL=C command df -P -l -i / 2>/dev/null | awk '
-    NR==1 { for (i=1; i<=NF; i++) { if ($i=="Inodes") t=i; if ($i=="IFree") f=i } }
-    NR==2 && t && f { print $t, $f }')"
-  [[ "${_DF_INO_TOT}" =~ ^[0-9]+$ ]] || _DF_INO_TOT=0
-  [[ "${_DF_INO}" =~ ^[0-9]+$ ]] || _DF_INO=""
-  if [ "${_DF_INO_TOT}" -gt 0 ] && [ ! -z "${_DF_INO}" ] && [ "${_DF_INO}" -lt 5000 ]; then
-    echo "WARNING: Only ${_DF_INO} free inodes left on / -- with none left duplicity cannot run at all"
-    echo "WARNING: Backups will stop working once inodes are exhausted; free up inodes soon"
+  # With no free inodes duplicity cannot create even a temp file and dies
+  # with an obscure traceback while df -h still looks fine; inode use gets
+  # the same line as space. Filesystems without inode accounting (btrfs
+  # prints - for IUse%) are never refused on it.
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
+    echo "ERROR: We can not proceed until inode use is below 90/100"
+    echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
+    exit 1
   fi
 }
 _check_root

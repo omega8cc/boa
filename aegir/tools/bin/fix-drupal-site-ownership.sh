@@ -48,6 +48,8 @@ exec 3>&2
 #     account's users can rename into their own tree what another account
 #     left group-writable, a whole directory with everything in it; that
 #     stays its owner's, and one Notice counts it (_owners_left_note).
+#     Under /var/aegir every user but an account's counts as the site's
+#     own: a plain Aegir server's tree is handed to aegir whoever owns it.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -339,8 +341,8 @@ _in_pinned_dir() {
 # $2 through a handle opened without following a link or blocking on a FIFO.
 # A file with more than one link, a link, a FIFO or a socket is left alone:
 # a hard link planted in a tree the account can write shares its file with a
-# name elsewhere, which a chown by name would hand over too, and nothing
-# checks who owns a link. The names are ./names in the current directory.
+# name elsewhere, which a chown by name would hand over too; only the link
+# check reads a link's owner. The names are ./names in the current directory.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 
 # A walk leaves a regular file with more than one link as it was (a hard
@@ -389,11 +391,14 @@ _acct_walk_uids() {
 }
 # The uids the walks below act for, comma-separated, from the site path as
 # resolved, never from argv: under /data/disk/<account>/ that account's
-# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
-# master's pool users wwwNN, the holders _master_web_group allows, and
-# www-data's, the web server's user, which no account's login can be and a
-# plain Aegir server's PHP runs as. Status 1, and nothing, for any other
-# path, or when the account or aegir is not in passwd. A uid no passwd entry names counts as the site's own too
+# (_acct_walk_uids); under /var/aegir/ root's and every other user's but
+# an account's identities (a name _acct_walk_uids would give for an
+# account with a /data/disk/<account>): a plain Aegir server's tree, a
+# deploy login's files included, is handed to aegir as it always was, and
+# what an account's users moved into the master's group-writable stores
+# stays theirs. Status 1, and nothing, for any other path, or when the
+# account or aegir is not in passwd. A uid no passwd entry names counts
+# as the site's own too
 # (_SAT_REOWN_OWN_PL, _SAT_CHMOD_OWN_PL): a login removed before its files
 # were handed to its account left those.
 _site_walk_uids() {
@@ -406,8 +411,12 @@ _site_walk_uids() {
       ;;
     /var/aegir/*)
       while IFS=: read -r _n _p _u _r; do
-        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
         [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        _a="${_n%%.*}"
+        if [[ "${_a}" =~ ^[a-z0-9-]+$ && -d "/data/disk/${_a}" ]] \
+          && [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]]; then
+          continue
+        fi
         _x="${_x},${_u}"
         [ "${_n}" = "aegir" ] && _self=YES
       done < <(getent passwd 2> /dev/null)
@@ -768,6 +777,19 @@ _link_guard_tree() {
   return 0
 }
 
+### The nightly runs while its marker names a live owl.sh, as owl.sh itself
+### tests it: a marker a killed nightly left names none, and its stores are
+### no longer covered by the night's own pass. A marker with no pid is the
+### account loop's touch after clear.sh swept an idle one: still running.
+_night_running() {
+  local _p
+  [ -e /run/daily-fix.pid ] || return 1
+  _p=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2> /dev/null )
+  [ -n "${_p}" ] || return 0
+  kill -0 "${_p}" 2> /dev/null \
+    && grep -q "owl.sh" "/proc/${_p}/cmdline" 2> /dev/null
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 
@@ -946,7 +968,7 @@ if [ -n "${_files_dir}" ] \
   if [ -n "${_priv_dir}" ]; then
     _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_own_here 2> /dev/null)"
   fi
-  if [ ! -e "/run/daily-fix.pid" ]; then
+  if ! _night_running; then
     _link_guard_tree "${_files_dir}"
     _link_guard_tree "${_priv_dir}"
   fi
