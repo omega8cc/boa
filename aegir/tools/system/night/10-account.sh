@@ -889,7 +889,7 @@ _night_bak_move() {
 # would be handed over by a chown -h on the name: the link is made by its
 # owner under a fresh name and renamed onto ./$2 without replacing anything
 # found there. A link root makes, when that owner cannot make one here,
-# stays root's: nothing checks the owner of a link.
+# stays root's; only the nginx link check reads that, and linkguard fixes it.
 _night_bak_link_here() {
   local _t="./.${2}.lnk.$$.${RANDOM}" _u _g
   _u=$(id -u -- "${3%%:*}" 2> /dev/null)
