@@ -844,6 +844,12 @@ _night_bak_move() {
       echo "backups-on-static: provision task active -- left ${_src} as real dir"
       return 0
     fi
+    # Room for the copy on the store's filesystem first, in bytes and inodes.
+    if ! _night_bak_room; then
+      _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
+      echo "backups-on-static: ${_NIGHT_BAK_SHORT}; left ${_src} as real dir"
+      return 0
+    fi
     # One-time migration de-links any pre-existing backups<->backup-exports hardlink
     # pairs (the two dirs are copied in separate rsync runs, no -H), so old tarballs
     # briefly cost double space -- on the static FS (the target), not the tight root,
@@ -882,6 +888,35 @@ _night_bak_move() {
   _acct_in_real_dir "${_usEr}" _night_bak_link_here "${_lnk}" "${_n}" "${_ug}" \
     || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"; return 0; }
   echo "backups-on-static: relocated ${_src} -> ${_st}/.${_n} (static filesystem)"
+}
+# For _night_bak_move: whether the store's filesystem takes the copy of the
+# real directory _src. It must fit in bytes, and leave 2% of that
+# filesystem's inodes, at least 50,000, free, counting every name the copy
+# makes (rsync -a without -H: each hard-linked name a file of its own, as
+# du -l counts them). A side with no reading, or a filesystem with no inode
+# count (btrfs), is not judged. Status 1 with the reason in _NIGHT_BAK_SHORT.
+_NIGHT_BAK_SHORT=""
+_night_bak_room() {
+  local _kb _av _in _it _if _ih
+  _NIGHT_BAK_SHORT=""
+  _kb=$(_acct_in_real_dir "${_src}" timeout 900 du -sk . 2>/dev/null | awk '{print $1}')
+  _in=$(_acct_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
+  _av=$(_night_in_pinned "${_st}" df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')
+  read -r _it _if <<< "$(_night_in_pinned "${_st}" env LC_ALL=C df -P -i . 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  if [[ "${_kb}" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]] && [ "${_av}" -lt "${_kb}" ]; then
+    _NIGHT_BAK_SHORT="not enough space on the store's filesystem (need ${_kb}K, ${_av}K free)"
+    return 1
+  fi
+  if [[ "${_in}" =~ ^[0-9]+$ && "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] \
+    && [ "${_it}" -gt 0 ]; then
+    _ih=$(( _it / 50 ))
+    [ "${_ih}" -ge 50000 ] || _ih=50000
+    if [ $(( _in + _ih )) -gt "${_if}" ]; then
+      _NIGHT_BAK_SHORT="not enough free inodes on the store's filesystem (need ${_in} and ${_ih} kept free, ${_if} free)"
+      return 1
+    fi
+  fi
+  return 0
 }
 # In the real account root (the current directory): ./$2 made a link to $1
 # owned by $3 (owner:group), only while no name is there, as ln -s -T made
