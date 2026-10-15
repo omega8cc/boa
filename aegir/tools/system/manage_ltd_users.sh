@@ -864,28 +864,58 @@ _ltd_drush_copies_here() {
 # (_ltd_mine_here) or an earlier release's root-made one of alias copies
 # (_ltd_drush_copies_here): any other root-owned directory of the home
 # renamed onto the name is neither emptied nor handed over. Done before usr/
-# is made, which would leave a new directory no longer empty. $1 = hosted
-# YES|NO, $2 = owner:group, $3 = the instance user.
+# is made, which would leave a new directory no longer empty. The login can
+# rename into ~/.drush, or into its usr/, what another account left
+# group-writable: every removal goes through _ACCT_RM_OWN_PL, so only what
+# root or the account's own identities own (_acct_walk_uids) is removed,
+# never anything below a directory another user owns, and one NOTE line
+# counts what was left. $1 = hosted YES|NO, $2 = owner:group, $3 = the
+# instance user.
 _ltd_drush_strip() {
+  local _o _l
   _ltd_mine_here "${2%%:*}" || _ltd_drush_copies_here "${3}" || return 1
   chown -h "${2}" . || return 1
   chmod 02755 . || return 1
+  _o=$(_acct_walk_uids "${3}") || _o="0"
   if [ "${1}" = "YES" ]; then
-    find . -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2> /dev/null
+    _l=$(_ltd_rm_own_all_here "${_o}")
   else
-    rm -f -- ./drush_make ./registry_rebuild ./clean_missing_modules
-    rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
-    _ltd_in_real_dir ./usr _ltd_drush_strip_usr
-    rm -f -- ./.ctrl*
-    rm -rf -- ./cache ./drush.ini ./*drushrc* ./*.inc
+    _l=$(
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./drush_make ./registry_rebuild \
+        ./clean_missing_modules ./drupalgeddon ./drush_ecl ./make_local \
+        ./safe_cache_form* 2> /dev/null
+      _ltd_in_real_dir ./usr _ltd_drush_strip_usr "${_o}"
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl* 2> /dev/null
+      perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - ./cache ./drush.ini \
+        ./*drushrc* ./*.inc 2> /dev/null
+    )
+  fi
+  _l=$(printf '%s\n' "${_l}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  if [ "${_l}" -gt 0 ]; then
+    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(pwd -P)"
   fi
   mkdir -p ./usr
 }
+# The legacy extension names in the real ~/.drush/usr (the current, pinned
+# directory) removed through _ACCT_RM_OWN_PL, only what the uids $1 own.
 _ltd_drush_strip_usr() {
-  rm -f -- ./drush_make ./registry_rebuild ./clean_missing_modules
-  rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
-  rm -f -- ./mydropwizard ./utf8mb4_convert ./backdrop
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${1}" - ./drush_make ./registry_rebuild \
+    ./clean_missing_modules ./drupalgeddon ./drush_ecl ./make_local \
+    ./safe_cache_form* ./mydropwizard ./utf8mb4_convert ./backdrop 2> /dev/null
+  return 0
 }
+# Every entry of the current (pinned) directory, its dot names too, removed
+# as rm -rf removed it, through _ACCT_RM_OWN_PL: only what the uids $1 own,
+# never anything below a directory another user owns. Prints dev:ino of
+# each entry left.
+_ltd_rm_own_all_here() (
+  local -a _n
+  shopt -s dotglob nullglob
+  _n=( ./* )
+  [ "${#_n[@]}" -gt 0 ] || exit 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - "${_n[@]}" 2> /dev/null
+  exit 0
+)
 # The instance's Drush 8 extensions linked into the real ~/.drush/usr (the
 # current, pinned directory), all from inside it. The login can rename to
 # usr, or to an extension's name in it, what another account left

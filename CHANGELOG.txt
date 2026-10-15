@@ -439,11 +439,12 @@
       is made or linked in it. A file or directory another account
       placed at the name of an extension link in usr also stays as it is.
 
-    * The limited-shell worker links the instance's Drush extensions into
-      a login's ~/.drush/usr only where root or the account's own users
-      own it: a file or directory another account placed at an
-      extension's name, or at usr itself, stays as it is, nothing is
-      linked into it, and one line counts it.
+    * The limited-shell worker's once-per-release reset of a login's
+      ~/.drush, and the Drush extension links it then makes in its usr,
+      remove and link only what root or the account's own users own: a
+      file or directory another account placed in ~/.drush, at an
+      extension's name or at usr itself stays as it is, nothing is linked
+      into it, and one line counts it.
 
     * The Octopus upgrade's removal of entries older than a day from the
       account's .tmp deletes only what root or the account's own users
