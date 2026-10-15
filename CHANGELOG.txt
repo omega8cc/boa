@@ -267,6 +267,21 @@
       log; with none installed it is skipped with a note and the site's
       alias file is kept.
 
+    * The "Drush command terminated abnormally" line of a Drupal 8+ task
+      now names the uncaught error that ended the run ("Error: Uncaught"
+      with the class, the message, the file and the line). Drupal's own
+      log line named it only when Drupal's logger reached Drush, which it
+      does not when the error comes before Drupal's services are ready (a
+      settings file that fails) or when a logger ahead of Drush's own
+      fails, as with a broken database log table.
+
+    * A Clone, Migrate or Restore whose database update failed no longer
+      reports a second failure at the end of its deploy. Once a step has
+      failed, the closing bootstrap is not tried, and the warning now says
+      so (DEPLOY/BOOTSTRAP/SKIP, with the first line of the earlier error)
+      instead of "could not bootstrap Drupal after updatedb". A bootstrap
+      that is tried and fails keeps that warning; Backdrop deploys do the same.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
@@ -908,8 +923,9 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.17 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above and the named kernel boot error under Important Fixes.
+    * Classic Drush 8.5.18 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above and the named kernel boot and uncaught errors under
+      Important Fixes.
       On Drupal 10 and 11 pm-updatestatus no longer dies on
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an
