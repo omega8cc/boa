@@ -39,6 +39,27 @@
       the free space. /data/conf/disable_space_preflight.cnf turns these
       checks off with the space checks.
 
+    * autosymlink counts the files a store copy will create, not only its
+      bytes (#1947). The un-share copy after a Migrate or Clone and a
+      conversion onto a store on another filesystem now skip, with their
+      warning, when they would leave less than 2% of the target's inodes,
+      at least 50,000, free; a dry run records it as
+      SPACE_INODES_INSUFFICIENT. The count matches the copy: hard-linked
+      names count as files, a link inside the store counts once, and a
+      store that is itself a link to another store is counted, bytes too,
+      through it.
+
+    * A Clone, Migrate, upgrade, install or restore whose store conversion
+      or un-share was refused or left unfinished is reported as not
+      completed (a warning in the task log, an ALERT or WARN line in the
+      autosymlink log) instead of as done: an install or restore that kept
+      its plain dirs, or a Clone that un-shared files but not private, was
+      logged as moved into the store.
+
+    * autosymlink refuses to break a site's sharing when the store its link
+      names resolves outside the account stores, instead of copying
+      whatever tree the link reaches.
+
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
       Valkey, which is keyed by the site name without a leading www., and
@@ -71,6 +92,25 @@
       With BOA's failover wiring in place the redis module skipped Drupal's
       tag preloading, which gathers a page's cache tag lookups into fewer
       round trips to Valkey; the module, now 8.x-1.11.4, passes it on.
+
+    * Sites stay consistent across a Valkey outage. While Valkey cannot be
+      reached a site runs on its database cache, and the two caches kept
+      separate records of what changed: after an outage Valkey served the
+      pages, settings and service container it held before it, and the
+      next outage started from what the database cache kept from the one
+      before (a module enabled in between answered 500). Each outage is now
+      recorded beside the backoff flag; the first request after it clears
+      what Valkey kept before using it (only the site's own keys when the
+      redis module's own connection failed on one site), and during an
+      outage the database cache refuses entries older than the outage. On
+      Drupal 7, Drupal 8 and later, and Backdrop.
+
+    * Sites keep their Valkey cache when the local socket cannot be used but
+      TCP can. BOA's check per request fell back to TCP while the redis
+      module was still handed the socket: Drupal 8 and later sites ran on
+      their database, and Drupal 7 sites (and Drupal 6, which shares that
+      wiring) answered 500. The module now gets the TCP target the check
+      reached; a custom target is left alone.
 
     * Drupal 8, 9 and 10 sites keep their queues in their own database.
       BOA had moved Drupal's default queue to Valkey, where the redis

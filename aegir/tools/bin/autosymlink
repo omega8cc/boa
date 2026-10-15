@@ -11,7 +11,7 @@
 #   BATCH_IF_CLEAN    : run DRY and if CLEAN automatically run BATCH (cron-safe)
 #   REPORT  (report)  : read-only report of shared files/private symlinks
 #
-# A DRY run that is NOT CLEAN blocks batch/live for the whole sweep, so it ends
+# A DRY run that is NOT CLEAN blocks batch for the whole sweep, so it ends
 # with an [EXPLAINED] section: every finding that caused the verdict is re-checked
 # against the filesystem right then and printed with what was seen, what was
 # probed, the diagnosis and the fix. The commonest one by far is a ghost Drush
@@ -193,6 +193,8 @@ _LIVE_SITE_APPROVED="NO"
 declare -A _FS_PAIR_STATUS
 # Cumulative planned/reserved KB per target filesystem (used mainly for break-sharing copies)
 declare -A _FS_RESERVED_KB
+# The same in inodes (files), for targets that report an inode count
+declare -A _FS_RESERVED_INO
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -342,10 +344,21 @@ _log_reserved_fs_summary() {
       _FS_PROJ_KB=0
     fi
 
+    _RES_INO_TXT=""
+    if [ -n "${_FS_RESERVED_INO[${_FS_DEV}]+x}" ]; then
+      _RES_INO="${_FS_RESERVED_INO[${_FS_DEV}]}"
+      _FS_FREE_INO=$(LC_ALL=C df -P -i "${_FS_DEV}" 2>/dev/null | awk 'NR==2 {print $4}')
+      if [[ "${_FS_FREE_INO}" =~ ^[0-9]+$ ]]; then
+        _FS_PROJ_INO=$(( _FS_FREE_INO - _RES_INO ))
+        [ "${_FS_PROJ_INO}" -ge 0 ] || _FS_PROJ_INO=0
+        _RES_INO_TXT="; inodes: current free=${_FS_FREE_INO}, reserved=${_RES_INO}, projected free=${_FS_PROJ_INO}"
+      fi
+    fi
+
     if [ -n "${_FS_MOUNT}" ]; then
-      _log "[INFO] ${_FS_DEV} (${_FS_MOUNT}): current free=${_FS_FREE_KB}K, reserved=${_RES_KB}K, projected free=${_FS_PROJ_KB}K"
+      _log "[INFO] ${_FS_DEV} (${_FS_MOUNT}): current free=${_FS_FREE_KB}K, reserved=${_RES_KB}K, projected free=${_FS_PROJ_KB}K${_RES_INO_TXT}"
     else
-      _log "[INFO] ${_FS_DEV}: current free=${_FS_FREE_KB}K, reserved=${_RES_KB}K, projected free=${_FS_PROJ_KB}K"
+      _log "[INFO] ${_FS_DEV}: current free=${_FS_FREE_KB}K, reserved=${_RES_KB}K, projected free=${_FS_PROJ_KB}K${_RES_INO_TXT}"
     fi
   done
 }
@@ -1019,7 +1032,7 @@ _explain_break_sharing_source() {
 }
 
 _explain_space() {
-  # The four _check_space_for_transfer findings. Re-read df/du now rather than
+  # The five _check_space_for_transfer findings. Re-read df/du now rather than
   # reprinting the recorded numbers, so the operator sees whether the condition
   # still holds.
   # Args: 1 code, 2 record.
@@ -1088,6 +1101,26 @@ _explain_space() {
       _explain_log "    (only a filesystem above the heal threshold empties it, oldest first) and"
       _explain_log "    is usually the cheapest thing to reclaim by hand (boa archived prune) --"
       _explain_log "    the report run lists its size per account."
+      ;;
+    SPACE_INODES_INSUFFICIENT)
+      _EXP_SP_INEED=$(_anom_field "${_EXP_SP_REC}" "inodes_need")
+      _EXP_SP_IHEAD=$(_anom_field "${_EXP_SP_REC}" "inodes_headroom")
+      _EXP_SP_IFREE=$(_anom_field "${_EXP_SP_REC}" "inodes_free")
+      _EXP_SP_IRES=$(_anom_field "${_EXP_SP_REC}" "inodes_reserved")
+      [ "${_EXP_SP_IRES}" != "0" ] || _EXP_SP_IRES=""
+      _explain_log "  Seen: the copy's files do not fit in the target filesystem's free inodes."
+      _explain_log "  Needs      : ${_EXP_SP_INEED:-?} inodes, and ${_EXP_SP_IHEAD:-?} kept free (2% of the"
+      _explain_log "    filesystem's inodes, at least 50,000)"
+      _explain_log "  Target     : ${_EXP_SP_TGT:-?}"
+      _explain_log "  At check   : ${_EXP_SP_IFREE:-?} inodes free${_EXP_SP_IRES:+, ${_EXP_SP_IRES} already reserved for other planned copies this run}"
+      _explain_log "  Now        : $(LC_ALL=C df -P -i -- "${_EXP_SP_TGT}" 2>/dev/null | awk 'NR==2 {print $4" inodes free on "$1" ("$6")"}')"
+      _explain_log "  Diagnosis  : OUT OF INODES -- nothing is wrong with the site; every file takes"
+      _explain_log "    an inode, so a filesystem runs out of them while df -h still shows free"
+      _explain_log "    space (df -i shows them)."
+      _explain_log "  Fix        : free inodes on the target, then re-run the dry run. What holds the"
+      _explain_log "    most shows with du --inodes -x -d 3 <mount> | sort -n | tail; on an"
+      _explain_log "    account it is usually platform codebases no site uses, and the archived"
+      _explain_log "    store pile under <account>/static/files/.archived (boa archived prune)."
       ;;
   esac
 }
@@ -1818,7 +1851,47 @@ _archive_orphan_store() {
   return 0
 }
 
+_inode_room() {
+  # The inodes of the filesystem holding $1, for a copy onto it: prints
+  # "<total> <free> <headroom>", the headroom being what provision's copy
+  # pre-flight keeps free, 2% of the filesystem's inodes and at least
+  # 50,000. Nothing (status 1) when the filesystem reports no inode count
+  # (btrfs) or df gives no reading: the copy is then judged on its bytes.
+  local _t _f _h
+  read -r _t _f <<< "$(LC_ALL=C df -P -i -- "${1}" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  [[ "${_t}" =~ ^[0-9]+$ && "${_f}" =~ ^[0-9]+$ ]] && [ "${_t}" -gt 0 ] || return 1
+  _h=$(( _t / 50 ))
+  [ "${_h}" -ge 50000 ] || _h=50000
+  echo "${_t} ${_f} ${_h}"
+}
+
+_pair_inode_bound() {
+  # A move between two filesystems frees its source, so a pair needs no
+  # per-site file counts while the target's free inodes, less its headroom,
+  # take every inode the source filesystem uses (its whole use, far more
+  # than its sites' names even where a store's hard links add names). Read
+  # live on every call: a copy made onto the target earlier in the run takes
+  # its inodes without freeing the source. Sets _PAIR_INO (YES when they fit
+  # or the target has no inode count; NO when they do not, or the source has
+  # no count to bound them) and _PAIR_INO_TXT (the figures, for the log).
+  # Args: 1 source dir, 2 target dir.
+  local _tt _tf _th _st _su
+  _PAIR_INO="YES"
+  _PAIR_INO_TXT=""
+  read -r _tt _tf _th < <(_inode_room "${2}") || return 0
+  read -r _st _su <<< "$(LC_ALL=C df -P -i -- "${1}" 2>/dev/null | awk 'NR==2 {print $2, $3}')"
+  _PAIR_INO_TXT=", src inodes used=${_su:-?}, tgt inodes free=${_tf} (${_th} kept free)"
+  if ! [[ "${_st}" =~ ^[0-9]+$ && "${_su}" =~ ^[0-9]+$ ]] || [ "${_st}" -eq 0 ] \
+    || [ $(( _su + _th )) -gt "${_tf}" ]; then
+    _PAIR_INO="NO"
+  fi
+  return 0
+}
+
 _check_space_for_transfer() {
+  # Bytes and inodes: a copy needs both, and a filesystem can run out of
+  # inodes while df -h still shows free space. A rename on one filesystem
+  # needs neither.
   # Args:
   #   1: source directory
   #   2: target base directory (where new dir will live, e.g. /data/disk/oX/static/files/SITE)
@@ -1887,11 +1960,17 @@ _check_space_for_transfer() {
       fi
     fi
   else
-    # If we already know this pair is SPACIOUS, skip per-site checks (normal move logic only)
+    # If we already know this pair is SPACIOUS, skip per-site checks (normal move
+    # logic only) while its inode bound still holds: that one is read again.
     if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ] && [ -n "${_FS_PAIR_STATUS[${_KEY}]+x}" ]; then
       if [ "${_FS_PAIR_STATUS[${_KEY}]}" = "SPACIOUS" ]; then
-        _log "[INFO] Space check skipped for ${_DESC} of site ${_SITE}: filesystem pair ${_KEY} already marked SPACIOUS."
-        return 0
+        _pair_inode_bound "${_SRC_DIR}" "${_TARGET_CHECK}"
+        if [ "${_PAIR_INO}" = "YES" ]; then
+          _log "[INFO] Space check skipped for ${_DESC} of site ${_SITE}: filesystem pair ${_KEY} already marked SPACIOUS."
+          return 0
+        fi
+        _FS_PAIR_STATUS[${_KEY}]="TIGHT"
+        _log "[INFO] Filesystem pair ${_KEY} no longer SPACIOUS in inodes${_PAIR_INO_TXT} – will run per-site space checks."
       fi
       # If marked TIGHT, we fall through to detailed per-site check below
     fi
@@ -1901,20 +1980,41 @@ _check_space_for_transfer() {
       _SRC_USED_KB=$(df -Pk "${_SRC_DIR}" 2>/dev/null | awk 'NR==2 {print $3}')
       _AVAIL_TGT_KB=$(df -Pk "${_TARGET_CHECK}" 2>/dev/null | awk 'NR==2 {print $4}')
 
-      if [ -n "${_SRC_USED_KB}" ] && [ -n "${_AVAIL_TGT_KB}" ] && [ "${_AVAIL_TGT_KB}" -ge "${_SRC_USED_KB}" ]; then
+      # The same for inodes (see _pair_inode_bound)
+      _pair_inode_bound "${_SRC_DIR}" "${_TARGET_CHECK}"
+
+      if [ -n "${_SRC_USED_KB}" ] && [ -n "${_AVAIL_TGT_KB}" ] && [ "${_AVAIL_TGT_KB}" -ge "${_SRC_USED_KB}" ] \
+        && [ "${_PAIR_INO}" = "YES" ]; then
         _FS_PAIR_STATUS[${_KEY}]="SPACIOUS"
-        _log "[INFO] Filesystem pair ${_KEY} marked SPACIOUS (src used=${_SRC_USED_KB}K, tgt avail=${_AVAIL_TGT_KB}K) – skipping per-site size checks."
+        _log "[INFO] Filesystem pair ${_KEY} marked SPACIOUS (src used=${_SRC_USED_KB}K, tgt avail=${_AVAIL_TGT_KB}K${_PAIR_INO_TXT}) – skipping per-site size checks."
         return 0
       else
         _FS_PAIR_STATUS[${_KEY}]="TIGHT"
-        _log "[INFO] Filesystem pair ${_KEY} marked TIGHT or unknown (src used=${_SRC_USED_KB:-?}K, tgt avail=${_AVAIL_TGT_KB:-?}K) – will run per-site space checks."
+        _log "[INFO] Filesystem pair ${_KEY} marked TIGHT or unknown (src used=${_SRC_USED_KB:-?}K, tgt avail=${_AVAIL_TGT_KB:-?}K${_PAIR_INO_TXT}) – will run per-site space checks."
         # Fall through to per-site du logic
       fi
     fi
   fi
 
-  # Per-site detailed size check (fallback when FS pair is TIGHT or devs unknown)
-  _SIZE_KB=$(du -sk "${_SRC_DIR}" 2>/dev/null | awk '{print $1}')
+  # Per-site detailed size check (fallback when FS pair is TIGHT or devs unknown).
+  # A break-sharing copy follows its source when that is itself a link (its
+  # rsync of "<source>/"), so it is measured at the directory the link
+  # resolves to, but only when that is a store's files or private dir: a
+  # link an account makes to anywhere else is counted as the link, as root
+  # never walks a tree an account points it at. A move's source is the
+  # site's own dir, which the move refuses as a link: never followed. Links
+  # inside stay links.
+  _SRC_MEASURE="${_SRC_DIR}"
+  case "${_DESC}" in
+    *"break sharing"*)
+      _SRC_REAL=$(realpath -e -- "${_SRC_DIR}" 2>/dev/null)
+      if [[ "${_SRC_REAL}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] \
+        || [[ "${_SRC_REAL}" =~ ^/mnt/[^/]+/files/[^/]+/static/files/[^/]+/(files|private)$ ]]; then
+        _SRC_MEASURE="${_SRC_REAL}"
+      fi
+      ;;
+  esac
+  _SIZE_KB=$(du -sk "${_SRC_MEASURE}" 2>/dev/null | awk '{print $1}')
   if [ -z "${_SIZE_KB}" ]; then
     _log "[WARN] Unable to determine size for $(_log_name "${_SRC_DIR}") (${_DESC} of site ${_SITE})"
     if [ "${_MODE}" = "DRY" ]; then
@@ -1979,19 +2079,65 @@ _check_space_for_transfer() {
     return 1
   fi
 
+  # The copy makes one inode per name in the source: a link inside it stays
+  # a link and every hard link becomes a file of its own (rsync -a, no -H),
+  # which is what du -l --inodes counts, measured as the bytes are. It must
+  # leave the target's headroom free. A target with no inode count, or a source du cannot count
+  # within 15 minutes, leaves the decision to the bytes, as provision's
+  # pre-flight does.
+  _INO_NEED=""
+  _INO_TXT=""
+  if read -r _INO_TOTAL _INO_FREE _INO_HEAD < <(_inode_room "${_TARGET_CHECK}"); then
+    _INO_NEED=$(timeout 900 du -s -l --inodes -- "${_SRC_MEASURE}" 2>/dev/null | awk 'NR==1 {print $1}')
+    if [[ ! "${_INO_NEED}" =~ ^[0-9]+$ ]]; then
+      _log "[WARN] Unable to count the files of $(_log_name "${_SRC_DIR}") (${_DESC} of site ${_SITE}): checked on bytes only"
+      _INO_NEED=""
+    else
+      _INO_RESERVED=0
+      if [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ] && [ -n "${_TGT_DEV}" ] \
+        && [ -n "${_FS_RESERVED_INO[${_TGT_DEV}]+x}" ]; then
+        _INO_RESERVED="${_FS_RESERVED_INO[${_TGT_DEV}]}"
+      fi
+      _INO_EFFECTIVE=$(( _INO_FREE - _INO_RESERVED ))
+      [ "${_INO_EFFECTIVE}" -ge 0 ] || _INO_EFFECTIVE=0
+      if [ $(( _INO_NEED + _INO_HEAD )) -gt "${_INO_EFFECTIVE}" ]; then
+        if [ "${_INO_RESERVED}" -gt 0 ]; then
+          _log "[WARN] Not enough free inodes on ${_TARGET_CHECK} for ${_DESC} of site ${_SITE}: need ${_INO_NEED} and ${_INO_HEAD} kept free, free now ${_INO_FREE}, already reserved ${_INO_RESERVED}, effective free ${_INO_EFFECTIVE} (every file takes an inode, so a filesystem runs out of them while df -h still shows free space; df -i shows them)"
+        else
+          _log "[WARN] Not enough free inodes on ${_TARGET_CHECK} for ${_DESC} of site ${_SITE}: need ${_INO_NEED} and ${_INO_HEAD} kept free, free now ${_INO_FREE} (every file takes an inode, so a filesystem runs out of them while df -h still shows free space; df -i shows them)"
+        fi
+        if [ "${_MODE}" = "DRY" ]; then
+          _DRY_HAS_ERRORS="YES"
+          _record_anomaly "SPACE_INODES_INSUFFICIENT" "site=${_SITE}" "account_dir=${_ACCOUNT_DIR}" \
+            "desc=${_DESC}" "src_dir=${_SRC_DIR}" "inodes_need=${_INO_NEED}" \
+            "inodes_headroom=${_INO_HEAD}" "inodes_free=${_INO_FREE}" \
+            "inodes_reserved=${_INO_RESERVED}" "target_check=${_TARGET_CHECK}"
+        fi
+        return 1
+      fi
+      _INO_TXT=", ${_INO_NEED} files with ${_INO_EFFECTIVE} inodes free (${_INO_HEAD} kept free)"
+    fi
+  else
+    _log "[INFO] No inode count on ${_TARGET_CHECK} (btrfs, or df unreadable): ${_DESC} of site ${_SITE} checked on bytes only"
+  fi
+
   if [ "${_IS_BREAK_SHARING}" = "YES" ]; then
     _AFTER_COPY_KB=$(( _EFFECTIVE_AVAIL_KB - _SIZE_KB ))
     if [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ]; then
-      _log "[INFO] Ready to copy for ${_DESC} of site ${_SITE}: source size=${_SIZE_KB}K, target free now=${_AVAIL_KB}K, reserved on fs=${_RESERVED_KB}K, effective free=${_EFFECTIVE_AVAIL_KB}K, projected free after copy=${_AFTER_COPY_KB}K on ${_TARGET_CHECK}"
+      _log "[INFO] Ready to copy for ${_DESC} of site ${_SITE}: source size=${_SIZE_KB}K, target free now=${_AVAIL_KB}K, reserved on fs=${_RESERVED_KB}K, effective free=${_EFFECTIVE_AVAIL_KB}K, projected free after copy=${_AFTER_COPY_KB}K on ${_TARGET_CHECK}${_INO_TXT}"
     else
-      _log "[INFO] Ready to copy for ${_DESC} of site ${_SITE}: source size=${_SIZE_KB}K, target free now=${_AVAIL_KB}K, projected free after copy=${_AFTER_COPY_KB}K on ${_TARGET_CHECK}"
+      _log "[INFO] Ready to copy for ${_DESC} of site ${_SITE}: source size=${_SIZE_KB}K, target free now=${_AVAIL_KB}K, projected free after copy=${_AFTER_COPY_KB}K on ${_TARGET_CHECK}${_INO_TXT}"
     fi
     if [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ] && [ -n "${_TGT_DEV}" ]; then
       _FS_RESERVED_KB[${_TGT_DEV}]=$(( _RESERVED_KB + _SIZE_KB ))
       _log "[INFO] Reserved cumulative space for pending break-sharing copies on ${_TGT_DEV}: ${_FS_RESERVED_KB[${_TGT_DEV}]}K"
+      if [ -n "${_INO_NEED}" ]; then
+        _FS_RESERVED_INO[${_TGT_DEV}]=$(( _INO_RESERVED + _INO_NEED ))
+        _log "[INFO] Reserved cumulative inodes for pending break-sharing copies on ${_TGT_DEV}: ${_FS_RESERVED_INO[${_TGT_DEV}]}"
+      fi
     fi
   else
-    _log "[INFO] Space check OK for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, available ${_EFFECTIVE_AVAIL_KB}K on ${_TARGET_CHECK}"
+    _log "[INFO] Space check OK for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, available ${_EFFECTIVE_AVAIL_KB}K on ${_TARGET_CHECK}${_INO_TXT}"
   fi
   return 0
 }
@@ -2130,6 +2276,24 @@ _check_symlink_sharing() {
   _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
   _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
 
+  # The copy follows its source to the directory it resolves to (rsync of
+  # "<source>/"), as the account. That must be a store's files or private
+  # dir: a name on the way an account turned into a link elsewhere would have
+  # the copy take any tree the account can read, uncounted by the space check.
+  _ORIGINAL_REAL=$(realpath -e -- "${_ORIGINAL_TOP}" 2>/dev/null)
+  if [ -n "${_ORIGINAL_REAL}" ] \
+    && ! [[ "${_ORIGINAL_REAL}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] \
+    && ! [[ "${_ORIGINAL_REAL}" =~ ^/mnt/[^/]+/files/[^/]+/static/files/[^/]+/(files|private)$ ]]; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a store that resolves outside the account stores: $(_log_name "${_ORIGINAL_REAL}") – refusing to break sharing"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_EDGE_CASES="YES"
+      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
+    fi
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+
   _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to $(_log_name "${_LINK_TARGET}") (owned by $(_log_name "${_TARGET_SITE_NAME}"))"
   _log "[PLAN] Break sharing: copy from $(_log_name "${_ORIGINAL_TOP}") to ${_NEW_TARGET} and update symlink at ${_PATH}"
 
@@ -2168,7 +2332,7 @@ _check_symlink_sharing() {
 
   # LIVE / BATCH: space check
   if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
-    _log "[WARN] Skipping breaking sharing for ${_TYPE} of site ${_SITE_NAME} due to insufficient space."
+    _log "[WARN] Skipping breaking sharing for ${_TYPE} of site ${_SITE_NAME} due to insufficient space or inodes."
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
@@ -3122,6 +3286,7 @@ _process_site() {
   _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="NO"
   _SITE_SHARED_SYMLINK_FIX_APPLIED="NO"
   _SITE_SHARED_SYMLINK_FIX_SKIPPED="NO"
+  _SITE_CONVERT_SKIPPED="NO"
 
   # Decide what needs to be done for files/
   if [ -d "${_FILES_PATH}" ] && [ ! -L "${_FILES_PATH}" ]; then
@@ -3276,17 +3441,21 @@ _process_site() {
 
       if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
-          _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
+          _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
 
       if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
-          _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
+          _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
     else
@@ -3295,17 +3464,21 @@ _process_site() {
 
       if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
-          _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
+          _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
 
       if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
-          _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
+          _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
     fi
@@ -3512,8 +3685,9 @@ _run_one_site() {
   # account (explicit --account preferred; otherwise by locating the valid
   # vhost+alias pair), validates tokens fail-closed, and converts exactly that
   # one site via _process_site. It never reads or writes the global CLEAN-DRY
-  # state file and never sweeps other accounts. Always returns 0 (done or
-  # safe-skip); the caller treats any internal warning as non-fatal.
+  # state file and never sweeps other accounts. Returns 0 (done, or nothing
+  # to do), or 3 when the conversion, an un-share or a store archive was left
+  # undone; the caller treats either as non-fatal.
   _SITE="${_ONE_SITE}"
   _ACCOUNT_DIR=""
   _ACCOUNT_NAME=""
@@ -3588,6 +3762,7 @@ _run_one_site() {
   _reset_anomalies
   _FS_PAIR_STATUS=()
   _FS_RESERVED_KB=()
+  _FS_RESERVED_INO=()
 
   _log "=================================================================="
   _log "[INFO] Narrow single-site run: site=${_SITE} account=${_ACCOUNT_NAME} apply=${_APPLY_FLAG}"
@@ -3618,27 +3793,39 @@ _run_one_site() {
       _explain_anomalies
       if [ "${_FORCE_UNSHARE}" = "YES" ]; then
         _log "[ALERT] Clone unshare for ${_SITE} not completed (dry-run not clean); files may still be shared with the source - manual review required"
-        return 3
+      else
+        _log "[WARN] Conversion for ${_SITE} not done (dry-run not clean); its files/private are left as they are - manual review required"
       fi
-      return 0
+      return 3
     fi
     _log "[INFO] Narrow dry-run for ${_SITE} is CLEAN; applying."
     _MODE="BATCH"
     _APPLY_COUNT=0
     _FS_PAIR_STATUS=()
     _FS_RESERVED_KB=()
+    _FS_RESERVED_INO=()
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
 
-    # A clone explicitly requested --force-unshare but the inherited share could
-    # not be broken (missing source / no space / rsync fail): the in-site link
-    # may still point at another site's store. Surface it loudly and signal the
-    # caller (non-zero, still non-fatal to the clone).
-    if [ "${_FORCE_UNSHARE}" = "YES" ] \
-      && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
-      && [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ]; then
+    # An inherited share that could not be broken, or was broken for files
+    # and not for private or the other way round (missing source / no space
+    # or inodes / rsync fail): an in-site link may still point at another
+    # site's store. A plain files/private dir that could not be moved into
+    # the store: the site keeps it. Either way the site is not as the caller
+    # asked: surface it and signal the caller (non-zero, still non-fatal to
+    # the task, which logs it as a warning).
+    _NARROW_RC=0
+    if [ "${_SITE_SHARED_SYMLINK_FIX_SKIPPED}" = "YES" ] \
+      || { [ "${_FORCE_UNSHARE}" = "YES" ] \
+        && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
+        && [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ]; }; then
       _log "[ALERT] Clone unshare for ${_SITE} not completed; files may still be shared with the source - manual review required"
-      return 3
+      _NARROW_RC=3
     fi
+    if [ "${_SITE_CONVERT_SKIPPED}" = "YES" ]; then
+      _log "[WARN] Conversion for ${_SITE} not completed; a files/private dir is left in the site as it is - manual review required"
+      _NARROW_RC=3
+    fi
+    [ "${_NARROW_RC}" = "0" ] || return "${_NARROW_RC}"
   else
     _MODE="DRY"
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
@@ -3688,9 +3875,14 @@ _main() {
       exit 10
     fi
 
-    # Second pass: BATCH
+    # Second pass: BATCH. It judges every copy against the disk as it is then:
+    # no pair verdict or reservation of the dry pass is carried over (the
+    # dry pass's reservations were reported above)
     _MODE="BATCH"
     _APPLY_COUNT=0
+    _FS_PAIR_STATUS=()
+    _FS_RESERVED_KB=()
+    _FS_RESERVED_INO=()
     _log "=================================================================="
     _log "[START] autosymlink running in BATCH mode (no per-site confirmation)"
     _require_clean_dry_run_or_exit

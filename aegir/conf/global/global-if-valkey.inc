@@ -254,12 +254,215 @@ function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_
   return $ok;
 }
 
+/* ---------------- Outage windows --------------------------------------- */
+/* While Valkey cannot be reached a site runs on its database cache, so two
+ * caches with separate tag counters take turns: what a request changes on the
+ * database never reaches Valkey, and what changes while Valkey is up never
+ * reaches the database cache. Each turn on the database is a window, recorded
+ * beside the backoff flag in two files per scope: win.<scope>.open holds the
+ * id of the window last opened ("<start microtime>-<md5>"), win.<scope>.closed
+ * the id of the last one cleared from Valkey; a window is pending while they
+ * differ. Scope "box" is this probe path, which every site shares; a site's
+ * scope is md5 of its name, opened only by the redis module's failover on that
+ * site (global-window-d8.php), so one site whose own connection fails never
+ * clears the others. While a window is pending a request runs on the database
+ * and refuses every database cache entry created before the window began
+ * (global-valkey.inc); the first request that finds Valkey up clears what
+ * Valkey kept from before the window and closes it. The files are handled like
+ * the flag: read through lstat() as regular files of the id's own shape only,
+ * written under a random name and renamed over. */
+function _valkey_window_file($flag_path, $scope, $kind) {
+  return dirname($flag_path).'/win.'.$scope.'.'.$kind;
+}
+
+function _valkey_window_read($path) {
+  $st = @lstat($path);
+  if (!is_array($st) || ($st['mode'] & 0170000) !== 0100000 || $st['size'] > 64) {
+    return FALSE;
+  }
+  $id = trim((string) @file_get_contents($path, FALSE, NULL, 0, 64));
+  if (!preg_match('/^[0-9]{9,11}\.[0-9]{6}-[0-9a-f]{32}$/', $id)) {
+    return FALSE;
+  }
+  return $id;
+}
+
+function _valkey_window_write($path, $id) {
+  $tmp = $path.'.'.md5(uniqid(mt_rand(), TRUE));
+  $fh = @fopen($tmp, 'x');
+  if ($fh === FALSE) {
+    return FALSE;
+  }
+  $ok = (@fwrite($fh, $id."\n") !== FALSE);
+  fclose($fh);
+  // Every pool and the CLI read it, whatever umask made it.
+  @chmod($tmp, 0644);
+  if (!$ok || !@rename($tmp, $path)) {
+    @unlink($tmp);
+    return FALSE;
+  }
+  return TRUE;
+}
+
+function _valkey_window_start($id) {
+  if ($id === FALSE) {
+    return 0.0;
+  }
+  return (float) substr($id, 0, strpos($id, '-'));
+}
+
+/* The pending window's id, or FALSE when none is. */
+function _valkey_window_pending($flag_path, $scope) {
+  $open = _valkey_window_read(_valkey_window_file($flag_path, $scope, 'open'));
+  if ($open === FALSE || $open === _valkey_window_read(_valkey_window_file($flag_path, $scope, 'closed'))) {
+    return FALSE;
+  }
+  return $open;
+}
+
+/* Open a window of this scope unless one is pending; return the pending
+ * window's start, or 0.0 when none could be recorded. Called with no flag path
+ * by the failover cache factory, from the same request. */
+function _valkey_window_mark($scope = 'box', $flag_path = NULL) {
+  if (!preg_match('/^(box|[0-9a-f]{32})$/', (string) $scope)) {
+    return 0.0;
+  }
+  if ($flag_path === NULL) {
+    $flag_path = _valkey_backoff_flag_path('/var/tmp/fpm', '/data/conf/arch/valkey.disabled.flag');
+  }
+  $open = _valkey_window_pending($flag_path, $scope);
+  if ($open !== FALSE) {
+    return _valkey_window_start($open);
+  }
+  $id = sprintf('%.6F', microtime(TRUE)).'-'.md5(uniqid(mt_rand(), TRUE));
+  if (!_valkey_window_write(_valkey_window_file($flag_path, $scope, 'open'), $id)) {
+    return 0.0;
+  }
+  return _valkey_window_start($id);
+}
+
+/* The earliest start among the windows pending for this request's scopes:
+ * every database cache entry this site wrote since then was written on the
+ * database, so only older ones are refused. */
+function _valkey_window_threshold($flag_path, $scopes) {
+  $start = 0.0;
+  foreach ($scopes as $scope) {
+    $s = _valkey_window_start(_valkey_window_pending($flag_path, $scope));
+    if ($s > 0 && ($start == 0 || $s < $start)) {
+      $start = $s;
+    }
+  }
+  return $start;
+}
+
+/* Clear what Valkey kept from before a pending window, then close it. One
+ * request per window wins (SET NX in database 0, 30 s); every other request,
+ * and the winner when the clear fails, runs on the database and leaves the
+ * window pending for a later request. The box scope empties database 8, as a
+ * restart does (Valkey keeps nothing on disk), and bumps the APCu serial; a
+ * site's scope removes its own keys only (every copy of the name, as
+ * provision's purges do). APCu needs no clear for correctness: a ChainedFast
+ * bin whose write timestamp is gone stamps a new one and stops trusting every
+ * older APCu entry. TRUE: Valkey may be used. */
+function _valkey_window_recover($flag_path, $scope, $id, $socket_path, $host, $port, $pass, $connect_timeout_s, $read_timeout_s, $transport) {
+  if (!class_exists('Redis')) {
+    return FALSE;
+  }
+  $r = new Redis();
+  $key = 'boa_window_recover_'.$scope.'_'.md5($id);
+  $won = FALSE;
+  try {
+    if ($transport === 'socket') {
+      $connected = $r->connect($socket_path);
+    }
+    else {
+      $connected = $r->connect($host, $port, $connect_timeout_s);
+    }
+    if (!$connected) {
+      return FALSE;
+    }
+    if (defined('Redis::OPT_READ_TIMEOUT')) {
+      $r->setOption(Redis::OPT_READ_TIMEOUT, $read_timeout_s);
+    }
+    if ($pass !== '' && !$r->auth($pass)) {
+      return FALSE;
+    }
+    if (!$r->set($key, '1', array('nx', 'ex' => 30))) {
+      return FALSE;
+    }
+    $won = TRUE;
+    if (!$r->select(8)) {
+      throw new Exception('select');
+    }
+    if ($scope === 'box') {
+      if (!$r->flushDb()) {
+        throw new Exception('flushdb');
+      }
+    }
+    else {
+      $r->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);
+      $it = NULL;
+      while (($keys = $r->scan($it, $scope.'_*', 1000)) !== FALSE) {
+        if (!empty($keys)) {
+          $r->del($keys);
+        }
+      }
+    }
+  }
+  catch (Exception $e) {
+    if ($won) {
+      try {
+        $r->select(0);
+        $r->del($key);
+      }
+      catch (Exception $e2) {
+      }
+    }
+    return FALSE;
+  }
+  _valkey_window_write(_valkey_window_file($flag_path, $scope, 'closed'), $id);
+  if ($scope === 'box') {
+    _valkey_window_write(_valkey_window_file($flag_path, 'apcu', 'serial'), $id);
+  }
+  try { $r->close(); } catch (Exception $e) {}
+  return TRUE;
+}
+
+/* After a box window each FPM APCu segment (every pool of one PHP version
+ * shares one) clears itself once (one clearer per segment, apcu_add), which
+ * redis_flush_apcu_on_recovery switches; the CLI's cache is its own process's
+ * and has nothing to clear. */
+function _valkey_apcu_serial_sync($flag_path) {
+  if (PHP_SAPI === 'cli' || !function_exists('apcu_fetch')) {
+    return FALSE;
+  }
+  $serial = _valkey_window_read(_valkey_window_file($flag_path, 'apcu', 'serial'));
+  if ($serial === FALSE || @apcu_fetch('boa_valkey_window_serial') === $serial) {
+    return FALSE;
+  }
+  if (!@apcu_add('boa_valkey_window_clear_'.md5($serial), 1, 60)) {
+    return FALSE;
+  }
+  @apcu_clear_cache();
+  @apcu_store('boa_valkey_window_serial', $serial);
+  return TRUE;
+}
+
 /* ------------------- Probe Valkey once with guard --------------------- */
 $flag_path = _valkey_backoff_flag_path($flag_dir_run, $flag_file_fallback);
 $flag_existed = (_valkey_backoff_mtime($flag_path) !== FALSE);
 $skip_probe = _valkey_backoff_is_active($flag_path, $backoff_ttl_s);
 $last_reason = 'init';
 $valkey_transport = FALSE; // 'socket' or 'tcp' once a probe answered: the wiring must reuse the transport that worked
+/* The scopes this request answers for: the box, and the site (md5 of its
+ * name, as the redis module names its keys). $valkey_window_start > 0 means
+ * this request runs on its database cache inside a pending window and must
+ * refuse entries created before that time (global-valkey.inc). */
+$valkey_window_scopes = array('box');
+if (!empty($_SERVER['SERVER_NAME'])) {
+  $valkey_window_scopes[] = md5(preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']));
+}
+$valkey_window_start = 0.0;
 
 if ($use_valkey) {
   if (!$skip_probe) {
@@ -284,54 +487,57 @@ if ($use_valkey) {
     }
 
     if ($valkey_up) {
-      // Recovery: we were flagged down and are now up again. Flush the local
-      // APCu so any stale ChainedFast front-layer entries written (or missed)
-      // during the degraded window are discarded and rebuilt from the
-      // consistent Valkey backend. This is the key fix for "config changes
-      // not applied" persisting after a transient blip.
-      //
-      // Elect a SINGLE flusher per recovery: claim the backoff flag with an
-      // atomic rename() so exactly one worker runs the pool-wide, lock-taking
-      // apcu_clear_cache(); every other worker simply ensures the flag is
-      // gone. Without this, many workers can pass the $flag_existed gate at
-      // the same recovery instant and each fire a full-segment clear, all
-      // contending for the APCu write lock just as the pool is recovering.
-      // rename() is atomic on POSIX (only one caller can move the flag) and is
-      // not in BOA's disable_functions list. A '.flushing' temp left behind by
-      // a crashed winner is harmless: backoff logic only looks at $flag_path,
-      // and the next rename() simply overwrites it.
-      //
-      // A CLI process (drush, bee) shares nothing with the FPM pool's APCu:
-      // its apcu_clear_cache() clears its own, empty, per-process cache. So a
-      // CLI recovery must neither win the election nor consume the flag --
-      // it leaves the expired flag in place for the first web worker, which
-      // then runs the pool-wide flush. The flag past its TTL costs nothing:
-      // _valkey_backoff_is_active() is already FALSE for it.
-      $flush_claimed = FALSE;
-      $flush_context = ($flush_apcu_recov && PHP_SAPI !== 'cli');
-      if ($flag_existed && $flush_context) {
-        $claim_path = $flag_path . '.flushing';
-        $flush_claimed = @rename($flag_path, $claim_path);
-      }
-      if ($flush_claimed) {
-        if (function_exists('apcu_clear_cache')) {
-          @apcu_clear_cache();
-          _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY RECOVERY action=apcu_clear winner=1 flag='.$flag_path);
-        }
-        @unlink($claim_path);
-      } elseif ($flush_context || !$flush_apcu_recov) {
-        // Lost the election, flushing disabled, or no flag was set: just make
-        // sure the backoff flag is cleared.
+      // Valkey answers again: the backoff is over. What it kept from before a
+      // pending window is cleared before this request reads it; a request
+      // that cannot do that now stays on the database.
+      if ($flag_existed) {
         _valkey_backoff_clear($flag_path);
       }
-      _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
+      foreach ($valkey_window_scopes as $vw_scope) {
+        $vw_id = _valkey_window_pending($flag_path, $vw_scope);
+        if ($vw_id === FALSE) {
+          continue;
+        }
+        // A site's window waits out the backoff TTL before its clear, as the
+        // box's does: a site whose own connection keeps failing then reopens
+        // one at most that often, and the requests meanwhile cache on the
+        // database inside it.
+        if ($vw_scope !== 'box' && microtime(TRUE) - _valkey_window_start($vw_id) < $backoff_ttl_s) {
+          $valkey_up = FALSE;
+          $last_reason = 'window-recovery';
+          $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
+          break;
+        }
+        if (_valkey_window_recover($flag_path, $vw_scope, $vw_id, $valkey_socket_path, $valkey_host, $valkey_port, $auth_pass, $connect_timeout_s, $read_timeout_s, $valkey_transport)) {
+          _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY WINDOW action=clear scope='.$vw_scope.' id='.$vw_id);
+        }
+        else {
+          $valkey_up = FALSE;
+          $last_reason = 'window-recovery';
+          $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
+          _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY WINDOW action=wait scope='.$vw_scope.' id='.$vw_id);
+          break;
+        }
+      }
+      if ($valkey_up) {
+        if ($flush_apcu_recov && _valkey_apcu_serial_sync($flag_path)) {
+          _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY RECOVERY action=apcu_clear');
+        }
+        _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
+      }
     } else {
       _valkey_backoff_touch($flag_path);
+      _valkey_window_mark('box', $flag_path);
+      $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
       _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
     }
   } else {
+    // Inside the backoff: a flag that no window was recorded for (written by
+    // an earlier release) opens one now.
     $valkey_up = FALSE;
     $last_reason = 'backoff-active';
+    _valkey_window_mark('box', $flag_path);
+    $valkey_window_start = _valkey_window_threshold($flag_path, $valkey_window_scopes);
     _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY SKIP reason=backoff-active flag='.$flag_path);
   }
 }
@@ -359,6 +565,8 @@ if ($cache_dbg_hdr && empty($is_backend) && !headers_sent()) {
       $vk_state = 'up';
     } elseif ($skip_probe) {
       $vk_state = 'backoff';
+    } elseif ($last_reason === 'window-recovery') {
+      $vk_state = 'window';
     } elseif ($last_reason === 'no-phpredis') {
       $vk_state = 'nophpredis';
     } else {
