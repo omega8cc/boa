@@ -282,9 +282,10 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
           header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
         }
       }
-      if ($drupal_core <= 10) {
-        $settings['queue_default']               = 'queue.redis_reliable';
-      }
+      // Queues stay in each site's own database (Drupal's default): the
+      // module names its queue keys drupal:queue:<name> with no site part,
+      // so on the shared instance every site's queue of one name was the
+      // same queue, and the instance keeps nothing on disk.
       if ($redis_comprs) {
         $settings['redis_compress_length']       = 100;
         $settings['redis_compress_level']        = 1; // module default; raising it is discouraged (higher CPU, minimal storage gain)
