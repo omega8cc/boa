@@ -667,9 +667,11 @@ EOFMYSQL
 # bash reads the file: export is tolerated, a quoted value ends at its
 # closing quote, any other at the first blank or semicolon. Nothing when the
 # file assigns it nowhere or cannot be read.
+# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
+# grep reads it as text.
 _master_db_broker_cnf_last() {
   local _v
-  _v=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
   _v="${_v#*=}"
   case "${_v}" in
     \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
