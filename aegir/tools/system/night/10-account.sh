@@ -897,21 +897,24 @@ _night_bak_move() {
 # count (btrfs), is not judged. Status 1 with the reason in _NIGHT_BAK_SHORT.
 _NIGHT_BAK_SHORT=""
 _night_bak_room() {
-  local _kb _av _in _it _if _ih _dkb _din
+  local _kb _av _in _it _if _ih _db _dn
   _NIGHT_BAK_SHORT=""
   _kb=$(_acct_in_real_dir "${_src}" timeout 900 du -sk . 2>/dev/null | awk '{print $1}')
   _in=$(_acct_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
-  # What a copy that stopped short left in the store's .$_n is not copied
-  # again (rsync passes over a file already there whole), so only the rest
-  # needs room: counted in full, a store holding a stopped copy would refuse
-  # the copy that completes it on every pass
-  _dkb=$(_night_in_pinned "${_st}" _night_sub ".${_n}" timeout 900 du -sk . 2>/dev/null | awk '{print $1}')
-  _din=$(_night_in_pinned "${_st}" _night_sub ".${_n}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
-  if [[ "${_kb}" =~ ^[0-9]+$ && "${_dkb}" =~ ^[0-9]+$ ]]; then
-    _kb=$(( _kb > _dkb ? _kb - _dkb : 0 ))
-  fi
-  if [[ "${_in}" =~ ^[0-9]+$ && "${_din}" =~ ^[0-9]+$ ]]; then
-    _in=$(( _in > _din ? _in - _din : 0 ))
+  # A copy that stopped short left part of it in the store's .$_n: what the
+  # copy still writes is what rsync's own dry run says it would send (a file
+  # there whole is passed over; one it left half sent, as a temporary name,
+  # or one no longer in the directory, is not counted as done). Counted in
+  # full, a store holding a stopped copy would refuse the copy that completes
+  # it on every pass. Without the dry run's figures the whole directory is
+  # counted.
+  if [ -n "$(_night_in_pinned "${_st}" _night_sub ".${_n}" ls -A . 2>/dev/null)" ]; then
+    read -r _db _dn <<< "$(_acct_in_real_dir "${_src}" _night_bak_need_here "${_dm}" 2>/dev/null)"
+    if [[ "${_db}" =~ ^[0-9]+$ && "${_dn}" =~ ^[0-9]+$ ]]; then
+      # every new file takes at least a block: 4K each over the bytes
+      _kb=$(( _db / 1024 + 4 * _dn + 1 ))
+      _in=$(( _dn + 1 ))
+    fi
   fi
   _av=$(_night_in_pinned "${_st}" df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')
   read -r _it _if <<< "$(_night_in_pinned "${_st}" env LC_ALL=C df -P -i . 2>/dev/null | awk 'NR==2 {print $2, $4}')"
@@ -929,6 +932,22 @@ _night_bak_room() {
     fi
   fi
   return 0
+}
+# From inside the real directory being relocated: what the copy into the
+# store directory $1, held open as _night_bak_copy_here holds it, would
+# write, from rsync's own dry run: "<bytes> <names>", the bytes of the files
+# it would send and the names it would create. Nothing printed, and status
+# 1, when its figures cannot be read.
+_night_bak_need_here() {
+  local _out _b _n
+  exec 9< "${1}/." || return 1
+  [ "$(readlink /proc/self/fd/9)" = "${1}" ] || return 1
+  _out="$(LC_ALL=C timeout 900 rsync -a --no-devices --no-specials --dry-run --stats ./ /proc/self/fd/9/ 2>/dev/null)" \
+    || return 1
+  _b="$(printf '%s\n' "${_out}" | awk -F': ' '/^Total transferred file size:/ { v = $2; gsub(/[^0-9]/, "", v); print v; exit }')"
+  _n="$(printf '%s\n' "${_out}" | awk -F': ' '/^Number of created files:/ { split($2, a, " "); v = a[1]; gsub(/[^0-9]/, "", v); print v; exit }')"
+  [[ "${_b}" =~ ^[0-9]+$ && "${_n}" =~ ^[0-9]+$ ]] || return 1
+  echo "${_b} ${_n}"
 }
 # In the real account root (the current directory): ./$2 made a link to $1
 # owned by $3 (owner:group), only while no name is there, as ln -s -T made
