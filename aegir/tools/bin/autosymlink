@@ -11,7 +11,7 @@
 #   BATCH_IF_CLEAN    : run DRY and if CLEAN automatically run BATCH (cron-safe)
 #   REPORT  (report)  : read-only report of shared files/private symlinks
 #
-# A DRY run that is NOT CLEAN blocks batch/live for the whole sweep, so it ends
+# A DRY run that is NOT CLEAN blocks batch for the whole sweep, so it ends
 # with an [EXPLAINED] section: every finding that caused the verdict is re-checked
 # against the filesystem right then and printed with what was seen, what was
 # probed, the diagnosis and the fix. The commonest one by far is a ghost Drush
@@ -3268,6 +3268,7 @@ _process_site() {
   _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="NO"
   _SITE_SHARED_SYMLINK_FIX_APPLIED="NO"
   _SITE_SHARED_SYMLINK_FIX_SKIPPED="NO"
+  _SITE_CONVERT_SKIPPED="NO"
 
   # Decide what needs to be done for files/
   if [ -d "${_FILES_PATH}" ] && [ ! -L "${_FILES_PATH}" ]; then
@@ -3423,16 +3424,20 @@ _process_site() {
       if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
 
       if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
     else
@@ -3442,16 +3447,20 @@ _process_site() {
       if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
 
       if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space or inodes."
+          _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}" \
+            || _SITE_CONVERT_SKIPPED="YES"
         fi
       fi
     fi
@@ -3658,8 +3667,8 @@ _run_one_site() {
   # account (explicit --account preferred; otherwise by locating the valid
   # vhost+alias pair), validates tokens fail-closed, and converts exactly that
   # one site via _process_site. It never reads or writes the global CLEAN-DRY
-  # state file and never sweeps other accounts. Returns 0 (done or
-  # safe-skip), or 3 when a requested un-share or store archive was left
+  # state file and never sweeps other accounts. Returns 0 (done, or nothing
+  # to do), or 3 when the conversion, an un-share or a store archive was left
   # undone; the caller treats either as non-fatal.
   _SITE="${_ONE_SITE}"
   _ACCOUNT_DIR=""
@@ -3766,9 +3775,10 @@ _run_one_site() {
       _explain_anomalies
       if [ "${_FORCE_UNSHARE}" = "YES" ]; then
         _log "[ALERT] Clone unshare for ${_SITE} not completed (dry-run not clean); files may still be shared with the source - manual review required"
-        return 3
+      else
+        _log "[WARN] Conversion for ${_SITE} not done (dry-run not clean); its files/private are left as they are - manual review required"
       fi
-      return 0
+      return 3
     fi
     _log "[INFO] Narrow dry-run for ${_SITE} is CLEAN; applying."
     _MODE="BATCH"
@@ -3778,18 +3788,26 @@ _run_one_site() {
     _FS_RESERVED_INO=()
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
 
-    # A clone explicitly requested --force-unshare but the inherited share could
-    # not be broken, or was broken for files and not for private or the other
-    # way round (missing source / no space or inodes / rsync fail): an in-site
-    # link may still point at another site's store. Surface it loudly and
-    # signal the caller (non-zero, still non-fatal to the clone).
-    if [ "${_FORCE_UNSHARE}" = "YES" ] \
-      && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
-      && { [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ] \
-        || [ "${_SITE_SHARED_SYMLINK_FIX_SKIPPED}" = "YES" ]; }; then
+    # An inherited share that could not be broken, or was broken for files
+    # and not for private or the other way round (missing source / no space
+    # or inodes / rsync fail): an in-site link may still point at another
+    # site's store. A plain files/private dir that could not be moved into
+    # the store: the site keeps it. Either way the site is not as the caller
+    # asked: surface it and signal the caller (non-zero, still non-fatal to
+    # the task, which logs it as a warning).
+    _NARROW_RC=0
+    if [ "${_SITE_SHARED_SYMLINK_FIX_SKIPPED}" = "YES" ] \
+      || { [ "${_FORCE_UNSHARE}" = "YES" ] \
+        && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
+        && [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ]; }; then
       _log "[ALERT] Clone unshare for ${_SITE} not completed; files may still be shared with the source - manual review required"
-      return 3
+      _NARROW_RC=3
     fi
+    if [ "${_SITE_CONVERT_SKIPPED}" = "YES" ]; then
+      _log "[WARN] Conversion for ${_SITE} not completed; a files/private dir is left in the site as it is - manual review required"
+      _NARROW_RC=3
+    fi
+    [ "${_NARROW_RC}" = "0" ] || return "${_NARROW_RC}"
   else
     _MODE="DRY"
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
@@ -3839,9 +3857,14 @@ _main() {
       exit 10
     fi
 
-    # Second pass: BATCH
+    # Second pass: BATCH. It judges every copy against the disk as it is then:
+    # no pair verdict or reservation of the dry pass is carried over (the
+    # dry pass's reservations were reported above)
     _MODE="BATCH"
     _APPLY_COUNT=0
+    _FS_PAIR_STATUS=()
+    _FS_RESERVED_KB=()
+    _FS_RESERVED_INO=()
     _log "=================================================================="
     _log "[START] autosymlink running in BATCH mode (no per-site confirmation)"
     _require_clean_dry_run_or_exit

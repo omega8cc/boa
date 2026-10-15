@@ -49,10 +49,12 @@
       store that is itself a link to another store is counted, bytes too,
       through it.
 
-    * A Clone, Migrate or upgrade whose un-share copy was made for files
-      but not for private, or the other way round, is reported as not
-      completed (an ALERT, and a warning in the task log) instead of as
-      un-shared: a link into the other site's store was still there.
+    * A Clone, Migrate, upgrade, install or restore whose store conversion
+      or un-share was refused or left unfinished is reported as not
+      completed (a warning in the task log, an ALERT or WARN line in the
+      autosymlink log) instead of as done: an install or restore that kept
+      its plain dirs, or a Clone that un-shared files but not private, was
+      logged as moved into the store.
 
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
