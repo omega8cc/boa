@@ -231,7 +231,9 @@ _mfs_kind_here() {
 # (user:group) when given: the link is made by that owner itself, so no chown
 # by name follows it (a hard link renamed over the name before a chown -h
 # would be handed over). Where the owner is root, does not resolve or cannot
-# make it, root makes it and it stays root's: nothing checks a link's owner.
+# make it, root makes it and it stays root's: only the nginx link check reads
+# a link's owner, and on a box armed for it linkguard makes a link inside one
+# account its target owner's.
 # -T: a name put there meanwhile makes ln fail, never takes the link inside
 # it.
 _mfs_link_here() {

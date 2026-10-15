@@ -460,9 +460,10 @@ _links_here() {
 # ./$1 in the current (pinned) directory made a link to $2, owned by the
 # numeric owner $3 (uid:gid) when given: the link is made by that owner
 # under a fresh name and renamed over ./$1, so nothing is handed over by
-# name (a hard link renamed over the name before a chown -h would be). A
-# link root makes when that owner cannot write here: nginx never checks a
-# link's owner.
+# name (a hard link renamed over the name before a chown -h would be). Root
+# makes it when that owner cannot write here: only the nginx link check reads
+# a link's owner, and on a box armed for it linkguard makes a link inside one
+# account its target owner's.
 _relink_here() {
   local _t="./.${1}.rah.$$.${RANDOM}"
   rm -f -- "${_t}"
