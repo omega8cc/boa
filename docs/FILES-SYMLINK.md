@@ -1018,10 +1018,14 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   over and set modes only on what root or the account's own users own.
 
   Those users are the account's backend user, `.ftp` login, client
-  sub-accounts and PHP-FPM users, or, under the master, aegir, the master's
-  pool users and www-data (the web server's user, which runs PHP on a plain
-  Aegir server), read from the resolved path, never from the arguments. A
-  file whose owner no longer exists counts as the account's own.
+  sub-accounts and PHP-FPM users, read from the resolved path, never from
+  the arguments. A file whose owner no longer exists counts as the
+  account's own.
+
+  Under the master (`/var/aegir`) the Verify fixers count every user except
+  an account's own users. A plain Aegir server's files, a deploy login's
+  included, are handed to aegir as they always were, while what an
+  account's users moved into the master's stores stays theirs.
 
   A file or directory another account's users own is left as it is, with
   everything below it, and never followed through a link: an account's users
