@@ -46,7 +46,8 @@
       at least 50,000, free; a dry run records it as
       SPACE_INODES_INSUFFICIENT. The count matches the copy: hard-linked
       names count as files, a link inside the store counts once, and a
-      store that is itself a link is counted, bytes too, through it.
+      store that is itself a link to another store is counted, bytes too,
+      through it.
 
     * A Clone, Migrate or upgrade whose un-share copy was made for files
       but not for private, or the other way round, is reported as not

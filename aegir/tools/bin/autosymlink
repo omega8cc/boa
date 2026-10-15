@@ -1998,12 +1998,21 @@ _check_space_for_transfer() {
 
   # Per-site detailed size check (fallback when FS pair is TIGHT or devs unknown).
   # A break-sharing copy follows its source when that is itself a link (its
-  # rsync of "<source>/"), so it is measured through it. A move's source is
-  # the site's own dir, which the move refuses as a link: a link the site's
-  # account swaps in there is never followed. Links inside stay links.
+  # rsync of "<source>/"), so it is measured at the directory the link
+  # resolves to, but only when that is a store's files or private dir: a
+  # link an account makes to anywhere else is counted as the link, as root
+  # never walks a tree an account points it at. A move's source is the
+  # site's own dir, which the move refuses as a link: never followed. Links
+  # inside stay links.
   _SRC_MEASURE="${_SRC_DIR}"
   case "${_DESC}" in
-    *"break sharing"*) _SRC_MEASURE="${_SRC_DIR%/}/" ;;
+    *"break sharing"*)
+      _SRC_REAL=$(realpath -e -- "${_SRC_DIR}" 2>/dev/null)
+      if [[ "${_SRC_REAL}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] \
+        || [[ "${_SRC_REAL}" =~ ^/mnt/[^/]+/files/[^/]+/static/files/[^/]+/(files|private)$ ]]; then
+        _SRC_MEASURE="${_SRC_REAL}"
+      fi
+      ;;
   esac
   _SIZE_KB=$(du -sk "${_SRC_MEASURE}" 2>/dev/null | awk '{print $1}')
   if [ -z "${_SIZE_KB}" ]; then
