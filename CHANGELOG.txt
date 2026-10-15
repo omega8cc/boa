@@ -481,6 +481,11 @@
       extension's name or at usr itself stays as it is, nothing is linked
       into it, and one line counts it.
 
+    * The limited-shell worker's other removals in a login's ~/.drush
+      (alias names that are not files, old stamps) and in the main
+      login's ~/.drush/cache and ~/.tmp at a new release remove only what
+      root or the account's own users own, and one line counts the rest.
+
     * The Octopus upgrade's removal of entries older than a day from the
       account's .tmp deletes only what root or the account's own users
       own, never a directory another account placed there.
