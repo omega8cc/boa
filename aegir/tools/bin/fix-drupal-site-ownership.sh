@@ -276,6 +276,38 @@ _web_group() {
   esac
 }
 
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
+}
+
 _master_web_group() {
   # The master's own web group, wg-aegir, the way _web_group_state reads an
   # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its

@@ -693,10 +693,18 @@
       group; the outside holder is not changed. A standby, a frozen
       account, a box not ready, a group a directory service holds, a file
       under /etc naming it or a free of the same account in the last 30
-      days keeps the alarm instead, which says why. Root's writers keep a
-      converted account's group for its paths while root's record names
-      its number; they gave such paths www-data, which the account's
-      phase B pools no longer hold (docs/INSTGRP.md).
+      days keeps the alarm instead, which says why (docs/INSTGRP.md).
+
+    * A web group that someone outside the account holds too (a member, a
+      user whose primary group it is, or a member of another group with
+      the same number) is never joined, but once the account is converted
+      onto it, root's writers keep giving the account's paths that group,
+      new identities and pool users of the account are listed in it, and
+      its pools keep their group line at phase B, until the name is
+      freed; they gave such paths www-data and left the new identities
+      out, so the account's phase B pools could not read them. Until the
+      free the outside holder keeps group access to the paths written
+      there (docs/INSTGRP.md).
 
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no

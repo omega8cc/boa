@@ -145,16 +145,52 @@ _web_group() {
   esac
 }
 
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
+}
+
 _web_group_rb() {
-  # "rb" when the account's record says phase B (_web_group_state phaseb)
-  # and carries the fourth field rb=1: a rollback of phase B was cut short,
-  # so the record says B only because the pools may still lack www-data, and
-  # no share check has passed since. Empty otherwise. The pool line is left
-  # out while it stands and the account's shell user is still listed in
-  # www-data. $1 as _web_group_state.
+  # "rb" when the account's record says phase B (_web_group_state phaseb,
+  # or foreign while the record names the group's current gid: the
+  # _web_group_conv rule) and carries the fourth field rb=1: a rollback of
+  # phase B was cut short, so the record says B only because the pools may
+  # still lack www-data, and no share check has passed since. Empty
+  # otherwise. The pool line is left out while it stands and the account's
+  # shell user is still listed in www-data. $1 as _web_group_state.
   local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
   _s=$(_web_group_state "${1}")
-  [ "${_s%% *}" = "phaseb" ] || return 0
+  case "${_s%% *}" in
+    phaseb|foreign) ;;
+    *) return 0 ;;
+  esac
   _a="${_s##* }"
   _a="${_a#wg-}"
   _r="/root/.${_a}.web-group.txt"
@@ -3976,16 +4012,16 @@ _ok_create_user() {
       # in every case -- it is the binary execute ACL, lshell included.
       usermod -aG users ${_usrLtd}
       # www-data (files/ write, settings.php read) until the account's
-      # identities have left it for the account's own web group, which is
-      # listed as soon as the account holds one.
+      # identities have left it for the account's own web group (phase B),
+      # which is listed as soon as the account holds one or is converted onto
+      # a group an identity outside it holds too (_web_group_conv).
       _T_WGS=$(_web_group_state "${_usrLtd}")
-      [ "${_T_WGS%% *}" = "phaseb" ] || adduser ${_usrLtd} ${_WEBG}
-      case "${_T_WGS%% *}" in
-        held|converted|phaseb)
-          _ltd_wg_grant "${_usrLtd}" "${_T_WGS##* }" \
-            || echo "ALERT: ${_usrLtd} could not be listed in ${_T_WGS##* }"
-          ;;
-      esac
+      _T_WGC=$(_web_group_conv "${_usrLtd}" "${_T_WGS}")
+      [ "${_T_WGC}" = "${_T_WGS##* } B" ] || adduser ${_usrLtd} ${_WEBG}
+      if [ "${_T_WGS%% *}" = "held" ] || [ -n "${_T_WGC}" ]; then
+        _ltd_wg_grant "${_usrLtd}" "${_T_WGS##* }" \
+          || echo "ALERT: ${_usrLtd} could not be listed in ${_T_WGS##* }"
+      fi
       # A migration carries /home/<admin>/users/<name> from the source box
       # before this user exists here; honour that stored password so the
       # client's sub-account credential survives the move, instead of
@@ -4294,14 +4330,13 @@ _ok_update_user() {
       if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
         usermod -aG users ${_usrLtd}
       fi
-      # The account's own web group, once it holds one: listed the same way.
+      # The account's own web group, once it holds one or is converted onto
+      # it (_web_group_conv): listed the same way.
       _T_WGS=$(_web_group_state "${_usrLtd}")
-      case "${_T_WGS%% *}" in
-        held|converted|phaseb)
-          _ltd_wg_grant "${_usrLtd}" "${_T_WGS##* }" \
-            || echo "ALERT: ${_usrLtd} could not be listed in ${_T_WGS##* }"
-          ;;
-      esac
+      if [ "${_T_WGS%% *}" = "held" ] || [ -n "$(_web_group_conv "${_usrLtd}" "${_T_WGS}")" ]; then
+        _ltd_wg_grant "${_usrLtd}" "${_T_WGS##* }" \
+          || echo "ALERT: ${_usrLtd} could not be listed in ${_T_WGS##* }"
+      fi
       # A sub-user still on the box-wide primary group while its account
       # carries the per-instance group (born under an older worker, or the
       # account converted since) cannot read its 0440 alias copies: align it,
@@ -5173,15 +5208,14 @@ _satellite_create_web_user() {
       _satellite_web_user_update "$1"
     fi
     # A pool user made anew drops every group listing: once the account holds
-    # its own web group, the pool is listed in it before its pool file is
+    # its own web group, or is converted onto one an identity outside it holds
+    # too (_web_group_conv), the pool is listed in it before its pool file is
     # written and FPM reloaded, or its workers could not read settings.php.
     _T_WGS=$(_web_group_state "${_WEB}")
-    case "${_T_WGS%% *}" in
-      held|converted|phaseb)
-        _ltd_wg_grant "${_WEB}" "${_T_WGS##* }" \
-          || echo "ALERT: ${_WEB} could not be listed in ${_T_WGS##* }"
-        ;;
-    esac
+    if [ "${_T_WGS%% *}" = "held" ] || [ -n "$(_web_group_conv "${_WEB}" "${_T_WGS}")" ]; then
+      _ltd_wg_grant "${_WEB}" "${_T_WGS##* }" \
+        || echo "ALERT: ${_WEB} could not be listed in ${_T_WGS##* }"
+    fi
   fi
 }
 #
@@ -5781,7 +5815,7 @@ _ltd_hm_pool() {
   # the pool runs in the account's web group once its identities have left
   # www-data, on the same terms as its other pools (see the pool loop)
   _T_WGS=$(_web_group_state "${_USER}")
-  if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+  if [ "$(_web_group_conv "${_USER}" "${_T_WGS}")" = "wg-${_USER} B" ] \
     && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
     && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
       && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
@@ -6270,14 +6304,16 @@ _switch_php() {
 
             # Once the account's identities have left www-data, its pools run
             # in the account's own web group (after the include, which sets
-            # www-data). A group that does not resolve would fail this whole
-            # PHP version on reload, so it is written only when it does.
+            # www-data), also while an identity outside the account holds that
+            # group too and root's record names it at B (_web_group_conv). A
+            # group that does not resolve would fail this whole PHP version
+            # on reload, so it is written only when it does.
             # A record of B left by a phase-B rollback that was cut short
             # (rb=1) does not count while the account's own user is still
             # listed in www-data: the pools keep www-data until the next
             # conversion run has re-checked shares.
             _T_WGS=$(_web_group_state "${_USER}")
-            if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+            if [ "$(_web_group_conv "${_USER}" "${_T_WGS}")" = "wg-${_USER} B" ] \
               && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
               && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
                 && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
@@ -6832,12 +6868,13 @@ _manage_user() {
       else
         _usrGroup=$(_acct_group "${_USER}")
       fi
-      # An account that holds its own web group: its backend user (provision's
-      # membership test reads the group database), its SFTP user and every
-      # pool user are listed in it, healed every pass.
+      # An account that holds its own web group, or is converted onto one an
+      # identity outside it holds too (_web_group_conv): its backend user
+      # (provision's membership test reads the group database), its SFTP user
+      # and every pool user are listed in it, healed every pass.
       _T_WGS=$(_web_group_state "${_USER}")
       if [ "${_T_WGS##* }" = "wg-${_USER}" ] \
-        && [[ "${_T_WGS%% *}" =~ ^(held|converted|phaseb)$ ]]; then
+        && { [ "${_T_WGS%% *}" = "held" ] || [ -n "$(_web_group_conv "${_USER}" "${_T_WGS}")" ]; }; then
         for _igU in ${_USER} ${_USER}.ftp $(getent passwd | cut -d: -f1 \
           | grep -E "^${_USER}(\.[0-9]+)?\.web$"); do
           getent passwd "${_igU}" > /dev/null 2>&1 || continue

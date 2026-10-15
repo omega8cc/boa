@@ -567,15 +567,16 @@ _satellite_create_web_user() {
 
 #
 # An identity of an account that holds its own web group is listed in that
-# group (supplementary, verified in the group database, never by id -nG);
-# nothing to do while the account has none. $1 = the identity.
+# group (supplementary, verified in the group database, never by id -nG),
+# and so is one of an account converted onto a group an identity outside it
+# holds too (_web_group_conv: its paths are in that group); nothing to do
+# while the account has none. $1 = the identity.
 _satellite_wg_grant() {
   local _st _g
   _st=$(_web_group_state "${1}")
-  case "${_st%% *}" in
-    held|converted|phaseb) ;;
-    *) return 0 ;;
-  esac
+  if [ "${_st%% *}" != "held" ] && [ -z "$(_web_group_conv "${1}" "${_st}")" ]; then
+    return 0
+  fi
   _g="${_st##* }"
   getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
   usermod -aG "${_g}" "${1}" &> /dev/null
@@ -858,14 +859,16 @@ _satellite_tune_fpm_config() {
       wait
     fi
     # Once the account's identities have left www-data, its pool runs in the
-    # account's own web group (after the include, which sets www-data). A
-    # group that does not resolve would fail this whole PHP version on
-    # reload, so it is written only when it does. A record of B left by a
-    # phase-B rollback that was cut short (rb=1) does not count while the
-    # account's own user is still listed in www-data: the pool keeps
-    # www-data until the next conversion run has re-checked shares.
+    # account's own web group (after the include, which sets www-data), also
+    # while an identity outside the account holds that group too and root's
+    # record names it at B (_web_group_conv). A group that does not resolve
+    # would fail this whole PHP version on reload, so it is written only when
+    # it does. A record of B left by a phase-B rollback that was cut short
+    # (rb=1) does not count while the account's own user is still listed in
+    # www-data: the pool keeps www-data until the next conversion run has
+    # re-checked shares.
     _T_WGS=$(_web_group_state "${_USER}")
-    if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+    if [ "$(_web_group_conv "${_USER}" "${_T_WGS}")" = "wg-${_USER} B" ] \
       && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
       && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
         && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
@@ -6052,9 +6055,11 @@ _satellite_if_add_ftps_lshell_access() {
   # primary group is; a primary 'users' alone is not a listed membership.
   usermod -aG ${_USRG} ${_USERFTP} &> /dev/null
   # www-data (files/ write, settings.php read) until the account's identities
-  # have left it for the account's own web group, listed once it holds one.
+  # have left it for the account's own web group (phase B, _web_group_conv),
+  # listed once it holds one.
   _T_WGS=$(_web_group_state "${_USERFTP}")
-  [ "${_T_WGS%% *}" = "phaseb" ] || adduser ${_USERFTP} ${_WEBG} &> /dev/null
+  [ "$(_web_group_conv "${_USERFTP}" "${_T_WGS}")" = "${_T_WGS##* } B" ] \
+    || adduser ${_USERFTP} ${_WEBG} &> /dev/null
   _satellite_wg_grant "${_USERFTP}"
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
