@@ -1,0 +1,7 @@
+# Drupal 8+ database cache inside a Valkey outage window (global-window-d8.php):
+# the default backend while a window is pending, and the redis module's
+# failover service while Valkey is wired.
+services:
+  cache.backend.boa_window:
+    class: Drupal\boa_window\WindowBackendFactory
+    arguments: ['@cache.backend.database']

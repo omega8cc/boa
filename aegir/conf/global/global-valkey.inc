@@ -256,6 +256,15 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         $settings['redis.connection']['password'] = $auth_pass;
       }
       $settings['redis.connection']['base']      = '8';
+      // The installer points the lines above at the local socket. When the
+      // probe could not use the socket but reached Valkey over TCP, the
+      // module gets the TCP target the probe answered on, or every site
+      // would fail over to its database on a box whose cache still works.
+      if (isset($valkey_transport) && $valkey_transport === 'tcp'
+          && $settings['redis.connection']['host'] === '/var/run/valkey/valkey.sock') {
+        $settings['redis.connection']['host']    = $valkey_host;
+        $settings['redis.connection']['port']    = $valkey_port;
+      }
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
       if (!is_readable('/data/conf/clstr.cnf')) {
@@ -266,6 +275,19 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       if (is_readable($example_failover_path)) {
         $settings['container_yamls'][]           = $example_failover_path;
         $settings['redis.failover']              = TRUE;
+        // When this site's own connection fails the module falls back to
+        // BOA's window cache: it opens a window of this site's scope and
+        // refuses database entries older than it (global-if-valkey.inc).
+        if (is_readable('/data/conf/global/global-window-d8.services.yml')
+            && isset($class_loader) && !empty($valkey_window_scopes[1])) {
+          $class_loader->addClassMap(array(
+            'Drupal\boa_window\WindowBackendFactory' => '/data/conf/global/global-window-d8.php',
+            'Drupal\boa_window\WindowBackend' => '/data/conf/global/global-window-d8.php',
+          ));
+          $settings['container_yamls'][]         = '/data/conf/global/global-window-d8.services.yml';
+          $settings['redis.failover.cache_service'] = 'cache.backend.boa_window';
+          $settings['boa_window_scope']          = $valkey_window_scopes[1];
+        }
         if ($is_dev && !$is_backend) {
           header("X-Valkey-Failover-Is-Readable: " . $example_failover_path);
         }
@@ -403,6 +425,15 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         $conf['redis_client_password']          = $auth_pass;
       }
       $conf['redis_client_base']                = '8';
+      // As for Drupal 8+ above: the TCP target the probe answered on when it
+      // could not use the local socket. The host key is built in two parts
+      // because the installer renames every literal of it to the socket key.
+      if (isset($valkey_transport) && $valkey_transport === 'tcp' && isset($conf['redis_client_socket'])
+          && $conf['redis_client_socket'] === '/var/run/valkey/valkey.sock') {
+        unset($conf['redis_client_socket']);
+        $conf['redis_client_' . 'host']         = $valkey_host;
+        $conf['redis_client_port']              = $valkey_port;
+      }
       $conf['cache_prefix']                     = $this_prefix;
       $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
       $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
@@ -429,6 +460,55 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
           header("X-Ini-Valkey-Exclude-Bin-" . $exclude . ": " . $bin_exclude);
         }
       }
+    }
+  }
+}
+
+/**
+ * Inside a Valkey outage window (global-if-valkey.inc) the site runs on its
+ * database cache, which nothing kept current while Valkey was up: entries
+ * created before the window began are refused, everything written since is
+ * served. Drupal 8+ wraps every bin and the kernel's container cache (the
+ * core default definition, read from the kernel, with its cache.container
+ * wrapped); Drupal 7 swaps its default cache class, the form and bootstrap
+ * bins staying plain database as they are with Valkey.
+ */
+if (empty($valkey_up) && !empty($use_valkey) && empty($custom_cache) && !empty($valkey_window_start)) {
+  if ($drupal_core >= 8) {
+    if (isset($class_loader) && is_readable('/data/conf/global/global-window-d8.services.yml')) {
+      $class_loader->addClassMap(array(
+        'Drupal\boa_window\WindowBackendFactory' => '/data/conf/global/global-window-d8.php',
+        'Drupal\boa_window\WindowBackend' => '/data/conf/global/global-window-d8.php',
+      ));
+      $settings['boa_window_start']              = $valkey_window_start;
+      $settings['container_yamls'][]             = '/data/conf/global/global-window-d8.services.yml';
+      $settings['cache']['default']              = 'cache.backend.boa_window';
+      if (class_exists('Drupal\Core\DrupalKernel', FALSE)) {
+        $vw_props = (new ReflectionClass('Drupal\Core\DrupalKernel'))->getDefaultProperties();
+        if (!empty($vw_props['defaultBootstrapContainerDefinition']['services']['cache.container'])) {
+          $vw_def = $vw_props['defaultBootstrapContainerDefinition'];
+          $vw_def['services']['cache.container.boa_window_inner'] = $vw_def['services']['cache.container'];
+          $vw_def['services']['cache.container'] = array(
+            'class' => 'Drupal\boa_window\WindowBackend',
+            'arguments' => array('@cache.container.boa_window_inner', $valkey_window_start),
+          );
+          $settings['bootstrap_container_definition'] = $vw_def;
+        }
+      }
+    }
+  }
+  elseif ($drupal_core == 7 && defined('DRUPAL_ROOT')
+      && is_readable(DRUPAL_ROOT . '/includes/cache.inc')
+      && is_readable('/data/conf/global/global-window-d7.inc')) {
+    // The subclass needs DrupalDatabaseCache, which bootstrap loads only
+    // after settings: load it now (bootstrap's own require_once then skips).
+    require_once DRUPAL_ROOT . '/includes/cache.inc';
+    require_once '/data/conf/global/global-window-d7.inc';
+    $conf['boa_window_start']                    = $valkey_window_start;
+    $conf['cache_default_class']                 = 'BoaWindowDatabaseCache';
+    $conf['cache_class_cache_form']              = 'DrupalDatabaseCache';
+    if (!is_readable('/data/conf/clstr.cnf')) {
+      $conf['cache_class_cache_bootstrap']       = 'DrupalDatabaseCache';
     }
   }
 }
