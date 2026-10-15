@@ -59,8 +59,9 @@ granted anything on that schema.
 Not served, and refused by `scope`: an account whose databases are on another
 server (a web head: `_THIS_DB_HOST` in its `/root/.oN.octopus.cnf` names a
 host that is not this box), an account behind ProxySQL, a database cluster.
-`report` reads such an account `not-served`, and a pass's switch answers
-`skipped` for it.
+`report` reads such an account `not-served` (on a ProxySQL or cluster box it
+answers `skipped` for the whole box), and a pass's switch and a new
+account's switch answer `skipped` for it.
 
 A box that is the database server of other boxes' web heads holds those
 accounts' logins too. The broker never touches them: they can be used from
@@ -351,7 +352,8 @@ switch. A second run on the same box settles nothing and prints the same
 
 A read that fails ends it at once, but for the read of the definers (above).
 A change that fails is said in an `ALRT` line and ends it with `ERR 7
-baseline-settle-incomplete N` once the rest is done.
+baseline-settle-incomplete N` once the rest is done; a pass relays those
+lines (see "A box armed for the broker").
 
 The passes of a box armed for the broker call `baseline settle` (see "A box
 armed for the broker"); nothing else does.
@@ -578,18 +580,23 @@ An account a migration tool installs here (`xoct create`) is never switched by
 this setting: it takes its state from its source instead, switched on the
 target when it is switched there (where the target's own checks allow it).
 
-`_DB_BROKER_BORN=NO` in an account's `/root/.oN.octopus.cnf` keeps that
-account out of it. `xoct create` puts that line there before it installs a
-moved account and takes its own line back once the account is installed and
-its source's settings and switch are carried. A line the cnf held before is
-its operator's and stays.
+`_DB_BROKER_ARM=NO` or `_DB_BROKER_BORN=NO` in an account's
+`/root/.oN.octopus.cnf` keeps that account out of it, with one INFO line. Each
+is read as the cnf is when it is sourced, as the pass's own step reads it: the
+last assignment counts, and `export`, an indent, quotes and a trailing
+comment are read through. `xoct create` puts `_DB_BROKER_BORN=NO` there before
+it installs a moved account and takes its own line back once the account is
+installed and its source's settings and switch are carried (see "A box armed
+for the broker"). A line the cnf held before is its operator's and stays.
 
 The pass makes it with `boa-dbctl scope oN on --born`, which reads the plan
 itself: with `--sha`, `--force` or `--accept-refusals`, or on `plan`, `off` or
 `status`, it is a usage error. It takes no pause of the task queue and waits
-for no task, the account being new. On a box armed for the broker (below) the
-pass calls `boa-dbctl baseline settle` right before it, so the new account's
-switch finds a settled box.
+for no task, the account being new. For an account the broker does not serve
+it changes nothing and answers `OK scope on oN skipped <reason>` with exit
+code 0, as a pass's switch does (below); the pass says that line as INFO. On a
+box armed for the broker (below) the pass calls `boa-dbctl baseline settle`
+right before it, so the new account's switch finds a settled box.
 
 In this release it switches no account outside a test server (see above): the
 pass prints a NOTE and leaves the account on the direct path.
@@ -693,17 +700,48 @@ A moved account takes its state from its source. `xoct create` puts
 neither the install's pass nor the upgrade pass that follows it switches the
 account before its source's settings are there. Once the account is installed
 and its source's settings and switch are carried, the tool takes its own line
-back, under an `xmass` run too; a line the target's cnf held before is its
-operator's and stays.
+back, under an `xmass` run too.
+
+It says what it did in a root-only note beside the cnf,
+`/root/.oN.dbctl-seed.txt`: `made` (it made the cnf for the line), `line` (it
+added the line to a cnf that was there) or `operator`. Where the target's cnf
+already assigns `_DB_BROKER_BORN`, in any spelling, the tool adds nothing and
+the note says `operator`: that line is its operator's and stays. The tool's
+take-back, and its unseed when the install does not happen, act on that note
+as they read it on the target, so a create run again after any exit takes
+back what an earlier run put; each removes the note with the line. The install
+window's own exit takes the line back where the account was not made; one that
+was made keeps the line until the create is run again. The seed puts its line
+on a line of its own where the cnf's last line has no line end.
 
 Where the merge of the source's settings failed, or the target could not be
 reached for the take-back, the line stays, the tool prints an `ALRT` that
-names it, and `report` reads the account `kept-out _DB_BROKER_BORN=NO` until
-an operator removes it.
+names it, and `report` reads the account `kept-out _DB_BROKER_BORN=NO` until a
+create run again merges them and takes the line back.
 
-The account's own `_DB_BROKER_ARM` line travels with its other settings in
-`xoct` and in `xmass`: an account kept out on its source is kept out on the
-target, and on a standby once it is promoted.
+A `_DB_BROKER_BORN=NO` a migration left behind is taken back by the Octopus
+pass of an armed box that is no standby and no box being prepared: the exact
+line, from an account that carries the create marker
+`/root/.oN.migration-create.txt` (a regular file of root's, not a link) older
+than a day, where the seed's note does not say `operator`. One INFO line says
+so, and the pass goes on as for any account. A tool's line never outlives its
+create, so one still there a day after it is a leftover: of an `xoct` from
+before the take-back, or of a create that ended early and was never run again.
+A bare `_DB_BROKER_BORN=NO` an operator puts into a migrated account's cnf is
+read as the tool's and taken back the same way, a day after the move. An
+operator's opt-out is `_DB_BROKER_ARM=NO`, which nothing takes back.
+
+The account's `_DB_BROKER_ARM=NO` travels with it, read as the pass reads it,
+in any of its shapes. `xoct` and `xmass` send a plain `_DB_BROKER_ARM=NO` to
+the target where the source reads `NO`, and remove every line of the key there
+where it does not, so an opt-out lifted on the source is lifted on the target
+too (`xmass` on every live pass): an account kept out on its source is kept
+out on the target, and on a standby once it is promoted. `xcopy` puts the
+source's `_DB_BROKER_ARM=NO` into the new account's cnf on the target before
+its install (the file made, root 0600, where there is none), removes a line of
+the key there where the source does not read `NO`, and takes what it wrote back
+when the install does not happen. It puts no `_DB_BROKER_BORN`: a copy that is
+not kept out is switched by an armed target as any new account is.
 
 Each call is one line of the pass. An answer that ends well is the broker's
 own `OK` line:
@@ -716,8 +754,18 @@ INFO: database broker: OK scope on o1 already server=@server_localhost rows=loca
 An account the broker does not serve gets that one INFO line too, on every
 pass (`OK scope on o3 skipped remote-database-server`).
 
-Anything else is a NOTE that names the call and carries the broker's own
-`ERR` line:
+Each login a settle revoked or dropped is named on an INFO line of its own,
+before the call's line, at most 20 of them, in printable characters:
+
+```
+INFO: database broker: settled revoked monitor@% saved=revoke-....sql
+```
+
+One whose name carries a word the pass launchers read as an alarm is said as
+`settled revoked: the login's name is in /var/log/boa/dbctl/dbctl.log`.
+
+A refusal is a NOTE that names the call and carries the broker's own `ERR`
+line:
 
 ```
 NOTE: database broker: scope o1 on --pass: ERR 6 not-proven 1
@@ -729,8 +777,17 @@ repairs nothing: what the broker refused stays as it was, and the next pass
 asks anew. `boa-dbctl baseline plan` and `boa-dbctl scope oN plan` say what
 stands in the way, and the daily mail lists it. An answer whose last line is
 neither of the two is said as `no answer line, exit N`. A line that carries a
-word the pass launchers read as an alarm is not repeated: the pass's line
-then names the broker's log.
+word the pass launchers read as an alarm is not repeated: the pass's line then
+names the broker's log.
+
+A call that stopped after it changed something is no refusal: `ERR 7
+scope-failed <step>` (a switch that stopped part way) and `ERR 7
+baseline-settle-incomplete N` (a settle with a change that failed). The pass
+relays each `ALRT` line of the broker's answer as `ALRT: database broker:
+<line>` (printable characters only, at most 20 lines of at most 300
+characters) and says the call and its last line as an `ALRT` too, so the pass
+is reported with errors, as a new account's failed switch already is. The
+pass goes on all the same.
 
 The pass's switch runs only under a pass launcher (`octopus up-...`, `boa
 in-octopus`), which keeps `/run/boa_wait.pid`. The Octopus leg of a chained
@@ -756,6 +813,9 @@ switches the broker on also writes `_DB_BROKER_ARM=YES` into a
 first and on every box one release later. A line that is there, `NO`
 included, always stays, so `_DB_BROKER_ARM=NO` set today keeps a box out.
 
+Every reader of the two settings reads a cnf as text, whatever bytes it holds:
+a NUL byte (a crash can zero-fill a file's tail) hides none of its lines.
+
 ## The report
 
 ```
@@ -771,8 +831,12 @@ o2 not-switched <reason>[, <reason>...]
 o3 kept-out <setting>=NO
 o4 not-served <reason>
 box stop <finding>
-OK report accounts=N switched=N unswitched=N kept-out=N not-served=N stops=N reference=ok|off|none
+OK report accounts=N switched=N unswitched=N kept-out=N not-served=N stops=N reference=ok|off|none released=yes|no
 ```
+
+`released` says whether this release switches accounts on the box: `yes` with
+the release switch on or the test marker there, `no` otherwise, so a reader
+needs no account's line for it.
 
 `not-switched` is an account the box could switch and has not, and
 `unswitched` counts only those. Its reasons are the ones its own `scope oN
@@ -803,9 +867,8 @@ switch and nothing the box does changes that, so their plans are not read,
   setting, the operator's where both are there. Each is read as a pass reads
   it and as the cnf is when it is sourced: the last assignment counts, and
   `export`, an indent, quotes and a trailing comment are read through.
-- `not-served <reason>`: the broker does not serve the account. `proxysql` or
-  `cluster` on a box where `baseline settle` answers `skipped` with that
-  word, `proxysql` for an account behind ProxySQL by its own control file,
+- `not-served <reason>`: the broker does not serve the account. `proxysql`
+  for an account behind ProxySQL by its own control file,
   `remote-database-server` for an account whose databases are on another
   server. The cnf is read first: an account both kept out and not served
   reads `kept-out`.
@@ -821,31 +884,44 @@ direct path.
 It reads the box once for all accounts, logs in as a plan does (each account's
 own login, each site's recorded login) and changes nothing. On a standby it
 answers `OK report standby` and reads nothing; a call with any other word
-after `report` is a usage error there too.
+after `report` is a usage error there too. On a box where `baseline settle`
+answers `skipped`, no account is ever switched and no stop is ever settled:
+`report` answers the same way, `OK report skipped proxysql` or `OK report
+skipped cluster` with exit code 0, and reads nothing further (the standby
+answer still comes first).
 
 ### The daily mail
 
 On a box armed for the broker the nightly run calls `boa-dbctl report` after
-the witness, and its lines go into that night's log between `dbctl-report:
-start` and `dbctl-report: done rc=N`. While the last line counts an account
-the box could switch and has not (`unswitched` above 0) or a finding that
-stops the box (`stops` above 0), the box operator is mailed, once a day, the
-way the nightly's other notices are (`_MY_EMAIL`, one mail a day per notice,
-none with `_INCIDENT_REPORT=OFF`; each night's lines also go to
+the witness. The whole report, with any other line the broker printed, goes
+to `/var/log/boa/dbctl-report.txt` (root only, rewritten each night); that
+night's log gets only the report's last line, its counts and words, and that
+path, between `dbctl-report: start` and `dbctl-report: done rc=N, the whole
+report in /var/log/boa/dbctl-report.txt`. So no login's or host's name
+reaches the night's incident scan.
+
+While the last line counts an account the box could switch and has not
+(`unswitched` above 0), or a finding that stops a box with an account
+switched or one it could switch (`stops` above 0 while `switched` plus
+`unswitched` is above 0), the box operator is mailed, once a day, the way the
+nightly's other notices are (`_MY_EMAIL`, one mail a day per notice, none
+with `_INCIDENT_REPORT=OFF`; each night's lines also go to
 `/var/log/boa/nightly.incident.log`).
 
 The mail carries what an operator can act on: each `not-switched` line, each
 `box` line and the last line with its counts, and nothing else of the box.
-The lines of switched, kept-out and not-served accounts are in the night's
-log only.
+The lines of switched, kept-out and not-served accounts are in the report's
+file only.
 
 Nothing is mailed while every account the box could switch is switched and
-nothing stops the box: an account kept out by its cnf or not served by the
-broker causes no mail, as nothing changes that from one night to the next.
-Nor is anything mailed for a report that fails, while the report says
-`not-released` (this release switches no account there, and no operator can),
-or from a standby or a box being prepared as one, where the report is not
-asked for.
+nothing stops it: an account kept out by its cnf or not served by the broker
+causes no mail, as nothing changes that from one night to the next, and
+neither does a stop on a box that has no other account. Nor is anything
+mailed for a report that fails, while the release switches no account on the
+box (the last line says `released=no`; from a broker without that field, an
+account's own line says `not-released`), for a box the report skips, or from
+a standby or a box being prepared as one, where the report is not asked
+for.
 
 ## The database count limit
 
@@ -880,8 +956,8 @@ against its version's reference. It logs in as no one and changes nothing.
 | `_DB_BROKER_BORN_SCOPED` | `/root/.barracuda.cnf` | `NO` |
 | `_DB_BROKER_ARM` | `/root/.barracuda.cnf` | `NO`: `YES` arms the box, its passes then settle it and switch each account |
 | `_DB_COUNT_MAX` | `/root/.oN.octopus.cnf` | `AUTO` (no limit) |
-| `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch, and of a pass's switch on an armed box; `xoct create` sets it for a moved account's install and takes it back; `report` says `kept-out _DB_BROKER_BORN=NO`) |
-| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a pass's switch on an armed box; it travels with the account in `xoct` and `xmass`; `report` says `kept-out _DB_BROKER_ARM=NO`) |
+| `_DB_BROKER_BORN` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch, and of a pass's switch on an armed box; `xoct create` sets it for a moved account's install and takes it back, and an armed box's pass takes back one a migration left a day after the create; `report` says `kept-out _DB_BROKER_BORN=NO`) |
+| `_DB_BROKER_ARM` | `/root/.oN.octopus.cnf` | unset (`NO` keeps the account out of a new account's switch, and of a pass's switch on an armed box; it travels with the account both ways in `xoct` and `xmass`, and into a copy in `xcopy`; `report` says `kept-out _DB_BROKER_ARM=NO`) |
 
 `/root/.barracuda.cnf` is each box's own: set a standing pair's two boxes alike.
 
@@ -918,6 +994,8 @@ slot until the limit: the limit is the bound.
 | Control files | `/data/conf/oN_db_broker.txt` |
 | Registry, baseline | `boa_dbreg.owners`, `boa_dbreg.baseline` |
 | Log, one line per call, never a password | `/var/log/boa/dbctl/dbctl.log` (rotated weekly) |
+| The nightly's report, on an armed box | `/var/log/boa/dbctl-report.txt` (root only, rewritten each night) |
+| A migration's seed note | `/root/.oN.dbctl-seed.txt` (root only, on the target) |
 | Saved grants | `/var/backups/boa/dbrights/` |
 | Sudo lines | `/etc/sudoers.d/boa-dbctl` |
 
