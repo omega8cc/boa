@@ -1829,6 +1829,77 @@ _xcopy_wg_unseed() {
   return 0
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. A NUL byte in the file (a crash
+# can zero-fill its tail) hides no line: grep reads it as text. The passes
+# read an account's broker settings with this same text.
+_xcopy_dbctl_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+# The source's opt-out of the database broker, seeded into the new account's
+# cnf on the target before its install, so an armed target never switches a
+# copy of an account its source keeps out (the install's own pass and the
+# upgrade pass it chains both run before anything else of the source
+# arrives): _DB_BROKER_ARM=NO as a plain line where the source reads NO as
+# the passes read it (the file made, root 0600, when absent), a
+# _DB_BROKER_ARM line in any form removed where it does not. Only while the
+# name is free there, as the web group's seed above. What was written is
+# taken back when the install does not happen. A copy carries no switch: one
+# not kept out is switched by an armed target as any new account is.
+# 1 = account here 2 = account on the target 3 = target
+_XCOPY_DBA_SEED=""
+_xcopy_dbarm_seed() {
+  local _v=-
+  _XCOPY_DBA_SEED=""
+  [ "$(_xcopy_dbctl_cnf_last "/root/.${1}.octopus.cnf" _DB_BROKER_ARM)" = "NO" ] && _v=NO
+  # the names expand here on purpose: the remote side gets them as text
+  # shellcheck disable=SC2029
+  _XCOPY_DBA_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
+    _c=/root/.${2}.octopus.cnf
+    _re='^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM='
+    if [ ${_v} = NO ]; then
+      if [ ! -e \${_c} ]; then
+        ( umask 077; printf '_DB_BROKER_ARM=NO\\n' > \${_c} ) && echo made
+      elif [ \"\$(grep -E \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ]; then
+        grep -vE \"\${_re}\" \${_c} > \${_c}.dbaseed
+        printf '_DB_BROKER_ARM=NO\\n' >> \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c} && echo line
+      fi
+    elif [ -e \${_c} ] && grep -qE \"\${_re}\" \${_c}; then
+      grep -vE \"\${_re}\" \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
+    fi" 2> /dev/null)
+  case "${_XCOPY_DBA_SEED}" in
+    made|line) echo "INFO: the source's _DB_BROKER_ARM=NO put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
+  esac
+  return 0
+}
+# 1 = account on the target 2 = target
+_xcopy_dbarm_unseed() {
+  case "${_XCOPY_DBA_SEED}" in
+    made)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_ARM=NO' ] && rm -f \${_c}" 2> /dev/null
+      ;;
+    line)
+      # the seed left its own line as the only _DB_BROKER_ARM one
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}" 2> /dev/null
+      ;;
+  esac
+  _XCOPY_DBA_SEED=""
+  return 0
+}
+
 # A create marks the account it installed on the target: a root-only file
 # naming this box and the source account, put only after the install
 # succeeded. A later create goes on into an account the target already
@@ -2420,7 +2491,9 @@ _migrate_prepare() {
         ### The launcher exits 1 without installing when the name is taken
         ### or a run lock is held: nothing below may run on the target then.
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+        _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         if ! ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"; then
+          _xcopy_dbarm_unseed "${_TGT_HM_USER}" "${_tgt}"
           _xcopy_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (see the launcher output above); nothing further was changed there"
           exit 1
