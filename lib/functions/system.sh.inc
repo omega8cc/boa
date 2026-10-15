@@ -1143,6 +1143,8 @@ _global_inc_conf_update() {
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-window-d7.inc" global-window-d7.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-window-bd.inc" global-window-bd.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-if-valkey.inc" global-if-valkey.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-valkey.inc" global-valkey.inc

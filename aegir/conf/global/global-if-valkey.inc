@@ -295,6 +295,8 @@ function _valkey_window_write($path, $id) {
   }
   $ok = (@fwrite($fh, $id."\n") !== FALSE);
   fclose($fh);
+  // Every pool and the CLI read it, whatever umask made it.
+  @chmod($tmp, 0644);
   if (!$ok || !@rename($tmp, $path)) {
     @unlink($tmp);
     return FALSE;
