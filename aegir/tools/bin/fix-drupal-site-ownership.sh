@@ -341,8 +341,8 @@ _in_pinned_dir() {
 # $2 through a handle opened without following a link or blocking on a FIFO.
 # A file with more than one link, a link, a FIFO or a socket is left alone:
 # a hard link planted in a tree the account can write shares its file with a
-# name elsewhere, which a chown by name would hand over too, and nothing
-# checks who owns a link. The names are ./names in the current directory.
+# name elsewhere, which a chown by name would hand over too; only the link
+# check reads a link's owner. The names are ./names in the current directory.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 
 # A walk leaves a regular file with more than one link as it was (a hard
@@ -777,6 +777,19 @@ _link_guard_tree() {
   return 0
 }
 
+### The nightly runs while its marker names a live owl.sh, as owl.sh itself
+### tests it: a marker a killed nightly left names none, and its stores are
+### no longer covered by the night's own pass. A marker with no pid is the
+### account loop's touch after clear.sh swept an idle one: still running.
+_night_running() {
+  local _p
+  [ -e /run/daily-fix.pid ] || return 1
+  _p=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2> /dev/null )
+  [ -n "${_p}" ] || return 0
+  kill -0 "${_p}" 2> /dev/null \
+    && grep -q "owl.sh" "/proc/${_p}/cmdline" 2> /dev/null
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 
@@ -955,7 +968,7 @@ if [ -n "${_files_dir}" ] \
   if [ -n "${_priv_dir}" ]; then
     _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_own_here 2> /dev/null)"
   fi
-  if [ ! -e "/run/daily-fix.pid" ]; then
+  if ! _night_running; then
     _link_guard_tree "${_files_dir}"
     _link_guard_tree "${_priv_dir}"
   fi
