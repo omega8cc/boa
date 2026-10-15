@@ -4966,7 +4966,12 @@ _xoct_dbctl_from_source() {
   fi
   # shellcheck disable=SC2029
   if _out=$(ssh root@"${3}" "/usr/local/bin/boa-dbctl scope ${2} on --born 2>&1 < /dev/null"); then
-    echo "INFO: ${2} switched to the database broker on ${3}, as ${1} is here"
+    # an account the target's broker does not serve there is not switched
+    if [[ "${_out##*$'\n'}" == "OK scope on ${2} skipped "* ]]; then
+      echo "ALRT: ${1} is switched to the database broker here, and the broker on ${3} does not serve ${2} there: it is left on the direct path (${_out##*$'\n'})"
+    else
+      echo "INFO: ${2} switched to the database broker on ${3}, as ${1} is here"
+    fi
   else
     echo "ALRT: ${2} could not be switched to the database broker on ${3}: ${_out##*$'\n'}"
     echo "ALRT: its sites keep the direct path there; read why with: boa-dbctl scope ${2} plan"

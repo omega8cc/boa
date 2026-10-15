@@ -4432,23 +4432,26 @@ EOFMYSQL
 # A new account switched to the database broker at the end of its first
 # pass, where the box says so: _DB_BROKER_BORN_SCOPED=YES in
 # /root/.barracuda.cnf (off unless set). Never for an account whose cnf
-# says _DB_BROKER_BORN=NO (a migration tool puts it there before it installs
-# a moved account: such an account takes its state from its source), nor on
+# says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO, read as the pass's own step
+# reads them (a migration tool puts the second there before it installs a
+# moved account: such an account takes its state from its source), nor on
 # a replication standby or a box being prepared as one. The broker's own
 # checks decide, unforced; a refusal leaves the account on the direct path,
-# as every account is without the switch, and says why. On a box armed for
-# the broker (_satellite_if_db_broker) the box settles first, so the new
-# account's switch finds a settled box.
+# as every account is without the switch, and says why. An account the
+# broker does not serve (skipped) is said in one INFO line. On a box armed
+# for the broker (_satellite_if_db_broker) the box settles first, so the
+# new account's switch finds a settled box.
 _satellite_db_broker_born() {
-  local _out
+  local _out _k
   [ "${_STATUS}" = "INIT" ] || return 0
   grep -qE "^_DB_BROKER_BORN_SCOPED=[\"']?YES[\"']?[[:space:]]*$" \
     /root/.barracuda.cnf 2> /dev/null || return 0
-  if grep -qE "^_DB_BROKER_BORN=[\"']?NO[\"']?[[:space:]]*$" \
-    "/root/.${_USER}.octopus.cnf" 2> /dev/null; then
-    _msg "INFO: ${_USER} stays on the direct database path (_DB_BROKER_BORN=NO)"
-    return 0
-  fi
+  for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
+    if [[ "$(_satellite_db_broker_cnf_last "/root/.${_USER}.octopus.cnf" "${_k}")" == "NO" ]]; then
+      _msg "INFO: ${_USER} stays on the direct database path (${_k}=NO)"
+      return 0
+    fi
+  done
   if [ -e "/root/.standby.cnf" ] || [ -e "/root/.standby.prep.cnf" ]; then
     _msg "INFO: ${_USER} is not switched to the database broker on a standby"
     return 0
@@ -4461,7 +4464,11 @@ _satellite_db_broker_born() {
     _satellite_db_broker_call baseline settle
   fi
   if _out=$(/usr/local/bin/boa-dbctl scope "${_USER}" on --born 2>&1 < /dev/null); then
-    _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
+    if [[ "${_out##*$'\n'}" == "OK scope on ${_USER} skipped "* ]]; then
+      _msg "INFO: ${_USER} stays on the direct database path: ${_out##*$'\n'}"
+    else
+      _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
+    fi
   elif [[ "${_out##*$'\n'}" == "ERR 7 not-released"* ]]; then
     _msg "NOTE: ${_USER} stays on the direct database path: tenant isolation is switched on by a later release"
   else
