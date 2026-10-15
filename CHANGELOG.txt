@@ -25,6 +25,22 @@
       is removed once the new one serves the site. Every Drupal 10 and 11
       site starts with a cold cache once, when its server takes the new module.
 
+    * Drupal 8, 9 and 10 sites keep their queues in their own database.
+      BOA had moved Drupal's default queue to Valkey, where the redis
+      module names a queue's keys by its name alone, so the sites on one
+      server shared every queue of the same name: one site could take and
+      run another site's queued items. The cache server also keeps nothing
+      on disk, so queued work did not survive its restart. Items still
+      queued in Valkey when a server takes this change stay there unrun.
+
+    * A same-name Migrate of a site with visitors no longer ends in a
+      Warning over the site's files/css folder. Drupal makes that folder
+      again, as the site's PHP-FPM pool user, right after a cache rebuild
+      removes it, and the account cannot change the mode of a folder it
+      does not own: the move logged "Could not change permissions" and a
+      successful Migrate showed Warning. Such a folder, already writable
+      to its group, is now left as it is.
+
     * A same-name Migrate of an HTTPS site no longer verifies the site on
       its old platform after the copy is built. Encryption was switched
       off before the move and back on after it; the switch-off never took
