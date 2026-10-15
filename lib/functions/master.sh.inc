@@ -694,8 +694,12 @@ _master_db_broker_cnf_last() {
 # no refusal: each ALRT line of the broker's answer is relayed (printable,
 # at most 20 lines of 300 characters) and the call's line is an ALRT too,
 # so the pass is reported with errors, as a new account's failed switch is.
+# Each login a settle revoked or dropped is named on an INFO line of its own
+# (at most 20, printable, the alarm words kept out as above), so a login of
+# an operator's own that loses its rights is never named in the broker's
+# log alone.
 _master_db_broker_call() {
-  local _out _rc _last _kind="NOTE" _l _na=0
+  local _out _rc _last _kind="NOTE" _l _na=0 _ns=0
   _out=$(/usr/local/bin/boa-dbctl "$@" 2>&1 < /dev/null)
   _rc=$?
   _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
@@ -709,6 +713,18 @@ _master_db_broker_call() {
         _na=$(( _na + 1 ))
         _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
         _msg "ALRT: database broker: ${_l}"
+        ;;
+      "settled revoked "*|"settled dropped "*)
+        [[ "${_ns}" -lt 20 ]] || continue
+        _ns=$(( _ns + 1 ))
+        _l=$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+        case "${_l}" in
+          *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+            _l="${_l#settled }"
+            _l="settled ${_l%% *}: the login's name is in /var/log/boa/dbctl/dbctl.log"
+            ;;
+        esac
+        _msg "INFO: database broker: ${_l}"
         ;;
     esac
   done <<< "${_out}"
