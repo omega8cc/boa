@@ -864,37 +864,86 @@ _ltd_drush_copies_here() {
 # (_ltd_mine_here) or an earlier release's root-made one of alias copies
 # (_ltd_drush_copies_here): any other root-owned directory of the home
 # renamed onto the name is neither emptied nor handed over. Done before usr/
-# is made, which would leave a new directory no longer empty. $1 = hosted
-# YES|NO, $2 = owner:group, $3 = the instance user.
+# is made, which would leave a new directory no longer empty. The login can
+# rename into ~/.drush, or into its usr/, what another account left
+# group-writable: every removal goes through _ACCT_RM_OWN_PL, so only what
+# root or the account's own identities own (_acct_walk_uids) is removed,
+# never anything below a directory another user owns, and one NOTE line
+# counts what was left. $1 = hosted YES|NO, $2 = owner:group, $3 = the
+# instance user.
 _ltd_drush_strip() {
+  local _o _l
   _ltd_mine_here "${2%%:*}" || _ltd_drush_copies_here "${3}" || return 1
   chown -h "${2}" . || return 1
   chmod 02755 . || return 1
+  _o=$(_acct_walk_uids "${3}") || _o="0"
   if [ "${1}" = "YES" ]; then
-    find . -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2> /dev/null
+    _l=$(_ltd_rm_own_all_here "${_o}")
   else
-    rm -f -- ./drush_make ./registry_rebuild ./clean_missing_modules
-    rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
-    _ltd_in_real_dir ./usr _ltd_drush_strip_usr
-    rm -f -- ./.ctrl*
-    rm -rf -- ./cache ./drush.ini ./*drushrc* ./*.inc
+    _l=$(
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./drush_make ./registry_rebuild \
+        ./clean_missing_modules ./drupalgeddon ./drush_ecl ./make_local \
+        ./safe_cache_form* 2> /dev/null
+      _ltd_in_real_dir ./usr _ltd_drush_strip_usr "${_o}"
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl* 2> /dev/null
+      perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - ./cache ./drush.ini \
+        ./*drushrc* ./*.inc 2> /dev/null
+    )
+  fi
+  _l=$(printf '%s\n' "${_l}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  if [ "${_l}" -gt 0 ]; then
+    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(pwd -P)"
   fi
   mkdir -p ./usr
 }
+# The legacy extension names in the real ~/.drush/usr (the current, pinned
+# directory) removed through _ACCT_RM_OWN_PL, only what the uids $1 own.
 _ltd_drush_strip_usr() {
-  rm -f -- ./drush_make ./registry_rebuild ./clean_missing_modules
-  rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
-  rm -f -- ./mydropwizard ./utf8mb4_convert ./backdrop
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${1}" - ./drush_make ./registry_rebuild \
+    ./clean_missing_modules ./drupalgeddon ./drush_ecl ./make_local \
+    ./safe_cache_form* ./mydropwizard ./utf8mb4_convert ./backdrop 2> /dev/null
+  return 0
 }
-# The instance's Drush 8 extensions linked into the real ~/.drush/usr.
-# $1 = the instance's .drush/usr.
+# Every entry of the current (pinned) directory, its dot names too, removed
+# as rm -rf removed it, through _ACCT_RM_OWN_PL: only what the uids $1 own,
+# never anything below a directory another user owns. Prints dev:ino of
+# each entry left.
+_ltd_rm_own_all_here() (
+  local -a _n
+  shopt -s dotglob nullglob
+  _n=( ./* )
+  [ "${#_n[@]}" -gt 0 ] || exit 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - "${_n[@]}" 2> /dev/null
+  exit 0
+)
+# The instance's Drush 8 extensions linked into the real ~/.drush/usr (the
+# current, pinned directory), all from inside it. The login can rename to
+# usr, or to an extension's name in it, what another account left
+# group-writable: nothing is done unless usr/ and every directory above it
+# are root's or the account's own identities' (_acct_walk_uids); a link at
+# the name is kept as before; a file there that root or the account's own
+# identities own is removed (_ACCT_RM_OWN_PL), another user's left; a
+# directory there is never removed nor written into; and the link is made
+# only where the name is then free (-T). Prints dev:ino of each entry left
+# for another owner. $1 = the instance's .drush/usr, $2 = the account.
 _ltd_drush_usr_links() {
-  local _t
+  local _t _o _u
+  _o=$(_acct_walk_uids "${2}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - 2> /dev/null || return 0
   for _t in registry_rebuild clean_missing_modules drupalgeddon drush_ecl \
     safe_cache_form_clear utf8mb4_convert backdrop; do
-    if [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ]; then
-      ln -sfn "${1}/${_t}" "./${_t}"
+    [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ] || continue
+    if [ -d "./${_t}" ]; then
+      _u=$(stat -c %u -- "./${_t}" 2> /dev/null) || continue
+      if [[ ",${_o}," != *",${_u},"* ]] && getent passwd "${_u}" > /dev/null 2>&1; then
+        stat -c '%d:%i' -- "./${_t}"
+      fi
+      continue
     fi
+    if [ -e "./${_t}" ]; then
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "./${_t}" 2> /dev/null
+    fi
+    ln -s -T -- "${1}/${_t}" "./${_t}" 2> /dev/null
   done
 }
 # The release serial's stamp of an account's ~/.drush, written inside the
@@ -1929,7 +1978,7 @@ _enable_chattr() {
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     # Group owning this account's tree, derived from the user this call
     # handles -- never the script-scope default, which is box-wide.
-    local _accGrp _hdRefused=NO
+    local _accGrp _hdRefused=NO _ltdLeft
     _accGrp=$(_acct_group "$1")
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
@@ -1972,8 +2021,12 @@ _enable_chattr() {
       _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "$1:${_accGrp}" 02755 YES
       # ~/.drush was handed over and given its mode by the reset above
       if [ "${_hdRefused}" = "NO" ]; then
-        _ltd_in_real_dir "${_U_HD}" \
-          _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
+        _ltdLeft=$(_ltd_in_real_dir "${_U_HD}" _ltd_in_real_dir ./usr \
+          _ltd_drush_usr_links "${_dscUsr}/.drush/usr" "${_USER}")
+        _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+        if [ "${_ltdLeft}" -gt 0 ]; then
+          echo "NOTE: ${_USER}: the Drush extension links left ${_ltdLeft} entries owned by another user in place in ${_U_HD}/usr"
+        fi
       fi
     fi
 

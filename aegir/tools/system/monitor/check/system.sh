@@ -459,6 +459,42 @@ _syslog_giant_log_detection() {
   fi
 }
 
+# Every file takes an inode: a filesystem out of them fails every write as
+# "No space left on device" while df -h still shows free space, and nothing
+# else on the box says so until the upgrades, backups and copying tasks
+# refuse at 90%. Above 85% of its inodes in use (the archived-store heal's
+# line) the root filesystem, and the one holding /data/disk when that is
+# another, is logged and mailed as an ALERT, at most once in six hours. A
+# filesystem without an inode count (btrfs prints - for IUse%) is skipped.
+_inode_pressure_detection() {
+  local _p _l _seen="" _dev _pct _mnt _hit="" _mark="/run/boa_inode_pressure.stamp"
+  [ -z "$(find "${_mark}" -mmin -360 2>/dev/null)" ] || return 0
+  # not while the mail would be held for the boot or install grace, or the
+  # six hours would start on an alert nobody got
+  if command -v _check_uptime_grace_period >/dev/null 2>&1; then
+    _check_uptime_grace_period >/dev/null || return 0
+  fi
+  for _p in / /data/disk; do
+    [ -d "${_p}" ] || continue
+    _l="$(LC_ALL=C command df -P -i -- "${_p}" 2>/dev/null | awk '
+      NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+      NR==2 && u { gsub(/%/,"",$u); print $1, $u, $NF }')"
+    read -r _dev _pct _mnt <<< "${_l}"
+    [[ "${_pct}" =~ ^[0-9]+$ ]] || continue
+    case " ${_seen} " in *" ${_dev} "*) continue ;; esac
+    _seen="${_seen} ${_dev}"
+    if [ "${_pct}" -gt 85 ]; then
+      _hit="${_hit}${_hit:+, }${_mnt} ${_pct}%"
+    fi
+  done
+  [ -n "${_hit}" ] || return 0
+  touch "${_mark}"
+  _thisErrLog="$(date) Inodes almost exhausted (${_hit} of inodes in use): every file takes one, free space alone is not enough; above 90% BOA refuses upgrades, backups and copying tasks; see df -i"
+  echo "${_thisErrLog}" >> ${_pthOml}
+  _incident_email_report "Inodes almost exhausted: ${_hit} in use" ALERT "system-inodes"
+  echo >> ${_pthOml}
+}
+
 _gpg_too_many_instances_detection() {
   _CNT=$(pgrep -xc gpg-agent)
   if (( _CNT > 5 )); then
@@ -807,6 +843,7 @@ _rsyslog_health_check_fix
 _postfix_health_check_fix
 _cron_duplicate_instances_detection
 _syslog_giant_log_detection
+_inode_pressure_detection
 
 if [ -e "/run/boa_system_auto_healing.pid" ] \
   || [ -e "/run/boa_mysql_auto_healing.pid" ] \

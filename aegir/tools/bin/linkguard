@@ -324,7 +324,8 @@ print "R\t$_\n" for sort keys %r;'
 # (never followed), then the directories directory-links lead to, each once
 # by its real path: a directory already walked is not entered again from a
 # parent walked after it, and a link reached twice (above one root and inside
-# another) is one record. One NUL-separated record per link whose owner differs
+# another) is one record: a link above a root is named by its parent's real
+# path, as the walk names it. One NUL-separated record per link whose owner differs
 # from its target's: class, kind, reason, path, link uid, target uid, real
 # target, then a last record "SUMMARY", entries, roots walked, roots missing,
 # extra directories walked, complete (1 or 0), directories reached only
@@ -385,6 +386,8 @@ sub boa_place { my $p = shift; my ($d, $b) = $p =~ m{^(.*)/([^/]+)$} or return 0
   return 1 if $b eq "redis_edge" && $d =~ m{^(.*)/modules/o_contrib_seven$} && is_pdir($1);
   return 0; }
 sub under_walked { my $p = shift; while (length $p) { return 1 if $walked{$p}; last unless $p =~ s{/[^/]*$}{}; } return 0; }
+sub canon { my $p = shift; my ($d, $b) = $p =~ m{^(.*)/([^/]+)$} or return $p; return "/$b" unless length $d;
+  my $r = Cwd::abs_path($d); return $p unless defined $r; return $r eq "/" ? "/$b" : "$r/$b"; }
 sub follow { my ($r, $own) = @_; return if $one || $r =~ m{^/(?:proc|sys|dev|run)(?:/|$)} || under_walked($r) || $queued{$r}++;
   if ($own) { if ($qown < $max) { $qown++; push @queue, $r; } else { $skipped++; } }
   elsif ($qsys < $max) { $qsys++; push @queue, $r; } else { $complete = 0; } }
@@ -410,7 +413,7 @@ sub link_rec { my $p = shift; return if $seen{$p}++; my @l = lstat($p) or return
   push @recs, join("\0", $c, $k, $why, $p, $lu, $tu, $r); }
 my @roots = grep { length } @ARGV; my %top;
 for my $root (@roots) { my $r = Cwd::abs_path($root); $rr{$r} = 1 if defined $r && -d $r; }
-for my $root (@roots) { my $p = ""; for my $c (grep { length } split m{/}, $root) { $p .= "/$c"; link_rec($p) if -l $p; }
+for my $root (@roots) { my $p = ""; for my $c (grep { length } split m{/}, $root) { $p .= "/$c"; link_rec(canon($p)) if -l $p; }
   my $r = Cwd::abs_path($root); if (!defined $r || !-d $r) { $missing++; next; } }
 my @keep; for my $r (sort keys %rr) { push @keep, $r unless grep { index("$r/", "$_/") == 0 } @keep; }
 $walked{$_} = 1 for @keep; $top{$_} = 1 for @keep;

@@ -25,6 +25,9 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  # No inode line here on purpose: this queue runs the Delete tasks that
+  # free inodes, and the tasks that add files refuse themselves in
+  # provision above 90% inode use.
 }
 _check_root
 

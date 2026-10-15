@@ -800,7 +800,7 @@ _tb_stage() {
   # "/web"...). Fetches and extracts beside the platform; on success the
   # complete tree is ${_pthDst}/.boa-refresh/$1.new/<top> (in _TB_STAGED)
   # and the tarball is captured. The old tree is not touched here.
-  local _st="${_pthDst}/.boa-refresh" _tgz _new _top _need _free
+  local _st="${_pthDst}/.boa-refresh" _tgz _new _top _need _free _ineed _itot _iuse
   _TB_STAGED=""
   _TB_SHA=""
   mkdir -p "${_st}" || return 1
@@ -813,6 +813,18 @@ _tb_stage() {
   _free="$(df -Pk "${_pthDst}" 2> /dev/null | awk 'NR==2 {print $4}')"
   if [ -z "${_free}" ] || [ "${_free}" -lt "${_need}" ]; then
     _msg "DISTRO: ${1} not fetched again: ${_free:-unknown} KB free, ${_need} KB needed"
+    return 1
+  fi
+  # The new tree takes about as many inodes as the old one, and they must
+  # fit without taking the filesystem past 90% of its inodes, the line at
+  # which BOA's own scripts refuse to run (no inode count, as on btrfs, or
+  # no reading: no inode check)
+  _ineed="$(du -s --inodes "${_pthDst}/${1}" 2> /dev/null | cut -f1)"
+  read -r _itot _iuse <<< "$(LC_ALL=C command df -P -i -- "${_pthDst}" 2> /dev/null | awk 'NR==2 {print $2, $3}')"
+  if [[ "${_ineed}" =~ ^[0-9]+$ ]] && [[ "${_itot}" =~ ^[0-9]+$ ]] \
+    && [[ "${_iuse}" =~ ^[0-9]+$ ]] && [ "${_itot}" -gt 0 ] \
+    && [ $(( (_iuse + _ineed) * 100 )) -gt $(( _itot * 90 )) ]; then
+    _msg "DISTRO: ${1} not fetched again: ${_iuse} of ${_itot} inodes in use, ${_ineed} more would pass 90% (df -i ${_pthDst})"
     return 1
   fi
   if ! curl ${_TB_CRL} --fail --max-time 1800 --retry 2 --retry-delay 10 -R "${2}" -o "${_tgz}"; then
@@ -2655,7 +2667,38 @@ _d_core_platform_install() {
   fi
 }
 
+# IUse% of the filesystem holding $1, empty when unknown or when the
+# filesystem keeps no inode count (btrfs prints - for IUse%)
+_d_inode_use_pct() {
+  LC_ALL=C command df -P -i -- "$1" 2> /dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }' | tr -dc '0-9'
+}
+
+# Whether this run builds the symbol at all: the gates the dispatch at the
+# end of _d_dist_loop applies (the core triples always and UC6; Backdrop,
+# Grav and Textpattern behind their switches; every other distribution
+# behind _ALLOW_ALL, which its install function tests)
+_d_would_build() {
+  case "$1" in
+    DL[0-9]|DX[0-9]|DE[0-9]|UC6) return 0 ;;
+    GRV) [ "${_GRAV_SUPPORT}" = "YES" ] ;;
+    TXP) [ "${_TXP_SUPPORT}" = "YES" ] ;;
+    *BD*) [ "${_BACKDROP_SUPPORT}" = "YES" ] ;;
+    *) [ "${_ALLOW_ALL}" = "YES" ] ;;
+  esac
+}
+
 _d_dist_loop() {
+  # Every requested platform is a whole codebase, tens of thousands of
+  # files; on a filesystem out of inodes each write fails as "No space left
+  # on device" while df -h still shows room, and the half-extracted trees
+  # stay behind. A requested symbol (for a core, its dev, stage and prod
+  # platforms) is started only while the filesystem holding the account
+  # has at most 90% of its inodes in use, the line at which BOA's own
+  # scripts refuse to run, so a run ends at most one symbol past it; the
+  # rest are named and left for a run after inodes are freed.
+  local _d_iuse _d_isaid=NO
   # Drupal 11 needs MySQL 8. On a Percona 5.7 box its platforms built and
   # verified without a word, and every site Install then died inside the
   # installer ("database server version 5.7.x is less than the minimum
@@ -2696,6 +2739,18 @@ _d_dist_loop() {
       fi
       _msg "NOTE! Upgrade this box's Percona to 8.4 in place first (docs.boa.io: Percona 8 upgrade readiness), then run this again"
       continue
+    fi
+    if { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; } \
+      && _d_would_build "${_dist}"; then
+      _d_iuse="$(_d_inode_use_pct "${_ROOT}")"
+      if [ -n "${_d_iuse}" ] && [ "${_d_iuse}" -gt 90 ]; then
+        _msg "ALRT! ${_dist} (${_d_name} ${_d_vers}) not built: ${_d_iuse}% of the inodes on the filesystem holding ${_ROOT} are in use, above 90%"
+        if [ "${_d_isaid}" = "NO" ]; then
+          _msg "ALRT! Every file takes an inode, free space alone is not enough: df -i ${_ROOT}; free inodes, then run the upgrade again"
+          _d_isaid=YES
+        fi
+        continue
+      fi
     fi
     _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
     _d_xdes="${_d_name} ${_d_vers}"
