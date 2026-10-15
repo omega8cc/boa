@@ -1032,10 +1032,13 @@ _get_dev_contrib() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      if [ ! -z "${2}" ]; then
-        _extract_archive "${1}" "${2}"
-      else
-        _extract_archive "${1}"
+      # A module that did not unpack whole counts as a failed fetch, as in
+      # the core and distro fetchers: the stages built from these (a shared
+      # tree, a refreshed bundle) are never placed with it
+      if ! _extract_archive "${1}" ${2:+"${2}"}; then
+        _msg "OOPS: $1 could not be extracted"
+        _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
+        return 1
       fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"

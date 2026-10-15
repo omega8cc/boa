@@ -832,7 +832,9 @@ _tb_stage() {
   # $1 platform name, $2 url, $3 docroot relative to the platform ("" or
   # "/web"...). Fetches and extracts beside the platform; on success the
   # complete tree is ${_pthDst}/.boa-refresh/$1.new/<top> (in _TB_STAGED)
-  # and the tarball is captured. The old tree is not touched here.
+  # and the tarball is captured. The old tree is not touched here. Status 2
+  # when there is no room for it (said here; nothing was tried), 1 when the
+  # fetch or the extract failed.
   local _st="${_pthDst}/.boa-refresh" _tgz _new _top _need _free _ineed _itot _iuse
   _TB_STAGED=""
   _TB_SHA=""
@@ -846,7 +848,7 @@ _tb_stage() {
   _free="$(df -Pk "${_pthDst}" 2> /dev/null | awk 'NR==2 {print $4}')"
   if [ -z "${_free}" ] || [ "${_free}" -lt "${_need}" ]; then
     _msg "DISTRO: ${1} not fetched again: ${_free:-unknown} KB free, ${_need} KB needed"
-    return 1
+    return 2
   fi
   # The new tree takes about as many inodes as the old one, and they must
   # fit without taking the filesystem past 90% of its inodes, the line at
@@ -858,7 +860,7 @@ _tb_stage() {
     && [[ "${_iuse}" =~ ^[0-9]+$ ]] && [ "${_itot}" -gt 0 ] \
     && [ $(( (_iuse + _ineed) * 100 )) -gt $(( _itot * 90 )) ]; then
     _msg "DISTRO: ${1} not fetched again: ${_iuse} of ${_itot} inodes in use, ${_ineed} more would pass 90% (df -i ${_pthDst})"
-    return 1
+    return 2
   fi
   if ! curl ${_TB_CRL} --fail --max-time 1800 --retry 2 --retry-delay 10 -R "${2}" -o "${_tgz}"; then
     rm -f "${_tgz}"
@@ -987,10 +989,17 @@ _tb_refresh() {
     fi
     return 0
   fi
-  if ! _tb_stage "${1}" "${3}" "${2}"; then
-    _msg "ALRT! ${1}: ${_why}, but the fetch or extract failed; the current tree is kept"
-    return 0
-  fi
+  _tb_stage "${1}" "${3}" "${2}"
+  case "$?" in
+    0) ;;
+    # no room for a second copy: said by _tb_stage, the tree in place is
+    # kept and works, and the next pass asks again
+    2) return 0 ;;
+    *)
+      _msg "ALRT! ${1}: ${_why}, but the fetch or extract failed; the current tree is kept"
+      return 0
+      ;;
+  esac
   if [ -n "${_rsha}" ] && [ "${_TB_SHA}" = "${_rsha}" ]; then
     # The same bytes under a new mtime
     _tb_write "${_dir}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" ""
