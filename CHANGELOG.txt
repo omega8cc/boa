@@ -74,6 +74,15 @@
       store that is itself a link to another store is counted, bytes too,
       through it.
 
+    * migratefs, moving an account's store onto attached storage, and the
+      nightly move of its backups onto that storage count the files the
+      copy makes and leave the directory in place unless 2% of the
+      target's inodes, at least 50,000, stay free; the nightly move also
+      checks the space, which it never did (#1947).
+
+    * The system monitor's inode alert also watches every filesystem
+      mounted at /mnt/<name>, the attached storage migratefs uses (#1947).
+
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not
       completed (a warning in the task log, an ALERT or WARN line in the
