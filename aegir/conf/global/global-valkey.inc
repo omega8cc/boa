@@ -256,6 +256,15 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         $settings['redis.connection']['password'] = $auth_pass;
       }
       $settings['redis.connection']['base']      = '8';
+      // The installer points the lines above at the local socket. When the
+      // probe could not use the socket but reached Valkey over TCP, the
+      // module gets the TCP target the probe answered on, or every site
+      // would fail over to its database on a box whose cache still works.
+      if (isset($valkey_transport) && $valkey_transport === 'tcp'
+          && $settings['redis.connection']['host'] === '/var/run/valkey/valkey.sock') {
+        $settings['redis.connection']['host']    = $valkey_host;
+        $settings['redis.connection']['port']    = $valkey_port;
+      }
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
       if (!is_readable('/data/conf/clstr.cnf')) {
@@ -416,6 +425,15 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         $conf['redis_client_password']          = $auth_pass;
       }
       $conf['redis_client_base']                = '8';
+      // As for Drupal 8+ above: the TCP target the probe answered on when it
+      // could not use the local socket. The host key is built in two parts
+      // because the installer renames every literal of it to the socket key.
+      if (isset($valkey_transport) && $valkey_transport === 'tcp' && isset($conf['redis_client_socket'])
+          && $conf['redis_client_socket'] === '/var/run/valkey/valkey.sock') {
+        unset($conf['redis_client_socket']);
+        $conf['redis_client_' . 'host']         = $valkey_host;
+        $conf['redis_client_port']              = $valkey_port;
+      }
       $conf['cache_prefix']                     = $this_prefix;
       $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
       $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
