@@ -4493,17 +4493,34 @@ _satellite_db_broker_cnf_last() {
 #
 # One call the pass makes of the database broker by itself ($@), said as one
 # line of the pass: the broker's last line when that is its OK line, a NOTE
-# naming the call with that line otherwise. Never an alarm and never the end
-# of the pass: what the broker refuses stays as it is, nothing is tried
-# again or forced, and the next pass asks anew. The line is repeated only as
-# printable text of the broker's own shape, and never with a word the pass
-# launchers read as an alarm in a pass's log: a row's host and a database's
-# name are an account's to choose.
+# naming the call with that line otherwise. A refusal is never an alarm and
+# never the end of the pass: what the broker refuses stays as it is, nothing
+# is tried again or forced, and the next pass asks anew. The line is
+# repeated only as printable text of the broker's own shape, and never with
+# a word the pass launchers read as an alarm in a pass's log: a row's host
+# and a database's name are an account's to choose. A call that stopped
+# after it changed something (scope-failed, baseline-settle-incomplete) is
+# no refusal: each ALRT line of the broker's answer is relayed (printable,
+# at most 20 lines of 300 characters) and the call's line is an ALRT too,
+# so the pass is reported with errors, as a new account's failed switch is.
 _satellite_db_broker_call() {
-  local _out _rc _last _kind="NOTE"
+  local _out _rc _last _kind="NOTE" _l _na=0
   _out=$(/usr/local/bin/boa-dbctl "$@" 2>&1 < /dev/null)
   _rc=$?
   _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+  case "${_last}" in
+    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*) _kind="ALRT" ;;
+  esac
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT: "*)
+        [[ "${_kind}" == "ALRT" && "${_na}" -lt 20 ]] || continue
+        _na=$(( _na + 1 ))
+        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+        _msg "ALRT: database broker: ${_l}"
+        ;;
+    esac
+  done <<< "${_out}"
   if [[ "${_rc}" == "0" && "${_last}" == "OK "* ]]; then
     _kind="INFO"
   elif [[ "${_last}" == "ERR "* ]]; then
