@@ -93,6 +93,18 @@
       tag preloading, which gathers a page's cache tag lookups into fewer
       round trips to Valkey; the module, now 8.x-1.11.4, passes it on.
 
+    * Sites stay consistent across a Valkey outage. While Valkey cannot be
+      reached a site runs on its database cache, and the two caches kept
+      separate records of what changed: after an outage Valkey served the
+      pages, settings and service container it held before it, and the
+      next outage started from what the database cache kept from the one
+      before (a module enabled in between answered 500). Each outage is now
+      recorded beside the backoff flag; the first request after it clears
+      what Valkey kept before using it (only the site's own keys when the
+      redis module's own connection failed on one site), and during an
+      outage the database cache refuses entries older than the outage. On
+      Drupal 7, Drupal 8 and later, and Backdrop.
+
     * Drupal 8, 9 and 10 sites keep their queues in their own database.
       BOA had moved Drupal's default queue to Valkey, where the redis
       module names a queue's keys by its name alone, so the sites on one
