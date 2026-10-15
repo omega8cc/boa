@@ -60,6 +60,18 @@
       is removed once the new one serves the site. Every Drupal 10 and 11
       site starts with a cold cache once, when its server takes the new module.
 
+    * A Drupal 10 or 11 site whose connection to Valkey fails after BOA's
+      per-request check now runs that request on the database instead of
+      answering 500. The redis module, now 8.x-1.11.4, takes its database
+      fallbacks from the container being built, the bootstrap container
+      uses the module's failover checksum, and the flood fallback gets the
+      time service Drupal 11 requires.
+
+    * Drupal 11.2 and newer sites preload their cache tags in Valkey again.
+      With BOA's failover wiring in place the redis module skipped Drupal's
+      tag preloading, which gathers a page's cache tag lookups into fewer
+      round trips to Valkey; the module, now 8.x-1.11.4, passes it on.
+
     * Drupal 8, 9 and 10 sites keep their queues in their own database.
       BOA had moved Drupal's default queue to Valkey, where the redis
       module names a queue's keys by its name alone, so the sites on one

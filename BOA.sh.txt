@@ -3224,7 +3224,7 @@ _update_agents() {
     && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f95 --mode 755
 
   _Dir="/data/all/000/modules"
-  _REDIS_E_VERSION=8.x-1.11.3
+  _REDIS_E_VERSION=8.x-1.11.4
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if _shared_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
