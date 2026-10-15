@@ -439,8 +439,8 @@ _chmod_nofollow_here() {
 ### on a FIFO, and a directory, or a regular file with a single link, is
 ### changed through the open handle (fchown). A hard-linked file, a link, a
 ### FIFO or a socket is left alone, so a hard link put at a name (or anywhere
-### in a walked tree) never hands over the file it names; nothing checks the
-### owner of a link. Args: uid, gid (numbers; -1 keeps that id), the names.
+### in a walked tree) never hands over the file it names; only the link check
+### reads a link's owner. Args: uid, gid (numbers; -1 keeps that id), names.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 ### $1 (owner or owner:group, as chown takes it) as the numbers "uid gid",
 ### -1 for a group not named; status 1, and nothing, when a name does not

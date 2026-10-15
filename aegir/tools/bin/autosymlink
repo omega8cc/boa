@@ -2671,8 +2671,10 @@ _link_as_store_owner() {
   # made by that owner itself, never chowned by name afterwards: the site
   # directory is the account's, and a hard link renamed over the name before a
   # chown -h would be handed to the store's owner. Where that owner is root or
-  # cannot make it there, root makes it as before and it stays root's (nothing
-  # checks a link's owner). Returns ln's status. -T so the name is never treated
+  # cannot make it there, root makes it as before and it stays root's (only the
+  # nginx link check reads a link's owner, and on a box armed for it linkguard
+  # makes a link inside one account its target owner's). Returns ln's status.
+  # -T so the name is never treated
   # as a directory: a real dir still at $2 (a move/removal that did not complete)
   # makes ln fail instead of creating a nested <type>/<type> link inside it.
   # Args: 1 store target dir (reference for owner:group), 2 in-site symlink

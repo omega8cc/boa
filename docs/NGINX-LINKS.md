@@ -88,6 +88,10 @@ was made with. The same run makes it its target owner's: a site Verify runs
 has handed the site's files and private stores over, the same for each
 store.
 
+`fix --root` and `fix --tree` refuse a directory named in one account's tree
+that now leads into another account's: that account's links are not the
+caller's to change.
+
 During the nightly the stores are left to the night's own pass, which
 covers every one of them when it ends; a link inside a store whose target
 the night handed over is refused until then.
@@ -150,7 +154,8 @@ complete=0`. Only one count runs at a time, and it holds up no other
 linkguard run; a count that waited a minute for another one says
 `result=busy`.
 
-A line counts the links whose owner differs from their target's, by kind.
+A line counts the links whose owner differs from their target's, by kind,
+each link once however often the walk reaches it.
 Where the target is decides between `root-in` and `root-out`, and between
 `in-other` and `out`; where the link is decides `system-in`; who owns the
 target decides `inside`:

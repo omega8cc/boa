@@ -1445,7 +1445,9 @@ _a2b_rcd_a2b() {
 # real directory): each name is opened without following a link or blocking
 # on a FIFO, and only a directory or a single-link regular file is changed,
 # through its handle. A hard link put in the tree is never handed over; a
-# link, a FIFO or a socket keeps its owner (a link's owner is never checked).
+# link, a FIFO or a socket keeps its owner (only the nginx link check reads a
+# link's owner, and on a box armed for it linkguard makes a link inside one
+# account its target owner's).
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 
 verb_transfer() {
