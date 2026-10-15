@@ -138,7 +138,7 @@
       what Valkey kept before using it (only the site's own keys when the
       redis module's own connection failed on one site), and during an
       outage the database cache refuses entries older than the outage. On
-      Drupal 7, Drupal 8 and later, and Backdrop.
+      Drupal 6, 7, 8 and later, and Backdrop.
 
     * A site on PHP 8.6, which BOA builds without the Valkey extension, no
       longer sends every site on its server to the database. Each of its
