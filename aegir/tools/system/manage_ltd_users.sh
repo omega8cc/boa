@@ -906,16 +906,14 @@ _ltd_drush_strip_usr() {
 }
 # Every entry of the current (pinned) directory, its dot names too, removed
 # as rm -rf removed it, through _ACCT_RM_OWN_PL: only what the uids $1 own,
-# never anything below a directory another user owns. Prints dev:ino of
-# each entry left.
-_ltd_rm_own_all_here() (
-  local -a _n
-  shopt -s dotglob nullglob
-  _n=( ./* )
-  [ "${#_n[@]}" -gt 0 ] || exit 0
-  perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - "${_n[@]}" 2> /dev/null
-  exit 0
-)
+# never anything below a directory another user owns. find hands the names
+# over in batches, so a directory of any size fits. Prints dev:ino of each
+# entry left.
+_ltd_rm_own_all_here() {
+  find . -mindepth 1 -maxdepth 1 \
+    -exec perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - {} + 2> /dev/null
+  return 0
+}
 # The instance's Drush 8 extensions linked into the real ~/.drush/usr (the
 # current, pinned directory), all from inside it. The login can rename to
 # usr, or to an extension's name in it, what another account left
@@ -950,9 +948,12 @@ _ltd_drush_usr_links() {
 # real directory: the reset above and the alias re-copy are keyed on it. No
 # CLI php.ini is kept there any more (PHP runs on its version's global ini
 # and takes its temp paths from TMPDIR), so neither are the per-version
-# stamps one was keyed on.
+# stamps one was keyed on. The old stamps go through _ACCT_RM_OWN_PL: one
+# another user owns stays. $1 = the instance user.
 _ltd_drush_stamp_put() {
-  rm -f -- ./.ctrl.php*
+  local _o
+  _o=$(_acct_walk_uids "${1}") || _o="0"
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.php* > /dev/null 2>&1
   _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" ""
   return 0
 }
@@ -2034,7 +2035,7 @@ _enable_chattr() {
     if [ "${_hdRefused}" = "NO" ] \
       && [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p ${_U_HD}
-      _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put "${_USER}"
     fi
 
     _UQ="$1"
@@ -3645,9 +3646,11 @@ _manage_sec_user_drush_aliases() {
   fi
 
   # an alias name that is not a regular file (a FIFO, a device link, a
-  # directory) is never root's to open: the diff below reads every copy
+  # directory) is never root's to open: the diff below reads every copy.
+  # Removed through _ACCT_RM_OWN_PL: what another user owns stays.
   _ltd_in_real_dir "${_usrLtdRoot}/.drush" find . -maxdepth 1 \
-    -name '*.alias.drushrc.php' ! -type f -exec rm -rf {} + 2> /dev/null
+    -name '*.alias.drushrc.php' ! -type f -exec perl -e "${_ACCT_RM_OWN_PL}" -- \
+    r "$(_acct_walk_uids "${_USER}" || echo 0)" - {} + > /dev/null 2>&1
   for _Symlink in `find ${_usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
     _SiteName=$(echo ${_Symlink}  \
@@ -4399,7 +4402,7 @@ _php_cli_local_dirs_update() {
     mkdir -p ${_U_TP} ${_U_HD}
     if _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "${_USER}:${_usrGroup}" 755 YES \
       && _ltd_in_real_dir "${_U_HD}" _ltd_own_dir_here "${_USER}:${_usrGroup}" 755 NO; then
-      _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put "${_USER}"
     else
       echo "ALERT: ${_U_TP} or ${_U_HD} is not ${_USER}'s own directory; left as it was"
     fi
@@ -6153,9 +6156,11 @@ _manage_site_drush_alias_mirror() {
   _ltd_in_real_dir "${_ftpD}" rm -f -- ./hm.alias.drushrc.php \
     ./self.alias.drushrc.php
   # an alias name that is not a regular file (a FIFO, a device link, a
-  # directory) is never root's to open: the diff below reads every copy
+  # directory) is never root's to open: the diff below reads every copy.
+  # Removed through _ACCT_RM_OWN_PL: what another user owns stays.
   _ltd_in_real_dir "${_ftpD}" find . -maxdepth 1 \
-    -name '*.alias.drushrc.php' ! -type f -exec rm -rf {} + 2> /dev/null
+    -name '*.alias.drushrc.php' ! -type f -exec perl -e "${_ACCT_RM_OWN_PL}" -- \
+    r "$(_acct_walk_uids "${_USER}" || echo 0)" - {} + > /dev/null 2>&1
   # oN's own ~/.drush, its ghost markers in log/ctrl and its undo/ are oN's
   # to swap too: every remove, marker and move below acts inside the real
   # directories only
@@ -6878,9 +6883,25 @@ _manage_user() {
           fi
           if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
             # the main login's home is never immutable: inside ~/.drush and
-            # ~/.tmp root works only in the real directories
-            _ltd_in_real_dir "/home/${_USER}.ftp/.drush" rm -rf -- ./cache
-            rm -rf /home/${_USER}.ftp/.tmp
+            # ~/.tmp root works only in the real directories, and removes
+            # only what root or the account's own users own
+            # (_ACCT_RM_OWN_PL): what another user put there stays
+            _ltdOwn=$(_acct_walk_uids "${_USER}") || _ltdOwn="0"
+            _ltdLeft=$(_ltd_in_real_dir "/home/${_USER}.ftp/.drush" \
+              perl -e "${_ACCT_RM_OWN_PL}" -- r "${_ltdOwn}" - ./cache 2> /dev/null)
+            if [ -L "/home/${_USER}.ftp/.tmp" ]; then
+              rm -f "/home/${_USER}.ftp/.tmp"
+            elif [ -d "/home/${_USER}.ftp/.tmp" ]; then
+              _ltdLeft="${_ltdLeft}"$'\n'"$(_ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+                _ltd_rm_own_all_here "${_ltdOwn}")"
+            elif [ -e "/home/${_USER}.ftp/.tmp" ]; then
+              _ltdLeft="${_ltdLeft}"$'\n'"$(_ltd_in_real_dir "/home/${_USER}.ftp" \
+                perl -e "${_ACCT_RM_OWN_PL}" -- h "${_ltdOwn}" - ./.tmp 2> /dev/null)"
+            fi
+            _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+            if [ "${_ltdLeft}" -gt 0 ]; then
+              echo "NOTE: ${_USER}: the main login's ~/.drush/cache and ~/.tmp clean-up left ${_ltdLeft} entries owned by another user in place"
+            fi
             mkdir -p /home/${_USER}.ftp/.tmp
             # handed over and given its mode only when it is the main login's
             # own or the empty one just made: a root-owned directory of the
