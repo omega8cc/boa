@@ -684,16 +684,21 @@
       (docs/INSTGRP.md).
 
     * The per-account web group conversion, still switched off, frees an
-      account's group name that someone outside the account holds too (a
-      member, or a user whose primary group it is) on a box that is
-      ready: the Octopus pass and instgrp webconvert rename that group to
-      <gid>-wgheld with its number and members kept, give the account a
-      new wg-oN at once, reload its pools into it, move the account's
-      paths to it and take the account's identities out of the renamed
-      group; the outside holder is not changed. A standby, a frozen
-      account, a box not ready, a group a directory service holds, a file
-      under /etc naming it or a free of the same account in the last 30
-      days keeps the alarm instead, which says why (docs/INSTGRP.md).
+      account's group name that someone outside the account holds too on
+      a box that is ready: the Octopus pass and instgrp webconvert rename
+      that group to <gid>-wgheld-<account> with its number and members
+      kept, give the account a new wg-oN at once, reload its pools into
+      it, move the account's paths to it, take the account's identities
+      out of the renamed group and clear the set-group-ID bit on the
+      account's own files left in the old number, with the account's
+      task queue held throughout; the outside holder is not changed. A
+      standby, a frozen account, a running xmass, xoct or xcopy verb, a
+      box not ready, a group a directory service holds, a file under /etc
+      naming it or a free of the same account in the last 30 days keeps
+      the alarm instead, which says why, and so does an account the
+      Octopus pass and webconvert all otherwise leave alone (opted out, or
+      not on its per-instance group yet) until it is converted onto that
+      group (docs/INSTGRP.md).
 
     * A web group that someone outside the account holds too (a member, a
       user whose primary group it is, or a member of another group with
@@ -705,6 +710,16 @@
       out, so the account's phase B pools could not read them. Until the
       free the outside holder keeps group access to the paths written
       there (docs/INSTGRP.md).
+
+    * A free of a held web group name that a kill cut short no longer
+      costs the account its paths: until the next web verb finishes it,
+      instgrp reclaim, instgrp convert and the nightly leave the paths
+      still in the old number alone, a reclaim puts a rename alone back
+      and otherwise skips the account with an alarm, a standby, a box
+      being prepared or a frozen account only gets its rename or its new
+      group's record put right, and a free whose last checks warned is
+      recorded done instead of being run again; the journal goes with the
+      account (docs/INSTGRP.md).
 
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no

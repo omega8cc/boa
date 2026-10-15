@@ -200,7 +200,8 @@ record this box's group is dropped. No identity change and no lock, so it
 is what a root-run restore, a migration destination and the nightly run.
 `convert` and `reclaim` leave the paths of the account's own web group
 (`wg-oN`, while it exists) alone: those are the account's web paths, which
-its FPM pools reach through that group.
+its FPM pools reach through that group. So are the paths still in the old
+number while a free of a held name is unfinished (below).
 
 It still
 defers (exit 4) while a BOA install or upgrade run is live (`/run/boa_run.pid`,
@@ -514,22 +515,33 @@ prepared as one) refuses every verb but `webrevert`.
 
 ### A group name held outside the account
 
-A group `wg-oN` that an identity outside the account holds too (listed in
-it, or with it as its primary group) is never joined or written to as it
-is: `webstatus` says `FOREIGN`, and the watchers raise it every pass. On a
-box that is ready (above), the Octopus pass and `webconvert` free the name
-instead.
+A group `wg-oN` that an identity outside the account holds too (a member
+of it, a user with it as its primary group, or a member of another group
+entry with the same number) is never joined: `webstatus` says `FOREIGN`,
+and the watchers raise it every pass. Once the account is converted onto
+that group (root's record names its number at phase A or B), root's
+writers (the nightly, the site fixers, the worker) keep giving its paths
+that group, and the account's own identities and pool users are still
+listed in it and its pools keep their `group =` line at phase B, until the
+name is freed. Meanwhile the outside holder keeps group access to the
+paths written there, private files included. On a box that is ready
+(above), the Octopus pass and `webconvert` free the name.
 
-The held group is renamed `<gid>-wgheld` (for example `1002-wgheld`),
-keeping its number and its members, so whatever that number grants
-outside the account stays as it is. The account gets a new `wg-oN` at
-once, on a number no group and no user's primary group has, and root's
-record follows it.
+The held group is renamed `<gid>-wgheld-oN` (for example
+`1002-wgheld-o5`), keeping its number and its members, so whatever that
+number grants outside the account stays as it is. The account gets a new
+`wg-oN` at once, on a number no group and no user has (looked up by
+number too, for a directory service that does not list its entries), and
+root's record follows it.
 
-The account's PHP-FPM pools are reloaded into the new group before any
-path moves. Every path of the account in the old number then moves to
-the new one, and the account's own identities leave the renamed group.
-The run then goes on as for any account.
+The account's task queue is held from before the rename to after the last
+walk. Its PHP-FPM pools are reloaded into the new group before any path
+moves. Every path of the account in the old number then moves to the new
+one, and the account's own identities leave the renamed group; a live
+shell or SFTP session of the account is named in its notes. A
+set-group-ID file of the account's own still in the old number elsewhere
+on the box loses the bit, logged and alarmed. The run then goes on as for
+any account.
 
 Nothing of the outside holder is changed: it keeps its memberships, its
 primary group and the renamed group, and loses only the account's files.
@@ -538,22 +550,34 @@ added to `wg-oN`, therefore stops reaching the account's files. Give such
 a user its own login under the account instead.
 
 The name is not freed, and the alarm stays and says why, on a standby or
-a box being prepared as one, for a frozen account, on a box that is not
-ready, or when `wg-oN` is not a group of `/etc/group` (a directory service
-holds it). It stays held too when one of the account's identities has it
-as its primary group, when a file under `/etc` names it (a sudoers rule,
-sshd's `Match Group`, a systemd `Group=` line), or when the account's
-name was freed once already in the last 30 days.
+a box being prepared as one, for a frozen account, while an `xmass`,
+`xoct` or `xcopy` verb runs on the box, on a box that is not ready, or
+when `wg-oN` is not a group of `/etc/group` (a directory service holds
+it). It stays held too when one of the account's identities has it as its
+primary group, when a file under `/etc` names it (a sudoers rule, sshd's
+`Match Group`, a systemd `Group=` line), or when the account's name was
+freed once already in the last 30 days. The arm and `webconvert all` do
+not free it for an account they leave alone otherwise, opted out
+(`_WEB_GROUP=NO` or `_INSTANCE_GROUP=NO`) or not on its per-instance group
+yet, unless the account is converted onto that group already (there the
+opt-out stops raises only); a per-account `webconvert` frees it and lifts
+the opt-out.
 
 `webrevert` and `reclaim` never free a name, and the master's own group
 (`wg-aegir`) is not freed this way.
 
-A run killed during a free is finished by the next run of a web verb of
-the account, from root's journal `/etc/boa/control/instgrp-web.oN.free.txt`,
-which also dates the free. While a converted account's name stays held,
-root's writers (the nightly, the site fixers, the worker) keep giving its
-paths its group as long as root's record names that group's number, so
-its pools keep reading them.
+Root's journal `/etc/boa/control/instgrp-web.oN.free.txt` dates the free
+and finishes one a kill cut short: the next run of a web verb of the
+account completes it. Until then `reclaim`, `convert` and the nightly's
+probe leave the paths still in the old number alone, as the free's walk
+to finish; `reclaim` puts a rename alone back (the state before the free)
+and otherwise skips the account, exit 4, with an alarm. On a standby or a
+box being prepared as one, or for a frozen account, that next run only
+puts the rename back or carries root's record to a new group already
+made, and leaves the walk and the reloads to a run those guards allow. A
+free whose last checks warned (a version's reload, a listing) is recorded
+done all the same, and the run's own steps reload what is left. The
+journal goes with the account.
 
 ### What holds phase B back
 

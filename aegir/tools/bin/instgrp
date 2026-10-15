@@ -566,14 +566,19 @@ _web_group_phase_b() {
 # otherwise. $1 = one of the account's roots (/data/disk/<oN>, /home/<oN>.*,
 # its store on attached storage); a root under neither names no account.
 # Numeric, and emitted only when it resolves: find refuses an unknown group
-# name, and every claim here discards find's errors.
+# name, and every claim here discards find's errors. With $2, the account,
+# a second line while a free of its name is unfinished: the held gid, whose
+# paths are that free's walk to finish (_wg_free_held), never the account
+# group's, where its pools would lose them. One gid per line.
 _wg_keep() {
   local _g
   _g=$(_web_group_state "${1}" | cut -d' ' -f2)
   case "${_g}" in
-    ""|*[!0-9]*) return 0 ;;
+    ""|*[!0-9]*) ;;
+    *) printf '%s\n' "${_g}" ;;
   esac
-  printf '%s\n' "${_g}"
+  [ -n "${2:-}" ] && _wg_free_held "${2}"
+  return 0
 }
 
 _grant_sup() {
@@ -1168,7 +1173,7 @@ _grp_changed_expr() {
 _GRP_REOWN_PL='use Fcntl; my ($g, $ok, $from, $w, $x, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _ || (-p _ && $o{$l[4]})); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && ($from ne "" ? $s[5] == $from : ($s[5] != $g && $s[5] != $w && $s[5] != $x && $s[5] != 0)) && (-d _ || (-f _ && $s[3] == 1) || ((-f _ || -p _) && $o{$s[4]}))) { chown(-1, $g, $h) or $rc = 1; } close($h); } exit $rc'
 _GRP_IMMUTABLE_PL='use Fcntl; my ($g, $ok, $w, $x, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && $s[5] != $g && $s[5] != $w && $s[5] != $x && $s[5] != 0 && (-d _ || (-f _ && ($s[3] == 1 || $o{$s[4]})))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); if ($fl & 0x10) { if (ioctl($h, 0x40086602, pack("L", $fl & ~0x10))) { chown(-1, $g, $h) or $rc = 1; ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } } else { $rc = 1 } } close($h); } exit $rc'
 _grp_walk() {
-  local _from="$1" _to="$2" _a="$3" _toGid _wGid _uids _r _keep _wg _wgX
+  local _from="$1" _to="$2" _a="$3" _toGid _wGid _uids _r _keep _wg _wgX _g
   shift 3
   _toGid=$(_gid_of "${_to}")
   [[ "${_toGid}" =~ ^[0-9]+$ ]] || return 1
@@ -1197,7 +1202,8 @@ _grp_walk() {
     # the same system range -- the gid of a DIFFERENT named group on this
     # box, whose identities could then read the copied credential files.
     # Both take the account's group; only the FPM group, the account's own
-    # web group (its web paths once converted) and root stay.
+    # web group (its web paths once converted, and the old number while a
+    # free of its name is unfinished: _wg_keep) and root stay.
     # The limited-shell homes carry chattr +i on a known set of names (the
     # home itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh
     # sets and clears them around its own writes): when a batch left an
@@ -1208,8 +1214,11 @@ _grp_walk() {
     # alone). Every name is opened inside the directory find holds, by its
     # bare name, never through a pathname a tenant can re-point mid-way.
     _wgX=()
-    _wg=$(_wg_keep "${_r}")
-    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    _wg=""
+    for _g in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_g}" )
+      _wg="${_wg:-${_g}}"
+    done
     env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
       -execdir sh -c 'g=$0 r=$1 c=$2 u=$3 w=$4 x=$5; shift 5
         perl -e "$r" -- "$g" "$u" "" "$w" "$x" "$@" && exit 0
@@ -1243,8 +1252,9 @@ _grp_residue() {
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
     _wgX=()
-    _wg=$(_wg_keep "${_r}")
-    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    for _wg in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_wg}" )
+    done
     read -r _res _n < <(find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
       \( "${_chg[@]}" -printf 'R\n' -quit -o ! -type l -printf 'U\n' \) 2> /dev/null | _tally)
     _UNWALKED=$((_UNWALKED + ${_n:-0}))
@@ -1261,8 +1271,9 @@ _grp_residue_list() {
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
     _wgX=()
-    _wg=$(_wg_keep "${_r}")
-    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    for _wg in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_wg}" )
+    done
     find -P "${_r}" "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -printf '%G %p\n' 2> /dev/null | head -5
   done
 }
@@ -1302,8 +1313,9 @@ _grp_unwalked() {
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
     _wgX=()
-    _wg=$(_wg_keep "${_r}")
-    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    for _wg in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_wg}" )
+    done
     find -P "${_r}" ! -type l ! "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -print0 2> /dev/null
   done | tr '\n\0' '?\n' | awk 'NR <= 3 { e = e " " $0 } END { print NR + 0 e }'
 }
@@ -1698,7 +1710,10 @@ _do_convert() {
 # record names it), then the file half; the worse exit class of the two.
 # The web leg skips where the file half does (a freeze without --force, a
 # live install or upgrade run), with a note and rc 4, so a caller that
-# reclaims for the web residue sees it left.
+# reclaims for the web residue sees it left. While a free of the account's
+# web group name that a kill cut short is unfinished, both legs skip (rc 4,
+# alarmed) for the next web verb to finish it; a rename alone is put back
+# first (_wg_free_settled).
 _do_reclaim() {
   local _a="$1" _wrc=0 _rc
   if _valid_account "${_a}"; then
@@ -1712,6 +1727,11 @@ _do_reclaim() {
       _msg "NOTE: ${_a}: the web group leg skipped: a BOA install or upgrade run is live (/run/*.pid)"
       _wrc=4
     else
+      _wg_profile "${_a}"
+      if ! _wg_free_settled; then
+        _log "${_a}: RECLAIM skipped: a free of its web group name is unfinished"
+        return 4
+      fi
       trap '_wg_on_exit' EXIT
       _WG_CALLER=reclaim
       _wg_run "${_a}"
@@ -3774,11 +3794,17 @@ _wg_sweep_unwalked() {
 # directory the account renames or swaps for a link meanwhile cannot lead
 # root outside the walked tree. The network and FUSE mounts without nosuid
 # are named in the notes, not walked. 1 when one could not be cleared, or
-# when no file system was read to walk.
+# when no file system was read to walk. The free's sweep of the old number
+# gives $1 (the gid), $2 (what the notes call it) and $3 (the step); phase
+# B's gives none: www-data. The count cleared is left in _WG_SGID_N.
+_WG_SGID_N=0
 _wg_sgid_sweep() {
   local _uids _r _out _rc=0 _n=0 _u _w=() _l _roots=0 _t _m _un=""
+  local _g="${1:-${_WG_WWWGID}}" _what="${2:-www-data}" _step="${3:-phase B}" _again=""
+  [ -n "${1:-}" ] || _again="; the next run at B tries again"
+  _WG_SGID_N=0
   _uids=$(_wg_own_uids)
-  [ -n "${_uids}" ] && [[ "${_WG_WWWGID}" =~ ^[0-9]+$ ]] || return 0
+  [ -n "${_uids}" ] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 0
   for _u in ${_uids//,/ }; do
     _w+=(-o -uid "${_u}")
   done
@@ -3787,8 +3813,8 @@ _wg_sgid_sweep() {
     _roots=$((_roots + 1))
     # find's own exit is not read: a file gone during the walk is no failure
     _out=$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -xdev -type f -perm -2000 \
-      -gid "${_WG_WWWGID}" \( "${_w[@]:1}" \) \
-      -execdir perl -e "${_WG_SGID_PL}" "${_WG_WWWGID}" "${_uids}" {} + 2> /dev/null < /dev/null)
+      -gid "${_g}" \( "${_w[@]:1}" \) \
+      -execdir perl -e "${_WG_SGID_PL}" "${_g}" "${_uids}" {} + 2> /dev/null < /dev/null)
     [ -n "${_out}" ] || continue
     while IFS= read -r _l; do
       case "${_l}" in
@@ -3804,21 +3830,22 @@ _wg_sgid_sweep() {
     done <<< "${_out}"
   done < <(_wg_sweep_roots)
   if [ "${_roots}" = "0" ]; then
-    _alrt "${_WP_A}: no file system to walk was read from /proc/self/mounts; the set-group-ID sweep of phase B stays owed"
+    _alrt "${_WP_A}: no file system to walk was read from /proc/self/mounts; the set-group-ID sweep of ${_step} stays owed"
     return 1
   fi
   while read -r _t _m; do
     [ -n "${_m}" ] || continue
     _un="${_un} ${_m}"
     _log "${_WP_A}: set-group-ID sweep: ${_m} (${_t}, no nosuid) not walked"
-    _wg_note "phase B: the set-group-ID sweep does not walk ${_m} (${_t}, a network or FUSE mount without nosuid): a set-group-ID www-data file of the account there keeps its bit; mount it nosuid"
+    _wg_note "${_step}: the set-group-ID sweep does not walk ${_m} (${_t}, a network or FUSE mount without nosuid): a set-group-ID ${_what} file of the account there keeps its bit; mount it nosuid"
   done < <(_wg_sweep_unwalked)
   [ -n "${_un}" ] && _msg "NOTE: ${_WP_A}: network or FUSE mounts without nosuid are not swept for set-group-ID files:${_un} (see ${_WP_NOTES})"
   if [ "${_n}" -gt 0 ]; then
-    _msg "NOTE: ${_WP_A}: the set-group-ID bit cleared on ${_n} www-data file(s) of the account (${_LOG})"
-    _wg_note "phase B: the set-group-ID bit cleared on ${_n} www-data file(s) of the account"
+    _msg "NOTE: ${_WP_A}: the set-group-ID bit cleared on ${_n} ${_what} file(s) of the account (${_LOG})"
+    _wg_note "${_step}: the set-group-ID bit cleared on ${_n} ${_what} file(s) of the account"
   fi
-  [ "${_rc}" = "0" ] || _alrt "${_WP_A}: a set-group-ID www-data file of the account could not be cleared (${_LOG}); the next run at B tries again"
+  _WG_SGID_N="${_n}"
+  [ "${_rc}" = "0" ] || _alrt "${_WP_A}: a set-group-ID ${_what} file of the account could not be cleared (${_LOG})${_again}"
   return "${_rc}"
 }
 
@@ -5488,30 +5515,57 @@ _wg_off_quiet() {
 # ---- a held name freed (E1) -------------------------------------------------------
 
 # E1: an identity outside the account holds the account's web group too.
-# The Octopus arm and webconvert (under the run lock, holding the account)
-# free the name instead of only refusing: the held group is renamed
-# <gid>-wgheld with its number and members kept, so whatever that number
-# grants outside the account stays as it is, and a new wg-<account> is made
-# at once on a gid no group and no user's primary group has; root's record
-# follows the account to it (a stale one goes, as at u3). Those of the
-# account that held the old group hold the new one (every identity and pool
-# user of a converted account), its PHP-FPM versions are reloaded so their
-# workers hold the new gid before any path moves (at phase B the pools read
-# only through the group), every path of the account in the old number is
-# handed to the new one, the account's identities leave the renamed group,
-# and the versions are reloaded and the paths walked once more. Nothing of
-# the outside holder is changed, and the account's own notes name no one. A
-# journal in /etc/boa/control is written before the rename: the next run of
-# a web verb of the account finishes a free a kill cut short, and it dates
-# the free, which happens once per account in _WG_FREE_DAYS days. Every
-# check reads a group by its name: a second group entry can share the held
-# number, and a lookup by number answers whichever entry comes first. A guard
-# that fails keeps E1's alarm and is named in it. The master's free waits
-# for its own caller.
+# The Octopus arm and webconvert (under the run lock, holding the account
+# and its task queue) free the name instead of only refusing: the held
+# group is renamed <gid>-wgheld-<account> with its number and members kept,
+# so whatever that number grants outside the account stays as it is, and a
+# new wg-<account> is made at once on a gid no group and no user has; root's
+# record follows the account to it (a stale one goes, as at u3). Those of
+# the account that held the old group hold the new one (every identity and
+# pool user of a converted account), its PHP-FPM versions are reloaded so
+# their workers hold the new gid before any path moves (at phase B the
+# pools read only through the group), every path of the account in the old
+# number is handed to the new one, the account's identities leave the
+# renamed group, and the versions are reloaded and the paths walked once
+# more; a set-group-ID file of the account's own still in the old number
+# elsewhere loses the bit. Nothing of the outside holder is changed, and the
+# account's own notes name no one. A journal in /etc/boa/control is written
+# before the rename: the next run of a web verb of the account finishes a
+# free a kill cut short, and until then every claim and probe leaves the
+# old number's paths alone (_wg_keep); it dates the free, which happens once
+# per account in _WG_FREE_DAYS days. Every check reads a group by its name: a
+# second group entry can share the held number, and a lookup by number
+# answers whichever entry comes first. A guard that fails keeps E1's alarm
+# and is named in it. The arm and both forms of all free no name for an
+# account they otherwise leave alone (opted out, or not on its per-instance
+# group yet) unless it is converted onto that group already. The master's
+# free waits for its own caller.
 _WG_FREE_DAYS=30
 _WG_ETC=/etc
 _wg_free_journal() {
   printf '%s\n' "${_WG_ETC}/boa/control/instgrp-web.${_WP_A}.free.txt"
+}
+
+# The name the group held at gid $1 is renamed to: the gid and the
+# account's name, so a second held name never meets a first (under 32
+# characters for a BOA account name).
+_wg_free_aside() {
+  printf '%s\n' "${1}-wgheld-${_WP_A}"
+}
+
+# The held gid of account $1's free while it is unfinished: its journal not
+# done and the renamed group, <gid>-wgheld-<account>, still at that gid. Its
+# paths in that number are the free's walk to finish, so no claim or probe
+# takes them meanwhile. Nothing otherwise. One text in instgrp and the
+# nightly's 10-account.sh.
+_wg_free_held() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  read -r _s _h _ < "${_j}" || :
+  _h="${_h#held=}"
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  [ "$(getent group "${_h}-wgheld-${1}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || return 0
+  printf '%s\n' "${_h}"
 }
 
 # The journal's fields into _FJ_S (renaming, made or done), _FJ_H (the held
@@ -5535,8 +5589,37 @@ _wg_free_j_read() {
   return 0
 }
 
+# $1 the step, $2 the held gid, $3 the new gid, $4 a mark (warn: a check of
+# a done free warned) or none.
 _wg_free_j_write() {
-  _wg_put_root "$(_wg_free_journal)" "step=${1} held=${2} new=${3} at=$(date +%s)"
+  _wg_put_root "$(_wg_free_journal)" "step=${1} held=${2} new=${3} at=$(date +%s)${4:+ ${4}}"
+}
+
+# Root's record into _FR1 (the group), _FR2 (gid=), _FR3 (phase=) and _FREST;
+# 0 when it names the account's web group at gid $1 (or $2) at phase A or
+# B: the account is converted onto that group.
+_wg_free_rec() {
+  local _rl=""
+  _FR1=""
+  _FR2=""
+  _FR3=""
+  _FREST=""
+  if [ -f "${_WP_R}" ] && [ ! -L "${_WP_R}" ] \
+    && [ "$(stat -c %u -- "${_WP_R}" 2> /dev/null)" = "0" ]; then
+    read -r _rl < "${_WP_R}" || :
+    read -r _FR1 _FR2 _FR3 _FREST <<< "${_rl}"
+  fi
+  [ "${_FR1}" = "${_WP_G}" ] && { [ "${_FR3}" = "phase=A" ] || [ "${_FR3}" = "phase=B" ]; } \
+    && { [ "${_FR2}" = "gid=${1}" ] || { [ -n "${2:-}" ] && [ "${_FR2}" = "gid=${2}" ]; }; }
+}
+
+# Root's record carried to the new gid, $1, while it names the held gid,
+# $2, at A or B (naming $1 already, nothing to do); 1 when it could not be
+# written.
+_wg_free_carry() {
+  _wg_free_rec "${2}" "${1}" || return 0
+  [ "${_FR2}" = "gid=${1}" ] && return 0
+  _wg_put_root "${_WP_R}" "${_FR1} gid=${1} ${_FR3}${_FREST:+ ${_FREST}}"
 }
 
 # 0 when $1 is one of the account's own names (as _web_group_state reads
@@ -5547,7 +5630,9 @@ _wg_own_name() {
 
 # A gid for the new group: the highest in login.defs' system range
 # (SYS_GID_MIN to SYS_GID_MAX, 100 to 999 when unset) that no group has and
-# no user has as its primary group.
+# no user has as its primary group, nor resolves looked up by number as a
+# group or a user: a directory service that does not enumerate answers
+# only such a lookup, and groupadd -g would fail on it every run.
 _wg_free_gid() {
   local _lo _hi _g _used
   _lo=$(awk '$1 == "SYS_GID_MIN" { print $2; exit }' "${_WG_ETC}/login.defs" 2> /dev/null)
@@ -5557,9 +5642,12 @@ _wg_free_gid() {
   _used=$'\n'$( { getent group | cut -d: -f3; getent passwd | cut -d: -f4; } 2> /dev/null | sort -un)$'\n'
   for ((_g = _hi; _g >= _lo; _g--)); do
     case "${_used}" in
-      *$'\n'"${_g}"$'\n'*) ;;
-      *) printf '%s\n' "${_g}"; return 0 ;;
+      *$'\n'"${_g}"$'\n'*) continue ;;
     esac
+    getent group "${_g}" > /dev/null 2>&1 && continue
+    getent passwd "${_g}" > /dev/null 2>&1 && continue
+    printf '%s\n' "${_g}"
+    return 0
   done
   return 1
 }
@@ -5574,6 +5662,28 @@ _wg_free_guard() {
     *) return 2 ;;
   esac
   [ "${_WP_M}" != "YES" ] || return 2
+  # the arm and all leave an opted-out account, or one not on its
+  # per-instance group yet, as it is: no name is freed for it unless root's
+  # record has it converted onto the held group already (where the opt-out
+  # stops raises only); a per-account webconvert lifts the opt-out (L1a)
+  case "${_WG_CALLER}" in
+    arm|all|all_b)
+      if ! _wg_free_rec "${_WG_GID}"; then
+        if _wg_g_optout; then
+          echo "opted out (_WEB_GROUP=NO); a per-account webconvert frees it"
+          return 1
+        fi
+        if _wg_g_v1_optout; then
+          echo "opted out of the per-instance group (_INSTANCE_GROUP=NO); a per-account webconvert frees it"
+          return 1
+        fi
+        if ! _wg_g_v1; then
+          echo "not on its per-instance group yet (instgrp convert ${_WP_A} first)"
+          return 1
+        fi
+      fi
+      ;;
+  esac
   if [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; then
     echo "this box is a standby or is being prepared as one"
     return 1
@@ -5582,6 +5692,14 @@ _wg_free_guard() {
     echo "frozen for a migration (log/proxied.pid)"
     return 1
   fi
+  # xmass maps the web group by name: a sync or a cutover meanwhile would
+  # carry the paths still in the old number by that number alone
+  for _l in /run/xmass.verb.pid /run/xoct.verb.pid /run/xcopy.verb.pid; do
+    if _wg_pid_live "${_l}"; then
+      echo "a migration verb is live (${_l})"
+      return 1
+    fi
+  done
   if ! _wg_g_ready > /dev/null 2>&1; then
     echo "the box is not ready for it (instgrp webcheck)"
     return 1
@@ -5596,8 +5714,9 @@ _wg_free_guard() {
     echo "${_u} has it as its primary group"
     return 1
   done
-  if getent group "${_WG_GID}-wgheld" > /dev/null 2>&1; then
-    echo "the name ${_WG_GID}-wgheld is taken"
+  _l=$(_wg_free_aside "${_WG_GID}")
+  if getent group "${_l}" > /dev/null 2>&1; then
+    echo "the name ${_l} is taken"
     return 1
   fi
   _l=$(timeout 60 grep -rIlwF -- "${_WP_G}" "${_WG_ETC}" 2> /dev/null)
@@ -5662,23 +5781,22 @@ _wg_free_reload() {
 # The free of the name held at gid $1, each step read from the box first, so
 # a run that finishes one a kill cut short does only what is left. 0 once
 # the account has its new group (warnings alarmed), 1 when the name stays
-# held (nothing changed, or the rename put back).
+# held (nothing changed, or the rename put back). The journal says done
+# once the group, the record and the walk are complete, marked warn when a
+# check warned (a version's reload, a listing): the run's own leg reloads
+# what is left (u4).
 _wg_free() {
-  local _old="${1}" _held="${1}-wgheld" _new="" _u _who="" _out="" _rl _r1="" _r2="" _r3="" _rest="" _conv=NO _rc=0
+  local _old="${1}" _held _new="" _u _who="" _out="" _conv=NO _rc=0 _rec=YES
+  _held=$(_wg_free_aside "${_old}")
   _wg_hold "${_WP_A}" || { _fail "${_WP_A}: another run holds the account; ${_WP_G} not freed"; return 1; }
+  # the account's tasks drained and held from before the rename to after
+  # the last walk: a task's process holds only the old number meanwhile
+  _wg_qhold || { _fail "${_WP_A}: the task queue did not drain; ${_WP_G} not freed"; return 1; }
   _wg_free_j_read
   [ "${_FJ_S}" != "done" ] && [ "${_FJ_H}" = "${_old}" ] && _new="${_FJ_N}"
   # root's record, when it names the old gid (or the new one, after a kill)
   # at A or B: the account is converted onto the group, the record follows it
-  if [ -f "${_WP_R}" ] && [ ! -L "${_WP_R}" ] \
-    && [ "$(stat -c %u -- "${_WP_R}" 2> /dev/null)" = "0" ]; then
-    read -r _rl < "${_WP_R}" || :
-    read -r _r1 _r2 _r3 _rest <<< "${_rl}"
-  fi
-  if [ "${_r1}" = "${_WP_G}" ] && { [ "${_r3}" = "phase=A" ] || [ "${_r3}" = "phase=B" ]; } \
-    && { [ "${_r2}" = "gid=${_old}" ] || { [ -n "${_new}" ] && [ "${_r2}" = "gid=${_new}" ]; }; }; then
-    _conv=YES
-  fi
+  _wg_free_rec "${_old}" "${_new}" && _conv=YES
   # the rename, the new group and the record, TERM, INT and HUP held off
   # meanwhile: what a kill still cuts is the journal's to finish
   trap '' TERM INT HUP
@@ -5723,13 +5841,12 @@ _wg_free() {
   fi
   _new=$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)
   if [ "${_conv}" = "YES" ]; then
-    if [ "${_r2}" != "gid=${_new}" ] \
-      && ! _wg_put_root "${_WP_R}" "${_r1} gid=${_new} ${_r3}${_rest:+ ${_rest}}"; then
+    if ! _wg_free_carry "${_new}" "${_old}"; then
       _alrt "${_WP_A}: the record ${_WP_R} could not be carried to gid ${_new}"
-      _rc=1
+      _rec=NO
     fi
   elif [ -e "${_WP_R}" ] || [ -L "${_WP_R}" ]; then
-    _wg_r_remove || { _alrt "${_WP_A}: a stale record ${_WP_R} could not be removed"; _rc=1; }
+    _wg_r_remove || { _alrt "${_WP_A}: a stale record ${_WP_R} could not be removed"; _rec=NO; }
   fi
   _wg_free_j_write "made" "${_old}" "${_new}" || :
   trap - TERM INT HUP
@@ -5754,26 +5871,89 @@ _wg_free() {
     gpasswd -d "${_u}" "${_held}" > /dev/null 2>&1
     _in_grp_sup "${_u}" "${_held}" && { _alrt "${_u}: could not take it out of ${_held}"; _rc=1; }
   done
+  # a live shell or SFTP session keeps the old group set until it reconnects
+  [ -n "${_who}" ] && _wg_sessions_note
   # no worker keeps the held gid, and what was written meanwhile moves too
   if [ -n "${_who}" ]; then
     _wg_free_reload || _rc=1
     _wg_free_walk "${_old}" "${_new}"
   fi
+  _wg_qhold_release
   if _wg_gid_in_roots "${_old}"; then
     _alrt "${_WP_A}: paths of the account still carry gid ${_old} (${_held}): a hard link or an immutable file the walk leaves; see ${_WP_NOTES}"
     _wg_note_log "paths of the account still carry the old number of its web group (a hard link or an immutable file the walk leaves as it is)"
   fi
-  [ "${_rc}" = "0" ] && _wg_free_j_write "done" "${_old}" "${_new}"
+  # the account's own files outside the walk keep the old number: a
+  # set-group-ID one would still run in the outsider's group
+  if [ -n "${_who}" ]; then
+    _wg_sgid_sweep "${_old}" "old web group" "its web group renewed" || _rc=1
+    [ "${_WG_SGID_N}" -gt 0 ] \
+      && _alrt "${_WP_A}: the set-group-ID bit cleared on ${_WG_SGID_N} file(s) of the account in gid ${_old} (${_held}) outside its tree (${_LOG})"
+  fi
+  if [ "${_rec}" = "YES" ]; then
+    _wg_free_j_write "done" "${_old}" "${_new}" "$([ "${_rc}" = "0" ] || echo warn)"
+  fi
   _wg_note_log "its web group's name ${_WP_G} was held by an identity outside the account: that group was renamed ${_held} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
   _msg "${_WP_A}: ${_WP_G} was held by an identity outside it: renamed ${_held}, a new ${_WP_G} made (gid ${_new}), the account's paths moved to it"
   return 0
 }
 
+# A free a kill cut short, mended as far as its trapped block by a run that
+# does not finish it ($1 says why: reclaim, or the guard a web verb fails
+# now). Its rename alone (no wg-<account>, the renamed group at the
+# journal's gid) is put back, the state before the free, and the journal
+# goes (0). A web verb carries root's record to a group already made and
+# the journal says made; the walk and the reloads wait for a run the guards
+# allow, and a reclaim skips meanwhile (1). Each is alarmed.
+_wg_free_mend() {
+  local _held _new
+  _held=$(_wg_free_aside "${_FJ_H}")
+  if ! getent group "${_WP_G}" > /dev/null 2>&1 \
+    && [ "$(getent group "${_held}" 2> /dev/null | cut -d: -f3)" = "${_FJ_H}" ]; then
+    groupmod -n "${_WP_G}" "${_held}" > /dev/null 2>&1
+    if [ "$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)" = "${_FJ_H}" ] \
+      && ! getent group "${_held}" > /dev/null 2>&1; then
+      rm -f -- "$(_wg_free_journal)"
+      _alrt "${_WP_A}: the rename of a free of ${_WP_G} that a kill cut short is put back (${1}): ${_held} has its name back, as before the free"
+      return 0
+    fi
+  fi
+  _new=$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)
+  if [ "${1}" = "reclaim" ]; then
+    _alrt "${_WP_A}: a free of ${_WP_G} that a kill cut short is unfinished (the journal $(_wg_free_journal)); reclaim skipped until the next web verb of the account finishes it"
+    return 1
+  fi
+  if [ -n "${_new}" ] && [ "${_new}" != "${_FJ_H}" ]; then
+    _wg_free_carry "${_new}" "${_FJ_H}" \
+      || _alrt "${_WP_A}: the record ${_WP_R} could not be carried to gid ${_new}"
+    _wg_free_j_write "made" "${_FJ_H}" "${_new}" || :
+  fi
+  _alrt "${_WP_A}: a free of ${_WP_G} that a kill cut short is unfinished (${1}): its walk and reloads wait for a run that passes that guard"
+  return 1
+}
+
+# Reclaim, on an account a free of whose name a kill cut short: 0 when no
+# free is unfinished (a journal whose rename never happened goes, a rename
+# alone is put back), 1 while one is (both legs skipped, alarmed): the
+# next web verb's resume finishes it.
+_wg_free_settled() {
+  [ "${_WP_M}" != "YES" ] || return 0
+  _wg_free_j_read
+  [ -n "${_FJ_S}" ] && [ "${_FJ_S}" != "done" ] && [ -n "${_FJ_H}" ] || return 0
+  if [ "$(getent group "${_WP_G}" 2> /dev/null | cut -d: -f3)" = "${_FJ_H}" ]; then
+    rm -f -- "$(_wg_free_journal)"
+    return 0
+  fi
+  _wg_free_mend reclaim
+}
+
 # A free a kill cut short (its journal not done) is finished by the next
-# run of a web verb of the account, before anything else and whatever the
-# guards say now: its rename is made. A journal whose rename never happened
-# (the name still has the held gid) is removed.
+# run of a web verb of the account, before anything else: its rename is
+# made. A journal whose rename never happened (the name still has the held
+# gid) is removed. On a standby or a box being prepared as one, or for a
+# frozen account, only its trapped block is mended (_wg_free_mend).
 _wg_free_resume() {
+  local _held _why=""
   [ "${_WP_M}" != "YES" ] && [ "${_WG_CALLER}" != "reclaim" ] || return 0
   _wg_free_j_read
   [ -n "${_FJ_S}" ] && [ "${_FJ_S}" != "done" ] && [ -n "${_FJ_H}" ] || return 0
@@ -5781,8 +5961,18 @@ _wg_free_resume() {
     rm -f -- "$(_wg_free_journal)"
     return 0
   fi
-  if [ "$(getent group "${_FJ_H}-wgheld" 2> /dev/null | cut -d: -f3)" != "${_FJ_H}" ]; then
-    _alrt "${_WP_A}: the journal $(_wg_free_journal) names gid ${_FJ_H}, which is not ${_FJ_H}-wgheld now; left as it is"
+  _held=$(_wg_free_aside "${_FJ_H}")
+  if [ "$(getent group "${_held}" 2> /dev/null | cut -d: -f3)" != "${_FJ_H}" ]; then
+    _alrt "${_WP_A}: the journal $(_wg_free_journal) names gid ${_FJ_H}, which is not ${_held} now; left as it is"
+    return 0
+  fi
+  if [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; then
+    _why="this box is a standby or is being prepared as one"
+  elif [ -e "/data/disk/${_WP_A}/log/proxied.pid" ] || [ -L "/data/disk/${_WP_A}/log/proxied.pid" ]; then
+    _why="frozen for a migration (log/proxied.pid)"
+  fi
+  if [ -n "${_why}" ]; then
+    _wg_free_mend "${_why}"
     return 0
   fi
   _msg "${_WP_A}: finishing the free of ${_WP_G} that a killed run left (gid ${_FJ_H})"

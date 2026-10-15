@@ -2002,6 +2002,21 @@ _purge_hits_under_account() {
   done
 }
 
+### The held gid of account $1's free of its web group name while that free
+### is unfinished (a kill cut it short): its journal not done and the renamed
+### group, <gid>-wgheld-<account>, still at that gid. Its paths in that
+### number are the free's walk to finish (the next web verb's), never drift
+### to reclaim. Nothing otherwise. One text in instgrp and here.
+_wg_free_held() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  read -r _s _h _ < "${_j}" || :
+  _h="${_h#held=}"
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  [ "$(getent group "${_h}-wgheld-${1}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || return 0
+  printf '%s\n' "${_h}"
+}
+
 ### The account's own web group, before the site loop: its drift witnesses
 ### (instgrp webdrift; an alarm goes to the nightly's incident log and, once
 ### a day, to the operator's address, never to the account's own), and a
@@ -2245,6 +2260,9 @@ _purge_cruft_machine() {
       ""|*[!0-9]*) ;;
       *) _igX=( ! -gid "${_igWg}" ) ;;
     esac
+    # neither is the old number of a free of its name that a kill cut short
+    _igWg=$(_wg_free_held "${_HM_U}")
+    [ -n "${_igWg}" ] && _igX+=( ! -gid "${_igWg}" )
     _igHit=$(find -P ${_usEr}/.drush ${_igBak:+"${_igBak}"} ${_usEr}/config ${_usEr}/tools \
       ${_usEr}/aegir/distro/*/sites -xdev "${_igSel[@]}" \
       ! -group "${_acctGrp}" ! -group www-data ! -group root "${_igX[@]}" \
