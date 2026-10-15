@@ -2675,6 +2675,20 @@ _d_inode_use_pct() {
     NR==2 && u { gsub(/%/,"",$u); print $u }' | tr -dc '0-9'
 }
 
+# Whether this run builds the symbol at all: the gates the dispatch at the
+# end of _d_dist_loop applies (the core triples always and UC6; Backdrop,
+# Grav and Textpattern behind their switches; every other distribution
+# behind _ALLOW_ALL, which its install function tests)
+_d_would_build() {
+  case "$1" in
+    DL[0-9]|DX[0-9]|DE[0-9]|UC6) return 0 ;;
+    GRV) [ "${_GRAV_SUPPORT}" = "YES" ] ;;
+    TXP) [ "${_TXP_SUPPORT}" = "YES" ] ;;
+    *BD*) [ "${_BACKDROP_SUPPORT}" = "YES" ] ;;
+    *) [ "${_ALLOW_ALL}" = "YES" ] ;;
+  esac
+}
+
 _d_dist_loop() {
   # Every requested platform is a whole codebase, tens of thousands of
   # files; on a filesystem out of inodes each write fails as "No space left
@@ -2725,7 +2739,8 @@ _d_dist_loop() {
       _msg "NOTE! Upgrade this box's Percona to 8.4 in place first (docs.boa.io: Percona 8 upgrade readiness), then run this again"
       continue
     fi
-    if [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+    if { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; } \
+      && _d_would_build "${_dist}"; then
       _d_iuse="$(_d_inode_use_pct "${_ROOT}")"
       if [ -n "${_d_iuse}" ] && [ "${_d_iuse}" -gt 90 ]; then
         _msg "ALRT! ${_dist} (${_d_name} ${_d_vers}) not built: ${_d_iuse}% of the inodes on the filesystem holding ${_ROOT} are in use, above 90%"
