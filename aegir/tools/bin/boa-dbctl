@@ -2417,9 +2417,10 @@ _store_walk_here() {
 }
 
 # What may become two lines of a client file: user $1 and the password in
-# _PW. The client reads an option file line by line through a buffer of a
-# few kilobytes, and what does not fit in it is read as lines of its own;
-# and a line feed ends a line. So: no name that is not plain, no password
+# _PW. The 5.7 client reads an option file line by line through a buffer of
+# a few kilobytes, and what does not fit in it is read as lines of its own
+# (the 8.4 client was measured to read such a line whole); and a line feed
+# ends a line. So: no name that is not plain, no password
 # with a control character in it, and none longer than a password given on
 # standard input may be (1024 bytes). 1 otherwise, with why in _CNF_WHY and
 # as one word in _CNF_TOK. Both writers of a client file ask here, whatever
@@ -5547,7 +5548,8 @@ _settle_row_tests() {
 
 # The proof of each row 3 may drop, made before the lock is taken (a login
 # can take seconds): once per row and run, and only for a row every other
-# test lets go and that carries no failed-login limit of its own. Keeps
+# test lets go, while no row of its user carries a failed-login limit (the
+# limit is asked over every row of the user, not this row's alone). Keeps
 # "<user>@<host> <answer> <signature>" lines in _ST_PR: the signature is
 # the row's as it was when the proof was made, and 3 drops only a row that
 # still reads so under the lock.
@@ -5694,9 +5696,9 @@ _settle_gate() {
 #      parked home records for it opens that very row. That credential is
 #      tried before the lock, once per row and run, over the socket, a
 #      loopback address or an address the box holds, and never on a row
-#      another of these tests leaves or that carries a failed-login limit
-#      of its own; the row must read under the lock as it did when it was
-#      tried. A purged account's site users are left to "leftovers drop"
+#      another of these tests leaves, nor while a row of its user carries
+#      a failed-login limit (asked over every row of the user); the row
+#      must read under the lock as it did when it was tried. A purged account's site users are left to "leftovers drop"
 # It is refused where a switch is (_settle_gate), at its start and again
 # once it holds the baseline lock.
 # Never touched in 2 either: a name two accounts' records claim, and every
@@ -7085,7 +7087,8 @@ _v_report() {
     if [[ "${_rc}" -eq 0 ]]; then
       _sw=$(( _sw + 1 ))
       # said for a switched account too: a pass's switch of it ends
-      # not proven while one of them holds such a grant
+      # not proven while its instance user holds such a grant (with one on
+      # a panel user alone it answers already)
       if [[ "${_kr}" -gt 0 ]]; then
         printf '%s switched role-or-proxy-grant %s\n' "${_a}" "${_kr}"
       else
