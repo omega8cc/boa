@@ -827,7 +827,34 @@ in `/var/backups/a2b/<oN>/`, where the per-minute runner never looks,
 for the duration — a raw DB import must never race task dispatch. If the
 import fails mid-way the dispatcher deliberately STAYS held (a broken
 panel must not dispatch); only success, `--revert-db-import`, or manual
-repair restore it. The steps, each idempotent behind its own marker:
+repair restore it.
+
+The marker's second line names the operation that put it and that run's
+pid (`verb=db-import pid=<n>`; `verb=revert-db` for `--revert-db-import`).
+The run's exit cleanup lifts the freeze on every failure it sees; a run
+killed outright (SIGKILL, a crash, a reboot) leaves it, and the next run
+then refuses: "freeze marker already present". On a target armed for the
+account web group (it carries the arm stamp; see "Arming" in
+`INSTGRP.md`):
+
+- a re-run of the same operation takes the freeze over when its pid no
+  longer runs stage 2 and no other stage 2 run names the account; a
+  marker of the other operation, or a one-line marker of an earlier
+  release, is refused as before;
+- BOA's limited-shell worker removes a killed import's freeze a day after
+  it first sees it with no migration running and no relay record or
+  proxy vhost beside it, so the account gets its Octopus, nightly and
+  limited-shell passes again;
+- while `/var/backups/a2b/<oN>/` shows the import unfinished (the held
+  dispatcher, or step markers without the done marker), the Octopus pass
+  writes and runs no dispatcher for the account and BOA's agent pass
+  moves a live one back into the hold, and the worker mails the operator
+  once a day until the import is re-run or reverted.
+
+Anywhere else, make sure no `aegir2boa-stage2` runs for the account,
+remove `log/proxied.pid`, then re-run the import or revert it.
+
+The steps, each idempotent behind its own marker:
 
 1. **Snapshot**: dump the fresh panel DB to
    `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql` (the revert point) and
@@ -1151,6 +1178,7 @@ deliberately:
 | `export` skips a site | the printed reason (missing vhost/alias, multi-host DB, bad creds, missing cert files, headroom); fix or accept, re-run |
 | dump fails mid-export | the 503 stub STAYS up (consistency over uptime); `revert --site <dom>` to unpause |
 | `import` (db-import) fails mid-run | dispatcher stays held on purpose; fix and re-run `import` (steps are idempotent), or `--revert-db-import` |
+| `import` or `--revert-db-import` dies: freeze marker already present | another run of the account is live, or one was killed outright and left its freeze. On a target armed for the web group the same operation's re-run takes over a dead freeze of its own, and BOA clears a killed import's freeze a day later (the dispatcher stays held, a daily mail names the account). Otherwise make sure no `aegir2boa-stage2` runs for the account, remove `log/proxied.pid`, and re-run |
 | site fails its verify/probe on target | it is listed and skipped; `proxy` will refuse it (probe gate) — fix, re-import that site |
 | `proxy` skips a site: HTTP diff | target answers differently than the baseline; re-check the site on the target, or `--accept-http-diff` if the change is expected |
 | `proxy` skips a site: CATCH-ALL page | the target is not serving that site at all — its 200 is the box's own "Under Construction" answer; re-check the site's import. `--accept-http-diff` cannot override this |

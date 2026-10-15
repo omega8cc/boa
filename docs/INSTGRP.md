@@ -891,6 +891,26 @@ set-group-ID sweep a free left owed that could not finish (DR12); one
 owed because it cleared a file is a note only, for the account's next web
 verb sweeps again.
 
+An account frozen for a migration gets no web group: no Octopus pass,
+nightly or worker pass visits it. An aegir2boa db-import killed outright
+(SIGKILL, a crash, a reboot) leaves such a freeze behind, a
+`log/proxied.pid` of root's reading `A2B-IMPORT-FREEZE`. On an armed box
+that is no standby the worker removes that marker a day after it first
+sees it (its own stamp, `/var/log/boa/manage-ltd-freeze.oN.seen`, never
+the marker's date) while no `aegir2boa-stage2`, `xoct`, `xcopy`, `xmass`
+or `xtrim` runs, no process holds a file under `/var/backups/a2b/oN/`, no
+migration park stands and no relay record or proxy vhost is beside it,
+and says so once. The account then takes its passes again, its web group
+included, while its half-imported panel's task dispatcher stays held: as
+long as `/var/backups/a2b/oN/` shows the import unfinished, the Octopus
+pass writes and runs no dispatcher for it and BOA's agent pass moves a
+live one back into aegir2boa's hold. The worker names such an account
+every pass and mails once a day until the import is re-run
+(`aegir2boa-stage2 import --account oN --route db-import`) or reverted
+(`--revert-db-import`). Any other marker (one the account made, a relay
+record reading `COMPLETE`, one put by hand) stays as it is, and so does
+the freeze.
+
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
 on its next pass (world read and directory search added, only to a file
@@ -1021,7 +1041,9 @@ keeps.
   Nothing else re-groups a tree between those. An
   account frozen for a migration (`log/proxied.pid`) is outside all of it:
   the nightly never visits it and `reclaim` skips it, so a frozen
-  destination is healed only by the migration tool's own pass (below).
+  destination is healed only by the migration tool's own pass (below), or
+  by the worker clearing a killed aegir2boa import's freeze on an armed
+  box ("Watching for drift").
 - Ægir backups, restores, clones and migrations need no conversion step:
   the extracting process is the account's backend user, so the restored
   files take the account's primary group. Root-run restores are different:
