@@ -33,6 +33,14 @@
       on disk, so queued work did not survive its restart. Items still
       queued in Valkey when a server takes this change stay there unrun.
 
+    * A same-name Migrate of a site with visitors no longer ends in a
+      Warning over the site's files/css folder. Drupal makes that folder
+      again, as the site's PHP-FPM pool user, right after a cache rebuild
+      removes it, and the account cannot change the mode of a folder it
+      does not own: the move logged "Could not change permissions" and a
+      successful Migrate showed Warning. Such a folder, already writable
+      to its group, is now left as it is.
+
     * A same-name Migrate of an HTTPS site no longer verifies the site on
       its old platform after the copy is built. Encryption was switched
       off before the move and back on after it; the switch-off never took
