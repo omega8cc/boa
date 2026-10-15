@@ -38,7 +38,7 @@ This is the server-admin reference. For the per-site user how-to see
 | Event | Behaviour | Default |
 |-------|-----------|---------|
 | **New site** install | After the install creates the real `files`/`private` dirs, they are **moved into the static store and symlinked** (delegated to the root tool). | **on** (kill-switchable) |
-| **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
+| **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space and inodes allow; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
 | **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; a rename then sets the old-name store aside into `static/files/.archived/…` (`RENAME/STORE/ARCHIVED` in the task log; never deletes, the same keep cases as a delete). | **on** (kill-switchable) |
 | **Backdrop upgrade** (Drupal 7 → Backdrop; Drupal 6 → Drupal 7, hop 1 of the D6 chain) | Both tasks deploy the copy from the source site's backup and run the same re-homing as a clone (`--force-unshare`). On `provision-backdrop-upgrade` it runs **before** the standalone updater converts the copy, so every conversion write lands in the copy's own store. On `provision-backdrop-d6-upgrade` the deploy's own `updatedb` performs the staged D6 → D7 core conversion **first** — with the copy's `files`/`private` still pointing into the **source's** store on a box that preserves symlinks in implicit backups (the default) — and the re-home runs straight after it, before the contrib-kit leg. Either way the copy ends with its own store and a deliberate share on the source is not inherited. | **on** (kill-switchable) |
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
@@ -226,8 +226,9 @@ Every finding carries a code:
 | `SPACE_SIZE_UNKNOWN` | `du` could not measure the source (usually unreadable — check ownership). |
 | `SPACE_TARGET_AVAIL_UNKNOWN` | `df` could not read the target filesystem (usually a missing mount). |
 | `SPACE_INSUFFICIENT` | The transfer does not fit. Reservations are cumulative per filesystem, so several planned copies are counted together. |
+| `SPACE_INODES_INSUFFICIENT` | The copy's files do not fit in the target filesystem's free inodes with 2% of its inodes, at least 50,000, kept free: a filesystem runs out of inodes while `df -h` still shows free space (`df -i` shows them). Planned copies are counted together here too. |
 
-Only `SYMLINK_UNKNOWN_PATTERN` is an *edge case*; the other eight are *errors*.
+Only `SYMLINK_UNKNOWN_PATTERN` is an *edge case*; the other nine are *errors*.
 That is why the stock verdict says "edge cases and/or errors" — the `[EXPLAINED]`
 header states which actually fired.
 
@@ -618,12 +619,12 @@ the same either way:
    deployed plain directories into it), and
 2. (re)points the new site's symlinks at its own copy.
 
-This is **warn-not-fail**: if disk space is short, the tool is missing, or the
-copy cannot complete, the step logs a warning (and a loud `[ALERT]` if the new
-site may still be sharing the source's data) and **the clone still succeeds**.
-Such a clone is left usable; resolve it later with a manual
-`fix-drupal-site-symlinks.sh --site=<clone> --force-unshare` run once space is
-available.
+This is **warn-not-fail**: if disk space or inodes are short, the tool is
+missing, or the copy cannot complete, the step logs a warning (and a loud
+`[ALERT]` if the new site may still be sharing the source's data) and **the
+clone still succeeds**. Such a clone is left usable; resolve it later with a
+manual `fix-drupal-site-symlinks.sh --site=<clone> --force-unshare` run once
+space and inodes are available.
 
 In a clone into a different account, the deploy and the clone's verify run
 while the deployed copy's links still lead into the source account's store.
@@ -753,6 +754,24 @@ Both local and attached/extra filesystems are supported. Before moving or copyin
 data the tools compare the source size against the target's free space (`du`/`df`,
 filesystem-aware for same-FS vs cross-FS), and **skip with a warning** rather than
 fail when space is insufficient.
+
+A copy needs inodes as well as bytes: every file takes one, and a filesystem can
+run out of them while `df -h` still shows free space. So a copy also counts the
+files it will create, as the copy makes them: a link inside the source stays one
+link, every hard-linked name becomes a file of its own, and a source that is
+itself a link is counted through it.
+
+The copy is skipped with a warning (`Not enough free inodes on …`, then the usual
+`Skipping … due to insufficient space or inodes`) unless it leaves 2% of the
+target filesystem's inodes, at least 50,000, free — the headroom the copying
+tasks keep.
+
+A dry run counts its planned un-share copies onto one filesystem together. A
+filesystem that reports no inode count (btrfs)
+and a source whose files cannot be counted are judged on bytes alone, never
+refused on a guess. A move onto another filesystem skips the per-site measures
+when the target's free space and free inodes take everything the source
+filesystem holds.
 
 A same-filesystem conversion is a rename (no extra space needed). A
 cross-filesystem one (a store relocated onto attached storage) copies **as the
@@ -1149,7 +1168,7 @@ shows the `[native-symlink] …` line for install, clone and migrate/rename.
    `[ALERT] … not completed` line means the unshare could not finish (low disk /
    missing source) and the clone may still share the source store — re-run
    `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<clone> --force-unshare`
-   once space is available.
+   once space and inodes are available.
 
 ### Delete
 
@@ -1327,9 +1346,9 @@ re-tries on failure; it does not give up after one attempt).
   accounts under `/data/disk`; the master account's own site is left with plain
   directories.
 - **Cross-account clone under low disk.** If a clone into a *different* account
-  cannot copy the shared source's files for lack of space, the new site may keep a
-  link into the source store until the manual `--force-unshare` run is repeated
-  with space available — the `[ALERT]` log line flags this case. A same-account
+  cannot copy the shared source's files for lack of space or inodes, the new site
+  may keep a link into the source store until the manual `--force-unshare` run is
+  repeated with space and inodes available — the `[ALERT]` log line flags this case. A same-account
   clone leaving a shared link is harmless (the data stays within one account).
 - **Sharing control files are honoured everywhere except cloning.** If you rely on
   an intentional share, keep its `share.files.<site>.info` control file in place;
