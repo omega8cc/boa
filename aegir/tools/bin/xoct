@@ -4049,6 +4049,24 @@ _mig_fix_target_php() {
   return 0
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. A NUL byte in the file (a crash
+# can zero-fill its tail) hides no line: grep reads it as text. The passes
+# read an account's broker settings with this same text.
+_xoct_dbctl_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's /root/.<dst>.octopus.cnf. A wholesale copy would carry the host
 ### axis (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN), which
@@ -4086,7 +4104,7 @@ _xoct_push_target_octopus_cnf() {
     _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
     _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _GRAV_SUPPORT _TXP_SUPPORT _HOT_SAUCE \
     _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
-    _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX _DB_BROKER_ARM"
+    _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_dst}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
@@ -4126,6 +4144,16 @@ _xoct_push_target_octopus_cnf() {
   else
     printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
   fi
+  # The account's opt-out of the database broker mirrors the source both
+  # ways, read as the passes read it: _DB_BROKER_ARM=NO travels as a plain
+  # line, and a source that does not read NO removes the key's lines on the
+  # target in any form (the merge otherwise keeps every line the source
+  # lacks), so a lifted opt-out is lifted there too.
+  if [ "$(_xoct_dbctl_cnf_last "${_sCnf}" _DB_BROKER_ARM)" = "NO" ]; then
+    printf '%s\n' "_DB_BROKER_ARM=NO" >> "${_lTmp}"
+  else
+    printf '%s\n' "-_DB_BROKER_ARM" >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -4139,6 +4167,12 @@ while IFS= read -r _l; do
     -_WEB_GROUP|_WEB_GROUP=*)
       grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
+      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      continue
+      ;;
+    -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
+      grep -vE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
       ;;
