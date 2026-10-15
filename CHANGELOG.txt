@@ -27,6 +27,31 @@
       line), so it ends at most one set past the line; a catalogue refresh
       counts the old tree's inodes before it fetches the new one.
 
+    * barracuda and octopus exit 3 when their final line says WITH ERRORS,
+      so a script can tell a run to review from a clean one; they exited 0
+      either way. 0 stays a clean run (for barracuda also one that only
+      needs boa reboot) and 1 a run refused before it began. xmass and
+      xoct, which run a barracuda pass on their target, go on after a 3 to
+      check what they ran it for.
+
+    * An Octopus upgrade notices a platform it could not unpack. A tarball
+      that failed to extract (its filesystem ran out of inodes) read as
+      fetched: the half made tree took the platform's name, the run said
+      "installed" and ended clean. The failed unpack now counts as a failed
+      download and its half tree is removed, the platform's line is an
+      ALRT, "not built", and the run ends WITH ERRORS; "installed" is said
+      only for a platform whose code is there.
+
+    * A shared Drupal 6 or 7 core or platform tree an earlier build left
+      half made (a real directory without the files a build places it
+      with) is built again, in a stage beside it as a rebuild does; it
+      used to stay as it was until a rebuild was asked for.
+
+    * The report or alert mail of a pass log over 1 MB carries its ALRT,
+      FATAL and ERROR lines, its first and last lines and where the log
+      is, so it can be sent: a 59 MB log of tar errors never was. Every
+      mailed line is cut at 2,000 characters.
+
     * Install, Clone, Migrate, Restore, Deploy and the Backdrop, Grav and
       TXP upgrade and rename tasks refuse before writing anything while a
       filesystem they write to (/, the account home, the platform) has
