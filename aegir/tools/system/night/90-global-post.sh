@@ -1288,6 +1288,23 @@ _dbctl_witness() {
   echo "dbctl-witness: done rc=$?"
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. The passes read the box's line
+# with this same text.
+_dbctl_cnf_last() {
+  local _v
+  _v=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
 # The database broker's daily report, on a box armed for it: the last
 # _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything else, no
 # line included, runs nothing here). One line per account, switched or why
@@ -1302,16 +1319,9 @@ _dbctl_witness() {
 # none (not-released). The counts are read from a broker that does not tell
 # those two classes apart yet as well: the two files arrive on their own.
 _dbctl_report() {
-  local _arm _out _rc _l _last="" _un _st _body=""
+  local _out _rc _l _last="" _un _st _body=""
   [[ -x "/usr/local/bin/boa-dbctl" ]] || return 0
-  _arm=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" /root/.barracuda.cnf 2> /dev/null | tail -n 1)
-  _arm="${_arm#*=}"
-  case "${_arm}" in
-    \"*) _arm="${_arm#\"}"; _arm="${_arm%%\"*}" ;;
-    \'*) _arm="${_arm#\'}"; _arm="${_arm%%\'*}" ;;
-    *) _arm="${_arm%%[[:space:];]*}" ;;
-  esac
-  [[ "${_arm}" == "YES" ]] || return 0
+  [[ "$(_dbctl_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] || return 0
   if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
     return 0
   fi
