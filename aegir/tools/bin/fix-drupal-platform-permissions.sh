@@ -7,6 +7,10 @@ This script is used to fix the file permissions of a Drupal platform. You need
 to provide the following argument:
 
   --root: Path to the root of your Drupal installation.
+  --app-root: the platform Delete's step only: give every directory of the
+              Composer project root above that docroot, below the account's
+              static/, group write (02775) so the Delete can remove it, then
+              stop; refused while the docroot holds a site.
 
 Usage: (sudo) ${0##*/} --root=PATH
 Example: (sudo) ${0##*/} --root=/var/aegir/platforms/drupal-7.50
@@ -530,6 +534,7 @@ _grav_capsule_perm_here() {
 }
 
 _SCOPE_ROOT=""
+_APP_ROOT=NO
 drupal_root=${1%/}
 
 # Parse Command Line Arguments
@@ -537,6 +542,9 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --root=*)
         drupal_root="${1#*=}"
+        ;;
+    --app-root)
+        _APP_ROOT=YES
         ;;
     --help) print_help;;
     *)
@@ -665,6 +673,59 @@ for _d in modules themes libraries drush; do
     exit 1
   fi
 done
+
+### --app-root: the platform Delete's leg, never a Verify's (provision passes
+### it right before it removes a platform whose docroot sits in a Composer
+### project root below the account's static/). What the account's shell
+### logins made in that project root (the directory itself, composer.json,
+### composer.lock, any other they added) stays theirs through every Verify,
+### which hands over only the docroot's code and vendor/. A directory left
+### 0755 there (a shell session before the limited shell carried umask 002,
+### rsync -a, scp -p) keeps the backend user that runs the Delete from
+### unlinking anything in it: the Delete empties web/ and vendor/ and stops.
+### Every directory of the project root, and the one holding it unless that
+### is static/ itself or root's, gets the group write static/ carries for
+### the account (02775), as the logins' umask 002 would have given it. Only
+### a real directory strictly below the account's static/, never in its
+### files store (static/files, root's and BOA's own), with a real vendor/
+### and a composer.lock, only while the docroot holds no site, and only
+### what root or the account's own identities own (_fwalk_own_here); the
+### run then ends. A refusal ends with status 1, as an older helper's
+### "Invalid argument" does, so the Delete never reports group write that
+### was not set.
+# The current (pinned) directory takes 02775 only when one of the account's
+# own users owns it: a root-owned directory keeps its mode (the store bases
+# autosymlink makes are trusted for being root's and closed).
+_app_up_here() {
+  [[ "$(stat -c %u -- . 2> /dev/null)" =~ ^[1-9][0-9]*$ ]] || return 0
+  _chmod_own_here d 02775 .
+}
+if [[ "${_APP_ROOT}" = "YES" ]]; then
+  _app="${drupal_root%/*}"
+  if [[ -z "${_SCOPE_ROOT}" ]] \
+    || [[ "${_app}" != "${_SCOPE_ROOT}/static/"?* ]] \
+    || [[ "${_app}/" = "${_SCOPE_ROOT}/static/files/"* ]] \
+    || [[ -L "${_app}/vendor" || ! -d "${_app}/vendor" ]] \
+    || [[ -L "${_app}/composer.lock" || ! -f "${_app}/composer.lock" ]]; then
+    printf "Notice: %s is not a Composer project root below the account's static/; nothing changed.\n" "${_app}" >&3
+    exit 1
+  fi
+  for _s in "${drupal_root}"/sites/*/settings.php; do
+    [[ -e "${_s}" ]] || continue
+    [[ "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
+    printf "Notice: %s still holds a site (%s); nothing changed.\n" "${drupal_root}" "${_s}" >&3
+    exit 1
+  done
+  printf 'Setting group write on the directories of %s for the Delete...\n' "${_app}"
+  _LEFT=""
+  _left_add _in_pinned_dir "${_app}" _fwalk_own_here d 02775 .
+  if [[ "${_app%/*}" != "${_SCOPE_ROOT}/static" ]]; then
+    _left_add _in_pinned_dir "${_app%/*}" _app_up_here
+  fi
+  _root_owners_left_note "${_LEFT}"
+  echo "Done setting group write on the project root."
+  exit 0
+fi
 
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}

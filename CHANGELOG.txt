@@ -23,8 +23,7 @@
       its cache during the move and a busy site's Migrate no longer ends
       in a Warning about the purge's sweep bound; the old copy's namespace
       is removed once the new one serves the site. Every Drupal 10 and 11
-      site starts with a cold cache once, when its server takes the new
-      module.
+      site starts with a cold cache once, when its server takes the new module.
 
     * A same-name Migrate of an HTTPS site no longer verifies the site on
       its old platform after the copy is built. Encryption was switched
@@ -293,6 +292,14 @@
       so (DEPLOY/BOOTSTRAP/SKIP, with the first line of the earlier error)
       instead of "could not bootstrap Drupal after updatedb". A bootstrap
       that is tried and fails keeps that warning; Backdrop deploys do the same.
+
+    * Deleting a platform built with Composer in ~/static removes its whole
+      project folder again when that folder is not group writable, as with
+      a build made before the limited shell's umask 002 or an upload that
+      kept its modes. The Delete emptied web/ and vendor/, left the folder
+      and its composer files, and ended with warnings. A folder that holds
+      another codebase or another platform, or is one of the account's own
+      directories, is kept and the task log names it.
 
 @=> Security
 
