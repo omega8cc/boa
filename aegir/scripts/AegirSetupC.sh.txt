@@ -2292,7 +2292,7 @@ _ubercart6_install() {
     done
   fi
 
-  # /data/disk/o8/distro/001/ubercart-2.15-6.60.1
+  # /data/disk/o8/distro/001/ubercart-2.15-6.60.3
   _REAL_PRNAME="${params[profile_name]}"
   _VIRT_PRNAME="ubercart"
   _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
