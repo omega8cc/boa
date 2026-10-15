@@ -1134,6 +1134,14 @@ _global_inc_conf_update() {
     _acct_in_real_dir "${_GL_D}" _sys_conf_sed_here global-front-end.inc \
       "s/3600/${_SPEED_VALID_MAX}/g" &> /dev/null
   fi
+  ### The outage-window cache classes land before the Valkey includes that
+  ### name them (those check each file is readable before using it).
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-window-d8.php" global-window-d8.php
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-window-d8.services.yml" global-window-d8.services.yml
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-window-d7.inc" global-window-d7.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-if-valkey.inc" global-if-valkey.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
