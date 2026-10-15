@@ -866,8 +866,10 @@ is, and so do the account web group's walks (see `INSTGRP.md`).
   the directory and its store copy are closed to the account (root, 0700), then the
   source is emptied and replaced by the link, so the static filesystem needs a full
   copy's space while it runs: the move checks first that it fits, in bytes and in
-  files (leaving 2% of that filesystem's inodes, at least 50,000, free), and
-  leaves the real directory in place with a log line when it does not. On any
+  files (leaving 2% of that filesystem's inodes, at least 50,000, free; what an
+  earlier copy that stopped short already put in the store is not counted
+  again), and leaves the real directory in place with a log line when it does
+  not. On any
   failure the real directory is handed back with
   its owner and mode and no symlink is made; a pass killed mid-copy is healed by the
   next nightly, which hands both back and finishes the move. It never deletes a

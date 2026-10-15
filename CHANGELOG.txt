@@ -78,7 +78,8 @@
       nightly move of its backups onto that storage count the files the
       copy makes and leave the directory in place unless 2% of the
       target's inodes, at least 50,000, stay free; the nightly move also
-      checks the space, which it never did (#1947).
+      checks the space, which it never did, and does not count again what
+      a copy that stopped short already made (#1947).
 
     * The system monitor's inode alert also watches every filesystem
       mounted at /mnt/<name>, the attached storage migratefs uses (#1947).
