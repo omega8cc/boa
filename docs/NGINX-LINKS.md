@@ -88,6 +88,10 @@ was made with. The same run makes it its target owner's: a site Verify runs
 has handed the site's files and private stores over, the same for each
 store.
 
+`fix --root` and `fix --tree` refuse a directory named in one account's tree
+that now leads into another account's: that account's links are not the
+caller's to change.
+
 During the nightly the stores are left to the night's own pass, which
 covers every one of them when it ends; a link inside a store whose target
 the night handed over is refused until then.

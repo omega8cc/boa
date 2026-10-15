@@ -569,6 +569,12 @@ _lg_fix() {
         ;;
     esac
     [ -d "${_r}" ] || _die "not a directory: ${_r}"
+    # A caller passes a path it resolved itself; one that names an account's
+    # tree and now resolves into another's had a name on the way swapped for
+    # a link since: that account's links are not this call's to fix.
+    _a="$(_lg_tree_acct "${_root}${_tree}/")" \
+      && [ "$(_lg_tree_acct "${_r}/")" != "${_a}" ] \
+      && _die "${_root}${_tree} now leads out of ${_a}'s tree, to ${_r}"
     [ -n "${_root}" ] && _dirs=("${_r}")
     [ -n "${_tree}" ] && _LG_TREE=1
     _walk=("${_r}")
