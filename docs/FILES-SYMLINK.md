@@ -758,18 +758,22 @@ fail when space is insufficient.
 A copy needs inodes as well as bytes: every file takes one, and a filesystem can
 run out of them while `df -h` still shows free space. So a copy also counts the
 files it will create, as the copy makes them: a link inside the source stays one
-link, every hard-linked name becomes a file of its own, and a source that is
-itself a link is counted through it.
+link, every hard-linked name becomes a file of its own, and an un-share source
+that is itself a link is counted through it when it leads to another store's
+`files` or `private` dir (a link to anywhere else counts as the link).
 
-The copy is skipped with a warning (`Not enough free inodes on …`, then the usual
-`Skipping … due to insufficient space or inodes`) unless it leaves 2% of the
-target filesystem's inodes, at least 50,000, free — the headroom the copying
-tasks keep.
+A copy that would leave less than 2% of the target filesystem's inodes, at least
+50,000, free — the headroom the copying tasks keep — is refused with a warning
+(`Not enough free inodes on …`). In a dry run, which is where the nightly sweep
+and the per-site run of a clone, migrate or install meet it first, that makes
+the run NOT CLEAN with a `SPACE_INODES_INSUFFICIENT` finding: the nightly skips
+its apply pass, and the per-site run leaves that site as it is. A pass that
+applies changes skips just that copy (`Skipping … due to insufficient space or
+inodes`).
 
 A dry run counts its planned un-share copies onto one filesystem together. A
-filesystem that reports no inode count (btrfs)
-and a source whose files cannot be counted are judged on bytes alone, never
-refused on a guess. A move onto another filesystem skips the per-site measures
+filesystem that reports no inode count (btrfs) and a source whose files cannot
+be counted are judged on bytes alone, never refused on a guess. A move onto another filesystem skips the per-site measures
 when the target's free space and free inodes take everything the source
 filesystem holds.
 
@@ -1289,7 +1293,9 @@ Check, in order:
 4. **Account in scope?** Only `/data/disk/<account>` (Octopus) accounts are
    symlinked; the master hostmaster account is left with plain dirs.
 5. **Tool ran?** Look for the `[native-symlink]` line in the install task log and
-   for a recent entry in `/var/log/boa/autosymlink.log`.
+   for a recent entry in `/var/log/boa/autosymlink.log`. The `could not move files
+   into the store (non-fatal)` warning there means the conversion was refused or
+   did not finish (space, inodes, a not-clean dry run); the log says why.
 6. **Store writable?** If the store dir came up `root`-owned, the move was done by
    root but the contents are preserved from the source; the store dir should be
    `<account>:www-data`. The in-site symlink itself is owner-matched to the store
