@@ -94,7 +94,7 @@
 #   staticbuild advisories [tree ...] read-only: audit the composer.lock of every
 #                                   PUBLISHED catalogue platform of each tree (default
 #                                   dev lts pro) -- the distributions and the Drupal
-#                                   9-11 cores; the Drupal 6/7 forks are outside
+#                                   9-12 cores; the Drupal 6/7 forks are outside
 #                                   Composer -- against today's advisories, and list
 #                                   BOA's own non-Composer contrib no audit can see;
 #                                   fails only when something could not be audited
@@ -173,6 +173,8 @@ _PHP_OPENFED="${_PHP_83}"                        # OpenFed 13.6 rides the D10.6 
                                                  # its catalogue cap - build on the version it
                                                  # will run on
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
+_PHP_CORE_12="${_PHP_85}"                        # Drupal 12 and later: their generated
+                                                 # platform_check.php refuses PHP below 8.5
 
 # farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
 _FARM_REPO="farmOS/farmOS"
@@ -331,6 +333,12 @@ _PHP_PINNED="${_PHP_83}"
 _CORE_MINORS=""
 _CORE_FLOOR="10.2"                               # oldest minor to build when auto-discovering
 _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/EOL), space-separated
+# Pre-release cores of the next major, as exact versions: a minor resolves to stable
+# releases only. Each is built beside the minors only while they hold no stable
+# release of its minor, so the line stops by itself the day that minor ships. Name
+# only a pre-release that carries every core security fix released so far, and
+# replace it at each new one; empty builds none.
+_CORE_PRERELEASE=""
 # Dependency releases no distribution build may resolve, as root composer.json conflicts
 # (package:constraint, space-separated). twig/twig 3.30.0 breaks every page of the Drupal
 # 10 and 11 releases published before Drupal's own fix: compiled templates call Twig's
@@ -1575,6 +1583,33 @@ _discover_core_minors() {
   printf '%s\n' "${_out% }"
 }
 
+_core_prereleases_due() {
+  # $1 = the core minors to build. Echo each _CORE_PRERELEASE version whose minor
+  # is not among them.
+  local _pre _out=""
+  for _pre in ${_CORE_PRERELEASE}; do
+    case " $1 " in *" ${_pre%.*} "*) continue ;; esac
+    _out+="${_pre} "
+  done
+  printf '%s\n' "${_out% }"
+}
+
+_core_from_12() {
+  # $1 = a core line (a minor or an exact version). True for Drupal 12 and later.
+  [[ "${1%%.*}" =~ ^[0-9]+$ ]] && (( ${1%%.*} >= 12 ))
+}
+
+_core_drush_spec() {
+  # $1 = a core line. What its drush require names. No Drush release resolves on
+  # Drupal 12 yet: 14.x-dev does, with its two dev-only dependencies required at
+  # the root as well. Back to plain drush/drush once a release resolves.
+  if _core_from_12 "$1"; then
+    printf '%s\n' "grasmash/yaml-cli:4.x-dev chi-teck/drupal-code-generator:^4@dev drush/drush:^14@dev"
+  else
+    printf '%s\n' "drush/drush"
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Per-distribution builds. Each records its own OK/FAIL/SKIP result.
 # ---------------------------------------------------------------------------
@@ -2005,26 +2040,56 @@ build_commerce_base() {
 }
 
 build_cores() {
-  # Vanilla core platforms: one per minor, resolved to its latest patch, full install,
-  # add drush, audit for the record (never fatal). Named from the detected core version.
+  # Vanilla core platforms: one per minor, resolved to its latest patch, and each
+  # pre-release still due (_CORE_PRERELEASE) at its exact version; full install, add
+  # drush, audit for the record (never fatal). Named from the detected core version.
+  # Drupal 12 and later build under _PHP_CORE_12, and a failed drush require fails
+  # such a line: BOA cannot run a platform of theirs without its own Drush.
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
   if [[ -z "${_minors}" ]]; then
     _record_fail "cores (no core minors)"
     return 1
   fi
-  _msg "core minors: ${_minors}"
-  use_php "${_PHP_CORE}" || { _record_fail "cores (php ${_PHP_CORE} missing)"; return 1; }
-  local _m _wd="${_DAY_DIR}/.build.core" _core
-  for _m in ${_minors}; do
+  local _pres _lines
+  _pres="$(_core_prereleases_due "${_minors}")"
+  _lines="${_minors}${_pres:+ ${_pres}}"
+  _msg "core lines: ${_lines}"
+  local _m _wd="${_DAY_DIR}/.build.core" _core _spec _php _drush
+  for _m in ${_lines}; do
     _tail_mark
-    _begin_build "drupal-${_m}." "drupal-${_m}" || continue
-    if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'${_m}.*' '.build.core' ${_CORE_CP_FLAGS}"; then
+    if [[ "${_m}" == *-* ]]; then
+      _begin_build "drupal-${_m}" "drupal-${_m}" || continue
+      _spec="${_m}"
+    else
+      _begin_build "drupal-${_m}." "drupal-${_m}" || continue
+      _spec="${_m}.*"
+    fi
+    _php="${_PHP_CORE}"
+    _core_from_12 "${_m}" && _php="${_PHP_CORE_12}"
+    use_php "${_php}" || { _record_fail "drupal-${_m} (php ${_php} missing)"; continue; }
+    if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'${_spec}' '.build.core' ${_CORE_CP_FLAGS}"; then
       _record_fail "drupal-${_m}"
       continue
     fi
     local _nodrush=""
-    _run_as_o8 "cd '${_wd}' && composer require drush/drush" || { _alrt "drupal-${_m}: drush require failed"; _nodrush="YES"; }
+    if ! _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "${_m}")"; then
+      if _core_from_12 "${_m}"; then
+        _record_fail "drupal-${_m} (drush require failed)"
+        _run_as_o8 "rm -rf '${_wd}'"
+        continue
+      fi
+      _alrt "drupal-${_m}: drush require failed"
+      _nodrush="YES"
+    fi
+    _drush=""
+    if _core_from_12 "${_m}"; then
+      # A development branch moves: name the commit the line resolved, too.
+      _drush="$(_run_as_o8 "cd '${_wd}' && composer show drush/drush 2>/dev/null" \
+        | sed -n -e 's/^versions : \* //p' -e 's/^source *: \[git\] [^ ]* \([0-9a-f]\{7\}\).*/\1/p' | tr '\n' ' ')"
+      _drush="${_drush% }"
+      _msg "drupal-${_m}: drush ${_drush:-<unknown>}"
+    fi
     _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
     if [[ -z "${_core}" ]]; then
       _record_fail "drupal-${_m} (no core version)"
@@ -2034,6 +2099,7 @@ build_cores() {
     if _run_as_o8 "mv '${_wd}' '${_DAY_DIR}/drupal-${_core}'"; then
       _rec "drupal-${_core}" BUILD ok
       [[ -n "${_nodrush}" ]] && _rec_note "drupal-${_core}" "no drush"
+      [[ -n "${_drush}" ]] && _rec_note "drupal-${_core}" "drush ${_drush}"
       _info "drupal-${_m}: built drupal-${_core}"
       _audit_platform "drupal-${_core}"
     else
@@ -3127,6 +3193,9 @@ do_check() {
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
   _msg "Core minors to build (latest patch of each): ${_minors:-<discovery failed>}"
+  local _pres
+  _pres="$(_core_prereleases_due "${_minors}")"
+  _msg "Pre-release cores to build: ${_pres:-none}"
   _msg "Full supported-core matrix: https://www.drupal.org/project/drupal/releases"
 }
 
@@ -3158,10 +3227,10 @@ _catalogue_producers() {
 _catalogue_rows() {
   # $1 = tree. Emits "KEY<TAB>prefix<TAB>tarball" for every catalogue entry that is
   # fetched from the distro mirror. The excluded key shapes mirror _d_dist_loop's
-  # dispatch in AegirSetupC.sh.txt (core-only D[LXE]N, Backdrop BD*, and the
+  # dispatch in AegirSetupC.sh.txt (core-only D[LXET]N, Backdrop BD*, and the
   # custom CK1/UC* handlers) -- add a class there and it must be added here too.
-  # With $2 = core it emits the Composer-built core-only entries instead (D9, D10
-  # and D11: DL9, DX*, DE*), as "KEY<TAB>drupal<TAB>drupal-<ver>.tar.gz", the name
+  # With $2 = core it emits the Composer-built core-only entries instead (D9 to
+  # D12: DL9, DX*, DE*, DT*), as "KEY<TAB>drupal<TAB>drupal-<ver>.tar.gz", the name
   # _create_drupal_basic_version fetches from the core mirror; the Drupal 6/7 cores
   # (DL6, DL7) are BOA's own forks, outside Composer.
   local _tree="$1" _mode="${2:-distro}" _tmp _rc=0
@@ -3210,11 +3279,11 @@ _catalogue_rows() {
     END {
       for (_k in _P) {
         if (_mode == "core") {
-          if (_k ~ /^D[XE][0-9]$/ || _k == "DL9")
+          if (_k ~ /^D[XET][0-9]$/ || _k == "DL9")
             printf "%s\tdrupal\tdrupal-%s.tar.gz\n", _k, _resolve(_R[_k])
           continue
         }
-        if (_k ~ /^D[LXE][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1" || _k == "GRV" || _k == "TXP") continue
+        if (_k ~ /^D[LXET][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1" || _k == "GRV" || _k == "TXP") continue
         printf "%s\t%s\t%s-%s-%s.tar.gz\n", \
           _k, _P[_k], _P[_k], _resolve(_R[_k]), _resolve(_C[_k])
       }

@@ -1194,7 +1194,8 @@ _add_solr() {
         && [ -x "/opt/solr9/bin/solr" ] \
         && [ -e "/var/solr9/data" ]; then
         if [ -e "${_Plr}/modules/o_contrib_ten" ] \
-          || [ -e "${_Plr}/modules/o_contrib_eleven" ]; then
+          || [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+          || [ -e "${_Plr}/modules/o_contrib_twelve" ]; then
           echo in _add_solr create_core -p 9099 -c ${_SolrCoreID}
           su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr create_core -p 9099 -c ${_SolrCoreID}"
           wait

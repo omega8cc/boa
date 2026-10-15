@@ -385,6 +385,8 @@ Please add local Drush to your Drupal codebase with Composer and use it instead 
 
 BOA still provides standalone `drush10` and `drush11`, though, because we still need them to convert Drush 8-type site aliases into Drush 10+ type site aliases, but otherwise these standalone Drush versions are of little use.
 
+That conversion needs PHP 8.1 or newer, the floor of BOA's own Drush 10 build. When an Ægir task runs it on an older PHP (every task of a Drupal 8 site runs on PHP 7, the rollback of a failed Migrate included), the task uses the newest installed PHP that clears the floor and names it in the task log; with none installed it skips the conversion with a note. The floor belongs to BOA's tool, never to your platform's `composer.json`.
+
 By the way, due to constant dependencies versions updates, you could get pretty different versions of the same Drush 10+ release installed depending on *when* you have installed it. Sometimes they will be too old and sometimes too new for the Drupal codebase in question. This makes using them as standalone a completely unpredictable mess.
 
 That’s also why Drush 12 has been officially announced as the first version which can’t be used as standalone at all — no matter how hard you would try.

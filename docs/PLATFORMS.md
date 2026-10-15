@@ -20,24 +20,24 @@ percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasechec
 says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.9)
-- [Drupal 11.3.18](https://drupal.org/project/drupal/releases/11.3.18)
-- [Drupal 11.4.9](https://drupal.org/project/drupal/releases/11.4.9)
-- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.9)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.10)
+- [Drupal 11.3.19](https://drupal.org/project/drupal/releases/11.3.19)
+- [Drupal 11.4.10](https://drupal.org/project/drupal/releases/11.4.10)
+- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.10)
 - [farmOS 4.0.7](https://drupal.org/project/farm) (11.3.18)
-- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.9)
-- [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.9)
-- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.9)
+- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.10)
+- [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.10)
+- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.10)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.8)
 
 ## Drupal 10
 
 - [Commerce v.2](https://drupal.org/project/commerce) (10.1.8)
-- [Drupal 10.6.18](https://drupal.org/project/drupal/releases/10.6.18)
+- [Drupal 10.6.19](https://drupal.org/project/drupal/releases/10.6.19)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.18)
-- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.18)
-- [Social 13.1.0](https://drupal.org/project/social) (10.6.18)
+- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.19)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.19)
+- [Social 13.1.0](https://drupal.org/project/social) (10.6.19)
 
 ## Drupal 9
 
@@ -70,6 +70,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 * Opt-in on self-hosted systems: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`) it is on by default: a new instance gets `YES`, an existing one's `NO` seeded before that default flips to `YES` once, and a `NO` set afterwards stays. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
 * A Grav site keeps everything in files on the "None (flat-file sites)" database server, or, for a KahunaCart shop, gets a database when it is created on a MySQL 8 server (Percona 8.4). The panel carries that database through every task and passes its credentials through the vhost and the `grav` command, never a file the site's PHP can read. Verify brings the store schema up to date.
 * BOA runs the shop's worker (`bin/plugin kahunacart work`) every minute as the site's web server user, one shop at a time on a PHP pool of fewer than eight workers and two on a larger one; Grav's own scheduler, and the custom jobs a site's admin can define, never run.
+* The shop's order mail goes out through Grav's email plugin, which ships with no sender address and its `sendmail` engine: set the address and the plugin's SMTP engine with the mail provider on port 587 or 465. BOA keeps `sendmail` closed to sites unless `_ALLOW_SENDMAIL=YES`, and its csf blocks a site's outgoing port 25, localhost included.
 * A copy made by Clone or Upgrade a copy is held until a Cutover retires the store it stands in for, or a released copy of that store at the domain the copy was made from. The store is the site at the store's domain when it carries a store and is neither a held copy nor a copy of another store, and the hold stays while a store runs at the domain the copy was made from: the copy's marker keeps domains only. A released copy keeps running through a Cutover.
 * A copy is also released once `~/static/control/kahunacart-run.<domain>.info` exists and is newer than the copy: one left by an earlier copy at the same domain, or made before a Rename or Cutover of the held copy, releases nothing.
 * A Clone also gets its own signing key and a paused store.

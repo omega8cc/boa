@@ -33,6 +33,12 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
           }
         }
       }
+      elseif ($drupal_core == 12) {
+        // Drupal 12 carries its own copy under o_contrib_twelve; without
+        // that shelf nothing below finds it and the cache stays in the
+        // database.
+        $redis_dirname = 'redis_twelve';
+      }
       elseif ($drupal_core == 9) {
         $redis_dirname = 'redis_nine_ten';
         if ($all_ini['redis_old_nine_mode']) {
@@ -111,6 +117,21 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
           if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
             $cache_valkey = TRUE;
             $redis_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+            }
+          }
+        }
+        elseif (is_readable('modules/o_contrib_twelve')) {
+          if (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/example.services.yml')) {
+            $cache_valkey = TRUE;
+            $example_failover_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/example.failover.services.yml';
+            $example_services_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+          }
+          if (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml')) {
+            $cache_valkey = TRUE;
+            $redis_services_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml';
             if ($is_dev && !$is_backend) {
               header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
             }
@@ -216,6 +237,9 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
       elseif (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_nine/' . $redis_dirname . '/src');
+      }
+      elseif (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml')) {
+        $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_twelve/' . $redis_dirname . '/src');
       }
       else {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eight/' . $redis_dirname . '/src');
