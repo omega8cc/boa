@@ -897,10 +897,22 @@ _night_bak_move() {
 # count (btrfs), is not judged. Status 1 with the reason in _NIGHT_BAK_SHORT.
 _NIGHT_BAK_SHORT=""
 _night_bak_room() {
-  local _kb _av _in _it _if _ih
+  local _kb _av _in _it _if _ih _dkb _din
   _NIGHT_BAK_SHORT=""
   _kb=$(_acct_in_real_dir "${_src}" timeout 900 du -sk . 2>/dev/null | awk '{print $1}')
   _in=$(_acct_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
+  # What a copy that stopped short left in the store's .$_n is not copied
+  # again (rsync passes over a file already there whole), so only the rest
+  # needs room: counted in full, a store holding a stopped copy would refuse
+  # the copy that completes it on every pass
+  _dkb=$(_night_in_pinned "${_st}" _night_sub ".${_n}" timeout 900 du -sk . 2>/dev/null | awk '{print $1}')
+  _din=$(_night_in_pinned "${_st}" _night_sub ".${_n}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
+  if [[ "${_kb}" =~ ^[0-9]+$ && "${_dkb}" =~ ^[0-9]+$ ]]; then
+    _kb=$(( _kb > _dkb ? _kb - _dkb : 0 ))
+  fi
+  if [[ "${_in}" =~ ^[0-9]+$ && "${_din}" =~ ^[0-9]+$ ]]; then
+    _in=$(( _in > _din ? _in - _din : 0 ))
+  fi
   _av=$(_night_in_pinned "${_st}" df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')
   read -r _it _if <<< "$(_night_in_pinned "${_st}" env LC_ALL=C df -P -i . 2>/dev/null | awk 'NR==2 {print $2, $4}')"
   if [[ "${_kb}" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]] && [ "${_av}" -lt "${_kb}" ]; then
