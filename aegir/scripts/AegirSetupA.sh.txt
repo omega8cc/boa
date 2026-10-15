@@ -332,9 +332,9 @@ su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${_vSet} hosting_queue_tasks_i
 _satellite_if_create_local_bin
 _satellite_run_post_install
 _satellite_set_permissions_for_all
-# an Aegir-only pass (octopus up-* <user> aegir) builds no shared code and
-# no platform in part C
-[ "${_HM_ONLY}" = "YES" ] \
+# an Aegir-only upgrade (octopus up-* <user> aegir) builds no shared code
+# and no platform in part C; an install builds them whatever _HM_ONLY says
+{ [ "${_STATUS}" != "INIT" ] && [ "${_HM_ONLY}" = "YES" ]; } \
   || _inode_room_or_stop "The shared code and platforms build (part C)"
 _satellite_run_child_c
 _satellite_child_scripts_cleanup
