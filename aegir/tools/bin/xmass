@@ -3375,6 +3375,10 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
   # reset-phase only rewrites one line of the state file. Refusing it on a full
   # disk locks the operator out of the recovery verb exactly when a stalled
   # migration is the likely reason the disk filled. autosync is exempt for the
@@ -3385,6 +3389,13 @@ _check_root() {
     && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
     && [ "${_cmd}" != "autosync" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
+  fi
+  # A filesystem out of inodes is as full as one out of space, whatever
+  # df -h shows; the same verbs are exempt for the same reasons.
+  if [ -n "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
+    && [ "${_cmd}" != "autosync" ]; then
+    _die "Inode usage at ${_DI_TEST}% — must be below 90% to proceed (see df -i /)"
   fi
   # A test, not ||: tr exits 0 on an empty /etc/hostname
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
@@ -13677,6 +13688,9 @@ _xmass_autosync_run() {
     # Deliberately not a refusal: a filling active is exactly when the mirror
     # must stay current. The disk itself is the sibling monitors' business.
     _alrt "autosync: source disk at ${_DF_TEST}% — syncing anyway (reads only); fix the disk"
+  fi
+  if [ -n "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    _alrt "autosync: source disk inodes at ${_DI_TEST}% used — syncing anyway (reads only); fix the disk (df -i /)"
   fi
   local _t0 _dur
   _t0=$(date +%s)

@@ -547,6 +547,13 @@ _check_root() {
   if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     _die "Disk usage is at ${_DF_TEST}% — aborting (must be below 90%)"
   fi
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
+  if [ -n "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    _die "Inode usage is at ${_DI_TEST}% — aborting (must be below 90%; see df -i /)"
+  fi
 
   if [ ! -d "${_AEGIR_ROOT}" ]; then
     _die "Aegir root not found: ${_AEGIR_ROOT}"

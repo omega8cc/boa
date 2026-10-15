@@ -2618,6 +2618,16 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit
   fi
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
+    echo "ERROR: We can not proceed until inode use is below 90/100"
+    echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
+    _clean_pid_exit
+  fi
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -3264,6 +3274,11 @@ _display_info() {
       echo "  _DSK Usage for relevant partitions:"
       # Loop through all partitions and display their usage, excluding tmpfs, udev, and empty partitions
       df -h | awk 'NR > 1 && $1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
+      # Every file takes an inode: a filesystem out of them fails every
+      # write as "No space left on device" while its space above looks fine
+      # (filesystems without an inode count print - and are left out)
+      echo "  _INO Inode usage for relevant partitions:"
+      LC_ALL=C df -P -i | awk 'NR > 1 && $1 !~ /tmpfs|udev/ && $5 ~ /^[0-9]+%$/ && $5 != "0%" {print "  _INO " $1 ": " $5 " of inodes used (" $6 ")"}'
       echo
 
       echo "  _XSE Key Services Uptime Report"
@@ -4724,9 +4739,11 @@ _archived_prune_user() {
 # large as the pile beside it used to fill the disk and take nginx and mysqld
 # down with ENOSPC (2026-09-18: a 74 GB clone, a 100 GB pile). runner.sh
 # calls this every minute, so the room comes back while such a task is still
-# writing. The threshold is percent used, default 85: below the 90 at which
-# runner.sh, the backup scripts and some twenty other BOA scripts refuse to
-# run at all, so the pile is gone before any of them stops -- a heal that
+# writing. The threshold is percent used, space or inodes, whichever is
+# fuller (a pile of many small files fills the inodes first), default 85:
+# below the 90 at which runner.sh, the backup scripts and some twenty other
+# BOA scripts refuse to run at all, so the pile is gone before any of them
+# stops -- a heal that
 # waited for 90 would find the box already refusing the work it was meant to
 # save. /data/conf/archived_heal_threshold.cnf overrides it (50..99, anything
 # else keeps the default; above 89 the refusals win the race) and
@@ -4752,8 +4769,19 @@ _archived_heal_threshold() {
   echo "${_t}"
 }
 _archived_fs_used_pct() {
-  # $1 = a path; prints the Use% of the filesystem holding it, empty if unknown
-  LC_ALL=C df -P -- "$1" 2> /dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9'
+  # $1 = a path; prints the Use% of the filesystem holding it, or its IUse%
+  # when that is higher (every file takes an inode, so a filesystem out of
+  # inodes is full while df -h still shows room; an entry removed frees one
+  # per file), empty if unknown; a filesystem without an inode count (btrfs
+  # prints - for IUse%) is judged on its space alone
+  local _b _i
+  _b=$(LC_ALL=C df -P -- "$1" 2> /dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9')
+  _i=$(LC_ALL=C df -P -i -- "$1" 2> /dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9')
+  if [[ "${_i}" =~ ^[0-9]+$ ]] && { [[ ! "${_b}" =~ ^[0-9]+$ ]] || [ "${_i}" -gt "${_b}" ]; }; then
+    echo "${_i}"
+  else
+    echo "${_b}"
+  fi
 }
 _archived_age_secs() {
   # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>, checked WHOLE: the tenant owns
@@ -4819,7 +4847,7 @@ _archived_heal() {
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
     _l=$(_archived_rm_in "${_e%/*}" "${_n}" "${_u}"); _rc=$?
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
-      _line="$(date '+%F %T') removed ${_u} ${_n} (${_kb:-0} KB; its filesystem was ${_pct}% used, above ${_t}%): ${_sites}"
+      _line="$(date '+%F %T') removed ${_u} ${_n} (${_kb:-0} KB; its filesystem was ${_pct}% used, space or inodes, above ${_t}%): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
       rm -f "${_mark}"
     else
@@ -4858,9 +4886,9 @@ _archived_heal() {
     if [ -n "${_MY_EMAIL}" ] && command -v s-nail &> /dev/null; then
       _hn="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
       [ -n "${_hn}" ] || _hn="$(hostname -f 2> /dev/null)"
-      printf '%s\n%s\n\nThe archived site stores below (static/files/.archived, a deleted or\nrenamed site'"'"'s last copy) were removed because the filesystem holding them\nwas used above %s%% -- the automatic heal that keeps a clone, a migrate or a\nbackup from filling the disk. Tune the threshold in\n/data/conf/archived_heal_threshold.cnf (50..99) or disable the heal with\n/data/conf/disable_archived_heal.cnf; see /var/log/boa/archived-heal.log.\n' \
+      printf '%s\n%s\n\nThe archived site stores below (static/files/.archived, a deleted or\nrenamed site'"'"'s last copy) were removed because the filesystem holding them\nwas used above %s%%, its space or its inodes -- the automatic heal that keeps\na clone, a migrate or a backup from filling the disk. Tune the threshold in\n/data/conf/archived_heal_threshold.cnf (50..99) or disable the heal with\n/data/conf/disable_archived_heal.cnf; see /var/log/boa/archived-heal.log.\n' \
         "${_report}" "${_line}" "${_t}" \
-        | s-nail -s "Archived site stores pruned on ${_hn}: disk above ${_t}% used" "${_MY_EMAIL}" &> /dev/null
+        | s-nail -s "Archived site stores pruned on ${_hn}: disk above ${_t}% used (space or inodes)" "${_MY_EMAIL}" &> /dev/null
     fi
   fi
   rm -f "${_lock}"

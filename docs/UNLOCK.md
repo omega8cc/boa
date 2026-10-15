@@ -117,9 +117,10 @@ platform, tracked by marker files under `~/log/ctrl/`):
 
   Every site-level leg, in the nightly and in the helpers Verify runs,
   hands over and sets modes only on what root or the account's own users
-  own (for a site of the master, aegir, its pool users and www-data, the
-  web server's user, which runs PHP on a plain Aegir server), and nothing
-  below a directory another user owns.
+  own, and nothing below a directory another user owns. For a site of the
+  master (`/var/aegir`) the helpers count every user except an account's
+  own users, so a plain Aegir server's files, a deploy login's included,
+  are handed to aegir as they always were.
 
   Another account's files renamed into the site's tree or its stores keep
   their owner and modes, counted on one `NOTE:` line per site in the nightly

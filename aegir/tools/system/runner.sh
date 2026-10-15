@@ -30,15 +30,27 @@ _archived_heal_threshold() {
   [[ "${_v}" =~ ^[0-9]{2}$ ]] && [ "${_v}" -ge 50 ] && _t="${_v}"
   echo "${_t}"
 }
+# Percent used of the filesystem holding $1: its space, or its inodes when
+# those are fuller (every file takes one, so a filesystem out of inodes is
+# full while df -h still shows room); a filesystem without an inode count
+# (btrfs prints - for IUse%) is judged on its space alone.
 _fs_used_pct() {
-  LC_ALL=C command df -P -- "$1" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9'
+  local _b _i
+  _b=$(LC_ALL=C command df -P -- "$1" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9')
+  _i=$(LC_ALL=C command df -P -i -- "$1" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9')
+  if [[ "${_i}" =~ ^[0-9]+$ ]] && { [[ ! "${_b}" =~ ^[0-9]+$ ]] || [ "${_i}" -gt "${_b}" ]; }; then
+    echo "${_i}"
+  else
+    echo "${_b}"
+  fi
 }
 
 # The one pile BOA reclaims on its own: the archived site stores
 # (static/files/.archived, a deleted or renamed site's last copy) go oldest
 # first while the filesystem holding them is used above the heal threshold
 # (85 by default, below the 90 at which this script and some twenty others
-# refuse to run), and only then. Every minute, AFTER the standby, proxy,
+# refuse to run), space or inodes, whichever is fuller, and only then. Every
+# minute, AFTER the standby, proxy,
 # maintenance, queue-stop and load holds above (a replica must not diverge,
 # a held queue means a sweep may be filling the pile) and AHEAD of the disk
 # gate below, so a clone or migrate that is filling the disk beside a large
@@ -71,6 +83,10 @@ _disk_gate() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  # No inode line here on purpose: the queue is what frees inodes (the
+  # Delete tasks of empty platforms the nightly queues, a panel's Delete),
+  # so it keeps running; the tasks that add files (Install, Clone, Migrate,
+  # Restore, Deploy) refuse themselves in provision above 90% inode use.
 }
 
 _enable_master_cron() {

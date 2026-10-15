@@ -173,6 +173,32 @@ _check_disk_space() {
     } | _backup_notice "Backup ABORTED on [${_hName}]: disk ${_DF_TEST}% full" "root filesystem ${_DF_TEST}% full"
     exit 1
   fi
+  # A dump writes a file per table and more per chunk, and the nightly sets
+  # pile up until purged: a filesystem out of inodes fails every write as
+  # "No space left on device" while df -h still shows room, so inode use
+  # gets the same line as space.
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
+    echo "ERROR: We can not proceed until inode use is below 90/100"
+    echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
+    ### No backup at all tonight is an incident, not a quiet exit.
+    {
+      echo "The cluster database backup run on ${_hName} did not start: the"
+      echo "root filesystem has ${_DI_TEST}% of its inodes in use and the run"
+      echo "refuses to add files to it above 90%. Every file takes an inode, so"
+      echo "a disk can be full this way while df -h still shows free space;"
+      echo "df -i / shows the inodes. No database was dumped. Free inodes, then"
+      echo "run:"
+      echo
+      echo "  bash /var/xdrago/mysql_cluster_backup.sh"
+      echo
+    } | _backup_notice "Backup ABORTED on [${_hName}]: disk inodes ${_DI_TEST}% used" "root filesystem inodes ${_DI_TEST}% used"
+    exit 1
+  fi
 }
 _check_disk_space
 

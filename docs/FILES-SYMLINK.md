@@ -462,8 +462,10 @@ dry run. `list` and `prune` run from a root shell only; neither runs from the ni
 **Disk pressure does prune automatically.** `runner.sh` runs `boa archived heal all`
 every minute, after its standby, proxy, maintenance, queue-stop and load holds and
 ahead of its own disk gate: while the filesystem holding an entry is used above the
-heal threshold — **85% by default**, deliberately below the 90% at which `runner.sh`,
-the backup scripts and some twenty other BOA scripts refuse to run at all — the oldest
+heal threshold, in space or in inodes, whichever is fuller (a pile of many small
+files fills the inodes first) — **85% by default**, deliberately below the 90% at
+which `runner.sh`, the backup scripts and some twenty other BOA scripts refuse to run
+at all — the oldest
 entry across all instances goes, then the next, until the filesystem is back under the
 threshold or the pile is empty.
 
@@ -1018,10 +1020,14 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   over and set modes only on what root or the account's own users own.
 
   Those users are the account's backend user, `.ftp` login, client
-  sub-accounts and PHP-FPM users, or, under the master, aegir, the master's
-  pool users and www-data (the web server's user, which runs PHP on a plain
-  Aegir server), read from the resolved path, never from the arguments. A
-  file whose owner no longer exists counts as the account's own.
+  sub-accounts and PHP-FPM users, read from the resolved path, never from
+  the arguments. A file whose owner no longer exists counts as the
+  account's own.
+
+  Under the master (`/var/aegir`) the Verify fixers count every user except
+  an account's own users. A plain Aegir server's files, a deploy login's
+  included, are handed to aegir as they always were, while what an
+  account's users moved into the master's stores stays theirs.
 
   A file or directory another account's users own is left as it is, with
   everything below it, and never followed through a link: an account's users
