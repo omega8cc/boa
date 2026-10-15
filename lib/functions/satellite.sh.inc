@@ -7153,6 +7153,26 @@ _satellite_send_welcome_email() {
   fi
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands without its done marker. Root's
+# /var/backups/a2b only: a link on the way reads as no state. One text
+# wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
 #
 # Satellite start.
 _satellite_make() {
@@ -7568,10 +7588,21 @@ _satellite_make() {
     _LOCAL_THISHTIP=all
   fi
 
-  cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
-  sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
-  wait
-  chmod 700 /var/xdrago/run-${_USER} &> /dev/null
+  # aegir2boa holds the account's dispatcher aside for its db-import and
+  # keeps it held when the import fails or is killed: a half-imported panel
+  # must not dispatch. On a box armed for the web group this pass writes no
+  # new one while that state stands (the rest of the pass, the web group's
+  # conversion included, goes on); the import's success or revert hands the
+  # held one back.
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${_USER}"; then
+    _msg "NOTE: ${_USER}: an aegir2boa db-import is unfinished; its task dispatcher stays held until the import is re-run or reverted"
+  else
+    cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
+    sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
+    wait
+    chmod 700 /var/xdrago/run-${_USER} &> /dev/null
+  fi
   # 0755 in the build tree, not 0700: the setup children are read by a su'd
   # satellite user, and read is all they need. The deployed copy above keeps
   # 0700 -- it is a different file on a different path.
