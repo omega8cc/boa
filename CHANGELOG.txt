@@ -483,8 +483,9 @@
     * Under /var/aegir, so on a plain Aegir server everywhere, the site
       and platform Verify's ownership and permission fixes hand over and
       set modes on every file whoever owns it, a deploy login's included,
-      as they did before; only files a BOA account's users moved there
-      are left as they are and counted.
+      even one a directory service knows that the server's user list does
+      not show, as they did before; only files a BOA account's users
+      moved there are left as they are and counted.
 
     * The nightly permission pass hands over and sets modes at the
       platform level too only on what root or the account's own users

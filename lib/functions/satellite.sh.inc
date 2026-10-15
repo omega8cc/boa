@@ -7789,11 +7789,14 @@ _acct_walk_uids() {
 # left group-writable, a whole directory with everything nested in it, and
 # nothing below such a directory is changed. Prints dev:ino of each name
 # another uid owns, and, given . as a name, of the directory another uid
-# owns above the place when it is refused; status 1 when it is.
+# owns above the place when it is refused; status 1 when it is. A list
+# with '-' first (the Verify fixers' deny list) names the uids it never
+# acts for.
 _SAT_CHMOD_OWN_PL='use Fcntl;
 my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -7825,8 +7828,9 @@ exit 0;'
 # anything below a directory another named uid owns, keeps its owner.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
