@@ -10,6 +10,17 @@ Ensure that you have corresponding PHP versions installed with barracuda before 
 
 On hosted BOA contact your host if you need any legacy PHP installed again.
 
+## Drupal 12
+
+Drupal 12 is at a pre-release, for testing modules, themes and upgrade paths, not
+for sites. Its platforms (`DT0`) are built only where the platform list names the
+symbol, never through `ALL` while the core is a pre-release, and only in an instance
+whose command-line and web PHP are 8.5: the Octopus upgrade skips the symbol in any
+other instance and says so in its log. Like Drupal 11 it needs MySQL 8, on BOA a box
+on Percona 8.4.
+
+- [Drupal 12.0.0-beta2](https://drupal.org/project/drupal/releases/12.0.0-beta2)
+
 ## Drupal 11
 
 Drupal 11 needs MySQL 8, on BOA a box on Percona 8.4. On a Percona 5.7 box the
@@ -100,6 +111,10 @@ This file, if it exists and contains a list of symbols used to define supported 
 **NOTE**: The `_PLATFORMS_LIST` value in `/root/.${_USER}.octopus.cnf` is consumed by one pass: every Octopus install or upgrade resets it to `none` after reading it, so a list written there steers only the next pass. This control file is the persistent per-instance list, applied on every future upgrade until it is removed.
 
 ## Supported Values
+
+### Drupal 12 (pre-release, for testing)
+
+- `DT0` — Drupal 12 pre-release prod/stage/dev (built only when named, in an instance at PHP 8.5)
 
 ### Drupal 11.4
 

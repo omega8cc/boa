@@ -7326,6 +7326,11 @@ _satellite_make() {
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
+  echo "export _DRUPAL12_0=\"${_DRUPAL12_0}\""               >> ${_writeTo}
+  echo "export _DRUPAL12_0_D=\"${_DRUPAL12_0}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL12_0_P=\"${_DRUPAL12_0}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL12_0_S=\"${_DRUPAL12_0}-stage\""       >> ${_writeTo}
+
   # Resolve the newest Backdrop version from the mirror stamp so platforms track
   # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK);
   # the platform build fetches the matching versioned backdrop-<ver>.tar.gz.
@@ -7425,6 +7430,7 @@ _satellite_make() {
   echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_3_V=\"${_SMALLCORE11_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_4_V=\"${_SMALLCORE11_4_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE12_0_V=\"${_SMALLCORE12_0_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}

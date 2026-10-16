@@ -1065,6 +1065,7 @@ _tb_create_core() {
   case "${1}" in
     DX[0-9]) _var="_DRUPAL10_${1:2}" ;;
     DE[0-9]) _var="_DRUPAL11_${1:2}" ;;
+    DT[0-9]) _var="_DRUPAL12_${1:2}" ;;
     BDR) _file="backdrop-${_BACKDROP_V}" ;;
     GRV) _file="grav-${_GRAV_V}" ;;
     TXP) _file="textpattern-${_TXP_V}" ;;
@@ -1882,6 +1883,9 @@ _create_drupal_core_basic() {
     "DE4")
       _create_drupal_basic_version "11_4"
       ;;
+    "DT0")
+      _create_drupal_basic_version "12_0"
+      ;;
     "BDR")
       _create_backdrop_basic_version
       ;;
@@ -1928,6 +1932,7 @@ declare -A _distros_names=(
   ["DE2"]="Drupal"
   ["DE3"]="Drupal"
   ["DE4"]="Drupal"
+  ["DT0"]="Drupal"
   ["BDR"]="Backdrop"
   ["GRV"]="Grav"
   ["TXP"]="Textpattern"
@@ -1964,6 +1969,7 @@ declare -A _distros_versions=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
   ["GRV"]="${_GRAV_V}"
   ["TXP"]="${_TXP_V}"
@@ -2000,6 +2006,7 @@ declare -A _distros_drupal_cores=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
   ["GRV"]="${_GRAV_V}"
   ["TXP"]="${_TXP_V}"
@@ -2036,6 +2043,7 @@ declare -A _distros_profiles_names=(
   ["DE2"]="standard"
   ["DE3"]="standard"
   ["DE4"]="standard"
+  ["DT0"]="standard"
   ["BDR"]="standard"
   ["GRV"]="grav"
   ["TXP"]="textpattern"
@@ -2072,6 +2080,7 @@ declare -A _distros_profiles_paths=(
   ["DE2"]="/"
   ["DE3"]="/"
   ["DE4"]="/"
+  ["DT0"]="/"
   ["BDR"]="/"
   ["GRV"]="/"
   ["TXP"]="/"
@@ -2108,6 +2117,7 @@ declare -A _distros_web_dirs=(
   ["DE2"]="/web"
   ["DE3"]="/web"
   ["DE4"]="/web"
+  ["DT0"]="/web"
   ["BDR"]=""
   ["GRV"]=""
   ["TXP"]=""
@@ -2144,6 +2154,7 @@ declare -A _distros_urls=(
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
   ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
   ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
+  ["DT0"]="${_urlPrt}/drupal/releases/${_SMALLCORE12_0_V}"
   ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP_V}"
   ["GRV"]="${_urlPrt}/grav/releases/${_GRAV_V}"
   ["TXP"]="https://github.com/textpattern/textpattern/releases/tag/${_TXP_V}"
@@ -2180,6 +2191,7 @@ declare -A _distros_php_versions=(
   ["DE2"]="8.4"
   ["DE3"]="8.4"
   ["DE4"]="8.4"
+  ["DT0"]="8.5"
   ["BDR"]="8.4"
   ["GRV"]="8.4"
   ["TXP"]="8.4"
@@ -2600,6 +2612,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_DRUPAL11_4_D}"
     _CORE_STG="${_DRUPAL11_4_S}"
     _CORE_PRD="${_DRUPAL11_4_P}"
+  elif [ "${1}" = "DT0" ]; then
+    _CORE_DEV="${_DRUPAL12_0_D}"
+    _CORE_STG="${_DRUPAL12_0_S}"
+    _CORE_PRD="${_DRUPAL12_0_P}"
   elif [ "${1}" = "DX6" ]; then
     _CORE_DEV="${_DRUPAL10_6_D}"
     _CORE_STG="${_DRUPAL10_6_S}"
@@ -2746,13 +2762,19 @@ _d_inode_use_pct() {
     NR==2 && u { gsub(/%/,"",$u); print $u }' | tr -dc '0-9'
 }
 
+# Whether PHP version $1 (dotted, 8.5) is $2 or newer.
+_d_php_ge() {
+  local _a="${1//./}" _b="${2//./}"
+  [[ "${_a}" =~ ^[0-9]+$ ]] && [[ "${_b}" =~ ^[0-9]+$ ]] && [ "${_a}" -ge "${_b}" ]
+}
+
 # Whether this run builds the symbol at all: the gates the dispatch at the
 # end of _d_dist_loop applies (the core triples always and UC6; Backdrop,
 # Grav and Textpattern behind their switches; every other distribution
 # behind _ALLOW_ALL, which its install function tests)
 _d_would_build() {
   case "$1" in
-    DL[0-9]|DX[0-9]|DE[0-9]|UC6) return 0 ;;
+    DL[0-9]|DX[0-9]|DE[0-9]|DT[0-9]|UC6) return 0 ;;
     GRV) [ "${_GRAV_SUPPORT}" = "YES" ] ;;
     TXP) [ "${_TXP_SUPPORT}" = "YES" ] ;;
     *BD*) [ "${_BACKDROP_SUPPORT}" = "YES" ] ;;
@@ -2798,6 +2820,12 @@ _d_dist_loop() {
         continue
         ;;
     esac
+    # A core still at a pre-release (12.0.0-beta2) is built only where the
+    # list names it, never through ALL: it is for testing, not for sites.
+    if [[ "${_dist}" =~ ^D[LXET][0-9]$ ]] && [[ "${_d_vers}" == *-* ]] \
+      && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+      continue
+    fi
     if [[ "${_d_core%%.*}" =~ ^[0-9]+$ ]] \
       && [ "${_d_core%%.*}" -ge 11 ] \
       && [ -n "${_d_db_v}" ] \
@@ -2809,6 +2837,19 @@ _d_dist_loop() {
         _msg "NOTE! ${_dist} (${_d_name} ${_d_vers} on Drupal ${_d_core}) needs MySQL 8; this server runs Percona ${_d_db_v}: skipped"
       fi
       _msg "NOTE! Upgrade this box's Percona to 8.4 in place first (docs.boa.io: Percona 8 upgrade readiness), then run this again"
+      continue
+    fi
+    # Drupal 12 needs PHP 8.5 on the command line and in the web pool: its
+    # vendor/composer/platform_check.php refuses anything older, so a trio
+    # built in an older instance would fail its Verify and every site. Skip
+    # it there and say why; the versions are this instance's, after the
+    # fallbacks to an installed PHP.
+    if [[ "${_d_core%%.*}" =~ ^[0-9]+$ ]] \
+      && [ "${_d_core%%.*}" -ge 12 ] \
+      && { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; } \
+      && { ! _d_php_ge "${_PHP_CLI_VERSION}" 8.5 || ! _d_php_ge "${_PHP_FPM_VERSION}" 8.5; }; then
+      _msg "NOTE! ${_dist} (${_d_name} ${_d_vers}) needs PHP 8.5 for the command line and the web; this instance runs ${_PHP_CLI_VERSION:-unknown} and ${_PHP_FPM_VERSION:-unknown}: skipped"
+      _msg "NOTE! Set this instance's ~/static/control/cli.info and fpm.info to 8.5, then run this again"
       continue
     fi
     if { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; } \
@@ -2830,8 +2871,8 @@ _d_dist_loop() {
     _d_webd="${_distros_web_dirs[${_dist}]}"
     _d_phpv="${_distros_php_versions[${_dist}]}"
     _d_xurl="${_distros_urls[${_dist}]}"
-    if [[ "${_dist}" =~ ^D[LXE][0-9]$ ]]; then
-      # Anchored: only the DL6/DL7/DL9, DX0..DX6, DE1..DE4 core symbols take
+    if [[ "${_dist}" =~ ^D[LXET][0-9]$ ]]; then
+      # Anchored: only the DL6/DL7/DL9, DX0..DX6, DE1..DE4, DT0 core symbols take
       # the core-triple path. The old unanchored match also caught DXP and
       # sent it here, where no _CORE_* mapping arm exists -- it then
       # registered platform aliases pointing at whatever core the previous
