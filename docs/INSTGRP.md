@@ -540,14 +540,21 @@ root's record follows it.
 The account's task queue is held from before the rename to after the last
 walk. Its PHP-FPM pools are reloaded into the new group before any path
 moves. Every path of the account in the old number then moves to the new
-one, and the account's own identities leave the renamed group; a live
-shell or SFTP session of the account is named in its notes. A
-set-group-ID file of the account's own still in the old number elsewhere
-on the box loses the bit, logged and alarmed. A sweep that cleared such a
-file (a session started before the free could make another) or could not
-finish is owed again (`/var/log/boa/instgrp-web.oN.sgid-held.txt`): the
-account's next web verb sweeps again until one finds nothing. The run then
-goes on as for any account.
+one, and the account's own identities leave every group of the old
+number: the renamed group, under whatever name it has by then, and any
+other group entry sharing that number. One still listed there is alarmed,
+naming the group. A live shell or SFTP session of the account is named in
+its notes.
+
+A set-group-ID file of the account's own still in the old number
+elsewhere on the box loses the bit, logged and alarmed. A sweep that
+cleared such a file (a session started before the free could make
+another) or could not finish is owed again
+(`/var/log/boa/instgrp-web.oN.sgid-held.txt`): the account's next web verb
+sweeps again until one finds nothing, a sweep that could not finish a day
+after its last try at the earliest, and none runs on a standby, a box
+being prepared as one or for a frozen account. The run then goes on as
+for any account.
 
 Nothing of the outside holder is changed: it keeps its memberships, its
 primary group and the renamed group, and loses only the account's files.
@@ -577,23 +584,55 @@ Root's journal `/etc/boa/control/instgrp-web.oN.free.txt` dates the free
 and finishes one a kill cut short: the next run of a web verb of the
 account completes it from the journal, as long as the renamed group still
 has the old number or `wg-oN` has the number the journal gave it (the
-walk from the old number, the account's identities taken out of the
-renamed group where it still is). Until then `reclaim`, `convert`, the
-nightly's probe and a root-run restore's re-group leave the paths still in
-the old number alone, as the free's walk to finish; `reclaim` puts a
-rename alone back (the state before the free) and otherwise skips the
-account, exit 4, with an alarm. A journal nothing can finish from (the
-renamed group removed, renamed or renumbered while `wg-oN` is gone or on
-another number) is dropped with an alarm that names it, by `reclaim` and
-by a web verb alike. On a standby or a box being prepared as one, or for
-a frozen account, that next run only puts the rename back or carries
-root's record to a new group already made, and leaves the walk and the
-reloads to a run those guards allow. A free whose last checks warned (a
-version's reload, a listing, paths left in the old number) is recorded
-done all the same, and the run's own steps reload what is left. The
-journal goes with the account. While it is not done, `xmass`, `xoct` and
-`xcopy` refuse to start for the account and name it: the paths still in
-the old number would travel by that number alone.
+walk from the old number, the account's identities taken out of every
+group of that number).
+
+Until then `reclaim`, `convert`, the nightly's probe and a root-run
+restore's re-group leave the paths still in the old number alone, as the
+free's walk to finish; `reclaim` puts a rename alone back (the state
+before the free) and otherwise skips the account, exit 4, with an alarm.
+
+A rename alone that an earlier version left under the name it gave the
+renamed group, `<gid>-wgheld`, is put back the same way, by `reclaim` and
+by a web verb alike; the web verb then frees the name as described above.
+A journal nothing can finish from (the renamed group removed, renamed or
+renumbered while `wg-oN` is gone or on another number) is dropped with an
+alarm that names it, by `reclaim` and by a web verb alike.
+
+Each journal `reclaim` or a web verb removes, dropped, put back or one
+whose rename never happened, leaves its line in
+`/var/log/boa/instgrp.log`: a restore runs its `reclaim` with the output
+discarded.
+
+On a standby or a box being prepared as one, for a frozen account, or
+while an `xmass`, `xoct` or `xcopy` verb runs on the box, that next run
+only puts the rename back or carries root's record to a new group already
+made, and leaves the walk and the reloads to a run those guards allow.
+The free itself reads the migration verbs again once it holds the account
+and its task queue, before it writes its journal, and stops when one has
+started meanwhile.
+
+A free whose last checks warned (a version's reload, a listing, paths
+left in the old number) is recorded done all the same, and the run's own
+steps reload what is left. The directories and single-link files it
+leaves in the old number (an immutable one the walk leaves as it is) are
+named in its alarm, the first ten, and each in `/var/log/boa/instgrp.log`;
+a hard-linked file the walk leaves there is not. A migration carries both
+by that number, as it carries any path. The journal goes with the
+account.
+
+While the journal is not done, the paths still in the old number would
+travel by that number alone, so `xoct` and `xcopy` refuse to start for
+the account. `xmass` skips its legs in a sync (an autosync pass included),
+with a DENY naming the journal, and carries the shared legs and every
+other account; that pass ends non-zero, so its alarm still fires, and a
+dry sync says so without marking the plan not clean. `xmass prep-target`,
+`init` and both cutover gates refuse the whole run, since none may leave
+an account behind.
+
+Each refusal says what finishes the free: the account's next Octopus
+pass, or `instgrp webconvert oN`, which also completes the account's
+conversion; for a frozen account only once its freeze is recovered.
 
 ### What holds phase B back
 
@@ -764,6 +803,9 @@ account's own state.
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
   what differs, or `FOREIGN` (someone outside the account holds `wg-oN`).
+  A free of the account's held name left unfinished (its state and what
+  finishes it) and each set-group-ID sweep a free left owed get a line of
+  their own.
 - `webcheck` is the readiness report above.
 - `webdrift` is what the watchers read (below); `--own night` is the
   nightly's own form of it.
@@ -841,6 +883,13 @@ line for one account now: `instgrp webdrift oN --own night`.
 On any box, `/root/.standby.prep.cnf` standing for over three days
 without `/root/.standby.cnf` is reported too: while it stands, no account
 there converts.
+
+A free of an account's held name left unfinished (DR11, its journal not
+done, above) is raised the same way while no run holds the account: the
+migration tools skip or refuse the account meanwhile. So is a
+set-group-ID sweep a free left owed that could not finish (DR12); one
+owed because it cleared a file is a note only, for the account's next web
+verb sweeps again.
 
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files

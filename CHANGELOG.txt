@@ -689,19 +689,23 @@
       that group to <gid>-wgheld-<account> with its number and members
       kept, give the account a new wg-oN at once, reload its pools into
       it, move the account's paths to it, take the account's identities
-      out of the renamed group and clear the set-group-ID bit on the
-      account's own files left in the old number (again on the account's
-      next web verb while a sweep finds one or cannot finish), with the
-      account's task queue held throughout; the renamed group's name is
-      cut to 32 characters for a long account name, and the outside holder
-      is not changed. A standby, a frozen account, a running xmass, xoct
-      or xcopy verb (a stale pid file whose number another process took no
-      longer counts), a box not ready, a group a directory service holds,
-      a file under /etc naming it or a free of the same account in the
-      last 30 days keeps the alarm instead, which says why, and so does an
-      account the Octopus pass and webconvert all otherwise leave alone
-      (opted out, or not on its per-instance group yet) until it is
-      converted onto that group (docs/INSTGRP.md).
+      out of every group of the old number (one still listed there is
+      alarmed) and clear the set-group-ID bit on the account's own files
+      left in the old number (again on the account's next web verb while a
+      sweep finds one, at most once a day while one cannot finish, never
+      on a standby or for a frozen account), with the account's task queue
+      held throughout; the renamed group's name is cut to 32 characters
+      for a long account name, paths the walk leaves in the old number are
+      named in the alarm, and the outside holder is not changed. A
+      standby, a frozen account, a running xmass, xoct or xcopy verb (a
+      stale pid file whose number another process took no longer counts;
+      read again once the free holds the account), a box not ready, a
+      group a directory service holds, a file under /etc naming it or a
+      free of the same account in the last 30 days keeps the alarm
+      instead, which says why, and so does an account the Octopus pass and
+      webconvert all otherwise leave alone (opted out, or not on its
+      per-instance group yet) until it is converted onto that group
+      (docs/INSTGRP.md).
 
     * A web group that someone outside the account holds too (a member, a
       user whose primary group it is, or a member of another group with
@@ -719,15 +723,21 @@
       costs the account its paths: until the next web verb finishes it,
       instgrp reclaim, instgrp convert, the nightly and a root-run
       restore leave the paths still in the old number alone, a reclaim
-      puts a rename alone back and otherwise skips the account with an
-      alarm, xmass, xoct and xcopy refuse to start for the account, a
-      standby, a box being prepared or a frozen account only gets its
-      rename or its new group's record put right, and a free whose last
-      checks warned is recorded done instead of being run again. The web
-      verb finishes it as long as the renamed group or the new one still
-      has its number; a journal nothing can finish from is dropped with
-      an alarm instead of stopping every reclaim of the account for good.
-      The journal goes with the account (docs/INSTGRP.md).
+      puts a rename alone back (an earlier version's <gid>-wgheld one too,
+      which a web verb then frees anew) and otherwise skips the account
+      with an alarm, xoct and xcopy refuse to start for the account, an
+      xmass sync skips its legs and carries every other account (its
+      prep-target, init and cutover refuse the run), each saying what
+      finishes the free, a standby, a box being prepared, a frozen account
+      or a running migration verb only gets its rename or its new group's
+      record put right, and a free whose last checks warned is recorded
+      done instead of being run again. The web verb finishes it as long as
+      the renamed group or the new one still has its number; a journal
+      nothing can finish from is dropped with an alarm instead of stopping
+      every reclaim of the account for good, and each journal removed is
+      logged in instgrp.log. instgrp webstatus and the watchers report an
+      unfinished free and a set-group-ID sweep it left owed. The journal
+      goes with the account (docs/INSTGRP.md).
 
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no

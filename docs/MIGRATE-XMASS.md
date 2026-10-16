@@ -592,7 +592,10 @@ What it does, in order:
    predates the web group, or cannot be asked, because its claim passes
    would hand the account's web paths back. `init`, `sync` and `cutover`
    re-gate the same way (a DENY in a dry run), and `instgrp` is part of the
-   forced tool refresh in step 0.
+   forced tool refresh in step 0. An account whose free of a held web group
+   name is unfinished (its journal `/etc/boa/control/instgrp-web.oN.free.txt`
+   not done, see `INSTGRP.md`) is refused here too, and by `init` and both
+   cutover gates; a `sync` skips that account's legs alone (below).
 4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.
@@ -1388,6 +1391,12 @@ read the DRY plan and the eligible/**skipped-account list** at least once.
 An account added later that is missing on the target fails the pass loudly
 (the same target-readiness gates run in die mode every pass) — run
 `xmass prep-target` for it, exactly as before a manual sync.
+
+An account whose free of a held web group name is unfinished (see
+`INSTGRP.md`) has its legs skipped by every pass, manual or automated,
+with a DENY naming the journal; the shared legs and every other account
+are still carried and the pass ends non-zero, so it alarms. The account's
+next Octopus pass, or `instgrp webconvert oN`, finishes the free.
 
 **Every pass, before any bytes move,** the run re-verifies the whole state
 and prefers doing nothing over doing the wrong thing:
