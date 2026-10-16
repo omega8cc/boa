@@ -3967,9 +3967,11 @@ _octopus_cleanup() {
         # it names, and a retried create must not take it for that one.
         mkdir -p ${_zombie_dir}root
         # Its database broker switch too: a later account of the name would
-        # otherwise start switched, with none of its databases its own.
+        # otherwise start switched, with none of its databases its own. And
+        # the broker seed's note, which a later account's create, or its
+        # Octopus pass, would read as its own.
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
-          /root/.${_usEr}.migration-create.txt \
+          /root/.${_usEr}.migration-create.txt /root/.${_usEr}.dbctl-seed.txt \
           /data/conf/${_usEr}_db_broker.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
