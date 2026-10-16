@@ -2538,6 +2538,17 @@ _xmass_dbctl_cnf_last() {
   printf '%s' "${_v}"
 }
 
+# Whether account $1, its cnf here $2, is kept out of the database broker as
+# this box's passes read it: its _DB_BROKER_ARM=NO, or a _DB_BROKER_BORN=NO
+# that is its operator's, the account holding no create marker here
+# (/root/.<oN>.migration-create.txt, a regular file of root's), so that no
+# migration tool put the line. Such an account travels kept out.
+_xmass_dbctl_kept_here() {
+  [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
+  [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
+  [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ]
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's copy: replace-or-append per key, whole lines, host axis excluded
 ### (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN are re-derived
@@ -2612,10 +2623,12 @@ _xmass_push_account_cnf() {
   fi
   # The account's opt-out of the database broker mirrors the source both
   # ways, read as the passes read it: _DB_BROKER_ARM=NO travels as a plain
-  # line, and a source that does not read NO removes the key's lines on the
-  # target in any form (the merge otherwise keeps every line the source
-  # lacks), so a lifted opt-out is lifted there too.
-  if [ "$(_xmass_dbctl_cnf_last "${_sCnf}" _DB_BROKER_ARM)" = "NO" ]; then
+  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, as
+  # _DB_BROKER_ARM=NO (the tools' own line stays here); a source that keeps
+  # the account out neither way removes the key's lines on the target in
+  # any form (the merge otherwise keeps every line the source lacks), so a
+  # lifted opt-out is lifted there too.
+  if _xmass_dbctl_kept_here "${_acct}" "${_sCnf}"; then
     printf '%s\n' "_DB_BROKER_ARM=NO" >> "${_lTmp}"
   else
     printf '%s\n' "-_DB_BROKER_ARM" >> "${_lTmp}"

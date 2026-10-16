@@ -1847,12 +1847,24 @@ _xcopy_dbctl_cnf_last() {
   printf '%s' "${_v}"
 }
 
+# Whether account $1, its cnf here $2, is kept out of the database broker as
+# this box's passes read it: its _DB_BROKER_ARM=NO, or a _DB_BROKER_BORN=NO
+# that is its operator's, the account holding no create marker here
+# (/root/.<oN>.migration-create.txt, a regular file of root's), so that no
+# migration tool put the line. Such an account travels kept out.
+_xcopy_dbctl_kept_here() {
+  [ "$(_xcopy_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
+  [ "$(_xcopy_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
+  [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ]
+}
+
 # The source's opt-out of the database broker, seeded into the new account's
 # cnf on the target before its install, so an armed target never switches a
 # copy of an account its source keeps out (the install's own pass and the
 # upgrade pass it chains both run before anything else of the source
-# arrives): _DB_BROKER_ARM=NO as a plain line where the source reads NO as
-# the passes read it (the file made, root 0600, when absent), a
+# arrives): _DB_BROKER_ARM=NO as a plain line where the source is kept out
+# as its passes read it (_xcopy_dbctl_kept_here: its _DB_BROKER_ARM=NO, or
+# its operator's _DB_BROKER_BORN=NO; the file made, root 0600, when absent), a
 # _DB_BROKER_ARM line in any form removed where it does not. Only while the
 # name is free there, as the web group's seed above. What was written is
 # taken back when the install does not happen, unless the launcher made the
@@ -1870,7 +1882,7 @@ _xcopy_dbarm_seed() {
   local _v=- _out
   _XCOPY_DBA_SEED=""
   _XCOPY_DBA_WAS=""
-  [ "$(_xcopy_dbctl_cnf_last "/root/.${1}.octopus.cnf" _DB_BROKER_ARM)" = "NO" ] && _v=NO
+  _xcopy_dbctl_kept_here "${1}" "/root/.${1}.octopus.cnf" && _v=NO
   # the names expand here on purpose: the remote side gets them as text
   # shellcheck disable=SC2029
   _out=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
