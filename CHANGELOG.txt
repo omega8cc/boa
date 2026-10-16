@@ -134,11 +134,17 @@
       pages, settings and service container it held before it, and the
       next outage started from what the database cache kept from the one
       before (a module enabled in between answered 500). Each outage is now
-      recorded beside the backoff flag; the first request after it clears
-      what Valkey kept before using it (only the site's own keys when the
-      redis module's own connection failed on one site), and during an
-      outage the database cache refuses entries older than the outage. On
-      Drupal 6, 7, 8 and later, and Backdrop.
+      recorded beside the backoff flag with the sites that served requests
+      on their database during it; the first request after it clears from
+      Valkey what those sites kept from before it, before using it, keeping
+      their locks and login counters, and every other site keeps its cache
+      (only the site's own keys when the redis module's own connection
+      failed on one site). A request still running on the database then has
+      its site cleared again when it ends. When BOA cannot tell (an outage
+      begun during a BOA upgrade, more than 500,000 keys) it clears the whole
+      database as a restart does. During an outage the database cache
+      refuses entries older than the outage. On Drupal 6, 7, 8 and later,
+      and Backdrop.
 
     * A site on PHP 8.6, which BOA builds without the Valkey extension, no
       longer sends every site on its server to the database. Each of its

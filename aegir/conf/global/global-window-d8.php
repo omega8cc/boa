@@ -65,11 +65,17 @@ class WindowBackendFactory implements CacheFactoryInterface {
 
   /**
    * The threshold: the window global-valkey.inc named, or this site's own.
+   *
+   * The module's failover opens or joins the site's window, which waits while
+   * the site's requests keep failing, and records the site for its recovery.
    */
   protected function start() {
     if (!isset($this->start)) {
       $start = (float) Settings::get('boa_window_start', 0);
-      if ($start <= 0 && function_exists('_valkey_window_mark')) {
+      if ($start <= 0 && function_exists('_valkey_window_failover')) {
+        $start = (float) _valkey_window_failover((string) Settings::get('boa_window_scope', ''));
+      }
+      elseif ($start <= 0 && function_exists('_valkey_window_mark')) {
         $start = (float) _valkey_window_mark((string) Settings::get('boa_window_scope', ''));
       }
       $this->start = $start;
