@@ -2151,10 +2151,13 @@ _WG_PROV_TOKEN="provision_drupal_web_group_private"
 _WG_PROV_PATH_TOKEN="provision_path_web_group"
 # The writers that must be on the box before a first conversion: the
 # fetched copy carries the named token, a function or a constant only its
-# web-group form has.
+# web-group form has. The limited-shell worker's token comes with its
+# current form, which reads a group of the account held outside it and
+# raises its incident for a files store outside the account at phase B
+# only (an older form raises it on every pass at phase A too).
 _WG_INVENTORY="\
 /opt/local/bin/instgrp:_wg_table \
-/var/xdrago/manage_ltd_users.sh:_ltd_d9_files_here \
+/var/xdrago/manage_ltd_users.sh:_web_group_conv \
 /var/xdrago/night/10-account.sh:_night_web_hit \
 /var/xdrago/night/20-sites.sh:_NIGHT_DENIED_RE \
 /usr/local/bin/fix-drupal-site-permissions.sh:_SITE_DENIED_RE \
