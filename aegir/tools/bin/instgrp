@@ -2670,14 +2670,19 @@ _wg_note_log() {
   _log "${_WP_A}: $*"
 }
 
-# The notes this run wrote, keyed by the account and the text, so a lookup
-# costs the same however many it holds. _wg_run empties it.
+# The notes this run wrote, keyed by the run's account (_WG_NOTED_RUN),
+# the note's account and the text, so a lookup costs the same however many
+# it holds. _wg_run empties it, except under webconvert all, which empties
+# it once (_WG_NOTED_KEEP): there a held account's run is two _wg_run calls
+# with other accounts' runs between them, and the key keeps each run's own.
 declare -gA _WG_NOTED=()
+_WG_NOTED_RUN=""
+_WG_NOTED_KEEP=NO
 
 # 0 when note $2 of account $1 is new in this run (marked now), 1 when this
 # run marked it already.
 _wg_noted() {
-  local _k="${1} ${2}"
+  local _k="${_WG_NOTED_RUN} ${1} ${2}"
   [[ -z "${_WG_NOTED[${_k}]+x}" ]] || return 1
   _WG_NOTED[${_k}]=1
   return 0
@@ -5588,7 +5593,8 @@ _wg_run() {
   _ACCT="${1}"
   _wg_profile "${1}"
   _wg_reset
-  _WG_NOTED=()
+  [ "${_WG_NOTED_KEEP}" = "YES" ] || _WG_NOTED=()
+  _WG_NOTED_RUN="${1}"
   if [ "${_WP_M}" = "YES" ]; then
     if ! getent passwd aegir > /dev/null 2>&1 || [ ! -d /var/aegir ]; then
       _fail "no Aegir master on this box"
@@ -6662,9 +6668,12 @@ _wg_reclaim_leg() {
 # through u3 (a token strip it owes included), then every PHP version whose
 # workers of one of those accounts lack its web group is reloaded once, then
 # each account runs again from the top (the steps done are no-ops) and on to
-# its end. The row is read again at each phase.
+# its end. The row is read again at each phase; the note set is kept across
+# both runs of an account, so each note is written once.
 _wg_all() {
   local _a _r _rc=0 _e _held="" _vers=""
+  _WG_NOTED=()
+  _WG_NOTED_KEEP=YES
   for _a in $(_all_accounts); do
     _WG_STOP_AT_U3=YES
     _wg_run "${_a}"
@@ -6689,6 +6698,7 @@ _wg_all() {
     _rc=$(_worse_rc "${_rc}" "${_r}")
     _msg "-- ${_a}: rc=${_r}"
   done
+  _WG_NOTED_KEEP=NO
   return "${_rc}"
 }
 
