@@ -802,12 +802,12 @@ main login's own file, mode 0600 (the notes name other accounts' stores),
 which it reads over SFTP and in its shell. Root writes it through one
 handle that never follows a link, in the real `static/control` only, and
 renames it over the name, so a link, a hard link or a FIFO put there is
-replaced and never opened; BOA never reads it back.
+replaced and never opened; BOA never reads it back. The directory's
+`README.txt` names it. A migration carries neither copy (below).
 
 When two runs note the same account at the same moment, the copy can be left
 with the older of their two reads of root's file until the next note
-rewrites it; root's file keeps every line. The directory's `README.txt`
-names it. A migration carries neither copy (below).
+rewrites it; root's file keeps every line.
 
 A share INTO the account's store never holds anything; both accounts are
 told (see `FILES-SYMLINK.md`) once a run: before the conversion's first
