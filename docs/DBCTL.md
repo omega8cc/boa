@@ -130,18 +130,23 @@ Otherwise no file is written and no login tried, and the reason is said:
 `credential-not-plain` for one of the server's own logins, `unregistered
 <database> <site> its-recorded-password-too-long` or
 `...-control-character` for a site in a plan, `ERR 2 bad-password` for a
-load. One line does not say it: where an account's server alias records a
-password longer than 1024 bytes, that account's own plan says only `refused
-login the account's own database login opens no row of it`.
+load. Where an account's server alias records a password longer than 1024
+bytes, that account's own plan says `refused login the account's own
+database login: the password recorded for it is longer than 1024 bytes: no
+login is tried with it`; `refused login the account's own database login
+opens no row of it` is said only where a login was tried.
 
 A server alias whose encoded password decodes to a control character, or in
 which a `%` does not begin two hex digits, is said as that and not as an
 alias that is missing: `refused server-alias-password ...` in a plan, the
 same words on the box-wide check's line and on settle's `left` line. An
-alias whose password holds a character outside the URL-safe set, or is
-longer than 3072 bytes as the alias spells it, is read as an alias that
-gives no credential (`no-server-alias` in a plan, a parked home that holds
-no credential in settle).
+alias whose password is empty, holds a character outside the URL-safe set,
+or is longer than 3072 bytes as the alias spells it gives no credential
+either, and a plan says that too: `refused server-alias-password the
+password its server alias records is empty`, `... has a character outside
+A-Z, a-z, 0-9 and %._~/-` or `... is longer than 3072 bytes as the alias
+spells it`; settle reads a parked home that holds such an alias as one that
+holds no credential.
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
@@ -294,9 +299,12 @@ only while each of these holds, and is left otherwise, with the reason on its
   such credential, with a control character in it or longer than 1024
   bytes, one no login of this box reaches, one whose login opens another
   row of the user, one the server refuses the credential for (`it is
-  someone else's by now`; for a row at `%` of a user that has another row
-  the line says only that a login of the user was refused, as the narrower
-  row may have answered), and one whose login could not be tried: too many
+  someone else's by now` where only that row can have refused it: a row at
+  `localhost`, which a login over the socket alone reaches, or the user's
+  only row; for a row at `%`, `127.0.0.1` or an address the box holds, of a
+  user that has another row, the line says only that a login of the user
+  was refused, as a narrower row may have answered), and one whose login
+  could not be tried: too many
   connections, a blocked host, a locked or expired account, no answer
   within 30 seconds. Each has its own reason on the `left` line;
 - the row reads under the lock as it did when that login was tried (it is
@@ -540,12 +548,23 @@ privilege.
   account in the registry.
 - `boa cleanup purge` parks the account's control file and marks its registry
   entries purged: no other account can take a name whose database is still
-  there. Its site users stay with its databases; `leftovers` lists them.
+  there. Its site users stay with its databases; `leftovers` lists them. The
+  migration seed's note (`/root/.oN.dbctl-seed.txt`) is parked with the
+  account's other root files, so a later account of the name never reads it
+  as its own.
 - The nightly run calls `boa-dbctl witness` where an account is switched or the
   registry is in use. It raises an `ALRT` line for a switched account whose
   instance or panel users hold a global privilege, a database of it without its
   instance user's grant, a grant of it on a database not its own, a provision
   copy without the broker client, and for any grant row on the registry.
+- Those lines name logins and hosts an account chose, so they go to
+  `/var/log/boa/dbctl-witness.txt` (root only, rewritten each night); that
+  night's log gets only the witness's last line (its `OK` or `ERR` line, or
+  `no answer line`), how many `ALRT` lines it said and that path, between
+  `dbctl-witness: start` and `dbctl-witness: done rc=N, alerts=N, the whole
+  witness in /var/log/boa/dbctl-witness.txt`. Where that file cannot be
+  written the witness runs all the same, its lines are discarded, and the
+  night's log says so.
 - Where a baseline is kept the witness also raises every finding of the
   box-wide check. It changes nothing, except that it lets go of reservations a
   day old that nothing used. A query that fails makes it say `ALRT: witness
@@ -587,7 +606,8 @@ last assignment counts, and `export`, an indent, quotes and a trailing
 comment are read through. `xoct create` puts `_DB_BROKER_BORN=NO` there before
 it installs a moved account and takes its own line back once the account is
 installed and its source's settings and switch are carried (see "A box armed
-for the broker"). A line the cnf held before is its operator's and stays.
+for the broker"). A line the cnf held before, an assignment at the start of
+a line, is its operator's and stays.
 
 The pass makes it with `boa-dbctl scope oN on --born`, which reads the plan
 itself: with `--sha`, `--force` or `--accept-refusals`, or on `plan`, `off` or
@@ -704,44 +724,81 @@ back, under an `xmass` run too.
 
 It says what it did in a root-only note beside the cnf,
 `/root/.oN.dbctl-seed.txt`: `made` (it made the cnf for the line), `line` (it
-added the line to a cnf that was there) or `operator`. Where the target's cnf
-already assigns `_DB_BROKER_BORN`, in any spelling, the tool adds nothing and
-the note says `operator`: that line is its operator's and stays. The tool's
-take-back, and its unseed when the install does not happen, act on that note
-as they read it on the target, so a create run again after any exit takes
-back what an earlier run put; each removes the note with the line. The install
-window's own exit takes the line back where the account was not made; one that
+added the line to a cnf that was there), `kept` (either, the take-back waiting
+for the source's settings, below) or `operator`. Where the target's cnf
+already assigns `_DB_BROKER_BORN` at the start of a line, the one spelling the
+install keeps in a cnf it did not write, the tool adds nothing and the note
+says `operator`: that line is its operator's and stays. An `export` or an
+indented assignment, which the install drops, gets the tool's line as a cnf
+with none does. The tool's take-back, and its unseed when the install does
+not happen, act on that note as they read it on the target, so a create run
+again after any exit takes back what an earlier run put; each removes the note
+with the line. The install window's own exit takes the line back where the
+account was not made, until the remote install is started: from then on the
+line and the note stay (an interrupt does not stop that install, which may
+still make the account), and a re-run's seed reads the note. An account that
 was made keeps the line until the create is run again. The seed puts its line
-on a line of its own where the cnf's last line has no line end.
+on a line of its own where the cnf's last line has no line end. Each reads
+and rewrites the target's cnf as text: a NUL byte costs none of its lines.
 
-Where the merge of the source's settings failed, or the target could not be
-reached for the take-back, the line stays, the tool prints an `ALRT` that
-names it, and `report` reads the account `kept-out _DB_BROKER_BORN=NO` until a
-create run again merges them and takes the line back.
+Where the merge of the source's settings failed, the line stays, the note
+says `kept`, the tool prints an `ALRT` that names the line, and `report` reads
+the account `kept-out _DB_BROKER_BORN=NO`: the next merge that succeeds takes
+the line back, a create run again or a live transfer (each `xoct` transfer
+runs the take-back with its own merge's result). Where the target gives no
+answer to the take-back, the `ALRT` names the line only where the note there
+reads `made`, `line` or `kept`: after a merge that worked, as a line to remove
+with its note; after one that failed, as one that stays until a merge
+succeeds.
+
+Two ways leave a tool's line in place until someone acts, the safe direction:
+an account the install half made (the launcher made it and then failed: the
+unseed leaves an account the target holds, no create marker is put, and no
+pass takes back a line without one), and a create whose marker could not be
+put while the target gave no answer to the take-back either. `report` reads
+such an account `kept-out _DB_BROKER_BORN=NO` until the create is run again,
+which merges the source's settings and takes the line back, or an operator
+removes the line and `/root/.oN.dbctl-seed.txt` there.
 
 A `_DB_BROKER_BORN=NO` a migration left behind is taken back by the Octopus
-pass of an armed box that is no standby and no box being prepared: the exact
-line, from an account that carries the create marker
-`/root/.oN.migration-create.txt` (a regular file of root's, not a link) older
-than a day, where the seed's note does not say `operator`. One INFO line says
-so, and the pass goes on as for any account. A tool's line never outlives its
+pass of an armed box that is no standby and no box being prepared, on an
+upgrade pass (never an install's, where no create marker can be the new
+account's own yet): the exact line, from an account that carries the create
+marker `/root/.oN.migration-create.txt` (a regular file of root's, not a
+link, older than a day, read without following a link and no more than its
+first 64 KiB) that names the account as it is now: the uid, and the inode and
+birth time of `/data/disk/oN`, it records are the account's, as `xoct` reads
+them when it finds an account it created, so a marker an earlier account of
+the name left is not trusted. The seed's note must say neither `operator` nor
+`kept`. The cnf is rewritten in place from a copy the pass makes beside it,
+reading the cnf as text, and only where that copy holds exactly the cnf's
+lines but the ones taken and the cnf is still the file read; otherwise
+nothing changes, a NOTE says so, and the next pass tries again. One INFO line
+names the migration (the source account and box the marker records), and the
+pass goes on as for any account. A tool's line never outlives its
 create, so one still there a day after it is a leftover: of an `xoct` from
 before the take-back, or of a create that ended early and was never run again.
 A bare `_DB_BROKER_BORN=NO` an operator puts into a migrated account's cnf is
 read as the tool's and taken back the same way, a day after the move. An
 operator's opt-out is `_DB_BROKER_ARM=NO`, which nothing takes back.
 
-The account's `_DB_BROKER_ARM=NO` travels with it, read as the pass reads it,
-in any of its shapes. `xoct` and `xmass` send a plain `_DB_BROKER_ARM=NO` to
-the target where the source reads `NO`, and remove every line of the key there
-where it does not, so an opt-out lifted on the source is lifted on the target
-too (`xmass` on every live pass): an account kept out on its source is kept
-out on the target, and on a standby once it is promoted. `xcopy` puts the
-source's `_DB_BROKER_ARM=NO` into the new account's cnf on the target before
-its install (the file made, root 0600, where there is none), removes a line of
-the key there where the source does not read `NO`, and takes what it wrote back
-when the install does not happen. It puts no `_DB_BROKER_BORN`: a copy that is
-not kept out is switched by an armed target as any new account is.
+The account's opt-out travels with it, read as the pass reads it, in any of
+its shapes: its `_DB_BROKER_ARM=NO`, and a `_DB_BROKER_BORN=NO` that is its
+operator's (the source holds no create marker for the account, so no
+migration tool put that line), which travels as `_DB_BROKER_ARM=NO`. `xoct`
+and `xmass` send a plain `_DB_BROKER_ARM=NO` to the target where the source is
+kept out so, and remove every line of the key there where it is not, so an
+opt-out lifted on the source is lifted on the target too (`xmass` on every
+live pass): an account kept out on its source is kept out on the target, and
+on a standby once it is promoted. `xcopy` puts that `_DB_BROKER_ARM=NO` into
+the new account's cnf on the target before its install (the file made, root
+0600, where there is none), removes a line of the key there where the source
+is not kept out, and takes what it wrote back when the install does not
+happen, unless the launcher made the account before it failed (that copy
+keeps the source's `NO`); a line of the key the target's cnf held, which the
+seed replaced or removed, is put back then. It puts no `_DB_BROKER_BORN`: a
+copy that is not kept out is switched by an armed target as any new account
+is.
 
 Each call is one line of the pass. An answer that ends well is the broker's
 own `OK` line:
@@ -780,14 +837,19 @@ neither of the two is said as `no answer line, exit N`. A line that carries a
 word the pass launchers read as an alarm is not repeated: the pass's line then
 names the broker's log.
 
-A call that stopped after it changed something is no refusal: `ERR 7
-scope-failed <step>` (a switch that stopped part way) and `ERR 7
-baseline-settle-incomplete N` (a settle with a change that failed). The pass
-relays each `ALRT` line of the broker's answer as `ALRT: database broker:
-<line>` (printable characters only, at most 20 lines of at most 300
-characters) and says the call and its last line as an `ALRT` too, so the pass
-is reported with errors, as a new account's failed switch already is. The
-pass goes on all the same.
+A call that stopped after it changed something is no refusal, nor is one
+that an SQL statement failed in, which is never a policy refusal: `ERR 7
+scope-failed <step>` (a switch that stopped part way), `ERR 7
+baseline-settle-incomplete N` (a settle with a change that failed) and `ERR 7
+sql-failed <step> <errno>`. The pass relays each `ALRT` line of the broker's
+answer as `ALRT: database broker: <line>` (printable characters only, at most
+20 lines of at most 512 characters, `OOPS:` written without its colon, a word
+the launchers read as an oops while the line is an alarm already) and says
+the call and its last line as an `ALRT` too, so the pass is reported with
+errors, as a new account's failed switch already is. A new account's switch
+that stopped part way relays the broker's `ALRT` lines the same way before
+its own two lines: the broker logs none of them, and one may say what an
+operator must run (`run syncpass fix oN`). The pass goes on all the same.
 
 The pass's switch runs only under a pass launcher (`octopus up-...`, `boa
 in-octopus`), which keeps `/run/boa_wait.pid`. The Octopus leg of a chained
@@ -897,7 +959,12 @@ the witness. The whole report, with any other line the broker printed, goes
 to `/var/log/boa/dbctl-report.txt` (root only, rewritten each night); that
 night's log gets only the report's last line, its counts and words, and that
 path, between `dbctl-report: start` and `dbctl-report: done rc=N, the whole
-report in /var/log/boa/dbctl-report.txt`. So no login's or host's name
+report in /var/log/boa/dbctl-report.txt`. The file is tested before the
+broker is asked: where it cannot be written (a full disk, a directory at its
+path) the report runs all the same, any other line the broker printed is
+discarded, the night's log says `done rc=N, /var/log/boa/dbctl-report.txt not
+writable, the report not kept`, and the mail below goes as it would. With the
+witness's own lines in a file of their own (above), no login's or host's name
 reaches the night's incident scan.
 
 While the last line counts an account the box could switch and has not
