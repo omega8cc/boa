@@ -112,6 +112,10 @@ Note that while both `log` and `system` modes are "silent" (they don't display a
 
 It is recommended that you start `screen` before running commands using the "silent" mode to avoid confusion or incomplete tasks when your SSH connection drops for any reason.
 
+The last line of a run says how it went: `BARRACUDA upgrade completed` or `OCTOPUS upgrade completed` for a clean run, `... upgrade completed WITH ERRORS -- review <log>` when something failed. The exit status says the same, for scripts: 0 for a clean run (for barracuda also one that only needs `boa reboot`), 3 for a run that completed WITH ERRORS, and 1 for a run the launcher refused to start. A pass log larger than 1 MB is not mailed whole: the mail carries its ALRT, FATAL and ERROR lines, its first and last lines and where the log is.
+
+An Octopus pass that could not build a platform (its tarball would not download or unpack, its shared tree is missing) says `ALRT! <platform> not built: ...` and completes WITH ERRORS; a platform is reported `installed` only when its code is there.
+
 It is possible to set/force the upgrade mode on the fly using optional arguments: `{aegir|platforms|both}`
 
 Note that `both` (also accepted as `force`) will force an aegir plus platforms upgrade, `aegir` will upgrade only the Ægir Master/Satellite instance (setting `_HM_ONLY=YES`), and `platforms` will upgrade only the platforms (setting `_PLATFORMS_ONLY=YES`). When no mode argument is given, both flags are reset so a full aegir plus platforms upgrade is performed, the same as `both`.

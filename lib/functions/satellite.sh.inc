@@ -46,7 +46,7 @@ _get_core_ext() {
 # The provision-backdrop-d6-upgrade task copies module directories from this
 # on-box cache and never downloads anything itself; without the staged kit
 # the task fails closed in validate. One pinned tarball on the /core/ shelf
-# (the pressflow-6.60.1 pattern), stamp-gated for idempotency, re-checked on
+# (the pressflow-6.60.3 pattern), stamp-gated for idempotency, re-checked on
 # every up-* run. A kit version bump means editing _D6D7_KIT_V here. It
 # works by path in /data/all/000: this pass's AegirSetupA checked the store
 # and 000 before (_satellite_store_dirs_back, run whatever _HM_ONLY says):
@@ -6284,7 +6284,9 @@ _satellite_if_add_update_user_dot_dirs() {
   if [ ! -d "${_USER_TMP}" ]; then
     [ -L "${_USER_TMP}" ] && rm -f "${_USER_TMP}"
     mkdir -p "${_USER_TMP}"
-    _acct_in_real_dir "${_USER_TMP}" _satellite_ftp_tmp_here &> /dev/null
+    # what it leaves for another owner is named on a NOTE line
+    _T_N=$(_acct_in_real_dir "${_USER_TMP}" _satellite_ftp_tmp_here 2> /dev/null)
+    _satellite_left_note "${_T_N}" "in place in ${_USER_TMP}"
   fi
 
   ###---### Create .ssh dir if not exists.
@@ -6293,15 +6295,22 @@ _satellite_if_add_update_user_dot_dirs() {
   if [ ! -d "${_USER_SSH}" ]; then
     [ -L "${_USER_SSH}" ] && rm -f "${_USER_SSH}"
     mkdir -p "${_USER_SSH}"
-    _acct_in_real_dir "${_USER_SSH}" \
-      _satellite_reown_here "${_USERFTP}:${_ACCG:-users}" &> /dev/null
-    _acct_in_real_dir "${_USER_SSH}" chmod 700 . &> /dev/null
+    # handed over and given its mode only when it is root's or the
+    # account's own: another account's directory renamed onto the name
+    # between the test above and here keeps its owner and mode
+    _T_N=$(_acct_in_real_dir "${_USER_SSH}" \
+      _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 2> /dev/null)
+    _satellite_left_note "${_T_N}" "in place at ${_USER_SSH}"
   fi
   # the main login's own keys: set through a handle inside the real .ssh,
   # never through a link put at a key name or at .ssh; authorized_keys too,
-  # which sshd's StrictModes refuses once it is group-writable
-  _acct_in_real_dir "${_USER_SSH}" _satellite_chmod_nofollow f 0600 \
-    ./id_rsa ./id_dsa ./authorized_keys ./authorized_keys2 &> /dev/null
+  # which sshd's StrictModes refuses once it is group-writable. Only what
+  # root or the account's own identities own: another account's file renamed
+  # to a key name, or a .ssh another user owns, keeps its mode and is named
+  # on a NOTE line.
+  _T_N=$(_acct_in_real_dir "${_USER_SSH}" _satellite_chmod_own_here f 0600 \
+    . ./id_rsa ./id_dsa ./authorized_keys ./authorized_keys2)
+  _satellite_left_note "${_T_N}" "as they were in ${_USER_SSH}"
 
   ###---### Create .bazaar dir and conf file if not exist.
   #
@@ -6476,9 +6485,12 @@ _satellite_distro_ghosts_here() {
       && [ -z "$(find "${i}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
       [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_n}"
       _s="$(date +%y%m%d-%H%M%S)"
-      _acct_in_real_dir "${_usEr}" _satellite_sub_here undo \
+      # the stamp directory handed to the account only when it and every
+      # directory above it are root's or the account's own
+      _satellite_left_note "$(_acct_in_real_dir "${_usEr}" _satellite_sub_here undo \
         _satellite_sub_here dist _satellite_sub_here "${_s}" \
-        chown -h "${_USER}:${_ACCG:-users}" . &> /dev/null
+        _satellite_own_dir_here "${_USER}:${_ACCG:-users}" "" 2> /dev/null)" \
+        "in place in ${_usEr}/undo/dist"
       _satellite_as_user "mv -f -- \
         ${_usEr}/distro/$(printf '%q' "${i#./}") \
         ${_usEr}/undo/dist/${_s}/" &> /dev/null
@@ -6556,15 +6568,16 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
       "${_USER}:${_ACCG:-users}" 02775 2> /dev/null
   )
   _satellite_left_note "${_T_N}" "in place at ${_ROOT}/static"
-  _acct_put_in "${_ROOT}/static" EMPTY.txt empty
+  # nothing is put into a static that was left as another user's
+  [ -n "${_T_N}" ] || _acct_put_in "${_ROOT}/static" EMPTY.txt empty
 
   ###---### Create ~/.tmp dir if not exists.
   #
   if [ ! -d "${_ROOT}/.tmp" ]; then
     rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
-    _acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 02775 > /dev/null
+    _satellite_left_note "$(_acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
+      "${_USER}:${_ACCG:-users}" 02775 2> /dev/null)" "in place at ${_ROOT}/.tmp"
   fi
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
@@ -8197,6 +8210,18 @@ _satellite_own_dir_here() {
   perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . || return 1
   [ -z "${2}" ] || chmod "${2}" .
 }
+# The names after the type $1 (f or d) and the mode $2 in the current
+# (pinned) directory given that mode through _SAT_CHMOD_OWN_PL: only what
+# root or one of the instance's own identities owns (_acct_walk_uids), only
+# while this directory and every one above it are, never through a link.
+# Prints dev:ino of each entry left for another owner (given ., the
+# directory above that refused the place).
+_satellite_chmod_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "$@" 2> /dev/null
+  return 0
+}
 # One NOTE line for what the owner-checked helpers left to another owner:
 # $1 the dev:ino lines they printed, each entry counted once though more
 # than one of them met it, $2 the end of the sentence (how and where it was
@@ -8484,10 +8509,10 @@ _satellite_sys_dir_here() {
 # handed to the login (_satellite_reown_here), the directory 0755.
 _satellite_ftp_tmp_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 755 || exit 1
   touch .
-  find . -mindepth 1 -mtime +0 -execdir rm -rf {} \;
-  _satellite_reown_here "${_USERFTP}:${_ACCG:-users}"
-  chmod 755 .
+  _satellite_aged_rm_own_here 0
+  _satellite_reown_own_here "${_USERFTP}:${_ACCG:-users}"
 )
 # A login's ~/.bazaar (the current, pinned directory) seeded: bazaar.conf
 # put as a fresh file, the tree handed to $1 (owner:group) as

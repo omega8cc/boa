@@ -647,12 +647,19 @@ _mfs_drop_copy() {
 _relocate_dir() {
   local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
   local _src="${_par}/${_name}" _dpar="${_dst%/*}" _dname="${_dst##*/}"
-  local _szKB _avKB _ug _mode _rc _old
+  local _szKB _avKB _ug _mode _rc _old _szIn _iTot _iFree _iHead
 
   _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
   _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
   [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
-  _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K) -> ${_dst} (target avail ${_avKB:-?}K) and symlink"
+  # Every name the copy makes takes an inode on the target: rsync -a without
+  # -H makes a file of every hard-linked name and keeps a link a link, which
+  # is what du -l --inodes counts
+  _szIn=$(_mfs_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
+  read -r _iTot _iFree <<< "$(LC_ALL=C df -P -i -- "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  [[ "${_iTot}" =~ ^[0-9]+$ ]] \
+    || read -r _iTot _iFree <<< "$(LC_ALL=C df -P -i -- "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K, ${_szIn:-?} files) -> ${_dst} (target avail ${_avKB:-?}K, ${_iFree:-?} inodes free) and symlink"
   case "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" in
     none|'') ;;
     *) _log "PLAN: ${_label} ${_dst} is left from an earlier run: it is renamed aside and never copied into again, and it holds its space until removed" ;;
@@ -667,6 +674,18 @@ _relocate_dir() {
   if [ -n "${_szKB}" ] && [ -n "${_avKB}" ] && [ "${_avKB}" -lt "${_szKB}" ]; then
     _log "ERROR: ${_label} not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K); leaving real dir in place"
     return 0
+  fi
+  # And for its inodes: it must leave 2% of the target's inodes, at least
+  # 50,000, free, the headroom the copying tasks keep. A target with no inode
+  # count (btrfs) or a source du could not count is judged on bytes alone.
+  if [[ "${_szIn}" =~ ^[0-9]+$ && "${_iTot}" =~ ^[0-9]+$ && "${_iFree}" =~ ^[0-9]+$ ]] \
+    && [ "${_iTot}" -gt 0 ]; then
+    _iHead=$(( _iTot / 50 ))
+    [ "${_iHead}" -ge 50000 ] || _iHead=50000
+    if [ $(( _szIn + _iHead )) -gt "${_iFree}" ]; then
+      _log "ERROR: ${_label} not enough free inodes on ${_TARGET} (need ${_szIn} and ${_iHead} kept free, ${_iFree} free; every file takes one, df -i shows them); leaving real dir in place"
+      return 0
+    fi
   fi
 
   # Re-check the interlock right before we start writing.
