@@ -2637,7 +2637,7 @@ _wg_note() {
 }
 
 # A note that also goes into instgrp.log: why phase B waits, or what a run
-# at B left in www-data (the Octopus arm points at that log).
+# left in www-data (the Octopus arm points at that log).
 _wg_note_log() {
   _wg_note "$@"
   _log "${_WP_A}: $*"
@@ -3906,6 +3906,14 @@ _wg_sgid_sweep() {
   return "${_rc}"
 }
 
+# Phase A's exit 2: the walk ended with paths in www-data, written during
+# it, which the next run walks; said in a NOTE, the notes and instgrp.log,
+# where the Octopus arm's note points.
+_wg_a_left() {
+  _msg "NOTE: ${_WP_A}: www-data paths remain after the walk at phase A, written during it; the next run walks them"
+  _wg_note_log "phase A: paths in www-data remain after the walk at phase A, written during it; the next run walks them"
+}
+
 # The up leg, rows A0r A0g A0 A1 B0r B0g B0 B1. rc as the table's exit
 # column.
 _wg_leg_up() {
@@ -3937,7 +3945,7 @@ _wg_leg_up() {
   fi
   _wg_u7 || return 1
   if [ "${_D_T}" = "A" ]; then
-    [ "${_rw}" = "2" ] && return 2
+    [ "${_rw}" = "2" ] && { _wg_a_left; return 2; }
     return 0
   fi
   _wg_u8
@@ -4021,7 +4029,7 @@ _wg_leg_down() {
       return "${_t}"
     fi
     _wg_u7 || return 1
-    [ "${_rc}" = "2" ] && return 2
+    [ "${_rc}" = "2" ] && { _wg_a_left; return 2; }
     return 0
   fi
   if [ -n "$(_gid_of "${_WP_G}")" ] && [ "${_WM_G}" = "ours" ]; then
@@ -6808,11 +6816,12 @@ _wg_status() {
 # witness that fires, "ALRT <text>" or "NOTE <text>"; with --report a line
 # RESIDUE when the account carries a record and www-data is back in its
 # trio or store tops, and with --deep also anywhere in its private set (the
-# residue rule in full; only the B check also reads the attached stores
-# (_wg_b_beyond) whole; the nightly passes it and then runs instgrp
-# reclaim). With --own night the caller is the account's nightly pass: its
-# own hold (the nightly marker naming a process this run descends from) is
-# not a live hold here, and DR10 is read for this caller alone.
+# residue rule in full; only the B check and every run at B also read the
+# sites' stores no walk takes (_wg_b_beyond) whole; the nightly passes it
+# and then runs instgrp reclaim). With --own night the caller is the
+# account's nightly pass: its own hold (the nightly marker naming a
+# process this run descends from) is not a live hold here, and DR10 is
+# read for this caller alone.
 # webdrift --box: DR4 (a pool file naming a group getent does not resolve)
 # and DR6 (a stale web inventory while any record exists).
 
