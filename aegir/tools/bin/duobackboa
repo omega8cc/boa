@@ -1378,6 +1378,47 @@ _web_group_conv() {
   return 0
 }
 
+# The name the group held at gid $1 is renamed to for account $2 by a free
+# of its web group name (instgrp): <gid>-wgheld-<account>, cut to 32
+# characters. One text in instgrp, the nightly and the restore tools.
+_wg_free_aside() {
+  local _n="${1}-wgheld-${2}"
+  printf '%s\n' "${_n:0:32}"
+}
+
+# The held gid of account $1's free of its web group name while that free
+# is unfinished (a kill cut it short): its journal not done, and the rename
+# alone or a free that can still finish as instgrp reads it. Its paths in
+# that number are the free's walk to finish, which no claim takes; nothing
+# otherwise. With $2, the journal's state on one line instead. One text in
+# instgrp, the nightly and the restore tools.
+_wg_free_held() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _st _
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  read -r _s _h _n _ < "${_j}" || :
+  _h="${_h#held=}"
+  _n="${_n#new=}"
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
+  _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
+  if [ "${_g}" = "${_h}" ]; then
+    _st=stale
+  elif [ -z "${_g}" ] && [ "${_r}" = "${_h}" ]; then
+    _st=renamed
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+    _st=finish
+  else
+    _st=lost
+  fi
+  if [ -n "${2:-}" ]; then
+    printf '%s %s %s\n' "${_st}" "${_h}" "${_n}"
+  elif [ "${_st}" = "renamed" ] || [ "${_st}" = "finish" ]; then
+    printf '%s\n' "${_h}"
+  fi
+  return 0
+}
+
 # An account owns /data/disk/<oN> and /home/<oN>.ftp, so any name below
 # either can be a link, and a whole directory on the way can be one. Root
 # acts there only inside a directory it pinned by its physical path.
@@ -1667,12 +1708,17 @@ _acct_reclaim_restored() {
   [ -n "${_g}" ] || _g="users"
   # The account's own web group is where its web paths belong once it holds
   # one: its gid stays, numeric and only when it resolves (find refuses an
-  # unknown group name, and this claim discards find's errors).
+  # unknown group name, and this claim discards find's errors). So does the
+  # old number of a free of its name a kill cut short (_wg_free_held): its
+  # paths there are that free's walk to finish, never the account group's,
+  # where its pools would lose them.
   _wg=$(_web_group_state "${_a}" | cut -d' ' -f2)
   case "${_wg}" in
     ""|*[!0-9]*) ;;
     *) _x=( ! -gid "${_wg}" ) ;;
   esac
+  _wg=$(_wg_free_held "${_a}")
+  [[ "${_wg}" =~ ^[0-9]+$ ]] && _x+=( ! -gid "${_wg}" )
   if [ -d "${_r}" ]; then
     _d="${_r}"
     _w=(.)

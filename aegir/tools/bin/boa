@@ -4383,6 +4383,7 @@ _octopus_cleanup() {
           "/var/log/boa/instgrp-web.${_usEr}.notes.txt" \
           "/var/log/boa/instgrp-web.${_usEr}.procs.txt" \
           "/var/log/boa/instgrp-web.${_usEr}.sgid.txt" \
+          "/var/log/boa/instgrp-web.${_usEr}.sgid-held.txt" \
           "/var/log/boa/instgrp-web.${_usEr}.dr1.txt" \
           "/var/log/boa/manage-ltd-d9.${_usEr}.txt" \
           "/var/log/boa/manage-ltd-d9.${_usEr}.txt.next" \

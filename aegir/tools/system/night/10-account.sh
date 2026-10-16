@@ -2004,19 +2004,46 @@ _purge_hits_under_account() {
   done
 }
 
+### The name the group held at gid $1 is renamed to for account $2 by a
+### free of its web group name: <gid>-wgheld-<account>, cut to 32
+### characters. One text in instgrp, here and the restore tools.
+_wg_free_aside() {
+  local _n="${1}-wgheld-${2}"
+  printf '%s\n' "${_n:0:32}"
+}
+
 ### The held gid of account $1's free of its web group name while that free
-### is unfinished (a kill cut it short): its journal not done and the renamed
-### group, <gid>-wgheld-<account>, still at that gid. Its paths in that
-### number are the free's walk to finish (the next web verb's), never drift
-### to reclaim. Nothing otherwise. One text in instgrp and here.
+### is unfinished (a kill cut it short): its journal not done, and the
+### rename alone or a free that can still finish as instgrp reads it. Its
+### paths in that number are the free's walk to finish (the next web
+### verb's), never drift to reclaim. Nothing otherwise; with $2, the
+### journal's state on one line instead. One text in instgrp, here and the
+### restore tools.
 _wg_free_held() {
-  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _st _
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
-  read -r _s _h _ < "${_j}" || :
+  read -r _s _h _n _ < "${_j}" || :
   _h="${_h#held=}"
+  _n="${_n#new=}"
   [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
-  [ "$(getent group "${_h}-wgheld-${1}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || return 0
-  printf '%s\n' "${_h}"
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
+  _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
+  if [ "${_g}" = "${_h}" ]; then
+    _st=stale
+  elif [ -z "${_g}" ] && [ "${_r}" = "${_h}" ]; then
+    _st=renamed
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+    _st=finish
+  else
+    _st=lost
+  fi
+  if [ -n "${2:-}" ]; then
+    printf '%s %s %s\n' "${_st}" "${_h}" "${_n}"
+  elif [ "${_st}" = "renamed" ] || [ "${_st}" = "finish" ]; then
+    printf '%s\n' "${_h}"
+  fi
+  return 0
 }
 
 ### The account's own web group, before the site loop: its drift witnesses
