@@ -138,7 +138,7 @@ Contrib [F]orce[D]isabled
 Contrib [NA]:
 
  cache_backport ------------- [D6] --------- [S] [B] [NA]
- redis ---------------------- [D6-D10] ----- [S] [B] [NA]
+ redis ---------------------- [D6-D12] ----- [S] [B] [NA]
 
 Contrib [S]oft[E]nabled:
 
