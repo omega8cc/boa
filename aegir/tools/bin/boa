@@ -3520,6 +3520,21 @@ _purge_db_user_taken() {
   done
   return 1
 }
+# The account $1's aegir2boa state (/var/backups/a2b/$1, root's) parked in
+# the purge's own dir $2, beside its migration create marker; under a name
+# of its own when an earlier purge of the name parked one there. A later
+# account of the name must never read an import that was this one's as its
+# own (its dispatcher held, its daily alarm offering the revert). A link at
+# the name is never followed and stays.
+_boa_purge_a2b_park() {
+  local _s="/var/backups/a2b/${1}" _t="${2}/a2b"
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] && [ ! -L /var/backups/a2b ] || return 0
+  if [ -e "${_t}" ] || [ -L "${_t}" ]; then
+    _t="${2}/a2b.$(date +%y%m%d-%H%M%S).$$"
+  fi
+  mv -T -- "${_s}" "${_t}" && echo "parked the aegir2boa state of ${1} in ${_t}"
+}
+
 # Sets _PURGE_DBU (the proven names) and _PURGE_DBU_KEPT (each name or gap
 # with why it stays) for the account $1, and the server they live on.
 _purge_db_users_find() {
@@ -3958,6 +3973,8 @@ _octopus_cleanup() {
           /data/conf/${_usEr}_db_broker.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
+        # So does its aegir2boa import state, beside the create marker.
+        _boa_purge_a2b_park "${_usEr}" "${_zombie_dir}root"
         # So does its task dispatcher (live, or parked by an update pass):
         # the runner would keep starting tasks as the account's identity
         # while it is being removed.
