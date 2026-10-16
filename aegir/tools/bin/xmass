@@ -6615,7 +6615,8 @@ _xmass_sync_static_symlink_safe() {
 # naming the journal, while a free of the account's web group name is
 # unfinished here (_wg_free_unfinished): its paths may still sit in the old
 # number, which a leg would carry by that number; the account is named
-# again in the pass's last line (_XMASS_WG_SKIPPED). After a done free, the
+# again in the final error of the sync or the cutover (_XMASS_WG_SKIPPED,
+# _xmass_wg_skipped_says). After a done free, the
 # paths it left in the held gid are mapped by that number onto the web
 # group too (_wg_free_left). $1 = account.
 _xmass_set_gmap() {
@@ -6663,6 +6664,19 @@ _xmass_set_gmap() {
     esac
   fi
   _XMASS_GMAP="${_XMASS_GMAP}${_wgMap:+${_XMASS_GMAP:+,}${_wgMap}}"
+  return 0
+}
+
+# The accounts whose legs a free kept out this pass (_XMASS_WG_SKIPPED),
+# each with its journal, as the head of the pass's final error: the DENY of
+# each may sit far above the mailed tail of the pass log. Nothing when
+# there is none.
+_xmass_wg_skipped_says() {
+  local _oct _skip=""
+  for _oct in ${_XMASS_WG_SKIPPED}; do
+    _skip="${_skip:+${_skip}, }${_oct} (/etc/boa/control/instgrp-web.${_oct}.free.txt)"
+  done
+  [ -z "${_skip}" ] || printf '%s' "the legs of these accounts were skipped, a free of their web group name unfinished here: ${_skip}; "
   return 0
 }
 
@@ -13442,7 +13456,7 @@ _xmass_cmd_sync() {
   # the operator twice, which reads like two different passes.)
   _xmass_sync_shared
   _xmass_sync_solr
-  local _oct _skip=""
+  local _oct
   _XMASS_WG_SKIPPED=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
@@ -13455,12 +13469,7 @@ _xmass_cmd_sync() {
       _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
-      # the accounts a free kept out, by name and journal, first: the DENY
-      # of each may sit far above the mailed tail of the pass log
-      for _oct in ${_XMASS_WG_SKIPPED}; do
-        _skip="${_skip:+${_skip}, }${_oct} (/etc/boa/control/instgrp-web.${_oct}.free.txt)"
-      done
-      _die "${_skip:+the legs of these accounts were skipped, a free of their web group name unfinished here: ${_skip}; }a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
+      _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
     fi
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
     _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))
@@ -15062,6 +15071,7 @@ _xmass_cmd_cutover() {
   _xmass_sync_shared
   _xmass_sync_solr
   local _oct
+  _XMASS_WG_SKIPPED=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
@@ -15076,7 +15086,7 @@ _xmass_cmd_cutover() {
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before the write freeze"
   fi
 
   # Step 4: Wait for replica to fully catch up
@@ -15114,7 +15124,7 @@ _xmass_cmd_cutover() {
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "the final static/files transfer failed (see DENY above); cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)the final static/files transfer failed (see DENY above); cutover aborted before the write freeze"
   fi
 
   # Everything above this line is still recoverable: the source serves 503, but
