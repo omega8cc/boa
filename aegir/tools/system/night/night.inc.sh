@@ -1014,6 +1014,10 @@ _if_gen_goaccess() {
     # The name comes from a vhost file name the account controls: a host
     # name (or ALL) only, never a path, a glob or an option.
     [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 0
+    # owl.sh stages the night's log corpus once and plants .global.pid; a
+    # night it refused to (out of inodes) has none, and every report would
+    # then stage the whole corpus again on its own
+    [ -e "/var/www/adminer/access/archive/unzip/.global.pid" ] || return 0
     if [ -x "${_isWblgx}" ]; then
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait

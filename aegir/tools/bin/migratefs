@@ -121,6 +121,11 @@ After a successful relocation, run:
   autosymlink --batch-if-clean   (or wait for the nightly run)
 to convert each account's sites into the now-attached store. The nightly backups
 mover relocates backups + backup-exports onto the same filesystem.
+
+Exit status: 0 done, nothing to do, or deferred (run again later); 1 refused to
+start; 2 finished, with a store left in place by an ERROR (room on the target,
+a failed copy): the ERROR lines say which and why. The DRY plan names each store
+the apply would refuse for room.
 EOF
 }
 
@@ -185,8 +190,17 @@ _RECHECK_MAX_MB=$(( 10#${_RECHECK_MAX_MB} ))
 
 [ -d "${_LOG_DIR}" ] || mkdir -p "${_LOG_DIR}"
 
+# Every ERROR line of the run is also tallied in _MFS_ERRS: a relocation
+# runs its copy in a subshell (_mfs_in_real_dir), where no variable of the
+# run's own would see it. A run that left a store in place ends with 2.
+_MFS_ERRS=""
 _log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${_LOG_FILE}"
+  local _l
+  _l="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+  case "$*" in
+    ERROR:*) [ -n "${_MFS_ERRS}" ] && echo "${_l}" >> "${_MFS_ERRS}" ;;
+  esac
+  echo "${_l}" | tee -a "${_LOG_FILE}"
 }
 
 # An account owns /data/disk/<oN>, so static/ and every name in it can be a
@@ -515,6 +529,7 @@ _manage_single_lock() {
 # args (an argless unlock would leave the fd empty — the historical lock.inc
 # "ambiguous redirect" trap).
 _cleanup() {
+  [ -n "${_MFS_ERRS}" ] && rm -f -- "${_MFS_ERRS}"
   _mfs_hold_drop
   _mfs_unlock
   _mfs_work_drop
@@ -647,7 +662,7 @@ _mfs_drop_copy() {
 _relocate_dir() {
   local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
   local _src="${_par}/${_name}" _dpar="${_dst%/*}" _dname="${_dst##*/}"
-  local _szKB _avKB _ug _mode _rc _old _szIn _iTot _iFree _iHead
+  local _szKB _avKB _ug _mode _rc _old _szIn _iTot _iFree _iHead _short
 
   _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
   _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
@@ -665,27 +680,39 @@ _relocate_dir() {
     *) _log "PLAN: ${_label} ${_dst} is left from an earlier run: it is renamed aside and never copied into again, and it holds its space until removed" ;;
   esac
 
-  if [ "${_APPLY}" != "YES" ]; then
-    _mfs_plan_chain "${_dst}" "${_label}"
-    return 0
-  fi
-
-  # Space guard for the cross-FS copy (a safety net — the operator owns the call).
-  if [ -n "${_szKB}" ] && [ -n "${_avKB}" ] && [ "${_avKB}" -lt "${_szKB}" ]; then
-    _log "ERROR: ${_label} not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K); leaving real dir in place"
-    return 0
-  fi
-  # And for its inodes: it must leave 2% of the target's inodes, at least
-  # 50,000, free, the headroom the copying tasks keep. A target with no inode
-  # count (btrfs) or a source du could not count is judged on bytes alone.
-  if [[ "${_szIn}" =~ ^[0-9]+$ && "${_iTot}" =~ ^[0-9]+$ && "${_iFree}" =~ ^[0-9]+$ ]] \
+  # The room the cross-FS copy needs (a safety net, the operator owns the
+  # call): all of its bytes, and for its inodes 2% of the target's, at
+  # least 50,000, left free, the headroom the copying tasks keep. A target
+  # with no inode count (btrfs) or a source du could not count is judged on
+  # bytes alone; a figure no command gave lets the copy through with a
+  # warning, as the plan shows it with a '?'. The plan says what the apply
+  # would refuse.
+  _short=""
+  if [[ "${_szKB}" =~ ^[0-9]+$ && "${_avKB}" =~ ^[0-9]+$ ]] && [ "${_avKB}" -lt "${_szKB}" ]; then
+    _short="not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K)"
+  elif [[ "${_szIn}" =~ ^[0-9]+$ && "${_iTot}" =~ ^[0-9]+$ && "${_iFree}" =~ ^[0-9]+$ ]] \
     && [ "${_iTot}" -gt 0 ]; then
     _iHead=$(( _iTot / 50 ))
     [ "${_iHead}" -ge 50000 ] || _iHead=50000
     if [ $(( _szIn + _iHead )) -gt "${_iFree}" ]; then
-      _log "ERROR: ${_label} not enough free inodes on ${_TARGET} (need ${_szIn} and ${_iHead} kept free, ${_iFree} free; every file takes one, df -i shows them); leaving real dir in place"
-      return 0
+      _short="not enough free inodes on ${_TARGET} (need ${_szIn} and ${_iHead} kept free, ${_iFree} free; every file takes one, df -i shows them)"
     fi
+  fi
+
+  if [ "${_APPLY}" != "YES" ]; then
+    [ -n "${_short}" ] && _log "PLAN: ${_label} would be refused at --apply: ${_short}"
+    _mfs_plan_chain "${_dst}" "${_label}"
+    return 0
+  fi
+
+  if [ -n "${_short}" ]; then
+    _log "ERROR: ${_label} ${_short}; leaving real dir in place"
+    return 0
+  fi
+  [[ "${_szKB}" =~ ^[0-9]+$ && "${_avKB}" =~ ^[0-9]+$ ]] \
+    || _log "WARN: ${_label} the copy's size or the target's free space could not be read (${_szKB:-?}K, avail ${_avKB:-?}K); copying without the space check, as the plan showed"
+  if [[ "${_iTot}" =~ ^[0-9]+$ ]] && [ "${_iTot}" -gt 0 ] && ! [[ "${_szIn}" =~ ^[0-9]+$ ]]; then
+    _log "WARN: ${_label} the copy's files could not be counted within 15 minutes; copying without the inode check"
   fi
 
   # Re-check the interlock right before we start writing.
@@ -1191,6 +1218,7 @@ done
 # returned would carry on with the next step of a relocation, or the next
 # account, with the queue pause already released.
 trap _cleanup EXIT
+_MFS_ERRS="$(mktemp /run/migratefs.err.XXXXXXXX 2>/dev/null)" || _MFS_ERRS=""
 trap 'exit 1' INT TERM HUP
 
 # Enforce the SINGLE-/mnt-mount invariant fleet-wide. More than one attached
@@ -1330,7 +1358,10 @@ for _a in ${_accounts}; do
 done
 
 _log "------------------------------------------------------------------"
-if [ "${_APPLY}" = "YES" ]; then
+if [ "${_APPLY}" = "YES" ] && [ -n "${_MFS_ERRS}" ] && [ -s "${_MFS_ERRS}" ]; then
+  _log "[DONE] migratefs finished WITH ERRORS: $(grep -c . "${_MFS_ERRS}") step(s) left a store in place (the ERROR lines above); fix the cause and run again. For the stores that moved: run 'autosymlink --batch-if-clean' (or wait for the nightly run)."
+  exit 2
+elif [ "${_APPLY}" = "YES" ]; then
   _log "[DONE] migratefs finished. Next: run 'autosymlink --batch-if-clean' to convert sites into the attached store (or wait for the nightly run)."
 else
   _log "[DONE] migratefs DRY plan finished — re-run with --apply to perform the relocation."

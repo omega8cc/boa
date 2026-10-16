@@ -690,8 +690,10 @@ _incident_email_report() {
 }
 
 _incident_detection() {
-  # Array of errors to search for
+  # Array of errors to search for. A full filesystem (space or inodes) comes
+  # first: only the first match is mailed, and it explains the rest.
   declare -a _errors=(
+    "No space left on device"
     "urn:ietf:params:acme:error:unauthorized"
     "urn:ietf:params:acme:error:badNonce"
     "urn:ietf:params:acme:error:rateLimited"

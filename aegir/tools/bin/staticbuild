@@ -338,7 +338,7 @@ _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/E
 # release of its minor, so the line stops by itself the day that minor ships. Name
 # only a pre-release that carries every core security fix released so far, and
 # replace it at each new one; empty builds none.
-_CORE_PRERELEASE=""
+_CORE_PRERELEASE="12.0.0-beta2"
 # Dependency releases no distribution build may resolve, as root composer.json conflicts
 # (package:constraint, space-separated). twig/twig 3.30.0 breaks every page of the Drupal
 # 10 and 11 releases published before Drupal's own fix: compiled templates call Twig's
