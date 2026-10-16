@@ -231,18 +231,16 @@ _log_name() {
 # account's store: /data/disk/<account>/static/files/<site>/<type>, or the
 # same under a store migratefs put on attached storage,
 # /mnt/<mount>/files/<account>/static/files/<site>/<type>, where <mount>
-# (one directory or more) holds none named files or static: the stores
-# _store_files_dir accepts.
+# (one directory or more, plain names) holds none named files or static:
+# the stores _store_files_dir accepts. The account and site names are taken
+# as they are (a site directory is the account's to name).
 _is_store_site_dir() {
   local _p="${1}" _m
-  case "${_p}" in
-    *[!A-Za-z0-9._/-]*) return 1 ;;
-  esac
   [[ "${_p}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] && return 0
   [[ "${_p}" =~ ^(/mnt/.+)/files/[^/]+/static/files/[^/]+/(files|private)$ ]] || return 1
   _m="${BASH_REMATCH[1]}"
   case "${_m}/" in
-    */files/*|*/static/*) return 1 ;;
+    *[!A-Za-z0-9._/-]*|*/files/*|*/static/*) return 1 ;;
   esac
   return 0
 }
