@@ -894,22 +894,49 @@ verb sweeps again.
 An account frozen for a migration gets no web group: no Octopus pass,
 nightly or worker pass visits it. An aegir2boa db-import killed outright
 (SIGKILL, a crash, a reboot) leaves such a freeze behind, a
-`log/proxied.pid` of root's reading `A2B-IMPORT-FREEZE`. On an armed box
-that is no standby the worker removes that marker a day after it first
-sees it (its own stamp, `/var/log/boa/manage-ltd-freeze.oN.seen`, never
-the marker's date) while no `aegir2boa-stage2`, `xoct`, `xcopy`, `xmass`
-or `xtrim` runs, no process holds a file under `/var/backups/a2b/oN/`, no
-migration park stands and no relay record or proxy vhost is beside it,
-and says so once. The account then takes its passes again, its web group
-included, while its half-imported panel's task dispatcher stays held: as
-long as `/var/backups/a2b/oN/` shows the import unfinished, the Octopus
-pass writes and runs no dispatcher for it and BOA's agent pass moves a
-live one back into aegir2boa's hold. The worker names such an account
-every pass and mails once a day until the import is re-run
-(`aegir2boa-stage2 import --account oN --route db-import`) or reverted
-(`--revert-db-import`). Any other marker (one the account made, a relay
-record reading `COMPLETE`, one put by hand) stays as it is, and so does
-the freeze.
+`log/proxied.pid` of root's reading `A2B-IMPORT-FREEZE` (with a second
+line `verb=... pid=... pgid=...` from this release on).
+
+On an armed box that is no standby the worker removes that marker a day
+after it first sees it (its own stamp,
+`/var/log/boa/manage-ltd-freeze.oN.seen`, never the marker's date) while no
+root `aegir2boa-stage2`, `xoct`, `xcopy`, `xmass` or `xtrim` runs, no root
+process holds a file under `/var/backups/a2b/oN/`, no migration park stands
+and no relay record or proxy vhost is beside it, and says so once.
+
+Only root's processes count (a tenant sets its own command line). A pass
+that finds a migration of another account, or an xmass autosync, only puts
+the removal off, while one that finds the account's own import starts the
+day again. A one-line marker is removed only beside aegir2boa's state of
+this release (`/var/backups/a2b/oN/markers`) and none of an earlier
+release's in the account's tree (`log/a2b`, `src/a2b`,
+`undo/a2b-pre-import.sql`).
+
+The account then gets its nightly and worker passes again, while its
+half-imported control panel stays switched off: as long as
+`/var/backups/a2b/oN/` shows the import unfinished (the dispatcher it held,
+or step markers with neither the done marker nor the hand-back marker the
+import writes just before it returns the dispatcher), the octopus wrapper
+skips the account (an INFO line in an `all` run, an ALRT naming the
+account's own run) and no Octopus pass writes or runs its dispatcher.
+
+BOA's agent pass moves a live dispatcher back into aegir2boa's hold, and the
+nightly runs no task, queue sweep or setting on the panel and skips its
+migration-source sweep. The web group converts with the first Octopus pass
+after the import is finished or undone (`instgrp webconvert oN` converts it
+sooner).
+
+The worker mails once a day, from aegir2boa's own state whatever the
+account's tree holds, until the import is re-run (`aegir2boa-stage2 import
+--account oN --route db-import`) or reverted (`--revert-db-import`). That
+state counts only for the account it was made for (the uid and home
+`transfer` records beside it); `boa cleanup purge` parks it with the
+account.
+
+Any other marker (one the account made, a relay record reading
+`COMPLETE`, an earlier release's freeze, an aegir2boa freeze beside relay
+evidence, one put by hand) stays as it is, and so does the freeze; once
+the worker has seen it for a day it names it in a mail once a day.
 
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
