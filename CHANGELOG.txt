@@ -1375,7 +1375,10 @@
 
     * The database broker (boa-dbctl), still switched off, has a verb that
       settles a box's database logins with no ruling asked: baseline settle.
-      It records the server's own logins that are not in the baseline yet.
+      It records the server's own logins that are not in the baseline yet,
+      the master panel user's install-time row at 127.0.0.1 among them
+      where the master's own credential opens it (a box whose barracuda
+      passes were system passes only keeps that row).
       It takes the global privileges of a login no record names that exists
       only at the box's own hosts and defines no stored object, its grants
       saved first; one with a row at % or at any other host is left, as it

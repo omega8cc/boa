@@ -78,7 +78,7 @@ row and every stored object of the server and judges each one:
 
 | What | Belongs when |
 |---|---|
-| The server's own logins: `root` at `localhost`, `127.0.0.1`, `::1` and the box's own address; `aegir_root` at `localhost` and `%`; the master panel's database user at `localhost` and `%`; `mysql.session`, `mysql.sys`, `mysql.infoschema`, `percona.telemetry` and `debian-sys-maint` at `localhost` | proven, and kept in the box's baseline (below) |
+| The server's own logins: `root` at `localhost`, `127.0.0.1`, `::1` and the box's own address; `aegir_root` at `localhost` and `%`; the master panel's database user at `localhost`, `%` and `127.0.0.1` (the install makes that row, and only a full barracuda pass drops it); `mysql.session`, `mysql.sys`, `mysql.infoschema`, `percona.telemetry` and `debian-sys-maint` at `localhost` | proven, and kept in the box's baseline (below) |
 | An account's instance user and current panel user | at a host its logins use; while the account is not switched, proven by a login with the credential its own files hold |
 | An account's site users, and its panel's earlier database users | holding no global privilege |
 | A login no record names, holding no global privilege (an operator's own user, a test user) | accepted once into the baseline, by an operator or by `baseline settle` (below) |
