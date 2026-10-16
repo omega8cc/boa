@@ -133,6 +133,10 @@ _XMASS_RSYNC_RC=0
 _XMASS_GMAP=""
 _XMASS_UMAP=""
 
+### The accounts whose legs a pass skipped for an unfinished free of their
+### web group name (_xmass_set_gmap), named in the pass's last line.
+_XMASS_WG_SKIPPED=""
+
 ### The firewall half of the standby web hold (chain BOA_STANDBY_WEB, asserted
 ### by the nginx watchdog and csfpost.sh while the box is not promoted). One
 ### text, used verbatim by every site that removes the "this box was held" web
@@ -518,16 +522,39 @@ _wg_migration_notes() {
 
 # A free of account $1's web group name that a kill cut short (instgrp's
 # E1 route) is unfinished: its journal,
-# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
-# other than done. Until the account's next web verb finishes it, paths of
-# the account may still sit in the old number, which every leg would carry
-# by that number alone, so no migration of the account starts meanwhile.
-# Verbatim in xoct, xcopy and xmass.
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there and does not
+# read done (an empty or unreadable one included: never read as no free).
+# Until the account's next web verb finishes it, or drops a journal it
+# cannot finish from, paths of the account may still sit in the old
+# number, which every leg would carry by that number alone, so no
+# migration of the account starts meanwhile. Verbatim in xoct, xcopy and
+# xmass.
 _wg_free_unfinished() {
   local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
-  read -r _s _ < "${_j}" 2> /dev/null || :
-  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
+  { read -r _s _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ]
+}
+
+# The held gid of a done free of account $1's web group name while the
+# group it renamed still has that gid here, under its name or an earlier
+# version's (<gid>-wgheld): the paths its walk left in that number (an
+# immutable file, a hard link) are mapped by it onto the account's web
+# group there, as wg-<account> carried them before the free. The number is
+# the map's key: rsync reads a name that starts with a digit as a number
+# and stops. Nothing otherwise. Verbatim in xoct, xcopy and xmass.
+_wg_free_left() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  { read -r _s _h _ < "${_j}"; } 2> /dev/null || :
+  _h="${_h#held=}"
+  [ "${_s}" = "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  for _n in "${_h}-wgheld-${1}" "${_h}-wgheld"; do
+    [ "$(getent group "${_n:0:32}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || continue
+    printf '%s\n' "${_h}"
+    return 0
+  done
+  return 0
 }
 
 #
@@ -6587,15 +6614,19 @@ _xmass_sync_static_symlink_safe() {
 # a number, the caller skips the account's legs. So it does, with a DENY
 # naming the journal, while a free of the account's web group name is
 # unfinished here (_wg_free_unfinished): its paths may still sit in the old
-# number, which a leg would carry by that number. $1 = account.
+# number, which a leg would carry by that number; the account is named
+# again in the pass's last line (_XMASS_WG_SKIPPED). After a done free, the
+# paths it left in the held gid are mapped by that number onto the web
+# group too (_wg_free_left). $1 = account.
 _xmass_set_gmap() {
-  local _oct="$1" _dstGrp _dstWg _wgMap=""
+  local _oct="$1" _dstGrp _dstWg _wgMap="" _left
   _XMASS_GMAP=""
   [ "${_MODE}" = "LIVE" ] || return 0
   if [ "${2:-}" != "acct" ]; then
     if _wg_free_unfinished "${_oct}"; then
       _alrt "DENY: a free of the web group name of ${_oct} is unfinished here (/etc/boa/control/instgrp-web.${_oct}.free.txt); the legs of ${_oct} are skipped this pass"
-      _alrt "DENY: fix: its next Octopus pass finishes it, or 'instgrp webconvert ${_oct}' (which also completes its conversion), for a frozen account only once its freeze is recovered"
+      _alrt "DENY: fix: its next Octopus pass finishes it, or 'instgrp webconvert ${_oct}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid)"
+      _XMASS_WG_SKIPPED="${_XMASS_WG_SKIPPED:+${_XMASS_WG_SKIPPED} }${_oct}"
       return 1
     fi
     if [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ] \
@@ -6616,6 +6647,8 @@ _xmass_set_gmap() {
       _dstWg=www-data
     fi
     _wgMap="wg-${_oct}:${_dstWg}"
+    _left=$(_wg_free_left "${_oct}")
+    [ -n "${_left}" ] && _wgMap="${_wgMap},${_left}:${_dstWg}"
   fi
   if getent group "${_oct}" > /dev/null 2>&1; then
     _dstGrp=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_tgt}" \
@@ -10564,7 +10597,7 @@ _xmass_webgroup_gate() {
   ### account's legs, every other account is carried, and a dry sync says
   ### so in an ALRT; a cutover, init and prep-target leave no account behind.
   local _t="$1" _on_old="${2:-die}" _sync="${3:-}" _oct _conv="" _ans _fj="" _rc=0
-  local _fix="the account's next Octopus pass finishes it, or 'instgrp webconvert <account>' (which also completes the account's conversion), for a frozen account only once its freeze is recovered"
+  local _fix="the account's next Octopus pass finishes it, or 'instgrp webconvert <account>' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid)"
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _wg_free_unfinished "${_oct}" && _fj="${_fj} /etc/boa/control/instgrp-web.${_oct}.free.txt"
     case "$(_web_group_state "${_oct}" | cut -d' ' -f1)" in
@@ -13409,7 +13442,8 @@ _xmass_cmd_sync() {
   # the operator twice, which reads like two different passes.)
   _xmass_sync_shared
   _xmass_sync_solr
-  local _oct
+  local _oct _skip=""
+  _XMASS_WG_SKIPPED=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
@@ -13421,7 +13455,12 @@ _xmass_cmd_sync() {
       _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
-      _die "a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
+      # the accounts a free kept out, by name and journal, first: the DENY
+      # of each may sit far above the mailed tail of the pass log
+      for _oct in ${_XMASS_WG_SKIPPED}; do
+        _skip="${_skip:+${_skip}, }${_oct} (/etc/boa/control/instgrp-web.${_oct}.free.txt)"
+      done
+      _die "${_skip:+the legs of these accounts were skipped, a free of their web group name unfinished here: ${_skip}; }a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
     fi
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
     _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))

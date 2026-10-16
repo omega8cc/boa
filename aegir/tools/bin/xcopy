@@ -363,16 +363,39 @@ _wg_migration_notes() {
 
 # A free of account $1's web group name that a kill cut short (instgrp's
 # E1 route) is unfinished: its journal,
-# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
-# other than done. Until the account's next web verb finishes it, paths of
-# the account may still sit in the old number, which every leg would carry
-# by that number alone, so no migration of the account starts meanwhile.
-# Verbatim in xoct, xcopy and xmass.
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there and does not
+# read done (an empty or unreadable one included: never read as no free).
+# Until the account's next web verb finishes it, or drops a journal it
+# cannot finish from, paths of the account may still sit in the old
+# number, which every leg would carry by that number alone, so no
+# migration of the account starts meanwhile. Verbatim in xoct, xcopy and
+# xmass.
 _wg_free_unfinished() {
   local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
-  read -r _s _ < "${_j}" 2> /dev/null || :
-  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
+  { read -r _s _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ]
+}
+
+# The held gid of a done free of account $1's web group name while the
+# group it renamed still has that gid here, under its name or an earlier
+# version's (<gid>-wgheld): the paths its walk left in that number (an
+# immutable file, a hard link) are mapped by it onto the account's web
+# group there, as wg-<account> carried them before the free. The number is
+# the map's key: rsync reads a name that starts with a digit as a number
+# and stops. Nothing otherwise. Verbatim in xoct, xcopy and xmass.
+_wg_free_left() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  { read -r _s _h _ < "${_j}"; } 2> /dev/null || :
+  _h="${_h#held=}"
+  [ "${_s}" = "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  for _n in "${_h}-wgheld-${1}" "${_h}-wgheld"; do
+    [ "$(getent group "${_n:0:32}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || continue
+    printf '%s\n' "${_h}"
+    return 0
+  done
+  return 0
 }
 
 #
@@ -559,10 +582,12 @@ _xcopy_acct_gmap() {   # 1 account here 2 account on the target 3 target
 # holds a web group here, its legs map it onto the one the target's
 # writers give the target account (_XCOPY_GMAP): by name alone its paths
 # would land in a number that is no group there, or another account's;
-# an answer that cannot be read is refused, never guessed.
+# an answer that cannot be read is refused, never guessed. After a done
+# free, the paths it left in the held gid are mapped by that number onto
+# the same group (_wg_free_left).
 # A refusal is a DENY: the dry run is not clean, a live run stops.
 _xcopy_webgroup_gate() {   # 1 account here 2 account on the target 3 target
-  local _st _ans _wg
+  local _st _ans _wg _left
   _XCOPY_GMAP=""
   _st=$(_web_group_state "${1}" | cut -d' ' -f1)
   [ "${_st}" = "none" ] && return 0
@@ -587,6 +612,8 @@ _xcopy_webgroup_gate() {   # 1 account here 2 account on the target 3 target
     return 1
   fi
   _XCOPY_GMAP="wg-${1}:${_wg}"
+  _left=$(_wg_free_left "${1}")
+  [ -n "${_left}" ] && _XCOPY_GMAP="${_XCOPY_GMAP},${_left}:${_wg}"
   return 0
 }
 
@@ -4121,7 +4148,7 @@ _migrate_init() {
       exit 1
     elif _wg_free_unfinished "${_oct}"; then
       echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_oct}.free.txt)"
-      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_oct}' (which also completes the account's conversion), for a frozen account only once its freeze is recovered; re-run then"
+      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_oct}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid); re-run then"
       exit 1
     elif [ -e "${_USR}/log/proxied.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"
