@@ -2623,9 +2623,10 @@ _wg_r_remove() {
 
 # One line into root's notes file and, for an account, a printable copy
 # into its own log/web-group-notes.txt (put through the no-follow writer,
-# the newest 200 lines kept).
+# the newest 200 lines kept) and one where its main login reads them
+# (_wg_note_put_here).
 _wg_note() {
-  local _t _old
+  local _t _old _u
   _t="$(date '+%Y-%m-%d %H:%M:%S') $*"
   ( umask 077; printf '%s\n' "${_t}" >> "${_WP_NOTES}" ) 2> /dev/null
   [ "${_WP_M}" = "YES" ] && return 0
@@ -2633,7 +2634,28 @@ _wg_note() {
   _old=$(_ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_read_here web-group-notes.txt)
   _ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_put_here web-group-notes.txt \
     "$(printf '%s\n%s\n' "${_old}" "${_t}" | awk 'NF' | tail -n 200)" > /dev/null 2>&1
+  _u=$(id -u "${_WP_A}.ftp" 2> /dev/null)
+  if [[ "${_u}" =~ ^[0-9]+$ ]]; then
+    _ig_in_real_dir "/data/disk/${_WP_A}/static/control" _wg_note_put_here "${_u}" \
+      "$(tail -n 200 -- "${_WP_NOTES}" 2> /dev/null | tr -cd '[:print:]\n' | awk 'NF')" \
+      > /dev/null 2>&1
+  fi
   return 0
+}
+
+# The account's notes where its main login reads them, over SFTP and in
+# its shell: root's newest 200 lines, printable, as ./web-group-notes.txt
+# in the real static/control, the login's own (uid $1) and 0600, as they
+# name other accounts' stores. Made through one handle that never follows
+# a link and renamed over the name, so whatever stands there is replaced,
+# never opened; never read back from there. $2 = the lines.
+_wg_note_put_here() {
+  local _t="./.web-group-notes.txt.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  printf '%s\n' "${2}" | perl -e "${_ACCT_PUT_PL}" "${_t}" "${1}" -1 600 \
+    && mv -f -T -- "${_t}" ./web-group-notes.txt && return 0
+  rm -f -- "${_t}"
+  return 1
 }
 
 # A note that also goes into instgrp.log: why phase B waits, or what a run

@@ -214,6 +214,11 @@ Also available here
   run-sftp-password-update.pid — rotate your SSH/SFTP password; the
       new one appears here as new-<account>.ftp-password.txt
 
+  web-group-notes.txt — notes on your account's own web group (what
+      it left as it is, and what clears it: "phase B waits until
+      ..."), written by BOA and readable only by your main login
+      https://docs.boa.io/operating/security/per-instance-group
+
   run-php-fpm-reload.pid — graceful PHP-FPM reload, clears APCu
       (higher plans, or ask your host)
       https://docs.boa.io/using/caching/php-opcache-and-apcu

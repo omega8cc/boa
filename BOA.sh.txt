@@ -3057,7 +3057,7 @@ _update_agents() {
     # is named like this file's fetch marker: the fetcher takes it for
     # another serial's marker and would hold the unchanged readme an hour.
     rm -f "${_pthLog}/control-readme.txt.ctrl.${_tRee}."*".pid"
-    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f95 --mode 644
   fi
 
   # The queue template is fetched through _fetch_versioned, which holds a
@@ -5703,7 +5703,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f23 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f22 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f89 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
