@@ -414,16 +414,18 @@ web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
 it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
 the writers that must be current on the box, the stamp, and for each
 account whether it is ready and what would hold its phase B back, counted
-by kind (below).
+by kind (below), and the same for the master.
 
 A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
 limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
-`xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
-carries two tokens: `provision_drupal_web_group_private`, the branch that
-keeps its private files closed, and `provision_path_web_group`, which keeps
-a site outside the account's tree in `www-data` (see "What holds phase B
-back").
+`xcopy`, `xmass`, `aegir2boa-stage2`; for the worker its current form,
+where an earlier one raised an incident on every pass for an account at
+phase A whose site keeps its files store outside it), and the account's
+own provision copy carries two tokens:
+`provision_drupal_web_group_private`, the branch that keeps its private
+files closed, and `provision_path_web_group`, which keeps a site outside
+the account's tree in `www-data` (see "What holds phase B back").
 
 A box that is not ready refuses with exit 5, names what its check missed,
 and changes nothing. `webcheck --report` prints `provision: ready` for an
@@ -750,8 +752,9 @@ a group. This is why the readiness check asks for the copy that carries
 
 - `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
   account to phase A, exit 0. The account's notes
-  (`/var/log/boa/instgrp-web.oN.notes.txt`, and a copy in its own
-  `log/web-group-notes.txt`) name each path and what clears it.
+  (`/var/log/boa/instgrp-web.oN.notes.txt`, a copy in its own
+  `log/web-group-notes.txt` and one its main login reads, below) name
+  each path and what clears it, once a run.
 - `--phase-b` on an account below phase A takes it to A and stops there,
   exit 6. A run that stops before phase A is complete (the task queue not
   drained, exit 6) is finished by the same command run again. On an
@@ -783,19 +786,29 @@ a group. This is why the readiness check asks for the copy that carries
   store. The two accounts settle it between them; BOA does not move the
   files for them.
 - `instgrp webcheck --report` says `shares:  phase B held` for such an
-  account, with a count for each of the four kinds, without running a
-  conversion and without writing a note. For an account whose record
+  account, and for the master, with a count for each of the four kinds,
+  without running a conversion and without writing a note; `webstatus`
+  says the same on its own `shares:` line. For an account whose record
   already says phase B it says `phase B on record, not held` with the same
   counts: a layout made after phase B holds nothing back. A record left by
   a phase B rollback that could not finish (marked `rb=1`, below) still
   reads `phase B held`: the next run checks the layouts again.
 
+The account's main login cannot read `log/`, so each note also rewrites
+`~/static/control/web-group-notes.txt` from root's newest 200 lines: the
+main login's own file, mode 0600 (the notes name other accounts' stores),
+which it reads over SFTP and in its shell. Root writes it through one
+handle that never follows a link, in the real `static/control` only, and
+renames it over the name, so a link, a hard link or a FIFO put there is
+replaced and never opened; BOA never reads it back. The directory's
+`README.txt` names it. A migration carries neither copy (below).
+
 A share INTO the account's store never holds anything; both accounts are
-told (see `FILES-SYMLINK.md`) before the conversion's first write, again
-once its private side is done, and once more by a run that goes on toward
-phase B. When the account that owns the store converts, the reading site
-loses write there (and read on a private store), whatever the reading
-account's own state.
+told (see `FILES-SYMLINK.md`) once a run: before the conversion's first
+write where the run reads the share scan at its start, otherwise once its
+private side is done. When the account that owns the store converts, the
+reading site loses write there (and read on a private store), whatever
+the reading account's own state.
 
 ### The verbs
 
@@ -852,8 +865,10 @@ account's own state.
   it resolves walks the store and removes the group.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
-  and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
-  what differs, or `FOREIGN` (someone outside the account holds `wg-oN`).
+  and the record, what holds its phase B back (its `shares:` line, as
+  `webcheck --report` counts it), and a verdict: `NONE`, `A`, `B`,
+  `BETWEEN(...)` naming what differs, or `FOREIGN` (someone outside the
+  account holds `wg-oN`).
   A free of the account's held name left unfinished (its state and what
   finishes it) and each set-group-ID sweep a free left owed get a line of
   their own.
@@ -1057,7 +1072,9 @@ in any form included.
 
 They carry neither the intent nor the record, so a revert in progress, and
 a pin that is only in the intent (no `_WEB_GROUP=A` in the cnf), stay
-behind. The account converts on the target by that box's own settings, and
+behind; nor the account's notes, which name the source box's state: neither
+`log/web-group-notes.txt` nor `static/control/web-group-notes.txt`
+travels, and the target keeps its own. The account converts on the target by that box's own settings, and
 the tools print a NOTE naming the command to run there: "after its
 promotion" when the target is a standby, and a plain warning when the
 target is not armed, where nothing ever converts. See `MIGRATE-XOCT.md`
