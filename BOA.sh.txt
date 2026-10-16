@@ -809,19 +809,21 @@ _find_fast_mirror_early() {
 }
 
 #
-# Extract archive.
+# Extract archive. tar never keeps the owners the archive recorded: run by
+# root it would give each file that owner, by name or number, which can be
+# one of this box's accounts.
 _extract_archive() {
   if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf ${1}    ;;
-      *.tar.gz)    tar xzf ${1}    ;;
-      *.tar.xz)    tar xvf ${1}    ;;
+      *.tar.bz2)   tar --no-same-owner -xjf ${1} ;;
+      *.tar.gz)    tar --no-same-owner -xzf ${1} ;;
+      *.tar.xz)    tar --no-same-owner -xvf ${1} ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
       *.gz)        gunzip -q ${1}  ;;
-      *.tar)       tar xf ${1}     ;;
-      *.tbz2)      tar xjf ${1}    ;;
-      *.tgz)       tar xzf ${1}    ;;
+      *.tar)       tar --no-same-owner -xf ${1} ;;
+      *.tbz2)      tar --no-same-owner -xjf ${1} ;;
+      *.tgz)       tar --no-same-owner -xzf ${1} ;;
       *.zip)       unzip -qq ${1}  ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
@@ -929,16 +931,58 @@ _shared_module_update() {
       ;;
   esac
 }
+# The first entry of the module $1 under ${_Dir} (or of ./$1, the module in
+# the current directory, when ${_Dir} is empty), the name itself included,
+# that is a link, is not root's or is writable by its group or others,
+# found without following a link (an earlier release let an account own the
+# store, and its recursive chown made what the account left there root's);
+# nothing when every entry is root's alone or the module is not there.
+_shared_module_flagged() {
+  find -P "${_Dir:-.}/${1}" \( -type l -o \! -user 0 -o -perm /022 \) \
+    -print -quit 2> /dev/null
+}
 # A fetch of the shared module ${_Dir}/$1 is due: its stamp $2 is not
-# there, or an entry of the module, the name itself included, is a link, is
-# not root's or is writable by its group or others, found without following
-# a link (an earlier release let an account own the store, and its
-# recursive chown made what the account left there root's). Nothing is
+# there, or the module is flagged (_shared_module_flagged). Nothing is
 # trusted through a link. The fetch swaps the module out without following
-# a link; when the fetch fails, what is there stays until one succeeds.
+# a link; when the fetch fails and the module is flagged, an empty directory
+# takes its place (_shared_module_seal_here), otherwise what is there stays
+# until a fetch succeeds.
 _shared_module_stale() {
-  [ -n "$(find -P "${_Dir}/${1}" \( -type l -o \! -user 0 -o -perm /022 \) \
-    -print -quit 2> /dev/null)" ] || [ ! -e "${_Dir}/${1}/${2}" ]
+  [ -n "$(_shared_module_flagged "${1}")" ] || [ ! -e "${_Dir}/${1}/${2}" ]
+}
+# A flagged module that could not be fetched again is taken out of every
+# site's load path: an empty directory of root's takes its name in the
+# current (pinned) ${_Dir}, swapped in without following a link, and the
+# run says so in ${_pthLog}/shared-module.incident.log and by mail. BOA's
+# settings includes reach a module only through is_readable(), so the sites
+# fall back to their database cache until a fetch puts it back; the empty
+# directory has no stamp, so the next run fetches again, and being root's
+# alone it is never sealed twice.
+_shared_module_seal_here() {
+  local _nm="$1" _e _tmp _swp=NO _m
+  _e="$(_Dir="" _shared_module_flagged "${_nm}")"
+  [ -n "${_e}" ] || return 0
+  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
+  if mkdir -m 0755 -- "${_tmp}/${_nm}"; then
+    if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+      _swp=YES
+    elif mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null \
+      && mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+      _swp=YES
+    fi
+  fi
+  rm -rf -- "${_tmp}"
+  if [ "${_swp}" = "YES" ]; then
+    _m="ALRT: ${_nm} in ${_Dir} held ${_e#./} (a link, or not root's alone) and could not be fetched again: an empty directory took its place, sites use their database cache until the next fetch"
+  else
+    _m="ALRT: ${_nm} in ${_Dir} held ${_e#./} (a link, or not root's alone), could not be fetched again and could not be set aside"
+  fi
+  echo "${_m}"
+  [ -d "${_pthLog}" ] && echo "$(date) ${_m}" >> "${_pthLog}/shared-module.incident.log"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+    echo "${_m}" | s-nail -s "Shared module ${_nm} taken out of use on [${_hName:-$(hostname -f 2> /dev/null)}]" ${_MY_EMAIL} &> /dev/null
+  fi
+  return 0
 }
 # The fetch, unpack and swap in the current (pinned) ${_Dir}, run in a
 # subshell: 0 done, 2 not swapped in, 3 not fetched or unpacked, 1 no unpack
@@ -978,6 +1022,7 @@ _shared_module_update_here() {
     fi
   fi
   rm -rf -- "${_tmp}"
+  [ "${_rc}" = 0 ] || _shared_module_seal_here "${_nm}"
   return "${_rc}"
 }
 
@@ -2494,7 +2539,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f90
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f67
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f63
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f33
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f33
@@ -5181,7 +5226,7 @@ _if_reinstall_curl() {
       rm -rf /var/opt/curl*
       cd /var/opt
       wget ${_wgetGet} https://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+      tar --no-same-owner -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
         _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -5402,18 +5447,18 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f64 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f47 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f63 --guard duplicity
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f46 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f27 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f64 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f63 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
     # installer (no --patch-only arm yet) ran the whole dependency install.
     if [ -d "/root/.remote_backups/run" ]; then
-      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f32
+      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f31
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f45
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f44
@@ -5433,7 +5478,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f98 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f07 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f63 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f62 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f55 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
@@ -5483,7 +5528,7 @@ CSFSTANDBY
     _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
-      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f92 --guard /local/bin/weblogx
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f91 --guard /local/bin/weblogx
     else
       echo "The weblogx and owl.sh is running!"
     fi

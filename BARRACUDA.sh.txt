@@ -312,7 +312,7 @@ if ! declare -F _master_web_group_rb > /dev/null 2>&1; then
     # shellcheck disable=SC2086,SC2154
     ( cd /opt/tmp/boa-refetch \
       && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
-      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+      && tar --no-same-owner -xzf boa.tar.gz ) > /dev/null 2>&1
     if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
       && grep -q "^_master_web_group_rb() {" /opt/tmp/boa-refetch/boa/lib/functions/php.sh.inc 2> /dev/null; then

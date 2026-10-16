@@ -11350,7 +11350,7 @@ _other_sys_java21_install() {
     return 1
   fi
 
-  _mrun "tar -xzf ${_tmpDir}/${_tar} -C ${_optDir}"
+  _mrun "tar --no-same-owner -xzf ${_tmpDir}/${_tar} -C ${_optDir}"
 
   _real="${_optDir}/${_topDir}"
   if [ ! -x "${_real}/bin/java" ]; then

@@ -731,19 +731,21 @@ _detect_real_docroot() {
 _extract_archive() {
   # The extractor's own status (0 when it extracted), the archive removed
   # either way unless $2 is given. unzip's 1 and gunzip's 2 are warnings
-  # after a complete extract, so they read 0.
+  # after a complete extract, so they read 0. tar never keeps the owners
+  # the archive recorded: run by root it would give each file that owner,
+  # by name or number, which can be one of this box's accounts.
   local _xRc=0
   if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf ${1}    ;;
-      *.tar.gz)    tar xzf ${1}    ;;
-      *.tar.xz)    tar xvf ${1}    ;;
+      *.tar.bz2)   tar --no-same-owner -xjf ${1} ;;
+      *.tar.gz)    tar --no-same-owner -xzf ${1} ;;
+      *.tar.xz)    tar --no-same-owner -xvf ${1} ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
       *.gz)        gunzip -q ${1} || [ "$?" = "2" ] ;;
-      *.tar)       tar xf ${1}     ;;
-      *.tbz2)      tar xjf ${1}    ;;
-      *.tgz)       tar xzf ${1}    ;;
+      *.tar)       tar --no-same-owner -xf ${1} ;;
+      *.tbz2)      tar --no-same-owner -xjf ${1} ;;
+      *.tgz)       tar --no-same-owner -xzf ${1} ;;
       *.zip)       unzip -qq ${1} || [ "$?" = "1" ] ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;

@@ -651,6 +651,21 @@
       what another account placed there stays and is named on a NOTE
       line in the run's report.
 
+    * Archives root unpacks (the mirror's shared modules and bundles, the
+      sources Barracuda builds, the BOA tree itself, Java and Python
+      stages) never keep the owners they recorded: an archive recording a
+      name or number one of the box's accounts has no longer gives that
+      account files root builds and runs, or that every site loads.
+
+    * A shared module in /data/all/000/modules that is a link, or holds an
+      entry not root's alone, and cannot be fetched again is replaced by an
+      empty directory of root's with an alert, so no site keeps loading it;
+      sites use their database cache until the next fetch puts it back.
+
+    * Drupal 6's cache_backport is fetched like the redis modules, staged
+      and swapped in whole, and is no longer removed before every fetch:
+      a failed fetch at an upgrade no longer leaves Drupal 6 sites without it.
+
     * A platform Verify's ownership and permission fixes leave files
       another account's users own as they are, with everything below them,
       and count them on one line: in a Drupal platform's code, vendor and

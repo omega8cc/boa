@@ -164,7 +164,7 @@ _install_goaccess() {
   rm -rf /var/opt/goaccess*
   echo "Downloading from ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
   curl -I ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
-  curl ${_crlGet} "${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
+  curl ${_crlGet} "${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar --no-same-owner -xzf -
   cd /var/opt/goaccess-${_GOACCESS_VRN}
   bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=mmdb --with-getline
   make --quiet
