@@ -2798,7 +2798,7 @@ _d_dist_loop() {
   # required version 8.0"), one notice among hundreds in the task log --
   # omega8cc/boa#1943 came from such a box. Skip a requested Drupal 11
   # symbol here and say why; the probe is the one system.sh.inc uses for _DB_V.
-  local _d_db_v
+  local _d_db_v _d_php_new
   _d_db_v=$(mysql -V 2>&1 \
     | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
     | head -1 \
@@ -2848,8 +2848,20 @@ _d_dist_loop() {
       && [ "${_d_core%%.*}" -ge 12 ] \
       && { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; } \
       && { ! _d_php_ge "${_PHP_CLI_VERSION}" 8.5 || ! _d_php_ge "${_PHP_FPM_VERSION}" 8.5; }; then
-      _msg "NOTE! ${_dist} (${_d_name} ${_d_vers}) needs PHP 8.5 for the command line and the web; this instance runs ${_PHP_CLI_VERSION:-unknown} and ${_PHP_FPM_VERSION:-unknown}: skipped"
-      _msg "NOTE! Set this instance's ~/static/control/cli.info and fpm.info to 8.5, then run this again"
+      _msg "NOTE! ${_dist} (${_d_name} ${_d_vers}) needs PHP 8.5 or newer for the command line and the web; this instance runs ${_PHP_CLI_VERSION:-unknown} and ${_PHP_FPM_VERSION:-unknown}: skipped"
+      # A version this server lacks falls back to an older one, so name one it has
+      if [ -x "/opt/php85/bin/php" ]; then
+        _d_php_new=8.5
+      elif [ -x "/opt/php86/bin/php" ]; then
+        _d_php_new=8.6
+      else
+        _d_php_new=
+      fi
+      if [ -z "${_d_php_new}" ]; then
+        _msg "NOTE! No PHP 8.5 or 8.6 on this server: add 8.5 to _PHP_MULTI_INSTALL in /root/.barracuda.cnf and run barracuda first"
+      else
+        _msg "NOTE! Set this instance's ~/static/control/cli.info and fpm.info to ${_d_php_new} and remove any lower phpNN.info there (a marker overrides cli.info), then run this again"
+      fi
       continue
     fi
     if { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; } \

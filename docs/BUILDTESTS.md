@@ -34,7 +34,7 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
                                  # (PRODUCER=none: hand-published, nothing here rebuilds it; a tree that
                                  #  cannot be read is INCONCLUSIVE and exits non-zero, never "0 missing")
   staticbuild advisories [tree]  # read-only: audit the lock of every PUBLISHED catalogue platform
-                                 # (distributions and the Drupal 9-11 cores) against today's
+                                 # (distributions and the Drupal 9-12 cores) against today's
                                  # advisories, and list BOA's own non-Composer contrib (exits
                                  # non-zero only when something could not be audited)
 ```
@@ -179,8 +179,8 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   unreachable) marks the row `audit failed`, and the build still succeeds.
 - **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue
   entry of each published tree: the distributions (the list `staticbuild catalogue`
-  checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
-  (`DL9`, `DX*`, `DE*`, fetched from `core/`). It pulls `composer.lock` and
+  checks, fetched from `distro/`) and the Drupal 9, 10, 11 and 12 core platforms
+  (`DL9`, `DX*`, `DE*`, `DT*`, fetched from `core/`). It pulls `composer.lock` and
   `vendor/composer/installed.json` out of each published tarball's stream and audits
   them against today's advisories, since advisories keep arriving after a build.
 
