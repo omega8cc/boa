@@ -8590,7 +8590,15 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+  # reset-state only removes files (the migration stamps, the export's panel
+  # dump); abandon removes the export latch and the panel dump, lifts the 503
+  # gate export put on the account and takes its panel out of maintenance
+  # mode (a small database write); the policy table only reads. Refusing them
+  # on a full disk keeps the account's sites on 503, or its stale state in
+  # place, exactly when a stalled move is the likely reason the disk filled.
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-state" ] && [ "${_cmd}" != "abandon" ] \
+    && [ "${_cmd}" != "proxy-table" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -8599,7 +8607,10 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
-  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+  # Out of inodes is as full as out of space; the same verbs run.
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-state" ] && [ "${_cmd}" != "abandon" ] \
+    && [ "${_cmd}" != "proxy-table" ]; then
     echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
     echo "ERROR: We can not proceed until inode use is below 90/100"
     echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
@@ -9172,6 +9183,8 @@ case "$1" in
             _migrate_init
   ;;
   proxy-mode) _cmd="$1"
+            ### no mode named: the read-only policy table (see _check_root)
+            [ -z "$3" ] && [ -z "${_XOCT_MODE_FLAG}" ] && _cmd="proxy-table"
             _check_root
             _xoct_proxy_mode "$2" "$3"
   ;;
