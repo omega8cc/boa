@@ -802,8 +802,11 @@ main login's own file, mode 0600 (the notes name other accounts' stores),
 which it reads over SFTP and in its shell. Root writes it through one
 handle that never follows a link, in the real `static/control` only, and
 renames it over the name, so a link, a hard link or a FIFO put there is
-replaced and never opened; BOA never reads it back. The directory's
-`README.txt` names it. A migration carries neither copy (below).
+replaced and never opened; BOA never reads it back. When two runs note the
+same account at the same moment, the copy can be left with the older of
+their two reads of root's file until the next note rewrites it; root's file
+keeps every line. The directory's `README.txt` names it. A migration carries
+neither copy (below).
 
 A share INTO the account's store never holds anything; both accounts are
 told (see `FILES-SYMLINK.md`) once a run: before the conversion's first
@@ -829,9 +832,10 @@ the reading account's own state.
   `--phase-b` or `webrevert` lifts it. The migration tools carry it with the
   cnf (below), so a box the account moves to keeps it at A too.
 - `webconvert all` converts every account, in three rounds so each PHP
-  version is reloaded once. On a standby, and for an opted-out account
-  that has no web group yet, it refuses at once, without waiting for the
-  account's nightly pass.
+  version is reloaded once; an account that runs in two of them writes
+  each note once, as one run does. On a standby, and for an opted-out
+  account that has no web group yet, it refuses at once, without waiting
+  for the account's nightly pass.
 - `webrevert <oN>` goes back the whole way: phase B undone first, then A,
   then the group removed. It writes the opt-out first (over a pin), so the
   arm does not convert the account again; `--keep-enabled` writes none and
@@ -1078,11 +1082,11 @@ They carry neither the intent nor the record, so a revert in progress, and
 a pin that is only in the intent (no `_WEB_GROUP=A` in the cnf), stay
 behind; nor the account's notes, which name the source box's state: neither
 `log/web-group-notes.txt` nor `static/control/web-group-notes.txt`
-travels, and the target keeps its own. The account converts on the target by that box's own settings, and
-the tools print a NOTE naming the command to run there: "after its
-promotion" when the target is a standby, and a plain warning when the
-target is not armed, where nothing ever converts. See `MIGRATE-XOCT.md`
-and `MIGRATE-XMASS.md`.
+travels, and the target keeps its own. The account converts on the target by
+that box's own settings, and the tools print a NOTE naming the command to
+run there: "after its promotion" when the target is a standby, and a plain
+warning when the target is not armed, where nothing ever converts. See
+`MIGRATE-XOCT.md` and `MIGRATE-XMASS.md`.
 
 A box being prepared as an xmass standby carries `/root/.standby.prep.cnf`
 from `xmass prep-target` on: its accounts stay unconverted until the
