@@ -326,7 +326,7 @@ _if_reinstall_curl_src() {
       rm -rf /var/opt/curl*
       cd /var/opt
       wget ${_wgetGet} https://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+      tar --no-same-owner -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
         _SSL_BINARY=/usr/local/ssl3/bin/openssl
