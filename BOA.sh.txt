@@ -3449,6 +3449,19 @@ _update_agents() {
       _shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
     fi
   fi
+  # Drupal 12's Valkey integration (BOA's own redis 2.x line), refreshed but
+  # never created here: only where Octopus has made the o_contrib_twelve
+  # shelf, and only once the pin names a published tarball (empty: no box
+  # fetches it). The same version as OCTOPUS.sh.txt's _REDIS_W_VERSION.
+  _Dir="/data/all/000/modules"
+  _REDIS_W_VERSION=
+  if [ -n "${_REDIS_W_VERSION}" ] \
+    && [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -d "${_Dir}/o_contrib_twelve" ]; then
+    if _shared_module_stale redis_twelve "ver-${_REDIS_W_VERSION}.${_xSrl}.full.info"; then
+      _shared_module_update redis_twelve "${_REDIS_W_VERSION}"
+    fi
+  fi
   _fetch_failed_report "the agents pass"
 }
 
