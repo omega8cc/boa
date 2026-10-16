@@ -4584,24 +4584,61 @@ _satellite_db_broker_call() {
 # tool takes its own line back once the account's settings are merged, so
 # one still there a day after the account's create is a leftover: of a tool
 # from before that take-back, or of a create that ended early and was never
-# run again. It is taken back here, the exact line only, where the account
-# carries the create marker (/root/.<oN>.migration-create.txt, a regular
-# file of root's, not a link, older than a day) and the seed's note
-# (/root/.<oN>.dbctl-seed.txt) does not say the cnf held an operator's line
-# before; the note goes with it. An operator's _DB_BROKER_ARM=NO, which
-# nothing takes back, keeps the account out. One INFO line says so.
+# run again. It is taken back here, the exact line only, on an upgrade pass
+# (never an install's: no create marker is the new account's own yet),
+# where the account carries the create marker
+# (/root/.<oN>.migration-create.txt, a regular file of root's, not a link,
+# older than a day, read without following a link, its first 64 KiB) and
+# the marker names the account as it is now: its uid, and the inode and
+# birth time of /data/disk/<oN>, both numbers, as xoct's owner gate reads
+# them (a marker left from an earlier account of the name is not trusted).
+# The seed's note (/root/.<oN>.dbctl-seed.txt) must not say that the cnf
+# held its operator's line before (operator) or that the tool keeps its
+# line until the source's settings are merged (kept); the note goes with the
+# line. The cnf is rewritten in place, its inode and mode kept, from a copy
+# this run makes beside it, read as text (a crash can zero-fill a cnf's
+# tail): only where that copy is a regular file holding exactly the cnf's
+# lines but the ones taken, and the cnf is still the file it was read from;
+# otherwise nothing changes and a NOTE says so. One INFO line names the
+# migration. An operator's _DB_BROKER_ARM=NO, which nothing takes back,
+# keeps the account out.
 _satellite_db_broker_born_leftover() {
   local _c="/root/.${_USER}.octopus.cnf" _m="/root/.${_USER}.migration-create.txt"
-  local _n="/root/.${_USER}.dbctl-seed.txt"
+  local _n="/root/.${_USER}.dbctl-seed.txt" _t _mk _mu _mi _mh _mo _nu _ni _was _all _k _rc
+  [[ "${_STATUS}" != "INIT" ]] || return 0
   [[ -n "$(find "${_m}" -maxdepth 0 -type f -user root -mmin +1440 2> /dev/null)" ]] || return 0
-  [[ "$(cat "${_n}" 2> /dev/null)" != "operator" ]] || return 0
-  grep -qx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
-  grep -vx "_DB_BROKER_BORN=NO" "${_c}" > "${_c}.dbseed" 2> /dev/null
-  if [[ "$?" -le 1 ]] && cat "${_c}.dbseed" > "${_c}"; then
-    rm -f "${_n}"
-    _msg "INFO: database broker: _DB_BROKER_BORN=NO taken back from ${_c}: a migration's line, left a day after the account's create"
+  case "$(cat "${_n}" 2> /dev/null)" in
+    operator|kept) return 0 ;;
+  esac
+  grep -aqx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
+  _mk=$(timeout 10 dd if="${_m}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null)
+  _mu=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
+  _mi=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_INODE=' | cut -d= -f2-)
+  _nu=$(id -u "${_USER}" 2> /dev/null)
+  _ni=$(stat -c %i:%W "/data/disk/${_USER}" 2> /dev/null)
+  [[ "${_nu}" =~ ^[0-9]+$ && "${_mu}" == "${_nu}" ]] || return 0
+  [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ && "${_mi}" == "${_ni}" ]] || return 0
+  _t="${_c}.dbseed.$$"
+  rm -f -- "${_t}"
+  _was=$(stat -c %i:%s "${_c}" 2> /dev/null)
+  _all=$(grep -ac '' "${_c}" 2> /dev/null)
+  _k=$(grep -acx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null)
+  { grep -avx "_DB_BROKER_BORN=NO" "${_c}" > "${_t}"; } 2> /dev/null
+  _rc=$?
+  if [[ "${_rc}" -le 1 && -f "${_t}" && ! -L "${_t}" ]] \
+    && [[ "${_all}" =~ ^[0-9]+$ && "${_k}" =~ ^[0-9]+$ && -n "${_was}" ]] \
+    && [[ "$(grep -ac '' "${_t}" 2> /dev/null)" == "$(( _all - _k ))" ]] \
+    && [[ "$(stat -c %i:%s "${_c}" 2> /dev/null)" == "${_was}" ]] \
+    && cat "${_t}" > "${_c}"; then
+    rm -f -- "${_t}" "${_n}"
+    _mh=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+    _mo=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
+    [[ "${_mh}" =~ ^[a-z0-9.-]+$ && "${_mo}" =~ ^[a-z0-9._-]+$ ]] || { _mh="?"; _mo="?"; }
+    _msg "INFO: database broker: _DB_BROKER_BORN=NO taken back from ${_c}: the line of a migration of ${_mo} from ${_mh}, left a day after the account's create"
+  else
+    rm -f -- "${_t}"
+    _msg "NOTE: database broker: _DB_BROKER_BORN=NO could not be taken back from ${_c}: it stays, and the next pass tries again"
   fi
-  rm -f "${_c}.dbseed"
   return 0
 }
 
