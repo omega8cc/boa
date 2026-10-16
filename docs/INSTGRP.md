@@ -885,7 +885,9 @@ pin, the task queue not drained). Only `webrevert` and
 `--phase-a` ever lower an account; nothing else does, whatever it finds.
 
 The Octopus upgrade's note for an exit 2 or 5 points at
-`/var/log/boa/instgrp.log`, which names the reason.
+`/var/log/boa/instgrp.log`, which names the reason, phase A's exit 2
+(paths a writer left in `www-data` during the walk, which the next run
+walks) included.
 
 ### Intent and record
 
