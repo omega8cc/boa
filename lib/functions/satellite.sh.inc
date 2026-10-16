@@ -4437,12 +4437,16 @@ EOFMYSQL
 # moved account: such an account takes its state from its source), nor on
 # a replication standby or a box being prepared as one. The broker's own
 # checks decide, unforced; a refusal leaves the account on the direct path,
-# as every account is without the switch, and says why. An account the
-# broker does not serve (skipped) is said in one INFO line. On a box armed
-# for the broker (_satellite_if_db_broker) the box settles first, so the
-# new account's switch finds a settled box.
+# as every account is without the switch, and says why. A switch that
+# stopped part way (scope-failed) has each ALRT line of the broker's answer
+# relayed first, bounded and filtered as a pass's own call relays them
+# (_satellite_db_broker_call): the broker logs none of them, and one may say
+# what an operator must run. An account the broker does not serve (skipped)
+# is said in one INFO line. On a box armed for the broker
+# (_satellite_if_db_broker) the box settles first, so the new account's
+# switch finds a settled box.
 _satellite_db_broker_born() {
-  local _out _k
+  local _out _k _l _na=0
   [ "${_STATUS}" = "INIT" ] || return 0
   grep -qE "^_DB_BROKER_BORN_SCOPED=[\"']?YES[\"']?[[:space:]]*$" \
     /root/.barracuda.cnf 2> /dev/null || return 0
@@ -4472,6 +4476,18 @@ _satellite_db_broker_born() {
   elif [[ "${_out##*$'\n'}" == "ERR 7 not-released"* ]]; then
     _msg "NOTE: ${_USER} stays on the direct database path: tenant isolation is switched on by a later release"
   else
+    if [[ "${_out##*$'\n'}" == "ERR 7 scope-failed "* ]]; then
+      while IFS= read -r _l; do
+        case "${_l}" in
+          "ALRT: "*)
+            [[ "${_na}" -lt 20 ]] || continue
+            _na=$(( _na + 1 ))
+            _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
+            _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
+            ;;
+        esac
+      done <<< "${_out}"
+    fi
     _msg "ALRT: ${_USER} is not switched to the database broker: ${_out##*$'\n'}"
     _msg "ALRT: boa-dbctl scope ${_USER} plan says why"
   fi
