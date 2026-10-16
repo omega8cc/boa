@@ -4312,8 +4312,13 @@ _pair_class() {
           fi
           ;;
         MASTER)
+          # at 127.0.0.1 too: the install makes the master panel's row
+          # there, and a box whose barracuda passes were system passes only
+          # keeps it (a full pass's master step drops it); proven as every
+          # own login is, by the credential the master's own record holds
+          # opening that very row
           case "${_h}" in
-            localhost|%) _PC_K="SYSPIN" ;;
+            localhost|%|127.0.0.1) _PC_K="SYSPIN" ;;
             *) _PC_K="SYSRULE" ;;
           esac
           ;;
