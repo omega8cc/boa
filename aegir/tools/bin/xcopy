@@ -1855,32 +1855,49 @@ _xcopy_dbctl_cnf_last() {
 # the passes read it (the file made, root 0600, when absent), a
 # _DB_BROKER_ARM line in any form removed where it does not. Only while the
 # name is free there, as the web group's seed above. What was written is
-# taken back when the install does not happen. A copy carries no switch: one
-# not kept out is switched by an armed target as any new account is. The
-# cnf there is read as text: a NUL byte costs no line of it.
+# taken back when the install does not happen, unless the launcher made the
+# account before it failed (that copy keeps the source's NO, as xoct's seed
+# stays in an account that was made); a line of the key the seed replaced
+# or removed of the target's own cnf comes back with it: the seed's answer
+# names those lines (made, line or removed, then the lines), and the unseed
+# hands them back. A copy carries no switch: one not kept out is switched by
+# an armed target as any new account is. The cnf there is read as text: a
+# NUL byte costs no line of it.
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_DBA_SEED=""
+_XCOPY_DBA_WAS=""
 _xcopy_dbarm_seed() {
-  local _v=-
+  local _v=- _out
   _XCOPY_DBA_SEED=""
+  _XCOPY_DBA_WAS=""
   [ "$(_xcopy_dbctl_cnf_last "/root/.${1}.octopus.cnf" _DB_BROKER_ARM)" = "NO" ] && _v=NO
   # the names expand here on purpose: the remote side gets them as text
   # shellcheck disable=SC2029
-  _XCOPY_DBA_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
+  _out=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
     _c=/root/.${2}.octopus.cnf
     _re='^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM='
     if [ ${_v} = NO ]; then
       if [ ! -e \${_c} ]; then
         ( umask 077; printf '_DB_BROKER_ARM=NO\\n' > \${_c} ) && echo made
-      elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ]; then
-        grep -avE \"\${_re}\" \${_c} > \${_c}.dbaseed
-        printf '_DB_BROKER_ARM=NO\\n' >> \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c} && echo line
+        exit 0
       fi
-    elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
-      grep -avE \"\${_re}\" \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
-    fi" 2> /dev/null)
+      [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ] || exit 0
+      _w=line
+    else
+      [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c} || exit 0
+      _w=removed
+    fi
+    _was=\$(grep -aE \"\${_re}\" \${_c})
+    grep -avE \"\${_re}\" \${_c} > \${_c}.dbaseed
+    if [ \$? -le 1 ]; then
+      [ \${_w} = removed ] || printf '_DB_BROKER_ARM=NO\\n' >> \${_c}.dbaseed
+      mv -f \${_c}.dbaseed \${_c} && printf '%s\\n' \${_w} \"\${_was}\"
+    fi
+    rm -f \${_c}.dbaseed" 2> /dev/null)
+  _XCOPY_DBA_SEED="${_out%%$'\n'*}"
+  [[ "${_out}" == *$'\n'* ]] && _XCOPY_DBA_WAS="${_out#*$'\n'}"
   case "${_XCOPY_DBA_SEED}" in
-    made|line) echo "INFO: the source's _DB_BROKER_ARM=NO put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
+    made|line) echo "INFO: the source's opt-out of the database broker put into /root/.${2}.octopus.cnf on ${3} before its install (_DB_BROKER_ARM=NO)" ;;
   esac
   return 0
 }
@@ -1889,15 +1906,25 @@ _xcopy_dbarm_unseed() {
   case "${_XCOPY_DBA_SEED}" in
     made)
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_ARM=NO' ] && rm -f \${_c}" 2> /dev/null
+      ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+        _c=/root/.${1}.octopus.cnf
+        [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_ARM=NO' ] && rm -f \${_c}" 2> /dev/null
       ;;
-    line)
-      # the seed left its own line as the only _DB_BROKER_ARM one
+    line|removed)
+      # the seed left its own line as the only _DB_BROKER_ARM one, or none;
+      # what it replaced or removed goes back, from this side's input
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}" 2> /dev/null
+      { [ -z "${_XCOPY_DBA_WAS}" ] || printf '%s\n' "${_XCOPY_DBA_WAS}"; } \
+        | ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+        _c=/root/.${1}.octopus.cnf
+        [ -e \${_c} ] || exit 0
+        grep -avE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c} > \${_c}.dbaseed
+        [ \$? -le 1 ] && cat >> \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
+        rm -f \${_c}.dbaseed" 2> /dev/null
       ;;
   esac
   _XCOPY_DBA_SEED=""
+  _XCOPY_DBA_WAS=""
   return 0
 }
 
