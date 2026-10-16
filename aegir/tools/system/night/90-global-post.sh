@@ -1271,10 +1271,16 @@ _migrate_source_sweep_all() {
 # to it or its registry is in use: what a switched account or its panel
 # users hold beyond their own databases, a database of one without the
 # account's grant, a grant on the registry itself, and reservations nothing
-# used (let go). Its ALRT lines go into this night's log. A box with
-# neither runs nothing here, so the broker writes no log line there.
+# used (let go). Its ALRT lines name logins and hosts an account chose, so
+# they go to /var/log/boa/dbctl-witness.txt (root only, rewritten each
+# night), and this night's log gets only the witness's last line (its OK or
+# ERR line), how many ALRT lines it said and that path: no such name reaches
+# the night's incident scan. Where that file cannot be written the witness
+# runs all the same, its lines discarded, and the night's log says so. A box
+# with neither runs nothing here, so the broker writes no log line there.
 _dbctl_witness() {
-  local _f _on=NO
+  local _f _on=NO _out _rc _l _na _keep=YES
+  local _wit="/var/log/boa/dbctl-witness.txt"
   [ -x "/usr/local/bin/boa-dbctl" ] || return 0
   for _f in /data/conf/*_db_broker.txt; do
     [ -e "${_f}" ] || [ -L "${_f}" ] || continue
@@ -1284,8 +1290,24 @@ _dbctl_witness() {
   [ -d "/var/lib/mysql/boa_dbreg" ] && _on=YES
   [ "${_on}" = "YES" ] || return 0
   echo "dbctl-witness: start"
-  /usr/local/bin/boa-dbctl witness 2>&1
-  echo "dbctl-witness: done rc=$?"
+  mkdir -p /var/log/boa
+  rm -f -- "${_wit}" 2> /dev/null
+  ( umask 077; : > "${_wit}" ) 2> /dev/null || _keep=NO
+  _out=$(/usr/local/bin/boa-dbctl witness 2>&1 < /dev/null)
+  _rc=$?
+  [ "${_keep}" = "YES" ] && printf '%s\n' "${_out}" > "${_wit}"
+  _na=$(printf '%s\n' "${_out}" | grep -c '^ALRT')
+  _l="${_out##*$'\n'}"
+  case "${_l}" in
+    "OK "*|"ERR "*) ;;
+    *) _l="no answer line" ;;
+  esac
+  printf 'dbctl-witness: %s\n' "$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)"
+  if [ "${_keep}" = "YES" ]; then
+    echo "dbctl-witness: done rc=${_rc}, alerts=${_na}, the whole witness in ${_wit}"
+  else
+    echo "dbctl-witness: done rc=${_rc}, alerts=${_na}, ${_wit} not writable, the witness not kept"
+  fi
 }
 
 # The value the last assignment of setting $2 in cnf $1 gives it, read as
