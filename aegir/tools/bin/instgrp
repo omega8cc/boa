@@ -130,10 +130,11 @@
 #               _WEB_GROUP=NO into the account's cnf first, over a pin
 #               (--keep-enabled writes none and keeps the pin). The only
 #               verb besides --phase-a that lowers.
-#   webstatus   every trait, the intent and the record, the verdict.
+#   webstatus   every trait, the intent and the record, what holds phase B
+#               back (as webcheck --report counts it), the verdict.
 #   webcheck    the web-group writers, the stamp; --report adds each account's
-#               readiness and what holds its phase B back, counted by kind
-#               (read only: no notes written).
+#               readiness and what holds its phase B back, counted by kind,
+#               and the master's (read only: no notes written).
 #   webdrift    the drift witnesses the limited-shell worker and the nightly
 #               read: one ALRT or NOTE line per witness that fires; the
 #               nightly passes --own night, so its own hold of the account
@@ -290,8 +291,9 @@ Usage:
            every account (phase B with --phase-b, a pinned one to A).
   webrevert   back to www-data; writes _WEB_GROUP=NO first unless
            --keep-enabled.
-  webstatus   traits, intent, record and verdict of the web group.
-  webcheck    the web-group writers and the arm stamp; --report per account.
+  webstatus   traits, intent, record, what holds phase B back, and verdict.
+  webcheck    the web-group writers and the arm stamp; --report per account
+           and for the master.
   webdrift    the drift witnesses of one account, the master, or (--box) the
            box; read-only, one ALRT or NOTE line each. --own night: run
            from the account's nightly pass, whose own hold does not count
@@ -6767,6 +6769,9 @@ _wg_status() {
     esac
   fi
   _msg "record:   ${_WR_PH:-absent}${_WR_RB:+}${_rb:+ (rb=1: ${_rb})}"
+  # what holds phase B back, as webcheck --report says it; in a subshell,
+  # as it measures again what the lines below print
+  ( _wg_shares_line "shares:   " )
   _msg "members:  $( [ "${_WM_L}" = "YES" ] && echo complete || echo incomplete )"
   _msg "www-data: $(case "${_WM_W}" in 0) echo every tenant identity listed ;; 1) echo some listed ;; 2) echo "the account's own user out" ;; 3) echo none listed ;; esac)"
   _msg "pools:    line in a pool file=${_WM_PF} on every version=${_WM_PALL}"
@@ -7134,6 +7139,27 @@ _wg_drift_box() {
 
 # ---- webcheck ----------------------------------------------------------------------
 
+# The profile's grounds of the share and store gate, read silently (no
+# note written), on one line after the label $1: phase B held by them, or
+# on record and not held once the record says a plain B (one left by a
+# rollback cut short carries the token and commits nothing: the next run
+# is held at the B check), or no outbound share. It measures the group and
+# reads the record as it goes.
+_wg_shares_line() {
+  if _WG_SHARE_MODE=silent _wg_g_share; then
+    _wg_m_g
+    _wg_r_read
+    if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" != "YES" ]; then
+      _msg "${1}phase B on record, not held: $(_wg_grounds) (a conversion run names them in ${_WP_NOTES})"
+    else
+      _msg "${1}phase B held: $(_wg_grounds) (phase A only, $(_wg_grounds_left); a conversion run names them in ${_WP_NOTES})"
+    fi
+  else
+    _msg "${1}no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
+  fi
+  return 0
+}
+
 _wg_check() {
   local _t _p _tok _rc=0 _a
   for _t in ${_WG_INVENTORY} ${_WG_MINVENTORY}; do
@@ -7161,27 +7187,20 @@ _wg_check() {
     _msg "phase B: the arm stops at A (_WEB_GROUP_PHASE_B is not YES)"
   fi
   [ "${_WG_REPORT}" = "YES" ] || return "${_rc}"
-  for _a in $(_all_accounts); do
+  for _a in $(_all_accounts) aegir; do
     _wg_profile "${_a}"
     _msg "== ${_a}"
+    # the master: no per-instance group, policy or provision copy of its
+    # own to read here, only its grounds
+    if [ "${_WP_M}" = "YES" ]; then
+      _wg_shares_line "shares:  "
+      continue
+    fi
     if _wg_g_v1; then _msg "v1:      converted"; else _msg "v1:      NOT converted (instgrp convert ${_a})"; fi
     if _wg_g_optout; then _msg "opt-out: _WEB_GROUP=NO"; fi
     if _wg_g_v1_optout; then _msg "opt-out: _INSTANCE_GROUP=NO"; fi
     if _wg_g_pinned; then _msg "pin:     _WEB_GROUP=A (phase A only)"; fi
-    if _WG_SHARE_MODE=silent _wg_g_share; then
-      # a ground holds nothing back once the record says a plain B (one
-      # left by a rollback cut short carries the token and commits nothing:
-      # the next run is held at the B check)
-      _wg_m_g
-      _wg_r_read
-      if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" != "YES" ]; then
-        _msg "shares:  phase B on record, not held: $(_wg_grounds) (a conversion run names them in ${_WP_NOTES})"
-      else
-        _msg "shares:  phase B held: $(_wg_grounds) (phase A only, $(_wg_grounds_left); a conversion run names them in ${_WP_NOTES})"
-      fi
-    else
-      _msg "shares:  no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
-    fi
+    _wg_shares_line "shares:  "
     if [[ "$(_ig_in_real_dir "/data/disk/${_a}/.drush/sys/provision/platform" _ig_read_here provision_drupal.drush.inc)" != *"${_WG_PROV_TOKEN}"* ]]; then
       _msg "provision: its copy lacks ${_WG_PROV_TOKEN}"
     elif [[ "$(_ig_in_real_dir "/data/disk/${_a}/.drush/sys/provision" _ig_read_here provision.inc)" != *"${_WG_PROV_PATH_TOKEN}"* ]]; then
