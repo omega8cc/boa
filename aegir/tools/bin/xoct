@@ -4932,11 +4932,15 @@ _xoct_wg_unseed() {
 ### Once they are merged and the source's switch is carried, the line is
 ### taken back (_xoct_dbctl_seed_back), under xmass too, so the target's
 ### later passes treat the account as any other of the box. A merge that
-### failed leaves the line where it is, and says so: without the source's
-### settings the target cannot know an account its source kept out.
+### failed leaves the line where it is, the note saying kept, and says so:
+### without the source's settings the target cannot know an account its
+### source kept out. The next merge that succeeds takes it back, a create's
+### or a live transfer's, each of which runs the take-back with its own
+### merge's result.
 ### The seed says what it did in a root-only note beside the cnf there,
 ### /root/.<account>.dbctl-seed.txt, one word: made (the cnf made for the
-### line), line (the line added to a cnf that was there) or operator (the
+### line), line (the line added to a cnf that was there), kept (either, the
+### take-back waiting for a merge that succeeds) or operator (the
 ### cnf already assigns _DB_BROKER_BORN at the start of a line, the one
 ### spelling the install keeps in a cnf it did not write: nothing is added,
 ### and that line is its operator's for good; an export or an indented
@@ -4960,7 +4964,7 @@ _xoct_dbctl_seed() {
     _w=\$(cat \${_n} 2> /dev/null)
     case \${_w} in
       operator) grep -aq '^_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
-      made|line) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
+      made|line|kept) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
     esac
     _w=
     if [ ! -e \${_c} ]; then
@@ -5004,10 +5008,14 @@ _xoct_dbctl_seed_back() {
   _r=$(ssh root@"${2}" "_c=/root/.${1}.octopus.cnf
     _n=/root/.${1}.dbctl-seed.txt
     case \"\$(cat \${_n} 2> /dev/null)\" in
-      made|line) ;;
+      made|line|kept) ;;
       *) echo none; exit 0 ;;
     esac
-    [ '${3}' = 0 ] || { echo kept; exit 0; }
+    if [ '${3}' != 0 ]; then
+      ( umask 077; printf 'kept\\n' > \${_n} )
+      echo kept
+      exit 0
+    fi
     grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
     [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
     rm -f \${_c}.dbseed
@@ -5016,10 +5024,19 @@ _xoct_dbctl_seed_back() {
     none|back) ;;
     kept)
       echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}"
-      echo "ALRT: a re-run of this create takes it back once it has merged them"
+      echo "ALRT: a re-run of this create, or the next live transfer, takes it back once it has merged them"
+      ;;
+    failed)
+      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt"
       ;;
     *)
-      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt"
+      # no answer: only the note there says whether the line is the tool's
+      if [ "${3}" = 0 ]; then
+        echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: it gave no answer; where /root/.${1}.dbctl-seed.txt there reads made, line or kept, remove that line there, and that note"
+      else
+        echo "ALRT: the source's settings were not merged and ${2} gave no answer: where /root/.${1}.dbctl-seed.txt there reads made, line or kept, _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf there"
+        echo "ALRT: a re-run of this create, or the next live transfer, takes it back once it has merged them"
+      fi
       ;;
   esac
   _XOCT_DBCTL_SEED=""
@@ -7902,6 +7919,8 @@ _migrate_init() {
           # before cutover. Never in DRY -- these mutate the target. The PHP
           # coverage gate re-runs first, because the pins forced by the
           # static pass above must never name a version the target lacks.
+          # A broker line a create kept for a merge that failed goes with
+          # the first merge that succeeds.
           if [ "${_MODE}" = "LIVE" ]; then
             if ! _xoct_php_coverage_gate "${_USR}" "${_tgt}"; then
               echo "ERROR: ${_cmd} for ${_oct}: target PHP coverage failed AFTER the file sync;"
@@ -7909,6 +7928,8 @@ _migrate_init() {
               exit 1
             fi
             _xoct_push_target_octopus_cnf "${_oct}" "${_DST_ACCT}" "${_tgt}"
+            _XFER_CNF_MERGED=$?
+            _xoct_dbctl_seed_back "${_DST_ACCT}" "${_tgt}" "${_XFER_CNF_MERGED}"
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
           fi
 
