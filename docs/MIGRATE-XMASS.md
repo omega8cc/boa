@@ -1398,8 +1398,19 @@ An account added later that is missing on the target fails the pass loudly
 An account whose free of a held web group name is unfinished (see
 `INSTGRP.md`) has its legs skipped by every pass, manual or automated,
 with a DENY naming the journal; the shared legs and every other account
-are still carried and the pass ends non-zero, so it alarms. The account's
-next Octopus pass, or `instgrp webconvert oN`, finishes the free.
+are still carried and the pass ends non-zero, its last line naming the
+skipped accounts and their journals, so it alarms. The account's next
+Octopus pass, or `instgrp webconvert oN` (which also converts the account
+and lifts a `_WEB_GROUP=NO` opt-out), finishes the free once no `xmass`,
+`xoct` or `xcopy` run is live on the box: a free waits while an autosync
+pass runs, and for a frozen account (`log/proxied.pid`, a relayed
+account included) it waits as long as the freeze, so such an account's
+legs stay skipped meanwhile.
+
+After a free is done, the paths it left in the old number (an immutable
+file, a hard link) are mapped by that number onto the account's web group
+on the target, as long as the renamed group keeps the number on the
+source.
 
 **Every pass, before any bytes move,** the run re-verifies the whole state
 and prefers doing nothing over doing the wrong thing:

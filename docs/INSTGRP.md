@@ -585,7 +585,11 @@ and finishes one a kill cut short: the next run of a web verb of the
 account completes it from the journal, as long as the renamed group still
 has the old number or `wg-oN` has the number the journal gave it (the
 walk from the old number, the account's identities taken out of every
-group of that number).
+group of that number). Every repair of a free is made under the
+account's hold: a run that cannot take it leaves the free to the run that
+holds it, which finishes or mends it. A free whose rename is put back
+while it runs (by hand, say) stops with its alarm, takes nothing out of
+any group and leaves no journal.
 
 Until then `reclaim`, `convert`, the nightly's probe and a root-run
 restore's re-group leave the paths still in the old number alone, as the
@@ -595,9 +599,18 @@ before the free) and otherwise skips the account, exit 4, with an alarm.
 A rename alone that an earlier version left under the name it gave the
 renamed group, `<gid>-wgheld`, is put back the same way, by `reclaim` and
 by a web verb alike; the web verb then frees the name as described above.
+That name does not name the account: where another account's free journal
+names the same number (two group entries that shared it), the group is
+left as it is and alarmed, and the journal stays until that is settled by
+hand. A free of such a group that can still finish (`wg-oN` made on
+another number) is finished like any other, root's record kept where it
+names that number already.
 A journal nothing can finish from (the renamed group removed, renamed or
 renumbered while `wg-oN` is gone or on another number) is dropped with an
-alarm that names it, by `reclaim` and by a web verb alike.
+alarm that names it, by `reclaim` and by a web verb alike. So is a journal
+that is not done and names no old number, or cannot be read (a hand's
+edit, damage): until then `webstatus` and `webdrift` show it, and the
+migration tools count it unfinished.
 
 Each journal `reclaim` or a web verb removes, dropped, put back or one
 whose rename never happened, leaves its line in
@@ -616,23 +629,31 @@ A free whose last checks warned (a version's reload, a listing, paths
 left in the old number) is recorded done all the same, and the run's own
 steps reload what is left. The directories and single-link files it
 leaves in the old number (an immutable one the walk leaves as it is) are
-named in its alarm, the first ten, and each in `/var/log/boa/instgrp.log`;
-a hard-linked file the walk leaves there is not. A migration carries both
-by that number, as it carries any path. The journal goes with the
-account.
+named in its alarm, the first ten, and in `/var/log/boa/instgrp.log`, up
+to a thousand, with a line there when there are more; a hard-linked file
+the walk leaves there is not named. While the renamed group keeps the old
+number, `xmass`, `xoct` and `xcopy` map that number onto the account's web
+group on the target, so both land there as `wg-oN` carried them before the
+free. The alarms and the account's notes name the group the old number
+has, under whatever name. The journal is removed with the account.
 
-While the journal is not done, the paths still in the old number would
-travel by that number alone, so `xoct` and `xcopy` refuse to start for
-the account. `xmass` skips its legs in a sync (an autosync pass included),
-with a DENY naming the journal, and carries the shared legs and every
-other account; that pass ends non-zero, so its alarm still fires, and a
-dry sync says so without marking the plan not clean. `xmass prep-target`,
-`init` and both cutover gates refuse the whole run, since none may leave
-an account behind.
+While the journal is not done (an empty or unreadable one counts as not
+done), the paths still in the old number would travel by that number
+alone, so `xoct` and `xcopy` refuse to start for the account; `xoct` lets
+a proxied account's `proxy --repair` and `go-live` through, since neither
+carries an account path. `xmass` skips its legs in a sync (an autosync
+pass included), with a DENY naming the journal, and carries the shared
+legs and every other account; that pass ends non-zero, its last line
+naming the accounts it skipped and their journals, so its alarm still
+fires, and a dry sync says so without marking the plan not clean.
+`xmass prep-target`, `init` and both cutover gates refuse the whole run,
+since none may leave an account behind.
 
 Each refusal says what finishes the free: the account's next Octopus
-pass, or `instgrp webconvert oN`, which also completes the account's
-conversion; for a frozen account only once its freeze is recovered.
+pass, or `instgrp webconvert oN`, which also converts the account and
+lifts a `_WEB_GROUP=NO` opt-out, either once no `xmass`, `xoct` or `xcopy`
+run is live on the box. While the account is frozen (`log/proxied.pid`)
+the free waits.
 
 ### What holds phase B back
 
