@@ -1386,8 +1386,10 @@
       parked home records opens that very row. That credential is tried
       once per row, over the socket or an address the box holds, and never
       while a row of the user carries a failed-login limit of its own; a
-      login that could not be tried leaves the row as a refused one does.
-      Only the passes of a box armed for the broker call it (docs/DBCTL.md).
+      login that could not be tried leaves the row as a refused one does,
+      and a refusal over TCP of a user with another row is said as one a
+      narrower row may have given. Only the passes of a box armed for the
+      broker call it (docs/DBCTL.md).
 
     * The broker's scope oN on --pass is the unforced switch an Octopus pass
       makes. It runs only while a pass is running, waits for the account's
@@ -1411,8 +1413,11 @@
       last line says released=yes or released=no, whether this release
       switches accounts on the box. On a ProxySQL or cluster box, where
       settle skips the box, report answers OK report skipped with the same
-      word and reads nothing further. Only the nightly of a box armed for
-      the broker asks for it (docs/DBCTL.md).
+      word and reads nothing further. Its reasons are the plan's, each its
+      true cause: a server alias whose password is empty, longer than 3072
+      bytes or not URL-safe is said as that, never as no alias, and a login
+      the plan did not try is never said to have opened no row. Only the
+      nightly of a box armed for the broker asks for it (docs/DBCTL.md).
 
     * The broker's box-wide check names a role or a proxy grant on an
       account's own database login as that login's finding: no switch
@@ -1427,14 +1432,16 @@
       own OK line, or a NOTE with its refusal, which never fails the pass
       and leaves everything as it was until the next pass asks again. A
       call that stopped after it changed something (scope-failed,
-      baseline-settle-incomplete) is no refusal: the broker's ALRT lines
-      are relayed and the call's line is an ALRT, so the pass is reported
-      with errors. Each login a settle revoked or dropped is named on an
-      INFO line of its own. No call is made on a standby or a box being
-      prepared as one, nor for an account whose cnf says _DB_BROKER_ARM=NO
-      or _DB_BROKER_BORN=NO. Where the box also switches new accounts, an
-      install settles the box before that switch too, and that switch
-      obeys both of the account's settings, read as the pass reads them.
+      baseline-settle-incomplete), or that an SQL statement failed in
+      (sql-failed), is no refusal: the broker's ALRT lines are relayed, up
+      to 512 characters each, and the call's line is an ALRT, so the pass
+      is reported with errors. Each login a settle revoked or dropped is
+      named on an INFO line of its own. No call is made on a standby or a
+      box being prepared as one, nor for an account whose cnf says
+      _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO. Where the box also switches
+      new accounts, an install settles the box before that switch too, and
+      that switch obeys both of the account's settings, read as the pass
+      reads them, and relays the broker's ALRT lines when it stops part way.
       Every reader of the two settings reads a cnf as text, so a NUL byte
       in it hides none of its lines. The broker still refuses outside a
       test server, so a box armed today only prints those NOTE lines
@@ -1452,9 +1459,12 @@
       its cnf or not served by the broker, for a stop on a box with no
       account switched or that it could switch, for a box the report
       skips, nor while the release switches no account. The whole report
-      goes to /var/log/boa/dbctl-report.txt, root only and rewritten each
-      night; the night's log gets its last line and that path, so no name
-      a login chose reaches the night's incident scan (docs/DBCTL.md).
+      goes to /var/log/boa/dbctl-report.txt and the nightly witness's lines
+      to /var/log/boa/dbctl-witness.txt, both root only and rewritten each
+      night; the night's log gets their last lines, the witness's count of
+      alerts and those paths, so no name a login chose reaches the night's
+      incident scan. A report whose file cannot be written still runs and
+      mails as it would, and the night's log says so (docs/DBCTL.md).
 
     * The _DB_BROKER_ARM default is written the way the web group's is: a
       barracuda pass writes _DB_BROKER_ARM=YES only into a cnf that has no
@@ -1469,21 +1479,32 @@
       switch are carried, under an xmass run too. A root-only note beside
       the cnf says what the seed did, and the take-back reads it, so a
       create run again after any exit takes back what an earlier run put;
-      where the cnf already assigns _DB_BROKER_BORN, in any spelling, the
-      seed adds nothing and that line stays (docs/DBCTL.md).
+      where the cnf already assigns _DB_BROKER_BORN at the start of a line,
+      the one spelling the install keeps, the seed adds nothing and that
+      line stays. Where the merge of the source's settings failed the line
+      stays until the next merge that succeeds, a create's or a live
+      transfer's, takes it back; an interrupt once the remote install has
+      started leaves line and note for a re-run. The target's cnf is read
+      and rewritten as text, and the purge parks the note with the
+      account's root files (docs/DBCTL.md).
 
     * On a box armed for the broker the Octopus pass takes back a
       _DB_BROKER_BORN=NO line a migration left in a moved account's cnf a
       day after its create, so accounts moved with the tools of an
       earlier release are switched like any other; an operator's opt-out
-      is _DB_BROKER_ARM=NO, which nothing takes back (docs/DBCTL.md).
+      is _DB_BROKER_ARM=NO, which nothing takes back. Only on an upgrade
+      pass, where the create marker names the account as it is now, and
+      only through a checked rewrite of the cnf, read as text; one INFO
+      line names the migration (docs/DBCTL.md).
 
     * xoct and xmass carry an account's _DB_BROKER_ARM=NO both ways, read
-      as the pass reads it, in any of its shapes: an account its operator
+      as the pass reads it, in any of its shapes, and an operator's
+      _DB_BROKER_BORN=NO as _DB_BROKER_ARM=NO: an account its operator
       kept out of the broker stays out on the target and on a promoted
       standby, and one let back in on its source is let back in there.
-      xcopy puts the source's NO into the copy's cnf before its install
-      (docs/DBCTL.md).
+      xcopy puts the source's NO into the copy's cnf before its install,
+      and where the install does not happen takes it back, unless the
+      account was made, and puts back what it replaced (docs/DBCTL.md).
 
     * A load through the broker, still switched off, walks the account's
       dump store with the account's own rights before its loader starts,
