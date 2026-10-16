@@ -161,6 +161,17 @@
       back online; it stayed on the maintenance page. A Backdrop upgrade
       refused there removes its unused safety copy.
 
+    * provision-update, the command-line database update, puts a Drupal 6
+      or 7 site back online when its safety backup fails before the update
+      runs; the site stayed on the maintenance page until the next Verify.
+      A backup that died without reporting no longer lets the update run
+      with no copy to restore.
+
+    * provision-update refuses a site that does not run Drupal (Backdrop,
+      Grav, Textpattern) before it changes anything: it wrote a Drupal
+      settings.php over the site's own, and a Backdrop site then answered
+      500 until a Verify.
+
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not
       completed (a warning in the task log, an ALERT or WARN line in the
