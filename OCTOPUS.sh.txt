@@ -346,7 +346,7 @@ if ! declare -F _satellite_if_instance_group > /dev/null 2>&1 \
     # the re-fetch would hit the same edge cache and land the same stale tree.
     ( cd /opt/tmp/boa-refetch \
       && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
-      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+      && tar --no-same-owner -xzf boa.tar.gz ) > /dev/null 2>&1
     if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc" ] \
@@ -411,7 +411,7 @@ if ! declare -F _satellite_if_web_group > /dev/null 2>&1 \
     # shellcheck disable=SC2086
     ( cd /opt/tmp/boa-refetch \
       && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
-      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+      && tar --no-same-owner -xzf boa.tar.gz ) > /dev/null 2>&1
     if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
       && grep -q "^_satellite_if_web_group() {" /opt/tmp/boa-refetch/boa/lib/functions/satellite.sh.inc 2> /dev/null \

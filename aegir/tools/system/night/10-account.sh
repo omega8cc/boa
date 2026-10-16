@@ -84,8 +84,10 @@ _web_group_state() {
   # (the record is root's: run as another user, converted reads as held):
   #   none       no group of that name
   #   foreign    the group exists, but an identity outside the account holds
-  #              it too: never joined nor written to; claim passes still leave
-  #              its paths alone (taking them would cut the pools off)
+  #              it too: never joined nor written to unless root's record
+  #              names its gid at phase A or B (_web_group, _web_group_conv);
+  #              claim passes still leave its paths alone (taking them would
+  #              cut the pools off)
   #   held       the group exists and only this account's identities hold it:
   #              claim passes leave its paths alone, new identities join it
   #   converted  and root's record names that gid: writers use the group
@@ -179,6 +181,38 @@ _web_group() {
       ;;
     *) echo "www-data" ;;
   esac
+}
+
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
 }
 fi
 
@@ -1970,6 +2004,49 @@ _purge_hits_under_account() {
   done
 }
 
+### The name the group held at gid $1 is renamed to for account $2 by a
+### free of its web group name: <gid>-wgheld-<account>, cut to 32
+### characters. One text in instgrp, here and the restore tools.
+_wg_free_aside() {
+  local _n="${1}-wgheld-${2}"
+  printf '%s\n' "${_n:0:32}"
+}
+
+### The held gid of account $1's free of its web group name while that free
+### is unfinished (a kill cut it short): its journal not done, and the
+### rename alone or a free that can still finish as instgrp reads it. Its
+### paths in that number are the free's walk to finish (the next web
+### verb's), never drift to reclaim. Nothing otherwise; with $2, the
+### journal's state on one line instead. One text in instgrp, here and the
+### restore tools.
+_wg_free_held() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  read -r _s _h _n _ < "${_j}" || :
+  _h="${_h#held=}"
+  _n="${_n#new=}"
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
+  _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
+  _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
+  if [ "${_g}" = "${_h}" ]; then
+    _st=stale
+  elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
+    _st=renamed
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+    _st=finish
+  else
+    _st=lost
+  fi
+  if [ -n "${2:-}" ]; then
+    printf '%s %s %s\n' "${_st}" "${_h}" "${_n}"
+  elif [ "${_st}" = "renamed" ] || [ "${_st}" = "finish" ]; then
+    printf '%s\n' "${_h}"
+  fi
+  return 0
+}
+
 ### The account's own web group, before the site loop: its drift witnesses
 ### (instgrp webdrift; an alarm goes to the nightly's incident log and, once
 ### a day, to the operator's address, never to the account's own), and a
@@ -2213,6 +2290,9 @@ _purge_cruft_machine() {
       ""|*[!0-9]*) ;;
       *) _igX=( ! -gid "${_igWg}" ) ;;
     esac
+    # neither is the old number of a free of its name that a kill cut short
+    _igWg=$(_wg_free_held "${_HM_U}")
+    [ -n "${_igWg}" ] && _igX+=( ! -gid "${_igWg}" )
     _igHit=$(find -P ${_usEr}/.drush ${_igBak:+"${_igBak}"} ${_usEr}/config ${_usEr}/tools \
       ${_usEr}/aegir/distro/*/sites -xdev "${_igSel[@]}" \
       ! -group "${_acctGrp}" ! -group www-data ! -group root "${_igX[@]}" \

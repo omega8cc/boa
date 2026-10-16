@@ -353,8 +353,10 @@ _web_group_state() {
   # (the record is root's: run as another user, converted reads as held):
   #   none       no group of that name
   #   foreign    the group exists, but an identity outside the account holds
-  #              it too: never joined nor written to; claim passes still leave
-  #              its paths alone (taking them would cut the pools off)
+  #              it too: never joined nor written to unless root's record
+  #              names its gid at phase A or B (_web_group, _web_group_conv);
+  #              claim passes still leave its paths alone (taking them would
+  #              cut the pools off)
   #   held       the group exists and only this account's identities hold it:
   #              claim passes leave its paths alone, new identities join it
   #   converted  and root's record names that gid: writers use the group
@@ -450,16 +452,52 @@ _web_group() {
   esac
 }
 
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
+}
+
 _web_group_rb() {
-  # "rb" when the account's record says phase B (_web_group_state phaseb)
-  # and carries the fourth field rb=1: a rollback of phase B was cut short,
-  # so the record says B only because the pools may still lack www-data, and
-  # no share check has passed since. Empty otherwise. The pool line is left
-  # out while it stands and the account's shell user is still listed in
-  # www-data. $1 as _web_group_state.
+  # "rb" when the account's record says phase B (_web_group_state phaseb,
+  # or foreign while the record names the group's current gid: the
+  # _web_group_conv rule) and carries the fourth field rb=1: a rollback of
+  # phase B was cut short, so the record says B only because the pools may
+  # still lack www-data, and no share check has passed since. Empty
+  # otherwise. The pool line is left out while it stands and the account's
+  # shell user is still listed in www-data. $1 as _web_group_state.
   local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
   _s=$(_web_group_state "${1}")
-  [ "${_s%% *}" = "phaseb" ] || return 0
+  case "${_s%% *}" in
+    phaseb|foreign) ;;
+    *) return 0 ;;
+  esac
   _a="${_s##* }"
   _a="${_a#wg-}"
   _r="/root/.${_a}.web-group.txt"
@@ -731,19 +769,21 @@ _detect_real_docroot() {
 _extract_archive() {
   # The extractor's own status (0 when it extracted), the archive removed
   # either way unless $2 is given. unzip's 1 and gunzip's 2 are warnings
-  # after a complete extract, so they read 0.
+  # after a complete extract, so they read 0. tar never keeps the owners
+  # the archive recorded: run by root it would give each file that owner,
+  # by name or number, which can be one of this box's accounts.
   local _xRc=0
   if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf ${1}    ;;
-      *.tar.gz)    tar xzf ${1}    ;;
-      *.tar.xz)    tar xvf ${1}    ;;
+      *.tar.bz2)   tar --no-same-owner -xjf ${1} ;;
+      *.tar.gz)    tar --no-same-owner -xzf ${1} ;;
+      *.tar.xz)    tar --no-same-owner -xvf ${1} ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
       *.gz)        gunzip -q ${1} || [ "$?" = "2" ] ;;
-      *.tar)       tar xf ${1}     ;;
-      *.tbz2)      tar xjf ${1}    ;;
-      *.tgz)       tar xzf ${1}    ;;
+      *.tar)       tar --no-same-owner -xf ${1} ;;
+      *.tbz2)      tar --no-same-owner -xjf ${1} ;;
+      *.tgz)       tar --no-same-owner -xzf ${1} ;;
       *.zip)       unzip -qq ${1} || [ "$?" = "1" ] ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
