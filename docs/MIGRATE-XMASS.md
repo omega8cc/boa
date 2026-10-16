@@ -592,10 +592,15 @@ What it does, in order:
    predates the web group, or cannot be asked, because its claim passes
    would hand the account's web paths back. `init`, `sync` and `cutover`
    re-gate the same way (a DENY in a dry run), and `instgrp` is part of the
-   forced tool refresh in step 0. An account whose free of a held web group
-   name is unfinished (its journal `/etc/boa/control/instgrp-web.oN.free.txt`
-   not done, see `INSTGRP.md`) is refused here too, and by `init` and both
-   cutover gates; a `sync` skips that account's legs alone (below).
+   forced tool refresh in step 0.
+
+   An account whose free of a held web group name is unfinished (its
+   journal `/etc/boa/control/instgrp-web.oN.free.txt` not done, see
+   `INSTGRP.md`) is refused here too, and by `init` and both cutover gates;
+   a `sync` skips that account's legs alone (below). A live cutover whose
+   own legs still meet one (a free left unfinished after its gate) stops
+   before the write freeze, its error naming such accounts and their
+   journals first.
 4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.

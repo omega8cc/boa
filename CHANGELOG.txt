@@ -898,27 +898,32 @@
       instgrp reclaim, instgrp convert, the nightly and a root-run
       restore leave the paths still in the old number alone, a reclaim
       puts a rename alone back (an earlier version's <gid>-wgheld one too,
-      which a web verb then frees anew, unless another account's journal
-      names its number) and otherwise skips the account with an alarm,
+      which a web verb then frees anew; where another account's journal
+      names its number, that group keeps its name, a run that converts the
+      account makes a new wg-oN and the next web verb finishes the free
+      from the old number) and otherwise skips the account with an alarm,
       xoct and xcopy refuse to start for the account (xoct still lets a
       proxied account's proxy --repair and go-live through), an xmass sync
       skips its legs and carries every other account, naming the skipped
       accounts in its last line (its prep-target, init and cutover refuse
-      the run), each saying what finishes the free, a standby, a box being
-      prepared, a frozen account or a running migration verb only gets its
-      rename or its new group's record put right, and a free whose last
-      checks warned is recorded done instead of being run again. Every
-      repair is made under the account's hold, so a run that cannot take
-      it leaves the free to the run that holds it, and a free whose rename
-      is put back meanwhile stops without a journal. The web verb finishes
-      it as long as the renamed group or the new one still has its number;
-      a journal nothing can finish from (one that names no old number or
-      cannot be read included) is dropped with an alarm instead of
-      stopping every reclaim and migration of the account for good, and
-      each journal removed is logged in instgrp.log. instgrp webstatus and
-      the watchers report an unfinished free and a set-group-ID sweep it
-      left owed. The journal is removed with the account
-      (docs/INSTGRP.md).
+      the run, and a live cutover whose own legs still skip one names them
+      as it stops), each saying what finishes the free, a standby, a box
+      being prepared, a frozen account or a running migration verb only
+      gets its rename or its new group's record put right, and a free
+      whose last checks warned is recorded done instead of being run
+      again. Every repair a web verb makes is made under the account's
+      hold, so a run that cannot take it leaves the free to the run that
+      holds it and is deferred at once instead of waiting for the account
+      twice, and a free whose rename is put back meanwhile stops without a
+      journal. The web verb finishes it as long as the renamed group or
+      the new one still has its number; a journal nothing can finish from
+      (one that names no old number included) is dropped with an alarm
+      instead of stopping every reclaim and migration of the account for
+      good, one that cannot be read is kept, alarmed once a day, until it
+      reads again, and each journal removed is logged in instgrp.log.
+      instgrp webstatus and the watchers report an unfinished free and a
+      set-group-ID sweep it left owed. The journal is removed with the
+      account (docs/INSTGRP.md).
 
     * The per-account web group conversion, still switched off, reaches
       an account an aegir2boa db-import left frozen when it was killed
