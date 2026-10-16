@@ -516,6 +516,20 @@ _wg_migration_notes() {
   return 0
 }
 
+# A free of account $1's web group name that a kill cut short (instgrp's
+# E1 route) is unfinished: its journal,
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
+# other than done. Until the account's next web verb finishes it, paths of
+# the account may still sit in the old number, which every leg would carry
+# by that number alone, so no migration of the account starts meanwhile.
+# Verbatim in xoct, xcopy and xmass.
+_wg_free_unfinished() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
+  read -r _s _ < "${_j}" 2> /dev/null || :
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
+}
+
 #
 # Re-group an account's tree ON A REMOTE BOX after a copy landed there
 # (transfer, sync, cutover): the copy carries this box's numeric gids, and
@@ -10325,21 +10339,35 @@ _xmass_webgroup_gate() {
   ### tools predate the web group: their claim passes and nightly would hand
   ### those paths back to www-data or the account's group. The target's
   ### instgrp, which the destination pass runs, is asked whether it knows the
-  ### group; an answer that cannot be read counts as no. 'die' (the default)
-  ### refuses, 'deny' reports and marks the DRY run NOT CLEAN.
-  local _t="$1" _on_old="${2:-die}" _oct _conv="" _ans
+  ### group; an answer that cannot be read counts as no. An account whose
+  ### free of its web group name a kill cut short is unfinished
+  ### (_wg_free_unfinished) is refused too: its paths may still sit in the
+  ### old number, which every leg would carry by that number. 'die' (the
+  ### default) refuses, 'deny' reports and marks the DRY run NOT CLEAN.
+  local _t="$1" _on_old="${2:-die}" _oct _conv="" _ans _fj="" _rc=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _wg_free_unfinished "${_oct}" && _fj="${_fj} /etc/boa/control/instgrp-web.${_oct}.free.txt"
     case "$(_web_group_state "${_oct}" | cut -d' ' -f1)" in
       converted|phaseb) _conv="${_conv} ${_oct}" ;;
     esac
   done
-  [ -n "${_conv}" ] || return 0
+  if [ -n "${_fj}" ]; then
+    if [ "${_on_old}" != "deny" ]; then
+      _die "a free of an account's web group name is unfinished here (${_fj# });" \
+           " each account's next web verb (its Octopus pass, or 'instgrp webconvert <account>') finishes it; re-run this step then."
+    fi
+    _alrt "DENY: a free of an account's web group name is unfinished here (${_fj# })"
+    _alrt "DENY: fix: each account's next web verb (its Octopus pass, or 'instgrp webconvert <account>') finishes it; then re-run this DRY."
+    _XMASS_NOT_CLEAN=YES
+    _rc=1
+  fi
+  [ -n "${_conv}" ] || return "${_rc}"
   _ans=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_t}" \
     "grep -q '^_web_group_state() {' /opt/local/bin/instgrp 2>/dev/null && echo XMWG-READY || echo XMWG-OLD" \
     2>/dev/null | grep -m1 -x -E 'XMWG-(READY|OLD)')
   if [ "${_ans}" = "XMWG-READY" ]; then
     _info "  web group: the target's tools know it (${_conv# })"
-    return 0
+    return "${_rc}"
   fi
   if [ "${_on_old}" = "deny" ]; then
     _alrt "DENY: account(s)${_conv} use their own web group here, and the tools on ${_t} predate it (or could not be asked)"

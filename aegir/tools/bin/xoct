@@ -352,6 +352,20 @@ _wg_migration_notes() {
   return 0
 }
 
+# A free of account $1's web group name that a kill cut short (instgrp's
+# E1 route) is unfinished: its journal,
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
+# other than done. Until the account's next web verb finishes it, paths of
+# the account may still sit in the old number, which every leg would carry
+# by that number alone, so no migration of the account starts meanwhile.
+# Verbatim in xoct, xcopy and xmass.
+_wg_free_unfinished() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
+  read -r _s _ < "${_j}" 2> /dev/null || :
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -7480,6 +7494,10 @@ _migrate_init() {
       exit 1
     elif [ -e "${_USR}/log/CANCELLED" ]; then
       echo "_USR ${_oct} is not eligible for migration: cancelled"
+      exit 1
+    elif _wg_free_unfinished "${_RUNTIME_OCT}"; then
+      echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
+      echo "INFO: the account's next web verb here (its Octopus pass, or 'instgrp webconvert ${_RUNTIME_OCT}') finishes it; re-run then"
       exit 1
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"
