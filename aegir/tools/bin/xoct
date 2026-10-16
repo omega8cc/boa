@@ -7497,7 +7497,7 @@ _migrate_init() {
       exit 1
     elif _wg_free_unfinished "${_RUNTIME_OCT}"; then
       echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
-      echo "INFO: the account's next web verb here (its Octopus pass, or 'instgrp webconvert ${_RUNTIME_OCT}') finishes it; re-run then"
+      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also completes the account's conversion), for a frozen account only once its freeze is recovered; re-run then"
       exit 1
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"

@@ -6376,12 +6376,20 @@ _xmass_sync_static_symlink_safe() {
 # (the identity repair's credential legs: no web path among them). Returns
 # 1, with a DENY, when a group of the account's here is asked of the target
 # and its answer cannot be read: its paths never land in a guessed group or
-# a number, the caller skips the account's legs. $1 = account.
+# a number, the caller skips the account's legs. So it does, with a DENY
+# naming the journal, while a free of the account's web group name is
+# unfinished here (_wg_free_unfinished): its paths may still sit in the old
+# number, which a leg would carry by that number. $1 = account.
 _xmass_set_gmap() {
   local _oct="$1" _dstGrp _dstWg _wgMap=""
   _XMASS_GMAP=""
   [ "${_MODE}" = "LIVE" ] || return 0
   if [ "${2:-}" != "acct" ]; then
+    if _wg_free_unfinished "${_oct}"; then
+      _alrt "DENY: a free of the web group name of ${_oct} is unfinished here (/etc/boa/control/instgrp-web.${_oct}.free.txt); the legs of ${_oct} are skipped this pass"
+      _alrt "DENY: fix: its next Octopus pass finishes it, or 'instgrp webconvert ${_oct}' (which also completes its conversion), for a frozen account only once its freeze is recovered"
+      return 1
+    fi
     if [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ] \
       || [ -e "/var/log/boa/instgrp-web.${_oct}.txt" ] || [ -e "/run/instgrp-web-${_oct}.pid" ]; then
       _dstWg=$(_web_group_on_target "${_oct}" "${_tgt}") || _dstWg=""
@@ -10343,21 +10351,31 @@ _xmass_webgroup_gate() {
   ### free of its web group name a kill cut short is unfinished
   ### (_wg_free_unfinished) is refused too: its paths may still sit in the
   ### old number, which every leg would carry by that number. 'die' (the
-  ### default) refuses, 'deny' reports and marks the DRY run NOT CLEAN.
-  local _t="$1" _on_old="${2:-die}" _oct _conv="" _ans _fj="" _rc=0
+  ### default) refuses, 'deny' reports and marks the DRY run NOT CLEAN. A
+  ### sync ($3 = sync) refuses no run for it: _xmass_set_gmap skips that
+  ### account's legs, every other account is carried, and a dry sync says
+  ### so in an ALRT; a cutover, init and prep-target leave no account behind.
+  local _t="$1" _on_old="${2:-die}" _sync="${3:-}" _oct _conv="" _ans _fj="" _rc=0
+  local _fix="the account's next Octopus pass finishes it, or 'instgrp webconvert <account>' (which also completes the account's conversion), for a frozen account only once its freeze is recovered"
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _wg_free_unfinished "${_oct}" && _fj="${_fj} /etc/boa/control/instgrp-web.${_oct}.free.txt"
     case "$(_web_group_state "${_oct}" | cut -d' ' -f1)" in
       converted|phaseb) _conv="${_conv} ${_oct}" ;;
     esac
   done
-  if [ -n "${_fj}" ]; then
+  if [ -n "${_fj}" ] && [ "${_sync}" = "sync" ]; then
+    if [ "${_on_old}" = "deny" ]; then
+      _alrt "a free of an account's web group name is unfinished here (${_fj# }):"
+      _alrt "a live sync skips that account's legs (a DENY, the pass ends non-zero) and carries every other account;"
+      _alrt "${_fix}."
+    fi
+  elif [ -n "${_fj}" ]; then
     if [ "${_on_old}" != "deny" ]; then
       _die "a free of an account's web group name is unfinished here (${_fj# });" \
-           " each account's next web verb (its Octopus pass, or 'instgrp webconvert <account>') finishes it; re-run this step then."
+           " ${_fix}; re-run this step then."
     fi
     _alrt "DENY: a free of an account's web group name is unfinished here (${_fj# })"
-    _alrt "DENY: fix: each account's next web verb (its Octopus pass, or 'instgrp webconvert <account>') finishes it; then re-run this DRY."
+    _alrt "DENY: fix: ${_fix}; then re-run this DRY."
     _XMASS_NOT_CLEAN=YES
     _rc=1
   fi
@@ -13109,12 +13127,12 @@ _xmass_cmd_sync() {
     _xmass_verify_target_accounts "${_tgt}" die
     _xmass_php_coverage_gate "${_tgt}" die
     _xmass_solr_coverage_gate "${_tgt}" die
-    _xmass_webgroup_gate "${_tgt}" die
+    _xmass_webgroup_gate "${_tgt}" die sync
   else
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
-    _xmass_webgroup_gate "${_tgt}" deny || true
+    _xmass_webgroup_gate "${_tgt}" deny sync || true
   fi
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all
   # accounts). An autosync pass runs without the token: arming already required
