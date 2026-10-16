@@ -729,6 +729,10 @@ _detect_real_docroot() {
 #
 # Extract archive.
 _extract_archive() {
+  # The extractor's own status (0 when it extracted), the archive removed
+  # either way unless $2 is given. unzip's 1 and gunzip's 2 are warnings
+  # after a complete extract, so they read 0.
+  local _xRc=0
   if [ ! -z "${1}" ]; then
     case $1 in
       *.tar.bz2)   tar xjf ${1}    ;;
@@ -736,17 +740,19 @@ _extract_archive() {
       *.tar.xz)    tar xvf ${1}    ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
-      *.gz)        gunzip -q ${1}  ;;
+      *.gz)        gunzip -q ${1} || [ "$?" = "2" ] ;;
       *.tar)       tar xf ${1}     ;;
       *.tbz2)      tar xjf ${1}    ;;
       *.tgz)       tar xzf ${1}    ;;
-      *.zip)       unzip -qq ${1}  ;;
+      *.zip)       unzip -qq ${1} || [ "$?" = "1" ] ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
-      *)           echo "'${1}' cannot be extracted via >extract<" ;;
+      *)           echo "'${1}' cannot be extracted via >extract<"; false ;;
     esac
+    _xRc=$?
     [ -z "${2}" ] && rm -f "${1}"
   fi
+  return "${_xRc}"
 }
 
 #
@@ -1026,10 +1032,13 @@ _get_dev_contrib() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      if [ ! -z "${2}" ]; then
-        _extract_archive "${1}" "${2}"
-      else
-        _extract_archive "${1}"
+      # A module that did not unpack whole counts as a failed fetch, as in
+      # the core and distro fetchers: the stages built from these (a shared
+      # tree, a refreshed bundle) are never placed with it
+      if ! _extract_archive "${1}" ${2:+"${2}"}; then
+        _msg "OOPS: $1 could not be extracted"
+        _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
+        return 1
       fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"

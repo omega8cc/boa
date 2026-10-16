@@ -248,8 +248,41 @@ fi
 
 
 ###
+### Inode room
+###
+# A filesystem out of inodes fails every write as "No space left on device"
+# while df -h still shows free space, and one run adds a hostmaster copy and
+# up to a whole platform generation (a million inodes and more on a crowded
+# account). Each stage that adds codebases starts only while the filesystem
+# holding the account has at most 90% of its inodes in use, the line at
+# which BOA's own scripts refuse to run, so a run stops short of an empty
+# inode table instead of leaving half-extracted trees on a box whose
+# services can no longer write. A filesystem without an inode count (btrfs
+# prints - for IUse%) is never stopped on it.
+_inode_room_or_stop() {
+  local _p="${_ROOT}" _i
+  while [ ! -d "${_p}" ] && [ "${_p}" != "/" ]; do
+    _p="${_p%/*}"
+    [ -n "${_p}" ] || _p="/"
+  done
+  _i="$(LC_ALL=C command df -P -i -- "${_p}" 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_i}" =~ ^[0-9]+$ ]] || return 0
+  if [ "${_i}" -gt 90 ]; then
+    _msg "${_STATUS} A: FATAL ERROR: ${_i}% of the inodes on the filesystem holding ${_p} are in use, above 90%"
+    _msg "${_STATUS} A: FATAL ERROR: Every file takes an inode, free space alone is not enough: df -i ${_p}"
+    _msg "${_STATUS} A: FATAL ERROR: ${1} not started; free inodes, then run the upgrade again"
+    touch "${_stateDir}/status-AegirSetupA-FAIL"
+    exit 1
+  fi
+}
+
+
+###
 ### Run key pre/child/post procedures
 ###
+_inode_room_or_stop "The Aegir build (part B)"
 _satellite_hot_sauce_check
 _satellite_add_user_dirs
 _satellite_if_add_snail_access
@@ -299,6 +332,10 @@ su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${_vSet} hosting_queue_tasks_i
 _satellite_if_create_local_bin
 _satellite_run_post_install
 _satellite_set_permissions_for_all
+# an Aegir-only upgrade (octopus up-* <user> aegir) builds no shared code
+# and no platform in part C; an install builds them whatever _HM_ONLY says
+{ [ "${_STATUS}" != "INIT" ] && [ "${_HM_ONLY}" = "YES" ]; } \
+  || _inode_room_or_stop "The shared code and platforms build (part C)"
 _satellite_run_child_c
 _satellite_child_scripts_cleanup
 _satellite_if_add_ftps_lshell_access

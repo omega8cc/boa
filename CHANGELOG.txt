@@ -4,6 +4,97 @@
 
 @=> Important Fixes
 
+    * BOA refuses to run a server out of inodes (#1947). Every file takes
+      an inode, and a filesystem out of them fails every write with "No
+      space left on device" while df -h still shows free space; BOA's
+      refusals looked at space only, so an Octopus upgrade on a box at 68%
+      space ran on through failed extractions until nothing on it could
+      write. Every tool that refuses above 90% of / used now also refuses
+      above 90% of its inodes in use, and names inodes and df -i /:
+      Barracuda, Octopus and the boa installers, the OS upgrade tools, the
+      backup tools, the nightly database dumps (which mail the refusal as
+      they do for space), the migration tools and xtrim. backboa and
+      duobackboa refuse instead of printing a warning cron threw away. The
+      task queue and the nightly keep running: the Delete tasks and purges
+      that free inodes ride them.
+
+    * An Octopus upgrade stops near 90% of the inodes in use instead of at
+      none left. One platform generation can take two million inodes, more
+      than the start's check leaves room for, so the run checks again
+      before the hostmaster build and before the shared code and platforms
+      build (a FATAL that says why), and before each requested platform
+      symbol, a core's dev, stage and prod set (skipped, with an ALRT
+      line), so it ends at most one set past the line; a catalogue refresh
+      counts the old tree's inodes before it fetches the new one.
+
+    * barracuda and octopus exit 3 when their final line says WITH ERRORS,
+      so a script can tell a run to review from a clean one; they exited 0
+      either way. 0 stays a clean run (for barracuda also one that only
+      needs boa reboot) and 1 a run refused before it began. xmass and
+      xoct, which run a barracuda pass on their target, go on after a 3 to
+      check what they ran it for.
+
+    * An Octopus upgrade notices a platform it could not unpack. A tarball
+      that failed to extract (its filesystem ran out of inodes) read as
+      fetched: the half made tree took the platform's name, the run said
+      "installed" and ended clean. The failed unpack now counts as a failed
+      download and its half tree is removed, the platform's line is an
+      ALRT, "not built", and the run ends WITH ERRORS; "installed" is said
+      only for a platform whose code is there.
+
+    * A shared Drupal 6 or 7 core or platform tree an earlier build left
+      half made (a real directory without the files a build places it
+      with) is built again, in a stage beside it as a rebuild does; it
+      used to stay as it was until a rebuild was asked for.
+
+    * The report or alert mail of a pass log over 1 MB carries its ALRT,
+      FATAL and ERROR lines, its first and last lines and where the log
+      is, so it can be sent: a 59 MB log of tar errors never was. Every
+      mailed line is cut at 2,000 characters.
+
+    * Install, Clone, Migrate, Restore, Deploy and the Backdrop, Grav and
+      TXP upgrade and rename tasks refuse before writing anything while a
+      filesystem they write to (/, the account home, the platform) has
+      more than 90% of its inodes in use; Delete, Verify and Backup still
+      run, so unused platforms and sites can be removed. The space
+      pre-flight of Clone, Migrate and Restore counts the site's files
+      too, following links, and refuses a copy that would leave less than
+      2% of the inodes, at least 50,000, free; the check before the deploy
+      does the same, and a failed extraction names the free inodes beside
+      the free space. /data/conf/disable_space_preflight.cnf turns these
+      checks off with the space checks.
+
+    * autosymlink counts the files a store copy will create, not only its
+      bytes (#1947). The un-share copy after a Migrate or Clone and a
+      conversion onto a store on another filesystem now skip, with their
+      warning, when they would leave less than 2% of the target's inodes,
+      at least 50,000, free; a dry run records it as
+      SPACE_INODES_INSUFFICIENT. The count matches the copy: hard-linked
+      names count as files, a link inside the store counts once, and a
+      store that is itself a link to another store is counted, bytes too,
+      through it.
+
+    * migratefs, moving an account's store onto attached storage, and the
+      nightly move of its backups onto that storage count the files the
+      copy makes and leave the directory in place unless 2% of the
+      target's inodes, at least 50,000, stay free; the nightly move also
+      checks the space, which it never did, and does not count again what
+      a copy that stopped short already made (#1947).
+
+    * The system monitor's inode alert also watches every filesystem
+      mounted at /mnt/<name>, the attached storage migratefs uses (#1947).
+
+    * A Clone, Migrate, upgrade, install or restore whose store conversion
+      or un-share was refused or left unfinished is reported as not
+      completed (a warning in the task log, an ALERT or WARN line in the
+      autosymlink log) instead of as done: an install or restore that kept
+      its plain dirs, or a Clone that un-shared files but not private, was
+      logged as moved into the store.
+
+    * autosymlink refuses to break a site's sharing when the store its link
+      names resolves outside the account stores, instead of copying
+      whatever tree the link reaches.
+
     * A same-name Migrate that fails after its copy was built no longer
       leaves the site down. The copy shares the site's cache namespace in
       Valkey, which is keyed by the site name without a leading www., and
@@ -13,6 +104,85 @@
       of it failed, until its cache was flushed. The rollback now purges
       the namespace once the site is back, also after a Migrate that
       renamed the site to its www. twin.
+
+    * On Drupal 10 and 11 each copy of a site now has a cache namespace of
+      its own in Valkey: the redis module, now 8.x-1.11.3, adds a segment
+      taken from the copy's database host, name and table prefix to the
+      name-based prefix. A same-name Migrate no longer gets 500s from the
+      live site while its copy, running a newer core, is built. The
+      deploy's purge spares the live site's namespace, so the site keeps
+      its cache during the move and a busy site's Migrate no longer ends
+      in a Warning about the purge's sweep bound; the old copy's namespace
+      is removed once the new one serves the site. Every Drupal 10 and 11
+      site starts with a cold cache once, when its server takes the new module.
+
+    * A Drupal 10 or 11 site whose connection to Valkey fails after BOA's
+      per-request check now runs that request on the database instead of
+      answering 500. The redis module, now 8.x-1.11.4, takes its database
+      fallbacks from the container being built, the bootstrap container
+      uses the module's failover checksum, and the flood fallback gets the
+      time service Drupal 11 requires.
+
+    * Drupal 11.2 and newer sites preload their cache tags in Valkey again.
+      With BOA's failover wiring in place the redis module skipped Drupal's
+      tag preloading, which gathers a page's cache tag lookups into fewer
+      round trips to Valkey; the module, now 8.x-1.11.4, passes it on.
+
+    * Sites stay consistent across a Valkey outage. While Valkey cannot be
+      reached a site runs on its database cache, and the two caches kept
+      separate records of what changed: after an outage Valkey served the
+      pages, settings and service container it held before it, and the
+      next outage started from what the database cache kept from the one
+      before (a module enabled in between answered 500). Each outage is now
+      recorded beside the backoff flag with the sites that served requests
+      on their database during it; the first request after it clears from
+      Valkey what those sites kept from before it, before using it, keeping
+      their locks and login counters, and every other site keeps its cache
+      (only the site's own keys when the redis module's own connection
+      failed on one site). A request still running on the database then has
+      its site cleared again when it ends. When BOA cannot tell (an outage
+      begun during a BOA upgrade, more than 500,000 keys) it clears the whole
+      database as a restart does. During an outage the database cache
+      refuses entries older than the outage. On Drupal 6, 7, 8 and later,
+      and Backdrop.
+
+    * A site on PHP 8.6, which BOA builds without the Valkey extension, no
+      longer sends every site on its server to the database. Each of its
+      requests failed BOA's Valkey check and set the server-wide backoff,
+      so all sites ran on their database cache 15 seconds at a time for as
+      long as it had visitors; now only that site runs on its database.
+
+    * Sites keep their Valkey cache when the local socket cannot be used but
+      TCP can. BOA's check per request fell back to TCP while the redis
+      module was still handed the socket: Drupal 8 and later sites ran on
+      their database, and Drupal 7 sites (and Drupal 6, which shares that
+      wiring) answered 500. The module now gets the TCP target the check
+      reached; a custom target is left alone.
+
+    * Drupal 6 sites work on PHP 8.1 and later as they did before. Every
+      new Drupal 6 site failed to install ("Table ... system doesn't
+      exist"), and two requests racing to store the same cache entry,
+      setting or session could end one of them in a fatal error: PHP 8.1
+      made mysqli throw on a failed query that Drupal 6 expects to come
+      back FALSE. Pressflow 6.60.3 sets the error mode it was written for
+      in its own database driver, and BOA's Drupal 6 settings do the same
+      for sites on older Pressflow cores.
+
+    * Drupal 8, 9 and 10 sites keep their queues in their own database.
+      BOA had moved Drupal's default queue to Valkey, where the redis
+      module names a queue's keys by its name alone, so the sites on one
+      server shared every queue of the same name: one site could take and
+      run another site's queued items. The cache server also keeps nothing
+      on disk, so queued work did not survive its restart. Items still
+      queued in Valkey when a server takes this change stay there unrun.
+
+    * A same-name Migrate of a site with visitors no longer ends in a
+      Warning over the site's files/css folder. Drupal makes that folder
+      again, as the site's PHP-FPM pool user, right after a cache rebuild
+      removes it, and the account cannot change the mode of a folder it
+      does not own: the move logged "Could not change permissions" and a
+      successful Migrate showed Warning. Such a folder, already writable
+      to its group, is now left as it is.
 
     * A same-name Migrate of an HTTPS site no longer verifies the site on
       its old platform after the copy is built. Encryption was switched
@@ -267,6 +437,29 @@
       log; with none installed it is skipped with a note and the site's
       alias file is kept.
 
+    * The "Drush command terminated abnormally" line of a Drupal 8+ task
+      now names the uncaught error that ended the run ("Error: Uncaught"
+      with the class, the message, the file and the line). Drupal's own
+      log line named it only when Drupal's logger reached Drush, which it
+      does not when the error comes before Drupal's services are ready (a
+      settings file that fails) or when a logger ahead of Drush's own
+      fails, as with a broken database log table.
+
+    * A Clone, Migrate or Restore whose database update failed no longer
+      reports a second failure at the end of its deploy. Once a step has
+      failed, the closing bootstrap is not tried, and the warning now says
+      so (DEPLOY/BOOTSTRAP/SKIP, with the first line of the earlier error)
+      instead of "could not bootstrap Drupal after updatedb". A bootstrap
+      that is tried and fails keeps that warning; Backdrop deploys do the same.
+
+    * Deleting a platform built with Composer in ~/static removes its whole
+      project folder again when that folder is not group writable, as with
+      a build made before the limited shell's umask 002 or an upload that
+      kept its modes. The Delete emptied web/ and vendor/, left the folder
+      and its composer files, and ended with warnings. A folder that holds
+      another codebase or another platform, or is one of the account's own
+      directories, is kept and the task log names it.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
@@ -343,6 +536,13 @@
       permission pass leave files another account's users own as they
       are, with everything below them, and count them on one line.
 
+    * Under /var/aegir, so on a plain Aegir server everywhere, the site
+      and platform Verify's ownership and permission fixes hand over and
+      set modes on every file whoever owns it, a deploy login's included,
+      even one a directory service knows that the server's user list does
+      not show, as they did before; only files a BOA account's users
+      moved there are left as they are and counted.
+
     * The nightly permission pass hands over and sets modes at the
       platform level too only on what root or the account's own users
       own: files another account's users own keep their owner and mode,
@@ -365,6 +565,11 @@
       source server's user number; once that user exists on the target,
       the next pass gives its files back to it.
 
+    * xmass carries a client login's SSH keys to the target as the
+      login's own whenever the target has the login, also on the pass
+      that first finds it there; they no longer land as the account's
+      until the next pass.
+
     * The Octopus upgrade hands backups/system and its old_hostmaster to
       the account, and every Octopus run hands over static, only when
       root or the account's own users own them: a directory another
@@ -383,9 +588,68 @@
       is made or linked in it. A file or directory another account
       placed at the name of an extension link in usr also stays as it is.
 
+    * The limited-shell worker's once-per-release reset of a login's
+      ~/.drush, and the Drush extension links it then makes in its usr,
+      remove and link only what root or the account's own users own: a
+      file or directory another account placed in ~/.drush, at an
+      extension's name or at usr itself stays as it is, nothing is linked
+      into it, and one line counts it.
+
+    * The limited-shell worker's other removals in a login's ~/.drush
+      (alias names that are not files, old stamps) and in the main
+      login's ~/.drush/cache and ~/.tmp at a new release remove only what
+      root or the account's own users own, and one line counts the rest.
+
     * The Octopus upgrade's removal of entries older than a day from the
       account's .tmp deletes only what root or the account's own users
       own, never a directory another account placed there.
+
+    * The nightly's removals at fixed names (archives left in a code
+      directory, the cleanup markers, llms.txt, robots.txt and their
+      marker, the Boost cache's contents) and its hand-over of llms.txt,
+      robots.txt and the Boost cache act only on what root or the
+      account's own users own: a file or directory another account placed
+      there stays as it is, with everything below it, and is counted.
+
+    * The nightly's Drupal 7 core patch leg strips, patches and marks
+      nothing in a profiles or includes/database directory another
+      account owns, and leaves another account's database.inc unpatched.
+
+    * The once-per-release modes of every BOA-built platform's sites/all
+      modules, themes and libraries leave a directory another account
+      placed there, with everything in it, as it is.
+
+    * The Octopus upgrade sets the main login's key files to 0600, hands
+      a new ~/.ssh and ~/.tmp to it, hands a ghost revision's undo stamp
+      to the account and puts EMPTY.txt in ~/static only where root or the
+      account's own users own them: another account's file or directory
+      there keeps its owner and mode.
+
+    * The limited-shell worker's once-per-release hand-over of every
+      login's ~/.ssh and ~/.tmp, its removal of old entries from a login's
+      ~/.tmp and the account's .tmp, and its 0600 on key files act only on
+      what root, the login or the account's own users own; what another
+      account placed there stays as it is, and the hand-over counts what it
+      left on a NOTE line in the worker's incident log
+      (/var/log/boa/manage_ltd.incident.log, which the nightly sweep of
+      /var/backups/ltd does not remove).
+
+    * The nightly's removal of the account's and its main login's Drush
+      caches and of the login's drush-backups, of a platform's retired
+      o_contrib links and of legacy control files acts only on what root
+      or the account's own users own, and counts what it leaves; the
+      robots.txt and llms.txt legs do nothing in a files store another
+      account owns (a share). The release's sites/all modes count what
+      they leave too.
+
+    * The limited-shell worker hands over the main login's users/ store,
+      the control directory at a new release and its .info files, the
+      web user's home and the gems and npm trees, and removes retired
+      ~/.rvm, ~/.gem, ~/.npm and ~/.composer names, a client login's
+      drush-backups and .gnupg, and a removed login's gem and npm trees,
+      only where root, the login or the account's own users own them;
+      what another account placed there stays and is named on a NOTE
+      line in the run's report.
 
     * A platform Verify's ownership and permission fixes leave files
       another account's users own as they are, with everything below them,
@@ -606,6 +870,20 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The archived-store heal (boa archived heal, run by runner.sh every
+      minute) treats inode pressure as disk pressure: a filesystem used
+      above the heal threshold, in space or in inodes, prunes the pile of
+      deleted sites' last copies oldest first, and the log line and the
+      mail say so.
+
+    * The minute monitor mails an ALERT when / or the filesystem holding
+      /data/disk has more than 85% of its inodes in use, at most once in
+      six hours, before BOA's upgrades, backups and copying tasks refuse
+      at 90%. Nothing on the box said so before.
+
+    * boa info shows the inode use of each filesystem (_INO lines) beside
+      its space (_DSK lines), so a disk out of inodes reads as full.
 
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
@@ -908,8 +1186,9 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.17 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above and the named kernel boot error under Important Fixes.
+    * Classic Drush 8.5.18 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above and the named kernel boot and uncaught errors under
+      Important Fixes.
       On Drupal 10 and 11 pm-updatestatus no longer dies on
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an

@@ -178,8 +178,8 @@ Arming `rename-failed` re-runs the cutover tail from its head: the resume
 replication user, and re-proves the target's web layer before the panel
 rewire and the renames.
 
-`reset-phase` is exempt from the 90%-disk precondition, because a stalled
-migration is a likely reason the disk filled in the first place.
+`reset-phase` is exempt from the 90%-disk precondition (space or inodes of `/`),
+because a stalled migration is a likely reason the disk filled in the first place.
 
 To abandon and start over, remove the state file — but only do so if
 replication has already been torn down on the target.
@@ -1095,6 +1095,9 @@ version it does not run) onto the account itself, never onto the source's
 user number, which there can be another account's. The pass after the name
 appears there hands its files back, and a target whose users cannot be read
 fails that account's legs for the pass (a `DENY`).
+
+A client login's `.ssh`, copied only when the target answers that it has the
+login, lands as that login's own on the same pass.
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 

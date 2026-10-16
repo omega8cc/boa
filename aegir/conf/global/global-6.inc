@@ -2,6 +2,17 @@
 
 
 /**
+ * PHP 8.1 made mysqli throw on every failed query. Drupal 6 checks each
+ * query's result itself and relies on a failed INSERT returning FALSE
+ * (cache_set, variable_set and sess_write race on a duplicate key; the site
+ * installer probes for the system table), so it gets the error mode it was
+ * written for, which earlier PHP has by default.
+ */
+if (function_exists('mysqli_report')) {
+  mysqli_report(MYSQLI_REPORT_OFF);
+}
+
+/**
  * Include ini
  */
 if (is_readable('/data/conf/global/global-ini.inc')) {

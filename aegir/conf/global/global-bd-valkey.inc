@@ -152,6 +152,31 @@ if ($valkey_up && $use_valkey && !$custom_cache && defined('BACKDROP_ROOT')) {
 }
 
 /**
+ * Inside a Valkey outage window (global-if-valkey.inc) the site runs on its
+ * database cache, which nothing kept current while Valkey was up: entries
+ * created before the window began are refused, everything written since is
+ * served (a noredis=1 request inside a window included). The form bin stays
+ * plain database, as it holds no cache of anything. The class needs
+ * BackdropDatabaseCache, which bootstrap loads only after settings: load it
+ * now (bootstrap's own require_once then skips). A site with a cache of its
+ * own (custom_cache) may keep it in Valkey under a prefix of its own, so its
+ * record names the whole database.
+ */
+if (!empty($custom_cache) && !empty($GLOBALS['valkey_window_runs']) && function_exists('_valkey_window_join')) {
+  $GLOBALS['valkey_window_pattern']             = '*';
+  _valkey_window_join($GLOBALS['valkey_window_flag'], $GLOBALS['valkey_window_runs']);
+}
+if (empty($valkey_up) && (!empty($use_valkey) || !empty($valkey_noredis)) && empty($custom_cache) && !empty($valkey_window_start)
+    && defined('BACKDROP_ROOT') && is_readable(BACKDROP_ROOT . '/core/includes/cache.inc')
+    && is_readable('/data/conf/global/global-window-bd.inc')) {
+  require_once BACKDROP_ROOT . '/core/includes/cache.inc';
+  require_once '/data/conf/global/global-window-bd.inc';
+  $settings['boa_window_start']                 = $valkey_window_start;
+  $settings['cache_default_class']              = 'BoaWindowBackdropDatabaseCache';
+  $settings['cache_class_form']                 = 'BackdropDatabaseCache';
+}
+
+/**
  * Always-on, non-sensitive backend observability (ini: redis_debug_header).
  *
  * Reports which backend served the structured-cache bins on THIS request,
