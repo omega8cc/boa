@@ -1977,13 +1977,37 @@ _t_owl_drain() {
 # account's tree, so what comes back into /var/xdrago is the file root put
 # there, never one the account put in its place.
 _t_held_run() { echo "${_STATE_DIR}/held-run-${_ACCOUNT}"; }
+# The account's dispatcher runs: a root process (real and effective uid
+# root's) whose argv[0] or argv[1] is exactly the dispatcher's path, as
+# runner.sh starts it (bash <path>) or its shebang runs it, read from the
+# proc root's cmdline and status, 64 KiB of each at most. A process that
+# only names the path elsewhere in its argv (the operator's own shell, a
+# grep, an editor), names it with a suffix, or is not root's, is not the
+# dispatcher; a /proc that cannot be read counts as one running. Args: the
+# dispatcher's path, the proc root.
+_A2B_DISPATCH_PL='my ($path, $p) = @ARGV;
+sub rd {
+  open(my $f, "<", $_[0]) or return "";
+  my $t = "";
+  sysread($f, $t, 65536);
+  close($f);
+  return $t;
+}
+opendir(my $d, $p) or exit 0;
+for my $x (grep { /^[0-9]+$/ } readdir($d)) {
+  next if $x == $$;
+  next unless rd("$p/$x/status") =~ /^Uid:\s+0\s+0\s/m;
+  my @a = split(/\0/, rd("$p/$x/cmdline"));
+  exit 0 if (defined $a[0] && $a[0] eq $path) || (defined $a[1] && $a[1] eq $path);
+}
+exit 1'
 _t_dispatch_off() {
   if [[ -e "/var/xdrago/run-${_ACCOUNT}" ]]; then
     mv -f "/var/xdrago/run-${_ACCOUNT}" "$(_t_held_run)"
     _info "dispatcher run-${_ACCOUNT} held aside at $(_t_held_run) (restored on success or by --revert-db-import)"
   fi
   local _waited=0
-  while pgrep -f "[r]un-${_ACCOUNT}([^0-9a-z]|\$)" >/dev/null 2>&1 \
+  while perl -e "${_A2B_DISPATCH_PL}" -- "/var/xdrago/run-${_ACCOUNT}" /proc 2>/dev/null \
     || pgrep -u "${_ACCOUNT}" -f "hosting-dispatch|hosting-tasks|provision-" >/dev/null 2>&1; do
     [[ "${_waited}" -ge 900 ]] && _die "account ${_ACCOUNT} dispatch still draining after 900s - retry later"
     _info "in-flight dispatch for ${_ACCOUNT} draining..."
