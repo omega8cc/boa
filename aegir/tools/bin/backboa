@@ -1362,7 +1362,7 @@ _wg_free_aside() {
 # otherwise. With $2, the journal's state on one line instead. One text in
 # instgrp, the nightly and the restore tools.
 _wg_free_held() {
-  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _st _
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
   read -r _s _h _n _ < "${_j}" || :
   _h="${_h#held=}"
@@ -1371,9 +1371,10 @@ _wg_free_held() {
   [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
   _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
   _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
+  _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
   if [ "${_g}" = "${_h}" ]; then
     _st=stale
-  elif [ -z "${_g}" ] && [ "${_r}" = "${_h}" ]; then
+  elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
     _st=renamed
   elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
     _st=finish
