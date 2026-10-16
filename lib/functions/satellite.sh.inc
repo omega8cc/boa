@@ -2502,8 +2502,10 @@ _satellite_build_shared() {
             [ -n "${_p}" ] && _trees="${_trees} ${_p}"
             ;;
           bundle)
+            # Drupal 12's shelf is built only while its pin is set
             if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_twelve|_backdrop)?$ ]] \
-              || [ ! -d "${_p}" ]; then
+              || [ ! -d "${_p}" ] \
+              || { [ "${_p##*/}" = "o_contrib_twelve" ] && [ -z "${_REDIS_W_VERSION}" ]; }; then
               _gone="${_gone} ${_p}"
             elif [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " != *" ${_p} "* ]]; then
               _msg "${_STATUS} A: Running ${_p} forced upgrade..."
