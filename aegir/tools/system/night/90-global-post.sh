@@ -245,13 +245,20 @@ exit 0;'
 # its modes with everything below it; nothing changes in a tree that is
 # another user's. An account not in passwd is left alone.
 _distro_sites_all_modes() {
-  local _pDis _a _o _n
+  local _pDis _a _o _n _x
   local -A _left=()
   for _pDis in /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes}; do
     [ -d "${_pDis}" ] || continue
     _a="${_pDis#/data/disk/}"
     _a="${_a%%/*}"
     _o=$(_acct_walk_uids "${_a}") || continue
+    # a tree that is another user's is left whole and counted once: find
+    # hands the walker its start as ./., and only a "." names a refused place
+    _x=$(_acct_in_real_dir "${_pDis}" perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 02775 . 2> /dev/null)
+    if [ -n "${_x}" ]; then
+      _left["${_a}"]+="${_x}"$'\n'
+      continue
+    fi
     # what the walker leaves for another owner, by dev:ino, per account
     _left["${_a}"]+="$(_acct_in_real_dir "${_pDis}" find . -type d \
       -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 02775 {} + 2> /dev/null)"$'\n'
