@@ -1213,6 +1213,44 @@
       its own web group, which the two accounts settle between them
       (docs/INSTGRP.md).
 
+    * The web group conversion, still switched off, gives an account's
+      main login its own copy of the account's web group notes, which
+      say what holds its phase B back and what clears it:
+      ~/static/control/web-group-notes.txt, readable by that login alone
+      over SFTP and in its shell, where the copy in log/ is out of its
+      reach. Root rewrites it from its own notes file through a writer
+      that never follows a link; no migration tool carries it, and the
+      control directory's README names it (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, names each ground
+      that holds an account's phase B, and a share into the account's
+      store, once a run in each account's notes, where a run that went
+      on to the check before phase B wrote it twice (docs/INSTGRP.md).
+
+    * A web group conversion run that notes thousands of paths no longer
+      spends minutes checking which notes it already wrote: the check
+      costs the same however many there are.
+
+    * A web group conversion at phase A, still switched off, that ends
+      with paths a writer left in www-data during its walk (exit 2) says
+      so in a NOTE, in the account's notes and in instgrp.log, where the
+      Octopus upgrade's note for it points; the next run walks them, as
+      before (docs/INSTGRP.md).
+
+    * instgrp webstatus says what holds the account's phase B back, on a
+      shares: line counted as instgrp webcheck --report counts it, read
+      without writing a note (docs/INSTGRP.md).
+
+    * instgrp webcheck --report also reads the master, which a share or a
+      site or store outside it can hold at phase A as it can an account:
+      a block of its own with its shares: line (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, waits for the
+      limited-shell worker's current web group form before an account's
+      first conversion: an earlier form raised an incident on every pass
+      for an account at phase A whose site keeps its files store outside
+      the account (docs/INSTGRP.md).
+
 @=> New Features
 
     * Grav shops: a Grav site can now be created on a database server for
