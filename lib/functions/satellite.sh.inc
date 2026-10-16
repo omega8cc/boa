@@ -4506,10 +4506,13 @@ _satellite_db_broker_cnf_last() {
 # repeated only as printable text of the broker's own shape, and never with
 # a word the pass launchers read as an alarm in a pass's log: a row's host
 # and a database's name are an account's to choose. A call that stopped
-# after it changed something (scope-failed, baseline-settle-incomplete) is
+# after it changed something (scope-failed, baseline-settle-incomplete), or
+# that an SQL statement failed in (sql-failed: never a policy refusal), is
 # no refusal: each ALRT line of the broker's answer is relayed (printable,
-# at most 20 lines of 300 characters) and the call's line is an ALRT too,
-# so the pass is reported with errors, as a new account's failed switch is.
+# at most 20 lines of 512 characters, OOPS: said without its colon, a word
+# the launchers read as an oops while the line is an alarm already) and the
+# call's line is an ALRT too, so the pass is reported with errors, as a new
+# account's failed switch is.
 # Each login a settle revoked or dropped is named on an INFO line of its own
 # (at most 20, printable, the alarm words kept out as above), so a login of
 # an operator's own that loses its rights is never named in the broker's
@@ -4520,15 +4523,15 @@ _satellite_db_broker_call() {
   _rc=$?
   _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
   case "${_last}" in
-    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*) _kind="ALRT" ;;
+    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*|"ERR 7 sql-failed "*) _kind="ALRT" ;;
   esac
   while IFS= read -r _l; do
     case "${_l}" in
       "ALRT: "*)
         [[ "${_kind}" == "ALRT" && "${_na}" -lt 20 ]] || continue
         _na=$(( _na + 1 ))
-        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
-        _msg "ALRT: database broker: ${_l}"
+        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
+        _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
         ;;
       "settled revoked "*|"settled dropped "*)
         [[ "${_ns}" -lt 20 ]] || continue
