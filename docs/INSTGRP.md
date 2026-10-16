@@ -904,10 +904,11 @@ root `aegir2boa-stage2`, `xoct`, `xcopy`, `xmass` or `xtrim` runs, no root
 process holds a file under `/var/backups/a2b/oN/`, no migration park stands
 and no relay record or proxy vhost is beside it, and says so once.
 
-Only root's processes count (a tenant sets its own command line). A pass
-that finds a migration of another account, or an xmass autosync, only puts
-the removal off, while one that finds the account's own import starts the
-day again. A one-line marker is removed only beside aegir2boa's state of
+Only root's processes count (a tenant sets its own command line), and a
+stage 2 is the account's own import only when its `--account` argument,
+read whole, names the account. A pass that finds a migration of another
+account, or an xmass autosync, only puts the removal off, while one that
+finds the account's own import starts the day again. A one-line marker is removed only beside aegir2boa's state of
 this release (`/var/backups/a2b/oN/markers`) and none of an earlier
 release's in the account's tree (`log/a2b`, `src/a2b`,
 `undo/a2b-pre-import.sql`).
@@ -921,22 +922,36 @@ skips the account (an INFO line in an `all` run, an ALRT naming the
 account's own run) and no Octopus pass writes or runs its dispatcher.
 
 BOA's agent pass moves a live dispatcher back into aegir2boa's hold, and the
-nightly runs no task, queue sweep or setting on the panel and skips its
-migration-source sweep. The web group converts with the first Octopus pass
-after the import is finished or undone (`instgrp webconvert oN` converts it
-sooner).
+nightly runs no task, queue sweep or setting on the panel, skips its
+migration-source sweep and moves none of the account's sites, vhosts or
+aliases aside as ghosts (the import may have placed them half). usage.sh
+counts the account but writes no footer and clears no cache on the panel,
+and `renameaegirhost` and `syncpass fix` refuse the account, naming the
+import's re-run and its revert. The web group converts with the first
+Octopus pass after the import is finished or undone (`instgrp webconvert
+oN` converts it sooner).
 
 The worker mails once a day, from aegir2boa's own state whatever the
 account's tree holds, until the import is re-run (`aegir2boa-stage2 import
---account oN --route db-import`) or reverted (`--revert-db-import`). That
-state counts only for the account it was made for (the uid and home
-`transfer` records beside it); `boa cleanup purge` parks it with the
-account.
+--account oN --route db-import`) or reverted (`--revert-db-import`). A pass
+that could not read the process table mails all the same and says so (for
+the removal it counts as an import running). That state counts only for
+the account it was made for (the uid and home `transfer` records beside
+it; an empty record is the account's own); `boa cleanup purge` parks it
+with the account.
 
 Any other marker (one the account made, a relay record reading
 `COMPLETE`, an earlier release's freeze, an aegir2boa freeze beside relay
 evidence, one put by hand) stays as it is, and so does the freeze; once
-the worker has seen it for a day it names it in a mail once a day.
+the worker has seen it for a day it names it in a mail once a day, with
+what to do about its kind.
+
+A relay record beside root's source-role `log/migproxy.cnf` or a proxy
+vhost is a live relay and is not named; one with neither is, with the
+advice to check whether this box serves the account (after a promotion by
+hand `xmass post-mig` clears what the demotion left). An earlier release's
+freeze is named with the advice to finish or revert that import by that
+release's procedure before the marker goes.
 
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files

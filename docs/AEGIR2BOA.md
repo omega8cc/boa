@@ -762,10 +762,17 @@ verify tasks).
 Before anything lands, `transfer` binds that state to the account as it
 stands on the target: the first transfer records the account's uid and its
 home's inode and birth time in `/var/backups/a2b/<oN>/identity`, and every
-later one compares them. A state an earlier account of the name left (one
-removed by hand and made again) is refused with the path to move aside;
-BOA's own passes read such a state as none of this account's. A birth time
-the filesystem does not keep is not compared.
+later one compares them, its dry run included, before it prints its plan or
+consumes its gate. `import` compares them too, in every mode (either route,
+`--revert-db-import`, `--reset-sites`), before it prints a plan or reads its
+gate.
+
+A state an earlier account of the name left (one removed by hand and made
+again) is refused with the path to move aside; BOA's own passes read such a
+state as none of this account's. The record's first line is read whether or
+not a newline ends it; an empty record counts as the account's own (the next
+transfer writes it), as no record does. A birth time the filesystem does not
+keep is not compared.
 
 Drush aliases are deliberately NOT transferred on either route: vanilla
 aliases carry `/var/aegir` roots that would poison the target; everything
@@ -848,11 +855,14 @@ target armed for the account web group (it carries the arm stamp; see
 - a re-run of the same operation takes the freeze over once nothing of the
   killed run still touches the account: no process is left in its process
   group (a dump load, a `sed` or an `su` it started outlives it there), its
-  pid runs no stage 2, no other stage 2 run names the account, no process
-  holds a file or its working directory under `/var/backups/a2b/<oN>/`,
-  and the account's hostmaster database has no connection but the one that
-  asks. Only processes of root's are read (a tenant sets its own command
-  line).
+  pid runs no stage 2, no other stage 2 run names the account (its
+  `--account` argument read whole and cut down as stage 2 cuts down its
+  own: `--account o-1` names `o1`), no process holds a file or its working
+  directory under `/var/backups/a2b/<oN>/`, and the account's hostmaster
+  database has no connection but the one that asks.
+
+  Only processes of root's are read (a tenant sets its own command line).
+  A refused re-run says which of these refused it.
 
   A marker of the other operation, or of an earlier release (one line, or
   no process group), is refused as before. A run refused at the freeze keeps
@@ -874,10 +884,15 @@ target armed for the account web group (it carries the arm stamp; see
   the account's panel stays switched off: the Octopus wrapper skips the
   account (an INFO line in an `all` run, an ALRT when the run names it),
   no Octopus pass writes or runs its dispatcher, BOA's agent pass moves a
-  live one back into the hold and the nightly runs nothing on the panel.
+  live one back into the hold, the nightly runs nothing on the panel and
+  moves none of its sites aside as ghosts, usage.sh writes nothing into
+  it, and `renameaegirhost` and `syncpass fix` refuse the account, naming
+  the re-run and the revert.
 
   The worker mails the operator once a day until the import is re-run or
-  reverted. `boa cleanup purge` parks that state with the account.
+  reverted, also from a pass that could not read the process table (the
+  mail then says so). `boa cleanup purge` parks that state with the
+  account.
 
 Anywhere else, make sure no `aegir2boa-stage2` runs for the account,
 remove `log/proxied.pid`, then re-run the import or revert it.
@@ -1210,8 +1225,8 @@ deliberately:
 | `export` skips a site | the printed reason (missing vhost/alias, multi-host DB, bad creds, missing cert files, headroom); fix or accept, re-run |
 | dump fails mid-export | the 503 stub STAYS up (consistency over uptime); `revert --site <dom>` to unpause |
 | `import` (db-import) fails mid-run | dispatcher stays held on purpose; fix and re-run `import` (steps are idempotent), or `--revert-db-import` |
-| `import` or `--revert-db-import` dies: freeze marker already present | another run of the account is live, or one was killed outright and left its freeze. On a target armed for the web group the same operation's re-run takes over a dead freeze of its own once nothing of the killed run is left (its process group, a holder of its state, a connection to the panel's database), and BOA clears a killed import's freeze a day later (the panel stays switched off, a daily mail names the account). Otherwise make sure no `aegir2boa-stage2` runs for the account, remove `log/proxied.pid`, and re-run |
-| `transfer` dies: made for another account of the name | `/var/backups/a2b/<oN>/` on the target holds an earlier account's import state (that account removed and made again by hand): move it aside on the target, then re-run `transfer` |
+| `import` or `--revert-db-import` dies: freeze marker already present | another run of the account is live, or one was killed outright and left its freeze. On a target armed for the web group the same operation's re-run takes over a dead freeze of its own once nothing of the killed run is left (its process group, a holder of its state, a connection to the panel's database; the error names the check that refused), and BOA clears a killed import's freeze a day later (the panel stays switched off, a daily mail names the account). Otherwise make sure no `aegir2boa-stage2` runs for the account, remove `log/proxied.pid`, and re-run |
+| `transfer` or `import` dies (dry run included): made for another account of the name | `/var/backups/a2b/<oN>/` on the target holds an earlier account's import state (that account removed and made again by hand): move it aside on the target, then re-run `transfer` from the source |
 | site fails its verify/probe on target | it is listed and skipped; `proxy` will refuse it (probe gate) — fix, re-import that site |
 | `proxy` skips a site: HTTP diff | target answers differently than the baseline; re-check the site on the target, or `--accept-http-diff` if the change is expected |
 | `proxy` skips a site: CATCH-ALL page | the target is not serving that site at all — its 200 is the box's own "Under Construction" answer; re-check the site's import. `--accept-http-diff` cannot override this |
