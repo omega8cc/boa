@@ -2643,16 +2643,25 @@ _wg_note_log() {
   _log "${_WP_A}: $*"
 }
 
-# A note the walks would write again in the same run (each walk reads the
-# public set twice, and a raise to B walks twice): written once per run
-# and notes file, 0 when it is new (and written now), 1 when it was
-# written already. _wg_run empties the set.
-_WG_NOTED=$'\n'
+# The notes this run wrote, keyed by the account and the text, so a lookup
+# costs the same however many it holds. _wg_run empties it.
+declare -gA _WG_NOTED=()
+
+# 0 when note $2 of account $1 is new in this run (marked now), 1 when this
+# run marked it already.
+_wg_noted() {
+  local _k="${1} ${2}"
+  [[ -z "${_WG_NOTED[${_k}]+x}" ]] || return 1
+  _WG_NOTED[${_k}]=1
+  return 0
+}
+
+# A note the same run would write again (each walk reads the public set
+# twice and a raise to B walks twice; u6 and the B check name the same
+# grounds): written once per run and account, 0 when it is new (and
+# written now), 1 when it was written already.
 _wg_note_once() {
-  case "${_WG_NOTED}" in
-    *$'\n'"${_WP_NOTES} $*"$'\n'*) return 1 ;;
-  esac
-  _WG_NOTED="${_WG_NOTED}${_WP_NOTES} $*"$'\n'
+  _wg_noted "${_WP_A}" "$*" || return 1
   _wg_note "$@"
   return 0
 }
@@ -5235,7 +5244,7 @@ _WG_GN_STORE=0
 _WG_GN_OWN=0
 _WG_SCAN_LEFT=""
 _wg_share_note() {
-  [ "${_WG_SHARE_MODE}" = "silent" ] || _wg_note "$@"
+  [ "${_WG_SHARE_MODE}" = "silent" ] || _wg_note_once "$@"
   return 0
 }
 
@@ -5253,9 +5262,9 @@ _wg_ground_note() {
     silent|pick) return 0 ;;
   esac
   if [ "${_D_T:-}" = "B" ] && [ "${_D_RAISE:-}" != "YES" ] && [ "${_D_BEV:-}" = "YES" ]; then
-    _wg_note "${1}: phase B is committed and does not wait for it; the site reaches that path without www-data"
+    _wg_note_once "${1}: phase B is committed and does not wait for it; the site reaches that path without www-data"
   else
-    _wg_note "${1}, ${_how}: phase A only, phase B waits until ${2}"
+    _wg_note_once "${1}, ${_how}: phase A only, phase B waits until ${2}"
   fi
   return 0
 }
@@ -5309,7 +5318,7 @@ _wg_level_now() {
 }
 
 _wg_g_share() {
-  local _al _s _k _p _hit=1 _x _xh _o _me="${_WP_A}"
+  local _al _s _k _p _hit=1 _x _xh _xn _o _me="${_WP_A}"
   _WG_GN_SHARE=0
   _WG_GN_LEGACY=0
   _WG_GN_SITE=0
@@ -5366,7 +5375,10 @@ _wg_g_share() {
         esac
         if [ "$(_wg_path_owner "${_k}")" = "${_WP_A}" ]; then
           _wg_share_note "inbound share: ${_x}'s site ${_al} reads this account's ${_p} store (${_k}); it loses write (and read on a private store) once converted"
-          ( _wg_profile "${_x}"; _wg_note "outbound share: site ${_al} reads the ${_p} store of ${_me}; it loses write there once ${_me} converts" )
+          # the other account's note, once a run as well: marked here, in
+          # this run's set, and written under that account's profile
+          _xn="outbound share: site ${_al} reads the ${_p} store of ${_me}; it loses write there once ${_me} converts"
+          _wg_noted "${_x}" "${_xn}" && ( _wg_profile "${_x}"; _wg_note "${_xn}" )
         fi
       done
     done < <(_wg_sites "${_xh}")
@@ -5541,7 +5553,7 @@ _wg_run() {
   _ACCT="${1}"
   _wg_profile "${1}"
   _wg_reset
-  _WG_NOTED=$'\n'
+  _WG_NOTED=()
   if [ "${_WP_M}" = "YES" ]; then
     if ! getent passwd aegir > /dev/null 2>&1 || [ ! -d /var/aegir ]; then
       _fail "no Aegir master on this box"
