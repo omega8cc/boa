@@ -760,7 +760,10 @@ unreadable root or an unreadable target counts as busy.
 A trigger counts as armed only where the runner would take it: with a
 `platforms.info` beside it, and with the account's dispatcher in place. One
 with no `platforms.info` starts no pass, so it is not pending work, here and
-in the quiet waits of `xoct create` and `xcopy`.
+in the quiet waits of `xoct create` and `xcopy`. A dispatcher parked in
+`/var/backups/off-run`, or held by an unfinished aegir2boa import
+(`/var/backups/a2b/<oN>/held-run-<oN>`), is not in place: neither its
+trigger nor its queue counts.
 
 `init` applies the same
 probe to the source itself, twice: a cheap read (run locks and pass processes)
