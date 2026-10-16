@@ -976,6 +976,22 @@
       or reads its gate: a revert there dropped the new account's panel
       database and loaded the earlier account's snapshot into it.
 
+    * aegir2boa-stage2 --revert-db-import and --reset-sites drop, with
+      each site database the import loaded, the database users the import
+      made for it; they left them behind. The import records the rows of
+      a site's user (at localhost and %) it found missing and made, and
+      only those go, each row's CREATE USER line and grants saved first in
+      /var/backups/boa/dbrights. A user that was there before, that the
+      master or another account names, that the database broker's
+      registry gives to another account, or that has a row at a host the
+      box does not own stays, and the run says why (docs/AEGIR2BOA.md).
+
+    * aegir2boa-stage2's drain before a db-import's or a revert's surgery
+      waits only on the account's task dispatcher itself, a root process
+      running /var/xdrago/run-oN, no longer on any process whose command
+      line names that path: an operator's shell naming it held a revert
+      until that shell ended.
+
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no
       longer than 1024 bytes; otherwise no file is written, and the login
