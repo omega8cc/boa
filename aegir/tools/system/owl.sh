@@ -24,6 +24,10 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  # No inode line here on purpose: the nightly is what frees inodes (old
+  # tmp, old backups, the Delete tasks of empty platforms), so it runs
+  # whatever the inode use; weblogx, the report tool it calls, refuses
+  # itself above 90%.
   # A test, not ||: tr exits 0 on an empty /etc/hostname
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
   [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"

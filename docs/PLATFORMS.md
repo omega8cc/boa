@@ -23,10 +23,10 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.10)
 - [Drupal 11.3.19](https://drupal.org/project/drupal/releases/11.3.19)
 - [Drupal 11.4.10](https://drupal.org/project/drupal/releases/11.4.10)
-- [Drupal CMS 2.2.4](https://drupal.org/project/cms) (11.4.10)
-- [farmOS 4.0.7](https://drupal.org/project/farm) (11.3.18)
+- [Drupal CMS 2.2.5](https://drupal.org/project/cms) (11.4.10)
+- [farmOS 4.0.8](https://drupal.org/project/farm) (11.3.19)
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.10)
-- [OpenCulturas 3.1.2](https://drupal.org/project/openculturas) (11.4.10)
+- [OpenCulturas 3.1.3](https://drupal.org/project/openculturas) (11.4.10)
 - [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.10)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.8)
 
@@ -51,8 +51,8 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 ## Drupal 6
 
-- [Pressflow 6.60.1](https://www.pressflow.org)
-- [Ubercart 2.15](https://drupal.org/project/ubercart) (6.60.1)
+- [Pressflow 6.60.3](https://www.pressflow.org)
+- [Ubercart 2.15](https://drupal.org/project/ubercart) (6.60.3)
 
 ## Backdrop CMS
 
@@ -85,7 +85,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 * The Ægir control panel runs on the same pinned Drupal 7 core. Its code is built from the prebuilt `make_local` tree; when the Drupal core directory in that tree carries a different release than the pin, BOA replaces it from the pinned core tarball before building the panel, so a panel can no longer stay on an older core than the platforms.
 
-* All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
+* All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.3 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 
 * All D6 and D7 platforms include some useful and performance-related contrib modules. See [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MODULES.md) for details.
 

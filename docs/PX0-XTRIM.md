@@ -68,7 +68,8 @@ still works and does both stages, as before.
 
 ## Hard refusals (the plan battery)
 
-Root; single instance; `/` under 90% (refused before any dump is staged);
+Root; single instance; `/` under 90% used, in space and in inodes (refused
+before any dump is staged);
 at most ONE `/mnt` mount — more than one is an unconditional refusal for
 the whole run, because a resolved store path could not then be attributed
 unambiguously; no `sqlclean` (mutual lock) and no

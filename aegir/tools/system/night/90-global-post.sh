@@ -181,19 +181,96 @@ _global_conf_modes_here() (
   chmod 0711 .
 )
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0) and those of every identity of the account as passwd names
+# them (oN and oN.<name>); status 1, and nothing, unless the account itself
+# is in passwd. One text with night/20-sites.sh's.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# As _NIGHT_FCHMOD_PL, given first the uids it acts for (_acct_walk_uids): a
+# name another named uid owns keeps its mode and is printed (dev:ino), and
+# nothing is changed unless the current directory and every directory above
+# it, up to /, are owned by those uids. One text with night/20-sites.sh's.
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
+
 # The modes of every account platform's sites/all/{libraries,modules,themes}
 # trees: directories 02775, files 0664. The account owns distro/ and every
 # platform in it, so each tree is walked from inside its real directory and
-# every mode goes through a handle that never follows a link.
+# every mode goes through a handle that never follows a link, and only on
+# what root or the account's own identities own (_SAT_CHMOD_OWN_PL): its
+# logins can rename into these trees what another account left
+# group-writable, a whole directory with owner-only files in it, which keeps
+# its modes with everything below it; nothing changes in a tree that is
+# another user's. An account not in passwd is left alone.
 _distro_sites_all_modes() {
-  local _pDis
+  local _pDis _a _o _n _x
+  local -A _left=()
   for _pDis in /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes}; do
     [ -d "${_pDis}" ] || continue
-    _acct_in_real_dir "${_pDis}" find . -type d \
-      -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
-    _acct_in_real_dir "${_pDis}" find . -type f \
-      -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+    _a="${_pDis#/data/disk/}"
+    _a="${_a%%/*}"
+    _o=$(_acct_walk_uids "${_a}") || continue
+    # a tree that is another user's is left whole and counted once: find
+    # hands the walker its start as ./., and only a "." names a refused place
+    _x=$(_acct_in_real_dir "${_pDis}" perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 02775 . 2> /dev/null)
+    if [ -n "${_x}" ]; then
+      _left["${_a}"]+="${_x}"$'\n'
+      continue
+    fi
+    # what the walker leaves for another owner, by dev:ino, per account
+    _left["${_a}"]+="$(_acct_in_real_dir "${_pDis}" find . -type d \
+      -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 02775 {} + 2> /dev/null)"$'\n'
+    _left["${_a}"]+="$(_acct_in_real_dir "${_pDis}" find . -type f \
+      -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f 0664 {} + 2> /dev/null)"$'\n'
   done
+  for _a in "${!_left[@]}"; do
+    _n=$(printf '%s' "${_left[${_a}]}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+    [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || continue
+    echo "NOTE: ${_a}: the release's sites/all modes left ${_n} entries owned by another user as they were"
+  done
+  return 0
 }
 
 # Every vhost in the current (pinned) vhost.d still carrying TLSv1.1 in its

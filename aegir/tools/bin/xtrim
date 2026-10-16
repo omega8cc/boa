@@ -881,10 +881,15 @@ _preflight() {
     _die "${_oN}: proxied.pid is ${_age}d old; floor is ${_MIN_DAYS}d (_XTRIM_MIN_DAYS)"
   fi
   ### Root disk sanity.
-  local _dfp
+  local _dfp _dip
   _dfp=$(df -P / 2>/dev/null | awk 'NR==2 { gsub(/%/,""); print $5 }')
   [ -n "${_dfp}" ] && [ "${_dfp}" -gt "90" ] \
     && _die "root filesystem at ${_dfp}% -- refusing to stage dumps"
+  ### Every file takes an inode: out of them the filesystem is full while
+  ### its space still looks fine (btrfs keeps no count, prints -, no check).
+  _dip=$(LC_ALL=C df -P -i / 2>/dev/null | awk 'NR==2 { gsub(/%/,""); print $5 }' | tr -dc '0-9')
+  [ -n "${_dip}" ] && [ "${_dip}" -gt "90" ] \
+    && _die "root filesystem inodes at ${_dip}% used -- refusing to stage dumps (df -i /)"
   ### Quiescence: no installer/migrator/task machinery in flight.
   for _p in boa_run.pid boa_wait.pid octopus_install_run.pid; do
     [ -e "/run/${_p}" ] && _die "/run/${_p} present -- an install/upgrade is in flight"

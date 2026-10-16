@@ -48,6 +48,8 @@ exec 3>&2
 #     account's users can rename into their own tree what another account
 #     left group-writable, a whole directory with everything in it; that
 #     stays its owner's, and one Notice counts it (_owners_left_note).
+#     Under /var/aegir every user but an account's counts as the site's
+#     own: a plain Aegir server's tree is handed to aegir whoever owns it.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -339,8 +341,8 @@ _in_pinned_dir() {
 # $2 through a handle opened without following a link or blocking on a FIFO.
 # A file with more than one link, a link, a FIFO or a socket is left alone:
 # a hard link planted in a tree the account can write shares its file with a
-# name elsewhere, which a chown by name would hand over too, and nothing
-# checks who owns a link. The names are ./names in the current directory.
+# name elsewhere, which a chown by name would hand over too; only the link
+# check reads a link's owner. The names are ./names in the current directory.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 
 # A walk leaves a regular file with more than one link as it was (a hard
@@ -387,17 +389,22 @@ _acct_walk_uids() {
   [ "${_self}" = "YES" ] || return 1
   echo "${_x}"
 }
-# The uids the walks below act for, comma-separated, from the site path as
-# resolved, never from argv: under /data/disk/<account>/ that account's
-# (_acct_walk_uids); under /var/aegir/ root's, aegir's, those of the
-# master's pool users wwwNN, the holders _master_web_group allows, and
-# www-data's, the web server's user, which no account's login can be and a
-# plain Aegir server's PHP runs as. Status 1, and nothing, for any other
-# path, or when the account or aegir is not in passwd. A uid no passwd entry names counts as the site's own too
+# The uids the walks below act for, from the site path as resolved, never
+# from argv: under /data/disk/<account>/ that account's, comma-separated
+# (_acct_walk_uids); under /var/aegir/ every uid but those an account's
+# identities hold (a name _acct_walk_uids would give for an account with
+# a /data/disk/<account>), as a deny list: '-' and those uids,
+# comma-separated, or '-' alone. A plain Aegir server's tree, a deploy
+# login's files included, is handed to aegir as it always was, a login
+# passwd does not list (a directory service with enumeration off) too,
+# and what an account's users moved into the master's group-writable
+# stores stays theirs. Status 1, and nothing, for any other path, or when
+# the account or aegir is not in passwd. Under an account's tree a uid no
+# passwd entry names counts as the site's own too
 # (_SAT_REOWN_OWN_PL, _SAT_CHMOD_OWN_PL): a login removed before its files
 # were handed to its account left those.
 _site_walk_uids() {
-  local _a _n _p _u _r _x="0" _self=NO
+  local _a _n _p _u _r _x="" _self=NO
   case "${1}/" in
     /data/disk/*/*)
       _a="${1#/data/disk/}"
@@ -406,24 +413,32 @@ _site_walk_uids() {
       ;;
     /var/aegir/*)
       while IFS=: read -r _n _p _u _r; do
-        [[ "${_n}" =~ ^(aegir|www-data|www[0-9][0-9])$ ]] || continue
         [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-        _x="${_x},${_u}"
         [ "${_n}" = "aegir" ] && _self=YES
+        _a="${_n%%.*}"
+        if [[ "${_a}" =~ ^[a-z0-9-]+$ && -d "/data/disk/${_a}" ]] \
+          && [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]]; then
+          [[ ",${_x}," == *",${_u},"* ]] || _x="${_x},${_u}"
+        fi
       done < <(getent passwd 2> /dev/null)
       [ "${_self}" = "YES" ] || return 1
-      echo "${_x}"
+      printf '%s\n' "-${_x#,}"
       return 0
       ;;
   esac
   return 1
+}
+# Status 0 when $1 is a list of uids the walkers take (_site_walk_uids):
+# 0 and other uids, comma-separated, or a deny list.
+_own_uids_ok() {
+  [[ "${1}" =~ ^(0(,[1-9][0-9]*)*|-([1-9][0-9]*(,[1-9][0-9]*)*)?)$ ]]
 }
 # The uids the walks act for in _OWN_UIDS (_site_walk_uids); a site path in
 # neither an account's tree nor the master's is left as it is, with one
 # Notice and nothing changed.
 _own_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${site_path}") || _OWN_UIDS=""
-  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] && return 0
+  _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
     "${site_path}" >&2
   exit 0
@@ -448,10 +463,13 @@ _owners_left_note() {
 # below a directory another named uid owns is handed over. Given . as a
 # name, a directory another uid owns above the place is printed when it
 # is refused; status 1 when it is.
+# Given a deny list ('-' first, _site_walk_uids), it acts for every uid
+# but the list's.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -511,12 +529,22 @@ _reown_here() {
 
 # find's tests, in _NOT_OWN, for an entry another user owns as the walkers
 # read it: its uid is none of _OWN_UIDS and a passwd entry names it
-# (-nouser is true for a uid no entry names). A walk hands such an entry to
-# its walker whatever state it is in, so it is left and counted as before.
+# (-nouser is true for a uid no entry names), or, given a deny list, its
+# uid is one of the list's. A walk hands such an entry to its walker
+# whatever state it is in, so it is left and counted as before.
 _not_own_tests() {
   local _u
   local -a _ids=()
   _NOT_OWN=()
+  if [ "${_OWN_UIDS:0:1}" = "-" ]; then
+    IFS=, read -r -a _ids <<< "${_OWN_UIDS#-}"
+    _NOT_OWN=( \( -false )
+    for _u in "${_ids[@]}"; do
+      _NOT_OWN+=( -o -uid "${_u}" )
+    done
+    _NOT_OWN+=( \) )
+    return 0
+  fi
   IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
   for _u in "${_ids[@]}"; do
     _NOT_OWN+=( ! -uid "${_u}" )
@@ -544,7 +572,7 @@ _reown_own_here() {
   [[ "${1}" != *:* ]] \
     || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
   if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]] \
-    || [[ ! "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]]; then
+    || ! _own_uids_ok "${_OWN_UIDS}"; then
     printf "Error: invalid owner %s\n" "${1}" >&2
     return 1
   fi
@@ -569,7 +597,7 @@ _reown_own_here() {
 # to nobody: -1 keeps the owner and the group); otherwise the directory
 # another user owns is printed (dev:ino) and the status is 1.
 _place_ours_here() {
-  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  _own_uids_ok "${_OWN_UIDS}" || return 1
   perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" -1 -1 .
 }
 # "$@" in the current (pinned) directory only while that place is root's
@@ -768,6 +796,19 @@ _link_guard_tree() {
   return 0
 }
 
+### The nightly runs while its marker names a live owl.sh, as owl.sh itself
+### tests it: a marker a killed nightly left names none, and its stores are
+### no longer covered by the night's own pass. A marker with no pid is the
+### account loop's touch after clear.sh swept an idle one: still running.
+_night_running() {
+  local _p
+  [ -e /run/daily-fix.pid ] || return 1
+  _p=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2> /dev/null )
+  [ -n "${_p}" ] || return 0
+  kill -0 "${_p}" 2> /dev/null \
+    && grep -q "owl.sh" "/proc/${_p}/cmdline" 2> /dev/null
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 
@@ -946,7 +987,7 @@ if [ -n "${_files_dir}" ] \
   if [ -n "${_priv_dir}" ]; then
     _LEFT="${_LEFT}"$'\n'"$(_in_pinned_dir "${_priv_dir}" _priv_own_here 2> /dev/null)"
   fi
-  if [ ! -e "/run/daily-fix.pid" ]; then
+  if ! _night_running; then
     _link_guard_tree "${_files_dir}"
     _link_guard_tree "${_priv_dir}"
   fi
