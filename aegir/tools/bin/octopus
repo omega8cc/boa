@@ -823,6 +823,37 @@ _oct_mfs_held() {
     | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). One text wherever it is
+# defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ] \
+    && read -r _iu _ii _ib _ < "${_b}/identity"; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
 _up_action_all() {
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
@@ -841,6 +872,16 @@ _up_action_all() {
     ### and xoct's successful conversion removes it.
     if [ -e "${_usEr}/log/proxy-failed.pid" ]; then
       echo "INFO: skipping ${_usEr}: its proxy conversion failed at a cutover (repair it with xoct first)"
+      continue
+    fi
+    ### An aegir2boa db-import left the account's panel half made (its
+    ### dispatcher held aside, or step markers without the done or hand-back
+    ### marker): on a box armed for the web group a pass here would verify,
+    ### dispatch, sweep and migrate that panel. Only the import's re-run or
+    ### revert ends it. Read-only, as the two tests above.
+    if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+      && _a2b_import_unfinished "${_usEr##*/}"; then
+      echo "INFO: skipping ${_usEr}: its aegir2boa db-import is unfinished (finish it with aegir2boa-stage2 import --account ${_usEr##*/} --route db-import, or undo it with aegir2boa-stage2 import --account ${_usEr##*/} --revert-db-import)"
       continue
     fi
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
@@ -949,6 +990,12 @@ _up_action_one() {
   fi
   if [ -e "${_usEr}/log/proxy-failed.pid" ]; then
     echo "ALRT: skipping ${_usEr}: its proxy conversion failed at a cutover (repair it with xoct first) - nothing was upgraded"
+    _SEND_ALERT=YES
+    return 0
+  fi
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${_sCnd}"; then
+    echo "ALRT: skipping ${_usEr}: its aegir2boa db-import is unfinished - nothing was upgraded (finish it with aegir2boa-stage2 import --account ${_sCnd} --route db-import, or undo it with aegir2boa-stage2 import --account ${_sCnd} --revert-db-import)"
     _SEND_ALERT=YES
     return 0
   fi

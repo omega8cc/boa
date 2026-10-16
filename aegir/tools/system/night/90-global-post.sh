@@ -1089,6 +1089,37 @@ _archive_old_daily_logs() {
   done
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). One text wherever it is
+# defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ] \
+    && read -r _iu _ii _ib _ < "${_b}/identity"; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
 # Hand the migration-source sweep back to the module's own daily hosting queue
 # on every hosted instance that carries it. The nightly pass below switches that
 # queue off per instance because the paused nightly run is the only executor on
@@ -1099,9 +1130,13 @@ _archive_old_daily_logs() {
 _migrate_source_queue_fallback_on() {
   local _armPth _armUsr _armHas
   for _armPth in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    # nor a panel an aegir2boa db-import left half made, on a box armed
+    # for the web group: nothing runs on it until the import ends
     if [ -e "${_armPth}/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "${_armPth}/log/proxied.pid" ] \
-      && [ ! -e "${_armPth}/log/CANCELLED" ]; then
+      && [ ! -e "${_armPth}/log/CANCELLED" ] \
+      && { [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+        || ! _a2b_import_unfinished "${_armPth##*/}"; }; then
       _armUsr=$(echo "${_armPth}" | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       _armHas=$(su -s /bin/bash - "${_armUsr}" -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
       if [ "${_armHas}" = "1" ]; then
@@ -1197,9 +1232,13 @@ _migrate_source_sweep_all() {
     echo "migrate-sweep: provision task still active after grace and drain; skipping this night"
   else
     for _swpPth in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      # nor a panel an aegir2boa db-import left half made, on a box armed
+      # for the web group: its sweep runs once the import ends
       if [ -e "${_swpPth}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${_swpPth}/log/proxied.pid" ] \
-        && [ ! -e "${_swpPth}/log/CANCELLED" ]; then
+        && [ ! -e "${_swpPth}/log/CANCELLED" ] \
+        && { [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+          || ! _a2b_import_unfinished "${_swpPth##*/}"; }; then
         _swpUsr=$(echo ${_swpPth} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _swpHas=$(su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
         if [ "${_swpHas}" = "1" ]; then
