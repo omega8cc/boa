@@ -172,6 +172,13 @@
       settings.php over the site's own, and a Backdrop site then answered
       500 until a Verify.
 
+    * provision-update and the Convert to utf8mb4 task keep a Drupal 6 or
+      7 site in maintenance mode while the update or the conversion runs.
+      Their safety backup runs in a process of its own that rewrote
+      settings.php twice from the site's enabled record (the database
+      credentials written out for the archive, then cloaked again), so
+      the site was back online before the work started.
+
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not
       completed (a warning in the task log, an ALERT or WARN line in the
