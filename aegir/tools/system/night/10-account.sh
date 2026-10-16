@@ -862,6 +862,20 @@ _relocate_one_backup_dir() {
 # The relocation proper, for _relocate_one_backup_dir: reads its _n, _st,
 # _lnk, _src, _dm, _ug and _md. Every return leaves both directories open
 # with that owner and mode, or never closed them.
+# A backups directory the nightly cannot move stays on the account's own
+# filesystem, the one the move protects, and only the account's night log
+# said so: the operator hears of it once a day through the nightly's notice
+# (nightly.incident.log and a mail to the operator's address, never the
+# account's), as the web group drift does. $1 = the reason.
+_night_bak_tell() {
+  declare -F _night_notice > /dev/null 2>&1 || return 0
+  ( _MY_OCTO_EMAIL=""
+    _MY_EMAIL="${_ADMIN_EMAIL:-}"
+    _night_notice "bak-move-${_HM_U}" \
+      "BOA nightly on $(hostname -f): backups of ${_HM_U} not moved to attached storage" \
+      "${_HM_U}: ${_src} stays where it is: ${1}. The nightly tries again every night." )
+  return 0
+}
 _night_bak_move() {
   if ! _night_in_pinned "${_st}" _night_bak_dst_here ".${_n}"; then
     _night_bak_open "" "${_dm}" "${_ug}" "${_md}"
@@ -882,6 +896,7 @@ _night_bak_move() {
     if ! _night_bak_room; then
       _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
       echo "backups-on-static: ${_NIGHT_BAK_SHORT}; left ${_src} as real dir"
+      _night_bak_tell "${_NIGHT_BAK_SHORT}"
       return 0
     fi
     # One-time migration de-links any pre-existing backups<->backup-exports hardlink
@@ -893,6 +908,7 @@ _night_bak_move() {
       || ! _acct_in_real_dir "${_src}" _night_bak_copy_here "${_dm}"; then
       _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
       echo "backups-on-static: move failed ${_src} -> ${_st}/.${_n}; left as real dir"
+      _night_bak_tell "the copy into ${_st}/.${_n} failed; what it wrote stays there and the store's filesystem may be full"
       return 0
     fi
     # A device, FIFO or socket is never copied: a dir holding one stays.
@@ -920,15 +936,20 @@ _night_bak_move() {
   # A name put there meanwhile makes this fail, never takes the link inside
   # it, and the link is never handed over by its name (_night_bak_link_here).
   _acct_in_real_dir "${_usEr}" _night_bak_link_here "${_lnk}" "${_n}" "${_ug}" \
-    || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"; return 0; }
+    || {
+      echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"
+      _night_bak_tell "it could not be linked to its copy; the data is in ${_st}/.${_n}, relink it by hand"
+      return 0
+    }
   echo "backups-on-static: relocated ${_src} -> ${_st}/.${_n} (static filesystem)"
 }
 # For _night_bak_move: whether the store's filesystem takes the copy of the
 # real directory _src. It must fit in bytes, and leave 2% of that
 # filesystem's inodes, at least 50,000, free, counting every name the copy
 # makes (rsync -a without -H: each hard-linked name a file of its own, as
-# du -l counts them). A side with no reading, or a filesystem with no inode
-# count (btrfs), is not judged. Status 1 with the reason in _NIGHT_BAK_SHORT.
+# du -l counts them). A figure no command gave skips the copy for the night;
+# a filesystem with no inode count (btrfs) is judged on bytes alone. Status 1
+# with the reason in _NIGHT_BAK_SHORT.
 _NIGHT_BAK_SHORT=""
 _night_bak_room() {
   local _kb _av _in _it _if _ih _db _dn
@@ -952,12 +973,23 @@ _night_bak_room() {
   fi
   _av=$(_night_in_pinned "${_st}" df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')
   read -r _it _if <<< "$(_night_in_pinned "${_st}" env LC_ALL=C df -P -i . 2>/dev/null | awk 'NR==2 {print $2, $4}')"
-  if [[ "${_kb}" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]] && [ "${_av}" -lt "${_kb}" ]; then
+  # A figure no command gave skips the copy for the night: it runs
+  # unattended, and a copy that does not fit stops short and leaves the
+  # store's filesystem full under live sites. A filesystem with no inode
+  # count (btrfs) is judged on bytes alone.
+  if ! [[ "${_kb}" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]]; then
+    _NIGHT_BAK_SHORT="skipped for the night: the copy or the store's free space could not be measured (${_kb:-?}K to copy, ${_av:-?}K free; du gets 15 minutes)"
+    return 1
+  fi
+  if [ "${_av}" -lt "${_kb}" ]; then
     _NIGHT_BAK_SHORT="not enough space on the store's filesystem (need ${_kb}K, ${_av}K free)"
     return 1
   fi
-  if [[ "${_in}" =~ ^[0-9]+$ && "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] \
-    && [ "${_it}" -gt 0 ]; then
+  if [[ "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] && [ "${_it}" -gt 0 ]; then
+    if ! [[ "${_in}" =~ ^[0-9]+$ ]]; then
+      _NIGHT_BAK_SHORT="skipped for the night: the copy's files could not be counted (du --inodes gets 15 minutes)"
+      return 1
+    fi
     _ih=$(( _it / 50 ))
     [ "${_ih}" -ge 50000 ] || _ih=50000
     if [ $(( _in + _ih )) -gt "${_if}" ]; then
@@ -1677,9 +1709,12 @@ _le_account_report() {
   ### outside a per-domain detail block) now that per-account output left
   ### _thisLog. The `grep -v '^\["'` drops the per-domain jsonsh dump lines so a
   ### normal validation failure is not also echoed here (already in the report).
+  ### A full filesystem counts too (nothing else reads this log for it), and
+  ### so does every backups move that did not happen (room, unmeasured, a
+  ### failed copy or link), which _night_bak_tell also gives its daily notice.
   ###
   _nonle="$(grep -E -a \
-    'Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
+    'No space left on device|backups-on-static: (not enough|move failed|skipped|could not symlink)|Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
     "${_acctLog}" 2>/dev/null | grep -v -E '^\["' | sort -u | head -n 40)"
   [ -z "${_fails}" ] && [ -z "${_nonle}" ] && return 0
   _throttle=7
