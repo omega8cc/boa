@@ -830,16 +830,19 @@ _oct_mfs_held() {
 # dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
 # state, and so does a state recorded for another account of the name (its
 # uid, or its home's inode or birth time, not the account's now; a birth
-# time either side does not know is not compared). One text wherever it is
-# defined.
+# time either side does not know is not compared). The record's first line
+# is read whether or not a newline ends it; an empty record, or none, is
+# the account's own. One text wherever it is defined.
 _a2b_import_unfinished() {
-  local _b="/var/backups/a2b/${1}" _m _iu _ii _ib _n
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
   case "${1}" in
     ""|*[!a-z0-9-]*) return 1 ;;
   esac
   [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
-  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ] \
-    && read -r _iu _ii _ib _ < "${_b}/identity"; then
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
     _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
     [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
