@@ -204,20 +204,22 @@ _acct_walk_uids() {
   [ "${_self}" = "YES" ] || return 1
   echo "${_x}"
 }
-# The uids the walks below act for, comma-separated, from the root as
-# resolved, never from argv: under /data/disk/<account>/ that account's
-# (_acct_walk_uids); under /var/aegir/ root's and every other user's but
-# an account's identities (a name _acct_walk_uids would give for an
-# account with a /data/disk/<account>): a plain Aegir server's tree, a
-# deploy login's files included, is handed to aegir as it always was, and
-# what an account's users moved into the master's group-writable stores
-# stays theirs. Status 1, and nothing, for any other path, or when the
-# account or aegir is not in passwd. A uid no passwd entry names counts as
-# the platform's own too
+# The uids the walks below act for, from the root as resolved, never
+# from argv: under /data/disk/<account>/ that account's, comma-separated
+# (_acct_walk_uids); under /var/aegir/ every uid but those an account's
+# identities hold (a name _acct_walk_uids would give for an account with
+# a /data/disk/<account>), as a deny list: '-' and those uids,
+# comma-separated, or '-' alone. A plain Aegir server's tree, a deploy
+# login's files included, is handed to aegir as it always was, a login
+# passwd does not list (a directory service with enumeration off) too,
+# and what an account's users moved into the master's group-writable
+# stores stays theirs. Status 1, and nothing, for any other path, or when
+# the account or aegir is not in passwd. Under an account's tree a uid no
+# passwd entry names counts as the platform's own too
 # (_SAT_CHMOD_OWN_PL): a login removed before its files were handed to its
 # account left those.
 _site_walk_uids() {
-  local _a _n _p _u _r _x="0" _self=NO
+  local _a _n _p _u _r _x="" _self=NO
   case "${1}/" in
     /data/disk/*/*)
       _a="${1#/data/disk/}"
@@ -227,27 +229,31 @@ _site_walk_uids() {
     /var/aegir/*)
       while IFS=: read -r _n _p _u _r; do
         [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        [ "${_n}" = "aegir" ] && _self=YES
         _a="${_n%%.*}"
         if [[ "${_a}" =~ ^[a-z0-9-]+$ && -d "/data/disk/${_a}" ]] \
           && [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]]; then
-          continue
+          [[ ",${_x}," == *",${_u},"* ]] || _x="${_x},${_u}"
         fi
-        _x="${_x},${_u}"
-        [ "${_n}" = "aegir" ] && _self=YES
       done < <(getent passwd 2> /dev/null)
       [ "${_self}" = "YES" ] || return 1
-      echo "${_x}"
+      printf '%s\n' "-${_x#,}"
       return 0
       ;;
   esac
   return 1
+}
+# Status 0 when $1 is a list of uids the walkers take (_site_walk_uids):
+# 0 and other uids, comma-separated, or a deny list.
+_own_uids_ok() {
+  [[ "${1}" =~ ^(0(,[1-9][0-9]*)*|-([1-9][0-9]*(,[1-9][0-9]*)*)?)$ ]]
 }
 # The uids the walks act for in _OWN_UIDS (_site_walk_uids); a root in
 # neither an account's tree nor the master's is left as it is, with one
 # Notice and nothing changed.
 _root_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
-  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] && return 0
+  _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
     "${drupal_root}" >&2
   exit 0
@@ -286,10 +292,13 @@ _root_place_or_leave() {
 # find stands), so nothing below a directory another named uid owns gets a
 # mode. Given . as a name, a directory another uid owns above the place is
 # printed when it is refused; status 1 when it is.
+# Given a deny list ('-' first, _site_walk_uids), it acts for every uid
+# but the list's.
 _SAT_CHMOD_OWN_PL='use Fcntl;
 my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -327,7 +336,7 @@ _chmod_own_here() {
   local _t="${1}" _mode="${2}" _pat _p
   local -a _names=()
   shift 2
-  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  _own_uids_ok "${_OWN_UIDS}" || return 1
   for _pat in "$@"; do
     for _p in ${_pat}; do
       [ "${_p}" = "." ] || _p="./${_p#./}"
@@ -410,12 +419,22 @@ _fwalk_here() {
 }
 # find's tests, in _NOT_OWN, for an entry another user owns as the walkers
 # read it: its uid is none of _OWN_UIDS and a passwd entry names it
-# (-nouser is true for a uid no entry names). A walk hands such an entry to
-# its walker whatever state it is in, so it is left and counted as before.
+# (-nouser is true for a uid no entry names), or, given a deny list, its
+# uid is one of the list's. A walk hands such an entry to its walker
+# whatever state it is in, so it is left and counted as before.
 _not_own_tests() {
   local _u
   local -a _ids=()
   _NOT_OWN=()
+  if [ "${_OWN_UIDS:0:1}" = "-" ]; then
+    IFS=, read -r -a _ids <<< "${_OWN_UIDS#-}"
+    _NOT_OWN=( \( -false )
+    for _u in "${_ids[@]}"; do
+      _NOT_OWN+=( -o -uid "${_u}" )
+    done
+    _NOT_OWN+=( \) )
+    return 0
+  fi
   IFS=, read -r -a _ids <<< "${_OWN_UIDS}"
   for _u in "${_ids[@]}"; do
     _NOT_OWN+=( ! -uid "${_u}" )
@@ -438,7 +457,7 @@ _fwalk_own_here() {
   local _t="${1}" _m="${2}" _rc _v _s _p
   local -a _need=()
   shift 2
-  [[ "${_OWN_UIDS}" =~ ^0(,[1-9][0-9]*)*$ ]] || return 1
+  _own_uids_ok "${_OWN_UIDS}" || return 1
   if [[ "${_t}" =~ ^[df]$ && "${_m}" =~ ^0?[0-7]{3,4}$ ]]; then
     _v=$(( 8#${_m} ))
     if [[ "${_t}" == "d" && "${#_m}" -lt 5 ]]; then

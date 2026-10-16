@@ -221,10 +221,12 @@
 ```text
 ;redis_flush_apcu_on_recovery = TRUE
 ;;
-;;  When the backend transitions from down back to up, clear the local APCu so
-;;  any stale ChainedFast front-layer entries written/missed during the
-;;  degraded window are discarded and rebuilt from Redis/Valkey. This is the
-;;  main guard against "config changes not applied" lingering after a blip.
+;;  When BOA clears the whole of Valkey after an outage window (it cannot tell
+;;  which sites served requests on their database meanwhile), every PHP-FPM
+;;  pool of the box clears its local APCu once. Otherwise BOA clears from
+;;  Valkey only what those sites kept from before the window, and inside a
+;;  window the database cache refuses entries older than the window, so
+;;  neither cache serves what the other changed.
 ;;  Set FALSE only if you have a specific reason to keep APCu across recovery.
 ```
 

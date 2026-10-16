@@ -451,6 +451,22 @@ _save_verify_this_platform() {
 }
 
 #
+# Whether the platform whose docroot is $1 has its code: its index.php, the
+# test _save_verify_this_platform registers a platform by. "installed" when
+# it has; otherwise an ALRT that it was not built ($2 its description),
+# unless $3 is NO and there is no directory: its builder said why.
+_d_platform_there() {
+  if [ -e "${1}/index.php" ]; then
+    _msg "DISTRO: ${2} installed"
+    return 0
+  fi
+  if [ -d "${1}" ] || [ "${3:-}" != "NO" ]; then
+    _msg "ALRT! ${2} not built: no ${1}/index.php"
+  fi
+  return 1
+}
+
+#
 # Download and extract from core archive. A fetch that fails is counted in
 # _GET_FAILS, as _get_dev_contrib counts its own: the shared phase never
 # places a tree a fetch failed for (_shared_place).
@@ -484,14 +500,22 @@ _get_core_ext() {
     done
     if [ "${_success}" -eq 1 ]; then
       _tb_capture "https://${_USE_MIR}/core/$1" "$1" bytes
-      if [ ! -z "${2}" ]; then
-        _extract_archive "${1}" "${2}"
-      else
-        _extract_archive "${1}"
+      # _extract_archive reports the extractor's own status: a failed unpack
+      # counts as a failed fetch, and the directory it made (the archive's
+      # name without .tar.gz) is removed, so a half made tree is never taken
+      # for the platform and gives back the inodes it took
+      _xTop="${1%.tar.gz}"
+      _xNew=NO
+      [ -e "${_xTop}" ] || [ -L "${_xTop}" ] || _xNew=YES
+      if ! _extract_archive "${1}" ${2:+"${2}"}; then
+        _msg "OOPS: $1 could not be extracted"
+        if [ "${_xNew}" = "YES" ] && [ "${_xTop}" != "${1}" ] \
+          && [ -d "${_xTop}" ] && [ ! -L "${_xTop}" ]; then
+          _tb_rmtree "${_xTop}"
+        fi
+        _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
+        return 1
       fi
-      # Explicit: _extract_archive ends on "[ -z ${2} ] && rm -f", so with a
-      # second argument it reports 1 after a perfectly good extract, and
-      # callers now branch on this function's status
       return 0
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
@@ -532,14 +556,22 @@ _get_distro_ext() {
     done
     if [ "${_success}" -eq 1 ]; then
       _tb_capture "https://${_USE_MIR}/distro/$1" "$1" bytes
-      if [ ! -z "${2}" ]; then
-        _extract_archive "${1}" "${2}"
-      else
-        _extract_archive "${1}"
+      # _extract_archive reports the extractor's own status: a failed unpack
+      # counts as a failed fetch, and the directory it made (the archive's
+      # name without .tar.gz) is removed, so a half made tree is never taken
+      # for the platform and gives back the inodes it took
+      _xTop="${1%.tar.gz}"
+      _xNew=NO
+      [ -e "${_xTop}" ] || [ -L "${_xTop}" ] || _xNew=YES
+      if ! _extract_archive "${1}" ${2:+"${2}"}; then
+        _msg "OOPS: $1 could not be extracted"
+        if [ "${_xNew}" = "YES" ] && [ "${_xTop}" != "${1}" ] \
+          && [ -d "${_xTop}" ] && [ ! -L "${_xTop}" ]; then
+          _tb_rmtree "${_xTop}"
+        fi
+        _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
+        return 1
       fi
-      # Explicit: _extract_archive ends on "[ -z ${2} ] && rm -f", so with a
-      # second argument it reports 1 after a perfectly good extract, and
-      # callers now branch on this function's status
       return 0
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/distro/$1 after ${_max_attempts} attempts"
@@ -610,8 +642,9 @@ _tb_write() {
 _tb_record() {
   # $1 platform directory, $2 its docroot: after the create path, keep what
   # its fetch downloaded -- only for a tree that is really there and complete
-  # (the fetchers do not see tar's status: a short extract is not recorded,
-  # so the next pass fetches the platform again)
+  # (a failed extract leaves no tree; a short one, should the extractor
+  # still report success, is not recorded, so the next pass fetches the
+  # platform again)
   local _have
   if [ -n "${_TB_SHA}" ] && [ -e "${2}/index.php" ]; then
     # the Drush-lock dirs keep the mode the lock gave them (pruned, as in
@@ -623,7 +656,7 @@ _tb_record() {
       # No record at all (an older one could describe an earlier tree), so
       # the next pass refreshes it
       rm -f "${_pthDst}/.boa-tarball/$(basename "${1}").info"
-      _msg "OOPS: $(basename "${1}"): the extract came out short (${_have} of ${_TB_BYTES} bytes), fetched again next pass"
+      _msg "ALRT! $(basename "${1}"): the extract came out short (${_have} of ${_TB_BYTES} bytes), fetched again next pass"
     else
       _tb_write "${1}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" ""
     fi
@@ -799,7 +832,9 @@ _tb_stage() {
   # $1 platform name, $2 url, $3 docroot relative to the platform ("" or
   # "/web"...). Fetches and extracts beside the platform; on success the
   # complete tree is ${_pthDst}/.boa-refresh/$1.new/<top> (in _TB_STAGED)
-  # and the tarball is captured. The old tree is not touched here.
+  # and the tarball is captured. The old tree is not touched here. Status 2
+  # when there is no room for it (said here; nothing was tried), 1 when the
+  # fetch or the extract failed.
   local _st="${_pthDst}/.boa-refresh" _tgz _new _top _need _free _ineed _itot _iuse
   _TB_STAGED=""
   _TB_SHA=""
@@ -813,7 +848,7 @@ _tb_stage() {
   _free="$(df -Pk "${_pthDst}" 2> /dev/null | awk 'NR==2 {print $4}')"
   if [ -z "${_free}" ] || [ "${_free}" -lt "${_need}" ]; then
     _msg "DISTRO: ${1} not fetched again: ${_free:-unknown} KB free, ${_need} KB needed"
-    return 1
+    return 2
   fi
   # The new tree takes about as many inodes as the old one, and they must
   # fit without taking the filesystem past 90% of its inodes, the line at
@@ -825,7 +860,7 @@ _tb_stage() {
     && [[ "${_iuse}" =~ ^[0-9]+$ ]] && [ "${_itot}" -gt 0 ] \
     && [ $(( (_iuse + _ineed) * 100 )) -gt $(( _itot * 90 )) ]; then
     _msg "DISTRO: ${1} not fetched again: ${_iuse} of ${_itot} inodes in use, ${_ineed} more would pass 90% (df -i ${_pthDst})"
-    return 1
+    return 2
   fi
   if ! curl ${_TB_CRL} --fail --max-time 1800 --retry 2 --retry-delay 10 -R "${2}" -o "${_tgz}"; then
     rm -f "${_tgz}"
@@ -954,10 +989,17 @@ _tb_refresh() {
     fi
     return 0
   fi
-  if ! _tb_stage "${1}" "${3}" "${2}"; then
-    _msg "OOPS: ${1}: ${_why}, but the fetch or extract failed; the current tree is kept"
-    return 0
-  fi
+  _tb_stage "${1}" "${3}" "${2}"
+  case "$?" in
+    0) ;;
+    # no room for a second copy: said by _tb_stage, the tree in place is
+    # kept and works, and the next pass asks again
+    2) return 0 ;;
+    *)
+      _msg "ALRT! ${1}: ${_why}, but the fetch or extract failed; the current tree is kept"
+      return 0
+      ;;
+  esac
   if [ -n "${_rsha}" ] && [ "${_TB_SHA}" = "${_rsha}" ]; then
     # The same bytes under a new mtime
     _tb_write "${_dir}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" ""
@@ -983,7 +1025,7 @@ _tb_refresh() {
     return 0
   fi
   if ! _tb_retire "${_old}"; then
-    _msg "OOPS: ${1}: a previous tree could not be moved out of the way in .boa-refresh, not replaced"
+    _msg "ALRT! ${1}: a previous tree could not be moved out of the way in .boa-refresh, not replaced"
     _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
     _TB_SHA=""
     return 0
@@ -996,7 +1038,7 @@ _tb_refresh() {
   fi
   if [ -e "${_dir}" ] || ! mv "${_TB_STAGED}" "${_dir}"; then
     [ -e "${_dir}" ] || mv "${_old}" "${_dir}"
-    _msg "OOPS: ${1}: the new tree could not be moved in; the current tree is kept"
+    _msg "ALRT! ${1}: the new tree could not be moved in; the current tree is kept"
     _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
     _TB_SHA=""
     return 0
@@ -1269,12 +1311,12 @@ _shared_place() {
   local _s="${1}" _r="${2}" _f
   shift 2
   if [ "${_GET_FAILS:-0}" -gt 0 ]; then
-    _msg "OOPS: ${_r} not built (${_GET_FAILS} fetch(es) failed), left as it was"
+    _msg "ALRT! ${_r} not built (${_GET_FAILS} fetch(es) failed), left as it was"
     return 1
   fi
   for _f in "$@"; do
     if [ ! -e "${_s}/${_f}" ]; then
-      _msg "OOPS: ${_r} not built (no ${_f}), left as it was"
+      _msg "ALRT! ${_r} not built (no ${_f}), left as it was"
       return 1
     fi
   done
@@ -1294,7 +1336,7 @@ _shared_place() {
     _msg "SHARED: ${_r} built again"
     echo "${_r}" >> "${_sigF}-DONE"
   else
-    _msg "OOPS: ${_r} is not a directory, left as it was"
+    _msg "ALRT! ${_r} is not a directory, left as it was"
     return 1
   fi
 }
@@ -1310,8 +1352,24 @@ _shared_redo_due() {
 }
 
 #
+# Whether the tree or core $1, which is there, was left half made by an
+# earlier build (one made in place before trees were staged, or one a full
+# disk stopped): a real directory without one of the files $2... a build
+# places it with. It is built again then, as when this run rebuilds it.
+_shared_half_made() {
+  local _d="${1}" _f
+  shift
+  [ -d "${_d}" ] && [ ! -L "${_d}" ] || return 1
+  for _f in "$@"; do
+    [ -e "${_d}/${_f}" ] || return 0
+  done
+  return 1
+}
+
+#
 # The shared core $1 (6 or 7) at its name in 000/core: built when it is
-# missing, built again when this run rebuilds it (_shared_redo_due), in a
+# missing, built again when this run rebuilds it (_shared_redo_due) or an
+# earlier build left it half made (_shared_half_made), in a
 # stage directory beside it (_D6_CORE_DIR or _D7_CORE_DIR points there while
 # the core is prepared), placed with its admin themes and, for D6, the
 # toolkit it copies from its bundle. A core built again links the same
@@ -1323,8 +1381,14 @@ _shared_redo_due() {
 _shared_core() {
   local _v="_D${1}_CORE_DIR" _real _stg _bnd _l _srl="${_CORE}" _need
   _real="${!_v}"
+  _need="index.php includes/bootstrap.inc themes/rubik themes/tao"
+  [ "${1}" = "6" ] && _need="${_need} includes/image.imagemagick.inc"
   if [ -e "${_real}" ] || [ -L "${_real}" ]; then
-    _shared_redo_due "${_real}" || return 0
+    if ! _shared_redo_due "${_real}"; then
+      # shellcheck disable=SC2086 # _need: one word per file
+      _shared_half_made "${_real}" ${_need} || return 0
+      _msg "SHARED: ${_real} is half made, built again"
+    fi
     _bnd="o_contrib"
     [ "${1}" = "7" ] && _bnd="o_contrib_seven"
     _l="$(readlink "${_real}/modules/${_bnd}")"
@@ -1337,17 +1401,15 @@ _shared_core() {
   # refetch failed in this pass (_SHRD_STALE, set by satellite.sh.inc)
   if [ "${1}" = "6" ] \
     && [[ " ${_SHRD_STALE:-} " == *" ${_srl}/o_contrib "* ]]; then
-    _msg "OOPS: ${_real} not built: its bundle ${_srl}/o_contrib was not fetched again"
+    _msg "ALRT! ${_real} not built: its bundle ${_srl}/o_contrib was not fetched again"
     if [ -d "${_real}" ]; then
       echo "${_real}" >> "${_sigF}-MISSED"
       _SHRD_CORE_LEFT="${_SHRD_CORE_LEFT} ${_real}"
     fi
     return 0
   fi
-  _need="index.php includes/bootstrap.inc themes/rubik themes/tao"
-  [ "${1}" = "6" ] && _need="${_need} includes/image.imagemagick.inc"
   if ! _stg="$(mktemp -d "${_real%/*}/.boa-build.XXXXXX")"; then
-    _msg "OOPS: ${_real} not built: no stage directory could be made beside it"
+    _msg "ALRT! ${_real} not built: no stage directory could be made beside it"
     if [ -d "${_real}" ]; then
       echo "${_real}" >> "${_sigF}-MISSED"
       _SHRD_CORE_LEFT="${_SHRD_CORE_LEFT} ${_real}"
@@ -1373,7 +1435,8 @@ _shared_core() {
 # Whether the shared platform tree at ${_SHRD_PLPATH} is built in this run
 # (shared phase only): a missing one when the account asked for it
 # (_SHRD_REQ), one that is there when this run rebuilds it
-# (_shared_redo_due). Never while its core (_SHRD_CORE_OF) was due to be
+# (_shared_redo_due) or when it has no profile file (_shared_half_made: an
+# earlier build left it half made). Never while its core (_SHRD_CORE_OF) was due to be
 # built again and was not: a tree copies its profiles from the core, so one
 # that is there waits for the core (${_sigF}-MISSED), as one does when no
 # stage can be made beside it. When it is,
@@ -1384,18 +1447,22 @@ _shared_due() {
   [ "${_PHASE}" = "shared" ] || return 1
   _SHRD_REAL="${_SHRD_PLPATH}"
   if [ -e "${_SHRD_REAL}" ] || [ -L "${_SHRD_REAL}" ]; then
-    _shared_redo_due "${_SHRD_REAL}" || return 1
+    if ! _shared_redo_due "${_SHRD_REAL}"; then
+      _shared_half_made "${_SHRD_REAL}" \
+        "${_SHRD_PRPATH#"${_SHRD_REAL}/"}/${_REAL_PRNAME}.profile" || return 1
+      _msg "SHARED: ${_SHRD_REAL} is half made, built again"
+    fi
   elif [ "${_SHRD_REQ}" != "YES" ]; then
     return 1
   fi
   if [ -n "${_SHRD_CORE_LEFT}" ] \
     && [[ " ${_SHRD_CORE_LEFT} " == *" ${_SHRD_CORE_OF} "* ]]; then
-    _msg "OOPS: ${_SHRD_REAL} not built: its shared core ${_SHRD_CORE_OF} was not built again"
+    _msg "ALRT! ${_SHRD_REAL} not built: its shared core ${_SHRD_CORE_OF} was not built again"
     [ -d "${_SHRD_REAL}" ] && echo "${_SHRD_REAL}" >> "${_sigF}-MISSED"
     return 1
   fi
   if ! _SHRD_STG="$(mktemp -d "${_SHRD_REAL%/*}/.boa-build.XXXXXX")"; then
-    _msg "OOPS: ${_SHRD_REAL} not built: no stage directory could be made beside it"
+    _msg "ALRT! ${_SHRD_REAL} not built: no stage directory could be made beside it"
     [ -d "${_SHRD_REAL}" ] && echo "${_SHRD_REAL}" >> "${_sigF}-MISSED"
     return 1
   fi
@@ -1454,7 +1521,7 @@ _shared_dist_loop() {
     esac
     if [ ! -d "${_core}" ]; then
       [ "${_req}" = "YES" ] \
-        && _msg "OOPS: ${_dist}: the shared core ${_core} is missing, its shared trees not built"
+        && _msg "ALRT! ${_dist}: the shared core ${_core} is missing, its shared trees not built"
       continue
     fi
     _SHRD_REQ="${_req}"
@@ -1572,7 +1639,7 @@ _enter_this_distro_root() {
   chmod 0711 ${_ROOT}/distro &> /dev/null
   chmod 0711 ${_pthDst} &> /dev/null
   if ! cd ${_pthDst} 2> /dev/null; then
-    _msg "OOPS: distro root ${_pthDst} not available, skipping this platform"
+    _msg "ALRT! distro root ${_pthDst} not available, skipping this platform"
     return 1
   fi
   return 0
@@ -1672,7 +1739,7 @@ _create_drupal6_or_7_basic() {
   if [ -d "${_SHRD_PLPATH}" ]; then
     _init_this_distro_root
   else
-    _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${_SHRD_PLNAME} not added"
+    _msg "ALRT! the shared tree ${_SHRD_PLPATH} is not there, ${_SHRD_PLNAME} not added"
   fi
 }
 
@@ -1716,6 +1783,7 @@ _create_backdrop_basic_version() {
         mv -f "${_pthDst}/backdrop" "${_pthDst}/backdrop-${_BACKDROP_V}"
       fi
     fi
+    [ -d "${_pthDst}/backdrop-${_BACKDROP_V}" ] || return 1
     mv -f "${_pthDst}/backdrop-${_BACKDROP_V}" "${_SHRD_PLNAME}"
   fi
 }
@@ -1736,6 +1804,7 @@ _create_grav_basic_version() {
         mv -f "${_pthDst}/grav" "${_pthDst}/grav-${_GRAV_V}"
       fi
     fi
+    [ -d "${_pthDst}/grav-${_GRAV_V}" ] || return 1
     mv -f "${_pthDst}/grav-${_GRAV_V}" "${_SHRD_PLNAME}"
   fi
 }
@@ -1762,6 +1831,7 @@ _create_txp_basic_version() {
         mv -f "${_pthDst}/textpattern" "${_pthDst}/textpattern-${_TXP_V}"
       fi
     fi
+    [ -d "${_pthDst}/textpattern-${_TXP_V}" ] || return 1
     mv -f "${_pthDst}/textpattern-${_TXP_V}" "${_SHRD_PLNAME}"
   fi
 }
@@ -2183,11 +2253,11 @@ _commerce_7_2_install() {
           fi
           [ "${_PHASE}" = "shared" ] && return 0
           if [ ! -d "${_SHRD_PLPATH}" ]; then
-            _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
+            _msg "ALRT! the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
             return 0
           fi
           _init_this_distro_root
-          _msg "DISTRO: ${params[description]} installed"
+          _d_platform_there "${_OCTO_PLPATH}" "${params[description]}" || return 0
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
         else
@@ -2222,7 +2292,7 @@ _ubercart6_install() {
     done
   fi
 
-  # /data/disk/o8/distro/001/ubercart-2.15-6.60.1
+  # /data/disk/o8/distro/001/ubercart-2.15-6.60.3
   _REAL_PRNAME="${params[profile_name]}"
   _VIRT_PRNAME="ubercart"
   _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
@@ -2294,11 +2364,11 @@ _ubercart6_install() {
         fi
         [ "${_PHASE}" = "shared" ] && return 0
         if [ ! -d "${_SHRD_PLPATH}" ]; then
-          _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
+          _msg "ALRT! the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
           return 0
         fi
         _init_this_distro_root
-        _msg "DISTRO: ${params[description]} installed"
+        _d_platform_there "${_OCTO_PLPATH}" "${params[description]}" || return 0
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
         _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
       else
@@ -2398,11 +2468,11 @@ _ubercart7_install() {
           fi
           [ "${_PHASE}" = "shared" ] && return 0
           if [ ! -d "${_SHRD_PLPATH}" ]; then
-            _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
+            _msg "ALRT! the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
             return 0
           fi
           _init_this_distro_root
-          _msg "DISTRO: ${params[description]} installed"
+          _d_platform_there "${_OCTO_PLPATH}" "${params[description]}" || return 0
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
           # _save_verify_this_platform 'UC7' '3.13' '7.106.2' 'ubercart-3.13-7.106.2' '/' 'minimal' ''
@@ -2498,8 +2568,7 @@ _d_dist_platform_install() {
             fi
           fi
           _tb_record "${_pthDst}/${_DIST_PLNAME}" "${_OCTO_PLPATH}"
-          if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${params[description]} installed"
+          if _d_platform_there "${_OCTO_PLPATH}" "${params[description]}"; then
             [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
             _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
           fi
@@ -2607,6 +2676,8 @@ _d_core_platform_install() {
 
   # Access parameters by name
   _REAL_PRNAME="${params[profile_name]}"
+  local _d_said=YES
+  [[ "${1}" =~ ^DL[67]$ ]] && _d_said=NO
 
   if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
     || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
@@ -2627,8 +2698,8 @@ _d_core_platform_install() {
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] ${_yOk}"
         _tb_create_core "${params[dist]}" "${7}"
-        if [ -d "${_OCTO_PLPATH}" ]; then
-          _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] installed"
+        if _d_platform_there "${_OCTO_PLPATH}${7}" \
+          "${params[description]} [D.${_THIS_CORE}]" "${_d_said}"; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [D.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [D.${_THIS_CORE}]" "${5}" "${6}" "${7}"
         fi
@@ -2641,8 +2712,8 @@ _d_core_platform_install() {
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] ${_yOk}"
         _tb_create_core "${params[dist]}" "${7}"
-        if [ -d "${_OCTO_PLPATH}" ]; then
-          _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] installed"
+        if _d_platform_there "${_OCTO_PLPATH}${7}" \
+          "${params[description]} [S.${_THIS_CORE}]" "${_d_said}"; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [S.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [S.${_THIS_CORE}]" "${5}" "${6}" "${7}"
         fi
@@ -2655,8 +2726,8 @@ _d_core_platform_install() {
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] ${_yOk}"
         _tb_create_core "${params[dist]}" "${7}"
-        if [ -d "${_OCTO_PLPATH}" ]; then
-          _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] installed"
+        if _d_platform_there "${_OCTO_PLPATH}${7}" \
+          "${params[description]} [P.${_THIS_CORE}]" "${_d_said}"; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [P.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [P.${_THIS_CORE}]" "${5}" "${6}" "${7}"
         fi

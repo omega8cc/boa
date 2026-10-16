@@ -474,7 +474,11 @@ _inode_pressure_detection() {
   if command -v _check_uptime_grace_period >/dev/null 2>&1; then
     _check_uptime_grace_period >/dev/null || return 0
   fi
-  for _p in / /data/disk; do
+  # / and the accounts' filesystem, and every filesystem mounted under /mnt,
+  # where migratefs puts an account's store and its backups on attached
+  # storage (read from /proc/mounts: never a path an account can point
+  # elsewhere)
+  for _p in / /data/disk $(awk '$2 ~ "^/mnt/[^/]+$" {print $2}' /proc/mounts 2>/dev/null); do
     [ -d "${_p}" ] || continue
     _l="$(LC_ALL=C command df -P -i -- "${_p}" 2>/dev/null | awk '
       NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
