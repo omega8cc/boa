@@ -194,12 +194,23 @@ backup never reads a source file through a link or waits on a FIFO.
   which the clean-up of a major OS upgrade deleted until this release (it
   keeps `*.archive.log` now): with only the history lost, the next run stays
   incremental (while the box's local duplicity
-  cache is there too). To start a new full chain on
-  purpose, remove the `.chain.txt` marker as well as the archive log. A
-  run that fails says so in the emailed report: duplicity's own error lines
-  and an `ALERT:` line with its exit code. An incremental that duplicity
-  refuses because the bucket lost its signature files is retried once in
-  full mode, as `multiback` does.
+  cache is there too).
+
+  To start a new full chain on
+  purpose, remove the `.chain.txt` marker as well as the archive log.
+
+  A run that fails says so in the emailed report: duplicity's own error lines
+  and an `ALERT:` line with its exit code, under the subject
+  `Daily backup: FAILED ...`, and the run exits with duplicity's status (the
+  run marker `run_<host>_backup.log` is touched only after a success). An
+  incremental that duplicity refuses because the bucket lost its signature
+  files is retried once in full mode, as `multiback` does.
+
+  A scheduled backup
+  refused because `/` is above 90% of its space or inodes is logged in
+  `/var/log/boa/backboa.incident.log` (`duobackboa.incident.log`) and mailed
+  as `Daily backup: REFUSED ...` to the same address, on a box where backups
+  are configured.
 
   The `srv.foo.bar` is a hostname of the BOA system backed up before.
   In the `retrieve` mode it will use the `_AWS_*` variables configured

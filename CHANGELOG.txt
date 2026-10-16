@@ -55,8 +55,9 @@
     * Install, Clone, Migrate, Restore, Deploy and the Backdrop, Grav and
       TXP upgrade and rename tasks refuse before writing anything while a
       filesystem they write to (/, the account home, the platform) has
-      more than 90% of its inodes in use; Delete, Verify and Backup still
-      run, so unused platforms and sites can be removed. The space
+      more than 90% of its inodes in use; Delete, Verify (but for a
+      platform Verify that builds its codebase from a makefile) and Backup
+      still run, so unused platforms and sites can be removed. The space
       pre-flight of Clone, Migrate and Restore counts the site's files
       too, following links, and refuses a copy that would leave less than
       2% of the inodes, at least 50,000, free; the check before the deploy
@@ -83,6 +84,82 @@
 
     * The system monitor's inode alert also watches every filesystem
       mounted at /mnt/<name>, the attached storage migratefs uses (#1947).
+
+    * The system monitor's disk alerts no longer wait while a BOA install
+      or upgrade runs, or on a box whose csf firewall is not running: they
+      were silent exactly while an upgrade filled a filesystem (#1947).
+      Only the first 15 minutes after a boot are held, and an alert whose
+      mail could not be sent is tried again within the hour.
+
+    * The system monitor's disk alerts read every filesystem BOA writes
+      to: its data, database, log and scratch filesystems besides / and
+      the accounts', and every writable mount under /mnt at any depth.
+
+    * The system monitor mails an ALERT when a filesystem BOA writes to is
+      more than 90% full, at most once in six hours, beside its inode
+      alert: above 90% of / the upgrades, the backups and the task queue
+      stop, and nothing said so.
+
+    * The nightly database dumps refuse, and mail why, when the filesystem
+      the dumps go to is more than 90% used in space or inodes, not only
+      /: migratefs moves /data/disk/arch onto attached storage, and /data
+      can be a filesystem of its own (#1947).
+
+    * The nightly cluster database dump purges its old dumps also when its
+      dump directory is a link onto attached storage, as the database dump
+      already did.
+
+    * A scheduled backboa or duobackboa backup refused for disk room is
+      logged and mailed as "Daily backup: REFUSED"; it said nothing, as cron
+      discards its output. A backup whose duplicity run failed is mailed as
+      "Daily backup: FAILED" and exits with duplicity's status; it was
+      reported as complete.
+
+    * migratefs ends with status 2 when it left a store in place on an
+      ERROR, its dry plan names each store the apply would refuse for room,
+      and it warns when it copies a store whose size it could not read.
+
+    * The nightly move of an account's backups onto attached storage skips
+      the night when it cannot measure the copy or the room for it, and a
+      move refused, failed or left unlinked is mailed to the operator once
+      a day; it only wrote a line to the account's night log.
+
+    * The nightly's incident mail reports "No space left on device" in its
+      own log ahead of any other incident; one in an account's log, and a
+      backups move the room refused or a copy that failed, are listed in
+      that account's report to the operator.
+
+    * With GoAccess reports switched on, the nightly copies no web logs for
+      them while / is above 90% of its inodes in use, where weblogx refuses
+      every report, and makes no account's reports that night.
+
+    * xoct's reset-state and abandon, and its policy table, run on a server
+      above 90% of its space or inodes: they remove files or only read (and
+      abandon takes the panel out of maintenance mode), and refusing them
+      kept a stalled move's 503 gate on the account's sites.
+
+    * The Backdrop, Grav and TXP upgrades and renames refuse before their
+      safety copy when their copies would not fit with the headroom the
+      copying tasks keep (#1947); an upgrade into another platform is
+      measured as a Migrate, and measured again before its deploy.
+
+    * A Backup task from the task queue refuses before writing when its
+      archive, and the database dump written into the site first, would not
+      fit with the copying tasks' headroom (2 GB or 2% of the filesystem);
+      the safety copy another task makes (a Delete's, provision-update's)
+      is that task's to measure and still runs.
+
+    * A Grav or TXP Clone or Restore checks again before its deploy that
+      the unpacked copy still fits, as the Drupal and Backdrop ones do.
+
+    * A platform Verify that builds its codebase from a makefile refuses
+      while its filesystem has more than 90% of its inodes in use, like the
+      other tasks that add files; the control panel's own new platform,
+      built by its upgrade, is not refused.
+
+    * A Restore refused before its deploy for want of room puts the site
+      back online; it stayed on the maintenance page. A Backdrop upgrade
+      refused there removes its unused safety copy.
 
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not

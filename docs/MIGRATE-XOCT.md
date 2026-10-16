@@ -137,6 +137,13 @@ not data, so policy can be inspected or pinned during a run. The guard is
 liveness-based: a run killed outright (or a reboot) wedges nothing and there
 is no stale lock to clear by hand.
 
+Every verb refuses to start while `/` has more than 90% of its space or its
+inodes in use, except `reset-state`, `abandon` and `proxy-mode` with no mode
+named (the policy table): they remove files or only read (`abandon` also
+takes the account's control panel out of maintenance mode, a small database
+write), and a stalled move is a likely reason the disk filled, so they still
+lift its 503 gate and clear its state on a full disk.
+
 ### 1. Prepare Target Firewall
 
 On the **target host** — allow source IP through CSF so rsync and MySQL traffic
