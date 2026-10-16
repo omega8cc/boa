@@ -6284,7 +6284,9 @@ _satellite_if_add_update_user_dot_dirs() {
   if [ ! -d "${_USER_TMP}" ]; then
     [ -L "${_USER_TMP}" ] && rm -f "${_USER_TMP}"
     mkdir -p "${_USER_TMP}"
-    _acct_in_real_dir "${_USER_TMP}" _satellite_ftp_tmp_here &> /dev/null
+    # what it leaves for another owner is named on a NOTE line
+    _T_N=$(_acct_in_real_dir "${_USER_TMP}" _satellite_ftp_tmp_here 2> /dev/null)
+    _satellite_left_note "${_T_N}" "in place in ${_USER_TMP}"
   fi
 
   ###---### Create .ssh dir if not exists.
@@ -6296,8 +6298,9 @@ _satellite_if_add_update_user_dot_dirs() {
     # handed over and given its mode only when it is root's or the
     # account's own: another account's directory renamed onto the name
     # between the test above and here keeps its owner and mode
-    _acct_in_real_dir "${_USER_SSH}" \
-      _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 &> /dev/null
+    _T_N=$(_acct_in_real_dir "${_USER_SSH}" \
+      _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 2> /dev/null)
+    _satellite_left_note "${_T_N}" "in place at ${_USER_SSH}"
   fi
   # the main login's own keys: set through a handle inside the real .ssh,
   # never through a link put at a key name or at .ssh; authorized_keys too,
@@ -6484,9 +6487,10 @@ _satellite_distro_ghosts_here() {
       _s="$(date +%y%m%d-%H%M%S)"
       # the stamp directory handed to the account only when it and every
       # directory above it are root's or the account's own
-      _acct_in_real_dir "${_usEr}" _satellite_sub_here undo \
+      _satellite_left_note "$(_acct_in_real_dir "${_usEr}" _satellite_sub_here undo \
         _satellite_sub_here dist _satellite_sub_here "${_s}" \
-        _satellite_own_dir_here "${_USER}:${_ACCG:-users}" "" &> /dev/null
+        _satellite_own_dir_here "${_USER}:${_ACCG:-users}" "" 2> /dev/null)" \
+        "in place in ${_usEr}/undo/dist"
       _satellite_as_user "mv -f -- \
         ${_usEr}/distro/$(printf '%q' "${i#./}") \
         ${_usEr}/undo/dist/${_s}/" &> /dev/null
@@ -6572,8 +6576,8 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   if [ ! -d "${_ROOT}/.tmp" ]; then
     rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
-    _acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 02775 > /dev/null
+    _satellite_left_note "$(_acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
+      "${_USER}:${_ACCG:-users}" 02775 2> /dev/null)" "in place at ${_ROOT}/.tmp"
   fi
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.

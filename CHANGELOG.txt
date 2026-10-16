@@ -630,7 +630,26 @@
       ~/.tmp and the account's .tmp, and its 0600 on key files act only on
       what root, the login or the account's own users own; what another
       account placed there stays as it is, and the hand-over counts what it
-      left on a NOTE line in its own log.
+      left on a NOTE line in the worker's incident log
+      (/var/log/boa/manage_ltd.incident.log, which the nightly sweep of
+      /var/backups/ltd does not remove).
+
+    * The nightly's removal of the account's and its main login's Drush
+      caches and of the login's drush-backups, of a platform's retired
+      o_contrib links and of legacy control files acts only on what root
+      or the account's own users own, and counts what it leaves; the
+      robots.txt and llms.txt legs do nothing in a files store another
+      account owns (a share). The release's sites/all modes count what
+      they leave too.
+
+    * The limited-shell worker hands over the main login's users/ store,
+      the control directory at a new release and its .info files, the
+      web user's home and the gems and npm trees, and removes retired
+      ~/.rvm, ~/.gem, ~/.npm and ~/.composer names, a client login's
+      drush-backups and .gnupg, and a removed login's gem and npm trees,
+      only where root, the login or the account's own users own them;
+      what another account placed there stays and is named on a NOTE
+      line in the run's report.
 
     * A platform Verify's ownership and permission fixes leave files
       another account's users own as they are, with everything below them,

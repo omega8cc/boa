@@ -245,16 +245,25 @@ exit 0;'
 # its modes with everything below it; nothing changes in a tree that is
 # another user's. An account not in passwd is left alone.
 _distro_sites_all_modes() {
-  local _pDis _a _o
+  local _pDis _a _o _n
+  local -A _left=()
   for _pDis in /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes}; do
     [ -d "${_pDis}" ] || continue
     _a="${_pDis#/data/disk/}"
-    _o=$(_acct_walk_uids "${_a%%/*}") || continue
-    _acct_in_real_dir "${_pDis}" find . -type d \
-      -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 02775 {} + &> /dev/null
-    _acct_in_real_dir "${_pDis}" find . -type f \
-      -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f 0664 {} + &> /dev/null
+    _a="${_a%%/*}"
+    _o=$(_acct_walk_uids "${_a}") || continue
+    # what the walker leaves for another owner, by dev:ino, per account
+    _left["${_a}"]+="$(_acct_in_real_dir "${_pDis}" find . -type d \
+      -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 02775 {} + 2> /dev/null)"$'\n'
+    _left["${_a}"]+="$(_acct_in_real_dir "${_pDis}" find . -type f \
+      -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f 0664 {} + 2> /dev/null)"$'\n'
   done
+  for _a in "${!_left[@]}"; do
+    _n=$(printf '%s' "${_left[${_a}]}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+    [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || continue
+    echo "NOTE: ${_a}: the release's sites/all modes left ${_n} entries owned by another user as they were"
+  done
+  return 0
 }
 
 # Every vhost in the current (pinned) vhost.d still carrying TLSv1.1 in its

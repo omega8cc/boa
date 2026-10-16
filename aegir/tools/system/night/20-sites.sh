@@ -1514,6 +1514,19 @@ _rm_nolink_here() {
   [ -L "./${2}" ] || _rm_own_here "${1}" "./${2}"
 }
 ### The names after the uids $1 removed in the current (pinned) directory
+### through _ACCT_RM_OWN_PL (op r), a directory with everything below it:
+### only what root or those uids own, nothing below a directory another
+### user owns, and only when this directory and every one above it
+### are; what is left is counted (_perm_left_add).
+_rm_tree_here() {
+  local _o="${1}" _x
+  shift
+  [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "$@" 2> /dev/null)
+  _perm_left_add "${_x}"
+  return 0
+}
+### The names after the uids $1 removed in the current (pinned) directory
 ### through _ACCT_RM_OWN_PL (op h): each unless it is a directory, only while
 ### it is root's or one of those uids', and only when this directory and
 ### every one above it are; another user's is left and counted
@@ -1700,6 +1713,10 @@ _llms_txt_legs() {
   # written there (the store legs name it in a NOTE); a copy fetched in would
   # be the reading account's file in the other account's served files
   [ "${_wg}" = "SKIP" ] && return 0
+  # nothing is stripped, fetched or written into a store that is not root's
+  # or the account's own up to /: another account's store reached through a
+  # share is that account's own pass's (the refusing directory is counted)
+  _in_pinned_dir "${_fls}" _night_place_own_here "${_o}" || return 0
   _url="http://${_Dom}/llms.txt?nocache=1&noredis=1"
   _in_pinned_dir "${_fls}" _desymlink_planted ./llms.txt
   # A tenant-uploaded policy is durable content, served as-is for as long as
@@ -1752,8 +1769,8 @@ _llms_txt_legs() {
       fi
       return 0
     fi
-    _in_pinned_dir "${_fls}" find ./llms.txt -maxdepth 0 -mtime +6 \
-      -exec perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - {} + &> /dev/null
+    _perm_left_add "$(_in_pinned_dir "${_fls}" find ./llms.txt -maxdepth 0 -mtime +6 \
+      -exec perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - {} + 2> /dev/null)"
   fi
   if ! _in_pinned_dir "${_fls}" test -e ./llms.txt \
     && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
@@ -1805,9 +1822,11 @@ _robots_txt_legs() {
   # as in _llms_txt_legs: nothing is written into a converted share
   [ "${_wg}" = "SKIP" ] && return 0
   _fls="${_R_FLS}"
+  # as in _llms_txt_legs: nothing is done in a store that is not the account's
+  _in_pinned_dir "${_fls}" _night_place_own_here "${_o}" || return 0
   _in_pinned_dir "${_fls}" _desymlink_planted ./robots.txt
-  _in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \
-    -exec perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - {} + &> /dev/null
+  _perm_left_add "$(_in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \
+    -exec perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - {} + 2> /dev/null)"
   if ! _in_pinned_dir "${_fls}" test -e ./robots.txt \
     && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
     _store_fetch robots.txt "${_fls}" \
@@ -1883,11 +1902,16 @@ _boost_cache_own_here() {
 ### made only inside the real directory (_site_in_resolved_dir): a name on
 ### the way swapped for a link never takes a root rm or ln elsewhere.
 _plr_mod_rm() {
-  local _n _a=()
+  local _n _o _a=()
   for _n in "$@"; do
     _a+=("./${_n}")
   done
-  _site_in_resolved_dir "${_Plr}/modules" rm -f -- "${_a[@]}"
+  # only root's or the account's own entries at these names (_rm_own_here):
+  # modules/ of a ~/static platform is group-writable
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _perm_left_open
+  _site_in_resolved_dir "${_Plr}/modules" _rm_own_here "${_o}" "${_a[@]}"
+  _perm_left_note "${_Plr}/modules" "the o_contrib link leg"
 }
 _plr_mod_ln() {
   _site_in_resolved_dir "${_Plr}/modules" ln -sfn -- "${1}" "./${2}" &> /dev/null
@@ -2695,8 +2719,13 @@ _seven_put_here() {
 ### prints the dev:ino of another user's file); status 1 only when refused,
 ### a patch that does not apply going on to the hand-over as before.
 _seven_patch_here() {
+  local _x
   _night_place_own_here "${1}" || return 1
-  [ -z "$(perl -e "${_SAT_REOWN_OWN_PL}" -- "${1}" -1 -1 ./database.inc 2> /dev/null)" ] || return 1
+  _x=$(perl -e "${_SAT_REOWN_OWN_PL}" -- "${1}" -1 -1 ./database.inc 2> /dev/null)
+  if [ -n "${_x}" ]; then
+    _perm_left_add "${_x}"
+    return 1
+  fi
   patch -p3 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
   return 0
 }
@@ -3348,7 +3377,7 @@ _convert_controls_orig() {
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     _ctrl_ini_sed "${_CTRL_F}" "s/.*$1.*/$1 = TRUE/g" &> /dev/null
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -3358,7 +3387,7 @@ _convert_controls_orig_no_global() {
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     _ctrl_ini_sed "${_CTRL_F}" "s/.*$1.*/$1 = TRUE/g" &> /dev/null
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -3377,7 +3406,7 @@ _convert_controls_value() {
     fi
     _ctrl_ini_sed "${_CTRL_F}" \
       "s/.*speed_booster_anon.*/speed_booster_anon_cache_ttl = ${_TTL}/g" &> /dev/null
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -3390,7 +3419,7 @@ _convert_controls_renamed() {
       _ctrl_ini_sed "${_CTRL_F}" \
         "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" &> /dev/null
     fi
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -4314,7 +4343,13 @@ _daily_process() {
             if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.hm-fix-${_NOW}.info" ]; then
               su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
               wait
-              _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
+              # the account's code runs in this .tmp: its cache is removed
+              # only where root or the account's own users own it, nothing
+              # below a directory another user owns (_rm_tree_here)
+              _perm_left_open
+              _acct_in_real_dir "${_usEr}/.tmp" _rm_tree_here \
+                "$(_acct_walk_uids "${_HM_U}")" ./cache
+              _perm_left_note "${_usEr}/.tmp/cache" "the Drush cache leg"
               _run_drush8_hmr_cmd "dis update syslog dblog -y"
               _run_drush8_hmr_cmd "cron"
               _run_drush8_hmr_cmd "cache-clear all"

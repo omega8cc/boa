@@ -1167,14 +1167,19 @@ _account_process() {
   _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
   su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
   wait
-  _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
+  # both Drush caches are removed as the purge removes (_night_rm_own_here):
+  # only what root or the account's identities own, nothing below a
+  # directory another user owns, counted on one NOTE line
+  _purge_left_open
+  _acct_in_real_dir "${_usEr}/.tmp" _night_rm_own_here cache
   chage -M 99999 ${_HM_U}.ftp &> /dev/null
   su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
   wait
   chage -M 90 ${_HM_U}.ftp &> /dev/null
   # .tmp sits in the tenant's own, never-immutable home: cache is removed
   # only inside the real .tmp.
-  _acct_in_real_dir "/home/${_HM_U}.ftp/.tmp" rm -rf -- ./cache
+  _acct_in_real_dir "/home/${_HM_U}.ftp/.tmp" _night_rm_own_here cache
+  _purge_left_note
   _SQL_CONVERT=NO
   _DEL_OLD_EMPTY_PLATFORMS="0"
   # The account's front as root's octopus.cnf gives it, or none.
@@ -1319,12 +1324,16 @@ _account_process() {
   [ ${_nightWait} -ge 180 ] \
     && echo "${_HM_U}: the ltd worker is still running after ${_nightWait} s; unlocking anyway"
   _disable_chattr ${_HM_U}.ftp
-  rm -rf /home/${_HM_U}.ftp/drush-backups
+  _purge_left_open
+  _acct_in_real_dir "/home/${_HM_U}.ftp" _night_rm_own_here drush-backups
+  _purge_left_note
   if [ -e "${_THIS_HM_SITE}" ]; then
     cd -- "${_THIS_HM_SITE}"
     su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
     wait
-    _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
+    _purge_left_open
+    _acct_in_real_dir "${_usEr}/.tmp" _night_rm_own_here cache
+    _purge_left_note
     _run_drush8_hmr_cmd "${_vSet} hosting_cron_default_interval 3600"
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_cron_frequency 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_civicrm_cron_queue_frequency 60"
