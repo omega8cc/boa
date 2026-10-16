@@ -6078,24 +6078,119 @@ _xoct_rsync() {
 # fits at its target destination dir (which follows the target's /var/solrN symlink
 # onto a mount, or lands on root). Returns 0 if it fits (or src absent), 1 + DENY +
 # NOT_CLEAN otherwise. Placement is unchanged (data-only rsync) — this only gates.
-_xoct_solr_check() {   # 1 src  2 target-dest-dir  3 label
+_xoct_solr_check() {   # 1 src  2 target-dest-dir  3 label  4 the copy's own destination
   local _sz
   [ -e "$1" ] || return 0
   # -L: a symlink operand (e.g. a backups dir relocated into the store)
   # measures 0 with plain du, which waves the fit gate through unmeasured.
   _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
-  _xoct_target_fits "${_tgt}" "$2" "${_sz}" && return 0
-  echo "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
+  _xoct_target_fits "${_tgt}" "$2" "${_sz}" "" "$1" "${4:-$2/${1##*/}}" && return 0
+  echo "DENY: $3: ${_sz:-?}K does not fit at target $2${_XOCT_FIT_WHY:+ (${_XOCT_FIT_WHY})} — free space and retry"
   _XOCT_NOT_CLEAN=YES
   return 1
 }
 
+### Whether a copy fits at <probe> ($2) on the target box ($1): its bytes
+### ($3, in KB) and, given the names it makes ($4) or the source tree to
+### count them in ($5), its inodes too, both read in one remote call. Every
+### file takes an inode, and a filesystem out of them fails every write
+### with "No space left on device" while df -h still shows room: a copy
+### must leave 2% of the target's inodes, at least 50,000, free, the
+### headroom BOA's other copy checks keep. rsync -a makes one name per name
+### the source holds, which du -l counts; the source tree is walked only
+### when its own filesystem's inodes in use (no subtree has more) do not
+### already fit. A copy that falls short is credited with what its own
+### destination ($6) already holds, counted there only, as a repeated pass
+### adds only what changed: its bytes with du -sk, its names with du -l
+### (stale names and a nested store made inside it count too). A
+### destination that cannot be measured, or not within 15 minutes, keeps
+### the refusal.
+### A figure no command gave (an unreadable df, btrfs's '-' for inodes, a
+### count past 15 minutes) leaves that side unjudged, with a warning on the
+### plan. The remote reads take no stdin (-n), so a caller reading a list
+### from stdin keeps it, and are found by a token, so login noise cannot
+### garble them. Why a copy did not fit is left in _XOCT_FIT_WHY for the
+### caller's DENY.
 _xoct_target_fits() {
-  local _av _q
+  local _q _qo _av _it _if _e _ih _n="${4:-}" _ub _dex _dn
+  _XOCT_FIT_WHY=""
   _q="$(_shq "$2")"
-  _av=$(ssh root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
-  if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
-  [ "${_av}" -ge "$3" ]
+  _qo="$(_shq "${6:-}")"
+  read -r _av _it _if _e <<< "$(ssh -n root@"$1" "p='${_q}'; o='${_qo}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; a=\$(df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'); i=\$(LC_ALL=C df -P -i \"\$p\" 2>/dev/null | awk 'NR==2{print \$2, \$4}'); e=N; [ -n \"\$o\" ] && [ -d \"\$o\" ] && e=D; echo \"XOFIT \${a:--} \${i:-- -} \$e\"" 2>/dev/null \
+    | grep -m1 '^XOFIT ' | awk '{print $2, $3, $4, $5}')"
+  if ! [[ "$3" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]]; then
+    _xoct_fit_warn space "$2" "the copy's size or the free space there could not be read (${3:-?}K, ${_av:-?}K free); copying without the space check"
+  elif [ "${_av}" -lt "$3" ]; then
+    # Short of bytes: credit what the copy's own destination holds,
+    # measured only here, where it changes the answer.
+    _dex=""
+    if [ "${_e}" = "D" ]; then
+      _dex="$(ssh -n root@"$1" "echo \"XODEX \$(timeout 900 du -skH '${_qo}' 2>/dev/null | awk '{print \$1}')\"" 2>/dev/null \
+        | grep -m1 '^XODEX ' | awk '{print $2}')"
+    fi
+    if ! [[ "${_dex}" =~ ^[0-9]+$ ]] || [ $(( _av + _dex )) -lt "$3" ]; then
+      _XOCT_FIT_WHY="${3}K needed, ${_av}K free"
+      return 1
+    fi
+  fi
+  [ -n "${_n}${5:-}" ] || return 0
+  if ! [[ "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] || [ "${_it}" -eq 0 ]; then
+    _xoct_fit_warn inodes "$2" "its free inodes could not be read (df -i); copying without the inode check"
+    return 0
+  fi
+  _ih=$(( _it / 50 ))
+  [ "${_ih}" -ge 50000 ] || _ih=50000
+  if [ -z "${_n}" ]; then
+    _ub="$(LC_ALL=C df -P -i -- "$5" 2>/dev/null | awk 'NR==2 {print $3}')"
+    if [[ "${_ub}" =~ ^[0-9]+$ ]] && [ "${_ub}" -gt 0 ] && [ $(( _ub + _ih )) -le "${_if}" ]; then
+      return 0
+    fi
+    _xoct_names_of "$5"
+    _n="${_XOCT_NAMES}"
+  fi
+  if ! [[ "${_n}" =~ ^[0-9]+$ ]]; then
+    _xoct_fit_warn count "$2" "the copy's files could not be counted within 15 minutes; copying without the inode check"
+    return 0
+  fi
+  [ $(( _n + _ih )) -le "${_if}" ] && return 0
+  # Short of inodes: credit the names the copy's own destination holds.
+  if [ "${_e}" = "D" ]; then
+    _dn="$(ssh -n root@"$1" "n=\$(timeout 900 du -s -l -H --inodes '${_qo}' 2>/dev/null | awk '{print \$1}'); echo \"XODEN \${n:--}\"" 2>/dev/null \
+      | grep -m1 '^XODEN ' | awk '{print $2}')"
+    if [[ "${_dn}" =~ ^[0-9]+$ ]] && [ $(( _n + _ih )) -le $(( _if + _dn )) ]; then
+      return 0
+    fi
+  fi
+  _XOCT_FIT_WHY="${_n} files and ${_ih} inodes kept free, ${_if} inodes free (df -i)"
+  return 1
+}
+
+### The names a copy of the tree $1 makes (one per name, du -l), into
+### _XOCT_NAMES (empty when the count failed or took over 15 minutes). The
+### last tree's count is kept, so a store tried at the mount and then at
+### the root is walked once. It sets globals: never call it inside $(...).
+_xoct_names_of() {
+  [ "${_XOCT_NAMES_OF:-}" = "$1" ] && return 0
+  _XOCT_NAMES_OF="$1"
+  _XOCT_NAMES="$(timeout 900 du -s -l -H --inodes -- "$1" 2>/dev/null | awk 'NR==1 {print $1}')"
+}
+
+### A figure the fit check could not read: the copy goes on without that
+### side of the check, as the plan shows.
+_xoct_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
+  echo "WARN: $2 on the target: $3"
+}
+
+### Where a store sits on the target now, read at its destination there
+### ($2): M when it is the link a mirror placed onto the mount copy ($3), L
+### another link (a dangling one too), D a real directory, N nothing (one
+### remote read, no stdin; empty when the target could not be asked).
+_xoct_tgt_kind() {
+  local _qd _qm
+  _qd="$(_shq "$2")"
+  _qm="$(_shq "${3:-}")"
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XOKIND \$k\"" 2>/dev/null \
+    | grep -m1 '^XOKIND ' | awk '{print $2}'
 }
 
 # Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
@@ -6188,7 +6283,8 @@ _xoct_put_on_mount() {
 _xoct_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
   local _acct="$8" _rule="${9:-tree}" _dacct=""
-  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
+  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0 _why
+  local _kind _rp _rown="" _mown=""
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
@@ -6244,14 +6340,34 @@ _xoct_handle_store() {
       fi
     fi
     [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
+    # The preferred placement first, then the other: a store goes where it
+    # fits, in bytes and inodes, and is refused when it fits on neither.
+    # What the store's destination holds on the target is credited at
+    # that placement only. The root's figures are read at the
+    # destination's parent unless the destination is a real directory: df
+    # through a link (or one the read could not name) would read the mount.
+    _kind="$(_xoct_tgt_kind "${_th}" "${_dstRoot}" "${_mntDest}")"
+    _rp="${_dstRoot%/*}"
+    case "${_kind}" in
+      M) _mown="${_mntDest}" ;;
+      D) _rown="${_dstRoot}"; _rp="${_dstRoot}" ;;
+    esac
     if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
-      if _xoct_target_fits "${_th}" "${_mntDest}" "${_sz}"; then _act=MIRROR
-      elif _xoct_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
-      else _act=DENY; _reason="does not fit on target mount (${_mntDest}) nor root (${_dstRoot})"; fi
+      if _xoct_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}"; then _act=MIRROR
+      else
+        _why="${_XOCT_FIT_WHY}"
+        if _xoct_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}"; then _act=ROOT
+        else _act=DENY; _reason="does not fit on target mount (${_mntDest}${_why:+: ${_why}}) nor root (${_dstRoot}${_XOCT_FIT_WHY:+: ${_XOCT_FIT_WHY}})"; fi
+      fi
     else
-      if _xoct_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
-      elif [ -n "${_mntDest}" ]; then _act=MIRROR
-      else _act=DENY; _reason="does not fit on target root (${_dstRoot}) and no usable target mount"; fi
+      if _xoct_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}"; then _act=ROOT
+      else
+        _why="${_XOCT_FIT_WHY}"
+        if [ -z "${_mntDest}" ]; then
+          _act=DENY; _reason="does not fit on target root (${_dstRoot}${_why:+: ${_why}}) and no usable target mount"
+        elif _xoct_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}"; then _act=MIRROR
+        else _act=DENY; _reason="does not fit on target root (${_dstRoot}${_why:+: ${_why}}) nor mount (${_mntDest}${_XOCT_FIT_WHY:+: ${_XOCT_FIT_WHY}})"; fi
+      fi
     fi
   fi
 
