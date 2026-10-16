@@ -64,8 +64,10 @@ _web_group_state() {
   # (the record is root's: run as another user, converted reads as held):
   #   none       no group of that name
   #   foreign    the group exists, but an identity outside the account holds
-  #              it too: never joined nor written to; claim passes still leave
-  #              its paths alone (taking them would cut the pools off)
+  #              it too: never joined nor written to unless root's record
+  #              names its gid at phase A or B (_web_group, _web_group_conv);
+  #              claim passes still leave its paths alone (taking them would
+  #              cut the pools off)
   #   held       the group exists and only this account's identities hold it:
   #              claim passes leave its paths alone, new identities join it
   #   converted  and root's record names that gid: writers use the group
@@ -159,6 +161,38 @@ _web_group() {
       ;;
     *) echo "www-data" ;;
   esac
+}
+
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
 }
 
 # The group the target's own writers give an account's web paths there:
@@ -316,6 +350,20 @@ _wg_migration_notes() {
     fi
   fi
   return 0
+}
+
+# A free of account $1's web group name that a kill cut short (instgrp's
+# E1 route) is unfinished: its journal,
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
+# other than done. Until the account's next web verb finishes it, paths of
+# the account may still sit in the old number, which every leg would carry
+# by that number alone, so no migration of the account starts meanwhile.
+# Verbatim in xoct, xcopy and xmass.
+_wg_free_unfinished() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
+  read -r _s _ < "${_j}" 2> /dev/null || :
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
 }
 
 ###
@@ -7446,6 +7494,10 @@ _migrate_init() {
       exit 1
     elif [ -e "${_USR}/log/CANCELLED" ]; then
       echo "_USR ${_oct} is not eligible for migration: cancelled"
+      exit 1
+    elif _wg_free_unfinished "${_RUNTIME_OCT}"; then
+      echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
+      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also completes the account's conversion), for a frozen account only once its freeze is recovered; re-run then"
       exit 1
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"

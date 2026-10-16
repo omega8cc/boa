@@ -82,17 +82,19 @@ alias htop='xtitle $_L_HOST System Monitor && htop'
 alias mytop='xtitle $_L_HOST SQL Monitor && mytop'
 alias make='xtitle Making $(basename $PWD) ; make SHELL=/bin/bash'
 
+# root's extract: tar never keeps the owners the archive recorded, which
+# could give one account files in another's tree (plain tar run by root keeps them)
 function extract() {
   if [ -f $1 ]; then
     case $1 in
-      *.tar.bz2)   tar xjf $1    ;;
-      *.tar.gz)    tar xzf $1    ;;
+      *.tar.bz2)   tar --no-same-owner -xjf $1 ;;
+      *.tar.gz)    tar --no-same-owner -xzf $1 ;;
       *.bz2)       bunzip2 $1    ;;
       *.rar)       unrar x $1    ;;
       *.gz)        gunzip -q $1  ;;
-      *.tar)       tar xf $1     ;;
-      *.tbz2)      tar xjf $1    ;;
-      *.tgz)       tar xzf $1    ;;
+      *.tar)       tar --no-same-owner -xf $1 ;;
+      *.tbz2)      tar --no-same-owner -xjf $1 ;;
+      *.tgz)       tar --no-same-owner -xzf $1 ;;
       *.zip)       unzip -qq $1  ;;
       *.Z)         uncompress $1 ;;
       *.7z)        7z x $1       ;;
