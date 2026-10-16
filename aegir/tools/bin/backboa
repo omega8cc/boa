@@ -593,7 +593,7 @@ _python_stage_src() {
   # extraction doubles as the payload check
   wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
   if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
-    || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
+    || ! tar --no-same-owner -xzf "Python-${_PTN_VRN}.tgz"; then
     echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
     return 1
   fi
@@ -1216,8 +1216,10 @@ _web_group_state() {
   # (the record is root's: run as another user, converted reads as held):
   #   none       no group of that name
   #   foreign    the group exists, but an identity outside the account holds
-  #              it too: never joined nor written to; claim passes still leave
-  #              its paths alone (taking them would cut the pools off)
+  #              it too: never joined nor written to unless root's record
+  #              names its gid at phase A or B (_web_group, _web_group_conv);
+  #              claim passes still leave its paths alone (taking them would
+  #              cut the pools off)
   #   held       the group exists and only this account's identities hold it:
   #              claim passes leave its paths alone, new identities join it
   #   converted  and root's record names that gid: writers use the group
@@ -1311,6 +1313,80 @@ _web_group() {
       ;;
     *) echo "www-data" ;;
   esac
+}
+
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
+}
+
+# The name the group held at gid $1 is renamed to for account $2 by a free
+# of its web group name (instgrp): <gid>-wgheld-<account>, cut to 32
+# characters. One text in instgrp, the nightly and the restore tools.
+_wg_free_aside() {
+  local _n="${1}-wgheld-${2}"
+  printf '%s\n' "${_n:0:32}"
+}
+
+# The held gid of account $1's free of its web group name while that free
+# is unfinished (a kill cut it short): its journal not done, and the rename
+# alone or a free that can still finish as instgrp reads it. Its paths in
+# that number are the free's walk to finish, which no claim takes; nothing
+# otherwise. With $2, the journal's state on one line instead. One text in
+# instgrp, the nightly and the restore tools.
+_wg_free_held() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  read -r _s _h _n _ < "${_j}" || :
+  _h="${_h#held=}"
+  _n="${_n#new=}"
+  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
+  _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
+  _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
+  if [ "${_g}" = "${_h}" ]; then
+    _st=stale
+  elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
+    _st=renamed
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+    _st=finish
+  else
+    _st=lost
+  fi
+  if [ -n "${2:-}" ]; then
+    printf '%s %s %s\n' "${_st}" "${_h}" "${_n}"
+  elif [ "${_st}" = "renamed" ] || [ "${_st}" = "finish" ]; then
+    printf '%s\n' "${_h}"
+  fi
+  return 0
 }
 
 # An account owns /data/disk/<oN> and /home/<oN>.ftp, so any name below
@@ -1602,12 +1678,17 @@ _acct_reclaim_restored() {
   [ -n "${_g}" ] || _g="users"
   # The account's own web group is where its web paths belong once it holds
   # one: its gid stays, numeric and only when it resolves (find refuses an
-  # unknown group name, and this claim discards find's errors).
+  # unknown group name, and this claim discards find's errors). So does the
+  # old number of a free of its name a kill cut short (_wg_free_held): its
+  # paths there are that free's walk to finish, never the account group's,
+  # where its pools would lose them.
   _wg=$(_web_group_state "${_a}" | cut -d' ' -f2)
   case "${_wg}" in
     ""|*[!0-9]*) ;;
     *) _x=( ! -gid "${_wg}" ) ;;
   esac
+  _wg=$(_wg_free_held "${_a}")
+  [[ "${_wg}" =~ ^[0-9]+$ ]] && _x+=( ! -gid "${_wg}" )
   if [ -d "${_r}" ]; then
     _d="${_r}"
     _w=(.)

@@ -567,15 +567,16 @@ _satellite_create_web_user() {
 
 #
 # An identity of an account that holds its own web group is listed in that
-# group (supplementary, verified in the group database, never by id -nG);
-# nothing to do while the account has none. $1 = the identity.
+# group (supplementary, verified in the group database, never by id -nG),
+# and so is one of an account converted onto a group an identity outside it
+# holds too (_web_group_conv: its paths are in that group); nothing to do
+# while the account has none. $1 = the identity.
 _satellite_wg_grant() {
   local _st _g
   _st=$(_web_group_state "${1}")
-  case "${_st%% *}" in
-    held|converted|phaseb) ;;
-    *) return 0 ;;
-  esac
+  if [ "${_st%% *}" != "held" ] && [ -z "$(_web_group_conv "${1}" "${_st}")" ]; then
+    return 0
+  fi
   _g="${_st##* }"
   getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
   usermod -aG "${_g}" "${1}" &> /dev/null
@@ -858,14 +859,16 @@ _satellite_tune_fpm_config() {
       wait
     fi
     # Once the account's identities have left www-data, its pool runs in the
-    # account's own web group (after the include, which sets www-data). A
-    # group that does not resolve would fail this whole PHP version on
-    # reload, so it is written only when it does. A record of B left by a
-    # phase-B rollback that was cut short (rb=1) does not count while the
-    # account's own user is still listed in www-data: the pool keeps
-    # www-data until the next conversion run has re-checked shares.
+    # account's own web group (after the include, which sets www-data), also
+    # while an identity outside the account holds that group too and root's
+    # record names it at B (_web_group_conv). A group that does not resolve
+    # would fail this whole PHP version on reload, so it is written only when
+    # it does. A record of B left by a phase-B rollback that was cut short
+    # (rb=1) does not count while the account's own user is still listed in
+    # www-data: the pool keeps www-data until the next conversion run has
+    # re-checked shares.
     _T_WGS=$(_web_group_state "${_USER}")
-    if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+    if [ "$(_web_group_conv "${_USER}" "${_T_WGS}")" = "wg-${_USER} B" ] \
       && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
       && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
         && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
@@ -2420,13 +2423,18 @@ _satellite_mk_modules() {
   _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
     mkdir -p -m 0755 -- ./modules &> /dev/null
 }
+# cache_backport, Drupal 6's cache layer that every D6 bundle links to in
+# 000/modules, fetched and swapped in the same way as the redis modules.
+_CACHE_BACKPORT_VERSION="6.x-1.0-rc4"
 # A fetch of the shared module ${_D}/000/modules/$1 is due: its stamp $2 is
 # not there, or an entry of the module, the name itself included, is a
 # link, is not root's or is writable by others (_satellite_not_root_alone:
 # an earlier release let an account own 000/modules, and its recursive
 # chown made what the account left there root's). Nothing is trusted
 # through a link. The fetch swaps the module out without following a link;
-# when the fetch fails, what is there stays until one succeeds.
+# when the fetch fails, a module flagged so is replaced by an empty
+# directory (_satellite_module_seal_here), and one that is root's alone
+# stays until a fetch succeeds.
 _satellite_module_stale() {
   [ -n "$(_satellite_not_root_alone "${_D}/000/modules/${1}")" ] \
     || [ ! -e "${_D}/000/modules/${1}/${2}" ]
@@ -2642,15 +2650,6 @@ _satellite_core_links_here() {
 }
 
 #
-# Each entry at the top of the current (pinned) directory, dot names
-# included, as one NUL-ended "device:inode type name" record (find -printf
-# %D:%i %y %P): the identity a name is checked against.
-_satellite_top_ids_here() {
-  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 \
-    -printf '%D:%i %y %P\0'
-}
-
-#
 # '.' of the current (pinned) directory handed back to root:root and
 # cleared of POSIX ACLs (_SAT_ROOT_NO_ACL_PL), then given the mode $1 (five
 # digits, so set-ID bits the account set go too). An ACL the account set
@@ -2671,98 +2670,23 @@ _satellite_xattr_nr() {
 }
 
 #
-# The top of the current (pinned) directory put back as root had it. With
-# $1, the record _satellite_top_ids_here took when the directory was lent:
-# every recorded name whose identity changed (the account renamed, replaced
-# or swapped it, whoever owns what is there now) has what is there set
-# aside, and the entry root had is renamed back from wherever it is at this
-# level (a directory can only be renamed within its parent by someone who
-# cannot write in it); what was set aside and is not a recorded entry is
-# removed. A recorded directory that is gone is reported. Then each
+# The top of the current (pinned) directory put back as root had it: each
 # o_contrib* bundle name (root makes every bundle before the build) that is
-# not a real directory of root's or, with a record, is not the very entry
-# recorded at that name (device:inode: a put-back that failed leaves
-# whatever was there, root's or not) is renamed aside and removed, or
-# removed where it is when it cannot be renamed; a bundle root had is
-# printed to be fetched again. Last, any other name that is neither a
-# directory nor a regular file and is not root's (a link, a FIFO) is
-# removed, never followed. Output: "A <alert>" and "B <bundle>" lines.
+# not a real directory of root's is renamed aside and removed, or removed
+# where it is when it cannot be renamed, and printed to be fetched again.
+# Last, any other name that is neither a directory nor a regular file and is
+# not root's (a link, a FIFO) is removed, never followed. Output:
+# "A <alert>" and "B <bundle>" lines.
 _satellite_lent_top_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
-  local _inv="${1:-}" _r _i _j _n _c _t _b _had
-  local -a _rn=() _ri=() _rt=() _cn=() _ci=() _chg=() _aside=()
-  # a record that cannot be read is no record: only the ownership checks
-  # run, never "nothing was here" (which would remove every bundle)
-  if [ -n "${_inv}" ] && { [ ! -f "${_inv}" ] || [ ! -r "${_inv}" ]; }; then
-    echo "A ${PWD}: the record taken at the lend is missing, identities not checked"
-    _inv=""
-  fi
-  if [ -n "${_inv}" ]; then
-    while IFS= read -r -d '' _r; do
-      _ri+=("${_r%% *}")
-      _r="${_r#* }"
-      _rt+=("${_r%% *}")
-      _rn+=("${_r#* }")
-    done < "${_inv}"
-  fi
-  _cur() {
-    _cn=()
-    _ci=()
-    while IFS= read -r -d '' _r; do
-      _ci+=("${_r%% *}")
-      _r="${_r#* }"
-      _cn+=("${_r#* }")
-    done < <(_satellite_top_ids_here)
-  }
-  _cur
-  for _i in "${!_rn[@]}"; do
-    _c=""
-    for _j in "${!_cn[@]}"; do
-      [ "${_cn[${_j}]}" = "${_rn[${_i}]}" ] && _c="${_ci[${_j}]}" && break
-    done
-    [ "${_c}" = "${_ri[${_i}]}" ] && continue
-    _chg+=("${_i}")
-    if [ -n "${_c}" ]; then
-      _t="./.lent-aside.$$.${RANDOM}.${_i}"
-      mv -f -T -- "./${_rn[${_i}]}" "${_t}" && _aside+=("${_t}")
-    fi
-  done
-  _cur
-  for _i in "${_chg[@]}"; do
-    _n=""
-    for _j in "${!_ci[@]}"; do
-      [ "${_ci[${_j}]}" = "${_ri[${_i}]}" ] && _n="${_cn[${_j}]}" && break
-    done
-    if [ -n "${_n}" ] \
-      && mv -T -- "./${_n}" "./${_rn[${_i}]}" 2> /dev/null; then
-      echo "A ${PWD}/${_rn[${_i}]} was renamed or replaced during the build, put back"
-    elif [ "${_rt[${_i}]}" = "d" ]; then
-      echo "A ${PWD}/${_rn[${_i}]} is gone after the build"
-    fi
-  done
-  for _t in "${_aside[@]}"; do
-    if [ -e "${_t}" ] || [ -L "${_t}" ]; then
-      rm -rf -- "${_t}"
-    fi
-  done
-  _cur
+  local _b _t
   for _b in o_contrib o_contrib_seven o_contrib_eight o_contrib_nine \
     o_contrib_ten o_contrib_eleven o_contrib_backdrop; do
-    _had=""
-    for _i in "${!_rn[@]}"; do
-      [ "${_rn[${_i}]}" = "${_b}" ] && _had="${_ri[${_i}]}" && break
-    done
-    _c=""
-    for _j in "${!_cn[@]}"; do
-      [ "${_cn[${_j}]}" = "${_b}" ] && _c="${_ci[${_j}]}" && break
-    done
     if [ ! -e "./${_b}" ] && [ ! -L "./${_b}" ]; then
-      [ -n "${_inv}" ] && [ -n "${_had}" ] && echo "B ${_b}"
       continue
     fi
     if [ -d "./${_b}" ] && [ ! -L "./${_b}" ] \
-      && [ "$(stat -c %u -- "./${_b}" 2> /dev/null)" = "0" ] \
-      && { [ -z "${_inv}" ] || [ "${_c}" = "${_had}" ]; }; then
+      && [ "$(stat -c %u -- "./${_b}" 2> /dev/null)" = "0" ]; then
       continue
     fi
     _t="./.${_b}.gone.$$.${RANDOM}"
@@ -2771,11 +2695,7 @@ _satellite_lent_top_here() (
     if [ -e "./${_b}" ] || [ -L "./${_b}" ]; then
       echo "A ${PWD}/${_b} is not the bundle root had there and could not be removed"
     fi
-    if [ -z "${_inv}" ] || [ -n "${_had}" ]; then
-      echo "B ${_b}"
-    else
-      echo "A ${PWD}/${_b} was made during the build, removed"
-    fi
+    echo "B ${_b}"
   done
   find . -mindepth 1 -maxdepth 1 \
     \! -type d \! -type f \! -uid 0 -exec rm -f -- {} +
@@ -3401,29 +3321,54 @@ _WEBFORM_B_TAG="1.x-4.26.6"
 # 000/modules to work in (a link on the way) or no unpack directory is
 # reported, and the copy in place is kept.
 _satellite_shared_module_update() {
+  local _e
   _satellite_mk_modules
   if ! _satellite_in_modules _satellite_shared_module_here "$@"; then
     _msg "${_STATUS} A: OOPS ${1}-${2} was not updated (no unpack directory in the real ${_D}/000/modules); the copy in place is kept"
+    # nothing can be set aside where 000/modules is not the real one; a
+    # flagged module there is said all the same
+    _e="$(_satellite_not_root_alone "${_D}/000/modules/${1}")"
+    [ -n "${_e}" ] && _satellite_module_alarm "${1}" "${_e}" NO
   fi
+  return 0
 }
 _satellite_shared_module_here() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO
+  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO _in=NO _why
   _arc="${_nm}-${_ver}.tar.gz"
   # a directory a killed pass left behind; a live pass's is never this old
   find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
     -exec rm -rf -- {} + &> /dev/null
-  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
-  ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
-  # every member present and whole: tar compares the kept archive with what
-  # it unpacked, and fails on a cut archive and on a missing or short file
-  if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
-    && tar -C "${_tmp}" -dzf "${_tmp}/${_arc}" &> /dev/null; then
-    _ok=YES
+  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || _tmp=""
+  if [ -n "${_tmp}" ]; then
+    ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
+    # every member present and whole: tar compares the kept archive with
+    # what it unpacked, and fails on a cut archive and on a missing or short
+    # file
+    if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
+      && [ ! -L "${_tmp}/${_nm}" ] \
+      && _satellite_tar_whole "${_tmp}" "${_tmp}/${_arc}"; then
+      _ok=YES
+    fi
   fi
   if [ "${_ok}" = "YES" ]; then
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
+    rm -f -- "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info" \
+      "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    # the store's modes before the copy goes in, its stamps included (some
+    # archives record modes writable by the group, which root's tar keeps):
+    # a copy is never flagged as it enters the store
+    _acct_in_real_dir "${_tmp}/${_nm}" _satellite_modes_walk_here 0755 0644 &> /dev/null
+  fi
+  if [ -z "${_tmp}" ]; then
+    _why="was not updated (no unpack directory in the real ${_D}/000/modules)"
+  elif [ "${_ok}" != "YES" ]; then
+    _why="was not updated (download or unpack failed)"
+  elif [ -n "$(_satellite_not_root_alone "${_tmp}/${_nm}")" ]; then
+    # a link in it, or an entry the walk could not make root's alone
+    _why="was not updated (the unpacked copy holds a link or an entry not root's alone)"
+  else
     # swapped, the copy that was in place is left at ${_tmp}/${_nm}
     if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
       if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
@@ -3432,17 +3377,135 @@ _satellite_shared_module_here() {
         mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
       fi
     fi
-    if [ "${_swp}" != "YES" ] \
-      && ! mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+    if [ "${_swp}" = "YES" ] \
+      || mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+      _in=YES
+    else
       [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
         && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
-      _msg "${_STATUS} A: OOPS ${_nm}-${_ver} could not be swapped in; the copy in place is kept"
+      _why="could not be swapped in"
     fi
-  else
-    _msg "${_STATUS} A: OOPS ${_nm}-${_ver} was not updated (download or unpack failed); the copy in place is kept"
   fi
-  rm -rf -- "${_tmp}"
+  [ -n "${_tmp}" ] && rm -rf -- "${_tmp}"
+  if [ "${_in}" != "YES" ]; then
+    _satellite_module_seal_here "${_nm}"
+    case $? in
+      4) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, was taken out of use" ;;
+      5) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, could not be set aside" ;;
+      *) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; $(_satellite_module_kept_here "${_nm}")" ;;
+    esac
+  fi
   return 0
+}
+# What a failed fetch leaves of the module ./$1 in the current (pinned)
+# 000/modules, for its OOPS line.
+_satellite_module_kept_here() {
+  if [ ! -e "./${1}" ] && [ ! -L "./${1}" ]; then
+    echo "nothing is in place"
+  elif [ -d "./${1}" ] && [ ! -L "./${1}" ] \
+    && [ -z "$(find -P "./${1}" -mindepth 1 -print -quit 2> /dev/null)" ] \
+    && [ -z "$(_satellite_not_root_alone "./${1}")" ]; then
+    echo "the module stays out of use until a fetch succeeds"
+  else
+    echo "the copy in place is kept"
+  fi
+}
+# The archive $2 unpacked whole under $1: tar's compare finds every member
+# there with its size and contents. A difference in owner or mode alone is
+# not a cut archive: the unpack never keeps the owners the archive recorded
+# (cache_backport's records another user's), and the modes walk sets the
+# store's modes after it.
+_satellite_tar_whole() {
+  local _d _rc
+  _d="$(LC_ALL=C tar -C "${1}" -dzf "${2}" 2>&1)"
+  _rc=$?
+  [ "${_rc}" = "0" ] && return 0
+  [ "${_rc}" = "1" ] || return 1
+  ! grep -v -E ': (Uid|Gid|Mode) differs$' <<< "${_d}" | grep -q .
+}
+# The alarm for the flagged module $1 (its first flagged entry $2) on an
+# ALRT line, which the Octopus report mails: $3 YES when it was taken out of
+# use, NO when it could not be set aside. Said once in a pass for each
+# module, entry and outcome, however many of the pass's gates fetch the
+# module (the pass's shell, $$, with that shell's start time, since a pid is
+# used again, keys the record in /run, which a reboot empties; the record
+# goes when nothing was added to it for a day). The entry is keyed with its
+# unprintable characters replaced, so a name holding a newline stays one
+# line of the record.
+_satellite_module_alarm() {
+  local _k _r=/run/octopus-module-alarm.log
+  _k="${$}.$(cut -d' ' -f22 "/proc/${$}/stat" 2> /dev/null) ${1} ${3}"
+  _k="${_k} $(printf '%s' "${2}" | tr -c '[:print:]' '?')"
+  find /run -maxdepth 1 -name octopus-module-alarm.log -mmin +1440 -delete 2> /dev/null
+  grep -qxF -- "${_k}" "${_r}" 2> /dev/null && return 0
+  echo "${_k}" >> "${_r}" 2> /dev/null
+  if [ "${3}" = "YES" ]; then
+    _msg "${_STATUS} A: ALRT ${1} in ${_D}/000/modules held ${2#./} (a link, or not root's alone) and could not be fetched again: taken out of use, sites use their database cache until the next fetch"
+  else
+    _msg "${_STATUS} A: ALRT ${1} in ${_D}/000/modules held ${2#./} (a link, or not root's alone), could not be fetched again and could not be set aside: sites still load it"
+  fi
+  return 0
+}
+# A module that could not be fetched again while what is at its name in the
+# current (pinned) 000/modules is a link, or holds an entry not root's or
+# writable by others (_satellite_not_root_alone), is taken out of every
+# site's load path: an empty directory of root's takes the name, swapped in
+# without following a link, and the alarm says so (_satellite_module_alarm).
+# BOA's settings includes reach a module only through is_readable(), so the
+# sites fall back to their database cache until a fetch puts it back; the
+# empty directory has no stamp, so the next pass fetches again, and being
+# root's alone it is never sealed twice. What came out is put back when it
+# is root's alone after all (a concurrent pass swapped a good copy in since
+# the test). Status: 0 nothing flagged (or put back), 4 taken out of use,
+# 5 flagged and not set aside.
+_satellite_module_seal_here() {
+  local _nm="$1" _e _f _tmp="" _swp=NO
+  _e="$(_satellite_not_root_alone "./${_nm}")"
+  [ -n "${_e}" ] || return 0
+  if _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" \
+    && mkdir -m 0755 -- "${_tmp}/${_nm}"; then
+    if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+      _swp=YES
+      if [ -z "$(_satellite_not_root_alone "${_tmp}/${_nm}")" ] \
+        && perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+        _swp=BACK
+      fi
+    elif mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null; then
+      if [ -z "$(_satellite_not_root_alone "${_tmp}/.old")" ] \
+        && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null; then
+        _swp=BACK
+      elif mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+        _swp=YES
+      elif [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
+        # another pass put a copy at the name meanwhile: that copy's own test
+        _f="$(_satellite_not_root_alone "./${_nm}")"
+        if [ -z "${_f}" ]; then
+          _swp=BACK
+        else
+          _e="${_f}"
+        fi
+      else
+        # nothing at the name: out of use all the same
+        _swp=YES
+      fi
+    else
+      # nothing moved: what is at the name now has its own test (another
+      # pass may have swapped a copy in since this one's)
+      _f="$(_satellite_not_root_alone "./${_nm}")"
+      if [ -z "${_f}" ]; then
+        _swp=BACK
+      else
+        _e="${_f}"
+      fi
+    fi
+  fi
+  [ -n "${_tmp}" ] && rm -rf -- "${_tmp}"
+  case "${_swp}" in
+    BACK) return 0 ;;
+    YES) _satellite_module_alarm "${_nm}" "${_e}" YES; return 4 ;;
+  esac
+  _satellite_module_alarm "${_nm}" "${_e}" NO
+  return 5
 }
 
 #
@@ -3796,9 +3859,8 @@ _satellite_download_o_contrib_six() {
   if [ ! -L "./cache_backport" ]; then
     ln -sfn ${_D}/000/modules/cache_backport cache_backport
   fi
-  if _satellite_module_stale cache_backport "update-${_xSrl}-${_X_VERSION}.info"; then
-    _satellite_mk_modules
-    _satellite_in_modules _satellite_cache_backport_here
+  if _satellite_module_stale cache_backport "ver-${_CACHE_BACKPORT_VERSION}.${_xSrl}.full.info"; then
+    _satellite_shared_module_update cache_backport "${_CACHE_BACKPORT_VERSION}" root
   fi
   if [ -e "${_D}/000/modules/redis" ] || [ -L "${_D}/000/modules/redis" ]; then
     _satellite_in_modules rm -rf -- ./redis
@@ -3875,9 +3937,8 @@ _satellite_check_fix_o_contrib() {
       _satellite_bundle_redo_at "${_CORE}" o_contrib_backdrop
     fi
   fi
-  if _satellite_module_stale cache_backport "update-${_xSrl}-${_X_VERSION}.info"; then
-    _satellite_mk_modules
-    _satellite_in_modules _satellite_cache_backport_here
+  if _satellite_module_stale cache_backport "ver-${_CACHE_BACKPORT_VERSION}.${_xSrl}.full.info"; then
+    _satellite_shared_module_update cache_backport "${_CACHE_BACKPORT_VERSION}" root
   fi
   if [ -e "${_D}/000/modules/redis" ] || [ -L "${_D}/000/modules/redis" ]; then
     _satellite_in_modules rm -rf -- ./redis
@@ -4061,16 +4122,6 @@ _satellite_all_fetched_here() {
 # shellcheck disable=SC2016
 _SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
-#
-# cache_backport fetched again in the current (pinned) 000/modules, and its
-# stamp put as a fresh file inside the real directory the archive unpacked
-# to, never written through a name.
-_satellite_cache_backport_here() {
-  rm -rf -- ./cache_backport
-  _get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
-  _acct_in_real_dir ./cache_backport _satellite_put_stdin_here \
-    "update-${_xSrl}-${_X_VERSION}.info" 0644 "" <<< "update"
-}
 
 _satellite_hot_sauce_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6101,9 +6152,11 @@ _satellite_if_add_ftps_lshell_access() {
   # primary group is; a primary 'users' alone is not a listed membership.
   usermod -aG ${_USRG} ${_USERFTP} &> /dev/null
   # www-data (files/ write, settings.php read) until the account's identities
-  # have left it for the account's own web group, listed once it holds one.
+  # have left it for the account's own web group (phase B, _web_group_conv),
+  # listed once it holds one.
   _T_WGS=$(_web_group_state "${_USERFTP}")
-  [ "${_T_WGS%% *}" = "phaseb" ] || adduser ${_USERFTP} ${_WEBG} &> /dev/null
+  [ "$(_web_group_conv "${_USERFTP}" "${_T_WGS}")" = "${_T_WGS##* } B" ] \
+    || adduser ${_USERFTP} ${_WEBG} &> /dev/null
   _satellite_wg_grant "${_USERFTP}"
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
