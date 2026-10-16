@@ -2196,10 +2196,11 @@ _a2b_import_unfinished() {
   return 1
 }
 # A root process runs aegir2boa-stage2 for the account $2: the tool's name
-# in any word of its argv (bash -x and sh -c count) and --account $2 after
-# it, read from the proc root $1. Only a process whose real and effective
-# uid are root's is read (a tenant sets its own argv), 64 KiB of each file
-# at most. A /proc that cannot be read counts as one.
+# in any word of its argv (bash -x and sh -c count) and --account with the
+# next argv element, read whole and cut down as stage 2 cuts down its own
+# --account, naming $2, read from the proc root $1. Only a process whose
+# real and effective uid are root's is read (a tenant sets its own argv),
+# 64 KiB of each file at most. A /proc that cannot be read counts as one.
 _A2B_LIVE_PL='my ($p, $acct) = @ARGV;
 opendir(my $d, $p) or exit 0;
 for my $n (readdir($d)) {
@@ -2216,9 +2217,10 @@ for my $n (readdir($d)) {
   close($h);
   my @w = grep { length } split(/[\0\s]+/, $c);
   next unless grep { (my $x = $_) =~ s{.*/}{}; $x eq "aegir2boa-stage2" } @w;
-  for my $i (0 .. $#w - 1) {
-    next unless $w[$i] eq "--account";
-    (my $z = $w[$i + 1]) =~ tr/a-z0-9-//cd;
+  my @e = split(/\0/, $c);
+  for my $i (0 .. $#e - 1) {
+    next unless $e[$i] eq "--account";
+    (my $z = $e[$i + 1]) =~ tr/a-z0-9//cd;
     exit 0 if $z eq $acct;
   }
 }
@@ -2794,7 +2796,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f46 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f45 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
