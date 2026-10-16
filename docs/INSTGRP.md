@@ -522,13 +522,16 @@ and the watchers raise it every pass. Once the account is converted onto
 that group (root's record names its number at phase A or B), root's
 writers (the nightly, the site fixers, the worker) keep giving its paths
 that group, and the account's own identities and pool users are still
-listed in it and its pools keep their `group =` line at phase B, until the
-name is freed. Meanwhile the outside holder keeps group access to the
+listed in it (by the worker, the Octopus pass and `convert`, none of which
+gives them `www-data` back at phase B) and its pools keep their `group =`
+line at phase B, until the name is freed. Meanwhile the outside holder keeps group access to the
 paths written there, private files included. On a box that is ready
 (above), the Octopus pass and `webconvert` free the name.
 
 The held group is renamed `<gid>-wgheld-oN` (for example
-`1002-wgheld-o5`), keeping its number and its members, so whatever that
+`1002-wgheld-o5`; cut to 32 characters, a group name's limit, for a long
+account name, the number keeping it unique), keeping its number and its
+members, so whatever that
 number grants outside the account stays as it is. The account gets a new
 `wg-oN` at once, on a number no group and no user has (looked up by
 number too, for a directory service that does not list its entries), and
@@ -540,8 +543,11 @@ moves. Every path of the account in the old number then moves to the new
 one, and the account's own identities leave the renamed group; a live
 shell or SFTP session of the account is named in its notes. A
 set-group-ID file of the account's own still in the old number elsewhere
-on the box loses the bit, logged and alarmed. The run then goes on as for
-any account.
+on the box loses the bit, logged and alarmed. A sweep that cleared such a
+file (a session started before the free could make another) or could not
+finish is owed again (`/var/log/boa/instgrp-web.oN.sgid-held.txt`): the
+account's next web verb sweeps again until one finds nothing. The run then
+goes on as for any account.
 
 Nothing of the outside holder is changed: it keeps its memberships, its
 primary group and the renamed group, and loses only the account's files.
@@ -551,7 +557,8 @@ a user its own login under the account instead.
 
 The name is not freed, and the alarm stays and says why, on a standby or
 a box being prepared as one, for a frozen account, while an `xmass`,
-`xoct` or `xcopy` verb runs on the box, on a box that is not ready, or
+`xoct` or `xcopy` verb runs on the box (its pid file naming a live run of
+that tool), on a box that is not ready, or
 when `wg-oN` is not a group of `/etc/group` (a directory service holds
 it). It stays held too when one of the account's identities has it as its
 primary group, when a file under `/etc` names it (a sudoers rule, sshd's
@@ -568,16 +575,25 @@ the opt-out.
 
 Root's journal `/etc/boa/control/instgrp-web.oN.free.txt` dates the free
 and finishes one a kill cut short: the next run of a web verb of the
-account completes it. Until then `reclaim`, `convert` and the nightly's
-probe leave the paths still in the old number alone, as the free's walk
-to finish; `reclaim` puts a rename alone back (the state before the free)
-and otherwise skips the account, exit 4, with an alarm. On a standby or a
-box being prepared as one, or for a frozen account, that next run only
-puts the rename back or carries root's record to a new group already
-made, and leaves the walk and the reloads to a run those guards allow. A
-free whose last checks warned (a version's reload, a listing) is recorded
+account completes it from the journal, as long as the renamed group still
+has the old number or `wg-oN` has the number the journal gave it (the
+walk from the old number, the account's identities taken out of the
+renamed group where it still is). Until then `reclaim`, `convert`, the
+nightly's probe and a root-run restore's re-group leave the paths still in
+the old number alone, as the free's walk to finish; `reclaim` puts a
+rename alone back (the state before the free) and otherwise skips the
+account, exit 4, with an alarm. A journal nothing can finish from (the
+renamed group removed, renamed or renumbered while `wg-oN` is gone or on
+another number) is dropped with an alarm that names it, by `reclaim` and
+by a web verb alike. On a standby or a box being prepared as one, or for
+a frozen account, that next run only puts the rename back or carries
+root's record to a new group already made, and leaves the walk and the
+reloads to a run those guards allow. A free whose last checks warned (a
+version's reload, a listing, paths left in the old number) is recorded
 done all the same, and the run's own steps reload what is left. The
-journal goes with the account.
+journal goes with the account. While it is not done, `xmass`, `xoct` and
+`xcopy` refuse to start for the account and name it: the paths still in
+the old number would travel by that number alone.
 
 ### What holds phase B back
 
@@ -966,7 +982,9 @@ keeps.
   resolves inside an account's tree or its relocated files store (a single
   restored file included); a restore staged anywhere else is the
   operator's to follow with `instgrp reclaim oN` once the files are in
-  place.
+  place. Like `reclaim`, that re-group leaves alone what sits in the old
+  number of a free of the account's web group name that a kill cut short
+  (above).
 
   `backboa`, `duobackboa` and `multiback` restore a path inside an
   account's tree in a directory only root can open and then move it into
