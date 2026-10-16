@@ -3454,7 +3454,7 @@ _update_agents() {
   # shelf, and only once the pin names a published tarball (empty: no box
   # fetches it). The same version as OCTOPUS.sh.txt's _REDIS_W_VERSION.
   _Dir="/data/all/000/modules"
-  _REDIS_W_VERSION=
+  _REDIS_W_VERSION=2.0.0-alpha2.1
   if [ -n "${_REDIS_W_VERSION}" ] \
     && [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -d "${_Dir}/o_contrib_twelve" ]; then
