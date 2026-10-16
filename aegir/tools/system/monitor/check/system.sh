@@ -113,18 +113,30 @@ _normalize_incident_report() {
   esac
 }
 _normalize_incident_report
+# The operator's own setting: a failed grace check exports
+# _INCIDENT_REPORT=OFF for the rest of this run, and the disk alerts do not
+# wait for the grace
+_INCIDENT_REPORT_CNF="${_INCIDENT_REPORT}"
 
 ###
 ### Function to send incident email report
 ###
 _incident_email_report() {
-  _check_uptime_grace_period >/dev/null || return 1
+  # $4 nograce: the disk alerts, paced by their own six-hour stamps. A boot,
+  # a BOA pass or a box without csf makes them no noisier, and a filesystem
+  # fills while an upgrade writes
+  local _mode="${_INCIDENT_REPORT}"
+  if [[ "${4:-}" = "nograce" ]]; then
+    _mode="${_INCIDENT_REPORT_CNF:-${_INCIDENT_REPORT}}"
+  else
+    _check_uptime_grace_period >/dev/null || return 1
+  fi
   local _subject="${1:-(no subject)}"
   local _lvl="${2:-INFO}"
   _lvl="${_lvl^^}"
   [ -n "${_MY_EMAIL}" ] || return 1
   # Decide if we should send
-  case "${_INCIDENT_REPORT}" in
+  case "${_mode}" in
     OFF)  return 1 ;;                            # always veto
     CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
     ALL) : ;;                                    # allow
@@ -459,43 +471,99 @@ _syslog_giant_log_detection() {
   fi
 }
 
+# The filesystems the disk alerts read. root: /. fixed: the ones BOA keeps
+# its shared code, sites, dumps, panel, databases, logs and scratch on, read
+# whatever their type, each once however many of these paths it holds. mnt:
+# every filesystem mounted under /mnt, at any depth, where migratefs puts an
+# account's store and its backups; there a read-only mount, an image
+# (squashfs, iso9660 and udf read 100% by nature), RAM, an overlay or an
+# automount trigger is left out. Fixed paths and /proc/mounts only: never a
+# path an account can point elsewhere.
+_disk_alert_paths() {
+  local _p
+  case "${1}" in
+    root)
+      echo "/"
+      ;;
+    mnt)
+      awk '$2 ~ "^/mnt/" && $4 !~ /^ro(,|$)/ &&
+        $3 !~ /^(tmpfs|devtmpfs|ramfs|squashfs|iso9660|udf|overlay|autofs)$/ {
+        print $2 }' /proc/mounts 2>/dev/null
+      ;;
+    *)
+      for _p in /data/all /data/disk /data/disk/arch /var/aegir /var/lib/mysql \
+        /var/log /var/backups /opt/tmp /tmp /home; do
+        echo "${_p}"
+      done
+      ;;
+  esac
+  return 0
+}
+
 # Every file takes an inode: a filesystem out of them fails every write as
-# "No space left on device" while df -h still shows free space, and nothing
-# else on the box says so until the upgrades, backups and copying tasks
-# refuse at 90%. Above 85% of its inodes in use (the archived-store heal's
-# line) the root filesystem, and the one holding /data/disk when that is
-# another, is logged and mailed as an ALERT, at most once in six hours. A
-# filesystem without an inode count (btrfs prints - for IUse%) is skipped.
-_inode_pressure_detection() {
-  local _p _l _seen="" _dev _pct _mnt _hit="" _mark="/run/boa_inode_pressure.stamp"
+# "No space left on device" while df -h still shows free space, and above
+# 90% of either BOA's upgrades, backups and copying tasks refuse, silently
+# when cron runs them. Above 85% of its inodes in use (the archived-store
+# heal's line, before the refusals) or above 90% of its space (where they
+# begin) a filesystem BOA writes to is logged and mailed as an ALERT, at most
+# once in six hours for each kind. A filesystem without an inode count
+# (btrfs prints - for IUse%) is judged on space only. Unlike the heal
+# alerts, these do not wait for the install or csf grace: a filesystem fills
+# while an upgrade writes. Only the first 15 minutes after a boot are held,
+# as the six-hour stamps live in /run.
+_disk_pressure_detection() {
+  local _kind="${1}" _opt _line _mark _what _g _p _rows="" _hit _up
+  local -a _paths
+  case "${_kind}" in
+    inodes)
+      _opt="-i"; _line=85
+      _mark="/run/boa_inode_pressure.stamp"
+      ;;
+    space)
+      _opt="-k"; _line=90
+      _mark="/run/boa_space_pressure.stamp"
+      ;;
+    *) return 0 ;;
+  esac
   [ -z "$(find "${_mark}" -mmin -360 2>/dev/null)" ] || return 0
-  # not while the mail would be held for the boot or install grace, or the
-  # six hours would start on an alert nobody got
-  if command -v _check_uptime_grace_period >/dev/null 2>&1; then
-    _check_uptime_grace_period >/dev/null || return 0
-  fi
-  # / and the accounts' filesystem, and every filesystem mounted under /mnt,
-  # where migratefs puts an account's store and its backups on attached
-  # storage (read from /proc/mounts: never a path an account can point
-  # elsewhere)
-  for _p in / /data/disk $(awk '$2 ~ "^/mnt/[^/]+$" {print $2}' /proc/mounts 2>/dev/null); do
-    [ -d "${_p}" ] || continue
-    _l="$(LC_ALL=C command df -P -i -- "${_p}" 2>/dev/null | awk '
-      NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
-      NR==2 && u { gsub(/%/,"",$u); print $1, $u, $NF }')"
-    read -r _dev _pct _mnt <<< "${_l}"
-    [[ "${_pct}" =~ ^[0-9]+$ ]] || continue
-    case " ${_seen} " in *" ${_dev} "*) continue ;; esac
-    _seen="${_seen} ${_dev}"
-    if [ "${_pct}" -gt 85 ]; then
-      _hit="${_hit}${_hit:+, }${_mnt} ${_pct}%"
-    fi
+  _up="$(awk '{print int($1/60)}' /proc/uptime 2>/dev/null)"
+  [[ "${_up}" =~ ^[0-9]+$ ]] && [ "${_up}" -ge 15 ] || return 0
+  # one df per group, bounded: a network filesystem whose server is gone
+  # hangs anything that looks at it, a stat as much as df, and only KILL
+  # ends that wait. So no path is probed here (df skips a missing one), and
+  # / has a df of its own: a killed df prints nothing, and / must still be
+  # read when a fixed path sits on network storage.
+  for _g in root fixed mnt; do
+    _paths=()
+    while IFS= read -r _p; do
+      _paths+=("${_p}")
+    done < <(_disk_alert_paths "${_g}")
+    [ "${#_paths[@]}" -gt 0 ] || continue
+    _rows="${_rows}$(LC_ALL=C timeout -s KILL 10 df -P "${_opt}" -- "${_paths[@]}" 2>/dev/null)"$'\n'
   done
+  # The share sits just before the mount point: a source name with a space
+  # (a network share's) moves every column after it, never these two
+  _hit="$(printf '%s' "${_rows}" | awk -v l="${_line}" '
+    $1 == "Filesystem" { h = 1; next }
+    h && NF >= 6 && !seen[$NF]++ { p = $(NF - 1); gsub(/%/, "", p)
+      if (p ~ /^[0-9]+$/ && p + 0 > l) printf "%s%s %s%%", (n++ ? ", " : ""), $NF, p }')"
   [ -n "${_hit}" ] || return 0
   touch "${_mark}"
-  _thisErrLog="$(date) Inodes almost exhausted (${_hit} of inodes in use): every file takes one, free space alone is not enough; above 90% BOA refuses upgrades, backups and copying tasks; see df -i"
+  if [[ "${_kind}" = "inodes" ]]; then
+    _what="Inodes almost exhausted"
+    _thisErrLog="$(date) ${_what} (${_hit} of inodes in use): every file takes one, free space alone is not enough; above 90% BOA refuses upgrades, backups and copying tasks; see df -i"
+  else
+    _what="Disk almost full"
+    _thisErrLog="$(date) ${_what} (${_hit} of space in use): writes there fail once it is full; with / above 90% BOA refuses upgrades, backups and copying tasks and the task queue stops; see df -h"
+  fi
   echo "${_thisErrLog}" >> ${_pthOml}
-  _incident_email_report "Inodes almost exhausted: ${_hit} in use" ALERT "system-inodes"
+  if ! _incident_email_report "${_what}: ${_hit} in use" ALERT "system-${_kind}" nograce; then
+    # wanted but not sent (s-nail failing while an upgrade replaces the
+    # mail system, say): look again in an hour, not in six
+    if [[ "${_INCIDENT_REPORT_CNF}" != "OFF" ]] && [[ -n "${_MY_EMAIL}" ]]; then
+      touch -d "300 minutes ago" "${_mark}" 2>/dev/null
+    fi
+  fi
   echo >> ${_pthOml}
 }
 
@@ -847,7 +915,8 @@ _rsyslog_health_check_fix
 _postfix_health_check_fix
 _cron_duplicate_instances_detection
 _syslog_giant_log_detection
-_inode_pressure_detection
+_disk_pressure_detection inodes
+_disk_pressure_detection space
 
 if [ -e "/run/boa_system_auto_healing.pid" ] \
   || [ -e "/run/boa_mysql_auto_healing.pid" ] \

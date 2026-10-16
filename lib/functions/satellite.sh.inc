@@ -2502,8 +2502,10 @@ _satellite_build_shared() {
             [ -n "${_p}" ] && _trees="${_trees} ${_p}"
             ;;
           bundle)
-            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_backdrop)?$ ]] \
-              || [ ! -d "${_p}" ]; then
+            # Drupal 12's shelf is built only while its pin is set
+            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_twelve|_backdrop)?$ ]] \
+              || [ ! -d "${_p}" ] \
+              || { [ "${_p##*/}" = "o_contrib_twelve" ] && [ -z "${_REDIS_W_VERSION}" ]; }; then
               _gone="${_gone} ${_p}"
             elif [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " != *" ${_p} "* ]]; then
               _msg "${_STATUS} A: Running ${_p} forced upgrade..."
@@ -2681,7 +2683,7 @@ _satellite_lent_top_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
   local _b _t
   for _b in o_contrib o_contrib_seven o_contrib_eight o_contrib_nine \
-    o_contrib_ten o_contrib_eleven o_contrib_backdrop; do
+    o_contrib_ten o_contrib_eleven o_contrib_twelve o_contrib_backdrop; do
     if [ ! -e "./${_b}" ] && [ ! -L "./${_b}" ]; then
       continue
     fi
@@ -3245,6 +3247,41 @@ _satellite_o_contrib_eleven_update_global() {
   cd
 }
 
+
+#
+# Update o_contrib_twelve: only where the shelf exists (it is made once
+# _REDIS_W_VERSION names a published copy), its one member the shared
+# redis_twelve.
+_satellite_o_contrib_twelve_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_o_contrib_twelve_update_global"
+    _debug_proc
+  fi
+
+  local _up
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_twelve" || continue
+    [ -e "${i}/o_contrib_twelve" ] || continue
+    if [ ! -e "${i}/o_contrib_twelve/update-${_xSrl}-${_X_VERSION}.info" ] \
+      || [ ! -L "${i}/o_contrib_twelve/redis_twelve" ]; then
+      _up=YES
+    else
+      _up=NO
+    fi
+    if [ "${_up}" = "YES" ]; then
+      if [ -e "${_D}/000/modules/redis_twelve" ] \
+        && [ ! -L "${i}/o_contrib_twelve/redis_twelve" ]; then
+        ln -sfn ${_D}/000/modules/redis_twelve ${i}/o_contrib_twelve/redis_twelve
+      fi
+      _acct_in_real_dir "${i}/o_contrib_twelve" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_twelve" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
+    fi
+  done
+  cd
+}
+
 _satellite_o_contrib_backdrop_update_global() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_o_contrib_backdrop_update_global"
@@ -3625,7 +3662,7 @@ _satellite_restore_o_contrib_backdrop_webform() {
 
 
 #
-# The links into ${_D}/000/modules a D8 to D11 bundle carries (the redis_*
+# The links into ${_D}/000/modules a D8 to D12 bundle carries (the redis_*
 # names its _update_global loop links), made in the directory the download
 # function fills, as the D6, D7 and Backdrop functions make theirs: a bundle
 # fetched again into a stage carries them when it is swapped in, so its
@@ -3638,6 +3675,24 @@ _satellite_bundle_links_here() {
     fi
   done
 }
+
+#
+# Download o_contrib_twelve: Drupal 12's shelf holds only the shared copy of
+# BOA's redis 2.x line, fetched once _REDIS_W_VERSION names it.
+_satellite_download_o_contrib_twelve() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_download_o_contrib_twelve"
+    _debug_proc
+  fi
+  touch update-${_xSrl}-${_X_VERSION}.info
+  if [ -n "${_REDIS_W_VERSION}" ] \
+    && _satellite_module_stale redis_twelve "ver-${_REDIS_W_VERSION}.${_xSrl}.full.info"; then
+    _satellite_shared_module_update redis_twelve "${_REDIS_W_VERSION}"
+  fi
+  _satellite_bundle_links_here redis_twelve
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
+}
+
 
 #
 # Download o_contrib_eleven.
@@ -3878,6 +3933,13 @@ _satellite_check_fix_o_contrib() {
     _msg "PROC: _satellite_check_fix_o_contrib"
     _debug_proc
   fi
+  if [ -n "${_REDIS_W_VERSION}" ] && [ -e "${_CORE}/o_contrib_twelve" ]; then
+    if [ ! -e "${_CORE}/o_contrib_twelve/redis_twelve" ] \
+      || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+      _msg "${_STATUS} A: Running o_contrib_twelve forced upgrade..."
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_twelve
+    fi
+  fi
   if [ -e "${_CORE}/o_contrib_eleven" ]; then
     if [ ! -e "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
@@ -3958,6 +4020,14 @@ _satellite_check_fix_o_contrib() {
   if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
+  ### Drupal 12's store: only once the pin names a published copy, and only
+  ### where the shelf exists.
+  if [ -n "${_REDIS_W_VERSION}" ] \
+    && [ -e "${_D}/000/modules/o_contrib_twelve" ]; then
+    if _satellite_module_stale redis_twelve "ver-${_REDIS_W_VERSION}.${_xSrl}.full.info"; then
+      _satellite_shared_module_update redis_twelve "${_REDIS_W_VERSION}"
+    fi
+  fi
   ### The Backdrop store is refreshed only where the bundle exists (or the
   ### support gate is on) so opted-out boxes never fetch it.
   if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
@@ -3992,6 +4062,12 @@ _satellite_manage_o_contrib() {
     _msg "${_STATUS} A: ALRT shared bundles not root's, fetched again: ${_mine}"
     _gone="${_gone:+${_gone} }${_mine}"
   fi
+  ### Drupal 12's shelf is made once _REDIS_W_VERSION names a published
+  ### copy of BOA's redis 2.x line; until then a Drupal 12 site keeps its
+  ### cache in the database. An existing shelf is kept fresh regardless.
+  if [ -n "${_REDIS_W_VERSION}" ] && [ ! -e "${_CORE}/o_contrib_twelve" ]; then
+    _satellite_bundle_new o_contrib_twelve _satellite_download_o_contrib_twelve
+  fi
   if [ ! -e "${_CORE}/o_contrib_eleven" ]; then
     _satellite_bundle_new o_contrib_eleven _satellite_download_o_contrib_eleven
   fi
@@ -4021,6 +4097,10 @@ _satellite_manage_o_contrib() {
       _satellite_download_o_contrib_backdrop
   fi
   _satellite_mk_modules
+  if [ -e "${_CORE}/o_contrib_twelve" ]; then
+    rm -f ${_D}/000/modules/o_contrib_twelve
+    ln -sfn ${_CORE}/o_contrib_twelve ${_D}/000/modules/o_contrib_twelve
+  fi
   rm -f ${_D}/000/modules/o_contrib_eleven
   ln -sfn ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
   rm -f ${_D}/000/modules/o_contrib_ten
@@ -4077,8 +4157,9 @@ _satellite_bundle_redo_at() {
 # links into ${_D}/000/modules included): $2 fills a fresh stage beside the
 # bundle (stages a stopped pass left are removed first), and the stage,
 # once every fetch $2 made succeeded
-# (_satellite_all_fetched_here) and it holds a module, is swapped in for the
-# bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
+# (_satellite_all_fetched_here) and it holds a module (a directory, or a link
+# to one: Drupal 12's shelf holds only its link into the store), is swapped
+# in for the bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
 # finds it emptied or part-fetched while it is fetched; where one rename
 # cannot do it, the bundle is moved aside first and the stage moved in. The
 # old bundle is removed with the stage. A stage a fetch failed for is
@@ -4091,7 +4172,7 @@ _satellite_bundle_redo_in() {
   mkdir -m 0755 -- "${_s}" || return 1
   if ! TAR_OPTIONS="--no-same-owner" \
     _acct_in_real_dir "${_s}" _satellite_all_fetched_here "${2}" \
-    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]; then
+    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -xtype d -print -quit)" ]; then
     _msg "${_STATUS} A: ALRT ${PWD}/${1} not fetched again (a fetch failed), kept as it was"
     rm -rf -- "${_s}"
     return 1
@@ -7330,6 +7411,7 @@ _satellite_make() {
   echo "export _REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_B_VERSION=\"${_REDIS_B_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_W_VERSION=\"${_REDIS_W_VERSION}\""     >> ${_writeTo}
   echo "export _SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
 
   echo "export _SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
@@ -9954,6 +10036,7 @@ _satellite_display_url_finalize() {
     _satellite_o_contrib_nine_update_global
     _satellite_o_contrib_ten_update_global
     _satellite_o_contrib_eleven_update_global
+    _satellite_o_contrib_twelve_update_global
     _satellite_o_contrib_backdrop_update_global
   fi
   if [ ! -e "/root/.upstart.cnf" ] \

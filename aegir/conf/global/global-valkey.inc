@@ -92,7 +92,24 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         }
       }
       else {
-        if (is_readable('modules/o_contrib_ten')) {
+        // A Drupal 12 tree reads only its own shelf: a Drupal 11 shelf linked
+        // into it holds no copy of the 2.x line.
+        if ($drupal_core == 12) {
+          if (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/example.services.yml')) {
+            $cache_valkey = TRUE;
+            $example_failover_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/example.failover.services.yml';
+            $example_services_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+          }
+          if (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml')) {
+            $cache_valkey = TRUE;
+            $redis_services_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+            }
+          }
+        }
+        elseif (is_readable('modules/o_contrib_ten')) {
           if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml')) {
             $cache_valkey = TRUE;
             $example_failover_path = 'modules/o_contrib_ten/' . $redis_dirname . '/example.failover.services.yml';
@@ -117,21 +134,6 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
           if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
             $cache_valkey = TRUE;
             $redis_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml';
-            if ($is_dev && !$is_backend) {
-              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
-            }
-          }
-        }
-        elseif (is_readable('modules/o_contrib_twelve')) {
-          if (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/example.services.yml')) {
-            $cache_valkey = TRUE;
-            $example_failover_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/example.failover.services.yml';
-            $example_services_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/example.services.yml';
-            $cache_gzip_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          }
-          if (is_readable('modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml')) {
-            $cache_valkey = TRUE;
-            $redis_services_path = 'modules/o_contrib_twelve/' . $redis_dirname . '/redis.services.yml';
             if ($is_dev && !$is_backend) {
               header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
             }
