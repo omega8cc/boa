@@ -272,11 +272,16 @@ _t_base() { echo "/var/backups/a2b/$1"; }
 # The account the target's state of the account $1 was made for: its uid
 # and its home's inode and birth time, as xmass records a migration create.
 # Written into the state dir (identity) by the first transfer and compared
-# by every later one: a state an earlier account of the name left (one
-# removed by hand and made again) is refused, never taken for this one's,
-# and BOA's passes read it as no state of this account. A birth time either
-# side does not know (0) is not compared. Exit 3: no such account or state
-# dir; 4: the state is another account's. Run as root: bash -s -- <oN>.
+# by every later one, and by import in all its modes before it acts: a
+# state an earlier account of the name left (one removed by hand and made
+# again) is refused, never taken for this one's, and BOA's passes read it
+# as no state of this account. The record is read as BOA reads it: its
+# first line, whether or not a newline ends it; an empty one is the
+# account's own (and is written now), as is none at all. A birth time
+# either side does not know (0) is not compared. With "check" as $2 it only
+# compares: nothing is written, and a state dir not made yet passes. Exit
+# 3: no such account or state dir; 4: the state is another account's. Run
+# as root: bash -s -- <oN> [check].
 _T_IDENTITY_SH='a="$1"
 b="/var/backups/a2b/${a}"
 u=$(id -u "${a}" 2> /dev/null) || exit 3
@@ -284,14 +289,22 @@ n=$(stat -c "%i %W" "/data/disk/${a}" 2> /dev/null) || exit 3
 ni="${n% *}"
 nb="${n#* }"
 case "${u}:${ni}:${nb}" in *[!0-9:]*|:*|*:|*::*) exit 3 ;; esac
-[ -d "${b}" ] && [ ! -L "${b}" ] && [ ! -L "${b%/*}" ] || exit 3
+[ ! -L "${b%/*}" ] || exit 3
+if [ "$2" = "check" ] && [ ! -e "${b}" ] && [ ! -L "${b}" ]; then
+  exit 0
+fi
+[ -d "${b}" ] && [ ! -L "${b}" ] || exit 3
+iu=""
 if [ -e "${b}/identity" ] || [ -L "${b}/identity" ]; then
   [ -f "${b}/identity" ] && [ ! -L "${b}/identity" ] || exit 4
   read -r iu ii ib _ < "${b}/identity"
+fi
+if [ -n "${iu}" ]; then
   [ "${iu}" = "${u}" ] && [ "${ii}" = "${ni}" ] || exit 4
   [ "${ib}" = "0" ] || [ "${nb}" = "0" ] || [ "${ib}" = "${nb}" ] || exit 4
   exit 0
 fi
+[ "$2" = "check" ] && exit 0
 ( umask 077; printf "%s %s %s\n" "${u}" "${ni}" "${nb}" > "${b}/identity.$$" ) \
   && mv -f "${b}/identity.$$" "${b}/identity"'
 
@@ -304,6 +317,17 @@ _require_target_box() {
   _STATE_DIR="$(_t_base "${_ACCOUNT}")"
   [[ -L "${_STATE_DIR%/*}" || -L "${_STATE_DIR}" ]] \
     && _die "${_STATE_DIR} or its parent is a symlink - refusing to keep migration state there"
+  # import in every mode (the route, --revert-db-import, --reset-sites)
+  # acts only on a state made for this account: one an earlier account of
+  # the name left is refused before a plan is printed or a gate is read
+  if [[ "${_OP}" = "import" ]]; then
+    bash -s -- "${_ACCOUNT}" check <<< "${_T_IDENTITY_SH}"
+    case "$?" in
+      0) ;;
+      4) _die "${_STATE_DIR} was made for another account of the name ${_ACCOUNT} (removed and made again here): move it aside, then re-run transfer from the source" ;;
+      *) _die "cannot compare the account ${_ACCOUNT} with the record in ${_STATE_DIR}" ;;
+    esac
+  fi
   if [[ ! -d "${_STATE_DIR}" ]] \
     && [[ -e "${_ACCT_ROOT}/log/a2b" || -e "${_ACCT_ROOT}/src/a2b" \
       || -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]]; then
@@ -1524,6 +1548,15 @@ verb_transfer() {
     && -n "${_freeD}" && "${_freeD}" -gt $(( _needD + 500 )) ]] \
     || _die "target free space insufficient (or unreadable) - refusing"
 
+  # a state on the target recorded for another account of the name is
+  # refused before the dry run says CLEAN or the live run consumes its gate
+  ssh -o BatchMode=yes "root@${_TARGET}" "bash -s -- ${_ACCOUNT} check" <<< "${_T_IDENTITY_SH}"
+  case "$?" in
+    0) ;;
+    4) _die "${_tb} on ${_TARGET} was made for another account of the name ${_ACCOUNT} (removed and made again there): move it aside on ${_TARGET}, then re-run transfer" ;;
+    *) _die "cannot compare the account ${_ACCOUNT} on ${_TARGET} with the record beside ${_tb}" ;;
+  esac
+
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
     for _mf in ${_mfl}; do
@@ -1802,7 +1835,7 @@ _t_freeze_on() {
   local _verb="${1:-db-import}" _st _pg=""
   if [[ -e "${_ACCT_ROOT}/log/proxied.pid" ]]; then
     _t_freeze_dead "${_verb}" "${2}" \
-      || _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?"
+      || _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?${_T_FREEZE_WHY:+ (${_T_FREEZE_WHY})}"
     _alrt "taking over the freeze a killed ${_verb} run left on ${_ACCOUNT}"
   fi
   # what this run starts (a dump load, su) keeps its process group when the
@@ -1825,13 +1858,15 @@ _t_freeze_on() {
 # subshells, and what it runs under), only those whose real and effective
 # uid are root's are read, 64 KiB of each file at most: none may be in the
 # group <g> (a loader, a sed or an su the killed run started outlives it
-# there), <n> may run no stage 2, no stage 2 may name this account (any
-# word of any argv), none may hold a file or its working directory under
-# the account's state, and the account's hostmaster database ($2) may have
-# no connection but the one that counts them. A marker of an earlier
-# release (one line, or no group), of the other operation or of anything
-# else is refused as before. Args: root's uid, the operation, this run's
-# pid, the account, the proc root, the account's state dir.
+# there), <n> may run no stage 2, no stage 2 (its name in any word of its
+# argv) may name this account (--account and the next argv element, read
+# whole and cut down as the run's own --account is), none may hold a file
+# or its working directory under the account's state, and the account's
+# hostmaster database ($2) may have no connection but the one that counts
+# them. Which of these refused is printed. A marker of an earlier release
+# (one line, or no group), of the other operation or of anything else is
+# refused as before. Args: root's uid, the operation, this run's pid, the
+# account, the proc root, the account's state dir.
 _A2B_FREEZE_PL='use Fcntl;
 my ($ru, $v, $me, $acct, $p, $base) = @ARGV;
 my @l = lstat("./proxied.pid");
@@ -1864,18 +1899,21 @@ sub ours {
   for (1 .. 64) { return 1 if $x == $me; return 0 if $x <= 1; $x = (pp($x))[0] }
   return 0;
 }
+sub refuse { print "$_[0]\n"; exit 1 }
 opendir(my $dh, $p) or exit 1;
 for my $x (grep { /^[0-9]+$/ } readdir($dh)) {
   next if ours($x);
   next unless rd("$p/$x/status") =~ /^Uid:\s+0\s+0\s/m;
-  exit 1 if (pp($x))[1] == $pg;
-  my @w = grep { length } split(/[\0\s]+/, rd("$p/$x/cmdline"));
+  refuse("a root process is left in the process group $pg of the killed run (pid $x)") if (pp($x))[1] == $pg;
+  my $c = rd("$p/$x/cmdline");
+  my @w = grep { length } split(/[\0\s]+/, $c);
   if (grep { (my $n = $_) =~ s{.*/}{}; $n eq "aegir2boa-stage2" } @w) {
-    exit 1 if $x == $pid;
-    for my $i (0 .. $#w - 1) {
-      next unless $w[$i] eq "--account";
-      (my $z = $w[$i + 1]) =~ tr/a-z0-9-//cd;
-      exit 1 if $z eq $acct;
+    refuse("the pid $pid of the killed run runs a stage 2") if $x == $pid;
+    my @e = split(/\0/, $c);
+    for my $i (0 .. $#e - 1) {
+      next unless $e[$i] eq "--account";
+      (my $z = $e[$i + 1]) =~ tr/a-z0-9//cd;
+      refuse("another stage 2 names $acct (pid $x)") if $z eq $acct;
     }
   }
   my @f = ("$p/$x/cwd");
@@ -1885,24 +1923,35 @@ for my $x (grep { /^[0-9]+$/ } readdir($dh)) {
   }
   for my $f (@f) {
     my $r = readlink($f);
-    exit 1 if defined $r && index("$r/", "$base/") == 0;
+    refuse("a root process holds a file or its working directory under $base (pid $x)")
+      if defined $r && index("$r/", "$base/") == 0;
   }
 }
 exit 0'
+# Whether the freeze is one a killed run of the operation $1 left; which
+# check refused, when one did, in _T_FREEZE_WHY. $2 = the account's
+# hostmaster database.
 _t_freeze_dead() {
+  _T_FREEZE_WHY=""
   [[ -s /etc/boa/control/instgrp-web-arm.ready.txt ]] || return 1
-  _a2b_in_real_dir "${_ACCT_ROOT}/log" \
-    perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null \
+  _T_FREEZE_WHY="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
+    perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)" \
     && _t_freeze_conns "${2}"
 }
 # No connection but the one asking on the hostmaster database $1: a dump
 # load or a drush the killed run left would still be writing the panel. A
-# count that cannot be read refuses.
+# count that cannot be read refuses. What refused goes to _T_FREEZE_WHY.
 _t_freeze_conns() {
   local _n
   [[ -n "${1}" ]] || return 1
   _n="$(mysql --defaults-file=/root/.my.cnf -N -B -e "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE DB = '${1}' AND ID <> CONNECTION_ID()" 2> /dev/null)"
-  [[ "${_n}" = "0" ]]
+  [[ "${_n}" = "0" ]] && return 0
+  if [[ "${_n}" =~ ^[0-9]+$ ]]; then
+    _T_FREEZE_WHY="the panel database ${1} has another connection"
+  else
+    _T_FREEZE_WHY="the connections to the panel database ${1} could not be counted"
+  fi
+  return 1
 }
 _t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
 _t_owl_drain() {
@@ -3109,7 +3158,10 @@ verb_import() {
     _dry_finish "${_scope}"
   fi
   if [[ "${_ROUTE}" = "db-import" ]]; then
-    # consumed once its freeze is put (_import_db_route)
+    # only checked here, consumed once its freeze is put (_import_db_route):
+    # a run that stops before that, refused at the freeze or dying in one of
+    # the route's pre-checks (the panel database, the dump, the headroom),
+    # keeps its clean dry run, and nothing has acted by then
     _gate_ready "${_scope}"
   else
     _gate_consume "${_scope}"
