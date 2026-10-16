@@ -419,13 +419,15 @@ by kind (below), and the same for the master.
 A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
 limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
-`xcopy`, `xmass`, `aegir2boa-stage2`; for the worker its current form,
-where an earlier one raised an incident on every pass for an account at
-phase A whose site keeps its files store outside it), and the account's
-own provision copy carries two tokens:
-`provision_drupal_web_group_private`, the branch that keeps its private
-files closed, and `provision_path_web_group`, which keeps a site outside
-the account's tree in `www-data` (see "What holds phase B back").
+`xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
+carries two tokens: `provision_drupal_web_group_private`, the branch that
+keeps its private files closed, and `provision_path_web_group`, which keeps
+a site outside the account's tree in `www-data` (see "What holds phase B
+back").
+
+For the limited-shell worker that is its current form: an earlier one
+raised an incident on every pass for an account at phase A whose site
+keeps its files store outside the account.
 
 A box that is not ready refuses with exit 5, names what its check missed,
 and changes nothing. `webcheck --report` prints `provision: ready` for an
