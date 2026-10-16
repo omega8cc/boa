@@ -216,7 +216,8 @@ Also available here
 
   web-group-notes.txt — notes on your account's own web group (what
       it left as it is, and what clears it: "phase B waits until
-      ..."), written by BOA and readable only by your main login
+      ..."), written by BOA and readable only by your main login;
+      it appears once your host converts your account's web group
       https://docs.boa.io/operating/security/per-instance-group
 
   run-php-fpm-reload.pid — graceful PHP-FPM reload, clears APCu
