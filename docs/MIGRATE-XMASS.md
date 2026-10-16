@@ -1033,8 +1033,8 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 > target.
 >
 > The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
-> pre-checks disk space for every account's files store **and the Solr indices** (which
-> can be large), and records `CLEAN`/`NOT CLEAN`
+> pre-checks disk space and inodes for every account's files store **and the Solr
+> indices** (which can be large), and records `CLEAN`/`NOT CLEAN`
 > for the whole run.
 >
 > A single `DENY` (a dangling **named store** such as
@@ -1421,11 +1421,17 @@ and prefers doing nothing over doing the wrong thing:
 
   One more difference from a
   manual pass: an unattended pass **never re-places a store** — a store that
-  stops fitting at its established placement (target mount or root) is a
-  loud DENY, never the silent mirror-to-root fallback an operator pass may
-  choose. And the fit gates credit the bytes already sitting at the
-  destination, so a mirror whose storage is sized to the data does not
-  false-refuse every delta pass after the first full copy.
+  stops fitting at its established placement (target mount or root, read
+  from where the store sits on the target) is a loud DENY, never the
+  mirror-to-root fallback an operator pass may choose. So is a store whose
+  path on the target is a link that no longer reaches the mount (the mount
+  missing), or one whose placement could not be read.
+
+  The fit gates count no files on an unattended pass: a store already in
+  place needs only 2% of the target's
+  inodes, at least 50,000, free where it is, and its bytes are credited with
+  what already sits at the destination, so a mirror whose storage is sized
+  to the data does not false-refuse every delta pass after the first copy.
 
 The target's standby marker is verified at pass start **and re-proved at
 every leg boundary** (before the shared, Solr and each account leg), so a

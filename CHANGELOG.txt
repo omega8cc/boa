@@ -82,6 +82,26 @@
       checks the space, which it never did, and does not count again what
       a copy that stopped short already made (#1947).
 
+    * xoct, xcopy and xmass count the files a store, a Solr index or a
+      batch of out-of-root files will make on the target, not only its
+      bytes (#1947). A copy that would leave less than 2% of the target's
+      inodes, at least 50,000, free is refused with a DENY naming why,
+      instead of failing mid-copy with "No space left on device", for
+      xmass inside the cutover's 503 window. The fallback placement is
+      checked too, a repeated pass is credited with what the copy's own
+      destination holds, an unattended xmass autosync pass counts no
+      files, and a figure that cannot be read lets the copy through with
+      a warning on the plan.
+
+    * xoct, xcopy and xmass read where a store sits on the target before
+      they judge a repeated pass. The root's room was read through the
+      store's link onto the attached mount, so a pass could move a
+      mirrored store back onto a root without room for it, and an
+      unattended xmass pass judged the placement the source's shape
+      suggested, refusing on every pass a store a manual pass had put on
+      the root, and copying onto the root a mirrored store whose mount
+      had gone missing; it now refuses that store.
+
     * The system monitor's inode alert also watches every filesystem
       mounted at /mnt/<name>, the attached storage migratefs uses (#1947).
 
