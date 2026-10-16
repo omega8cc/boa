@@ -1136,6 +1136,18 @@ additionally restores the panel DB from the pre-import snapshot and
 returns the held dispatcher. Both print the same reminder: a retry needs
 a fresh export+transfer.
 
+With each site DB go the database users the import made for it: the
+import records which rows of the site's user (at `localhost` and `%`) it
+found missing and made, beside its state, and only those are dropped,
+each row's `CREATE USER` line and grants saved first in
+`/var/backups/boa/dbrights/a2b-<oN>-<time>-<pid>.sql` (root's, 0600). A
+user that was there before, that the master or another account names (a
+site's `drushrc.php`, a server alias), that the database broker's
+registry gives to another account, or that has a row at a host this box
+does not own stays, and the run says why. An import made before this
+release recorded no users, so a revert of it leaves them for the
+operator to drop by hand once nothing else uses them.
+
 ### Monitoring a migration
 
 ```sh
