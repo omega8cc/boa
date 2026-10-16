@@ -2263,10 +2263,210 @@ _t_fpm_map_wait() {   # 1 uri 2 dmajor (per-site route: no freeze in play)
   _t_fpm_wait "$1" "$2" "${_FPM_WANT}"
 }
 
+# The hosts of the database user $1's rows, one a line; 1 when they cannot
+# be read. $1 is a site's database name, which is also its user's.
+_t_user_rows() {   # 1 user
+  [[ "$1" =~ ^[A-Za-z0-9_]{1,64}$ ]] || return 1
+  mysql --silent -u root -N -B -e "SELECT Host FROM mysql.user WHERE User = '$1'" 2>/dev/null
+}
+# The record of the rows of a site's user the import made: of localhost
+# and % those it found missing ($2, its rows read before its CREATE USER)
+# and finds there after it, failed or not, one user@host a line in root's
+# markers, each once. Only a row this record names is ever dropped by a
+# revert; a read that fails records nothing.
+_t_users_made() {   # 1 dbn 2 hosts there before
+  local _now _h _rec
+  _now="$(_t_user_rows "$1")" || return 0
+  _rec="$(_marker "db-users.$1")"
+  [[ -L "${_rec}" ]] && return 0
+  for _h in localhost %; do
+    printf '%s\n' "$2" | grep -qxF -- "${_h}" && continue
+    printf '%s\n' "${_now}" | grep -qxF -- "${_h}" || continue
+    [[ -f "${_rec}" && ! -L "${_rec}" ]] && grep -qxF -- "$1@${_h}" "${_rec}" && continue
+    ( umask 077; printf '%s@%s\n' "$1" "${_h}" >> "${_rec}" )
+  done
+}
+# The plain *.alias.drushrc.php files of the current (real) directory.
+_t_aliases_here() {
+  local _f
+  for _f in ./*.alias.drushrc.php; do
+    [[ -f "${_f}" && ! -L "${_f}" ]] && printf '%s\n' "${_f#./}"
+  done
+  return 0
+}
+# The database users the master and every other account name, read once a
+# run into _T_NAMED (one a line): the db_user of each site's drushrc.php,
+# the site found by its alias's site_path inside that instance's own tree,
+# and the user of each server alias's master_db. Every file is read inside
+# its real directory, 1 MiB of it at most; the account's own tree is not
+# read.
+_T_NAMED=""
+_T_NAMED_READ="NO"
+_t_named_elsewhere() {
+  local _h _f _t _sp
+  [[ "${_T_NAMED_READ}" = "YES" ]] && return 0
+  _T_NAMED_READ="YES"
+  _T_NAMED=$'\n'
+  for _h in /var/aegir /data/disk/*; do
+    [[ -d "${_h}/.drush" && ! -L "${_h}" && "${_h}" != "${_ACCT_ROOT}" ]] || continue
+    while IFS= read -r _f; do
+      [[ -n "${_f}" ]] || continue
+      _t="$(_a2b_in_real_dir "${_h}/.drush" _a2b_read_here "${_f}")"
+      _T_NAMED="${_T_NAMED}$(printf '%s\n' "${_t}" \
+        | sed -n "s#^[[:space:]]*'master_db' => 'mysql://\([A-Za-z0-9_]*\):.*#\1#p")"$'\n'
+      _sp="$(printf '%s\n' "${_t}" | sed -n "s#^[[:space:]]*'site_path' => '\([^']*\)',.*#\1#p" | head -n 1)"
+      case "${_sp}" in
+        *[!A-Za-z0-9._/-]*|*/../*|*/./*|*//*|*/|"") continue ;;
+        "${_h}"/?*) ;;
+        *) continue ;;
+      esac
+      _T_NAMED="${_T_NAMED}$(_a2b_in_real_dir "${_sp}" _a2b_read_here drushrc.php \
+        | sed -n "s#^[[:space:]]*\$options\['db_user'\] = '\([A-Za-z0-9_]*\)';.*#\1#p")"$'\n'
+    done < <(_a2b_in_real_dir "${_h}/.drush" _t_aliases_here)
+  done
+}
+# Why the database user $1 a revert would drop must stay, into
+# _T_KEPT_WHY (empty: it may go): a system or instance user, a user the
+# master or another account names (_t_named_elsewhere), a name the
+# database broker's registry gives to another account, or a user with a
+# row at a host this box does not own (localhost, its loopback addresses,
+# %, its names and the addresses it holds): on a box serving another
+# box's sites that box logs in from its own address. What cannot be read
+# keeps it.
+_t_user_kept_why() {   # 1 user
+  local _u="$1" _n _h _rows _own
+  _T_KEPT_WHY=""
+  case "${_u}" in
+    ""|root|aegir|aegir_root|*[!A-Za-z0-9_]*)
+      _T_KEPT_WHY="it is not a site's user"
+      return 0
+      ;;
+  esac
+  if [[ "${_u}" = "${_ACCOUNT}" || -e "/data/disk/${_u}" || -L "/data/disk/${_u}" \
+    || -e "/root/.${_u}.octopus.cnf" ]]; then
+    _T_KEPT_WHY="it is an instance's own user"
+    return 0
+  fi
+  _t_named_elsewhere
+  if [[ "${_T_NAMED}" == *$'\n'"${_u}"$'\n'* ]]; then
+    _T_KEPT_WHY="the master or another account names it"
+    return 0
+  fi
+  _n="$(mysql --silent -u root -N -B -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'boa_dbreg' AND TABLE_NAME = 'owners'" 2>/dev/null)"
+  if [[ "${_n}" = "1" ]]; then
+    _n="$(mysql --silent -u root -N -B -e "SELECT COUNT(*) FROM boa_dbreg.owners WHERE db_name = '${_u}' AND account <> '${_ACCOUNT}'" 2>/dev/null)"
+  fi
+  if [[ "${_n}" != "0" ]]; then
+    if [[ "${_n}" =~ ^[0-9]+$ ]]; then
+      _T_KEPT_WHY="the database broker's registry gives its name to another account"
+    else
+      _T_KEPT_WHY="the database broker's registry could not be read"
+    fi
+    return 0
+  fi
+  if ! _rows="$(_t_user_rows "${_u}")"; then
+    _T_KEPT_WHY="its rows could not be read"
+    return 0
+  fi
+  _own=$'\n'"localhost"$'\n'"127.0.0.1"$'\n'"::1"$'\n'"%"$'\n'"$(hostname 2>/dev/null)"$'\n'"$(hostname -f 2>/dev/null)"$'\n'
+  for _h in $(hostname -I 2>/dev/null); do
+    _own="${_own}${_h}"$'\n'
+  done
+  while IFS= read -r _h; do
+    [[ -n "${_h}" ]] || continue
+    if [[ "${_own}" != *$'\n'"${_h}"$'\n'* ]]; then
+      _T_KEPT_WHY="it has a row at ${_h}, a host this box does not own"
+      return 0
+    fi
+  done <<< "${_rows}"
+  return 0
+}
+# The row $2@$3 saved into the file $1 before it is dropped, as the
+# database broker saves a login's grants: a "-- <time> user@host" line, its
+# SHOW CREATE USER line (the stored password as hex where the server can
+# print it so) and its SHOW GRANTS lines, each statement ended, so the
+# entry can be run again as it is. 1 when any part cannot be read or
+# written.
+_t_rights_save() {   # 1 file 2 user 3 host
+  local _sc _sg
+  _sc="$(mysql --silent -u root -N -B -e "SET SESSION print_identified_with_as_hex = 1; SHOW CREATE USER '${2}'@'${3}'" 2>/dev/null)" \
+    || _sc="$(mysql --silent -u root -N -B -e "SHOW CREATE USER '${2}'@'${3}'" 2>/dev/null)" \
+    || return 1
+  [[ "${_sc}" == "CREATE USER "* && "${_sc}" != *$'\n'* ]] || return 1
+  _sg="$(mysql --silent -u root -N -B -e "SHOW GRANTS FOR '${2}'@'${3}'" 2>/dev/null)" || return 1
+  [[ -n "${_sg}" ]] || return 1
+  { printf -- '-- %s %s@%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${2}" "${3}"
+    printf '%s;\n' "${_sc}"
+    printf '%s\n' "${_sg}" | sed -e '/^$/d' -e 's/$/;/'
+  } >> "${1}" 2>/dev/null || return 1
+  chmod 0600 "${1}" 2>/dev/null
+}
+# The database users the import made for the site database $2 (its
+# record, _t_users_made), dropped once the database is: only the rows the
+# record names of the user named as the database, at localhost or %, only
+# while _t_user_kept_why finds nothing to keep it for, and each row only
+# once its CREATE USER line and grants are saved in root's
+# /var/backups/boa/dbrights. A row kept stays in the record and is said.
+_t_drop_made_users() {   # 1 uri 2 dbn
+  local _uri="$1" _u="$2" _rec _l _hs="" _h _rows _d=/var/backups/boa/dbrights _f _gone="" _left=""
+  _rec="$(_marker "db-users.${_u}")"
+  [[ -e "${_rec}" || -L "${_rec}" ]] || return 0
+  if [[ ! -f "${_rec}" || -L "${_rec}" ]]; then
+    _alrt "site ${_uri}: database user ${_u} kept: its record ${_rec} is not a plain file"
+    return 0
+  fi
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "${_u}@localhost") _hs="${_hs} localhost" ;;
+      "${_u}@%") _hs="${_hs} %" ;;
+    esac
+  done < "${_rec}"
+  [[ -n "${_hs}" ]] || return 0
+  _t_user_kept_why "${_u}"
+  if [[ -n "${_T_KEPT_WHY}" ]]; then
+    _alrt "site ${_uri}: database user ${_u} kept: ${_T_KEPT_WHY}"
+    return 0
+  fi
+  if ! _rows="$(_t_user_rows "${_u}")"; then
+    _alrt "site ${_uri}: database user ${_u} kept: its rows could not be read"
+    return 0
+  fi
+  [[ -e "${_d}" || -L "${_d}" ]] || ( umask 077; mkdir -p -- "${_d}" ) 2>/dev/null
+  if [[ ! -d "${_d}" || -L "${_d}" || -L "${_d%/*}" ]]; then
+    _alrt "site ${_uri}: database user ${_u} kept: its grants could not be saved (${_d} is not root's own directory)"
+    return 0
+  fi
+  chmod 0700 "${_d}" 2>/dev/null
+  # one file a run, as the broker keeps one a call
+  _f="${_T_RIGHTS_F:=${_d}/a2b-${_ACCOUNT}-$(date -u +%Y%m%dT%H%M%SZ)-$$.sql}"
+  for _h in ${_hs}; do
+    if ! printf '%s\n' "${_rows}" | grep -qxF -- "${_h}"; then
+      continue
+    elif ! ( umask 077; _t_rights_save "${_f}" "${_u}" "${_h}" ); then
+      _alrt "site ${_uri}: database user ${_u} at ${_h} kept: its grants could not be saved"
+      _left="${_left} ${_h}"
+    elif mysql --silent -u root -e "DROP USER '${_u}'@'${_h}'" >/dev/null 2>&1; then
+      _gone="${_gone} ${_h}"
+    else
+      _alrt "site ${_uri}: database user ${_u} at ${_h} kept: the server did not drop it"
+      _left="${_left} ${_h}"
+    fi
+  done
+  if [[ -z "${_left}" ]]; then
+    rm -f -- "${_rec}"
+  else
+    ( umask 077; for _h in ${_left}; do printf '%s@%s\n' "${_u}" "${_h}"; done > "${_rec}.$$" ) \
+      && mv -f -- "${_rec}.$$" "${_rec}"
+  fi
+  [[ -n "${_gone}" ]] && _info "site ${_uri}: database user ${_u} dropped (${_gone# }), saved first in ${_f}"
+  return 0
+}
+
 # drop ONLY the site DBs this tool loaded (dbloaded markers are the scope
-# fence - never touch a DB the tool did not create) + clear their markers
-# so a retry re-lands fresh data. M1 fix: without this, a revert-then-retry
-# would cut sites over to first-export (stale) data.
+# fence - never touch a DB the tool did not create), and with each the
+# database users the import made for it (_t_drop_made_users), + clear
+# their markers so a retry re-lands fresh data. M1 fix: without this, a
+# revert-then-retry would cut sites over to first-export (stale) data.
 _t_reset_site_dbs() {
   local _mff _uri _dbn
   for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
@@ -2275,8 +2475,10 @@ _t_reset_site_dbs() {
     _marker_has "${_uri}.dbloaded.pid" || continue
     _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
     [[ -n "${_dbn}" ]] || continue
-    mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`" \
-      && _info "site ${_uri}: db ${_dbn} dropped"
+    if mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`"; then
+      _info "site ${_uri}: db ${_dbn} dropped"
+      _t_drop_made_users "${_uri}" "${_dbn}"
+    fi
     rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
   done
   # an earlier release kept its dbloaded markers in the account's tree,
@@ -2310,7 +2512,8 @@ _t_remove_estate_vhosts() {
 }
 
 # once the exact grant is in place, a wildcard grant an earlier import left
-# on the same name (a retry after _t_reset_site_dbs keeps the user) goes, as
+# on the same name (a retry after _t_reset_site_dbs keeps a user it did not
+# drop) goes, as
 # provisioning converges it (revoke_wildcard_db_grant): only when SHOW
 # GRANTS lists it, and revoked as it is stored, its grant option too (a
 # db-level REVOKE takes ALL and GRANT OPTION only as two statements; the
@@ -2374,7 +2577,7 @@ _t_drop_made_db() {   # 1 dbn
 
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
-  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe _st _ev _sch
+  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe _st _ev _sch _had _urc
   # defence-in-depth: the source gated _dbp, but it reaches a root SQL
   # heredoc here via a 600 manifest - re-gate so a hand-edited manifest or
   # a wider-than-assumed Aegir password charset can't inject
@@ -2397,7 +2600,12 @@ _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
   # escaped, as provisioning grants it (grant_privileges), and _ is all a
   # name that passed the gate above can carry
   _dbe="${_dbn//_/\\_}"
-  if ! mysql --silent -u root mysql <<EOFMYSQL
+  # the user's rows read before it is made: the rows the statements below
+  # make are this import's, recorded beside its state whether they succeed
+  # or not (_t_users_made), and only those does a revert drop; a read that
+  # fails records nothing
+  _had="$(_t_user_rows "${_dbn}")" || _had="?"
+  mysql --silent -u root mysql <<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_dbn}'@'localhost';
 CREATE USER IF NOT EXISTS '${_dbn}'@'%';
 GRANT ALL ON \`${_dbe}\`.* TO '${_dbn}'@'localhost';
@@ -2405,7 +2613,9 @@ GRANT ALL ON \`${_dbe}\`.* TO '${_dbn}'@'%';
 ALTER USER '${_dbn}'@'localhost' IDENTIFIED BY '${_dbp}';
 ALTER USER '${_dbn}'@'%' IDENTIFIED BY '${_dbp}';
 EOFMYSQL
-  then
+  _urc=$?
+  [[ "${_had}" = "?" ]] || _t_users_made "${_dbn}" "${_had}"
+  if [[ "${_urc}" != "0" ]]; then
     _alrt "db ${_dbn}: its user and grants could not be set on target - SKIP"
     _t_drop_made_db "${_dbn}" \
       || _alrt "db ${_dbn}: the database made for it could not be dropped - drop it by hand before the re-run"
@@ -3138,7 +3348,8 @@ verb_import() {
     if [[ "${_LIVE}" != "YES" ]]; then
       _DRY_FAIL=0
       _info "[DRY] would drop + restore hostmaster db from ${_undo}/a2b-pre-import.sql,"
-      _info "[DRY] drop the a2b-loaded site DBs, remove the estate's now-ownerless vhosts,"
+      _info "[DRY] drop the a2b-loaded site DBs and the database users the import made for them,"
+      _info "[DRY] remove the estate's now-ownerless vhosts,"
       _info "[DRY] clear target markers, restore the dispatcher"
       _dry_finish "revert-db"
     fi
@@ -3163,7 +3374,8 @@ verb_import() {
   if [[ "${_RESET_SITES}" = "YES" ]]; then
     if [[ "${_LIVE}" != "YES" ]]; then
       _DRY_FAIL=0
-      _info "[DRY] would drop every a2b-loaded site DB (dbloaded markers) + clear dbloaded/imported markers"
+      _info "[DRY] would drop every a2b-loaded site DB (dbloaded markers) and the database users the import made for it,"
+      _info "[DRY] + clear dbloaded/imported markers"
       _dry_finish "reset-sites"
     fi
     _gate_consume "reset-sites"
