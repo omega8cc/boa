@@ -68,8 +68,10 @@ _web_group_state() {
   # (the record is root's: run as another user, converted reads as held):
   #   none       no group of that name
   #   foreign    the group exists, but an identity outside the account holds
-  #              it too: never joined nor written to; claim passes still leave
-  #              its paths alone (taking them would cut the pools off)
+  #              it too: never joined nor written to unless root's record
+  #              names its gid at phase A or B (_web_group, _web_group_conv);
+  #              claim passes still leave its paths alone (taking them would
+  #              cut the pools off)
   #   held       the group exists and only this account's identities hold it:
   #              claim passes leave its paths alone, new identities join it
   #   converted  and root's record names that gid: writers use the group
