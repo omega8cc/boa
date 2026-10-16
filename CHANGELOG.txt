@@ -1024,16 +1024,15 @@
       from its vhost and the grav command, never from a file its PHP can
       read; Verify applies the store's schema changes; and BOA runs the
       store's worker every minute inside the site's own PHP-FPM pool, one
-      or two at a time per pool, never Grav's whole scheduler. A copy made
-      by Clone or Upgrade a copy is held until a Cutover retires its
-      store, the site at the store's domain when that carries a store and
-      is neither a held copy nor a copy of another store (unless a store
-      then runs at the domain the copy was made from), or a released
-      copy of that store at the domain the copy was made from, or until
-      the account creates
-      ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
-      signing secret of its own and a paused store. A store kept in its own
-      SQLite file is warned about and is not cloned.
+      or two at a time per pool, never Grav's whole scheduler. A copy of a
+      shop made by Clone or Upgrade a copy is held until the account
+      creates ~/static/control/kahunacart-run.<domain>.info, or a Cutover
+      retires the store it stands in for or the released copy it was made
+      from; the store is found by an identity it and its copies carry in
+      their capsules, never by a domain, which a Rename or a new site can
+      move, and a copy that takes a store's place takes its identity. A
+      Clone also gets a signing secret of its own and a paused store. A
+      store kept in its own SQLite file is warned about and is not cloned.
 
     * AI agents report, switched off by default: with _GOACCESS_AI_REPORT=YES
       in /root/.barracuda.cnf (GoAccess itself on), every nightly GoAccess
