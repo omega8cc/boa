@@ -4937,8 +4937,11 @@ _xoct_wg_unseed() {
 ### The seed says what it did in a root-only note beside the cnf there,
 ### /root/.<account>.dbctl-seed.txt, one word: made (the cnf made for the
 ### line), line (the line added to a cnf that was there) or operator (the
-### cnf already assigns _DB_BROKER_BORN, in any spelling: nothing is added,
-### and that line is its operator's for good). The take-back, and the unseed
+### cnf already assigns _DB_BROKER_BORN at the start of a line, the one
+### spelling the install keeps in a cnf it did not write: nothing is added,
+### and that line is its operator's for good; an export or an indented
+### line, which the install drops, gets the tool's line as where there is
+### none). The take-back, and the unseed
 ### of an install that did not happen, act on that note as read on the
 ### target, so a re-run after any exit takes back what an earlier run put;
 ### each removes the note with the line, an operator note stays. The unseed
@@ -4956,13 +4959,13 @@ _xoct_dbctl_seed() {
     _n=/root/.${1}.dbctl-seed.txt
     _w=\$(cat \${_n} 2> /dev/null)
     case \${_w} in
-      operator) grep -aqE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
+      operator) grep -aq '^_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
       made|line) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
     esac
     _w=
     if [ ! -e \${_c} ]; then
       ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && _w=made
-    elif grep -aqE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c}; then
+    elif grep -aq '^_DB_BROKER_BORN=' \${_c}; then
       _w=operator
     else
       [ -z \"\$(tail -c 1 \${_c})\" ] || echo >> \${_c}
