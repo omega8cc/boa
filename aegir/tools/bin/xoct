@@ -6622,6 +6622,8 @@ _xoct_transfer_static_symlink_safe() {
   ### inside the real static/ on the target, so neither end resolves static/
   ### through a link put in its place. A static/ that is not a real
   ### directory here is never followed, and the transfer is not complete.
+  ### control/web-group-notes.txt, the account's copy of its web-group
+  ### notes, names the source box's web-group state: it never travels.
   if ! _xoct_in_real_dir "${_X_SRC_STATIC}" true; then
     echo "DENY: ${_X_SRC_STATIC} is not a real directory -- not followed; static/ not copied"
     _XOCT_NOT_CLEAN=YES
@@ -6629,7 +6631,8 @@ _xoct_transfer_static_symlink_safe() {
     return 1
   fi
   _xoct_in_real_dir "${_X_SRC_STATIC}" _xoct_copy_here "${_X_TGT_HOST}" \
-    "${_X_DST_STATIC}" '' -aEAXqu ${_X_IENI} --exclude=/files
+    "${_X_DST_STATIC}" '' -aEAXqu ${_X_IENI} --exclude=/files \
+    --exclude=/control/web-group-notes.txt
 
   # The static sync uses -u (skip-newer), but `xoct create` on the target just
   # wrote FRESH default control files (newer mtime) that shadow the migrated
@@ -7929,12 +7932,14 @@ _migrate_init() {
           ### through it); a real one travels by its top-level entries, from
           ### inside it into the real control directory on the target. Its
           ### subdirectories came with the static pass above and are never
-          ### entered here by name.
+          ### entered here by name. Its web-group-notes.txt never travels: it
+          ### names the source box's web-group state.
           if [ -L "${_USR}/static/control" ]; then
             echo "ALRT: ${_USR}/static/control is a symlink -- not followed; no control file of ${_oct} travels"
           elif [ -d "${_USR}/static/control" ]; then
             _xoct_in_real_dir "${_USR}/static/control" _xoct_copy_here "${_tgt}" \
-              "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' &> /dev/null
+              "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' \
+              --exclude=/web-group-notes.txt &> /dev/null
           fi
           #
           ### backups/ and backup-exports/ follow the nightly's store layout

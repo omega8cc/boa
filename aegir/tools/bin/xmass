@@ -6545,7 +6545,9 @@ _xmass_sync_static_symlink_safe() {
   # mirror until the link is gone. Both ends are pinned: the copy leaves
   # from inside the real control directory here and lands inside the real
   # one there (a link put at that name there gives way to a directory), so
-  # a link swapped in after the test is followed on neither side.
+  # a link swapped in after the test is followed on neither side. Its
+  # web-group-notes.txt, the account's copy of its web-group notes, never
+  # travels: it names the source box's web-group state.
   local _ctl_link=NO _ctl_rp
   _ctl_rp="$(_xmass_pin_rpath "${_dst_static}/control")"
   if [ -L "${_src_static}/control" ]; then
@@ -6554,6 +6556,7 @@ _xmass_sync_static_symlink_safe() {
       "  ${_src_static}/control is a SYMLINK -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is a directory again"
   elif [ -d "${_src_static}/control" ]; then
     if ! _xmass_at_real_dir "${_src_static}/control" _xmass_rsync -aEAXqu ${_ieni} \
+      --exclude=/web-group-notes.txt \
       --rsync-path="${_ctl_rp}" -e ssh ./ "root@${_tgt}:./"; then
       _ctl_link=YES
       _xmass_warn_daily "static_control_link_${_dst_acct}" \
