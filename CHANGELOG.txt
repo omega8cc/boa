@@ -882,8 +882,7 @@
       silenced their alarms. The worker and BOA's agent pass count a stage
       2 as an account's own import only when its --account argument, read
       whole and cut down as stage 2 reads it (--account o-1 is o1), names
-      the account; words inside one argument of a root process no longer
-      count.
+      the account; words inside one argument no longer count.
 
     * The worker removes a one-line aegir2boa freeze only beside the
       import state of this release (/var/backups/a2b/oN/markers) and none
