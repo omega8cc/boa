@@ -1225,7 +1225,9 @@
     * The web group conversion, still switched off, names each ground
       that holds an account's phase B, and a share into the account's
       store, once a run in each account's notes, where a run that went
-      on to the check before phase B wrote it twice (docs/INSTGRP.md).
+      on to the check before phase B wrote it twice; webconvert all,
+      which runs an account in two rounds, writes it once too
+      (docs/INSTGRP.md).
 
     * A web group conversion run that notes thousands of paths no longer
       spends minutes checking which notes it already wrote: the check
