@@ -53,12 +53,12 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.17
+export _DRUSH_VERSION=8.5.18
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.3
 export _REDIS_N_VERSION=com-19-04-2021
 export _REDIS_T_VERSION=8.x-1.8.2
-export _REDIS_E_VERSION=8.x-1.11.2
+export _REDIS_E_VERSION=8.x-1.11.4
 export _REDIS_B_VERSION=1.x-3.20.1
 
 ###
@@ -76,7 +76,7 @@ export _SMALLCORE11_1_V=11.1.10
 export _SMALLCORE11_2_V=11.2.14
 export _SMALLCORE11_3_V=11.3.19
 export _SMALLCORE11_4_V=11.4.10
-export _SMALLCORE6_V=6.60.1
+export _SMALLCORE6_V=6.60.3
 export _SMALLCORE7_V=7.106.2
 export _SMALLCORE9_V=9.5.11
 
@@ -164,8 +164,8 @@ export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 ### The value below is only the fallback when the mirror is unreachable at
 ### make time.
 ###
-export _BACKDROP_V_FALLBACK=1.35.1
-export _GRAV_V_FALLBACK=2.2.8
+export _BACKDROP_V_FALLBACK=1.35.2
+export _GRAV_V_FALLBACK=2.2.9
 export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
 export _BACKDROP="backdrop-${_BACKDROP_V}"

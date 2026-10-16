@@ -844,6 +844,12 @@ _night_bak_move() {
       echo "backups-on-static: provision task active -- left ${_src} as real dir"
       return 0
     fi
+    # Room for the copy on the store's filesystem first, in bytes and inodes.
+    if ! _night_bak_room; then
+      _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
+      echo "backups-on-static: ${_NIGHT_BAK_SHORT}; left ${_src} as real dir"
+      return 0
+    fi
     # One-time migration de-links any pre-existing backups<->backup-exports hardlink
     # pairs (the two dirs are copied in separate rsync runs, no -H), so old tarballs
     # briefly cost double space -- on the static FS (the target), not the tight root,
@@ -883,13 +889,73 @@ _night_bak_move() {
     || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"; return 0; }
   echo "backups-on-static: relocated ${_src} -> ${_st}/.${_n} (static filesystem)"
 }
+# For _night_bak_move: whether the store's filesystem takes the copy of the
+# real directory _src. It must fit in bytes, and leave 2% of that
+# filesystem's inodes, at least 50,000, free, counting every name the copy
+# makes (rsync -a without -H: each hard-linked name a file of its own, as
+# du -l counts them). A side with no reading, or a filesystem with no inode
+# count (btrfs), is not judged. Status 1 with the reason in _NIGHT_BAK_SHORT.
+_NIGHT_BAK_SHORT=""
+_night_bak_room() {
+  local _kb _av _in _it _if _ih _db _dn
+  _NIGHT_BAK_SHORT=""
+  _kb=$(_acct_in_real_dir "${_src}" timeout 900 du -sk . 2>/dev/null | awk '{print $1}')
+  _in=$(_acct_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
+  # A copy that stopped short left part of it in the store's .$_n: what the
+  # copy still writes is what rsync's own dry run says it would send (a file
+  # there whole is passed over; one it left half sent, as a temporary name,
+  # or one no longer in the directory, is not counted as done). Counted in
+  # full, a store holding a stopped copy would refuse the copy that completes
+  # it on every pass. Without the dry run's figures the whole directory is
+  # counted.
+  if [ -n "$(_night_in_pinned "${_st}" _night_sub ".${_n}" ls -A . 2>/dev/null)" ]; then
+    read -r _db _dn <<< "$(_acct_in_real_dir "${_src}" _night_bak_need_here "${_dm}" 2>/dev/null)"
+    if [[ "${_db}" =~ ^[0-9]+$ && "${_dn}" =~ ^[0-9]+$ ]]; then
+      # every new file takes at least a block: 4K each over the bytes
+      _kb=$(( _db / 1024 + 4 * _dn + 1 ))
+      _in=$(( _dn + 1 ))
+    fi
+  fi
+  _av=$(_night_in_pinned "${_st}" df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')
+  read -r _it _if <<< "$(_night_in_pinned "${_st}" env LC_ALL=C df -P -i . 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  if [[ "${_kb}" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]] && [ "${_av}" -lt "${_kb}" ]; then
+    _NIGHT_BAK_SHORT="not enough space on the store's filesystem (need ${_kb}K, ${_av}K free)"
+    return 1
+  fi
+  if [[ "${_in}" =~ ^[0-9]+$ && "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] \
+    && [ "${_it}" -gt 0 ]; then
+    _ih=$(( _it / 50 ))
+    [ "${_ih}" -ge 50000 ] || _ih=50000
+    if [ $(( _in + _ih )) -gt "${_if}" ]; then
+      _NIGHT_BAK_SHORT="not enough free inodes on the store's filesystem (need ${_in} and ${_ih} kept free, ${_if} free)"
+      return 1
+    fi
+  fi
+  return 0
+}
+# From inside the real directory being relocated: what the copy into the
+# store directory $1, held open as _night_bak_copy_here holds it, would
+# write, from rsync's own dry run: "<bytes> <names>", the bytes of the files
+# it would send and the names it would create. Nothing printed, and status
+# 1, when its figures cannot be read.
+_night_bak_need_here() {
+  local _out _b _n
+  exec 9< "${1}/." || return 1
+  [ "$(readlink /proc/self/fd/9)" = "${1}" ] || return 1
+  _out="$(LC_ALL=C timeout 900 rsync -a --no-devices --no-specials --dry-run --stats ./ /proc/self/fd/9/ 2>/dev/null)" \
+    || return 1
+  _b="$(printf '%s\n' "${_out}" | awk -F': ' '/^Total transferred file size:/ { v = $2; gsub(/[^0-9]/, "", v); print v; exit }')"
+  _n="$(printf '%s\n' "${_out}" | awk -F': ' '/^Number of created files:/ { split($2, a, " "); v = a[1]; gsub(/[^0-9]/, "", v); print v; exit }')"
+  [[ "${_b}" =~ ^[0-9]+$ && "${_n}" =~ ^[0-9]+$ ]] || return 1
+  echo "${_b} ${_n}"
+}
 # In the real account root (the current directory): ./$2 made a link to $1
 # owned by $3 (owner:group), only while no name is there, as ln -s -T made
 # it. oN writes this directory, so a hard link it renamed over a new link
 # would be handed over by a chown -h on the name: the link is made by its
 # owner under a fresh name and renamed onto ./$2 without replacing anything
 # found there. A link root makes, when that owner cannot make one here,
-# stays root's: nothing checks the owner of a link.
+# stays root's; only the nginx link check reads that, and linkguard fixes it.
 _night_bak_link_here() {
   local _t="./.${2}.lnk.$$.${RANDOM}" _u _g
   _u=$(id -u -- "${3%%:*}" 2> /dev/null)
@@ -1101,14 +1167,19 @@ _account_process() {
   _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
   su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
   wait
-  _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
+  # both Drush caches are removed as the purge removes (_night_rm_own_here):
+  # only what root or the account's identities own, nothing below a
+  # directory another user owns, counted on one NOTE line
+  _purge_left_open
+  _acct_in_real_dir "${_usEr}/.tmp" _night_rm_own_here cache
   chage -M 99999 ${_HM_U}.ftp &> /dev/null
   su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
   wait
   chage -M 90 ${_HM_U}.ftp &> /dev/null
   # .tmp sits in the tenant's own, never-immutable home: cache is removed
   # only inside the real .tmp.
-  _acct_in_real_dir "/home/${_HM_U}.ftp/.tmp" rm -rf -- ./cache
+  _acct_in_real_dir "/home/${_HM_U}.ftp/.tmp" _night_rm_own_here cache
+  _purge_left_note
   _SQL_CONVERT=NO
   _DEL_OLD_EMPTY_PLATFORMS="0"
   # The account's front as root's octopus.cnf gives it, or none.
@@ -1253,12 +1324,16 @@ _account_process() {
   [ ${_nightWait} -ge 180 ] \
     && echo "${_HM_U}: the ltd worker is still running after ${_nightWait} s; unlocking anyway"
   _disable_chattr ${_HM_U}.ftp
-  rm -rf /home/${_HM_U}.ftp/drush-backups
+  _purge_left_open
+  _acct_in_real_dir "/home/${_HM_U}.ftp" _night_rm_own_here drush-backups
+  _purge_left_note
   if [ -e "${_THIS_HM_SITE}" ]; then
     cd -- "${_THIS_HM_SITE}"
     su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
     wait
-    _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
+    _purge_left_open
+    _acct_in_real_dir "${_usEr}/.tmp" _night_rm_own_here cache
+    _purge_left_note
     _run_drush8_hmr_cmd "${_vSet} hosting_cron_default_interval 3600"
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_cron_frequency 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_civicrm_cron_queue_frequency 60"

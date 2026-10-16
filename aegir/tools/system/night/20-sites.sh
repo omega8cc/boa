@@ -439,8 +439,8 @@ _chmod_nofollow_here() {
 ### on a FIFO, and a directory, or a regular file with a single link, is
 ### changed through the open handle (fchown). A hard-linked file, a link, a
 ### FIFO or a socket is left alone, so a hard link put at a name (or anywhere
-### in a walked tree) never hands over the file it names; nothing checks the
-### owner of a link. Args: uid, gid (numbers; -1 keeps that id), the names.
+### in a walked tree) never hands over the file it names; only the link check
+### reads a link's owner. Args: uid, gid (numbers; -1 keeps that id), names.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 ### $1 (owner or owner:group, as chown takes it) as the numbers "uid gid",
 ### -1 for a group not named; status 1, and nothing, when a name does not
@@ -514,11 +514,14 @@ _acct_walk_uids() {
 ### and nothing is changed unless the current directory and every directory
 ### above it, up to /, are owned by those uids, read through '..' from where
 ### find stands. Given . as a name, a directory another uid owns above the
-### place is printed when it is refused; status 1 when it is.
+### place is printed when it is refused; status 1 when it is. A list with
+### '-' first (the Verify fixers' deny list) names the uids it never acts
+### for.
 _SAT_CHMOD_OWN_PL='use Fcntl;
 my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -549,8 +552,9 @@ exit 0;'
 ### each name to.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -574,6 +578,119 @@ for my $f (@ARGV) {
   close($h);
 }
 exit 0;'
+### Root's removals in the account's trees, run inside the directory they act
+### in (op h: each name given removed unless it is a directory; r: removed, a
+### directory depth first): only what the uids given second own, or a uid no
+### passwd entry names, and nothing below a directory another named uid owns,
+### nor anything unless the current directory and every one above it, up to
+### /, are owned by those uids. Prints dev:ino of each entry left; one text
+### with night/10-account.sh's.
+_ACCT_RM_OWN_PL='use Fcntl;
+my ($op, $ul, $days, @f) = @ARGV;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, defined($ul) ? $ul : "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($left, $bad, $now) = (0, 0, time);
+sub left { my ($l) = @_; print "$l->[0]:$l->[1]\n"; $left++; }
+sub done { exit($bad ? 1 : $left ? 3 : 0); }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) { left(\@x) if @x && !own($x[4]); $left = 1; done(); }
+sub kids {
+  opendir(my $h, ".") or do { $bad = 1; return (); };
+  my @n = grep { $_ ne "." && $_ ne ".." } readdir($h);
+  closedir($h);
+  return @n;
+}
+sub into {
+  my ($n, $l, $cb) = @_;
+  sysopen(my $up, ".", O_RDONLY | O_DIRECTORY) or do { $bad = 1; return 0; };
+  sysopen(my $dn, $n, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+    or do { $bad = 1; return 0; };
+  my @s = stat($dn);
+  unless (@s && $s[0] == $l->[0] && $s[1] == $l->[1] && chdir($dn)) {
+    $bad = 1;
+    return 0;
+  }
+  close($dn);
+  $cb->();
+  chdir($up) or die "no way back\n";
+  return 1;
+}
+sub rmown {
+  my ($n) = @_;
+  my @l = lstat($n) or return;
+  unless (own($l[4])) { left(\@l); return; }
+  if (-d _) {
+    into($n, \@l, sub { rmown($_) for kids(); }) or return;
+    rmdir($n) or $!{ENOTEMPTY} or $!{EEXIST} or $bad = 1;
+  } else {
+    unlink($n) or $bad = 1;
+  }
+}
+sub noimm {
+  my ($n, $l) = @_;
+  sysopen(my $h, $n, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or return;
+  my @s = stat($h);
+  if (@s && $s[0] == $l->[0] && $s[1] == $l->[1] && own($s[4])) {
+    my $b = pack("L", 0);
+    if (ioctl($h, 0x80086601, $b)) {
+      my $fl = unpack("L", $b);
+      ioctl($h, 0x40086602, pack("L", $fl & ~0x10)) if $fl & 0x10;
+    }
+  }
+  close($h);
+}
+sub unown {
+  my ($n) = @_;
+  my @l = lstat($n) or return;
+  return unless own($l[4]);
+  if (-d _) {
+    noimm($n, \@l);
+    into($n, \@l, sub { unown($_) for kids(); });
+  } elsif (-f _ && $l[3] == 1) {
+    noimm($n, \@l);
+  }
+}
+sub aged { return int(($now - $_[0]->[9]) / 86400) > $days; }
+sub sel {
+  my ($n, $top) = @_;
+  return if $top && $op ne "a" && substr($n, 0, 1) eq ".";
+  my @l = lstat($n) or return;
+  unless (own($l[4])) { left(\@l); return; }
+  if ($op eq "f") {
+    if (-d _) {
+      into($n, \@l, sub { sel($_, 0) for kids(); });
+    } elsif (-f _ && aged(\@l)) {
+      unlink($n) or $bad = 1;
+    }
+  } elsif (aged(\@l)) {
+    rmown($n);
+  } elsif (-d _) {
+    into($n, \@l, sub { sel($_, 0) for kids(); });
+  }
+}
+if ($op eq "r") {
+  rmown($_) for @f;
+} elsif ($op eq "u") {
+  unown($_) for @f;
+} elsif ($op eq "h") {
+  for my $n (@f) {
+    my @l = lstat($n) or next;
+    next if -d _;
+    if (own($l[4])) { unlink($n) or $bad = 1; } else { left(\@l); }
+  }
+} elsif ($op =~ /^[adf]$/ && defined($days) && $days =~ /^[0-9]+$/) {
+  sel($_, 1) for kids();
+} else {
+  exit 2;
+}
+done();'
 ### What the walks below leave for another owner, by dev:ino, kept in root's
 ### /run while the pass is on a site (its platform's legs, when they run for
 ### it, included) and said on one NOTE line for it, each entry counted once
@@ -594,7 +711,7 @@ _perm_left_note() {
   rm -f -- "${_PERM_LEFT_F}"
   _PERM_LEFT_F=""
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
-  echo "NOTE: ${1}: the permissions pass left ${_n} entries owned by another user as they were"
+  echo "NOTE: ${1}: ${2:-the permissions pass} left ${_n} entries owned by another user as they were"
 }
 ### The names after $2 in the current (pinned) directory handed to $2 (owner
 ### or owner:group) through _SAT_REOWN_OWN_PL with the uids $1; status 1 when
@@ -1394,21 +1511,49 @@ _in_real_sub() {
 }
 ### ./$1 removed unless it is a link; a link at the name is left alone.
 _rm_nolink_here() {
-  [ -L "./${1}" ] || rm -f -- "./${1}"
+  [ -L "./${2}" ] || _rm_own_here "${1}" "./${2}"
 }
-### The names matching the globs "$@" removed in the current (pinned)
-### directory, as rm -f removes them (a link as a link, never a directory);
-### each glob expands here, never in the caller's directory.
+### The names after the uids $1 removed in the current (pinned) directory
+### through _ACCT_RM_OWN_PL (op r), a directory with everything below it:
+### only what root or those uids own, nothing below a directory another
+### user owns, and only when this directory and every one above it
+### are; what is left is counted (_perm_left_add).
+_rm_tree_here() {
+  local _o="${1}" _x
+  shift
+  [ -n "${_o}" ] && [ "$#" -gt 0 ] || return 0
+  _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "$@" 2> /dev/null)
+  _perm_left_add "${_x}"
+  return 0
+}
+### The names after the uids $1 removed in the current (pinned) directory
+### through _ACCT_RM_OWN_PL (op h): each unless it is a directory, only while
+### it is root's or one of those uids', and only when this directory and
+### every one above it are; another user's is left and counted
+### (_perm_left_add).
+_rm_own_here() {
+  local _o="${1}" _x
+  shift
+  [ "$#" -gt 0 ] || return 0
+  _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null)
+  _perm_left_add "${_x}"
+  return 0
+}
+### The names matching the globs after the uids $1 removed in the current
+### (pinned) directory as _rm_own_here removes them; each glob expands here,
+### never in the caller's directory.
 _rm_glob_here() {
-  local _g _f
+  local _o="${1}" _g _f
+  local -a _l=()
+  shift
   for _g in "$@"; do
     # unquoted on purpose: the glob is the point
     for _f in ./${_g}; do
       [ -e "${_f}" ] || [ -L "${_f}" ] || continue
-      rm -f -- "${_f}" 2> /dev/null
+      _l+=("${_f}")
     done
   done
-  return 0
+  _rm_own_here "${_o}" "${_l[@]}"
 }
 ### The regular files matching the glob $4 in the current (pinned)
 ### directory handed to $2 and given the mode $3 with the uids $1, never
@@ -1427,19 +1572,28 @@ _own_glob_here() {
   _night_chmod_own_here "${_o}" f "${3}" "${_l[@]}"
 }
 ### The archives a tenant left in the current (pinned) code dir: every
-### regular file of *.tar, *.tar.gz and *.zip, removed by find -delete from
-### the directory it walked, never through a link.
+### regular file of *.tar, *.tar.gz and *.zip find meets there, removed from
+### the directory it stands in through _ACCT_RM_OWN_PL with the uids $1, so
+### another user's archive, or anything below a directory another user owns,
+### is left and counted.
 _archive_sweep_here() {
-  find ./*.tar ./*.tar.gz ./*.zip -type f -delete &> /dev/null
+  local _x
+  [ -n "${1}" ] || return 0
+  _x=$(env PATH=/usr/local/bin:/usr/bin:/bin find ./*.tar ./*.tar.gz ./*.zip -type f \
+    -execdir perl -e "${_ACCT_RM_OWN_PL}" -- h "${1}" - {} + 2> /dev/null)
+  _perm_left_add "${_x}"
   return 0
 }
 ### ./$1 handed to $2 and, only if it is a regular file, given the mode $3,
 ### each through a no-follow handle and only while it has a single link, so
 ### neither a link nor a hard link swapped in at the name meanwhile (or put
-### there by the account) is ever followed or handed over.
+### there by the account) is ever followed or handed over; and only while it
+### is root's or one of the uids $4' (_night_reown_own_here,
+### _night_chmod_own_here), so another user's file there keeps its owner and
+### mode.
 _own_nolink_here() {
-  _reown_here "${2}" "./${1}"
-  _chmod_nofollow_here f "${3}" "./${1}"
+  _night_reown_own_here "${4}" "${2}" "./${1}" || return 0
+  _night_chmod_own_here "${4}" f "${3}" "./${1}"
   return 0
 }
 
@@ -1512,7 +1666,25 @@ _store_put_copy_here() {
   return 1
 }
 
+### The llms.txt, robots.txt and Boost cache legs run outside the permissions
+### pass, so each counts what it leaves for another owner on a NOTE line of
+### its own.
 _fix_llms_txt() {
+  _perm_left_open
+  _llms_txt_legs
+  _perm_left_note "${_Dir}" "the llms.txt leg"
+}
+_fix_robots_txt() {
+  _perm_left_open
+  _robots_txt_legs
+  _perm_left_note "${_Dir}" "the robots.txt leg"
+}
+_fix_boost_cache() {
+  _perm_left_open
+  _boost_cache_legs
+  _perm_left_note "${_Plr}/cache" "the Boost cache leg"
+}
+_llms_txt_legs() {
   # The site files/ dir is tenant-writable (oN:www-data 02775; the shell user is
   # in www-data), so a tenant can plant files/llms.txt as a symlink, and
   # files/ itself is a link the tenant can repoint. curl -o follows a link and
@@ -1526,7 +1698,10 @@ _fix_llms_txt() {
   # mode legs never follow one nor act by name (_own_nolink_here): every
   # member of the store's web group can write it, so a hard link put at the
   # name is left alone, never handed over.
-  local _fls _url _wg
+  local _fls _url _wg _o
+  # root, the account's own identities: every removal and hand-over below
+  # leaves another user's file at these names as it is
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
       && echo "SKIP: ${_Dir}/files resolves outside any static store, or into BOA's own folders there (llms.txt)"
@@ -1538,6 +1713,10 @@ _fix_llms_txt() {
   # written there (the store legs name it in a NOTE); a copy fetched in would
   # be the reading account's file in the other account's served files
   [ "${_wg}" = "SKIP" ] && return 0
+  # nothing is stripped, fetched or written into a store that is not root's
+  # or the account's own up to /: another account's store reached through a
+  # share is that account's own pass's (the refusing directory is counted)
+  _in_pinned_dir "${_fls}" _night_place_own_here "${_o}" || return 0
   _url="http://${_Dom}/llms.txt?nocache=1&noredis=1"
   _in_pinned_dir "${_fls}" _desymlink_planted ./llms.txt
   # A tenant-uploaded policy is durable content, served as-is for as long as
@@ -1579,19 +1758,19 @@ _fix_llms_txt() {
       || [ -z "${_LLMS_SUM}" ] \
       || ! _site_in_resolved_dir "${_Dir}" _acct_read_plain_here .llms-fetched.md5 \
         | grep -q "^${_LLMS_SUM}$" 2>/dev/null; then
-      _site_in_resolved_dir "${_Dir}" rm -f -- ./.llms-fetched.md5
+      _site_in_resolved_dir "${_Dir}" _rm_own_here "${_o}" ./.llms-fetched.md5
       # The test above is a read and a grep away, and files/ is
       # tenant-writable: owner and mode set through a no-follow handle, only
       # on a single-link regular file, so neither a link replanted in that
       # window nor a hard link put there is followed or handed over.
-      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
+      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664 "${_o}"
       if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
-        _site_in_resolved_dir "${_Plr}" rm -f -- ./llms.txt
+        _site_in_resolved_dir "${_Plr}" _rm_own_here "${_o}" ./llms.txt
       fi
       return 0
     fi
-    _in_pinned_dir "${_fls}" find ./llms.txt -maxdepth 0 -mtime +6 \
-      -exec rm -f {} \; &> /dev/null
+    _perm_left_add "$(_in_pinned_dir "${_fls}" find ./llms.txt -maxdepth 0 -mtime +6 \
+      -exec perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - {} + 2> /dev/null)"
   fi
   if ! _in_pinned_dir "${_fls}" test -e ./llms.txt \
     && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
@@ -1603,11 +1782,11 @@ _fix_llms_txt() {
   _VAR_IF_PRESENT=$(_in_pinned_dir "${_fls}" _acct_read_plain_here llms.txt \
     | grep "##" 2>&1)
   if [[ ! "${_VAR_IF_PRESENT}" =~ "##" ]]; then
-    _in_pinned_dir "${_fls}" _rm_nolink_here llms.txt
-    _site_in_resolved_dir "${_Dir}" rm -f -- ./.llms-fetched.md5
+    _in_pinned_dir "${_fls}" _rm_nolink_here "${_o}" llms.txt
+    _site_in_resolved_dir "${_Dir}" _rm_own_here "${_o}" ./.llms-fetched.md5
   else
     if _in_pinned_dir "${_fls}" test ! -L ./llms.txt; then
-      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
+      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664 "${_o}"
       # The site dir is not group-writable in the steady state, but
       # _fix_static_permissions walks every dir of a ~/static platform through
       # a 0775 window each night, so the marker IS plantable: it is put as a
@@ -1619,31 +1798,35 @@ _fix_llms_txt() {
       fi
     fi
     if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
-      _site_in_resolved_dir "${_Plr}" rm -f -- ./llms.txt
+      _site_in_resolved_dir "${_Plr}" _rm_own_here "${_o}" ./llms.txt
     fi
   fi
 }
 
-_fix_robots_txt() {
-  # See _fix_llms_txt: files/ is tenant-writable and a link the tenant can
+_robots_txt_legs() {
+  # See _llms_txt_legs: files/ is tenant-writable and a link the tenant can
   # repoint, so every leg acts only inside the store as it resolves once here
   # (_site_files_store), entered for real, on ./robots.txt -- strip the leaf,
   # fetch only into the root-only staging dir and put the copy over the leaf
   # (_store_fetch), read it bounded and never through a link, and never
   # follow one nor act by name in the owner and mode legs.
-  local _fls _wg
+  local _fls _wg _o
+  # as in _llms_txt_legs: another user's file at these names is left as it is
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
       && echo "SKIP: ${_Dir}/files resolves outside any static store, or into BOA's own folders there (robots.txt)"
     return 0
   fi
   _wg=$(_store_web_group "${_R_FLS}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
-  # as in _fix_llms_txt: nothing is written into a converted share
+  # as in _llms_txt_legs: nothing is written into a converted share
   [ "${_wg}" = "SKIP" ] && return 0
   _fls="${_R_FLS}"
+  # as in _llms_txt_legs: nothing is done in a store that is not the account's
+  _in_pinned_dir "${_fls}" _night_place_own_here "${_o}" || return 0
   _in_pinned_dir "${_fls}" _desymlink_planted ./robots.txt
-  _in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \
-    -exec rm -f {} \; &> /dev/null
+  _perm_left_add "$(_in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \
+    -exec perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - {} + 2> /dev/null)"
   if ! _in_pinned_dir "${_fls}" test -e ./robots.txt \
     && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
     _store_fetch robots.txt "${_fls}" \
@@ -1652,19 +1835,19 @@ _fix_robots_txt() {
   _VAR_IF_PRESENT=$(_in_pinned_dir "${_fls}" _acct_read_plain_here robots.txt \
     | grep "Disallow:" 2>&1)
   if [[ ! "${_VAR_IF_PRESENT}" =~ "Disallow:" ]]; then
-    _in_pinned_dir "${_fls}" _rm_nolink_here robots.txt
+    _in_pinned_dir "${_fls}" _rm_nolink_here "${_o}" robots.txt
   else
     # files/ is tenant-writable, so the leaf can be replanted between the
     # read above and this call: owner and mode set through a no-follow
     # handle, only on a single-link regular file (_own_nolink_here).
-    _in_pinned_dir "${_fls}" _own_nolink_here robots.txt "${_HM_U}${_wg:+:${_wg}}" 0664
+    _in_pinned_dir "${_fls}" _own_nolink_here robots.txt "${_HM_U}${_wg:+:${_wg}}" 0664 "${_o}"
     if [ -f "${_Plr}/robots.txt" ] || [ -L "${_Plr}/robots.txt" ]; then
-      _site_in_resolved_dir "${_Plr}" rm -f -- ./robots.txt
+      _site_in_resolved_dir "${_Plr}" _rm_own_here "${_o}" ./robots.txt
     fi
   fi
 }
 
-_fix_boost_cache() {
+_boost_cache_legs() {
   # ${_Plr} is the docroot, 02775 and group-writable (by the account's shell
   # identities; by ANY tenant while the instance still carries the box-wide
   # 'users' group), so cache is a name a tenant can plant as a symlink, or
@@ -1676,34 +1859,59 @@ _fix_boost_cache() {
   # removes a link itself, never what it points at. cache itself is entered
   # as a name in the resolved docroot, never resolved again: a link swapped
   # in after the strip is refused, not followed to a directory that would be
-  # emptied and handed over.
-  _site_in_resolved_dir "${_Plr}" _desymlink_planted ./cache
+  # emptied and handed over. Every act goes through the owner-checked
+  # handles with the account's own uids: nothing in a docroot that is
+  # another user's or below one, and another user's directory renamed in at
+  # cache, or into it, is left whole, not emptied or handed over.
+  local _o
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _site_in_resolved_dir "${_Plr}" _boost_cache_strip_here "${_o}" || return 0
   if [ -e "${_Plr}/cache" ] && [ ! -L "${_Plr}/cache" ]; then
-    _site_in_resolved_dir "${_Plr}/cache" _boost_cache_clear_here
+    _site_in_resolved_dir "${_Plr}/cache" _boost_cache_clear_here "${_o}"
   elif [ -e "${_Plr}/sites/all/drush/drushrc.php" ]; then
-    _site_in_resolved_dir "${_Plr}" mkdir -p ./cache
+    _site_in_resolved_dir "${_Plr}" _night_mkdir_own_here "${_o}" ./cache
   fi
-  _site_in_resolved_dir "${_Plr}/cache" _boost_cache_own_here \
+  _site_in_resolved_dir "${_Plr}/cache" _boost_cache_own_here "${_o}" \
     "$(_web_group "$(_night_phys "${_Plr}")")"
 }
-_boost_cache_clear_here() {
-  rm -rf -- ./*
-  rm -f -- ./.boost ./.htaccess
+### The docroot's cache link stripped, only in a docroot that is root's or
+### the uids $1' and every directory above it (one pin for test and act).
+_boost_cache_strip_here() {
+  _night_place_own_here "${1}" || return 1
+  _desymlink_planted ./cache
+  return 0
 }
+### Everything in the cache but its dot names, and .boost and .htaccess,
+### removed with the uids $1 (_ACCT_RM_OWN_PL): another user's entry, and
+### everything below its directory, is left and counted.
+_boost_cache_clear_here() {
+  local _x
+  _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - ./* 2> /dev/null)
+  _x="${_x}"$'\n'"$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${1}" - ./.boost ./.htaccess 2> /dev/null)"
+  _perm_left_add "${_x}"
+  return 0
+}
+### The cache itself handed to the account (group $2) and set 02775, only
+### while it and every directory above it are root's or the uids $1'.
 _boost_cache_own_here() {
-  chown "${_HM_U}${1:+:${1}}" . &> /dev/null
-  chmod 02775 . &> /dev/null
+  _night_reown_own_here "${1}" "${_HM_U}${2:+:${2}}" . || return 0
+  _night_chmod_own_here "${1}" d 02775 .
 }
 
 ### The shared-module links in the platform's own modules dir, removed and
 ### made only inside the real directory (_site_in_resolved_dir): a name on
 ### the way swapped for a link never takes a root rm or ln elsewhere.
 _plr_mod_rm() {
-  local _n _a=()
+  local _n _o _a=()
   for _n in "$@"; do
     _a+=("./${_n}")
   done
-  _site_in_resolved_dir "${_Plr}/modules" rm -f -- "${_a[@]}"
+  # only root's or the account's own entries at these names (_rm_own_here):
+  # modules/ of a ~/static platform is group-writable
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _perm_left_open
+  _site_in_resolved_dir "${_Plr}/modules" _rm_own_here "${_o}" "${_a[@]}"
+  _perm_left_note "${_Plr}/modules" "the o_contrib link leg"
 }
 _plr_mod_ln() {
   _site_in_resolved_dir "${_Plr}/modules" ln -sfn -- "${1}" "./${2}" &> /dev/null
@@ -2450,12 +2658,15 @@ _fix_seven_core_patch() {
   ### profiles/ and includes/database there for real (_in_real_sub): a name
   ### on the way swapped for a link since is refused, never resolved again
   ### to another tree of the account.
-  _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
-    _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
+  ### A link at the marker's name is stripped only in a profiles/ that is
+  ### root's or the account's and every directory above it, in one pin.
+  _in_pinned_dir "${_rPlr}" _in_real_sub profiles _seven_strip_here "${_o}"
   if [ ! -f "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
     ### Nothing is patched, put or handed over in a platform root that is
-    ### another user's or below a directory of one (noted once).
+    ### another user's or below a directory of one (noted once), nor when
+    ### profiles/ is.
     _in_pinned_dir "${_rPlr}" _night_place_own_here "${_o}" || return 0
+    _in_pinned_dir "${_rPlr}" _in_real_sub profiles _night_place_own_here "${_o}" || return 0
     ### database.inc is the tenant's: read bounded, never through a link at
     ### its name and never blocked on a FIFO, so a link to a huge or endless
     ### file cannot hold the pass.
@@ -2463,11 +2674,13 @@ _fix_seven_core_patch() {
       _acct_read_plain_here database.inc \
       | grep "foreach (array_values(\$data)" 2>&1)
     if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
-      _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
-        _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
+      _in_pinned_dir "${_rPlr}" _in_real_sub profiles _seven_put_here "${_o}"
     else
-      _in_pinned_dir "${_rPlr}" \
-        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+      ### patched from inside the real includes/database, only when it and
+      ### every directory above it, and database.inc, are root's or the
+      ### account's (_seven_patch_here)
+      _in_pinned_dir "${_rPlr}" _in_real_sub includes/database \
+        _seven_patch_here "${_o}" || return 0
       ### Every dir in a static platform is 0775 and group-writable, so these
       ### names, and includes/ and database/ on the way, can be swapped for a
       ### link at any moment: the *.inc files are handed over and given their
@@ -2476,8 +2689,7 @@ _fix_seven_core_patch() {
       ### another user's.
       _in_pinned_dir "${_rPlr}" _in_real_sub includes/database \
         _own_glob_here "${_o}" "${_HM_U}:${_grp}" 0664 '*.inc'
-      _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
-        _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
+      _in_pinned_dir "${_rPlr}" _in_real_sub profiles _seven_put_here "${_o}"
     fi
     ### profiles/ is 0775 and group-writable, so *-fix.info matches
     ### tenant-created names: handed over and given their mode only inside
@@ -2486,6 +2698,36 @@ _fix_seven_core_patch() {
     _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
       _own_glob_here "${_o}" "${_HM_U}:${_grp}" 0664 '*-fix.info'
   fi
+}
+### In the real profiles/: a link at the patch marker's name stripped, only
+### when the directory and every one above it are root's or the uids $1'.
+_seven_strip_here() {
+  [ -L ./SA-CORE-2014-005-D7-fix.info ] || return 0
+  _night_place_own_here "${1}" || return 1
+  _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
+  return 0
+}
+### In the real profiles/: the patch marker put (_acct_put_here), only in a
+### directory that is root's or the uids $1' with every one above it.
+_seven_put_here() {
+  _night_place_own_here "${1}" || return 1
+  _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
+}
+### In the real includes/database: the core patch applied to database.inc,
+### only when the directory and every one above it are root's or the uids
+### $1', and database.inc is too (a hand-over to -1 -1 changes nothing and
+### prints the dev:ino of another user's file); status 1 only when refused,
+### a patch that does not apply going on to the hand-over as before.
+_seven_patch_here() {
+  local _x
+  _night_place_own_here "${1}" || return 1
+  _x=$(perl -e "${_SAT_REOWN_OWN_PL}" -- "${1}" -1 -1 ./database.inc 2> /dev/null)
+  if [ -n "${_x}" ]; then
+    _perm_left_add "${_x}"
+    return 1
+  fi
+  patch -p3 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+  return 0
 }
 
 ### The walk of a static platform tree, inside its real top directory (the
@@ -2676,7 +2918,7 @@ _plr_perm_here() {
   ### planted at one of those names: skip the whole leg there.
   if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
     for _d in modules themes libraries drush; do
-      _in_real_sub "sites/all/${_d}" _archive_sweep_here
+      _in_real_sub "sites/all/${_d}" _archive_sweep_here "${_o}"
     done
     ### The walk inside each real code dir (_night_chown_own_all_here):
     ### every entry there is a tenant-plantable name, the walk never follows
@@ -2808,11 +3050,11 @@ _site_perm_here() {
   ### regular files they normally are.
   _night_reown_own_here "${_o}" "${_HM_U}:${_grp}" . || return 0
   ### Cleanup
-  _rm_glob_here '*.codebasecheck*.info' '*.hm-fix-*.info' \
+  _rm_glob_here "${_o}" '*.codebasecheck*.info' '*.hm-fix-*.info' \
     '*.ctm-lock-*.info' '*.lock-*.info' '*.perm-fix-*.info'
   ### directory and settings files - site level
   [ -e ./modules ] || mkdir ./modules &> /dev/null
-  [ -e ./aegir.services.yml ] && rm -f -- ./aegir.services.yml
+  [ -e ./aegir.services.yml ] && _rm_own_here "${_o}" ./aegir.services.yml
   _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php \
     ./settings.php ./civicrm.settings.php
   ### solr.php holds the site's Solr core details for its owner; no web
@@ -2833,9 +3075,9 @@ _site_perm_here() {
   ### is refused as well.
   if [ -z "${_siteCodeLink}" ]; then
     for _d in modules themes libraries; do
-      _in_real_sub "${_d}" _archive_sweep_here
+      _in_real_sub "${_d}" _archive_sweep_here "${_o}"
     done
-    _in_real_sub modules rm -f -- ./local-allow.info
+    _in_real_sub modules _rm_own_here "${_o}" ./local-allow.info
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
@@ -2962,8 +3204,8 @@ _fix_permissions() {
   esac
   ### modules,themes,libraries - platform level
   if [ -f "${_Plr}/profiles/core-permissions-update-fix.info" ]; then
-    _site_in_resolved_dir "${_Plr}/profiles" _rm_glob_here '*permissions*.info'
-    _site_in_resolved_dir "${_Plr}/sites/all" _rm_glob_here 'permissions-fix*'
+    _site_in_resolved_dir "${_Plr}/profiles" _rm_glob_here "${_own}" '*permissions*.info'
+    _site_in_resolved_dir "${_Plr}/sites/all" _rm_glob_here "${_own}" 'permissions-fix*'
   fi
   ### sites and sites/all are names a tenant can plant as symlinks (the
   ### docroot is group-writable), and every root op below would walk THROUGH
@@ -3135,7 +3377,7 @@ _convert_controls_orig() {
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     _ctrl_ini_sed "${_CTRL_F}" "s/.*$1.*/$1 = TRUE/g" &> /dev/null
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -3145,7 +3387,7 @@ _convert_controls_orig_no_global() {
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     _ctrl_ini_sed "${_CTRL_F}" "s/.*$1.*/$1 = TRUE/g" &> /dev/null
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -3164,7 +3406,7 @@ _convert_controls_value() {
     fi
     _ctrl_ini_sed "${_CTRL_F}" \
       "s/.*speed_booster_anon.*/speed_booster_anon_cache_ttl = ${_TTL}/g" &> /dev/null
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -3177,7 +3419,7 @@ _convert_controls_renamed() {
       _ctrl_ini_sed "${_CTRL_F}" \
         "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" &> /dev/null
     fi
-    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
+    _acct_in_resolved_dir "${_CTRL_DIR}" _rm_own_here "$(_acct_walk_uids "${_HM_U}")" "./$1.info"
   fi
 }
 
@@ -4101,7 +4343,13 @@ _daily_process() {
             if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.hm-fix-${_NOW}.info" ]; then
               su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
               wait
-              _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
+              # the account's code runs in this .tmp: its cache is removed
+              # only where root or the account's own users own it, nothing
+              # below a directory another user owns (_rm_tree_here)
+              _perm_left_open
+              _acct_in_real_dir "${_usEr}/.tmp" _rm_tree_here \
+                "$(_acct_walk_uids "${_HM_U}")" ./cache
+              _perm_left_note "${_usEr}/.tmp/cache" "the Drush cache leg"
               _run_drush8_hmr_cmd "dis update syslog dblog -y"
               _run_drush8_hmr_cmd "cron"
               _run_drush8_hmr_cmd "cache-clear all"

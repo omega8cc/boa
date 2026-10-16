@@ -3939,7 +3939,7 @@ _xoct_php_coverage_gate() {
 ### one barracuda system pass there to build them. Idempotent: versions
 ### already listed are not repeated, and barracuda itself is safe to re-run.
 _mig_fix_target_php() {
-  local _t="$1" _add="$2" _cur _new _v _nv _tree
+  local _t="$1" _add="$2" _cur _new _v _nv _tree _rc
   # Normalise the fetched value token by token: the raw line may carry an
   # inline comment or quotes, and anything not a known PHP version must
   # never reach the remote root shell that rewrites the cnf.
@@ -3988,8 +3988,16 @@ _mig_fix_target_php() {
   esac
   echo "INFO: driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
   echo "INFO: this is a full system pass and typically takes ~30 minutes"
-  ssh root@"${_t}" "barracuda up-${_tree} system noscreen" \
-    || { echo "ERROR: barracuda system run on ${_t} returned non-zero"; return 1; }
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen"
+  _rc=$?
+  # 3: the pass ran to its end WITH ERRORS (its log on the target says
+  # why); what this step needs is checked by the caller right after
+  if [ "${_rc}" = "3" ]; then
+    echo "WARN: barracuda system run on ${_t} completed WITH ERRORS; checking the PHP versions it was run for"
+  elif [ "${_rc}" != "0" ]; then
+    echo "ERROR: barracuda system run on ${_t} returned ${_rc}"
+    return 1
+  fi
   return 0
 }
 
@@ -8533,6 +8541,16 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
+    echo "ERROR: We can not proceed until inode use is below 90/100"
+    echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
     exit 1
   fi
   # A test, not ||: tr exits 0 on an empty /etc/hostname

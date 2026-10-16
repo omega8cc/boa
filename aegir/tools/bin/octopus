@@ -425,6 +425,29 @@ _check_dns_settings() {
   fi
 }
 
+# The pass log as a mail's body; when it is larger than a mail can carry
+# (one failed unpack wrote 270,000 tar errors, 59 MB, and the mail was never
+# sent), its ALRT, FATAL and ERROR lines, its first and last lines and where
+# the whole log is. Every line is cut at 2,000 characters.
+_up_mail_body() {
+  local _sz
+  _sz=$(stat -c %s "${_UP_LOG}" 2> /dev/null)
+  if [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -gt 1048576 ]; then
+    echo "The log is ${_sz} bytes, too large to mail whole; it is ${_UP_LOG}"
+    echo
+    echo "Its first 200 ALRT, FATAL and ERROR lines:"
+    grep -a -E 'ALRT|FATAL|ERROR' "${_UP_LOG}" | head -n 200 | cut -c1-2000
+    echo
+    echo "Its first 100 lines:"
+    head -n 100 "${_UP_LOG}" | cut -c1-2000
+    echo
+    echo "Its last 300 lines:"
+    tail -n 300 "${_UP_LOG}" | cut -c1-2000
+  else
+    cut -c1-2000 "${_UP_LOG}"
+  fi
+}
+
 _send_report() {
   if [ -e "${_barCnf}" ]; then
     _if_hosted_sys
@@ -435,7 +458,7 @@ _send_report() {
       _repSub="Successful Octopus upgrade for ${_octUsr}"
       _repSub="REPORT: ${_repSub} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
-      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      _up_mail_body | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
@@ -450,7 +473,7 @@ _send_alert() {
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
-      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      _up_mail_body | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
@@ -1139,6 +1162,12 @@ _up_finish() {
   done
   echo Bye
   echo
+  # The status says what the completion line says: 3 for WITH ERRORS (a
+  # pass that failed or raised an alert, or an account left out), 0 for a
+  # clean run. A run refused before it began exits 1, as before.
+  if [ "${_upDone}" != "OCTOPUS upgrade completed" ]; then
+    exit 3
+  fi
   exit 0
 }
 
@@ -1464,6 +1493,16 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
+    _clean_pid_exit
+  fi
+  _DI_TEST="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
+    echo "ERROR: We can not proceed until inode use is below 90/100"
+    echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
     _clean_pid_exit
   fi
 }
