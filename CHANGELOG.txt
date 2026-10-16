@@ -877,9 +877,13 @@
     * The limited-shell worker counts only root's processes when it looks
       for a running migration, and reads at most 64 KiB of each within a
       minute (a read that does not end in time counts as a migration
-      running): a tenant's process naming aegir2boa-stage2 or another
-      account kept every account's killed-import freeze and silenced
-      their alarms.
+      running for the removal): a tenant's process naming aegir2boa-stage2
+      or another account kept every account's killed-import freeze and
+      silenced their alarms. The worker and BOA's agent pass count a stage
+      2 as an account's own import only when its --account argument, read
+      whole and cut down as stage 2 reads it (--account o-1 is o1), names
+      the account; words inside one argument of a root process no longer
+      count.
 
     * The worker removes a one-line aegir2boa freeze only beside the
       import state of this release (/var/backups/a2b/oN/markers) and none
@@ -891,8 +895,13 @@
     * The worker names a freeze marker it keeps (one the account made, a
       relay record, an earlier release's freeze, an aegir2boa freeze
       beside relay evidence, one put by hand) in a mail once a day, once
-      it has seen it for a day: such an account gets no BOA pass while
-      the marker stands.
+      it has seen it for a day, with what to do about its kind: such an
+      account gets no BOA pass while the marker stands. A relay record
+      beside root's source-role log/migproxy.cnf or a proxy vhost is a
+      live relay and is not named; one with neither is, with the advice
+      to check whether the box serves the account (xmass post-mig after a
+      promotion by hand), and an earlier release's freeze with the advice
+      to finish or revert that import by its own procedure first.
 
     * On a box armed for the web group, while aegir2boa's own state shows
       an account's db-import unfinished (its dispatcher held aside, or
@@ -902,23 +911,34 @@
       ALRT when the run names it), no Octopus pass writes or runs its
       task dispatcher, BOA's agent pass moves a live one back into the
       import's hold and never hands a parked one back, and the nightly
-      runs no task, queue sweep or setting on the panel. A half-imported
-      panel must not dispatch: an Octopus pass ran a forced server
-      verify, hosting-dispatch, three task sweeps and the panel's
-      migration on it. A box not armed works as before (docs/AEGIR2BOA.md).
+      runs no task, queue sweep or setting on the panel nor moves its
+      sites, vhosts or aliases aside as ghosts. The usage pass writes no
+      footer and clears no cache on the panel, and renameaegirhost and
+      syncpass fix refuse the account, naming the import's re-run and its
+      revert. A half-imported panel must not dispatch: an Octopus pass ran
+      a forced server verify, hosting-dispatch, three task sweeps and the
+      panel's migration on it. On a box not armed none of this acts: the
+      takeover of a dead freeze, the panel guard, the worker's removal and
+      the skips need the arm stamp, while aegir2boa-stage2's freeze body,
+      its hand-back marker, the account record and its dry-run gate order
+      are the same on every box (docs/AEGIR2BOA.md).
 
     * The limited-shell worker mails the operator once a day while
       aegir2boa's state shows an account's import unfinished and none of
-      it runs, naming the import's re-run and its revert and how a killed
-      run's freeze is cleared. It reads root's state whatever the
-      account's tree holds, and writes its incident line once a day with
-      the mail.
+      it is seen running, naming the import's re-run and its revert and
+      how a killed run's freeze is cleared; a pass that cannot read the
+      process table mails all the same and says so. It reads root's state
+      whatever the account's tree holds, and writes its incident line once
+      a day with the mail.
 
     * aegir2boa's import state counts only for the account it was made
       for: BOA reads a state recorded for another account of the name
       (another uid, or another home by its inode and birth time) as none
-      of this account's, and boa cleanup purge parks /var/backups/a2b/oN
-      with the account beside its migration create marker.
+      of this account's, its record read whole whether or not a newline
+      ends it, and an empty record as the account's own, as
+      aegir2boa-stage2 reads it. boa cleanup purge parks
+      /var/backups/a2b/oN with the account beside its migration create
+      marker.
 
     * xmass, xoct and xcopy read an account whose task dispatcher
       aegir2boa holds for an unfinished import as parked, as they read
@@ -929,16 +949,19 @@
       group. The freeze names its operation, pid and process group on a
       second line, and the run takes it over only once nothing of the
       killed run is left: no root process in that group, its pid running
-      no stage 2, no other stage 2 naming the account, no root process
-      holding the account's import state and no other connection on the
-      account's panel database. A one-line marker, the other operation's
-      or any other body is refused as before.
+      no stage 2, no other stage 2 naming the account (its --account read
+      as stage 2 reads its own), no root process holding the account's
+      import state and no other connection on the account's panel
+      database. A refused re-run names the check that refused it. A
+      one-line marker, the other operation's or any other body is refused
+      as before.
 
     * aegir2boa-stage2 stops when it cannot put its freeze marker, instead
       of importing into an account the BOA passes do not hold off.
 
     * aegir2boa-stage2 consumes the dry run of a db-import or a revert only
-      once its freeze is put: a run refused at the freeze keeps it.
+      once its freeze is put: a run that stops before then (refused at the
+      freeze, or a db-import dying in a check before it) keeps it.
 
     * aegir2boa-stage2 marks the hand-back of a db-import's dispatcher
       just before it returns it, so an import cut off in the PHP pool
@@ -947,7 +970,12 @@
 
     * aegir2boa-stage2 transfer records the account it lands for (its uid
       and its home's inode and birth time) beside the import state on the
-      target, and refuses a state recorded for another account of the name.
+      target, and refuses a state recorded for another account of the
+      name, its dry run included, before it prints its plan or consumes
+      its gate. import refuses such a state too in every mode (either
+      route, --revert-db-import, --reset-sites), before it prints a plan
+      or reads its gate: a revert there dropped the new account's panel
+      database and loaded the earlier account's snapshot into it.
 
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no
