@@ -299,6 +299,59 @@ _check_disk_space() {
 }
 _check_disk_space
 
+# The dumps go to ${_BACKUPDIR}, which need not be on /: migratefs makes
+# /data/disk/arch a link onto attached storage, and /data can be its own
+# filesystem. That filesystem gets the 90% line / has, read after any
+# migratefs wait (a relocation moves it) and only when it is not / (judged
+# above). Status 1, noticed, when it refuses; the caller exits 0, as after a
+# failed dump, so backchain's multiback legs still carry the archives that
+# exist off the box (they keep their temp and cache on /, not here).
+_check_dump_fs() {
+  local _dir="${_BACKUPDIR}" _mnt _dfArch _diArch
+  while [[ ! -d "${_dir}" && "${_dir}" == /?* ]]; do
+    _dir="${_dir%/*}"
+  done
+  [[ -n "${_dir}" ]] || _dir="/"
+  read -r _mnt _dfArch <<< "$(LC_ALL=C timeout 60 df -P -- "${_dir}" 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
+    NR==2 && u { m=$NF; gsub(/%/,"",$u); print m, $u }')"
+  [[ -n "${_mnt}" && "${_mnt}" != "/" ]] || return 0
+  [[ "${_dfArch}" =~ ^[0-9]+$ ]] || _dfArch=""
+  _diArch="$(LC_ALL=C timeout 60 df -P -i -- "${_dir}" 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_diArch}" =~ ^[0-9]+$ ]] || _diArch=""
+  if [ -n "${_dfArch}" ] && [ "${_dfArch}" -gt 90 ]; then
+    echo "ERROR: The filesystem holding ${_dir} is almost full !!! ${_dfArch}/100"
+    {
+      echo "The database backup run on ${_hName} did not start: the filesystem"
+      echo "holding ${_dir} (mounted at ${_mnt}), where the dumps go, is ${_dfArch}%"
+      echo "full and the run refuses to add to it above 90%. No database was"
+      echo "dumped; the dumps already there are kept. Free space there, then run:"
+      echo
+      echo "  bash /var/xdrago/mysql_backup.sh"
+      echo
+    } | _backup_notice "Backup ABORTED on [${_hName}]: dump filesystem ${_dfArch}% full" "${_mnt} ${_dfArch}% full"
+    return 1
+  fi
+  if [ -n "${_diArch}" ] && [ "${_diArch}" -gt 90 ]; then
+    echo "ERROR: The filesystem holding ${_dir} is almost out of inodes !!! ${_diArch}/100"
+    {
+      echo "The database backup run on ${_hName} did not start: the filesystem"
+      echo "holding ${_dir} (mounted at ${_mnt}), where the dumps go, has ${_diArch}%"
+      echo "of its inodes in use and the run refuses to add files to it above"
+      echo "90%. Every file takes an inode; df -i ${_mnt} shows them. No database"
+      echo "was dumped; the dumps already there are kept. Free inodes there, then"
+      echo "run:"
+      echo
+      echo "  bash /var/xdrago/mysql_backup.sh"
+      echo
+    } | _backup_notice "Backup ABORTED on [${_hName}]: dump filesystem inodes ${_diArch}% used" "${_mnt} inodes ${_diArch}% used"
+    return 1
+  fi
+  return 0
+}
+
 # migratefs relocating /data/disk/arch holds it: /run/migratefs-arch.pid
 # names a live root process that runs migratefs, matched as executed,
 # never as a word anywhere on a command line (a pid reused after a kill -9,
@@ -362,6 +415,18 @@ if [[ -n "${_mfsPid}" ]]; then
     exit 0
   fi
   _arch_wait_log "mysql_backup.sh (pid $$) waited ${_mfsWait} s; /data/disk/arch is no longer held, the database backup starts"
+fi
+if ! _check_dump_fs; then
+  _sql_wait_drop
+  # The usage report the full run ends with writes nothing where the dumps
+  # go, and its over-limit notices to the accounts matter most on a full box
+  if [ "${_THIS_MODE}" = "full" ]; then
+    echo "INFO: Starting verbose usage report on $(date)"
+    bash /var/xdrago/usage.sh verbose
+    wait
+    echo "INFO: Completing verbose usage report on $(date)"
+  fi
+  exit 0
 fi
 echo $$ > /run/boa_sql_backup.pid
 _sql_wait_drop

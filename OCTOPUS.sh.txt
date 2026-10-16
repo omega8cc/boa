@@ -60,6 +60,9 @@ export _REDIS_N_VERSION=com-19-04-2021
 export _REDIS_T_VERSION=8.x-1.8.2
 export _REDIS_E_VERSION=8.x-1.11.4
 export _REDIS_B_VERSION=1.x-3.20.1
+# Drupal 12: BOA's redis 2.x line, empty until its tarball is published
+# (then the same value as in BOA.sh.txt).
+export _REDIS_W_VERSION=
 
 ###
 ### Drupal Core Versions

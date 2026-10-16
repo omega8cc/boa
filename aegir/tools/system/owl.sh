@@ -27,7 +27,7 @@ _check_root() {
   # No inode line here on purpose: the nightly is what frees inodes (old
   # tmp, old backups, the Delete tasks of empty platforms), so it runs
   # whatever the inode use; weblogx, the report tool it calls, refuses
-  # itself above 90%.
+  # itself above 90%, and _prepare_weblogx copies no logs for it there.
   # A test, not ||: tr exits 0 on an empty /etc/hostname
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
   [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
@@ -179,7 +179,18 @@ _find_fast_mirror_early() {
 }
 
 _prepare_weblogx() {
+  local _wxIno
   _ARCHLOGS=/var/www/adminer/access/archive
+  # weblogx refuses above 90% of the inodes on / (its own check, read the
+  # same way), so the copies made for it would only take the last of them;
+  # space is held under 90% by this script's own check at the start
+  _wxIno="$(LC_ALL=C command df -P -i -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  if [[ "${_wxIno}" =~ ^[0-9]+$ ]] && [ "${_wxIno}" -gt 90 ]; then
+    echo "[+] NOT COPYING LOGS: ${_wxIno}% of the inodes on / in use, weblogx refuses above 90%"
+    return 0
+  fi
   mkdir -p ${_ARCHLOGS}/unzip
   echo "[+] SYNCING LOGS TO: ${_ARCHLOGS}"
   rsync -rlvz --size-only --progress /var/log/nginx/access* ${_ARCHLOGS}/
