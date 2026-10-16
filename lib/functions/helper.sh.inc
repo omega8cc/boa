@@ -353,8 +353,10 @@ _web_group_state() {
   # (the record is root's: run as another user, converted reads as held):
   #   none       no group of that name
   #   foreign    the group exists, but an identity outside the account holds
-  #              it too: never joined nor written to; claim passes still leave
-  #              its paths alone (taking them would cut the pools off)
+  #              it too: never joined nor written to unless root's record
+  #              names its gid at phase A or B (_web_group, _web_group_conv);
+  #              claim passes still leave its paths alone (taking them would
+  #              cut the pools off)
   #   held       the group exists and only this account's identities hold it:
   #              claim passes leave its paths alone, new identities join it
   #   converted  and root's record names that gid: writers use the group
@@ -450,16 +452,52 @@ _web_group() {
   esac
 }
 
+_web_group_conv() {
+  # The account's web group and its phase, "wg-<account> A" or "wg-<account>
+  # B", once the account is converted onto that group; nothing otherwise:
+  # converted and phaseb as _web_group_state reads them, and a group an
+  # identity outside the account has come to hold too (foreign) while
+  # root's record names its current gid at phase A or B, read as root (the
+  # rule _web_group follows). The listings in the group and the pool line
+  # follow it, so an identity made while the name is held joins the group
+  # its paths are in. $1 as _web_group_state; $2, when given, the line that
+  # read printed for $1 (no second read).
+  local _s="${2:-}" _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  [ -n "${_s}" ] || _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted) echo "${_s##* } A" ;;
+    phaseb) echo "${_s##* } B" ;;
+    foreign)
+      _r="/root/.${_s##* wg-}.web-group.txt"
+      if [ "$(id -u)" = "0" ] && [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+        && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+        read -r _rg _rgid _rph _ < "${_r}" || :
+      fi
+      if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ]; then
+        case "${_rph}" in
+          phase=A) echo "${_rg} A" ;;
+          phase=B) echo "${_rg} B" ;;
+        esac
+      fi
+      ;;
+  esac
+  return 0
+}
+
 _web_group_rb() {
-  # "rb" when the account's record says phase B (_web_group_state phaseb)
-  # and carries the fourth field rb=1: a rollback of phase B was cut short,
-  # so the record says B only because the pools may still lack www-data, and
-  # no share check has passed since. Empty otherwise. The pool line is left
-  # out while it stands and the account's shell user is still listed in
-  # www-data. $1 as _web_group_state.
+  # "rb" when the account's record says phase B (_web_group_state phaseb,
+  # or foreign while the record names the group's current gid: the
+  # _web_group_conv rule) and carries the fourth field rb=1: a rollback of
+  # phase B was cut short, so the record says B only because the pools may
+  # still lack www-data, and no share check has passed since. Empty
+  # otherwise. The pool line is left out while it stands and the account's
+  # shell user is still listed in www-data. $1 as _web_group_state.
   local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
   _s=$(_web_group_state "${1}")
-  [ "${_s%% *}" = "phaseb" ] || return 0
+  case "${_s%% *}" in
+    phaseb|foreign) ;;
+    *) return 0 ;;
+  esac
   _a="${_s##* }"
   _a="${_a#wg-}"
   _r="/root/.${_a}.web-group.txt"
