@@ -59,6 +59,50 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). The record's first line
+# is read whether or not a newline ends it; an empty record, or none, is
+# the account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
+# Every write this pass makes into the account's control panel, drush8
+# @hostmaster $1 as the account: none while the panel is one an aegir2boa
+# db-import left half made (_hmHeld, set per account on a box armed for the
+# web group), until the import is finished or undone.
+_usage_hm() {
+  [ "${_hmHeld:-NO}" = "YES" ] && return 0
+  su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster $1" &> /dev/null
+  wait
+}
+
 # An account's main login owns static/control and can write static/, and oN
 # owns the rest of /data/disk/oN (log/, .drush/, config/, the site dirs):
 # either can put a link or a FIFO at any name there, or swap a directory for
@@ -184,8 +228,7 @@ _usage_stores() {
 
 _fix_clear_cache() {
   if [ -e "${_Plr}/profiles/hostmaster" ]; then
-    su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
-    wait
+    _usage_hm "cache-clear all"
   fi
 }
 
@@ -1033,6 +1076,12 @@ _usage_action() {
         _SumDir=0
         _TotSiz=0
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _hmHeld=NO
+        if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+          && _a2b_import_unfinished "${_THIS_U}"; then
+          _hmHeld=YES
+          echo "NOTE: ${_THIS_U}: an aegir2boa db-import is unfinished; no footer or cache clear on its half-made panel"
+        fi
         _uLogDir="${_usEr}/static/usage"
         _uLogFil=/dev/null
         # static/ is tenant-writable (02775, no sticky), so the usage directory
@@ -1157,16 +1206,14 @@ EOF
         if [ "${_hostedSys}" = "YES" ]; then
           if [ -e "${_THIS_HM_SITE}" ]; then
             _check_limits
-            su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
-              variable-set --always-set site_footer 'Usage on ${_DATE} \
+            _usage_hm "variable-set --always-set site_footer 'Usage on ${_DATE} \
               | Files <strong>${_TotSizH}</strong> MB \
               | LiveDb <strong>${_SumDatH}</strong> MB \
               | DevDb <strong>${_SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
-              | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
-            wait
+              | FPM <strong>${_CLIENT_FPM}</strong>'"
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
               && [ ! -e "${_usEr}/log/proxied.pid" ] \
@@ -1199,23 +1246,19 @@ EOF
               fi
               echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
             fi
-            su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster cache-clear all" &> /dev/null
-            wait
+            _usage_hm "cache-clear all"
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             _check_limits
-            su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
-              variable-set --always-set site_footer 'Usage on ${_DATE} \
+            _usage_hm "variable-set --always-set site_footer 'Usage on ${_DATE} \
               | Files <strong>${_TotSizH}</strong> MB \
               | LiveDb <strong>${_SumDatH}</strong> MB \
               | DevDb <strong>${_SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
-              | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
-            wait
+              | FPM <strong>${_CLIENT_FPM}</strong>'"
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
               && [ ! -e "${_usEr}/log/proxied.pid" ] \
@@ -1248,13 +1291,8 @@ EOF
               fi
               echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
             fi
-            su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster variable-set \
-              --always-set site_footer ''" &> /dev/null
-            wait
-            su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster cache-clear all" &> /dev/null
-            wait
+            _usage_hm "variable-set --always-set site_footer ''"
+            _usage_hm "cache-clear all"
           fi
         fi
         echo "Done for ${_usEr}"
