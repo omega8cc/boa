@@ -269,6 +269,32 @@ _require_source_box() {
 # both ends). $1 = account.
 _t_base() { echo "/var/backups/a2b/$1"; }
 
+# The account the target's state of the account $1 was made for: its uid
+# and its home's inode and birth time, as xmass records a migration create.
+# Written into the state dir (identity) by the first transfer and compared
+# by every later one: a state an earlier account of the name left (one
+# removed by hand and made again) is refused, never taken for this one's,
+# and BOA's passes read it as no state of this account. A birth time either
+# side does not know (0) is not compared. Exit 3: no such account or state
+# dir; 4: the state is another account's. Run as root: bash -s -- <oN>.
+_T_IDENTITY_SH='a="$1"
+b="/var/backups/a2b/${a}"
+u=$(id -u "${a}" 2> /dev/null) || exit 3
+n=$(stat -c "%i %W" "/data/disk/${a}" 2> /dev/null) || exit 3
+ni="${n% *}"
+nb="${n#* }"
+case "${u}:${ni}:${nb}" in *[!0-9:]*|:*|*:|*::*) exit 3 ;; esac
+[ -d "${b}" ] && [ ! -L "${b}" ] && [ ! -L "${b%/*}" ] || exit 3
+if [ -e "${b}/identity" ] || [ -L "${b}/identity" ]; then
+  [ -f "${b}/identity" ] && [ ! -L "${b}/identity" ] || exit 4
+  read -r iu ii ib _ < "${b}/identity"
+  [ "${iu}" = "${u}" ] && [ "${ii}" = "${ni}" ] || exit 4
+  [ "${ib}" = "0" ] || [ "${nb}" = "0" ] || [ "${ib}" = "${nb}" ] || exit 4
+  exit 0
+fi
+( umask 077; printf "%s %s %s\n" "${u}" "${ni}" "${nb}" > "${b}/identity.$$" ) \
+  && mv -f "${b}/identity.$$" "${b}/identity"'
+
 _require_target_box() {
   [[ "$(_box_class)" = "boa" ]] \
     || _die "verb '${_OP}' runs on the BOA TARGET box only (this box: $(_box_class))"
@@ -346,12 +372,16 @@ _gate_file() { echo "${_STATE_DIR}/state/gate_${_OP}_$(_key_sanitize "$1")"; }
 _gate_mark_clean()     { _kv_set "$(_gate_file "$1")" "_LAST" "CLEAN"; }
 _gate_mark_not_clean() { _kv_set "$(_gate_file "$1")" "_LAST" "NOT_CLEAN"; }
 
-_gate_consume() {
-  local _f
-  _f="$(_gate_file "$1")"
-  [[ "$(_kv_get "${_f}" _LAST)" = "CLEAN" ]] \
+# The gate of scope $1 is armed (a CLEAN dry run), or the run stops; nothing
+# is consumed.
+_gate_ready() {
+  [[ "$(_kv_get "$(_gate_file "$1")" _LAST)" = "CLEAN" ]] \
     || _die "--live requires a prior CLEAN dry run of '${_OP}' for scope '$1' on this box"
-  _kv_set "${_f}" "_LAST" "CONSUMED"
+}
+
+_gate_consume() {
+  _gate_ready "$1"
+  _kv_set "$(_gate_file "$1")" "_LAST" "CONSUMED"
 }
 
 _dry_finish() {
@@ -1507,6 +1537,14 @@ verb_transfer() {
 
   _msg "LIVE transfer -> root@${_TARGET}:${_dst}"
   ssh "root@${_TARGET}" "umask 077; mkdir -p ${_tsrc}/manifest ${_tsrc}/ssl-ref ${_tsrc}/nginx-ref && chmod 700 ${_tb%/*} ${_tb} ${_tsrc}"
+  # the state is bound to the account that stands there now, before
+  # anything lands in it
+  ssh "root@${_TARGET}" "bash -s -- ${_ACCOUNT}" <<< "${_T_IDENTITY_SH}"
+  case "$?" in
+    0) ;;
+    4) _die "${_tb} on ${_TARGET} was made for another account of the name ${_ACCOUNT} (removed and made again there): move it aside on ${_TARGET}, then re-run transfer" ;;
+    *) _die "cannot record the account ${_ACCOUNT} on ${_TARGET} beside ${_tb}" ;;
+  esac
   # static/a2b made inside the real static/ (root's, as mkdir made it),
   # never through a link; one that is anyone else's is refused, and nobody
   # but root may write it
@@ -1756,32 +1794,46 @@ _t_wait_task() {
 # for any active owl pass to drain. log/ is the account's: the marker is put
 # (root's, as created) and removed only inside the real log/, never through
 # a link put on the way or at the name. Its second line names the operation
-# that put it (db-import or revert-db) and that run's pid, so a re-run of
-# the same operation can tell a freeze a killed run left from one in flight.
-# $1 = the operation.
+# that put it (db-import or revert-db), that run's pid and its process
+# group, so a re-run of the same operation can tell a freeze a killed run
+# left from one in flight. $1 = the operation, $2 = the account's
+# hostmaster database.
 _t_freeze_on() {
-  local _verb="${1:-db-import}"
+  local _verb="${1:-db-import}" _st _pg=""
   if [[ -e "${_ACCT_ROOT}/log/proxied.pid" ]]; then
-    _t_freeze_dead "${_verb}" \
+    _t_freeze_dead "${_verb}" "${2}" \
       || _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?"
     _alrt "taking over the freeze a killed ${_verb} run left on ${_ACCOUNT}"
   fi
+  # what this run starts (a dump load, su) keeps its process group when the
+  # run itself is killed outright
+  _st="$(cat "/proc/$$/stat" 2> /dev/null)"
+  _st="${_st##*") "}"
+  read -r _ _ _pg _ <<< "${_st}"
+  [[ "${_pg}" =~ ^[1-9][0-9]*$ ]] || _pg="$$"
   _a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_put_here proxied.pid \
-    "$(printf 'A2B-IMPORT-FREEZE\nverb=%s pid=%s' "${_verb}" "$$")" \
+    "$(printf 'A2B-IMPORT-FREEZE\nverb=%s pid=%s pgid=%s' "${_verb}" "$$" "${_pg}")" \
     || _die "cannot put the freeze marker in ${_ACCT_ROOT}/log"
 }
 # A freeze a killed run of the operation $1 left (SIGKILL, a crash: no EXIT
 # trap ran), taken over only on a box armed for the web group, where BOA's
 # limited-shell worker also clears a killed import's freeze a day later:
 # root's single-link regular file in the real log/ reading
-# A2B-IMPORT-FREEZE, then verb=$1 pid=<n>, read through one handle that
-# never follows a link or blocks on a FIFO; <n> runs no stage 2, and no
-# other stage 2 run names this account (any word of any argv; this run and
-# its subshells aside). A marker of an earlier release (one line), of the
-# other operation or of anything else is refused as before. Args: root's
-# uid, the operation, this run's pid, the account, the proc root.
+# A2B-IMPORT-FREEZE, then verb=$1 pid=<n> pgid=<g>, read through one handle
+# that never follows a link or blocks on a FIFO, and nothing of the killed
+# run still touching the account. Of the processes not this run's own (its
+# subshells, and what it runs under), only those whose real and effective
+# uid are root's are read, 64 KiB of each file at most: none may be in the
+# group <g> (a loader, a sed or an su the killed run started outlives it
+# there), <n> may run no stage 2, no stage 2 may name this account (any
+# word of any argv), none may hold a file or its working directory under
+# the account's state, and the account's hostmaster database ($2) may have
+# no connection but the one that counts them. A marker of an earlier
+# release (one line, or no group), of the other operation or of anything
+# else is refused as before. Args: root's uid, the operation, this run's
+# pid, the account, the proc root, the account's state dir.
 _A2B_FREEZE_PL='use Fcntl;
-my ($ru, $v, $me, $acct, $p) = @ARGV;
+my ($ru, $v, $me, $acct, $p, $base) = @ARGV;
 my @l = lstat("./proxied.pid");
 exit 1 unless @l && -f _;
 sysopen(my $h, "./proxied.pid", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit 1;
@@ -1791,43 +1843,66 @@ my $d = "";
 sysread($h, $d, 4097);
 close($h);
 exit 1 unless length($d) <= 4096
-  && $d =~ /\AA2B-IMPORT-FREEZE\nverb=\Q$v\E pid=([1-9][0-9]*)\n?\z/;
-my $pid = $1;
-sub ppid {
-  open(my $f, "<", "$p/$_[0]/stat") or return 0;
-  my $t = <$f>;
+  && $d =~ /\AA2B-IMPORT-FREEZE\nverb=\Q$v\E pid=([1-9][0-9]*) pgid=([1-9][0-9]*)\n?\z/;
+my ($pid, $pg) = ($1, $2);
+sub rd {
+  open(my $f, "<", $_[0]) or return "";
+  my $t = "";
+  sysread($f, $t, 65536);
   close($f);
-  return (defined $t && $t =~ /.*\)\s+\S+\s+([0-9]+)/s) ? $1 : 0;
+  return $t;
 }
+sub pp {
+  return (rd("$p/$_[0]/stat") =~ /.*\)\s+\S+\s+([0-9]+)\s+([0-9]+)/s) ? ($1, $2) : (0, 0);
+}
+my %up;
+my $y = (pp($me))[0];
+for (1 .. 64) { last if $y <= 1; $up{$y} = 1; $y = (pp($y))[0] }
 sub ours {
   my $x = $_[0];
-  for (1 .. 64) { return 1 if $x == $me; return 0 if $x <= 1; $x = ppid($x) }
+  return 1 if $up{$x};
+  for (1 .. 64) { return 1 if $x == $me; return 0 if $x <= 1; $x = (pp($x))[0] }
   return 0;
-}
-sub words {
-  open(my $f, "<", "$p/$_[0]/cmdline") or return ();
-  local $/;
-  my $c = <$f>;
-  close($f);
-  return grep { length } split(/[\0\s]+/, defined $c ? $c : "");
 }
 opendir(my $dh, $p) or exit 1;
 for my $x (grep { /^[0-9]+$/ } readdir($dh)) {
   next if ours($x);
-  my @w = words($x);
-  next unless grep { (my $n = $_) =~ s{.*/}{}; $n eq "aegir2boa-stage2" } @w;
-  exit 1 if $x == $pid;
-  for my $i (0 .. $#w - 1) {
-    next unless $w[$i] eq "--account";
-    (my $z = $w[$i + 1]) =~ tr/a-z0-9//cd;
-    exit 1 if $z eq $acct;
+  next unless rd("$p/$x/status") =~ /^Uid:\s+0\s+0\s/m;
+  exit 1 if (pp($x))[1] == $pg;
+  my @w = grep { length } split(/[\0\s]+/, rd("$p/$x/cmdline"));
+  if (grep { (my $n = $_) =~ s{.*/}{}; $n eq "aegir2boa-stage2" } @w) {
+    exit 1 if $x == $pid;
+    for my $i (0 .. $#w - 1) {
+      next unless $w[$i] eq "--account";
+      (my $z = $w[$i + 1]) =~ tr/a-z0-9-//cd;
+      exit 1 if $z eq $acct;
+    }
+  }
+  my @f = ("$p/$x/cwd");
+  if (opendir(my $fd, "$p/$x/fd")) {
+    push @f, map { "$p/$x/fd/$_" } grep { /^[0-9]+$/ } readdir($fd);
+    closedir($fd);
+  }
+  for my $f (@f) {
+    my $r = readlink($f);
+    exit 1 if defined $r && index("$r/", "$base/") == 0;
   }
 }
 exit 0'
 _t_freeze_dead() {
   [[ -s /etc/boa/control/instgrp-web-arm.ready.txt ]] || return 1
   _a2b_in_real_dir "${_ACCT_ROOT}/log" \
-    perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc 2> /dev/null
+    perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null \
+    && _t_freeze_conns "${2}"
+}
+# No connection but the one asking on the hostmaster database $1: a dump
+# load or a drush the killed run left would still be writing the panel. A
+# count that cannot be read refuses.
+_t_freeze_conns() {
+  local _n
+  [[ -n "${1}" ]] || return 1
+  _n="$(mysql --defaults-file=/root/.my.cnf -N -B -e "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE DB = '${1}' AND ID <> CONNECTION_ID()" 2> /dev/null)"
+  [[ "${_n}" = "0" ]]
 }
 _t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
 _t_owl_drain() {
@@ -1866,11 +1941,23 @@ _t_dispatch_off() {
     sleep 10; _waited=$(( _waited + 10 ))
   done
 }
+# The held dispatcher goes back. With none held, one BOA's agent pass parked
+# in off-run while the freeze stood (it parks the dispatcher of every
+# frozen account there) goes back instead, unless the account is relayed,
+# cancelled or left by a failed proxy conversion (log/proxied.pid then
+# being no aegir2boa freeze): BOA itself hands back an off-run copy only
+# once a release, and the import or revert is over before that.
 _t_dispatch_on() {
-  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}"
+  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}" _off="/var/backups/off-run/run-${_ACCOUNT}"
   if [[ -e "$(_t_held_run)" ]]; then
     mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
     _info "dispatcher run-${_ACCOUNT} restored"
+  elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" && -f "${_off}" && ! -L "${_off}" \
+    && ! -e "${_ACCT_ROOT}/log/CANCELLED" && ! -e "${_ACCT_ROOT}/log/proxy-failed.pid" ]] \
+    && { [[ ! -e "${_ACCT_ROOT}/log/proxied.pid" && ! -L "${_ACCT_ROOT}/log/proxied.pid" ]] \
+      || [[ "$(_a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_read_here proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]]; }; then
+    mv -f "${_off}" "/var/xdrago/run-${_ACCOUNT}"
+    _info "dispatcher run-${_ACCOUNT} restored from ${_off}"
   elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" ]] \
     && [[ -e "${_old}" || -L "${_old}" ]]; then
     _t_dispatch_rebuild
@@ -2373,10 +2460,12 @@ _import_db_route() {
     return 0
   fi
 
-  _t_freeze_on db-import
+  _t_freeze_on db-import "${_hdb}"
   # chain, never replace: the global EXIT handler is the only remover of
   # the per-scope lock dir, and a bare 'trap - EXIT' would strand it in /var/run
   trap '_t_freeze_off; _cleanup' EXIT
+  # the dry run's gate goes only now: a run refused at the freeze keeps it
+  _gate_consume "${_SITE:-all}"
   # 0. the account dispatcher MUST be off for the whole surgery window;
   # a failure below leaves it off deliberately (a broken hostmaster must
   # not dispatch) - success and --revert-db-import restore it
@@ -2753,6 +2842,11 @@ PHPEOF
   _pcode="$(_http_code_at "${_panel}" 127.0.0.1)"
   _info "step 12: panel ${_panel} answers HTTP ${_pcode}"
   _tsql "UPDATE hosting_task SET task_status='2' WHERE task_status='0' AND executed='0'"
+  # the panel is verified and its stray tasks neutered: marked before the
+  # dispatcher goes back, so BOA reads a run cut off after the hand-back (in
+  # the pool waits below) as finished, and one cut off before it still has
+  # its dispatcher held
+  touch "${_step}.12.done"
   _t_dispatch_on
   _t_freeze_off
   trap _cleanup EXIT
@@ -2975,8 +3069,12 @@ verb_import() {
       _info "[DRY] clear target markers, restore the dispatcher"
       _dry_finish "revert-db"
     fi
+    # the gate is checked first and consumed once the freeze is put: a run
+    # refused at the freeze keeps its clean dry run
+    _gate_ready "revert-db"
+    _t_freeze_on revert-db "${_hdb}"; trap '_t_freeze_off; _cleanup' EXIT
     _gate_consume "revert-db"
-    _t_freeze_on revert-db; trap '_t_freeze_off; _cleanup' EXIT; _t_owl_drain; _t_dispatch_off
+    _t_owl_drain; _t_dispatch_off
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
     mysql --defaults-file=/root/.my.cnf "${_hdb}" < "${_undo}/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import ${_undo}/a2b-pre-import.sql manually"
@@ -3010,7 +3108,12 @@ verb_import() {
     esac
     _dry_finish "${_scope}"
   fi
-  _gate_consume "${_scope}"
+  if [[ "${_ROUTE}" = "db-import" ]]; then
+    # consumed once its freeze is put (_import_db_route)
+    _gate_ready "${_scope}"
+  else
+    _gate_consume "${_scope}"
+  fi
   # the serve probes below compare bodies against this box's catch-all
   # answer: a BOA box replies 200 to any unknown Host with its own page, so
   # a status alone cannot tell "the site serves" from "nothing serves it"
