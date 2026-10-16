@@ -2862,9 +2862,9 @@ _d_dist_loop() {
         # overrides the list (and parks the other versions' binaries), and an
         # upgrade's PHP cleanup drops a version no instance names yet
         _msg "NOTE! No PHP 8.5 or 8.6 on this server. To build ${_dist} here:"
-        _msg "NOTE! 1. in /root/.barracuda.cnf add 8.5 to _PHP_MULTI_INSTALL and empty _PHP_SINGLE_INSTALL, which overrides that list"
-        _msg "NOTE! 2. add the line 'place.holder1.dont.remove 8.5' to this instance's ~/static/control/multi-fpm.info, or an upgrade drops a version no instance uses yet"
-        _msg "NOTE! 3. run barracuda, then set this instance's cli.info and fpm.info to 8.5 and run this again"
+        _msg "NOTE! 1. in /root/.barracuda.cnf add 8.5 to _PHP_MULTI_INSTALL, quoted (_PHP_MULTI_INSTALL=\"8.4 8.5\"), and empty _PHP_SINGLE_INSTALL, which overrides that list"
+        _msg "NOTE! 2. add the line 'place.holder1.dont.remove 8.5' to this instance's ~/static/control/multi-fpm.info: the PHP cleanup, when it is on, drops a version no instance uses yet"
+        _msg "NOTE! 3. run barracuda, then set this instance's cli.info and fpm.info to 8.5, remove any lower phpNN.info there, and run this again"
       else
         _msg "NOTE! Set this instance's ~/static/control/cli.info and fpm.info to ${_d_php_new} and remove any lower phpNN.info there (a marker overrides cli.info), then run this again"
       fi
