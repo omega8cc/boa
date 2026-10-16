@@ -468,12 +468,19 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
  * Inside a Valkey outage window (global-if-valkey.inc) the site runs on its
  * database cache, which nothing kept current while Valkey was up: entries
  * created before the window began are refused, everything written since is
- * served. Drupal 8+ wraps every bin and the kernel's container cache (the
- * core default definition, read from the kernel, with its cache.container
- * wrapped); Drupal 7 swaps its default cache class, the form and bootstrap
- * bins staying plain database as they are with Valkey.
+ * served (a noredis=1 request inside a window included). Drupal 8+ wraps
+ * every bin and the kernel's container cache (the core default definition,
+ * read from the kernel, with its cache.container wrapped); Drupal 6 (through
+ * cache_backport) and 7 swap their default cache class, the form and
+ * bootstrap bins staying plain database as they are with Valkey. A site with
+ * a cache of its own (custom_cache) may keep it in Valkey under a prefix of
+ * its own, so its record names the whole database.
  */
-if (empty($valkey_up) && !empty($use_valkey) && empty($custom_cache) && !empty($valkey_window_start)) {
+if (!empty($custom_cache) && !empty($GLOBALS['valkey_window_runs']) && function_exists('_valkey_window_join')) {
+  $GLOBALS['valkey_window_pattern']              = '*';
+  _valkey_window_join($GLOBALS['valkey_window_flag'], $GLOBALS['valkey_window_runs']);
+}
+if (empty($valkey_up) && (!empty($use_valkey) || !empty($valkey_noredis)) && empty($custom_cache) && !empty($valkey_window_start)) {
   if ($drupal_core >= 8) {
     if (isset($class_loader) && is_readable('/data/conf/global/global-window-d8.services.yml')) {
       $class_loader->addClassMap(array(
@@ -510,6 +517,17 @@ if (empty($valkey_up) && !empty($use_valkey) && empty($custom_cache) && !empty($
     if (!is_readable('/data/conf/clstr.cnf')) {
       $conf['cache_class_cache_bootstrap']       = 'DrupalDatabaseCache';
     }
+  }
+  elseif ($drupal_core == 6 && is_readable('modules/o_contrib/cache_backport/cache.inc')
+      && is_readable('/data/conf/global/global-window-d7.inc')) {
+    // Drupal 6 takes the Drupal 7 cache API from cache_backport, as it does
+    // with Valkey; the backport loads cache_backends right after its own
+    // database class, so the same subclass serves.
+    $conf['cache_inc']                           = 'modules/o_contrib/cache_backport/cache.inc';
+    $conf['cache_backends'][]                    = '/data/conf/global/global-window-d7.inc';
+    $conf['boa_window_start']                    = $valkey_window_start;
+    $conf['cache_default_class']                 = 'BoaWindowDatabaseCache';
+    $conf['cache_class_cache_form']              = 'DrupalDatabaseCache';
   }
 }
 

@@ -227,6 +227,24 @@ _log_name() {
   printf '%s' "${1//[^A-Za-z0-9._\/-]/?}"
 }
 
+# Whether $1, a resolved path, is a site's files or private dir in an
+# account's store: /data/disk/<account>/static/files/<site>/<type>, or the
+# same under a store migratefs put on attached storage,
+# /mnt/<mount>/files/<account>/static/files/<site>/<type>, where <mount>
+# (one directory or more, plain names) holds none named files or static:
+# the stores _store_files_dir accepts. The account and site names are taken
+# as they are (a site directory is the account's to name).
+_is_store_site_dir() {
+  local _p="${1}" _m
+  [[ "${_p}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] && return 0
+  [[ "${_p}" =~ ^(/mnt/.+)/files/[^/]+/static/files/[^/]+/(files|private)$ ]] || return 1
+  _m="${BASH_REMATCH[1]}"
+  case "${_m}/" in
+    *[!A-Za-z0-9._/-]*|*/files/*|*/static/*) return 1 ;;
+  esac
+  return 0
+}
+
 _record_anomaly() {
   # Capture one not-clean finding WITH its identity, next to the flag it raises.
   # Args: 1: CODE, 2..: k=v context fields.
@@ -907,12 +925,30 @@ _explain_symlink_broken() {
 
 _explain_symlink_unknown() {
   # SYMLINK_UNKNOWN_PATTERN: the only edge-case (rather than error) finding.
-  # Args: 1 site, 2 account dir, 3 type, 4 path, 5 link target.
+  # Args: 1 site, 2 account dir, 3 type, 4 path, 5 link target, 6 where the
+  # store the link names resolves, when that is what was refused.
   _EXP_SU_SITE="$1"
   _EXP_SU_ACCT="$2"
   _EXP_SU_TYPE="$3"
   _EXP_SU_PATH="$4"
   _EXP_SU_TGT="$5"
+  _EXP_SU_RES="${6:-}"
+
+  if [ -n "${_EXP_SU_RES}" ]; then
+    _explain_log "  Seen: the in-site ${_EXP_SU_TYPE} symlink names another site's store, but that"
+    _explain_log "    store resolves outside the account stores, so the script refused to copy"
+    _explain_log "    from it to break the sharing and marked the run NOT CLEAN."
+    _explain_log "  Symlink    : ${_EXP_SU_PATH}"
+    _explain_log "  Points at  : $(_log_name "${_EXP_SU_TGT}")"
+    _explain_log "  Resolves to: $(_log_name "${_EXP_SU_RES}")"
+    _explain_log "  Files store: $(_exp_store_state "${_EXP_SU_ACCT}" "${_EXP_SU_SITE}")"
+    _explain_log "  Diagnosis  : A LINK ON THE WAY -- a directory in the named store's path is a"
+    _explain_log "    link elsewhere, so a copy from it would take whatever tree that link reaches."
+    _explain_log "  Fix        : make the named store's directories real again (the data the link"
+    _explain_log "    reaches moved back under .../static/files/<site>/${_EXP_SU_TYPE}), or remove this"
+    _explain_log "    site's link and Verify the site in the Aegir front-end; then re-run the dry run."
+    return 0
+  fi
 
   _explain_log "  Seen: the in-site ${_EXP_SU_TYPE} symlink points somewhere that does not match"
   _explain_log "    the expected .../static/files/<site>/${_EXP_SU_TYPE} store layout, so the"
@@ -1176,7 +1212,8 @@ _explain_anomalies() {
       SYMLINK_UNKNOWN_PATTERN)
         _explain_symlink_unknown "${_EXP_SITE}" "${_EXP_ACCT}" \
           "$(_anom_field "${_EXP_REC}" "type")" "$(_anom_field "${_EXP_REC}" "path")" \
-          "$(_anom_field "${_EXP_REC}" "link_target")"
+          "$(_anom_field "${_EXP_REC}" "link_target")" \
+          "$(_anom_field "${_EXP_REC}" "resolved")"
         ;;
       BREAK_SHARING_SOURCE_MISSING)
         _explain_break_sharing_source "${_EXP_SITE}" "${_EXP_ACCT}" \
@@ -2008,8 +2045,7 @@ _check_space_for_transfer() {
   case "${_DESC}" in
     *"break sharing"*)
       _SRC_REAL=$(realpath -e -- "${_SRC_DIR}" 2>/dev/null)
-      if [[ "${_SRC_REAL}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] \
-        || [[ "${_SRC_REAL}" =~ ^/mnt/[^/]+/files/[^/]+/static/files/[^/]+/(files|private)$ ]]; then
+      if _is_store_site_dir "${_SRC_REAL}"; then
         _SRC_MEASURE="${_SRC_REAL}"
       fi
       ;;
@@ -2281,14 +2317,13 @@ _check_symlink_sharing() {
   # dir: a name on the way an account turned into a link elsewhere would have
   # the copy take any tree the account can read, uncounted by the space check.
   _ORIGINAL_REAL=$(realpath -e -- "${_ORIGINAL_TOP}" 2>/dev/null)
-  if [ -n "${_ORIGINAL_REAL}" ] \
-    && ! [[ "${_ORIGINAL_REAL}" =~ ^/data/disk/[^/]+/static/files/[^/]+/(files|private)$ ]] \
-    && ! [[ "${_ORIGINAL_REAL}" =~ ^/mnt/[^/]+/files/[^/]+/static/files/[^/]+/(files|private)$ ]]; then
+  if [ -n "${_ORIGINAL_REAL}" ] && ! _is_store_site_dir "${_ORIGINAL_REAL}"; then
     _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a store that resolves outside the account stores: $(_log_name "${_ORIGINAL_REAL}") – refusing to break sharing"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_EDGE_CASES="YES"
       _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
-        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}" \
+        "resolved=${_ORIGINAL_REAL}"
     fi
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
@@ -3025,6 +3060,15 @@ _dir_residue_only() {
   return 0
 }
 
+# _convert_dir_to_symlink, noting a site whose dir was not moved into its
+# store (_SITE_CONVERT_SKIPPED); a new account's first run, which has no
+# store to move into yet (status 2, said as INFO), is not one.
+_convert_or_note() {
+  _convert_dir_to_symlink "$@"
+  [ "$?" = "1" ] && _SITE_CONVERT_SKIPPED="YES"
+  return 0
+}
+
 _convert_dir_to_symlink() {
   # Crash-safe conversion of a real in-site directory into a symlink pointing at
   # the per-site store. Replaces the former non-atomic `mv; ln -s` pair.
@@ -3051,7 +3095,8 @@ _convert_dir_to_symlink() {
   #     are corruption-safe: the losing rename fails (source already gone) and
   #     self-heal/idempotency repoint to the winner's store dir.
   # Args: 1 in-site real dir, 2 store target dir, 3 type label, 4 site name.
-  # Returns 0 on success, 1 on hard error (real dir left intact).
+  # Returns 0 on success, 1 on hard error (real dir left intact), 2 when a
+  # new account has no static/ yet (real dir left for a later run).
   _SRC="$1"
   _DST="$2"
   _TYPE="$3"
@@ -3076,7 +3121,7 @@ _convert_dir_to_symlink() {
     # is not a real directory, or a store that cannot be opened, still is.
     if [ ! -e "${_ACCOUNT_DIR}/static" ] && [ ! -L "${_ACCOUNT_DIR}/static" ]; then
       _log "[INFO] No static/ yet in ${_ACCOUNT_DIR} (a new account): ${_TYPE} of site ${_SITE} stays a real dir until a later run links it"
-      return 1
+      return 2
     fi
     _log "[ERROR] Store base ${_DST%/*} is not a real directory for ${_TYPE} of site ${_SITE}; leaving real dir in place (no symlink created)"
     return 1
@@ -3444,8 +3489,7 @@ _process_site() {
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space or inodes."
           _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}" \
-            || _SITE_CONVERT_SKIPPED="YES"
+          _convert_or_note "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
         fi
       fi
 
@@ -3454,8 +3498,7 @@ _process_site() {
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space or inodes."
           _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}" \
-            || _SITE_CONVERT_SKIPPED="YES"
+          _convert_or_note "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
         fi
       fi
     else
@@ -3467,8 +3510,7 @@ _process_site() {
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space or inodes."
           _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}" \
-            || _SITE_CONVERT_SKIPPED="YES"
+          _convert_or_note "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
         fi
       fi
 
@@ -3477,8 +3519,7 @@ _process_site() {
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space or inodes."
           _SITE_CONVERT_SKIPPED="YES"
         else
-          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}" \
-            || _SITE_CONVERT_SKIPPED="YES"
+          _convert_or_note "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
         fi
       fi
     fi

@@ -2414,7 +2414,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f76
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f66
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f65
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f78
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f89
@@ -2496,9 +2496,9 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f67
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f63
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f36
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f37
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f65
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f33
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f33
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f62
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f65
     ###
@@ -2570,7 +2570,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f53 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f51 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -5398,12 +5398,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f84 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f83 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f41 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f39 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f64 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f46 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f47 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f27 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -5433,13 +5433,13 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f98 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f07 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f62 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f63 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f55 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f80 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f81 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f80 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
@@ -5449,8 +5449,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f11 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f80 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f44 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f79 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f45 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f63 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f92 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f85 --guard /local/bin/autochimaera

@@ -220,7 +220,7 @@ Every finding carries a code:
 | `SITE_PATH_DIR_ABSENT` | The alias names a `site_path` that is not on disk — **the common one**, expanded below. |
 | `ALIAS_NO_SITE_PATH` | No `site_path` line could be read from the alias at all (truncated, malformed, or a non-site context that happens to have a vhost). |
 | `SYMLINK_EMPTY_OR_BROKEN` | The in-site `files`/`private` path is a symlink whose target `readlink` could not read. |
-| `SYMLINK_UNKNOWN_PATTERN` | The link resolves but points outside the expected `…/static/files/<site>/<type>` store layout, so ownership cannot be inferred and it is reported rather than touched. |
+| `SYMLINK_UNKNOWN_PATTERN` | The link resolves but points outside the expected `…/static/files/<site>/<type>` store layout, so ownership cannot be inferred and it is reported rather than touched; or it names another site's store whose path resolves outside the account stores (`A LINK ON THE WAY`, with where it resolves), so it is not un-shared. |
 | `BREAK_SHARING_SOURCE_MISSING` | The site shares another site's store and the source to copy from is gone, so the un-share would fail. |
 | `SPACE_SRC_DIR_MISSING` | The directory to move/copy does not exist. |
 | `SPACE_SIZE_UNKNOWN` | `du` could not measure the source (usually unreadable — check ownership). |
@@ -865,7 +865,12 @@ is, and so do the account web group's walks (see `INSTGRP.md`).
 - **Safe one-time migration.** Existing backups are copied whole (`rsync -a`) while
   the directory and its store copy are closed to the account (root, 0700), then the
   source is emptied and replaced by the link, so the static filesystem needs a full
-  copy's space while it runs. On any failure the real directory is handed back with
+  copy's space while it runs: the move checks first that it fits, in bytes and in
+  files (leaving 2% of that filesystem's inodes, at least 50,000, free; what an
+  earlier copy that stopped short already put in the store is not counted
+  again), and leaves the real directory in place with a log line when it does
+  not. On any
+  failure the real directory is handed back with
   its owner and mode and no symlink is made; a pass killed mid-copy is healed by the
   next nightly, which hands both back and finishes the move. It never deletes a
   backup.

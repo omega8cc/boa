@@ -29,7 +29,9 @@ relocates its `backups` + `backup-exports` onto the same filesystem. See
 > attached storage has enough free space for what you are about to move, so the
 > decision and the action are 100% yours: run it by hand, in a maintenance window,
 > after reviewing the DRY plan. It is never scheduled and never run by SKYNET. A
-> space check is included as a safety net, but you own the call.
+> space and inode check is included as a safety net (the copy must fit, and leave
+> 2% of the target's inodes, at least 50,000, free; the DRY plan shows both
+> figures), but you own the call.
 
 > **BOA supports exactly ONE attached mountpoint under `/mnt`.** `migratefs` **and**
 > other BOA scripts (notably the lshell FTP-jail path allow-list built in

@@ -1096,6 +1096,9 @@ user number, which there can be another account's. The pass after the name
 appears there hands its files back, and a target whose users cannot be read
 fails that account's legs for the pass (a `DENY`).
 
+A client login's `.ssh`, copied only when the target answers that it has the
+login, lands as that login's own on the same pass.
+
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
 That covers what the active writes to its binary log. BOA's own database loads
