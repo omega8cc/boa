@@ -153,6 +153,15 @@
       wiring) answered 500. The module now gets the TCP target the check
       reached; a custom target is left alone.
 
+    * Drupal 6 sites work on PHP 8.1 and later as they did before. Every
+      new Drupal 6 site failed to install ("Table ... system doesn't
+      exist"), and two requests racing to store the same cache entry,
+      setting or session could end one of them in a fatal error: PHP 8.1
+      made mysqli throw on a failed query that Drupal 6 expects to come
+      back FALSE. Pressflow 6.60.3 sets the error mode it was written for
+      in its own database driver, and BOA's Drupal 6 settings do the same
+      for sites on older Pressflow cores.
+
     * Drupal 8, 9 and 10 sites keep their queues in their own database.
       BOA had moved Drupal's default queue to Valkey, where the redis
       module names a queue's keys by its name alone, so the sites on one
