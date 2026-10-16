@@ -3321,29 +3321,54 @@ _WEBFORM_B_TAG="1.x-4.26.6"
 # 000/modules to work in (a link on the way) or no unpack directory is
 # reported, and the copy in place is kept.
 _satellite_shared_module_update() {
+  local _e
   _satellite_mk_modules
   if ! _satellite_in_modules _satellite_shared_module_here "$@"; then
     _msg "${_STATUS} A: OOPS ${1}-${2} was not updated (no unpack directory in the real ${_D}/000/modules); the copy in place is kept"
+    # nothing can be set aside where 000/modules is not the real one; a
+    # flagged module there is said all the same
+    _e="$(_satellite_not_root_alone "${_D}/000/modules/${1}")"
+    [ -n "${_e}" ] && _satellite_module_alarm "${1}" "${_e}" NO
   fi
+  return 0
 }
 _satellite_shared_module_here() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO _in=NO
+  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO _in=NO _why
   _arc="${_nm}-${_ver}.tar.gz"
   # a directory a killed pass left behind; a live pass's is never this old
   find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
     -exec rm -rf -- {} + &> /dev/null
-  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
-  ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
-  # every member present and whole: tar compares the kept archive with what
-  # it unpacked, and fails on a cut archive and on a missing or short file
-  if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
-    && _satellite_tar_whole "${_tmp}" "${_tmp}/${_arc}"; then
-    _ok=YES
+  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || _tmp=""
+  if [ -n "${_tmp}" ]; then
+    ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
+    # every member present and whole: tar compares the kept archive with
+    # what it unpacked, and fails on a cut archive and on a missing or short
+    # file
+    if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
+      && [ ! -L "${_tmp}/${_nm}" ] \
+      && _satellite_tar_whole "${_tmp}" "${_tmp}/${_arc}"; then
+      _ok=YES
+    fi
   fi
   if [ "${_ok}" = "YES" ]; then
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
+    rm -f -- "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info" \
+      "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    # the store's modes before the copy goes in, its stamps included (some
+    # archives record modes writable by the group, which root's tar keeps):
+    # a copy is never flagged as it enters the store
+    _acct_in_real_dir "${_tmp}/${_nm}" _satellite_modes_walk_here 0755 0644 &> /dev/null
+  fi
+  if [ -z "${_tmp}" ]; then
+    _why="was not updated (no unpack directory in the real ${_D}/000/modules)"
+  elif [ "${_ok}" != "YES" ]; then
+    _why="was not updated (download or unpack failed)"
+  elif [ -n "$(_satellite_not_root_alone "${_tmp}/${_nm}")" ]; then
+    # a link in it, or an entry the walk could not make root's alone
+    _why="was not updated (the unpacked copy holds a link or an entry not root's alone)"
+  else
     # swapped, the copy that was in place is left at ${_tmp}/${_nm}
     if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
       if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
@@ -3358,14 +3383,32 @@ _satellite_shared_module_here() {
     else
       [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
         && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
-      _msg "${_STATUS} A: OOPS ${_nm}-${_ver} could not be swapped in; the copy in place is kept"
+      _why="could not be swapped in"
     fi
-  else
-    _msg "${_STATUS} A: OOPS ${_nm}-${_ver} was not updated (download or unpack failed); the copy in place is kept"
   fi
-  rm -rf -- "${_tmp}"
-  [ "${_in}" = "YES" ] || _satellite_module_seal_here "${_nm}"
+  [ -n "${_tmp}" ] && rm -rf -- "${_tmp}"
+  if [ "${_in}" != "YES" ]; then
+    _satellite_module_seal_here "${_nm}"
+    case $? in
+      4) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, was taken out of use" ;;
+      5) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, could not be set aside" ;;
+      *) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; $(_satellite_module_kept_here "${_nm}")" ;;
+    esac
+  fi
   return 0
+}
+# What a failed fetch leaves of the module ./$1 in the current (pinned)
+# 000/modules, for its OOPS line.
+_satellite_module_kept_here() {
+  if [ ! -e "./${1}" ] && [ ! -L "./${1}" ]; then
+    echo "nothing is in place"
+  elif [ -d "./${1}" ] && [ ! -L "./${1}" ] \
+    && [ -z "$(find -P "./${1}" -mindepth 1 -print -quit 2> /dev/null)" ] \
+    && [ -z "$(_satellite_not_root_alone "./${1}")" ]; then
+    echo "the module stays out of use until a fetch succeeds"
+  else
+    echo "the copy in place is kept"
+  fi
 }
 # The archive $2 unpacked whole under $1: tar's compare finds every member
 # there with its size and contents. A difference in owner or mode alone is
@@ -3380,35 +3423,89 @@ _satellite_tar_whole() {
   [ "${_rc}" = "1" ] || return 1
   ! grep -v -E ': (Uid|Gid|Mode) differs$' <<< "${_d}" | grep -q .
 }
+# The alarm for the flagged module $1 (its first flagged entry $2) on an
+# ALRT line, which the Octopus report mails: $3 YES when it was taken out of
+# use, NO when it could not be set aside. Said once in a pass for each
+# module, entry and outcome, however many of the pass's gates fetch the
+# module (the pass's shell, $$, with that shell's start time, since a pid is
+# used again, keys the record in /run, which a reboot empties; the record
+# goes when nothing was added to it for a day). The entry is keyed with its
+# unprintable characters replaced, so a name holding a newline stays one
+# line of the record.
+_satellite_module_alarm() {
+  local _k _r=/run/octopus-module-alarm.log
+  _k="${$}.$(cut -d' ' -f22 "/proc/${$}/stat" 2> /dev/null) ${1} ${3}"
+  _k="${_k} $(printf '%s' "${2}" | tr -c '[:print:]' '?')"
+  find /run -maxdepth 1 -name octopus-module-alarm.log -mmin +1440 -delete 2> /dev/null
+  grep -qxF -- "${_k}" "${_r}" 2> /dev/null && return 0
+  echo "${_k}" >> "${_r}" 2> /dev/null
+  if [ "${3}" = "YES" ]; then
+    _msg "${_STATUS} A: ALRT ${1} in ${_D}/000/modules held ${2#./} (a link, or not root's alone) and could not be fetched again: taken out of use, sites use their database cache until the next fetch"
+  else
+    _msg "${_STATUS} A: ALRT ${1} in ${_D}/000/modules held ${2#./} (a link, or not root's alone), could not be fetched again and could not be set aside: sites still load it"
+  fi
+  return 0
+}
 # A module that could not be fetched again while what is at its name in the
 # current (pinned) 000/modules is a link, or holds an entry not root's or
 # writable by others (_satellite_not_root_alone), is taken out of every
 # site's load path: an empty directory of root's takes the name, swapped in
-# without following a link, and the pass says so on an ALRT line (the
-# Octopus report mails it). BOA's settings includes reach a module only
-# through is_readable(), so the sites fall back to their database cache
-# until a fetch puts it back; the empty directory has no stamp, so the next
-# pass fetches again, and being root's alone it is never sealed twice.
+# without following a link, and the alarm says so (_satellite_module_alarm).
+# BOA's settings includes reach a module only through is_readable(), so the
+# sites fall back to their database cache until a fetch puts it back; the
+# empty directory has no stamp, so the next pass fetches again, and being
+# root's alone it is never sealed twice. What came out is put back when it
+# is root's alone after all (a concurrent pass swapped a good copy in since
+# the test). Status: 0 nothing flagged (or put back), 4 taken out of use,
+# 5 flagged and not set aside.
 _satellite_module_seal_here() {
-  local _nm="$1" _e _tmp _swp=NO
+  local _nm="$1" _e _f _tmp="" _swp=NO
   _e="$(_satellite_not_root_alone "./${_nm}")"
   [ -n "${_e}" ] || return 0
-  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
-  if mkdir -m 0755 -- "${_tmp}/${_nm}"; then
+  if _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" \
+    && mkdir -m 0755 -- "${_tmp}/${_nm}"; then
     if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
       _swp=YES
-    elif mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null \
-      && mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
-      _swp=YES
+      if [ -z "$(_satellite_not_root_alone "${_tmp}/${_nm}")" ] \
+        && perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+        _swp=BACK
+      fi
+    elif mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null; then
+      if [ -z "$(_satellite_not_root_alone "${_tmp}/.old")" ] \
+        && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null; then
+        _swp=BACK
+      elif mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+        _swp=YES
+      elif [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
+        # another pass put a copy at the name meanwhile: that copy's own test
+        _f="$(_satellite_not_root_alone "./${_nm}")"
+        if [ -z "${_f}" ]; then
+          _swp=BACK
+        else
+          _e="${_f}"
+        fi
+      else
+        # nothing at the name: out of use all the same
+        _swp=YES
+      fi
+    else
+      # nothing moved: what is at the name now has its own test (another
+      # pass may have swapped a copy in since this one's)
+      _f="$(_satellite_not_root_alone "./${_nm}")"
+      if [ -z "${_f}" ]; then
+        _swp=BACK
+      else
+        _e="${_f}"
+      fi
     fi
   fi
-  rm -rf -- "${_tmp}"
-  if [ "${_swp}" = "YES" ]; then
-    _msg "${_STATUS} A: ALRT ${_nm} in ${_D}/000/modules held ${_e#./} (a link, or not root's alone) and could not be fetched again: an empty directory took its place, sites use their database cache until the next fetch"
-  else
-    _msg "${_STATUS} A: ALRT ${_nm} in ${_D}/000/modules held ${_e#./} (a link, or not root's alone), could not be fetched again and could not be set aside"
-  fi
-  return 0
+  [ -n "${_tmp}" ] && rm -rf -- "${_tmp}"
+  case "${_swp}" in
+    BACK) return 0 ;;
+    YES) _satellite_module_alarm "${_nm}" "${_e}" YES; return 4 ;;
+  esac
+  _satellite_module_alarm "${_nm}" "${_e}" NO
+  return 5
 }
 
 #

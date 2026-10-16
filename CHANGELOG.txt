@@ -653,14 +653,20 @@
 
     * Archives root unpacks (the mirror's shared modules and bundles, the
       sources Barracuda builds, the BOA tree itself, Java and Python
-      stages) never keep the owners they recorded: an archive recording a
-      name or number one of the box's accounts has no longer gives that
-      account files root builds and runs, or that every site loads.
+      stages, root's extract shell helper) never keep the owners they
+      recorded: an archive recording a name or number one of the box's
+      accounts has no longer gives that account files root builds and
+      runs, or that every site loads.
 
     * A shared module in /data/all/000/modules that is a link, or holds an
       entry not root's alone, and cannot be fetched again is replaced by an
       empty directory of root's with an alert, so no site keeps loading it;
-      sites use their database cache until the next fetch puts it back.
+      sites use their database cache until the next fetch puts it back. The
+      five-minute agents pass mails each such alert once, not on every run.
+
+    * A shared module fetched from the mirror goes in only when the copy
+      unpacked holds nothing but root's own files and directories: a copy
+      that is or holds a link is refused and the module in place kept.
 
     * Drupal 6's cache_backport is fetched like the redis modules, staged
       and swapped in whole, and is no longer removed before every fetch:
