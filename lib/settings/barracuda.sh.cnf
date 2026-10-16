@@ -1967,7 +1967,8 @@ _verify_boa_keys() {
 
 
 ###
-### Extract archive
+### Extract archive (tar never keeps the owners the archive recorded: run
+### by root it would give each file that owner, which can be an account's)
 ###
 _extract_archive_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
@@ -1975,15 +1976,15 @@ _extract_archive_pre() {
   fi
   if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf ${1}    ;;
-      *.tar.gz)    tar xzf ${1}    ;;
-      *.tar.xz)    tar xvf ${1}    ;;
+      *.tar.bz2)   tar --no-same-owner -xjf ${1} ;;
+      *.tar.gz)    tar --no-same-owner -xzf ${1} ;;
+      *.tar.xz)    tar --no-same-owner -xvf ${1} ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
       *.gz)        gunzip -q ${1}  ;;
-      *.tar)       tar xf ${1}     ;;
-      *.tbz2)      tar xjf ${1}    ;;
-      *.tgz)       tar xzf ${1}    ;;
+      *.tar)       tar --no-same-owner -xf ${1} ;;
+      *.tbz2)      tar --no-same-owner -xjf ${1} ;;
+      *.tgz)       tar --no-same-owner -xzf ${1} ;;
       *.zip)       unzip -qq ${1}  ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
@@ -1999,19 +2000,21 @@ _extract_archive_pre() {
 _extract_archive() {
   # The extractor's own status (0 when it extracted), the archive removed
   # either way unless $2 is given. unzip's 1 and gunzip's 2 are warnings
-  # after a complete extract, so they read 0.
+  # after a complete extract, so they read 0. tar never keeps the owners
+  # the archive recorded: run by root it would give each file that owner,
+  # by name or number, which can be one of this box's accounts.
   local _xRc=0
   if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf ${1}    ;;
-      *.tar.gz)    tar xzf ${1}    ;;
-      *.tar.xz)    tar xvf ${1}    ;;
+      *.tar.bz2)   tar --no-same-owner -xjf ${1} ;;
+      *.tar.gz)    tar --no-same-owner -xzf ${1} ;;
+      *.tar.xz)    tar --no-same-owner -xvf ${1} ;;
       *.bz2)       bunzip2 ${1}    ;;
       *.rar)       unrar x ${1}    ;;
       *.gz)        gunzip -q ${1} || [ "$?" = "2" ] ;;
-      *.tar)       tar xf ${1}     ;;
-      *.tbz2)      tar xjf ${1}    ;;
-      *.tgz)       tar xzf ${1}    ;;
+      *.tar)       tar --no-same-owner -xf ${1} ;;
+      *.tbz2)      tar --no-same-owner -xjf ${1} ;;
+      *.tgz)       tar --no-same-owner -xzf ${1} ;;
       *.zip)       unzip -qq ${1} || [ "$?" = "1" ] ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
@@ -2156,7 +2159,7 @@ _boa_tree_stamp_check() {
   # shellcheck disable=SC2086
   ( cd "${_stNew}" \
     && curl ${_crlGet} "${_urlDev}/${_tRee}/boa.tar.gz${_stQry}" -o boa.tar.gz \
-    && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+    && tar --no-same-owner -xzf boa.tar.gz ) > /dev/null 2>&1
   _stGot=$(head -c 256 "${_stNew}/boa/.update.txt" 2> /dev/null \
     | tr -d '\r' | sed 's/[[:space:]]*$//')
   if [ "${_stGot}" = "${_stPub}" ] \

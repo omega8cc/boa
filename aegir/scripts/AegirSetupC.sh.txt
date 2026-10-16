@@ -868,7 +868,7 @@ _tb_stage() {
   fi
   _tb_capture "${2}" "${_tgz}"
   mkdir -p "${_new}"
-  if ! tar -xzf "${_tgz}" -C "${_new}" &> /dev/null; then
+  if ! tar --no-same-owner -xzf "${_tgz}" -C "${_new}" &> /dev/null; then
     rm -f "${_tgz}"
     _tb_rmtree "${_new}"
     _TB_SHA=""

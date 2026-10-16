@@ -484,7 +484,7 @@ _python_stage_src() {
   # extraction doubles as the payload check
   wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
   if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
-    || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
+    || ! tar --no-same-owner -xzf "Python-${_PTN_VRN}.tgz"; then
     echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
     return 1
   fi

@@ -64,7 +64,7 @@ echo "${_PINS}" | while read -r _PROJECT _VERSION; do
     touch "${_WORK_DIR}/.failed"
     break
   fi
-  if ! tar -xzf "${_TARBALL}"; then
+  if ! tar --no-same-owner -xzf "${_TARBALL}"; then
     _msg "FATAL ERROR: extract failed for ${_TARBALL}"
     touch "${_WORK_DIR}/.failed"
     break
@@ -87,7 +87,9 @@ _COUNT=$(find "${_WORK_DIR}/${_KIT_NAME}" -mindepth 1 -maxdepth 1 -type d | wc -
 [[ "${_COUNT}" -eq 10 ]] || { rm -rf "${_WORK_DIR}"; _die "expected 10 project dirs, found ${_COUNT}"; }
 
 cd "${_WORK_DIR}" || { rm -rf "${_WORK_DIR}"; _die "cd ${_WORK_DIR} failed"; }
-tar -czf "${_OUT_DIR}/${_KIT_NAME}.tar.gz" "${_KIT_NAME}" \
+### Every member recorded as root's (0:0), as staticbuild packs: an unpack
+### that keeps owners can then never give the kit to one of a box's users.
+tar --owner=0 --group=0 --numeric-owner -czf "${_OUT_DIR}/${_KIT_NAME}.tar.gz" "${_KIT_NAME}" \
   || { rm -rf "${_WORK_DIR}"; _die "tar failed"; }
 cd "${_OUT_DIR}" || { rm -rf "${_WORK_DIR}"; _die "cd ${_OUT_DIR} failed"; }
 if command -v sha256sum > /dev/null 2>&1; then
