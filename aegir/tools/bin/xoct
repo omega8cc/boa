@@ -4171,7 +4171,7 @@ while IFS= read -r _l; do
       continue
       ;;
     -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
-      grep -vE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
@@ -4943,7 +4943,8 @@ _xoct_wg_unseed() {
 ### target, so a re-run after any exit takes back what an earlier run put;
 ### each removes the note with the line, an operator note stays. The unseed
 ### leaves an account the target holds alone: its line is taken back with
-### the merge, by the create's re-run.
+### the merge, by the create's re-run. Each reads the cnf there as text: a
+### NUL byte (a crash can zero-fill a cnf's tail) costs no line of it.
 # 1 = account on the target 2 = target
 _XOCT_DBCTL_SEED=""
 _xoct_dbctl_seed() {
@@ -4955,13 +4956,13 @@ _xoct_dbctl_seed() {
     _n=/root/.${1}.dbctl-seed.txt
     _w=\$(cat \${_n} 2> /dev/null)
     case \${_w} in
-      operator) grep -qE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
-      made|line) grep -qx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
+      operator) grep -aqE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
+      made|line) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
     esac
     _w=
     if [ ! -e \${_c} ]; then
       ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && _w=made
-    elif grep -qE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c}; then
+    elif grep -aqE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_BORN=' \${_c}; then
       _w=operator
     else
       [ -z \"\$(tail -c 1 \${_c})\" ] || echo >> \${_c}
@@ -4984,7 +4985,7 @@ _xoct_dbctl_unseed() {
     if [ \${_w} = made ] && [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ]; then
       rm -f \${_c}
     elif [ -e \${_c} ]; then
-      grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+      grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
       [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c}
       rm -f \${_c}.dbseed
     fi
@@ -5004,7 +5005,7 @@ _xoct_dbctl_seed_back() {
       *) echo none; exit 0 ;;
     esac
     [ '${3}' = 0 ] || { echo kept; exit 0; }
-    grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+    grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
     [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
     rm -f \${_c}.dbseed
     echo failed" 2> /dev/null)

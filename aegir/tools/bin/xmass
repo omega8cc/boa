@@ -2636,7 +2636,7 @@ while IFS= read -r _l; do
       continue
       ;;
     -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
-      grep -vE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue

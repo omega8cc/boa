@@ -1856,7 +1856,8 @@ _xcopy_dbctl_cnf_last() {
 # _DB_BROKER_ARM line in any form removed where it does not. Only while the
 # name is free there, as the web group's seed above. What was written is
 # taken back when the install does not happen. A copy carries no switch: one
-# not kept out is switched by an armed target as any new account is.
+# not kept out is switched by an armed target as any new account is. The
+# cnf there is read as text: a NUL byte costs no line of it.
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_DBA_SEED=""
 _xcopy_dbarm_seed() {
@@ -1871,12 +1872,12 @@ _xcopy_dbarm_seed() {
     if [ ${_v} = NO ]; then
       if [ ! -e \${_c} ]; then
         ( umask 077; printf '_DB_BROKER_ARM=NO\\n' > \${_c} ) && echo made
-      elif [ \"\$(grep -E \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ]; then
-        grep -vE \"\${_re}\" \${_c} > \${_c}.dbaseed
+      elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ]; then
+        grep -avE \"\${_re}\" \${_c} > \${_c}.dbaseed
         printf '_DB_BROKER_ARM=NO\\n' >> \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c} && echo line
       fi
-    elif [ -e \${_c} ] && grep -qE \"\${_re}\" \${_c}; then
-      grep -vE \"\${_re}\" \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
+    elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
+      grep -avE \"\${_re}\" \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
     fi" 2> /dev/null)
   case "${_XCOPY_DBA_SEED}" in
     made|line) echo "INFO: the source's _DB_BROKER_ARM=NO put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
@@ -1893,7 +1894,7 @@ _xcopy_dbarm_unseed() {
     line)
       # the seed left its own line as the only _DB_BROKER_ARM one
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}" 2> /dev/null
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c} > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}" 2> /dev/null
       ;;
   esac
   _XCOPY_DBA_SEED=""
