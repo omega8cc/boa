@@ -5811,11 +5811,16 @@ _migrate_prepare() {
         ### signal handler exits (bash would otherwise resume at the next
         ### statement and run the rest of the create unlocked); exiting runs
         ### the EXIT handler, which does the removals; it also takes back the
-        ### broker seed of an account the install did not make.
-        trap '_xoct_chattr_back; _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"' > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        ### broker seed of an account the install did not make, until the
+        ### remote install is started: an exit here does not stop that one,
+        ### which may make the account after it, so from then on the seed's
+        ### line and note stay, and a re-run's seed reads the note.
+        _XOCT_INSTALL_ON=NO
+        trap '_xoct_chattr_back; [ "${_XOCT_INSTALL_ON}" = "YES" ] || _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"' > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
+        _XOCT_INSTALL_ON=YES
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
