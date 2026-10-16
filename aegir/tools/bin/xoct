@@ -4403,7 +4403,9 @@ _xoct_wait_target_quiet() {
   while [ "${_w}" -lt "${_max}" ]; do
     ### An armed run-upgrade.pid whose dispatcher is parked (a demoted
     ### target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
-    ### is inert and not busy, as xmass's silence probe already reads it;
+    ### is inert and not busy, as xmass's silence probe already reads it,
+    ### and so is one of an account whose dispatcher aegir2boa holds for an
+    ### unfinished import (/var/backups/a2b/<account>/held-run-<account>);
     ### counting it burnt the whole bound and refused the create. The same
     ### holds for every armed pid while the box's runner itself is parked
     ### (pre-mig's .runner.sh.off, held by the park marker until post-mig):
@@ -4412,7 +4414,7 @@ _xoct_wait_target_quiet() {
     ### the marker the next tools refresh brings the runner back, so the
     ### pid still counts. One with no platforms.info beside it never does:
     ### the runner takes no trigger without it.
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && { [ -e \"/var/backups/off-run/run-\${_n}\" ] || [ -e \"/var/backups/a2b/\${_n}/held-run-\${_n}\" ]; } && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then

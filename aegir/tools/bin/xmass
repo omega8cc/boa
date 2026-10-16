@@ -10672,11 +10672,14 @@ _xmass_target_silence_probe() {
       ### target) every dispatcher is parked under /var/backups/off-run until
       ### the promotion restores it -- and that same cleanup defuses the pid
       ### as stale -- so such a marker is inert: counting it made every
-      ### verb wait out its whole bound on a quiet target. The same holds
+      ### verb wait out its whole bound on a quiet target. So is one of an
+      ### account whose dispatcher aegir2boa holds for an unfinished import
+      ### (/var/backups/a2b/<account>/held-run-<account>) until the import
+      ### is re-run or reverted. The same holds
       ### for a marker with no platforms.info beside it: the runner takes
       ### none without it, so it starts no pass, and every writer of a
       ### trigger puts the list first.
-      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; [ -e "${_f%/*}/platforms.info" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && [ -e "/var/backups/off-run/run-${_n}" ] && continue; printf "%s " "${_n}"; done)
+      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; [ -e "${_f%/*}/platforms.info" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && { [ -e "/var/backups/off-run/run-${_n}" ] || [ -e "/var/backups/a2b/${_n}/held-run-${_n}" ]; } && continue; printf "%s " "${_n}"; done)
       _roots="aegir"
       for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
         _n=$(basename "${_d}")
@@ -10693,8 +10696,9 @@ _xmass_target_silence_probe() {
         [ "${_r}" = "aegir" ] && [ ! -e /var/aegir/.drush/hostmaster.alias.drushrc.php ] && continue
         ### Same as the armed pid above: a queue nothing can dispatch is
         ### not pending work. A demoted box'"'"'s parked dispatcher leaves its
-        ### accounts'"'"' queued tasks inert until the promotion restores it.
-        [ "${_r}" != "aegir" ] && [ ! -e "/var/xdrago/run-${_r}" ] && [ -e "/var/backups/off-run/run-${_r}" ] && continue
+        ### accounts'"'"' queued tasks inert until the promotion restores it,
+        ### and so does a dispatcher aegir2boa holds for an unfinished import.
+        [ "${_r}" != "aegir" ] && [ ! -e "/var/xdrago/run-${_r}" ] && { [ -e "/var/backups/off-run/run-${_r}" ] || [ -e "/var/backups/a2b/${_r}/held-run-${_r}" ]; } && continue
         _c=$(su -s /bin/bash - "${_r}" -c "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = -1 OR (t.task_status = 0 AND (t.executed IS NULL OR t.executed = 0))\"" 2>/dev/null | tail -1 | tr -d " ")
         case "${_c}" in
           "") _q="${_q}${_r}=? " ;;
