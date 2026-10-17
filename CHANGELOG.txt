@@ -676,6 +676,9 @@
 
 @=> Security
 
+    * autosymlink prints every log line as one line: a control byte in a
+      site's name or in a value read from its alias prints as '?'.
+
     * The per-account lock of the minute task runner (run-xdrago) is kept
       in /run/run-xdrago, which only root can enter. It was created
       world-readable in /run, and a lock needs nothing more than read
