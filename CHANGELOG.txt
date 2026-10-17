@@ -1366,6 +1366,13 @@
       markers in /var/log/boa whose writers are gone. A test server held
       304 such password copies and 593 entries in /var/xdrago/log.
 
+    * The weekly prune removes the attack archives older releases set
+      aside at each release in /var/xdrago/monitor/log
+      (hackcheck.archive.<serial>.log, scan_nginx.archive.<serial>.log
+      and the archive-old copies), which nothing has read since: the live
+      archives, whose counts drive the deny escalation, and their
+      one-time .x3 copies stay. A test server held 34 of them.
+
     * The weekly prune keeps only the newest copies BOA makes on every
       run and never reads again: three of sources.list, rsyslog.conf,
       resolv.conf and the nginx init script, five per-release copies of

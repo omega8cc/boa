@@ -305,9 +305,13 @@ _purge_run_copies() {
 # MySQL root password and client config older releases kept at the top of
 # /var/backups (they go to dragon/config now), the log folder used before
 # /var/log/boa (BOA.sh.txt copied its files there once and then wrote
-# .migrated.txt), and markers whose writers are gone. The old folder is emptied
-# only after that copy, and never when it leads to /var/log/boa itself.
+# .migrated.txt), markers whose writers are gone, and the attack archives older
+# releases set aside at each release (<name>.archive.<serial>.log and
+# <name>.archive-old-*.log); the live archives and their one-time .x3 copies,
+# which guest-water and xdr9000 read, stay. The old folder is emptied only after
+# that copy, and never when it leads to /var/log/boa itself.
 _purge_leftovers() {
+  local _lfA
   rm -f /var/backups/.my.pass.txt-pre-* /var/backups/.my.cnf-pre-*
   if [ -e "/var/log/boa/.migrated.txt" ] \
     && [ -d "/var/xdrago/log" ] && [ ! -L "/var/xdrago/log" ] \
@@ -318,6 +322,13 @@ _purge_leftovers() {
   rm -f /var/log/boa/sec-redis-pass-* /var/log/boa/.custom_percona_forced.* \
     /var/log/boa/mss-build-master-* /var/log/boa/geos-* \
     /var/log/boa/nginx.kill-start.log /var/log/boa/cron-count.kill.log
+  if [ -d "/var/xdrago/monitor/log" ] && [ ! -L "/var/xdrago/monitor/log" ]; then
+    for _lfA in hackcheck scan_nginx hackftp; do
+      find /var/xdrago/monitor/log -mindepth 1 -maxdepth 1 -type f \
+        \( -name "${_lfA}.archive.*.log" ! -name "${_lfA}.archive.x3.log" \
+        -o -name "${_lfA}.archive-old-*.log" \) -delete &> /dev/null
+    done
+  fi
 }
 
 # A session cgroup is idle when no process is in it or below it and it has no
