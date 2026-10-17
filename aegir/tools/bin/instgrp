@@ -1715,10 +1715,10 @@ _do_convert() {
 # The web leg skips where the file half does (a freeze without --force, a
 # live install or upgrade run), with a note and rc 4, so a caller that
 # reclaims for the web residue sees it left. While a free of the account's
-# web group name that a kill cut short can still finish, both legs skip (rc
-# 4, alarmed) for the next web verb to finish it; a rename alone is put
-# back first, and a journal nothing can finish from is dropped with an
-# alarm (_wg_free_settled).
+# web group name that a kill cut short can still finish, or its journal
+# cannot be read, both legs skip (rc 4, alarmed) for the next web verb to
+# finish it; a rename alone is put back first, and a journal nothing can
+# finish from is dropped with an alarm (_wg_free_settled).
 _do_reclaim() {
   local _a="$1" _wrc=0 _rc
   if _valid_account "${_a}"; then
@@ -1734,7 +1734,7 @@ _do_reclaim() {
     else
       _wg_profile "${_a}"
       if ! _wg_free_settled; then
-        _log "${_a}: RECLAIM skipped: a free of its web group name is unfinished"
+        _log "${_a}: RECLAIM skipped: a free of its web group name is unfinished, or its journal cannot be read"
         return 4
       fi
       trap '_wg_on_exit' EXIT
@@ -5985,6 +5985,12 @@ _wg_free() {
     _fail "${_WP_A}: $(_wg_busy_why "${_hr}"); ${_WP_G} not freed"
     return "${_hr}"
   fi
+  # a journal that cannot be read may name a free that can still finish
+  # (_wg_free_lost): never written over
+  if _wg_free_j_unread; then
+    _fail "${_WP_A}: the journal $(_wg_free_journal) of a free of ${_WP_G} cannot be read (a web verb's free): it is kept and nothing is settled from it or written over it until it reads again; $(_wg_free_tools_say); ${_WP_G} not freed"
+    return 1
+  fi
   # the account's tasks drained and held from before the rename to after
   # the last walk: a task's process holds only the old number meanwhile
   _wg_qhold || { _fail "${_WP_A}: the task queue did not drain; ${_WP_G} not freed"; return 1; }
@@ -6239,11 +6245,13 @@ _wg_free_j_unread() {
 # A lost journal (_wg_free_held), its held gid $1 (or -), its new gid $2
 # (or -), $3 the run that found it: dropped (_wg_free_drop), unless it names
 # no held gid because it cannot be read. Such a journal may name a free that
-# can still finish, so it is kept and nothing is settled from it; xmass,
-# xoct and xcopy keep refusing the account meanwhile (they count it
-# unfinished), and an alarm says so at most once a day. One that reads now
-# and names a held gid, or says done, could not be read a moment ago: it is
-# left to the next run.
+# can still finish, so it is kept and nothing is settled from it or written
+# over it (_wg_free_settled, _wg_free); xmass, xoct and xcopy keep refusing
+# the account meanwhile (they count it unfinished), and an alarm says so at
+# most once a day. One that reads now and names a held gid, or says done,
+# could not be read a moment ago: it is left to the next run. 1 while the
+# journal is kept (it cannot be read, or reads now naming a held gid), 0
+# once it is dropped or says done.
 _wg_free_lost() {
   local _m _t _s="" _h=""
   if [[ "${1}" =~ ^[0-9]+$ ]]; then
@@ -6253,20 +6261,20 @@ _wg_free_lost() {
   if ! _wg_free_j_unread; then
     { read -r _s _h _ < "$(_wg_free_journal)"; } 2> /dev/null
     _h="${_h#held=}"
-    if [[ "${_h}" =~ ^[0-9]+$ ]] || [ "${_s}" = "step=done" ]; then
-      return 0
-    fi
+    [ "${_s}" != "step=done" ] || return 0
+    [[ ! "${_h}" =~ ^[0-9]+$ ]] || return 1
     _wg_free_drop "${1}" "${2}" "${3}"
     return 0
   fi
   _m=$(_wg_free_unread_file)
   _t=$( { tr -dc '0-9' < "${_m}"; } 2> /dev/null )
   if [[ "${_t}" =~ ^[0-9]+$ ]] && [ "$(( $(date +%s) - _t ))" -lt 86400 ]; then
-    return 0
+    return 1
   fi
   mkdir -p /var/log/boa 2> /dev/null
   _wg_put_root "${_m}" "$(date +%s)" || :
   _alrt "${_WP_A}: the journal $(_wg_free_journal) of a free of ${_WP_G} cannot be read (${3}): it is kept and nothing is settled from it until it reads again; $(_wg_free_tools_say) (this alarm once a day)"
+  return 1
 }
 
 # What the migration tools do with the account while a free of its name is
@@ -6282,17 +6290,18 @@ _wg_free_tools_say() {
 
 # Reclaim, on an account a free of whose name a kill cut short: 0 when no
 # free is unfinished (a journal whose rename never happened goes, a rename
-# alone is put back, a journal nothing can finish from goes with an alarm,
-# one that cannot be read stays: _wg_free_lost), 1 while the rename alone
-# holds or the free can still finish (_wg_free_held; both legs skipped,
-# alarmed): the next web verb's resume finishes it.
+# alone is put back, a journal nothing can finish from goes with an alarm),
+# 1 while the rename alone holds or the free can still finish
+# (_wg_free_held), or while a journal that cannot be read is kept
+# (_wg_free_lost): both legs skipped, alarmed; the next web verb's resume
+# finishes the free, or settles the journal once it reads again.
 _wg_free_settled() {
   local _st _h _n
   [ "${_WP_M}" != "YES" ] || return 0
   read -r _st _h _n <<< "$(_wg_free_held "${_WP_A}" state)"
   case "${_st}" in
     stale) _wg_free_j_gone "its rename never happened, reclaim" ;;
-    lost) _wg_free_lost "${_h}" "${_n}" reclaim ;;
+    lost) _wg_free_lost "${_h}" "${_n}" reclaim || return 1 ;;
     renamed|finish)
       _wg_free_j_read
       _wg_free_mend reclaim
