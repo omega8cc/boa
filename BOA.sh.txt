@@ -2750,7 +2750,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _runner_parked graceful.sh \
-      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f83
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f84
     _runner_parked usage.sh \
       || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f54
   fi
@@ -3415,7 +3415,8 @@ _update_agents() {
             _acct_in_real_dir "${_leRoot}" rm -rf -- "./${_acctsDemoDir##*/}"
             ### Archive, never destroy: the accounts dir holds the tenant's
             ### only ACME account key. A mis-fired heal that deleted it cost
-            ### a fresh registration; an archived copy costs a mv back.
+            ### a fresh registration; an archived copy costs a mv back. The
+            ### weekly graceful.sh prune keeps the newest three per account.
             if [ -d "${_acctsDir}" ]; then
               mkdir -p /var/backups/le-accounts/${_tUsr}
               _acct_in_real_dir "${_leRoot}" mv -f -- "./${_acctsDir##*/}" \

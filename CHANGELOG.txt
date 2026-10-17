@@ -1381,6 +1381,11 @@
       a running process holds. A test server dropped 138 of 144 such
       entries with both Solr instances answering throughout.
 
+    * The weekly prune keeps the newest three ACME account keys the
+      certificate heal sets aside per account when it registers anew
+      (/var/backups/le-accounts/<account>/accounts-<stamp>), newest by the
+      date and time in the name; the heal still archives, never deletes.
+
     * The weekly prune keeps only the newest copies BOA makes on every
       run and never reads again: three of sources.list, rsyslog.conf,
       resolv.conf and the nginx init script, five per-release copies of

@@ -185,6 +185,7 @@ _purge_weekly_backups() {
   _purge_markers
   _purge_dated_files
   _purge_solr_tmp
+  _purge_le_accounts
   _purge_leftovers
   touch "${_wkStamp}"
 }
@@ -330,6 +331,24 @@ _purge_solr_tmp() {
             -ctime +1 -execdir rm -rf -- {} + 2> /dev/null
         done
     done
+  done
+}
+
+# The ACME account keys the certificate heal sets aside per account when it
+# registers anew (/var/backups/le-accounts/<account>/accounts-<stamp>): the newest
+# three per account stay, newest by the date and time in the name, which keeps
+# its order whatever later touches the copies. Other names stay.
+_purge_le_accounts() {
+  local _laD _laE
+  [ -d "/var/backups/le-accounts" ] && [ ! -L "/var/backups/le-accounts" ] || return 0
+  for _laD in /var/backups/le-accounts/*; do
+    [ -d "${_laD}" ] && [ ! -L "${_laD}" ] || continue
+    find "${_laD}" -mindepth 1 -maxdepth 1 -name \
+      'accounts-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]' \
+      -printf '%f\n' 2> /dev/null | LC_ALL=C sort -r | tail -n +4 \
+      | while read -r _laE; do
+        rm -rf -- "${_laD:?}/${_laE}"
+      done
   done
 }
 
