@@ -2611,6 +2611,54 @@ _xmass_dbctl_kept_here() {
     && [ "$(head -c 64 "/root/.${1}.dbctl-seed.txt" 2> /dev/null)" = "operator" ]
 }
 
+# The line an xoct create put into the account's cnf on the target before
+# its install (_DB_BROKER_BORN=NO, its note /root/.<oN>.dbctl-seed.txt
+# there) is taken back once a merge of the source's settings succeeds, as
+# xoct's create and live transfer take it back: each live pass runs this
+# with its own merge's result, and a merge that failed leaves the line, the
+# note saying kept. Same text as xoct's _xoct_dbctl_seed_back.
+# 1 = account on the target 2 = target 3 = what the merge of the source's
+# settings returned
+_xmass_dbctl_seed_back() {
+  local _r
+  # shellcheck disable=SC2029
+  _r=$(ssh root@"${2}" "_c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    case \"\$(cat \${_n} 2> /dev/null)\" in
+      pending|made|line|kept) ;;
+      *) echo none; exit 0 ;;
+    esac
+    if [ '${3}' != 0 ]; then
+      ( umask 077; printf 'kept\\n' > \${_n} )
+      echo kept
+      exit 0
+    fi
+    grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+    [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
+    rm -f \${_c}.dbseed
+    echo failed" 2> /dev/null)
+  case "${_r}" in
+    none|back) ;;
+    kept)
+      echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}, which keeps the account out of the database broker there"
+      echo "ALRT: no pass takes it back: the next merge of the source's settings that succeeds does (a re-run of the create, an xoct live transfer, an xmass live pass)"
+      ;;
+    failed)
+      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt (no pass takes it back)"
+      ;;
+    *)
+      # no answer: only the note there says whether the line is the tool's
+      if [ "${3}" = 0 ]; then
+        echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: it gave no answer; where /root/.${1}.dbctl-seed.txt there reads pending, made, line or kept, remove that line there, and that note: no pass takes it back"
+      else
+        echo "ALRT: the source's settings were not merged and ${2} gave no answer: where /root/.${1}.dbctl-seed.txt there reads pending, made, line or kept, _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf there, which keeps the account out of the database broker there"
+        echo "ALRT: no pass takes it back: the next merge of the source's settings that succeeds does (a re-run of the create, an xoct live transfer, an xmass live pass)"
+      fi
+      ;;
+  esac
+  return 0
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's copy: replace-or-append per key, whole lines, host axis excluded
 ### (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN are re-derived
@@ -2619,7 +2667,9 @@ _xmass_dbctl_kept_here() {
 ### static/control/*.info, so the control-file force is what makes the pins
 ### stick and the cnf carries everything only it owns. Both cnfs are read and
 ### rewritten as text (grep -a): a crash can zero-fill a cnf's tail, and grep
-### would then read the file as binary and pass none of its lines.
+### would then read the file as binary and pass none of its lines. A merge
+### that ran on the target then takes back a create's _DB_BROKER_BORN=NO
+### there with its result (_xmass_dbctl_seed_back).
 _xmass_push_account_cnf() {
   local _acct="$1" _t="$2"
   local _sCnf="/root/.${_acct}.octopus.cnf"
@@ -2739,9 +2789,11 @@ MERGESH
   rm -f "${_lTmp}" "${_lRun}"
   if ssh root@"${_t}" "bash ${_rRun}; _rc=\$?; rm -f ${_rRun}; exit \${_rc}"; then
     _info "  ${_acct}: merged source octopus.cnf values into the target copy"
+    _xmass_dbctl_seed_back "${_acct}" "${_t}" 0
     return 0
   fi
   _alrt "cnf merge for ${_acct} on ${_t} failed; the target keeps its current cnf"
+  _xmass_dbctl_seed_back "${_acct}" "${_t}" 1
   return 1
 }
 

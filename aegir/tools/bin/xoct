@@ -4983,24 +4983,27 @@ _xoct_wg_unseed() {
 ### later passes treat the account as any other of the box. A merge that
 ### failed leaves the line where it is, the note saying kept, and says so:
 ### without the source's settings the target cannot know an account its
-### source kept out. The next merge that succeeds takes it back, a create's
-### or a live transfer's, each of which runs the take-back with its own
-### merge's result.
+### source kept out. The next merge that succeeds takes it back: a create's,
+### an xoct live transfer's or an xmass live pass's, each of which runs the
+### take-back with its own merge's result. No pass of the target takes back
+### a line its note names, so the account stays kept out until then.
 ### The seed says what it did in a root-only note beside the cnf there,
-### /root/.<account>.dbctl-seed.txt, one word: made (the cnf made for the
-### line), line (the line added to a cnf that was there), kept (either, the
-### take-back waiting for a merge that succeeds) or operator (the
-### cnf already assigns _DB_BROKER_BORN at the start of a line, the one
-### spelling the install keeps in a cnf it did not write: nothing is added,
-### and that line is its operator's for good; an export or an indented
-### line, which the install drops, gets the tool's line as where there is
-### none). The take-back, and the unseed
-### of an install that did not happen, act on that note as read on the
-### target, so a re-run after any exit takes back what an earlier run put;
-### each removes the note with the line, an operator note stays. The unseed
-### leaves an account the target holds alone: its line is taken back with
-### the merge, by the create's re-run. Each reads the cnf there as text: a
-### NUL byte (a crash can zero-fill a cnf's tail) costs no line of it.
+### /root/.<account>.dbctl-seed.txt, one word: pending (the tool's line, in
+### a cnf made for it or one that was there, until a merge of the source's
+### settings succeeds), kept (the same after a merge that failed) or
+### operator (the cnf already assigns _DB_BROKER_BORN at the start of a
+### line, the one spelling the install keeps in a cnf it did not write:
+### nothing is added, and that line is its operator's for good; an export
+### or an indented line, which the install drops, gets the tool's line as
+### where there is none). The notes of the release before, made and line,
+### are read as pending. The take-back, and the unseed of an install that
+### did not happen, act on that note as read on the target, so a re-run
+### after any exit takes back what an earlier run put; each removes the note
+### with the line, an operator note stays. The unseed leaves an account the
+### target holds alone: its line is taken back with the merge, by the
+### create's re-run. Each reads the cnf there as text: a NUL byte (a crash
+### can zero-fill a cnf's tail) costs no line of it, and the seed's line
+### starts a line of its own after a last byte that is no line end.
 # 1 = account on the target 2 = target
 _XOCT_DBCTL_SEED=""
 _xoct_dbctl_seed() {
@@ -5013,16 +5016,16 @@ _xoct_dbctl_seed() {
     _w=\$(cat \${_n} 2> /dev/null)
     case \${_w} in
       operator) grep -aq '^_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
-      made|line|kept) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
+      pending|made|line|kept) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
     esac
     _w=
     if [ ! -e \${_c} ]; then
-      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && _w=made
+      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && _w=pending
     elif grep -aq '^_DB_BROKER_BORN=' \${_c}; then
       _w=operator
     else
-      [ -z \"\$(tail -c 1 \${_c})\" ] || echo >> \${_c}
-      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && _w=line
+      [ ! -s \${_c} ] || [ \"\$(tail -c 1 \${_c} | od -An -tx1 | tr -d ' \\n')\" = 0a ] || echo >> \${_c}
+      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && _w=pending
     fi
     [ -n \"\${_w}\" ] && ( umask 077; printf '%s\\n' \${_w} > \${_n} ) && echo \${_w}" 2> /dev/null)
   return 0
@@ -5035,10 +5038,10 @@ _xoct_dbctl_unseed() {
     _n=/root/.${1}.dbctl-seed.txt
     _w=\$(cat \${_n} 2> /dev/null)
     case \${_w} in
-      made|line) ;;
+      pending|made|line) ;;
       *) exit 0 ;;
     esac
-    if [ \${_w} = made ] && [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ]; then
+    if [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ]; then
       rm -f \${_c}
     elif [ -e \${_c} ]; then
       grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
@@ -5050,14 +5053,15 @@ _xoct_dbctl_unseed() {
   return 0
 }
 # 1 = account on the target 2 = target 3 = what the merge of the source's
-# settings returned
+# settings returned. Same text in xoct and xmass (_xmass_dbctl_seed_back):
+# each live pass of xmass runs it with its own merge's result.
 _xoct_dbctl_seed_back() {
   local _r
   # shellcheck disable=SC2029
   _r=$(ssh root@"${2}" "_c=/root/.${1}.octopus.cnf
     _n=/root/.${1}.dbctl-seed.txt
     case \"\$(cat \${_n} 2> /dev/null)\" in
-      made|line|kept) ;;
+      pending|made|line|kept) ;;
       *) echo none; exit 0 ;;
     esac
     if [ '${3}' != 0 ]; then
@@ -5072,23 +5076,22 @@ _xoct_dbctl_seed_back() {
   case "${_r}" in
     none|back) ;;
     kept)
-      echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}"
-      echo "ALRT: a re-run of this create, or the next live transfer, takes it back once it has merged them"
+      echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}, which keeps the account out of the database broker there"
+      echo "ALRT: no pass takes it back: the next merge of the source's settings that succeeds does (a re-run of the create, an xoct live transfer, an xmass live pass)"
       ;;
     failed)
-      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt"
+      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt (no pass takes it back)"
       ;;
     *)
       # no answer: only the note there says whether the line is the tool's
       if [ "${3}" = 0 ]; then
-        echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: it gave no answer; where /root/.${1}.dbctl-seed.txt there reads made, line or kept, remove that line there, and that note"
+        echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: it gave no answer; where /root/.${1}.dbctl-seed.txt there reads pending, made, line or kept, remove that line there, and that note: no pass takes it back"
       else
-        echo "ALRT: the source's settings were not merged and ${2} gave no answer: where /root/.${1}.dbctl-seed.txt there reads made, line or kept, _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf there"
-        echo "ALRT: a re-run of this create, or the next live transfer, takes it back once it has merged them"
+        echo "ALRT: the source's settings were not merged and ${2} gave no answer: where /root/.${1}.dbctl-seed.txt there reads pending, made, line or kept, _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf there, which keeps the account out of the database broker there"
+        echo "ALRT: no pass takes it back: the next merge of the source's settings that succeeds does (a re-run of the create, an xoct live transfer, an xmass live pass)"
       fi
       ;;
   esac
-  _XOCT_DBCTL_SEED=""
   return 0
 }
 # 1 = account here 2 = account on the target 3 = target
