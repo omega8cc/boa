@@ -753,6 +753,12 @@ _SEND_UPGRADE_EMAIL=YES
 ### force conversion to InnoDB format in all
 ### sites hosted on this instance.
 ###
+### Drupal 8 and newer sites are never
+### converted: the conversion reads a site
+### through Drush 8, which BOA never runs
+### against them, and they run on InnoDB
+### already.
+###
 ### Note that it will run weekly on all sites
 ### even if all tables have been already
 ### converted to the desired format/engine.

@@ -2667,12 +2667,20 @@ _if_site_db_conversion() {
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
       _TIMP=$(date +%y%m%d-%H%M%S)
-      echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
-        for ${_Dom} started"
-      _sql_convert
-      _TIMP=$(date +%y%m%d-%H%M%S)
-      echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
-        for ${_Dom} completed"
+      if [ -e "${_Plr}/core/lib/Drupal.php" ]; then
+        ### sqlmagic reads the site through Drush 8 (status, sql-query), and
+        ### outside Aegir's own backend nothing bootstraps a Drupal 8+ site
+        ### with Drush 8; those sites run on InnoDB already
+        echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
+          for ${_Dom} skipped: Drupal 8+ site, no Drush 8 here"
+      else
+        echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
+          for ${_Dom} started"
+        _sql_convert
+        _TIMP=$(date +%y%m%d-%H%M%S)
+        echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
+          for ${_Dom} completed"
+      fi
     fi
   fi
 }
