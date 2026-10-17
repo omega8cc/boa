@@ -1373,6 +1373,14 @@
       archives, whose counts drive the deny escalation, and their
       one-time .x3 copies stay. A test server held 34 of them.
 
+    * The weekly prune removes the work directories and start files Solr 7
+      and Solr 9 leave in /tmp at every start (jetty-* and
+      start_*.properties of the solr7 and solr9 users), which BOA's
+      cleaner, written for Solr 4's jetty9, never matched: only those
+      made over two days ago, never the newest of each kind and never one
+      a running process holds. A test server dropped 138 of 144 such
+      entries with both Solr instances answering throughout.
+
     * The weekly prune keeps only the newest copies BOA makes on every
       run and never reads again: three of sources.list, rsyslog.conf,
       resolv.conf and the nginx init script, five per-release copies of

@@ -184,6 +184,7 @@ _purge_weekly_backups() {
   _purge_run_copies
   _purge_markers
   _purge_dated_files
+  _purge_solr_tmp
   _purge_leftovers
   touch "${_wkStamp}"
 }
@@ -297,6 +298,37 @@ _purge_run_copies() {
       | sort -u); do
       _prune_keep_newest /var/backups \
         "${_rcAls}.alias.drushrc.php.${_rcUsr}-${_rcStm}" 3
+    done
+  done
+}
+
+# Solr's Jetty leaves a work directory (jetty-*) and a start properties file
+# (start_*.properties) in /tmp at every start, and nothing removes the old ones:
+# BOA's own cleaner matches only Solr 4's jetty9. Only what the solr7 and solr9
+# users own counts, since any account can make such names in /tmp, and of that
+# only an entry made over two days ago that is not the newest of its kind for
+# its owner and that no process holds open, maps or works in.
+_purge_solr_tmp() {
+  local _stU _stK _stC _stE _stHeld
+  _stHeld="$( { find /proc/[0-9]*/fd /proc/[0-9]*/cwd -maxdepth 1 -lname '/tmp/*' \
+    -printf '%l\n'; awk '$6 ~ /^\/tmp\// { print $6 }' /proc/[0-9]*/maps; } \
+    2> /dev/null | sort -u)"
+  for _stU in solr7 solr9; do
+    id -u "${_stU}" &> /dev/null || continue
+    for _stK in 'jetty-*' 'start_*.properties'; do
+      find /tmp -mindepth 1 -maxdepth 1 -user "${_stU}" -name "${_stK}" \
+        -printf '%C@ %f\n' 2> /dev/null | LC_ALL=C sort -rn | tail -n +2 \
+        | while read -r _stC _stE; do
+          case "${_stE}" in
+            ""|*/*|*[!A-Za-z0-9._-]*) continue ;;
+          esac
+          if printf '%s\n' "${_stHeld}" | grep -q -e "^/tmp/${_stE}\$" \
+            -e "^/tmp/${_stE}/"; then
+            continue
+          fi
+          find /tmp -mindepth 1 -maxdepth 1 -name "${_stE}" -user "${_stU}" \
+            -ctime +1 -execdir rm -rf -- {} + 2> /dev/null
+        done
     done
   done
 }
