@@ -5730,6 +5730,11 @@ _if_install_wkhtmltox() {
   # sites point at, is what sends a pass here, and with no distro package
   # reinstalled the copy has to come from /usr/local/bin.
   _fix_wkhtml
+  # No distro package stands in when the bundled one could not be fetched or
+  # installed, so say it; the next pass tries again.
+  if [ ! -x "/usr/local/bin/wkhtmltopdf" ] && [ ! -x "/usr/bin/wkhtmltopdf" ]; then
+    _msg "ALRT: wkhtmltopdf is missing: the bundled wkhtmltox ${_WKHTMLTOX_VRN} package could not be installed"
+  fi
 }
 
 #
@@ -8733,16 +8738,22 @@ _if_heal_logind_leak() {
         *) _lgnExtra="${_lgnExtra} ${_lgnPkg}" ;;
       esac
     done
+    _lgnExtra="$(printf '%s\n' ${_lgnExtra} | sort -u | tr '\n' ' ')"
+    _lgnExtra="${_lgnExtra% }"
     if [ -z "${_lgnSim}" ]; then
       _msg "ALRT: libpam-elogind is installed but apt cannot plan its removal; every login session still leaves a cgroup behind"
     elif [ -n "${_lgnExtra}" ]; then
-      _msg "ALRT: libpam-elogind left in place: removing it would also remove${_lgnExtra}; every login session still leaves a cgroup behind"
+      _msg "ALRT: libpam-elogind left in place: removing it would also remove ${_lgnExtra}; every login session still leaves a cgroup behind, which graceful.sh removes nightly"
     else
       _mrun "apt-get purge libpam-elogind -y -qq"
       if _pkg_installed "libpam-elogind"; then
         _msg "ALRT: libpam-elogind could not be removed; every login session still leaves a cgroup behind"
       else
         _msg "INFO: elogind's PAM module and the polkit stack removed"
+        # pam-auth-update keeps a common-session file edited by hand as it is
+        if grep -qs "pam_elogind" /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive; then
+          _msg "WARN: /etc/pam.d/common-session still names pam_elogind, now removed: delete that line or run pam-auth-update --force"
+        fi
       fi
     fi
   fi
