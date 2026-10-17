@@ -10352,15 +10352,17 @@ _satellite_child_b_prepare_dirs_permissions() {
      | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
 
   mkdir -p ${_ROOT}/aegir/distro
-  mkdir -p ${_ROOT}/distro/${_DISTRO}
-  mkdir -p ${_ROOT}/src/${_DISTRO}
+  # Only the parent: the platforms of a pass go into distro/<core
+  # generation>, made by stage C when it builds there. A distro/<this pass>
+  # made here stayed empty whenever the generation was reused (every re-run)
+  # and was swept away as a ghost an hour later, and its src/<this pass>
+  # twin, which nothing reads, stayed for good.
+  mkdir -p ${_ROOT}/distro
   mkdir -p ${_ROOT}/src/{modules,themes}
   mkdir -p ${_ROOT}/{tools,log,u,backups,platforms,clients}
   chmod 0700 ${_ROOT}/{log,src,u} &> /dev/null
-  chmod 0700 ${_ROOT}/src/${_DISTRO} &> /dev/null
   chmod 0700 ${_ROOT}/src/{modules,themes} &> /dev/null
   chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,platforms,tools} &> /dev/null
-  chmod 0711 ${_ROOT}/distro/${_DISTRO} &> /dev/null
   chmod 0750 ${_ROOT}/{backups,clients} &> /dev/null
 
   if [ "${_STATUS}" = "UPGRADE" ]; then
