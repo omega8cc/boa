@@ -314,7 +314,11 @@ _satellite_run_child_b
 ###
 ### Run accelerated tasks queue
 ###
-if [ -e "/var/xdrago/run-${_USER}" ]; then
+### Not for an account whose aegir2boa db-import is unfinished, on a box armed
+### for the web group: its dispatcher is held, and one left live must not run.
+if [ -e "/var/xdrago/run-${_USER}" ] \
+  && { [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    || ! _a2b_import_unfinished "${_USER}"; }; then
   _msg "${_STATUS} A: Ægir accelerated task queue will run for 60 seconds..."
   su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${_vSet} hosting_queue_tasks_items 3" &> /dev/null
   _msg "${_STATUS} A: Please wait..."

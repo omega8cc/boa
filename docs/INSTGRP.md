@@ -414,7 +414,7 @@ web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
 it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
 the writers that must be current on the box, the stamp, and for each
 account whether it is ready and what would hold its phase B back, counted
-by kind (below).
+by kind (below), and the same for the master.
 
 A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
@@ -424,6 +424,10 @@ carries two tokens: `provision_drupal_web_group_private`, the branch that
 keeps its private files closed, and `provision_path_web_group`, which keeps
 a site outside the account's tree in `www-data` (see "What holds phase B
 back").
+
+For the limited-shell worker that is its current form: an earlier one
+raised an incident on every pass for an account at phase A whose site
+keeps its files store outside the account.
 
 A box that is not ready refuses with exit 5, names what its check missed,
 and changes nothing. `webcheck --report` prints `provision: ready` for an
@@ -587,6 +591,21 @@ has the old number or `wg-oN` has the number the journal gave it (the
 walk from the old number, the account's identities taken out of every
 group of that number).
 
+Every repair a web verb makes of a free is made under the account's hold: a run that cannot take it leaves the free to
+the run that holds it, which finishes or mends it, and is deferred at
+once (exit 4 while another web-group run holds the account, 6 while a
+nightly or migratefs pass of it is still live after the wait), so it
+waits for the account only once; where the account's name is held
+outside it, its alarm names that cause and no free is tried in that run.
+
+So on a standby or a box being prepared as one, a run of an account with
+an unfinished journal whose nightly pass stays live through the wait is
+deferred with exit 6 (row E2), not refused as a standby (E4).
+
+A free whose rename is put back while it runs (by hand, or by a `reclaim`,
+which holds no account) stops with its alarm, takes nothing out of any
+group and leaves no journal.
+
 Until then `reclaim`, `convert`, the nightly's probe and a root-run
 restore's re-group leave the paths still in the old number alone, as the
 free's walk to finish; `reclaim` puts a rename alone back (the state
@@ -595,9 +614,30 @@ before the free) and otherwise skips the account, exit 4, with an alarm.
 A rename alone that an earlier version left under the name it gave the
 renamed group, `<gid>-wgheld`, is put back the same way, by `reclaim` and
 by a web verb alike; the web verb then frees the name as described above.
+
+That name does not name the account: where another account's free journal
+names the same number (two group entries that shared it), the group is
+left as it is, under its name, and alarmed. A run that converts the
+account then makes a new `wg-oN`, and the account's next web verb
+finishes the free from the old number (its paths there move to the new
+group); the other account's group keeps its name.
+
+A free of such a group that can still finish (`wg-oN` made on another number) is finished like
+any other, root's record kept where it names that number already.
+
 A journal nothing can finish from (the renamed group removed, renamed or
 renumbered while `wg-oN` is gone or on another number) is dropped with an
-alarm that names it, by `reclaim` and by a web verb alike.
+alarm that names it, by `reclaim` and by a web verb alike. So is a journal
+that is not done and names no old number (a hand's edit, damage): until
+then `webstatus` and `webdrift` show it, and the migration tools count it
+unfinished.
+
+A journal that cannot be read (a read error) is kept: it may
+name a free that can still finish, so no run settles anything from it
+or writes over it until it reads again. Meanwhile `reclaim` skips the
+account (exit 4), a free of the name stops with the journal's alarm, an
+alarm says so once a day, and the migration tools keep refusing the
+account.
 
 Each journal `reclaim` or a web verb removes, dropped, put back or one
 whose rename never happened, leaves its line in
@@ -616,23 +656,38 @@ A free whose last checks warned (a version's reload, a listing, paths
 left in the old number) is recorded done all the same, and the run's own
 steps reload what is left. The directories and single-link files it
 leaves in the old number (an immutable one the walk leaves as it is) are
-named in its alarm, the first ten, and each in `/var/log/boa/instgrp.log`;
-a hard-linked file the walk leaves there is not. A migration carries both
-by that number, as it carries any path. The journal goes with the
-account.
+named in its alarm, the first ten, and in `/var/log/boa/instgrp.log`, up
+to a thousand, with a line there when there are more; a hard-linked file
+the walk leaves there is not named.
 
-While the journal is not done, the paths still in the old number would
-travel by that number alone, so `xoct` and `xcopy` refuse to start for
-the account. `xmass` skips its legs in a sync (an autosync pass included),
-with a DENY naming the journal, and carries the shared legs and every
-other account; that pass ends non-zero, so its alarm still fires, and a
-dry sync says so without marking the plan not clean. `xmass prep-target`,
-`init` and both cutover gates refuse the whole run, since none may leave
-an account behind.
+While the renamed group keeps the old number, `xmass`, `xoct` and `xcopy`
+map that number onto the account's web group on the target, so both land
+there as `wg-oN` carried them before the free. The alarms and the
+account's notes name the group the old number has, under whatever name.
+The journal is removed with the account.
+
+While the journal is not done (an empty or unreadable one counts as not
+done), the paths still in the old number would travel by that number
+alone, so `xoct` and `xcopy` refuse to start for the account; `xoct` lets
+a proxied account's `proxy --repair` and `go-live` through, since neither
+carries an account path.
+
+`xmass` skips its legs in a sync (an autosync
+pass included), with a DENY naming the journal, and carries the shared
+legs and every other account; that pass ends non-zero, its last line
+naming the accounts it skipped and their journals, so its alarm still
+fires, and a dry sync says so without marking the plan not clean.
+
+`xmass prep-target`, `init` and both cutover gates refuse the whole run,
+since none may leave an account behind; a live cutover whose own legs
+still skip one (a free left unfinished after its gate) stops before the
+write freeze, its error naming such accounts and their journals first.
 
 Each refusal says what finishes the free: the account's next Octopus
-pass, or `instgrp webconvert oN`, which also completes the account's
-conversion; for a frozen account only once its freeze is recovered.
+pass, or `instgrp webconvert oN`, which also converts the account and
+lifts a `_WEB_GROUP=NO` opt-out, either once no `xmass`, `xoct` or `xcopy`
+run is live on the box. While the account is frozen (`log/proxied.pid`)
+the free waits.
 
 ### What holds phase B back
 
@@ -699,8 +754,9 @@ a group. This is why the readiness check asks for the copy that carries
 
 - `webconvert <oN>`, `webconvert all` and the Octopus arm take such an
   account to phase A, exit 0. The account's notes
-  (`/var/log/boa/instgrp-web.oN.notes.txt`, and a copy in its own
-  `log/web-group-notes.txt`) name each path and what clears it.
+  (`/var/log/boa/instgrp-web.oN.notes.txt`, a copy in its own
+  `log/web-group-notes.txt` and one its main login reads, below) name
+  each path and what clears it, once a run.
 - `--phase-b` on an account below phase A takes it to A and stops there,
   exit 6. A run that stops before phase A is complete (the task queue not
   drained, exit 6) is finished by the same command run again. On an
@@ -732,19 +788,33 @@ a group. This is why the readiness check asks for the copy that carries
   store. The two accounts settle it between them; BOA does not move the
   files for them.
 - `instgrp webcheck --report` says `shares:  phase B held` for such an
-  account, with a count for each of the four kinds, without running a
-  conversion and without writing a note. For an account whose record
+  account, and for the master, with a count for each of the four kinds,
+  without running a conversion and without writing a note; `webstatus`
+  says the same on its own `shares:` line. For an account whose record
   already says phase B it says `phase B on record, not held` with the same
   counts: a layout made after phase B holds nothing back. A record left by
   a phase B rollback that could not finish (marked `rb=1`, below) still
   reads `phase B held`: the next run checks the layouts again.
 
+The account's main login cannot read `log/`, so each note also rewrites
+`~/static/control/web-group-notes.txt` from root's newest 200 lines: the
+main login's own file, mode 0600 (the notes name other accounts' stores),
+which it reads over SFTP and in its shell. Root writes it through one
+handle that never follows a link, in the real `static/control` only, and
+renames it over the name, so a link, a hard link or a FIFO put there is
+replaced and never opened; BOA never reads it back. The directory's
+`README.txt` names it. A migration carries neither copy (below).
+
+When two runs note the same account at the same moment, the copy can be left
+with the older of their two reads of root's file until the next note
+rewrites it; root's file keeps every line.
+
 A share INTO the account's store never holds anything; both accounts are
-told (see `FILES-SYMLINK.md`) before the conversion's first write, again
-once its private side is done, and once more by a run that goes on toward
-phase B. When the account that owns the store converts, the reading site
-loses write there (and read on a private store), whatever the reading
-account's own state.
+told (see `FILES-SYMLINK.md`) once a run: before the conversion's first
+write where the run reads the share scan at its start, otherwise once its
+private side is done. When the account that owns the store converts, the
+reading site loses write there (and read on a private store), whatever
+the reading account's own state.
 
 ### The verbs
 
@@ -763,9 +833,10 @@ account's own state.
   `--phase-b` or `webrevert` lifts it. The migration tools carry it with the
   cnf (below), so a box the account moves to keeps it at A too.
 - `webconvert all` converts every account, in three rounds so each PHP
-  version is reloaded once. On a standby, and for an opted-out account
-  that has no web group yet, it refuses at once, without waiting for the
-  account's nightly pass.
+  version is reloaded once; an account that runs in two of them writes
+  each note once, as one run does. On a standby, and for an opted-out
+  account that has no web group yet, it refuses at once, without waiting
+  for the account's nightly pass.
 - `webrevert <oN>` goes back the whole way: phase B undone first, then A,
   then the group removed. It writes the opt-out first (over a pin), so the
   arm does not convert the account again; `--keep-enabled` writes none and
@@ -801,8 +872,10 @@ account's own state.
   it resolves walks the store and removes the group.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
-  and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
-  what differs, or `FOREIGN` (someone outside the account holds `wg-oN`).
+  and the record, what holds its phase B back (its `shares:` line, as
+  `webcheck --report` counts it), and a verdict: `NONE`, `A`, `B`,
+  `BETWEEN(...)` naming what differs, or `FOREIGN` (someone outside the
+  account holds `wg-oN`).
   A free of the account's held name left unfinished (its state and what
   finishes it) and each set-group-ID sweep a free left owed get a line of
   their own.
@@ -819,7 +892,9 @@ pin, the task queue not drained). Only `webrevert` and
 `--phase-a` ever lower an account; nothing else does, whatever it finds.
 
 The Octopus upgrade's note for an exit 2 or 5 points at
-`/var/log/boa/instgrp.log`, which names the reason.
+`/var/log/boa/instgrp.log`, which names the reason, phase A's exit 2
+(paths a writer left in `www-data` during the walk, which the next run
+walks) included.
 
 ### Intent and record
 
@@ -886,10 +961,73 @@ there converts.
 
 A free of an account's held name left unfinished (DR11, its journal not
 done, above) is raised the same way while no run holds the account: the
-migration tools skip or refuse the account meanwhile. So is a
+migration tools skip or refuse the account meanwhile, but for a frozen
+account's `xoct proxy --repair` and `go-live`. So is a
 set-group-ID sweep a free left owed that could not finish (DR12); one
 owed because it cleared a file is a note only, for the account's next web
 verb sweeps again.
+
+An account frozen for a migration gets no web group: no Octopus pass,
+nightly or worker pass visits it. An aegir2boa db-import killed outright
+(SIGKILL, a crash, a reboot) leaves such a freeze behind, a
+`log/proxied.pid` of root's reading `A2B-IMPORT-FREEZE` (with a second
+line `verb=... pid=... pgid=...` from this release on).
+
+On an armed box that is no standby the worker removes that marker a day
+after it first sees it (its own stamp,
+`/var/log/boa/manage-ltd-freeze.oN.seen`, never the marker's date) while no
+root `aegir2boa-stage2`, `xoct`, `xcopy`, `xmass` or `xtrim` runs, no root
+process holds a file under `/var/backups/a2b/oN/`, no migration park stands
+and no relay record or proxy vhost is beside it, and says so once.
+
+Only root's processes count (a tenant sets its own command line), and a
+stage 2 is the account's own import only when its `--account` argument,
+read whole, names the account. A pass that finds a migration of another
+account, or an xmass autosync, only puts the removal off, while one that
+finds the account's own import starts the day again. A one-line marker is removed only beside aegir2boa's state of
+this release (`/var/backups/a2b/oN/markers`) and none of an earlier
+release's in the account's tree (`log/a2b`, `src/a2b`,
+`undo/a2b-pre-import.sql`).
+
+The account then gets its nightly and worker passes again, while its
+half-imported control panel stays switched off: as long as
+`/var/backups/a2b/oN/` shows the import unfinished (the dispatcher it held,
+or step markers with neither the done marker nor the hand-back marker the
+import writes just before it returns the dispatcher), the octopus wrapper
+skips the account (an INFO line in an `all` run, an ALRT naming the
+account's own run) and no Octopus pass writes or runs its dispatcher.
+
+BOA's agent pass moves a live dispatcher back into aegir2boa's hold, and the
+nightly runs no task, queue sweep or setting on the panel, skips its
+migration-source sweep and moves none of the account's sites, vhosts or
+aliases aside as ghosts (the import may have placed them half). usage.sh
+counts the account but writes no footer and clears no cache on the panel,
+and `renameaegirhost` and `syncpass fix` refuse the account, naming the
+import's re-run and its revert. The web group converts with the first
+Octopus pass after the import is finished or undone (`instgrp webconvert
+oN` converts it sooner).
+
+The worker mails once a day, from aegir2boa's own state whatever the
+account's tree holds, until the import is re-run (`aegir2boa-stage2 import
+--account oN --route db-import`) or reverted (`--revert-db-import`). A pass
+that could not read the process table mails all the same and says so (for
+the removal it counts as an import running). That state counts only for
+the account it was made for (the uid and home `transfer` records beside
+it; an empty record is the account's own); `boa cleanup purge` parks it
+with the account.
+
+Any other marker (one the account made, a relay record reading
+`COMPLETE`, an earlier release's freeze, an aegir2boa freeze beside relay
+evidence, one put by hand) stays as it is, and so does the freeze; once
+the worker has seen it for a day it names it in a mail once a day, with
+what to do about its kind.
+
+A relay record beside root's source-role `log/migproxy.cnf` or a proxy
+vhost is a live relay and is not named; one with neither is, with the
+advice to check whether this box serves the account (after a promotion by
+hand `xmass post-mig` clears what the demotion left). An earlier release's
+freeze is named with the advice to finish or revert that import by that
+release's procedure before the marker goes.
 
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
@@ -943,11 +1081,13 @@ in any form included.
 
 They carry neither the intent nor the record, so a revert in progress, and
 a pin that is only in the intent (no `_WEB_GROUP=A` in the cnf), stay
-behind. The account converts on the target by that box's own settings, and
-the tools print a NOTE naming the command to run there: "after its
-promotion" when the target is a standby, and a plain warning when the
-target is not armed, where nothing ever converts. See `MIGRATE-XOCT.md`
-and `MIGRATE-XMASS.md`.
+behind; nor the account's notes, which name the source box's state: neither
+`log/web-group-notes.txt` nor `static/control/web-group-notes.txt`
+travels, and the target keeps its own. The account converts on the target by
+that box's own settings, and the tools print a NOTE naming the command to
+run there: "after its promotion" when the target is a standby, and a plain
+warning when the target is not armed, where nothing ever converts. See
+`MIGRATE-XOCT.md` and `MIGRATE-XMASS.md`.
 
 A box being prepared as an xmass standby carries `/root/.standby.prep.cnf`
 from `xmass prep-target` on: its accounts stay unconverted until the
@@ -1021,7 +1161,9 @@ keeps.
   Nothing else re-groups a tree between those. An
   account frozen for a migration (`log/proxied.pid`) is outside all of it:
   the nightly never visits it and `reclaim` skips it, so a frozen
-  destination is healed only by the migration tool's own pass (below).
+  destination is healed only by the migration tool's own pass (below), or
+  by the worker clearing a killed aegir2boa import's freeze on an armed
+  box ("Watching for drift").
 - Ægir backups, restores, clones and migrations need no conversion step:
   the extracting process is the account's backend user, so the restored
   files take the account's primary group. Root-run restores are different:

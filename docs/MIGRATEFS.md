@@ -33,6 +33,11 @@ relocates its `backups` + `backup-exports` onto the same filesystem. See
 > 2% of the target's inodes, at least 50,000, free; the DRY plan shows both
 > figures), but you own the call.
 
+> The DRY plan also names each store the apply would refuse for room. A store
+> refused there stays where it is, and the run then ends with exit status 2
+> (0 done or deferred, 1 refused to start); a store whose size cannot be read
+> is copied with a `WARN:` line.
+
 > **BOA supports exactly ONE attached mountpoint under `/mnt`.** `migratefs` **and**
 > other BOA scripts (notably the lshell FTP-jail path allow-list built in
 > `manage_ltd_users.sh` and `satellite.sh.inc`) locate the attached files mount as

@@ -34,7 +34,7 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
                                  # (PRODUCER=none: hand-published, nothing here rebuilds it; a tree that
                                  #  cannot be read is INCONCLUSIVE and exits non-zero, never "0 missing")
   staticbuild advisories [tree]  # read-only: audit the lock of every PUBLISHED catalogue platform
-                                 # (distributions and the Drupal 9-11 cores) against today's
+                                 # (distributions and the Drupal 9-12 cores) against today's
                                  # advisories, and list BOA's own non-Composer contrib (exits
                                  # non-zero only when something could not be audited)
 ```
@@ -179,8 +179,8 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   unreachable) marks the row `audit failed`, and the build still succeeds.
 - **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue
   entry of each published tree: the distributions (the list `staticbuild catalogue`
-  checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
-  (`DL9`, `DX*`, `DE*`, fetched from `core/`). It pulls `composer.lock` and
+  checks, fetched from `distro/`) and the Drupal 9, 10, 11 and 12 core platforms
+  (`DL9`, `DX*`, `DE*`, `DT*`, fetched from `core/`). It pulls `composer.lock` and
   `vendor/composer/installed.json` out of each published tarball's stream and audits
   them against today's advisories, since advisories keep arriving after a build.
 
@@ -678,12 +678,13 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # then audit the lock as under "By hand" above (never fatal)
            # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.19 11.1.10 11.2.14 11.3.19 11.4.10
 prerelease # each _CORE_PRERELEASE version whose minor has no stable release among the
-           # minors (the list ships empty; name only a pre-release that carries every
-           # core security fix released so far), under php85 like every Drupal 12 line:
+           # minors (name only a pre-release that carries every core security fix
+           # released so far), under php85 like every Drupal 12 line:
            # composer create-project drupal/recommended-project:<version> drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require grasmash/yaml-cli:4.x-dev \
            #   chi-teck/drupal-code-generator:^4@dev drush/drush:^14@dev
            # a failed Drush require fails the line: no Drush, no platform
+           # built: 12.0.0-beta2
 ```
 
 ### Clean up artefacts before packaging

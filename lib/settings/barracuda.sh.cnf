@@ -1025,6 +1025,27 @@ _WEB_GROUP_PHASE_B=NO
 _NGINX_LINK_GUARD=NO
 
 ###
+### The database broker (boa-dbctl) for every account: an account switched
+### to it keeps rights on its own databases only, where every account's
+### database user otherwise holds every privilege on all of them. With
+### _DB_BROKER_ARM=YES every barracuda pass has the box settle its own
+### database logins (boa-dbctl baseline settle), every Octopus install and
+### upgrade settles them too and then switches its account, unforced
+### (boa-dbctl scope <account> on --pass), and the nightly mails what is
+### still open once a day. Whatever the broker refuses is a NOTE of the
+### pass and stays as it is. A per-account opt-out is _DB_BROKER_ARM=NO in
+### /root/.<account>.octopus.cnf. Set both boxes of a standing xmass mirror
+### alike. Not switched on in this release: the broker settles nothing and
+### switches no account except on a test box that carries the marker
+### /root/.tenant-isolation-test.cnf. The release that switches it on also
+### writes _DB_BROKER_ARM=YES where /root/.barracuda.cnf has no such line,
+### so a NO set there today keeps a box out. See docs/DBCTL.md.
+###
+###   _DB_BROKER_ARM=YES
+###
+_DB_BROKER_ARM=NO
+
+###
 ### Every clear.sh run tells BOA's mirror the
 ### BOA release and the OS release of this box,
 ### and nothing else, as the User-Agent of one
