@@ -5896,7 +5896,15 @@ _migrate_prepare() {
           && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
           && echo BORN" 2>/dev/null)
         if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
-          _xoct_dbctl_unseed "${_TGT_HM_USER}" "${_tgt}"
+          ### 255 is the connection lost, not the launcher's answer: the
+          ### remote install may go on and make the account after this, so
+          ### the broker seed's line and note stay there, as the install
+          ### window's exit leaves them, and a re-run's seed reads the note
+          if [ "${_INSTALL_RC}" = "255" ]; then
+            echo "ALRT: the connection to ${_tgt} was lost during the install: the database broker seed of ${_TGT_HM_USER} stays there for a re-run of this create"
+          else
+            _xoct_dbctl_unseed "${_TGT_HM_USER}" "${_tgt}"
+          fi
           _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
