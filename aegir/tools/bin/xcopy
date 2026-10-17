@@ -231,9 +231,10 @@ _web_group_policy() {
   # export, quotes or a trailing comment. NO (opted out of the conversion)
   # or A (pinned at phase A) is printed; any other value, or none, prints
   # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
-  # notes and the carry read the line the same way.
+  # notes and the carry read the line the same way. The cnf is read as text:
+  # a NUL byte (a crash can zero-fill its tail) hides none of its lines.
   local _l
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   case "${_l}" in
@@ -1253,7 +1254,7 @@ _xcopy_heal_fpm_pins() {
 # box). Status 1 when the cnf is missing or cannot be rewritten. As in xoct.
 _xcopy_admail_upgrade_mail_off() {
   local _a="$1" _h="$2" _sh _rc
-  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
   if [ -n "${_h}" ]; then
     ssh root@"${_h}" "${_sh}" 2> /dev/null
     _rc=$?
@@ -1806,7 +1807,8 @@ _xcopy_import_precheck() {
 # form removed when the source has neither. Only while the name is free
 # there: otherwise the install refuses it, and the line would land in
 # another account's cnf. What was written is taken back when the install
-# does not happen.
+# does not happen. The cnf there is read and rewritten as text: a NUL byte
+# costs none of its lines.
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_WG_SEED=""
 _XCOPY_WG_SEEDV=""
@@ -1827,12 +1829,12 @@ _xcopy_wg_seed() {
     if [ ${_v} != - ]; then
       if [ ! -e \${_c} ]; then
         ( umask 077; printf '_WEB_GROUP=${_v}\\n' > \${_c} ) && echo made
-      elif [ \"\$(grep -E \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
-        grep -vE \"\${_re}\" \${_c} > \${_c}.wgseed
+      elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
+        grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed
         printf '_WEB_GROUP=${_v}\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
       fi
-    elif [ -e \${_c} ] && grep -qE \"\${_re}\" \${_c}; then
-      grep -vE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
+    elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
+      grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
     fi" 2> /dev/null)
   case "${_XCOPY_WG_SEED}" in
     made|line) echo "INFO: the source's _WEB_GROUP=${_v} put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
@@ -1849,7 +1851,7 @@ _xcopy_wg_unseed() {
     line:NO|line:A)
       # the seed left its own line as the only _WEB_GROUP one
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
       ;;
   esac
   _XCOPY_WG_SEED=""

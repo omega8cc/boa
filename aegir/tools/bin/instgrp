@@ -540,9 +540,10 @@ _web_group_policy() {
   # export, quotes or a trailing comment. NO (opted out of the conversion)
   # or A (pinned at phase A) is printed; any other value, or none, prints
   # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
-  # notes and the carry read the line the same way.
+  # notes and the carry read the line the same way. The cnf is read as text:
+  # a NUL byte (a crash can zero-fill its tail) hides none of its lines.
   local _l
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   case "${_l}" in

@@ -390,9 +390,10 @@ _web_group_policy() {
   # export, quotes or a trailing comment. NO (opted out of the conversion)
   # or A (pinned at phase A) is printed; any other value, or none, prints
   # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
-  # notes and the carry read the line the same way.
+  # notes and the carry read the line the same way. The cnf is read as text:
+  # a NUL byte (a crash can zero-fill its tail) hides none of its lines.
   local _l
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   case "${_l}" in
@@ -2611,7 +2612,9 @@ _xmass_dbctl_kept_here() {
 ### target-correct when absent and actively harmful when copied). Runs AFTER
 ### the target install by design: _satellite_cnf derives the PHP pins from
 ### static/control/*.info, so the control-file force is what makes the pins
-### stick and the cnf carries everything only it owns.
+### stick and the cnf carries everything only it owns. Both cnfs are read and
+### rewritten as text (grep -a): a crash can zero-fill a cnf's tail, and grep
+### would then read the file as binary and pass none of its lines.
 _xmass_push_account_cnf() {
   local _acct="$1" _t="$2"
   local _sCnf="/root/.${_acct}.octopus.cnf"
@@ -2641,13 +2644,13 @@ _xmass_push_account_cnf() {
     _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_acct}\"" > "${_lTmp}"
   for _v in ${_lst}; do
-    _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
+    _l=$(grep -a "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
     [ -n "${_l}" ] || continue
     # a Grav or Textpattern NO from a cnf the hosted default never reached
     # (no _GRAV_TXP_SUPPORT_MIGRATED line) is a seeded default, not a choice:
     # it stays here, and the target keeps its own default
     if [[ "${_l}" =~ ^_(GRAV|TXP)_SUPPORT=[\"\']?NO[\"\']?$ ]] \
-      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
+      && ! grep -aq "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
       continue
     fi
     # the target sources this cnf as root, and some values began as the
@@ -2699,7 +2702,7 @@ _xmass_push_account_cnf() {
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
-      grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
@@ -2714,7 +2717,7 @@ while IFS= read -r _l; do
     *) continue ;;
   esac
   _k="${_l%%=*}"
-  grep -v "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  grep -av "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
   printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
   mv -f "${_cnf}.mrgnew" "${_cnf}"
 done < "${_mrg}"
@@ -14423,9 +14426,9 @@ UNLOCKDB
 # resumed tail keeps it.
 _xmass_decide_flip_first() {
   local _vals _v _why=""
-  _vals=$( { grep -h "^_THIS_DB_HOST=" /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null;
+  _vals=$( { grep -ah "^_THIS_DB_HOST=" /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null;
     ssh -o ConnectTimeout=15 root@"${_tgt}" \
-      "grep -h '^_THIS_DB_HOST=' /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null; echo _THIS_DB_HOST=__read_ok__" 2>/dev/null; } \
+      "grep -ah '^_THIS_DB_HOST=' /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null; echo _THIS_DB_HOST=__read_ok__" 2>/dev/null; } \
     | sed "s/^_THIS_DB_HOST=//; s/[\"' ]//g" | sort -u)
   case "${_vals}" in
     *__read_ok__*) ;;
@@ -16161,7 +16164,7 @@ _xmass_go_live_standing() {
   _info "go-live of the test run${_rec:+ under admail=${_rec}} on ${_tgt}, this box's standing mirror:"
   _info "  nothing has moved, so no client is mailed; the pair becomes a real one"
   # The account names are checked above and each switch is YES or NO.
-  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
   _xmass_golive_hold_report "${_out}" "${_mk}"
   while IFS= read -r _l; do
     _a="$(printf '%s' "${_l}" | cut -d' ' -f2)"

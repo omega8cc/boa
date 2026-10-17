@@ -222,9 +222,10 @@ _web_group_policy() {
   # export, quotes or a trailing comment. NO (opted out of the conversion)
   # or A (pinned at phase A) is printed; any other value, or none, prints
   # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
-  # notes and the carry read the line the same way.
+  # notes and the carry read the line the same way. The cnf is read as text:
+  # a NUL byte (a crash can zero-fill its tail) hides none of its lines.
   local _l
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   case "${_l}" in
@@ -1173,7 +1174,7 @@ _xoct_upgrade_skip_put() {
 _xoct_admail_upgrade_mail_off() {
   local _a="$1" _h="$2" _sh _rc _f
   _f="$(_xoct_admail_rec "${_a}")"
-  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
   if [ "$3" = "record" ]; then
     _sh="${_sh} && mkdir -p /data/conf && ( umask 022; printf '%s\n' '${_XOCT_ADMAIL}' > '${_f}.tmp' ) && mv -f '${_f}.tmp' '${_f}'"
   fi
@@ -4114,7 +4115,9 @@ _xoct_dbctl_kept_here() {
 ### existing-cnf branch re-derives the PHP pins from static/control/*.info,
 ### so a pre-install cnf alone would be overwritten -- the control-file
 ### seeding below is what makes the pins stick, and manage_ltd_users then
-### converges the pools within minutes.
+### converges the pools within minutes. Both cnfs are read and rewritten as
+### text (grep -a): a crash can zero-fill a cnf's tail, and grep would then
+### read the file as binary and pass none of its lines.
 _xoct_push_target_octopus_cnf() {
   local _src="$1" _dst="$2" _t="$3"
   local _sCnf="/root/.${_src}.octopus.cnf"
@@ -4145,13 +4148,13 @@ _xoct_push_target_octopus_cnf() {
     _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_dst}\"" > "${_lTmp}"
   for _v in ${_lst}; do
-    _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
+    _l=$(grep -a "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
     [ -n "${_l}" ] || continue
     # a Grav or Textpattern NO from a cnf the hosted default never reached
     # (no _GRAV_TXP_SUPPORT_MIGRATED line) is a seeded default, not a choice:
     # it stays here, and the target keeps its own default
     if [[ "${_l}" =~ ^_(GRAV|TXP)_SUPPORT=[\"\']?NO[\"\']?$ ]] \
-      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
+      && ! grep -aq "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
       continue
     fi
     # the database count limit travels only as a plain value
@@ -4205,7 +4208,7 @@ _xoct_push_target_octopus_cnf() {
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
-      grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
@@ -4220,12 +4223,12 @@ while IFS= read -r _l; do
     *) continue ;;
   esac
   _k="${_l%%=*}"
-  grep -v "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  grep -av "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
   printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
   mv -f "${_cnf}.mrgnew" "${_cnf}"
 done < "${_mrg}"
 if [ -e "${_adm}" ]; then
-  grep -v '^_SEND_UPGRADE_EMAIL=' "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  grep -av '^_SEND_UPGRADE_EMAIL=' "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
   echo '_SEND_UPGRADE_EMAIL=NO' >> "${_cnf}.mrgnew"
   mv -f "${_cnf}.mrgnew" "${_cnf}"
   echo "INFO: the upgrade notice stays off in ${_cnf}: a test run's record (${_adm})"
@@ -4911,7 +4914,8 @@ _xoct_import_precheck() {
 # form removed when the source has neither. Only while the name is free
 # there: otherwise the install refuses it, and the line would land in
 # another account's cnf. What was written is taken back when the install
-# does not happen.
+# does not happen. The cnf there is read and rewritten as text: a NUL byte
+# costs none of its lines.
 # 1 = account here 2 = account on the target 3 = target
 _XOCT_WG_SEED=""
 _XOCT_WG_SEEDV=""
@@ -4932,12 +4936,12 @@ _xoct_wg_seed() {
     if [ ${_v} != - ]; then
       if [ ! -e \${_c} ]; then
         ( umask 077; printf '_WEB_GROUP=${_v}\\n' > \${_c} ) && echo made
-      elif [ \"\$(grep -E \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
-        grep -vE \"\${_re}\" \${_c} > \${_c}.wgseed
+      elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
+        grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed
         printf '_WEB_GROUP=${_v}\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
       fi
-    elif [ -e \${_c} ] && grep -qE \"\${_re}\" \${_c}; then
-      grep -vE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
+    elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
+      grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
     fi" 2> /dev/null)
   case "${_XOCT_WG_SEED}" in
     made|line) echo "INFO: the source's _WEB_GROUP=${_v} put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
@@ -4954,7 +4958,7 @@ _xoct_wg_unseed() {
     line:NO|line:A)
       # the seed left its own line as the only _WEB_GROUP one
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
       ;;
   esac
   _XOCT_WG_SEED=""
@@ -5967,9 +5971,9 @@ _migrate_prepare() {
       ### Verify the pins actually took (catches the availability-fallback
       ### downgrade class at the cheapest possible moment).
       for _pinVar in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
-        _SRC_PIN=$(grep "^${_pinVar}=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+        _SRC_PIN=$(grep -a "^${_pinVar}=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
         [ -n "${_SRC_PIN}" ] || continue
-        _TGT_PIN=$(ssh root@${_tgt} "grep '^${_pinVar}=' /root/.${_TGT_HM_USER}.octopus.cnf 2>/dev/null" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+        _TGT_PIN=$(ssh root@${_tgt} "grep -a '^${_pinVar}=' /root/.${_TGT_HM_USER}.octopus.cnf 2>/dev/null" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
         if [ "${_SRC_PIN}" != "${_TGT_PIN}" ]; then
           echo "ALRT: ${_pinVar} differs after seeding: source=${_SRC_PIN} target=${_TGT_PIN}"
         fi
@@ -5988,9 +5992,9 @@ _migrate_prepare() {
       ### between prep-target runs.
       ### one version, dotted or two-digit, as the target's pass records it
       _SRC_FPM_PIN="$(_mig_php_norm "$(_xoct_read_in "${_USR}/static/control" fpm.info | tr -d ' \t\r\n')")"
-      [ -n "${_SRC_FPM_PIN}" ] || _SRC_FPM_PIN=$(grep "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+      [ -n "${_SRC_FPM_PIN}" ] || _SRC_FPM_PIN=$(grep -a "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
       _SRC_CLI_PIN="$(_mig_php_norm "$(_xoct_read_in "${_USR}/static/control" cli.info | tr -d ' \t\r\n')")"
-      [ -n "${_SRC_CLI_PIN}" ] || _SRC_CLI_PIN=$(grep "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+      [ -n "${_SRC_CLI_PIN}" ] || _SRC_CLI_PIN=$(grep -a "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
       _TGT_SEED_NOW=$(_xoct_seed_witness "${_TGT_HM_USER}" "${_tgt}")
       _ARM_UPGRADE=NO
       _ARM_WHY=""
@@ -7536,7 +7540,7 @@ else echo HOLD-NONE; fi
 if [ -f \"\${_c}\" ]; then
   _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"')
   if [ \"\${_cur}\" = \"\${_sw}\" ]; then echo \"SW-SAME \${_cur}\"
-  else { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo SW-STUCK; exit 1; }; echo \"SW-SET \${_cur:-unset}\"; fi
+  else { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo SW-STUCK; exit 1; }; echo \"SW-SET \${_cur:-unset}\"; fi
 else echo SW-NOCNF; fi
 if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo SKIP-STUCK; exit 1; }; echo SKIP-GONE; fi
 echo GOLIVE-TARGET-OK"
