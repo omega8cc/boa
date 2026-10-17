@@ -167,6 +167,18 @@ place.holder3.dont.remove 5.6
 
 The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
 
+## NOTE on login sessions and recommended packages
+
+BOA runs no login-session manager. elogind's PAM module (`libpam-elogind`, the `pam_elogind.so` line in `/etc/pam.d/common-session`) arrives only as a dependency, when something installs `polkitd`. elogind then makes a cgroup under `/sys/fs/cgroup` for every PAM session (every `su` BOA runs, every cron job and ssh login) and never removes it.
+
+Their kernel memory grows until the OOM killer takes `mysqld`. The per-CPU part is reserved for every possible CPU, so a VM that reports many more possible than online CPUs pays many times over. Tens of thousands of cgroups in `grep memory /proc/cgroups`, with `Percpu` and `SUnreclaim` in `/proc/meminfo` far above normal, mean the leak.
+
+Every `barracuda` pass, FAST upgrades included, removes `libpam-elogind` and the polkit stack that needs it (with `packagekit`, `software-properties-common` and `ModemManager` where they came along), but only when apt would remove nothing else. Otherwise the pass leaves everything in place and writes an `ALRT:` line naming what apt would also remove. The `elogind` daemon package stays; without the module it registers no sessions.
+
+The pass then removes the empty session cgroups: top-level `c<N>` and `<N>` only, each with no process and no child cgroup at two reads three seconds apart, never on a systemd host. A populated cgroup is never touched. The nightly `graceful.sh` does the same.
+
+BOA installs packages without their recommended packages: `APT::Install-Recommends "false"` in `/opt/apt/apt.conf.noi.dist` and `apt.conf.noi.nrml`, which every pass refreshes, and on the aptitude form of the install command. A server whose image left recommends on got whole service stacks with each install before (the old files carried `APT::Get::Install-Recommends`, a key apt does not read). wkhtmltopdf comes only from BOA's own build, which brings the libraries it links; the distro package, which it replaces, is no longer installed first.
+
 ## NOTE on the Verify tasks an Octopus upgrade queues
 
 The shared nginx include takes a site's database credentials through variables the site

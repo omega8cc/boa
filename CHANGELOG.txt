@@ -4,6 +4,31 @@
 
 @=> Important Fixes
 
+    * A server no longer loses its memory to finished login sessions.
+      elogind's PAM module, which a package chain can bring in (polkitd
+      needs a logind), makes a cgroup for every PAM session (every su BOA
+      runs, every cron job and ssh login) and never removes it: on a test
+      box 74,885 of them held 2.4 GB of kernel memory after eight days and
+      the kernel killed mysqld three times. Every barracuda pass now
+      removes the PAM module and the polkit stack that needs it, with
+      packagekit and ModemManager where they came along, but only when apt
+      would remove nothing else (an ALRT line names what kept it), and
+      then removes the empty session cgroups; the elogind daemon stays.
+      The nightly graceful.sh removes them too. wkhtmltopdf is no longer
+      installed from the distro packages before BOA's own build, which
+      replaced that package anyway: its dependency chain was what brought
+      polkitd in, while the build's own dependencies are all it needs.
+
+    * BOA's package installs no longer pull in recommended packages. The
+      line meant to turn them off in BOA's apt settings used a key apt
+      never reads (APT::Get::Install-Recommends), so on a server whose
+      image leaves recommends on, every install brought their whole chains
+      along: the distro wkhtmltopdf came with 99 packages instead of 40,
+      elogind, polkitd, ModemManager and avahi-daemon among them. Servers
+      whose image turns them off box-wide were never affected. The key is
+      now APT::Install-Recommends, and the aptitude form of the install
+      command passes it too.
+
     * BOA refuses to run a server out of inodes (#1947). Every file takes
       an inode, and a filesystem out of them fails every write with "No
       space left on device" while df -h still shows free space; BOA's
