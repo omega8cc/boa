@@ -1353,6 +1353,16 @@
       of its 2,756 names there and kept every marker of its current
       release and PHP versions.
 
+    * BOA's logrotate file (/etc/logrotate.d/boa) rotates the logs that
+      grew without bound: too.many.log, the kill logs, fire_stuck.log,
+      memorytuner.log, sql_watch.log and the shell escape check's log
+      weekly with four kept; the symlink tools' logs weekly with half a
+      year kept, since symlinkinfo reads the rotated copies to say where
+      a site's files went (autosymlink.log had reached 21 MB on a test
+      server); and the backup tools' queue, check and cron logs in
+      /var/log. The check log and the symlink update log are mailed
+      whole, so their mails stay short too.
+
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
       rate limit of its own vendor, refused on a site whose policy.txt
