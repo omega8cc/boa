@@ -2183,6 +2183,10 @@ _purge_cruft_machine() {
     "${_PURGE_CTRL}" '*cert-x1-rebuilt.info' 'le-notify.*.info'
   _acct_in_real_dir "${_usEr}/log/ctrl" _night_ctrl_purge_here \
     "${_PURGE_TMP}" 'plr*' '*rom-fix.info'
+  # The hostmaster migrate and certificate logs each Octopus upgrade leaves in
+  # log/, kept 90 days.
+  _acct_in_real_dir "${_usEr}/log" _night_ctrl_purge_here 90 \
+    'hostmaster-migrate-*.log' 'letsencrypt-*.log' 'letsencrypt-*.attempt'
 
   _night_in_bak_dir backups _night_purge_here "${_PURGE_BACKUPS}" \
     || _night_bak_unpurged backups

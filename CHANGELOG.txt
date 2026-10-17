@@ -1363,6 +1363,16 @@
       /var/log. The check log and the symlink update log are mailed
       whole, so their mails stay short too.
 
+    * Files dated by the day or the event go once nothing reads them: the
+      weekly prune removes multiback's per-day run markers, the nginx
+      error logs the monitor sets aside at a restart and codebasecheck's
+      reports after 30 days (boa info read every report ever written, so
+      old incompatibilities kept showing), the flood detector's snapshots
+      after 90 days, and keeps the three newest copies synproxy takes of
+      csf's config. The nightly account pass removes the hostmaster
+      migrate and certificate logs an Octopus upgrade leaves in the
+      account's log/ after 90 days. A test server dropped 1,159 such files.
+
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
       rate limit of its own vendor, refused on a site whose policy.txt

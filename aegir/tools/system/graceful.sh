@@ -188,8 +188,26 @@ _purge_weekly_backups() {
   fi
   _purge_run_copies
   _purge_markers
+  _purge_dated_files
   _purge_leftovers
   touch "${_wkStamp}"
+}
+
+# Files dated by the day or the event that nothing reads once that day is past:
+# multiback's per-day run markers (it tests only today's), the nginx error logs
+# the monitor sets aside at a restart (with the rotated copy the distro's nginx
+# rules make of each), codebasecheck's reports (boa info greps them all, so old
+# ones kept showing), the flood detector's snapshots, and the copies synproxy
+# takes of csf's config at each run (its rollback does not read them).
+_purge_dated_files() {
+  local _dfD="[0-9][0-9][0-9][0-9][0-9][0-9]"
+  _prune_older_than /var/log/boa "back-to-*.${_dfD}.*.log" 30
+  _prune_older_than /var/log/nginx "${_dfD}-[0-9][0-9][0-9][0-9]-error.log*" 30
+  _prune_older_than /var/log/boa/core 'incompatible-*.log' 30
+  _prune_older_than /var/log/boa/core 'box-readiness-*.log' 30
+  _prune_older_than /var/xdrago/monitor/log/i18n_flood '[0-9]*-*.txt' 90
+  _prune_keep_newest /etc/csf 'csfpost.sh.bak.[0-9]*' 3
+  _prune_keep_newest /etc/csf 'csf.conf.bak.[0-9]*' 3
 }
 
 # Markers BOA writes in /var/log/boa on every run, at each release or for each
