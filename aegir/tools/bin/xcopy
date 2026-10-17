@@ -3977,10 +3977,12 @@ _xcopy_transfer_static_symlink_safe() {
 ### key verification. xoct's _xoct_learn_peer_host_key twin (the tools stay
 ### separate, not DRY-ed), except that it takes a host name too: the hold gate
 ### reads one, and an unknown key there would let a held target pass. A name
-### outside that alphabet or a key already known is left alone.
+### outside that alphabet or a key already known is left alone. The name is
+### looked up lowercased, as ssh-keyscan records it and ssh looks it up.
 _xcopy_learn_peer_host_key() {
-  local _p="$1"
-  [[ "${_p}" =~ ^[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || return 0
+  local _p
+  _p="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  [[ "${_p}" =~ ^[a-z0-9][a-z0-9.:-]*$ ]] || return 0
   ssh-keygen -F "${_p}" > /dev/null 2>&1 && return 0
   mkdir -p /root/.ssh
   chmod 700 /root/.ssh
