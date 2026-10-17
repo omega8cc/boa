@@ -199,6 +199,14 @@
       credentials written out for the archive, then cloaked again), so
       the site was back online before the work started.
 
+    * A Drupal 6 site's database updates run again. Since late 2022
+      Ægir's Drush 8 stopped every Drupal 6 batch with "Missing required
+      argument: batch-id" and ran none of it, so updatedb applied no
+      update while still printing "Finished performing updates": a
+      provision-update failed and restored its safety copy, and the
+      deploy of a Clone, Migrate or Restore of a Drupal 6 site left its
+      pending updates unapplied.
+
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not
       completed (a warning in the task log, an ALERT or WARN line in the
@@ -1494,9 +1502,9 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.18 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above and the named kernel boot and uncaught errors under
-      Important Fixes.
+    * Classic Drush 8.5.19 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above and the named kernel boot and uncaught errors and the
+      Drupal 6 database updates under Important Fixes.
       On Drupal 10 and 11 pm-updatestatus no longer dies on
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an
