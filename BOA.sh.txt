@@ -2640,7 +2640,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f76
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f64
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f63
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f78
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f89
@@ -5683,7 +5683,7 @@ CSFSTANDBY
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f57 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f46 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f23 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f22 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f57 --guard duplicity
@@ -5735,7 +5735,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f85 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f85 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f72 --guard /local/bin/autoinit
-    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f87 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f86 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f93 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f91 --guard /local/bin/codebasecheck
@@ -6395,6 +6395,24 @@ _backup_waiting_notify() {
 }
 
 # Load kTLS module only if it is not already loaded.
+# On an image that leaves recommended packages on, every install brings whole
+# service stacks along: the distro wkhtmltopdf brought polkitd and a logind
+# whose login-session cgroups filled a box's kernel memory. BOA's own apt
+# settings files turn them off for the calls that read them; this file does it
+# for every other apt call on the box. A later file in apt.conf.d still wins,
+# so an operator who wants them back can say so there.
+_apt_no_recommends() {
+  local _anrFile="/etc/apt/apt.conf.d/00boa-no-recommends"
+  local _anrWant
+  _anrWant="APT::Install-Recommends \"false\";"$'\n'"APT::Install-Suggests \"false\";"
+  [ -d "/etc/apt/apt.conf.d" ] || return 0
+  if [ "$(cat "${_anrFile}" 2> /dev/null)" != "${_anrWant}" ]; then
+    printf '%s\n' "${_anrWant}" > "${_anrFile}.new" \
+      && mv -f "${_anrFile}.new" "${_anrFile}"
+  fi
+  return 0
+}
+
 _load_ktls_module() {
   if ! lsmod 2>/dev/null | awk '{print $1}' | grep -qx "tls"; then
     if [ -e "/lib/modules/$(uname -r)/kernel/net/tls/tls.ko" ] \
@@ -6532,6 +6550,9 @@ _csf_raise_temp_ban_limit() {
 
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
+
+  # Before any install below: no recommended packages, box-wide
+  _apt_no_recommends
 
   # Load kTLS module only if it is not already loaded
   _load_ktls_module

@@ -567,6 +567,36 @@ _disk_pressure_detection() {
   echo >> ${_pthOml}
 }
 
+# elogind's PAM module makes a cgroup for every login session (every su, cron
+# job and ssh login) and never removes it, and each holds kernel memory: about
+# 7 KB of slab plus per-CPU memory for every possible CPU, until the OOM killer
+# takes mysqld. Barracuda removes the module and the empty cgroups, graceful.sh
+# the cgroups every night; where the module had to stay, or something brings a
+# logind back, they pile up again. A box without one runs a handful, so above
+# 10,000 this is logged and mailed as an ALERT, at most once a day. A systemd
+# host keeps a tree of its own and is not judged.
+_session_cgroup_pile_detection() {
+  local _mark="/run/boa_session_cgroups.stamp" _cnt _mem _cpu _pam="no"
+  [ -d "/run/systemd/system" ] && return 0
+  [ -z "$(find "${_mark}" -mmin -1440 2>/dev/null)" ] || return 0
+  _cnt="$(awk '$1 == "memory" { print $3 }' /proc/cgroups 2>/dev/null)"
+  [[ "${_cnt}" =~ ^[0-9]+$ ]] && [ "${_cnt}" -gt 10000 ] || return 0
+  touch "${_mark}"
+  _mem="$(awk '$1 == "Percpu:" || $1 == "SUnreclaim:" {
+    printf "%s%s %d MB", (n++ ? ", " : ""), $1, $2 / 1024 }' /proc/meminfo 2>/dev/null)"
+  _cpu="$(cat /sys/devices/system/cpu/possible 2>/dev/null)"
+  dpkg-query -W -f='${Status}' libpam-elogind 2>/dev/null | grep -qx 'install ok installed' && _pam="yes"
+  _thisErrLog="$(date) Login-session cgroups piling up (${_cnt} cgroups; ${_mem}; possible CPUs ${_cpu}; libpam-elogind installed: ${_pam}): each holds kernel memory until the OOM killer takes mysqld; barracuda removes elogind's PAM module and the empty cgroups, or says in an ALRT line what kept it; see grep memory /proc/cgroups"
+  echo "${_thisErrLog}" >> ${_pthOml}
+  if ! _incident_email_report "Login-session cgroups piling up: ${_cnt}" ALERT "system-cgroups" nograce; then
+    # wanted but not sent: look again in an hour, not in a day
+    if [[ "${_INCIDENT_REPORT_CNF}" != "OFF" ]] && [[ -n "${_MY_EMAIL}" ]]; then
+      touch -d "1380 minutes ago" "${_mark}" 2>/dev/null
+    fi
+  fi
+  echo >> ${_pthOml}
+}
+
 _gpg_too_many_instances_detection() {
   _CNT=$(pgrep -xc gpg-agent)
   if (( _CNT > 5 )); then
@@ -917,6 +947,7 @@ _cron_duplicate_instances_detection
 _syslog_giant_log_detection
 _disk_pressure_detection inodes
 _disk_pressure_detection space
+_session_cgroup_pile_detection
 
 if [ -e "/run/boa_system_auto_healing.pid" ] \
   || [ -e "/run/boa_mysql_auto_healing.pid" ] \
