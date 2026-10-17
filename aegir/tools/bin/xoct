@@ -6695,7 +6695,8 @@ _xoct_transfer_static_symlink_safe() {
   ### through a link put in its place. A static/ that is not a real
   ### directory here is never followed, and the transfer is not complete.
   ### control/web-group-notes.txt, the account's copy of its web-group
-  ### notes, names the source box's web-group state: it never travels.
+  ### notes, names the source box's web-group state: it never travels, nor
+  ### does a temp copy of it a killed note left (.web-group-notes.txt.put.*).
   if ! _xoct_in_real_dir "${_X_SRC_STATIC}" true; then
     echo "DENY: ${_X_SRC_STATIC} is not a real directory -- not followed; static/ not copied"
     _XOCT_NOT_CLEAN=YES
@@ -6704,7 +6705,7 @@ _xoct_transfer_static_symlink_safe() {
   fi
   _xoct_in_real_dir "${_X_SRC_STATIC}" _xoct_copy_here "${_X_TGT_HOST}" \
     "${_X_DST_STATIC}" '' -aEAXqu ${_X_IENI} --exclude=/files \
-    --exclude=/control/web-group-notes.txt
+    --exclude=/control/web-group-notes.txt '--exclude=/control/.web-group-notes.txt.put.*'
 
   # The static sync uses -u (skip-newer), but `xoct create` on the target just
   # wrote FRESH default control files (newer mtime) that shadow the migrated
@@ -8002,7 +8003,8 @@ _migrate_init() {
               "${_DST}/clients" '*' -aEAXqu ${_ieni} &> /dev/null
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own, and
-          # web-group-notes.txt names the source box's web-group state.
+          # web-group-notes.txt (a temp copy of it too) names the source
+          # box's web-group state.
           ### log/ is oN's on both boxes: copied from inside the real
           ### directory into the real directory, the glob expanded there.
           ### The account's own log/email.txt goes over the install's copy
@@ -8011,7 +8013,7 @@ _migrate_init() {
           if _xoct_leg_ok "${_USR}/log"; then
             _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
               -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid \
-              --exclude=web-group-notes.txt
+              --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*'
             _xoct_in_real_dir "${_USR}/log" _xoct_put_file_remote_here \
               email.txt "${_tgt}" "${_DST}/log" "${_ieni}"
           fi
@@ -8020,14 +8022,14 @@ _migrate_init() {
           ### through it); a real one travels by its top-level entries, from
           ### inside it into the real control directory on the target. Its
           ### subdirectories came with the static pass above and are never
-          ### entered here by name. Its web-group-notes.txt never travels: it
-          ### names the source box's web-group state.
+          ### entered here by name. Its web-group-notes.txt never travels, nor
+          ### a temp copy of it: it names the source box's web-group state.
           if [ -L "${_USR}/static/control" ]; then
             echo "ALRT: ${_USR}/static/control is a symlink -- not followed; no control file of ${_oct} travels"
           elif [ -d "${_USR}/static/control" ]; then
             _xoct_in_real_dir "${_USR}/static/control" _xoct_copy_here "${_tgt}" \
               "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' \
-              --exclude=/web-group-notes.txt &> /dev/null
+              --exclude=/web-group-notes.txt '--exclude=/.web-group-notes.txt.put.*' &> /dev/null
           fi
           #
           ### backups/ and backup-exports/ follow the nightly's store layout
