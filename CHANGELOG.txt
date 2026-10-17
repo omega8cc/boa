@@ -1326,6 +1326,15 @@
       /var/backups/dragon/t. On a test server the csf.allow copies alone
       had reached 6,733 files and 354 MB in nineteen months.
 
+    * The weekly prune also removes what older releases left behind and
+      no code uses: copies of the MySQL root password and client config
+      kept at the top of /var/backups (such copies go to dragon/config
+      now), the contents of /var/xdrago/log, which BOA copied to
+      /var/log/boa when its logs moved there (the folder is emptied only
+      after that copy and never through a link to /var/log/boa), and
+      markers in /var/log/boa whose writers are gone. A test server held
+      304 such password copies and 593 entries in /var/xdrago/log.
+
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
       rate limit of its own vendor, refused on a site whose policy.txt

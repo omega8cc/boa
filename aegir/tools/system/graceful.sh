@@ -172,7 +172,7 @@ _purge_weekly_backups() {
     && [ -z "$(find "${_wkStamp}" -mmin +9000 2> /dev/null)" ]; then
     return 0
   fi
-  echo "Removing archived PHP logs and csf.allow copies older than 7 days..."
+  echo "Removing old backup copies, markers and leftovers..."
   if [ -d "/var/backups/php-logs" ] && [ ! -L "/var/backups/php-logs" ]; then
     find /var/backups/php-logs -mindepth 1 -maxdepth 1 -ctime +6 \
       -exec rm -rf {} + &> /dev/null
@@ -186,7 +186,27 @@ _purge_weekly_backups() {
       \( -name 'csf.allow.backup-*' -o -name 'csf.allow.broken-*' \) \
       -ctime +6 -delete &> /dev/null
   fi
+  _purge_leftovers
   touch "${_wkStamp}"
+}
+
+# Leftovers no current code writes or reads, removed once: the copies of the
+# MySQL root password and client config older releases kept at the top of
+# /var/backups (they go to dragon/config now), the log folder used before
+# /var/log/boa (BOA.sh.txt copied its files there once and then wrote
+# .migrated.txt), and markers whose writers are gone. The old folder is emptied
+# only after that copy, and never when it leads to /var/log/boa itself.
+_purge_leftovers() {
+  rm -f /var/backups/.my.pass.txt-pre-* /var/backups/.my.cnf-pre-*
+  if [ -e "/var/log/boa/.migrated.txt" ] \
+    && [ -d "/var/xdrago/log" ] && [ ! -L "/var/xdrago/log" ] \
+    && [ "$(readlink -f /var/xdrago/log)" != "$(readlink -f /var/log/boa)" ]; then
+    find /var/xdrago/log -mindepth 1 -maxdepth 1 ! -name EMPTY.txt \
+      -exec rm -rf {} + &> /dev/null
+  fi
+  rm -f /var/log/boa/sec-redis-pass-* /var/log/boa/.custom_percona_forced.* \
+    /var/log/boa/mss-build-master-* /var/log/boa/geos-* \
+    /var/log/boa/nginx.kill-start.log /var/log/boa/cron-count.kill.log
 }
 
 # A session cgroup is idle when no process is in it or below it and it has no
