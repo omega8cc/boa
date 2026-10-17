@@ -61,14 +61,17 @@ _sanitize_number() {
 
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
-# or a step marker of the import stands with neither its done marker nor
-# the marker of its hand-back (written right before the import returns the
-# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
-# state, and so does a state recorded for another account of the name (its
-# uid, or its home's inode or birth time, not the account's now; a birth
-# time either side does not know is not compared). The record's first line
-# is read whether or not a newline ends it; an empty record, or none, is
-# the account's own. One text wherever it is defined.
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold), a revert marked itself started (revert-db.started,
+# cleared only once the revert's dispatcher is back), or a step marker of
+# the import stands with neither its done marker nor the marker of its
+# hand-back (written right before the import returns the dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
 _a2b_import_unfinished() {
   local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
   case "${1}" in
@@ -84,7 +87,9 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
   [ -e "${_b}/markers/dbimport.12.done" ] && return 1
   for _m in "${_b}"/markers/dbimport.*.done; do

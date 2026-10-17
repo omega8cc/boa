@@ -7341,14 +7341,17 @@ _NOW=${_NOW//[^0-9-]/}
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
-# or a step marker of the import stands with neither its done marker nor
-# the marker of its hand-back (written right before the import returns the
-# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
-# state, and so does a state recorded for another account of the name (its
-# uid, or its home's inode or birth time, not the account's now; a birth
-# time either side does not know is not compared). The record's first line
-# is read whether or not a newline ends it; an empty record, or none, is
-# the account's own. One text wherever it is defined.
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold), a revert marked itself started (revert-db.started,
+# cleared only once the revert's dispatcher is back), or a step marker of
+# the import stands with neither its done marker nor the marker of its
+# hand-back (written right before the import returns the dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
 _a2b_import_unfinished() {
   local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
   case "${1}" in
@@ -7364,13 +7367,39 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
   [ -e "${_b}/markers/dbimport.12.done" ] && return 1
   for _m in "${_b}"/markers/dbimport.*.done; do
     [ -e "${_m}" ] && return 0
   done
   return 1
+}
+# What to do about the unfinished aegir2boa import of the account $1 (one
+# _a2b_import_unfinished holds for), by what its root state says was cut
+# off: the one way out that state allows, or either. A revert cut off part
+# way (revert-db.started) is ended by the revert alone: a re-run of the
+# import would find its step markers and report a finished import on the
+# panel the revert restored. A hold xmass carried here with a failover
+# (failover-hold), with no dump transferred here, is ended by the route run
+# again toward this box: the dumps and the pre-import snapshot stayed on
+# the box the import ran on. An import cut off before its pre-import
+# snapshot was complete (no dbimport.1.done) is ended by its re-run alone:
+# there is nothing to revert to. Anything else by either. One sentence, its
+# commands spelled out. One text wherever it is defined.
+_a2b_import_advice() {
+  local _b="/var/backups/a2b/${1}" _c="aegir2boa-stage2 import --account ${1}"
+  if [ -e "${_b}/markers/revert-db.started" ]; then
+    echo "A revert of it was cut off part way: finish the revert with ${_c} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
+  elif [ -e "${_b}/failover-hold" ] && [ ! -e "${_b}/src/hostmaster.sql" ]; then
+    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box (a fresh aegir2boa-stage2 export and transfer on its source, then ${_c} --route db-import here, dry first, then with --live)"
+  elif [ ! -e "${_b}/markers/dbimport.1.done" ]; then
+    echo "It was cut off before its pre-import snapshot was complete, so there is nothing to revert to: finish it with ${_c} --route db-import (dry first, then with --live)"
+  else
+    echo "Finish it with ${_c} --route db-import, or undo it with ${_c} --revert-db-import (each dry first, then with --live)"
+  fi
 }
 # The freeze route. A db-import killed in its freeze window (SIGKILL, a
 # crash, a reboot) runs no EXIT trap and leaves aegir2boa's freeze marker,
@@ -7382,19 +7411,23 @@ _a2b_import_unfinished() {
 # (the Octopus pass skips the account, BOA.sh.txt keeps its dispatcher held
 # and the nightly runs nothing on the panel) until the import is re-run or
 # reverted, and while that state stands with none of it running the
-# operator is told once a day. Any other marker (one the account made, a
-# relay record, an earlier release's freeze, one put by hand) is left as it
-# is and named once a day after its first day, with what to do about its
+# operator is told once a day, with the one way out that state allows
+# (_a2b_import_advice). Any other marker (one the account made, a relay
+# record, an earlier release's freeze, one put by hand) is left as it is
+# and named once a day after its first day, with what to do about its
 # kind; a relay record beside relay evidence is a live relay and is not
 # named.
 #
 # ./proxied.pid in the current (real) log/, read through one handle that
 # never follows a link or blocks on a FIFO, the handle proven to be the
-# entry lstat saw: "a2b <dev>:<ino>:<mtime> <lines>" for aegir2boa's own
-# freeze (root's single-link regular file reading A2B-IMPORT-FREEZE, a
-# second line verb=<db-import|revert-db> pid=<n> pgid=<g> allowed), "relay"
-# for a relay record (COMPLETE), else the entry's kind: link, dir, special
-# or file. Nothing when there is none. $1 = root's uid.
+# entry lstat saw: "a2b <dev>:<ino>:<mtime> <lines> <verb>" for aegir2boa's
+# own freeze (root's single-link regular file reading A2B-IMPORT-FREEZE, a
+# second line verb=<db-import|revert-db> pid=<n> pgid=<g> allowed; <verb>
+# is the one it names, "-" for a one-line freeze), "relay" for a relay
+# record (COMPLETE) that is root's single-link regular file, as xmass reads
+# one (a COMPLETE the account could have written is a file), else the
+# entry's kind: link, dir, special or file. Nothing when there is none.
+# $1 = root's uid.
 _LTD_FREEZE_CLASS_PL='use Fcntl;
 my ($ru) = @ARGV;
 my $n = "./proxied.pid";
@@ -7411,11 +7444,11 @@ sysread($h, $d, 4097);
 close($h);
 my @ln = split(/\n/, $d, -1);
 pop @ln if @ln && $ln[-1] eq "";
-if (@ln && $ln[0] eq "COMPLETE") { print "relay\n"; exit 0 }
+if (@ln && $ln[0] eq "COMPLETE" && $s[4] == $ru && $s[3] == 1) { print "relay\n"; exit 0 }
 if (length($d) <= 4096 && $s[4] == $ru && $s[3] == 1 && (@ln == 1 || @ln == 2)
   && $ln[0] eq "A2B-IMPORT-FREEZE"
   && (@ln == 1 || $ln[1] =~ /^verb=(db-import|revert-db) pid=[1-9][0-9]* pgid=[1-9][0-9]*$/)) {
-  print "a2b $s[0]:$s[1]:$s[9] " . scalar(@ln) . "\n";
+  print "a2b $s[0]:$s[1]:$s[9] " . scalar(@ln) . " " . (@ln == 2 ? $1 : "-") . "\n";
   exit 0;
 }
 print "file\n";
@@ -7645,7 +7678,7 @@ _ltd_freeze_relay() {
 # that finds another migration or the park only skips its removal. A line
 # per account it looks at goes to the pass log.
 _ltd_freeze_route() {
-  local _d _a _b _c _k _id _nl _seen _age _u _now _x
+  local _d _a _b _c _k _id _nl _vb _vt _seen _age _u _now _x
   [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] || return 0
   [ -e /root/.standby.cnf ] && return 0
   [ -e /root/.standby.prep.cnf ] && return 0
@@ -7663,7 +7696,7 @@ _ltd_freeze_route() {
     _ltd_freeze_blind \
       && _x=". This pass could not read the process table, so an import of ${_a} may still be running"
     _ltd_notice_daily "a2b-unfinished-${_a}" "aegir2boa import unfinished on ${_a}" \
-      "aegir2boa's state in /var/backups/a2b/${_a} shows its db-import, or the revert of one, unfinished with none running: the account's control panel stays switched off (its task dispatcher held, no Octopus pass, no panel task run by the nightly) until the import is finished or undone. Finish it with aegir2boa-stage2 import --account ${_a} --route db-import, or undo it with aegir2boa-stage2 import --account ${_a} --revert-db-import (each dry first, then with --live). A freeze (log/proxied.pid) the killed run left is cleared by BOA a day after it is first seen; until then only a re-run of the same operation by this release takes it over${_x}"
+      "aegir2boa's state in /var/backups/a2b/${_a} shows its db-import, or the revert of one, unfinished with none running: the account's control panel stays switched off (its task dispatcher held, no Octopus pass, no panel task run by the nightly) until the import is finished or undone. $(_a2b_import_advice "${_a}"). A freeze (log/proxied.pid) the killed run left is cleared by BOA a day after it is first seen; until then only a re-run of the same operation by this release takes it over${_x}"
   done
   for _d in /data/disk/*; do
     [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
@@ -7684,7 +7717,7 @@ _ltd_freeze_route() {
       rm -f -- "${_seen}"
       continue
     fi
-    read -r _k _id _nl _ <<< "${_c}"
+    read -r _k _id _nl _vb _ <<< "${_c}"
     if [ "${_k}" = "a2b" ] && [ "${_nl}" = "1" ] && ! _ltd_freeze_a2b_here "${_a}"; then
       _k="a2b-old"
     fi
@@ -7729,15 +7762,21 @@ _ltd_freeze_route() {
     fi
     _u=NO
     _a2b_import_unfinished "${_a}" && _u=YES
+    # the notice names the operation the removed marker recorded: once the
+    # marker is gone, aegir2boa's state is what tells the two apart
+    case "${_vb}" in
+      db-import|revert-db) _vt="put by a killed ${_vb} run" ;;
+      *) _vt="a one-line marker, its operation not recorded" ;;
+    esac
     if _ltd_in_real_dir "${_d}/log" perl -e "${_LTD_FREEZE_RM_PL}" 0 "${_id}" 2> /dev/null; then
       rm -f -- "${_seen}"
       echo "freeze route: ${_a} REAP a2b"
       if [ "${_u}" = "YES" ]; then
         _ltd_notice "a2b-freeze-${_a}" "freeze of a killed aegir2boa import removed on ${_a}" \
-          "log/proxied.pid (A2B-IMPORT-FREEZE) stood for over a day since this worker first saw it, with no migration running and no relay record or proxy vhost beside it: ${_a} rejoins the nightly and limited-shell passes, while its control panel stays switched off (its task dispatcher held, no Octopus pass, no panel task run by the nightly) until the import is finished or undone. Finish it with aegir2boa-stage2 import --account ${_a} --route db-import, or undo it with aegir2boa-stage2 import --account ${_a} --revert-db-import (each dry first, then with --live)"
+          "log/proxied.pid (A2B-IMPORT-FREEZE, ${_vt}) stood for over a day since this worker first saw it, with no migration running and no relay record or proxy vhost beside it: ${_a} rejoins the nightly and limited-shell passes, while its control panel stays switched off (its task dispatcher held, no Octopus pass, no panel task run by the nightly) until the import is finished or undone. $(_a2b_import_advice "${_a}")"
       else
         _ltd_notice "a2b-freeze-${_a}" "freeze of a killed aegir2boa import removed on ${_a}" \
-          "log/proxied.pid (A2B-IMPORT-FREEZE) stood for over a day since this worker first saw it, with no migration running and no relay record or proxy vhost beside it, and aegir2boa's state shows no unfinished import: ${_a} rejoins every pass, nothing of it held"
+          "log/proxied.pid (A2B-IMPORT-FREEZE, ${_vt}) stood for over a day since this worker first saw it, with no migration running and no relay record or proxy vhost beside it, and aegir2boa's state shows no unfinished import: ${_a} rejoins every pass, nothing of it held"
       fi
     else
       echo "freeze route: ${_a} KEEP-RACE a2b"

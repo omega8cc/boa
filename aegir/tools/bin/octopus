@@ -825,14 +825,17 @@ _oct_mfs_held() {
 
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
-# or a step marker of the import stands with neither its done marker nor
-# the marker of its hand-back (written right before the import returns the
-# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
-# state, and so does a state recorded for another account of the name (its
-# uid, or its home's inode or birth time, not the account's now; a birth
-# time either side does not know is not compared). The record's first line
-# is read whether or not a newline ends it; an empty record, or none, is
-# the account's own. One text wherever it is defined.
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold), a revert marked itself started (revert-db.started,
+# cleared only once the revert's dispatcher is back), or a step marker of
+# the import stands with neither its done marker nor the marker of its
+# hand-back (written right before the import returns the dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
 _a2b_import_unfinished() {
   local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
   case "${1}" in
@@ -848,13 +851,39 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
   [ -e "${_b}/markers/dbimport.12.done" ] && return 1
   for _m in "${_b}"/markers/dbimport.*.done; do
     [ -e "${_m}" ] && return 0
   done
   return 1
+}
+# What to do about the unfinished aegir2boa import of the account $1 (one
+# _a2b_import_unfinished holds for), by what its root state says was cut
+# off: the one way out that state allows, or either. A revert cut off part
+# way (revert-db.started) is ended by the revert alone: a re-run of the
+# import would find its step markers and report a finished import on the
+# panel the revert restored. A hold xmass carried here with a failover
+# (failover-hold), with no dump transferred here, is ended by the route run
+# again toward this box: the dumps and the pre-import snapshot stayed on
+# the box the import ran on. An import cut off before its pre-import
+# snapshot was complete (no dbimport.1.done) is ended by its re-run alone:
+# there is nothing to revert to. Anything else by either. One sentence, its
+# commands spelled out. One text wherever it is defined.
+_a2b_import_advice() {
+  local _b="/var/backups/a2b/${1}" _c="aegir2boa-stage2 import --account ${1}"
+  if [ -e "${_b}/markers/revert-db.started" ]; then
+    echo "A revert of it was cut off part way: finish the revert with ${_c} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
+  elif [ -e "${_b}/failover-hold" ] && [ ! -e "${_b}/src/hostmaster.sql" ]; then
+    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box (a fresh aegir2boa-stage2 export and transfer on its source, then ${_c} --route db-import here, dry first, then with --live)"
+  elif [ ! -e "${_b}/markers/dbimport.1.done" ]; then
+    echo "It was cut off before its pre-import snapshot was complete, so there is nothing to revert to: finish it with ${_c} --route db-import (dry first, then with --live)"
+  else
+    echo "Finish it with ${_c} --route db-import, or undo it with ${_c} --revert-db-import (each dry first, then with --live)"
+  fi
 }
 
 _up_action_all() {
@@ -881,10 +910,11 @@ _up_action_all() {
     ### dispatcher held aside, or step markers without the done or hand-back
     ### marker): on a box armed for the web group a pass here would verify,
     ### dispatch, sweep and migrate that panel. Only the import's re-run or
-    ### revert ends it. Read-only, as the two tests above.
+    ### revert ends it, and the line names the one its state allows (or
+    ### both). Read-only, as the two tests above.
     if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
       && _a2b_import_unfinished "${_usEr##*/}"; then
-      echo "INFO: skipping ${_usEr}: its aegir2boa db-import is unfinished (finish it with aegir2boa-stage2 import --account ${_usEr##*/} --route db-import, or undo it with aegir2boa-stage2 import --account ${_usEr##*/} --revert-db-import)"
+      echo "INFO: skipping ${_usEr}: its aegir2boa db-import is unfinished. $(_a2b_import_advice "${_usEr##*/}")"
       continue
     fi
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
@@ -998,7 +1028,7 @@ _up_action_one() {
   fi
   if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
     && _a2b_import_unfinished "${_sCnd}"; then
-    echo "ALRT: skipping ${_usEr}: its aegir2boa db-import is unfinished - nothing was upgraded (finish it with aegir2boa-stage2 import --account ${_sCnd} --route db-import, or undo it with aegir2boa-stage2 import --account ${_sCnd} --revert-db-import)"
+    echo "ALRT: skipping ${_usEr}: its aegir2boa db-import is unfinished - nothing was upgraded. $(_a2b_import_advice "${_sCnd}")"
     _SEND_ALERT=YES
     return 0
   fi
