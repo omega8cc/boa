@@ -8708,8 +8708,9 @@ _trim_session_cgroups() {
 }
 
 #
-# BOA runs no login-session manager. elogind's PAM module arrives only as a
-# dependency (polkitd needs a logind), and elogind, 246 on daedalus and 255
+# BOA runs no login-session manager. BOA's installs never ask for elogind's
+# PAM module: it arrives as a dependency (polkitd needs a logind) or as
+# elogind's own recommended package, and elogind, 246 on daedalus and 255
 # on excalibur alike, never removes the cgroup it makes for each PAM session:
 # every su, cron run and ssh login leaves one behind, and their kernel memory
 # (slab, and per-CPU memory counted for every possible CPU) grows until the
