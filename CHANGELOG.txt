@@ -21,17 +21,19 @@
       dependency chain was what brought polkitd in, while the bundled
       build's own dependencies are all it needs.
 
-    * BOA's main package install command no longer pulls in recommended
-      packages. Its apt settings (/opt/apt/apt.conf.noi.*) turned them off
-      with a key apt never reads (APT::Get::Install-Recommends), so on a
-      server whose image leaves recommends on, every install through it
-      brought their whole chains along: the distro wkhtmltopdf came with
-      99 packages instead of 40, elogind, polkitd, ModemManager and
-      avahi-daemon among them. Servers whose image turns them off
-      box-wide were never affected. The key is now
-      APT::Install-Recommends, and the aptitude form of the command passes
-      it too; plain apt-get calls elsewhere in BOA still follow the
-      image's setting.
+    * BOA's own apt calls no longer pull in recommended packages. Its apt
+      settings (/opt/apt/apt.conf.noi.dist and .noi.nrml, read by every
+      apt-get call BOA makes with them: installs on a fresh box, upgrades
+      and dist-upgrades, the OS upgrade hops) turned them off with a key
+      apt never reads (APT::Get::Install-Recommends), and on upgrade
+      passes the aptitude form of its install command passed no such
+      option at all. So on a server whose image leaves recommends on,
+      installs brought whole chains along: the distro wkhtmltopdf came
+      with 99 packages instead of 40, elogind, polkitd, ModemManager and
+      avahi-daemon among them. Servers whose image turns them off box-wide
+      were never affected. The files now set APT::Install-Recommends and
+      the aptitude form passes it; apt-get calls without those files still
+      follow the image's setting.
 
     * BOA refuses to run a server out of inodes (#1947). Every file takes
       an inode, and a filesystem out of them fails every write with "No
