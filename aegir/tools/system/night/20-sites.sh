@@ -2702,6 +2702,15 @@ _cleanup_ghost_platforms() {
     _ghost_seen_reset_acct "${_gh_mark}"
     return
   fi
+  # A control panel an aegir2boa db-import left half made, on a box armed
+  # for the web group: a platform of it with no docroot may be one the
+  # import placed and has not verified yet, so none is counted towards a
+  # move or moved aside as a ghost until the import is finished or undone.
+  if _a2b_import_unfinished "${_HM_U}" \
+    && [ -s /etc/boa/control/instgrp-web-arm.ready.txt ]; then
+    echo "NOTE: ${_HM_U}: an aegir2boa db-import is unfinished; no ghost platform moved on its half-made panel (${_Plr})"
+    return
+  fi
   # Ghost candidate: require it across consecutive nights before acting, then the
   # opt-in flag (per-account octopus.cnf, else system barracuda.cnf).
   if ! _ghost_seen_enough_acct "${_gh_mark}"; then
