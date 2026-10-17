@@ -2668,9 +2668,9 @@ _if_site_db_conversion() {
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
       _TIMP=$(date +%y%m%d-%H%M%S)
       if [ -e "${_Plr}/core/lib/Drupal.php" ]; then
-        ### sqlmagic reads the site through Drush 8 (status, sql-query), and
-        ### outside Aegir's own backend nothing bootstraps a Drupal 8+ site
-        ### with Drush 8; those sites run on InnoDB already
+        ### sqlmagic writes to the site's database through Drush 8
+        ### (sql-query, sqlc), which BOA allows on Drupal 8+ only from
+        ### Aegir's own backend; those sites run on InnoDB already
         echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
           for ${_Dom} skipped: Drupal 8+ site, no Drush 8 here"
       else

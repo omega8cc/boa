@@ -572,9 +572,9 @@ A symbolic link at `sites`, the site directory or `files/solr`, or at `files` ot
 ;;  over both INI files. On the hosted Ægir BOA service the conversion never
 ;;  runs, whatever is set here.
 ;;
-;;  Drupal 8 and newer sites are never converted: the conversion reads a site
-;;  through Drush 8, which BOA never runs against them, and they run on InnoDB
-;;  already.
+;;  Drupal 8 and newer sites are never converted: the conversion writes to a
+;;  site's database through Drush 8 (sql-query, sqlc), which BOA allows on
+;;  Drupal 8+ only from Aegir's own backend, and they run on InnoDB already.
 ;;
 ;;  Supported values are: innodb and myisam (lowercase only!)
 ;;

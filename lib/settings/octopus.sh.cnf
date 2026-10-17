@@ -754,10 +754,11 @@ _SEND_UPGRADE_EMAIL=YES
 ### sites hosted on this instance.
 ###
 ### Drupal 8 and newer sites are never
-### converted: the conversion reads a site
-### through Drush 8, which BOA never runs
-### against them, and they run on InnoDB
-### already.
+### converted: the conversion writes to a
+### site's database through Drush 8
+### (sql-query, sqlc), which BOA allows on
+### Drupal 8+ only from Aegir's own backend,
+### and they run on InnoDB already.
 ###
 ### Note that it will run weekly on all sites
 ### even if all tables have been already
