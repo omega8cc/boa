@@ -426,16 +426,16 @@ _init_prepare() {
     mkdir -p /opt/apt
     echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.dist
     echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.dist
-    echo "APT::Get::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.dist
-    echo "APT::Get::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.dist
     echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.dist
     echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};" >> /opt/apt/apt.conf.noi.dist
     echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.dist
     echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.dist
     echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.nrml
     echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.nrml
-    echo "APT::Get::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.nrml
-    echo "APT::Get::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.nrml
     echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.nrml
     echo "DPkg::Options {\"--force-confdef\";\"--force-confmiss\";\"--force-confold\"};" >> /opt/apt/apt.conf.noi.nrml
     echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
@@ -513,7 +513,9 @@ _init_offsystemd() {
   apt-get update --allow-insecure-repositories >> "${_logSlt}"
   if [ -e "/root/.top-excalibur.cnf" ]; then
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
-    apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+    # Without recommends: libpam-elogind and polkitd would put a logind in
+    # the PAM stack, and it never removes the session cgroups it creates.
+    apt-get -y --no-install-recommends -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
   fi
   apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)

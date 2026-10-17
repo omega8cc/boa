@@ -214,6 +214,11 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### or one per line:
 ###
 
+### Drupal 12, a pre-release for testing: built only where the list names
+### it (never through ALL) and only in an instance at PHP 8.5 or newer
+#
+# DT0 — Drupal 12 pre-release prod/stage/dev
+
 ### Drupal 11.4
 #
 # DE4 — Drupal 11.4 prod/stage/dev

@@ -573,9 +573,11 @@ by the BOA install and upgrade tools exclusively.
 
   Please note that if you will change it to _SQL_CONVERT=YES, the system will
   ignore sql_conversion_mode variables set in the active INI files, and instead
-  will force conversion to InnoDB format in all Drupal and Backdrop sites hosted
-  on this instance (Grav and Textpattern sites carry no INI and are never
-  converted).
+  will force conversion to InnoDB format in all Drupal 6/7 and Backdrop sites
+  hosted on this instance (Grav and Textpattern sites carry no INI and are never
+  converted, and Drupal 8 and newer sites are never converted: the conversion
+  writes to a site's database through Drush 8, which BOA allows on Drupal 8+
+  only from Aegir's own backend).
 
   By the way, conversion to MyISAM format will still keep some tables at InnoDB,
   and exceptions are defined with regex:
@@ -607,5 +609,8 @@ by the BOA install and upgrade tools exclusively.
   For test servers only. Tenant isolation is not switched on in this release:
   this marker lets _WEB_GROUP_ARM=YES write the web group's arm stamp at the
   next barracuda pass, lets _NGINX_LINK_GUARD=YES write the nginx link
-  check's arm stamp there, and lets boa-dbctl scope oN on switch an account,
-  so their drills can run. Never create it on a production box.
+  check's arm stamp there, and lets boa-dbctl switch an account (scope oN
+  on, typed by an operator or asked by a pass) and settle the box's logins
+  (baseline settle): the two calls every barracuda and octopus pass makes
+  on a box with _DB_BROKER_ARM=YES, which the broker refuses without it. So
+  their drills can run. Never create it on a production box.

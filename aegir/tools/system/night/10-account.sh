@@ -2057,11 +2057,15 @@ _wg_free_aside() {
 _wg_free_held() {
   local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
-  read -r _s _h _n _ < "${_j}" || :
+  { read -r _s _h _n _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ] || return 0
   _h="${_h#held=}"
   _n="${_n#new=}"
-  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
   [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  if [[ ! "${_h}" =~ ^[0-9]+$ ]]; then
+    [ -z "${2:-}" ] || printf 'lost - %s\n' "${_n}"
+    return 0
+  fi
   _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
   _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
   _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
@@ -2069,7 +2073,7 @@ _wg_free_held() {
     _st=stale
   elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
     _st=renamed
-  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
     _st=finish
   else
     _st=lost
@@ -2179,6 +2183,10 @@ _purge_cruft_machine() {
     "${_PURGE_CTRL}" '*cert-x1-rebuilt.info' 'le-notify.*.info'
   _acct_in_real_dir "${_usEr}/log/ctrl" _night_ctrl_purge_here \
     "${_PURGE_TMP}" 'plr*' '*rom-fix.info'
+  # The hostmaster migrate and certificate logs each Octopus upgrade leaves in
+  # log/, kept 90 days.
+  _acct_in_real_dir "${_usEr}/log" _night_ctrl_purge_here 90 \
+    'hostmaster-migrate-*.log' 'letsencrypt-*.log' 'letsencrypt-*.attempt'
 
   _night_in_bak_dir backups _night_purge_here "${_PURGE_BACKUPS}" \
     || _night_bak_unpurged backups
