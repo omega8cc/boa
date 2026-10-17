@@ -513,7 +513,9 @@ _init_offsystemd() {
   apt-get update --allow-insecure-repositories >> "${_logSlt}"
   if [ -e "/root/.top-excalibur.cnf" ]; then
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
-    apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+    # Without recommends: libpam-elogind and polkitd would put a logind in
+    # the PAM stack, and it never removes the session cgroups it creates.
+    apt-get -y --no-install-recommends -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
   fi
   apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)

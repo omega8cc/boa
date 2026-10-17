@@ -614,6 +614,15 @@
       another codebase or another platform, or is one of the account's own
       directories, is kept and the task log names it.
 
+    * autoinit installs elogind before the Excalibur dist-upgrade, as
+      Devuan's trixie-to-excalibur guide says, instead of stopping at apt's
+      prompt and going on without it: the step now answers yes and takes
+      no recommended packages, so the PAM module and polkitd stay out. The
+      systemd-dummy package is now built only when apt's simulation shows
+      that removing systemd would take the SSH server; opensysusers, which
+      autoinit installs first, already keeps openssh-server. automini's
+      copy of the elogind step answers yes the same way.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept

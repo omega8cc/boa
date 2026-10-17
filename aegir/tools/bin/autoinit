@@ -1700,11 +1700,13 @@ _ensure_openssh_server() {
 # Before real removal, simulate and auto-heal if SSH would be removed.
 _purge_systemd_keep_ssh() {
 
-  _install_systemd_dummy
-
+  # opensysusers, installed by _ensure_openssh_server, provides the
+  # systemd-sysusers that openssh-server needs, so the dummy is only a
+  # fallback for when the simulation still shows SSH going.
   _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
   if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
     _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
+    _install_systemd_dummy
     _msg "[init] Re-simulating removal" >> "${_logInt}"
     if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
       _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
@@ -1836,7 +1838,9 @@ _init_offsystemd() {
   _autoinit_ensure_devuan_keyring
   if [ -e "/root/.top-excalibur.cnf" ]; then
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
-    /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+    # Without recommends: libpam-elogind and polkitd would put a logind in
+    # the PAM stack, and it never removes the session cgroups it creates.
+    /usr/bin/apt-get -y --no-install-recommends -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
   fi
   _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
