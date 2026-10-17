@@ -616,12 +616,15 @@
 
     * autoinit installs elogind before the Excalibur dist-upgrade, as
       Devuan's trixie-to-excalibur guide says, instead of stopping at apt's
-      prompt and going on without it: the step now answers yes and takes
-      no recommended packages, so the PAM module and polkitd stay out. The
-      systemd-dummy package is now built only when apt's simulation shows
-      that removing systemd would take the SSH server; opensysusers, which
-      autoinit installs first, already keeps openssh-server. automini's
-      copy of the elogind step answers yes the same way.
+      prompt and going on without it: the step now answers yes and, unlike
+      the guide, takes no recommended packages, so the PAM module and
+      polkitd stay out. automini's copy of the step does the same.
+
+    * autoinit builds its systemd-dummy package only when apt's simulation
+      shows that removing systemd would take the SSH server. opensysusers,
+      which autoinit now installs with retries and a check, already keeps
+      openssh-server. A dummy that was needed stays after the conversion,
+      with a WARN line, when removing it would remove the SSH server.
 
 @=> Security
 

@@ -1681,7 +1681,7 @@ _ensure_openssh_server() {
   fi
   if ! _pkg_installed "opensysusers"; then
     _msg "[init] Installing opensysusers" >> "${_logInt}"
-    ${_INITINS} opensysusers >> "${_logSlt}"
+    _autoinit_apt_install_checked "opensysusers" "opensysusers"
   fi
   if ! _pkg_installed "openssh-server"; then
     _msg "[init] Installing openssh-server" >> "${_logInt}"
@@ -1870,7 +1870,15 @@ _init_offsystemd() {
 
   _msg "[init] offd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
   /usr/bin/apt-get remove systemd-timesyncd -y -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+  # The dummy is there only when nothing else kept openssh-server, so it stays
+  # when removing it would still take the SSH server.
+  if _pkg_installed "systemd-dummy"; then
+    if /usr/bin/apt-get -s remove systemd-dummy 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
+      _msg "[init][WARN] offd ==> Keeping systemd-dummy: removing it would remove the SSH server" >> "${_logInt}"
+    else
+      /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+    fi
+  fi
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
   # Ensure classic ifupdown networking and DNS after systemd purge.
