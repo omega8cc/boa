@@ -160,12 +160,11 @@ _purge_postfix_bounces() {
 # Once a week, remove the copies older than 7 days that BOA leaves on every run
 # and every day and nothing else removes: the PHP-FPM logs moved aside on each
 # FPM restart and each barracuda or octopus run (php-logs/<stamp>/), and the
-# csf.allow copies guest-water takes before each provider refresh (csf/water/,
-# plus its pre-refresh snapshot and rolled-back copy in dragon/t/, which the
-# nightly dragon prune also reaches, but owl.sh does not run on a standby or a
-# proxy and guest-water does). Age is when a copy was made (ctime): cp -a keeps
-# the mtime of the file it copies. A stamp sets the pace, not a weekday, so a
-# night this pass skips only moves the prune to the next night it runs.
+# csf.allow copies guest-water takes before each provider refresh (csf/water/);
+# then the dragon vault and the other families below. Age is when a copy was
+# made (ctime): cp -a keeps the mtime of the file it copies. A stamp sets the
+# pace, not a weekday, so a night this pass skips only moves the prune to the
+# next night it runs.
 _purge_weekly_backups() {
   local _wkStamp="/var/backups/.graceful.weekly.prune.stamp"
   if [ -e "${_wkStamp}" ] \
@@ -181,11 +180,7 @@ _purge_weekly_backups() {
     find /var/backups/csf/water -mindepth 1 -maxdepth 1 -type f -ctime +6 \
       -delete &> /dev/null
   fi
-  if [ -d "/var/backups/dragon/t" ] && [ ! -L "/var/backups/dragon/t" ]; then
-    find /var/backups/dragon/t -mindepth 1 -maxdepth 1 -type f \
-      \( -name 'csf.allow.backup-*' -o -name 'csf.allow.broken-*' \) \
-      -ctime +6 -delete &> /dev/null
-  fi
+  _prune_dragon_vault
   _purge_run_copies
   _purge_markers
   _purge_dated_files
@@ -241,6 +236,23 @@ _purge_markers() {
     -printf '%f\n' 2> /dev/null | sed -n 's/^\([a-z_]*\)\.ctrl\.[0-9a-zA-Z]*\.log$/\1/p' \
     | sort -u); do
     _prune_keep_newest "${_mkL}" "${_mkM}.ctrl.*.log" 3
+  done
+}
+
+# The dragon vault's copies other than config/ go once they are a week old, by
+# when each was made (ctime), the rule owl.sh's nightly pass also applies. That
+# pass does not run on a standby or a proxy, where barracuda still runs and
+# adds a full copy of /var/xdrago to dragon/x on every pass.
+_prune_dragon_vault() {
+  local _dvS
+  [ -d "/var/backups/dragon" ] && [ ! -L "/var/backups/dragon" ] || return 0
+  find /var/backups/dragon -mindepth 1 -maxdepth 1 ! -name config ! -type d \
+    -ctime +7 -delete &> /dev/null
+  for _dvS in /var/backups/dragon/*; do
+    [ -d "${_dvS}" ] && [ ! -L "${_dvS}" ] || continue
+    [ "${_dvS##*/}" = "config" ] && continue
+    find "${_dvS}" -mindepth 1 -maxdepth 1 -ctime +7 \
+      -exec rm -rf {} + &> /dev/null
   done
 }
 

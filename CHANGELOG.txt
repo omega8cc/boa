@@ -640,7 +640,9 @@
       instead of the copies in them, and new copies kept the directories
       young, so nothing there was removed: a test server held 1.4 GB of
       /var/xdrago copies in dragon/x. A copy's age is now when it was made
-      there, not its mtime, which it keeps from the file it copies.
+      there, not its mtime, which it keeps from the file it copies. The
+      weekly graceful.sh pass applies the same rule, so a standby or a
+      proxy, where the nightly pass does not run, keeps a week too.
       dragon/config stays a permanent archive.
 
 @=> Security
