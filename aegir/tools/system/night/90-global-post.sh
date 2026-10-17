@@ -989,8 +989,20 @@ _global_cleanup() {
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/solr-archive -mindepth 1 -maxdepth 1 -type f -mtime +30 -exec rm -f {} \; &> /dev/null
   find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
-  find /var/backups/dragon/* -maxdepth 0 ! -name config -mtime +7 -exec rm -rf {} \; &> /dev/null
-  # dragon/config is a low-volume, high-value config archive -- never auto-purged.
+  ### dragon/config is a low-volume, high-value config archive -- never
+  ### auto-purged. Every other entry goes once it is a week old, judged by when
+  ### it was made there (ctime): the copies keep the mtime of what they copy
+  ### (cp -a, mv). Each entry inside t/, x/ and z/ is tested, never those
+  ### subtrees themselves, which the daily and per-run copies keep young.
+  local _dSub
+  find /var/backups/dragon -mindepth 1 -maxdepth 1 ! -name config ! -type d \
+    -ctime +7 -delete &> /dev/null
+  for _dSub in /var/backups/dragon/*; do
+    [ -d "${_dSub}" ] && [ ! -L "${_dSub}" ] || continue
+    [ "${_dSub##*/}" = "config" ] && continue
+    find "${_dSub}" -mindepth 1 -maxdepth 1 -ctime +7 \
+      -exec rm -rf {} + &> /dev/null
+  done
   ### Account password backups written by the rotation-on-update path: heal any
   ### copy left world-readable by older code (the account home allows traversal,
   ### so a lax mode is readable by local users by exact path), then keep only

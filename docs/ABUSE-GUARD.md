@@ -1052,7 +1052,8 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > copy, the snapshot and the diff, and mailed to `_MY_EMAIL` as well (unless `_MY_EMAIL` is
 > empty, `_INCIDENT_REPORT` is `OFF` or `NO`, or `s-nail` is missing),
 > since the box keeps yesterday's ranges until the next pass succeeds) and per-provider
-> backups under `/var/backups/csf/water/`.
+> backups under `/var/backups/csf/water/`, which the daily `graceful.sh` pass prunes once a
+> week to the last seven days.
 >
 > Every fetched provider fetches *before* it clears its own
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
