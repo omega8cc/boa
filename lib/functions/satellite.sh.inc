@@ -1005,11 +1005,11 @@ _satellite_cnf() {
   # and upgrade (resolved before the append-missing pass below persists it),
   # so accounts created on a hosted box are born with the fleet defaults.
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-    grep -q "^_GHOST_PLATFORMS_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_PLATFORMS_CLEANUP=YES
-    grep -q "^_GHOST_VHOSTS_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_VHOSTS_CLEANUP=YES
-    grep -q "^_GHOST_SITES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITES_CLEANUP=YES
-    grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
-    grep -q "^_GHOST_ALIASES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
+    grep -aq "^_GHOST_PLATFORMS_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_PLATFORMS_CLEANUP=YES
+    grep -aq "^_GHOST_VHOSTS_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_VHOSTS_CLEANUP=YES
+    grep -aq "^_GHOST_SITES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITES_CLEANUP=YES
+    grep -aq "^_GHOST_SITE_FILES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
+    grep -aq "^_GHOST_ALIASES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
   # Hosted and remotely managed systems (_if_hosted_sys: /root/.host8.cnf counts
   # too) have Grav and Textpattern on by default, as Backdrop is everywhere: a
@@ -1019,8 +1019,8 @@ _satellite_cnf() {
   # systems keep the NO of the settings file.
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
-    grep -q "^_GRAV_SUPPORT=" "${_octCnf}" 2>/dev/null || _GRAV_SUPPORT=YES
-    grep -q "^_TXP_SUPPORT=" "${_octCnf}" 2>/dev/null || _TXP_SUPPORT=YES
+    grep -aq "^_GRAV_SUPPORT=" "${_octCnf}" 2>/dev/null || _GRAV_SUPPORT=YES
+    grep -aq "^_TXP_SUPPORT=" "${_octCnf}" 2>/dev/null || _TXP_SUPPORT=YES
   fi
   # A hand-seeded cnf -- the documented opt-out creates /root/.oN.octopus.cnf
   # before boa in-octopus with _INSTANCE_GROUP=NO -- carries a line or two,
@@ -1030,7 +1030,7 @@ _satellite_cnf() {
   # seed: keep its lines, write the full set, lay the seeded lines back.
   _octSeed=""
   _octSeeded=NO
-  if [ -e "${_octCnf}" ] && ! grep -q "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
+  if [ -e "${_octCnf}" ] && ! grep -aq "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
     _octSeeded=YES
   fi
   if [ "${_octSeeded}" = "YES" ] || [ ! -e "${_octCnf}" ]; then
@@ -1059,7 +1059,7 @@ _satellite_cnf() {
     # there took the operator's file with it, and the re-run then installed
     # with the box defaults.
     if [ "${_octSeeded}" = "YES" ]; then
-      _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
+      _octSeed=$(grep -aE '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
       rm -f ${_octCnf}
       _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
     fi
@@ -1127,7 +1127,7 @@ _satellite_cnf() {
         [ -n "${_seedLine}" ] || continue
         _seedKey="${_seedLine%%=*}"
         _seedRep=$(printf '%s' "${_seedLine}" | sed 's/[&|\\]/\\&/g')
-        if grep -q "^${_seedKey}=" ${_octCnf} 2> /dev/null; then
+        if grep -aq "^${_seedKey}=" ${_octCnf} 2> /dev/null; then
           sed -i "s|^${_seedKey}=.*|${_seedRep}|" ${_octCnf}
         else
           echo "${_seedLine}" >> ${_octCnf}
@@ -1143,37 +1143,37 @@ _satellite_cnf() {
       _msg "INFO: Reading your ${_octCnf} config file"
     fi
     sleep 1
-    _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${_octCnf} 2>&1)
+    _PHP_FPM_WORKERS_TEST=$(grep -a _PHP_FPM_WORKERS ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_WORKERS_TEST}" =~ "_PHP_FPM_WORKERS" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${_octCnf}
     fi
-    _PHP_FPM_MAX_CHILDREN_FORCE_TEST=$(grep _PHP_FPM_MAX_CHILDREN_FORCE ${_octCnf} 2>&1)
+    _PHP_FPM_MAX_CHILDREN_FORCE_TEST=$(grep -a _PHP_FPM_MAX_CHILDREN_FORCE ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_MAX_CHILDREN_FORCE_TEST}" =~ "_PHP_FPM_MAX_CHILDREN_FORCE" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_MAX_CHILDREN_FORCE=${_PHP_FPM_MAX_CHILDREN_FORCE:-AUTO}" >> ${_octCnf}
     fi
-    _PHP_FPM_MEMORY_LIMIT_FORCE_TEST=$(grep _PHP_FPM_MEMORY_LIMIT_FORCE ${_octCnf} 2>&1)
+    _PHP_FPM_MEMORY_LIMIT_FORCE_TEST=$(grep -a _PHP_FPM_MEMORY_LIMIT_FORCE ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_MEMORY_LIMIT_FORCE_TEST}" =~ "_PHP_FPM_MEMORY_LIMIT_FORCE" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_MEMORY_LIMIT_FORCE=${_PHP_FPM_MEMORY_LIMIT_FORCE:-AUTO}" >> ${_octCnf}
     fi
-    _PHP_FPM_RAM_PCT_TEST=$(grep _PHP_FPM_RAM_PCT ${_octCnf} 2>&1)
+    _PHP_FPM_RAM_PCT_TEST=$(grep -a _PHP_FPM_RAM_PCT ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_RAM_PCT_TEST}" =~ "_PHP_FPM_RAM_PCT" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_RAM_PCT=${_PHP_FPM_RAM_PCT:-AUTO}" >> ${_octCnf}
     fi
-    _PHP_FPM_CPU_FACTOR_TEST=$(grep _PHP_FPM_CPU_FACTOR ${_octCnf} 2>&1)
+    _PHP_FPM_CPU_FACTOR_TEST=$(grep -a _PHP_FPM_CPU_FACTOR ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_CPU_FACTOR_TEST}" =~ "_PHP_FPM_CPU_FACTOR" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_CPU_FACTOR=${_PHP_FPM_CPU_FACTOR:-AUTO}" >> ${_octCnf}
     fi
-    _PHP_FPM_TIMEOUT_TEST=$(grep _PHP_FPM_TIMEOUT ${_octCnf} 2>&1)
+    _PHP_FPM_TIMEOUT_TEST=$(grep -a _PHP_FPM_TIMEOUT ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_TIMEOUT_TEST}" =~ "_PHP_FPM_TIMEOUT" ]]; then
       _DO_NOTHING=YES
     else
@@ -1182,31 +1182,31 @@ _satellite_cnf() {
     ### Retired: every PHP-FPM pool keeps one disable_functions list (since 2026-10-12)
     sed -i "/^_PHP_FPM_DENY=/d" ${_octCnf}
     wait
-     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${_octCnf} 2>&1)
+     _RESERVED_RAM_TEST=$(grep -a _RESERVED_RAM ${_octCnf} 2>&1)
     if [[ "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       _DO_NOTHING=YES
     else
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${_octCnf}
     fi
-    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${_octCnf} 2>&1)
+    _PHP_FPM_VERSION_TEST=$(grep -a _PHP_FPM_VERSION ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${_octCnf}
     fi
-    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${_octCnf} 2>&1)
+    _PHP_CLI_VERSION_TEST=$(grep -a _PHP_CLI_VERSION ${_octCnf} 2>&1)
     if [[ "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${_octCnf}
     fi
-    _PLATFORMS_ONLY_TEST=$(grep _PLATFORMS_ONLY ${_octCnf} 2>&1)
+    _PLATFORMS_ONLY_TEST=$(grep -a _PLATFORMS_ONLY ${_octCnf} 2>&1)
     if [[ "${_PLATFORMS_ONLY_TEST}" =~ "_PLATFORMS_ONLY" ]]; then
       _DO_NOTHING=YES
     else
       echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}" >> ${_octCnf}
     fi
-    _BACKDROP_SUPPORT_TEST=$(grep "^_BACKDROP_SUPPORT=" ${_octCnf} 2>&1)
+    _BACKDROP_SUPPORT_TEST=$(grep -a "^_BACKDROP_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
@@ -1214,13 +1214,13 @@ _satellite_cnf() {
     fi
     ### Off on self-hosted systems, on by default on hosted ones (see the
     ### top of this function).
-    _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
+    _GRAV_SUPPORT_TEST=$(grep -a "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
     fi
-    _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
+    _TXP_SUPPORT_TEST=$(grep -a "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
@@ -1229,7 +1229,7 @@ _satellite_cnf() {
     ### One-shot opt-out migration; see the barracuda-side twin in
     ### system.sh.inc for the why. Runs before this cnf is sourced, so
     ### the flipped value takes effect in the same run.
-    _BDR_MIGRATED_TEST=$(grep _BACKDROP_SUPPORT_MIGRATED ${_octCnf} 2>&1)
+    _BDR_MIGRATED_TEST=$(grep -a _BACKDROP_SUPPORT_MIGRATED ${_octCnf} 2>&1)
     if [[ ! "${_BDR_MIGRATED_TEST}" =~ "_BACKDROP_SUPPORT_MIGRATED" ]]; then
       sed -i "s/^_BACKDROP_SUPPORT=NO$/_BACKDROP_SUPPORT=YES/g" ${_octCnf}
       echo "### _BACKDROP_SUPPORT_MIGRATED" >> ${_octCnf}
@@ -1238,7 +1238,7 @@ _satellite_cnf() {
     ### only (see the top of this function); before the source, too.
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ] \
-      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_octCnf}" 2> /dev/null; then
+      && ! grep -aq "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_octCnf}" 2> /dev/null; then
       sed -i "s/^_GRAV_SUPPORT=NO$/_GRAV_SUPPORT=YES/g" "${_octCnf}"
       sed -i "s/^_TXP_SUPPORT=NO$/_TXP_SUPPORT=YES/g" "${_octCnf}"
       echo "### _GRAV_TXP_SUPPORT_MIGRATED" >> "${_octCnf}"
@@ -1477,7 +1477,7 @@ _satellite_cnf() {
       fi
     fi
 
-    _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP ${_octCnf} 2>&1)
+    _O_CONTRIB_UP_TEST=$(grep -a _O_CONTRIB_UP ${_octCnf} 2>&1)
     if [[ "${_O_CONTRIB_UP_TEST}" =~ "_O_CONTRIB_UP" ]]; then
       sed -i "s/^_O_CONTRIB_UP.*//g" ${_octCnf} &> /dev/null
       wait
@@ -1485,7 +1485,7 @@ _satellite_cnf() {
       wait
     fi
 
-    _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED ${_octCnf} 2>&1)
+    _ALLOW_UNSUPPORTED_TEST=$(grep -a _ALLOW_UNSUPPORTED ${_octCnf} 2>&1)
     if [[ "${_ALLOW_UNSUPPORTED_TEST}" =~ "_ALLOW_UNSUPPORTED" ]]; then
       sed -i "s/^_ALLOW_UNSUPPORTED.*//g" ${_octCnf} &> /dev/null
       wait
@@ -1493,7 +1493,7 @@ _satellite_cnf() {
       wait
     fi
 
-    _USE_STOCK_TEST=$(grep _USE_STOCK ${_octCnf} 2>&1)
+    _USE_STOCK_TEST=$(grep -a _USE_STOCK ${_octCnf} 2>&1)
     if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
       sed -i "s/^_USE_STOCK.*//g" ${_octCnf} &> /dev/null
       wait
@@ -1501,7 +1501,7 @@ _satellite_cnf() {
       wait
     fi
 
-    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${_octCnf} 2>&1)
+    _HTTP_WILDCARD_TEST=$(grep -a _HTTP_WILDCARD ${_octCnf} 2>&1)
     if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
       sed -i "s/^_HTTP_WILDCARD.*//g" ${_octCnf} &> /dev/null
       wait
@@ -1509,91 +1509,91 @@ _satellite_cnf() {
       wait
     fi
 
-    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS ${_octCnf} 2>&1)
+    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep -a _DEL_OLD_EMPTY_PLATFORMS ${_octCnf} 2>&1)
     if [[ "${_DEL_OLD_EMPTY_PLATFORMS_TEST}" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]]; then
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${_octCnf}
     fi
 
-    _GHOST_PLATFORMS_CLEANUP_TEST=$(grep _GHOST_PLATFORMS_CLEANUP ${_octCnf} 2>&1)
+    _GHOST_PLATFORMS_CLEANUP_TEST=$(grep -a _GHOST_PLATFORMS_CLEANUP ${_octCnf} 2>&1)
     if [[ "${_GHOST_PLATFORMS_CLEANUP_TEST}" =~ "_GHOST_PLATFORMS_CLEANUP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_octCnf}
     fi
 
-    _GHOST_VHOSTS_CLEANUP_TEST=$(grep _GHOST_VHOSTS_CLEANUP ${_octCnf} 2>&1)
+    _GHOST_VHOSTS_CLEANUP_TEST=$(grep -a _GHOST_VHOSTS_CLEANUP ${_octCnf} 2>&1)
     if [[ "${_GHOST_VHOSTS_CLEANUP_TEST}" =~ "_GHOST_VHOSTS_CLEANUP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_octCnf}
     fi
 
-    _GHOST_SITES_CLEANUP_TEST=$(grep _GHOST_SITES_CLEANUP ${_octCnf} 2>&1)
+    _GHOST_SITES_CLEANUP_TEST=$(grep -a _GHOST_SITES_CLEANUP ${_octCnf} 2>&1)
     if [[ "${_GHOST_SITES_CLEANUP_TEST}" =~ "_GHOST_SITES_CLEANUP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_octCnf}
     fi
 
-    _GHOST_SITE_FILES_CLEANUP_TEST=$(grep _GHOST_SITE_FILES_CLEANUP ${_octCnf} 2>&1)
+    _GHOST_SITE_FILES_CLEANUP_TEST=$(grep -a _GHOST_SITE_FILES_CLEANUP ${_octCnf} 2>&1)
     if [[ "${_GHOST_SITE_FILES_CLEANUP_TEST}" =~ "_GHOST_SITE_FILES_CLEANUP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
     fi
 
-    _GHOST_ALIASES_CLEANUP_TEST=$(grep _GHOST_ALIASES_CLEANUP ${_octCnf} 2>&1)
+    _GHOST_ALIASES_CLEANUP_TEST=$(grep -a _GHOST_ALIASES_CLEANUP ${_octCnf} 2>&1)
     if [[ "${_GHOST_ALIASES_CLEANUP_TEST}" =~ "_GHOST_ALIASES_CLEANUP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_octCnf}
     fi
 
-    _INSTANCE_GROUP_TEST=$(grep _INSTANCE_GROUP ${_octCnf} 2>&1)
+    _INSTANCE_GROUP_TEST=$(grep -a _INSTANCE_GROUP ${_octCnf} 2>&1)
     if [[ "${_INSTANCE_GROUP_TEST}" =~ "_INSTANCE_GROUP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}" >> ${_octCnf}
     fi
 
-    _SEND_UPGRADE_EMAIL_TEST=$(grep "^_SEND_UPGRADE_EMAIL=" ${_octCnf} 2>&1)
+    _SEND_UPGRADE_EMAIL_TEST=$(grep -a "^_SEND_UPGRADE_EMAIL=" ${_octCnf} 2>&1)
     if [[ "${_SEND_UPGRADE_EMAIL_TEST}" =~ "_SEND_UPGRADE_EMAIL=" ]]; then
       _DO_NOTHING=YES
     else
       echo "_SEND_UPGRADE_EMAIL=${_SEND_UPGRADE_EMAIL:-YES}" >> ${_octCnf}
     fi
 
-    _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
+    _DEL_OLD_BACKUPS_TEST=$(grep -a _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
     if [[ "${_DEL_OLD_BACKUPS_TEST}" =~ "_DEL_OLD_BACKUPS" ]]; then
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}" >> ${_octCnf}
     fi
 
-    _DEL_OLD_TMP_TEST=$(grep _DEL_OLD_TMP ${_octCnf} 2>&1)
+    _DEL_OLD_TMP_TEST=$(grep -a _DEL_OLD_TMP ${_octCnf} 2>&1)
     if [[ "${_DEL_OLD_TMP_TEST}" =~ "_DEL_OLD_TMP" ]]; then
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}" >> ${_octCnf}
     fi
 
-    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${_octCnf} 2>&1)
+    _STRONG_PASSWORDS_TEST=$(grep -a _STRONG_PASSWORDS ${_octCnf} 2>&1)
     if [[ "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
       _DO_NOTHING=YES
     else
       echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${_octCnf}
     fi
 
-    _SQL_CONVERT_TEST=$(grep _SQL_CONVERT ${_octCnf} 2>&1)
+    _SQL_CONVERT_TEST=$(grep -a _SQL_CONVERT ${_octCnf} 2>&1)
     if [[ "${_SQL_CONVERT_TEST}" =~ "_SQL_CONVERT" ]]; then
       _DO_NOTHING=YES
     else
       echo "_SQL_CONVERT=${_SQL_CONVERT}" >> ${_octCnf}
     fi
 
-    _DL_MODE_TEST=$(grep _DL_MODE ${_octCnf} 2>&1)
+    _DL_MODE_TEST=$(grep -a _DL_MODE ${_octCnf} 2>&1)
     if [[ ! "${_DL_MODE_TEST}" =~ "_DL_MODE" ]]; then
       if [ -n "${_DL_MODE}" ]; then
         echo "_DL_MODE=${_DL_MODE}" >> ${_octCnf}
@@ -1624,7 +1624,7 @@ _satellite_cnf() {
     # another account's cnf owns is never this one's; the derived name is.
     if [ "${_STATUS}" = "INIT" ] && [ -n "${_domDerived}" ] \
       && [ "${_DOMAIN}" != "${_domDerived}" ] \
-      && grep -l "^_DOMAIN=\"${_DOMAIN}\"" /root/.o*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
+      && grep -al "^_DOMAIN=\"${_DOMAIN}\"" /root/.o*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
       _msg "NOTE: _DOMAIN ${_DOMAIN} in ${_octCnf} belongs to another account; using ${_domDerived}"
       _DOMAIN="${_domDerived}"
       sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
