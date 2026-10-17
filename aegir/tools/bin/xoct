@@ -7492,6 +7492,9 @@ _xoct_go_live() {
     echo "ERROR: without admail=, which removes the record"
     exit 1
   fi
+  ### go-live reaches the target below before _migrate_init runs, so it
+  ### learns the host key itself, as the verbs there do.
+  _xoct_learn_peer_host_key "${_tgt}"
   _USR="/data/disk/${_oct}"
   _THIS_HM_USER="${_oct}"
   _dA="${_dst}"
@@ -7537,7 +7540,9 @@ if [ -f \"\${_c}\" ]; then
 else echo SW-NOCNF; fi
 if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo SKIP-STUCK; exit 1; }; echo SKIP-GONE; fi
 echo GOLIVE-TARGET-OK"
-  _out="$(ssh root@"${_tgt}" "${_sh}" 2> /dev/null)"
+  ### Gives up on a target that does not answer as the other verbs' first
+  ### contact does, not after the system's two-minute connect timeout.
+  _out="$(ssh -o ConnectTimeout=15 root@"${_tgt}" "${_sh}" 2> /dev/null)"
   if [ "${_out}" = "NAME-UNKNOWN" ]; then
     echo "ERROR: ${_tgt} holds no create marker naming this box and ${_oct}, and no policy record here"
     echo "ERROR: names the account there: its ${_oct} may be another account (a renamed canary before"
@@ -7628,6 +7633,17 @@ _migrate_init() {
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   fi
+  ### The verbs that reach the target learn its host key before their first
+  ### contact, as proxy's record push and xmass do: on a box that has never
+  ### met the target, their non-interactive ssh and rsync calls would fail
+  ### host key verification (and the hold read before them would pass it by
+  ### silently). An account's export and import reach no peer; the shared
+  ### and xusage legs reach the target whatever the verb.
+  case "${_cmd}:${_oct}" in
+    create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
+      _xoct_learn_peer_host_key "${_tgt}"
+      ;;
+  esac
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     if [ -e "/var/log/boa/usage" ]; then
