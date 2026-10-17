@@ -2750,7 +2750,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _runner_parked graceful.sh \
-      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f74
     _runner_parked usage.sh \
       || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f54
   fi

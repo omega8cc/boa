@@ -5649,17 +5649,16 @@ _if_install_wkhtmltox() {
     || [ -L "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Installing wkhtmltopdf from ${_OS_CODE} packages..."
+      _msg "INFO: Installing the packages wkhtmltopdf needs from ${_OS_CODE}..."
     fi
     _apt_clean_update
-    for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf; do
-      # trixie and excalibur no longer ship wkhtmltopdf; the bundled build
-      # below is the only source there.
-      if [ "${_PKG}" = "wkhtmltopdf" ]; then
-        case "${_OS_CODE}" in
-          excalibur|trixie) continue ;;
-        esac
-      fi
+    # The bundled build below is the only source on every system. The distro
+    # wkhtmltopdf package is not installed: the bundled package conflicts
+    # with it and replaces it, so it only ever left its dependency chain
+    # behind, and with recommends on that chain brought polkitd, elogind
+    # and its PAM module (see _if_heal_logind_leak). trixie and excalibur
+    # no longer ship it at all.
+    for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -5726,8 +5725,11 @@ _if_install_wkhtmltox() {
       _msg "INFO: The wkhtmltox tools v.${_WKHTMLTOX_VRN} installation complete"
     fi
     cd /var/opt
-    _fix_wkhtml
   fi
+  # Also when the bundled build is current: a missing /usr/bin copy, which
+  # sites point at, is what sends a pass here, and with no distro package
+  # reinstalled the copy has to come from /usr/local/bin.
+  _fix_wkhtml
 }
 
 #
@@ -8651,6 +8653,101 @@ _finale() {
   _msg "BYE!"
 }
 
+#
+# A session cgroup is idle when no process is in it or below it and it has no
+# child cgroup.
+_session_cgroup_idle() {
+  local _cgKey _cgVal _cgSub
+  local _cgPop=1
+  [ -d "$1" ] && [ -r "$1/cgroup.events" ] || return 1
+  while read -r _cgKey _cgVal; do
+    if [ "${_cgKey}" = "populated" ]; then
+      _cgPop="${_cgVal}"
+    fi
+  done < "$1/cgroup.events"
+  [ "${_cgPop}" = "0" ] || return 1
+  for _cgSub in "$1"/*/; do
+    [ -d "${_cgSub}" ] && return 1
+  done
+  return 0
+}
+
+#
+# Remove the empty per-session cgroups elogind leaves on the cgroup2
+# hierarchy it mounts: top-level c<N> and <N> directories only, never on a
+# systemd host, and only those idle at two reads three seconds apart (a new
+# session's cgroup is filled the moment it is made). The kernel refuses
+# rmdir on a populated cgroup in any case.
+_trim_session_cgroups() {
+  local _cgDir _cgLeft
+  local -a _cgCand=()
+  local -a _cgGone=()
+  [ -d "/run/systemd/system" ] && return 0
+  grep -qs "^[^ ]* /sys/fs/cgroup cgroup2 " /proc/mounts || return 0
+  for _cgDir in /sys/fs/cgroup/c[0-9]* /sys/fs/cgroup/[0-9]*; do
+    [[ "${_cgDir##*/}" =~ ^c?[0-9]+$ ]] || continue
+    _session_cgroup_idle "${_cgDir}" && _cgCand+=("${_cgDir}")
+  done
+  (( ${#_cgCand[@]} )) || return 0
+  sleep 3
+  for _cgDir in "${_cgCand[@]}"; do
+    _session_cgroup_idle "${_cgDir}" && _cgGone+=("${_cgDir}")
+  done
+  (( ${#_cgGone[@]} )) || return 0
+  printf '%s\0' "${_cgGone[@]}" | xargs -0 rmdir 2> /dev/null
+  _cgLeft=0
+  for _cgDir in "${_cgGone[@]}"; do
+    [ -d "${_cgDir}" ] && _cgLeft=$(( _cgLeft + 1 ))
+  done
+  _msg "INFO: Removed $(( ${#_cgGone[@]} - _cgLeft )) empty login-session cgroups"
+}
+
+#
+# BOA runs no login-session manager. elogind's PAM module arrives only as a
+# dependency (polkitd needs a logind), and elogind, 246 on daedalus and 255
+# on excalibur alike, never removes the cgroup it makes for each PAM session:
+# every su, cron run and ssh login leaves one behind, and their kernel memory
+# (slab, and per-CPU memory counted for every possible CPU) grows until the
+# OOM killer takes mysqld. Remove the PAM module, the polkit stack that needs
+# it and the services that came with them and need polkit (modemmanager,
+# packagekit), but only when apt would remove nothing else; the elogind
+# daemon stays, inert without the module. Then remove the empty session
+# cgroups.
+_if_heal_logind_leak() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_heal_logind_leak"
+  fi
+  local _lgnSim _lgnPkg _lgnExtra
+  if _pkg_installed "libpam-elogind"; then
+    _lgnSim="$(apt-get -s purge libpam-elogind 2> /dev/null \
+      | awk '$1 == "Purg" || $1 == "Remv" { print $2 }')"
+    _lgnExtra=
+    for _lgnPkg in ${_lgnSim}; do
+      case "${_lgnPkg%%:*}" in
+        libpam-elogind|polkitd|polkitd-pkla|policykit-1|policykit-1-gnome) ;;
+        pkexec|libpolkit-gobject-elogind-1-0) ;;
+        modemmanager) ;;
+        packagekit|packagekit-tools) ;;
+        software-properties-common|python3-software-properties) ;;
+        *) _lgnExtra="${_lgnExtra} ${_lgnPkg}" ;;
+      esac
+    done
+    if [ -z "${_lgnSim}" ]; then
+      _msg "ALRT: libpam-elogind is installed but apt cannot plan its removal; every login session still leaves a cgroup behind"
+    elif [ -n "${_lgnExtra}" ]; then
+      _msg "ALRT: libpam-elogind left in place: removing it would also remove${_lgnExtra}; every login session still leaves a cgroup behind"
+    else
+      _mrun "apt-get purge libpam-elogind -y -qq"
+      if _pkg_installed "libpam-elogind"; then
+        _msg "ALRT: libpam-elogind could not be removed; every login session still leaves a cgroup behind"
+      else
+        _msg "INFO: elogind's PAM module and the polkit stack removed"
+      fi
+    fi
+  fi
+  _trim_session_cgroups
+}
+
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -8697,6 +8794,10 @@ _run_aptitude_deps_install() {
       _mrun "dpkg --purge ${_lgcySlgd}"
     fi
   done
+  # A box that already carries elogind's PAM module leaks a cgroup per login
+  # session whatever brought it, and the FULL-mode removal of the polkit
+  # stack below runs only on a fresh install, so heal it on every run.
+  _if_heal_logind_leak
   # The distro archive keyring is the box's only trust root, and _mrun cannot
   # fail (it returns 0 unconditionally), so the old duplicated call could not
   # tell whether the package ever arrived -- it just ran the same command
