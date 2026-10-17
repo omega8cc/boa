@@ -266,6 +266,12 @@
       credentials written out for the archive, then cloaked again), so
       the site was back online before the work started.
 
+    * A Restore and a Migrate keep a Drupal 6 or 7 site in maintenance
+      mode while the copy's database updates run. Their deploy runs in a
+      process of its own that wrote settings.php from the site's enabled
+      record, and its vhost was live again before the updates, so
+      visitors reached a site whose database was still being updated.
+
     * A Drupal 6 site's database updates run again. Since late 2022
       Ægir's Drush 8 stopped every Drupal 6 batch with "Missing required
       argument: batch-id" and ran none of it, so updatedb applied no
