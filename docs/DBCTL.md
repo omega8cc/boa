@@ -149,8 +149,10 @@ or is longer than 3072 bytes as the alias spells it gives no credential
 either, and a plan says that too: `refused server-alias-password the
 password its server alias records is empty`, `... has a character outside
 A-Z, a-z, 0-9 and %._~/-` or `... is longer than 3072 bytes as the alias
-spells it`; settle reads a parked home that holds such an alias as one that
-holds no credential.
+spells it`. So does the box-wide check's line of an account's instance login
+that holds a global privilege, with the same words, and the master's own
+instance login reads `credential-not-plain`. Settle reads a parked home that
+holds such an alias as one that holds no credential.
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
