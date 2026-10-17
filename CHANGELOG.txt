@@ -4,6 +4,35 @@
 
 @=> Important Fixes
 
+    * xtrim no longer refuses an account over a site that has no
+      database. A site on the 'none' database server (a Grav site, a
+      Textpattern site kept without a store) carries a drushrc.php that
+      defines no db_name at all, and the plan read that as a database
+      it could not prove the account's own, so nothing on that account
+      could ever be trimmed after a migration. Such a site now proves
+      nothing and blocks nothing; a defined db_name that cannot be read
+      sanely still refuses.
+
+    * renameaegirhost no longer keeps a site's alias file under both
+      names after a failback. A box promoted once before still held the
+      alias it wrote then; the sync (a copy that deletes nothing) laid
+      the active's old-name alias beside it, the rename skipped the move
+      because the new name existed, and the pair was rewritten and
+      converted again by Drush at every pass, leaving placeholder yml
+      files naming the former host on every account. The alias at the
+      new name is now replaced by the old-name copy, the one the active
+      kept current.
+
+    * A box promoted by a cutover, or by hand, no longer keeps the state
+      file of the round it ran as the active before its demotion. The
+      promotion retired the account records that demotion left (relay
+      markers, source-role proxy records) but not the box's own, so a box
+      promoted back by a later round still read as relaying to that
+      round's target: status showed the old round, init refused to start
+      over, and reset-phase refused with a remedy that would have resumed
+      that round's cutover tail toward the box now demoted. The file is
+      set aside as superseded and the next round starts from init.
+
     * A server no longer loses its memory to finished login sessions.
       elogind's PAM module, which a package chain can bring in (polkitd
       needs a logind), makes a cgroup for every PAM session (every su BOA
