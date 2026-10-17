@@ -8710,9 +8710,10 @@ _trim_session_cgroups() {
 # (slab, and per-CPU memory counted for every possible CPU) grows until the
 # OOM killer takes mysqld. Remove the PAM module, the polkit stack that needs
 # it and the services that came with them and need polkit (modemmanager,
-# packagekit), but only when apt would remove nothing else; the elogind
-# daemon stays, inert without the module. Then remove the empty session
-# cgroups.
+# packagekit), but only when apt would remove nothing else. The elogind
+# daemon is never removed here (inert without the module, and apt may drop
+# it later as unused where only the module needed it). Then remove the empty
+# session cgroups.
 _if_heal_logind_leak() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_heal_logind_leak"
