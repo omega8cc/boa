@@ -706,6 +706,20 @@
       proxy, where the nightly pass does not run, keeps a week too.
       dragon/config stays a permanent archive.
 
+    * A Grav rename, Clone or Upgrade a copy onto a name whose earlier
+      holder left a stale alias behind no longer takes over that holder's
+      settings. The renamed site or the copy inherited its domain aliases,
+      redirection, encryption and key, extra Drush aliases and cron key,
+      and its Verify went after a certificate for the holder's aliases.
+      The stale alias is now removed before the new context is saved. A
+      rename or Clone onto a name a live site's context still holds on
+      another platform is refused instead of re-pointing that context.
+
+    * A Grav rename now keeps the site's extra Drush aliases: the renamed
+      site lost them, and their alias files kept naming the old name and
+      a site directory that no longer exists. A rename that fails after
+      saving the new name writes them again for the restored site.
+
 @=> Security
 
     * autosymlink prints every log line as one line: a control byte in a
