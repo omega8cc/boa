@@ -1028,6 +1028,9 @@ _satellite_cnf() {
   # persists only a subset: the account's first upgrade then refused on the
   # email that was never written. A cnf without _MY_OCTO_EMAIL is such a
   # seed: keep its lines, write the full set, lay the seeded lines back.
+  # Every read of the cnf here reads it as text (grep -a): a crash can
+  # zero-fill a cnf's tail, and grep would then read the file as binary and
+  # find none of its lines.
   _octSeed=""
   _octSeeded=NO
   if [ -e "${_octCnf}" ] && ! grep -aq "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
@@ -4580,36 +4583,37 @@ _satellite_db_broker_call() {
 }
 
 #
-# A migration tool's _DB_BROKER_BORN=NO left in a moved account's cnf. The
-# tool takes its own line back once the account's settings are merged, so
-# one still there a day after the account's create is a leftover: of a tool
-# from before that take-back, or of a create that ended early and was never
-# run again. It is taken back here, the exact line only, on an upgrade pass
-# (never an install's: no create marker is the new account's own yet),
-# where the account carries the create marker
+# A migration tool's _DB_BROKER_BORN=NO that a release before the seed's
+# note left in a moved account's cnf: that tool never took its line back,
+# so the account was kept out for good. A create of this release notes its
+# line beside the cnf (/root/.<oN>.dbctl-seed.txt), and only a merge of the
+# source's settings that succeeded takes it back (xoct's create and live
+# transfer, each live xmass pass): a line a note names, in any word, is
+# never taken back here, so a create whose merge failed keeps its account
+# out until one succeeds, and an operator's line stays. A line with no note
+# a day after the account's create is taken back here, the exact line only,
+# on an upgrade pass (never an install's: no create marker is the new
+# account's own yet), where the account carries the create marker
 # (/root/.<oN>.migration-create.txt, a regular file of root's, not a link,
 # older than a day, read without following a link, its first 64 KiB) and
 # the marker names the account as it is now: its uid, and the inode and
 # birth time of /data/disk/<oN>, both numbers, as xoct's owner gate reads
 # them (a marker left from an earlier account of the name is not trusted).
-# The seed's note (/root/.<oN>.dbctl-seed.txt) must not say that the cnf
-# held its operator's line before (operator) or that the tool keeps its
-# line until the source's settings are merged (kept); the note goes with the
-# line. The cnf is rewritten in place, its inode and mode kept, from a copy
-# this run makes beside it, read as text (a crash can zero-fill a cnf's
-# tail): only where that copy is a regular file holding exactly the cnf's
-# lines but the ones taken, and the cnf is still the file it was read from;
-# otherwise nothing changes and a NOTE says so. One INFO line names the
-# migration. An operator's _DB_BROKER_ARM=NO, which nothing takes back,
-# keeps the account out.
+# The cnf is rewritten in place, its inode and mode kept, from a copy this
+# run makes beside it, read as text (a crash can zero-fill a cnf's tail):
+# only where that copy is a regular file holding exactly the cnf's lines
+# but the ones taken, and the cnf is still the file it was read from;
+# otherwise nothing changes and a NOTE says so. Once the write into the cnf
+# has started the copy is the cnf's one whole text: a write that fails part
+# way leaves it there, an ALRT names it, and the status is 1, so the pass
+# switches nothing. One INFO line names the migration. An operator's
+# _DB_BROKER_ARM=NO, which nothing takes back, keeps the account out.
 _satellite_db_broker_born_leftover() {
   local _c="/root/.${_USER}.octopus.cnf" _m="/root/.${_USER}.migration-create.txt"
   local _n="/root/.${_USER}.dbctl-seed.txt" _t _mk _mu _mi _mh _mo _nu _ni _was _all _k _rc
   [[ "${_STATUS}" != "INIT" ]] || return 0
   [[ -n "$(find "${_m}" -maxdepth 0 -type f -user root -mmin +1440 2> /dev/null)" ]] || return 0
-  case "$(cat "${_n}" 2> /dev/null)" in
-    operator|kept) return 0 ;;
-  esac
+  [[ ! -e "${_n}" && ! -L "${_n}" ]] || return 0
   grep -aqx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
   _mk=$(timeout 10 dd if="${_m}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null)
   _mu=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
@@ -4628,9 +4632,12 @@ _satellite_db_broker_born_leftover() {
   if [[ "${_rc}" -le 1 && -f "${_t}" && ! -L "${_t}" ]] \
     && [[ "${_all}" =~ ^[0-9]+$ && "${_k}" =~ ^[0-9]+$ && -n "${_was}" ]] \
     && [[ "$(grep -ac '' "${_t}" 2> /dev/null)" == "$(( _all - _k ))" ]] \
-    && [[ "$(stat -c %i:%s "${_c}" 2> /dev/null)" == "${_was}" ]] \
-    && cat "${_t}" > "${_c}"; then
-    rm -f -- "${_t}" "${_n}"
+    && [[ "$(stat -c %i:%s "${_c}" 2> /dev/null)" == "${_was}" ]]; then
+    if ! { cat -- "${_t}" > "${_c}"; } 2> /dev/null; then
+      _msg "ALRT: database broker: ${_c} could not be written whole: its whole text without _DB_BROKER_BORN=NO is in ${_t}, put that copy in its place; ${_USER} is not switched on this pass"
+      return 1
+    fi
+    rm -f -- "${_t}"
     _mh=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
     _mo=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
     [[ "${_mh}" =~ ^[a-z0-9.-]+$ && "${_mo}" =~ ^[a-z0-9._-]+$ ]] || { _mh="?"; _mo="?"; }
@@ -4651,11 +4658,12 @@ _satellite_db_broker_born_leftover() {
 # for an account whose cnf says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO, the
 # last assignment counting (a migration tool puts the second there before it
 # installs a moved account: such an account takes its state from its
-# source; one left a day after its create is taken back first), nor on a
-# replication standby or a box being prepared as one. The broker's own
-# checks decide; a call it refuses is a NOTE and the pass goes on. The
-# switch runs only under a pass launcher, which keeps /run/boa_wait.pid and
-# with it every task dispatcher off.
+# source; one a release before the seed's note left is taken back first, a
+# day after its create, and a take-back whose write failed switches
+# nothing), nor on a replication standby or a box being prepared as one.
+# The broker's own checks decide; a call it refuses is a NOTE and the pass
+# goes on. The switch runs only under a pass launcher, which keeps
+# /run/boa_wait.pid and with it every task dispatcher off.
 _satellite_if_db_broker() {
   local _k
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4670,7 +4678,7 @@ _satellite_if_db_broker() {
   [[ "$(_satellite_db_broker_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] \
     || return 0
   if [[ ! -e "/root/.standby.cnf" && ! -e "/root/.standby.prep.cnf" ]]; then
-    _satellite_db_broker_born_leftover
+    _satellite_db_broker_born_leftover || return 0
   fi
   for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
     if [[ "$(_satellite_db_broker_cnf_last "/root/.${_USER}.octopus.cnf" "${_k}")" == "NO" ]]; then
