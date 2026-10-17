@@ -143,8 +143,9 @@ opens no row of it` is said only where a login was tried.
 A server alias whose encoded password decodes to a control character, or in
 which a `%` does not begin two hex digits, is said as that and not as an
 alias that is missing: `refused server-alias-password ...` in a plan, the
-same words on the box-wide check's line and on settle's `left` line. An
-alias whose password is empty, holds a character outside the URL-safe set,
+same words on the box-wide check's line and on settle's `left` line.
+
+An alias whose password is empty, holds a character outside the URL-safe set,
 or is longer than 3072 bytes as the alias spells it gives no credential
 either, and a plan says that too: `refused server-alias-password the
 password its server alias records is empty`, `... has a character outside
