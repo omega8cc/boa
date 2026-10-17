@@ -26,6 +26,40 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
+# The scheduled run discards what it prints (crontabs/root), so a backup
+# refused for disk room says so where the daily report goes: the same
+# address, the same _INCIDENT_REPORT gate, the same "Daily backup:" subject
+# prefix. Only for a backup that would have run: without credentials the
+# tool is not in use, the maintenance pause mails nothing, and a run on a
+# terminal prints the refusal instead. $1 = what is short.
+_backup_refused() {
+  [ "${_BB_VERB:-}" = "backup" ] || return 0
+  [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && return 0
+  (
+    _hst=""
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    [ -n "${_AWS_KEY:-}" ] && [ -n "${_AWS_SEC:-}" ] && [ -n "${_AWS_PWD:-}" ] || exit 0
+    mkdir -p /var/log/boa
+    echo "$(date) Daily backup REFUSED: ${1} on /" >> /var/log/boa/backboa.incident.log
+    [ -t 1 ] && exit 0
+    _INCIDENT_REPORT="${_INCIDENT_REPORT:-}"
+    _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+    _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+    [ "${_INCIDENT_REPORT}" = "NO" ] && _INCIDENT_REPORT="OFF"
+    [ -n "${_MY_EMAIL:-}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ] || exit 0
+    _hst="$(cat /etc/hostname 2>/dev/null | tr -d '[:space:]')"
+    [ -n "${_hst}" ] || _hst="$(hostname -f 2>/dev/null | tr -d '[:space:]')"
+    {
+      echo "The daily backup on ${_hst} did not run: ${1} on /, above the"
+      echo "90% line every BOA backup keeps. Nothing went to the bucket tonight."
+      echo "Free space or inodes on / (df -h /, df -i /), then run: backboa backup"
+    } | s-nail -s "Daily backup: REFUSED ${_hst} $(date)" ${_MY_EMAIL}
+  )
+  return 0
+}
+_BB_VERB="${1:-}"
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
@@ -43,6 +77,7 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
+    _backup_refused "disk ${_DF_TEST}% full"
     exit 1
   fi
   # With no free inodes duplicity cannot create even a temp file and dies
@@ -57,6 +92,7 @@ _check_root() {
     echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
     echo "ERROR: We can not proceed until inode use is below 90/100"
     echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
+    _backup_refused "inodes ${_DI_TEST}% used"
     exit 1
   fi
 }
@@ -1098,6 +1134,7 @@ _chain_known() {
 }
 
 _backup() {
+  local _sub
   _backup_prepare
   _monthly_cleanup
   _randomize_full
@@ -1127,7 +1164,11 @@ _backup() {
   _chain_put "${_MODE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
-    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+    # A failed run keeps the prefix the report has always had, so it sorts
+    # with the others, and says FAILED before the mode
+    _sub="Daily backup: ${_MODE} ${_HST} $(date)"
+    [ "${_BUP_RC:-0}" -ne 0 ] && _sub="Daily backup: FAILED ${_MODE} ${_HST} $(date)"
+    s-nail -s "${_sub}" ${_MY_EMAIL} < ${_LOGFILE}
   fi
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   rm -f ${_LOGFILE}
@@ -1364,11 +1405,15 @@ _wg_free_aside() {
 _wg_free_held() {
   local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
-  read -r _s _h _n _ < "${_j}" || :
+  { read -r _s _h _n _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ] || return 0
   _h="${_h#held=}"
   _n="${_n#new=}"
-  [ -n "${_s}" ] && [ "${_s}" != "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
   [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  if [[ ! "${_h}" =~ ^[0-9]+$ ]]; then
+    [ -z "${2:-}" ] || printf 'lost - %s\n' "${_n}"
+    return 0
+  fi
   _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
   _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
   _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
@@ -1376,7 +1421,7 @@ _wg_free_held() {
     _st=stale
   elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
     _st=renamed
-  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
     _st=finish
   else
     _st=lost
@@ -1886,6 +1931,12 @@ if [ "$1" = "backup" ]; then
     # source-read patch reaches its venv here; a no-op once applied
     _patch_duplicity_path_open
     _backup
+    # duplicity's own exit status, as multiback gives it: the EXIT trap's
+    # bare exit keeps it, and the run marker is a success's alone
+    if [ "${_BUP_RC:-0}" -ne 0 ]; then
+      echo "The duplicity backup FAILED with exit code ${_BUP_RC}; see ${_LOGPTH}/${_BUCKET_NAME}.archive.log"
+      exit "${_BUP_RC}"
+    fi
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
   fi

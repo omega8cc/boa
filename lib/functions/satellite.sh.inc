@@ -2502,8 +2502,10 @@ _satellite_build_shared() {
             [ -n "${_p}" ] && _trees="${_trees} ${_p}"
             ;;
           bundle)
-            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_backdrop)?$ ]] \
-              || [ ! -d "${_p}" ]; then
+            # Drupal 12's shelf is built only while its pin is set
+            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_twelve|_backdrop)?$ ]] \
+              || [ ! -d "${_p}" ] \
+              || { [ "${_p##*/}" = "o_contrib_twelve" ] && [ -z "${_REDIS_W_VERSION}" ]; }; then
               _gone="${_gone} ${_p}"
             elif [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " != *" ${_p} "* ]]; then
               _msg "${_STATUS} A: Running ${_p} forced upgrade..."
@@ -2681,7 +2683,7 @@ _satellite_lent_top_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
   local _b _t
   for _b in o_contrib o_contrib_seven o_contrib_eight o_contrib_nine \
-    o_contrib_ten o_contrib_eleven o_contrib_backdrop; do
+    o_contrib_ten o_contrib_eleven o_contrib_twelve o_contrib_backdrop; do
     if [ ! -e "./${_b}" ] && [ ! -L "./${_b}" ]; then
       continue
     fi
@@ -3245,6 +3247,41 @@ _satellite_o_contrib_eleven_update_global() {
   cd
 }
 
+
+#
+# Update o_contrib_twelve: only where the shelf exists (it is made once
+# _REDIS_W_VERSION names a published copy), its one member the shared
+# redis_twelve.
+_satellite_o_contrib_twelve_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_o_contrib_twelve_update_global"
+    _debug_proc
+  fi
+
+  local _up
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_twelve" || continue
+    [ -e "${i}/o_contrib_twelve" ] || continue
+    if [ ! -e "${i}/o_contrib_twelve/update-${_xSrl}-${_X_VERSION}.info" ] \
+      || [ ! -L "${i}/o_contrib_twelve/redis_twelve" ]; then
+      _up=YES
+    else
+      _up=NO
+    fi
+    if [ "${_up}" = "YES" ]; then
+      if [ -e "${_D}/000/modules/redis_twelve" ] \
+        && [ ! -L "${i}/o_contrib_twelve/redis_twelve" ]; then
+        ln -sfn ${_D}/000/modules/redis_twelve ${i}/o_contrib_twelve/redis_twelve
+      fi
+      _acct_in_real_dir "${i}/o_contrib_twelve" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_twelve" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
+    fi
+  done
+  cd
+}
+
 _satellite_o_contrib_backdrop_update_global() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_o_contrib_backdrop_update_global"
@@ -3625,7 +3662,7 @@ _satellite_restore_o_contrib_backdrop_webform() {
 
 
 #
-# The links into ${_D}/000/modules a D8 to D11 bundle carries (the redis_*
+# The links into ${_D}/000/modules a D8 to D12 bundle carries (the redis_*
 # names its _update_global loop links), made in the directory the download
 # function fills, as the D6, D7 and Backdrop functions make theirs: a bundle
 # fetched again into a stage carries them when it is swapped in, so its
@@ -3638,6 +3675,24 @@ _satellite_bundle_links_here() {
     fi
   done
 }
+
+#
+# Download o_contrib_twelve: Drupal 12's shelf holds only the shared copy of
+# BOA's redis 2.x line, fetched once _REDIS_W_VERSION names it.
+_satellite_download_o_contrib_twelve() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_download_o_contrib_twelve"
+    _debug_proc
+  fi
+  touch update-${_xSrl}-${_X_VERSION}.info
+  if [ -n "${_REDIS_W_VERSION}" ] \
+    && _satellite_module_stale redis_twelve "ver-${_REDIS_W_VERSION}.${_xSrl}.full.info"; then
+    _satellite_shared_module_update redis_twelve "${_REDIS_W_VERSION}"
+  fi
+  _satellite_bundle_links_here redis_twelve
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
+}
+
 
 #
 # Download o_contrib_eleven.
@@ -3878,6 +3933,13 @@ _satellite_check_fix_o_contrib() {
     _msg "PROC: _satellite_check_fix_o_contrib"
     _debug_proc
   fi
+  if [ -n "${_REDIS_W_VERSION}" ] && [ -e "${_CORE}/o_contrib_twelve" ]; then
+    if [ ! -e "${_CORE}/o_contrib_twelve/redis_twelve" ] \
+      || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+      _msg "${_STATUS} A: Running o_contrib_twelve forced upgrade..."
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_twelve
+    fi
+  fi
   if [ -e "${_CORE}/o_contrib_eleven" ]; then
     if [ ! -e "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
@@ -3958,6 +4020,14 @@ _satellite_check_fix_o_contrib() {
   if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
+  ### Drupal 12's store: only once the pin names a published copy, and only
+  ### where the shelf exists.
+  if [ -n "${_REDIS_W_VERSION}" ] \
+    && [ -e "${_D}/000/modules/o_contrib_twelve" ]; then
+    if _satellite_module_stale redis_twelve "ver-${_REDIS_W_VERSION}.${_xSrl}.full.info"; then
+      _satellite_shared_module_update redis_twelve "${_REDIS_W_VERSION}"
+    fi
+  fi
   ### The Backdrop store is refreshed only where the bundle exists (or the
   ### support gate is on) so opted-out boxes never fetch it.
   if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
@@ -3992,6 +4062,12 @@ _satellite_manage_o_contrib() {
     _msg "${_STATUS} A: ALRT shared bundles not root's, fetched again: ${_mine}"
     _gone="${_gone:+${_gone} }${_mine}"
   fi
+  ### Drupal 12's shelf is made once _REDIS_W_VERSION names a published
+  ### copy of BOA's redis 2.x line; until then a Drupal 12 site keeps its
+  ### cache in the database. An existing shelf is kept fresh regardless.
+  if [ -n "${_REDIS_W_VERSION}" ] && [ ! -e "${_CORE}/o_contrib_twelve" ]; then
+    _satellite_bundle_new o_contrib_twelve _satellite_download_o_contrib_twelve
+  fi
   if [ ! -e "${_CORE}/o_contrib_eleven" ]; then
     _satellite_bundle_new o_contrib_eleven _satellite_download_o_contrib_eleven
   fi
@@ -4021,6 +4097,10 @@ _satellite_manage_o_contrib() {
       _satellite_download_o_contrib_backdrop
   fi
   _satellite_mk_modules
+  if [ -e "${_CORE}/o_contrib_twelve" ]; then
+    rm -f ${_D}/000/modules/o_contrib_twelve
+    ln -sfn ${_CORE}/o_contrib_twelve ${_D}/000/modules/o_contrib_twelve
+  fi
   rm -f ${_D}/000/modules/o_contrib_eleven
   ln -sfn ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
   rm -f ${_D}/000/modules/o_contrib_ten
@@ -4077,8 +4157,9 @@ _satellite_bundle_redo_at() {
 # links into ${_D}/000/modules included): $2 fills a fresh stage beside the
 # bundle (stages a stopped pass left are removed first), and the stage,
 # once every fetch $2 made succeeded
-# (_satellite_all_fetched_here) and it holds a module, is swapped in for the
-# bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
+# (_satellite_all_fetched_here) and it holds a module (a directory, or a link
+# to one: Drupal 12's shelf holds only its link into the store), is swapped
+# in for the bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
 # finds it emptied or part-fetched while it is fetched; where one rename
 # cannot do it, the bundle is moved aside first and the stage moved in. The
 # old bundle is removed with the stage. A stage a fetch failed for is
@@ -4091,7 +4172,7 @@ _satellite_bundle_redo_in() {
   mkdir -m 0755 -- "${_s}" || return 1
   if ! TAR_OPTIONS="--no-same-owner" \
     _acct_in_real_dir "${_s}" _satellite_all_fetched_here "${2}" \
-    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]; then
+    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -xtype d -print -quit)" ]; then
     _msg "${_STATUS} A: ALRT ${PWD}/${1} not fetched again (a fetch failed), kept as it was"
     rm -rf -- "${_s}"
     return 1
@@ -4351,21 +4432,30 @@ EOFMYSQL
 # A new account switched to the database broker at the end of its first
 # pass, where the box says so: _DB_BROKER_BORN_SCOPED=YES in
 # /root/.barracuda.cnf (off unless set). Never for an account whose cnf
-# says _DB_BROKER_BORN=NO (a migration tool puts it there before it installs
-# a moved account: such an account takes its state from its source), nor on
+# says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO, read as the pass's own step
+# reads them (a migration tool puts the second there before it installs a
+# moved account: such an account takes its state from its source), nor on
 # a replication standby or a box being prepared as one. The broker's own
 # checks decide, unforced; a refusal leaves the account on the direct path,
-# as every account is without the switch, and says why.
+# as every account is without the switch, and says why. A switch that
+# stopped part way (scope-failed) has each ALRT line of the broker's answer
+# relayed first, bounded and filtered as a pass's own call relays them
+# (_satellite_db_broker_call): the broker logs none of them, and one may say
+# what an operator must run. An account the broker does not serve (skipped)
+# is said in one INFO line. On a box armed for the broker
+# (_satellite_if_db_broker) the box settles first, so the new account's
+# switch finds a settled box.
 _satellite_db_broker_born() {
-  local _out
+  local _out _k _l _na=0
   [ "${_STATUS}" = "INIT" ] || return 0
   grep -qE "^_DB_BROKER_BORN_SCOPED=[\"']?YES[\"']?[[:space:]]*$" \
     /root/.barracuda.cnf 2> /dev/null || return 0
-  if grep -qE "^_DB_BROKER_BORN=[\"']?NO[\"']?[[:space:]]*$" \
-    "/root/.${_USER}.octopus.cnf" 2> /dev/null; then
-    _msg "INFO: ${_USER} stays on the direct database path (_DB_BROKER_BORN=NO)"
-    return 0
-  fi
+  for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
+    if [[ "$(_satellite_db_broker_cnf_last "/root/.${_USER}.octopus.cnf" "${_k}")" == "NO" ]]; then
+      _msg "INFO: ${_USER} stays on the direct database path (${_k}=NO)"
+      return 0
+    fi
+  done
   if [ -e "/root/.standby.cnf" ] || [ -e "/root/.standby.prep.cnf" ]; then
     _msg "INFO: ${_USER} is not switched to the database broker on a standby"
     return 0
@@ -4374,14 +4464,230 @@ _satellite_db_broker_born() {
     _msg "ALRT: ${_USER} is not switched to the database broker: it is not installed here"
     return 0
   fi
+  if [[ "$(_satellite_db_broker_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]]; then
+    _satellite_db_broker_call baseline settle
+  fi
   if _out=$(/usr/local/bin/boa-dbctl scope "${_USER}" on --born 2>&1 < /dev/null); then
-    _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
+    if [[ "${_out##*$'\n'}" == "OK scope on ${_USER} skipped "* ]]; then
+      _msg "INFO: ${_USER} stays on the direct database path: ${_out##*$'\n'}"
+    else
+      _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
+    fi
   elif [[ "${_out##*$'\n'}" == "ERR 7 not-released"* ]]; then
     _msg "NOTE: ${_USER} stays on the direct database path: tenant isolation is switched on by a later release"
   else
+    if [[ "${_out##*$'\n'}" == "ERR 7 scope-failed "* ]]; then
+      while IFS= read -r _l; do
+        case "${_l}" in
+          "ALRT: "*)
+            [[ "${_na}" -lt 20 ]] || continue
+            _na=$(( _na + 1 ))
+            _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
+            _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
+            ;;
+        esac
+      done <<< "${_out}"
+    fi
     _msg "ALRT: ${_USER} is not switched to the database broker: ${_out##*$'\n'}"
     _msg "ALRT: boa-dbctl scope ${_USER} plan says why"
   fi
+  return 0
+}
+
+#
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read.
+# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
+# grep reads it as text.
+_satellite_db_broker_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+#
+# One call the pass makes of the database broker by itself ($@), said as one
+# line of the pass: the broker's last line when that is its OK line, a NOTE
+# naming the call with that line otherwise. A refusal is never an alarm and
+# never the end of the pass: what the broker refuses stays as it is, nothing
+# is tried again or forced, and the next pass asks anew. The line is
+# repeated only as printable text of the broker's own shape, and never with
+# a word the pass launchers read as an alarm in a pass's log: a row's host
+# and a database's name are an account's to choose. A call that stopped
+# after it changed something (scope-failed, baseline-settle-incomplete), or
+# that an SQL statement failed in (sql-failed: never a policy refusal), is
+# no refusal: each ALRT line of the broker's answer is relayed (printable,
+# at most 20 lines of 512 characters, OOPS: said without its colon, a word
+# the launchers read as an oops while the line is an alarm already) and the
+# call's line is an ALRT too, so the pass is reported with errors, as a new
+# account's failed switch is.
+# Each login a settle revoked or dropped is named on an INFO line of its own
+# (at most 20, printable, the alarm words kept out as above), so a login of
+# an operator's own that loses its rights is never named in the broker's
+# log alone.
+_satellite_db_broker_call() {
+  local _out _rc _last _kind="NOTE" _l _na=0 _ns=0
+  _out=$(/usr/local/bin/boa-dbctl "$@" 2>&1 < /dev/null)
+  _rc=$?
+  _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+  case "${_last}" in
+    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*|"ERR 7 sql-failed "*) _kind="ALRT" ;;
+  esac
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT: "*)
+        [[ "${_kind}" == "ALRT" && "${_na}" -lt 20 ]] || continue
+        _na=$(( _na + 1 ))
+        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
+        _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
+        ;;
+      "settled revoked "*|"settled dropped "*)
+        [[ "${_ns}" -lt 20 ]] || continue
+        _ns=$(( _ns + 1 ))
+        _l=$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+        case "${_l}" in
+          *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+            _l="${_l#settled }"
+            _l="settled ${_l%% *}: the login's name is in /var/log/boa/dbctl/dbctl.log"
+            ;;
+        esac
+        _msg "INFO: database broker: ${_l}"
+        ;;
+    esac
+  done <<< "${_out}"
+  if [[ "${_rc}" == "0" && "${_last}" == "OK "* ]]; then
+    _kind="INFO"
+  elif [[ "${_last}" == "ERR "* ]]; then
+    _last="$*: ${_last}"
+  else
+    _last="$*: no answer line, exit ${_rc}"
+  fi
+  case "${_last}" in
+    *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+      _last="$*: exit ${_rc}, its answer is in /var/log/boa/dbctl/dbctl.log"
+      ;;
+  esac
+  _msg "${_kind}: database broker: ${_last}"
+  return 0
+}
+
+#
+# A migration tool's _DB_BROKER_BORN=NO left in a moved account's cnf. The
+# tool takes its own line back once the account's settings are merged, so
+# one still there a day after the account's create is a leftover: of a tool
+# from before that take-back, or of a create that ended early and was never
+# run again. It is taken back here, the exact line only, on an upgrade pass
+# (never an install's: no create marker is the new account's own yet),
+# where the account carries the create marker
+# (/root/.<oN>.migration-create.txt, a regular file of root's, not a link,
+# older than a day, read without following a link, its first 64 KiB) and
+# the marker names the account as it is now: its uid, and the inode and
+# birth time of /data/disk/<oN>, both numbers, as xoct's owner gate reads
+# them (a marker left from an earlier account of the name is not trusted).
+# The seed's note (/root/.<oN>.dbctl-seed.txt) must not say that the cnf
+# held its operator's line before (operator) or that the tool keeps its
+# line until the source's settings are merged (kept); the note goes with the
+# line. The cnf is rewritten in place, its inode and mode kept, from a copy
+# this run makes beside it, read as text (a crash can zero-fill a cnf's
+# tail): only where that copy is a regular file holding exactly the cnf's
+# lines but the ones taken, and the cnf is still the file it was read from;
+# otherwise nothing changes and a NOTE says so. One INFO line names the
+# migration. An operator's _DB_BROKER_ARM=NO, which nothing takes back,
+# keeps the account out.
+_satellite_db_broker_born_leftover() {
+  local _c="/root/.${_USER}.octopus.cnf" _m="/root/.${_USER}.migration-create.txt"
+  local _n="/root/.${_USER}.dbctl-seed.txt" _t _mk _mu _mi _mh _mo _nu _ni _was _all _k _rc
+  [[ "${_STATUS}" != "INIT" ]] || return 0
+  [[ -n "$(find "${_m}" -maxdepth 0 -type f -user root -mmin +1440 2> /dev/null)" ]] || return 0
+  case "$(cat "${_n}" 2> /dev/null)" in
+    operator|kept) return 0 ;;
+  esac
+  grep -aqx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
+  _mk=$(timeout 10 dd if="${_m}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null)
+  _mu=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
+  _mi=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_INODE=' | cut -d= -f2-)
+  _nu=$(id -u "${_USER}" 2> /dev/null)
+  _ni=$(stat -c %i:%W "/data/disk/${_USER}" 2> /dev/null)
+  [[ "${_nu}" =~ ^[0-9]+$ && "${_mu}" == "${_nu}" ]] || return 0
+  [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ && "${_mi}" == "${_ni}" ]] || return 0
+  _t="${_c}.dbseed.$$"
+  rm -f -- "${_t}"
+  _was=$(stat -c %i:%s "${_c}" 2> /dev/null)
+  _all=$(grep -ac '' "${_c}" 2> /dev/null)
+  _k=$(grep -acx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null)
+  { grep -avx "_DB_BROKER_BORN=NO" "${_c}" > "${_t}"; } 2> /dev/null
+  _rc=$?
+  if [[ "${_rc}" -le 1 && -f "${_t}" && ! -L "${_t}" ]] \
+    && [[ "${_all}" =~ ^[0-9]+$ && "${_k}" =~ ^[0-9]+$ && -n "${_was}" ]] \
+    && [[ "$(grep -ac '' "${_t}" 2> /dev/null)" == "$(( _all - _k ))" ]] \
+    && [[ "$(stat -c %i:%s "${_c}" 2> /dev/null)" == "${_was}" ]] \
+    && cat "${_t}" > "${_c}"; then
+    rm -f -- "${_t}" "${_n}"
+    _mh=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+    _mo=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
+    [[ "${_mh}" =~ ^[a-z0-9.-]+$ && "${_mo}" =~ ^[a-z0-9._-]+$ ]] || { _mh="?"; _mo="?"; }
+    _msg "INFO: database broker: _DB_BROKER_BORN=NO taken back from ${_c}: the line of a migration of ${_mo} from ${_mh}, left a day after the account's create"
+  else
+    rm -f -- "${_t}"
+    _msg "NOTE: database broker: _DB_BROKER_BORN=NO could not be taken back from ${_c}: it stays, and the next pass tries again"
+  fi
+  return 0
+}
+
+#
+# The database broker on a box armed for it, at the end of every INIT and
+# UPGRADE pass: the last _DB_BROKER_ARM line of /root/.barracuda.cnf says
+# YES (anything else, no line included, does not arm the box). The box
+# settles what it can name by itself, then the pass's own switch is asked
+# for the account, unforced: one already switched is left as it is. Never
+# for an account whose cnf says _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO, the
+# last assignment counting (a migration tool puts the second there before it
+# installs a moved account: such an account takes its state from its
+# source; one left a day after its create is taken back first), nor on a
+# replication standby or a box being prepared as one. The broker's own
+# checks decide; a call it refuses is a NOTE and the pass goes on. The
+# switch runs only under a pass launcher, which keeps /run/boa_wait.pid and
+# with it every task dispatcher off.
+_satellite_if_db_broker() {
+  local _k
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_if_db_broker $1"
+    _debug_proc
+  fi
+  [[ "$1" == "post" ]] || return 0
+  case "${_STATUS}" in
+    INIT|UPGRADE) ;;
+    *) return 0 ;;
+  esac
+  [[ "$(_satellite_db_broker_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] \
+    || return 0
+  if [[ ! -e "/root/.standby.cnf" && ! -e "/root/.standby.prep.cnf" ]]; then
+    _satellite_db_broker_born_leftover
+  fi
+  for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
+    if [[ "$(_satellite_db_broker_cnf_last "/root/.${_USER}.octopus.cnf" "${_k}")" == "NO" ]]; then
+      _msg "INFO: ${_USER} is kept out of the database broker (${_k}=NO)"
+      return 0
+    fi
+  done
+  if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
+    _msg "INFO: ${_USER} is not switched to the database broker on a standby"
+    return 0
+  fi
+  if [[ ! -x "/usr/local/bin/boa-dbctl" ]]; then
+    _msg "NOTE: database broker: not installed here, _DB_BROKER_ARM=YES arms nothing"
+    return 0
+  fi
+  _satellite_db_broker_call baseline settle
+  _satellite_db_broker_call scope "${_USER}" on --pass
   return 0
 }
 
@@ -7072,6 +7378,40 @@ _satellite_send_welcome_email() {
   fi
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). The record's first line
+# is read whether or not a newline ends it; an empty record, or none, is
+# the account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
 #
 # Satellite start.
 _satellite_make() {
@@ -7245,6 +7585,11 @@ _satellite_make() {
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
+  echo "export _DRUPAL12_0=\"${_DRUPAL12_0}\""               >> ${_writeTo}
+  echo "export _DRUPAL12_0_D=\"${_DRUPAL12_0}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL12_0_P=\"${_DRUPAL12_0}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL12_0_S=\"${_DRUPAL12_0}-stage\""       >> ${_writeTo}
+
   # Resolve the newest Backdrop version from the mirror stamp so platforms track
   # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK);
   # the platform build fetches the matching versioned backdrop-<ver>.tar.gz.
@@ -7330,6 +7675,7 @@ _satellite_make() {
   echo "export _REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_B_VERSION=\"${_REDIS_B_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_W_VERSION=\"${_REDIS_W_VERSION}\""     >> ${_writeTo}
   echo "export _SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
 
   echo "export _SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
@@ -7343,6 +7689,7 @@ _satellite_make() {
   echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_3_V=\"${_SMALLCORE11_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_4_V=\"${_SMALLCORE11_4_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE12_0_V=\"${_SMALLCORE12_0_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
@@ -7480,10 +7827,21 @@ _satellite_make() {
     _LOCAL_THISHTIP=all
   fi
 
-  cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
-  sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
-  wait
-  chmod 700 /var/xdrago/run-${_USER} &> /dev/null
+  # aegir2boa holds the account's dispatcher aside for its db-import and
+  # keeps it held when the import fails or is killed: a half-imported panel
+  # must not dispatch. On a box armed for the web group this pass writes no
+  # new one while that state stands (the rest of the pass, the web group's
+  # conversion included, goes on); the import's success or revert hands the
+  # held one back.
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${_USER}"; then
+    _msg "NOTE: ${_USER}: an aegir2boa db-import is unfinished; its task dispatcher stays held until the import is re-run or reverted"
+  else
+    cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
+    sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
+    wait
+    chmod 700 /var/xdrago/run-${_USER} &> /dev/null
+  fi
   # 0755 in the build tree, not 0700: the setup children are read by a su'd
   # satellite user, and read is all they need. The deployed copy above keeps
   # 0700 -- it is a different file on a different path.
@@ -9954,6 +10312,7 @@ _satellite_display_url_finalize() {
     _satellite_o_contrib_nine_update_global
     _satellite_o_contrib_ten_update_global
     _satellite_o_contrib_eleven_update_global
+    _satellite_o_contrib_twelve_update_global
     _satellite_o_contrib_backdrop_update_global
   fi
   if [ ! -e "/root/.upstart.cnf" ] \
@@ -9993,15 +10352,17 @@ _satellite_child_b_prepare_dirs_permissions() {
      | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
 
   mkdir -p ${_ROOT}/aegir/distro
-  mkdir -p ${_ROOT}/distro/${_DISTRO}
-  mkdir -p ${_ROOT}/src/${_DISTRO}
+  # Only the parent: the platforms of a pass go into distro/<core
+  # generation>, made by stage C when it builds there. A distro/<this pass>
+  # made here stayed empty whenever the generation was reused (every re-run)
+  # and was swept away as a ghost an hour later, and its src/<this pass>
+  # twin, which nothing reads, stayed for good.
+  mkdir -p ${_ROOT}/distro
   mkdir -p ${_ROOT}/src/{modules,themes}
   mkdir -p ${_ROOT}/{tools,log,u,backups,platforms,clients}
   chmod 0700 ${_ROOT}/{log,src,u} &> /dev/null
-  chmod 0700 ${_ROOT}/src/${_DISTRO} &> /dev/null
   chmod 0700 ${_ROOT}/src/{modules,themes} &> /dev/null
   chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,platforms,tools} &> /dev/null
-  chmod 0711 ${_ROOT}/distro/${_DISTRO} &> /dev/null
   chmod 0750 ${_ROOT}/{backups,clients} &> /dev/null
 
   if [ "${_STATUS}" = "UPGRADE" ]; then
