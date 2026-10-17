@@ -187,8 +187,43 @@ _purge_weekly_backups() {
       -ctime +6 -delete &> /dev/null
   fi
   _purge_run_copies
+  _purge_markers
   _purge_leftovers
   touch "${_wkStamp}"
+}
+
+# Markers BOA writes in /var/log/boa on every run, at each release or for each
+# build. A run reads only its own or the current one, so the newest three are
+# kept (by ctime) and none goes by age: a release or a PHP build stays current
+# for months. The PHP extension markers are kept per extension and PHP branch,
+# since every installed branch has its own current one, and the shared module
+# markers per module; a name that does not parse is left alone.
+_purge_markers() {
+  local _mkL="/var/log/boa" _mkP _mkE _mkB _mkM
+  for _mkP in 'sysctl.conf-*.log' 'sec-valkey-pass-*.log' '.curl_libs_fix_*.pid' \
+    '._php_libs_fix_*.pid' 'pure-ftpd-build-*.log' 'valkey-*.log' \
+    'mss-build-ok-*.log' 'nginx-config-params-fixed-*.log' \
+    'fix-drupal-site-permissions-*.log' '.force.f*.ctrl' \
+    '.csf_legacy_cleanup.*.pid' '.csf_dhcp_udp_cleanup.*.pid' \
+    '.disabled_modules_fix.*.pid' '.curl_ctrl.*.pid' \
+    '.etc_crontab_lock_state.*.txt' 'apt-deb-src-updates-*.txt' \
+    'lshell-fix-build-*.log' 'csf_BOA-*.log' 'libmagickwand-dev-*-rebuild.log'; do
+    _prune_keep_newest "${_mkL}" "${_mkP}" 3
+  done
+  for _mkE in apcu imagick igbinary f_yaml phpredis-update f_uploadprogress \
+    mcrypt php-pecl-jsmin php-geos; do
+    for _mkB in $(find "${_mkL}" -mindepth 1 -maxdepth 1 -type f -name "${_mkE}-*.log" \
+      -printf '%f\n' 2> /dev/null \
+      | sed -n "s/^${_mkE}-.*-\([0-9]\{1,2\}\.[0-9]\{1,2\}\)\.[0-9]\{1,3\}[A-Za-z0-9]*\.log\$/\1/p" \
+      | sort -u); do
+      _prune_keep_newest "${_mkL}" "${_mkE}-*-${_mkB}.[0-9]*.log" 3
+    done
+  done
+  for _mkM in $(find "${_mkL}" -mindepth 1 -maxdepth 1 -type f -name '*.ctrl.*.log' \
+    -printf '%f\n' 2> /dev/null | sed -n 's/^\([a-z_]*\)\.ctrl\.[0-9a-zA-Z]*\.log$/\1/p' \
+    | sort -u); do
+    _prune_keep_newest "${_mkL}" "${_mkM}.ctrl.*.log" 3
+  done
 }
 
 # Remove all but the newest $3 entries the find pattern $2 names directly in

@@ -1343,6 +1343,16 @@
       debug build writes go after 30 days. Newest is by when the copy was
       made. A test server dropped 1,140 such copies.
 
+    * The weekly prune keeps the newest three of each marker family BOA
+      writes in /var/log/boa on every run, at each release or for each
+      build (sysctl and Valkey password runs, per-release gates such as
+      pure-ftpd, Valkey, nginx and csf, the shared module markers per
+      module, and the PHP extension builds per extension and PHP branch).
+      A run reads only its own marker or the current one, so none goes by
+      age and a current one is never removed. A test server dropped 1,272
+      of its 2,756 names there and kept every marker of its current
+      release and PHP versions.
+
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
       rate limit of its own vendor, refused on a site whose policy.txt
