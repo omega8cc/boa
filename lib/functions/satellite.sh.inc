@@ -6411,7 +6411,7 @@ _satellite_if_web_group() {
       case "${_wGrc}" in
         1) _wGwhy="failed" ;;
         3) _wGwhy="inconsistent" ;;
-        4) _wGwhy="skipped: busy or frozen" ;;
+        4) _wGwhy="skipped: busy, frozen, or a web group free journal that cannot be read" ;;
         *) _wGwhy="unexpected exit code" ;;
       esac
       _msg "ALRT: instgrp webconvert ${_USER} returned ${_wGrc} (${_wGwhy}), see /var/log/boa/instgrp.log" ;;
