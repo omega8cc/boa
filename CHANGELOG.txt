@@ -4,6 +4,15 @@
 
 @=> Important Fixes
 
+    * xtrim no longer refuses an account over a site that has no
+      database. A site on the 'none' database server (a Grav site, a
+      Textpattern site kept without a store) carries a drushrc.php that
+      defines no db_name at all, and the plan read that as a database
+      it could not prove the account's own, so nothing on that account
+      could ever be trimmed after a migration. Such a site now proves
+      nothing and blocks nothing; a defined db_name that cannot be read
+      sanely still refuses.
+
     * A server no longer loses its memory to finished login sessions.
       elogind's PAM module, which a package chain can bring in (polkitd
       needs a logind), makes a cgroup for every PAM session (every su BOA

@@ -330,8 +330,9 @@ _cred_ok() {
 ### real directory (never through a link or FIFO), db_user must equal
 ### db_name, and the account's own credentials must open it. A database is
 ### dumped or dropped only when all of that holds. Returns 1 when the site
-### has no drushrc.php at all; any other refusal prints the step that failed
-### (site-path, read, db_user!=db_name, login) and returns 2.
+### has no drushrc.php at all, or one that defines no database; any other
+### refusal prints the step that failed (site-path, read, db_user!=db_name,
+### login) and returns 2.
 _acct_owns_db() {
   local _sp="$1" _rc _dn _du _dp
   case "${_sp}/" in
@@ -344,6 +345,13 @@ _acct_owns_db() {
   esac
   [ -e "${_sp}/drushrc.php" ] || [ -L "${_sp}/drushrc.php" ] || return 1
   _rc="$(_read_file "${_sp}/drushrc.php")"
+  ### A site without a database: a site on the 'none' database server (a
+  ### Grav site, a Textpattern or Grav site kept without a store) carries a
+  ### drushrc.php that defines no db_name at all, only 'installed' and the
+  ### package list. Nothing to prove, nothing to dump or drop: the same
+  ### return as no drushrc, never the fail-closed 'read' below, which is for
+  ### a db_name that is defined and cannot be read sanely.
+  printf '%s\n' "${_rc}" | grep -q "^[$]options\['db_name'\]" || return 1
   _dn=$(printf '%s\n' "${_rc}" \
     | sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
   _du=$(printf '%s\n' "${_rc}" \
