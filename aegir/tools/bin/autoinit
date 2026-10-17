@@ -986,7 +986,15 @@ _init_no_systemd() {
   _autoinit_apt_install_checked "initscripts sysv-rc insserv startpar" "initscripts sysv-rc insserv startpar"
   _autoinit_ensure_inittab
   if _pkg_installed sysvinit-core && [ -e "/lib/systemd/systemd" ]; then
-    /usr/bin/apt-get purge systemd systemd-sysv systemd-resolved libnss-systemd -y -qq >> "${_logSlt}" 2>&1
+    # opensysusers keeps openssh-server once systemd is gone; never purge
+    # while apt says the SSH server would go with it
+    _ensure_openssh_server
+    if /usr/bin/apt-get -s purge systemd systemd-sysv systemd-resolved libnss-systemd 2>/dev/null \
+      | grep -qE '^(Remv|Purg) (openssh-server|ssh) '; then
+      _msg "[init][ERROR] nosd ==> Not removing systemd: apt would remove the SSH server with it" >> "${_logInt}"
+    else
+      /usr/bin/apt-get purge systemd systemd-sysv systemd-resolved libnss-systemd -y -qq >> "${_logSlt}" 2>&1
+    fi
     /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" 2>&1
     /usr/bin/dpkg --configure -a >> "${_logSlt}" 2>&1
   fi

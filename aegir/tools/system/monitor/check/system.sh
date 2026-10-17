@@ -574,19 +574,23 @@ _disk_pressure_detection() {
 # the cgroups every night; where the module had to stay, or something brings a
 # logind back, they pile up again. A box without one runs a handful, so above
 # 10,000 this is logged and mailed as an ALERT, at most once a day. A systemd
-# host keeps a tree of its own and is not judged.
+# host keeps a tree of its own and is not judged. The count is the box's own
+# cgroup2 tree, live and dying, which inside a container is the container's:
+# /proc/cgroups counts the host's. Without a cgroup2 tree there is nothing to
+# count.
 _session_cgroup_pile_detection() {
   local _mark="/run/boa_session_cgroups.stamp" _cnt _mem _cpu _pam="no"
   [ -d "/run/systemd/system" ] && return 0
   [ -z "$(find "${_mark}" -mmin -1440 2>/dev/null)" ] || return 0
-  _cnt="$(awk '$1 == "memory" { print $3 }' /proc/cgroups 2>/dev/null)"
+  _cnt="$(awk '$1 == "nr_descendants" || $1 == "nr_dying_descendants" { n += $2 }
+    END { if (NR) print n + 0 }' /sys/fs/cgroup/cgroup.stat 2>/dev/null)"
   [[ "${_cnt}" =~ ^[0-9]+$ ]] && [ "${_cnt}" -gt 10000 ] || return 0
   touch "${_mark}"
   _mem="$(awk '$1 == "Percpu:" || $1 == "SUnreclaim:" {
     printf "%s%s %d MB", (n++ ? ", " : ""), $1, $2 / 1024 }' /proc/meminfo 2>/dev/null)"
   _cpu="$(cat /sys/devices/system/cpu/possible 2>/dev/null)"
   dpkg-query -W -f='${Status}' libpam-elogind 2>/dev/null | grep -qx 'install ok installed' && _pam="yes"
-  _thisErrLog="$(date) Login-session cgroups piling up (${_cnt} cgroups; ${_mem}; possible CPUs ${_cpu}; libpam-elogind installed: ${_pam}): each holds kernel memory until the OOM killer takes mysqld; barracuda removes elogind's PAM module and the empty cgroups, or says in an ALRT line what kept it; see grep memory /proc/cgroups"
+  _thisErrLog="$(date) Login-session cgroups piling up (${_cnt} cgroups; ${_mem}; possible CPUs ${_cpu}; libpam-elogind installed: ${_pam}): each holds kernel memory until the OOM killer takes mysqld; barracuda removes elogind's PAM module and the empty cgroups, or says in an ALRT line what kept it; see /sys/fs/cgroup/cgroup.stat"
   echo "${_thisErrLog}" >> ${_pthOml}
   if ! _incident_email_report "Login-session cgroups piling up: ${_cnt}" ALERT "system-cgroups" nograce; then
     # wanted but not sent: look again in an hour, not in a day
