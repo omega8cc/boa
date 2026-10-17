@@ -1356,6 +1356,12 @@
     * boa info shows the inode use of each filesystem (_INO lines) beside
       its space (_DSK lines), so a disk out of inodes reads as full.
 
+    * Octopus upgrades no longer leave an empty folder in the account's
+      distro/ and src/ on every pass, and the nightly removes the empty
+      src/<pass number> folders older passes left, which nothing read or
+      removed (the empty distro/ ones were already swept as ghosts). An
+      account on a test server held fifteen.
+
     * The daily graceful.sh pass removes, once a week, the copies older
       than seven days that BOA leaves on every run and every day and that
       nothing removed before: the PHP-FPM logs moved aside into
