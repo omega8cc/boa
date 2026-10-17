@@ -13701,7 +13701,7 @@ _xmass_cmd_sync() {
 
   if [ "${_MODE}" = "LIVE" ]; then
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
-      _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
+      _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
       _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
@@ -15317,7 +15317,7 @@ _xmass_cmd_cutover() {
   # with source untouched.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
@@ -15355,7 +15355,7 @@ _xmass_cmd_cutover() {
   # them, so a store that failed placement here proceeded to promote the target.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
