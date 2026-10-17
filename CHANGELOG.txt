@@ -23,6 +23,16 @@
       new name is now replaced by the old-name copy, the one the active
       kept current.
 
+    * A box promoted by a cutover, or by hand, no longer keeps the state
+      file of the round it ran as the active before its demotion. The
+      promotion retired the account records that demotion left (relay
+      markers, source-role proxy records) but not the box's own, so a box
+      promoted back by a later round still read as relaying to that
+      round's target: status showed the old round, init refused to start
+      over, and reset-phase refused with a remedy that would have resumed
+      that round's cutover tail toward the box now demoted. The file is
+      set aside as superseded and the next round starts from init.
+
     * A server no longer loses its memory to finished login sessions.
       elogind's PAM module, which a package chain can bring in (polkitd
       needs a logind), makes a cgroup for every PAM session (every su BOA
