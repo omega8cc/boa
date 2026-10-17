@@ -3972,22 +3972,15 @@ _xcopy_transfer_static_symlink_safe() {
     "static/files (${_X_DST_ACCT})" "${_X_SRC_USR##*/}" || _XCOPY_STORE_RC=$?
 }
 
-# xcopy copies an account under its own name only. A fourth argument naming
-# another account is a rename, which is xoct's: xcopy rewrites no old account
-# name in the copied vhosts, aliases or panel database (its import renames
-# only the source hostname), so a renamed copy would keep
-# pointing into the old account's tree (on the target, another tenant's).
-# Refused before the account is read, the target is asked or anything of
-# the account is changed on either box: a DENY, the dry run is not clean,
-# every verb stops.
 ### Learn the host key of a target this box has never met before the first
 ### ssh or rsync to it: their non-interactive calls would otherwise fail host
 ### key verification. xoct's _xoct_learn_peer_host_key twin (the tools stay
-### separate, not DRY-ed); an address that is no IPv4 or a key already known
-### is left alone.
+### separate, not DRY-ed), except that it takes a host name too: the hold gate
+### reads one, and an unknown key there would let a held target pass. A name
+### outside that alphabet or a key already known is left alone.
 _xcopy_learn_peer_host_key() {
   local _p="$1"
-  [[ "${_p}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 0
+  [[ "${_p}" =~ ^[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || return 0
   ssh-keygen -F "${_p}" > /dev/null 2>&1 && return 0
   mkdir -p /root/.ssh
   chmod 700 /root/.ssh
@@ -3999,6 +3992,15 @@ _xcopy_learn_peer_host_key() {
   fi
   return 0
 }
+
+# xcopy copies an account under its own name only. A fourth argument naming
+# another account is a rename, which is xoct's: xcopy rewrites no old account
+# name in the copied vhosts, aliases or panel database (its import renames
+# only the source hostname), so a renamed copy would keep
+# pointing into the old account's tree (on the target, another tenant's).
+# Refused before the account is read, the target is asked or anything of
+# the account is changed on either box: a DENY, the dry run is not clean,
+# every verb stops.
 _xcopy_refuse_rename() {   # 1 account here 2 fourth argument 3 target
   if [ -z "${2}" ] || [ "${2}" = "${1}" ]; then
     return 0
@@ -4035,9 +4037,12 @@ _migrate_init() {
   fi
   ### The verbs that reach the target learn its host key before their first
   ### contact (the hold read before them would pass an unknown key by
-  ### silently); export, import and noproxy reach no peer.
-  case "${_cmd}" in
-    create|pretransfer|transfer) _xcopy_learn_peer_host_key "${_tgt}" ;;
+  ### silently). An account's export, import and noproxy reach no peer; the
+  ### shared and xusage legs reach the target whatever the verb.
+  case "${_cmd}:${_oct}" in
+    create:*|pretransfer:*|transfer:*|*:shared|*:xusage)
+      _xcopy_learn_peer_host_key "${_tgt}"
+      ;;
   esac
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"

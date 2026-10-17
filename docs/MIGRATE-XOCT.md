@@ -206,9 +206,9 @@ xoct pre-mig source-host --key-fp=SHA256:<the fingerprint printed on the source>
 ### 3. Verify SSH Connectivity
 
 Optional. The verbs that reach the target (`create`, `pretransfer`,
-`transfer` and `proxy`, which `go-live` runs too) learn its host key before
-their first contact, as `xmass` does, so the source needs no interactive
-login to the target first. To check root's access by hand:
+`transfer`, `proxy` and `go-live`, and every verb run for `shared`) learn
+its host key before their first contact, as `xmass` does, so the source
+needs no interactive login to the target first. To check root's access by hand:
 
 **On source:**
 ```sh

@@ -191,10 +191,10 @@
 
     * xoct and xcopy learn the target's SSH host key before their first
       contact with it, on every verb that reaches it (create, pretransfer,
-      transfer, and xoct's proxy and go-live), as xmass does. A source that
-      had never logged in to the target failed host key verification on
-      those non-interactive calls, so the move needed an interactive login
-      by hand first; that check is optional now.
+      transfer, the shared legs, and xoct's proxy and go-live), as xmass
+      does. A source that had never logged in to the target failed host
+      key verification on those non-interactive calls, so the move needed
+      an interactive login by hand first; that check is optional now.
 
     * The Backdrop, Grav and TXP upgrades and renames refuse before their
       safety copy when their copies would not fit with the headroom the

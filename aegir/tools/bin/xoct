@@ -7492,6 +7492,9 @@ _xoct_go_live() {
     echo "ERROR: without admail=, which removes the record"
     exit 1
   fi
+  ### go-live reaches the target below before _migrate_init runs, so it
+  ### learns the host key itself, as the verbs there do.
+  _xoct_learn_peer_host_key "${_tgt}"
   _USR="/data/disk/${_oct}"
   _THIS_HM_USER="${_oct}"
   _dA="${_dst}"
@@ -7632,9 +7635,12 @@ _migrate_init() {
   ### contact, as proxy's record push and xmass do: on a box that has never
   ### met the target, their non-interactive ssh and rsync calls would fail
   ### host key verification (and the hold read before them would pass it by
-  ### silently). go-live runs as proxy here; export and import reach no peer.
-  case "${_cmd}" in
-    create|pretransfer|transfer|proxy) _xoct_learn_peer_host_key "${_tgt}" ;;
+  ### silently). An account's export and import reach no peer; the shared
+  ### and xusage legs reach the target whatever the verb.
+  case "${_cmd}:${_oct}" in
+    create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
+      _xoct_learn_peer_host_key "${_tgt}"
+      ;;
   esac
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
