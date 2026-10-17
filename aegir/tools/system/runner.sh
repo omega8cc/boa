@@ -210,8 +210,10 @@ if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
 fi
 # Dedicated, self-healing task-queue stop file: a maintenance op (e.g. the nightly
 # backups-to-static-fs relocation) sets /run/boa_queue_stop.pid to hold the queue
-# while it moves data. It lives in /run (cleared on reboot) and clear.sh purges a
-# leaked one after 3h, so it can never freeze the queue for good.
+# while it moves data. It lives in /run (cleared on reboot) and clear.sh, on each
+# of its runs (every five minutes), removes one whose pid is gone or is not
+# root's, or that names no pid. Never by age: a long move is not unpaused, and a
+# leaked file is honoured for as long as a root process holds the pid it names.
 [ -e "/run/boa_queue_stop.pid" ] && exit 0
 # An Octopus install/upgrade must reload backend config/aliases promptly, so let
 # the queue run even under a web-load pause while a run is genuinely in progress.

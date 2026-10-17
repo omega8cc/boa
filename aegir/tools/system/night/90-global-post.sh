@@ -1089,6 +1089,40 @@ _archive_old_daily_logs() {
   done
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). The record's first line
+# is read whether or not a newline ends it; an empty record, or none, is
+# the account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
 # Hand the migration-source sweep back to the module's own daily hosting queue
 # on every hosted instance that carries it. The nightly pass below switches that
 # queue off per instance because the paused nightly run is the only executor on
@@ -1099,9 +1133,13 @@ _archive_old_daily_logs() {
 _migrate_source_queue_fallback_on() {
   local _armPth _armUsr _armHas
   for _armPth in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    # nor a panel an aegir2boa db-import left half made, on a box armed
+    # for the web group: nothing runs on it until the import ends
     if [ -e "${_armPth}/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "${_armPth}/log/proxied.pid" ] \
-      && [ ! -e "${_armPth}/log/CANCELLED" ]; then
+      && [ ! -e "${_armPth}/log/CANCELLED" ] \
+      && { [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+        || ! _a2b_import_unfinished "${_armPth##*/}"; }; then
       _armUsr=$(echo "${_armPth}" | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       _armHas=$(su -s /bin/bash - "${_armUsr}" -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
       if [ "${_armHas}" = "1" ]; then
@@ -1197,9 +1235,13 @@ _migrate_source_sweep_all() {
     echo "migrate-sweep: provision task still active after grace and drain; skipping this night"
   else
     for _swpPth in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      # nor a panel an aegir2boa db-import left half made, on a box armed
+      # for the web group: its sweep runs once the import ends
       if [ -e "${_swpPth}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${_swpPth}/log/proxied.pid" ] \
-        && [ ! -e "${_swpPth}/log/CANCELLED" ]; then
+        && [ ! -e "${_swpPth}/log/CANCELLED" ] \
+        && { [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+          || ! _a2b_import_unfinished "${_swpPth##*/}"; }; then
         _swpUsr=$(echo ${_swpPth} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _swpHas=$(su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
         if [ "${_swpHas}" = "1" ]; then
@@ -1229,10 +1271,16 @@ _migrate_source_sweep_all() {
 # to it or its registry is in use: what a switched account or its panel
 # users hold beyond their own databases, a database of one without the
 # account's grant, a grant on the registry itself, and reservations nothing
-# used (let go). Its ALRT lines go into this night's log. A box with
-# neither runs nothing here, so the broker writes no log line there.
+# used (let go). Its ALRT lines name logins and hosts an account chose, so
+# they go to /var/log/boa/dbctl-witness.txt (root only, rewritten each
+# night), and this night's log gets only the witness's last line (its OK or
+# ERR line), how many ALRT lines it said and that path: no such name reaches
+# the night's incident scan. Where that file cannot be written the witness
+# runs all the same, its lines discarded, and the night's log says so. A box
+# with neither runs nothing here, so the broker writes no log line there.
 _dbctl_witness() {
-  local _f _on=NO
+  local _f _on=NO _out _rc _l _na _keep=YES
+  local _wit="/var/log/boa/dbctl-witness.txt"
   [ -x "/usr/local/bin/boa-dbctl" ] || return 0
   for _f in /data/conf/*_db_broker.txt; do
     [ -e "${_f}" ] || [ -L "${_f}" ] || continue
@@ -1242,6 +1290,131 @@ _dbctl_witness() {
   [ -d "/var/lib/mysql/boa_dbreg" ] && _on=YES
   [ "${_on}" = "YES" ] || return 0
   echo "dbctl-witness: start"
-  /usr/local/bin/boa-dbctl witness 2>&1
-  echo "dbctl-witness: done rc=$?"
+  mkdir -p /var/log/boa
+  rm -f -- "${_wit}" 2> /dev/null
+  ( umask 077; : > "${_wit}" ) 2> /dev/null || _keep=NO
+  _out=$(/usr/local/bin/boa-dbctl witness 2>&1 < /dev/null)
+  _rc=$?
+  [ "${_keep}" = "YES" ] && printf '%s\n' "${_out}" > "${_wit}"
+  _na=$(printf '%s\n' "${_out}" | grep -c '^ALRT')
+  _l="${_out##*$'\n'}"
+  case "${_l}" in
+    "OK "*|"ERR "*) ;;
+    *) _l="no answer line" ;;
+  esac
+  printf 'dbctl-witness: %s\n' "$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)"
+  if [ "${_keep}" = "YES" ]; then
+    echo "dbctl-witness: done rc=${_rc}, alerts=${_na}, the whole witness in ${_wit}"
+  else
+    echo "dbctl-witness: done rc=${_rc}, alerts=${_na}, ${_wit} not writable, the witness not kept"
+  fi
+}
+
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. The passes read the box's line
+# with this same text.
+# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
+# grep reads it as text.
+_dbctl_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+# The database broker's daily report, on a box armed for it: the last
+# _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything else, no
+# line included, runs nothing here). One line per account, switched or why
+# not, and what stops the box, into /var/log/boa/dbctl-report.txt (root
+# only, rewritten each night, with whatever else the broker said); into
+# this night's log only the report's last line, its counts and words, and
+# that path: a login or a host an account chose never reaches the night's
+# incident scan. The file is tested before the broker is asked: where it
+# cannot be written (a full disk, a directory at its path) the report runs
+# all the same, whatever the broker says beside it discarded, the night's
+# log says so, and the mail below goes as it would. While the box could
+# switch an account and has not, or something stops a box that has an
+# account switched or one it could switch, the lines that say so
+# (not-switched, box) and the report's counts go to the box operator once
+# a day, as the web group's notices do. An account its own cnf keeps out
+# and one the broker does not serve are neither counted as unswitched nor
+# mailed, and a box with nothing else has no stop worth a mail: nothing the
+# box or its operator does there changes them. Never from a replication
+# standby or a box being prepared as one, where no pass switches an
+# account, nor from a box the report skips (ProxySQL, a cluster), nor while
+# the release switches none: the report's last line says released=no, or,
+# from a broker without that field, an account's own line not-released.
+# The counts are read from a broker that does not tell the two classes
+# apart yet as well: the two files arrive on their own.
+_dbctl_report() {
+  local _out _err="" _rc _l _last="" _sw _un _st _nr=NO _body="" _keep=YES
+  local _rep="/var/log/boa/dbctl-report.txt"
+  [[ -x "/usr/local/bin/boa-dbctl" ]] || return 0
+  [[ "$(_dbctl_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] || return 0
+  if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
+    return 0
+  fi
+  echo "dbctl-report: start"
+  mkdir -p /var/log/boa
+  rm -f -- "${_rep}" 2> /dev/null
+  ( umask 077; : > "${_rep}" ) 2> /dev/null || _keep=NO
+  if [[ "${_keep}" == "YES" ]]; then
+    _out=$(umask 077; /usr/local/bin/boa-dbctl report 2> "${_rep}" < /dev/null)
+    _rc=$?
+    _err=$(cat -- "${_rep}" 2> /dev/null)
+    { [[ -z "${_out}" ]] || printf '%s\n' "${_out}"
+      [[ -z "${_err}" ]] || printf '%s\n' "${_err}"; } > "${_rep}"
+  else
+    _out=$(/usr/local/bin/boa-dbctl report 2> /dev/null < /dev/null)
+    _rc=$?
+  fi
+  # the last line: the counts, or the ERR line of a report that failed
+  if [[ "${_rc}" == "0" ]]; then
+    _l="${_out##*$'\n'}"
+  else
+    _l="${_err##*$'\n'}"
+  fi
+  printf 'dbctl-report: %s\n' "$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)"
+  if [[ "${_keep}" == "YES" ]]; then
+    echo "dbctl-report: done rc=${_rc}, the whole report in ${_rep}"
+  else
+    echo "dbctl-report: done rc=${_rc}, ${_rep} not writable, the report not kept"
+  fi
+  [[ "${_rc}" == "0" ]] || return 0
+  while IFS= read -r _l; do
+    _last="${_l}"
+    # a broker without the release field says it on an account's own line,
+    # right after control-file-invalid where that is there
+    if [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ not-switched\ (control-file-invalid,\ )?not-released(,|$) ]]; then
+      _nr=YES
+    fi
+    # what an operator can act on: an account the box could switch and has
+    # not, and what stops the box
+    [[ "${_l}" =~ ^[a-z][a-z0-9_]*\ not-switched\  || "${_l}" == "box "* ]] || continue
+    _body="${_body}${_l}"$'\n'" "
+  done <<< "${_out}"
+  [[ "${_last}" =~ ^OK\ report\ accounts=[0-9]+\ switched=([0-9]+)\ unswitched=([0-9]+)\ (kept-out=[0-9]+\ not-served=[0-9]+\ )?stops=([0-9]+)\  ]] \
+    || return 0
+  _sw="${BASH_REMATCH[1]}"
+  _un="${BASH_REMATCH[2]}"
+  _st="${BASH_REMATCH[4]}"
+  case "${_last} " in
+    *" released=no "*) return 0 ;;
+    *" released=yes "*) ;;
+    *) [[ "${_nr}" == "NO" ]] || return 0 ;;
+  esac
+  [[ "${_un}" -gt 0 || ( "${_st}" -gt 0 && "$(( _sw + _un ))" -gt 0 ) ]] || return 0
+  _body="${_body}${_last}"
+  declare -F _night_notice > /dev/null 2>&1 || return 0
+  ( unset _MY_OCTO_EMAIL
+    _night_notice "dbctl-report" \
+      "BOA nightly on $(hostname -f): database broker report" "${_body}" )
+  return 0
 }

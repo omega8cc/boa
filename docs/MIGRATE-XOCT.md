@@ -47,8 +47,8 @@ For full-server migrations where Percona versions match, consider
 
 > **Every `xoct transfer …` runs a read-only DRY test by default.** It resolves the
 > target's storage, prints the plan for each store (`[DRY-PLAN] … would mirror / would
-> place real dir …`), pre-checks disk space (including the Solr indices, which can be
-> large), and records `CLEAN` or `NOT CLEAN` — making
+> place real dir …`), pre-checks disk space and inodes (including the Solr indices,
+> which can be large), and records `CLEAN` or `NOT CLEAN` — making
 > **no** changes on either host. The outcome is persisted per account+target in a state
 > file (`/var/log/boa/xoct.migrate.<oct>_<tgt>.state`).
 >
@@ -284,10 +284,10 @@ It never touches serving state, so a site's 503 gate is left alone.
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
 `/data/disk/legacy` (when the source has one), Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
 `/var/log/boa/usage` to the target. A Solr index tree that does not fit on
-the target is a **hard stop**, not a skip: each Solr home is space-checked
-before its rsync and a failure refuses the run non-zero ("refusing to migrate
-without its search indices") — free space on the target and re-run, rather
-than discovering an index-less account later.
+the target is a **hard stop**, not a skip: each Solr home is checked for space
+and inodes before its rsync and a failure refuses the run non-zero ("refusing to
+migrate without its search indices") — free space or inodes on the target and
+re-run, rather than discovering an index-less account later.
 
 `create`, `export` and `pretransfer` read the account's client address
 first, before the target is contacted: the words of `log/email.txt`, or,
@@ -1085,6 +1085,27 @@ too small — and never uses a blanket `rsync --copy-links`:
      at `static/files` on the target root.
    - A source that was a **real dir** on root stays a real dir on the target root (the
      target mount is used only as a fallback if root cannot fit it).
+   - A store on the source's mount whose target mount cannot fit it goes onto the
+     target root instead.
+
+Each placement must fit in space **and in inodes**: every file takes an inode, and a
+filesystem out of them fails every write with `No space left on device` while
+`df -h` still shows room. The copy must leave 2% of the target's inodes, at least
+50,000, free. The source's files are counted with `du -s -l --inodes` only when the
+inodes in use on its own filesystem would not already fit. A store that fits on
+neither placement is a `DENY` naming why, for example
+`does not fit on target mount (<mount>: <n> files and <H> inodes kept free, <F> inodes free (df -i)) nor root (<root>: ...)`.
+
+The tools first read where the store already sits on the target: the link onto its
+mount copy, or a real directory on the root. A copy that falls short is credited with
+what that destination holds, its space and its files, counted there only, so a
+repeated pass (`pretransfer`, then `transfer`) needs room only for what changed. An
+account's fresh directory on the target holds a few files and is credited with
+those; a destination that cannot be measured keeps the refusal.
+
+A figure no command gives (an unreadable `df`, btrfs's missing inode count, a file
+count past 15 minutes) lets the copy through with a `WARN: <dest> on the target: ...`
+line on the plan.
 
 Site-level symlinks (`sites/*/files`, `sites/*/private`) stay symlinks and resolve
 either way, because they point at the account-relative `static/files` path, not at any

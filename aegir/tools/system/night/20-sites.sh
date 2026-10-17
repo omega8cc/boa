@@ -426,6 +426,40 @@ _ghost_seen_reset_acct() {
   return 0
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). The record's first line
+# is read whether or not a newline ends it; an empty record, or none, is
+# the account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
 ### A mode set on names in a directory the account can write, never through
 ### a link: each name is opened without following one and without blocking
 ### on a FIFO, checked to be the expected type and changed through the open
@@ -2633,12 +2667,20 @@ _if_site_db_conversion() {
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
       _TIMP=$(date +%y%m%d-%H%M%S)
-      echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
-        for ${_Dom} started"
-      _sql_convert
-      _TIMP=$(date +%y%m%d-%H%M%S)
-      echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
-        for ${_Dom} completed"
+      if [ -e "${_Plr}/core/lib/Drupal.php" ]; then
+        ### sqlmagic writes to the site's database through Drush 8
+        ### (sql-query, sqlc), which BOA allows on Drupal 8+ only from
+        ### Aegir's own backend; those sites run on InnoDB already
+        echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
+          for ${_Dom} skipped: Drupal 8+ site, no Drush 8 here"
+      else
+        echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
+          for ${_Dom} started"
+        _sql_convert
+        _TIMP=$(date +%y%m%d-%H%M%S)
+        echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
+          for ${_Dom} completed"
+      fi
     fi
   fi
 }
@@ -4237,8 +4279,17 @@ _daily_process() {
   ### never through a link or a FIFO (_acct_in_real_dir, _acct_read_in); the
   ### log/ctrl markers go through _log_ctrl_mark.
   local _vhD="${_usEr}/config/server_master/nginx/vhost.d" _vhTxt _alTxt _iniTxt
-  _cleanup_ghost_vhosts
-  _cleanup_ghost_drushrc
+  # A control panel an aegir2boa db-import left half made, on a box armed
+  # for the web group: its sites, vhosts and aliases may be the import's
+  # own, half placed, so none of them is moved aside as a ghost until the
+  # import is finished or undone (the rest of the account's pass goes on).
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${_HM_U}"; then
+    echo "NOTE: ${_HM_U}: an aegir2boa db-import is unfinished; no ghost site, vhost or alias moved on its half-made panel"
+  else
+    _cleanup_ghost_vhosts
+    _cleanup_ghost_drushrc
+  fi
   for _Site in `_acct_in_real_dir "${_vhD}" find . \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
     _Site="${_vhD}/${_Site#./}"

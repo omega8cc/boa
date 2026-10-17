@@ -449,6 +449,10 @@ _daily_action() {
   if command -v _dbctl_witness > /dev/null 2>&1; then
     _dbctl_witness
   fi
+  # Skew-guarded likewise: the broker's daily report on a box armed for it.
+  if command -v _dbctl_report > /dev/null 2>&1; then
+    _dbctl_report
+  fi
   _night_link_count
 }
 

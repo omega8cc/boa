@@ -354,16 +354,39 @@ _wg_migration_notes() {
 
 # A free of account $1's web group name that a kill cut short (instgrp's
 # E1 route) is unfinished: its journal,
-# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
-# other than done. Until the account's next web verb finishes it, paths of
-# the account may still sit in the old number, which every leg would carry
-# by that number alone, so no migration of the account starts meanwhile.
-# Verbatim in xoct, xcopy and xmass.
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there and does not
+# read done (an empty or unreadable one included: never read as no free).
+# Until the account's next web verb finishes it, or drops a journal it
+# cannot finish from, paths of the account may still sit in the old
+# number, which every leg would carry by that number alone, so no
+# migration of the account starts meanwhile. Verbatim in xoct, xcopy and
+# xmass.
 _wg_free_unfinished() {
   local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
-  read -r _s _ < "${_j}" 2> /dev/null || :
-  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
+  { read -r _s _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ]
+}
+
+# The held gid of a done free of account $1's web group name while the
+# group it renamed still has that gid here, under its name or an earlier
+# version's (<gid>-wgheld): the paths its walk left in that number (an
+# immutable file, a hard link) are mapped by it onto the account's web
+# group there, as wg-<account> carried them before the free. The number is
+# the map's key: rsync reads a name that starts with a digit as a number
+# and stops. Nothing otherwise. Verbatim in xoct, xcopy and xmass.
+_wg_free_left() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  { read -r _s _h _ < "${_j}"; } 2> /dev/null || :
+  _h="${_h#held=}"
+  [ "${_s}" = "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  for _n in "${_h}-wgheld-${1}" "${_h}-wgheld"; do
+    [ "$(getent group "${_n:0:32}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || continue
+    printf '%s\n' "${_h}"
+    return 0
+  done
+  return 0
 }
 
 ###
@@ -3544,10 +3567,12 @@ _xoct_acct_gmap() {   # 1 account here 2 account on the target 3 target
 ### holds a web group here, its legs map it onto the one the target's
 ### writers give the target account (_XOCT_GMAP): by name alone its paths
 ### would land in a number that is no group there, or another account's;
-### an answer that cannot be read is refused, never guessed.
+### an answer that cannot be read is refused, never guessed. After a done
+### free, the paths it left in the held gid are mapped by that number onto
+### the same group (_wg_free_left).
 ### A refusal is a DENY: the dry run is not clean, a live run stops.
 _xoct_webgroup_gate() {   # 1 account here 2 account on the target 3 target
-  local _st _ans _wg
+  local _st _ans _wg _left
   _XOCT_GMAP=""
   _st=$(_web_group_state "${1}" | cut -d' ' -f1)
   [ "${_st}" = "none" ] && return 0
@@ -3572,6 +3597,8 @@ _xoct_webgroup_gate() {   # 1 account here 2 account on the target 3 target
     return 1
   fi
   _XOCT_GMAP="wg-${1}:${_wg}"
+  _left=$(_wg_free_left "${1}")
+  [ -n "${_left}" ] && _XOCT_GMAP="${_XOCT_GMAP},${_left}:${_wg}"
   return 0
 }
 
@@ -4049,6 +4076,35 @@ _mig_fix_target_php() {
   return 0
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. A NUL byte in the file (a crash
+# can zero-fill its tail) hides no line: grep reads it as text. The passes
+# read an account's broker settings with this same text.
+_xoct_dbctl_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+# Whether account $1, its cnf here $2, is kept out of the database broker as
+# this box's passes read it: its _DB_BROKER_ARM=NO, or a _DB_BROKER_BORN=NO
+# that is its operator's, the account holding no create marker here
+# (/root/.<oN>.migration-create.txt, a regular file of root's), so that no
+# migration tool put the line. Such an account travels kept out.
+_xoct_dbctl_kept_here() {
+  [ "$(_xoct_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
+  [ "$(_xoct_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
+  [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ]
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's /root/.<dst>.octopus.cnf. A wholesale copy would carry the host
 ### axis (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN), which
@@ -4126,6 +4182,18 @@ _xoct_push_target_octopus_cnf() {
   else
     printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
   fi
+  # The account's opt-out of the database broker mirrors the source both
+  # ways, read as the passes read it: _DB_BROKER_ARM=NO travels as a plain
+  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, as
+  # _DB_BROKER_ARM=NO (the tools' own line stays here); a source that keeps
+  # the account out neither way removes the key's lines on the target in
+  # any form (the merge otherwise keeps every line the source lacks), so a
+  # lifted opt-out is lifted there too.
+  if _xoct_dbctl_kept_here "${_src}" "${_sCnf}"; then
+    printf '%s\n' "_DB_BROKER_ARM=NO" >> "${_lTmp}"
+  else
+    printf '%s\n' "-_DB_BROKER_ARM" >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -4139,6 +4207,12 @@ while IFS= read -r _l; do
     -_WEB_GROUP|_WEB_GROUP=*)
       grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
+      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      continue
+      ;;
+    -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
       ;;
@@ -4403,7 +4477,9 @@ _xoct_wait_target_quiet() {
   while [ "${_w}" -lt "${_max}" ]; do
     ### An armed run-upgrade.pid whose dispatcher is parked (a demoted
     ### target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
-    ### is inert and not busy, as xmass's silence probe already reads it;
+    ### is inert and not busy, as xmass's silence probe already reads it,
+    ### and so is one of an account whose dispatcher aegir2boa holds for an
+    ### unfinished import (/var/backups/a2b/<account>/held-run-<account>);
     ### counting it burnt the whole bound and refused the create. The same
     ### holds for every armed pid while the box's runner itself is parked
     ### (pre-mig's .runner.sh.off, held by the park marker until post-mig):
@@ -4412,7 +4488,7 @@ _xoct_wait_target_quiet() {
     ### the marker the next tools refresh brings the runner back, so the
     ### pid still counts. One with no platforms.info beside it never does:
     ### the runner takes no trigger without it.
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && { [ -e \"/var/backups/off-run/run-\${_n}\" ] || [ -e \"/var/backups/a2b/\${_n}/held-run-\${_n}\" ]; } && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
@@ -4891,7 +4967,31 @@ _xoct_wg_unseed() {
 ### when absent; only while the name is free there, as the web group's seed
 ### above), and once it is installed it is switched there when it is
 ### switched here. Under xmass the account's switch travels with every live
-### pass instead.
+### pass instead. The line covers the install's own pass and the upgrade
+### pass it chains, which both run before the source's settings are merged.
+### Once they are merged and the source's switch is carried, the line is
+### taken back (_xoct_dbctl_seed_back), under xmass too, so the target's
+### later passes treat the account as any other of the box. A merge that
+### failed leaves the line where it is, the note saying kept, and says so:
+### without the source's settings the target cannot know an account its
+### source kept out. The next merge that succeeds takes it back, a create's
+### or a live transfer's, each of which runs the take-back with its own
+### merge's result.
+### The seed says what it did in a root-only note beside the cnf there,
+### /root/.<account>.dbctl-seed.txt, one word: made (the cnf made for the
+### line), line (the line added to a cnf that was there), kept (either, the
+### take-back waiting for a merge that succeeds) or operator (the
+### cnf already assigns _DB_BROKER_BORN at the start of a line, the one
+### spelling the install keeps in a cnf it did not write: nothing is added,
+### and that line is its operator's for good; an export or an indented
+### line, which the install drops, gets the tool's line as where there is
+### none). The take-back, and the unseed
+### of an install that did not happen, act on that note as read on the
+### target, so a re-run after any exit takes back what an earlier run put;
+### each removes the note with the line, an operator note stays. The unseed
+### leaves an account the target holds alone: its line is taken back with
+### the merge, by the create's re-run. Each reads the cnf there as text: a
+### NUL byte (a crash can zero-fill a cnf's tail) costs no line of it.
 # 1 = account on the target 2 = target
 _XOCT_DBCTL_SEED=""
 _xoct_dbctl_seed() {
@@ -4900,23 +5000,83 @@ _xoct_dbctl_seed() {
   # shellcheck disable=SC2029
   _XOCT_DBCTL_SEED=$(ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
     _c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    _w=\$(cat \${_n} 2> /dev/null)
+    case \${_w} in
+      operator) grep -aq '^_DB_BROKER_BORN=' \${_c} 2> /dev/null && echo operator && exit 0 ;;
+      made|line|kept) grep -aqx '_DB_BROKER_BORN=NO' \${_c} 2> /dev/null && echo \${_w} && exit 0 ;;
+    esac
+    _w=
     if [ ! -e \${_c} ]; then
-      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && echo made
-    elif ! grep -qx '_DB_BROKER_BORN=NO' \${_c}; then
-      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && echo line
-    fi" 2> /dev/null)
+      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && _w=made
+    elif grep -aq '^_DB_BROKER_BORN=' \${_c}; then
+      _w=operator
+    else
+      [ -z \"\$(tail -c 1 \${_c})\" ] || echo >> \${_c}
+      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && _w=line
+    fi
+    [ -n \"\${_w}\" ] && ( umask 077; printf '%s\\n' \${_w} > \${_n} ) && echo \${_w}" 2> /dev/null)
   return 0
 }
 # 1 = account on the target 2 = target
 _xoct_dbctl_unseed() {
-  case "${_XOCT_DBCTL_SEED}" in
-    made)
-      # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ] && rm -f \${_c}" 2> /dev/null
+  # shellcheck disable=SC2029
+  ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+    _c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    _w=\$(cat \${_n} 2> /dev/null)
+    case \${_w} in
+      made|line) ;;
+      *) exit 0 ;;
+    esac
+    if [ \${_w} = made ] && [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ]; then
+      rm -f \${_c}
+    elif [ -e \${_c} ]; then
+      grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+      [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c}
+      rm -f \${_c}.dbseed
+    fi
+    rm -f \${_n}" 2> /dev/null
+  _XOCT_DBCTL_SEED=""
+  return 0
+}
+# 1 = account on the target 2 = target 3 = what the merge of the source's
+# settings returned
+_xoct_dbctl_seed_back() {
+  local _r
+  # shellcheck disable=SC2029
+  _r=$(ssh root@"${2}" "_c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    case \"\$(cat \${_n} 2> /dev/null)\" in
+      made|line|kept) ;;
+      *) echo none; exit 0 ;;
+    esac
+    if [ '${3}' != 0 ]; then
+      ( umask 077; printf 'kept\\n' > \${_n} )
+      echo kept
+      exit 0
+    fi
+    grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+    [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
+    rm -f \${_c}.dbseed
+    echo failed" 2> /dev/null)
+  case "${_r}" in
+    none|back) ;;
+    kept)
+      echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}"
+      echo "ALRT: a re-run of this create, or the next live transfer, takes it back once it has merged them"
       ;;
-    line)
-      # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null
+    failed)
+      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt"
+      ;;
+    *)
+      # no answer: only the note there says whether the line is the tool's
+      if [ "${3}" = 0 ]; then
+        echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: it gave no answer; where /root/.${1}.dbctl-seed.txt there reads made, line or kept, remove that line there, and that note"
+      else
+        echo "ALRT: the source's settings were not merged and ${2} gave no answer: where /root/.${1}.dbctl-seed.txt there reads made, line or kept, _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf there"
+        echo "ALRT: a re-run of this create, or the next live transfer, takes it back once it has merged them"
+      fi
       ;;
   esac
   _XOCT_DBCTL_SEED=""
@@ -4938,7 +5098,12 @@ _xoct_dbctl_from_source() {
   fi
   # shellcheck disable=SC2029
   if _out=$(ssh root@"${3}" "/usr/local/bin/boa-dbctl scope ${2} on --born 2>&1 < /dev/null"); then
-    echo "INFO: ${2} switched to the database broker on ${3}, as ${1} is here"
+    # an account the target's broker does not serve there is not switched
+    if [[ "${_out##*$'\n'}" == "OK scope on ${2} skipped "* ]]; then
+      echo "ALRT: ${1} is switched to the database broker here, and the broker on ${3} does not serve ${2} there: it is left on the direct path (${_out##*$'\n'})"
+    else
+      echo "INFO: ${2} switched to the database broker on ${3}, as ${1} is here"
+    fi
   else
     echo "ALRT: ${2} could not be switched to the database broker on ${3}: ${_out##*$'\n'}"
     echo "ALRT: its sites keep the direct path there; read why with: boa-dbctl scope ${2} plan"
@@ -5685,11 +5850,17 @@ _migrate_prepare() {
         ### here leaves ${_XOCT_LOCK_FILE} behind with a dead owner. The
         ### signal handler exits (bash would otherwise resume at the next
         ### statement and run the rest of the create unlocked); exiting runs
-        ### the EXIT handler, which does the removals.
-        trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        ### the EXIT handler, which does the removals; it also takes back the
+        ### broker seed of an account the install did not make, until the
+        ### remote install is started: an exit here does not stop that one,
+        ### which may make the account after it, so from then on the seed's
+        ### line and note stay, and a re-run's seed reads the note.
+        _XOCT_INSTALL_ON=NO
+        trap '_xoct_chattr_back; [ "${_XOCT_INSTALL_ON}" = "YES" ] || _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"' > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
+        _XOCT_INSTALL_ON=YES
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -5766,7 +5937,9 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _TGT_CNF_MERGED=$?
       _xoct_dbctl_from_source "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_dbctl_seed_back "${_TGT_HM_USER}" "${_tgt}" "${_TGT_CNF_MERGED}"
       ### After the merge, which carries the source's switch: under admail=
       ### a target that keeps the notice on refuses the create, before the
       ### transfer can bring the setup mail it would send. The record put
@@ -6078,24 +6251,119 @@ _xoct_rsync() {
 # fits at its target destination dir (which follows the target's /var/solrN symlink
 # onto a mount, or lands on root). Returns 0 if it fits (or src absent), 1 + DENY +
 # NOT_CLEAN otherwise. Placement is unchanged (data-only rsync) — this only gates.
-_xoct_solr_check() {   # 1 src  2 target-dest-dir  3 label
+_xoct_solr_check() {   # 1 src  2 target-dest-dir  3 label  4 the copy's own destination
   local _sz
   [ -e "$1" ] || return 0
   # -L: a symlink operand (e.g. a backups dir relocated into the store)
   # measures 0 with plain du, which waves the fit gate through unmeasured.
   _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
-  _xoct_target_fits "${_tgt}" "$2" "${_sz}" && return 0
-  echo "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
+  _xoct_target_fits "${_tgt}" "$2" "${_sz}" "" "$1" "${4:-$2/${1##*/}}" && return 0
+  echo "DENY: $3: ${_sz:-?}K does not fit at target $2${_XOCT_FIT_WHY:+ (${_XOCT_FIT_WHY})} — free space and retry"
   _XOCT_NOT_CLEAN=YES
   return 1
 }
 
+### Whether a copy fits at <probe> ($2) on the target box ($1): its bytes
+### ($3, in KB) and, given the names it makes ($4) or the source tree to
+### count them in ($5), its inodes too, both read in one remote call. Every
+### file takes an inode, and a filesystem out of them fails every write
+### with "No space left on device" while df -h still shows room: a copy
+### must leave 2% of the target's inodes, at least 50,000, free, the
+### headroom BOA's other copy checks keep. rsync -a makes one name per name
+### the source holds, which du -l counts; the source tree is walked only
+### when its own filesystem's inodes in use (no subtree has more) do not
+### already fit. A copy that falls short is credited with what its own
+### destination ($6) already holds, counted there only, as a repeated pass
+### adds only what changed: its bytes with du -sk, its names with du -l
+### (stale names and a nested store made inside it count too). A
+### destination that cannot be measured, or not within 15 minutes, keeps
+### the refusal.
+### A figure no command gave (an unreadable df, btrfs's '-' for inodes, a
+### count past 15 minutes) leaves that side unjudged, with a warning on the
+### plan. The remote reads take no stdin (-n), so a caller reading a list
+### from stdin keeps it, and are found by a token, so login noise cannot
+### garble them. Why a copy did not fit is left in _XOCT_FIT_WHY for the
+### caller's DENY.
 _xoct_target_fits() {
-  local _av _q
+  local _q _qo _av _it _if _e _ih _n="${4:-}" _ub _dex _dn
+  _XOCT_FIT_WHY=""
   _q="$(_shq "$2")"
-  _av=$(ssh root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
-  if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
-  [ "${_av}" -ge "$3" ]
+  _qo="$(_shq "${6:-}")"
+  read -r _av _it _if _e <<< "$(ssh -n root@"$1" "p='${_q}'; o='${_qo}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; a=\$(df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'); i=\$(LC_ALL=C df -P -i \"\$p\" 2>/dev/null | awk 'NR==2{print \$2, \$4}'); e=N; [ -n \"\$o\" ] && [ -d \"\$o\" ] && e=D; echo \"XOFIT \${a:--} \${i:-- -} \$e\"" 2>/dev/null \
+    | grep -m1 '^XOFIT ' | awk '{print $2, $3, $4, $5}')"
+  if ! [[ "$3" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]]; then
+    _xoct_fit_warn space "$2" "the copy's size or the free space there could not be read (${3:-?}K, ${_av:-?}K free); copying without the space check"
+  elif [ "${_av}" -lt "$3" ]; then
+    # Short of bytes: credit what the copy's own destination holds,
+    # measured only here, where it changes the answer.
+    _dex=""
+    if [ "${_e}" = "D" ]; then
+      _dex="$(ssh -n root@"$1" "echo \"XODEX \$(timeout 900 du -skH '${_qo}' 2>/dev/null | awk '{print \$1}')\"" 2>/dev/null \
+        | grep -m1 '^XODEX ' | awk '{print $2}')"
+    fi
+    if ! [[ "${_dex}" =~ ^[0-9]+$ ]] || [ $(( _av + _dex )) -lt "$3" ]; then
+      _XOCT_FIT_WHY="${3}K needed, ${_av}K free"
+      return 1
+    fi
+  fi
+  [ -n "${_n}${5:-}" ] || return 0
+  if ! [[ "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] || [ "${_it}" -eq 0 ]; then
+    _xoct_fit_warn inodes "$2" "its free inodes could not be read (df -i); copying without the inode check"
+    return 0
+  fi
+  _ih=$(( _it / 50 ))
+  [ "${_ih}" -ge 50000 ] || _ih=50000
+  if [ -z "${_n}" ]; then
+    _ub="$(LC_ALL=C df -P -i -- "$5" 2>/dev/null | awk 'NR==2 {print $3}')"
+    if [[ "${_ub}" =~ ^[0-9]+$ ]] && [ "${_ub}" -gt 0 ] && [ $(( _ub + _ih )) -le "${_if}" ]; then
+      return 0
+    fi
+    _xoct_names_of "$5"
+    _n="${_XOCT_NAMES}"
+  fi
+  if ! [[ "${_n}" =~ ^[0-9]+$ ]]; then
+    _xoct_fit_warn count "$2" "the copy's files could not be counted within 15 minutes; copying without the inode check"
+    return 0
+  fi
+  [ $(( _n + _ih )) -le "${_if}" ] && return 0
+  # Short of inodes: credit the names the copy's own destination holds.
+  if [ "${_e}" = "D" ]; then
+    _dn="$(ssh -n root@"$1" "n=\$(timeout 900 du -s -l -H --inodes '${_qo}' 2>/dev/null | awk '{print \$1}'); echo \"XODEN \${n:--}\"" 2>/dev/null \
+      | grep -m1 '^XODEN ' | awk '{print $2}')"
+    if [[ "${_dn}" =~ ^[0-9]+$ ]] && [ $(( _n + _ih )) -le $(( _if + _dn )) ]; then
+      return 0
+    fi
+  fi
+  _XOCT_FIT_WHY="${_n} files and ${_ih} inodes kept free, ${_if} inodes free (df -i)"
+  return 1
+}
+
+### The names a copy of the tree $1 makes (one per name, du -l), into
+### _XOCT_NAMES (empty when the count failed or took over 15 minutes). The
+### last tree's count is kept, so a store tried at the mount and then at
+### the root is walked once. It sets globals: never call it inside $(...).
+_xoct_names_of() {
+  [ "${_XOCT_NAMES_OF:-}" = "$1" ] && return 0
+  _XOCT_NAMES_OF="$1"
+  _XOCT_NAMES="$(timeout 900 du -s -l -H --inodes -- "$1" 2>/dev/null | awk 'NR==1 {print $1}')"
+}
+
+### A figure the fit check could not read: the copy goes on without that
+### side of the check, as the plan shows.
+_xoct_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
+  echo "WARN: $2 on the target: $3"
+}
+
+### Where a store sits on the target now, read at its destination there
+### ($2): M when it is the link a mirror placed onto the mount copy ($3), L
+### another link (a dangling one too), D a real directory, N nothing (one
+### remote read, no stdin; empty when the target could not be asked).
+_xoct_tgt_kind() {
+  local _qd _qm
+  _qd="$(_shq "$2")"
+  _qm="$(_shq "${3:-}")"
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XOKIND \$k\"" 2>/dev/null \
+    | grep -m1 '^XOKIND ' | awk '{print $2}'
 }
 
 # Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
@@ -6188,7 +6456,8 @@ _xoct_put_on_mount() {
 _xoct_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
   local _acct="$8" _rule="${9:-tree}" _dacct=""
-  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
+  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0 _why
+  local _kind _rp _rown="" _mown=""
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
@@ -6244,14 +6513,34 @@ _xoct_handle_store() {
       fi
     fi
     [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
+    # The preferred placement first, then the other: a store goes where it
+    # fits, in bytes and inodes, and is refused when it fits on neither.
+    # What the store's destination holds on the target is credited at
+    # that placement only. The root's figures are read at the
+    # destination's parent unless the destination is a real directory: df
+    # through a link (or one the read could not name) would read the mount.
+    _kind="$(_xoct_tgt_kind "${_th}" "${_dstRoot}" "${_mntDest}")"
+    _rp="${_dstRoot%/*}"
+    case "${_kind}" in
+      M) _mown="${_mntDest}" ;;
+      D) _rown="${_dstRoot}"; _rp="${_dstRoot}" ;;
+    esac
     if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
-      if _xoct_target_fits "${_th}" "${_mntDest}" "${_sz}"; then _act=MIRROR
-      elif _xoct_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
-      else _act=DENY; _reason="does not fit on target mount (${_mntDest}) nor root (${_dstRoot})"; fi
+      if _xoct_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}"; then _act=MIRROR
+      else
+        _why="${_XOCT_FIT_WHY}"
+        if _xoct_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}"; then _act=ROOT
+        else _act=DENY; _reason="does not fit on target mount (${_mntDest}${_why:+: ${_why}}) nor root (${_dstRoot}${_XOCT_FIT_WHY:+: ${_XOCT_FIT_WHY}})"; fi
+      fi
     else
-      if _xoct_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
-      elif [ -n "${_mntDest}" ]; then _act=MIRROR
-      else _act=DENY; _reason="does not fit on target root (${_dstRoot}) and no usable target mount"; fi
+      if _xoct_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}"; then _act=ROOT
+      else
+        _why="${_XOCT_FIT_WHY}"
+        if [ -z "${_mntDest}" ]; then
+          _act=DENY; _reason="does not fit on target root (${_dstRoot}${_why:+: ${_why}}) and no usable target mount"
+        elif _xoct_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}"; then _act=MIRROR
+        else _act=DENY; _reason="does not fit on target root (${_dstRoot}${_why:+: ${_why}}) nor mount (${_mntDest}${_XOCT_FIT_WHY:+: ${_XOCT_FIT_WHY}})"; fi
+      fi
     fi
   fi
 
@@ -6333,6 +6622,8 @@ _xoct_transfer_static_symlink_safe() {
   ### inside the real static/ on the target, so neither end resolves static/
   ### through a link put in its place. A static/ that is not a real
   ### directory here is never followed, and the transfer is not complete.
+  ### control/web-group-notes.txt, the account's copy of its web-group
+  ### notes, names the source box's web-group state: it never travels.
   if ! _xoct_in_real_dir "${_X_SRC_STATIC}" true; then
     echo "DENY: ${_X_SRC_STATIC} is not a real directory -- not followed; static/ not copied"
     _XOCT_NOT_CLEAN=YES
@@ -6340,7 +6631,8 @@ _xoct_transfer_static_symlink_safe() {
     return 1
   fi
   _xoct_in_real_dir "${_X_SRC_STATIC}" _xoct_copy_here "${_X_TGT_HOST}" \
-    "${_X_DST_STATIC}" '' -aEAXqu ${_X_IENI} --exclude=/files
+    "${_X_DST_STATIC}" '' -aEAXqu ${_X_IENI} --exclude=/files \
+    --exclude=/control/web-group-notes.txt
 
   # The static sync uses -u (skip-newer), but `xoct create` on the target just
   # wrote FRESH default control files (newer mtime) that shadow the migrated
@@ -7495,9 +7787,12 @@ _migrate_init() {
     elif [ -e "${_USR}/log/CANCELLED" ]; then
       echo "_USR ${_oct} is not eligible for migration: cancelled"
       exit 1
-    elif _wg_free_unfinished "${_RUNTIME_OCT}"; then
+    elif [ ! -e "${_USR}/log/proxied.pid" ] && _wg_free_unfinished "${_RUNTIME_OCT}"; then
+      ### A proxied account is passed by: its free waits while it stays
+      ### frozen, and the verbs it may still take (proxy --repair, go-live)
+      ### carry no account path; the others stop at "already migrated".
       echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
-      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also completes the account's conversion), for a frozen account only once its freeze is recovered; re-run then"
+      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid); re-run then"
       exit 1
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"
@@ -7637,12 +7932,14 @@ _migrate_init() {
           ### through it); a real one travels by its top-level entries, from
           ### inside it into the real control directory on the target. Its
           ### subdirectories came with the static pass above and are never
-          ### entered here by name.
+          ### entered here by name. Its web-group-notes.txt never travels: it
+          ### names the source box's web-group state.
           if [ -L "${_USR}/static/control" ]; then
             echo "ALRT: ${_USR}/static/control is a symlink -- not followed; no control file of ${_oct} travels"
           elif [ -d "${_USR}/static/control" ]; then
             _xoct_in_real_dir "${_USR}/static/control" _xoct_copy_here "${_tgt}" \
-              "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' &> /dev/null
+              "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' \
+              --exclude=/web-group-notes.txt &> /dev/null
           fi
           #
           ### backups/ and backup-exports/ follow the nightly's store layout
@@ -7675,6 +7972,8 @@ _migrate_init() {
           # before cutover. Never in DRY -- these mutate the target. The PHP
           # coverage gate re-runs first, because the pins forced by the
           # static pass above must never name a version the target lacks.
+          # A broker line a create kept for a merge that failed goes with
+          # the first merge that succeeds.
           if [ "${_MODE}" = "LIVE" ]; then
             if ! _xoct_php_coverage_gate "${_USR}" "${_tgt}"; then
               echo "ERROR: ${_cmd} for ${_oct}: target PHP coverage failed AFTER the file sync;"
@@ -7682,6 +7981,8 @@ _migrate_init() {
               exit 1
             fi
             _xoct_push_target_octopus_cnf "${_oct}" "${_DST_ACCT}" "${_tgt}"
+            _XFER_CNF_MERGED=$?
+            _xoct_dbctl_seed_back "${_DST_ACCT}" "${_tgt}" "${_XFER_CNF_MERGED}"
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
           fi
 

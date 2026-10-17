@@ -1491,16 +1491,16 @@ _init_prepare() {
     mkdir -p /opt/apt
     echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.dist
     echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.dist
-    echo "APT::Get::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.dist
-    echo "APT::Get::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.dist
     echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.dist
     echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};" >> /opt/apt/apt.conf.noi.dist
     echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.dist
     echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.dist
     echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.nrml
     echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.nrml
-    echo "APT::Get::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.nrml
-    echo "APT::Get::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.nrml
     echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.nrml
     echo "DPkg::Options {\"--force-confdef\";\"--force-confmiss\";\"--force-confold\"};" >> /opt/apt/apt.conf.noi.nrml
     echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
@@ -1681,7 +1681,7 @@ _ensure_openssh_server() {
   fi
   if ! _pkg_installed "opensysusers"; then
     _msg "[init] Installing opensysusers" >> "${_logInt}"
-    ${_INITINS} opensysusers >> "${_logSlt}"
+    _autoinit_apt_install_checked "opensysusers" "opensysusers"
   fi
   if ! _pkg_installed "openssh-server"; then
     _msg "[init] Installing openssh-server" >> "${_logInt}"
@@ -1700,11 +1700,13 @@ _ensure_openssh_server() {
 # Before real removal, simulate and auto-heal if SSH would be removed.
 _purge_systemd_keep_ssh() {
 
-  _install_systemd_dummy
-
+  # opensysusers, installed by _ensure_openssh_server, provides the
+  # systemd-sysusers that openssh-server needs, so the dummy is only a
+  # fallback for when the simulation still shows SSH going.
   _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
   if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
     _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
+    _install_systemd_dummy
     _msg "[init] Re-simulating removal" >> "${_logInt}"
     if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
       _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
@@ -1836,7 +1838,9 @@ _init_offsystemd() {
   _autoinit_ensure_devuan_keyring
   if [ -e "/root/.top-excalibur.cnf" ]; then
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
-    /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+    # Without recommends: libpam-elogind and polkitd would put a logind in
+    # the PAM stack, and it never removes the session cgroups it creates.
+    /usr/bin/apt-get -y --no-install-recommends -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
   fi
   _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -1866,7 +1870,15 @@ _init_offsystemd() {
 
   _msg "[init] offd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
   /usr/bin/apt-get remove systemd-timesyncd -y -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+  # The dummy is there only when nothing else kept openssh-server, so it stays
+  # when removing it would still take the SSH server.
+  if _pkg_installed "systemd-dummy"; then
+    if /usr/bin/apt-get -s remove systemd-dummy 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
+      _msg "[init][WARN] offd ==> Keeping systemd-dummy: removing it would remove the SSH server" >> "${_logInt}"
+    else
+      /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+    fi
+  fi
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
   # Ensure classic ifupdown networking and DNS after systemd purge.
