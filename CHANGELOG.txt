@@ -202,10 +202,10 @@
     * A Drupal 6 site's database updates run again. Since late 2022
       Ægir's Drush 8 stopped every Drupal 6 batch with "Missing required
       argument: batch-id" and ran none of it, so updatedb applied no
-      update while still printing "Finished performing updates": a
-      provision-update failed and restored its safety copy, and the
-      deploy of a Clone, Migrate or Restore of a Drupal 6 site left its
-      pending updates unapplied.
+      update while still printing "Finished performing updates". A
+      provision-update with updates pending failed and restored its
+      safety copy, and a Clone, Migrate or Restore of a Drupal 6 site
+      whose database had updates pending failed on that error in its deploy.
 
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not
