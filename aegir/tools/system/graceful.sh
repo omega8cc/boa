@@ -308,11 +308,13 @@ _purge_run_copies() {
 # BOA's own cleaner matches only Solr 4's jetty9. Only what the solr7 and solr9
 # users own counts, since any account can make such names in /tmp, and of that
 # only an entry made over two days ago that is not the newest of its kind for
-# its owner and that no process holds open, maps or works in.
+# its owner and that no process holds open, maps or works in. The maps files
+# go through cat: awk given a file that is gone (a process that ended after the
+# glob was expanded) stops there and reads none of the rest.
 _purge_solr_tmp() {
   local _stU _stK _stC _stE _stHeld
   _stHeld="$( { find /proc/[0-9]*/fd /proc/[0-9]*/cwd -maxdepth 1 -lname '/tmp/*' \
-    -printf '%l\n'; awk '$6 ~ /^\/tmp\// { print $6 }' /proc/[0-9]*/maps; } \
+    -printf '%l\n'; cat /proc/[0-9]*/maps | awk '$6 ~ /^\/tmp\// { print $6 }'; } \
     2> /dev/null | sort -u)"
   for _stU in solr7 solr9; do
     id -u "${_stU}" &> /dev/null || continue
