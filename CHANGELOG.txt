@@ -679,7 +679,11 @@
       shows that removing systemd would take the SSH server. opensysusers,
       which autoinit now installs with retries and a check, already keeps
       openssh-server. A dummy that was needed stays after the conversion,
-      with a WARN line, when removing it would remove the SSH server.
+      with a WARN line, when removing it would remove the SSH server. When
+      even the dummy does not keep it, autoinit leaves systemd in place with
+      an ERROR line, and so does its final cleanup, which now asks apt
+      first; the conversion then stops before the BOA install until its
+      repair can remove systemd with openssh-server kept.
 
     * BOA's other systemd removals no longer risk the SSH server: the boa
       tool on an Excalibur box that still carries systemd, automini,
