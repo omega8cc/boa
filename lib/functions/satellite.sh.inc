@@ -6367,7 +6367,7 @@ _satellite_if_instance_group() {
       case "${_iGrc}" in
         1) _iGwhy="failed" ;;
         3) _iGwhy="inconsistent: marker or files say converted while an identity is on the box-wide group" ;;
-        4) _iGwhy="skipped: busy, frozen, or an identity in use such as a logged-in session" ;;
+        4) _iGwhy="skipped: busy, frozen, an identity in use such as a logged-in session, or a web group free journal that cannot be read" ;;
         *) _iGwhy="unexpected exit code" ;;
       esac
       _msg "ALRT: instgrp convert ${_USER} returned ${_iGrc} (${_iGwhy}), see /var/log/boa/instgrp.log" ;;
