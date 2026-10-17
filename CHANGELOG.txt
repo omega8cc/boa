@@ -1335,6 +1335,14 @@
       markers in /var/log/boa whose writers are gone. A test server held
       304 such password copies and 593 entries in /var/xdrago/log.
 
+    * The weekly prune keeps only the newest copies BOA makes on every
+      run and never reads again: three of sources.list, rsyslog.conf,
+      resolv.conf and the nginx init script, five per-release copies of
+      csf.allow and csf.ignore, three drush alias copies per alias and
+      account, and the latest retired libcurl; the PHP build options a
+      debug build writes go after 30 days. Newest is by when the copy was
+      made. A test server dropped 1,140 such copies.
+
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
       rate limit of its own vendor, refused on a site whose policy.txt

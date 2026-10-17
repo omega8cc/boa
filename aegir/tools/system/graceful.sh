@@ -186,8 +186,54 @@ _purge_weekly_backups() {
       \( -name 'csf.allow.backup-*' -o -name 'csf.allow.broken-*' \) \
       -ctime +6 -delete &> /dev/null
   fi
+  _purge_run_copies
   _purge_leftovers
   touch "${_wkStamp}"
+}
+
+# Remove all but the newest $3 entries the find pattern $2 names directly in
+# the real directory $1, newest by when each was made there (ctime).
+_prune_keep_newest() {
+  local _kDir="${1}" _kPat="${2}" _kKeep="${3}"
+  [ -d "${_kDir}" ] && [ ! -L "${_kDir}" ] || return 0
+  find "${_kDir}" -mindepth 1 -maxdepth 1 -name "${_kPat}" -printf '%C@ %p\0' \
+    2> /dev/null | LC_ALL=C sort -z -rn | tail -z -n +$(( _kKeep + 1 )) \
+    | cut -z -d' ' -f2- | xargs -0 -r rm -rf -- &> /dev/null
+}
+
+# Remove the entries the find pattern $2 names directly in the real directory
+# $1 that were made there more than $3 days ago (ctime).
+_prune_older_than() {
+  local _oDir="${1}" _oPat="${2}" _oDays="${3}"
+  [ -d "${_oDir}" ] && [ ! -L "${_oDir}" ] || return 0
+  find "${_oDir}" -mindepth 1 -maxdepth 1 -name "${_oPat}" -ctime +"${_oDays}" \
+    -exec rm -rf {} + &> /dev/null
+}
+
+# Copies BOA makes on every run or on a change and never reads again: the
+# config files a barracuda pass replaces, csf's allow and ignore lists at each
+# release, the libcurl a cURL change retires, the PHP build options a debug
+# build writes, and the drush aliases syncpass rewrites, kept per alias and
+# account (a name that does not parse is left alone).
+_purge_run_copies() {
+  local _rcAls _rcUsr _rcStm="[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]"
+  _prune_keep_newest /var/backups 'sources.list-pre-*' 3
+  _prune_keep_newest /var/backups '.etc.rsyslog.conf-pre-*' 3
+  _prune_keep_newest /var/backups 'resolv.conf.pre-*' 3
+  _prune_keep_newest /var/backups 'nginx-pre-*' 3
+  _prune_keep_newest /var/backups/csf 'csf.allow.*.txt' 5
+  _prune_keep_newest /var/backups/csf 'csf.ignore.*.txt' 5
+  _prune_keep_newest /var/backups 'legacy-libcurl-pre-*' 1
+  _prune_older_than /var/backups 'php_extra_*' 30
+  for _rcAls in server_master server_localhost; do
+    for _rcUsr in $(find /var/backups -mindepth 1 -maxdepth 1 -type f \
+      -name "${_rcAls}.alias.drushrc.php.*-${_rcStm}" -printf '%f\n' 2> /dev/null \
+      | sed -n "s/^${_rcAls}\.alias\.drushrc\.php\.\([a-z0-9._]*\)-[0-9]\{6\}-[0-9]\{6\}\$/\1/p" \
+      | sort -u); do
+      _prune_keep_newest /var/backups \
+        "${_rcAls}.alias.drushrc.php.${_rcUsr}-${_rcStm}" 3
+    done
+  done
 }
 
 # Leftovers no current code writes or reads, removed once: the copies of the
