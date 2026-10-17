@@ -157,6 +157,37 @@ _purge_postfix_bounces() {
   fi
 }
 
+# Once a week, remove the copies older than 7 days that BOA leaves on every run
+# and every day and nothing else removes: the PHP-FPM logs moved aside on each
+# FPM restart and each barracuda or octopus run (php-logs/<stamp>/), and the
+# csf.allow copies guest-water takes before each provider refresh (csf/water/,
+# plus its pre-refresh snapshot and rolled-back copy in dragon/t/, whose daily
+# arrival also keeps dragon/t from ever reaching the nightly 7-day rule). A
+# stamp sets the pace, not a weekday, so a night this pass skips only moves the
+# prune to the next night it runs.
+_purge_weekly_backups() {
+  local _wkStamp="/var/backups/.graceful.weekly.prune.stamp"
+  if [ -e "${_wkStamp}" ] \
+    && [ -z "$(find "${_wkStamp}" -mmin +9000 2> /dev/null)" ]; then
+    return 0
+  fi
+  echo "Removing archived PHP logs and csf.allow copies older than 7 days..."
+  if [ -d "/var/backups/php-logs" ] && [ ! -L "/var/backups/php-logs" ]; then
+    find /var/backups/php-logs -mindepth 1 -maxdepth 1 -mtime +6 \
+      -exec rm -rf {} + &> /dev/null
+  fi
+  if [ -d "/var/backups/csf/water" ] && [ ! -L "/var/backups/csf/water" ]; then
+    find /var/backups/csf/water -mindepth 1 -maxdepth 1 -type f -mtime +6 \
+      -delete &> /dev/null
+  fi
+  if [ -d "/var/backups/dragon/t" ] && [ ! -L "/var/backups/dragon/t" ]; then
+    find /var/backups/dragon/t -mindepth 1 -maxdepth 1 -type f \
+      \( -name 'csf.allow.backup-*' -o -name 'csf.allow.broken-*' \) \
+      -mtime +6 -delete &> /dev/null
+  fi
+  touch "${_wkStamp}"
+}
+
 # A session cgroup is idle when no process is in it or below it and it has no
 # child cgroup.
 _session_cgroup_idle() {
@@ -261,6 +292,8 @@ _graceful_action() {
 
   # Cleanup for /opt/tmp/sess*
   rm -f /opt/tmp/sess*
+
+  _purge_weekly_backups
 
   # Speed cleanup
   _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"

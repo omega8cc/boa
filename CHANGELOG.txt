@@ -1306,6 +1306,16 @@
     * boa info shows the inode use of each filesystem (_INO lines) beside
       its space (_DSK lines), so a disk out of inodes reads as full.
 
+    * The daily graceful.sh pass removes, once a week, the copies older
+      than seven days that BOA leaves on every run and every day and that
+      nothing removed before: the PHP-FPM logs moved aside into
+      /var/backups/php-logs on each FPM restart and each barracuda or
+      octopus run, and the copies of /etc/csf/csf.allow guest-water.sh
+      takes before each daily provider refresh, in /var/backups/csf/water
+      and, as its pre-refresh snapshot and rolled-back copy, in
+      /var/backups/dragon/t. On a test server the csf.allow copies alone
+      had reached 6,733 files and 354 MB in nineteen months.
+
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
       rate limit of its own vendor, refused on a site whose policy.txt
