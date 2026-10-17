@@ -16,20 +16,22 @@
       then removes the empty session cgroups. It never removes the
       elogind daemon itself, which apt may later drop as unused. The
       nightly graceful.sh removes empty session cgroups too. wkhtmltopdf
-      is no longer installed from the distro packages before BOA's own
-      build, which replaced that package anyway: its dependency chain was
-      what brought polkitd in, while the build's own dependencies are all
-      it needs.
+      is no longer installed from the distro packages before the wkhtmltox
+      build BOA bundles, which replaced that package anyway: its
+      dependency chain was what brought polkitd in, while the bundled
+      build's own dependencies are all it needs.
 
-    * BOA's package installs no longer pull in recommended packages. The
-      line meant to turn them off in BOA's apt settings used a key apt
-      never reads (APT::Get::Install-Recommends), so on a server whose
-      image leaves recommends on, every install brought their whole chains
-      along: the distro wkhtmltopdf came with 99 packages instead of 40,
-      elogind, polkitd, ModemManager and avahi-daemon among them. Servers
-      whose image turns them off box-wide were never affected. The key is
-      now APT::Install-Recommends, and the aptitude form of the install
-      command passes it too.
+    * BOA's main package install command no longer pulls in recommended
+      packages. Its apt settings (/opt/apt/apt.conf.noi.*) turned them off
+      with a key apt never reads (APT::Get::Install-Recommends), so on a
+      server whose image leaves recommends on, every install through it
+      brought their whole chains along: the distro wkhtmltopdf came with
+      99 packages instead of 40, elogind, polkitd, ModemManager and
+      avahi-daemon among them. Servers whose image turns them off
+      box-wide were never affected. The key is now
+      APT::Install-Recommends, and the aptitude form of the command passes
+      it too; plain apt-get calls elsewhere in BOA still follow the
+      image's setting.
 
     * BOA refuses to run a server out of inodes (#1947). Every file takes
       an inode, and a filesystem out of them fails every write with "No

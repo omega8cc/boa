@@ -169,7 +169,7 @@ The same logic protects existing and used versions from being removed even if th
 
 ## NOTE on login sessions and recommended packages
 
-BOA runs no login-session manager. elogind's PAM module (`libpam-elogind`, the `pam_elogind.so` line in `/etc/pam.d/common-session`) arrives only as a dependency, when something installs `polkitd`. elogind then makes a cgroup under `/sys/fs/cgroup` for every PAM session (every `su` BOA runs, every cron job and ssh login) and never removes it.
+BOA runs no login-session manager. BOA's install command does not ask for elogind's PAM module (`libpam-elogind`, the `pam_elogind.so` line in `/etc/pam.d/common-session`): it arrives as a dependency, as when something installs `polkitd`, which needs a logind, or as a recommended package of elogind itself where an install takes recommended packages. elogind then makes a cgroup under `/sys/fs/cgroup` for every PAM session (every `su` BOA runs, every cron job and ssh login) and never removes it.
 
 Their kernel memory grows until the OOM killer takes `mysqld`. The per-CPU part is reserved for every possible CPU, so a VM that reports many more possible than online CPUs pays many times over. Tens of thousands of cgroups in `grep memory /proc/cgroups`, with `Percpu` and `SUnreclaim` in `/proc/meminfo` far above normal, mean the leak.
 
@@ -177,7 +177,9 @@ Every `barracuda` pass, FAST upgrades included, removes `libpam-elogind` and the
 
 The pass then removes the empty session cgroups: top-level `c<N>` and `<N>` only, each with no process and no child cgroup at two reads three seconds apart, never on a systemd host. A populated cgroup is never touched. The nightly `graceful.sh` does the same.
 
-BOA installs packages without their recommended packages: `APT::Install-Recommends "false"` in `/opt/apt/apt.conf.noi.dist` and `apt.conf.noi.nrml`, which every pass refreshes, and on the aptitude form of the install command. A server whose image left recommends on got whole service stacks with each install before (the old files carried `APT::Get::Install-Recommends`, a key apt does not read). wkhtmltopdf comes only from BOA's own build, which brings the libraries it links; the distro package, which it replaces, is no longer installed first.
+BOA's install command installs packages without their recommended packages: `APT::Install-Recommends "false"` in `/opt/apt/apt.conf.noi.dist` and `apt.conf.noi.nrml`, which every pass refreshes, and on its aptitude form. A server whose image left recommends on got whole service stacks with each such install before (the old files carried `APT::Get::Install-Recommends`, a key apt does not read). Plain `apt-get` calls elsewhere in BOA still follow the image's setting.
+
+wkhtmltopdf comes only from the wkhtmltox build BOA bundles (upstream's 0.12.6.1 with its patched Qt), fetched from BOA's mirror with the libraries it links; the distro package, which it replaces, is no longer installed first.
 
 ## NOTE on the Verify tasks an Octopus upgrade queues
 
