@@ -194,6 +194,8 @@ _AL_FOR=""
 _PO_FOR=""
 _PN_ROOT=""
 _SRV_VER=""
+_KO=""
+_NS=""
 
 _usage() {
   cat <<'EOF' >&2
@@ -2415,9 +2417,10 @@ _store_walk_here() {
 }
 
 # What may become two lines of a client file: user $1 and the password in
-# _PW. The client reads an option file line by line through a buffer of a
-# few kilobytes, and what does not fit in it is read as lines of its own;
-# and a line feed ends a line. So: no name that is not plain, no password
+# _PW. The 5.7 client reads an option file line by line through a buffer of
+# a few kilobytes, and what does not fit in it is read as lines of its own
+# (the 8.4 client was measured to read such a line whole); and a line feed
+# ends a line. So: no name that is not plain, no password
 # with a control character in it, and none longer than a password given on
 # standard input may be (1024 bytes). 1 otherwise, with why in _CNF_WHY and
 # as one word in _CNF_TOK. Both writers of a client file ask here, whatever
@@ -3358,6 +3361,9 @@ _php_lit() {
 _mdb_why() {
   case "${1}" in
     ctl) _MW="holds a control character" ;;
+    none) _MW="is empty" ;;
+    long) _MW="is longer than 3072 bytes as the alias spells it" ;;
+    char) _MW="has a character outside A-Z, a-z, 0-9 and %._~/-" ;;
     *) _MW="has a % that begins no two hex digits, or a NUL" ;;
   esac
 }
@@ -3367,12 +3373,16 @@ _mdb_why() {
 # and the password, decoded, in _PW. 1 when there is none to read, and when
 # what is there is refused: _MDB_WHY then says which way (enc for its
 # encoding, ctl for a control character it decodes to), with the user and
-# the host it names still set.
+# the host it names still set. A password that is empty, longer than 3072
+# bytes as the alias spells it, or holds a character outside the URL-safe
+# set is refused before it is decoded, as one that gives no credential, and
+# _MDB_NOTE says which (none, long, char) for the words of a plan.
 _master_db() {
   local _l _enc
   _MDB_USER=""
   _MDB_HOST=""
   _MDB_WHY=""
+  _MDB_NOTE=""
   _PW=""
   _alias_val "${1}" master_db || return 1
   _l="${_VAL#mysql://}"
@@ -3383,7 +3393,16 @@ _master_db() {
   _enc="${_l%@*}"
   [[ "${_MDB_USER}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 1
   [[ "${_MDB_HOST}" =~ ^[A-Za-z0-9._:-]{1,255}$ ]] || return 1
-  [[ "${#_enc}" -le 3072 && "${_enc}" =~ ^[A-Za-z0-9%._~/-]+$ ]] || return 1
+  if [[ -z "${_enc}" ]]; then
+    _MDB_NOTE="none"
+    return 1
+  elif [[ "${#_enc}" -gt 3072 ]]; then
+    _MDB_NOTE="long"
+    return 1
+  elif [[ ! "${_enc}" =~ ^[A-Za-z0-9%._~/-]+$ ]]; then
+    _MDB_NOTE="char"
+    return 1
+  fi
   # Every % begins two hex digits, and never a NUL: the shell would cut the
   # password short at one, and what follows it would be lost unseen.
   case "${_enc}" in
@@ -3408,21 +3427,24 @@ _master_db() {
 # master's) for user $2, from the server alias that names it: _CTX the
 # alias context, _MDB_HOST its host, _PW its password. 1 when no alias
 # gives one; _RL_WHY then holds the word of _master_db's refusal when an
-# alias names the user and its password is refused.
+# alias names the user and its password is refused, _RL_NOTE its note.
 _root_login() {
   local _c _t
   _CTX=""
   _RL_WHY=""
+  _RL_NOTE=""
   for _c in server_localhost server_master; do
     _t=$(_acct_read_in "${1}/.drush" "${_c}.alias.drushrc.php")
     [[ -n "${_t}" ]] || continue
     if ! _master_db "${_t}"; then
       [[ -n "${_MDB_WHY}" && "${_MDB_USER}" == "${2}" ]] && _RL_WHY="${_MDB_WHY}"
+      [[ -n "${_MDB_NOTE}" && "${_MDB_USER}" == "${2}" ]] && _RL_NOTE="${_MDB_NOTE}"
       continue
     fi
     [[ "${_MDB_USER}" == "${2}" ]] || continue
     _CTX="@${_c}"
     _RL_WHY=""
+    _RL_NOTE=""
     return 0
   done
   _PW=""
@@ -4290,8 +4312,13 @@ _pair_class() {
           fi
           ;;
         MASTER)
+          # at 127.0.0.1 too: the install makes the master panel's row
+          # there, and a box whose barracuda passes were system passes only
+          # keeps it (a full pass's master step drops it); proven as every
+          # own login is, by the credential the master's own record holds
+          # opening that very row
           case "${_h}" in
-            localhost|%) _PC_K="SYSPIN" ;;
+            localhost|%|127.0.0.1) _PC_K="SYSPIN" ;;
             *) _PC_K="SYSRULE" ;;
           esac
           ;;
@@ -5545,7 +5572,8 @@ _settle_row_tests() {
 
 # The proof of each row 3 may drop, made before the lock is taken (a login
 # can take seconds): once per row and run, and only for a row every other
-# test lets go and that carries no failed-login limit of its own. Keeps
+# test lets go, while no row of its user carries a failed-login limit (the
+# limit is asked over every row of the user, not this row's alone). Keeps
 # "<user>@<host> <answer> <signature>" lines in _ST_PR: the signature is
 # the row's as it was when the proof was made, and 3 drops only a row that
 # still reads so under the lock.
@@ -5596,12 +5624,14 @@ _settle_proofs() {
         5) _v="name" ;;
         *)
           _v="refused"
-          # A login over TCP is matched to the narrowest row of the user:
-          # where the user has another row, the refusal may be that
-          # row's, and this one was not shown to refuse anything.
-          if [[ "${_h}" == "%" ]]; then
+          # A login over TCP is matched to the narrowest row of the user
+          # that fits it, at 127.0.0.1 or an address the box holds as at
+          # %: where the user has another row, the refusal may be that
+          # row's, and this one was not shown to refuse anything. Over the
+          # socket a row at localhost is the only one a login reaches.
+          if [[ "${_h}" != "localhost" ]]; then
             while IFS='|' read -r _a _b _c _d; do
-              [[ "${_c}" == "${_u}" && "${_b}" != "25" ]] && _v="refusedany"
+              [[ "${_c}" == "${_u}" && "${_b}" != "${_hx}" ]] && _v="refusedany"
             done <<< "${_AL_PAIRS}"
           fi
           ;;
@@ -5692,9 +5722,10 @@ _settle_gate() {
 #      parked home records for it opens that very row. That credential is
 #      tried before the lock, once per row and run, over the socket, a
 #      loopback address or an address the box holds, and never on a row
-#      another of these tests leaves or that carries a failed-login limit
-#      of its own; the row must read under the lock as it did when it was
-#      tried. A purged account's site users are left to "leftovers drop"
+#      another of these tests leaves, nor while a row of its user carries
+#      a failed-login limit (asked over every row of the user); the row
+#      must read under the lock as it did when it was tried. A purged
+#      account's site users are left to "leftovers drop"
 # It is refused where a switch is (_settle_gate), at its start and again
 # once it holds the baseline lock.
 # Never touched in 2 either: a name two accounts' records claim, and every
@@ -6051,9 +6082,9 @@ _scope_pre() {
         fi
         ;;
     esac
-  elif [[ -n "${_RL_WHY}" ]]; then
+  elif [[ -n "${_RL_WHY}${_RL_NOTE}" ]]; then
     _PW=""
-    _mdb_why "${_RL_WHY}"
+    _mdb_why "${_RL_WHY:-${_RL_NOTE}}"
     _sp_refuse "server-alias-password the password its server alias records ${_MW}: no login is tried with it"
   else
     _PW=""
@@ -6192,8 +6223,12 @@ _scope_rows() {
   local _t _cu _h
   local -a _tr=(socket tcp:127.0.0.1)
   _SP_ROWS=()
+  _SR_WHY=""
   _root_login "${_DISK}/${_ACCT}" "${_ACCT}" || return 0
-  _proof_cnf "${_ACCT}" || return 0
+  if ! _proof_cnf "${_ACCT}"; then
+    _SR_WHY="${_PCNF_WHY}"
+    return 0
+  fi
   [[ -n "${_BOX}" ]] && _tr+=("tcp:${_BOX}")
   for _t in "${_tr[@]}"; do
     _cu=$(_login_cu "${_PCNF}" "${_t}") || continue
@@ -6204,6 +6239,20 @@ _scope_rows() {
     _SP_ROWS+=("${_h}")
     _sp_line "row ${_h} in use (${_t})"
   done
+  return 0
+}
+
+# A plan that found no row of the account's in use says why: the account's
+# own login was tried and opened none, or no login was tried with the
+# password its alias records (that alias's own refusal, said by
+# _scope_pre, stands for itself).
+_scope_rows_none() {
+  [[ "${#_SP_ROWS[@]}" -eq 0 ]] || return 0
+  if [[ -n "${_SR_WHY}" ]]; then
+    _sp_refuse "login the account's own database login: ${_SR_WHY}: no login is tried with it"
+  elif [[ -n "${_SP_CTX}" ]]; then
+    _sp_refuse "login the account's own database login opens no row of it"
+  fi
   return 0
 }
 
@@ -6221,9 +6270,7 @@ _scope_plan() {
   _scope_pre
   _scope_sites
   _scope_rows
-  if [[ "${#_SP_ROWS[@]}" -eq 0 ]]; then
-    _sp_refuse "login the account's own database login opens no row of it"
-  fi
+  _scope_rows_none
   while IFS='|' read -r _ux _hx _u _h _k; do
     [[ -n "${_ux}" ]] || continue
     _sp_line "revoke-global ${_u}@${_h} (${_k})"
@@ -6934,6 +6981,65 @@ _v_census() {
   _info "census accounts=${_all} version=${_SRV_VER} cap-enforced=${_f} reference=${_REF_STATE}"
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. The Octopus pass reads an
+# account's lines with this same text.
+# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
+# grep reads it as text.
+_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+# The setting of account $1's own cnf that keeps it out of every switch a
+# pass makes, into _KO: _DB_BROKER_ARM=NO, its operator's, or
+# _DB_BROKER_BORN=NO, a migration tool's while a move's line is there. In
+# the order, and with the reading, of the pass. 1 when neither.
+_kept_out() {
+  local _k
+  _KO=""
+  for _k in _DB_BROKER_ARM _DB_BROKER_BORN; do
+    if [[ "$(_cnf_last "${_RHOME}/.${1}.octopus.cnf" "${_k}")" == "NO" ]]; then
+      _KO="${_k}=NO"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Why the broker does not serve account $1, into _NS, in the words its plan
+# refuses with: a box behind ProxySQL or an account that is (proxysql), a
+# database cluster (cluster: the two words a settle skips such a box with),
+# databases on another server (remote-database-server). Read from the
+# box's files alone, after _box_facts: nothing asks the server. 1 when it
+# is served.
+_not_served() {
+  local _h
+  _NS=""
+  if [[ -e "${_CONF}/${1}_use_proxysql.txt" || -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+    _NS="proxysql"
+  elif [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+    _NS="cluster"
+  else
+    _h=$(grep -s "^_THIS_DB_HOST=" "${_RHOME}/.${1}.octopus.cnf" | tail -n 1 \
+      | cut -d= -f2 | tr -d "\"' ")
+    case "${_h}" in
+      ""|localhost|127.0.0.1|FQDN) ;;
+      *) _own_ip "${_h}" || _NS="remote-database-server" ;;
+    esac
+  fi
+  [[ -n "${_NS}" ]]
+}
+
 # Why account ${_ACCT} is not switched, as its own plan says it, into
 # _RP_WHY: each refusal, each site left unregistered, and, when nothing of
 # its own holds it, how many findings of the box-wide check its switch
@@ -6948,9 +7054,7 @@ _report_plan() {
   _scope_pre
   _scope_sites
   _scope_rows
-  if [[ "${#_SP_ROWS[@]}" -eq 0 ]]; then
-    _sp_refuse "login the account's own database login opens no row of it"
-  fi
+  _scope_rows_none
   while IFS= read -r _l; do
     case "${_l}" in
       "refused "*) _RP_WHY="${_RP_WHY:+${_RP_WHY}, }${_l#refused }" ;;
@@ -6970,14 +7074,22 @@ _report_plan() {
 
 # report: each account the census lists, switched or why not; then every
 # finding of the box-wide check, once, and how the server stands against
-# its version's reference. The box is read once for all accounts, each
-# account's own part of its plan once. It logs in as a plan does and
-# changes nothing. On a standby it has already answered
-# (_need_not_standby).
+# its version's reference. An account its own cnf keeps out (kept-out) and
+# one the broker does not serve (not-served) are told apart from the ones
+# the box could switch and has not (not-switched): only these are counted
+# as unswitched, and only their plans are read. The last line says whether
+# this release switches accounts here (released=yes, the test marker
+# counting), so a reader needs no account's line for it. The box is read
+# once for all accounts, each account's own part of its plan once. It logs
+# in as a plan does and changes nothing. On a standby, and on a box settle
+# skips, it has already answered.
 _v_report() {
-  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _oo _n=0 _sw=0 _un=0
+  local _a _rc _l _x _u _h _subj _why _own=$'\n' _roled=$'\n' _k _kr _n=0 _sw=0 _un=0 _ko=0 _ns=0 _rel=yes
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage report"
+  if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+    _rel=no
+  fi
   _box_facts
   _pair_state
   _al_judge ""
@@ -7016,7 +7128,8 @@ _v_report() {
     if [[ "${_rc}" -eq 0 ]]; then
       _sw=$(( _sw + 1 ))
       # said for a switched account too: a pass's switch of it ends
-      # not proven while one of them holds such a grant
+      # not proven while its instance user holds such a grant (with one on
+      # a panel user alone it answers already)
       if [[ "${_kr}" -gt 0 ]]; then
         printf '%s switched role-or-proxy-grant %s\n' "${_a}" "${_kr}"
       else
@@ -7024,27 +7137,34 @@ _v_report() {
       fi
       continue
     fi
-    _un=$(( _un + 1 ))
     _why=""
     # a control file that is not valid: its tasks take the direct path
     [[ "${_rc}" -eq 1 ]] || _why="control-file-invalid"
-    if [[ "${_TI_RELEASED}" != "YES" && ! -e "${_TI_TEST}" ]]; then
+    # Kept out by its own cnf, or not served by the broker: no pass asks
+    # for its switch and nothing the box does changes that, so its plan is
+    # not read and it is not counted as unswitched. The cnf first, as the
+    # pass reads it first.
+    if _kept_out "${_a}"; then
+      _ko=$(( _ko + 1 ))
+      printf '%s kept-out %s%s\n' "${_a}" "${_KO}" "${_why:+ ${_why}}"
+      continue
+    fi
+    if _not_served "${_a}"; then
+      _ns=$(( _ns + 1 ))
+      printf '%s not-served %s%s\n' "${_a}" "${_NS}" "${_why:+ ${_why}}"
+      continue
+    fi
+    _un=$(( _un + 1 ))
+    if [[ "${_rel}" == "no" ]]; then
       _why="${_why:+${_why}, }not-released"
     fi
-    # the last assignment counts, as it does when the cnf is sourced
-    _oo=$(grep -E '^_DB_BROKER_ARM=' "${_RHOME}/.${_a}.octopus.cnf" 2> /dev/null | tail -n 1)
-    if printf '%s\n' "${_oo}" | grep -qE "^_DB_BROKER_ARM=[\"']?NO[\"']?[[:space:]]*$"; then
-      # kept out by its own cnf: its plan is not read
-      _why="${_why:+${_why}, }opted-out"
-    else
-      _k=0
-      while IFS= read -r _x; do
-        [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
-      done <<< "${_own}"
-      _report_plan "$(( _k + _kr ))"
-      [[ "${_kr}" -eq 0 ]] || _why="${_why:+${_why}, }role-or-proxy-grant ${_kr}"
-      [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
-    fi
+    _k=0
+    while IFS= read -r _x; do
+      [[ "${_x}" == "${_a}" ]] && _k=$(( _k + 1 ))
+    done <<< "${_own}"
+    _report_plan "$(( _k + _kr ))"
+    [[ "${_kr}" -eq 0 ]] || _why="${_why:+${_why}, }role-or-proxy-grant ${_kr}"
+    [[ -z "${_RP_WHY}" ]] || _why="${_why:+${_why}, }${_RP_WHY}"
     printf '%s not-switched %s\n' "${_a}" "${_why:-ready}"
   done
   _ACCT=""
@@ -7052,7 +7172,7 @@ _v_report() {
     [[ -n "${_l}" ]] && printf 'box %s\n' "${_l}"
   done <<< "${_AL_OUT}"
   _ref_state
-  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} stops=${_AL_NSTOP} reference=${_REF_STATE}"
+  _info "report accounts=${_n} switched=${_sw} unswitched=${_un} kept-out=${_ko} not-served=${_ns} stops=${_AL_NSTOP} reference=${_REF_STATE} released=${_rel}"
 }
 
 _parse_args() {
@@ -7194,6 +7314,35 @@ _main() {
     if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
       _info "baseline settle skipped cluster"
       exit 0
+    fi
+  fi
+  # Nor has such a box anything to report: no account there is ever
+  # switched and its stops are never settled. report says so the same way,
+  # in the same word, and reads nothing further.
+  if [[ "${_VERB}" == "report" && "${#_ARGS[@]}" -eq 0 ]]; then
+    if [[ -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+      _info "report skipped proxysql"
+      exit 0
+    fi
+    if [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+      _info "report skipped cluster"
+      exit 0
+    fi
+  fi
+  # An account the broker does not serve has no switch a pass could make,
+  # on this pass or the next: a pass's switch, and a new account's, says so
+  # in its OK line, before anything asks the server, and ends without an
+  # error, as a settle does on such a box. One that is switched goes on to
+  # its switch, which may still have something to take. The box's addresses
+  # are read again when the plan is.
+  if [[ "${_VERB}" == "scope" && ( "${_OPT_PASS}" == "YES" || "${_OPT_BORN}" == "YES" ) && "${#_ARGS[@]}" -eq 2 ]]; then
+    if ! _broker_mode; then
+      _box_facts
+      if _not_served "${_ACCT}"; then
+        _info "scope on ${_ACCT} skipped ${_NS}"
+        exit 0
+      fi
+      _BOX_READ="NO"
     fi
   fi
   _TMPD=$(mktemp -d "${_RUNP}.tmp.XXXXXXXX" 2> /dev/null) || _die 7 "tmp-failed"

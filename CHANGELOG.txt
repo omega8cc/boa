@@ -4,6 +4,37 @@
 
 @=> Important Fixes
 
+    * A server no longer loses its memory to finished login sessions.
+      elogind's PAM module, which a package chain can bring in (polkitd
+      needs a logind), makes a cgroup for every PAM session (every su BOA
+      runs, every cron job and ssh login) and never removes it: on a test
+      box 74,885 of them held 2.4 GB of kernel memory after eight days and
+      the kernel killed mysqld three times. Every barracuda pass now
+      removes the PAM module and the polkit stack that needs it, with
+      packagekit and ModemManager where they came along, but only when apt
+      would remove nothing else (an ALRT line names what kept it), and
+      then removes the empty session cgroups. It never removes the
+      elogind daemon itself, which apt may later drop as unused. The
+      nightly graceful.sh removes empty session cgroups too. wkhtmltopdf
+      is no longer installed from the distro packages before the wkhtmltox
+      build BOA bundles, which replaced that package anyway: its
+      dependency chain was what brought polkitd in, while the bundled
+      build's own dependencies are all it needs.
+
+    * BOA's own apt calls no longer pull in recommended packages. Its apt
+      settings (/opt/apt/apt.conf.noi.dist and .noi.nrml, read by every
+      apt-get call BOA makes with them: installs on a fresh box, upgrades
+      and dist-upgrades, the OS upgrade hops) turned them off with a key
+      apt never reads (APT::Get::Install-Recommends), and on upgrade
+      passes the aptitude form of its install command passed no such
+      option at all. So on a server whose image leaves recommends on,
+      installs brought whole chains along: the distro wkhtmltopdf came
+      with 99 packages instead of 40, elogind, polkitd, ModemManager and
+      avahi-daemon among them. Servers whose image turns them off box-wide
+      were never affected. The files now set APT::Install-Recommends and
+      the aptitude form passes it; apt-get calls without those files still
+      follow the image's setting.
+
     * BOA refuses to run a server out of inodes (#1947). Every file takes
       an inode, and a filesystem out of them fails every write with "No
       space left on device" while df -h still shows free space; BOA's
@@ -81,6 +112,26 @@
       target's inodes, at least 50,000, stay free; the nightly move also
       checks the space, which it never did, and does not count again what
       a copy that stopped short already made (#1947).
+
+    * xoct, xcopy and xmass count the files a store, a Solr index or a
+      batch of out-of-root files will make on the target, not only its
+      bytes (#1947). A copy that would leave less than 2% of the target's
+      inodes, at least 50,000, free is refused with a DENY naming why,
+      instead of failing mid-copy with "No space left on device", for
+      xmass inside the cutover's 503 window. The fallback placement is
+      checked too, a repeated pass is credited with what the copy's own
+      destination holds, an unattended xmass autosync pass counts no
+      files, and a figure that cannot be read lets the copy through with
+      a warning on the plan.
+
+    * xoct, xcopy and xmass read where a store sits on the target before
+      they judge a repeated pass. The root's room was read through the
+      store's link onto the attached mount, so a pass could move a
+      mirrored store back onto a root without room for it, and an
+      unattended xmass pass judged the placement the source's shape
+      suggested, refusing on every pass a store a manual pass had put on
+      the root, and copying onto the root a mirrored store whose mount
+      had gone missing; it now refuses that store.
 
     * The system monitor's inode alert also watches every filesystem
       mounted at /mnt/<name>, the attached storage migratefs uses (#1947).
@@ -160,6 +211,32 @@
     * A Restore refused before its deploy for want of room puts the site
       back online; it stayed on the maintenance page. A Backdrop upgrade
       refused there removes its unused safety copy.
+
+    * provision-update, the command-line database update, puts a Drupal 6
+      or 7 site back online when its safety backup fails before the update
+      runs; the site stayed on the maintenance page until the next Verify.
+      A backup that died without reporting no longer lets the update run
+      with no copy to restore.
+
+    * provision-update refuses a site that does not run Drupal (Backdrop,
+      Grav, Textpattern) before it changes anything: it wrote a Drupal
+      settings.php over the site's own, and a Backdrop site then answered
+      500 until a Verify.
+
+    * provision-update and the Convert to utf8mb4 task keep a Drupal 6 or
+      7 site in maintenance mode while the update or the conversion runs.
+      Their safety backup runs in a process of its own that rewrote
+      settings.php twice from the site's enabled record (the database
+      credentials written out for the archive, then cloaked again), so
+      the site was back online before the work started.
+
+    * A Drupal 6 site's database updates run again. Since late 2022
+      Ægir's Drush 8 stopped every Drupal 6 batch with "Missing required
+      argument: batch-id" and ran none of it, so updatedb applied no
+      update while still printing "Finished performing updates". A
+      provision-update with updates pending failed and restored its
+      safety copy, and a Clone, Migrate or Restore of a Drupal 6 site
+      whose database had updates pending failed on that error in its deploy.
 
     * A Clone, Migrate, upgrade, install or restore whose store conversion
       or un-share was refused or left unfinished is reported as not
@@ -537,6 +614,18 @@
       another codebase or another platform, or is one of the account's own
       directories, is kept and the task log names it.
 
+    * autoinit installs elogind before the Excalibur dist-upgrade, as
+      Devuan's trixie-to-excalibur guide says, instead of stopping at apt's
+      prompt and going on without it: the step now answers yes and, unlike
+      the guide, takes no recommended packages, so the PAM module and
+      polkitd stay out. automini's copy of the step does the same.
+
+    * autoinit builds its systemd-dummy package only when apt's simulation
+      shows that removing systemd would take the SSH server. opensysusers,
+      which autoinit now installs with retries and a check, already keeps
+      openssh-server. A dummy that was needed stays after the conversion,
+      with a WARN line, when removing it would remove the SSH server.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
@@ -779,7 +868,9 @@
       on a standby or for a frozen account), with the account's task queue
       held throughout; the renamed group's name is cut to 32 characters
       for a long account name, paths the walk leaves in the old number are
-      named in the alarm, and the outside holder is not changed. A
+      named in the alarm and logged (up to a thousand) and mapped by that
+      number onto the account's web group by xmass, xoct and xcopy while
+      the renamed group keeps it, and the outside holder is not changed. A
       standby, a frozen account, a running xmass, xoct or xcopy verb (a
       stale pid file whose number another process took no longer counts;
       read again once the free holds the account), a box not ready, a
@@ -807,20 +898,165 @@
       instgrp reclaim, instgrp convert, the nightly and a root-run
       restore leave the paths still in the old number alone, a reclaim
       puts a rename alone back (an earlier version's <gid>-wgheld one too,
-      which a web verb then frees anew) and otherwise skips the account
-      with an alarm, xoct and xcopy refuse to start for the account, an
-      xmass sync skips its legs and carries every other account (its
-      prep-target, init and cutover refuse the run), each saying what
-      finishes the free, a standby, a box being prepared, a frozen account
-      or a running migration verb only gets its rename or its new group's
-      record put right, and a free whose last checks warned is recorded
-      done instead of being run again. The web verb finishes it as long as
-      the renamed group or the new one still has its number; a journal
-      nothing can finish from is dropped with an alarm instead of stopping
-      every reclaim of the account for good, and each journal removed is
-      logged in instgrp.log. instgrp webstatus and the watchers report an
-      unfinished free and a set-group-ID sweep it left owed. The journal
-      goes with the account (docs/INSTGRP.md).
+      which a web verb then frees anew; where another account's journal
+      names its number, that group keeps its name, a run that converts the
+      account makes a new wg-oN and the next web verb finishes the free
+      from the old number) and otherwise skips the account with an alarm,
+      xoct and xcopy refuse to start for the account (xoct still lets a
+      proxied account's proxy --repair and go-live through), an xmass sync
+      skips its legs and carries every other account, naming the skipped
+      accounts in its last line (its prep-target, init and cutover refuse
+      the run, and a live cutover whose own legs still skip one names them
+      as it stops), each saying what finishes the free, a standby, a box
+      being prepared, a frozen account or a running migration verb only
+      gets its rename or its new group's record put right, and a free
+      whose last checks warned is recorded done instead of being run
+      again. Every repair a web verb makes is made under the account's
+      hold, so a run that cannot take it leaves the free to the run that
+      holds it and is deferred at once instead of waiting for the account
+      twice, and a free whose rename is put back meanwhile stops without a
+      journal. The web verb finishes it as long as the renamed group or
+      the new one still has its number; a journal nothing can finish from
+      (one that names no old number included) is dropped with an alarm
+      instead of stopping every reclaim and migration of the account for
+      good, one that cannot be read is kept, alarmed once a day, until it
+      reads again (a reclaim skips the account meanwhile and no free
+      writes over it), and each journal removed is logged in instgrp.log.
+      instgrp webstatus and the watchers report an unfinished free and a
+      set-group-ID sweep it left owed. The journal is removed with the
+      account (docs/INSTGRP.md).
+
+    * The per-account web group conversion, still switched off, reaches
+      an account an aegir2boa db-import left frozen when it was killed
+      outright (SIGKILL, a crash, a reboot): on a box armed for it that
+      is no standby, the limited-shell worker removes the import's own
+      freeze (root's log/proxied.pid reading A2B-IMPORT-FREEZE) a day
+      after it first sees it, while no migration tool runs, no process
+      holds the import's state, no migration park stands and no relay
+      record or proxy vhost is beside it. The age is the worker's own
+      stamp, never the marker's date; a pass that finds a migration of
+      another account, or an xmass autosync, only puts the removal off,
+      and one that finds the account's own import starts the day again.
+      A marker the account made, a relay record or one put by hand stays
+      as it is (docs/INSTGRP.md).
+
+    * The limited-shell worker counts only root's processes when it looks
+      for a running migration, and reads at most 64 KiB of each within a
+      minute (a read that does not end in time counts as a migration
+      running for the removal): a tenant's process naming aegir2boa-stage2
+      or another account kept every account's killed-import freeze and
+      silenced their alarms. The worker and BOA's agent pass count a stage
+      2 as an account's own import only when its --account argument, read
+      whole and cut down as stage 2 reads it (--account o-1 is o1), names
+      the account; words inside one argument no longer count.
+
+    * The worker removes a one-line aegir2boa freeze only beside the
+      import state of this release (/var/backups/a2b/oN/markers) and none
+      of an earlier release's in the account's tree (log/a2b, src/a2b,
+      undo/a2b-pre-import.sql). Earlier releases kept their state there,
+      where BOA does not read it, so their killed import's freeze would
+      have gone with nothing to hold the half-imported panel.
+
+    * The worker names a freeze marker it keeps (one the account made, a
+      relay record, an earlier release's freeze, an aegir2boa freeze
+      beside relay evidence, one put by hand) in a mail once a day, once
+      it has seen it for a day, with what to do about its kind: such an
+      account gets no BOA pass while the marker stands. A relay record
+      beside root's source-role log/migproxy.cnf or a proxy vhost is a
+      live relay and is not named; one with neither is, with the advice
+      to check whether the box serves the account (xmass post-mig after a
+      promotion by hand), and an earlier release's freeze with the advice
+      to finish or revert that import by its own procedure first.
+
+    * On a box armed for the web group, while aegir2boa's own state shows
+      an account's db-import unfinished (its dispatcher held aside, or
+      step markers with neither the done marker nor the marker of its
+      hand-back), the account's control panel stays switched off: the
+      octopus wrapper skips the account (an INFO line in an all run, an
+      ALRT when the run names it), no Octopus pass writes or runs its
+      task dispatcher, BOA's agent pass moves a live one back into the
+      import's hold and never hands a parked one back, and the nightly
+      runs no task, queue sweep or setting on the panel nor moves its
+      sites, vhosts or aliases aside as ghosts. The usage pass writes no
+      footer and clears no cache on the panel, and renameaegirhost and
+      syncpass fix refuse the account, naming the import's re-run and its
+      revert. A half-imported panel must not dispatch: an Octopus pass ran
+      a forced server verify, hosting-dispatch, three task sweeps and the
+      panel's migration on it. On a box not armed none of this acts: the
+      takeover of a dead freeze, the panel guard, the worker's removal and
+      the skips need the arm stamp, while aegir2boa-stage2's freeze body,
+      its hand-back marker, the account record and its dry-run gate order
+      are the same on every box (docs/AEGIR2BOA.md).
+
+    * The limited-shell worker mails the operator once a day while
+      aegir2boa's state shows an account's import unfinished and none of
+      it is seen running, naming the import's re-run and its revert and
+      how a killed run's freeze is cleared; a pass that cannot read the
+      process table mails all the same and says so. It reads root's state
+      whatever the account's tree holds, and writes its incident line once
+      a day with the mail.
+
+    * aegir2boa's import state counts only for the account it was made
+      for: BOA reads a state recorded for another account of the name
+      (another uid, or another home by its inode and birth time) as none
+      of this account's, its record read whole whether or not a newline
+      ends it, and an empty record as the account's own, as
+      aegir2boa-stage2 reads it. boa cleanup purge parks
+      /var/backups/a2b/oN with the account beside its migration create
+      marker.
+
+    * xmass, xoct and xcopy read an account whose task dispatcher
+      aegir2boa holds for an unfinished import as parked, as they read
+      one in off-run: its queue no longer holds their wait for a quiet box.
+
+    * aegir2boa-stage2: a re-run of a db-import, or of its revert, takes
+      over the freeze its own killed run left, on a box armed for the web
+      group. The freeze names its operation, pid and process group on a
+      second line, and the run takes it over only once nothing of the
+      killed run is left: no root process in that group, its pid running
+      no stage 2, no other stage 2 naming the account (its --account read
+      as stage 2 reads its own), no root process holding the account's
+      import state and no other connection on the account's panel
+      database. A refused re-run names the check that refused it. A
+      one-line marker, the other operation's or any other body is refused
+      as before.
+
+    * aegir2boa-stage2 stops when it cannot put its freeze marker, instead
+      of importing into an account the BOA passes do not hold off.
+
+    * aegir2boa-stage2 consumes the dry run of a db-import or a revert only
+      once its freeze is put: a run that stops before then (refused at the
+      freeze, or a db-import dying in a check before it) keeps it.
+
+    * aegir2boa-stage2 marks the hand-back of a db-import's dispatcher
+      just before it returns it, so an import cut off in the PHP pool
+      waits that follow is read as finished, and hands back a dispatcher
+      BOA parked in off-run while the freeze stood.
+
+    * aegir2boa-stage2 transfer records the account it lands for (its uid
+      and its home's inode and birth time) beside the import state on the
+      target, and refuses a state recorded for another account of the
+      name, its dry run included, before it prints its plan or consumes
+      its gate. import refuses such a state too in every mode (either
+      route, --revert-db-import, --reset-sites), before it prints a plan
+      or reads its gate: a revert there dropped the new account's panel
+      database and loaded the earlier account's snapshot into it.
+
+    * aegir2boa-stage2 --revert-db-import and --reset-sites drop, with
+      each site database the import loaded, the database users the import
+      made for it; they left them behind. The import records the rows of
+      a site's user (at localhost and %) it found missing and made, and
+      only those go, each row's CREATE USER line and grants saved first in
+      /var/backups/boa/dbrights. A user that was there before, that the
+      master or another account names, that the database broker's
+      registry gives to another account, or that has a row at a host the
+      box does not own stays, and the run says why (docs/AEGIR2BOA.md).
+
+    * aegir2boa-stage2's drain before a db-import's or a revert's surgery
+      waits only on the account's task dispatcher itself, a root process
+      running /var/xdrago/run-oN, no longer on any process whose command
+      line names that path: an operator's shell naming it held a revert
+      until that shell ended.
 
     * The database broker (boa-dbctl) writes a database password into a
       client file only when it holds no control character and is no
@@ -977,6 +1213,46 @@
       its own web group, which the two accounts settle between them
       (docs/INSTGRP.md).
 
+    * The web group conversion, still switched off, gives an account's
+      main login its own copy of the account's web group notes, which
+      say what holds its phase B back and what clears it:
+      ~/static/control/web-group-notes.txt, readable by that login alone
+      over SFTP and in its shell, where the copy in log/ is out of its
+      reach. Root rewrites it from its own notes file through a writer
+      that never follows a link; no migration tool carries it, and the
+      control directory's README names it (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, names each ground
+      that holds an account's phase B, and a share into the account's
+      store, once a run in each account's notes, where a run that went
+      on to the check before phase B wrote it twice; webconvert all,
+      which runs an account in two rounds, writes it once too
+      (docs/INSTGRP.md).
+
+    * A web group conversion run that notes thousands of paths no longer
+      spends minutes checking which notes it already wrote: the check
+      costs the same however many there are.
+
+    * A web group conversion at phase A, still switched off, that ends
+      with paths a writer left in www-data during its walk (exit 2) says
+      so in a NOTE, in the account's notes and in instgrp.log, where the
+      Octopus upgrade's note for it points; the next run walks them, as
+      before (docs/INSTGRP.md).
+
+    * instgrp webstatus says what holds the account's phase B back, on a
+      shares: line counted as instgrp webcheck --report counts it, read
+      without writing a note (docs/INSTGRP.md).
+
+    * instgrp webcheck --report also reads the master, which a share or a
+      site or store outside it can hold at phase A as it can an account:
+      a block of its own with its shares: line (docs/INSTGRP.md).
+
+    * The web group conversion, still switched off, waits for the
+      limited-shell worker's current web group form before an account's
+      first conversion: an earlier form raised an incident on every pass
+      for an account at phase A whose site keeps its files store outside
+      the account (docs/INSTGRP.md).
+
 @=> New Features
 
     * Grav shops: a Grav site can now be created on a database server for
@@ -986,16 +1262,15 @@
       from its vhost and the grav command, never from a file its PHP can
       read; Verify applies the store's schema changes; and BOA runs the
       store's worker every minute inside the site's own PHP-FPM pool, one
-      or two at a time per pool, never Grav's whole scheduler. A copy made
-      by Clone or Upgrade a copy is held until a Cutover retires its
-      store, the site at the store's domain when that carries a store and
-      is neither a held copy nor a copy of another store (unless a store
-      then runs at the domain the copy was made from), or a released
-      copy of that store at the domain the copy was made from, or until
-      the account creates
-      ~/static/control/kahunacart-run.<domain>.info; a Clone also gets a
-      signing secret of its own and a paused store. A store kept in its own
-      SQLite file is warned about and is not cloned.
+      or two at a time per pool, never Grav's whole scheduler. A copy of a
+      shop made by Clone or Upgrade a copy is held until the account
+      creates ~/static/control/kahunacart-run.<domain>.info, or a Cutover
+      retires the store it stands in for or the released copy it was made
+      from; the store is found by an identity it and its copies carry in
+      their capsules, never by a domain, which a Rename or a new site can
+      move, and a copy that takes a store's place takes its identity. A
+      Clone also gets a signing secret of its own and a paused store. A
+      store kept in its own SQLite file is warned about and is not cloned.
 
     * AI agents report, switched off by default: with _GOACCESS_AI_REPORT=YES
       in /root/.barracuda.cnf (GoAccess itself on), every nightly GoAccess
@@ -1167,7 +1442,10 @@
 
     * The database broker (boa-dbctl), still switched off, has a verb that
       settles a box's database logins with no ruling asked: baseline settle.
-      It records the server's own logins that are not in the baseline yet.
+      It records the server's own logins that are not in the baseline yet,
+      the master panel user's install-time row at 127.0.0.1 among them
+      where the master's own credential opens it (a box whose barracuda
+      passes were system passes only keeps that row).
       It takes the global privileges of a login no record names that exists
       only at the box's own hosts and defines no stored object, its grants
       saved first; one with a row at % or at any other host is left, as it
@@ -1178,8 +1456,10 @@
       parked home records opens that very row. That credential is tried
       once per row, over the socket or an address the box holds, and never
       while a row of the user carries a failed-login limit of its own; a
-      login that could not be tried leaves the row as a refused one does.
-      Nothing calls it in this release (docs/DBCTL.md).
+      login that could not be tried leaves the row as a refused one does,
+      and a refusal over TCP of a user with another row is said as one a
+      narrower row may have given. Only the passes of a box armed for the
+      broker call it (docs/DBCTL.md).
 
     * The broker's scope oN on --pass is the unforced switch an Octopus pass
       makes. It runs only while a pass is running, waits for the account's
@@ -1188,16 +1468,113 @@
       would change nothing. One whose instance or panel user holds a global
       privilege again, or that has a grant row the switch revokes or
       rewrites, is switched again, and stays switched when a step of that
-      fails. Nothing calls it in this release (docs/DBCTL.md).
+      fails. For an account the broker does not serve (a ProxySQL box or
+      account, a database cluster, databases on another server) it changes
+      nothing and answers OK scope on oN skipped with the reason, and so
+      does a new account's switch (scope oN on --born), so such an install
+      says one INFO line where it said two ALRT lines. Only an Octopus pass
+      on a box armed for the broker makes it (docs/DBCTL.md).
 
     * The broker's report says for each account whether it is switched, or
-      why not, and lists what stops the box. Nothing calls it in this
-      release (docs/DBCTL.md).
+      why not, and lists what stops the box. An account its own cnf keeps
+      out reads kept-out with the setting that does it, one the broker does
+      not serve reads not-served with the reason, and the last line counts
+      both apart from the accounts the box could switch and has not. The
+      last line says released=yes or released=no, whether this release
+      switches accounts on the box. On a ProxySQL or cluster box, where
+      settle skips the box, report answers OK report skipped with the same
+      word and reads nothing further. Its reasons are the plan's, each its
+      true cause: a server alias whose password is empty, longer than 3072
+      bytes or not URL-safe is said as that, never as no alias, and a login
+      the plan did not try is never said to have opened no row. Only the
+      nightly of a box armed for the broker asks for it (docs/DBCTL.md).
 
     * The broker's box-wide check names a role or a proxy grant on an
       account's own database login as that login's finding: no switch
       takes one, so it stops the account's own switch too, and report
       says it for that account (docs/DBCTL.md).
+
+    * A box can be armed for the database broker (boa-dbctl), still switched
+      off: with _DB_BROKER_ARM=YES in /root/.barracuda.cnf every Octopus
+      install and upgrade has the box settle its database logins (baseline
+      settle) and then asks for the pass's switch of its account (scope oN
+      on --pass), unforced. Each call is one line of the pass: the broker's
+      own OK line, or a NOTE with its refusal, which never fails the pass
+      and leaves everything as it was until the next pass asks again. A
+      call that stopped after it changed something (scope-failed,
+      baseline-settle-incomplete), or that an SQL statement failed in
+      (sql-failed), is no refusal: the broker's ALRT lines are relayed, up
+      to 512 characters each, and the call's line is an ALRT, so the pass
+      is reported with errors. Each login a settle revoked or dropped is
+      named on an INFO line of its own. No call is made on a standby or a
+      box being prepared as one, nor for an account whose cnf says
+      _DB_BROKER_ARM=NO or _DB_BROKER_BORN=NO. Where the box also switches
+      new accounts, an install settles the box before that switch too, and
+      that switch obeys both of the account's settings, read as the pass
+      reads them, and relays the broker's ALRT lines when it stops part way.
+      Every reader of the two settings reads a cnf as text, so a NUL byte
+      in it hides none of its lines. The broker still refuses outside a
+      test server, so a box armed today only prints those NOTE lines
+      (docs/DBCTL.md).
+
+    * On a box armed for the broker a barracuda pass has it settle the
+      box's database logins once, after the pass has made the server's own
+      logins for the last time and had them recorded again (docs/DBCTL.md).
+
+    * On a box armed for the broker the nightly asks for the broker's
+      report and mails the box operator, once a day, the lines of the
+      accounts the box could switch and has not and of what stops the box,
+      with the report's counts. Nothing is mailed while every such account
+      is switched and nothing stops the box, for an account kept out by
+      its cnf or not served by the broker, for a stop on a box with no
+      account switched or that it could switch, for a box the report
+      skips, nor while the release switches no account. The whole report
+      goes to /var/log/boa/dbctl-report.txt and the nightly witness's lines
+      to /var/log/boa/dbctl-witness.txt, both root only and rewritten each
+      night; the night's log gets their last lines, the witness's count of
+      alerts and those paths, so no name a login chose reaches the night's
+      incident scan. A report whose file cannot be written still runs and
+      mails as it would, and the night's log says so (docs/DBCTL.md).
+
+    * The _DB_BROKER_ARM default is written the way the web group's is: a
+      barracuda pass writes _DB_BROKER_ARM=YES only into a cnf that has no
+      such line, so an operator's own line, NO included, always stays. It
+      is staged by release and off in this one: no pass writes the setting
+      (docs/DBCTL.md).
+
+    * xoct create keeps a moved account out of the broker's switches only
+      while it installs it on the target: it puts _DB_BROKER_BORN=NO into
+      the account's cnf there before the install and takes its own line
+      back once the account is installed and its source's settings and
+      switch are carried, under an xmass run too. A root-only note beside
+      the cnf says what the seed did, and the take-back reads it, so a
+      create run again after any exit takes back what an earlier run put;
+      where the cnf already assigns _DB_BROKER_BORN at the start of a line,
+      the one spelling the install keeps, the seed adds nothing and that
+      line stays. Where the merge of the source's settings failed the line
+      stays until the next merge that succeeds, a create's or a live
+      transfer's, takes it back; an interrupt once the remote install has
+      started leaves line and note for a re-run. The target's cnf is read
+      and rewritten as text, and the purge parks the note with the
+      account's root files (docs/DBCTL.md).
+
+    * On a box armed for the broker the Octopus pass takes back a
+      _DB_BROKER_BORN=NO line a migration left in a moved account's cnf a
+      day after its create, so accounts moved with the tools of an
+      earlier release are switched like any other; an operator's opt-out
+      is _DB_BROKER_ARM=NO, which nothing takes back. Only on an upgrade
+      pass, where the create marker names the account as it is now, and
+      only through a checked rewrite of the cnf, read as text; one INFO
+      line names the migration (docs/DBCTL.md).
+
+    * xoct and xmass carry an account's _DB_BROKER_ARM=NO both ways, read
+      as the pass reads it, in any of its shapes, and an operator's
+      _DB_BROKER_BORN=NO as _DB_BROKER_ARM=NO: an account its operator
+      kept out of the broker stays out on the target and on a promoted
+      standby, and one let back in on its source is let back in there.
+      xcopy puts the source's NO into the copy's cnf before its install,
+      and where the install does not happen takes it back, unless the
+      account was made, and puts back what it replaced (docs/DBCTL.md).
 
     * A load through the broker, still switched off, walks the account's
       dump store with the account's own rights before its loader starts,
@@ -1325,9 +1702,9 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.18 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above and the named kernel boot and uncaught errors under
-      Important Fixes.
+    * Classic Drush 8.5.19 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above and the named kernel boot and uncaught errors and the
+      Drupal 6 database updates under Important Fixes.
       On Drupal 10 and 11 pm-updatestatus no longer dies on
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an

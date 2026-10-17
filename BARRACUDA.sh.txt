@@ -42,8 +42,8 @@ _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.10.3
 _CSF_VRN=15.00
 _CURL_VRN=8.23.0
-_DRUSH_EIGHT_TEST_VRN=8.5.18
-_DRUSH_EIGHT_VRN=8.5.18
+_DRUSH_EIGHT_TEST_VRN=8.5.19
+_DRUSH_EIGHT_VRN=8.5.19
 _DRUSH_ELEVEN_VRN=11.6.0
 _DRUSH_TEN_VRN=10.6.2
 _GIT_VRN=2.51.0
@@ -347,6 +347,9 @@ if ! declare -F _master_web_group_rb > /dev/null 2>&1; then
     fi
   fi
 fi
+# The database broker's step on a box armed for it: a lib tree without it
+# has nothing to ask this pass, and the next pass asks.
+declare -F _master_db_broker_settle > /dev/null 2>&1 || _master_db_broker_settle() { return 0; }
 
 
 ###
@@ -672,6 +675,13 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_config_update_fix
   _aegir_master_display_login_link
 fi
+
+
+###
+### The database broker on a box armed for it: the box settles its own
+### database logins, once the pass has made them for the last time
+###
+_master_db_broker_settle
 
 
 ###

@@ -157,6 +157,55 @@ _purge_postfix_bounces() {
   fi
 }
 
+# A session cgroup is idle when no process is in it or below it and it has no
+# child cgroup.
+_session_cgroup_idle() {
+  local _cgKey _cgVal _cgSub
+  local _cgPop=1
+  [ -d "$1" ] && [ -r "$1/cgroup.events" ] || return 1
+  while read -r _cgKey _cgVal; do
+    if [ "${_cgKey}" = "populated" ]; then
+      _cgPop="${_cgVal}"
+    fi
+  done < "$1/cgroup.events"
+  [ "${_cgPop}" = "0" ] || return 1
+  for _cgSub in "$1"/*/; do
+    [ -d "${_cgSub}" ] && return 1
+  done
+  return 0
+}
+
+# elogind never removes the cgroup it makes for each login session, and every
+# su, cron run and ssh login makes one; their kernel memory grows until the
+# OOM killer steps in. Barracuda removes elogind's PAM module, but where it is
+# still in place (or a long session ended since) remove the empty session
+# cgroups: top-level c<N> and <N> directories on the cgroup2 hierarchy elogind
+# mounts, never on a systemd host, only those idle at two reads three seconds
+# apart. The kernel refuses rmdir on a populated cgroup in any case.
+_trim_session_cgroups() {
+  local _cgDir _cgLeft
+  local -a _cgCand=()
+  local -a _cgGone=()
+  [ -d "/run/systemd/system" ] && return 0
+  grep -qs "^[^ ]* /sys/fs/cgroup cgroup2 " /proc/mounts || return 0
+  for _cgDir in /sys/fs/cgroup/c[0-9]* /sys/fs/cgroup/[0-9]*; do
+    [[ "${_cgDir##*/}" =~ ^c?[0-9]+$ ]] || continue
+    _session_cgroup_idle "${_cgDir}" && _cgCand+=("${_cgDir}")
+  done
+  (( ${#_cgCand[@]} )) || return 0
+  sleep 3
+  for _cgDir in "${_cgCand[@]}"; do
+    _session_cgroup_idle "${_cgDir}" && _cgGone+=("${_cgDir}")
+  done
+  (( ${#_cgGone[@]} )) || return 0
+  printf '%s\0' "${_cgGone[@]}" | xargs -0 rmdir 2> /dev/null
+  _cgLeft=0
+  for _cgDir in "${_cgGone[@]}"; do
+    [ -d "${_cgDir}" ] && _cgLeft=$(( _cgLeft + 1 ))
+  done
+  echo "Removed $(( ${#_cgGone[@]} - _cgLeft )) empty login-session cgroups"
+}
+
 # Main action function
 _graceful_action() {
   echo "Starting system maintenance tasks..."
@@ -200,6 +249,9 @@ _graceful_action() {
     echo "Optimizing RAM usage..."
     _optimize_ram
   fi
+
+  echo "Removing empty login-session cgroups..."
+  _trim_session_cgroups
 
   # Setup GeoIP directories
   if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
