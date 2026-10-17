@@ -10,6 +10,17 @@ Ensure that you have corresponding PHP versions installed with barracuda before 
 
 On hosted BOA contact your host if you need any legacy PHP installed again.
 
+## Drupal 12
+
+Drupal 12 is at a pre-release, for testing modules, themes and upgrade paths, not for
+sites. Its platforms (`DT0`) are built only where the platform list names the symbol,
+never through `ALL` while the core is a pre-release, and only in an instance whose
+command-line and web PHP are 8.5 or newer: the Octopus upgrade skips the symbol in
+any other instance and says so in its log. Like Drupal 11 it needs MySQL 8, on BOA a
+box on Percona 8.4.
+
+- [Drupal 12.0.0-beta2](https://drupal.org/project/drupal/releases/12.0.0-beta2)
+
 ## Drupal 11
 
 Drupal 11 needs MySQL 8, on BOA a box on Percona 8.4. On a Percona 5.7 box the
@@ -71,7 +82,9 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 * A Grav site keeps everything in files on the "None (flat-file sites)" database server, or, for a KahunaCart shop, gets a database when it is created on a MySQL 8 server (Percona 8.4). The panel carries that database through every task and passes its credentials through the vhost and the `grav` command, never a file the site's PHP can read. Verify brings the store schema up to date.
 * BOA runs the shop's worker (`bin/plugin kahunacart work`) every minute as the site's web server user, one shop at a time on a PHP pool of fewer than eight workers and two on a larger one; Grav's own scheduler, and the custom jobs a site's admin can define, never run.
 * The shop's order mail goes out through Grav's email plugin, which ships with no sender address and its `sendmail` engine: set the address and the plugin's SMTP engine with the mail provider on port 587 or 465. BOA keeps `sendmail` closed to sites unless `_ALLOW_SENDMAIL=YES`, and its csf blocks a site's outgoing port 25, localhost included.
-* A copy made by Clone or Upgrade a copy is held until a Cutover retires the store it stands in for, or a released copy of that store at the domain the copy was made from. The store is the site at the store's domain when it carries a store and is neither a held copy nor a copy of another store, and the hold stays while a store runs at the domain the copy was made from: the copy's marker keeps domains only. A released copy keeps running through a Cutover.
+* A copy of a shop made by Clone or Upgrade a copy is held until a Cutover retires the store it stands in for, or a released copy of that store that ran while no site holding the store's identity is a store any more; never while the site it was made from is a store. A released copy keeps running through a Cutover, and a copy of a site without a store is not held.
+* A copy that replaces its released source while the store is still here stays a released copy: the release file left for that domain releases it, and deleting the file holds it again.
+* The store is found by an identity it and its copies carry in their capsules (`.boa-store`), never by a domain, which a Rename or a new site can move; a copy that takes a store's place takes its identity too. A copy made before identities existed, or made from such a copy, is still judged by domains.
 * A copy is also released once `~/static/control/kahunacart-run.<domain>.info` exists and is newer than the copy: one left by an earlier copy at the same domain, or made before a Rename or Cutover of the held copy, releases nothing.
 * A Clone also gets its own signing key and a paused store.
 
@@ -100,6 +113,10 @@ This file, if it exists and contains a list of symbols used to define supported 
 **NOTE**: The `_PLATFORMS_LIST` value in `/root/.${_USER}.octopus.cnf` is consumed by one pass: every Octopus install or upgrade resets it to `none` after reading it, so a list written there steers only the next pass. This control file is the persistent per-instance list, applied on every future upgrade until it is removed.
 
 ## Supported Values
+
+### Drupal 12 (pre-release, for testing)
+
+- `DT0` — Drupal 12 pre-release prod/stage/dev (built only when named, in an instance at PHP 8.5 or newer)
 
 ### Drupal 11.4
 

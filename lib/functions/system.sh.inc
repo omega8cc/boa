@@ -3969,6 +3969,7 @@ _barracuda_cnf() {
     _sql_series_never_downgrade
     _instgrp_web_arm_seed
     _nginx_link_guard_seed
+    _db_broker_arm_seed
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -4750,6 +4751,7 @@ _barracuda_cnf() {
     fi
     _instgrp_web_arm_seed
     _nginx_link_guard_seed
+    _db_broker_arm_seed
     _hm_cli_floor_publish
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
@@ -5649,17 +5651,16 @@ _if_install_wkhtmltox() {
     || [ -L "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Installing wkhtmltopdf from ${_OS_CODE} packages..."
+      _msg "INFO: Installing the packages wkhtmltopdf needs from ${_OS_CODE}..."
     fi
     _apt_clean_update
-    for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf; do
-      # trixie and excalibur no longer ship wkhtmltopdf; the bundled build
-      # below is the only source there.
-      if [ "${_PKG}" = "wkhtmltopdf" ]; then
-        case "${_OS_CODE}" in
-          excalibur|trixie) continue ;;
-        esac
-      fi
+    # The bundled build below is the only source on every system. The distro
+    # wkhtmltopdf package is not installed: the bundled package conflicts
+    # with it and replaces it, so it only ever left its dependency chain
+    # behind, and with recommends on that chain brought polkitd, elogind
+    # and its PAM module (see _if_heal_logind_leak). trixie and excalibur
+    # no longer ship it at all.
+    for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -5726,7 +5727,15 @@ _if_install_wkhtmltox() {
       _msg "INFO: The wkhtmltox tools v.${_WKHTMLTOX_VRN} installation complete"
     fi
     cd /var/opt
-    _fix_wkhtml
+  fi
+  # Also when the bundled build is current: a missing /usr/bin copy, which
+  # sites point at, is what sends a pass here, and with no distro package
+  # reinstalled the copy has to come from /usr/local/bin.
+  _fix_wkhtml
+  # No distro package stands in when the bundled one could not be fetched or
+  # installed, so say it; the next pass tries again.
+  if [ ! -x "/usr/local/bin/wkhtmltopdf" ] && [ ! -x "/usr/bin/wkhtmltopdf" ]; then
+    _msg "ALRT: wkhtmltopdf is missing: the bundled wkhtmltox ${_WKHTMLTOX_VRN} package could not be installed"
   fi
 }
 
@@ -8651,6 +8660,113 @@ _finale() {
   _msg "BYE!"
 }
 
+#
+# A session cgroup is idle when no process is in it or below it and it has no
+# child cgroup.
+_session_cgroup_idle() {
+  local _cgKey _cgVal _cgSub
+  local _cgPop=1
+  [ -d "$1" ] && [ -r "$1/cgroup.events" ] || return 1
+  while read -r _cgKey _cgVal; do
+    if [ "${_cgKey}" = "populated" ]; then
+      _cgPop="${_cgVal}"
+    fi
+  done < "$1/cgroup.events"
+  [ "${_cgPop}" = "0" ] || return 1
+  for _cgSub in "$1"/*/; do
+    [ -d "${_cgSub}" ] && return 1
+  done
+  return 0
+}
+
+#
+# Remove the empty per-session cgroups elogind leaves on the cgroup2
+# hierarchy it mounts: top-level c<N> and <N> directories only, never on a
+# systemd host, and only those idle at two reads three seconds apart (a new
+# session's cgroup is filled the moment it is made). The kernel refuses
+# rmdir on a populated cgroup in any case.
+_trim_session_cgroups() {
+  local _cgDir _cgLeft
+  local -a _cgCand=()
+  local -a _cgGone=()
+  [ -d "/run/systemd/system" ] && return 0
+  grep -qs "^[^ ]* /sys/fs/cgroup cgroup2 " /proc/mounts || return 0
+  for _cgDir in /sys/fs/cgroup/c[0-9]* /sys/fs/cgroup/[0-9]*; do
+    [[ "${_cgDir##*/}" =~ ^c?[0-9]+$ ]] || continue
+    _session_cgroup_idle "${_cgDir}" && _cgCand+=("${_cgDir}")
+  done
+  (( ${#_cgCand[@]} )) || return 0
+  sleep 3
+  for _cgDir in "${_cgCand[@]}"; do
+    _session_cgroup_idle "${_cgDir}" && _cgGone+=("${_cgDir}")
+  done
+  (( ${#_cgGone[@]} )) || return 0
+  printf '%s\0' "${_cgGone[@]}" | xargs -0 rmdir 2> /dev/null
+  _cgLeft=0
+  for _cgDir in "${_cgGone[@]}"; do
+    [ -d "${_cgDir}" ] && _cgLeft=$(( _cgLeft + 1 ))
+  done
+  _msg "INFO: Removed $(( ${#_cgGone[@]} - _cgLeft )) empty login-session cgroups"
+}
+
+#
+# BOA runs no login-session manager. BOA's installs never ask for elogind's
+# PAM module: it arrives as a dependency (polkitd needs a logind) or as
+# elogind's own recommended package, and elogind, 246 on daedalus and 255
+# on excalibur alike, never removes the cgroup it makes for each PAM session:
+# every su, cron run and ssh login leaves one behind, and their kernel memory
+# (slab, and per-CPU memory counted for every possible CPU) grows until the
+# OOM killer takes mysqld. Remove the PAM module, the polkit stack that needs
+# it and the services that came with them and need polkit (modemmanager,
+# packagekit), but only when apt would remove nothing else. The elogind
+# daemon is never removed here (inert without the module, and apt may drop
+# it later as unused where only the module needed it). Then remove the empty
+# session cgroups.
+_if_heal_logind_leak() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_heal_logind_leak"
+  fi
+  local _lgnSim _lgnPkg _lgnExtra _lgnPam
+  if _pkg_installed "libpam-elogind"; then
+    _lgnSim="$(apt-get -s purge libpam-elogind 2> /dev/null \
+      | awk '$1 == "Purg" || $1 == "Remv" { print $2 }')"
+    _lgnExtra=
+    for _lgnPkg in ${_lgnSim}; do
+      case "${_lgnPkg%%:*}" in
+        libpam-elogind|polkitd|polkitd-pkla|policykit-1|policykit-1-gnome) ;;
+        pkexec|libpolkit-gobject-elogind-1-0) ;;
+        modemmanager) ;;
+        packagekit|packagekit-tools) ;;
+        software-properties-common|python3-software-properties) ;;
+        *) _lgnExtra="${_lgnExtra} ${_lgnPkg}" ;;
+      esac
+    done
+    _lgnExtra="$(printf '%s\n' ${_lgnExtra} | sort -u | tr '\n' ' ')"
+    _lgnExtra="${_lgnExtra% }"
+    if [ -z "${_lgnSim}" ]; then
+      _msg "ALRT: libpam-elogind is installed but apt cannot plan its removal; every login session still leaves a cgroup behind"
+    elif [ -n "${_lgnExtra}" ]; then
+      _msg "ALRT: libpam-elogind left in place: removing it would also remove ${_lgnExtra}; every login session still leaves a cgroup behind, which graceful.sh removes nightly"
+    else
+      _mrun "apt-get purge libpam-elogind -y -qq"
+      if _pkg_installed "libpam-elogind"; then
+        _msg "ALRT: libpam-elogind could not be removed; every login session still leaves a cgroup behind"
+      else
+        _msg "INFO: elogind's PAM module and the polkit stack removed"
+      fi
+    fi
+  fi
+  # pam-auth-update keeps a common-session file edited by hand as it is, so
+  # the line can outlive the module: say so on every pass until it is gone.
+  if ! _pkg_installed "libpam-elogind"; then
+    _lgnPam="$(grep -ls "pam_elogind" /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive | tr '\n' ' ')"
+    if [ -n "${_lgnPam}" ]; then
+      _msg "WARN: ${_lgnPam% } still names pam_elogind, which is not installed: delete that line or run pam-auth-update --force"
+    fi
+  fi
+  _trim_session_cgroups
+}
+
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -8697,6 +8813,10 @@ _run_aptitude_deps_install() {
       _mrun "dpkg --purge ${_lgcySlgd}"
     fi
   done
+  # A box that already carries elogind's PAM module leaks a cgroup per login
+  # session whatever brought it, and the FULL-mode removal of the polkit
+  # stack below runs only on a fresh install, so heal it on every run.
+  _if_heal_logind_leak
   # The distro archive keyring is the box's only trust root, and _mrun cannot
   # fail (it returns 0 unconditionally), so the old duplicated call could not
   # tell whether the package ever arrived -- it just ran the same command
@@ -13064,6 +13184,25 @@ _instgrp_web_arm_seed() {
     && _instgrp_web_seed_line _WEB_GROUP_PHASE_B "${_tiSeedPhaseB}"; then
     _WEB_GROUP_PHASE_B=YES
     _msg "INFO: The account web group goes on to phase B by default: _WEB_GROUP_PHASE_B=YES written to ${_barCnf} (NO there stops at phase A)"
+  fi
+}
+
+# The database broker's default, written the way the account web group's is
+# (_instgrp_web_seed_line): a pass writes _DB_BROKER_ARM=YES into a cnf that
+# carries no such line, so an operator's own line, NO included, always stays,
+# and a box no stage has reached yet gets no line at all. Staged by release:
+# NO writes nothing, HOSTED writes on the omega8.cc-hosted fleet, ALL on
+# every box. Nothing is written in this release. Kept local so no cnf line
+# can set it; it stays NO wherever the broker's own release switch
+# (_TI_RELEASED in boa-dbctl) is NO.
+_db_broker_arm_seed() {
+  local _dbSeedArm=NO
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _db_broker_arm_seed"
+  fi
+  if _instgrp_web_seed_line _DB_BROKER_ARM "${_dbSeedArm}"; then
+    _DB_BROKER_ARM=YES
+    _msg "INFO: The database broker is armed by default: _DB_BROKER_ARM=YES written to ${_barCnf} (NO there opts this box out)"
   fi
 }
 

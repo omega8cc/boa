@@ -915,7 +915,51 @@ _run_drush8_cmd() {
   wait
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# or a step marker of the import stands with neither its done marker nor
+# the marker of its hand-back (written right before the import returns the
+# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
+# state, and so does a state recorded for another account of the name (its
+# uid, or its home's inode or birth time, not the account's now; a birth
+# time either side does not know is not compared). The record's first line
+# is read whether or not a newline ends it; an empty record, or none, is
+# the account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
+# Every command the nightly runs on an account's control panel. An aegir2boa
+# db-import that left the panel half made keeps it switched off on a box
+# armed for the web group: no task, queue sweep or setting is run on it
+# until the import is re-run or reverted (the rest of the account's pass
+# goes on).
 _run_drush8_hmr_cmd() {
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${_HM_U}"; then
+    echo "NOTE: ${_HM_U}: an aegir2boa db-import is unfinished; drush8 @hostmaster ${1%% *} not run on its half-made panel" >&2
+    return 0
+  fi
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
@@ -1014,6 +1058,10 @@ _if_gen_goaccess() {
     # The name comes from a vhost file name the account controls: a host
     # name (or ALL) only, never a path, a glob or an option.
     [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 0
+    # owl.sh stages the night's log corpus once and plants .global.pid; a
+    # night it refused to (out of inodes) has none, and every report would
+    # then stage the whole corpus again on its own
+    [ -e "/var/www/adminer/access/archive/unzip/.global.pid" ] || return 0
     if [ -x "${_isWblgx}" ]; then
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait

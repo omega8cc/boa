@@ -56,6 +56,11 @@ _PHP_CLI_VERSION=8.4
 ### using the symbols listed below.
 ###
 
+### Drupal 12, a pre-release for testing: built only where the list names
+### it (never through ALL) and only in an instance at PHP 8.5 or newer
+#
+# DT0 — Drupal 12 pre-release prod/stage/dev
+
 ### Drupal 11.4
 #
 # DE4 — Drupal 11.4 prod/stage/dev
@@ -747,6 +752,13 @@ _SEND_UPGRADE_EMAIL=YES
 ### in the active INI files, and instead will
 ### force conversion to InnoDB format in all
 ### sites hosted on this instance.
+###
+### Drupal 8 and newer sites are never
+### converted: the conversion writes to a
+### site's database through Drush 8
+### (sql-query, sqlc), which BOA allows on
+### Drupal 8+ only from Aegir's own backend,
+### and they run on InnoDB already.
 ###
 ### Note that it will run weekly on all sites
 ### even if all tables have been already

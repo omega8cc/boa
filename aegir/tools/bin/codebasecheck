@@ -351,7 +351,7 @@ classify_codebase() {
       printf 'OK\t%s\tDrupal %s is MySQL-8 compatible\n' "${_version}" "${_version}"
       return 0
       ;;
-    11)
+    11|12)
       printf 'OK\t%s\tDrupal %s requires MySQL 8 (this is why the box must be on Percona 8.x)\n' "${_version}" "${_version}"
       return 0
       ;;
