@@ -594,6 +594,10 @@ nightly or migratefs pass of it is still live after the wait), so it
 waits for the account only once; where the account's name is held
 outside it, its alarm names that cause and no free is tried in that run.
 
+So on a standby or a box being prepared as one, a run of an account with
+an unfinished journal whose nightly pass stays live through the wait is
+deferred with exit 6 (row E2), not refused as a standby (E4).
+
 A free whose rename is put back while it runs (by hand, or by a `reclaim`,
 which holds no account) stops with its alarm, takes nothing out of any
 group and leaves no journal.
@@ -626,8 +630,10 @@ unfinished.
 
 A journal that cannot be read (a read error) is kept: it may
 name a free that can still finish, so no run settles anything from it
-until it reads again, an alarm says so once a day, and the migration
-tools keep refusing the account.
+or writes over it until it reads again. Meanwhile `reclaim` skips the
+account (exit 4), a free of the name stops with the journal's alarm, an
+alarm says so once a day, and the migration tools keep refusing the
+account.
 
 Each journal `reclaim` or a web verb removes, dropped, put back or one
 whose rename never happened, leaves its line in

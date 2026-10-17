@@ -920,7 +920,8 @@
       (one that names no old number included) is dropped with an alarm
       instead of stopping every reclaim and migration of the account for
       good, one that cannot be read is kept, alarmed once a day, until it
-      reads again, and each journal removed is logged in instgrp.log.
+      reads again (a reclaim skips the account meanwhile and no free
+      writes over it), and each journal removed is logged in instgrp.log.
       instgrp webstatus and the watchers report an unfinished free and a
       set-group-ID sweep it left owed. The journal is removed with the
       account (docs/INSTGRP.md).
