@@ -955,8 +955,11 @@ account probe of `create`, the mount query of `pretransfer` and
 `transfer`, the record push of `proxy`), which then refuses, naming the
 target: a mistyped or unreachable target ends the verb in about half a
 minute, or in about 45 seconds when the verb first spends up to 10 seconds
-learning a host key the box does not know yet. `xcopy` reads the target's
-hold and makes its first contact the same way.
+learning a host key the box does not know yet.
+
+`xcopy` reads the target's hold and makes its first contact the same way.
+`go-live`'s one contact, the release on the target, gives up after 15
+seconds too: about 25 seconds with the host key to learn.
 
 **A canary goes live** with one verb on the source:
 

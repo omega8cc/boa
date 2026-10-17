@@ -7540,7 +7540,9 @@ if [ -f \"\${_c}\" ]; then
 else echo SW-NOCNF; fi
 if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo SKIP-STUCK; exit 1; }; echo SKIP-GONE; fi
 echo GOLIVE-TARGET-OK"
-  _out="$(ssh root@"${_tgt}" "${_sh}" 2> /dev/null)"
+  ### Gives up on a target that does not answer as the other verbs' first
+  ### contact does, not after the system's two-minute connect timeout.
+  _out="$(ssh -o ConnectTimeout=15 root@"${_tgt}" "${_sh}" 2> /dev/null)"
   if [ "${_out}" = "NAME-UNKNOWN" ]; then
     echo "ERROR: ${_tgt} holds no create marker naming this box and ${_oct}, and no policy record here"
     echo "ERROR: names the account there: its ${_oct} may be another account (a renamed canary before"
