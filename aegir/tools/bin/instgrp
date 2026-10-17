@@ -1539,6 +1539,14 @@ _do_convert() {
     _log "${_a}: SKIP frozen"
     return 4
   fi
+  # The paths a free of the account's web group name left in its old number
+  # are that free's walk, which no claim takes (_wg_keep); only its journal
+  # names the number, so while it cannot be read nothing is re-grouped.
+  if _wg_free_unreadable "${_a}"; then
+    _alrt "${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the paths that free may still walk cannot be told apart, so nothing is re-grouped until it reads again; skipped this pass"
+    _log "${_a}: SKIP a free journal that cannot be read"
+    return 4
+  fi
   _uGid=$(_gid_of "${_USRG}")
   [ -n "${_uGid}" ] || _die "group ${_USRG} not found"
   _subs=$(_acct_subusers "${_a}")
@@ -1856,6 +1864,12 @@ _do_revert() {
   if [ "${_wgSt%% *}" != "none" ]; then
     _fail "${_a} holds its own web group (${_wgSt##* }, ${_wgSt%% *}); revert that first"
     return 1
+  fi
+  # the walk back is a claim too (convert's rule above)
+  if _wg_free_unreadable "${_a}"; then
+    _alrt "${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the paths that free may still walk cannot be told apart, so nothing is re-grouped until it reads again; skipped"
+    _log "${_a}: SKIP revert, a free journal that cannot be read"
+    return 4
   fi
   _gid=$(_gid_of "${_a}")
   if ! _wait_idle "${_a}"; then
@@ -5467,6 +5481,7 @@ _wg_reset() {
   _WG_RSAVE=""
   _WG_CARRIED=""
   _WG_E2RC=4
+  _WG_E2WHY=""
   _WM_G=none
   _WM_W=0
   _WM_PF=NO
@@ -5736,8 +5751,19 @@ _wg_free_held() {
   return 0
 }
 
+# 0 when account $1's free journal is there and cannot be read (a read
+# error; an empty file reads). _wg_free_held then names no held gid, so a
+# claim cannot keep the paths of a free that may still finish out of its
+# walk: it waits until the journal reads again. One text in instgrp, the
+# nightly's 10-account.sh and the restore tools.
+_wg_free_unreadable() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt"
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
+}
+
 # The journal's fields into _FJ_S (renaming, made or done), _FJ_H (the held
-# gid), _FJ_N (the new gid) and _FJ_AT (its epoch); empty when there is none.
+# gid), _FJ_N (the new gid) and _FJ_AT (its epoch); empty when there is none
+# or it cannot be read.
 _wg_free_j_read() {
   local _j _s="" _h="" _n="" _at=""
   _FJ_S=""
@@ -5746,7 +5772,7 @@ _wg_free_j_read() {
   _FJ_AT=""
   _j=$(_wg_free_journal)
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
-  read -r _s _h _n _at _ < "${_j}" || :
+  { read -r _s _h _n _at _ < "${_j}"; } 2> /dev/null || :
   _FJ_S="${_s#step=}"
   _FJ_H="${_h#held=}"
   _FJ_N="${_n#new=}"
@@ -6486,7 +6512,17 @@ _wg_free_resume() {
     *)
       case "${_st}" in
         stale) _wg_free_j_gone "its rename never happened, a web verb" ;;
-        lost) _wg_free_lost "${_h}" "${_n}" "a web verb" ;;
+        lost)
+          # kept because it cannot be read: the free it may name could
+          # still finish from its old number, so the run stops at the row
+          # (E2, exit 4), converting and claiming nothing meanwhile
+          if ! _wg_free_lost "${_h}" "${_n}" "a web verb" && _wg_free_unreadable "${_WP_A}"; then
+            _D_BUSY=YES
+            _WG_E2RC=4
+            _WG_E2WHY="the journal $(_wg_free_journal) of a free of ${_WP_G} cannot be read; nothing is converted or claimed until it reads again"
+            return 0
+          fi
+          ;;
       esac
       [ -n "${_why}" ] || _wg_free_resweep
       return 0
@@ -6556,8 +6592,9 @@ _wg_run_row() {
   # refuses (_wg_free), and the row is read again for the new group
   if [ "${_D_ROW}" = "E1" ]; then
     if [ "${_D_BUSY}" = "YES" ]; then
-      # the resume could not hold the account: no free, no second wait
-      _why=$(_wg_busy_why "${_WG_E2RC}")
+      # the resume could not hold the account, or its journal cannot be
+      # read: no free, no second wait
+      _why="${_WG_E2WHY:-$(_wg_busy_why "${_WG_E2RC}")}"
     else
       _why=$(_wg_free_guard)
       if [ "$?" = "0" ]; then
@@ -6579,6 +6616,7 @@ _wg_run_row() {
     E1|E2|E3|E4)
       case "${_D_ROW}" in
         E1) _alrt "${_WP_A}: ${_WP_G} is held by an identity outside it; left alone${_why:+ (${_why})}" ;;
+        E2) [ -z "${_WG_E2WHY}" ] || _msg "NOTE: ${_WP_A}: deferred: ${_WG_E2WHY}" ;;
         E3) _msg "${_WP_A}: frozen for a migration (log/proxied.pid), skipped (--force overrides for a per-account verb)" ;;
         E4) _msg "NOTE: ${_WP_A}: this box is a standby (${_WG_STANDBY} or ${_WG_PREP}); nothing but webrevert runs here" ;;
       esac

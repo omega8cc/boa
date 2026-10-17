@@ -223,6 +223,16 @@ _wg_free_held() {
   return 0
 }
 
+# 0 when account $1's free journal is there and cannot be read (a read
+# error; an empty file reads). _wg_free_held then names no held gid, so a
+# claim cannot keep the paths of a free that may still finish out of its
+# walk: it waits until the journal reads again. One text in instgrp, the
+# nightly's 10-account.sh and the restore tools.
+_wg_free_unreadable() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt"
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
+}
+
 # An account owns /data/disk/<oN> and, through its .ftp login, static/control,
 # so any name below either can be a link or a FIFO, and a whole directory on
 # the way can be one. The root queue pass reads and writes there only inside
@@ -826,6 +836,15 @@ _acct_reclaim_restored() {
   esac
   _wg=$(_wg_free_held "${_a}")
   [[ "${_wg}" =~ ^[0-9]+$ ]] && _x+=( ! -gid "${_wg}" )
+  # only the free's journal names that number: while it cannot be read the
+  # claim here waits (instgrp reclaim below skips the account too, and
+  # takes the restored paths once it reads again)
+  if _wg_free_unreadable "${_a}"; then
+    echo "NOTE: ${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the restored paths keep their groups until it reads again and instgrp reclaim ${_a} runs"
+    _gid=""
+  else
+    _gid=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
+  fi
   if [ -d "${_r}" ]; then
     _d="${_r}"
     _w=(.)
@@ -843,7 +862,6 @@ _acct_reclaim_restored() {
   # it as an argument, not a switch): the tree is the account's, so a hard
   # link, a link or a FIFO put in it is left alone, and no file outside it is
   # regrouped (nothing checks a link's own group).
-  _gid=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
   if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
     ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
