@@ -726,11 +726,6 @@
       the removal loaded that alias first and died on the missing
       platform. The file is now removed directly.
 
-    * A Textpattern rename onto one of the site's own extra Drush alias
-      names is no longer refused as a name another context holds: the
-      only file of that name is the site's own pointer, which the rename
-      now replaces.
-
 @=> Security
 
     * autosymlink prints every log line as one line: a control byte in a
