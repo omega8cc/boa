@@ -13,6 +13,16 @@
       nothing and blocks nothing; a defined db_name that cannot be read
       sanely still refuses.
 
+    * renameaegirhost no longer keeps a site's alias file under both
+      names after a failback. A box promoted once before still held the
+      alias it wrote then; the sync (a copy that deletes nothing) laid
+      the active's old-name alias beside it, the rename skipped the move
+      because the new name existed, and the pair was rewritten and
+      converted again by Drush at every pass, leaving placeholder yml
+      files naming the former host on every account. The alias at the
+      new name is now replaced by the old-name copy, the one the active
+      kept current.
+
     * A server no longer loses its memory to finished login sessions.
       elogind's PAM module, which a package chain can bring in (polkitd
       needs a logind), makes a cgroup for every PAM session (every su BOA
