@@ -681,13 +681,13 @@
       with a WARN line, when removing it would remove the SSH server.
 
     * BOA's other systemd removals no longer risk the SSH server: the boa
-      tool on an Excalibur box that still carries systemd, automini, and
-      the systemd cleanup of the major OS upgrades. Each asks apt first
-      and leaves systemd in place when removing it would also remove
-      openssh-server, which on Excalibur needs systemd-sysusers; the
-      upgrade cleanup says so in an ALRT line. automini installs
-      opensysusers, which provides it, before its removal, as autoinit
-      does.
+      tool on an Excalibur box that still carries systemd, automini,
+      autoinit's repair of an incomplete conversion, and the systemd
+      cleanup of the major OS upgrades. Each asks apt first and leaves
+      systemd in place when removing it would also remove openssh-server,
+      which on Excalibur needs systemd-sysusers; the repair says so in an
+      ERROR line, the upgrade cleanup in an ALRT line. automini and the
+      repair install opensysusers, which provides it, before the removal.
 
     * The copies BOA keeps for a week in /var/backups/dragon/t, x and z
       (configuration files before a rewrite, the whole /var/xdrago before
