@@ -203,13 +203,19 @@ declare -A _FS_RESERVED_INO
 _log() {
   # Single place to log + print
   # Arguments: message...
+  # One line per call: a site's name or a value read from its alias may carry
+  # a newline or a control sequence, and each such byte prints as '?', so no
+  # part of a message starts a line of its own or reaches the terminal raw.
+  local LC_ALL=C
   _NOW="$(date "+%Y-%m-%d %H:%M:%S")"
   _LINE="${_NOW} $*"
+  _LINE="${_LINE//[[:cntrl:]]/?}"
 
-  # Track applied changes only for modes which can apply changes
+  # Track applied changes only for modes which can apply changes; only an
+  # [APPLY] message counts, never a name inside another line that holds it
   if [ "${_MODE}" = "LIVE" ] || [ "${_MODE}" = "BATCH" ] || [ "${_MODE}" = "BATCH_IF_CLEAN" ]; then
-    case "${_LINE}" in
-      *"[APPLY]"*)
+    case "$*" in
+      "[APPLY]"*)
         _APPLY_COUNT=$(( _APPLY_COUNT + 1 ))
         ;;
     esac
@@ -1250,7 +1256,7 @@ _ask_confirm_site() {
   _SITE_NAME="$1"
 
   echo
-  echo "READY TO APPLY CHANGES FOR SITE: ${_SITE_NAME}"
+  echo "READY TO APPLY CHANGES FOR SITE: $(_log_name "${_SITE_NAME}")"
   printf "Type 'yes' or 'Y' to proceed, anything else to skip: "
   read _ANSWER
 
