@@ -633,6 +633,16 @@
       openssh-server. A dummy that was needed stays after the conversion,
       with a WARN line, when removing it would remove the SSH server.
 
+    * The copies BOA keeps for a week in /var/backups/dragon/t, x and z
+      (configuration files before a rewrite, the whole /var/xdrago before
+      each barracuda run, root's crontab) are removed again once they are
+      a week old. The nightly test looked at those three directories
+      instead of the copies in them, and new copies kept the directories
+      young, so nothing there was removed: a test server held 1.4 GB of
+      /var/xdrago copies in dragon/x. A copy's age is now when it was made
+      there, not its mtime, which it keeps from the file it copies.
+      dragon/config stays a permanent archive.
+
 @=> Security
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
