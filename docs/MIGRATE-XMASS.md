@@ -592,10 +592,15 @@ What it does, in order:
    predates the web group, or cannot be asked, because its claim passes
    would hand the account's web paths back. `init`, `sync` and `cutover`
    re-gate the same way (a DENY in a dry run), and `instgrp` is part of the
-   forced tool refresh in step 0. An account whose free of a held web group
-   name is unfinished (its journal `/etc/boa/control/instgrp-web.oN.free.txt`
-   not done, see `INSTGRP.md`) is refused here too, and by `init` and both
-   cutover gates; a `sync` skips that account's legs alone (below).
+   forced tool refresh in step 0.
+
+   An account whose free of a held web group name is unfinished (its
+   journal `/etc/boa/control/instgrp-web.oN.free.txt` not done, see
+   `INSTGRP.md`) is refused here too, and by `init` and both cutover gates;
+   a `sync` skips that account's legs alone (below). A live cutover whose
+   own legs still meet one (a free left unfinished after its gate) stops
+   before the write freeze, its error naming such accounts and their
+   journals first.
 4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.
@@ -760,7 +765,10 @@ unreadable root or an unreadable target counts as busy.
 A trigger counts as armed only where the runner would take it: with a
 `platforms.info` beside it, and with the account's dispatcher in place. One
 with no `platforms.info` starts no pass, so it is not pending work, here and
-in the quiet waits of `xoct create` and `xcopy`.
+in the quiet waits of `xoct create` and `xcopy`. A dispatcher parked in
+`/var/backups/off-run`, or held by an unfinished aegir2boa import
+(`/var/backups/a2b/<oN>/held-run-<oN>`), is not in place: neither its
+trigger nor its queue counts.
 
 `init` applies the same
 probe to the source itself, twice: a cheap read (run locks and pass processes)
@@ -1033,8 +1041,8 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 > target.
 >
 > The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
-> pre-checks disk space for every account's files store **and the Solr indices** (which
-> can be large), and records `CLEAN`/`NOT CLEAN`
+> pre-checks disk space and inodes for every account's files store **and the Solr
+> indices** (which can be large), and records `CLEAN`/`NOT CLEAN`
 > for the whole run.
 >
 > A single `DENY` (a dangling **named store** such as
@@ -1395,8 +1403,19 @@ An account added later that is missing on the target fails the pass loudly
 An account whose free of a held web group name is unfinished (see
 `INSTGRP.md`) has its legs skipped by every pass, manual or automated,
 with a DENY naming the journal; the shared legs and every other account
-are still carried and the pass ends non-zero, so it alarms. The account's
-next Octopus pass, or `instgrp webconvert oN`, finishes the free.
+are still carried and the pass ends non-zero, its last line naming the
+skipped accounts and their journals, so it alarms. The account's next
+Octopus pass, or `instgrp webconvert oN` (which also converts the account
+and lifts a `_WEB_GROUP=NO` opt-out), finishes the free once no `xmass`,
+`xoct` or `xcopy` run is live on the box: a free waits while an autosync
+pass runs, and for a frozen account (`log/proxied.pid`, a relayed
+account included) it waits as long as the freeze, so such an account's
+legs stay skipped meanwhile.
+
+After a free is done, the paths it left in the old number (an immutable
+file, a hard link) are mapped by that number onto the account's web group
+on the target, as long as the renamed group keeps the number on the
+source.
 
 **Every pass, before any bytes move,** the run re-verifies the whole state
 and prefers doing nothing over doing the wrong thing:
@@ -1421,11 +1440,17 @@ and prefers doing nothing over doing the wrong thing:
 
   One more difference from a
   manual pass: an unattended pass **never re-places a store** — a store that
-  stops fitting at its established placement (target mount or root) is a
-  loud DENY, never the silent mirror-to-root fallback an operator pass may
-  choose. And the fit gates credit the bytes already sitting at the
-  destination, so a mirror whose storage is sized to the data does not
-  false-refuse every delta pass after the first full copy.
+  stops fitting at its established placement (target mount or root, read
+  from where the store sits on the target) is a loud DENY, never the
+  mirror-to-root fallback an operator pass may choose. So is a store whose
+  path on the target is a link that no longer reaches the mount (the mount
+  missing), or one whose placement could not be read.
+
+  The fit gates count no files on an unattended pass: a store already in
+  place needs only 2% of the target's
+  inodes, at least 50,000, free where it is, and its bytes are credited with
+  what already sits at the destination, so a mirror whose storage is sized
+  to the data does not false-refuse every delta pass after the first copy.
 
 The target's standby marker is verified at pass start **and re-proved at
 every leg boundary** (before the shared, Solr and each account leg), so a

@@ -133,6 +133,10 @@ _XMASS_RSYNC_RC=0
 _XMASS_GMAP=""
 _XMASS_UMAP=""
 
+### The accounts whose legs a pass skipped for an unfinished free of their
+### web group name (_xmass_set_gmap), named in the pass's last line.
+_XMASS_WG_SKIPPED=""
+
 ### The firewall half of the standby web hold (chain BOA_STANDBY_WEB, asserted
 ### by the nginx watchdog and csfpost.sh while the box is not promoted). One
 ### text, used verbatim by every site that removes the "this box was held" web
@@ -518,16 +522,39 @@ _wg_migration_notes() {
 
 # A free of account $1's web group name that a kill cut short (instgrp's
 # E1 route) is unfinished: its journal,
-# /etc/boa/control/instgrp-web.<account>.free.txt, is there with a step
-# other than done. Until the account's next web verb finishes it, paths of
-# the account may still sit in the old number, which every leg would carry
-# by that number alone, so no migration of the account starts meanwhile.
-# Verbatim in xoct, xcopy and xmass.
+# /etc/boa/control/instgrp-web.<account>.free.txt, is there and does not
+# read done (an empty or unreadable one included: never read as no free).
+# Until the account's next web verb finishes it, or drops a journal it
+# cannot finish from, paths of the account may still sit in the old
+# number, which every leg would carry by that number alone, so no
+# migration of the account starts meanwhile. Verbatim in xoct, xcopy and
+# xmass.
 _wg_free_unfinished() {
   local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s=""
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 1
-  read -r _s _ < "${_j}" 2> /dev/null || :
-  [ -n "${_s}" ] && [ "${_s}" != "step=done" ]
+  { read -r _s _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ]
+}
+
+# The held gid of a done free of account $1's web group name while the
+# group it renamed still has that gid here, under its name or an earlier
+# version's (<gid>-wgheld): the paths its walk left in that number (an
+# immutable file, a hard link) are mapped by it onto the account's web
+# group there, as wg-<account> carried them before the free. The number is
+# the map's key: rsync reads a name that starts with a digit as a number
+# and stops. Nothing otherwise. Verbatim in xoct, xcopy and xmass.
+_wg_free_left() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  { read -r _s _h _ < "${_j}"; } 2> /dev/null || :
+  _h="${_h#held=}"
+  [ "${_s}" = "step=done" ] && [[ "${_h}" =~ ^[0-9]+$ ]] || return 0
+  for _n in "${_h}-wgheld-${1}" "${_h}-wgheld"; do
+    [ "$(getent group "${_n:0:32}" 2> /dev/null | cut -d: -f3)" = "${_h}" ] || continue
+    printf '%s\n' "${_h}"
+    return 0
+  done
+  return 0
 }
 
 #
@@ -2520,6 +2547,35 @@ _xmass_cnf_line_ok() {
   return 0
 }
 
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read. A NUL byte in the file (a crash
+# can zero-fill its tail) hides no line: grep reads it as text. The passes
+# read an account's broker settings with this same text.
+_xmass_dbctl_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+# Whether account $1, its cnf here $2, is kept out of the database broker as
+# this box's passes read it: its _DB_BROKER_ARM=NO, or a _DB_BROKER_BORN=NO
+# that is its operator's, the account holding no create marker here
+# (/root/.<oN>.migration-create.txt, a regular file of root's), so that no
+# migration tool put the line. Such an account travels kept out.
+_xmass_dbctl_kept_here() {
+  [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
+  [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
+  [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ]
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's copy: replace-or-append per key, whole lines, host axis excluded
 ### (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN are re-derived
@@ -2592,6 +2648,18 @@ _xmass_push_account_cnf() {
   else
     printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
   fi
+  # The account's opt-out of the database broker mirrors the source both
+  # ways, read as the passes read it: _DB_BROKER_ARM=NO travels as a plain
+  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, as
+  # _DB_BROKER_ARM=NO (the tools' own line stays here); a source that keeps
+  # the account out neither way removes the key's lines on the target in
+  # any form (the merge otherwise keeps every line the source lacks), so a
+  # lifted opt-out is lifted there too.
+  if _xmass_dbctl_kept_here "${_acct}" "${_sCnf}"; then
+    printf '%s\n' "_DB_BROKER_ARM=NO" >> "${_lTmp}"
+  else
+    printf '%s\n' "-_DB_BROKER_ARM" >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -2604,6 +2672,12 @@ while IFS= read -r _l; do
     -_WEB_GROUP|_WEB_GROUP=*)
       grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
       [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
+      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      continue
+      ;;
+    -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
       ;;
@@ -5428,7 +5502,7 @@ _xmass_rsync() {
 # fits at its target destination dir (which follows the target's /var/solrN symlink
 # onto a mount, or lands on root). Returns 0 if it fits (or src absent), 1 + DENY +
 # NOT_CLEAN otherwise. Placement is unchanged (data-only rsync) — this only gates.
-_xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
+_xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label  4 the copy's own destination
   local _sz
   [ -e "$1" ] || return 0
   # -H: a symlink operand (e.g. a backups dir relocated into the store)
@@ -5436,34 +5510,147 @@ _xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
   # Links below it are measured as the links the copy carries, never
   # followed into whatever tree an account pointed them at.
   _sz="$(du -skH "$1" 2>/dev/null | awk '{print $1}')"
-  _xmass_target_fits "${_tgt}" "$2" "${_sz}" && return 0
-  _alrt "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
+  _xmass_target_fits "${_tgt}" "$2" "${_sz}" "" "$1" "${4:-$2/${1##*/}}" && return 0
+  _alrt "DENY: $3: ${_sz:-?}K does not fit at target $2${_XMASS_FIT_WHY:+ (${_XMASS_FIT_WHY})} — free space and retry"
   _XMASS_NOT_CLEAN=YES
   return 1
 }
 
+### Whether a copy fits at <probe> ($2) on the target box ($1): its bytes
+### ($3, in KB) and, given the names it makes ($4) or the source tree to
+### count them in ($5), its inodes too, both read in one remote call. Every
+### file takes an inode, and a filesystem out of them fails every write
+### with "No space left on device" while df -h still shows room: a copy
+### must leave 2% of the target's inodes, at least 50,000, free, the
+### headroom BOA's other copy checks keep. rsync -a makes one name per name
+### the source holds, which du -l counts; the source tree is walked only
+### when its own filesystem's inodes in use (no subtree has more) do not
+### already fit. A copy that falls short is credited with what its own
+### destination ($6) already holds, counted there only, as a repeated pass
+### adds only what changed: its bytes with du -sk, its names with du -l
+### (stale names and a nested store made inside it count too). A
+### destination that cannot be measured, or not within 15 minutes, keeps
+### the refusal.
+### An unattended pass adds no walk: there an existing destination needs
+### only the headroom free, so a first copy onto an account's own fresh
+### directory is judged on the headroom alone.
+### A figure no command gave (an unreadable df, btrfs's '-' for inodes, a
+### count past 15 minutes) leaves that side unjudged, with a warning on the
+### plan. The remote reads take no stdin (-n), so a caller reading a list
+### from stdin keeps it, and are found by a token, so login noise cannot
+### garble them. Why a copy did not fit is left in _XMASS_FIT_WHY for the
+### caller's DENY.
 _xmass_target_fits() {
-  local _av _q _dex
+  local _q _qo _av _it _if _e _ih _n="${4:-}" _ub _dex _dn
+  _XMASS_FIT_WHY=""
   _q="$(_shq "$2")"
-  # Token-anchored reads: a target whose shell prints login noise into
-  # non-interactive ssh (a .bashrc echo) must not be able to garble the
-  # numbers into a wrong refusal.
-  _av=$(ssh -n root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; echo \"XMFIT \$(df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}')\"" 2>/dev/null \
-    | grep -m1 '^XMFIT ' | awk '{print $2}')
-  if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
-  [[ "${_av}" =~ ^[0-9]+$ ]] || return 0
-  [ "${_av}" -ge "$3" ] && return 0
-  # Tight fit: credit the bytes already sitting at the destination — a
-  # repeated (delta) sync needs room for the growth, not the whole store
-  # again. Without this a standing mirror whose storage is sized to the
-  # data fails the plain test on every pass after the first full copy.
-  # Measured only when the plain test fails, so the remote walk is paid
-  # exactly where it changes the answer; an unmeasurable destination
-  # keeps the refusal (fail closed).
-  _dex=$(ssh -n root@"$1" "echo \"XMDEX \$(du -sk '${_q}' 2>/dev/null | awk '{print \$1}')\"" 2>/dev/null \
-    | grep -m1 '^XMDEX ' | awk '{print $2}')
-  [[ "${_dex}" =~ ^[0-9]+$ ]] || return 1
-  [ $(( _av + _dex )) -ge "$3" ]
+  _qo="$(_shq "${6:-}")"
+  read -r _av _it _if _e <<< "$(ssh -n root@"$1" "p='${_q}'; o='${_qo}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; a=\$(df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'); i=\$(LC_ALL=C df -P -i \"\$p\" 2>/dev/null | awk 'NR==2{print \$2, \$4}'); e=N; [ -n \"\$o\" ] && [ -d \"\$o\" ] && e=D; echo \"XMFIT \${a:--} \${i:-- -} \$e\"" 2>/dev/null \
+    | grep -m1 '^XMFIT ' | awk '{print $2, $3, $4, $5}')"
+  if ! [[ "$3" =~ ^[0-9]+$ && "${_av}" =~ ^[0-9]+$ ]]; then
+    _xmass_fit_warn space "$2" "the copy's size or the free space there could not be read (${3:-?}K, ${_av:-?}K free); copying without the space check"
+  elif [ "${_av}" -lt "$3" ]; then
+    # Short of bytes: credit what the copy's own destination holds,
+    # measured only here, where it changes the answer.
+    _dex=""
+    if [ "${_e}" = "D" ]; then
+      _dex="$(ssh -n root@"$1" "echo \"XMDEX \$(timeout 900 du -skH '${_qo}' 2>/dev/null | awk '{print \$1}')\"" 2>/dev/null \
+        | grep -m1 '^XMDEX ' | awk '{print $2}')"
+    fi
+    if ! [[ "${_dex}" =~ ^[0-9]+$ ]] || [ $(( _av + _dex )) -lt "$3" ]; then
+      _XMASS_FIT_WHY="${3}K needed, ${_av}K free"
+      return 1
+    fi
+  fi
+  [ -n "${_n}${5:-}" ] || return 0
+  if ! [[ "${_it}" =~ ^[0-9]+$ && "${_if}" =~ ^[0-9]+$ ]] || [ "${_it}" -eq 0 ]; then
+    _xmass_fit_warn inodes "$2" "its free inodes could not be read (df -i); copying without the inode check"
+    return 0
+  fi
+  _ih=$(( _it / 50 ))
+  [ "${_ih}" -ge 50000 ] || _ih=50000
+  if [ "${_e}" = "D" ] && [ "${_XMASS_AUTO:-NO}" = "YES" ]; then
+    [ "${_if}" -ge "${_ih}" ] && return 0
+    _XMASS_FIT_WHY="${_if} inodes free, ${_ih} kept free (df -i)"
+    return 1
+  fi
+  if [ -z "${_n}" ]; then
+    _ub="$(LC_ALL=C df -P -i -- "$5" 2>/dev/null | awk 'NR==2 {print $3}')"
+    if [[ "${_ub}" =~ ^[0-9]+$ ]] && [ "${_ub}" -gt 0 ] && [ $(( _ub + _ih )) -le "${_if}" ]; then
+      return 0
+    fi
+    _xmass_names_of "$5"
+    _n="${_XMASS_NAMES}"
+  fi
+  if ! [[ "${_n}" =~ ^[0-9]+$ ]]; then
+    _xmass_fit_warn count "$2" "the copy's files could not be counted within 15 minutes; copying without the inode check"
+    return 0
+  fi
+  [ $(( _n + _ih )) -le "${_if}" ] && return 0
+  # Short of inodes: credit the names the copy's own destination holds.
+  if [ "${_e}" = "D" ]; then
+    _dn="$(ssh -n root@"$1" "n=\$(timeout 900 du -s -l -H --inodes '${_qo}' 2>/dev/null | awk '{print \$1}'); echo \"XMDEN \${n:--}\"" 2>/dev/null \
+      | grep -m1 '^XMDEN ' | awk '{print $2}')"
+    if [[ "${_dn}" =~ ^[0-9]+$ ]] && [ $(( _n + _ih )) -le $(( _if + _dn )) ]; then
+      return 0
+    fi
+  fi
+  _XMASS_FIT_WHY="${_n} files and ${_ih} inodes kept free, ${_if} inodes free (df -i)"
+  return 1
+}
+
+### The names a copy of the tree $1 makes (one per name, du -l), into
+### _XMASS_NAMES (empty when the count failed or took over 15 minutes).
+### Each tree is counted once per run: a store tried at the mount and then
+### at the root, or copied again by the cutover's last pass while the web
+### is held, is not walked twice. It sets globals: never call it inside
+### $(...).
+_xmass_names_of() {
+  local _c
+  _c="$(printf '%s' "${_XMASS_NAMES_SEEN:-}" | P="$1" awk -F '\t' '$2 == ENVIRON["P"] { print "n" $1; exit }')"
+  if [ -n "${_c}" ]; then
+    _XMASS_NAMES="${_c#n}"
+    return 0
+  fi
+  _XMASS_NAMES="$(timeout 900 du -s -l -H --inodes -- "$1" 2>/dev/null | awk 'NR==1 {print $1}')"
+  _XMASS_NAMES_SEEN="${_XMASS_NAMES_SEEN:-}${_XMASS_NAMES}"$'\t'"$1"$'\n'
+}
+
+### A figure the fit check could not read, shown on the plan and once a day
+### on a live pass: the copy goes on without that side of the check.
+_xmass_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
+  _xmass_warn_daily "fit_$1_$(printf '%s' "$2" | tr -c 'A-Za-z0-9._-' '_')" "  $2 on the target: $3"
+}
+
+### Where a store sits on the target now, read at its destination there
+### ($2): M when it is the link a mirror placed onto the mount copy ($3), L
+### another link (a dangling one too), D a real directory, N nothing (one
+### remote read, no stdin; empty when the target could not be asked).
+_xmass_tgt_kind() {
+  local _qd _qm
+  _qd="$(_shq "$2")"
+  _qm="$(_shq "${3:-}")"
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XMKIND \$k\"" 2>/dev/null \
+    | grep -m1 '^XMKIND ' | awk '{print $2}'
+}
+
+### Whether an out-of-root file batch fits at <dest> ($2) on the target: its
+### bytes ($3, in KB) and the names it makes ($4). Short of either, the
+### batch's own files already there are credited, as a repeated pass adds
+### only what changed: one remote read, given the list ($5) on its stdin,
+### counts the names still missing there and the KB the present ones hold.
+### Nothing else at the destination is credited, and a read that fails
+### keeps the refusal.
+_xmass_batch_fits() {
+  local _q _r _m _k
+  _xmass_target_fits "$1" "$2" "$3" "$4" && return 0
+  _q="$(_shq "$2")"
+  _r="$(printf '%s\n' "$5" | ssh root@"$1" "cd '${_q}' 2>/dev/null || { echo 'XMBAT - -'; exit 0; }; l=\$(cat); m=\$(printf '%s\\n' \"\$l\" | while IFS= read -r f; do [ -n \"\$f\" ] && [ ! -e \"\$f\" ] && echo x; done | grep -c x); k=\$(printf '%s\\n' \"\$l\" | while IFS= read -r f; do [ -n \"\$f\" ] && [ -e \"\$f\" ] && printf '%s\\0' \"\$f\"; done | du -ckH --files0-from=- 2>/dev/null | awk 'END{print \$1}'); echo \"XMBAT \${m:--} \${k:-0}\"" 2>/dev/null \
+    | grep -m1 '^XMBAT ' | awk '{print $2, $3}')"
+  read -r _m _k <<< "${_r}"
+  [[ "${_m}" =~ ^[0-9]+$ && "${_k}" =~ ^[0-9]+$ ]] || return 1
+  if [[ "$3" =~ ^[0-9]+$ ]] && [ "$3" -gt "${_k}" ]; then _k=$(( $3 - _k )); else _k=0; fi
+  _xmass_target_fits "$1" "$2" "${_k}" "${_m}"
 }
 
 # Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
@@ -5608,7 +5795,8 @@ _xmass_put_on_mount() {
 _xmass_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
   local _acct="$8" _rule="${9:-tree}" _dacct=""
-  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
+  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0 _why
+  local _kind _rp _rown="" _mown=""
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
@@ -5657,19 +5845,66 @@ _xmass_handle_store() {
     # the whole store onto the target's root filesystem under its replica
     # DB, and can flip back next pass). In auto mode a preferred placement
     # that stops fitting is a loud DENY instead — the operator frees space
-    # or accepts the re-placement with a manual sync.
-    if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
-      if _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}"; then _act=MIRROR
-      elif [ "${_XMASS_AUTO}" = "YES" ]; then
-        _act=DENY; _reason="does not fit at its established placement (${_mntDest}); an unattended pass never re-places a store — free space there, or run a manual 'xmass sync --live' to accept the root fallback"
-      elif _xmass_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
-      else _act=DENY; _reason="does not fit on target mount (${_mntDest}) nor root (${_dstRoot})"; fi
+    # or accepts the re-placement with a manual sync. It judges the
+    # placement the store holds on the target (the mount when its
+    # destination there is the mirror's link, the root when a real
+    # directory), the one the source's shape prefers when nothing is
+    # there, and refuses any other link or a placement it could not
+    # read. A manual pass
+    # tries the preferred placement and then the other: a store goes where
+    # it fits, in bytes and inodes, and is refused when it fits on neither.
+    # What the store's destination holds on the target is credited at
+    # that placement only. The root's figures are read at the
+    # destination's parent unless the destination is a real directory: df
+    # through a link (or one the read could not name) would read the mount.
+    _kind="$(_xmass_tgt_kind "${_th}" "${_dstRoot}" "${_mntDest}")"
+    _rp="${_dstRoot%/*}"
+    case "${_kind}" in
+      M) _mown="${_mntDest}" ;;
+      D) _rown="${_dstRoot}"; _rp="${_dstRoot}" ;;
+    esac
+    if [ "${_XMASS_AUTO}" = "YES" ]; then
+      case "${_kind}" in
+        M) _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}" && _act=MIRROR ;;
+        D) _xmass_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}" && _act=ROOT ;;
+        N)
+          if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
+            _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}" && _act=MIRROR
+          else
+            _xmass_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}" && _act=ROOT
+          fi
+          ;;
+        L)
+          _act=DENY; _reason="its destination on the target (${_dstRoot}) is a link that does not reach ${_mntDest:-a usable target mount} (the mount missing?); an unattended pass never re-places a store — check the target's mount, or run a manual 'xmass sync --live' to accept a re-placement"
+          ;;
+        *)
+          _act=DENY; _reason="where it sits on the target (${_dstRoot}) could not be read; an unattended pass never re-places a store — the next pass reads it again"
+          ;;
+      esac
+      if [ -z "${_act}" ]; then
+        _why="${_XMASS_FIT_WHY}"
+        if [ "${_kind}" = "M" ] || { [ "${_kind}" != "D" ] && [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; }; then
+          _act=DENY; _reason="does not fit at its established placement (${_mntDest}${_why:+: ${_why}}); an unattended pass never re-places a store — free space or inodes there, or run a manual 'xmass sync --live' to accept the root fallback"
+        else
+          _act=DENY; _reason="does not fit at its established placement (${_dstRoot}${_why:+: ${_why}}); an unattended pass never re-places a store — free space or inodes there, or run a manual 'xmass sync --live' to accept a re-placement"
+        fi
+      fi
+    elif [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
+      if _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}"; then _act=MIRROR
+      else
+        _why="${_XMASS_FIT_WHY}"
+        if _xmass_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}"; then _act=ROOT
+        else _act=DENY; _reason="does not fit on target mount (${_mntDest}${_why:+: ${_why}}) nor root (${_dstRoot}${_XMASS_FIT_WHY:+: ${_XMASS_FIT_WHY}})"; fi
+      fi
     else
-      if _xmass_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
-      elif [ "${_XMASS_AUTO}" = "YES" ]; then
-        _act=DENY; _reason="does not fit at its established placement (${_dstRoot}); an unattended pass never re-places a store — free space there, or run a manual 'xmass sync --live' to accept a re-placement"
-      elif [ -n "${_mntDest}" ]; then _act=MIRROR
-      else _act=DENY; _reason="does not fit on target root (${_dstRoot}) and no usable target mount"; fi
+      if _xmass_target_fits "${_th}" "${_rp}" "${_sz}" "" "${_real}" "${_rown}"; then _act=ROOT
+      else
+        _why="${_XMASS_FIT_WHY}"
+        if [ -z "${_mntDest}" ]; then
+          _act=DENY; _reason="does not fit on target root (${_dstRoot}${_why:+: ${_why}}) and no usable target mount"
+        elif _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}" "" "${_real}" "${_mown}"; then _act=MIRROR
+        else _act=DENY; _reason="does not fit on target root (${_dstRoot}${_why:+: ${_why}}) nor mount (${_mntDest}${_XMASS_FIT_WHY:+: ${_XMASS_FIT_WHY}})"; fi
+      fi
     fi
   fi
 
@@ -6066,15 +6301,15 @@ _xmass_materialise_out_links() {
 ${_dirs}
 EOF
   if [ -n "${_files}" ]; then
-    if ! _xmass_target_fits "${_tgt}" "${_dstRoot}" "${_fkb}"; then
-      _alrt "DENY: out-of-root file links under ${_root}: ${_fkb}K does not fit at target ${_dstRoot} -- free space and retry"
+    _n="$(printf '%s' "${_files}" | grep -c .)"
+    if ! _xmass_batch_fits "${_tgt}" "${_dstRoot}" "${_fkb}" "${_n}" "${_files}"; then
+      _alrt "DENY: out-of-root file links under ${_root}: ${_n} file(s), ${_fkb}K, do not fit at target ${_dstRoot}${_XMASS_FIT_WHY:+ (${_XMASS_FIT_WHY})} -- free space or inodes and retry"
       _XMASS_NOT_CLEAN=YES
       _XMASS_STORE_RC=3
     elif [ -n "${_acct}" ]; then
       _xmass_materialise_own_files "${_root}" "${_dstRoot}" "${_files}" "${_acct}"
     elif [ "${_MODE}" != "LIVE" ]; then
       # a dry run writes nothing here: the list is a live pass's input
-      _n="$(printf '%s' "${_files}" | grep -c .)"
       _info "[DRY-PLAN] would materialise ${_n} out-of-root file link(s) under ${_root} (${_fkb}K) at ${_dstRoot} in one batch"
     else
       _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
@@ -6310,7 +6545,9 @@ _xmass_sync_static_symlink_safe() {
   # mirror until the link is gone. Both ends are pinned: the copy leaves
   # from inside the real control directory here and lands inside the real
   # one there (a link put at that name there gives way to a directory), so
-  # a link swapped in after the test is followed on neither side.
+  # a link swapped in after the test is followed on neither side. Its
+  # web-group-notes.txt, the account's copy of its web-group notes, never
+  # travels: it names the source box's web-group state.
   local _ctl_link=NO _ctl_rp
   _ctl_rp="$(_xmass_pin_rpath "${_dst_static}/control")"
   if [ -L "${_src_static}/control" ]; then
@@ -6319,6 +6556,7 @@ _xmass_sync_static_symlink_safe() {
       "  ${_src_static}/control is a SYMLINK -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is a directory again"
   elif [ -d "${_src_static}/control" ]; then
     if ! _xmass_at_real_dir "${_src_static}/control" _xmass_rsync -aEAXqu ${_ieni} \
+      --exclude=/web-group-notes.txt \
       --rsync-path="${_ctl_rp}" -e ssh ./ "root@${_tgt}:./"; then
       _ctl_link=YES
       _xmass_warn_daily "static_control_link_${_dst_acct}" \
@@ -6379,15 +6617,20 @@ _xmass_sync_static_symlink_safe() {
 # a number, the caller skips the account's legs. So it does, with a DENY
 # naming the journal, while a free of the account's web group name is
 # unfinished here (_wg_free_unfinished): its paths may still sit in the old
-# number, which a leg would carry by that number. $1 = account.
+# number, which a leg would carry by that number; the account is named
+# again in the final error of the sync or the cutover (_XMASS_WG_SKIPPED,
+# _xmass_wg_skipped_says). After a done free, the
+# paths it left in the held gid are mapped by that number onto the web
+# group too (_wg_free_left). $1 = account.
 _xmass_set_gmap() {
-  local _oct="$1" _dstGrp _dstWg _wgMap=""
+  local _oct="$1" _dstGrp _dstWg _wgMap="" _left
   _XMASS_GMAP=""
   [ "${_MODE}" = "LIVE" ] || return 0
   if [ "${2:-}" != "acct" ]; then
     if _wg_free_unfinished "${_oct}"; then
       _alrt "DENY: a free of the web group name of ${_oct} is unfinished here (/etc/boa/control/instgrp-web.${_oct}.free.txt); the legs of ${_oct} are skipped this pass"
-      _alrt "DENY: fix: its next Octopus pass finishes it, or 'instgrp webconvert ${_oct}' (which also completes its conversion), for a frozen account only once its freeze is recovered"
+      _alrt "DENY: fix: its next Octopus pass finishes it, or 'instgrp webconvert ${_oct}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid)"
+      _XMASS_WG_SKIPPED="${_XMASS_WG_SKIPPED:+${_XMASS_WG_SKIPPED} }${_oct}"
       return 1
     fi
     if [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ] \
@@ -6408,6 +6651,8 @@ _xmass_set_gmap() {
       _dstWg=www-data
     fi
     _wgMap="wg-${_oct}:${_dstWg}"
+    _left=$(_wg_free_left "${_oct}")
+    [ -n "${_left}" ] && _wgMap="${_wgMap},${_left}:${_dstWg}"
   fi
   if getent group "${_oct}" > /dev/null 2>&1; then
     _dstGrp=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_tgt}" \
@@ -6422,6 +6667,19 @@ _xmass_set_gmap() {
     esac
   fi
   _XMASS_GMAP="${_XMASS_GMAP}${_wgMap:+${_XMASS_GMAP:+,}${_wgMap}}"
+  return 0
+}
+
+# The accounts whose legs a free kept out this pass (_XMASS_WG_SKIPPED),
+# each with its journal, as the head of the pass's final error: the DENY of
+# each may sit far above the mailed tail of the pass log. Nothing when
+# there is none.
+_xmass_wg_skipped_says() {
+  local _oct _skip=""
+  for _oct in ${_XMASS_WG_SKIPPED}; do
+    _skip="${_skip:+${_skip}, }${_oct} (/etc/boa/control/instgrp-web.${_oct}.free.txt)"
+  done
+  [ -z "${_skip}" ] || printf '%s' "the legs of these accounts were skipped, a free of their web group name unfinished here: ${_skip}; "
   return 0
 }
 
@@ -6915,7 +7173,7 @@ _xmass_sync_account() {
     _bkReal="$(cd -P -- "${_udir}/backups" 2>/dev/null && pwd -P)"
     if [ -z "${_bkReal}" ] || ! _xmass_own_path "${_oct}" "${_bkReal}"; then
       _xmass_leg_refused "${_udir}/backups" "the backups of ${_oct} (it resolves to ${_bkReal:-nothing}, outside its own tree and store)"
-    elif _xmass_solr_check "${_bkReal}" "${_dst}/backups" "backups (${_oct})"; then
+    elif _xmass_solr_check "${_bkReal}" "${_dst}/backups" "backups (${_oct})" "${_dst}/backups"; then
       _bkTo=""
       if [ "${_MODE}" = "LIVE" ]; then
         _bkTo="$(_xmass_tgt_place "${_tgt}" _xmass_own_dir_ready keep "${_oct}" "${_dst}/backups")"
@@ -9317,6 +9575,32 @@ fi
 PROMCLEAN
 }
 
+# The script the promotion cleanup runs ONCE on the promoted box, after the
+# account records: the box's own state file is a source-role record too, the
+# completed round this box ran as the active (the round that demoted it, or
+# an earlier one). Kept, it told status, init and reset-phase that the box
+# still relays to that round's target, and reset-phase's remedy would have
+# resumed that round's cutover tail toward the box now demoted (found live on
+# the second failback of a pair). Retired like the account records, set aside
+# as superseded; a round in any other phase was not finished and is left for
+# the operator. The path is _XMASS_STATE_FILE's, spelled out for the remote
+# shell.
+_xmass_promoted_state_retire_sh() {
+  cat <<'PROMSTATE'
+_f=/data/conf/xmass_state.cnf
+if [ -f "${_f}" ] && [ ! -L "${_f}" ] && grep -qx '_XMASS_PHASE=complete' "${_f}"; then
+  _t=$(grep -m1 '^_XMASS_TARGET_IP=' "${_f}" | cut -d= -f2-)
+  _p=$(grep -m1 '^_XMASS_PROXIED_AT=' "${_f}" | cut -d= -f2-)
+  _k="${_f}.superseded-by-promotion-$(date -u +%Y%m%d-%H%M%S)"
+  if mv -f -T -- "${_f}" "${_k}"; then
+    echo "  box: retired its own completed round's state file (the active toward ${_t:-?}${_p:+, relaying since ${_p}}): promoted now, its next round starts from init"
+  else
+    echo "  ALRT: box: its own completed round's state file could NOT be retired -- init and reset-phase refuse here until it is removed by hand"
+  fi
+fi
+PROMSTATE
+}
+
 _xmass_promotion_cleanup_target() {
   # A cutover TARGET that was itself demoted earlier (failback: the pair
   # switched, now switches back) still carries the artefacts of its OWN
@@ -9341,10 +9625,13 @@ _xmass_promotion_cleanup_target() {
   # lets the failback complete. Idempotent; a first-migration target has
   # none of these and every branch is a no-op.
   _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
-  local _oct _mine _o
+  local _oct _mine _o _l
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_promotion_cleanup_sh "${_oct}" | ssh root@"${_tgt}" "bash -s"
   done
+  # the box's own record of the round it ran as the active, after the accounts'
+  _xmass_promoted_state_retire_sh | ssh root@"${_tgt}" "bash -s" 2>&1 \
+    | while IFS= read -r _l; do _info "${_l}"; done
   # The target's own record of a test run toward this box (its xmass_admail
   # record naming one of this box's addresses: a mirror built under admail=
   # and promoted by hand, the returning box now promoted back) ended when this
@@ -9941,6 +10228,9 @@ _xmass_promote_cleanup_here() {
       | sed 's/until the cutover completes/until the renames are done/')
     [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
   done
+  # the box's own record of the round it ran as the active, after the accounts'
+  _out=$(_xmass_promoted_state_retire_sh | bash -s 2>&1)
+  [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
   _XMASS_HAND_CLEANED=YES
   if [ -f "${_XMASS_HAND_PROMO_FILE}" ] && [ ! -L "${_XMASS_HAND_PROMO_FILE}" ]; then
     printf '_XMASS_HAND_CLEANED=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "${_XMASS_HAND_PROMO_FILE}"
@@ -10356,7 +10646,7 @@ _xmass_webgroup_gate() {
   ### account's legs, every other account is carried, and a dry sync says
   ### so in an ALRT; a cutover, init and prep-target leave no account behind.
   local _t="$1" _on_old="${2:-die}" _sync="${3:-}" _oct _conv="" _ans _fj="" _rc=0
-  local _fix="the account's next Octopus pass finishes it, or 'instgrp webconvert <account>' (which also completes the account's conversion), for a frozen account only once its freeze is recovered"
+  local _fix="the account's next Octopus pass finishes it, or 'instgrp webconvert <account>' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid)"
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _wg_free_unfinished "${_oct}" && _fj="${_fj} /etc/boa/control/instgrp-web.${_oct}.free.txt"
     case "$(_web_group_state "${_oct}" | cut -d' ' -f1)" in
@@ -10511,11 +10801,14 @@ _xmass_target_silence_probe() {
       ### target) every dispatcher is parked under /var/backups/off-run until
       ### the promotion restores it -- and that same cleanup defuses the pid
       ### as stale -- so such a marker is inert: counting it made every
-      ### verb wait out its whole bound on a quiet target. The same holds
+      ### verb wait out its whole bound on a quiet target. So is one of an
+      ### account whose dispatcher aegir2boa holds for an unfinished import
+      ### (/var/backups/a2b/<account>/held-run-<account>) until the import
+      ### is re-run or reverted. The same holds
       ### for a marker with no platforms.info beside it: the runner takes
       ### none without it, so it starts no pass, and every writer of a
       ### trigger puts the list first.
-      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; [ -e "${_f%/*}/platforms.info" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && [ -e "/var/backups/off-run/run-${_n}" ] && continue; printf "%s " "${_n}"; done)
+      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; [ -e "${_f%/*}/platforms.info" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && { [ -e "/var/backups/off-run/run-${_n}" ] || [ -e "/var/backups/a2b/${_n}/held-run-${_n}" ]; } && continue; printf "%s " "${_n}"; done)
       _roots="aegir"
       for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
         _n=$(basename "${_d}")
@@ -10532,8 +10825,9 @@ _xmass_target_silence_probe() {
         [ "${_r}" = "aegir" ] && [ ! -e /var/aegir/.drush/hostmaster.alias.drushrc.php ] && continue
         ### Same as the armed pid above: a queue nothing can dispatch is
         ### not pending work. A demoted box'"'"'s parked dispatcher leaves its
-        ### accounts'"'"' queued tasks inert until the promotion restores it.
-        [ "${_r}" != "aegir" ] && [ ! -e "/var/xdrago/run-${_r}" ] && [ -e "/var/backups/off-run/run-${_r}" ] && continue
+        ### accounts'"'"' queued tasks inert until the promotion restores it,
+        ### and so does a dispatcher aegir2boa holds for an unfinished import.
+        [ "${_r}" != "aegir" ] && [ ! -e "/var/xdrago/run-${_r}" ] && { [ -e "/var/backups/off-run/run-${_r}" ] || [ -e "/var/backups/a2b/${_r}/held-run-${_r}" ]; } && continue
         _c=$(su -s /bin/bash - "${_r}" -c "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = -1 OR (t.task_status = 0 AND (t.executed IS NULL OR t.executed = 0))\"" 2>/dev/null | tail -1 | tr -d " ")
         case "${_c}" in
           "") _q="${_q}${_r}=? " ;;
@@ -13198,6 +13492,7 @@ _xmass_cmd_sync() {
   _xmass_sync_shared
   _xmass_sync_solr
   local _oct
+  _XMASS_WG_SKIPPED=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
@@ -13209,7 +13504,7 @@ _xmass_cmd_sync() {
       _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
-      _die "a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
+      _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
     fi
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
     _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))
@@ -14811,6 +15106,7 @@ _xmass_cmd_cutover() {
   _xmass_sync_shared
   _xmass_sync_solr
   local _oct
+  _XMASS_WG_SKIPPED=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
@@ -14825,7 +15121,7 @@ _xmass_cmd_cutover() {
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before the write freeze"
   fi
 
   # Step 4: Wait for replica to fully catch up
@@ -14863,7 +15159,7 @@ _xmass_cmd_cutover() {
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "the final static/files transfer failed (see DENY above); cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)the final static/files transfer failed (see DENY above); cutover aborted before the write freeze"
   fi
 
   # Everything above this line is still recoverable: the source serves 503, but

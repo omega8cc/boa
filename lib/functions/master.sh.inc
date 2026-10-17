@@ -663,6 +663,117 @@ EOFMYSQL
 }
 
 #
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read.
+# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
+# grep reads it as text.
+_master_db_broker_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+#
+# One call the pass makes of the database broker by itself ($@), said as one
+# line of the pass: the broker's last line when that is its OK line, a NOTE
+# naming the call with that line otherwise. A refusal is never an alarm and
+# never the end of the pass: what the broker refuses stays as it is, nothing
+# is tried again or forced, and the next pass asks anew. The line is
+# repeated only as printable text of the broker's own shape, and never with
+# a word the pass launchers read as an alarm in a pass's log: a row's host
+# and a database's name are an account's to choose. A call that stopped
+# after it changed something (scope-failed, baseline-settle-incomplete), or
+# that an SQL statement failed in (sql-failed: never a policy refusal), is
+# no refusal: each ALRT line of the broker's answer is relayed (printable,
+# at most 20 lines of 512 characters, OOPS: said without its colon, a word
+# the launchers read as an oops while the line is an alarm already) and the
+# call's line is an ALRT too, so the pass is reported with errors, as a new
+# account's failed switch is.
+# Each login a settle revoked or dropped is named on an INFO line of its own
+# (at most 20, printable, the alarm words kept out as above), so a login of
+# an operator's own that loses its rights is never named in the broker's
+# log alone.
+_master_db_broker_call() {
+  local _out _rc _last _kind="NOTE" _l _na=0 _ns=0
+  _out=$(/usr/local/bin/boa-dbctl "$@" 2>&1 < /dev/null)
+  _rc=$?
+  _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+  case "${_last}" in
+    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*|"ERR 7 sql-failed "*) _kind="ALRT" ;;
+  esac
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT: "*)
+        [[ "${_kind}" == "ALRT" && "${_na}" -lt 20 ]] || continue
+        _na=$(( _na + 1 ))
+        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
+        _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
+        ;;
+      "settled revoked "*|"settled dropped "*)
+        [[ "${_ns}" -lt 20 ]] || continue
+        _ns=$(( _ns + 1 ))
+        _l=$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+        case "${_l}" in
+          *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+            _l="${_l#settled }"
+            _l="settled ${_l%% *}: the login's name is in /var/log/boa/dbctl/dbctl.log"
+            ;;
+        esac
+        _msg "INFO: database broker: ${_l}"
+        ;;
+    esac
+  done <<< "${_out}"
+  if [[ "${_rc}" == "0" && "${_last}" == "OK "* ]]; then
+    _kind="INFO"
+  elif [[ "${_last}" == "ERR "* ]]; then
+    _last="$*: ${_last}"
+  else
+    _last="$*: no answer line, exit ${_rc}"
+  fi
+  case "${_last}" in
+    *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+      _last="$*: exit ${_rc}, its answer is in /var/log/boa/dbctl/dbctl.log"
+      ;;
+  esac
+  _msg "${_kind}: database broker: ${_last}"
+  return 0
+}
+
+#
+# The database broker on a box armed for it, once in every barracuda pass:
+# the last _DB_BROKER_ARM line of /root/.barracuda.cnf says YES (anything
+# else, no line included, does not arm the box). The box settles what it can
+# name by itself, after the pass has made the server's own logins for the
+# last time and had them recorded again, so a login the pass has just
+# rotated is never read as one changed behind the broker. Not on a
+# replication standby nor on a box being prepared as one. The broker's own
+# checks decide; what it refuses is a NOTE and the pass goes on.
+_master_db_broker_settle() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _master_db_broker_settle"
+  fi
+  [[ "$(_master_db_broker_cnf_last "/root/.barracuda.cnf" _DB_BROKER_ARM)" == "YES" ]] \
+    || return 0
+  if [[ -e "/root/.standby.cnf" || -e "/root/.standby.prep.cnf" ]]; then
+    return 0
+  fi
+  if [[ ! -x "/usr/local/bin/boa-dbctl" ]]; then
+    _msg "NOTE: database broker: not installed here, _DB_BROKER_ARM=YES arms nothing"
+    return 0
+  fi
+  _master_db_broker_call baseline settle
+  return 0
+}
+
+#
 # Where the files of this box name each of the database users given, one
 # line per mention:
 #   db <user> <alias>         the master_db of a server alias: an instance's

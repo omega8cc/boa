@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.18
+export _DRUSH_VERSION=8.5.19
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.3
 export _REDIS_N_VERSION=com-19-04-2021
@@ -79,6 +79,7 @@ export _SMALLCORE11_1_V=11.1.10
 export _SMALLCORE11_2_V=11.2.14
 export _SMALLCORE11_3_V=11.3.19
 export _SMALLCORE11_4_V=11.4.10
+export _SMALLCORE12_0_V=12.0.0-beta2
 export _SMALLCORE6_V=6.60.3
 export _SMALLCORE7_V=7.106.2
 export _SMALLCORE9_V=9.5.11
@@ -98,6 +99,7 @@ export _DRUPAL11_1="drupal-${_SMALLCORE11_1_V}"
 export _DRUPAL11_2="drupal-${_SMALLCORE11_2_V}"
 export _DRUPAL11_3="drupal-${_SMALLCORE11_3_V}"
 export _DRUPAL11_4="drupal-${_SMALLCORE11_4_V}"
+export _DRUPAL12_0="drupal-${_SMALLCORE12_0_V}"
 export _DRUPAL6="pressflow-${_SMALLCORE6_V}"
 export _DRUPAL7="drupal-${_SMALLCORE7_V}"
 export _DRUPAL9="drupal-${_SMALLCORE9_V}"
@@ -157,6 +159,9 @@ export _DRUPAL11_3_S="${_DRUPAL11_3}-stage"
 export _DRUPAL11_4_D="${_DRUPAL11_4}-dev"
 export _DRUPAL11_4_P="${_DRUPAL11_4}-prod"
 export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
+export _DRUPAL12_0_D="${_DRUPAL12_0}-dev"
+export _DRUPAL12_0_P="${_DRUPAL12_0}-prod"
+export _DRUPAL12_0_S="${_DRUPAL12_0}-stage"
 
 ###
 ### Backdrop CMS core. Always the newest release: the mirror publishes
@@ -452,6 +457,9 @@ if ! declare -F _satellite_if_web_group > /dev/null 2>&1 \
     fi
   fi
 fi
+# The database broker's step on a box armed for it: a lib tree without it
+# has nothing to ask this pass, and the next pass asks.
+declare -F _satellite_if_db_broker > /dev/null 2>&1 || _satellite_if_db_broker() { return 0; }
 
 
 ###
@@ -537,6 +545,7 @@ _satellite_if_instance_group pre
 _satellite_make
 _satellite_if_instance_group post
 _satellite_if_web_group post
+_satellite_if_db_broker post
 _satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
 
