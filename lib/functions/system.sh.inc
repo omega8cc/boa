@@ -8723,7 +8723,7 @@ _if_heal_logind_leak() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_heal_logind_leak"
   fi
-  local _lgnSim _lgnPkg _lgnExtra
+  local _lgnSim _lgnPkg _lgnExtra _lgnPam
   if _pkg_installed "libpam-elogind"; then
     _lgnSim="$(apt-get -s purge libpam-elogind 2> /dev/null \
       | awk '$1 == "Purg" || $1 == "Remv" { print $2 }')"
@@ -8750,11 +8750,15 @@ _if_heal_logind_leak() {
         _msg "ALRT: libpam-elogind could not be removed; every login session still leaves a cgroup behind"
       else
         _msg "INFO: elogind's PAM module and the polkit stack removed"
-        # pam-auth-update keeps a common-session file edited by hand as it is
-        if grep -qs "pam_elogind" /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive; then
-          _msg "WARN: /etc/pam.d/common-session still names pam_elogind, now removed: delete that line or run pam-auth-update --force"
-        fi
       fi
+    fi
+  fi
+  # pam-auth-update keeps a common-session file edited by hand as it is, so
+  # the line can outlive the module: say so on every pass until it is gone.
+  if ! _pkg_installed "libpam-elogind"; then
+    _lgnPam="$(grep -ls "pam_elogind" /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive | tr '\n' ' ')"
+    if [ -n "${_lgnPam}" ]; then
+      _msg "WARN: ${_lgnPam% } still names pam_elogind, which is not installed: delete that line or run pam-auth-update --force"
     fi
   fi
   _trim_session_cgroups

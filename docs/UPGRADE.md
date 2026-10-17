@@ -179,7 +179,7 @@ The pass then removes the empty session cgroups: top-level `c<N>` and `<N>` only
 
 BOA's install command installs packages without their recommended packages: `APT::Install-Recommends "false"` in `/opt/apt/apt.conf.noi.dist` and `apt.conf.noi.nrml`, which every pass refreshes, and on its aptitude form. A server whose image left recommends on got whole service stacks with each such install before (the old files carried `APT::Get::Install-Recommends`, a key apt does not read). Plain `apt-get` calls elsewhere in BOA still follow the image's setting.
 
-wkhtmltopdf comes only from the wkhtmltox build BOA bundles (upstream's 0.12.6.1 with its patched Qt), fetched from BOA's mirror with the libraries it links; the distro package, which it replaces, is no longer installed first.
+wkhtmltopdf comes only from the wkhtmltox build BOA bundles (upstream's 0.12.6.1 with its patched Qt), a package fetched from BOA's mirror whose dependencies, the libraries it links, come from the distribution; the distro wkhtmltopdf package, which it replaces, is no longer installed first.
 
 ## NOTE on the Verify tasks an Octopus upgrade queues
 
