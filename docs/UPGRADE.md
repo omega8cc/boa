@@ -173,7 +173,7 @@ BOA runs no login-session manager. elogind's PAM module (`libpam-elogind`, the `
 
 Their kernel memory grows until the OOM killer takes `mysqld`. The per-CPU part is reserved for every possible CPU, so a VM that reports many more possible than online CPUs pays many times over. Tens of thousands of cgroups in `grep memory /proc/cgroups`, with `Percpu` and `SUnreclaim` in `/proc/meminfo` far above normal, mean the leak.
 
-Every `barracuda` pass, FAST upgrades included, removes `libpam-elogind` and the polkit stack that needs it (with `packagekit`, `software-properties-common` and `ModemManager` where they came along), but only when apt would remove nothing else. Otherwise the pass leaves everything in place and writes an `ALRT:` line naming what apt would also remove. The `elogind` daemon package stays; without the module it registers no sessions.
+Every `barracuda` pass, FAST upgrades included, removes `libpam-elogind` and the polkit stack that needs it (with `packagekit`, `software-properties-common` and `ModemManager` where they came along), but only when apt would remove nothing else. Otherwise the pass leaves everything in place and writes an `ALRT:` line naming what apt would also remove. The pass never removes the `elogind` daemon package itself: without the module it registers no sessions, and where only the module needed it apt may later remove it as unused.
 
 The pass then removes the empty session cgroups: top-level `c<N>` and `<N>` only, each with no process and no child cgroup at two reads three seconds apart, never on a systemd host. A populated cgroup is never touched. The nightly `graceful.sh` does the same.
 
