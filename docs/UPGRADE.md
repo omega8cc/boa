@@ -171,7 +171,7 @@ The same logic protects existing and used versions from being removed even if th
 
 BOA runs no login-session manager. BOA's install command does not ask for elogind's PAM module (`libpam-elogind`, the `pam_elogind.so` line in `/etc/pam.d/common-session`): it arrives as a dependency, as when something installs `polkitd`, which needs a logind, or as a recommended package of elogind itself where an install takes recommended packages. elogind then makes a cgroup under `/sys/fs/cgroup` for every PAM session (every `su` BOA runs, every cron job and ssh login) and never removes it.
 
-Their kernel memory grows until the OOM killer takes `mysqld`. The per-CPU part is reserved for every possible CPU, so a VM that reports many more possible than online CPUs pays many times over. Tens of thousands of cgroups in `grep memory /proc/cgroups`, with `Percpu` and `SUnreclaim` in `/proc/meminfo` far above normal, mean the leak.
+Their kernel memory grows until the OOM killer takes `mysqld`. The per-CPU part is reserved for every possible CPU, so a VM that reports many more possible than online CPUs pays many times over. Tens of thousands of cgroups in `cat /sys/fs/cgroup/cgroup.stat` (`nr_descendants` plus `nr_dying_descendants`, the box's own tree also inside a container, where `/proc/cgroups` counts the host's), with `Percpu` and `SUnreclaim` in `/proc/meminfo` far above normal, mean the leak.
 
 Every `barracuda` pass, FAST upgrades included, removes `libpam-elogind` and the polkit stack that needs it (with `packagekit`, `software-properties-common` and `ModemManager` where they came along), but only when apt would remove nothing else. Otherwise the pass leaves everything in place and writes an `ALRT:` line naming what apt would also remove.
 

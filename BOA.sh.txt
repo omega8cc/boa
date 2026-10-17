@@ -5734,7 +5734,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f92 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f85 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f85 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f71 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f70 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f86 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f93 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
@@ -6394,7 +6394,6 @@ _backup_waiting_notify() {
   fi
 }
 
-# Load kTLS module only if it is not already loaded.
 # On an image that leaves recommended packages on, every install brings whole
 # service stacks along: the distro wkhtmltopdf brought polkitd and a logind
 # whose login-session cgroups filled a box's kernel memory. BOA's own apt
@@ -6413,6 +6412,7 @@ _apt_no_recommends() {
   return 0
 }
 
+# Load kTLS module only if it is not already loaded.
 _load_ktls_module() {
   if ! lsmod 2>/dev/null | awk '{print $1}' | grep -qx "tls"; then
     if [ -e "/lib/modules/$(uname -r)/kernel/net/tls/tls.ko" ] \

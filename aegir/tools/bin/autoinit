@@ -1717,7 +1717,8 @@ _purge_systemd_keep_ssh() {
     _install_systemd_dummy
     _msg "[init] Re-simulating removal" >> "${_logInt}"
     if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
-      _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
+      _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present; not removing systemd" >> "${_logInt}"
+      return 1
     fi
   else
     _msg "[init] Simulating 'apt-get remove systemd' appeared clean" >> "${_logInt}"
@@ -1736,6 +1737,7 @@ _purge_systemd_keep_ssh() {
 #   _msg "[init] Autoremove harmless leftovers (kept minimal)" >> "${_logInt}"
 #   /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
 #   /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
+  return 0
 }
 
 # High-level orchestrator to call in the off-systemd phase
@@ -1744,9 +1746,12 @@ _autoinit_devuan_protect_essential() {
 #   _switch_to_elogind_stack
   _ensure_openssh_server
   _protect_daemons
-  _purge_systemd_keep_ssh
-  _ensure_openssh_server
-  _msg "[init] systemd purged while keeping openssh-server intact" >> "${_logInt}"
+  if _purge_systemd_keep_ssh; then
+    _ensure_openssh_server
+    _msg "[init] systemd purged while keeping openssh-server intact" >> "${_logInt}"
+  else
+    _ensure_openssh_server
+  fi
   return 0
 }
 
@@ -1887,7 +1892,12 @@ _init_offsystemd() {
       /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
     fi
   fi
-  /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+  if /usr/bin/apt-get -s purge systemd libnss-systemd 2>/dev/null \
+    | grep -qE '^(Remv|Purg) (openssh-server|ssh) '; then
+    _msg "[init][ERROR] offd ==> Not removing systemd: apt would remove the SSH server with it" >> "${_logInt}"
+  else
+    /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+  fi
 
   # Ensure classic ifupdown networking and DNS after systemd purge.
   _msg "[init] offd ==> Ensuring classic networking with vmnetfix after systemd purge..." >> "${_logInt}"
