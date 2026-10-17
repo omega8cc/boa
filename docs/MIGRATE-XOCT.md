@@ -205,6 +205,11 @@ xoct pre-mig source-host --key-fp=SHA256:<the fingerprint printed on the source>
 
 ### 3. Verify SSH Connectivity
 
+Optional. The verbs that reach the target (`create`, `pretransfer`,
+`transfer` and `proxy`, which `go-live` runs too) learn its host key before
+their first contact, as `xmass` does, so the source needs no interactive
+login to the target first. To check root's access by hand:
+
 **On source:**
 ```sh
 ssh root@target-ip
@@ -949,9 +954,9 @@ does not answer, and so does the verb's own first contact there (the
 account probe of `create`, the mount query of `pretransfer` and
 `transfer`, the record push of `proxy`), which then refuses, naming the
 target: a mistyped or unreachable target ends the verb in about half a
-minute, and `proxy`, which first spends up to 10 seconds learning the
-target's host key, in about 45 seconds. `xcopy` reads the target's hold
-and makes its first contact the same way.
+minute, or in about 45 seconds when the verb first spends up to 10 seconds
+learning a host key the box does not know yet. `xcopy` reads the target's
+hold and makes its first contact the same way.
 
 **A canary goes live** with one verb on the source:
 

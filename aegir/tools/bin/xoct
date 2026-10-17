@@ -7628,6 +7628,14 @@ _migrate_init() {
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   fi
+  ### The verbs that reach the target learn its host key before their first
+  ### contact, as proxy's record push and xmass do: on a box that has never
+  ### met the target, their non-interactive ssh and rsync calls would fail
+  ### host key verification (and the hold read before them would pass it by
+  ### silently). go-live runs as proxy here; export and import reach no peer.
+  case "${_cmd}" in
+    create|pretransfer|transfer|proxy) _xoct_learn_peer_host_key "${_tgt}" ;;
+  esac
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     if [ -e "/var/log/boa/usage" ]; then
