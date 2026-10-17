@@ -1394,15 +1394,19 @@ _mode_detection() {
     _DPKG_CNF="confnew"
   fi
 
+  # Recommends stay off here as in the apt-get forms: a box whose image
+  # leaves them on would otherwise pull in whole service stacks.
   if [ -x "/opt/local/bin/aptfast" ]; then
     _INSTAPP="/opt/local/bin/aptfast -f -y -q \
       --allow-untrusted \
+      -o APT::Install-Recommends=false \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-${_DPKG_CNF} install"
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q \
       --allow-untrusted \
+      -o APT::Install-Recommends=false \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-${_DPKG_CNF} install"
