@@ -2711,8 +2711,19 @@ _ltd_platform_task() {
   local _verb="${1}"
   local _alias="${2}"
   local _log="/var/backups/ltd/log/window-${_NOW}.log"
+  # The alias is a file name in the account's ~/.drush and goes into a shell
+  # line: only the characters a context name is made of
+  if [[ ! "${_alias}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "$(date) ${_USER}: refused platform alias '${_alias}': not a context name" >> "${_log}"
+    return 1
+  fi
   echo "$(date) ${_USER}: drush8 @platform_${_alias} ${_verb}" >> "${_log}"
-  su -s /bin/bash - ${_USER} -c "drush8 @platform_${_alias} ${_verb} -y" >> "${_log}" 2>&1
+  # Through /bin/sh (websh), as the panel's own tasks run: websh gives the
+  # line the PHP those tasks get for this platform (its cli-per-platform.info
+  # line, the phpNN.info markers, cli.info). A bare drush8 in the bash login
+  # ran on the server's default PHP, which a Drupal 12 platform refuses
+  # (vendor/composer/platform_check.php), so its window never opened.
+  su -s /bin/bash - ${_USER} -c "/bin/sh -c 'drush8 @platform_${_alias} ${_verb} -y'" >> "${_log}" 2>&1
 }
 _ltd_platform_window_close() {
   local _acct="${1}"
