@@ -184,6 +184,8 @@ _purge_weekly_backups() {
   _purge_run_copies
   _purge_markers
   _purge_dated_files
+  _purge_solr_tmp
+  _purge_le_accounts
   _purge_leftovers
   touch "${_wkStamp}"
 }
@@ -301,13 +303,68 @@ _purge_run_copies() {
   done
 }
 
+# Solr's Jetty leaves a work directory (jetty-*) and a start properties file
+# (start_*.properties) in /tmp at every start, and nothing removes the old ones:
+# BOA's own cleaner matches only Solr 4's jetty9. Only what the solr7 and solr9
+# users own counts, since any account can make such names in /tmp, and of that
+# only an entry made over two days ago that is not the newest of its kind for
+# its owner and that no process holds open, maps or works in. The maps files
+# go through cat: awk given a file that is gone (a process that ended after the
+# glob was expanded) stops there and reads none of the rest.
+_purge_solr_tmp() {
+  local _stU _stK _stC _stE _stHeld
+  _stHeld="$( { find /proc/[0-9]*/fd /proc/[0-9]*/cwd -maxdepth 1 -lname '/tmp/*' \
+    -printf '%l\n'; cat /proc/[0-9]*/maps | awk '$6 ~ /^\/tmp\// { print $6 }'; } \
+    2> /dev/null | sort -u)"
+  for _stU in solr7 solr9; do
+    id -u "${_stU}" &> /dev/null || continue
+    for _stK in 'jetty-*' 'start_*.properties'; do
+      find /tmp -mindepth 1 -maxdepth 1 -user "${_stU}" -name "${_stK}" \
+        -printf '%C@ %f\n' 2> /dev/null | LC_ALL=C sort -rn | tail -n +2 \
+        | while read -r _stC _stE; do
+          case "${_stE}" in
+            ""|*/*|*[!A-Za-z0-9._-]*) continue ;;
+          esac
+          if printf '%s\n' "${_stHeld}" | grep -q -e "^/tmp/${_stE}\$" \
+            -e "^/tmp/${_stE}/"; then
+            continue
+          fi
+          find /tmp -mindepth 1 -maxdepth 1 -name "${_stE}" -user "${_stU}" \
+            -ctime +1 -execdir rm -rf -- {} + 2> /dev/null
+        done
+    done
+  done
+}
+
+# The ACME account keys the certificate heal sets aside per account when it
+# registers anew (/var/backups/le-accounts/<account>/accounts-<stamp>): the newest
+# three per account stay, newest by the date and time in the name, which keeps
+# its order whatever later touches the copies. Other names stay.
+_purge_le_accounts() {
+  local _laD _laE
+  [ -d "/var/backups/le-accounts" ] && [ ! -L "/var/backups/le-accounts" ] || return 0
+  for _laD in /var/backups/le-accounts/*; do
+    [ -d "${_laD}" ] && [ ! -L "${_laD}" ] || continue
+    find "${_laD}" -mindepth 1 -maxdepth 1 -name \
+      'accounts-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]' \
+      -printf '%f\n' 2> /dev/null | LC_ALL=C sort -r | tail -n +4 \
+      | while read -r _laE; do
+        rm -rf -- "${_laD:?}/${_laE}"
+      done
+  done
+}
+
 # Leftovers no current code writes or reads, removed once: the copies of the
 # MySQL root password and client config older releases kept at the top of
 # /var/backups (they go to dragon/config now), the log folder used before
 # /var/log/boa (BOA.sh.txt copied its files there once and then wrote
-# .migrated.txt), and markers whose writers are gone. The old folder is emptied
-# only after that copy, and never when it leads to /var/log/boa itself.
+# .migrated.txt), markers whose writers are gone, and the attack archives older
+# releases set aside at each release (<name>.archive.<serial>.log and
+# <name>.archive-old-*.log); the live archives and their one-time .x3 copies,
+# which guest-water and xdr9000 read, stay. The old folder is emptied only after
+# that copy, and never when it leads to /var/log/boa itself.
 _purge_leftovers() {
+  local _lfA
   rm -f /var/backups/.my.pass.txt-pre-* /var/backups/.my.cnf-pre-*
   if [ -e "/var/log/boa/.migrated.txt" ] \
     && [ -d "/var/xdrago/log" ] && [ ! -L "/var/xdrago/log" ] \
@@ -318,6 +375,13 @@ _purge_leftovers() {
   rm -f /var/log/boa/sec-redis-pass-* /var/log/boa/.custom_percona_forced.* \
     /var/log/boa/mss-build-master-* /var/log/boa/geos-* \
     /var/log/boa/nginx.kill-start.log /var/log/boa/cron-count.kill.log
+  if [ -d "/var/xdrago/monitor/log" ] && [ ! -L "/var/xdrago/monitor/log" ]; then
+    for _lfA in hackcheck scan_nginx hackftp; do
+      find /var/xdrago/monitor/log -mindepth 1 -maxdepth 1 -type f \
+        \( -name "${_lfA}.archive.*.log" ! -name "${_lfA}.archive.x3.log" \
+        -o -name "${_lfA}.archive-old-*.log" \) -delete &> /dev/null
+    done
+  fi
 }
 
 # A session cgroup is idle when no process is in it or below it and it has no
