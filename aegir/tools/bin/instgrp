@@ -2646,21 +2646,48 @@ _wg_r_remove() {
 # the newest 200 lines kept) and one where its main login reads them
 # (_wg_note_put_here).
 _wg_note() {
-  local _t _old _u
+  local _t _old _u _rc
   _t="$(date '+%Y-%m-%d %H:%M:%S') $*"
   ( umask 077; printf '%s\n' "${_t}" >> "${_WP_NOTES}" ) 2> /dev/null
   [ "${_WP_M}" = "YES" ] && return 0
   _t=$(printf '%s' "${_t}" | tr -cd '[:print:]')
   _old=$(_ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_read_here web-group-notes.txt)
-  _ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_put_here web-group-notes.txt \
+  _ig_in_real_dir "/data/disk/${_WP_A}/log" _wg_note_own_here \
     "$(printf '%s\n%s\n' "${_old}" "${_t}" | awk 'NF' | tail -n 200)" > /dev/null 2>&1
   _u=$(id -u "${_WP_A}.ftp" 2> /dev/null)
   if [[ "${_u}" =~ ^[0-9]+$ ]]; then
     _ig_in_real_dir "/data/disk/${_WP_A}/static/control" _wg_note_put_here "${_u}" \
       "$(tail -n 200 -- "${_WP_NOTES}" 2> /dev/null | tr -cd '[:print:]\n' | awk 'NF')" \
       > /dev/null 2>&1
+    _rc=$?
+    # once a run: every note of the run meets the same place
+    case "${_rc}" in
+      2)
+        _wg_noted "${_WP_A}" "the notes copy: control owner" \
+          && _log "${_WP_A}: the notes copy not written: /data/disk/${_WP_A}/static/control is owned by neither root nor an identity of the account"
+        ;;
+      3)
+        _wg_noted "${_WP_A}" "the notes copy: not a file" \
+          && _log "${_WP_A}: the notes copy not written: a directory stands at /data/disk/${_WP_A}/static/control/web-group-notes.txt"
+        ;;
+    esac
   fi
   return 0
+}
+
+# The temp copies a killed note left in the current (pinned) directory: a
+# minute old or more, so a note written at the same moment keeps its own.
+# A migration excludes them as it excludes the notes.
+_wg_note_sweep_here() {
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -maxdepth 1 -name '.web-group-notes.txt.put.*' \
+    ! -type d -mmin +1 -exec rm -f -- {} + > /dev/null 2>&1
+  return 0
+}
+
+# The account's own copy in its real log/ (_ig_put_here), stale temps swept.
+_wg_note_own_here() {
+  _wg_note_sweep_here
+  _ig_put_here web-group-notes.txt "${1}"
 }
 
 # The account's notes where its main login reads them, over SFTP and in
@@ -2668,13 +2695,24 @@ _wg_note() {
 # in the real static/control, the login's own (uid $1) and 0600, as they
 # name other accounts' stores. Made through one handle that never follows
 # a link and renamed over the name, so whatever stands there is replaced,
-# never opened; never read back from there. $2 = the lines.
+# never opened; never read back from there. Written only where root or an
+# identity of the account owns the directory: a co-tenant can put its own
+# directory at the name of static/control (static/ is group-writable), and
+# a copy there would be its to remove or to stand in for. $2 = the lines.
+# 2 for such a directory, 3 for a directory at the name, 1 otherwise.
 _wg_note_put_here() {
-  local _t="./.web-group-notes.txt.put.$$.${RANDOM}"
+  local _t="./.web-group-notes.txt.put.$$.${RANDOM}" _o
+  _o=$(stat -c %u -- . 2> /dev/null)
+  [[ "${_o}" =~ ^[0-9]+$ ]] || return 2
+  if [ "${_o}" != "0" ] && [ "${_o}" != "${1}" ] && [[ ",$(_wg_own_uids)," != *",${_o},"* ]]; then
+    return 2
+  fi
+  _wg_note_sweep_here
   rm -f -- "${_t}"
   printf '%s\n' "${2}" | perl -e "${_ACCT_PUT_PL}" "${_t}" "${1}" -1 600 \
     && mv -f -T -- "${_t}" ./web-group-notes.txt && return 0
   rm -f -- "${_t}"
+  [ -d ./web-group-notes.txt ] && [ ! -L ./web-group-notes.txt ] && return 3
   return 1
 }
 
@@ -6068,7 +6106,7 @@ _wg_free_reload() {
 # warned (a version's reload, a listing): the run's own leg reloads what is
 # left (u4).
 _wg_free() {
-  local _old="${1}" _held _new="" _u _g _p _n _l _cur _nm _who="" _out="" _conv=NO _rc=0 _rec=YES _hr
+  local _old="${1}" _held _new="" _u _g _p _n _l _cur _nm _nmT _nmG _who="" _out="" _conv=NO _rc=0 _rec=YES _hr
   _held=$(_wg_free_aside "${_old}" "${_WP_A}")
   _wg_hold "${_WP_A}"
   _hr=$?
@@ -6239,14 +6277,26 @@ _wg_free() {
   if [ "${_rec}" = "YES" ]; then
     _wg_free_j_write "done" "${_old}" "${_new}" "$([ "${_rc}" = "0" ] || echo warn)"
   fi
+  # the account's notes name that group only by one of the account's own
+  # two forms of the name: one resolved by its number alone (its owner
+  # renamed it since) can be another account's, and the notes are the
+  # tenant's to read; instgrp.log and the run's own lines name it as it is
+  _nmT=" ${_nm}"
+  _nmG=""
+  if [ "${_nm}" != "${_held}" ] && [ "${_nm}" != "${_old}-wgheld" ]; then
+    _nmT=""
+    _nmG=" (gid ${_old})"
+  fi
   # an earlier version's <gid>-wgheld that another account's free journal
   # names too is that account's group: this free never renamed it
   if [ "${_nm}" != "${_held}" ] && [ -n "$(_wg_free_other "${_old}")" ]; then
-    _wg_note_log "its web group's name ${_WP_G} was held by an identity outside the account: the free finished from gid ${_old}, whose group ${_nm} another account's free journal names and keeps its name, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+    _wg_note "its web group's name ${_WP_G} was held by an identity outside the account: the free finished from gid ${_old}, whose group${_nmT} another account's free journal names and keeps its name, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+    _log "${_WP_A}: its web group's name ${_WP_G} was held by an identity outside the account: the free finished from gid ${_old}, whose group ${_nm} another account's free journal names and keeps its name, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
     _msg "${_WP_A}: the free of ${_WP_G} finished from gid ${_old}: ${_nm}, which another account's free journal names, keeps its name; a new ${_WP_G} (gid ${_new}) holds the account's paths"
     return 0
   fi
-  _wg_note_log "its web group's name ${_WP_G} was held by an identity outside the account: that group was renamed ${_nm} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+  _wg_note "its web group's name ${_WP_G} was held by an identity outside the account: that group${_nmG} was renamed${_nmT} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+  _log "${_WP_A}: its web group's name ${_WP_G} was held by an identity outside the account: that group was renamed ${_nm} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
   _msg "${_WP_A}: ${_WP_G} was held by an identity outside it: renamed ${_nm}, a new ${_WP_G} made (gid ${_new}), the account's paths moved to it"
   return 0
 }
