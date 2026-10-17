@@ -160,19 +160,18 @@ _purge_postfix_bounces() {
 # Once a week, remove the copies older than 7 days that BOA leaves on every run
 # and every day and nothing else removes: the PHP-FPM logs moved aside on each
 # FPM restart and each barracuda or octopus run (php-logs/<stamp>/), and the
-# csf.allow copies guest-water takes before each provider refresh (csf/water/,
-# plus its pre-refresh snapshot and rolled-back copy in dragon/t/, which the
-# nightly dragon prune also reaches, but owl.sh does not run on a standby or a
-# proxy and guest-water does). Age is when a copy was made (ctime): cp -a keeps
-# the mtime of the file it copies. A stamp sets the pace, not a weekday, so a
-# night this pass skips only moves the prune to the next night it runs.
+# csf.allow copies guest-water takes before each provider refresh (csf/water/);
+# then the dragon vault and the other families below. Age is when a copy was
+# made (ctime): cp -a keeps the mtime of the file it copies. A stamp sets the
+# pace, not a weekday, so a night this pass skips only moves the prune to the
+# next night it runs.
 _purge_weekly_backups() {
   local _wkStamp="/var/backups/.graceful.weekly.prune.stamp"
   if [ -e "${_wkStamp}" ] \
     && [ -z "$(find "${_wkStamp}" -mmin +9000 2> /dev/null)" ]; then
     return 0
   fi
-  echo "Removing archived PHP logs and csf.allow copies older than 7 days..."
+  echo "Removing old backup copies, markers and leftovers..."
   if [ -d "/var/backups/php-logs" ] && [ ! -L "/var/backups/php-logs" ]; then
     find /var/backups/php-logs -mindepth 1 -maxdepth 1 -ctime +6 \
       -exec rm -rf {} + &> /dev/null
@@ -181,12 +180,144 @@ _purge_weekly_backups() {
     find /var/backups/csf/water -mindepth 1 -maxdepth 1 -type f -ctime +6 \
       -delete &> /dev/null
   fi
-  if [ -d "/var/backups/dragon/t" ] && [ ! -L "/var/backups/dragon/t" ]; then
-    find /var/backups/dragon/t -mindepth 1 -maxdepth 1 -type f \
-      \( -name 'csf.allow.backup-*' -o -name 'csf.allow.broken-*' \) \
-      -ctime +6 -delete &> /dev/null
-  fi
+  _prune_dragon_vault
+  _purge_run_copies
+  _purge_markers
+  _purge_dated_files
+  _purge_leftovers
   touch "${_wkStamp}"
+}
+
+# Files dated by the day or the event that nothing reads once that day is past:
+# multiback's per-day run markers (it tests only today's), the nginx error logs
+# the monitor sets aside at a restart (with the rotated copy the distro's nginx
+# rules make of each), codebasecheck's reports (boa info greps them all, so old
+# ones kept showing), the flood detector's snapshots, and the copies synproxy
+# takes of csf's config at each run (its rollback does not read them).
+_purge_dated_files() {
+  local _dfD="[0-9][0-9][0-9][0-9][0-9][0-9]"
+  _prune_older_than /var/log/boa "back-to-*.${_dfD}.*.log" 30
+  _prune_older_than /var/log/nginx "${_dfD}-[0-9][0-9][0-9][0-9]-error.log*" 30
+  _prune_older_than /var/log/boa/core 'incompatible-*.log' 30
+  _prune_older_than /var/log/boa/core 'box-readiness-*.log' 30
+  _prune_older_than /var/xdrago/monitor/log/i18n_flood '[0-9]*-*.txt' 90
+  _prune_keep_newest /etc/csf 'csfpost.sh.bak.[0-9]*' 3
+  _prune_keep_newest /etc/csf 'csf.conf.bak.[0-9]*' 3
+}
+
+# Markers BOA writes in /var/log/boa on every run, at each release or for each
+# build. A run reads only its own or the current one, so the newest three are
+# kept (by ctime) and none goes by age: a release or a PHP build stays current
+# for months. The PHP extension markers are kept per extension and PHP branch,
+# since every installed branch has its own current one, and the shared module
+# markers per module; a name that does not parse is left alone.
+_purge_markers() {
+  local _mkL="/var/log/boa" _mkP _mkE _mkB _mkM
+  for _mkP in 'sysctl.conf-*.log' 'sec-valkey-pass-*.log' '.curl_libs_fix_*.pid' \
+    '._php_libs_fix_*.pid' 'pure-ftpd-build-*.log' 'valkey-*.log' \
+    'mss-build-ok-*.log' 'nginx-config-params-fixed-*.log' \
+    'fix-drupal-site-permissions-*.log' '.force.f*.ctrl' \
+    '.csf_legacy_cleanup.*.pid' '.csf_dhcp_udp_cleanup.*.pid' \
+    '.disabled_modules_fix.*.pid' '.curl_ctrl.*.pid' \
+    '.etc_crontab_lock_state.*.txt' 'apt-deb-src-updates-*.txt' \
+    'lshell-fix-build-*.log' 'csf_BOA-*.log' 'libmagickwand-dev-*-rebuild.log'; do
+    _prune_keep_newest "${_mkL}" "${_mkP}" 3
+  done
+  for _mkE in apcu imagick igbinary f_yaml phpredis-update f_uploadprogress \
+    mcrypt php-pecl-jsmin php-geos; do
+    for _mkB in $(find "${_mkL}" -mindepth 1 -maxdepth 1 -type f -name "${_mkE}-*.log" \
+      -printf '%f\n' 2> /dev/null \
+      | sed -n "s/^${_mkE}-.*-\([0-9]\{1,2\}\.[0-9]\{1,2\}\)\.[0-9]\{1,3\}[A-Za-z0-9]*\.log\$/\1/p" \
+      | sort -u); do
+      _prune_keep_newest "${_mkL}" "${_mkE}-*-${_mkB}.[0-9]*.log" 3
+    done
+  done
+  for _mkM in $(find "${_mkL}" -mindepth 1 -maxdepth 1 -type f -name '*.ctrl.*.log' \
+    -printf '%f\n' 2> /dev/null | sed -n 's/^\([a-z_]*\)\.ctrl\.[0-9a-zA-Z]*\.log$/\1/p' \
+    | sort -u); do
+    _prune_keep_newest "${_mkL}" "${_mkM}.ctrl.*.log" 3
+  done
+}
+
+# The dragon vault's copies other than config/ go once they are a week old, by
+# when each was made (ctime), the rule owl.sh's nightly pass also applies. That
+# pass does not run on a standby or a proxy, where barracuda still runs and
+# adds a full copy of /var/xdrago to dragon/x on every pass.
+_prune_dragon_vault() {
+  local _dvS
+  [ -d "/var/backups/dragon" ] && [ ! -L "/var/backups/dragon" ] || return 0
+  find /var/backups/dragon -mindepth 1 -maxdepth 1 ! -name config ! -type d \
+    -ctime +7 -delete &> /dev/null
+  for _dvS in /var/backups/dragon/*; do
+    [ -d "${_dvS}" ] && [ ! -L "${_dvS}" ] || continue
+    [ "${_dvS##*/}" = "config" ] && continue
+    find "${_dvS}" -mindepth 1 -maxdepth 1 -ctime +7 \
+      -exec rm -rf {} + &> /dev/null
+  done
+}
+
+# Remove all but the newest $3 entries the find pattern $2 names directly in
+# the real directory $1, newest by when each was made there (ctime).
+_prune_keep_newest() {
+  local _kDir="${1}" _kPat="${2}" _kKeep="${3}"
+  [ -d "${_kDir}" ] && [ ! -L "${_kDir}" ] || return 0
+  find "${_kDir}" -mindepth 1 -maxdepth 1 -name "${_kPat}" -printf '%C@ %p\0' \
+    2> /dev/null | LC_ALL=C sort -z -rn | tail -z -n +$(( _kKeep + 1 )) \
+    | cut -z -d' ' -f2- | xargs -0 -r rm -rf -- &> /dev/null
+}
+
+# Remove the entries the find pattern $2 names directly in the real directory
+# $1 that were made there more than $3 days ago (ctime).
+_prune_older_than() {
+  local _oDir="${1}" _oPat="${2}" _oDays="${3}"
+  [ -d "${_oDir}" ] && [ ! -L "${_oDir}" ] || return 0
+  find "${_oDir}" -mindepth 1 -maxdepth 1 -name "${_oPat}" -ctime +"${_oDays}" \
+    -exec rm -rf {} + &> /dev/null
+}
+
+# Copies BOA makes on every run or on a change and never reads again: the
+# config files a barracuda pass replaces, csf's allow and ignore lists at each
+# release, the libcurl a cURL change retires, the PHP build options a debug
+# build writes, and the drush aliases syncpass rewrites, kept per alias and
+# account (a name that does not parse is left alone).
+_purge_run_copies() {
+  local _rcAls _rcUsr _rcStm="[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]"
+  _prune_keep_newest /var/backups 'sources.list-pre-*' 3
+  _prune_keep_newest /var/backups '.etc.rsyslog.conf-pre-*' 3
+  _prune_keep_newest /var/backups 'resolv.conf.pre-*' 3
+  _prune_keep_newest /var/backups 'nginx-pre-*' 3
+  _prune_keep_newest /var/backups/csf 'csf.allow.*.txt' 5
+  _prune_keep_newest /var/backups/csf 'csf.ignore.*.txt' 5
+  _prune_keep_newest /var/backups 'legacy-libcurl-pre-*' 1
+  _prune_older_than /var/backups 'php_extra_*' 30
+  for _rcAls in server_master server_localhost; do
+    for _rcUsr in $(find /var/backups -mindepth 1 -maxdepth 1 -type f \
+      -name "${_rcAls}.alias.drushrc.php.*-${_rcStm}" -printf '%f\n' 2> /dev/null \
+      | sed -n "s/^${_rcAls}\.alias\.drushrc\.php\.\([a-z0-9._]*\)-[0-9]\{6\}-[0-9]\{6\}\$/\1/p" \
+      | sort -u); do
+      _prune_keep_newest /var/backups \
+        "${_rcAls}.alias.drushrc.php.${_rcUsr}-${_rcStm}" 3
+    done
+  done
+}
+
+# Leftovers no current code writes or reads, removed once: the copies of the
+# MySQL root password and client config older releases kept at the top of
+# /var/backups (they go to dragon/config now), the log folder used before
+# /var/log/boa (BOA.sh.txt copied its files there once and then wrote
+# .migrated.txt), and markers whose writers are gone. The old folder is emptied
+# only after that copy, and never when it leads to /var/log/boa itself.
+_purge_leftovers() {
+  rm -f /var/backups/.my.pass.txt-pre-* /var/backups/.my.cnf-pre-*
+  if [ -e "/var/log/boa/.migrated.txt" ] \
+    && [ -d "/var/xdrago/log" ] && [ ! -L "/var/xdrago/log" ] \
+    && [ "$(readlink -f /var/xdrago/log)" != "$(readlink -f /var/log/boa)" ]; then
+    find /var/xdrago/log -mindepth 1 -maxdepth 1 ! -name EMPTY.txt \
+      -exec rm -rf {} + &> /dev/null
+  fi
+  rm -f /var/log/boa/sec-redis-pass-* /var/log/boa/.custom_percona_forced.* \
+    /var/log/boa/mss-build-master-* /var/log/boa/geos-* \
+    /var/log/boa/nginx.kill-start.log /var/log/boa/cron-count.kill.log
 }
 
 # A session cgroup is idle when no process is in it or below it and it has no

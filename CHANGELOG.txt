@@ -640,7 +640,9 @@
       instead of the copies in them, and new copies kept the directories
       young, so nothing there was removed: a test server held 1.4 GB of
       /var/xdrago copies in dragon/x. A copy's age is now when it was made
-      there, not its mtime, which it keeps from the file it copies.
+      there, not its mtime, which it keeps from the file it copies. The
+      weekly graceful.sh pass applies the same rule, so a standby or a
+      proxy, where the nightly pass does not run, keeps a week too.
       dragon/config stays a permanent archive.
 
 @=> Security
@@ -1325,6 +1327,53 @@
       and, as its pre-refresh snapshot and rolled-back copy, in
       /var/backups/dragon/t. On a test server the csf.allow copies alone
       had reached 6,733 files and 354 MB in nineteen months.
+
+    * The weekly prune also removes what older releases left behind and
+      no code uses: copies of the MySQL root password and client config
+      kept at the top of /var/backups (such copies go to dragon/config
+      now), the contents of /var/xdrago/log, which BOA copied to
+      /var/log/boa when its logs moved there (the folder is emptied only
+      after that copy and never through a link to /var/log/boa), and
+      markers in /var/log/boa whose writers are gone. A test server held
+      304 such password copies and 593 entries in /var/xdrago/log.
+
+    * The weekly prune keeps only the newest copies BOA makes on every
+      run and never reads again: three of sources.list, rsyslog.conf,
+      resolv.conf and the nginx init script, five per-release copies of
+      csf.allow and csf.ignore, three drush alias copies per alias and
+      account, and the latest retired libcurl; the PHP build options a
+      debug build writes go after 30 days. Newest is by when the copy was
+      made. A test server dropped 1,140 such copies.
+
+    * The weekly prune keeps the newest three of each marker family BOA
+      writes in /var/log/boa on every run, at each release or for each
+      build (sysctl and Valkey password runs, per-release gates such as
+      pure-ftpd, Valkey, nginx and csf, the shared module markers per
+      module, and the PHP extension builds per extension and PHP branch).
+      A run reads only its own marker or the current one, so none goes by
+      age and a current one is never removed. A test server dropped 1,272
+      of its 2,756 names there and kept every marker of its current
+      release and PHP versions.
+
+    * BOA's logrotate file (/etc/logrotate.d/boa) rotates the logs that
+      grew without bound: too.many.log, the kill logs, fire_stuck.log,
+      memorytuner.log, sql_watch.log and the shell escape check's log
+      weekly with four kept; the symlink tools' logs weekly with half a
+      year kept, since symlinkinfo reads the rotated copies to say where
+      a site's files went (autosymlink.log had reached 21 MB on a test
+      server); and the backup tools' queue, check and cron logs in
+      /var/log. The check log and the symlink update log are mailed
+      whole, so their mails stay short too.
+
+    * Files dated by the day or the event go once nothing reads them: the
+      weekly prune removes multiback's per-day run markers, the nginx
+      error logs the monitor sets aside at a restart and codebasecheck's
+      reports after 30 days (boa info read every report ever written, so
+      old incompatibilities kept showing), the flood detector's snapshots
+      after 90 days, and keeps the three newest copies synproxy takes of
+      csf's config. The nightly account pass removes the hostmaster
+      migrate and certificate logs an Octopus upgrade leaves in the
+      account's log/ after 90 days. A test server dropped 1,159 such files.
 
     * Amazon's search crawler (Amzn-SearchBot) joins the AI search class
       and its assistant fetcher (Amzn-User) the AI user class, each with a
