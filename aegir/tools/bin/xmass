@@ -9575,6 +9575,32 @@ fi
 PROMCLEAN
 }
 
+# The script the promotion cleanup runs ONCE on the promoted box, after the
+# account records: the box's own state file is a source-role record too, the
+# completed round this box ran as the active (the round that demoted it, or
+# an earlier one). Kept, it told status, init and reset-phase that the box
+# still relays to that round's target, and reset-phase's remedy would have
+# resumed that round's cutover tail toward the box now demoted (found live on
+# the second failback of a pair). Retired like the account records, set aside
+# as superseded; a round in any other phase was not finished and is left for
+# the operator. The path is _XMASS_STATE_FILE's, spelled out for the remote
+# shell.
+_xmass_promoted_state_retire_sh() {
+  cat <<'PROMSTATE'
+_f=/data/conf/xmass_state.cnf
+if [ -f "${_f}" ] && [ ! -L "${_f}" ] && grep -qx '_XMASS_PHASE=complete' "${_f}"; then
+  _t=$(grep -m1 '^_XMASS_TARGET_IP=' "${_f}" | cut -d= -f2-)
+  _p=$(grep -m1 '^_XMASS_PROXIED_AT=' "${_f}" | cut -d= -f2-)
+  _k="${_f}.superseded-by-promotion-$(date -u +%Y%m%d-%H%M%S)"
+  if mv -f -T -- "${_f}" "${_k}"; then
+    echo "  box: retired its own completed round's state file (the active toward ${_t:-?}${_p:+, relaying since ${_p}}): promoted now, its next round starts from init"
+  else
+    echo "  ALRT: box: its own completed round's state file could NOT be retired -- init and reset-phase refuse here until it is removed by hand"
+  fi
+fi
+PROMSTATE
+}
+
 _xmass_promotion_cleanup_target() {
   # A cutover TARGET that was itself demoted earlier (failback: the pair
   # switched, now switches back) still carries the artefacts of its OWN
@@ -9599,10 +9625,13 @@ _xmass_promotion_cleanup_target() {
   # lets the failback complete. Idempotent; a first-migration target has
   # none of these and every branch is a no-op.
   _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
-  local _oct _mine _o
+  local _oct _mine _o _l
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_promotion_cleanup_sh "${_oct}" | ssh root@"${_tgt}" "bash -s"
   done
+  # the box's own record of the round it ran as the active, after the accounts'
+  _xmass_promoted_state_retire_sh | ssh root@"${_tgt}" "bash -s" 2>&1 \
+    | while IFS= read -r _l; do _info "${_l}"; done
   # The target's own record of a test run toward this box (its xmass_admail
   # record naming one of this box's addresses: a mirror built under admail=
   # and promoted by hand, the returning box now promoted back) ended when this
@@ -10199,6 +10228,9 @@ _xmass_promote_cleanup_here() {
       | sed 's/until the cutover completes/until the renames are done/')
     [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
   done
+  # the box's own record of the round it ran as the active, after the accounts'
+  _out=$(_xmass_promoted_state_retire_sh | bash -s 2>&1)
+  [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
   _XMASS_HAND_CLEANED=YES
   if [ -f "${_XMASS_HAND_PROMO_FILE}" ] && [ ! -L "${_XMASS_HAND_PROMO_FILE}" ]; then
     printf '_XMASS_HAND_CLEANED=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "${_XMASS_HAND_PROMO_FILE}"

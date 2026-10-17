@@ -1333,8 +1333,9 @@ _find_old_host_site_dirs() {
 
 _rename_site_uri_surfaces() {
   # Idempotent by construction: every move is skipped when the source is
-  # gone or the target already exists, so a site carried at two depths and a
-  # re-run both converge.
+  # gone or, for a directory, the target already exists, so a site carried
+  # at two depths and a re-run both converge. The alias file is the one
+  # exception (below): at the new name it is replaced, not kept.
   local _OLDNAME="$1"
   local _NEWNAME="$2"
   local _OLD_D="$3"
@@ -1354,8 +1355,19 @@ _rename_site_uri_surfaces() {
   # .drush is the account's: the rename runs on ./names inside the real
   # directory, and -T replaces a link put at the new name instead of moving
   # the alias into whatever directory it points at.
-  if [ -f "${_OLD_ALIAS}" ] && [ ! -f "${_NEW_ALIAS}" ]; then
-    _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
+  # Unlike a site dir, an alias file already at the new name is replaced: a
+  # box promoted once before still holds the alias it wrote then, and the
+  # sync (a copy that deletes nothing) laid the active's old-name alias
+  # beside it. The old-name copy is the one the active kept current; this
+  # box's stopped at its demotion. Kept as a pair, the old-name copy is
+  # rewritten by §3 like any other, converted again by Drush at every pass,
+  # and its placeholder yml names the former host for good.
+  if [ -f "${_OLD_ALIAS}" ]; then
+    if [ -f "${_NEW_ALIAS}" ]; then
+      _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php (replacing the copy kept from an earlier promotion)"
+    else
+      _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
+    fi
     _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' mv -f -T -- \
       \'"./${_OLDNAME}.alias.drushrc.php"\' \'"./${_NEWNAME}.alias.drushrc.php"\'
     _URI_SURFACES_CHANGED=YES
