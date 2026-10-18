@@ -3427,7 +3427,8 @@ _master_db() {
 # master's) for user $2, from the server alias that names it: _CTX the
 # alias context, _MDB_HOST its host, _PW its password. 1 when no alias
 # gives one; _RL_WHY then holds the word of _master_db's refusal when an
-# alias names the user and its password is refused, _RL_NOTE its note.
+# alias names the user and its password is refused, _RL_NOTE its note (a
+# refused password's note over an empty one's, whichever alias came first).
 _root_login() {
   local _c _t
   _CTX=""
@@ -3438,7 +3439,10 @@ _root_login() {
     [[ -n "${_t}" ]] || continue
     if ! _master_db "${_t}"; then
       [[ -n "${_MDB_WHY}" && "${_MDB_USER}" == "${2}" ]] && _RL_WHY="${_MDB_WHY}"
-      [[ -n "${_MDB_NOTE}" && "${_MDB_USER}" == "${2}" ]] && _RL_NOTE="${_MDB_NOTE}"
+      if [[ -n "${_MDB_NOTE}" && "${_MDB_USER}" == "${2}" ]] \
+        && [[ "${_MDB_NOTE}" != "none" || -z "${_RL_NOTE}" ]]; then
+        _RL_NOTE="${_MDB_NOTE}"
+      fi
       continue
     fi
     [[ "${_MDB_USER}" == "${2}" ]] || continue
