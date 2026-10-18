@@ -2378,6 +2378,7 @@ _purge_cruft_machine() {
   _acct_in_real_dir "/home/${_HM_U}.ftp/platforms" _night_pl_ghosts_here
   _acct_in_real_dir "${_usEr}/distro" _night_distro_ghosts_here
   _acct_in_real_dir "${_usEr}/distro" _night_distro_links_here
+  _acct_in_real_dir "${_usEr}/src" _night_src_ghosts_here
 }
 
 # In the real static/: a link put at trash dropped, trash made when missing,
@@ -2465,6 +2466,23 @@ _night_distro_ghosts_here() {
       else
         echo "GHOST revision ${_usEr}/distro/${i#./} detected and not moved: ${_GH_REFUSED}"
       fi
+    fi
+  done
+  return 0
+}
+
+# In the real src/: each empty three-digit directory untouched for an hour
+# removed by its own name. Octopus passes made one per pass number, which
+# nothing read, until they stopped; the dump directories there are named for
+# a site's database, and that name always holds a letter. rmdir removes only
+# an empty directory, whatever is put there meanwhile.
+_night_src_ghosts_here() {
+  local i
+  for i in ./[0-9][0-9][0-9]; do
+    [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    [ -z "$(find "${i}" -maxdepth 0 -mmin -60 2> /dev/null)" ] || continue
+    if rmdir -- "${i}" 2> /dev/null; then
+      echo "Removed the empty pass folder ${_usEr}/src/${i#./}"
     fi
   done
   return 0

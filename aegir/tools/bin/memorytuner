@@ -401,10 +401,25 @@ if [ -n "${_CORPUS}" ]; then
       rs[n] = jnum("resid_rss_mb")
       fpc[n] = jnum("fpm_procs")
       rall[n] = jnum("rss_all_mb")
+      # PHP-FPM as it really holds memory, where the sampler records it:
+      # private memory of masters and workers plus their shared opcache and
+      # APCu counted once, idle versions included. The VmRSS sum above counts
+      # those segments again in every worker that maps them and misses a
+      # version whose workers are gone, so it stands in only for older records.
+      fpr = fp[n]
+      if ($0 ~ /"fpm_shm_mb":[0-9]/) {
+        nr++
+        fan[nr] = jnum("fpm_anon_mb")
+        fsh[nr] = jnum("fpm_shm_mb")
+        frl[nr] = fan[nr] + fsh[nr]
+        fpr = frl[nr]
+        fs = jstr("fpm_shm_i")
+        if (fs ~ /^[0-9:,]+$/) fslast = fs
+      }
       # Co-occurring consumer footprint: the sum THIS sample saw, so its
       # percentile is a state the box actually reached — unlike a sum of
       # independently-taken per-consumer percentiles.
-      tot[n] = my[n] + vk[n] + jnum("solr_rss_mb") + fp[n] + ng[n] + cl[n]
+      tot[n] = my[n] + vk[n] + jnum("solr_rss_mb") + fpr + ng[n] + cl[n]
       fc[n] = jnum("mem_avail_mb") - jnum("mem_free_mb")
       if (fc[n] < 0) fc[n] = 0
       af[n] = jnum("mem_actfile_mb") + jnum("mem_sreclaim_mb")
@@ -440,6 +455,12 @@ if [ -n "${_CORPUS}" ]; then
       crow("fpmprocs", fpc, n)
       crow("csum", tot, n)
       crow("rssall", rall, n)
+      if (nr > 0) {
+        crow("fpmanon", fan, nr)
+        crow("fpmshm", fsh, nr)
+        crow("fpmreal", frl, nr)
+      }
+      if (fslast != "") printf "H %s\n", fslast
       for (k in scnt) {
         split("", tmp)
         for (i = 1; i <= scnt[k]; i++) tmp[i] = srss[k, i]
@@ -459,6 +480,8 @@ _LCL_P50=0; _LCL_P95=0; _LRS_P50=0; _LRS_P95=0
 _LFC_P50=0; _LFC_P95=0; _LAF_P50=0; _LAF_P95=0
 _LFPP_P50=0; _LFPP_P95=0; _LCS_P50=0; _LCS_P95=0
 _LRA_P50=0; _LRA_P95=0
+_LFA_P50=0; _LFA_P95=0; _LFS_P50=0; _LFS_P95=0
+_LFR_N=0; _LFR_P50=0; _LFR_P95=0; _LFSHM=""
 while read -r _f1 _f2 _f3 _f4 _f5 _f6 _f7; do
   case "${_f1}" in
     NONE) _LTOT=$(_num "${_f2}") ;;
@@ -476,10 +499,14 @@ while read -r _f1 _f2 _f3 _f4 _f5 _f6 _f7; do
         fpmprocs) _LFPP_P50=$(_num "${_f4}"); _LFPP_P95=$(_num "${_f5}") ;;
         csum)     _LCS_P50=$(_num "${_f4}"); _LCS_P95=$(_num "${_f5}") ;;
         rssall)   _LRA_P50=$(_num "${_f4}"); _LRA_P95=$(_num "${_f5}") ;;
+        fpmanon)  _LFA_P50=$(_num "${_f4}"); _LFA_P95=$(_num "${_f5}") ;;
+        fpmshm)   _LFS_P50=$(_num "${_f4}"); _LFS_P95=$(_num "${_f5}") ;;
+        fpmreal)  _LFR_N=$(_num "${_f3}"); _LFR_P50=$(_num "${_f4}"); _LFR_P95=$(_num "${_f5}") ;;
       esac
       ;;
     S) _LSOLR="${_LSOLR}${_f2} ${_f3} ${_f4} ${_f5} ${_f6} ${_f7}"$'\n' ;;
     F) _LFPM="${_f2}" ;;
+    H) _LFSHM="${_f2}" ;;
   esac
 done <<< "${_LAGG}"
 
@@ -568,7 +595,11 @@ fi
 ### consumer whose whole series is zero was not observed -- rendered as
 ### such and excluded from the sum, never counted as a measured zero
 ### need. The consumer sum is VmRSS-based and therefore an UPPER BOUND
-### (shared pages count once per process); the co-occurring csum
+### (shared pages count once per process), except PHP-FPM where the
+### sampler records its private memory and its opcache/APCu segments
+### apart: a VmRSS sum counts those segments in every worker and misses
+### the ones a version whose workers are gone still holds, which once
+### left 5.8 GB out of this ledger on a box OOM-killed by them; the co-occurring csum
 ### percentile beside it is a box state that was actually reached. File
 ### cache is the REMAINDER of the budget, never an additive reserve
 ### term: reclaimable cache grows to fill whatever RAM consumers leave
@@ -636,10 +667,6 @@ if [ "${_LN}" -gt 0 ]; then
   fi
 
   if [ "${_LFP_P95}" -gt 0 ]; then
-    _LFP_NEED=$(( _LFP_P95 * 12 / 10 ))
-    _LSUM=$(( _LSUM + _LFP_NEED ))
-    _LFP_PER=0
-    [ "${_LFPP_P95}" -gt 0 ] && _LFP_PER=$(( _LFP_P95 / _LFPP_P95 ))
     _LFPM_TXT=""
     if [ -n "${_LFPM}" ]; then
       _IFS_SAVE="${IFS}"; IFS=','
@@ -649,7 +676,36 @@ if [ "${_LN}" -gt 0 ]; then
       done
       IFS="${_IFS_SAVE}"
     fi
-    _add_led "php-fpm: aggregate rss p50/p95 ${_LFP_P50}/${_LFP_P95}M over procs p50/p95 ${_LFPP_P50}/${_LFPP_P95} (~${_LFP_PER}M per proc at peak), need ${_LFP_NEED}M (p95+20%); topology at last sample: ${_LFPM_TXT:-no master seen}"
+    _LFSHM_TXT=""
+    if [ -n "${_LFSHM}" ]; then
+      _IFS_SAVE="${IFS}"; IFS=','
+      for _fm in ${_LFSHM}; do
+        IFS=':' read -r _fmv _fms <<< "${_fm}"
+        _LFSHM_TXT="${_LFSHM_TXT}php$(_num "${_fmv}") $(_num "${_fms}")M; "
+      done
+      IFS="${_IFS_SAVE}"
+    fi
+    if [ "${_LFR_N}" -ge 288 ] && [ "${_LFR_P95}" -gt 0 ]; then
+      # The sampler records what FPM really holds: the need comes from that,
+      # never from the VmRSS sum, which counts the shared opcache and APCu
+      # again in every worker and misses a version whose workers are gone.
+      # A day of such samples first (288 at the five-minute cadence), so the
+      # days after an update never size from a handful of them.
+      _LFP_NEED=$(( _LFR_P95 * 12 / 10 ))
+      _LSUM=$(( _LSUM + _LFP_NEED ))
+      _add_led "php-fpm: private p50/p95 ${_LFA_P50}/${_LFA_P95}M + shared opcache/APCu (resident, each segment once, idle versions included) p50/p95 ${_LFS_P50}/${_LFS_P95}M = held p50/p95 ${_LFR_P50}/${_LFR_P95}M, need ${_LFP_NEED}M (p95+20%, ${_LFR_N} samples); vmrss sum p95 ${_LFP_P95}M counts shared pages per process; topology at last sample: ${_LFPM_TXT:-no master seen; }shared at last sample: ${_LFSHM_TXT:-none}"
+    else
+      _LFP_NEED=$(( _LFP_P95 * 12 / 10 ))
+      _LSUM=$(( _LSUM + _LFP_NEED ))
+      _LFP_PER=0
+      [ "${_LFPP_P95}" -gt 0 ] && _LFP_PER=$(( _LFP_P95 / _LFPP_P95 ))
+      _LFR_TXT=""
+      if [ "${_LFR_N}" -gt 0 ]; then
+        # The topology text ends in "; " when a master was seen.
+        _LFR_TXT="private+shared held p95 ${_LFR_P95}M over ${_LFR_N} samples (used for the need from 288 on), shared at last sample: ${_LFSHM_TXT:-none}"
+      fi
+      _add_led "php-fpm: aggregate rss p50/p95 ${_LFP_P50}/${_LFP_P95}M over procs p50/p95 ${_LFPP_P50}/${_LFPP_P95} (~${_LFP_PER}M per proc at peak), need ${_LFP_NEED}M (p95+20%); topology at last sample: ${_LFPM_TXT:-no master seen${_LFR_TXT:+; }}${_LFR_TXT}"
+    fi
   else
     _add_led "php-fpm: not observed in the ledger corpus"
   fi

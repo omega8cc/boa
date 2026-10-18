@@ -522,7 +522,15 @@ _init_offsystemd() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
-  apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+  # opensysusers provides the systemd-sysusers that openssh-server needs once
+  # systemd is gone; systemd stays while apt says the SSH server would go too.
+  apt-get -y install opensysusers >> "${_logSlt}"
+  if apt-get -s purge systemd libnss-systemd 2> /dev/null \
+    | grep -qE '^(Remv|Purg) (openssh-server|ssh) '; then
+    _msg "[init][ERROR] offd ==> Not removing systemd: apt would remove the SSH server with it" >> "${_logInt}"
+  else
+    apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+  fi
   apt-get autoremove --purge -y -qq >> "${_logSlt}"
   apt-get autoclean -y -qq >> "${_logSlt}"
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"

@@ -184,6 +184,8 @@ _purge_weekly_backups() {
   _purge_run_copies
   _purge_markers
   _purge_dated_files
+  _purge_solr_tmp
+  _purge_le_accounts
   _purge_leftovers
   touch "${_wkStamp}"
 }
@@ -301,13 +303,68 @@ _purge_run_copies() {
   done
 }
 
+# Solr's Jetty leaves a work directory (jetty-*) and a start properties file
+# (start_*.properties) in /tmp at every start, and nothing removes the old ones:
+# BOA's own cleaner matches only Solr 4's jetty9. Only what the solr7 and solr9
+# users own counts, since any account can make such names in /tmp, and of that
+# only an entry made over two days ago that is not the newest of its kind for
+# its owner and that no process holds open, maps or works in. The maps files
+# go through cat: awk given a file that is gone (a process that ended after the
+# glob was expanded) stops there and reads none of the rest.
+_purge_solr_tmp() {
+  local _stU _stK _stC _stE _stHeld
+  _stHeld="$( { find /proc/[0-9]*/fd /proc/[0-9]*/cwd -maxdepth 1 -lname '/tmp/*' \
+    -printf '%l\n'; cat /proc/[0-9]*/maps | awk '$6 ~ /^\/tmp\// { print $6 }'; } \
+    2> /dev/null | sort -u)"
+  for _stU in solr7 solr9; do
+    id -u "${_stU}" &> /dev/null || continue
+    for _stK in 'jetty-*' 'start_*.properties'; do
+      find /tmp -mindepth 1 -maxdepth 1 -user "${_stU}" -name "${_stK}" \
+        -printf '%C@ %f\n' 2> /dev/null | LC_ALL=C sort -rn | tail -n +2 \
+        | while read -r _stC _stE; do
+          case "${_stE}" in
+            ""|*/*|*[!A-Za-z0-9._-]*) continue ;;
+          esac
+          if printf '%s\n' "${_stHeld}" | grep -q -e "^/tmp/${_stE}\$" \
+            -e "^/tmp/${_stE}/"; then
+            continue
+          fi
+          find /tmp -mindepth 1 -maxdepth 1 -name "${_stE}" -user "${_stU}" \
+            -ctime +1 -execdir rm -rf -- {} + 2> /dev/null
+        done
+    done
+  done
+}
+
+# The ACME account keys the certificate heal sets aside per account when it
+# registers anew (/var/backups/le-accounts/<account>/accounts-<stamp>): the newest
+# three per account stay, newest by the date and time in the name, which keeps
+# its order whatever later touches the copies. Other names stay.
+_purge_le_accounts() {
+  local _laD _laE
+  [ -d "/var/backups/le-accounts" ] && [ ! -L "/var/backups/le-accounts" ] || return 0
+  for _laD in /var/backups/le-accounts/*; do
+    [ -d "${_laD}" ] && [ ! -L "${_laD}" ] || continue
+    find "${_laD}" -mindepth 1 -maxdepth 1 -name \
+      'accounts-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]' \
+      -printf '%f\n' 2> /dev/null | LC_ALL=C sort -r | tail -n +4 \
+      | while read -r _laE; do
+        rm -rf -- "${_laD:?}/${_laE}"
+      done
+  done
+}
+
 # Leftovers no current code writes or reads, removed once: the copies of the
 # MySQL root password and client config older releases kept at the top of
 # /var/backups (they go to dragon/config now), the log folder used before
 # /var/log/boa (BOA.sh.txt copied its files there once and then wrote
-# .migrated.txt), and markers whose writers are gone. The old folder is emptied
-# only after that copy, and never when it leads to /var/log/boa itself.
+# .migrated.txt), markers whose writers are gone, and the attack archives older
+# releases set aside at each release (<name>.archive.<serial>.log and
+# <name>.archive-old-*.log); the live archives and their one-time .x3 copies,
+# which guest-water and xdr9000 read, stay. The old folder is emptied only after
+# that copy, and never when it leads to /var/log/boa itself.
 _purge_leftovers() {
+  local _lfA
   rm -f /var/backups/.my.pass.txt-pre-* /var/backups/.my.cnf-pre-*
   if [ -e "/var/log/boa/.migrated.txt" ] \
     && [ -d "/var/xdrago/log" ] && [ ! -L "/var/xdrago/log" ] \
@@ -318,6 +375,13 @@ _purge_leftovers() {
   rm -f /var/log/boa/sec-redis-pass-* /var/log/boa/.custom_percona_forced.* \
     /var/log/boa/mss-build-master-* /var/log/boa/geos-* \
     /var/log/boa/nginx.kill-start.log /var/log/boa/cron-count.kill.log
+  if [ -d "/var/xdrago/monitor/log" ] && [ ! -L "/var/xdrago/monitor/log" ]; then
+    for _lfA in hackcheck scan_nginx hackftp; do
+      find /var/xdrago/monitor/log -mindepth 1 -maxdepth 1 -type f \
+        \( -name "${_lfA}.archive.*.log" ! -name "${_lfA}.archive.x3.log" \
+        -o -name "${_lfA}.archive-old-*.log" \) -delete &> /dev/null
+    done
+  fi
 }
 
 # A session cgroup is idle when no process is in it or below it and it has no
@@ -369,6 +433,90 @@ _trim_session_cgroups() {
   echo "Removed $(( ${#_cgGone[@]} - _cgLeft )) empty login-session cgroups"
 }
 
+# Resident size in MB of the shared memory a PHP-FPM master maps (opcache and
+# APCu: the master creates both before it forks its workers). A page any worker
+# ever filled stays resident until the master restarts, long after that worker
+# is gone, so the master's own RSS shows almost none of it: fincore reads the
+# segment's own pages instead. Each object counts once.
+_fpm_shared_resident_mb() {
+  local _rng _perm _off _dev _ino _name _res _seen=" " _tot=0
+  while read -r _rng _perm _off _dev _ino _name; do
+    [[ "${_perm}" == *s* ]] || continue
+    [[ "${_ino}" != "0" ]] || continue
+    case "${_name}" in
+      /dev/zero*|/memfd:*|/SYSV*) ;;
+      *) continue ;;
+    esac
+    [[ "${_seen}" == *" ${_dev}:${_ino} "* ]] && continue
+    _seen="${_seen}${_dev}:${_ino} "
+    _res=$(fincore -n -b -o RES "/proc/${1}/map_files/${_rng}" 2> /dev/null)
+    _res="${_res//[^0-9]/}"
+    [ -n "${_res}" ] && _tot=$(( _tot + _res ))
+  done < "/proc/${1}/maps"
+  echo "$(( _tot / 1048576 ))"
+}
+
+# Every PHP-FPM version keeps its opcache and APCu filled to their high-water
+# mark until its master restarts, and BOA sizes each version's segments for the
+# whole PHP budget of the box. When sites move to another version, the one they
+# left holds its filled segments with nothing using them: a hosted box had its
+# database OOM-killed with 5.8 GB held that way beside the 6.2 GB of the version
+# in use. Reload a version the FPM sampler saw without a single worker in every
+# sample of the last day (at least 12 hours of samples of its current master)
+# while it still holds 256 MB or more of them: no request is in flight to lose,
+# and the reload hands the memory back.
+_reload_idle_fpm_versions() {
+  local _now _from _mPid _mVer _mUp _since _verdict _shm _mNew _after
+  local _tuneDir="/var/log/boa/fpm-tune"
+  local _relLog="/var/log/boa/fpm-idle-reload.log"
+  command -v fincore > /dev/null 2>&1 || return 0
+  [ -d "${_tuneDir}" ] || return 0
+  _now=$(date +%s)
+  _from=$(( _now - 86400 ))
+  for _mPid in $(pgrep -f '^php-fpm: master process'); do
+    _mVer=$(tr '\0' ' ' < "/proc/${_mPid}/cmdline" 2> /dev/null \
+      | grep -o '/opt/php[0-9]\+/' | head -n1)
+    _mVer="${_mVer//[^0-9]/}"
+    [ -n "${_mVer}" ] && [ -e "/etc/init.d/php${_mVer}-fpm" ] || continue
+    _mUp=$(ps -o etimes= -p "${_mPid}" 2> /dev/null)
+    _mUp="${_mUp//[^0-9]/}"
+    [ -n "${_mUp}" ] || continue
+    _since=$(( _now - _mUp ))
+    [ "${_since}" -lt "${_from}" ] && _since="${_from}"
+    _verdict=$(cat "${_tuneDir}/$(date -d "@${_from}" +%Y%m%d).jsonl" \
+      "${_tuneDir}/$(date -d "@${_now}" +%Y%m%d).jsonl" 2> /dev/null \
+      | awk -v v="${_mVer}" -v p="${_mPid}" -v s="${_since}" '
+        function num(k,   r) {
+          if (!match($0, "\"" k "\":[0-9]+")) return -1
+          r = substr($0, RSTART, RLENGTH); sub(/.*:/, "", r); return r + 0
+        }
+        /"scope":"version"/ {
+          if (num("version") != v || num("master_pid") != p) next
+          t = num("ts"); if (t < s) next
+          k = num("n_children"); if (k < 0) next
+          n++; if (k > 0) busy++
+          if (lo == "" || t < lo) lo = t
+          if (t > hi) hi = t
+        }
+        END { if (n >= 100 && hi - lo >= 43200 && busy == 0) print "IDLE" }')
+    [ "${_verdict}" = "IDLE" ] || continue
+    _shm=$(_fpm_shared_resident_mb "${_mPid}")
+    [ "${_shm:-0}" -ge 256 ] || continue
+    echo "Reloading PHP ${_mVer} FPM, idle all day with ${_shm} MB of caches..."
+    if service "php${_mVer}-fpm" reload > /dev/null 2>&1; then
+      # What the version holds after the reload, read from its master then
+      # (a fresh master starts at a baseline of some tens of MB).
+      sleep 3
+      _mNew=$(pgrep -f "^php-fpm: master process \(/opt/php${_mVer}/" | head -n1)
+      _after="?"
+      [ -n "${_mNew}" ] && _after=$(_fpm_shared_resident_mb "${_mNew}")
+      echo "$(date) php${_mVer}-fpm reloaded: no worker for a day, opcache and APCu held ${_shm} MB before, ${_after} MB after" >> "${_relLog}"
+    else
+      echo "$(date) php${_mVer}-fpm reload FAILED: no worker for a day, ${_shm} MB of opcache and APCu still held" >> "${_relLog}"
+    fi
+  done
+}
+
 # Main action function
 _graceful_action() {
   echo "Starting system maintenance tasks..."
@@ -394,27 +542,21 @@ _graceful_action() {
     service rsyslog start
   fi
 
-  # Swap, RAM and disk cache management
-  _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"
+  # RAM and disk cache management. No swap reset here any more: autoupboa's
+  # _swap_purge_if_bloated empties swap from clear.sh's five-minute tick once
+  # it is half full, and only while free RAM can take it back. The nightly
+  # swapoff here checked no RAM at all, so with a large swap it could pull
+  # back more than the box had free.
   if [ -d "/dev/disk" ]; then
-    if [ ! -e "/root/.no.swap.clear.cnf" ]; then
-      if [ -n "${_IF_BCP}" ]; then
-        # Old shape ran swapoff unconditionally and skipped only the
-        # swapon, leaving the box SWAPLESS for a day whenever a backup
-        # overlapped 03:01. Defer the whole reset instead.
-        echo "Backup in progress; swap reset deferred to the next run..."
-      else
-        echo "Resetting swap..."
-        swapoff -a
-        swapon -a
-      fi
-    fi
     echo "Optimizing RAM usage..."
     _optimize_ram
   fi
 
   echo "Removing empty login-session cgroups..."
   _trim_session_cgroups
+
+  echo "Checking for PHP-FPM versions idle all day..."
+  _reload_idle_fpm_versions
 
   # Setup GeoIP directories
   if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
