@@ -3277,7 +3277,7 @@ for _a in \${_PUT}; do _d=\${_r}/\${_a}
 done
 for _a in \${_GONE}; do _d=\${_r}/\${_a}
   [ -e \"\${_d}\" ] || [ -L \"\${_d}\" ] || continue
-  if [ -L \"\${_r}\" ] || [ -L \"\${_d}\" ] || [ ! -d \"\${_d}\" ]; then echo \"AH-BAD \${_a}\"; continue; fi
+  if [ -L \"\${_r}\" ] || [ -L \"\${_d}\" ] || [ ! -d \"\${_d}\" ]; then echo \"AH-ODD \${_a}\"; continue; fi
   if [ -e \"\${_d}/failover-hold\" ] || [ -L \"\${_d}/failover-hold\" ]; then
     rm -f \"\${_d}/failover-hold\" && echo \"AH-GONE \${_a}\"
   fi
@@ -3300,6 +3300,7 @@ echo AH-OK" 2> /dev/null)
         _info "  ${_l%% *}: its aegir2boa import is finished here: the state ${_t} kept of it from a role before is set aside there as ${_l#* }"
         ;;
       "AH-BAD "*) _alrt "  ${_l#AH-BAD }: its aegir2boa hold on ${_t} could not be set (/var/backups/a2b there is a link, or no directory): a promotion there would hand its half-imported panel the dispatcher" ;;
+      "AH-ODD "*) _alrt "  ${_l#AH-ODD }: its aegir2boa import is finished here, and /var/backups/a2b/${_l#AH-ODD } on ${_t} is a link or no directory (or /var/backups/a2b is): left as it is, nothing of this import is held there" ;;
     esac
   done <<< "${_out}"
   case "${_out}" in
@@ -9743,12 +9744,13 @@ REARM
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
 # a hold xmass carried here with a failover from the box the import ran on
-# stands (failover-hold) on a box that is no standby (a standby's own passes
-# never act on it; the promotion does), a revert marked itself started
-# (revert-db.started,
-# cleared only once the revert's dispatcher is back), or a step marker of
-# the import stands with neither its done marker nor the marker of its
-# hand-back (written right before the import returns the dispatcher).
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
 # Root's /var/backups/a2b only: a link on the way reads as no state, and so
 # does a state recorded for another account of the name (its uid, or its
 # home's inode or birth time, not the account's now; a birth time either
@@ -9770,8 +9772,9 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
-  [ -e "${_b}/failover-hold" ] && [ ! -e /root/.standby.cnf ] \
-    && [ ! -e /root/.standby.prep.cnf ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
   [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
@@ -9814,13 +9817,38 @@ exit 1'
 _a2b_import_live() {
   perl -e "${_A2B_LIVE_PL}" /proc "${1}" 2> /dev/null
 }
+# The dispatcher of the account $1 on a box being promoted, where its
+# aegir2boa import is unfinished (its own state, or the hold this tool
+# carried there with every pass, read with the standby marker still in
+# place) on a box armed for the web group: it stays parked, its control
+# panel half made. A live one (a standby's accounts are installed with
+# one) goes into aegir2boa's own hold, or into off-run beside one already
+# held there, as BOA.sh.txt's agents pass parks it, never while an import
+# of the account runs here. 0 when the account is held, 1 when it is not.
+_xmass_a2b_hold_dispatcher() {
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${1}" promoted || return 1
+  if [ -e "/var/xdrago/run-${1}" ] && ! _a2b_import_live "${1}"; then
+    if [ -e "/var/backups/a2b/${1}/held-run-${1}" ]; then
+      mkdir -p /var/backups/off-run
+      mv -f "/var/xdrago/run-${1}" /var/backups/off-run/
+    else
+      mv -f "/var/xdrago/run-${1}" "/var/backups/a2b/${1}/held-run-${1}"
+    fi
+    echo "  ${1}: its aegir2boa import is unfinished here: its dispatcher parked"
+  else
+    echo "  ${1}: its aegir2boa import is unfinished here: its dispatcher is not handed back"
+  fi
+  return 0
+}
 
 # The script the promotion cleanup runs as root on the promoted box through
 # bash -s, for the account $1: what an earlier demotion of that box left.
 # The cutover pipes it to its target; post-mig runs it here after a
-# promotion by hand. It carries _a2b_import_unfinished as defined above, so
-# the promoted box reads its own aegir2boa state (and the hold this tool
-# carried there with every pass) by the same text as every BOA pass does.
+# promotion by hand. It carries _a2b_import_unfinished and the dispatcher's
+# hold as defined above, so the promoted box reads its own aegir2boa state
+# (and the hold this tool carried there with every pass) by the same text as
+# every BOA pass does.
 _xmass_promotion_cleanup_sh() {
   local _oct="$1"
   cat <<PROMCLEAN
@@ -9865,21 +9893,20 @@ _rd() {
     fi
   done )
 $(declare -f _a2b_import_unfinished)
+$(declare -p _A2B_LIVE_PL)
+$(declare -f _a2b_import_live)
+$(declare -f _xmass_a2b_hold_dispatcher)
 # An account whose aegir2boa import is unfinished here (its own state, or
 # the hold this tool carried from the active with every pass) keeps its
-# dispatcher parked on a box armed for the web group: its control panel is
-# half made, and BOA's passes keep it switched off as the active did once
-# this box holds no standby marker; the worker names the account and the
-# way out once a day. The carried hold is read here by itself: the
-# predicate leaves it to a box that is no standby, and a promotion by hand
-# runs this before it removes the marker. Every other account's parked
-# dispatcher goes back as the demotion's artefact it is.
-if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
-  && { _a2b_import_unfinished "${_oct}" \
-    || { [ -d "/var/backups/a2b/${_oct}" ] && [ ! -L "/var/backups/a2b/${_oct}" ] \
-      && [ ! -L /var/backups/a2b ] && [ -e "/var/backups/a2b/${_oct}/failover-hold" ]; }; }; then
-  echo "  ${_oct}: its aegir2boa import is unfinished here: its dispatcher is not handed back"
-elif [ ! -e "/var/xdrago/run-${_oct}" ] \
+# dispatcher parked on a box armed for the web group, a live one parked
+# now: its control panel is half made, and BOA's passes keep it switched
+# off as the active did once this box holds no standby marker; the worker
+# names the account and the way out once a day. A promotion by hand runs
+# this before it removes the marker, the cutover before its runner starts.
+# Every other account's parked dispatcher goes back as the demotion's
+# artefact it is.
+if ! _xmass_a2b_hold_dispatcher "${_oct}" \
+  && [ ! -e "/var/xdrago/run-${_oct}" ] \
   && [ -e "/var/backups/off-run/run-${_oct}" ]; then
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
   echo "  ${_oct}: restored parked dispatcher"
@@ -10595,9 +10622,10 @@ _xmass_hand_hold_upgrade() {
 # The demotion cleanup of step 12.7, here: files only, so it runs first,
 # before the standby marker goes and the runner may act on an armed upgrade.
 # The cutover runs it on the accounts it moves; here it takes this pair's
-# accounts (_xmass_hand_scope) and holds the armed upgrade of every account
-# this box serves; an account it relays, or is moving, to another box is
-# left as it is. Once per promotion by hand: its record notes the run.
+# accounts (_xmass_hand_scope), and holds the armed upgrade, and the
+# dispatcher of an unfinished aegir2boa import, of every account this box
+# serves; an account it relays, or is moving, to another box is left as it
+# is. Once per promotion by hand: its record notes the run.
 _xmass_promote_cleanup_here() {
   local _root _oct _out _l _sc
   _info "Clearing what an earlier demotion of this box left (this pair's accounts) ..."
@@ -10617,7 +10645,11 @@ _xmass_promote_cleanup_here() {
       ;;
     esac
     _xmass_hand_hold_upgrade "${_oct}"
-    [ "${_sc}" = "pair" ] || continue
+    if [ "${_sc}" != "pair" ]; then
+      _out=$(_xmass_a2b_hold_dispatcher "${_oct}" 2>&1)
+      [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
+      continue
+    fi
     # The script speaks of the cutover that arms a held upgrade at its end;
     # here the second post-mig run, after the renames, does.
     _out=$(_xmass_promotion_cleanup_sh "${_oct}" | bash -s 2>&1 \

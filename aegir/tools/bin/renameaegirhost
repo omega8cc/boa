@@ -244,12 +244,13 @@ _die() {
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
 # a hold xmass carried here with a failover from the box the import ran on
-# stands (failover-hold) on a box that is no standby (a standby's own passes
-# never act on it; the promotion does), a revert marked itself started
-# (revert-db.started,
-# cleared only once the revert's dispatcher is back), or a step marker of
-# the import stands with neither its done marker nor the marker of its
-# hand-back (written right before the import returns the dispatcher).
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
 # Root's /var/backups/a2b only: a link on the way reads as no state, and so
 # does a state recorded for another account of the name (its uid, or its
 # home's inode or birth time, not the account's now; a birth time either
@@ -271,8 +272,9 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
-  [ -e "${_b}/failover-hold" ] && [ ! -e /root/.standby.cnf ] \
-    && [ ! -e /root/.standby.prep.cnf ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
   [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
@@ -300,7 +302,7 @@ _a2b_import_advice() {
   if [ -e "${_b}/markers/revert-db.started" ]; then
     echo "A revert of it was cut off part way: finish the revert with ${_c} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
   elif [ -e "${_b}/failover-hold" ] && [ ! -e "${_b}/src/hostmaster.sql" ]; then
-    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box (a fresh aegir2boa-stage2 export and transfer on its source, then ${_c} --route db-import here, dry first, then with --live), after dropping the site databases the replication brought here from the cut-off import (those of the transfer's manifest that already exist here: the import refuses a database that exists, and no reset reaches them)"
+    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box, a fresh aegir2boa-stage2 export and transfer on its source, then drop each database the transfer's manifests name (A2BM_DBN in ${_b}/src/manifest/*.info) that already exists here, as the replication brought them from the cut-off import (boa-dbctl drop <database> --account ${1} where the account is switched to the database broker, DROP DATABASE as root otherwise: the import refuses a database that exists, and no reset reaches them), then ${_c} --route db-import here, dry first, then with --live"
   elif [ ! -e "${_b}/markers/dbimport.1.done" ]; then
     echo "It was cut off before its pre-import snapshot was complete, so there is nothing to revert to: finish it with ${_c} --route db-import (dry first, then with --live)"
   else
@@ -656,13 +658,16 @@ _check_root() {
 # finished or undone, the refusal naming the way out the import's state
 # allows and that state's directory (a leftover of an earlier account of
 # the name is moved aside instead). The master instance has no such import.
+# A rename is never a standby's own pass: a cutover runs it on the box it
+# promotes before its standby marker goes, so the hold xmass carried there
+# counts as on any other box.
 _check_a2b_held() {
   case "${_AEGIR_ROOT}" in
     /data/disk/?*) ;;
     *) return 0 ;;
   esac
   if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
-    && _a2b_import_unfinished "${_AEGIR_USER}"; then
+    && _a2b_import_unfinished "${_AEGIR_USER}" promoted; then
     _die "${_AEGIR_USER}: its aegir2boa db-import is unfinished, its control panel half made; nothing was renamed. $(_a2b_import_advice "${_AEGIR_USER}"). Then run the rename again. The import's state is /var/backups/a2b/${_AEGIR_USER}: when that is what an earlier account of the name left, move it aside instead"
   fi
 }
