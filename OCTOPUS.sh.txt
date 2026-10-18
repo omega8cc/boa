@@ -81,7 +81,7 @@ export _SMALLCORE11_3_V=11.3.19
 export _SMALLCORE11_4_V=11.4.10
 export _SMALLCORE12_0_V=12.0.0-beta2
 export _SMALLCORE6_V=6.60.3
-export _SMALLCORE7_V=7.106.2
+export _SMALLCORE7_V=7.106.3
 export _SMALLCORE9_V=9.5.11
 
 ###
