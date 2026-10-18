@@ -4673,7 +4673,8 @@ _pin_status() {
       if _root_login "${_AEGIR}" aegir_root; then
         _login="NOTPLAIN"
         _proof_cnf aegir_root && _login="YES"
-      elif [[ -n "${_RL_WHY:-${_RL_NOTE}}" ]]; then
+      elif [[ -n "${_RL_WHY}" || ( -n "${_RL_NOTE}" && "${_RL_NOTE}" != "none" ) ]]; then
+        # an empty password is no credential; one refused unread is
         _login="NOTPLAIN"
       fi
       ;;
