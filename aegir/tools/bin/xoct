@@ -4102,9 +4102,9 @@ _xoct_dbctl_cnf_last() {
 # migration tool put the line, or the seed's note here
 # (/root/.<oN>.dbctl-seed.txt, a regular file of root's) says operator, so
 # that the line was there before the create, which never takes it back.
-# Such an account travels kept out. So does one whose own create never had
-# its source's settings merged here (the note says pending or kept, or made
-# or line, the release before's words): its source's state is not known.
+# Such an account travels kept out. So does one whose create's line no
+# merge has taken back yet (the note says pending or kept, or made or line,
+# the release before's words): its source's state is not known here.
 _xoct_dbctl_kept_here() {
   [ "$(_xoct_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
   [ "$(_xoct_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
@@ -4927,8 +4927,11 @@ _xoct_import_precheck() {
 # another account's cnf. What was written is taken back when the install
 # does not happen, unless the account is there by then (the install made
 # it before it failed) or the connection was lost during the install, which
-# may go on and make it. The cnf there is read and rewritten as text: a NUL
-# byte costs none of its lines.
+# may go on and make it. A line already there as the seed would write it
+# (found) was put before this run, by hand or by a create whose connection
+# was lost: no note tells the two apart, so it stays, and a failed install
+# names it. The cnf there is read and rewritten as text: a NUL byte costs
+# none of its lines.
 # 1 = account here 2 = account on the target 3 = target
 _XOCT_WG_SEED=""
 _XOCT_WG_SEEDV=""
@@ -4952,6 +4955,8 @@ _xoct_wg_seed() {
       elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
         grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed
         printf '_WEB_GROUP=${_v}\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
+      else
+        echo found
       fi
     elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
       grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
@@ -4959,6 +4964,29 @@ _xoct_wg_seed() {
   case "${_XOCT_WG_SEED}" in
     made|line) echo "INFO: the source's _WEB_GROUP=${_v} put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
   esac
+  return 0
+}
+# What the create's seeds leave in the target's cnf of an account its
+# install did not make, named line by line: after a lost connection (rc
+# 255) every line they put, for a re-run of the create, whose install uses
+# them; a line the web group's seed found there, whatever the rc.
+# 1 = account on the target 2 = target 3 = the launcher's rc
+_xoct_seeds_left() {
+  local _c="/root/.${1}.octopus.cnf" _any=""
+  if [ "${3}" = "255" ]; then
+    echo "ALRT: the connection to ${2} was lost during the install, which may go on and make ${1} there"
+    case "${_XOCT_WG_SEED}" in
+      made|line) echo "ALRT: the web group's seed stays for a re-run of this create: _WEB_GROUP=${_XOCT_WG_SEEDV} in ${_c}"; _any=1 ;;
+    esac
+    case "${_XOCT_DBCTL_SEED}" in
+      pending|made|line|kept) echo "ALRT: the database broker's seed stays for a re-run of this create: _DB_BROKER_BORN=NO in ${_c}, the note /root/.${1}.dbctl-seed.txt"; _any=1 ;;
+    esac
+    [ -z "${_any}" ] || echo "ALRT: with no re-run and no account ${1} there, remove what stays (a cnf left empty too); a re-run that fails leaves it as well"
+  fi
+  if [ "${_XOCT_WG_SEED}" = "found" ]; then
+    echo "ALRT: ${_c} on ${2} held _WEB_GROUP=${_XOCT_WG_SEEDV} before this run (by hand, or from a create whose connection was lost): it stays;"
+    echo "ALRT: with no account ${1} there, remove it unless it is yours"
+  fi
   return 0
 }
 # 1 = account on the target 2 = target
@@ -5064,7 +5092,8 @@ _xoct_dbctl_unseed() {
 }
 # 1 = account on the target 2 = target 3 = what the merge of the source's
 # settings returned. Same text in xoct and xmass (_xmass_dbctl_seed_back):
-# each live pass of xmass runs it with its own merge's result.
+# a live pass of xmass runs it with its own merge's result where that
+# merge's call found a note there, or got no answer.
 _xoct_dbctl_seed_back() {
   local _r
   # shellcheck disable=SC2029
@@ -5872,13 +5901,13 @@ _migrate_prepare() {
         ### here leaves ${_XOCT_LOCK_FILE} behind with a dead owner. The
         ### signal handler exits (bash would otherwise resume at the next
         ### statement and run the rest of the create unlocked); exiting runs
-        ### the EXIT handler, which does the removals; it also takes back the
-        ### broker seed of an account the install did not make, until the
-        ### remote install is started: an exit here does not stop that one,
-        ### which may make the account after it, so from then on the seed's
-        ### line and note stay, and a re-run's seed reads the note.
+        ### the EXIT handler, which does the removals; it also takes back both
+        ### seeds of an account the install did not make, until the remote
+        ### install is started: an exit here does not stop that one, which
+        ### may make the account after it, so from then on the seeds' lines
+        ### and the broker's note stay, and a re-run's seed reads the note.
         _XOCT_INSTALL_ON=NO
-        trap '_xoct_chattr_back; [ "${_XOCT_INSTALL_ON}" = "YES" ] || _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"' > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap '_xoct_chattr_back; [ "${_XOCT_INSTALL_ON}" = "YES" ] || { _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xoct_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
@@ -5909,11 +5938,10 @@ _migrate_prepare() {
           ### 255 is the connection lost, not the launcher's answer: the
           ### remote install may go on and make the account after this, so
           ### both seeds stay there, as the install window's exit leaves
-          ### them, and a re-run's seeds find them
-          if [ "${_INSTALL_RC}" = "255" ]; then
-            echo "ALRT: the connection to ${_tgt} was lost during the install: the seeds of ${_TGT_HM_USER} stay there for a re-run of this create"
-            echo "ALRT: (the web group's and the database broker's lines in /root/.${_TGT_HM_USER}.octopus.cnf, the note /root/.${_TGT_HM_USER}.dbctl-seed.txt); with no re-run and no account ${_TGT_HM_USER} there, remove those"
-          else
+          ### them, for a re-run whose install uses them; any other failure
+          ### takes back what this run put. What stays is named.
+          _xoct_seeds_left "${_TGT_HM_USER}" "${_tgt}" "${_INSTALL_RC}"
+          if [ "${_INSTALL_RC}" != "255" ]; then
             _xoct_dbctl_unseed "${_TGT_HM_USER}" "${_tgt}"
             _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           fi

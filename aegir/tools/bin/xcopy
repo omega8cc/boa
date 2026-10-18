@@ -1809,8 +1809,11 @@ _xcopy_import_precheck() {
 # another account's cnf. What was written is taken back when the install
 # does not happen, unless the account is there by then (the install made
 # it before it failed) or the connection was lost during the install, which
-# may go on and make it. The cnf there is read and rewritten as text: a NUL
-# byte costs none of its lines.
+# may go on and make it. A line already there as the seed would write it
+# (found) was put before this run, by hand or by a create whose connection
+# was lost: no note tells the two apart, so it stays, and a failed install
+# names it. The cnf there is read and rewritten as text: a NUL byte costs
+# none of its lines.
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_WG_SEED=""
 _XCOPY_WG_SEEDV=""
@@ -1834,6 +1837,8 @@ _xcopy_wg_seed() {
       elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
         grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed
         printf '_WEB_GROUP=${_v}\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
+      else
+        echo found
       fi
     elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
       grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
@@ -1887,9 +1892,9 @@ _xcopy_dbctl_cnf_last() {
 # migration tool put the line, or the seed's note here
 # (/root/.<oN>.dbctl-seed.txt, a regular file of root's) says operator, so
 # that the line was there before the create, which never takes it back.
-# Such an account travels kept out. So does one whose own create never had
-# its source's settings merged here (the note says pending or kept, or made
-# or line, the release before's words): its source's state is not known.
+# Such an account travels kept out. So does one whose create's line no
+# merge has taken back yet (the note says pending or kept, or made or line,
+# the release before's words): its source's state is not known here.
 _xcopy_dbctl_kept_here() {
   [ "$(_xcopy_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
   [ "$(_xcopy_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
@@ -1916,9 +1921,11 @@ _xcopy_dbctl_kept_here() {
 # install, which may go on and make it; a line of the key the seed replaced
 # or removed of the target's own cnf comes back with it: the seed's answer
 # names those lines (made, line or removed, then the lines), and the unseed
-# hands them back. A copy carries no switch: one not kept out is switched by
-# an armed target as any new account is. The cnf there is read as text: a
-# NUL byte costs no line of it.
+# hands them back. A _DB_BROKER_ARM=NO already there as the seed would
+# write it (found) stays, as the web group's found line does. A copy
+# carries no switch: one not kept out is switched by an armed target as any
+# new account is. The cnf there is read as text: a NUL byte costs no line
+# of it.
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_DBA_SEED=""
 _XCOPY_DBA_WAS=""
@@ -1937,7 +1944,7 @@ _xcopy_dbarm_seed() {
         ( umask 077; printf '_DB_BROKER_ARM=NO\\n' > \${_c} ) && echo made
         exit 0
       fi
-      [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ] || exit 0
+      [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_DB_BROKER_ARM=NO' ] || { echo found; exit 0; }
       _w=line
     else
       [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c} || exit 0
@@ -1981,6 +1988,44 @@ _xcopy_dbarm_unseed() {
   esac
   _XCOPY_DBA_SEED=""
   _XCOPY_DBA_WAS=""
+  return 0
+}
+# What the create's seeds leave in the target's cnf of an account its
+# install did not make, named line by line: after a lost connection (rc
+# 255) every line they put, for a re-run of the create, whose install uses
+# them, and the target's own lines the broker's seed replaced or removed; a
+# line a seed found there, whatever the rc.
+# 1 = account on the target 2 = target 3 = the launcher's rc
+_xcopy_seeds_left() {
+  local _c="/root/.${1}.octopus.cnf" _l _any=""
+  if [ "${3}" = "255" ]; then
+    echo "ALRT: the connection to ${2} was lost during the install, which may go on and make ${1} there"
+    case "${_XCOPY_WG_SEED}" in
+      made|line) echo "ALRT: the web group's seed stays for a re-run of this create: _WEB_GROUP=${_XCOPY_WG_SEEDV} in ${_c}"; _any=1 ;;
+    esac
+    case "${_XCOPY_DBA_SEED}" in
+      made|line) echo "ALRT: the database broker's seed stays for a re-run of this create: _DB_BROKER_ARM=NO in ${_c}"; _any=1 ;;
+    esac
+    [ -z "${_any}" ] || echo "ALRT: with no re-run and no account ${1} there, remove what stays (a cnf left empty too); a re-run that fails leaves it as well"
+    case "${_XCOPY_DBA_SEED}" in
+      line|removed)
+        if [ -n "${_XCOPY_DBA_WAS}" ]; then
+          echo "ALRT: the broker's seed took these lines of the cnf there out; with no re-run, put them back:"
+          while IFS= read -r _l; do
+            echo "ALRT:   ${_l}"
+          done <<< "${_XCOPY_DBA_WAS}"
+        fi
+        ;;
+    esac
+  fi
+  if [ "${_XCOPY_WG_SEED}" = "found" ]; then
+    echo "ALRT: ${_c} on ${2} held _WEB_GROUP=${_XCOPY_WG_SEEDV} before this run (by hand, or from a create whose connection was lost): it stays;"
+    echo "ALRT: with no account ${1} there, remove it unless it is yours"
+  fi
+  if [ "${_XCOPY_DBA_SEED}" = "found" ]; then
+    echo "ALRT: ${_c} on ${2} held _DB_BROKER_ARM=NO before this run (by hand, or from a create whose connection was lost): it stays;"
+    echo "ALRT: with no account ${1} there, remove it unless it is yours"
+  fi
   return 0
 }
 
@@ -2574,18 +2619,27 @@ _migrate_prepare() {
         fi
         ### The launcher exits 1 without installing when the name is taken
         ### or a run lock is held: nothing below may run on the target then.
+        ### The install window's EXIT handler takes the marker off (when this
+        ### run put it) and takes back both seeds of an account the install
+        ### did not make, until the remote install is started: an exit here
+        ### does not stop that one, which may make the account after it, so
+        ### from then on the seeds stay. Its signal handler exits, which runs
+        ### the EXIT handler.
+        _XCOPY_INSTALL_ON=NO
+        trap '_xcopy_chattr_back; [ "${_XCOPY_INSTALL_ON}" = "YES" ] || { _xcopy_dbarm_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xcopy_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+        trap 'exit 130' INT TERM HUP
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+        _XCOPY_INSTALL_ON=YES
         ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_INSTALL_RC}" != "0" ]; then
           ### 255 is the connection lost, not the launcher's answer: the
           ### remote install may go on and make the account after this, so
-          ### both seeds stay there for a re-run of this create
-          if [ "${_INSTALL_RC}" = "255" ]; then
-            echo "ALRT: the connection to ${_tgt} was lost during the install: the seeds of ${_TGT_HM_USER} stay there for a re-run of this create"
-            echo "ALRT: (the web group's and the database broker's lines in /root/.${_TGT_HM_USER}.octopus.cnf); with no re-run and no account ${_TGT_HM_USER} there, remove those"
-          else
+          ### both seeds stay there for a re-run whose install uses them; any
+          ### other failure takes back what this run put. What stays is named.
+          _xcopy_seeds_left "${_TGT_HM_USER}" "${_tgt}" "${_INSTALL_RC}"
+          if [ "${_INSTALL_RC}" != "255" ]; then
             _xcopy_dbarm_unseed "${_TGT_HM_USER}" "${_tgt}"
             _xcopy_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           fi
@@ -2600,9 +2654,9 @@ _migrate_prepare() {
           fi
           ssh root@"${_tgt}" "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
-          trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
-          trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
         fi
+        trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+        trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
         if ! _xcopy_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
           _xcopy_create_adopt_hint "${_oct}" "${_TGT_HM_USER}" "${_tgt}" "$(_xcopy_create_src_host)"
