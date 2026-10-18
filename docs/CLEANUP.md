@@ -186,6 +186,16 @@ Every leg is bounded per run (`hosting_task_gc_tasks_per_run` 200,
 all are panel variables set with `drush @hostmaster vset`), so a large backlog
 drains over hours without ever holding a table.
 
+## Empty pass folders in src/
+
+Older Octopus upgrades made an empty `src/<pass number>` folder in the account
+(`src/001`, `src/014` and so on) on every pass, and nothing ever read one. The
+nightly removes each empty three-digit folder in the account's real `src/` once
+it has been untouched for an hour, by its own name and never through a link.
+Everything else in `src/` stays: the migration dumps (named for a site's
+database, which always holds a letter), `modules` and `themes`. Only empty
+directories go, so there is nothing to recover.
+
 ## Recovering a moved item
 
 Nothing is deleted, so recovery is just moving the item back from its backup or
