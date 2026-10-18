@@ -1037,15 +1037,14 @@
       number onto the account's web group by xmass, xoct and xcopy while
       the renamed group keeps it, the account's notes name that group by
       its number where its name may be another account's, and the outside
-      holder is not changed. A
-      standby, a frozen account, a running xmass, xoct or xcopy verb (a
-      stale pid file whose number another process took no longer counts;
-      read again once the free holds the account), a box not ready, a
-      group a directory service holds, a file under /etc naming it or a
-      free of the same account in the last 30 days keeps the alarm
-      instead, which says why, and so does an account the Octopus pass and
-      webconvert all otherwise leave alone (opted out, or not on its
-      per-instance group yet) until it is converted onto that group
+      holder is not changed. A standby, a frozen account, a running xmass,
+      xoct or xcopy verb (a stale pid file whose number another process
+      took no longer counts; read again once the free holds the account),
+      a box not ready, a group a directory service holds, a file under
+      /etc naming it or a free of the same account in the last 30 days
+      keeps the alarm instead, which says why, and so does an account the
+      Octopus pass and webconvert all otherwise leave alone (opted out, or
+      not on its per-instance group yet) until it is converted onto that group
       (docs/INSTGRP.md).
 
     * A web group that someone outside the account holds too (a member, a
@@ -1089,9 +1088,10 @@
       good, one that cannot be read is kept, alarmed once a day, until it
       reads again (instgrp reclaim, convert and revert skip the account
       meanwhile, a root-run restore leaves what it restored in the groups
-      it landed in, a web verb's run of the account is deferred and no
-      free writes over it), and each journal removed is logged in
-      instgrp.log.
+      it landed in, while one the account runs itself, which cannot read
+      the journal, claims as before, a web verb's run of the account is
+      deferred and no free writes over it), and each journal removed is
+      logged in instgrp.log.
       instgrp webstatus and the watchers report an unfinished free and a
       set-group-ID sweep it left owed. The journal is removed with the
       account (docs/INSTGRP.md).
@@ -1390,9 +1390,10 @@
       over SFTP and in its shell, where the copy in log/ is out of its
       reach. Root rewrites it from its own notes file through a writer
       that never follows a link, only where root or an identity of the
-      account owns static/control (a refusal is logged in instgrp.log),
-      and removes the temp copies a killed note left; no migration tool
-      carries it or them, and the control directory's README names it
+      account owns static/control (a refusal is logged once a run in
+      instgrp.log), and removes the temp copies a killed note left, as the
+      per-instance group's marker writer does for its own; no migration
+      tool carries it or them, and the control directory's README names it
       (docs/INSTGRP.md).
 
     * The web group conversion, still switched off, names each ground
