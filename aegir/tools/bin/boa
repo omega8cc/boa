@@ -167,7 +167,13 @@ _os_detection_minimal() {
   if [ "${_OS_CODE}" = "excalibur" ] \
     && [ -e "/lib/systemd/systemd" ] ; then
     ${_APT_UPDATE} -qq 2> /dev/null
-    apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
+    # On a box halfway through autoinit's move from Debian, nothing may
+    # provide the systemd-sysusers that openssh-server needs yet: removing
+    # systemd then would take the SSH server, so leave it to autoinit.
+    if ! apt-get -s purge systemd libnss-systemd 2> /dev/null \
+      | grep -qE '^(Remv|Purg) (openssh-server|ssh) '; then
+      apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
+    fi
     apt-get remove stunnel4 -y --purge --auto-remove -qq 2> /dev/null
   fi
 }

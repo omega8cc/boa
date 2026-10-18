@@ -4,6 +4,22 @@
 
 @=> Important Fixes
 
+    * A PHP-FPM version the sites have left no longer holds its opcache
+      and APCu until the weekly restart. Each version's segments are sized
+      for the whole PHP budget of the box and stay filled to their
+      high-water mark until its master restarts, long after the workers
+      that filled them have gone; on one box sites moved from one version
+      to another mid-week, both held about 6 GB, and the database was
+      OOM-killed. The nightly graceful.sh pass now reloads a version that
+      had no worker for a whole day while it still holds 256 MB or more
+      of them, and logs it in /var/log/boa/fpm-idle-reload.log.
+
+    * The nightly graceful.sh pass no longer turns swap off and on. It did
+      so without checking free memory, so with a large swap it could pull
+      back more than the box had free. autoupboa already empties swap
+      every five minutes once it is half full, and only while free memory
+      can take it back. /root/.no.swap.clear.cnf has no reader.
+
     * xtrim no longer refuses an account over a site that has no
       database. A site on the 'none' database server (a Grav site, a
       Textpattern site kept without a store) carries a drushrc.php that
@@ -61,8 +77,21 @@
       with 99 packages instead of 40, elogind, polkitd, ModemManager and
       avahi-daemon among them. Servers whose image turns them off box-wide
       were never affected. The files now set APT::Install-Recommends and
-      the aptitude form passes it; apt-get calls without those files still
-      follow the image's setting.
+      the aptitude form passes it.
+
+    * Every other apt call on a BOA server leaves recommended packages out
+      too, operators' own included: BOA.sh.txt writes
+      /etc/apt/apt.conf.d/00boa-no-recommends whenever it runs, from the
+      first bootstrap on, the setting servers whose image turns recommends
+      off already ran with. A later file in apt.conf.d can turn them back
+      on. Packages that earlier installs brought in are left in place.
+
+    * The system monitor mails an ALERT when a server holds more than
+      10,000 cgroups, at most once a day: login sessions piling up again
+      where elogind's PAM module had to stay or came back. A server
+      without it runs a handful. The mail names the count, the server's
+      Percpu and SUnreclaim totals, the possible CPUs and whether
+      libpam-elogind is installed. systemd hosts are not judged.
 
     * BOA refuses to run a server out of inodes (#1947). Every file takes
       an inode, and a filesystem out of them fails every write with "No
@@ -265,6 +294,12 @@
       settings.php twice from the site's enabled record (the database
       credentials written out for the archive, then cloaked again), so
       the site was back online before the work started.
+
+    * A Restore and a Migrate keep a Drupal 6 or 7 site in maintenance
+      mode while the copy's database updates run. Their deploy runs in a
+      process of its own that wrote settings.php from the site's enabled
+      record, and its vhost was live again before the updates, so
+      visitors reached a site whose database was still being updated.
 
     * A Drupal 6 site's database updates run again. Since late 2022
       Ægir's Drush 8 stopped every Drupal 6 batch with "Missing required
@@ -660,7 +695,20 @@
       shows that removing systemd would take the SSH server. opensysusers,
       which autoinit now installs with retries and a check, already keeps
       openssh-server. A dummy that was needed stays after the conversion,
-      with a WARN line, when removing it would remove the SSH server.
+      with a WARN line, when removing it would remove the SSH server. When
+      even the dummy does not keep it, autoinit leaves systemd in place with
+      an ERROR line, and so does its final cleanup, which now asks apt
+      first; the conversion then stops before the BOA install until its
+      repair can remove systemd with openssh-server kept.
+
+    * BOA's other systemd removals no longer risk the SSH server: the boa
+      tool on an Excalibur box that still carries systemd, automini,
+      autoinit's repair of an incomplete conversion, and the systemd
+      cleanup of the major OS upgrades. Each asks apt first and leaves
+      systemd in place when removing it would also remove openssh-server,
+      which on Excalibur needs systemd-sysusers; the repair says so in an
+      ERROR line, the upgrade cleanup in an ALRT line. automini and the
+      repair install opensysusers, which provides it, before the removal.
 
     * The copies BOA keeps for a week in /var/backups/dragon/t, x and z
       (configuration files before a rewrite, the whole /var/xdrago before
@@ -674,7 +722,30 @@
       proxy, where the nightly pass does not run, keeps a week too.
       dragon/config stays a permanent archive.
 
+    * A Grav rename, Clone or Upgrade a copy onto a name whose earlier
+      holder left a stale alias behind no longer takes over that holder's
+      settings. The renamed site or the copy inherited its domain aliases,
+      redirection, encryption and key, extra Drush aliases and cron key,
+      and its Verify went after a certificate for the holder's aliases.
+      The stale alias is now removed before the new context is saved. A
+      rename or Clone onto a name a live site's context still holds on
+      another platform is refused instead of re-pointing that context.
+
+    * A Grav rename now keeps the site's extra Drush aliases: the renamed
+      site lost them, and their alias files kept naming the old name and
+      a site directory that no longer exists. A rename that fails after
+      saving the new name writes them again for the restored site.
+
+    * A Textpattern rename or Upgrade onto a name whose stale alias names
+      a platform that is gone too, as a forced platform delete leaves it,
+      no longer stops every time with "Could not remove the stale alias":
+      the removal loaded that alias first and died on the missing
+      platform. The file is now removed directly.
+
 @=> Security
+
+    * autosymlink prints every log line as one line: a control byte in a
+      site's name or in a value read from its alias prints as '?'.
 
     * The per-account lock of the minute task runner (run-xdrago) is kept
       in /run/run-xdrago, which only root can enter. It was created
@@ -1333,6 +1404,23 @@
 
 @=> Improvements
 
+    * MySQL's log buffer, read buffer and table definition cache now
+      follow the box. innodb_log_buffer_size, 256M on every box and
+      allocated in full at start, stays 256M with 32 GB or more of usable
+      RAM and is 64M below that. read_buffer_size follows the RAM tier of
+      read_rnd_buffer_size but never goes above the 8M it was, so only
+      the smallest boxes get less. table_definition_cache, fixed at 512,
+      is left to the server, which sizes it at 1424 with BOA's table
+      cache.
+
+    * memorytuner's needs ledger now counts PHP-FPM by what it really
+      holds: its private memory plus its shared opcache and APCu, each
+      segment once and idle versions included, which sqlprobe now
+      records. The resident-size sum it used counted the shared caches
+      again in every worker and missed what a version with no workers
+      left still held. The new figure sets the need once a day of samples
+      carries it, and the ledger shows the shared size per version.
+
     * The archived-store heal (boa archived heal, run by runner.sh every
       minute) treats inode pressure as disk pressure: a filesystem used
       above the heal threshold, in space or in inodes, prunes the pile of
@@ -1346,6 +1434,12 @@
 
     * boa info shows the inode use of each filesystem (_INO lines) beside
       its space (_DSK lines), so a disk out of inodes reads as full.
+
+    * Octopus upgrades no longer leave an empty folder in the account's
+      distro/ and src/ on every pass, and the nightly removes the empty
+      src/<pass number> folders older passes left, which nothing read or
+      removed (the empty distro/ ones were already swept as ghosts). An
+      account on a test server held fifteen.
 
     * The daily graceful.sh pass removes, once a week, the copies older
       than seven days that BOA leaves on every run and every day and that
@@ -1365,6 +1459,26 @@
       after that copy and never through a link to /var/log/boa), and
       markers in /var/log/boa whose writers are gone. A test server held
       304 such password copies and 593 entries in /var/xdrago/log.
+
+    * The weekly prune removes the attack archives older releases set
+      aside at each release in /var/xdrago/monitor/log
+      (hackcheck.archive.<serial>.log, scan_nginx.archive.<serial>.log
+      and the archive-old copies), which nothing has read since: the live
+      archives, whose counts drive the deny escalation, and their
+      one-time .x3 copies stay. A test server held 34 of them.
+
+    * The weekly prune removes the work directories and start files Solr 7
+      and Solr 9 leave in /tmp at every start (jetty-* and
+      start_*.properties of the solr7 and solr9 users), which BOA's
+      cleaner, written for Solr 4's jetty9, never matched: only those
+      made over two days ago, never the newest of each kind and never one
+      a running process holds. A test server dropped 138 of 144 such
+      entries with both Solr instances answering throughout.
+
+    * The weekly prune keeps the newest three ACME account keys the
+      certificate heal sets aside per account when it registers anew
+      (/var/backups/le-accounts/<account>/accounts-<stamp>), newest by the
+      date and time in the name; the heal still archives, never deletes.
 
     * The weekly prune keeps only the newest copies BOA makes on every
       run and never reads again: three of sources.list, rsyslog.conf,
