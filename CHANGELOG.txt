@@ -1443,6 +1443,18 @@
 
 @=> Improvements
 
+    * The xmass cutover no longer raises a Solr alarm on a server move
+      whose source uses no Solr. Its Solr step on the target started
+      whatever was there, waited 30 seconds and probed four ports, so with
+      every version denied there by prep-target it printed "No Solr port
+      responded on target" in the cutover window and then reported Solr
+      started. It now starts the versions the source used and never one
+      the target denies, waits and probes only for what it started, says
+      in one line when there is nothing to start, and reports a started
+      service that does not answer as not confirmed. post-mig reads the
+      denies the same way, and the core parity check compares nothing on
+      a source that uses no Solr.
+
     * Old public-file addresses of an imported or a renamed site keep
       answering. A request for a file under sites/default/files/ (a site
       that came from elsewhere) or sites/<old-name>/files/ (a renamed
