@@ -1091,17 +1091,20 @@ runs. They are written only onto a box that carries the standby marker, and
 
 **So does the hold of an unfinished aegir2boa import.** Its state lives in
 root's `/var/backups/a2b/<oN>/` on the box the import ran on, which no leg
-sends, while the account's panel database and files do travel. For each
-account whose aegir2boa db-import reads unfinished on the active (its
-dispatcher held, a revert cut off part way, or step markers without the
-done or hand-back marker; `AEGIR2BOA.md`) with no run of it live, every
+sends, while the account's panel database and files do travel.
+
+For each account whose aegir2boa db-import reads unfinished on the active
+(its dispatcher held, a revert cut off part way, or step markers without
+the done or hand-back marker; `AEGIR2BOA.md`) with no run of it live, every
 live pass puts `/var/backups/a2b/<oN>/failover-hold` (root's) on the
-standby (a running import hands its dispatcher back itself: a hold already
-there stays meanwhile), and removes it once the import there no longer
-reads unfinished. The standby's own passes never act on it: it counts only
-on a box that is no standby. It is written only onto a box that carries the
-standby marker, and a hold that cannot be carried is said without failing
-the pass.
+standby, and removes it once the import there no longer reads unfinished.
+An import that runs is left to hand its dispatcher back itself (a hold
+already there stays meanwhile): a failover while it runs carries no hold of
+it, and the promoted box hands that half-made panel its dispatcher.
+
+The standby's own passes never act on the hold: it counts only on a box
+that is no standby. It is written only onto a box that carries the standby
+marker, and a hold that cannot be carried is said without failing the pass.
 
 On a promotion the account's dispatcher stays parked on a box
 armed for the web group, BOA's passes keep its half-made panel switched off

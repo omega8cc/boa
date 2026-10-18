@@ -914,10 +914,12 @@ remove `log/proxied.pid`, then take the way out the state allows:
 
 A box that is the active of an `xmass` pair carries, with every pass, the
 hold of each account whose import reads unfinished and is not running to
-its standby (`/var/backups/a2b/<oN>/failover-hold`; a running import hands
-its dispatcher back itself), and takes it back once the import there is
-finished or reverted. The standby's own passes never act on the hold: it
-counts only on a box that is no standby.
+its standby (`/var/backups/a2b/<oN>/failover-hold`), and takes it back once
+the import there is finished or reverted. An import that runs is left to
+hand its dispatcher back itself: a failover while it runs carries no hold of
+it, and the promoted box hands that half-made panel its dispatcher. The
+standby's own passes never act on the hold: it counts only on a box that is
+no standby.
 
 A promotion leaves such an account's dispatcher parked on a box armed for the web group, the passes
 keep its panel switched off there as on the old box, and the worker there
