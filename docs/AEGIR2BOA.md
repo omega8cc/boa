@@ -910,17 +910,29 @@ remove `log/proxied.pid`, then take the way out the state allows:
 | the import, before its pre-import snapshot was complete | the dispatcher held, no `markers/dbimport.1.done` | the import's re-run alone (`--route db-import`): there is nothing to revert to, and the revert refuses |
 | the import, after its snapshot | step markers with neither the done nor the hand-back marker | either: the re-run finishes it, the revert undoes it |
 | a revert, before its sql-drop | its freeze reads `verb=revert-db`, the import's markers as it left them | either |
-| the import, on the box it ran on, which then failed over to its `xmass` standby | on the promoted box, `failover-hold` and no transferred dump | the route run again toward the promoted box (a fresh `export` and `transfer` on the source, then the import there): the dumps and the snapshot stayed on the old box |
+| the import, on the box it ran on, which then failed over to its `xmass` standby | on the promoted box, `failover-hold` and no transferred dump | the route run again toward the promoted box (a fresh `export` and `transfer` on the source, then the import there), once the site databases the replication brought from the cut-off import are dropped there (those of the transfer's manifest that already exist: the import refuses a database that exists, and no reset reaches them): the dumps and the snapshot stayed on the old box |
 
 A box that is the active of an `xmass` pair carries, with every pass, the
-hold of each account whose import reads unfinished to its standby
-(`/var/backups/a2b/<oN>/failover-hold`), and takes it back once the import
-there is finished or reverted. A promotion leaves such an account's
-dispatcher parked on a box armed for the web group, the passes keep its
-panel switched off there as on the old box, and the worker there names it
-once a day. An import on the promoted box ends the hold when it reaches its
-hand-back; a revert there leaves it standing (the snapshot it restores is
-of the panel the failover carried).
+hold of each account whose import reads unfinished and is not running to
+its standby (`/var/backups/a2b/<oN>/failover-hold`; a running import hands
+its dispatcher back itself), and takes it back once the import there is
+finished or reverted. The standby's own passes never act on the hold: it
+counts only on a box that is no standby.
+
+A promotion leaves such an account's dispatcher parked on a box armed for the web group, the passes
+keep its panel switched off there as on the old box, and the worker there
+names it once a day. An import on the promoted box ends the hold when it
+reaches its hand-back; a revert there leaves it standing (the snapshot it
+restores is of the panel the failover carried) and sets the dumps it
+transferred aside (`src.reverted.<time>`), so the way out named is the
+route run again.
+
+Once the import on the active no longer reads unfinished, any other
+aegir2boa state the standby holds of the account (a box that ran the import
+and then failed over keeps its own) is set aside there as
+`/var/backups/a2b/<oN>.superseded.<time>`, never removed, its held
+dispatcher back among the standby's parked ones: a later promotion of that
+box offers no way out over the panel the other box finished.
 
 The steps, each idempotent behind its own marker:
 
@@ -1234,7 +1246,9 @@ account's dispatcher on the box (the same file with this account's
 its next Octopus upgrade rewrites the dispatcher. `--revert-db-import`
 never loads a snapshot left there: it stops and names
 `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql`, where the operator may
-place that snapshot after checking it.
+place that snapshot after checking it. It reaches that stop whenever the
+account's tree holds that release's `log/a2b/markers/dbimport.1.done` or
+the snapshot itself (both tested by name only).
 
 The site databases that release's import loaded are recorded only in its
 markers there, so a revert or `--reset-sites` does not drop them: it

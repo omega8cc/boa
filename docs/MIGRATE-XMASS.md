@@ -1094,17 +1094,28 @@ root's `/var/backups/a2b/<oN>/` on the box the import ran on, which no leg
 sends, while the account's panel database and files do travel. For each
 account whose aegir2boa db-import reads unfinished on the active (its
 dispatcher held, a revert cut off part way, or step markers without the
-done or hand-back marker; `AEGIR2BOA.md`), every live pass puts
-`/var/backups/a2b/<oN>/failover-hold` (root's) on the standby, and removes
-it once the import there no longer reads unfinished; nothing else of the
-standby's state is touched. It is written only onto a box that carries the
+done or hand-back marker; `AEGIR2BOA.md`) with no run of it live, every
+live pass puts `/var/backups/a2b/<oN>/failover-hold` (root's) on the
+standby (a running import hands its dispatcher back itself: a hold already
+there stays meanwhile), and removes it once the import there no longer
+reads unfinished. The standby's own passes never act on it: it counts only
+on a box that is no standby. It is written only onto a box that carries the
 standby marker, and a hold that cannot be carried is said without failing
-the pass. On a promotion the account's dispatcher stays parked on a box
+the pass.
+
+On a promotion the account's dispatcher stays parked on a box
 armed for the web group, BOA's passes keep its half-made panel switched off
 there as on the old box, and the worker names it once a day with the way
-out on that box: the route run again toward it, since the import's dumps
-and pre-import snapshot stayed on the old box. An import there that reaches
-its hand-back ends the hold.
+out on that box: the route run again toward it, once the site databases
+the replication brought from the cut-off import are dropped there, since
+the import's dumps and pre-import snapshot stayed on the old box. An import
+there that reaches its hand-back ends the hold.
+
+Once the import on the active no longer reads unfinished, any other
+aegir2boa state the standby holds of the account (from a role before this
+one: a box that ran the import and failed over) is set aside there as
+`/var/backups/a2b/<oN>.superseded.<time>`, never removed, its held
+dispatcher back among the standby's parked ones.
 
 Under another box's test-run mark `post-mig` also names the accounts whose
 `_SEND_UPGRADE_EMAIL` reads `NO`. A mirror built under `admail=` has it off
