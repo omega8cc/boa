@@ -931,8 +931,10 @@ _check_limits() {
   _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _CLIENT_CORES ))
   _SQL_MAX_LIMIT=$(( _SQL_MAX_LIMIT *= _CLIENT_CORES ))
   _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _CLIENT_CORES ))
+  # The dev/test allowance is the plan's factor of the live allowance, which
+  # already carries the engine count above; the factor is 0 on the plans
+  # that have no dev/test allowance.
   _SQL_DEV_LIMIT=${_SQL_MIN_LIMIT}
-  _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _CLIENT_CORES ))
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
     if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
@@ -1195,8 +1197,8 @@ EOF
         if [ "${_THIS_MODE}" = "verbose" ]; then
           cat << EOF >> "${_uLogFil}"
 
-  LiveDb Memory Space Used is ${_SumDat} kB or ${_SumDatH} MB
-  DevDb Memory Space Used is ${_SkipDt} kB or ${_SkipDtH} MB
+  LiveDb Database Space Used is ${_SumDat} kB or ${_SumDatH} MB
+  DevDb Database Space Used is ${_SkipDt} kB or ${_SkipDtH} MB
   Total Disk Space (Files and Solr) Used is ${_TotSiz} kB or ${_TotSizH} MB
 
 EOF
