@@ -4,6 +4,14 @@
 
 @=> Important Fixes
 
+    * xoct, xmass and xcopy read and rewrite an account's cnf as text, and
+      so does the Octopus pass. A crash can leave NUL bytes in a cnf's
+      tail, and grep then reads the file as binary: a rewrite through grep
+      (the merges of a moved account's settings, the web group's seeds, the
+      admail and go-live switches) dropped every line it did not touch, the
+      source's settings read as none while the merge reported success, and
+      the pass lost a hand-seeded cnf's lines. A NUL tail now costs no line.
+
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
       live allowance, which already carries the engine count, so an account
@@ -1777,9 +1785,11 @@
       settle skips the box, report answers OK report skipped with the same
       word and reads nothing further. Its reasons are the plan's, each its
       true cause: a server alias whose password is empty, longer than 3072
-      bytes or not URL-safe is said as that, never as no alias, and a login
-      the plan did not try is never said to have opened no row. Only the
-      nightly of a box armed for the broker asks for it (docs/DBCTL.md).
+      bytes or not URL-safe is said as that, never as no alias, in the plan
+      and in the box-wide check's lines of the account's and the master's
+      own logins, and a login the plan did not try is never said to have
+      opened no row. Only the nightly of a box armed for the broker asks for
+      it (docs/DBCTL.md).
 
     * The broker's box-wide check names a role or a proxy grant on an
       account's own database login as that login's finding: no switch
@@ -1826,7 +1836,8 @@
       night; the night's log gets their last lines, the witness's count of
       alerts and those paths, so no name a login chose reaches the night's
       incident scan. A report whose file cannot be written still runs and
-      mails as it would, and the night's log says so (docs/DBCTL.md).
+      mails as it would, and the night's log says so and still gets the
+      report's last line, the ERR line of one that failed (docs/DBCTL.md).
 
     * The _DB_BROKER_ARM default is written the way the web group's is: a
       barracuda pass writes _DB_BROKER_ARM=YES only into a cnf that has no
@@ -1839,31 +1850,36 @@
       the account's cnf there before the install and takes its own line
       back once the account is installed and its source's settings and
       switch are carried, under an xmass run too. A root-only note beside
-      the cnf says what the seed did, and the take-back reads it, so a
-      create run again after any exit takes back what an earlier run put;
-      where the cnf already assigns _DB_BROKER_BORN at the start of a line,
-      the one spelling the install keeps, the seed adds nothing and that
-      line stays. Where the merge of the source's settings failed the line
-      stays until the next merge that succeeds, a create's or a live
-      transfer's, takes it back; an interrupt once the remote install has
-      started leaves line and note for a re-run. The target's cnf is read
-      and rewritten as text, and the purge parks the note with the
-      account's root files (docs/DBCTL.md).
+      the cnf says pending until a merge of the source's settings succeeds,
+      and the take-back reads it, so a create run again after any exit
+      takes back what an earlier run put; where the cnf already assigns
+      _DB_BROKER_BORN at the start of a line, the one spelling the install
+      keeps, the seed adds nothing and that line stays. Where the merge
+      failed the line stays, and no pass takes it back, until the next
+      merge that succeeds does: a create run again, an xoct live transfer
+      or an xmass live pass, each with its own merge's result. An interrupt
+      once the remote install has started, or a connection lost during it,
+      leaves line and note for a re-run. The seed's line starts a line of
+      its own after a NUL tail, the target's cnf is read and rewritten as
+      text, and the purge parks the note with the account's root files
+      (docs/DBCTL.md).
 
     * On a box armed for the broker the Octopus pass takes back a
-      _DB_BROKER_BORN=NO line a migration left in a moved account's cnf a
-      day after its create, so accounts moved with the tools of an
-      earlier release are switched like any other; an operator's opt-out
-      is _DB_BROKER_ARM=NO, which nothing takes back. Only on an upgrade
-      pass, where the create marker names the account as it is now, and
-      only through a checked rewrite of the cnf, read as text; one INFO
-      line names the migration (docs/DBCTL.md).
+      _DB_BROKER_BORN=NO line a migration of an earlier release left in a
+      moved account's cnf, no seed note beside it, a day after its create,
+      so such accounts are switched like any other; an operator's opt-out
+      is _DB_BROKER_ARM=NO. Only on an upgrade pass, where the create
+      marker names the account as it is now, through a checked rewrite
+      read as text; one INFO line names the migration. A write failing part
+      way keeps the copy, named in an ALRT, and switches nothing
+      (docs/DBCTL.md).
 
     * xoct and xmass carry an account's _DB_BROKER_ARM=NO both ways, read
       as the pass reads it, in any of its shapes, and an operator's
-      _DB_BROKER_BORN=NO as _DB_BROKER_ARM=NO: an account its operator
-      kept out of the broker stays out on the target and on a promoted
-      standby, and one let back in on its source is let back in there.
+      _DB_BROKER_BORN=NO (no create marker, or a seed note saying
+      operator) as _DB_BROKER_ARM=NO: an account its operator kept out
+      stays out on the target and on a promoted standby, and one let back
+      in on its source is let back in there.
       xcopy puts the source's NO into the copy's cnf before its install,
       and where the install does not happen takes it back, unless the
       account was made, and puts back what it replaced (docs/DBCTL.md).
