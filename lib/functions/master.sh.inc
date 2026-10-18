@@ -1092,7 +1092,7 @@ _hostmaster_oldhost_dbuser_drop() {
 # The tree's core is compared with the pinned core tarball file by file and
 # replaced from it when they differ: the core's VERSION string cannot tell,
 # because D7ES keeps it at the major and minor release (7.106 for 7.106.1 and
-# 7.106.2 alike). A tree found equal, or replaced, is stamped with the pin, so
+# 7.106.3 alike). A tree found equal, or replaced, is stamped with the pin, so
 # the other accounts of the same run do not fetch the core again; a tree
 # fetched again loses the stamp with the rest of make_local.
 _master_pin_panel_core() {
