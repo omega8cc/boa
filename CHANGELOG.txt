@@ -1404,6 +1404,15 @@
 
 @=> Improvements
 
+    * MySQL's log buffer, read buffer and table definition cache now
+      follow the box. innodb_log_buffer_size, 256M on every box and
+      allocated in full at start, stays 256M with 32 GB or more of usable
+      RAM and is 64M below that. read_buffer_size follows the RAM tier of
+      read_rnd_buffer_size but never goes above the 8M it was, so only
+      the smallest boxes get less. table_definition_cache, fixed at 512,
+      is left to the server, which sizes it at 1424 with BOA's table
+      cache.
+
     * memorytuner's needs ledger now counts PHP-FPM by what it really
       holds: its private memory plus its shared opcache and APCu, each
       segment once and idle versions included, which sqlprobe now
