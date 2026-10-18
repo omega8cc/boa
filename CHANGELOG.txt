@@ -1397,6 +1397,15 @@
 
 @=> New Features
 
+    * A read-only report of the sites that cannot take a security
+      release in place: eolreport lists the Drupal 8+ sites whose
+      platform runs a core minor drupal.org no longer supports. The
+      catalogue build records drupal.org's supported branches beside the
+      core tarballs on the mirror (core/drupal-supported.txt), every
+      server takes that file with its daily tools refresh and keeps the
+      last good copy, and no server asks drupal.org. See
+      docs/EOLREPORT.md.
+
     * Grav shops: a Grav site can now be created on a database server for
       a KahunaCart shop (KahunaCart 1.5.4 or later, Percona 8.4). The
       panel creates its database and carries it through every task, the
