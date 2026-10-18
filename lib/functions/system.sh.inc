@@ -395,7 +395,14 @@ _systemd_remove_apt_cmd() {
     _msg "PROC: _systemd_remove_apt_cmd"
   fi
   _apt_clean_update
-  _mrun "apt-get purge systemd libnss-systemd -y -qq"
+  # openssh-server needs systemd-sysusers on excalibur: where nothing else
+  # provides it, removing systemd would take the SSH server with it.
+  if apt-get -s purge systemd libnss-systemd 2> /dev/null \
+    | grep -qE '^(Remv|Purg) (openssh-server|ssh) '; then
+    _msg "ALRT: systemd left in place: removing it would also remove the SSH server; install opensysusers, then run barracuda again"
+  else
+    _mrun "apt-get purge systemd libnss-systemd -y -qq"
+  fi
   _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Running apt-get autoclean..."
