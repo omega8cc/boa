@@ -2602,9 +2602,9 @@ _xmass_dbctl_cnf_last() {
 # migration tool put the line, or the seed's note here
 # (/root/.<oN>.dbctl-seed.txt, a regular file of root's) says operator, so
 # that the line was there before the create, which never takes it back.
-# Such an account travels kept out. So does one whose own create never had
-# its source's settings merged here (the note says pending or kept, or made
-# or line, the release before's words): its source's state is not known.
+# Such an account travels kept out. So does one whose create's line no
+# merge has taken back yet (the note says pending or kept, or made or line,
+# the release before's words): its source's state is not known here.
 _xmass_dbctl_kept_here() {
   [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
   [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
@@ -2619,9 +2619,10 @@ _xmass_dbctl_kept_here() {
 # The line an xoct create put into the account's cnf on the target before
 # its install (_DB_BROKER_BORN=NO, its note /root/.<oN>.dbctl-seed.txt
 # there) is taken back once a merge of the source's settings succeeds, as
-# xoct's create and live transfer take it back: each live pass runs this
-# with its own merge's result, and a merge that failed leaves the line, the
-# note saying kept. Same text as xoct's _xoct_dbctl_seed_back.
+# xoct's create and live transfer take it back: a live pass runs this with
+# its own merge's result where that merge's call found a note there, or got
+# no answer, and a merge that failed leaves the line, the note saying kept.
+# Same text as xoct's _xoct_dbctl_seed_back.
 # 1 = account on the target 2 = target 3 = what the merge of the source's
 # settings returned
 _xmass_dbctl_seed_back() {
@@ -2797,7 +2798,7 @@ MERGESH
   # the merge's own call says whether a create's note is there: the
   # take-back asks the target only then, or when that call got no answer
   _n=$(ssh root@"${_t}" "bash ${_rRun} > /dev/null; _rc=\$?; rm -f ${_rRun}
-    [ -e /root/.${_acct}.dbctl-seed.txt ] || [ -L /root/.${_acct}.dbctl-seed.txt ] && echo note
+    [ -f /root/.${_acct}.dbctl-seed.txt ] || [ -L /root/.${_acct}.dbctl-seed.txt ] && echo note
     exit \${_rc}")
   _mrc=$?
   if [ "${_mrc}" = "0" ]; then
