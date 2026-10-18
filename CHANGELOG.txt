@@ -1905,6 +1905,16 @@
       whole; an operator's own list in /root/.barracuda.cnf replaces the
       default, so add the route there too.
 
+    * The control panel names its server for Grav sites without MySQL
+      "Grav (no MySQL)", and the Servers list shows its database as
+      "Flat-file or SQLite". Both columns read "None (flat-file sites)"
+      beside a ticked Database cell, as if a Grav site could have no
+      database, while a Grav site there may keep a KahunaCart store in
+      SQLite and a shop with MySQL is created on a MySQL server. The
+      panel's database update renames a server that still carries the
+      old name and keeps a name an operator chose; the site form lists
+      the server under its name instead of its made-up hostname.
+
 @=> Changes and Upgrades
 
     * The arm stamps of the per-instance group, the account web group
