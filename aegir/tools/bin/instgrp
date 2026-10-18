@@ -2664,15 +2664,17 @@ _wg_note() {
       "$(tail -n 200 -- "${_WP_NOTES}" 2> /dev/null | tr -cd '[:print:]\n' | awk 'NF')" \
       > /dev/null 2>&1
     _rc=$?
-    # once a run: every note of the run meets the same place
+    # once a run: every note of the run meets the same place (a note
+    # written in a subshell hands _WG_NOTE_REFUSED back for its caller to
+    # mark)
     case "${_rc}" in
       2)
         _wg_noted "${_WP_A}" "the notes copy: control owner" \
-          && _log "${_WP_A}: the notes copy not written: /data/disk/${_WP_A}/static/control is owned by neither root nor an identity of the account"
+          && { _log "${_WP_A}: the notes copy not written: /data/disk/${_WP_A}/static/control is owned by neither root nor an identity of the account"; _WG_NOTE_REFUSED=2; }
         ;;
       3)
         _wg_noted "${_WP_A}" "the notes copy: not a file" \
-          && _log "${_WP_A}: the notes copy not written: a directory stands at /data/disk/${_WP_A}/static/control/web-group-notes.txt"
+          && { _log "${_WP_A}: the notes copy not written: a directory stands at /data/disk/${_WP_A}/static/control/web-group-notes.txt"; _WG_NOTE_REFUSED=3; }
         ;;
     esac
   fi
@@ -2734,6 +2736,7 @@ _wg_note_log() {
 # with other accounts' runs between them, and the key keeps each run's own.
 declare -gA _WG_NOTED=()
 _WG_NOTED_RUN=""
+_WG_NOTE_REFUSED=0
 _WG_NOTED_KEEP=NO
 
 # 0 when note $2 of account $1 is new in this run (marked now), 1 when this
@@ -5487,7 +5490,15 @@ _wg_g_share() {
           # the other account's note, once a run as well: marked here, in
           # this run's set, and written under that account's profile
           _xn="outbound share: site ${_al} reads the ${_p} store of ${_me}; it loses write there once ${_me} converts"
-          _wg_noted "${_x}" "${_xn}" && ( _wg_profile "${_x}"; _wg_note "${_xn}" )
+          if _wg_noted "${_x}" "${_xn}"; then
+            ( _wg_profile "${_x}"; _WG_NOTE_REFUSED=0; _wg_note "${_xn}"; exit "${_WG_NOTE_REFUSED}" )
+            # a refusal of its notes copy logged in there is marked here
+            # too, so the run logs it once however many such notes it writes
+            case "$?" in
+              2) _wg_noted "${_x}" "the notes copy: control owner" ;;
+              3) _wg_noted "${_x}" "the notes copy: not a file" ;;
+            esac
+          fi
         fi
       done
     done < <(_wg_sites "${_xh}")
