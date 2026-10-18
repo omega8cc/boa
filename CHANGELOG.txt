@@ -4,6 +4,22 @@
 
 @=> Important Fixes
 
+    * A PHP-FPM version the sites have left no longer holds its opcache
+      and APCu until the weekly restart. Each version's segments are sized
+      for the whole PHP budget of the box and stay filled to their
+      high-water mark until its master restarts, long after the workers
+      that filled them have gone; on one box sites moved from one version
+      to another mid-week, both held about 6 GB, and the database was
+      OOM-killed. The nightly graceful.sh pass now reloads a version that
+      had no worker for a whole day while it still holds 256 MB or more
+      of them, and logs it in /var/log/boa/fpm-idle-reload.log.
+
+    * The nightly graceful.sh pass no longer turns swap off and on. It did
+      so without checking free memory, so with a large swap it could pull
+      back more than the box had free. autoupboa already empties swap
+      every five minutes once it is half full, and only while free memory
+      can take it back. /root/.no.swap.clear.cnf has no reader.
+
     * xtrim no longer refuses an account over a site that has no
       database. A site on the 'none' database server (a Grav site, a
       Textpattern site kept without a store) carries a drushrc.php that
@@ -1387,6 +1403,14 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * memorytuner's needs ledger now counts PHP-FPM by what it really
+      holds: its private memory plus its shared opcache and APCu, each
+      segment once and idle versions included, which sqlprobe now
+      records. The resident-size sum it used counted the shared caches
+      again in every worker and missed what a version with no workers
+      left still held. The new figure sets the need once a day of samples
+      carries it, and the ledger shows the shared size per version.
 
     * The archived-store heal (boa archived heal, run by runner.sh every
       minute) treats inode pressure as disk pressure: a filesystem used
