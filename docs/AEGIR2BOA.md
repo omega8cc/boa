@@ -921,10 +921,14 @@ it, and the promoted box hands that half-made panel its dispatcher. The
 standby's own passes never act on the hold: it counts only on a box that is
 no standby.
 
-A promotion leaves such an account's dispatcher parked on a box armed for the web group, the passes
-keep its panel switched off there as on the old box, and the worker there
-names it once a day. An import on the promoted box ends the hold when it
-reaches its hand-back; a revert there leaves it standing (the snapshot it
+A promotion leaves such an account's dispatcher parked on a box armed for
+the web group (a live one, as a standby's accounts are installed with, is
+parked before the standby marker goes, by the cutover and by a promotion by
+hand), the cutover's rename of the account refuses, the passes keep its
+panel switched off there as on the old box, and the worker there names it
+once a day.
+
+An import on the promoted box ends the hold when it reaches its hand-back; a revert there leaves it standing (the snapshot it
 restores is of the panel the failover carried) and sets the dumps it
 transferred aside (`src.reverted.<time>`), so the way out named is the
 route run again.

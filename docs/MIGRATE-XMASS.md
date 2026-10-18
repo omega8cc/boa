@@ -1106,13 +1106,18 @@ The standby's own passes never act on the hold: it counts only on a box
 that is no standby. It is written only onto a box that carries the standby
 marker, and a hold that cannot be carried is said without failing the pass.
 
-On a promotion the account's dispatcher stays parked on a box
-armed for the web group, BOA's passes keep its half-made panel switched off
-there as on the old box, and the worker names it once a day with the way
-out on that box: the route run again toward it, once the site databases
-the replication brought from the cut-off import are dropped there, since
-the import's dumps and pre-import snapshot stayed on the old box. An import
-there that reaches its hand-back ends the hold.
+On a promotion the account's dispatcher stays parked on a box armed for
+the web group (a live one, as a standby's accounts are installed with, is
+parked before the standby marker goes, by the cutover and by a promotion by
+hand), the cutover's rename of the account refuses (the cutover parks at
+`rename-failed`), and BOA's passes keep its half-made panel switched off
+there as on the old box.
+
+The worker names it once a day with the way out on that box: the route run
+again toward it, once the site databases the replication brought from the
+cut-off import are dropped there, since the import's dumps and pre-import
+snapshot stayed on the old box. An import there that reaches its hand-back
+ends the hold.
 
 Once the import on the active no longer reads unfinished, any other
 aegir2boa state the standby holds of the account (from a role before this
