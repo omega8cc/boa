@@ -2585,7 +2585,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f45 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f44 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f90 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -2752,7 +2752,7 @@ _update_agents() {
     _runner_parked graceful.sh \
       || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f87
     _runner_parked usage.sh \
-      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f54
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f53
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -5552,6 +5552,29 @@ _if_boa_key_tools_update_allowed() {
   fi
 }
 
+# The Drupal core minors drupal.org supports, as the catalogue build recorded
+# them on the mirror beside the core tarballs (core/drupal-supported.txt);
+# eolreport reads the copy kept here. Taken from the mirror the box already
+# talks to, never from drupal.org. A fetch that fails, or that returns
+# anything but one line of minors, leaves the last good copy as it is; a
+# mirror box reads its own tree.
+_fetch_core_coverage() {
+  local _dst="${_pthLog}/drupal-supported.txt" _tmp _l
+  _tmp="${_dst}.new.$$"
+  if [ -s "/var/www/static/core/drupal-supported.txt" ]; then
+    cp -f "/var/www/static/core/drupal-supported.txt" "${_tmp}" 2> /dev/null
+  else
+    curl ${_crlGet} --max-time 60 "https://${_USE_MIR}/core/drupal-supported.txt" -o "${_tmp}" 2> /dev/null
+  fi
+  _l="$(head -n 1 "${_tmp}" 2> /dev/null | tr -d '\r')"
+  if [[ "${_l}" =~ ^[0-9]+\.[0-9]+(\ [0-9]+\.[0-9]+)*$ ]]; then
+    printf '%s\n' "${_l}" > "${_tmp}" \
+      && chmod 0644 "${_tmp}" \
+      && mv -f "${_tmp}" "${_dst}"
+  fi
+  rm -f "${_tmp}"
+}
+
 _update_boa_tools() {
   mkdir -p ${_usrBin}
   _FETCH_FAIL_CNT=0
@@ -5706,6 +5729,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f19 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f89 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f99 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
+    _fetch_core_coverage
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
@@ -5825,7 +5850,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/{aegir2boa-preflight,aegir2boa-stage1,aegir2boa-stage2,lock.inc,renameaegirhost,solrtrim,syncpass,weblogx,xcopy,xmass,xoct,xtrim} &> /dev/null
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,perftest,xdr9000} &> /dev/null
+  chmod 700 ${_optBin}/{eolreport,floodreport,fpmreport,loadreport,memorytuner,perftest,xdr9000} &> /dev/null
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps} &> /dev/null
