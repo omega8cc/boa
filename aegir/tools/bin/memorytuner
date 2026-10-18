@@ -676,28 +676,35 @@ if [ "${_LN}" -gt 0 ]; then
       done
       IFS="${_IFS_SAVE}"
     fi
-    if [ "${_LFR_N}" -gt 0 ] && [ "${_LFR_P95}" -gt 0 ]; then
+    _LFSHM_TXT=""
+    if [ -n "${_LFSHM}" ]; then
+      _IFS_SAVE="${IFS}"; IFS=','
+      for _fm in ${_LFSHM}; do
+        IFS=':' read -r _fmv _fms <<< "${_fm}"
+        _LFSHM_TXT="${_LFSHM_TXT}php$(_num "${_fmv}") $(_num "${_fms}")M; "
+      done
+      IFS="${_IFS_SAVE}"
+    fi
+    if [ "${_LFR_N}" -ge 288 ] && [ "${_LFR_P95}" -gt 0 ]; then
       # The sampler records what FPM really holds: the need comes from that,
-      # never from the VmRSS sum, which counts each worker's share of opcache
-      # and APCu again and misses a version whose workers are gone.
+      # never from the VmRSS sum, which counts the shared opcache and APCu
+      # again in every worker and misses a version whose workers are gone.
+      # A day of such samples first (288 at the five-minute cadence), so the
+      # days after an update never size from a handful of them.
       _LFP_NEED=$(( _LFR_P95 * 12 / 10 ))
       _LSUM=$(( _LSUM + _LFP_NEED ))
-      _LFSHM_TXT=""
-      if [ -n "${_LFSHM}" ]; then
-        _IFS_SAVE="${IFS}"; IFS=','
-        for _fm in ${_LFSHM}; do
-          IFS=':' read -r _fmv _fms <<< "${_fm}"
-          _LFSHM_TXT="${_LFSHM_TXT}php$(_num "${_fmv}") $(_num "${_fms}")M; "
-        done
-        IFS="${_IFS_SAVE}"
-      fi
-      _add_led "php-fpm: private p50/p95 ${_LFA_P50}/${_LFA_P95}M + shared opcache/APCu (resident, each segment once, idle versions included) p50/p95 ${_LFS_P50}/${_LFS_P95}M = held p50/p95 ${_LFR_P50}/${_LFR_P95}M, need ${_LFP_NEED}M (p95+20%, ${_LFR_N} samples); vmrss sum p95 ${_LFP_P95}M counts shared pages per process; topology at last sample: ${_LFPM_TXT:-no master seen} shared at last sample: ${_LFSHM_TXT:-none}"
+      _add_led "php-fpm: private p50/p95 ${_LFA_P50}/${_LFA_P95}M + shared opcache/APCu (resident, each segment once, idle versions included) p50/p95 ${_LFS_P50}/${_LFS_P95}M = held p50/p95 ${_LFR_P50}/${_LFR_P95}M, need ${_LFP_NEED}M (p95+20%, ${_LFR_N} samples); vmrss sum p95 ${_LFP_P95}M counts shared pages per process; topology at last sample: ${_LFPM_TXT:-no master seen; }shared at last sample: ${_LFSHM_TXT:-none}"
     else
       _LFP_NEED=$(( _LFP_P95 * 12 / 10 ))
       _LSUM=$(( _LSUM + _LFP_NEED ))
       _LFP_PER=0
       [ "${_LFPP_P95}" -gt 0 ] && _LFP_PER=$(( _LFP_P95 / _LFPP_P95 ))
-      _add_led "php-fpm: aggregate rss p50/p95 ${_LFP_P50}/${_LFP_P95}M over procs p50/p95 ${_LFPP_P50}/${_LFPP_P95} (~${_LFP_PER}M per proc at peak), need ${_LFP_NEED}M (p95+20%); topology at last sample: ${_LFPM_TXT:-no master seen}"
+      _LFR_TXT=""
+      if [ "${_LFR_N}" -gt 0 ]; then
+        # The topology text ends in "; " when a master was seen.
+        _LFR_TXT="private+shared held p95 ${_LFR_P95}M over ${_LFR_N} samples (used for the need from 288 on), shared at last sample: ${_LFSHM_TXT:-none}"
+      fi
+      _add_led "php-fpm: aggregate rss p50/p95 ${_LFP_P50}/${_LFP_P95}M over procs p50/p95 ${_LFPP_P50}/${_LFPP_P95} (~${_LFP_PER}M per proc at peak), need ${_LFP_NEED}M (p95+20%); topology at last sample: ${_LFPM_TXT:-no master seen${_LFR_TXT:+; }}${_LFR_TXT}"
     fi
   else
     _add_led "php-fpm: not observed in the ledger corpus"
