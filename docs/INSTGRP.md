@@ -49,7 +49,9 @@ counts as the account's own is exact: `oN`, `oN.<name>` and
 
 Each conversion writes `/data/disk/oN/log/instance-group.txt`. An account already converted costs
 one read-only traversal on every later upgrade (early-quit on the first path
-outside its group), no walk and no write.
+outside its group), no walk and no write. A temp copy a killed write left
+beside the marker (`.instance-group.txt.put.*`) is removed by the next write
+once it is a minute old, and no migration carries it.
 
 The order never leaves an identity without access it had:
 
@@ -639,7 +641,9 @@ from it, writes over it, or takes a path of the account into a group.
 
 Meanwhile `reclaim`, `convert` and `revert` skip the account (exit 4,
 alarmed); a root-run restore leaves what it restored in the groups it
-landed in, and its `reclaim` skips too; a web verb's run of the account
+landed in, says so on its standard error, and its `reclaim` skips too (a
+restore the account runs itself is not held: only root reads the journal);
+a web verb's run of the account
 stops at its row (exit 4, row E2, a note naming the journal), so it
 neither converts the account nor tries a free; a free that meets the
 journal all the same stops with its alarm. An alarm says so once a day,
