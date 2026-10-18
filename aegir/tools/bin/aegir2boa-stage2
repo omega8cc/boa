@@ -1940,8 +1940,16 @@ exit 0'
 # check refused, when one did, in _T_FREEZE_WHY. $2 = the account's
 # hostmaster database.
 _t_freeze_dead() {
+  local _w
   _T_FREEZE_WHY=""
-  [[ -s /etc/boa/control/instgrp-web-arm.ready.txt ]] || return 1
+  if [[ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ]]; then
+    # never taken over on a box not armed for the web group, but a freeze
+    # of the other operation is named, as on an armed box
+    _w="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
+      perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)"
+    [[ "${_w}" == "the freeze is a killed "* ]] && _T_FREEZE_WHY="${_w}"
+    return 1
+  fi
   _T_FREEZE_WHY="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
     perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)" \
     && _t_freeze_conns "${2}"
@@ -2514,8 +2522,11 @@ _t_reset_site_dbs() {
 # control file the broker finds not valid (ERR 8: its tasks take the direct
 # path, its databases are not in the registry). Any other refusal of the
 # broker keeps the database, said with the broker's answer: a plain drop
-# would leave its registry entry naming a database that is gone. True when
-# the database was dropped.
+# would leave its registry entry naming a database that is gone. A refusal
+# after the broker's own drop ran (its DROP comes first, so a failed grant
+# or registry step after it ends 7 with the database gone) is the server's
+# to say: a database that is gone is dropped, and what the broker left is
+# named for the operator. True when the database was dropped.
 _t_drop_site_db() {   # 1 uri 2 dbn
   local _f="/data/conf/${_ACCOUNT}_db_broker.txt" _out _rc
   if [[ -e "${_f}" || -L "${_f}" ]]; then
@@ -2527,6 +2538,10 @@ _t_drop_site_db() {   # 1 uri 2 dbn
     _rc=$?
     [[ "${_rc}" == "0" ]] && return 0
     if [[ "${_rc}" != "8" ]]; then
+      if _t_db_gone "${2}"; then
+        _alrt "site ${1}: db ${2} dropped, but the database broker ended ${_rc} after its drop: ${_out##*$'\n'} - settle what it left with boa-dbctl leftovers list"
+        return 0
+      fi
       _alrt "site ${1}: db ${2} kept: the database broker refused its drop: ${_out##*$'\n'} - drop it with boa-dbctl drop ${2} --account ${_ACCOUNT} once that is settled"
       return 1
     fi
@@ -3421,7 +3436,7 @@ PHPEOF
 
 verb_import() {
   _require_target_box
-  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb
+  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb _sx
   _troute="$(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null | tr -d '\n')"
   if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" && "${_DROP_MADE_USERS}" != "YES" ]]; then
     [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
@@ -3457,9 +3472,14 @@ verb_import() {
     # only an import that completed its pre-import snapshot (its step 1
     # marker) has anything to revert to, or a revert cut off part way (its
     # started mark: it cleared the step markers last, the snapshot it loads
-    # was complete when it began). Refused before a plan is printed, a gate
-    # is read or anything is dropped
-    if ! _marker_has dbimport.1.done && ! _marker_has revert-db.started; then
+    # was complete when it began), or an import of an earlier release, which
+    # kept its step 1 marker or its snapshot in the account's tree (only
+    # their existence is tested: the account can write there), so the
+    # placement of that snapshot below is reached. Refused before a plan is
+    # printed, a gate is read or anything is dropped
+    if ! _marker_has dbimport.1.done && ! _marker_has revert-db.started \
+      && [[ ! -e "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" && ! -L "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" \
+        && ! -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" && ! -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]]; then
       [[ -e "$(_t_held_run)" ]] \
         && _die "nothing to revert on ${_ACCOUNT}: its db-import was cut off before its pre-import snapshot was complete (no $(_marker dbimport.1.done)) - finish it with aegir2boa-stage2 import --account ${_ACCOUNT} --route db-import (dry first, then with --live)"
       _die "nothing to revert on ${_ACCOUNT}: no db-import has completed its pre-import snapshot since the last revert (no $(_marker dbimport.1.done))"
@@ -3504,6 +3524,16 @@ verb_import() {
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
     rm -f -- "$(_marker revert-db.started)"
+    # on a box a failover brought the panel to (its hold stands: the
+    # dispatcher stays held), the dumps the route transferred here are
+    # stale now: set aside, never removed, so every line that names the way
+    # out names the route run again, a fresh export and transfer
+    if [[ ( -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ) \
+      && -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]]; then
+      _sx="${_STATE_DIR}/src.reverted.$(date -u +%Y%m%dT%H%M%SZ)"
+      mv -T -- "${_STATE_DIR}/src" "${_sx}" \
+        && _info "the dumps transferred here set aside as ${_sx}: run the route again toward this box"
+    fi
     _t_freeze_off; trap _cleanup EXIT
     _msg "db-import reverted - hostmaster restored, a2b site DBs dropped; a retry needs fresh export+transfer (stale dumps must never cut over)"
     exit 0
