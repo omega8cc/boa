@@ -61,8 +61,21 @@
       with 99 packages instead of 40, elogind, polkitd, ModemManager and
       avahi-daemon among them. Servers whose image turns them off box-wide
       were never affected. The files now set APT::Install-Recommends and
-      the aptitude form passes it; apt-get calls without those files still
-      follow the image's setting.
+      the aptitude form passes it.
+
+    * Every other apt call on a BOA server leaves recommended packages out
+      too, operators' own included: BOA.sh.txt writes
+      /etc/apt/apt.conf.d/00boa-no-recommends whenever it runs, from the
+      first bootstrap on, the setting servers whose image turns recommends
+      off already ran with. A later file in apt.conf.d can turn them back
+      on. Packages that earlier installs brought in are left in place.
+
+    * The system monitor mails an ALERT when a server holds more than
+      10,000 cgroups, at most once a day: login sessions piling up again
+      where elogind's PAM module had to stay or came back. A server
+      without it runs a handful. The mail names the count, the server's
+      Percpu and SUnreclaim totals, the possible CPUs and whether
+      libpam-elogind is installed. systemd hosts are not judged.
 
     * BOA refuses to run a server out of inodes (#1947). Every file takes
       an inode, and a filesystem out of them fails every write with "No
@@ -265,6 +278,12 @@
       settings.php twice from the site's enabled record (the database
       credentials written out for the archive, then cloaked again), so
       the site was back online before the work started.
+
+    * A Restore and a Migrate keep a Drupal 6 or 7 site in maintenance
+      mode while the copy's database updates run. Their deploy runs in a
+      process of its own that wrote settings.php from the site's enabled
+      record, and its vhost was live again before the updates, so
+      visitors reached a site whose database was still being updated.
 
     * A Drupal 6 site's database updates run again. Since late 2022
       Ægir's Drush 8 stopped every Drupal 6 batch with "Missing required
@@ -660,7 +679,20 @@
       shows that removing systemd would take the SSH server. opensysusers,
       which autoinit now installs with retries and a check, already keeps
       openssh-server. A dummy that was needed stays after the conversion,
-      with a WARN line, when removing it would remove the SSH server.
+      with a WARN line, when removing it would remove the SSH server. When
+      even the dummy does not keep it, autoinit leaves systemd in place with
+      an ERROR line, and so does its final cleanup, which now asks apt
+      first; the conversion then stops before the BOA install until its
+      repair can remove systemd with openssh-server kept.
+
+    * BOA's other systemd removals no longer risk the SSH server: the boa
+      tool on an Excalibur box that still carries systemd, automini,
+      autoinit's repair of an incomplete conversion, and the systemd
+      cleanup of the major OS upgrades. Each asks apt first and leaves
+      systemd in place when removing it would also remove openssh-server,
+      which on Excalibur needs systemd-sysusers; the repair says so in an
+      ERROR line, the upgrade cleanup in an ALRT line. automini and the
+      repair install opensysusers, which provides it, before the removal.
 
     * The copies BOA keeps for a week in /var/backups/dragon/t, x and z
       (configuration files before a rewrite, the whole /var/xdrago before
@@ -673,6 +705,26 @@
       weekly graceful.sh pass applies the same rule, so a standby or a
       proxy, where the nightly pass does not run, keeps a week too.
       dragon/config stays a permanent archive.
+
+    * A Grav rename, Clone or Upgrade a copy onto a name whose earlier
+      holder left a stale alias behind no longer takes over that holder's
+      settings. The renamed site or the copy inherited its domain aliases,
+      redirection, encryption and key, extra Drush aliases and cron key,
+      and its Verify went after a certificate for the holder's aliases.
+      The stale alias is now removed before the new context is saved. A
+      rename or Clone onto a name a live site's context still holds on
+      another platform is refused instead of re-pointing that context.
+
+    * A Grav rename now keeps the site's extra Drush aliases: the renamed
+      site lost them, and their alias files kept naming the old name and
+      a site directory that no longer exists. A rename that fails after
+      saving the new name writes them again for the restored site.
+
+    * A Textpattern rename or Upgrade onto a name whose stale alias names
+      a platform that is gone too, as a forced platform delete leaves it,
+      no longer stops every time with "Could not remove the stale alias":
+      the removal loaded that alias first and died on the missing
+      platform. The file is now removed directly.
 
 @=> Security
 
@@ -1349,6 +1401,12 @@
 
     * boa info shows the inode use of each filesystem (_INO lines) beside
       its space (_DSK lines), so a disk out of inodes reads as full.
+
+    * Octopus upgrades no longer leave an empty folder in the account's
+      distro/ and src/ on every pass, and the nightly removes the empty
+      src/<pass number> folders older passes left, which nothing read or
+      removed (the empty distro/ ones were already swept as ghosts). An
+      account on a test server held fifteen.
 
     * The daily graceful.sh pass removes, once a week, the copies older
       than seven days that BOA leaves on every run and every day and that
