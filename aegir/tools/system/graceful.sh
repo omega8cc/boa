@@ -466,7 +466,7 @@ _fpm_shared_resident_mb() {
 # while it still holds 256 MB or more of them: no request is in flight to lose,
 # and the reload hands the memory back.
 _reload_idle_fpm_versions() {
-  local _now _from _mPid _mVer _mUp _since _verdict _shm
+  local _now _from _mPid _mVer _mUp _since _verdict _shm _mNew _after
   local _tuneDir="/var/log/boa/fpm-tune"
   local _relLog="/var/log/boa/fpm-idle-reload.log"
   command -v fincore > /dev/null 2>&1 || return 0
@@ -504,7 +504,13 @@ _reload_idle_fpm_versions() {
     [ "${_shm:-0}" -ge 256 ] || continue
     echo "Reloading PHP ${_mVer} FPM, idle all day with ${_shm} MB of caches..."
     if service "php${_mVer}-fpm" reload > /dev/null 2>&1; then
-      echo "$(date) php${_mVer}-fpm reloaded: no worker for a day, ${_shm} MB of opcache and APCu released" >> "${_relLog}"
+      # What the version holds after the reload, read from its master then
+      # (a fresh master starts at a baseline of some tens of MB).
+      sleep 3
+      _mNew=$(pgrep -f "^php-fpm: master process \(/opt/php${_mVer}/" | head -n1)
+      _after="?"
+      [ -n "${_mNew}" ] && _after=$(_fpm_shared_resident_mb "${_mNew}")
+      echo "$(date) php${_mVer}-fpm reloaded: no worker for a day, opcache and APCu held ${_shm} MB before, ${_after} MB after" >> "${_relLog}"
     else
       echo "$(date) php${_mVer}-fpm reload FAILED: no worker for a day, ${_shm} MB of opcache and APCu still held" >> "${_relLog}"
     fi
