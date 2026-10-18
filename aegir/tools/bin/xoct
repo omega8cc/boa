@@ -4919,8 +4919,10 @@ _xoct_import_precheck() {
 # form removed when the source has neither. Only while the name is free
 # there: otherwise the install refuses it, and the line would land in
 # another account's cnf. What was written is taken back when the install
-# does not happen. The cnf there is read and rewritten as text: a NUL byte
-# costs none of its lines.
+# does not happen, unless the account is there by then (the install made
+# it before it failed) or the connection was lost during the install, which
+# may go on and make it. The cnf there is read and rewritten as text: a NUL
+# byte costs none of its lines.
 # 1 = account here 2 = account on the target 3 = target
 _XOCT_WG_SEED=""
 _XOCT_WG_SEEDV=""
@@ -4958,12 +4960,14 @@ _xoct_wg_unseed() {
   case "${_XOCT_WG_SEED}:${_XOCT_WG_SEEDV}" in
     made:*)
       # shellcheck disable=SC2029
-      ssh root@"${2}" "rm -f /root/.${1}.octopus.cnf" 2> /dev/null
+      ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+        rm -f /root/.${1}.octopus.cnf" 2> /dev/null
       ;;
     line:NO|line:A)
       # the seed left its own line as the only _WEB_GROUP one
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+      ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+        _c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
       ;;
   esac
   _XOCT_WG_SEED=""
@@ -5898,14 +5902,15 @@ _migrate_prepare() {
         if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
           ### 255 is the connection lost, not the launcher's answer: the
           ### remote install may go on and make the account after this, so
-          ### the broker seed's line and note stay there, as the install
-          ### window's exit leaves them, and a re-run's seed reads the note
+          ### both seeds stay there, as the install window's exit leaves
+          ### them, and a re-run's seeds find them
           if [ "${_INSTALL_RC}" = "255" ]; then
-            echo "ALRT: the connection to ${_tgt} was lost during the install: the database broker seed of ${_TGT_HM_USER} stays there for a re-run of this create"
+            echo "ALRT: the connection to ${_tgt} was lost during the install: the seeds of ${_TGT_HM_USER} stay there for a re-run of this create"
+            echo "ALRT: (the web group's and the database broker's lines in /root/.${_TGT_HM_USER}.octopus.cnf, the note /root/.${_TGT_HM_USER}.dbctl-seed.txt); with no re-run and no account ${_TGT_HM_USER} there, remove those"
           else
             _xoct_dbctl_unseed "${_TGT_HM_USER}" "${_tgt}"
+            _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           fi
-          _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
           exit 1

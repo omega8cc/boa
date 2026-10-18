@@ -1807,8 +1807,10 @@ _xcopy_import_precheck() {
 # form removed when the source has neither. Only while the name is free
 # there: otherwise the install refuses it, and the line would land in
 # another account's cnf. What was written is taken back when the install
-# does not happen. The cnf there is read and rewritten as text: a NUL byte
-# costs none of its lines.
+# does not happen, unless the account is there by then (the install made
+# it before it failed) or the connection was lost during the install, which
+# may go on and make it. The cnf there is read and rewritten as text: a NUL
+# byte costs none of its lines.
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_WG_SEED=""
 _XCOPY_WG_SEEDV=""
@@ -1846,12 +1848,14 @@ _xcopy_wg_unseed() {
   case "${_XCOPY_WG_SEED}:${_XCOPY_WG_SEEDV}" in
     made:*)
       # shellcheck disable=SC2029
-      ssh root@"${2}" "rm -f /root/.${1}.octopus.cnf" 2> /dev/null
+      ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+        rm -f /root/.${1}.octopus.cnf" 2> /dev/null
       ;;
     line:NO|line:A)
       # the seed left its own line as the only _WEB_GROUP one
       # shellcheck disable=SC2029
-      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+      ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+        _c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
       ;;
   esac
   _XCOPY_WG_SEED=""
@@ -1903,7 +1907,8 @@ _xcopy_dbctl_kept_here() {
 # name is free there, as the web group's seed above. What was written is
 # taken back when the install does not happen, unless the launcher made the
 # account before it failed (that copy keeps the source's NO, as xoct's seed
-# stays in an account that was made); a line of the key the seed replaced
+# stays in an account that was made) or the connection was lost during the
+# install, which may go on and make it; a line of the key the seed replaced
 # or removed of the target's own cnf comes back with it: the seed's answer
 # names those lines (made, line or removed, then the lines), and the unseed
 # hands them back. A copy carries no switch: one not kept out is switched by
@@ -2566,10 +2571,20 @@ _migrate_prepare() {
         ### or a run lock is held: nothing below may run on the target then.
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
-        if ! ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"; then
-          _xcopy_dbarm_unseed "${_TGT_HM_USER}" "${_tgt}"
-          _xcopy_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
-          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (see the launcher output above); nothing further was changed there"
+        ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        _INSTALL_RC=$?
+        if [ "${_INSTALL_RC}" != "0" ]; then
+          ### 255 is the connection lost, not the launcher's answer: the
+          ### remote install may go on and make the account after this, so
+          ### both seeds stay there for a re-run of this create
+          if [ "${_INSTALL_RC}" = "255" ]; then
+            echo "ALRT: the connection to ${_tgt} was lost during the install: the seeds of ${_TGT_HM_USER} stay there for a re-run of this create"
+            echo "ALRT: (the web group's and the database broker's lines in /root/.${_TGT_HM_USER}.octopus.cnf); with no re-run and no account ${_TGT_HM_USER} there, remove those"
+          else
+            _xcopy_dbarm_unseed "${_TGT_HM_USER}" "${_tgt}"
+            _xcopy_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
+          fi
+          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (launcher rc=${_INSTALL_RC}, see its output above); nothing further was changed there"
           exit 1
         fi
         if [ "${_SILENT_MARKER}" = "YES" ]; then
