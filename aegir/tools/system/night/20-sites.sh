@@ -429,7 +429,9 @@ _ghost_seen_reset_acct() {
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
 # a hold xmass carried here with a failover from the box the import ran on
-# stands (failover-hold), a revert marked itself started (revert-db.started,
+# stands (failover-hold) on a box that is no standby (a standby's own passes
+# never act on it; the promotion does), a revert marked itself started
+# (revert-db.started,
 # cleared only once the revert's dispatcher is back), or a step marker of
 # the import stands with neither its done marker nor the marker of its
 # hand-back (written right before the import returns the dispatcher).
@@ -454,7 +456,8 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
-  [ -e "${_b}/failover-hold" ] && return 0
+  [ -e "${_b}/failover-hold" ] && [ ! -e /root/.standby.cnf ] \
+    && [ ! -e /root/.standby.prep.cnf ] && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
   [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1

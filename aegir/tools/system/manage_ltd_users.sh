@@ -7342,7 +7342,9 @@ _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
 # a hold xmass carried here with a failover from the box the import ran on
-# stands (failover-hold), a revert marked itself started (revert-db.started,
+# stands (failover-hold) on a box that is no standby (a standby's own passes
+# never act on it; the promotion does), a revert marked itself started
+# (revert-db.started,
 # cleared only once the revert's dispatcher is back), or a step marker of
 # the import stands with neither its done marker nor the marker of its
 # hand-back (written right before the import returns the dispatcher).
@@ -7367,7 +7369,8 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
-  [ -e "${_b}/failover-hold" ] && return 0
+  [ -e "${_b}/failover-hold" ] && [ ! -e /root/.standby.cnf ] \
+    && [ ! -e /root/.standby.prep.cnf ] && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
   [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
@@ -7384,8 +7387,9 @@ _a2b_import_unfinished() {
 # import would find its step markers and report a finished import on the
 # panel the revert restored. A hold xmass carried here with a failover
 # (failover-hold), with no dump transferred here, is ended by the route run
-# again toward this box: the dumps and the pre-import snapshot stayed on
-# the box the import ran on. An import cut off before its pre-import
+# again toward this box, once the site databases the replication brought
+# from the cut-off import are dropped: the dumps and the pre-import
+# snapshot stayed on the box the import ran on. An import cut off before its pre-import
 # snapshot was complete (no dbimport.1.done) is ended by its re-run alone:
 # there is nothing to revert to. Anything else by either. One sentence, its
 # commands spelled out. One text wherever it is defined.
@@ -7394,7 +7398,7 @@ _a2b_import_advice() {
   if [ -e "${_b}/markers/revert-db.started" ]; then
     echo "A revert of it was cut off part way: finish the revert with ${_c} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
   elif [ -e "${_b}/failover-hold" ] && [ ! -e "${_b}/src/hostmaster.sql" ]; then
-    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box (a fresh aegir2boa-stage2 export and transfer on its source, then ${_c} --route db-import here, dry first, then with --live)"
+    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box (a fresh aegir2boa-stage2 export and transfer on its source, then ${_c} --route db-import here, dry first, then with --live), after dropping the site databases the replication brought here from the cut-off import (those of the transfer's manifest that already exist here: the import refuses a database that exists, and no reset reaches them)"
   elif [ ! -e "${_b}/markers/dbimport.1.done" ]; then
     echo "It was cut off before its pre-import snapshot was complete, so there is nothing to revert to: finish it with ${_c} --route db-import (dry first, then with --live)"
   else
