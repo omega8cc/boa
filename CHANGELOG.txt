@@ -712,7 +712,7 @@
       Devuan's trixie-to-excalibur guide says, instead of stopping at apt's
       prompt and going on without it: the step now answers yes and, unlike
       the guide, takes no recommended packages, so the PAM module and
-      polkitd stay out. automini's copy of the step does the same.
+      polkitd stay out.
 
     * autoinit builds its systemd-dummy package only when apt's simulation
       shows that removing systemd would take the SSH server. opensysusers,
@@ -725,13 +725,13 @@
       repair can remove systemd with openssh-server kept.
 
     * BOA's other systemd removals no longer risk the SSH server: the boa
-      tool on an Excalibur box that still carries systemd, automini,
-      autoinit's repair of an incomplete conversion, and the systemd
-      cleanup of the major OS upgrades. Each asks apt first and leaves
-      systemd in place when removing it would also remove openssh-server,
-      which on Excalibur needs systemd-sysusers; the repair says so in an
-      ERROR line, the upgrade cleanup in an ALRT line. automini and the
-      repair install opensysusers, which provides it, before the removal.
+      tool on an Excalibur box that still carries systemd, autoinit's
+      repair of an incomplete conversion, and the systemd cleanup of the
+      major OS upgrades. Each asks apt first and leaves systemd in place
+      when removing it would also remove openssh-server, which on Excalibur
+      needs systemd-sysusers; the repair says so in an ERROR line, the
+      upgrade cleanup in an ALRT line. The repair installs opensysusers,
+      which provides it, before the removal.
 
     * The copies BOA keeps for a week in /var/backups/dragon/t, x and z
       (configuration files before a rewrite, the whole /var/xdrago before
@@ -1426,6 +1426,12 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * automini is retired. It was a reduced copy of autoinit made for
+      custom testing, and BOA never started it: autoinit alone moves a
+      Debian box to Devuan. A box that still carries
+      /opt/local/bin/automini loses it, with its link and fetch markers,
+      the next time BOA.sh.txt runs.
 
     * MySQL's log buffer, read buffer and table definition cache now
       follow the box. innodb_log_buffer_size, 256M on every box and
