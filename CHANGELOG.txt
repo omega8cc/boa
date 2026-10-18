@@ -1213,13 +1213,18 @@
       the box it ran on, which no leg sends, and a promotion handed the
       half-imported panel the sync carried its dispatcher back. Every pass
       now puts /var/backups/a2b/oN/failover-hold on the standby while the
-      import reads unfinished on the active, and takes it away once it no
-      longer does; on a promotion such an account's dispatcher stays
-      parked on a box armed for the web group, BOA keeps its panel
-      switched off there, and the worker names it once a day with the way
-      out on that box (the route run again toward it). An import there
-      that reaches its hand-back ends the hold. Every other account's
-      promotion is as before (docs/MIGRATE-XMASS.md).
+      import reads unfinished on the active with no run of it live, and
+      takes it away once it no longer does; the standby's own passes never
+      act on it. On a promotion such an account's dispatcher stays parked
+      on a box armed for the web group, BOA keeps its panel switched off
+      there, and the worker names it once a day with the way out on that
+      box (the route run again toward it, once the site databases the
+      replication brought are dropped). An import there that reaches its
+      hand-back ends the hold, and a revert there sets the transferred
+      dumps aside. Once the import on the active is finished, the
+      standby's own import state of a role before is set aside, never
+      removed. Every other account's promotion is as before
+      (docs/MIGRATE-XMASS.md).
 
     * aegir2boa-stage2: a re-run of a db-import, or of its revert, takes
       over the freeze its own killed run left, on a box armed for the web
@@ -1231,8 +1236,8 @@
       import state and no other connection on the account's panel
       database. A refused re-run names the check that refused it. A
       freeze of the other operation is refused naming that operation,
-      whose own re-run takes it over; a one-line marker or any other body
-      is refused as before.
+      whose own re-run takes it over, on a box not armed too; a one-line
+      marker or any other body is refused as before.
 
     * aegir2boa-stage2 stops when it cannot put its freeze marker, instead
       of importing into an account the BOA passes do not hold off.
@@ -1258,9 +1263,11 @@
       temporary name and renames it into place only once mysqldump has
       succeeded, and --revert-db-import refuses, before its dry run
       prints a plan, unless the import completed that snapshot or a
-      revert cut off part way left its started mark. An import killed in
-      its snapshot left a partial dump where the revert loaded it from,
-      after dropping the panel database.
+      revert cut off part way left its started mark, or an import of an
+      earlier release left its step 1 marker or snapshot in the account's
+      tree (the revert then names where to place that snapshot). An import
+      killed in its snapshot left a partial dump where the revert loaded
+      it from, after dropping the panel database.
 
     * aegir2boa-stage2 transfer records the account it lands for (its uid
       and its home's inode and birth time) beside the import state on the
@@ -1298,7 +1305,10 @@
       goes with it: the plain drop left the entry naming a database that
       was gone. An account not switched, and one whose control file the
       broker finds not valid, keep the plain drop; a drop the broker
-      refuses keeps the database and says why.
+      refuses keeps the database and says why, unless the server says the
+      database is gone (the broker's drop ran before a later step of it
+      failed): then it counts as dropped, its users go with it, and what
+      the broker left is named.
 
     * aegir2boa-stage2's drain before a db-import's or a revert's surgery
       waits only on the account's task dispatcher itself, a root process
