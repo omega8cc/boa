@@ -187,7 +187,10 @@ _FARM_TAG=""
 # the Drupal cores: every published version is retained, backdrop.txt stamps
 # the newest, and a version-less backdrop.tar.gz compat tarball of the newest
 # (extracting to backdrop/, the pre-versioning contract) is refreshed for
-# already-deployed BOA releases.
+# already-deployed BOA releases. The cores target also leaves
+# drupal-supported.txt on the core shelf: the core minors drupal.org supports,
+# read from the release history at build time; the boxes take it with their
+# daily tools refresh and eolreport reads it, so no box asks drupal.org.
 _BACKDROP_REPO="backdrop/backdrop"
 _BACKDROP_TAG=""
 
@@ -1558,6 +1561,16 @@ _drupal_release() {
     | grep -viE 'dev|alpha|beta|rc|unstable' | head -n 1
 }
 
+_drupal_supported_minors() {
+  # Echo the core minors drupal.org supports, from the release history's
+  # supported_branches element ("10.6.,11.3.,..."), as "10.6 11.3 ..." in
+  # ascending order. Empty if the metadata cannot be fetched or carries none.
+  curl -fsSL -A "${_UA}" "https://updates.drupal.org/release-history/drupal/current" 2>/dev/null \
+    | grep -oE '<supported_branches>[^<]+</supported_branches>' | head -n 1 \
+    | sed -E 's/<[^>]+>//g' | tr ',' '\n' | grep -oE '^[0-9]+\.[0-9]+' \
+    | sort -u -t. -k1,1n -k2,2n | tr '\n' ' ' | sed -E 's/ $//'
+}
+
 _minor_ge() {
   # 0 if $1 >= $2, comparing major.minor numerically.
   local _a1="${1%.*}" _a2="${1#*.}" _b1="${2%.*}" _b2="${2#*.}"
@@ -2051,10 +2064,23 @@ build_cores() {
     _record_fail "cores (no core minors)"
     return 1
   fi
-  local _pres _lines
+  local _pres _lines _sup
   _pres="$(_core_prereleases_due "${_minors}")"
   _lines="${_minors}${_pres:+ ${_pres}}"
   _msg "core lines: ${_lines}"
+  # The supported minors, for the boxes (published with the cores by
+  # do_distribute). Written only when drupal.org answered with a list, so a
+  # failed read leaves the published copy as it is.
+  _sup="$(_drupal_supported_minors)"
+  if [[ -n "${_sup}" ]]; then
+    if _run_as_o8 "cd '${_DAY_DIR}' && printf '%s\n' '${_sup}' > drupal-supported.txt"; then
+      _msg "supported core minors: ${_sup}"
+    else
+      _alrt "cores: drupal-supported.txt not written"
+    fi
+  else
+    _alrt "cores: supported_branches not read from drupal.org; drupal-supported.txt not written"
+  fi
   local _m _wd="${_DAY_DIR}/.build.core" _core _spec _php _drush
   for _m in ${_lines}; do
     _tail_mark
@@ -2736,6 +2762,9 @@ _family_row() {
     textpattern.tar.gz|textpattern.txt)
       _v="$(_txp_day_version)"; printf '%s
 ' "textpattern-${_v:-unknown} companion" ;;
+    drupal-supported.txt)
+      printf '%s
+' "drupal-supported" ;;
     *)
       printf '%s
 ' "${1%.tar.gz}" ;;
@@ -3140,6 +3169,11 @@ do_distribute() {
       _alrt "backdrop.txt held: ${_bhold}"
       _rec_note "backdrop-${_bdrv}" "stamp held"
     fi
+  fi
+  # The supported core minors go out with the cores target, after the core
+  # tarballs: the boxes take the copy on core/ with their daily tools refresh.
+  if _scope_takes cores && [[ -n "$(_day_names drupal-supported.txt)" ]]; then
+    _publish_core_file "${_DAY_DIR}/drupal-supported.txt"
   fi
   # A named run checked its names up front; a named all reports a failed build in its row.
   if [[ "${_seen}" -eq 0 && "${#_SCOPE[@]}" -eq 0 ]]; then
