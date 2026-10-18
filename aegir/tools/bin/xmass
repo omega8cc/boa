@@ -2674,7 +2674,8 @@ _xmass_dbctl_seed_back() {
 ### rewritten as text (grep -a): a crash can zero-fill a cnf's tail, and grep
 ### would then read the file as binary and pass none of its lines. A merge
 ### that ran on the target then takes back a create's _DB_BROKER_BORN=NO
-### there with its result (_xmass_dbctl_seed_back).
+### there with its result (_xmass_dbctl_seed_back), where the merge's own
+### call found that create's note there or got no answer.
 _xmass_push_account_cnf() {
   local _acct="$1" _t="$2"
   local _sCnf="/root/.${_acct}.octopus.cnf"
@@ -2683,7 +2684,7 @@ _xmass_push_account_cnf() {
   local _rRun="/root/.${_acct}.octopus.cnf.migrate-merge.run"
   local _lTmp="/var/backups/.xmass.cnfmerge.$$.lines"
   local _lRun="/var/backups/.xmass.cnfmerge.$$.run"
-  local _v _l _lst
+  local _v _l _lst _n _mrc
   if [ ! -e "${_sCnf}" ]; then
     _alrt "no ${_sCnf} on the source; the target account keeps its install-time defaults"
     return 0
@@ -2793,13 +2794,21 @@ MERGESH
     return 1
   fi
   rm -f "${_lTmp}" "${_lRun}"
-  if ssh root@"${_t}" "bash ${_rRun}; _rc=\$?; rm -f ${_rRun}; exit \${_rc}"; then
+  # the merge's own call says whether a create's note is there: the
+  # take-back asks the target only then, or when that call got no answer
+  _n=$(ssh root@"${_t}" "bash ${_rRun} > /dev/null; _rc=\$?; rm -f ${_rRun}
+    [ -e /root/.${_acct}.dbctl-seed.txt ] || [ -L /root/.${_acct}.dbctl-seed.txt ] && echo note
+    exit \${_rc}")
+  _mrc=$?
+  if [ "${_mrc}" = "0" ]; then
     _info "  ${_acct}: merged source octopus.cnf values into the target copy"
-    _xmass_dbctl_seed_back "${_acct}" "${_t}" 0
+    [ "${_n}" = "note" ] && _xmass_dbctl_seed_back "${_acct}" "${_t}" 0
     return 0
   fi
   _alrt "cnf merge for ${_acct} on ${_t} failed; the target keeps its current cnf"
-  _xmass_dbctl_seed_back "${_acct}" "${_t}" 1
+  if [ "${_n}" = "note" ] || [ "${_mrc}" = "255" ]; then
+    _xmass_dbctl_seed_back "${_acct}" "${_t}" 1
+  fi
   return 1
 }
 
