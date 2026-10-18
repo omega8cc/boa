@@ -2850,7 +2850,7 @@ _start_up() {
 _is_protected_run() {
   _protectedRun=FALSE
   _optBin="/opt/local/bin"
-  _boaBins="autoinit automini barracuda boa octopus"
+  _boaBins="autoinit barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
       # Anchored for every member, not just "boa": a bare path substring

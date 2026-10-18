@@ -209,7 +209,7 @@ _weekly_install_in_flight() {
   local _cbn=""
   local _cPat=""
   local _CNT=0
-  for _cbn in autoinit automini barracuda boa octopus; do
+  for _cbn in autoinit barracuda boa octopus; do
     if [ -e "/opt/local/bin/${_cbn}" ]; then
       # Anchored for every member, not just "boa": a bare path substring
       # matches any command line that merely MENTIONS the wrapper -- an
@@ -1159,7 +1159,7 @@ _check_system_manufacturer() {
 _is_protected_run() {
   _protectedRun=FALSE
   _optBin="/opt/local/bin"
-  _boaBins="autoinit automini barracuda boa octopus"
+  _boaBins="autoinit barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
       # Anchored, as _weekly_install_in_flight above: a bare path substring
