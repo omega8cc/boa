@@ -196,4 +196,6 @@ A built-in platform is fetched from the mirror only when its directory is missin
 
 A platform in use is left as it is, and the upgrade log says so once per republished copy. To pick up the fix, migrate its sites to a platform that has it. What each platform was fetched from is recorded in `~/distro/NNN/.boa-tarball/`; a replaced tree that turned out to hold a site or tenant files is kept in `~/distro/NNN/.boa-refresh/` and reported on every upgrade until it is dealt with.
 
+Which sites run on a Drupal core minor drupal.org no longer supports, and so cannot take a security release in place, `eolreport` lists; see [docs/EOLREPORT.md](EOLREPORT.md).
+
 Platforms fetched before this was added have no record. For each idle one, the first upgrade that runs fetches its tarball once: a tree that still matches it is only recorded, and one that does not (every verified Drupal 8+ tree) is refreshed.

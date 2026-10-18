@@ -1,0 +1,118 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+#
+# eolreport -- which Drupal 8+ sites on this box run on a core minor that
+# drupal.org no longer supports (READ-ONLY).
+#
+# The supported minors come from the mirror, never from drupal.org: the
+# catalogue build records updates.drupal.org's supported branches as
+# core/drupal-supported.txt beside the core tarballs, and the daily tools
+# refresh keeps the last good copy of that file on the box. A minor outside
+# the list gets no routine security fix. drupal.org sometimes adds a
+# best-effort fix for an older minor when a flaw is highly critical, which
+# does not put that minor back on the list.
+#
+# The report changes nothing. It names the sites that cannot be patched in
+# place, so that on a security release day the operator knows which sites
+# need a platform on a supported minor and a Migrate.
+#
+# Only Drupal 8 and newer sites are read: Drupal 6 and 7 (BOA's own long-term
+# cores), Backdrop, Grav and Textpattern sites are left out. A site is read
+# from its Drush alias; the platform's core version comes from
+# core/lib/Drupal.php under the site's root.
+#
+# Usage:
+#   eolreport          the sites outside the supported minors
+#   eolreport --all    every Drupal 8+ site, with its minor and its standing
+#
+# Exit code: 0 no site outside, 1 one or more sites outside, 2 no list on
+# this box yet (it arrives with the daily tools refresh).
+#
+# Tunable (env): _EOL_LIST (/var/log/boa/drupal-supported.txt)
+
+_LIST="${_EOL_LIST:-/var/log/boa/drupal-supported.txt}"
+_ALL=0
+
+case "${1:-}" in
+  --all) _ALL=1 ;;
+  "") ;;
+  *) echo "Usage: eolreport [--all]"; exit 2 ;;
+esac
+
+_read_list() {
+  local _l
+  if [[ ! -s "${_LIST}" ]]; then
+    echo "No list of supported Drupal core minors on this box yet (${_LIST})."
+    echo "It is fetched with the daily tools refresh from the mirror."
+    exit 2
+  fi
+  _l="$(head -n 1 "${_LIST}" 2> /dev/null | tr -d '\r')"
+  if [[ ! "${_l}" =~ ^[0-9]+\.[0-9]+( [0-9]+\.[0-9]+)*$ ]]; then
+    echo "The list at ${_LIST} is not a list of core minors; nothing reported."
+    exit 2
+  fi
+  _MINORS="${_l}"
+  _DATED="$(date -r "${_LIST}" '+%Y-%m-%d' 2> /dev/null)"
+}
+
+_supported() {
+  case " ${_MINORS} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  return 1
+}
+
+_alias_value() {
+  # $1 = alias file, $2 = key: the quoted value of 'key' => '...', first match
+  sed -n "s/.*'${2}' => '\([^']*\)'.*/\1/p" "${1}" 2> /dev/null | head -n 1
+}
+
+_core_version() {
+  # $1 = site root (the docroot): Drupal 8+ gives core/lib/Drupal.php
+  local _f="${1%/}/core/lib/Drupal.php"
+  [[ -f "${_f}" ]] || return 1
+  awk -F"'" '/const VERSION =/ { print $2; exit }' "${_f}" 2> /dev/null \
+    | grep -m1 -oE '^[0-9]+\.[0-9]+\.[0-9A-Za-z.-]+'
+}
+
+_read_list
+echo "Supported Drupal core minors (list dated ${_DATED:-unknown}): ${_MINORS}"
+[[ "${_ALL}" = "1" ]] && echo
+_SITES=0
+_OUT=0
+for _a in /data/disk/*/.drush/*.alias.drushrc.php; do
+  [[ -f "${_a}" ]] || continue
+  _n="${_a##*/}"
+  _n="${_n%.alias.drushrc.php}"
+  case "${_n}" in
+    platform_*|server_*|hostmaster|hm|none|self) continue ;;
+  esac
+  _u="${_a#/data/disk/}"
+  _u="${_u%%/*}"
+  _uri="$(_alias_value "${_a}" uri)"
+  _root="$(_alias_value "${_a}" root)"
+  [[ -n "${_uri}" && -n "${_root}" ]] || continue
+  _v="$(_core_version "${_root}")" || continue
+  [[ -n "${_v}" ]] || continue
+  _m="$(echo "${_v}" | grep -oE '^[0-9]+\.[0-9]+')"
+  _SITES=$(( _SITES + 1 ))
+  if _supported "${_m}"; then
+    [[ "${_ALL}" = "1" ]] && printf '%-5s %-44s %-12s %-8s %s\n' "${_u}" "${_uri}" "${_v}" "ok" "${_root}"
+  else
+    _OUT=$(( _OUT + 1 ))
+    printf '%-5s %-44s %-12s %-8s %s\n' "${_u}" "${_uri}" "${_v}" "OUTSIDE" "${_root}"
+  fi
+done
+[[ "${_ALL}" = "1" || "${_OUT}" -gt 0 ]] && echo
+if [[ "${_OUT}" -gt 0 ]]; then
+  echo "${_OUT} of ${_SITES} Drupal 8+ sites run on a core minor outside the supported ones."
+  echo "Such a site cannot take a security release in place: build a platform on a"
+  echo "supported minor and move the site there with Migrate."
+  exit 1
+fi
+echo "Every one of the ${_SITES} Drupal 8+ sites runs on a supported core minor."
+exit 0

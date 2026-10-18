@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * The dev/test database allowance of a hosted account no longer
+      multiplies by the engine count twice. It is the plan's factor of the
+      live allowance, which already carries the engine count, so an account
+      with one engine sees no change and one with N engines sees N times
+      the per-engine dev/test figure instead of N squared times it. The
+      usage report calls database usage Database Space (was Memory Space).
+
     * A PHP-FPM version the sites have left no longer holds its opcache
       and APCu until the weekly restart. Each version's segments are sized
       for the whole PHP budget of the box and stay filled to their
@@ -1397,6 +1404,15 @@
 
 @=> New Features
 
+    * A read-only report of the sites that cannot take a security
+      release in place: eolreport lists the Drupal 8+ sites whose
+      platform runs a core minor drupal.org no longer supports. The
+      catalogue build records drupal.org's supported branches beside the
+      core tarballs on the mirror (core/drupal-supported.txt), every
+      server takes that file with its daily tools refresh and keeps the
+      last good copy, and no server asks drupal.org. See
+      docs/EOLREPORT.md.
+
     * Grav shops: a Grav site can now be created on a database server for
       a KahunaCart shop (KahunaCart 1.5.4 or later, Percona 8.4). The
       panel creates its database and carries it through every task, the
@@ -1426,6 +1442,15 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * Old public-file addresses of an imported or a renamed site keep
+      answering. A request for a file under sites/default/files/ (a site
+      that came from elsewhere) or sites/<old-name>/files/ (a renamed
+      site) that finds nothing there is served from the site's own files
+      directory, through a named location the static-file locations fall
+      back to, and answers 404 when the file is missing there too. The
+      private, backup_migrate and config_ locations keep matching first.
+      Subdirectory sites already had this for sites/default/files/.
 
     * automini is retired. It was a reduced copy of autoinit made for
       custom testing, and BOA never started it: autoinit alone moves a
