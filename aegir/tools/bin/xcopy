@@ -1254,7 +1254,7 @@ _xcopy_heal_fpm_pins() {
 # box). Status 1 when the cnf is missing or cannot be rewritten. As in xoct.
 _xcopy_admail_upgrade_mail_off() {
   local _a="$1" _h="$2" _sh _rc
-  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { tr -d '\\000' < \"\${_c}\" > \"\${_c}.nulheal\" && cat -- \"\${_c}.nulheal\" > \"\${_c}\"; rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
   if [ -n "${_h}" ]; then
     ssh root@"${_h}" "${_sh}" 2> /dev/null
     _rc=$?
@@ -1830,6 +1830,8 @@ _xcopy_wg_seed() {
   # shellcheck disable=SC2029
   _XCOPY_WG_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
     _c=/root/.${2}.octopus.cnf
+    [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ] \
+      && { tr -d '\\000' < \${_c} > \${_c}.nulheal && cat -- \${_c}.nulheal > \${_c}; rm -f -- \${_c}.nulheal; }
     _re='^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP='
     if [ ${_v} != - ]; then
       if [ ! -e \${_c} ]; then
@@ -1938,6 +1940,8 @@ _xcopy_dbarm_seed() {
   # shellcheck disable=SC2029
   _out=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
     _c=/root/.${2}.octopus.cnf
+    [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ] \
+      && { tr -d '\\000' < \${_c} > \${_c}.nulheal && cat -- \${_c}.nulheal > \${_c}; rm -f -- \${_c}.nulheal; }
     _re='^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM='
     if [ ${_v} = NO ]; then
       if [ ! -e \${_c} ]; then

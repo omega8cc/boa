@@ -1142,6 +1142,10 @@ _satellite_cnf() {
       done <<< "${_octSeed}"
     fi
   else
+    # a NUL byte (a crash can zero-fill the cnf's tail) ends bash's read of
+    # the cnf there, and a key written after it is lost to this pass: every
+    # NUL byte is dropped before the cnf is read, the cnf rewritten in place
+    _satellite_cnf_nul_heal "${_octCnf}"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_octCnf} config file"
     fi
@@ -4495,6 +4499,21 @@ _satellite_db_broker_born() {
     _msg "ALRT: boa-dbctl scope ${_USER} plan says why"
   fi
   return 0
+}
+
+#
+# Every NUL byte of the cnf $1 dropped, the file rewritten in place (its
+# inode, owner and mode kept), said once; nothing when it holds none, is a
+# link or no file.
+_satellite_cnf_nul_heal() {
+  local _t
+  [[ -f "$1" && ! -L "$1" ]] || return 0
+  [[ "$(tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]] || return 0
+  _t="$1.nulheal.$$"
+  if tr -d '\000' < "$1" > "${_t}" && cat -- "${_t}" > "$1"; then
+    _msg "NOTE: NUL bytes dropped from $1 (a crash can zero-fill a file's tail; bash stops reading a file at its first NUL byte)"
+  fi
+  rm -f -- "${_t}"
 }
 
 #
