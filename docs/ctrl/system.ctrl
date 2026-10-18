@@ -422,8 +422,11 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.no.swap.clear.cnf
 
-  This file, if exists, allows to skip the otherwise default procedure
-  designed to clear system (memory) swap daily.
+  RETIRED. This file no longer does anything: no code reads it, and the daily
+  graceful.sh pass does not touch swap. Swap is emptied by autoupboa from
+  clear.sh's five-minute tick once it is half full, and only while free RAM can
+  take it all back. BOA still creates the file once on hosted boxes. An existing
+  file is harmless and can be deleted at leisure.
 
  @=> /root/.no.sysctl.update.cnf
 

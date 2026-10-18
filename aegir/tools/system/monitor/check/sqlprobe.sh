@@ -469,6 +469,43 @@ _rss_sum_mb() {
   printf '%s' "$(( _t / 1024 ))"
 }
 
+# Private (anonymous) resident memory of the given pids, summed. Unlike VmRSS
+# it never counts a page two processes share, so it adds up across workers.
+_anon_sum_mb() {
+  local _p _t=0 _v
+  for _p in "$@"; do
+    _v=$(awk '/^RssAnon:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
+    _v="${_v//[^0-9]/}"
+    [ -n "${_v}" ] && _t=$(( _t + _v ))
+  done
+  printf '%s' "$(( _t / 1024 ))"
+}
+
+# Resident size in MB of the shared memory a PHP-FPM master maps (opcache and
+# APCu: the master creates both before it forks its workers). A page any worker
+# ever filled stays resident until the master restarts, long after that worker
+# is gone, so neither the master's RSS nor its live workers' show it: a version
+# whose sites moved away held 5.8 GB that no process RSS reported. fincore
+# reads the segment's own pages instead. Each object counts once.
+_fpm_shared_resident_mb() {
+  local _rng _perm _off _dev _ino _name _res _seen=" " _tot=0
+  command -v fincore > /dev/null 2>&1 || { printf '0'; return 0; }
+  while read -r _rng _perm _off _dev _ino _name; do
+    [[ "${_perm}" == *s* ]] || continue
+    [[ "${_ino}" != "0" ]] || continue
+    case "${_name}" in
+      /dev/zero*|/memfd:*|/SYSV*) ;;
+      *) continue ;;
+    esac
+    [[ "${_seen}" == *" ${_dev}:${_ino} "* ]] && continue
+    _seen="${_seen}${_dev}:${_ino} "
+    _res=$(fincore -n -b -o RES "/proc/${1}/map_files/${_rng}" 2> /dev/null)
+    _res="${_res//[^0-9]/}"
+    [ -n "${_res}" ] && _tot=$(( _tot + _res ))
+  done < "/proc/${1}/maps"
+  printf '%s' "$(( _tot / 1048576 ))"
+}
+
 # Solr JVMs: classify each java process by the instance token BOA itself
 # launches it with (solr4 rides jetty9 with -Dsolr.solr.home=/opt/solr4;
 # solr7/solr9 run standalone against /var/solrN), then read VmRSS and the
@@ -516,9 +553,16 @@ done
 # segment (/run/o1.fpm.socket), so socket names cannot attribute it to a
 # version, and the wwwNN socket path has no glob metachar, so nullglob
 # could never zero it.
+# fpm_rss_mb stays the VmRSS sum it always was (older records compare with
+# it); fpm_anon_mb (private memory of masters and workers) plus fpm_shm_mb
+# (their shared opcache and APCu, each segment once, idle versions included)
+# is what PHP-FPM really holds. fpm_shm_i is ver:MB per master.
 _FPM_I=""
 _FPM_RSS_MB=0
 _FPM_PROCS=0
+_FPM_ANON_MB=0
+_FPM_SHM_MB=0
+_FPM_SHM_I=""
 for _MPID in $(pgrep -f '^php-fpm: master process' 2>/dev/null); do
   _MCMD=$(tr '\0' ' ' 2>/dev/null < "/proc/${_MPID}/cmdline")
   _MVER=$(printf '%s\n' "${_MCMD}" | grep -o '/opt/php[0-9]\+/' | head -n1)
@@ -534,6 +578,12 @@ for _MPID in $(pgrep -f '^php-fpm: master process' 2>/dev/null); do
   _FPM_I="${_FPM_I:+${_FPM_I},}${_MVER}:${#_MPOOLS[@]}:${_MNKIDS}"
   _FPM_RSS_MB=$(( _FPM_RSS_MB + _MRSS ))
   _FPM_PROCS=$(( _FPM_PROCS + 1 + _MNKIDS ))
+  # shellcheck disable=SC2086
+  _MANON=$(_anon_sum_mb "${_MPID}" ${_MKIDS})
+  _MSHM=$(_fpm_shared_resident_mb "${_MPID}")
+  _FPM_ANON_MB=$(( _FPM_ANON_MB + _MANON ))
+  _FPM_SHM_MB=$(( _FPM_SHM_MB + _MSHM ))
+  _FPM_SHM_I="${_FPM_SHM_I:+${_FPM_SHM_I},}${_MVER}:${_MSHM}"
 done
 
 # shellcheck disable=SC2046
@@ -559,7 +609,7 @@ _RESID_RSS_MB=$(( _RSS_ALL_MB - _VMRSS_MB - _VK_RSS_MB - _SOLR_RSS_MB \
 _POOL_MB=$(( _POOL_B / 1048576 ))
 _TMP_MB=$(( _TMPSZ_B / 1048576 ))
 
-_rec="{\"scope\":\"sql\",\"v\":2,\"ts\":${_TS},\"host\":\"${_HOST}\",\"up\":${_UP},\"interval\":${_IVL},\"valid\":${_VALID},\"lread_ps\":${_lread_ps},\"miss_ps\":${_miss_ps},\"miss_ppm\":${_miss_ppm},\"qps\":${_qps},\"conn_ps\":${_conn_ps},\"tmp_ps\":${_tmp_ps},\"tmp_disk_ps\":${_tmpd_ps},\"key_reads_ps\":${_keyr_ps},\"data_read_bps\":${_dread_bps},\"data_write_bps\":${_dwrit_bps},\"pool_pages_total\":${_PGTOT},\"pool_pages_free\":${_PGFREE},\"threads_conn\":${_THRC},\"threads_run\":${_THRR},\"max_used_conn\":${_MAXUSED},\"max_conn\":${_MAXCONN},\"pool_mb\":${_POOL_MB},\"tmp_mb\":${_TMP_MB},\"mem_avail_mb\":${_MEMAVAIL_MB},\"psi_mem_some10_x100\":${_PSI_X100},\"mysqld_vmrss_mb\":${_VMRSS_MB},\"datadir_mb\":${_DATADIR_MB},\"valkey_used_mb\":${_VK_MB},\"valkey_seeded\":${_VK_SEEDED},\"valkey_hits_ps\":${_vk_hits_ps:-0},\"valkey_miss_ps\":${_vk_miss_ps:-0},\"valkey_evicted_ps\":${_vk_evic_ps:-0},\"mem_free_mb\":${_MEMFREE_MB},\"mem_actfile_mb\":${_MEMACTF_MB},\"mem_sreclaim_mb\":${_MEMSRE_MB},\"valkey_rss_mb\":${_VK_RSS_MB},\"solr_rss_mb\":${_SOLR_RSS_MB},\"solr_n\":${_SOLR_N},\"solr_i\":\"${_SOLR_I}\",\"fpm_rss_mb\":${_FPM_RSS_MB},\"fpm_procs\":${_FPM_PROCS},\"fpm_i\":\"${_FPM_I}\",\"nginx_rss_mb\":${_NGX_RSS_MB},\"clamd_rss_mb\":${_CLAMD_RSS_MB},\"resid_rss_mb\":${_RESID_RSS_MB},\"rss_all_mb\":${_RSS_ALL_MB}}"
+_rec="{\"scope\":\"sql\",\"v\":2,\"ts\":${_TS},\"host\":\"${_HOST}\",\"up\":${_UP},\"interval\":${_IVL},\"valid\":${_VALID},\"lread_ps\":${_lread_ps},\"miss_ps\":${_miss_ps},\"miss_ppm\":${_miss_ppm},\"qps\":${_qps},\"conn_ps\":${_conn_ps},\"tmp_ps\":${_tmp_ps},\"tmp_disk_ps\":${_tmpd_ps},\"key_reads_ps\":${_keyr_ps},\"data_read_bps\":${_dread_bps},\"data_write_bps\":${_dwrit_bps},\"pool_pages_total\":${_PGTOT},\"pool_pages_free\":${_PGFREE},\"threads_conn\":${_THRC},\"threads_run\":${_THRR},\"max_used_conn\":${_MAXUSED},\"max_conn\":${_MAXCONN},\"pool_mb\":${_POOL_MB},\"tmp_mb\":${_TMP_MB},\"mem_avail_mb\":${_MEMAVAIL_MB},\"psi_mem_some10_x100\":${_PSI_X100},\"mysqld_vmrss_mb\":${_VMRSS_MB},\"datadir_mb\":${_DATADIR_MB},\"valkey_used_mb\":${_VK_MB},\"valkey_seeded\":${_VK_SEEDED},\"valkey_hits_ps\":${_vk_hits_ps:-0},\"valkey_miss_ps\":${_vk_miss_ps:-0},\"valkey_evicted_ps\":${_vk_evic_ps:-0},\"mem_free_mb\":${_MEMFREE_MB},\"mem_actfile_mb\":${_MEMACTF_MB},\"mem_sreclaim_mb\":${_MEMSRE_MB},\"valkey_rss_mb\":${_VK_RSS_MB},\"solr_rss_mb\":${_SOLR_RSS_MB},\"solr_n\":${_SOLR_N},\"solr_i\":\"${_SOLR_I}\",\"fpm_rss_mb\":${_FPM_RSS_MB},\"fpm_procs\":${_FPM_PROCS},\"fpm_i\":\"${_FPM_I}\",\"fpm_anon_mb\":${_FPM_ANON_MB},\"fpm_shm_mb\":${_FPM_SHM_MB},\"fpm_shm_i\":\"${_FPM_SHM_I}\",\"nginx_rss_mb\":${_NGX_RSS_MB},\"clamd_rss_mb\":${_CLAMD_RSS_MB},\"resid_rss_mb\":${_RESID_RSS_MB},\"rss_all_mb\":${_RSS_ALL_MB}}"
 echo "${_rec}" >> "${_OUT}"
 [ "${_STDOUT}" = "YES" ] && echo "${_rec}"
 
