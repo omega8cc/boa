@@ -29,6 +29,29 @@
       nothing and blocks nothing; a defined db_name that cannot be read
       sanely still refuses.
 
+    * The control panel's colleague logins see each task's site name in
+      the task lists, and the Profile and Platform columns of the Sites
+      list. The panel's Drupal 7 core compiled the node access check of a
+      joined node table on its own, so its placeholders shared names with
+      the outer query's and it ran with the outer query's values: for
+      every login without 'bypass node access' those fields came back
+      empty, or filled by chance, and a login attached to several Clients
+      lost every task name. Sites on BOA's Drupal 7 core get the same fix
+      for their Views relationships to other nodes.
+
+    * A site operator login lists the platforms on the panel's Platforms
+      page. A platform with no client list is offered to every Client on
+      the Add site form, yet only the instance owner could see it, so the
+      role's 'view platform' showed an empty page and no platform name on
+      its sites. Such a platform is now visible, read-only, to every
+      member of a Client holding 'view platform' (the client role does
+      not hold it); the page leaves out its Server column for logins that
+      cannot read server nodes.
+
+    * A Client login no longer lists the server Verify tasks, which it
+      could not open and which showed no name. A server task now belongs
+      to the instance owner alone, like the server itself.
+
     * renameaegirhost no longer keeps a site's alias file under both
       names after a failback. A box promoted once before still held the
       alias it wrote then; the sync (a copy that deletes nothing) laid
@@ -1410,8 +1433,7 @@
       RAM and is 64M below that. read_buffer_size follows the RAM tier of
       read_rnd_buffer_size but never goes above the 8M it was, so only
       the smallest boxes get less. table_definition_cache, fixed at 512,
-      is left to the server, which sizes it at 1424 with BOA's table
-      cache.
+      is left to the server, which sizes it at 1424 with BOA's table cache.
 
     * memorytuner's needs ledger now counts PHP-FPM by what it really
       holds: its private memory plus its shared opcache and APCu, each
