@@ -1216,10 +1216,15 @@
       import reads unfinished on the active with no run of it live, and
       takes it away once it no longer does; the standby's own passes never
       act on it. On a promotion such an account's dispatcher stays parked
-      on a box armed for the web group, BOA keeps its panel switched off
-      there, and the worker names it once a day with the way out on that
-      box (the route run again toward it, once the site databases the
-      replication brought are dropped). An import there that reaches its
+      on a box armed for the web group (a live one, as a standby's
+      accounts are installed with, is parked before the standby marker
+      goes, by the cutover and by a promotion by hand), the cutover's
+      rename of it refuses, BOA keeps its panel switched off there, and
+      the worker names it once a day with the way out on that box (the
+      route run again toward it, the databases the transfer's manifests
+      name dropped first, with their command). An import running on the
+      active carries no hold: a failover while it runs hands the promoted
+      box its half-made panel's dispatcher. An import there that reaches its
       hand-back ends the hold, and a revert there sets the transferred
       dumps aside. Once the import on the active is finished, the
       standby's own import state of a role before is set aside, never
@@ -1261,13 +1266,14 @@
 
     * aegir2boa-stage2 writes the db-import's pre-import snapshot under a
       temporary name and renames it into place only once mysqldump has
-      succeeded, and --revert-db-import refuses, before its dry run
-      prints a plan, unless the import completed that snapshot or a
-      revert cut off part way left its started mark, or an import of an
-      earlier release left its step 1 marker or snapshot in the account's
-      tree (the revert then names where to place that snapshot). An import
-      killed in its snapshot left a partial dump where the revert loaded
-      it from, after dropping the panel database.
+      succeeded, and --revert-db-import refuses, before its dry run prints
+      a plan, unless the import completed that snapshot or a revert cut
+      off part way left its started mark, or an import of an earlier
+      release left its step 1 marker or snapshot in the account's tree
+      (the revert then names where to place that snapshot and its step 1
+      marker); a snapshot a completed revert left under root's undo never
+      loads. An import killed in its snapshot left a partial dump where
+      the revert loaded it from, after dropping the panel database.
 
     * aegir2boa-stage2 transfer records the account it lands for (its uid
       and its home's inode and birth time) beside the import state on the
