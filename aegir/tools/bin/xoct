@@ -4102,13 +4102,18 @@ _xoct_dbctl_cnf_last() {
 # migration tool put the line, or the seed's note here
 # (/root/.<oN>.dbctl-seed.txt, a regular file of root's) says operator, so
 # that the line was there before the create, which never takes it back.
-# Such an account travels kept out.
+# Such an account travels kept out. So does one whose own create never had
+# its source's settings merged here (the note says pending or kept, or made
+# or line, the release before's words): its source's state is not known.
 _xoct_dbctl_kept_here() {
   [ "$(_xoct_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
   [ "$(_xoct_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
   [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] && return 0
-  [ -n "$(find "/root/.${1}.dbctl-seed.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] \
-    && [ "$(head -c 64 "/root/.${1}.dbctl-seed.txt" 2> /dev/null)" = "operator" ]
+  [ -n "$(find "/root/.${1}.dbctl-seed.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] || return 1
+  case "$(head -c 64 "/root/.${1}.dbctl-seed.txt" 2> /dev/null)" in
+    operator|pending|kept|made|line) return 0 ;;
+  esac
+  return 1
 }
 
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
@@ -4192,8 +4197,9 @@ _xoct_push_target_octopus_cnf() {
   fi
   # The account's opt-out of the database broker mirrors the source both
   # ways, read as the passes read it: _DB_BROKER_ARM=NO travels as a plain
-  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, as
-  # _DB_BROKER_ARM=NO (the tools' own line stays here); a source that keeps
+  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, or one
+  # a create there put whose merge never succeeded, as _DB_BROKER_ARM=NO
+  # (any other line a tool put stays here); a source that keeps
   # the account out neither way removes the key's lines on the target in
   # any form (the merge otherwise keeps every line the source lacks), so a
   # lifted opt-out is lifted there too.

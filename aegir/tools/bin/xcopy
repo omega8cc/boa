@@ -1887,13 +1887,18 @@ _xcopy_dbctl_cnf_last() {
 # migration tool put the line, or the seed's note here
 # (/root/.<oN>.dbctl-seed.txt, a regular file of root's) says operator, so
 # that the line was there before the create, which never takes it back.
-# Such an account travels kept out.
+# Such an account travels kept out. So does one whose own create never had
+# its source's settings merged here (the note says pending or kept, or made
+# or line, the release before's words): its source's state is not known.
 _xcopy_dbctl_kept_here() {
   [ "$(_xcopy_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
   [ "$(_xcopy_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
   [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] && return 0
-  [ -n "$(find "/root/.${1}.dbctl-seed.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] \
-    && [ "$(head -c 64 "/root/.${1}.dbctl-seed.txt" 2> /dev/null)" = "operator" ]
+  [ -n "$(find "/root/.${1}.dbctl-seed.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] || return 1
+  case "$(head -c 64 "/root/.${1}.dbctl-seed.txt" 2> /dev/null)" in
+    operator|pending|kept|made|line) return 0 ;;
+  esac
+  return 1
 }
 
 # The source's opt-out of the database broker, seeded into the new account's
