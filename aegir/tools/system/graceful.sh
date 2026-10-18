@@ -433,6 +433,84 @@ _trim_session_cgroups() {
   echo "Removed $(( ${#_cgGone[@]} - _cgLeft )) empty login-session cgroups"
 }
 
+# Resident size in MB of the shared memory a PHP-FPM master maps (opcache and
+# APCu: the master creates both before it forks its workers). A page any worker
+# ever filled stays resident until the master restarts, long after that worker
+# is gone, so the master's own RSS shows almost none of it: fincore reads the
+# segment's own pages instead. Each object counts once.
+_fpm_shared_resident_mb() {
+  local _rng _perm _off _dev _ino _name _res _seen=" " _tot=0
+  while read -r _rng _perm _off _dev _ino _name; do
+    [[ "${_perm}" == *s* ]] || continue
+    [[ "${_ino}" != "0" ]] || continue
+    case "${_name}" in
+      /dev/zero*|/memfd:*|/SYSV*) ;;
+      *) continue ;;
+    esac
+    [[ "${_seen}" == *" ${_dev}:${_ino} "* ]] && continue
+    _seen="${_seen}${_dev}:${_ino} "
+    _res=$(fincore -n -b -o RES "/proc/${1}/map_files/${_rng}" 2> /dev/null)
+    _res="${_res//[^0-9]/}"
+    [ -n "${_res}" ] && _tot=$(( _tot + _res ))
+  done < "/proc/${1}/maps"
+  echo "$(( _tot / 1048576 ))"
+}
+
+# Every PHP-FPM version keeps its opcache and APCu filled to their high-water
+# mark until its master restarts, and BOA sizes each version's segments for the
+# whole PHP budget of the box. When sites move to another version, the one they
+# left holds its filled segments with nothing using them: a hosted box had its
+# database OOM-killed with 5.8 GB held that way beside the 6.2 GB of the version
+# in use. Reload a version the FPM sampler saw without a single worker in every
+# sample of the last day (at least 12 hours of samples of its current master)
+# while it still holds 256 MB or more of them: no request is in flight to lose,
+# and the reload hands the memory back.
+_reload_idle_fpm_versions() {
+  local _now _from _mPid _mVer _mUp _since _verdict _shm
+  local _tuneDir="/var/log/boa/fpm-tune"
+  local _relLog="/var/log/boa/fpm-idle-reload.log"
+  command -v fincore > /dev/null 2>&1 || return 0
+  [ -d "${_tuneDir}" ] || return 0
+  _now=$(date +%s)
+  _from=$(( _now - 86400 ))
+  for _mPid in $(pgrep -f '^php-fpm: master process'); do
+    _mVer=$(tr '\0' ' ' < "/proc/${_mPid}/cmdline" 2> /dev/null \
+      | grep -o '/opt/php[0-9]\+/' | head -n1)
+    _mVer="${_mVer//[^0-9]/}"
+    [ -n "${_mVer}" ] && [ -e "/etc/init.d/php${_mVer}-fpm" ] || continue
+    _mUp=$(ps -o etimes= -p "${_mPid}" 2> /dev/null)
+    _mUp="${_mUp//[^0-9]/}"
+    [ -n "${_mUp}" ] || continue
+    _since=$(( _now - _mUp ))
+    [ "${_since}" -lt "${_from}" ] && _since="${_from}"
+    _verdict=$(cat "${_tuneDir}/$(date -d "@${_from}" +%Y%m%d).jsonl" \
+      "${_tuneDir}/$(date -d "@${_now}" +%Y%m%d).jsonl" 2> /dev/null \
+      | awk -v v="${_mVer}" -v p="${_mPid}" -v s="${_since}" '
+        function num(k,   r) {
+          if (!match($0, "\"" k "\":[0-9]+")) return -1
+          r = substr($0, RSTART, RLENGTH); sub(/.*:/, "", r); return r + 0
+        }
+        /"scope":"version"/ {
+          if (num("version") != v || num("master_pid") != p) next
+          t = num("ts"); if (t < s) next
+          k = num("n_children"); if (k < 0) next
+          n++; if (k > 0) busy++
+          if (lo == "" || t < lo) lo = t
+          if (t > hi) hi = t
+        }
+        END { if (n >= 100 && hi - lo >= 43200 && busy == 0) print "IDLE" }')
+    [ "${_verdict}" = "IDLE" ] || continue
+    _shm=$(_fpm_shared_resident_mb "${_mPid}")
+    [ "${_shm:-0}" -ge 256 ] || continue
+    echo "Reloading PHP ${_mVer} FPM, idle all day with ${_shm} MB of caches..."
+    if service "php${_mVer}-fpm" reload > /dev/null 2>&1; then
+      echo "$(date) php${_mVer}-fpm reloaded: no worker for a day, ${_shm} MB of opcache and APCu released" >> "${_relLog}"
+    else
+      echo "$(date) php${_mVer}-fpm reload FAILED: no worker for a day, ${_shm} MB of opcache and APCu still held" >> "${_relLog}"
+    fi
+  done
+}
+
 # Main action function
 _graceful_action() {
   echo "Starting system maintenance tasks..."
@@ -458,27 +536,21 @@ _graceful_action() {
     service rsyslog start
   fi
 
-  # Swap, RAM and disk cache management
-  _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"
+  # RAM and disk cache management. No swap reset here any more: autoupboa's
+  # _swap_purge_if_bloated empties swap from clear.sh's five-minute tick once
+  # it is half full, and only while free RAM can take it back. The nightly
+  # swapoff here checked no RAM at all, so with a large swap it could pull
+  # back more than the box had free.
   if [ -d "/dev/disk" ]; then
-    if [ ! -e "/root/.no.swap.clear.cnf" ]; then
-      if [ -n "${_IF_BCP}" ]; then
-        # Old shape ran swapoff unconditionally and skipped only the
-        # swapon, leaving the box SWAPLESS for a day whenever a backup
-        # overlapped 03:01. Defer the whole reset instead.
-        echo "Backup in progress; swap reset deferred to the next run..."
-      else
-        echo "Resetting swap..."
-        swapoff -a
-        swapon -a
-      fi
-    fi
     echo "Optimizing RAM usage..."
     _optimize_ram
   fi
 
   echo "Removing empty login-session cgroups..."
   _trim_session_cgroups
+
+  echo "Checking for PHP-FPM versions idle all day..."
+  _reload_idle_fpm_versions
 
   # Setup GeoIP directories
   if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
