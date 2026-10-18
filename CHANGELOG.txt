@@ -1857,13 +1857,16 @@
       keeps, the seed adds nothing and that line stays. Where the merge
       failed the line stays, and no pass takes it back, until the next
       merge that succeeds does: a create run again, an xoct live transfer
-      or an xmass live pass, each with its own merge's result. An interrupt
-      once the remote install has started, or a connection lost during it,
-      leaves line and note for a re-run, a lost connection the web group's
-      seed too, an ALRT naming them. The seed's line starts a line of
-      its own after a NUL tail, the target's cnf is read and rewritten as
-      text, and the purge parks the note with the account's root files
-      (docs/DBCTL.md).
+      or an xmass live pass, each with its own merge's result. An exit
+      before the remote install starts takes both seeds back; an interrupt
+      once it has started, or a connection lost during it, leaves line and
+      note for a re-run whose install uses them, a lost connection the web
+      group's seed too, an ALRT naming each line that stays (xcopy create
+      the same with its two seeds). A web group line a re-run finds there
+      already stays, and a failed install names it. The seed's line starts
+      a line of its own after a NUL tail, the target's cnf is read and
+      rewritten as text, and the purge parks the note with the account's
+      root files (docs/DBCTL.md).
 
     * On a box armed for the broker the Octopus pass takes back a
       _DB_BROKER_BORN=NO line a migration of an earlier release left in a
