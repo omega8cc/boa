@@ -3472,23 +3472,27 @@ verb_import() {
     # only an import that completed its pre-import snapshot (its step 1
     # marker) has anything to revert to, or a revert cut off part way (its
     # started mark: it cleared the step markers last, the snapshot it loads
-    # was complete when it began), or an import of an earlier release, which
-    # kept its step 1 marker or its snapshot in the account's tree (only
-    # their existence is tested: the account can write there), so the
-    # placement of that snapshot below is reached. Refused before a plan is
+    # was complete when it began). A snapshot under root's undo with
+    # neither is what a completed revert leaves, stale, and never loads. An
+    # import of an earlier release kept its step 1 marker or its snapshot in
+    # the account's tree (only their existence is tested: the account can
+    # write there): with nothing under root's undo it reaches the placement
+    # of that snapshot below, never a load. Refused before a plan is
     # printed, a gate is read or anything is dropped
-    if ! _marker_has dbimport.1.done && ! _marker_has revert-db.started \
-      && [[ ! -e "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" && ! -L "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" \
-        && ! -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" && ! -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]]; then
-      [[ -e "$(_t_held_run)" ]] \
-        && _die "nothing to revert on ${_ACCOUNT}: its db-import was cut off before its pre-import snapshot was complete (no $(_marker dbimport.1.done)) - finish it with aegir2boa-stage2 import --account ${_ACCOUNT} --route db-import (dry first, then with --live)"
-      _die "nothing to revert on ${_ACCOUNT}: no db-import has completed its pre-import snapshot since the last revert (no $(_marker dbimport.1.done))"
+    if ! _marker_has dbimport.1.done && ! _marker_has revert-db.started; then
+      if [[ -s "${_undo}/a2b-pre-import.sql" \
+        || ( ! -e "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" && ! -L "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" \
+          && ! -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" && ! -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ) ]]; then
+        [[ -e "$(_t_held_run)" ]] \
+          && _die "nothing to revert on ${_ACCOUNT}: its db-import was cut off before its pre-import snapshot was complete (no $(_marker dbimport.1.done)) - finish it with aegir2boa-stage2 import --account ${_ACCOUNT} --route db-import (dry first, then with --live)"
+        _die "nothing to revert on ${_ACCOUNT}: no db-import has completed its pre-import snapshot since the last revert (no $(_marker dbimport.1.done))"
+      fi
     fi
     if [[ ! -s "${_undo}/a2b-pre-import.sql" ]]; then
       # an earlier release kept the snapshot in the account's tree, which
       # the account can write: only its existence is tested here
       [[ -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" || -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]] \
-        && _die "no pre-import snapshot in ${_undo}: ${_ACCT_ROOT}/undo/a2b-pre-import.sql was left by an earlier release and is never loaded from the account's tree - after checking it, place it as ${_undo}/a2b-pre-import.sql (root's, dir 0700, file 0600) and re-run the revert"
+        && _die "no pre-import snapshot in ${_undo}: ${_ACCT_ROOT}/undo/a2b-pre-import.sql was left by an earlier release and is never loaded from the account's tree - after checking it, place it as ${_undo}/a2b-pre-import.sql (root's, dir 0700, file 0600) with its step 1 marker $(_marker dbimport.1.done) beside it, and re-run the revert"
       _die "no pre-import snapshot to revert to"
     fi
     # resolved before anything is dropped: the alias is read only inside the
