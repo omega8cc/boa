@@ -1746,9 +1746,10 @@ _acct_reclaim_restored() {
   [[ "${_wg}" =~ ^[0-9]+$ ]] && _x+=( ! -gid "${_wg}" )
   # only the free's journal names that number: while it cannot be read the
   # claim here waits (instgrp reclaim below skips the account too, and
-  # takes the restored paths once it reads again)
-  if _wg_free_unreadable "${_a}"; then
-    echo "NOTE: ${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the restored paths keep their groups until it reads again and instgrp reclaim ${_a} runs"
+  # takes the restored paths once it reads again); only root reads it, so a
+  # restore run by the account itself is never held by it
+  if [ "$(id -u)" = "0" ] && _wg_free_unreadable "${_a}"; then
+    echo "NOTE: ${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the restored paths keep their groups until it reads again and instgrp reclaim ${_a} runs" >&2
     _gid=""
   else
     _gid=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
