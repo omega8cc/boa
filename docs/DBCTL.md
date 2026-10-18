@@ -761,8 +761,10 @@ install of that re-run that fails names it in an `ALRT`.
 
 An account that was made keeps the line until the create is run again. The
 seed puts its line on a line of its own where the cnf's last byte is no line
-end, a NUL byte included. Each reads and rewrites the target's cnf as text: a
-NUL byte costs none of its lines.
+end. Each reads and rewrites the target's cnf as text, and drops every NUL
+byte of it first (a crash can zero-fill a file's tail, and bash stops reading
+a file at its first NUL byte, so a line written after one is lost to the
+pass).
 
 Where the merge of the source's settings failed, the line stays, the note
 says `kept`, the tool prints an `ALRT` that names the line, and `report` reads
@@ -935,7 +937,11 @@ first and on every box one release later. A line that is there, `NO`
 included, always stays, so `_DB_BROKER_ARM=NO` set today keeps a box out.
 
 Every reader of the two settings reads a cnf as text, whatever bytes it holds:
-a NUL byte (a crash can zero-fill a file's tail) hides none of its lines.
+a NUL byte (a crash can zero-fill a file's tail) hides none of its lines from
+them. bash, which the Octopus pass sources the cnf with, stops reading a file
+at its first NUL byte, so the pass drops every NUL byte of the account's cnf
+before it reads it (the file rewritten in place, said in a NOTE), and so does
+every tool that writes a line after the cnf's text.
 
 ## The report
 
