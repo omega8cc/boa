@@ -339,6 +339,18 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
   drupal-10.6.19
 ```
 
+The last minor of each earlier major too, so a site still on it can be rehearsed
+through its upgrade on a BOA server: no catalogue symbol builds a platform from
+`drupal-8.9.20` (register the tarball as a platform of your own), `DL9` builds one from
+`drupal-9.5.11`. Each builds under the newest installed PHP its lock accepts, with the
+Drush line of its day; a build server with none of them skips the line and says so in
+the summary:
+
+```sh
+  drupal-8.9.20     # php74 or php73, drush ^10
+  drupal-9.5.11     # php82, php81 or php74, drush ^11
+```
+
 ## Backdrop family
 
 staticbuild is also the Backdrop-family builder. Backdrop is not Composer-based, so
@@ -677,6 +689,15 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # cd drupal-<version> && composer require drush/drush
            # then audit the lock as under "By hand" above (never fatal)
            # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.19 11.1.10 11.2.14 11.3.19 11.4.10
+legacy     # the last minor of each earlier major (_CORE_LEGACY: 8.9 9.5), built first,
+           # each under the newest installed PHP its lock accepts: 8.9 under php74 (or
+           # php73) with drush/drush:^10, 9.5 under php82 (or php81, php74) with
+           # drush/drush:^11; the same create-project, require and audit, except that
+           # the 8.9 template is created with --no-install, its three plugins allowed
+           # (composer config allow-plugins.<plugin> true), then composer install: its
+           # lock is older than composer's allow-plugins setting. A server with none of
+           # a line's PHP versions skips it (BUILD skip, "needs ...: not installed")
+           # built: 8.9.20 9.5.11
 prerelease # each _CORE_PRERELEASE version whose minor has no stable release among the
            # minors (name only a pre-release that carries every core security fix
            # released so far), under php85 like every Drupal 12 line:
