@@ -152,8 +152,9 @@ password its server alias records is empty`, `... has a character outside
 A-Z, a-z, 0-9 and %._~/-` or `... is longer than 3072 bytes as the alias
 spells it`. So does the box-wide check's line of an account's instance login
 that holds a global privilege, with the same words, and the master's own
-instance login reads `credential-not-plain`. Settle reads a parked home that
-holds such an alias as one that holds no credential.
+instance login reads `credential-not-plain`, or `no-credential` where its
+alias records an empty password. Settle reads a parked home that holds such
+an alias as one that holds no credential.
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
@@ -749,7 +750,8 @@ The install window's own exit takes the line back where the account was not
 made, until the remote install is started. From then on the line and the note
 stay (an interrupt does not stop that install, which may still make the
 account), and a re-run's seed reads the note; a connection lost during the
-install leaves them too.
+install leaves them too, and the web group's seed with them (an `ALRT` names
+what stays, to remove where no re-run follows and no account was made).
 
 An account that was made keeps the line until the create is run again. The
 seed puts its line on a line of its own where the cnf's last byte is no line
@@ -808,7 +810,9 @@ records), and the pass goes on as for any account.
 Once the write into the cnf has started, the copy is the cnf's one whole text.
 A write that fails part way (a full disk) leaves the cnf partly written and
 keeps the copy, `/root/.oN.octopus.cnf.dbseed.<pid>`: an `ALRT` names it, to be
-put back in the cnf's place, and the pass switches nothing for the account.
+put back in the cnf's place, and the pass switches nothing for the account. A
+write refused before its first byte (an immutable or append-only cnf) leaves
+the cnf as it was: the copy goes, and the `NOTE` says the line stays.
 
 The account's opt-out travels with it, read as the pass reads it, in any of
 its shapes: its `_DB_BROKER_ARM=NO`, and a `_DB_BROKER_BORN=NO` that is its
@@ -817,6 +821,11 @@ where the source holds no create marker for the account, so no migration tool
 put it, or where the seed's note for the account there says `operator` (a
 regular file of root's), so the line was there before the create, which never
 takes it back.
+
+A `_DB_BROKER_BORN=NO` travels so too where that note says `pending` or `kept`
+(or `made` or `line`, an earlier release's words): the create that brought the
+account there never had its source's settings merged, so its source's state is
+not known.
 
 `xoct` and `xmass` send a plain `_DB_BROKER_ARM=NO` to the target where the
 source is kept out so, and remove every line of the key there where it is
@@ -828,7 +837,9 @@ target, and on a standby once it is promoted.
 before its install (the file made, root 0600, where there is none), removes a
 line of the key there where the source is not kept out, and takes what it
 wrote back when the install does not happen, unless the launcher made the
-account before it failed (that copy keeps the source's `NO`).
+account before it failed (that copy keeps the source's `NO`) or the connection
+was lost during the install, which may go on and make it (an `ALRT` names what
+stays).
 
 A line of the key the target's cnf held, which the seed replaced or removed,
 is put back then. `xcopy` puts no `_DB_BROKER_BORN`: a copy that is not kept
