@@ -153,8 +153,8 @@ A-Z, a-z, 0-9 and %._~/-` or `... is longer than 3072 bytes as the alias
 spells it`. So does the box-wide check's line of an account's instance login
 that holds a global privilege, with the same words, and the master's own
 instance login reads `credential-not-plain`, or `no-credential` where its
-alias records an empty password. Settle reads a parked home that holds such
-an alias as one that holds no credential.
+aliases record only an empty password. Settle reads a parked home that holds
+such an alias as one that holds no credential.
 
 A `root` row no transport of the box reaches (on most boxes `::1`, as IPv6 is
 off) is proven by its record alone: when it is accepted it takes root's own
@@ -747,11 +747,17 @@ that note as they read it on the target, so a create run again after any exit
 takes back what an earlier run put; each removes the note with the line.
 
 The install window's own exit takes the line back where the account was not
-made, until the remote install is started. From then on the line and the note
-stay (an interrupt does not stop that install, which may still make the
-account), and a re-run's seed reads the note; a connection lost during the
-install leaves them too, and the web group's seed with them (an `ALRT` names
-what stays, to remove where no re-run follows and no account was made).
+made, until the remote install is started, and the web group's seed with it.
+From then on the line and the note stay (an interrupt does not stop that
+install, which may still make the account), and a re-run's seed reads the
+note. A connection lost during the install leaves them too, and the web
+group's seed with them, for a re-run whose install uses them; an `ALRT` names
+each line that stays, to remove where no re-run follows and no account was
+made.
+
+The web group's seed keeps no note. A re-run that finds its line already
+there cannot tell it from an operator's, so it leaves the line, and an
+install of that re-run that fails names it in an `ALRT`.
 
 An account that was made keeps the line until the create is run again. The
 seed puts its line on a line of its own where the cnf's last byte is no line
@@ -823,9 +829,9 @@ regular file of root's), so the line was there before the create, which never
 takes it back.
 
 A `_DB_BROKER_BORN=NO` travels so too where that note says `pending` or `kept`
-(or `made` or `line`, an earlier release's words): the create that brought the
-account there never had its source's settings merged, so its source's state is
-not known.
+(or `made` or `line`, an earlier release's words): no merge of its source's
+settings has taken the create's line back yet, so its source's state is not
+known there.
 
 `xoct` and `xmass` send a plain `_DB_BROKER_ARM=NO` to the target where the
 source is kept out so, and remove every line of the key there where it is
@@ -838,12 +844,17 @@ before its install (the file made, root 0600, where there is none), removes a
 line of the key there where the source is not kept out, and takes what it
 wrote back when the install does not happen, unless the launcher made the
 account before it failed (that copy keeps the source's `NO`) or the connection
-was lost during the install, which may go on and make it (an `ALRT` names what
-stays).
+was lost during the install, which may go on and make it.
+
+After a lost connection an `ALRT` names each line that stays, and the lines of
+the target's own cnf the seed took out, to put back where no re-run follows.
+An exit before the install starts takes both seeds back.
 
 A line of the key the target's cnf held, which the seed replaced or removed,
-is put back then. `xcopy` puts no `_DB_BROKER_BORN`: a copy that is not kept
-out is switched by an armed target as any new account is.
+is put back then. A `_DB_BROKER_ARM=NO` already there stays, as the web
+group's line does, and a failed install names it. `xcopy` puts no
+`_DB_BROKER_BORN`: a copy that is not kept out is switched by an armed target
+as any new account is.
 
 Each call is one line of the pass. An answer that ends well is the broker's
 own `OK` line:
