@@ -1957,6 +1957,10 @@
       own checks: on 11.4 it crashed on the first severity reported as an
       enum, and before that showed 18 of the report's 51.
 
+    * Drupal 7 core 7.106.3 (D7ES), for the node access check on joined
+      node tables under Important Fixes. New Drupal 7 platforms and the
+      control panels are built on it.
+
     * Redis integration for Drupal 7 (redis_edge) 7.x-3.19.3. A path
       without an alias raised two PHP 8.5 warnings at every lookup, and
       on a site whose language is not neutral, English on most sites, it
