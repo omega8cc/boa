@@ -1374,9 +1374,13 @@ _ig_put_here() {
 }
 
 # The marker $1 in the current (pinned) log/: an empty directory at the name is
-# removed first (2 when it is not empty), then the marker is put.
+# removed first (2 when it is not empty), then the marker is put. The temp
+# copies a killed write left beside it go first, a minute old or more, as
+# _wg_note_sweep_here takes the notes'; a migration excludes them too.
 _marker_put_here() {
   local _n="${_MARK_REL##*/}"
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -maxdepth 1 -name ".${_n}.put.*" \
+    ! -type d -mmin +1 -exec rm -f -- {} + > /dev/null 2>&1
   if [ -d "./${_n}" ] && [ ! -L "./${_n}" ]; then
     rmdir -- "./${_n}" 2> /dev/null || return 2
   fi

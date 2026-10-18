@@ -7211,7 +7211,8 @@ _xmass_sync_account() {
   # record. pass.txt rides the credential carry below instead, paired with
   # the shadow hash so the two can never disagree.
   # instance-group.txt records the SOURCE box's conversion (its gid) and
-  # must never travel either: the destination pass below writes its own;
+  # must never travel either (nor a temp copy of it a killed write left):
+  # the destination pass below writes its own;
   # nor web-group-notes.txt (or a temp copy of it a killed note left),
   # which names the source box's web-group state.
   # proxy-failed.pid is source-role state too: on the target it would park
@@ -7222,7 +7223,7 @@ _xmass_sync_account() {
   _xmass_pinned_leg "${_udir}/log" "${_dst}/log" "the log files of ${_oct}" \
     -aEAXqu ${_ieni} \
     --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
-    --exclude=instance-group.txt --exclude=proxy-failed.pid \
+    --exclude=instance-group.txt '--exclude=.instance-group.txt.put.*' --exclude=proxy-failed.pid \
     --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*'
 
   # Drush aliases are copied WHOLE — including the source's server_master
