@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * The dev/test database allowance of a hosted account no longer
+      multiplies by the engine count twice. It is the plan's factor of the
+      live allowance, which already carries the engine count, so an account
+      with one engine sees no change and one with N engines sees N times
+      the per-engine dev/test figure instead of N squared times it. The
+      usage report calls database usage Database Space (was Memory Space).
+
     * A PHP-FPM version the sites have left no longer holds its opcache
       and APCu until the weekly restart. Each version's segments are sized
       for the whole PHP budget of the box and stay filled to their
