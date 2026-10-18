@@ -1436,6 +1436,15 @@
 
 @=> Improvements
 
+    * Old public-file addresses of an imported or a renamed site keep
+      answering. A request for a file under sites/default/files/ (a site
+      that came from elsewhere) or sites/<old-name>/files/ (a renamed
+      site) that finds nothing there is served from the site's own files
+      directory, through a named location the static-file locations fall
+      back to, and answers 404 when the file is missing there too. The
+      private, backup_migrate and config_ locations keep matching first.
+      Subdirectory sites already had this for sites/default/files/.
+
     * automini is retired. It was a reduced copy of autoinit made for
       custom testing, and BOA never started it: autoinit alone moves a
       Debian box to Devuan. A box that still carries
