@@ -1213,7 +1213,9 @@ _fix_on_upgrade() {
 # yields the same budget on every host family, and each tier roughly doubles.
 # The 16384 tier corresponds to roughly 85 GB of installed RAM. Sets the PHP
 # limits (_USE_PHP/_USE_OPC/_USE_CLI) and the matching Percona buffer sizes
-# (_QCE_SQL/_RND_SQL/_JBF_SQL); platform-specific caps are applied by the caller.
+# (_QCE_SQL/_RND_SQL/_JBF_SQL, and _LBF_SQL for innodb_log_buffer_size, 256M
+# only from the 8192 tier up: it is allocated in full at start on every box);
+# platform-specific caps are applied by the caller.
 # NB _QCE_SQL is a dead output: every tier still computes it, nothing consumes
 # it since the query-cache era ended. Kept inert on purpose.
 _php_budget_for_ram() {
@@ -1224,6 +1226,7 @@ _php_budget_for_ram() {
     _QCE_SQL=256M
     _RND_SQL=32M
     _JBF_SQL=16M
+    _LBF_SQL=256M
   elif [ "${_USE}" -ge 8192 ]; then
     _USE_PHP=4096
     _USE_OPC=4096
@@ -1231,6 +1234,7 @@ _php_budget_for_ram() {
     _QCE_SQL=128M
     _RND_SQL=16M
     _JBF_SQL=8M
+    _LBF_SQL=256M
   elif [ "${_USE}" -ge 2048 ]; then
     _USE_PHP=2048
     _USE_OPC=2048
@@ -1238,6 +1242,7 @@ _php_budget_for_ram() {
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
+    _LBF_SQL=64M
   elif [ "${_USE}" -ge 512 ]; then
     _USE_PHP=1024
     _USE_OPC=1024
@@ -1245,6 +1250,7 @@ _php_budget_for_ram() {
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
+    _LBF_SQL=64M
   else
     _USE_PHP="${_USE}"
     _USE_OPC="${_USE}"
@@ -1252,6 +1258,7 @@ _php_budget_for_ram() {
     _QCE_SQL=32M
     _RND_SQL=1M
     _JBF_SQL=1M
+    _LBF_SQL=64M
   fi
 }
 
@@ -1922,10 +1929,18 @@ _tune_memory_limits() {
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
+      _LBF_SQL=64M
     fi
   fi
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
+  fi
+  # read_buffer_size follows read_rnd_buffer_size's tier (caps included) but
+  # never above 8M: it is allocated per session for sequential scans, so a
+  # larger box gains nothing from more, and only the smallest tier goes lower.
+  _RBF_SQL="${_RND_SQL}"
+  if [ "${_RND_SQL%M}" -gt 8 ] 2>/dev/null; then
+    _RBF_SQL=8M
   fi
   # RAM-scaled PHP memory floors. Tiny VMs were previously pinned to a 1 GB
   # per-pool memory_limit (and matching APCu), which triggers OOM under even
@@ -1971,6 +1986,8 @@ _tune_memory_limits() {
     _msg "TUNE: _QCE_SQL is ${_QCE_SQL}"
     _msg "TUNE: _RND_SQL is ${_RND_SQL}"
     _msg "TUNE: _JBF_SQL is ${_JBF_SQL}"
+    _msg "TUNE: _RBF_SQL is ${_RBF_SQL}"
+    _msg "TUNE: _LBF_SQL is ${_LBF_SQL}"
     _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
@@ -2028,6 +2045,10 @@ _tune_memory_limits() {
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf &> /dev/null
     wait
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf &> /dev/null
+    wait
+    sed -i "s/^read_buffer_size.*/read_buffer_size        = ${_RBF_SQL}/g"        /etc/mysql/my.cnf &> /dev/null
+    wait
+    sed -i "s/^innodb_log_buffer_size.*/innodb_log_buffer_size  = ${_LBF_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
     wait
     if [ -n "${_KEY_BUFFER_PIN}" ]; then
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_KEY_BUFFER_PIN}M/g" /etc/mysql/my.cnf &> /dev/null
