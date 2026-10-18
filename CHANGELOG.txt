@@ -1859,7 +1859,8 @@
       merge that succeeds does: a create run again, an xoct live transfer
       or an xmass live pass, each with its own merge's result. An interrupt
       once the remote install has started, or a connection lost during it,
-      leaves line and note for a re-run. The seed's line starts a line of
+      leaves line and note for a re-run, a lost connection the web group's
+      seed too, an ALRT naming them. The seed's line starts a line of
       its own after a NUL tail, the target's cnf is read and rewritten as
       text, and the purge parks the note with the account's root files
       (docs/DBCTL.md).
@@ -1871,18 +1872,21 @@
       is _DB_BROKER_ARM=NO. Only on an upgrade pass, where the create
       marker names the account as it is now, through a checked rewrite
       read as text; one INFO line names the migration. A write failing part
-      way keeps the copy, named in an ALRT, and switches nothing
+      way keeps the copy, named in an ALRT, and switches nothing; one
+      refused before its first byte changes nothing and is a NOTE
       (docs/DBCTL.md).
 
     * xoct and xmass carry an account's _DB_BROKER_ARM=NO both ways, read
       as the pass reads it, in any of its shapes, and an operator's
       _DB_BROKER_BORN=NO (no create marker, or a seed note saying
-      operator) as _DB_BROKER_ARM=NO: an account its operator kept out
-      stays out on the target and on a promoted standby, and one let back
-      in on its source is let back in there.
+      operator) as _DB_BROKER_ARM=NO, and so a create's line whose merge
+      never succeeded (a note saying pending or kept): an account its
+      operator kept out stays out on the target and on a promoted standby,
+      and one let back in on its source is let back in there.
       xcopy puts the source's NO into the copy's cnf before its install,
       and where the install does not happen takes it back, unless the
-      account was made, and puts back what it replaced (docs/DBCTL.md).
+      account was made or the connection was lost during the install, and
+      puts back what it replaced (docs/DBCTL.md).
 
     * A load through the broker, still switched off, walks the account's
       dump store with the account's own rights before its loader starts,
