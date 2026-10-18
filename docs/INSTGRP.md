@@ -646,8 +646,10 @@ restore the account runs itself is not held: only root reads the journal);
 a web verb's run of the account
 stops at its row (exit 4, row E2, a note naming the journal), so it
 neither converts the account nor tries a free; a free that meets the
-journal all the same stops with its alarm. An alarm says so once a day,
-and the migration tools keep refusing the account.
+journal all the same stops with its alarm.
+
+An alarm says so once a day, and the migration tools keep refusing the
+account.
 
 Each journal `reclaim` or a web verb removes, dropped, put back or one
 whose rename never happened, leaves its line in
