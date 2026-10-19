@@ -49,7 +49,9 @@ counts as the account's own is exact: `oN`, `oN.<name>` and
 
 Each conversion writes `/data/disk/oN/log/instance-group.txt`. An account already converted costs
 one read-only traversal on every later upgrade (early-quit on the first path
-outside its group), no walk and no write.
+outside its group), no walk and no write. A temp copy a killed write left
+beside the marker (`.instance-group.txt.put.*`) is removed by the next write
+once it is a minute old, and no migration carries it.
 
 The order never leaves an identity without access it had:
 
@@ -632,11 +634,20 @@ that is not done and names no old number (a hand's edit, damage): until
 then `webstatus` and `webdrift` show it, and the migration tools count it
 unfinished.
 
-A journal that cannot be read (a read error) is kept: it may
-name a free that can still finish, so no run settles anything from it
-or writes over it until it reads again. Meanwhile `reclaim` skips the
-account (exit 4), a free of the name stops with the journal's alarm, an
-alarm says so once a day, and the migration tools keep refusing the
+A journal that cannot be read (a read error) is kept: it may name a free
+that can still finish, and it alone names the old number whose paths
+that free still walks. So until it reads again no run settles anything
+from it, writes over it, or takes a path of the account into a group.
+
+Meanwhile `reclaim`, `convert` and `revert` skip the account (exit 4,
+alarmed); a root-run restore leaves what it restored in the groups it
+landed in, says so on its standard error, and its `reclaim` skips too (a
+restore the account runs itself is not held: only root reads the journal);
+a web verb's run of the account stops at its row (exit 4, row E2, a note
+naming the journal), so it neither converts the account nor tries a free; a
+free that meets the journal all the same stops with its alarm.
+
+An alarm says so once a day, and the migration tools keep refusing the
 account.
 
 Each journal `reclaim` or a web verb removes, dropped, put back or one
@@ -662,9 +673,13 @@ the walk leaves there is not named.
 
 While the renamed group keeps the old number, `xmass`, `xoct` and `xcopy`
 map that number onto the account's web group on the target, so both land
-there as `wg-oN` carried them before the free. The alarms and the
-account's notes name the group the old number has, under whatever name.
-The journal is removed with the account.
+there as `wg-oN` carried them before the free. The alarms and
+`/var/log/boa/instgrp.log` name the group the old number has, under
+whatever name. The account's notes name it only by one of the account's
+own two forms (`<gid>-wgheld-oN`, `<gid>-wgheld`), and by its gid
+otherwise: a name read from the number alone can be another account's.
+The journal is removed with the account, with the date of its once-a-day
+unread alarm.
 
 While the journal is not done (an empty or unreadable one counts as not
 done), the paths still in the old number would travel by that number
@@ -804,6 +819,14 @@ handle that never follows a link, in the real `static/control` only, and
 renames it over the name, so a link, a hard link or a FIFO put there is
 replaced and never opened; BOA never reads it back. The directory's
 `README.txt` names it. A migration carries neither copy (below).
+
+The copy is written only while root or an identity of the account owns
+`static/control`: `static/` is group-writable, so a co-tenant could put
+its own directory at that name. Such a directory, and a directory standing
+at the copy's own name, gets no copy, and `/var/log/boa/instgrp.log` says
+so once a run. A temp copy a killed note left beside either copy
+(`.web-group-notes.txt.put.*`) is removed by a later note once it is a
+minute old.
 
 When two runs note the same account at the same moment, the copy can be left
 with the older of their two reads of root's file until the next note
@@ -1083,7 +1106,10 @@ They carry neither the intent nor the record, so a revert in progress, and
 a pin that is only in the intent (no `_WEB_GROUP=A` in the cnf), stay
 behind; nor the account's notes, which name the source box's state: neither
 `log/web-group-notes.txt` nor `static/control/web-group-notes.txt`
-travels, and the target keeps its own. The account converts on the target by
+travels, nor a temp copy of either (`.web-group-notes.txt.put.*`), and the
+target keeps its own.
+
+The account converts on the target by
 that box's own settings, and the tools print a NOTE naming the command to
 run there: "after its promotion" when the target is a standby, and a plain
 warning when the target is not armed, where nothing ever converts. See

@@ -1384,8 +1384,12 @@ _dbctl_report() {
     { [[ -z "${_out}" ]] || printf '%s\n' "${_out}"
       [[ -z "${_err}" ]] || printf '%s\n' "${_err}"; } > "${_rep}"
   else
-    _out=$(/usr/local/bin/boa-dbctl report 2> /dev/null < /dev/null)
+    # no file to keep what the broker says beside the report: it stays in
+    # the answer, so a report that fails still gives the night's log its
+    # ERR line; the mail reads only the report's own lines from it
+    _out=$(/usr/local/bin/boa-dbctl report 2>&1 < /dev/null)
     _rc=$?
+    _err="${_out}"
   fi
   # the last line: the counts, or the ERR line of a report that failed
   if [[ "${_rc}" == "0" ]]; then
