@@ -1511,6 +1511,10 @@ verb_transfer() {
   _require_source_box
   [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "transfer needs --target and --account"
   [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "transfer needs --site <dom> or --all"
+  # a route recorded by check, as export asks: a parity refusal empties it,
+  # and an empty route lands on the target as a route import takes for any
+  [[ -n "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" ]] \
+    || _die "no recorded route - run check first"
   local _scope="${_SITE:-all}" _dst="/data/disk/${_ACCOUNT}" _tb _tsrc _mf _uri _plat _plr _dbn
   local _need=0 _needD=0 _free _freeD _mntP _mntD _dfs
   # everything but the platform trees lands in the target's root-only state
@@ -2548,7 +2552,7 @@ _t_drop_site_db() {   # 1 uri 2 dbn
     [[ "${_rc}" == "0" ]] && return 0
     if [[ "${_rc}" != "8" ]]; then
       if _t_db_gone "${2}"; then
-        _alrt "site ${1}: db ${2} dropped, but the database broker ended ${_rc} after its drop: ${_out##*$'\n'} - settle what it left with boa-dbctl leftovers list"
+        _alrt "site ${1}: db ${2} dropped, but the database broker ended ${_rc} after its drop: ${_out##*$'\n'} - run boa-dbctl drop ${2} --account ${_ACCOUNT} again, which clears the grant rows and the entry it left"
         return 0
       fi
       _alrt "site ${1}: db ${2} kept: the database broker refused its drop: ${_out##*$'\n'} - drop it with boa-dbctl drop ${2} --account ${_ACCOUNT} once that is settled"
