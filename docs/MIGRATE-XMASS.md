@@ -1089,6 +1089,42 @@ client mail the active held, and its `xoct` verbs keep to the same test
 runs. They are written only onto a box that carries the standby marker, and
 `post-mig` names what it finds on the promoted box.
 
+**So does the hold of an unfinished aegir2boa import.** Its state lives in
+root's `/var/backups/a2b/<oN>/` on the box the import ran on, which no leg
+sends, while the account's panel database and files do travel.
+
+For each account whose aegir2boa db-import reads unfinished on the active
+(its dispatcher held, a revert cut off part way, or step markers without
+the done or hand-back marker; `AEGIR2BOA.md`) with no run of it live, every
+live pass puts `/var/backups/a2b/<oN>/failover-hold` (root's) on the
+standby, and removes it once the import there no longer reads unfinished.
+An import that runs is left to hand its dispatcher back itself (a hold
+already there stays meanwhile): a failover while it runs carries no hold of
+it, and the promoted box hands that half-made panel its dispatcher.
+
+The standby's own passes never act on the hold: it counts only on a box
+that is no standby. It is written only onto a box that carries the standby
+marker, and a hold that cannot be carried is said without failing the pass.
+
+On a promotion the account's dispatcher stays parked on a box armed for
+the web group (a live one, as a standby's accounts are installed with, is
+parked before the standby marker goes, by the cutover and by a promotion by
+hand), the cutover's rename of the account refuses (the cutover parks at
+`rename-failed`), and BOA's passes keep its half-made panel switched off
+there as on the old box.
+
+The worker names it once a day with the way out on that box: the route run
+again toward it, once the site databases the replication brought from the
+cut-off import are dropped there, since the import's dumps and pre-import
+snapshot stayed on the old box. An import there that reaches its hand-back
+ends the hold.
+
+Once the import on the active no longer reads unfinished, any other
+aegir2boa state the standby holds of the account (from a role before this
+one: a box that ran the import and failed over) is set aside there as
+`/var/backups/a2b/<oN>.superseded.<time>`, never removed, its held
+dispatcher back among the standby's parked ones.
+
 Under another box's test-run mark `post-mig` also names the accounts whose
 `_SEND_UPGRADE_EMAIL` reads `NO`. A mirror built under `admail=` has it off
 for every account it carries, and after a promotion by hand no `go-live` can
@@ -1828,7 +1864,10 @@ left to do.
 First, before the standby marker goes, it clears what an earlier demotion
 of this box toward the active it mirrored (the marker's first line names
 it) left in that pair's accounts: its own relay records, `proxied.pid` and
-the export latches, a parked dispatcher, proxy vhosts. It holds back every
+the export latches, a parked dispatcher, proxy vhosts. The dispatcher of an
+account whose aegir2boa import reads unfinished there (the hold carried
+above) stays parked on a box armed for the web group, and the run says so.
+It holds back every
 upgrade armed in an account it serves, removing none. An account it
 relays, or is moving, to another box is left as it is. Then, once the
 database takes writes, it rewires each control panel to its live panel

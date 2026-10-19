@@ -33,6 +33,7 @@
 #              [--welcome-node]                               [--live]
 #   import     --account <oN> --revert-db-import              [--live]
 #   import     --account <oN> --reset-sites                   [--live]
+#   import     --account <oN> --drop-made-users               [--live]
 #   peer       --source <ip> [--pubkey-file <f>]              [--live]
 #   target-status --account <oN>
 #
@@ -86,6 +87,7 @@ _INSTALL_CRON=NO
 _WELCOME_NODE=NO
 _REVERT_DB_IMPORT=NO
 _RESET_SITES=NO
+_DROP_MADE_USERS=NO
 _FROM_STATE=NO
 # set while create holds the target's box-wide post-install upgrade guard,
 # so any exit path can take it back off (see _guard_target_off)
@@ -317,7 +319,8 @@ _require_target_box() {
   _STATE_DIR="$(_t_base "${_ACCOUNT}")"
   [[ -L "${_STATE_DIR%/*}" || -L "${_STATE_DIR}" ]] \
     && _die "${_STATE_DIR} or its parent is a symlink - refusing to keep migration state there"
-  # import in every mode (the route, --revert-db-import, --reset-sites)
+  # import in every mode (the route, --revert-db-import, --reset-sites,
+  # --drop-made-users)
   # acts only on a state made for this account: one an earlier account of
   # the name left is refused before a plan is printed or a gate is read
   if [[ "${_OP}" = "import" ]]; then
@@ -1556,6 +1559,15 @@ verb_transfer() {
     4) _die "${_tb} on ${_TARGET} was made for another account of the name ${_ACCOUNT} (removed and made again there): move it aside on ${_TARGET}, then re-run transfer" ;;
     *) _die "cannot compare the account ${_ACCOUNT} on ${_TARGET} with the record beside ${_tb}" ;;
   esac
+  # the db-import route's acknowledged module list is a precondition of
+  # the transfer, so the dry run refuses without it and the live run stops
+  # before anything is copied
+  if [[ "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" = "db-import" ]]; then
+    [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+    [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
+      || _die "no enabled-modules list from check - re-run check"
+  fi
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -1864,9 +1876,10 @@ _t_freeze_on() {
 # or its working directory under the account's state, and the account's
 # hostmaster database ($2) may have no connection but the one that counts
 # them. Which of these refused is printed. A marker of an earlier release
-# (one line, or no group), of the other operation or of anything else is
-# refused as before. Args: root's uid, the operation, this run's pid, the
-# account, the proc root, the account's state dir.
+# (one line, or no group) or of anything else is refused as before; one of
+# the other operation is refused naming that operation, whose own re-run
+# is the one that may take it over. Args: root's uid, the operation, this
+# run's pid, the account, the proc root, the account's state dir.
 _A2B_FREEZE_PL='use Fcntl;
 my ($ru, $v, $me, $acct, $p, $base) = @ARGV;
 my @l = lstat("./proxied.pid");
@@ -1878,8 +1891,12 @@ my $d = "";
 sysread($h, $d, 4097);
 close($h);
 exit 1 unless length($d) <= 4096
-  && $d =~ /\AA2B-IMPORT-FREEZE\nverb=\Q$v\E pid=([1-9][0-9]*) pgid=([1-9][0-9]*)\n?\z/;
-my ($pid, $pg) = ($1, $2);
+  && $d =~ /\AA2B-IMPORT-FREEZE\nverb=(db-import|revert-db) pid=([1-9][0-9]*) pgid=([1-9][0-9]*)\n?\z/;
+my ($vb, $pid, $pg) = ($1, $2, $3);
+if ($vb ne $v) {
+  print "the freeze is a killed $vb run\x27s: only a re-run of that operation takes it over\n";
+  exit 1;
+}
 sub rd {
   open(my $f, "<", $_[0]) or return "";
   my $t = "";
@@ -1932,8 +1949,16 @@ exit 0'
 # check refused, when one did, in _T_FREEZE_WHY. $2 = the account's
 # hostmaster database.
 _t_freeze_dead() {
+  local _w
   _T_FREEZE_WHY=""
-  [[ -s /etc/boa/control/instgrp-web-arm.ready.txt ]] || return 1
+  if [[ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ]]; then
+    # never taken over on a box not armed for the web group, but a freeze
+    # of the other operation is named, as on an armed box
+    _w="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
+      perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)"
+    [[ "${_w}" == "the freeze is a killed "* ]] && _T_FREEZE_WHY="${_w}"
+    return 1
+  fi
   _T_FREEZE_WHY="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
     perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)" \
     && _t_freeze_conns "${2}"
@@ -2019,9 +2044,16 @@ _t_dispatch_off() {
 # frozen account there) goes back instead, unless the account is relayed,
 # cancelled or left by a failed proxy conversion (log/proxied.pid then
 # being no aegir2boa freeze): BOA itself hands back an off-run copy only
-# once a release, and the import or revert is over before that.
+# once a release, and the import or revert is over before that. Nothing
+# goes back while a hold xmass carried here with a failover stands (the
+# panel came from a box where its import was cut off): only an import
+# here that reaches its hand-back ends that hold.
 _t_dispatch_on() {
   local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}" _off="/var/backups/off-run/run-${_ACCOUNT}"
+  if [[ -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ]]; then
+    _alrt "dispatcher run-${_ACCOUNT} stays held: its panel came here with a failover from a box where its import was cut off (${_STATE_DIR}/failover-hold); an import here that finishes ends that hold"
+    return 0
+  fi
   if [[ -e "$(_t_held_run)" ]]; then
     mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
     _info "dispatcher run-${_ACCOUNT} restored"
@@ -2463,22 +2495,25 @@ _t_drop_made_users() {   # 1 uri 2 dbn
 }
 
 # drop ONLY the site DBs this tool loaded (dbloaded markers are the scope
-# fence - never touch a DB the tool did not create), and with each the
-# database users the import made for it (_t_drop_made_users), + clear
-# their markers so a retry re-lands fresh data. M1 fix: without this, a
-# revert-then-retry would cut sites over to first-export (stale) data.
+# fence - never touch a DB the tool did not create), each as it was made
+# (_t_drop_site_db), and with each the database users the import made for
+# it (_t_drop_made_users), + clear their markers so a retry re-lands fresh
+# data; then every user the record still names (_t_drop_kept_users). M1
+# fix: without this, a revert-then-retry would cut sites over to
+# first-export (stale) data.
 _t_reset_site_dbs() {
-  local _mff _uri _dbn
+  local _mff _uri _dbn _done=""
   for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
     [[ -e "${_mff}" ]] || continue
     _uri="$(_manifest_val "${_mff}" URI)"
     _marker_has "${_uri}.dbloaded.pid" || continue
     _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
     [[ -n "${_dbn}" ]] || continue
-    if mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`"; then
+    if _t_drop_site_db "${_uri}" "${_dbn}"; then
       _info "site ${_uri}: db ${_dbn} dropped"
       _t_drop_made_users "${_uri}" "${_dbn}"
     fi
+    _done="${_done} ${_dbn}"
     rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
   done
   # an earlier release kept its dbloaded markers in the account's tree,
@@ -2486,6 +2521,84 @@ _t_reset_site_dbs() {
   if [[ -e "${_ACCT_ROOT}/log/a2b/markers" || -L "${_ACCT_ROOT}/log/a2b/markers" ]]; then
     _alrt "site DBs loaded by an earlier release's import are recorded only in ${_ACCT_ROOT}/log/a2b/markers, which is never read: they are not dropped here - check that list against the transferred manifests and drop them by hand"
   fi
+  _t_drop_kept_users "${_done}"
+}
+
+# A site database dropped as it was made: through the database broker's own
+# drop for an account switched to it (root's /data/conf/<account>_db_broker.txt:
+# the registry entry and the instance user's grant rows on it go with the
+# database), by plain SQL for an account not switched, and for one whose
+# control file the broker finds not valid (ERR 8: its tasks take the direct
+# path, its databases are not in the registry). Any other refusal of the
+# broker keeps the database, said with the broker's answer: a plain drop
+# would leave its registry entry naming a database that is gone. A refusal
+# after the broker's own drop ran (its DROP comes first, so a failed grant
+# or registry step after it ends 7 with the database gone) is the server's
+# to say: a database that is gone is dropped, and what the broker left is
+# named for the operator. True when the database was dropped.
+_t_drop_site_db() {   # 1 uri 2 dbn
+  local _f="/data/conf/${_ACCOUNT}_db_broker.txt" _out _rc
+  if [[ -e "${_f}" || -L "${_f}" ]]; then
+    if [[ ! -x /usr/local/bin/boa-dbctl ]]; then
+      _alrt "site ${1}: db ${2} kept: ${_ACCOUNT} is switched to the database broker, which is not installed here"
+      return 1
+    fi
+    _out="$(/usr/local/bin/boa-dbctl drop "${2}" --account "${_ACCOUNT}" 2>&1)"
+    _rc=$?
+    [[ "${_rc}" == "0" ]] && return 0
+    if [[ "${_rc}" != "8" ]]; then
+      if _t_db_gone "${2}"; then
+        _alrt "site ${1}: db ${2} dropped, but the database broker ended ${_rc} after its drop: ${_out##*$'\n'} - settle what it left with boa-dbctl leftovers list"
+        return 0
+      fi
+      _alrt "site ${1}: db ${2} kept: the database broker refused its drop: ${_out##*$'\n'} - drop it with boa-dbctl drop ${2} --account ${_ACCOUNT} once that is settled"
+      return 1
+    fi
+  fi
+  mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${2}\`"
+}
+
+# 0 when the server says the database $1 is not there, 1 when it is, 2 when
+# it could not say.
+_t_db_gone() {   # 1 dbn
+  local _n
+  _n="$(mysql --silent -u root -N -B -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '${1}'" 2>/dev/null)"
+  [[ "${_n}" = "0" ]] && return 0
+  [[ "${_n}" =~ ^[0-9]+$ ]] && return 1
+  return 2
+}
+
+# The record of the users the import made (_t_users_made), read whole: a
+# user it still names (kept at an earlier drop because something named it
+# then, or because a row could not be dropped) is looked at again whatever
+# its site's loaded marker says, and dropped by _t_drop_made_users once
+# nothing keeps it and its database is gone; while that database stands it
+# stays with it. The records of the databases named in $1 (this run dropped
+# them and looked at their users already) are skipped. Every revert, reset
+# and --drop-made-users reads it so; the purge of the account runs the last.
+_t_drop_kept_users() {   # 1 databases done already
+  local _rec _dbn _uri _mff
+  for _rec in "${_STATE_DIR}/markers/db-users."*; do
+    [[ -e "${_rec}" || -L "${_rec}" ]] || continue
+    _dbn="${_rec##*/db-users.}"
+    [[ "${_dbn}" =~ ^[A-Za-z0-9_]{1,64}$ ]] || continue
+    case " ${1:-} " in
+      *" ${_dbn} "*) continue ;;
+    esac
+    _uri="of the database ${_dbn}"
+    for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
+      [[ -e "${_mff}" ]] || continue
+      [[ "$(_sane_ident "$(_manifest_val "${_mff}" DBN)")" = "${_dbn}" ]] || continue
+      _uri="$(_manifest_val "${_mff}" URI)"
+      break
+    done
+    _t_db_gone "${_dbn}"
+    case "$?" in
+      0) _t_drop_made_users "${_uri}" "${_dbn}" ;;
+      1) _alrt "site ${_uri}: database user ${_dbn} kept: its database ${_dbn} stands" ;;
+      *) _alrt "site ${_uri}: database user ${_dbn} kept: the server could not say whether its database ${_dbn} is gone" ;;
+    esac
+  done
 }
 
 # db-import revert only: the restored panel no longer knows the estate's
@@ -2754,15 +2867,20 @@ _import_db_route() {
   # not dispatch) - success and --revert-db-import restore it
   _t_dispatch_off
 
-  # 1. snapshot (revert + reconcile artifacts)
+  # 1. snapshot (revert + reconcile artifacts): dumped under a temporary
+  # name and renamed only once mysqldump has succeeded, so a dump cut off
+  # (a kill, a crash) never stands where the revert loads it from
   _step="${_STATE_DIR}/markers/dbimport"
   if [[ ! -e "${_step}.1.done" ]]; then
     ( umask 077; mkdir -p "${_undo}" )
     _mysqldump_gtid_opts
-    mysqldump --defaults-file=/root/.my.cnf "${_MYSQLDUMP_GTID[@]}" --single-transaction --quick \
-      --no-autocommit --skip-add-locks --no-tablespaces --hex-blob "${_hdb}" \
-      > "${_undo}/a2b-pre-import.sql" || _die "pre-import snapshot failed"
-    chmod 600 "${_undo}/a2b-pre-import.sql"
+    ( umask 077
+      mysqldump --defaults-file=/root/.my.cnf "${_MYSQLDUMP_GTID[@]}" --single-transaction --quick \
+        --no-autocommit --skip-add-locks --no-tablespaces --hex-blob "${_hdb}" \
+        > "${_undo}/a2b-pre-import.sql.part" ) || _die "pre-import snapshot failed"
+    chmod 600 "${_undo}/a2b-pre-import.sql.part"
+    mv -f -- "${_undo}/a2b-pre-import.sql.part" "${_undo}/a2b-pre-import.sql" \
+      || _die "pre-import snapshot could not be put in place"
     _tsql "SELECT name FROM \\\`system\\\` WHERE status=1 AND type='module'" \
       > "${_undo}/a2b-enabled-baseline.txt"
     _tsql "SELECT service, type FROM hosting_service WHERE nid = (SELECT nid FROM hosting_context WHERE name='server_master')" \
@@ -3128,8 +3246,11 @@ PHPEOF
   # the panel is verified and its stray tasks neutered: marked before the
   # dispatcher goes back, so BOA reads a run cut off after the hand-back (in
   # the pool waits below) as finished, and one cut off before it still has
-  # its dispatcher held
+  # its dispatcher held. A hold xmass carried here with a failover (the
+  # import had been cut off on the box it ran on) is this import's to end
+  # now, before the dispatcher goes back.
   touch "${_step}.12.done"
+  rm -f -- "${_STATE_DIR}/failover-hold"
   _t_dispatch_on
   _t_freeze_off
   trap _cleanup EXIT
@@ -3324,20 +3445,63 @@ PHPEOF
 
 verb_import() {
   _require_target_box
-  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb
+  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb _sx
   _troute="$(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null | tr -d '\n')"
-  if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" ]]; then
+  if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" && "${_DROP_MADE_USERS}" != "YES" ]]; then
     [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
     [[ -z "${_troute}" || "${_troute}" = "${_ROUTE}" ]] \
       || _die "transferred route marker says '${_troute}' but --route says '${_ROUTE}' - refusing"
+    # a revert cut off part way (it marks itself started before its
+    # sql-drop and clears that only once its dispatcher is back) is ended by
+    # the revert alone: the import's step markers still stand, so a re-run
+    # of the import would skip its every step and report a finished import
+    # on the panel the revert restored. Refused before a plan is printed or
+    # a gate is read
+    if [[ "${_ROUTE}" = "db-import" ]] && _marker_has revert-db.started; then
+      _die "a revert of the db-import of ${_ACCOUNT} was cut off part way ($(_marker revert-db.started)): only the revert can end it - aegir2boa-stage2 import --account ${_ACCOUNT} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
+    fi
+  fi
+
+  # the database users the import made that its record still names, alone
+  # (the account's purge runs it): each looked at again, dropped once its
+  # database is gone and nothing keeps it; never a database, no freeze
+  if [[ "${_DROP_MADE_USERS}" = "YES" ]]; then
+    if [[ "${_LIVE}" != "YES" ]]; then
+      _DRY_FAIL=0
+      _info "[DRY] would drop each database user the import made that its record still names, once its database is gone and nothing keeps it, its grants saved first"
+      _dry_finish "drop-made-users"
+    fi
+    _gate_consume "drop-made-users"
+    _t_drop_kept_users ""
+    _msg "the database users the import made and its record still named are looked at again"
+    exit 0
   fi
 
   if [[ "${_REVERT_DB_IMPORT}" = "YES" ]]; then
+    # only an import that completed its pre-import snapshot (its step 1
+    # marker) has anything to revert to, or a revert cut off part way (its
+    # started mark: it cleared the step markers last, the snapshot it loads
+    # was complete when it began). A snapshot under root's undo with
+    # neither is what a completed revert leaves, stale, and never loads. An
+    # import of an earlier release kept its step 1 marker or its snapshot in
+    # the account's tree (only their existence is tested: the account can
+    # write there): with nothing under root's undo it reaches the placement
+    # of that snapshot below, never a load. Refused before a plan is
+    # printed, a gate is read or anything is dropped
+    if ! _marker_has dbimport.1.done && ! _marker_has revert-db.started; then
+      if [[ -s "${_undo}/a2b-pre-import.sql" \
+        || ( ! -e "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" && ! -L "${_ACCT_ROOT}/log/a2b/markers/dbimport.1.done" \
+          && ! -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" && ! -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ) ]]; then
+        [[ -e "$(_t_held_run)" ]] \
+          && _die "nothing to revert on ${_ACCOUNT}: its db-import was cut off before its pre-import snapshot was complete (no $(_marker dbimport.1.done)) - finish it with aegir2boa-stage2 import --account ${_ACCOUNT} --route db-import (dry first, then with --live)"
+        _die "nothing to revert on ${_ACCOUNT}: no db-import has completed its pre-import snapshot since the last revert (no $(_marker dbimport.1.done))"
+      fi
+    fi
     if [[ ! -s "${_undo}/a2b-pre-import.sql" ]]; then
       # an earlier release kept the snapshot in the account's tree, which
       # the account can write: only its existence is tested here
       [[ -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" || -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]] \
-        && _die "no pre-import snapshot in ${_undo}: ${_ACCT_ROOT}/undo/a2b-pre-import.sql was left by an earlier release and is never loaded from the account's tree - after checking it, place it as ${_undo}/a2b-pre-import.sql (root's, dir 0700, file 0600) and re-run the revert"
+        && _die "no pre-import snapshot in ${_undo}: ${_ACCT_ROOT}/undo/a2b-pre-import.sql was left by an earlier release and is never loaded from the account's tree - after checking it, place it as ${_undo}/a2b-pre-import.sql (root's, dir 0700, file 0600) with its step 1 marker $(_marker dbimport.1.done) beside it, and re-run the revert"
       _die "no pre-import snapshot to revert to"
     fi
     # resolved before anything is dropped: the alias is read only inside the
@@ -3359,6 +3523,12 @@ verb_import() {
     _t_freeze_on revert-db "${_hdb}"; trap '_t_freeze_off; _cleanup' EXIT
     _gate_consume "revert-db"
     _t_owl_drain; _t_dispatch_off
+    # from the sql-drop until the dispatcher is back the revert is marked
+    # started: a run cut off in between (a kill, a crash, a failed restore)
+    # leaves the import's step markers beside the restored panel, and this
+    # mark is what tells BOA and the import's re-run that only the revert
+    # ends it
+    _marker_set revert-db.started
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
     mysql --defaults-file=/root/.my.cnf "${_hdb}" < "${_undo}/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import ${_undo}/a2b-pre-import.sql manually"
@@ -3366,6 +3536,17 @@ verb_import() {
     _t_remove_estate_vhosts
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
+    rm -f -- "$(_marker revert-db.started)"
+    # on a box a failover brought the panel to (its hold stands: the
+    # dispatcher stays held), the dumps the route transferred here are
+    # stale now: set aside, never removed, so every line that names the way
+    # out names the route run again, a fresh export and transfer
+    if [[ ( -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ) \
+      && -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]]; then
+      _sx="${_STATE_DIR}/src.reverted.$(date -u +%Y%m%dT%H%M%SZ)"
+      mv -T -- "${_STATE_DIR}/src" "${_sx}" \
+        && _info "the dumps transferred here set aside as ${_sx}: run the route again toward this box"
+    fi
     _t_freeze_off; trap _cleanup EXIT
     _msg "db-import reverted - hostmaster restored, a2b site DBs dropped; a retry needs fresh export+transfer (stale dumps must never cut over)"
     exit 0
@@ -4062,6 +4243,7 @@ verb_target_status() {
   _require_target_box
   _info "account: ${_ACCOUNT}  route: $(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null || echo unset)"
   _info "freeze marker: $([ -e "${_ACCT_ROOT}/log/proxied.pid" ] && echo PRESENT || echo no)"
+  _info "failover hold: $([ -e "${_STATE_DIR}/failover-hold" ] && echo "PRESENT (carried by xmass from $(head -n 1 "${_STATE_DIR}/failover-hold" 2>/dev/null | cut -d' ' -f1))" || echo no)"
   local _m
   for _m in "${_STATE_DIR}/markers/"*; do
     [[ -e "${_m}" ]] || continue
@@ -4115,6 +4297,7 @@ while [[ $# -gt 0 ]]; do
     --welcome-node)      _WELCOME_NODE=YES ;;
     --revert-db-import)  _REVERT_DB_IMPORT=YES ;;
     --reset-sites)       _RESET_SITES=YES ;;
+    --drop-made-users)   _DROP_MADE_USERS=YES ;;
     --from-state)        _FROM_STATE=YES ;;
     --live)     _LIVE=YES ;;
     --aegir-root) _AEGIR_ROOT="$2"; shift ;;
