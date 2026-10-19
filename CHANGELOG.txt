@@ -13,12 +13,21 @@
       read as none while the merge reported success, and the pass lost a
       hand-seeded cnf's lines. A NUL tail now costs no line, and since bash
       stops reading a file at its first NUL byte, the Octopus pass drops
-      every NUL byte of the account's cnf before it reads it (the file
-      rewritten in place, said once; a run of them that cut a line short
+      every NUL byte of the account's cnf before it reads it (the healed
+      text renamed over it, said once; a run of them that cut a line short
       ends that line), as the merges, the seeds, the upgrade-notice switches
       and instgrp's policy write do before they write a line after the
       cnf's text. The healed text is renamed over the cnf, so a heal that
       cannot be finished leaves the cnf as it was.
+
+    * A moved account's settings merge (xoct and xmass) replaces the
+      account's cnf on the target only with a copy written whole: a write
+      that failed part way (a full disk) cut the cnf short while the merge
+      reported success, and the account's next pass read what was left.
+      The merge now stops with the cnf as it was and says it failed.
+      instgrp's write of the web group's policy is checked the same way,
+      and the broker's take-back of a migration's leftover line renames
+      its copy over the cnf instead of writing into it.
 
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
