@@ -7251,7 +7251,7 @@ _xmass_wg_promoted_here() {
 ### next Octopus pass runs each account again (no arm runs the master),
 ### and instgrp's lines say what this leaves and why.
 _xmass_wg_promoted() {
-  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b
+  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b _left=NO
   if [ "${_h}" = "here" ]; then
     _out=$(_xmass_wg_promoted_here "${_m}" "${_how}")
   else
@@ -7270,7 +7270,14 @@ _xmass_wg_promoted() {
   _info "Web groups on the promoted box (instgrp webconvert all; a large account takes a while, its sites already serve) ..."
   while IFS= read -r _l; do
     case "${_l}" in
-      "XMWO: "*) _info "    ${_l#XMWO: }" ;;
+      "XMWO: "*)
+        _info "    ${_l#XMWO: }"
+        # an account its unfinished aegir2boa import holds (or one frozen for
+        # a migration) is skipped with exit 4, as a busy one is
+        case "${_l}" in
+          *": held by an unfinished aegir2boa import ("*|*": frozen for a migration (log/proxied.pid), skipped"*) _left=YES ;;
+        esac
+        ;;
       XMWP:NOTE:*) _info "  NOTE: ${_l#XMWP:NOTE:}" ;;
       XMWP:ALRT:*) _alrt "  ${_l#XMWP:ALRT:}" ;;
       XMWP:RC:*)
@@ -7278,7 +7285,13 @@ _xmass_wg_promoted() {
         case "${_rc}" in
           0) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: done" ;;
           2|5|6) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc} (some deferred, refused or left in www-data; the lines above say which and why)" ;;
-          4) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends" ;;
+          4)
+            if [ "${_left}" = "YES" ]; then
+              _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (an account held or frozen there is left as it is, or a run is live: the lines above say which)"
+            else
+              _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends"
+            fi
+            ;;
           *) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc}; see /var/log/boa/instgrp.log there" ;;
         esac
         ;;
