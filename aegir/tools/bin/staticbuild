@@ -161,6 +161,10 @@ _SYS_PHP="/usr/bin/php"                          # per-build switch target
 _PHP_85="/opt/php85/bin/php"
 _PHP_84="/opt/php84/bin/php"
 _PHP_83="/opt/php83/bin/php"
+_PHP_82="/opt/php82/bin/php"
+_PHP_81="/opt/php81/bin/php"
+_PHP_74="/opt/php74/bin/php"
+_PHP_73="/opt/php73/bin/php"
 _PHP_DISTRO="${_PHP_85}"                         # farm/cms/culturas/commerce/localgov/thunder
 _PHP_VARBASE="${_PHP_84}"                        # varbase pins php84
 _PHP_SOCIAL="${_PHP_83}"                         # Open Social 13 requires php ^8.3 and SOC is
@@ -175,6 +179,14 @@ _PHP_OPENFED="${_PHP_83}"                        # OpenFed 13.6 rides the D10.6 
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
 _PHP_CORE_12="${_PHP_85}"                        # Drupal 12 and later: their generated
                                                  # platform_check.php refuses PHP below 8.5
+# A legacy line builds under the newest installed interpreter of those its lock
+# accepts on a full resolve (the Drush require is one), newest first; a server with
+# none of them skips the line. Drupal 8.9's Twig 1 and Symfony 3.4 stop at PHP 7.4;
+# Drupal 9.5's lock pins laminas-diactoros 2.14, which stops at 8.2, and Drush 11
+# starts at 7.4. The vendor code is the same whichever of them resolves it, and the
+# platform sites run on is theirs to pick (the catalogue caps Drupal 9 at 8.3).
+_PHP_CORE_8="${_PHP_74} ${_PHP_73}"
+_PHP_CORE_9="${_PHP_82} ${_PHP_81} ${_PHP_74}"
 
 # farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
 _FARM_REPO="farmOS/farmOS"
@@ -336,6 +348,13 @@ _PHP_PINNED="${_PHP_83}"
 _CORE_MINORS=""
 _CORE_FLOOR="10.2"                               # oldest minor to build when auto-discovering
 _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/EOL), space-separated
+# The last minor of each earlier major, built beside the discovered minors so a site
+# still on it can be rehearsed through its upgrade on a BOA server: no new catalogue
+# platform comes from them (DL9 excepted), a tester registers the tarball. Each line
+# builds under the PHP its sites run on (_core_php) with the Drush line of its day
+# (_core_drush_spec); a server without that PHP skips the line with a row note.
+# Their advisories stay, as the other legacy cores' do. Empty builds none.
+_CORE_LEGACY="8.9 9.5"
 # Pre-release cores of the next major, as exact versions: a minor resolves to stable
 # releases only. Each is built beside the minors only while they hold no stable
 # release of its minor, so the line stops by itself the day that minor ships. Name
@@ -1615,12 +1634,75 @@ _core_from_12() {
 _core_drush_spec() {
   # $1 = a core line. What its drush require names. No Drush release resolves on
   # Drupal 12 yet: 14.x-dev does, with its two dev-only dependencies required at
-  # the root as well. Back to plain drush/drush once a release resolves.
+  # the root as well. Back to plain drush/drush once a release resolves. The legacy
+  # majors take the last Drush line that ran on them: 10 on Drupal 8, 11 on 9.
   if _core_from_12 "$1"; then
     printf '%s\n' "grasmash/yaml-cli:4.x-dev chi-teck/drupal-code-generator:^4@dev drush/drush:^14@dev"
-  else
-    printf '%s\n' "drush/drush"
+    return 0
   fi
+  case "${1%%.*}" in
+    8) printf '%s\n' "drush/drush:^10" ;;
+    9) printf '%s\n' "drush/drush:^11" ;;
+    *) printf '%s\n' "drush/drush" ;;
+  esac
+}
+
+_core_php_choices() {
+  # $1 = a core line. The interpreters it may build under, newest first.
+  if _core_from_12 "$1"; then
+    printf '%s\n' "${_PHP_CORE_12}"
+    return 0
+  fi
+  case "${1%%.*}" in
+    8) printf '%s\n' "${_PHP_CORE_8}" ;;
+    9) printf '%s\n' "${_PHP_CORE_9}" ;;
+    *) printf '%s\n' "${_PHP_CORE}" ;;
+  esac
+}
+
+_core_php() {
+  # $1 = a core line. The interpreter it builds under: the first installed of its
+  # choices, else the first choice (not executable: the caller skips or fails).
+  local _p _c
+  _c="$(_core_php_choices "$1")"
+  for _p in ${_c}; do
+    [[ -x "${_p}" ]] && { printf '%s\n' "${_p}"; return 0; }
+  done
+  printf '%s\n' "${_c%% *}"
+}
+
+_core_php_names() {
+  # $1 = a core line. Its choices as names for a note: "php82, php81 or php74".
+  local _p _out=""
+  for _p in $(_core_php_choices "$1"); do
+    _p="${_p%/bin/php}"
+    _out+="${_out:+, }${_p##*/}"
+  done
+  printf '%s\n' "${_out/%, ${_out##*, }/ or ${_out##*, }}"
+}
+
+_core_create() {
+  # $1 = a core line, $2 = its spec, $3 = the work dir under _DAY_DIR. The template
+  # of a Drupal 8 line ships a lock older than composer's allow-plugins setting,
+  # which a current composer refuses to install non-interactively: that line is
+  # created without install, its three plugins allowed, then installed.
+  local _wd="$3"
+  if [[ "${1%%.*}" == "8" ]]; then
+    _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'$2' '${_wd##*/}' ${_CORE_CP_FLAGS} --no-install \
+      && cd '${_wd}' \
+      && composer config --no-plugins allow-plugins.composer/installers true \
+      && composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true \
+      && composer config --no-plugins allow-plugins.drupal/core-project-message true \
+      && composer install ${_CORE_CP_FLAGS}"
+  else
+    _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'$2' '${_wd##*/}' ${_CORE_CP_FLAGS}"
+  fi
+}
+
+_core_legacy() {
+  # $1 = a core line. True for a _CORE_LEGACY line.
+  case " ${_CORE_LEGACY} " in *" $1 "*) return 0 ;; esac
+  return 1
 }
 
 # ---------------------------------------------------------------------------
@@ -2057,7 +2139,9 @@ build_cores() {
   # pre-release still due (_CORE_PRERELEASE) at its exact version; full install, add
   # drush, audit for the record (never fatal). Named from the detected core version.
   # Drupal 12 and later build under _PHP_CORE_12, and a failed drush require fails
-  # such a line: BOA cannot run a platform of theirs without its own Drush.
+  # such a line: BOA cannot run a platform of theirs without its own Drush. The
+  # _CORE_LEGACY lines build first, each under its own PHP and Drush line; one
+  # whose interpreter this server lacks is skipped, any other line fails.
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
   if [[ -z "${_minors}" ]]; then
@@ -2066,7 +2150,7 @@ build_cores() {
   fi
   local _pres _lines _sup
   _pres="$(_core_prereleases_due "${_minors}")"
-  _lines="${_minors}${_pres:+ ${_pres}}"
+  _lines="${_CORE_LEGACY:+${_CORE_LEGACY} }${_minors}${_pres:+ ${_pres}}"
   _msg "core lines: ${_lines}"
   # The supported minors, for the boxes (published with the cores by
   # do_distribute). Written only when drupal.org answered with a list, so a
@@ -2091,10 +2175,15 @@ build_cores() {
       _begin_build "drupal-${_m}." "drupal-${_m}" || continue
       _spec="${_m}.*"
     fi
-    _php="${_PHP_CORE}"
-    _core_from_12 "${_m}" && _php="${_PHP_CORE_12}"
+    _php="$(_core_php "${_m}")"
+    if [[ ! -x "${_php}" ]] && _core_legacy "${_m}"; then
+      _alrt "drupal-${_m}: needs $(_core_php_names "${_m}"), none installed here: skipped"
+      _rec "drupal-${_m}" BUILD skip
+      _rec_note "drupal-${_m}" "needs $(_core_php_names "${_m}"): not installed"
+      continue
+    fi
     use_php "${_php}" || { _record_fail "drupal-${_m} (php ${_php} missing)"; continue; }
-    if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'${_spec}' '.build.core' ${_CORE_CP_FLAGS}"; then
+    if ! _core_create "${_m}" "${_spec}" "${_wd}"; then
       _record_fail "drupal-${_m}"
       continue
     fi
@@ -3227,6 +3316,7 @@ do_check() {
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
   _msg "Core minors to build (latest patch of each): ${_minors:-<discovery failed>}"
+  _msg "Legacy cores to build (the last minor of each earlier major): ${_CORE_LEGACY:-none}"
   local _pres
   _pres="$(_core_prereleases_due "${_minors}")"
   _msg "Pre-release cores to build: ${_pres:-none}"

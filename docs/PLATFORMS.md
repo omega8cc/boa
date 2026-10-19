@@ -158,6 +158,14 @@ names one says so in the log. Platforms already on a server keep their sites.
 
 - `DL9` — Drupal 9 prod/stage/dev
 
+### Upgrade rehearsals
+
+The mirror also carries the last Drupal 8 core, `drupal-8.9.20`, built beside
+`drupal-9.5.11` with the Drush line of its day, so a site still on Drupal 8 can be
+rehearsed through its upgrade on a BOA server. No symbol builds a platform from it:
+register the tarball as a platform of your own. `DL9` builds its platform from the
+rebuilt Drupal 9 core.
+
 ### Drupal 7
 
 - `DL7` — Drupal 7 prod/stage/dev
