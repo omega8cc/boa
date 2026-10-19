@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * The dev/test database allowance of a hosted account no longer
+      multiplies by the engine count twice. It is the plan's factor of the
+      live allowance, which already carries the engine count, so an account
+      with one engine sees no change and one with N engines sees N times
+      the per-engine dev/test figure instead of N squared times it. The
+      usage report calls database usage Database Space (was Memory Space).
+
     * A PHP-FPM version the sites have left no longer holds its opcache
       and APCu until the weekly restart. Each version's segments are sized
       for the whole PHP budget of the box and stay filled to their
@@ -28,6 +35,29 @@
       could ever be trimmed after a migration. Such a site now proves
       nothing and blocks nothing; a defined db_name that cannot be read
       sanely still refuses.
+
+    * The control panel's colleague logins see each task's site name in
+      the task lists, and the Profile and Platform columns of the Sites
+      list. The panel's Drupal 7 core compiled the node access check of a
+      joined node table on its own, so its placeholders shared names with
+      the outer query's and it ran with the outer query's values: for
+      every login without 'bypass node access' those fields came back
+      empty, or filled by chance, and a login attached to several Clients
+      lost every task name. Sites on BOA's Drupal 7 core get the same fix
+      for their Views relationships to other nodes.
+
+    * A site operator login lists the platforms on the panel's Platforms
+      page. A platform with no client list is offered to every Client on
+      the Add site form, yet only the instance owner could see it, so the
+      role's 'view platform' showed an empty page and no platform name on
+      its sites. Such a platform is now visible, read-only, to every
+      member of a Client holding 'view platform' (the client role does
+      not hold it); the page leaves out its Server column for logins that
+      cannot read server nodes.
+
+    * A Client login no longer lists the server Verify tasks, which it
+      could not open and which showed no name. A server task now belongs
+      to the instance owner alone, like the server itself.
 
     * renameaegirhost no longer keeps a site's alias file under both
       names after a failback. A box promoted once before still held the
@@ -689,7 +719,7 @@
       Devuan's trixie-to-excalibur guide says, instead of stopping at apt's
       prompt and going on without it: the step now answers yes and, unlike
       the guide, takes no recommended packages, so the PAM module and
-      polkitd stay out. automini's copy of the step does the same.
+      polkitd stay out.
 
     * autoinit builds its systemd-dummy package only when apt's simulation
       shows that removing systemd would take the SSH server. opensysusers,
@@ -702,13 +732,13 @@
       repair can remove systemd with openssh-server kept.
 
     * BOA's other systemd removals no longer risk the SSH server: the boa
-      tool on an Excalibur box that still carries systemd, automini,
-      autoinit's repair of an incomplete conversion, and the systemd
-      cleanup of the major OS upgrades. Each asks apt first and leaves
-      systemd in place when removing it would also remove openssh-server,
-      which on Excalibur needs systemd-sysusers; the repair says so in an
-      ERROR line, the upgrade cleanup in an ALRT line. automini and the
-      repair install opensysusers, which provides it, before the removal.
+      tool on an Excalibur box that still carries systemd, autoinit's
+      repair of an incomplete conversion, and the systemd cleanup of the
+      major OS upgrades. Each asks apt first and leaves systemd in place
+      when removing it would also remove openssh-server, which on Excalibur
+      needs systemd-sysusers; the repair says so in an ERROR line, the
+      upgrade cleanup in an ALRT line. The repair installs opensysusers,
+      which provides it, before the removal.
 
     * The copies BOA keeps for a week in /var/backups/dragon/t, x and z
       (configuration files before a rewrite, the whole /var/xdrago before
@@ -1374,6 +1404,15 @@
 
 @=> New Features
 
+    * A read-only report of the sites that cannot take a security
+      release in place: eolreport lists the Drupal 8+ sites whose
+      platform runs a core minor drupal.org no longer supports. The
+      catalogue build records drupal.org's supported branches beside the
+      core tarballs on the mirror (core/drupal-supported.txt), every
+      server takes that file with its daily tools refresh and keeps the
+      last good copy, and no server asks drupal.org. See
+      docs/EOLREPORT.md.
+
     * Grav shops: a Grav site can now be created on a database server for
       a KahunaCart shop (KahunaCart 1.5.4 or later, Percona 8.4). The
       panel creates its database and carries it through every task, the
@@ -1404,14 +1443,48 @@
 
 @=> Improvements
 
+    * staticbuild builds the last Drupal 8 and 9 cores, drupal-8.9.20 and
+      drupal-9.5.11, beside the legacy 10.x minors, each under the PHP its
+      sites run on and with the Drush line of its day, so an upgrade from a
+      site still on them can be rehearsed on a BOA server; the Drupal 9 core
+      on the mirror gains Drush 11. A build server without a PHP a line's
+      lock accepts (7.4 or 7.3 for Drupal 8; 8.2, 8.1 or 7.4 for Drupal 9)
+      skips that line and says so in the summary.
+
+    * The xmass cutover no longer raises a Solr alarm on a server move
+      whose source uses no Solr. Its Solr step on the target started
+      whatever was there, waited 30 seconds and probed four ports, so with
+      every version denied there by prep-target it printed "No Solr port
+      responded on target" in the cutover window and then reported Solr
+      started. It now starts the versions the source used and never one
+      the target denies, waits and probes only for what it started, says
+      in one line when there is nothing to start, and reports a started
+      service that does not answer as not confirmed. post-mig reads the
+      denies the same way, and the core parity check compares nothing on
+      a source that uses no Solr.
+
+    * Old public-file addresses of an imported or a renamed site keep
+      answering. A request for a file under sites/default/files/ (a site
+      that came from elsewhere) or sites/<old-name>/files/ (a renamed
+      site) that finds nothing there is served from the site's own files
+      directory, through a named location the static-file locations fall
+      back to, and answers 404 when the file is missing there too. The
+      private, backup_migrate and config_ locations keep matching first.
+      Subdirectory sites already had this for sites/default/files/.
+
+    * automini is retired. It was a reduced copy of autoinit made for
+      custom testing, and BOA never started it: autoinit alone moves a
+      Debian box to Devuan. A box that still carries
+      /opt/local/bin/automini loses it, with its link and fetch markers,
+      the next time BOA.sh.txt runs.
+
     * MySQL's log buffer, read buffer and table definition cache now
       follow the box. innodb_log_buffer_size, 256M on every box and
       allocated in full at start, stays 256M with 32 GB or more of usable
       RAM and is 64M below that. read_buffer_size follows the RAM tier of
       read_rnd_buffer_size but never goes above the 8M it was, so only
       the smallest boxes get less. table_definition_cache, fixed at 512,
-      is left to the server, which sizes it at 1424 with BOA's table
-      cache.
+      is left to the server, which sizes it at 1424 with BOA's table cache.
 
     * memorytuner's needs ledger now counts PHP-FPM by what it really
       holds: its private memory plus its shared opcache and APCu, each
@@ -1877,6 +1950,16 @@
       whole; an operator's own list in /root/.barracuda.cnf replaces the
       default, so add the route there too.
 
+    * The control panel names its server for Grav sites without MySQL
+      "Grav (no MySQL)", and the Servers list shows its database as
+      "Flat-file or SQLite". Both columns read "None (flat-file sites)"
+      beside a ticked Database cell, as if a Grav site could have no
+      database, while a Grav site there may keep a KahunaCart store in
+      SQLite and a shop with MySQL is created on a MySQL server. The
+      panel's database update renames a server that still carries the
+      old name and keeps a name an operator chose; the site form lists
+      the server under its name instead of its made-up hostname.
+
 @=> Changes and Upgrades
 
     * The arm stamps of the per-instance group, the account web group
@@ -1928,6 +2011,10 @@
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an
       enum, and before that showed 18 of the report's 51.
+
+    * Drupal 7 core 7.106.3 (D7ES), for the node access check on joined
+      node tables under Important Fixes. New Drupal 7 platforms and the
+      control panels are built on it.
 
     * Redis integration for Drupal 7 (redis_edge) 7.x-3.19.3. A path
       without an alias raised two PHP 8.5 warnings at every lookup, and

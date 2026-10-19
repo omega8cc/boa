@@ -86,6 +86,8 @@ location = /about_us.php {
 
 ## Helper locations to avoid 404 on legacy images paths
 
+The shared vhost include does this for every site: a public file asked for under `sites/default/files/` or `sites/<old-name>/files/` that is not there is tried again in the site's own files directory, in the `@legacy_files` named location the static-file locations fall back to, and answers 404 when it is missing there too. The private, `backup_migrate` and `config_` locations keep matching first. The block below is the per-site form of the same mapping, the pattern to adapt for a directory of your own:
+
 ```nginx
 if ($main_site_name = '') {
   set $main_site_name "$server_name";
