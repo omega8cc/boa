@@ -4,6 +4,17 @@
 
 @=> Important Fixes
 
+    * A box promoted from an xmass standby while an aegir2boa import of
+      an account was cut off on the old box carries that import's hold,
+      but never the import's freeze. instgrp read only the freeze, so the
+      promotion's web group conversion converted the held account; it now
+      skips an account the import holds as it skips a frozen one (--force
+      overrides either). The promotion's panel rewire skips the held
+      account too and says why, instead of reporting a dead panel to
+      repair. An xmass sync names the import's freeze for what it is
+      rather than as a relay, and the hold's alarm says the transfer puts
+      the manifests that name the databases to drop.
+
     * aegir2boa-stage2's transfer refuses a db-import route without the
       acknowledged module list (check --accept-scrub-list) in its dry run,
       and its live run stops before it copies anything. A dry run printed
