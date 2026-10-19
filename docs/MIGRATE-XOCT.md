@@ -112,8 +112,9 @@ For full-server migrations where Percona versions match, consider
 > names `instgrp webrevert <dst>` whenever the source is opted out and the target's cnf
 > does not say so, and `instgrp webconvert <dst> --phase-a` whenever it is pinned and the
 > target's cnf does not say so, whether or not the target converted the account yet. The
-> account's `log/web-group-notes.txt` (what the conversion told the account on this box)
-> never travels.
+> account's notes (what the conversion told the account on this box:
+> `log/web-group-notes.txt`, the main login's copy in `static/control`, and a temp copy
+> of either, `.web-group-notes.txt.put.*`) never travel.
 >
 > `xcopy` maps the account's group, its web group and its identities the same way. It never renames: a
 > fourth argument naming another account is a `DENY` before the account is read, the

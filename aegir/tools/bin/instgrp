@@ -540,9 +540,10 @@ _web_group_policy() {
   # export, quotes or a trailing comment. NO (opted out of the conversion)
   # or A (pinned at phase A) is printed; any other value, or none, prints
   # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
-  # notes and the carry read the line the same way.
+  # notes and the carry read the line the same way. The cnf is read as text:
+  # a NUL byte (a crash can zero-fill its tail) hides none of its lines.
   local _l
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   case "${_l}" in
@@ -1373,9 +1374,13 @@ _ig_put_here() {
 }
 
 # The marker $1 in the current (pinned) log/: an empty directory at the name is
-# removed first (2 when it is not empty), then the marker is put.
+# removed first (2 when it is not empty), then the marker is put. The temp
+# copies a killed write left beside it go first, a minute old or more, as
+# _wg_note_sweep_here takes the notes'; a migration excludes them too.
 _marker_put_here() {
   local _n="${_MARK_REL##*/}"
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -maxdepth 1 -name ".${_n}.put.*" \
+    ! -type d -mmin +1 -exec rm -f -- {} + > /dev/null 2>&1
   if [ -d "./${_n}" ] && [ ! -L "./${_n}" ]; then
     rmdir -- "./${_n}" 2> /dev/null || return 2
   fi
@@ -1536,6 +1541,14 @@ _do_convert() {
   if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
     _alrt "${_a}: frozen for a migration (log/proxied.pid), skipped this pass (--force overrides)"
     _log "${_a}: SKIP frozen"
+    return 4
+  fi
+  # The paths a free of the account's web group name left in its old number
+  # are that free's walk, which no claim takes (_wg_keep); only its journal
+  # names the number, so while it cannot be read nothing is re-grouped.
+  if _wg_free_unreadable "${_a}"; then
+    _alrt "${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the paths that free may still walk cannot be told apart, so nothing is re-grouped until it reads again; skipped this pass"
+    _log "${_a}: SKIP a free journal that cannot be read"
     return 4
   fi
   _uGid=$(_gid_of "${_USRG}")
@@ -1856,6 +1869,12 @@ _do_revert() {
     _fail "${_a} holds its own web group (${_wgSt##* }, ${_wgSt%% *}); revert that first"
     return 1
   fi
+  # the walk back is a claim too (convert's rule above)
+  if _wg_free_unreadable "${_a}"; then
+    _alrt "${_a}: the journal /etc/boa/control/instgrp-web.${_a}.free.txt of a free of its web group name cannot be read: the paths that free may still walk cannot be told apart, so nothing is re-grouped until it reads again; skipped"
+    _log "${_a}: SKIP revert, a free journal that cannot be read"
+    return 4
+  fi
   _gid=$(_gid_of "${_a}")
   if ! _wait_idle "${_a}"; then
     _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped"
@@ -1918,7 +1937,7 @@ _do_revert() {
   # bare revert would be undone by the next unattended octopus upgrade.
   _cnf="/root/.${_a}.octopus.cnf"
   if [ "${_KEEP_ENABLED}" != "YES" ] && [ -f "${_cnf}" ]; then
-    if grep -q "^_INSTANCE_GROUP=" "${_cnf}" 2> /dev/null; then
+    if grep -aq "^_INSTANCE_GROUP=" "${_cnf}" 2> /dev/null; then
       sed -i "s/^_INSTANCE_GROUP=.*/_INSTANCE_GROUP=NO/" "${_cnf}" 2> /dev/null
     else
       printf '\n_INSTANCE_GROUP=NO\n' >> "${_cnf}"
@@ -2631,21 +2650,50 @@ _wg_r_remove() {
 # the newest 200 lines kept) and one where its main login reads them
 # (_wg_note_put_here).
 _wg_note() {
-  local _t _old _u
+  local _t _old _u _rc
   _t="$(date '+%Y-%m-%d %H:%M:%S') $*"
   ( umask 077; printf '%s\n' "${_t}" >> "${_WP_NOTES}" ) 2> /dev/null
   [ "${_WP_M}" = "YES" ] && return 0
   _t=$(printf '%s' "${_t}" | tr -cd '[:print:]')
   _old=$(_ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_read_here web-group-notes.txt)
-  _ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_put_here web-group-notes.txt \
+  _ig_in_real_dir "/data/disk/${_WP_A}/log" _wg_note_own_here \
     "$(printf '%s\n%s\n' "${_old}" "${_t}" | awk 'NF' | tail -n 200)" > /dev/null 2>&1
   _u=$(id -u "${_WP_A}.ftp" 2> /dev/null)
   if [[ "${_u}" =~ ^[0-9]+$ ]]; then
     _ig_in_real_dir "/data/disk/${_WP_A}/static/control" _wg_note_put_here "${_u}" \
       "$(tail -n 200 -- "${_WP_NOTES}" 2> /dev/null | tr -cd '[:print:]\n' | awk 'NF')" \
       > /dev/null 2>&1
+    _rc=$?
+    # once a run: every note of the run meets the same place (a note
+    # written in a subshell hands _WG_NOTE_REFUSED back for its caller to
+    # mark)
+    case "${_rc}" in
+      2)
+        _wg_noted "${_WP_A}" "the notes copy: control owner" \
+          && { _log "${_WP_A}: the notes copy not written: /data/disk/${_WP_A}/static/control is owned by neither root nor an identity of the account"; _WG_NOTE_REFUSED=2; }
+        ;;
+      3)
+        _wg_noted "${_WP_A}" "the notes copy: not a file" \
+          && { _log "${_WP_A}: the notes copy not written: a directory stands at /data/disk/${_WP_A}/static/control/web-group-notes.txt"; _WG_NOTE_REFUSED=3; }
+        ;;
+    esac
   fi
   return 0
+}
+
+# The temp copies a killed note left in the current (pinned) directory: a
+# minute old or more, so a note written at the same moment keeps its own.
+# A migration excludes them as it excludes the notes.
+_wg_note_sweep_here() {
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P . -maxdepth 1 -name '.web-group-notes.txt.put.*' \
+    ! -type d -mmin +1 -exec rm -f -- {} + > /dev/null 2>&1
+  return 0
+}
+
+# The account's own copy in its real log/ (_ig_put_here), stale temps swept.
+_wg_note_own_here() {
+  _wg_note_sweep_here
+  _ig_put_here web-group-notes.txt "${1}"
 }
 
 # The account's notes where its main login reads them, over SFTP and in
@@ -2653,13 +2701,24 @@ _wg_note() {
 # in the real static/control, the login's own (uid $1) and 0600, as they
 # name other accounts' stores. Made through one handle that never follows
 # a link and renamed over the name, so whatever stands there is replaced,
-# never opened; never read back from there. $2 = the lines.
+# never opened; never read back from there. Written only where root or an
+# identity of the account owns the directory: a co-tenant can put its own
+# directory at the name of static/control (static/ is group-writable), and
+# a copy there would be its to remove or to stand in for. $2 = the lines.
+# 2 for such a directory, 3 for a directory at the name, 1 otherwise.
 _wg_note_put_here() {
-  local _t="./.web-group-notes.txt.put.$$.${RANDOM}"
+  local _t="./.web-group-notes.txt.put.$$.${RANDOM}" _o
+  _o=$(stat -c %u -- . 2> /dev/null)
+  [[ "${_o}" =~ ^[0-9]+$ ]] || return 2
+  if [ "${_o}" != "0" ] && [ "${_o}" != "${1}" ] && [[ ",$(_wg_own_uids)," != *",${_o},"* ]]; then
+    return 2
+  fi
+  _wg_note_sweep_here
   rm -f -- "${_t}"
   printf '%s\n' "${2}" | perl -e "${_ACCT_PUT_PL}" "${_t}" "${1}" -1 600 \
     && mv -f -T -- "${_t}" ./web-group-notes.txt && return 0
   rm -f -- "${_t}"
+  [ -d ./web-group-notes.txt ] && [ ! -L ./web-group-notes.txt ] && return 3
   return 1
 }
 
@@ -2677,6 +2736,7 @@ _wg_note_log() {
 # with other accounts' runs between them, and the key keeps each run's own.
 declare -gA _WG_NOTED=()
 _WG_NOTED_RUN=""
+_WG_NOTE_REFUSED=0
 _WG_NOTED_KEEP=NO
 
 # 0 when note $2 of account $1 is new in this run (marked now), 1 when this
@@ -5143,8 +5203,8 @@ _wg_g_optout() {
 _wg_g_v1_optout() {
   local _c="/root/.${_WP_A}.octopus.cnf" _l
   [ "${_WP_M}" = "YES" ] && return 1
-  grep -q "^_INSTANCE_GROUP=NO" "${_c}" 2> /dev/null && return 0
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=" "${_c}" 2> /dev/null | tail -n 1 \
+  grep -aq "^_INSTANCE_GROUP=NO" "${_c}" 2> /dev/null && return 0
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=" "${_c}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=(NO|\"NO\"|'NO')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   [ "${_l}" = "NO" ]
@@ -5159,19 +5219,36 @@ _wg_g_pinned() {
 }
 
 # The account's cnf (root's) rewritten without any _WEB_GROUP line, and
-# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it.
+# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it once
+# it is written whole (status 1 and the cnf as it was otherwise). The
+# cnf is read as text (a crash can zero-fill its tail, and grep would read
+# it as binary and drop every line); a NUL byte ends bash's read of the cnf
+# there, so the line written after it would be lost to every pass: every
+# NUL byte is dropped first, as the Octopus pass drops them (a run of them
+# that cut a line short ends that line), the healed text renamed over the
+# cnf as the rewrite below is, so a heal that fails leaves the cnf as it was.
 _wg_policy_put() {
   local _cnf="/root/.${_WP_A}.octopus.cnf" _t
   [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] || return 1
+  if [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ]; then
+    { rm -f -- "${_cnf}.nulheal" && perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" && chmod --reference="${_cnf}" -- "${_cnf}.nulheal" && mv -f -- "${_cnf}.nulheal" "${_cnf}"; } 2> /dev/null \
+      || rm -f -- "${_cnf}.nulheal"
+  fi
   _t="/root/.${_WP_A}.octopus.cnf.wg.$$"
   rm -f -- "${_t}"
-  { grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
+  # renamed over the cnf only once it is written whole (grep's own status:
+  # 1 when it keeps no line, the copy still whole)
+  if ( grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
+    [ $? -le 1 ] || exit 1
     case "${1}" in
       NO|A) printf '_WEB_GROUP=%s\n' "${1}" ;;
-    esac
-  } > "${_t}" 2> /dev/null
-  chmod --reference="${_cnf}" -- "${_t}" 2> /dev/null
-  mv -f -- "${_t}" "${_cnf}" 2> /dev/null || { rm -f -- "${_t}"; return 1; }
+    esac ) > "${_t}" 2> /dev/null \
+    && chmod --reference="${_cnf}" -- "${_t}" 2> /dev/null \
+    && mv -f -- "${_t}" "${_cnf}" 2> /dev/null; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 # d0: the opt-out, written first (over a pin's line); a per-account verb
@@ -5195,7 +5272,9 @@ _wg_policy_set() {
     _msg "NOTE: _WEB_GROUP=A written to /root/.${_WP_A}.octopus.cnf: ${_WP_A} stays at phase A here and on every box its cnf travels to (xoct, xmass) until webconvert ${_WP_A} --phase-b or webrevert"
     return 0
   fi
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "/root/.${_WP_A}.octopus.cnf" 2> /dev/null || return 0
+  # read as the cnf reads once its NUL bytes are dropped (_wg_policy_put)
+  { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "/root/.${_WP_A}.octopus.cnf"; } 2> /dev/null \
+    | grep -aqE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" || return 0
   _wg_policy_put REMOVE || return 1
   _msg "NOTE: _WEB_GROUP removed from /root/.${_WP_A}.octopus.cnf (a per-account verb lifts the opt-out; only --phase-a pins)"
 }
@@ -5418,7 +5497,15 @@ _wg_g_share() {
           # the other account's note, once a run as well: marked here, in
           # this run's set, and written under that account's profile
           _xn="outbound share: site ${_al} reads the ${_p} store of ${_me}; it loses write there once ${_me} converts"
-          _wg_noted "${_x}" "${_xn}" && ( _wg_profile "${_x}"; _wg_note "${_xn}" )
+          if _wg_noted "${_x}" "${_xn}"; then
+            ( _wg_profile "${_x}"; _WG_NOTE_REFUSED=0; _wg_note "${_xn}"; exit "${_WG_NOTE_REFUSED}" )
+            # a refusal of its notes copy logged in there is marked here
+            # too, so the run logs it once however many such notes it writes
+            case "$?" in
+              2) _wg_noted "${_x}" "the notes copy: control owner" ;;
+              3) _wg_noted "${_x}" "the notes copy: not a file" ;;
+            esac
+          fi
         fi
       done
     done < <(_wg_sites "${_xh}")
@@ -5454,6 +5541,7 @@ _wg_reset() {
   _WG_RSAVE=""
   _WG_CARRIED=""
   _WG_E2RC=4
+  _WG_E2WHY=""
   _WM_G=none
   _WM_W=0
   _WM_PF=NO
@@ -5723,8 +5811,19 @@ _wg_free_held() {
   return 0
 }
 
+# 0 when account $1's free journal is there and cannot be read (a read
+# error; an empty file reads). _wg_free_held then names no held gid, so a
+# claim cannot keep the paths of a free that may still finish out of its
+# walk: it waits until the journal reads again. One text in instgrp, the
+# nightly's 10-account.sh and the restore tools.
+_wg_free_unreadable() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt"
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
+}
+
 # The journal's fields into _FJ_S (renaming, made or done), _FJ_H (the held
-# gid), _FJ_N (the new gid) and _FJ_AT (its epoch); empty when there is none.
+# gid), _FJ_N (the new gid) and _FJ_AT (its epoch); empty when there is none
+# or it cannot be read.
 _wg_free_j_read() {
   local _j _s="" _h="" _n="" _at=""
   _FJ_S=""
@@ -5733,7 +5832,7 @@ _wg_free_j_read() {
   _FJ_AT=""
   _j=$(_wg_free_journal)
   [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
-  read -r _s _h _n _at _ < "${_j}" || :
+  { read -r _s _h _n _at _ < "${_j}"; } 2> /dev/null || :
   _FJ_S="${_s#step=}"
   _FJ_H="${_h#held=}"
   _FJ_N="${_n#new=}"
@@ -6029,7 +6128,7 @@ _wg_free_reload() {
 # warned (a version's reload, a listing): the run's own leg reloads what is
 # left (u4).
 _wg_free() {
-  local _old="${1}" _held _new="" _u _g _p _n _l _cur _nm _who="" _out="" _conv=NO _rc=0 _rec=YES _hr
+  local _old="${1}" _held _new="" _u _g _p _n _l _cur _nm _nmT _nmG _who="" _out="" _conv=NO _rc=0 _rec=YES _hr
   _held=$(_wg_free_aside "${_old}" "${_WP_A}")
   _wg_hold "${_WP_A}"
   _hr=$?
@@ -6200,14 +6299,26 @@ _wg_free() {
   if [ "${_rec}" = "YES" ]; then
     _wg_free_j_write "done" "${_old}" "${_new}" "$([ "${_rc}" = "0" ] || echo warn)"
   fi
+  # the account's notes name that group only by one of the account's own
+  # two forms of the name: one resolved by its number alone (its owner
+  # renamed it since) can be another account's, and the notes are the
+  # tenant's to read; instgrp.log and the run's own lines name it as it is
+  _nmT=" ${_nm}"
+  _nmG=""
+  if [ "${_nm}" != "${_held}" ] && [ "${_nm}" != "${_old}-wgheld" ]; then
+    _nmT=""
+    _nmG=" (gid ${_old})"
+  fi
   # an earlier version's <gid>-wgheld that another account's free journal
   # names too is that account's group: this free never renamed it
   if [ "${_nm}" != "${_held}" ] && [ -n "$(_wg_free_other "${_old}")" ]; then
-    _wg_note_log "its web group's name ${_WP_G} was held by an identity outside the account: the free finished from gid ${_old}, whose group ${_nm} another account's free journal names and keeps its name, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+    _wg_note "its web group's name ${_WP_G} was held by an identity outside the account: the free finished from gid ${_old}, whose group${_nmT} another account's free journal names and keeps its name, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+    _log "${_WP_A}: its web group's name ${_WP_G} was held by an identity outside the account: the free finished from gid ${_old}, whose group ${_nm} another account's free journal names and keeps its name, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
     _msg "${_WP_A}: the free of ${_WP_G} finished from gid ${_old}: ${_nm}, which another account's free journal names, keeps its name; a new ${_WP_G} (gid ${_new}) holds the account's paths"
     return 0
   fi
-  _wg_note_log "its web group's name ${_WP_G} was held by an identity outside the account: that group was renamed ${_nm} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+  _wg_note "its web group's name ${_WP_G} was held by an identity outside the account: that group${_nmG} was renamed${_nmT} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
+  _log "${_WP_A}: its web group's name ${_WP_G} was held by an identity outside the account: that group was renamed ${_nm} with its members and number, and the account was given a new ${_WP_G} (gid ${_new}) holding its paths"
   _msg "${_WP_A}: ${_WP_G} was held by an identity outside it: renamed ${_nm}, a new ${_WP_G} made (gid ${_new}), the account's paths moved to it"
   return 0
 }
@@ -6473,7 +6584,17 @@ _wg_free_resume() {
     *)
       case "${_st}" in
         stale) _wg_free_j_gone "its rename never happened, a web verb" ;;
-        lost) _wg_free_lost "${_h}" "${_n}" "a web verb" ;;
+        lost)
+          # kept because it cannot be read: the free it may name could
+          # still finish from its old number, so the run stops at the row
+          # (E2, exit 4), converting and claiming nothing meanwhile
+          if ! _wg_free_lost "${_h}" "${_n}" "a web verb" && _wg_free_unreadable "${_WP_A}"; then
+            _D_BUSY=YES
+            _WG_E2RC=4
+            _WG_E2WHY="the journal $(_wg_free_journal) of a free of ${_WP_G} cannot be read; nothing is converted or claimed until it reads again"
+            return 0
+          fi
+          ;;
       esac
       [ -n "${_why}" ] || _wg_free_resweep
       return 0
@@ -6543,8 +6664,9 @@ _wg_run_row() {
   # refuses (_wg_free), and the row is read again for the new group
   if [ "${_D_ROW}" = "E1" ]; then
     if [ "${_D_BUSY}" = "YES" ]; then
-      # the resume could not hold the account: no free, no second wait
-      _why=$(_wg_busy_why "${_WG_E2RC}")
+      # the resume could not hold the account, or its journal cannot be
+      # read: no free, no second wait
+      _why="${_WG_E2WHY:-$(_wg_busy_why "${_WG_E2RC}")}"
     else
       _why=$(_wg_free_guard)
       if [ "$?" = "0" ]; then
@@ -6566,6 +6688,7 @@ _wg_run_row() {
     E1|E2|E3|E4)
       case "${_D_ROW}" in
         E1) _alrt "${_WP_A}: ${_WP_G} is held by an identity outside it; left alone${_why:+ (${_why})}" ;;
+        E2) [ -z "${_WG_E2WHY}" ] || _msg "NOTE: ${_WP_A}: deferred: ${_WG_E2WHY}" ;;
         E3) _msg "${_WP_A}: frozen for a migration (log/proxied.pid), skipped (--force overrides for a per-account verb)" ;;
         E4) _msg "NOTE: ${_WP_A}: this box is a standby (${_WG_STANDBY} or ${_WG_PREP}); nothing but webrevert runs here" ;;
       esac
