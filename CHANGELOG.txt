@@ -8,14 +8,17 @@
       so does the Octopus pass. A crash can leave NUL bytes in a cnf's
       tail, and grep then reads the file as binary: a rewrite through grep
       (the merges of a moved account's settings, the web group's seeds, the
-      admail and go-live switches) dropped every line it did not touch, the
-      source's settings read as none while the merge reported success, and
-      the pass lost a hand-seeded cnf's lines. A NUL tail now costs no line,
-      and since bash stops reading a file at its first NUL byte, the
-      Octopus pass drops every NUL byte of the account's cnf before it
-      reads it (the file rewritten in place, said once), as the merges, the
-      seeds and the upgrade-notice switches do before they write a line
-      after the cnf's text.
+      admail and go-live switches, instgrp's write of the web group's
+      policy) dropped every line it did not touch, the source's settings
+      read as none while the merge reported success, and the pass lost a
+      hand-seeded cnf's lines. A NUL tail now costs no line, and since bash
+      stops reading a file at its first NUL byte, the Octopus pass drops
+      every NUL byte of the account's cnf before it reads it (the file
+      rewritten in place, said once; a run of them that cut a line short
+      ends that line), as the merges, the seeds, the upgrade-notice switches
+      and instgrp's policy write do before they write a line after the
+      cnf's text. A rewrite that fails part way keeps the cnf's whole text
+      beside it and goes no further.
 
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
