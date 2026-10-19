@@ -811,19 +811,14 @@ that names the account as it is now: the uid, and the inode and birth time of
 finds an account it created, so a marker an earlier account of the name left
 is not trusted.
 
-The cnf is rewritten in place, keeping the file and its mode, from a copy the
-pass makes beside it, reading the cnf as text, and only where that copy holds
+The cnf is replaced by a copy the pass makes beside it, reading the cnf as
+text, renamed over it with its mode kept, and only where that copy holds
 exactly the cnf's lines but the ones taken and the cnf is still the file read;
-otherwise nothing changes, a NOTE says so, and the next pass tries again. One
+otherwise, and where the rename is refused (an immutable or append-only cnf),
+nothing changes, a NOTE says the line stays, and the next pass tries again. A
+write that fails part way (a full disk) can no longer cut the cnf short. One
 INFO line names the migration (the source account and box the marker
 records), and the pass goes on as for any account.
-
-Once the write into the cnf has started, the copy is the cnf's one whole text.
-A write that fails part way (a full disk) leaves the cnf partly written and
-keeps the copy, `/root/.oN.octopus.cnf.dbseed.<pid>`: an `ALRT` names it, to be
-put back in the cnf's place, and the pass switches nothing for the account. A
-write refused before its first byte (an immutable or append-only cnf) leaves
-the cnf as it was: the copy goes, and the `NOTE` says the line stays.
 
 The account's opt-out travels with it, read as the pass reads it, in any of
 its shapes: its `_DB_BROKER_ARM=NO`, and a `_DB_BROKER_BORN=NO` that is its
@@ -943,7 +938,7 @@ Every reader of the two settings reads a cnf as text, whatever bytes it holds:
 a NUL byte (a crash can zero-fill a file's tail) hides none of its lines from
 them. bash, which the Octopus pass sources the cnf with, stops reading a file
 at its first NUL byte, so the pass drops every NUL byte of the account's cnf
-before it reads it (the file rewritten in place, said in a NOTE), and so do
+before it reads it (the healed text renamed over it, said in a NOTE), and so do
 the moves' merges, seeds and upgrade-notice switches, and `instgrp`'s write of
 the web group's policy, before they write a line after the cnf's text. A run
 of NUL bytes that cut a line short ends that line, so a line written after it
