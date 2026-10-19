@@ -928,6 +928,17 @@ hand), the cutover's rename of the account refuses, the passes keep its
 panel switched off there as on the old box, and the worker there names it
 once a day.
 
+The promotion also leaves the account's web group as it was (`instgrp`
+counts the hold as it counts a migration's freeze, and `--force` overrides
+either) and does not rewire its panel, which is still the vanilla one the
+cut-off import left: the route run again brings it.
+
+While the import is unfinished on the active, a sync sends none of the
+account's vhosts (it names the freeze; the sites are still served by the
+vanilla source), and `xmass pre-mig` refuses that box: a pair is prepared
+only once every import there is finished or reverted, so the hold covers a
+pair that stood before the import.
+
 An import on the promoted box ends the hold when it reaches its hand-back; a revert there leaves it standing (the snapshot it
 restores is of the panel the failover carried) and sets the dumps it
 transferred aside (`src.reverted.<time>`), so the way out named is the

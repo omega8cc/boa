@@ -519,6 +519,13 @@ exit 4, unless an operator passes `--force`. A standby box (xmass's
 `/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
 prepared as one) refuses every verb but `webrevert`.
 
+An account an unfinished aegir2boa import holds (`/var/backups/a2b/oN/`
+reading unfinished, the test the octopus wrapper makes) is skipped the same
+way, exit 4 unless `--force` is given, by the web group verbs and by
+`convert` and `reclaim`: a box promoted while an import of the account was
+cut off has the hold `xmass` carried there, never the import's freeze, which
+no standby receives.
+
 ### A group name held outside the account
 
 A group `wg-oN` that an identity outside the account holds too (a member

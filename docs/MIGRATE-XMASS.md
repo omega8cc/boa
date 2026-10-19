@@ -1119,6 +1119,18 @@ cut-off import are dropped there, since the import's dumps and pre-import
 snapshot stayed on the old box. An import there that reaches its hand-back
 ends the hold.
 
+The promotion leaves the account's web group as it was (`instgrp` counts
+the hold as it counts a migration's freeze) and does not rewire its panel,
+which is still the vanilla one the cut-off import left (`PANEL-HELD` in
+its output).
+
+While the import is unfinished on the active, a sync names the account
+frozen (the import's own `log/proxied.pid`) and sends none of its vhosts,
+as its sites are still served by the vanilla source. `xmass pre-mig`
+refuses that box (the panel's platform in the database differs from its
+alias root): a pair is prepared only once every import there is finished
+or reverted, so the hold covers a pair that stood before the import.
+
 Once the import on the active no longer reads unfinished, any other
 aegir2boa state the standby holds of the account (from a role before this
 one: a box that ran the import and failed over) is set aside there as
