@@ -1550,6 +1550,7 @@ _xmass_solr_ts_line() {
   esac
 }
 
+_XMASS_SOLR_CLASSIFIED=NO   # YES once this process classified the source
 ### Classify the SOURCE's per-version Solr use from measured state: service,
 ### dotted cores, document counts via the cores STATUS endpoint, per-site
 ### boa_site_control.ini bindings and SR tokens. Sets
@@ -1791,6 +1792,34 @@ _XMASS_SOLR_RECORDED_AT="$(date -u '+%Y-%m-%d %H:%M')"
 SOLRSETEOF
     chmod 600 "${_XMASS_SOLR_SET_FILE}"
   fi
+  _XMASS_SOLR_CLASSIFIED=YES
+  return 0
+}
+
+### The Solr versions expected to SERVE on the target: the set this run
+### classified (every live verb runs the coverage gate first), else the set
+### the classifier recorded while the source was still healthy (a resumed
+### cutover tail runs no gate). Echoes the set -- empty on a Solr-free
+### estate, where the record's empty set is a complete one -- and returns 1
+### when nothing is known, so a caller falls back to the old wider
+### behaviour instead of guessing.
+_xmass_solr_target_want() {
+  local _want=""
+  if [ "${_XMASS_SOLR_CLASSIFIED}" = "YES" ]; then
+    _want="${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}"
+  elif [ -r "${_XMASS_SOLR_SET_FILE}" ]; then
+    ### Read in a subshell on purpose: the record must never overwrite this
+    ### process's own classification. The stamp is what says a record was
+    ### written; its payload may legitimately be empty.
+    _want=$(_XMASS_SOLR_RECORDED_AT=""; . "${_XMASS_SOLR_SET_FILE}" 2>/dev/null \
+      && [ -n "${_XMASS_SOLR_RECORDED_AT}" ] \
+      && echo "R ${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}")
+    [ -n "${_want}" ] || return 1
+    _want="${_want#R}"
+  else
+    return 1
+  fi
+  echo "${_want}" | tr -s ' ' | sed 's/^ //; s/ $//'
   return 0
 }
 
@@ -3165,20 +3194,19 @@ _xmass_solr_core_parity() {
   local _want="" _sv _dta _try
   ### The LIVE path arrives with the sets filled by its own coverage gate;
   ### the RESUME path never runs that gate, so fall back to the record the
-  ### classifier wrote while the source was still healthy, and then to all
-  ### three trees -- degrade to the old, wider check, never to silence.
-  _want="${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}"
-  _want="${_want## }"
-  _want="${_want%% }"
-  if [ -z "${_want}" ] && [ -r "${_XMASS_SOLR_SET_FILE}" ]; then
-    ### Read in a subshell on purpose: the record must never overwrite this
-    ### process's own classification.
-    _want=$(. "${_XMASS_SOLR_SET_FILE}" 2>/dev/null \
-      && echo "${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}")
-    _want="${_want## }"
-    _want="${_want%% }"
+  ### classifier wrote while the source was still healthy, and with neither
+  ### to all three trees -- degrade to the old, wider check, never to
+  ### silence. A KNOWN empty set is the Solr-free estate: every version is
+  ### denied on the target by design, so no registration is expected there
+  ### and a core found as data in an unused tree is not a finding.
+  if _want="$(_xmass_solr_target_want)"; then
+    if [ -z "${_want}" ]; then
+      _info "Solr core parity: the source uses no Solr -- nothing to compare on ${_t}"
+      return 0
+    fi
+  else
+    _want="solr4 solr7 solr9"
   fi
-  [ -z "${_want}" ] && _want="solr4 solr7 solr9"
   for _sv in ${_want}; do
     case "${_sv}" in
       solr4) _dta=/opt/solr4 ;;
@@ -4962,67 +4990,157 @@ _xmass_restore_solr_source() {
 }
 
 _xmass_start_solr_target() {
-  # Remove Solr transaction logs on target before first start.
-  # Source Solr was stopped cleanly before final rsync, so tlogs should be
-  # nearly empty, but removing them prevents any risk of double-indexing on
-  # first startup. BOA performs no special Solr recovery beyond core health
-  # checks and optimisation, so this is the correct pre-start procedure here.
-  _info "Clearing Solr transaction logs on target ${_tgt} ..."
-  ssh root@"${_tgt}" bash <<'REMOTE'
-for _tlog in $(find /opt/solr4 /var/solr7/data /var/solr9/data \
-  -name tlog -type d 2>/dev/null); do
-  rm -rf "${_tlog}"
-  echo "INFO: Removed tlog at ${_tlog}"
-done
-REMOTE
-  _info "Starting Solr on target ${_tgt} ..."
-  ssh root@"${_tgt}" bash <<'REMOTE'
-rm -f /var/log/boa/.xmass_solr_hold.pid
-# Re-arm what the init-time hold disarmed -- exec bits and rc links come
-# back BEFORE the starts (the start loops require -x), symmetrically with
-# _xmass_prevent_solr_target. Deny-parked services have no init script
-# here and stay parked.
-for _svc in solr9 solr7 solr4 jetty9; do
-  if [ -e "/etc/init.d/${_svc}" ]; then
-    [ ! -x "/etc/init.d/${_svc}" ] && chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
-    update-rc.d ${_svc} defaults &>/dev/null || true
-    update-rc.d ${_svc} enable &>/dev/null || true
+  # What is expected to serve here is the source's used set (plus what was
+  # gated as used), which the deny set prep-target wrote mirrors: on an
+  # estate whose source uses no Solr the target carries every deny and the
+  # blanket java pair, so there is nothing to re-arm, start, wait for or
+  # probe -- only the hold marker goes (java.sh re-asserts the disarm while
+  # it exists). A version denied on the target is never re-armed, whatever
+  # the set says; with nothing known about the set, every armed and undenied
+  # service starts, as before. The wait and the probe cover exactly the
+  # services this step started, so a box that started none raises no alarm.
+  local _want="" _known=NO _out _line _rest _svc _started="" _ports=""
+  if _want="$(_xmass_solr_target_want)"; then
+    _known=YES
   fi
-done
-for _svc in solr9 solr7; do
-  if [ -x "/etc/init.d/${_svc}" ] \
-    && [ -e "/etc/default/${_svc}.in.sh" ]; then
-    if id "${_svc}" &>/dev/null; then
-      pkill -9 -u "${_svc}" &>/dev/null || true
+  ### Belt-and-braces before the set reaches a remote root shell: it is
+  ### built only from the fixed version tokens, so assert that.
+  case "${_want}" in
+    *[!a-z0-9\ ]*)
+      _alrt "refusing to splice a malformed Solr set into a remote shell; starting what is armed on ${_tgt}"
+      _want=""
+      _known=NO
+      ;;
+  esac
+  if [ "${_known}" = "YES" ] && [ -z "${_want}" ]; then
+    if ssh root@"${_tgt}" 'rm -f /var/log/boa/.xmass_solr_hold.pid'; then
+      _info "Solr on target ${_tgt}: the source uses no Solr and every version is denied there -- nothing to start, hold cleared"
     else
-      pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &>/dev/null || true
+      _alrt "Solr on target ${_tgt}: could not clear the hold marker over ssh -- 'xmass post-mig' there clears it"
     fi
-    service ${_svc} start &>/dev/null || true
-    echo "INFO: Started ${_svc} on target"
+    return 0
   fi
+  _info "Starting Solr on target ${_tgt} ..."
+  _out=$(ssh root@"${_tgt}" "_XM_WANT='${_want}' _XM_KNOWN='${_known}' bash -s" <<'REMOTE'
+rm -f /var/log/boa/.xmass_solr_hold.pid
+for _sv in solr9 solr7 solr4; do
+  case "${_sv}" in
+    solr9) _svc=solr9;  _dvar=_DENY_SOLR9;  _dta=/var/solr9/data; _dflt=/etc/default/solr9.in.sh ;;
+    solr7) _svc=solr7;  _dvar=_DENY_SOLR7;  _dta=/var/solr7/data; _dflt=/etc/default/solr7.in.sh ;;
+    solr4) _svc=jetty9; _dvar=_DENY_JETTY9; _dta=/opt/solr4;      _dflt=/etc/default/jetty9 ;;
+  esac
+  if [ "${_XM_KNOWN}" = "YES" ]; then
+    case " ${_XM_WANT} " in
+      *" ${_sv} "*) : ;;
+      *) echo "SKIP:${_svc}:the source does not use ${_sv}"; continue ;;
+    esac
+  fi
+  # this box's own deny for the service, in either form, or the blanket pair
+  _deny=NO
+  [ -e /root/.deny.java.cnf ] && _deny=YES
+  [ -e "/etc/boa/.deny.${_svc}.cnf" ] && _deny=YES
+  [ -e "/root/.deny.${_svc}.cnf" ] && _deny=YES
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?(_DENY_JAVA|${_dvar})=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _deny=YES
+  if [ "${_deny}" = "YES" ]; then
+    echo "SKIP:${_svc}:denied on the target"
+    continue
+  fi
+  if [ ! -e "/etc/init.d/${_svc}" ]; then
+    echo "SKIP:${_svc}:no init script on the target"
+    continue
+  fi
+  # exec bits and rc links back BEFORE the start (the start requires -x),
+  # symmetrically with the init-time hold's disarm, which takes solr4's own
+  # script down beside jetty9's
+  _arm="${_svc}"
+  [ "${_sv}" = "solr4" ] && _arm="jetty9 solr4"
+  for _i in ${_arm}; do
+    [ -e "/etc/init.d/${_i}" ] || continue
+    [ ! -x "/etc/init.d/${_i}" ] && chmod 744 "/etc/init.d/${_i}" 2>/dev/null
+    update-rc.d ${_i} defaults &>/dev/null || true
+    update-rc.d ${_i} enable &>/dev/null || true
+  done
+  if [ ! -e "${_dflt}" ]; then
+    echo "SKIP:${_svc}:no ${_dflt}"
+    continue
+  fi
+  # Transaction logs go before the first start: the source's Solr was
+  # stopped cleanly before the final rsync, so they are nearly empty, and
+  # removing them prevents any double-indexing on the first start. BOA
+  # performs no special Solr recovery beyond core health checks and
+  # optimisation, so this is the correct pre-start procedure here.
+  for _tlog in $(find "${_dta}" -name tlog -type d 2>/dev/null); do
+    rm -rf "${_tlog}"
+    echo "TLOG:${_tlog}"
+  done
+  if id "${_svc}" &>/dev/null; then
+    pkill -9 -u "${_svc}" &>/dev/null || true
+  else
+    pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &>/dev/null || true
+  fi
+  service ${_svc} start &>/dev/null || true
+  echo "STARTED:${_svc}"
 done
-if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-  pkill -9 -f "^[^ ]*java[0-9]* .*jetty9" &>/dev/null || true
-  service jetty9 start &>/dev/null || true
-  echo "INFO: Started jetty9 on target"
-fi
+exit 0
 REMOTE
+  ) || { _alrt "Solr on target ${_tgt}: could not reach it over ssh to clear the hold and start Solr -- 'xmass post-mig' there does both"; return 1; }
+  while read -r _line; do
+    [ -z "${_line}" ] && continue
+    case "${_line}" in
+      STARTED:*)
+        _svc="${_line#STARTED:}"
+        _started="${_started} ${_svc}"
+        case "${_svc}" in
+          solr9)  _ports="${_ports} 9099" ;;
+          solr7)  _ports="${_ports} 9077" ;;
+          jetty9) _ports="${_ports} 8099" ;;
+        esac
+        _info "  Started ${_svc} on target"
+        ;;
+      SKIP:*)
+        _rest="${_line#SKIP:}"
+        _info "  ${_rest%%:*}: not started (${_rest#*:})"
+        ;;
+      TLOG:*)
+        _info "  Removed tlog at ${_line#TLOG:}"
+        ;;
+    esac
+  done <<< "${_out}"
+  _started="${_started## }"
+  _ports="${_ports## }"
+  if [ -z "${_started}" ]; then
+    _info "Solr on target ${_tgt}: no service to start (every version denied or absent there) -- hold cleared"
+    return 0
+  fi
   _info "Waiting 30s for Solr to initialise on target ..."
   sleep 30
-  _xmass_solr_check_target
-  _info "Solr started on target ${_tgt}: OK"
+  if _xmass_solr_check_target "${_ports}"; then
+    _info "Solr started on target ${_tgt}: OK"
+  else
+    _alrt "Solr on target ${_tgt}: [${_started}] started but NOT confirmed -- see the lines above"
+  fi
 }
 
 _xmass_solr_check_target() {
-  # Informational HTTP reachability check against the ports BOA actually
-  # installs on: solr9 9099, solr7 9077, jetty9/solr4 8099 (plus 8983 for a
-  # hand-installed upstream Solr). Probed over ssh on 127.0.0.1 — Solr binds
-  # localhost and CSF filters the public interface, so the old public-IP
-  # probe of 8983/8984/8080 could never see a healthy BOA Solr.
-  # A non-200/302 response is a warning, not a fatal error — Solr may still
-  # be replaying its write-ahead log or warming up caches.
-  _info "Checking Solr HTTP response on target ${_tgt} ..."
-  local _line _rest _ok=NO
+  # Informational HTTP reachability check over ssh on 127.0.0.1 (Solr binds
+  # localhost and CSF filters the public interface), against the ports of
+  # the services the step above started ($1): BOA's solr9 answers on 9099,
+  # solr7 on 9077, jetty9/solr4 on 8099. A non-200/302 response is a
+  # warning, not a fatal error — Solr may still be replaying its
+  # write-ahead log or warming up caches. Returns 1 when no port answered,
+  # so the caller never reports a start it could not confirm.
+  local _ports="${1:-9099 9077 8099}" _out _line _rest _ok=NO
+  case "${_ports}" in
+    *[!0-9\ ]*) _alrt "refusing to splice a malformed port list into a remote shell"; return 1 ;;
+  esac
+  _info "Checking Solr HTTP response on target ${_tgt} (port ${_ports}) ..."
+  _out=$(ssh root@"${_tgt}" "_XM_PORTS='${_ports}' bash -s" <<'REMOTE' 2>/dev/null
+for _p in ${_XM_PORTS}; do
+  _h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -A iCab "http://127.0.0.1:${_p}/solr/" 2>/dev/null)
+  if [ "${_h}" = "200" ] || [ "${_h}" = "302" ]; then echo "OK:${_p}:${_h}"; else echo "NO:${_p}:${_h}"; fi
+done
+REMOTE
+  )
   while read -r _line; do
     [ -z "${_line}" ] && continue
     case "${_line}" in
@@ -5036,14 +5154,13 @@ _xmass_solr_check_target() {
         _info "  Solr port ${_rest%%:*}: HTTP ${_rest#*:} (not yet ready or not active)"
         ;;
     esac
-  done <<< "$(ssh root@"${_tgt}" 'for _p in 9099 9077 8099 8983; do
-    _h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -A iCab "http://127.0.0.1:${_p}/solr/" 2>/dev/null)
-    if [ "${_h}" = "200" ] || [ "${_h}" = "302" ]; then echo "OK:${_p}:${_h}"; else echo "NO:${_p}:${_h}"; fi
-  done' 2>/dev/null)"
+  done <<< "${_out}"
   if [ "${_ok}" = "NO" ]; then
     _alrt "No Solr port responded on target — check manually after cutover:" \
-          " ssh root@${_tgt} 'curl http://127.0.0.1:9099/solr/'"
+          " ssh root@${_tgt} 'curl http://127.0.0.1:${_ports%% *}/solr/'"
+    return 1
   fi
+  return 0
 }
 
 ###-------------ACCOUNT ENUMERATION------###
@@ -15283,6 +15400,71 @@ _xmass_cmd_cutover() {
   _xmass_cutover_finish
 }
 
+### This box's own deny for a Solr service, in either form, or the blanket
+### java pair (what a source that used no Solr leaves on its target): such a
+### service is never re-armed or started here -- java.sh would park it again
+### within a minute.
+_xmass_solr_denied_here() {
+  local _svc="$1" _dvar
+  case "${_svc}" in
+    solr9)        _dvar=_DENY_SOLR9 ;;
+    solr7)        _dvar=_DENY_SOLR7 ;;
+    jetty9|solr4) _svc=jetty9; _dvar=_DENY_JETTY9 ;;
+    *) return 1 ;;
+  esac
+  [ -e "${_SOLR_DENY_FILE}" ] && return 0
+  [ -e "/etc/boa/.deny.${_svc}.cnf" ] && return 0
+  [ -e "/root/.deny.${_svc}.cnf" ] && return 0
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?(_DENY_JAVA|${_dvar})=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && return 0
+  return 1
+}
+
+### post-mig's Solr step on the promoted box: remove the hold if still
+### present and re-arm what it disarmed (the hold drops exec bits and rc
+### links, and the start requires -x), then (re)start each service this box
+### does not deny. Deny-parked services have no init script here and stay
+### parked; a denied one still on disk is left disarmed. Says so in one line
+### when there is nothing to start -- the usual shape after a move from a
+### source that used no Solr.
+_xmass_post_mig_solr() {
+  local _svc _started=""
+  rm -f /var/log/boa/.xmass_solr_hold.pid
+  for _svc in solr9 solr7 solr4 jetty9; do
+    [ -e "/etc/init.d/${_svc}" ] || continue
+    if _xmass_solr_denied_here "${_svc}"; then
+      _info "  ${_svc}: denied on this box, left disarmed"
+      continue
+    fi
+    [ ! -x "/etc/init.d/${_svc}" ] && chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+    update-rc.d "${_svc}" defaults &> /dev/null || true
+    update-rc.d "${_svc}" enable &> /dev/null || true
+  done
+  for _svc in solr9 solr7; do
+    if [ -x "/etc/init.d/${_svc}" ] && [ -e "/etc/default/${_svc}.in.sh" ] \
+      && ! _xmass_solr_denied_here "${_svc}"; then
+      if id "${_svc}" &> /dev/null; then
+        pkill -9 -u "${_svc}" &> /dev/null || true
+      else
+        pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &> /dev/null || true
+      fi
+      service "${_svc}" start &>/dev/null
+      _info "  ${_svc} restarted"
+      _started="${_started} ${_svc}"
+    fi
+  done
+  pkill -9 -f "^[^ ]*java[0-9]* .*jetty9" &>/dev/null || true
+  rm -f /var/log/jetty9/* &>/dev/null || true
+  if [ -e "/etc/default/jetty9" ] && [ -x "/etc/init.d/jetty9" ] \
+    && ! _xmass_solr_denied_here jetty9; then
+    service jetty9 start &>/dev/null
+    _info "  jetty9 restarted"
+    _started="${_started} jetty9"
+  fi
+  [ -n "${_started}" ] \
+    || _info "  no Solr service to start here (every version denied or absent)"
+  return 0
+}
+
 _xmass_post_mig() {
   # Run on TARGET after DNS is updated and traffic flows directly.
   # Ensures Solr, nginx, and BOA runners are in clean state.
@@ -15300,38 +15482,10 @@ _xmass_post_mig() {
     _XMASS_PROMOTED_HERE=YES
     [ "${_XMASS_HAND_CLEANED}" = "YES" ] || _xmass_promote_cleanup_here
   fi
-  # Remove the Solr hold if still present, and re-arm what it disarmed:
-  # the hold drops exec bits and rc links, and the start loop below
-  # requires -x. Deny-parked services have no init script here and stay
-  # parked.
-  rm -f /var/log/boa/.xmass_solr_hold.pid
-  local _svc
-  for _svc in solr9 solr7 solr4 jetty9; do
-    if [ -e "/etc/init.d/${_svc}" ]; then
-      [ ! -x "/etc/init.d/${_svc}" ] && chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
-      update-rc.d "${_svc}" defaults &> /dev/null || true
-      update-rc.d "${_svc}" enable &> /dev/null || true
-    fi
-  done
-  # (Re)start Solr services cleanly
-  for _svc in solr9 solr7; do
-    if [ -x "/etc/init.d/${_svc}" ] && [ -e "/etc/default/${_svc}.in.sh" ]; then
-      if id "${_svc}" &> /dev/null; then
-        pkill -9 -u "${_svc}" &> /dev/null || true
-      else
-        pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &> /dev/null || true
-      fi
-      service "${_svc}" start &>/dev/null
-      _info "  ${_svc} restarted"
-    fi
-  done
-  pkill -9 -f "^[^ ]*java[0-9]* .*jetty9" &>/dev/null || true
+  # The Solr hold and what it disarmed; nothing this box denies is re-armed
+  # or started.
+  _xmass_post_mig_solr
   rm -rf /tmp/drush* /tmp/pear /tmp/jetty*
-  rm -f /var/log/jetty9/* &>/dev/null || true
-  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-    service jetty9 start &>/dev/null
-    _info "  jetty9 restarted"
-  fi
   service nginx reload &>/dev/null
   # Harsh cache flush: cold-restart Valkey/Redis (drop stale D8+ containers
   # carried from the source) + restart every PHP-FPM master (drop opcache/APCu),
