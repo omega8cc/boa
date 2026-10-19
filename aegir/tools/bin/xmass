@@ -390,9 +390,10 @@ _web_group_policy() {
   # export, quotes or a trailing comment. NO (opted out of the conversion)
   # or A (pinned at phase A) is printed; any other value, or none, prints
   # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
-  # notes and the carry read the line the same way.
+  # notes and the carry read the line the same way. The cnf is read as text:
+  # a NUL byte (a crash can zero-fill its tail) hides none of its lines.
   local _l
-  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+  _l=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
     | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
     | tr -d "\"'")
   case "${_l}" in
@@ -2596,13 +2597,72 @@ _xmass_dbctl_cnf_last() {
 
 # Whether account $1, its cnf here $2, is kept out of the database broker as
 # this box's passes read it: its _DB_BROKER_ARM=NO, or a _DB_BROKER_BORN=NO
-# that is its operator's, the account holding no create marker here
+# that is its operator's: the account holds no create marker here
 # (/root/.<oN>.migration-create.txt, a regular file of root's), so that no
-# migration tool put the line. Such an account travels kept out.
+# migration tool put the line, or the seed's note here
+# (/root/.<oN>.dbctl-seed.txt, a regular file of root's) says operator, so
+# that the line was there before the create, which never takes it back.
+# Such an account travels kept out. So does one whose create's line no
+# merge has taken back yet (the note says pending or kept, or made or line,
+# the release before's words): its source's state is not known here.
 _xmass_dbctl_kept_here() {
   [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_ARM)" = "NO" ] && return 0
   [ "$(_xmass_dbctl_cnf_last "${2}" _DB_BROKER_BORN)" = "NO" ] || return 1
-  [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ]
+  [ -z "$(find "/root/.${1}.migration-create.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] && return 0
+  [ -n "$(find "/root/.${1}.dbctl-seed.txt" -maxdepth 0 -type f -user root 2> /dev/null)" ] || return 1
+  case "$(head -c 64 "/root/.${1}.dbctl-seed.txt" 2> /dev/null)" in
+    operator|pending|kept|made|line) return 0 ;;
+  esac
+  return 1
+}
+
+# The line an xoct create put into the account's cnf on the target before
+# its install (_DB_BROKER_BORN=NO, its note /root/.<oN>.dbctl-seed.txt
+# there) is taken back once a merge of the source's settings succeeds, as
+# xoct's create and live transfer take it back: a live pass runs this with
+# its own merge's result where that merge's call found a note there, or got
+# no answer, and a merge that failed leaves the line, the note saying kept.
+# Same text as xoct's _xoct_dbctl_seed_back.
+# 1 = account on the target 2 = target 3 = what the merge of the source's
+# settings returned
+_xmass_dbctl_seed_back() {
+  local _r
+  # shellcheck disable=SC2029
+  _r=$(ssh root@"${2}" "_c=/root/.${1}.octopus.cnf
+    _n=/root/.${1}.dbctl-seed.txt
+    case \"\$(cat \${_n} 2> /dev/null)\" in
+      pending|made|line|kept) ;;
+      *) echo none; exit 0 ;;
+    esac
+    if [ '${3}' != 0 ]; then
+      ( umask 077; printf 'kept\\n' > \${_n} )
+      echo kept
+      exit 0
+    fi
+    grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
+    [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
+    rm -f \${_c}.dbseed
+    echo failed" 2> /dev/null)
+  case "${_r}" in
+    none|back) ;;
+    kept)
+      echo "ALRT: the source's settings were not merged: _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf on ${2}, which keeps the account out of the database broker there"
+      echo "ALRT: no pass takes it back: the next merge of the source's settings that succeeds does (a re-run of the create, an xoct live transfer, an xmass live pass)"
+      ;;
+    failed)
+      echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: remove that line there, and /root/.${1}.dbctl-seed.txt (no pass takes it back)"
+      ;;
+    *)
+      # no answer: only the note there says whether the line is the tool's
+      if [ "${3}" = 0 ]; then
+        echo "ALRT: _DB_BROKER_BORN=NO could not be taken back from /root/.${1}.octopus.cnf on ${2}: it gave no answer; where /root/.${1}.dbctl-seed.txt there reads pending, made, line or kept, remove that line there, and that note: no pass takes it back"
+      else
+        echo "ALRT: the source's settings were not merged and ${2} gave no answer: where /root/.${1}.dbctl-seed.txt there reads pending, made, line or kept, _DB_BROKER_BORN=NO stays in /root/.${1}.octopus.cnf there, which keeps the account out of the database broker there"
+        echo "ALRT: no pass takes it back: the next merge of the source's settings that succeeds does (a re-run of the create, an xoct live transfer, an xmass live pass)"
+      fi
+      ;;
+  esac
+  return 0
 }
 
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
@@ -2611,7 +2671,12 @@ _xmass_dbctl_kept_here() {
 ### target-correct when absent and actively harmful when copied). Runs AFTER
 ### the target install by design: _satellite_cnf derives the PHP pins from
 ### static/control/*.info, so the control-file force is what makes the pins
-### stick and the cnf carries everything only it owns.
+### stick and the cnf carries everything only it owns. Both cnfs are read and
+### rewritten as text (grep -a): a crash can zero-fill a cnf's tail, and grep
+### would then read the file as binary and pass none of its lines. A merge
+### that ran on the target then takes back a create's _DB_BROKER_BORN=NO
+### there with its result (_xmass_dbctl_seed_back), where the merge's own
+### call found that create's note there or got no answer.
 _xmass_push_account_cnf() {
   local _acct="$1" _t="$2"
   local _sCnf="/root/.${_acct}.octopus.cnf"
@@ -2620,7 +2685,7 @@ _xmass_push_account_cnf() {
   local _rRun="/root/.${_acct}.octopus.cnf.migrate-merge.run"
   local _lTmp="/var/backups/.xmass.cnfmerge.$$.lines"
   local _lRun="/var/backups/.xmass.cnfmerge.$$.run"
-  local _v _l _lst
+  local _v _l _lst _n _mrc
   if [ ! -e "${_sCnf}" ]; then
     _alrt "no ${_sCnf} on the source; the target account keeps its install-time defaults"
     return 0
@@ -2641,13 +2706,13 @@ _xmass_push_account_cnf() {
     _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_acct}\"" > "${_lTmp}"
   for _v in ${_lst}; do
-    _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
+    _l=$(grep -a "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
     [ -n "${_l}" ] || continue
     # a Grav or Textpattern NO from a cnf the hosted default never reached
     # (no _GRAV_TXP_SUPPORT_MIGRATED line) is a seeded default, not a choice:
     # it stays here, and the target keeps its own default
     if [[ "${_l}" =~ ^_(GRAV|TXP)_SUPPORT=[\"\']?NO[\"\']?$ ]] \
-      && ! grep -q "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
+      && ! grep -aq "^### _GRAV_TXP_SUPPORT_MIGRATED" "${_sCnf}" 2>/dev/null; then
       continue
     fi
     # the target sources this cnf as root, and some values began as the
@@ -2679,8 +2744,9 @@ _xmass_push_account_cnf() {
   fi
   # The account's opt-out of the database broker mirrors the source both
   # ways, read as the passes read it: _DB_BROKER_ARM=NO travels as a plain
-  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, as
-  # _DB_BROKER_ARM=NO (the tools' own line stays here); a source that keeps
+  # line, and so does a _DB_BROKER_BORN=NO of the source operator's, or one
+  # a create there put whose merge never succeeded, as _DB_BROKER_ARM=NO
+  # (any other line a tool put stays here); a source that keeps
   # the account out neither way removes the key's lines on the target in
   # any form (the merge otherwise keeps every line the source lacks), so a
   # lifted opt-out is lifted there too.
@@ -2696,27 +2762,38 @@ _xmass_push_account_cnf() {
     cat <<'MERGESH'
 [ -e "${_cnf}" ] || exit 1
 [ -e "${_mrg}" ] || exit 1
+# a NUL byte (a crash can zero-fill the cnf's tail) ends bash's read of the
+# cnf there, so a key the merge writes after it would be lost to every pass:
+# every NUL byte is dropped first (a run of them that cut a line short ends
+# that line), the healed text written beside the cnf and renamed over it
+# (its mode kept), so a write that fails leaves the cnf as it was
+[ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] && [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ] \
+  && { rm -f -- "${_cnf}.nulheal"; { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" && chmod --reference="${_cnf}" "${_cnf}.nulheal" && mv -f "${_cnf}.nulheal" "${_cnf}"; } || rm -f -- "${_cnf}.nulheal"; }
+# each rewrite goes over the cnf only once its copy is written whole (grep's
+# own status: 1 when it keeps no line, the copy still whole); otherwise the
+# copy goes, the cnf stays as it was and the merge stops
+_ok() { [ "$1" -le 1 ]; }
+_stop() { rm -f "${_cnf}.mrgnew"; exit 1; }
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
-      grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
-      [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
-      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      _ok $? && { [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"; } \
+        && mv -f "${_cnf}.mrgnew" "${_cnf}" || _stop
       continue
       ;;
     -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
       grep -avE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
-      [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
-      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      _ok $? && { [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"; } \
+        && mv -f "${_cnf}.mrgnew" "${_cnf}" || _stop
       continue
       ;;
     _*=*) : ;;
     *) continue ;;
   esac
   _k="${_l%%=*}"
-  grep -v "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
-  printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
-  mv -f "${_cnf}.mrgnew" "${_cnf}"
+  grep -av "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  _ok $? && printf '%s\n' "${_l}" >> "${_cnf}.mrgnew" && mv -f "${_cnf}.mrgnew" "${_cnf}" || _stop
 done < "${_mrg}"
 chmod 644 "${_cnf}"
 rm -f "${_mrg}"
@@ -2729,11 +2806,21 @@ MERGESH
     return 1
   fi
   rm -f "${_lTmp}" "${_lRun}"
-  if ssh root@"${_t}" "bash ${_rRun}; _rc=\$?; rm -f ${_rRun}; exit \${_rc}"; then
+  # the merge's own call says whether a create's note is there: the
+  # take-back asks the target only then, or when that call got no answer
+  _n=$(ssh root@"${_t}" "bash ${_rRun} > /dev/null; _rc=\$?; rm -f ${_rRun}
+    [ -f /root/.${_acct}.dbctl-seed.txt ] || [ -L /root/.${_acct}.dbctl-seed.txt ] && echo note
+    exit \${_rc}")
+  _mrc=$?
+  if [ "${_mrc}" = "0" ]; then
     _info "  ${_acct}: merged source octopus.cnf values into the target copy"
+    [ "${_n}" = "note" ] && _xmass_dbctl_seed_back "${_acct}" "${_t}" 0
     return 0
   fi
   _alrt "cnf merge for ${_acct} on ${_t} failed; the target keeps its current cnf"
+  if [ "${_n}" = "note" ] || [ "${_mrc}" = "255" ]; then
+    _xmass_dbctl_seed_back "${_acct}" "${_t}" 1
+  fi
   return 1
 }
 
@@ -6664,7 +6751,8 @@ _xmass_sync_static_symlink_safe() {
   # one there (a link put at that name there gives way to a directory), so
   # a link swapped in after the test is followed on neither side. Its
   # web-group-notes.txt, the account's copy of its web-group notes, never
-  # travels: it names the source box's web-group state.
+  # travels, nor a temp copy of it a killed note left: it names the source
+  # box's web-group state.
   local _ctl_link=NO _ctl_rp
   _ctl_rp="$(_xmass_pin_rpath "${_dst_static}/control")"
   if [ -L "${_src_static}/control" ]; then
@@ -6673,7 +6761,7 @@ _xmass_sync_static_symlink_safe() {
       "  ${_src_static}/control is a SYMLINK -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is a directory again"
   elif [ -d "${_src_static}/control" ]; then
     if ! _xmass_at_real_dir "${_src_static}/control" _xmass_rsync -aEAXqu ${_ieni} \
-      --exclude=/web-group-notes.txt \
+      --exclude=/web-group-notes.txt '--exclude=/.web-group-notes.txt.put.*' \
       --rsync-path="${_ctl_rp}" -e ssh ./ "root@${_tgt}:./"; then
       _ctl_link=YES
       _xmass_warn_daily "static_control_link_${_dst_acct}" \
@@ -7127,8 +7215,10 @@ _xmass_sync_account() {
   # record. pass.txt rides the credential carry below instead, paired with
   # the shadow hash so the two can never disagree.
   # instance-group.txt records the SOURCE box's conversion (its gid) and
-  # must never travel either: the destination pass below writes its own;
-  # nor web-group-notes.txt, which names the source box's web-group state.
+  # must never travel either (nor a temp copy of it a killed write left):
+  # the destination pass below writes its own;
+  # nor web-group-notes.txt (or a temp copy of it a killed note left),
+  # which names the source box's web-group state.
   # proxy-failed.pid is source-role state too: on the target it would park
   # the dispatcher of an account that box serves.
   # log/ and .drush/ (below) are the account user's: both ends are pinned,
@@ -7137,8 +7227,8 @@ _xmass_sync_account() {
   _xmass_pinned_leg "${_udir}/log" "${_dst}/log" "the log files of ${_oct}" \
     -aEAXqu ${_ieni} \
     --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
-    --exclude=instance-group.txt --exclude=proxy-failed.pid \
-    --exclude=web-group-notes.txt
+    --exclude=instance-group.txt '--exclude=.instance-group.txt.put.*' --exclude=proxy-failed.pid \
+    --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*'
 
   # Drush aliases are copied WHOLE — including the source's server_master
   # and hostmaster aliases (site aliases get regenerated by renameaegirhost
@@ -13618,7 +13708,7 @@ _xmass_cmd_sync() {
 
   if [ "${_MODE}" = "LIVE" ]; then
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
-      _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
+      _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
       _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
@@ -14423,9 +14513,9 @@ UNLOCKDB
 # resumed tail keeps it.
 _xmass_decide_flip_first() {
   local _vals _v _why=""
-  _vals=$( { grep -h "^_THIS_DB_HOST=" /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null;
+  _vals=$( { grep -ah "^_THIS_DB_HOST=" /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null;
     ssh -o ConnectTimeout=15 root@"${_tgt}" \
-      "grep -h '^_THIS_DB_HOST=' /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null; echo _THIS_DB_HOST=__read_ok__" 2>/dev/null; } \
+      "grep -ah '^_THIS_DB_HOST=' /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null; echo _THIS_DB_HOST=__read_ok__" 2>/dev/null; } \
     | sed "s/^_THIS_DB_HOST=//; s/[\"' ]//g" | sort -u)
   case "${_vals}" in
     *__read_ok__*) ;;
@@ -15234,7 +15324,7 @@ _xmass_cmd_cutover() {
   # with source untouched.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
@@ -15272,7 +15362,7 @@ _xmass_cmd_cutover() {
   # them, so a store that failed placement here proceeded to promote the target.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before the write freeze"
+    _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
@@ -16161,7 +16251,7 @@ _xmass_go_live_standing() {
   _info "go-live of the test run${_rec:+ under admail=${_rec}} on ${_tgt}, this box's standing mirror:"
   _info "  nothing has moved, so no client is mailed; the pair becomes a real one"
   # The account names are checked above and each switch is YES or NO.
-  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { rm -f -- \"\${_c}.nulheal\"; { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
   _xmass_golive_hold_report "${_out}" "${_mk}"
   while IFS= read -r _l; do
     _a="$(printf '%s' "${_l}" | cut -d' ' -f2)"

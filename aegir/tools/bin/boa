@@ -4400,8 +4400,9 @@ _octopus_cleanup() {
           _purge_group_drop "wg-${_usEr}" "${_wgGid}"
         fi
         # root's record of the account's conversion to it goes with the account,
-        # with the conversion's intent, its notes, the D9 stamp and the journal
-        # of a free of its name: a new account of the same name starts clean
+        # with the conversion's intent, its notes, the D9 stamp, the journal
+        # of a free of its name and the date of that journal's unread alarm:
+        # a new account of the same name starts clean
         rm -f -- "/root/.${_usEr}.web-group.txt" \
           "/etc/boa/control/instgrp-web.${_usEr}.free.txt"
         rm -f -- "/var/log/boa/instgrp-web.${_usEr}.txt" \
@@ -4409,6 +4410,7 @@ _octopus_cleanup() {
           "/var/log/boa/instgrp-web.${_usEr}.procs.txt" \
           "/var/log/boa/instgrp-web.${_usEr}.sgid.txt" \
           "/var/log/boa/instgrp-web.${_usEr}.sgid-held.txt" \
+          "/var/log/boa/instgrp-web.${_usEr}.free-unread.txt" \
           "/var/log/boa/instgrp-web.${_usEr}.dr1.txt" \
           "/var/log/boa/manage-ltd-d9.${_usEr}.txt" \
           "/var/log/boa/manage-ltd-d9.${_usEr}.txt.next" \

@@ -4,6 +4,31 @@
 
 @=> Important Fixes
 
+    * xoct, xmass and xcopy read and rewrite an account's cnf as text, and
+      so does the Octopus pass. A crash can leave NUL bytes in a cnf's
+      tail, and grep then reads the file as binary: a rewrite through grep
+      (the merges of a moved account's settings, the web group's seeds, the
+      admail and go-live switches, instgrp's write of the web group's
+      policy) dropped every line it did not touch, the source's settings
+      read as none while the merge reported success, and the pass lost a
+      hand-seeded cnf's lines. A NUL tail now costs no line, and since bash
+      stops reading a file at its first NUL byte, the Octopus pass drops
+      every NUL byte of the account's cnf before it reads it (the healed
+      text renamed over it, said once; a run of them that cut a line short
+      ends that line), as the merges, the seeds, the upgrade-notice switches
+      and instgrp's policy write do before they write a line after the
+      cnf's text. The healed text is renamed over the cnf, so a heal that
+      cannot be finished leaves the cnf as it was.
+
+    * A moved account's settings merge (xoct and xmass) replaces the
+      account's cnf on the target only with a copy written whole: a write
+      that failed part way (a full disk) cut the cnf short while the merge
+      reported success, and the account's next pass read what was left.
+      The merge now stops with the cnf as it was and says it failed.
+      instgrp's write of the web group's policy is checked the same way,
+      and the broker's take-back of a migration's leftover line renames
+      its copy over the cnf instead of writing into it.
+
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
       live allowance, which already carries the engine count, so an account
@@ -1019,15 +1044,16 @@
       for a long account name, paths the walk leaves in the old number are
       named in the alarm and logged (up to a thousand) and mapped by that
       number onto the account's web group by xmass, xoct and xcopy while
-      the renamed group keeps it, and the outside holder is not changed. A
-      standby, a frozen account, a running xmass, xoct or xcopy verb (a
-      stale pid file whose number another process took no longer counts;
-      read again once the free holds the account), a box not ready, a
-      group a directory service holds, a file under /etc naming it or a
-      free of the same account in the last 30 days keeps the alarm
-      instead, which says why, and so does an account the Octopus pass and
-      webconvert all otherwise leave alone (opted out, or not on its
-      per-instance group yet) until it is converted onto that group
+      the renamed group keeps it, the account's notes name that group by
+      its number where its name may be another account's, and the outside
+      holder is not changed. A standby, a frozen account, a running xmass,
+      xoct or xcopy verb (a stale pid file whose number another process
+      took no longer counts; read again once the free holds the account),
+      a box not ready, a group a directory service holds, a file under
+      /etc naming it or a free of the same account in the last 30 days
+      keeps the alarm instead, which says why, and so does an account the
+      Octopus pass and webconvert all otherwise leave alone (opted out, or
+      not on its per-instance group yet) until it is converted onto that group
       (docs/INSTGRP.md).
 
     * A web group that someone outside the account holds too (a member, a
@@ -1069,8 +1095,12 @@
       (one that names no old number included) is dropped with an alarm
       instead of stopping every reclaim and migration of the account for
       good, one that cannot be read is kept, alarmed once a day, until it
-      reads again (a reclaim skips the account meanwhile and no free
-      writes over it), and each journal removed is logged in instgrp.log.
+      reads again (instgrp reclaim, convert and revert skip the account
+      meanwhile, a root-run restore leaves what it restored in the groups
+      it landed in, while one the account runs itself, which cannot read
+      the journal, claims as before, a web verb's run of the account is
+      deferred and no free writes over it), and each journal removed is
+      logged in instgrp.log.
       instgrp webstatus and the watchers report an unfinished free and a
       set-group-ID sweep it left owed. The journal is removed with the
       account (docs/INSTGRP.md).
@@ -1368,8 +1398,12 @@
       ~/static/control/web-group-notes.txt, readable by that login alone
       over SFTP and in its shell, where the copy in log/ is out of its
       reach. Root rewrites it from its own notes file through a writer
-      that never follows a link; no migration tool carries it, and the
-      control directory's README names it (docs/INSTGRP.md).
+      that never follows a link, only where root or an identity of the
+      account owns static/control (a refusal is logged once a run in
+      instgrp.log), and removes the temp copies a killed note left, as the
+      per-instance group's marker writer does for its own; no migration
+      tool carries it or them, and the control directory's README names it
+      (docs/INSTGRP.md).
 
     * The web group conversion, still switched off, names each ground
       that holds an account's phase B, and a share into the account's
@@ -1777,9 +1811,11 @@
       settle skips the box, report answers OK report skipped with the same
       word and reads nothing further. Its reasons are the plan's, each its
       true cause: a server alias whose password is empty, longer than 3072
-      bytes or not URL-safe is said as that, never as no alias, and a login
-      the plan did not try is never said to have opened no row. Only the
-      nightly of a box armed for the broker asks for it (docs/DBCTL.md).
+      bytes or not URL-safe is said as that, never as no alias, in the plan
+      and in the box-wide check's lines of the account's and the master's
+      own logins, and a login the plan did not try is never said to have
+      opened no row. Only the nightly of a box armed for the broker asks for
+      it (docs/DBCTL.md).
 
     * The broker's box-wide check names a role or a proxy grant on an
       account's own database login as that login's finding: no switch
@@ -1826,7 +1862,8 @@
       night; the night's log gets their last lines, the witness's count of
       alerts and those paths, so no name a login chose reaches the night's
       incident scan. A report whose file cannot be written still runs and
-      mails as it would, and the night's log says so (docs/DBCTL.md).
+      mails as it would, and the night's log says so and still gets the
+      report's last line, the ERR line of one that failed (docs/DBCTL.md).
 
     * The _DB_BROKER_ARM default is written the way the web group's is: a
       barracuda pass writes _DB_BROKER_ARM=YES only into a cnf that has no
@@ -1839,34 +1876,45 @@
       the account's cnf there before the install and takes its own line
       back once the account is installed and its source's settings and
       switch are carried, under an xmass run too. A root-only note beside
-      the cnf says what the seed did, and the take-back reads it, so a
-      create run again after any exit takes back what an earlier run put;
-      where the cnf already assigns _DB_BROKER_BORN at the start of a line,
-      the one spelling the install keeps, the seed adds nothing and that
-      line stays. Where the merge of the source's settings failed the line
-      stays until the next merge that succeeds, a create's or a live
-      transfer's, takes it back; an interrupt once the remote install has
-      started leaves line and note for a re-run. The target's cnf is read
-      and rewritten as text, and the purge parks the note with the
-      account's root files (docs/DBCTL.md).
+      the cnf says pending until a merge of the source's settings succeeds,
+      and the take-back reads it, so a create run again after any exit
+      takes back what an earlier run put; where the cnf already assigns
+      _DB_BROKER_BORN at the start of a line, the one spelling the install
+      keeps, the seed adds nothing and that line stays. Where the merge
+      failed the line stays, and no pass takes it back, until the next
+      merge that succeeds does: a create run again, an xoct live transfer
+      or an xmass live pass, each with its own merge's result. An exit
+      before the remote install starts takes both seeds back; an interrupt
+      once it has started, or a connection lost during it, leaves line and
+      note for a re-run whose install uses them, a lost connection the web
+      group's seed too, an ALRT naming each line that stays (xcopy create
+      the same with its two seeds). A web group line a re-run finds there
+      already stays, and a failed install names it. The target's cnf is
+      read and rewritten as text, its NUL bytes dropped first, and the
+      purge parks the note with the account's root files (docs/DBCTL.md).
 
     * On a box armed for the broker the Octopus pass takes back a
-      _DB_BROKER_BORN=NO line a migration left in a moved account's cnf a
-      day after its create, so accounts moved with the tools of an
-      earlier release are switched like any other; an operator's opt-out
-      is _DB_BROKER_ARM=NO, which nothing takes back. Only on an upgrade
-      pass, where the create marker names the account as it is now, and
-      only through a checked rewrite of the cnf, read as text; one INFO
-      line names the migration (docs/DBCTL.md).
+      _DB_BROKER_BORN=NO line a migration of an earlier release left in a
+      moved account's cnf, no seed note beside it, a day after its create,
+      so such accounts are switched like any other; an operator's opt-out
+      is _DB_BROKER_ARM=NO. Only on an upgrade pass, where the create
+      marker names the account as it is now, through a checked rewrite
+      read as text; one INFO line names the migration. A write failing part
+      way keeps the copy, named in an ALRT, and switches nothing; one
+      refused before its first byte changes nothing and is a NOTE
+      (docs/DBCTL.md).
 
     * xoct and xmass carry an account's _DB_BROKER_ARM=NO both ways, read
       as the pass reads it, in any of its shapes, and an operator's
-      _DB_BROKER_BORN=NO as _DB_BROKER_ARM=NO: an account its operator
-      kept out of the broker stays out on the target and on a promoted
-      standby, and one let back in on its source is let back in there.
+      _DB_BROKER_BORN=NO (no create marker, or a seed note saying
+      operator) as _DB_BROKER_ARM=NO, and so a create's line whose merge
+      never succeeded (a note saying pending or kept): an account its
+      operator kept out stays out on the target and on a promoted standby,
+      and one let back in on its source is let back in there.
       xcopy puts the source's NO into the copy's cnf before its install,
       and where the install does not happen takes it back, unless the
-      account was made, and puts back what it replaced (docs/DBCTL.md).
+      account was made or the connection was lost during the install, and
+      puts back what it replaced (docs/DBCTL.md).
 
     * A load through the broker, still switched off, walks the account's
       dump store with the account's own rights before its loader starts,
