@@ -1131,8 +1131,10 @@ While the import is unfinished on the active, a sync names the account
 frozen (the import's own `log/proxied.pid`) and sends none of its vhosts,
 as its sites are still served by the vanilla source. `xmass pre-mig`
 refuses that box (the panel's platform in the database differs from its
-alias root): a pair is prepared only once every import there is finished
-or reverted, so the hold covers a pair that stood before the import.
+alias root), and so does `xmass prep-target` (its account creation names
+the import's freeze): a pair is prepared only once every import there is
+finished or reverted, so the hold covers a pair that stood before the
+import.
 
 A cutover refuses the same way (its DRY run as a DENY) while an import of
 an account it carries is unfinished there: it would promote the target and

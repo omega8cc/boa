@@ -935,9 +935,10 @@ cut-off import left: the route run again brings it.
 
 While the import is unfinished on the active, a sync sends none of the
 account's vhosts (it names the freeze; the sites are still served by the
-vanilla source), and `xmass pre-mig` refuses that box: a pair is prepared
-only once every import there is finished or reverted, so the hold covers a
-pair that stood before the import.
+vanilla source), and `xmass pre-mig` and `xmass prep-target` refuse that box
+(the latter's account creation names the import's freeze): a pair is
+prepared only once every import there is finished or reverted, so the hold
+covers a pair that stood before the import.
 
 A cutover refuses the same way (its DRY run as a DENY) while the import of
 an account it carries is unfinished: it would promote the target and then
