@@ -1174,7 +1174,7 @@ _xoct_upgrade_skip_put() {
 _xoct_admail_upgrade_mail_off() {
   local _a="$1" _h="$2" _sh _rc _f
   _f="$(_xoct_admail_rec "${_a}")"
-  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; if [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ]; then rm -f -- \"\${_c}.nulheal\"; if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\"; then cat -- \"\${_c}.nulheal\" > \"\${_c}\" || exit 1; fi; rm -f -- \"\${_c}.nulheal\"; fi; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
   if [ "$3" = "record" ]; then
     _sh="${_sh} && mkdir -p /data/conf && ( umask 022; printf '%s\n' '${_XOCT_ADMAIL}' > '${_f}.tmp' ) && mv -f '${_f}.tmp' '${_f}'"
   fi
@@ -4219,13 +4219,10 @@ _xoct_push_target_octopus_cnf() {
 # a NUL byte (a crash can zero-fill the cnf's tail) ends bash's read of the
 # cnf there, so a key the merge writes after it would be lost to every pass:
 # every NUL byte is dropped first (a run of them that cut a line short ends
-# that line), the cnf rewritten in place; a write that fails part way leaves
-# the cnf's whole text in .nulheal and stops the merge
-if [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] && [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ]; then
-  rm -f -- "${_cnf}.nulheal"
-  if perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal"; then cat -- "${_cnf}.nulheal" > "${_cnf}" || exit 1; fi
-  rm -f -- "${_cnf}.nulheal"
-fi
+# that line), the healed text written beside the cnf and renamed over it
+# (its mode kept), so a write that fails leaves the cnf as it was
+[ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] && [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ] \
+  && { { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" && chmod --reference="${_cnf}" "${_cnf}.nulheal" && mv -f "${_cnf}.nulheal" "${_cnf}"; } || rm -f -- "${_cnf}.nulheal"; }
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
@@ -4959,11 +4956,8 @@ _xoct_wg_seed() {
   # shellcheck disable=SC2029
   _XOCT_WG_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
     _c=/root/.${2}.octopus.cnf
-    if [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ]; then
-      rm -f -- \${_c}.nulheal
-      if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \${_c} > \${_c}.nulheal; then cat -- \${_c}.nulheal > \${_c} || exit 1; fi
-      rm -f -- \${_c}.nulheal
-    fi
+    [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ] \
+      && { { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \${_c} > \${_c}.nulheal && chmod --reference=\${_c} \${_c}.nulheal && mv -f \${_c}.nulheal \${_c}; } || rm -f -- \${_c}.nulheal; }
     _re='^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP='
     if [ ${_v} != - ]; then
       if [ ! -e \${_c} ]; then
@@ -5067,11 +5061,8 @@ _xoct_dbctl_seed() {
   # shellcheck disable=SC2029
   _XOCT_DBCTL_SEED=$(ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
     _c=/root/.${1}.octopus.cnf
-    if [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ]; then
-      rm -f -- \${_c}.nulheal
-      if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \${_c} > \${_c}.nulheal; then cat -- \${_c}.nulheal > \${_c} || exit 1; fi
-      rm -f -- \${_c}.nulheal
-    fi
+    [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ] \
+      && { { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \${_c} > \${_c}.nulheal && chmod --reference=\${_c} \${_c}.nulheal && mv -f \${_c}.nulheal \${_c}; } || rm -f -- \${_c}.nulheal; }
     _n=/root/.${1}.dbctl-seed.txt
     _w=\$(cat \${_n} 2> /dev/null)
     case \${_w} in
@@ -7617,7 +7608,7 @@ else echo HOLD-NONE; fi
 if [ -f \"\${_c}\" ]; then
   _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"')
   if [ \"\${_cur}\" = \"\${_sw}\" ]; then echo \"SW-SAME \${_cur}\"
-  else if [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ]; then rm -f -- \"\${_c}.nulheal\"; if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\"; then cat -- \"\${_c}.nulheal\" > \"\${_c}\" || { echo SW-STUCK; exit 1; }; fi; rm -f -- \"\${_c}.nulheal\"; fi; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo SW-STUCK; exit 1; }; echo \"SW-SET \${_cur:-unset}\"; fi
+  else [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo SW-STUCK; exit 1; }; echo \"SW-SET \${_cur:-unset}\"; fi
 else echo SW-NOCNF; fi
 if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo SKIP-STUCK; exit 1; }; echo SKIP-GONE; fi
 echo GOLIVE-TARGET-OK"

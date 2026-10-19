@@ -1144,9 +1144,8 @@ _satellite_cnf() {
   else
     # a NUL byte (a crash can zero-fill the cnf's tail) ends bash's read of
     # the cnf there, and a key written after it is lost to this pass: every
-    # NUL byte is dropped before the cnf is read, the cnf rewritten in place;
-    # the pass stops on a cnf a failed write cut short
-    _satellite_cnf_nul_heal "${_octCnf}" || _clean_pid_exit
+    # NUL byte is dropped before the cnf is read
+    _satellite_cnf_nul_heal "${_octCnf}"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_octCnf} config file"
     fi
@@ -4503,34 +4502,27 @@ _satellite_db_broker_born() {
 }
 
 #
-# Every NUL byte of the cnf $1 dropped, the file rewritten in place (its
-# inode, owner and mode kept), said once; nothing when it holds none, is a
-# link or no file. A run of NUL bytes that cut a line short (a crash can
-# zero-fill a file's tail from the middle of a line) ends that line, so a
-# line written after it later starts a line of its own. A copy that cannot
-# be made, or a write refused before its first byte, leaves the cnf as it
-# was, and a NOTE says so. Once the write has started the copy is the cnf's
-# one whole text: a write that fails part way leaves it there, an ALRT names
-# it, and the status is 1.
+# Every NUL byte of the cnf $1 dropped, said once; nothing when it holds
+# none, is a link or no file. A run of NUL bytes that cut a line short (a
+# crash can zero-fill a file's tail from the middle of a line) ends that
+# line, so a line written after it later starts a line of its own. The
+# healed text is written beside the cnf and renamed over it (its mode
+# kept), so a heal that cannot be finished leaves the cnf as it was, and a
+# NOTE says so. Status 0 always.
 _satellite_cnf_nul_heal() {
-  local _t _was
+  local _t
   [[ -f "$1" && ! -L "$1" ]] || return 0
   [[ "$(tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]] || return 0
   _t="$1.nulheal.$$"
   rm -f -- "${_t}"
-  _was=$(stat -c %i:%s "$1" 2> /dev/null)
-  if ! { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "$1" > "${_t}"; } 2> /dev/null \
-    || ! { cat -- "${_t}" > "$1"; } 2> /dev/null; then
-    if [[ ! -s "${_t}" || "$(stat -c %i:%s "$1" 2> /dev/null)" == "${_was}" ]]; then
-      rm -f -- "${_t}"
-      _msg "NOTE: NUL bytes could not be dropped from $1: it stays as it was, and the next pass tries again"
-      return 0
-    fi
-    _msg "ALRT: $1 could not be written whole: its whole text without NUL bytes is in ${_t}, put that copy in its place; this pass stops"
-    return 1
+  if { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "$1" > "${_t}" \
+    && chmod --reference="$1" -- "${_t}" && mv -f -- "${_t}" "$1"; } 2> /dev/null; then
+    _msg "NOTE: NUL bytes dropped from $1 (a crash can zero-fill a file's tail; bash stops reading a file at its first NUL byte)"
+  else
+    rm -f -- "${_t}"
+    _msg "NOTE: NUL bytes could not be dropped from $1: it stays as it was, and the next pass tries again"
   fi
-  rm -f -- "${_t}"
-  _msg "NOTE: NUL bytes dropped from $1 (a crash can zero-fill a file's tail; bash stops reading a file at its first NUL byte)"
+  return 0
 }
 
 #
