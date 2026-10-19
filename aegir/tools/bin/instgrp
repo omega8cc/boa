@@ -1919,7 +1919,7 @@ _do_revert() {
   # bare revert would be undone by the next unattended octopus upgrade.
   _cnf="/root/.${_a}.octopus.cnf"
   if [ "${_KEEP_ENABLED}" != "YES" ] && [ -f "${_cnf}" ]; then
-    if grep -q "^_INSTANCE_GROUP=" "${_cnf}" 2> /dev/null; then
+    if grep -aq "^_INSTANCE_GROUP=" "${_cnf}" 2> /dev/null; then
       sed -i "s/^_INSTANCE_GROUP=.*/_INSTANCE_GROUP=NO/" "${_cnf}" 2> /dev/null
     else
       printf '\n_INSTANCE_GROUP=NO\n' >> "${_cnf}"
@@ -5160,13 +5160,27 @@ _wg_g_pinned() {
 }
 
 # The account's cnf (root's) rewritten without any _WEB_GROUP line, and
-# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it.
+# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it. The
+# cnf is read as text (a crash can zero-fill its tail, and grep would read
+# it as binary and drop every line); a NUL byte ends bash's read of the cnf
+# there, so the line written after it would be lost to every pass: every
+# NUL byte is dropped first, as the Octopus pass drops them (a run of them
+# that cut a line short ends that line), the cnf rewritten in place, and a
+# write that fails part way leaves the cnf's whole text in .nulheal and
+# writes nothing more.
 _wg_policy_put() {
   local _cnf="/root/.${_WP_A}.octopus.cnf" _t
   [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] || return 1
+  if [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ]; then
+    rm -f -- "${_cnf}.nulheal"
+    if perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" 2> /dev/null; then
+      cat -- "${_cnf}.nulheal" > "${_cnf}" 2> /dev/null || return 1
+    fi
+    rm -f -- "${_cnf}.nulheal"
+  fi
   _t="/root/.${_WP_A}.octopus.cnf.wg.$$"
   rm -f -- "${_t}"
-  { grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
+  { grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
     case "${1}" in
       NO|A) printf '_WEB_GROUP=%s\n' "${1}" ;;
     esac
@@ -5196,7 +5210,9 @@ _wg_policy_set() {
     _msg "NOTE: _WEB_GROUP=A written to /root/.${_WP_A}.octopus.cnf: ${_WP_A} stays at phase A here and on every box its cnf travels to (xoct, xmass) until webconvert ${_WP_A} --phase-b or webrevert"
     return 0
   fi
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "/root/.${_WP_A}.octopus.cnf" 2> /dev/null || return 0
+  # read as the cnf reads once its NUL bytes are dropped (_wg_policy_put)
+  perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "/root/.${_WP_A}.octopus.cnf" 2> /dev/null \
+    | grep -aqE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" || return 0
   _wg_policy_put REMOVE || return 1
   _msg "NOTE: _WEB_GROUP removed from /root/.${_WP_A}.octopus.cnf (a per-account verb lifts the opt-out; only --phase-a pins)"
 }

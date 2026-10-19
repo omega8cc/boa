@@ -1254,7 +1254,7 @@ _xcopy_heal_fpm_pins() {
 # box). Status 1 when the cnf is missing or cannot be rewritten. As in xoct.
 _xcopy_admail_upgrade_mail_off() {
   local _a="$1" _h="$2" _sh _rc
-  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { tr -d '\\000' < \"\${_c}\" > \"\${_c}.nulheal\" && cat -- \"\${_c}.nulheal\" > \"\${_c}\"; rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; if [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ]; then rm -f -- \"\${_c}.nulheal\"; if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\"; then cat -- \"\${_c}.nulheal\" > \"\${_c}\" || exit 1; fi; rm -f -- \"\${_c}.nulheal\"; fi; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
   if [ -n "${_h}" ]; then
     ssh root@"${_h}" "${_sh}" 2> /dev/null
     _rc=$?
@@ -1813,7 +1813,8 @@ _xcopy_import_precheck() {
 # (found) was put before this run, by hand or by a create whose connection
 # was lost: no note tells the two apart, so it stays, and a failed install
 # names it. The cnf there is read and rewritten as text: a NUL byte costs
-# none of its lines.
+# none of its lines, and its NUL bytes are dropped first, as the Octopus pass
+# drops them (_satellite_cnf_nul_heal).
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_WG_SEED=""
 _XCOPY_WG_SEEDV=""
@@ -1830,8 +1831,11 @@ _xcopy_wg_seed() {
   # shellcheck disable=SC2029
   _XCOPY_WG_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
     _c=/root/.${2}.octopus.cnf
-    [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ] \
-      && { tr -d '\\000' < \${_c} > \${_c}.nulheal && cat -- \${_c}.nulheal > \${_c}; rm -f -- \${_c}.nulheal; }
+    if [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ]; then
+      rm -f -- \${_c}.nulheal
+      if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \${_c} > \${_c}.nulheal; then cat -- \${_c}.nulheal > \${_c} || exit 1; fi
+      rm -f -- \${_c}.nulheal
+    fi
     _re='^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP='
     if [ ${_v} != - ]; then
       if [ ! -e \${_c} ]; then
@@ -1927,7 +1931,8 @@ _xcopy_dbctl_kept_here() {
 # write it (found) stays, as the web group's found line does. A copy
 # carries no switch: one not kept out is switched by an armed target as any
 # new account is. The cnf there is read as text: a NUL byte costs no line
-# of it.
+# of it, and its NUL bytes are dropped first, as the Octopus pass drops them
+# (_satellite_cnf_nul_heal).
 # 1 = account here 2 = account on the target 3 = target
 _XCOPY_DBA_SEED=""
 _XCOPY_DBA_WAS=""
@@ -1940,8 +1945,11 @@ _xcopy_dbarm_seed() {
   # shellcheck disable=SC2029
   _out=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
     _c=/root/.${2}.octopus.cnf
-    [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ] \
-      && { tr -d '\\000' < \${_c} > \${_c}.nulheal && cat -- \${_c}.nulheal > \${_c}; rm -f -- \${_c}.nulheal; }
+    if [ -f \${_c} ] && [ ! -L \${_c} ] && [ \"\$(tr -d '\\000' < \${_c} | wc -c)\" != \"\$(wc -c < \${_c})\" ]; then
+      rm -f -- \${_c}.nulheal
+      if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \${_c} > \${_c}.nulheal; then cat -- \${_c}.nulheal > \${_c} || exit 1; fi
+      rm -f -- \${_c}.nulheal
+    fi
     _re='^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM='
     if [ ${_v} = NO ]; then
       if [ ! -e \${_c} ]; then

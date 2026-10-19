@@ -2764,9 +2764,14 @@ _xmass_push_account_cnf() {
 [ -e "${_mrg}" ] || exit 1
 # a NUL byte (a crash can zero-fill the cnf's tail) ends bash's read of the
 # cnf there, so a key the merge writes after it would be lost to every pass:
-# every NUL byte is dropped first, the cnf rewritten in place
-[ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] && [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ] \
-  && { tr -d '\000' < "${_cnf}" > "${_cnf}.nulheal" && cat -- "${_cnf}.nulheal" > "${_cnf}"; rm -f -- "${_cnf}.nulheal"; }
+# every NUL byte is dropped first (a run of them that cut a line short ends
+# that line), the cnf rewritten in place; a write that fails part way leaves
+# the cnf's whole text in .nulheal and stops the merge
+if [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] && [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ]; then
+  rm -f -- "${_cnf}.nulheal"
+  if perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal"; then cat -- "${_cnf}.nulheal" > "${_cnf}" || exit 1; fi
+  rm -f -- "${_cnf}.nulheal"
+fi
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
@@ -16242,7 +16247,7 @@ _xmass_go_live_standing() {
   _info "go-live of the test run${_rec:+ under admail=${_rec}} on ${_tgt}, this box's standing mirror:"
   _info "  nothing has moved, so no client is mailed; the pair becomes a real one"
   # The account names are checked above and each switch is YES or NO.
-  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { tr -d '\\000' < \"\${_c}\" > \"\${_c}.nulheal\" && cat -- \"\${_c}.nulheal\" > \"\${_c}\"; rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then if [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ]; then rm -f -- \"\${_c}.nulheal\"; if perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\"; then cat -- \"\${_c}.nulheal\" > \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; fi; rm -f -- \"\${_c}.nulheal\"; fi; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
   _xmass_golive_hold_report "${_out}" "${_mk}"
   while IFS= read -r _l; do
     _a="$(printf '%s' "${_l}" | cut -d' ' -f2)"
