@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * xoct named an account an unfinished aegir2boa import froze "already
+      migrated", so a standby's preparation on that box failed without
+      naming the import; it now says the import is frozen there and to
+      finish or revert it first. A promotion that left such an account
+      alone reported instgrp's exit 4 as a run still live; it now says an
+      account was left held or frozen.
+
     * The hold of an unfinished aegir2boa import now follows it on every
       xmass path. restore-target removes the holds the active carried
       before it hands a standby back as a plain box (one left there held
