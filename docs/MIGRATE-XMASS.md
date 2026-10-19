@@ -109,7 +109,9 @@ database). At cutover:
 9. `renameaegirhost` runs on the target for every Ægir root (master +
    all Octopus accounts), replacing the source hostname with the target FQDN
    and running a 5-pass Ægir task queue per root.
-10. Target Solr starts (transaction logs pre-cleared for clean first start).
+10. Target Solr starts for the versions the source used (transaction logs
+    pre-cleared for a clean first start); on a source that uses no Solr
+    nothing is started, and the step says so in one line.
 11. Source **site** vhosts are converted to proxy via `xoct proxy` per
     account. The control panels are never proxied: each account's panel and
     the master panel stay online on the source, in Drupal's own maintenance
@@ -867,7 +869,8 @@ What `init` does:
    barracuda pass, nor the java.sh watchdog can bring it back mid-sync.
    `/var/log/boa/.xmass_solr_hold.pid` records the hold, and java.sh
    re-asserts the disarm every minute while it exists. Cutover step 14
-   or `post-mig` re-arm symmetrically.
+   or `post-mig` re-arm symmetrically — the versions the source used and
+   the target does not deny; a denied version stays disarmed.
 
    5a. **Arms the standby write gates on the target.** `/root/.standby.cnf`
    is written FIRST, before the datadir swap, in one command with the
@@ -1696,7 +1699,7 @@ first change to the source):
 | Steps 12.85–12.94 | **The relay starts here, BEFORE the renames.** The promoted target already serves every client-domain site (nothing on their request path carries the box hostname), while the renames cost minutes per Ægir root, in series; relaying first takes them out of the visitors' window, which therefore no longer grows with the number of accounts. In order: clear the advisory read-only flag on the target (12.85); re-arm the target's SQL watchdog, the source's stays paused to the end (12.86); **prove the standby marker is still on the target and its master dispatch crontab parked** (12.87) — the marker is the one thing keeping the task queue from running under the old server identity until step 15, and it is proven again before every Ægir root in step 13; wire the migration-proxy trust on the target, **fail-closed and proven** (the persisted peer list, both `csf.allow` lines, `csf.ignore`, and a real fetch of the target on port 80) (12.89); carry the inbound proxies' reach (12.895, the old step 15.95); **fail out every task row that travelled with the panels**, by current revision, and re-count with the same predicate — queued rows and the rows the source was running when its panel stopped alike (those travel as processing, and nothing runs them on the target; a resume after a step-13 park that meets a task the rename started on the target leaves it to finish and refuses, naming the runner, until it has) — because the rename forces the queue several times per root and must never run a replicated verify, migrate, clone or restore against sites already serving visitors; site auto-import stays off for the window (12.90); save `_XMASS_SOURCE_PROXIED=YES` with the time to the state file **before** the first account is converted, so a killed run cannot hide that the target has taken live writes (12.91); `xoct proxy oN target-ip --defer-host-named=old-box-hostname` per account (12.92, **end of the client-domain outage**): the client-domain sites are relayed, while the sites named under the old box hostname are *deferred* — they stay local, held on 503 by the per-host gate `static/control/http-off-host.pid`, because the new box has not renamed them yet; the completion mail goes out here; master panel into maintenance mode (12.93); **cron back on the source** under BOA's heavy-tasks pause, because this box is now the only front door and must not sit without its web watchdog, IDS, real-client refresh and certificate mirror while the renames run (12.94). Any refusal up to 12.90 parks at `phase=rename-failed`: with the source still gated on a pass that has not yet recorded the relay (12.91), and saying the source relays on a resume after one that has — the marker, trust and fail-out checks run again on every pass until step 15. Skipped only on an estate where `_THIS_DB_HOST` is not local on either box: there every site's settings name the old box as database host until the rename's verifies regenerate them, so the rename-first order (steps 15.9–16.5 below) still applies, and the DRY plan says so |
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master; this run also renames the target's host-level names — postfix `myhostname`, `/etc/mailname`, the self-signed fallback certificate — where they still carry a former name of the box, see MIGRATE.md) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account). The rename moves host-derived tenant site directories onto the new hostname together with every URI-keyed surface (per-site Drush alias file, static files store, per-site PHP pins), and **aborts before the Ægir task queue** if any site dir still carries the old hostname — the queue would import those as brand-new sites with duplicate panel nodes. Inside a cutover that refusal parks at `phase=rename-failed`. After the renames it waits for each renamed site to actually serve (up to 180 s per site, `_RENAME_SERVE_WAIT`; the box's catch-all page is discriminated so an unknown-host 200 never passes) — minutes per site here are the wait, not a hang; a site named as never serving with a 400 usually means its trusted-host settings |
-| Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
+| Step 14 | Clear the Solr hold on the target and start the versions the source **used** (plus any gated as used), each with its transaction logs cleared first; then wait 30 s and probe the started services' ports over the loopback (solr9 9099, solr7 9077, jetty9 8099). A version the target denies is never re-armed. On a source that uses no Solr — every version denied on the target by `prep-target` — nothing is started, there is no wait and no probe, and one line says so. A started service that does not answer is reported as not confirmed, never as started |
 | Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual). Scoped to the real, dotted cores of the versions expected to **serve** on the target (used + ambiguous): a version this run deliberately denied has no service there by design, and its data trees travel with the sync regardless, so its cores are not reported |
 | Step 14.9 | Put each moved account's one-pass upgrade-notice marker on the target when absent (`/data/conf/<oN>_skip_upgrade_email.txt`; not for an account whose `_SEND_UPGRADE_EMAIL` is `NO` here): the first pass after the move sends no upgrade notice, even where the pass `prep-target` armed took the one `create` put |
 | Step 15 | Start cron on target; restore BOA runner scripts on target; record `_XMASS_TARGET_ARMED=YES` (a resumed tail then neither expects the marker nor fails out real client tasks) |
@@ -1882,22 +1885,22 @@ Spot-check independently with `/run/<oN>.<NN>.fpm.socket` and the site's
 PHP 8.4 looks perfectly healthy while mis-pinned, whereas a 5.6 or 7.x
 site fatals.
 
-> **Do not skip `post-mig`.** It re-arms and restarts Solr, clears any
-> leftover hold or standby marker, restores the five runners, and
-> reconciles the migration-proxy trust. Cron runs on the target for the
-> whole window by design — the per-job standby gates carry the passivity —
-> so a quiet box is NOT the expected state at any point.
->
-> Every hold
-> releases with the marker: the cutover itself unlocks the DB (step 11.5)
-> and opens the firewall (step 12); the watchdog layers release the rest
-> within about a minute — nginx healed up, FTPS resurrected, backups
-> resumed, tenant logins restored (verified per user, at the
-> manage_ltd cadence). After `post-mig`,
-> verify the marker is gone (`test -e /root/.standby.cnf` must fail) and
-> the task queue drains. A target quiesced by pre-gate BOA bytes may still
-> have cron stopped; cutover step 15 starts it as vintage tolerance —
-> verify with `pgrep -x cron`.
+> **Do not skip `post-mig`.** It re-arms and restarts the Solr services
+> this box does not deny, clears any leftover hold or standby marker,
+> restores the five runners, and reconciles the migration-proxy trust.
+
+Cron runs on the target for the whole window by design — the per-job
+standby gates carry the passivity — so a quiet box is NOT the expected
+state at any point. Every hold releases with the marker: the cutover
+itself unlocks the DB (step 11.5) and opens the firewall (step 12); the
+watchdog layers release the rest within about a minute — nginx healed
+up, FTPS resurrected, backups resumed, tenant logins restored (verified
+per user, at the manage_ltd cadence).
+
+After `post-mig`, verify the marker is gone (`test -e /root/.standby.cnf`
+must fail) and the task queue drains. A target quiesced by pre-gate BOA
+bytes may still have cron stopped; cutover step 15 starts it as vintage
+tolerance — verify with `pgrep -x cron`.
 
 ---
 
@@ -1998,8 +2001,8 @@ says so; the replica takes them as already executed.
 | Cutover step 0 | Running | Re-held and stopped (safety) |
 | Cutover step 2 | Stopped; `/root/.deny.java.cnf` created + `_DENY_JAVA=YES` set | Held |
 | Cutover step 3 | Stopped (clean index state) | Held (final Solr rsync with clean source) |
-| Cutover step 14 | — | Re-armed (exec bits + rc links restored); tlogs cleared; Solr started; HTTP health check |
-| `post-mig` | — | Hold cleared + re-armed if leftover; Solr restarted cleanly |
+| Cutover step 14 | — | Hold cleared; the versions the source used re-armed (exec bits + rc links restored), their tlogs cleared, started and probed on their ports; a denied version left disarmed; on a Solr-free source nothing started, no wait, one line |
+| `post-mig` | — | Hold cleared; the services this box does not deny re-armed and restarted; a denied one left disarmed; one line when there is nothing to start |
 
 Clearing transaction logs (`tlog/` directories) before starting Solr on the
 target prevents double-indexing of any writes that were buffered at the moment

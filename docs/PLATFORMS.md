@@ -56,9 +56,9 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 ## Drupal 7
 
-- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.106.2)
-- [Drupal 7.106.2](https://docs.tag1.com/faqs/)
-- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.106.2)
+- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.106.3)
+- [Drupal 7.106.3](https://docs.tag1.com/faqs/)
+- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.106.3)
 
 ## Drupal 6
 
@@ -79,7 +79,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Grav 2 (official release, admin bundle)](https://getgrav.org)
 
 * Opt-in on self-hosted systems: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems (an `.aegir.cc` hostname or `/root/.host8.cnf`) it is on by default: a new instance gets `YES`, an existing one's `NO` seeded before that default flips to `YES` once, and a `NO` set afterwards stays. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
-* A Grav site keeps everything in files on the "None (flat-file sites)" database server, or, for a KahunaCart shop, gets a database when it is created on a MySQL 8 server (Percona 8.4). The panel carries that database through every task and passes its credentials through the vhost and the `grav` command, never a file the site's PHP can read. Verify brings the store schema up to date.
+* A Grav site keeps everything in files on the "Grav (no MySQL)" database server (its database shows as "Flat-file or SQLite" in the panel's Servers list), or, for a KahunaCart shop, gets a database when it is created on a MySQL 8 server (Percona 8.4). The panel carries that database through every task and passes its credentials through the vhost and the `grav` command, never a file the site's PHP can read. Verify brings the store schema up to date.
 * BOA runs the shop's worker (`bin/plugin kahunacart work`) every minute as the site's web server user, one shop at a time on a PHP pool of fewer than eight workers and two on a larger one; Grav's own scheduler, and the custom jobs a site's admin can define, never run.
 * The shop's order mail goes out through Grav's email plugin, which ships with no sender address and its `sendmail` engine: set the address and the plugin's SMTP engine with the mail provider on port 587 or 465. BOA keeps `sendmail` closed to sites unless `_ALLOW_SENDMAIL=YES`, and its csf blocks a site's outgoing port 25, localhost included.
 * A copy of a shop made by Clone or Upgrade a copy is held until a Cutover retires the store it stands in for, or a released copy of that store that ran while no site holding the store's identity is a store any more; never while the site it was made from is a store. A released copy keeps running through a Cutover, and a copy of a site without a store is not held.
@@ -94,7 +94,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 
 * Opt-in on self-hosted systems: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. On hosted and remotely managed systems it is on by default, as Grav is. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
 
-* All D7 platforms have been enhanced using [Drupal 7.106.2 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
+* All D7 platforms have been enhanced using [Drupal 7.106.3 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
 * The Ægir control panel runs on the same pinned Drupal 7 core. Its code is built from the prebuilt `make_local` tree; when the Drupal core directory in that tree carries a different release than the pin, BOA replaces it from the pinned core tarball before building the panel, so a panel can no longer stay on an older core than the platforms.
 
@@ -158,6 +158,14 @@ names one says so in the log. Platforms already on a server keep their sites.
 
 - `DL9` — Drupal 9 prod/stage/dev
 
+### Upgrade rehearsals
+
+The mirror also carries the last Drupal 8 core, `drupal-8.9.20`, built beside
+`drupal-9.5.11` with the Drush line of its day, so a site still on Drupal 8 can be
+rehearsed through its upgrade on a BOA server. No symbol builds a platform from it:
+register the tarball as a platform of your own. `DL9` builds its platform from the
+rebuilt Drupal 9 core.
+
 ### Drupal 7
 
 - `DL7` — Drupal 7 prod/stage/dev
@@ -195,5 +203,7 @@ ALL
 A built-in platform is fetched from the mirror only when its directory is missing. When the mirror republishes a platform's tarball under the same name, for example with a security fix, every Octopus upgrade checks it. An idle platform (no site directory, no tenant file in `sites/all`, no site or pending task for it in the control panel) is fetched again beside the old tree, swapped in and verified. Only a newer copy on the mirror counts, so a CDN edge still serving an older tarball never swaps a platform back.
 
 A platform in use is left as it is, and the upgrade log says so once per republished copy. To pick up the fix, migrate its sites to a platform that has it. What each platform was fetched from is recorded in `~/distro/NNN/.boa-tarball/`; a replaced tree that turned out to hold a site or tenant files is kept in `~/distro/NNN/.boa-refresh/` and reported on every upgrade until it is dealt with.
+
+Which sites run on a Drupal core minor drupal.org no longer supports, and so cannot take a security release in place, `eolreport` lists; see [docs/EOLREPORT.md](EOLREPORT.md).
 
 Platforms fetched before this was added have no record. For each idle one, the first upgrade that runs fetches its tarball once: a tree that still matches it is only recorded, and one that does not (every verified Drupal 8+ tree) is refreshed.

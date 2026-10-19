@@ -81,7 +81,7 @@ export _SMALLCORE11_3_V=11.3.19
 export _SMALLCORE11_4_V=11.4.10
 export _SMALLCORE12_0_V=12.0.0-beta2
 export _SMALLCORE6_V=6.60.3
-export _SMALLCORE7_V=7.106.2
+export _SMALLCORE7_V=7.106.3
 export _SMALLCORE9_V=9.5.11
 
 ###
@@ -173,7 +173,7 @@ export _DRUPAL12_0_S="${_DRUPAL12_0}-stage"
 ### make time.
 ###
 export _BACKDROP_V_FALLBACK=1.35.2
-export _GRAV_V_FALLBACK=2.2.9
+export _GRAV_V_FALLBACK=2.2.10
 export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
 export _BACKDROP="backdrop-${_BACKDROP_V}"
