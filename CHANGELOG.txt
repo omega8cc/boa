@@ -4,6 +4,12 @@
 
 @=> Important Fixes
 
+    * aegir2boa-stage2's transfer refuses a db-import route without the
+      acknowledged module list (check --accept-scrub-list) in its dry run,
+      and its live run stops before it copies anything. A dry run printed
+      DRY RUN CLEAN, then the live run copied every platform tree and dump
+      before it stopped on the missing acknowledgement.
+
     * xoct, xmass and xcopy read and rewrite an account's cnf as text, and
       so does the Octopus pass. A crash can leave NUL bytes in a cnf's
       tail, and grep then reads the file as binary: a rewrite through grep
