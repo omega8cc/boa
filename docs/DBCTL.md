@@ -761,10 +761,12 @@ install of that re-run that fails names it in an `ALRT`.
 
 An account that was made keeps the line until the create is run again. The
 seed puts its line on a line of its own where the cnf's last byte is no line
-end. Each reads and rewrites the target's cnf as text, and drops every NUL
-byte of it first (a crash can zero-fill a file's tail, and bash stops reading
-a file at its first NUL byte, so a line written after one is lost to the
-pass).
+end. The seed and its take-back read and rewrite the target's cnf as text.
+The seed drops every NUL byte of it first, a run of them that cut a line
+short ending that line (a crash can zero-fill a file's tail from the middle
+of a line, and bash stops reading a file at its first NUL byte, so a line
+written after one is lost to the pass). A take-back writes no line, and
+leaves any NUL bytes for the pass to drop.
 
 Where the merge of the source's settings failed, the line stays, the note
 says `kept`, the tool prints an `ALRT` that names the line, and `report` reads
@@ -940,8 +942,15 @@ Every reader of the two settings reads a cnf as text, whatever bytes it holds:
 a NUL byte (a crash can zero-fill a file's tail) hides none of its lines from
 them. bash, which the Octopus pass sources the cnf with, stops reading a file
 at its first NUL byte, so the pass drops every NUL byte of the account's cnf
-before it reads it (the file rewritten in place, said in a NOTE), and so does
-every tool that writes a line after the cnf's text.
+before it reads it (the file rewritten in place, said in a NOTE), and so do
+the moves' merges, seeds and upgrade-notice switches, and `instgrp`'s write of
+the web group's policy, before they write a line after the cnf's text. A run
+of NUL bytes that cut a line short ends that line, so a line written after it
+starts a line of its own. A write that fails part way leaves the cnf's whole
+text in a copy beside it (`.nulheal`) and goes no further: the pass names the
+copy in an `ALRT` and stops. Other writers, the nightly run's among them, still
+write after a NUL byte; such a line is read once the next Octopus pass has
+dropped the NUL bytes.
 
 ## The report
 
