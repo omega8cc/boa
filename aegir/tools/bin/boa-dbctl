@@ -3427,7 +3427,8 @@ _master_db() {
 # master's) for user $2, from the server alias that names it: _CTX the
 # alias context, _MDB_HOST its host, _PW its password. 1 when no alias
 # gives one; _RL_WHY then holds the word of _master_db's refusal when an
-# alias names the user and its password is refused, _RL_NOTE its note.
+# alias names the user and its password is refused, _RL_NOTE its note (a
+# refused password's note over an empty one's, whichever alias came first).
 _root_login() {
   local _c _t
   _CTX=""
@@ -3438,7 +3439,10 @@ _root_login() {
     [[ -n "${_t}" ]] || continue
     if ! _master_db "${_t}"; then
       [[ -n "${_MDB_WHY}" && "${_MDB_USER}" == "${2}" ]] && _RL_WHY="${_MDB_WHY}"
-      [[ -n "${_MDB_NOTE}" && "${_MDB_USER}" == "${2}" ]] && _RL_NOTE="${_MDB_NOTE}"
+      if [[ -n "${_MDB_NOTE}" && "${_MDB_USER}" == "${2}" ]] \
+        && [[ "${_MDB_NOTE}" != "none" || -z "${_RL_NOTE}" ]]; then
+        _RL_NOTE="${_MDB_NOTE}"
+      fi
       continue
     fi
     [[ "${_MDB_USER}" == "${2}" ]] || continue
@@ -4673,7 +4677,8 @@ _pin_status() {
       if _root_login "${_AEGIR}" aegir_root; then
         _login="NOTPLAIN"
         _proof_cnf aegir_root && _login="YES"
-      elif [[ -n "${_RL_WHY}" ]]; then
+      elif [[ -n "${_RL_WHY}" || ( -n "${_RL_NOTE}" && "${_RL_NOTE}" != "none" ) ]]; then
+        # an empty password is no credential; one refused unread is
         _login="NOTPLAIN"
       fi
       ;;
@@ -4761,8 +4766,8 @@ _acct_proof() {
   _AP_WHY=""
   if [[ "${3}" == "INST" ]]; then
     if ! _root_login "${_DISK}/${4}" "${1}"; then
-      if [[ -n "${_RL_WHY}" ]]; then
-        _mdb_why "${_RL_WHY}"
+      if [[ -n "${_RL_WHY:-${_RL_NOTE}}" ]]; then
+        _mdb_why "${_RL_WHY:-${_RL_NOTE}}"
         _AP_WHY="the password its server alias records ${_MW}"
       fi
       return 1
@@ -7002,8 +7007,10 @@ _cnf_last() {
 
 # The setting of account $1's own cnf that keeps it out of every switch a
 # pass makes, into _KO: _DB_BROKER_ARM=NO, its operator's, or
-# _DB_BROKER_BORN=NO, a migration tool's while a move's line is there. In
-# the order, and with the reading, of the pass. 1 when neither.
+# _DB_BROKER_BORN=NO, a migration tool's while a move's line is there, or
+# its operator's (one the cnf held before a create, its seed note there
+# saying operator). In the order, and with the reading, of the pass. 1 when
+# neither.
 _kept_out() {
   local _k
   _KO=""
