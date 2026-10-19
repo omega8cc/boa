@@ -1603,9 +1603,11 @@
       drupal-9.5.11, beside the legacy 10.x minors, each under the PHP its
       sites run on and with the Drush line of its day, so an upgrade from a
       site still on them can be rehearsed on a BOA server; the Drupal 9 core
-      on the mirror gains Drush 11. A build server without a PHP a line's
-      lock accepts (7.4 or 7.3 for Drupal 8; 8.2, 8.1 or 7.4 for Drupal 9)
-      skips that line and says so in the summary.
+      on the mirror gains Drush 11, resolved for PHP 7.4 so the platform
+      runs there too. A build server without a PHP a line's lock accepts
+      (7.4 or 7.3 for Drupal 8; 8.1, 8.0 or 7.4 for Drupal 9) skips that
+      line and says so in the summary, and a line whose Drush require fails
+      is a failed build rather than a core published without Drush.
 
     * The xmass cutover no longer raises a Solr alarm on a server move
       whose source uses no Solr. Its Solr step on the target started
