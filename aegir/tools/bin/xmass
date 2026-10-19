@@ -7359,11 +7359,17 @@ _xmass_sync_account() {
   # name there can be a link: root copies only from the real directory. The nginx
   # legs go only from the real directory, each directory sent by its own name
   # into the parent, so a link swapped in after the check travels as a link
-  # and is never followed.
+  # and is never followed. aegir2boa's freeze of an import is the same file
+  # (its first line A2B-IMPORT-FREEZE): its vhost.d stays too, as the sites
+  # of an unfinished import are still served by its vanilla source, and is
+  # named for what it is.
   local _ngxW _ngx
   _ngxW="$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_oct}/config/server_master/nginx"
   _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && pwd -P)"
-  if [ -e "${_udir}/log/proxied.pid" ]; then
+  if [ -e "${_udir}/log/proxied.pid" ] \
+    && [ "$(_xmass_in_real_dir "${_udir}/log" _xmass_rootread_here proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]; then
+    _alrt "  ${_udir##*/}: an aegir2boa import of the account is frozen here (log/proxied.pid) -- its vhost.d is NOT synced"
+  elif [ -e "${_udir}/log/proxied.pid" ]; then
     _alrt "  ${_udir##*/}: this box relays the account (log/proxied.pid) -- its vhost.d is NOT synced"
   elif [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/vhost.d" ]; then
     _xmass_warn_daily "nginx_link_${_oct}_vhost.d" "  ${_oct}: nginx/vhost.d or a directory above it is a link -- not followed, not sent"
@@ -10725,6 +10731,13 @@ _xmass_promote_panels_here() {
   _info "Control panels: rewired to their live panel databases where a promotion left them dead ..."
   for _root in /var/aegir /data/disk/o*; do
     [ -f "${_root}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    # an aegir2boa import cut off on the box this one mirrored left its panel
+    # database half-imported (the vanilla panel, no BOA platform path): it
+    # has no live panel to rewire to, and the route run again here brings one
+    if [ "${_root}" != "/var/aegir" ] && _a2b_import_unfinished "${_root##*/}" promoted; then
+      _info "  PANEL-HELD: ${_root}: held by an unfinished aegir2boa import (/var/backups/a2b/${_root##*/}): not rewired; its panel comes with the route run again, as the hold's alarm says"
+      continue
+    fi
     _out=$(_xmass_panel_rewire_sh | bash -s -- "${_root}" "${_me}" 2>&1)
     [ $? -eq 0 ] || _bad="${_bad} ${_root}"
     while IFS= read -r _l; do
