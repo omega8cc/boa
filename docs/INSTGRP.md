@@ -1060,10 +1060,13 @@ nothing to revert to), the route run again toward the box when the hold
 came there with a failover (the dumps and the snapshot stayed on the box
 the import ran on), either otherwise.
 
-On the active of an `xmass` pair every pass carries the hold of each
-account whose import reads unfinished to the standby, and takes it back
-once it no longer does; a promotion there leaves the account's dispatcher
-parked on a box armed for the web group (`MIGRATE-XMASS.md`).
+On the active of an `xmass` pair every live pass carries the hold of each
+account whose import reads unfinished, with no run of it live, to the
+standby (an import that runs is left to hand its dispatcher back itself),
+and takes it back once it no longer reads unfinished; a promotion there
+leaves the account's dispatcher parked on a box armed for the web group
+(`MIGRATE-XMASS.md`), and `xmass restore-target` removes the holds the
+active carried before it hands the standby back as a plain box.
 
 Any other marker (one the account made, a relay record reading
 `COMPLETE`, an earlier release's freeze, an aegir2boa freeze beside relay

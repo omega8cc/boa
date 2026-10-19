@@ -904,7 +904,10 @@ What `init` does:
    standby that was never promoted returns to that state with
    `xmass restore-target` (dry by default, `--live` performs it; refused
    while a window is in flight, under a barracuda/octopus run, or on a box a
-   cutover promoted).
+   cutover promoted). It removes the holds of unfinished aegir2boa imports
+   the active carried there (`/var/backups/a2b/<oN>/failover-hold`) before
+   the standby marker goes, so the plain box holds none of the other box's
+   imports.
 
    Cron stays RUNNING for the whole
    window — a standby is a working BOA box, with IDS and every watchdog
@@ -1130,6 +1133,10 @@ as its sites are still served by the vanilla source. `xmass pre-mig`
 refuses that box (the panel's platform in the database differs from its
 alias root): a pair is prepared only once every import there is finished
 or reverted, so the hold covers a pair that stood before the import.
+
+A cutover refuses the same way (its DRY run as a DENY) while an import of
+an account it carries is unfinished there: it would promote the target and
+then stop at the panel rewire.
 
 Once the import on the active no longer reads unfinished, any other
 aegir2boa state the standby holds of the account (from a role before this
