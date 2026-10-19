@@ -5219,7 +5219,8 @@ _wg_g_pinned() {
 }
 
 # The account's cnf (root's) rewritten without any _WEB_GROUP line, and
-# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it. The
+# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it once
+# it is written whole (status 1 and the cnf as it was otherwise). The
 # cnf is read as text (a crash can zero-fill its tail, and grep would read
 # it as binary and drop every line); a NUL byte ends bash's read of the cnf
 # there, so the line written after it would be lost to every pass: every
@@ -5230,18 +5231,24 @@ _wg_policy_put() {
   local _cnf="/root/.${_WP_A}.octopus.cnf" _t
   [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] || return 1
   if [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ]; then
-    { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" && chmod --reference="${_cnf}" -- "${_cnf}.nulheal" && mv -f -- "${_cnf}.nulheal" "${_cnf}"; } 2> /dev/null \
+    { rm -f -- "${_cnf}.nulheal" && perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" && chmod --reference="${_cnf}" -- "${_cnf}.nulheal" && mv -f -- "${_cnf}.nulheal" "${_cnf}"; } 2> /dev/null \
       || rm -f -- "${_cnf}.nulheal"
   fi
   _t="/root/.${_WP_A}.octopus.cnf.wg.$$"
   rm -f -- "${_t}"
-  { grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
+  # renamed over the cnf only once it is written whole (grep's own status:
+  # 1 when it keeps no line, the copy still whole)
+  if ( grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
+    [ $? -le 1 ] || exit 1
     case "${1}" in
       NO|A) printf '_WEB_GROUP=%s\n' "${1}" ;;
-    esac
-  } > "${_t}" 2> /dev/null
-  chmod --reference="${_cnf}" -- "${_t}" 2> /dev/null
-  mv -f -- "${_t}" "${_cnf}" 2> /dev/null || { rm -f -- "${_t}"; return 1; }
+    esac ) > "${_t}" 2> /dev/null \
+    && chmod --reference="${_cnf}" -- "${_t}" 2> /dev/null \
+    && mv -f -- "${_t}" "${_cnf}" 2> /dev/null; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 # d0: the opt-out, written first (over a pin's line); a per-account verb

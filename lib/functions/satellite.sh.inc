@@ -4627,15 +4627,14 @@ _satellite_db_broker_call() {
 # the marker names the account as it is now: its uid, and the inode and
 # birth time of /data/disk/<oN>, both numbers, as xoct's owner gate reads
 # them (a marker left from an earlier account of the name is not trusted).
-# The cnf is rewritten in place, its inode and mode kept, from a copy this
-# run makes beside it, read as text (a crash can zero-fill a cnf's tail):
+# The cnf is replaced by a copy this run makes beside it, read as text (a
+# crash can zero-fill a cnf's tail), renamed over it with its mode kept:
 # only where that copy is a regular file holding exactly the cnf's lines
-# but the ones taken, and the cnf is still the file it was read from;
-# otherwise nothing changes and a NOTE says so, as for a write refused before
-# its first byte (the cnf's inode and size as read). Once the write into the
-# cnf has started the copy is the cnf's one whole text: a write that fails
-# part way leaves it there, an ALRT names it, and the status is 1, so the
-# pass switches nothing. One INFO line names the migration. An operator's
+# but the ones taken, and the cnf is still the file it was read from (its
+# inode and size as read); otherwise, and where the rename is refused (an
+# immutable or append-only cnf), nothing changes and a NOTE says so: the
+# line stays and the next pass tries again. One INFO line names the
+# migration. An operator's
 # _DB_BROKER_ARM=NO, which nothing takes back, keeps the account out.
 _satellite_db_broker_born_leftover() {
   local _c="/root/.${_USER}.octopus.cnf" _m="/root/.${_USER}.migration-create.txt"
@@ -4662,18 +4661,13 @@ _satellite_db_broker_born_leftover() {
     && [[ "${_all}" =~ ^[0-9]+$ && "${_k}" =~ ^[0-9]+$ && -n "${_was}" ]] \
     && [[ "$(grep -ac '' "${_t}" 2> /dev/null)" == "$(( _all - _k ))" ]] \
     && [[ "$(stat -c %i:%s "${_c}" 2> /dev/null)" == "${_was}" ]]; then
-    if ! { cat -- "${_t}" > "${_c}"; } 2> /dev/null; then
-      # refused before its first byte (an immutable or append-only cnf):
-      # the cnf is as it was, so the line stays as when the checks fail
-      if [[ "$(stat -c %i:%s "${_c}" 2> /dev/null)" == "${_was}" ]]; then
-        rm -f -- "${_t}"
-        _msg "NOTE: database broker: _DB_BROKER_BORN=NO could not be taken back from ${_c}: it stays, and the next pass tries again"
-        return 0
-      fi
-      _msg "ALRT: database broker: ${_c} could not be written whole: its whole text without _DB_BROKER_BORN=NO is in ${_t}, put that copy in its place; ${_USER} is not switched on this pass"
-      return 1
+    if ! { chmod --reference="${_c}" -- "${_t}" && mv -f -- "${_t}" "${_c}"; } 2> /dev/null; then
+      # a rename refused leaves the cnf as it was, so the line stays as when
+      # the checks fail
+      rm -f -- "${_t}"
+      _msg "NOTE: database broker: _DB_BROKER_BORN=NO could not be taken back from ${_c}: it stays, and the next pass tries again"
+      return 0
     fi
-    rm -f -- "${_t}"
     _mh=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
     _mo=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
     [[ "${_mh}" =~ ^[a-z0-9.-]+$ && "${_mo}" =~ ^[a-z0-9._-]+$ ]] || { _mh="?"; _mo="?"; }
