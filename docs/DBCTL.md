@@ -765,8 +765,9 @@ end. The seed and its take-back read and rewrite the target's cnf as text.
 The seed drops every NUL byte of it first, a run of them that cut a line
 short ending that line (a crash can zero-fill a file's tail from the middle
 of a line, and bash stops reading a file at its first NUL byte, so a line
-written after one is lost to the pass). A take-back writes no line, and
-leaves any NUL bytes for the pass to drop.
+written after one is lost to the pass). A take-back heals nothing itself: it
+writes no line of its own (xcopy's puts back the target operator's lines its
+seed replaced, in the cnf that seed healed).
 
 Where the merge of the source's settings failed, the line stays, the note
 says `kept`, the tool prints an `ALRT` that names the line, and `report` reads
@@ -946,9 +947,10 @@ before it reads it (the file rewritten in place, said in a NOTE), and so do
 the moves' merges, seeds and upgrade-notice switches, and `instgrp`'s write of
 the web group's policy, before they write a line after the cnf's text. A run
 of NUL bytes that cut a line short ends that line, so a line written after it
-starts a line of its own. A write that fails part way leaves the cnf's whole
-text in a copy beside it (`.nulheal`) and goes no further: the pass names the
-copy in an `ALRT` and stops. Other writers, the nightly run's among them, still
+starts a line of its own. The healed text is written beside the cnf and
+renamed over it (its mode kept), so a heal that cannot be finished leaves the
+cnf as it was: the pass says so in a NOTE and tries again on its next run.
+Other writers, the nightly run's among them, still
 write after a NUL byte; such a line is read once the next Octopus pass has
 dropped the NUL bytes.
 
