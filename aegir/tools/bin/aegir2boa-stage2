@@ -1559,6 +1559,15 @@ verb_transfer() {
     4) _die "${_tb} on ${_TARGET} was made for another account of the name ${_ACCOUNT} (removed and made again there): move it aside on ${_TARGET}, then re-run transfer" ;;
     *) _die "cannot compare the account ${_ACCOUNT} on ${_TARGET} with the record beside ${_tb}" ;;
   esac
+  # the db-import route's acknowledged module list is a precondition of
+  # the transfer, so the dry run refuses without it and the live run stops
+  # before anything is copied
+  if [[ "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" = "db-import" ]]; then
+    [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+    [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
+      || _die "no enabled-modules list from check - re-run check"
+  fi
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
