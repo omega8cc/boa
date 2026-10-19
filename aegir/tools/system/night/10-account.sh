@@ -2086,6 +2086,16 @@ _wg_free_held() {
   return 0
 }
 
+# 0 when account $1's free journal is there and cannot be read (a read
+# error; an empty file reads). _wg_free_held then names no held gid, so a
+# claim cannot keep the paths of a free that may still finish out of its
+# walk: it waits until the journal reads again. One text in instgrp, the
+# nightly's 10-account.sh and the restore tools.
+_wg_free_unreadable() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt"
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
+}
+
 ### The account's own web group, before the site loop: its drift witnesses
 ### (instgrp webdrift; an alarm goes to the nightly's incident log and, once
 ### a day, to the operator's address, never to the account's own), and a
