@@ -4,6 +4,19 @@
 
 @=> Important Fixes
 
+    * The hold of an unfinished aegir2boa import now follows it on every
+      xmass path. restore-target removes the holds the active carried
+      before it hands a standby back as a plain box (one left there held
+      the account for good and mailed advice meant for a promoted box), a
+      promotion by hand parks a held account's dispatcher before the
+      leftover standby marker goes even when its cleanup could not run,
+      and a cutover refuses while an import of an account it carries is
+      unfinished, instead of promoting the target and stopping at the
+      panel rewire. A standby the sync cannot reach no longer raises the
+      hold's alarm when there was no hold to carry. aegir2boa-stage2's
+      transfer refuses a state with no recorded route, as export does, and
+      a late failure of the broker's drop names running that drop again.
+
     * A box promoted from an xmass standby while an aegir2boa import of
       an account was cut off on the old box carries that import's hold,
       but never the import's freeze. instgrp read only the freeze, so the
