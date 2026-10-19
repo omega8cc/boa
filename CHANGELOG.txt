@@ -17,8 +17,8 @@
       rewritten in place, said once; a run of them that cut a line short
       ends that line), as the merges, the seeds, the upgrade-notice switches
       and instgrp's policy write do before they write a line after the
-      cnf's text. A rewrite that fails part way keeps the cnf's whole text
-      beside it and goes no further.
+      cnf's text. The healed text is renamed over the cnf, so a heal that
+      cannot be finished leaves the cnf as it was.
 
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
