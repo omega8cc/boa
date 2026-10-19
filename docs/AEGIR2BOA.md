@@ -560,6 +560,7 @@ Target-resident verbs (BOA box, root):
              [--welcome-node]                               [--live]
   import     --account <oN> --revert-db-import              [--live]
   import     --account <oN> --reset-sites                   [--live]
+  import     --account <oN> --drop-made-users               [--live]
   peer       --source <ip> [--pubkey-file <f>]              [--live]
   target-status --account <oN>
 ```
@@ -864,9 +865,11 @@ target armed for the account web group (it carries the arm stamp; see
   Only processes of root's are read (a tenant sets its own command line).
   A refused re-run says which of these refused it.
 
-  A marker of the other operation, or of an earlier release (one line, or
-  no process group), is refused as before. A run refused at the freeze keeps
-  its clean dry run: the gate is consumed only once the freeze is put;
+  A marker of the other operation is refused, the refusal naming that
+  operation: only its own re-run takes it over. A marker of an earlier
+  release (one line, or no process group) is refused as before. A run
+  refused at the freeze keeps its clean dry run: the gate is consumed only
+  once the freeze is put;
 - BOA's limited-shell worker removes a killed import's freeze a day after
   it first sees it with no migration running and no relay record or
   proxy vhost beside it, so the account gets its nightly and limited-shell
@@ -879,30 +882,73 @@ target armed for the account web group (it carries the arm stamp; see
   any marker the worker keeps, is named in a mail once a day after its
   first day;
 - while `/var/backups/a2b/<oN>/` shows the import unfinished (the held
-  dispatcher, or step markers with neither the done marker nor the
+  dispatcher, a revert's started mark, a hold `xmass` carried there with a
+  failover, or step markers with neither the done marker nor the
   hand-back marker step 10 writes just before it returns the dispatcher),
   the account's panel stays switched off: the Octopus wrapper skips the
   account (an INFO line in an `all` run, an ALRT when the run names it),
   no Octopus pass writes or runs its dispatcher, BOA's agent pass moves a
   live one back into the hold, the nightly runs nothing on the panel and
-  moves none of its sites aside as ghosts, usage.sh writes nothing into
-  it, and `renameaegirhost` and `syncpass fix` refuse the account, naming
-  the re-run and the revert.
+  moves none of its sites or platforms aside as ghosts, usage.sh writes
+  nothing into it, and `renameaegirhost` (naming the state's directory)
+  and `syncpass fix` refuse the account. Each of these lines, the reap's
+  mail and the daily mail name the one way out the state allows (the table
+  below), or both where either is safe.
 
   The worker mails the operator once a day until the import is re-run or
   reverted, also from a pass that could not read the process table (the
-  mail then says so). `boa cleanup purge` parks that state with the
+  mail then says so). Its mail on removing a freeze names the operation
+  the freeze recorded. `boa cleanup purge` parks that state with the
   account.
 
-Anywhere else, make sure no `aegir2boa-stage2` runs for the account,
-remove `log/proxied.pid`, then re-run the import or revert it.
+Anywhere else, make sure no `aegir2boa-stage2` runs for the account and
+remove `log/proxied.pid`, then take the way out the state allows:
+
+| What was cut off | What the state shows | The way out |
+|---|---|---|
+| a revert, after its sql-drop | `markers/revert-db.started` | the revert's re-run alone (`--revert-db-import`): the import's step markers still stand, so a re-run of the import would skip every step and report a finished import on the panel the revert restored; the db-import route refuses while the mark stands |
+| the import, before its pre-import snapshot was complete | the dispatcher held, no `markers/dbimport.1.done` | the import's re-run alone (`--route db-import`): there is nothing to revert to, and the revert refuses |
+| the import, after its snapshot | step markers with neither the done nor the hand-back marker | either: the re-run finishes it, the revert undoes it |
+| a revert, before its sql-drop | its freeze reads `verb=revert-db`, the import's markers as it left them | either |
+| the import, on the box it ran on, which then failed over to its `xmass` standby | on the promoted box, `failover-hold` and no transferred dump | the route run again toward the promoted box (a fresh `export` and `transfer` on the source, then the import there), once the site databases the replication brought from the cut-off import are dropped there (those of the transfer's manifest that already exist: the import refuses a database that exists, and no reset reaches them): the dumps and the snapshot stayed on the old box |
+
+A box that is the active of an `xmass` pair carries, with every pass, the
+hold of each account whose import reads unfinished and is not running to
+its standby (`/var/backups/a2b/<oN>/failover-hold`), and takes it back once
+the import there is finished or reverted. An import that runs is left to
+hand its dispatcher back itself: a failover while it runs carries no hold of
+it, and the promoted box hands that half-made panel its dispatcher. The
+standby's own passes never act on the hold: it counts only on a box that is
+no standby.
+
+A promotion leaves such an account's dispatcher parked on a box armed for
+the web group (a live one, as a standby's accounts are installed with, is
+parked before the standby marker goes, by the cutover and by a promotion by
+hand), the cutover's rename of the account refuses, the passes keep its
+panel switched off there as on the old box, and the worker there names it
+once a day.
+
+An import on the promoted box ends the hold when it reaches its hand-back; a revert there leaves it standing (the snapshot it
+restores is of the panel the failover carried) and sets the dumps it
+transferred aside (`src.reverted.<time>`), so the way out named is the
+route run again.
+
+Once the import on the active no longer reads unfinished, any other
+aegir2boa state the standby holds of the account (a box that ran the import
+and then failed over keeps its own) is set aside there as
+`/var/backups/a2b/<oN>.superseded.<time>`, never removed, its held
+dispatcher back among the standby's parked ones: a later promotion of that
+box offers no way out over the panel the other box finished.
 
 The steps, each idempotent behind its own marker:
 
 1. **Snapshot**: dump the fresh panel DB to
    `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql` (the revert point) and
    capture the enabled-module set into `undo/a2b-enabled-baseline.txt`
-   beside it (the reconciliation source of truth). The import pre-checks
+   beside it (the reconciliation source of truth). The dump is written
+   under a temporary name (`a2b-pre-import.sql.part`) and renamed into
+   place only once `mysqldump` has succeeded, so a dump cut off never
+   stands where the revert loads it from. The import pre-checks
    roughly 2× the transferred hostmaster dump + 200 MB free under
    `/var/backups/a2b/<oN>` for this snapshot — an extra headroom gate on
    top of the transfer one. The snapshot is taken with
@@ -1136,6 +1182,22 @@ additionally restores the panel DB from the pre-import snapshot and
 returns the held dispatcher. Both print the same reminder: a retry needs
 a fresh export+transfer.
 
+A site DB of an account switched to the database broker goes by the
+broker's own drop (`boa-dbctl drop <db> --account <oN>`, see `DBCTL.md`),
+so its registry entry and the instance user's grant on it go with it; any
+other account's goes by plain SQL, as does one whose control file the
+broker finds not valid (its tasks take the direct path). A drop the broker
+refuses otherwise keeps that DB and says why.
+
+`--revert-db-import` refuses, before its dry run prints a plan, unless the
+import completed its pre-import snapshot (`markers/dbimport.1.done`) or a
+revert cut off part way left its started mark: an import cut off before
+its snapshot was complete has nothing to revert to, and its re-run is the
+way out. From its sql-drop until its dispatcher is back the revert marks
+itself started (`markers/revert-db.started`); while that mark stands the
+db-import route refuses, dry run included, naming the revert, whose re-run
+ends it.
+
 With each site DB go the database users the import made for it: the
 import records which rows of the site's user (at `localhost` and `%`) it
 found missing and made, beside its state, and only those are dropped,
@@ -1148,19 +1210,31 @@ does not own stays, and the run says why. An import made before this
 release recorded no users, so a revert of it leaves them for the
 operator to drop by hand once nothing else uses them.
 
+A user kept so stays in the import's record. Every later revert and
+`--reset-sites` reads the whole record, not only the users of the
+databases they drop, and so does
+`aegir2boa-stage2 import --account <oN> --drop-made-users` (dry, then
+`--live`), which drops nothing else: a kept user goes once its database
+is gone and nothing keeps it any more, and stays with its database while
+that stands. `boa cleanup purge` runs `--drop-made-users` before it parks
+the account's state, so a kept user goes at the latest with the account,
+unless the master, another account or another box still uses it, which
+then owns it.
+
 ### Monitoring a migration
 
 ```sh
   aegir2boa-stage2 status                       # on source: route, markers, per-site [P E T X] + live HTTP
-  aegir2boa-stage2 target-status --account o1   # on target: route, freeze state, step markers
+  aegir2boa-stage2 target-status --account o1   # on target: route, freeze state, failover hold, step markers
 ```
 
 Source state lives under `/var/aegir/log/a2b/` (state, manifests, per-site
 markers), its dumps under `/var/aegir/src/a2b/`. Target state lives under
 `/var/backups/a2b/<oN>/`, root-only and outside the account's tree:
 `state/` and `markers/`, the held-aside dispatcher, the landed dumps,
-manifests and reference copies in `src/`, and the pre-import snapshot and
-baselines in `undo/`. A crashed run's stale lock
+manifests and reference copies in `src/`, the pre-import snapshot and
+baselines in `undo/`, and on a promoted standby the `failover-hold` its
+active carried there. A crashed run's stale lock
 (`/var/run/aegir2boa-stage2.*.lock`) is taken over automatically once its
 recorded pid is dead.
 
@@ -1178,7 +1252,9 @@ account's dispatcher on the box (the same file with this account's
 its next Octopus upgrade rewrites the dispatcher. `--revert-db-import`
 never loads a snapshot left there: it stops and names
 `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql`, where the operator may
-place that snapshot after checking it.
+place that snapshot after checking it. It reaches that stop whenever the
+account's tree holds that release's `log/a2b/markers/dbimport.1.done` or
+the snapshot itself (both tested by name only).
 
 The site databases that release's import loaded are recorded only in its
 markers there, so a revert or `--reset-sites` does not drop them: it
@@ -1236,8 +1312,10 @@ deliberately:
 | `create` waits forever | another Octopus operation on the target; it times out at 30 min with a warning — verify quiescence manually before `import` |
 | `export` skips a site | the printed reason (missing vhost/alias, multi-host DB, bad creds, missing cert files, headroom); fix or accept, re-run |
 | dump fails mid-export | the 503 stub STAYS up (consistency over uptime); `revert --site <dom>` to unpause |
-| `import` (db-import) fails mid-run | dispatcher stays held on purpose; fix and re-run `import` (steps are idempotent), or `--revert-db-import` |
-| `import` or `--revert-db-import` dies: freeze marker already present | another run of the account is live, or one was killed outright and left its freeze. On a target armed for the web group the same operation's re-run takes over a dead freeze of its own once nothing of the killed run is left (its process group, a holder of its state, a connection to the panel's database; the error names the check that refused), and BOA clears a killed import's freeze a day later (the panel stays switched off, a daily mail names the account). Otherwise make sure no `aegir2boa-stage2` runs for the account, remove `log/proxied.pid`, and re-run |
+| `import` (db-import) fails mid-run | dispatcher stays held on purpose; fix and re-run `import` (steps are idempotent), or `--revert-db-import` once its pre-import snapshot is complete (`markers/dbimport.1.done`); before that the revert refuses and the re-run is the way out |
+| `--revert-db-import` fails or is cut off after its sql-drop | its started mark (`markers/revert-db.started`) stays: re-run the revert; the db-import route refuses while the mark stands |
+| `--revert-db-import` dies: nothing to revert | no import completed its pre-import snapshot since the last revert; an import cut off before it is finished by its re-run (`--route db-import`) |
+| `import` or `--revert-db-import` dies: freeze marker already present | another run of the account is live, or one was killed outright and left its freeze. On a target armed for the web group the same operation's re-run takes over a dead freeze of its own once nothing of the killed run is left (its process group, a holder of its state, a connection to the panel's database; the error names the check that refused, or the other operation when the freeze is that one's), and BOA clears a killed import's freeze a day later (the panel stays switched off, a daily mail names the account and the way out its state allows). Otherwise make sure no `aegir2boa-stage2` runs for the account, remove `log/proxied.pid`, and take the way out the state allows (the table in "import, db-import route") |
 | `transfer` or `import` dies (dry run included): made for another account of the name | `/var/backups/a2b/<oN>/` on the target holds an earlier account's import state (that account removed and made again by hand): move it aside on the target, then re-run `transfer` from the source |
 | site fails its verify/probe on target | it is listed and skipped; `proxy` will refuse it (probe gate) — fix, re-import that site |
 | `proxy` skips a site: HTTP diff | target answers differently than the baseline; re-check the site on the target, or `--accept-http-diff` if the change is expected |
