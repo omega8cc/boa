@@ -11927,14 +11927,14 @@ OWNSH
     _alrt "    xmass prep-target ${_t} --adopt-siteless=${_siteless}$(_xmass_admail_hint)"
   fi
   for _a in ${_moved}; do
-    _alrt "  ${_a} moved on: point its sites at the box it relays to, then retire this box's copy (touch"
-    _alrt "  /data/disk/${_a}/log/CANCELLED, 'boa cleanup detect noscreen', then 'boa cleanup purge ${_a}"
-    _alrt "  noscreen'); ${_t} keeps its relay files only with _XMASS_ALLOW_TARGET_ONLY=YES on the"
-    _alrt "  re-run, and serves nothing once it is this pair's standby"
+    _alrt "  ${_a} moved on: point its sites at the box it relays to, then retire it on both boxes of"
+    _alrt "  this pair (touch /data/disk/${_a}/log/CANCELLED, 'boa cleanup detect noscreen', then"
+    _alrt "  'boa cleanup purge ${_a} noscreen', here and on ${_t}); a relay kept on ${_t} serves"
+    _alrt "  nothing while it is this pair's standby, and its panel does not survive the init"
   done
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
-         " nothing was changed there. Move such an account out of the way on ${_t},${_moved:+ retire here the copy of one that moved on,}" \
+         " nothing was changed there. Move such an account out of the way on ${_t},${_moved:+ retire one that moved on as said above,}" \
          " or mark the ones that really are this migration's, then re-run prep-target"
   fi
   return 0
