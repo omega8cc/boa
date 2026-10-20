@@ -55,8 +55,8 @@ by the BOA install and upgrade tools exclusively.
 
   Converted to _MYSQLADMIN_MONITOR=YES in /root/.barracuda.cnf -- the variable
   is the supported switch; the file stays honoured for one release. Logs the
-  output of `mysqladmin proc` in /var/log/boa/mysqladmin.monitor.log every 15
-  seconds. Absence is the ACTIVE state: it turns slow_query_log off on the
+  output of `mysqladmin proc` in /var/log/boa/mysqladmin.monitor.log on every
+  pass of the MySQL watchdog, several times a minute. Absence is the ACTIVE state: it turns slow_query_log off on the
   running server and deletes both that monitor log and the slow-query log. To
   switch it off during the transition, set the variable to NO *and* remove the
   file -- while the file exists it wins and is re-asserted on every pass.
@@ -64,17 +64,19 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.fast.cron.cnf
 
   This file, if exists, allows to speed up the Ægir tasks and sites cron queues
-  on all hosted Octopus instances, so instead of runing every minute, it will
-  run every 10 seconds. Note that while it may be handy during development,
-  it will cause higher system load, even with its built-in prevention from
-  running more than two concurrent queues, so it is not recommended to use on
-  production systems.
+  on all hosted Octopus instances, so instead of running once a minute, the
+  queue runner makes ten passes a minute, five seconds apart. Note that while
+  it may be handy during development, it will cause higher system load, even
+  with its built-in bound of eight concurrent runner passes, so it is not
+  recommended to use on production systems.
 
  @=> /root/.force.drupalgeddon.cnf
 
-  This file, if exists, allows to force running drupalgeddon checks daily
-  on all Octopus instances, even if they are not enabled with instance level
-  control file ~/static/control/drupalgeddon.info
+  RETIRED. This file no longer does anything: no code reads it, nothing reads
+  the instance level ~/static/control/drupalgeddon.info either, and the
+  nightly runs no drupalgeddon check; BOA.sh.txt removes a leftover copy. The
+  drupalgeddon Drush extension stays installed for a check run by hand. An
+  existing file is harmless and can be deleted at leisure.
 
  @=> /root/.force.sites.verify.cnf
 
@@ -489,7 +491,7 @@ by the BOA install and upgrade tools exclusively.
 
   Recommended if you have an extremely busy site(s) hosted. It prevents
   the Speed Booster (Nginx) cache cleanup (for entries older than 1 day),
-  which happens hourly. However, even with very busy sites hosted, it will be
+  which graceful.sh runs once a day. However, even with very busy sites hosted, it will be
   very rarely needed, since the cleanup procedure has been improved
   to not cause load spikes, even under "Giant Traffic" pressure.
 
@@ -522,7 +524,8 @@ by the BOA install and upgrade tools exclusively.
   supported switch; the file stays honoured for one release; off = NO *and*
   remove the file.
 
-  Without this file the system will run 'chmod 700 /home/*' every 5 minutes.
+  Without this file the system will run 'chmod 700 /home/*' every three
+  minutes, from manage_ltd_users.sh.
 
  @=> /root/.my.batch_innodb.cnf
 
