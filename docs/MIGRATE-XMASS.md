@@ -620,18 +620,23 @@ What it does, in order:
    credentials. Already-installed accounts are re-seeded, not re-installed.
 
    An account of the same name that the target relays, or is moving, to
-   another box (its `log/proxied.pid` with no source-role record naming one
-   of this box's addresses, a source-role `log/migproxy.cnf` naming another
-   box, or either unreadable) is refused first, whatever else holds: it left
-   this pair (`xoct` moved it on), and this box's copy is from before that
-   move, so a create would re-seed it and the sync would put that copy over
-   its relay.
+   another box (a source-role `log/migproxy.cnf` naming another box, or a
+   `log/proxied.pid` with no record naming this box) is refused first,
+   whatever else holds: a create would re-seed it and the sync would put
+   this box's copy over its relay. A record naming no peer (a `proxy-mode`
+   pin) counts only beside a `proxied.pid`, and an aegir2boa import frozen
+   there is no relay; a relay that cannot be read is refused, to be checked
+   on the target.
 
-   Point its sites at the box it relays to, then retire it on
+   When this box's create marker of the account names the target (or, with
+   none here, the target's names this box), this box's copy is from before
+   that move: point its sites at the box it relays to, then retire it on
    both boxes of the pair (its `log/CANCELLED`, `boa cleanup detect`, then
-   `boa cleanup purge <oN>`, here and on the target): a relay kept on the
+   `boa cleanup purge <oN>`, here and on the target). A relay kept on the
    target serves nothing while it is the pair's standby, and its control
-   panel does not survive the `init`.
+   panel does not survive the `init`. Otherwise nothing ties the two
+   (another client's account, or the newer copy of a chained move): check on
+   the target whose it is, and move it out of the way there.
 
    Otherwise an account of the same name that the target already holds is
    this migration's only when one of these is true, checked once the target
@@ -2223,7 +2228,8 @@ read-back proves the target is still a replica — **thaws the write freeze
 itself** and puts the phase back at `syncing`, so retrying is a fresh DRY,
 then `--live`. When the event scheduler step 6 stopped could not be started
 again, the phase stays `cutover` and the run says so: once it runs, `xmass
-reset-phase syncing`, a fresh DRY, then `--live`.
+reset-phase syncing` (which refuses while it still will not start), a fresh
+DRY, then `--live`.
 
 A refusal at step 12
 or later (and a step-8 failure whose promotion actually committed) parks
