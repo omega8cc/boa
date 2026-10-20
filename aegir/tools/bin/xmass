@@ -8461,8 +8461,14 @@ _xmass_restore_hint() {
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
-  local _oct _held=""
+  local _oct _held="" _away
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # One this box relays to another box (a single-account move made
+    # before this cutover) holds nothing local to gate and is no part of it.
+    if _away=$(_xmass_relays_elsewhere "${_oct}"); then
+      _info "  ${_oct}: relays to ${_away}, not this pair's target -- left as it is"
+      continue
+    fi
     # An account already converted to the relay has no PHP left to gate on
     # its relayed sites: writing the account gate there would be inert and
     # the closing line below a lie. What it may still hold locally are the
@@ -8846,7 +8852,7 @@ _xmass_convert_source_to_proxy() {
   #   whole  the single pass of the rename-first order: everything at once,
   #          redirects included.
   local _pass="${1:-whole}"
-  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn=""
+  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn="" _away
   if [ "${_pass}" = "relay" ]; then
     _info "Converting the source accounts to relay the client-domain sites via xoct ..."
     _XMASS_PROXY_CONV_FAILED=""
@@ -8883,6 +8889,12 @@ _xmass_convert_source_to_proxy() {
       if [ -z "${_XMASS_ADMAIL}" ] && [ -e "/data/conf/xoct_admail.${_oct}.txt" ] \
         && [ "$(_mig_get "/data/disk/${_oct}/${_MIG_CNF_NAME}" _MIG_PEER_IP)" != "${_tgt}" ]; then
         _info "  ${_oct}: an xoct canary still in its test run; leaving as is"
+        continue
+      fi
+      # Moved to another box before this cutover: nothing of it was
+      # deferred here, and its relay is not this pair's to repoint.
+      if _away=$(_xmass_relays_elsewhere "${_oct}"); then
+        _info "  ${_oct}: relays to ${_away}, not this pair's target -- left as it is"
         continue
       fi
       # Already relaying: the repair pass converts what was deferred and
@@ -10637,6 +10649,28 @@ _xmass_promoted_here_said() {
 # most 64 KiB; nothing otherwise. log/ is the account's.
 _xmass_rootread_here() {
   perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
+}
+
+# An account $1 this box relays to a box other than this cutover's target
+# ($_tgt): a single-account move made before it, its own record (root's,
+# read without following a link) of the source role with this box as its
+# host naming that other box. It is no part of the pair's switch, as go-live
+# and the hand path's scope already treat it: the switch neither gates its
+# sites named under this box's hostname nor repoints its relay (xoct refuses
+# that without --retarget, which would aim it at the mirror's stale copy).
+# Prints that box; status 1 for any other account, a record it cannot read
+# included.
+_xmass_relays_elsewhere() {   # 1 = account
+  local _l="/data/disk/$1/log" _rec _hip _rp _mine
+  [ -e "${_l}/proxied.pid" ] || return 1
+  _rec=$(_xmass_in_real_dir "${_l}" _xmass_rootread_here migproxy.cnf)
+  printf '%s\n' "${_rec}" | grep -qx '_MIG_ROLE=source' || return 1
+  _hip=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+  _rp=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+  _mine=$(hostname -I 2> /dev/null | tr ' ' '\n' | grep -v '^$')
+  [ -n "${_hip}" ] && printf '%s\n' "${_mine}" | grep -qxF -- "${_hip}" || return 1
+  [ -n "${_rp}" ] && [ "${_rp}" != "${_tgt}" ] || return 1
+  printf '%s' "${_rp}"
 }
 
 # Which part of the hand path's cleanup the account $1 takes, from root's
