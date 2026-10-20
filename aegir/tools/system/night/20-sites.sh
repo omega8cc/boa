@@ -428,14 +428,20 @@ _ghost_seen_reset_acct() {
 
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
-# or a step marker of the import stands with neither its done marker nor
-# the marker of its hand-back (written right before the import returns the
-# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
-# state, and so does a state recorded for another account of the name (its
-# uid, or its home's inode or birth time, not the account's now; a birth
-# time either side does not know is not compared). The record's first line
-# is read whether or not a newline ends it; an empty record, or none, is
-# the account's own. One text wherever it is defined.
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
 _a2b_import_unfinished() {
   local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
   case "${1}" in
@@ -451,7 +457,11 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
   [ -e "${_b}/markers/dbimport.12.done" ] && return 1
   for _m in "${_b}"/markers/dbimport.*.done; do
@@ -2695,6 +2705,15 @@ _cleanup_ghost_platforms() {
   # (a Composer D8+ docroot without a top-level profiles/ would be mis-flagged).
   if [ -n "$(_detect_real_docroot "${_Plr}")" ] || [ -e "${_Plr}/vendor" ]; then
     _ghost_seen_reset_acct "${_gh_mark}"
+    return
+  fi
+  # A control panel an aegir2boa db-import left half made, on a box armed
+  # for the web group: a platform of it with no docroot may be one the
+  # import placed and has not verified yet, so none is counted towards a
+  # move or moved aside as a ghost until the import is finished or undone.
+  if _a2b_import_unfinished "${_HM_U}" \
+    && [ -s /etc/boa/control/instgrp-web-arm.ready.txt ]; then
+    echo "NOTE: ${_HM_U}: an aegir2boa db-import is unfinished; no ghost platform moved on its half-made panel (${_Plr})"
     return
   fi
   # Ghost candidate: require it across consecutive nights before acting, then the

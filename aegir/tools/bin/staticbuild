@@ -163,6 +163,7 @@ _PHP_84="/opt/php84/bin/php"
 _PHP_83="/opt/php83/bin/php"
 _PHP_82="/opt/php82/bin/php"
 _PHP_81="/opt/php81/bin/php"
+_PHP_80="/opt/php80/bin/php"
 _PHP_74="/opt/php74/bin/php"
 _PHP_73="/opt/php73/bin/php"
 _PHP_DISTRO="${_PHP_85}"                         # farm/cms/culturas/commerce/localgov/thunder
@@ -182,11 +183,15 @@ _PHP_CORE_12="${_PHP_85}"                        # Drupal 12 and later: their ge
 # A legacy line builds under the newest installed interpreter of those its lock
 # accepts on a full resolve (the Drush require is one), newest first; a server with
 # none of them skips the line. Drupal 8.9's Twig 1 and Symfony 3.4 stop at PHP 7.4;
-# Drupal 9.5's lock pins laminas-diactoros 2.14, which stops at 8.2, and Drush 11
-# starts at 7.4. The vendor code is the same whichever of them resolves it, and the
-# platform sites run on is theirs to pick (the catalogue caps Drupal 9 at 8.3).
+# Drupal 9.5's lock pins laminas-escaper 2.9, laminas-feed 2.17 and laminas-stdlib
+# 3.11, which stop at 8.1, and Drush 11 starts at 7.4. The 9.5 line's Drush require
+# resolves for PHP 7.4 (_PHP_RESOLVE_9, composer's platform.php) whichever of them
+# runs it: resolved for 8.0 or 8.1, Drush 11 takes Symfony 6 parts that refuse 7.4,
+# the PHP a site upgraded from Drupal 8 arrives on. The PHP sites run on is theirs
+# to pick from there (the catalogue caps Drupal 9 at 8.3).
 _PHP_CORE_8="${_PHP_74} ${_PHP_73}"
-_PHP_CORE_9="${_PHP_82} ${_PHP_81} ${_PHP_74}"
+_PHP_CORE_9="${_PHP_81} ${_PHP_80} ${_PHP_74}"
+_PHP_RESOLVE_9="7.4.0"
 
 # farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
 _FARM_REPO="farmOS/farmOS"
@@ -352,7 +357,8 @@ _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/E
 # still on it can be rehearsed through its upgrade on a BOA server: no new catalogue
 # platform comes from them (DL9 excepted), a tester registers the tarball. Each line
 # builds under the PHP its sites run on (_core_php) with the Drush line of its day
-# (_core_drush_spec); a server without that PHP skips the line with a row note.
+# (_core_drush_spec); a server without that PHP skips the line with a row note, and a
+# line whose Drush require fails is a failed build, never published without it.
 # Their advisories stay, as the other legacy cores' do. Empty builds none.
 _CORE_LEGACY="8.9 9.5"
 # Pre-release cores of the next major, as exact versions: a minor resolves to stable
@@ -1660,6 +1666,14 @@ _core_php_choices() {
   esac
 }
 
+_core_resolve_php() {
+  # $1 = a core line. The PHP version its Drush require resolves for (composer's
+  # platform.php), or nothing: the interpreter it runs under.
+  case "${1%%.*}" in
+    9) printf '%s\n' "${_PHP_RESOLVE_9}" ;;
+  esac
+}
+
 _core_php() {
   # $1 = a core line. The interpreter it builds under: the first installed of its
   # choices, else the first choice (not executable: the caller skips or fails).
@@ -2140,8 +2154,10 @@ build_cores() {
   # drush, audit for the record (never fatal). Named from the detected core version.
   # Drupal 12 and later build under _PHP_CORE_12, and a failed drush require fails
   # such a line: BOA cannot run a platform of theirs without its own Drush. The
-  # _CORE_LEGACY lines build first, each under its own PHP and Drush line; one
-  # whose interpreter this server lacks is skipped, any other line fails.
+  # _CORE_LEGACY lines build first, each under its own PHP and Drush line, the 9
+  # line's require resolved for _PHP_RESOLVE_9; one whose interpreter this server
+  # lacks is skipped, any other line fails, and so does one whose Drush require
+  # fails: the line is built for its Drush.
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
   if [[ -z "${_minors}" ]]; then
@@ -2165,7 +2181,7 @@ build_cores() {
   else
     _alrt "cores: supported_branches not read from drupal.org; drupal-supported.txt not written"
   fi
-  local _m _wd="${_DAY_DIR}/.build.core" _core _spec _php _drush
+  local _m _wd="${_DAY_DIR}/.build.core" _core _spec _php _drush _res
   for _m in ${_lines}; do
     _tail_mark
     if [[ "${_m}" == *-* ]]; then
@@ -2187,9 +2203,15 @@ build_cores() {
       _record_fail "drupal-${_m}"
       continue
     fi
+    _res="$(_core_resolve_php "${_m}")"
+    if [[ -n "${_res}" ]] && ! _run_as_o8 "cd '${_wd}' && composer config platform.php '${_res}'"; then
+      _record_fail "drupal-${_m} (platform pin failed)"
+      _run_as_o8 "rm -rf '${_wd}'"
+      continue
+    fi
     local _nodrush=""
     if ! _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "${_m}")"; then
-      if _core_from_12 "${_m}"; then
+      if _core_from_12 "${_m}" || _core_legacy "${_m}"; then
         _record_fail "drupal-${_m} (drush require failed)"
         _run_as_o8 "rm -rf '${_wd}'"
         continue
