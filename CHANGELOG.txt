@@ -31,10 +31,10 @@
       place now stays home; one whose platform is missing still travels.
 
     * Provision's fast import stops before loading anything when the dump
-      holds a stored routine made under ANSI_QUOTES with no SQL mode line
-      before it (a dump taken before BOA kept each object's own mode):
-      myloader failed it with ERROR 1064 and left the database half
-      loaded. The task log names the routines.
+      its Migrate or Clone just made holds a stored routine made under
+      ANSI_QUOTES with no SQL mode line before it (the mode step after the
+      dump failed): myloader failed it with ERROR 1064 and left the
+      database half loaded. The task log names the routines.
 
     * xoct named an account an unfinished aegir2boa import froze "already
       migrated", so a standby's preparation on that box failed without

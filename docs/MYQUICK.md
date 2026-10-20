@@ -91,7 +91,7 @@ A dump taken before this keeps the file's one mode for every object. When an obj
 
 Such a dump holding a routine made under `ANSI_QUOTES` (its name in double quotes) cannot be loaded by `myloader` as it stands: the routine fails with `ERROR 1064` under the file's one mode, and `myloader` stops with the database half loaded. Its own mode cannot be read from the dump, and a guessed one would change what the routine does (whether `||` concatenates, what an insert in it refuses).
 
-So Provision's fast import stops before it loads anything and names the routines; restore a backup taken since, or load that dump by hand as root with each routine's own `SET SQL_MODE` line put before it.
+Load such a dump by hand as root with each routine's own `SET SQL_MODE` line put before it. Provision's fast import, which loads only the dump its own Migrate or Clone just made, meets one only when the mode step after that dump failed: it stops before it loads anything, names the routines, and the task can run again once that step works (the dump's own warning says why it failed).
 
 The fast import of a Migrate or of a dump-less Restore gives every view, trigger, routine and event to the site's new database user (`--replace-definer`), as the classic dump path does by loading as that user. Kept as they were, they would name the source database's user, which the task drops when it finishes, and fail from then on. A `myloader` without `--replace-definer` (the 0.19.3 line) loads the tables and views and leaves the triggers, routines and events out; the task log says so.
 
