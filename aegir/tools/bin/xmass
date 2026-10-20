@@ -11684,7 +11684,11 @@ _xmass_create_src_host() {
 }
 
 ### Which eligible accounts the target $1 already holds, and whether each is
-### this migration's to take. A held account goes on only when:
+### this migration's to take. One the target relays, or is moving, to
+### another box is refused first, whatever else holds: it left this pair
+### (xoct moved it on), and this box's copy is from before that move, so a
+### create would re-seed it and the sync would put that copy over its relay.
+### Otherwise a held account goes on only when:
 ###   - a create marker there names this box and the account, and the uid and
 ###     /data/disk/<oN> it records are the account's now (xoct create then
 ###     re-seeds it: this migration made it);
@@ -11708,7 +11712,7 @@ _xmass_create_src_host() {
 ### --adopt puts the marker for each. Read-only on the target.
 _xmass_target_owner_gate() {
   local _t="$1" _h _a _rmt _out _nu _ni _mh _mo _mu _mi _held _inv _vh _lnk
-  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless=""
+  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless="" _away _moved=""
   _XMASS_ADOPT_ACCOUNTS=""
   if ! _h="$(_xmass_create_src_host)"; then
     _die "this box's hostname -f is not a hostname the create marker can name;" \
@@ -11844,6 +11848,13 @@ OWNSH
         continue
       ;;
     esac
+    if _away=$(_xmass_target_moved_on "${_out}" "${_mine}"); then
+      _deny="${_deny} ${_a}"
+      _moved="${_moved} ${_a}"
+      _alrt "DENY: ${_a}: ${_t}'s ${_a} relays, or is moving, to ${_away} (its log/proxied.pid, its source-role"
+      _alrt "DENY: record): it left this pair, and this box's ${_a} is a copy from before that move"
+      continue
+    fi
     # The account's uid and directory as they are now come first in the
     # output, so a first match can only take these real values.
     _nu=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
@@ -11915,6 +11926,11 @@ OWNSH
     _alrt "  a site-less account checked by hand as this migration's to take is adopted with:"
     _alrt "    xmass prep-target ${_t} --adopt-siteless=${_siteless}$(_xmass_admail_hint)"
   fi
+  for _a in ${_moved}; do
+    _alrt "  ${_a} moved on: once the box it relays to serves it, retire this box's copy (touch"
+    _alrt "  /data/disk/${_a}/log/CANCELLED, 'boa cleanup detect noscreen', then 'boa cleanup purge ${_a}"
+    _alrt "  noscreen'); ${_t}'s relay stays only with _XMASS_ALLOW_TARGET_ONLY=YES on the re-run"
+  done
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
          " nothing was changed there. Move such an account out of the way on ${_t}," \
@@ -12062,6 +12078,31 @@ _xmass_create_marker_here() {
     timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null \
       | grep '^_MIG_CREATE_'
   fi
+}
+
+### Whether the target's account relays, or is moving, to a box other than
+### this one, from the probe output $1 ($2 = this box's addresses), by the
+### probe's first print of each relay key: a source-role record naming
+### another box, a proxied.pid with no such record naming this box, or
+### either unreadable. Status 0 then, the peer read printed (? unknown);
+### status 1 for no relay at all or one to this box (the relay proof's).
+_xmass_target_moved_on() {
+  local _rp _rr
+  _rp=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PID=' | cut -d= -f2-)
+  _rr=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PEER=' | cut -d= -f2-)
+  case "${_rp}" in
+    NO|YES) : ;;
+    *) echo "?"; return 0 ;;
+  esac
+  if [ -z "${_rr}" ]; then
+    [ "${_rp}" = "YES" ] && { echo "?"; return 0; }
+    return 1
+  fi
+  if [ "${_rr}" != "?" ] && printf '%s\n' ${2} | grep -qxF -- "${_rr}"; then
+    return 1
+  fi
+  echo "${_rr}"
+  return 0
 }
 
 ### Whether the target's account $1 is this pair's own, from the target's
