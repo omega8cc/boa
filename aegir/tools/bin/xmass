@@ -11933,7 +11933,7 @@ OWNSH
   done
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
-         " nothing was changed there. Move such an account out of the way on ${_t}," \
+         " nothing was changed there. Move such an account out of the way on ${_t},${_moved:+ retire here the copy of one that moved on,}" \
          " or mark the ones that really are this migration's, then re-run prep-target"
   fi
   return 0
