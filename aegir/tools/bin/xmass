@@ -11748,9 +11748,10 @@ printf 'PAIR_TARGET_IP=%s\nPAIR_PHASE=%s\nPAIR_INIT_EPOCH=%s\n' "${_pt}" "${_pp}
 # in any form (? when its log/ is not a real directory; FREEZE when it is
 # root's and says an aegir2boa import of the account is frozen there, which
 # is no relay), and the peer of its source-role record of root's (? when a
-# record is there that cannot be read so, or names no peer). The pair's
-# state names the box, not each account: an account that box moved on is no
-# copy of this one. Both keys, even when empty.
+# record is there that cannot be read so; empty for one naming no peer, a
+# proxy-mode pin xoct writes before any move). The pair's state names the
+# box, not each account: an account that box moved on is no copy of this
+# one. Both keys, even when empty.
 _L="/data/disk/${_A}/log"
 _isthere() { [ -e "./${1}" ] || [ -L "./${1}" ]; }
 _rpid=NO
@@ -11767,7 +11768,6 @@ if _xmass_in_real_dir "${_L}" _isthere migproxy.cnf; then
     _rpeer='?'
   elif printf '%s\n' "${_rrec}" | grep -qx '_MIG_ROLE=source'; then
     _rpeer=$(printf '%s\n' "${_rrec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
-    [ -n "${_rpeer}" ] || _rpeer='?'
   fi
 fi
 printf 'PAIR_RELAY_PID=%s\nPAIR_RELAY_PEER=%s\n' "${_rpid}" "${_rpeer}"
@@ -12101,15 +12101,14 @@ _xmass_create_marker_here() {
 ### pin, set per account or by 'xoct proxy-mode --all') or one that cannot
 ### be read counts only beside a proxied.pid. Status 0 then, the peer read
 ### printed (? unknown); status 1 for no relay at all, one to this box (the
-### relay proof's) or an aegir2boa import frozen there (FREEZE: the other
-### proofs decide, as before).
+### relay proof's) or an aegir2boa import frozen there with no record naming
+### another box (FREEZE: the other proofs decide, as before).
 _xmass_target_moved_on() {
   local _rp _rr
   _rp=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PID=' | cut -d= -f2-)
   _rr=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PEER=' | cut -d= -f2-)
   case "${_rp}" in
-    NO|YES) : ;;
-    FREEZE) return 1 ;;
+    NO|YES|FREEZE) : ;;
     *) echo "?"; return 0 ;;
   esac
   if [ -z "${_rr}" ] || [ "${_rr}" = "?" ]; then
@@ -12124,25 +12123,58 @@ _xmass_target_moved_on() {
 }
 
 ### Whether the create markers tie the target's account $1 to this box's
-### ($2 = the name this box's markers carry, $3 = the probe output): this
-### box's own marker of the account names the target (this copy came from
-### there, before the move), or, when this box has none, the target's names
-### this box. A marker here naming another box is no tie: this copy came
+### ($2 = the name this box's markers carry, $3 = the probe output), by the
+### proofs' own tests, so a marker left from an earlier account of the name
+### ties nothing: this box's marker of the account names the target and
+### still names this box's account user ID and directory, and the target's
+### account was born before it was put (this copy came from there, before
+### the move); or, with no marker here, the target's names this box and the
+### account as they are there now, and this box's account was born before
+### it was put. A marker here naming another box is no tie: this copy came
 ### from elsewhere, maybe after the move (a chained one). Only the moved-on
 ### refusal's advice reads it: an account nothing ties may be another
-### client's, or the live one.
+### client's, or the live one. A birth time a filesystem does not keep (0)
+### is not compared, as in the proofs.
 _xmass_target_tied() {
-  local _a="$1" _h="$2" _out="$3" _th _m _mh
-  _th=$(printf '%s\n' "${_out}" | grep -m1 '^TGT_HOST=' | cut -d= -f2-)
+  local _a="$1" _h="$2" _out="$3" _th _m _mh _nu _nl _mu _mi _ms _se _ni _tb _tu _ti _ob
+  _th=$(_xmass_kv "${_out}" TGT_HOST)
   _m=$(_xmass_create_marker_here "${_a}")
-  _mh=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+  _mh=$(_xmass_kv "${_m}" _MIG_CREATE_SRC_HOST)
+  _ni=$(_xmass_kv "${_out}" _MIG_CREATE_NOW_INODE)
   if [ -n "${_mh}" ]; then
-    [ -n "${_th}" ] && [ "${_mh}" = "${_th}" ] \
-      && [ "$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)" = "${_a}" ]
+    _nu=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_UID)
+    _nl=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_INODE)
+    _mu=$(_xmass_kv "${_m}" _MIG_CREATE_TGT_UID)
+    _mi=$(_xmass_kv "${_m}" _MIG_CREATE_TGT_INODE)
+    _ms=$(_xmass_kv "${_m}" _MIG_CREATE_STAMPED)
+    _se=""
+    [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+    _tb="${_ni#*:}"
+    [ -n "${_th}" ] && [ "${_mh}" = "${_th}" ] && [ "$(_xmass_kv "${_m}" _MIG_CREATE_SRC_OCT)" = "${_a}" ] \
+      && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+      && [[ "${_nl}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_nl}" ] \
+      && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] \
+      && { [ "${_tb}" = 0 ] || [ -z "${_ms}" ] || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_tb}" -lt "${_se}" ]; }; }
     return $?
   fi
-  [ "$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)" = "${_h}" ] \
-    && [ "$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)" = "${_a}" ]
+  _nu=$(_xmass_kv "${_out}" _MIG_CREATE_NOW_UID)
+  _tu=$(_xmass_kv "${_out}" _MIG_CREATE_TGT_UID)
+  _ti=$(_xmass_kv "${_out}" _MIG_CREATE_TGT_INODE)
+  _ms=$(_xmass_kv "${_out}" _MIG_CREATE_STAMPED)
+  _se=""
+  [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+  _ob=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_INODE)
+  _ob="${_ob#*:}"
+  [ "$(_xmass_kv "${_out}" _MIG_CREATE_SRC_HOST)" = "${_h}" ] && [ "$(_xmass_kv "${_out}" _MIG_CREATE_SRC_OCT)" = "${_a}" ] \
+    && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_tu}" = "${_nu}" ] \
+    && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_ti}" = "${_ni}" ] \
+    && [[ "${_ob}" =~ ^[0-9]+$ ]] \
+    && { [ "${_ob}" = 0 ] || [ -z "${_ms}" ] || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_ob}" -lt "${_se}" ]; }; }
+}
+
+### The first value of key $2 in the KEY=value lines of $1.
+_xmass_kv() {
+  printf '%s\n' "$1" | grep -m1 "^${2}=" | cut -d= -f2-
 }
 
 ### Whether the target's account $1 is this pair's own, from the target's
