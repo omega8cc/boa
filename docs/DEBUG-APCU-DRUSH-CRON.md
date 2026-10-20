@@ -384,8 +384,9 @@ For any BOA server experiencing the symptoms described in this document, follow 
       see RAM sizing guidance in Issue 1
 - [ ] Disable Drupal core's Automated Cron on all Ægir-managed sites
 - [ ] If drush-based cron is confirmed as a trigger: switch to Ægir's wget-based cron
-- [ ] If wget cron is not completing: increase PHP execution time limits via
-      fpm-pool-common files rather than switching to drush cron — see FAQ.md
+- [ ] If wget cron is not completing: shorten the work, or run the long job from the
+      shell with the site's own Drush (`vdrush`); the 180 s web ceiling cannot be
+      raised, and switching to drush cron is not the answer — see Issue 2
 - [ ] If `local.settings.php` discovery cache override was applied as a workaround:
       revert it once the root cause is resolved
 - [ ] Confirm drush operations are run in the limited shell (`oN.ftp` or a platform
