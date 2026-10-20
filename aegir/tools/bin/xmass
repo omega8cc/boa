@@ -10376,6 +10376,24 @@ _xmass_release_source_events() {
   fi
 }
 
+# A cutover stopped after the freeze but before the promotion (the lag checks
+# of step 7, or step 8 read back as still a replica) has handed this box back
+# writable with its events running, and the pair is as it was: the phase goes
+# back to syncing, as 'xmass reset-phase syncing' would set it. Left at
+# cutover, a state kept from when step 6 held a global read lock, every
+# autosync pass deferred and the mirror's files stood still until an
+# operator ran that line, which no abort message named. Called after the
+# restore hint: the hint reads the phase to tell a pre-freeze abort (whose
+# gate comes down with it) from this one, whose 503 lift stays the
+# operator's.
+_xmass_cutover_back_to_syncing() {
+  _XMASS_PHASE="syncing"
+  _xmass_save_state
+  _alrt "The target was not promoted: the pair is back at phase 'syncing' (the"
+  _alrt "  autosync cadence runs again); re-run the DRY and --live cutover once"
+  _alrt "  the lag holds at zero"
+}
+
 # A promoted box's events: each one its active created after the snapshot
 # arrived replica-side disabled, and a promotion leaves it so; MySQL runs it
 # again only after ALTER EVENT ... ENABLE, which without DEFINER makes root
@@ -15748,6 +15766,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
+      _xmass_cutover_back_to_syncing
       _die "Replica lag not zero after the write freeze on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted; writes thawed"
     fi
@@ -15790,6 +15809,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
+      _xmass_cutover_back_to_syncing
       _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
            "— cutover aborted; writes thawed"
     fi
