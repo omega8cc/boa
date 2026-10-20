@@ -10399,6 +10399,18 @@ _xmass_release_source_events() {
 # gate comes down with it) from this one, whose 503 lift stays the
 # operator's.
 _xmass_cutover_back_to_syncing() {
+  # The scheduler this cutover stopped must be running again first: its
+  # record is the only trace of the stop, and the next cutover's step 6
+  # drops a record it finds with the scheduler off. While the record stays,
+  # the phase stays at cutover, so 'xmass reset-phase syncing' (which tries
+  # the release again) remains the way on, as before.
+  _xmass_release_source_events
+  if [ -e "${_XMASS_EVENTS_OFF_PID}" ]; then
+    _alrt "The target was not promoted, but the event scheduler stopped at step 6 could"
+    _alrt "  not be started again: the phase stays at 'cutover'. Once it starts, run"
+    _alrt "  'xmass reset-phase syncing', then the DRY and --live cutover"
+    return 0
+  fi
   _XMASS_PHASE="syncing"
   _xmass_save_state
   _alrt "The target was not promoted: the pair is back at phase 'syncing' (the"
