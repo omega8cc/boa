@@ -292,7 +292,7 @@ It never touches serving state, so a site's 503 gate is left alone.
 `/var/log/boa/usage` to the target. A Solr index tree that does not fit on
 the target is a **hard stop**, not a skip: each Solr home is checked for space
 and inodes before its rsync and a failure refuses the run non-zero ("refusing to
-migrate without its search indices") — free space or inodes on the target and
+migrate o1 without its search indices") — free space or inodes on the target and
 re-run, rather than discovering an index-less account later.
 
 `create`, `export` and `pretransfer` read the account's client address
@@ -1100,7 +1100,7 @@ too small — and never uses a blanket `rsync --copy-links`:
 Each placement must fit in space **and in inodes**: every file takes an inode, and a
 filesystem out of them fails every write with `No space left on device` while
 `df -h` still shows room. The copy must leave 2% of the target's inodes, at least
-50,000, free. The source's files are counted with `du -s -l --inodes` only when the
+50,000, free. The source's files are counted with `du -s -l -H --inodes` only when the
 inodes in use on its own filesystem would not already fit. A store that fits on
 neither placement is a `DENY` naming why, for example
 `does not fit on target mount (<mount>: <n> files and <H> inodes kept free, <F> inodes free (df -i)) nor root (<root>: ...)`.
