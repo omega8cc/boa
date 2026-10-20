@@ -834,6 +834,10 @@
       the removal loaded that alias first and died on the missing
       platform. The file is now removed directly.
 
+    * The nightly's parallel account fan-out no longer waits forever when
+      _NIGHT_MAX_PARALLEL is 0, a fraction or a word: such a value means
+      one slot, and a leading zero no longer reads as octal.
+
 @=> Security
 
     * autosymlink prints every log line as one line: a control byte in a
