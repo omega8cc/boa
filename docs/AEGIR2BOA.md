@@ -928,6 +928,24 @@ hand), the cutover's rename of the account refuses, the passes keep its
 panel switched off there as on the old box, and the worker there names it
 once a day.
 
+The promotion also leaves the account's web group as it was (`instgrp`
+counts the hold as it counts a migration's freeze, and `--force` overrides
+either) and does not rewire its panel, which is still the vanilla one the
+cut-off import left: the route run again brings it.
+
+While the import is unfinished on the active, a sync sends none of the
+account's vhosts (it names the freeze; the sites are still served by the
+vanilla source), and `xmass pre-mig` and `xmass prep-target` refuse that box
+(the latter's account creation names the import's freeze): a pair is
+prepared only once every import there is finished or reverted, so the hold
+covers a pair that stood before the import.
+
+A cutover refuses the same way (its DRY run as a DENY) while the import of
+an account it carries is unfinished: it would promote the target and then
+stop at the panel rewire. `xmass restore-target` removes the holds the
+active carried (`failover-hold`) before it hands a standby back as a plain
+box, so that box holds none of the other box's imports.
+
 An import on the promoted box ends the hold when it reaches its hand-back; a revert there leaves it standing (the snapshot it
 restores is of the panel the failover carried) and sets the dumps it
 transferred aside (`src.reverted.<time>`), so the way out named is the
@@ -1249,12 +1267,18 @@ db-import or `--revert-db-import` restores dispatch and
 `/var/xdrago/run-<oN>` is missing, the tool rebuilds it from another
 account's dispatcher on the box (the same file with this account's
 `_H_USER` line), or alerts that dispatch for the account stays off until
-its next Octopus upgrade rewrites the dispatcher. `--revert-db-import`
-never loads a snapshot left there: it stops and names
-`/var/backups/a2b/<oN>/undo/a2b-pre-import.sql`, where the operator may
-place that snapshot after checking it. It reaches that stop whenever the
-account's tree holds that release's `log/a2b/markers/dbimport.1.done` or
-the snapshot itself (both tested by name only).
+its next Octopus upgrade rewrites the dispatcher.
+
+`--revert-db-import` never loads a snapshot left there. With nothing under
+root's `undo/`, it stops at that release's snapshot
+(`undo/a2b-pre-import.sql` in the account's tree, tested by name only) and
+names `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql`: after checking it,
+place the snapshot there (root's, directory 0700, file 0600) with its step 1
+marker `/var/backups/a2b/<oN>/markers/dbimport.1.done` beside it, and run
+the revert again. A snapshot placed without its marker is refused as nothing
+to revert, the state a completed revert leaves; with that release's
+`log/a2b/markers/dbimport.1.done` alone there is no pre-import snapshot to
+revert to.
 
 The site databases that release's import loaded are recorded only in its
 markers there, so a revert or `--reset-sites` does not drop them: it

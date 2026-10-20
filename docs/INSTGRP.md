@@ -519,6 +519,13 @@ exit 4, unless an operator passes `--force`. A standby box (xmass's
 `/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
 prepared as one) refuses every verb but `webrevert`.
 
+An account an unfinished aegir2boa import holds (`/var/backups/a2b/oN/`
+reading unfinished, the test the octopus wrapper makes) is skipped the same
+way, exit 4 unless `--force` is given, by the web group verbs and by
+`convert` and `reclaim`: a box promoted while an import of the account was
+cut off has the hold `xmass` carried there, never the import's freeze, which
+no standby receives.
+
 ### A group name held outside the account
 
 A group `wg-oN` that an identity outside the account holds too (a member
@@ -1053,10 +1060,13 @@ nothing to revert to), the route run again toward the box when the hold
 came there with a failover (the dumps and the snapshot stayed on the box
 the import ran on), either otherwise.
 
-On the active of an `xmass` pair every pass carries the hold of each
-account whose import reads unfinished to the standby, and takes it back
-once it no longer does; a promotion there leaves the account's dispatcher
-parked on a box armed for the web group (`MIGRATE-XMASS.md`).
+On the active of an `xmass` pair every live pass carries the hold of each
+account whose import reads unfinished, with no run of it live, to the
+standby (an import that runs is left to hand its dispatcher back itself),
+and takes it back once it no longer reads unfinished; a promotion there
+leaves the account's dispatcher parked on a box armed for the web group
+(`MIGRATE-XMASS.md`), and `xmass restore-target` removes the holds the
+active carried before it hands the standby back as a plain box.
 
 Any other marker (one the account made, a relay record reading
 `COMPLETE`, an earlier release's freeze, an aegir2boa freeze beside relay

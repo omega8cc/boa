@@ -3309,9 +3309,37 @@ echo AH-OK" 2> /dev/null)
       _alrt "  ${_t} holds no /root/.standby.cnf: the hold of an unfinished aegir2boa import is carried only onto this box's standby"
       ;;
     *)
-      _alrt "  could not carry the hold of an unfinished aegir2boa import to ${_t}${_put:+ (${_put# })}: a promotion there would hand its half-imported panel the dispatcher"
+      # every live pass asks, for the holds a finished import no longer
+      # needs too: only a hold that could not be put is a promotion's risk
+      [ -n "${_put}" ] \
+        && _alrt "  could not carry the hold of an unfinished aegir2boa import to ${_t} (${_put# }): a promotion there would hand its half-imported panel the dispatcher"
       ;;
   esac
+  return 0
+}
+
+### restore-target hands a standby back as a plain box: the holds of
+### unfinished aegir2boa imports the active carried here (failover-hold, a
+### record of the pair) would count once the marker goes, holding accounts
+### whose imports belong to the other box on a box that was never promoted.
+### Each goes before the marker, its directory with it when it held nothing
+### else, as the carry removes one; any other aegir2boa state here is this
+### box's own and stays.
+_xmass_restore_drop_a2b_holds() {
+  local _r=/var/backups/a2b _d _a
+  [ -d "${_r}" ] && [ ! -L "${_r}" ] || return 0
+  for _d in "${_r}"/*; do
+    _a="${_d##*/}"
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    [ -e "${_d}/failover-hold" ] || [ -L "${_d}/failover-hold" ] || continue
+    if rm -f "${_d}/failover-hold"; then
+      rmdir "${_d}" 2> /dev/null
+      _info "  ${_a}: the hold of an unfinished aegir2boa import the active carried here removed (${_d}/failover-hold)"
+    else
+      _alrt "  ${_a}: ${_d}/failover-hold could not be removed: remove it by hand, or the account stays held here"
+    fi
+  done
   return 0
 }
 
@@ -4956,6 +4984,7 @@ _xmass_restore_target() {
   _info "  the database broker switches the passes carried go; the ones parked with it come back"
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
+  _info "  the holds of aegir2boa imports the active carried here (/var/backups/a2b/<oN>/failover-hold) removed"
   if [ "${_live}" != "YES" ]; then
     _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
     return 0
@@ -4986,6 +5015,7 @@ _xmass_restore_target() {
       sed -i '/xmass-standby-hold/,+2d' "${_cnf}"
     fi
   done
+  _xmass_restore_drop_a2b_holds
   # The web and FTPS "was held" breadcrumbs go with the marker: this box is
   # being handed back as a normal box, and the watchdog reads them whenever
   # the marker is absent. The DROP chain goes FIRST, in the same step: the
@@ -7221,7 +7251,7 @@ _xmass_wg_promoted_here() {
 ### next Octopus pass runs each account again (no arm runs the master),
 ### and instgrp's lines say what this leaves and why.
 _xmass_wg_promoted() {
-  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b
+  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b _left=NO
   if [ "${_h}" = "here" ]; then
     _out=$(_xmass_wg_promoted_here "${_m}" "${_how}")
   else
@@ -7240,7 +7270,14 @@ _xmass_wg_promoted() {
   _info "Web groups on the promoted box (instgrp webconvert all; a large account takes a while, its sites already serve) ..."
   while IFS= read -r _l; do
     case "${_l}" in
-      "XMWO: "*) _info "    ${_l#XMWO: }" ;;
+      "XMWO: "*)
+        _info "    ${_l#XMWO: }"
+        # an account its unfinished aegir2boa import holds (or one frozen for
+        # a migration) is skipped with exit 4, as a busy one is
+        case "${_l}" in
+          *": held by an unfinished aegir2boa import ("*|*": frozen for a migration (log/proxied.pid), skipped"*) _left=YES ;;
+        esac
+        ;;
       XMWP:NOTE:*) _info "  NOTE: ${_l#XMWP:NOTE:}" ;;
       XMWP:ALRT:*) _alrt "  ${_l#XMWP:ALRT:}" ;;
       XMWP:RC:*)
@@ -7248,7 +7285,13 @@ _xmass_wg_promoted() {
         case "${_rc}" in
           0) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: done" ;;
           2|5|6) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc} (some deferred, refused or left in www-data; the lines above say which and why)" ;;
-          4) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends" ;;
+          4)
+            if [ "${_left}" = "YES" ]; then
+              _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (an account held or frozen there is left as it is, or a run is live: the lines above say which)"
+            else
+              _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends"
+            fi
+            ;;
           *) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc}; see /var/log/boa/instgrp.log there" ;;
         esac
         ;;
@@ -7359,11 +7402,17 @@ _xmass_sync_account() {
   # name there can be a link: root copies only from the real directory. The nginx
   # legs go only from the real directory, each directory sent by its own name
   # into the parent, so a link swapped in after the check travels as a link
-  # and is never followed.
+  # and is never followed. aegir2boa's freeze of an import is the same file
+  # (its first line A2B-IMPORT-FREEZE): its vhost.d stays too, as the sites
+  # of an unfinished import are still served by its vanilla source, and is
+  # named for what it is.
   local _ngxW _ngx
   _ngxW="$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_oct}/config/server_master/nginx"
   _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && pwd -P)"
-  if [ -e "${_udir}/log/proxied.pid" ]; then
+  if [ -e "${_udir}/log/proxied.pid" ] \
+    && [ "$(_xmass_in_real_dir "${_udir}/log" _xmass_rootread_here proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]; then
+    _alrt "  ${_udir##*/}: an aegir2boa import of the account is frozen here (log/proxied.pid) -- its vhost.d is NOT synced"
+  elif [ -e "${_udir}/log/proxied.pid" ]; then
     _alrt "  ${_udir##*/}: this box relays the account (log/proxied.pid) -- its vhost.d is NOT synced"
   elif [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/vhost.d" ]; then
     _xmass_warn_daily "nginx_link_${_oct}_vhost.d" "  ${_oct}: nginx/vhost.d or a directory above it is a link -- not followed, not sent"
@@ -10666,6 +10715,20 @@ _xmass_promote_cleanup_here() {
   return 0
 }
 
+# The dispatchers of the accounts here an unfinished aegir2boa import holds,
+# parked as the promotion cleanup parks them (_xmass_a2b_hold_dispatcher),
+# for every account the cleanup would visit.
+_xmass_hold_held_dispatchers_here() {
+  local _root _oct _out
+  for _root in /data/disk/o*; do
+    _oct="${_root##*/}"
+    [[ "${_oct}" =~ ^o[0-9]+$ ]] || continue
+    [ -f "${_root}/log/cores.txt" ] || continue
+    _out=$(_xmass_a2b_hold_dispatcher "${_oct}" 2>&1) && [ -n "${_out}" ] && _info "${_out}"
+  done
+  return 0
+}
+
 # The promotion by hand is over here once its cleanup ran, the panels were
 # rewired and no upgrade stays held: its record goes. Otherwise it stays, and
 # the run says what a later post-mig run still owes.
@@ -10725,6 +10788,13 @@ _xmass_promote_panels_here() {
   _info "Control panels: rewired to their live panel databases where a promotion left them dead ..."
   for _root in /var/aegir /data/disk/o*; do
     [ -f "${_root}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    # an aegir2boa import cut off on the box this one mirrored left its panel
+    # database half-imported (the vanilla panel, no BOA platform path): it
+    # has no live panel to rewire to, and the route run again here brings one
+    if [ "${_root}" != "/var/aegir" ] && _a2b_import_unfinished "${_root##*/}" promoted; then
+      _info "  PANEL-HELD: ${_root}: held by an unfinished aegir2boa import (/var/backups/a2b/${_root##*/}): not rewired; its panel comes with the route run again, as the hold's alarm says"
+      continue
+    fi
     _out=$(_xmass_panel_rewire_sh | bash -s -- "${_root}" "${_me}" 2>&1)
     [ $? -eq 0 ] || _bad="${_bad} ${_root}"
     while IFS= read -r _l; do
@@ -11055,6 +11125,28 @@ _xmass_assert_same_release() {
          " target missing one takes down EVERY migrated site on that box." \
          " Bring ${_fix} up first with a FULL run -- barracuda AND" \
          " octopus, not just one of them -- then re-run this step."
+  fi
+  _die "${_why}"
+}
+
+### An account whose aegir2boa db-import is unfinished here (cut off, a
+### revert of it cut off, or its dispatcher still held) has a half-made
+### panel: a cutover would freeze this box and promote the target, then stop
+### at the panel rewire or the rename with both done. Refused until the
+### import is finished or reverted here. 'die' (the default) refuses, 'deny'
+### reports and marks the DRY run NOT CLEAN.
+_xmass_a2b_cutover_gate() {
+  local _how="${1:-die}" _oct _held="" _why
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[a-z0-9-]+$ ]] || continue
+    _a2b_import_unfinished "${_oct}" && _held="${_held} ${_oct}"
+  done
+  [ -n "${_held}" ] || return 0
+  _why="an aegir2boa import is unfinished here for:${_held} -- finish or revert it here first ('aegir2boa-stage2 target-status --account <oN>' says where it stands): a cutover would promote the target and then stop at its panel rewire"
+  if [ "${_how}" = "deny" ]; then
+    _alrt "DENY: ${_why}"
+    _XMASS_NOT_CLEAN=YES
+    return 1
   fi
   _die "${_why}"
 }
@@ -15382,6 +15474,7 @@ _xmass_cmd_cutover() {
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
     _xmass_webgroup_gate "${_tgt}" deny || true
+    _xmass_a2b_cutover_gate deny || true
     # A hazardous-vintage java.sh on the target would kill the final Solr
     # rsync's own receiver DURING the cutover window -- with the 503 already
     # up and the source's Solr already deny-filed. The fact is known before
@@ -15461,6 +15554,7 @@ _xmass_cmd_cutover() {
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
   _xmass_webgroup_gate "${_tgt}" die
+  _xmass_a2b_cutover_gate die
   # Same consult as the DRY plan, in die mode: the receiver-kill hazard must
   # refuse HERE, at the last free moment, not surface mid-window.
   if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
@@ -15839,6 +15933,11 @@ _xmass_post_mig() {
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
   # it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
+    # A promotion by hand whose cleanup did not run (the box still read as a
+    # replica, or its state could not be read): the dispatcher of an account
+    # an unfinished aegir2boa import holds is parked before the marker goes,
+    # as the cleanup parks it, or the runner the marker held would fire it.
+    [ "${_XMASS_HAND_CLEANED}" = "YES" ] || _xmass_hold_held_dispatchers_here
     # The DROP chain before the breadcrumb that unlocks it: this box is taking
     # direct traffic, and nginx.sh flushes BOA_STANDBY_WEB only while the
     # breadcrumb or the marker is still there.

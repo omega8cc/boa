@@ -904,7 +904,10 @@ What `init` does:
    standby that was never promoted returns to that state with
    `xmass restore-target` (dry by default, `--live` performs it; refused
    while a window is in flight, under a barracuda/octopus run, or on a box a
-   cutover promoted).
+   cutover promoted). It removes the holds of unfinished aegir2boa imports
+   the active carried there (`/var/backups/a2b/<oN>/failover-hold`) before
+   the standby marker goes, so the plain box holds none of the other box's
+   imports.
 
    Cron stays RUNNING for the whole
    window — a standby is a working BOA box, with IDS and every watchdog
@@ -1118,6 +1121,24 @@ again toward it, once the site databases the replication brought from the
 cut-off import are dropped there, since the import's dumps and pre-import
 snapshot stayed on the old box. An import there that reaches its hand-back
 ends the hold.
+
+The promotion leaves the account's web group as it was (`instgrp` counts
+the hold as it counts a migration's freeze) and does not rewire its panel,
+which is still the vanilla one the cut-off import left (`PANEL-HELD` in
+its output).
+
+While the import is unfinished on the active, a sync names the account
+frozen (the import's own `log/proxied.pid`) and sends none of its vhosts,
+as its sites are still served by the vanilla source. `xmass pre-mig`
+refuses that box (the panel's platform in the database differs from its
+alias root), and so does `xmass prep-target` (its account creation names
+the import's freeze): a pair is prepared only once every import there is
+finished or reverted, so the hold covers a pair that stood before the
+import.
+
+A cutover refuses the same way (its DRY run as a DENY) while an import of
+an account it carries is unfinished there: it would promote the target and
+then stop at the panel rewire.
 
 Once the import on the active no longer reads unfinished, any other
 aegir2boa state the standby holds of the account (from a role before this
