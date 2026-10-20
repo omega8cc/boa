@@ -3526,6 +3526,42 @@ _purge_db_user_taken() {
   done
   return 1
 }
+# The database users the account $1's aegir2boa import made that its record
+# (/var/backups/a2b/$1/markers/db-users.<db>) still names: one a revert or
+# a reset kept because something named it then would otherwise outlive the
+# account with nothing owning it. Stage 2 looks at each again under the
+# revert's own rules, its dry run first: dropped once its database is gone
+# and nothing keeps it (the master or another account naming it, the
+# broker's registry giving its name to another account, a row at a host
+# this box does not own), its CREATE USER line and grants saved first; kept
+# with its database while that stands, as the account's other site users
+# are. Run before the state is parked, which the record then goes with.
+_boa_purge_a2b_users() {
+  local _s="/var/backups/a2b/${1}" _t=/opt/local/bin/aegir2boa-stage2 _r _o _rc
+  [ -d "${_s}/markers" ] && [ ! -L "${_s}" ] && [ ! -L "${_s}/markers" ] \
+    && [ ! -L /var/backups/a2b ] || return 0
+  _r=""
+  for _o in "${_s}"/markers/db-users.*; do
+    [ -e "${_o}" ] && _r="${_o}" && break
+  done
+  [ -n "${_r}" ] || return 0
+  if [ ! -x "${_t}" ]; then
+    echo "ALRT: ${1}: the database users its aegir2boa import made (${_s}/markers/db-users.*) are left as they are: aegir2boa-stage2 is not installed here"
+    return 1
+  fi
+  _o=$("${_t}" import --account "${1}" --drop-made-users 2>&1)
+  _rc=$?
+  if [ "${_rc}" = "0" ]; then
+    _o=$("${_t}" import --account "${1}" --drop-made-users --live 2>&1)
+    _rc=$?
+  fi
+  printf '%s\n' "${_o}" | grep -F 'database user' | sed 's/^A2B-S2 \[[^]]*\] [!:=>]* */  /'
+  if [ "${_rc}" != "0" ]; then
+    echo "ALRT: ${1}: the database users its aegir2boa import made are left as they are: ${_o##*$'\n'}"
+    return 1
+  fi
+  return 0
+}
 # The account $1's aegir2boa state (/var/backups/a2b/$1, root's) parked in
 # the purge's own dir $2, beside its migration create marker; under a name
 # of its own when an earlier purge of the name parked one there. A later
@@ -3981,7 +4017,9 @@ _octopus_cleanup() {
           /data/conf/${_usEr}_db_broker.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
-        # So does its aegir2boa import state, beside the create marker.
+        # So does its aegir2boa import state, beside the create marker, once
+        # the database users its import made and still names are looked at.
+        _boa_purge_a2b_users "${_usEr}"
         _boa_purge_a2b_park "${_usEr}" "${_zombie_dir}root"
         # So does its task dispatcher (live, or parked by an update pass):
         # the runner would keep starting tasks as the account's identity

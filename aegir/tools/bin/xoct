@@ -7886,6 +7886,13 @@ _migrate_init() {
       echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
       echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid); re-run then"
       exit 1
+    elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ] \
+      && [ "$(_xoct_read_in "${_USR}/log" proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]; then
+      ### aegir2boa's freeze of an import is the same file: the account is
+      ### not migrated, its import is unfinished here
+      echo "_USR ${_oct} is not eligible for migration: an aegir2boa import of it is frozen here (log/proxied.pid)"
+      echo "INFO: finish or revert that import first ('aegir2boa-stage2 target-status --account ${_RUNTIME_OCT}' says where it stands), then re-run"
+      exit 1
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"
       exit 1
