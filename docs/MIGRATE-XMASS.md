@@ -166,6 +166,13 @@ that aborts earlier in the cutover — a failed transfer, a store that will not
 fit, a replica that never catches up — leaves the phase at `syncing` and is
 recovered by simply re-running the DRY and `--live`.
 
+An abort after the
+freeze but before the promotion (step 7's lag checks, a step-8 failure whose
+read-back proves the target still a replica) thaws the freeze and puts the
+phase back at `syncing` too, so the autosync cadence runs again; it stays
+`cutover` only while the event scheduler step 6 stopped could not be started
+again, and the run says so.
+
 If the phase does end up wrong, use `xmass reset-phase <phase>` rather than
 editing `/data/conf/xmass_state.cnf` by hand. It is a recovery verb and it
 warns about the unsafe transitions:
@@ -612,8 +619,22 @@ What it does, in order:
    values only), force-copies the PHP pin files and carries the client's shell
    credentials. Already-installed accounts are re-seeded, not re-installed.
 
-   An account of the same name that the target already holds is this
-   migration's only when one of these is true, checked once the target
+   An account of the same name that the target relays, or is moving, to
+   another box (its `log/proxied.pid` with no source-role record naming one
+   of this box's addresses, a source-role `log/migproxy.cnf` naming another
+   box, or either unreadable) is refused first, whatever else holds: it left
+   this pair (`xoct` moved it on), and this box's copy is from before that
+   move, so a create would re-seed it and the sync would put that copy over
+   its relay.
+
+   Point its sites at the box it relays to, then retire it on
+   both boxes of the pair (its `log/CANCELLED`, `boa cleanup detect`, then
+   `boa cleanup purge <oN>`, here and on the target): a relay kept on the
+   target serves nothing while it is the pair's standby, and its control
+   panel does not survive the `init`.
+
+   Otherwise an account of the same name that the target already holds is
+   this migration's only when one of these is true, checked once the target
    answers and before it changes at all (before its tools are refreshed and
    before any target-only account is purged):
    - the create marker there names this box and this account, and the user
@@ -1294,8 +1315,14 @@ minutes later. The `distro/` leg leaves that tree, its downloaded tarball and
 any `.stale-*` leftover behind.
 
 The replaced tree `<name>.old` stays behind
-too while a barracuda or octopus run is live; otherwise it travels, because
-after an interrupted run it can be the only copy. A tree the refresh kept
+too while a barracuda or octopus run is live. With no run live it stays
+behind while its platform `distro/NNN/<name>` is there: it is then a spare
+the next pass removes, which a mirror never needs and which, carried, the
+next sync would have to delete again (past 5000 files the delete guard
+stops that sync).
+
+Only an `.old` whose platform is missing travels, because after a run
+stopped between the swap's two moves it is the only copy. A tree the refresh kept
 because it held tenant files, and the tarball records in `.boa-tarball/`,
 travel like any other file.
 
@@ -1737,7 +1764,7 @@ first change to the source):
 | Step | What happens |
 |---|---|
 | Step 0 | Re-hold Solr on target (in case it was manually started since init) |
-| Step 1 | Write `http-off.pid` for all accounts → nginx serves 503 on source; purge speed cache |
+| Step 1 | Write `http-off.pid` for all accounts → nginx serves 503 on source; purge speed cache. An account this box relays to another box (a single-account `xoct` move made before this cutover: its `log/proxied.pid` and a source-role record naming a box other than this cutover's target) gets no gate here and no conversion later: it is left as it is, and the run says so |
 | Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse on a rolled-back source run `xmass restore-solr` -- clearing the deny by hand is **not** enough, see below) |
 | Step 3 | Final rsync: shared data, Solr (now clean — source stopped), all account data |
 | Step 3.5 | **Gate:** abort if any store could not be placed or any transfer failed — before anything destructive |
@@ -1745,7 +1772,7 @@ first change to the source):
 | Step 5 | Final rsync pass of `static/files` only, **before** the write freeze (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
 | Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect. Before the lag checks the **event scheduler** is turned off on the source when it runs (recorded in `/run/boa_xmass_events_off.pid`; every abort before the promotion, the pre-freeze unwind and `reset-phase syncing` start it again; a resumed tail turns it off again after a reboot) |
-| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable |
+| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable and the phase goes back to `syncing` (it stays `cutover` only while the stopped event scheduler could not be started again) |
 | Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
 | Step 9 | Vacant: no lock is held on the source, so nothing is released. The write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
@@ -2193,8 +2220,10 @@ From the freeze onward
 the tool prints the full restore recipe for the source instead; follow it
 rather than doing it from memory. An abort at step 7 — and a step-8 failure whose
 read-back proves the target is still a replica — **thaws the write freeze
-itself**; the phase is `cutover`, so retrying is
-`xmass reset-phase syncing`, a fresh DRY, then `--live`.
+itself** and puts the phase back at `syncing`, so retrying is a fresh DRY,
+then `--live`. When the event scheduler step 6 stopped could not be started
+again, the phase stays `cutover` and the run says so: once it runs, `xmass
+reset-phase syncing`, a fresh DRY, then `--live`.
 
 A refusal at step 12
 or later (and a step-8 failure whose promotion actually committed) parks
