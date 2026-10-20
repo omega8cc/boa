@@ -634,9 +634,11 @@ What it does, in order:
    both boxes of the pair (its `log/CANCELLED`, `boa cleanup detect`, then
    `boa cleanup purge <oN>`, here and on the target). A relay kept on the
    target serves nothing while it is the pair's standby, and its control
-   panel does not survive the `init`. Otherwise nothing ties the two
-   (another client's account, or the newer copy of a chained move): check on
-   the target whose it is, and move it out of the way there.
+   panel does not survive the `init`.
+
+   Otherwise nothing ties the two (another client's account, or the newer
+   copy of a chained move): check on the target whose it is, and move it out
+   of the way there.
 
    Otherwise an account of the same name that the target already holds is
    this migration's only when one of these is true, checked once the target
