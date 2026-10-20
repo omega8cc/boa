@@ -11927,9 +11927,10 @@ OWNSH
     _alrt "    xmass prep-target ${_t} --adopt-siteless=${_siteless}$(_xmass_admail_hint)"
   fi
   for _a in ${_moved}; do
-    _alrt "  ${_a} moved on: once the box it relays to serves it, retire this box's copy (touch"
+    _alrt "  ${_a} moved on: point its sites at the box it relays to, then retire this box's copy (touch"
     _alrt "  /data/disk/${_a}/log/CANCELLED, 'boa cleanup detect noscreen', then 'boa cleanup purge ${_a}"
-    _alrt "  noscreen'); ${_t}'s relay stays only with _XMASS_ALLOW_TARGET_ONLY=YES on the re-run"
+    _alrt "  noscreen'); ${_t} keeps its relay files only with _XMASS_ALLOW_TARGET_ONLY=YES on the"
+    _alrt "  re-run, and serves nothing once it is this pair's standby"
   done
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
