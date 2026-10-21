@@ -2136,8 +2136,11 @@ _check_root() {
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
     #
-    # Protect from any barracuda updates when _SKYNET_MODE=OFF
-    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+    # Protect from any barracuda updates when _SKYNET_MODE=OFF, except the
+    # system pass BOA.sh.txt starts for a PHP security floor: a known remote
+    # code execution hole in the box's PHP outranks the opt-out
+    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ] \
+      && [ "${_PHP_SEC_FLOOR_PASS}" != "YES" ]; then
       if [ -n "${SSH_TTY+x}" ]; then
         echo
         echo "STATUS: BOA Skynet Agent is Inactive!"
