@@ -222,8 +222,8 @@ regardless.
   the classic `_DAEDALUS_TO_EXCALIBUR=YES` upgrade refuse the Daedalus →
   Excalibur OS upgrade until the box is on 8.4, so upgrade Percona in place on
   Daedalus first (see [MAJORUPGRADE.md](MAJORUPGRADE.md)). The classic refusal
-  sets the variable to `NO` in `/root/.barracuda.cnf` so the two Percona runs
-  go ahead; set it to `YES` again once the box is on 8.4.
+  removes the variable's line from `/root/.barracuda.cnf` so the two Percona
+  runs go ahead; put `_DAEDALUS_TO_EXCALIBUR=YES` back once the box is on 8.4.
 - **A new server can start on 8.4** by installing with the `percona-8.4`
   argument (see [INSTALL.md](INSTALL.md)). On Daedalus the default stays 5.7 on
   purpose: what runs keeps running, and the newer engine is a choice you make

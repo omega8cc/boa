@@ -182,7 +182,7 @@ Configuration files which merge all other configuration files per bucket when yo
      .backboa.data_include.merged.file
      .backboa.exclude.file
      .backboa.exclude.list
-     .backboa.exclude_data_regexp.file
+     .backboa.exclude_data.file
      .backboa.global_exclude.merged.file
      .backboa.global_include.merged.file
      .backboa.include_data.file

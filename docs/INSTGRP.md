@@ -519,6 +519,13 @@ exit 4, unless an operator passes `--force`. A standby box (xmass's
 `/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
 prepared as one) refuses every verb but `webrevert`.
 
+An account an unfinished aegir2boa import holds (`/var/backups/a2b/oN/`
+reading unfinished, the test the octopus wrapper makes) is skipped the same
+way, exit 4 unless `--force` is given, by the web group verbs and by
+`convert` and `reclaim`: a box promoted while an import of the account was
+cut off has the hold `xmass` carried there, never the import's freeze, which
+no standby receives.
+
 ### A group name held outside the account
 
 A group `wg-oN` that an identity outside the account holds too (a member
@@ -1001,7 +1008,8 @@ after it first sees it (its own stamp,
 `/var/log/boa/manage-ltd-freeze.oN.seen`, never the marker's date) while no
 root `aegir2boa-stage2`, `xoct`, `xcopy`, `xmass` or `xtrim` runs, no root
 process holds a file under `/var/backups/a2b/oN/`, no migration park stands
-and no relay record or proxy vhost is beside it, and says so once.
+and no relay record or proxy vhost is beside it, and says so once, naming
+the operation the marker recorded (`db-import` or `revert-db`).
 
 Only root's processes count (a tenant sets its own command line), and a
 stage 2 is the account's own import only when its `--account` argument,
@@ -1015,18 +1023,21 @@ release's in the account's tree (`log/a2b`, `src/a2b`,
 The account then gets its nightly and worker passes again, while its
 half-imported control panel stays switched off: as long as
 `/var/backups/a2b/oN/` shows the import unfinished (the dispatcher it held,
-or step markers with neither the done marker nor the hand-back marker the
-import writes just before it returns the dispatcher), the octopus wrapper
-skips the account (an INFO line in an `all` run, an ALRT naming the
-account's own run) and no Octopus pass writes or runs its dispatcher.
+a revert's started mark `markers/revert-db.started`, a hold `xmass` carried
+there with a failover `failover-hold`, or step markers with neither the
+done marker nor the hand-back marker the import writes just before it
+returns the dispatcher), the octopus wrapper skips the account (an INFO
+line in an `all` run, an ALRT naming the account's own run) and no Octopus
+pass writes or runs its dispatcher.
 
 BOA's agent pass moves a live dispatcher back into aegir2boa's hold, and the
 nightly runs no task, queue sweep or setting on the panel, skips its
-migration-source sweep and moves none of the account's sites, vhosts or
-aliases aside as ghosts (the import may have placed them half). usage.sh
-counts the account but writes no footer and clears no cache on the panel,
-and `renameaegirhost` and `syncpass fix` refuse the account, naming the
-import's re-run and its revert. The web group converts with the first
+migration-source sweep and moves none of the account's sites, platforms,
+vhosts or aliases aside as ghosts (the import may have placed them half).
+usage.sh counts the account but writes no footer and clears no cache on
+the panel, and `renameaegirhost` (naming the state's directory, which a
+leftover of an earlier account of the name is moved aside from) and
+`syncpass fix` refuse the account. The web group converts with the first
 Octopus pass after the import is finished or undone (`instgrp webconvert
 oN` converts it sooner).
 
@@ -1037,13 +1048,33 @@ that could not read the process table mails all the same and says so (for
 the removal it counts as an import running). That state counts only for
 the account it was made for (the uid and home `transfer` records beside
 it; an empty record is the account's own); `boa cleanup purge` parks it
-with the account.
+with the account, after stage 2 has dropped the database users the import
+made that its record still names and nothing keeps.
+
+Every line that refuses or skips such an account, the removal's mail and
+the daily mail name the one way out the state allows: the revert's re-run
+alone after a revert cut off part way (a re-run of the import would report
+it finished on the panel the revert restored), the import's re-run alone
+when it was cut off before its pre-import snapshot was complete (there is
+nothing to revert to), the route run again toward the box when the hold
+came there with a failover (the dumps and the snapshot stayed on the box
+the import ran on), either otherwise.
+
+On the active of an `xmass` pair every live pass carries the hold of each
+account whose import reads unfinished, with no run of it live, to the
+standby (an import that runs is left to hand its dispatcher back itself),
+and takes it back once it no longer reads unfinished; a promotion there
+leaves the account's dispatcher parked on a box armed for the web group
+(`MIGRATE-XMASS.md`), and `xmass restore-target` removes the holds the
+active carried before it hands the standby back as a plain box.
 
 Any other marker (one the account made, a relay record reading
 `COMPLETE`, an earlier release's freeze, an aegir2boa freeze beside relay
 evidence, one put by hand) stays as it is, and so does the freeze; once
 the worker has seen it for a day it names it in a mail once a day, with
-what to do about its kind.
+what to do about its kind. A relay record is root's single-link regular
+file reading `COMPLETE`, as `xmass` reads one; a `COMPLETE` the account
+could have written is named as a file.
 
 A relay record beside root's source-role `log/migproxy.cnf` or a proxy
 vhost is a live relay and is not named; one with neither is, with the

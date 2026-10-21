@@ -382,8 +382,10 @@ _daily_action() {
   if [ -z "${_NIGHT_MAX_PARALLEL}" ] || [ "${_NIGHT_MAX_PARALLEL}" = "AUTO" ]; then
     _NIGHT_MAX_PARALLEL="${_CPU_NR}"
   fi
-  _NIGHT_MAX_PARALLEL="$(_sanitize_number "${_NIGHT_MAX_PARALLEL}")"
-  [ -z "${_NIGHT_MAX_PARALLEL}" ] && _NIGHT_MAX_PARALLEL=1
+  ### A whole number of slots, at least one: 0, a fraction or a word would
+  ### make the fan-out below wait for a free slot forever.
+  [[ "${_NIGHT_MAX_PARALLEL}" =~ ^0*[1-9][0-9]*$ ]] || _NIGHT_MAX_PARALLEL=1
+  _NIGHT_MAX_PARALLEL=$(( 10#${_NIGHT_MAX_PARALLEL} ))
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control

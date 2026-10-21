@@ -165,8 +165,9 @@ by `ls /data/disk/<OCT>/.drush/platform_*.alias.drushrc.php`.
 
 The probe has its
 own name so it can coexist with the Test 2 probe. The permission helper is run
-the way the fix_permissions task runs it, by the Octopus user through sudo; it
-refuses any other caller. Test 2b already covers the limited-shell identity, so
+the way the fix_permissions task runs it, by the Octopus user through sudo; a sudo
+caller outside its own tree is refused (a direct root run is also accepted). Test 2b
+already covers the limited-shell identity, so
 this test has no `<OCT>.ftp` step.
 
 ```bash

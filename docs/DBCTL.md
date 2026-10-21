@@ -553,7 +553,9 @@ privilege.
 - The pass prints every `ALRT` line of the broker's answer, a rotation that
   went through included.
 - `xoct`, `xcopy` and `aegir2boa` enter the databases they make for a switched
-  account in the registry.
+  account in the registry. An `aegir2boa` revert or `--reset-sites` drops a
+  switched account's site databases through `drop`, so their entries go with
+  them; a drop the broker refuses keeps the database.
 - `boa cleanup purge` parks the account's control file and marks its registry
   entries purged: no other account can take a name whose database is still
   there. Its site users stay with its databases; `leftovers` lists them. The
