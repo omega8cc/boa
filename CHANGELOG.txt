@@ -886,7 +886,9 @@
       through the PHP security floor.
 
     * PHP 8.6 runs with fatal_error_backtraces Off until an 8.6 release
-      carries PHP's October 2026 security fix; 8.6.0RC3 does not.
+      carries PHP's October 2026 security fix; 8.6.0RC3 does not. The
+      system agent keeps the line in both 8.6 php.ini files within five
+      minutes, also after a pass from a tree without it.
 
     * PHP runs with session.upload_progress.enabled Off on every
       version: the ini templates carry it, and the system agent puts
