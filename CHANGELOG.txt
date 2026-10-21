@@ -887,6 +887,10 @@
       releases on all four maintained branches, enforced on every box
       through the PHP security floor.
 
+    * PHP 7.4.33, 8.0.30 and 8.1.34 build with the PHP security team's
+      own minimal backport of the same fix, published for versions it
+      no longer maintains; a build without it is rebuilt.
+
     * PHP 8.6 runs with fatal_error_backtraces Off until an 8.6 release
       carries PHP's October 2026 security fix; 8.6.0RC3 does not. The
       system agent keeps the line in both 8.6 php.ini files within five
