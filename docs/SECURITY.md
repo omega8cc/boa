@@ -142,6 +142,30 @@ PHP 8.4 added `Pdo\Sqlite::loadExtension()`, which loads a native shared object 
 
 The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and the `SQLite3` class keep working, and `SQLite3::loadExtension()` stays off because BOA leaves `sqlite3.extension_dir` unset.
 
+## Session upload progress is off
+
+Every PHP version, 5.6 through 8.6, runs with `session.upload_progress.enabled = Off`. PHP's own default is On: the session extension then watches every multipart POST for a `PHP_SESSION_UPLOAD_PROGRESS` field and writes the upload's progress into the visitor's session before the site's code runs. No CMS BOA hosts reads that data; Drupal and Backdrop show upload progress through the `uploadprogress` extension, which stays enabled.
+
+The Off line ships in the `php.ini` templates of every version, the FPM file (`/opt/phpNN/etc/phpNN.ini`) and the command-line one (`/opt/phpNN/lib/php.ini`). Each Barracuda pass copies the templates over the live files, so the system agent (`BOA.sh.txt`, every 5 minutes, also with `_SKYNET_MODE=OFF`) checks both files of every version on each run and puts the line back where a pass from an older tree brought PHP's default back.
+
+It reloads that version's FPM master only after the master's own configuration test passes; a master that fails the test keeps serving, and the reload is retried on every run. Each change is logged in `/var/log/boa/php-upload-progress.log`.
+
+A site cannot turn it back on: the directive cannot be changed with `ini_set()`, BOA disables `.user.ini` files, and there is no Apache `.htaccess` layer.
+
+## Fatal error backtraces off on a PHP 8.5 or 8.6 build without the fix
+
+PHP's October 2026 security fix came with PHP 8.5.12 and 8.6.0RC4. For a build without it, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug. A box the PHP security floor holds back (a staged major OS upgrade, three passes that changed nothing, `_SKYNET_MODE=OFF` with an older launcher) can still run an older 8.5 or 8.6 build.
+
+The system agent checks the installed 8.5 and 8.6 builds on every run and, on one older than 8.5.12 or 8.6.0RC4, keeps that line in both of its `php.ini` files the same way it keeps the upload progress line: it puts the line where PHP's commented default is, and reloads that version's FPM master after its configuration test, logging to the same file. Fatal errors are still logged, without the backtrace. A build with the fix is left as it is, and the `php.ini` templates carry PHP's default.
+
+## Security backports for older PHP releases
+
+PHP fixes security bugs only in its supported versions, while BOA still builds 5.6, 7.0 to 7.4, 8.0 and 8.1. When a fix matters for those, BOA ships its own backport as `aegir/patches/php-sec/php-<release>-<id>.patch`, made for that exact release. Every build of that release from sources applies it, exactly as written (no fuzz); if a patch does not apply, nothing is built and the build in place keeps serving, with an ALRT line in the pass log.
+
+A build records the patches it carries in `/opt/phpNN/lib/boa-sec-patches`, one id a line. The prebuilt packages are made from the builder mirrors' own barracuda builds, so they carry the patches and the record too. A Barracuda pass rebuilds a version whose record lacks a patch the tree has for its release, and refuses a prebuilt package without it in favour of the source build. To bring every box to the patched build at once, a BOA release names the patch in the PHP security floor (see SELFUPGRADE.md).
+
+PHP 7.4.33, 8.0.30 and 8.1.34 carry `cve-2026-109618-109619`: the PHP security team's own minimal backport of its October 2026 security fix, published for the versions it no longer maintains, taken unchanged from php-src's `PHP-7.4-CVE-2026-109618-109619`, `PHP-8.0-CVE-2026-109618-109619` and `PHP-8.1-CVE-2026-109618-109619` branches.
+
 # Strict Binary Permissions
 
 ## Option in `/root/.barracuda.cnf`
