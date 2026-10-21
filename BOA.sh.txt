@@ -6586,6 +6586,80 @@ _csf_raise_temp_ban_limit() {
   csf -r > /dev/null 2>&1 || csf -ra > /dev/null 2>&1
 }
 
+# Keep session.upload_progress.enabled Off in the FPM and CLI ini of every PHP
+# version on the box. The upload progress handler runs on every multipart POST
+# and no hosted CMS reads it (Drupal and Backdrop use the uploadprogress
+# extension). Checked on every run, never stamped: each barracuda pass copies
+# the ini templates over these files, and a pass from a tree older than the
+# templates' own Off line brings PHP's default On back. A changed FPM ini is
+# applied by a reload after the master's own config test. A master failing
+# that test keeps serving, and the reload is retried on every run until it
+# passes; the marker lives in /run, since a master started after a reboot
+# reads the changed file anyway.
+_php_upload_progress_off() {
+  local _e=""
+  local _fIle=""
+  local _fpmCh=""
+  local _pId=""
+  local _pNd=""
+  local _lIne="session.upload_progress.enabled = Off"
+  local _aCt='^[[:space:]]*session\.upload_progress\.enabled[[:space:]]*='
+  local _cMt='^;[[:space:]]*session\.upload_progress\.enabled'
+  for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _fpmCh=NO
+    for _fIle in "/opt/php${_e}/etc/php${_e}.ini" "/opt/php${_e}/lib/php.ini"; do
+      if [ ! -f "${_fIle}" ] || [ -L "${_fIle}" ]; then
+        continue
+      fi
+      if [ "$(grep -E "${_aCt}" "${_fIle}" 2> /dev/null)" = "${_lIne}" ]; then
+        continue
+      fi
+      ### Every active line goes; the line comes back in place of the stock
+      ### commented default, or at the end of a file that has none.
+      if ! sed -i -E "/${_aCt}/d" "${_fIle}" 2> /dev/null; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
+          >> "${_pthLog}/php-upload-progress.log"
+        continue
+      fi
+      if grep -qE "${_cMt}" "${_fIle}" 2> /dev/null; then
+        sed -i -E "0,/${_cMt}/{s/${_cMt}.*/${_lIne}/}" "${_fIle}"
+      else
+        echo "${_lIne}" >> "${_fIle}"
+      fi
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}: ${_lIne} in ${_fIle}" \
+        >> "${_pthLog}/php-upload-progress.log"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "INFO: php${_e}: ${_lIne} in ${_fIle}"
+      fi
+      [ "${_fIle}" = "/opt/php${_e}/etc/php${_e}.ini" ] && _fpmCh=YES
+    done
+    _pNd="/run/php${_e}-fpm.ini-reload"
+    [ "${_fpmCh}" = "YES" ] && touch "${_pNd}"
+    [ -e "${_pNd}" ] || continue
+    _pId=$(cat "/run/php${_e}-fpm.pid" 2> /dev/null)
+    case "${_pId}" in
+      ''|*[!0-9]*) _pId="" ;;
+    esac
+    ### No init script or no live master: the next start reads the file.
+    if [ ! -e "/etc/init.d/php${_e}-fpm" ] || [ -z "${_pId}" ] \
+      || ! kill -0 "${_pId}" 2> /dev/null; then
+      rm -f "${_pNd}"
+      continue
+    fi
+    if [ -x "/opt/php${_e}/sbin/php-fpm" ] \
+      && "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
+        -c "/opt/php${_e}/etc/php${_e}.ini" &> /dev/null; then
+      service "php${_e}-fpm" reload &> /dev/null
+      rm -f "${_pNd}"
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
+        >> "${_pthLog}/php-upload-progress.log"
+    elif [ "${_fpmCh}" = "YES" ]; then
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm config test failed, reload retried every run" \
+        >> "${_pthLog}/php-upload-progress.log"
+    fi
+  done
+}
+
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
@@ -6600,6 +6674,9 @@ if [ "$(id -u)" -eq 0 ]; then
 
   # Raise the csf temp ban ceiling if it is still at the stock 300
   _csf_raise_temp_ban_limit
+
+  # PHP session upload progress Off in every ini, re-asserted every run
+  _php_upload_progress_off
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null
