@@ -6670,9 +6670,13 @@ _php_upload_progress_off() {
 
 # PHP security floor: the first point release of each minor version that
 # carries a security fix no box may wait for, e.g. "8.2.35 8.3.36"; empty
-# means off. A box running an older build of an installed version listed
-# here gets a barracuda system pass, which rebuilds PHP to the pins of the
-# box's tree. SKYNET-off boxes get it too, through the launcher's override
+# means off. A release PHP no longer fixes takes BOA's own security patch
+# as "<release>+<id>", e.g. "8.1.34+<id>": a build of that release counts
+# as below until /opt/phpNN/lib/boa-sec-patches lists the id (see
+# _php_sec_patches in lib/functions/php.sh.inc). A box running an older
+# build of an installed version listed here gets a barracuda system pass,
+# which rebuilds PHP to the pins of the box's tree, with the patches.
+# SKYNET-off boxes get it too, through the launcher's override
 # for this pass alone: a pass that may break an old Octopus instance until
 # that is upgraded as well is still safer than a known remote code execution
 # hole, and a system pass leaves the master Ægir instance as it is.
@@ -6724,7 +6728,7 @@ _php_floor_mail() {
 _php_security_floor() {
   local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
   local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
-  local _tR="" _wAit="" _eNt=""
+  local _tR="" _wAit="" _eNt="" _fV="" _fId=""
   _PHP_FLOOR_GO=NO
   [ -n "${_PHP_SEC_FLOOR}" ] || return 0
   [ -x "/opt/local/bin/barracuda" ] || return 0
@@ -6732,16 +6736,21 @@ _php_security_floor() {
   ### A major OS upgrade in progress rebuilds every PHP version itself.
   ls /root/.run-to-*.cnf > /dev/null 2>&1 && return 0
   for _fLr in ${_PHP_SEC_FLOOR}; do
-    _e=$(echo "${_fLr}" | cut -d. -f1-2 | tr -d .)
+    _fV="${_fLr%%+*}"
+    _fId=""
+    [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
+    _e=$(echo "${_fV}" | cut -d. -f1-2 | tr -d .)
     [ -x "/opt/php${_e}/bin/php" ] || continue
     ### -n: no ini, so no extension load warning can reach the output
     _iV=$("/opt/php${_e}/bin/php" -n -r 'echo PHP_VERSION;' 2> /dev/null)
     case "${_iV}" in
       ''|*[!0-9A-Za-z.]*) continue ;;
     esac
-    if _php_floor_older "/opt/php${_e}/bin/php" "${_iV}" "${_fLr}"; then
+    if _php_floor_older "/opt/php${_e}/bin/php" "${_iV}" "${_fV}" \
+      || { [ -n "${_fId}" ] && [ "${_iV}" = "${_fV}" ] \
+        && ! grep -qx -- "${_fId}" "/opt/php${_e}/lib/boa-sec-patches" 2> /dev/null; }; then
       _bElow="${_bElow} ${_e}:${_fLr}"
-      _lIst="${_lIst} ${_iV}"
+      _lIst="${_lIst} ${_iV}${_fId:+ (without ${_fId})}"
     fi
   done
   _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}" | cksum | cut -d' ' -f1).txt"
@@ -6816,9 +6825,22 @@ Log: ${_pthLog}/php-sec-floor.log"
   for _eNt in ${_bElow}; do
     _e="${_eNt%%:*}"
     _fLr="${_eNt#*:}"
+    _fV="${_fLr%%+*}"
+    _fId=""
+    [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
     _pIn=$(echo "${_pIns}" | grep "^_PHP${_e}_VRN=" | head -n 1 | cut -d= -f2 | tr -cd '0-9A-Za-z.')
-    if [ -z "${_pIn}" ] || _php_floor_older "/opt/php${_e}/bin/php" "${_pIn}" "${_fLr}"; then
-      _php_floor_log "waiting for the ${_tR} tree to pin PHP ${_fLr} or newer (it pins ${_pIn:-nothing readable})"
+    if [ -z "${_pIn}" ] || _php_floor_older "/opt/php${_e}/bin/php" "${_pIn}" "${_fV}"; then
+      _php_floor_log "waiting for the ${_tR} tree to pin PHP ${_fV} or newer (it pins ${_pIn:-nothing readable})"
+      _wAit=YES
+      break
+    fi
+    ### A patched release needs its patch in the box's tree: every patch has
+    ### hunks, the mirror's page for a missing file has none.
+    if [ -n "${_fId}" ] && [ "${_pIn}" = "${_fV}" ] \
+      && ! curl -sL --max-time 30 -A iCab \
+        "https://${_USE_MIR}/versions/${_tR}/boa/aegir/patches/php-sec/php-${_pIn}-${_fId}.patch" \
+        2> /dev/null | grep -q '^@@'; then
+      _php_floor_log "waiting for the ${_tR} tree to carry the PHP ${_pIn} patch ${_fId}"
       _wAit=YES
       break
     fi
