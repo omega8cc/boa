@@ -6916,7 +6916,9 @@ _php_security_floor_launch() {
   echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
   [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
     >> "${_pthLog}/php-sec-floor.log"
-  rm -rf /opt/tmp/*
+  ### Nothing of an earlier run may stay in /opt/tmp, hidden entries included
+  ### (a stale build tree or its refetch marker): the pass starts clean.
+  find /opt/tmp/ -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2> /dev/null
   ( _PHP_SEC_FLOOR_PASS=YES nohup setsid /opt/local/bin/barracuda "up-${_PHP_FLOOR_TREE}" system noscreen \
     >> /var/log/boa/barracuda-php-floor.log 2>&1 < /dev/null & )
 }
