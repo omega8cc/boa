@@ -158,6 +158,8 @@ PHP released its October 2026 security fix for 8.2 to 8.5 only, and the 8.6 buil
 
 The system agent keeps the line there the same way it keeps the upload progress line: it checks both 8.6 files on every run, puts the line back where a pass from an older tree left PHP's default, and reloads the 8.6 FPM master after its configuration test, logging to the same file.
 
+It does the same for PHP 8.5 while the installed build is older than 8.5.12, the release with the fix: on a box the PHP security floor holds back (a staged major OS upgrade, three passes that changed nothing, `_SKYNET_MODE=OFF` with an older launcher), 8.5 then runs with backtraces off until the upgrade. An 8.5.12 or newer build is left as it is.
+
 ## Security backports for older PHP releases
 
 PHP fixes security bugs only in its supported versions, while BOA still builds 5.6, 7.0 to 7.4, 8.0 and 8.1. When a fix matters for those, BOA ships its own backport as `aegir/patches/php-sec/php-<release>-<id>.patch`, made for that exact release. Every build of that release from sources applies it, exactly as written (no fuzz); if a patch does not apply, nothing is built and the build in place keeps serving, with an ALRT line in the pass log.
