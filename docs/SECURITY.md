@@ -152,13 +152,11 @@ It reloads that version's FPM master only after the master's own configuration t
 
 A site cannot turn it back on: the directive cannot be changed with `ini_set()`, BOA disables `.user.ini` files, and there is no Apache `.htaccess` layer.
 
-## Fatal error backtraces are off on PHP 8.6
+## Fatal error backtraces off on a PHP 8.5 or 8.6 build without the fix
 
-PHP released its October 2026 security fix for 8.2 to 8.5 only, and the 8.6 build BOA ships, 8.6.0RC3, does not carry it. For a build without the fix, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug, so the 8.6 `php.ini` templates (FPM and command line) carry it and each Barracuda pass puts it in the live files. Fatal errors are still logged, without the backtrace. The line goes once BOA builds an 8.6 release with the fix.
+PHP's October 2026 security fix came with PHP 8.5.12 and 8.6.0RC4. For a build without it, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug. A box the PHP security floor holds back (a staged major OS upgrade, three passes that changed nothing, `_SKYNET_MODE=OFF` with an older launcher) can still run an older 8.5 or 8.6 build.
 
-The system agent keeps the line there the same way it keeps the upload progress line: it checks both 8.6 files on every run, puts the line back where a pass from an older tree left PHP's default, and reloads the 8.6 FPM master after its configuration test, logging to the same file.
-
-It does the same for PHP 8.5 while the installed build is older than 8.5.12, the release with the fix: on a box the PHP security floor holds back (a staged major OS upgrade, three passes that changed nothing, `_SKYNET_MODE=OFF` with an older launcher), 8.5 then runs with backtraces off until the upgrade. An 8.5.12 or newer build is left as it is.
+The system agent checks the installed 8.5 and 8.6 builds on every run and, on one older than 8.5.12 or 8.6.0RC4, keeps that line in both of its `php.ini` files the same way it keeps the upload progress line: it puts the line where PHP's commented default is, and reloads that version's FPM master after its configuration test, logging to the same file. Fatal errors are still logged, without the backtrace. A build with the fix is left as it is, and the `php.ini` templates carry PHP's default.
 
 ## Security backports for older PHP releases
 
