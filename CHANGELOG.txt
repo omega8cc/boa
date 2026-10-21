@@ -887,10 +887,15 @@
       releases on all four maintained branches, enforced on every box
       through the PHP security floor.
 
+    * PHP 7.4.33, 8.0.30 and 8.1.34 build with the PHP security team's
+      own minimal backport of the same fix, published for versions it
+      no longer maintains; a build without it is rebuilt.
+
     * PHP 8.6 runs with fatal_error_backtraces Off until an 8.6 release
       carries PHP's October 2026 security fix; 8.6.0RC3 does not. The
       system agent keeps the line in both 8.6 php.ini files within five
-      minutes, also after a pass from a tree without it.
+      minutes, also after a pass from a tree without it, and in those of
+      an 8.5 build older than 8.5.12, on a box the floor holds back.
 
     * PHP runs with session.upload_progress.enabled Off on every
       version: the ini templates carry it, and the system agent puts
