@@ -152,7 +152,9 @@ A site cannot turn it back on: the directive cannot be changed with `ini_set()`,
 
 ## Fatal error backtraces are off on PHP 8.6
 
-PHP released its October 2026 security fix for 8.2 to 8.5 only, and the 8.6 build BOA ships, 8.6.0RC3, does not carry it. For a build without the fix, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug, so the 8.6 `php.ini` templates (FPM and command line) carry it and each Barracuda pass puts it in the live files. The system agent keeps it there the same way it keeps the upload progress line: it checks both 8.6 files on every run, puts the line back where a pass from an older tree left PHP's default, and reloads the 8.6 FPM master after its configuration test, logging to the same file. Fatal errors are still logged, without the backtrace. The line goes once BOA builds an 8.6 release with the fix.
+PHP released its October 2026 security fix for 8.2 to 8.5 only, and the 8.6 build BOA ships, 8.6.0RC3, does not carry it. For a build without the fix, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug, so the 8.6 `php.ini` templates (FPM and command line) carry it and each Barracuda pass puts it in the live files. Fatal errors are still logged, without the backtrace. The line goes once BOA builds an 8.6 release with the fix.
+
+The system agent keeps the line there the same way it keeps the upload progress line: it checks both 8.6 files on every run, puts the line back where a pass from an older tree left PHP's default, and reloads the 8.6 FPM master after its configuration test, logging to the same file.
 
 ## Security backports for older PHP releases
 
