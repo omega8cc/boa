@@ -2164,14 +2164,20 @@ _le_ctrl_clear_here() {
 }
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
-# or a step marker of the import stands with neither its done marker nor
-# the marker of its hand-back (written right before the import returns the
-# dispatcher). Root's /var/backups/a2b only: a link on the way reads as no
-# state, and so does a state recorded for another account of the name (its
-# uid, or its home's inode or birth time, not the account's now; a birth
-# time either side does not know is not compared). The record's first line
-# is read whether or not a newline ends it; an empty record, or none, is
-# the account's own. One text wherever it is defined.
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
 _a2b_import_unfinished() {
   local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
   case "${1}" in
@@ -2187,7 +2193,11 @@ _a2b_import_unfinished() {
     [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
   fi
   [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
   [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
   [ -e "${_b}/markers/import.db-import.done" ] && return 1
   [ -e "${_b}/markers/dbimport.12.done" ] && return 1
   for _m in "${_b}"/markers/dbimport.*.done; do
@@ -2585,7 +2595,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f43 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f42 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f90 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -2721,12 +2731,12 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f58
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f28
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f55
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f24
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f25
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f49
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f46
     _runner_parked owl.sh \
-      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f63
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f64
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2752,7 +2762,7 @@ _update_agents() {
     _runner_parked graceful.sh \
       || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f87
     _runner_parked usage.sh \
-      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f53
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f50
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2796,7 +2806,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f44 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f40 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -5695,7 +5705,7 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f96 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f74 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f69 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f84 --guard /local/bin/autobeowulf
@@ -5706,7 +5716,7 @@ CSFSTANDBY
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f55 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f46 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f21 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f20 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f55 --guard duplicity
@@ -5727,7 +5737,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f07 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f06 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f89 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f99 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
     _fetch_core_coverage
@@ -5737,9 +5747,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f91 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f00 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f60 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f56 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f56 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f50 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f80 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
@@ -5753,8 +5763,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f83 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f48 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f08 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f32 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f07 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f62 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f92 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f85 --guard /local/bin/autochimaera
@@ -5782,7 +5792,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f98 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f91 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f97 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f88 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f84 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f98 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f98 --guard /local/bin/vhostcheck
@@ -6576,6 +6586,80 @@ _csf_raise_temp_ban_limit() {
   csf -r > /dev/null 2>&1 || csf -ra > /dev/null 2>&1
 }
 
+# Keep session.upload_progress.enabled Off in the FPM and CLI ini of every PHP
+# version on the box. The upload progress handler runs on every multipart POST
+# and no hosted CMS reads it (Drupal and Backdrop use the uploadprogress
+# extension). Checked on every run, never stamped: each barracuda pass copies
+# the ini templates over these files, and a pass from a tree older than the
+# templates' own Off line brings PHP's default On back. A changed FPM ini is
+# applied by a reload after the master's own config test. A master failing
+# that test keeps serving, and the reload is retried on every run until it
+# passes; the marker lives in /run, since a master started after a reboot
+# reads the changed file anyway.
+_php_upload_progress_off() {
+  local _e=""
+  local _fIle=""
+  local _fpmCh=""
+  local _pId=""
+  local _pNd=""
+  local _lIne="session.upload_progress.enabled = Off"
+  local _aCt='^[[:space:]]*session\.upload_progress\.enabled[[:space:]]*='
+  local _cMt='^;[[:space:]]*session\.upload_progress\.enabled'
+  for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _fpmCh=NO
+    for _fIle in "/opt/php${_e}/etc/php${_e}.ini" "/opt/php${_e}/lib/php.ini"; do
+      if [ ! -f "${_fIle}" ] || [ -L "${_fIle}" ]; then
+        continue
+      fi
+      if [ "$(grep -E "${_aCt}" "${_fIle}" 2> /dev/null)" = "${_lIne}" ]; then
+        continue
+      fi
+      ### Every active line goes; the line comes back in place of the stock
+      ### commented default, or at the end of a file that has none.
+      if ! sed -i -E "/${_aCt}/d" "${_fIle}" 2> /dev/null; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
+          >> "${_pthLog}/php-upload-progress.log"
+        continue
+      fi
+      if grep -qE "${_cMt}" "${_fIle}" 2> /dev/null; then
+        sed -i -E "0,/${_cMt}/{s/${_cMt}.*/${_lIne}/}" "${_fIle}"
+      else
+        echo "${_lIne}" >> "${_fIle}"
+      fi
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}: ${_lIne} in ${_fIle}" \
+        >> "${_pthLog}/php-upload-progress.log"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "INFO: php${_e}: ${_lIne} in ${_fIle}"
+      fi
+      [ "${_fIle}" = "/opt/php${_e}/etc/php${_e}.ini" ] && _fpmCh=YES
+    done
+    _pNd="/run/php${_e}-fpm.ini-reload"
+    [ "${_fpmCh}" = "YES" ] && touch "${_pNd}"
+    [ -e "${_pNd}" ] || continue
+    _pId=$(cat "/run/php${_e}-fpm.pid" 2> /dev/null)
+    case "${_pId}" in
+      ''|*[!0-9]*) _pId="" ;;
+    esac
+    ### No init script or no live master: the next start reads the file.
+    if [ ! -e "/etc/init.d/php${_e}-fpm" ] || [ -z "${_pId}" ] \
+      || ! kill -0 "${_pId}" 2> /dev/null; then
+      rm -f "${_pNd}"
+      continue
+    fi
+    if [ -x "/opt/php${_e}/sbin/php-fpm" ] \
+      && "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
+        -c "/opt/php${_e}/etc/php${_e}.ini" &> /dev/null; then
+      service "php${_e}-fpm" reload &> /dev/null
+      rm -f "${_pNd}"
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
+        >> "${_pthLog}/php-upload-progress.log"
+    elif [ "${_fpmCh}" = "YES" ]; then
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm config test failed, reload retried every run" \
+        >> "${_pthLog}/php-upload-progress.log"
+    fi
+  done
+}
+
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
@@ -6590,6 +6674,9 @@ if [ "$(id -u)" -eq 0 ]; then
 
   # Raise the csf temp ban ceiling if it is still at the stock 300
   _csf_raise_temp_ban_limit
+
+  # PHP session upload progress Off in every ini, re-asserted every run
+  _php_upload_progress_off
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null

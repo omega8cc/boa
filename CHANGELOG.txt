@@ -4,6 +4,78 @@
 
 @=> Important Fixes
 
+    * xmass prep-target took an account the target relays to a third box
+      (xoct moved it on) by a create marker, so the init and the sync put
+      this box's copy, from before that move, over the relay, and a
+      failback there served the stale copy. Such an account is now
+      refused before any proof, naming the box it relays to; where a
+      create marker shows this box's copy came from there, the refusal
+      says to point its sites at that box, then retire it on both boxes.
+      A proxy-mode pin and an aegir2boa import's freeze are no relay.
+
+    * An xmass cutover from a box that relays one account to a third box
+      no longer puts that account's sites behind the per-host 503 gate or
+      tries to repoint its relay at the new active (which xoct refused):
+      the account is left as it is, and the run says so.
+
+    * A cutover stopped after the write freeze but before the promotion
+      (the lag checks, a target read back as still a replica) left the
+      phase at cutover, so the autosync cadence stood still and the next
+      cutover refused until reset-phase was run by hand. It now goes back
+      to syncing, unless the event scheduler it stopped could not be
+      started again, and says so; reset-phase syncing then refuses until
+      it starts.
+
+    * After an Octopus pass was killed right after a platform refresh's
+      swap, xmass carried the spare replaced tree (.boa-refresh/*.old) to
+      the mirror, and once the next pass removed it the sync had to delete
+      it there too: past 5000 files the delete guard stopped that live
+      sync with a false mass-loss alarm. A spare whose platform is in
+      place now stays home; one whose platform is missing still travels.
+
+    * Provision's fast import stops before loading anything when the dump
+      its Migrate or Clone just made holds a stored routine made under
+      ANSI_QUOTES with no SQL mode line before it (the mode step after the
+      dump failed): myloader failed it with ERROR 1064 and left the
+      database half loaded. The task log names the routines.
+
+    * xoct named an account an unfinished aegir2boa import froze "already
+      migrated", so a standby's preparation on that box failed without
+      naming the import; it now says the import is frozen there and to
+      finish or revert it first. A promotion that left such an account
+      alone reported instgrp's exit 4 as a run still live; it now says an
+      account was left held or frozen.
+
+    * The hold of an unfinished aegir2boa import now follows it on every
+      xmass path. restore-target removes the holds the active carried
+      before it hands a standby back as a plain box (one left there held
+      the account for good and mailed advice meant for a promoted box), a
+      promotion by hand parks a held account's dispatcher before the
+      leftover standby marker goes even when its cleanup could not run,
+      and a cutover refuses while an import of an account it carries is
+      unfinished, instead of promoting the target and stopping at the
+      panel rewire. A standby the sync cannot reach no longer raises the
+      hold's alarm when there was no hold to carry. aegir2boa-stage2's
+      transfer refuses a state with no recorded route, as export does, and
+      a late failure of the broker's drop names running that drop again.
+
+    * A box promoted from an xmass standby while an aegir2boa import of
+      an account was cut off on the old box carries that import's hold,
+      but never the import's freeze. instgrp read only the freeze, so the
+      promotion's web group conversion converted the held account; it now
+      skips an account the import holds as it skips a frozen one (--force
+      overrides either). The promotion's panel rewire skips the held
+      account too and says why, instead of reporting a dead panel to
+      repair. An xmass sync names the import's freeze for what it is
+      rather than as a relay, and the hold's alarm says the transfer puts
+      the manifests that name the databases to drop.
+
+    * aegir2boa-stage2's transfer refuses a db-import route without the
+      acknowledged module list (check --accept-scrub-list) in its dry run,
+      and its live run stops before it copies anything. A dry run printed
+      DRY RUN CLEAN, then the live run copied every platform tree and dump
+      before it stopped on the missing acknowledgement.
+
     * xoct, xmass and xcopy read and rewrite an account's cnf as text, and
       so does the Octopus pass. A crash can leave NUL bytes in a cnf's
       tail, and grep then reads the file as binary: a rewrite through grep
@@ -797,6 +869,10 @@
       the removal loaded that alias first and died on the missing
       platform. The file is now removed directly.
 
+    * The nightly's parallel account fan-out no longer waits forever when
+      _NIGHT_MAX_PARALLEL is 0, a fraction or a word: such a value means
+      one slot, and a leading zero no longer reads as octal.
+
 @=> Security
 
     * autosymlink prints every log line as one line: a control byte in a
@@ -1141,39 +1217,59 @@
       beside relay evidence, one put by hand) in a mail once a day, once
       it has seen it for a day, with what to do about its kind: such an
       account gets no BOA pass while the marker stands. A relay record
-      beside root's source-role log/migproxy.cnf or a proxy vhost is a
-      live relay and is not named; one with neither is, with the advice
+      (root's single-link regular file reading COMPLETE, as xmass reads
+      one; a COMPLETE the account could have written is named as a file,
+      where it read as a live relay and silenced its own notice) beside
+      root's source-role log/migproxy.cnf or a proxy vhost is a live
+      relay and is not named; one with neither is, with the advice
       to check whether the box serves the account (xmass post-mig after a
       promotion by hand), and an earlier release's freeze with the advice
       to finish or revert that import by its own procedure first.
 
     * On a box armed for the web group, while aegir2boa's own state shows
-      an account's db-import unfinished (its dispatcher held aside, or
-      step markers with neither the done marker nor the marker of its
+      an account's db-import unfinished (its dispatcher held aside, a
+      revert's started mark, a hold xmass carried there with a failover,
+      or step markers with neither the done marker nor the marker of its
       hand-back), the account's control panel stays switched off: the
       octopus wrapper skips the account (an INFO line in an all run, an
-      ALRT when the run names it), no Octopus pass writes or runs its
-      task dispatcher, BOA's agent pass moves a live one back into the
-      import's hold and never hands a parked one back, and the nightly
-      runs no task, queue sweep or setting on the panel nor moves its
-      sites, vhosts or aliases aside as ghosts. The usage pass writes no
-      footer and clears no cache on the panel, and renameaegirhost and
-      syncpass fix refuse the account, naming the import's re-run and its
-      revert. A half-imported panel must not dispatch: an Octopus pass ran
-      a forced server verify, hosting-dispatch, three task sweeps and the
-      panel's migration on it. On a box not armed none of this acts: the
-      takeover of a dead freeze, the panel guard, the worker's removal and
-      the skips need the arm stamp, while aegir2boa-stage2's freeze body,
-      its hand-back marker, the account record and its dry-run gate order
-      are the same on every box (docs/AEGIR2BOA.md).
+      ALRT when the run names it), no Octopus pass writes or runs its task
+      dispatcher, BOA's agent pass moves a live one back into the import's
+      hold and never hands a parked one back, and the nightly runs no
+      task, queue sweep or setting on the panel nor moves its sites,
+      platforms, vhosts or aliases aside as ghosts. The usage pass writes
+      no footer and clears no cache on the panel, and renameaegirhost and
+      syncpass fix refuse the account. A half-imported panel must not
+      dispatch: an Octopus pass ran a forced server verify,
+      hosting-dispatch, three task sweeps and the panel's migration on it.
+      On a box not armed none of this acts: the takeover of a dead freeze,
+      the panel guard, the worker's removal and the skips need the arm
+      stamp, while aegir2boa-stage2's freeze body, its hand-back marker,
+      the account record and its dry-run gate order are the same on every
+      box (docs/AEGIR2BOA.md).
 
     * The limited-shell worker mails the operator once a day while
       aegir2boa's state shows an account's import unfinished and none of
-      it is seen running, naming the import's re-run and its revert and
-      how a killed run's freeze is cleared; a pass that cannot read the
-      process table mails all the same and says so. It reads root's state
-      whatever the account's tree holds, and writes its incident line once
-      a day with the mail.
+      it is seen running, naming the way out and how a killed run's
+      freeze is cleared; a pass that cannot read the process table mails
+      all the same and says so. It reads root's state whatever the
+      account's tree holds, and writes its incident line once a day with
+      the mail.
+
+    * The advice for a half-imported panel follows the state that decides
+      which recovery is safe. The worker's daily mail, its mail on
+      removing a killed run's freeze, the octopus wrapper's skip and the
+      refusals of renameaegirhost and syncpass fix all offered the
+      import's re-run and its revert as equals: after a revert cut off
+      part way the re-run skipped every step by the import's markers and
+      reported a finished import on the panel the revert had restored,
+      and after an import cut off in its pre-import snapshot the revert
+      loaded the partial dump. Each now names the revert alone after a
+      revert cut off part way, the import's re-run alone before the
+      snapshot was complete, the route run again toward a box a failover
+      carried the hold to, and either otherwise. The removal mail names
+      the operation the removed freeze recorded, and renameaegirhost's
+      refusal names the import state's directory, which a leftover of an
+      earlier account of the name is moved aside from.
 
     * aegir2boa's import state counts only for the account it was made
       for: BOA reads a state recorded for another account of the name
@@ -1188,6 +1284,29 @@
       aegir2boa holds for an unfinished import as parked, as they read
       one in off-run: its queue no longer holds their wait for a quiet box.
 
+    * The hold of an unfinished aegir2boa import follows an xmass
+      failover. The import's state stays in root's /var/backups/a2b/oN on
+      the box it ran on, which no leg sends, and a promotion handed the
+      half-imported panel the sync carried its dispatcher back. Every pass
+      now puts /var/backups/a2b/oN/failover-hold on the standby while the
+      import reads unfinished on the active with no run of it live, and
+      takes it away once it no longer does; the standby's own passes never
+      act on it. On a promotion such an account's dispatcher stays parked
+      on a box armed for the web group (a live one, as a standby's
+      accounts are installed with, is parked before the standby marker
+      goes, by the cutover and by a promotion by hand), the cutover's
+      rename of it refuses, BOA keeps its panel switched off there, and
+      the worker names it once a day with the way out on that box (the
+      route run again toward it, the databases the transfer's manifests
+      name dropped first, with their command). An import running on the
+      active carries no hold: a failover while it runs hands the promoted
+      box its half-made panel's dispatcher. An import there that reaches its
+      hand-back ends the hold, and a revert there sets the transferred
+      dumps aside. Once the import on the active is finished, the
+      standby's own import state of a role before is set aside, never
+      removed. Every other account's promotion is as before
+      (docs/MIGRATE-XMASS.md).
+
     * aegir2boa-stage2: a re-run of a db-import, or of its revert, takes
       over the freeze its own killed run left, on a box armed for the web
       group. The freeze names its operation, pid and process group on a
@@ -1197,8 +1316,9 @@
       as stage 2 reads its own), no root process holding the account's
       import state and no other connection on the account's panel
       database. A refused re-run names the check that refused it. A
-      one-line marker, the other operation's or any other body is refused
-      as before.
+      freeze of the other operation is refused naming that operation,
+      whose own re-run takes it over, on a box not armed too; a one-line
+      marker or any other body is refused as before.
 
     * aegir2boa-stage2 stops when it cannot put its freeze marker, instead
       of importing into an account the BOA passes do not hold off.
@@ -1211,6 +1331,25 @@
       just before it returns it, so an import cut off in the PHP pool
       waits that follow is read as finished, and hands back a dispatcher
       BOA parked in off-run while the freeze stood.
+
+    * aegir2boa-stage2 --revert-db-import marks itself started before its
+      sql-drop and clears the mark only once its dispatcher is back. While
+      the mark stands the db-import route refuses, its dry run included,
+      naming the revert, and BOA holds the panel as unfinished: a revert
+      cut off after its drop (a kill, a crash, a failed restore) left the
+      import's step markers beside the restored panel, and one that held
+      no dispatcher was not seen as unfinished at all.
+
+    * aegir2boa-stage2 writes the db-import's pre-import snapshot under a
+      temporary name and renames it into place only once mysqldump has
+      succeeded, and --revert-db-import refuses, before its dry run prints
+      a plan, unless the import completed that snapshot or a revert cut
+      off part way left its started mark, or an import of an earlier
+      release left its step 1 marker or snapshot in the account's tree
+      (the revert then names where to place that snapshot and its step 1
+      marker); a snapshot a completed revert left under root's undo never
+      loads. An import killed in its snapshot left a partial dump where
+      the revert loaded it from, after dropping the panel database.
 
     * aegir2boa-stage2 transfer records the account it lands for (its uid
       and its home's inode and birth time) beside the import state on the
@@ -1230,6 +1369,28 @@
       master or another account names, that the database broker's
       registry gives to another account, or that has a row at a host the
       box does not own stays, and the run says why (docs/AEGIR2BOA.md).
+
+    * A database user an aegir2boa import made and a revert or a reset
+      kept, because something named it then, no longer outlives the
+      account with nothing owning it. It stays in the import's record
+      until it is dropped, every later revert and --reset-sites reads the
+      whole record (it was looked at only with its database's loaded
+      marker, which the first drop had cleared), and a new mode,
+      aegir2boa-stage2 import --account oN --drop-made-users, reads it
+      alone; boa cleanup purge runs that before it parks the account's
+      import state. A kept user goes once its database is gone and nothing
+      keeps it any more, its grants saved first, and stays with its
+      database while that stands.
+
+    * aegir2boa-stage2 drops a site database of an account switched to the
+      database broker through the broker's own drop, so its registry entry
+      goes with it: the plain drop left the entry naming a database that
+      was gone. An account not switched, and one whose control file the
+      broker finds not valid, keep the plain drop; a drop the broker
+      refuses keeps the database and says why, unless the server says the
+      database is gone (the broker's drop ran before a later step of it
+      failed): then it counts as dropped, its users go with it, and what
+      the broker left is named.
 
     * aegir2boa-stage2's drain before a db-import's or a revert's surgery
       waits only on the account's task dispatcher itself, a root process
@@ -1481,9 +1642,11 @@
       drupal-9.5.11, beside the legacy 10.x minors, each under the PHP its
       sites run on and with the Drush line of its day, so an upgrade from a
       site still on them can be rehearsed on a BOA server; the Drupal 9 core
-      on the mirror gains Drush 11. A build server without a PHP a line's
-      lock accepts (7.4 or 7.3 for Drupal 8; 8.2, 8.1 or 7.4 for Drupal 9)
-      skips that line and says so in the summary.
+      on the mirror gains Drush 11, resolved for PHP 7.4 so the platform
+      runs there too. A build server without a PHP a line's lock accepts
+      (7.4 or 7.3 for Drupal 8; 8.1, 8.0 or 7.4 for Drupal 9) skips that
+      line and says so in the summary, and a line whose Drush require fails
+      is a failed build rather than a core published without Drush.
 
     * The xmass cutover no longer raises a Solr alarm on a server move
       whose source uses no Solr. Its Solr step on the target started

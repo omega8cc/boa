@@ -72,7 +72,8 @@
 #            SFTP session; a chrooted pure-ftpd session is not) and skips the
 #            account (4) while one stays so, before anything changes,
 #            skips an account frozen for a migration (log/proxied.pid, the
-#            marker every other root writer honours; --force overrides), and
+#            marker every other root writer honours) or held by an aegir2boa
+#            import that stopped part way (--force overrides either), and
 #            refuses when any fetched root-run writer on the box predates the
 #            group-aware form (see check): converting under an old writer
 #            would be undone by its next pass, and an old websh would lock the
@@ -302,7 +303,8 @@ Usage:
            residue too, not only in the settings files and store tops.
 
   --from-octopus  the octopus upgrade arm holds /run/boa_run.pid itself.
-  --force         convert or reclaim an account frozen for a migration (log/proxied.pid).
+  --force         convert or reclaim an account frozen for a migration (log/proxied.pid)
+                  or held by an unfinished aegir2boa import (/var/backups/a2b/<account>).
   --keep-enabled  revert without writing _INSTANCE_GROUP=NO into the cnf.
   Exit: 0 done, 1 failed, 2 drift, 3 inconsistent, 4 skipped (busy, frozen,
   a live BOA run), 5 not ready (writers still box-wide, or the arm's release
@@ -724,6 +726,59 @@ _valid_account() {
     [ "${_h}" = "${_s}" ] && return 0
   done
   return 1
+}
+
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+
+# Why instgrp leaves the account $1 alone when aegir2boa holds it, printed;
+# status 1 and nothing when it does not. The import's freeze
+# (log/proxied.pid) never travels to a standby, so a box promoted while an
+# import of the account was cut off knows it by the carried hold alone.
+_a2b_held_why() {
+  _a2b_import_unfinished "${1}" \
+    && echo "held by an unfinished aegir2boa import (/var/backups/a2b/${1})"
 }
 
 # The account's lshell sub-users: passwd names <acct>.<x> or <acct>.<x>-dev
@@ -1532,7 +1587,7 @@ _marker_valid() {
 }
 
 _do_convert() {
-  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0 _wgSt _wgC _wgKeep
+  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0 _wgSt _wgC _wgKeep _held
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # A frozen account is served from another box mid-migration; every other
@@ -1541,6 +1596,11 @@ _do_convert() {
   if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
     _alrt "${_a}: frozen for a migration (log/proxied.pid), skipped this pass (--force overrides)"
     _log "${_a}: SKIP frozen"
+    return 4
+  fi
+  if [ "${_FORCE}" != "YES" ] && _held=$(_a2b_held_why "${_a}"); then
+    _alrt "${_a}: ${_held}, skipped this pass (--force overrides)"
+    _log "${_a}: SKIP held"
     return 4
   fi
   # The paths a free of the account's web group name left in its old number
@@ -1735,11 +1795,14 @@ _do_convert() {
 # finish it; a rename alone is put back first, and a journal nothing can
 # finish from is dropped with an alarm (_wg_free_settled).
 _do_reclaim() {
-  local _a="$1" _wrc=0 _rc
+  local _a="$1" _wrc=0 _rc _held
   if _valid_account "${_a}"; then
     [ "${_FROM_OCTOPUS}" != "YES" ] && _reap_own_stale_lock
     if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
       _msg "NOTE: ${_a}: the web group leg skipped: frozen for a migration (log/proxied.pid)"
+      _wrc=4
+    elif [ "${_FORCE}" != "YES" ] && _held=$(_a2b_held_why "${_a}"); then
+      _msg "NOTE: ${_a}: the web group leg skipped: ${_held}"
       _wrc=4
     elif [ "${_FROM_OCTOPUS}" != "YES" ] \
       && { [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
@@ -1767,7 +1830,7 @@ _do_reclaim() {
 # current group. No identity change and no lock, so it is safe after a
 # root-run restore, on a migration destination and from the nightly.
 _do_reclaim_files() {
-  local _a="$1" _to _from _uGid _gid _roots _subs _ids _u _conv=NO _anyAcct=NO _anyUsers=NO
+  local _a="$1" _to _from _uGid _gid _roots _subs _ids _u _conv=NO _anyAcct=NO _anyUsers=NO _held
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # The same freeze convert honours: a frozen account is served from another
@@ -1777,6 +1840,11 @@ _do_reclaim_files() {
   if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
     _alrt "${_a}: frozen for a migration (log/proxied.pid), reclaim skipped this pass (--force overrides)"
     _log "${_a}: RECLAIM skipped: frozen"
+    return 4
+  fi
+  if [ "${_FORCE}" != "YES" ] && _held=$(_a2b_held_why "${_a}"); then
+    _alrt "${_a}: ${_held}, reclaim skipped this pass (--force overrides)"
+    _log "${_a}: RECLAIM skipped: held"
     return 4
   fi
   # No lock is taken, but a live install or upgrade run owns the account's
@@ -5521,6 +5589,7 @@ _wg_reset() {
   _D_FOREIGN=NO
   _D_BUSY=NO
   _D_FROZEN=NO
+  _WG_HELD=""
   _D_FORCE="${_FORCE}"
   _D_STANDBY=NO
   _D_I=""
@@ -5609,7 +5678,13 @@ _wg_decide() {
       esac
     fi
   fi
-  [ "${_WP_M}" != "YES" ] && [ -e "/data/disk/${_WP_A}/log/proxied.pid" ] && _D_FROZEN=YES
+  if [ "${_WP_M}" != "YES" ]; then
+    if [ -e "/data/disk/${_WP_A}/log/proxied.pid" ]; then
+      _D_FROZEN=YES
+    elif _WG_HELD=$(_a2b_held_why "${_WP_A}"); then
+      _D_FROZEN=YES
+    fi
+  fi
   { [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; } && _D_STANDBY=YES
   # a refusal of every run needs no measurement
   _wg_derive
@@ -6033,6 +6108,7 @@ _wg_free_guard() {
     echo "frozen for a migration (log/proxied.pid)"
     return 1
   fi
+  _a2b_held_why "${_WP_A}" && return 1
   # xmass maps the web group by name: a sync or a cutover meanwhile would
   # carry the paths still in the old number by that number alone
   if _l=$(_wg_verb_any); then
@@ -6564,6 +6640,8 @@ _wg_free_resume() {
   elif [ -e "/data/disk/${_WP_A}/log/proxied.pid" ] || [ -L "/data/disk/${_WP_A}/log/proxied.pid" ]; then
     _why="frozen for a migration (log/proxied.pid)"
     _kind=guard
+  elif _why=$(_a2b_held_why "${_WP_A}"); then
+    _kind=guard
   fi
   read -r _st _h _n <<< "$(_wg_free_held "${_WP_A}" state)"
   if [ -n "${_st}" ]; then
@@ -6689,7 +6767,7 @@ _wg_run_row() {
       case "${_D_ROW}" in
         E1) _alrt "${_WP_A}: ${_WP_G} is held by an identity outside it; left alone${_why:+ (${_why})}" ;;
         E2) [ -z "${_WG_E2WHY}" ] || _msg "NOTE: ${_WP_A}: deferred: ${_WG_E2WHY}" ;;
-        E3) _msg "${_WP_A}: frozen for a migration (log/proxied.pid), skipped (--force overrides for a per-account verb)" ;;
+        E3) _msg "${_WP_A}: ${_WG_HELD:-frozen for a migration (log/proxied.pid)}, skipped (--force overrides for a per-account verb)" ;;
         E4) _msg "NOTE: ${_WP_A}: this box is a standby (${_WG_STANDBY} or ${_WG_PREP}); nothing but webrevert runs here" ;;
       esac
       [ "${_D_ROW}" = "E2" ] && return "${_WG_E2RC}"
@@ -7039,7 +7117,7 @@ _wg_drift_held() {
   # the arm's own row for the account as it stands, with nothing written
   _D_CALLER=arm
   _D_FORCE=NO
-  [ -e "/data/disk/${_a}/log/proxied.pid" ] && _D_FROZEN=YES
+  { [ -e "/data/disk/${_a}/log/proxied.pid" ] || _a2b_import_unfinished "${_a}"; } && _D_FROZEN=YES
   { [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; } && _D_STANDBY=YES
   _D_LAM="${_WM_LAM}"
   _D_I="${_WI_T}"
@@ -7117,8 +7195,8 @@ _wg_drift() {
     fi
   fi
   # DR8, on an armed box that is no standby: an account with no web group,
-  # no intent and no record, not opted out and not frozen for a migration,
-  # for over a day (nothing has converted it: a promoted mirror whose
+  # no intent and no record, not opted out, not frozen for a migration and
+  # not held by an aegir2boa import, for over a day (nothing has converted it: a promoted mirror whose
   # Octopus pass ran under its standby marks, a refusal no one read). Its
   # first-seen stamp is DR1's file, marked dr8: the two never hold at once.
   # An account opted out of its per-instance group is opted out of the web
@@ -7126,7 +7204,8 @@ _wg_drift() {
   if [ "${_held}" = "NO" ] && [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] \
     && [ -z "${_WI_T}" ] && [ "${_WR_ANY}" = "NO" ] && [ -s "${_WG_STAMP}" ] \
     && [ ! -e "${_WG_STANDBY}" ] && [ ! -e "${_WG_PREP}" ] \
-    && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] && ! _wg_g_optout; then
+    && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] && ! _a2b_import_unfinished "${_a}" \
+    && ! _wg_g_optout; then
     if _wg_g_v1_optout; then
       _dr8v1=YES
     else

@@ -3219,6 +3219,130 @@ echo MS-OK" 2> /dev/null)
   return 1
 }
 
+### The hold of an unfinished aegir2boa import travels with every pass. The
+### import keeps its state in root's /var/backups/a2b/<oN> on the box it ran
+### on, which no leg sends, while the panel database and the account's
+### files do travel: a standby promoted while this box held an account's
+### half-imported control panel would hand that panel its dispatcher back.
+### For each account this run carries, the standby gets
+### /var/backups/a2b/<oN>/failover-hold (root's, 0600, naming this box and
+### the time) while the import reads unfinished here and no run of it is
+### live (an import that runs hands its dispatcher back itself: a record
+### already there stays meanwhile), and loses it once the import no longer
+### reads unfinished. The standby's own passes never act on it (the
+### predicate counts it only on a box that is no standby). Through it the
+### promoted box keeps the panel switched off as this box does (the
+### promotion leaves its dispatcher parked, BOA's passes skip the panel)
+### and BOA's worker there names the account once a day with the one way
+### out on that box: the route run again toward it, the dumps and the
+### pre-import snapshot having stayed here. An import there that reaches
+### its hand-back ends the hold. Once the import here no longer reads
+### unfinished, whatever aegir2boa state of the account the standby holds
+### besides the record is a role before this one's (a box that ran the
+### import and failed over): it is set aside under a dated name, never
+### removed, its held dispatcher back among the standby's parked ones,
+### since an import finished here supersedes it. Written only onto a box
+### that carries the standby marker; a hold that cannot be carried is said,
+### never a refusal of the pass, so no other account's failover waits on
+### it. DRY says what would travel. $1 = the target.
+_xmass_carry_a2b_hold() {
+  local _t="$1" _oct _put="" _gone="" _out _l _src
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[a-z0-9-]+$ ]] || continue
+    if _a2b_import_unfinished "${_oct}"; then
+      _a2b_import_live "${_oct}" || _put="${_put} ${_oct}"
+    else
+      _gone="${_gone} ${_oct}"
+    fi
+  done
+  if [ "${_MODE}" != "LIVE" ]; then
+    [ -n "${_put}" ] && _info "  [DRY-PLAN] the hold of an unfinished aegir2boa import carried to ${_t}:${_put}"
+    return 0
+  fi
+  [ -n "${_put}${_gone}" ] || return 0
+  # a promoted box is never written to: an automated pass re-proves the
+  # marker here, and the remote half writes nothing on a box without one
+  _xmass_auto_assert_standby
+  _src="$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')"
+  # checked account names and a cleaned name: each goes into the remote
+  # line as is
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo AH-NOT-STANDBY; exit 1; }; _PUT='${_put}'; _GONE='${_gone}'; _src='${_src}'; _r=/var/backups/a2b
+for _a in \${_PUT}; do _d=\${_r}/\${_a}
+  [ -f \"\${_d}/failover-hold\" ] && [ ! -L \"\${_d}/failover-hold\" ] && continue
+  ( umask 077; mkdir -p \"\${_d}\" ) 2> /dev/null
+  if [ -L \"\${_r}\" ] || [ -L \"\${_d}\" ] || [ ! -d \"\${_d}\" ]; then echo \"AH-BAD \${_a}\"; continue; fi
+  chmod 700 \"\${_r}\" \"\${_d}\"
+  if ( umask 077; printf '%s %s\n' \"\${_src:-unknown}\" \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > \"\${_d}/failover-hold.\$\$\" ) \
+    && mv -f \"\${_d}/failover-hold.\$\$\" \"\${_d}/failover-hold\"; then echo \"AH-PUT \${_a}\"; else echo \"AH-BAD \${_a}\"; fi
+done
+for _a in \${_GONE}; do _d=\${_r}/\${_a}
+  [ -e \"\${_d}\" ] || [ -L \"\${_d}\" ] || continue
+  if [ -L \"\${_r}\" ] || [ -L \"\${_d}\" ] || [ ! -d \"\${_d}\" ]; then echo \"AH-ODD \${_a}\"; continue; fi
+  if [ -e \"\${_d}/failover-hold\" ] || [ -L \"\${_d}/failover-hold\" ]; then
+    rm -f \"\${_d}/failover-hold\" && echo \"AH-GONE \${_a}\"
+  fi
+  rmdir \"\${_d}\" 2> /dev/null && continue
+  _h=\${_d}/held-run-\${_a}
+  if [ -f \"\${_h}\" ] && [ ! -L \"\${_h}\" ] && [ ! -e /var/xdrago/run-\${_a} ] && [ ! -e /var/backups/off-run/run-\${_a} ] \
+    && [ ! -L /var/backups/off-run ]; then
+    mkdir -p /var/backups/off-run && mv -f \"\${_h}\" /var/backups/off-run/run-\${_a}
+  fi
+  _n=\${_d}.superseded.\$(date -u +%Y%m%dT%H%M%SZ)
+  mv -T -- \"\${_d}\" \"\${_n}\" && echo \"AH-ASIDE \${_a} \${_n}\"
+done
+echo AH-OK" 2> /dev/null)
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "AH-PUT "*) _info "  ${_l#AH-PUT }: the hold of its unfinished aegir2boa import carried to ${_t}" ;;
+      "AH-GONE "*) _info "  ${_l#AH-GONE }: its aegir2boa import no longer unfinished here: its hold removed on ${_t}" ;;
+      "AH-ASIDE "*)
+        _l="${_l#AH-ASIDE }"
+        _info "  ${_l%% *}: its aegir2boa import is finished here: the state ${_t} kept of it from a role before is set aside there as ${_l#* }"
+        ;;
+      "AH-BAD "*) _alrt "  ${_l#AH-BAD }: its aegir2boa hold on ${_t} could not be set (/var/backups/a2b there is a link, or no directory): a promotion there would hand its half-imported panel the dispatcher" ;;
+      "AH-ODD "*) _alrt "  ${_l#AH-ODD }: its aegir2boa import is finished here, and /var/backups/a2b/${_l#AH-ODD } on ${_t} is a link or no directory (or /var/backups/a2b is): left as it is, nothing of this import is held there" ;;
+    esac
+  done <<< "${_out}"
+  case "${_out}" in
+    *AH-OK*) ;;
+    *AH-NOT-STANDBY*)
+      _alrt "  ${_t} holds no /root/.standby.cnf: the hold of an unfinished aegir2boa import is carried only onto this box's standby"
+      ;;
+    *)
+      # every live pass asks, for the holds a finished import no longer
+      # needs too: only a hold that could not be put is a promotion's risk
+      [ -n "${_put}" ] \
+        && _alrt "  could not carry the hold of an unfinished aegir2boa import to ${_t} (${_put# }): a promotion there would hand its half-imported panel the dispatcher"
+      ;;
+  esac
+  return 0
+}
+
+### restore-target hands a standby back as a plain box: the holds of
+### unfinished aegir2boa imports the active carried here (failover-hold, a
+### record of the pair) would count once the marker goes, holding accounts
+### whose imports belong to the other box on a box that was never promoted.
+### Each goes before the marker, its directory with it when it held nothing
+### else, as the carry removes one; any other aegir2boa state here is this
+### box's own and stays.
+_xmass_restore_drop_a2b_holds() {
+  local _r=/var/backups/a2b _d _a
+  [ -d "${_r}" ] && [ ! -L "${_r}" ] || return 0
+  for _d in "${_r}"/*; do
+    _a="${_d##*/}"
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    [ -e "${_d}/failover-hold" ] || [ -L "${_d}/failover-hold" ] || continue
+    if rm -f "${_d}/failover-hold"; then
+      rmdir "${_d}" 2> /dev/null
+      _info "  ${_a}: the hold of an unfinished aegir2boa import the active carried here removed (${_d}/failover-hold)"
+    else
+      _alrt "  ${_a}: ${_d}/failover-hold could not be removed: remove it by hand, or the account stays held here"
+    fi
+  done
+  return 0
+}
+
 ### Source-side LE health sweep: dehydrated's broken-renewal shape writes a
 ### fresh key and a ZERO-BYTE certificate nightly and never advances the
 ### symlink. Migrating a broken renewal means debugging two things at once
@@ -4860,6 +4984,7 @@ _xmass_restore_target() {
   _info "  the database broker switches the passes carried go; the ones parked with it come back"
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
+  _info "  the holds of aegir2boa imports the active carried here (/var/backups/a2b/<oN>/failover-hold) removed"
   if [ "${_live}" != "YES" ]; then
     _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
     return 0
@@ -4890,6 +5015,7 @@ _xmass_restore_target() {
       sed -i '/xmass-standby-hold/,+2d' "${_cnf}"
     fi
   done
+  _xmass_restore_drop_a2b_holds
   # The web and FTPS "was held" breadcrumbs go with the marker: this box is
   # being handed back as a normal box, and the watchdog reads them whenever
   # the marker is absent. The DROP chain goes FIRST, in the same step: the
@@ -5598,6 +5724,27 @@ _xmass_boa_run_live() {
     || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1 \
     || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
     || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1
+}
+
+# The spare replaced trees of a catalogue refresh under an account's distro
+# dir ($1): each <rev>/.boa-refresh/<name>.old whose <rev>/<name> is there,
+# a real directory both, as one leg exclude per line, anchored at the leg's
+# root. A name outside the plain platform charset is not listed: it
+# travels, as every .old did before.
+_xmass_refresh_spares() {   # 1 = the account's distro dir
+  local _o _rel _rev _n
+  for _o in "$1"/*/.boa-refresh/*.old; do
+    [ -d "${_o}" ] && [ ! -L "${_o}" ] || continue
+    _rel="${_o#"$1"/}"
+    _rev="${_rel%%/*}"
+    _n="${_rel##*/}"
+    _n="${_n%.old}"
+    case "${_rev}" in ''|*[!0-9]*) continue ;; esac
+    case "${_n}" in ''|.*|*[!A-Za-z0-9._-]*) continue ;; esac
+    [ -d "$1/${_rev}/${_n}" ] && [ ! -L "$1/${_rev}/${_n}" ] || continue
+    [ ! -L "$1/${_rev}/.boa-refresh" ] || continue
+    printf '/%s/.boa-refresh/%s.old\n' "${_rev}" "${_n}"
+  done
 }
 
 # What a DATA leg passes where every other leg passes ${_ieni}: the prune
@@ -7125,7 +7272,7 @@ _xmass_wg_promoted_here() {
 ### next Octopus pass runs each account again (no arm runs the master),
 ### and instgrp's lines say what this leaves and why.
 _xmass_wg_promoted() {
-  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b
+  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b _left=NO
   if [ "${_h}" = "here" ]; then
     _out=$(_xmass_wg_promoted_here "${_m}" "${_how}")
   else
@@ -7144,7 +7291,14 @@ _xmass_wg_promoted() {
   _info "Web groups on the promoted box (instgrp webconvert all; a large account takes a while, its sites already serve) ..."
   while IFS= read -r _l; do
     case "${_l}" in
-      "XMWO: "*) _info "    ${_l#XMWO: }" ;;
+      "XMWO: "*)
+        _info "    ${_l#XMWO: }"
+        # an account its unfinished aegir2boa import holds (or one frozen for
+        # a migration) is skipped with exit 4, as a busy one is
+        case "${_l}" in
+          *": held by an unfinished aegir2boa import ("*|*": frozen for a migration (log/proxied.pid), skipped"*) _left=YES ;;
+        esac
+        ;;
       XMWP:NOTE:*) _info "  NOTE: ${_l#XMWP:NOTE:}" ;;
       XMWP:ALRT:*) _alrt "  ${_l#XMWP:ALRT:}" ;;
       XMWP:RC:*)
@@ -7152,7 +7306,13 @@ _xmass_wg_promoted() {
         case "${_rc}" in
           0) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: done" ;;
           2|5|6) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc} (some deferred, refused or left in www-data; the lines above say which and why)" ;;
-          4) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends" ;;
+          4)
+            if [ "${_left}" = "YES" ]; then
+              _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (an account held or frozen there is left as it is, or a run is live: the lines above say which)"
+            else
+              _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends"
+            fi
+            ;;
           *) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc}; see /var/log/boa/instgrp.log there" ;;
         esac
         ;;
@@ -7183,12 +7343,22 @@ _xmass_sync_account() {
   # distro/NNN/.boa-refresh/ for minutes: copied to the mirror, it would be
   # pruned there by the next pass, thousands of entries past the delete
   # guard. The staging names never travel. A replaced tree sits in
-  # <name>.old only seconds during a live run, but after an interrupted one
-  # it can be the only copy, so it is left out only while a run is live.
+  # <name>.old only seconds during a live run, so it is left out then. With
+  # no run live it travels only as the only copy, its platform missing (a
+  # pass stopped between the two moves of the swap); one beside its
+  # platform is a spare (a pass stopped after the swap, before it retired
+  # the old tree), which the next pass removes, so a copy of it on the
+  # mirror would be that same mass deletion (see _xmass_refresh_spares).
   # Kept trees (<name>.kept-*) and the tarball records always travel.
   local _stg=(--exclude='/*/.boa-refresh/*.new' --exclude='/*/.boa-refresh/*.tar.gz' \
-    --exclude='/*/.boa-refresh/*.stale-*')
-  _xmass_boa_run_live && _stg+=(--exclude='/*/.boa-refresh/*.old')
+    --exclude='/*/.boa-refresh/*.stale-*') _spare
+  if _xmass_boa_run_live; then
+    _stg+=(--exclude='/*/.boa-refresh/*.old')
+  else
+    while IFS= read -r _spare; do
+      [ -n "${_spare}" ] && _stg+=("--exclude=${_spare}")
+    done < <(_xmass_refresh_spares "${_udir}/distro")
+  fi
   # Every account leg below is pinned at its top on both ends (see
   # _xmass_pinned_leg): the account's names are never followed as root.
   _xmass_pinned_leg "${_udir}/distro" "${_dst}/distro" "the platform codebases of ${_oct}" \
@@ -7263,11 +7433,17 @@ _xmass_sync_account() {
   # name there can be a link: root copies only from the real directory. The nginx
   # legs go only from the real directory, each directory sent by its own name
   # into the parent, so a link swapped in after the check travels as a link
-  # and is never followed.
+  # and is never followed. aegir2boa's freeze of an import is the same file
+  # (its first line A2B-IMPORT-FREEZE): its vhost.d stays too, as the sites
+  # of an unfinished import are still served by its vanilla source, and is
+  # named for what it is.
   local _ngxW _ngx
   _ngxW="$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_oct}/config/server_master/nginx"
   _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && pwd -P)"
-  if [ -e "${_udir}/log/proxied.pid" ]; then
+  if [ -e "${_udir}/log/proxied.pid" ] \
+    && [ "$(_xmass_in_real_dir "${_udir}/log" _xmass_rootread_here proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]; then
+    _alrt "  ${_udir##*/}: an aegir2boa import of the account is frozen here (log/proxied.pid) -- its vhost.d is NOT synced"
+  elif [ -e "${_udir}/log/proxied.pid" ]; then
     _alrt "  ${_udir##*/}: this box relays the account (log/proxied.pid) -- its vhost.d is NOT synced"
   elif [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/vhost.d" ]; then
     _xmass_warn_daily "nginx_link_${_oct}_vhost.d" "  ${_oct}: nginx/vhost.d or a directory above it is a link -- not followed, not sent"
@@ -7753,6 +7929,8 @@ _xmass_sync_shared() {
   # The mail hold and the test-run records, which no leg sends, travel with
   # every pass (the accounts this run carries are enumerated by now).
   _xmass_copy_mail_state "${_tgt}"
+  # So does the hold of an unfinished aegir2boa import.
+  _xmass_carry_a2b_hold "${_tgt}"
   # So do the database broker switches of the accounts it does not carry.
   _xmass_sweep_db_broker "${_tgt}"
   # trust-creators for a pair built before the line: the mirror, then here.
@@ -8283,8 +8461,14 @@ _xmass_restore_hint() {
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
-  local _oct _held=""
+  local _oct _held="" _away
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # One this box relays to another box (a single-account move made
+    # before this cutover) holds nothing local to gate and is no part of it.
+    if _away=$(_xmass_relays_elsewhere "${_oct}"); then
+      _info "  ${_oct}: relays to ${_away}, not this pair's target -- left as it is"
+      continue
+    fi
     # An account already converted to the relay has no PHP left to gate on
     # its relayed sites: writing the account gate there would be inert and
     # the closing line below a lie. What it may still hold locally are the
@@ -8668,7 +8852,7 @@ _xmass_convert_source_to_proxy() {
   #   whole  the single pass of the rename-first order: everything at once,
   #          redirects included.
   local _pass="${1:-whole}"
-  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn=""
+  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn="" _away
   if [ "${_pass}" = "relay" ]; then
     _info "Converting the source accounts to relay the client-domain sites via xoct ..."
     _XMASS_PROXY_CONV_FAILED=""
@@ -8705,6 +8889,12 @@ _xmass_convert_source_to_proxy() {
       if [ -z "${_XMASS_ADMAIL}" ] && [ -e "/data/conf/xoct_admail.${_oct}.txt" ] \
         && [ "$(_mig_get "/data/disk/${_oct}/${_MIG_CNF_NAME}" _MIG_PEER_IP)" != "${_tgt}" ]; then
         _info "  ${_oct}: an xoct canary still in its test run; leaving as is"
+        continue
+      fi
+      # Moved to another box before this cutover: nothing of it was
+      # deferred here, and its relay is not this pair's to repoint.
+      if _away=$(_xmass_relays_elsewhere "${_oct}"); then
+        _info "  ${_oct}: relays to ${_away}, not this pair's target -- left as it is"
         continue
       fi
       # Already relaying: the repair pass converts what was deferred and
@@ -9643,10 +9833,114 @@ REARM
   return 0
 }
 
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+# A root process runs aegir2boa-stage2 for the account $2: the tool's name
+# in any word of its argv (bash -x and sh -c count) and --account with the
+# next argv element, read whole and cut down as stage 2 cuts down its own
+# --account, naming $2, read from the proc root $1. Only a process whose
+# real and effective uid are root's is read (a tenant sets its own argv),
+# 64 KiB of each file at most. A /proc that cannot be read counts as one.
+_A2B_LIVE_PL='my ($p, $acct) = @ARGV;
+opendir(my $d, $p) or exit 0;
+for my $n (readdir($d)) {
+  next unless $n =~ /^[0-9]+$/ && $n != $$;
+  my $s = "";
+  if (open(my $sh, "<", "$p/$n/status")) {
+    sysread($sh, $s, 65536);
+    close($sh);
+  }
+  next unless $s =~ /^Uid:\s+0\s+0\s/m;
+  open(my $h, "<", "$p/$n/cmdline") or next;
+  my $c = "";
+  sysread($h, $c, 65536);
+  close($h);
+  my @w = grep { length } split(/[\0\s]+/, $c);
+  next unless grep { (my $x = $_) =~ s{.*/}{}; $x eq "aegir2boa-stage2" } @w;
+  my @e = split(/\0/, $c);
+  for my $i (0 .. $#e - 1) {
+    next unless $e[$i] eq "--account";
+    (my $z = $e[$i + 1]) =~ tr/a-z0-9//cd;
+    exit 0 if $z eq $acct;
+  }
+}
+exit 1'
+_a2b_import_live() {
+  perl -e "${_A2B_LIVE_PL}" /proc "${1}" 2> /dev/null
+}
+# The dispatcher of the account $1 on a box being promoted, where its
+# aegir2boa import is unfinished (its own state, or the hold this tool
+# carried there with every pass, read with the standby marker still in
+# place) on a box armed for the web group: it stays parked, its control
+# panel half made. A live one (a standby's accounts are installed with
+# one) goes into aegir2boa's own hold, or into off-run beside one already
+# held there, as BOA.sh.txt's agents pass parks it, never while an import
+# of the account runs here. 0 when the account is held, 1 when it is not.
+_xmass_a2b_hold_dispatcher() {
+  [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${1}" promoted || return 1
+  if [ -e "/var/xdrago/run-${1}" ] && ! _a2b_import_live "${1}"; then
+    if [ -e "/var/backups/a2b/${1}/held-run-${1}" ]; then
+      mkdir -p /var/backups/off-run
+      mv -f "/var/xdrago/run-${1}" /var/backups/off-run/
+    else
+      mv -f "/var/xdrago/run-${1}" "/var/backups/a2b/${1}/held-run-${1}"
+    fi
+    echo "  ${1}: its aegir2boa import is unfinished here: its dispatcher parked"
+  else
+    echo "  ${1}: its aegir2boa import is unfinished here: its dispatcher is not handed back"
+  fi
+  return 0
+}
+
 # The script the promotion cleanup runs as root on the promoted box through
 # bash -s, for the account $1: what an earlier demotion of that box left.
 # The cutover pipes it to its target; post-mig runs it here after a
-# promotion by hand.
+# promotion by hand. It carries _a2b_import_unfinished and the dispatcher's
+# hold as defined above, so the promoted box reads its own aegir2boa state
+# (and the hold this tool carried there with every pass) by the same text as
+# every BOA pass does.
 _xmass_promotion_cleanup_sh() {
   local _oct="$1"
   cat <<PROMCLEAN
@@ -9690,7 +9984,21 @@ _rd() {
       echo "  ${_oct}: removed stale \${_lch}.pid"
     fi
   done )
-if [ ! -e "/var/xdrago/run-${_oct}" ] \
+$(declare -f _a2b_import_unfinished)
+$(declare -p _A2B_LIVE_PL)
+$(declare -f _a2b_import_live)
+$(declare -f _xmass_a2b_hold_dispatcher)
+# An account whose aegir2boa import is unfinished here (its own state, or
+# the hold this tool carried from the active with every pass) keeps its
+# dispatcher parked on a box armed for the web group, a live one parked
+# now: its control panel is half made, and BOA's passes keep it switched
+# off as the active did once this box holds no standby marker; the worker
+# names the account and the way out once a day. A promotion by hand runs
+# this before it removes the marker, the cutover before its runner starts.
+# Every other account's parked dispatcher goes back as the demotion's
+# artefact it is.
+if ! _xmass_a2b_hold_dispatcher "${_oct}" \
+  && [ ! -e "/var/xdrago/run-${_oct}" ] \
   && [ -e "/var/backups/off-run/run-${_oct}" ]; then
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
   echo "  ${_oct}: restored parked dispatcher"
@@ -10080,6 +10388,36 @@ _xmass_release_source_events() {
   fi
 }
 
+# A cutover stopped after the freeze but before the promotion (the lag checks
+# of step 7, or step 8 read back as still a replica) has handed this box back
+# writable with its events running, and the pair is as it was: the phase goes
+# back to syncing, as 'xmass reset-phase syncing' would set it. Left at
+# cutover, a state kept from when step 6 held a global read lock, every
+# autosync pass deferred and the mirror's files stood still until an
+# operator ran that line, which no abort message named. Called after the
+# restore hint: the hint reads the phase to tell a pre-freeze abort (whose
+# gate comes down with it) from this one, whose 503 lift stays the
+# operator's.
+_xmass_cutover_back_to_syncing() {
+  # The scheduler this cutover stopped must be running again first: its
+  # record is the only trace of the stop, and the next cutover's step 6
+  # drops a record it finds with the scheduler off. While the record stays,
+  # the phase stays at cutover, so 'xmass reset-phase syncing' (which tries
+  # the release again) remains the way on, as before.
+  _xmass_release_source_events
+  if [ -e "${_XMASS_EVENTS_OFF_PID}" ]; then
+    _alrt "The target was not promoted, but the event scheduler stopped at step 6 could"
+    _alrt "  not be started again: the phase stays at 'cutover'. Once it starts, run"
+    _alrt "  'xmass reset-phase syncing', then the DRY and --live cutover"
+    return 0
+  fi
+  _XMASS_PHASE="syncing"
+  _xmass_save_state
+  _alrt "The target was not promoted: the pair is back at phase 'syncing' (the"
+  _alrt "  autosync cadence runs again); re-run the DRY and --live cutover once"
+  _alrt "  the lag holds at zero"
+}
+
 # A promoted box's events: each one its active created after the snapshot
 # arrived replica-side disabled, and a promotion leaves it so; MySQL runs it
 # again only after ALTER EVENT ... ENABLE, which without DEFINER makes root
@@ -10325,6 +10663,28 @@ _xmass_rootread_here() {
   perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
 }
 
+# An account $1 this box relays to a box other than this cutover's target
+# ($_tgt): a single-account move made before it, its own record (root's,
+# read without following a link) of the source role with this box as its
+# host naming that other box. It is no part of the pair's switch, as go-live
+# and the hand path's scope already treat it: the switch neither gates its
+# sites named under this box's hostname nor repoints its relay (xoct refuses
+# that without --retarget, which would aim it at the mirror's stale copy).
+# Prints that box; status 1 for any other account, a record it cannot read
+# included.
+_xmass_relays_elsewhere() {   # 1 = account
+  local _l="/data/disk/$1/log" _rec _hip _rp _mine
+  [ -e "${_l}/proxied.pid" ] || return 1
+  _rec=$(_xmass_in_real_dir "${_l}" _xmass_rootread_here migproxy.cnf)
+  printf '%s\n' "${_rec}" | grep -qx '_MIG_ROLE=source' || return 1
+  _hip=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+  _rp=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+  _mine=$(hostname -I 2> /dev/null | tr ' ' '\n' | grep -v '^$')
+  [ -n "${_hip}" ] && printf '%s\n' "${_mine}" | grep -qxF -- "${_hip}" || return 1
+  [ -n "${_rp}" ] && [ "${_rp}" != "${_tgt}" ] || return 1
+  printf '%s' "${_rp}"
+}
+
 # Which part of the hand path's cleanup the account $1 takes, from root's
 # files in its log/ and the pair's peer $2 (the active this box mirrored):
 #   pair  -- its own source-role record (this box's address as the host) names
@@ -10406,9 +10766,10 @@ _xmass_hand_hold_upgrade() {
 # The demotion cleanup of step 12.7, here: files only, so it runs first,
 # before the standby marker goes and the runner may act on an armed upgrade.
 # The cutover runs it on the accounts it moves; here it takes this pair's
-# accounts (_xmass_hand_scope) and holds the armed upgrade of every account
-# this box serves; an account it relays, or is moving, to another box is
-# left as it is. Once per promotion by hand: its record notes the run.
+# accounts (_xmass_hand_scope), and holds the armed upgrade, and the
+# dispatcher of an unfinished aegir2boa import, of every account this box
+# serves; an account it relays, or is moving, to another box is left as it
+# is. Once per promotion by hand: its record notes the run.
 _xmass_promote_cleanup_here() {
   local _root _oct _out _l _sc
   _info "Clearing what an earlier demotion of this box left (this pair's accounts) ..."
@@ -10428,7 +10789,11 @@ _xmass_promote_cleanup_here() {
       ;;
     esac
     _xmass_hand_hold_upgrade "${_oct}"
-    [ "${_sc}" = "pair" ] || continue
+    if [ "${_sc}" != "pair" ]; then
+      _out=$(_xmass_a2b_hold_dispatcher "${_oct}" 2>&1)
+      [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
+      continue
+    fi
     # The script speaks of the cutover that arms a held upgrade at its end;
     # here the second post-mig run, after the renames, does.
     _out=$(_xmass_promotion_cleanup_sh "${_oct}" | bash -s 2>&1 \
@@ -10442,6 +10807,20 @@ _xmass_promote_cleanup_here() {
   if [ -f "${_XMASS_HAND_PROMO_FILE}" ] && [ ! -L "${_XMASS_HAND_PROMO_FILE}" ]; then
     printf '_XMASS_HAND_CLEANED=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "${_XMASS_HAND_PROMO_FILE}"
   fi
+  return 0
+}
+
+# The dispatchers of the accounts here an unfinished aegir2boa import holds,
+# parked as the promotion cleanup parks them (_xmass_a2b_hold_dispatcher),
+# for every account the cleanup would visit.
+_xmass_hold_held_dispatchers_here() {
+  local _root _oct _out
+  for _root in /data/disk/o*; do
+    _oct="${_root##*/}"
+    [[ "${_oct}" =~ ^o[0-9]+$ ]] || continue
+    [ -f "${_root}/log/cores.txt" ] || continue
+    _out=$(_xmass_a2b_hold_dispatcher "${_oct}" 2>&1) && [ -n "${_out}" ] && _info "${_out}"
+  done
   return 0
 }
 
@@ -10504,6 +10883,13 @@ _xmass_promote_panels_here() {
   _info "Control panels: rewired to their live panel databases where a promotion left them dead ..."
   for _root in /var/aegir /data/disk/o*; do
     [ -f "${_root}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    # an aegir2boa import cut off on the box this one mirrored left its panel
+    # database half-imported (the vanilla panel, no BOA platform path): it
+    # has no live panel to rewire to, and the route run again here brings one
+    if [ "${_root}" != "/var/aegir" ] && _a2b_import_unfinished "${_root##*/}" promoted; then
+      _info "  PANEL-HELD: ${_root}: held by an unfinished aegir2boa import (/var/backups/a2b/${_root##*/}): not rewired; its panel comes with the route run again, as the hold's alarm says"
+      continue
+    fi
     _out=$(_xmass_panel_rewire_sh | bash -s -- "${_root}" "${_me}" 2>&1)
     [ $? -eq 0 ] || _bad="${_bad} ${_root}"
     while IFS= read -r _l; do
@@ -10834,6 +11220,28 @@ _xmass_assert_same_release() {
          " target missing one takes down EVERY migrated site on that box." \
          " Bring ${_fix} up first with a FULL run -- barracuda AND" \
          " octopus, not just one of them -- then re-run this step."
+  fi
+  _die "${_why}"
+}
+
+### An account whose aegir2boa db-import is unfinished here (cut off, a
+### revert of it cut off, or its dispatcher still held) has a half-made
+### panel: a cutover would freeze this box and promote the target, then stop
+### at the panel rewire or the rename with both done. Refused until the
+### import is finished or reverted here. 'die' (the default) refuses, 'deny'
+### reports and marks the DRY run NOT CLEAN.
+_xmass_a2b_cutover_gate() {
+  local _how="${1:-die}" _oct _held="" _why
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[a-z0-9-]+$ ]] || continue
+    _a2b_import_unfinished "${_oct}" && _held="${_held} ${_oct}"
+  done
+  [ -n "${_held}" ] || return 0
+  _why="an aegir2boa import is unfinished here for:${_held} -- finish or revert it here first ('aegir2boa-stage2 target-status --account <oN>' says where it stands): a cutover would promote the target and then stop at its panel rewire"
+  if [ "${_how}" = "deny" ]; then
+    _alrt "DENY: ${_why}"
+    _XMASS_NOT_CLEAN=YES
+    return 1
   fi
   _die "${_why}"
 }
@@ -11276,7 +11684,11 @@ _xmass_create_src_host() {
 }
 
 ### Which eligible accounts the target $1 already holds, and whether each is
-### this migration's to take. A held account goes on only when:
+### this migration's to take. One the target relays, or is moving, to
+### another box is refused first, whatever else holds: it left this pair
+### (xoct moved it on), and this box's copy is from before that move, so a
+### create would re-seed it and the sync would put that copy over its relay.
+### Otherwise a held account goes on only when:
 ###   - a create marker there names this box and the account, and the uid and
 ###     /data/disk/<oN> it records are the account's now (xoct create then
 ###     re-seeds it: this migration made it);
@@ -11300,7 +11712,7 @@ _xmass_create_src_host() {
 ### --adopt puts the marker for each. Read-only on the target.
 _xmass_target_owner_gate() {
   local _t="$1" _h _a _rmt _out _nu _ni _mh _mo _mu _mi _held _inv _vh _lnk
-  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless=""
+  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless="" _away _moved=""
   _XMASS_ADOPT_ACCOUNTS=""
   if ! _h="$(_xmass_create_src_host)"; then
     _die "this box's hostname -f is not a hostname the create marker can name;" \
@@ -11333,10 +11745,13 @@ _pi=$(printf '%s\n' "${_st}" | grep -m1 '^_XMASS_INIT_TIME=' | cut -d= -f2- \
 [ -n "${_pi}" ] && _pi=$(date -d "${_pi}" +%s 2> /dev/null)
 printf 'PAIR_TARGET_IP=%s\nPAIR_PHASE=%s\nPAIR_INIT_EPOCH=%s\n' "${_pt}" "${_pp}" "${_pi}"
 # Whether the account there relays, or is moving, elsewhere: a proxied.pid
-# in any form (? when its log/ is not a real directory), and the peer of its
-# source-role record of root's (? when a record is there that cannot be read
-# so). The pair's state names the box, not each account: an account that
-# box moved on is no copy of this one. Both keys, even when empty.
+# in any form (? when its log/ is not a real directory; FREEZE when it is
+# root's and says an aegir2boa import of the account is frozen there, which
+# is no relay), and the peer of its source-role record of root's (? when a
+# record is there that cannot be read so; empty for one naming no peer, a
+# proxy-mode pin xoct writes before any move). The pair's state names the
+# box, not each account: an account that box moved on is no copy of this
+# one. Both keys, even when empty.
 _L="/data/disk/${_A}/log"
 _isthere() { [ -e "./${1}" ] || [ -L "./${1}" ]; }
 _rpid=NO
@@ -11344,6 +11759,7 @@ if ! _xmass_in_real_dir "${_L}" true; then
   _rpid='?'
 elif _xmass_in_real_dir "${_L}" _isthere proxied.pid; then
   _rpid=YES
+  [ "$(_xmass_in_real_dir "${_L}" _rootread proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ] && _rpid=FREEZE
 fi
 _rpeer=""
 if _xmass_in_real_dir "${_L}" _isthere migproxy.cnf; then
@@ -11352,7 +11768,6 @@ if _xmass_in_real_dir "${_L}" _isthere migproxy.cnf; then
     _rpeer='?'
   elif printf '%s\n' "${_rrec}" | grep -qx '_MIG_ROLE=source'; then
     _rpeer=$(printf '%s\n' "${_rrec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
-    [ -n "${_rpeer}" ] || _rpeer='?'
   fi
 fi
 printf 'PAIR_RELAY_PID=%s\nPAIR_RELAY_PEER=%s\n' "${_rpid}" "${_rpeer}"
@@ -11436,6 +11851,22 @@ OWNSH
         continue
       ;;
     esac
+    if _away=$(_xmass_target_moved_on "${_out}" "${_mine}"); then
+      _deny="${_deny} ${_a}"
+      if [ "${_away}" = "?" ]; then
+        _alrt "DENY: ${_a}: whether ${_t}'s ${_a} relays elsewhere cannot be read (a log/proxied.pid with no record"
+        _alrt "DENY: naming its peer, or a log/ that is not a real directory): check on ${_t} what relays it"
+      elif _xmass_target_tied "${_a}" "${_h}" "${_out}"; then
+        _moved="${_moved} ${_a}"
+        _alrt "DENY: ${_a}: ${_t}'s ${_a} relays, or is moving, to ${_away} (its log/proxied.pid, its source-role"
+        _alrt "DENY: record): it left this pair, and this box's ${_a} is a copy from before that move"
+      else
+        _alrt "DENY: ${_a}: ${_t}'s ${_a} relays, or is moving, to ${_away} (its log/proxied.pid, its source-role"
+        _alrt "DENY: record), and no create marker ties it to this box's ${_a}, which may be the newer copy"
+        _alrt "DENY: or another client's: check on ${_t} whose it is, and move it out of the way there"
+      fi
+      continue
+    fi
     # The account's uid and directory as they are now come first in the
     # output, so a first match can only take these real values.
     _nu=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
@@ -11507,9 +11938,15 @@ OWNSH
     _alrt "  a site-less account checked by hand as this migration's to take is adopted with:"
     _alrt "    xmass prep-target ${_t} --adopt-siteless=${_siteless}$(_xmass_admail_hint)"
   fi
+  for _a in ${_moved}; do
+    _alrt "  ${_a} moved on: point its sites at the box it relays to, then retire it on both boxes of"
+    _alrt "  this pair (touch /data/disk/${_a}/log/CANCELLED, 'boa cleanup detect noscreen', then"
+    _alrt "  'boa cleanup purge ${_a} noscreen', here and on ${_t}); a relay kept on ${_t} serves"
+    _alrt "  nothing while it is this pair's standby, and its panel does not survive the init"
+  done
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
-         " nothing was changed there. Move such an account out of the way on ${_t}," \
+         " nothing was changed there. Move such an account out of the way on ${_t},${_moved:+ retire one that moved on as said above,}" \
          " or mark the ones that really are this migration's, then re-run prep-target"
   fi
   return 0
@@ -11654,6 +12091,90 @@ _xmass_create_marker_here() {
     timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null \
       | grep '^_MIG_CREATE_'
   fi
+}
+
+### Whether the target's account relays, or is moving, to a box other than
+### this one, from the probe output $1 ($2 = this box's addresses), by the
+### probe's first print of each relay key: a source-role record naming
+### another box, a proxied.pid with no record naming this box, or a
+### proxied.pid that cannot be read. A record naming no peer (a proxy-mode
+### pin, set per account or by 'xoct proxy-mode --all') or one that cannot
+### be read counts only beside a proxied.pid. Status 0 then, the peer read
+### printed (? unknown); status 1 for no relay at all, one to this box (the
+### relay proof's) or an aegir2boa import frozen there with no record naming
+### another box (FREEZE: the other proofs decide, as before).
+_xmass_target_moved_on() {
+  local _rp _rr
+  _rp=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PID=' | cut -d= -f2-)
+  _rr=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PEER=' | cut -d= -f2-)
+  case "${_rp}" in
+    NO|YES|FREEZE) : ;;
+    *) echo "?"; return 0 ;;
+  esac
+  if [ -z "${_rr}" ] || [ "${_rr}" = "?" ]; then
+    [ "${_rp}" = "YES" ] && { echo "?"; return 0; }
+    return 1
+  fi
+  if printf '%s\n' ${2} | grep -qxF -- "${_rr}"; then
+    return 1
+  fi
+  echo "${_rr}"
+  return 0
+}
+
+### Whether the create markers tie the target's account $1 to this box's
+### ($2 = the name this box's markers carry, $3 = the probe output), by the
+### proofs' own tests, so a marker left from an earlier account of the name
+### ties nothing: this box's marker of the account names the target and
+### still names this box's account user ID and directory, and the target's
+### account was born before it was put (this copy came from there, before
+### the move); or, with no marker here, the target's names this box and the
+### account as they are there now, and this box's account was born before
+### it was put. A marker here naming another box is no tie: this copy came
+### from elsewhere, maybe after the move (a chained one). Only the moved-on
+### refusal's advice reads it: an account nothing ties may be another
+### client's, or the live one. A birth time a filesystem does not keep (0)
+### is not compared, as in the proofs.
+_xmass_target_tied() {
+  local _a="$1" _h="$2" _out="$3" _th _m _mh _nu _nl _mu _mi _ms _se _ni _tb _tu _ti _ob
+  _th=$(_xmass_kv "${_out}" TGT_HOST)
+  _m=$(_xmass_create_marker_here "${_a}")
+  _mh=$(_xmass_kv "${_m}" _MIG_CREATE_SRC_HOST)
+  _ni=$(_xmass_kv "${_out}" _MIG_CREATE_NOW_INODE)
+  if [ -n "${_mh}" ]; then
+    _nu=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_UID)
+    _nl=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_INODE)
+    _mu=$(_xmass_kv "${_m}" _MIG_CREATE_TGT_UID)
+    _mi=$(_xmass_kv "${_m}" _MIG_CREATE_TGT_INODE)
+    _ms=$(_xmass_kv "${_m}" _MIG_CREATE_STAMPED)
+    _se=""
+    [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+    _tb="${_ni#*:}"
+    [ -n "${_th}" ] && [ "${_mh}" = "${_th}" ] && [ "$(_xmass_kv "${_m}" _MIG_CREATE_SRC_OCT)" = "${_a}" ] \
+      && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+      && [[ "${_nl}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_nl}" ] \
+      && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] \
+      && { [ "${_tb}" = 0 ] || [ -z "${_ms}" ] || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_tb}" -lt "${_se}" ]; }; }
+    return $?
+  fi
+  _nu=$(_xmass_kv "${_out}" _MIG_CREATE_NOW_UID)
+  _tu=$(_xmass_kv "${_out}" _MIG_CREATE_TGT_UID)
+  _ti=$(_xmass_kv "${_out}" _MIG_CREATE_TGT_INODE)
+  _ms=$(_xmass_kv "${_out}" _MIG_CREATE_STAMPED)
+  _se=""
+  [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+  _ob=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_INODE)
+  _ob="${_ob#*:}"
+  [ "$(_xmass_kv "${_out}" _MIG_CREATE_SRC_HOST)" = "${_h}" ] && [ "$(_xmass_kv "${_out}" _MIG_CREATE_SRC_OCT)" = "${_a}" ] \
+    && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_tu}" = "${_nu}" ] \
+    && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_ti}" = "${_ni}" ] \
+    && [[ "${_ob}" =~ ^[0-9]+$ ]] \
+    && { [ "${_ob}" = 0 ] || [ -z "${_ms}" ] || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_ob}" -lt "${_se}" ]; }; }
+}
+
+### The first value of key $2 in the KEY=value lines of $1.
+_xmass_kv() {
+  printf '%s\n' "$1" | grep -m1 "^${2}=" | cut -d= -f2-
 }
 
 ### Whether the target's account $1 is this pair's own, from the target's
@@ -13781,6 +14302,12 @@ _xmass_cmd_reset_phase() {
   # scheduler a frozen cutover stopped here starts again.
   if [ "${_new}" = "syncing" ] || [ "${_new}" = "init" ]; then
     _xmass_release_source_events
+    # A scheduler that would not start keeps its record: the phase stays,
+    # or the cadence would sync on while this box's events stand still.
+    [ -e "${_XMASS_EVENTS_OFF_PID}" ] \
+      && _die "reset-phase ${_new} REFUSED: the event scheduler a cutover stopped here would not start" \
+              "again (${_XMASS_EVENTS_OFF_PID} kept, the phase stays '${_XMASS_PHASE:-none}'): start it" \
+              "(SET GLOBAL event_scheduler=ON) and re-run 'xmass reset-phase ${_new}'"
   fi
   _XMASS_PHASE="${_new}"
   # phase=complete also disarms a still-armed autosync cadence, at the
@@ -15161,6 +15688,7 @@ _xmass_cmd_cutover() {
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
     _xmass_webgroup_gate "${_tgt}" deny || true
+    _xmass_a2b_cutover_gate deny || true
     # A hazardous-vintage java.sh on the target would kill the final Solr
     # rsync's own receiver DURING the cutover window -- with the 503 already
     # up and the source's Solr already deny-filed. The fact is known before
@@ -15240,6 +15768,7 @@ _xmass_cmd_cutover() {
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
   _xmass_webgroup_gate "${_tgt}" die
+  _xmass_a2b_cutover_gate die
   # Same consult as the DRY plan, in die mode: the receiver-kill hazard must
   # refuse HERE, at the last free moment, not surface mid-window.
   if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
@@ -15402,6 +15931,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
+      _xmass_cutover_back_to_syncing
       _die "Replica lag not zero after the write freeze on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted; writes thawed"
     fi
@@ -15444,6 +15974,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
+      _xmass_cutover_back_to_syncing
       _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
            "— cutover aborted; writes thawed"
     fi
@@ -15618,6 +16149,11 @@ _xmass_post_mig() {
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
   # it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
+    # A promotion by hand whose cleanup did not run (the box still read as a
+    # replica, or its state could not be read): the dispatcher of an account
+    # an unfinished aegir2boa import holds is parked before the marker goes,
+    # as the cleanup parks it, or the runner the marker held would fire it.
+    [ "${_XMASS_HAND_CLEANED}" = "YES" ] || _xmass_hold_held_dispatchers_here
     # The DROP chain before the breadcrumb that unlocks it: this box is taking
     # direct traffic, and nginx.sh flushes BOA_STANDBY_WEB only while the
     # breadcrumb or the marker is still there.

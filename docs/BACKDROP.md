@@ -60,9 +60,10 @@ After the run the instance has:
   Backdrop platforms before the module, that sweep is what makes them
   visible as upgrade targets. A larger panel gets no sweep (its warning
   is discarded with the enable's output): run a Verify on each
-  pre-existing Backdrop platform yourself. Enabling it also grants the
-  `create backdrop_upgrade task` permission to the `aegir administrator`
-  role.
+  pre-existing Backdrop platform yourself. Enabling it also grants the three
+  Backdrop task permissions (`create backdrop_upgrade task`,
+  `create backdrop_d6_upgrade task`, `create backdrop_cutover task`) to the
+  administrative roles and to `aegir client` alike.
 - **`bee`**, the native Backdrop CLI, at `/opt/local/bin/bee`, plus the
   backdrop-drush-extension wired into the backend Drush 8.
 

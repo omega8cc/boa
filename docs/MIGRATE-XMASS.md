@@ -166,6 +166,13 @@ that aborts earlier in the cutover — a failed transfer, a store that will not
 fit, a replica that never catches up — leaves the phase at `syncing` and is
 recovered by simply re-running the DRY and `--live`.
 
+An abort after the
+freeze but before the promotion (step 7's lag checks, a step-8 failure whose
+read-back proves the target still a replica) thaws the freeze and puts the
+phase back at `syncing` too, so the autosync cadence runs again; it stays
+`cutover` only while the event scheduler step 6 stopped could not be started
+again, and the run says so.
+
 If the phase does end up wrong, use `xmass reset-phase <phase>` rather than
 editing `/data/conf/xmass_state.cnf` by hand. It is a recovery verb and it
 warns about the unsafe transitions:
@@ -612,8 +619,29 @@ What it does, in order:
    values only), force-copies the PHP pin files and carries the client's shell
    credentials. Already-installed accounts are re-seeded, not re-installed.
 
-   An account of the same name that the target already holds is this
-   migration's only when one of these is true, checked once the target
+   An account of the same name that the target relays, or is moving, to
+   another box (a source-role `log/migproxy.cnf` naming another box, or a
+   `log/proxied.pid` with no record naming this box) is refused first,
+   whatever else holds: a create would re-seed it and the sync would put
+   this box's copy over its relay. A record naming no peer (a `proxy-mode`
+   pin) counts only beside a `proxied.pid`, and an aegir2boa import frozen
+   there is no relay; a relay that cannot be read is refused, to be checked
+   on the target.
+
+   When this box's create marker of the account names the target (or, with
+   none here, the target's names this box), this box's copy is from before
+   that move: point its sites at the box it relays to, then retire it on
+   both boxes of the pair (its `log/CANCELLED`, `boa cleanup detect`, then
+   `boa cleanup purge <oN>`, here and on the target). A relay kept on the
+   target serves nothing while it is the pair's standby, and its control
+   panel does not survive the `init`.
+
+   Otherwise nothing ties the two (another client's account, or the newer
+   copy of a chained move): check on the target whose it is, and move it out
+   of the way there.
+
+   Otherwise an account of the same name that the target already holds is
+   this migration's only when one of these is true, checked once the target
    answers and before it changes at all (before its tools are refreshed and
    before any target-only account is purged):
    - the create marker there names this box and this account, and the user
@@ -904,7 +932,10 @@ What `init` does:
    standby that was never promoted returns to that state with
    `xmass restore-target` (dry by default, `--live` performs it; refused
    while a window is in flight, under a barracuda/octopus run, or on a box a
-   cutover promoted).
+   cutover promoted). It removes the holds of unfinished aegir2boa imports
+   the active carried there (`/var/backups/a2b/<oN>/failover-hold`) before
+   the standby marker goes, so the plain box holds none of the other box's
+   imports.
 
    Cron stays RUNNING for the whole
    window — a standby is a working BOA box, with IDS and every watchdog
@@ -1089,6 +1120,60 @@ client mail the active held, and its `xoct` verbs keep to the same test
 runs. They are written only onto a box that carries the standby marker, and
 `post-mig` names what it finds on the promoted box.
 
+**So does the hold of an unfinished aegir2boa import.** Its state lives in
+root's `/var/backups/a2b/<oN>/` on the box the import ran on, which no leg
+sends, while the account's panel database and files do travel.
+
+For each account whose aegir2boa db-import reads unfinished on the active
+(its dispatcher held, a revert cut off part way, or step markers without
+the done or hand-back marker; `AEGIR2BOA.md`) with no run of it live, every
+live pass puts `/var/backups/a2b/<oN>/failover-hold` (root's) on the
+standby, and removes it once the import there no longer reads unfinished.
+An import that runs is left to hand its dispatcher back itself (a hold
+already there stays meanwhile): a failover while it runs carries no hold of
+it, and the promoted box hands that half-made panel its dispatcher.
+
+The standby's own passes never act on the hold: it counts only on a box
+that is no standby. It is written only onto a box that carries the standby
+marker, and a hold that cannot be carried is said without failing the pass.
+
+On a promotion the account's dispatcher stays parked on a box armed for
+the web group (a live one, as a standby's accounts are installed with, is
+parked before the standby marker goes, by the cutover and by a promotion by
+hand), the cutover's rename of the account refuses (the cutover parks at
+`rename-failed`), and BOA's passes keep its half-made panel switched off
+there as on the old box.
+
+The worker names it once a day with the way out on that box: the route run
+again toward it, once the site databases the replication brought from the
+cut-off import are dropped there, since the import's dumps and pre-import
+snapshot stayed on the old box. An import there that reaches its hand-back
+ends the hold.
+
+The promotion leaves the account's web group as it was (`instgrp` counts
+the hold as it counts a migration's freeze) and does not rewire its panel,
+which is still the vanilla one the cut-off import left (`PANEL-HELD` in
+its output).
+
+While the import is unfinished on the active, a sync names the account
+frozen (the import's own `log/proxied.pid`) and sends none of its vhosts,
+as its sites are still served by the vanilla source. `xmass pre-mig`
+refuses that box (the panel's platform in the database differs from its
+alias root), and so does `xmass prep-target` (its account creation names
+the import's freeze): a pair is prepared only once every import there is
+finished or reverted, so the hold covers a pair that stood before the
+import.
+
+A cutover refuses the same way (its DRY run as a DENY) while an import of
+an account it carries is unfinished there: it would promote the target and
+then stop at the panel rewire.
+
+Once the import on the active no longer reads unfinished, any other
+aegir2boa state the standby holds of the account (from a role before this
+one: a box that ran the import and failed over) is set aside there as
+`/var/backups/a2b/<oN>.superseded.<time>`, never removed, its held
+dispatcher back among the standby's parked ones.
+
 Under another box's test-run mark `post-mig` also names the accounts whose
 `_SEND_UPGRADE_EMAIL` reads `NO`. A mirror built under `admail=` has it off
 for every account it carries, and after a promotion by hand no `go-live` can
@@ -1237,8 +1322,14 @@ minutes later. The `distro/` leg leaves that tree, its downloaded tarball and
 any `.stale-*` leftover behind.
 
 The replaced tree `<name>.old` stays behind
-too while a barracuda or octopus run is live; otherwise it travels, because
-after an interrupted run it can be the only copy. A tree the refresh kept
+too while a barracuda or octopus run is live. With no run live it stays
+behind while its platform `distro/NNN/<name>` is there: it is then a spare
+the next pass removes, which a mirror never needs and which, carried, the
+next sync would have to delete again (past 5000 files the delete guard
+stops that sync).
+
+Only an `.old` whose platform is missing travels, because after a run
+stopped between the swap's two moves it is the only copy. A tree the refresh kept
 because it held tenant files, and the tarball records in `.boa-tarball/`,
 travel like any other file.
 
@@ -1680,7 +1771,7 @@ first change to the source):
 | Step | What happens |
 |---|---|
 | Step 0 | Re-hold Solr on target (in case it was manually started since init) |
-| Step 1 | Write `http-off.pid` for all accounts → nginx serves 503 on source; purge speed cache |
+| Step 1 | Write `http-off.pid` for all accounts → nginx serves 503 on source; purge speed cache. An account this box relays to another box (a single-account `xoct` move made before this cutover: its `log/proxied.pid` and a source-role record naming a box other than this cutover's target) gets no gate here and no conversion later: it is left as it is, and the run says so |
 | Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse on a rolled-back source run `xmass restore-solr` -- clearing the deny by hand is **not** enough, see below) |
 | Step 3 | Final rsync: shared data, Solr (now clean — source stopped), all account data |
 | Step 3.5 | **Gate:** abort if any store could not be placed or any transfer failed — before anything destructive |
@@ -1688,7 +1779,7 @@ first change to the source):
 | Step 5 | Final rsync pass of `static/files` only, **before** the write freeze (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
 | Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect. Before the lag checks the **event scheduler** is turned off on the source when it runs (recorded in `/run/boa_xmass_events_off.pid`; every abort before the promotion, the pre-freeze unwind and `reset-phase syncing` start it again; a resumed tail turns it off again after a reboot) |
-| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable |
+| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable and the phase goes back to `syncing` (it stays `cutover` only while the stopped event scheduler could not be started again) |
 | Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
 | Step 9 | Vacant: no lock is held on the source, so nothing is released. The write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
@@ -1828,7 +1919,10 @@ left to do.
 First, before the standby marker goes, it clears what an earlier demotion
 of this box toward the active it mirrored (the marker's first line names
 it) left in that pair's accounts: its own relay records, `proxied.pid` and
-the export latches, a parked dispatcher, proxy vhosts. It holds back every
+the export latches, a parked dispatcher, proxy vhosts. The dispatcher of an
+account whose aegir2boa import reads unfinished there (the hold carried
+above) stays parked on a box armed for the web group, and the run says so.
+It holds back every
 upgrade armed in an account it serves, removing none. An account it
 relays, or is moving, to another box is left as it is. Then, once the
 database takes writes, it rewires each control panel to its live panel
@@ -2133,8 +2227,11 @@ From the freeze onward
 the tool prints the full restore recipe for the source instead; follow it
 rather than doing it from memory. An abort at step 7 — and a step-8 failure whose
 read-back proves the target is still a replica — **thaws the write freeze
-itself**; the phase is `cutover`, so retrying is
-`xmass reset-phase syncing`, a fresh DRY, then `--live`.
+itself** and puts the phase back at `syncing`, so retrying is a fresh DRY,
+then `--live`. When the event scheduler step 6 stopped could not be started
+again, the phase stays `cutover` and the run says so: once it runs, `xmass
+reset-phase syncing` (which refuses while it still will not start), a fresh
+DRY, then `--live`.
 
 A refusal at step 12
 or later (and a step-8 failure whose promotion actually committed) parks

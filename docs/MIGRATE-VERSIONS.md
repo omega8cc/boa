@@ -20,7 +20,9 @@ the tool references [MIGRATE-XOCT.md](MIGRATE-XOCT.md) and
 - **`xmass`** evacuates a whole server with an xtrabackup physical snapshot plus
   GTID replication. Physical backup and replication require **identical Percona
   series and patch level on both ends** (for example both 8.4.13) — `xmass init`
-  refuses a mismatch before it touches any data.
+  refuses a mismatch before it touches any data. The one waiver is a target on a
+  newer patch than the source, accepted only with `_XMASS_ALLOW_PATCH_SKEW=YES`
+  exported; a target on an older patch is refused outright.
 
 So when the two hosts of a whole-server move run different series, you have two
 ways forward: bring the older box up to the same series **in place** first
@@ -109,7 +111,8 @@ you configure anything:
 - **Replica authentication.** `caching_sha2_password` (the 8.0+ default auth
   plugin) refuses to authenticate a replica over a non-TLS channel unless the
   replica is told to fetch the source's public key. `xmass` sets
-  `GET_SOURCE_PUBLIC_KEY=1` on the replication link and verifies that **both**
+  `GET_SOURCE_PUBLIC_KEY=1` (`GET_MASTER_PUBLIC_KEY=1` on 8.0) on the replication
+  link and verifies that **both**
   the IO and SQL replica threads report running before it proceeds.
 
 None of this applies to a same-version 5.7→5.7 `xmass` move, which uses
