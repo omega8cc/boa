@@ -146,9 +146,17 @@ The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and t
 
 Every PHP version, 5.6 through 8.6, runs with `session.upload_progress.enabled = Off`. PHP's own default is On: the session extension then watches every multipart POST for a `PHP_SESSION_UPLOAD_PROGRESS` field and writes the upload's progress into the visitor's session before the site's code runs. No CMS BOA hosts reads that data; Drupal and Backdrop show upload progress through the `uploadprogress` extension, which stays enabled.
 
-The Off line ships in the `php.ini` templates of every version, the FPM file (`/opt/phpNN/etc/phpNN.ini`) and the command-line one (`/opt/phpNN/lib/php.ini`). Each Barracuda pass copies the templates over the live files, so the system agent (`BOA.sh.txt`, every 5 minutes, also with `_SKYNET_MODE=OFF`) checks both files of every version on each run and puts the line back where a pass from an older tree brought PHP's default back. It reloads that version's FPM master only after the master's own configuration test passes; a master that fails the test keeps serving, and the reload is retried on every run. Each change is logged in `/var/log/boa/php-upload-progress.log`.
+The Off line ships in the `php.ini` templates of every version, the FPM file (`/opt/phpNN/etc/phpNN.ini`) and the command-line one (`/opt/phpNN/lib/php.ini`). Each Barracuda pass copies the templates over the live files, so the system agent (`BOA.sh.txt`, every 5 minutes, also with `_SKYNET_MODE=OFF`) checks both files of every version on each run and puts the line back where a pass from an older tree brought PHP's default back.
+
+It reloads that version's FPM master only after the master's own configuration test passes; a master that fails the test keeps serving, and the reload is retried on every run. Each change is logged in `/var/log/boa/php-upload-progress.log`.
 
 A site cannot turn it back on: the directive cannot be changed with `ini_set()`, BOA disables `.user.ini` files, and there is no Apache `.htaccess` layer.
+
+## Fatal error backtraces are off on PHP 8.6
+
+PHP released its October 2026 security fix for 8.2 to 8.5 only, and the 8.6 build BOA ships, 8.6.0RC3, does not carry it. For a build without the fix, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug, so the 8.6 `php.ini` templates (FPM and command line) carry it and each Barracuda pass puts it in the live files. Fatal errors are still logged, without the backtrace. The line goes once BOA builds an 8.6 release with the fix.
+
+The system agent keeps the line there the same way it keeps the upload progress line: it checks both 8.6 files on every run, puts the line back where a pass from an older tree left PHP's default, and reloads the 8.6 FPM master after its configuration test, logging to the same file.
 
 ## Security backports for older PHP releases
 
