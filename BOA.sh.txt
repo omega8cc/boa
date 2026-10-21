@@ -5715,7 +5715,7 @@ CSFSTANDBY
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f55 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f46 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f45 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f20 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -6671,26 +6671,61 @@ _php_upload_progress_off() {
 # PHP security floor: the first point release of each minor version that
 # carries a security fix no box may wait for, e.g. "8.2.35 8.3.36"; empty
 # means off. A box running an older build of an installed version listed
-# here gets a barracuda system pass, which rebuilds PHP to the pinned
-# releases. SKYNET-off boxes get it too: a pass that may break an old Octopus
-# instance until that is upgraded as well is still safer than a known remote
-# code execution hole, and a system pass leaves the master Ægir instance as it
-# is. The pass is due a spread of up to 30 minutes after the first run that saw
-# the floor, so the fleet does not fetch from the mirrors at once, and a pass
-# that leaves a version below the floor is tried again 12 hours later.
+# here gets a barracuda system pass, which rebuilds PHP to the pins of the
+# box's tree. SKYNET-off boxes get it too, through the launcher's override
+# for this pass alone: a pass that may break an old Octopus instance until
+# that is upgraded as well is still safer than a known remote code execution
+# hole, and a system pass leaves the master Ægir instance as it is.
 _PHP_SEC_FLOOR=""
+
+# One line per state: a wait repeated on every run is logged once, until
+# something else is logged.
+_php_floor_log() {
+  [ -d "${_pthLog}" ] || return 0
+  tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 0
+  echo "$(date 2> /dev/null) $1" >> "${_pthLog}/php-sec-floor.log"
+}
+
+# TRUE when version $2 is older than $3 by PHP's own rules, asked of the PHP
+# binary $1: sort -V puts 8.6.0 before 8.6.0RC3.
+_php_floor_older() {
+  # shellcheck disable=SC2016 # $argv is PHP's, not the shell's
+  "$1" -n -r 'exit(version_compare($argv[1], $argv[2], "<") ? 0 : 1);' "$2" "$3" 2> /dev/null
+}
+
+# TRUE while no pass may start: an install or upgrade, the nightly dump, an
+# xoct or xcopy verb, SQL maintenance, mydumper or myloader, or an xmass or
+# standby seed in its first two days.
+_php_floor_busy() {
+  _myquick_busy && return 0
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2> /dev/null)" ] && return 0
+  return 1
+}
+
+# Mailed to the operator unless _INCIDENT_REPORT=OFF: $1 subject, $2 body.
+_php_floor_mail() {
+  [ -n "${_MY_EMAIL}" ] || return 0
+  [ "${_INCIDENT_REPORT}" = "OFF" ] && return 0
+  echo "$2" | s-nail -s "$1" "${_MY_EMAIL}" &> /dev/null
+}
+
+# Decides whether this box needs the floor's pass. _php_security_floor_launch
+# starts it at the end of the run, after the tools refresh: the run's own apt
+# and service steps never overlap the pass, and a SKYNET-off box already has
+# the launcher that honours the override. The state, one line in
+# /etc/boa/control, is the time of the next allowed start, the passes started
+# and the versions they were for. Each box starts at its own spread of up to
+# 30 minutes, also when a wait for the release ends, so the fleet does not
+# fetch from the mirrors at once. A version waits while the pin of the box's
+# tree is below its floor or the pin's source is not on the mirror. A pass
+# that leaves a version below is tried again 12 hours later; after three, or
+# when a major OS upgrade is staged in the cnf, the operator is mailed once
+# and the box is left to them.
 _php_security_floor() {
-  local _fLr=""
-  local _e=""
-  local _iV=""
-  local _bElow=""
-  local _sTp=""
-  local _nOw=""
-  local _dUe=""
-  local _tR=""
-  local _hN=""
-  local _wAnt=""
-  local _sZ=""
+  local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
+  local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
+  local _tR="" _wAit="" _eNt=""
+  _PHP_FLOOR_GO=NO
   [ -n "${_PHP_SEC_FLOOR}" ] || return 0
   [ -x "/opt/local/bin/barracuda" ] || return 0
   [ -e "/var/log/barracuda_log.txt" ] || return 0
@@ -6704,66 +6739,119 @@ _php_security_floor() {
     case "${_iV}" in
       ''|*[!0-9A-Za-z.]*) continue ;;
     esac
-    [ "${_iV}" = "${_fLr}" ] && continue
-    if [ "$(printf '%s\n' "${_iV}" "${_fLr}" | sort -V | head -n 1)" = "${_iV}" ]; then
-      _bElow="${_bElow} ${_iV}"
-      _wAnt="${_wAnt} ${_fLr}"
+    if _php_floor_older "/opt/php${_e}/bin/php" "${_iV}" "${_fLr}"; then
+      _bElow="${_bElow} ${_e}:${_fLr}"
+      _lIst="${_lIst} ${_iV}"
     fi
   done
   _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}" | cksum | cut -d' ' -f1).txt"
+  find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' ! -name "${_sTp##*/}" \
+    -delete 2> /dev/null
   if [ -z "${_bElow}" ]; then
     rm -f "${_sTp}"
     return 0
   fi
+  _sUm=$(echo "${_bElow}" | cksum | cut -d' ' -f1)
+  _hN=$(cat /etc/hostname 2> /dev/null)
+  _sPr=$(( $(echo "${_hN}" | cksum | cut -d' ' -f1) % 1800 ))
   _nOw=$(date +%s)
-  _dUe=$(cat "${_sTp}" 2> /dev/null)
+  [ -s "${_sTp}" ] && read -r _dUe _tRies _lAst < "${_sTp}"
   case "${_dUe}" in
     ''|*[!0-9]*)
-      _hN=$(cat /etc/hostname 2> /dev/null)
-      _dUe=$(( _nOw + $(echo "${_hN}" | cksum | cut -d' ' -f1) % 1800 ))
+      _dUe=$(( _nOw + _sPr ))
       mkdir -p /etc/boa/control
-      echo "${_dUe}" > "${_sTp}"
-      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_bElow} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)" \
-        >> "${_pthLog}/php-sec-floor.log"
-      if [ "${_SKYNET_MODE}" = "OFF" ] && [ -n "${_MY_EMAIL}" ]; then
-        {
-          echo "PHP${_bElow} on ${_hN} is older than the security release BOA requires."
-          echo
-          echo "A barracuda system pass rebuilds PHP from $(date -d "@${_dUe}" 2> /dev/null)."
-          echo "It runs although _SKYNET_MODE=OFF is set: the release fixes remote"
-          echo "code execution bugs. The pass does not touch the master Aegir instance."
-          echo
-          echo "Log: ${_pthLog}/php-sec-floor.log"
-        } | s-nail -s "PHP security upgrade scheduled for [${_hN}]" "${_MY_EMAIL}" &> /dev/null
-      fi
-      ;;
-  esac
-  [ "${_nOw}" -ge "${_dUe}" ] || return 0
-  _install_in_flight && return 0
-  ### Where no package is out yet the pass builds from the mirror's source,
-  ### so a floor published before the source must not spend the 12-hour
-  ### retry on a pass that cannot build: wait for every tarball. A missing
-  ### file is served as a small page, so only a real size counts.
-  for _fLr in ${_wAnt}; do
-    _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/php-${_fLr}.tar.bz2" 2> /dev/null \
-      | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
-    if [ -z "${_sZ}" ] || [ "${_sZ}" -lt 1000000 ]; then
-      if [ -d "${_pthLog}" ] \
-        && ! tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -q "waiting for php-${_fLr}.tar.bz2"; then
-        echo "$(date 2> /dev/null) waiting for php-${_fLr}.tar.bz2 on ${_USE_MIR}" >> "${_pthLog}/php-sec-floor.log"
+      echo "${_dUe} 0 ${_sUm}" > "${_sTp}"
+      _php_floor_log "PHP${_lIst} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)"
+      if [ "${_SKYNET_MODE}" = "OFF" ]; then
+        _php_floor_mail "PHP security upgrade scheduled for [${_hN}]" \
+          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+
+A barracuda system pass rebuilds PHP from $(date -d "@${_dUe}" 2> /dev/null), once the
+release is out for this box. It runs although _SKYNET_MODE=OFF is set:
+the release fixes remote code execution bugs. The pass does not touch
+the master Aegir instance.
+
+Log: ${_pthLog}/php-sec-floor.log"
       fi
       return 0
+      ;;
+  esac
+  case "${_tRies}" in
+    ''|*[!0-9]*) _tRies=0 ;;
+  esac
+  ### Other versions below than the passes so far were for: count afresh.
+  [ "${_lAst}" = "${_sUm}" ] || _tRies=0
+  [ "${_nOw}" -ge "${_dUe}" ] || return 0
+  [ "${_tRies}" -ge 4 ] && return 0
+  if [ "${_tRies}" -eq 3 ] \
+    || grep -qE '^_[A-Z]+_TO_[A-Z]+=YES' /root/.barracuda.cnf 2> /dev/null; then
+    echo "${_dUe} 4 ${_sUm}" > "${_sTp}"
+    if [ "${_tRies}" -eq 3 ]; then
+      _eNt="still below it after three barracuda system passes"
+    else
+      _eNt="not upgraded: a major OS upgrade is staged in /root/.barracuda.cnf"
     fi
-  done
-  echo "$(( _nOw + 43200 ))" > "${_sTp}"
+    _php_floor_log "PHP${_lIst} below the security floor, ${_eNt}; no forced pass from here on"
+    _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
+      "PHP${_lIst} on ${_hN} is older than the security release BOA requires,
+and is ${_eNt}.
+
+BOA starts no more passes for it. Run 'barracuda up-<tree> system' by
+hand and read its report in /var/backups/reports/up/barracuda/.
+
+Log: ${_pthLog}/php-sec-floor.log"
+    return 0
+  fi
+  _php_floor_busy && return 0
   ### The box's own tree, as its last barracuda pass recorded it.
   _tR=$(grep -oE "Barracuda BOA-[0-9.]+-(dev|lts|pro)" /var/log/barracuda_log.txt 2> /dev/null \
     | tail -n 1 | sed -E 's/.*-//')
   [ -n "${_tR}" ] || _tR="${_tRee}"
-  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_bElow} below the security floor, barracuda up-${_tR} system launched" \
+  ### The pass builds the pins of that tree, from a package or else from the
+  ### mirror's source: wait until every pin reaches its floor and its source
+  ### is there (a missing file is served as a small page, so only a real
+  ### size counts), then start at the box's own spread.
+  _pIns=$(curl -sL --max-time 60 -A iCab "https://${_USE_MIR}/versions/${_tR}/boa/BARRACUDA.sh.txt" \
+    2> /dev/null | grep -E '^_PHP[0-9]{2}_VRN=')
+  for _eNt in ${_bElow}; do
+    _e="${_eNt%%:*}"
+    _fLr="${_eNt#*:}"
+    _pIn=$(echo "${_pIns}" | grep "^_PHP${_e}_VRN=" | head -n 1 | cut -d= -f2 | tr -cd '0-9A-Za-z.')
+    if [ -z "${_pIn}" ] || _php_floor_older "/opt/php${_e}/bin/php" "${_pIn}" "${_fLr}"; then
+      _php_floor_log "waiting for the ${_tR} tree to pin PHP ${_fLr} or newer (it pins ${_pIn:-nothing readable})"
+      _wAit=YES
+      break
+    fi
+    _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/php-${_pIn}.tar.bz2" 2> /dev/null \
+      | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
+    if [ -z "${_sZ}" ] || [ "${_sZ}" -lt 1000000 ]; then
+      _php_floor_log "waiting for php-${_pIn}.tar.bz2 on ${_USE_MIR}"
+      _wAit=YES
+      break
+    fi
+  done
+  if [ "${_wAit}" = "YES" ]; then
+    echo "$(( _nOw + 300 + _sPr )) ${_tRies} ${_lAst}" > "${_sTp}"
+    return 0
+  fi
+  _PHP_FLOOR_GO=YES
+  _PHP_FLOOR_TREE="${_tR}"
+  _PHP_FLOOR_STATE="${_sTp}"
+  _PHP_FLOOR_NEXT="$(( _nOw + 43200 )) $(( _tRies + 1 )) ${_sUm}"
+  _PHP_FLOOR_LIST="${_lIst}"
+}
+
+# Starts the pass _php_security_floor decided on, detached from this run:
+# a new session, so neither this script's nor clear.sh's waits block on it.
+_php_security_floor_launch() {
+  [ "${_PHP_FLOOR_GO}" = "YES" ] || return 0
+  _PHP_FLOOR_GO=NO
+  _php_floor_busy && return 0
+  echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
+  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
     >> "${_pthLog}/php-sec-floor.log"
   rm -rf /opt/tmp/*
-  ( nohup setsid /opt/local/bin/barracuda "up-${_tR}" system noscreen \
+  ( _PHP_SEC_FLOOR_PASS=YES nohup setsid /opt/local/bin/barracuda "up-${_PHP_FLOOR_TREE}" system noscreen \
     >> /var/log/boa/barracuda-php-floor.log 2>&1 < /dev/null & )
 }
 
@@ -7130,7 +7218,8 @@ if [ "$(id -u)" -eq 0 ]; then
     _count_cpu
   fi
 
-  # Below the PHP security floor: a barracuda system pass, SKYNET-off too
+  # Below the PHP security floor: decide on a barracuda system pass,
+  # SKYNET-off too; it starts at the end of whichever branch runs below
   _php_security_floor
 
   _if_boa_key_tools_update_allowed
@@ -7149,9 +7238,11 @@ if [ "$(id -u)" -eq 0 ]; then
         echo "NOTE: Critically important BOA tools will be still updated"
         echo
         _if_update_boa_key_tools_only verbose
+        _php_security_floor_launch
         exit 0
       else
         _if_update_boa_key_tools_only silent
+        _php_security_floor_launch
         exit 0
       fi
     else
@@ -7228,6 +7319,8 @@ if [ "$(id -u)" -eq 0 ]; then
     # _saCoreN="3143016-83"
     # _fix_core_dgd
   fi
+  # The PHP security floor's pass, decided above, after this run's own work
+  _php_security_floor_launch
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."
     openssl dhparam -out /etc/ssl/private/4096.dhp 4096 > /dev/null 2>&1 &
