@@ -150,6 +150,10 @@ The Off line ships in the `php.ini` templates of every version, the FPM file (`/
 
 A site cannot turn it back on: the directive cannot be changed with `ini_set()`, BOA disables `.user.ini` files, and there is no Apache `.htaccess` layer.
 
+## Fatal error backtraces are off on PHP 8.6
+
+PHP released its October 2026 security fix for 8.2 to 8.5 only, and the 8.6 build BOA ships, 8.6.0RC3, does not carry it. For a build without the fix, PHP's advisory gives `fatal_error_backtraces = Off` as the setting that closes one way to reach the bug, so the 8.6 `php.ini` templates (FPM and command line) carry it and each Barracuda pass puts it in the live files. Fatal errors are still logged, without the backtrace. The line goes once BOA builds an 8.6 release with the fix.
+
 ## Security backports for older PHP releases
 
 PHP fixes security bugs only in its supported versions, while BOA still builds 5.6, 7.0 to 7.4, 8.0 and 8.1. When a fix matters for those, BOA ships its own backport as `aegir/patches/php-sec/php-<release>-<id>.patch`, made for that exact release. Every build of that release from sources applies it, exactly as written (no fuzz); if a patch does not apply, nothing is built and the build in place keeps serving, with an ALRT line in the pass log.
