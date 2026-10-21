@@ -344,11 +344,16 @@ through its upgrade on a BOA server: no catalogue symbol builds a platform from
 `drupal-8.9.20` (register the tarball as a platform of your own), `DL9` builds one from
 `drupal-9.5.11`. Each builds under the newest installed PHP its lock accepts, with the
 Drush line of its day; a build server with none of them skips the line and says so in
-the summary:
+the summary.
+
+The 9.5 line's Drush require resolves for PHP 7.4 whichever of them runs it
+(`composer config platform.php 7.4.0`), so the platform also runs on 7.4, where a site
+upgraded from Drupal 8 arrives. A line whose Drush require fails is a failed build, and
+the published copy stays:
 
 ```sh
   drupal-8.9.20     # php74 or php73, drush ^10
-  drupal-9.5.11     # php82, php81 or php74, drush ^11
+  drupal-9.5.11     # php81, php80 or php74, drush ^11 resolved for PHP 7.4
 ```
 
 ## Backdrop family
@@ -437,9 +442,9 @@ Four artefacts, all published to `/var/www/static/core`:
   platform build.
 - **grav.tar.gz** — the version-less compat tarball of the newest release,
   built by a SEPARATE `tar --transform` invocation so it extracts to `grav/`
-  (a copied archive would extract to the versioned name). It is the
-  transitional fallback `_create_grav_basic_version` falls back to when a
-  mirror carries no versioned Grav tarball yet.
+  (a copied archive would extract to the versioned name). It is the name the
+  releases from before versioning fetch; a current release takes the version
+  from `grav.txt` and fetches the versioned tarball.
 - **grav-admin-v\<ver\>.zip** — the raw official zip kept verbatim as the
   per-site upgrade shelf: the upgrade engine feeds it to gpm direct-install as
   a LOCAL file, so `official_gpm_only` stays enforced and no box ever talks to
@@ -691,12 +696,15 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.19 11.1.10 11.2.14 11.3.19 11.4.10
 legacy     # the last minor of each earlier major (_CORE_LEGACY: 8.9 9.5), built first,
            # each under the newest installed PHP its lock accepts: 8.9 under php74 (or
-           # php73) with drush/drush:^10, 9.5 under php82 (or php81, php74) with
-           # drush/drush:^11; the same create-project, require and audit, except that
+           # php73) with drush/drush:^10, 9.5 under php81 (or php80, php74) with
+           # drush/drush:^11 after composer config platform.php 7.4.0 (its laminas
+           # packages stop at PHP 8.1; resolved for 8.0 or 8.1, Drush 11's Symfony
+           # parts refuse 7.4); the same create-project, require and audit, except that
            # the 8.9 template is created with --no-install, its three plugins allowed
            # (composer config allow-plugins.<plugin> true), then composer install: its
            # lock is older than composer's allow-plugins setting. A server with none of
-           # a line's PHP versions skips it (BUILD skip, "needs ...: not installed")
+           # a line's PHP versions skips it (BUILD skip, "needs ...: not installed"); a
+           # failed Drush require fails the line, so no copy without Drush is published
            # built: 8.9.20 9.5.11
 prerelease # each _CORE_PRERELEASE version whose minor has no stable release among the
            # minors (name only a pre-release that carries every core security fix
