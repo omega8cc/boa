@@ -5715,7 +5715,7 @@ CSFSTANDBY
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f55 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f46 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f44 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f20 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -6587,51 +6587,85 @@ _csf_raise_temp_ban_limit() {
 }
 
 # Keep session.upload_progress.enabled Off in the FPM and CLI ini of every PHP
-# version on the box. The upload progress handler runs on every multipart POST
+# version on the box, and fatal_error_backtraces Off in those of an 8.5 or 8.6
+# build older than the first release with PHP's October 2026 security fix
+# (8.5.12, 8.6.0RC4). The upload progress handler runs on every multipart POST
 # and no hosted CMS reads it (Drupal and Backdrop use the uploadprogress
-# extension). Checked on every run, never stamped: each barracuda pass copies
-# the ini templates over these files, and a pass from a tree older than the
-# templates' own Off line brings PHP's default On back. A changed FPM ini is
-# applied by a reload after the master's own config test. A master failing
-# that test keeps serving, and the reload is retried on every run until it
-# passes; the marker lives in /run, since a master started after a reboot
-# reads the changed file anyway.
+# extension). An older 8.5 or 8.6 is one the security floor has not upgraded
+# yet (a box it holds back); PHP's advisory gives backtraces Off for a build
+# without the fix, and a build with it is left as it is. Checked on every run,
+# never stamped: each barracuda pass copies the ini templates over these files,
+# and a pass from a tree older than the templates' own Off line brings PHP's
+# default back. A changed FPM ini is applied by a reload after the master's own
+# config test. A master failing that test keeps serving, and the reload is
+# retried on every run until it passes; the marker lives in /run, since a
+# master started after a reboot reads the changed file anyway.
 _php_upload_progress_off() {
   local _e=""
   local _fIle=""
   local _fpmCh=""
   local _pId=""
   local _pNd=""
-  local _lIne="session.upload_progress.enabled = Off"
-  local _aCt='^[[:space:]]*session\.upload_progress\.enabled[[:space:]]*='
-  local _cMt='^;[[:space:]]*session\.upload_progress\.enabled'
+  local _rO=""
+  local _lIne=""
+  local _kEy=""
+  local _aCt=""
+  local _cMt=""
+  local _fBt=""
+  local _fFx=""
   for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
     _fpmCh=NO
+    _fBt=NO
+    ### The first release of each version that carries the fix.
+    case "${_e}" in
+      86) _fFx="8.6.0RC4" ;;
+      85) _fFx="8.5.12" ;;
+      *) _fFx="" ;;
+    esac
+    if [ -n "${_fFx}" ] && [ -x "/opt/php${_e}/bin/php" ] \
+      && "/opt/php${_e}/bin/php" -n -r "exit(version_compare(PHP_VERSION, '${_fFx}', '<') ? 0 : 1);" 2> /dev/null; then
+      _fBt=YES
+    fi
     for _fIle in "/opt/php${_e}/etc/php${_e}.ini" "/opt/php${_e}/lib/php.ini"; do
       if [ ! -f "${_fIle}" ] || [ -L "${_fIle}" ]; then
         continue
       fi
-      if [ "$(grep -E "${_aCt}" "${_fIle}" 2> /dev/null)" = "${_lIne}" ]; then
-        continue
-      fi
-      ### Every active line goes; the line comes back in place of the stock
-      ### commented default, or at the end of a file that has none.
-      if ! sed -i -E "/${_aCt}/d" "${_fIle}" 2> /dev/null; then
-        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
+      for _lIne in "session.upload_progress.enabled = Off" "fatal_error_backtraces = Off"; do
+        _kEy="${_lIne%% *}"
+        if [ "${_kEy}" = "fatal_error_backtraces" ] && [ "${_fBt}" != "YES" ]; then
+          continue
+        fi
+        _aCt="^[[:space:]]*${_kEy//./\\.}[[:space:]]*="
+        _cMt="^;[[:space:]]*${_kEy//./\\.}"
+        if [ "$(grep -E "${_aCt}" "${_fIle}" 2> /dev/null)" = "${_lIne}" ]; then
+          continue
+        fi
+        ### Every active line goes; the line comes back in place of the stock
+        ### commented default, or at the end of a file that has none.
+        ### Once per file while it stays so, not every five minutes (an
+        ### immutable file): a marker in /run per file.
+        _rO="/run/php-upload-progress.$(echo "${_fIle}" | cksum | cut -d' ' -f1).ro"
+        if ! sed -i -E "/${_aCt}/d" "${_fIle}" 2> /dev/null; then
+          if [ ! -e "${_rO}" ]; then
+            [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
+              >> "${_pthLog}/php-upload-progress.log"
+            touch "${_rO}"
+          fi
+          continue 2
+        fi
+        rm -f "${_rO}"
+        if grep -qE "${_cMt}" "${_fIle}" 2> /dev/null; then
+          sed -i -E "0,/${_cMt}/{s/${_cMt}.*/${_lIne}/}" "${_fIle}"
+        else
+          echo "${_lIne}" >> "${_fIle}"
+        fi
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}: ${_lIne} in ${_fIle}" \
           >> "${_pthLog}/php-upload-progress.log"
-        continue
-      fi
-      if grep -qE "${_cMt}" "${_fIle}" 2> /dev/null; then
-        sed -i -E "0,/${_cMt}/{s/${_cMt}.*/${_lIne}/}" "${_fIle}"
-      else
-        echo "${_lIne}" >> "${_fIle}"
-      fi
-      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}: ${_lIne} in ${_fIle}" \
-        >> "${_pthLog}/php-upload-progress.log"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "INFO: php${_e}: ${_lIne} in ${_fIle}"
-      fi
-      [ "${_fIle}" = "/opt/php${_e}/etc/php${_e}.ini" ] && _fpmCh=YES
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          echo "INFO: php${_e}: ${_lIne} in ${_fIle}"
+        fi
+        [ "${_fIle}" = "/opt/php${_e}/etc/php${_e}.ini" ] && _fpmCh=YES
+      done
     done
     _pNd="/run/php${_e}-fpm.ini-reload"
     [ "${_fpmCh}" = "YES" ] && touch "${_pNd}"
@@ -6649,15 +6683,270 @@ _php_upload_progress_off() {
     if [ -x "/opt/php${_e}/sbin/php-fpm" ] \
       && "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
         -c "/opt/php${_e}/etc/php${_e}.ini" &> /dev/null; then
-      service "php${_e}-fpm" reload &> /dev/null
-      rm -f "${_pNd}"
-      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
-        >> "${_pthLog}/php-upload-progress.log"
+      if service "php${_e}-fpm" reload &> /dev/null; then
+        rm -f "${_pNd}"
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
+          >> "${_pthLog}/php-upload-progress.log"
+      elif [ "${_fpmCh}" = "YES" ]; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm reload failed, retried every run" \
+          >> "${_pthLog}/php-upload-progress.log"
+      fi
     elif [ "${_fpmCh}" = "YES" ]; then
       [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm config test failed, reload retried every run" \
         >> "${_pthLog}/php-upload-progress.log"
     fi
   done
+}
+
+# PHP security floor: the first point release of each minor version that
+# carries a security fix no box may wait for, e.g. "8.2.35 8.3.36"; empty
+# means off. A release PHP no longer fixes takes BOA's own security patch
+# as "<release>+<id>", e.g. "8.1.34+<id>": a build of that release counts
+# as below until /opt/phpNN/lib/boa-sec-patches lists the id (see
+# _php_sec_patches in lib/functions/php.sh.inc). A box running an older
+# build of an installed version listed here gets a barracuda system pass,
+# which rebuilds PHP to the pins of the box's tree, with the patches.
+# SKYNET-off boxes get it too, through the launcher's override
+# for this pass alone: a pass that may break an old Octopus instance until
+# that is upgraded as well is still safer than a known remote code execution
+# hole, and a system pass leaves the master Ægir instance as it is.
+_PHP_SEC_FLOOR="8.2.35 8.3.36 8.4.27 8.5.12 8.6.0RC4 7.4.33+cve-2026-109618-109619 8.0.30+cve-2026-109618-109619 8.1.34+cve-2026-109618-109619"
+
+# One line per state: a wait repeated on every run is logged once, until
+# something else is logged. TRUE only when it wrote the line, so a mail can
+# follow a new state alone.
+_php_floor_log() {
+  [ -d "${_pthLog}" ] || return 1
+  tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 1
+  echo "$(date 2> /dev/null) $1" >> "${_pthLog}/php-sec-floor.log"
+}
+
+# TRUE when version $2 is older than $3 by PHP's own rules, asked of the PHP
+# binary $1: sort -V puts 8.6.0 before 8.6.0RC3.
+_php_floor_older() {
+  # shellcheck disable=SC2016 # $argv is PHP's, not the shell's
+  "$1" -n -r 'exit(version_compare($argv[1], $argv[2], "<") ? 0 : 1);' "$2" "$3" 2> /dev/null
+}
+
+# TRUE while no pass may start: an install or upgrade, the nightly dump, an
+# xoct or xcopy verb, SQL maintenance, mydumper or myloader, or an xmass or
+# standby seed in its first two days.
+_php_floor_busy() {
+  _myquick_busy && return 0
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2> /dev/null)" ] && return 0
+  return 1
+}
+
+# Mailed to the operator unless _INCIDENT_REPORT=OFF: $1 subject, $2 body.
+_php_floor_mail() {
+  [ -n "${_MY_EMAIL}" ] || return 0
+  [ "${_INCIDENT_REPORT}" = "OFF" ] && return 0
+  echo "$2" | s-nail -s "$1" "${_MY_EMAIL}" &> /dev/null
+}
+
+# Decides whether this box needs the floor's pass. _php_security_floor_launch
+# starts it at the end of the run, after the tools refresh: the run's own apt
+# and service steps never overlap the pass, and a SKYNET-off box already has
+# the launcher that honours the override. The state, one line in
+# /etc/boa/control, is the time of the next allowed start, the passes started
+# and the versions they were for. Each box starts at its own spread of up to
+# 30 minutes, also when a wait for the release ends, so the fleet does not
+# fetch from the mirrors at once. A version waits while the pin of the box's
+# tree is below its floor or the pin's source is not on the mirror. A pass
+# that leaves a version below is tried again 12 hours later; after three, or
+# when a major OS upgrade is staged in the cnf, the operator is mailed once
+# and the box is left to them.
+_php_security_floor() {
+  local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
+  local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
+  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst=""
+  _PHP_FLOOR_GO=NO
+  [ -n "${_PHP_SEC_FLOOR}" ] || return 0
+  [ -x "/opt/local/bin/barracuda" ] || return 0
+  [ -e "/var/log/barracuda_log.txt" ] || return 0
+  ### A major OS upgrade in progress rebuilds every PHP version itself.
+  ls /root/.run-to-*.cnf > /dev/null 2>&1 && return 0
+  for _fLr in ${_PHP_SEC_FLOOR}; do
+    _fV="${_fLr%%+*}"
+    _fId=""
+    [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
+    _e=$(echo "${_fV}" | cut -d. -f1-2 | tr -d .)
+    [ -x "/opt/php${_e}/bin/php" ] || continue
+    ### -n: no ini, so no extension load warning can reach the output
+    _iV=$("/opt/php${_e}/bin/php" -n -r 'echo PHP_VERSION;' 2> /dev/null)
+    case "${_iV}" in
+      ''|*[!0-9A-Za-z.]*) continue ;;
+    esac
+    if _php_floor_older "/opt/php${_e}/bin/php" "${_iV}" "${_fV}" \
+      || { [ -n "${_fId}" ] && [ "${_iV}" = "${_fV}" ] \
+        && ! grep -qx -- "${_fId}" "/opt/php${_e}/lib/boa-sec-patches" 2> /dev/null; }; then
+      _bElow="${_bElow} ${_e}:${_fLr}"
+      _lIst="${_lIst} ${_iV}${_fId:+ (without ${_fId})}"
+    fi
+  done
+  _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}" | cksum | cut -d' ' -f1).txt"
+  find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' ! -name "${_sTp##*/}" \
+    -delete 2> /dev/null
+  if [ -z "${_bElow}" ]; then
+    rm -f "${_sTp}"
+    return 0
+  fi
+  _sUm=$(echo "${_bElow}" | cksum | cut -d' ' -f1)
+  _hN=$(cat /etc/hostname 2> /dev/null)
+  _sPr=$(( $(echo "${_hN}" | cksum | cut -d' ' -f1) % 1800 ))
+  _nOw=$(date +%s)
+  [ -s "${_sTp}" ] && read -r _dUe _tRies _lAst < "${_sTp}"
+  case "${_dUe}" in
+    ''|*[!0-9]*)
+      _dUe=$(( _nOw + _sPr ))
+      mkdir -p /etc/boa/control
+      echo "${_dUe} 0 ${_sUm}" > "${_sTp}"
+      _php_floor_log "PHP${_lIst} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)"
+      if [ "${_SKYNET_MODE}" = "OFF" ]; then
+        _php_floor_mail "PHP security upgrade scheduled for [${_hN}]" \
+          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+
+A barracuda system pass rebuilds PHP from $(date -d "@${_dUe}" 2> /dev/null), once the
+release is out for this box. It runs although _SKYNET_MODE=OFF is set:
+the release fixes remote code execution bugs. The pass does not touch
+the master Aegir instance.
+
+Log: ${_pthLog}/php-sec-floor.log"
+      fi
+      return 0
+      ;;
+  esac
+  case "${_tRies}" in
+    ''|*[!0-9]*) _tRies=0 ;;
+  esac
+  ### Other versions below than the passes so far were for: count afresh.
+  [ "${_lAst}" = "${_sUm}" ] || _tRies=0
+  [ "${_nOw}" -ge "${_dUe}" ] || return 0
+  [ "${_tRies}" -ge 4 ] && return 0
+  if [ "${_tRies}" -eq 3 ]; then
+    echo "${_dUe} 4 ${_sUm}" > "${_sTp}"
+    _php_floor_log "PHP${_lIst} below the security floor after three barracuda system passes; no forced pass from here on"
+    _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
+      "PHP${_lIst} on ${_hN} is older than the security release BOA requires,
+and still is after three barracuda system passes.
+
+BOA starts no more passes for it. Run 'barracuda up-<tree> system' by
+hand and read its report in /var/backups/reports/up/barracuda/.
+
+Log: ${_pthLog}/php-sec-floor.log"
+    return 0
+  fi
+  _php_floor_busy && return 0
+  ### The box's own tree, as its last barracuda pass recorded it.
+  _tR=$(grep -oE "Barracuda BOA-[0-9.]+-(dev|lts|pro)" /var/log/barracuda_log.txt 2> /dev/null \
+    | tail -n 1 | sed -E 's/.*-//')
+  [ -n "${_tR}" ] || _tR="${_tRee}"
+  ### The pass builds the pins of that tree, from a package or else from the
+  ### mirror's source: wait until every pin reaches its floor and its source
+  ### is there (a missing file is served as a small page, so only a real
+  ### size counts), then start at the box's own spread. Pins and patches are
+  ### read where the pass's launcher reads its tree, files.boa.io, and from
+  ### this box's mirror when that gives nothing.
+  for _hOst in files.boa.io "${_USE_MIR}"; do
+    _pIns=$(curl -sL --max-time 60 -A iCab "https://${_hOst}/versions/${_tR}/boa/BARRACUDA.sh.txt" \
+      2> /dev/null | grep -E '^_PHP[0-9]{2}_VRN=')
+    [ -n "${_pIns}" ] && break
+  done
+  for _eNt in ${_bElow}; do
+    _e="${_eNt%%:*}"
+    _fLr="${_eNt#*:}"
+    _fV="${_fLr%%+*}"
+    _fId=""
+    [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
+    _pIn=$(echo "${_pIns}" | grep "^_PHP${_e}_VRN=" | head -n 1 | cut -d= -f2 | tr -cd '0-9A-Za-z.')
+    if [ -z "${_pIn}" ] || _php_floor_older "/opt/php${_e}/bin/php" "${_pIn}" "${_fV}"; then
+      _php_floor_log "waiting for the ${_tR} tree to pin PHP ${_fV} or newer (it pins ${_pIn:-nothing readable})"
+      _wAit=YES
+      break
+    fi
+    ### A patched release needs its patch in the box's tree: every patch has
+    ### hunks, the mirror's page for a missing file has none.
+    if [ -n "${_fId}" ] && [ "${_pIn}" = "${_fV}" ]; then
+      _sZ=""
+      for _hOst in files.boa.io "${_USE_MIR}"; do
+        if curl -sL --max-time 30 -A iCab \
+          "https://${_hOst}/versions/${_tR}/boa/aegir/patches/php-sec/php-${_pIn}-${_fId}.patch" \
+          2> /dev/null | grep -q '^@@'; then
+          _sZ=YES
+          break
+        fi
+      done
+      if [ "${_sZ}" != "YES" ]; then
+        _php_floor_log "waiting for the ${_tR} tree to carry the PHP ${_pIn} patch ${_fId}"
+        _wAit=YES
+        break
+      fi
+    fi
+    _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/php-${_pIn}.tar.bz2" 2> /dev/null \
+      | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
+    if [ -z "${_sZ}" ] || [ "${_sZ}" -lt 1000000 ]; then
+      _php_floor_log "waiting for php-${_pIn}.tar.bz2 on ${_USE_MIR}"
+      _wAit=YES
+      break
+    fi
+  done
+  ### A staged major OS upgrade would run inside the pass, unattended. The
+  ### flags as barracuda reads them (the cnf is sourced, so exported or
+  ### quoted ones count) and named as in _barracuda_cnf_cleanup: hold until
+  ### the operator runs or clears it, with one mail.
+  if [ "${_wAit}" != "YES" ]; then
+    for _eNt in _DAEDALUS_TO_EXCALIBUR _TRIXIE_TO_EXCALIBUR _BOOKWORM_TO_DAEDALUS \
+      _CHIMAERA_TO_DAEDALUS _BULLSEYE_TO_CHIMAERA _BOOKWORM_TO_TRIXIE _BULLSEYE_TO_BOOKWORM \
+      _BEOWULF_TO_CHIMAERA _BUSTER_TO_BEOWULF _STRETCH_TO_BEOWULF _JESSIE_TO_BEOWULF \
+      _BUSTER_TO_BULLSEYE _STRETCH_TO_BUSTER _JESSIE_TO_STRETCH _WHEEZY_TO_JESSIE \
+      _SQUEEZE_TO_WHEEZY _LENNY_TO_SQUEEZE; do
+      [ "${!_eNt}" = "YES" ] || continue
+      if _php_floor_log "PHP${_lIst} below the security floor, held: ${_eNt}=YES is staged in /root/.barracuda.cnf"; then
+        _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
+          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+
+The barracuda system pass that rebuilds it would also run the major OS
+upgrade staged with ${_eNt}=YES in /root/.barracuda.cnf. BOA starts it
+once that upgrade has been run or the line is removed.
+
+Log: ${_pthLog}/php-sec-floor.log"
+      fi
+      _wAit=YES
+      break
+    done
+  fi
+  if [ "${_wAit}" = "YES" ]; then
+    echo "$(( _nOw + 300 + _sPr )) ${_tRies} ${_lAst}" > "${_sTp}"
+    return 0
+  fi
+  _PHP_FLOOR_GO=YES
+  _PHP_FLOOR_TREE="${_tR}"
+  _PHP_FLOOR_STATE="${_sTp}"
+  _PHP_FLOOR_NEXT="$(( _nOw + 43200 )) $(( _tRies + 1 )) ${_sUm}"
+  _PHP_FLOOR_LIST="${_lIst}"
+}
+
+# Starts the pass _php_security_floor decided on, detached from this run:
+# a new session, so neither this script's nor clear.sh's waits block on it.
+_php_security_floor_launch() {
+  [ "${_PHP_FLOOR_GO}" = "YES" ] || return 0
+  _PHP_FLOOR_GO=NO
+  _php_floor_busy && return 0
+  ### With _SKYNET_MODE=OFF only a launcher that honours the floor's override
+  ### runs the pass; an older one, its refresh failed, would refuse in silence.
+  if [ "${_SKYNET_MODE}" = "OFF" ] \
+    && ! grep -q "_PHP_SEC_FLOOR_PASS" /opt/local/bin/barracuda 2> /dev/null; then
+    _php_floor_log "waiting for a barracuda launcher that runs the floor's pass with _SKYNET_MODE=OFF"
+    return 0
+  fi
+  echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
+  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
+    >> "${_pthLog}/php-sec-floor.log"
+  ### Nothing of an earlier run may stay in /opt/tmp, hidden entries included
+  ### (a stale build tree or its refetch marker): the pass starts clean.
+  find /opt/tmp/ -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2> /dev/null
+  ( _PHP_SEC_FLOOR_PASS=YES nohup setsid /opt/local/bin/barracuda "up-${_PHP_FLOOR_TREE}" system noscreen \
+    >> /var/log/boa/barracuda-php-floor.log 2>&1 < /dev/null & )
 }
 
 ###--------------------###
@@ -7023,6 +7312,10 @@ if [ "$(id -u)" -eq 0 ]; then
     _count_cpu
   fi
 
+  # Below the PHP security floor: decide on a barracuda system pass,
+  # SKYNET-off too; it starts at the end of whichever branch runs below
+  _php_security_floor
+
   _if_boa_key_tools_update_allowed
 
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
@@ -7039,9 +7332,11 @@ if [ "$(id -u)" -eq 0 ]; then
         echo "NOTE: Critically important BOA tools will be still updated"
         echo
         _if_update_boa_key_tools_only verbose
+        _php_security_floor_launch
         exit 0
       else
         _if_update_boa_key_tools_only silent
+        _php_security_floor_launch
         exit 0
       fi
     else
@@ -7118,6 +7413,8 @@ if [ "$(id -u)" -eq 0 ]; then
     # _saCoreN="3143016-83"
     # _fix_core_dgd
   fi
+  # The PHP security floor's pass, decided above, after this run's own work
+  _php_security_floor_launch
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."
     openssl dhparam -out /etc/ssl/private/4096.dhp 4096 > /dev/null 2>&1 &

@@ -53,3 +53,19 @@ _AUTO_OCT_UP_MINUTE=  # Minute of the hour (0-59) for octopus upgrades
 ```
 
 > **IMPORTANT:** pay attention to use correct values within ranges as listed above. Otherwise you can break and lock your system cron.
+
+# Forced System Upgrade for a PHP Security Release
+
+Some PHP security releases cannot wait for the weekly window. For those, a BOA release sets a PHP security floor in `BOA.sh.txt` (`_PHP_SEC_FLOOR`): the first fixed point release of each affected minor version, for example `8.4.27`. A release PHP no longer fixes takes BOA's own backported patch, written as `<release>+<id>`, for example `8.1.34+<id>`: a build of that release counts as below the floor until it carries the patch (see SECURITY.md, "Security backports for older PHP releases"). The floor is empty unless such a release is out, and an empty floor does nothing.
+
+The system agent (`BOA.sh.txt`, run by `clear.sh` every 5 minutes) compares each PHP version installed on the box with its floor, by PHP's own version rules. When one is older, it starts `barracuda up-<tree> system noscreen`, the pass that rebuilds PHP to the pinned releases, on the box's own tree as `/var/log/barracuda_log.txt` records it. It starts the pass at the end of its run, after the BOA tools are refreshed, so nothing else of that run overlaps it, and from an empty `/opt/tmp`: everything there, hidden entries included, is removed first, so the pass fetches a fresh build tree.
+
+This pass also runs with `_SKYNET_MODE=OFF` and on boxes without any `_AUTO_UP_*` schedule: a known remote code execution hole is worse than the risks of the pass, and a system pass leaves the Ægir Master Instance as it is. The barracuda launcher, which otherwise refuses every run with `_SKYNET_MODE=OFF`, lets this one pass through. With `_SKYNET_MODE=OFF` the agent mails `_MY_EMAIL` once, when it first sees the floor, with the time the pass will start.
+
+A version waits until the pin of the box's tree (its `_PHPNN_VRN` in that tree's `BARRACUDA.sh.txt`, read from files.boa.io as the launcher reads it, or from the box's mirror when that gives nothing) reaches its floor, the tree carries the backported patch where the floor names one, and the pin's source tarball is on the box's mirror. Each box starts at a fixed spread of up to 30 minutes, after the first run that saw the floor and again when such a wait ends. The pass also waits while an install, upgrade, nightly database dump, xoct or xcopy verb, SQL maintenance, mydumper or myloader run, or an xmass or standby seed younger than two days is in flight, and never starts during a major OS upgrade.
+
+When a major OS upgrade is staged in `/root/.barracuda.cnf` (one of barracuda's `_X_TO_Y=YES` hop flags), the pass would run it too, so the agent mails `_MY_EMAIL` once and holds the pass until that upgrade has been run or the flag removed. With `_SKYNET_MODE=OFF` it also waits until the box has a launcher that honours the override.
+
+If a version is still below the floor after a pass, the next one starts 12 hours later. After three passes that changed nothing, the agent mails `_MY_EMAIL` once and starts no more passes for that floor: run `barracuda up-<tree> system` by hand. With `_INCIDENT_REPORT=OFF` no mail is sent.
+
+The state is `/etc/boa/control/php-sec-floor.<sum>.txt` (the time of the next allowed start, the passes started and the versions they were for), removed once every version is at or above its floor. Decisions are logged in `/var/log/boa/php-sec-floor.log`, the pass itself in `/var/log/boa/barracuda-php-floor.log`.
