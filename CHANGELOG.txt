@@ -875,6 +875,15 @@
 
 @=> Security
 
+    * PHP runs with session.upload_progress.enabled Off on every
+      version: the ini templates carry it, and the system agent puts
+      it back in the FPM and command-line php.ini within five minutes
+      of a pass that removed it, also with _SKYNET_MODE=OFF.
+
+    * A PHP security release can set a floor that brings every box
+      below it up with a barracuda system pass within 30 minutes,
+      also with _SKYNET_MODE=OFF, where the operator is mailed first.
+
     * autosymlink prints every log line as one line: a control byte in a
       site's name or in a value read from its alias prints as '?'.
 

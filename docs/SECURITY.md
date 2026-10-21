@@ -142,6 +142,14 @@ PHP 8.4 added `Pdo\Sqlite::loadExtension()`, which loads a native shared object 
 
 The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and the `SQLite3` class keep working, and `SQLite3::loadExtension()` stays off because BOA leaves `sqlite3.extension_dir` unset.
 
+## Session upload progress is off
+
+Every PHP version, 5.6 through 8.6, runs with `session.upload_progress.enabled = Off`. PHP's own default is On: the session extension then watches every multipart POST for a `PHP_SESSION_UPLOAD_PROGRESS` field and writes the upload's progress into the visitor's session before the site's code runs. No CMS BOA hosts reads that data; Drupal and Backdrop show upload progress through the `uploadprogress` extension, which stays enabled.
+
+The Off line ships in the `php.ini` templates of every version, the FPM file (`/opt/phpNN/etc/phpNN.ini`) and the command-line one (`/opt/phpNN/lib/php.ini`). Each Barracuda pass copies the templates over the live files, so the system agent (`BOA.sh.txt`, every 5 minutes, also with `_SKYNET_MODE=OFF`) checks both files of every version on each run and puts the line back where a pass from an older tree brought PHP's default back. It reloads that version's FPM master only after the master's own configuration test passes; a master that fails the test keeps serving, and the reload is retried on every run. Each change is logged in `/var/log/boa/php-upload-progress.log`.
+
+A site cannot turn it back on: the directive cannot be changed with `ini_set()`, BOA disables `.user.ini` files, and there is no Apache `.htaccess` layer.
+
 # Strict Binary Permissions
 
 ## Option in `/root/.barracuda.cnf`

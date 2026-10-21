@@ -40,6 +40,8 @@ Now you can disable this convenient magic by adding the line:
 
 NOTE: Critically important BOA tools will be still auto-updated every 5 minutes to keep your system ready for upgrade if/when needed and as initially intended.
 
+Two PHP security measures also hold with `_SKYNET_MODE=OFF`. Every PHP version keeps `session.upload_progress.enabled = Off`, re-asserted every 5 minutes (see SECURITY.md). And when a BOA release sets a PHP security floor for a release that fixes remote code execution bugs, a box running an older PHP build gets a `barracuda up-<tree> system` pass, after one email to `_MY_EMAIL` (see SELFUPGRADE.md).
+
 Better idea, though:
 
   `_SKYNET_MODE=ON`
