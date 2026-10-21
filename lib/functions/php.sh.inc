@@ -2131,6 +2131,12 @@ _install_php_deb() {
     if ! _check_php_sqlite_loadext "${1}"; then
       _PHP_DEB_TOKENS_OK=NO
     fi
+    # A package built before a security patch this tree has for the release
+    # (an edge cache may still serve it under the same name) is refused too:
+    # the source build applies the patch.
+    if ! _check_php_sec_patches "${1}"; then
+      _PHP_DEB_TOKENS_OK=NO
+    fi
     if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
       rm -rf "/var/opt/php${1}-pre-deb"
       _PHP_DEB_INSTALLED=YES
@@ -2349,6 +2355,23 @@ _install_php_multi_src() {
       fi
     fi
   fi
+  ### BOA's security backports for this exact release (_php_sec_patches), all
+  ### of them or no build: a patch that does not apply exactly (no fuzz, so
+  ### no hunk lands in another function) builds nothing, so the build that
+  ### runs now keeps serving and the next pass tries again.
+  local _secId _secOut
+  _PHP_SEC_DONE=""
+  for _secId in $(_php_sec_patches); do
+    if ! _secOut=$(patch -p1 --fuzz=0 --forward --batch \
+      < "${_bldPth}/aegir/patches/php-sec/php-${_PHP_VERSION}-${_secId}.patch" 2>&1); then
+      _msg "ALRT: Security patch ${_secId} does not apply to PHP ${_PHP_VERSION}, not building it"
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "${_secOut}"
+      return 1
+    fi
+    [ "${_DEBUG_MODE}" = "YES" ] && echo "${_secOut}"
+    _PHP_SEC_DONE="${_PHP_SEC_DONE} ${_secId}"
+    _msg "INFO: PHP ${_PHP_VERSION} security patch ${_secId} applied"
+  done
   if [ "${_OS_CODE}" != "jessie" ] \
     && [ "${_OS_CODE}" != "excalibur" ] \
     && [ "$1" -lt 85 ] \
@@ -2546,6 +2569,8 @@ _install_php_multi() {
     elif [ -n "${_binIno}" ] \
       && [ "$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)" = "${_binIno}" ]; then
       _msg "ALRT: Building PHP ${_PHP_VERSION} failed, the previous build in /opt/php$1 keeps serving"
+    else
+      _php_sec_mark "$1"
     fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
@@ -3267,6 +3292,54 @@ _check_php_sqlite_loadext() {
 }
 
 #
+# Security fixes BOA backports to PHP releases PHP no longer fixes live in
+# aegir/patches/php-sec as php-<release>-<id>.patch and are applied to that
+# exact release when it is built from sources (_install_php_multi_src). The
+# build records the ids it carries in /opt/phpNN/lib/boa-sec-patches, which
+# the prebuilt package of that build carries too. Prints the ids this tree
+# has for _PHP_VERSION, one a line.
+_php_sec_patches() {
+  local _p
+  for _p in "${_bldPth}/aegir/patches/php-sec/php-${_PHP_VERSION}-"*.patch; do
+    [ -e "${_p}" ] || continue
+    _p="${_p##*/}"
+    _p="${_p#"php-${_PHP_VERSION}-"}"
+    echo "${_p%.patch}"
+  done
+}
+
+#
+# Check that the PHP $1 build carries every security patch this tree has for
+# its release (_php_sec_patches); a release without any passes.
+_check_php_sec_patches() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_sec_patches $1"
+  fi
+  local _id
+  for _id in $(_php_sec_patches); do
+    if ! grep -qx -- "${_id}" "/opt/php${1}/lib/boa-sec-patches" 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: PHP $1 lacks the security patch ${_id}"
+      fi
+      return 1
+    fi
+  done
+  return 0
+}
+
+#
+# Record the security patches the build that just replaced /opt/php$1
+# carries, for _check_php_sec_patches; an empty file when it carries none.
+_php_sec_mark() {
+  local _id
+  mkdir -p "/opt/php${1}/lib"
+  : > "/opt/php${1}/lib/boa-sec-patches"
+  for _id in ${_PHP_SEC_DONE}; do
+    echo "${_id}" >> "/opt/php${1}/lib/boa-sec-patches"
+  done
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -3340,6 +3413,12 @@ _check_php_rebuild() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: PHP ${_PHP_ITD} can load SQLite extensions via PDO, forcing rebuild"
     fi
+    _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
+  fi
+
+  if ! _check_php_sec_patches "$1"; then
+    _msg "INFO: PHP ${_PHP_ITD} lacks a BOA security patch, forcing rebuild"
     _PHP_FORCE_REINSTALL=YES
     _ownWhy=YES
   fi
