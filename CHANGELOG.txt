@@ -881,6 +881,8 @@
 
 @=> Security
 
+    * Unbound 1.26.2, the upstream security release.
+
     * PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12, the upstream security
       releases on all four maintained branches, enforced on every box
       through the PHP security floor.
