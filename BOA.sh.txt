@@ -6681,6 +6681,8 @@ _php_security_floor() {
   local _dUe=""
   local _tR=""
   local _hN=""
+  local _wAnt=""
+  local _sZ=""
   [ -n "${_PHP_SEC_FLOOR}" ] || return 0
   [ -x "/opt/local/bin/barracuda" ] || return 0
   [ -e "/var/log/barracuda_log.txt" ] || return 0
@@ -6697,6 +6699,7 @@ _php_security_floor() {
     [ "${_iV}" = "${_fLr}" ] && continue
     if [ "$(printf '%s\n' "${_iV}" "${_fLr}" | sort -V | head -n 1)" = "${_iV}" ]; then
       _bElow="${_bElow} ${_iV}"
+      _wAnt="${_wAnt} ${_fLr}"
     fi
   done
   _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}" | cksum | cut -d' ' -f1).txt"
@@ -6729,6 +6732,21 @@ _php_security_floor() {
   esac
   [ "${_nOw}" -ge "${_dUe}" ] || return 0
   _install_in_flight && return 0
+  ### Where no package is out yet the pass builds from the mirror's source,
+  ### so a floor published before the source must not spend the 12-hour
+  ### retry on a pass that cannot build: wait for every tarball. A missing
+  ### file is served as a small page, so only a real size counts.
+  for _fLr in ${_wAnt}; do
+    _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/php-${_fLr}.tar.bz2" 2> /dev/null \
+      | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
+    if [ -z "${_sZ}" ] || [ "${_sZ}" -lt 1000000 ]; then
+      if [ -d "${_pthLog}" ] \
+        && ! tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -q "waiting for php-${_fLr}.tar.bz2"; then
+        echo "$(date 2> /dev/null) waiting for php-${_fLr}.tar.bz2 on ${_USE_MIR}" >> "${_pthLog}/php-sec-floor.log"
+      fi
+      return 0
+    fi
+  done
   echo "$(( _nOw + 43200 ))" > "${_sTp}"
   ### The box's own tree, as its last barracuda pass recorded it.
   _tR=$(grep -oE "Barracuda BOA-[0-9.]+-(dev|lts|pro)" /var/log/barracuda_log.txt 2> /dev/null \
