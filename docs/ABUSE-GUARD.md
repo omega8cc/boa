@@ -710,10 +710,10 @@ never calls csf, and never bans an address at the firewall: its only enforcement
 `$boa_fleet_block` guard in the vhost (Part 3), which answers **`429`**. It exits at once on
 a box with no nginx, and on a passive replication standby that is not serving.
 
-**On by default, both scopes.** The refusal ships armed on every box; `_NGINX_FLEET_ACTION`
-and `_NGINX_FLEET_CRAWLER_ACTION` both default to `BAN`. They exist for **reactive
-loosening after a confirmed legitimate report**, not for per-box arming, and there is no
-`REPORT` soak period to sit through. Action values are case-insensitive; an invalid address
+**On by default, both scopes.** The refusal ships armed on every box: `_NGINX_FLEET_ACTION`
+defaults to `BAN` and `_NGINX_FLEET_CRAWLER_ACTION`, empty by default, inherits it. They
+exist for **reactive loosening after a confirmed legitimate report**, not for per-box
+arming, and there is no `REPORT` soak period to sit through. Action values are case-insensitive; an invalid address
 action falls back to the shipped `BAN` with a `CONFIG` line, and an invalid crawler action
 inherits the address action — a typo must never switch the protection off.
 
@@ -911,8 +911,9 @@ rather than exempting a path.
 >
 > The one session shield
 > scan_nginx has (`_is_logged_in`, threshold raised to `9999`) keys off **active SSH
-> sessions** (`netstat` ESTABLISHED on port 22), not any web or `auth.log` login. For a
-> durable, protocol-independent exemption use `csf.allow` or `/root/.local.IP.list`.
+> sessions** (`netstat` ESTABLISHED on the ports `sshd -T` reports), not any web or
+> `auth.log` login. For a durable, protocol-independent exemption use `csf.allow` or
+> `/root/.local.IP.list`.
 
 ### Output
 

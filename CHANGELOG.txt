@@ -4,6 +4,41 @@
 
 @=> Important Fixes
 
+    * xmass prep-target took an account the target relays to a third box
+      (xoct moved it on) by a create marker, so the init and the sync put
+      this box's copy, from before that move, over the relay, and a
+      failback there served the stale copy. Such an account is now
+      refused before any proof, naming the box it relays to; where a
+      create marker shows this box's copy came from there, the refusal
+      says to point its sites at that box, then retire it on both boxes.
+      A proxy-mode pin and an aegir2boa import's freeze are no relay.
+
+    * An xmass cutover from a box that relays one account to a third box
+      no longer puts that account's sites behind the per-host 503 gate or
+      tries to repoint its relay at the new active (which xoct refused):
+      the account is left as it is, and the run says so.
+
+    * A cutover stopped after the write freeze but before the promotion
+      (the lag checks, a target read back as still a replica) left the
+      phase at cutover, so the autosync cadence stood still and the next
+      cutover refused until reset-phase was run by hand. It now goes back
+      to syncing, unless the event scheduler it stopped could not be
+      started again, and says so; reset-phase syncing then refuses until
+      it starts.
+
+    * After an Octopus pass was killed right after a platform refresh's
+      swap, xmass carried the spare replaced tree (.boa-refresh/*.old) to
+      the mirror, and once the next pass removed it the sync had to delete
+      it there too: past 5000 files the delete guard stopped that live
+      sync with a false mass-loss alarm. A spare whose platform is in
+      place now stays home; one whose platform is missing still travels.
+
+    * Provision's fast import stops before loading anything when the dump
+      its Migrate or Clone just made holds a stored routine made under
+      ANSI_QUOTES with no SQL mode line before it (the mode step after the
+      dump failed): myloader failed it with ERROR 1064 and left the
+      database half loaded. The task log names the routines.
+
     * xoct named an account an unfinished aegir2boa import froze "already
       migrated", so a standby's preparation on that box failed without
       naming the import; it now says the import is frozen there and to
@@ -833,6 +868,10 @@
       no longer stops every time with "Could not remove the stale alias":
       the removal loaded that alias first and died on the missing
       platform. The file is now removed directly.
+
+    * The nightly's parallel account fan-out no longer waits forever when
+      _NIGHT_MAX_PARALLEL is 0, a fraction or a word: such a value means
+      one slot, and a leading zero no longer reads as octal.
 
 @=> Security
 
