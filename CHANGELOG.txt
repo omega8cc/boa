@@ -889,9 +889,11 @@
 
     * PHP 7.4.33, 8.0.30 and 8.1.34 build with the PHP security team's
       own minimal backport of the same fix, published for versions it
-      no longer maintains; a build without it is rebuilt.
+      no longer maintains; a build without it is rebuilt, and the PHP
+      security floor brings every box running them to the patched build.
 
-    * PHP 8.6.0RC4, the release candidate with the same fix. Until a box
+    * PHP 8.6.0RC4, the release candidate with the same fix, enforced
+      through the PHP security floor on every box running 8.6. Until a box
       runs it, or 8.5.12, the system agent keeps fatal_error_backtraces
       Off in the php.ini files of the older 8.6 or 8.5 build (the
       setting PHP's advisory gives for a build without the fix), within
