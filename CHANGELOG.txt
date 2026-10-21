@@ -873,6 +873,12 @@
       _NIGHT_MAX_PARALLEL is 0, a fraction or a word: such a value means
       one slot, and a leading zero no longer reads as octal.
 
+    * The barracuda report and alert mails of a pass started from cron
+      (autoupboa, the PHP security floor) were not sent when the pass
+      log carried a non-ASCII character: with no locale, s-nail refused
+      the message, and the launcher still said it was sent. Both mails
+      now go out as UTF-8, and a mail that fails is reported as not sent.
+
 @=> Security
 
     * PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12, the upstream security
