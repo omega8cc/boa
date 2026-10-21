@@ -5726,6 +5726,27 @@ _xmass_boa_run_live() {
     || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1
 }
 
+# The spare replaced trees of a catalogue refresh under an account's distro
+# dir ($1): each <rev>/.boa-refresh/<name>.old whose <rev>/<name> is there,
+# a real directory both, as one leg exclude per line, anchored at the leg's
+# root. A name outside the plain platform charset is not listed: it
+# travels, as every .old did before.
+_xmass_refresh_spares() {   # 1 = the account's distro dir
+  local _o _rel _rev _n
+  for _o in "$1"/*/.boa-refresh/*.old; do
+    [ -d "${_o}" ] && [ ! -L "${_o}" ] || continue
+    _rel="${_o#"$1"/}"
+    _rev="${_rel%%/*}"
+    _n="${_rel##*/}"
+    _n="${_n%.old}"
+    case "${_rev}" in ''|*[!0-9]*) continue ;; esac
+    case "${_n}" in ''|.*|*[!A-Za-z0-9._-]*) continue ;; esac
+    [ -d "$1/${_rev}/${_n}" ] && [ ! -L "$1/${_rev}/${_n}" ] || continue
+    [ ! -L "$1/${_rev}/.boa-refresh" ] || continue
+    printf '/%s/.boa-refresh/%s.old\n' "${_rev}" "${_n}"
+  done
+}
+
 # What a DATA leg passes where every other leg passes ${_ieni}: the prune
 # flags when pruning is on and safe, the historical --ignore-errors when not.
 # Never both -- see guard 3 above.
@@ -7322,12 +7343,22 @@ _xmass_sync_account() {
   # distro/NNN/.boa-refresh/ for minutes: copied to the mirror, it would be
   # pruned there by the next pass, thousands of entries past the delete
   # guard. The staging names never travel. A replaced tree sits in
-  # <name>.old only seconds during a live run, but after an interrupted one
-  # it can be the only copy, so it is left out only while a run is live.
+  # <name>.old only seconds during a live run, so it is left out then. With
+  # no run live it travels only as the only copy, its platform missing (a
+  # pass stopped between the two moves of the swap); one beside its
+  # platform is a spare (a pass stopped after the swap, before it retired
+  # the old tree), which the next pass removes, so a copy of it on the
+  # mirror would be that same mass deletion (see _xmass_refresh_spares).
   # Kept trees (<name>.kept-*) and the tarball records always travel.
   local _stg=(--exclude='/*/.boa-refresh/*.new' --exclude='/*/.boa-refresh/*.tar.gz' \
-    --exclude='/*/.boa-refresh/*.stale-*')
-  _xmass_boa_run_live && _stg+=(--exclude='/*/.boa-refresh/*.old')
+    --exclude='/*/.boa-refresh/*.stale-*') _spare
+  if _xmass_boa_run_live; then
+    _stg+=(--exclude='/*/.boa-refresh/*.old')
+  else
+    while IFS= read -r _spare; do
+      [ -n "${_spare}" ] && _stg+=("--exclude=${_spare}")
+    done < <(_xmass_refresh_spares "${_udir}/distro")
+  fi
   # Every account leg below is pinned at its top on both ends (see
   # _xmass_pinned_leg): the account's names are never followed as root.
   _xmass_pinned_leg "${_udir}/distro" "${_dst}/distro" "the platform codebases of ${_oct}" \
@@ -8430,8 +8461,14 @@ _xmass_restore_hint() {
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
-  local _oct _held=""
+  local _oct _held="" _away
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # One this box relays to another box (a single-account move made
+    # before this cutover) holds nothing local to gate and is no part of it.
+    if _away=$(_xmass_relays_elsewhere "${_oct}"); then
+      _info "  ${_oct}: relays to ${_away}, not this pair's target -- left as it is"
+      continue
+    fi
     # An account already converted to the relay has no PHP left to gate on
     # its relayed sites: writing the account gate there would be inert and
     # the closing line below a lie. What it may still hold locally are the
@@ -8815,7 +8852,7 @@ _xmass_convert_source_to_proxy() {
   #   whole  the single pass of the rename-first order: everything at once,
   #          redirects included.
   local _pass="${1:-whole}"
-  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn=""
+  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn="" _away
   if [ "${_pass}" = "relay" ]; then
     _info "Converting the source accounts to relay the client-domain sites via xoct ..."
     _XMASS_PROXY_CONV_FAILED=""
@@ -8852,6 +8889,12 @@ _xmass_convert_source_to_proxy() {
       if [ -z "${_XMASS_ADMAIL}" ] && [ -e "/data/conf/xoct_admail.${_oct}.txt" ] \
         && [ "$(_mig_get "/data/disk/${_oct}/${_MIG_CNF_NAME}" _MIG_PEER_IP)" != "${_tgt}" ]; then
         _info "  ${_oct}: an xoct canary still in its test run; leaving as is"
+        continue
+      fi
+      # Moved to another box before this cutover: nothing of it was
+      # deferred here, and its relay is not this pair's to repoint.
+      if _away=$(_xmass_relays_elsewhere "${_oct}"); then
+        _info "  ${_oct}: relays to ${_away}, not this pair's target -- left as it is"
         continue
       fi
       # Already relaying: the repair pass converts what was deferred and
@@ -10345,6 +10388,36 @@ _xmass_release_source_events() {
   fi
 }
 
+# A cutover stopped after the freeze but before the promotion (the lag checks
+# of step 7, or step 8 read back as still a replica) has handed this box back
+# writable with its events running, and the pair is as it was: the phase goes
+# back to syncing, as 'xmass reset-phase syncing' would set it. Left at
+# cutover, a state kept from when step 6 held a global read lock, every
+# autosync pass deferred and the mirror's files stood still until an
+# operator ran that line, which no abort message named. Called after the
+# restore hint: the hint reads the phase to tell a pre-freeze abort (whose
+# gate comes down with it) from this one, whose 503 lift stays the
+# operator's.
+_xmass_cutover_back_to_syncing() {
+  # The scheduler this cutover stopped must be running again first: its
+  # record is the only trace of the stop, and the next cutover's step 6
+  # drops a record it finds with the scheduler off. While the record stays,
+  # the phase stays at cutover, so 'xmass reset-phase syncing' (which tries
+  # the release again) remains the way on, as before.
+  _xmass_release_source_events
+  if [ -e "${_XMASS_EVENTS_OFF_PID}" ]; then
+    _alrt "The target was not promoted, but the event scheduler stopped at step 6 could"
+    _alrt "  not be started again: the phase stays at 'cutover'. Once it starts, run"
+    _alrt "  'xmass reset-phase syncing', then the DRY and --live cutover"
+    return 0
+  fi
+  _XMASS_PHASE="syncing"
+  _xmass_save_state
+  _alrt "The target was not promoted: the pair is back at phase 'syncing' (the"
+  _alrt "  autosync cadence runs again); re-run the DRY and --live cutover once"
+  _alrt "  the lag holds at zero"
+}
+
 # A promoted box's events: each one its active created after the snapshot
 # arrived replica-side disabled, and a promotion leaves it so; MySQL runs it
 # again only after ALTER EVENT ... ENABLE, which without DEFINER makes root
@@ -10588,6 +10661,28 @@ _xmass_promoted_here_said() {
 # most 64 KiB; nothing otherwise. log/ is the account's.
 _xmass_rootread_here() {
   perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
+}
+
+# An account $1 this box relays to a box other than this cutover's target
+# ($_tgt): a single-account move made before it, its own record (root's,
+# read without following a link) of the source role with this box as its
+# host naming that other box. It is no part of the pair's switch, as go-live
+# and the hand path's scope already treat it: the switch neither gates its
+# sites named under this box's hostname nor repoints its relay (xoct refuses
+# that without --retarget, which would aim it at the mirror's stale copy).
+# Prints that box; status 1 for any other account, a record it cannot read
+# included.
+_xmass_relays_elsewhere() {   # 1 = account
+  local _l="/data/disk/$1/log" _rec _hip _rp _mine
+  [ -e "${_l}/proxied.pid" ] || return 1
+  _rec=$(_xmass_in_real_dir "${_l}" _xmass_rootread_here migproxy.cnf)
+  printf '%s\n' "${_rec}" | grep -qx '_MIG_ROLE=source' || return 1
+  _hip=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+  _rp=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+  _mine=$(hostname -I 2> /dev/null | tr ' ' '\n' | grep -v '^$')
+  [ -n "${_hip}" ] && printf '%s\n' "${_mine}" | grep -qxF -- "${_hip}" || return 1
+  [ -n "${_rp}" ] && [ "${_rp}" != "${_tgt}" ] || return 1
+  printf '%s' "${_rp}"
 }
 
 # Which part of the hand path's cleanup the account $1 takes, from root's
@@ -11589,7 +11684,11 @@ _xmass_create_src_host() {
 }
 
 ### Which eligible accounts the target $1 already holds, and whether each is
-### this migration's to take. A held account goes on only when:
+### this migration's to take. One the target relays, or is moving, to
+### another box is refused first, whatever else holds: it left this pair
+### (xoct moved it on), and this box's copy is from before that move, so a
+### create would re-seed it and the sync would put that copy over its relay.
+### Otherwise a held account goes on only when:
 ###   - a create marker there names this box and the account, and the uid and
 ###     /data/disk/<oN> it records are the account's now (xoct create then
 ###     re-seeds it: this migration made it);
@@ -11613,7 +11712,7 @@ _xmass_create_src_host() {
 ### --adopt puts the marker for each. Read-only on the target.
 _xmass_target_owner_gate() {
   local _t="$1" _h _a _rmt _out _nu _ni _mh _mo _mu _mi _held _inv _vh _lnk
-  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless=""
+  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless="" _away _moved=""
   _XMASS_ADOPT_ACCOUNTS=""
   if ! _h="$(_xmass_create_src_host)"; then
     _die "this box's hostname -f is not a hostname the create marker can name;" \
@@ -11646,10 +11745,13 @@ _pi=$(printf '%s\n' "${_st}" | grep -m1 '^_XMASS_INIT_TIME=' | cut -d= -f2- \
 [ -n "${_pi}" ] && _pi=$(date -d "${_pi}" +%s 2> /dev/null)
 printf 'PAIR_TARGET_IP=%s\nPAIR_PHASE=%s\nPAIR_INIT_EPOCH=%s\n' "${_pt}" "${_pp}" "${_pi}"
 # Whether the account there relays, or is moving, elsewhere: a proxied.pid
-# in any form (? when its log/ is not a real directory), and the peer of its
-# source-role record of root's (? when a record is there that cannot be read
-# so). The pair's state names the box, not each account: an account that
-# box moved on is no copy of this one. Both keys, even when empty.
+# in any form (? when its log/ is not a real directory; FREEZE when it is
+# root's and says an aegir2boa import of the account is frozen there, which
+# is no relay), and the peer of its source-role record of root's (? when a
+# record is there that cannot be read so; empty for one naming no peer, a
+# proxy-mode pin xoct writes before any move). The pair's state names the
+# box, not each account: an account that box moved on is no copy of this
+# one. Both keys, even when empty.
 _L="/data/disk/${_A}/log"
 _isthere() { [ -e "./${1}" ] || [ -L "./${1}" ]; }
 _rpid=NO
@@ -11657,6 +11759,7 @@ if ! _xmass_in_real_dir "${_L}" true; then
   _rpid='?'
 elif _xmass_in_real_dir "${_L}" _isthere proxied.pid; then
   _rpid=YES
+  [ "$(_xmass_in_real_dir "${_L}" _rootread proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ] && _rpid=FREEZE
 fi
 _rpeer=""
 if _xmass_in_real_dir "${_L}" _isthere migproxy.cnf; then
@@ -11665,7 +11768,6 @@ if _xmass_in_real_dir "${_L}" _isthere migproxy.cnf; then
     _rpeer='?'
   elif printf '%s\n' "${_rrec}" | grep -qx '_MIG_ROLE=source'; then
     _rpeer=$(printf '%s\n' "${_rrec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
-    [ -n "${_rpeer}" ] || _rpeer='?'
   fi
 fi
 printf 'PAIR_RELAY_PID=%s\nPAIR_RELAY_PEER=%s\n' "${_rpid}" "${_rpeer}"
@@ -11749,6 +11851,22 @@ OWNSH
         continue
       ;;
     esac
+    if _away=$(_xmass_target_moved_on "${_out}" "${_mine}"); then
+      _deny="${_deny} ${_a}"
+      if [ "${_away}" = "?" ]; then
+        _alrt "DENY: ${_a}: whether ${_t}'s ${_a} relays elsewhere cannot be read (a log/proxied.pid with no record"
+        _alrt "DENY: naming its peer, or a log/ that is not a real directory): check on ${_t} what relays it"
+      elif _xmass_target_tied "${_a}" "${_h}" "${_out}"; then
+        _moved="${_moved} ${_a}"
+        _alrt "DENY: ${_a}: ${_t}'s ${_a} relays, or is moving, to ${_away} (its log/proxied.pid, its source-role"
+        _alrt "DENY: record): it left this pair, and this box's ${_a} is a copy from before that move"
+      else
+        _alrt "DENY: ${_a}: ${_t}'s ${_a} relays, or is moving, to ${_away} (its log/proxied.pid, its source-role"
+        _alrt "DENY: record), and no create marker ties it to this box's ${_a}, which may be the newer copy"
+        _alrt "DENY: or another client's: check on ${_t} whose it is, and move it out of the way there"
+      fi
+      continue
+    fi
     # The account's uid and directory as they are now come first in the
     # output, so a first match can only take these real values.
     _nu=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
@@ -11820,9 +11938,15 @@ OWNSH
     _alrt "  a site-less account checked by hand as this migration's to take is adopted with:"
     _alrt "    xmass prep-target ${_t} --adopt-siteless=${_siteless}$(_xmass_admail_hint)"
   fi
+  for _a in ${_moved}; do
+    _alrt "  ${_a} moved on: point its sites at the box it relays to, then retire it on both boxes of"
+    _alrt "  this pair (touch /data/disk/${_a}/log/CANCELLED, 'boa cleanup detect noscreen', then"
+    _alrt "  'boa cleanup purge ${_a} noscreen', here and on ${_t}); a relay kept on ${_t} serves"
+    _alrt "  nothing while it is this pair's standby, and its panel does not survive the init"
+  done
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
-         " nothing was changed there. Move such an account out of the way on ${_t}," \
+         " nothing was changed there. Move such an account out of the way on ${_t},${_moved:+ retire one that moved on as said above,}" \
          " or mark the ones that really are this migration's, then re-run prep-target"
   fi
   return 0
@@ -11967,6 +12091,90 @@ _xmass_create_marker_here() {
     timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null \
       | grep '^_MIG_CREATE_'
   fi
+}
+
+### Whether the target's account relays, or is moving, to a box other than
+### this one, from the probe output $1 ($2 = this box's addresses), by the
+### probe's first print of each relay key: a source-role record naming
+### another box, a proxied.pid with no record naming this box, or a
+### proxied.pid that cannot be read. A record naming no peer (a proxy-mode
+### pin, set per account or by 'xoct proxy-mode --all') or one that cannot
+### be read counts only beside a proxied.pid. Status 0 then, the peer read
+### printed (? unknown); status 1 for no relay at all, one to this box (the
+### relay proof's) or an aegir2boa import frozen there with no record naming
+### another box (FREEZE: the other proofs decide, as before).
+_xmass_target_moved_on() {
+  local _rp _rr
+  _rp=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PID=' | cut -d= -f2-)
+  _rr=$(printf '%s\n' "$1" | grep -m1 '^PAIR_RELAY_PEER=' | cut -d= -f2-)
+  case "${_rp}" in
+    NO|YES|FREEZE) : ;;
+    *) echo "?"; return 0 ;;
+  esac
+  if [ -z "${_rr}" ] || [ "${_rr}" = "?" ]; then
+    [ "${_rp}" = "YES" ] && { echo "?"; return 0; }
+    return 1
+  fi
+  if printf '%s\n' ${2} | grep -qxF -- "${_rr}"; then
+    return 1
+  fi
+  echo "${_rr}"
+  return 0
+}
+
+### Whether the create markers tie the target's account $1 to this box's
+### ($2 = the name this box's markers carry, $3 = the probe output), by the
+### proofs' own tests, so a marker left from an earlier account of the name
+### ties nothing: this box's marker of the account names the target and
+### still names this box's account user ID and directory, and the target's
+### account was born before it was put (this copy came from there, before
+### the move); or, with no marker here, the target's names this box and the
+### account as they are there now, and this box's account was born before
+### it was put. A marker here naming another box is no tie: this copy came
+### from elsewhere, maybe after the move (a chained one). Only the moved-on
+### refusal's advice reads it: an account nothing ties may be another
+### client's, or the live one. A birth time a filesystem does not keep (0)
+### is not compared, as in the proofs.
+_xmass_target_tied() {
+  local _a="$1" _h="$2" _out="$3" _th _m _mh _nu _nl _mu _mi _ms _se _ni _tb _tu _ti _ob
+  _th=$(_xmass_kv "${_out}" TGT_HOST)
+  _m=$(_xmass_create_marker_here "${_a}")
+  _mh=$(_xmass_kv "${_m}" _MIG_CREATE_SRC_HOST)
+  _ni=$(_xmass_kv "${_out}" _MIG_CREATE_NOW_INODE)
+  if [ -n "${_mh}" ]; then
+    _nu=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_UID)
+    _nl=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_INODE)
+    _mu=$(_xmass_kv "${_m}" _MIG_CREATE_TGT_UID)
+    _mi=$(_xmass_kv "${_m}" _MIG_CREATE_TGT_INODE)
+    _ms=$(_xmass_kv "${_m}" _MIG_CREATE_STAMPED)
+    _se=""
+    [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+    _tb="${_ni#*:}"
+    [ -n "${_th}" ] && [ "${_mh}" = "${_th}" ] && [ "$(_xmass_kv "${_m}" _MIG_CREATE_SRC_OCT)" = "${_a}" ] \
+      && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+      && [[ "${_nl}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_nl}" ] \
+      && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] \
+      && { [ "${_tb}" = 0 ] || [ -z "${_ms}" ] || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_tb}" -lt "${_se}" ]; }; }
+    return $?
+  fi
+  _nu=$(_xmass_kv "${_out}" _MIG_CREATE_NOW_UID)
+  _tu=$(_xmass_kv "${_out}" _MIG_CREATE_TGT_UID)
+  _ti=$(_xmass_kv "${_out}" _MIG_CREATE_TGT_INODE)
+  _ms=$(_xmass_kv "${_out}" _MIG_CREATE_STAMPED)
+  _se=""
+  [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+  _ob=$(_xmass_kv "${_m}" _MIG_CREATE_NOW_INODE)
+  _ob="${_ob#*:}"
+  [ "$(_xmass_kv "${_out}" _MIG_CREATE_SRC_HOST)" = "${_h}" ] && [ "$(_xmass_kv "${_out}" _MIG_CREATE_SRC_OCT)" = "${_a}" ] \
+    && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_tu}" = "${_nu}" ] \
+    && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_ti}" = "${_ni}" ] \
+    && [[ "${_ob}" =~ ^[0-9]+$ ]] \
+    && { [ "${_ob}" = 0 ] || [ -z "${_ms}" ] || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_ob}" -lt "${_se}" ]; }; }
+}
+
+### The first value of key $2 in the KEY=value lines of $1.
+_xmass_kv() {
+  printf '%s\n' "$1" | grep -m1 "^${2}=" | cut -d= -f2-
 }
 
 ### Whether the target's account $1 is this pair's own, from the target's
@@ -14094,6 +14302,12 @@ _xmass_cmd_reset_phase() {
   # scheduler a frozen cutover stopped here starts again.
   if [ "${_new}" = "syncing" ] || [ "${_new}" = "init" ]; then
     _xmass_release_source_events
+    # A scheduler that would not start keeps its record: the phase stays,
+    # or the cadence would sync on while this box's events stand still.
+    [ -e "${_XMASS_EVENTS_OFF_PID}" ] \
+      && _die "reset-phase ${_new} REFUSED: the event scheduler a cutover stopped here would not start" \
+              "again (${_XMASS_EVENTS_OFF_PID} kept, the phase stays '${_XMASS_PHASE:-none}'): start it" \
+              "(SET GLOBAL event_scheduler=ON) and re-run 'xmass reset-phase ${_new}'"
   fi
   _XMASS_PHASE="${_new}"
   # phase=complete also disarms a still-armed autosync cadence, at the
@@ -15717,6 +15931,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
+      _xmass_cutover_back_to_syncing
       _die "Replica lag not zero after the write freeze on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted; writes thawed"
     fi
@@ -15759,6 +15974,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
+      _xmass_cutover_back_to_syncing
       _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
            "— cutover aborted; writes thawed"
     fi
