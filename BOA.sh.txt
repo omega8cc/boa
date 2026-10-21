@@ -6617,8 +6617,12 @@ _php_upload_progress_off() {
       ### Every active line goes; the line comes back in place of the stock
       ### commented default, or at the end of a file that has none.
       if ! sed -i -E "/${_aCt}/d" "${_fIle}" 2> /dev/null; then
-        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
-          >> "${_pthLog}/php-upload-progress.log"
+        ### Once per state, not every five minutes (an immutable file).
+        if [ -d "${_pthLog}" ] && ! tail -n 1 "${_pthLog}/php-upload-progress.log" 2> /dev/null \
+          | grep -qF "${_fIle} not writable"; then
+          echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
+            >> "${_pthLog}/php-upload-progress.log"
+        fi
         continue
       fi
       if grep -qE "${_cMt}" "${_fIle}" 2> /dev/null; then
@@ -6649,10 +6653,14 @@ _php_upload_progress_off() {
     if [ -x "/opt/php${_e}/sbin/php-fpm" ] \
       && "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
         -c "/opt/php${_e}/etc/php${_e}.ini" &> /dev/null; then
-      service "php${_e}-fpm" reload &> /dev/null
-      rm -f "${_pNd}"
-      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
-        >> "${_pthLog}/php-upload-progress.log"
+      if service "php${_e}-fpm" reload &> /dev/null; then
+        rm -f "${_pNd}"
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
+          >> "${_pthLog}/php-upload-progress.log"
+      elif [ "${_fpmCh}" = "YES" ]; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm reload failed, retried every run" \
+          >> "${_pthLog}/php-upload-progress.log"
+      fi
     elif [ "${_fpmCh}" = "YES" ]; then
       [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm config test failed, reload retried every run" \
         >> "${_pthLog}/php-upload-progress.log"
