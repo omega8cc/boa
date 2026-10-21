@@ -6684,7 +6684,7 @@ _php_upload_progress_off() {
 # for this pass alone: a pass that may break an old Octopus instance until
 # that is upgraded as well is still safer than a known remote code execution
 # hole, and a system pass leaves the master Ægir instance as it is.
-_PHP_SEC_FLOOR=""
+_PHP_SEC_FLOOR="8.2.35 8.3.36 8.4.27 8.5.12"
 
 # One line per state: a wait repeated on every run is logged once, until
 # something else is logged. TRUE only when it wrote the line, so a mail can

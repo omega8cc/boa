@@ -875,6 +875,10 @@
 
 @=> Security
 
+    * PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12, the upstream security
+      releases on all four maintained branches, enforced on every box
+      through the PHP security floor.
+
     * PHP runs with session.upload_progress.enabled Off on every
       version: the ini templates carry it, and the system agent puts
       it back in the FPM and command-line php.ini within five minutes
