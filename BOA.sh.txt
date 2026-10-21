@@ -6602,6 +6602,7 @@ _php_upload_progress_off() {
   local _fpmCh=""
   local _pId=""
   local _pNd=""
+  local _rO=""
   local _lIne="session.upload_progress.enabled = Off"
   local _aCt='^[[:space:]]*session\.upload_progress\.enabled[[:space:]]*='
   local _cMt='^;[[:space:]]*session\.upload_progress\.enabled'
@@ -6616,15 +6617,18 @@ _php_upload_progress_off() {
       fi
       ### Every active line goes; the line comes back in place of the stock
       ### commented default, or at the end of a file that has none.
+      ### Once per file while it stays so, not every five minutes (an
+      ### immutable file): a marker in /run per file.
+      _rO="/run/php-upload-progress.$(echo "${_fIle}" | cksum | cut -d' ' -f1).ro"
       if ! sed -i -E "/${_aCt}/d" "${_fIle}" 2> /dev/null; then
-        ### Once per state, not every five minutes (an immutable file).
-        if [ -d "${_pthLog}" ] && ! tail -n 1 "${_pthLog}/php-upload-progress.log" 2> /dev/null \
-          | grep -qF "${_fIle} not writable"; then
-          echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
+        if [ ! -e "${_rO}" ]; then
+          [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}: ${_fIle} not writable" \
             >> "${_pthLog}/php-upload-progress.log"
+          touch "${_rO}"
         fi
         continue
       fi
+      rm -f "${_rO}"
       if grep -qE "${_cMt}" "${_fIle}" 2> /dev/null; then
         sed -i -E "0,/${_cMt}/{s/${_cMt}.*/${_lIne}/}" "${_fIle}"
       else
@@ -6683,10 +6687,11 @@ _php_upload_progress_off() {
 _PHP_SEC_FLOOR=""
 
 # One line per state: a wait repeated on every run is logged once, until
-# something else is logged.
+# something else is logged. TRUE only when it wrote the line, so a mail can
+# follow a new state alone.
 _php_floor_log() {
-  [ -d "${_pthLog}" ] || return 0
-  tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 0
+  [ -d "${_pthLog}" ] || return 1
+  tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 1
   echo "$(date 2> /dev/null) $1" >> "${_pthLog}/php-sec-floor.log"
 }
 
@@ -6728,7 +6733,7 @@ _php_floor_mail() {
 _php_security_floor() {
   local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
   local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
-  local _tR="" _wAit="" _eNt="" _fV="" _fId=""
+  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst=""
   _PHP_FLOOR_GO=NO
   [ -n "${_PHP_SEC_FLOOR}" ] || return 0
   [ -x "/opt/local/bin/barracuda" ] || return 0
@@ -6792,18 +6797,12 @@ Log: ${_pthLog}/php-sec-floor.log"
   [ "${_lAst}" = "${_sUm}" ] || _tRies=0
   [ "${_nOw}" -ge "${_dUe}" ] || return 0
   [ "${_tRies}" -ge 4 ] && return 0
-  if [ "${_tRies}" -eq 3 ] \
-    || grep -qE '^_[A-Z]+_TO_[A-Z]+=YES' /root/.barracuda.cnf 2> /dev/null; then
+  if [ "${_tRies}" -eq 3 ]; then
     echo "${_dUe} 4 ${_sUm}" > "${_sTp}"
-    if [ "${_tRies}" -eq 3 ]; then
-      _eNt="still below it after three barracuda system passes"
-    else
-      _eNt="not upgraded: a major OS upgrade is staged in /root/.barracuda.cnf"
-    fi
-    _php_floor_log "PHP${_lIst} below the security floor, ${_eNt}; no forced pass from here on"
+    _php_floor_log "PHP${_lIst} below the security floor after three barracuda system passes; no forced pass from here on"
     _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
       "PHP${_lIst} on ${_hN} is older than the security release BOA requires,
-and is ${_eNt}.
+and still is after three barracuda system passes.
 
 BOA starts no more passes for it. Run 'barracuda up-<tree> system' by
 hand and read its report in /var/backups/reports/up/barracuda/.
@@ -6819,9 +6818,14 @@ Log: ${_pthLog}/php-sec-floor.log"
   ### The pass builds the pins of that tree, from a package or else from the
   ### mirror's source: wait until every pin reaches its floor and its source
   ### is there (a missing file is served as a small page, so only a real
-  ### size counts), then start at the box's own spread.
-  _pIns=$(curl -sL --max-time 60 -A iCab "https://${_USE_MIR}/versions/${_tR}/boa/BARRACUDA.sh.txt" \
-    2> /dev/null | grep -E '^_PHP[0-9]{2}_VRN=')
+  ### size counts), then start at the box's own spread. Pins and patches are
+  ### read where the pass's launcher reads its tree, files.boa.io, and from
+  ### this box's mirror when that gives nothing.
+  for _hOst in files.boa.io "${_USE_MIR}"; do
+    _pIns=$(curl -sL --max-time 60 -A iCab "https://${_hOst}/versions/${_tR}/boa/BARRACUDA.sh.txt" \
+      2> /dev/null | grep -E '^_PHP[0-9]{2}_VRN=')
+    [ -n "${_pIns}" ] && break
+  done
   for _eNt in ${_bElow}; do
     _e="${_eNt%%:*}"
     _fLr="${_eNt#*:}"
@@ -6836,13 +6840,21 @@ Log: ${_pthLog}/php-sec-floor.log"
     fi
     ### A patched release needs its patch in the box's tree: every patch has
     ### hunks, the mirror's page for a missing file has none.
-    if [ -n "${_fId}" ] && [ "${_pIn}" = "${_fV}" ] \
-      && ! curl -sL --max-time 30 -A iCab \
-        "https://${_USE_MIR}/versions/${_tR}/boa/aegir/patches/php-sec/php-${_pIn}-${_fId}.patch" \
-        2> /dev/null | grep -q '^@@'; then
-      _php_floor_log "waiting for the ${_tR} tree to carry the PHP ${_pIn} patch ${_fId}"
-      _wAit=YES
-      break
+    if [ -n "${_fId}" ] && [ "${_pIn}" = "${_fV}" ]; then
+      _sZ=""
+      for _hOst in files.boa.io "${_USE_MIR}"; do
+        if curl -sL --max-time 30 -A iCab \
+          "https://${_hOst}/versions/${_tR}/boa/aegir/patches/php-sec/php-${_pIn}-${_fId}.patch" \
+          2> /dev/null | grep -q '^@@'; then
+          _sZ=YES
+          break
+        fi
+      done
+      if [ "${_sZ}" != "YES" ]; then
+        _php_floor_log "waiting for the ${_tR} tree to carry the PHP ${_pIn} patch ${_fId}"
+        _wAit=YES
+        break
+      fi
     fi
     _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/php-${_pIn}.tar.bz2" 2> /dev/null \
       | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
@@ -6852,6 +6864,31 @@ Log: ${_pthLog}/php-sec-floor.log"
       break
     fi
   done
+  ### A staged major OS upgrade would run inside the pass, unattended. The
+  ### flags as barracuda reads them (the cnf is sourced, so exported or
+  ### quoted ones count) and named as in _barracuda_cnf_cleanup: hold until
+  ### the operator runs or clears it, with one mail.
+  if [ "${_wAit}" != "YES" ]; then
+    for _eNt in _DAEDALUS_TO_EXCALIBUR _TRIXIE_TO_EXCALIBUR _BOOKWORM_TO_DAEDALUS \
+      _CHIMAERA_TO_DAEDALUS _BULLSEYE_TO_CHIMAERA _BOOKWORM_TO_TRIXIE _BULLSEYE_TO_BOOKWORM \
+      _BEOWULF_TO_CHIMAERA _BUSTER_TO_BEOWULF _STRETCH_TO_BEOWULF _JESSIE_TO_BEOWULF \
+      _BUSTER_TO_BULLSEYE _STRETCH_TO_BUSTER _JESSIE_TO_STRETCH _WHEEZY_TO_JESSIE \
+      _SQUEEZE_TO_WHEEZY _LENNY_TO_SQUEEZE; do
+      [ "${!_eNt}" = "YES" ] || continue
+      if _php_floor_log "PHP${_lIst} below the security floor, held: ${_eNt}=YES is staged in /root/.barracuda.cnf"; then
+        _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
+          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+
+The barracuda system pass that rebuilds it would also run the major OS
+upgrade staged with ${_eNt}=YES in /root/.barracuda.cnf. BOA starts it
+once that upgrade has been run or the line is removed.
+
+Log: ${_pthLog}/php-sec-floor.log"
+      fi
+      _wAit=YES
+      break
+    done
+  fi
   if [ "${_wAit}" = "YES" ]; then
     echo "$(( _nOw + 300 + _sPr )) ${_tRies} ${_lAst}" > "${_sTp}"
     return 0
@@ -6869,6 +6906,13 @@ _php_security_floor_launch() {
   [ "${_PHP_FLOOR_GO}" = "YES" ] || return 0
   _PHP_FLOOR_GO=NO
   _php_floor_busy && return 0
+  ### With _SKYNET_MODE=OFF only a launcher that honours the floor's override
+  ### runs the pass; an older one, its refresh failed, would refuse in silence.
+  if [ "${_SKYNET_MODE}" = "OFF" ] \
+    && ! grep -q "_PHP_SEC_FLOOR_PASS" /opt/local/bin/barracuda 2> /dev/null; then
+    _php_floor_log "waiting for a barracuda launcher that runs the floor's pass with _SKYNET_MODE=OFF"
+    return 0
+  fi
   echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
   [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
     >> "${_pthLog}/php-sec-floor.log"
