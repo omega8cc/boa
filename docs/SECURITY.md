@@ -150,6 +150,12 @@ The Off line ships in the `php.ini` templates of every version, the FPM file (`/
 
 A site cannot turn it back on: the directive cannot be changed with `ini_set()`, BOA disables `.user.ini` files, and there is no Apache `.htaccess` layer.
 
+## Security backports for older PHP releases
+
+PHP fixes security bugs only in its supported versions, while BOA still builds 5.6, 7.0 to 7.4, 8.0 and 8.1. When a fix matters for those, BOA ships its own backport as `aegir/patches/php-sec/php-<release>-<id>.patch`, made for that exact release. Every build of that release from sources applies it, exactly as written (no fuzz); if a patch does not apply, nothing is built and the build in place keeps serving, with an ALRT line in the pass log.
+
+A build records the patches it carries in `/opt/phpNN/lib/boa-sec-patches`, one id a line. The prebuilt packages are made from the builder mirrors' own barracuda builds, so they carry the patches and the record too. A Barracuda pass rebuilds a version whose record lacks a patch the tree has for its release, and refuses a prebuilt package without it in favour of the source build. To bring every box to the patched build at once, a BOA release names the patch in the PHP security floor (see SELFUPGRADE.md).
+
 # Strict Binary Permissions
 
 ## Option in `/root/.barracuda.cnf`

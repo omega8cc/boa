@@ -884,6 +884,10 @@
       below it up with a barracuda system pass within 30 minutes,
       also with _SKYNET_MODE=OFF, where the operator is mailed first.
 
+    * PHP releases PHP no longer fixes (5.6 to 8.1) can carry BOA's own
+      security backports: applied exactly when built, recorded per
+      build and in the packages, rebuilt where a build lacks one.
+
     * autosymlink prints every log line as one line: a control byte in a
       site's name or in a value read from its alias prints as '?'.
 
