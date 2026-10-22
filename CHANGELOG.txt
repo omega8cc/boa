@@ -915,7 +915,8 @@
     * PHP 5.6, 7.0, 7.1, 7.2, 7.3, 7.4, 8.0 and 8.1 build with the
       security fixes Debian's PHP packaging (Ondřej Surý) backports to
       them since their last release, the October 2026 fix included on
-      5.6 to 7.3; his packaging changes are left out.
+      5.6 to 7.3; his packaging changes are left out. The PHP security
+      floor brings every box running one of them to the patched build.
 
     * PHP 5.6 to 7.3 link OpenSSL 3, like 7.4 and later, wherever BOA
       has it: they used OpenSSL 1.1, which gets no fixes since 2023,
