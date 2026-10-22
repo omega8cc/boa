@@ -7095,7 +7095,10 @@ _manage_user() {
             _PHP_SV=84
           fi
         fi
-        if [ -f "${_dscUsr}/static/control/multi-fpm.info" ]; then
+        # the pools' own mode test: without tools/le the account runs its
+        # single pool, multi-fpm.info or not
+        if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] \
+          && [ -d "${_dscUsr}/tools/le" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \

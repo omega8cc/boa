@@ -797,6 +797,12 @@
       loads it, and a barracuda pass that starts loading it writes them
       back into every pool before it reloads PHP-FPM.
 
+    * The limited-shell worker switches New Relic on or off in the single
+      pool of an account that has multi-fpm.info but no tools/le. It
+      looked for the per-version pools such an account does not run, so a
+      newrelic.info added or removed reached its pool only when its pools
+      were set up again.
+
     * Import reads a Drupal 8 or newer site's profile, language and
       database settings through Drupal's own APIs. It ran Drupal 7 code
       that found nothing there, so the site's records took the standard
