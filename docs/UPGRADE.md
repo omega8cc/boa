@@ -187,19 +187,31 @@ Every other apt call on the box leaves them out too: `BOA.sh.txt` writes `/etc/a
 
 wkhtmltopdf comes only from the wkhtmltox build BOA bundles (upstream's 0.12.6.1 with its patched Qt), a package fetched from BOA's mirror whose dependencies, the libraries it links, come from the distribution; the distro wkhtmltopdf package, which it replaces, is no longer installed first.
 
-## NOTE on the Verify tasks an Octopus upgrade queues
+## NOTE on the db variables an Octopus upgrade writes into site vhosts
 
 The shared nginx include takes a site's database credentials through variables the site
 vhost sets after the include line. A vhost rendered before those variables existed passes
 empty credentials to the locations that declare their own `fastcgi_param` set (`cron`,
-`update.php`, `authorize.php`, ESI), and only the site's own Verify re-renders it, so an
-Octopus upgrade queues one Verify for every Drupal and Backdrop site whose vhost predates
-the variables (`_satellite_queue_dbvars_site_verifies` in `lib/functions/satellite.sh.inc`).
+`update.php`, `authorize.php`, ESI), so the site's scheduled cron answers 500.
 
-The sweep is self-limiting: a re-rendered vhost is never queued again, Grav, Textpattern
-and the control panel itself are skipped, the Verifies run one at a time under the runner
-lock, and the pass log says how many were queued. Let them finish before judging other
-task results.
+An Octopus upgrade therefore writes the lines into every Drupal and Backdrop vhost that lacks them
+(`_satellite_dbvars_write_set_lines` in `lib/functions/satellite.sh.inc`): after each
+include line, from the server block's own `fastcgi_param db_*` values, with the
+`db_creds_urlencoded` marker a fresh render carries. It does not depend on the site's own
+Verify, which can fail for reasons of its own (a command-line PHP the codebase cannot run,
+a broken platform) and then leaves the vhost as it was.
+
+The originals go to `/var/backups/boa-dbvars/<account>/<stamp>/`. nginx is tested before
+and after: when it already fails the step changes nothing, and when it rejects the result
+every file is put back and the pass log says so with an `ALERT`. A vhost the step cannot
+change (a server block without the include line or without all six params) still gets a
+queued Verify (`_satellite_queue_dbvars_site_verifies`), the other way its vhost is
+re-rendered.
+
+The sweep is self-limiting: a vhost carrying the lines is never changed or queued again,
+Grav, Textpattern and the control panel itself are skipped, the Verifies run one at a time
+under the runner lock, and the pass log says how many vhosts were written and how many
+Verifies were queued. Let the Verifies finish before judging other task results.
 
 ## NOTE on Ægir Platforms
 
