@@ -2329,13 +2329,18 @@ _install_php_multi_src() {
     fi
   fi
   if [ "$1" -gt 80 ]; then
-    # PHP 8.6 needs libavif 1.0.0 or newer (Daedalus has 0.11): with an
-    # older one it is built without AVIF in GD instead of not at all
-    if [ "$1" -lt 86 ] \
-      || pkg-config --atleast-version=1.0.0 libavif 2> /dev/null; then
+    # GD's AVIF needs libavif 0.8.2 or newer, and 1.0.0 or newer on PHP 8.6
+    # (Daedalus has 0.11): without it, or with an older one, PHP is built
+    # without AVIF in GD instead of not at all
+    local _avifMin="0.8.2"
+    if [ "$1" -ge 86 ]; then
+      _avifMin="1.0.0"
+    fi
+    if PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" \
+      pkg-config --atleast-version="${_avifMin}" libavif 2> /dev/null; then
       _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
     else
-      _msg "NOTE: libavif is older than 1.0.0, PHP ${_PHP_VERSION} is built without AVIF"
+      _msg "NOTE: libavif ${_avifMin} or newer not found, PHP ${_PHP_VERSION} is built without AVIF"
     fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
