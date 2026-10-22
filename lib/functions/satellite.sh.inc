@@ -9747,8 +9747,9 @@ _satellite_dbvars_list_here() {
 ### them, so a block without the db_creds_urlencoded marker gets it too, as
 ### a fresh render has it; a cloaked settings.php then decodes a password
 ### holding characters urlencode changes. A block without the include line
-### or without all six params is left as it is, and so is a token holding
-### a ';'.
+### or without all six params is left as it is, and so is a value that is
+### not one plain or double-quoted token (fastcgi_param takes a third
+### argument that set refuses).
 _SATELLITE_DBVARS_AWK='
 { L[NR] = $0 }
 /^[ \t]*server[ \t]*[{]/ { b++ }
@@ -9760,7 +9761,7 @@ _SATELLITE_DBVARS_AWK='
   t = s; sub(/^[^ \t]+[ \t]+/, "", t)
   if (t ~ /;[ \t]*$/) {
     sub(/;[ \t]*$/, "", t)
-    if (t != "" && t !~ /;/) V[b, k] = t
+    if (t ~ /^[^ \t;"\047\\]+$/ || t ~ /^"[^";\\]*"$/) V[b, k] = t
   }
 }
 /^[ \t]*set[ \t]+[$]boa_db_type[ \t]/ { S[b] = 1 }
@@ -9784,13 +9785,17 @@ END {
 
 ### Run inside the real vhost.d: ./$1 given the set lines, read once and put
 ### back as _ltd_sed_here does (never through a link or from a FIFO, with
-### the owner, group and mode it had); its bytes and ids are kept in $2 for
-### a restore, and its name printed, only when it changed.
+### the owner, group and mode it had), and its name printed, only when the
+### lines went in. $2 keeps, per name, the original (orig/), what was
+### written (new/) and the ids (ids/) for a restore. A file that changed
+### between the read and the write (a task rendering it) is left to its
+### Verify.
 _satellite_dbvars_set_here() {
   local LC_ALL=C
-  local _st _typ _uid _gid _mod _sz _nl
-  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
-  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  local _fmt='%F|%u|%g|%a|%s|%h|%d:%i|%y'
+  local _st _st2 _typ _uid _gid _mod _sz _nl _n0 _n1
+  _st=$(stat -c "${_fmt}" -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl _ <<< "${_st}"
   case "${_typ}" in
     "regular file") ;;
     *) return 1 ;;
@@ -9798,17 +9803,21 @@ _satellite_dbvars_set_here() {
   [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
     && [ "${_nl}" = "1" ] || return 1
   if ! timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none > "${2}/${1}" 2> /dev/null \
-    || [ "$(stat -c %s -- "${2}/${1}" 2> /dev/null)" != "${_sz}" ] \
-    || ! awk "${_SATELLITE_DBVARS_AWK}" "${2}/${1}" > "${2}/.new" 2> /dev/null \
-    || cmp -s "${2}/${1}" "${2}/.new"; then
-    rm -f -- "${2}/${1}"
+    bs=1048576 count=1 status=none > "${2}/orig/${1}" 2> /dev/null \
+    || [ "$(stat -c %s -- "${2}/orig/${1}" 2> /dev/null)" != "${_sz}" ] \
+    || ! awk "${_SATELLITE_DBVARS_AWK}" "${2}/orig/${1}" > "${2}/new/${1}" 2> /dev/null; then
+    rm -f -- "${2}/orig/${1}" "${2}/new/${1}"
     return 1
   fi
-  printf '%s %s %s\n' "${_uid}" "${_gid}" "${_mod}" > "${2}/${1}.ids"
-  if ! _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
-    < "${2}/.new"; then
-    rm -f -- "${2}/${1}" "${2}/${1}.ids"
+  # changed means the set lines went in, never a byte the copy added
+  _n0=$(grep -c '^[[:space:]]*set \$boa_db_type ' "${2}/orig/${1}")
+  _n1=$(grep -c '^[[:space:]]*set \$boa_db_type ' "${2}/new/${1}")
+  _st2=$(stat -c "${_fmt}" -- "./${1}" 2> /dev/null)
+  if [ "${_n1}" -le "${_n0}" ] || [ "${_st2}" != "${_st}" ] \
+    || ! printf '%s %s %s\n' "${_uid}" "${_gid}" "${_mod}" > "${2}/ids/${1}" \
+    || ! _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
+      < "${2}/new/${1}"; then
+    rm -f -- "${2}/orig/${1}" "${2}/new/${1}" "${2}/ids/${1}"
     return 1
   fi
   printf '%s\n' "${1}"
@@ -9826,15 +9835,21 @@ _satellite_dbvars_set_all_here() {
   done
 }
 
-### Run inside the real vhost.d: each name on stdin put back from the copy
-### and ids kept in $1.
+### Run inside the real vhost.d: each name on stdin put back from the
+### original and ids kept in $1, only while it still holds what was written
+### (a task may have rendered it since); the names not put back printed.
 _satellite_dbvars_restore_here() {
   local _d _uid _gid _mod
   while read -r _d; do
-    [ -n "${_d}" ] && [ -f "${1}/${_d}" ] || continue
-    read -r _uid _gid _mod < "${1}/${_d}.ids" || continue
-    _ltd_put_ids_here "${_d}" "${_uid}" "${_gid}" "${_mod}" x \
-      < "${1}/${_d}"
+    [ -n "${_d}" ] || continue
+    if [ -f "${1}/orig/${_d}" ] \
+      && read -r _uid _gid _mod < "${1}/ids/${_d}" \
+      && _acct_read_here "${_d}" | cmp -s - "${1}/new/${_d}" \
+      && _ltd_put_ids_here "${_d}" "${_uid}" "${_gid}" "${_mod}" x \
+        < "${1}/orig/${_d}"; then
+      continue
+    fi
+    printf '%s\n' "${_d}"
   done
 }
 
@@ -9847,25 +9862,37 @@ _satellite_dbvars_restore_here() {
 ### queued below stays the way for a vhost this cannot change.
 _satellite_dbvars_write_set_lines() {
   local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
-  local _bak _done _n
+  local _bak _done _n _left
+  [ -n "$(_acct_in_real_dir "${_vhd}" _satellite_dbvars_list_here "${_DOMAIN}")" ] \
+    || return 0
   command -v nginx > /dev/null 2>&1 || return 0
+  # a task still running (the pass's own dispatch waits for them only so
+  # long) may render a vhost while this writes it
+  if pgrep -u "${_USER}" -f "drush.php.*hosting-task" > /dev/null 2>&1; then
+    _msg "NOTE: a ${_USER} task is still running; the db-variables set lines are left to the site Verifies"
+    return 0
+  fi
   if ! nginx -t > /dev/null 2>&1; then
     _msg "NOTE: nginx -t fails before the db-variables set lines; left to the site Verifies"
     return 0
   fi
   _bak="/var/backups/boa-dbvars/${_USER}/$(date +%y%m%d-%H%M%S)"
-  mkdir -p "${_bak}" && chmod 700 /var/backups/boa-dbvars "${_bak}" || return 0
+  mkdir -p "${_bak}/orig" "${_bak}/new" "${_bak}/ids" \
+    && chmod 700 /var/backups/boa-dbvars "${_bak}" || return 0
   _done="$(_acct_in_real_dir "${_vhd}" _satellite_dbvars_set_all_here "${_DOMAIN}" "${_bak}")"
-  rm -f "${_bak}/.new"
   if [ -z "${_done}" ]; then
-    rmdir "${_bak}" 2> /dev/null
+    rmdir "${_bak}/orig" "${_bak}/new" "${_bak}/ids" "${_bak}" 2> /dev/null
     return 0
   fi
   _n=$(printf '%s\n' "${_done}" | wc -l)
   if ! nginx -t > /dev/null 2>&1; then
-    printf '%s\n' "${_done}" \
-      | _acct_in_real_dir "${_vhd}" _satellite_dbvars_restore_here "${_bak}"
-    _msg "ALERT: nginx -t rejected the db-variables set lines in ${_n} vhost(s); restored, left to the site Verifies"
+    _left="$(printf '%s\n' "${_done}" \
+      | _acct_in_real_dir "${_vhd}" _satellite_dbvars_restore_here "${_bak}")"
+    if [ -n "${_left}" ] || ! nginx -t > /dev/null 2>&1; then
+      _msg "ALERT: nginx -t rejected the db-variables set lines in ${_n} vhost(s) and the restore did not end it; see ${_bak}"
+    else
+      _msg "ALERT: nginx -t rejected the db-variables set lines in ${_n} vhost(s); restored, left to the site Verifies"
+    fi
     return 0
   fi
   _mrun "service nginx reload"
