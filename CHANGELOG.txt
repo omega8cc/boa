@@ -1703,7 +1703,8 @@
       every scheduled cron answered 500 for days looked fine there. Once
       an hour cron_guard reads the panel's cron requests in today's and
       yesterday's nginx access log and reports, once a day per site, a
-      site whose scheduled cron answered 403 or 5xx in two different
+      site whose scheduled cron kept failing (a refusal, an error, a
+      redirect or a run killed at the time limit) in two different
       hours with no success (incident log and mail). Read-only;
       _USE_CRON_GUARD=NO turns it off. See docs/MONITOR.md.
 
