@@ -11,14 +11,25 @@
 # mails that never went out.
 #
 # This watchdog reads what nginx logged for those requests (the panel sends
-# them with BOA's own iCabProXy agent) in today's and yesterday's access log,
-# and reports a site whose scheduled cron failed in at least two different
-# hours with no success in the same window. Read-only: it changes nothing on
-# any site or panel.
+# them with BOA's own iCabProXy agent, from the box itself) in today's and
+# yesterday's access log, and reports a site whose scheduled cron failed in
+# at least two different hours, at least 50 minutes apart, with no success
+# in the same window. Read-only: it changes nothing on any site or panel.
 #
-# A failure is an answer of 403 (a wrong cron key, a refusing gate) or 5xx.
-# A 404 is never one: BOA's own cron gate answers it for dev and tmp sites
-# by design. One success in the window clears the site.
+# A failure is an answer of 403 (a wrong cron key, a refusing gate), 5xx, a
+# 404 with a page (a Drupal 8+ site whose panel record has no cron key is
+# asked for /cron/, which no route serves), or a 3xx (Drupal and Backdrop
+# never redirect a working cron; a module sending 403s to the login page
+# does). The 404 of BOA's own cron gate for dev and tmp sites carries no
+# page and is never one. A redirect is cleared when its target answered the
+# same keyed cron request. One success in the window clears the site, except
+# a success within 15 minutes of a run killed at the PHP time limit: that is
+# the panel's retry meeting the cron lock the killed run left, and no cron
+# ran. Only requests from the box's own addresses count: anyone can send
+# the agent string.
+#
+# A site whose cron interval is longer than a day has one run in the window
+# at most and is never judged.
 #
 # Opt-outs (in /root/.barracuda.cnf):
 #   _USE_CRON_GUARD=NO           fully off (unset means ON)
@@ -116,6 +127,14 @@ _manage_single_lock
 mkdir -p "${_pthDat}"
 chmod 0700 "${_pthDat}"
 
+# No judgement while a BOA pass or a fresh boot churns nginx, when no alert
+# could go out either: the stamp is left alone, so the next minute tries
+# again, and nothing is marked as reported before it could be mailed.
+if command -v _check_uptime_grace_period > /dev/null 2>&1 \
+  && ! _check_uptime_grace_period > /dev/null; then
+  exit 0
+fi
+
 # Hourly (minute.sh relaunches us every minute), unless --force: the panel's
 # shortest cron interval worth judging is an hour, and the access logs grow.
 if [ "${_FORCE}" != "YES" ] && [ -e "${_STAMP}" ] \
@@ -148,75 +167,109 @@ _normalize_incident_report() {
 }
 _normalize_incident_report
 
-_incident_email_report() {
+# How an alert goes out now: "off" (no address, or the level keeps a cron
+# alert out), "held" (the ratelimit holds it back) or "send". Asked only when
+# there is something to send, since a "send" answer takes the ratelimit slot.
+_mail_way() {
+  _MAIL_WAY=send
+  _sfx=""
+  if [ -z "${_MY_EMAIL}" ]; then
+    _MAIL_WAY=off
+    return
+  fi
   # A site losing its scheduled cron is heard at the default level (MINI);
   # this guard has no ALERT tier of its own.
-  if command -v _check_uptime_grace_period >/dev/null 2>&1 \
-    && ! _check_uptime_grace_period >/dev/null; then
-    return 1
-  fi
-  local _subject="${1:-(no subject)}"
-  local _lvl="${2:-MINI}"
-  _lvl="${_lvl^^}"
-  [ -n "${_MY_EMAIL}" ] || return 1
   case "${_INCIDENT_REPORT}" in
-    OFF)  return 1 ;;
-    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;;
-    MINI) [ "${_lvl}" = "ALERT" ] || [ "${_lvl}" = "MINI" ] || return 1 ;;
-    ALL)  : ;;
+    OFF|CRIT) _MAIL_WAY=off; return ;;
   esac
-  local _sfx=""
   if command -v _incident_email_ratelimit >/dev/null 2>&1; then
     if ! _incident_email_ratelimit "cron-guard"; then
-      echo "$(date) INFO: alert for '${_subject}' held back, one was already sent this cooldown" >> ${_pthOml}
-      return 1
+      _MAIL_WAY=held
+      return
     fi
     if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
       _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
     fi
   fi
+}
+
+_incident_email_send() {
+  local _subject="${1:-(no subject)}"
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
   s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
 }
 
 # The scheduled cron requests in the window, judged per site: a site is
-# printed when it has no 2xx/3xx answer and failed answers (403, 5xx) in at
-# least two different hours, as "host hours last-status last-time".
-# Fields per provision's log_format main: "$remote_addr" $host [$time_local]
-# "$request" $status ..., so $2 = host, $3 = [date:time, $6 = path, $8 = status.
-# The Drupal 8+ key takes only the key alphabet, as in global-main.inc: a
-# /cron/../node request reaches a page, not cron.
+# printed when it has no success and failed answers in at least two
+# different hours at least 50 minutes apart, as "host hours last-status
+# last-time". Fields per provision's log_format main: "$remote_addr" $host
+# [$time_local] "$request" $status $body_bytes_sent $request_length
+# $bytes_sent "$http_referer" "$http_user_agent" $request_time ..., so
+# $1 = "address", $2 = host, $3 = [date:time, $6 = path, $8 = status,
+# $9 = body bytes, $14 = request time. The Drupal 8+ key takes only the key
+# alphabet, as in global-main.inc: a /cron/../node request reaches a page,
+# not cron. A 5xx after 170 s or more is a run killed at the time limit. The
+# gate's 404 has no page: 0 bytes, or a few bytes of framing in the line the
+# SSL front logs for the same request; a page is 64 bytes or more.
+# Minutes count from the first day in the window (the logs are read in
+# order; mawk has no time functions).
 _CRON_GUARD_AWK='
-$6 ~ /^\/(cron\/[A-Za-z0-9_-]+|cron\.php|core\/cron\.php)([?].*)?$/ && $8 ~ /^[0-9][0-9][0-9]$/ {
-  h = $2; s = $8; t = $3; sub(/^\[/, "", t)
-  if (s ~ /^[23]/) { ok[h] = 1; next }
-  if (s != "403" && s !~ /^5/) next
+BEGIN { n = split(own, a, " "); for (i = 1; i <= n; i++) mine[a[i]] = 1 }
+$6 ~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/ && $8 ~ /^[0-9][0-9][0-9]$/ {
+  ip = $1; gsub(/"/, "", ip); sub(/^::ffff:/, "", ip)
+  if (!(ip in mine) && ip !~ /^127\./ && ip != "::1") next
+  h = $2; p = $6; s = $8; t = $3; sub(/^\[/, "", t)
+  split(t, f, ":")
+  if (!(f[1] in day)) day[f[1]] = ++nd
+  m = day[f[1]] * 1440 + f[2] * 60 + f[3]
+  if (s ~ /^2/) {
+    if ((h in kill) && m - kill[h] <= 15) next
+    ok[h] = 1; okp[p] = 1; next
+  }
+  if (s ~ /^3/) {
+    if (p !~ /(cron_key=|\/cron\/)[A-Za-z0-9_-]/) next
+    rp[h SUBSEP p] = 1
+  }
+  else if (s == "404") { if ($9 + 0 < 64) next }
+  else if (s != "403" && s !~ /^5/) next
+  if (s ~ /^5/ && $14 + 0 >= 170) kill[h] = m
   k = substr(t, 1, 14)
   if (!((h, k) in seen)) { seen[h, k] = 1; hrs[h]++ }
-  last[h] = s; when[h] = t
+  if (!(h in first)) first[h] = m
+  lastm[h] = m; last[h] = s; when[h] = t
 }
 END {
-  for (h in hrs) if (!(h in ok) && hrs[h] >= 2) print h, hrs[h], last[h], when[h]
+  for (x in rp) { split(x, q, SUBSEP); if (q[2] in okp) ok[q[1]] = 1 }
+  for (h in hrs) if (!(h in ok) && hrs[h] >= 2 && lastm[h] - first[h] >= 50) print h, hrs[h], last[h], when[h]
 }'
 
+# The box's own addresses (kernel, operator list, barracuda.cnf): the
+# panel's requests come from them, loopback included.
+_OWN_IPS="$( { ip -o addr show 2> /dev/null | awk '{print $4}' | sed 's#/.*##'
+    [ -r /root/.local.IP.list ] && sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list
+    echo "${_MY_OWNIP}"; } | grep -E '^[0-9A-Fa-f.:]+$' | sort -u | tr '\n' ' ')"
+
+# -a: a log with a crash-zeroed stretch must not read as binary, which
+# would hide every line after it.
 _failing="$(for _f in ${_LOGS}; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ -r "${_f}" ] || continue
-    grep -h -F '"iCabProXy"' "${_f}"
-  done | awk "${_CRON_GUARD_AWK}" 2> /dev/null | sort)"
+    LC_ALL=C grep -a -h -F '"iCabProXy"' "${_f}"
+  done | awk -v own="${_OWN_IPS}" "${_CRON_GUARD_AWK}" 2> /dev/null | sort)"
 
 _today="$(date +%F)"
 touch "${_SEEN}"
-_new=0
+_newHosts=()
+_newLines=()
 while read -r _h _hrs _st _when; do
   [ -n "${_h}" ] || continue
   _say "FAILING host=${_h} hours=${_hrs} last=${_st} at=${_when}"
   # once a day per site: the log keeps the record, the mail the summary
   grep -qxF "${_today} ${_h}" "${_SEEN}" && continue
-  echo "${_today} ${_h}" >> "${_SEEN}"
-  echo "$(date) CRON: scheduled cron of ${_h} failed in ${_hrs} different hours with no success since yesterday; last answer ${_st} at ${_when} (the panel still shows cron as run)" >> ${_pthOml}
-  _new=$(( _new + 1 ))
+  _newHosts+=("${_h}")
+  _newLines+=("$(date) CRON: scheduled cron of ${_h} failed in ${_hrs} different hours with no success since yesterday; last answer ${_st} at ${_when} (the panel still shows cron as run)")
 done <<< "${_failing}"
+_new="${#_newHosts[@]}"
 
 # keep a week of daily records
 if [ -s "${_SEEN}" ]; then
@@ -225,8 +278,20 @@ if [ -s "${_SEEN}" ]; then
     && mv -f "${_SEEN}.new" "${_SEEN}"
 fi
 
+# A site is marked as reported only when its alert went out, or when no
+# alert can: a held one is tried again by the next hourly run.
 if [ "${_new}" -gt 0 ]; then
-  _incident_email_report "Scheduled cron failing for ${_new} site(s)" "MINI"
+  _mail_way
+  if [ "${_MAIL_WAY}" = "held" ]; then
+    echo "$(date) INFO: alert for ${_new} site(s) held back, one was already sent this cooldown; the next hourly run tries again" >> ${_pthOml}
+    _say "HELD new=${_new}"
+    exit 0
+  fi
+  for _i in "${!_newHosts[@]}"; do
+    echo "${_today} ${_newHosts[${_i}]}" >> "${_SEEN}"
+    echo "${_newLines[${_i}]}" >> ${_pthOml}
+  done
+  [ "${_MAIL_WAY}" = "send" ] && _incident_email_send "Scheduled cron failing for ${_new} site(s)"
   echo >> ${_pthOml}
 fi
 _say "DONE new=${_new}"
