@@ -166,6 +166,16 @@ A build records the patches it carries in `/opt/phpNN/lib/boa-sec-patches`, one 
 
 PHP 7.4.33, 8.0.30 and 8.1.34 carry `cve-2026-109618-109619`: the PHP security team's own minimal backport of its October 2026 security fix, published for the versions it no longer maintains, taken unchanged from php-src's `PHP-7.4-CVE-2026-109618-109619`, `PHP-8.0-CVE-2026-109618-109619` and `PHP-8.1-CVE-2026-109618-109619` branches.
 
+Every one of these releases also carries `sury-<n>`: the security and bug fixes Debian's PHP packaging (Ondřej Surý, `debian/main/<version>` in the php-team repository on salsa.debian.org) has backported to it since its last release, at his packaging level `<n>` (5.6.40-105, 7.0.33-93, 7.1.33-81, 7.2.34-66, 7.3.33-35, 7.4.33-31, 8.0.30-25, 8.1.34-9).
+
+For 5.6 to 7.3 that includes the October 2026 fix (the PHP security team's 7.4 backport, adapted to each version in his packaging) and the `max_multipart_body_parts` limit. On 7.4, 8.0 and 8.1 the patch applies after `cve-2026-109618-109619`, and its result was checked to equal his own packaging's code.
+
+Only his fixes are taken: his Debian packaging, build and layout changes and his version-check telemetry are left out, and his binary packages are never used.
+
+PHP 5.6 to 7.3 link OpenSSL 3 (`/usr/local/ssl3`), like 7.4 and later, wherever BOA has it; only a box without it builds them with OpenSSL 1.1, which gets no fixes since 2023. A build linked to the other OpenSSL is rebuilt. On them, as on 7.4 and later already, OpenSSL 3 refuses TLS 1.0 and 1.1 and the algorithms it keeps out of its default set (RC4, RC2, MD5 signatures).
+
+PHP 5.6.40 and 7.0.33 also carry `openssl3-pkey-export`, BOA's own fix: `openssl_pkey_export_to_file()` wrote through a file handle it never checked, which OpenSSL 1.1 ignored and OpenSSL 3 crashes on when the path cannot be opened. It now returns false there, as 7.1 and later do.
+
 # Strict Binary Permissions
 
 ## Option in `/root/.barracuda.cnf`
