@@ -1238,7 +1238,16 @@ _php_cli_drush_update() {
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
-    _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+    # A supported value whose binary is missing (a failed build) is not a
+    # wrong value: say which of the two it is
+    case "${_PHP_CLI_VERSION}" in
+      8.3|8.4|8.5|8.6)
+        _msg "FATAL ERROR: _PHP_CLI_VERSION=${_PHP_CLI_VERSION} is supported but /opt/php${_PHP_CLI_VERSION//./}/bin/php is missing"
+        ;;
+      *)
+        _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+        ;;
+    esac
     _msg "FATAL ERROR: Aborting AegirM installer NOW!"
     rm -f /opt/tmp/status-AegirM-FAIL
     touch /opt/tmp/status-AegirM-FAIL

@@ -1697,6 +1697,11 @@
 
 @=> Improvements
 
+    * When the Ægir Master upgrade stops because the PHP named in
+      _PHP_CLI_VERSION has no binary, its FATAL line now says the value is
+      supported and names the missing /opt/phpNN/bin/php, instead of
+      calling the value unsupported (#1950).
+
     * staticbuild builds the last Drupal 8 and 9 cores, drupal-8.9.20 and
       drupal-9.5.11, beside the legacy 10.x minors, each under the PHP its
       sites run on and with the Drush line of its day, so an upgrade from a
