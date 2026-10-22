@@ -47,6 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthDat="/var/log/boa/cron_guard"
 _STAMP="${_pthDat}/.last_run"
 _SEEN="${_pthDat}/reported"
+_MFAIL="${_pthDat}/.mail_failed"
 _pthOml="/var/log/boa/cron_guard.incident.log"
 _LOGS="/var/log/nginx/access.log.1 /var/log/nginx/access.log"
 
@@ -127,14 +128,6 @@ _manage_single_lock
 mkdir -p "${_pthDat}"
 chmod 0700 "${_pthDat}"
 
-# No judgement while a BOA pass or a fresh boot churns nginx, when no alert
-# could go out either: the stamp is left alone, so the next minute tries
-# again, and nothing is marked as reported before it could be mailed.
-if command -v _check_uptime_grace_period > /dev/null 2>&1 \
-  && ! _check_uptime_grace_period > /dev/null; then
-  exit 0
-fi
-
 # Hourly (minute.sh relaunches us every minute), unless --force: the panel's
 # shortest cron interval worth judging is an hour, and the access logs grow.
 if [ "${_FORCE}" != "YES" ] && [ -e "${_STAMP}" ] \
@@ -167,9 +160,10 @@ _normalize_incident_report() {
 }
 _normalize_incident_report
 
-# How an alert goes out now: "off" (no address, or the level keeps a cron
-# alert out), "held" (the ratelimit holds it back) or "send". Asked only when
-# there is something to send, since a "send" answer takes the ratelimit slot.
+# How an alert goes out now: "off" (no address, the level keeps a cron
+# alert out, or a box lock.inc never mails from), "held" (a fresh boot, a BOA
+# pass or the ratelimit holds it back) or "send". Asked only when there is
+# something to send, since a "send" answer takes the ratelimit slot.
 _mail_way() {
   _MAIL_WAY=send
   _sfx=""
@@ -182,6 +176,19 @@ _mail_way() {
   case "${_INCIDENT_REPORT}" in
     OFF|CRIT) _MAIL_WAY=off; return ;;
   esac
+  # The grace check also fails for good on a box without csf (optional, or
+  # removed where the kernel cannot run it) or without the Master's alias:
+  # no alert ever goes out there, so the sites are logged and marked.
+  if command -v _check_uptime_grace_period >/dev/null 2>&1 \
+    && ! _check_uptime_grace_period >/dev/null; then
+    if [ ! -x "/usr/sbin/csf" ] \
+      || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+      _MAIL_WAY=off
+    else
+      _MAIL_WAY=held
+    fi
+    return
+  fi
   if command -v _incident_email_ratelimit >/dev/null 2>&1; then
     if ! _incident_email_ratelimit "cron-guard"; then
       _MAIL_WAY=held
@@ -279,19 +286,33 @@ if [ -s "${_SEEN}" ]; then
 fi
 
 # A site is marked as reported only when its alert went out, or when no
-# alert can: a held one is tried again by the next hourly run.
+# alert can: a held one is tried again by the next hourly run, and so is a
+# failed mail, once a day (a box whose mail never works logs it once a day).
 if [ "${_new}" -gt 0 ]; then
   _mail_way
   if [ "${_MAIL_WAY}" = "held" ]; then
-    echo "$(date) INFO: alert for ${_new} site(s) held back, one was already sent this cooldown; the next hourly run tries again" >> ${_pthOml}
+    echo "$(date) INFO: alert for ${_new} site(s) held back (a fresh boot, a BOA pass or the cooldown); the next hourly run tries again" >> ${_pthOml}
     _say "HELD new=${_new}"
     exit 0
   fi
   for _i in "${!_newHosts[@]}"; do
-    echo "${_today} ${_newHosts[${_i}]}" >> "${_SEEN}"
     echo "${_newLines[${_i}]}" >> ${_pthOml}
   done
-  [ "${_MAIL_WAY}" = "send" ] && _incident_email_send "Scheduled cron failing for ${_new} site(s)"
+  _mark=YES
+  if [ "${_MAIL_WAY}" = "send" ] \
+    && ! _incident_email_send "Scheduled cron failing for ${_new} site(s)"; then
+    if [ "$(cat "${_MFAIL}" 2> /dev/null)" != "${_today}" ]; then
+      echo "${_today}" > "${_MFAIL}"
+      _mark=NO
+    fi
+    echo "$(date) INFO: the alert mail for ${_new} site(s) failed" >> ${_pthOml}
+    _say "MAILFAIL new=${_new} marked=${_mark}"
+  fi
+  if [ "${_mark}" = "YES" ]; then
+    for _i in "${!_newHosts[@]}"; do
+      echo "${_today} ${_newHosts[${_i}]}" >> "${_SEEN}"
+    done
+  fi
   echo >> ${_pthOml}
 fi
 _say "DONE new=${_new}"
