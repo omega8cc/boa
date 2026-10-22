@@ -80,6 +80,8 @@ _PERCONA_5_7_VRN=5.7
 _PERCONA_8_0_VRN=8.0
 _PERCONA_8_4_VRN=8.4
 _PHP_APCU=5.1.28
+# APCu master for 8.6: 5.1.28 does not build against it, no release since
+_PHP_APCU_EIGHT_SIX=5.1.29-dev-ebbcd3d
 _PHP_GEOS_VRN="1.0.0"
 _PHP_IGBINARY_EIGHT_FIVE=3.2.17
 _PHP_IGBINARY_THREE=3.2.16
@@ -111,7 +113,7 @@ _PHP85_API=20250925
 _PHP85_VRN=8.5.12
 _PHP86_API=20260924
 # pinned extension releases not shown to build against the pinned 8.6 RC
-_PHP86_EXT_SKIP="apcu-5.1.28 imagick-3.8.1 mcrypt-1.0.9 mongodb-1.2.5 php-geos-1.0.0 phpredis-6.3.0"
+_PHP86_EXT_SKIP="imagick-3.8.1 mcrypt-1.0.9 mongodb-1.2.5 php-geos-1.0.0 phpredis-6.3.0"
 _PHP86_VRN=8.6.0RC4
 _PHPREDIS_FIVE_VRN=5.3.7
 _PHPREDIS_FOUR_VRN=4.3.0
