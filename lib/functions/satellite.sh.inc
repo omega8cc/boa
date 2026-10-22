@@ -9711,25 +9711,153 @@ _satellite_pre_cleanup() {
   fi
 }
 
-### Run inside the real vhost.d: each regular file there whose name is a
-### host name other than $1 (the hostmaster's), read as _acct_read_here
-### reads it, that declares the db_* set without the nginx db variables,
-### printed as "<name>", for the PHP array below. The name becomes a PHP
-### string literal: a vhost file is named by the site's URI, so anything
-### outside the hostname alphabet is not a site of ours.
+### Run inside the real vhost.d: true when ./$1 is a regular file whose name
+### is a host name other than $2 (the hostmaster's), read as _acct_read_here
+### reads it, that declares the db_* set without the nginx db variables. A
+### vhost file is named by the site's URI, so anything outside the hostname
+### alphabet is not a site of ours.
+_satellite_dbvars_old_here() {
+  local _t
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  case "${1}" in .*|https.*) return 1 ;; esac
+  [ "${1}" = "${2}" ] && return 1
+  case "${1}" in *[!A-Za-z0-9.-]*) return 1 ;; esac
+  _t="$(_acct_read_here "${1}")"
+  case "${_t}" in *'set $boa_db_type'*) return 1 ;; esac
+  case "${_t}" in *'fastcgi_param db_type'*) ;; *) return 1 ;; esac
+  return 0
+}
+
+### Each such vhost printed as "<name>", for the PHP array below; the name
+### becomes a PHP string literal.
 _satellite_dbvars_list_here() {
-  local _v _d _t
+  local _v _d
   for _v in ./*; do
-    [ -f "${_v}" ] && [ ! -L "${_v}" ] || continue
     _d="${_v#./}"
-    case "${_d}" in .*|https.*) continue ;; esac
-    [ "${_d}" = "${1}" ] && continue
-    case "${_d}" in *[!A-Za-z0-9.-]*) continue ;; esac
-    _t="$(_acct_read_here "${_d}")"
-    case "${_t}" in *'set $boa_db_type'*) continue ;; esac
-    case "${_t}" in *'fastcgi_param db_type'*) ;; *) continue ;; esac
+    _satellite_dbvars_old_here "${_d}" "${1}" || continue
     printf '"%s",' "${_d}"
   done
+}
+
+### The set lines a site's Verify would print after the include line, made
+### from what the same server block already passes the main PHP location:
+### each server-level fastcgi_param db_* token, copied as written, so nginx
+### hands the include's own locations the very values it hands the pages.
+### A block without the include line or without all six params is left as
+### it is, and so is a token holding a ';'.
+_SATELLITE_DBVARS_AWK='
+{ L[NR] = $0 }
+/^[ \t]*server[ \t]*[{]/ { b++ }
+{ B[NR] = b }
+/^[ \t]*fastcgi_param[ \t]+db_(type|name|user|passwd|host|port|creds_urlencoded)[ \t]/ {
+  s = $0
+  sub(/^[ \t]*fastcgi_param[ \t]+db_/, "", s)
+  k = s; sub(/[ \t].*$/, "", k)
+  t = s; sub(/^[^ \t]+[ \t]+/, "", t)
+  if (t ~ /;[ \t]*$/) {
+    sub(/;[ \t]*$/, "", t)
+    if (t != "" && t !~ /;/) V[b, k] = t
+  }
+}
+/^[ \t]*set[ \t]+[$]boa_db_type[ \t]/ { S[b] = 1 }
+END {
+  n = split("type name user passwd host port", K, " ")
+  for (i = 1; i <= NR; i++) {
+    print L[i]
+    c = B[i]
+    if (L[i] !~ /^[ \t]*include[ \t]+[^;]*\/nginx_vhost_common[.]conf;[ \t]*$/ || (c in S)) continue
+    ok = 1
+    for (j = 1; j <= n; j++) if (!((c, K[j]) in V)) ok = 0
+    if (!ok) continue
+    for (j = 1; j <= n; j++) printf "  set $boa_db_%s %s;\n", K[j], V[c, K[j]]
+    if ((c, "creds_urlencoded") in V) printf "  set $boa_db_creds_urlencoded %s;\n", V[c, "creds_urlencoded"]
+    else print "  set $boa_db_creds_urlencoded \"\";"
+  }
+}'
+
+### Run inside the real vhost.d: ./$1 given the set lines, read once and put
+### back as _ltd_sed_here does (never through a link or from a FIFO, with
+### the owner, group and mode it had); its bytes and ids are kept in $2 for
+### a restore, and its name printed, only when it changed.
+_satellite_dbvars_set_here() {
+  local LC_ALL=C
+  local _st _typ _uid _gid _mod _sz _nl
+  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  case "${_typ}" in
+    "regular file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
+    && [ "${_nl}" = "1" ] || return 1
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none > "${2}/${1}" 2> /dev/null || return 1
+  [ "$(stat -c %s -- "${2}/${1}" 2> /dev/null)" = "${_sz}" ] || return 1
+  awk "${_SATELLITE_DBVARS_AWK}" "${2}/${1}" > "${2}/.new" 2> /dev/null \
+    || return 1
+  cmp -s "${2}/${1}" "${2}/.new" && return 1
+  printf '%s %s %s\n' "${_uid}" "${_gid}" "${_mod}" > "${2}/${1}.ids"
+  _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
+    < "${2}/.new" || return 1
+  printf '%s\n' "${1}"
+}
+
+### Run inside the real vhost.d: every vhost _satellite_dbvars_old_here
+### selects given its set lines ($1 = the hostmaster's name, $2 = the
+### backup directory); the changed names printed.
+_satellite_dbvars_set_all_here() {
+  local _v _d
+  for _v in ./*; do
+    _d="${_v#./}"
+    _satellite_dbvars_old_here "${_d}" "${1}" || continue
+    _satellite_dbvars_set_here "${_d}" "${2}"
+  done
+}
+
+### Run inside the real vhost.d: each name on stdin put back from the copy
+### and ids kept in $1.
+_satellite_dbvars_restore_here() {
+  local _d _uid _gid _mod
+  while read -r _d; do
+    [ -n "${_d}" ] && [ -f "${1}/${_d}" ] || continue
+    read -r _uid _gid _mod < "${1}/${_d}.ids" || continue
+    _ltd_put_ids_here "${_d}" "${_uid}" "${_gid}" "${_mod}" x \
+      < "${1}/${_d}"
+  done
+}
+
+### A site Verify can fail for reasons of its own (a PHP its codebase cannot
+### run, a broken platform), and its vhost then keeps passing the include's
+### own locations empty credentials, so the site's scheduled cron answers
+### 500 until some later Verify succeeds. The pass therefore writes the set
+### lines itself, from the vhost's own params, for every vhost the include
+### would leave without them, when nginx accepts the result; the Verify
+### queued below stays the way for a vhost this cannot change.
+_satellite_dbvars_write_set_lines() {
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _bak _done _n
+  command -v nginx > /dev/null 2>&1 || return 0
+  if ! nginx -t > /dev/null 2>&1; then
+    _msg "NOTE: nginx -t fails before the db-variables set lines; left to the site Verifies"
+    return 0
+  fi
+  _bak="/var/backups/boa-dbvars/${_USER}/$(date +%y%m%d-%H%M%S)"
+  mkdir -p "${_bak}" && chmod 700 /var/backups/boa-dbvars "${_bak}" || return 0
+  _done="$(_acct_in_real_dir "${_vhd}" _satellite_dbvars_set_all_here "${_DOMAIN}" "${_bak}")"
+  rm -f "${_bak}/.new"
+  if [ -z "${_done}" ]; then
+    rmdir "${_bak}" 2> /dev/null
+    return 0
+  fi
+  _n=$(printf '%s\n' "${_done}" | wc -l)
+  if ! nginx -t > /dev/null 2>&1; then
+    printf '%s\n' "${_done}" \
+      | _acct_in_real_dir "${_vhd}" _satellite_dbvars_restore_here "${_bak}"
+    _msg "ALERT: nginx -t rejected the db-variables set lines in ${_n} vhost(s); restored, left to the site Verifies"
+    return 0
+  fi
+  _mrun "service nginx reload"
+  _msg "INFO: wrote the nginx db variables into ${_n} site vhost(s); originals in ${_bak}"
 }
 
 ### The shared nginx include now takes the site's database credentials
@@ -9737,11 +9865,13 @@ _satellite_dbvars_list_here() {
 ### rendered before that keeps passing EMPTY credentials to the locations
 ### that declare their own fastcgi_param set (/cron/<key>, update.php,
 ### authorize.php), and on a cloaked site those requests reach PHP with no
-### database at all. A site vhost is re-rendered only by the site's own
-### Verify, so queue one for every such site once this pass has rendered the
-### include. Self-limiting: a re-rendered vhost carries the lines and is
-### never queued again; Grav and TXP vhosts carry no credentials and are
-### skipped; the queue runs them one at a time under the runner lock.
+### database at all. The pass writes those lines itself first
+### (_satellite_dbvars_write_set_lines); a site vhost is otherwise
+### re-rendered only by the site's own Verify, so queue one for every such
+### site that is still left once this pass has rendered the include.
+### Self-limiting: a vhost carrying the lines is never queued again; Grav
+### and TXP vhosts carry no credentials and are skipped; the queue runs them
+### one at a time under the runner lock.
 ### The test for "carries credentials" is the server-level fastcgi_param
 ### db_* set every Drupal vhost declares (placeholders when the site has no
 ### database) -- NOT the urlencoded marker, which only a recent render
@@ -9761,6 +9891,7 @@ _satellite_queue_dbvars_site_verifies() {
   [ -f "${_inc}" ] && _acct_read_in "${_inc%/*}" "${_inc##*/}" \
     | grep -q '^set \$boa_db_type' || return 0
   [ -d "${_vhd}" ] || return 0
+  _satellite_dbvars_write_set_lines
   _list="$(_acct_in_real_dir "${_vhd}" _satellite_dbvars_list_here "${_DOMAIN}")"
   [ -n "${_list}" ] || return 0
   ### One hostmaster bootstrap for the whole list: a per-site drush call
