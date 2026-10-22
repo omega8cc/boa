@@ -4,6 +4,14 @@
 
 @=> Important Fixes
 
+    * PHP 8.1 to 8.5 failed to build on a host without libavif 0.8.2 or
+      newer, such as Devuan Beowulf, whose main and security suites have
+      none (#1950): configure was always given --with-avif and stopped, so
+      a full barracuda pass there went on to stop at the Ægir Master
+      upgrade for lack of PHP 8.3. The option is now passed only when
+      pkg-config finds a new enough libavif, as it already was for PHP 8.6;
+      otherwise GD is built without AVIF and the build log says so.
+
     * xmass prep-target took an account the target relays to a third box
       (xoct moved it on) by a create marker, so the init and the sync put
       this box's copy, from before that move, over the relay, and a
