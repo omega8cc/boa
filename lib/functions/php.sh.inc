@@ -277,6 +277,43 @@ _fix_php_ini_newrelic_all() {
 }
 
 #
+# True when PHP $1's FPM ini loads New Relic (its extension line).
+_php_newrelic_in_ini() {
+  [ -f "/opt/php$1/etc/php$1.ini" ] \
+    && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+
+#
+# The pool templates keep New Relic off with newrelic.* lines, and an ini that
+# loads New Relic enables it for every pool. A PHP whose ini does not load it
+# has no such settings: each line fails in every new worker, and the master
+# logs each failure, so there the lines go from every pool. Where it does, a
+# pool left without them (the ltd worker removes them while its version does
+# not load New Relic) gets the off lines back before this pass reloads FPM;
+# the ltd worker then sets an account's own key. Runs after the ini fixes,
+# which decide what each version loads.
+_php_pool_newrelic_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pool_newrelic_fix"
+  fi
+  local e _pf
+  for e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    for _pf in /opt/php${e}/etc/pool.d/*.conf; do
+      [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || continue
+      if ! _php_newrelic_in_ini "${e}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" "${_pf}" &> /dev/null
+        wait
+      elif ! grep -q "^php_admin_value\[newrelic.enabled\]" "${_pf}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" "${_pf}" &> /dev/null
+        wait
+        echo "php_admin_value[newrelic.license] = \"\"" >> "${_pf}"
+        echo "php_admin_value[newrelic.enabled] = \"false\"" >> "${_pf}"
+      fi
+    done
+  done
+}
+
+#
 # Fix FMP php.ini file to add opcache configuration
 _fix_php_ini_opcache() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -795,6 +832,7 @@ _php_conf_update() {
     _THIS_FILE=/opt/php86/lib/php.ini
     _php_ini_drop_unbuilt_ext
   fi
+  _php_pool_newrelic_fix
 }
 
 #

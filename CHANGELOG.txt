@@ -786,6 +786,17 @@
       cannot set off a restart or an alert by printing them, and these
       logs and the pools' slow logs are rotated daily, seven kept.
 
+    * PHP-FPM no longer logs "Unable to set php_admin_value" for
+      newrelic.enabled and newrelic.license at each new worker of a PHP
+      whose php.ini does not load New Relic (every version on a box
+      without a New Relic key), nor for apc.enabled where APCu is not
+      built (5.6, 8.6) (#1949). The pools always failed these lines; the
+      master's log shows them since it takes the workers' output.
+      apc.enabled is on by APCu's own default and no longer set. The
+      newrelic.* lines, which keep New Relic off, stay only where php.ini
+      loads it, and a barracuda pass that starts loading it writes them
+      back into every pool before it reloads PHP-FPM.
+
     * Import reads a Drupal 8 or newer site's profile, language and
       database settings through Drupal's own APIs. It ran Drupal 7 code
       that found nothing there, so the site's records took the standard

@@ -5002,6 +5002,31 @@ _satellite_tune_fpm_workers() {
 }
 
 #
+# True when PHP $1's FPM ini loads New Relic (its extension line). Without it
+# PHP has no newrelic.* settings, so a pool line naming one fails in every new
+# worker, and the master logs each failure. The line alone decides, the module
+# file not: the ini enables New Relic for every pool, and the pass that adds
+# the line links the module later, so the pools keep New Relic off from then.
+_newrelic_in_ini() {
+  [ -f "/opt/php$1/etc/php$1.ini" ] \
+    && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+#
+# PHP $1 does not load New Relic: the pool's newrelic.* lines go (arguments as
+# for _disable_newrelic), which writes them back once it does.
+_newrelic_pool_off() {
+  _THIS_POOL_TPL="${4:-/opt/php$1/etc/pool.d/$2.conf}"
+  if [ -e "${_THIS_POOL_TPL}" ] \
+    && grep -q "^php_admin_value\[newrelic\." ${_THIS_POOL_TPL}; then
+    echo "New Relic lines removed for $2: php$1 does not load New Relic"
+    sed -i "/^php_admin_value\[newrelic\./d" ${_THIS_POOL_TPL}
+    wait
+    if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
+      service php$1-fpm reload &> /dev/null
+    fi
+  fi
+}
+#
 # Disable New Relic per Octopus instance. $1 = the version digits, $2 = the
 # pool, $3 = 1 to reload its FPM after a change, $4 = the pool file to edit
 # when it is not the live one (a pool being made aside).
@@ -5015,6 +5040,17 @@ _disable_newrelic() {
       wait
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
       wait
+      if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
+        service php$1-fpm reload &> /dev/null
+      fi
+    elif ! grep -q "^php_admin_value\[newrelic.enabled\]" ${_THIS_POOL_TPL}; then
+      # a pool left without the lines while its PHP did not load New Relic
+      # keeps it off now that it does: the ini enables it for every pool
+      echo "New Relic for $2 disabled in php$1"
+      sed -i "/^php_admin_value\[newrelic\./d" ${_THIS_POOL_TPL}
+      wait
+      echo "php_admin_value[newrelic.license] = \"\"" >> ${_THIS_POOL_TPL}
+      echo "php_admin_value[newrelic.enabled] = \"false\"" >> ${_THIS_POOL_TPL}
       if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
         service php$1-fpm reload &> /dev/null
       fi
@@ -5066,7 +5102,9 @@ _switch_newrelic() {
   _isRld="$3"
   _isRld=${_isRld//[^0-1]/}
   if [ ! -z "${_isPhp}" ] && [ ! -z "${_isUsr}" ] && [ ! -z "${_isRld}" ]; then
-    if [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
+    if ! _newrelic_in_ini "${_isPhp}"; then
+      _newrelic_pool_off $1 $2 $3 "$4"
+    elif [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
       _enable_newrelic $1 $2 $3 "$4"
     else
       _disable_newrelic $1 $2 $3 "$4"
@@ -5833,6 +5871,12 @@ _ltd_hm_pool() {
     && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
       && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
     echo "group = ${_T_WGS##* }" >> "${_pNew}"
+  fi
+  # the template keeps New Relic off for the panel; a version that does not
+  # load New Relic gets no newrelic.* line at all (see _newrelic_in_ini)
+  if ! _newrelic_in_ini "${_hv}"; then
+    sed -i "/^php_admin_value\[newrelic\./d" "${_pNew}" &> /dev/null
+    wait
   fi
   # the panel pool of another version goes: the version moved. Both
   # versions' pools listen on the same socket path, and a master refuses

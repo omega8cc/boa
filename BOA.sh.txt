@@ -2806,7 +2806,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f40 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f39 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2948,7 +2948,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f98 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f97 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common.conf.dist "${_poolSum}" \
       "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
@@ -2968,7 +2968,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-legacy.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f98 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f97 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_poolSum}" \
       "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
@@ -2988,7 +2988,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-modern.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f98 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f97 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_poolSum}" \
       "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old

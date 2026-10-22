@@ -697,6 +697,13 @@ _php_fpm_memory_limit() {
 }
 
 #
+# True when PHP $1's FPM ini loads New Relic (its extension line).
+_satellite_newrelic_in_ini() {
+  [ -f "/opt/php$1/etc/php$1.ini" ] \
+    && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+
+#
 # Tune FPM configuration.
 _satellite_tune_fpm_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -841,6 +848,13 @@ _satellite_tune_fpm_config() {
         wait
       elif [[ "${_PHP_SV}" == 7* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-legacy.conf" ]; then
         sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        wait
+      fi
+      # the template keeps New Relic off; a version that does not load New
+      # Relic has no newrelic.* settings, and each line would fail in every
+      # new worker (the ltd worker then keeps the pool in step)
+      if ! _satellite_newrelic_in_ini "${_PHP_SV}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         wait
       fi
     fi
