@@ -35,6 +35,13 @@
       a later pass got through. The same FATAL lines say so, and that the
       crontab and Drush were left untouched.
 
+    * With the automatic PHP cleanup on (barracuda php-idle disable, or a
+      major OS upgrade chain), the Ægir Master's _PHP_CLI_VERSION was set
+      aside with the unused versions whenever it differed from
+      _PHP_FPM_VERSION and no account used it, so every full barracuda
+      pass after that stopped at the Master upgrade without it (#1950).
+      The cleanup now keeps that version too.
+
     * xmass prep-target took an account the target relays to a third box
       (xoct moved it on) by a create marker, so the init and the sync put
       this box's copy, from before that move, over the relay, and a
