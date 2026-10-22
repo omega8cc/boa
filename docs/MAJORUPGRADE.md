@@ -71,6 +71,8 @@ Sometimes even those steps don't bring your server back with a successful boot, 
 
 Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chimaera first by using `touch /root/.run-to-chimaera.cnf` instead -- they cannot run the auto-upgrade to Devuan Daedalus directly. Once on Chimaera, they can auto-upgrade to Devuan Daedalus with `touch /root/.run-to-daedalus.cnf`.
 
+Until such a server is on Daedalus, run only `barracuda up-lts system` there (the auto-upgrade passes are of that kind too): BOA builds no PHP 8.2 or newer on Jessie or Stretch, and the Ægir Master needs PHP 8.3 to 8.6, so a full `barracuda up-lts` stops with a FATAL before the Ægir Master upgrade begins.
+
 ## How To: Launch Classic Major OS Upgrade
 
 You can easily upgrade your BOA system from any supported Debian or Devuan version, starting with Debian Jessie, to any supported newer version.
