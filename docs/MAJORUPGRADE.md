@@ -73,6 +73,8 @@ Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chim
 
 Until such a server is on Daedalus, run only `barracuda up-lts system` there (the auto-upgrade passes are of that kind too): BOA builds no PHP 8.2 or newer on Jessie or Stretch, and the Ægir Master needs PHP 8.3 to 8.6, so a full `barracuda up-lts` stops with a FATAL before the Ægir Master upgrade begins.
 
+Before the first pass, set `_PHP_CLI_VERSION` and `_PHP_FPM_VERSION` in `/root/.barracuda.cnf` to 8.3, 8.4, 8.5 or 8.6 (8.4 is the default). Every pass refuses to start with any other value, and on Jessie or Stretch BOA turns an older one (5.6, 7.x, 8.0) into an installed 7.x, which it then refuses, saying so.
+
 ## How To: Launch Classic Major OS Upgrade
 
 You can easily upgrade your BOA system from any supported Debian or Devuan version, starting with Debian Jessie, to any supported newer version.
