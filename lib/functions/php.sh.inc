@@ -277,6 +277,43 @@ _fix_php_ini_newrelic_all() {
 }
 
 #
+# True when PHP $1's FPM ini loads New Relic (its extension line).
+_php_newrelic_in_ini() {
+  [ -f "/opt/php$1/etc/php$1.ini" ] \
+    && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+
+#
+# The pool templates keep New Relic off with newrelic.* lines, and an ini that
+# loads New Relic enables it for every pool. A PHP whose ini does not load it
+# has no such settings: each line fails in every new worker, and the master
+# logs each failure, so there the lines go from every pool. Where it does, a
+# pool left without them (the ltd worker removes them while its version does
+# not load New Relic) gets the off lines back before this pass reloads FPM;
+# the ltd worker then sets an account's own key. Runs after the ini fixes,
+# which decide what each version loads.
+_php_pool_newrelic_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pool_newrelic_fix"
+  fi
+  local e _pf
+  for e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    for _pf in /opt/php${e}/etc/pool.d/*.conf; do
+      [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || continue
+      if ! _php_newrelic_in_ini "${e}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" "${_pf}" &> /dev/null
+        wait
+      elif ! grep -q "^php_admin_value\[newrelic.enabled\]" "${_pf}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" "${_pf}" &> /dev/null
+        wait
+        echo "php_admin_value[newrelic.license] = \"\"" >> "${_pf}"
+        echo "php_admin_value[newrelic.enabled] = \"false\"" >> "${_pf}"
+      fi
+    done
+  done
+}
+
+#
 # Fix FMP php.ini file to add opcache configuration
 _fix_php_ini_opcache() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -795,6 +832,7 @@ _php_conf_update() {
     _THIS_FILE=/opt/php86/lib/php.ini
     _php_ini_drop_unbuilt_ext
   fi
+  _php_pool_newrelic_fix
 }
 
 #
@@ -1060,6 +1098,17 @@ _imagick_loads() {
 }
 
 #
+# True when PHP $1 has APCu but its igbinary was built without APCu's headers,
+# as on 8.6 while APCu was not built for it: igbinary then never registers its
+# serializer, and apc.serializer=igbinary falls back to PHP's own unsaid.
+_igbinary_lacks_apcu() {
+  [ -x "/opt/php$1/bin/php" ] && [ -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
+    && [ -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] || return 1
+  "/opt/php$1/bin/php" -n -d "extension=${_THIS_PHP_EXT_DIR}/igbinary.so" -i 2> /dev/null \
+    | grep -q "^igbinary APCu serializer ABI => no$"
+}
+
+#
 # True when PHP $1 itself runs but cannot load its imagick.so.
 _imagick_broken() {
   "/opt/php$1/bin/php" -n -r 'exit(0);' &> /dev/null \
@@ -1152,13 +1201,18 @@ _install_php_extensions() {
     _msg "PROC: _install_php_extensions $1"
   fi
   ###--------------------###
+  if [ "$1" = "86" ]; then
+    _USE_APCU="${_PHP_APCU_EIGHT_SIX}"
+  else
+    _USE_APCU="${_PHP_APCU}"
+  fi
   if [ "$1" != 56 ] \
-    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
-    _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
+    && ! _php_ext_rc_skip "$1" "apcu-${_USE_APCU}" "APCu ${_USE_APCU}"; then
+    _msg "INFO: Installing APCu ${_USE_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
-    _get_dev_src "apcu-${_PHP_APCU}.tgz"
-    cd /var/opt/apcu-${_PHP_APCU}
+    _get_dev_src "apcu-${_USE_APCU}.tgz"
+    cd /var/opt/apcu-${_USE_APCU}
     _mrun "${_T_PHP_PTH}/phpize"
     _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
@@ -1167,7 +1221,7 @@ _install_php_extensions() {
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
       _msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
     else
-      touch ${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+      touch ${_pthLog}/apcu-${_USE_APCU}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
@@ -1533,15 +1587,20 @@ _php_extensions_update() {
     _msg "PROC: _php_extensions_update $1"
   fi
   ###--------------------###
+  if [ "$1" = "86" ]; then
+    _USE_APCU="${_PHP_APCU_EIGHT_SIX}"
+  else
+    _USE_APCU="${_PHP_APCU}"
+  fi
   if [ "$1" != 56 ] \
-    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
+    && ! _php_ext_rc_skip "$1" "apcu-${_USE_APCU}" "APCu ${_USE_APCU}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
-      || [ ! -e "${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
-      _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
+      || [ ! -e "${_pthLog}/apcu-${_USE_APCU}-${_T_PHP_VRN}.log" ]; then
+      _msg "INFO: Installing APCu ${_USE_APCU} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
-      _get_dev_src "apcu-${_PHP_APCU}.tgz"
-      cd /var/opt/apcu-${_PHP_APCU}
+      _get_dev_src "apcu-${_USE_APCU}.tgz"
+      cd /var/opt/apcu-${_USE_APCU}
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
@@ -1550,7 +1609,7 @@ _php_extensions_update() {
       if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
         _msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/apcu-${_USE_APCU}-${_T_PHP_VRN}.log
       fi
     fi
   fi
@@ -1564,7 +1623,8 @@ _php_extensions_update() {
   fi
   if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}" \
     && { [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
-    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; }; then
+    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ] \
+    || _igbinary_lacks_apcu "$1"; }; then
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
