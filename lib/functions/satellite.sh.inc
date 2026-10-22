@@ -9743,8 +9743,12 @@ _satellite_dbvars_list_here() {
 ### from what the same server block already passes the main PHP location:
 ### each server-level fastcgi_param db_* token, copied as written, so nginx
 ### hands the include's own locations the very values it hands the pages.
-### A block without the include line or without all six params is left as
-### it is, and so is a token holding a ';'.
+### The vhost templates have urlencoded those values since they first passed
+### them, so a block without the db_creds_urlencoded marker gets it too, as
+### a fresh render has it; a cloaked settings.php then decodes a password
+### holding characters urlencode changes. A block without the include line
+### or without all six params is left as it is, and so is a token holding
+### a ';'.
 _SATELLITE_DBVARS_AWK='
 { L[NR] = $0 }
 /^[ \t]*server[ \t]*[{]/ { b++ }
@@ -9771,7 +9775,10 @@ END {
     if (!ok) continue
     for (j = 1; j <= n; j++) printf "  set $boa_db_%s %s;\n", K[j], V[c, K[j]]
     if ((c, "creds_urlencoded") in V) printf "  set $boa_db_creds_urlencoded %s;\n", V[c, "creds_urlencoded"]
-    else print "  set $boa_db_creds_urlencoded \"\";"
+    else {
+      print "  fastcgi_param db_creds_urlencoded 1;"
+      print "  set $boa_db_creds_urlencoded \"1\";"
+    }
   }
 }'
 
