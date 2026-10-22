@@ -2347,6 +2347,15 @@
       kept its key as known. The nine general Git hosts are still
       scanned once, when the instance's key pair is made.
 
+    * APCu for PHP 8.6, from APCu's development tree (5.1.29-dev, commit
+      ebbcd3d), which builds against 8.6.0RC4 and passes its own tests
+      there: 5.1.28, the latest release, does not build against 8.6.
+      PHP 7.0 to 8.5 stay on 5.1.28; 5.6 has no APCu. An igbinary built
+      while its PHP had no APCu, as every 8.6 one so far, is built again
+      once APCu is there: without APCu's headers it never registers its
+      serializer, and the apc.serializer=igbinary of php.ini fell back to
+      PHP's own unsaid.
+
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
 ### Date: Thu 08 Oct 2026 16:52:19 CEST in Warsaw
