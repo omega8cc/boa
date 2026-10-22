@@ -1703,7 +1703,8 @@ _cpp_say() {
 # PHP just chosen stops before PHP starts, naming the file that chose it and
 # the fix, instead of dying on a PHP fatal half-way through a task. Only
 # pairs that fatal anyway: Drupal 7 below 7.79 (the first release whose test
-# suite passes on PHP 8.0) or any Drupal 8 on PHP 8.0+ -- refused for a site,
+# suite passes on PHP 8.0) or any Drupal 8 on PHP 8.0+, and a Drupal 8+ core
+# on a PHP below the minimum the core itself declares -- refused for a site,
 # only a warning for a platform line, which boots no site -- and a codebase
 # whose vendor/composer/platform_check.php floor is above the chosen PHP, for
 # any drush line (its autoloader stops at that check). composer itself is not
@@ -1784,6 +1785,63 @@ _cpp_guard() {
         _cpp_say "Refused before PHP starts: ${_who} needs PHP ${_fln:0:1}.${_fln:1:1} or newer (vendor/composer/platform_check.php). This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
       fi
     fi
+  fi
+  # A Drupal 8+ core without that floor still declares its own, read as text
+  # like its VERSION below: Drupal::MINIMUM_PHP, or DRUPAL_MINIMUM_PHP in
+  # core/includes/bootstrap.inc on Drupal 8. Below it the core does not even
+  # parse (Drupal 8.9 dies on its first ?? under PHP 5.6), and a Verify dies
+  # in its full bootstrap after it has rewritten the site's settings.php.
+  # Drupal 7 needs less than any PHP BOA installs and is not read here.
+  if [ -z "${_app}" ] && [ -n "${_dr}" ] && [ -f "${_dr}/core/lib/Drupal.php" ]; then
+    local _cv="" _want _none _re="DRUPAL_MINIMUM_PHP'?[[:space:]]*[=,][[:space:]]*'([0-9])\.([0-9])[^0-9]"
+    _c=""
+    { IFS= read -r -N 16384 _c < "${_dr}/core/lib/Drupal.php"; } 2> /dev/null
+    [[ "${_c}" =~ const[[:space:]]+VERSION[[:space:]]*=[[:space:]]*\'([0-9]+)\.([0-9]+) ]] \
+      && _mj="${BASH_REMATCH[1]}" && _mn="${BASH_REMATCH[2]}"
+    if [[ "${_c}" =~ const[[:space:]]+MINIMUM_PHP[[:space:]]*=[[:space:]]*\'([0-9])\.([0-9])[^0-9] ]]; then
+      _fl="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+    else
+      { IFS= read -r -N 16384 _cv < "${_dr}/core/includes/bootstrap.inc"; } 2> /dev/null
+      [[ "${_cv}" =~ ${_re} ]] && _fl="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+    fi
+    if [ -n "${_mj}" ] && [[ "${_fl}" =~ ^[5-9][0-9]$ ]] && [ "${_ch}" -lt "${_fl}" ]; then
+      # Drupal 8 stops at PHP 7 the other way, so it gets the newest 7.x
+      if [ "${_mj}" = "8" ]; then
+        for _e in 74 73 72 71 70; do
+          [ "${_e}" -ge "${_fl}" ] && [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
+        done
+      else
+        for _e in 70 71 72 73 74 80 81 82 83 84 85 86; do
+          [ "${_e}" -ge "${_fl}" ] && [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
+        done
+      fi
+      _cpp_rel "${_dr}"
+      [ -n "${_who}" ] && _who="${_who} is Drupal ${_mj}.${_mn} (${_CPP_RP})" || _who="${_CPP_RP} is Drupal ${_mj}.${_mn}"
+      _want="PHP ${_fl:0:1}.${_fl:1:1} or newer"
+      _none="No PHP ${_fl:0:1}.${_fl:1:1} or newer is installed on this server; ask your host."
+      if [ "${_mj}" = "8" ]; then
+        _want="a PHP 7 version, ${_fl:0:1}.${_fl:1:1} or newer"
+        _none="No PHP 7 version, ${_fl:0:1}.${_fl:1:1} or newer, is installed on this server; ask your host."
+      fi
+      if [ -n "${_CPP_V}" ]; then
+        _fix="Fix: change line ${_CPP_LN} of ${_CPP_WHERE} to ${_want}."
+      elif [ -n "${_sug}" ]; then
+        _cpp_key "${_CPP_RP}"
+        _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ${_CPP_WHERE}"
+        # never "remove the marker": what it outranks may be no better
+        [[ "${_CLI_FROM}" == php[0-9][0-9].info ]] && _fix+=" (or switch from ${_CLI_FROM} to php${_sug}.info)"
+        _fix+="."
+      else
+        _fix="${_none}"
+      fi
+      if [ "${_CPP_CTX}" = "site" ]; then
+        _cpp_say "Refused before PHP starts: ${_who}, which needs PHP ${_fl:0:1}.${_fl:1:1} or newer. This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
+      fi
+      # shellcheck disable=SC2089 # message text for the task log, never run
+      _CPP_WARN+="${_who}, which needs PHP ${_fl:0:1}.${_fl:1:1} or newer, and this runs on PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}; its sites' tasks will be refused. ${_fix}"$'\n'
+      return 0
+    fi
+    _mj=""; _mn=""; _sug=""; _who="${_CPP_NAME}"
   fi
   [ "${_ch}" -ge 80 ] && [ -n "${_dr}" ] || return 0
   _c=""
