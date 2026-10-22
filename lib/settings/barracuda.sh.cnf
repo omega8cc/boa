@@ -1171,6 +1171,17 @@ _USE_BATCH_GUARD=YES
 _USE_TASK_GUARD=YES
 
 ###
+### Scheduled cron watchdog (cron_guard monitor): the panel stamps a
+### site's last cron time whatever the site answers, so a site whose
+### every scheduled cron fails looks fine there. Once an hour the
+### watchdog reads the panel's cron requests in today's and yesterday's
+### nginx access log and reports, once a day per site, a site whose
+### scheduled cron answered 403 or 5xx in two different hours with no
+### success. Read-only. Set to NO to disable on this system.
+###
+_USE_CRON_GUARD=YES
+
+###
 ### Permanent health/attack archive (XDR9000): a read-only harvester
 ### copies attack bans, auto-heal incidents, backup outcomes and metric
 ### samples into an append-only archive under /var/log/boa/xdr9000/
