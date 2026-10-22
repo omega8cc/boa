@@ -144,7 +144,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
         $second_return_var = 0;
         exec($second_cmd, $second_output, $second_return_var);
         // Append curl response to the log.
-        if (!empty($second_response)) {
+        if (!empty($second_output)) {
           file_put_contents($this_clog, "$date First IP Response:\n" . implode("\n", $second_output) . "\n", FILE_APPEND);
         } else {
           file_put_contents($this_clog, "$date First IP request returned empty OK response.\n", FILE_APPEND);
@@ -168,7 +168,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
           $second_output = [];
           $second_return_var = 0;
           exec($second_cmd, $second_output, $second_return_var);
-          if (!empty($second_response)) {
+          if (!empty($second_output)) {
             file_put_contents($this_clog, "$date Second IP Response:\n" . implode("\n", $second_output) . "\n", FILE_APPEND);
           } else {
             file_put_contents($this_clog, "$date Second IP request returned empty OK response.\n", FILE_APPEND);
