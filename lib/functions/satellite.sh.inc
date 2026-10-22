@@ -9797,15 +9797,20 @@ _satellite_dbvars_set_here() {
   esac
   [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
     && [ "${_nl}" = "1" ] || return 1
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none > "${2}/${1}" 2> /dev/null || return 1
-  [ "$(stat -c %s -- "${2}/${1}" 2> /dev/null)" = "${_sz}" ] || return 1
-  awk "${_SATELLITE_DBVARS_AWK}" "${2}/${1}" > "${2}/.new" 2> /dev/null \
-    || return 1
-  cmp -s "${2}/${1}" "${2}/.new" && return 1
+  if ! timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none > "${2}/${1}" 2> /dev/null \
+    || [ "$(stat -c %s -- "${2}/${1}" 2> /dev/null)" != "${_sz}" ] \
+    || ! awk "${_SATELLITE_DBVARS_AWK}" "${2}/${1}" > "${2}/.new" 2> /dev/null \
+    || cmp -s "${2}/${1}" "${2}/.new"; then
+    rm -f -- "${2}/${1}"
+    return 1
+  fi
   printf '%s %s %s\n' "${_uid}" "${_gid}" "${_mod}" > "${2}/${1}.ids"
-  _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
-    < "${2}/.new" || return 1
+  if ! _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
+    < "${2}/.new"; then
+    rm -f -- "${2}/${1}" "${2}/${1}.ids"
+    return 1
+  fi
   printf '%s\n' "${1}"
 }
 
