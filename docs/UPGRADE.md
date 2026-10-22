@@ -201,12 +201,15 @@ include line, from the server block's own `fastcgi_param db_*` values, with the
 Verify, which can fail for reasons of its own (a command-line PHP the codebase cannot run,
 a broken platform) and then leaves the vhost as it was.
 
-The originals go to `/var/backups/boa-dbvars/<account>/<stamp>/`. nginx is tested before
-and after: when it already fails the step changes nothing, and when it rejects the result
-every file is put back and the pass log says so with an `ALERT`. A vhost the step cannot
-change (a server block without the include line or without all six params) still gets a
-queued Verify (`_satellite_queue_dbvars_site_verifies`), the other way its vhost is
-re-rendered.
+The originals go to `/var/backups/boa-dbvars/<account>/<stamp>/`. The step stands aside
+while one of the account's tasks is still running, and writes a file only when it is
+unchanged since it was read. nginx is tested before and after: when it already fails the
+step changes nothing, and when it rejects the result every file still holding what was
+written is put back and the pass log says so with an `ALERT`.
+
+A vhost the step cannot change (a server block without the include line or without all
+six params, or a value that is not one plain or quoted token) still gets a queued Verify
+(`_satellite_queue_dbvars_site_verifies`), the other way its vhost is re-rendered.
 
 The sweep is self-limiting: a vhost carrying the lines is never changed or queued again,
 Grav, Textpattern and the control panel itself are skipped, the Verifies run one at a time
