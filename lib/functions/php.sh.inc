@@ -2259,7 +2259,10 @@ _install_php_multi_src() {
     _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
-  if [ "$1" -lt 74 ]; then
+  ### PHP before 7.4 takes OpenSSL 1.x only where OpenSSL 3 is missing: with
+  ### its security backports (aegir/patches/php-sec) it builds and runs on 3,
+  ### the version libcurl and nginx use, and 1.1 gets no fixes since 2023.
+  if [ "$1" -lt 74 ] && [ ! -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
     if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
       || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
       || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
@@ -2269,7 +2272,11 @@ _install_php_multi_src() {
     fi
   fi
   _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
-  if [ -e "${_SSL_LIB_PATH}" ]; then
+  if [ "$1" -lt 74 ] && [ "${_SSL_PATH}" = "/usr/local/ssl3" ]; then
+    ### configure before 7.4 looks for the libraries of a named OpenSSL in
+    ### its lib dir only, and OpenSSL 3 has lib64: it finds it by pkg-config
+    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl"
+  elif [ -e "${_SSL_LIB_PATH}" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=${_SSL_PATH}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl"
@@ -3187,7 +3194,10 @@ _check_php_ssl_version() {
   # Set OpenSSL version based on PHP version and detected OpenSSL version
   case "${1}" in
     56|70|71|72|73)
-      if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+      ### OpenSSL 3, when present, as _install_php_multi_src builds them
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        :
+      elif [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP ${1}"
