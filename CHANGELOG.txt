@@ -12,6 +12,12 @@
       pkg-config finds a new enough libavif, as it already was for PHP 8.6;
       otherwise GD is built without AVIF and the build log says so.
 
+    * A PHP 8.1+ source build that left AVIF out because libavif was
+      missing (a libavif-dev install that failed on that pass) is rebuilt
+      on a later pass once pkg-config finds a new enough libavif and its
+      GD still lacks AVIF (#1950). A host whose packages carry no libavif,
+      and a prebuilt package, are never rebuilt for it.
+
     * A Drupal 8+ site whose Verify failed after an Octopus upgrade lost
       its scheduled cron: the task rewrote its settings.php before it
       died, and the vhost it never re-rendered passed the shared
