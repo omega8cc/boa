@@ -1,0 +1,22 @@
+diff --git a/ext/openssl/openssl.c b/ext/openssl/openssl.c
+index af376aa..5116a4a 100644
+--- a/ext/openssl/openssl.c
++++ b/ext/openssl/openssl.c
+@@ -4001,6 +4001,9 @@ PHP_FUNCTION(openssl_pkey_export_to_file)
+ 
+ 	if (PHP_SSL_REQ_PARSE(&req, args) == SUCCESS) {
+ 		bio_out = BIO_new_file(filename, "w");
++		if (bio_out == NULL) {
++			goto clean_exit;
++		}
+ 
+ 		if (passphrase && req.priv_key_encrypt) {
+ 			if (req.priv_key_encrypt_cipher) {
+@@ -4029,6 +4032,7 @@ PHP_FUNCTION(openssl_pkey_export_to_file)
+ 			RETVAL_TRUE;
+ 		}
+ 	}
++clean_exit:
+ 	PHP_SSL_REQ_DISPOSE(&req);
+ 
+ 	if (key_resource == -1 && key) {
