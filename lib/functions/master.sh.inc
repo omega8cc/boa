@@ -1238,7 +1238,16 @@ _php_cli_drush_update() {
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
-    _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+    # A supported value whose binary is missing (a failed build) is not a
+    # wrong value: say which of the two it is
+    case "${_PHP_CLI_VERSION}" in
+      8.3|8.4|8.5|8.6)
+        _msg "FATAL ERROR: _PHP_CLI_VERSION=${_PHP_CLI_VERSION} is supported but /opt/php${_PHP_CLI_VERSION//./}/bin/php is missing"
+        ;;
+      *)
+        _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+        ;;
+    esac
     _msg "FATAL ERROR: Aborting AegirM installer NOW!"
     rm -f /opt/tmp/status-AegirM-FAIL
     touch /opt/tmp/status-AegirM-FAIL
@@ -1455,6 +1464,55 @@ _SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_ren
 
 #
 # Upgrade Ægir Master Instance.
+# The PHP the Master's Drush runs on, as an empty _PHP_CLI_VERSION resolves:
+# the version /usr/bin/php points at when it is installed, else the first
+# installed of 8.4, 8.5, 8.6 and 8.3, else 8.4. Prints the version and
+# nothing else (its callers capture it).
+_master_cli_php_resolve() {
+  local _cliPhpBin _cliPhpNum _fbV
+  if [ -n "${_PHP_CLI_VERSION}" ]; then
+    echo "${_PHP_CLI_VERSION}"
+    return 0
+  fi
+  _cliPhpBin=$(readlink -f /usr/bin/php 2>/dev/null)
+  _cliPhpNum="${_cliPhpBin%/bin/php}"
+  _cliPhpNum="${_cliPhpNum##*php}"
+  if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
+    echo "${_cliPhpNum:0:1}.${_cliPhpNum:1}"
+    return 0
+  fi
+  for _fbV in 84 85 86 83; do
+    if [ -x "/opt/php${_fbV}/bin/php" ]; then
+      echo "${_fbV:0:1}.${_fbV:1}"
+      return 0
+    fi
+  done
+  echo "8.4"
+}
+
+# _php_cli_drush_update stops the Master upgrade when the PHP its Drush runs
+# on is unsupported or has no binary (a failed build), but only after the
+# crontab update and the Drush tree swap: refuse before them, with the same
+# FATAL lines, so such a pass leaves the Master as it was.
+_master_cli_php_check() {
+  local _cV
+  _cV=$(_master_cli_php_resolve)
+  case "${_cV}" in
+    8.3|8.4|8.5|8.6)
+      [ -x "/opt/php${_cV//./}/bin/php" ] && return 0
+      _msg "FATAL ERROR: _PHP_CLI_VERSION=${_cV} is supported but /opt/php${_cV//./}/bin/php is missing"
+      ;;
+    *)
+      _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+      ;;
+  esac
+  _msg "FATAL ERROR: Ægir Master Instance not upgraded, its crontab and Drush untouched"
+  _msg "FATAL ERROR: Aborting AegirM installer NOW!"
+  rm -f /opt/tmp/status-AegirM-FAIL
+  touch /opt/tmp/status-AegirM-FAIL
+  exit 1
+}
+
 _aegir_master_upgrade() {
   # Reached from the barracuda process, which exports no _ROOT: every
   # ${_ROOT}/... below then resolves against the filesystem root, and
@@ -1548,22 +1606,7 @@ _aegir_master_upgrade() {
     # shadow the template's shipped default, so an empty value here would
     # reach the su'd child as-is and break its version branch table
     if [ -z "${_PHP_CLI_VERSION}" ]; then
-      _cliPhpBin=$(readlink -f /usr/bin/php 2>/dev/null)
-      _cliPhpNum="${_cliPhpBin%/bin/php}"
-      _cliPhpNum="${_cliPhpNum##*php}"
-      if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
-        _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
-      else
-        for _fbV in 84 85 86 83; do
-          if [ -x "/opt/php${_fbV}/bin/php" ]; then
-            _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
-            break
-          fi
-        done
-      fi
-      if [ -z "${_PHP_CLI_VERSION}" ]; then
-        _PHP_CLI_VERSION=8.4
-      fi
+      _PHP_CLI_VERSION=$(_master_cli_php_resolve)
     fi
     if [ -z "${_PHP_FPM_VERSION}" ]; then
       _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
@@ -2286,6 +2329,7 @@ EOFMYSQL
         _msg "Bye"
         _clean_pid_exit _aegir_master_install_upgrade_g
       fi
+      _master_cli_php_check
       _php_cli_cron_update
       _aegir_master_upgrade
       _php_cli_cron_update
@@ -2300,6 +2344,7 @@ _if_upgrade_only_aegir_master() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UP_ONLY}" = "NO" ]; then
+      _master_cli_php_check
       _php_cli_cron_update
       _aegir_master_upgrade
       _php_cli_cron_update

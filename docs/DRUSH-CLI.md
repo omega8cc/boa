@@ -212,7 +212,11 @@ instead of dying half-way on a PHP fatal:
 
 - a site on Drupal 7 older than 7.79, or on any Drupal 8, on PHP 8.0 or newer;
 - a codebase whose `vendor/composer/platform_check.php` needs a newer PHP than the one
-  chosen (Drupal 10 needs 8.1, Drupal 11 and site-local Drush 13 need 8.3).
+  chosen (Drupal 10 needs 8.1, Drupal 11 and site-local Drush 13 need 8.3);
+- a site on Drupal 8 or newer whose codebase has no `platform_check.php`, on a PHP older
+  than the minimum its core declares (`Drupal::MINIMUM_PHP`, or `DRUPAL_MINIMUM_PHP` in
+  `core/includes/bootstrap.inc` on Drupal 8, read from the core itself): a Drupal 8.9 site
+  under `php56.info` is refused, as Drupal 8.9 needs PHP 7.0.8.
 
 The message names the PHP, the file that chose it and the line that would fix it, e.g.
 `Refused before Drupal starts: @old.example.com is Drupal 7.78 (static/d7-legacy), which
@@ -221,9 +225,12 @@ the line "d7-legacy 7.4" to ~/static/control/cli-per-platform.info (or switch ba
 php74.info).`
 
 A Clone or Migrate is checked for its target before the safety copy starts. A platform
-task, which boots no site, gets the Drupal 7 or 8 text as a warning and runs; a
+task, which boots no site, gets the Drupal 7 or 8 text, or the core's own minimum, as a
+warning and runs; a
 `platform_check.php` floor refuses it too, because Drush stops at that check whatever it
-runs. Commands that never load the codebase (deleting a backup file, the `version` and
+runs.
+
+Commands that never load the codebase (deleting a backup file, the `version` and
 alias listing of the server's Drush 8) run as before; `help` can boot the site, so it is
 judged like any other command. Composer is never refused, because it is the tool that
 repairs `vendor/`.
