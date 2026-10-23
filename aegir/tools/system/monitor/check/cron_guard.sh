@@ -21,8 +21,8 @@
 # asked for /cron/, which no route serves), or a 3xx (Drupal and Backdrop
 # never redirect a working cron; a module sending 403s to the login page
 # does). The 404 of BOA's own cron gate for dev and tmp sites carries no
-# page and is never one. A redirect is cleared when its target answered the
-# same keyed cron request. One success in the window clears the site, except
+# page and is never one. A redirect is cleared when the request it led to
+# answered 2xx. One success in the window clears the site, except
 # a success within 15 minutes of a run killed at the PHP time limit: that is
 # the panel's retry meeting the cron lock the killed run left, and no cron
 # ran. Only requests from the box's own addresses count: anyone can send
@@ -227,19 +227,38 @@ _incident_email_send() {
 # one asked for /cron.php with no key). A 2xx in that time ran no cron.
 # Each window has 30 s more: the lock is taken after the bootstrap, and the
 # panel times a site's next run from the start of its last one.
-# A redirect is cleared by a 2xx for the same cron key, also on a path with
-# a language prefix (a module sending /cron/<key> to /en/cron/<key>); a run
-# killed on such a path is timed by the host and path it was logged on, where
-# its retry lands too: a clone keeps its source's key, and a subdirectory
-# site's parent host has its own clock.
+# A redirect is cleared by the 2xx it led to, also on a path with a
+# language prefix (a module sending /cron/<key> to /en/cron/<key>) or on
+# another name (www to the bare name, a subdirectory site's name to its
+# parent's path). The panel's curl follows a redirect at once, so its next
+# hop is the next line for the same key: on the same name, or on another
+# name when it began within 2 s of the redirect (the panel waits 3 s between
+# sites). A clone keeps its source's key, so a key alone would let a working
+# clone clear its failing source. A run killed on a prefixed path is timed
+# by the host and path it was logged on, where its retry lands too: a
+# subdirectory site's parent host has its own clock.
 # Seconds count from the first day in the window (the logs are read in
-# order; mawk has no time functions).
+# order, each line written when its request ended; mawk has no time
+# functions).
 _CRON_GUARD_AWK='
 function ckey(p,   k) {
   k = p
   if (sub(/^.*[?&]cron_key=/, "", k)) { sub(/&.*$/, "", k); return k }
   if (match(p, /\/cron\/[A-Za-z0-9_-]+/)) return substr(p, RSTART + 6, RLENGTH - 6)
   return ""
+}
+# One line for key k on host h, ended at e, started at b: a 3xx opens or
+# extends the redirect chain of k, any other line ends it, and a 2xx that
+# counts as a run (r) clears every name in it.
+function hop(k, h, s, e, b, r,   on, n, i, c) {
+  if (k == "") return
+  on = (ch[k] != "" && (chh[k] == h || (ct[k] <= b + 1 && b - ct[k] <= 2)))
+  if (s ~ /^3/) {
+    if (!on) ch[k] = h; else if (chh[k] != h) ch[k] = ch[k] " " h
+    chh[k] = h; ct[k] = e; return
+  }
+  if (on && r) { n = split(ch[k], c, " "); for (i = 1; i <= n; i++) cl[c[i], k] = 1 }
+  ch[k] = ""
 }
 BEGIN { n = split(own, a, " "); for (i = 1; i <= n; i++) mine[a[i]] = 1 }
 $8 ~ /^[0-9][0-9][0-9]$/ {
@@ -252,21 +271,22 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   split(t, f, ":")
   if (!(f[1] in day)) day[f[1]] = ++nd
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
+  k = ckey(p); b = sec - $14
   if (pre) {
-    k = ckey(p); kp = p; sub(/[?].*$/, "", kp)
+    kp = p; sub(/[?].*$/, "", kp)
     if (s ~ /^5/ && $14 + 0 >= 170) kk[h, kp] = sec - int($14 + 0)
-    else if (s ~ /^2/ && !(((h, kp) in kk) && sec - kk[h, kp] <= 930)) okk[k] = 1
+    hop(k, h, s, sec, b, s ~ /^2/ && !(((h, kp) in kk) && sec - kk[h, kp] <= 930))
     next
   }
   if (s ~ /^2/) {
     if (h in ks) {
-      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 270 : 930)) next
-      if (h in d6) { if (sec - ks[h] > 3630) delete d6[h]; next }
+      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 270 : 930)) { hop(k, h, s, sec, b, 0); next }
+      if (h in d6) { if (sec - ks[h] > 3630) delete d6[h]; hop(k, h, s, sec, b, 0); next }
     }
-    ok[h] = 1; k = ckey(p); if (k != "") okk[k] = 1; next
+    ok[h] = 1; hop(k, h, s, sec, b, 1); next
   }
+  hop(k, h, s, sec, b, 0)
   if (s ~ /^3/) {
-    k = ckey(p)
     if (k == "") next
     rk[h SUBSEP k] = 1
   }
@@ -282,7 +302,7 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   lasts[h] = sec; last[h] = s; when[h] = t
 }
 END {
-  for (x in rk) { split(x, q, SUBSEP); if (q[2] in okk) ok[q[1]] = 1 }
+  for (x in rk) if (x in cl) { split(x, q, SUBSEP); ok[q[1]] = 1 }
   for (h in hrs) if (!(h in ok) && hrs[h] >= 2 && lasts[h] - first[h] >= 3000) print h, hrs[h], last[h], when[h]
 }'
 
