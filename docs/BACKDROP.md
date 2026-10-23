@@ -211,7 +211,11 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   Verify, Clone, Migrate and Restore regenerate
   `civicrm.settings.php` for the site's own address and platform — every
   `cv` call names the site it acts on, so a clone never boots or rewrites
-  its source — and the panel's CiviCRM cron runs the scheduled jobs through
+  its source. A Restore or a Migrate, renamed or not, keeps the site's
+  CiviCRM keys (credentials CiviCRM stored encrypted stay readable); only a
+  Clone gets keys of its own.
+
+  The panel's CiviCRM cron runs the scheduled jobs through
   `cv` (`provision-civicrm-cron`). CiviCRM's private area is kept in
   `sites/<uri>/private/files/civicrm`, as on Drupal. CiviCRM's own web
   installer cannot add CiviCRM to an existing site: it writes its settings
