@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * An Octopus or Barracuda upgrade could rebuild the control panels
+      from the panel sources of an earlier publish: the staged sources in
+      /opt/tmp/make_local are reused whenever they hold hosting.module,
+      and the build tree fetched again for a new publish kept them, so a
+      panel fix published since did not reach the panels. The sources now
+      go with the old tree, and the pass fetches the current ones.
+
     * PHP 8.1 to 8.5 failed to build on a host without libavif 0.8.2 or
       newer, such as Devuan Beowulf, whose main and security suites have
       none (#1950): configure was always given --with-avif and stopped, so
