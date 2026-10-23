@@ -216,39 +216,65 @@ _incident_email_send() {
 # $1 = "address", $2 = host, $3 = [date:time, $6 = path, $8 = status,
 # $9 = body bytes, $14 = request time. The Drupal 8+ key takes only the key
 # alphabet, as in global-main.inc: a /cron/../node request reaches a page,
-# not cron. A 5xx after 170 s or more is a run killed at the time limit. The
-# gate's 404 has no page: 0 bytes, or a few bytes of framing in the line the
-# SSL front logs for the same request; a page is 64 bytes or more.
-# Minutes count from the first day in the window (the logs are read in
+# not cron. The gate's 404 has no page: 0 bytes, or a few bytes of framing
+# in the line the SSL front logs for the same request; a page is 64 bytes
+# or more.
+# A 5xx after 170 s or more is a run killed at the time limit, started its
+# request time earlier. Its cron lock outlives it: 900 s on Drupal 8+ and
+# BOA's Drupal 7, 240 s on Backdrop, and Drupal 6 keeps its semaphore an
+# hour, then the request that clears it runs nothing either (Drupal 6 is the
+# one asked for /cron.php with no key). A 2xx in that time ran no cron.
+# A redirect is cleared by a 2xx for the same cron key, also on a path with
+# a language prefix (a module sending /cron/<key> to /en/cron/<key>).
+# Seconds count from the first day in the window (the logs are read in
 # order; mawk has no time functions).
 _CRON_GUARD_AWK='
+function ckey(p,   k) {
+  k = p
+  if (sub(/^.*[?&]cron_key=/, "", k)) { sub(/&.*$/, "", k); return k }
+  if (match(p, /\/cron\/[A-Za-z0-9_-]+/)) return substr(p, RSTART + 6, RLENGTH - 6)
+  return ""
+}
 BEGIN { n = split(own, a, " "); for (i = 1; i <= n; i++) mine[a[i]] = 1 }
-$6 ~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/ && $8 ~ /^[0-9][0-9][0-9]$/ {
+$8 ~ /^[0-9][0-9][0-9]$/ {
   ip = $1; gsub(/"/, "", ip); sub(/^::ffff:/, "", ip)
   if (!(ip in mine) && ip !~ /^127\./ && ip != "::1") next
-  h = $2; p = $6; s = $8; t = $3; sub(/^\[/, "", t)
+  p = $6
+  if (p ~ /^\/[A-Za-z][A-Za-z0-9_-]*\/cron\/[A-Za-z0-9_-]+([?].*)?$/) {
+    if ($8 ~ /^2/) okk[ckey(p)] = 1
+    next
+  }
+  if (p !~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
+  h = $2; s = $8; t = $3; sub(/^\[/, "", t)
   split(t, f, ":")
   if (!(f[1] in day)) day[f[1]] = ++nd
-  m = day[f[1]] * 1440 + f[2] * 60 + f[3]
+  sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   if (s ~ /^2/) {
-    if ((h in kill) && m - kill[h] <= 15) next
-    ok[h] = 1; okp[p] = 1; next
+    if (h in ks) {
+      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 240 : 900)) next
+      if (h in d6) { if (sec - ks[h] > 3600) delete d6[h]; next }
+    }
+    ok[h] = 1; k = ckey(p); if (k != "") okk[k] = 1; next
   }
   if (s ~ /^3/) {
-    if (p !~ /(cron_key=|\/cron\/)[A-Za-z0-9_-]/) next
-    rp[h SUBSEP p] = 1
+    k = ckey(p)
+    if (k == "") next
+    rk[h SUBSEP k] = 1
   }
   else if (s == "404") { if ($9 + 0 < 64) next }
   else if (s != "403" && s !~ /^5/) next
-  if (s ~ /^5/ && $14 + 0 >= 170) kill[h] = m
+  if (s ~ /^5/ && $14 + 0 >= 170) {
+    ks[h] = sec - int($14 + 0)
+    if (p == "/cron.php") d6[h] = 1; else delete d6[h]
+  }
   k = substr(t, 1, 14)
   if (!((h, k) in seen)) { seen[h, k] = 1; hrs[h]++ }
-  if (!(h in first)) first[h] = m
-  lastm[h] = m; last[h] = s; when[h] = t
+  if (!(h in first)) first[h] = sec
+  lasts[h] = sec; last[h] = s; when[h] = t
 }
 END {
-  for (x in rp) { split(x, q, SUBSEP); if (q[2] in okp) ok[q[1]] = 1 }
-  for (h in hrs) if (!(h in ok) && hrs[h] >= 2 && lastm[h] - first[h] >= 50) print h, hrs[h], last[h], when[h]
+  for (x in rk) { split(x, q, SUBSEP); if (q[2] in okk) ok[q[1]] = 1 }
+  for (h in hrs) if (!(h in ok) && hrs[h] >= 2 && lasts[h] - first[h] >= 3000) print h, hrs[h], last[h], when[h]
 }'
 
 # The box's own addresses (kernel, operator list, barracuda.cnf): the
