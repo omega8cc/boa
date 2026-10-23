@@ -16,8 +16,9 @@ barracuda and octopus expect.
 
 Beside each tarball goes `boa.stamp`, a copy of that `.update.txt`. The Barracuda
 and Octopus upgrades compare it with the build tree they staged and fetch the tree
-again when it differs (`_boa_tree_stamp_check` in `lib/settings/*.sh.cnf`); the
-purge below covers it with the tarball.
+again when it differs (`_boa_tree_stamp_check` in `lib/settings/*.sh.cnf`), taking
+the staged panel sources (`/opt/tmp/make_local`, published with the tree) with the
+old tree; the purge below covers it with the tarball.
 
 ## Installing It
 

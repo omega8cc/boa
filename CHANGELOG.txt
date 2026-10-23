@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * An Octopus or Barracuda upgrade could rebuild the control panels
+      from the panel sources of an earlier publish: the staged sources in
+      /opt/tmp/make_local are reused whenever they hold hosting.module,
+      and the build tree fetched again for a new publish kept them, so a
+      panel fix published since did not reach the panels. The sources now
+      go with the old tree, and the pass fetches the current ones.
+
     * PHP 8.1 to 8.5 failed to build on a host without libavif 0.8.2 or
       newer, such as Devuan Beowulf, whose main and security suites have
       none (#1950): configure was always given --with-avif and stopped, so
@@ -47,6 +54,18 @@
       _PHP_FPM_VERSION and no account used it, so every full barracuda
       pass after that stopped at the Master upgrade without it (#1950).
       The cleanup now keeps that version too.
+
+    * An Octopus or Ægir Master upgrade of a panel whose database held no
+      site record of the panel itself ended WITH ERRORS on every run: the
+      panel moved to its new code, then the step that moves its records
+      died with a PHP 8 fatal error before hosting-setup ran. The step now
+      makes the panel's site record again from the values its alias
+      holds, the profile's package too when the collector had removed it,
+      or gives the name back to a record that lost only that; a site
+      record under the panel's domain that is not the panel's own is never
+      taken. When no record can be made the step says what is in the way,
+      still runs hosting-setup, and makes no platform record whose Verify
+      would bring the panel in as an ordinary site.
 
     * xmass prep-target took an account the target relays to a third box
       (xoct moved it on) by a create marker, so the init and the sync put
