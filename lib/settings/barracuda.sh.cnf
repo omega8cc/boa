@@ -2202,6 +2202,10 @@ _boa_tree_stamp_check() {
     rm -rf /opt/tmp/boa
     mv -f "${_stNew}/boa" /opt/tmp/boa
     chown -R root:root /opt/tmp/boa &> /dev/null
+    # The panel sources are published with the tree and reused whenever they
+    # hold hosting.module: kept, they would rebuild the panel from the old
+    # publish, so they go with it and the pass fetches the current ones.
+    rm -rf /opt/tmp/make_local
     echo "NOTE: build tree ${_stPub##*$'\n'} in place"
   else
     echo "ALRT: the build tree fetched again is not the published ${_stPubL}; continuing with the current one"
