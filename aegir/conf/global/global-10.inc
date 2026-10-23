@@ -18,6 +18,13 @@ if (is_readable('/data/conf/global/global-mode.inc')) {
 }
 
 /**
+ * Include the Drush lock stand-in
+ */
+if (is_readable('/data/conf/global/global-drush-lock.inc')) {
+  include_once('/data/conf/global/global-drush-lock.inc');
+}
+
+/**
  * Include main
  */
 if (is_readable('/data/conf/global/global-main.inc')) {

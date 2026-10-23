@@ -4,6 +4,16 @@
 
 @=> Important Fixes
 
+    * A Drupal 8+ site on a locked platform answered 500 on every page,
+      its scheduled cron included, when one module registers a Drush
+      command class as a Drupal service (varbase_core does, in every
+      Varbase 10 release) and another loads every service class while the
+      container builds (symfony_mailer 2.x does): the web cannot read the
+      locked site-local Drush, so the build stopped on Class
+      "Drush\Commands\DrushCommands" not found. BOA's global settings now
+      give that one base class an empty stand-in outside Drush, only while
+      the real class cannot be read, and log each use.
+
     * An Octopus or Barracuda upgrade could rebuild the control panels
       from the panel sources of an earlier publish: the staged sources in
       /opt/tmp/make_local are reused whenever they hold hosting.module,
