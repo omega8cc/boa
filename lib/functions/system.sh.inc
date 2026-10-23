@@ -3067,12 +3067,14 @@ _php_if_versions_cleanup_cnf() {
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
       fi
     else
-      ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
+      ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION, and
+      ### _PHP_CLI_VERSION: the Ægir Master upgrade refuses to run without
+      ### that one, and no account need use it
       if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
         _PHP_CLI_VERSION=7.4
         _PHP_FPM_VERSION=7.4
       fi
-      _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
+      _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION} ${_PHP_CLI_VERSION}"
 
       ### The control panels' own pools run on the version _HM_FPM_VERSION
       ### names while it is installed: that version stays

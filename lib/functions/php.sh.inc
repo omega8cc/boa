@@ -2199,6 +2199,9 @@ _install_php_deb() {
     fi
     if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
       rm -rf "/var/opt/php${1}-pre-deb"
+      # A package is what its builder made: never rebuilt for AVIF, or one
+      # built without it would be fetched again on every pass
+      rm -f "/opt/php${1}/lib/boa-no-avif"
       _PHP_DEB_INSTALLED=YES
       _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
       return 0
@@ -2388,19 +2391,17 @@ _install_php_multi_src() {
       fi
     fi
   fi
+  _PHP_NO_AVIF=NO
   if [ "$1" -gt 80 ]; then
-    # GD's AVIF needs libavif 0.8.2 or newer, and 1.0.0 or newer on PHP 8.6
-    # (Daedalus has 0.11): without it, or with an older one, PHP is built
-    # without AVIF in GD instead of not at all
-    local _avifMin="0.8.2"
-    if [ "$1" -ge 86 ]; then
-      _avifMin="1.0.0"
-    fi
-    if PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" \
-      pkg-config --atleast-version="${_avifMin}" libavif 2> /dev/null; then
+    # Without the libavif GD's AVIF needs (_php_avif_ready), or with an
+    # older one, PHP is built without AVIF in GD instead of not at all; the
+    # build records that (_php_avif_mark) and is rebuilt once libavif is
+    # there (_check_php_avif)
+    if _php_avif_ready "$1"; then
       _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
     else
-      _msg "NOTE: libavif ${_avifMin} or newer not found, PHP ${_PHP_VERSION} is built without AVIF"
+      _PHP_NO_AVIF=YES
+      _msg "NOTE: libavif $(_php_avif_min "$1") or newer not found, PHP ${_PHP_VERSION} is built without AVIF"
     fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
@@ -2643,6 +2644,7 @@ _install_php_multi() {
       _msg "ALRT: Building PHP ${_PHP_VERSION} failed, the previous build in /opt/php$1 keeps serving"
     else
       _php_sec_mark "$1"
+      _php_avif_mark "$1"
     fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
@@ -3415,6 +3417,59 @@ _php_sec_mark() {
 }
 
 #
+# The libavif GD's AVIF needs for PHP $1: 0.8.2 or newer, and 1.0.0 or newer
+# on PHP 8.6 (Daedalus has 0.11).
+_php_avif_min() {
+  if [ "$1" -ge 86 ]; then
+    echo "1.0.0"
+  else
+    echo "0.8.2"
+  fi
+}
+
+#
+# Exit 0 when pkg-config finds that libavif, with the PKG_CONFIG_PATH
+# _install_php_multi_src gives configure.
+_php_avif_ready() {
+  PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" \
+    pkg-config --atleast-version="$(_php_avif_min "$1")" libavif 2> /dev/null
+}
+
+#
+# Record whether the source build that just replaced /opt/php$1 left AVIF
+# out (_PHP_NO_AVIF, set by _install_php_multi_src).
+_php_avif_mark() {
+  mkdir -p "/opt/php${1}/lib"
+  if [ "${_PHP_NO_AVIF}" = "YES" ]; then
+    : > "/opt/php${1}/lib/boa-no-avif"
+  else
+    rm -f "/opt/php${1}/lib/boa-no-avif"
+  fi
+}
+
+#
+# Exit 1 when PHP $1 was built from sources without AVIF (boa-no-avif), its
+# GD still lacks it and pkg-config finds a new enough libavif now: a pass on
+# which the libavif-dev install failed is healed by the next one. On a host
+# whose packages carry no libavif it never fires.
+_check_php_avif() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_avif $1"
+  fi
+  local _av
+  [ -e "/opt/php${1}/lib/boa-no-avif" ] || return 0
+  _php_avif_ready "$1" || return 0
+  _av=$("/opt/php${1}/bin/php" -r 'echo function_exists("imageavif") ? "avif:on" : "avif:off";' 2>/dev/null)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 GD AVIF probe: ${_av:-no answer}"
+  fi
+  if [[ "${_av}" =~ "avif:off" ]]; then
+    return 1
+  fi
+  return 0
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -3494,6 +3549,12 @@ _check_php_rebuild() {
 
   if ! _check_php_sec_patches "$1"; then
     _msg "INFO: PHP ${_PHP_ITD} lacks a BOA security patch, forcing rebuild"
+    _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
+  fi
+
+  if [ "$1" -gt 80 ] && ! _check_php_avif "$1"; then
+    _msg "INFO: PHP ${_PHP_ITD} was built without AVIF and libavif is there now, forcing rebuild"
     _PHP_FORCE_REINSTALL=YES
     _ownWhy=YES
   fi
