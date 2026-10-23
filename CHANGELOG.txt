@@ -902,6 +902,12 @@
       settings file that fails) or when a logger ahead of Drush's own
       fails, as with a broken database log table.
 
+    * The same line now names the original error of a Drupal 7 site that
+      fails in settings.php or a file it includes (#1950). There Drupal's
+      own exception handler died on an undefined cache_get() while it
+      built its maintenance page, so the line named only that second
+      error, never the cause.
+
     * A Clone, Migrate or Restore whose database update failed no longer
       reports a second failure at the end of its deploy. Once a step has
       failed, the closing bootstrap is not tried, and the warning now says
@@ -2400,9 +2406,9 @@
       release, so a toggle the operator sets afterwards is no longer put
       back to YES at every release.
 
-    * Classic Drush 8.5.19 (Ægir's Drush 8), for the PHP 8.5 and 8.6
-      items above and the named kernel boot and uncaught errors and the
-      Drupal 6 database updates under Important Fixes.
+    * Classic Drush 8.5.20 (Ægir's Drush 8), for the PHP 8.5 and 8.6
+      items above and the named kernel boot and uncaught errors (Drupal 7
+      included) and the Drupal 6 database updates under Important Fixes.
       On Drupal 10 and 11 pm-updatestatus no longer dies on
       drupal_get_path(), and core-requirements lists the status report's
       own checks: on 11.4 it crashed on the first severity reported as an
