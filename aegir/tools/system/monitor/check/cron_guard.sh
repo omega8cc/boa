@@ -231,10 +231,10 @@ _incident_email_send() {
 # language prefix (a module sending /cron/<key> to /en/cron/<key>) or on
 # another name (www to the bare name, a subdirectory site's name to its
 # parent's path). The panel's curl follows a redirect at once, so its next
-# hop is the next line for the same key: on the same name, or on another
-# name when it began within 2 s of the redirect (the panel waits 3 s between
-# sites). A clone keeps its source's key, so a key alone would let a working
-# clone clear its failing source. A run killed on a prefixed path is timed
+# hop is the next line for the same key, begun within 2 s of the redirect
+# (the panel waits 3 s between sites), on the same name or another. A clone
+# keeps its source's key, so a key alone would let a working clone clear its
+# failing source. A run killed on a prefixed path is timed
 # by the host and path it was logged on, where its retry lands too: a
 # subdirectory site's parent host has its own clock.
 # Seconds count from the first day in the window (the logs are read in
@@ -249,10 +249,13 @@ function ckey(p,   k) {
 }
 # One line for key k on host h, ended at e, started at b: a 3xx opens or
 # extends the redirect chain of k, any other line ends it, and a 2xx that
-# counts as a run (r) clears every name in it.
+# counts as a run (r) clears every name in it. A line is the next hop when it
+# began at most 2 s after the last line of the chain ended; on another name
+# not before it either (the SSL front logs its copy of a request after the
+# line of the site, and the copy began earlier).
 function hop(k, h, s, e, b, r,   on, n, i, c) {
   if (k == "") return
-  on = (ch[k] != "" && (chh[k] == h || (ct[k] <= b + 1 && b - ct[k] <= 2)))
+  on = (ch[k] != "" && b - ct[k] <= 2 && (chh[k] == h || ct[k] <= b + 1))
   if (s ~ /^3/) {
     if (!on) ch[k] = h; else if (chh[k] != h) ch[k] = ch[k] " " h
     chh[k] = h; ct[k] = e; return
