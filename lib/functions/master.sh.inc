@@ -469,10 +469,18 @@ _provision_backend_dbpass_sync() {
   chmod 0600 ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+    local _pUpd
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_ADBU}'\"" &> /dev/null
+    _pUpd=$?
     wait
+    ### MySQL and the aliases take the new password below either way; a
+    ### panel that kept the old one would write it back into the alias on
+    ### its next Verify of the database server.
+    if [ "${_pUpd}" != "0" ]; then
+      _msg "ALRT: the Master panel did not store the new ${_ADBU} database password; run this upgrade again once @hostmaster works, before any Verify of its database server"
+    fi
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -1513,6 +1521,29 @@ _master_cli_php_check() {
   exit 1
 }
 
+# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
+# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning throws an ArgumentCountError before includes/cache.inc is loaded,
+# and Drupal's exception handler then dies on cache_get(), hiding the cause.
+# The upgrade runs the old Master panel on PHP 8 before it moves it, so that
+# argument is made optional ($context = NULL). Only that exact line changes;
+# a missing file or a symlink is left alone. Returns 0 when it healed the
+# file, 1 when there was nothing to heal, 2 when the old line is still there.
+# The root-side call runs it as aegir, in aegir's own tree.
+_master_heal_d7_error_handler() {
+  local _bInc="${1}/includes/bootstrap.inc"
+  local _oLd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -z "${1}" ] || [ ! -f "${_bInc}" ] || [ -L "${_bInc}" ]; then
+    return 1
+  fi
+  grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null || return 1
+  sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_bInc}" &> /dev/null
+  if grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null; then
+    return 2
+  fi
+  return 0
+}
+
 _aegir_master_upgrade() {
   # Reached from the barracuda process, which exports no _ROOT: every
   # ${_ROOT}/... below then resolves against the filesystem root, and
@@ -1570,6 +1601,12 @@ _aegir_master_upgrade() {
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
+    ### Every @hostmaster call from here on runs the old panel, on PHP 8.
+    su -s /bin/bash aegir -c "$(declare -f _master_heal_d7_error_handler); _master_heal_d7_error_handler $(printf '%q' "${_THIS_HM_ROOT}")"
+    case $? in
+      0) _msg "INFO: Old Master panel core: error handler made safe for PHP 8" ;;
+      2) _msg "ALRT: Old Master panel core keeps an error handler PHP 8 cannot call" ;;
+    esac
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
     _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir
     # a CLI php.ini an earlier release left (+i) would refuse the chown;
