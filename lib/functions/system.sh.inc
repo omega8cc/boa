@@ -3067,12 +3067,14 @@ _php_if_versions_cleanup_cnf() {
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
       fi
     else
-      ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
+      ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION, and
+      ### _PHP_CLI_VERSION: the Ægir Master upgrade refuses to run without
+      ### that one, and no account need use it
       if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
         _PHP_CLI_VERSION=7.4
         _PHP_FPM_VERSION=7.4
       fi
-      _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
+      _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION} ${_PHP_CLI_VERSION}"
 
       ### The control panels' own pools run on the version _HM_FPM_VERSION
       ### names while it is installed: that version stays
@@ -3761,6 +3763,7 @@ _barracuda_cnf() {
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
     echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}"                 >> ${_barCnf}
+    echo "_USE_CRON_GUARD=${_USE_CRON_GUARD}"                 >> ${_barCnf}
     echo "_XDR9000=${_XDR9000}"                               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -4443,6 +4446,11 @@ _barracuda_cnf() {
     _USE_TASK_GUARD_TEST=$(grep _USE_TASK_GUARD ${_barCnf} 2>&1)
     if [[ ! "${_USE_TASK_GUARD_TEST}" =~ "_USE_TASK_GUARD" ]]; then
       echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}" >> ${_barCnf}
+    fi
+
+    _USE_CRON_GUARD_TEST=$(grep _USE_CRON_GUARD ${_barCnf} 2>&1)
+    if [[ ! "${_USE_CRON_GUARD_TEST}" =~ "_USE_CRON_GUARD" ]]; then
+      echo "_USE_CRON_GUARD=${_USE_CRON_GUARD}" >> ${_barCnf}
     fi
 
     _XDR9000_TEST=$(grep _XDR9000 ${_barCnf} 2>&1)

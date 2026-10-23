@@ -4,6 +4,50 @@
 
 @=> Important Fixes
 
+    * PHP 8.1 to 8.5 failed to build on a host without libavif 0.8.2 or
+      newer, such as Devuan Beowulf, whose main and security suites have
+      none (#1950): configure was always given --with-avif and stopped, so
+      a full barracuda pass there went on to stop at the Ægir Master
+      upgrade for lack of PHP 8.3. The option is now passed only when
+      pkg-config finds a new enough libavif, as it already was for PHP 8.6;
+      otherwise GD is built without AVIF and the build log says so.
+
+    * A PHP 8.1+ source build that left AVIF out because libavif was
+      missing (a libavif-dev install that failed on that pass) is rebuilt
+      on a later pass once pkg-config finds a new enough libavif and its
+      GD still lacks AVIF (#1950). A host whose packages carry no libavif,
+      and a prebuilt package, are never rebuilt for it.
+
+    * A Drupal 8+ site whose Verify failed after an Octopus upgrade lost
+      its scheduled cron: the task rewrote its settings.php before it
+      died, and the vhost it never re-rendered passed the shared
+      include's cron, update.php, authorize.php and ESI locations empty
+      database credentials, so every scheduled run answered 500 while the
+      panel showed cron as sent. The pass now writes the db variables
+      into such vhosts itself, from their own server-level params, keeps
+      the originals and puts them back if nginx rejects the result.
+
+    * websh refused a command-line PHP too new for a Drupal core, never
+      one too old: a Drupal 8.9 site under php56.info had its Verify run
+      on PHP 5.6 and die on a parse error. A Drupal 8+ codebase without a
+      platform_check.php is now held to the minimum PHP its core
+      declares: a site's command is refused with the file that chose the
+      PHP and the fix, a platform's gets a warning.
+
+    * A full barracuda pass whose Ægir Master CLI PHP is unsupported or has
+      no binary (its build failed) now stops before it touches the Master
+      (#1950): it used to rewrite the aegir crontab and swap in a fresh
+      Drush tree first, then stop, leaving the Master half upgraded until
+      a later pass got through. The same FATAL lines say so, and that the
+      crontab and Drush were left untouched.
+
+    * With the automatic PHP cleanup on (barracuda php-idle disable, or a
+      major OS upgrade chain), the Ægir Master's _PHP_CLI_VERSION was set
+      aside with the unused versions whenever it differed from
+      _PHP_FPM_VERSION and no account used it, so every full barracuda
+      pass after that stopped at the Master upgrade without it (#1950).
+      The cleanup now keeps that version too.
+
     * xmass prep-target took an account the target relays to a third box
       (xoct moved it on) by a create marker, so the init and the sync put
       this box's copy, from before that move, over the relay, and a
@@ -754,6 +798,29 @@
       worker lines when they look for PHP-FPM's own messages, so a site
       cannot set off a restart or an alert by printing them, and these
       logs and the pools' slow logs are rotated daily, seven kept.
+
+    * PHP-FPM no longer logs "Unable to set php_admin_value" for
+      newrelic.enabled and newrelic.license at each new worker of a PHP
+      whose php.ini does not load New Relic (every version on a box
+      without a New Relic key), nor for apc.enabled where APCu is not
+      built (5.6, 8.6) (#1949). The pools always failed these lines; the
+      master's log shows them since it takes the workers' output.
+      apc.enabled is on by APCu's own default and no longer set. The
+      newrelic.* lines, which keep New Relic off, stay only where php.ini
+      loads it, and a barracuda pass that starts loading it writes them
+      back into every pool before it reloads PHP-FPM.
+
+    * The limited-shell worker switches New Relic on or off in the single
+      pool of an account that has multi-fpm.info but no tools/le. It
+      looked for the per-version pools such an account does not run, so a
+      newrelic.info added or removed reached its pool only when its pools
+      were set up again.
+
+    * On a box with a New Relic key, every php.ini kept the placeholder
+      licence REPLACE_WITH_REAL_KEY: the line meant to empty it was a
+      command GNU sed rejects. It is now emptied, so New Relic has no
+      server-wide licence and reports only for the accounts and sites
+      that set their own key in newrelic.info, as documented.
 
     * Import reads a Drupal 8 or newer site's profile, language and
       database settings through Drupal's own APIs. It ran Drupal 7 code
@@ -1650,6 +1717,16 @@
 
 @=> New Features
 
+    * A watchdog for scheduled cron that keeps failing: the panel stamps
+      a site's last cron time whatever the site answers, so a site whose
+      every scheduled cron answered 500 for days looked fine there. Once
+      an hour cron_guard reads the panel's cron requests in today's and
+      yesterday's nginx access log and reports, once a day per site, a
+      site whose scheduled cron kept failing (a refusal, an error, a
+      redirect or a run killed at the time limit) in two different
+      hours with no success (incident log and mail). Read-only;
+      _USE_CRON_GUARD=NO turns it off. See docs/MONITOR.md.
+
     * A read-only report of the sites that cannot take a security
       release in place: eolreport lists the Drupal 8+ sites whose
       platform runs a core minor drupal.org no longer supports. The
@@ -1688,6 +1765,19 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The php.ini of PHP 8.0 to 8.6, FPM and command line, no longer sets
+      mbstring.http_input and mbstring.http_output, which PHP 8 reports as
+      deprecated at every start with full error reporting. With
+      encoding_translation off they changed nothing; BOA's Drupal 6 and 7
+      cores check them only below PHP 5.6. auto_detect_line_endings stays
+      on: PHP 8.1 deprecates it too, but it still reads files with classic
+      Mac line endings.
+
+    * When the Ægir Master upgrade stops because the PHP named in
+      _PHP_CLI_VERSION has no binary, its FATAL line now says the value is
+      supported and names the missing /opt/phpNN/bin/php, instead of
+      calling the value unsupported (#1950).
 
     * staticbuild builds the last Drupal 8 and 9 cores, drupal-8.9.20 and
       drupal-9.5.11, beside the legacy 10.x minors, each under the PHP its
@@ -2224,6 +2314,12 @@
 
 @=> Changes and Upgrades
 
+    * A Drupal CMS site the panel installs stores its anonymous usage data
+      choice as off, whatever its Drupal CMS version or site template: from
+      Drupal CMS 2.2.5 a site with no stored choice sends it from cron. On
+      Drupal CMS 2.2.2 and newer its owner can turn it on under Basic site
+      settings. Existing sites are left as they are.
+
     * The arm stamps of the per-instance group, the account web group
       and the Nginx link check live in /etc/boa/control instead of the
       top of /var/log/boa, out of reach of the clean-ups that delete
@@ -2293,6 +2389,15 @@
       service, so the scan told a stranger's host the account name and
       kept its key as known. The nine general Git hosts are still
       scanned once, when the instance's key pair is made.
+
+    * APCu for PHP 8.6, from APCu's development tree (5.1.29-dev, commit
+      ebbcd3d), which builds against 8.6.0RC4 and passes its own tests
+      there: 5.1.28, the latest release, does not build against 8.6.
+      PHP 7.0 to 8.5 stay on 5.1.28; 5.6 has no APCu. An igbinary built
+      while its PHP had no APCu, as every 8.6 one so far, is built again
+      once APCu is there: without APCu's headers it never registers its
+      serializer, and the apc.serializer=igbinary of php.ini fell back to
+      PHP's own unsaid.
 
 ###
 ### Stable BOA-5.88.866 PRO/LTS - GRIFFIN EDITION
