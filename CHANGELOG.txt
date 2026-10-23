@@ -12,6 +12,12 @@
       pkg-config finds a new enough libavif, as it already was for PHP 8.6;
       otherwise GD is built without AVIF and the build log says so.
 
+    * A PHP 8.1+ source build that left AVIF out because libavif was
+      missing (a libavif-dev install that failed on that pass) is rebuilt
+      on a later pass once pkg-config finds a new enough libavif and its
+      GD still lacks AVIF (#1950). A host whose packages carry no libavif,
+      and a prebuilt package, are never rebuilt for it.
+
     * A Drupal 8+ site whose Verify failed after an Octopus upgrade lost
       its scheduled cron: the task rewrote its settings.php before it
       died, and the vhost it never re-rendered passed the shared
@@ -34,6 +40,13 @@
       Drush tree first, then stop, leaving the Master half upgraded until
       a later pass got through. The same FATAL lines say so, and that the
       crontab and Drush were left untouched.
+
+    * With the automatic PHP cleanup on (barracuda php-idle disable, or a
+      major OS upgrade chain), the Ægir Master's _PHP_CLI_VERSION was set
+      aside with the unused versions whenever it differed from
+      _PHP_FPM_VERSION and no account used it, so every full barracuda
+      pass after that stopped at the Master upgrade without it (#1950).
+      The cleanup now keeps that version too.
 
     * xmass prep-target took an account the target relays to a third box
       (xoct moved it on) by a create marker, so the init and the sync put
@@ -2287,10 +2300,11 @@
 
 @=> Changes and Upgrades
 
-    * A Drupal CMS site the panel installs starts with its anonymous usage
-      data switched off: Drupal CMS sends it from cron unless a site opts
-      out, and the install now opts every new site out. Its owner can turn
-      it on under Basic site settings; sites installed before keep theirs.
+    * A Drupal CMS site the panel installs stores its anonymous usage data
+      choice as off, whatever its Drupal CMS version or site template: from
+      Drupal CMS 2.2.5 a site with no stored choice sends it from cron. On
+      Drupal CMS 2.2.2 and newer its owner can turn it on under Basic site
+      settings. Existing sites are left as they are.
 
     * The arm stamps of the per-instance group, the account web group
       and the Nginx link check live in /etc/boa/control instead of the
