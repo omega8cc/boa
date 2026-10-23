@@ -816,6 +816,12 @@
       newrelic.info added or removed reached its pool only when its pools
       were set up again.
 
+    * On a box with a New Relic key, every php.ini kept the placeholder
+      licence REPLACE_WITH_REAL_KEY: the line meant to empty it was a
+      command GNU sed rejects. It is now emptied, so New Relic has no
+      server-wide licence and reports only for the accounts and sites
+      that set their own key in newrelic.info, as documented.
+
     * Import reads a Drupal 8 or newer site's profile, language and
       database settings through Drupal's own APIs. It ran Drupal 7 code
       that found nothing there, so the site's records took the standard

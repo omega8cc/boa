@@ -244,7 +244,8 @@ _fix_php_ini_newrelic() {
     else
       echo "newrelic.framework.drupal.modules = 1" >> ${_THIS_FILE}
     fi
-    sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
+    # no server-wide licence: pools enable New Relic per instance
+    sed -i "s/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
     wait
     sed -i "s/license_key=//g" ${_THIS_FILE} &> /dev/null
     wait
