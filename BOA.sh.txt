@@ -2649,7 +2649,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f91
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f92
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f95
+    _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f94
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f76
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f62
