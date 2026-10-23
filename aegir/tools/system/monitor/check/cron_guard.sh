@@ -224,8 +224,12 @@ _incident_email_send() {
 # BOA's Drupal 7, 240 s on Backdrop, and Drupal 6 keeps its semaphore an
 # hour, then the request that clears it runs nothing either (Drupal 6 is the
 # one asked for /cron.php with no key). A 2xx in that time ran no cron.
+# Each window has 30 s more: the lock is taken after the bootstrap, and the
+# panel times a site's next run from the start of its last one.
 # A redirect is cleared by a 2xx for the same cron key, also on a path with
-# a language prefix (a module sending /cron/<key> to /en/cron/<key>).
+# a language prefix (a module sending /cron/<key> to /en/cron/<key>); a run
+# killed on such a path is timed by its key, which a subdirectory site's
+# parent host does not share.
 # Seconds count from the first day in the window (the logs are read in
 # order; mawk has no time functions).
 _CRON_GUARD_AWK='
@@ -240,19 +244,22 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   ip = $1; gsub(/"/, "", ip); sub(/^::ffff:/, "", ip)
   if (!(ip in mine) && ip !~ /^127\./ && ip != "::1") next
   p = $6
-  if (p ~ /^\/[A-Za-z][A-Za-z0-9_-]*\/cron\/[A-Za-z0-9_-]+([?].*)?$/) {
-    if ($8 ~ /^2/) okk[ckey(p)] = 1
-    next
-  }
-  if (p !~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
+  pre = (p ~ /^\/[A-Za-z][A-Za-z0-9_-]*\/cron\/[A-Za-z0-9_-]+([?].*)?$/)
+  if (!pre && p !~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
   h = $2; s = $8; t = $3; sub(/^\[/, "", t)
   split(t, f, ":")
   if (!(f[1] in day)) day[f[1]] = ++nd
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
+  if (pre) {
+    k = ckey(p)
+    if (s ~ /^5/ && $14 + 0 >= 170) kk[k] = sec - int($14 + 0)
+    else if (s ~ /^2/ && !((k in kk) && sec - kk[k] <= 930)) okk[k] = 1
+    next
+  }
   if (s ~ /^2/) {
     if (h in ks) {
-      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 240 : 900)) next
-      if (h in d6) { if (sec - ks[h] > 3600) delete d6[h]; next }
+      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 270 : 930)) next
+      if (h in d6) { if (sec - ks[h] > 3630) delete d6[h]; next }
     }
     ok[h] = 1; k = ckey(p); if (k != "") okk[k] = 1; next
   }
