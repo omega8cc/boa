@@ -229,8 +229,9 @@ _incident_email_send() {
 # panel times a site's next run from the start of its last one.
 # A redirect is cleared by a 2xx for the same cron key, also on a path with
 # a language prefix (a module sending /cron/<key> to /en/cron/<key>); a run
-# killed on such a path is timed by its key, which a subdirectory site's
-# parent host does not share.
+# killed on such a path is timed by the host and path it was logged on, where
+# its retry lands too: a clone keeps its source's key, and a subdirectory
+# site's parent host has its own clock.
 # Seconds count from the first day in the window (the logs are read in
 # order; mawk has no time functions).
 _CRON_GUARD_AWK='
@@ -252,9 +253,9 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   if (!(f[1] in day)) day[f[1]] = ++nd
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   if (pre) {
-    k = ckey(p)
-    if (s ~ /^5/ && $14 + 0 >= 170) kk[k] = sec - int($14 + 0)
-    else if (s ~ /^2/ && !((k in kk) && sec - kk[k] <= 930)) okk[k] = 1
+    k = ckey(p); kp = p; sub(/[?].*$/, "", kp)
+    if (s ~ /^5/ && $14 + 0 >= 170) kk[h, kp] = sec - int($14 + 0)
+    else if (s ~ /^2/ && !(((h, kp) in kk) && sec - kk[h, kp] <= 930)) okk[k] = 1
     next
   }
   if (s ~ /^2/) {
