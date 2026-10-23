@@ -44,6 +44,15 @@
       was. The upgrade now gives the old core the declaration 7.93.1
       shipped before it runs the panel.
 
+    * An upgrade that stopped between re-rendering the shared
+      nginx_vhost_common.conf and verifying the sites (a control panel
+      that did not verify) left nginx unable to load its configuration on
+      a box whose vhosts predate the per-site AI policy (#1950): those
+      vhosts declare neither $ai_train_allow nor $ai_evasive_allow, which
+      the include tests, and nginx refused the whole config. The master
+      http config now declares both with their default; a vhost's own
+      value still wins.
+
     * A Drupal 8+ site whose Verify failed after an Octopus upgrade lost
       its scheduled cron: the task rewrote its settings.php before it
       died, and the vhost it never re-rendered passed the shared
