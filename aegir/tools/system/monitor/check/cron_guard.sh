@@ -15,6 +15,8 @@
 # yesterday's access log, and reports a site whose scheduled cron failed in
 # at least two different hours, at least 50 minutes apart, with no success
 # in the same window. Read-only: it changes nothing on any site or panel.
+# When the box's awk cannot run the judgement, it says so once a day the
+# same way, instead of reporting nothing.
 #
 # A failure is an answer of 403 (a wrong cron key, a refusing gate), 5xx, a
 # 404 with a page (a Drupal 8+ site whose panel record has no cron key is
@@ -22,7 +24,8 @@
 # never redirect a working cron; a module sending 403s to the login page
 # does). The 404 of BOA's own cron gate for dev and tmp sites carries no
 # page and is never one. A redirect is cleared when the request it led to
-# answered 2xx. One success in the window clears the site, except
+# answered 2xx. A subdirectory site whose redirect is not logged is judged as
+# <parent>/<subdir>. One success in the window clears the site, except
 # a success within 15 minutes of a run killed at the PHP time limit: that is
 # the panel's retry meeting the cron lock the killed run left, and no cron
 # ran. Only requests from the box's own addresses count: anyone can send
@@ -234,9 +237,16 @@ _incident_email_send() {
 # hop is the next line for the same key, begun within 2 s of the redirect
 # (the panel waits 3 s between sites), on the same name or another. A clone
 # keeps its source's key, so a key alone would let a working clone clear its
-# failing source. A run killed on a prefixed path is timed
-# by the host and path it was logged on, where its retry lands too: a
-# subdirectory site's parent host has its own clock.
+# failing source. A prefixed path is a language prefix or a subdirectory
+# site's cron route under its parent's name (/<subdir>/cron.php,
+# /<subdir>/core/cron.php, /<subdir>/cron/<key>, a language prefix inside
+# the subdirectory). A prefixed line no logged redirect led to belongs to a
+# subdirectory site whose own name redirects through a vhost that logs
+# nothing (the alias redirect logs only through the wildcard SSL front): it
+# is judged as <parent>/<subdir>, the path below it as its route. A run
+# killed on a prefixed path is timed by the host and path it was logged on,
+# where its retry lands too: a subdirectory site's parent host has its own
+# clock; Backdrop's lock is the shorter one there as well.
 # Seconds count from the first day in the window (the logs are read in
 # order, each line written when its request ended; mawk has no time
 # functions).
@@ -247,48 +257,64 @@ function ckey(p,   k) {
   if (match(p, /\/cron\/[A-Za-z0-9_-]+/)) return substr(p, RSTART + 6, RLENGTH - 6)
   return ""
 }
-# One line for key k on host h, ended at e, started at b: a 3xx opens or
-# extends the redirect chain of k, any other line ends it, and a 2xx that
-# counts as a run (r) clears every name in it. A line is the next hop when it
+# The open redirect chain of key k takes a line on host h begun at b when it
 # began at most 2 s after the last line of the chain ended; on another name
 # not before it either (the SSL front logs its copy of a request after the
 # line of the site, and the copy began earlier).
-function hop(k, h, s, e, b, r,   on, n, i, c) {
+function linked(k, h, b) {
+  return (k != "" && ch[k] != "" && b - ct[k] <= 2 && (chh[k] == h || ct[k] <= b + 1))
+}
+# One line for key k on host h, judged as name n, ended at e, started at b:
+# a 3xx opens or extends the chain of k, any other line ends it, and a 2xx
+# that counts as a run (r) clears every name in it.
+function hop(k, h, n, s, e, b, r,   on, m, i, c) {
   if (k == "") return
-  on = (ch[k] != "" && b - ct[k] <= 2 && (chh[k] == h || ct[k] <= b + 1))
+  on = linked(k, h, b)
   if (s ~ /^3/) {
-    if (!on) ch[k] = h; else if (chh[k] != h) ch[k] = ch[k] " " h
-    chh[k] = h; ct[k] = e; return
+    if (!on) ch[k] = n; else if (chn[k] != n) ch[k] = ch[k] " " n
+    chh[k] = h; chn[k] = n; ct[k] = e; return
   }
-  if (on && r) { n = split(ch[k], c, " "); for (i = 1; i <= n; i++) cl[c[i], k] = 1 }
+  if (on && r) { m = split(ch[k], c, " "); for (i = 1; i <= m; i++) cl[c[i], k] = 1 }
   ch[k] = ""
+}
+function route(p) {
+  return (p ~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/)
 }
 BEGIN { n = split(own, a, " "); for (i = 1; i <= n; i++) mine[a[i]] = 1 }
 $8 ~ /^[0-9][0-9][0-9]$/ {
   ip = $1; gsub(/"/, "", ip); sub(/^::ffff:/, "", ip)
   if (!(ip in mine) && ip !~ /^127\./ && ip != "::1") next
   p = $6
-  pre = (p ~ /^\/[A-Za-z][A-Za-z0-9_-]*\/cron\/[A-Za-z0-9_-]+([?].*)?$/)
-  if (!pre && p !~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
-  h = $2; s = $8; t = $3; sub(/^\[/, "", t)
+  pre = 0
+  if (!route(p)) {
+    if (p !~ /^\/[A-Za-z][A-Za-z0-9_-]*(\/[A-Za-z][A-Za-z0-9_-]*)?\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
+    pre = 1
+  }
+  rh = $2; h = rh; s = $8; t = $3; sub(/^\[/, "", t)
   split(t, f, ":")
   if (!(f[1] in day)) day[f[1]] = ++nd
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   k = ckey(p); b = sec - $14
+  if (pre && !linked(k, rh, b)) {
+    x = p; sub(/^\//, "", x); sub(/\/.*$/, "", x)
+    h = rh "/" x; p = substr(p, length(x) + 2)
+    if (!route(p)) { hop(k, rh, h, s, sec, b, 0); next }
+    pre = 0
+  }
   if (pre) {
     kp = p; sub(/[?].*$/, "", kp)
-    if (s ~ /^5/ && $14 + 0 >= 170) kk[h, kp] = sec - int($14 + 0)
-    hop(k, h, s, sec, b, s ~ /^2/ && !(((h, kp) in kk) && sec - kk[h, kp] <= 930))
+    if (s ~ /^5/ && $14 + 0 >= 170) kk[rh, kp] = sec - int($14 + 0)
+    hop(k, rh, rh, s, sec, b, s ~ /^2/ && !(((rh, kp) in kk) && sec - kk[rh, kp] <= ((kp ~ /\/core\/cron\.php$/) ? 270 : 930)))
     next
   }
   if (s ~ /^2/) {
     if (h in ks) {
-      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 270 : 930)) { hop(k, h, s, sec, b, 0); next }
-      if (h in d6) { if (sec - ks[h] > 3630) delete d6[h]; hop(k, h, s, sec, b, 0); next }
+      if (sec - ks[h] <= ((p ~ /^\/core\//) ? 270 : 930)) { hop(k, rh, h, s, sec, b, 0); next }
+      if (h in d6) { if (sec - ks[h] > 3630) delete d6[h]; hop(k, rh, h, s, sec, b, 0); next }
     }
-    ok[h] = 1; hop(k, h, s, sec, b, 1); next
+    ok[h] = 1; hop(k, rh, h, s, sec, b, 1); next
   }
-  hop(k, h, s, sec, b, 0)
+  hop(k, rh, h, s, sec, b, 0)
   if (s ~ /^3/) {
     if (k == "") next
     rk[h SUBSEP k] = 1
@@ -316,16 +342,32 @@ _OWN_IPS="$( { ip -o addr show 2> /dev/null | awk '{print $4}' | sed 's#/.*##'
     echo "${_MY_OWNIP}"; } | grep -E '^[0-9A-Fa-f.:]+$' | sort -u | tr '\n' ' ')"
 
 # -a: a log with a crash-zeroed stretch must not read as binary, which
-# would hide every line after it.
+# would hide every line after it. The judgement's errors are kept: an awk
+# that cannot run it reports no site at all and would look healthy.
+_AERR="${_pthDat}/.reader.err"
 _failing="$(for _f in ${_LOGS}; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ -r "${_f}" ] || continue
     LC_ALL=C grep -a -h -F '"iCabProXy"' "${_f}"
-  done | awk -v own="${_OWN_IPS}" "${_CRON_GUARD_AWK}" 2> /dev/null | sort)"
+  done | awk -v own="${_OWN_IPS}" "${_CRON_GUARD_AWK}" 2> "${_AERR}")"
+_awkRc=$?
+_failing="$(sort <<< "${_failing}")"
 
 _today="$(date +%F)"
 touch "${_SEEN}"
 _newHosts=()
 _newLines=()
+_subject=""
+# once a day, like a site: the next hourly run tries again while held
+if [ "${_awkRc}" -ne 0 ]; then
+  _aErr="$(head -n 1 "${_AERR}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-160)"
+  _say "READERFAIL rc=${_awkRc} ${_aErr}"
+  if ! grep -qxF "${_today} (log reader)" "${_SEEN}"; then
+    _newHosts+=("(log reader)")
+    _newLines+=("$(date) CRON: cron_guard could not judge the access logs (awk exit ${_awkRc}${_aErr:+: ${_aErr}}); no failing site can be reported until it can")
+    _subject="cron_guard cannot judge the access logs"
+  fi
+fi
+rm -f "${_AERR}"
 while read -r _h _hrs _st _when; do
   [ -n "${_h}" ] || continue
   _say "FAILING host=${_h} hours=${_hrs} last=${_st} at=${_when}"
@@ -358,7 +400,7 @@ if [ "${_new}" -gt 0 ]; then
   done
   _mark=YES
   if [ "${_MAIL_WAY}" = "send" ] \
-    && ! _incident_email_send "Scheduled cron failing for ${_new} site(s)"; then
+    && ! _incident_email_send "${_subject:-Scheduled cron failing for ${_new} site(s)}"; then
     if [ "$(cat "${_MFAIL}" 2> /dev/null)" != "${_today}" ]; then
       echo "${_today}" > "${_MFAIL}"
       _mark=NO
