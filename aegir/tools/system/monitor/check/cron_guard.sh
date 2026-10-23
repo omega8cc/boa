@@ -243,7 +243,9 @@ _incident_email_send() {
 # the subdirectory). A prefixed line no logged redirect led to belongs to a
 # subdirectory site whose own name redirects through a vhost that logs
 # nothing (the alias redirect logs only through the wildcard SSL front): it
-# is judged as <parent>/<subdir>, the path below it as its route. A run
+# is judged as <parent>/<subdir>, the path below it as its route. The SSL
+# front's copy of the line that ended a chain (same host, path and status,
+# the same second or the next) is the same request, never such a line. A run
 # killed on a prefixed path is timed by the host and path it was logged on,
 # where its retry lands too: a subdirectory site's parent host has its own
 # clock; Backdrop's lock is the shorter one there as well.
@@ -296,12 +298,14 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   k = ckey(p); b = sec - $14
   if (pre && !linked(k, rh, b)) {
+    if ((k in cp) && cp[k] == rh SUBSEP p SUBSEP s && sec - cpe[k] <= 1) next
     x = p; sub(/^\//, "", x); sub(/\/.*$/, "", x)
     h = rh "/" x; p = substr(p, length(x) + 2)
     if (!route(p)) { hop(k, rh, h, s, sec, b, 0); next }
     pre = 0
   }
   if (pre) {
+    if (k != "" && s !~ /^3/) { cp[k] = rh SUBSEP p SUBSEP s; cpe[k] = sec }
     kp = p; sub(/[?].*$/, "", kp)
     if (s ~ /^5/ && $14 + 0 >= 170) kk[rh, kp] = sec - int($14 + 0)
     hop(k, rh, rh, s, sec, b, s ~ /^2/ && !(((rh, kp) in kk) && sec - kk[rh, kp] <= ((kp ~ /\/core\/cron\.php$/) ? 270 : 930)))
