@@ -7609,6 +7609,36 @@ _ltd_notice_daily() {
   fi
   _ltd_notice "$@"
 }
+# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
+# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning or deprecation (on 8.4, one while the core loads its phar wrapper,
+# on every request) throws an ArgumentCountError and the request dies before
+# Drupal can log it. BOA's own Drupal 7 platforms share their core from the
+# store, /data/all/000/core, so every such core there gets that argument made
+# optional ($context = NULL), as 7.93.1 did, before any pool of this pass
+# switches PHP: a box upgraded from an older release, a core a migration
+# brought along, a site moved to PHP 8. Only that exact line changes, only in
+# a store core whose directories and file are root's, none of them a link; a
+# core in an account's own platform is never touched (websh refuses its
+# drush lines on PHP 8 and says what to change).
+_ltd_d7_store_heal() {
+  local _c _b _o
+  _o='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  for _c in /data/all/000/core/drupal-7.*; do
+    _b="${_c}/includes/bootstrap.inc"
+    [ -f "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L "${_c}" ] && [ ! -L "${_c}/includes" ] || continue
+    grep -qxF "${_o}" "${_b}" 2> /dev/null || continue
+    [ "$(stat -L -c %u "${_c%/*/*}" "${_c%/*}" "${_c}" "${_c}/includes" "${_b}" 2> /dev/null | sort -u)" = "0" ] || continue
+    sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_b}" &> /dev/null
+    if grep -qxF "${_o}" "${_b}" 2> /dev/null; then
+      _ltd_notice_daily "d7-store-heal-${_c##*/}" \
+        "the shared Drupal 7 core ${_c} keeps an error handler PHP 8 cannot call" \
+        "its sites fail on PHP 8 until ${_b} can be rewritten (immutable or read-only?)"
+    else
+      echo "INFO: shared Drupal 7 core ${_c}: error handler made safe for PHP 8"
+    fi
+  done
+}
 # The process table of this pass, read once and within a minute: a read
 # that fails or runs out of time counts as an import of every account
 # running ("tool ?") for the reaper, the safe side there.
@@ -7950,6 +7980,8 @@ else
   # before the account loop, which skips a frozen account: one the route
   # clears rejoins this very pass
   _ltd_freeze_route >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  # before the account loop, which switches the pools' PHP
+  _ltd_d7_store_heal >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
     _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
