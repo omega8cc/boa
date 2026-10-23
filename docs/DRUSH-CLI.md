@@ -343,6 +343,10 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 
 Re-locking a platform unlocked earlier, by that task or by a Verify, also rebuilds every Drupal 8+ site on it with Drupal core's own rebuild. A site whose service container the local Drush compiled (a module installed or removed, a recipe applied) could not run on that container once the local Drush is locked away, so the rebuild replaces it. In the task log, `REBUILD/RELOCK` lines open and close the run, with one `REBUILD/CORE` rebuild per site between them.
 
+A module may register a Drush command class in its main services file instead of its `drush.services.yml` (varbase_core does, in every Varbase 10 release), and another module may load every service class while the container builds (symfony_mailer 2.x does). On a locked platform the web cannot read Drush, so that build would stop with `Class "Drush\Commands\DrushCommands" not found`.
+
+BOA's global settings give that one base class an empty stand-in for the build: outside Drush, and only while the real class cannot be read. The PHP error log then shows `BOA: site-local Drush is locked on this platform`. A command class that also needs a Drush trait or interface still stops the build; its commands belong in the module's `drush.services.yml`, which only Drush reads.
+
 The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or an Ægir task locks it, and that lock then runs the rebuild above.
 
 Every task that bootstraps a site on the platform reads the lock from the files themselves before it does (Verify, Clone, Backup, Restore, Migrate, Deploy, Import, Delete, Enable, Login reset and Install alike), and locks the platform first when you left it unlocked, when its psr/log and core logger files are not in the form the lock keeps them in (untyped while a Drush 8 copy on the server still binds the untyped psr/log or the platform waits to be converted, stock after that), or when it still owes the web its stock copies.
