@@ -36,6 +36,11 @@ fpm.info:
   foo.com 8.5
   old.com 7.4
 
+A site whose code cannot run on the version that serves it (an old
+Drupal 7 or Drupal 6 core on PHP 8, say) is listed with the reason in
+.fpm-core.info here, within a few minutes, and goes from the list a few
+minutes after its code is fixed. Nothing is switched for you.
+
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
 immediately. The marker steers your Ægir tasks too (Verify, Clone,
