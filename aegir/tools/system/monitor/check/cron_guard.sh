@@ -240,10 +240,13 @@ _incident_email_send() {
 # failing source. A prefixed path is a language prefix or a subdirectory
 # site's cron route under its parent's name (/<subdir>/cron.php,
 # /<subdir>/core/cron.php, /<subdir>/cron/<key>, a language prefix inside
-# the subdirectory). A prefixed line no logged redirect led to belongs to a
+# the subdirectory; the panel takes digits, dots and nested subdirectories in
+# <subdir>). A prefixed line no logged redirect led to belongs to a
 # subdirectory site whose own name redirects through a vhost that logs
 # nothing (the alias redirect logs only through the wildcard SSL front): it
-# is judged as <parent>/<subdir>, the path below it as its route. A run
+# is judged as <parent>/<subdir>, the path below it as its route. The SSL
+# front's copy of the line that ended a chain (same host, path and status,
+# the same second or the next) is the same request, never such a line. A run
 # killed on a prefixed path is timed by the host and path it was logged on,
 # where its retry lands too: a subdirectory site's parent host has its own
 # clock; Backdrop's lock is the shorter one there as well.
@@ -266,13 +269,16 @@ function linked(k, h, b) {
 }
 # One line for key k on host h, judged as name n, ended at e, started at b:
 # a 3xx opens or extends the chain of k, any other line ends it, and a 2xx
-# that counts as a run (r) clears every name in it.
+# that counts as a run (r) clears every name in it. A prefixed hop adds no
+# name (n empty): it is never a failure of the host it was logged on, whose
+# own redirect a clone sharing the key would otherwise clear.
 function hop(k, h, n, s, e, b, r,   on, m, i, c) {
   if (k == "") return
   on = linked(k, h, b)
   if (s ~ /^3/) {
-    if (!on) ch[k] = n; else if (chn[k] != n) ch[k] = ch[k] " " n
-    chh[k] = h; chn[k] = n; ct[k] = e; return
+    if (!on) ch[k] = n; else if (n != "" && chn[k] != n) ch[k] = ch[k] " " n
+    chh[k] = h; if (n != "") chn[k] = n
+    ct[k] = e; return
   }
   if (on && r) { m = split(ch[k], c, " "); for (i = 1; i <= m; i++) cl[c[i], k] = 1 }
   ch[k] = ""
@@ -287,7 +293,7 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   p = $6
   pre = 0
   if (!route(p)) {
-    if (p !~ /^\/[A-Za-z][A-Za-z0-9_-]*(\/[A-Za-z][A-Za-z0-9_-]*)?\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
+    if (p !~ /^(\/[A-Za-z0-9][A-Za-z0-9._-]*)+\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
     pre = 1
   }
   rh = $2; h = rh; s = $8; t = $3; sub(/^\[/, "", t)
@@ -296,15 +302,16 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   k = ckey(p); b = sec - $14
   if (pre && !linked(k, rh, b)) {
-    x = p; sub(/^\//, "", x); sub(/\/.*$/, "", x)
-    h = rh "/" x; p = substr(p, length(x) + 2)
-    if (!route(p)) { hop(k, rh, h, s, sec, b, 0); next }
+    if ((k in cp) && cp[k] == rh SUBSEP p SUBSEP s && sec - cpe[k] <= 1) next
+    if (!match(p, /\/core\/cron\.php([?].*)?$/)) match(p, /\/cron(\.php|\/[A-Za-z0-9_-]*)([?].*)?$/)
+    h = rh substr(p, 1, RSTART - 1); p = substr(p, RSTART)
     pre = 0
   }
   if (pre) {
+    if (k != "" && s !~ /^3/) { cp[k] = rh SUBSEP p SUBSEP s; cpe[k] = sec }
     kp = p; sub(/[?].*$/, "", kp)
     if (s ~ /^5/ && $14 + 0 >= 170) kk[rh, kp] = sec - int($14 + 0)
-    hop(k, rh, rh, s, sec, b, s ~ /^2/ && !(((rh, kp) in kk) && sec - kk[rh, kp] <= ((kp ~ /\/core\/cron\.php$/) ? 270 : 930)))
+    hop(k, rh, "", s, sec, b, s ~ /^2/ && !(((rh, kp) in kk) && sec - kk[rh, kp] <= ((kp ~ /\/core\/cron\.php$/) ? 270 : 930)))
     next
   }
   if (s ~ /^2/) {
@@ -357,14 +364,18 @@ touch "${_SEEN}"
 _newHosts=()
 _newLines=()
 _subject=""
+_what=""
 # once a day, like a site: the next hourly run tries again while held
 if [ "${_awkRc}" -ne 0 ]; then
-  _aErr="$(head -n 1 "${_AERR}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-160)"
+  # the fatal line when there is one: gawk can print warnings first
+  _aErr="$( { grep -m 1 -i -E 'fatal|error' "${_AERR}" || head -n 1 "${_AERR}"; } 2> /dev/null \
+    | tr -cd '[:print:]' | cut -c1-160)"
   _say "READERFAIL rc=${_awkRc} ${_aErr}"
   if ! grep -qxF "${_today} (log reader)" "${_SEEN}"; then
     _newHosts+=("(log reader)")
     _newLines+=("$(date) CRON: cron_guard could not judge the access logs (awk exit ${_awkRc}${_aErr:+: ${_aErr}}); no failing site can be reported until it can")
     _subject="cron_guard cannot judge the access logs"
+    _what="the log reader"
   fi
 fi
 rm -f "${_AERR}"
@@ -391,7 +402,7 @@ fi
 if [ "${_new}" -gt 0 ]; then
   _mail_way
   if [ "${_MAIL_WAY}" = "held" ]; then
-    echo "$(date) INFO: alert for ${_new} site(s) held back (a fresh boot, a BOA pass or the cooldown); the next hourly run tries again" >> ${_pthOml}
+    echo "$(date) INFO: alert for ${_what:-${_new} site(s)} held back (a fresh boot, a BOA pass or the cooldown); the next hourly run tries again" >> ${_pthOml}
     _say "HELD new=${_new}"
     exit 0
   fi
@@ -405,7 +416,7 @@ if [ "${_new}" -gt 0 ]; then
       echo "${_today}" > "${_MFAIL}"
       _mark=NO
     fi
-    echo "$(date) INFO: the alert mail for ${_new} site(s) failed" >> ${_pthOml}
+    echo "$(date) INFO: the alert mail for ${_what:-${_new} site(s)} failed" >> ${_pthOml}
     _say "MAILFAIL new=${_new} marked=${_mark}"
   fi
   if [ "${_mark}" = "YES" ]; then
