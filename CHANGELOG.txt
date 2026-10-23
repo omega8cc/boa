@@ -1766,6 +1766,14 @@
 
 @=> Improvements
 
+    * The php.ini of PHP 8.0 to 8.6, FPM and command line, no longer sets
+      mbstring.http_input and mbstring.http_output, which PHP 8 reports as
+      deprecated at every start with full error reporting. With
+      encoding_translation off they changed nothing; BOA's Drupal 6 and 7
+      cores check them only below PHP 5.6. auto_detect_line_endings stays
+      on: PHP 8.1 deprecates it too, but it still reads files with classic
+      Mac line endings.
+
     * When the Ægir Master upgrade stops because the PHP named in
       _PHP_CLI_VERSION has no binary, its FATAL line now says the value is
       supported and names the missing /opt/phpNN/bin/php, instead of
