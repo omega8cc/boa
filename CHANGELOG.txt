@@ -1698,6 +1698,16 @@
 
 @=> New Features
 
+    * A watchdog for scheduled cron that keeps failing: the panel stamps
+      a site's last cron time whatever the site answers, so a site whose
+      every scheduled cron answered 500 for days looked fine there. Once
+      an hour cron_guard reads the panel's cron requests in today's and
+      yesterday's nginx access log and reports, once a day per site, a
+      site whose scheduled cron kept failing (a refusal, an error, a
+      redirect or a run killed at the time limit) in two different
+      hours with no success (incident log and mail). Read-only;
+      _USE_CRON_GUARD=NO turns it off. See docs/MONITOR.md.
+
     * A read-only report of the sites that cannot take a security
       release in place: eolreport lists the Drupal 8+ sites whose
       platform runs a core minor drupal.org no longer supports. The
@@ -2276,6 +2286,11 @@
       the server under its name instead of its made-up hostname.
 
 @=> Changes and Upgrades
+
+    * A Drupal CMS site the panel installs starts with its anonymous usage
+      data switched off: Drupal CMS sends it from cron unless a site opts
+      out, and the install now opts every new site out. Its owner can turn
+      it on under Basic site settings; sites installed before keep theirs.
 
     * The arm stamps of the per-instance group, the account web group
       and the Nginx link check live in /etc/boa/control instead of the
