@@ -277,6 +277,12 @@ _hostmaster_dr_tt() {
 #
 _hostmaster_mi_up() {
   _msg "INFO: Running hostmaster-migrate, please wait..."
+  ### Every @hostmaster call below runs the old panel, on PHP 8.
+  _master_heal_d7_error_handler "${_PREV_HM_ROOT}"
+  case $? in
+    0) _msg "INFO: Old Master panel core: error handler made safe for PHP 8" ;;
+    2) _msg "ALRT: Old Master panel core keeps an error handler PHP 8 cannot call" ;;
+  esac
   ### security_review breaks the upgrade if active
   mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
     ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null

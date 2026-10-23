@@ -10928,6 +10928,29 @@ _satellite_child_b_drush_test() {
   fi
 }
 
+#
+# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
+# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning throws an ArgumentCountError before includes/cache.inc is loaded,
+# and Drupal's exception handler then dies on cache_get(), hiding the cause.
+# The upgrade runs the old control panel on PHP 8 before it moves it, so its
+# core gets the declaration 7.93.1 shipped. Only that exact line changes; a
+# missing file or a symlink is left alone. Returns 0 when it healed the file,
+# 1 when there was nothing to heal, 2 when the old line is still there.
+_satellite_heal_d7_error_handler() {
+  local _bInc="${1}/includes/bootstrap.inc"
+  local _oLd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -z "${1}" ] || [ ! -f "${_bInc}" ] || [ -L "${_bInc}" ]; then
+    return 1
+  fi
+  grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null || return 1
+  sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_bInc}" &> /dev/null
+  if grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null; then
+    return 2
+  fi
+  return 0
+}
+
 _satellite_child_b_aegir_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_child_b_aegir_build"
@@ -11113,6 +11136,12 @@ _satellite_child_b_aegir_build() {
       exit 1
     fi
     _msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
+    ### Every @hostmaster call below runs the old panel, on PHP 8.
+    _satellite_heal_d7_error_handler "${_PREV_HM_ROOT}"
+    case $? in
+      0) _msg "${_STATUS} B: Old panel core: error handler made safe for PHP 8" ;;
+      2) _msg "${_STATUS} B: ALRT: Old panel core keeps an error handler PHP 8 cannot call" ;;
+    esac
     ### security_review breaks the upgrade if active
     mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
       ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null

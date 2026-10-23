@@ -1513,6 +1513,28 @@ _master_cli_php_check() {
   exit 1
 }
 
+# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
+# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning throws an ArgumentCountError before includes/cache.inc is loaded,
+# and Drupal's exception handler then dies on cache_get(), hiding the cause.
+# The upgrade runs the old Master panel on PHP 8 before it moves it, so its
+# core gets the declaration 7.93.1 shipped. Only that exact line changes; a
+# missing file or a symlink is left alone. Returns 0 when it healed the file,
+# 1 when there was nothing to heal, 2 when the old line is still there.
+_master_heal_d7_error_handler() {
+  local _bInc="${1}/includes/bootstrap.inc"
+  local _oLd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -z "${1}" ] || [ ! -f "${_bInc}" ] || [ -L "${_bInc}" ]; then
+    return 1
+  fi
+  grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null || return 1
+  sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_bInc}" &> /dev/null
+  if grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null; then
+    return 2
+  fi
+  return 0
+}
+
 _aegir_master_upgrade() {
   # Reached from the barracuda process, which exports no _ROOT: every
   # ${_ROOT}/... below then resolves against the filesystem root, and
@@ -1570,6 +1592,12 @@ _aegir_master_upgrade() {
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
+    ### Every @hostmaster call from here on runs the old panel, on PHP 8.
+    _master_heal_d7_error_handler "${_THIS_HM_ROOT}"
+    case $? in
+      0) _msg "INFO: Old Master panel core: error handler made safe for PHP 8" ;;
+      2) _msg "ALRT: Old Master panel core keeps an error handler PHP 8 cannot call" ;;
+    esac
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
     _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir
     # a CLI php.ini an earlier release left (+i) would refuse the chown;

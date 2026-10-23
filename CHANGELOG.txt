@@ -35,6 +35,15 @@
       GD still lacks AVIF (#1950). A host whose packages carry no libavif,
       and a prebuilt package, are never rebuilt for it.
 
+    * An Octopus or Ægir Master upgrade whose control panel still ran a
+      Drupal 7 core from before 7.93.1 (a panel last upgraded on BOA 4.x)
+      could not move it on PHP 8 (#1950): that core declares its error
+      handler with an argument PHP 8 no longer passes, so the first PHP
+      warning ended the panel's bootstrap, hidden behind an undefined
+      cache_get(), and hostmaster-migrate stopped with the panel where it
+      was. The upgrade now gives the old core the declaration 7.93.1
+      shipped before it runs the panel.
+
     * A Drupal 8+ site whose Verify failed after an Octopus upgrade lost
       its scheduled cron: the task rewrote its settings.php before it
       died, and the vhost it never re-rendered passed the shared
