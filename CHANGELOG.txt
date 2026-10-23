@@ -2277,6 +2277,11 @@
 
 @=> Changes and Upgrades
 
+    * A Drupal CMS site the panel installs starts with its anonymous usage
+      data switched off: Drupal CMS sends it from cron unless a site opts
+      out, and the install now opts every new site out. Its owner can turn
+      it on under Basic site settings; sites installed before keep theirs.
+
     * The arm stamps of the per-instance group, the account web group
       and the Nginx link check live in /etc/boa/control instead of the
       top of /var/log/boa, out of reach of the clean-ups that delete
