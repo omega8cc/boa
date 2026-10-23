@@ -1703,7 +1703,8 @@ _cpp_say() {
 # PHP just chosen stops before PHP starts, naming the file that chose it and
 # the fix, instead of dying on a PHP fatal half-way through a task. Only
 # pairs that fatal anyway: Drupal 7 below 7.79 (the first release whose test
-# suite passes on PHP 8.0) or any Drupal 8 on PHP 8.0+, and a Drupal 8+ core
+# suite passes on PHP 8.0), a Drupal 7 core that still declares the error
+# handler PHP 8 cannot call, or any Drupal 8 on PHP 8.0+, and a Drupal 8+ core
 # on a PHP below the minimum the core itself declares -- refused for a site,
 # only a warning for a platform line, which boots no site -- and a codebase
 # whose vendor/composer/platform_check.php floor is above the chosen PHP, for
@@ -1716,6 +1717,7 @@ _cpp_say() {
 _CPP_NOBOOT=" provision-backup-delete provision-save provision-leftover-import provision-leftover-purge version --version sa site-alias aliases "
 _cpp_guard() {
   local _ch _p _dr="" _app="" _c="" _fl="" _fln="" _mj="" _mn="" _e _sug="" _fix _who
+  local _eh="" _why="which cannot run on PHP 8.0 or newer"
   [ "${_CPP_PROBE}" != "YES" ] && [ "${_CPP_FLAV}" != "vendor" ] && [ -n "${_CPP_CMD}" ] \
     && [[ "${_CPP_NOBOOT}" == *" ${_CPP_CMD} "* ]] && return 0
   case "${DRUSH_PHP}" in
@@ -1854,7 +1856,17 @@ _cpp_guard() {
     { IFS= read -r -N 16384 _c < "${_dr}/includes/bootstrap.inc"; } 2> /dev/null
     [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'7\.([0-9]+) ]] || return 0
     _mj=7; _mn="${BASH_REMATCH[1]}"
-    [ "$(( 10#${_mn} ))" -lt 79 ] || return 0
+    # BOA's own Drupal 7 copy from 7.79.1 to 7.92.1 kept an error handler
+    # whose fifth argument is required, which PHP 8 no longer passes: its
+    # first warning there is an ArgumentCountError (7.93.1 dropped it). The
+    # cores BOA ships are healed in the shared store; a copy in a platform of
+    # the account's own is judged by that one line.
+    if [ "$(( 10#${_mn} ))" -ge 79 ]; then
+      [ "$(( 10#${_mn} ))" -le 92 ] || return 0
+      grep -qxF 'function _drupal_error_handler($error_level, $message, $filename, $line, $context) {' \
+        "${_dr}/includes/bootstrap.inc" 2> /dev/null || return 0
+      _eh=YES
+    fi
   fi
   for _e in 74 73 72 71 70; do
     [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
@@ -1871,11 +1883,25 @@ _cpp_guard() {
   else
     _fix="No PHP 7 version is installed on this server; ask your host."
   fi
+  # the old handler is one line to change, on any PHP; in the shared store
+  # it is BOA's to change, not the account's
+  if [ "${_eh}" = "YES" ]; then
+    _why="whose includes/bootstrap.inc declares an error handler PHP 8.0 or newer cannot call"
+    # BOA's platforms link includes/ to the store by its absolute path
+    _p=$(readlink "${_dr}/includes" 2> /dev/null)
+    if [[ "${_p}" == /data/all/* ]] || [[ "${_p}" == /data/disk/all/* ]]; then
+      _fix="BOA makes the shared cores safe for PHP 8 within a few minutes; if this stays, ask your host."
+    elif [ -n "${_CPP_V}" ] || [ -n "${_sug}" ]; then
+      _fix="Fix: make the last argument of _drupal_error_handler() there optional (\$context = NULL), as Drupal 7.93.1 did, or ${_fix#Fix: }"
+    else
+      _fix="Fix: make the last argument of _drupal_error_handler() there optional (\$context = NULL), as Drupal 7.93.1 did."
+    fi
+  fi
   if [ "${_CPP_CTX}" = "site" ]; then
-    _cpp_say "Refused before Drupal starts: ${_who}, which cannot run on PHP 8.0 or newer. This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
+    _cpp_say "Refused before Drupal starts: ${_who}, ${_why}. This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
   fi
   # shellcheck disable=SC2089 # message text for the task log, never run
-  _CPP_WARN+="${_who}, which cannot run on PHP 8.0 or newer, and this runs on PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}; its sites' tasks will be refused. ${_fix}"$'\n'
+  _CPP_WARN+="${_who}, ${_why}, and this runs on PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}; its sites' tasks will be refused. ${_fix}"$'\n'
 }
 # Every drush line, right before its exec: what chose the PHP, the guard,
 # then the report. A tenant reads a NOTE when a line overrides the

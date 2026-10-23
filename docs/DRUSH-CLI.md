@@ -211,6 +211,9 @@ whose Drupal core cannot run on the PHP chosen for it is refused before the PHP 
 instead of dying half-way on a PHP fatal:
 
 - a site on Drupal 7 older than 7.79, or on any Drupal 8, on PHP 8.0 or newer;
+- a site on a copy of BOA's Drupal 7 core from 7.79.1 to 7.92.1 (its `VERSION` reads 7.79
+  to 7.92) that still declares `_drupal_error_handler()` with a required fifth argument,
+  on PHP 8.0 or newer: PHP 8 passes four, so the first notice there is a fatal error;
 - a codebase whose `vendor/composer/platform_check.php` needs a newer PHP than the one
   chosen (Drupal 10 needs 8.1, Drupal 11 and site-local Drush 13 need 8.3);
 - a site on Drupal 8 or newer whose codebase has no `platform_check.php`, on a PHP older
@@ -223,6 +226,13 @@ The message names the PHP, the file that chose it and the line that would fix it
 cannot run on PHP 8.0 or newer. This would use PHP 8.4, chosen by php84.info. Fix: add
 the line "d7-legacy 7.4" to ~/static/control/cli-per-platform.info (or switch back to
 php74.info).`
+
+For the old error handler the fix is one line in the platform's `includes/bootstrap.inc`:
+make the last argument optional (`$context = NULL`), as 7.93.1 did, or update the core.
+The Drupal 7 cores BOA ships share their code from `/data/all/000/core`, and the ltd
+worker makes that change there on its next pass, so BOA's own platforms need nothing;
+until then the message says so. Pages are not checked: a platform of the account's own
+that keeps the old line answers HTTP 500 on PHP 8 (on PHP 8.4, on every page).
 
 A Clone or Migrate is checked for its target before the safety copy starts. A platform
 task, which boots no site, gets the Drupal 7 or 8 text, or the core's own minimum, as a
