@@ -31,24 +31,24 @@ percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasechec
 says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.10)
-- [Drupal 11.3.19](https://drupal.org/project/drupal/releases/11.3.19)
-- [Drupal 11.4.10](https://drupal.org/project/drupal/releases/11.4.10)
-- [Drupal CMS 2.2.5](https://drupal.org/project/cms) (11.4.10)
-- [farmOS 4.0.8](https://drupal.org/project/farm) (11.3.19)
-- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.10)
-- [OpenCulturas 3.1.3](https://drupal.org/project/openculturas) (11.4.10)
-- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.10)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.11)
+- [Drupal 11.3.20](https://drupal.org/project/drupal/releases/11.3.20)
+- [Drupal 11.4.11](https://drupal.org/project/drupal/releases/11.4.11)
+- [Drupal CMS 2.2.6](https://drupal.org/project/cms) (11.4.11)
+- [farmOS 4.0.9](https://drupal.org/project/farm) (11.3.19)
+- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.11)
+- [OpenCulturas 3.1.4](https://drupal.org/project/openculturas) (11.4.11)
+- [Thunder 8.4.6](https://drupal.org/project/thunder) (11.4.11)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.8)
 
 ## Drupal 10
 
 - [Commerce v.2](https://drupal.org/project/commerce) (10.1.8)
-- [Drupal 10.6.19](https://drupal.org/project/drupal/releases/10.6.19)
+- [Drupal 10.6.20](https://drupal.org/project/drupal/releases/10.6.20)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.19)
-- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.19)
-- [Social 13.1.0](https://drupal.org/project/social) (10.6.19)
+- [OpenFed 13.6.8](https://drupal.org/project/openfed) (10.6.20)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.20)
+- [Social 13.1.0](https://drupal.org/project/social) (10.6.20)
 
 ## Drupal 9
 
