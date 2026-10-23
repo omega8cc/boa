@@ -244,7 +244,8 @@ _fix_php_ini_newrelic() {
     else
       echo "newrelic.framework.drupal.modules = 1" >> ${_THIS_FILE}
     fi
-    sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
+    # no server-wide licence: pools enable New Relic per instance
+    sed -i "s/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
     wait
     sed -i "s/license_key=//g" ${_THIS_FILE} &> /dev/null
     wait
@@ -274,6 +275,43 @@ _fix_php_ini_newrelic_all() {
       _fix_php_ini_newrelic ${e}
     done
   fi
+}
+
+#
+# True when PHP $1's FPM ini loads New Relic (its extension line).
+_php_newrelic_in_ini() {
+  [ -f "/opt/php$1/etc/php$1.ini" ] \
+    && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+
+#
+# The pool templates keep New Relic off with newrelic.* lines, and an ini that
+# loads New Relic enables it for every pool. A PHP whose ini does not load it
+# has no such settings: each line fails in every new worker, and the master
+# logs each failure, so there the lines go from every pool. Where it does, a
+# pool left without them (the ltd worker removes them while its version does
+# not load New Relic) gets the off lines back before this pass reloads FPM;
+# the ltd worker then sets an account's own key. Runs after the ini fixes,
+# which decide what each version loads.
+_php_pool_newrelic_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pool_newrelic_fix"
+  fi
+  local e _pf
+  for e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    for _pf in /opt/php${e}/etc/pool.d/*.conf; do
+      [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || continue
+      if ! _php_newrelic_in_ini "${e}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" "${_pf}" &> /dev/null
+        wait
+      elif ! grep -q "^php_admin_value\[newrelic.enabled\]" "${_pf}"; then
+        sed -i "/^php_admin_value\[newrelic\./d" "${_pf}" &> /dev/null
+        wait
+        echo "php_admin_value[newrelic.license] = \"\"" >> "${_pf}"
+        echo "php_admin_value[newrelic.enabled] = \"false\"" >> "${_pf}"
+      fi
+    done
+  done
 }
 
 #
@@ -795,6 +833,7 @@ _php_conf_update() {
     _THIS_FILE=/opt/php86/lib/php.ini
     _php_ini_drop_unbuilt_ext
   fi
+  _php_pool_newrelic_fix
 }
 
 #
@@ -1060,6 +1099,17 @@ _imagick_loads() {
 }
 
 #
+# True when PHP $1 has APCu but its igbinary was built without APCu's headers,
+# as on 8.6 while APCu was not built for it: igbinary then never registers its
+# serializer, and apc.serializer=igbinary falls back to PHP's own unsaid.
+_igbinary_lacks_apcu() {
+  [ -x "/opt/php$1/bin/php" ] && [ -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
+    && [ -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] || return 1
+  "/opt/php$1/bin/php" -n -d "extension=${_THIS_PHP_EXT_DIR}/igbinary.so" -i 2> /dev/null \
+    | grep -q "^igbinary APCu serializer ABI => no$"
+}
+
+#
 # True when PHP $1 itself runs but cannot load its imagick.so.
 _imagick_broken() {
   "/opt/php$1/bin/php" -n -r 'exit(0);' &> /dev/null \
@@ -1152,13 +1202,18 @@ _install_php_extensions() {
     _msg "PROC: _install_php_extensions $1"
   fi
   ###--------------------###
+  if [ "$1" = "86" ]; then
+    _USE_APCU="${_PHP_APCU_EIGHT_SIX}"
+  else
+    _USE_APCU="${_PHP_APCU}"
+  fi
   if [ "$1" != 56 ] \
-    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
-    _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
+    && ! _php_ext_rc_skip "$1" "apcu-${_USE_APCU}" "APCu ${_USE_APCU}"; then
+    _msg "INFO: Installing APCu ${_USE_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
-    _get_dev_src "apcu-${_PHP_APCU}.tgz"
-    cd /var/opt/apcu-${_PHP_APCU}
+    _get_dev_src "apcu-${_USE_APCU}.tgz"
+    cd /var/opt/apcu-${_USE_APCU}
     _mrun "${_T_PHP_PTH}/phpize"
     _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
@@ -1167,7 +1222,7 @@ _install_php_extensions() {
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
       _msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
     else
-      touch ${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+      touch ${_pthLog}/apcu-${_USE_APCU}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
@@ -1533,15 +1588,20 @@ _php_extensions_update() {
     _msg "PROC: _php_extensions_update $1"
   fi
   ###--------------------###
+  if [ "$1" = "86" ]; then
+    _USE_APCU="${_PHP_APCU_EIGHT_SIX}"
+  else
+    _USE_APCU="${_PHP_APCU}"
+  fi
   if [ "$1" != 56 ] \
-    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
+    && ! _php_ext_rc_skip "$1" "apcu-${_USE_APCU}" "APCu ${_USE_APCU}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
-      || [ ! -e "${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
-      _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
+      || [ ! -e "${_pthLog}/apcu-${_USE_APCU}-${_T_PHP_VRN}.log" ]; then
+      _msg "INFO: Installing APCu ${_USE_APCU} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
-      _get_dev_src "apcu-${_PHP_APCU}.tgz"
-      cd /var/opt/apcu-${_PHP_APCU}
+      _get_dev_src "apcu-${_USE_APCU}.tgz"
+      cd /var/opt/apcu-${_USE_APCU}
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
@@ -1550,7 +1610,7 @@ _php_extensions_update() {
       if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
         _msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/apcu-${_USE_APCU}-${_T_PHP_VRN}.log
       fi
     fi
   fi
@@ -1564,7 +1624,8 @@ _php_extensions_update() {
   fi
   if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}" \
     && { [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
-    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; }; then
+    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ] \
+    || _igbinary_lacks_apcu "$1"; }; then
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
@@ -2139,6 +2200,9 @@ _install_php_deb() {
     fi
     if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
       rm -rf "/var/opt/php${1}-pre-deb"
+      # A package is what its builder made: never rebuilt for AVIF, or one
+      # built without it would be fetched again on every pass
+      rm -f "/opt/php${1}/lib/boa-no-avif"
       _PHP_DEB_INSTALLED=YES
       _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
       return 0
@@ -2328,14 +2392,17 @@ _install_php_multi_src() {
       fi
     fi
   fi
+  _PHP_NO_AVIF=NO
   if [ "$1" -gt 80 ]; then
-    # PHP 8.6 needs libavif 1.0.0 or newer (Daedalus has 0.11): with an
-    # older one it is built without AVIF in GD instead of not at all
-    if [ "$1" -lt 86 ] \
-      || pkg-config --atleast-version=1.0.0 libavif 2> /dev/null; then
+    # Without the libavif GD's AVIF needs (_php_avif_ready), or with an
+    # older one, PHP is built without AVIF in GD instead of not at all; the
+    # build records that (_php_avif_mark) and is rebuilt once libavif is
+    # there (_check_php_avif)
+    if _php_avif_ready "$1"; then
       _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
     else
-      _msg "NOTE: libavif is older than 1.0.0, PHP ${_PHP_VERSION} is built without AVIF"
+      _PHP_NO_AVIF=YES
+      _msg "NOTE: libavif $(_php_avif_min "$1") or newer not found, PHP ${_PHP_VERSION} is built without AVIF"
     fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
@@ -2578,6 +2645,7 @@ _install_php_multi() {
       _msg "ALRT: Building PHP ${_PHP_VERSION} failed, the previous build in /opt/php$1 keeps serving"
     else
       _php_sec_mark "$1"
+      _php_avif_mark "$1"
     fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
@@ -3350,6 +3418,59 @@ _php_sec_mark() {
 }
 
 #
+# The libavif GD's AVIF needs for PHP $1: 0.8.2 or newer, and 1.0.0 or newer
+# on PHP 8.6 (Daedalus has 0.11).
+_php_avif_min() {
+  if [ "$1" -ge 86 ]; then
+    echo "1.0.0"
+  else
+    echo "0.8.2"
+  fi
+}
+
+#
+# Exit 0 when pkg-config finds that libavif, with the PKG_CONFIG_PATH
+# _install_php_multi_src gives configure.
+_php_avif_ready() {
+  PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" \
+    pkg-config --atleast-version="$(_php_avif_min "$1")" libavif 2> /dev/null
+}
+
+#
+# Record whether the source build that just replaced /opt/php$1 left AVIF
+# out (_PHP_NO_AVIF, set by _install_php_multi_src).
+_php_avif_mark() {
+  mkdir -p "/opt/php${1}/lib"
+  if [ "${_PHP_NO_AVIF}" = "YES" ]; then
+    : > "/opt/php${1}/lib/boa-no-avif"
+  else
+    rm -f "/opt/php${1}/lib/boa-no-avif"
+  fi
+}
+
+#
+# Exit 1 when PHP $1 was built from sources without AVIF (boa-no-avif), its
+# GD still lacks it and pkg-config finds a new enough libavif now: a pass on
+# which the libavif-dev install failed is healed by the next one. On a host
+# whose packages carry no libavif it never fires.
+_check_php_avif() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_avif $1"
+  fi
+  local _av
+  [ -e "/opt/php${1}/lib/boa-no-avif" ] || return 0
+  _php_avif_ready "$1" || return 0
+  _av=$("/opt/php${1}/bin/php" -r 'echo function_exists("imageavif") ? "avif:on" : "avif:off";' 2>/dev/null)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 GD AVIF probe: ${_av:-no answer}"
+  fi
+  if [[ "${_av}" =~ "avif:off" ]]; then
+    return 1
+  fi
+  return 0
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -3429,6 +3550,12 @@ _check_php_rebuild() {
 
   if ! _check_php_sec_patches "$1"; then
     _msg "INFO: PHP ${_PHP_ITD} lacks a BOA security patch, forcing rebuild"
+    _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
+  fi
+
+  if [ "$1" -gt 80 ] && ! _check_php_avif "$1"; then
+    _msg "INFO: PHP ${_PHP_ITD} was built without AVIF and libavif is there now, forcing rebuild"
     _PHP_FORCE_REINSTALL=YES
     _ownWhy=YES
   fi
