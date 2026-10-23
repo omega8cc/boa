@@ -227,7 +227,8 @@ _incident_email_send() {
 # request time earlier. Its cron lock outlives it: 900 s on Drupal 8+ and
 # BOA's Drupal 7, 240 s on Backdrop, and Drupal 6 keeps its semaphore an
 # hour, then the request that clears it runs nothing either (Drupal 6 is the
-# one asked for /cron.php with no key). A 2xx in that time ran no cron.
+# one asked for /cron.php with no key), nor does its SSL front copy. A 2xx in
+# that time ran no cron.
 # Each window has 30 s more: the lock is taken after the bootstrap, and the
 # panel times a site's next run from the start of its last one.
 # A redirect is cleared by the 2xx it led to, also on a path with a
@@ -240,14 +241,16 @@ _incident_email_send() {
 # failing source. A prefixed path is a language prefix or a subdirectory
 # site's cron route under its parent's name (/<subdir>/cron.php,
 # /<subdir>/core/cron.php, /<subdir>/cron/<key>, a language prefix inside
-# the subdirectory; the panel takes digits, dots and nested subdirectories in
-# <subdir>). A prefixed line no logged redirect led to belongs to a
+# the subdirectory; the panel takes digits, dots, hyphens and nested
+# subdirectories in <subdir>). A prefixed line no logged redirect led to belongs to a
 # subdirectory site whose own name redirects through a vhost that logs
 # nothing (the alias redirect logs only through the wildcard SSL front): it
 # is judged as <parent>/<subdir>, the path below it as its route. The SSL
-# front's copy of the line that ended a chain (same host, path and status,
-# the same second or the next) is the same request, never such a line. A run
-# killed on a prefixed path is timed by the host and path it was logged on,
+# front's copy of the line that ended a chain (same host and path, the same
+# second or the next, the same status or both failures: at the 180 s cut the
+# front answers 504 while the site, its client gone, logs 499) is the same
+# request, never such a line. A run killed on a prefixed path (a 5xx, or that
+# 499, after 170 s) is timed by the host and path it was logged on,
 # where its retry lands too: a subdirectory site's parent host has its own
 # clock; Backdrop's lock is the shorter one there as well.
 # Seconds count from the first day in the window (the logs are read in
@@ -293,7 +296,7 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   p = $6
   pre = 0
   if (!route(p)) {
-    if (p !~ /^(\/[A-Za-z0-9][A-Za-z0-9._-]*)+\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
+    if (p !~ /^(\/[A-Za-z0-9-][A-Za-z0-9._-]*)+\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/) next
     pre = 1
   }
   rh = $2; h = rh; s = $8; t = $3; sub(/^\[/, "", t)
@@ -302,22 +305,25 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   k = ckey(p); b = sec - $14
   if (pre && !linked(k, rh, b)) {
-    if ((k in cp) && cp[k] == rh SUBSEP p SUBSEP s && sec - cpe[k] <= 1) next
-    if (!match(p, /\/core\/cron\.php([?].*)?$/)) match(p, /\/cron(\.php|\/[A-Za-z0-9_-]*)([?].*)?$/)
-    h = rh substr(p, 1, RSTART - 1); p = substr(p, RSTART)
+    if ((k in cp) && cp[k] == rh SUBSEP p && sec - cpe[k] <= 1 &&
+      (s == cps[k] || (s !~ /^[23]/ && cps[k] !~ /^[23]/))) next
+    pq = p; sub(/[?].*$/, "", pq)
+    if (!match(pq, /\/core\/cron\.php$/)) match(pq, /\/cron(\.php|\/[A-Za-z0-9_-]*)$/)
+    h = rh substr(pq, 1, RSTART - 1); p = substr(p, RSTART)
     pre = 0
   }
   if (pre) {
-    if (k != "" && s !~ /^3/) { cp[k] = rh SUBSEP p SUBSEP s; cpe[k] = sec }
+    if (k != "" && s !~ /^3/) { cp[k] = rh SUBSEP p; cps[k] = s; cpe[k] = sec }
     kp = p; sub(/[?].*$/, "", kp)
-    if (s ~ /^5/ && $14 + 0 >= 170) kk[rh, kp] = sec - int($14 + 0)
+    if ((s ~ /^5/ || s == "499") && $14 + 0 >= 170) kk[rh, kp] = sec - int($14 + 0)
     hop(k, rh, "", s, sec, b, s ~ /^2/ && !(((rh, kp) in kk) && sec - kk[rh, kp] <= ((kp ~ /\/core\/cron\.php$/) ? 270 : 930)))
     next
   }
   if (s ~ /^2/) {
     if (h in ks) {
       if (sec - ks[h] <= ((p ~ /^\/core\//) ? 270 : 930)) { hop(k, rh, h, s, sec, b, 0); next }
-      if (h in d6) { if (sec - ks[h] > 3630) delete d6[h]; hop(k, rh, h, s, sec, b, 0); next }
+      if (h in d6) { if (sec - ks[h] > 3630) { delete d6[h]; d6c[h] = sec }; hop(k, rh, h, s, sec, b, 0); next }
+      if ((h in d6c) && sec - d6c[h] <= 1) { hop(k, rh, h, s, sec, b, 0); next }
     }
     ok[h] = 1; hop(k, rh, h, s, sec, b, 1); next
   }
