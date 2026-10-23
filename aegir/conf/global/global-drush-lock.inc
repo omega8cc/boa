@@ -14,8 +14,10 @@
  * Outside Drush, and only while the real class cannot be read, that one base
  * class gets an empty stand-in, so the container builds; no request runs a
  * Drush command. Drush 8 defines DRUSH_VERSION and never sees it, and an
- * unlocked platform loads the real class. Each use is logged once per
- * process. Must remain PHP 5.6 compatible (legacy servers).
+ * unlocked platform loads the real class. Drupal 11.4's console command pass
+ * also loads the command classes a module keeps in its Command folder, and
+ * skips them whether they load or not. A request that loads the class logs
+ * it once. Must remain PHP 5.6 compatible (legacy servers).
  */
 if (!defined('DRUSH_VERSION')
   && !function_exists('_boa_drush_lock_stand_in')
