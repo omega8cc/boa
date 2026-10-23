@@ -41,8 +41,10 @@
       handler with an argument PHP 8 no longer passes, so the first PHP
       warning ended the panel's bootstrap, hidden behind an undefined
       cache_get(), and hostmaster-migrate stopped with the panel where it
-      was. The upgrade now gives the old core the declaration 7.93.1
-      shipped before it runs the panel.
+      was, its database server record left on the old password the
+      upgrade had already replaced. The upgrade now makes that argument
+      optional before it first runs the old panel, and says so when a
+      panel does not take the new database password.
 
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel
