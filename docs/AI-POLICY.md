@@ -95,6 +95,12 @@ global composite guard, cleared per site by `$ai_train_allow` / `$ai_evasive_all
 rate limit for the three allowed classes is applied in `location /` via
 `limit_req zone=ai_search|ai_user|ai_utility`.
 
+Each site vhost sets both flags to `0` before its `ai_policy` include, and the master
+`http{}` config also declares them as a `map $host` defaulting to `0`. A server verify
+re-renders the shared include before the sites are verified, so a vhost rendered by an
+older Provision (which sets neither) still loads instead of failing the whole config with
+`unknown "ai_train_allow" variable`; a vhost's own `set` wins over the map.
+
 The rate-limit zones key on the **per-vendor** maps (`$ai_*_limit_key`): non-AI traffic
 emits an empty key (not counted), and each in-class UA emits a constant unique to its
 vendor. The zone therefore caps each vendor's **aggregate** rate across every source IP
