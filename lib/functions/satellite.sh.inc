@@ -5054,10 +5054,18 @@ _provision_backend_dbpass_sync() {
     "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
+    local _pUpd
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
+    _pUpd=$?
     wait
+    ### MySQL and the aliases take the new password below either way; a
+    ### panel that kept the old one would write it back into the alias on
+    ### its next Verify of the database server.
+    if [ "${_pUpd}" != "0" ]; then
+      _msg "${_STATUS} A: ALRT: the panel did not store the new ${_USER} database password; run this upgrade again once @hostmaster works, before any Verify of its database server"
+    fi
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
     _USE_AEGIR_HOST="${_hName}"
@@ -5651,6 +5659,13 @@ _satellite_run_pre_install() {
     else
       mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     fi
+    ### syncpass and the password sync store the new password in the panel
+    ### through Drush on PHP 8: an old panel core is healed first.
+    _satellite_pre_heal_d7_panel
+    case $? in
+      0) _msg "${_STATUS} A: Old panel core: error handler made safe for PHP 8" ;;
+      2) _msg "${_STATUS} A: ALRT: Old panel core keeps an error handler PHP 8 cannot call" ;;
+    esac
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
   fi
@@ -10928,6 +10943,39 @@ _satellite_child_b_drush_test() {
   fi
 }
 
+#
+# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
+# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning throws an ArgumentCountError before includes/cache.inc is loaded,
+# and Drupal's exception handler then dies on cache_get(), hiding the cause.
+# The upgrade runs the old control panel on PHP 8 before it moves it, so that
+# argument is made optional ($context = NULL). Only that exact line changes;
+# a missing file or a symlink is left alone. Returns 0 when it healed the
+# file, 1 when there was nothing to heal, 2 when the old line is still there.
+_satellite_heal_d7_error_handler() {
+  local _bInc="${1}/includes/bootstrap.inc"
+  local _oLd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -z "${1}" ] || [ ! -f "${_bInc}" ] || [ -L "${_bInc}" ]; then
+    return 1
+  fi
+  grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null || return 1
+  sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_bInc}" &> /dev/null
+  if grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null; then
+    return 2
+  fi
+  return 0
+}
+# The same heal for the root-side steps that run the current panel before
+# AegirSetupB does (syncpass, the backend password sync): on the root the
+# account's alias names, run as the account user in its own tree.
+_satellite_pre_heal_d7_panel() {
+  local _hmR
+  _hmR=$(_satellite_hm_alias_get "root'")
+  _hmR="${_hmR%/}"
+  _satellite_hm_path_ok "${_hmR}" || return 1
+  _satellite_as_user "$(declare -f _satellite_heal_d7_error_handler); _satellite_heal_d7_error_handler $(printf '%q' "${_hmR}")"
+}
+
 _satellite_child_b_aegir_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_child_b_aegir_build"
@@ -11113,6 +11161,12 @@ _satellite_child_b_aegir_build() {
       exit 1
     fi
     _msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
+    ### Every @hostmaster call below runs the old panel, on PHP 8.
+    _satellite_heal_d7_error_handler "${_PREV_HM_ROOT}"
+    case $? in
+      0) _msg "${_STATUS} B: Old panel core: error handler made safe for PHP 8" ;;
+      2) _msg "${_STATUS} B: ALRT: Old panel core keeps an error handler PHP 8 cannot call" ;;
+    esac
     ### security_review breaks the upgrade if active
     mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
       ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
