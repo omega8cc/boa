@@ -2921,7 +2921,10 @@ _purge_rec() {
 _publish_plain() {
   # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
   # when the file only rides along with that row's own tarball (a compat tarball, a
-  # version stamp): then only a failure changes the row. For shelves no lock guards.
+  # version stamp): then only a failure changes the row. $5, when given, is the text
+  # the caller checked: root's copy must hold exactly that, or nothing is published
+  # (the build user can rewrite its file between the check and this copy). For
+  # shelves no lock guards.
   local _src="$1" _out="$2" _k="$3" _st="new" _what="" _rc
   # A companion's failure names the file, so the row does not blame its own tarball.
   [[ "${4:-}" == "companion" ]] && _what="${_src##*/} "
@@ -2936,6 +2939,13 @@ _publish_plain() {
   elif [[ "${_rc}" != "0" ]]; then
     _rec_pub "${_k}" FAILED
     _rec_note "${_k}" "${_what}copy failed"
+    return 1
+  fi
+  if [[ -n "${5:-}" && "$(< "${_SHELF_TMP}")" != "$5" ]]; then
+    _shelf_drop
+    _alrt "${_src##*/} changed after its check, not published"
+    _rec_pub "${_k}" FAILED
+    _rec_note "${_k}" "${_what}changed after its check"
     return 1
   fi
   if [[ -e "${_out}/${_src##*/}" ]]; then
@@ -3057,15 +3067,15 @@ _civicrm_backdrop_stamp() {
   # $1 = the pair the day dir's civicrm_backdrop.txt holds, $2 = 1 when this run failed
   # to put that platform's tarball on the distro shelf. The stamp names the platform
   # every box fetches, so it goes out after the tarball, only while the shelf holds it
-  # (a name built on an earlier day and skipped since counts), and never when this
-  # run's own copy of it failed.
+  # (a name built on an earlier day and skipped since counts), never when this
+  # run's own copy of it failed, and only as the pair checked here.
   local _k="civicrm_backdrop-$1"
   if [[ "$2" == "1" || ! -f "${_DISTRO_OUT}/${_k}.tar.gz" ]]; then
     _alrt "civicrm_backdrop.txt held: ${_k}.tar.gz is not on ${_DISTRO_OUT}"
     _rec_note "${_k}" "stamp held"
     return 1
   fi
-  _publish_plain "${_DAY_DIR}/civicrm_backdrop.txt" "${_DISTRO_OUT}" "${_k}" companion
+  _publish_plain "${_DAY_DIR}/civicrm_backdrop.txt" "${_DISTRO_OUT}" "${_k}" companion "$1"
 }
 
 package_backdrop_compat() {
