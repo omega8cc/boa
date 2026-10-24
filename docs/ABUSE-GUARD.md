@@ -367,19 +367,22 @@ HTTP/1.0 here.
 
 BOA's own proxy layer (the migration / PX0 `*_proxy.conf` and the wildcard-SSL
 `nginx_wild_ssl.conf`) sets `proxy_http_version 1.1`, so a correctly-updated BOA front proxy
-no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin.
-
-The wildcard-SSL front also drops a connection its backend dropped (`proxy_next_upstream off`,
-its own 502 mapped to `return 444`): a port-80 vhost's 444 reaches the HTTPS visitor as the
-same closed connection, not as a 502 minted after a second try at the loopback backend. In the access log
-that drop is the front's `444` line with `ups="502" uht="-"` (its backend closed the connection
-without answering); the front's own refusals log `444` with `ups="-"`, and a 502 the backend vhost answered
-itself passes through as a front `502` with `uht` set.
-
-**Opt out** only on a
+no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin. **Opt out** only on a
 box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or not yet updated
 to the HTTP/1.1 proxy confs (see **Part 5**). A malformed `_NGINX_HTTP10_AUTH_PATHS` override
 fails closed — the detector counts nothing rather than mis-banning.
+
+The wildcard-SSL front also drops a connection its backend dropped (`proxy_next_upstream off`,
+and its own 502 mapped to `return 444` in `location @boa_drop`): a port-80 vhost's 444 reaches
+the HTTPS visitor as the same closed connection, not as a 502 minted after a second try at the
+loopback backend. In the access log that drop is the front's `444` line with `ups="502"
+uht="-"` (its backend closed the connection without answering); a fault the front answers
+itself is a `502` line with the same `ups="502" uht="-"`; the front's own refusals log `444`
+with `ups="-"`, and a 502 the backend vhost answered itself passes through as a front `502`
+with `uht` set. The front drops only a backend's refusal, a backend that took the request and closed
+without a byte of an answer (`$upstream_bytes_sent` above zero, `$upstream_bytes_received`
+zero). Any other failure the front meets answers 502 as before: nothing listening behind it,
+or an answer whose headers do not fit the front's buffer.
 
 ### Detector 5 — distributed scanner-fleet (UA-burst)
 

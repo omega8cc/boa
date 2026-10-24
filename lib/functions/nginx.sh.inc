@@ -1241,8 +1241,9 @@ _nginx_wildcard_ssl_install() {
       _WILD_SSL_PROXY_UP=YES
     fi
     ### A front without the drop rule answers 502, after retries, where the
-    ### backend closed the connection on purpose.
-    if ! grep -q "boa_drop" ${_WILD_SSL_VHOST} 2> /dev/null; then
+    ### backend closed the connection on purpose; one with the ungated rule
+    ### drops every other fault too. The gate's own variable marks it.
+    if ! grep -q "upstream_bytes_sent" ${_WILD_SSL_VHOST} 2> /dev/null; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: nginx_wild_ssl.conf proxy needs backend drop update..."
       fi
