@@ -228,7 +228,7 @@ _if_solr_seven() {
 #
 # Kill Solr 4 (Jetty 9) and start it again. A start while the killed JVM is
 # still exiting starts nothing, and the init script then reads its stale
-# state file as STARTED, so Solr 4 stayed down until the watchdog found it.
+# state file as STARTED, so Solr 4 stays down until the watchdog finds it.
 # The killed JVM also leaves its war work dir in /tmp, and a second one there
 # reads as a stale Jetty to the self-update run, which kills Solr 4 again.
 _jetty9_restart() {

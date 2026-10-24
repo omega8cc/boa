@@ -207,14 +207,14 @@ _fpm_duplicate_instances_detection() {
     [ -s "${_cd}" ] && _ts=$(tr -dc '0-9' < "${_cd}" 2> /dev/null)
     if [ -n "${_ts}" ] && [ $(( _now - _ts )) -ge 0 ] \
       && [ $(( _now - _ts )) -lt "${_FPM_COOLDOWN_SECS}" ]; then
-      echo "$(date) INFO: php${e}-fpm duplicate master but in cooldown; skipping restart" >> ${_pthOml}
+      echo "$(date) INFO: php${e}-fpm duplicate master but in cooldown; skipping restart" >> "${_pthOml}"
       continue
     fi
     _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
-    echo ${_thisErrLog} >> ${_pthOml}
-    echo "$(date) INFO: php${e}-fpm masters counted: $(ps -o pid=,ppid=,etimes=,args= -p "$(_fpm_master_pids "${_pat}" | paste -sd, -)" 2> /dev/null | tr -s ' ' | tr '\n' ';')" >> ${_pthOml}
-    [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-    mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
+    echo "${_thisErrLog}" >> "${_pthOml}"
+    echo "$(date) INFO: php${e}-fpm masters counted: $(ps -o pid=,ppid=,etimes=,args= -p "$(_fpm_master_pids "${_pat}" | paste -sd, -)" 2> /dev/null | tr -s ' ' | tr '\n' ';')" >> "${_pthOml}"
+    [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p "/var/backups/php-logs/${_NOW}/"
+    mv -f "/var/log/php/php${e}-fpm-error.log" "/var/backups/php-logs/${_NOW}/" &> /dev/null
     service "php${e}-fpm" restart
     wait
     date +%s > "${_cd}"
@@ -364,7 +364,7 @@ _fpm_health_check_fix() {
   done
   _PHP_V="${_ORD}"
   # One grace for reloads, shared by every version found down: a grace per
-  # version made each one wait for all those listed before it.
+  # version makes each one wait for every version listed before it.
   _DOWN_V=""
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
