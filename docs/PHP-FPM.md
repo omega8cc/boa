@@ -88,6 +88,26 @@ Supported Drupal core versions and distributions have different PHP versions req
 
 - [Drupal 7 PHP Requirements](https://www.drupal.org/docs/7/system-requirements/php-requirements)
 - [Drupal System Requirements](https://www.drupal.org/docs/system-requirements/php-requirements)
+- A Drupal 7 core older than 7.79, or a Drupal 6 core older than 6.58, does not run on PHP
+  8. BOA's own copy of Drupal 7 from 7.79.1 to 7.92.1, and its Pressflow 6.59.1 and 6.60.1,
+  declare `_drupal_error_handler()` with a fifth argument PHP 8 no longer passes: the first
+  notice is a fatal error, and on PHP 8.4 a Drupal 7 site fails on every page with nothing
+  logged.
+- The cores BOA ships in `/data/all/000/core` are fixed by the ltd worker. A copy in a
+  platform of your own needs `$context = NULL` on that line (`includes/bootstrap.inc` on
+  Drupal 7, `includes/common.inc` on Pressflow 6), or a core update.
+
+A version can reach a site whose code cannot run on it: through `fpm.info`, a
+`multi-fpm.info` line, or the version BOA falls back to when the one asked for is not
+installed. Such a site answers HTTP 500 on every page. The ltd worker checks every site
+against the version that serves it, by the rules drush is refused by (see
+[DRUSH-CLI.md](DRUSH-CLI.md)), on the next pass after the sites, their versions or their
+code change, and once a day.
+
+Each site it finds is listed with the version and the reason in
+`~/static/control/.fpm-core.info`, the same line appears in drush output and Ægir task logs
+on that site, and the operator gets a daily notice. Nothing is switched: the fix is in the
+code, or a `multi-fpm.info` line for a version that runs it, where one is installed.
 
 #### Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 

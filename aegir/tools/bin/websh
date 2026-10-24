@@ -1717,7 +1717,7 @@ _cpp_say() {
 _CPP_NOBOOT=" provision-backup-delete provision-save provision-leftover-import provision-leftover-purge version --version sa site-alias aliases "
 _cpp_guard() {
   local _ch _p _dr="" _app="" _c="" _fl="" _fln="" _mj="" _mn="" _e _sug="" _fix _who
-  local _eh="" _why="which cannot run on PHP 8.0 or newer"
+  local _eh="" _ehfix="" _why="which cannot run on PHP 8.0 or newer"
   [ "${_CPP_PROBE}" != "YES" ] && [ "${_CPP_FLAV}" != "vendor" ] && [ -n "${_CPP_CMD}" ] \
     && [[ "${_CPP_NOBOOT}" == *" ${_CPP_CMD} "* ]] && return 0
   case "${DRUSH_PHP}" in
@@ -1776,13 +1776,13 @@ _cpp_guard() {
         done
         _cpp_rel "${_app}"
         [ -n "${_who}" ] && _who="${_who} (${_CPP_RP})" || _who="${_CPP_RP}"
-        if [ -n "${_CPP_V}" ]; then
+        if [ -z "${_sug}" ]; then
+          _fix="No PHP ${_fln:0:1}.${_fln:1:1} or newer is installed on this server; ask your host."
+        elif [ -n "${_CPP_V}" ]; then
           _fix="Fix: change line ${_CPP_LN} of ${_CPP_WHERE} to PHP ${_fln:0:1}.${_fln:1:1} or newer."
-        elif [ -n "${_sug}" ]; then
+        else
           _cpp_key "${_CPP_RP}"
           _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ${_CPP_WHERE}, or switch the account to PHP ${_fln:0:1}.${_fln:1:1} or newer."
-        else
-          _fix="No PHP ${_fln:0:1}.${_fln:1:1} or newer is installed on this server; ask your host."
         fi
         _cpp_say "Refused before PHP starts: ${_who} needs PHP ${_fln:0:1}.${_fln:1:1} or newer (vendor/composer/platform_check.php). This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
       fi
@@ -1825,16 +1825,16 @@ _cpp_guard() {
         _want="a PHP 7 version, ${_fl:0:1}.${_fl:1:1} or newer"
         _none="No PHP 7 version, ${_fl:0:1}.${_fl:1:1} or newer, is installed on this server; ask your host."
       fi
-      if [ -n "${_CPP_V}" ]; then
+      if [ -z "${_sug}" ]; then
+        _fix="${_none}"
+      elif [ -n "${_CPP_V}" ]; then
         _fix="Fix: change line ${_CPP_LN} of ${_CPP_WHERE} to ${_want}."
-      elif [ -n "${_sug}" ]; then
+      else
         _cpp_key "${_CPP_RP}"
         _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ${_CPP_WHERE}"
         # never "remove the marker": what it outranks may be no better
         [[ "${_CLI_FROM}" == php[0-9][0-9].info ]] && _fix+=" (or switch from ${_CLI_FROM} to php${_sug}.info)"
         _fix+="."
-      else
-        _fix="${_none}"
       fi
       if [ "${_CPP_CTX}" = "site" ]; then
         _cpp_say "Refused before PHP starts: ${_who}, which needs PHP ${_fl:0:1}.${_fl:1:1} or newer. This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
@@ -1854,18 +1854,35 @@ _cpp_guard() {
     [ "${_mj}" = "8" ] || return 0
   else
     { IFS= read -r -N 16384 _c < "${_dr}/includes/bootstrap.inc"; } 2> /dev/null
-    [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'7\.([0-9]+) ]] || return 0
-    _mj=7; _mn="${BASH_REMATCH[1]}"
-    # BOA's own Drupal 7 copy from 7.79.1 to 7.92.1 kept an error handler
-    # whose fifth argument is required, which PHP 8 no longer passes: its
-    # first warning there is an ArgumentCountError (7.93.1 dropped it). The
-    # cores BOA ships are healed in the shared store; a copy in a platform of
-    # the account's own is judged by that one line.
-    if [ "$(( 10#${_mn} ))" -ge 79 ]; then
-      [ "$(( 10#${_mn} ))" -le 92 ] || return 0
-      grep -qxF 'function _drupal_error_handler($error_level, $message, $filename, $line, $context) {' \
-        "${_dr}/includes/bootstrap.inc" 2> /dev/null || return 0
-      _eh=YES
+    if [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'7\.([0-9]+) ]]; then
+      _mj=7; _mn="${BASH_REMATCH[1]}"
+      # BOA's own Drupal 7 copy from 7.79.1 to 7.92.1 kept an error handler
+      # whose fifth argument is required, which PHP 8 no longer passes: its
+      # first warning there is an ArgumentCountError (7.93.1 dropped it). The
+      # cores BOA ships are healed in the shared store; a copy in a platform
+      # of the account's own is judged by that one line.
+      if [ "$(( 10#${_mn} ))" -ge 79 ]; then
+        [ "$(( 10#${_mn} ))" -le 92 ] || return 0
+        grep -qxF 'function _drupal_error_handler($error_level, $message, $filename, $line, $context) {' \
+          "${_dr}/includes/bootstrap.inc" 2> /dev/null || return 0
+        _eh="includes/bootstrap.inc"; _ehfix="Drupal 7.93.1"
+      fi
+    else
+      # Drupal 6 keeps its VERSION in system.module. Below 6.58 its own code
+      # dies on PHP 8 (a curly-brace offset in filter.module, each() in
+      # menu.inc); Pressflow 6.58 to 6.60 carry the PHP 8 fixes, BOA's
+      # 6.59.1 and 6.60.1 with the same handler line in common.inc (6.60.2
+      # made it optional), and are judged by that line.
+      _c=""
+      { IFS= read -r -N 16384 _c < "${_dr}/modules/system/system.module"; } 2> /dev/null
+      [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'6\.([0-9]+) ]] || return 0
+      _mj=6; _mn="$(( 10#${BASH_REMATCH[1]} ))"
+      if [ "${_mn}" -ge 58 ]; then
+        [ "${_mn}" -le 60 ] || return 0
+        grep -qxF 'function _drupal_error_handler($error_level, $message, $filename, $line, $context) {' \
+          "${_dr}/includes/common.inc" 2> /dev/null || return 0
+        _eh="includes/common.inc"; _ehfix="Pressflow 6.60.2"
+      fi
     fi
   fi
   for _e in 74 73 72 71 70; do
@@ -1873,28 +1890,52 @@ _cpp_guard() {
   done
   _cpp_rel "${_dr}"
   [ -n "${_who}" ] && _who="${_who} is Drupal ${_mj}.${_mn} (${_CPP_RP})" || _who="${_CPP_RP} is Drupal ${_mj}.${_mn}"
-  if [ -n "${_CPP_V}" ]; then
+  # a PHP 7 version is offered only where one is installed: a line naming a
+  # missing one is ignored, and the same refusal would come back
+  if [ -z "${_sug}" ]; then
+    _fix="No PHP 7 version is installed on this server; ask your host."
+  elif [ -n "${_CPP_V}" ]; then
     _fix="Fix: change line ${_CPP_LN} of ${_CPP_WHERE} to a PHP 7 version."
-  elif [ -n "${_sug}" ]; then
+  else
     _cpp_key "${_CPP_RP}"
     _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ${_CPP_WHERE}"
     [[ "${_CLI_FROM}" == php[0-9][0-9].info ]] && _fix+=" (or switch back to php${_sug}.info)"
     _fix+="."
-  else
-    _fix="No PHP 7 version is installed on this server; ask your host."
   fi
   # the old handler is one line to change, on any PHP; in the shared store
   # it is BOA's to change, not the account's
-  if [ "${_eh}" = "YES" ]; then
-    _why="whose includes/bootstrap.inc declares an error handler PHP 8.0 or newer cannot call"
-    # BOA's platforms link includes/ to the store by its absolute path
+  if [ -n "${_eh}" ]; then
+    _why="whose ${_eh} declares an error handler PHP 8.0 or newer cannot call"
+    # BOA's platforms link includes/ to the store by its absolute path; the
+    # heal is promised only where the ltd worker makes it: a core it reaches
+    # through no further link, wholly root's
     _p=$(readlink "${_dr}/includes" 2> /dev/null)
-    if [[ "${_p}" == /data/all/* ]] || [[ "${_p}" == /data/disk/all/* ]]; then
-      _fix="BOA makes the shared cores safe for PHP 8 within a few minutes; if this stays, ask your host."
-    elif [ -n "${_CPP_V}" ] || [ -n "${_sug}" ]; then
-      _fix="Fix: make the last argument of _drupal_error_handler() there optional (\$context = NULL), as Drupal 7.93.1 did, or ${_fix#Fix: }"
+    if [[ "${_p}" == /data/all/000/core/* ]] || [[ "${_p}" == /data/disk/all/000/core/* ]]; then
+      local _sh=""
+      _p="${_p%/includes}"
+      case "${_p##*/}" in
+        drupal-7.*) _sh=YES ;;
+        pressflow-6.*)
+          [ ! -L "${_p}/modules" ] && [ ! -L "${_p}/modules/system" ] \
+            && [ -f "${_p}/modules/system/system.module" ] && [ ! -L "${_p}/modules/system/system.module" ] \
+            && _sh=YES
+          ;;
+      esac
+      [ -n "${_sh}" ] && [ ! -L "${_p}" ] && [ ! -L "${_p}/includes" ] && [ -f "${_p}/${_eh}" ] \
+        && [ ! -L "${_p}/${_eh}" ] \
+        && [ "$(stat -L -c %u "${_p%/*/*}" "${_p%/*}" "${_p}" "${_p}/includes" "${_p}/${_eh}" 2> /dev/null | sort -u)" = "0" ] \
+        || _sh=""
+      if [ -n "${_sh}" ]; then
+        _fix="BOA makes the shared cores safe for PHP 8 within a few minutes; if this stays, ask your host."
+      elif [ -n "${_sug}" ]; then
+        _fix="This core is shared from the server, where BOA does not change it: ask your host, or ${_fix#Fix: }"
+      else
+        _fix="This core is shared from the server, where BOA does not change it; ask your host."
+      fi
+    elif [ -n "${_sug}" ]; then
+      _fix="Fix: make the last argument of _drupal_error_handler() there optional (\$context = NULL), as ${_ehfix} did, or ${_fix#Fix: }"
     else
-      _fix="Fix: make the last argument of _drupal_error_handler() there optional (\$context = NULL), as Drupal 7.93.1 did."
+      _fix="Fix: make the last argument of _drupal_error_handler() there optional (\$context = NULL), as ${_ehfix} did."
     fi
   fi
   if [ "${_CPP_CTX}" = "site" ]; then
@@ -1902,6 +1943,31 @@ _cpp_guard() {
   fi
   # shellcheck disable=SC2089 # message text for the task log, never run
   _CPP_WARN+="${_who}, ${_why}, and this runs on PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}; its sites' tasks will be refused. ${_fix}"$'\n'
+}
+# The pages of a site can be served by a PHP-FPM version its code cannot run
+# (fpm.info, a multi-fpm.info line, or the fallback for a version that is not
+# installed): the ltd worker lists each such site in the control folder's
+# .fpm-core.info, "<site> <x.y> <why>". A drush line aimed at a listed site
+# says so with the other warnings, so its output and every Aegir task log on
+# it carry the reason, whichever PHP the command line itself uses.
+_cpp_fpm_warn() {
+  local _s="${_CPP_NAME#@}" _l _v
+  [ "${_CPP_CTX}" = "site" ] && [ -n "${_s}" ] && [ -n "${_DRUSH_CLI_CTRL}" ] || return 0
+  _ctrl_file "${_DRUSH_CLI_CTRL}" .fpm-core.info
+  [ -n "${_CTRL_F}" ] || return 0
+  # the file is the account's to edit: only a line of the worker's shape is
+  # taken, printable and cut to its length, as it goes to the environment
+  while IFS= read -r -n 1024 _l; do
+    [ "${_l%% *}" = "${_s}" ] || continue
+    _l="${_l//[^[:print:]]/}"
+    _l="${_l#* }"
+    _v="${_l%% *}"
+    [[ "${_v}" =~ ^[5-9]\.[0-9]$ ]] || continue
+    _l="${_l#* }"
+    # shellcheck disable=SC2089 # message text for the task log, never run
+    _CPP_WARN+="The pages of @${_s} are served by PHP-FPM ${_v}, which its code cannot run: ${_l:0:300} (listed in ~/static/control/.fpm-core.info). Fix the code, or give the site a version that runs it in ~/static/control/multi-fpm.info."$'\n'
+    return 0
+  done < "${_CTRL_F}"
 }
 # Every drush line, right before its exec: what chose the PHP, the guard,
 # then the report. A tenant reads a NOTE when a line overrides the
@@ -1966,6 +2032,7 @@ _cpp_before_exec() {
     _CPP_FROM="${_CLI_WHY:-the server default}"
   fi
   [ "$1" = "composer" ] || _cpp_guard
+  [ "$1" = "drush" ] && _cpp_fpm_warn
   if _is_tenant; then
     if [ -n "${_CPP_V}" ] && [ "${_CPP_ACCT}" != "${DRUSH_PHP}" ]; then
       _cpp_rel "${_CPP_ROOT}"
