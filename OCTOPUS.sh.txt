@@ -181,6 +181,18 @@ export _BACKDROP_D="${_BACKDROP}-dev"
 export _BACKDROP_P="${_BACKDROP}-prod"
 export _BACKDROP_S="${_BACKDROP}-stage"
 
+###
+### Backdrop CMS with CiviCRM (BDC): one catalogue platform on the distro
+### shelf, civicrm_backdrop-<civicrm>-<backdrop>. staticbuild stamps its
+### <civicrm>-<backdrop> pair to distro/civicrm_backdrop.txt after the tarball;
+### _satellite_make resolves both versions from that stamp. The pair below is
+### only the fallback when the stamp cannot be read, and must name a published
+### platform.
+###
+export _BDC_V_FALLBACK=6.19.2-1.35.2
+export _BDC_V="${_BDC_V_FALLBACK%-*}"
+export _BDC_CORE_V="${_BDC_V_FALLBACK#*-}"
+
 export _SPINNER=NO
 export _T_BUILD=SRC
 export _USRG=users

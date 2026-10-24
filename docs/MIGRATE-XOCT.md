@@ -1260,3 +1260,10 @@ find /data/disk/o2 -type l -lname '/data/disk/o1/*' | head
   HTTP/1.0 registration-spam guard from false-flagging legitimate proxied access
   — which would otherwise all arrive as HTTP/1.0 at the origin — see
   [ABUSE-GUARD.md](ABUSE-GUARD.md).
+- **A refusal at the new host stays a refusal:** when the new host drops a
+  request (`return 444`: a banned address, a refused crawler, a probe for a
+  secret path), the proxy vhosts drop the visitor's connection too, instead of
+  answering 502. Only that case: a new host that is down (the proxy never
+  reached it), an answer whose headers do not fit, or any other failure still
+  answers 502. A barracuda upgrade adds the rule to proxy vhosts written before
+  it; `aegir2boa-stage2` writes it on a source whose nginx is 1.15.8 or newer.

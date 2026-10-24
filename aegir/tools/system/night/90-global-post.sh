@@ -540,9 +540,12 @@ _ghost_codebases_cleanup() {
     _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"
   done
   _CLD="/var/backups/ghost-codebases-cleanup"
-  for i in `dir -d /data/disk/*/distro/*/*/`; do
-    _CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
-      -type d -name vendor | sort 2>&1)
+  # A box with no distro/NNN/<codebase>/ tree leaves the glob unexpanded;
+  # skipping it keeps the nightly log free of a false "cannot access".
+  for i in /data/disk/*/distro/*/*/; do
+    [[ -d "${i}" ]] || continue
+    _CodebaseTest=$(find "${i}" -maxdepth 1 -mindepth 1 \
+      -type d -name vendor 2> /dev/null | sort)
     for _vendor in ${_CodebaseTest}; do
       _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
       ### The platform root is group-writable, so what is on disk there is

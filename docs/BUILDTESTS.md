@@ -20,7 +20,8 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
                                  # publish; or only the named build targets
   staticbuild build [name ...]   # build all, or only named targets
   staticbuild package [name ...] # clean + tar every platform in the day dir, or only the named
-                                 # (cores keep core/profiles, distros strip)
+                                 # (cores and the CiviCRM platforms keep core/profiles,
+                                 #  distros strip)
   staticbuild distribute [name ...]
                                  # copy the day dir's tarballs, or only the named, to
                                  # /var/www/static/{distro,core,dev/{dev,lts,pro}}
@@ -318,6 +319,7 @@ Distributions, published to `/var/www/static/distro`:
   commerce_base-2.40-10.1.8
   commerce_kickstart-5.1.0-11.4.11
   drupal_cms_installer-2.2.6-11.4.11
+  civicrm_drupal-6.19.2-11.4.11
   ezcontent-2.2.15-10.3.6
   farm-4.0.9-11.3.19
   localgov-4.0.5-11.4.11
@@ -369,8 +371,9 @@ family:
   staticbuild backdrop           # build + package + publish only the Backdrop family
 ```
 
-Five artefacts, always rebuilt at the latest upstream tag (pin any with the matching
-`_*_TAG` in the config block):
+Six artefacts, always rebuilt at the latest upstream tag (pin any with the matching
+`_*_TAG` in the config block), except `civicrm_backdrop`, which is built once per name
+(see CiviCRM platforms below):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
   release `backdrop.zip`.
@@ -392,6 +395,9 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   tar time: the `/core/` shelf is shared by every release, and the pre-bundle
   releases consuming that name probe only `modules/redis`. Published
   to `/var/www/static/core`.
+- **civicrm_backdrop** — the day's Backdrop core with CiviCRM for Backdrop in its root
+  `modules/`, published to `/var/www/static/distro` with its `civicrm_backdrop.txt`
+  stamp (see CiviCRM platforms below).
 - **bee** — native Backdrop CLI (`backdrop-contrib/bee`), from its latest git tag,
   packaged version-less as `bee.tar.gz` (`bee.php` at the root). Published to
   `/var/www/static/dev/{dev,lts,pro}` — every box pulls its own tree dir.
@@ -422,6 +428,58 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   records another release (`webform/ver-<tag>.info`). The new tree must test whole and
   carry `webform.info` and `webform.module` before it is swapped in, root-owned;
   `staticbuild check` surfaces upstream drift as the `bd-webform` row.
+
+## CiviCRM platforms
+
+Two catalogue platforms carry CiviCRM ready for a new site (the `BDC` and `DEC`
+symbols, built on a box only where the platform list names them). Both take the latest
+stable CiviCRM release from `https://latest.civicrm.org/stable.php` (pin one with
+`_CIVICRM_TAG`), keep core's install profiles (their sites install with `standard`),
+and go to `/var/www/static/distro`. `staticbuild check` shows the release as the
+`civicrm` row.
+
+- **civicrm_drupal** — a distribution target, built in `staticbuild all` and named
+  `civicrm_drupal-<civicrm>-<core>`: `drupal/recommended-project:^11`, then CiviCRM's
+  three Drupal packages at the release (`civicrm/civicrm-core`,
+  `civicrm/civicrm-packages`, `civicrm/civicrm-drupal-8`, which brings
+  `civicrm/civicrm-asset-plugin`), then Drush, after CiviCRM's own Drupal install
+  guide.
+
+  Dependency patching is on (`extra.enable-patching`) and a patch that does not
+  apply fails the build, since CiviCRM's packages patch their own dependencies; CiviCRM's
+  compile tasks run unattended (`extra.compile-mode all`). There is no older-core
+  fallback: the platform is the Drupal 11 flavour. The build fails unless the lock holds
+  `civicrm/civicrm-core` at the release, the module sits in `web/modules/contrib/civicrm`
+  and the asset plugin filled `web/libraries/civicrm` (core's `core/js/Common.js` and
+  the `packages` folder; an empty libraries folder fails it).
+
+  The fix step never moves the three CiviCRM
+  packages. It publishes like any distribution, lock guard included, and the catalogue
+  pins its name (`DEC` in AegirSetupC's arrays), so a new CiviCRM or core release needs a
+  pin bump, as the other Drupal 11 distributions do.
+- **civicrm_backdrop** — part of the Backdrop family, built in `staticbuild all` and
+  `staticbuild backdrop` right after `backdrop`, and named
+  `civicrm_backdrop-<civicrm>-<backdrop>`: the day's `backdrop-<ver>/` tree with the
+  official `civicrm-<ver>-backdrop.tar.gz` release unpacked into its root `modules/`,
+  where the add-on finds CiviCRM through the platform's module list.
+
+  The tarball is
+  checked against its line in the release's `civicrm-<ver>.SHA256SUMS` and must hold
+  nothing outside `civicrm/` before it is unpacked; any failure leaves no tree. Both
+  inputs of a name are fixed upstream releases, so a name already on the distro shelf
+  is not built again (`-f` does): a rebuild would pack new bytes under the same name,
+  which every idle copy on the boxes would fetch again.
+
+  Its `<civicrm>-<backdrop>` pair
+  is stamped to `distro/civicrm_backdrop.txt`, published after the tarball, only
+  while the shelf holds it and only as the pair root checked (a stamp the build user
+  rewrites after that check is not published); the boxes take both versions from that
+  stamp (or the `_BDC_V_FALLBACK` pair in `OCTOPUS.sh.txt` whole). It carries CiviCRM's own vendor
+  tree and no lock at its top, so it is copied as the Backdrop core is, outside the lock
+  guard and the advisory audits.
+
+Unpacked, `civicrm_backdrop` takes about 240 MB and 28,000 files and `civicrm_drupal`
+about 520 MB and 65,000 files; their tarballs are about 45 MB and 92 MB.
 
 ## Grav family
 
@@ -506,6 +564,7 @@ published to `/var/www/static/core`:
   https://www.drupal.org/project/social
   https://www.drupal.org/project/thunder
   https://www.drupal.org/project/varbase
+  https://latest.civicrm.org/stable.php
 ```
 
 ### Build them one by one and document results
@@ -738,10 +797,11 @@ Gzip the raw-core platforms first, keeping their `core/profiles`:
 ```
 
 Then strip the stock core profiles from the distributions (they ship their own
-install profile), then gzip the remaining (distribution) platforms:
+install profile; the CiviCRM platforms keep core's), then gzip the remaining
+(distribution) platforms:
 
 ```sh
-  for d in */ ; do case "${d%/}" in drupal-*|backdrop-[0-9]*) continue ;; esac ; rm -rf "${d%/}"/*/core/profiles/* ; done
+  for d in */ ; do case "${d%/}" in drupal-*|backdrop-[0-9]*|civicrm_*) continue ;; esac ; rm -rf "${d%/}"/*/core/profiles/* ; done
   for d in */ ; do case "${d%/}" in drupal-*|backdrop-[0-9]*) continue ;; esac ; tar -czf "${d%/}.tar.gz" "${d%/}" ; done
 ```
 
