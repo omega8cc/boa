@@ -1159,6 +1159,18 @@ _nginx_wild_ssl_fleet_gate() {
   return 0
 }
 
+# True when the installed nginx takes `keepalive 0` in an upstream block:
+# from 1.29.7 on, the release that keeps idle upstream connections by
+# default; an older one rejects the value (and keeps none anyway). An
+# unreadable version reads as older.
+_nginx_wild_ssl_keepalive_ok() {
+  local _v
+  _v=$(/usr/sbin/nginx -v 2>&1 | grep -oE "nginx/[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)
+  _v="${_v#nginx/}"
+  [ -n "${_v}" ] || return 1
+  [ "$(printf '%s\n%s\n' "1.29.7" "${_v}" | sort -V | head -n 1)" = "1.29.7" ]
+}
+
 _nginx_wildcard_ssl_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_wildcard_ssl_install"
@@ -1182,6 +1194,8 @@ _nginx_wildcard_ssl_install() {
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
     [ -e "/etc/nginx/no_ktls.conf" ] \
       && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST} &> /dev/null
+    _nginx_wild_ssl_keepalive_ok \
+      || sed -i "/^[[:space:]]*keepalive[[:space:]]\+0;/d" ${_WILD_SSL_VHOST} &> /dev/null
     if [ -e "${_locCnf}/global/global.inc" ]; then
       ### Deploy the full global include set (per-core chain + dispatcher);
       ### the dispatcher alone would be inert without the chain.
@@ -1249,9 +1263,14 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
-    ### A front whose upstream keeps idle connections tries a refusal again
-    ### on each of them.
-    if ! grep -qE '^[[:space:]]*keepalive[[:space:]]+0;' ${_WILD_SSL_VHOST} 2> /dev/null; then
+    ### Keep the upstream's keepalive line in step with the nginx reading it,
+    ### both ways. From 1.29.7 an upstream keeps idle connections by default,
+    ### and with no retry a request sent on one the site had just closed is
+    ### lost; an older nginx keeps none and rejects the line.
+    local _ka_want=NO _ka_front=NO
+    _nginx_wild_ssl_keepalive_ok && _ka_want=YES
+    grep -qE '^[[:space:]]*keepalive[[:space:]]+0;' ${_WILD_SSL_VHOST} 2> /dev/null && _ka_front=YES
+    if [ "${_ka_want}" != "${_ka_front}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: nginx_wild_ssl.conf proxy needs upstream keepalive update..."
       fi
@@ -1294,11 +1313,32 @@ _nginx_wildcard_ssl_install() {
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
+      ### The front in place is kept until the new one tests clean: a front
+      ### nginx rejects would leave it down at the next restart.
+      local _wildPrev=""
+      _wildPrev=$(mktemp /var/backups/.boa-wild-ssl.XXXXXX 2> /dev/null)
+      if [ -n "${_wildPrev}" ] && ! cp -af ${_WILD_SSL_VHOST} "${_wildPrev}"; then
+        rm -f "${_wildPrev}"
+        _wildPrev=""
+      fi
       cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
       _nginx_wild_ssl_fleet_gate
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
       [ -e "/etc/nginx/no_ktls.conf" ] \
         && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST}
+      [ "${_ka_want}" = "YES" ] \
+        || sed -i "/^[[:space:]]*keepalive[[:space:]]\+0;/d" ${_WILD_SSL_VHOST}
+      if ! nginx -t > /dev/null 2>&1; then
+        if [ -s "${_wildPrev}" ]; then
+          cp -af "${_wildPrev}" ${_WILD_SSL_VHOST}
+          _msg "ALRT: nginx_wild_ssl.conf proxy update does not test clean, the previous front is back"
+          nginx -t > /dev/null 2>&1 \
+            || _msg "ALRT: the nginx config does not test clean with the previous front either"
+        else
+          _msg "ALRT: nginx_wild_ssl.conf proxy update does not test clean, and no copy of the previous front was kept"
+        fi
+      fi
+      [ -n "${_wildPrev}" ] && rm -f "${_wildPrev}"
     fi
   fi
 }
