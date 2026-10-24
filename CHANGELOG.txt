@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * The php monitor's max_children check missed the hits that followed
+      a NUL byte in what a PHP-FPM master log gained since its last pass,
+      and the PHP code of any site can write one there through its
+      stderr: grep read the rest as binary, and those hits were never
+      read again, so a pool out of workers could raise no note. The log
+      is now read as text whatever bytes it holds.
+
     * A barracuda pass could restart Nginx twice at once: the Nginx monitor
       took the gap of the pass's own restart, before the new master writes
       its pid file, for an outage and started a second Nginx, and the
@@ -1980,6 +1987,24 @@
       the backend's own, and a 444 of the wildcard SSL front with
       ups="502" is a backend refusal it dropped. The fields are appended,
       so the web IDS and every other reader of the log read it as before.
+
+    * A request PHP-FPM cuts at its time limit (request_terminate_timeout,
+      180 s at most) was logged in the master log and nowhere else, so a
+      cron.php cut at every run, its work never done, could go unseen for
+      weeks. On every pass (every 5 seconds on most servers) the php
+      monitor now reads the time-out lines the master logs gained, from an
+      offset of its own (its first run starts at their ends and counts no
+      earlier cut), and records each cut for the account whose pool and
+      tree it is: the time, how long it ran, the script and the request as
+      PHP-FPM logged it, only its method and first path segment, never the
+      query string. The ltd worker lists a script cut three times or more
+      in 24 hours in ~/static/control/.fpm-timeout.info, with the count,
+      how long it ran, the first and last cut and the last request, and
+      tells the operator once a day; the file goes when none is left. No
+      site is named: PHP-FPM's line has none, and a guess from the access
+      log or the vhosts could hand another tenant's name or request to the
+      account; the script's path names the platform. Nothing is stopped or
+      changed.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
