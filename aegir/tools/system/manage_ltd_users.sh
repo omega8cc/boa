@@ -3311,8 +3311,8 @@ _ltd_platform_report() {
 # for the login, cut to what is its own: the version digits of cli.info and
 # fpm.info, the cli-per-platform.info lines about its granted platforms or its
 # client's sites (every other line left blank, so websh names the same line
-# numbers as for the account's file), the multi-fpm.info lines of its client's
-# sites. A copy exists exactly while the main login's websh can read the
+# numbers as for the account's file), the multi-fpm.info and .fpm-core.info
+# lines of its client's sites. A copy exists exactly while the main login's websh can read the
 # account's file (read by the main login, never by root; a pass that cannot
 # tell leaves the copy as it was), one file per
 # login in a root-only directory per name (0711: a login reaches its own file
@@ -3322,7 +3322,7 @@ _ltd_platform_report() {
 # removes what a gone login left. websh reads a copy only when the account's
 # own file exists and cannot be opened.
 _LTD_CLI_DIR="/var/backups/ltd/.cli"
-_LTD_CLI_FILES="cli.info cli-per-platform.info fpm.info multi-fpm.info"
+_LTD_CLI_FILES="cli.info cli-per-platform.info fpm.info multi-fpm.info .fpm-core.info"
 _ltd_cli_dirs() {
   local _d=""
   for _d in "" ${_LTD_CLI_FILES}; do
@@ -3550,6 +3550,15 @@ _ltd_platform_cli_copies() {
     _ltd_cli_put "${_acct}" multi-fpm.info YES "${_out}"
   elif [ "${_has}" = "3" ]; then
     _ltd_cli_put "${_acct}" multi-fpm.info NO ""
+  fi
+  # the page check's lines about the client's own sites, as written
+  _ltd_cli_src .fpm-core.info "${_src}"
+  _has="$?"
+  if [ "${_has}" = "0" ]; then
+    _out=$(LC_ALL=C awk -v s="${_sites}" '{ if ($1 != "" && index(s, " " $1 " ")) print }' "${_src}")
+    _ltd_cli_put "${_acct}" .fpm-core.info YES "${_out}"
+  elif [ "${_has}" = "3" ]; then
+    _ltd_cli_put "${_acct}" .fpm-core.info NO ""
   fi
   rm -f "${_src}"
 }
@@ -7084,6 +7093,8 @@ _manage_user() {
         _ltd_ctrl_put cli.info 5.6
         fi
       fi
+      # before the panel's pool and dispatcher move to this pass's PHP
+      _ltd_hm_core_heal "${_THIS_HM_PLR}"
       _nrCheck=
       _ltdNgxReloaded=
       _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
@@ -7114,6 +7125,7 @@ _manage_user() {
         fi
       fi
       _site_socket_inc_gen
+      _ltd_fpm_core_check
       ### reload nginx once per pass, and only when this pass changed the
       ### account's FPM includes: nginx reads them on reload alone, and a
       ### reload on every pass reset every HTTP/3 transfer in flight
@@ -7609,6 +7621,334 @@ _ltd_notice_daily() {
   fi
   _ltd_notice "$@"
 }
+# BOA's own copy of Drupal 7 from 7.79.1 to 7.92.1 (its VERSION reads 7.79 to
+# 7.92) and of Pressflow 6 at 6.59.1 and 6.60.1 declare _drupal_error_handler()
+# with a required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning or deprecation (on 8.4, one while a Drupal 7 core loads its phar
+# wrapper, on every request) throws an ArgumentCountError and the request
+# dies before Drupal can log it. For these cores that line is all that stands
+# between them and PHP 8. BOA's own platforms share their core from the store,
+# /data/all/000/core, so every such core there gets that argument made
+# optional ($context = NULL), as the later releases did, before any pool of
+# this pass switches PHP: a box upgraded from an older release, a core a
+# migration brought along, a site moved to PHP 8. Only that exact line
+# changes, only in a store core whose directories and file are root's, none
+# of them a link; one that is not wholly root's is left alone and reported. A
+# core older than these (Drupal 7 below 7.79, Drupal 6 below 6.58) needs more
+# than one line on PHP 8 and is not touched: the page check below names its
+# sites. A core in an account's own platform is never touched either: websh
+# refuses its drush lines on PHP 8 and says what to change. A store that is
+# not wholly root's may hold any name, so the files are read only when they
+# are regular and no link, never past the first megabyte, and time-bound.
+_ltd_store_core_head() {
+  timeout -k 2 10 dd if="${1}" iflag=nofollow,nonblock,fullblock bs="${2}" count=1 \
+    status=none 2> /dev/null
+}
+_ltd_store_core_heal() {
+  local _c _b _m _v _o _ok _why
+  _o='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  for _c in /data/all/000/core/drupal-7.* /data/all/000/core/pressflow-6.*; do
+    case "${_c##*/}" in
+      drupal-7.*) _b="${_c}/includes/bootstrap.inc"; _m="${_b}" ;;
+      *)
+        _b="${_c}/includes/common.inc"; _m="${_c}/modules/system/system.module"
+        [ -f "${_m}" ] && [ ! -L "${_m}" ] && [ ! -L "${_c}/modules" ] \
+          && [ ! -L "${_c}/modules/system" ] || continue
+        ;;
+    esac
+    [ -f "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L "${_c}" ] && [ ! -L "${_c}/includes" ] || continue
+    _ltd_store_core_head "${_b}" 1048576 | grep -qxF "${_o}" || continue
+    _v=$(_ltd_store_core_head "${_m}" 16384 \
+      | sed -n "s/^define('VERSION', '\([67]\.[0-9]*\)');.*/\1/p" | head -n 1)
+    case "${_c##*/}" in
+      drupal-7.*) [[ "${_v}" =~ ^7\.([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" -ge 79 ] && [ "${BASH_REMATCH[1]}" -le 92 ] || continue ;;
+      *) [[ "${_v}" =~ ^6\.(58|59|60)$ ]] || continue ;;
+    esac
+    _ok=NO
+    _why="is left alone: a directory on its path, or the file, is not root's"
+    [ "$(stat -L -c %u "${_c%/*/*}" "${_c%/*}" "${_c}" "${_c}/includes" "${_b}" 2> /dev/null | sort -u)" = "0" ] && _ok=YES
+    if [ "${_ok}" = "YES" ]; then
+      sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_b}" &> /dev/null
+      _ltd_store_core_head "${_b}" 1048576 | grep -qxF "${_o}" || {
+        echo "INFO: shared core ${_c}: error handler made safe for PHP 8"
+        continue
+      }
+      _why="cannot be rewritten (immutable or read-only?)"
+    fi
+    _ltd_notice_daily "store-core-heal-${_c##*/}" \
+      "the shared core ${_c} keeps an error handler PHP 8 cannot call" \
+      "its sites fail on PHP 8: ${_b} ${_why}"
+  done
+}
+# The same line in an account's control panel core (a panel last upgraded on
+# an older release): its pool and its dispatcher run on the box's PHP 8 from
+# this pass on, and only the Octopus upgrade heals it there, so an account the
+# upgrade has not reached yet, or skips, kept a panel that answered 500. Made
+# optional as the account, inside the panel's real includes/ directory, on the
+# root its hostmaster alias names ($1, already held to one of the account's
+# own aegir/distro/<n> trees). The panel's files are the account's, and a
+# name the account can change is read without following a link or blocking.
+_ltd_hm_core_heal() {
+  local _r="${1}" _o
+  _o='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  [ -n "${_r}" ] && [ -d "${_r}/includes" ] && [ ! -L "${_r}/includes" ] || return 0
+  _ltd_read_in "${_r}/includes" bootstrap.inc | grep -qxF "${_o}" || return 0
+  _ltd_in_real_dir "${_r}/includes" _ltd_as_owner_here "${_USER}:${_usrGroup}" \
+    timeout -k 2 20 sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' ./bootstrap.inc &> /dev/null
+  if _ltd_read_in "${_r}/includes" bootstrap.inc | grep -qxF "${_o}"; then
+    _ltd_notice_daily "hm-core-heal-${_USER}" \
+      "the control panel core of ${_USER} keeps an error handler PHP 8 cannot call" \
+      "${_r}/includes/bootstrap.inc: the panel fails on PHP 8 until its Octopus upgrade"
+  else
+    echo "INFO: control panel core ${_r} of ${_USER}: error handler made safe for PHP 8"
+  fi
+}
+# A bounded read of a regular file for the page check, as the account: a FIFO,
+# a device or a file swapped underneath holds the judge ten seconds at most.
+# $1 = the file, $2 = the most bytes read (16384).
+_ltd_fpm_head() {
+  [ -f "${1}" ] || return 1
+  timeout -k 2 10 dd if="${1}" iflag=nonblock,fullblock bs="${2:-16384}" count=1 \
+    status=none 2> /dev/null
+}
+# Why a codebase cannot run on a PHP-FPM version, the pairs websh refuses on
+# the command line (one line, empty when it can): a Composer floor in
+# vendor/composer/platform_check.php above it, a Drupal 8+ core's own minimum
+# above it, any Drupal 8, Drupal 7 below 7.79 or Drupal 6 below 6.58 on PHP
+# 8.0+, and a Drupal 7 (7.79-7.92) or Pressflow 6 (6.58-6.60) core that still
+# declares the error handler PHP 8 cannot call. $1 = the site's root, $2 = the
+# version (NN). Runs as the account, inside _ltd_fpm_judge.
+_ltd_fpm_why() {
+  local _r="${1}" _v="${2}" _app="" _c="" _fl="" _mj _mn _o
+  _o='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -f "${_r}/vendor/composer/platform_check.php" ]; then
+    _app="${_r}"
+  else
+    case "${_r##*/}" in
+      web|docroot|html) [ -f "${_r%/*}/vendor/composer/platform_check.php" ] && _app="${_r%/*}" ;;
+    esac
+  fi
+  if [ -n "${_app}" ]; then
+    _c=$(_ltd_fpm_head "${_app}/vendor/composer/platform_check.php")
+    if [[ "${_c}" =~ PHP_VERSION_ID[[:space:]]*\>=[[:space:]]*([0-9]{5}) ]]; then
+      _fl=$(( 10#${BASH_REMATCH[1]} / 100 ))
+      _fl="${_fl:0:1}${_fl:2:1}"
+      if [ "${_v}" -lt "${_fl}" ]; then
+        echo "its vendor/composer/platform_check.php needs PHP ${_fl:0:1}.${_fl:1:1} or newer"
+        return 0
+      fi
+    fi
+  fi
+  if [ -f "${_r}/core/lib/Drupal.php" ]; then
+    _c=$(_ltd_fpm_head "${_r}/core/lib/Drupal.php")
+    [[ "${_c}" =~ const[[:space:]]+VERSION[[:space:]]*=[[:space:]]*\'([0-9]+)\.([0-9]+) ]] || return 0
+    _mj="${BASH_REMATCH[1]}"
+    _mn="${BASH_REMATCH[2]}"
+    if [ -z "${_app}" ]; then
+      _fl=""
+      if [[ "${_c}" =~ const[[:space:]]+MINIMUM_PHP[[:space:]]*=[[:space:]]*\'([0-9])\.([0-9])[^0-9] ]]; then
+        _fl="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+      else
+        _c=$(_ltd_fpm_head "${_r}/core/includes/bootstrap.inc")
+        [[ "${_c}" =~ DRUPAL_MINIMUM_PHP\'?[[:space:]]*[=,][[:space:]]*\'([0-9])\.([0-9])[^0-9] ]] \
+          && _fl="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+      fi
+      if [[ "${_fl}" =~ ^[5-9][0-9]$ ]] && [ "${_v}" -lt "${_fl}" ]; then
+        echo "Drupal ${_mj}.${_mn} needs PHP ${_fl:0:1}.${_fl:1:1} or newer"
+        return 0
+      fi
+    fi
+    [ "${_mj}" = "8" ] && [ "${_v}" -ge 80 ] && echo "Drupal ${_mj}.${_mn} cannot run on PHP 8.0 or newer"
+    return 0
+  fi
+  [ "${_v}" -ge 80 ] || return 0
+  _c=$(_ltd_fpm_head "${_r}/includes/bootstrap.inc")
+  if [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'7\.([0-9]+) ]]; then
+    _mn="${BASH_REMATCH[1]}"
+    if [ "$(( 10#${_mn} ))" -lt 79 ]; then
+      echo "Drupal 7.${_mn} cannot run on PHP 8.0 or newer"
+    elif [ "$(( 10#${_mn} ))" -le 92 ] \
+      && _ltd_fpm_head "${_r}/includes/bootstrap.inc" 1048576 | grep -qxF "${_o}"; then
+      echo "Drupal 7.${_mn}: its includes/bootstrap.inc declares an error handler PHP 8.0 or newer cannot call"
+    fi
+    return 0
+  fi
+  _c=$(_ltd_fpm_head "${_r}/modules/system/system.module")
+  [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'6\.([0-9]+) ]] || return 0
+  _mn="$(( 10#${BASH_REMATCH[1]} ))"
+  if [ "${_mn}" -lt 58 ]; then
+    echo "Drupal 6.${_mn} cannot run on PHP 8.0 or newer"
+  elif [ "${_mn}" -le 60 ] \
+    && _ltd_fpm_head "${_r}/includes/common.inc" 1048576 | grep -qxF "${_o}"; then
+    echo "Drupal 6.${_mn}: its includes/common.inc declares an error handler PHP 8.0 or newer cannot call"
+  fi
+}
+# The PHP-FPM version each site's own include names, and the default
+# include's, read as root: the worker writes a site's include as root in the
+# account's post.d, 0600 under root's usual umask, which the account itself
+# cannot read. One line
+# each, "<site> <NN>", and "- <NN>" for the default include; every name is
+# read inside the real directory, never through a link, and bounded.
+_ltd_fpm_served() {
+  local _inc="${_dscUsr}/config/server_master/nginx/post.d" _f _s _v
+  [ -d "${_inc}" ] || return 0
+  while IFS= read -r _f; do
+    _f="${_f#./}"
+    case "${_f}" in
+      fpm_include_default.inc) _s="-" ;;
+      fpm_include_site_*.inc) _s="${_f#fpm_include_site_}"; _s="${_s%.inc}" ;;
+      *) continue ;;
+    esac
+    [[ "${_s}" == "-" || "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
+    _v=$(_ltd_read_in "${_inc}" "${_f}" \
+      | sed -n 's/.*user_socket "[^"]*\.\([0-9][0-9]\)".*/\1/p' | head -n 1)
+    [[ "${_v}" =~ ^[5-9][0-9]$ ]] && printf '%s\n' "${_s} ${_v}"
+  done < <(_ltd_in_real_dir "${_inc}" find . -maxdepth 1 -type f -name 'fpm_include_*.inc' \
+    2> /dev/null | head -n 5000)
+}
+# Run as the account: every site of it whose codebase cannot run on the
+# PHP-FPM version that serves it, one line each, "<site> <x.y> <why>", and
+# "# <the site's root>" for every site judged, whose files decide it. $1 =
+# the account's home, $2 = the version its sites get when no include names
+# one (NN); on stdin the versions the includes name, from _ltd_fpm_served.
+# The version that serves a site is the one its own include names, else the
+# default include's (multi-FPM mode), else $2; the control panel is served
+# from a pool of its own and is not judged here.
+_ltd_fpm_judge() {
+  local _h="${1}" _d="${2}" _a _c _s _r _v _w _df=""
+  local -A _sv=()
+  while read -r _s _v; do
+    [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
+    if [ "${_s}" = "-" ]; then
+      _df="${_v}"
+    elif [[ "${_s}" =~ ^[a-z0-9.-]+$ ]]; then
+      _sv["${_s}"]="${_v}"
+    fi
+  done
+  for _a in "${_h}"/.drush/*.alias.drushrc.php; do
+    [ -f "${_a}" ] && [ ! -L "${_a}" ] || continue
+    _c=$(_ltd_fpm_head "${_a}")
+    [[ "${_c}" =~ \'context_type\'[[:space:]]*=\>[[:space:]]*\'site\' ]] || continue
+    [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]] || continue
+    _r="${BASH_REMATCH[1]}"
+    _r="${_r%/}"
+    [[ "${_r}" == /* && "${_r}" != *$'\n'* ]] || continue
+    _s="${_a##*/}"
+    _s="${_s%.alias.drushrc.php}"
+    [[ "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
+    case "${_s}" in
+      hostmaster|hm) continue ;;
+    esac
+    case "${_r}" in
+      "${_h}"/aegir/*) continue ;;
+    esac
+    _v="${_sv[${_s}]:-${_df:-${_d}}}"
+    [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
+    _w=$(_ltd_fpm_why "${_r}" "${_v}")
+    [ -n "${_w}" ] && printf '%s\n' "${_s} ${_v:0:1}.${_v:1:1} ${_w}"
+    printf '%s\n' "# ${_r}"
+  done
+}
+# The page check's inputs, as one sum: the account's site aliases, its FPM
+# includes, its default version ($1), the files that decide each site it
+# judged last time ($2 = their roots, one a line), taken through a link as
+# the judge reads them, so that a change to a site's code is seen on the
+# next pass, and the check's own code (without its comments), so that a new
+# worker judges every account again on its first pass instead of a day later.
+_ltd_fpm_sig() {
+  local _f _fs=()
+  while IFS= read -r _f; do
+    [[ "${_f}" == /* ]] || continue
+    _fs+=("${_f}/includes/bootstrap.inc" "${_f}/includes/common.inc" \
+      "${_f}/modules/system/system.module" "${_f}/core/lib/Drupal.php" \
+      "${_f}/core/includes/bootstrap.inc" "${_f}/vendor/composer/platform_check.php" \
+      "${_f%/*}/vendor/composer/platform_check.php")
+  done < <(head -n 1000 "${2}" 2> /dev/null)
+  {
+    stat -c '%n %i %Y %s' -- "${_dscUsr}"/.drush/*.alias.drushrc.php 2> /dev/null
+    _ltd_ngx_fpm_fp
+    echo "${1}"
+    [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
+    declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
+      _ltd_fpm_core_check
+  } | md5sum | cut -d' ' -f1
+}
+# The judge, run as the account and cut off after two minutes, given the
+# versions the includes name on stdin. setpriv, not su: su starts its shell
+# in a session of its own, where the timeout cannot reach what the shell
+# started, and a child left behind holds the output open. $1 = the default
+# version (NN).
+_ltd_fpm_judge_as() {
+  local _uid _gid _sv
+  _uid=$(id -u -- "${_USER}" 2> /dev/null)
+  _gid=$(id -g -- "${_USER}" 2> /dev/null)
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 125
+  _sv=$(_ltd_fpm_served)
+  timeout -k 10 120 setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
+    env -i PATH="/usr/local/bin:/usr/bin:/bin" /bin/bash \
+    -c "$(declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_judge); _ltd_fpm_judge $(printf '%q' "${_dscUsr}") ${1}" \
+    2> /dev/null <<< "${_sv}"
+}
+# The page check: nothing stops a PHP-FPM version from serving a site whose
+# code cannot run on it (fpm.info, a multi-fpm.info line, or the fallback
+# when the version asked for is not installed), and such a site then answers
+# 500 on every page with nothing logged. The account's sites are judged as
+# the account (it reads its own aliases and platforms, every read bounded)
+# whenever the inputs may have changed -- its site aliases, the FPM includes,
+# its default version, the files that decide each site -- and once a day.
+# The sum kept is the one taken before the judge ran, so a change made while
+# it ran is judged on the next pass; when the sites' roots were not the ones
+# summed, there is no sum and the next pass judges again with them.
+# A run cut off after two minutes is not repeated before a change or a day:
+# a name the account planted must not hold up every pass of the box. The
+# sites found are listed, with
+# the version and the reason, in ~/static/control/.fpm-core.info for the
+# account (websh shows a site's line in its drush output and task logs), and
+# in a daily notice for the operator; the file goes when none is left.
+# Nothing is held back or switched: the fix is the codebase's, or a
+# multi-fpm.info line for a version that can run it.
+_ltd_fpm_core_check() {
+  local _st="/var/backups/ltd/fpmcore" _sig _old _age _out _rc _d _n _ro _rn
+  mkdir -p "${_st}" && chmod 700 "${_st}"
+  _d=$(_ltd_read_in "${_dscUsr}/log" fpm.txt | tr -cd '0-9')
+  [[ "${_d}" =~ ^[5-9][0-9]$ ]] || _d=84
+  _sig=$(_ltd_fpm_sig "${_d}" "${_st}/${_USER}.roots")
+  _old=$(head -c 64 "${_st}/${_USER}.sig" 2> /dev/null)
+  _age=$(stat -c %Y "${_st}/${_USER}.sig" 2> /dev/null)
+  if [ "${_sig}" = "${_old}" ] && [[ "${_age}" =~ ^[0-9]+$ ]] \
+    && [ "$(( $(date +%s) - _age ))" -lt 86400 ]; then
+    return 0
+  fi
+  _out=$(_ltd_fpm_judge_as "${_d}")
+  _rc="$?"
+  if [ "${_rc}" -ge 124 ]; then
+    echo "${_sig}" > "${_st}/${_USER}.sig"
+    echo "ALRT: the page check of ${_USER} did not finish; ${_dscUsr}/static/control/.fpm-core.info is left as it was"
+    _ltd_notice_daily "fpm-core-timeout-${_USER}" \
+      "the page check of ${_USER} did not finish" \
+      "it ran out of time or could not run as the account; it is judged again when its sites change, or in a day"
+    return 0
+  fi
+  _ro=$(head -n 1000 "${_st}/${_USER}.roots" 2> /dev/null)
+  _rn=$(printf '%s\n' "${_out}" | sed -n 's/^# \(\/.*\)$/\1/p' | LC_ALL=C sort -u | head -n 1000)
+  if [ "${_rn}" = "${_ro}" ]; then
+    echo "${_sig}" > "${_st}/${_USER}.sig"
+  else
+    printf '%s\n' "${_rn}" > "${_st}/${_USER}.roots"
+    rm -f "${_st}/${_USER}.sig"
+  fi
+  _out=$(printf '%s\n' "${_out}" | grep -E '^[a-z0-9.-]+ [5-9]\.[0-9] .' | head -n 500)
+  if [ -n "${_out}" ]; then
+    _n=$(printf '%s\n' "${_out}" | wc -l)
+    echo "ALRT: ${_n} site(s) of ${_USER} are served by a PHP their code cannot run, see ${_dscUsr}/static/control/.fpm-core.info"
+    _ltd_ctrl_put .fpm-core.info "${_out}"
+    _ltd_notice_daily "fpm-core-${_USER}" \
+      "${_n} site(s) of ${_USER} are served by a PHP their code cannot run" \
+      "$(printf '%s\n' "${_out}" | head -n 5 | tr '\n' ';')"
+  else
+    _ltd_ctrl_rm .fpm-core.info
+  fi
+}
 # The process table of this pass, read once and within a minute: a read
 # that fails or runs out of time counts as an import of every account
 # running ("tool ?") for the reaper, the safe side there.
@@ -7950,6 +8290,8 @@ else
   # before the account loop, which skips a frozen account: one the route
   # clears rejoins this very pass
   _ltd_freeze_route >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  # before the account loop, which switches the pools' PHP
+  _ltd_store_core_heal >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
     _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
