@@ -22,9 +22,13 @@ In hosted BOA environments, Node/NPM support is available only on dedicated syst
 
 # Security Considerations for Running PHP by Name
 
-Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php86`; any other account typing one gets lshell's own refusal.
+Outside a Composer run, only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php86`; any other account typing one gets lshell's own refusal.
 
-A tool the account runs can also hand `/bin/sh` a command line, a Composer or npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account." A Composer `@php` script entry is one of those.
+A tool the account runs can also hand `/bin/sh` a command line, an npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account."
+
+Composer is the exception. Inside a Composer run every account runs PHP by name: an `@php` script entry, a compile task of CiviCRM's packages, a `php` line in the project's own `composer.json` scripts, or a tool one of those starts. Composer already runs its plugins and PHP callback scripts inside its own process, so refusing its children stopped real builds without closing anything. Outside a Composer run, PHP typed in the shell or started by any other tool stays refused.
+
+The wrapper recognises the run by an ancestor process of the same account, up to eight steps up, whose program is one of the server's PHP builds (`/opt/phpNN/bin/php` or `/usr/bin/php`) running `/usr/local/bin/composer` (or BOA's `/usr/bin/composer` link to it), whether the wrapper started that Composer or it was started by its path. A script line such as `XDEBUG_MODE=off php vendor/bin/phpunit` is still refused, since the wrapper refuses a `NAME=value` word in front of `php`, and the refusal fails the Composer script; set the ini value with PHP's own `-d` option instead (`php -d xdebug.mode=off vendor/bin/phpunit`).
 
 Drush, vdrush, bee and Composer keep working: the wrapper starts them itself on the PHP version the account chose. A Drush launcher at the head of a line that names an interpreter runs on that version too. A Composer `@composer` entry and `grav composer` run Composer on the PHP they name when it is one of the server's `/opt/phpNN/bin/php` builds. Members keep PHP by name while the box's `/etc/lshell.conf` carries the `phpNN` aliases.
 
