@@ -387,9 +387,10 @@ or an answer whose headers do not fit the front's buffer. That buffer takes 64 K
 allocates while `proxy_buffering` is off); a site's own vhost takes up to 512 KB on port 80
 (`fastcgi_buffer_size 512k`), so an answer between the two works over HTTP and is a 502 over
 HTTPS through the front. The front's `upstream` keeps no idle
-connection to the site (`keepalive 0`): since nginx 1.29.7 an `upstream` block keeps 32 by
-default, and a refusal that arrived on a kept connection was tried again on each of them, up
-to 33 backend lines for one request.
+connection to the site (`keepalive 0`). Since nginx 1.29.7 an `upstream` block keeps 32 by
+default, and with no second try a request sent on a kept connection the site had just closed
+would be lost, dropped like a refusal. The installer writes the line only for nginx 1.29.7 and
+newer; an older nginx keeps no idle connection and rejects it.
 
 A control panel's own HTTPS proxy (`pre.d/z_<panel>_ssl_proxy.conf`) drops the same way in its
 `location /`, with the same test and the same 64 KB header buffer. It needs no

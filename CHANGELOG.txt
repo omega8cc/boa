@@ -76,11 +76,12 @@
       Both fronts now take up to 64 KB of headers; an answer over that
       is still a 502.
 
-    * The wildcard SSL front tried a request its site refused once more
-      for every idle connection it kept to the site, up to 33 times under
-      load: since nginx 1.29.7 an upstream keeps 32 idle connections by
-      default. The front now keeps none and opens one loopback connection
-      per request, as it did before.
+    * The wildcard SSL front kept idle connections to its sites, nginx's
+      default since 1.29.7, and it no longer tries a request twice: a
+      request sent on a connection the site had just closed was lost,
+      dropped as if refused. The front now keeps none and opens one
+      loopback connection per request, as before 1.29.7; under an older
+      nginx, which rejects the setting, it is left out.
 
     * The wildcard SSL front answers 502 again where the failure is real:
       nothing listening behind it, or a site's answer whose headers do not
