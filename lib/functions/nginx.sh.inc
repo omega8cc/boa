@@ -1914,7 +1914,7 @@ _nginx_ssl_proxy_header_buffer() {
     [ "$(grep -cE '^    proxy_set_header[[:space:]]+Host[[:space:]]' "${_p}")" = "1" ] || continue
     cp -af "${_p}" "${_bak}/" || continue
     awk -v buf="${_bak}/.buf" '
-      /^    proxy_set_header[[:space:]]+Host[[:space:]]/ { while ((getline _l < buf) > 0) print _l }
+      /^    proxy_set_header[ \t]+Host[ \t]/ { while ((getline _l < buf) > 0) print _l }
       { print }' "${_bak}/${_p##*/}" > "${_p}"
     _any="yes"
   done
