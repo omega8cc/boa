@@ -2560,6 +2560,17 @@
 
 @=> Changes and Upgrades
 
+    * PHP that runs inside a Composer run, such as an @php script entry, a
+      compile task of CiviCRM's packages or a php line in the project's own
+      composer.json scripts, runs for every shell account, not only for the
+      ltd-shell-more group: building a Drupal CiviCRM platform or a Drupal
+      CMS project in ~/static no longer stops with "Running PHP directly is
+      not available on this account". A script line with a NAME=value word
+      in front of php is still refused, and the Composer script then fails
+      instead of passing with nothing run: PHP's own -d option sets an ini
+      value instead. Outside a Composer run, PHP typed in the shell or
+      started by any other tool is still for that group only.
+
     * A Drupal CMS site the panel installs stores its anonymous usage data
       choice as off, whatever its Drupal CMS version or site template: from
       Drupal CMS 2.2.5 a site with no stored choice sends it from cron. On
