@@ -148,6 +148,12 @@ _stop_nginx_processes() {
   # process name would take a plain `nginx -t` or `-s reload` in flight with it.
   local _mpid _w=0
   _mpid=$( { tr -dc '0-9' < /run/nginx.pid; } 2>/dev/null )
+  # With the pidfile missing or naming something else, the one master the
+  # box lists still gets its QUIT before the -9.
+  if [ -z "${_mpid}" ] || [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" != "nginx" ]; then
+    _mpid=$(_nginx_master_pids)
+    [ "$(printf '%s\n' "${_mpid}" | grep -c .)" -eq 1 ] || _mpid=
+  fi
   # The number must still BE nginx: a pidfile left by a -9'd master outlives
   # its owner on tmpfs, and a recycled pid would receive root's SIGQUIT.
   if [ -n "${_mpid}" ] \
@@ -160,6 +166,34 @@ _stop_nginx_processes() {
     done
   fi
   pkill -9 -f '^nginx: ' || true
+}
+
+_nginx_error_log_aside() {
+  # error.log to a dated name no move this minute has taken: a restart and a
+  # bind stand-down in the same minute must never overwrite each other's copy.
+  local _base _to _n=1
+  [ -e "/var/log/nginx/error.log" ] || return 0
+  _base="/var/log/nginx/$(date +%y%m%d-%H%M)-error.log"
+  _to="${_base}"
+  while [ -e "${_to}" ] && [ "${_n}" -lt 100 ]; do
+    _to="${_base}.${_n}"
+    _n=$(( _n + 1 ))
+  done
+  mv -f /var/log/nginx/error.log "${_to}"
+}
+
+_nginx_start_in_flight() {
+  # A start or restart in flight is not an outage: until Nginx has loaded
+  # its config, bound its ports and daemonized it carries no master title
+  # and has no /run/nginx.pid, and a heal inside that gap starts a second
+  # Nginx that races it for the ports. The init script stays visible for
+  # the whole gap; one older than two minutes is stuck, not starting.
+  local _p _age
+  for _p in $(pgrep -f '^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/nginx (start|restart|stop|force-reload)( |$)' 2> /dev/null); do
+    _age=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -d ' ')
+    [[ -n "${_age}" ]] && [[ "${_age}" -lt 120 ]] && return 0
+  done
+  return 1
 }
 
 _nginx_master_pids() {
@@ -251,6 +285,11 @@ _restart_nginx() {
     [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
     exit 0
   fi
+  if [ "$2" != "requested" ] && _nginx_start_in_flight; then
+    echo "$(date) INFO: NGX $1 but an Nginx start is in flight; standing down" >> "${_pthOml}"
+    [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
+    exit 0
+  fi
   echo "$(date) NGX $1 detected" >> ${_pthOml}
   # The hard-restart entry used by the OOM/bind/state detectors carried no
   # cooldown at all, so a symptom that survives a restart re-ran the whole
@@ -266,7 +305,7 @@ _restart_nginx() {
   fi
   echo "Killing all Nginx processes and restarting Nginx..."
   _stop_nginx_processes
-  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
+  _nginx_error_log_aside
   service nginx restart
   _nginx_quic_bpf_shed
   date +%s > "${_cd}"
@@ -297,12 +336,44 @@ _nginx_oom_detection() {
 }
 
 _nginx_bind_check_fix() {
-  if [ `tail --lines=8 /var/log/nginx/error.log \
-    | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) Nginx BIND PORT error, service will be restarted"
-    echo "${_thisErrLog}" >> ${_pthOml}
-    _restart_nginx "Nginx BIND PORT error"
+  local _bnd _mst _pid _p _own=NO
+  _bnd=$(tail --lines=8 /var/log/nginx/error.log 2> /dev/null \
+    | grep "Address already in use")
+  [ -n "${_bnd}" ] || return 0
+  # A start still in flight may yet win the ports: its lines are judged on a
+  # later pass, once it has a master.
+  _nginx_start_in_flight && return 0
+  # A start that loses the ports to a master already serving them logs these
+  # lines and exits; restarting the master that won is an outage of its own.
+  # Act while no single master serves, when the serving master wrote the lines
+  # itself (a reload that could not bind), or when /run/nginx.pid does not name
+  # it: the restart rebuilds that file too.
+  _mst=$(_nginx_master_pids)
+  _pid=$( { tr -dc '0-9' < /run/nginx.pid; } 2> /dev/null )
+  if [ "$(printf '%s\n' "${_mst}" | grep -c .)" -eq 1 ] \
+    && [ "${_pid}" = "${_mst}" ] \
+    && command -v ss > /dev/null 2>&1 \
+    && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
+    for _p in $(printf '%s\n' "${_bnd}" | grep -oE '\] [0-9]+#' | tr -dc '0-9\n'); do
+      [ "${_p}" = "${_mst}" ] && _own=YES
+    done
+    if [ "${_own}" = "NO" ]; then
+      # Memory errors in the same log are the OOM check's to judge, on this
+      # pass or the first one after its cooldown, so the log stays while
+      # they are in it.
+      if tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+        | grep -q "Cannot allocate memory"; then
+        return 0
+      fi
+      _nginx_error_log_aside
+      kill -USR1 "${_mst}" 2> /dev/null
+      echo "$(date) INFO: NGX bind error left by an exited start, master ${_mst} serving; log moved aside, no restart" >> "${_pthOml}"
+      return 0
+    fi
   fi
+  _thisErrLog="$(date) Nginx BIND PORT error, service will be restarted"
+  echo "${_thisErrLog}" >> ${_pthOml}
+  _restart_nginx "Nginx BIND PORT error"
 }
 
 _nginx_health_check_fix() {
@@ -366,6 +437,10 @@ _nginx_if_up_check_fix() {
       if [ -z "$(_nginx_master_pids)" ] \
         || [ ! -e "/run/nginx.pid" ]; then
         _sql_mutation_began && exit 0
+        if _nginx_start_in_flight; then
+          echo "$(date) INFO: Nginx not up yet but a start is in flight; standing down" >> "${_pthOml}"
+          return 0
+        fi
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
           _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
@@ -388,7 +463,7 @@ _nginx_if_up_check_fix() {
           return 0
         fi
         _stop_nginx_processes
-        mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
+        _nginx_error_log_aside
         service nginx restart
         _nginx_quic_bpf_shed
         # Stamp cooldown after attempting recovery
@@ -447,6 +522,11 @@ _if_nginx_restart() {
           echo "$(date) INFO: Nginx restart requested but in cooldown; request kept for the next pass" >> ${_pthOml}
           return 0
         fi
+      fi
+      # A restart now would race the start in flight for the ports.
+      if _nginx_start_in_flight; then
+        echo "$(date) INFO: Nginx restart requested but a start is in flight; request kept for the next pass" >> "${_pthOml}"
+        return 0
       fi
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"

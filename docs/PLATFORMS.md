@@ -21,6 +21,26 @@ box on Percona 8.4.
 
 - [Drupal 12.0.0-beta2](https://drupal.org/project/drupal/releases/12.0.0-beta2)
 
+## CiviCRM
+
+Two platforms come with CiviCRM, the constituent relationship manager, ready for a
+new site: `DEC` is a Drupal 11 codebase with CiviCRM's Drupal packages, and `BDC` is
+Backdrop CMS with CiviCRM for Backdrop in its root `modules/`. The control panel
+installs CiviCRM with every new site on them, and Verify, Backup, Restore, Clone,
+Migrate and the panel's CiviCRM cron carry it along.
+
+Each is a single platform, not a prod/stage/dev set, and is built only where the
+platform list names its symbol, never through `ALL`. Unpacked, `BDC` takes about
+240 MB and 28,000 files and `DEC` about 520 MB and 65,000 files, in every distro
+revision of every account that lists it.
+
+`DEC` is pinned like the Drupal 11 distributions, needs MySQL 8 (on BOA, Percona 8.4)
+and PHP 8.4 or newer. `BDC` follows the mirror's `civicrm_backdrop.txt` stamp, which
+names its CiviCRM and Backdrop releases together, and is skipped when
+`_BACKDROP_SUPPORT=NO`; CiviCRM runs on PHP 8.1 or newer and recommends 8.3 to 8.5.
+Both are for demonstration and compatibility testing, not production: a production
+CiviCRM site runs on a platform of the account's own in `~/static`.
+
 ## Drupal 11
 
 Drupal 11 needs MySQL 8, on BOA a box on Percona 8.4. On a Percona 5.7 box the
@@ -31,6 +51,7 @@ percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasechec
 says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
+- [CiviCRM 6.19.2](https://civicrm.org) (11.4.11), built only when named (`DEC`)
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.11)
 - [Drupal 11.3.20](https://drupal.org/project/drupal/releases/11.3.20)
 - [Drupal 11.4.11](https://drupal.org/project/drupal/releases/11.4.11)
@@ -68,6 +89,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 ## Backdrop CMS
 
 - [Backdrop CMS (latest stable release)](https://backdropcms.org)
+- [CiviCRM for Backdrop](https://civicrm.org), built only when named (`BDC`)
 
 * Backdrop platforms track the newest release automatically (the mirror's `backdrop.txt` stamp selects the versioned `backdrop-<ver>.tar.gz` to fetch, managed like the Drupal core tarballs), so there is no per-version pin to maintain.
 * Each Backdrop platform gets the Valkey/Redis object-cache module through the shared, centrally updated `o_contrib_backdrop` bundle, symlinked in on platform verify and repaired nightly — used per site when Valkey is available, otherwise the site falls back to Backdrop's database cache.
@@ -123,6 +145,7 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DE4` — Drupal 11.4 prod/stage/dev
 - `CK3` — Commerce v.3
 - `CMS` — Drupal CMS
+- `DEC` — CiviCRM on Drupal 11 (built only when named)
 - `LGV` — LocalGov
 - `OCS` — OpenCulturas
 - `THR` — Thunder
@@ -180,13 +203,14 @@ rebuilt Drupal 9 core.
 ### Backdrop
 
 - `BDR` — Backdrop CMS prod/stage/dev (built by default; skipped when `_BACKDROP_SUPPORT=NO`)
+- `BDC` — Backdrop CMS with CiviCRM (built only when named; skipped when `_BACKDROP_SUPPORT=NO`)
 
 ### Grav and Textpattern
 
 - `GRV` — Grav 2 prod/stage/dev (skipped unless `_GRAV_SUPPORT=YES` in the instance config)
 - `TXP` — Textpattern prod/stage/dev (skipped unless `_TXP_SUPPORT=YES` in the instance config)
 
-You can also use the special keyword `ALL` instead of any other symbols to have all available platforms installed, including newly added platforms in all future BOA system releases.
+You can also use the special keyword `ALL` instead of any other symbols to have all available platforms installed, including newly added platforms in all future BOA system releases. Three symbols are built only when the list names them, `ALL` or not: the pre-release `DT0` and the CiviCRM platforms `BDC` and `DEC` (`ALL BDC` builds everything plus `BDC`).
 
 ### Examples:
 
