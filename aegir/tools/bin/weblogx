@@ -411,8 +411,9 @@ _ai_report() {
       # Over HTTPS through the front proxy one request is logged twice: by
       # the site vhost from 127.0.0.1, then by the front with the visitor.
       # A request the site refuses with 444 reaches the front as a closed
-      # connection and is logged there as 502, a moment after the site
-      # line, so a site 444 is kept for its own clock minute and the next.
+      # connection, which the front drops and logs as 444 (a front from
+      # before that rule logged 502), a moment after the site line, so a
+      # site 444 is kept for its own clock minute and the next.
       mnum = substr(ts, 14, 2) * 60 + substr(ts, 17, 2)
       if (dk != cdk || mnum != cmnum) {
         if (dk == cdk && mnum == cmnum + 1) {
