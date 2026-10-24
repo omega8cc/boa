@@ -43,10 +43,11 @@ minutes after its code is fixed. Nothing is switched for you.
 
 A script PHP-FPM keeps stopping at its time limit (180 seconds at
 most; three times or more in a day, a cron.php that never finishes,
-say) is listed in .fpm-timeout.info here, with the request as PHP-FPM
-logged it and the times, and goes within a day of its last cut. No
-site is named: PHP-FPM logs none, and the script's path names the
-platform. A job that needs longer runs from the shell with Drush.
+say) is listed in .fpm-timeout.info here, with the times and the
+request's method and first path segment as PHP-FPM logged it, never
+its query string, and goes within a day of its last cut. No site is
+named: PHP-FPM logs none, and the script's path names the platform.
+A job that needs longer runs from the shell with Drush.
 
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
