@@ -46,21 +46,50 @@
       optional before it first runs the old panel, and says so when a
       panel does not take the new database password.
 
-    * A hosted Drupal 7 site on a platform BOA built with its own Drupal 7
-      core from before 7.93.1 (a box upgraded from BOA 4.x, or a core a
-      migration brought along) failed on PHP 8 with the same error
-      handler: on PHP 8.4 every page answered 500 and nothing was logged.
-      These platforms share their core from /data/all/000/core, and the
-      ltd worker now makes that argument optional there before it
-      switches any pool's PHP, and alerts once a day when it cannot. A
-      core in an account's own platform is never changed.
+    * A hosted Drupal 7 or Drupal 6 site on a platform BOA built with its
+      own Drupal 7 core from 7.79.1 to 7.92.1, or Pressflow 6.59.1 or
+      6.60.1 (a box upgraded from an older release, or a core a migration
+      brought along), failed on PHP 8 with the same error handler: on PHP
+      8.4 every Drupal 7 page answered 500 and nothing was logged. These
+      platforms share their core from /data/all/000/core, and the ltd
+      worker now makes that argument optional there before it switches
+      any pool's PHP, and alerts once a day when it cannot, or when the
+      store is not wholly root's. Older cores need more than this line on
+      PHP 8 and are left alone; a core in an account's own platform is
+      never changed.
 
     * drush and Ægir tasks on a copy of BOA's Drupal 7 core from 7.79.1 to
-      7.92.1 that still declares that error handler now stop before PHP 8
-      starts, as they did for cores older than 7.79, and the message names
-      the one line to change. They used to die on an undefined cache_get()
-      or the ArgumentCountError, because the core's own version reads 7.79
-      or newer.
+      7.92.1, or of Pressflow 6.59.1 or 6.60.1, that still declares that
+      error handler now stop before PHP 8 starts, as they did for Drupal 7
+      cores older than 7.79, and the message names the one line to change.
+      They used to die on an undefined cache_get() or the
+      ArgumentCountError: the Drupal 7 core's own version reads 7.79 or
+      newer, and a Drupal 6 core was not checked at all. A Drupal 6 core
+      older than 6.58, whose own code does not parse on PHP 8, is refused
+      too. A refusal now suggests a PHP 7 version only where one is
+      installed, and BOA's heal only for a shared core it does heal.
+
+    * An Octopus control panel still on a Drupal 7 core from before 7.93.1
+      (a panel its Octopus upgrade has not reached yet, or skips) answered
+      500 once the ltd worker served it on PHP 8, and its task dispatcher
+      died. The worker now makes that argument optional in the panel's
+      core first, as the account, the way the upgrade does.
+
+    * A PHP-FPM version could serve a site whose code cannot run on it
+      (fpm.info, a multi-fpm.info line, or the fallback when the version
+      asked for is not installed), and the site answered 500 on every page
+      with nothing logged. The ltd worker now checks every site against
+      the version that serves it, by the rules drush is refused by (a
+      Composer floor, a core's own minimum, Drupal 8, Drupal 7 below 7.79
+      or Drupal 6 below 6.58 on PHP 8, an old error handler), lists each
+      such site with the
+      reason in ~/static/control/.fpm-core.info and tells the operator once
+      a day; drush output and Ægir task logs on that site say so too.
+      Nothing is switched for the account. A change to a site's code is
+      seen on the next pass; every file is read with a size and time
+      limit, and a check that does not finish is reported and not
+      repeated until the sites change or a day has passed. The store heal
+      reads a core's files only when they are regular and no link.
 
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel

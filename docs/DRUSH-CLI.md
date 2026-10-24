@@ -138,9 +138,9 @@ This version will be used by default if no instant switch files (e.g., `php83.in
 
 `cli.info` and the `phpNN.info` switches choose one PHP-CLI version for the whole account:
 your shell, Composer and every Ægir task. An account that hosts old and new Drupal cores
-side by side cannot pick one version that suits both. A Drupal 7 site older than 7.79 and
-any Drupal 8 site stop on a PHP 8 fatal, while a Drupal 10 or 11 platform needs PHP 8.1 or
-8.3 and newer.
+side by side cannot pick one version that suits both. A Drupal 6 site older than 6.58, a
+Drupal 7 site older than 7.79, one on an unfixed copy of BOA's Drupal 7.79.1 to 7.92.1, and
+any Drupal 8 site stop on a PHP 8 fatal, while a Drupal 10 or 11 platform needs PHP 8.1 or 8.3 and newer.
 
 `~/static/control/cli-per-platform.info` gives a platform its own PHP-CLI version. One line
 per platform: the platform folder, a space, the version.
@@ -210,10 +210,13 @@ On every account, with or without `cli-per-platform.info`, a drush command or Æ
 whose Drupal core cannot run on the PHP chosen for it is refused before the PHP starts,
 instead of dying half-way on a PHP fatal:
 
-- a site on Drupal 7 older than 7.79, or on any Drupal 8, on PHP 8.0 or newer;
+- a site on Drupal 6 older than 6.58, Drupal 7 older than 7.79, or any Drupal 8, on PHP 8.0
+  or newer;
 - a site on a copy of BOA's Drupal 7 core from 7.79.1 to 7.92.1 (its `VERSION` reads 7.79
-  to 7.92) that still declares `_drupal_error_handler()` with a required fifth argument,
-  on PHP 8.0 or newer: PHP 8 passes four, so the first notice there is a fatal error;
+  to 7.92), or of its Pressflow 6.59.1 or 6.60.1 (the line is in `includes/common.inc`,
+  `VERSION` in `modules/system/system.module`), that still declares
+  `_drupal_error_handler()` with a required fifth argument, on PHP 8.0 or newer: PHP 8
+  passes four, so the first notice there is a fatal error;
 - a codebase whose `vendor/composer/platform_check.php` needs a newer PHP than the one
   chosen (Drupal 10 needs 8.1, Drupal 11 and site-local Drush 13 need 8.3);
 - a site on Drupal 8 or newer whose codebase has no `platform_check.php`, on a PHP older
@@ -227,12 +230,21 @@ cannot run on PHP 8.0 or newer. This would use PHP 8.4, chosen by php84.info. Fi
 the line "d7-legacy 7.4" to ~/static/control/cli-per-platform.info (or switch back to
 php74.info).`
 
-For the old error handler the fix is one line in the platform's `includes/bootstrap.inc`:
-make the last argument optional (`$context = NULL`), as 7.93.1 did, or update the core.
-The Drupal 7 cores BOA ships share their code from `/data/all/000/core`, and the ltd
-worker makes that change there on its next pass, so BOA's own platforms need nothing;
-until then the message says so. Pages are not checked: a platform of the account's own
-that keeps the old line answers HTTP 500 on PHP 8 (on PHP 8.4, on every page).
+For the old error handler the fix is one line, in the platform's `includes/bootstrap.inc`
+on Drupal 7 or `includes/common.inc` on Pressflow 6: make the last argument optional
+(`$context = NULL`), as 7.93.1 and 6.60.2 did, or update the core. The cores BOA ships
+share their code from `/data/all/000/core`, and the ltd worker makes that change there on
+its next pass (and in an account's control panel core), so BOA's own platforms need
+nothing; until then the message says so.
+
+A PHP 7 version is suggested only where one is installed: a line naming a missing version
+is ignored, and the refusal would come back.
+
+The pages of a site whose code cannot run on the PHP-FPM version that serves it fail with
+HTTP 500 (an old Drupal 7 core on PHP 8.4 on every page). The ltd worker judges every site
+by the rules above against that version and lists each one it finds, with the reason, in
+`~/static/control/.fpm-core.info`; a drush line on such a site, and every Ægir task log on
+it, carries the same line as a warning. See [PHP-FPM.md](PHP-FPM.md).
 
 A Clone or Migrate is checked for its target before the safety copy starts. A platform
 task, which boots no site, gets the Drupal 7 or 8 text, or the core's own minimum, as a
