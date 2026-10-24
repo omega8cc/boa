@@ -200,6 +200,26 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   deliberately afterwards. Custom aliases of the retired site are not
   carried over, and the domain is unserved while the rename completes —
   minutes that scale with the site's size.
+- **CiviCRM** runs on Backdrop sites through the CiviCRM add-on
+  (hosting_civicrm), which drives CiviCRM's `cv` tool there: CiviCRM for
+  Backdrop ships no Drush commands. CiviCRM for Backdrop (the
+  `civicrm-<version>-backdrop.tar.gz` download) goes into the `modules/`
+  folder of the account's own platform in `~/static`, and a site created on
+  that platform gets CiviCRM installed with it (`cv core:install`, which
+  also enables the module).
+
+  Verify, Clone, Migrate and Restore regenerate
+  `civicrm.settings.php` for the site's own address and platform — every
+  `cv` call names the site it acts on, so a clone never boots or rewrites
+  its source. A Restore or a Migrate, renamed or not, keeps the site's
+  CiviCRM keys (credentials CiviCRM stored encrypted stay readable); only a
+  Clone gets keys of its own.
+
+  The panel's CiviCRM cron runs the scheduled jobs through
+  `cv` (`provision-civicrm-cron`). CiviCRM's private area is kept in
+  `sites/<uri>/private/files/civicrm`, as on Drupal. CiviCRM's own web
+  installer cannot add CiviCRM to an existing site: it writes its settings
+  file into the site folder, which the web pool cannot write.
 
 ## Upgrading a Drupal 7 site to Backdrop
 

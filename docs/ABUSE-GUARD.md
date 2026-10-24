@@ -367,7 +367,11 @@ HTTP/1.0 here.
 
 BOA's own proxy layer (the migration / PX0 `*_proxy.conf` and the wildcard-SSL
 `nginx_wild_ssl.conf`) sets `proxy_http_version 1.1`, so a correctly-updated BOA front proxy
-no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin. **Opt out** only on a
+no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin.
+
+The wildcard-SSL front also drops a connection its backend dropped (`proxy_next_upstream off`,
+its own 502 mapped to `return 444`): a port-80 vhost's 444 reaches the HTTPS visitor as the
+same closed connection, not as a 502 minted after a second try at the loopback backend. **Opt out** only on a
 box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or not yet updated
 to the HTTP/1.1 proxy confs (see **Part 5**). A malformed `_NGINX_HTTP10_AUTH_PATHS` override
 fails closed — the detector counts nothing rather than mis-banning.

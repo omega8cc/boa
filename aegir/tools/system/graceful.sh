@@ -157,10 +157,12 @@ _purge_postfix_bounces() {
   fi
 }
 
-# Once a week, remove the copies older than 7 days that BOA leaves on every run
-# and every day and nothing else removes: the PHP-FPM logs moved aside on each
-# FPM restart and each barracuda or octopus run (php-logs/<stamp>/), and the
-# csf.allow copies guest-water takes before each provider refresh (csf/water/);
+# Once a week, remove the copies that BOA leaves on every run and every day
+# and nothing else removes: the PHP-FPM logs moved aside on each FPM restart
+# and each barracuda or octopus run (php-logs/<stamp>/), kept 30 days so the
+# logs of a forced security pass can still be read a month later, when the
+# reports saying what to look for usually arrive; the csf.allow copies
+# guest-water takes before each provider refresh (csf/water/), kept 7 days;
 # then the dragon vault and the other families below. Age is when a copy was
 # made (ctime): cp -a keeps the mtime of the file it copies. A stamp sets the
 # pace, not a weekday, so a night this pass skips only moves the prune to the
@@ -173,7 +175,7 @@ _purge_weekly_backups() {
   fi
   echo "Removing old backup copies, markers and leftovers..."
   if [ -d "/var/backups/php-logs" ] && [ ! -L "/var/backups/php-logs" ]; then
-    find /var/backups/php-logs -mindepth 1 -maxdepth 1 -ctime +6 \
+    find /var/backups/php-logs -mindepth 1 -maxdepth 1 -ctime +30 \
       -exec rm -rf {} + &> /dev/null
   fi
   if [ -d "/var/backups/csf/water" ] && [ ! -L "/var/backups/csf/water" ]; then
