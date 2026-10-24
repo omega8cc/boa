@@ -46,6 +46,13 @@
       servers and skips a site on one; any other site without a usable
       db_name still stops the run.
 
+    * The HTTPS proxy of a control panel, and the plain proxy of a moved
+      instance, wrote their access log into a file named "on" under
+      nginx's prefix, /usr/on, which nothing rotated or read, so the web
+      IDS never saw the requests they answered. They now log into the
+      main access log at the visitor's address, as the wildcard SSL front
+      does, and the upgrade removes /usr/on.
+
     * A site served over HTTPS by the wildcard SSL front answered 502 where
       its own vhost drops the connection (a banned address, a refused
       crawler, a probe for a secret path): the front read the backend's

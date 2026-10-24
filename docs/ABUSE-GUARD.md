@@ -555,6 +555,12 @@ Counting the loopback copy would double every proxied request and halve the
 cohort's distinct-URI share, so a harvest over the front would never pass the
 keystone below.
 
+A control panel's own HTTPS proxy (`pre.d/z_<panel>_ssl_proxy.conf`) logs the same way: its
+line carries the real visitor, and the panel vhost's copy carries the box's own address, which
+no detector bans (the box's addresses are on the local allow list). An older proxy that still
+said `access_log on;` wrote into a file named `on` under nginx's prefix (`/usr/on`), which
+nothing rotated or read; the upgrade points it at the main log and removes that file.
+
 **Two ways in.**
 
 - **VOLUME** — the fast harvest. At least `_NGINX_HARVEST_IP_THRESHOLD`

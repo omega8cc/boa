@@ -1598,6 +1598,43 @@ _nginx_link_guard_sync() {
   fi
 }
 
+_nginx_proxy_access_log_fix() {
+  ### An HTTPS or plain proxy in pre.d written before its template logged
+  ### into the IDS's file says `access_log on;`, which nginx takes for a file
+  ### named "on" under its prefix: never rotated, never read by the IDS. It
+  ### gets the template's main log line; every change is undone when the
+  ### config no longer tests clean.
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _any=""
+  _bak=$(mktemp -d /var/backups/.boa-proxy-log.XXXXXX 2>/dev/null) || return 0
+  for _p in "${_preD}"/*ssl_proxy.conf "${_preD}"/*pln_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -qE "^[[:space:]]*access_log[[:space:]]+on;" "${_p}" || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    sed -E "s/^([[:space:]]*)access_log[[:space:]]+on;/\1access_log                   \/var\/log\/nginx\/access.log main;/" \
+      "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
+_nginx_proxy_stray_log_purge() {
+  ### The file `access_log on;` wrote, once no loaded config names it any
+  ### more and the reload has closed it. Only a regular file is removed.
+  local _f="/usr/on"
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  nginx -t > /dev/null 2>&1 || return 0
+  if nginx -T 2>/dev/null | grep -qE "^[[:space:]]*access_log[[:space:]]+on;"; then
+    return 0
+  fi
+  rm -f "${_f}"
+}
+
 _nginx_ssl_proxy_local_refusal() {
   ### Every HTTPS proxy in pre.d (a control panel's, or a per-site one made by
   ### xoct ssl-gen) connects to its vhost from the box's own address, which
@@ -1948,6 +1985,7 @@ _nginx_config_update_fix() {
       wait
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
+      _nginx_proxy_access_log_fix
       _nginx_ssl_proxy_local_refusal
       _nginx_ssl_proxy_panel_lock
       _nginx_ssl_proxy_extra_names
@@ -2164,5 +2202,6 @@ _nginx_config_update_fix() {
       _master_fix_multi_ip_cron_access
     fi
     _mrun "service nginx reload"
+    _nginx_proxy_stray_log_purge
   fi
 }
