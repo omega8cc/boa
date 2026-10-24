@@ -585,6 +585,9 @@ server {
   access_log                   off;
   log_not_found                off;
   location / {
+PROXYEOF
+  _emit_backend_drop_top
+  cat <<PROXYEOF
     proxy_pass                 http://$2;
     proxy_http_version         1.1;
     proxy_set_header           Connection        "";
@@ -606,11 +609,49 @@ server {
     proxy_send_timeout         180;
     proxy_read_timeout         180;
   }
+PROXYEOF
+  _emit_backend_drop_loc
+  cat <<'PROXYEOF'
 }
 ###
 ### Plain HTTP proxy (END)
 ###
 PROXYEOF
+}
+
+# The new host refuses a request (a banned address, a refused crawler, a probe
+# for a secret path) by closing the connection, which a proxy answers with its
+# own 502. BOA's templates drop that close too, and only that one; the test
+# reads $upstream_bytes_sent, which nginx has from 1.15.8 on. A distro nginx
+# older than that, or one whose version cannot be read, gets no rule and keeps
+# the 502: an unknown variable fails the whole config.
+_emit_backend_drop_top() {
+  _nginx_at_least 1.15.8 || return 0
+  cat <<'DROPEOF'
+    ### The host behind this proxy refuses a request (a banned address, a
+    ### refused crawler, a probe for a secret path) by closing the connection,
+    ### which this proxy would answer with its own 502: drop it here too.
+    error_page                 502 = @boa_drop;
+DROPEOF
+}
+
+_emit_backend_drop_loc() {
+  _nginx_at_least 1.15.8 || return 0
+  cat <<'DROPEOF'
+  location @boa_drop {
+    ### Only a close after the request and before any byte of an answer is
+    ### such a refusal: nothing listening at the target, an oversized header
+    ### or any other fault keeps its 502.
+    recursive_error_pages      off;
+    if ($upstream_bytes_received !~ "^[0, :]*$") {
+      return 502;
+    }
+    if ($upstream_bytes_sent !~ "[1-9]") {
+      return 502;
+    }
+    return 444;
+  }
+DROPEOF
 }
 
 # nginx gained the standalone `http2` directive in 1.25.1; before that HTTP/2
@@ -665,6 +706,9 @@ server {
   access_log                   off;
   log_not_found                off;
   location / {
+PROXYEOF
+  _emit_backend_drop_top
+  cat <<PROXYEOF
     proxy_pass                 https://$3;
     proxy_http_version         1.1;
     proxy_set_header           Connection        "";
@@ -687,6 +731,9 @@ server {
     proxy_send_timeout         180;
     proxy_read_timeout         180;
   }
+PROXYEOF
+  _emit_backend_drop_loc
+  cat <<'PROXYEOF'
 }
 ###
 ### Secure HTTPS proxy (END)
