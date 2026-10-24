@@ -114,24 +114,18 @@ A request that runs past the pool's `request_terminate_timeout` (180 s, lowered 
 `/var/log/php/phpNN-fpm-error.log`. On every pass (every 5 s on most servers, see
 [MONITOR.md](MONITOR.md)) the php monitor reads the lines those logs gained, from an offset of
 its own; its first run starts at their ends, so no earlier cut is counted. Each cut is
-recorded for the account whose pool and tree it is. The site is named from the access log
-lines of the same request, read back to before the request began (a client that gave up
-early was logged 499 then; after the monitor's first run or a pause of more than about ten
-minutes nothing older is read and the site stays unknown), and only when the host is the
-name of a regular file in the account's own `config/server_master/nginx/vhost.d` that no
-other instance's `vhost.d` on the server also holds. The names are listed, in the real
-directory, and the files are never opened; Aegir keeps a name unique within an instance only.
-An alias, a name two instances hold and any other host leave the site unknown (`?`), so no
-other customer's name reaches the account. Of the request only the method and the path's first
-segment are kept (`GET /cron/…`: never a Drupal 8+ cron key, a search's terms or the query
-string). A script cut three times or more in 24 hours is listed by the ltd worker in
+recorded for the account whose pool and tree it is: the time, how long it ran, the script and
+the request as PHP-FPM logged it, of which only the method and the path's first segment are
+kept (`GET /cron/…`: never a Drupal 8+ cron key, a search's terms or the query string). A
+script cut three times or more in 24 hours is listed by the ltd worker in
 `~/static/control/.fpm-timeout.info`: the script, the count, how long it ran, the first and
-last cut, the sites the cuts came from (`?` where none of the account's was named) and the
-last request, with a line of advice; the operator gets a daily notice, and the file goes when
-no script has three cuts left in the last 24 hours. A cron.php cut at every run never
-finishes its work. Nothing is stopped or changed: the fix is the script's, or a long job run
-from the shell with Drush, where PHP has no time limit. The control panel's pool and the
-`www` pools are not counted.
+last cut and the last request, with a line of advice; the operator gets a daily notice, and the
+file goes when no script has three cuts left in the last 24 hours. No site is named:
+PHP-FPM's line has none, and a guess from the access log or the vhosts could hand another
+tenant's name or request to the account, so the monitor reads neither; the script's path names
+the platform. A cron.php cut at every run never finishes its work. Nothing is stopped or
+changed: the fix is the script's, or a long job run from the shell with Drush, where PHP has
+no time limit. The control panel's pool and the `www` pools are not counted.
 
 #### Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 

@@ -1988,17 +1988,16 @@
       monitor now reads the time-out lines the master logs gained, from an
       offset of its own (its first run starts at their ends and counts no
       earlier cut), and records each cut for the account whose pool and
-      tree it is. The site is named from the access log lines of the same
-      request, read back to before it began, and only when its host is
-      the name of one of the account's vhost files that no other instance
-      on the server also has (the names are listed, the files never
-      opened; aliases are not used); of the request only the method and
-      the path's first segment are kept, never the query string. The ltd
-      worker lists a script cut three times or more in 24 hours in
-      ~/static/control/.fpm-timeout.info, with the count, how long it
-      ran, the first and last cut, the sites the cuts came from and the
-      last request, and tells the operator once a day; the file goes when
-      none is left. Nothing is stopped or changed.
+      tree it is: the time, how long it ran, the script and the request as
+      PHP-FPM logged it, only its method and first path segment, never the
+      query string. The ltd worker lists a script cut three times or more
+      in 24 hours in ~/static/control/.fpm-timeout.info, with the count,
+      how long it ran, the first and last cut and the last request, and
+      tells the operator once a day; the file goes when none is left. No
+      site is named: PHP-FPM's line has none, and a guess from the access
+      log or the vhosts could hand another tenant's name or request to the
+      account; the script's path names the platform. Nothing is stopped or
+      changed.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
