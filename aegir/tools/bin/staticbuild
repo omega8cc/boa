@@ -2183,6 +2183,16 @@ build_commerce_base() {
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
 }
 
+_civicrm_drupal_complete() {
+  # $1 = a civicrm_drupal build tree. True when CiviCRM's Drupal module sits where
+  # composer/installers puts it and the asset plugin filled web/libraries/civicrm:
+  # core's Common.js, which every CiviCRM page loads, and the packages. An empty or
+  # half-published libraries folder does not count.
+  _run_as_o8 "test -f '$1/web/modules/contrib/civicrm/civicrm.info.yml' \
+    && test -f '$1/web/libraries/civicrm/core/js/Common.js' \
+    && test -d '$1/web/libraries/civicrm/packages'"
+}
+
 build_civicrm_drupal() {
   # Drupal 11 with CiviCRM, after CiviCRM's own Drupal install guide: the
   # recommended-project template with dependency patching on, CiviCRM's three Drupal
@@ -2214,10 +2224,9 @@ build_civicrm_drupal() {
   fi
   _fix_step "${_wd}" "civicrm_drupal" "${_CIVICRM_D_PKGS}" || return 1
   # Fail closed on what the platform is for: CiviCRM's core at the release, its module
-  # where composer/installers puts it, and the assets the asset plugin publishes.
+  # and the assets the asset plugin publishes.
   _got="$(_lock_version "${_wd}" civicrm/civicrm-core)"
-  if [[ "${_got}" != "${_cv}" ]] \
-    || ! _run_as_o8 "test -f '${_wd}/web/modules/contrib/civicrm/civicrm.info.yml' && test -d '${_wd}/web/libraries/civicrm'"; then
+  if [[ "${_got}" != "${_cv}" ]] || ! _civicrm_drupal_complete "${_wd}"; then
     _alrt "civicrm_drupal: CiviCRM ${_cv} is not complete in the build (lock: ${_got:-none})"
     _record_fail "civicrm_drupal (CiviCRM ${_cv} not complete)"
     return 1
