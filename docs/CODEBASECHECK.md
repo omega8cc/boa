@@ -84,14 +84,17 @@ symlink is passed over, and a codebase reached through a symlink anywhere below
 | Verdict  | Exit | Meaning |
 |----------|------|---------|
 | READY    | 0    | Every codebase on the box is compatible with Percona 8.x. |
-| REVIEW   | 2    | Cores are compatible, but `--deep` found signals to verify first. |
+| REVIEW   | 2    | Cores are compatible, but `--deep` found signals to verify first, or could not read the database. |
 | BLOCKED  | 1    | At least one codebase's core predates its MySQL-8 floor, or its version could not be read (UNKNOWN); fix it (update the core, or move its sites to a newer platform on this box) and re-run. |
 
 ## Deep contrib/schema analysis (`--deep`)
 
 A codebase can pass the core-version check yet still break on 8.x through contrib/custom
-code or schema. `--deep` (needs the local MySQL root access via `/root/.my.cnf`; skips
-cleanly if unavailable) adds a **REVIEW** tier driven by high-precision signals:
+code or schema. `--deep` (needs the local MySQL root access via `/root/.my.cnf`) adds a
+**REVIEW** tier. When it cannot read the database (no client, no `/root/.my.cnf`, the
+server down or still upgrading) it says so and counts that as one REVIEW item, so the
+verdict never reads READY on a database nobody looked at; run it again once the server
+answers. Otherwise the tier is driven by high-precision signals:
 
 - **utf8mb3 tables** (all databases) — reported as **INFO only**; utf8mb3 runs fine on
   8.4, so this does not change the verdict. It flags where a `utf8mb4` conversion is
