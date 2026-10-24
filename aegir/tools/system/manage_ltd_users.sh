@@ -7958,33 +7958,41 @@ _ltd_fpm_core_check() {
 # came from and the last request (its method and first path segment only),
 # and in a daily notice for the operator; the file goes when none is left.
 # The script is what keeps timing out, so its cuts count together whichever
-# site sent them. A site is named only when it is the account's own (a vhost
-# name in its config/server_master/nginx/vhost.d, or a server_name there,
-# read in the real directory), else "?": no other customer's name is ever
-# printed. A single cut can be a slow page on a busy minute; three in a day
-# are the same work never finishing. Nothing is stopped or changed: the fix
-# is the script's, or a long job run from the shell.
+# site sent them. A site is named only when it is the name of a regular file
+# in the account's own config/server_master/nginx/vhost.d (listed in its real
+# directory, never opened: the account can put a FIFO or a huge file there)
+# and of no file in any other vhost.d of the box (Aegir keeps names unique
+# within an instance only); anything else, an alias included, prints as "?".
+# A single cut can be a slow page on a busy minute; three in a day are the
+# same work never finishing. Nothing is stopped or changed: the fix is the
+# script's, or a long job run from the shell.
 _LTD_FPM_CUT_MIN=3
-_ltd_fpm_cut_own_here() {
-  # in the pinned vhost.d: the names its vhosts answer, one a line
-  local _f
-  local -a _fs=()
-  for _f in ./*; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    _fs+=("${_f}")
-    [[ "${_f#./}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] && echo "${_f#./}"
-  done
-  [ "${#_fs[@]}" -gt 0 ] || return 0
-  LC_ALL=C awk '$1 == "server_name" {
-      for (i = 2; i <= NF; i++) {
-        t = tolower($i)
-        sub(/;$/, "", t)
-        if (t ~ /^[a-z0-9][a-z0-9.-]*$/) print t
-      }
-    }' "${_fs[@]}" 2> /dev/null
+_LTD_FPM_CUT_VROOT="/data/disk"
+_LTD_FPM_CUT_MROOT="/var/aegir/config/server_master/nginx/vhost.d"
+_ltd_fpm_cut_names_here() {
+  # in the pinned vhost.d: its regular files, "./name" a line, never opened
+  timeout -k 2 20 find . -mindepth 1 -maxdepth 1 -type f 2> /dev/null | head -n 100000
+}
+_ltd_fpm_cut_own() {
+  # the account's names that can name a site, one a line: its vhost.d's,
+  # held by no other vhost.d of the box
+  local _d="${_dscUsr}/config/server_master/nginx/vhost.d"
+  LC_ALL=C awk -v d="${_d}" '
+    FILENAME == ARGV[1] {
+      if (!match($0, /\/[^\/]*$/)) next
+      p = substr($0, 1, RSTART - 1)
+      n = substr($0, RSTART + 1)
+      if (!((p SUBSEP n) in s)) { s[p SUBSEP n] = 1; c[n]++; w[n] = p }
+      next
+    }
+    { n = substr($0, 3) }
+    n ~ /^[a-z0-9][a-z0-9.-]*$/ && c[n] == 1 && w[n] == d { print n }' \
+    <(timeout -k 2 30 find "${_LTD_FPM_CUT_VROOT}"/*/config/server_master/nginx/vhost.d \
+        "${_LTD_FPM_CUT_MROOT}" -mindepth 1 -maxdepth 1 -type f 2> /dev/null | head -n 1000000) \
+    <(_ltd_in_real_dir "${_d}" _ltd_fpm_cut_names_here) 2> /dev/null
 }
 _ltd_fpm_cut_notice() {
-  local _st="/var/backups/ltd/fpmcut" _now _rows _txt _hdr _body _n _own
+  local _st="/var/backups/ltd/fpmcut" _now _rows _txt _hdr _body _n
   local _c _sc _s _t1 _t2 _rq _d _hs _ln
   local -a _fs=()
   _now=$(date +%s)
@@ -7993,10 +8001,7 @@ _ltd_fpm_cut_notice() {
     [ -f "${_ln}" ] && [ ! -L "${_ln}" ] && _fs+=("${_ln}")
   done
   if [ "${#_fs[@]}" -gt 0 ]; then
-    _own=$(_ltd_in_real_dir "${_dscUsr}/config/server_master/nginx/vhost.d" \
-      _ltd_fpm_cut_own_here | LC_ALL=C sort -u | tr '\n' ' ')
-    _rows=$(cat -- "${_fs[@]}" 2> /dev/null | LC_ALL=C awk -F'|' \
-      -v now="${_now}" -v min="${_LTD_FPM_CUT_MIN}" -v own=" ${_own}" '
+    _rows=$(LC_ALL=C awk -F'|' -v now="${_now}" -v min="${_LTD_FPM_CUT_MIN}" '
       # a request as the method and its path to the first segment
       function segr(q,   sp, p, i) {
         sp = index(q, " ")
@@ -8005,10 +8010,12 @@ _ltd_fpm_cut_notice() {
         if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
         return substr(q, 1, sp) p
       }
+      # the own names first, then the records
+      FILENAME == ARGV[1] { own[$1] = 1; next }
       NF == 5 && $1 ~ /^[0-9]+$/ && $1 > now - 86400 && $1 <= now + 300 \
         && $3 ~ /^[0-9]+$/ && index($5, " ") > 1 {
         k = $4
-        h = (index(own, " " $2 " ") ? $2 : "?")
+        h = (($2 in own) ? $2 : "?")
         $5 = segr($5)
         if (!(k in c)) { c[k] = 0; f[k] = $1; l[k] = $1; s[k] = $3; nk++; K[nk] = k }
         c[k]++
@@ -8037,7 +8044,7 @@ _ltd_fpm_cut_notice() {
           if (m > 5) o = o ", " (m - 5) " more"
           print c[k] "|" k "|" s[k] "|" f[k] "|" l[k] "|" r[k] "|" d[k] "|" o
         }
-      }' | sort -t'|' -k1,1nr | head -n 50)
+      }' <(_ltd_fpm_cut_own) "${_fs[@]}" 2> /dev/null | sort -t'|' -k1,1nr | head -n 50)
   fi
   if [ -z "${_rows}" ]; then
     if [ -e "${_dscUsr}/static/control/.fpm-timeout.info" ] \
