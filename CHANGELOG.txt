@@ -97,6 +97,11 @@
       when its code runs on its own version, or left out when it does not. The
       worker now reads the includes itself and hands the versions to the check.
 
+    * A new ltd worker that changes how the page check judges took up to a
+      day to judge an account again, because the check's sum covered its
+      inputs but not its own code. The sum now holds the check's code too,
+      so the first pass after an update judges every account again.
+
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel
       that did not verify) left nginx unable to load its configuration on
