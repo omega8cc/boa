@@ -82,14 +82,13 @@
       the version that serves it, by the rules drush is refused by (a
       Composer floor, a core's own minimum, Drupal 8, Drupal 7 below 7.79
       or Drupal 6 below 6.58 on PHP 8, an old error handler), lists each
-      such site with the
-      reason in ~/static/control/.fpm-core.info and tells the operator once
-      a day; drush output and Ægir task logs on that site say so too.
-      Nothing is switched for the account. A change to a site's code is
-      seen on the next pass; every file is read with a size and time
-      limit, and a check that does not finish is reported and not
-      repeated until the sites change or a day has passed. The store heal
-      reads a core's files only when they are regular and no link.
+      such site with the reason in ~/static/control/.fpm-core.info and
+      tells the operator once a day; drush output and Ægir task logs on
+      that site say so too. Nothing is switched for the account. A change
+      to a site's code is seen on the next pass; every file is read with a
+      size and time limit, and a check that does not finish is reported and
+      not repeated until the sites change or a day has passed. The store
+      heal reads a core's files only when they are regular and no link.
 
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel
@@ -1865,6 +1864,12 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The PHP-FPM logs that every barracuda and octopus run and every FPM
+      restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
+      days by the weekly prune, not 7, so the logs of a forced security
+      pass can still be read a month later, when the reports saying what
+      to look for in them usually arrive.
 
     * The php.ini of PHP 8.0 to 8.6, FPM and command line, no longer sets
       mbstring.http_input and mbstring.http_output, which PHP 8 reports as
