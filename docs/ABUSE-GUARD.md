@@ -382,7 +382,10 @@ with `ups="-"`, and a 502 the backend vhost answered itself passes through as a 
 with `uht` set. The front drops only a backend's refusal, a backend that took the request and closed
 without a byte of an answer (`$upstream_bytes_sent` above zero, `$upstream_bytes_received`
 zero). Any other failure the front meets answers 502 as before: nothing listening behind it,
-or an answer whose headers do not fit the front's buffer.
+or an answer whose headers do not fit the front's buffer. The front's `upstream` keeps no idle
+connection to the site (`keepalive 0`): since nginx 1.29.7 an `upstream` block keeps 32 by
+default, and a refusal that arrived on a kept connection was tried again on each of them, up
+to 33 backend lines for one request.
 
 A control panel's own HTTPS proxy (`pre.d/z_<panel>_ssl_proxy.conf`) drops the same way in its
 `location /`, with the same test. It needs no `proxy_next_upstream` line: it proxies to the

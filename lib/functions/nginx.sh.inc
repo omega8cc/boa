@@ -1249,6 +1249,14 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    ### A front whose upstream keeps idle connections tries a refusal again
+    ### on each of them.
+    if ! grep -qE '^[[:space:]]*keepalive[[:space:]]+0;' ${_WILD_SSL_VHOST} 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs upstream keepalive update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     if ! grep -qE '^[[:space:]]*send_timeout[[:space:]]+3600s;' ${_WILD_SSL_VHOST} 2> /dev/null; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: nginx_wild_ssl.conf proxy needs media send timeout update..."

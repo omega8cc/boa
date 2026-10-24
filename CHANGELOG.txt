@@ -69,6 +69,12 @@
       vhost did; nothing listening behind it, an answer whose headers do
       not fit or any other failure still answers 502.
 
+    * The wildcard SSL front tried a request its site refused once more
+      for every idle connection it kept to the site, up to 33 times under
+      load: since nginx 1.29.7 an upstream keeps 32 idle connections by
+      default. The front now keeps none and opens one loopback connection
+      per request, as it did before.
+
     * The wildcard SSL front answers 502 again where the failure is real:
       nothing listening behind it, or a site's answer whose headers do not
       fit. Since it began to drop the connection where the site drops it,
