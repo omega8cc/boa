@@ -7684,6 +7684,17 @@ _satellite_make() {
   # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
   echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
 
+  # Backdrop with CiviCRM (BDC): both versions in its platform name come from the
+  # one stamp staticbuild publishes after the tarball, distro/civicrm_backdrop.txt
+  # (a <civicrm>-<backdrop> pair), never one from it and one from backdrop.txt,
+  # which moves on its own. A missing or malformed stamp (a mirror can answer a
+  # missing path with a page) takes the fallback pair whole.
+  _bdcVrn=$(curl ${_crlGet} "https://${_USE_MIR}/distro/civicrm_backdrop.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.-')
+  [[ "${_bdcVrn}" =~ ^[0-9]+(\.[0-9]+)+-[0-9]+(\.[0-9]+)+$ ]] || _bdcVrn="${_BDC_V_FALLBACK}"
+  echo "export _BDC_V=\"${_bdcVrn%-*}\""                     >> ${_writeTo}
+  echo "export _BDC_CORE_V=\"${_bdcVrn#*-}\""                >> ${_writeTo}
+
   # Resolve the newest Grav version from the mirror stamp so platforms track
   # the latest official admin-bundle release without a hardcoded pin
   # (fallback: _GRAV_V_FALLBACK); the platform build fetches the matching
