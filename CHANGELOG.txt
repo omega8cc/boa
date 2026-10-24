@@ -40,6 +40,12 @@
       A skipped or failed database scan now counts as one REVIEW item and
       says to run the check again once the server answers.
 
+    * sqlclean LIVE auto refused on every box with a Grav site: a
+      flat-file site has no db_name, and sqlclean counted that as an
+      alias it could not resolve. It now reads each panel's no-database
+      servers and skips a site on one; any other site without a usable
+      db_name still stops the run.
+
     * A site served over HTTPS by the wildcard SSL front answered 502 where
       its own vhost drops the connection (a banned address, a refused
       crawler, a probe for a secret path): the front read the backend's
