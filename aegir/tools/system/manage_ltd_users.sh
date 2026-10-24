@@ -7126,6 +7126,7 @@ _manage_user() {
       fi
       _site_socket_inc_gen
       _ltd_fpm_core_check
+      _ltd_fpm_cut_notice
       ### reload nginx once per pass, and only when this pass changed the
       ### account's FPM includes: nginx reads them on reload alone, and a
       ### reload on every pass reset every HTTP/3 transfer in flight
@@ -7948,6 +7949,78 @@ _ltd_fpm_core_check() {
   else
     _ltd_ctrl_rm .fpm-core.info
   fi
+}
+# Requests PHP-FPM cut at its time limit (request_terminate_timeout), one
+# record a cut in /var/backups/ltd/fpmcut/<account>.<day>, root's, written by
+# the php monitor. A script of one site cut _LTD_FPM_CUT_MIN times or more in
+# the last 24 hours is listed in ~/static/control/.fpm-timeout.info for the
+# account, with the count, how long it ran, the first and last cut and the
+# last request, and in a daily notice for the operator; the file goes when
+# none is left. The site is the one the access log named for the request;
+# cuts it could not name count under the script alone, whose path names the
+# platform. A single cut can be a slow page on a busy minute, three in a day
+# are the same work never finishing. Nothing is stopped or changed: the fix
+# is the script's, or a long job run from the shell.
+_LTD_FPM_CUT_MIN=3
+_ltd_fpm_cut_notice() {
+  local _st="/var/backups/ltd/fpmcut" _now _rows _txt _hdr _body _n
+  local _c _h _sc _s _t1 _t2 _rq _d _ln
+  local -a _fs=()
+  _now=$(date +%s)
+  _rows=""
+  for _ln in "${_st}/${_USER}".*; do
+    [ -f "${_ln}" ] && [ ! -L "${_ln}" ] && _fs+=("${_ln}")
+  done
+  if [ "${#_fs[@]}" -gt 0 ]; then
+    _rows=$(cat -- "${_fs[@]}" 2> /dev/null | LC_ALL=C awk -F'|' \
+      -v now="${_now}" -v min="${_LTD_FPM_CUT_MIN}" '
+      NF == 5 && $1 ~ /^[0-9]+$/ && $1 > now - 86400 && $1 <= now + 300 \
+        && $3 ~ /^[0-9]+$/ {
+        k = $2 "|" $4
+        if (!(k in c)) { c[k] = 0; f[k] = $1; l[k] = $1; s[k] = $3; nk++; K[nk] = k }
+        c[k]++
+        if ($1 < f[k]) f[k] = $1
+        if ($1 >= l[k]) { l[k] = $1; r[k] = $5 }
+        if ($3 + 0 < s[k] + 0) s[k] = $3
+        if (!((k SUBSEP $5) in u)) { u[k SUBSEP $5] = 1; d[k]++ }
+      }
+      END {
+        for (i = 1; i <= nk; i++) {
+          k = K[i]
+          if (c[k] >= min) print c[k] "|" k "|" s[k] "|" f[k] "|" l[k] "|" r[k] "|" d[k]
+        }
+      }' | sort -t'|' -k1,1nr | head -n 50)
+  fi
+  if [ -z "${_rows}" ]; then
+    if [ -e "${_dscUsr}/static/control/.fpm-timeout.info" ] \
+      || [ -L "${_dscUsr}/static/control/.fpm-timeout.info" ]; then
+      _ltd_ctrl_rm .fpm-timeout.info
+    fi
+    return 0
+  fi
+  _txt=""
+  while IFS='|' read -r _c _h _sc _s _t1 _t2 _rq _d; do
+    [ "${_h}" = "-" ] && _h="?"
+    _ln="${_h} ${_sc}: cut ${_c} times after ${_s} s, first $(date -d "@${_t1}" '+%F %H:%M'),"
+    _ln+=" last $(date -d "@${_t2}" '+%F %H:%M %Z'), last request ${_rq}"
+    [ "${_d}" -gt 1 ] 2> /dev/null && _ln+=" (of ${_d} different requests)"
+    _txt+="${_ln}"$'\n'
+  done <<< "${_rows}"
+  _txt="${_txt%$'\n'}"
+  _n=$(printf '%s\n' "${_txt}" | wc -l)
+  _hdr="# Requests PHP-FPM stopped at its time limit in the last 24 hours, by site"
+  _hdr+=$'\n'"# (? where the log did not name it) and script, ${_LTD_FPM_CUT_MIN} or more each."
+  _hdr+=$'\n'"# A request stopped there never finishes: a cron.php cut at every run leaves"
+  _hdr+=$'\n'"# its work undone each time. Find what the script waits on and fix it, or run"
+  _hdr+=$'\n'"# the long job from the shell with Drush, where PHP has no time limit."
+  _body="${_hdr}"$'\n'"${_txt}"
+  if [ "$(_ltd_ctrl_read .fpm-timeout.info)" != "${_body}" ]; then
+    echo "ALRT: ${_n} script(s) of ${_USER} cut at the PHP-FPM time limit repeatedly, see ${_dscUsr}/static/control/.fpm-timeout.info"
+    _ltd_ctrl_put .fpm-timeout.info "${_body}"
+  fi
+  _ltd_notice_daily "fpm-timeout-${_USER}" \
+    "${_n} script(s) of ${_USER} cut at the PHP-FPM time limit repeatedly" \
+    "$(printf '%s\n' "${_txt}" | head -n 5 | tr '\n' ';')"
 }
 # The process table of this pass, read once and within a minute: a read
 # that fails or runs out of time counts as an import of every account

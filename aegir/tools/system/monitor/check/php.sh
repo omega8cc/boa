@@ -304,6 +304,208 @@ _fpm_proc_max_detection() {
   fi
 }
 
+# A request a pool cuts at its request_terminate_timeout is logged by the
+# master, with no site name, as
+#   WARNING: [pool NAME] child PID, script 'PATH' (request: "METHOD URI")
+#   execution timed out (SECS sec), terminating
+# Each pass reads only what the master logs gained since the last one (a
+# byte offset and inode of its own per file), and the access log only on a
+# pass that found such a line, from where the pass before the last one left
+# it: nginx may log its own time-out a heartbeat before the master cuts.
+# The access log lines of the same request (begun within 2 s of it, the same
+# method, the same path or any path behind index.php, answered 444, 499 or
+# 5xx) name the site when they agree on one host. One record per cut,
+# "time|host|seconds|script|METHOD path", goes to root's
+# /var/backups/ltd/fpmcut/<account>.<day> for the ltd worker, which tells
+# the account; the nightly age prune of /var/backups/ltd/*/* removes a day's
+# file a day after its last record. A cut counts for an account only in a
+# pool of its own and a script in its own tree outside its control panel's.
+# The query string is never kept: it can carry a cron key or what a visitor
+# searched for. Times are read as the box's local time, as both logs write
+# them.
+_FPM_CUT_TIME_AWK='
+function dfc(y, m, d,   e, yoe, doy) {
+  y -= (m <= 2)
+  e = int((y >= 0 ? y : y - 399) / 400)
+  yoe = y - e * 400
+  doy = int((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1
+  return e * 146097 + yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy - 719468
+}
+function lsec(d, mo, y, hh, mm, ss,   m) {
+  m = index("JanFebMarAprMayJunJulAugSepOctNovDec", mo)
+  if (m == 0 || (m - 1) % 3) return -1
+  return dfc(y + 0, (m + 2) / 3, d + 0) * 86400 + hh * 3600 + mm * 60 + ss
+}
+function zsec(z,   s) {
+  if (z !~ /^[-+][0-9][0-9][0-9][0-9]$/) return 0
+  s = substr(z, 2, 2) * 3600 + substr(z, 4, 2) * 60
+  return substr(z, 1, 1) == "-" ? -s : s
+}
+'
+# The master lines in, "start|time|account|script|METHOD|path|seconds" out.
+_FPM_CUT_AWK='
+BEGIN {
+  q = "\047"
+  pre = "^\\[[0-9][0-9]-[A-Z][a-z][a-z]-[0-9][0-9][0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\\.[0-9]+)?\\] WARNING: \\[pool [a-z0-9._-]+\\] child [0-9]+, script " q "/"
+  off = zsec(tz)
+}
+$0 ~ pre {
+  t = lsec(substr($0, 2, 2), substr($0, 5, 3), substr($0, 9, 4), substr($0, 14, 2), substr($0, 17, 2), substr($0, 20, 2))
+  if (t < 0) next
+  t -= off
+  r = substr($0, index($0, "] WARNING: [pool ") + 17)
+  pool = substr(r, 1, index(r, "]") - 1)
+  r = substr(r, index(r, ", script " q) + 10)
+  i = index(r, q " (request: \"")
+  if (i < 2) next
+  sc = substr(r, 1, i - 1)
+  r = substr(r, i + 13)
+  if (!match(r, /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/)) next
+  secs = substr(r, RSTART + 24) + 0
+  rq = substr(r, 1, RSTART - 1)
+  sp = index(rq, " ")
+  if (sp < 2) next
+  me = substr(rq, 1, sp - 1)
+  pa = substr(rq, sp + 1)
+  sub(/\?.*$/, "", pa)
+  ac = pool
+  sub(/\..*$/, "", ac)
+  if (pool ~ /^www[0-9]+$/ || pool ~ /\.hm$/ || ac !~ /^[a-z0-9][a-z0-9_-]*$/) next
+  if (index(sc, "/data/disk/" ac "/") != 1 || index(sc, "/data/disk/" ac "/aegir/") == 1) next
+  if (sc ~ /\/\.\.?\// || me !~ /^[A-Z]+$/) next
+  gsub(/[^A-Za-z0-9._\/+@-]/, "_", sc)
+  gsub(/[^A-Za-z0-9._~\/%:@+,;=-]/, "_", pa)
+  printf "%.0f|%.0f|%s|%s|%s|%s|%d\n", t - int(secs), t, ac, substr(sc, 1, 300), me, substr(pa, 1, 200), secs
+}
+'
+# The records above (file rf), then the access log: each record is
+# appended to its account's file of the day with the host it found.
+_FPM_CUT_SITE_AWK='
+FILENAME == rf {
+  if (split($0, f, "|") != 7) next
+  n++
+  T[n] = f[2]; A[n] = f[3]; C[n] = f[4]; M[n] = f[5]; P[n] = f[6]; X[n] = f[7]
+  B[f[1]] = B[f[1]] " " n
+  next
+}
+{
+  if (split($0, a, "\"") < 10 || split(a[5], c, " ") < 1) next
+  s = c[1]
+  if (s != "444" && s != "499" && s !~ /^50[0-4]$/) next
+  if (split(a[3], b, " ") < 3) next
+  if (b[2] !~ /^\[[0-9][0-9]\/[A-Z][a-z][a-z]\/[0-9][0-9][0-9][0-9]:[0-9][0-9]:[0-9][0-9]:[0-9][0-9]$/) next
+  e = lsec(substr(b[2], 2, 2), substr(b[2], 5, 3), substr(b[2], 9, 4), substr(b[2], 14, 2), substr(b[2], 17, 2), substr(b[2], 20, 2))
+  if (e < 0 || split(a[4], w, " ") < 2) next
+  z = b[3]
+  sub(/\]$/, "", z)
+  st = e - zsec(z) - (a[9] + 0)
+  p = w[2]
+  sub(/\?.*$/, "", p)
+  h = tolower(b[1])
+  for (d = -2; d <= 2; d++) {
+    k = sprintf("%.0f", st + d)
+    if (!(k in B)) continue
+    nb = split(B[k], ix, " ")
+    for (j = 1; j <= nb; j++) {
+      i = ix[j]
+      if (w[1] != M[i] || (p != P[i] && P[i] !~ /\/index\.php$/)) continue
+      if (H[i] == "") { H[i] = h; HP[i] = p } else if (H[i] != h) H[i] = "?"
+    }
+  }
+}
+END {
+  for (i = 1; i <= n; i++) {
+    h = H[i]
+    p = P[i]
+    if (h == "" || h == "?" || h !~ /^[a-z0-9][a-z0-9.-]*$/) {
+      h = "-"
+    } else {
+      p = HP[i]
+      gsub(/[^A-Za-z0-9._~\/%:@+,;=-]/, "_", p)
+      p = substr(p, 1, 200)
+    }
+    print T[i] "|" substr(h, 1, 253) "|" X[i] "|" C[i] "|" M[i] " " p >> (dir "/" A[i] "." day)
+  }
+}
+'
+_fpm_timeout_detection() {
+  local _posfile="/var/log/boa/fpm_timeout.pos"
+  local _alog="/var/log/nginx/access.log"
+  local _dir="/var/backups/ltd/fpmcut"
+  local _tmp _cut _rec _f _off _ino _x _y _sz _from
+  local _a0=0 _ai0="" _a1=0 _ai1="" _a2=0 _ai2=""
+  declare -A _POS _INO
+  if [ -f "${_posfile}" ]; then
+    while IFS='|' read -r _f _off _ino _x _y; do
+      [[ "${_off}" =~ ^[0-9]+$ ]] || continue
+      if [ "${_f}" = "${_alog}" ]; then
+        _a1="${_off}"
+        _ai1="${_ino}"
+        if [[ "${_x}" =~ ^[0-9]+$ ]]; then
+          _a2="${_x}"
+          _ai2="${_y}"
+        fi
+      elif [ -n "${_f}" ]; then
+        _POS["${_f}"]="${_off}"
+        _INO["${_f}"]="${_ino}"
+      fi
+    done < "${_posfile}"
+  fi
+  _tmp="${_posfile}.$$"
+  _cut="${_posfile}.cut.$$"
+  _rec="${_posfile}.rec.$$"
+  : > "${_tmp}" 2> /dev/null || return 0
+  : > "${_cut}" 2> /dev/null || { rm -f "${_tmp}"; return 0; }
+  for _f in /var/log/php/php*-fpm-error.log; do
+    [ -f "${_f}" ] || continue
+    _sz=""
+    _ino=""
+    read -r _sz _ino < <(stat -c '%s %i' -- "${_f}" 2> /dev/null)
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || continue
+    _off="${_POS["${_f}"]:-0}"
+    # a log moved away by a restart, or rotated: the new one from its start
+    if [ "${_INO["${_f}"]:-}" != "${_ino}" ] || (( _sz < _off )); then
+      _off=0
+    fi
+    if (( _sz > _off )); then
+      tail -c +"$(( _off + 1 ))" -- "${_f}" 2> /dev/null | head -c "$(( _sz - _off ))" \
+        | grep -F -- ') execution timed out (' \
+        | grep -v -E -- "${_FPM_WORKER_LINE}" >> "${_cut}"
+    fi
+    printf '%s|%s|%s\n' "${_f}" "${_sz}" "${_ino}" >> "${_tmp}"
+  done
+  if [ -f "${_alog}" ]; then
+    read -r _a0 _ai0 < <(stat -c '%s %i' -- "${_alog}" 2> /dev/null)
+    [[ "${_a0}" =~ ^[0-9]+$ ]] || _a0=0
+  fi
+  printf '%s|%s|%s|%s|%s\n' "${_alog}" "${_a0}" "${_ai0}" "${_a1}" "${_ai1}" >> "${_tmp}"
+  mv -f "${_tmp}" "${_posfile}" 2> /dev/null
+  if [ -s "${_cut}" ]; then
+    LC_ALL=C awk -v tz="$(date +%z)" "${_FPM_CUT_TIME_AWK}${_FPM_CUT_AWK}" \
+      < "${_cut}" > "${_rec}" 2> /dev/null
+  fi
+  if [ -s "${_rec}" ]; then
+    _from=0
+    if [ -n "${_ai0}" ] && [ "${_ai2}" = "${_ai0}" ] && (( _a2 <= _a0 )); then
+      _from="${_a2}"
+    fi
+    # a pass after a long hold: the last 64 MiB are more than enough
+    (( _a0 - _from > 67108864 )) && _from=$(( _a0 - 67108864 ))
+    if [ ! -d "${_dir}" ] || [ -L "${_dir}" ]; then
+      rm -f "${_dir}"
+      mkdir -p "${_dir}"
+    fi
+    chmod 700 "${_dir}"
+    {
+      if (( _a0 > _from )); then
+        tail -c +"$(( _from + 1 ))" -- "${_alog}" 2> /dev/null | head -c "$(( _a0 - _from ))"
+      fi
+    } | LC_ALL=C awk -v rf="${_rec}" -v dir="${_dir}" -v day="$(date +%Y%m%d)" \
+      "${_FPM_CUT_TIME_AWK}${_FPM_CUT_SITE_AWK}" "${_rec}" - 2> /dev/null
+  fi
+  rm -f "${_cut}" "${_rec}"
+}
+
 _fpm_sockets_healing() {
   _hit=$(_fpm_master_tail | grep -c "Address already in use")
   if [ "${_hit}" -gt 0 ]; then
@@ -692,6 +894,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   _fpm_duplicate_instances_detection
   _fpm_listen_conflict_detection
   _fpm_proc_max_detection
+  _fpm_timeout_detection
   _fpm_sockets_healing
   _fpm_fastcgi_temp
   _fpm_giant_log_detection

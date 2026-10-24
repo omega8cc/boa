@@ -41,6 +41,12 @@ Drupal 7 or Drupal 6 core on PHP 8, say) is listed with the reason in
 .fpm-core.info here, within a few minutes, and goes from the list a few
 minutes after its code is fixed. Nothing is switched for you.
 
+A script PHP-FPM keeps stopping at its time limit (180 seconds at
+most; three times or more in a day on one site, a cron.php that never
+finishes, say) is listed in .fpm-timeout.info here, with the request
+and the times, and goes a day after its last cut. A job that needs
+longer runs from the shell with Drush.
+
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
 immediately. The marker steers your Ægir tasks too (Verify, Clone,
