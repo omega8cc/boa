@@ -1862,6 +1862,20 @@
 
 @=> New Features
 
+    * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
+      modules/, DEC is Drupal 11 with CiviCRM's Drupal packages, and the
+      control panel installs CiviCRM with every site created on either,
+      then carries it through Verify, Backup, Restore, Clone, Migrate and
+      the panel's CiviCRM cron. Both are built only when platforms.info
+      names them, never through ALL, and only where client cores are on;
+      DEC needs Percona 8.4, as every Drupal 11 platform does. Like every
+      catalogue platform they are for demonstration and compatibility
+      testing: run a production CiviCRM site from a platform of your own
+      in ~/static. The mirror build checks the CiviCRM for Backdrop
+      release against its published SHA256 sums. On Drupal 10 and later
+      the CiviCRM add-on now installs CiviCRM through cv, as on Backdrop;
+      it used to finish an Install without CiviCRM. See docs/PLATFORMS.md.
+
     * A watchdog for scheduled cron that keeps failing: the panel stamps
       a site's last cron time whatever the site answers, so a site whose
       every scheduled cron answered 500 for days looked fine there. Once
