@@ -1914,6 +1914,15 @@
     * The nightly no longer logs "dir: cannot access" on a box where no
       account has a distro platform tree for the ghost-codebases check.
 
+    * Every line of the nginx access log ends with three more fields:
+      cfray= (the Ray ID a Cloudflare error page shows, so its request can
+      be found), ups= (the status the upstream gave) and uht= (how long
+      its response header took, "-" when none came back). A 502 with
+      uht="-" was made by the nginx that logged it, one with a number is
+      the backend's own, and a 444 of the wildcard SSL front with
+      ups="502" is a backend refusal it dropped. The fields are appended,
+      so the web IDS and every other reader of the log read it as before.
+
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
       days by the weekly prune, not 7, so the logs of a forced security

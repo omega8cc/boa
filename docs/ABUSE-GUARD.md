@@ -371,7 +371,12 @@ no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin.
 
 The wildcard-SSL front also drops a connection its backend dropped (`proxy_next_upstream off`,
 its own 502 mapped to `return 444`): a port-80 vhost's 444 reaches the HTTPS visitor as the
-same closed connection, not as a 502 minted after a second try at the loopback backend. **Opt out** only on a
+same closed connection, not as a 502 minted after a second try at the loopback backend. In the access log
+that drop is the front's `444` line with `ups="502" uht="-"` (its backend refused or failed without
+answering); the front's own refusals log `444` with `ups="-"`, and a 502 the backend vhost answered
+itself passes through as a front `502` with `uht` set.
+
+**Opt out** only on a
 box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or not yet updated
 to the HTTP/1.1 proxy confs (see **Part 5**). A malformed `_NGINX_HTTP10_AUTH_PATHS` override
 fails closed — the detector counts nothing rather than mis-banning.
