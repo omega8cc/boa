@@ -7851,10 +7851,10 @@ _ltd_fpm_judge() {
 }
 # The page check's inputs, as one sum: the account's site aliases, its FPM
 # includes, its default version ($1), the files that decide each site it
-# judged last time ($2 = their roots, one a line), so that a change to a
-# site's code is seen on the next pass, and the check's own code (without
-# its comments), so that a new worker judges every account again on its
-# first pass instead of a day later.
+# judged last time ($2 = their roots, one a line), taken through a link as
+# the judge reads them, so that a change to a site's code is seen on the
+# next pass, and the check's own code (without its comments), so that a new
+# worker judges every account again on its first pass instead of a day later.
 _ltd_fpm_sig() {
   local _f _fs=()
   while IFS= read -r _f; do
@@ -7868,7 +7868,7 @@ _ltd_fpm_sig() {
     stat -c '%n %i %Y %s' -- "${_dscUsr}"/.drush/*.alias.drushrc.php 2> /dev/null
     _ltd_ngx_fpm_fp
     echo "${1}"
-    [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
+    [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
     declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
       _ltd_fpm_core_check
   } | md5sum | cut -d' ' -f1
