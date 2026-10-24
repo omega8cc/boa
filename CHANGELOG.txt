@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * A site served over HTTPS by the wildcard SSL front answered 502 where
+      its own vhost drops the connection (a banned address, a refused
+      crawler, a probe for a secret path): the front read the backend's
+      close as an upstream failure, tried the backend again, dozens of
+      times under a crawler flood, and minted a 502. It now drops the
+      connection as the backend did, once.
+
     * A Drupal 8+ site on a locked platform answered 500 on every page,
       its scheduled cron included, when one module registers a Drush
       command class as a Drupal service (varbase_core does, in every
@@ -50,13 +57,12 @@
       own Drupal 7 core from 7.79.1 to 7.92.1, or Pressflow 6.59.1 or
       6.60.1 (a box upgraded from an older release, or a core a migration
       brought along), failed on PHP 8 with the same error handler: on PHP
-      8.4 every Drupal 7 page answered 500 and nothing was logged. These
-      platforms share their core from /data/all/000/core, and the ltd
-      worker now makes that argument optional there before it switches
-      any pool's PHP, and alerts once a day when it cannot, or when the
-      store is not wholly root's. Older cores need more than this line on
-      PHP 8 and are left alone; a core in an account's own platform is
-      never changed.
+      8.4 every Drupal 7 page answered 500. These platforms share their
+      core from /data/all/000/core, and the ltd worker now makes that
+      argument optional there before it switches any pool's PHP, reading
+      only regular files that are no link, and alerts once a day when it
+      cannot, or when the store is not wholly root's. Older cores are left
+      alone; a core in an account's own platform is never changed.
 
     * drush and Ægir tasks on a copy of BOA's Drupal 7 core from 7.79.1 to
       7.92.1, or of Pressflow 6.59.1 or 6.60.1, that still declares that
@@ -79,28 +85,13 @@
       (fpm.info, a multi-fpm.info line, or the fallback when the version
       asked for is not installed), and the site answered 500 on every page
       with nothing logged. The ltd worker now checks every site against
-      the version that serves it, by the rules drush is refused by (a
-      Composer floor, a core's own minimum, Drupal 8, Drupal 7 below 7.79
-      or Drupal 6 below 6.58 on PHP 8, an old error handler), lists each
-      such site with the reason in ~/static/control/.fpm-core.info and
-      tells the operator once a day; drush output and Ægir task logs on
-      that site say so too. Nothing is switched for the account. A change
-      to a site's code is seen on the next pass; every file is read with a
-      size and time limit, and a check that does not finish is reported and
-      not repeated until the sites change or a day has passed. The store
-      heal reads a core's files only when they are regular and no link.
-
-    * That check judged a site with its own PHP-FPM version (a multi-fpm.info
-      line) by the account's default version: it read the site's include as the
-      account, and the worker writes that include as root, usually 0600. Such a
-      site was listed in .fpm-core.info, the daily notice and its drush output
-      when its code runs on its own version, or left out when it does not. The
-      worker now reads the includes itself and hands the versions to the check.
-
-    * A new ltd worker that changes how the page check judges took up to a
-      day to judge an account again, because the check's sum covered its
-      inputs but not its own code. The sum now holds the check's code too,
-      so the first pass after an update judges every account again.
+      the version that serves it, read by root from the site's include, by
+      the rules drush is refused by, lists each such site with the reason
+      in ~/static/control/.fpm-core.info and tells the operator once a day;
+      drush output and Ægir task logs on that site say so too. Nothing is
+      switched. A change to a site's code, or a worker update, is judged on
+      the next pass; every read is bounded, and a check that does not
+      finish is not repeated until the sites change or a day has passed.
 
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel
