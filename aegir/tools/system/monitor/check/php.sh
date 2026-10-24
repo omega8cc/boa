@@ -286,8 +286,11 @@ _fpm_proc_max_detection() {
     # Log rotated/truncated since last run: re-baseline from the start.
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
+      # as bytes and text: a NUL a worker writes through its stderr made
+      # grep read the rest as binary and miss every later hit
       _new=$(tail -c +"$(( _off + 1 ))" "${_f}" 2>/dev/null \
-        | grep -v -E "${_FPM_WORKER_LINE}" | grep -c -- "reached max_children setting")
+        | LC_ALL=C grep -a -v -E "${_FPM_WORKER_LINE}" \
+        | LC_ALL=C grep -a -c -- "reached max_children setting")
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))
@@ -302,6 +305,145 @@ _fpm_proc_max_detection() {
     echo "${_thisErrLog}" >> "${_pthOml}"
     # No restart; capacity signal only.
   fi
+}
+
+# A request a pool cuts at its request_terminate_timeout is logged by the
+# master, with no site name, as
+#   WARNING: [pool NAME] child PID, script 'PATH' (request: "METHOD URI")
+#   execution timed out (SECS sec), terminating
+# Each pass reads only what the master logs gained since the last one (a
+# byte offset and inode of its own per file; the first run starts at their
+# ends, so no earlier cut is counted). One record per cut,
+# "time|account|seconds|script|METHOD /segment", goes to root's
+# /var/backups/ltd/fpmcut/<account>.<day> for the ltd worker, which tells
+# the account; the nightly age prune of /var/backups/ltd/*/* removes a day's
+# file a day after its last record. A cut counts for an account only in a
+# pool of its own and a script in its own tree outside its control panel's.
+# Of the request only the method and the path's first segment are kept,
+# never the query string: a Drupal 8+ cron key is a path segment, a search
+# its terms. No site is named and nothing else is read: the line has no
+# host, and a guess from the access log or the vhosts could hand another
+# tenant's name or request to the account; the script's path names the
+# platform. Times are read as the box's local time, as the master writes
+# them. The offsets are saved before anything is recorded, and a pass that
+# cannot save them records nothing: the next one reads the same lines.
+_FPM_CUT_AWK='
+function dfc(y, m, d,   e, yoe, doy) {
+  y -= (m <= 2)
+  e = int((y >= 0 ? y : y - 399) / 400)
+  yoe = y - e * 400
+  doy = int((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1
+  return e * 146097 + yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy - 719468
+}
+function lsec(d, mo, y, hh, mm, ss,   m) {
+  m = index("JanFebMarAprMayJunJulAugSepOctNovDec", mo)
+  if (m == 0 || (m - 1) % 3) return -1
+  return dfc(y + 0, (m + 2) / 3, d + 0) * 86400 + hh * 3600 + mm * 60 + ss
+}
+function zsec(z,   s) {
+  if (z !~ /^[-+][0-9][0-9][0-9][0-9]$/) return 0
+  s = substr(z, 2, 2) * 3600 + substr(z, 4, 2) * 60
+  return substr(z, 1, 1) == "-" ? -s : s
+}
+function seg(p,   i) {
+  gsub(/[^A-Za-z0-9._~\/%:@+,;=-]/, "_", p)
+  p = substr(p, 1, 200)
+  i = index(substr(p, 2), "/")
+  if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
+  return p
+}
+BEGIN {
+  q = "\047"
+  pre = "^\\[[0-9][0-9]-[A-Z][a-z][a-z]-[0-9][0-9][0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\\.[0-9]+)?\\] WARNING: \\[pool [a-z0-9._-]+\\] child [0-9]+, script " q "/"
+  off = zsec(tz)
+}
+$0 ~ pre {
+  t = lsec(substr($0, 2, 2), substr($0, 5, 3), substr($0, 9, 4), substr($0, 14, 2), substr($0, 17, 2), substr($0, 20, 2))
+  if (t < 0) next
+  t -= off
+  r = substr($0, index($0, "] WARNING: [pool ") + 17)
+  pool = substr(r, 1, index(r, "]") - 1)
+  r = substr(r, index(r, ", script " q) + 10)
+  i = index(r, q " (request: \"")
+  if (i < 2) next
+  sc = substr(r, 1, i - 1)
+  r = substr(r, i + 13)
+  if (!match(r, /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/)) next
+  secs = substr(r, RSTART + 24) + 0
+  rq = substr(r, 1, RSTART - 1)
+  sp = index(rq, " ")
+  if (sp < 2) next
+  me = substr(rq, 1, sp - 1)
+  pa = substr(rq, sp + 1)
+  sub(/\?.*$/, "", pa)
+  ac = pool
+  sub(/\..*$/, "", ac)
+  if (pool ~ /^www[0-9]+$/ || pool ~ /\.hm$/ || ac !~ /^[a-z0-9][a-z0-9_-]*$/) next
+  if (index(sc, "/data/disk/" ac "/") != 1 || index(sc, "/data/disk/" ac "/aegir/") == 1) next
+  if (sc ~ /\/\.\.?\// || me !~ /^[A-Z]+$/) next
+  gsub(/[^A-Za-z0-9._\/+@-]/, "_", sc)
+  printf "%.0f|%s|%d|%s|%s %s\n", t, ac, secs, substr(sc, 1, 300), me, seg(pa) >> (dir "/" ac "." day)
+}
+'
+_fpm_timeout_detection() {
+  local _posfile="/var/log/boa/fpm_timeout.pos"
+  local _dir="/var/backups/ltd/fpmcut"
+  local _tmp _cut _f _x _y _off _sz _ino _new _first=YES
+  declare -A _POS _INO
+  if [ -f "${_posfile}" ]; then
+    while IFS='|' read -r _f _x _y; do
+      if [ -n "${_f}" ] && [[ "${_x}" =~ ^[0-9]+$ ]]; then
+        _POS["${_f}"]="${_x}"
+        _INO["${_f}"]="${_y}"
+        _first=NO
+      fi
+    done < "${_posfile}"
+  fi
+  _tmp="${_posfile}.$$"
+  _cut="${_posfile}.cut.$$"
+  : > "${_cut}" 2> /dev/null || return 0
+  _new=""
+  for _f in /var/log/php/php*-fpm-error.log; do
+    [ -f "${_f}" ] || continue
+    _sz=""
+    _ino=""
+    read -r _sz _ino < <(stat -c '%s %i' -- "${_f}" 2> /dev/null)
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || continue
+    if [ "${_first}" = "YES" ]; then
+      _off="${_sz}"
+    else
+      # a log new since the last pass, or moved away by a restart and
+      # made again, or rotated: from its start
+      _off="${_POS["${_f}"]:-0}"
+      if [ "${_INO["${_f}"]:-}" != "${_ino}" ] || (( _sz < _off )); then
+        _off=0
+      fi
+    fi
+    if (( _sz > _off )); then
+      # as bytes and text whatever they hold: a worker's stderr can put a NUL
+      # in the log, a request an invalid UTF-8 byte, and grep would read the
+      # chunk as binary and print none of its lines
+      tail -c +"$(( _off + 1 ))" -- "${_f}" 2> /dev/null | head -c "$(( _sz - _off ))" \
+        | LC_ALL=C grep -a -F -- ') execution timed out (' \
+        | LC_ALL=C grep -a -v -E -- "${_FPM_WORKER_LINE}" >> "${_cut}"
+    fi
+    _new+="${_f}|${_sz}|${_ino}"$'\n'
+  done
+  if ! printf '%s' "${_new}" > "${_tmp}" 2> /dev/null \
+    || ! mv -f "${_tmp}" "${_posfile}" 2> /dev/null; then
+    rm -f "${_tmp}" "${_cut}"
+    return 0
+  fi
+  if [ -s "${_cut}" ]; then
+    if [ ! -d "${_dir}" ] || [ -L "${_dir}" ]; then
+      rm -f "${_dir}"
+      mkdir -p "${_dir}"
+    fi
+    chmod 700 "${_dir}"
+    LC_ALL=C awk -v tz="$(date +%z)" -v dir="${_dir}" -v day="$(date +%Y%m%d)" \
+      "${_FPM_CUT_AWK}" < "${_cut}" 2> /dev/null
+  fi
+  rm -f "${_cut}"
 }
 
 _fpm_sockets_healing() {
@@ -692,6 +834,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   _fpm_duplicate_instances_detection
   _fpm_listen_conflict_detection
   _fpm_proc_max_detection
+  _fpm_timeout_detection
   _fpm_sockets_healing
   _fpm_fastcgi_temp
   _fpm_giant_log_detection
