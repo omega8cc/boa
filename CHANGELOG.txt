@@ -84,14 +84,15 @@
     * A PHP-FPM version could serve a site whose code cannot run on it
       (fpm.info, a multi-fpm.info line, or the fallback when the version
       asked for is not installed), and the site answered 500 on every page
-      with nothing logged. The ltd worker now checks every site against
-      the version that serves it, read by root from the site's include, by
-      the rules drush is refused by, lists each such site with the reason
-      in ~/static/control/.fpm-core.info and tells the operator once a day;
+      with nothing logged. The ltd worker now checks every site against the
+      version that serves it, read by root from the site's include, by the
+      rules drush is refused by, lists each such site with the reason in
+      ~/static/control/.fpm-core.info and tells the operator once a day;
       drush output and Ægir task logs on that site say so too. Nothing is
-      switched. A change to a site's code, or a worker update, is judged on
-      the next pass; every read is bounded, and a check that does not
-      finish is not repeated until the sites change or a day has passed.
+      switched. A change to a site's code, a file it links to included, or
+      a worker update, is judged on the next pass; every read is bounded,
+      and a check that does not finish is not repeated until the sites
+      change or a day has passed.
 
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel
