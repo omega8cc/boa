@@ -109,6 +109,20 @@ Each site it finds is listed with the version and the reason in
 on that site, and the operator gets a daily notice. Nothing is switched: the fix is in the
 code, or a `multi-fpm.info` line for a version that runs it, where one is installed.
 
+A request that runs past the pool's `request_terminate_timeout` (180 s, lowered by
+`_PHP_FPM_TIMEOUT`) is cut by PHP-FPM, which logs only the script and the request, in
+`/var/log/php/phpNN-fpm-error.log`. The php monitor reads the new lines each minute and
+records each cut for the account whose pool and tree it is, naming the site when the
+access log lines of the same request agree on one host, and dropping the query string. A
+script of one site cut three times or more in 24 hours is listed by the ltd worker in
+`~/static/control/.fpm-timeout.info`: the site (`?` where the log did not name it), the
+script, the count, how long it ran, the first and last cut and the last request, with a
+line of advice; the operator gets a daily notice, and the file goes when no script is left
+in the last 24 hours. A cron.php cut at every run never finishes its work. Nothing is
+stopped or changed: the fix is the script's, or a long job run from the shell with Drush,
+where PHP has no time limit. The control panel's pool and the `www` pools are not
+counted.
+
 #### Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 
 ## PHP-FPM Resource Allocation (workers and memory)

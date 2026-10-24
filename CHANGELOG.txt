@@ -1981,6 +1981,19 @@
       ups="502" is a backend refusal it dropped. The fields are appended,
       so the web IDS and every other reader of the log read it as before.
 
+    * A request PHP-FPM cuts at its time limit (request_terminate_timeout,
+      180 s at most) was logged in the master log and nowhere else, so a
+      cron.php cut at every run, its work never done, could go unseen for
+      weeks. The php monitor now reads the new time-out lines each minute
+      from an offset of its own, records each cut for the account whose
+      pool and tree it is, names the site when the access log lines of
+      the same request agree on one host, and keeps no query string. The
+      ltd worker lists a script of a site cut three times or more in 24
+      hours in ~/static/control/.fpm-timeout.info, with the count, how
+      long it ran, the first and last cut and the last request, and tells
+      the operator once a day; the file goes when none is left. Nothing
+      is stopped or changed.
+
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
       days by the weekly prune, not 7, so the logs of a forced security
