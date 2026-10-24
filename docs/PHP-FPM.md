@@ -116,9 +116,13 @@ A request that runs past the pool's `request_terminate_timeout` (180 s, lowered 
 its own; its first run starts at their ends, so no earlier cut is counted. Each cut is
 recorded for the account whose pool and tree it is. The site is named from the access log
 lines of the same request, read back to before the request began (a client that gave up
-early was logged 499 then), and only when the host is one of the account's own vhosts (a name
-in its `config/server_master/nginx/vhost.d`, or a `server_name` there), so no other
-customer's name reaches the account. Of the request only the method and the path's first
+early was logged 499 then; after the monitor's first run or a pause of more than about ten
+minutes nothing older is read and the site stays unknown), and only when the host is the
+name of a regular file in the account's own `config/server_master/nginx/vhost.d` that no
+other instance's `vhost.d` on the server also holds. The names are listed, in the real
+directory, and the files are never opened; Aegir keeps a name unique within an instance only.
+An alias, a name two instances hold and any other host leave the site unknown (`?`), so no
+other customer's name reaches the account. Of the request only the method and the path's first
 segment are kept (`GET /cron/…`: never a Drupal 8+ cron key, a search's terms or the query
 string). A script cut three times or more in 24 hours is listed by the ltd worker in
 `~/static/control/.fpm-timeout.info`: the script, the count, how long it ran, the first and

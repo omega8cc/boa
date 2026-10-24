@@ -1989,9 +1989,11 @@
       offset of its own (its first run starts at their ends and counts no
       earlier cut), and records each cut for the account whose pool and
       tree it is. The site is named from the access log lines of the same
-      request, read back to before it began, and only when it is one of
-      the account's own vhosts; of the request only the method and the
-      path's first segment are kept, never the query string. The ltd
+      request, read back to before it began, and only when its host is
+      the name of one of the account's vhost files that no other instance
+      on the server also has (the names are listed, the files never
+      opened; aliases are not used); of the request only the method and
+      the path's first segment are kept, never the query string. The ltd
       worker lists a script cut three times or more in 24 hours in
       ~/static/control/.fpm-timeout.info, with the count, how long it
       ran, the first and last cut, the sites the cuts came from and the
