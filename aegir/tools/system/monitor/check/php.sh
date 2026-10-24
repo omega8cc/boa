@@ -286,8 +286,11 @@ _fpm_proc_max_detection() {
     # Log rotated/truncated since last run: re-baseline from the start.
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
+      # as bytes and text: a NUL a worker writes through its stderr made
+      # grep read the rest as binary and miss every later hit
       _new=$(tail -c +"$(( _off + 1 ))" "${_f}" 2>/dev/null \
-        | grep -v -E "${_FPM_WORKER_LINE}" | grep -c -- "reached max_children setting")
+        | LC_ALL=C grep -a -v -E "${_FPM_WORKER_LINE}" \
+        | LC_ALL=C grep -a -c -- "reached max_children setting")
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))

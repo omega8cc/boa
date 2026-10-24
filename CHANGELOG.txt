@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * The php monitor's max_children check missed the hits that followed
+      a NUL byte in what a PHP-FPM master log gained since its last pass,
+      and the PHP code of any site can write one there through its
+      stderr: grep read the rest as binary, and those hits were never
+      read again, so a pool out of workers could raise no note. The log
+      is now read as text whatever bytes it holds.
+
     * A barracuda pass could restart Nginx twice at once: the Nginx monitor
       took the gap of the pass's own restart, before the new master writes
       its pid file, for an outage and started a second Nginx, and the
