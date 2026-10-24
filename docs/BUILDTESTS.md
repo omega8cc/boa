@@ -470,9 +470,10 @@ and go to `/var/www/static/distro`. `staticbuild check` shows the release as the
   which every idle copy on the boxes would fetch again.
 
   Its `<civicrm>-<backdrop>` pair
-  is stamped to `distro/civicrm_backdrop.txt`, published after the tarball and only
-  while the shelf holds it; the boxes take both versions from that stamp (or the
-  `_BDC_V_FALLBACK` pair in `OCTOPUS.sh.txt` whole). It carries CiviCRM's own vendor
+  is stamped to `distro/civicrm_backdrop.txt`, published after the tarball, only
+  while the shelf holds it and only as the pair root checked (a stamp the build user
+  rewrites after that check is not published); the boxes take both versions from that
+  stamp (or the `_BDC_V_FALLBACK` pair in `OCTOPUS.sh.txt` whole). It carries CiviCRM's own vendor
   tree and no lock at its top, so it is copied as the Backdrop core is, outside the lock
   guard and the advisory audits.
 
