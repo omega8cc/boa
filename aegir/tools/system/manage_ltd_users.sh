@@ -7952,48 +7952,20 @@ _ltd_fpm_core_check() {
 }
 # Requests PHP-FPM cut at its time limit (request_terminate_timeout), one
 # record a cut in /var/backups/ltd/fpmcut/<account>.<day>, root's, written by
-# the php monitor. A script cut _LTD_FPM_CUT_MIN times or more in the last 24
-# hours is listed in ~/static/control/.fpm-timeout.info for the account, with
-# the count, how long it ran, the first and last cut, the sites the cuts
-# came from and the last request (its method and first path segment only),
-# and in a daily notice for the operator; the file goes when none is left.
-# The script is what keeps timing out, so its cuts count together whichever
-# site sent them. A site is named only when it is the name of a regular file
-# in the account's own config/server_master/nginx/vhost.d (listed in its real
-# directory, never opened: the account can put a FIFO or a huge file there)
-# and of no file in any other vhost.d of the box (Aegir keeps names unique
-# within an instance only); anything else, an alias included, prints as "?".
-# A single cut can be a slow page on a busy minute; three in a day are the
-# same work never finishing. Nothing is stopped or changed: the fix is the
-# script's, or a long job run from the shell.
+# the php monitor. A script of the account cut _LTD_FPM_CUT_MIN times or more
+# in the last 24 hours is listed in ~/static/control/.fpm-timeout.info, with
+# the count, how long it ran, the first and last cut and the last request
+# as PHP-FPM logged it (its method and first path segment only), and in a
+# daily notice for the operator; the file goes when none is left. No site
+# is named: the master's line has none, and a guess could hand another
+# tenant's name or request to the account; the script's path names the
+# platform. A single cut can be a slow page on a busy minute; three in a day
+# are the same work never finishing. Nothing is stopped or changed: the fix
+# is the script's, or a long job run from the shell.
 _LTD_FPM_CUT_MIN=3
-_LTD_FPM_CUT_VROOT="/data/disk"
-_LTD_FPM_CUT_MROOT="/var/aegir/config/server_master/nginx/vhost.d"
-_ltd_fpm_cut_names_here() {
-  # in the pinned vhost.d: its regular files, "./name" a line, never opened
-  timeout -k 2 20 find . -mindepth 1 -maxdepth 1 -type f 2> /dev/null | head -n 100000
-}
-_ltd_fpm_cut_own() {
-  # the account's names that can name a site, one a line: its vhost.d's,
-  # held by no other vhost.d of the box
-  local _d="${_dscUsr}/config/server_master/nginx/vhost.d"
-  LC_ALL=C awk -v d="${_d}" '
-    FILENAME == ARGV[1] {
-      if (!match($0, /\/[^\/]*$/)) next
-      p = substr($0, 1, RSTART - 1)
-      n = substr($0, RSTART + 1)
-      if (!((p SUBSEP n) in s)) { s[p SUBSEP n] = 1; c[n]++; w[n] = p }
-      next
-    }
-    { n = substr($0, 3) }
-    n ~ /^[a-z0-9][a-z0-9.-]*$/ && c[n] == 1 && w[n] == d { print n }' \
-    <(timeout -k 2 30 find "${_LTD_FPM_CUT_VROOT}"/*/config/server_master/nginx/vhost.d \
-        "${_LTD_FPM_CUT_MROOT}" -mindepth 1 -maxdepth 1 -type f 2> /dev/null | head -n 1000000) \
-    <(_ltd_in_real_dir "${_d}" _ltd_fpm_cut_names_here) 2> /dev/null
-}
 _ltd_fpm_cut_notice() {
   local _st="/var/backups/ltd/fpmcut" _now _rows _txt _hdr _body _n
-  local _c _sc _s _t1 _t2 _rq _d _hs _ln
+  local _c _sc _s _t1 _t2 _rq _d _ln
   local -a _fs=()
   _now=$(date +%s)
   _rows=""
@@ -8001,7 +7973,8 @@ _ltd_fpm_cut_notice() {
     [ -f "${_ln}" ] && [ ! -L "${_ln}" ] && _fs+=("${_ln}")
   done
   if [ "${#_fs[@]}" -gt 0 ]; then
-    _rows=$(LC_ALL=C awk -F'|' -v now="${_now}" -v min="${_LTD_FPM_CUT_MIN}" '
+    _rows=$(LC_ALL=C awk -F'|' -v now="${_now}" -v min="${_LTD_FPM_CUT_MIN}" \
+      -v acct="${_USER}" '
       # a request as the method and its path to the first segment
       function segr(q,   sp, p, i) {
         sp = index(q, " ")
@@ -8010,41 +7983,23 @@ _ltd_fpm_cut_notice() {
         if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
         return substr(q, 1, sp) p
       }
-      # the own names first, then the records
-      FILENAME == ARGV[1] { own[$1] = 1; next }
       NF == 5 && $1 ~ /^[0-9]+$/ && $1 > now - 86400 && $1 <= now + 300 \
-        && $3 ~ /^[0-9]+$/ && index($5, " ") > 1 {
+        && $2 == acct && $3 ~ /^[0-9]+$/ && index($5, " ") > 1 {
         k = $4
-        h = (($2 in own) ? $2 : "?")
-        $5 = segr($5)
+        q = segr($5)
         if (!(k in c)) { c[k] = 0; f[k] = $1; l[k] = $1; s[k] = $3; nk++; K[nk] = k }
         c[k]++
         if ($1 < f[k]) f[k] = $1
-        if ($1 >= l[k]) { l[k] = $1; r[k] = $5 }
+        if ($1 >= l[k]) { l[k] = $1; r[k] = q }
         if ($3 + 0 < s[k] + 0) s[k] = $3
-        if (!((k SUBSEP $5) in u)) { u[k SUBSEP $5] = 1; d[k]++ }
-        if (!((k SUBSEP h) in hc)) { hc[k SUBSEP h] = 0; hl[k] = hl[k] " " h; hn[k]++ }
-        hc[k SUBSEP h]++
+        if (!((k SUBSEP q) in u)) { u[k SUBSEP q] = 1; d[k]++ }
       }
       END {
         for (i = 1; i <= nk; i++) {
           k = K[i]
-          if (c[k] < min) continue
-          # the sites by count, five at most
-          m = split(substr(hl[k], 2), hs, " ")
-          o = ""
-          for (j = 1; j <= m && j <= 5; j++) {
-            b = 0
-            for (x = 1; x <= m; x++) {
-              if (hs[x] != "" && (b == 0 || hc[k SUBSEP hs[x]] > hc[k SUBSEP hs[b]])) b = x
-            }
-            o = o (o == "" ? "" : ", ") hs[b] " " hc[k SUBSEP hs[b]]
-            hs[b] = ""
-          }
-          if (m > 5) o = o ", " (m - 5) " more"
-          print c[k] "|" k "|" s[k] "|" f[k] "|" l[k] "|" r[k] "|" d[k] "|" o
+          if (c[k] >= min) print c[k] "|" k "|" s[k] "|" f[k] "|" l[k] "|" r[k] "|" d[k]
         }
-      }' <(_ltd_fpm_cut_own) "${_fs[@]}" 2> /dev/null | sort -t'|' -k1,1nr | head -n 50)
+      }' "${_fs[@]}" 2> /dev/null | sort -t'|' -k1,1nr | head -n 50)
   fi
   if [ -z "${_rows}" ]; then
     if [ -e "${_dscUsr}/static/control/.fpm-timeout.info" ] \
@@ -8054,20 +8009,21 @@ _ltd_fpm_cut_notice() {
     return 0
   fi
   _txt=""
-  while IFS='|' read -r _c _sc _s _t1 _t2 _rq _d _hs; do
+  while IFS='|' read -r _c _sc _s _t1 _t2 _rq _d; do
     _ln="${_sc}: cut ${_c} times after ${_s} s, first $(date -d "@${_t1}" '+%F %H:%M'),"
-    _ln+=" last $(date -d "@${_t2}" '+%F %H:%M %Z'); from ${_hs}; last request ${_rq}"
+    _ln+=" last $(date -d "@${_t2}" '+%F %H:%M %Z'); last request ${_rq}"
     [ "${_d}" -gt 1 ] 2> /dev/null && _ln+=" (of ${_d} different requests)"
     _txt+="${_ln}"$'\n'
   done <<< "${_rows}"
   _txt="${_txt%$'\n'}"
   _n=$(printf '%s\n' "${_txt}" | wc -l)
   _hdr="# Scripts PHP-FPM stopped at its time limit ${_LTD_FPM_CUT_MIN} or more times in the last"
-  _hdr+=$'\n'"# 24 hours, with the sites the requests came from (? where the log did not"
-  _hdr+=$'\n'"# name one of yours) and the last request (its method and first path segment)."
-  _hdr+=$'\n'"# A request stopped there never finishes: a cron.php cut at every run leaves"
-  _hdr+=$'\n'"# its work undone each time. Find what the script waits on and fix it, or run"
-  _hdr+=$'\n'"# the long job from the shell with Drush, where PHP has no time limit."
+  _hdr+=$'\n'"# 24 hours, with the last request as PHP-FPM logged it (its method and first"
+  _hdr+=$'\n'"# path segment). No site is named: PHP-FPM logs none, and the script's path"
+  _hdr+=$'\n'"# names the platform. A request stopped there never finishes: a cron.php cut"
+  _hdr+=$'\n'"# at every run leaves its work undone each time. Find what the script waits"
+  _hdr+=$'\n'"# on and fix it, or run the long job from the shell with Drush, where PHP has"
+  _hdr+=$'\n'"# no time limit."
   _body="${_hdr}"$'\n'"${_txt}"
   if [ "$(_ltd_ctrl_read .fpm-timeout.info)" != "${_body}" ] \
     && _ltd_ctrl_put .fpm-timeout.info "${_body}"; then
