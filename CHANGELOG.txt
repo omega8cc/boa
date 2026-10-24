@@ -4,6 +4,42 @@
 
 @=> Important Fixes
 
+    * A barracuda pass could restart Nginx twice at once: the Nginx monitor
+      took the gap of the pass's own restart, before the new master writes
+      its pid file, for an outage and started a second Nginx, and the
+      start that lost the ports left bind errors behind that made the
+      monitor restart the master that won, a needless outage of its own.
+      The monitor now leaves a start or restart in flight to finish, and
+      bind errors left by a start that exited while one master serves move
+      the log aside instead of restarting it.
+
+    * The PHP-FPM monitor restarted a whole PHP version, every pool on it
+      and the control panel's with them, on a single sample that showed
+      two masters, such as a master's just-forked child still carrying its
+      title on a stalled box. It now counts only masters whose parent is
+      not one, asks again after 3 seconds, honours the version's cooldown
+      and logs the processes it counted before a restart.
+
+    * After a database restart stopped every PHP-FPM version at once, the
+      monitor brought them back one after another with its grace paid per
+      version, so the version the sites run waited behind versions nobody
+      uses while Nginx was already sending it requests (502). Every version
+      found down now shares one grace, and the box default and the panel's
+      version come back first.
+
+    * Solr 4 could stay down after a barracuda pass until the Java monitor
+      found it, or be killed again by the next self-update run: the pass
+      killed Jetty 9 and started it at once, a start while the JVM was
+      still exiting started nothing behind a stale state file, and the dead
+      JVM's work dir in /tmp read as a stale Jetty. The pass now waits for
+      the JVM to exit and clears both before it starts Jetty 9.
+
+    * codebasecheck --deep reported READY with "No deep contrib red-flags
+      found" when it could not read the database (the server down or still
+      upgrading, no client, no /root/.my.cnf), turning a REVIEW into READY.
+      A skipped or failed database scan now counts as one REVIEW item and
+      says to run the check again once the server answers.
+
     * A site served over HTTPS by the wildcard SSL front answered 502 where
       its own vhost drops the connection (a banned address, a refused
       crawler, a probe for a secret path): the front read the backend's
@@ -1868,6 +1904,9 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The nightly no longer logs "dir: cannot access" on a box where no
+      account has a distro platform tree for the ghost-codebases check.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
