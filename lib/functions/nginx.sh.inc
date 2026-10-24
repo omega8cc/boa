@@ -1240,6 +1240,14 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    ### A front without the drop rule answers 502, after retries, where the
+    ### backend closed the connection on purpose.
+    if ! grep -q "boa_drop" ${_WILD_SSL_VHOST} 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs backend drop update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     if ! grep -qE '^[[:space:]]*send_timeout[[:space:]]+3600s;' ${_WILD_SSL_VHOST} 2> /dev/null; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: nginx_wild_ssl.conf proxy needs media send timeout update..."

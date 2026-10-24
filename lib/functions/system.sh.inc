@@ -1129,6 +1129,10 @@ _global_inc_conf_update() {
     "${_locCnf}/global/global-ini.inc" global-ini.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-mode.inc" global-mode.inc
+  ### The Drush lock stand-in: the Drupal 8+ chain heads include it after
+  ### global-mode.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-drush-lock.inc" global-drush-lock.inc
   ### The login/admin lock query-string gate: the per-core and Backdrop chain
   ### heads include it after global-mode, so it ships with the chain.
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
