@@ -7784,8 +7784,9 @@ _ltd_fpm_why() {
   fi
 }
 # The PHP-FPM version each site's own include names, and the default
-# include's, read as root: the worker writes a site's include root's, 0600,
-# in the account's post.d, so the account itself cannot read it. One line
+# include's, read as root: the worker writes a site's include as root in the
+# account's post.d, 0600 under root's usual umask, which the account itself
+# cannot read. One line
 # each, "<site> <NN>", and "- <NN>" for the default include; every name is
 # read inside the real directory, never through a link, and bounded.
 _ltd_fpm_served() {

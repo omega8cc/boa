@@ -90,13 +90,12 @@
       not repeated until the sites change or a day has passed. The store
       heal reads a core's files only when they are regular and no link.
 
-    * That check judged a site with its own PHP-FPM version (a
-      multi-fpm.info line) by the account's default version: it read the
-      site's include as the account, and the worker writes that include
-      root's, 0600. Such a site was listed in .fpm-core.info, the daily
-      notice and its drush output when its code runs on its own version,
-      or left out when it does not. The worker now reads the includes
-      itself and hands the versions to the check.
+    * That check judged a site with its own PHP-FPM version (a multi-fpm.info
+      line) by the account's default version: it read the site's include as the
+      account, and the worker writes that include as root, usually 0600. Such a
+      site was listed in .fpm-core.info, the daily notice and its drush output
+      when its code runs on its own version, or left out when it does not. The
+      worker now reads the includes itself and hands the versions to the check.
 
     * An upgrade that stopped between re-rendering the shared
       nginx_vhost_common.conf and verifying the sites (a control panel
