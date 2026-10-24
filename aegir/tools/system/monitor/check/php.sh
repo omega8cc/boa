@@ -417,9 +417,12 @@ _fpm_timeout_detection() {
       fi
     fi
     if (( _sz > _off )); then
+      # as bytes and text whatever they hold: a worker's stderr can put a NUL
+      # in the log, a request an invalid UTF-8 byte, and grep would read the
+      # chunk as binary and print none of its lines
       tail -c +"$(( _off + 1 ))" -- "${_f}" 2> /dev/null | head -c "$(( _sz - _off ))" \
-        | grep -F -- ') execution timed out (' \
-        | grep -v -E -- "${_FPM_WORKER_LINE}" >> "${_cut}"
+        | LC_ALL=C grep -a -F -- ') execution timed out (' \
+        | LC_ALL=C grep -a -v -E -- "${_FPM_WORKER_LINE}" >> "${_cut}"
     fi
     _new+="${_f}|${_sz}|${_ino}"$'\n'
   done
