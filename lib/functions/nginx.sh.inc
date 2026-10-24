@@ -1824,6 +1824,54 @@ _nginx_ssl_proxy_extra_names() {
   rm -rf "${_bak}"
 }
 
+_nginx_ssl_proxy_backend_drop() {
+  ### The vhost behind an HTTPS proxy in pre.d refuses a request by closing
+  ### the connection, which a proxy written before the template dropped it
+  ### too answers with its own 502. It gets the template's two parts, taken
+  ### from this pass's build tree: the error_page lines at the top of its
+  ### `location /` and the named location before the server's closing brace.
+  ### A file without exactly one of each anchor is left alone, and every
+  ### insert is undone when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _any=""
+  grep -q upstream_bytes_sent "${_src}" 2>/dev/null || return 0
+  [ "$(grep -c '^  location / {$' "${_src}")" = "1" ] || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-drop.XXXXXX 2>/dev/null) || return 0
+  awk '/^  location \/ [{]$/ { p = 1; next }
+    p { print }
+    p && /error_page .*@boa_drop;/ { exit }' "${_src}" > "${_bak}/.top"
+  awk '/^  location @boa_drop [{]$/ { p = 1 }
+    p { print }
+    p && /^  }$/ { exit }' "${_src}" > "${_bak}/.loc"
+  if ! grep -q "error_page .*502 = @boa_drop;" "${_bak}/.top" \
+    || ! grep -q "upstream_bytes_sent" "${_bak}/.loc" \
+    || ! grep -q "return 444;" "${_bak}/.loc" \
+    || ! grep -q "^  }$" "${_bak}/.loc"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -q boa_drop "${_p}" && continue
+    [ "$(grep -c '^  location / {$' "${_p}")" = "1" ] || continue
+    [ "$(grep -c '^}$' "${_p}")" = "1" ] || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    awk -v top="${_bak}/.top" -v loc="${_bak}/.loc" '
+      /^}$/ { while ((getline _l < loc) > 0) print _l }
+      { print }
+      /^  location \/ [{]$/ { while ((getline _l < top) > 0) print _l }' \
+      "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
 _nginx_migration_proxy_client() {
   ### A site proxy that xoct or xcopy wrote before its template handed on
   ### the wildcard SSL front's visitor still gives the new host 127.0.0.1
@@ -1990,6 +2038,7 @@ _nginx_config_update_fix() {
       _nginx_ssl_proxy_local_refusal
       _nginx_ssl_proxy_panel_lock
       _nginx_ssl_proxy_extra_names
+      _nginx_ssl_proxy_backend_drop
       _nginx_migration_proxy_client
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then

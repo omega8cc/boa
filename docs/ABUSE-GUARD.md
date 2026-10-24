@@ -384,6 +384,12 @@ without a byte of an answer (`$upstream_bytes_sent` above zero, `$upstream_bytes
 zero). Any other failure the front meets answers 502 as before: nothing listening behind it,
 or an answer whose headers do not fit the front's buffer.
 
+A control panel's own HTTPS proxy (`pre.d/z_<panel>_ssl_proxy.conf`) drops the same way in its
+`location /`, with the same test. It needs no `proxy_next_upstream` line: it proxies to the
+box's own address, not to an `upstream` block, and nginx makes one try there. A barracuda
+upgrade adds the rule to a deployed proxy that lacks it, and an Octopus upgrade regenerates
+the panel's proxy from the template when it lacks it.
+
 ### Detector 5 — distributed scanner-fleet (UA-burst)
 
 A distributed scanner fleet spreads a probe sweep across many IPs at a few requests each,

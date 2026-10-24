@@ -53,6 +53,13 @@
       main access log at the visitor's address, as the wildcard SSL front
       does, and the upgrade removes /usr/on.
 
+    * A control panel answered 502 over HTTPS where its own vhost drops
+      the connection (a banned address, a refused crawler, a probe for a
+      secret path): its HTTPS proxy, like the wildcard SSL front, read the
+      close as an upstream failure. It now drops the connection as the
+      vhost did; nothing listening behind it, an answer whose headers do
+      not fit or any other failure still answers 502.
+
     * The wildcard SSL front answers 502 again where the failure is real:
       nothing listening behind it, or a site's answer whose headers do not
       fit. Since it began to drop the connection where the site drops it,
