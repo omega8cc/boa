@@ -111,17 +111,23 @@ code, or a `multi-fpm.info` line for a version that runs it, where one is instal
 
 A request that runs past the pool's `request_terminate_timeout` (180 s, lowered by
 `_PHP_FPM_TIMEOUT`) is cut by PHP-FPM, which logs only the script and the request, in
-`/var/log/php/phpNN-fpm-error.log`. The php monitor reads the new lines each minute and
-records each cut for the account whose pool and tree it is, naming the site when the
-access log lines of the same request agree on one host, and dropping the query string. A
-script of one site cut three times or more in 24 hours is listed by the ltd worker in
-`~/static/control/.fpm-timeout.info`: the site (`?` where the log did not name it), the
-script, the count, how long it ran, the first and last cut and the last request, with a
-line of advice; the operator gets a daily notice, and the file goes when no script is left
-in the last 24 hours. A cron.php cut at every run never finishes its work. Nothing is
-stopped or changed: the fix is the script's, or a long job run from the shell with Drush,
-where PHP has no time limit. The control panel's pool and the `www` pools are not
-counted.
+`/var/log/php/phpNN-fpm-error.log`. On every pass (every 5 s on most servers, see
+[MONITOR.md](MONITOR.md)) the php monitor reads the lines those logs gained, from an offset of
+its own; its first run starts at their ends, so no earlier cut is counted. Each cut is
+recorded for the account whose pool and tree it is. The site is named from the access log
+lines of the same request, read back to before the request began (a client that gave up
+early was logged 499 then), and only when the host is one of the account's own vhosts (a name
+in its `config/server_master/nginx/vhost.d`, or a `server_name` there), so no other
+customer's name reaches the account. Of the request only the method and the path's first
+segment are kept (`GET /cron/…`: never a Drupal 8+ cron key, a search's terms or the query
+string). A script cut three times or more in 24 hours is listed by the ltd worker in
+`~/static/control/.fpm-timeout.info`: the script, the count, how long it ran, the first and
+last cut, the sites the cuts came from (`?` where none of the account's was named) and the
+last request, with a line of advice; the operator gets a daily notice, and the file goes when
+no script has three cuts left in the last 24 hours. A cron.php cut at every run never
+finishes its work. Nothing is stopped or changed: the fix is the script's, or a long job run
+from the shell with Drush, where PHP has no time limit. The control panel's pool and the
+`www` pools are not counted.
 
 #### Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 

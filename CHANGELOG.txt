@@ -1984,15 +1984,19 @@
     * A request PHP-FPM cuts at its time limit (request_terminate_timeout,
       180 s at most) was logged in the master log and nowhere else, so a
       cron.php cut at every run, its work never done, could go unseen for
-      weeks. The php monitor now reads the new time-out lines each minute
-      from an offset of its own, records each cut for the account whose
-      pool and tree it is, names the site when the access log lines of
-      the same request agree on one host, and keeps no query string. The
-      ltd worker lists a script of a site cut three times or more in 24
-      hours in ~/static/control/.fpm-timeout.info, with the count, how
-      long it ran, the first and last cut and the last request, and tells
-      the operator once a day; the file goes when none is left. Nothing
-      is stopped or changed.
+      weeks. On every pass (every 5 seconds on most servers) the php
+      monitor now reads the time-out lines the master logs gained, from an
+      offset of its own (its first run starts at their ends and counts no
+      earlier cut), and records each cut for the account whose pool and
+      tree it is. The site is named from the access log lines of the same
+      request, read back to before it began, and only when it is one of
+      the account's own vhosts; of the request only the method and the
+      path's first segment are kept, never the query string. The ltd
+      worker lists a script cut three times or more in 24 hours in
+      ~/static/control/.fpm-timeout.info, with the count, how long it
+      ran, the first and last cut, the sites the cuts came from and the
+      last request, and tells the operator once a day; the file goes when
+      none is left. Nothing is stopped or changed.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
