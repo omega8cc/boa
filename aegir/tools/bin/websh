@@ -618,6 +618,9 @@ _drush_refused_say() {
     if [ -x /opt/local/bin/checkmyperms ] && [[ "${_lc}" == *"'checkmyperms'"* ]]; then
       echo " checkmyperms shows the platforms, the aliases and the window."
     fi
+  elif [ "${_DR_WHY}" = "F" ]; then
+    echo " A NAME=value word in front of drush, composer, php or a .php script, and"
+    echo " a php -c or -d in front of drush, are not available (F)."
   else
     echo " This drush command is not available (${_DR_WHY})"
   fi
@@ -659,6 +662,70 @@ _php_member() {
   _in_grp ltd-shell-more || return 1
   { _lc=$(< /etc/lshell.conf); } 2> /dev/null
   [[ "${_lc}" == *"':'/opt/php"[0-9][0-9]"/bin/php'"* ]]
+}
+# A Composer run (websh's composer route below, or Composer started by its
+# path, which runs through its "#!/usr/bin/env php" line) starts PHP itself:
+# its @php scripts and plugin tasks, CiviCRM's compile tasks among them, and
+# the php lines of the project's own scripts come back here as "<php> -r ..."
+# or "<php> <script>". Those run: Composer already runs its plugins as PHP
+# inside its own process, so refusing its children stopped real builds
+# without closing anything. True when an ancestor of this shell, owned by
+# the same user, is such a Composer: its argv[0] one of the server's
+# /opt/phpNN/bin/php builds, /usr/bin/php, or "php" (env's PATH lookup,
+# which on BOA finds /usr/bin/php), its executable that very file (compared
+# by inode through /proc, which a process cannot rename) and its first
+# argument after -n, -d and -c (the options Composer is started with: its
+# own restart passes -n -c <ini>) /usr/local/bin/composer or BOA's link
+# to it, /usr/bin/composer. Any other PHP option before it ends the test: a
+# glued -r, -f or -B runs its own code and leaves composer an unused operand.
+# The path comes from argv[0] because a tenant cannot list /opt, so a glob
+# there matches nothing. A process that is not such a Composer is passed
+# over, so PHP that a tool inside a Composer run starts runs too. The walk
+# stops at the first process of another user, at PID 1, after eight steps
+# up, or where /proc gives no status. Pure bash: some identities cannot run
+# the system binaries.
+_under_composer() {
+  local _p="${PPID}" _n _k _a _r _uid _pp _i _skip _b
+  local -a _argv
+  for _n in 1 2 3 4 5 6 7 8; do
+    [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt 1 ] || return 1
+    _uid=""
+    _pp=""
+    {
+      while read -r _k _a _r; do
+        case "${_k}" in
+          Uid:) _uid="${_a}" ;;
+          PPid:) _pp="${_a}" ;;
+        esac
+      done < "/proc/${_p}/status"
+    } 2> /dev/null
+    [ -n "${_uid}" ] && [ "${_uid}" = "${UID}" ] || return 1
+    _argv=()
+    { mapfile -d '' -t _argv < "/proc/${_p}/cmdline"; } 2> /dev/null
+    case "${_argv[0]:-}" in
+      /opt/php[0-9][0-9]/bin/php|/usr/bin/php) _b="${_argv[0]}" ;;
+      php) _b=/usr/bin/php ;;
+      *) _b="" ;;
+    esac
+    if [ -n "${_b}" ] && [ "${#_argv[@]}" -gt 1 ] && [ -f "${_b}" ] \
+      && [[ "/proc/${_p}/exe" -ef "${_b}" ]]; then
+      _skip=NO
+      for (( _i = 1; _i < ${#_argv[@]}; _i++ )); do
+        if [ "${_skip}" = "YES" ]; then
+          _skip=NO
+          continue
+        fi
+        case "${_argv[${_i}]}" in
+          -d|-c) _skip=YES ;;
+          -n|-d?*|-c?*) ;;
+          /usr/local/bin/composer|/usr/bin/composer) return 0 ;;
+          *) break ;;
+        esac
+      done
+    fi
+    _p="${_pp}"
+  done
+  return 1
 }
 _php_direct_refused() {
   # $1 = the line as received; true when one of its simple commands names a
@@ -739,6 +806,7 @@ _php_direct_refused() {
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
     _drush_refused_say
+    [ "${_PHP_IN_COMPOSER}" = "YES" ] && exit 1
     exit 0
   fi
   exec /bin/dash -c "$1"
@@ -816,6 +884,7 @@ _forward_to_dash() {
         if [[ -n "$2" ]]; then
           if _is_tenant && _drush_refused "$2"; then
             _drush_refused_say
+            [ "${_PHP_IN_COMPOSER}" = "YES" ] && exit 1
             exit 0
           fi
           _options+=("-c" "$2")
@@ -889,13 +958,23 @@ if [ "${1}" = "-c" ] && [[ "${2}" == [-+]* ]] && _is_tenant; then
 fi
 
 # A tenant outside [grp:ltd-shell-more] never runs PHP by name, typed or
-# spawned by a tool it runs; refused before any route below can exec it.
+# spawned by a tool it runs, except inside a Composer run (_under_composer);
+# refused before any route below can exec it. Inside a Composer run the line
+# goes on to the routes below; where it meets the rules of an exec site (a
+# NAME=value word in front of php is refused there), _PHP_IN_COMPOSER makes
+# their refusal exit 1, so the Composer script that ran it fails instead of
+# passing with nothing run. A quoted or exec-led line the verbatim fast lane
+# below takes meets no such rule, inside a Composer run or not.
+_PHP_IN_COMPOSER=""
 if [ "${1}" = "-c" ] && _is_tenant && ! _php_member \
   && _php_direct_refused "${2}"; then
-  echo >&2
-  echo " Running PHP directly is not available on this account." >&2
-  echo >&2
-  exit 1
+  if ! _under_composer; then
+    echo >&2
+    echo " Running PHP directly is not available on this account." >&2
+    echo >&2
+    exit 1
+  fi
+  _PHP_IN_COMPOSER=YES
 fi
 
 # Capture all arguments
