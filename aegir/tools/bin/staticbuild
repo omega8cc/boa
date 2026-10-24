@@ -52,9 +52,10 @@
 #
 # Usage:
 #   staticbuild backdrop            build+package+publish ONLY the Backdrop family
-#                                   (backdrop core + bee + backdrop-drush-extension
-#                                   + redis_backdrop + webform_backdrop), all at
-#                                   latest - lightweight, no Composer
+#                                   (backdrop core + civicrm_backdrop + bee +
+#                                   backdrop-drush-extension + redis_backdrop +
+#                                   webform_backdrop), all at latest - lightweight,
+#                                   no Composer
 #   staticbuild grav                build+package+publish ONLY the Grav family
 #                                   (official admin bundle at latest; no Composer)
 #   staticbuild txp                 build+package+publish ONLY Textpattern (official
@@ -64,7 +65,8 @@
 #                                   the Backdrop family, or only the named targets
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package [name ...]  clean + tar every platform in the day dir, or only
-#                                   the named (cores keep core/profiles, distros strip)
+#                                   the named (cores and the CiviCRM platforms keep
+#                                   core/profiles, distros strip)
 #   staticbuild distribute [name ...]
 #                                   copy the day dir's tarballs, or only the named, to
 #                                   /var/www/static/{distro,core,dev/{dev,lts,pro}};
@@ -113,10 +115,12 @@
 #              platform summary still closes the run
 # Build target names: farm cms culturas commerce localgov openfed opigno social thunder
 #   varbase ezcontent commerce_base (the two pinned catalogue platforms, rebuilt from
-#   their published tarballs) backdrop (core, versioned like the Drupal cores) bee
-#   backdrop-drush-extension redis_backdrop webform_backdrop grav txp cores
+#   their published tarballs) civicrm_drupal (Drupal 11 with CiviCRM) backdrop (core,
+#   versioned like the Drupal cores) civicrm_backdrop (Backdrop with CiviCRM, made from
+#   the day's backdrop core: name it after backdrop) bee backdrop-drush-extension
+#   redis_backdrop webform_backdrop grav txp cores
 #
-# The Backdrop family (backdrop core, bee, backdrop-drush-extension,
+# The Backdrop family (backdrop core, civicrm_backdrop, bee, backdrop-drush-extension,
 # redis_backdrop, webform_backdrop) is always fetched at its newest upstream version, so BOA
 # never falls behind: run "staticbuild all" (or just the named targets) on the
 # mirror source VM, e.g. from cron alongside get-boa-dev. Backdrop core is
@@ -127,7 +131,9 @@
 # redis_backdrop is published versioned to the per-tree contrib shelf
 # (dev/{dev,lts,pro}/contrib/) and consumed by the version pinned in
 # OCTOPUS.sh.txt / BOA.sh.txt, so a newer publish here is inert until the
-# pins are bumped.
+# pins are bumped. civicrm_backdrop goes to the distro shelf with a
+# civicrm_backdrop.txt stamp holding its <civicrm>-<backdrop> pair, published after
+# its tarball; a name already on the shelf is not built again (-f rebuilds).
 
 # ---------------------------------------------------------------------------
 # Configuration - review the specs/minors each cycle ("staticbuild check").
@@ -180,6 +186,8 @@ _PHP_OPENFED="${_PHP_83}"                        # OpenFed 13.6 rides the D10.6 
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
 _PHP_CORE_12="${_PHP_85}"                        # Drupal 12 and later: their generated
                                                  # platform_check.php refuses PHP below 8.5
+_PHP_CIVICRM="${_PHP_84}"                        # Drupal 11 with CiviCRM: the catalogue's
+                                                 # Drupal 11 cap
 # A legacy line builds under the newest installed interpreter of those its lock
 # accepts on a full resolve (the Drush require is one), newest first; a server with
 # none of them skips the line. Drupal 8.9's Twig 1 and Symfony 3.4 stop at PHP 7.4;
@@ -266,6 +274,21 @@ _REDIS_TAG=""
 # refreshed on the next upgrade pass.
 _WEBFORM_B_REPO="backdrop-contrib/webform"
 _WEBFORM_B_TAG=""
+
+# CiviCRM, built into two catalogue platforms: civicrm_backdrop, the official CiviCRM
+# for Backdrop release tarball unpacked into the root modules/ of the day's Backdrop
+# core tree, and civicrm_drupal, a Composer-built Drupal 11 codebase with CiviCRM's
+# Drupal packages, after CiviCRM's own Drupal install guide. The latest stable release
+# is read from latest.civicrm.org; set _CIVICRM_TAG to pin one. The Backdrop tarball is
+# checked against the release's SHA256SUMS before it is unpacked. civicrm_backdrop is
+# named after both releases and its name is stamped to civicrm_backdrop.txt on the
+# distro shelf, published after its tarball: the boxes resolve the platform from that
+# stamp. civicrm_drupal is a Composer distribution whose name the catalogue pins.
+_CIVICRM_TAG=""
+_CIVICRM_STABLE_URL="https://latest.civicrm.org/stable.php"
+_CIVICRM_DL_URL="https://download.civicrm.org"
+_CIVICRM_D_SPEC="drupal/recommended-project:^11"
+_CIVICRM_D_PKGS="civicrm/civicrm-core civicrm/civicrm-packages civicrm/civicrm-drupal-8"
 
 # Distribution Composer specs (the create-project template) + the distribution PROFILE
 # package. The tarball version is the profile package's version (the authoritative number
@@ -391,7 +414,7 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # patch set is fetched from mutable branch refs with no hashes, so REBUILDS are not
 # reproducible -- each published tarball is the frozen artefact, same as every other
 # distro here.
-_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase ezcontent commerce_base"
+_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase ezcontent commerce_base civicrm_drupal"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -1553,6 +1576,18 @@ _resolve_txp_tag() {
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
 }
 
+_resolve_civicrm_version() {
+  # The latest stable CiviCRM release (latest.civicrm.org answers the bare version),
+  # or the pinned _CIVICRM_TAG. Prints only a plain N.N.N version, else nothing: it
+  # reaches file names, package constraints and root shell commands.
+  local _v="${_CIVICRM_TAG}"
+  if [[ -z "${_v}" ]]; then
+    _v="$(curl -fsSL --max-time 30 -A "${_UA}" "${_CIVICRM_STABLE_URL}" 2>/dev/null | head -c 64)"
+  fi
+  [[ "${_v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && printf '%s\n' "${_v}"
+  return 0
+}
+
 _gh_quota_note() {
   # After a GitHub API lookup failed: when GitHub's anonymous quota is spent, prints
   # ", GitHub quota spent until HH:MM UTC" for the row, else nothing. The
@@ -2148,6 +2183,57 @@ build_commerce_base() {
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
 }
 
+_civicrm_drupal_complete() {
+  # $1 = a civicrm_drupal build tree. True when CiviCRM's Drupal module sits where
+  # composer/installers puts it and the asset plugin filled web/libraries/civicrm:
+  # core's Common.js, which every CiviCRM page loads, and the packages. An empty or
+  # half-published libraries folder does not count.
+  _run_as_o8 "test -f '$1/web/modules/contrib/civicrm/civicrm.info.yml' \
+    && test -f '$1/web/libraries/civicrm/core/js/Common.js' \
+    && test -d '$1/web/libraries/civicrm/packages'"
+}
+
+build_civicrm_drupal() {
+  # Drupal 11 with CiviCRM, after CiviCRM's own Drupal install guide: the
+  # recommended-project template with dependency patching on, CiviCRM's three Drupal
+  # packages at the release, then Drush (CiviCRM before Drush, as the guide says).
+  # CiviCRM's packages patch their own dependencies, so a patch that does not apply
+  # fails this build, and its compile tasks run unattended (the plugin would prompt).
+  # No older-core fallback: this platform is the Drupal 11 flavour. Named
+  # civicrm_drupal-<civicrm>-<core>; the fix step never moves the CiviCRM packages,
+  # whose release names the platform.
+  _begin_build "$(_target_prefix civicrm_drupal)" "civicrm_drupal" || return 0
+  use_php "${_PHP_CIVICRM}" || { _record_fail "civicrm_drupal"; return 1; }
+  local _wd="${_DAY_DIR}/.build.civicrm_drupal" _cv _p _req="" _got
+  _cv="$(_resolve_civicrm_version)"
+  [[ -n "${_cv}" ]] || { _record_fail "civicrm_drupal (no CiviCRM release)"; return 1; }
+  for _p in ${_CIVICRM_D_PKGS}; do
+    _req+=" ${_p}:${_cv}"
+  done
+  _create_project "${_wd}" "${_CIVICRM_D_SPEC}" "drupal/recommended-project" "" > /dev/null \
+    || { _record_fail "civicrm_drupal"; return 1; }
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer config --no-plugins --json extra.enable-patching true \
+           && composer config --no-plugins --json extra.composer-exit-on-patch-failure true \
+           && composer config --no-plugins extra.compile-mode all \
+           && composer require --no-update --no-scripts${_req}" \
+         && _composer_build "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec 11) --no-scripts --update-no-dev"; }; then
+    _record_fail "civicrm_drupal"
+    return 1
+  fi
+  _fix_step "${_wd}" "civicrm_drupal" "${_CIVICRM_D_PKGS}" || return 1
+  # Fail closed on what the platform is for: CiviCRM's core at the release, its module
+  # and the assets the asset plugin publishes.
+  _got="$(_lock_version "${_wd}" civicrm/civicrm-core)"
+  if [[ "${_got}" != "${_cv}" ]] || ! _civicrm_drupal_complete "${_wd}"; then
+    _alrt "civicrm_drupal: CiviCRM ${_cv} is not complete in the build (lock: ${_got:-none})"
+    _record_fail "civicrm_drupal (CiviCRM ${_cv} not complete)"
+    return 1
+  fi
+  _finalize_distro "civicrm_drupal" "${_wd}" "${_cv}" "civicrm_drupal"
+}
+
 build_cores() {
   # Vanilla core platforms: one per minor, resolved to its latest patch, and each
   # pre-release still due (_CORE_PRERELEASE) at its exact version; full install, add
@@ -2355,6 +2441,55 @@ build_txp() {
   _info "textpattern: built textpattern-${_tag}/ (checksum verified, /sites present)"
 }
 
+build_civicrm_backdrop() {
+  # Backdrop core with CiviCRM: the day's backdrop-<ver>/ tree (backdrop builds
+  # first) and the official CiviCRM for Backdrop release tarball, checked against the
+  # release's SHA256SUMS and unpacked into the root modules/, where the add-on finds
+  # CiviCRM through the platform's module list. Named
+  # civicrm_backdrop-<civicrm>-<backdrop>, the pair stamped to civicrm_backdrop.txt.
+  # Both inputs of a name are fixed upstream releases, so a name already on the distro
+  # shelf is not built again (-f does): a rebuild would pack new bytes under the same
+  # name, and every idle copy on the boxes would fetch it again. No Composer: the
+  # tarball carries CiviCRM's own vendor tree, outside the advisory audit.
+  local _bv _cv _name _tgz _dl=".dl.civicrm_backdrop" _wd=".build.civicrm_backdrop"
+  _run_as_o8 "rm -f '${_DAY_DIR}/civicrm_backdrop.txt'"
+  _bv="$(_backdrop_day_version)"
+  if [[ -z "${_bv}" ]] || ! _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_bv}/modules'"; then
+    _record_fail "civicrm_backdrop (no Backdrop tree in the day dir: build backdrop first)"
+    return 1
+  fi
+  _cv="$(_resolve_civicrm_version)"
+  [[ -n "${_cv}" ]] || { _record_fail "civicrm_backdrop (no CiviCRM release)"; return 1; }
+  _name="civicrm_backdrop-${_cv}-${_bv}"
+  _tgz="civicrm-${_cv}-backdrop.tar.gz"
+  if [[ "${_FORCE}" != "1" && -f "${_DISTRO_OUT}/${_name}.tar.gz" ]]; then
+    _msg "SKIP: ${_name} is already on ${_DISTRO_OUT} (use -f to rebuild)"
+    _rec "${_name}" BUILD skip
+    _rec_note "${_name}" "already published (-f rebuilds)"
+  elif _begin_build "${_name}" "civicrm_backdrop"; then
+    if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' '${_dl}' && mkdir '${_dl}' \
+      && wget -q -O '${_dl}/${_tgz}' '${_CIVICRM_DL_URL}/${_tgz}' \
+      && wget -q -O '${_dl}/sums' '${_CIVICRM_DL_URL}/civicrm-${_cv}.SHA256SUMS' \
+      && awk -v f='${_tgz}' '\$2 == f' '${_dl}/sums' > '${_dl}/one.sum' && test -s '${_dl}/one.sum' \
+      && ( cd '${_dl}' && sha256sum -c --status one.sum ) \
+      && ! tar -tzf '${_dl}/${_tgz}' | grep -qv '^civicrm/' \
+      && cp -a 'backdrop-${_bv}' '${_wd}' \
+      && tar -xzf '${_dl}/${_tgz}' --no-same-owner -C '${_wd}/modules' \
+      && test -f '${_wd}/modules/civicrm/backdrop/civicrm.module' \
+      && touch -r 'backdrop-${_bv}/modules' '${_wd}/modules' \
+      && rm -rf '${_dl}' && mv '${_wd}' '${_name}'"; then
+      _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' '${_dl}'"
+      _record_fail "civicrm_backdrop (CiviCRM ${_cv}: download, checksum or unpack failed)"
+      return 1
+    fi
+    _rec "${_name}" BUILD ok
+    _info "civicrm_backdrop: built ${_name}/ (CiviCRM ${_cv} checksum verified, Backdrop ${_bv})"
+  fi
+  # The stamp in the day dir; distribute publishes it once the shelf holds the name.
+  _run_as_o8 "cd '${_DAY_DIR}' && printf '%s\n' '${_cv}-${_bv}' > civicrm_backdrop.txt" \
+    || _alrt "civicrm_backdrop: civicrm_backdrop.txt not written"
+}
+
 build_bee() {
   # Native Backdrop CLI. Packaged version-less as bee.tar.gz with bee.php at the
   # root (what BOA's _get_bee extracts into /opt/tools/bee). Always rebuilt.
@@ -2458,6 +2593,8 @@ _target_prefix() {
     varbase)       printf '%s\n' "varbase-" ;;
     ezcontent)     _r="${_EZC_PINNED%-*}"; printf '%s\n' "${_r%-*}-" ;;
     commerce_base) _r="${_CK2_PINNED%-*}"; printf '%s\n' "${_r%-*}-" ;;
+    civicrm_drupal) printf '%s\n' "civicrm_drupal-" ;;
+    civicrm_backdrop) printf '%s\n' "civicrm_backdrop-" ;;
   esac
 }
 
@@ -2512,6 +2649,8 @@ run_build() {
     varbase)  build_varbase ;;
     ezcontent) build_ezcontent ;;
     commerce_base) build_commerce_base ;;
+    civicrm_drupal) build_civicrm_drupal ;;
+    civicrm_backdrop) build_civicrm_backdrop ;;
     cores)    build_cores ;;
     *)        _record_fail "${_name} (unknown build target)"; return 1 ;;
   esac
@@ -2521,7 +2660,7 @@ run_build() {
 do_build() {
   # $@ = target names, or empty for all distros + cores.
   local _targets="$*"
-  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop cores"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop civicrm_backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop cores"
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
     _msg "composer clearcache (${_O8_USER})"
@@ -2664,7 +2803,8 @@ strip_core_profiles() {
   for _name in ${_list}; do
     _name="${_name%/}"
     _in_scope "${_name}" || continue
-    case "${_name}" in drupal-*|backdrop-[0-9]*) continue ;; esac
+    # The CiviCRM platforms are installed with core's standard profile.
+    case "${_name}" in drupal-*|backdrop-[0-9]*|civicrm_drupal-*|civicrm_backdrop-*) continue ;; esac
     _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
   done
 }
@@ -2790,7 +2930,10 @@ _purge_rec() {
 _publish_plain() {
   # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
   # when the file only rides along with that row's own tarball (a compat tarball, a
-  # version stamp): then only a failure changes the row. For shelves no lock guards.
+  # version stamp): then only a failure changes the row. $5, when given, is the line
+  # the caller checked: root's copy must hold exactly it, or nothing is published
+  # (the build user can rewrite its file between the check and this copy). For
+  # shelves no lock guards.
   local _src="$1" _out="$2" _k="$3" _st="new" _what="" _rc
   # A companion's failure names the file, so the row does not blame its own tarball.
   [[ "${4:-}" == "companion" ]] && _what="${_src##*/} "
@@ -2805,6 +2948,14 @@ _publish_plain() {
   elif [[ "${_rc}" != "0" ]]; then
     _rec_pub "${_k}" FAILED
     _rec_note "${_k}" "${_what}copy failed"
+    return 1
+  fi
+  # cmp, never a read into a string: the copy can be as large as _sb_take_here takes
+  if [[ -n "${5:-}" ]] && ! cmp -s "${_SHELF_TMP}" <(printf '%s\n' "$5"); then
+    _shelf_drop
+    _alrt "${_src##*/} changed after its check, not published"
+    _rec_pub "${_k}" FAILED
+    _rec_note "${_k}" "${_what}changed after its check"
     return 1
   fi
   if [[ -e "${_out}/${_src##*/}" ]]; then
@@ -2912,6 +3063,31 @@ _txp_day_version() {
   _sb_in_real_dir "${_DAY_DIR}" _sb_read_here textpattern.txt | tr -cd '0-9.'
 }
 
+_civicrm_backdrop_day_version() {
+  # The <civicrm>-<backdrop> pair the current civicrm_backdrop build stamped (empty if
+  # none or not that shape), read as above.
+  local _v
+  [[ -f "${_DAY_DIR}/civicrm_backdrop.txt" && ! -L "${_DAY_DIR}/civicrm_backdrop.txt" ]] || return 0
+  _v="$(_sb_in_real_dir "${_DAY_DIR}" _sb_read_here civicrm_backdrop.txt | head -n 1 | tr -cd '0-9.-')"
+  [[ "${_v}" =~ ^[0-9]+(\.[0-9]+)+-[0-9]+(\.[0-9]+)+$ ]] && printf '%s\n' "${_v}"
+  return 0
+}
+
+_civicrm_backdrop_stamp() {
+  # $1 = the pair the day dir's civicrm_backdrop.txt holds, $2 = 1 when this run failed
+  # to put that platform's tarball on the distro shelf. The stamp names the platform
+  # every box fetches, so it goes out after the tarball, only while the shelf holds it
+  # (a name built on an earlier day and skipped since counts), never when this
+  # run's own copy of it failed, and only as the pair checked here.
+  local _k="civicrm_backdrop-$1"
+  if [[ "$2" == "1" || ! -f "${_DISTRO_OUT}/${_k}.tar.gz" ]]; then
+    _alrt "civicrm_backdrop.txt held: ${_k}.tar.gz is not on ${_DISTRO_OUT}"
+    _rec_note "${_k}" "stamp held"
+    return 1
+  fi
+  _publish_plain "${_DAY_DIR}/civicrm_backdrop.txt" "${_DISTRO_OUT}" "${_k}" companion "$1"
+}
+
 package_backdrop_compat() {
   # Version-less backdrop.tar.gz for already-deployed BOA releases, which still
   # fetch that name AND expect it to extract to backdrop/ (the pre-versioning
@@ -2955,13 +3131,14 @@ package_backdrop_compat() {
 
 do_backdrop_family() {
   # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
-  # core + bee + backdrop-drush-extension + redis_backdrop + webform_backdrop), all at their
-  # newest upstream. No Composer, no distros/cores, no /usr/bin/php switch -
+  # core + civicrm_backdrop + bee + backdrop-drush-extension + redis_backdrop +
+  # webform_backdrop), all at their newest upstream. No Composer, no distros/cores,
+  # no /usr/bin/php switch -
   # just git/wget/unzip. Scoped to the family so it never touches unrelated
   # day-dir content.
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   local _t
-  for _t in backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop; do
+  for _t in backdrop civicrm_backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop; do
     _msg ""
     _msg "=== build: ${_t} ==="
     run_build "${_t}"
@@ -2975,6 +3152,13 @@ do_backdrop_family() {
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'backdrop-${_ver}.tar.gz' ${_TAR_OWNER} 'backdrop-${_ver}'" \
       || { _alrt "tar failed: backdrop-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop-${_ver}.tar.gz'"; _rec_note "backdrop-${_ver}" "tar failed"; }
     package_backdrop_compat
+  fi
+  local _cbv _cbfail=""
+  _cbv="$(_civicrm_backdrop_day_version)"
+  if [[ -n "${_cbv}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/civicrm_backdrop-${_cbv}'"; then
+    _msg "tar: civicrm_backdrop-${_cbv}.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'civicrm_backdrop-${_cbv}.tar.gz' ${_TAR_OWNER} 'civicrm_backdrop-${_cbv}'" \
+      || { _alrt "tar failed: civicrm_backdrop-${_cbv}"; _run_as_o8 "rm -f '${_DAY_DIR}/civicrm_backdrop-${_cbv}.tar.gz'"; _rec_note "civicrm_backdrop-${_cbv}" "tar failed"; }
   fi
   # Publish only the family artifacts. Tarballs first, the backdrop.txt stamp
   # last: a consumer must never resolve a version whose tarball is not there yet.
@@ -2991,6 +3175,18 @@ do_backdrop_family() {
         break
       fi
     done
+  fi
+  # The Backdrop CiviCRM platform and its stamp, which goes out after the tarball.
+  if [[ -n "${_cbv}" ]]; then
+    mkdir -p "${_DISTRO_OUT}" || _die "cannot create ${_DISTRO_OUT}"
+    if [[ -e "${_DAY_DIR}/civicrm_backdrop-${_cbv}.tar.gz" ]]; then
+      if _publish_plain "${_DAY_DIR}/civicrm_backdrop-${_cbv}.tar.gz" "${_DISTRO_OUT}" "civicrm_backdrop-${_cbv}"; then
+        _msg "distro <- civicrm_backdrop-${_cbv}.tar.gz"
+      else
+        _cbfail=1
+      fi
+    fi
+    _civicrm_backdrop_stamp "${_cbv}" "${_cbfail}"
   fi
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
@@ -3219,8 +3415,9 @@ do_distribute() {
     _ADV_TMP="$(mktemp -d)" || _die "cannot create a work dir"
   fi
   _ensure_devext_dirs
-  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold="" _names=()
+  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold="" _names=() _cbv _cbfail=""
   _bdrv="$(_backdrop_day_version)"
+  _cbv="$(_civicrm_backdrop_day_version)"
   # The tarballs are listed inside the real day dir.
   mapfile -t _names < <(_day_names '*.tar.gz')
   for _base in "${_names[@]}"; do
@@ -3255,6 +3452,16 @@ do_distribute() {
           [[ -n "${_bdrv}" && "${_base}" == "backdrop-${_bdrv}.tar.gz" ]] && _bdrok=1
         fi
         ;;
+      # No lock at its top (CiviCRM's own sits in modules/civicrm), and its inputs are
+      # fixed releases: copied as the Backdrop core is, its stamp after the loop.
+      civicrm_backdrop-*.tar.gz)
+        if _publish_plain "${_t}" "${_DISTRO_OUT}" "${_base%.tar.gz}"; then
+          _n=$((_n + 1))
+          _msg "distro <- ${_base}"
+        elif [[ "${_base}" == "civicrm_backdrop-${_cbv}.tar.gz" ]]; then
+          _cbfail=1
+        fi
+        ;;
       *)
         _publish_locked "${_t}" "${_DISTRO_OUT}" && _n=$((_n + 1)) ;;
     esac
@@ -3280,6 +3487,9 @@ do_distribute() {
       _alrt "backdrop.txt held: ${_bhold}"
       _rec_note "backdrop-${_bdrv}" "stamp held"
     fi
+  fi
+  if [[ -n "${_cbv}" ]] && _scope_takes civicrm_backdrop; then
+    _civicrm_backdrop_stamp "${_cbv}" "${_cbfail}"
   fi
   # The supported core minors go out with the cores target, after the core
   # tarballs: the boxes take the copy on core/ with their daily tools refresh.
@@ -3325,6 +3535,7 @@ do_check() {
   # _REDIS_B_VERSION pins in OCTOPUS.sh.txt + BOA.sh.txt are due a bump.
   _check_row "bd-redis" "$(_latest_git_tag "${_REDIS_REPO}")"
   _check_row "bd-webform" "$(_latest_git_tag "${_WEBFORM_B_REPO}")"
+  _check_row "civicrm"  "$(_resolve_civicrm_version)"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
@@ -3373,8 +3584,11 @@ _catalogue_producers() {
 _catalogue_rows() {
   # $1 = tree. Emits "KEY<TAB>prefix<TAB>tarball" for every catalogue entry that is
   # fetched from the distro mirror. The excluded key shapes mirror _d_dist_loop's
-  # dispatch in AegirSetupC.sh.txt (core-only D[LXET]N, Backdrop BD*, and the
-  # custom CK1/UC* handlers) -- add a class there and it must be added here too.
+  # dispatch in AegirSetupC.sh.txt (core-only D[LXET]N, the Backdrop BD* keys, whose
+  # names follow mirror stamps, and the custom CK1/UC* handlers) -- add a class there
+  # and it must be added here too. A key in _distros_name_prefixes is named after
+  # that prefix instead of its install profile (the CiviCRM platforms install with
+  # core's standard profile).
   # With $2 = core it emits the Composer-built core-only entries instead (D9 to
   # D12: DL9, DX*, DE*, DT*), as "KEY<TAB>drupal<TAB>drupal-<ver>.tar.gz", the name
   # _create_drupal_basic_version fetches from the core mirror; the Drupal 6/7 cores
@@ -3415,11 +3629,13 @@ _catalogue_rows() {
     /^declare -A _distros_profiles_names=\(/ { _sec = "prof"; next }
     /^declare -A _distros_versions=\(/       { _sec = "ver";  next }
     /^declare -A _distros_drupal_cores=\(/   { _sec = "core"; next }
+    /^declare -A _distros_name_prefixes=\(/  { _sec = "pfx";  next }
     /^\)/                                    { _sec = "";     next }
     _sec != "" && match($0, /\["[A-Z0-9]+"\]="[^"]*"/) {
       split(substr($0, RSTART, RLENGTH), _a, "\"")
       if (_sec == "prof")     _P[_a[2]] = _a[4]
       else if (_sec == "ver") _R[_a[2]] = _a[4]
+      else if (_sec == "pfx") _X[_a[2]] = _a[4]
       else                    _C[_a[2]] = _a[4]
     }
     END {
@@ -3430,8 +3646,9 @@ _catalogue_rows() {
           continue
         }
         if (_k ~ /^D[LXET][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1" || _k == "GRV" || _k == "TXP") continue
+        _pf = (_k in _X) ? _X[_k] : _P[_k]
         printf "%s\t%s\t%s-%s-%s.tar.gz\n", \
-          _k, _P[_k], _P[_k], _resolve(_R[_k]), _resolve(_C[_k])
+          _k, _pf, _pf, _resolve(_R[_k]), _resolve(_C[_k])
       }
     }
   ' "${_tmp}/catalogue" | sort
