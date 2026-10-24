@@ -148,6 +148,12 @@ _stop_nginx_processes() {
   # process name would take a plain `nginx -t` or `-s reload` in flight with it.
   local _mpid _w=0
   _mpid=$( { tr -dc '0-9' < /run/nginx.pid; } 2>/dev/null )
+  # With the pidfile missing or naming something else, the one master the
+  # box lists still gets its QUIT before the -9.
+  if [ -z "${_mpid}" ] || [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" != "nginx" ]; then
+    _mpid=$(_nginx_master_pids)
+    [ "$(printf '%s\n' "${_mpid}" | grep -c .)" -eq 1 ] || _mpid=
+  fi
   # The number must still BE nginx: a pidfile left by a -9'd master outlives
   # its owner on tmpfs, and a recycled pid would receive root's SIGQUIT.
   if [ -n "${_mpid}" ] \
@@ -160,6 +166,20 @@ _stop_nginx_processes() {
     done
   fi
   pkill -9 -f '^nginx: ' || true
+}
+
+_nginx_error_log_aside() {
+  # error.log to a dated name no move this minute has taken: a restart and a
+  # bind stand-down in the same minute must never overwrite each other's copy.
+  local _base _to _n=1
+  [ -e "/var/log/nginx/error.log" ] || return 0
+  _base="/var/log/nginx/$(date +%y%m%d-%H%M)-error.log"
+  _to="${_base}"
+  while [ -e "${_to}" ] && [ "${_n}" -lt 100 ]; do
+    _to="${_base}.${_n}"
+    _n=$(( _n + 1 ))
+  done
+  mv -f /var/log/nginx/error.log "${_to}"
 }
 
 _nginx_start_in_flight() {
@@ -285,7 +305,7 @@ _restart_nginx() {
   fi
   echo "Killing all Nginx processes and restarting Nginx..."
   _stop_nginx_processes
-  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
+  _nginx_error_log_aside
   service nginx restart
   _nginx_quic_bpf_shed
   date +%s > "${_cd}"
@@ -316,7 +336,7 @@ _nginx_oom_detection() {
 }
 
 _nginx_bind_check_fix() {
-  local _bnd _mst _pid _p _own=NO _base _to _n=1
+  local _bnd _mst _pid _p _own=NO
   _bnd=$(tail --lines=8 /var/log/nginx/error.log 2> /dev/null \
     | grep "Address already in use")
   [ -n "${_bnd}" ] || return 0
@@ -338,16 +358,14 @@ _nginx_bind_check_fix() {
       [ "${_p}" = "${_mst}" ] && _own=YES
     done
     if [ "${_own}" = "NO" ]; then
-      # Memory errors in the same log are judged before it goes aside, and a
-      # file a restart saved this minute is never overwritten.
-      _nginx_oom_detection
-      _base="/var/log/nginx/$(date +%y%m%d-%H%M)-error.log"
-      _to="${_base}"
-      while [ -e "${_to}" ] && [ "${_n}" -lt 100 ]; do
-        _to="${_base}.${_n}"
-        _n=$(( _n + 1 ))
-      done
-      mv -f /var/log/nginx/error.log "${_to}"
+      # Memory errors in the same log are the OOM check's to judge, on this
+      # pass or the first one after its cooldown, so the log stays while
+      # they are in it.
+      if tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+        | grep -q "Cannot allocate memory"; then
+        return 0
+      fi
+      _nginx_error_log_aside
       kill -USR1 "${_mst}" 2> /dev/null
       echo "$(date) INFO: NGX bind error left by an exited start, master ${_mst} serving; log moved aside, no restart" >> "${_pthOml}"
       return 0
@@ -445,7 +463,7 @@ _nginx_if_up_check_fix() {
           return 0
         fi
         _stop_nginx_processes
-        mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
+        _nginx_error_log_aside
         service nginx restart
         _nginx_quic_bpf_shed
         # Stamp cooldown after attempting recovery
