@@ -310,35 +310,21 @@ _fpm_proc_max_detection() {
 #   execution timed out (SECS sec), terminating
 # Each pass reads only what the master logs gained since the last one (a
 # byte offset and inode of its own per file; the first run starts at their
-# ends, so no earlier cut is counted), and the access log only on a pass
-# that found such a line, from a size noted at least 15 s before the
-# earliest of those requests began (one note every 10 s or more, kept 10
-# minutes): a client that gave up long before the cut was logged 499 then.
-# Without so old a note it starts at the oldest note of the file there now,
-# never at the start of a file older than every note, so a first run or a
-# long pause reads nothing old and names no site; at most the last 64 MiB
-# are read. The access log lines of the same request (begun within 2 s of
-# it, the same method, the same path or any path behind index.php,
-# answered 444, 499 or 5xx) name the site when they agree on one host, and
-# only when that host is the name of a regular file in the account's own
-# config/server_master/nginx/vhost.d (listed in its real directory, never
-# opened: the account can put a FIFO or a huge file there) and of no file
-# in any other vhost.d of the box (Aegir keeps names unique within an
-# instance only). An alias, a name another instance also holds, and any
-# other host leave the site unknown. One record per cut,
-# "time|host|seconds|script|METHOD /segment", goes to root's
+# ends, so no earlier cut is counted). One record per cut,
+# "time|account|seconds|script|METHOD /segment", goes to root's
 # /var/backups/ltd/fpmcut/<account>.<day> for the ltd worker, which tells
 # the account; the nightly age prune of /var/backups/ltd/*/* removes a day's
 # file a day after its last record. A cut counts for an account only in a
 # pool of its own and a script in its own tree outside its control panel's.
 # Of the request only the method and the path's first segment are kept,
 # never the query string: a Drupal 8+ cron key is a path segment, a search
-# its terms. Times are read as the box's local time, as both logs write
+# its terms. No site is named and nothing else is read: the line has no
+# host, and a guess from the access log or the vhosts could hand another
+# tenant's name or request to the account; the script's path names the
+# platform. Times are read as the box's local time, as the master writes
 # them. The offsets are saved before anything is recorded, and a pass that
 # cannot save them records nothing: the next one reads the same lines.
-_FPM_CUT_VROOT="/data/disk"
-_FPM_CUT_MROOT="/var/aegir/config/server_master/nginx/vhost.d"
-_FPM_CUT_TIME_AWK='
+_FPM_CUT_AWK='
 function dfc(y, m, d,   e, yoe, doy) {
   y -= (m <= 2)
   e = int((y >= 0 ? y : y - 399) / 400)
@@ -356,19 +342,13 @@ function zsec(z,   s) {
   s = substr(z, 2, 2) * 3600 + substr(z, 4, 2) * 60
   return substr(z, 1, 1) == "-" ? -s : s
 }
-function clean(p) {
-  gsub(/[^A-Za-z0-9._~\/%:@+,;=-]/, "_", p)
-  return substr(p, 1, 200)
-}
 function seg(p,   i) {
+  gsub(/[^A-Za-z0-9._~\/%:@+,;=-]/, "_", p)
+  p = substr(p, 1, 200)
   i = index(substr(p, 2), "/")
   if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
   return p
 }
-'
-# The master lines in, "start|time|account|script|METHOD|path|seconds" out
-# (the path whole here, to be matched; it is cut when recorded).
-_FPM_CUT_AWK='
 BEGIN {
   q = "\047"
   pre = "^\\[[0-9][0-9]-[A-Z][a-z][a-z]-[0-9][0-9][0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\\.[0-9]+)?\\] WARNING: \\[pool [a-z0-9._-]+\\] child [0-9]+, script " q "/"
@@ -399,110 +379,25 @@ $0 ~ pre {
   if (index(sc, "/data/disk/" ac "/") != 1 || index(sc, "/data/disk/" ac "/aegir/") == 1) next
   if (sc ~ /\/\.\.?\// || me !~ /^[A-Z]+$/) next
   gsub(/[^A-Za-z0-9._\/+@-]/, "_", sc)
-  printf "%.0f|%.0f|%s|%s|%s|%s|%d\n", t - int(secs), t, ac, substr(sc, 1, 300), me, clean(pa), secs
+  printf "%.0f|%s|%d|%s|%s %s\n", t, ac, secs, substr(sc, 1, 300), me, seg(pa) >> (dir "/" ac "." day)
 }
 '
-# The accounts' own hosts ("account host", file of), the records above
-# (file rf), then the access log: each record is appended to its account's
-# file of the day with the host found, or "-".
-_FPM_CUT_SITE_AWK='
-FILENAME == of { O[$1 SUBSEP $2] = 1; next }
-FILENAME == rf {
-  if (split($0, f, "|") != 7) next
-  n++
-  T[n] = f[2]; A[n] = f[3]; C[n] = f[4]; M[n] = f[5]; P[n] = f[6]; X[n] = f[7]
-  B[f[1]] = B[f[1]] " " n
-  next
-}
-{
-  if (split($0, a, "\"") < 10 || split(a[5], c, " ") < 1) next
-  s = c[1]
-  if (s != "444" && s != "499" && s !~ /^50[0-4]$/) next
-  if (split(a[3], b, " ") < 3) next
-  if (b[2] !~ /^\[[0-9][0-9]\/[A-Z][a-z][a-z]\/[0-9][0-9][0-9][0-9]:[0-9][0-9]:[0-9][0-9]:[0-9][0-9]$/) next
-  e = lsec(substr(b[2], 2, 2), substr(b[2], 5, 3), substr(b[2], 9, 4), substr(b[2], 14, 2), substr(b[2], 17, 2), substr(b[2], 20, 2))
-  if (e < 0 || split(a[4], w, " ") < 2) next
-  z = b[3]
-  sub(/\]$/, "", z)
-  st = e - zsec(z) - (a[9] + 0)
-  p = w[2]
-  sub(/\?.*$/, "", p)
-  p = clean(p)
-  h = tolower(b[1])
-  for (d = -2; d <= 2; d++) {
-    k = sprintf("%.0f", st + d)
-    if (!(k in B)) continue
-    nb = split(B[k], ix, " ")
-    for (j = 1; j <= nb; j++) {
-      i = ix[j]
-      if (!((A[i] SUBSEP h) in O)) continue
-      if (w[1] != M[i] || (p != P[i] && P[i] !~ /\/index\.php$/)) continue
-      if (H[i] == "") { H[i] = h; HP[i] = p } else if (H[i] != h) H[i] = "?"
-    }
-  }
-}
-END {
-  for (i = 1; i <= n; i++) {
-    h = H[i]
-    p = P[i]
-    if (h == "" || h == "?") {
-      h = "-"
-    } else {
-      p = HP[i]
-    }
-    print T[i] "|" h "|" X[i] "|" C[i] "|" M[i] " " seg(p) >> (dir "/" A[i] "." day)
-  }
-}
-'
-# The hosts of account $1 that can name a site, "account host" a line: the
-# names of the regular files of its vhost.d, listed in its real directory
-# (no link below the vhost root, which the account could plant) and never
-# opened, that no other vhost.d of the box holds ($2: every vhost.d's
-# files, one path a line).
-_fpm_cut_own_hosts() {
-  local _d="${_FPM_CUT_VROOT}/${1}/config/server_master/nginx/vhost.d" _want
-  _want="$(cd -P -- "${_FPM_CUT_VROOT}" 2> /dev/null && pwd -P)/${1}/config/server_master/nginx/vhost.d"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] || exit 0
-    timeout -k 2 20 find . -mindepth 1 -maxdepth 1 -type f 2> /dev/null | head -n 100000 ) \
-    | LC_ALL=C awk -v a="${1}" -v d="${_d}" -v lf="${2}" '
-      FILENAME == lf {
-        if (!match($0, /\/[^\/]*$/)) next
-        p = substr($0, 1, RSTART - 1)
-        n = substr($0, RSTART + 1)
-        if (!((p SUBSEP n) in s)) { s[p SUBSEP n] = 1; c[n]++; w[n] = p }
-        next
-      }
-      { n = substr($0, 3) }
-      n ~ /^[a-z0-9][a-z0-9.-]*$/ && c[n] == 1 && w[n] == d { print a, n }' "${2}" - 2> /dev/null
-}
 _fpm_timeout_detection() {
   local _posfile="/var/log/boa/fpm_timeout.pos"
-  local _alog="/var/log/nginx/access.log"
   local _dir="/var/backups/ltd/fpmcut"
-  local _tmp _cut _rec _own _all _f _x _y _z _off _sz _ino _from _now _need _new _sm _a
-  local _a0=0 _ai0="" _first=YES _bt=0 _bs="" _bi=""
-  local -a _st=() _keep=()
+  local _tmp _cut _f _x _y _off _sz _ino _new _first=YES
   declare -A _POS _INO
   if [ -f "${_posfile}" ]; then
-    while IFS='|' read -r _f _x _y _z; do
-      if [ "${_f}" = "@access" ]; then
-        [[ "${_x}" =~ ^[0-9]+$ && "${_y}" =~ ^[0-9]+$ ]] || continue
-        _st+=("${_x}|${_y}|${_z}")
-        _first=NO
-      elif [ -n "${_f}" ] && [[ "${_x}" =~ ^[0-9]+$ ]]; then
+    while IFS='|' read -r _f _x _y; do
+      if [ -n "${_f}" ] && [[ "${_x}" =~ ^[0-9]+$ ]]; then
         _POS["${_f}"]="${_x}"
         _INO["${_f}"]="${_y}"
         _first=NO
       fi
     done < "${_posfile}"
   fi
-  _now=$(date +%s)
-  [[ "${_now}" =~ ^[0-9]+$ ]] || return 0
   _tmp="${_posfile}.$$"
   _cut="${_posfile}.cut.$$"
-  _rec="${_posfile}.rec.$$"
-  _own="${_posfile}.own.$$"
-  _all="${_posfile}.all.$$"
   : > "${_cut}" 2> /dev/null || return 0
   _new=""
   for _f in /var/log/php/php*-fpm-error.log; do
@@ -528,86 +423,21 @@ _fpm_timeout_detection() {
     fi
     _new+="${_f}|${_sz}|${_ino}"$'\n'
   done
-  if [ -f "${_alog}" ]; then
-    read -r _a0 _ai0 < <(stat -c '%s %i' -- "${_alog}" 2> /dev/null)
-    [[ "${_a0}" =~ ^[0-9]+$ ]] || _a0=0
-  fi
-  # the access log's size notes: ten minutes of them, one each 10 s
-  _sm=0
-  for _x in "${_st[@]}"; do
-    IFS='|' read -r _f _y _z <<< "${_x}"
-    (( _f >= _now - 600 && _f <= _now + 60 )) || continue
-    _keep+=("${_x}")
-    (( _f > _sm )) && _sm="${_f}"
-  done
-  if [ -n "${_ai0}" ] && (( _sm <= _now - 10 )); then
-    _keep+=("${_now}|${_a0}|${_ai0}")
-  fi
-  for _x in "${_keep[@]}"; do
-    _new+="@access|${_x}"$'\n'
-  done
   if ! printf '%s' "${_new}" > "${_tmp}" 2> /dev/null \
     || ! mv -f "${_tmp}" "${_posfile}" 2> /dev/null; then
     rm -f "${_tmp}" "${_cut}"
     return 0
   fi
   if [ -s "${_cut}" ]; then
-    LC_ALL=C awk -v tz="$(date +%z)" "${_FPM_CUT_TIME_AWK}${_FPM_CUT_AWK}" \
-      < "${_cut}" > "${_rec}" 2> /dev/null
-  fi
-  if [ -s "${_rec}" ]; then
-    # back to the newest note taken 15 s or more before the earliest start
-    _need=$(cut -d'|' -f1 "${_rec}" | sort -n | head -n 1)
-    _need=$(( ${_need:-0} - 15 ))
-    for _x in "${_keep[@]}"; do
-      IFS='|' read -r _f _y _z <<< "${_x}"
-      if (( _f <= _need && _f > _bt )); then
-        _bt="${_f}"
-        _bs="${_y}"
-        _bi="${_z}"
-      fi
-    done
-    if [ -n "${_bs}" ]; then
-      # a log made again or truncated since that note is younger than it
-      _from="${_bs}"
-      if [ "${_bi}" != "${_ai0}" ] || (( _bs > _a0 )); then
-        _from=0
-      fi
-    else
-      # no note that old: from the oldest note of this file, else nothing
-      _from="${_a0}"
-      _bt=""
-      for _x in "${_keep[@]}"; do
-        IFS='|' read -r _f _y _z <<< "${_x}"
-        if [ "${_z}" = "${_ai0}" ] && (( _y <= _a0 )) \
-          && { [ -z "${_bt}" ] || (( _f < _bt )); }; then
-          _bt="${_f}"
-          _from="${_y}"
-        fi
-      done
-    fi
-    (( _a0 - _from > 67108864 )) && _from=$(( _a0 - 67108864 ))
-    timeout -k 2 30 find "${_FPM_CUT_VROOT}"/*/config/server_master/nginx/vhost.d \
-      "${_FPM_CUT_MROOT}" -mindepth 1 -maxdepth 1 -type f 2> /dev/null \
-      | head -n 1000000 > "${_all}"
-    : > "${_own}"
-    for _a in $(cut -d'|' -f3 "${_rec}" | sort -u); do
-      _fpm_cut_own_hosts "${_a}" "${_all}" >> "${_own}"
-    done
     if [ ! -d "${_dir}" ] || [ -L "${_dir}" ]; then
       rm -f "${_dir}"
       mkdir -p "${_dir}"
     fi
     chmod 700 "${_dir}"
-    {
-      if (( _a0 > _from )); then
-        tail -c +"$(( _from + 1 ))" -- "${_alog}" 2> /dev/null | head -c "$(( _a0 - _from ))"
-      fi
-    } | LC_ALL=C awk -v of="${_own}" -v rf="${_rec}" -v dir="${_dir}" \
-      -v day="$(date +%Y%m%d)" "${_FPM_CUT_TIME_AWK}${_FPM_CUT_SITE_AWK}" \
-      "${_own}" "${_rec}" - 2> /dev/null
+    LC_ALL=C awk -v tz="$(date +%z)" -v dir="${_dir}" -v day="$(date +%Y%m%d)" \
+      "${_FPM_CUT_AWK}" < "${_cut}" 2> /dev/null
   fi
-  rm -f "${_cut}" "${_rec}" "${_own}" "${_all}"
+  rm -f "${_cut}"
 }
 
 _fpm_sockets_healing() {
