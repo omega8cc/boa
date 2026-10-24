@@ -225,6 +225,25 @@ _if_solr_seven() {
   fi
 }
 
+#
+# Kill Solr 4 (Jetty 9) and start it again. A start while the killed JVM is
+# still exiting starts nothing, and the init script then reads its stale
+# state file as STARTED, so Solr 4 stayed down until the watchdog found it.
+# The killed JVM also leaves its war work dir in /tmp, and a second one there
+# reads as a stale Jetty to the self-update run, which kills Solr 4 again.
+_jetty9_restart() {
+  local _JETTY_WAIT=0
+  pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
+  while pgrep -f '^[^ ]*java[0-9]* .*jetty9' > /dev/null 2>&1 \
+    && [[ "${_JETTY_WAIT}" -lt 30 ]]; do
+    sleep 1
+    _JETTY_WAIT=$(( _JETTY_WAIT + 1 ))
+  done
+  find /tmp -mindepth 1 -maxdepth 1 -user jetty9 -exec rm -rf -- {} + 2> /dev/null
+  rm -f /opt/jetty9/jetty9.state
+  _mrun "service jetty9 start"
+}
+
 _if_solr_four() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_solr_four"
@@ -358,8 +377,7 @@ _if_solr_four() {
 
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
     _msg "INFO: Jetty 9 restart in progress - required after java upgrade"
-    pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-    _mrun "service jetty9 start"
+    _jetty9_restart
     _msg "INFO: Jetty 9 restart completed"
   fi
 
