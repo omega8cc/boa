@@ -2921,8 +2921,8 @@ _purge_rec() {
 _publish_plain() {
   # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
   # when the file only rides along with that row's own tarball (a compat tarball, a
-  # version stamp): then only a failure changes the row. $5, when given, is the text
-  # the caller checked: root's copy must hold exactly that, or nothing is published
+  # version stamp): then only a failure changes the row. $5, when given, is the line
+  # the caller checked: root's copy must hold exactly it, or nothing is published
   # (the build user can rewrite its file between the check and this copy). For
   # shelves no lock guards.
   local _src="$1" _out="$2" _k="$3" _st="new" _what="" _rc
@@ -2941,7 +2941,8 @@ _publish_plain() {
     _rec_note "${_k}" "${_what}copy failed"
     return 1
   fi
-  if [[ -n "${5:-}" && "$(< "${_SHELF_TMP}")" != "$5" ]]; then
+  # cmp, never a read into a string: the copy can be as large as _sb_take_here takes
+  if [[ -n "${5:-}" ]] && ! cmp -s "${_SHELF_TMP}" <(printf '%s\n' "$5"); then
     _shelf_drop
     _alrt "${_src##*/} changed after its check, not published"
     _rec_pub "${_k}" FAILED
