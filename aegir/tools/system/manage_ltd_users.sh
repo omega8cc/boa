@@ -7783,16 +7783,48 @@ _ltd_fpm_why() {
     echo "Drupal 6.${_mn}: its includes/common.inc declares an error handler PHP 8.0 or newer cannot call"
   fi
 }
+# The PHP-FPM version each site's own include names, and the default
+# include's, read as root: the worker writes a site's include as root in the
+# account's post.d, 0600 under root's usual umask, which the account itself
+# cannot read. One line
+# each, "<site> <NN>", and "- <NN>" for the default include; every name is
+# read inside the real directory, never through a link, and bounded.
+_ltd_fpm_served() {
+  local _inc="${_dscUsr}/config/server_master/nginx/post.d" _f _s _v
+  [ -d "${_inc}" ] || return 0
+  while IFS= read -r _f; do
+    _f="${_f#./}"
+    case "${_f}" in
+      fpm_include_default.inc) _s="-" ;;
+      fpm_include_site_*.inc) _s="${_f#fpm_include_site_}"; _s="${_s%.inc}" ;;
+      *) continue ;;
+    esac
+    [[ "${_s}" == "-" || "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
+    _v=$(_ltd_read_in "${_inc}" "${_f}" \
+      | sed -n 's/.*user_socket "[^"]*\.\([0-9][0-9]\)".*/\1/p' | head -n 1)
+    [[ "${_v}" =~ ^[5-9][0-9]$ ]] && printf '%s\n' "${_s} ${_v}"
+  done < <(_ltd_in_real_dir "${_inc}" find . -maxdepth 1 -type f -name 'fpm_include_*.inc' \
+    2> /dev/null | head -n 5000)
+}
 # Run as the account: every site of it whose codebase cannot run on the
 # PHP-FPM version that serves it, one line each, "<site> <x.y> <why>", and
 # "# <the site's root>" for every site judged, whose files decide it. $1 =
 # the account's home, $2 = the version its sites get when no include names
-# one (NN). The version that serves a site is the one its own include names, else
-# the default include's (multi-FPM mode), else $2; the control panel is
-# served from a pool of its own and is not judged here.
+# one (NN); on stdin the versions the includes name, from _ltd_fpm_served.
+# The version that serves a site is the one its own include names, else the
+# default include's (multi-FPM mode), else $2; the control panel is served
+# from a pool of its own and is not judged here.
 _ltd_fpm_judge() {
-  local _h="${1}" _d="${2}" _a _c _s _r _v _w _inc
-  _inc="${_h}/config/server_master/nginx/post.d"
+  local _h="${1}" _d="${2}" _a _c _s _r _v _w _df=""
+  local -A _sv=()
+  while read -r _s _v; do
+    [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
+    if [ "${_s}" = "-" ]; then
+      _df="${_v}"
+    elif [[ "${_s}" =~ ^[a-z0-9.-]+$ ]]; then
+      _sv["${_s}"]="${_v}"
+    fi
+  done
   for _a in "${_h}"/.drush/*.alias.drushrc.php; do
     [ -f "${_a}" ] && [ ! -L "${_a}" ] || continue
     _c=$(_ltd_fpm_head "${_a}")
@@ -7810,11 +7842,7 @@ _ltd_fpm_judge() {
     case "${_r}" in
       "${_h}"/aegir/*) continue ;;
     esac
-    _v=$(_ltd_fpm_head "${_inc}/fpm_include_site_${_s}.inc" \
-      | sed -n 's/.*user_socket "[^"]*\.\([0-9][0-9]\)".*/\1/p' | head -n 1)
-    [ -z "${_v}" ] && _v=$(_ltd_fpm_head "${_inc}/fpm_include_default.inc" \
-      | sed -n 's/.*user_socket "[^"]*\.\([0-9][0-9]\)".*/\1/p' | head -n 1)
-    [ -z "${_v}" ] && _v="${_d}"
+    _v="${_sv[${_s}]:-${_df:-${_d}}}"
     [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
     _w=$(_ltd_fpm_why "${_r}" "${_v}")
     [ -n "${_w}" ] && printf '%s\n' "${_s} ${_v:0:1}.${_v:1:1} ${_w}"
@@ -7841,19 +7869,21 @@ _ltd_fpm_sig() {
     [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
   } | md5sum | cut -d' ' -f1
 }
-# The judge, run as the account and cut off after two minutes. setpriv, not
-# su: su starts its shell in a session of its own, where the timeout cannot
-# reach what the shell started, and a child left behind holds the output open.
-# $1 = the default version (NN).
+# The judge, run as the account and cut off after two minutes, given the
+# versions the includes name on stdin. setpriv, not su: su starts its shell
+# in a session of its own, where the timeout cannot reach what the shell
+# started, and a child left behind holds the output open. $1 = the default
+# version (NN).
 _ltd_fpm_judge_as() {
-  local _uid _gid
+  local _uid _gid _sv
   _uid=$(id -u -- "${_USER}" 2> /dev/null)
   _gid=$(id -g -- "${_USER}" 2> /dev/null)
   [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 125
+  _sv=$(_ltd_fpm_served)
   timeout -k 10 120 setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
     env -i PATH="/usr/local/bin:/usr/bin:/bin" /bin/bash \
     -c "$(declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_judge); _ltd_fpm_judge $(printf '%q' "${_dscUsr}") ${1}" \
-    2> /dev/null
+    2> /dev/null <<< "${_sv}"
 }
 # The page check: nothing stops a PHP-FPM version from serving a site whose
 # code cannot run on it (fpm.info, a multi-fpm.info line, or the fallback
