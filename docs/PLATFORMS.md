@@ -41,9 +41,6 @@ names its CiviCRM and Backdrop releases together, and is skipped when
 Both are for demonstration and compatibility testing, not production: a production
 CiviCRM site runs on a platform of the account's own in `~/static`.
 
-- [CiviCRM 6.19.2 for Drupal](https://civicrm.org) (11.4.11)
-- [CiviCRM for Backdrop](https://civicrm.org) (on the newest Backdrop it was built with)
-
 ## Drupal 11
 
 Drupal 11 needs MySQL 8, on BOA a box on Percona 8.4. On a Percona 5.7 box the
