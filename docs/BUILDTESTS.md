@@ -450,7 +450,8 @@ and go to `/var/www/static/distro`. `staticbuild check` shows the release as the
   compile tasks run unattended (`extra.compile-mode all`). There is no older-core
   fallback: the platform is the Drupal 11 flavour. The build fails unless the lock holds
   `civicrm/civicrm-core` at the release, the module sits in `web/modules/contrib/civicrm`
-  and the assets in `web/libraries/civicrm`.
+  and the asset plugin filled `web/libraries/civicrm` (core's `core/js/Common.js` and
+  the `packages` folder; an empty libraries folder fails it).
 
   The fix step never moves the three CiviCRM
   packages. It publishes like any distribution, lock guard included, and the catalogue
