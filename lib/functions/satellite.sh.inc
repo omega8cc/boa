@@ -8822,8 +8822,10 @@ _satellite_hm_cli_bin() {
 # True when $1 names one of the account's own hostmaster roots
 # (<root>/aegir/distro/<name>) or, with $2 = site, a site in one
 # (.../<name>/sites/<site>). The alias is the account's file: a path read
-# from it is used only there, and only through _acct_in_real_dir, which also
-# refuses a link or a dot name on the way.
+# from it is used only there, and as root only through _acct_in_real_dir,
+# which also refuses a link or a dot name on the way; otherwise it goes,
+# quoted, to the account user's own shell, which reaches nothing more than
+# the account itself can.
 _satellite_hm_path_ok() {
   local _p="${1#"${_ROOT}/aegir/distro/"}"
   [ -n "${1}" ] && [ "${_p}" != "${1}" ] || return 1
