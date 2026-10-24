@@ -69,6 +69,13 @@
       vhost did; nothing listening behind it, an answer whose headers do
       not fit or any other failure still answers 502.
 
+    * A site whose answer carries more than 4 KB of headers (large
+      cookies, a long Link or Content-Security-Policy header) answered
+      502 over HTTPS through the wildcard SSL front or a control panel's
+      HTTPS proxy, while its own vhost takes up to 512 KB on port 80.
+      Both fronts now take up to 64 KB of headers; an answer over that
+      is still a 502.
+
     * The wildcard SSL front tried a request its site refused once more
       for every idle connection it kept to the site, up to 33 times under
       load: since nginx 1.29.7 an upstream keeps 32 idle connections by

@@ -1257,6 +1257,14 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    ### A front with nginx's 4k header buffer answers 502 for a site's answer
+    ### with larger headers.
+    if ! grep -qE '^[[:space:]]*proxy_buffer_size[[:space:]]+64k;' ${_WILD_SSL_VHOST} 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs header buffer update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     if ! grep -qE '^[[:space:]]*send_timeout[[:space:]]+3600s;' ${_WILD_SSL_VHOST} 2> /dev/null; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: nginx_wild_ssl.conf proxy needs media send timeout update..."
@@ -1840,6 +1848,43 @@ _nginx_ssl_proxy_backend_drop() {
   _nginx_pre_d_backend_drop ssl_proxy.conf
   _nginx_pre_d_backend_drop pln_proxy.conf
 }
+_nginx_ssl_proxy_header_buffer() {
+  ### An HTTPS proxy in pre.d written before its template sized its header
+  ### buffer answers 502 for a site's answer whose headers pass nginx's 4k
+  ### default. It gets the template's lines, taken from this pass's build
+  ### tree, before its `proxy_set_header Host` line. A file without exactly
+  ### one such line, or with a header buffer of its own, is left alone, and
+  ### every insert is undone when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _any=""
+  grep -qE '^[[:space:]]*proxy_buffer_size[[:space:]]+64k;' "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-hbuf.XXXXXX 2>/dev/null) || return 0
+  awk '/^    ### Room for the headers of a site.s answer/ { p = 1 }
+    p { print }
+    p && /^    proxy_buffers / { exit }' "${_src}" > "${_bak}/.buf"
+  if ! grep -qE '^    proxy_buffer_size +64k;$' "${_bak}/.buf" \
+    || ! grep -qE '^    proxy_buffers +[0-9]+ +64k;$' "${_bak}/.buf"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -qE "proxy_buffer_size|proxy_buffers" "${_p}" && continue
+    [ "$(grep -cE '^    proxy_set_header[[:space:]]+Host[[:space:]]' "${_p}")" = "1" ] || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    awk -v buf="${_bak}/.buf" '
+      /^    proxy_set_header[[:space:]]+Host[[:space:]]/ { while ((getline _l < buf) > 0) print _l }
+      { print }' "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
 # Every regular file in pre.d named *$1 that lacks the drop gets the two parts
 # of the template $1, taken from this pass's build tree: the error_page lines
 # at the top of its `location /` and the named location before the server's
@@ -2016,7 +2061,7 @@ _nginx_migration_proxy_client_here() {
 }
 
 _nginx_config_update_fix() {
-  local _tplDir _tpl _incDir _vhDir
+  local _tplDir _tpl _incDir _vhDir _preF
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_config_update_fix"
   fi
@@ -2068,11 +2113,17 @@ _nginx_config_update_fix() {
       wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
-      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      ### The wildcard SSL front and the HTTPS proxies keep their header
+      ### buffer, which their installers write before this runs.
+      for _preF in /var/aegir/config/server_*/nginx/pre.d/*.conf; do
+        case "${_preF##*/}" in
+          nginx_wild_ssl.conf|*ssl_proxy.conf) continue ;;
+        esac
+        [ -f "${_preF}" ] && [ ! -L "${_preF}" ] || continue
+        sed -i "s/.*proxy_buffer_size .*//g; s/.*proxy_buffers .*//g" "${_preF}" &> /dev/null
+      done
       wait
       sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
       sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
@@ -2117,6 +2168,7 @@ _nginx_config_update_fix() {
       _nginx_ssl_proxy_panel_lock
       _nginx_ssl_proxy_extra_names
       _nginx_ssl_proxy_backend_drop
+      _nginx_ssl_proxy_header_buffer
       _nginx_migration_proxy_client
       _nginx_migration_proxy_backend_drop
     fi

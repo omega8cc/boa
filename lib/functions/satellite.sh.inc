@@ -10150,8 +10150,8 @@ _satellite_ssl_proxy_template_refresh() {
   ### every older one.
   local _tpl="/var/xdrago/conf/ssl_proxy.conf"
   local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
-  grep -q upstream_bytes_sent "${_tpl}" 2>/dev/null && return 0
-  grep -q upstream_bytes_sent "${_src}" 2>/dev/null || return 0
+  grep -q proxy_buffer_size "${_tpl}" 2>/dev/null && return 0
+  grep -q proxy_buffer_size "${_src}" 2>/dev/null || return 0
   mkdir -p /var/xdrago/conf
   cp -af "${_src}" "${_tpl}"
 }
@@ -10215,6 +10215,9 @@ _satellite_letsencrypt_vhost_setup() {
         ### without it this front answers 502 where the panel vhost closed
         ### the connection on purpose.
         _BOADROP_TEST=$(grep upstream_bytes_sent ${_Ssl} 2>&1)
+        ### The header buffer came with it; without it a panel answer whose
+        ### headers pass nginx's 4k default is a 502 over HTTPS.
+        _HDRBUF_TEST=$(grep proxy_buffer_size ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
         _FPM_SOCKET_VAR=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
@@ -10242,7 +10245,8 @@ _satellite_letsencrypt_vhost_setup() {
           || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]] \
           || [[ ! "${_PANELLOCAL_TEST}" =~ "boa_panel_local" ]] \
           || [[ ! "${_PANELLOCK_TEST}" =~ "boa_panel_lock" ]] \
-          || [[ ! "${_BOADROP_TEST}" =~ "upstream_bytes_sent" ]]; then
+          || [[ ! "${_BOADROP_TEST}" =~ "upstream_bytes_sent" ]] \
+          || [[ ! "${_HDRBUF_TEST}" =~ "proxy_buffer_size" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi
