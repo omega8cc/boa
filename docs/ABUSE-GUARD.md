@@ -390,6 +390,12 @@ box's own address, not to an `upstream` block, and nginx makes one try there. A 
 upgrade adds the rule to a deployed proxy that lacks it, and an Octopus upgrade regenerates
 the panel's proxy from the template when it lacks it.
 
+The migration / PX0 proxies carry the same rule and test: the site proxies `xoct` and `xcopy`
+write into an account's `vhost.d` (`proxy.conf`, `https_proxy_le.conf`) and a moved instance's
+proxies in `pre.d`. A new host that refuses a request drops the visitor's connection through
+them, while a new host that is down still answers 502: a connection that never reached it
+sent nothing, which the test reads.
+
 ### Detector 5 — distributed scanner-fleet (UA-burst)
 
 A distributed scanner fleet spreads a probe sweep across many IPs at a few requests each,

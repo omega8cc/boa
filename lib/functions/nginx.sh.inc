@@ -1825,51 +1825,121 @@ _nginx_ssl_proxy_extra_names() {
 }
 
 _nginx_ssl_proxy_backend_drop() {
-  ### The vhost behind an HTTPS proxy in pre.d refuses a request by closing
-  ### the connection, which a proxy written before the template dropped it
-  ### too answers with its own 502. It gets the template's two parts, taken
-  ### from this pass's build tree: the error_page lines at the top of its
-  ### `location /` and the named location before the server's closing brace.
-  ### A file without exactly one of each anchor is left alone, and every
-  ### insert is undone when the config no longer tests clean.
-  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  ### The host behind an HTTPS proxy in pre.d (a control panel's, or a moved
+  ### instance's) and behind a moved instance's plain proxy refuses a request
+  ### by closing the connection, which a proxy written before its template
+  ### dropped it too answers with its own 502.
+  _nginx_pre_d_backend_drop ssl_proxy.conf
+  _nginx_pre_d_backend_drop pln_proxy.conf
+}
+# Every regular file in pre.d named *$1 that lacks the drop gets the two parts
+# of the template $1, taken from this pass's build tree: the error_page lines
+# at the top of its `location /` and the named location before the server's
+# closing brace. A file without exactly one of each anchor is left alone, and
+# every insert is undone when the config no longer tests clean.
+_nginx_pre_d_backend_drop() {
+  local _src="${_bldPth}/aegir/tools/system/conf/${1}"
   local _preD="/var/aegir/config/server_master/nginx/pre.d"
   local _bak _p _any=""
   grep -q upstream_bytes_sent "${_src}" 2>/dev/null || return 0
   [ "$(grep -c '^  location / {$' "${_src}")" = "1" ] || return 0
-  _bak=$(mktemp -d /var/backups/.boa-ssl-drop.XXXXXX 2>/dev/null) || return 0
-  awk '/^  location \/ [{]$/ { p = 1; next }
-    p { print }
-    p && /error_page .*@boa_drop;/ { exit }' "${_src}" > "${_bak}/.top"
-  awk '/^  location @boa_drop [{]$/ { p = 1 }
-    p { print }
-    p && /^  }$/ { exit }' "${_src}" > "${_bak}/.loc"
-  if ! grep -q "error_page .*502 = @boa_drop;" "${_bak}/.top" \
-    || ! grep -q "upstream_bytes_sent" "${_bak}/.loc" \
-    || ! grep -q "return 444;" "${_bak}/.loc" \
-    || ! grep -q "^  }$" "${_bak}/.loc"; then
+  _bak=$(mktemp -d /var/backups/.boa-pre-drop.XXXXXX 2>/dev/null) || return 0
+  if ! _nginx_backend_drop_parts "${_src}" "${_bak}"; then
     rm -rf "${_bak}"
     return 0
   fi
-  for _p in "${_preD}"/*ssl_proxy.conf; do
+  for _p in "${_preD}"/*"${1}"; do
     [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
     grep -q boa_drop "${_p}" && continue
     [ "$(grep -c '^  location / {$' "${_p}")" = "1" ] || continue
     [ "$(grep -c '^}$' "${_p}")" = "1" ] || continue
     cp -af "${_p}" "${_bak}/" || continue
-    awk -v top="${_bak}/.top" -v loc="${_bak}/.loc" '
-      /^}$/ { while ((getline _l < loc) > 0) print _l }
-      { print }
-      /^  location \/ [{]$/ { while ((getline _l < top) > 0) print _l }' \
-      "${_bak}/${_p##*/}" > "${_p}"
+    _nginx_backend_drop_insert "${_bak}" < "${_bak}/${_p##*/}" > "${_p}"
     _any="yes"
   done
   if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
-    for _p in "${_bak}"/*ssl_proxy.conf; do
+    for _p in "${_bak}"/*"${1}"; do
       [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
     done
   fi
   rm -rf "${_bak}"
+}
+# The drop's two parts of the template $1 into the dir $2: top (the lines at
+# the top of `location /`, through its error_page line) and loc (the named
+# location). False when either part is not what the drop needs.
+_nginx_backend_drop_parts() {
+  awk '/^  location \/ [{]$/ { p = 1; next }
+    p { print }
+    p && /error_page .*@boa_drop;/ { exit }' "${1}" > "${2}/top"
+  awk '/^  location @boa_drop [{]$/ { p = 1 }
+    p { print }
+    p && /^  }$/ { exit }' "${1}" > "${2}/loc"
+  grep -q "error_page .*502 = @boa_drop;" "${2}/top" \
+    && grep -q "upstream_bytes_sent" "${2}/loc" \
+    && grep -q "return 444;" "${2}/loc" \
+    && grep -q "^  }$" "${2}/loc"
+}
+# Standard input with the parts in the dir $1 inserted: top after the
+# `location /` line, loc before the server's closing brace.
+_nginx_backend_drop_insert() {
+  awk -v top="${1}/top" -v loc="${1}/loc" '
+    /^}$/ { while ((getline _l < loc) > 0) print _l }
+    { print }
+    /^  location \/ [{]$/ { while ((getline _l < top) > 0) print _l }'
+}
+
+_nginx_migration_proxy_backend_drop() {
+  ### A site proxy that xoct or xcopy wrote (plain or HTTPS) before its
+  ### template dropped what the new host drops answers 502 where the new host
+  ### closed the connection on purpose. It gets the template's parts, taken
+  ### from this pass's build tree (_nginx_backend_drop_parts). The vhost dirs
+  ### belong to the instance users, so each vhost is read and rewritten only
+  ### inside its real directory, as _nginx_migration_proxy_client does it;
+  ### every change is undone when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
+  local _d _v _k _p
+  grep -q upstream_bytes_sent "${_src}" 2>/dev/null || return 0
+  _d=$(mktemp -d /var/backups/.boa-mig-drop.XXXXXX 2>/dev/null) || return 0
+  if ! _nginx_backend_drop_parts "${_src}" "${_d}"; then
+    rm -rf "${_d}"
+    return 0
+  fi
+  while IFS= read -r -u 9 _v; do
+    _acct_in_real_dir "${_v}" _nginx_migration_proxy_backend_drop_here "${_d}" "${_v}"
+  done 9< <(_nginx_acct_dirs config/server_master/nginx/vhost.d)
+  if ls "${_d}"/*.path > /dev/null 2>&1 && ! nginx -t > /dev/null 2>&1; then
+    for _k in "${_d}"/*.path; do
+      _p=$(cat "${_k}")
+      _acct_in_real_dir "${_p%/*}" \
+        _nginx_sed_here "${_p##*/}" -e "1r ${_k%.path}.orig" -e d
+    done
+  fi
+  rm -rf "${_d}"
+}
+# Every site proxy vhost of the current (pinned) vhost.d $2 that still lacks
+# the drop, read as _acct_read_here reads it into the root-only dir $1,
+# rewritten there and put back as _nginx_sed_here puts it; each one changed
+# leaves <n>.orig and <n>.path in $1 for the rollback.
+_nginx_migration_proxy_backend_drop_here() {
+  local _d="${1}" _v="${2}" _f _k
+  while IFS= read -r -d '' _f; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
+    _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
+    _acct_read_here "${_f}" > "${_k}.orig"
+    if grep -qE "Plain HTTP proxy \(START\)|Secure HTTPS proxy for " "${_k}.orig" \
+      && grep -q "proxy_pass" "${_k}.orig" \
+      && ! grep -q boa_drop "${_k}.orig" \
+      && [ "$(grep -c '^  location / {$' "${_k}.orig")" = "1" ] \
+      && [ "$(grep -c '^}$' "${_k}.orig")" = "1" ]; then
+      _nginx_backend_drop_insert "${_d}" < "${_k}.orig" > "${_k}.new"
+      if [ -s "${_k}.new" ] \
+        && _nginx_sed_here "${_f}" -e "1r ${_k}.new" -e d; then
+        printf '%s\n' "${_v}/${_f}" > "${_k}.path"
+        continue
+      fi
+    fi
+    rm -f -- "${_k}" "${_k}.orig" "${_k}.new"
+  done < <(_nginx_names_with_here "*" -F -e "Plain HTTP proxy (START)" -e "Secure HTTPS proxy for ")
 }
 
 _nginx_migration_proxy_client() {
@@ -2040,6 +2110,7 @@ _nginx_config_update_fix() {
       _nginx_ssl_proxy_extra_names
       _nginx_ssl_proxy_backend_drop
       _nginx_migration_proxy_client
+      _nginx_migration_proxy_backend_drop
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
       sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null

@@ -53,6 +53,15 @@
       main access log at the visitor's address, as the wildcard SSL front
       does, and the upgrade removes /usr/on.
 
+    * A site behind a migration proxy (the old box's proxy to the new one
+      after xoct, xcopy or xmass moved it, kept for good on a proxy-only
+      box) answered 502 where the new host drops the connection (a banned
+      address, a refused crawler, a probe for a secret path). The proxy
+      now drops it as the new host did; a new host that is down, an
+      answer whose headers do not fit or any other failure still answers
+      502. The upgrade adds the rule to the deployed proxies, and
+      aegir2boa-stage2 writes it on a source whose nginx is 1.15.8 or newer.
+
     * A control panel answered 502 over HTTPS where its own vhost drops
       the connection (a banned address, a refused crawler, a probe for a
       secret path): its HTTPS proxy, like the wildcard SSL front, read the
