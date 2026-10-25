@@ -13,6 +13,45 @@
       and logs the signal beside its exit reasons, so the re-run a
       migration asks for can start at once.
 
+    * Reset login on a Grav site now signs out every browser session and
+      API token issued before it. It wrote the admin account without the
+      cutoff the Login and API plugins check (api_tokens_valid_after,
+      which their own password change stamps), so an earlier Admin2 token
+      or its refresh token kept working after the reset.
+
+    * A Grav site behind the login/admin IP lock keeps KahunaCart's public
+      routes reachable: the licence routes customers' software calls, the
+      carriers' tracking webhooks, the booking widget and rentals picker,
+      and the partners' portal (licences, shipping and bookings public/,
+      affiliates account/, under /api/v1/kahunacart). The lock covered all
+      of /api, so those broke for everyone off the list; the shop's admin
+      API stays locked.
+
+    * The Grav render cap no longer sheds API clients that send an
+      X-API-Key or X-API-Token header (KahunaCart's API keys, Admin2
+      itself) as anonymous visitors during a flood; only an Authorization
+      header counted before.
+
+    * A Grav site never serves a SQLite database or its -wal, -shm or
+      -journal file, wherever in the site it sits (.sqlite, .sqlite3,
+      .db); user/data was denied already, but a store's path is the
+      owner's setting. It takes effect on each site's next Verify.
+
+    * A Grav rename, Clone or Upgrade a copy, and a Textpattern rename or
+      Upgrade, onto a name a retired site's alias still held now remove
+      that site's own extra Drush alias files with its alias. They stayed
+      as a dead copy of its settings, naming the new site's directory when
+      the old site had sat on the same platform.
+
+    * A Textpattern Clone onto a name an alias already holds is refused
+      when that alias names a live site, and a retired site's alias is
+      removed before the copy is saved; the copy took the retired site's
+      encryption, domain aliases and cron key, or re-pointed a live site.
+
+    * A Grav or Textpattern Cutover claiming a free domain no longer dies
+      on a leftover alias whose platform is gone too: the leftover is read
+      from its file, as the renames read it.
+
     * The catalogue build's patch check no longer repairs what it cannot
       repair safely: where two sources give one patch description
       different patches (composer-patches keeps only one of them), or
