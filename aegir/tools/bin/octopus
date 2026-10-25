@@ -136,6 +136,8 @@ _sanitize_number() {
 }
 
 _clean_pid_exit() {
+  # A signal here must not cut the owner's cleanup short (cron left stopped)
+  trap '' HUP INT TERM PIPE
   if [ -n "${1}" ]; then
     echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
   fi
@@ -1130,6 +1132,38 @@ _up_action_one() {
   fi
 }
 
+# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
+# Ctrl-C or kill left the locks _up_start took behind, and clear.sh reaps them
+# only by age, one to three hours later. Release what this run holds at that
+# moment and nothing else, and never /opt/tmp, whose reuse across runs is
+# intentional. A lock is this run's while it is the very file _up_start made
+# (its inode): the installer drops the run lock at its own end, and another
+# run may then take a new one by the same name. Logged beside
+# _clean_pid_exit's reasons, never to the closed channel.
+_BOA_LOCK_RUN_I=""
+_BOA_LOCK_WAIT_I=""
+_BOA_LOCK_OCT_I=""
+_boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
+# $1 the lock, $2 its inode when this run took it: removed only while it is
+# still that file
+_boa_lock_release() {
+  if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ] && rm -f -- "${1}"; then
+    echo released
+  else
+    echo left
+  fi
+}
+_boa_on_signal() {
+  local _r _w _o
+  trap '' HUP INT TERM PIPE
+  _r=$(_boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}")
+  _w=$(_boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}")
+  _o=$(_boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
+  echo "SIGNAL ${1} in ${_cmNd:-octopus} on $(date): boa_run.pid ${_r}, boa_wait.pid ${_w}, octopus_install_run.pid ${_o}" \
+    >> /root/.octopus.exit.exceptions.log 2> /dev/null
+  exit "${2}"
+}
+
 _up_start() {
   if [ -e "/run/boa_run.pid" ]; then
     echo
@@ -1160,6 +1194,13 @@ _up_start() {
     touch /run/boa_wait.pid
     touch /run/octopus_install_run.pid
     _PID_LOCK_OWNER=YES
+    _BOA_LOCK_RUN_I=$(_boa_lock_ino /run/boa_run.pid)
+    _BOA_LOCK_WAIT_I=$(_boa_lock_ino /run/boa_wait.pid)
+    _BOA_LOCK_OCT_I=$(_boa_lock_ino /run/octopus_install_run.pid)
+    trap '_boa_on_signal HUP 129' HUP
+    trap '_boa_on_signal INT 130' INT
+    trap '_boa_on_signal PIPE 141' PIPE
+    trap '_boa_on_signal TERM 143' TERM
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     mkdir -p ${_LOG_DIR}
     cd ${_vBs}
@@ -1200,6 +1241,9 @@ _up_finish() {
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
+  _BOA_LOCK_RUN_I=""
+  _BOA_LOCK_WAIT_I=""
+  _BOA_LOCK_OCT_I=""
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/OCTOPUS.sh*
