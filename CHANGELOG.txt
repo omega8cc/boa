@@ -2016,7 +2016,11 @@
       site is named: PHP-FPM's line has none, and a guess from the access
       log or the vhosts could hand another tenant's name or request to the
       account; the script's path names the platform. Nothing is stopped or
-      changed.
+      changed. A time-out line PHP-FPM cut short itself (2 KB or more, 1 KB
+      before PHP 7.3; PHP 8.5 logs a query of up to 2 KB) loses its run
+      time but still counts once the same child's exit on SIGTERM follows.
+      Cuts a master log got between a pass and the restart or logrotate run
+      that moved it aside are read from the moved file, found by its inode.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
