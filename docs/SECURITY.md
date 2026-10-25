@@ -26,7 +26,7 @@ Outside a Composer run, only members of the hand-assigned `ltd-shell-more` group
 
 A tool the account runs can also hand `/bin/sh` a command line, an npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account."
 
-Composer is the exception. Inside a Composer run every account runs PHP by name: an `@php` script entry, a compile task of CiviCRM's packages, a `php` line in the project's own `composer.json` scripts, or a tool one of those starts. Composer already runs its plugins and PHP callback scripts inside its own process, so refusing its children stopped real builds without closing anything. Outside a Composer run, PHP typed in the shell or started by any other tool stays refused.
+Composer is the exception. Inside a Composer run every account runs PHP by name: an `@php` script entry, a compile task of CiviCRM's packages, a `php` line in the project's own `composer.json` scripts, or a tool one of those starts. Composer already runs its plugins and PHP callback scripts inside its own process, so refusing its children stopped real builds without closing anything. Outside a Composer run, PHP typed in the shell stays refused, and so does a command line another tool hands `/bin/sh` whose program is PHP.
 
 The wrapper recognises the run by an ancestor process of the same account, up to eight steps up, whose program is one of the server's PHP builds (`/opt/phpNN/bin/php` or `/usr/bin/php`) running `/usr/local/bin/composer` (or BOA's `/usr/bin/composer` link to it), whether the wrapper started that Composer or it was started by its path.
 
