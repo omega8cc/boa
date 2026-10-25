@@ -4,6 +4,134 @@
 
 @=> Important Fixes
 
+    * The catalogue build's patch check no longer repairs what it cannot
+      repair safely: where two sources give one patch description
+      different patches (composer-patches keeps only one of them), or
+      the package is installed as a link, the build fails and the
+      published copy stays, as it does when the repair would change which
+      other patches apply. It also notes a package composer-patches will
+      reinstall on every later Composer run, reads a description that
+      starts with "Source: " as a description, keeps a patch two
+      dependencies declare, judges the lock by its hash alone, and drops
+      an earlier step's "patch skipped" once every patch applies.
+
+    * A catalogue platform no longer ships a half-applied dependency
+      patch. When a patch a distribution declares no longer fits,
+      composer-patches 1.x kept the hunks that applied, left .rej files
+      and only logged that it skipped the patch: Open Social's
+      simple_oauth lost an import and its OAuth factories failed with a
+      TypeError. The build now reinstalls such a package without the
+      patch, records the patch as ignored and says "patch skipped"; a
+      patch declared twice is declared once, and anything left over
+      fails the build.
+
+    * staticbuild no longer marks the EzContent and Commerce v.2 rows
+      "lock hash stale" when their lock already matches composer.json:
+      the hash is checked first, and a resolve runs only when it is
+      stale. A resolve of their Drupal 10.1 and 10.3 trees now fails
+      upstream (packages.drupal.org lists drupal/toolbar for
+      admin_toolbar, which those cores do not provide), so the note came
+      on every build.
+
+    * The php monitor's max_children check missed the hits that followed
+      a NUL byte in what a PHP-FPM master log gained since its last pass,
+      and the PHP code of any site can write one there through its
+      stderr: grep read the rest as binary, and those hits were never
+      read again, so a pool out of workers could raise no note. The log
+      is now read as text whatever bytes it holds.
+
+    * A barracuda pass could restart Nginx twice at once: the Nginx monitor
+      took the gap of the pass's own restart, before the new master writes
+      its pid file, for an outage and started a second Nginx, and the
+      start that lost the ports left bind errors behind that made the
+      monitor restart the master that won, a needless outage of its own.
+      The monitor now leaves a start or restart in flight to finish, and
+      bind errors left by a start that exited while one master serves move
+      the log aside instead of restarting it.
+
+    * The PHP-FPM monitor restarted a whole PHP version, every pool on it
+      and the control panel's with them, on a single sample that showed
+      two masters, such as a master's just-forked child still carrying its
+      title on a stalled box. It now counts only masters whose parent is
+      not one, asks again after 3 seconds, honours the version's cooldown
+      and logs the processes it counted before a restart.
+
+    * After a database restart stopped every PHP-FPM version at once, the
+      monitor brought them back one after another with its grace paid per
+      version, so the version the sites run waited behind versions nobody
+      uses while Nginx was already sending it requests (502). Every version
+      found down now shares one grace, and the box default and the panel's
+      version come back first.
+
+    * Solr 4 could stay down after a barracuda pass until the Java monitor
+      found it, or be killed again by the next self-update run: the pass
+      killed Jetty 9 and started it at once, a start while the JVM was
+      still exiting started nothing behind a stale state file, and the dead
+      JVM's work dir in /tmp read as a stale Jetty. The pass now waits for
+      the JVM to exit and clears both before it starts Jetty 9.
+
+    * codebasecheck --deep reported READY with "No deep contrib red-flags
+      found" when it could not read the database (the server down or still
+      upgrading, no client, no /root/.my.cnf), turning a REVIEW into READY.
+      A skipped or failed database scan now counts as one REVIEW item and
+      says to run the check again once the server answers.
+
+    * sqlclean LIVE auto refused on every box with a Grav site: a
+      flat-file site has no db_name, and sqlclean counted that as an
+      alias it could not resolve. It now reads each panel's no-database
+      servers and skips a site on one; any other site without a usable
+      db_name still stops the run.
+
+    * The plain proxy of a moved instance let a visitor the web IDS had
+      banned through to the new host whenever the box sat behind
+      Cloudflare, where csf sees only the edge, while the HTTPS proxy for
+      the same address refused it. It now refuses a banned address at its
+      door too, and the upgrade adds the check to deployed proxies.
+
+    * The HTTPS proxy of a control panel, and the plain proxy of a moved
+      instance, wrote their access log into a file named "on" under
+      nginx's prefix, /usr/on, which nothing rotated or read, so the web
+      IDS never saw the requests they answered. They now log into the
+      main access log at the visitor's address, as the wildcard SSL front
+      does, and the upgrade removes /usr/on.
+
+    * A site behind a migration proxy (the old box's proxy to the new one
+      after xoct, xcopy or xmass moved it, kept for good on a proxy-only
+      box) answered 502 where the new host drops the connection (a banned
+      address, a refused crawler, a probe for a secret path). The proxy
+      now drops it as the new host did; a new host that is down, an
+      answer whose headers do not fit or any other failure still answers
+      502. The upgrade adds the rule to the deployed proxies, and
+      aegir2boa-stage2 writes it on a source whose nginx is 1.15.8 or newer.
+
+    * A control panel answered 502 over HTTPS where its own vhost drops
+      the connection (a banned address, a refused crawler, a probe for a
+      secret path): its HTTPS proxy, like the wildcard SSL front, read the
+      close as an upstream failure. It now drops the connection as the
+      vhost did; nothing listening behind it, an answer whose headers do
+      not fit or any other failure still answers 502.
+
+    * A site whose answer carries more than 4 KB of headers (large
+      cookies, a long Link or Content-Security-Policy header) answered
+      502 over HTTPS through the wildcard SSL front or a control panel's
+      HTTPS proxy, while its own vhost takes up to 512 KB on port 80.
+      Both fronts now take up to 64 KB of headers; an answer over that
+      is still a 502.
+
+    * The wildcard SSL front kept idle connections to its sites, nginx's
+      default since 1.29.7, and it no longer tries a request twice: a
+      request sent on a connection the site had just closed was lost,
+      dropped as if refused. The front now keeps none and opens one
+      loopback connection per request, as before 1.29.7; under an older
+      nginx, which rejects the setting, it is left out.
+
+    * The wildcard SSL front answers 502 again where the failure is real:
+      nothing listening behind it, or a site's answer whose headers do not
+      fit. Since it began to drop the connection where the site drops it,
+      it dropped every such failure too, as if the site had refused the
+      request. A request the site refuses by closing the connection is
+      still dropped, once.
+
     * A site served over HTTPS by the wildcard SSL front answered 502 where
       its own vhost drops the connection (a banned address, a refused
       crawler, a probe for a secret path): the front read the backend's
@@ -1818,7 +1946,40 @@
       for an account at phase A whose site keeps its files store outside
       the account (docs/INSTGRP.md).
 
+    * The shell accounts' Drush rules also apply to a command line a tool
+      hands /bin/sh in Composer's own form (a quoted or exec-led line),
+      where the refusal fails the tool's command, and to a drush line
+      continued over a backslash-newline or started through a wrapper
+      program given by its path.
+
+    * The shell accounts' Drush and PHP rules read a wrapper program's
+      options alike: the value an option takes (env -u, timeout -s,
+      stdbuf -o, time -f) and timeout's duration, whatever their form,
+      are passed over, env -S's value is read as env's own arguments,
+      and the PHP rule also reads a wrapper given by its path.
+
+    * Inside a Composer run a shell account's script lines may set PHP's
+      ini for the PHP they start: a NAME=value word in front of php
+      (XDEBUG_MODE=coverage php vendor/bin/phpunit) and Composer's @php
+      form in front of vendor/bin/drush run there, as PHP by name already
+      does; the other Drush rules still apply, and a refused line inside
+      the run now fails the Composer script.
+
 @=> New Features
+
+    * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
+      modules/, DEC is Drupal 11 with CiviCRM's Drupal packages, and the
+      control panel installs CiviCRM with every site created on either,
+      then carries it through Verify, Backup, Restore, Clone, Migrate and
+      the panel's CiviCRM cron. Both are built only when platforms.info
+      names them, never through ALL, and only where client cores are on;
+      DEC needs Percona 8.4, as every Drupal 11 platform does. Like every
+      catalogue platform they are for demonstration and compatibility
+      testing: run a production CiviCRM site from a platform of your own
+      in ~/static. The mirror build checks the CiviCRM for Backdrop
+      release against its published SHA256 sums. On Drupal 10 and later
+      the CiviCRM add-on now installs CiviCRM through cv, as on Backdrop;
+      it used to finish an Install without CiviCRM. See docs/PLATFORMS.md.
 
     * A watchdog for scheduled cron that keeps failing: the panel stamps
       a site's last cron time whatever the site answers, so a site whose
@@ -1868,6 +2029,40 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The nightly no longer logs "dir: cannot access" on a box where no
+      account has a distro platform tree for the ghost-codebases check.
+
+    * Every line of the nginx access log ends with three more fields:
+      cfray= (the Ray ID a Cloudflare error page shows, so its request can
+      be found), ups= (the status the upstream gave) and uht= (how long
+      its response header took, "-" when none came back). A 502 with
+      uht="-" was made by the nginx that logged it, one with a number is
+      the backend's own, and a 444 of the wildcard SSL front with
+      ups="502" is a backend refusal it dropped. The fields are appended,
+      so the web IDS and every other reader of the log read it as before.
+
+    * A request PHP-FPM cuts at its time limit (request_terminate_timeout,
+      180 s at most) was logged in the master log and nowhere else, so a
+      cron.php cut at every run, its work never done, could go unseen for
+      weeks. On every pass (every 5 seconds on most servers) the php
+      monitor now reads the time-out lines the master logs gained, from an
+      offset of its own (its first run starts at their ends and counts no
+      earlier cut), and records each cut for the account whose pool and
+      tree it is: the time, how long it ran, the script and the request as
+      PHP-FPM logged it, only its method and first path segment, never the
+      query string. The ltd worker lists a script cut three times or more
+      in 24 hours in ~/static/control/.fpm-timeout.info, with the count,
+      how long it ran, the first and last cut and the last request, and
+      tells the operator once a day; the file goes when none is left. No
+      site is named: PHP-FPM's line has none, and a guess from the access
+      log or the vhosts could hand another tenant's name or request to the
+      account; the script's path names the platform. Nothing is stopped or
+      changed. A time-out line PHP-FPM cut short itself (2 KB or more, 1 KB
+      before PHP 7.3; PHP 8.5 logs a query of up to 2 KB) loses its run
+      time but still counts once the same child's exit on SIGTERM follows.
+      Cuts a master log got between a pass and the restart or logrotate run
+      that moved it aside are read from the moved file, found by its inode.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30
@@ -2422,6 +2617,17 @@
       the server under its name instead of its made-up hostname.
 
 @=> Changes and Upgrades
+
+    * PHP that runs inside a Composer run, such as an @php script entry, a
+      compile task of CiviCRM's packages or a php line in the project's own
+      composer.json scripts, runs for every shell account, not only for the
+      ltd-shell-more group: building a Drupal CiviCRM platform or a Drupal
+      CMS project in ~/static no longer stops with "Running PHP directly is
+      not available on this account". A script line with a NAME=value word
+      in front of php is still refused, and the Composer script then fails
+      instead of passing with nothing run: PHP's own -d option sets an ini
+      value instead. Outside a Composer run, PHP typed in the shell or
+      started by any other tool is still for that group only.
 
     * A Drupal CMS site the panel installs stores its anonymous usage data
       choice as off, whatever its Drupal CMS version or site template: from

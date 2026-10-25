@@ -367,14 +367,44 @@ HTTP/1.0 here.
 
 BOA's own proxy layer (the migration / PX0 `*_proxy.conf` and the wildcard-SSL
 `nginx_wild_ssl.conf`) sets `proxy_http_version 1.1`, so a correctly-updated BOA front proxy
-no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin.
-
-The wildcard-SSL front also drops a connection its backend dropped (`proxy_next_upstream off`,
-its own 502 mapped to `return 444`): a port-80 vhost's 444 reaches the HTTPS visitor as the
-same closed connection, not as a 502 minted after a second try at the loopback backend. **Opt out** only on a
+no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin. **Opt out** only on a
 box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or not yet updated
 to the HTTP/1.1 proxy confs (see **Part 5**). A malformed `_NGINX_HTTP10_AUTH_PATHS` override
 fails closed — the detector counts nothing rather than mis-banning.
+
+The wildcard-SSL front also drops a connection its backend dropped (`proxy_next_upstream off`,
+and its own 502 mapped to `return 444` in `location @boa_drop`): a port-80 vhost's 444 reaches
+the HTTPS visitor as the same closed connection, not as a 502 minted after a second try at the
+loopback backend. The front drops only a backend's refusal: a backend that took the request
+and closed without a byte of an answer (`$upstream_bytes_sent` above zero,
+`$upstream_bytes_received` zero). Any other failure the front meets answers 502 as before:
+nothing listening behind it, or an answer whose headers do not fit the front's buffer.
+
+In the access log that drop is the front's `444` line with `ups="502" uht="-"` (its backend
+closed the connection without answering); a fault the front answers itself is a `502` line
+with the same `ups="502" uht="-"`; the front's own refusals log `444` with `ups="-"`, and a 502
+the backend vhost answered itself passes through as a front `502` with `uht` set.
+
+The front's buffer takes 64 KB of headers (`proxy_buffer_size 64k`, with `proxy_buffers 4 64k`,
+which nginx requires beside it and never allocates while `proxy_buffering` is off); a site's own
+vhost takes up to 512 KB on port 80 (`fastcgi_buffer_size 512k`), so an answer between the two
+works over HTTP and is a 502 over HTTPS through the front. The front's `upstream` keeps no idle
+connection to the site (`keepalive 0`). Since nginx 1.29.7 an `upstream` block keeps 32 by
+default, and with no second try a request sent on a kept connection the site had just closed
+would be lost, dropped like a refusal. The installer writes the line only for nginx 1.29.7 and
+newer; an older nginx keeps no idle connection and rejects it.
+
+A control panel's own HTTPS proxy (`pre.d/z_<panel>_ssl_proxy.conf`) drops the same way in its
+`location /`, with the same test and the same 64 KB header buffer. It needs no
+`proxy_next_upstream` line: it proxies to the box's own address, not to an `upstream` block,
+and nginx makes one try there. A barracuda upgrade adds the rule to a deployed proxy that lacks
+it, and an Octopus upgrade regenerates the panel's proxy from the template when it lacks it.
+
+The migration / PX0 proxies carry the same rule and test: the site proxies `xoct` and `xcopy`
+write into an account's `vhost.d` (`proxy.conf`, `https_proxy_le.conf`) and a moved instance's
+proxies in `pre.d`. A new host that refuses a request drops the visitor's connection through
+them, while a new host that is down still answers 502: a connection that never reached it
+sent nothing, which the test reads.
 
 ### Detector 5 — distributed scanner-fleet (UA-burst)
 
@@ -549,6 +579,12 @@ pass counts it once, from the front's line, as every other detector does.
 Counting the loopback copy would double every proxied request and halve the
 cohort's distinct-URI share, so a harvest over the front would never pass the
 keystone below.
+
+A control panel's own HTTPS proxy (`pre.d/z_<panel>_ssl_proxy.conf`) logs the same way: its
+line carries the real visitor, and the panel vhost's copy carries the box's own address, which
+no detector bans (the box's addresses are on the local allow list). An older proxy that still
+said `access_log on;` wrote into a file named `on` under nginx's prefix (`/usr/on`), which
+nothing rotated or read; the upgrade points it at the main log and removes that file.
 
 **Two ways in.**
 
@@ -1338,6 +1374,20 @@ include never picks up a half-written file).
 Because the deny keys on the realip'd address,
 it bites a Cloudflare-proxied attacker at the origin's nginx — where an origin CSF/iptables
 ban on a CF-fronted IP would only see the CF edge and miss.
+
+The proxies in `pre.d` test it at their own door, where `$remote_addr` is the real visitor:
+the wildcard SSL front, a control panel's HTTPS proxy, and a moved instance's HTTPS and plain
+proxies (`z_<domain>_ssl_proxy.conf`, `z_<domain>_pln_proxy.conf`). The vhost behind a panel's
+proxy sees only the box's own address, which no ban names, and a moved instance's proxies log
+into the main access log, so this box's IDS bans their visitors. A barracuda upgrade adds the
+test to a deployed plain proxy that lacks it.
+
+The migration / PX0 site proxies in an account's `vhost.d` carry no such test. They log
+nothing on the old box, and the new host, which trusts the old one as a realip source, sees
+the visitor and applies its own list; its 444 then reaches the visitor as a drop.
+
+The box's own addresses never enter the set: the writers skip the local address list,
+`127.0.0.0/8` and the allow list, and csf refuses to deny one of the server's own addresses.
 
 ### `$boa_fleet_block` → 429 — the crawler-fleet refusal
 

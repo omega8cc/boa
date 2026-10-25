@@ -206,7 +206,15 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   `civicrm-<version>-backdrop.tar.gz` download) goes into the `modules/`
   folder of the account's own platform in `~/static`, and a site created on
   that platform gets CiviCRM installed with it (`cv core:install`, which
-  also enables the module).
+  also enables the module). When that install fails, so does the site's
+  Install, and it is rolled back.
+
+  To try CiviCRM without building a platform, the `BDC` symbol in the
+  platform list builds a ready-made one: Backdrop with CiviCRM for Backdrop
+  in its root `modules/`, named after both releases (docs/PLATFORMS.md). Like
+  every catalogue platform it is for demonstration and compatibility testing,
+  not production: a production CiviCRM site runs on a platform of the
+  account's own.
 
   Verify, Clone, Migrate and Restore regenerate
   `civicrm.settings.php` for the site's own address and platform — every

@@ -109,6 +109,39 @@ Each site it finds is listed with the version and the reason in
 on that site, and the operator gets a daily notice. Nothing is switched: the fix is in the
 code, or a `multi-fpm.info` line for a version that runs it, where one is installed.
 
+A request that runs past the pool's `request_terminate_timeout` (180 s, lowered by
+`_PHP_FPM_TIMEOUT`) is cut by PHP-FPM, which logs only the script and the request, in
+`/var/log/php/phpNN-fpm-error.log`. On every pass (every 5 s on most servers, see
+[MONITOR.md](MONITOR.md)) the php monitor reads the lines those logs gained, from an offset of
+its own; its first run starts at their ends, so no earlier cut is counted.
+
+Each cut is recorded for the account whose pool and tree it is: the time, how long it ran, the
+script and the request as PHP-FPM logged it, of which only the method and the path's first
+segment are kept (`GET /cron/…`: never a Drupal 8+ cron key, a search's terms or the query
+string).
+
+A line PHP-FPM cut short itself (2 KB or more, 1 KB before PHP 7.3; PHP 8.5 logs a query of up
+to 2 KB) ends in `...` without its run time: it counts once the master logs that the same
+child exited on SIGTERM, the signal the time limit sends, and its run time stays unknown.
+The part PHP-FPM keeps holds the script and the request's path (Nginx passes the entry
+script, such as `/index.php`, and the query follows it).
+
+A master log that a restart or logrotate moved aside between two passes is read on from the
+moved file, found by its inode in `phpNN-fpm-error.log.1` or in the ten
+`/var/backups/php-logs/<stamp>/` folders written last; a move to another filesystem loses the
+cuts it got after the last pass.
+
+A script cut three times or more in 24 hours is listed by the ltd worker in
+`~/static/control/.fpm-timeout.info`: the script, the count, how long it ran, the first and
+last cut and the last request, with a line of advice; the operator gets a daily notice, and the
+file goes when no script has three cuts left in the last 24 hours.
+
+No site is named: PHP-FPM's line has none, and a guess from the access log or the vhosts could
+hand another tenant's name or request to the account, so the monitor reads neither; the
+script's path names the platform. A cron.php cut at every run never finishes its work. Nothing
+is stopped or changed: the fix is the script's, or a long job run from the shell with Drush,
+where PHP has no time limit. The control panel's pool and the `www` pools are not counted.
+
 #### Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 
 ## PHP-FPM Resource Allocation (workers and memory)

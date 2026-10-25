@@ -42,7 +42,9 @@
 ###
 ### Any alias or instance root that exists but cannot be resolved raises a
 ### resolution alert: the run still reports, but LIVE auto refuses — an
-### unreadable alias must never widen the ghost list unattended.
+### unreadable alias must never widen the ghost list unattended. A site with
+### no db_name whose db_server is one of its panel's no-database servers (a
+### flat-file Grav site) has no database and raises none.
 ###
 
 export HOME=/root
@@ -353,6 +355,18 @@ for _root in "${_aegir_roots[@]}"; do
     _INCOMPLETE=1
   fi
 
+  # The panel's no-database servers (a db service of type 'none', which
+  # hosting_grav makes for flat-file sites), read from the panel itself and
+  # never inferred from a name. A failed read leaves the set empty, so such
+  # a site's empty db_name stays an alert.
+  unset _none_srv
+  declare -A _none_srv=()
+  if [ -n "${_root_hm_db}" ]; then
+    while IFS= read -r _ns; do
+      [ -n "$(_sane_ident "${_ns}")" ] && _none_srv[${_ns}]=1
+    done < <(_sql_probe "SELECT c.name FROM \`${_root_hm_db}\`.hosting_service s JOIN \`${_root_hm_db}\`.node n ON n.vid = s.vid JOIN \`${_root_hm_db}\`.hosting_context c ON c.nid = n.nid WHERE n.type = 'server' AND s.service = 'db' AND s.type = 'none' AND s.available = 1")
+  fi
+
   # Every site alias of this instance, by context type — server, platform
   # and artifact aliases (e.g. none.alias) are not sites. Multiple alias
   # files may resolve to the same site; the map keeps the first reason. The
@@ -380,6 +394,13 @@ for _root in "${_aegir_roots[@]}"; do
     _dbn_raw=$(_drushrc_db_name "${_sp}")
     _dbn=$(_sane_ident "${_dbn_raw}")
     if [ -z "${_dbn}" ] || [ "${_dbn}" = "none" ]; then
+      # A site on a no-database server has no database to keep.
+      _dbs=$(_alias_get "${_f}" db_server)
+      _dbs="${_dbs#@}"
+      if [ -z "${_dbn_raw}" ] && [ -n "$(_sane_ident "${_dbs}")" ] \
+        && [ -n "${_none_srv[${_dbs}]}" ]; then
+        continue
+      fi
       _alrt "Site $(basename "${_f}" .alias.drushrc.php) has unusable db_name '${_dbn_raw}' in ${_sp}/drushrc.php"
       _INCOMPLETE=1
       continue
