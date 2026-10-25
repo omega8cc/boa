@@ -4238,7 +4238,7 @@ _rw() {
     [ -z "${2}" ] || printf '%s\n' "${2}" ) > "${_n}" 2> /dev/null \
     && mv -f -- "${_n}" "${_w}"; }
 rm -f -- "${_w}"
-cat -- "${_cnf}" > "${_w}" 2> /dev/null || _stop
+cp -- "${_cnf}" "${_w}" 2> /dev/null || _stop
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
