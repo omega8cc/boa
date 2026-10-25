@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * A BOA install killed part way (its connection dropped, as when a
+      migration creates the target account remotely, a hangup, Ctrl-C or
+      kill) no longer leaves its run locks behind for one to three
+      hours: it releases the locks it holds at that moment, and only
+      those, and logs the signal in /var/log/boa/.boa.exit.exceptions.log,
+      so the re-run a migration asks for can start at once.
+
     * The catalogue build's patch check no longer repairs what it cannot
       repair safely: where two sources give one patch description
       different patches (composer-patches keeps only one of them), or
