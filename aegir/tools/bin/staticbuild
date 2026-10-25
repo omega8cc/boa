@@ -2143,6 +2143,13 @@ _pinned_lock_rehash() {
   # its snapshot of the lock. A resolve that fails (a rate-limited GitHub repository)
   # keeps the stale hash and says so on the row: it breaks nothing. $1 workdir,
   # $2 label.
+  # A published copy already carries the edits of the builds before it, so its hash
+  # usually matches: no resolve then. Validate exits 0 on a matching hash and needs no
+  # network; a resolve can fail where nothing is stale (packages.drupal.org now lists
+  # drupal/toolbar for admin_toolbar, which the 10.1 and 10.3 cores do not replace).
+  if _run_as_o8 "cd '$1' && composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"; then
+    return 0
+  fi
   if ! _run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --lock --no-install --no-scripts --no-plugins ${_FIX_IGNORE_EXT}"; then
     _pending "$2" "lock hash stale" "composer update --lock failed; the lock's content-hash stays behind composer.json"
   fi
