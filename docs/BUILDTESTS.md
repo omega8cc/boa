@@ -243,14 +243,23 @@ download applies then. What still fails is ignored where composer-patches reads 
 pristine, the lock's content-hash follows (with no resolve: only `extra` changed; a hash
 that cannot follow adds `lock hash stale`), and the row says `patch skipped`. A patch
 declared twice, which composer-patches applies twice when the root and a dependency give
-it two descriptions, is declared once and its package reinstalled.
+it two descriptions, is declared once (the root's copy, else that of a dependency
+declaring it once) and its package reinstalled. Once the check has read a tree, the row's
+`patch skipped` is its own: an earlier step's (a patch that failed in that step's install
+and has applied since) is dropped, with its warning line.
 
 The build fails, and the published copy stays, when a patch is still not applied exactly
 once after that, when the check cannot run (a distribution that switches composer-patches
 reporting off leaves no `PATCHES.txt` to compare), or when any `.rej` file is left in a
-package composer-patches patched. A package left with a declared patch set and none applied
-is removed and reinstalled by composer-patches on every later Composer run on that
-platform; its `.advisories` line says so.
+package composer-patches patched. It also fails, before changing anything, where the
+repair cannot be made safely: composer-patches merges the root's declarations with every
+dependency's by description, a later one winning, so where two sources give one
+description different patches, dropping or keeping either could change which patch
+applies; a package installed as a link (from a path repository) is patched in its source
+and no reinstall makes it pristine. And it fails when the repair changed which other
+declared patches apply. A package left with a declared patch set and none applied (a
+dependency's only patch for it ignored) is removed and reinstalled by composer-patches on
+every later Composer run on that platform; its `.advisories` line says so.
 
 ### Same-name respins: a changed lock replaces unless it adds advisories
 
