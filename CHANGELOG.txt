@@ -4,6 +4,16 @@
 
 @=> Important Fixes
 
+    * A catalogue platform no longer ships a half-applied dependency
+      patch. When a patch a distribution declares no longer fits,
+      composer-patches 1.x kept the hunks that applied, left .rej files
+      and only logged that it skipped the patch: Open Social's
+      simple_oauth lost an import and its OAuth factories failed with a
+      TypeError. The build now reinstalls such a package without the
+      patch, records the patch as ignored and says "patch skipped"; a
+      patch declared twice is declared once, and anything left over
+      fails the build.
+
     * staticbuild no longer marks the EzContent and Commerce v.2 rows
       "lock hash stale" when their lock already matches composer.json:
       the hash is checked first, and a resolve runs only when it is
@@ -1936,6 +1946,13 @@
       stdbuf -o, time -f) and timeout's duration, whatever their form,
       are passed over, env -S's value is read as env's own arguments,
       and the PHP rule also reads a wrapper given by its path.
+
+    * Inside a Composer run a shell account's script lines may set PHP's
+      ini for the PHP they start: a NAME=value word in front of php
+      (XDEBUG_MODE=coverage php vendor/bin/phpunit) and Composer's @php
+      form in front of vendor/bin/drush run there, as PHP by name already
+      does; the other Drush rules still apply, and a refused line inside
+      the run now fails the Composer script.
 
 @=> New Features
 

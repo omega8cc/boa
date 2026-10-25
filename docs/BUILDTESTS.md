@@ -227,6 +227,31 @@ By hand, the same audit of a built platform is:
   cd /tmp/audit && composer audit --locked --no-plugins --no-scripts    # add --no-dev when require-dev was not installed
 ```
 
+### Declared patches that do not apply
+
+Every distribution build ends its fix step with a patch check on composer-patches 1.x
+trees. A declared dependency patch that no longer fits can still leave some of its hunks
+behind: 1.x falls back to `patch` with no dry run and only logs that it skipped the patch,
+while the package's `PATCHES.txt` lists it. That is how Open Social's simple_oauth
+shipped without an import its typed properties need.
+
+A package with a declared patch that `vendor/composer/installed.json` records as applied
+under no description is first reinstalled as declared: a patch that only failed to
+download applies then. What still fails is ignored where composer-patches reads it
+(dropped from the root's own patches, else from its patches-file, and added to
+`patches-ignore` under every dependency that declares it), the package is reinstalled
+pristine, the lock's content-hash follows (with no resolve: only `extra` changed; a hash
+that cannot follow adds `lock hash stale`), and the row says `patch skipped`. A patch
+declared twice, which composer-patches applies twice when the root and a dependency give
+it two descriptions, is declared once and its package reinstalled.
+
+The build fails, and the published copy stays, when a patch is still not applied exactly
+once after that, when the check cannot run (a distribution that switches composer-patches
+reporting off leaves no `PATCHES.txt` to compare), or when any `.rej` file is left in a
+package composer-patches patched. A package left with a declared patch set and none applied
+is removed and reinstalled by composer-patches on every later Composer run on that
+platform; its `.advisories` line says so.
+
 ### Same-name respins: a changed lock replaces unless it adds advisories
 
 A box takes a tarball republished under the same name at its next Octopus upgrade only
