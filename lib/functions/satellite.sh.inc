@@ -4656,6 +4656,9 @@ _satellite_db_broker_born_leftover() {
   [[ "${_STATUS}" != "INIT" ]] || return 0
   [[ -n "$(find "${_m}" -maxdepth 0 -type f -user root -mmin +1440 2> /dev/null)" ]] || return 0
   [[ ! -e "${_n}" && ! -L "${_n}" ]] || return 0
+  # a regular file only, as the NUL heal and instgrp take it: a link would be
+  # replaced by a file, and its inode and size check reads the link itself
+  [[ -f "${_c}" && ! -L "${_c}" ]] || return 0
   grep -aqx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
   _mk=$(timeout 10 dd if="${_m}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null)
   _mu=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
