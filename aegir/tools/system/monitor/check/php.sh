@@ -173,20 +173,51 @@ _fpm_reload() {
   rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
 }
 
+_fpm_master_pids() {
+  # ${1} = the master title pattern. A master's just-forked child carries the
+  # master's title until it names its pool, a window a stalled box stretches
+  # to seconds: only a match whose parent is not itself a match is a master.
+  local _all _pid _ppid
+  _all=" $(pgrep -f "${1}" 2> /dev/null | tr '\n' ' ') "
+  for _pid in ${_all}; do
+    _ppid=$(ps -o ppid= -p "${_pid}" 2> /dev/null | tr -d ' ')
+    [ -n "${_ppid}" ] || continue
+    [[ "${_all}" == *" ${_ppid} "* ]] && continue
+    echo "${_pid}"
+  done
+}
+
 _fpm_duplicate_instances_detection() {
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     # Count masters for this exact conf path
     _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
-    _cnt=$(pgrep -fc "${_pat}")
-    if (( _cnt > 1 )); then
-      _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
-      echo ${_thisErrLog} >> ${_pthOml}
-      [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-      service "php${e}-fpm" restart
-      wait
+    _cnt=$(_fpm_master_pids "${_pat}" | grep -c .)
+    (( _cnt > 1 )) || continue
+    # Asked again after a grace and gated like the health check: this
+    # restarts the whole version, cutting every request of every pool on it,
+    # and one sample under a stall is not evidence of a second master.
+    sleep 3
+    _cnt=$(_fpm_master_pids "${_pat}" | grep -c .)
+    (( _cnt > 1 )) || continue
+    _sql_mutation_began && return 0
+    _cd="/run/php${e}-fpm.cooldown"
+    _now=$(date +%s)
+    _ts=
+    [ -s "${_cd}" ] && _ts=$(tr -dc '0-9' < "${_cd}" 2> /dev/null)
+    if [ -n "${_ts}" ] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_FPM_COOLDOWN_SECS}" ]; then
+      echo "$(date) INFO: php${e}-fpm duplicate master but in cooldown; skipping restart" >> "${_pthOml}"
+      continue
     fi
+    _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
+    echo "${_thisErrLog}" >> "${_pthOml}"
+    echo "$(date) INFO: php${e}-fpm masters counted: $(ps -o pid=,ppid=,etimes=,args= -p "$(_fpm_master_pids "${_pat}" | paste -sd, -)" 2> /dev/null | tr -s ' ' | tr '\n' ';')" >> "${_pthOml}"
+    [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p "/var/backups/php-logs/${_NOW}/"
+    mv -f "/var/log/php/php${e}-fpm-error.log" "/var/backups/php-logs/${_NOW}/" &> /dev/null
+    service "php${e}-fpm" restart
+    wait
+    date +%s > "${_cd}"
   done
 }
 
@@ -255,8 +286,11 @@ _fpm_proc_max_detection() {
     # Log rotated/truncated since last run: re-baseline from the start.
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
+      # as bytes and text: a NUL a worker writes through its stderr made
+      # grep read the rest as binary and miss every later hit
       _new=$(tail -c +"$(( _off + 1 ))" "${_f}" 2>/dev/null \
-        | grep -v -E "${_FPM_WORKER_LINE}" | grep -c -- "reached max_children setting")
+        | LC_ALL=C grep -a -v -E "${_FPM_WORKER_LINE}" \
+        | LC_ALL=C grep -a -c -- "reached max_children setting")
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))
@@ -271,6 +305,260 @@ _fpm_proc_max_detection() {
     echo "${_thisErrLog}" >> "${_pthOml}"
     # No restart; capacity signal only.
   fi
+}
+
+# A request a pool cuts at its request_terminate_timeout is logged by the
+# master, with no site name, as
+#   WARNING: [pool NAME] child PID, script 'PATH' (request: "METHOD URI")
+#   execution timed out (SECS sec), terminating
+# Each pass reads only what the master logs gained since the last one (a
+# byte offset and inode of its own per file; the first run starts at their
+# ends, so no earlier cut is counted). One record per cut,
+# "time|account|seconds|script|METHOD /segment", goes to root's
+# /var/backups/ltd/fpmcut/<account>.<day> for the ltd worker, which tells
+# the account; the nightly age prune of /var/backups/ltd/*/* removes a day's
+# file a day after its last record. A cut counts for an account only in a
+# pool of its own and a script in its own tree outside its control panel's.
+# Of the request only the method and the path's first segment are kept,
+# never the query string: a Drupal 8+ cron key is a path segment, a search
+# its terms. No site is named and nothing else is read: the line has no
+# host, and a guess from the access log or the vhosts could hand another
+# tenant's name or request to the account; the script's path names the
+# platform. Times are read as the box's local time, as the master writes
+# them. The offsets are saved before anything is recorded, and a pass that
+# cannot save them records nothing: the next one reads the same lines.
+#
+# PHP-FPM writes a master line of up to 2047 bytes whole and cuts a longer
+# one to log_limit less a byte (2047 at most), ending it in "...": the tail
+# with the run time is lost. Before PHP 7.3 the bound is a fixed 1023 bytes.
+# Up to 8.4 the warning is about 1 KB at most: whole from 7.3 on, cut before
+# it only with every field near full. 8.5 keeps a request's path and query
+# up to 512 and 2048 bytes, so its warning can pass the bound. A cut-short
+# warning counts when the master logs, within 10 seconds of it, that the
+# same child exited on SIGTERM, the signal the time limit sends; its record
+# has "-" for the seconds, and a request whose path was cut keeps "…" at
+# its end. A warning still waiting for that line is kept for the next pass
+# in /var/log/boa/fpm_timeout.pend, two minutes at most.
+_FPM_CUT_AWK='
+function dfc(y, m, d,   e, yoe, doy) {
+  y -= (m <= 2)
+  e = int((y >= 0 ? y : y - 399) / 400)
+  yoe = y - e * 400
+  doy = int((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1
+  return e * 146097 + yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy - 719468
+}
+function lsec(d, mo, y, hh, mm, ss,   m) {
+  m = index("JanFebMarAprMayJunJulAugSepOctNovDec", mo)
+  if (m == 0 || (m - 1) % 3) return -1
+  return dfc(y + 0, (m + 2) / 3, d + 0) * 86400 + hh * 3600 + mm * 60 + ss
+}
+function zsec(z,   s) {
+  if (z !~ /^[-+][0-9][0-9][0-9][0-9]$/) return 0
+  s = substr(z, 2, 2) * 3600 + substr(z, 4, 2) * 60
+  return substr(z, 1, 1) == "-" ? -s : s
+}
+function seg(p,   i) {
+  gsub(/[^A-Za-z0-9._~\/%:@+,;=-]/, "_", p)
+  p = substr(p, 1, 200)
+  i = index(substr(p, 2), "/")
+  if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
+  return p
+}
+function ltm(l,   t) {
+  t = lsec(substr(l, 2, 2), substr(l, 5, 3), substr(l, 9, 4), substr(l, 14, 2), substr(l, 17, 2), substr(l, 20, 2))
+  return t < 0 ? -1 : t - off
+}
+function who(l,   r, p) {
+  r = substr(l, index(l, "] WARNING: [pool ") + 17)
+  p = substr(r, 1, index(r, "]") - 1)
+  return p "|" (substr(r, length(p) + 9) + 0)
+}
+function rec(l, t, short,   r, pool, sc, i, rq, secs, sp, me, pa, ac, whole) {
+  r = substr(l, index(l, "] WARNING: [pool ") + 17)
+  pool = substr(r, 1, index(r, "]") - 1)
+  r = substr(r, index(r, ", script " q) + 10)
+  i = index(r, q " (request: \"")
+  if (i < 2) return
+  sc = substr(r, 1, i - 1)
+  r = substr(r, i + 13)
+  if (short) {
+    secs = "-"
+    rq = substr(r, 1, length(r) - 3)
+  } else {
+    if (!match(r, /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/)) return
+    secs = sprintf("%d", substr(r, RSTART + 24) + 0)
+    rq = substr(r, 1, RSTART - 1)
+  }
+  sp = index(rq, " ")
+  if (sp < 2) return
+  me = substr(rq, 1, sp - 1)
+  pa = substr(rq, sp + 1)
+  whole = !short || index(pa, "?") > 0
+  sub(/\?.*$/, "", pa)
+  ac = pool
+  sub(/\..*$/, "", ac)
+  if (pool ~ /^www[0-9]+$/ || pool ~ /\.hm$/ || ac !~ /^[a-z0-9][a-z0-9_-]*$/) return
+  if (index(sc, "/data/disk/" ac "/") != 1 || index(sc, "/data/disk/" ac "/aegir/") == 1) return
+  if (sc ~ /\/\.\.?\// || me !~ /^[A-Z]+$/) return
+  gsub(/[^A-Za-z0-9._\/+@-]/, "_", sc)
+  pa = seg(pa)
+  if (!whole && substr(pa, length(pa) - 2) != "\342\200\246") pa = pa "\342\200\246"
+  printf "%.0f|%s|%s|%s|%s %s\n", t, ac, secs, substr(sc, 1, 300), me, pa >> (dir "/" ac "." day)
+}
+BEGIN {
+  q = "\047"
+  hd = "^\\[[0-9][0-9]-[A-Z][a-z][a-z]-[0-9][0-9][0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\\.[0-9]+)?\\] WARNING: \\[pool [a-z0-9._-]+\\] child [0-9]+"
+  pre = hd ", script " q "/"
+  term = hd " exited on signal 15 \\(SIGTERM( - core dumped)?\\) after [0-9]+(\\.[0-9]+)? seconds from start$"
+  off = zsec(tz)
+}
+$0 ~ term {
+  t = ltm($0)
+  k = who($0)
+  if (t >= 0 && (k in pl) && t - pt[k] <= 10 && pt[k] - t <= 10) rec(pl[k], pt[k], 1)
+  delete pl[k]
+  delete pt[k]
+  next
+}
+$0 ~ pre {
+  t = ltm($0)
+  if (t < 0) next
+  k = who($0)
+  if (substr($0, length($0) - 2) == "...") {
+    pl[k] = $0
+    pt[k] = t
+  } else if ($0 ~ /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/) {
+    rec($0, t, 0)
+    delete pl[k]
+    delete pt[k]
+  }
+}
+END {
+  for (k in pl) {
+    if (now - pt[k] <= 120 && pt[k] - now <= 120) print pl[k] > carry
+  }
+}
+'
+# A master log a restart or logrotate moved aside keeps its inode: logrotate
+# renames it to <name>.1 (left plain for a day by delaycompress), and BOA's
+# other movers (the launchers, the healers here and in move_sql.sh, a PHP
+# build) put it in a /var/backups/php-logs/<stamp>/ folder under its own
+# name or as a pre-build copy. The file of the saved inode is looked for
+# there, in the ten folders written last; its path is printed. A move to
+# another filesystem gives the file a new inode: it is not found then, and
+# the cuts the old file got after the last pass are not counted.
+_fpm_moved_log() {
+  local _f="${1}" _ino="${2}" _b _c _d _i
+  local -a _cs=()
+  [[ "${_ino}" =~ ^[0-9]+$ ]] || return 1
+  _b="${_f##*/}"
+  _cs=("${_f}.1")
+  # sorted by when each folder was last written to; BOA's stamps are digits
+  # and a dash, and a name ls cannot print whole is only a path not found
+  # shellcheck disable=SC2012
+  while IFS= read -r _d; do
+    [ -n "${_d}" ] || continue
+    _cs+=("${_d%/}/${_b}" "${_d%/}/${_b%.log}"-pre-build-*.log)
+  done < <(ls -1dt -- /var/backups/php-logs/*/ 2> /dev/null | head -n 10)
+  for _c in "${_cs[@]}"; do
+    [ -f "${_c}" ] && [ ! -L "${_c}" ] || continue
+    _i=$(stat -c %i -- "${_c}" 2> /dev/null)
+    if [ "${_i}" = "${_ino}" ]; then
+      echo "${_c}"
+      return 0
+    fi
+  done
+  return 1
+}
+# The lines of ${1} from byte ${2} to byte ${3} that may tell of a cut: a
+# time-out warning, whole or cut short, and a child's SIGTERM exit; never a
+# worker's. As bytes and text whatever they hold: a worker's stderr can put
+# a NUL in the log, a request an invalid UTF-8 byte, and grep would read the
+# chunk as binary and print none of its lines.
+_fpm_cut_lines() {
+  (( ${3} > ${2} )) || return 0
+  tail -c +"$(( ${2} + 1 ))" -- "${1}" 2> /dev/null | head -c "$(( ${3} - ${2} ))" \
+    | LC_ALL=C grep -a -E -e '\) execution timed out \(' -e '\.\.\.$' \
+      -e ' child [0-9]+ exited on signal 15 \(SIGTERM' \
+    | LC_ALL=C grep -a -v -E -- "${_FPM_WORKER_LINE}"
+}
+_fpm_timeout_detection() {
+  local _posfile="/var/log/boa/fpm_timeout.pos"
+  local _pend="/var/log/boa/fpm_timeout.pend"
+  local _dir="/var/backups/ltd/fpmcut"
+  local _tmp _cut _f _x _y _off _sz _ino _old _osz _new _first=YES
+  declare -A _POS _INO _SEEN
+  if [ -f "${_posfile}" ]; then
+    while IFS='|' read -r _f _x _y; do
+      if [ -n "${_f}" ] && [[ "${_x}" =~ ^[0-9]+$ ]]; then
+        _POS["${_f}"]="${_x}"
+        _INO["${_f}"]="${_y}"
+        _first=NO
+      fi
+    done < "${_posfile}"
+  fi
+  _tmp="${_posfile}.$$"
+  _cut="${_posfile}.cut.$$"
+  : > "${_cut}" 2> /dev/null || return 0
+  _new=""
+  for _f in /var/log/php/php*-fpm-error.log; do
+    [ -f "${_f}" ] || continue
+    _sz=""
+    _ino=""
+    read -r _sz _ino < <(stat -c '%s %i' -- "${_f}" 2> /dev/null)
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || continue
+    _SEEN["${_f}"]=1
+    if [ "${_first}" = "YES" ]; then
+      _off="${_sz}"
+    else
+      # a log new since the last pass, or moved away and made again, or
+      # rotated, is read from its start; a moved one's rest first
+      _off="${_POS["${_f}"]:-0}"
+      if [ -n "${_INO["${_f}"]:-}" ] && [ "${_INO["${_f}"]}" != "${_ino}" ]; then
+        if _old=$(_fpm_moved_log "${_f}" "${_INO["${_f}"]}"); then
+          _osz=$(stat -c %s -- "${_old}" 2> /dev/null)
+          [[ "${_osz}" =~ ^[0-9]+$ ]] \
+            && _fpm_cut_lines "${_old}" "${_off}" "${_osz}" >> "${_cut}"
+        fi
+        _off=0
+      elif [ "${_INO["${_f}"]:-}" != "${_ino}" ] || (( _sz < _off )); then
+        _off=0
+      fi
+    fi
+    _fpm_cut_lines "${_f}" "${_off}" "${_sz}" >> "${_cut}"
+    _new+="${_f}|${_sz}|${_ino}"$'\n'
+  done
+  # a log moved aside and not made again yet keeps its entry, so its rest is
+  # found once the new one is there
+  for _f in "${!_POS[@]}"; do
+    [ -n "${_SEEN["${_f}"]:-}" ] && continue
+    [[ "${_f}" == /var/log/php/php*-fpm-error.log ]] || continue
+    _new+="${_f}|${_POS["${_f}"]}|${_INO["${_f}"]}"$'\n'
+  done
+  if ! printf '%s' "${_new}" > "${_tmp}" 2> /dev/null \
+    || ! mv -f "${_tmp}" "${_posfile}" 2> /dev/null; then
+    rm -f "${_tmp}" "${_cut}"
+    return 0
+  fi
+  if [ -s "${_cut}" ]; then
+    if [ ! -d "${_dir}" ] || [ -L "${_dir}" ]; then
+      rm -f "${_dir}"
+      mkdir -p "${_dir}"
+    fi
+    chmod 700 "${_dir}"
+    rm -f "${_pend}.$$"
+    : > "${_pend}.$$" 2> /dev/null && chmod 600 "${_pend}.$$"
+    cat -- "${_pend}" "${_cut}" 2> /dev/null \
+      | LC_ALL=C awk -v tz="$(date +%z)" -v dir="${_dir}" -v day="$(date +%Y%m%d)" \
+        -v now="$(date +%s)" -v carry="${_pend}.$$" "${_FPM_CUT_AWK}" 2> /dev/null
+    if [ -s "${_pend}.$$" ]; then
+      mv -f "${_pend}.$$" "${_pend}" 2> /dev/null
+    else
+      rm -f "${_pend}"
+    fi
+    rm -f "${_pend}.$$"
+  fi
+  rm -f "${_cut}"
 }
 
 _fpm_sockets_healing() {
@@ -307,30 +595,49 @@ _fpm_fastcgi_temp() {
   fi
 }
 
+_fpm_health_ok() {
+  # ${1} = version: its master, its www socket and its pid file are all there
+  pgrep -f "^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" >/dev/null 2>&1 || return 1
+  [ -S "/run/www${1}.fpm.socket" ] || return 1
+  [ -s "/run/php${1}-fpm.pid" ] || return 1
+  return 0
+}
+
 _fpm_health_check_fix() {
   _thisErrLog=
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+  # The versions the sites and the panel run come first: when a database
+  # restart stops every version at once, Nginx is back within seconds and
+  # sends requests to them while versions nobody uses would still be healing.
+  _ORD=""
+  for e in "${_PHP_FPM_VERSION//[^0-9]/}" "${_HM_FPM_VERSION//[^0-9]/}"; do
+    if [ -n "${e}" ] && [[ " ${_PHP_V} " == *" ${e} "* ]] \
+      && [[ " ${_ORD} " != *" ${e} "* ]]; then
+      _ORD="${_ORD} ${e}"
+    fi
+  done
   for e in ${_PHP_V}; do
+    [[ " ${_ORD} " == *" ${e} "* ]] || _ORD="${_ORD} ${e}"
+  done
+  _PHP_V="${_ORD}"
+  # One grace for reloads, shared by every version found down: a grace per
+  # version makes each one wait for every version listed before it.
+  _DOWN_V=""
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      _fpm_health_ok "${e}" || _DOWN_V="${_DOWN_V} ${e}"
+    fi
+  done
+  [ -n "${_DOWN_V}" ] || return 0
+  sleep 2
+  for e in ${_DOWN_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
       _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
 
-      _ok_master=false
-      _ok_socket=false
-      _ok_pid=false
-
-      # First pass
+      _ok_master=false; _ok_socket=false; _ok_pid=false
       pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
       [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
       [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
-
-      # Second pass (grace for reloads)
-      if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
-        sleep 2
-        _ok_master=false; _ok_socket=false; _ok_pid=false
-        pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
-        [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
-        [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
-      fi
 
       if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
         _sql_mutation_began && break
@@ -642,6 +949,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   _fpm_duplicate_instances_detection
   _fpm_listen_conflict_detection
   _fpm_proc_max_detection
+  _fpm_timeout_detection
   _fpm_sockets_healing
   _fpm_fastcgi_temp
   _fpm_giant_log_detection

@@ -41,6 +41,14 @@ Drupal 7 or Drupal 6 core on PHP 8, say) is listed with the reason in
 .fpm-core.info here, within a few minutes, and goes from the list a few
 minutes after its code is fixed. Nothing is switched for you.
 
+A script PHP-FPM keeps stopping at its time limit (180 seconds at
+most; three times or more in a day, a cron.php that never finishes,
+say) is listed in .fpm-timeout.info here, with the times and the
+request's method and first path segment as PHP-FPM logged it, never
+its query string, and goes within a day of its last cut. No site is
+named: PHP-FPM logs none, and the script's path names the platform.
+A job that needs longer runs from the shell with Drush.
+
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
 immediately. The marker steers your Ægir tasks too (Verify, Clone,
@@ -84,16 +92,22 @@ Your Ægir instance upgrade starts within a few minutes; the trigger
 file is removed automatically. Without platforms.info the trigger is
 ignored. Note that platforms.info REPLACES the default list — pinned
 symbols mean you skip distributions added in future releases, while
-ALL never skips anything.
+ALL skips only the platforms built when named: the CiviCRM ones (BDC
+DEC) and a pre-release core (DT0). ALL BDC gets everything and BDC.
 
 The Drupal 8+ platforms BOA provides (every distribution and the plain
-Drupal 9, 10 and 11 cores) are for demonstration and compatibility
-testing only, not production, and their security updates are best
-effort. Run production sites on a platform you build yourself in
-~/static (docs.boa.io: Building a platform).
+Drupal 9, 10 and 11 cores) and both CiviCRM platforms are for
+demonstration and compatibility testing only, not production, and their
+security updates are best effort. Run production sites on a platform you
+build yourself in ~/static (docs.boa.io: Building a platform).
+
+The CiviCRM platforms (BDC: Backdrop with CiviCRM, DEC: Drupal 11 with
+CiviCRM) come with CiviCRM installed on every new site. Each is one
+platform, built only when named, of about 240 MB (BDC) or 520 MB (DEC).
+DEC needs PHP 8.4 or newer.
 
 Drupal 11 symbols (DE4 DE3 and the Drupal 11 distributions CMS CK3
-LGV THR VBX FOS OCS) need MySQL 8, which on BOA means Percona 8.4. On a
+LGV THR VBX FOS OCS DEC) need MySQL 8, which on BOA means Percona 8.4. On a
 Percona 5.7 server they are skipped with a NOTE in the upgrade log, and a
 Drupal 11 site Install stops with that one reason; ask your host to upgrade
 the server's Percona to 8.4 first (docs.boa.io: Percona 8 upgrade readiness).
@@ -102,6 +116,7 @@ Platform symbols:
 
   Backdrop (built by default; a server can opt out)
     BDR — Backdrop CMS prod/stage/dev
+    BDC — Backdrop CMS with CiviCRM (built only when named)
 
   Grav (opt-in; ask your host to switch it on for the server)
     GRV — Grav 2 prod/stage/dev
@@ -113,6 +128,7 @@ Platform symbols:
     DE4 — Drupal 11.4 prod/stage/dev
     CK3 — Commerce v.3
     CMS — Drupal CMS
+    DEC — CiviCRM on Drupal 11 (built only when named)
     LGV — LocalGov
     OCS — OpenCulturas
     THR — Thunder

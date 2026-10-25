@@ -52,9 +52,10 @@
 #
 # Usage:
 #   staticbuild backdrop            build+package+publish ONLY the Backdrop family
-#                                   (backdrop core + bee + backdrop-drush-extension
-#                                   + redis_backdrop + webform_backdrop), all at
-#                                   latest - lightweight, no Composer
+#                                   (backdrop core + civicrm_backdrop + bee +
+#                                   backdrop-drush-extension + redis_backdrop +
+#                                   webform_backdrop), all at latest - lightweight,
+#                                   no Composer
 #   staticbuild grav                build+package+publish ONLY the Grav family
 #                                   (official admin bundle at latest; no Composer)
 #   staticbuild txp                 build+package+publish ONLY Textpattern (official
@@ -64,7 +65,8 @@
 #                                   the Backdrop family, or only the named targets
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package [name ...]  clean + tar every platform in the day dir, or only
-#                                   the named (cores keep core/profiles, distros strip)
+#                                   the named (cores and the CiviCRM platforms keep
+#                                   core/profiles, distros strip)
 #   staticbuild distribute [name ...]
 #                                   copy the day dir's tarballs, or only the named, to
 #                                   /var/www/static/{distro,core,dev/{dev,lts,pro}};
@@ -113,10 +115,12 @@
 #              platform summary still closes the run
 # Build target names: farm cms culturas commerce localgov openfed opigno social thunder
 #   varbase ezcontent commerce_base (the two pinned catalogue platforms, rebuilt from
-#   their published tarballs) backdrop (core, versioned like the Drupal cores) bee
-#   backdrop-drush-extension redis_backdrop webform_backdrop grav txp cores
+#   their published tarballs) civicrm_drupal (Drupal 11 with CiviCRM) backdrop (core,
+#   versioned like the Drupal cores) civicrm_backdrop (Backdrop with CiviCRM, made from
+#   the day's backdrop core: name it after backdrop) bee backdrop-drush-extension
+#   redis_backdrop webform_backdrop grav txp cores
 #
-# The Backdrop family (backdrop core, bee, backdrop-drush-extension,
+# The Backdrop family (backdrop core, civicrm_backdrop, bee, backdrop-drush-extension,
 # redis_backdrop, webform_backdrop) is always fetched at its newest upstream version, so BOA
 # never falls behind: run "staticbuild all" (or just the named targets) on the
 # mirror source VM, e.g. from cron alongside get-boa-dev. Backdrop core is
@@ -127,7 +131,9 @@
 # redis_backdrop is published versioned to the per-tree contrib shelf
 # (dev/{dev,lts,pro}/contrib/) and consumed by the version pinned in
 # OCTOPUS.sh.txt / BOA.sh.txt, so a newer publish here is inert until the
-# pins are bumped.
+# pins are bumped. civicrm_backdrop goes to the distro shelf with a
+# civicrm_backdrop.txt stamp holding its <civicrm>-<backdrop> pair, published after
+# its tarball; a name already on the shelf is not built again (-f rebuilds).
 
 # ---------------------------------------------------------------------------
 # Configuration - review the specs/minors each cycle ("staticbuild check").
@@ -180,6 +186,8 @@ _PHP_OPENFED="${_PHP_83}"                        # OpenFed 13.6 rides the D10.6 
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
 _PHP_CORE_12="${_PHP_85}"                        # Drupal 12 and later: their generated
                                                  # platform_check.php refuses PHP below 8.5
+_PHP_CIVICRM="${_PHP_84}"                        # Drupal 11 with CiviCRM: the catalogue's
+                                                 # Drupal 11 cap
 # A legacy line builds under the newest installed interpreter of those its lock
 # accepts on a full resolve (the Drush require is one), newest first; a server with
 # none of them skips the line. Drupal 8.9's Twig 1 and Symfony 3.4 stop at PHP 7.4;
@@ -266,6 +274,21 @@ _REDIS_TAG=""
 # refreshed on the next upgrade pass.
 _WEBFORM_B_REPO="backdrop-contrib/webform"
 _WEBFORM_B_TAG=""
+
+# CiviCRM, built into two catalogue platforms: civicrm_backdrop, the official CiviCRM
+# for Backdrop release tarball unpacked into the root modules/ of the day's Backdrop
+# core tree, and civicrm_drupal, a Composer-built Drupal 11 codebase with CiviCRM's
+# Drupal packages, after CiviCRM's own Drupal install guide. The latest stable release
+# is read from latest.civicrm.org; set _CIVICRM_TAG to pin one. The Backdrop tarball is
+# checked against the release's SHA256SUMS before it is unpacked. civicrm_backdrop is
+# named after both releases and its name is stamped to civicrm_backdrop.txt on the
+# distro shelf, published after its tarball: the boxes resolve the platform from that
+# stamp. civicrm_drupal is a Composer distribution whose name the catalogue pins.
+_CIVICRM_TAG=""
+_CIVICRM_STABLE_URL="https://latest.civicrm.org/stable.php"
+_CIVICRM_DL_URL="https://download.civicrm.org"
+_CIVICRM_D_SPEC="drupal/recommended-project:^11"
+_CIVICRM_D_PKGS="civicrm/civicrm-core civicrm/civicrm-packages civicrm/civicrm-drupal-8"
 
 # Distribution Composer specs (the create-project template) + the distribution PROFILE
 # package. The tarball version is the profile package's version (the authoritative number
@@ -391,7 +414,7 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # patch set is fetched from mutable branch refs with no hashes, so REBUILDS are not
 # reproducible -- each published tarball is the frozen artefact, same as every other
 # distro here.
-_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase ezcontent commerce_base"
+_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase ezcontent commerce_base civicrm_drupal"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -440,6 +463,7 @@ _SCOPE_TARGETS=""                                # the build targets among those
 _REFUSED=0
 _ADV_TMP=""
 _SHELF_TMP=""                                    # a shelf copy in flight, removed by _cleanup
+_PATCHGAP_PHP=""                                 # the patch check's helper, removed by _cleanup
 _LOCK_HELD=0
 _DEBUG_MODE="${_DEBUG_MODE:-NO}"                 # --debug: stream everything, no run log
 _LOG=""                                          # this run's log; empty = output streams
@@ -607,6 +631,10 @@ _cleanup() {
     rm -f "${_SHELF_TMP}" 2>/dev/null
     _SHELF_TMP=""
   fi
+  if [[ -n "${_PATCHGAP_PHP}" ]]; then
+    rm -f "${_PATCHGAP_PHP}" 2>/dev/null
+    _PATCHGAP_PHP=""
+  fi
   if [[ "${_LOCK_HELD}" == "1" ]]; then
     rmdir "${_LOCK}" 2>/dev/null
     _LOCK_HELD=0
@@ -626,7 +654,9 @@ _run_as_o8() {
   # COMPOSER_HOME, COMPOSER_CACHE_DIR: the build's own, apart from the account's.
   # Aegir tasks run Composer as the same user, and the build clears its cache at
   # the start of every run. A GitHub token for the build goes into this home.
-  su -s /bin/bash - "${_O8_USER}" -c "export COMPOSER_NO_INTERACTION=1 COMPOSER_HOME='${_STATIC_ROOT}/${_O8_USER}/.config/staticbuild-composer' COMPOSER_CACHE_DIR='${_STATIC_ROOT}/${_O8_USER}/.cache/staticbuild-composer'; $1"
+  # COMPOSER_PATCHES_SKIP_REPORTING: never inherited from the account's profile, as
+  # the patch check reads the PATCHES.txt files composer-patches writes.
+  su -s /bin/bash - "${_O8_USER}" -c "unset COMPOSER_PATCHES_SKIP_REPORTING; export COMPOSER_NO_INTERACTION=1 COMPOSER_HOME='${_STATIC_ROOT}/${_O8_USER}/.config/staticbuild-composer' COMPOSER_CACHE_DIR='${_STATIC_ROOT}/${_O8_USER}/.cache/staticbuild-composer'; $1"
 }
 
 use_php() {
@@ -1390,17 +1420,461 @@ _restore_missing_packages() {
   return 0
 }
 
+_patch_gap_php() {
+  # The PHP half of _patch_gap_guard, run in a build tree as the build user. Only
+  # composer-patches 1.x trees: 1.x writes each package's declared patches to its
+  # PATCHES.txt (records of a description line, then "Source: <url>", then two empty
+  # lines) and the applied ones to installed.json extra.patches_applied, keyed by
+  # description (a package without that key was never processed and is left alone);
+  # 2.x stops the install on a failure. It merges the root's patches with every
+  # dependency's by description, a later source winning a key (a list's index is its
+  # key), so one URL declared under two descriptions is applied twice. Every mode reads
+  # the tree as it is now.
+  #   list      "gaps: N", "dups: M" and "checked: 1" (0 when the tree has no
+  #             composer-patches 1.x) first; then "gap<TAB><package><TAB><url>" per
+  #             declared URL applied under no description, "dup<TAB><package><TAB><url>"
+  #             per applied URL declared more than once, "churn<TAB><package>" per
+  #             package composer-patches processed with none applied (it removes and
+  #             reinstalls such a package on every later Composer run),
+  #             "applied<TAB><package><TAB><url>" per URL applied, and
+  #             "patched<TAB><dir>" per package composer-patches patched. Exits 4 when
+  #             reporting is off: there is no PATCHES.txt to compare then.
+  #   dirs      the directory of every package with a gap, for a plain reinstall
+  #   ignore    a gap URL is ignored wherever composer-patches 1.7 reads it (dropped
+  #             from the root's own patches, else its patches-file, and added to
+  #             patches-ignore under every dependency that declares it); a duplicate
+  #             is declared once (the root's first entry, else that of a dependency
+  #             declaring it once, as patches-ignore goes by value); patching stays
+  #             enabled by composer-patches' own test, and the root's emptied patches
+  #             stay {}, so a patches-file it hid stays hidden. Prints the directories
+  #             to reinstall. Exits 3, changing nothing, on a declaration it cannot
+  #             repair: a description that two sources give different URLs where one
+  #             of them is to change (the merge would keep or bring back the wrong
+  #             one), or a package installed as a link (reinstalling it never makes it
+  #             pristine, and its source is not the build's to remove).
+  #   rehash    writes Composer's own content-hash of composer.json (Locker, loaded
+  #             from the Composer phar given as $2) into composer.lock: ignore changes
+  #             only extra, which never moves the locked set
+  #   hashcheck exits 0 when the lock's content-hash is that hash, 1 when not
+  # A directory is printed only when it resolves inside the tree.
+  cat <<'EOPHP'
+<?php
+$mode = isset($argv[1]) ? $argv[1] : 'list';
+if ($mode === 'rehash' || $mode === 'hashcheck') {
+  $phar = isset($argv[2]) ? (string) $argv[2] : '';
+  // Composer's phar carries its own alias, composer.phar, and loads under no other
+  try { Phar::loadPhar($phar); } catch (Exception $e) { fwrite(STDERR, "cannot load Composer from $phar: " . $e->getMessage() . "\n"); exit(2); }
+  require 'phar://composer.phar/vendor/autoload.php';
+  $json = @file_get_contents('composer.json');
+  $lock = @file_get_contents('composer.lock');
+  $lj = json_decode((string) $lock, true);
+  if ($json === false || !is_array($lj)) { fwrite(STDERR, "composer.json or composer.lock unreadable\n"); exit(2); }
+  $hash = \Composer\Package\Locker::getContentHash($json);
+  if (isset($lj['content-hash']) && $lj['content-hash'] === $hash) { exit(0); }
+  if ($mode === 'hashcheck') { exit(1); }
+  $n = 0;
+  $new = preg_replace('/("content-hash"\s*:\s*")[0-9a-fA-F]*(")/', '${1}' . $hash . '${2}', $lock, 1, $n);
+  if ($n !== 1 || file_put_contents('composer.lock', $new) === false) { fwrite(STDERR, "composer.lock not updated\n"); exit(2); }
+  exit(0);
+}
+$inst = json_decode((string) @file_get_contents('vendor/composer/installed.json'), true);
+if (!is_array($inst)) { fwrite(STDERR, "vendor/composer/installed.json unreadable\n"); exit(2); }
+$pkgs = isset($inst['packages']) ? $inst['packages'] : $inst;
+$rootA = json_decode((string) @file_get_contents('composer.json'), true);
+if (!is_array($rootA)) { fwrite(STDERR, "composer.json unreadable\n"); exit(2); }
+$rx = (isset($rootA['extra']) && is_array($rootA['extra'])) ? $rootA['extra'] : array();
+$cp = '';
+foreach ($pkgs as $p) { if (isset($p['name']) && $p['name'] === 'cweagans/composer-patches') { $cp = (string) $p['version']; } }
+function inside($dir) {
+  $real = realpath($dir);
+  $top = realpath('.');
+  return ($real !== false && $top !== false && strpos($real, $top . '/') === 0) ? $real : false;
+}
+// The URLs of a PATCHES.txt, read record by record (the URL is a record's last line,
+// so a description that starts with "Source: " is no URL); false when it is not
+// composer-patches' format
+function declaredUrls($file) {
+  $t = str_replace("\r\n", "\n", (string) @file_get_contents($file));
+  $h = "Patches applied to this directory:\n\n";
+  $at = strpos($t, $h);
+  if ($at === false) { return false; }
+  $urls = array();
+  foreach (explode("\n\n\n", substr($t, $at + strlen($h))) as $rec) {
+    if (trim($rec) === '') { continue; }
+    $lines = explode("\n", rtrim($rec, "\n"));
+    $last = (string) end($lines);
+    if (strpos($last, 'Source: ') !== 0) { return false; }
+    $urls[] = trim(substr($last, 8));
+  }
+  return $urls;
+}
+$gaps = array();
+$dups = array();
+$churn = array();
+$patched = array();
+$applied = array();
+$checked = 0;
+if (preg_match('/^v?1\./', $cp)) {
+  if (getenv('COMPOSER_PATCHES_SKIP_REPORTING') || !empty($rx['composer-patches-skip-reporting'])) {
+    fwrite(STDERR, "composer-patches reporting is off: no PATCHES.txt to compare\n");
+    exit(4);
+  }
+  $checked = 1;
+  foreach ($pkgs as $p) {
+    if (empty($p['install-path']) || !isset($p['extra']) || !is_array($p['extra']) || !array_key_exists('patches_applied', $p['extra'])) { continue; }
+    $dir = 'vendor/composer/' . $p['install-path'];
+    if (!is_file($dir . '/PATCHES.txt')) { continue; }
+    $real = inside($dir);
+    if ($real === false) { fwrite(STDERR, $p['name'] . " installs outside the tree\n"); exit(3); }
+    $link = is_link(rtrim($dir, '/'));
+    $patched[$real] = true;
+    $urls = declaredUrls($dir . '/PATCHES.txt');
+    if ($urls === false) { fwrite(STDERR, $p['name'] . ": PATCHES.txt is not in composer-patches' format\n"); exit(2); }
+    $count = array();
+    foreach ($urls as $u) { $count[$u] = isset($count[$u]) ? $count[$u] + 1 : 1; }
+    $done = is_array($p['extra']['patches_applied']) ? array_values($p['extra']['patches_applied']) : array();
+    foreach (array_unique($done) as $u) { $applied[] = $p['name'] . "\t" . $u; }
+    foreach ($count as $u => $n) {
+      if (!in_array($u, $done, true)) { $gaps[] = array($p['name'], $u, $real, $link); }
+      elseif ($n > 1) { $dups[] = array($p['name'], $u, $real, $link); }
+    }
+    // processed (its patch set is declared, if empty) yet nothing applied
+    if (count($done) === 0) { $churn[$p['name']] = true; }
+  }
+}
+if ($mode === 'list') {
+  echo 'gaps: ', count($gaps), "\n", 'dups: ', count($dups), "\n", 'checked: ', $checked, "\n";
+  foreach ($gaps as $g) { echo "gap\t", $g[0], "\t", $g[1], "\n"; }
+  foreach ($dups as $g) { echo "dup\t", $g[0], "\t", $g[1], "\n"; }
+  foreach (array_keys($churn) as $c) { echo "churn\t", $c, "\n"; }
+  foreach ($applied as $a) { echo "applied\t", $a, "\n"; }
+  foreach (array_keys($patched) as $d) { echo "patched\t", $d, "\n"; }
+  exit(0);
+}
+// a package installed as a link: its source is patched in place and is not the
+// build's to remove
+foreach (array_merge($gaps, $dups) as $g) {
+  if ($g[3]) { fwrite(STDERR, $g[0] . " is installed as a link: it cannot be reinstalled pristine\n"); exit(3); }
+}
+if ($mode === 'dirs') {
+  $dirs = array();
+  foreach ($gaps as $g) { $dirs[$g[2]] = true; }
+  foreach (array_keys($dirs) as $d) { echo $d, "\n"; }
+  exit(0);
+}
+if ($mode !== 'ignore') { fwrite(STDERR, "unknown mode $mode\n"); exit(2); }
+// object view of a JSON container that may have been decoded as a list
+function obj($v) {
+  if (is_object($v)) { return $v; }
+  $o = new stdClass();
+  if (is_array($v)) { foreach ($v as $k => $x) { $o->{$k} = $x; } }
+  return $o;
+}
+$root = json_decode((string) file_get_contents('composer.json'));
+if (!is_object($root)) { fwrite(STDERR, "composer.json unreadable\n"); exit(2); }
+if (!isset($root->extra) || !is_object($root->extra)) { $root->extra = new stdClass(); }
+$ex = $root->extra;
+// The root's own declarations as composer-patches reads them: extra.patches, else
+// the patches-file's patches.
+$pf = isset($ex->{'patches-file'}) ? (string) $ex->{'patches-file'} : '';
+$pfj = null;
+$rs = null;
+if (isset($ex->patches)) { $ex->patches = obj($ex->patches); $rs = $ex->patches; }
+elseif ($pf !== '') {
+  $pfj = json_decode((string) @file_get_contents($pf));
+  if (!is_object($pfj)) { fwrite(STDERR, "patches-file $pf unreadable\n"); exit(3); }
+  if (isset($pfj->patches)) { $pfj->patches = obj($pfj->patches); $rs = $pfj->patches; }
+}
+$pfChanged = false;
+function rootKeys($rs, $pkg, $url) {
+  $k = array();
+  if (!is_object($rs) || !isset($rs->{$pkg})) { return $k; }
+  $rs->{$pkg} = obj($rs->{$pkg});
+  foreach ($rs->{$pkg} as $d => $u) { if ($u === $url) { $k[] = (string) $d; } }
+  return $k;
+}
+function rootDrop($rs, $pkg, $keys) {
+  foreach ($keys as $d) { unset($rs->{$pkg}->{$d}); }
+  if (count(get_object_vars($rs->{$pkg})) === 0) { unset($rs->{$pkg}); }
+}
+function ignored($ex, $dep, $pkg, $url) {
+  if (!isset($ex->{'patches-ignore'})) { return false; }
+  $pi = obj($ex->{'patches-ignore'});
+  if (!isset($pi->{$dep})) { return false; }
+  $pd = obj($pi->{$dep});
+  if (!isset($pd->{$pkg})) { return false; }
+  foreach (obj($pd->{$pkg}) as $u) { if ($u === $url) { return true; } }
+  return false;
+}
+// [dependency, description] for every installed dependency whose declaration of
+// $url for $pkg composer-patches still applies (not already in patches-ignore)
+function declaring($pkgs, $ex, $pkg, $url) {
+  $out = array();
+  foreach ($pkgs as $q) {
+    if (!isset($q['extra']['patches'][$pkg]) || !is_array($q['extra']['patches'][$pkg])) { continue; }
+    if (ignored($ex, $q['name'], $pkg, $url)) { continue; }
+    foreach ($q['extra']['patches'][$pkg] as $d => $u) {
+      if ($u === $url) { $out[] = array($q['name'], (string) $d); }
+    }
+  }
+  return $out;
+}
+// A description that two sources give different URLs, one of them in $urls: the merge
+// keeps one of them, so dropping or keeping a copy there can lose the applied patch
+// or bring back a hidden one. False when there is none.
+function collision($rs, $pkgs, $ex, $pkg, $urls) {
+  $byKey = array();
+  if (is_object($rs) && isset($rs->{$pkg})) {
+    foreach (obj($rs->{$pkg}) as $d => $u) { $byKey[(string) $d][] = $u; }
+  }
+  foreach ($pkgs as $q) {
+    if (!isset($q['extra']['patches'][$pkg]) || !is_array($q['extra']['patches'][$pkg])) { continue; }
+    foreach ($q['extra']['patches'][$pkg] as $d => $u) {
+      if (!ignored($ex, $q['name'], $pkg, $u)) { $byKey[(string) $d][] = $u; }
+    }
+  }
+  foreach ($byKey as $d => $us) {
+    if (count(array_unique($us)) > 1 && count(array_intersect($us, $urls)) > 0) { return (string) $d; }
+  }
+  return false;
+}
+function ignoreUnder($ex, $dep, $pkg, $url, $desc) {
+  $ex->{'patches-ignore'} = obj(isset($ex->{'patches-ignore'}) ? $ex->{'patches-ignore'} : null);
+  $pi = $ex->{'patches-ignore'};
+  $pi->{$dep} = obj(isset($pi->{$dep}) ? $pi->{$dep} : null);
+  $pi->{$dep}->{$pkg} = obj(isset($pi->{$dep}->{$pkg}) ? $pi->{$dep}->{$pkg} : null);
+  $list = $pi->{$dep}->{$pkg};
+  foreach ($list as $u) { if ($u === $url) { return; } }
+  $key = $desc;
+  $n = 2;
+  while (isset($list->{$key})) { $key = $desc . ' (' . $n . ')'; $n++; }
+  $list->{$key} = $url;
+}
+// every URL to change, per package, checked before anything changes
+$touch = array();
+foreach (array_merge($gaps, $dups) as $g) { $touch[$g[0]][] = $g[1]; }
+foreach ($touch as $pkg => $urls) {
+  $d = collision($rs, $pkgs, $ex, $pkg, $urls);
+  if ($d !== false) { fwrite(STDERR, "$pkg: two sources declare different patches as \"$d\": cannot repair it safely\n"); exit(3); }
+}
+$dirs = array();
+foreach ($gaps as $g) {
+  list($pkg, $url, $dir) = $g;
+  $k = rootKeys($rs, $pkg, $url);
+  $deps = declaring($pkgs, $ex, $pkg, $url);
+  if (count($k) === 0 && count($deps) === 0) { fwrite(STDERR, "no source declares $pkg $url\n"); exit(3); }
+  if (count($k) > 0) { rootDrop($rs, $pkg, $k); if ($pfj !== null) { $pfChanged = true; } }
+  foreach ($deps as $dd) { ignoreUnder($ex, $dd[0], $pkg, $url, $dd[1]); }
+  $dirs[$dir] = true;
+}
+foreach ($dups as $g) {
+  list($pkg, $url, $dir) = $g;
+  $k = rootKeys($rs, $pkg, $url);
+  $deps = declaring($pkgs, $ex, $pkg, $url);
+  if (count($k) > 0) {
+    if (count($k) > 1) { rootDrop($rs, $pkg, array_slice($k, 1)); if ($pfj !== null) { $pfChanged = true; } }
+    foreach ($deps as $dd) { ignoreUnder($ex, $dd[0], $pkg, $url, $dd[1]); }
+  }
+  elseif (count($deps) > 0) {
+    // patches-ignore goes by value: the copy kept is that of a dependency declaring
+    // it once, every other dependency's is ignored
+    $own = array();
+    foreach ($deps as $dd) { $own[$dd[0]] = isset($own[$dd[0]]) ? $own[$dd[0]] + 1 : 1; }
+    $keep = array_search(1, $own, true);
+    if ($keep === false) { fwrite(STDERR, "every dependency declaring $url for $pkg declares it twice: cannot keep one\n"); exit(3); }
+    foreach ($deps as $dd) { if ($dd[0] !== $keep) { ignoreUnder($ex, $dd[0], $pkg, $url, $dd[1]); } }
+  }
+  else { fwrite(STDERR, "no source declares $pkg $url\n"); exit(3); }
+  $dirs[$dir] = true;
+}
+// composer-patches 1.7 patches nothing when the root's patches and patches-ignore are
+// empty and it names no patches-file, unless the root opts in (isPatchingEnabled)
+$pe = !isset($ex->patches) || count((array) $ex->patches) === 0;
+$ie = !isset($ex->{'patches-ignore'}) || count((array) $ex->{'patches-ignore'}) === 0;
+if ($pe && $ie && !isset($ex->{'patches-file'}) && empty($ex->{'enable-patching'})) { $ex->{'enable-patching'} = true; }
+$flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
+$pfOut = $pfChanged ? json_encode($pfj, $flags) : '';
+$rootOut = json_encode($root, $flags);
+if ($pfOut === false || $rootOut === false) { fwrite(STDERR, "composer.json not encoded\n"); exit(2); }
+if ($pfChanged && file_put_contents($pf, $pfOut . "\n") === false) { exit(2); }
+if (file_put_contents('composer.json', $rootOut . "\n") === false) { exit(2); }
+foreach (array_keys($dirs) as $d) { echo $d, "\n"; }
+EOPHP
+}
+
+_patch_gap_run() {
+  # One run of the helper as the build user; $1 workdir, $2 mode. Returns the helper's
+  # own non-zero status, and 1 when list did not print its three count lines first.
+  local _out _rc _re="^gaps: [0-9]+"$'\n'"dups: [0-9]+"$'\n'"checked: [01]"
+  _out="$(_run_as_o8 "cd '$1' && php '${_PATCHGAP_PHP}' '$2'")"
+  _rc=$?
+  [[ "${_rc}" == "0" ]] || return "${_rc}"
+  if [[ "$2" == "list" ]]; then
+    [[ "${_out}" =~ ${_re} ]] || return 1
+  fi
+  printf '%s\n' "${_out}"
+}
+
+_patch_gap_count() {
+  # $1 a list output, $2 gaps, dups or checked: the count it printed
+  sed -n "s/^$2: //p" <<< "$1" | head -n 1
+}
+
+_patch_gap_unnote() {
+  # Prints the note list $1 ("a; b; c") without the note $2.
+  local _l="; $1; "
+  while [[ "${_l}" == *"; $2; "* ]]; do
+    _l="${_l/; $2; /; }"
+  done
+  _l="${_l#; }"
+  printf '%s' "${_l%; }"
+}
+
+_patch_gap_reinstall() {
+  # Remove the given package directories (one per line in $2) and reinstall them
+  # from the lock; $1 workdir. Composer counts any readable path as installed, so
+  # each directory must be gone first.
+  local _wd="$1" _d
+  while IFS= read -r _d; do
+    [[ -n "${_d}" ]] || continue
+    _run_as_o8 "rm -rf '${_d}'"
+    _run_as_o8 "test ! -e '${_d}'" || return 1
+  done <<< "$2"
+  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}"
+}
+
+_patch_gap_rehash() {
+  # The lock's content-hash follows composer.json after the helper changed a patch
+  # declaration (extra only, so no resolve: one can fail where nothing moved, as on
+  # the Drupal 10.1 and 10.3 pinned trees). Judged by the hash itself, as Composer's
+  # Locker computes it (composer validate fails on other errors too); a hash that
+  # follows also ends an earlier "lock hash stale" of this platform. $1 workdir,
+  # $2 label.
+  local _h="php '${_PATCHGAP_PHP}'" _c="\"\$(readlink -f \"\$(command -v composer)\")\""
+  if _run_as_o8 "cd '$1' && ${_h} rehash ${_c} && ${_h} hashcheck ${_c}"; then
+    _PENDING_NOTE="$(_patch_gap_unnote "${_PENDING_NOTE}" "lock hash stale")"
+    return 0
+  fi
+  _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json after a patch declaration changed"
+}
+
+_patch_gap_done() {
+  rm -f "${_PATCHGAP_PHP}"
+  _PATCHGAP_PHP=""
+}
+
+_patch_gap_guard() {
+  # composer-patches 1.x falls back to `patch` with no dry run: a patch that no
+  # longer fits can apply some hunks, leave .rej files and still be logged only as
+  # skipped, while PATCHES.txt lists it as declared. A half-applied Open Social
+  # simple_oauth patch shipped three constructors that fatal. So after every step
+  # that installs, a package with a declared patch applied under no description is
+  # first reinstalled as declared (a patch that only failed to download applies
+  # then); what still fails is ignored at its source, a patch declared twice is
+  # declared once, those packages are reinstalled pristine, the lock's hash follows
+  # and the row says `patch skipped`. A gap or duplicate that survives or cannot be
+  # repaired safely, a check that cannot run (reporting off included), or any .rej
+  # file in a package composer-patches patched fails the build, and the published
+  # copy stays. $1 workdir, $2 label.
+  local _wd="$1" _label="$2" _out _dirs _kind _pkg _url _d _rej _rc _l _before _gap=0 _keep=()
+  _PATCHGAP_PHP="$(mktemp /tmp/.staticbuild-patchgap.XXXXXX)" \
+    && _patch_gap_php > "${_PATCHGAP_PHP}" && chmod 0644 "${_PATCHGAP_PHP}" \
+    || { _record_fail "${_label} (patch check could not start)"; _patch_gap_done; return 1; }
+  _out="$(_patch_gap_run "${_wd}" list)"
+  _rc=$?
+  if [[ "${_rc}" == "4" ]]; then
+    _alrt "${_label}: composer-patches reporting is off, so a half-applied patch cannot be found"
+    _record_fail "${_label} (patch check cannot run: reporting off)"
+    _patch_gap_done
+    return 1
+  fi
+  [[ "${_rc}" == "0" ]] || { _record_fail "${_label} (patch check)"; _patch_gap_done; return 1; }
+  if [[ "$(_patch_gap_count "${_out}" gaps)" != "0" ]]; then
+    # one reinstall with the declarations unchanged first
+    _dirs="$(_patch_gap_run "${_wd}" dirs)" && _patch_gap_reinstall "${_wd}" "${_dirs}" \
+      && _out="$(_patch_gap_run "${_wd}" list)" \
+      || { _record_fail "${_label} (patch check: reinstall as declared failed)"; _patch_gap_done; return 1; }
+  fi
+  if [[ "$(_patch_gap_count "${_out}" gaps)" != "0" || "$(_patch_gap_count "${_out}" dups)" != "0" ]]; then
+    while IFS=$'\t' read -r _kind _pkg _url; do
+      case "${_kind}" in
+        gap)
+          _gap=1
+          _alrt "${_label}: ${_pkg}: a declared patch did not apply (twice), reinstalled without it: ${_url}"
+          _FIX_LINES+=("# patch skipped: ${_pkg} ${_url} (did not apply; reinstalled without it)")
+          ;;
+        dup)
+          _msg "${_label}: ${_pkg}: a patch declared twice, now declared once and reinstalled: ${_url}"
+          _FIX_LINES+=("# patch declared twice: ${_pkg} ${_url} (declared once; reinstalled)")
+          ;;
+      esac
+    done <<< "${_out}"
+    # what applies now: the repair may only drop gaps and duplicates, never change it
+    _before="$(grep $'^applied\t' <<< "${_out}" | sort -u)"
+    _dirs="$(_patch_gap_run "${_wd}" ignore)" && [[ -n "${_dirs}" ]] && _patch_gap_reinstall "${_wd}" "${_dirs}" \
+      || { _record_fail "${_label} (a patch declaration could not be repaired)"; _patch_gap_done; return 1; }
+    _patch_gap_rehash "${_wd}" "${_label}"
+    if ! _out="$(_patch_gap_run "${_wd}" list)" \
+      || [[ "$(_patch_gap_count "${_out}" gaps)" != "0" || "$(_patch_gap_count "${_out}" dups)" != "0" ]]; then
+      _alrt "${_label}: a declared patch is still not applied exactly once after the reinstall"
+      _record_fail "${_label} (a declared patch still not applied)"
+      _patch_gap_done
+      return 1
+    fi
+    if [[ "$(grep $'^applied\t' <<< "${_out}" | sort -u)" != "${_before}" ]]; then
+      _alrt "${_label}: the patch repair changed which declared patches apply"
+      _record_fail "${_label} (the patch repair changed what applies)"
+      _patch_gap_done
+      return 1
+    fi
+  fi
+  _patch_gap_done
+  # Once the check has read the tree it owns the word: an earlier step's "patch
+  # skipped" (a patch that failed in that step's install) stands only for a patch
+  # still not applied, and this check has just ignored or cured every such one.
+  if [[ "$(_patch_gap_count "${_out}" checked)" == "1" ]]; then
+    _FIX_NOTE="$(_patch_gap_unnote "${_FIX_NOTE}" "patch skipped")"
+    for _l in "${_FIX_LINES[@]}"; do
+      [[ "${_l}" == "# warning: a patch did not apply"* ]] || _keep+=("${_l}")
+    done
+    _FIX_LINES=("${_keep[@]}")
+    [[ "${_gap}" == "1" ]] && _FIX_NOTE="${_FIX_NOTE:+${_FIX_NOTE}; }patch skipped"
+  fi
+  while IFS=$'\t' read -r _kind _pkg; do
+    [[ "${_kind}" == "churn" ]] || continue
+    _FIX_LINES+=("# note: ${_pkg} keeps a declared patch set with none applied: composer-patches removes and reinstalls it on every later Composer run on this platform")
+  done <<< "${_out}"
+  # A patch run leaves .rej files only in a package composer-patches patched, and
+  # with reporting on every such package has its PATCHES.txt: any .rej there now is
+  # a hunk that did not go in.
+  while IFS=$'\t' read -r _kind _d; do
+    [[ "${_kind}" == "patched" ]] || continue
+    if ! _rej="$(_run_as_o8 "find '${_d}' -name '*.rej'")"; then
+      _record_fail "${_label} (patch leftover scan)"
+      return 1
+    fi
+    if [[ -n "${_rej}" ]]; then
+      _alrt "${_label}: patch leftovers: $(head -n 5 <<< "${_rej}" | tr '\n' ' ')"
+      _record_fail "${_label} (patch .rej files left)"
+      return 1
+    fi
+  done <<< "${_out}"
+  return 0
+}
+
 _fix_step() {
   # The advisory fix step as a build runs it: straight after its Composer work and
   # before any hand work (patches, moved directories, seds), so the hand work always
   # applies to the final tree and fails closed if it no longer fits. $1 workdir,
   # $2 label, $3 packages the step must not move (the one whose version names the
-  # platform). A fixed lock that does not install fails the build.
+  # platform). A fixed lock that does not install fails the build, and so does a
+  # declared patch that is neither applied once nor cleanly ignored.
   if ! _fix_advisories "$1" "$2" "${3:-}"; then
     _record_fail "$2 (fixed lock did not install)"
     return 1
   fi
-  _restore_missing_packages "$1" "$2"
+  _restore_missing_packages "$1" "$2" || return 1
+  _patch_gap_guard "$1" "$2"
 }
 
 _pathauto_source_module_fix() {
@@ -1551,6 +2025,18 @@ _resolve_txp_tag() {
   fi
   curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_TXP_REPO}/releases/latest" 2>/dev/null \
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
+_resolve_civicrm_version() {
+  # The latest stable CiviCRM release (latest.civicrm.org answers the bare version),
+  # or the pinned _CIVICRM_TAG. Prints only a plain N.N.N version, else nothing: it
+  # reaches file names, package constraints and root shell commands.
+  local _v="${_CIVICRM_TAG}"
+  if [[ -z "${_v}" ]]; then
+    _v="$(curl -fsSL --max-time 30 -A "${_UA}" "${_CIVICRM_STABLE_URL}" 2>/dev/null | head -c 64)"
+  fi
+  [[ "${_v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && printf '%s\n' "${_v}"
+  return 0
 }
 
 _gh_quota_note() {
@@ -2108,6 +2594,13 @@ _pinned_lock_rehash() {
   # its snapshot of the lock. A resolve that fails (a rate-limited GitHub repository)
   # keeps the stale hash and says so on the row: it breaks nothing. $1 workdir,
   # $2 label.
+  # A published copy already carries the edits of the builds before it, so its hash
+  # usually matches: no resolve then. Validate exits 0 on a matching hash and needs no
+  # network; a resolve can fail where nothing is stale (packages.drupal.org now lists
+  # drupal/toolbar for admin_toolbar, which the 10.1 and 10.3 cores do not replace).
+  if _run_as_o8 "cd '$1' && composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"; then
+    return 0
+  fi
   if ! _run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --lock --no-install --no-scripts --no-plugins ${_FIX_IGNORE_EXT}"; then
     _pending "$2" "lock hash stale" "composer update --lock failed; the lock's content-hash stays behind composer.json"
   fi
@@ -2146,6 +2639,57 @@ build_commerce_base() {
   _pinned_lock_rehash "${_wd}" "commerce_base"
   _fix_step "${_wd}" "commerce_base" "${_CK2_DISTPKG} drupal/commerce" || return 1
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
+}
+
+_civicrm_drupal_complete() {
+  # $1 = a civicrm_drupal build tree. True when CiviCRM's Drupal module sits where
+  # composer/installers puts it and the asset plugin filled web/libraries/civicrm:
+  # core's Common.js, which every CiviCRM page loads, and the packages. An empty or
+  # half-published libraries folder does not count.
+  _run_as_o8 "test -f '$1/web/modules/contrib/civicrm/civicrm.info.yml' \
+    && test -f '$1/web/libraries/civicrm/core/js/Common.js' \
+    && test -d '$1/web/libraries/civicrm/packages'"
+}
+
+build_civicrm_drupal() {
+  # Drupal 11 with CiviCRM, after CiviCRM's own Drupal install guide: the
+  # recommended-project template with dependency patching on, CiviCRM's three Drupal
+  # packages at the release, then Drush (CiviCRM before Drush, as the guide says).
+  # CiviCRM's packages patch their own dependencies, so a patch that does not apply
+  # fails this build, and its compile tasks run unattended (the plugin would prompt).
+  # No older-core fallback: this platform is the Drupal 11 flavour. Named
+  # civicrm_drupal-<civicrm>-<core>; the fix step never moves the CiviCRM packages,
+  # whose release names the platform.
+  _begin_build "$(_target_prefix civicrm_drupal)" "civicrm_drupal" || return 0
+  use_php "${_PHP_CIVICRM}" || { _record_fail "civicrm_drupal"; return 1; }
+  local _wd="${_DAY_DIR}/.build.civicrm_drupal" _cv _p _req="" _got
+  _cv="$(_resolve_civicrm_version)"
+  [[ -n "${_cv}" ]] || { _record_fail "civicrm_drupal (no CiviCRM release)"; return 1; }
+  for _p in ${_CIVICRM_D_PKGS}; do
+    _req+=" ${_p}:${_cv}"
+  done
+  _create_project "${_wd}" "${_CIVICRM_D_SPEC}" "drupal/recommended-project" "" > /dev/null \
+    || { _record_fail "civicrm_drupal"; return 1; }
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer config --no-plugins --json extra.enable-patching true \
+           && composer config --no-plugins --json extra.composer-exit-on-patch-failure true \
+           && composer config --no-plugins extra.compile-mode all \
+           && composer require --no-update --no-scripts${_req}" \
+         && _composer_build "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec 11) --no-scripts --update-no-dev"; }; then
+    _record_fail "civicrm_drupal"
+    return 1
+  fi
+  _fix_step "${_wd}" "civicrm_drupal" "${_CIVICRM_D_PKGS}" || return 1
+  # Fail closed on what the platform is for: CiviCRM's core at the release, its module
+  # and the assets the asset plugin publishes.
+  _got="$(_lock_version "${_wd}" civicrm/civicrm-core)"
+  if [[ "${_got}" != "${_cv}" ]] || ! _civicrm_drupal_complete "${_wd}"; then
+    _alrt "civicrm_drupal: CiviCRM ${_cv} is not complete in the build (lock: ${_got:-none})"
+    _record_fail "civicrm_drupal (CiviCRM ${_cv} not complete)"
+    return 1
+  fi
+  _finalize_distro "civicrm_drupal" "${_wd}" "${_cv}" "civicrm_drupal"
 }
 
 build_cores() {
@@ -2355,6 +2899,55 @@ build_txp() {
   _info "textpattern: built textpattern-${_tag}/ (checksum verified, /sites present)"
 }
 
+build_civicrm_backdrop() {
+  # Backdrop core with CiviCRM: the day's backdrop-<ver>/ tree (backdrop builds
+  # first) and the official CiviCRM for Backdrop release tarball, checked against the
+  # release's SHA256SUMS and unpacked into the root modules/, where the add-on finds
+  # CiviCRM through the platform's module list. Named
+  # civicrm_backdrop-<civicrm>-<backdrop>, the pair stamped to civicrm_backdrop.txt.
+  # Both inputs of a name are fixed upstream releases, so a name already on the distro
+  # shelf is not built again (-f does): a rebuild would pack new bytes under the same
+  # name, and every idle copy on the boxes would fetch it again. No Composer: the
+  # tarball carries CiviCRM's own vendor tree, outside the advisory audit.
+  local _bv _cv _name _tgz _dl=".dl.civicrm_backdrop" _wd=".build.civicrm_backdrop"
+  _run_as_o8 "rm -f '${_DAY_DIR}/civicrm_backdrop.txt'"
+  _bv="$(_backdrop_day_version)"
+  if [[ -z "${_bv}" ]] || ! _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_bv}/modules'"; then
+    _record_fail "civicrm_backdrop (no Backdrop tree in the day dir: build backdrop first)"
+    return 1
+  fi
+  _cv="$(_resolve_civicrm_version)"
+  [[ -n "${_cv}" ]] || { _record_fail "civicrm_backdrop (no CiviCRM release)"; return 1; }
+  _name="civicrm_backdrop-${_cv}-${_bv}"
+  _tgz="civicrm-${_cv}-backdrop.tar.gz"
+  if [[ "${_FORCE}" != "1" && -f "${_DISTRO_OUT}/${_name}.tar.gz" ]]; then
+    _msg "SKIP: ${_name} is already on ${_DISTRO_OUT} (use -f to rebuild)"
+    _rec "${_name}" BUILD skip
+    _rec_note "${_name}" "already published (-f rebuilds)"
+  elif _begin_build "${_name}" "civicrm_backdrop"; then
+    if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' '${_dl}' && mkdir '${_dl}' \
+      && wget -q -O '${_dl}/${_tgz}' '${_CIVICRM_DL_URL}/${_tgz}' \
+      && wget -q -O '${_dl}/sums' '${_CIVICRM_DL_URL}/civicrm-${_cv}.SHA256SUMS' \
+      && awk -v f='${_tgz}' '\$2 == f' '${_dl}/sums' > '${_dl}/one.sum' && test -s '${_dl}/one.sum' \
+      && ( cd '${_dl}' && sha256sum -c --status one.sum ) \
+      && ! tar -tzf '${_dl}/${_tgz}' | grep -qv '^civicrm/' \
+      && cp -a 'backdrop-${_bv}' '${_wd}' \
+      && tar -xzf '${_dl}/${_tgz}' --no-same-owner -C '${_wd}/modules' \
+      && test -f '${_wd}/modules/civicrm/backdrop/civicrm.module' \
+      && touch -r 'backdrop-${_bv}/modules' '${_wd}/modules' \
+      && rm -rf '${_dl}' && mv '${_wd}' '${_name}'"; then
+      _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' '${_dl}'"
+      _record_fail "civicrm_backdrop (CiviCRM ${_cv}: download, checksum or unpack failed)"
+      return 1
+    fi
+    _rec "${_name}" BUILD ok
+    _info "civicrm_backdrop: built ${_name}/ (CiviCRM ${_cv} checksum verified, Backdrop ${_bv})"
+  fi
+  # The stamp in the day dir; distribute publishes it once the shelf holds the name.
+  _run_as_o8 "cd '${_DAY_DIR}' && printf '%s\n' '${_cv}-${_bv}' > civicrm_backdrop.txt" \
+    || _alrt "civicrm_backdrop: civicrm_backdrop.txt not written"
+}
+
 build_bee() {
   # Native Backdrop CLI. Packaged version-less as bee.tar.gz with bee.php at the
   # root (what BOA's _get_bee extracts into /opt/tools/bee). Always rebuilt.
@@ -2458,6 +3051,8 @@ _target_prefix() {
     varbase)       printf '%s\n' "varbase-" ;;
     ezcontent)     _r="${_EZC_PINNED%-*}"; printf '%s\n' "${_r%-*}-" ;;
     commerce_base) _r="${_CK2_PINNED%-*}"; printf '%s\n' "${_r%-*}-" ;;
+    civicrm_drupal) printf '%s\n' "civicrm_drupal-" ;;
+    civicrm_backdrop) printf '%s\n' "civicrm_backdrop-" ;;
   esac
 }
 
@@ -2512,6 +3107,8 @@ run_build() {
     varbase)  build_varbase ;;
     ezcontent) build_ezcontent ;;
     commerce_base) build_commerce_base ;;
+    civicrm_drupal) build_civicrm_drupal ;;
+    civicrm_backdrop) build_civicrm_backdrop ;;
     cores)    build_cores ;;
     *)        _record_fail "${_name} (unknown build target)"; return 1 ;;
   esac
@@ -2521,7 +3118,7 @@ run_build() {
 do_build() {
   # $@ = target names, or empty for all distros + cores.
   local _targets="$*"
-  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop cores"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop civicrm_backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop cores"
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
     _msg "composer clearcache (${_O8_USER})"
@@ -2664,7 +3261,8 @@ strip_core_profiles() {
   for _name in ${_list}; do
     _name="${_name%/}"
     _in_scope "${_name}" || continue
-    case "${_name}" in drupal-*|backdrop-[0-9]*) continue ;; esac
+    # The CiviCRM platforms are installed with core's standard profile.
+    case "${_name}" in drupal-*|backdrop-[0-9]*|civicrm_drupal-*|civicrm_backdrop-*) continue ;; esac
     _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
   done
 }
@@ -2790,7 +3388,10 @@ _purge_rec() {
 _publish_plain() {
   # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
   # when the file only rides along with that row's own tarball (a compat tarball, a
-  # version stamp): then only a failure changes the row. For shelves no lock guards.
+  # version stamp): then only a failure changes the row. $5, when given, is the line
+  # the caller checked: root's copy must hold exactly it, or nothing is published
+  # (the build user can rewrite its file between the check and this copy). For
+  # shelves no lock guards.
   local _src="$1" _out="$2" _k="$3" _st="new" _what="" _rc
   # A companion's failure names the file, so the row does not blame its own tarball.
   [[ "${4:-}" == "companion" ]] && _what="${_src##*/} "
@@ -2805,6 +3406,14 @@ _publish_plain() {
   elif [[ "${_rc}" != "0" ]]; then
     _rec_pub "${_k}" FAILED
     _rec_note "${_k}" "${_what}copy failed"
+    return 1
+  fi
+  # cmp, never a read into a string: the copy can be as large as _sb_take_here takes
+  if [[ -n "${5:-}" ]] && ! cmp -s "${_SHELF_TMP}" <(printf '%s\n' "$5"); then
+    _shelf_drop
+    _alrt "${_src##*/} changed after its check, not published"
+    _rec_pub "${_k}" FAILED
+    _rec_note "${_k}" "${_what}changed after its check"
     return 1
   fi
   if [[ -e "${_out}/${_src##*/}" ]]; then
@@ -2912,6 +3521,31 @@ _txp_day_version() {
   _sb_in_real_dir "${_DAY_DIR}" _sb_read_here textpattern.txt | tr -cd '0-9.'
 }
 
+_civicrm_backdrop_day_version() {
+  # The <civicrm>-<backdrop> pair the current civicrm_backdrop build stamped (empty if
+  # none or not that shape), read as above.
+  local _v
+  [[ -f "${_DAY_DIR}/civicrm_backdrop.txt" && ! -L "${_DAY_DIR}/civicrm_backdrop.txt" ]] || return 0
+  _v="$(_sb_in_real_dir "${_DAY_DIR}" _sb_read_here civicrm_backdrop.txt | head -n 1 | tr -cd '0-9.-')"
+  [[ "${_v}" =~ ^[0-9]+(\.[0-9]+)+-[0-9]+(\.[0-9]+)+$ ]] && printf '%s\n' "${_v}"
+  return 0
+}
+
+_civicrm_backdrop_stamp() {
+  # $1 = the pair the day dir's civicrm_backdrop.txt holds, $2 = 1 when this run failed
+  # to put that platform's tarball on the distro shelf. The stamp names the platform
+  # every box fetches, so it goes out after the tarball, only while the shelf holds it
+  # (a name built on an earlier day and skipped since counts), never when this
+  # run's own copy of it failed, and only as the pair checked here.
+  local _k="civicrm_backdrop-$1"
+  if [[ "$2" == "1" || ! -f "${_DISTRO_OUT}/${_k}.tar.gz" ]]; then
+    _alrt "civicrm_backdrop.txt held: ${_k}.tar.gz is not on ${_DISTRO_OUT}"
+    _rec_note "${_k}" "stamp held"
+    return 1
+  fi
+  _publish_plain "${_DAY_DIR}/civicrm_backdrop.txt" "${_DISTRO_OUT}" "${_k}" companion "$1"
+}
+
 package_backdrop_compat() {
   # Version-less backdrop.tar.gz for already-deployed BOA releases, which still
   # fetch that name AND expect it to extract to backdrop/ (the pre-versioning
@@ -2955,13 +3589,14 @@ package_backdrop_compat() {
 
 do_backdrop_family() {
   # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
-  # core + bee + backdrop-drush-extension + redis_backdrop + webform_backdrop), all at their
-  # newest upstream. No Composer, no distros/cores, no /usr/bin/php switch -
+  # core + civicrm_backdrop + bee + backdrop-drush-extension + redis_backdrop +
+  # webform_backdrop), all at their newest upstream. No Composer, no distros/cores,
+  # no /usr/bin/php switch -
   # just git/wget/unzip. Scoped to the family so it never touches unrelated
   # day-dir content.
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   local _t
-  for _t in backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop; do
+  for _t in backdrop civicrm_backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop; do
     _msg ""
     _msg "=== build: ${_t} ==="
     run_build "${_t}"
@@ -2975,6 +3610,13 @@ do_backdrop_family() {
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'backdrop-${_ver}.tar.gz' ${_TAR_OWNER} 'backdrop-${_ver}'" \
       || { _alrt "tar failed: backdrop-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop-${_ver}.tar.gz'"; _rec_note "backdrop-${_ver}" "tar failed"; }
     package_backdrop_compat
+  fi
+  local _cbv _cbfail=""
+  _cbv="$(_civicrm_backdrop_day_version)"
+  if [[ -n "${_cbv}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/civicrm_backdrop-${_cbv}'"; then
+    _msg "tar: civicrm_backdrop-${_cbv}.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'civicrm_backdrop-${_cbv}.tar.gz' ${_TAR_OWNER} 'civicrm_backdrop-${_cbv}'" \
+      || { _alrt "tar failed: civicrm_backdrop-${_cbv}"; _run_as_o8 "rm -f '${_DAY_DIR}/civicrm_backdrop-${_cbv}.tar.gz'"; _rec_note "civicrm_backdrop-${_cbv}" "tar failed"; }
   fi
   # Publish only the family artifacts. Tarballs first, the backdrop.txt stamp
   # last: a consumer must never resolve a version whose tarball is not there yet.
@@ -2991,6 +3633,18 @@ do_backdrop_family() {
         break
       fi
     done
+  fi
+  # The Backdrop CiviCRM platform and its stamp, which goes out after the tarball.
+  if [[ -n "${_cbv}" ]]; then
+    mkdir -p "${_DISTRO_OUT}" || _die "cannot create ${_DISTRO_OUT}"
+    if [[ -e "${_DAY_DIR}/civicrm_backdrop-${_cbv}.tar.gz" ]]; then
+      if _publish_plain "${_DAY_DIR}/civicrm_backdrop-${_cbv}.tar.gz" "${_DISTRO_OUT}" "civicrm_backdrop-${_cbv}"; then
+        _msg "distro <- civicrm_backdrop-${_cbv}.tar.gz"
+      else
+        _cbfail=1
+      fi
+    fi
+    _civicrm_backdrop_stamp "${_cbv}" "${_cbfail}"
   fi
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
@@ -3219,8 +3873,9 @@ do_distribute() {
     _ADV_TMP="$(mktemp -d)" || _die "cannot create a work dir"
   fi
   _ensure_devext_dirs
-  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold="" _names=()
+  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold="" _names=() _cbv _cbfail=""
   _bdrv="$(_backdrop_day_version)"
+  _cbv="$(_civicrm_backdrop_day_version)"
   # The tarballs are listed inside the real day dir.
   mapfile -t _names < <(_day_names '*.tar.gz')
   for _base in "${_names[@]}"; do
@@ -3255,6 +3910,16 @@ do_distribute() {
           [[ -n "${_bdrv}" && "${_base}" == "backdrop-${_bdrv}.tar.gz" ]] && _bdrok=1
         fi
         ;;
+      # No lock at its top (CiviCRM's own sits in modules/civicrm), and its inputs are
+      # fixed releases: copied as the Backdrop core is, its stamp after the loop.
+      civicrm_backdrop-*.tar.gz)
+        if _publish_plain "${_t}" "${_DISTRO_OUT}" "${_base%.tar.gz}"; then
+          _n=$((_n + 1))
+          _msg "distro <- ${_base}"
+        elif [[ "${_base}" == "civicrm_backdrop-${_cbv}.tar.gz" ]]; then
+          _cbfail=1
+        fi
+        ;;
       *)
         _publish_locked "${_t}" "${_DISTRO_OUT}" && _n=$((_n + 1)) ;;
     esac
@@ -3280,6 +3945,9 @@ do_distribute() {
       _alrt "backdrop.txt held: ${_bhold}"
       _rec_note "backdrop-${_bdrv}" "stamp held"
     fi
+  fi
+  if [[ -n "${_cbv}" ]] && _scope_takes civicrm_backdrop; then
+    _civicrm_backdrop_stamp "${_cbv}" "${_cbfail}"
   fi
   # The supported core minors go out with the cores target, after the core
   # tarballs: the boxes take the copy on core/ with their daily tools refresh.
@@ -3325,6 +3993,7 @@ do_check() {
   # _REDIS_B_VERSION pins in OCTOPUS.sh.txt + BOA.sh.txt are due a bump.
   _check_row "bd-redis" "$(_latest_git_tag "${_REDIS_REPO}")"
   _check_row "bd-webform" "$(_latest_git_tag "${_WEBFORM_B_REPO}")"
+  _check_row "civicrm"  "$(_resolve_civicrm_version)"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
@@ -3373,8 +4042,11 @@ _catalogue_producers() {
 _catalogue_rows() {
   # $1 = tree. Emits "KEY<TAB>prefix<TAB>tarball" for every catalogue entry that is
   # fetched from the distro mirror. The excluded key shapes mirror _d_dist_loop's
-  # dispatch in AegirSetupC.sh.txt (core-only D[LXET]N, Backdrop BD*, and the
-  # custom CK1/UC* handlers) -- add a class there and it must be added here too.
+  # dispatch in AegirSetupC.sh.txt (core-only D[LXET]N, the Backdrop BD* keys, whose
+  # names follow mirror stamps, and the custom CK1/UC* handlers) -- add a class there
+  # and it must be added here too. A key in _distros_name_prefixes is named after
+  # that prefix instead of its install profile (the CiviCRM platforms install with
+  # core's standard profile).
   # With $2 = core it emits the Composer-built core-only entries instead (D9 to
   # D12: DL9, DX*, DE*, DT*), as "KEY<TAB>drupal<TAB>drupal-<ver>.tar.gz", the name
   # _create_drupal_basic_version fetches from the core mirror; the Drupal 6/7 cores
@@ -3415,11 +4087,13 @@ _catalogue_rows() {
     /^declare -A _distros_profiles_names=\(/ { _sec = "prof"; next }
     /^declare -A _distros_versions=\(/       { _sec = "ver";  next }
     /^declare -A _distros_drupal_cores=\(/   { _sec = "core"; next }
+    /^declare -A _distros_name_prefixes=\(/  { _sec = "pfx";  next }
     /^\)/                                    { _sec = "";     next }
     _sec != "" && match($0, /\["[A-Z0-9]+"\]="[^"]*"/) {
       split(substr($0, RSTART, RLENGTH), _a, "\"")
       if (_sec == "prof")     _P[_a[2]] = _a[4]
       else if (_sec == "ver") _R[_a[2]] = _a[4]
+      else if (_sec == "pfx") _X[_a[2]] = _a[4]
       else                    _C[_a[2]] = _a[4]
     }
     END {
@@ -3430,8 +4104,9 @@ _catalogue_rows() {
           continue
         }
         if (_k ~ /^D[LXET][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1" || _k == "GRV" || _k == "TXP") continue
+        _pf = (_k in _X) ? _X[_k] : _P[_k]
         printf "%s\t%s\t%s-%s-%s.tar.gz\n", \
-          _k, _P[_k], _P[_k], _resolve(_R[_k]), _resolve(_C[_k])
+          _k, _pf, _pf, _resolve(_R[_k]), _resolve(_C[_k])
       }
     }
   ' "${_tmp}/catalogue" | sort
