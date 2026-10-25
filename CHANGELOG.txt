@@ -4,6 +4,17 @@
 
 @=> Important Fixes
 
+    * The catalogue build's patch check no longer repairs what it cannot
+      repair safely: where two sources give one patch description
+      different patches (composer-patches keeps only one of them), or
+      the package is installed as a link, the build fails and the
+      published copy stays, as it does when the repair would change which
+      other patches apply. It also notes a package composer-patches will
+      reinstall on every later Composer run, reads a description that
+      starts with "Source: " as a description, keeps a patch two
+      dependencies declare, judges the lock by its hash alone, and drops
+      an earlier step's "patch skipped" once every patch applies.
+
     * A catalogue platform no longer ships a half-applied dependency
       patch. When a patch a distribution declares no longer fits,
       composer-patches 1.x kept the hunks that applied, left .rej files
