@@ -4,6 +4,14 @@
 
 @=> Important Fixes
 
+    * staticbuild no longer marks the EzContent and Commerce v.2 rows
+      "lock hash stale" when their lock already matches composer.json:
+      the hash is checked first, and a resolve runs only when it is
+      stale. A resolve of their Drupal 10.1 and 10.3 trees now fails
+      upstream (packages.drupal.org lists drupal/toolbar for
+      admin_toolbar, which those cores do not provide), so the note came
+      on every build.
+
     * The php monitor's max_children check missed the hits that followed
       a NUL byte in what a PHP-FPM master log gained since its last pass,
       and the PHP code of any site can write one there through its
@@ -1922,6 +1930,12 @@
       where the refusal fails the tool's command, and to a drush line
       continued over a backslash-newline or started through a wrapper
       program given by its path.
+
+    * The shell accounts' Drush and PHP rules read a wrapper program's
+      options alike: the value an option takes (env -u, timeout -s,
+      stdbuf -o, time -f) and timeout's duration, whatever their form,
+      are passed over, env -S's value is read as env's own arguments,
+      and the PHP rule also reads a wrapper given by its path.
 
 @=> New Features
 

@@ -96,11 +96,12 @@ move, same versions, to `web/libraries/`, where the modules look for them: witho
 Dropzone's library there, its requirement check stops `updatedb` after a clone or
 migration of an EzContent site.
 
-Both pinned builds then refresh the lock's content-hash alone (`composer update --lock`,
-no package moves) before the fix step: the root edits above (the held conflicts,
-EzContent's installer paths) would otherwise leave it behind `composer.json`, and
-Composer warns on every run there. A resolve that fails keeps the old hash and the row
-says `lock hash stale`.
+Both pinned builds then make sure the lock's content-hash matches `composer.json` before
+the fix step: the root edits above (the held conflicts, EzContent's installer paths)
+would otherwise leave it behind, and Composer warns on every run there. When `composer
+validate` finds the hash current (a published copy carries the earlier builds' edits),
+nothing runs; otherwise the hash alone is refreshed (`composer update --lock`, no package
+moves), and a resolve that fails keeps the old hash and the row says `lock hash stale`.
 
 CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
