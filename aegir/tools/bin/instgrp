@@ -3657,7 +3657,11 @@ _wg_u1() {
   read -r _t _pin <<< "$(_wg_plan)"
   _wg_i_write "${_t}" "${_pin}" - || return 1
   case "${_WG_CALLER}" in
-    conv|conv_a|conv_b) _wg_policy_set "${_pin}" ;;
+    conv|conv_a|conv_b)
+      # before anything else changes: a policy not written stops the leg
+      _wg_policy_set "${_pin}" \
+        || { _alrt "${_WP_A}: the web group policy could not be written to /root/.${_WP_A}.octopus.cnf"; return 1; }
+      ;;
   esac
   return 0
 }
@@ -4172,7 +4176,11 @@ _wg_leg_down() {
   read -r _t _pin <<< "$(_wg_plan)"
   _wg_i_write "${_t}" "${_pin}" - || return 1
   case "${_WG_CALLER}" in
-    conv|conv_a|conv_b) _wg_policy_set "${_pin}" ;;
+    conv|conv_a|conv_b)
+      # before anything else changes: a policy not written stops the leg
+      _wg_policy_set "${_pin}" \
+        || { _alrt "${_WP_A}: the web group policy could not be written to /root/.${_WP_A}.octopus.cnf"; return 1; }
+      ;;
   esac
   # d2
   _wg_d2 "${_D_T}" || return $?
