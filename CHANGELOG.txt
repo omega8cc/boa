@@ -1911,6 +1911,12 @@
       for an account at phase A whose site keeps its files store outside
       the account (docs/INSTGRP.md).
 
+    * The shell accounts' Drush rules also apply to a command line a tool
+      hands /bin/sh in Composer's own form (a quoted or exec-led line),
+      where the refusal fails the tool's command, and to a drush line
+      continued over a backslash-newline or started through a wrapper
+      program given by its path.
+
 @=> New Features
 
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
