@@ -232,7 +232,7 @@ By hand, the same audit of a built platform is:
 Every distribution build ends its fix step with a patch check on composer-patches 1.x
 trees. A declared dependency patch that no longer fits can still leave some of its hunks
 behind: 1.x falls back to `patch` with no dry run and only logs that it skipped the patch,
-while the package's `PATCHES.txt` lists it. That is how Open Social's simple_oauth once
+while the package's `PATCHES.txt` lists it. That is how Open Social's simple_oauth
 shipped without an import its typed properties need.
 
 A package with a declared patch that `vendor/composer/installed.json` records as applied
@@ -240,7 +240,8 @@ under no description is first reinstalled as declared: a patch that only failed 
 download applies then. What still fails is ignored where composer-patches reads it
 (dropped from the root's own patches, else from its patches-file, and added to
 `patches-ignore` under every dependency that declares it), the package is reinstalled
-pristine, the lock's content-hash follows, and the row says `patch skipped`. A patch
+pristine, the lock's content-hash follows (with no resolve: only `extra` changed; a hash
+that cannot follow adds `lock hash stale`), and the row says `patch skipped`. A patch
 declared twice, which composer-patches applies twice when the root and a dependency give
 it two descriptions, is declared once and its package reinstalled.
 
