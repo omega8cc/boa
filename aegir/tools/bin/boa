@@ -47,6 +47,8 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
+  # A signal here must not cut the owner's cleanup short (cron left stopped)
+  trap '' HUP INT TERM PIPE
   if [ -n "${1}" ]; then
     mkdir -p /var/log/boa 2>/dev/null
     echo "REASON ${1} on $(date)" >> /var/log/boa/.boa.exit.exceptions.log
@@ -1655,6 +1657,11 @@ _init_start() {
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
     _PID_LOCK_OWNER=YES
+    _BOA_LOCK_RUN=YES
+    trap '_boa_on_signal HUP 129' HUP
+    trap '_boa_on_signal INT 130' INT
+    trap '_boa_on_signal PIPE 141' PIPE
+    trap '_boa_on_signal TERM 143' TERM
     mkdir -p ${_LOG_IN_DIR}
     mkdir -p ${_LOG_UP_DIR}
     cd ${_vBs}
@@ -1662,6 +1669,30 @@ _init_start() {
     rm -f ${_vBs}/BARRACUDA.sh*
     rm -f ${_vBs}/OCTOPUS.sh*
   fi
+}
+
+# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
+# Ctrl-C or kill left boa_run.pid, boa_wait.pid and octopus_install_run.pid
+# behind, and clear.sh reaps those only by age, one to three hours later: the
+# re-run a migration asks for could not start. Release what this run holds at
+# that moment and nothing else: not a lock the chain dropped or handed to the
+# octopus run it started, and never /opt/tmp, whose reuse across runs is
+# intentional. Logged beside _clean_pid_exit's reasons, never to the closed
+# channel.
+_BOA_LOCK_RUN=NO
+_BOA_LOCK_OCT=NO
+_boa_on_signal() {
+  trap '' HUP INT TERM PIPE
+  if [ "${_BOA_LOCK_RUN}" = "YES" ]; then
+    rm -f /run/boa_run.pid /run/boa_wait.pid
+  fi
+  if [ "${_BOA_LOCK_OCT}" = "YES" ]; then
+    rm -f /run/octopus_install_run.pid
+  fi
+  mkdir -p /var/log/boa 2> /dev/null
+  echo "SIGNAL ${1} in ${_cmNd:-boa} on $(date), released: run lock ${_BOA_LOCK_RUN}, octopus marker ${_BOA_LOCK_OCT}" \
+    >> /var/log/boa/.boa.exit.exceptions.log 2> /dev/null
+  exit "${2}"
 }
 
 _check_etc_apt_preferences() {
@@ -1675,6 +1706,7 @@ _init_cleanup() {
   rm -f /root/BOA.sh*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  _BOA_LOCK_RUN=NO
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   rm -f ${_vBs}/*.sh.cnf*
@@ -1686,6 +1718,7 @@ _init_finish() {
   rm -f /root/BOA.sh*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  _BOA_LOCK_RUN=NO
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   rm -f ${_vBs}/*.sh.cnf*
@@ -2135,6 +2168,7 @@ _init_setup() {
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
     # Unconditional touch: the marker's mtime is its freshness heartbeat;
     # the [ ! -e ] form let it age into runner.sh staleness mid-chain
+    _BOA_LOCK_OCT=YES
     touch /run/octopus_install_run.pid
     sleep 3
     _octopus_install
@@ -2154,6 +2188,7 @@ _init_setup() {
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
     _init_cleanup
+    _BOA_LOCK_OCT=YES
     touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
@@ -2213,17 +2248,22 @@ _init_setup() {
 #         echo
 #         echo "Enjoy!"
 #         echo
+        # the marker is that octopus's from here: it outlives this run
+        _BOA_LOCK_OCT=NO
         nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
         echo "Now waiting 5 minutes before running octopus upgrade, please wait..."
         sleep 300
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
+        # while it runs the marker is that octopus's, which clears it
+        _BOA_LOCK_OCT=NO
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
         wait
         # That octopus cleared the marker in its _up_finish; re-take it so
         # the LE check plus a possible 5-min retry wait stay covered -- the
         # retry run bypasses via the exported _OCTOPUS_CHAINED and the
         # no-retry path releases it before the final exit below
+        _BOA_LOCK_OCT=YES
         touch /run/octopus_install_run.pid
         echo "Checking LE setup status..."
         # log/ is the account's: read inside the real directory, bounded,
@@ -2248,10 +2288,12 @@ _init_setup() {
           sleep 300
           echo "Launching another octopus upgrade to fix LE..." | tee -a "${_UP_OCTOPUS_LOG}"
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
+          _BOA_LOCK_OCT=NO
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
           # Same as after the first run: cover the remaining LE re-check;
           # the conditional release before the final exit clears it
+          _BOA_LOCK_OCT=YES
           touch /run/octopus_install_run.pid
           echo "Checking LE setup status..."
           if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
@@ -2295,6 +2337,7 @@ _init_setup() {
       || [ -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       rm -f /run/octopus_install_run.pid
     fi
+    _BOA_LOCK_OCT=NO
     _display_admin_email_info
     sleep 1
     # the console hint above told the operator to wait for these two lines;
