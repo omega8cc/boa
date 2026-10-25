@@ -88,7 +88,8 @@ _grp_set_is() {
 # forbidden drush tokens of the shipped lshell policy plus websh's own
 # (xstatus, redis-flush); an environment word other than lshell's own
 # LD_PRELOAD=<sudo_noexec.so> on a drush, composer or php segment is refused
-# (F). A grep -c or tar -cf that merely names drush is never a hit. The
+# (F) outside a Composer run (_in_composer_run). A grep -c or tar -cf that merely
+# names drush is never a hit. The
 # Aegir backend, root and the instance users are not tenants and keep
 # everything.
 _DRUSH_REFUSED_CMDS="archive-restore arr core-config conf config core-execute exec execute core-quick-drupal qd ev eval php-eval php php-cli core-cli php-script scr rs runserver sha shell-alias si site-install sql-create ssh site-ssh sup site-upgrade xstatus redis-flush pm-updatecode upc"
@@ -465,6 +466,26 @@ _wrap_opt_value() {
   esac
   return 1
 }
+# The F rule (an ini named for the process: a NAME=value word in front of
+# drush, composer, php or a .php script, php's own -c or -d in front of a
+# drush launcher) applies outside a Composer run only. Inside one websh
+# runs PHP by name for every account (_under_composer), php -d on a plain
+# script included, so such an ini adds no PHP the run cannot already
+# start, while refusing common script lines (XDEBUG_MODE=coverage php
+# vendor/bin/phpunit, Composer's @php expansion in front of vendor/bin/drush).
+# The Drush rules D, E and G still apply there, and a refusal there exits 1
+# (_exec_dash_c), so the script fails. Read once, and only when a refusal
+# is due.
+_IN_COMPOSER=""
+_in_composer_run() {
+  if [ -z "${_IN_COMPOSER}" ]; then
+    _IN_COMPOSER=NO
+    if [ "${_PHP_IN_COMPOSER}" = "YES" ] || _under_composer; then
+      _IN_COMPOSER=YES
+    fi
+  fi
+  [ "${_IN_COMPOSER}" = "YES" ]
+}
 _drush_refused() {
   # both reads of the line (_drush_segments): refused when either refuses;
   # without a newline in the line the two reads are the same
@@ -577,21 +598,21 @@ _drush_refused_read() {
         fi
         case "${_w2##*/}" in
           drush|drush8|drush10|drush11|drush.php)
-            if [ "${_pini}" = "YES" ]; then _DR_WHY=F; return 0; fi
+            if [ "${_pini}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
             ;;
           *)
-            if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
+            if [ "${_env}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
             continue
             ;;
         esac
         ;;
       composer|*.php)
-        if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
+        if [ "${_env}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
         continue
         ;;
       *) continue ;;
     esac
-    if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
+    if [ "${_env}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
     # the option words are drush's: tested on the arguments after the
     # launcher, so websh's own -c on the interpreter line is not one
     if [[ "${_rest}" =~ (^|[[:space:]])--(config|early|include)(=|[[:space:]]|$) ]] \
@@ -884,7 +905,7 @@ _php_direct_refused() {
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
     _drush_refused_say
-    [ "${_PHP_IN_COMPOSER}" = "YES" ] && exit 1
+    _in_composer_run && exit 1
     exit 0
   fi
   exec /bin/dash -c "$1"
@@ -962,7 +983,7 @@ _forward_to_dash() {
         if [[ -n "$2" ]]; then
           if _is_tenant && _drush_refused "$2"; then
             _drush_refused_say
-            [ "${_PHP_IN_COMPOSER}" = "YES" ] && exit 1
+            _in_composer_run && exit 1
             exit 0
           fi
           _options+=("-c" "$2")
@@ -1039,9 +1060,9 @@ fi
 # spawned by a tool it runs, except inside a Composer run (_under_composer);
 # refused before any route below can exec it. Inside a Composer run the line
 # goes on to the routes below; where it meets the rules of an exec site (a
-# NAME=value word in front of php is refused there), _PHP_IN_COMPOSER makes
-# their refusal exit 1, so the Composer script that ran it fails instead of
-# passing with nothing run. A quoted or exec-led line the verbatim fast lane
+# forbidden drush command is refused there), their refusal exits 1, as
+# every refusal inside a Composer run does (_in_composer_run), so the
+# Composer script that ran it fails instead of passing with nothing run. A quoted or exec-led line the verbatim fast lane
 # below takes meets the same rules there, and its refusal exits 1 too.
 _PHP_IN_COMPOSER=""
 if [ "${1}" = "-c" ] && _is_tenant && ! _php_member \
