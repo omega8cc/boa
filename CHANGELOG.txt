@@ -2635,6 +2635,11 @@
 
 @=> Changes and Upgrades
 
+    * The documentation that used to ship in this repository's docs/
+      directory is retired: https://docs.boa.io is the single
+      documentation site, and the README carries short Install and
+      Upgrade sections that point there.
+
     * PHP that runs inside a Composer run, such as an @php script entry, a
       compile task of CiviCRM's packages or a php line in the project's own
       composer.json scripts, runs for every shell account, not only for the
