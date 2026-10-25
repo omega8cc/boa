@@ -450,6 +450,21 @@ _d8_launcher() {
   esac
   [[ "${_p}" =~ ^(/mnt/.+)?/data/disk/[^/]+/tools/drush/ ]]
 }
+# true when option $2 of the wrapper program $1 takes the next word as its
+# value (env -u NAME, nice -n N, timeout -s SIG, time -f FORMAT); both
+# line readers pass the value over with the option
+_wrap_opt_value() {
+  case "$1:$2" in
+    env:-u|env:--unset|env:-C|env:--chdir|env:-a|env:--argv0) return 0 ;;
+    nice:-n|nice:--adjustment) return 0 ;;
+    timeout:-s|timeout:--signal|timeout:-k|timeout:--kill-after) return 0 ;;
+    stdbuf:-i|stdbuf:-o|stdbuf:-e|stdbuf:--input|stdbuf:--output|stdbuf:--error) return 0 ;;
+    ionice:-c|ionice:-n|ionice:-p|ionice:-P|ionice:-u) return 0 ;;
+    ionice:--class|ionice:--classdata|ionice:--pid|ionice:--pgid|ionice:--uid) return 0 ;;
+    time:-f|time:--format|time:-o|time:--output) return 0 ;;
+  esac
+  return 1
+}
 _drush_refused() {
   # both reads of the line (_drush_segments): refused when either refuses;
   # without a newline in the line the two reads are the same
@@ -458,7 +473,7 @@ _drush_refused() {
   _drush_refused_read "$1" join
 }
 _drush_refused_read() {
-  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp
+  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest
   _DR_WHY=""
   _GD_DOC=""
   _GD_CWD=$(pwd -P 2> /dev/null)
@@ -496,10 +511,29 @@ _drush_refused_read() {
             exec|nohup|nice|time|env|timeout|setsid|stdbuf|ionice) _wp=YES ;;
           esac
           _seg="${_w2} ${_rest}"
-          # the wrapper's own options and a numeric value (nice -n 5,
-          # timeout 30s), as _php_direct_refused reads them
-          while [[ "${_seg}" =~ ^[[:space:]]*(-[^[:space:]]*|[0-9][0-9.]*[smhd]?)[[:space:]]+ ]]; do
-            _seg="${_seg#"${BASH_REMATCH[0]}"}"
+          # the wrapper's own options with the value an option takes (env
+          # -u NAME, timeout -s KILL: _wrap_opt_value, which
+          # _php_direct_refused reads too), env -S's command line glued to
+          # it, timeout's duration and any bare number
+          _dur=NO
+          [ "${_wn}" = "timeout" ] && _dur=YES
+          while read -r _o _ov _orest <<< "${_seg}" && [ -n "${_o}" ]; do
+            case "${_wn}:${_o}" in
+              env:-S?*) _seg="${_o#-S} ${_ov} ${_orest}" ;;
+              env:--split-string=*) _seg="${_o#--split-string=} ${_ov} ${_orest}" ;;
+              *:-*)
+                if _wrap_opt_value "${_wn}" "${_o}"; then
+                  _seg="${_orest}"
+                else
+                  _seg="${_ov} ${_orest}"
+                fi
+                ;;
+              *)
+                [ "${_dur}" = "YES" ] || [[ "${_o}" =~ ^[0-9][0-9.]*[smhd]?$ ]] || break
+                _dur=NO
+                _seg="${_ov} ${_orest}"
+                ;;
+            esac
           done
           _again=YES
           ;;
@@ -767,7 +801,7 @@ _php_direct_refused() {
   # env -S hands its value on as a command line, read the same way. The
   # interpreter of a Drush or Composer launch at the head of the line is not
   # one: the dispatch below replaces it with the account's own.
-  local _line="$1" _seg _w _i _n _wrap _skip
+  local _line="$1" _seg _w _i _n _wrap _skip _dur
   local -a _ws
   if _drush_launcher "${_line}"; then
     _line="${_LA_CD}${_LA_PRE}drush.php ${_LA_REST}"
@@ -780,6 +814,7 @@ _php_direct_refused() {
     _i=0
     _wrap=""
     _skip=NO
+    _dur=NO
     while [ "${_i}" -lt "${_n}" ]; do
       _w="${_ws[${_i}]//$'\001'/ }"
       _i=$(( _i + 1 ))
@@ -794,35 +829,46 @@ _php_direct_refused() {
           ;;
         '<'*|'>'*|[0-9]'<'*|[0-9]'>'*) continue ;;
       esac
-      [[ "${_w}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
       if [ -n "${_wrap}" ]; then
         case "${_wrap}:${_w}" in
+          # env -S splits its value into env's own arguments, options too
           env:-S|env:--split-string)
-            [ "${_i}" -lt "${_n}" ] && _php_direct_refused "${_ws[${_i}]//$'\001'/ }" && return 0
+            [ "${_i}" -lt "${_n}" ] && _php_direct_refused "env ${_ws[${_i}]//$'\001'/ }" && return 0
             _skip=YES
             continue
             ;;
           env:-S?*|env:--split-string=*)
             _w="${_w#-S}"
-            _php_direct_refused "${_w#--split-string=}" && return 0
-            continue
-            ;;
-          env:-u|env:--unset|env:-C|env:--chdir|nice:-n|nice:--adjustment|timeout:-s|timeout:--signal|timeout:-k|timeout:--kill-after|stdbuf:-i|stdbuf:-o|stdbuf:-e|ionice:-c|ionice:-n|ionice:-p|ionice:-P|ionice:-u|ionice:--class|ionice:--classdata)
-            _skip=YES
+            _php_direct_refused "env ${_w#--split-string=}" && return 0
             continue
             ;;
           # command -v/-V only looks the name up
           command:-v|command:-V) break ;;
-          *:-*) continue ;;
-          timeout:[0-9]*) continue ;;
+          *:-*)
+            _wrap_opt_value "${_wrap}" "${_w}" && _skip=YES
+            continue
+            ;;
         esac
+        # timeout's first operand is its duration, whatever its form
+        if [ "${_dur}" = "YES" ]; then
+          _dur=NO
+          continue
+        fi
       fi
-      case "${_w}" in
-        '!'|'{'|'}'|'('|command|exec|nohup|time|if|then|else|elif|while|until|do|setsid)
-          _wrap="${_w}"
+      [[ "${_w}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
+      # a wrapper program named by its path (/usr/bin/env) is the same
+      # wrapper, as _drush_refused reads it; a reserved word, a brace or a
+      # builtin (command, exec) is one only as written
+      case "${_w##*/}" in
+        nohup|time|setsid|env|nice|timeout|stdbuf|ionice)
+          _wrap="${_w##*/}"
+          _dur=NO
+          [ "${_wrap}" = "timeout" ] && _dur=YES
           continue
           ;;
-        env|nice|timeout|stdbuf|ionice)
+      esac
+      case "${_w}" in
+        '!'|'{'|'}'|'('|command|exec|if|then|else|elif|while|until|do)
           _wrap="${_w}"
           continue
           ;;
