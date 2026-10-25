@@ -7684,6 +7684,17 @@ _satellite_make() {
   # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
   echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
 
+  # Backdrop with CiviCRM (BDC): both versions in its platform name come from the
+  # one stamp staticbuild publishes after the tarball, distro/civicrm_backdrop.txt
+  # (a <civicrm>-<backdrop> pair), never one from it and one from backdrop.txt,
+  # which moves on its own. A missing or malformed stamp (a mirror can answer a
+  # missing path with a page) takes the fallback pair whole.
+  _bdcVrn=$(curl ${_crlGet} "https://${_USE_MIR}/distro/civicrm_backdrop.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.-')
+  [[ "${_bdcVrn}" =~ ^[0-9]+(\.[0-9]+)+-[0-9]+(\.[0-9]+)+$ ]] || _bdcVrn="${_BDC_V_FALLBACK}"
+  echo "export _BDC_V=\"${_bdcVrn%-*}\""                     >> ${_writeTo}
+  echo "export _BDC_CORE_V=\"${_bdcVrn#*-}\""                >> ${_writeTo}
+
   # Resolve the newest Grav version from the mirror stamp so platforms track
   # the latest official admin-bundle release without a hardcoded pin
   # (fallback: _GRAV_V_FALLBACK); the platform build fetches the matching
@@ -10139,8 +10150,8 @@ _satellite_ssl_proxy_template_refresh() {
   ### every older one.
   local _tpl="/var/xdrago/conf/ssl_proxy.conf"
   local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
-  grep -q boa_panel_lock "${_tpl}" 2>/dev/null && return 0
-  grep -q boa_panel_lock "${_src}" 2>/dev/null || return 0
+  grep -q proxy_buffer_size "${_tpl}" 2>/dev/null && return 0
+  grep -q proxy_buffer_size "${_src}" 2>/dev/null || return 0
   mkdir -p /var/xdrago/conf
   cp -af "${_src}" "${_tpl}"
 }
@@ -10200,6 +10211,13 @@ _satellite_letsencrypt_vhost_setup() {
         ### them the panel vhost judges this proxy's address, which the lists
         ### always admit, so a locked panel answered anyone over HTTPS.
         _PANELLOCK_TEST=$(grep boa_panel_lock ${_Ssl} 2>&1)
+        ### The backend drop came after that (its gate's variable marks it);
+        ### without it this front answers 502 where the panel vhost closed
+        ### the connection on purpose.
+        _BOADROP_TEST=$(grep upstream_bytes_sent ${_Ssl} 2>&1)
+        ### The header buffer came with it; without it a panel answer whose
+        ### headers pass nginx's 4k default is a 502 over HTTPS.
+        _HDRBUF_TEST=$(grep proxy_buffer_size ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
         _FPM_SOCKET_VAR=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
@@ -10226,7 +10244,9 @@ _satellite_letsencrypt_vhost_setup() {
           || [[ ! "${_SQLADMCRWL_TEST}" =~ "is_crawler" ]] \
           || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]] \
           || [[ ! "${_PANELLOCAL_TEST}" =~ "boa_panel_local" ]] \
-          || [[ ! "${_PANELLOCK_TEST}" =~ "boa_panel_lock" ]]; then
+          || [[ ! "${_PANELLOCK_TEST}" =~ "boa_panel_lock" ]] \
+          || [[ ! "${_BOADROP_TEST}" =~ "upstream_bytes_sent" ]] \
+          || [[ ! "${_HDRBUF_TEST}" =~ "proxy_buffer_size" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi

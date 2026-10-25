@@ -11584,7 +11584,7 @@ _other_sys_java_install() {
       fi
     fi
   elif [ "${_javaVer}" = "17" ]; then
-    _JAVA_NEW=17.0.20.1
+    _JAVA_NEW=17.0.21
     _JAVA_ITD=$(java17 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
@@ -14138,8 +14138,7 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 9"
       fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-      _mrun "service jetty9 start"
+      _jetty9_restart
     fi
     # cron and nginx are boot-registered and started UNCONDITIONALLY: a
     # finalized proxy is still an internet-facing nginx relay whose cron
@@ -14263,8 +14262,7 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 9"
       fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-      _mrun "service jetty9 start"
+      _jetty9_restart
     fi
     # nginx restarts UNCONDITIONALLY on upgrade: a finalized proxy is
     # still an internet-facing relay whose upgraded config must activate.

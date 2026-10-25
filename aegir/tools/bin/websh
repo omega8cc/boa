@@ -88,7 +88,8 @@ _grp_set_is() {
 # forbidden drush tokens of the shipped lshell policy plus websh's own
 # (xstatus, redis-flush); an environment word other than lshell's own
 # LD_PRELOAD=<sudo_noexec.so> on a drush, composer or php segment is refused
-# (F). A grep -c or tar -cf that merely names drush is never a hit. The
+# (F) outside a Composer run (_in_composer_run). A grep -c or tar -cf that merely
+# names drush is never a hit. The
 # Aegir backend, root and the instance users are not tenants and keep
 # everything.
 _DRUSH_REFUSED_CMDS="archive-restore arr core-config conf config core-execute exec execute core-quick-drupal qd ev eval php-eval php php-cli core-cli php-script scr rs runserver sha shell-alias si site-install sql-create ssh site-ssh sup site-upgrade xstatus redis-flush pm-updatecode upc"
@@ -109,9 +110,17 @@ _drush_segments() {
   # Chunked on the special characters rather than walked one character at
   # a time: the walk was quadratic in the line length. With $2 = keep, a
   # blank inside quotes or after a backslash becomes \001, so a quoted word
-  # stays one word for a reader that splits on blanks.
-  local _s="$1" _out="" _c _k=""
+  # stays one word for a reader that splits on blanks. Every newline ends a
+  # segment, unless $3 = join: then a newline inside quotes is part of the
+  # word (read as a blank) and a backslash-newline is removed, as dash joins
+  # the two lines. The callers that refuse read the line both ways: a quote
+  # this reader takes where dash sees none (in a comment, a here-doc body)
+  # would let a joined read hide the lines after it, and the split read
+  # misses a command continued over a newline or a quoted value that spans
+  # one.
+  local _s="$1" _out="" _c _k="" _j=""
   [ "$2" = "keep" ] && _k=$'\001'
+  [ "$3" = "join" ] && _j=YES
   while [ -n "${_s}" ]; do
     _c="${_s%%[${_DR_SP}\\]*}"
     _out+="${_c}"
@@ -123,6 +132,7 @@ _drush_segments() {
       "'")
         _c="${_s%%\'*}"
         _s="${_s:${#_c}+1}"
+        [ -n "${_j}" ] && _c="${_c//$'\n'/ }"
         [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
         _out+="${_c}"
         ;;
@@ -130,6 +140,7 @@ _drush_segments() {
         while [ -n "${_s}" ]; do
           _c="${_s%%[\"\\]*}"
           _s="${_s:${#_c}}"
+          [ -n "${_j}" ] && _c="${_c//$'\n'/ }"
           [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
           _out+="${_c}"
           [ -n "${_s}" ] || break
@@ -137,6 +148,7 @@ _drush_segments() {
           _s="${_s:1}"
           [ "${_c}" = '"' ] && break
           _c="${_s:0:1}"
+          [ -n "${_j}" ] && [ "${_c}" = $'\n' ] && _c=""
           [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
           _out+="${_c}"
           _s="${_s:1}"
@@ -144,6 +156,7 @@ _drush_segments() {
         ;;
       '\')
         _c="${_s:0:1}"
+        [ -n "${_j}" ] && [ "${_c}" = $'\n' ] && _c=""
         [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
         _out+="${_c}"
         _s="${_s:1}"
@@ -438,8 +451,50 @@ _d8_launcher() {
   esac
   [[ "${_p}" =~ ^(/mnt/.+)?/data/disk/[^/]+/tools/drush/ ]]
 }
+# true when option $2 of the wrapper program $1 takes the next word as its
+# value (env -u NAME, nice -n N, timeout -s SIG, time -f FORMAT); both
+# line readers pass the value over with the option
+_wrap_opt_value() {
+  case "$1:$2" in
+    env:-u|env:--unset|env:-C|env:--chdir|env:-a|env:--argv0) return 0 ;;
+    nice:-n|nice:--adjustment) return 0 ;;
+    timeout:-s|timeout:--signal|timeout:-k|timeout:--kill-after) return 0 ;;
+    stdbuf:-i|stdbuf:-o|stdbuf:-e|stdbuf:--input|stdbuf:--output|stdbuf:--error) return 0 ;;
+    ionice:-c|ionice:-n|ionice:-p|ionice:-P|ionice:-u) return 0 ;;
+    ionice:--class|ionice:--classdata|ionice:--pid|ionice:--pgid|ionice:--uid) return 0 ;;
+    time:-f|time:--format|time:-o|time:--output) return 0 ;;
+  esac
+  return 1
+}
+# The F rule (an ini named for the process: a NAME=value word in front of
+# drush, composer, php or a .php script, php's own -c or -d in front of a
+# drush launcher) applies outside a Composer run only. Inside one websh
+# runs PHP by name for every account (_under_composer), php -d on a plain
+# script included, so such an ini adds no PHP the run cannot already
+# start, while refusing common script lines (XDEBUG_MODE=coverage php
+# vendor/bin/phpunit, Composer's @php expansion in front of vendor/bin/drush).
+# The Drush rules D, E and G still apply there, and a refusal there exits 1
+# (_exec_dash_c), so the script fails. Read once, and only when a refusal
+# is due.
+_IN_COMPOSER=""
+_in_composer_run() {
+  if [ -z "${_IN_COMPOSER}" ]; then
+    _IN_COMPOSER=NO
+    if [ "${_PHP_IN_COMPOSER}" = "YES" ] || _under_composer; then
+      _IN_COMPOSER=YES
+    fi
+  fi
+  [ "${_IN_COMPOSER}" = "YES" ]
+}
 _drush_refused() {
-  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd
+  # both reads of the line (_drush_segments): refused when either refuses;
+  # without a newline in the line the two reads are the same
+  _drush_refused_read "$1" && return 0
+  [[ "$1" == *$'\n'* ]] || return 1
+  _drush_refused_read "$1" join
+}
+_drush_refused_read() {
+  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest
   _DR_WHY=""
   _GD_DOC=""
   _GD_CWD=$(pwd -P 2> /dev/null)
@@ -449,6 +504,7 @@ _drush_refused() {
     # is remembered for the php-running segments
     _again=YES
     _env=NO
+    _wp=NO
     while [ "${_again}" = "YES" ]; do
       _again=NO
       while [[ "${_seg}" =~ ${_RE_ASSIGN} ]]; do
@@ -462,13 +518,43 @@ _drush_refused() {
         _again=YES
       done
       read -r _w1 _w2 _rest <<< "${_seg}"
-      case "${_w1}" in
+      # a wrapper program named by its path (/usr/bin/env) is the same
+      # wrapper; a reserved word, a brace or a builtin (command, exec) is
+      # one only as written
+      _wn="${_w1}"
+      case "${_w1##*/}" in
+        nohup|nice|time|env|timeout|setsid|stdbuf|ionice) _wn="${_w1##*/}" ;;
+      esac
+      case "${_wn}" in
         '!'|'{'|'}'|command|exec|nohup|nice|time|env|if|then|else|elif|while|until|do|timeout|setsid|stdbuf|ionice)
+          # a cd behind a wrapper program moves no shell
+          case "${_wn}" in
+            exec|nohup|nice|time|env|timeout|setsid|stdbuf|ionice) _wp=YES ;;
+          esac
           _seg="${_w2} ${_rest}"
-          # the wrapper's own options and a numeric value (nice -n 5,
-          # timeout 30s), as _php_direct_refused reads them
-          while [[ "${_seg}" =~ ^[[:space:]]*(-[^[:space:]]*|[0-9][0-9.]*[smhd]?)[[:space:]]+ ]]; do
-            _seg="${_seg#"${BASH_REMATCH[0]}"}"
+          # the wrapper's own options with the value an option takes (env
+          # -u NAME, timeout -s KILL: _wrap_opt_value, which
+          # _php_direct_refused reads too), env -S's command line glued to
+          # it, timeout's duration and any bare number
+          _dur=NO
+          [ "${_wn}" = "timeout" ] && _dur=YES
+          while read -r _o _ov _orest <<< "${_seg}" && [ -n "${_o}" ]; do
+            case "${_wn}:${_o}" in
+              env:-S?*) _seg="${_o#-S} ${_ov} ${_orest}" ;;
+              env:--split-string=*) _seg="${_o#--split-string=} ${_ov} ${_orest}" ;;
+              *:-*)
+                if _wrap_opt_value "${_wn}" "${_o}"; then
+                  _seg="${_orest}"
+                else
+                  _seg="${_ov} ${_orest}"
+                fi
+                ;;
+              *)
+                [ "${_dur}" = "YES" ] || [[ "${_o}" =~ ^[0-9][0-9.]*[smhd]?$ ]] || break
+                _dur=NO
+                _seg="${_ov} ${_orest}"
+                ;;
+            esac
           done
           _again=YES
           ;;
@@ -476,7 +562,7 @@ _drush_refused() {
     done
     read -r _w1 _w2 _rest <<< "${_seg}"
     # a cd earlier in the line moves the codebase a later Drush 8 boots
-    if [ "${_w1}" = "cd" ]; then
+    if [ "${_w1}" = "cd" ] && [ "${_wp}" = "NO" ]; then
       _cd="${_w2/#\~/${HOME}}"
       [ -n "${_cd}" ] || _cd="${HOME}"
       [[ "${_cd}" == /* ]] || _cd="${_GD_CWD}/${_cd}"
@@ -512,21 +598,21 @@ _drush_refused() {
         fi
         case "${_w2##*/}" in
           drush|drush8|drush10|drush11|drush.php)
-            if [ "${_pini}" = "YES" ]; then _DR_WHY=F; return 0; fi
+            if [ "${_pini}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
             ;;
           *)
-            if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
+            if [ "${_env}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
             continue
             ;;
         esac
         ;;
       composer|*.php)
-        if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
+        if [ "${_env}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
         continue
         ;;
       *) continue ;;
     esac
-    if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
+    if [ "${_env}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
     # the option words are drush's: tested on the arguments after the
     # launcher, so websh's own -c on the interpreter line is not one
     if [[ "${_rest}" =~ (^|[[:space:]])--(config|early|include)(=|[[:space:]]|$) ]] \
@@ -548,7 +634,7 @@ _drush_refused() {
       _DR_WHY=G
       return 0
     fi
-  done < <(_drush_segments "$1")
+  done < <(_drush_segments "$1" "" "$2")
   return 1
 }
 # what a refusal tells the tenant: G has its own way forward
@@ -618,6 +704,9 @@ _drush_refused_say() {
     if [ -x /opt/local/bin/checkmyperms ] && [[ "${_lc}" == *"'checkmyperms'"* ]]; then
       echo " checkmyperms shows the platforms, the aliases and the window."
     fi
+  elif [ "${_DR_WHY}" = "F" ]; then
+    echo " A NAME=value word in front of drush, composer, php or a .php script, and"
+    echo " a php -c or -d in front of drush, are not available (F)."
   else
     echo " This drush command is not available (${_DR_WHY})"
   fi
@@ -651,7 +740,7 @@ _runs_drush() {
       drush|drush8|drush10|drush11|vdrush|drush.php) return 0 ;;
     esac
     _php_word "${_w1}" && [[ "${_w2##*/}" == "drush.php" ]] && return 0
-  done < <(_drush_segments "$1")
+  done < <(_drush_segments "$1"; [[ "$1" == *$'\n'* ]] && _drush_segments "$1" "" join)
   return 1
 }
 _php_member() {
@@ -659,6 +748,70 @@ _php_member() {
   _in_grp ltd-shell-more || return 1
   { _lc=$(< /etc/lshell.conf); } 2> /dev/null
   [[ "${_lc}" == *"':'/opt/php"[0-9][0-9]"/bin/php'"* ]]
+}
+# A Composer run (websh's composer route below, or Composer started by its
+# path, which runs through its "#!/usr/bin/env php" line) starts PHP itself:
+# its @php scripts and plugin tasks, CiviCRM's compile tasks among them, and
+# the php lines of the project's own scripts come back here as "<php> -r ..."
+# or "<php> <script>". Those run: Composer already runs its plugins as PHP
+# inside its own process, so refusing its children stopped real builds
+# without closing anything. True when an ancestor of this shell, owned by
+# the same user, is such a Composer: its argv[0] one of the server's
+# /opt/phpNN/bin/php builds, /usr/bin/php, or "php" (env's PATH lookup,
+# which on BOA finds /usr/bin/php), its executable that very file (compared
+# by inode through /proc, which a process cannot rename) and its first
+# argument after -n, -d and -c (the options Composer is started with: its
+# own restart passes -n -c <ini>) /usr/local/bin/composer or BOA's link
+# to it, /usr/bin/composer. Any other PHP option before it ends the test: a
+# glued -r, -f or -B runs its own code and leaves composer an unused operand.
+# The path comes from argv[0] because a tenant cannot list /opt, so a glob
+# there matches nothing. A process that is not such a Composer is passed
+# over, so PHP that a tool inside a Composer run starts runs too. The walk
+# stops at the first process of another user, at PID 1, after eight steps
+# up, or where /proc gives no status. Pure bash: some identities cannot run
+# the system binaries.
+_under_composer() {
+  local _p="${PPID}" _n _k _a _r _uid _pp _i _skip _b
+  local -a _argv
+  for _n in 1 2 3 4 5 6 7 8; do
+    [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt 1 ] || return 1
+    _uid=""
+    _pp=""
+    {
+      while read -r _k _a _r; do
+        case "${_k}" in
+          Uid:) _uid="${_a}" ;;
+          PPid:) _pp="${_a}" ;;
+        esac
+      done < "/proc/${_p}/status"
+    } 2> /dev/null
+    [ -n "${_uid}" ] && [ "${_uid}" = "${UID}" ] || return 1
+    _argv=()
+    { mapfile -d '' -t _argv < "/proc/${_p}/cmdline"; } 2> /dev/null
+    case "${_argv[0]:-}" in
+      /opt/php[0-9][0-9]/bin/php|/usr/bin/php) _b="${_argv[0]}" ;;
+      php) _b=/usr/bin/php ;;
+      *) _b="" ;;
+    esac
+    if [ -n "${_b}" ] && [ "${#_argv[@]}" -gt 1 ] && [ -f "${_b}" ] \
+      && [[ "/proc/${_p}/exe" -ef "${_b}" ]]; then
+      _skip=NO
+      for (( _i = 1; _i < ${#_argv[@]}; _i++ )); do
+        if [ "${_skip}" = "YES" ]; then
+          _skip=NO
+          continue
+        fi
+        case "${_argv[${_i}]}" in
+          -d|-c) _skip=YES ;;
+          -n|-d?*|-c?*) ;;
+          /usr/local/bin/composer|/usr/bin/composer) return 0 ;;
+          *) break ;;
+        esac
+      done
+    fi
+    _p="${_pp}"
+  done
+  return 1
 }
 _php_direct_refused() {
   # $1 = the line as received; true when one of its simple commands names a
@@ -669,7 +822,7 @@ _php_direct_refused() {
   # env -S hands its value on as a command line, read the same way. The
   # interpreter of a Drush or Composer launch at the head of the line is not
   # one: the dispatch below replaces it with the account's own.
-  local _line="$1" _seg _w _i _n _wrap _skip
+  local _line="$1" _seg _w _i _n _wrap _skip _dur
   local -a _ws
   if _drush_launcher "${_line}"; then
     _line="${_LA_CD}${_LA_PRE}drush.php ${_LA_REST}"
@@ -682,6 +835,7 @@ _php_direct_refused() {
     _i=0
     _wrap=""
     _skip=NO
+    _dur=NO
     while [ "${_i}" -lt "${_n}" ]; do
       _w="${_ws[${_i}]//$'\001'/ }"
       _i=$(( _i + 1 ))
@@ -696,35 +850,46 @@ _php_direct_refused() {
           ;;
         '<'*|'>'*|[0-9]'<'*|[0-9]'>'*) continue ;;
       esac
-      [[ "${_w}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
       if [ -n "${_wrap}" ]; then
         case "${_wrap}:${_w}" in
+          # env -S splits its value into env's own arguments, options too
           env:-S|env:--split-string)
-            [ "${_i}" -lt "${_n}" ] && _php_direct_refused "${_ws[${_i}]//$'\001'/ }" && return 0
+            [ "${_i}" -lt "${_n}" ] && _php_direct_refused "env ${_ws[${_i}]//$'\001'/ }" && return 0
             _skip=YES
             continue
             ;;
           env:-S?*|env:--split-string=*)
             _w="${_w#-S}"
-            _php_direct_refused "${_w#--split-string=}" && return 0
-            continue
-            ;;
-          env:-u|env:--unset|env:-C|env:--chdir|nice:-n|nice:--adjustment|timeout:-s|timeout:--signal|timeout:-k|timeout:--kill-after|stdbuf:-i|stdbuf:-o|stdbuf:-e|ionice:-c|ionice:-n|ionice:-p|ionice:-P|ionice:-u|ionice:--class|ionice:--classdata)
-            _skip=YES
+            _php_direct_refused "env ${_w#--split-string=}" && return 0
             continue
             ;;
           # command -v/-V only looks the name up
           command:-v|command:-V) break ;;
-          *:-*) continue ;;
-          timeout:[0-9]*) continue ;;
+          *:-*)
+            _wrap_opt_value "${_wrap}" "${_w}" && _skip=YES
+            continue
+            ;;
         esac
+        # timeout's first operand is its duration, whatever its form
+        if [ "${_dur}" = "YES" ]; then
+          _dur=NO
+          continue
+        fi
       fi
-      case "${_w}" in
-        '!'|'{'|'}'|'('|command|exec|nohup|time|if|then|else|elif|while|until|do|setsid)
-          _wrap="${_w}"
+      [[ "${_w}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
+      # a wrapper program named by its path (/usr/bin/env) is the same
+      # wrapper, as _drush_refused reads it; a reserved word, a brace or a
+      # builtin (command, exec) is one only as written
+      case "${_w##*/}" in
+        nohup|time|setsid|env|nice|timeout|stdbuf|ionice)
+          _wrap="${_w##*/}"
+          _dur=NO
+          [ "${_wrap}" = "timeout" ] && _dur=YES
           continue
           ;;
-        env|nice|timeout|stdbuf|ionice)
+      esac
+      case "${_w}" in
+        '!'|'{'|'}'|'('|command|exec|if|then|else|elif|while|until|do)
           _wrap="${_w}"
           continue
           ;;
@@ -732,13 +897,15 @@ _php_direct_refused() {
       _php_word "${_w}" && return 0
       break
     done
-  done < <(_drush_segments "${_line}" keep)
+  done < <(_drush_segments "${_line}" keep
+    [[ "${_line}" == *$'\n'* ]] && _drush_segments "${_line}" keep join)
   return 1
 }
 # every tenant exec site hands its final line through here
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
     _drush_refused_say
+    _in_composer_run && exit 1
     exit 0
   fi
   exec /bin/dash -c "$1"
@@ -816,6 +983,7 @@ _forward_to_dash() {
         if [[ -n "$2" ]]; then
           if _is_tenant && _drush_refused "$2"; then
             _drush_refused_say
+            _in_composer_run && exit 1
             exit 0
           fi
           _options+=("-c" "$2")
@@ -889,13 +1057,23 @@ if [ "${1}" = "-c" ] && [[ "${2}" == [-+]* ]] && _is_tenant; then
 fi
 
 # A tenant outside [grp:ltd-shell-more] never runs PHP by name, typed or
-# spawned by a tool it runs; refused before any route below can exec it.
+# spawned by a tool it runs, except inside a Composer run (_under_composer);
+# refused before any route below can exec it. Inside a Composer run the line
+# goes on to the routes below; where it meets the rules of an exec site (a
+# forbidden drush command is refused there), their refusal exits 1, as
+# every refusal inside a Composer run does (_in_composer_run), so the
+# Composer script that ran it fails instead of passing with nothing run. A quoted or exec-led line the verbatim fast lane
+# below takes meets the same rules there, and its refusal exits 1 too.
+_PHP_IN_COMPOSER=""
 if [ "${1}" = "-c" ] && _is_tenant && ! _php_member \
   && _php_direct_refused "${2}"; then
-  echo >&2
-  echo " Running PHP directly is not available on this account." >&2
-  echo >&2
-  exit 1
+  if ! _under_composer; then
+    echo >&2
+    echo " Running PHP directly is not available on this account." >&2
+    echo >&2
+    exit 1
+  fi
+  _PHP_IN_COMPOSER=YES
 fi
 
 # Capture all arguments
@@ -920,6 +1098,34 @@ fi
 # caller is dropped here, ahead of every route below (the fast lane
 # included): a php started for a line never loads another version's ini.
 unset PHPRC
+
+# The account the Drush rules resolve an @alias for (_d8plus_target), read
+# ahead of the fast lane below, which applies them too.
+_INTERNAL=NO
+if [ -z "${USER}" ]; then
+  USER=$(id -nu ${USER} 2>&1)
+  _LTD_QQQ=YES
+fi
+_X_USR=".*"
+if [ "${USER}" = "aegir" ] \
+  || [ "${HOME}" = "/var/aegir" ]; then
+  _Y_USR=aegir
+  _DRUSH_CLI_CTRL="/var/aegir/static/control"
+  ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
+else
+  _Y_USR=${USER%${_X_USR}}
+  _DRUSH_CLI_CTRL="/data/disk/${_Y_USR}/static/control"
+  ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
+fi
+if [ -z "${HOME}" ]; then
+  if [ -d "/home/${USER}/.tmp" ]; then
+    HOME="/home/${USER}"
+  elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
+    HOME="/data/disk/${_Y_USR}"
+  elif [ -d "/var/${_Y_USR}/.tmp" ]; then
+    HOME="/var/${_Y_USR}"
+  fi
+fi
 
 # Composer >= 2.8.3 (and any symfony/process caller) invokes git/hg/svn/tar/... as
 # argv-arrays, which symfony/process 5.x renders for /bin/sh (= websh) as
@@ -980,16 +1186,25 @@ if [ "${1}" = "-c" ] \
   case "${_SF_LEAD}" in
     */vendor/drush/drush/drush.php) _SF_SKIP=YES ;;
   esac
+  _SF_GO=NO
   if [[ "${_SF_LEAD}" == /* ]] && [ "${_SF_SKIP}" = "NO" ]; then
-    exec /bin/dash -c "${_SF_ORIG}"
-    exit 0
+    _SF_GO=YES
   fi
   case "${_SF_LEAD}" in
     git|git-upload-pack|git-receive-pack|git-upload-archive|hg|svn|svnadmin|fossil|bzr|cvs|p4|tar|unzip|7z|7za|7zz|gzip|gunzip|bzip2|xz|unxz|zstd|unzstd)
-      exec /bin/dash -c "${_SF_ORIG}"
-      exit 0
+      _SF_GO=YES
       ;;
   esac
+  if [ "${_SF_GO}" = "YES" ]; then
+    # the tenant Drush rules every other exec site applies (_exec_dash_c),
+    # on the same string; the line comes from a tool, so a refusal fails it
+    if _is_tenant && _drush_refused "${_SF_ORIG}"; then
+      _drush_refused_say
+      exit 1
+    fi
+    exec /bin/dash -c "${_SF_ORIG}"
+    exit 0
+  fi
 fi
 
 if [[ "${_ARGS}" =~ "--php=" ]]; then
@@ -1049,32 +1264,6 @@ fi
 _C_ARR=
 if _composer_lead "${_ARGS}"; then
   _C_ARR=("${_CO_REST}")
-fi
-
-_INTERNAL=NO
-if [ -z "${USER}" ]; then
-  USER=$(id -nu ${USER} 2>&1)
-  _LTD_QQQ=YES
-fi
-_X_USR=".*"
-if [ "${USER}" = "aegir" ] \
-  || [ "${HOME}" = "/var/aegir" ]; then
-  _Y_USR=aegir
-  _DRUSH_CLI_CTRL="/var/aegir/static/control"
-  ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
-else
-  _Y_USR=${USER%${_X_USR}}
-  _DRUSH_CLI_CTRL="/data/disk/${_Y_USR}/static/control"
-  ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
-fi
-if [ -z "${HOME}" ]; then
-  if [ -d "/home/${USER}/.tmp" ]; then
-    HOME="/home/${USER}"
-  elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
-    HOME="/data/disk/${_Y_USR}"
-  elif [ -d "/var/${_Y_USR}/.tmp" ]; then
-    HOME="/var/${_Y_USR}"
-  fi
 fi
 
 # The alias listing is filtered for every identity that reaches drush here

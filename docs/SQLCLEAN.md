@@ -82,6 +82,12 @@ alert. The report still completes, but `LIVE auto` refuses until every
 alert is fixed: an unreadable alias must never widen the ghost list
 unattended.
 
+A flat-file site, such as a Grav site, has no database: its drushrc carries
+no `db_name` and its `db_server` is the panel's no-database server (a server
+whose db service has the type `none`, which Hosting Grav creates). sqlclean
+reads those servers from each panel and skips such a site without an alert.
+Any other site without a usable `db_name` is still an alert.
+
 When a ghost database is dropped, its dedicated MySQL user (same name, as
 provisioned) is dropped with it — unless that user also holds grants on any
 other schema, in which case the user is kept and reported.

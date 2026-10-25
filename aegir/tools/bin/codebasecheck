@@ -489,7 +489,8 @@ _deep_static_scan() {
 
 # Box-wide live-schema signals via root /root/.my.cnf. $1 = log.
 # utf8mb3 tables (INFO only, does not flip the verdict) + reserved-word contrib TABLE names
-# excluding core 'system' (REVIEW). Skips cleanly if mysql/creds/connection are unavailable.
+# excluding core 'system' (REVIEW). A scan that cannot run counts as one REVIEW item: a
+# database nobody read must not roll up to READY.
 _deep_db_scan() {
   local _log="$1"
   local _mycnf="/root/.my.cnf"
@@ -497,11 +498,13 @@ _deep_db_scan() {
   local _in _w _utf8mb3 _restabs _n
 
   if ! command -v mysql >/dev/null 2>&1 || [ ! -r "${_mycnf}" ]; then
-    echo "  DB scan skipped: mysql client or ${_mycnf} unavailable" | tee -a "${_log}"
+    _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + 1))
+    echo "  REVIEW  DB scan skipped: mysql client or ${_mycnf} unavailable; the schema was not read, run this check again once it can be" | tee -a "${_log}"
     return 0
   fi
   if ! mysql --defaults-file="${_mycnf}" -N -e "SELECT 1;" >/dev/null 2>&1; then
-    echo "  DB scan skipped: cannot connect to the local SQL server" | tee -a "${_log}"
+    _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + 1))
+    echo "  REVIEW  DB scan skipped: cannot connect to the local SQL server; the schema was not read, run this check again when it answers" | tee -a "${_log}"
     return 0
   fi
 
@@ -524,12 +527,16 @@ _deep_db_scan() {
     } | tee -a "${_log}"
   fi
 
-  _restabs=$(mysql --defaults-file="${_mycnf}" -N -e \
+  if ! _restabs=$(mysql --defaults-file="${_mycnf}" -N -e \
     "SELECT CONCAT(table_schema,'.',table_name) FROM information_schema.tables
        WHERE table_schema NOT IN (${_sys})
          AND LOWER(table_name) IN (${_in})
          AND LOWER(table_name) <> 'system'
-       ORDER BY table_schema, table_name;" 2>/dev/null)
+       ORDER BY table_schema, table_name;" 2>/dev/null); then
+    _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + 1))
+    echo "  REVIEW  DB scan incomplete: the reserved-word table query failed; run this check again" | tee -a "${_log}"
+    return 0
+  fi
   if [ -n "${_restabs}" ]; then
     _n=$(echo "${_restabs}" | wc -l | tr -d ' ')
     _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + _n))

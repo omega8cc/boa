@@ -378,6 +378,15 @@ _prepare_for_save_verify_platforms() {
 }
 
 #
+# The name of a single-platform catalogue entry, its directory under the distro
+# root and its tarball's name: <profile>-<version>-<core>, or the key's
+# _distros_name_prefixes entry in place of the profile. $1 key, $2 profile name,
+# $3 version, $4 core version.
+_d_platform_name() {
+  printf '%s\n' "${_distros_name_prefixes[${1}]:-${2}}-${3}-${4}"
+}
+
+#
 # Save & Verify Platform
 _save_verify_this_platform() {
 
@@ -407,7 +416,7 @@ _save_verify_this_platform() {
   # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
   # make_platform 'ezcontent-2.2.15-10.3.6' ezcontent /data/disk/o8/distro/001/ezcontent-2.2.15-10.3.6/web
   # make_platform 'commerce_base-2.40-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.40-10.1.8/web
-  _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
+  _make_p="${_pthDst}/$(_d_platform_name "${params[dist]}" "${params[profile_name]}" "${params[version]}" "${params[core_version]}")${params[web_dir]}"
 
   # _save_verify_this_platform 'UC7' '3.13' '7.106.3' 'ubercart-3.13-7.106.3' '/' 'minimal' ''
   _make_u="${_pthDst}/ubercart-${params[version]}-${params[core_version]}${params[web_dir]}"
@@ -1932,15 +1941,17 @@ declare -A _distros_names=(
   ["DE2"]="Drupal"
   ["DE3"]="Drupal"
   ["DE4"]="Drupal"
+  ["DEC"]="CiviCRM for Drupal"
   ["DT0"]="Drupal"
   ["BDR"]="Backdrop"
+  ["BDC"]="CiviCRM for Backdrop"
   ["GRV"]="Grav"
   ["TXP"]="Textpattern"
 )
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="2.2.6"
+  ["CMS"]="2.2.7"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
   ["CK3"]="5.1.0"
@@ -1969,8 +1980,10 @@ declare -A _distros_versions=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["DEC"]="6.19.2"
   ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
+  ["BDC"]="${_BDC_V}"
   ["GRV"]="${_GRAV_V}"
   ["TXP"]="${_TXP_V}"
 )
@@ -2006,8 +2019,10 @@ declare -A _distros_drupal_cores=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["DEC"]="${_SMALLCORE11_4_V}"
   ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
+  ["BDC"]="${_BDC_CORE_V}"
   ["GRV"]="${_GRAV_V}"
   ["TXP"]="${_TXP_V}"
 )
@@ -2043,8 +2058,10 @@ declare -A _distros_profiles_names=(
   ["DE2"]="standard"
   ["DE3"]="standard"
   ["DE4"]="standard"
+  ["DEC"]="standard"
   ["DT0"]="standard"
   ["BDR"]="standard"
+  ["BDC"]="standard"
   ["GRV"]="grav"
   ["TXP"]="textpattern"
 )
@@ -2080,8 +2097,10 @@ declare -A _distros_profiles_paths=(
   ["DE2"]="/"
   ["DE3"]="/"
   ["DE4"]="/"
+  ["DEC"]="/"
   ["DT0"]="/"
   ["BDR"]="/"
+  ["BDC"]="/"
   ["GRV"]="/"
   ["TXP"]="/"
 )
@@ -2117,8 +2136,10 @@ declare -A _distros_web_dirs=(
   ["DE2"]="/web"
   ["DE3"]="/web"
   ["DE4"]="/web"
+  ["DEC"]="/web"
   ["DT0"]="/web"
   ["BDR"]=""
+  ["BDC"]=""
   ["GRV"]=""
   ["TXP"]=""
 )
@@ -2154,8 +2175,10 @@ declare -A _distros_urls=(
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
   ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
   ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
+  ["DEC"]="https://docs.civicrm.org/installation/en/latest/drupal8/"
   ["DT0"]="${_urlPrt}/drupal/releases/${_SMALLCORE12_0_V}"
   ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP_V}"
+  ["BDC"]="https://docs.civicrm.org/installation/en/latest/backdrop/"
   ["GRV"]="${_urlPrt}/grav/releases/${_GRAV_V}"
   ["TXP"]="https://github.com/textpattern/textpattern/releases/tag/${_TXP_V}"
 )
@@ -2191,10 +2214,20 @@ declare -A _distros_php_versions=(
   ["DE2"]="8.4"
   ["DE3"]="8.4"
   ["DE4"]="8.4"
+  ["DEC"]="8.4"
   ["DT0"]="8.5"
   ["BDR"]="8.4"
+  ["BDC"]="8.4"
   ["GRV"]="8.4"
   ["TXP"]="8.4"
+)
+
+# The CiviCRM platforms install with core's standard profile, so they are named
+# after this prefix instead: <prefix>-<civicrm>-<core>, a single platform each,
+# fetched from the distro shelf like a distribution.
+declare -A _distros_name_prefixes=(
+  ["BDC"]="civicrm_backdrop"
+  ["DEC"]="civicrm_drupal"
 )
 
 
@@ -2555,7 +2588,7 @@ _d_dist_platform_install() {
 
   # Access parameters by name
   _REAL_PRNAME="${params[profile_name]}"
-  _DIST_PLNAME="${params[profile_name]}-${params[version]}-${params[core_version]}"
+  _DIST_PLNAME="$(_d_platform_name "${params[dist]}" "${params[profile_name]}" "${params[version]}" "${params[core_version]}")"
   _DIST_PLPATH="${_CORE}/${_DIST_PLNAME}"
   _DIST_PRPATH="${_DIST_PLPATH}/profiles/${params[profile_path]}${params[profile_name]}"
   _OCTO_PLPATH="${_pthDst}/${_DIST_PLNAME}${7}"
@@ -2770,14 +2803,17 @@ _d_php_ge() {
 
 # Whether this run builds the symbol at all: the gates the dispatch at the
 # end of _d_dist_loop applies (the core triples always and UC6; Backdrop,
-# Grav and Textpattern behind their switches; every other distribution
-# behind _ALLOW_ALL, which its install function tests)
+# Grav and Textpattern behind their switches; Backdrop with CiviCRM behind
+# the Backdrop switch and _ALLOW_ALL; every other distribution behind
+# _ALLOW_ALL, which its install function tests). Exact keys only: a pattern
+# such as *BD* caught every later Backdrop key as well.
 _d_would_build() {
   case "$1" in
     DL[0-9]|DX[0-9]|DE[0-9]|DT[0-9]|UC6) return 0 ;;
     GRV) [ "${_GRAV_SUPPORT}" = "YES" ] ;;
     TXP) [ "${_TXP_SUPPORT}" = "YES" ] ;;
-    *BD*) [ "${_BACKDROP_SUPPORT}" = "YES" ] ;;
+    BDR) [ "${_BACKDROP_SUPPORT}" = "YES" ] ;;
+    BDC) [ "${_BACKDROP_SUPPORT}" = "YES" ] && [ "${_ALLOW_ALL}" = "YES" ] ;;
     *) [ "${_ALLOW_ALL}" = "YES" ] ;;
   esac
 }
@@ -2826,6 +2862,21 @@ _d_dist_loop() {
       && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
       continue
     fi
+    # The CiviCRM platforms are built only where the list names them, never
+    # through ALL: each is a whole Backdrop or Drupal codebase with CiviCRM's on
+    # top, made again in every new distro revision of every account that lists
+    # it. A name whose versions did not resolve (an empty or broken stamp and
+    # fallback) is never fetched.
+    case "${_dist}" in
+      BDC|DEC)
+        [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]] || continue
+        if [[ ! "${_d_vers}" =~ ^[0-9]+(\.[0-9]+)+$ ]] \
+          || [[ ! "${_d_core}" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+          _msg "NOTE! ${_dist} (${_d_name}) has no valid version (${_d_vers:-none} on ${_d_core:-none}): skipped"
+          continue
+        fi
+        ;;
+    esac
     if [[ "${_d_core%%.*}" =~ ^[0-9]+$ ]] \
       && [ "${_d_core%%.*}" -ge 11 ] \
       && [ -n "${_d_db_v}" ] \
@@ -2896,16 +2947,22 @@ _d_dist_loop() {
       # registered platform aliases pointing at whatever core the previous
       # loop iteration left in _CORE_DEV/_STG/_PRD.
       _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
-    elif [[ "${_dist}" =~ BD ]]; then
+    elif [ "${_dist}" = "BDR" ]; then
       # Backdrop core-only platform; gated dark behind _BACKDROP_SUPPORT.
+      # Anchored EXACT match: the old =~ BD sent every Backdrop key here.
       [ "${_BACKDROP_SUPPORT}" = "YES" ] \
         && _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+    elif [ "${_dist}" = "BDC" ]; then
+      # Backdrop with CiviCRM: a single platform from the distro shelf, like a
+      # distribution (which also checks _ALLOW_ALL), behind _BACKDROP_SUPPORT.
+      [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+        && _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [ "${_dist}" = "GRV" ]; then
       # Grav admin-bundle platform; gated dark behind _GRAV_SUPPORT. Anchored
       # EXACT match on purpose: the catch-all else fetches a prebuilt distro
       # tarball down the single-platform path, so a fallen-through symbol
-      # mis-builds quietly (and the BD substring arm above shows why loose
-      # matching is a trap).
+      # mis-builds quietly (a loose =~ BD once sent every Backdrop key to the
+      # trio path: loose matching is a trap).
       [ "${_GRAV_SUPPORT}" = "YES" ] \
         && _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [ "${_dist}" = "TXP" ]; then

@@ -7126,6 +7126,7 @@ _manage_user() {
       fi
       _site_socket_inc_gen
       _ltd_fpm_core_check
+      _ltd_fpm_cut_notice
       ### reload nginx once per pass, and only when this pass changed the
       ### account's FPM includes: nginx reads them on reload alone, and a
       ### reload on every pass reset every HTTP/3 transfer in flight
@@ -7948,6 +7949,96 @@ _ltd_fpm_core_check() {
   else
     _ltd_ctrl_rm .fpm-core.info
   fi
+}
+# Requests PHP-FPM cut at its time limit (request_terminate_timeout), one
+# record a cut in /var/backups/ltd/fpmcut/<account>.<day>, root's, written by
+# the php monitor. A script of the account cut _LTD_FPM_CUT_MIN times or more
+# in the last 24 hours is listed in ~/static/control/.fpm-timeout.info, with
+# the count, how long it ran (when PHP-FPM did not cut its own line short
+# and the run time with it), the first and last cut and the last request
+# as PHP-FPM logged it (its method and first path segment only), and in a
+# daily notice for the operator; the file goes when none is left. No site
+# is named: the master's line has none, and a guess could hand another
+# tenant's name or request to the account; the script's path names the
+# platform. A single cut can be a slow page on a busy minute; three in a day
+# are the same work never finishing. Nothing is stopped or changed: the fix
+# is the script's, or a long job run from the shell.
+_LTD_FPM_CUT_MIN=3
+_ltd_fpm_cut_notice() {
+  local _st="/var/backups/ltd/fpmcut" _now _rows _txt _hdr _body _n
+  local _c _sc _s _t1 _t2 _rq _d _ln
+  local -a _fs=()
+  _now=$(date +%s)
+  _rows=""
+  for _ln in "${_st}/${_USER}".*; do
+    [ -f "${_ln}" ] && [ ! -L "${_ln}" ] && _fs+=("${_ln}")
+  done
+  if [ "${#_fs[@]}" -gt 0 ]; then
+    _rows=$(LC_ALL=C awk -F'|' -v now="${_now}" -v min="${_LTD_FPM_CUT_MIN}" \
+      -v acct="${_USER}" '
+      # a request as the method and its path to the first segment
+      function segr(q,   sp, p, i) {
+        sp = index(q, " ")
+        p = substr(q, sp + 1)
+        i = index(substr(p, 2), "/")
+        if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
+        return substr(q, 1, sp) p
+      }
+      # "-" for the seconds: PHP-FPM cut its own line short, run time and all
+      NF == 5 && $1 ~ /^[0-9]+$/ && $1 > now - 86400 && $1 <= now + 300 \
+        && $2 == acct && $3 ~ /^([0-9]+|-)$/ && index($5, " ") > 1 {
+        k = $4
+        q = segr($5)
+        if (!(k in c)) { c[k] = 0; f[k] = $1; l[k] = $1; s[k] = ""; nk++; K[nk] = k }
+        c[k]++
+        if ($1 < f[k]) f[k] = $1
+        if ($1 >= l[k]) { l[k] = $1; r[k] = q }
+        if ($3 != "-" && (s[k] == "" || $3 + 0 < s[k] + 0)) s[k] = $3
+        if (!((k SUBSEP q) in u)) { u[k SUBSEP q] = 1; d[k]++ }
+      }
+      END {
+        for (i = 1; i <= nk; i++) {
+          k = K[i]
+          if (c[k] >= min) print c[k] "|" k "|" s[k] "|" f[k] "|" l[k] "|" r[k] "|" d[k]
+        }
+      }' "${_fs[@]}" 2> /dev/null | sort -t'|' -k1,1nr | head -n 50)
+  fi
+  if [ -z "${_rows}" ]; then
+    if [ -e "${_dscUsr}/static/control/.fpm-timeout.info" ] \
+      || [ -L "${_dscUsr}/static/control/.fpm-timeout.info" ]; then
+      _ltd_ctrl_rm .fpm-timeout.info
+    fi
+    return 0
+  fi
+  _txt=""
+  while IFS='|' read -r _c _sc _s _t1 _t2 _rq _d; do
+    if [ -n "${_s}" ]; then
+      _ln="${_sc}: cut ${_c} times after ${_s} s,"
+    else
+      _ln="${_sc}: cut ${_c} times at the time limit,"
+    fi
+    _ln+=" first $(date -d "@${_t1}" '+%F %H:%M'),"
+    _ln+=" last $(date -d "@${_t2}" '+%F %H:%M %Z'); last request ${_rq}"
+    [ "${_d}" -gt 1 ] 2> /dev/null && _ln+=" (of ${_d} different requests)"
+    _txt+="${_ln}"$'\n'
+  done <<< "${_rows}"
+  _txt="${_txt%$'\n'}"
+  _n=$(printf '%s\n' "${_txt}" | wc -l)
+  _hdr="# Scripts PHP-FPM stopped at its time limit ${_LTD_FPM_CUT_MIN} or more times in the last"
+  _hdr+=$'\n'"# 24 hours, with the last request as PHP-FPM logged it (its method and first"
+  _hdr+=$'\n'"# path segment). No site is named: PHP-FPM logs none, and the script's path"
+  _hdr+=$'\n'"# names the platform. A request stopped there never finishes: a cron.php cut"
+  _hdr+=$'\n'"# at every run leaves its work undone each time. Find what the script waits"
+  _hdr+=$'\n'"# on and fix it, or run the long job from the shell with Drush, where PHP has"
+  _hdr+=$'\n'"# no time limit."
+  _body="${_hdr}"$'\n'"${_txt}"
+  if [ "$(_ltd_ctrl_read .fpm-timeout.info)" != "${_body}" ] \
+    && _ltd_ctrl_put .fpm-timeout.info "${_body}"; then
+    echo "ALRT: ${_n} script(s) of ${_USER} cut at the PHP-FPM time limit repeatedly, see ${_dscUsr}/static/control/.fpm-timeout.info"
+  fi
+  _ltd_notice_daily "fpm-timeout-${_USER}" \
+    "${_n} script(s) of ${_USER} cut at the PHP-FPM time limit repeatedly" \
+    "$(printf '%s\n' "${_txt}" | head -n 5 | tr '\n' ';')"
 }
 # The process table of this pass, read once and within a minute: a read
 # that fails or runs out of time counts as an import of every account
