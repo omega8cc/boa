@@ -1937,6 +1937,13 @@
       are passed over, env -S's value is read as env's own arguments,
       and the PHP rule also reads a wrapper given by its path.
 
+    * Inside a Composer run a shell account's script lines may set PHP's
+      ini for the PHP they start: a NAME=value word in front of php
+      (XDEBUG_MODE=coverage php vendor/bin/phpunit) and Composer's @php
+      form in front of vendor/bin/drush run there, as PHP by name already
+      does; the other Drush rules still apply, and a refused line inside
+      the run now fails the Composer script.
+
 @=> New Features
 
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
