@@ -1423,43 +1423,57 @@ _restore_missing_packages() {
 _patch_gap_php() {
   # The PHP half of _patch_gap_guard, run in a build tree as the build user. Only
   # composer-patches 1.x trees: 1.x writes each package's declared patches to its
-  # PATCHES.txt (a description line, then "Source: <url>") and the applied ones to
-  # installed.json extra.patches_applied, keyed by description (a package without
-  # that key was never processed and is left alone); 2.x stops the install on a
-  # failure. It merges the root's patches with every dependency's by description, so
-  # one URL declared under two descriptions is applied twice. Every mode reads the
-  # tree as it is now.
-  #   list    "gaps: N" and "dups: M" first; then "gap<TAB><package><TAB><url>" per
-  #           declared URL applied under no description, "dup<TAB><package><TAB><url>"
-  #           per applied URL declared more than once, "churn<TAB><package>" per
-  #           package left with a declared set and none applied (composer-patches
-  #           removes and reinstalls it on every later Composer run), and
-  #           "patched<TAB><dir>" per package composer-patches patched. Exits 4 when
-  #           reporting is off: there is no PATCHES.txt to compare then.
-  #   dirs    the directory of every package with a gap, for a plain reinstall
-  #   ignore  a gap URL is ignored wherever composer-patches 1.7 reads it (dropped
-  #           from the root's own patches, else its patches-file, and added to
-  #           patches-ignore under every dependency that declares it); a duplicate
-  #           is declared once (the root's first entry, else the first dependency's);
-  #           patching stays enabled by composer-patches' own test, and the root's
-  #           emptied patches stay {}, so a patches-file it hid stays hidden. Prints
-  #           the directories to reinstall; exits 3 on a declaration it cannot repair.
-  #   rehash  writes Composer's own content-hash of composer.json (Locker, loaded
-  #           from the Composer phar given as $2) into composer.lock: ignore changes
-  #           only extra, which never moves the locked set
+  # PATCHES.txt (records of a description line, then "Source: <url>", then two empty
+  # lines) and the applied ones to installed.json extra.patches_applied, keyed by
+  # description (a package without that key was never processed and is left alone);
+  # 2.x stops the install on a failure. It merges the root's patches with every
+  # dependency's by description, a later source winning a key (a list's index is its
+  # key), so one URL declared under two descriptions is applied twice. Every mode reads
+  # the tree as it is now.
+  #   list      "gaps: N", "dups: M" and "checked: 1" (0 when the tree has no
+  #             composer-patches 1.x) first; then "gap<TAB><package><TAB><url>" per
+  #             declared URL applied under no description, "dup<TAB><package><TAB><url>"
+  #             per applied URL declared more than once, "churn<TAB><package>" per
+  #             package composer-patches processed with none applied (it removes and
+  #             reinstalls such a package on every later Composer run),
+  #             "applied<TAB><package><TAB><url>" per URL applied, and
+  #             "patched<TAB><dir>" per package composer-patches patched. Exits 4 when
+  #             reporting is off: there is no PATCHES.txt to compare then.
+  #   dirs      the directory of every package with a gap, for a plain reinstall
+  #   ignore    a gap URL is ignored wherever composer-patches 1.7 reads it (dropped
+  #             from the root's own patches, else its patches-file, and added to
+  #             patches-ignore under every dependency that declares it); a duplicate
+  #             is declared once (the root's first entry, else that of a dependency
+  #             declaring it once, as patches-ignore goes by value); patching stays
+  #             enabled by composer-patches' own test, and the root's emptied patches
+  #             stay {}, so a patches-file it hid stays hidden. Prints the directories
+  #             to reinstall. Exits 3, changing nothing, on a declaration it cannot
+  #             repair: a description that two sources give different URLs where one
+  #             of them is to change (the merge would keep or bring back the wrong
+  #             one), or a package installed as a link (reinstalling it never makes it
+  #             pristine, and its source is not the build's to remove).
+  #   rehash    writes Composer's own content-hash of composer.json (Locker, loaded
+  #             from the Composer phar given as $2) into composer.lock: ignore changes
+  #             only extra, which never moves the locked set
+  #   hashcheck exits 0 when the lock's content-hash is that hash, 1 when not
   # A directory is printed only when it resolves inside the tree.
   cat <<'EOPHP'
 <?php
 $mode = isset($argv[1]) ? $argv[1] : 'list';
-if ($mode === 'rehash') {
+if ($mode === 'rehash' || $mode === 'hashcheck') {
   $phar = isset($argv[2]) ? (string) $argv[2] : '';
   // Composer's phar carries its own alias, composer.phar, and loads under no other
   try { Phar::loadPhar($phar); } catch (Exception $e) { fwrite(STDERR, "cannot load Composer from $phar: " . $e->getMessage() . "\n"); exit(2); }
   require 'phar://composer.phar/vendor/autoload.php';
-  $hash = \Composer\Package\Locker::getContentHash((string) file_get_contents('composer.json'));
-  $lock = (string) @file_get_contents('composer.lock');
+  $json = @file_get_contents('composer.json');
+  $lock = @file_get_contents('composer.lock');
+  $lj = json_decode((string) $lock, true);
+  if ($json === false || !is_array($lj)) { fwrite(STDERR, "composer.json or composer.lock unreadable\n"); exit(2); }
+  $hash = \Composer\Package\Locker::getContentHash($json);
+  if (isset($lj['content-hash']) && $lj['content-hash'] === $hash) { exit(0); }
+  if ($mode === 'hashcheck') { exit(1); }
   $n = 0;
-  $new = preg_replace('/("content-hash"\s*:\s*")[0-9a-f]*(")/', '${1}' . $hash . '${2}', $lock, 1, $n);
+  $new = preg_replace('/("content-hash"\s*:\s*")[0-9a-fA-F]*(")/', '${1}' . $hash . '${2}', $lock, 1, $n);
   if ($n !== 1 || file_put_contents('composer.lock', $new) === false) { fwrite(STDERR, "composer.lock not updated\n"); exit(2); }
   exit(0);
 }
@@ -1476,44 +1490,71 @@ function inside($dir) {
   $top = realpath('.');
   return ($real !== false && $top !== false && strpos($real, $top . '/') === 0) ? $real : false;
 }
+// The URLs of a PATCHES.txt, read record by record (the URL is a record's last line,
+// so a description that starts with "Source: " is no URL); false when it is not
+// composer-patches' format
+function declaredUrls($file) {
+  $t = str_replace("\r\n", "\n", (string) @file_get_contents($file));
+  $h = "Patches applied to this directory:\n\n";
+  $at = strpos($t, $h);
+  if ($at === false) { return false; }
+  $urls = array();
+  foreach (explode("\n\n\n", substr($t, $at + strlen($h))) as $rec) {
+    if (trim($rec) === '') { continue; }
+    $lines = explode("\n", rtrim($rec, "\n"));
+    $last = (string) end($lines);
+    if (strpos($last, 'Source: ') !== 0) { return false; }
+    $urls[] = trim(substr($last, 8));
+  }
+  return $urls;
+}
 $gaps = array();
 $dups = array();
 $churn = array();
 $patched = array();
+$applied = array();
+$checked = 0;
 if (preg_match('/^v?1\./', $cp)) {
   if (getenv('COMPOSER_PATCHES_SKIP_REPORTING') || !empty($rx['composer-patches-skip-reporting'])) {
     fwrite(STDERR, "composer-patches reporting is off: no PATCHES.txt to compare\n");
     exit(4);
   }
+  $checked = 1;
   foreach ($pkgs as $p) {
     if (empty($p['install-path']) || !isset($p['extra']) || !is_array($p['extra']) || !array_key_exists('patches_applied', $p['extra'])) { continue; }
     $dir = 'vendor/composer/' . $p['install-path'];
     if (!is_file($dir . '/PATCHES.txt')) { continue; }
     $real = inside($dir);
     if ($real === false) { fwrite(STDERR, $p['name'] . " installs outside the tree\n"); exit(3); }
+    $link = is_link(rtrim($dir, '/'));
     $patched[$real] = true;
+    $urls = declaredUrls($dir . '/PATCHES.txt');
+    if ($urls === false) { fwrite(STDERR, $p['name'] . ": PATCHES.txt is not in composer-patches' format\n"); exit(2); }
     $count = array();
-    foreach (preg_split('/\r?\n/', (string) file_get_contents($dir . '/PATCHES.txt')) as $l) {
-      if (strpos($l, 'Source: ') === 0) {
-        $u = trim(substr($l, 8));
-        $count[$u] = isset($count[$u]) ? $count[$u] + 1 : 1;
-      }
-    }
+    foreach ($urls as $u) { $count[$u] = isset($count[$u]) ? $count[$u] + 1 : 1; }
     $done = is_array($p['extra']['patches_applied']) ? array_values($p['extra']['patches_applied']) : array();
+    foreach (array_unique($done) as $u) { $applied[] = $p['name'] . "\t" . $u; }
     foreach ($count as $u => $n) {
-      if (!in_array($u, $done, true)) { $gaps[] = array($p['name'], $u, $real); }
-      elseif ($n > 1) { $dups[] = array($p['name'], $u, $real); }
+      if (!in_array($u, $done, true)) { $gaps[] = array($p['name'], $u, $real, $link); }
+      elseif ($n > 1) { $dups[] = array($p['name'], $u, $real, $link); }
     }
-    if (count($done) === 0 && count($count) > 0) { $churn[$p['name']] = true; }
+    // processed (its patch set is declared, if empty) yet nothing applied
+    if (count($done) === 0) { $churn[$p['name']] = true; }
   }
 }
 if ($mode === 'list') {
-  echo 'gaps: ', count($gaps), "\n", 'dups: ', count($dups), "\n";
+  echo 'gaps: ', count($gaps), "\n", 'dups: ', count($dups), "\n", 'checked: ', $checked, "\n";
   foreach ($gaps as $g) { echo "gap\t", $g[0], "\t", $g[1], "\n"; }
   foreach ($dups as $g) { echo "dup\t", $g[0], "\t", $g[1], "\n"; }
   foreach (array_keys($churn) as $c) { echo "churn\t", $c, "\n"; }
+  foreach ($applied as $a) { echo "applied\t", $a, "\n"; }
   foreach (array_keys($patched) as $d) { echo "patched\t", $d, "\n"; }
   exit(0);
+}
+// a package installed as a link: its source is patched in place and is not the
+// build's to remove
+foreach (array_merge($gaps, $dups) as $g) {
+  if ($g[3]) { fwrite(STDERR, $g[0] . " is installed as a link: it cannot be reinstalled pristine\n"); exit(3); }
 }
 if ($mode === 'dirs') {
   $dirs = array();
@@ -1578,6 +1619,25 @@ function declaring($pkgs, $ex, $pkg, $url) {
   }
   return $out;
 }
+// A description that two sources give different URLs, one of them in $urls: the merge
+// keeps one of them, so dropping or keeping a copy there can lose the applied patch
+// or bring back a hidden one. False when there is none.
+function collision($rs, $pkgs, $ex, $pkg, $urls) {
+  $byKey = array();
+  if (is_object($rs) && isset($rs->{$pkg})) {
+    foreach (obj($rs->{$pkg}) as $d => $u) { $byKey[(string) $d][] = $u; }
+  }
+  foreach ($pkgs as $q) {
+    if (!isset($q['extra']['patches'][$pkg]) || !is_array($q['extra']['patches'][$pkg])) { continue; }
+    foreach ($q['extra']['patches'][$pkg] as $d => $u) {
+      if (!ignored($ex, $q['name'], $pkg, $u)) { $byKey[(string) $d][] = $u; }
+    }
+  }
+  foreach ($byKey as $d => $us) {
+    if (count(array_unique($us)) > 1 && count(array_intersect($us, $urls)) > 0) { return (string) $d; }
+  }
+  return false;
+}
 function ignoreUnder($ex, $dep, $pkg, $url, $desc) {
   $ex->{'patches-ignore'} = obj(isset($ex->{'patches-ignore'}) ? $ex->{'patches-ignore'} : null);
   $pi = $ex->{'patches-ignore'};
@@ -1589,6 +1649,13 @@ function ignoreUnder($ex, $dep, $pkg, $url, $desc) {
   $n = 2;
   while (isset($list->{$key})) { $key = $desc . ' (' . $n . ')'; $n++; }
   $list->{$key} = $url;
+}
+// every URL to change, per package, checked before anything changes
+$touch = array();
+foreach (array_merge($gaps, $dups) as $g) { $touch[$g[0]][] = $g[1]; }
+foreach ($touch as $pkg => $urls) {
+  $d = collision($rs, $pkgs, $ex, $pkg, $urls);
+  if ($d !== false) { fwrite(STDERR, "$pkg: two sources declare different patches as \"$d\": cannot repair it safely\n"); exit(3); }
 }
 $dirs = array();
 foreach ($gaps as $g) {
@@ -1609,13 +1676,13 @@ foreach ($dups as $g) {
     foreach ($deps as $dd) { ignoreUnder($ex, $dd[0], $pkg, $url, $dd[1]); }
   }
   elseif (count($deps) > 0) {
-    // patches-ignore goes by value: the first dependency keeps the URL only when it
-    // declares it once
-    $first = $deps[0][0];
-    $own = 0;
-    foreach ($deps as $dd) { if ($dd[0] === $first) { $own++; } }
-    if ($own > 1) { fwrite(STDERR, "$first declares $url for $pkg twice: cannot keep one\n"); exit(3); }
-    foreach ($deps as $dd) { if ($dd[0] !== $first) { ignoreUnder($ex, $dd[0], $pkg, $url, $dd[1]); } }
+    // patches-ignore goes by value: the copy kept is that of a dependency declaring
+    // it once, every other dependency's is ignored
+    $own = array();
+    foreach ($deps as $dd) { $own[$dd[0]] = isset($own[$dd[0]]) ? $own[$dd[0]] + 1 : 1; }
+    $keep = array_search(1, $own, true);
+    if ($keep === false) { fwrite(STDERR, "every dependency declaring $url for $pkg declares it twice: cannot keep one\n"); exit(3); }
+    foreach ($deps as $dd) { if ($dd[0] !== $keep) { ignoreUnder($ex, $dd[0], $pkg, $url, $dd[1]); } }
   }
   else { fwrite(STDERR, "no source declares $pkg $url\n"); exit(3); }
   $dirs[$dir] = true;
@@ -1626,28 +1693,41 @@ $pe = !isset($ex->patches) || count((array) $ex->patches) === 0;
 $ie = !isset($ex->{'patches-ignore'}) || count((array) $ex->{'patches-ignore'}) === 0;
 if ($pe && $ie && !isset($ex->{'patches-file'}) && empty($ex->{'enable-patching'})) { $ex->{'enable-patching'} = true; }
 $flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
-if ($pfChanged && file_put_contents($pf, json_encode($pfj, $flags) . "\n") === false) { exit(2); }
-if (file_put_contents('composer.json', json_encode($root, $flags) . "\n") === false) { exit(2); }
+$pfOut = $pfChanged ? json_encode($pfj, $flags) : '';
+$rootOut = json_encode($root, $flags);
+if ($pfOut === false || $rootOut === false) { fwrite(STDERR, "composer.json not encoded\n"); exit(2); }
+if ($pfChanged && file_put_contents($pf, $pfOut . "\n") === false) { exit(2); }
+if (file_put_contents('composer.json', $rootOut . "\n") === false) { exit(2); }
 foreach (array_keys($dirs) as $d) { echo $d, "\n"; }
 EOPHP
 }
 
 _patch_gap_run() {
   # One run of the helper as the build user; $1 workdir, $2 mode. Returns the helper's
-  # own non-zero status, and 1 when list did not print its two count lines first.
-  local _out _rc
+  # own non-zero status, and 1 when list did not print its three count lines first.
+  local _out _rc _re="^gaps: [0-9]+"$'\n'"dups: [0-9]+"$'\n'"checked: [01]"
   _out="$(_run_as_o8 "cd '$1' && php '${_PATCHGAP_PHP}' '$2'")"
   _rc=$?
   [[ "${_rc}" == "0" ]] || return "${_rc}"
   if [[ "$2" == "list" ]]; then
-    [[ "${_out}" =~ ^gaps:\ [0-9]+$'\n'dups:\ [0-9]+ ]] || return 1
+    [[ "${_out}" =~ ${_re} ]] || return 1
   fi
   printf '%s\n' "${_out}"
 }
 
 _patch_gap_count() {
-  # $1 a list output, $2 gaps or dups: the count it printed
+  # $1 a list output, $2 gaps, dups or checked: the count it printed
   sed -n "s/^$2: //p" <<< "$1" | head -n 1
+}
+
+_patch_gap_unnote() {
+  # Prints the note list $1 ("a; b; c") without the note $2.
+  local _l="; $1; "
+  while [[ "${_l}" == *"; $2; "* ]]; do
+    _l="${_l/; $2; /; }"
+  done
+  _l="${_l#; }"
+  printf '%s' "${_l%; }"
 }
 
 _patch_gap_reinstall() {
@@ -1666,10 +1746,13 @@ _patch_gap_reinstall() {
 _patch_gap_rehash() {
   # The lock's content-hash follows composer.json after the helper changed a patch
   # declaration (extra only, so no resolve: one can fail where nothing moved, as on
-  # the Drupal 10.1 and 10.3 pinned trees). $1 workdir, $2 label.
-  local _check="composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"
-  _run_as_o8 "cd '$1' && ${_check}" && return 0
-  if _run_as_o8 "cd '$1' && php '${_PATCHGAP_PHP}' rehash \"\$(readlink -f \"\$(command -v composer)\")\" && ${_check}"; then
+  # the Drupal 10.1 and 10.3 pinned trees). Judged by the hash itself, as Composer's
+  # Locker computes it (composer validate fails on other errors too); a hash that
+  # follows also ends an earlier "lock hash stale" of this platform. $1 workdir,
+  # $2 label.
+  local _h="php '${_PATCHGAP_PHP}'" _c="\"\$(readlink -f \"\$(command -v composer)\")\""
+  if _run_as_o8 "cd '$1' && ${_h} rehash ${_c} && ${_h} hashcheck ${_c}"; then
+    _PENDING_NOTE="$(_patch_gap_unnote "${_PENDING_NOTE}" "lock hash stale")"
     return 0
   fi
   _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json after a patch declaration changed"
@@ -1689,11 +1772,11 @@ _patch_gap_guard() {
   # first reinstalled as declared (a patch that only failed to download applies
   # then); what still fails is ignored at its source, a patch declared twice is
   # declared once, those packages are reinstalled pristine, the lock's hash follows
-  # and the row says `patch skipped`. A gap or duplicate that survives, a check that
-  # cannot run (reporting off included), or any .rej file in a package
-  # composer-patches patched fails the build, and the published copy stays.
-  # $1 workdir, $2 label.
-  local _wd="$1" _label="$2" _out _dirs _kind _pkg _url _d _rej _rc _gap=0
+  # and the row says `patch skipped`. A gap or duplicate that survives or cannot be
+  # repaired safely, a check that cannot run (reporting off included), or any .rej
+  # file in a package composer-patches patched fails the build, and the published
+  # copy stays. $1 workdir, $2 label.
+  local _wd="$1" _label="$2" _out _dirs _kind _pkg _url _d _rej _rc _l _before _gap=0 _keep=()
   _PATCHGAP_PHP="$(mktemp /tmp/.staticbuild-patchgap.XXXXXX)" \
     && _patch_gap_php > "${_PATCHGAP_PHP}" && chmod 0644 "${_PATCHGAP_PHP}" \
     || { _record_fail "${_label} (patch check could not start)"; _patch_gap_done; return 1; }
@@ -1726,6 +1809,8 @@ _patch_gap_guard() {
           ;;
       esac
     done <<< "${_out}"
+    # what applies now: the repair may only drop gaps and duplicates, never change it
+    _before="$(grep $'^applied\t' <<< "${_out}" | sort -u)"
     _dirs="$(_patch_gap_run "${_wd}" ignore)" && [[ -n "${_dirs}" ]] && _patch_gap_reinstall "${_wd}" "${_dirs}" \
       || { _record_fail "${_label} (a patch declaration could not be repaired)"; _patch_gap_done; return 1; }
     _patch_gap_rehash "${_wd}" "${_label}"
@@ -1736,15 +1821,29 @@ _patch_gap_guard() {
       _patch_gap_done
       return 1
     fi
-    while IFS=$'\t' read -r _kind _pkg; do
-      [[ "${_kind}" == "churn" ]] || continue
-      _FIX_LINES+=("# note: ${_pkg} keeps a declared patch set with none applied: composer-patches removes and reinstalls it on every later Composer run on this platform")
-    done <<< "${_out}"
-    if [[ "${_gap}" == "1" ]]; then
-      [[ "${_FIX_NOTE}" == *"patch skipped"* ]] || _FIX_NOTE="${_FIX_NOTE:+${_FIX_NOTE}; }patch skipped"
+    if [[ "$(grep $'^applied\t' <<< "${_out}" | sort -u)" != "${_before}" ]]; then
+      _alrt "${_label}: the patch repair changed which declared patches apply"
+      _record_fail "${_label} (the patch repair changed what applies)"
+      _patch_gap_done
+      return 1
     fi
   fi
   _patch_gap_done
+  # Once the check has read the tree it owns the word: an earlier step's "patch
+  # skipped" (a patch that failed in that step's install) stands only for a patch
+  # still not applied, and this check has just ignored or cured every such one.
+  if [[ "$(_patch_gap_count "${_out}" checked)" == "1" ]]; then
+    _FIX_NOTE="$(_patch_gap_unnote "${_FIX_NOTE}" "patch skipped")"
+    for _l in "${_FIX_LINES[@]}"; do
+      [[ "${_l}" == "# warning: a patch did not apply"* ]] || _keep+=("${_l}")
+    done
+    _FIX_LINES=("${_keep[@]}")
+    [[ "${_gap}" == "1" ]] && _FIX_NOTE="${_FIX_NOTE:+${_FIX_NOTE}; }patch skipped"
+  fi
+  while IFS=$'\t' read -r _kind _pkg; do
+    [[ "${_kind}" == "churn" ]] || continue
+    _FIX_LINES+=("# note: ${_pkg} keeps a declared patch set with none applied: composer-patches removes and reinstalls it on every later Composer run on this platform")
+  done <<< "${_out}"
   # A patch run leaves .rej files only in a package composer-patches patched, and
   # with reporting on every such package has its PATCHES.txt: any .rej there now is
   # a hunk that did not go in.
