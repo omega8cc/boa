@@ -327,6 +327,18 @@ _fpm_proc_max_detection() {
 # platform. Times are read as the box's local time, as the master writes
 # them. The offsets are saved before anything is recorded, and a pass that
 # cannot save them records nothing: the next one reads the same lines.
+#
+# PHP-FPM writes a master line of up to 2047 bytes whole and cuts a longer
+# one to log_limit less a byte (2047 at most), ending it in "...": the tail
+# with the run time is lost. Before PHP 7.3 the bound is a fixed 1023 bytes.
+# Up to 8.4 the warning is about 1 KB at most: whole from 7.3 on, cut before
+# it only with every field near full. 8.5 keeps a request's path and query
+# up to 512 and 2048 bytes, so its warning can pass the bound. A cut-short
+# warning counts when the master logs, within 10 seconds of it, that the
+# same child exited on SIGTERM, the signal the time limit sends; its record
+# has "-" for the seconds, and a request whose path was cut keeps "…" at
+# its end. A warning still waiting for that line is kept for the next pass
+# in /var/log/boa/fpm_timeout.pend, two minutes at most.
 _FPM_CUT_AWK='
 function dfc(y, m, d,   e, yoe, doy) {
   y -= (m <= 2)
@@ -352,44 +364,130 @@ function seg(p,   i) {
   if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
   return p
 }
-BEGIN {
-  q = "\047"
-  pre = "^\\[[0-9][0-9]-[A-Z][a-z][a-z]-[0-9][0-9][0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\\.[0-9]+)?\\] WARNING: \\[pool [a-z0-9._-]+\\] child [0-9]+, script " q "/"
-  off = zsec(tz)
+function ltm(l,   t) {
+  t = lsec(substr(l, 2, 2), substr(l, 5, 3), substr(l, 9, 4), substr(l, 14, 2), substr(l, 17, 2), substr(l, 20, 2))
+  return t < 0 ? -1 : t - off
 }
-$0 ~ pre {
-  t = lsec(substr($0, 2, 2), substr($0, 5, 3), substr($0, 9, 4), substr($0, 14, 2), substr($0, 17, 2), substr($0, 20, 2))
-  if (t < 0) next
-  t -= off
-  r = substr($0, index($0, "] WARNING: [pool ") + 17)
+function who(l,   r, p) {
+  r = substr(l, index(l, "] WARNING: [pool ") + 17)
+  p = substr(r, 1, index(r, "]") - 1)
+  return p "|" (substr(r, length(p) + 9) + 0)
+}
+function rec(l, t, short,   r, pool, sc, i, rq, secs, sp, me, pa, ac, whole) {
+  r = substr(l, index(l, "] WARNING: [pool ") + 17)
   pool = substr(r, 1, index(r, "]") - 1)
   r = substr(r, index(r, ", script " q) + 10)
   i = index(r, q " (request: \"")
-  if (i < 2) next
+  if (i < 2) return
   sc = substr(r, 1, i - 1)
   r = substr(r, i + 13)
-  if (!match(r, /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/)) next
-  secs = substr(r, RSTART + 24) + 0
-  rq = substr(r, 1, RSTART - 1)
+  if (short) {
+    secs = "-"
+    rq = substr(r, 1, length(r) - 3)
+  } else {
+    if (!match(r, /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/)) return
+    secs = sprintf("%d", substr(r, RSTART + 24) + 0)
+    rq = substr(r, 1, RSTART - 1)
+  }
   sp = index(rq, " ")
-  if (sp < 2) next
+  if (sp < 2) return
   me = substr(rq, 1, sp - 1)
   pa = substr(rq, sp + 1)
+  whole = !short || index(pa, "?") > 0
   sub(/\?.*$/, "", pa)
   ac = pool
   sub(/\..*$/, "", ac)
-  if (pool ~ /^www[0-9]+$/ || pool ~ /\.hm$/ || ac !~ /^[a-z0-9][a-z0-9_-]*$/) next
-  if (index(sc, "/data/disk/" ac "/") != 1 || index(sc, "/data/disk/" ac "/aegir/") == 1) next
-  if (sc ~ /\/\.\.?\// || me !~ /^[A-Z]+$/) next
+  if (pool ~ /^www[0-9]+$/ || pool ~ /\.hm$/ || ac !~ /^[a-z0-9][a-z0-9_-]*$/) return
+  if (index(sc, "/data/disk/" ac "/") != 1 || index(sc, "/data/disk/" ac "/aegir/") == 1) return
+  if (sc ~ /\/\.\.?\// || me !~ /^[A-Z]+$/) return
   gsub(/[^A-Za-z0-9._\/+@-]/, "_", sc)
-  printf "%.0f|%s|%d|%s|%s %s\n", t, ac, secs, substr(sc, 1, 300), me, seg(pa) >> (dir "/" ac "." day)
+  pa = seg(pa)
+  if (!whole && substr(pa, length(pa) - 2) != "\342\200\246") pa = pa "\342\200\246"
+  printf "%.0f|%s|%s|%s|%s %s\n", t, ac, secs, substr(sc, 1, 300), me, pa >> (dir "/" ac "." day)
+}
+BEGIN {
+  q = "\047"
+  hd = "^\\[[0-9][0-9]-[A-Z][a-z][a-z]-[0-9][0-9][0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\\.[0-9]+)?\\] WARNING: \\[pool [a-z0-9._-]+\\] child [0-9]+"
+  pre = hd ", script " q "/"
+  term = hd " exited on signal 15 \\(SIGTERM( - core dumped)?\\) after [0-9]+(\\.[0-9]+)? seconds from start$"
+  off = zsec(tz)
+}
+$0 ~ term {
+  t = ltm($0)
+  k = who($0)
+  if (t >= 0 && (k in pl) && t - pt[k] <= 10 && pt[k] - t <= 10) rec(pl[k], pt[k], 1)
+  delete pl[k]
+  delete pt[k]
+  next
+}
+$0 ~ pre {
+  t = ltm($0)
+  if (t < 0) next
+  k = who($0)
+  if (substr($0, length($0) - 2) == "...") {
+    pl[k] = $0
+    pt[k] = t
+  } else if ($0 ~ /"\) execution timed out \([0-9]+(\.[0-9]+)? sec\), terminating$/) {
+    rec($0, t, 0)
+    delete pl[k]
+    delete pt[k]
+  }
+}
+END {
+  for (k in pl) {
+    if (now - pt[k] <= 120 && pt[k] - now <= 120) print pl[k] > carry
+  }
 }
 '
+# A master log a restart or logrotate moved aside keeps its inode: logrotate
+# renames it to <name>.1 (left plain for a day by delaycompress), and BOA's
+# other movers (the launchers, the healers here and in move_sql.sh, a PHP
+# build) put it in a /var/backups/php-logs/<stamp>/ folder under its own
+# name or as a pre-build copy. The file of the saved inode is looked for
+# there, in the ten folders written last; its path is printed. A move to
+# another filesystem gives the file a new inode: it is not found then, and
+# the cuts the old file got after the last pass are not counted.
+_fpm_moved_log() {
+  local _f="${1}" _ino="${2}" _b _c _d _i
+  local -a _cs=()
+  [[ "${_ino}" =~ ^[0-9]+$ ]] || return 1
+  _b="${_f##*/}"
+  _cs=("${_f}.1")
+  # sorted by when each folder was last written to; BOA's stamps are digits
+  # and a dash, and a name ls cannot print whole is only a path not found
+  # shellcheck disable=SC2012
+  while IFS= read -r _d; do
+    [ -n "${_d}" ] || continue
+    _cs+=("${_d%/}/${_b}" "${_d%/}/${_b%.log}"-pre-build-*.log)
+  done < <(ls -1dt -- /var/backups/php-logs/*/ 2> /dev/null | head -n 10)
+  for _c in "${_cs[@]}"; do
+    [ -f "${_c}" ] && [ ! -L "${_c}" ] || continue
+    _i=$(stat -c %i -- "${_c}" 2> /dev/null)
+    if [ "${_i}" = "${_ino}" ]; then
+      echo "${_c}"
+      return 0
+    fi
+  done
+  return 1
+}
+# The lines of ${1} from byte ${2} to byte ${3} that may tell of a cut: a
+# time-out warning, whole or cut short, and a child's SIGTERM exit; never a
+# worker's. As bytes and text whatever they hold: a worker's stderr can put
+# a NUL in the log, a request an invalid UTF-8 byte, and grep would read the
+# chunk as binary and print none of its lines.
+_fpm_cut_lines() {
+  (( ${3} > ${2} )) || return 0
+  tail -c +"$(( ${2} + 1 ))" -- "${1}" 2> /dev/null | head -c "$(( ${3} - ${2} ))" \
+    | LC_ALL=C grep -a -E -e '\) execution timed out \(' -e '\.\.\.$' \
+      -e ' child [0-9]+ exited on signal 15 \(SIGTERM' \
+    | LC_ALL=C grep -a -v -E -- "${_FPM_WORKER_LINE}"
+}
 _fpm_timeout_detection() {
   local _posfile="/var/log/boa/fpm_timeout.pos"
+  local _pend="/var/log/boa/fpm_timeout.pend"
   local _dir="/var/backups/ltd/fpmcut"
-  local _tmp _cut _f _x _y _off _sz _ino _new _first=YES
-  declare -A _POS _INO
+  local _tmp _cut _f _x _y _off _sz _ino _old _osz _new _first=YES
+  declare -A _POS _INO _SEEN
   if [ -f "${_posfile}" ]; then
     while IFS='|' read -r _f _x _y; do
       if [ -n "${_f}" ] && [[ "${_x}" =~ ^[0-9]+$ ]]; then
@@ -409,25 +507,33 @@ _fpm_timeout_detection() {
     _ino=""
     read -r _sz _ino < <(stat -c '%s %i' -- "${_f}" 2> /dev/null)
     [[ "${_sz}" =~ ^[0-9]+$ ]] || continue
+    _SEEN["${_f}"]=1
     if [ "${_first}" = "YES" ]; then
       _off="${_sz}"
     else
-      # a log new since the last pass, or moved away by a restart and
-      # made again, or rotated: from its start
+      # a log new since the last pass, or moved away and made again, or
+      # rotated, is read from its start; a moved one's rest first
       _off="${_POS["${_f}"]:-0}"
-      if [ "${_INO["${_f}"]:-}" != "${_ino}" ] || (( _sz < _off )); then
+      if [ -n "${_INO["${_f}"]:-}" ] && [ "${_INO["${_f}"]}" != "${_ino}" ]; then
+        if _old=$(_fpm_moved_log "${_f}" "${_INO["${_f}"]}"); then
+          _osz=$(stat -c %s -- "${_old}" 2> /dev/null)
+          [[ "${_osz}" =~ ^[0-9]+$ ]] \
+            && _fpm_cut_lines "${_old}" "${_off}" "${_osz}" >> "${_cut}"
+        fi
+        _off=0
+      elif [ "${_INO["${_f}"]:-}" != "${_ino}" ] || (( _sz < _off )); then
         _off=0
       fi
     fi
-    if (( _sz > _off )); then
-      # as bytes and text whatever they hold: a worker's stderr can put a NUL
-      # in the log, a request an invalid UTF-8 byte, and grep would read the
-      # chunk as binary and print none of its lines
-      tail -c +"$(( _off + 1 ))" -- "${_f}" 2> /dev/null | head -c "$(( _sz - _off ))" \
-        | LC_ALL=C grep -a -F -- ') execution timed out (' \
-        | LC_ALL=C grep -a -v -E -- "${_FPM_WORKER_LINE}" >> "${_cut}"
-    fi
+    _fpm_cut_lines "${_f}" "${_off}" "${_sz}" >> "${_cut}"
     _new+="${_f}|${_sz}|${_ino}"$'\n'
+  done
+  # a log moved aside and not made again yet keeps its entry, so its rest is
+  # found once the new one is there
+  for _f in "${!_POS[@]}"; do
+    [ -n "${_SEEN["${_f}"]:-}" ] && continue
+    [[ "${_f}" == /var/log/php/php*-fpm-error.log ]] || continue
+    _new+="${_f}|${_POS["${_f}"]}|${_INO["${_f}"]}"$'\n'
   done
   if ! printf '%s' "${_new}" > "${_tmp}" 2> /dev/null \
     || ! mv -f "${_tmp}" "${_posfile}" 2> /dev/null; then
@@ -440,8 +546,17 @@ _fpm_timeout_detection() {
       mkdir -p "${_dir}"
     fi
     chmod 700 "${_dir}"
-    LC_ALL=C awk -v tz="$(date +%z)" -v dir="${_dir}" -v day="$(date +%Y%m%d)" \
-      "${_FPM_CUT_AWK}" < "${_cut}" 2> /dev/null
+    rm -f "${_pend}.$$"
+    : > "${_pend}.$$" 2> /dev/null && chmod 600 "${_pend}.$$"
+    cat -- "${_pend}" "${_cut}" 2> /dev/null \
+      | LC_ALL=C awk -v tz="$(date +%z)" -v dir="${_dir}" -v day="$(date +%Y%m%d)" \
+        -v now="$(date +%s)" -v carry="${_pend}.$$" "${_FPM_CUT_AWK}" 2> /dev/null
+    if [ -s "${_pend}.$$" ]; then
+      mv -f "${_pend}.$$" "${_pend}" 2> /dev/null
+    else
+      rm -f "${_pend}"
+    fi
+    rm -f "${_pend}.$$"
   fi
   rm -f "${_cut}"
 }

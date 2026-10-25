@@ -55,7 +55,7 @@ with the `percona-8.4` argument (docs/INSTALL.md).
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.11)
 - [Drupal 11.3.20](https://drupal.org/project/drupal/releases/11.3.20)
 - [Drupal 11.4.11](https://drupal.org/project/drupal/releases/11.4.11)
-- [Drupal CMS 2.2.6](https://drupal.org/project/cms) (11.4.11)
+- [Drupal CMS 2.2.7](https://drupal.org/project/cms) (11.4.11)
 - [farmOS 4.0.9](https://drupal.org/project/farm) (11.3.19)
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.11)
 - [OpenCulturas 3.1.4](https://drupal.org/project/openculturas) (11.4.11)

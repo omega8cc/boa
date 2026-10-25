@@ -53,6 +53,12 @@
       servers and skips a site on one; any other site without a usable
       db_name still stops the run.
 
+    * The plain proxy of a moved instance let a visitor the web IDS had
+      banned through to the new host whenever the box sat behind
+      Cloudflare, where csf sees only the edge, while the HTTPS proxy for
+      the same address refused it. It now refuses a banned address at its
+      door too, and the upgrade adds the check to deployed proxies.
+
     * The HTTPS proxy of a control panel, and the plain proxy of a moved
       instance, wrote their access log into a file named "on" under
       nginx's prefix, /usr/on, which nothing rotated or read, so the web
@@ -1911,6 +1917,12 @@
       for an account at phase A whose site keeps its files store outside
       the account (docs/INSTGRP.md).
 
+    * The shell accounts' Drush rules also apply to a command line a tool
+      hands /bin/sh in Composer's own form (a quoted or exec-led line),
+      where the refusal fails the tool's command, and to a drush line
+      continued over a backslash-newline or started through a wrapper
+      program given by its path.
+
 @=> New Features
 
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
@@ -2004,7 +2016,11 @@
       site is named: PHP-FPM's line has none, and a guess from the access
       log or the vhosts could hand another tenant's name or request to the
       account; the script's path names the platform. Nothing is stopped or
-      changed.
+      changed. A time-out line PHP-FPM cut short itself (2 KB or more, 1 KB
+      before PHP 7.3; PHP 8.5 logs a query of up to 2 KB) loses its run
+      time but still counts once the same child's exit on SIGTERM follows.
+      Cuts a master log got between a pass and the restart or logrotate run
+      that moved it aside are read from the moved file, found by its inode.
 
     * The PHP-FPM logs that every barracuda and octopus run and every FPM
       restart move aside into /var/backups/php-logs/<stamp>/ are kept 30

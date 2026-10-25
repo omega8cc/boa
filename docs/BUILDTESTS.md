@@ -318,7 +318,7 @@ Distributions, published to `/var/www/static/distro`:
 ```sh
   commerce_base-2.40-10.1.8
   commerce_kickstart-5.1.0-11.4.11
-  drupal_cms_installer-2.2.6-11.4.11
+  drupal_cms_installer-2.2.7-11.4.11
   civicrm_drupal-6.19.2-11.4.11
   ezcontent-2.2.15-10.3.6
   farm-4.0.9-11.3.19
@@ -588,8 +588,8 @@ farmos     # farm-4.0.9-11.3.19  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.2.6-11.4.11 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.6-11.4.11
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.7-11.4.11 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.7-11.4.11
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer require --no-update --no-scripts drupal/drupal_cms_starter:^2 drupal/drupal_cms_blank:^2 drupal/drupal_cms_ai:^2 drupal/drupal_cms_multilingual:^2 drupal/drupal_cms_forms:^2 drupal/drupal_cms_accessibility_tools:^2 drupal/drupal_cms_google_analytics:^2   # drupal/cms 2.2.4 no longer requires its site templates and add-on recipes; its installer would fetch a missing template with Composer during the site install
