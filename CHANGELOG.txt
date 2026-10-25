@@ -374,10 +374,14 @@
       account's cnf on the target only with a copy written whole: a write
       that failed part way (a full disk) cut the cnf short while the merge
       reported success, and the account's next pass read what was left.
-      The merge now stops with the cnf as it was and says it failed.
-      instgrp's write of the web group's policy is checked the same way,
-      and the broker's take-back of a migration's leftover line renames
-      its copy over the cnf instead of writing into it.
+      Every key now goes into one copy, renamed over the cnf after the
+      last key, so a merge that stops part way leaves the cnf as it was
+      and says it failed, and xmass stops a live sync or a cutover when
+      the merge failed. The upgrade-notice switches and the web group and
+      broker seeds write their copies the same way, instgrp's write of the
+      web group's policy is checked and stops its leg when it fails, and
+      the broker's take-back of a migration's leftover line renames its
+      copy over the cnf instead of writing into it, never through a link.
 
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
