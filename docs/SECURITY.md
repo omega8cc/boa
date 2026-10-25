@@ -20,6 +20,8 @@ Given that `node` can be exploited to bypass Limited Shell and pose a significan
 
 Node itself is installed only when the empty control file `/root/.allow.node.lshell.cnf` exists and `NPM` is in `_XTRAS_LIST`; without that file a barracuda upgrade removes it. The limited shell keeps `node`, `npm`, `npx` and `scp` in its command lists when that file exists or when any Octopus instance on the box is of type PHANTOM, CLUSTER, ULTRA or MONSTER; on every other box they are stripped from the lists on every pass. Creating the file takes effect with the next barracuda upgrade, which installs Node and puts the shipped lists back (with `_CUSTOM_CONFIG_LSHELL=YES`, your own saved list instead).
 
+Even where Node/NPM is enabled, only the main `oN.ftp` account gets it; per-client shell sub-accounts never do.
+
 In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
 # Security Considerations for Running PHP by Name
