@@ -7954,7 +7954,8 @@ _ltd_fpm_core_check() {
 # record a cut in /var/backups/ltd/fpmcut/<account>.<day>, root's, written by
 # the php monitor. A script of the account cut _LTD_FPM_CUT_MIN times or more
 # in the last 24 hours is listed in ~/static/control/.fpm-timeout.info, with
-# the count, how long it ran, the first and last cut and the last request
+# the count, how long it ran (when PHP-FPM did not cut its own line short
+# and the run time with it), the first and last cut and the last request
 # as PHP-FPM logged it (its method and first path segment only), and in a
 # daily notice for the operator; the file goes when none is left. No site
 # is named: the master's line has none, and a guess could hand another
@@ -7983,15 +7984,16 @@ _ltd_fpm_cut_notice() {
         if (i > 0 && length(p) > i + 1) p = substr(p, 1, i + 1) "\342\200\246"
         return substr(q, 1, sp) p
       }
+      # "-" for the seconds: PHP-FPM cut its own line short, run time and all
       NF == 5 && $1 ~ /^[0-9]+$/ && $1 > now - 86400 && $1 <= now + 300 \
-        && $2 == acct && $3 ~ /^[0-9]+$/ && index($5, " ") > 1 {
+        && $2 == acct && $3 ~ /^([0-9]+|-)$/ && index($5, " ") > 1 {
         k = $4
         q = segr($5)
-        if (!(k in c)) { c[k] = 0; f[k] = $1; l[k] = $1; s[k] = $3; nk++; K[nk] = k }
+        if (!(k in c)) { c[k] = 0; f[k] = $1; l[k] = $1; s[k] = ""; nk++; K[nk] = k }
         c[k]++
         if ($1 < f[k]) f[k] = $1
         if ($1 >= l[k]) { l[k] = $1; r[k] = q }
-        if ($3 + 0 < s[k] + 0) s[k] = $3
+        if ($3 != "-" && (s[k] == "" || $3 + 0 < s[k] + 0)) s[k] = $3
         if (!((k SUBSEP q) in u)) { u[k SUBSEP q] = 1; d[k]++ }
       }
       END {
@@ -8010,7 +8012,12 @@ _ltd_fpm_cut_notice() {
   fi
   _txt=""
   while IFS='|' read -r _c _sc _s _t1 _t2 _rq _d; do
-    _ln="${_sc}: cut ${_c} times after ${_s} s, first $(date -d "@${_t1}" '+%F %H:%M'),"
+    if [ -n "${_s}" ]; then
+      _ln="${_sc}: cut ${_c} times after ${_s} s,"
+    else
+      _ln="${_sc}: cut ${_c} times at the time limit,"
+    fi
+    _ln+=" first $(date -d "@${_t1}" '+%F %H:%M'),"
     _ln+=" last $(date -d "@${_t2}" '+%F %H:%M %Z'); last request ${_rq}"
     [ "${_d}" -gt 1 ] 2> /dev/null && _ln+=" (of ${_d} different requests)"
     _txt+="${_ln}"$'\n'

@@ -1888,6 +1888,44 @@ _nginx_ssl_proxy_backend_drop() {
   _nginx_pre_d_backend_drop ssl_proxy.conf
   _nginx_pre_d_backend_drop pln_proxy.conf
 }
+_nginx_pln_proxy_ban_guard() {
+  ### A moved instance's plain proxy in pre.d written before its template
+  ### checked the IDS bans lets a banned visitor through whenever csf sees
+  ### only the edge of a site behind Cloudflare, while the HTTPS proxy for
+  ### the same address refuses it. It gets the template's lines, taken from
+  ### this pass's build tree, after its log_not_found line. A file without
+  ### exactly one such line is left alone, and every insert is undone when
+  ### the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/pln_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _any=""
+  grep -q 'if ($is_banned) {' "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-pln-ban.XXXXXX 2>/dev/null) || return 0
+  awk '/^  ### IDS bans: / { p = 1; print "  ###" }
+    p { print }
+    p && /^  }$/ { exit }' "${_src}" > "${_bak}/.block"
+  if ! grep -q '^  if ($is_banned) {$' "${_bak}/.block" \
+    || ! grep -q "^    return 444;$" "${_bak}/.block"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*pln_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -q 'is_banned' "${_p}" && continue
+    [ "$(grep -c '^  log_not_found ' "${_p}")" = "1" ] || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    awk -v blk="${_bak}/.block" '{ print }
+      /^  log_not_found / { while ((getline _l < blk) > 0) print _l }' \
+      "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*pln_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
 _nginx_ssl_proxy_header_buffer() {
   ### An HTTPS proxy in pre.d written before its template sized its header
   ### buffer answers 502 for a site's answer whose headers pass nginx's 4k
@@ -2208,6 +2246,7 @@ _nginx_config_update_fix() {
       _nginx_ssl_proxy_panel_lock
       _nginx_ssl_proxy_extra_names
       _nginx_ssl_proxy_backend_drop
+      _nginx_pln_proxy_ban_guard
       _nginx_ssl_proxy_header_buffer
       _nginx_migration_proxy_client
       _nginx_migration_proxy_backend_drop

@@ -1375,6 +1375,20 @@ Because the deny keys on the realip'd address,
 it bites a Cloudflare-proxied attacker at the origin's nginx — where an origin CSF/iptables
 ban on a CF-fronted IP would only see the CF edge and miss.
 
+The proxies in `pre.d` test it at their own door, where `$remote_addr` is the real visitor:
+the wildcard SSL front, a control panel's HTTPS proxy, and a moved instance's HTTPS and plain
+proxies (`z_<domain>_ssl_proxy.conf`, `z_<domain>_pln_proxy.conf`). The vhost behind a panel's
+proxy sees only the box's own address, which no ban names, and a moved instance's proxies log
+into the main access log, so this box's IDS bans their visitors. A barracuda upgrade adds the
+test to a deployed plain proxy that lacks it.
+
+The migration / PX0 site proxies in an account's `vhost.d` carry no such test. They log
+nothing on the old box, and the new host, which trusts the old one as a realip source, sees
+the visitor and applies its own list; its 444 then reaches the visitor as a drop.
+
+The box's own addresses never enter the set: the writers skip the local address list,
+`127.0.0.0/8` and the allow list, and csf refuses to deny one of the server's own addresses.
+
 ### `$boa_fleet_block` → 429 — the crawler-fleet refusal
 
 The enforcement half of the fleet detector (Part 1). The maps live in the BOA-written
