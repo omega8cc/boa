@@ -16,7 +16,9 @@ It is **imperative** to never grant anyone access to the Ægir **system user** o
 
 # Security Considerations for Node/NPM Access
 
-Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. It is enabled when the empty control file `/root/.allow.node.lshell.cnf` exists, or automatically when any Octopus instance on the box is of type PHANTOM, CLUSTER, ULTRA or MONSTER; on every other box `node`, `npm`, `npx` and `scp` are stripped from the limited shell's command lists on every pass.
+Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default.
+
+Node itself is installed only when the empty control file `/root/.allow.node.lshell.cnf` exists and `NPM` is in `_XTRAS_LIST`; without that file a barracuda upgrade removes it. The limited shell keeps `node`, `npm`, `npx` and `scp` in its command lists when that file exists or when any Octopus instance on the box is of type PHANTOM, CLUSTER, ULTRA or MONSTER; on every other box they are stripped from the lists on every pass. Creating the file takes effect with the next barracuda upgrade, which installs Node and puts the shipped lists back (with `_CUSTOM_CONFIG_LSHELL=YES`, your own saved list instead).
 
 In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
@@ -26,13 +28,13 @@ Outside a Composer run, only members of the hand-assigned `ltd-shell-more` group
 
 A tool the account runs can also hand `/bin/sh` a command line, an npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account."
 
-Composer is the exception. Inside a Composer run every account runs PHP by name: an `@php` script entry, a compile task of CiviCRM's packages, a `php` line in the project's own `composer.json` scripts, or a tool one of those starts. Composer already runs its plugins and PHP callback scripts inside its own process, so refusing its children stopped real builds without closing anything. Outside a Composer run, PHP typed in the shell stays refused, and so does a command line another tool hands `/bin/sh` whose program is PHP.
+Composer is the exception. Inside a Composer run every account runs PHP by name: an `@php` script entry, a compile task of CiviCRM's packages, a `php` line in the project's own `composer.json` scripts, or a tool one of those starts. Composer already runs its plugins and PHP callback scripts inside its own process, so refusing its children stopped real builds without closing anything. Outside a Composer run, PHP typed in the shell stays refused, and so does a command line another tool hands `/bin/sh` whose program is PHP, other than the Drush backend calls and Composer launches below.
 
 The wrapper recognises the run by an ancestor process of the same account, up to eight steps up, whose program is one of the server's PHP builds (`/opt/phpNN/bin/php` or `/usr/bin/php`) running `/usr/local/bin/composer` (or BOA's `/usr/bin/composer` link to it), whether the wrapper started that Composer or it was started by its path.
 
 Inside the run a `NAME=value` word in front of `php` runs too (`XDEBUG_MODE=coverage php vendor/bin/phpunit`), and so does a Composer `@php` entry in front of a Drush launcher (`@php vendor/bin/drush cr`), which Composer expands with `-d` options of its own: the run already starts any PHP, so the wrapper's rule against an ini of the account's choosing guards nothing there. Its other Drush rules still apply inside the run (a forbidden Drush command, a file-loading option, Drush 8's read-only rule on a Drupal 8+ codebase), and their refusal fails the Composer script.
 
-Drush, vdrush, bee and Composer keep working: the wrapper starts them itself on the PHP version the account chose. A Drush launcher at the head of a line that names an interpreter runs on that version too. A Composer `@composer` entry and `grav composer` run Composer on the PHP they name when it is one of the server's `/opt/phpNN/bin/php` builds. Members keep PHP by name while the box's `/etc/lshell.conf` carries the `phpNN` aliases.
+Drush, vdrush, bee and Composer keep working: the wrapper starts them itself on the PHP version the account chose. A Drush launcher at the head of a line that names an interpreter (a Drush backend call) runs on that version too. A Composer `@composer` entry and `grav composer` run Composer on the PHP they name when it is one of the server's `/opt/phpNN/bin/php` builds. Members keep PHP by name while the box's `/etc/lshell.conf` carries the `phpNN` aliases.
 
 # BOA System Security Features Explained
 
