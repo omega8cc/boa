@@ -65,6 +65,9 @@
 #   Textpattern  /txpadmin — where BOA maps the Textpattern admin.
 # A Grav site that serves a deliberately public headless API adds the keyword
 # `api-open` to its record: /admin stays on the list, /api stays public.
+# Without it, KahunaCart's public routes under /api/v1/kahunacart stay open
+# (licences, shipping and bookings `public/`, the affiliates' `account/`):
+# their callers are never on an owner's list and the plugin checks each.
 #
 # Control file (Octopus only — the instance's sites and its control panel, whose
 # HTTPS proxy in pre.d includes the panel's fragment and map itself; the master's
@@ -79,7 +82,7 @@ _server_ip_file="/root/.found_correct_ipv4.cnf"
 
 # Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
-_emit_version="6"
+_emit_version="7"
 
 # The deployed front includes the front files only once it carries these lines;
 # until then none are written, so a front deploy never meets an unvalidated one.
@@ -822,6 +825,14 @@ _area_lines() {
   # needs no arm -- on a multi-language capsule /en/admin and /en/api/v1
   # are plain 404s.
   if [[ "$1" == "grav" && -z "$2" ]]; then
+    # KahunaCart's public routes stay open: the parties that call them are
+    # never on an owner's list (customers' software validating a licence, a
+    # carrier's tracking webhook, a shopper's booking widget, a partner's
+    # portal), and the plugin authenticates each itself. Case-sensitive and
+    # on v1 only, written before the line they except (a map takes the first
+    # regex that matches): any other spelling or version stays locked.
+    echo "  ~^/+api/v1/kahunacart/(?:licenses|shipping|bookings)/public/ 0;"
+    echo "  ~^/+api/v1/kahunacart/affiliates/account/ 0;"
     echo "  ~*^/+api(?:/|\$) 1;"
   elif [[ "$1" == "txp" ]]; then
     echo "  ~*^/+txpadmin(?:/|\$) 1;"
