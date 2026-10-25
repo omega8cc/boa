@@ -53,6 +53,12 @@
       servers and skips a site on one; any other site without a usable
       db_name still stops the run.
 
+    * The plain proxy of a moved instance let a visitor the web IDS had
+      banned through to the new host whenever the box sat behind
+      Cloudflare, where csf sees only the edge, while the HTTPS proxy for
+      the same address refused it. It now refuses a banned address at its
+      door too, and the upgrade adds the check to deployed proxies.
+
     * The HTTPS proxy of a control panel, and the plain proxy of a moved
       instance, wrote their access log into a file named "on" under
       nginx's prefix, /usr/on, which nothing rotated or read, so the web
