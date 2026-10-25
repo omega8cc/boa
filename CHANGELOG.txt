@@ -1931,6 +1931,12 @@
       continued over a backslash-newline or started through a wrapper
       program given by its path.
 
+    * The shell accounts' Drush and PHP rules read a wrapper program's
+      options alike: the value an option takes (env -u, timeout -s,
+      stdbuf -o, time -f) and timeout's duration, whatever their form,
+      are passed over, env -S's value is read as env's own arguments,
+      and the PHP rule also reads a wrapper given by its path.
+
 @=> New Features
 
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
