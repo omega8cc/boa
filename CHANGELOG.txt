@@ -4,6 +4,16 @@
 
 @=> Important Fixes
 
+    * A catalogue platform no longer ships a half-applied dependency
+      patch. When a patch a distribution declares no longer fits,
+      composer-patches 1.x kept the hunks that applied, left .rej files
+      and only logged that it skipped the patch: Open Social's
+      simple_oauth lost an import and its OAuth factories failed with a
+      TypeError. The build now reinstalls such a package without the
+      patch, records the patch as ignored and says "patch skipped"; a
+      patch declared twice is declared once, and anything left over
+      fails the build.
+
     * staticbuild no longer marks the EzContent and Commerce v.2 rows
       "lock hash stale" when their lock already matches composer.json:
       the hash is checked first, and a resolve runs only when it is
