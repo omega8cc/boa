@@ -57,7 +57,7 @@ autosymlink.verbose.archive.log; emails go to _MY_EMAIL from /root/.barracuda.cn
   -h, --help, help                this text; any other argument is refused
 
 Nothing runs before the install has completed, on a replication standby, or
-while another instance holds the lock. Docs: docs/FILES-SYMLINK.md
+while another instance holds the lock. Docs: https://docs.boa.io/operating/files-symlinking
 HELP
 }
 
