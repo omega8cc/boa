@@ -4227,8 +4227,9 @@ _xoct_push_target_octopus_cnf() {
 # the cnf once, after the last key: a merge that stops part way (a short
 # write, a killed run) leaves the cnf as it was, never half merged. Each
 # rewrite of the work copy goes to a fresh name (a link or a stale copy put
-# at the name is removed first) and counts only when grep's own status says
-# its lines are whole (1: it kept none) and the line after them was written
+# at the name is removed first, a directory there stops the merge) and counts
+# only when grep's own status says its lines are whole (1: it kept none) and
+# the line after them was written
 _w="${_cnf}.mrgwork"
 _n="${_cnf}.mrgnew"
 _stop() { rm -f -- "${_w}" "${_n}" "${_mrg}"; exit 1; }
@@ -4238,6 +4239,8 @@ _rw() {
     [ -z "${2}" ] || printf '%s\n' "${2}" ) > "${_n}" 2> /dev/null \
     && mv -f -- "${_n}" "${_w}"; }
 rm -f -- "${_w}"
+# cp would copy the cnf into a directory left at the name
+[ ! -d "${_w}" ] || { echo "ALRT: ${_w} is a directory: remove it, then re-run" >&2; _stop; }
 cp -- "${_cnf}" "${_w}" 2> /dev/null || _stop
 while IFS= read -r _l; do
   case "${_l}" in
