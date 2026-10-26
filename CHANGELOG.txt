@@ -13,11 +13,13 @@
       and logs the signal beside its exit reasons, so the re-run a
       migration asks for can start at once.
 
-    * Reset login on a Grav site now signs out every browser session and
-      API token issued before it. It wrote the admin account without the
-      cutoff the Login and API plugins check (api_tokens_valid_after,
-      which their own password change stamps), so an earlier Admin2 token
-      or its refresh token kept working after the reset.
+    * Reset login on a Grav site now signs out every browser session,
+      remembered login and API token issued before it. It wrote the admin
+      account without the cutoff the Login and API plugins check
+      (api_tokens_valid_after, which their own password change stamps) and
+      kept the account's remember-me logins, so an earlier Admin2 token,
+      its refresh token or a remembered browser kept working after the
+      reset. API keys stay, as with the plugins' own password change.
 
     * A Grav site behind the login/admin IP lock keeps KahunaCart's public
       routes reachable: the licence routes customers' software calls, the
