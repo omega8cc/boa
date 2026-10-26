@@ -6032,14 +6032,6 @@ _migrate_prepare() {
       _TGT_CNF_MERGED=$?
       _xoct_dbctl_from_source "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_dbctl_seed_back "${_TGT_HM_USER}" "${_tgt}" "${_TGT_CNF_MERGED}"
-      ### A merge that failed stops the create: the account would go on there
-      ### on the target's own values (an opt-out among them); a re-run merges
-      ### again.
-      if [ "${_TGT_CNF_MERGED}" != "0" ]; then
-        echo "ERROR: ${_cmd} for ${_oct}: the source's octopus.cnf values were not merged on ${_tgt};"
-        echo "ERROR: the account would run there on the target's own values -- re-run the create"
-        exit 1
-      fi
       ### After the merge, which carries the source's switch: under admail=
       ### a target that keeps the notice on refuses the create, before the
       ### transfer can bring the setup mail it would send. The record put
@@ -6053,11 +6045,21 @@ _migrate_prepare() {
       fi
       ### Every move, test or real: the account's first pass there that would
       ### mail its upgrade notice sends none (_xoct_upgrade_skip_file), unless
-      ### the account's switch here is NO, which the merge carries there.
-      if [ "$(_xoct_upgrade_switch "/root/.${_oct}.octopus.cnf")" = "NO" ]; then
+      ### the account's switch here is NO, which the merge carries there (a
+      ### merge that failed carried nothing: the marker goes on then too).
+      if [ "${_TGT_CNF_MERGED}" = "0" ] \
+        && [ "$(_xoct_upgrade_switch "/root/.${_oct}.octopus.cnf")" = "NO" ]; then
         echo "INFO: ${_oct}'s upgrade notice is off here (_SEND_UPGRADE_EMAIL=NO): no one-pass marker is put on ${_tgt}"
       else
         _xoct_upgrade_skip_put "${_TGT_HM_USER}" "${_tgt}" create
+      fi
+      ### A merge that failed stops the create, once the upgrade notice is kept
+      ### off above: the account would go on there on the target's own values
+      ### (an opt-out among them); a re-run merges again.
+      if [ "${_TGT_CNF_MERGED}" != "0" ]; then
+        echo "ERROR: ${_cmd} for ${_oct}: the source's octopus.cnf values were not merged on ${_tgt};"
+        echo "ERROR: the account would run there on the target's own values -- re-run the create"
+        exit 1
       fi
       _XOCT_GMAP="${_XOCT_AMAP}"
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
@@ -8110,7 +8112,7 @@ _migrate_init() {
             _xoct_dbctl_seed_back "${_DST_ACCT}" "${_tgt}" "${_XFER_CNF_MERGED}"
             if [ "${_XFER_CNF_MERGED}" != "0" ]; then
               echo "ERROR: ${_cmd} for ${_oct}: the source's octopus.cnf values were not merged on ${_tgt};"
-              echo "ERROR: NOT marking the transfer complete -- re-run it"
+              echo "ERROR: stopped here -- run ${_cmd} again without --live (a clean dry run), then with --live"
               exit 1
             fi
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
