@@ -76,11 +76,11 @@ writes the per-site nginx fragments across every Octopus instance, with per-clas
 rate-limit zones.
 
 **Docs:** per-site how-to —
-[docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md);
+[AI crawlers and assistants on your sites](https://docs.boa.io/using/protecting-your-site/ai-crawlers);
 per-server overview —
-[docs/AI-POLICY.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md);
+[AI crawler policy](https://docs.boa.io/operating/nginx-internals/ai-crawler-policy);
 edge testing —
-[docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md).
+[Building & testing BOA changes](https://docs.boa.io/developing/build-test/build-and-test).
 
 ---
 
@@ -95,9 +95,9 @@ allowed) and a ~2-minute pickup. Behind Cloudflare the list matches on the
 visitor's real IP.
 
 **Docs:** per-site how-to —
-[docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md);
+[Locking a whole site to your own IP addresses](https://docs.boa.io/using/protecting-your-site/site-ip-lock);
 per-server overview —
-[docs/IP-ACCESS.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md).
+[Whole-site IP allow-list — ip_access](https://docs.boa.io/operating/security/site-ip-access).
 
 ---
 
@@ -259,11 +259,11 @@ tested set:
 
 The new per-site edge controls and the edge-test harness are documented in the repo:
 
-- AI bot control, per site: [docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md)
-- AI bot policy, per-server overview: [docs/AI-POLICY.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md)
-- AI bot policy and edge testing: [docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md)
-- IP access control, per site: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md)
-- IP access control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md)
+- AI bot control, per site: [AI crawlers and assistants on your sites](https://docs.boa.io/using/protecting-your-site/ai-crawlers)
+- AI bot policy, per-server overview: [AI crawler policy](https://docs.boa.io/operating/nginx-internals/ai-crawler-policy)
+- AI bot policy and edge testing: [Building & testing BOA changes](https://docs.boa.io/developing/build-test/build-and-test)
+- IP access control, per site: [Locking a whole site to your own IP addresses](https://docs.boa.io/using/protecting-your-site/site-ip-lock)
+- IP access control, per-server overview: [Whole-site IP allow-list — ip_access](https://docs.boa.io/operating/security/site-ip-access)
 
 ---
 
@@ -289,8 +289,8 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/UPGRADE.md
-Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/SELFUPGRADE.md
+Full upgrade documentation: https://docs.boa.io/self-hosting/keeping-current
+Self-upgrade automation: https://docs.boa.io/operating/os-lifecycle/selfupgrade-reference
 
 ---
 

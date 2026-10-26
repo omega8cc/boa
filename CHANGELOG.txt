@@ -6058,19 +6058,19 @@
 @=> New Documentation
 
     * AI bot control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
+      https://docs.boa.io/using/protecting-your-site/ai-crawlers
 
     * AI bot policy, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
+      https://docs.boa.io/operating/nginx-internals/ai-crawler-policy
 
     * AI bot policy and edge testing (edgetest):
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
+      https://docs.boa.io/developing/build-test/build-and-test
 
     * IP access control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
+      https://docs.boa.io/using/protecting-your-site/site-ip-lock
 
     * IP access control, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
+      https://docs.boa.io/operating/security/site-ip-access
 
 
 ###
@@ -6102,7 +6102,7 @@
   All three _AUTO_UP_* variables must be defined to enable auto-upgrade.
   Weekly runs perform only "barracuda up-lts system"; the month/day date
   triggers a full Barracuda + Octopus upgrade. See the full reference at:
-    https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFUPGRADE.md
+    https://docs.boa.io/operating/os-lifecycle/selfupgrade-reference
 
   Then enable automatic reboot when a new kernel is installed:
 
@@ -6712,7 +6712,7 @@
    responsive (and stay that way during spikes), this is genuinely good news.
    Why is this a big deal? What should visitors notice?
 
-   Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/docs/HTTP3.md
+   Read the full story: https://docs.boa.io/operating/nginx-internals/http3-ktls
 
  * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
    Percona has released its own build for Debian Trixie, which can be used on
@@ -7409,16 +7409,16 @@
       This new feature is exclusive to BOA PRO and will not be ported to LTS.
 
       New PRO Backups for BOA SysAdmin:
-        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_ROOT.md
+        https://docs.boa.io/operating/backups/overview
 
       New PRO Backups for Octopus Lshell User:
-        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md
+        https://docs.boa.io/using/backups/mybackup-and-quota
 
       New PRO Backups Retention Policy Configuration:
-        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_RETENTION.md
+        https://docs.boa.io/operating/backups/retention
 
       New PRO Backups Supported Regions and Bucket Creation Guidelines:
-        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md
+        https://docs.boa.io/operating/backups/regions-and-buckets
 
 
 @=> Improvements
@@ -8503,7 +8503,7 @@
     LHG VBE D7P D7S D7D
 
   Composer will now use PHP 7.3 by default, and you can find many useful hints at:
-    https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+    https://docs.boa.io/using/deploying-code/building-a-platform
 
   IMPORTANT: You must switch your ~/static/control/cli.info to 7.2 or newer
   PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
@@ -8553,7 +8553,7 @@
 
   By the way, Composer will now use PHP 7.3 by default, and you can find
   many useful hints at:
-    https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+    https://docs.boa.io/using/deploying-code/building-a-platform
 
   Big improvements and changes are coming to (auto)managing Solr cores too!
   Solr cores are are now created every 5 minutes if needed, instead of during
@@ -8607,7 +8607,7 @@
   and the cloned site will also get its own Solr core created.
 
   For more details please check the docs at:
-    https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
+    https://docs.boa.io/operating/solr/overview-and-tuning
 
 @=> Drupal 8.7.0 platforms and Composer support
 
@@ -9338,7 +9338,7 @@
   You will need to re-initialize your account to have it added, by
   deleting the control file, and adding it again after ~10 minutes.
 
-  More details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
+  More details: https://docs.boa.io/using/deploying-code/gems-and-node-tools
 
 @=> Redis integration works with Drupal 8 -- with no effort on your side
 
@@ -9511,7 +9511,7 @@
   # How to enable live mode?
   # How to replace Let's Encrypt certificate with custom certificate?
 
-    [ Available also at: https://omega8.cc/node/381 ]
+    [ Available also at: https://learn.omega8.cc/letsencrypt-free-ssl-certificates-381 ]
 
   This BOA release opens a new era in SSL support for all hosted Drupal sites.
   The old method of creating SSL proxy vhosts is officially deprecated,
@@ -9904,9 +9904,10 @@
 
   @=> Latest Drupal 7 core version used in BOA in all built-in platforms is
       compatible with latest PHP 7.0.6 -- you can switch your Octopus instance
-      easily via fpm.info control file: https://omega8.cc/node/330 but please
-      don't use 7.0 in cli.info, because it is not supported in the Ægir
-      backend yet. PHP 7.0 can't be used if you have any Pressflow 6 site.
+      easily via fpm.info control file:
+      https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+      but please don't use 7.0 in cli.info, because it is not supported in the
+      Ægir backend yet. PHP 7.0 can't be used if you have any Pressflow 6 site.
 
 # New features and enhancements:
 
@@ -10185,7 +10186,7 @@
       receive upgrade to BOA-2.4.9, as announced before -- Please switch your
       Octopus to PHP 5.6 or at least 5.5 to be able to upgrade not only
       the Barracuda system part of BOA, but also Octopus Satellite --
-      The how-to can be found at: https://omega8.cc/node/330
+      The how-to can be found at: https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
   @=> Drupal 8 support for custom platforms in the ~/static directory tree
       will be included, along with Drush 8 and Hostmaster 3.x in the upcoming
@@ -10227,7 +10228,7 @@
       receive upgrade to BOA-2.4.8, as announced before -- Please switch your
       Octopus to PHP 5.6 or at least 5.5 to be able to upgrade not only
       the Barracuda system part of BOA, but also Octopus Satellite --
-      The how-to can be found at: https://omega8.cc/node/330
+      The how-to can be found at: https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
   @=> Drupal 8 support for custom platforms in the ~/static directory tree
       will be included, along with Drush 8 and PHP 7 in the *upcoming*
@@ -10344,7 +10345,7 @@
   @=> This BOA release (2.4.7) is the last release which still supports
       deprecated PHP versions: 5.3 and 5.4 -- You should switch to PHP 5.6
       or at least 5.5 as soon as possible, or you will not be able to upgrade
-      to newer BOA versions after 2.4.7 -- https://omega8.cc/node/330
+      to newer BOA versions after 2.4.7 -- https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
   @=> What are BOA plans for Drupal 6 support after February 24th, 2016?
 
@@ -11200,11 +11201,11 @@
 
   We recommend that you upgrade your D7 sites using this safe workflow:
 
-    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+    https://learn.omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
   For up-to-date information on #Drupageddon please check:
 
-    https://omega8.cc/drupageddon-psa-2014-003-342
+    https://learn.omega8.cc/drupageddon-psa-2014-003-342
 
 #-### Support for locking/unlocking web server write access in all codebases
 
@@ -11315,11 +11316,11 @@
 
   We recommend that you upgrade your D7 sites using this safe workflow:
 
-    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+    https://learn.omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
   For up-to-date information on #Drupageddon please check:
 
-    https://omega8.cc/drupageddon-psa-2014-003-342
+    https://learn.omega8.cc/drupageddon-psa-2014-003-342
 
 #-### Support for automated, encrypted, daily backups to Amazon S3
 
@@ -11449,7 +11450,7 @@
 
   We recommend that you upgrade your D7 sites using safe workflow:
 
-    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+    https://learn.omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
 # Updated Octopus platforms:
 
@@ -12605,7 +12606,7 @@
     you can help migrate existing docs and improve them, both via boa-docs
     project issue queue and pull requests:
 
-      https://github.com/omega8cc/boa-docs
+      https://docs.boa.io
 
     We also encourage you to use drupal.stackexchange.com for BOA support:
 
@@ -12716,7 +12717,7 @@
   If you have skipped some recent BOA releases, and you have new default config
   option: _PERMISSIONS_FIX=NO in your /root/.barracuda.cnf configuration file,
   plus, you are not sure if you follow best practices for managing permissions
-  as recommended in our docs: https://omega8.cc/node/116 then we recommend
+  as recommended in our docs: https://learn.omega8.cc/are-there-any-specific-good-habits-to-learn-116 then we recommend
   that you change it to _PERMISSIONS_FIX=YES temporarily, or even permanently
   if your VPS is fast enough, and then run this powerful script as root:
 
@@ -13292,9 +13293,10 @@
   fixed either in your contrib code or in the Redis integration module.
 
   Normally you had to edit the local.settings.php file which is both tedious
-  and dangerous because of extra steps: https://omega8.cc/node/230 to add
-  a line, for example: $conf['cache_class_cache_foo'] = 'DrupalDatabaseCache';
-  Plus, it had to be done for every site separately.
+  and dangerous because of extra steps:
+  https://learn.omega8.cc/how-to-edit-settingsphp-file-230 to add a line, for
+  example: $conf['cache_class_cache_foo'] = 'DrupalDatabaseCache'; Plus, it
+  had to be done for every site separately.
 
   Now you can simply list the cache bins to exclude, comma separated, either
   in the site or platform level active INI file.
@@ -13666,7 +13668,7 @@
     If "0" then this feature is disabled. It can't be configured via INI files,
     so you may need to submit support request if you want to customize this
     option set to 7 days by default on all hosted instances, as per our
-    backups policy: https://omega8.cc/backups
+    backups policy: https://docs.boa.io/operating/backups/retention
 
     The same logic applies to _DEL_OLD_TMP which defines for how long the
     temporary files in all hosted sites files/tmp/ and private/temp/ directories
@@ -13919,10 +13921,10 @@
   so updated docs are included only in the updated each morning INI templates:
   default.boa_platform_control.ini and default.boa_site_control.ini
 
-  You can find both INI templates also online at: https://omega8.cc/node/293
+  You can find both INI templates also online at: https://learn.omega8.cc/how-to-control-boa-on-site-and-platform-level-293
 
   We have also added some docs to help you if you experience any issues
-  with cached, Views based pages and panels: https://omega8.cc/node/292
+  with cached, Views based pages and panels: https://learn.omega8.cc/views-based-pages-are-not-updated-292
 
   Note also that since BOA-2.1.0 all D6 based sites are forced to use PHP 5.3.27
   on hosted and managed Ægir instances, even if they were previously configured
@@ -15441,9 +15443,9 @@
   NOTE: before you will try to upgrade any of your sites,
   please read our important how-to:
 
-  http://omega8.cc/the-best-recipes-for-disaster-139
-  http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
-  http://omega8.cc/managing-your-code-in-the-aegir-style-110
+  https://learn.omega8.cc/the-best-recipes-for-disaster-139
+  https://learn.omega8.cc/are-there-any-specific-good-habits-to-learn-116
+  https://learn.omega8.cc/managing-your-code-in-the-aegir-style-110
 
   REALLY, PLEASE READ IT TO AVOID SOME HEAVY HEADACHES!
 
@@ -15665,9 +15667,9 @@
   NOTE: before you will try to upgrade any of your sites,
   please read our important how-to:
 
-  http://omega8.cc/the-best-recipes-for-disaster-139
-  http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
-  http://omega8.cc/managing-your-code-in-the-aegir-style-110
+  https://learn.omega8.cc/the-best-recipes-for-disaster-139
+  https://learn.omega8.cc/are-there-any-specific-good-habits-to-learn-116
+  https://learn.omega8.cc/managing-your-code-in-the-aegir-style-110
 
   REALLY, PLEASE READ IT TO AVOID SOME HEAVY HEADACHES!
 

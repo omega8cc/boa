@@ -322,7 +322,7 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/UPGRADE.md
+Full upgrade documentation: https://docs.boa.io/self-hosting/keeping-current
 
 There are no Drupal platform updates in this release beyond the o_contrib_seven
 change noted above. Nginx reload during the CSF rule refresh causes ~2–5 seconds
