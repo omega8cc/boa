@@ -32,6 +32,12 @@
       API stays locked. A list frozen by deleting user_admin.txt keeps the
       lines it was written with until the file is written again.
 
+    * A Grav site behind the login/admin IP lock refuses with 400 a request
+      whose raw path carries a dot segment (/../ or /./, plain or
+      percent-encoded). The lock judged nginx's resolved path while Grav
+      routes on the raw one, so such a path could reach /admin or /api from
+      an address off the list.
+
     * The Grav render cap no longer sheds API clients that send an
       X-API-Key or X-API-Token header (KahunaCart's API keys, Admin2
       itself) as anonymous visitors during a flood; only an Authorization
