@@ -1707,13 +1707,20 @@ _boa_lock_release() {
 # $1 the marker, $2 this run's claim on it: prints the claim. Made new here,
 # or still the file this run claimed, it is this run's; a file another run
 # made in between is touched as before but never claimed, so no release of
-# this run's removes it
+# this run's removes it. Made only where nothing stands at the name (a FIFO
+# would hold the open), touched without following a link (a dangling one
+# would get its target made)
+_boa_lock_new() {
+  [ ! -e "${1}" ] && [ ! -L "${1}" ] && ( set -C; : > "${1}" ) 2> /dev/null
+}
 _boa_lock_take() {
-  if ( set -C; : > "${1}" ) 2> /dev/null; then
+  if _boa_lock_new "${1}"; then
     _boa_lock_ino "${1}"
   else
-    touch "${1}" 2> /dev/null
-    if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ]; then
+    touch -h -- "${1}" 2> /dev/null
+    if _boa_lock_new "${1}"; then
+      _boa_lock_ino "${1}"
+    elif [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ]; then
       echo "${2}"
     fi
   fi
