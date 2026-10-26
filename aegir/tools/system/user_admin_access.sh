@@ -67,7 +67,10 @@
 # `api-open` to its record: /admin stays on the list, /api stays public.
 # Without it, KahunaCart's public routes under /api/v1/kahunacart stay open
 # (licences, shipping and bookings `public/`, the affiliates' `account/`):
-# their callers are never on an owner's list and the plugin checks each.
+# their callers are never on an owner's list. The plugin keys them by the
+# licence key, a webhook secret, a booking token or a partner's login; the
+# booking widget's routes and the affiliate code check are public by its
+# design, rate-limited only.
 #
 # Control file (Octopus only — the instance's sites and its control panel, whose
 # HTTPS proxy in pre.d includes the panel's fragment and map itself; the master's
@@ -828,7 +831,8 @@ _area_lines() {
     # KahunaCart's public routes stay open: the parties that call them are
     # never on an owner's list (customers' software validating a licence, a
     # carrier's tracking webhook, a shopper's booking widget, a partner's
-    # portal), and the plugin authenticates each itself. Case-sensitive and
+    # portal), and the plugin guards each as it means it to be used (see
+    # the header). Case-sensitive and
     # on v1 only, written before the line they except (a map takes the first
     # regex that matches): any other spelling or version stays locked.
     echo "  ~^/+api/v1/kahunacart/(?:licenses|shipping|bookings)/public/ 0;"

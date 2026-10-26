@@ -13,13 +13,15 @@
       and logs the signal beside its exit reasons, so the re-run a
       migration asks for can start at once.
 
-    * Reset login on a Grav site now signs out every browser session,
-      remembered login and API token issued before it. It wrote the admin
-      account without the cutoff the Login and API plugins check
-      (api_tokens_valid_after, which their own password change stamps) and
-      kept the account's remember-me logins, so an earlier Admin2 token,
-      its refresh token or a remembered browser kept working after the
-      reset. API keys stay, as with the plugins' own password change.
+    * Reset login on a Grav site now signs out every API token and
+      remembered login issued before it, and every signed-in browser
+      session where the site runs the Login plugin 3.11 or later (BOA's
+      Grav 2.2.13 bundle). It wrote the admin account without the cutoff
+      the Login and API plugins check (api_tokens_valid_after, which their
+      own password change stamps) and kept the account's remember-me
+      logins, so an earlier Admin2 token, its refresh token or a
+      remembered browser kept working after the reset. API keys stay, as
+      with the plugins' own password change.
 
     * A Grav site behind the login/admin IP lock keeps KahunaCart's public
       routes reachable: the licence routes customers' software calls, the
@@ -27,7 +29,8 @@
       and the partners' portal (licences, shipping and bookings public/,
       affiliates account/, under /api/v1/kahunacart). The lock covered all
       of /api, so those broke for everyone off the list; the shop's admin
-      API stays locked.
+      API stays locked. A list frozen by deleting user_admin.txt keeps the
+      lines it was written with until the file is written again.
 
     * The Grav render cap no longer sheds API clients that send an
       X-API-Key or X-API-Token header (KahunaCart's API keys, Admin2
