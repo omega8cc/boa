@@ -9,9 +9,60 @@
       or builds a missing PHP there remotely, a hangup, Ctrl-C or kill)
       no longer leaves its run locks behind for one to three hours: it
       releases the locks it still holds at that moment, and only those
-      (a lock the installer dropped and another run took again stays),
-      and logs the signal beside its exit reasons, so the re-run a
-      migration asks for can start at once.
+      (a lock the installer dropped and another run took again stays,
+      as it now does when a run ends or fails), and logs the signal
+      beside its exit reasons, so the re-run a migration asks for can
+      start at once.
+
+    * Reset login on a Grav site now signs out every API token and
+      remembered login issued before it, and every signed-in browser
+      session where the site runs the Login plugin 3.11 or later (BOA's
+      Grav 2.2.13 bundle). It wrote the admin account without the cutoff
+      the Login and API plugins check (api_tokens_valid_after, which their
+      own password change stamps) and kept the account's remember-me
+      logins, so an earlier Admin2 token, its refresh token or a
+      remembered browser kept working after the reset. API keys stay, as
+      with the plugins' own password change.
+
+    * A Grav site behind the login/admin IP lock keeps KahunaCart's public
+      routes reachable: the licence routes customers' software calls, the
+      carriers' tracking webhooks, the booking widget and rentals picker,
+      and the partners' portal (licences, shipping and bookings public/,
+      affiliates account/, under /api/v1/kahunacart). The lock covered all
+      of /api, so those broke for everyone off the list; the shop's admin
+      API stays locked. A list frozen by deleting user_admin.txt keeps the
+      lines it was written with until the file is written again.
+
+    * A Grav site behind the login/admin IP lock refuses with 400 a request
+      whose raw path carries a dot segment (/../ or /./, plain or
+      percent-encoded). The lock judged nginx's resolved path while Grav
+      routes on the raw one, so such a path could reach /admin or /api from
+      an address off the list.
+
+    * The Grav render cap no longer sheds API clients that send an
+      X-API-Key or X-API-Token header (KahunaCart's API keys, Admin2
+      itself) as anonymous visitors during a flood; only an Authorization
+      header counted before.
+
+    * A Grav site never serves a SQLite database or its -wal, -shm or
+      -journal file, wherever in the site it sits (.sqlite, .sqlite3,
+      .db); user/data was denied already, but a store's path is the
+      owner's setting. It takes effect on each site's next Verify.
+
+    * A Grav rename, Clone or Upgrade a copy, and a Textpattern rename or
+      Upgrade, onto a name a retired site's alias still held now remove
+      that site's own extra Drush alias files with its alias. They stayed
+      as a dead copy of its settings, naming the new site's directory when
+      the old site had sat on the same platform.
+
+    * A Textpattern Clone onto a name an alias already holds is refused
+      when that alias names a live site, and a retired site's alias is
+      removed before the copy is saved; the copy took the retired site's
+      encryption, domain aliases and cron key, or re-pointed a live site.
+
+    * A Grav or Textpattern Cutover claiming a free domain no longer dies
+      on a leftover alias whose platform is gone too: the leftover is read
+      from its file, as the renames read it.
 
     * The catalogue build's patch check no longer repairs what it cannot
       repair safely: where two sources give one patch description
@@ -374,10 +425,15 @@
       account's cnf on the target only with a copy written whole: a write
       that failed part way (a full disk) cut the cnf short while the merge
       reported success, and the account's next pass read what was left.
-      The merge now stops with the cnf as it was and says it failed.
-      instgrp's write of the web group's policy is checked the same way,
-      and the broker's take-back of a migration's leftover line renames
-      its copy over the cnf instead of writing into it.
+      Every key now goes into one copy, renamed over the cnf after the
+      last key, so a merge that stops part way leaves the cnf as it was
+      and says it failed; xmass then stops a live sync or a cutover, and
+      xoct a create or a live transfer. The upgrade-notice switches and
+      the web group and broker seeds write their copies the same way,
+      instgrp's write of the web group's policy is checked and stops its
+      leg when it fails, and the broker's take-back of a migration's
+      leftover line renames its copy over the cnf instead of writing into
+      it, never through a link.
 
     * The dev/test database allowance of a hosted account no longer
       multiplies by the engine count twice. It is the plan's factor of the
@@ -2630,6 +2686,11 @@
       the server under its name instead of its made-up hostname.
 
 @=> Changes and Upgrades
+
+    * The documentation that used to ship in this repository's docs/
+      directory is retired: https://docs.boa.io is the single
+      documentation site, and the README carries short Install and
+      Upgrade sections that point there.
 
     * PHP that runs inside a Composer run, such as an @php script entry, a
       compile task of CiviCRM's packages or a php line in the project's own
