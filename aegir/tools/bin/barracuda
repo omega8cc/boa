@@ -61,8 +61,11 @@ _clean_pid_exit() {
     _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     # an ignored signal stays ignored in what a process starts: cron and the
-    # jobs it forks would never die by TERM, nor a pipeline by PIPE
-    ( trap - HUP INT TERM PIPE; service cron start &> /dev/null )
+    # jobs it forks would never die by TERM, nor a pipeline by PIPE. Started
+    # in a session of its own first, so no signal to this run's group cuts
+    # the start short, then with the four back at their defaults
+    setsid -w perl -e '$SIG{$_} = "DEFAULT" for qw(HUP INT TERM PIPE); exec @ARGV or exit 1' \
+      service cron start &> /dev/null
     _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
     if (( _CNT > 1 )); then
       pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
