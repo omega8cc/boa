@@ -437,8 +437,8 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/UPGRADE.md
-Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/SELFUPGRADE.md
+Full upgrade documentation: https://docs.boa.io/self-hosting/keeping-current
+Self-upgrade automation: https://docs.boa.io/operating/os-lifecycle/selfupgrade-reference
 
 ## Links
 
@@ -446,5 +446,5 @@ Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/SELFU
 - News & announcements: https://omega8.cc/news
 - Commit history (BOA): https://github.com/omega8cc/boa/commits/5.x-dev/
 - Commit history (Provision): https://github.com/omega8cc/provision/commits/5.x-dev/
-- Full changelog: https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt
-- License: https://github.com/omega8cc/boa/blob/5.x-pro/DUALLICENSE.md
+- Full changelog: https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt
+- License: https://github.com/omega8cc/boa/blob/5.x-dev/DUALLICENSE.md

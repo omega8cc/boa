@@ -22,7 +22,7 @@ From advanced performance tweaks to behind-the-scenes improvements in user manag
 - Direct **import to BOA** from Classic Ægir for legacy systems
 - Even more extensive **documentation**, including updates akin to our new backup docs
 
-For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt) and our [backup documentation](https://github.com/omega8cc/boa/blob/5.x-pro/docs/BACKUP_USER.md).
+For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt) and our [backup documentation](https://docs.boa.io/using/backups/mybackup-and-quota).
 
 ### Thank You & Happy New Year!
 None of this would be possible without our amazing community. To all of you who support us by purchasing a **BOA Pro license** or our hosted options, thank you from the bottom of our hearts. Ready to kick off 2025 with a bang? Dive into **BOA-5.6.0 PRO**—you won’t be disappointed!
