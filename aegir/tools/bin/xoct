@@ -6029,6 +6029,14 @@ _migrate_prepare() {
       _TGT_CNF_MERGED=$?
       _xoct_dbctl_from_source "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_dbctl_seed_back "${_TGT_HM_USER}" "${_tgt}" "${_TGT_CNF_MERGED}"
+      ### A merge that failed stops the create: the account would go on there
+      ### on the target's own values (an opt-out among them); a re-run merges
+      ### again.
+      if [ "${_TGT_CNF_MERGED}" != "0" ]; then
+        echo "ERROR: ${_cmd} for ${_oct}: the source's octopus.cnf values were not merged on ${_tgt};"
+        echo "ERROR: the account would run there on the target's own values -- re-run the create"
+        exit 1
+      fi
       ### After the merge, which carries the source's switch: under admail=
       ### a target that keeps the notice on refuses the create, before the
       ### transfer can bring the setup mail it would send. The record put
@@ -8097,6 +8105,11 @@ _migrate_init() {
             _xoct_push_target_octopus_cnf "${_oct}" "${_DST_ACCT}" "${_tgt}"
             _XFER_CNF_MERGED=$?
             _xoct_dbctl_seed_back "${_DST_ACCT}" "${_tgt}" "${_XFER_CNF_MERGED}"
+            if [ "${_XFER_CNF_MERGED}" != "0" ]; then
+              echo "ERROR: ${_cmd} for ${_oct}: the source's octopus.cnf values were not merged on ${_tgt};"
+              echo "ERROR: NOT marking the transfer complete -- re-run it"
+              exit 1
+            fi
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
           fi
 
