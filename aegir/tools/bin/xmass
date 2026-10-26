@@ -7621,14 +7621,14 @@ _xmass_sync_account() {
   # Target-mutating seeding runs only in LIVE: merge the portable cnf values,
   # carry the client credentials, mirror the suspension flag. Repeated syncs
   # keep all three converged with source-side changes until cutover. A merge
-  # that failed stops the pass as a failed placement does: a cutover would
-  # promote a target whose cnf lacks the source's values (an opt-out among
-  # them).
+  # that failed stops the pass, with a line of its own, as a failed placement
+  # does: a cutover would promote a target whose cnf lacks the source's values
+  # (an opt-out among them).
   if [ "${_MODE}" = "LIVE" ]; then
     if ! _xmass_push_account_cnf "${_oct}" "${_tgt}"; then
       _alrt "DENY: ${_oct}: the source's octopus.cnf values were not merged on ${_tgt} --"
       _alrt "DENY: the account would run there on the target's own values after cutover"
-      _XMASS_STORE_RC=1
+      _XMASS_CNF_RC=1
     fi
     _xmass_sync_shell_credentials "${_oct}" "${_tgt}"
     _xmass_copy_suspended_flag "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
@@ -14195,6 +14195,7 @@ _xmass_cmd_sync() {
     _xmass_require_clean_dry "${_tgt}"
   fi
   _XMASS_STORE_RC=0
+  _XMASS_CNF_RC=0
   _XMASS_RSYNC_RC=0
   # Source-side deletions propagate on the DATA trees for every `sync` pass,
   # manual and automated alike (2026-08-26 ruling — a standing mirror that
@@ -14248,6 +14249,9 @@ _xmass_cmd_sync() {
   if [ "${_MODE}" = "LIVE" ]; then
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
       _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); sync incomplete"
+    fi
+    if [ "${_XMASS_CNF_RC:-0}" != "0" ]; then
+      _die "$(_xmass_wg_skipped_says)an account's octopus.cnf values could not be merged on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
       _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
@@ -15739,6 +15743,7 @@ _xmass_cmd_cutover() {
     # The plan names the order --live will take; nothing is saved from a DRY.
     _xmass_decide_flip_first
     _XMASS_STORE_RC=0
+    _XMASS_CNF_RC=0
     _XMASS_RSYNC_RC=0
     # Cutover legs stay ADDITIVE, plan and live alike (2026-08-26 ruling): the
     # target is about to become production and a wrong deletion here is
@@ -15815,6 +15820,7 @@ _xmass_cmd_cutover() {
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
+  _XMASS_CNF_RC=0
   _XMASS_RSYNC_RC=0
 
   # Last wait before the first source mutation: the standby must hold no run
@@ -15872,6 +15878,10 @@ _xmass_cmd_cutover() {
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
     _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
+  fi
+  if [ "${_XMASS_CNF_RC:-0}" != "0" ]; then
+    _xmass_restore_hint
+    _die "$(_xmass_wg_skipped_says)an account's octopus.cnf values could not be merged on the target (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
