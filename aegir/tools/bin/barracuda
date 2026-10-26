@@ -56,8 +56,9 @@ _clean_pid_exit() {
     if [ -n "${1}" ]; then
       [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
     fi
-    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    # only the locks still the files this run made (_boa_lock_release)
+    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
+    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     # an ignored signal stays ignored in what a process starts: cron and the
     # jobs it forks would never die by TERM, nor a pipeline by PIPE
@@ -1624,8 +1625,9 @@ _up_action() {
 # moment and nothing else, and never /opt/tmp, whose reuse across runs is
 # intentional. A lock is this run's while it is the very file _up_start made
 # (its inode): the installer drops the run lock at its own end, and another
-# run may then take a new one by the same name. Logged beside
-# _clean_pid_exit's reasons, never to the closed channel.
+# run may then take a new one by the same name. Every release goes by that
+# rule, the signal's and the run's own. Logged beside _clean_pid_exit's
+# reasons, never to the closed channel.
 _BOA_LOCK_RUN_I=""
 _BOA_LOCK_WAIT_I=""
 _boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
@@ -1793,9 +1795,9 @@ _csf_kill_own() {
 _up_finish() {
   rm -f /root/.bashrc.bak*
   rm -f /root/BOA.sh*
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
   [ -e "/run/boa_system_wait.pid" ] && rm -f /run/boa_system_wait.pid
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
   _BOA_LOCK_RUN_I=""
   _BOA_LOCK_WAIT_I=""
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2857,7 +2859,8 @@ _launcher_release_check() {
   # The run lock is this invocation's (_up_start); the one it hands over to
   # takes it again, so release it rather than leave it to refuse its heir.
   if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
-    rm -f /run/boa_run.pid /run/boa_wait.pid
+    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
+    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
   fi
   exec /bin/bash "${_self}" "$@"
 }
