@@ -4,6 +4,12 @@
 
 @=> Important Fixes
 
+    * sqlmagic convert to-myisam keeps the cache, sessions, users, watchdog
+      and accesslog tables on InnoDB again and moves every other table to
+      MyISAM. The exception pattern was split over line continuations
+      inside its quotes, so it matched nothing and every table went to
+      MyISAM (Drupal 6 sites only; a newer core is always converted to InnoDB).
+
     * A BOA install, barracuda run or octopus run killed part way (its
       connection dropped, as when a migration creates the target account
       or builds a missing PHP there remotely, a hangup, Ctrl-C or kill)
