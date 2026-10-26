@@ -2696,7 +2696,10 @@
     * The documentation that used to ship in this repository's docs/
       directory is retired: https://docs.boa.io is the single
       documentation site, and the README carries short Install and
-      Upgrade sections that point there.
+      Upgrade sections that point there. CONTRIBUTING.md and SECURITY.md
+      at the repository root carry the reporting rules and point at the
+      site; the release notes and this changelog link the pages that
+      replaced the retired files.
 
     * PHP that runs inside a Composer run, such as an @php script entry, a
       compile task of CiviCRM's packages or a php line in the project's own
