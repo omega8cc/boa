@@ -4,6 +4,12 @@
 
 @=> Important Fixes
 
+    * An Octopus instance user and its shell accounts can run /bin/sh with
+      option words before -c, as root always could: sh -ec, sh -e -c,
+      sh -xc and sh -o errexit -c run the command with those options set
+      (GNU make in POSIX mode runs every recipe line as sh -ec). They
+      printed "Illegal option" and exited 1 without running the command.
+
     * sqlmagic convert to-myisam keeps the cache, sessions, users, watchdog
       and accesslog tables on InnoDB again and moves every other table to
       MyISAM. The exception pattern was split over line continuations
