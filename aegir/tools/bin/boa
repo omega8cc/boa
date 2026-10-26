@@ -63,14 +63,20 @@ _clean_pid_exit() {
     if [ -n "${1}" ]; then
       [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
     fi
-    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-    [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
+    # only the locks still the files this run made (_boa_lock_release)
+    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
+    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
+    _boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}" > /dev/null
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     rm -f ${_vBs}/*.sh.cnf*
     rm -f ${_vBs}/OCTOPUS.sh*
     rm -f ${_vBs}/BARRACUDA.sh*
-    service cron start &> /dev/null
+    # an ignored signal stays ignored in what a process starts: cron and the
+    # jobs it forks would never die by TERM, nor a pipeline by PIPE. Started
+    # in a session of its own first, so no signal to this run's group cuts
+    # the start short, then with the four back at their defaults
+    setsid -w perl -e '$SIG{$_} = "DEFAULT" for qw(HUP INT TERM PIPE); exec @ARGV or exit 1' \
+      service cron start &> /dev/null
     _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
     if (( _CNT > 1 )); then
       pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
@@ -1680,9 +1686,11 @@ _init_start() {
 # intentional. A lock is this run's while it is the very file this run made
 # (its inode, read when the run took it): the installers drop the run locks at
 # their own end, and a later step of the chain or another run may then take
-# new ones by the same names; the marker handed to the octopus run the chain
-# starts is that run's. Logged beside _clean_pid_exit's reasons, never to the
-# closed channel.
+# new ones by the same names. Every release goes by that rule, the signal's
+# and the run's own. The marker handed to a nohup'd octopus is that run's; one
+# run in the foreground leaves this run's claim as it is, since the handler
+# waits for it to exit, by when the marker is gone or still this run's file.
+# Logged beside _clean_pid_exit's reasons, never to the closed channel.
 _BOA_LOCK_RUN_I=""
 _BOA_LOCK_WAIT_I=""
 _BOA_LOCK_OCT_I=""
@@ -1694,6 +1702,27 @@ _boa_lock_release() {
     echo released
   else
     echo left
+  fi
+}
+# $1 the marker, $2 this run's claim on it: prints the claim. Made new here,
+# or still the file this run claimed, it is this run's; a file another run
+# made in between is touched as before but never claimed, so no release of
+# this run's removes it. Made only where nothing stands at the name (a FIFO
+# would hold the open), touched without following a link (a dangling one
+# would get its target made)
+_boa_lock_new() {
+  [ ! -e "${1}" ] && [ ! -L "${1}" ] && ( set -C; : > "${1}" ) 2> /dev/null
+}
+_boa_lock_take() {
+  if _boa_lock_new "${1}"; then
+    _boa_lock_ino "${1}"
+  else
+    touch -h -- "${1}" 2> /dev/null
+    if _boa_lock_new "${1}"; then
+      _boa_lock_ino "${1}"
+    elif [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ]; then
+      echo "${2}"
+    fi
   fi
 }
 _boa_on_signal() {
@@ -1717,8 +1746,8 @@ _check_etc_apt_preferences() {
 
 _init_cleanup() {
   rm -f /root/BOA.sh*
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
+  _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
   _BOA_LOCK_RUN_I=""
   _BOA_LOCK_WAIT_I=""
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -1730,8 +1759,8 @@ _init_cleanup() {
 
 _init_finish() {
   rm -f /root/BOA.sh*
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
+  _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
   _BOA_LOCK_RUN_I=""
   _BOA_LOCK_WAIT_I=""
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2183,8 +2212,7 @@ _init_setup() {
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
     # Unconditional touch: the marker's mtime is its freshness heartbeat;
     # the [ ! -e ] form let it age into runner.sh staleness mid-chain
-    touch /run/octopus_install_run.pid
-    _BOA_LOCK_OCT_I=$(_boa_lock_ino /run/octopus_install_run.pid)
+    _BOA_LOCK_OCT_I=$(_boa_lock_take /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
     sleep 3
     _octopus_install
     if [ ! -e "/data/disk/${_usEr}/config/includes/nginx_vhost_common.conf" ] \
@@ -2203,8 +2231,7 @@ _init_setup() {
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
     _init_cleanup
-    touch /run/octopus_install_run.pid
-    _BOA_LOCK_OCT_I=$(_boa_lock_ino /run/octopus_install_run.pid)
+    _BOA_LOCK_OCT_I=$(_boa_lock_take /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
     sleep 3
     # Execute post-install octopus upgrade and exit
     # created exclusively inside the real static/control: a link at the
@@ -2270,16 +2297,16 @@ _init_setup() {
         echo "Now waiting 5 minutes before running octopus upgrade, please wait..."
         sleep 300
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
-        # while it runs the marker is that octopus's, which clears it
-        _BOA_LOCK_OCT_I=""
+        # this run's claim stays: a signal waits for that octopus to exit,
+        # which clears the marker, or leaves this run's file to release when
+        # it died before taking it over
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
         wait
         # That octopus cleared the marker in its _up_finish; re-take it so
         # the LE check plus a possible 5-min retry wait stay covered -- the
         # retry run bypasses via the exported _OCTOPUS_CHAINED and the
         # no-retry path releases it before the final exit below
-        touch /run/octopus_install_run.pid
-        _BOA_LOCK_OCT_I=$(_boa_lock_ino /run/octopus_install_run.pid)
+        _BOA_LOCK_OCT_I=$(_boa_lock_take /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
         echo "Checking LE setup status..."
         # log/ is the account's: read inside the real directory, bounded,
         # never through a link or from a FIFO
@@ -2303,13 +2330,11 @@ _init_setup() {
           sleep 300
           echo "Launching another octopus upgrade to fix LE..." | tee -a "${_UP_OCTOPUS_LOG}"
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
-          _BOA_LOCK_OCT_I=""
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
           # Same as after the first run: cover the remaining LE re-check;
           # the conditional release before the final exit clears it
-          touch /run/octopus_install_run.pid
-          _BOA_LOCK_OCT_I=$(_boa_lock_ino /run/octopus_install_run.pid)
+          _BOA_LOCK_OCT_I=$(_boa_lock_take /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
           echo "Checking LE setup status..."
           if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
             _hmFront=$(_boa_in_real_dir "/data/disk/${_usEr}/log" _boa_read_here domain.txt)
@@ -2347,10 +2372,11 @@ _init_setup() {
     fi
     # Release the marker unless a nohup'd post-install octopus now owns it
     # (the in-octopus form without .dont.upgrade...); every other route
-    # through this block ends here with no octopus left to clear it
+    # through this block ends here with no octopus left to clear it; a
+    # marker another run made meanwhile is that run's and stays
     if [ "${_OCTOPUS_ONLY}" != "YES" ] \
       || [ -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
-      rm -f /run/octopus_install_run.pid
+      _boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}" > /dev/null
     fi
     _BOA_LOCK_OCT_I=""
     _display_admin_email_info

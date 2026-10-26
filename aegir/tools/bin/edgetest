@@ -2,7 +2,8 @@
 
 # edgetest — automated checks for the BOA edge-policy stack: AI bot
 # classification, Cloudflare realip, the csf->nginx web-ban mirror, and the
-# per-site AI / IP access controls. Companion to docs/AI-POLICY-TESTING.md — it
+# per-site AI / IP access controls. Companion to the edge-policy test checklist on
+# docs.boa.io (developing, build and test) — it
 # automates the parts that can run from the box itself and prints a plain
 # pass/fail report so a first-time admin can see at a glance what works.
 #
