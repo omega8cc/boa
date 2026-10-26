@@ -1269,6 +1269,10 @@
       wildcard part starts with a period (.* or .?) as the shell expands
       it, the parent directory included: such a path was checked as typed.
 
+    * lshell 0.11.14 keeps the variables bash reads at startup (SHELLOPTS,
+      BASHOPTS, PS4 and function definitions) out of the environment of
+      the shell a limited shell line runs through.
+
     * PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12, the upstream security
       releases on all four maintained branches, enforced on every box
       through the PHP security floor.
