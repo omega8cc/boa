@@ -1260,9 +1260,10 @@
 
     * Unbound 1.26.2, the upstream security release.
 
-    * lshell 0.11.10 refuses a limited shell line in which a variable,
-      once expanded, adds a second command to a pipe segment: that
-      command ran without the noexec library.
+    * lshell 0.11.11 refuses a limited shell line in which a variable,
+      once expanded, adds a second command to a pipe segment handed to
+      the shell: that command ran without the noexec library. Quote the
+      variable ("$V") to pass its value as one argument.
 
     * PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12, the upstream security
       releases on all four maintained branches, enforced on every box
