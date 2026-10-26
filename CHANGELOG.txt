@@ -9,6 +9,8 @@
       sh -xc and sh -o errexit -c run the command with those options set
       (GNU make in POSIX mode runs every recipe line as sh -ec). They
       printed "Illegal option" and exited 1 without running the command.
+      websh's rules now read such a line as they read sh -c, so root's
+      sh -ec line that runs Drush meets the refusal its sh -c line meets.
 
     * sqlmagic convert to-myisam keeps the cache, sessions, users, watchdog
       and accesslog tables on InnoDB again and moves every other table to
