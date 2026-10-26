@@ -117,10 +117,9 @@ _sqlmagic_convert() {
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
         ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       wait
-      perl -p -i -e \
-        's/(ALTER TABLE \
-        (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) \
-        ENGINE=)MYISAM/\1INNODB/g' \
+      # The pattern stays on one line: a backslash-newline inside the quotes
+      # is part of the pattern and matches no ALTER statement.
+      perl -p -i -e 's/(ALTER TABLE (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) ENGINE=)MYISAM/\1INNODB/g' \
         ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       wait
       if [ -s "${HOME}/static/to_myisam_alter_table.sql" ]; then

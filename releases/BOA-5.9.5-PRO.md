@@ -26,7 +26,7 @@ _AUTO_VER=lts            # BOA version to track (lts by default)
 > All three `_AUTO_UP_*` variables must be defined to enable auto-upgrade.
 > Weekly runs perform only `barracuda up-lts system`; the month/day date
 > triggers a full Barracuda + Octopus upgrade. Full reference:
-> https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFUPGRADE.md
+> https://docs.boa.io/operating/os-lifecycle/selfupgrade-reference
 
 Then enable automatic reboot when a new kernel is installed:
 
@@ -277,8 +277,8 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/UPGRADE.md
-Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFUPGRADE.md
+Full upgrade documentation: https://docs.boa.io/self-hosting/keeping-current
+Self-upgrade automation: https://docs.boa.io/operating/os-lifecycle/selfupgrade-reference
 
 > **Daedalus → Excalibur note:** if your server is still on Devuan Daedalus,
 > the OS upgrade will be offered as part of this cycle. Ensure Percona is on a
@@ -291,5 +291,5 @@ Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFU
 
 - Commit history (BOA): https://github.com/omega8cc/boa/commits/5.x-dev/
 - Commit history (Provision): https://github.com/omega8cc/provision/commits/5.x-dev/
-- Full changelog: https://github.com/omega8cc/boa/blob/5.x-lts/CHANGELOG.txt
-- License: https://github.com/omega8cc/boa/blob/5.x-lts/DUALLICENSE.md
+- Full changelog: https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt
+- License: https://github.com/omega8cc/boa/blob/5.x-dev/DUALLICENSE.md
