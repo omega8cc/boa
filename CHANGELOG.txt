@@ -13417,10 +13417,10 @@
   ### Pressflow 6.30.1
 
   Commons 2.16 ----------------- https://drupal.org/project/commons
-  Feature Server 1.2 ----------- http://bit.ly/fserver
+  Feature Server 1.2 ----------- https://www.drupal.org/project/fserver
   Managing News 1.2.4 ---------- https://drupal.org/project/managingnews
   Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
-  Pressflow 6.30.1 ------------- http://pressflow.org
+  Pressflow 6.30.1 ------------- https://github.com/pressflow/6
   Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
 
 # New features and enhancements in this release:
@@ -14308,11 +14308,11 @@
   ### Pressflow 6.28.2
 
   Commons 2.13 ----------------- http://drupal.org/project/commons
-  Feature Server 1.2 ----------- http://bit.ly/fserver
+  Feature Server 1.2 ----------- https://www.drupal.org/project/fserver
   Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
   Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
-  Pressflow 6.28.2 ------------- http://pressflow.org
-  ProsePoint 0.46 -------------- http://prosepoint.org
+  Pressflow 6.28.2 ------------- https://github.com/pressflow/6
+  ProsePoint 0.46 -------------- https://www.drupal.org/project/prosepoint
   Ubercart 2.12.1 -------------- http://drupal.org/project/ubercart
 
 # New features and enhancements in this release:
@@ -14773,11 +14773,11 @@
 
   Acquia 6.28.1 ---------------- http://bit.ly/acquiadrupal
   Commons 2.12 ----------------- http://drupal.org/project/commons
-  Feature Server 1.2 ----------- http://bit.ly/fserver
+  Feature Server 1.2 ----------- https://www.drupal.org/project/fserver
   Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
   Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
-  Pressflow 6.28.1 ------------- http://pressflow.org
-  ProsePoint 0.46 -------------- http://prosepoint.org
+  Pressflow 6.28.1 ------------- https://github.com/pressflow/6
+  ProsePoint 0.46 -------------- https://www.drupal.org/project/prosepoint
   Ubercart 2.11.1 -------------- http://drupal.org/project/ubercart
 
   All other not listed above platforms are available with latest
@@ -14790,7 +14790,7 @@
 
   ELMS ------------------------- http://drupal.org/project/elms
   MartPlug --------------------- http://drupal.org/project/martplug
-  Octopus Video ---------------- http://octopusvideo.org
+  Octopus Video ---------------- https://web.archive.org/web/20121227181948/http://octopusvideo.org/
   Open Academy ----------------- http://drupal.org/project/openacademy
   Open Enterprise -------------- http://drupal.org/project/openenterprise
   OpenPublic ------------------- http://drupal.org/project/openpublic
@@ -15010,14 +15010,14 @@
   Commerce 2.0 ----------------- http://drupalcommerce.org
   Commons 2.11 ----------------- http://acquia.com/drupalcommons
   Drupal 7.18.1 ---------------- http://drupal.org/drupal-7.18
-  Open Deals 1.14 -------------- http://opendealsapp.com
+  Open Deals 1.14 -------------- https://www.drupal.org/project/opendeals
   Open Outreach 1.0-rc7 -------- http://openoutreach.org
   OpenChurch 1.11-beta7 -------- http://openchurchsite.com
   Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
-  Pressflow 6.27.1 ------------- http://pressflow.org
-  ProsePoint 0.45 -------------- http://prosepoint.org
-  Ubercart 2.11.1 -------------- http://ubercart.org
-  Ubercart 3.3.1 --------------- http://ubercart.org
+  Pressflow 6.27.1 ------------- https://github.com/pressflow/6
+  ProsePoint 0.45 -------------- https://www.drupal.org/project/prosepoint
+  Ubercart 2.11.1 -------------- https://www.drupal.org/project/ubercart
+  Ubercart 3.3.1 --------------- https://www.drupal.org/project/ubercart
 
   All other not listed above platforms are available with latest
   D6 or D7 core, even if there were no new distro version released.
@@ -15124,21 +15124,21 @@
   CiviCRM 4.2.6-d7 ------------- http://civicrm.org
   Commerce 1.11.1 -------------- http://drupalcommerce.org
   Commons 2.10 ----------------- http://acquia.com/drupalcommons
-  Conference 1.0-rc2 ----------- http://usecod.com
+  Conference 1.0-rc2 ----------- https://www.drupal.org/project/cod
   Drupal 7.17.1 ---------------- http://drupal.org/drupal-7.17
-  Drupal 8.0-dev-tested -------- http://bit.ly/drupal-eight
-  ELMS 1.0-beta1 --------------- http://elms.psu.edu
-  NodeStream 1.5.1 ------------- http://nodestream.org
-  NodeStream 2.0-beta8 --------- http://nodestream.org
-  Open Atrium 1.6.1 ------------ http://openatrium.com
-  Open Deals 1.11 -------------- http://opendealsapp.com
+  Drupal 8.0-dev-tested -------- https://www.drupal.org/project/drupal
+  ELMS 1.0-beta1 --------------- https://www.drupal.org/project/elms
+  NodeStream 1.5.1 ------------- https://www.drupal.org/project/nodestream
+  NodeStream 2.0-beta8 --------- https://www.drupal.org/project/nodestream
+  Open Atrium 1.6.1 ------------ https://www.drupal.org/project/openatrium
+  Open Deals 1.11 -------------- https://www.drupal.org/project/opendeals
   Open Outreach 1.0-rc6 -------- http://openoutreach.org
   OpenChurch 1.11-beta5 -------- http://openchurchsite.com
   OpenPublish 3.0-beta7 -------- http://openpublishapp.com
   OpenScholar 2.0-rc1 ---------- http://openscholar.harvard.edu
   Panopoly 1.0-rc2 ------------- http://drupal.org/project/panopoly
-  Ubercart 2.10.1 -------------- http://ubercart.org
-  Ubercart 3.2.1 --------------- http://ubercart.org
+  Ubercart 2.10.1 -------------- https://www.drupal.org/project/ubercart
+  Ubercart 3.2.1 --------------- https://www.drupal.org/project/ubercart
 
 * We plan to shorten BOA system release and upgrades cycle
   to 1-2 months max, so we have decided to remove support for some
@@ -15152,10 +15152,10 @@
   Here is a list of distros we no longer support:
 
   MartPlug ------------ http://drupal.org/project/martplug
-  Octopus Video ------- http://octopusvideo.org
+  Octopus Video ------- https://web.archive.org/web/20121227181948/http://octopusvideo.org/
   Open Academy -------- http://drupal.org/project/openacademy
   Open Enterprise ----- http://drupal.org/project/openenterprise
-  OpenPublic ---------- http://openpublicapp.com
+  OpenPublic ---------- https://www.drupal.org/project/openpublic
   Videola ------------- http://videola.tv
 
   The platforms listed above can be re-added when their maintainers
@@ -15463,11 +15463,11 @@
   CiviCRM 4.1.2-d6 ------------- http://civicrm.org
   CiviCRM 4.1.2-d7 ------------- http://civicrm.org
   Drupal 7.14.2 ---------------- http://drupal.org/drupal-7.14
-  Drupal 8.0-dev --------------- http://bit.ly/drupal-eight
+  Drupal 8.0-dev --------------- https://www.drupal.org/project/drupal
   MartPlug 1.0-beta1b ---------- http://drupal.org/project/martplug
-  Octopus Video 1.0-alpha6 ----- http://octopusvideo.org
+  Octopus Video 1.0-alpha6 ----- https://web.archive.org/web/20121227181948/http://octopusvideo.org/
   Panopoly 1.0-beta3 ----------- http://drupal.org/project/panopoly
-  Pressflow 6.26.2 ------------- http://pressflow.org
+  Pressflow 6.26.2 ------------- https://github.com/pressflow/6
 
 # Updated Octopus platforms:
 
@@ -15476,17 +15476,17 @@
   CiviCRM 4.0.8-d7 ------------- http://civicrm.org
   Commerce 1.7.1 --------------- http://drupalcommerce.org
   Commons 2.6 ------------------ http://acquia.com/drupalcommons
-  Feature Server 1.1 ----------- http://bit.ly/fserver
+  Feature Server 1.1 ----------- https://www.drupal.org/project/fserver
   Managing News 1.2.2 ---------- http://managingnews.com
-  NodeStream 1.5 --------------- http://nodestream.org
-  NodeStream 2.0-beta1 --------- http://nodestream.org
-  Open Atrium 1.4.1 ------------ http://openatrium.com
-  Open Deals 1.0-beta7e -------- http://opendealsapp.com
+  NodeStream 1.5 --------------- https://www.drupal.org/project/nodestream
+  NodeStream 2.0-beta1 --------- https://www.drupal.org/project/nodestream
+  Open Atrium 1.4.1 ------------ https://www.drupal.org/project/openatrium
+  Open Deals 1.0-beta7e -------- https://www.drupal.org/project/opendeals
   Open Outreach 1.0-rc1 -------- http://openoutreach.org
   OpenChurch 1.10-alpha1 ------- http://openchurchsite.com
   OpenPublish 3.0-alpha8 ------- http://openpublishapp.com
-  Ubercart 2.9.1 --------------- http://ubercart.org
-  Ubercart 3.1.1 --------------- http://ubercart.org
+  Ubercart 2.9.1 --------------- https://www.drupal.org/project/ubercart
+  Ubercart 3.1.1 --------------- https://www.drupal.org/project/ubercart
   Videola 1.0-alpha3 ----------- http://videola.tv
 
 # New features:
@@ -15666,7 +15666,7 @@
   above patches, but also a few extra, performance related
   patches discussed here:
 
-  http://groups.drupal.org/node/187209
+  https://web.archive.org/web/20130527032243/http://groups.drupal.org/node/187209
 
   Note also that we renamed too basic Acquia 7.x platform to
   Ubercart 3.x platform. It is based on the same acquia install
@@ -15685,20 +15685,20 @@
 # New Octopus platforms:
 
   Drupal 7.12 ------------------ http://drupal.org/drupal-7.12
-  NodeStream 2.0-alpha6 -------- http://nodestream.org
+  NodeStream 2.0-alpha6 -------- https://www.drupal.org/project/nodestream
   OpenPublish 3-alpha3 --------- http://openpublishapp.com
-  Pressflow 6.24.1 ------------- http://pressflow.org
-  Ubercart 3.0.1 --------------- http://ubercart.org
+  Pressflow 6.24.1 ------------- https://github.com/pressflow/6
+  Ubercart 3.0.1 --------------- https://www.drupal.org/project/ubercart
 
 # Updated Octopus platforms:
 
   Acquia Commons 2.4 ----------- http://acquia.com/drupalcommons
   Commerce Kickstart 1.3 ------- http://drupalcommerce.org
-  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
-  Open Atrium 1.2.1 ------------ http://openatrium.com
-  Open Deals 1.0-beta7 --------- http://opendealsapp.com
+  ELMS 1.0-alpha6 -------------- https://www.drupal.org/project/elms
+  Open Atrium 1.2.1 ------------ https://www.drupal.org/project/openatrium
+  Open Deals 1.0-beta7 --------- https://www.drupal.org/project/opendeals
   Open Outreach 1.0-beta7a ----- http://openoutreach.org
-  ProsePoint 0.43 -------------- http://prosepoint.org
+  ProsePoint 0.43 -------------- https://www.drupal.org/project/prosepoint
   Videola 1.0-alpha2 ----------- http://videola.tv
 
 # New features:
@@ -15775,7 +15775,8 @@
     by adding ?nocache=1 to any URL. Useful for debugging.
 
   * Speed Booster offers now also ESI microcaching, as explained
-    in this article: http://groups.drupal.org/node/197478.
+    in this article:
+    https://web.archive.org/web/20120201192544/http://groups.drupal.org/node/197478.
     This may enhance not only anonymous visitors, but also
     logged in users experience, since it allows you to separate
     microcache for ESI/SSI includes (valid for just 15 seconds)
@@ -15906,8 +15907,8 @@
 
 # New Octopus platforms:
 
-  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
-  Open Deals 1.0-alpha4 -------- http://opendealsapp.com
+  ELMS 1.0-alpha5 -------------- https://www.drupal.org/project/elms
+  Open Deals 1.0-alpha4 -------- https://www.drupal.org/project/opendeals
   Open Outreach 1.0-beta6 ------ http://openoutreach.org
 
 # Updated Octopus platforms:
@@ -15919,11 +15920,11 @@
   Commerce Kickstart 1.0-rc7 --- http://drupalcommerce.org
   Drupal 7.10 ------------------ http://drupal.org/drupal-7.0
   Managing News 1.2.1 ---------- http://managingnews.com
-  NodeStream 1.1 --------------- http://nodestream.org
-  Open Atrium 1.1.1 ------------ http://openatrium.com
+  NodeStream 1.1 --------------- https://www.drupal.org/project/nodestream
+  Open Atrium 1.1.1 ------------ https://www.drupal.org/project/openatrium
   OpenChurch 1.22-a ------------ http://openchurchsite.com
   OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
-  ProsePoint 0.41 -------------- http://prosepoint.org
+  ProsePoint 0.41 -------------- https://www.drupal.org/project/prosepoint
 
 # New features:
 
@@ -15980,8 +15981,8 @@
   CiviCRM 3.4.7 ---------------- http://civicrm.org
   CiviCRM 4.0.7 ---------------- http://civicrm.org
   Commerce Kickstart 1.0-rc4 --- http://drupalcommerce.org
-  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
-  Ubercart 6.x-2.7 ------------- http://ubercart.org
+  OpenPublic 1.0-beta3 --------- https://www.drupal.org/project/openpublic
+  Ubercart 6.x-2.7 ------------- https://www.drupal.org/project/ubercart
 
 # New features:
 
@@ -16043,11 +16044,11 @@
   Acquia Commons 2.0 ----------- http://acquia.com/drupalcommons
   CiviCRM 3.4.5 ---------------- http://civicrm.org
   CiviCRM 4.0.5 ---------------- http://civicrm.org
-  Conference 1.0-beta2 --------- http://usecod.com
+  Conference 1.0-beta2 --------- https://www.drupal.org/project/cod
   Drupal 7.8 ------------------- http://drupal.org/drupal-7.0
   Drupal Commerce 1.0 ---------- http://drupalcommerce.org
-  OpenPublic 1.0-beta2 7.8 ----- http://openpublicapp.com
-  Ubercart 2.6 6.22 ------------ http://ubercart.org
+  OpenPublic 1.0-beta2 7.8 ----- https://www.drupal.org/project/openpublic
+  Ubercart 2.6 6.22 ------------ https://www.drupal.org/project/ubercart
 
 # Changes:
 
@@ -16078,10 +16079,10 @@
 
   Drupal 7.7 ------------------- http://drupal.org/drupal-7.0
   Acquia 7.7.5 ----------------- http://bit.ly/acquiadrupal
-  OpenPublic 1.0-beta1 7.7 ----- http://openpublicapp.com
+  OpenPublic 1.0-beta1 7.7 ----- https://www.drupal.org/project/openpublic
   Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
-  Open Atrium 1.0 6.22 --------- http://openatrium.com
-  ProsePoint 0.40 6.22 --------- http://prosepoint.org
+  Open Atrium 1.0 6.22 --------- https://www.drupal.org/project/openatrium
+  ProsePoint 0.40 6.22 --------- https://www.drupal.org/project/prosepoint
 
 # Fixes:
 
@@ -16120,12 +16121,12 @@
 
 # Updated Octopus platforms:
 
-  OpenPublic 1.0-beta1 7.4 ----- http://openpublicapp.com
+  OpenPublic 1.0-beta1 7.4 ----- https://www.drupal.org/project/openpublic
   Drupal Commerce 1.0-beta4 ---- http://drupalcommerce.org
   Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
   Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
   OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
-  Conference 1.0-beta1 --------- http://usecod.com
+  Conference 1.0-beta1 --------- https://www.drupal.org/project/cod
 
 # New features:
 
@@ -16205,7 +16206,7 @@
 
 * Open Atrium includes extra features:
   Atrium Folders:  http://bit.ly/oafolders
-  Ideation:        http://bit.ly/oaideation
+  Ideation:        https://www.drupal.org/project/ideation
 
 * Hostmaster platform comes with ready to enable extra modules:
   http://drupal.org/project/hosting_backup_queue
@@ -16214,11 +16215,11 @@
 
 * New Octopus platforms:
 
-  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
-  NodeStream 1.0 --------------- http://nodestream.org
+  OpenPublic 1.0-beta1 --------- https://www.drupal.org/project/openpublic
+  NodeStream 1.0 --------------- https://www.drupal.org/project/nodestream
   Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
-  Conference 1.0-alpha3 -------- http://usecod.com
+  Conference 1.0-alpha3 -------- https://www.drupal.org/project/cod
   Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
   Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
   Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
@@ -16484,7 +16485,8 @@ Added/Fixed: (upgrade required)
    when hostmaster is not upgraded.
 
 8. Introducing simple edition archive:
-   http://omega8.cc/dev/bo-a14a.tar.gz
+   bo-a14a.tar.gz (no longer offered; the code lives at
+   https://github.com/omega8cc/boa)
 
 9. Octopus now better supports using newer shared
    code for platforms and introduces new setting:
