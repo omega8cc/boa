@@ -59,7 +59,9 @@ _clean_pid_exit() {
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-    service cron start &> /dev/null
+    # an ignored signal stays ignored in what a process starts: cron and the
+    # jobs it forks would never die by TERM, nor a pipeline by PIPE
+    ( trap - HUP INT TERM PIPE; service cron start &> /dev/null )
     _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
     if (( _CNT > 1 )); then
       pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
