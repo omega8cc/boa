@@ -908,7 +908,7 @@ _exec_dash_c() {
     _in_composer_run && exit 1
     exit 0
   fi
-  exec /bin/dash -c "$1"
+  exec /bin/dash "${_SH_OPTS[@]}" -c "$1"
 }
 
 # The bare-verb dispatch reads the LEADING word of the line, never a
@@ -963,7 +963,7 @@ _forward_to_dash() {
   # Name under which the shell should think it was invoked
   _shell_name="sh"
   # Arrays to hold options and positional parameters
-  _options=()
+  _options=("${_SH_OPTS[@]}")
   _positional=()
   # Variables to hold command strings or script files
   _command=""
@@ -1028,6 +1028,57 @@ _forward_to_dash() {
     exit 0
   fi
 }
+
+# POSIX lets the shell's own option words come before -c too: sh -ec CMD,
+# sh -e -c CMD, sh -o errexit -c CMD (GNU make in POSIX mode runs every
+# recipe line as sh -ec). Those that only change how the string runs are
+# moved to _SH_OPTS and the line goes on as -c CMD, the shape every check
+# below reads; every exec site that starts the shell for the string hands
+# _SH_OPTS to it. A word that changes where commands come from (-i, -l,
+# -s, -o stdin) is not one of them: such a line, and one without -c (a
+# script file, standard input), is left as typed.
+_SH_OPTS=()
+_SH_LEAD=0
+_sh_opts_lead() {
+  local _w _o=() _n=0
+  while [ "$#" -gt 0 ]; do
+    _w="$1"
+    case "${_w}" in
+      -o|+o)
+        case "$2" in
+          allexport|errexit|noclobber|noexec|noglob|notify|nounset|verbose|xtrace) ;;
+          *) return 1 ;;
+        esac
+        _o+=("${_w}" "$2")
+        _n=$(( _n + 2 ))
+        shift 2
+        ;;
+      -|+|-*[!abCcefnuvx]*|+*[!abCefnuvx]*)
+        return 1
+        ;;
+      -*c*)
+        _w="${_w//c/}"
+        [ "${_w}" != "-" ] && _o+=("${_w}")
+        _SH_OPTS=("${_o[@]}")
+        _SH_LEAD=$(( _n + 1 ))
+        return 0
+        ;;
+      -*|+*)
+        _o+=("${_w}")
+        _n=$(( _n + 1 ))
+        shift
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  done
+  return 1
+}
+if [ "${1}" != "-c" ] && _sh_opts_lead "$@"; then
+  shift "${_SH_LEAD}"
+  set -- "-c" "$@"
+fi
 
 # POSIX allows -- to end the option list, and glibc has sent it since 2.38
 # (BZ#28519, "system and popen should pass -- between /bin/sh and argument"):
@@ -1202,7 +1253,7 @@ if [ "${1}" = "-c" ] \
       _drush_refused_say
       exit 1
     fi
-    exec /bin/dash -c "${_SF_ORIG}"
+    exec /bin/dash "${_SH_OPTS[@]}" -c "${_SF_ORIG}"
     exit 0
   fi
 fi
@@ -3012,13 +3063,13 @@ if _grp_set_is "users www-data" \
       else
         ### echo EXH 3 _F_ARR is "$@"
         ### echo EXH 3 /bin/bash "$@"
-        exec /bin/bash "$@"
+        exec /bin/bash "${_SH_OPTS[@]}" "$@"
         exit 0
       fi
     else
       ### echo EXO 1 _F_ARR is "$@"
       ### echo EXO 1 $0 "$@"
-      exec $0 "$@"
+      exec $0 "${_SH_OPTS[@]}" "$@"
       exit 0
     fi
   else
@@ -3056,18 +3107,18 @@ else
     if [ -x "/bin/dash" ]; then
       ### echo EXH 4 _F_ARR is "$@"
       ### echo EXH 4 /bin/dash "$@"
-      exec /bin/dash "$@"
+      exec /bin/dash "${_SH_OPTS[@]}" "$@"
       exit 0
     else
       ### echo EXH 6 _F_ARR is "$@"
       ### echo EXH 6 /bin/bash "$@"
-      exec /bin/bash "$@"
+      exec /bin/bash "${_SH_OPTS[@]}" "$@"
       exit 0
     fi
   else
     ### echo EXO 2 _F_ARR is "$@"
     ### echo EXO 2 $0 "$@"
-    exec $0 "$@"
+    exec $0 "${_SH_OPTS[@]}" "$@"
     exit 0
   fi
   exit 0
