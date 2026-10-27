@@ -1274,6 +1274,13 @@
 
 @=> Security
 
+    * nginx refuses requests for an npm token file (.npmrc), Google Cloud
+      service-account key files (service-account.json, gcp-credentials.json,
+      gcp-key.json, google-credentials.json, firebase-adminsdk.json,
+      application_default_credentials.json) and server.key at any path, as
+      it refuses .env and credentials.json. Probed daily from hundreds of
+      addresses, they reached the site and cost a full not-found render each.
+
     * Unbound 1.26.2, the upstream security release.
 
     * lshell 0.11.11 refuses a limited shell line in which a variable,
@@ -2137,6 +2144,29 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The crawler-fleet refusal now stops the residential-proxy scraper
+      fleets that send about one request from each address. When the
+      agent of a declared fleet is a stale browser (a Chrome or Edge major
+      more than a year past its stable release and not the last one any
+      old system can run, or a Firefox before 100), nginx answers 429 to
+      that agent on that site from any address, still only without a
+      Referer and a session cookie. Before, it refused only addresses
+      already seen in the fleet, between 6% and 11% of such a fleet's
+      requests. Replayed on two hosted servers' logs of one day, the
+      refused requests rose from about 4,700 to 65,000 on one and from
+      about 4,300 to 46,000 on the other. Such an agent is now also
+      declared over all the routes it walks, not only per route class.
+      _NGINX_FLEET_STALE_ACTION=REPORT loosens this scope alone.
+
+    * Two AI training crawlers, Reflectionbot and ElevenlabsCrawler, join
+      the AI training class and are refused by default (a site's policy.txt
+      train-allow lets them in); Meta's AI search indexer (meta-webindexer),
+      LinkupBot, KeenableBot and ShapBot join the AI search class, each
+      paced by a rate limit of its own vendor, refused on a site whose
+      policy.txt line says search-block, and exempt from crawler-fleet
+      declarations like the other allowed AI agents. No class knew them,
+      so they were neither paced nor refusable.
 
     * The nightly no longer logs "dir: cannot access" on a box where no
       account has a distro platform tree for the ghost-codebases check.
