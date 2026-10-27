@@ -2808,7 +2808,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f25 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f24 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2884,7 +2884,7 @@ _update_agents() {
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       _lshSum="$(md5sum /var/xdrago/conf/lshell.conf.dist 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f80 --mode 644
+      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f79 --mode 644
       if _source_due /var/xdrago/conf/lshell.conf.dist "${_lshSum}" \
         "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid"; then
         mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -5811,7 +5811,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f60 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f59 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
