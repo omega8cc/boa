@@ -1714,7 +1714,7 @@ _le_account_report() {
   ### failed copy or link), which _night_bak_tell also gives its daily notice.
   ###
   _nonle="$(grep -E -a \
-    'No space left on device|backups-on-static: (not enough|move failed|skipped|could not symlink)|Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
+    'No space left on device|LE wildcard order skipped|backups-on-static: (not enough|move failed|skipped|could not symlink)|Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
     "${_acctLog}" 2>/dev/null | grep -v -E '^\["' | sort -u | head -n 40)"
   [ -z "${_fails}" ] && [ -z "${_nonle}" ] && return 0
   _throttle=7
