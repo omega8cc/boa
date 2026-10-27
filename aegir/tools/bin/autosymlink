@@ -1643,7 +1643,7 @@ _site_share_file() {
   for _SSF_F in "${1}"/static/control/share.*."${2}".info; do
     [ -e "${_SSF_F}" ] || continue
     _SSF_KIND="${_SSF_F##*/share.}"
-    _SSF_KIND="${_SSF_KIND%.${2}.info}"
+    _SSF_KIND="${_SSF_KIND%".${2}.info"}"
     case "${_SSF_KIND}" in *.*|"") continue ;; esac
     printf '%s\n' "${_SSF_F}"
     return 0
