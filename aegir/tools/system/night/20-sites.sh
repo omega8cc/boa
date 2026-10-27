@@ -3881,6 +3881,22 @@ _acct_new_here() {
   perl -e "${_ACCT_NEW_PL}" "${_t}" "./${1}" "${2}" "${3}" "${4}"
 }
 
+### Whether the vhost named $1 serves the site dir $2: its one root line
+### resolves to the dir above sites/<name>, as a vhost serves its platform's
+### docroot. One serving another platform (a Migrate killed mid-copy leaves
+### the alias on the new platform's half copy) or a disabled site's vhost
+### (rooted elsewhere) does not.
+_ghost_vhost_serves() {
+  local _vh _vr
+  _vh=$(_acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
+    _acct_read_plain_here "${1}") || return 1
+  _vr=$(sed -n 's/^[[:space:]]*root[[:space:]]\{1,\}\([^;[:space:]]*\);.*/\1/p' \
+    <<< "${_vh}" | sort -u)
+  [ -n "${_vr}" ] && [ "${_vr}" = "${_vr%%$'\n'*}" ] || return 1
+  _vr=$(realpath -e -- "${_vr}" 2> /dev/null) || return 1
+  [ "${_vr}" = "$(realpath -e -- "${2%/sites/*}" 2> /dev/null)" ]
+}
+
 ### A Drupal site whose dir still holds settings.php but lost drushrc.php,
 ### while its vhost still serves that dir with the site's database lines:
 ### drushrc.php written again from those lines, the database options and
@@ -3888,10 +3904,11 @@ _acct_new_here() {
 ### group, 0440, then a Verify queued the panel's way, which writes the file
 ### in full. Only while the vhost's root is this dir's platform, the panel
 ### still has the site and those credentials open its database; otherwise
-### nothing is written and _GH_HEAL_WHY says why. _GH_HEAL_TASK is the queued task, empty when none was queued.
-### $1 = site name, $2 = site dir, $3 = its platform root.
+### nothing is written and _GH_HEAL_WHY says why. _GH_HEAL_TASK is the
+### queued task, empty when none was queued. $1 = the site's own name (its
+### alias's uri), $2 = site dir, $3 = its platform root.
 _ghost_drushrc_heal() {
-  local LC_ALL=C _s="${1}" _d="${2}" _r="${3%/}" _vh _vr _k _v _enc _txt _uid _gid _q
+  local LC_ALL=C _s="${1}" _d="${2}" _r="${3%/}" _vh _k _v _enc _txt _uid _gid _q
   local -A _db=()
   _GH_HEAL_WHY=""
   _GH_HEAL_TASK=""
@@ -3915,18 +3932,12 @@ _ghost_drushrc_heal() {
     _GH_HEAL_WHY="no vhost"
     return 1
   fi
-  # A vhost serves its platform's docroot; the site dir is <docroot>/sites/
-  # <name>. One serving another platform (a Migrate killed mid-copy leaves the
-  # alias on the new platform's half copy) must never lend it its login.
-  _vr=$(sed -n 's/^[[:space:]]*root[[:space:]]\{1,\}\([^;[:space:]]*\);.*/\1/p' \
-    <<< "${_vh}" | sort -u)
-  if [ -z "${_vr}" ] || [ "${_vr}" != "${_vr%%$'\n'*}" ] \
-    || [ "$(realpath -e -- "${_vr}" 2> /dev/null)" != "$(realpath -e -- "${_d%/sites/*}" 2> /dev/null)" ]; then
-    _GH_HEAL_WHY="its vhost does not serve this site dir's platform"
+  if ! grep -q '^[[:space:]]*set \$boa_db_' <<< "${_vh}"; then
+    _GH_HEAL_WHY="its vhost carries no set \$boa_db_* lines (a disabled site's has none; a Verify writes them)"
     return 1
   fi
-  if ! grep -q '^[[:space:]]*set \$boa_db_' <<< "${_vh}"; then
-    _GH_HEAL_WHY="its vhost carries no database lines (a disabled site's has none)"
+  if ! _ghost_vhost_serves "${_s}" "${_d}"; then
+    _GH_HEAL_WHY="its vhost does not serve this site dir's platform"
     return 1
   fi
   _enc=$(sed -n 's/^[[:space:]]*set \$boa_db_creds_urlencoded "\([^"]*\)";[[:space:]]*$/\1/p' \
@@ -4068,6 +4079,7 @@ _cleanup_ghost_drushrc() {
     else
       _T_SITE_NAME="${_aliasName}"
       _gh_smark="ghost-site-${_T_SITE_NAME}.seen"
+      _gh_lmark="ghost-drushrc-lost-${_T_SITE_NAME}.seen"
       if [[ "${_T_SITE_NAME}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         # .restore leftover: move only the alias (never the vhost, matching the
@@ -4100,6 +4112,7 @@ _cleanup_ghost_drushrc() {
           || ! _validate_loop_dir "${_T_SITE_FDIR}"; then
           _IS_SITE=YES
           _ghost_seen_reset_acct "${_gh_smark}"
+          _ghost_seen_reset_acct "${_gh_lmark}"
         elif [ -e "${_T_SITE_FDIR}/drushrc.php" ] \
           || [ -L "${_T_SITE_FDIR}/drushrc.php" ]; then
           # drushrc.php present = a registered, live site. Do NOT also require
@@ -4112,6 +4125,7 @@ _cleanup_ghost_drushrc() {
           fi
           _IS_SITE=YES
           _ghost_seen_reset_acct "${_gh_smark}"
+          _ghost_seen_reset_acct "${_gh_lmark}"
         else
           # drushrc.php absent = ghost candidate. Require persistence across
           # consecutive nights, then split flags: registration (alias + vhost)
@@ -4128,11 +4142,14 @@ _cleanup_ghost_drushrc() {
           # site's registration (and vhost) down at once. All three are left
           # for operator review; only a true per-site ghost (platform healthy,
           # site dir nowhere) is ever reaped. A site dir that still holds
-          # anything but folders, while a vhost serves the name or the panel
-          # may still list it (drushrc-lost), is a site that lost only
-          # drushrc.php: never reaped, its drushrc.php rebuilt where its
-          # vhost allows. One that nothing serves or lists (a Clone or a
-          # rename killed mid-copy) stays a ghost. The root parses are
+          # anything but folders (drushrc-lost) is a site that lost only
+          # drushrc.php while its vhost serves this dir (even with a copy
+          # stranded elsewhere), or, as a ghost, while a vhost or the panel
+          # may still know the site: never reaped, its drushrc.php rebuilt
+          # where its vhost allows. One nothing serves or lists (a Clone or
+          # a rename killed mid-copy) stays a ghost. Both tests go by the
+          # site's own name, its alias's uri: an extra Drush alias of a live
+          # site names its dir under another file name. The root parses are
           # anchored to the 'root' KEY so a value that merely ends in root
           # (e.g. client_name 'root') can never pollute them.
           _GH_CLASS=ghost
@@ -4142,6 +4159,9 @@ _cleanup_ghost_drushrc() {
             | cut -d: -f2 \
             | awk '{ print $3}' \
             | sed "s/[\,']//g" 2>&1)
+          _T_SITE_URI=$(printf '%s\n' "${_alTxt}" \
+            | sed -n "s/^[[:space:]]*'uri' => '\([^']*\)'.*/\1/p" | head -n 1)
+          [ -n "${_T_SITE_URI}" ] || _T_SITE_URI="${_T_SITE_NAME}"
           if [[ "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
             _GH_CLASS=front-end
           else
@@ -4172,14 +4192,27 @@ _cleanup_ghost_drushrc() {
               done
             fi
           fi
-          if [ "${_GH_CLASS}" = "ghost" ] && [ -d "${_T_SITE_FDIR}" ] \
+          if { [ "${_GH_CLASS}" = "ghost" ] || [ "${_GH_CLASS}" = "stranded" ]; } \
+            && [ -d "${_T_SITE_FDIR}" ] \
             && _ghost_site_dir_holds "${_T_SITE_FDIR}" \
-            && { _acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
-                test -f "./${_T_SITE_NAME}" \
-              || { _GH_FE=$(_hmr_context_exists "${_T_SITE_NAME}"); [ "${_GH_FE}" != "NO" ]; }; }; then
+            && { _ghost_vhost_serves "${_T_SITE_URI}" "${_T_SITE_FDIR}" \
+              || { [ "${_GH_CLASS}" = "ghost" ] \
+                && { _acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
+                    test -f "./${_T_SITE_URI}" \
+                  || { _GH_FE=$(_hmr_context_exists "${_T_SITE_URI}"); [ "${_GH_FE}" != "NO" ]; }; }; }; }; then
             _GH_CLASS=drushrc-lost
           fi
-          if ! _ghost_seen_enough_acct "${_gh_smark}"; then
+          # A drushrc-lost night is no ghost night: it counts on a counter of
+          # its own and starts the ghost one again (and the reverse), so a
+          # site that turns into a ghost gets its grace nights first.
+          _gh_cmark="${_gh_smark}"
+          if [ "${_GH_CLASS}" = "drushrc-lost" ]; then
+            _gh_cmark="${_gh_lmark}"
+            _ghost_seen_reset_acct "${_gh_smark}"
+          else
+            _ghost_seen_reset_acct "${_gh_lmark}"
+          fi
+          if ! _ghost_seen_enough_acct "${_gh_cmark}"; then
             if [ "${_GH_CLASS}" = "drushrc-lost" ]; then
               echo "GHOST candidate ${_T_SITE_NAME} has its site dir but no drushrc.php (grace run, nothing changed)"
             else
@@ -4189,8 +4222,8 @@ _cleanup_ghost_drushrc() {
             # Not gated by the cleanup flags: nothing is moved, and the file
             # written is the one Provision writes, from the vhost serving the
             # site. Its counter starts again once the file is back.
-            if _ghost_drushrc_heal "${_T_SITE_NAME}" "${_T_SITE_FDIR}" "${_T_SITE_ROOT}"; then
-              _ghost_seen_reset_acct "${_gh_smark}"
+            if _ghost_drushrc_heal "${_T_SITE_URI}" "${_T_SITE_FDIR}" "${_T_SITE_ROOT}"; then
+              _ghost_seen_reset_acct "${_gh_lmark}"
               if [ -n "${_GH_HEAL_TASK}" ]; then
                 echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; Verify task ${_GH_HEAL_TASK} queued to write it in full)"
               else
