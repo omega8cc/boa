@@ -4251,6 +4251,8 @@ _cleanup_ghost_drushrc() {
               else
                 echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; no Verify could be queued, run one to write it in full)"
               fi
+            elif [ -n "${_GH_HEAL_PANEL}" ]; then
+              echo "GHOST candidate ${_T_SITE_NAME} SKIPPED (drushrc-lost: its site dir is there without drushrc.php, nothing moved; not rebuilt: ${_GH_HEAL_WHY}; a Verify would follow the panel's platform, so settle which copy is the site first)"
             else
               echo "GHOST candidate ${_T_SITE_NAME} SKIPPED (drushrc-lost: its site dir is there without drushrc.php, nothing moved; not rebuilt: ${_GH_HEAL_WHY}; put ./drushrc.php back from the site's newest archive in ${_usEr}/backups as ${_HM_U}, then run a Verify)"
             fi
