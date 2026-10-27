@@ -1496,16 +1496,16 @@ _GHOST_VHOSTS_CLEANUP=NO
 
 ###
 ### Nightly cleanup of GHOST site registrations (a site Drush alias whose site
-### directory is gone or holds only empty folders; one holding any file is never
-### moved). The default NO only detects and logs them (dry-run). Set to YES to
-### move the stale alias and its vhost aside into undo/. Override in octopus.cnf.
+### dir is gone, holds only empty folders, or holds files no vhost serves and the
+### panel does not list). The default NO only detects and logs them (dry-run).
+### YES moves the stale alias and its vhost into undo/. Per account: octopus.cnf.
 ###
 _GHOST_SITES_CLEANUP=NO
 
 ###
-### Also move a ghost site's leftover directory (empty folders by then) when
-### _GHOST_SITES_CLEANUP acts. Kept separate and default NO as the one move of a
-### site directory. Per Octopus account override in octopus.cnf.
+### Also move a ghost site's leftover directory when _GHOST_SITES_CLEANUP acts.
+### Kept separate and default NO as the one move of a site directory. Per Octopus
+### account override in octopus.cnf.
 ###
 _GHOST_SITE_FILES_CLEANUP=NO
 
