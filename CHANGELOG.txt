@@ -2723,6 +2723,14 @@
       the notes of every release, and the notes of each new release are
       published there only. This changelog stays the summary record.
 
+    * DIFFERENT30Y.md, the heritage page at the repository root, reads as
+      the hosting runs today: Backdrop CMS, Grav CMS and Textpattern ship
+      as ready Ægir Platforms beside Drupal, so the page no longer calls
+      the service Drupal only; the managed updates paragraph names the
+      tailored automation and the same-day practice instead of Jenkins;
+      the backup paragraph reads files every six hours and databases
+      nightly; Drupal 11 support is dated to 2025.
+
     * PHP that runs inside a Composer run, such as an @php script entry, a
       compile task of CiviCRM's packages or a php line in the project's own
       composer.json scripts, runs for every shell account, not only for the
