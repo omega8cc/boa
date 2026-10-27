@@ -2218,6 +2218,15 @@
       cover Chrome 100 to 141, a year behind the current release, where
       they stopped at 139.
 
+    * The stale-Chrome search maps now keep up with Chrome on their own:
+      each render of the master's nginx config takes every Chrome major
+      from 100 on that reached stable more than a year earlier, from a
+      table of Chrome's release dates, minus the majors an old system is
+      pinned at (now with 150, the last for macOS 12). Every BOA upgrade
+      pass renders the config again, so the bound moves forward without
+      a code change instead of falling behind within weeks of Chrome's
+      two-week releases.
+
     * The crawler-fleet refusal now stops the residential-proxy scraper
       fleets that send about one request from each address. When the
       agent of a declared fleet is a stale browser (a Chrome or Edge major
