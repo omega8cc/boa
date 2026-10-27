@@ -39,7 +39,16 @@
       config, logs a warning and orders the per-name certificate; the
       nightly does the same instead of a wildcard order that dehydrated
       refuses under http-01, and the account report names the skipped
-      order.
+      order. Both read the switch under the site's own name, and the
+      nightly's per-name order short of the hook or the config carries
+      every name (it kept the wildcard's shape, without www and the
+      subdomain aliases).
+
+    * A files store is held for the share control file of the site's own
+      name alone: the Delete's archive, the nightly orphan sweep and its
+      report matched share.*.<site>.info, which a subdomain site's file
+      also fits, so a parent domain's store stayed at its name for
+      another site's share and a new site there was refused.
 
     * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
       longer move a live site that lost only its drushrc.php. With the

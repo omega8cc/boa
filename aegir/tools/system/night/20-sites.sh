@@ -4425,16 +4425,74 @@ _le_ssl_check_update() {
         _usEaliases=""
         ### A wildcard order needs the dns-01 challenge (dehydrated refuses a
         ### wildcard under http-01), so the wildcard flag counts only beside
-        ### one of the two DNS flags; without them the per-name order is
-        ### placed and the night log says so (the account report carries the
-        ### line). Decided once, under the site's own name: the www strips
-        ### below rename _Dom, and the flag is named after the site. Verify
-        ### decides the same way (hosting_le).
+        ### one of the two DNS flags, the hook it names (installed here when
+        ### missing) and the account's dehydrated config; short of any of them
+        ### the per-name order is placed with every name and the night log
+        ### says so (the account report carries the line). Decided once, before
+        ### the alias loop, under the site's own name: the www strip below
+        ### renames _Dom only for a wildcard, and the flag is named after the
+        ### site. Verify decides the same way (hosting_le).
         _leWild=NO
+        _thisHook=""
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
             || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
-            _leWild=YES
+            ### static/control is owned by the tenant SHELL user and sits in a
+            ### group-writable static/, so both the flag file and the control
+            ### dir are names a tenant can swap for a symlink. chattr has no -h
+            ### and follows, which would pin the immutable bit -- root-only to
+            ### clear -- on an arbitrary target: lock the flags only inside the
+            ### real static/control, and only while each is a regular file.
+            ### Skip, never delete: these are the tenant's own opt-in flags,
+            ### not root-maintained INIs.
+            _acct_in_real_dir "${_usEr}/static/control" _chattr_plain_here \
+              cloudflare-dns-ssl-py.info cloudflare-dns-ssl-sh.info
+            export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
+            export CF_SETTLE_TIME='30'
+            export CF_DEBUG='true'
+            ### An exit-status gate on the clone: the old form keyed only on
+            ### "hook file absent", so a FAILED clone (no network, or a hooks
+            ### dir that already exists) still reached the root pip3 install.
+            ### tools/le is oN's, so the clone lands only in the real,
+            ### root-owned hooks/, and the chmod and the pip3 install act only
+            ### inside that root-owned clone (_le_hook_root_here): pip runs
+            ### packaging code as root and may only ever see a tree this clone
+            ### just created, never a name the account swapped in.
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
+              _apt_clean_update
+              apt-get install gawk jq publicsuffix ldnsutils ${_aptYesUnth} 2> /dev/null
+              if _le_hook_clone cloudflare-sh \
+                https://github.com/omega8cc/dehydrated-hook-cloudflare; then
+                _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-sh" \
+                  _le_hook_exec_here cf-hook.sh
+              fi
+            fi
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
+              _apt_clean_update
+              apt-get install python3-pip python3-venv python-is-python3 ${_aptYesUnth} 2> /dev/null
+              if _le_hook_clone cloudflare-py \
+                https://github.com/omega8cc/letsencrypt-cloudflare-hook; then
+                _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
+                  _le_hook_py_here
+              fi
+            elif [ ! -x "${_usEr}/tools/le/hooks/cloudflare-py/venv/bin/python3" ]; then
+              ### A clone whose requirements never installed (the system pip3
+              ### refused them) gets its venv now, inside the same checks.
+              _apt_clean_update
+              apt-get install python3-venv ${_aptYesUnth} 2> /dev/null
+              _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
+                _le_hook_py_here
+            fi
+            if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
+            elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
+            fi
+            if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
+              _leWild=YES
+            else
+              echo "LE wildcard order skipped for ${_Dom}: the DNS hook or tools/le/config is not in place yet; per-name order placed"
+            fi
           else
             echo "LE wildcard order skipped for ${_Dom}: wildcard-enable-${_Dom}.info without cloudflare-dns-ssl-py.info or cloudflare-dns-ssl-sh.info in static/control; per-name order placed"
           fi
@@ -4495,65 +4553,9 @@ _le_ssl_check_update() {
         if [ "${_leWild}" = "YES" ]; then
           _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
-          ### static/control is owned by the tenant SHELL user and sits in a
-          ### group-writable static/, so both the flag file and the control
-          ### dir are names a tenant can swap for a symlink. chattr has no -h
-          ### and follows, which would pin the immutable bit -- root-only to
-          ### clear -- on an arbitrary target: lock the flags only inside the
-          ### real static/control, and only while each is a regular file.
-          ### Skip, never delete: these are the tenant's own opt-in flags,
-          ### not root-maintained INIs.
-          _acct_in_real_dir "${_usEr}/static/control" _chattr_plain_here \
-            cloudflare-dns-ssl-py.info cloudflare-dns-ssl-sh.info
-          export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
-          export CF_SETTLE_TIME='30'
-          export CF_DEBUG='true'
-          ### An exit-status gate on the clone: the old form keyed only on
-          ### "hook file absent", so a FAILED clone (no network, or a hooks
-          ### dir that already exists) still reached the root pip3 install.
-          ### tools/le is oN's, so the clone lands only in the real,
-          ### root-owned hooks/, and the chmod and the pip3 install act only
-          ### inside that root-owned clone (_le_hook_root_here): pip runs
-          ### packaging code as root and may only ever see a tree this clone
-          ### just created, never a name the account swapped in.
-          if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
-            _apt_clean_update
-            apt-get install gawk jq publicsuffix ldnsutils ${_aptYesUnth} 2> /dev/null
-            if _le_hook_clone cloudflare-sh \
-              https://github.com/omega8cc/dehydrated-hook-cloudflare; then
-              _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-sh" \
-                _le_hook_exec_here cf-hook.sh
-            fi
-          fi
-          if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
-            _apt_clean_update
-            apt-get install python3-pip python3-venv python-is-python3 ${_aptYesUnth} 2> /dev/null
-            if _le_hook_clone cloudflare-py \
-              https://github.com/omega8cc/letsencrypt-cloudflare-hook; then
-              _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
-                _le_hook_py_here
-            fi
-          elif [ ! -x "${_usEr}/tools/le/hooks/cloudflare-py/venv/bin/python3" ]; then
-            ### A clone whose requirements never installed (the system pip3
-            ### refused them) gets its venv now, inside the same checks.
-            _apt_clean_update
-            apt-get install python3-venv ${_aptYesUnth} 2> /dev/null
-            _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
-              _le_hook_py_here
-          fi
-          _thisHook=""
-          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
-            _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
-          elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
-            _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
-          fi
-          if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
-            _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
-            _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-            _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
-          else
-            echo "LE wildcard order skipped for ${_Dom}: the DNS hook or tools/le/config is not in place yet; per-name order placed"
-          fi
+          _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
+          _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+          _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
         fi
         echo "_leParams is ${_leParams}"
         echo "_dhArgs is ${_dhArgs}"
