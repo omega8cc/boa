@@ -15,7 +15,19 @@ function drush_provision_hosting_le_post_provision_verify() {
     $le_cnfx = d('@server_master')->aegir_root . "/tools/le/config";
     $le_acct = d('@server_master')->aegir_root . "/tools/le/accounts";
     $le_hook = d('@server_master')->aegir_root . "/tools/le/letsencrypt-sh-hooks.sh";
-    $cf_hook = d('@server_master')->aegir_root . "/tools/le/hooks/cloudflare/hook.py";
+    // The DNS hook is the one the nightly renewal installs and uses: one of
+    // two clones under hooks/, chosen by the account's flag the way
+    // 20-sites.sh chooses it. The single hooks/cloudflare path of 2024 is
+    // gone, and a wildcard Verify ordered through a hook the nightly never
+    // installs was never ordered; empty when the account has no flag.
+    $cf_ctrl = d('@server_master')->aegir_root . "/static/control";
+    $cf_hook = '';
+    if (provision_file()->exists($cf_ctrl . "/cloudflare-dns-ssl-py.info")->status()) {
+      $cf_hook = $le_root . "/hooks/cloudflare-py/hook.py";
+    }
+    elseif (provision_file()->exists($cf_ctrl . "/cloudflare-dns-ssl-sh.info")->status()) {
+      $cf_hook = $le_root . "/hooks/cloudflare-sh/cf-hook.sh";
+    }
 
     $is_boa = FALSE;
     $is_boa_ctrl = "/data/conf/global.inc";
@@ -91,13 +103,22 @@ function drush_provision_hosting_le_post_provision_verify() {
   }
 
   $is_wildcard = FALSE;
-  if (provision_file()->exists($wildcard_ctrl)->status()) {
-    if (provision_file()->exists($cf_hook)->status()) {
-      if (provision_file()->exists($le_cnfx)->status()) {
-        $is_wildcard = TRUE;
-        $main_name = preg_replace('`^www\.`', '', $main_name);
-        $real_name = preg_replace('`^www\.`', '', $real_name);
-      }
+  if (d()->type == 'site' && provision_file()->exists($wildcard_ctrl)->status()) {
+    // A wildcard needs the dns-01 challenge: a DNS flag, its hook and the
+    // account's dehydrated config. Short of any of them the per-name order
+    // is placed and the task log says why; the nightly renewal decides the
+    // same way (20-sites.sh), so neither ever undoes the other's order.
+    if ($cf_hook == '') {
+      drush_log('[hosting_le] Wildcard flag for ' . $main_name . ' without a DNS flag: a wildcard needs the dns-01 challenge, so the per-name order is placed. Create cloudflare-dns-ssl-py.info or cloudflare-dns-ssl-sh.info in static/control for a wildcard.', 'warning');
+    }
+    elseif (!provision_file()->exists($cf_hook)->status() ||
+            !provision_file()->exists($le_cnfx)->status()) {
+      drush_log('[hosting_le] Wildcard flag for ' . $main_name . ' but the DNS hook ' . $cf_hook . ' or the config ' . $le_cnfx . ' is not in place yet (the nightly installs the hook), so the per-name order is placed.', 'warning');
+    }
+    else {
+      $is_wildcard = TRUE;
+      $main_name = preg_replace('`^www\.`', '', $main_name);
+      $real_name = preg_replace('`^www\.`', '', $real_name);
     }
   }
 
@@ -365,6 +386,16 @@ function drush_provision_hosting_le_post_provision_verify() {
       if ($on_remote_server) {
         $le_options .= " --hook " . $le_hook;
       }
+      // The one-name order: the site's name, or on BOA both names of a site
+      // redirecting to an alias. Its vhost serves both, and dehydrated files
+      // the certificate under the first name ordered, which is where
+      // $cert_dir (certs/<site name>) and the vhost's symlink look: ordered
+      // under the alias alone it landed in certs/<alias>, and nothing was
+      // installed.
+      $one_name = " --domain " . $main_name;
+      if ($is_boa && $real_name != $main_name) {
+        $one_name = " --domain " . $real_name . " --domain " . $main_name;
+      }
       if ($force_renew) {
         if ($no_alt_names || empty($alt_names)) {
           if ($is_wildcard) {
@@ -372,7 +403,7 @@ function drush_provision_hosting_le_post_provision_verify() {
             exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output, $le_rc);
           }
           else {
-            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $main_name . ' 2>&1', $output, $le_rc);
+            exec("/bin/bash " . $le_exec . $le_options . " --force" . $one_name . ' 2>&1', $output, $le_rc);
           }
         }
         else {
@@ -392,7 +423,7 @@ function drush_provision_hosting_le_post_provision_verify() {
             exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output, $le_rc);
           }
           else {
-            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $main_name . ' 2>&1', $output, $le_rc);
+            exec("/bin/bash " . $le_exec . $le_options . $one_name . ' 2>&1', $output, $le_rc);
           }
         }
         else {
