@@ -2718,6 +2718,11 @@
       site; the release notes and this changelog link the pages that
       replaced the retired files.
 
+    * The release notes that used to ship in this repository's releases/
+      directory are retired: https://docs.boa.io/releases is the home of
+      the notes of every release, and the notes of each new release are
+      published there only. This changelog stays the summary record.
+
     * PHP that runs inside a Composer run, such as an @php script entry, a
       compile task of CiviCRM's packages or a php line in the project's own
       composer.json scripts, runs for every shell account, not only for the
