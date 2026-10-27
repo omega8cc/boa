@@ -6482,6 +6482,17 @@ _csf_allow_quic_udp_443() {
     return 0
   fi
 
+  # An operator who keeps csf.conf under _CUSTOM_CONFIG_CSF=YES owns its port
+  # lists, as barracuda's template pass already honours; until this check did
+  # too, every root run of this library re-opened UDP/443 on such a box and
+  # reloaded csf, undoing a closure the operator keeps every five minutes.
+  if grep -qE "^(export[[:space:]]+)?_CUSTOM_CONFIG_CSF=[\"']?YES" "${_barCnf:-/root/.barracuda.cnf}" 2> /dev/null; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: _CUSTOM_CONFIG_CSF=YES - leaving the csf.conf port lists alone"
+    fi
+    return 0
+  fi
+
   _csf_add_port_to_list_var() {
     # $1 = VAR (UDP_IN / UDP6_IN), $2 = PORT (443)
     _VAR="${1}"
