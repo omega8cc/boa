@@ -698,8 +698,18 @@ _load_paths() {
 # alone; anything else refuses the run. The filelists it names are opened by
 # duplicity by path much later, so duplicity gets root-private copies taken
 # from the same directory now. $1 = account, $2 = its paths.txt.
+# The file is read as text, never run: its five NAME="value" lines are the
+# only shape taken, each name once, no quote, dollar or backtick inside a
+# value and no value ending in a backslash (under eval that escaped the
+# closing quote, and a file whose two paths values both ended that way ran
+# the first exclude path as a command, as root). Anything else refuses the
+# file: a backup stops, every other action goes on with the five names
+# cleared, so a restore is never held by a paths file. The reason is logged
+# by line number, never by content.
+_PATHS_LINE_RE='^(_SOURCE|_USER_INCLUDE_PATHS|_USER_EXCLUDE_PATHS|_INCLUDE_LIST|_EXCLUDE_LIST)="([^"$`]*)"$'
 _load_account_paths() {
   local _user="$1" _paths_file="$2" _paths_dir="${2%/*}" _body _rc _v _n
+  local _line _ln=0 _n_ok=0 _k _val _seen=" " _why=""
   _body="$(_acct_in_real_dir "${_paths_dir}" _acct_read_root_here "${_paths_file##*/}")"
   _rc=$?
   if [ "${_rc}" != 0 ]; then
@@ -717,7 +727,48 @@ _load_account_paths() {
     echo "Error: no private directory for the filelists of ${_user}. Unable to proceed."
     exit 1
   fi
-  eval "${_body}"
+  _SOURCE=""
+  _USER_INCLUDE_PATHS=""
+  _USER_EXCLUDE_PATHS=""
+  _INCLUDE_LIST=""
+  _EXCLUDE_LIST=""
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _ln=$((_ln + 1))
+    [[ "${_line}" =~ ^[[:space:]]*(#|$) ]] && continue
+    if [[ ! "${_line}" =~ ${_PATHS_LINE_RE} ]]; then
+      _why="line ${_ln} is not one of the five NAME=\"value\" lines"
+      break
+    fi
+    _k="${BASH_REMATCH[1]}"
+    _val="${BASH_REMATCH[2]}"
+    case "${_seen}" in
+      *" ${_k} "*) _why="line ${_ln} repeats ${_k}"; break ;;
+    esac
+    case "${_val}" in
+      *\\) _why="line ${_ln}: the value of ${_k} ends in a backslash"; break ;;
+    esac
+    _seen="${_seen}${_k} "
+    printf -v "${_k}" '%s' "${_val}"
+    _n_ok=$((_n_ok + 1))
+  done <<< "${_body}"
+  if [ -z "${_why}" ] && [ "${_n_ok}" != "5" ]; then
+    _why="only ${_n_ok} of the five names are set"
+  fi
+  if [ -n "${_why}" ]; then
+    echo "[$(date)] REFUSED paths for ${_user}: ${_paths_file}: ${_why}" \
+      >> /var/log/mybackup_invalid_queued.log
+    _SOURCE=""
+    _USER_INCLUDE_PATHS=""
+    _USER_EXCLUDE_PATHS=""
+    _INCLUDE_LIST=""
+    _EXCLUDE_LIST=""
+    echo "Error: ${_paths_file} is not a paths file this tool reads (${_why})."
+    if [ "${_ACTION}" = "backup" ]; then
+      echo "Unable to proceed."
+      exit 1
+    fi
+    return 0
+  fi
   for _v in _INCLUDE_LIST _EXCLUDE_LIST; do
     _n="${!_v}"
     case "${_n}" in

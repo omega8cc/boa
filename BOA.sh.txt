@@ -5730,10 +5730,10 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f31
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f45
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
-      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f44
+      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f43
-      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f43
+      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f42
     fi
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
@@ -5747,7 +5747,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f90 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f89 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f99 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f52 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
