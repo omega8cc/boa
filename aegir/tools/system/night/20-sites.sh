@@ -3906,8 +3906,9 @@ _ghost_vhost_serves() {
 ### still has the site and those credentials open its database; otherwise
 ### nothing is written and _GH_HEAL_WHY says why. _GH_HEAL_TASK is the
 ### queued task, empty when none was queued. A Verify re-saves the alias from
-### the panel's record, so it is queued only while the panel records the site
-### on the alias's own platform; otherwise _GH_HEAL_PANEL names the panel's.
+### the panel's record, so nothing is written unless the panel records the
+### site on the alias's own platform; otherwise _GH_HEAL_PANEL names the
+### panel's.
 ### $1 = the site's own name (its alias's uri), $2 = site dir, $3 = its
 ### platform root, $4 = its alias's platform context.
 _ghost_drushrc_heal() {
@@ -3973,10 +3974,20 @@ _ghost_drushrc_heal() {
     _GH_HEAL_WHY="a database value in its vhost is not one this rebuild writes"
     return 1
   fi
-  case "$(_hmr_context_exists "${_s}")" in
-    YES) ;;
-    NO) _GH_HEAL_WHY="the control panel has no such site"; return 1 ;;
+  # Asked before anything is written: a site the panel records on another
+  # platform than its alias is a split an operator must settle (a Verify
+  # would follow the panel), so it is left as it is and named every night.
+  _q=$(su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster php-eval '\$s = hosting_get_site_by_url(\"${_s}\"); if (\$s && !empty(\$s->nid)) { \$p = hosting_context_name(\$s->platform); print \"platform=\" . (\$p ? \$p : \"unknown\"); } else { print \"platform=none\"; }'" 2> /dev/null)
+  case "${_q}" in
+    *platform=*) _q="${_q##*platform=}"; _q="${_q%%[^A-Za-z0-9@._-]*}" ;;
     *) _GH_HEAL_WHY="the control panel did not answer"; return 1 ;;
+  esac
+  case "${_q}" in
+    none) _GH_HEAL_WHY="the control panel has no such site"; return 1 ;;
+    "${_pc}") ;;
+    *) _GH_HEAL_PANEL="${_q:-unknown}"
+      _GH_HEAL_WHY="the control panel records the site on ${_GH_HEAL_PANEL}, its alias on ${_pc}: a split for operator review"
+      return 1 ;;
   esac
   if ! _ghost_db_login_ok "${_db[name]}" "${_db[user]}" "${_db[passwd]}" \
     "${_db[host]}" "${_db[port]}"; then
@@ -4236,7 +4247,7 @@ _cleanup_ghost_drushrc() {
               if [ -n "${_GH_HEAL_TASK}" ]; then
                 echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; Verify task ${_GH_HEAL_TASK} queued to write it in full)"
               elif [ -n "${_GH_HEAL_PANEL}" ]; then
-                echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; no Verify queued: the panel records the site on ${_GH_HEAL_PANEL}, its alias on ${_T_SITE_PLATFORM}, operator review needed)"
+                echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; no Verify queued: the panel records the site on ${_GH_HEAL_PANEL} now, its alias on ${_T_SITE_PLATFORM}, operator review needed)"
               else
                 echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; no Verify could be queued, run one to write it in full)"
               fi
