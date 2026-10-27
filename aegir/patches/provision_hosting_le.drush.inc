@@ -68,7 +68,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log('[hosting_le] This site main SSL name is ' . $main_name, 'info');
     }
 
-    $wildcard_ctrl = d('@server_master')->aegir_root . "/static/control/wildcard-enable-" . $main_name . ".info";
+    $wildcard_ctrl = d('@server_master')->aegir_root . "/static/control/wildcard-enable-" . $real_name . ".info";
     drush_log('[hosting_le] The optional wildcard flag is ' . $wildcard_ctrl, 'info');
 
     $no_san_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-no-san-" . $main_name . ".info";
@@ -109,11 +109,11 @@ function drush_provision_hosting_le_post_provision_verify() {
     // is placed and the task log says why; the nightly renewal decides the
     // same way (20-sites.sh), so neither ever undoes the other's order.
     if ($cf_hook == '') {
-      drush_log('[hosting_le] Wildcard flag for ' . $main_name . ' without a DNS flag: a wildcard needs the dns-01 challenge, so the per-name order is placed. Create cloudflare-dns-ssl-py.info or cloudflare-dns-ssl-sh.info in static/control for a wildcard.', 'warning');
+      drush_log('[hosting_le] Wildcard flag for ' . $real_name . ' without a DNS flag: a wildcard needs the dns-01 challenge, so the per-name order is placed. Create cloudflare-dns-ssl-py.info or cloudflare-dns-ssl-sh.info in static/control for a wildcard.', 'warning');
     }
     elseif (!provision_file()->exists($cf_hook)->status() ||
             !provision_file()->exists($le_cnfx)->status()) {
-      drush_log('[hosting_le] Wildcard flag for ' . $main_name . ' but the DNS hook ' . $cf_hook . ' or the config ' . $le_cnfx . ' is not in place yet (the nightly installs the hook), so the per-name order is placed.', 'warning');
+      drush_log('[hosting_le] Wildcard flag for ' . $real_name . ' but the DNS hook ' . $cf_hook . ' or the config ' . $le_cnfx . ' is not in place yet (the nightly installs the hook), so the per-name order is placed.', 'warning');
     }
     else {
       $is_wildcard = TRUE;

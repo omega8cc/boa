@@ -4792,7 +4792,7 @@ _fix_hosting_le() {
     _hleSum="$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
     _fetch_versioned "${_hoLeIncFull}" "${_urlHmr}/patches/hosting_le_vhost.drush.inc" f99 --mode 644
     _pleSum="$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f96 --mode 644
+    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f95 --mode 644
     if [ "$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)" != "${_dhySum}" ] \
       || [ "$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_hleSum}" ] \
       || [ "$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_pleSum}" ]; then
