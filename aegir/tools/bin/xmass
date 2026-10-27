@@ -2639,8 +2639,9 @@ _xmass_dbctl_seed_back() {
       echo kept
       exit 0
     fi
-    grep -avx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed
-    [ \$? -le 1 ] && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
+    rm -f -- \${_c}.dbseed
+    ( grep -avx '_DB_BROKER_BORN=NO' \${_c}; [ \$? -le 1 ] || exit 2 ) > \${_c}.dbseed \
+      && mv -f \${_c}.dbseed \${_c} && rm -f \${_n} && echo back && exit 0
     rm -f \${_c}.dbseed
     echo failed" 2> /dev/null)
   case "${_r}" in
@@ -2769,33 +2770,46 @@ _xmass_push_account_cnf() {
 # (its mode kept), so a write that fails leaves the cnf as it was
 [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] && [ "$(tr -d '\000' < "${_cnf}" | wc -c)" != "$(wc -c < "${_cnf}")" ] \
   && { rm -f -- "${_cnf}.nulheal"; { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "${_cnf}" > "${_cnf}.nulheal" && chmod --reference="${_cnf}" "${_cnf}.nulheal" && mv -f "${_cnf}.nulheal" "${_cnf}"; } || rm -f -- "${_cnf}.nulheal"; }
-# each rewrite goes over the cnf only once its copy is written whole (grep's
-# own status: 1 when it keeps no line, the copy still whole); otherwise the
-# copy goes, the cnf stays as it was and the merge stops
-_ok() { [ "$1" -le 1 ]; }
-_stop() { rm -f "${_cnf}.mrgnew"; exit 1; }
+# every key is merged into one work copy of the cnf, and the copy goes over
+# the cnf once, after the last key: a merge that stops part way (a short
+# write, a killed run) leaves the cnf as it was, never half merged. Each
+# rewrite of the work copy goes to a fresh name (a link or a stale copy put
+# at the name is removed first, a directory there stops the merge) and counts
+# only when grep's own status says its lines are whole (1: it kept none) and
+# the line after them was written
+_w="${_cnf}.mrgwork"
+_n="${_cnf}.mrgnew"
+_stop() { rm -f -- "${_w}" "${_n}" "${_mrg}"; exit 1; }
+_rw() {
+  rm -f -- "${_n}"
+  ( grep -avE "${1}" "${_w}"; [ $? -le 1 ] || exit 2
+    [ -z "${2}" ] || printf '%s\n' "${2}" ) > "${_n}" 2> /dev/null \
+    && mv -f -- "${_n}" "${_w}"; }
+rm -f -- "${_w}"
+# cp would copy the cnf into a directory left at the name
+[ ! -d "${_w}" ] || { echo "ALRT: ${_w} is a directory: remove it, then re-run" >&2; _stop; }
+cp -- "${_cnf}" "${_w}" 2> /dev/null || _stop
 while IFS= read -r _l; do
   case "${_l}" in
     -_WEB_GROUP|_WEB_GROUP=*)
-      grep -avE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
-      _ok $? && { [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"; } \
-        && mv -f "${_cnf}.mrgnew" "${_cnf}" || _stop
+      _v="${_l}"
+      [ "${_l}" = "-_WEB_GROUP" ] && _v=""
+      _rw "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_v}" || _stop
       continue
       ;;
     -_DB_BROKER_ARM|_DB_BROKER_ARM=*)
-      grep -avE "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
-      _ok $? && { [ "${_l}" = "-_DB_BROKER_ARM" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"; } \
-        && mv -f "${_cnf}.mrgnew" "${_cnf}" || _stop
+      _v="${_l}"
+      [ "${_l}" = "-_DB_BROKER_ARM" ] && _v=""
+      _rw "^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=" "${_v}" || _stop
       continue
       ;;
     _*=*) : ;;
     *) continue ;;
   esac
-  _k="${_l%%=*}"
-  grep -av "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
-  _ok $? && printf '%s\n' "${_l}" >> "${_cnf}.mrgnew" && mv -f "${_cnf}.mrgnew" "${_cnf}" || _stop
+  _rw "^${_l%%=*}=" "${_l}" || _stop
 done < "${_mrg}"
-chmod 644 "${_cnf}"
+chmod 644 "${_w}"
+mv -f -- "${_w}" "${_cnf}" || _stop
 rm -f "${_mrg}"
 MERGESH
   } > "${_lRun}"
@@ -2817,7 +2831,7 @@ MERGESH
     [ "${_n}" = "note" ] && _xmass_dbctl_seed_back "${_acct}" "${_t}" 0
     return 0
   fi
-  _alrt "cnf merge for ${_acct} on ${_t} failed; the target keeps its current cnf"
+  _alrt "cnf merge for ${_acct} on ${_t} failed; the target's cnf stays as it was before the merge"
   if [ "${_n}" = "note" ] || [ "${_mrc}" = "255" ]; then
     _xmass_dbctl_seed_back "${_acct}" "${_t}" 1
   fi
@@ -7609,9 +7623,16 @@ _xmass_sync_account() {
 
   # Target-mutating seeding runs only in LIVE: merge the portable cnf values,
   # carry the client credentials, mirror the suspension flag. Repeated syncs
-  # keep all three converged with source-side changes until cutover.
+  # keep all three converged with source-side changes until cutover. A merge
+  # that failed stops the pass, with a line of its own, as a failed placement
+  # does: a cutover would promote a target whose cnf lacks the source's values
+  # (an opt-out among them).
   if [ "${_MODE}" = "LIVE" ]; then
-    _xmass_push_account_cnf "${_oct}" "${_tgt}"
+    if ! _xmass_push_account_cnf "${_oct}" "${_tgt}"; then
+      _alrt "DENY: ${_oct}: the source's octopus.cnf values were not merged on ${_tgt} --"
+      _alrt "DENY: the account would run there on the target's own values after cutover"
+      _XMASS_CNF_RC=1
+    fi
     _xmass_sync_shell_credentials "${_oct}" "${_tgt}"
     _xmass_copy_suspended_flag "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
   fi
@@ -14177,6 +14198,7 @@ _xmass_cmd_sync() {
     _xmass_require_clean_dry "${_tgt}"
   fi
   _XMASS_STORE_RC=0
+  _XMASS_CNF_RC=0
   _XMASS_RSYNC_RC=0
   # Source-side deletions propagate on the DATA trees for every `sync` pass,
   # manual and automated alike (2026-08-26 ruling — a standing mirror that
@@ -14230,6 +14252,9 @@ _xmass_cmd_sync() {
   if [ "${_MODE}" = "LIVE" ]; then
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
       _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); sync incomplete"
+    fi
+    if [ "${_XMASS_CNF_RC:-0}" != "0" ]; then
+      _die "$(_xmass_wg_skipped_says)an account's octopus.cnf values could not be merged on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
       _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
@@ -15721,6 +15746,7 @@ _xmass_cmd_cutover() {
     # The plan names the order --live will take; nothing is saved from a DRY.
     _xmass_decide_flip_first
     _XMASS_STORE_RC=0
+    _XMASS_CNF_RC=0
     _XMASS_RSYNC_RC=0
     # Cutover legs stay ADDITIVE, plan and live alike (2026-08-26 ruling): the
     # target is about to become production and a wrong deletion here is
@@ -15797,6 +15823,7 @@ _xmass_cmd_cutover() {
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
+  _XMASS_CNF_RC=0
   _XMASS_RSYNC_RC=0
 
   # Last wait before the first source mutation: the standby must hold no run
@@ -15854,6 +15881,10 @@ _xmass_cmd_cutover() {
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
     _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
+  fi
+  if [ "${_XMASS_CNF_RC:-0}" != "0" ]; then
+    _xmass_restore_hint
+    _die "$(_xmass_wg_skipped_says)an account's octopus.cnf values could not be merged on the target (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
@@ -16787,7 +16818,7 @@ _xmass_go_live_standing() {
   _info "go-live of the test run${_rec:+ under admail=${_rec}} on ${_tgt}, this box's standing mirror:"
   _info "  nothing has moved, so no client is mailed; the pair becomes a real one"
   # The account names are checked above and each switch is YES or NO.
-  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { rm -f -- \"\${_c}.nulheal\"; { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { rm -f -- \"\${_c}.nulheal\"; { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; rm -f -- \"\${_c}.golive\"; ( grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; [ \$? -le 1 ] || exit 2; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\" ) > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { rm -f -- \"\${_c}.golive\"; echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
   _xmass_golive_hold_report "${_out}" "${_mk}"
   while IFS= read -r _l; do
     _a="$(printf '%s' "${_l}" | cut -d' ' -f2)"

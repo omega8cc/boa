@@ -1254,7 +1254,7 @@ _xcopy_heal_fpm_pins() {
 # box). Status 1 when the cnf is missing or cannot be rewritten. As in xoct.
 _xcopy_admail_upgrade_mail_off() {
   local _a="$1" _h="$2" _sh _rc
-  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { rm -f -- \"\${_c}.nulheal\"; { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; { grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; [ ! -L \"\${_c}\" ] && [ \"\$(tr -d '\\000' < \"\${_c}\" | wc -c)\" != \"\$(wc -c < \"\${_c}\")\" ] && { rm -f -- \"\${_c}.nulheal\"; { perl -0777 -pe 's/(?<=[^\\n\\0])\\0+/\\n/g; tr/\\0//d' < \"\${_c}\" > \"\${_c}.nulheal\" && chmod --reference=\"\${_c}\" \"\${_c}.nulheal\" && mv -f \"\${_c}.nulheal\" \"\${_c}\"; } || rm -f -- \"\${_c}.nulheal\"; }; rm -f -- \"\${_c}.admail\"; ( grep -av '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; [ \$? -le 1 ] || exit 2; echo _SEND_UPGRADE_EMAIL=NO ) > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\" || { rm -f -- \"\${_c}.admail\"; exit 1; }"
   if [ -n "${_h}" ]; then
     ssh root@"${_h}" "${_sh}" 2> /dev/null
     _rc=$?
@@ -1838,13 +1838,16 @@ _xcopy_wg_seed() {
       if [ ! -e \${_c} ]; then
         ( umask 077; printf '_WEB_GROUP=${_v}\\n' > \${_c} ) && echo made
       elif [ \"\$(grep -aE \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
-        grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed
-        printf '_WEB_GROUP=${_v}\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
+        rm -f -- \${_c}.wgseed
+        ( grep -avE \"\${_re}\" \${_c}; [ \$? -le 1 ] || exit 2; printf '_WEB_GROUP=${_v}\\n' ) > \${_c}.wgseed \
+          && mv -f \${_c}.wgseed \${_c} && echo line || rm -f -- \${_c}.wgseed
       else
         echo found
       fi
     elif [ -e \${_c} ] && grep -aqE \"\${_re}\" \${_c}; then
-      grep -avE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
+      rm -f -- \${_c}.wgseed
+      ( grep -avE \"\${_re}\" \${_c}; [ \$? -le 1 ] || exit 2 ) > \${_c}.wgseed \
+        && mv -f \${_c}.wgseed \${_c} || rm -f -- \${_c}.wgseed
     fi" 2> /dev/null)
   case "${_XCOPY_WG_SEED}" in
     made|line) echo "INFO: the source's _WEB_GROUP=${_v} put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
@@ -1863,7 +1866,7 @@ _xcopy_wg_unseed() {
       # the seed left its own line as the only _WEB_GROUP one
       # shellcheck disable=SC2029
       ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
-        _c=/root/.${1}.octopus.cnf; grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+        _c=/root/.${1}.octopus.cnf; rm -f -- \${_c}.wgseed; ( grep -avE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c}; [ \$? -le 1 ] || exit 2 ) > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} || rm -f -- \${_c}.wgseed" 2> /dev/null
       ;;
   esac
   _XCOPY_WG_SEED=""
@@ -1957,11 +1960,10 @@ _xcopy_dbarm_seed() {
       _w=removed
     fi
     _was=\$(grep -aE \"\${_re}\" \${_c})
-    grep -avE \"\${_re}\" \${_c} > \${_c}.dbaseed
-    if [ \$? -le 1 ]; then
-      [ \${_w} = removed ] || printf '_DB_BROKER_ARM=NO\\n' >> \${_c}.dbaseed
-      mv -f \${_c}.dbaseed \${_c} && printf '%s\\n' \${_w} \"\${_was}\"
-    fi
+    rm -f -- \${_c}.dbaseed
+    ( grep -avE \"\${_re}\" \${_c}; [ \$? -le 1 ] || exit 2
+      [ \${_w} = removed ] || printf '_DB_BROKER_ARM=NO\\n' ) > \${_c}.dbaseed \
+      && mv -f \${_c}.dbaseed \${_c} && printf '%s\\n' \${_w} \"\${_was}\"
     rm -f \${_c}.dbaseed" 2> /dev/null)
   _XCOPY_DBA_SEED="${_out%%$'\n'*}"
   [[ "${_out}" == *$'\n'* ]] && _XCOPY_DBA_WAS="${_out#*$'\n'}"
@@ -1987,8 +1989,9 @@ _xcopy_dbarm_unseed() {
         | ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
         _c=/root/.${1}.octopus.cnf
         [ -e \${_c} ] || exit 0
-        grep -avE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c} > \${_c}.dbaseed
-        [ \$? -le 1 ] && cat >> \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
+        rm -f -- \${_c}.dbaseed
+        ( grep -avE '^[[:space:]]*(export[[:space:]]+)?_DB_BROKER_ARM=' \${_c}; [ \$? -le 1 ] || exit 2
+          cat ) > \${_c}.dbaseed && mv -f \${_c}.dbaseed \${_c}
         rm -f \${_c}.dbaseed" 2> /dev/null
       ;;
   esac

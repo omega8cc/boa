@@ -4656,6 +4656,9 @@ _satellite_db_broker_born_leftover() {
   [[ "${_STATUS}" != "INIT" ]] || return 0
   [[ -n "$(find "${_m}" -maxdepth 0 -type f -user root -mmin +1440 2> /dev/null)" ]] || return 0
   [[ ! -e "${_n}" && ! -L "${_n}" ]] || return 0
+  # a regular file, or a link to one, is read; nothing else is (a FIFO would
+  # hold the pass)
+  [[ -f "${_c}" ]] || return 0
   grep -aqx "_DB_BROKER_BORN=NO" "${_c}" 2> /dev/null || return 0
   _mk=$(timeout 10 dd if="${_m}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null)
   _mu=$(printf '%s\n' "${_mk}" | grep -a -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
@@ -4664,6 +4667,13 @@ _satellite_db_broker_born_leftover() {
   _ni=$(stat -c %i:%W "/data/disk/${_USER}" 2> /dev/null)
   [[ "${_nu}" =~ ^[0-9]+$ && "${_mu}" == "${_nu}" ]] || return 0
   [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ && "${_mi}" == "${_ni}" ]] || return 0
+  # never taken back through a link, as the NUL heal and instgrp take only a
+  # regular file: the rename would replace the link with a file, and the
+  # inode and size check would read the link itself
+  if [[ -L "${_c}" ]]; then
+    _msg "NOTE: database broker: _DB_BROKER_BORN=NO could not be taken back from ${_c}: it is a link, never written through; the line stays while it is one"
+    return 0
+  fi
   _t="${_c}.dbseed.$$"
   rm -f -- "${_t}"
   _was=$(stat -c %i:%s "${_c}" 2> /dev/null)

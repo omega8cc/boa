@@ -1,6 +1,6 @@
 # Welcome to BOA!
 
-BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
+BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [Install BOA](https://docs.boa.io/self-hosting/install-boa)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
 
 ## 30 Years of Heritage
 
@@ -31,18 +31,18 @@ Barracuda is a specially tuned hosting environment for Ægir, designed to be lig
 
 Octopus is a smart system designed to manage multiple Ægir instances within Barracuda. Just like the sea creature with eight limbs, Octopus allows you to create and manage many separate but connected Ægir instances, showcasing its intelligence and adaptability in efficiently handling complex hosting environments.
 
-## Brand New Documentation
+## Documentation
 
-BOA has a brand new documentation site: [**docs.boa.io**](https://docs.boa.io). It is now the primary source of information about BOA, split into four guides, one per kind of reader:
+All BOA documentation lives on [**docs.boa.io**](https://docs.boa.io), split into four guides, one per kind of reader:
 
 - [**Using BOA**](https://docs.boa.io/using): for site owners on a hosted account.
 - [**Self-Hosting BOA**](https://docs.boa.io/self-hosting): for running BOA on your own server.
 - [**Operating BOA**](https://docs.boa.io/operating): the advanced root reference.
 - [**Developing BOA**](https://docs.boa.io/developing): for BOA maintainers.
 
-It also carries [cheat sheets](https://docs.boa.io/cheat-sheets), [release notes](https://docs.boa.io/releases) and a searchable [reference](https://docs.boa.io/reference) of every control variable, control file and command.
+It also carries the [Ægir Platforms](https://docs.boa.io/platforms) catalogue, [cheat sheets](https://docs.boa.io/cheat-sheets), [release notes](https://docs.boa.io/releases), a searchable [reference](https://docs.boa.io/reference) of every control variable, control file and command, and the [changelog](https://docs.boa.io/changelog) of the documentation itself.
 
-The built-in docs shipped in this repository will be deprecated soon. Until then they are still linked below: [Documentation and Templates](#documentation-and-templates), [Documentation for BOA PRO](#documentation-for-boa-pro) and [Additional Documentation](#additional-documentation).
+The documentation that used to ship in this repository's `docs/` directory was retired in October 2026, once everything in it had been carried over to the site. docs.boa.io is the single, current source.
 
 ## Dual License
 
@@ -66,9 +66,34 @@ Leverage one Ægir Master Instance and multiple Satellite Instances. Use Satelli
 - **BARRACUDA**: Upgrades the system and the Ægir Master Instance.
 - **OCTOPUS**: Updates Ægir Instances + Drupal platforms.
 
+## Install
+
+BOA installs on a clean, minimal Devuan server, or on a Debian server, which the installer converts to Devuan for you. You need root SSH-key access, a wildcard-enabled hostname such as `server.mydomain.org` that already resolves to the server, and no web or database service installed. Log in as root directly, never through `sudo`, start a `screen` session, and run:
+
+```sh
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
+boa in-lts public server.mydomain.org my@email o1 php-min silent
+```
+
+Replace the hostname and the e-mail address with your own. The install runs its phases on its own, the last one from cron within 30 minutes of the others. Don't reboot and don't use Ægir until `boa info | grep -c Percona` reports three lines; then reboot once with `boa reboot`.
+
+To host Drupal 11, or a distribution built on it, put `percona-8.4` where `php-min` is: BOA installs Percona 5.7 by default, and Drupal 11 needs MySQL 8. Every install option, the local-development install and what to do when an install is interrupted are on [**Install BOA**](https://docs.boa.io/self-hosting/install-boa); the server checklist is on [**Before you install**](https://docs.boa.io/self-hosting/before-you-install).
+
+## Upgrade
+
+Leave SKYNET on: it keeps the system patched between BOA releases and e-mails you when a new release is out. To run a full upgrade by hand, as root in a `screen` session:
+
+```sh
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
+barracuda up-lts
+octopus up-lts all force
+```
+
+On the PRO edition the verb is `up-pro`. Append `log` to either command for the silent, logged mode that e-mails the report instead of printing it. A Percona 5.7 server moves to 8.4 in place, in two steps, `barracuda up-lts system percona-8.0` and then `percona-8.4`, after a whole-server snapshot and a `codebasecheck --box --deep` run. The whole procedure, the partial upgrade modes and the self-upgrade schedule are on [**Keeping BOA current**](https://docs.boa.io/self-hosting/keeping-current).
+
 ## Bug Reporting
 
-Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CONTRIBUTING.md).
+Report bugs in the [GitHub issue queue](https://github.com/omega8cc/boa/issues), following [**Contributing to BOA**](https://docs.boa.io/developing/contributing/contributing). Every report needs a Gist with the output of `boa info`.
 
 ## Requirements
 
@@ -78,12 +103,12 @@ Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/
 - SSH (ed25519) keys for root are required by newer OpenSSH versions used in BOA.
 - Wget must be installed.
 - Open outgoing TCP ports: 25, 53, 80, 443.
-- Open incoming TCP ports 22, 80, 443 and UDP port 443 (HTTP/3): [docs/NGINX-QUIC-BPF.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NGINX-QUIC-BPF.md).
+- Open incoming TCP ports 22, 80, 443 and UDP port 443 (HTTP/3): [HTTP/3 and KTLS](https://docs.boa.io/operating/nginx-internals/http3-ktls).
 - Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 
 ## Provided Services and Features
 
-Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PROVIDES.md).
+Check out what the stack adds on top of Ægir in [**Ægir vs BOA**](https://docs.boa.io/aegir-vs-boa), and the full reference in [**Operating BOA**](https://docs.boa.io/operating).
 
 ## Supported Virtualization Systems
 
@@ -124,74 +149,10 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
 
-## Documentation and Templates
-
-- Installation Instructions: [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)
-- Upgrade Instructions: [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.md)
-- Major-Upgrade Instructions: [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)
-- Upgrading to Percona 8 in Place: [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md)
-- Percona 8 Upgrade Readiness (`codebasecheck`): [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CODEBASECHECK.md)
-- Importance of Keeping SKYNET Enabled in BOA: [docs/SKYNET.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SKYNET.md)
-- INI configuration per site: [docs/ini/site/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/site/INI.md)
-- INI configuration per platform: [docs/ini/platform/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/platform/INI.md)
-- Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf)
-- System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ctrl/system.ctrl)
-- How we build the distribution catalogue and test codebases: [docs/BUILDTESTS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BUILDTESTS.md)
-
-## Documentation for BOA PRO
-
-- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
-
-## Additional Documentation
-
-- AI Bot Control, per-server policy overview: [docs/AI-POLICY.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/AI-POLICY.md)
-- AI Bot Control, per-site how-to: [docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/AI-POLICY-USER.md)
-- AI Bot Policy and Edge Testing: [docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/AI-POLICY-TESTING.md)
-- Composer How-To: [docs/COMPOSER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/COMPOSER.md)
-- Dev-Mode Notes: [docs/DEVELOPMENT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DEVELOPMENT.md)
-- Drupal Contrib Modules: [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MODULES.md)
-- Extra Comments: [docs/CAVEATS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CAVEATS.md)
-- FAQ: [docs/FAQ.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FAQ.md)
-- Fast DB Operations: [docs/MYQUICK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MYQUICK.md)
-- Fast Migrate/Clone: [docs/FASTTRACK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FASTTRACK.md)
-- Files Directories Symlinking, per-server overview + testing: [docs/FILES-SYMLINK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK.md)
-- Files Directories Symlinking, per-site how-to: [docs/FILES-SYMLINK-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK-USER.md)
-- Relocating Files Stores to Attached Storage (`migratefs`): [docs/MIGRATEFS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATEFS.md)
-- HTTP/3 and KTLS Support: [docs/HTTP3.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/HTTP3.md)
-- Included Platforms: [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
-- IP Access Control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS.md)
-- IP Access Control, per-site how-to: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS-USER.md)
-- Let’s Encrypt: [docs/SSL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SSL.md)
-- Live Disk Resize How-To: [docs/DISK_RESIZE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DISK_RESIZE.md)
-- Migration for Single Octopus Instance: [docs/MIGRATE-XOCT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-XOCT.md)
-- Migration for All Octopus Instances: [docs/MIGRATE-XMASS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-XMASS.md)
-- Migrations Across Percona Versions, and Verifying a Migration: [docs/MIGRATE-VERSIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-VERSIONS.md)
-- Migration (Legacy Docs): [docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE.md)
-- Migration (Single Site): [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REMOTE.md)
-- New Relic How-To: [docs/NEWRELIC.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NEWRELIC.md)
-- Nginx Abuse Guard (IDS, request guards, ban pipeline): [docs/ABUSE-GUARD.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ABUSE-GUARD.md)
-- Nginx Custom Rewrites: [docs/REWRITES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REWRITES.md)
-- PHP-CLI and Drush Configuration How-To: [docs/DRUSH-CLI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DRUSH-CLI.md)
-- PHP-FPM Configuration How-To: [docs/PHP-FPM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PHP-FPM.md)
-- Remote S3 Backups: [docs/BACKUPS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPS.md)
-- Ruby Gems and NPM: [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/GEM.md)
-- Security Settings: [docs/SECURITY.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SECURITY.md)
-- Self-Healing Monitor Stack (auto-healing, load control, process guards): [docs/MONITOR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MONITOR.md)
-- Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
-- SMTP SSL Error Debugging: [docs/SMTP_SSL_DEBUG.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SMTP_SSL_DEBUG.md)
-- Solr and Jetty How-To: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md)
-- SSH Encryption: [docs/BLOWFISH.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BLOWFISH.md)
-- VServer Cluster: [docs/CLUSTER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CLUSTER.md) (deprecated)
-
 ## Useful Links
 
 - BOA Documentation: [**docs.boa.io**](https://docs.boa.io)
 - Release News and Announcements: [**omega8.cc/news**](https://omega8.cc/news)
-- BOA User Handbook (legacy): [**Learn BOA**](https://learn.omega8.cc/library/good-to-know)
-- Ægir Docs (legacy): [**Ægir Project**](https://docs.aegirproject.org)
 
 ## Maintainers
 

@@ -347,7 +347,7 @@ _SOCIAL_CONSTRAINT="^13"
 # PHP libraries without providing them (their open install Critical) and the profile
 # hard-requires an advisory-affected dompdf line, so build_opigno carries corrections.
 # The published platform ships dompdf 2.0.x with open advisories - a known, accepted
-# trade recorded in docs/BUILDTESTS.md; the fixed dompdf line (3.x) is outside the
+# trade, recorded on docs.boa.io (staticbuild); the fixed dompdf line (3.x) is outside the
 # profile's own constraint.
 _OPIGNO_SPEC="opigno/opigno-composer"
 _OPIGNO_DISTPKG="opigno/opigno_lms"

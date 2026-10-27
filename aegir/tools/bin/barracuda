@@ -42,6 +42,8 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
+  # A signal here must not cut the owner's cleanup short (cron left stopped)
+  trap '' HUP INT TERM PIPE
   if [ -n "${1}" ]; then
     mkdir -p /var/log/boa 2>/dev/null
     echo "REASON ${1} on $(date)" >> /var/log/boa/.barracuda.exit.exceptions.log
@@ -54,10 +56,16 @@ _clean_pid_exit() {
     if [ -n "${1}" ]; then
       [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
     fi
-    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    # only the locks still the files this run made (_boa_lock_release)
+    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
+    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-    service cron start &> /dev/null
+    # an ignored signal stays ignored in what a process starts: cron and the
+    # jobs it forks would never die by TERM, nor a pipeline by PIPE. Started
+    # in a session of its own first, so no signal to this run's group cuts
+    # the start short, then with the four back at their defaults
+    setsid -w perl -e '$SIG{$_} = "DEFAULT" for qw(HUP INT TERM PIPE); exec @ARGV or exit 1' \
+      service cron start &> /dev/null
     _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
     if (( _CNT > 1 )); then
       pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
@@ -1614,6 +1622,38 @@ _up_action() {
   fi
 }
 
+# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
+# Ctrl-C or kill left the locks _up_start took behind, and clear.sh reaps them
+# only by age, one to three hours later. Release what this run holds at that
+# moment and nothing else, and never /opt/tmp, whose reuse across runs is
+# intentional. A lock is this run's while it is the very file _up_start made
+# (its inode): the installer drops the run lock at its own end, and another
+# run may then take a new one by the same name. Every release goes by that
+# rule, the signal's and the run's own. Logged beside _clean_pid_exit's
+# reasons, never to the closed channel.
+_BOA_LOCK_RUN_I=""
+_BOA_LOCK_WAIT_I=""
+_boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
+# $1 the lock, $2 its inode when this run took it: removed only while it is
+# still that file
+_boa_lock_release() {
+  if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ] && rm -f -- "${1}"; then
+    echo released
+  else
+    echo left
+  fi
+}
+_boa_on_signal() {
+  local _r _w
+  trap '' HUP INT TERM PIPE
+  _r=$(_boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}")
+  _w=$(_boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}")
+  mkdir -p /var/log/boa 2> /dev/null
+  echo "SIGNAL ${1} in ${_cmNd:-barracuda} on $(date): boa_run.pid ${_r}, boa_wait.pid ${_w}" \
+    >> /var/log/boa/.barracuda.exit.exceptions.log 2> /dev/null
+  exit "${2}"
+}
+
 _up_start() {
   if [ -e "/run/boa_run.pid" ]; then
     echo
@@ -1643,6 +1683,12 @@ _up_start() {
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
     _PID_LOCK_OWNER=YES
+    _BOA_LOCK_RUN_I=$(_boa_lock_ino /run/boa_run.pid)
+    _BOA_LOCK_WAIT_I=$(_boa_lock_ino /run/boa_wait.pid)
+    trap '_boa_on_signal HUP 129' HUP
+    trap '_boa_on_signal INT 130' INT
+    trap '_boa_on_signal PIPE 141' PIPE
+    trap '_boa_on_signal TERM 143' TERM
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     #pkill -9 -f owl.sh
     #rm -f /run/*daily*.pid
@@ -1752,9 +1798,11 @@ _csf_kill_own() {
 _up_finish() {
   rm -f /root/.bashrc.bak*
   rm -f /root/BOA.sh*
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
   [ -e "/run/boa_system_wait.pid" ] && rm -f /run/boa_system_wait.pid
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
+  _BOA_LOCK_RUN_I=""
+  _BOA_LOCK_WAIT_I=""
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
@@ -2814,7 +2862,8 @@ _launcher_release_check() {
   # The run lock is this invocation's (_up_start); the one it hands over to
   # takes it again, so release it rather than leave it to refuse its heir.
   if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
-    rm -f /run/boa_run.pid /run/boa_wait.pid
+    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
+    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
   fi
   exec /bin/bash "${_self}" "$@"
 }
