@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * _CUSTOM_CONFIG_CSF=YES now also keeps the five-minute BOA.sh.txt
+      run from adding UDP 443 back to UDP_IN in csf.conf: it re-opened
+      the port on every run and reloaded csf, whatever the flag said, so
+      a box that closes HTTP/3 by hand reloaded its firewall every five
+      minutes. Without the flag the check adds the port and reloads csf
+      only when the port is missing, as before.
+
     * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
       longer move a live site that lost only its drushrc.php. With the
       _GHOST_* cleanups on, such a site (its directory still holding
