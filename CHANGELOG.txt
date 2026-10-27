@@ -1381,12 +1381,14 @@
       7.0, 7.3 and 7.4 packages that the backports above lacked, among
       them the HTTP stream wrapper, SOAP, phar and OpenSSL fixes of 2025
       and 2026; 7.1 and 7.2, which the LTS team never packaged, get them
-      ported from 7.0 and 7.3.
+      ported from 7.0 and 7.3. The PHP security floor brings every box
+      running one of them to the patched build.
 
     * PHP 7.0, 7.3, 7.4 and 8.0: a malformed row from a MySQL server no
       longer leaves values freed in the result's row cache, where fetching
       the row again read freed memory (the backported fix for
-      CVE-2024-8929 left them there).
+      CVE-2024-8929 left them there). The PHP security floor brings every
+      box running one of them to the fixed build.
 
     * PHP 5.6, 7.0, 7.1, 7.2 and 7.3 no longer crash on round() with a
       precision at or near the lowest integer (PHP's own test for bug
