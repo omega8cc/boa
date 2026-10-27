@@ -3375,7 +3375,9 @@ _check_php_sqlite_loadext() {
 # exact release when it is built from sources (_install_php_multi_src). The
 # build records the ids it carries in /opt/phpNN/lib/boa-sec-patches, which
 # the prebuilt package of that build carries too. Prints the ids this tree
-# has for _PHP_VERSION, one a line.
+# has for _PHP_VERSION, one a line, in the glob's order, which is the order
+# they are applied in: a patch made on top of others needs an id that sorts
+# after theirs (xlts-N after sury-N).
 _php_sec_patches() {
   local _p
   for _p in "${_bldPth}/aegir/patches/php-sec/php-${_PHP_VERSION}-"*.patch; do
