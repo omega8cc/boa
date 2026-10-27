@@ -3905,17 +3905,25 @@ _ghost_vhost_serves() {
 ### in full. Only while the vhost's root is this dir's platform, the panel
 ### still has the site and those credentials open its database; otherwise
 ### nothing is written and _GH_HEAL_WHY says why. _GH_HEAL_TASK is the
-### queued task, empty when none was queued. $1 = the site's own name (its
-### alias's uri), $2 = site dir, $3 = its platform root.
+### queued task, empty when none was queued. A Verify re-saves the alias from
+### the panel's record, so it is queued only while the panel records the site
+### on the alias's own platform; otherwise _GH_HEAL_PANEL names the panel's.
+### $1 = the site's own name (its alias's uri), $2 = site dir, $3 = its
+### platform root, $4 = its alias's platform context.
 _ghost_drushrc_heal() {
-  local LC_ALL=C _s="${1}" _d="${2}" _r="${3%/}" _vh _k _v _enc _txt _uid _gid _q
+  local LC_ALL=C _s="${1}" _d="${2}" _r="${3%/}" _pc="${4}" _vh _k _v _enc _txt _uid _gid _q
   local -A _db=()
   _GH_HEAL_WHY=""
   _GH_HEAL_TASK=""
-  # The name comes from a file name the account controls and reaches the
-  # panel's PHP below: a host name only.
+  _GH_HEAL_PANEL=""
+  # The name and the platform come from a file the account controls and
+  # reach the panel's PHP below: a host name and a context name only.
   if [[ ! "${_s}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
     _GH_HEAL_WHY="its name is not a plain host name"
+    return 1
+  fi
+  if [[ ! "${_pc}" =~ ^@[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    _GH_HEAL_WHY="its alias names no plain platform context"
     return 1
   fi
   if _is_foreign_cms_root "${_r}" \
@@ -3990,9 +3998,10 @@ _ghost_drushrc_heal() {
     _GH_HEAL_WHY="the new drushrc.php could not be written"
     return 1
   fi
-  _q=$(su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster php-eval '\$s = hosting_get_site_by_url(\"${_s}\"); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { print \"queued=\" . \$t->nid; } }'" 2> /dev/null)
+  _q=$(su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster php-eval '\$s = hosting_get_site_by_url(\"${_s}\"); if (\$s && !empty(\$s->nid)) { \$p = hosting_context_name(\$s->platform); if (\$p !== \"${_pc}\") { print \"panel=\" . \$p; } else { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { print \"queued=\" . \$t->nid; } } }'" 2> /dev/null)
   case "${_q}" in
     *queued=*) _q="${_q##*queued=}"; _GH_HEAL_TASK="${_q%%[^0-9]*}" ;;
+    *panel=*) _q="${_q##*panel=}"; _GH_HEAL_PANEL="${_q%%[^A-Za-z0-9@._-]*}" ;;
   esac
   return 0
 }
@@ -4142,16 +4151,16 @@ _cleanup_ghost_drushrc() {
           # site's registration (and vhost) down at once. All three are left
           # for operator review; only a true per-site ghost (platform healthy,
           # site dir nowhere) is ever reaped. A site dir that still holds
-          # anything but folders (drushrc-lost) is a site that lost only
-          # drushrc.php while its vhost serves this dir (even with a copy
-          # stranded elsewhere), or, as a ghost, while a vhost or the panel
-          # may still know the site: never reaped, its drushrc.php rebuilt
-          # where its vhost allows. One nothing serves or lists (a Clone or
-          # a rename killed mid-copy) stays a ghost. Both tests go by the
-          # site's own name, its alias's uri: an extra Drush alias of a live
-          # site names its dir under another file name. The root parses are
-          # anchored to the 'root' KEY so a value that merely ends in root
-          # (e.g. client_name 'root') can never pollute them.
+          # anything but folders, while a vhost or the panel may still know
+          # the site (drushrc-lost), is a site that lost only drushrc.php:
+          # never reaped, its drushrc.php rebuilt where its vhost allows. One
+          # nothing serves or lists (a Clone or a rename killed mid-copy)
+          # stays a ghost. These tests go by the site's own name, its
+          # alias's uri, and the stranded probe by its dir's name: an extra
+          # Drush alias of a live site names that dir under another file
+          # name. The root parses are anchored to the 'root' KEY so a value
+          # that merely ends in root (e.g. client_name 'root') can never
+          # pollute them.
           _GH_CLASS=ghost
           _GH_FE=""
           _T_SITE_ROOT=$(printf '%s\n' "${_alTxt}" \
@@ -4162,6 +4171,8 @@ _cleanup_ghost_drushrc() {
           _T_SITE_URI=$(printf '%s\n' "${_alTxt}" \
             | sed -n "s/^[[:space:]]*'uri' => '\([^']*\)'.*/\1/p" | head -n 1)
           [ -n "${_T_SITE_URI}" ] || _T_SITE_URI="${_T_SITE_NAME}"
+          _T_SITE_PLATFORM=$(printf '%s\n' "${_alTxt}" \
+            | sed -n "s/^[[:space:]]*'platform' => '\([^']*\)'.*/\1/p" | head -n 1)
           if [[ "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
             _GH_CLASS=front-end
           else
@@ -4185,21 +4196,18 @@ _cleanup_ghost_drushrc() {
                   || _GH_PDOC="${_GH_PROOT}"
                 if [ -n "${_GH_PDOC}" ] \
                   && [ "${_GH_PDOC}" != "${_GH_SDOC}" ] \
-                  && [ -d "${_GH_PDOC}/sites/${_T_SITE_NAME}" ]; then
+                  && [ -d "${_GH_PDOC}/sites/${_T_SITE_FDIR##*/}" ]; then
                   _GH_CLASS=stranded
                   break
                 fi
               done
             fi
           fi
-          if { [ "${_GH_CLASS}" = "ghost" ] || [ "${_GH_CLASS}" = "stranded" ]; } \
-            && [ -d "${_T_SITE_FDIR}" ] \
+          if [ "${_GH_CLASS}" = "ghost" ] && [ -d "${_T_SITE_FDIR}" ] \
             && _ghost_site_dir_holds "${_T_SITE_FDIR}" \
-            && { _ghost_vhost_serves "${_T_SITE_URI}" "${_T_SITE_FDIR}" \
-              || { [ "${_GH_CLASS}" = "ghost" ] \
-                && { _acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
-                    test -f "./${_T_SITE_URI}" \
-                  || { _GH_FE=$(_hmr_context_exists "${_T_SITE_URI}"); [ "${_GH_FE}" != "NO" ]; }; }; }; }; then
+            && { _acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
+                test -f "./${_T_SITE_URI}" \
+              || { _GH_FE=$(_hmr_context_exists "${_T_SITE_URI}"); [ "${_GH_FE}" != "NO" ]; }; }; then
             _GH_CLASS=drushrc-lost
           fi
           # A drushrc-lost night is no ghost night: it counts on a counter of
@@ -4222,10 +4230,13 @@ _cleanup_ghost_drushrc() {
             # Not gated by the cleanup flags: nothing is moved, and the file
             # written is the one Provision writes, from the vhost serving the
             # site. Its counter starts again once the file is back.
-            if _ghost_drushrc_heal "${_T_SITE_URI}" "${_T_SITE_FDIR}" "${_T_SITE_ROOT}"; then
+            if _ghost_drushrc_heal "${_T_SITE_URI}" "${_T_SITE_FDIR}" "${_T_SITE_ROOT}" \
+              "${_T_SITE_PLATFORM}"; then
               _ghost_seen_reset_acct "${_gh_lmark}"
               if [ -n "${_GH_HEAL_TASK}" ]; then
                 echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; Verify task ${_GH_HEAL_TASK} queued to write it in full)"
+              elif [ -n "${_GH_HEAL_PANEL}" ]; then
+                echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; no Verify queued: the panel records the site on ${_GH_HEAL_PANEL}, its alias on ${_T_SITE_PLATFORM}, operator review needed)"
               else
                 echo "GHOST candidate ${_T_SITE_NAME} HEALED (drushrc-lost: drushrc.php rebuilt from its vhost, whose database login works; no Verify could be queued, run one to write it in full)"
               fi
