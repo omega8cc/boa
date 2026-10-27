@@ -401,6 +401,14 @@ _here_exists() {
   [ -e "./${1}" ] || [ -L "./${1}" ]
 }
 
+# A server_name line of a file in the current (pinned) directory names $1 as
+# one of its names (links inside are not followed, FIFOs and devices skipped).
+_vhd_names_here() {
+  local _re="${1//./\\.}"
+  grep -rqsE -D skip \
+    "^[[:space:]]*server_name([[:space:]][^;]*)?[[:space:]]${_re}([[:space:];]|$)" . 2> /dev/null
+}
+
 # stdin as the fresh file $1 (a name that must not exist), handed to the
 # numeric uid $2 and gid $3 with the read/write bits of the mode $4, all
 # through the one handle that created it (O_EXCL|O_NOFOLLOW), so nothing is
@@ -2432,15 +2440,16 @@ _rewrite_vhosts() {
 
 # The park of §4. A box renamed before by a copy of this tool without it (a
 # restored box renamed before its tools were fetched, a box renamed long
-# ago) still carries the include of that earlier name, and no later pass
-# removes it: park it too. An earlier name is parked only when its include
-# is this account's panel proxy, as xoct ssl-gen writes it for a panel (the
-# header names the account and server_name is the file's own name; a moved
-# account's relay answers "_"), and nothing of that name lives here: it is
-# not the panel's name in log/domain.txt, and no vhost carries it. Both
-# witnesses are this root's, so an earlier name is judged for this root's
-# own account only: on an account rename the old account's name may be a
-# live local account's, and only its include of the old host is parked.
+# ago) still carries the include of that earlier name until the account's
+# next Octopus upgrade parks it: park it here too. An earlier name is parked
+# only when its include is this account's panel proxy, as xoct ssl-gen
+# writes it for a panel (the header names the account and server_name is the
+# file's own name; a moved account's relay answers "_"), and nothing of that
+# name lives here: it is not the panel's name in log/domain.txt, and no vhost
+# carries it (as its file name, or in a server_name line: a site's alias).
+# Both witnesses are this root's, so an earlier name is judged for this
+# root's own account only: on an account rename the old account's name may
+# be a live local account's, and only its include of the old host is parked.
 _park_old_panel_proxies() {
   local _preD=/var/aegir/config/server_master/nginx/pre.d
   local _PRX _PRX_ACCT _N _X _TXT _FRONT
@@ -2448,8 +2457,7 @@ _park_old_panel_proxies() {
   # §4b2 rewrites domain.txt after this step: judge by the name it will hold
   _FRONT=$(sed "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" <<< "${_FRONT}")
   if [ "${_ACCT_AXIS}" = "YES" ]; then
-    _FRONT=$(sed -e "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" \
-      -e "s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g" <<< "${_FRONT}")
+    _FRONT=$(sed "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" <<< "${_FRONT}")
   fi
   for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
     [ -n "${_PRX_ACCT}" ] || continue
@@ -2470,8 +2478,9 @@ _park_old_panel_proxies() {
           || continue
         [ "$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' <<< "${_TXT}")" = "${_PRX_ACCT}.${_X}" ] \
           || continue
-        if _in_real_dir "${_VHOSTD}" _here_exists "${_PRX_ACCT}.${_X}"; then
-          _info "  keep ${_N}: ${_VHOSTD} has a vhost of that name"
+        if _in_real_dir "${_VHOSTD}" _here_exists "${_PRX_ACCT}.${_X}" \
+          || _in_real_dir "${_VHOSTD}" _vhd_names_here "${_PRX_ACCT}.${_X}"; then
+          _info "  keep ${_N}: ${_VHOSTD} has a vhost of that name or alias"
           continue
         fi
       fi
@@ -2561,10 +2570,16 @@ _rewrite_log_stamps() {
       # The credential lines write the account as "<acct>.ftp" (username:
       # / user: / login wording), a form the front-axis sed above never
       # matches — without this the file mixes the old account in
-      # credential lines with the new one in URLs.
-      _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
-        \'"s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g"\' \
-        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
+      # credential lines with the new one in URLs. Only setupmail.txt has
+      # them: domain.txt is the one panel name, which this would rename
+      # when it starts with "<acct>.ftp.". A login is never followed by a
+      # dot or a host name character, so a panel URL of such a name keeps
+      # the name domain.txt keeps.
+      if [ "${_N}" = "setupmail.txt" ]; then
+        _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+          \'"s/\b${_OLD_ACCT}\.ftp\([^.[:alnum:]-]\|$\)/${_NEW_ACCT}.ftp\1/g"\' \
+          || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
+      fi
     fi
   done
 }
