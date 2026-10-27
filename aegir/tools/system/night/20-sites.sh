@@ -4506,7 +4506,7 @@ _le_ssl_check_update() {
           | sort | uniq`
         for _aliAs in `echo "${_siTealiases}"`; do
           if [ "${_leWild}" = "YES" ]; then
-            _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
+            _Dom="${_Dom#www.}"
             if [ -z "${_usEaliases}" ] \
               && [ ! -z "${_aliAs}" ] \
               && [[ ! "${_aliAs}" =~ ".nodns." ]] \
@@ -4551,7 +4551,7 @@ _le_ssl_check_update() {
         fi
         _dhArgs="--domain ${_Dom} ${_usEaliases}"
         if [ "${_leWild}" = "YES" ]; then
-          _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
+          _Dom="${_Dom#www.}"
           echo "--domain *.${_Dom}"
           _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
           _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
