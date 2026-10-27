@@ -757,8 +757,9 @@ _SEND_UPGRADE_EMAIL=YES
 ### all sites hosted on this instance. The
 ### myisam value is not forced: it is the
 ### instance default, and sql_conversion_mode
-### in an active INI file still overrides it
-### per platform or per site.
+### = innodb in an active INI file still
+### switches that platform or site to InnoDB
+### (a NO line there does not opt it out).
 ###
 ### Drupal 8 and newer sites are never
 ### converted: the conversion writes to a
@@ -784,7 +785,7 @@ _SEND_UPGRADE_EMAIL=YES
 ###
 ###  innodb (forced globally, INI ignored)
 ###  YES    (same as innodb, forced globally)
-###  myisam (instance default, INI overrides)
+###  myisam (instance default, an INI innodb wins)
 ###  NO     (nothing forced globally)
 ###
 _SQL_CONVERT=NO
