@@ -3893,8 +3893,10 @@ _ghost_drushrc_heal() {
   local -A _db=()
   _GH_HEAL_WHY=""
   _GH_HEAL_TASK=""
-  if ! _site_in_resolved_dir "${_d}" test -f ./settings.php -a ! -L ./settings.php; then
-    _GH_HEAL_WHY="no settings.php in its site dir"
+  # The name comes from a file name the account controls and reaches the
+  # panel's PHP below: a host name only.
+  if [[ ! "${_s}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    _GH_HEAL_WHY="its name is not a plain host name"
     return 1
   fi
   if _is_foreign_cms_root "${_r}" \
@@ -3902,9 +3904,17 @@ _ghost_drushrc_heal() {
     _GH_HEAL_WHY="not a Drupal site"
     return 1
   fi
+  if ! _site_in_resolved_dir "${_d}" test -f ./settings.php -a ! -L ./settings.php; then
+    _GH_HEAL_WHY="no settings.php in its site dir"
+    return 1
+  fi
   if ! _vh=$(_acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
     _acct_read_plain_here "${_s}"); then
     _GH_HEAL_WHY="no vhost"
+    return 1
+  fi
+  if ! grep -q '^[[:space:]]*set \$boa_db_' <<< "${_vh}"; then
+    _GH_HEAL_WHY="its vhost carries no database lines (a disabled site's has none)"
     return 1
   fi
   _enc=$(sed -n 's/^[[:space:]]*set \$boa_db_creds_urlencoded "\([^"]*\)";[[:space:]]*$/\1/p' \
