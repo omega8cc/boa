@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * _CUSTOM_CONFIG_CSF=YES now also keeps the five-minute BOA.sh.txt
+      run from adding UDP 443 back to UDP_IN in csf.conf: it re-opened
+      the port on every run and reloaded csf, whatever the flag said, so
+      a box that closes HTTP/3 by hand reloaded its firewall every five
+      minutes. Without the flag the check adds the port and reloads csf
+      only when the port is missing, as before.
+
     * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
       longer move a live site that lost only its drushrc.php. With the
       _GHOST_* cleanups on, such a site (its directory still holding
@@ -16,6 +23,13 @@
       serves the site's platform, the control panel still has the site and
       that login opens its database, and queues a Verify; otherwise it
       names the site in the night log with the reason and the way back.
+
+    * A site the nightly ghost cleanup logged as stranded, platform-gone
+      or front-end for some nights, which then turned into a plain ghost
+      (its platform restored without it, its other copy removed), was
+      moved to undo/ that same night, with no grace night as a ghost.
+      Those nights now count apart, so a new ghost always gets its grace
+      night first.
 
     * An Octopus instance user and its shell accounts can run /bin/sh with
       option words before -c, as root always could: sh -ec, sh -e -c,
@@ -1362,6 +1376,23 @@
       5.6 to 7.3; his packaging changes are left out. The PHP security
       floor brings every box running one of them to the patched build.
 
+    * PHP 5.6, 7.0, 7.1, 7.2, 7.3 and 7.4 also build with the security
+      fixes Debian's LTS team (Freexian) has backported to its PHP 5.6,
+      7.0, 7.3 and 7.4 packages that the backports above lacked, among
+      them the HTTP stream wrapper, SOAP, phar and OpenSSL fixes of 2025
+      and 2026; 7.1 and 7.2, which the LTS team never packaged, get them
+      ported from 7.0 and 7.3.
+
+    * PHP 7.0, 7.3, 7.4 and 8.0: a malformed row from a MySQL server no
+      longer leaves values freed in the result's row cache, where fetching
+      the row again read freed memory (the backported fix for
+      CVE-2024-8929 left them there).
+
+    * PHP 5.6, 7.0, 7.1, 7.2 and 7.3 no longer crash on round() with a
+      precision at or near the lowest integer (PHP's own test for bug
+      71201 crashed these builds): the two lines PHP 7.4 has for the
+      case are backported, so the call returns 0 as 7.4 does.
+
     * PHP 5.6 to 7.3 link OpenSSL 3, like 7.4 and later, wherever BOA
       has it: they used OpenSSL 1.1, which gets no fixes since 2023,
       while their curl already loaded OpenSSL 3.
@@ -2186,6 +2217,22 @@
       116, 119, 128 and 138; only 128 and 138 were spared), and they
       cover Chrome 100 to 141, a year behind the current release, where
       they stopped at 139.
+
+    * The crawlers of brand, media and social-listening tools are now
+      refused (444) like the SEO crawlers: Awario's three bots, SentiOne's
+      SentiBot, trendiction's crawler and QlyzeBot, whose purpose is not
+      published. They collect for a third party's marketing product, not
+      for a site's visitors or for search, and cost real PHP time on
+      hosted sites.
+
+    * The stale-Chrome search maps now keep up with Chrome on their own:
+      each render of the master's nginx config takes every Chrome major
+      from 100 on that reached stable more than a year earlier, from a
+      table of Chrome's release dates, minus the majors an old system is
+      pinned at (now with 150, the last for macOS 12). Every BOA upgrade
+      pass renders the config again, so the bound moves forward without
+      a code change instead of falling behind within weeks of Chrome's
+      two-week releases.
 
     * The crawler-fleet refusal now stops the residential-proxy scraper
       fleets that send about one request from each address. When the
