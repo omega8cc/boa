@@ -117,6 +117,7 @@ _CAPSULE_DONE_URIS=""
 _UNPARKED_N=0
 _STRAY_LEFT_N=0
 _SETTINGS_SKIPPED_N=0
+_PRX_LEFT_N=0
 _RENAMED_SITE_URIS=()
 _CERT_REVERIFY_URIS=()
 _CERT_HELD=()
@@ -393,6 +394,11 @@ _read_here() {
 # The file $1, read as _read_here reads it inside its real directory.
 _read_file() {
   _in_real_dir "${1%/*}" _read_here "${1##*/}"
+}
+
+# ./$1 is there in the current (pinned) directory, as anything, a link too.
+_here_exists() {
+  [ -e "./${1}" ] || [ -L "./${1}" ]
 }
 
 # stdin as the fresh file $1 (a name that must not exist), handed to the
@@ -816,21 +822,25 @@ _expire_priv_bk_here() {
   done
 }
 
+# Root's own backup dir of this run, made when it is not there: only root
+# can reach it, so nothing written into it can be redirected. Fails when it
+# is a link, not a directory or not root's.
+_priv_bk_ready() {
+  if [ ! -e "${_PRIV_BK}" ]; then
+    mkdir -p -- "${_PRIV_BK%/*}" 2> /dev/null
+    mkdir -m 0700 -- "${_PRIV_BK}" 2> /dev/null
+  fi
+  [ ! -L "${_PRIV_BK}" ] && [ -d "${_PRIV_BK}" ] && [ -O "${_PRIV_BK}" ]
+}
+
 _backup_files() {
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "(dry-run) Would create backup in ${_PRIV_BK}"
     return
   fi
 
-  # Only root can reach this directory, so nothing written into it can be
-  # redirected; a live run without it stops here, before any change.
-  if [ ! -e "${_PRIV_BK}" ]; then
-    mkdir -p -- "${_PRIV_BK%/*}" 2> /dev/null
-    mkdir -m 0700 -- "${_PRIV_BK}" 2> /dev/null
-  fi
-  if [ -L "${_PRIV_BK}" ] || [ ! -d "${_PRIV_BK}" ] || [ ! -O "${_PRIV_BK}" ]; then
-    _die "Could not make the root-only backup dir ${_PRIV_BK}"
-  fi
+  # A live run without it stops here, before any change.
+  _priv_bk_ready || _die "Could not make the root-only backup dir ${_PRIV_BK}"
   _TS=$(date +%Y%m%d_%H%M%S)
 
   # The dumps and copies of earlier runs are kept for _DEL_OLD_BACKUPS days
@@ -2415,20 +2425,59 @@ _rewrite_vhosts() {
   # went (a purge, an LE cleanup) nginx failed its configtest box-wide. Park
   # it with root's other backups of this run (never in the account's tree);
   # never rewrite it in place, the new-name certificate is not there yet.
-  local _PRX _PRX_ACCT
   case "${_AEGIR_ROOT}" in
-    /data/disk/*)
-      for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
-        [ -n "${_PRX_ACCT}" ] || continue
-        _PRX="/var/aegir/config/server_master/nginx/pre.d/z_${_PRX_ACCT}.${_OLD_HOST}_ssl_proxy.conf"
-        [ -e "${_PRX}" ] || continue
-        _info "  park old-name panel SSL proxy include: $(basename "${_PRX}") -> ${_PRIV_BK}/"
-        _maybe_run _in_real_dir \'"${_PRX%/*}"\' mv -f -T -- \
-          \'"./${_PRX##*/}"\' \'"${_PRIV_BK}/parked_${_TS}_${_PRX##*/}"\' \
-          || _alrt "  ${_PRX} NOT parked"
-      done
-    ;;
+    /data/disk/*) _park_old_panel_proxies ;;
   esac
+}
+
+# The park of §4. A box renamed before by a copy of this tool without it (a
+# restored box renamed before its tools were fetched, a box renamed long
+# ago) still carries the include of that earlier name, and no later pass
+# removes it: park it too. An earlier name is parked only when its include
+# is this account's panel proxy, as xoct ssl-gen writes it for a panel (the
+# header names the account and server_name is the file's own name; a moved
+# account's relay answers "_"), and nothing of that name lives here: it is
+# not the panel's name in log/domain.txt, and no vhost carries it.
+_park_old_panel_proxies() {
+  local _preD=/var/aegir/config/server_master/nginx/pre.d
+  local _PRX _PRX_ACCT _N _X _TXT _FRONT
+  _FRONT=$(_read_file "${_AEGIR_ROOT}/log/domain.txt" | head -n1 | tr -d ' \r\n')
+  for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
+    [ -n "${_PRX_ACCT}" ] || continue
+    for _PRX in "${_preD}/z_${_PRX_ACCT}."*_ssl_proxy.conf; do
+      [ -e "${_PRX}" ] || continue
+      _N="${_PRX##*/}"
+      _X="${_N#z_${_PRX_ACCT}.}"
+      _X="${_X%_ssl_proxy.conf}"
+      [ "${_X}" = "${_NEW_HOST}" ] && continue
+      _safe_name "${_N}" "panel SSL proxy include" || continue
+      if [ "${_X}" != "${_OLD_HOST}" ]; then
+        [ -f "${_PRX}" ] && [ ! -L "${_PRX}" ] || continue
+        [[ "${_X}" == *.* ]] || continue
+        [ "${_PRX_ACCT}.${_X}" != "${_FRONT}" ] || continue
+        _TXT=$(_read_file "${_PRX}")
+        [ "$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' <<< "${_TXT}")" = "${_PRX_ACCT}" ] \
+          || continue
+        [ "$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' <<< "${_TXT}")" = "${_PRX_ACCT}.${_X}" ] \
+          || continue
+        if _in_real_dir "${_VHOSTD}" _here_exists "${_PRX_ACCT}.${_X}"; then
+          _info "  keep ${_N}: ${_VHOSTD} has a vhost of that name"
+          continue
+        fi
+      fi
+      if [ "${_DRY_RUN}" != "YES" ] && ! _priv_bk_ready; then
+        _alrt "  ${_PRX} NOT parked -- no root-only backup dir ${_PRIV_BK}"
+        _PRX_LEFT_N=$((_PRX_LEFT_N + 1))
+        continue
+      fi
+      _info "  park old-name panel SSL proxy include: ${_N} -> ${_PRIV_BK}/"
+      if ! _maybe_run _in_real_dir \'"${_preD}"\' mv -f -T -- \
+        \'"./${_N}"\' \'"${_PRIV_BK}/parked_${_TS}_${_N}"\'; then
+        _alrt "  ${_PRX} NOT parked"
+        _PRX_LEFT_N=$((_PRX_LEFT_N + 1))
+      fi
+    done
+  done
 }
 
 ###-------------§4b OCTOPUS CONTROL CNF--###
@@ -4138,6 +4187,9 @@ _print_summary() {
   fi
   if [ "${_CERT_HELD_N}" -gt 0 ]; then
     echo "  ATTENTION    : ${_CERT_HELD_N} site(s) keep their old name's certificate record — see the ALRT lines above"
+  fi
+  if [ "${_PRX_LEFT_N}" -gt 0 ]; then
+    echo "  ATTENTION    : ${_PRX_LEFT_N} old-name panel SSL proxy include(s) still live in the master's pre.d — see the ALRT lines above"
   fi
   if [ -n "${_SERVE_FAILED}" ]; then
     echo "  NOT SERVING  :${_SERVE_FAILED}"

@@ -514,6 +514,19 @@
       new name is now replaced by the old-name copy, the one the active
       kept current.
 
+    * A host rename moves aside every control panel HTTPS proxy include
+      an earlier rename left in the master's nginx pre.d, not only the
+      one of the name it renames from. A box renamed by a copy of
+      renameaegirhost without that step (renamed long ago, or restored
+      and renamed before BOA fetched the current copy) kept the old
+      name's include live, sending that name's HTTPS to an address the
+      box may no longer own, and no later rename removed it. An earlier
+      name's include is moved only when it is the account's own panel
+      proxy and nothing of that name lives on the box (it is not the
+      panel's current name and no vhost carries it); a relay to another
+      box stays. The root-only backup dir is made again when it has gone
+      before the move, and an include that cannot be moved is reported.
+
     * A box promoted by a cutover, or by hand, no longer keeps the state
       file of the round it ran as the active before its demotion. The
       promotion retired the account records that demotion left (relay
