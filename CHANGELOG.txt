@@ -2218,6 +2218,13 @@
       cover Chrome 100 to 141, a year behind the current release, where
       they stopped at 139.
 
+    * The crawlers of brand, media and social-listening tools are now
+      refused (444) like the SEO crawlers: Awario's three bots, SentiOne's
+      SentiBot, trendiction's crawler and QlyzeBot, whose purpose is not
+      published. They collect for a third party's marketing product, not
+      for a site's visitors or for search, and cost real PHP time on
+      hosted sites.
+
     * The stale-Chrome search maps now keep up with Chrome on their own:
       each render of the master's nginx config takes every Chrome major
       from 100 on that reached stable more than a year earlier, from a
