@@ -426,6 +426,18 @@ _cred_name_plain() {
   return 1
 }
 
+# A # after a closing quote, or after the whitespace that ends an unquoted
+# value, starts a comment; a # inside the quotes or glued to an unquoted value
+# is part of the value, as in a shell. The shipped templates carry such a
+# comment on their region lines. A bracket expression holding a quote cannot
+# be written inline in [[ =~ ]], so the patterns live here, and they stay
+# unquoted on the right of =~ (quoted, bash would match them as plain text).
+_CRED_CMT_Q_RE="^([A-Za-z_][A-Za-z0-9_]*=(\"[^\"]*\"|'[^']*'))[[:space:]]*#.*\$"
+_CRED_CMT_U_RE="^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"'][^[:space:]]*)[[:space:]]+#.*\$"
+# One name, one value: quoted with none of its own quote inside, or one
+# unquoted word that does not start with a quote.
+_CRED_LINE_RE="^([A-Za-z_][A-Za-z0-9_]*)=(\"[^\"]*\"|'[^']*'|[^[:space:]\"'][^[:space:]]*)\$"
+
 # An account owns /data/disk/<oN> and, through its .ftp login, static/control,
 # so any name below either can be a link or a FIFO, and a whole directory on
 # the way can be one. Root reads and writes there only inside the real
@@ -507,25 +519,17 @@ _validate_credentials() {
       continue
     fi
 
-    # Remove anything after (and including) the first '#' for inline comments
-    # (This is a naive approach that does not consider # within quotes)
-    if [[ "${_line}" == *"#"* ]]; then
-      _line="${_line%%#*}"
-      # Re-trim after removing the comment
-      _line="${_line#"${_line%%[![:space:]]*}"}"
-      _line="${_line%"${_line##*[![:space:]]}"}"
-    fi
-
-    # Skip if there's nothing left after stripping inline comment
-    if [[ -z "${_line}" ]]; then
-      continue
-    fi
-
     # Remove 'export ' prefix if present
     _line="${_line#export }"
 
+    # Drop a trailing comment before the shape test, or the quoted branch
+    # below would read up to the comment's own closing quote
+    if [[ "${_line}" =~ ${_CRED_CMT_Q_RE} || "${_line}" =~ ${_CRED_CMT_U_RE} ]]; then
+      _line="${BASH_REMATCH[1]}"
+    fi
+
     # Validate the variable assignment (key=value)
-    if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
+    if [[ "${_line}" =~ ${_CRED_LINE_RE} ]]; then
       export _varname="${BASH_REMATCH[1]}"
       export _value="${BASH_REMATCH[2]}"
 
