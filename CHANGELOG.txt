@@ -536,12 +536,12 @@
       box may no longer own, and no later rename removed it. An earlier
       name's include is moved only when it is the account's own panel
       proxy and nothing of that name lives on the box (it is not the
-      panel's name as the rename leaves it, and no vhost carries it); a
-      relay to another box stays, and on an account rename the old
-      account's includes stay but for its old host's, since a live local
-      account of that name may own them. The root-only backup dir is made
-      again when it has gone before the move, and an include that cannot
-      be moved is reported.
+      panel's name as the rename leaves it, and no vhost carries it, as
+      its file name or as a site's alias); a relay to another box stays,
+      and on an account rename the old account's includes stay but for
+      its old host's, since a live local account of that name may own
+      them. The root-only backup dir is made again when it has gone
+      before the move, and an include that cannot be moved is reported.
 
     * An Octopus upgrade moves aside the account's control panel HTTPS
       proxy include of a name the panel no longer has: a box renamed
@@ -550,9 +550,11 @@
       until its next rename. Only the account's own panel front goes (its
       header names the account and its server_name is the file's own
       name), never the current panel name, a name a vhost of the account
-      carries, or a relay to another box. It is moved to
-      /var/backups/panel-proxy/<account>/, and put back when nginx -t
-      fails without it.
+      carries (as its file name or as a site's alias), or a relay to
+      another box. It is moved to /var/backups/panel-proxy/<account>/,
+      and put back only when nginx -t passed before the move and fails
+      after it; when nginx -t was failing already it stays moved, so the
+      stale includes of several accounts clear one pass at a time.
 
     * On an account rename renameaegirhost renames the old login form
       "<account>.ftp" in the welcome mail's copy (log/setupmail.txt)
