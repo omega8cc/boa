@@ -1381,6 +1381,11 @@
       the row again read freed memory (the backported fix for
       CVE-2024-8929 left them there).
 
+    * PHP 5.6, 7.0, 7.1, 7.2 and 7.3 no longer crash on round() with a
+      precision at or near the lowest integer (PHP's own test for bug
+      71201 crashed these builds): the two lines PHP 7.4 has for the
+      case are backported, so the call returns 0 as 7.4 does.
+
     * PHP 5.6 to 7.3 link OpenSSL 3, like 7.4 and later, wherever BOA
       has it: they used OpenSSL 1.1, which gets no fixes since 2023,
       while their curl already loaded OpenSSL 3.
