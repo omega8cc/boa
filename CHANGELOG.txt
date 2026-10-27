@@ -4,6 +4,18 @@
 
 @=> Important Fixes
 
+    * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
+      longer move a live site that lost only its drushrc.php. With the
+      _GHOST_* cleanups on, such a site (its directory still holding
+      settings.php and its files, its vhost still serving it) had its
+      alias, vhost and whole directory moved to undo/ after two nights,
+      and its alias by the ltd sweep after 48 hours. A site directory that
+      holds anything but empty folders is never moved now. For a Drupal
+      site the nightly writes drushrc.php again from the vhost's database
+      lines, while the control panel still has the site and that login
+      opens its database, and queues a Verify; otherwise it names the site
+      in the night log with the reason and the way back.
+
     * An Octopus instance user and its shell accounts can run /bin/sh with
       option words before -c, as root always could: sh -ec, sh -e -c,
       sh -xc and sh -o errexit -c run the command with those options set
