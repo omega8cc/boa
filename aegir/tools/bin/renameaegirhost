@@ -2448,8 +2448,7 @@ _park_old_panel_proxies() {
   # §4b2 rewrites domain.txt after this step: judge by the name it will hold
   _FRONT=$(sed "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" <<< "${_FRONT}")
   if [ "${_ACCT_AXIS}" = "YES" ]; then
-    _FRONT=$(sed -e "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" \
-      -e "s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g" <<< "${_FRONT}")
+    _FRONT=$(sed "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" <<< "${_FRONT}")
   fi
   for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
     [ -n "${_PRX_ACCT}" ] || continue
@@ -2561,10 +2560,14 @@ _rewrite_log_stamps() {
       # The credential lines write the account as "<acct>.ftp" (username:
       # / user: / login wording), a form the front-axis sed above never
       # matches — without this the file mixes the old account in
-      # credential lines with the new one in URLs.
-      _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
-        \'"s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g"\' \
-        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
+      # credential lines with the new one in URLs. Only setupmail.txt has
+      # them: domain.txt is the one panel name, which this would rename
+      # when it starts with "<acct>.ftp.".
+      if [ "${_N}" = "setupmail.txt" ]; then
+        _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+          \'"s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g"\' \
+          || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
+      fi
     fi
   done
 }

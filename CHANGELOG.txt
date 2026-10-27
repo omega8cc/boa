@@ -543,6 +543,22 @@
       again when it has gone before the move, and an include that cannot
       be moved is reported.
 
+    * An Octopus upgrade moves aside the account's control panel HTTPS
+      proxy include of a name the panel no longer has: a box renamed
+      before renameaegirhost moved the old name's include itself, or
+      renamed by a copy older than the one BOA fetches, kept it live
+      until its next rename. Only the account's own panel front goes (its
+      header names the account and its server_name is the file's own
+      name), never the current panel name, a name a vhost of the account
+      carries, or a relay to another box. It is moved to
+      /var/backups/panel-proxy/<account>/, and put back when nginx -t
+      fails without it.
+
+    * On an account rename renameaegirhost renames the old login form
+      "<account>.ftp" in the welcome mail's copy (log/setupmail.txt)
+      only. It renamed log/domain.txt too, where the only text is the
+      panel's name, so a panel named <account>.ftp.<name> was renamed.
+
     * A box promoted by a cutover, or by hand, no longer keeps the state
       file of the round it ran as the active before its demotion. The
       promotion retired the account records that demotion left (relay

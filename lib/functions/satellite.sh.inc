@@ -10299,6 +10299,72 @@ _satellite_letsencrypt_vhost_setup() {
       fi
     fi
   fi
+  _satellite_park_stale_panel_proxies
+}
+
+#
+# A panel front of this account under a name it no longer has: the include
+# a host rename left when its renameaegirhost had no park of the old name's
+# (before 2026-09-06, or the copy of a restored box not fetched yet). It
+# keeps answering that name's HTTPS and names that name's certificate, so
+# nginx -t fails box-wide the day that certificate goes. Parked as the rename
+# parks it, and only such a file: the header names this account and the
+# first server_name is the file's own name, as xoct ssl-gen writes a panel
+# front (a relay answers "_"), and it is not the current panel name (_DOMAIN,
+# log/domain.txt) or a name a vhost of this account carries. The files go to
+# root's own dated dir; when nginx -t fails without them they are put back.
+_satellite_park_stale_panel_proxies() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_park_stale_panel_proxies"
+    _debug_proc
+  fi
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _p _n _x _t _stamp _bak="" _moved=""
+  [ -d "${_preD}" ] && [ ! -L "${_preD}" ] || return 0
+  # an unreadable vhost.d would read as "no vhost of that name" for all
+  _acct_in_real_dir "${_vhd}" true || return 0
+  _stamp="$(_acct_read_in "${_ROOT}/log" domain.txt | head -n1 | tr -d ' \r\n')"
+  for _p in "${_preD}/z_${_USER}."*_ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _n="${_p##*/}"
+    _x="${_n#z_${_USER}.}"
+    _x="${_x%_ssl_proxy.conf}"
+    [[ "${_x}" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)+$ ]] || continue
+    [ "${_USER}.${_x}" != "${_DOMAIN}" ] || continue
+    [ "${_USER}.${_x}" != "${_stamp}" ] || continue
+    _t="$(_acct_read_in "${_preD}" "${_n}")"
+    [ "$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' <<< "${_t}")" = "${_USER}" ] \
+      || continue
+    [ "$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' <<< "${_t}")" = "${_USER}.${_x}" ] \
+      || continue
+    if _acct_in_real_dir "${_vhd}" test -e "./${_USER}.${_x}" \
+      || _acct_in_real_dir "${_vhd}" test -L "./${_USER}.${_x}"; then
+      continue
+    fi
+    if [ -z "${_bak}" ]; then
+      _bak="/var/backups/panel-proxy/${_USER}/$(date +%y%m%d-%H%M%S)"
+      mkdir -p "${_bak}" && chmod 700 /var/backups/panel-proxy "${_bak}" || return 0
+    fi
+    if _acct_in_real_dir "${_preD}" mv -f -T -- "./${_n}" "${_bak}/${_n}"; then
+      _moved="${_moved} ${_n}"
+      _msg "${_STATUS} A: stale panel SSL proxy include ${_n} parked in ${_bak}"
+    else
+      _msg "${_STATUS} A: NOTE: stale panel SSL proxy include ${_n} not parked"
+    fi
+  done
+  if [ -z "${_moved}" ]; then
+    [ -n "${_bak}" ] && rmdir "${_bak}" 2> /dev/null
+    return 0
+  fi
+  if nginx -t > /dev/null 2>&1; then
+    _mrun "service nginx reload"
+  else
+    for _n in ${_moved}; do
+      mv -f -T -- "${_bak}/${_n}" "${_preD}/${_n}"
+    done
+    _msg "${_STATUS} A: NOTE: nginx -t fails without${_moved}; put back"
+  fi
 }
 
 _satellite_log_update() {
