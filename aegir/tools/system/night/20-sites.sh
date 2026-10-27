@@ -4100,6 +4100,7 @@ _cleanup_ghost_drushrc() {
       _T_SITE_NAME="${_aliasName}"
       _gh_smark="ghost-site-${_T_SITE_NAME}.seen"
       _gh_lmark="ghost-drushrc-lost-${_T_SITE_NAME}.seen"
+      _gh_rmark="ghost-review-${_T_SITE_NAME}.seen"
       if [[ "${_T_SITE_NAME}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         # .restore leftover: move only the alias (never the vhost, matching the
@@ -4133,6 +4134,7 @@ _cleanup_ghost_drushrc() {
           _IS_SITE=YES
           _ghost_seen_reset_acct "${_gh_smark}"
           _ghost_seen_reset_acct "${_gh_lmark}"
+          _ghost_seen_reset_acct "${_gh_rmark}"
         elif [ -e "${_T_SITE_FDIR}/drushrc.php" ] \
           || [ -L "${_T_SITE_FDIR}/drushrc.php" ]; then
           # drushrc.php present = a registered, live site. Do NOT also require
@@ -4146,6 +4148,7 @@ _cleanup_ghost_drushrc() {
           _IS_SITE=YES
           _ghost_seen_reset_acct "${_gh_smark}"
           _ghost_seen_reset_acct "${_gh_lmark}"
+          _ghost_seen_reset_acct "${_gh_rmark}"
         else
           # drushrc.php absent = ghost candidate. Require persistence across
           # consecutive nights, then split flags: registration (alias + vhost)
@@ -4221,16 +4224,20 @@ _cleanup_ghost_drushrc() {
               || { _GH_FE=$(_hmr_context_exists "${_T_SITE_URI}"); [ "${_GH_FE}" != "NO" ]; }; }; then
             _GH_CLASS=drushrc-lost
           fi
-          # A drushrc-lost night is no ghost night: it counts on a counter of
-          # its own and starts the ghost one again (and the reverse), so a
-          # site that turns into a ghost gets its grace nights first.
+          # Only a ghost night is a ghost night: drushrc-lost counts on a
+          # counter of its own, the never-moved classes on another, and the
+          # night's counter starts the other two again, so a site that turns
+          # into a ghost gets its grace nights first.
           _gh_cmark="${_gh_smark}"
           if [ "${_GH_CLASS}" = "drushrc-lost" ]; then
             _gh_cmark="${_gh_lmark}"
-            _ghost_seen_reset_acct "${_gh_smark}"
-          else
-            _ghost_seen_reset_acct "${_gh_lmark}"
+          elif [ "${_GH_CLASS}" != "ghost" ]; then
+            _gh_cmark="${_gh_rmark}"
           fi
+          for _gh_omark in "${_gh_smark}" "${_gh_lmark}" "${_gh_rmark}"; do
+            [ "${_gh_omark}" = "${_gh_cmark}" ] \
+              || _ghost_seen_reset_acct "${_gh_omark}"
+          done
           if ! _ghost_seen_enough_acct "${_gh_cmark}"; then
             if [ "${_GH_CLASS}" = "drushrc-lost" ]; then
               echo "GHOST candidate ${_T_SITE_NAME} has its site dir but no drushrc.php (grace run, nothing changed)"

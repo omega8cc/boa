@@ -1,0 +1,71 @@
+diff --git a/ext/mysqli/tests/mysqlnd_row_decode_failure_refetch.phpt b/ext/mysqli/tests/mysqlnd_row_decode_failure_refetch.phpt
+new file mode 100644
+index 00000000..12ce0b0b
+--- /dev/null
++++ b/ext/mysqli/tests/mysqlnd_row_decode_failure_refetch.phpt
+@@ -0,0 +1,34 @@
++--TEST--
++mysqlnd: a row whose decoding failed is decoded again, never served from freed fields
++--EXTENSIONS--
++mysqli
++--FILE--
++<?php
++require_once 'fake_server.inc';
++
++$port = 33305;
++$process = run_fake_server_in_background('stmt_response_row_over_read_int', $port);
++$process->wait();
++
++$conn = new mysqli("127.0.0.1", "root", "", "", $port);
++$stmt = $conn->prepare("SELECT strval, intval FROM data");
++$stmt->execute();
++$result = $stmt->get_result();
++
++$first = @$result->fetch_assoc();
++var_dump($first);
++$result->data_seek(0);
++$second = @$result->fetch_assoc();
++var_dump($second);
++
++$result->free();
++$stmt->close();
++$conn->close();
++$process->terminate(true);
++print "done!";
++?>
++--EXPECTF--
++%A
++bool(false)
++bool(false)
++%Adone!%A
+diff --git a/ext/mysqlnd/mysqlnd_wireprotocol.c b/ext/mysqlnd/mysqlnd_wireprotocol.c
+index 23a3cb8b..316b276e 100644
+--- a/ext/mysqlnd/mysqlnd_wireprotocol.c
++++ b/ext/mysqlnd/mysqlnd_wireprotocol.c
+@@ -1594,6 +1594,8 @@ php_mysqlnd_rowp_read_binary_protocol(MYSQLND_ROW_BUFFER * row_buffer, zval * fi
+ 			if (rbs <= row_position) {
+ 				for (j = 0, current_field = start_field; j < i; current_field++, j++) {
+ 					zval_ptr_dtor(current_field);
++					/* the caller keeps this array and frees it again later */
++					ZVAL_UNDEF(current_field);
+ 				}
+ 				php_error_docref(NULL, E_WARNING, "Malformed server packet. No packet space left for the field");
+ 				DBG_RETURN(FAIL);
+@@ -1602,6 +1604,8 @@ php_mysqlnd_rowp_read_binary_protocol(MYSQLND_ROW_BUFFER * row_buffer, zval * fi
+ 			if (p == NULL) {
+ 				for (j = 0, current_field = start_field; j < i; current_field++, j++) {
+ 					zval_ptr_dtor(current_field);
++					/* the caller keeps this array and frees it again later */
++					ZVAL_UNDEF(current_field);
+ 				}
+ 				DBG_RETURN(FAIL);
+ 			}
+@@ -1686,6 +1690,8 @@ php_mysqlnd_rowp_read_text_protocol_aux(MYSQLND_ROW_BUFFER * row_buffer, zval *
+ 			php_error_docref(NULL, E_WARNING, "Malformed server packet. Field length pointing after end of packet");
+ 			for (j = 0, current_field = start_field; j < i; current_field++, j++) {
+ 				zval_ptr_dtor(current_field);
++				/* the caller keeps this array and frees it again later */
++				ZVAL_UNDEF(current_field);
+ 			}
+ 			DBG_RETURN(FAIL);
+ 		} else {
