@@ -3843,9 +3843,10 @@ _ghost_urldecode() {
 
 ### Whether the database login $2 with password $3 at $4 port $5 opens the
 ### database $1, as the site itself logs in. Only the option file made here is
-### read (root's own client defaults would override the login), with the
-### server's socket for a localhost login; the file is root's alone and gone
-### at once.
+### read, with the server's socket for a localhost login: root's own client
+### defaults and its login-path file (read even with --defaults-file) would
+### override the login, so HOME points at no directory and the login-path file
+### at nothing. The file is root's alone and gone at once.
 _ghost_db_login_ok() {
   local _c _sock _rc
   _c=$(mktemp /root/.my.ghost-drc.XXXXXXXX 2> /dev/null) || return 1
@@ -3859,7 +3860,8 @@ _ghost_db_login_ok() {
     echo "port=${5}"
     [ -n "${_sock}" ] && echo "socket=\"${_sock}\""
   } > "${_c}"
-  timeout 30 mysql --defaults-file="${_c}" --connect-timeout=10 -N -B \
+  HOME=/nonexistent MYSQL_TEST_LOGIN_FILE=/nonexistent \
+    timeout 30 mysql --defaults-file="${_c}" --connect-timeout=10 -N -B \
     -e "USE \`${1}\`" > /dev/null 2>&1
   _rc=$?
   rm -f -- "${_c}"
@@ -3880,16 +3882,16 @@ _acct_new_here() {
 }
 
 ### A Drupal site whose dir still holds settings.php but lost drushrc.php,
-### while its vhost still serves it with the site's database lines:
+### while its vhost still serves that dir with the site's database lines:
 ### drushrc.php written again from those lines, the database options and
 ### installed as Provision writes them, owned by the account user and its
 ### group, 0440, then a Verify queued the panel's way, which writes the file
-### in full. Only while the panel still has the site and those credentials
-### open its database; otherwise nothing is written and _GH_HEAL_WHY says
-### why. _GH_HEAL_TASK is the queued task, empty when none was queued.
+### in full. Only while the vhost's root is this dir's platform, the panel
+### still has the site and those credentials open its database; otherwise
+### nothing is written and _GH_HEAL_WHY says why. _GH_HEAL_TASK is the queued task, empty when none was queued.
 ### $1 = site name, $2 = site dir, $3 = its platform root.
 _ghost_drushrc_heal() {
-  local LC_ALL=C _s="${1}" _d="${2}" _r="${3%/}" _vh _k _v _enc _txt _uid _gid _q
+  local LC_ALL=C _s="${1}" _d="${2}" _r="${3%/}" _vh _vr _k _v _enc _txt _uid _gid _q
   local -A _db=()
   _GH_HEAL_WHY=""
   _GH_HEAL_TASK=""
@@ -3913,6 +3915,16 @@ _ghost_drushrc_heal() {
     _GH_HEAL_WHY="no vhost"
     return 1
   fi
+  # A vhost serves its platform's docroot; the site dir is <docroot>/sites/
+  # <name>. One serving another platform (a Migrate killed mid-copy leaves the
+  # alias on the new platform's half copy) must never lend it its login.
+  _vr=$(sed -n 's/^[[:space:]]*root[[:space:]]\{1,\}\([^;[:space:]]*\);.*/\1/p' \
+    <<< "${_vh}" | sort -u)
+  if [ -z "${_vr}" ] || [ "${_vr}" != "${_vr%%$'\n'*}" ] \
+    || [ "$(realpath -e -- "${_vr}" 2> /dev/null)" != "$(realpath -e -- "${_d%/sites/*}" 2> /dev/null)" ]; then
+    _GH_HEAL_WHY="its vhost does not serve this site dir's platform"
+    return 1
+  fi
   if ! grep -q '^[[:space:]]*set \$boa_db_' <<< "${_vh}"; then
     _GH_HEAL_WHY="its vhost carries no database lines (a disabled site's has none)"
     return 1
@@ -3932,7 +3944,7 @@ _ghost_drushrc_heal() {
     fi
     _db[${_k}]="${_v}"
   done
-  if [ "${_db[type]}" != "mysql" ] \
+  if [[ ! "${_db[type]}" =~ ^mysqli?$ ]] \
     || [[ ! "${_db[name]}" =~ ^[A-Za-z0-9_]+$ ]] \
     || [[ ! "${_db[user]}" =~ ^[A-Za-z0-9_.@-]+$ ]] \
     || [[ ! "${_db[host]}" =~ ^[A-Za-z0-9_.:-]+$ ]] \
@@ -3954,7 +3966,7 @@ _ghost_drushrc_heal() {
   fi
   _uid=$(id -u "${_HM_U}" 2> /dev/null)
   _gid=$(id -g "${_HM_U}" 2> /dev/null)
-  _txt="<?php "$'\n\n'"\$options['db_type'] = 'mysql';"$'\n'
+  _txt="<?php "$'\n\n'"\$options['db_type'] = '${_db[type]}';"$'\n'
   for _k in host port user passwd name; do
     _txt="${_txt}\$options['db_${_k}'] = '${_db[${_k}]}';"$'\n'
   done
@@ -4116,13 +4128,15 @@ _cleanup_ghost_drushrc() {
           # site's registration (and vhost) down at once. All three are left
           # for operator review; only a true per-site ghost (platform healthy,
           # site dir nowhere) is ever reaped. A site dir that still holds
-          # anything but folders (drushrc-lost) is a site that lost only
-          # drushrc.php, its vhost still serving it: never reaped, its
-          # drushrc.php rebuilt where its vhost allows. Only an absent dir or
-          # one of empty folders reads further. The root parses are anchored
-          # to the 'root' KEY so a value that merely ends in root (e.g.
-          # client_name 'root') can never pollute them.
+          # anything but folders, while a vhost serves the name or the panel
+          # may still list it (drushrc-lost), is a site that lost only
+          # drushrc.php: never reaped, its drushrc.php rebuilt where its
+          # vhost allows. One that nothing serves or lists (a Clone or a
+          # rename killed mid-copy) stays a ghost. The root parses are
+          # anchored to the 'root' KEY so a value that merely ends in root
+          # (e.g. client_name 'root') can never pollute them.
           _GH_CLASS=ghost
+          _GH_FE=""
           _T_SITE_ROOT=$(printf '%s\n' "${_alTxt}" \
             | grep "'root' =>" \
             | cut -d: -f2 \
@@ -4130,9 +4144,6 @@ _cleanup_ghost_drushrc() {
             | sed "s/[\,']//g" 2>&1)
           if [[ "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
             _GH_CLASS=front-end
-          elif [ -d "${_T_SITE_FDIR}" ] \
-            && _ghost_site_dir_holds "${_T_SITE_FDIR}"; then
-            _GH_CLASS=drushrc-lost
           else
             if [ -n "${_T_SITE_ROOT}" ] && [ ! -d "${_T_SITE_ROOT}" ]; then
               _GH_CLASS=platform-gone
@@ -4161,6 +4172,13 @@ _cleanup_ghost_drushrc() {
               done
             fi
           fi
+          if [ "${_GH_CLASS}" = "ghost" ] && [ -d "${_T_SITE_FDIR}" ] \
+            && _ghost_site_dir_holds "${_T_SITE_FDIR}" \
+            && { _acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
+                test -f "./${_T_SITE_NAME}" \
+              || { _GH_FE=$(_hmr_context_exists "${_T_SITE_NAME}"); [ "${_GH_FE}" != "NO" ]; }; }; then
+            _GH_CLASS=drushrc-lost
+          fi
           if ! _ghost_seen_enough_acct "${_gh_smark}"; then
             if [ "${_GH_CLASS}" = "drushrc-lost" ]; then
               echo "GHOST candidate ${_T_SITE_NAME} has its site dir but no drushrc.php (grace run, nothing changed)"
@@ -4184,14 +4202,15 @@ _cleanup_ghost_drushrc() {
           elif [ "${_GH_CLASS}" != "ghost" ]; then
             echo "GHOST candidate ${_T_SITE_NAME} SKIPPED (${_GH_CLASS}: operator review needed, nothing moved)"
           else
-            # Only a confirmed true ghost pays for the front-end lookup. YES
+            # Only a confirmed true ghost pays for the front-end lookup (one
+            # with files in its dir made it above already). YES
             # keeps the customer-facing line: the record is still in their
             # panel, so the client notice is accurate and actionable. NO (the
             # customer already deleted the node -- only backend leftovers
             # remain, which they cannot see or touch) and UNKNOWN both take
             # the backend-leftover line, which the client notice never
             # matches, so that cleanup stays silent.
-            _GH_FE=$(_hmr_context_exists "${_T_SITE_NAME}")
+            [ -n "${_GH_FE}" ] || _GH_FE=$(_hmr_context_exists "${_T_SITE_NAME}")
             if [ "${_GH_FE}" = "YES" ]; then
               _GH_LINE="GHOST drushrc for ${_T_SITE_NAME}"
             elif [ "${_GH_FE}" = "NO" ]; then
