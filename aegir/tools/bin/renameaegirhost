@@ -2437,11 +2437,19 @@ _rewrite_vhosts() {
 # is this account's panel proxy, as xoct ssl-gen writes it for a panel (the
 # header names the account and server_name is the file's own name; a moved
 # account's relay answers "_"), and nothing of that name lives here: it is
-# not the panel's name in log/domain.txt, and no vhost carries it.
+# not the panel's name in log/domain.txt, and no vhost carries it. Both
+# witnesses are this root's, so an earlier name is judged for this root's
+# own account only: on an account rename the old account's name may be a
+# live local account's, and only its include of the old host is parked.
 _park_old_panel_proxies() {
   local _preD=/var/aegir/config/server_master/nginx/pre.d
   local _PRX _PRX_ACCT _N _X _TXT _FRONT
   _FRONT=$(_read_file "${_AEGIR_ROOT}/log/domain.txt" | head -n1 | tr -d ' \r\n')
+  # §4b2 rewrites domain.txt after this step: judge by the name it will hold
+  _FRONT=$(sed "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" <<< "${_FRONT}")
+  if [ "${_ACCT_AXIS}" = "YES" ]; then
+    _FRONT=$(sed "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" <<< "${_FRONT}")
+  fi
   for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
     [ -n "${_PRX_ACCT}" ] || continue
     for _PRX in "${_preD}/z_${_PRX_ACCT}."*_ssl_proxy.conf; do
@@ -2452,6 +2460,7 @@ _park_old_panel_proxies() {
       [ "${_X}" = "${_NEW_HOST}" ] && continue
       _safe_name "${_N}" "panel SSL proxy include" || continue
       if [ "${_X}" != "${_OLD_HOST}" ]; then
+        [ "${_PRX_ACCT}" = "${_AEGIR_USER}" ] || continue
         [ -f "${_PRX}" ] && [ ! -L "${_PRX}" ] || continue
         [[ "${_X}" == *.* ]] || continue
         [ "${_PRX_ACCT}.${_X}" != "${_FRONT}" ] || continue
