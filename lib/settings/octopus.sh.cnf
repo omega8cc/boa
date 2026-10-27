@@ -564,11 +564,11 @@ _GHOST_VHOSTS_CLEANUP=NO
 ###
 ### Nightly cleanup of ghost site registrations
 ### (a site Drush alias whose site directory is
-### gone). The default NO only detects and logs
-### them (dry-run). Change to YES to move the
-### stale alias and its vhost aside into undo/.
-### A system-wide default may also be set in
-### barracuda.cnf.
+### gone, holds only empty folders, or holds
+### files no vhost serves and the panel does
+### not list). The default NO only logs them.
+### YES moves the stale alias and its vhost
+### into undo/. System-wide: barracuda.cnf.
 ###
 _GHOST_SITES_CLEANUP=NO
 
@@ -577,12 +577,12 @@ _GHOST_SITES_CLEANUP=NO
 ### GHOST SITE FILES CLEANUP                ###
 ###----------------------------------------###
 ###
-### Also move a ghost site's leftover files
-### directory (site data, not just the
-### registration) when GHOST SITES cleanup acts.
-### Kept separate and default NO because it
-### touches data. System-wide default may also
-### be set in barracuda.cnf.
+### Also move a ghost site's leftover
+### directory when GHOST SITES cleanup acts.
+### Kept separate and default NO as the one
+### move of a site directory. System-wide
+### default may also be set in
+### barracuda.cnf.
 ###
 _GHOST_SITE_FILES_CLEANUP=NO
 
@@ -597,9 +597,9 @@ _GHOST_SITE_FILES_CLEANUP=NO
 ### NO only detects and logs them (dry-run).
 ### Change to YES to move a stale alias aside:
 ### each candidate is held 48h from its first
-### sighting, and aegir/distro front-end
-### companion aliases are never touched.
-### System-wide default: barracuda.cnf.
+### sighting; aegir/distro front-end companions
+### and sites whose dir holds any file keep
+### theirs. System-wide default: barracuda.cnf.
 ###
 _GHOST_ALIASES_CLEANUP=NO
 

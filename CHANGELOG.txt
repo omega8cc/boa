@@ -4,6 +4,19 @@
 
 @=> Important Fixes
 
+    * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
+      longer move a live site that lost only its drushrc.php. With the
+      _GHOST_* cleanups on, such a site (its directory still holding
+      settings.php and its files, its vhost still serving it) had its
+      alias, vhost and whole directory moved to undo/ after two nights,
+      and its alias by the ltd sweep after 48 hours. A site directory that
+      holds a file is never moved now while a vhost serves it or the
+      control panel lists it. For a Drupal site the nightly writes
+      drushrc.php again from the vhost's database lines, while that vhost
+      serves the site's platform, the control panel still has the site and
+      that login opens its database, and queues a Verify; otherwise it
+      names the site in the night log with the reason and the way back.
+
     * An Octopus instance user and its shell accounts can run /bin/sh with
       option words before -c, as root always could: sh -ec, sh -e -c,
       sh -xc and sh -o errexit -c run the command with those options set
@@ -523,12 +536,30 @@
       box may no longer own, and no later rename removed it. An earlier
       name's include is moved only when it is the account's own panel
       proxy and nothing of that name lives on the box (it is not the
-      panel's name as the rename leaves it, and no vhost carries it); a
-      relay to another box stays, and on an account rename the old
-      account's includes stay but for its old host's, since a live local
-      account of that name may own them. The root-only backup dir is made
-      again when it has gone before the move, and an include that cannot
-      be moved is reported.
+      panel's name as the rename leaves it, and no vhost carries it, as
+      its file name or as a site's alias); a relay to another box stays,
+      and on an account rename the old account's includes stay but for
+      its old host's, since a live local account of that name may own
+      them. The root-only backup dir is made again when it has gone
+      before the move, and an include that cannot be moved is reported.
+
+    * An Octopus upgrade moves aside the account's control panel HTTPS
+      proxy include of a name the panel no longer has: a box renamed
+      before renameaegirhost moved the old name's include itself, or
+      renamed by a copy older than the one BOA fetches, kept it live
+      until its next rename. Only the account's own panel front goes (its
+      header names the account and its server_name is the file's own
+      name), never the current panel name, a name a vhost of the account
+      carries (as its file name or as a site's alias), or a relay to
+      another box. It is moved to /var/backups/panel-proxy/<account>/,
+      and put back only when nginx -t passed before the move and fails
+      after it; when nginx -t was failing already it stays moved, so the
+      stale includes of several accounts clear one pass at a time.
+
+    * On an account rename renameaegirhost renames the old login form
+      "<account>.ftp" in the welcome mail's copy (log/setupmail.txt)
+      only. It renamed log/domain.txt too, where the only text is the
+      panel's name, so a panel named <account>.ftp.<name> was renamed.
 
     * A box promoted by a cutover, or by hand, no longer keeps the state
       file of the round it ran as the active before its demotion. The
@@ -1273,6 +1304,13 @@
       now go out as UTF-8, and a mail that fails is reported as not sent.
 
 @=> Security
+
+    * nginx refuses requests for an npm token file (.npmrc), Google Cloud
+      service-account key files (service-account.json, gcp-credentials.json,
+      gcp-key.json, google-credentials.json, firebase-adminsdk.json,
+      application_default_credentials.json) and server.key at any path, as
+      it refuses .env and credentials.json. Probed daily from hundreds of
+      addresses, they reached the site and cost a full not-found render each.
 
     * Unbound 1.26.2, the upstream security release.
 
@@ -2137,6 +2175,40 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The stale-Chrome search maps no longer drop real visitors' site
+      searches. They judge only Chrome's and Edge's own browser string:
+      Samsung Internet, Silk, Huawei, MIUI, Opera, Yandex and Android
+      webviews carry a Chrome version that follows their own releases,
+      and Chromebooks and TVs keep the last one their device received,
+      so their searches were refused and counted toward a ban. The maps
+      also spare every major an old system is pinned at (103, 106, 109,
+      116, 119, 128 and 138; only 128 and 138 were spared), and they
+      cover Chrome 100 to 141, a year behind the current release, where
+      they stopped at 139.
+
+    * The crawler-fleet refusal now stops the residential-proxy scraper
+      fleets that send about one request from each address. When the
+      agent of a declared fleet is a stale browser (a Chrome or Edge major
+      more than a year past its stable release and not the last one any
+      old system can run, or a Firefox before 100), nginx answers 429 to
+      that agent on that site from any address, still only without a
+      Referer and a session cookie. Before, it refused only addresses
+      already seen in the fleet, between 6% and 11% of such a fleet's
+      requests. Replayed on two hosted servers' logs of one day, the
+      refused requests rose from about 4,700 to 65,000 on one and from
+      about 4,300 to 46,000 on the other. Such an agent is now also
+      declared over all the routes it walks, not only per route class.
+      _NGINX_FLEET_STALE_ACTION=REPORT loosens this scope alone.
+
+    * Two AI training crawlers, Reflectionbot and ElevenlabsCrawler, join
+      the AI training class and are refused by default (a site's policy.txt
+      train-allow lets them in); Meta's AI search indexer (meta-webindexer),
+      LinkupBot, KeenableBot and ShapBot join the AI search class, each
+      paced by a rate limit of its own vendor, refused on a site whose
+      policy.txt line says search-block, and exempt from crawler-fleet
+      declarations like the other allowed AI agents. No class knew them,
+      so they were neither paced nor refusable.
 
     * The nightly no longer logs "dir: cannot access" on a box where no
       account has a distro platform tree for the ghost-codebases check.
