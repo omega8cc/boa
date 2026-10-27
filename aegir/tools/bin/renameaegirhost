@@ -2562,10 +2562,12 @@ _rewrite_log_stamps() {
       # matches — without this the file mixes the old account in
       # credential lines with the new one in URLs. Only setupmail.txt has
       # them: domain.txt is the one panel name, which this would rename
-      # when it starts with "<acct>.ftp.".
+      # when it starts with "<acct>.ftp.". A login is never followed by a
+      # dot or a host name character, so a panel URL of such a name keeps
+      # the name domain.txt keeps.
       if [ "${_N}" = "setupmail.txt" ]; then
         _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
-          \'"s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g"\' \
+          \'"s/\b${_OLD_ACCT}\.ftp\([^.[:alnum:]-]\|$\)/${_NEW_ACCT}.ftp\1/g"\' \
           || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
       fi
     fi
