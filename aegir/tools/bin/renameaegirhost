@@ -2448,7 +2448,8 @@ _park_old_panel_proxies() {
   # §4b2 rewrites domain.txt after this step: judge by the name it will hold
   _FRONT=$(sed "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" <<< "${_FRONT}")
   if [ "${_ACCT_AXIS}" = "YES" ]; then
-    _FRONT=$(sed "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" <<< "${_FRONT}")
+    _FRONT=$(sed -e "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" \
+      -e "s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g" <<< "${_FRONT}")
   fi
   for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
     [ -n "${_PRX_ACCT}" ] || continue
