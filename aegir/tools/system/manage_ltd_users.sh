@@ -5978,6 +5978,8 @@ _switch_php() {
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   _T_CLI_ASKED=""
+  _T_FPM_VRN=""
+  _T_FPM_ASKED=""
   _ltd_hm_switches
   _ltd_pool_deny_heal
 
@@ -6143,6 +6145,8 @@ _switch_php() {
         echo "ALRT: fpm.info of ${_USER} is not one PHP version, ignored"
         _T_FPM_VRN=""
       fi
+      # the version the file asks for, before any fallback
+      _T_FPM_ASKED="${_T_FPM_VRN}"
       # An instance an earlier pass already poisoned (a joined version in its
       # octopus.cnf) is set up again on the default version below.
       if [ -z "${_T_FPM_VRN}" ] && [ -n "${_PHP_FPM_VERSION}" ] \
@@ -6185,6 +6189,20 @@ _switch_php() {
         if [ -n "${_T_FPM_VRN}" ]; then
           _NEW_FPM_SETUP=YES
         fi
+      fi
+
+      # The file names a version the server does not have and its fallback
+      # is the version already in use, so no setup runs below and the file
+      # kept the absent version. The file takes the version the pool runs
+      # on, as cli.info does; in multi-FPM mode it is the main login's own
+      # file and is left to it.
+      if [ -n "${_T_FPM_ASKED}" ] && [ -n "${_T_FPM_VRN}" ] \
+        && [ "${_T_FPM_ASKED}" != "${_T_FPM_VRN}" ] \
+        && [ "${_NEW_FPM_SETUP}" != "YES" ] \
+        && [ "${_PHP_FPM_MULTI}" = "NO" ] \
+        && [ -x "/opt/php${_T_FPM_VRN//./}/bin/php" ]; then
+        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
+        _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
       fi
 
       ### Update fpm_include_default.inc if needed
