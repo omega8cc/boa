@@ -58,7 +58,7 @@
     * Reset login on a Grav site now signs out every API token and
       remembered login issued before it, and every signed-in browser
       session where the site runs the Login plugin 3.11 or later (BOA's
-      Grav 2.2.13 bundle). It wrote the admin account without the cutoff
+      Grav 2.2.14 bundle). It wrote the admin account without the cutoff
       the Login and API plugins check (api_tokens_valid_after, which their
       own password change stamps) and kept the account's remember-me
       logins, so an earlier Admin2 token, its refresh token or a
