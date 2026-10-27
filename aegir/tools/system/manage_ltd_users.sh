@@ -1380,6 +1380,20 @@ _ltd_read_in() {
   _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
+# Whether the site dir $1 is there and holds anything but directories: a
+# settings file, a store link, any file at all. Listed from inside the dir,
+# never through a link at its name; a dir that is not a plain directory, or
+# cannot be listed, counts as holding something, so it is never taken for a
+# gone site's leftover. Status 1 only for an absent dir or one of empty
+# folders.
+_ltd_site_dir_holds() {
+  local _f
+  [ -e "${1}" ] || [ -L "${1}" ] || return 1
+  [ -d "${1}" ] && [ ! -L "${1}" ] || return 0
+  _f=$(cd -P -- "${1}" 2> /dev/null \
+    && find . -mindepth 1 ! -type d -print -quit 2> /dev/null) || return 0
+  [ -n "${_f}" ]
+}
 # The drushrc aliases a yml store is converted from, as one sum: every name,
 # and each file's content read as _ltd_read_in reads it. C collation keeps the
 # order the same whatever locale runs the pass. Run inside _ltd_in_real_dir.
@@ -6603,6 +6617,14 @@ _manage_site_drush_alias_mirror() {
             : # replication standby: aliases and site dirs arrive by
             : # replication and rsync on their own clocks, so a mid-sync
             : # mismatch is normal -- never reap here
+          elif _ltd_site_dir_holds "${_SiteDir}"; then
+            # The site dir is there and holds files: a site that lost only
+            # drushrc.php while its vhost still serves it, never a ghost. Its
+            # alias stays and its hold marker goes; the nightly rebuilds the
+            # file or names the site for review.
+            _ltd_in_real_dir "${_pthParentUsr}/log/ctrl" \
+              rm -f -- "./ghost-ltd-${_SiteName}.seen" 2>/dev/null
+            echo "LOST drushrc.php in ${_SiteDir} for ${_SiteName}: its site dir is there, its alias stays"
           else
             _GA_OCT="/root/.$(basename ${_pthParentUsr} 2>/dev/null).octopus.cnf"
             _GA_ON=NO
