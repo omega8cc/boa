@@ -17,6 +17,13 @@
       that login opens its database, and queues a Verify; otherwise it
       names the site in the night log with the reason and the way back.
 
+    * A site the nightly ghost cleanup logged as stranded, platform-gone
+      or front-end for some nights, which then turned into a plain ghost
+      (its platform restored without it, its other copy removed), was
+      moved to undo/ that same night, with no grace night as a ghost.
+      Those nights now count apart, so a new ghost always gets its grace
+      night first.
+
     * An Octopus instance user and its shell accounts can run /bin/sh with
       option words before -c, as root always could: sh -ec, sh -e -c,
       sh -xc and sh -o errexit -c run the command with those options set
