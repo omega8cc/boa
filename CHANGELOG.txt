@@ -2158,13 +2158,16 @@
 
 @=> Improvements
 
-    * The stale-Chrome search maps cover Chrome 100 to 141, a year behind
-      the current release as their rule asks; they stopped at 139, so
-      search bots on 140 and 141 passed. They also spare every major an
-      old system is pinned at (103, 106, 109, 116, 119, 128 and 138):
-      since Chrome 107 a pinned Mac, Windows 7 or old Android machine
-      reports the same platform as a current one, and only 128 and 138
-      were spared, so such a visitor's site searches were dropped.
+    * The stale-Chrome search maps no longer drop real visitors' site
+      searches. They judge only Chrome's and Edge's own browser string:
+      Samsung Internet, Silk, Huawei, MIUI, Opera, Yandex and Android
+      webviews carry a Chrome version that follows their own releases,
+      and Chromebooks and TVs keep the last one their device received,
+      so their searches were refused and counted toward a ban. The maps
+      also spare every major an old system is pinned at (103, 106, 109,
+      116, 119, 128 and 138; only 128 and 138 were spared), and they
+      cover Chrome 100 to 141, a year behind the current release, where
+      they stopped at 139.
 
     * The crawler-fleet refusal now stops the residential-proxy scraper
       fleets that send about one request from each address. When the
