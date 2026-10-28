@@ -4,14 +4,33 @@
 
 @=> Important Fixes
 
+    * Nginx no longer warns "could not build optimal map_hash" on every
+      configtest and reload while the crawler-fleet guard holds a large
+      address map. A 192-byte bucket fits only two or three fleet keys,
+      so no table size fit a map of a few thousand addresses; the master
+      config now sets map_hash_bucket_size 512 and map_hash_max_size
+      262144. The sizes reach a box with its next Aegir Master upgrade
+      or server Verify.
+    * A backup selection pattern that duplicity's regexp engine cannot
+      compile (an unbalanced bracket, a doubled repeat, an unknown escape)
+      ended the account's whole backup run with nothing saved. The paths
+      writer now compiles every -regexp line with the interpreter duplicity
+      runs under and refuses the ones that fail by line number, keeping
+      the rest; the account README names the rule.
+    * The paths writer no longer reports a missing regexp merged file for
+      an account without regexp directives, and multiback no longer prints
+      its priority change and a bare 3 from the cache drop into the run's
+      output.
     * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
       lock, and the lock is released as it ends. The lock's handler only
       unlocked, so the script went on running without the lock and a
-      second copy could start beside it. A hangup leaves the script
-      running and still locked, so a tool started in a remote session
-      survives its end. updatesymlinks did the same with the queue pause:
-      a TERM released the pause and the lock and it went on changing
-      links; it now ends.
+      second copy could start beside it. The script dies of the signal,
+      so an installer that runs it in the foreground stops on a Ctrl-C
+      too instead of carrying on past a step left half done. A hangup
+      leaves the script running and still locked, so a tool started in a
+      remote session survives its end. updatesymlinks did the same with
+      the queue pause: a TERM released the pause and the lock and it went
+      on changing links; it now ends.
 
     * A cleanup a BOA script sets for its exit before it takes the
       single-instance lock runs again: the lock's own exit handler
@@ -2291,6 +2310,14 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
+      csf.allow between its starts and parses the list again only after
+      it changed. The list grew about threefold when every provider came
+      to be listed on both web ports, and parsing it on every start,
+      every few seconds, took the scorer from about 1% to about 5% of a
+      small box's CPU. A pass with nothing new to score now takes a third
+      of the time.
 
     * The stale-Chrome search maps no longer drop real visitors' site
       searches. They judge only Chrome's and Edge's own browser string:

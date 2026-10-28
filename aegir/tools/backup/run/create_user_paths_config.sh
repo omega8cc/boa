@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f57"
+export _sPid="f56"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -237,6 +237,44 @@ _mail_validation_issues() {
 # output and root's own files are ./names there, the account's file (the one
 # validated) is read inside its real directory, never through a link or
 # from a FIFO.
+# The -regexp patterns reach duplicity's regexp engine as written, and one
+# it cannot compile ends the account's run with nothing backed up (duplicity
+# 3.2 exits 30 on re.PatternError) instead of skipping the line. They are
+# compiled by the interpreter duplicity runs under, one call per directive
+# file; without duplicity (so without backups) or any python3, nothing is
+# compiled and the shape check alone applies, as before.
+_regexp_compiler() {
+  local _dcy _py
+  _dcy="$(readlink -f /usr/local/bin/duplicity 2> /dev/null)"
+  _py="$(head -1 "${_dcy}" 2> /dev/null | tr -d '\r' | sed 's/^#!//; s/^[[:space:]]*//')"
+  _py="${_py%% *}"
+  if [ -n "${_py}" ] && [ -x "${_py}" ]; then
+    echo "${_py}"
+  else
+    command -v python3 2> /dev/null
+  fi
+}
+
+# stdin: one <line number><TAB><pattern> per line; stdout: the numbers whose
+# pattern does not compile. The script is an argument, so stdin stays the data.
+_uncompilable_lines() {
+  local _py
+  _py="$(_regexp_compiler)"
+  [ -n "${_py}" ] || return 0
+  "${_py}" -E -c '
+import re, sys
+for raw in sys.stdin:
+    raw = raw.rstrip("\n")
+    if not raw:
+        continue
+    n, _, pat = raw.partition("\t")
+    try:
+        re.compile(pat)
+    except Exception:
+        print(n)
+' 2> /dev/null
+}
+
 _validate_and_merge_paths() {
   local _file=$1
   local _user=$2
@@ -246,6 +284,7 @@ _validate_and_merge_paths() {
   local _body
   local _line_no=0
   local _invalid=0
+  local _taken=() _taken_no=() _rgx_check=""
   if [ "${_if_validate}" = "YES" ]; then
     _body="$(_acct_in_real_dir "${_file%/*}" _acct_read_file_here "${_file##*/}")"
   else
@@ -310,9 +349,14 @@ _validate_and_merge_paths() {
       esac
       # Validate directives
       if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
-        if echo "${_line}" | grep -Eq "${_path_shape}" \
-          || echo "${_line}" | grep -Eq "${_rgx_shape}"; then
-          echo "${_line}" >> "${_output_file}"
+        if echo "${_line}" | grep -Eq "${_path_shape}"; then
+          _taken+=("${_line}")
+          _taken_no+=("${_line_no}")
+        elif echo "${_line}" | grep -Eq "${_rgx_shape}"; then
+          # held for the compile pass after the loop
+          _taken+=("${_line}")
+          _taken_no+=("${_line_no}")
+          _rgx_check+="${_line_no}"$'\t'"${_line#* }"$'\n'
         else
           _log_issue "${_user}" "${_file}" "Invalid path (line ${_line_no})"
           _invalid_paths_found=true
@@ -327,6 +371,24 @@ _validate_and_merge_paths() {
       echo "${_line}" >> "${_output_file}"
     fi
   done <<< "${_body}"
+
+  # The compile pass: one interpreter call for the file's -regexp lines, then
+  # the accepted lines go out in their order, minus those that do not compile,
+  # each refused by line number like the backslash rules
+  if [ "${_if_validate}" = "YES" ] && [ "${#_taken[@]}" -gt 0 ]; then
+    local _bad="" _i
+    if [ -n "${_rgx_check}" ]; then
+      _bad="$(printf '%s' "${_rgx_check}" | _uncompilable_lines)"
+    fi
+    for _i in "${!_taken[@]}"; do
+      if [ -n "${_bad}" ] && grep -qx "${_taken_no[${_i}]}" <<< "${_bad}"; then
+        _log_issue "${_user}" "${_file}" "Invalid pattern: does not compile (line ${_taken_no[${_i}]})"
+        _invalid_paths_found=true
+      else
+        echo "${_taken[${_i}]}" >> "${_output_file}"
+      fi
+    done
+  fi
 
   if [ "${_invalid_paths_found}" = true ]; then
     echo "Skipped invalid lines in '${_file}' for user '${_user}'."
@@ -498,11 +560,12 @@ EOF
 
     # Merge all include path directives into single file
     cat "${_merged_include_file}" > "${_merged_all_include_file}"
-    cat "${_merged_regexp_include_file}" >> "${_merged_all_include_file}"
+    # the regexp merged file exists only when a regexp directive file did
+    [ -f "${_merged_regexp_include_file}" ] && cat "${_merged_regexp_include_file}" >> "${_merged_all_include_file}"
 
     # Merge all exclude path directives into single file
     cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
-    cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
+    [ -f "${_merged_regexp_exclude_file}" ] && cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
 
     # Convert the include file contents to a single-line variable without extra backslashes and excessive whitespace
     local _MERGED_ALL_INCLUDE=$(cat "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
