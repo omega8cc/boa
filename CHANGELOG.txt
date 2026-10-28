@@ -48,6 +48,8 @@
       and removed the file at exit, and the slow run was never measured
       against the three-minute limit. Only the run holding the lock now
       writes the PID, and a run removes the file only when it is its own.
+      The check kills the stuck run's children as well: they inherited
+      its lock and kept it held after the run itself was killed.
 
     * autoinit, aptcleanup and vmnetfix carry the single-instance lock
       inline, and their copies now match the shared one: the lock file
