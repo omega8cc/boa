@@ -465,13 +465,33 @@ _init_root() {
 ### Atomic unlock to prevent TOCTOU race
 ###
 _single_instance_unlock() {
-  _FD="$1"; _PATH="$2"
+  # Args optional: fall back to the descriptor/path recorded by _single_instance_lock,
+  # so a no-arg call (e.g. from a caller's own EXIT trap that overrode our trap) still
+  # releases the right lock instead of leaving _FD empty — an empty _FD tripped
+  # "_FD: ambiguous redirect" on the exec {_FD}>&- close below.
+  _FD="${1:-${_LOCK_FD:-}}"
+  _PATH="${2:-${_LOCK_PATH:-}}"
   if command -v flock >/dev/null 2>&1; then
-    flock -u "${_FD}" 2>/dev/null || true
-    eval "exec ${_FD}>&-"
-    rm -f "${_PATH}" 2>/dev/null || true
+    case "${_FD}" in
+      ''|*[!0-9]*)
+        # No usable numeric descriptor recorded — nothing to unlock/close.
+        :
+        ;;
+      *)
+        flock -u "${_FD}" 2>/dev/null || true
+        # Close the lock fd via the brace-expansion close form (bash >= 4.1),
+        # equivalent to `eval "exec ${_FD}>&-"` without the eval. Guarded above so a
+        # bare number is guaranteed here; an empty/non-numeric value would otherwise
+        # print "ambiguous redirect".
+        exec {_FD}>&-
+        ;;
+    esac
+    # The lockfile itself stays: flock lives on the inode, so removing the
+    # name would hand the NEXT opener a fresh inode while a process still
+    # waiting on the old one proceeds too -- two holders of one lock. A
+    # 0-byte file on tmpfs costs nothing and clears on reboot.
   else
-    rm -rf "${_PATH}" 2>/dev/null || true
+    [ -n "${_PATH}" ] && rm -rf "${_PATH}" 2>/dev/null || true
   fi
 }
 
@@ -487,27 +507,64 @@ _single_instance_lock() {
   if [ -n "${1:-}" ]; then
     _LOCK_PATH="$1"
   else
-    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
     _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
   fi
 
   if command -v flock >/dev/null 2>&1; then
-    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    # Open _LOCK_PATH on a fresh fd. The brace-expansion form lets bash
+    # auto-assign the next available descriptor into _LOCK_FD (overriding
+    # the default of 9 set above), avoiding the eval that the original
+    # code needed to use a variable as an fd number. All current callers
+    # invoke _single_instance_lock with no args, so they accept whichever
+    # fd bash picks.
+    exec {_LOCK_FD}>"${_LOCK_PATH}"
     if ! flock -n "${_LOCK_FD}"; then
       echo "${_SELF_NAME}: another instance is running; exiting."
       exit 0
     fi
     printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
-    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+    _LOCK_RELEASE="_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'"
   else
-    # mkdir is atomic; directory presence == lock held
+    # mkdir is atomic; directory presence == lock held. A holder that died
+    # without its trap (SIGKILL, power loss) must not lock every future run
+    # out: a recorded owner that is no longer alive, on a lock old enough
+    # that no live run can still own it, is reclaimed once.
     if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
-      echo "${_SELF_NAME}: another instance is running; exiting."
-      exit 0
+      _OWNER_PID="$(tr -dc '0-9' < "${_LOCK_PATH}/pid" 2>/dev/null)"
+      if { [ -z "${_OWNER_PID}" ] || ! kill -0 "${_OWNER_PID}" 2>/dev/null; } \
+        && [ -n "$(find "${_LOCK_PATH}" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
+        rm -rf "${_LOCK_PATH}" 2>/dev/null
+        mkdir "${_LOCK_PATH}" 2>/dev/null || { echo "${_SELF_NAME}: another instance is running; exiting."; exit 0; }
+      else
+        echo "${_SELF_NAME}: another instance is running; exiting."
+        exit 0
+      fi
     fi
     echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
-    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
+    _LOCK_RELEASE="rm -rf '${_LOCK_PATH}'"
   fi
+  # The EXIT trap is the lock's release path. An EXIT trap the caller set
+  # before locking runs first, so its cleanup is kept and is done before
+  # another copy can take the lock. A caller that installs its own EXIT
+  # trap after locking replaces this one and must call
+  # _single_instance_unlock itself (flock still auto-releases when the
+  # process exits, so the worst a lost trap costs is the tidy-up).
+  _LOCK_PREV="$(trap -p EXIT)"
+  if [ -n "${_LOCK_PREV}" ]; then
+    eval "set -- ${_LOCK_PREV}"
+    _LOCK_RELEASE="${3:-}"$'\n'"${_LOCK_RELEASE}"
+  fi
+  trap "${_LOCK_RELEASE}" EXIT
+  # A trap on a signal replaces its default action, so INT and TERM exit
+  # here with the usual status and the EXIT trap then releases the lock: a
+  # handler that returned would go on running beside the next copy. HUP
+  # leaves the run going and still locked, so a tool started in a remote
+  # session survives the session's end. ':', not '': the children get the
+  # default HUP back instead of inheriting an ignore.
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap ':' HUP
 }
 
 ###
