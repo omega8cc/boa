@@ -541,14 +541,17 @@ _get_load() {
 # quantity without that bias. _D_LOAD stays empty when /proc/stat cannot be
 # read; the wait still lasts about 9 s either way.
 _get_dealiased_load() {
-  local _fd _i _k _v _rest _run _blk _f _l _d _rsum=0 _bsum=0 _n=0 _dsum=0 _dn=0
+  local _fd _i _k _v _rest _run _blk _f _l _d _rsum=0 _bsum=0 _n=0 _dsum=0 _dn=0 _until
   _D_LOAD=""
   # A pipe nothing writes to: read -t on it is a sleep without a fork.
   if ! exec {_fd}<> <(:); then
     sleep 9
     return 1
   fi
-  for (( _i = 0; _i < 90; _i++ )); do
+  # 9 s at most, however long each sample takes on a busy box with many
+  # threads: the pass still has to end inside its minute.
+  _until=$(( SECONDS + 9 ))
+  for (( _i = 0; _i < 90 && SECONDS < _until; _i++ )); do
     _run=""
     _blk=""
     while read -r _k _v _rest; do
@@ -570,6 +573,9 @@ _get_dealiased_load() {
       _d=0
       for _f in /proc/[0-9]*/task/[0-9]*/stat; do
         read -r _l 2>/dev/null < "${_f}" || continue
+        # The state follows the comm field, which ends within the first 80
+        # characters; the longest-match strip costs far less on that part.
+        _l="${_l:0:80}"
         _l="${_l##*) }"
         [[ "${_l:0:1}" == "D" ]] && _d=$(( _d + 1 ))
       done
@@ -952,17 +958,30 @@ while [ "${#_HEAVY_EVERY}" -gt 1 ] && [ "${_HEAVY_EVERY:0:1}" = "0" ]; do
 done
 (( _HEAVY_EVERY < 1 )) && _HEAVY_EVERY=1
 
+# The second within the current wall-clock minute, without a fork. The run's
+# own elapsed time would misjudge what is left of the minute for a run that
+# started late or whose pass ran past the minute.
+_minute_second() {
+  local _now
+  printf -v _now '%(%s)T' -1
+  _MINUTE_SEC=$(( _now % 60 ))
+}
+
 # Main execution. Passes start 5.5 s apart, not 5: the kernel counts the run
 # queue for its load average every ~5 s (5*HZ+1 ticks), and passes on a
 # 5-second grid drift into step with those counts for half an hour of every
 # ~104 minutes, so the load average reported the passes' own bursts instead of
-# the box's load. The run never reaches the next cron minute: a run still going
-# then holds the lock, and that minute's run exits without a single pass. So
-# whether to sleep for another pass is decided before sleeping, and only while
-# a pass starting after the sleep would still end in time if it spends its
-# 9-second cooldown measuring (the 48 s test is the backstop).
-for _iteration in {1..10}; do
-  (( _iteration > 1 && SECONDS >= 48 )) && break
+# the box's load. A run still going at the next cron minute holds the lock, and
+# that minute's run exits without a single pass. So whether to sleep for
+# another pass is decided before sleeping, only while a pass starting after the
+# sleep would still end inside the minute if it spends its 9-second cooldown
+# measuring (the 48 s test is the backstop). A pass that ran into the next
+# minute anyway (a MAX or CRIT pass takes 17 s or more) leaves that minute to
+# this run, which goes on passing through it by the same rule; the pass cap is
+# far above what any run needs.
+for (( _iteration = 1; _iteration <= 20; _iteration++ )); do
+  _minute_second
+  (( _iteration > 1 && _MINUTE_SEC >= 48 )) && break
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _SPAWN_STEP=0
@@ -977,12 +996,14 @@ for _iteration in {1..10}; do
     _spawn_detached "${_monPath}/hackftp.sh"
     _spawn_detached "${_monPath}/escapecheck.sh"
   fi
-  (( _iteration < 10 && SECONDS < 42 )) || break
+  _minute_second
+  (( _iteration < 20 && _MINUTE_SEC < 42 )) || break
   sleep 5.5
 done
 # A short wait while the last pass's launches start, so they are still this
 # run's children when loadreport first sees them.
-(( SECONDS < 55 )) && sleep 2
+_minute_second
+(( _MINUTE_SEC < 55 )) && sleep 2
 
 echo "Done!"
 exit 0

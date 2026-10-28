@@ -211,6 +211,15 @@ done
 (( _ITER  < 1 )) && _ITER=1
 (( _SLEEP < 1 )) && _SLEEP=1
 
+# The second within the current wall-clock minute, without a fork. The run's
+# own elapsed time would misjudge what is left of the minute for a run that
+# started late, and a backward clock step would make it negative.
+_minute_second() {
+  local _now
+  printf -v _now '%(%s)T' -1
+  _MINUTE_SEC=$(( _now % 60 ))
+}
+
 # Main execution. The kernel counts the run queue for its load average every
 # ~5 s (5*HZ+1 ticks); passes on a 5-second grid drift into step with those
 # counts for half an hour of every ~104 minutes, and the load average then
@@ -221,17 +230,20 @@ done
 # next cron minute holds the lock, and that minute's run exits without a pass.
 _GAP="${_SLEEP}"
 (( _SLEEP % 5 == 0 )) && _GAP="${_SLEEP}.5"
-(( SECONDS < 2 )) && sleep "$(( 2 - SECONDS ))"
+_minute_second
+(( _MINUTE_SEC < 2 )) && sleep "$(( 2 - _MINUTE_SEC ))"
 for (( _iteration = 1; _iteration <= _ITER; _iteration++ )); do
   echo "----------------------------"
   echo "Iteration ${_iteration} of ${_ITER} (class ${_BOX_CLASS}):"
   _launch_auto_healing
-  (( _iteration < _ITER && SECONDS + _SLEEP < 56 )) || break
+  _minute_second
+  (( _iteration < _ITER && _MINUTE_SEC + _SLEEP < 56 )) || break
   sleep "${_GAP}"
 done
 # A short wait while the last pass's checkers start, so they are still this
 # run's children when loadreport first sees them.
-(( SECONDS < 55 )) && sleep 3
+_minute_second
+(( _MINUTE_SEC < 55 )) && sleep 3
 
 echo DONE!
 exit 0
