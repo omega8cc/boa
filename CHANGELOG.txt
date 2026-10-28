@@ -4,6 +4,216 @@
 
 @=> Important Fixes
 
+    * Since the move to lshell 0.11 a limited shell could not answer a
+      prompt on its terminal: the first SSH connection to a new host (a
+      git clone from a code host whose key was not yet known) failed with
+      "Host key verification failed.", and a key passphrase or a git
+      password was never asked for. lshell 0.11.15 hands the terminal to
+      the command it runs; Ctrl+Z, fg and Ctrl+C work as before.
+
+    * An Octopus account installed after the server's off-site backup was
+      set up was in no root data backup at all: the data run's account
+      list was built once, so the account's /data/disk tree and its files
+      store on attached storage (/mnt/<disk>/files/<account>) were never
+      uploaded. The list is now built again whenever an account or home
+      directory comes or goes, and replaced by rename; the first data run
+      after the update backs up every account left out so far.
+
+    * A Clone or a Migrate onto a name whose per-account files store was
+      still there (a deleted site's, kept by the operator's switch) checked
+      nothing: the storage tool re-linked the new site to the old store and
+      archived its private dir even under the switch. The copying tasks now
+      run the install's store check on the target name first and refuse,
+      the source untouched, when a share file names the store, the switch
+      holds it or the move failed; the Grav and Textpattern installs check
+      too, and the storage wrapper lets an account's own tasks set aside a
+      store at a name no site of the account carries (the new name has no
+      alias until the copy is made).
+
+    * A Delete of a site whose install was refused before anything was
+      built ended in warnings about undefined database keys and an unknown
+      database name, and a Grav one failed on the missing site directory;
+      it now takes no safety copy, runs no store or database step and ends
+      clean. A Grav site's Delete sets the site's store aside like the
+      other kinds.
+
+    * Nginx no longer warns "could not build optimal map_hash" on every
+      configtest and reload while the crawler-fleet guard holds a large
+      address map. A 192-byte bucket fits only two or three fleet keys,
+      so no table size fit a map of a few thousand addresses; the master
+      config now sets map_hash_bucket_size 512 and map_hash_max_size
+      262144. The sizes reach a box with its next Aegir Master upgrade
+      or server Verify.
+
+    * A backup selection pattern that duplicity's regexp engine cannot
+      compile (an unbalanced bracket, a doubled repeat, an unknown escape)
+      ended the account's whole backup run with nothing saved. The paths
+      writer now compiles every -regexp line with the interpreter duplicity
+      runs under and refuses the ones that fail by line number, keeping
+      the rest; the account README names the rule.
+
+    * The paths writer no longer reports a missing regexp merged file for
+      an account without regexp directives, and multiback no longer
+      prints its priority change and a bare 3 from the cache drop into
+      the run's output.
+
+    * A wildcard certificate for a www-named site is ordered on the bare
+      name but filed under the site's own name, where its vhost, Verify
+      and the nightly renewal look. Both strips of the www prefix acted
+      on the site's name itself: Verify then looked for a vhost under the
+      bare name and ordered nothing, and the nightly renewed a directory
+      nothing read while the installed certificate ran out.
+
+    * Verify reads dehydrated's exit code: a failing order whose output
+      none of the known patterns name (a DNS hook that fails or cannot
+      run, an order aborted before its challenge) is now a task warning
+      naming the code and the output tail, where it read as a success
+      and re-wired the vhost to nothing new. The wildcard order is placed
+      only through a hook that can run, with its Python environment in
+      place; otherwise the per-name order is placed with a warning.
+
+    * The nightly renewal of an account in Let's Encrypt demo mode no
+      longer asks for the ISRG Root X1 chain, which the staging
+      authority does not offer, so its orders complete instead of ending
+      on an alternative chain not found.
+
+    * An account's own tools/le/config, where a wildcard's DNS settings
+      live, is kept when the account enters or leaves Let's Encrypt demo
+      mode. Demo mode copied the staging authority line over it, or
+      failed on the immutable file and ordered from the live authority
+      under the demo label, and removed it on the way out. The staging
+      authority now lives in tools/le/config.sh alone, which reads the
+      account's own file first; Verify, the Octopus installer and both
+      night workers point dehydrated at it with --config in demo mode,
+      and a copy an earlier demo mode left behind is removed by the
+      nightly, as root, once the account is back in live mode. The
+      account's own frontend renewal in demo mode also leaves the ISRG
+      Root X1 chain out.
+
+    * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
+      lock, and the lock is released as it ends. The lock's handler only
+      unlocked, so the script went on running without the lock and a
+      second copy could start beside it. The script dies of the signal,
+      so an installer that runs it in the foreground stops on a Ctrl-C
+      too instead of carrying on past a step left half done. A hangup
+      leaves the script running and still locked, so a tool started in a
+      remote session survives its end. updatesymlinks did the same with
+      the queue pause: a TERM released the pause and the lock and it went
+      on changing links; it now ends.
+
+    * A cleanup a BOA script sets for its exit before it takes the
+      single-instance lock runs again: the lock's own exit handler
+      replaced it, so autoinit's pid file, guest-fire.sh's pid file and
+      checksql.sh's work file were left behind. The cleanup sees the
+      script's real exit status, and the release also holds for a lock
+      taken in a subshell or a script that trapped TERM first.
+
+    * guest-fire.sh's stuck-run check stops a firewall run that hangs
+      again. Each run wrote its PID before taking the lock, so the next
+      run, refused at the lock, replaced the slow run's PID with its own
+      and removed the file at exit, and the slow run was never measured
+      against the three-minute limit. Only the run holding the lock now
+      writes the PID, and a run removes the file only when it is its own.
+      The check kills the stuck run's children as well: they inherited
+      its lock and kept it held after the run itself was killed. The
+      weekly self-update's safety-net check of stuck runs does the same.
+
+    * autoinit, aptcleanup and vmnetfix carry the single-instance lock
+      inline, and their copies now match the shared one: the lock file
+      stays in place when the lock is released (removing it let two runs
+      hold the lock on two inodes), and a lock directory a killed run
+      left is reclaimed once its owner is gone.
+
+    * A platform Verify reads a module's hook_update_last_removed(). A
+      module that keeps only that hook (Open Social 13 does in
+      activity_logger, improved_theme_settings, social_advanced_queue and
+      social_follow_content) was recorded at the core floor, 10000 on
+      Drupal 10, below the schema of every site running it, so the
+      Migrate form counted it as a downgrade and greyed out every target
+      platform. Verify the target platform once after the upgrade.
+
+    * A site Verify drops the package records the site kept from a
+      platform it has left. After a Migrate the next Migrate form counted
+      every package twice, and a module the site has since disabled still
+      counted as enabled there.
+
+    * _CUSTOM_CONFIG_CSF=YES now also keeps the five-minute BOA.sh.txt
+      run from adding UDP 443 back to UDP_IN in csf.conf: it re-opened
+      the port on every run and reloaded csf, whatever the flag said, so
+      a box that closes HTTP/3 by hand reloaded its firewall every five
+      minutes. Without the flag the check adds the port and reloads csf
+      only when the port is missing, as before.
+
+    * mybackup and the scheduled backup read a credentials line the same
+      way: a "# comment" after a value's closing quote, or after the
+      space that ends an unquoted value, is a comment, and a # inside the
+      quotes or glued to the value stays part of it. mybackup refused the
+      shipped templates' own region lines over their trailing comment.
+
+    * A backup path pattern that ends in a backslash, or holds a doubled
+      one, is refused when the per-account paths list is built (logged by
+      line number), and the backup run reads its paths file as five plain
+      NAME="value" lines and stops, instead of selecting nothing, when a
+      value ends in a backslash.
+
+    * The per-account backup paths list is built again when the account's
+      include or exclude directive files change (added, edited or removed),
+      not only when the builder itself is updated: a tenant's edit reaches
+      the next backup run instead of waiting for the next release.
+
+    * The per-account backup paths builder reads a tenant's directive file
+      up to 500 lines and stops after 20 refused lines, each cap logged once;
+      every refusal names the file and line number alone; the validation
+      alert goes out once per run with that run's lines only; the paths file
+      is replaced by rename; and one builder runs at a time.
+
+    * Tools an Octopus instance login installs with gem install or npm
+      install -g (compass, sass, gulp, grunt, bower) run by name in the
+      limited shell again: each login's lshell section carries an
+      env_path of the login's gem directory, the main login's npm package
+      home too, and the command dispatcher resolves its own check on the
+      same path. lshell 0.11 refused them as not found.
+
+    * The per-site certificate switches and their readers agree: the
+      main-name-only switch on a site that redirects to an alias orders
+      the site's name and the redirect target, so the certificate lands
+      where the vhost looks (it landed under the alias and was never
+      installed); Verify reads the wildcard switch through the DNS hook
+      the nightly installs and, short of a DNS flag, the hook or the
+      config, logs a warning and orders the per-name certificate; the
+      nightly does the same instead of a wildcard order that dehydrated
+      refuses under http-01, and the account report names the skipped
+      order. Both read the switch under the site's own name, and the
+      nightly's per-name order short of the hook or the config carries
+      every name (it kept the wildcard's shape, without www and the
+      subdomain aliases).
+
+    * A files store is held for the share control file of the site's own
+      name alone: the Delete's archive, the nightly orphan sweep and its
+      report matched share.*.<site>.info, which a subdomain site's file
+      also fits, so a parent domain's store stayed at its name for
+      another site's share and a new site there was refused.
+
+    * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
+      longer move a live site that lost only its drushrc.php. With the
+      _GHOST_* cleanups on, such a site (its directory still holding
+      settings.php and its files, its vhost still serving it) had its
+      alias, vhost and whole directory moved to undo/ after two nights,
+      and its alias by the ltd sweep after 48 hours. A site directory that
+      holds a file is never moved now while a vhost serves it or the
+      control panel lists it. For a Drupal site the nightly writes
+      drushrc.php again from the vhost's database lines, while that vhost
+      serves the site's platform, the control panel still has the site and
+      that login opens its database, and queues a Verify; otherwise it
+      names the site in the night log with the reason and the way back.
+
+    * A site the nightly ghost cleanup logged as stranded, platform-gone
+      or front-end for some nights, which then turned into a plain ghost
+      (its platform restored without it, its other copy removed), was
+      moved to undo/ that same night, with no grace night as a ghost.
+      Those nights now count apart, so a new ghost always gets its grace
+      night first.
+
     * An Octopus instance user and its shell accounts can run /bin/sh with
       option words before -c, as root always could: sh -ec, sh -e -c,
       sh -xc and sh -o errexit -c run the command with those options set
@@ -31,7 +241,7 @@
     * Reset login on a Grav site now signs out every API token and
       remembered login issued before it, and every signed-in browser
       session where the site runs the Login plugin 3.11 or later (BOA's
-      Grav 2.2.13 bundle). It wrote the admin account without the cutoff
+      Grav 2.2.14 bundle). It wrote the admin account without the cutoff
       the Login and API plugins check (api_tokens_valid_after, which their
       own password change stamps) and kept the account's remember-me
       logins, so an earlier Admin2 token, its refresh token or a
@@ -513,6 +723,40 @@
       files naming the former host on every account. The alias at the
       new name is now replaced by the old-name copy, the one the active
       kept current.
+
+    * A host rename moves aside every control panel HTTPS proxy include
+      an earlier rename left in the master's nginx pre.d, not only the
+      one of the name it renames from. A box renamed by a copy of
+      renameaegirhost without that step (renamed long ago, or restored
+      and renamed before BOA fetched the current copy) kept the old
+      name's include live, sending that name's HTTPS to an address the
+      box may no longer own, and no later rename removed it. An earlier
+      name's include is moved only when it is the account's own panel
+      proxy and nothing of that name lives on the box (it is not the
+      panel's name as the rename leaves it, and no vhost carries it, as
+      its file name or as a site's alias); a relay to another box stays,
+      and on an account rename the old account's includes stay but for
+      its old host's, since a live local account of that name may own
+      them. The root-only backup dir is made again when it has gone
+      before the move, and an include that cannot be moved is reported.
+
+    * An Octopus upgrade moves aside the account's control panel HTTPS
+      proxy include of a name the panel no longer has: a box renamed
+      before renameaegirhost moved the old name's include itself, or
+      renamed by a copy older than the one BOA fetches, kept it live
+      until its next rename. Only the account's own panel front goes (its
+      header names the account and its server_name is the file's own
+      name), never the current panel name, a name a vhost of the account
+      carries (as its file name or as a site's alias), or a relay to
+      another box. It is moved to /var/backups/panel-proxy/<account>/,
+      and put back only when nginx -t passed before the move and fails
+      after it; when nginx -t was failing already it stays moved, so the
+      stale includes of several accounts clear one pass at a time.
+
+    * On an account rename renameaegirhost renames the old login form
+      "<account>.ftp" in the welcome mail's copy (log/setupmail.txt)
+      only. It renamed log/domain.txt too, where the only text is the
+      panel's name, so a panel named <account>.ftp.<name> was renamed.
 
     * A box promoted by a cutover, or by hand, no longer keeps the state
       file of the round it ran as the active before its demotion. The
@@ -1258,6 +1502,13 @@
 
 @=> Security
 
+    * nginx refuses requests for an npm token file (.npmrc), Google Cloud
+      service-account key files (service-account.json, gcp-credentials.json,
+      gcp-key.json, google-credentials.json, firebase-adminsdk.json,
+      application_default_credentials.json) and server.key at any path, as
+      it refuses .env and credentials.json. Probed daily from hundreds of
+      addresses, they reached the site and cost a full not-found render each.
+
     * Unbound 1.26.2, the upstream security release.
 
     * lshell 0.11.11 refuses a limited shell line in which a variable,
@@ -1307,6 +1558,25 @@
       them since their last release, the October 2026 fix included on
       5.6 to 7.3; his packaging changes are left out. The PHP security
       floor brings every box running one of them to the patched build.
+
+    * PHP 5.6, 7.0, 7.1, 7.2, 7.3 and 7.4 also build with the security
+      fixes Debian's LTS team (Freexian) has backported to its PHP 5.6,
+      7.0, 7.3 and 7.4 packages that the backports above lacked, among
+      them the HTTP stream wrapper, SOAP, phar and OpenSSL fixes of 2025
+      and 2026; 7.1 and 7.2, which the LTS team never packaged, get them
+      ported from 7.0 and 7.3. The PHP security floor brings every box
+      running one of them to the patched build.
+
+    * PHP 7.0, 7.3, 7.4 and 8.0: a malformed row from a MySQL server no
+      longer leaves values freed in the result's row cache, where fetching
+      the row again read freed memory (the backported fix for
+      CVE-2024-8929 left them there). The PHP security floor brings every
+      box running one of them to the fixed build.
+
+    * PHP 5.6, 7.0, 7.1, 7.2 and 7.3 no longer crash on round() with a
+      precision at or near the lowest integer (PHP's own test for bug
+      71201 crashed these builds): the two lines PHP 7.4 has for the
+      case are backported, so the call returns 0 as 7.4 does.
 
     * PHP 5.6 to 7.3 link OpenSSL 3, like 7.4 and later, wherever BOA
       has it: they used OpenSSL 1.1, which gets no fixes since 2023,
@@ -2122,6 +2392,64 @@
 
 @=> Improvements
 
+    * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
+      csf.allow between its starts and parses the list again only after
+      it changed. The list grew about threefold when every provider came
+      to be listed on both web ports, and parsing it on every start,
+      every few seconds, took the scorer from about 1% to about 5% of a
+      small box's CPU. A pass with nothing new to score now takes a third
+      of the time.
+
+    * The stale-Chrome search maps no longer drop real visitors' site
+      searches. They judge only Chrome's and Edge's own browser string:
+      Samsung Internet, Silk, Huawei, MIUI, Opera, Yandex and Android
+      webviews carry a Chrome version that follows their own releases,
+      and Chromebooks and TVs keep the last one their device received,
+      so their searches were refused and counted toward a ban. The maps
+      also spare every major an old system is pinned at (103, 106, 109,
+      116, 119, 128 and 138; only 128 and 138 were spared), and they
+      cover Chrome 100 to 141, a year behind the current release, where
+      they stopped at 139.
+
+    * The crawlers of brand, media and social-listening tools are now
+      refused (444) like the SEO crawlers: Awario's three bots, SentiOne's
+      SentiBot, trendiction's crawler and QlyzeBot, whose purpose is not
+      published. They collect for a third party's marketing product, not
+      for a site's visitors or for search, and cost real PHP time on
+      hosted sites.
+
+    * The stale-Chrome search maps now keep up with Chrome on their own:
+      each render of the master's nginx config takes every Chrome major
+      from 100 on that reached stable more than a year earlier, from a
+      table of Chrome's release dates, minus the majors an old system is
+      pinned at (now with 150, the last for macOS 12). Every BOA upgrade
+      pass renders the config again, so the bound moves forward without
+      a code change instead of falling behind within weeks of Chrome's
+      two-week releases.
+
+    * The crawler-fleet refusal now stops the residential-proxy scraper
+      fleets that send about one request from each address. When the
+      agent of a declared fleet is a stale browser (a Chrome or Edge major
+      more than a year past its stable release and not the last one any
+      old system can run, or a Firefox before 100), nginx answers 429 to
+      that agent on that site from any address, still only without a
+      Referer and a session cookie. Before, it refused only addresses
+      already seen in the fleet, between 6% and 11% of such a fleet's
+      requests. Replayed on two hosted servers' logs of one day, the
+      refused requests rose from about 4,700 to 65,000 on one and from
+      about 4,300 to 46,000 on the other. Such an agent is now also
+      declared over all the routes it walks, not only per route class.
+      _NGINX_FLEET_STALE_ACTION=REPORT loosens this scope alone.
+
+    * Two AI training crawlers, Reflectionbot and ElevenlabsCrawler, join
+      the AI training class and are refused by default (a site's policy.txt
+      train-allow lets them in); Meta's AI search indexer (meta-webindexer),
+      LinkupBot, KeenableBot and ShapBot join the AI search class, each
+      paced by a rate limit of its own vendor, refused on a site whose
+      policy.txt line says search-block, and exempt from crawler-fleet
+      declarations like the other allowed AI agents. No class knew them,
+      so they were neither paced nor refusable.
+
     * The nightly no longer logs "dir: cannot access" on a box where no
       account has a distro platform tree for the ghost-codebases check.
 
@@ -2709,6 +3037,14 @@
       the server under its name instead of its made-up hostname.
 
 @=> Changes and Upgrades
+
+    * BOA no longer lays its own copies of the hosting_le module's two
+      drush files over each account's control panel once per release.
+      The module ships those files itself, and the copies were an early
+      hotfix route that has not been needed for years. The stale copies
+      under /var/xdrago/conf go with their fetch markers; the account pass
+      that installs the Let's Encrypt helper and keeps its registration
+      runs as before.
 
     * The documentation that used to ship in this repository's docs/
       directory is retired: https://docs.boa.io is the single

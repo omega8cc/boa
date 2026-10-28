@@ -482,9 +482,22 @@ _nginx_high_load_off() {
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
-# Fire-and-forget launcher, cron-safe and interactive-safe
+# Fire-and-forget launcher, cron-safe and interactive-safe. Each launch in a
+# pass starts 0.1 s after the one before: started in the same instant, a pass's
+# watchdogs and scanners put up to ~30 processes on the run queue at once,
+# which delays any web request arriving then and inflates the kernel's load
+# average whenever its 5-second count lands in that instant.
+_SPAWN_STEP=0
 _spawn_detached() {
-  _cmd="$1"
+  _cmd="exec $1"
+  if (( _SPAWN_STEP > 0 )); then
+    _cmd="sleep $(( _SPAWN_STEP / 10 )).$(( _SPAWN_STEP % 10 )); ${_cmd}"
+  fi
+  # The child gets no copy of this run's lock: a daemon a watchdog restarts
+  # would keep it, and after a kill -9 of this run the lock would stay held
+  # until that daemon restarts, so no later run could start.
+  [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && _cmd="exec ${_LOCK_FD}>&-; ${_cmd}"
+  _SPAWN_STEP=$(( _SPAWN_STEP + 1 ))
   if command -v nohup >/dev/null 2>&1; then
     nohup bash -c "${_cmd}" >/dev/null 2>&1 &
   elif command -v setsid >/dev/null 2>&1; then
@@ -517,6 +530,73 @@ _get_load() {
   read -r _one _five _rest <<< "$(cat /proc/loadavg)"
   _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
   _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
+}
+
+# Average count of runnable plus I/O-blocked tasks over ~9 s, read from
+# /proc/stat every 100 ms without forking, as a per-CPU % in _D_LOAD. The
+# kernel's load average counts the run queue only once every ~5 s (5*HZ+1
+# ticks), and any job started on a fixed 5-second grid drifts into step with
+# those counts for half an hour at a time: the 1-minute figure then reports
+# the job's bursts while the CPUs idle. Sampling uniformly measures the same
+# quantity without that bias. _D_LOAD stays empty when /proc/stat cannot be
+# read; the wait still lasts about 9 s either way.
+_get_dealiased_load() {
+  local _fd _i _k _v _rest _run _blk _f _l _d _rsum=0 _bsum=0 _n=0 _dsum=0 _dn=0 _until
+  _D_LOAD=""
+  # A pipe nothing writes to: read -t on it is a sleep without a fork.
+  if ! exec {_fd}<> <(:); then
+    sleep 9
+    return 1
+  fi
+  # 9 s at most, however long each sample takes on a busy box with many
+  # threads: the pass still has to end inside its minute.
+  _until=$(( SECONDS + 9 ))
+  for (( _i = 0; _i < 90 && SECONDS < _until; _i++ )); do
+    _run=""
+    _blk=""
+    while read -r _k _v _rest; do
+      case "${_k}" in
+        procs_running) _run="${_v}" ;;
+        procs_blocked) _blk="${_v}"; break ;;
+      esac
+    done < /proc/stat
+    if [[ "${_run}" =~ ^[0-9]+$ ]] && [[ "${_blk}" =~ ^[0-9]+$ ]]; then
+      # procs_running includes this reader
+      _rsum=$(( _rsum + _run - 1 ))
+      _bsum=$(( _bsum + _blk ))
+      _n=$(( _n + 1 ))
+    fi
+    # procs_blocked counts only tasks waiting on I/O; the load average counts
+    # every uninterruptible task (lock and NFS waits too), so those threads are
+    # also counted directly, three times over the window.
+    if (( _i % 30 == 0 )); then
+      _d=0
+      for _f in /proc/[0-9]*/task/[0-9]*/stat; do
+        read -r _l 2>/dev/null < "${_f}" || continue
+        # The state follows the comm field, which ends within the first 80
+        # characters; the longest-match strip costs far less on that part.
+        _l="${_l:0:80}"
+        _l="${_l##*) }"
+        [[ "${_l:0:1}" == "D" ]] && _d=$(( _d + 1 ))
+      done
+      _dsum=$(( _dsum + _d ))
+      _dn=$(( _dn + 1 ))
+    fi
+    read -rt 0.1 -u "${_fd}"
+  done
+  exec {_fd}>&-
+  (( _n >= 45 )) || return 1
+  _D_LOAD=$(awk -v _r="${_rsum}" -v _b="${_bsum}" -v _c="${_n}" -v _d="${_dsum}" -v _dc="${_dn}" -v _cpus="${_CPU_COUNT}" \
+    'BEGIN { _u = _b / _c; if (_dc > 0 && _d / _dc > _u) _u = _d / _dc; printf "%.1f", (_r / _c + _u) / _cpus * 100 }')
+}
+
+# A crawler block the measured average declined: say so, and keep the latest
+# such case on record (overwritten, so it never grows) for whoever asks why
+# protection did not arm.
+_spider_stand_down() {
+  echo "$1 load $2% but measured ${_D_LOAD}% over 9s: spider protection not needed."
+  echo "$(date) $1 load $2% measured ${_D_LOAD}% threshold ${_CPU_SPIDER_THRESHOLD}%" \
+    > /var/log/boa/spider_standdown.last 2>/dev/null
 }
 
 # True while a scheduled/manual backup is running. A backup's high load is
@@ -770,9 +850,14 @@ _load_control() {
     fi
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
-    sleep 9
+    # The cooldown doubles as a measurement: the 1-minute figure alone can be a
+    # sampling artefact (see _get_dealiased_load), so the measured 9-second
+    # average must agree before crawlers are refused. No measurement, no veto.
+    _get_dealiased_load
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
-    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    if [ -n "${_D_LOAD}" ] && ! awk "BEGIN {exit !(${_D_LOAD} > ${_CPU_SPIDER_THRESHOLD})}"; then
+      _spider_stand_down "1-minute" "${_O_LOAD}"
+    elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
@@ -785,9 +870,13 @@ _load_control() {
       fi
     fi
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
-    sleep 9
+    # The 5-minute figure is fed by the same counts and lags behind a reading
+    # inflated that way, so it gets the same measured confirmation.
+    _get_dealiased_load
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
-    if awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    if [ -n "${_D_LOAD}" ] && ! awk "BEGIN {exit !(${_D_LOAD} > ${_CPU_SPIDER_THRESHOLD})}"; then
+      _spider_stand_down "5-minute" "${_F_LOAD}"
+    elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
@@ -850,7 +939,7 @@ _monitor_box_class() {
   fi
 }
 
-# Decide the heavy fan-out cadence. The 10x/5s loop is kept so load sampling and
+# Decide the heavy fan-out cadence. The 10-pass loop is kept so load sampling and
 # auto-pause stay responsive (cheap), but the expensive part — the watchdog
 # fan-out (_proc_control) and the hack/escape scanners — runs only every Nth
 # pass: every pass on NORMAL (unchanged), every 4th on SLOW, once/minute on CI.
@@ -869,10 +958,35 @@ while [ "${#_HEAVY_EVERY}" -gt 1 ] && [ "${_HEAVY_EVERY:0:1}" = "0" ]; do
 done
 (( _HEAVY_EVERY < 1 )) && _HEAVY_EVERY=1
 
-# Main execution
-for _iteration in {1..10}; do
+# The second within the current wall-clock minute, without a fork. The run's
+# own elapsed time would misjudge what is left of the minute for a run that
+# started late or whose pass ran past the minute.
+_minute_second() {
+  local _now
+  printf -v _now '%(%s)T' -1
+  _MINUTE_SEC=$(( _now % 60 ))
+}
+
+# Main execution. Passes start 5.5 s apart, not 5: the kernel counts the run
+# queue for its load average every ~5 s (5*HZ+1 ticks), and passes on a
+# 5-second grid drift into step with those counts for half an hour of every
+# ~104 minutes, so the load average reported the passes' own bursts instead of
+# the box's load. A run still going at the next cron minute holds the lock, and
+# that minute's run exits without a single pass. So whether to sleep for
+# another pass is decided before sleeping, only while a pass starting after the
+# sleep would still end inside the minute if it spends its 9-second cooldown
+# measuring (the 48 s test is the backstop). A pass that ran into the next
+# minute anyway (a MAX or CRIT pass takes 17 s or more) leaves that minute to
+# this run, which goes on passing through it by the same rule. Only such a run
+# reaches a tenth pass with time left in its minute: it then starts over in
+# place, reading the configuration afresh, since stopping there would leave the
+# rest of the minute without a pass.
+for (( _iteration = 1; _iteration <= 10; _iteration++ )); do
+  _minute_second
+  (( _iteration > 1 && _MINUTE_SEC >= 48 )) && break
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
+  _SPAWN_STEP=0
   _load_control
   if (( (_iteration - 1) % _HEAVY_EVERY == 0 )); then
     if [ "${_skip_proc_control}" = false ]; then
@@ -880,12 +994,28 @@ for _iteration in {1..10}; do
     else
       echo "Limits exceeded; skipping process control."
     fi
-    nohup "${_monPath}/hackcheck.sh" > /dev/null 2>&1 &
-    nohup "${_monPath}/hackftp.sh" > /dev/null 2>&1 &
-    nohup "${_monPath}/escapecheck.sh" > /dev/null 2>&1 &
+    _spawn_detached "${_monPath}/hackcheck.sh"
+    _spawn_detached "${_monPath}/hackftp.sh"
+    _spawn_detached "${_monPath}/escapecheck.sh"
   fi
-  sleep 5
+  _minute_second
+  (( _MINUTE_SEC < 42 )) || break
+  sleep 5.5
+  if (( _iteration == 10 )); then
+    declare -F _single_instance_unlock > /dev/null \
+      && _single_instance_unlock "${_LOCK_FD}" "${_LOCK_PATH}"
+    # The new run starts from cron's environment, not from this run's exports,
+    # so a setting since removed from .barracuda.cnf is gone there as well.
+    for _v in $(compgen -e); do
+      [[ "${_v}" == _[A-Z]* ]] && unset "${_v}"
+    done
+    exec bash /var/xdrago/second.sh
+  fi
 done
+# A short wait while the last pass's launches start, so they are still this
+# run's children when loadreport first sees them.
+_minute_second
+(( _MINUTE_SEC < 55 )) && sleep 2
 
 echo "Done!"
 exit 0

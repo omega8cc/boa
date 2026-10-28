@@ -78,7 +78,8 @@ ${_hex}:((:${_hex}){1,6})|\
 _ipv6_regex="^${_ipv6_core}(/(12[0-8]|1[01][0-9]|[0-9]?[0-9]))?$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 # The front map carries plain lowercased hostnames of at most 174 bytes (the
-# exact-key ceiling of map_hash_bucket_size 192). A wildcard alias is skipped:
+# exact-key ceiling of map_hash_bucket_size 192, which an older master render
+# still sets). A wildcard alias is skipped:
 # at :80 an exact name elsewhere on the box beats it, while a front map would
 # claim that other site's traffic. A skipped name only stays as it was; a
 # malformed or oversized key would fail the box-wide configtest.

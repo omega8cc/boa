@@ -14,7 +14,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 ### Idempotent include guard
 ###
 [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && return 0
-_SINGLE_INSTANCE_LIB_VER="1.2"
+_SINGLE_INSTANCE_LIB_VER="1.6"
 
 ###
 ### Atomic unlock to prevent TOCTOU race
@@ -79,11 +79,7 @@ _single_instance_lock() {
       exit 0
     fi
     printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
-    # This trap is the lock's release path; a caller that installs its own
-    # EXIT trap after locking replaces it and must call
-    # _single_instance_unlock itself (flock still auto-releases when the
-    # process exits, so the worst a lost trap costs is the tidy-up).
-    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+    _LOCK_RELEASE="_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'"
   else
     # mkdir is atomic; directory presence == lock held. A holder that died
     # without its trap (SIGKILL, power loss) must not lock every future run
@@ -101,8 +97,39 @@ _single_instance_lock() {
       fi
     fi
     echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
-    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
+    _LOCK_RELEASE="rm -rf '${_LOCK_PATH}'"
   fi
+  # The EXIT trap is the lock's release path. An EXIT trap the caller set
+  # before locking runs first, so its cleanup is kept and is done before
+  # another copy can take the lock. A caller that installs its own EXIT
+  # trap after locking replaces this one and must call
+  # _single_instance_unlock itself (flock still auto-releases when the
+  # process exits, so the worst a lost trap costs is the tidy-up), and ends
+  # with exit 130 or 143 instead of the signal unless it sends it again.
+  # The trap hands the exit status on to that earlier trap, with errexit
+  # and an ERR trap off (that status is a failing command), ignores a
+  # second INT or TERM (it would end the trap before the release), and last
+  # sends on the signal that ended the run, if one did. Take the lock once,
+  # in the main shell: bash 5 lists the parent's EXIT trap in a subshell
+  # too, so a subshell's lock would also run the parent's release.
+  _LOCK_PREV="$(trap -p EXIT)"
+  if [ -n "${_LOCK_PREV}" ]; then
+    eval "set -- ${_LOCK_PREV}"
+    _LOCK_RELEASE="${3:-}"$'\n'"${_LOCK_RELEASE}"
+  fi
+  _LOCK_SIG=""
+  trap "_LOCK_RC=\$?; set +e; trap - ERR; trap '' INT TERM; (exit \"\${_LOCK_RC}\")"$'\n'"${_LOCK_RELEASE}"$'\n''[ -z "${_LOCK_SIG:-}" ] || { trap - "${_LOCK_SIG}"; kill -"${_LOCK_SIG}" "${BASHPID:-$$}"; }' EXIT
+  # A trap on a signal replaces its default action: a handler that returned
+  # would go on running beside the next copy. INT and TERM end the run here;
+  # once the EXIT trap has released the lock it puts the default action
+  # back and sends the signal again, so the script dies of it and a calling
+  # script sees an interrupt and stops too (a plain exit 130 lets it carry
+  # on). HUP leaves the run going and still locked, so a tool started in a
+  # remote session survives the session's end. ':', not '': the children
+  # get the default HUP back instead of inheriting an ignore.
+  trap '_LOCK_SIG=INT; exit 130' INT
+  trap '_LOCK_SIG=TERM; exit 143' TERM
+  trap ':' HUP
 }
 
 ###

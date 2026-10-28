@@ -1638,19 +1638,34 @@ _le_hm_ssl_check_update() {
     echo "LE renewal skipped for hostmaster ${_hmFront} -- immutable dont-overwrite marker present"
   elif [ -x "${_exeLe}" ] \
     && [ ! -z "${_hmFront}" ] \
+    && [ -e "${_leCrtPath}/fullchain.pem" ] \
+    && [ -e "${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid" ] \
+    && [ ! -e "${_usEr}/tools/le/config.sh" ]; then
+    echo "LE renewal skipped for hostmaster ${_hmFront}: demo mode is on but tools/le/config.sh is not written yet (a site's Verify writes it)"
+  elif [ -x "${_exeLe}" ] \
+    && [ ! -z "${_hmFront}" ] \
     && [ -e "${_leCrtPath}/fullchain.pem" ]; then
     _DOM=$(date +%e)
     _DOM=${_DOM//[^0-9]/}
     _RDM=$((RANDOM%25+6))
+    ### Demo mode: the staging authority offers no ISRG Root X1 chain, and it
+    ### lives in tools/le/config.sh, read through --config in front of the
+    ### account's own tools/le/config (20-sites.sh decides the same way).
+    _leChain="--preferred-chain 'ISRG Root X1'"
+    _leCfg=""
+    if [ -e "${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
+      _leChain=""
+      _leCfg=" --config ${_usEr}/tools/le/config.sh"
+    fi
     if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info" ]; then
-        _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+        _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg} --force"
         _log_ctrl_mark "site.${_hmFront}.cert-x1-rebuilt.info"
       else
-        _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+        _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg}"
       fi
     else
-      _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+      _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg}"
     fi
     if [ ! -z "${_hmFrontExtra}" ]; then
       echo "Running LE cert check directly for hostmaster ${_HM_U} with ${_hmFrontExtra}"
@@ -1714,7 +1729,7 @@ _le_account_report() {
   ### failed copy or link), which _night_bak_tell also gives its daily notice.
   ###
   _nonle="$(grep -E -a \
-    'No space left on device|backups-on-static: (not enough|move failed|skipped|could not symlink)|Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
+    'No space left on device|backups-on-static: (not enough|move failed|skipped|could not symlink)|LE wildcard order skipped|Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
     "${_acctLog}" 2>/dev/null | grep -v -E '^\["' | sort -u | head -n 40)"
   [ -z "${_fails}" ] && [ -z "${_nonle}" ] && return 0
   _throttle=7
