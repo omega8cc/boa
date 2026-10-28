@@ -6,6 +6,8 @@
 ### Runs every minute via mysql.sh. Scans new syslog entries for MySQL table crash
 ### markers using byte-offset tracking. Invokes checksql.sh only when a problem
 ### is detected, avoiding the heavy mysqlcheck -Aa cost on clean systems.
+### Then measures the optimizer statistics of large tables that still read as
+### empty long after they were loaded (_heal_stale_stats).
 ###
 
 export HOME=/root
@@ -135,5 +137,148 @@ if [ "${_STATUS}" != "CLEAN" ]; then
 else
   touch "${_CLEAN_TOUCH}"
 fi
+
+###
+### Measure the optimizer statistics of large tables that still read as empty.
+###
+### InnoDB gives a new table the statistics of an empty one, and a bulk load
+### can leave them claiming a single page while the file holds millions of
+### rows. Only a background queue measures the pages, and once nothing new
+### wakes it, it takes one table about every ten seconds: after a run of
+### migrations a large site went live while its tables still read as one page
+### each, its pages were planned as full table scans, and the database server
+### ran out of CPU. Provision measures the databases it imports; this catches
+### every other load (a migration tool, a dump loaded by hand). A table
+### qualifies when its statistics claim at most one page, its file holds more
+### than 8 MB and it was created over 5 minutes ago (a load still running is
+### left alone). A table measured here is left alone for a day: one that
+### really is that small (rows deleted, the file never shrunk) keeps
+### qualifying. Never on a replica (a local write there is an errant
+### transaction) or a proxy-only box. Needs the 8.0+ tablespace view; on 5.7
+### the read fails and nothing runs.
+###
+_pthOml="/var/log/boa/sqlstats.incident.log"
+_pthStats="/var/log/boa/sqlstats.measured"
+
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+
+# A table still unmeasured after its heal is heard at the default level
+# (MINI); a heal that worked only at ALL.
+_stats_mail() {
+  local _lvl="${1}" _subject="${2}"
+  [ -n "${_MY_EMAIL}" ] || return 0
+  _normalize_incident_report
+  case "${_INCIDENT_REPORT}" in
+    OFF|CRIT) return 0 ;;
+    MINI) [ "${_lvl}" = "ALERT" ] || return 0 ;;
+  esac
+  _sfx=""
+  if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+    _incident_email_ratelimit "sql-stats" || return 0
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
+  _hName="$(tr -d '\n' < /etc/hostname 2>/dev/null)"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
+  s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
+}
+
+_heal_stale_stats() {
+  [ -e "/root/.proxy.cnf" ] && return 0
+  [ -e "/root/.standby.cnf" ] && return 0
+  command -v mysql >/dev/null 2>&1 || return 0
+  local _q _rows _now _key _ts _db _tb _mb _list _count _out _old _changed
+  local _ok _bad _n_ok _n_bad
+  local -A _seen=() _done=()
+  _now=$(date +%s)
+  # The tables measured here in the last day, as "db.table<TAB>epoch" lines.
+  _old=0
+  if [ -s "${_pthStats}" ]; then
+    while IFS=$'\t' read -r _key _ts; do
+      if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts < 86400 )); then
+        _seen["${_key}"]="${_ts}"
+      else
+        _old=$(( _old + 1 ))
+      fi
+    done < "${_pthStats}"
+  fi
+  _q="SELECT s.database_name, s.table_name, ROUND(ts.FILE_SIZE / 1048576)
+    FROM mysql.innodb_table_stats s
+    JOIN information_schema.INNODB_TABLESPACES ts
+      ON ts.NAME = CONCAT(s.database_name, '/', s.table_name)
+    JOIN information_schema.TABLES t
+      ON t.TABLE_SCHEMA = s.database_name AND t.TABLE_NAME = s.table_name
+    WHERE s.clustered_index_size <= 1
+      AND ts.FILE_SIZE > 8388608
+      AND t.CREATE_TIME < NOW() - INTERVAL 5 MINUTE
+    ORDER BY ts.FILE_SIZE DESC
+    LIMIT 1000"
+  _rows=$(timeout 60 mysql -N -B -e "${_q}" 2>/dev/null) || return 0
+  _list=""
+  _count=0
+  while IFS=$'\t' read -r _db _tb _mb; do
+    [ -n "${_db}" ] || continue
+    # Plain names only: anything else is never spliced into a statement.
+    if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || [[ ! "${_tb}" =~ ^[A-Za-z0-9_]+$ ]]; then
+      continue
+    fi
+    [ -n "${_seen["${_db}.${_tb}"]}" ] && continue
+    (( _count < 200 )) || break
+    _done["${_db}.${_tb}"]="${_mb}"
+    _list="${_list}${_list:+, }\`${_db}\`.\`${_tb}\`"
+    _count=$(( _count + 1 ))
+  done <<< "${_rows}"
+  _changed="${_old}"
+  _ok=""
+  _bad=""
+  _n_ok=0
+  _n_bad=0
+  if (( _count > 0 )); then
+    _out=$(timeout 300 mysql -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
+    # The outcome, not the exit code: each table answers with its own OK.
+    for _key in "${!_done[@]}"; do
+      if grep -qxF "${_key}"$'\tanalyze\tstatus\tOK' <<< "${_out}"; then
+        _seen["${_key}"]="${_now}"
+        _n_ok=$(( _n_ok + 1 ))
+        (( _n_ok <= 10 )) && _ok="${_ok}${_ok:+, }${_key} (${_done["${_key}"]} MB)"
+      else
+        _n_bad=$(( _n_bad + 1 ))
+        (( _n_bad <= 10 )) && _bad="${_bad}${_bad:+, }${_key} (${_done["${_key}"]} MB)"
+      fi
+    done
+    _changed=$(( _changed + _n_ok ))
+  fi
+  if (( _changed > 0 )); then
+    for _key in "${!_seen[@]}"; do
+      printf '%s\t%s\n' "${_key}" "${_seen["${_key}"]}"
+    done > "${_pthStats}.tmp" && mv -f "${_pthStats}.tmp" "${_pthStats}"
+  fi
+  (( _n_ok > 10 )) && _ok="${_ok} and $(( _n_ok - 10 )) more"
+  (( _n_bad > 10 )) && _bad="${_bad} and $(( _n_bad - 10 )) more"
+  if (( _n_ok > 0 )); then
+    echo "$(date) INFO: measured the optimizer statistics of ${_n_ok} large table(s) that still read as one page: ${_ok}" >> "${_pthOml}"
+  fi
+  if (( _n_bad > 0 )); then
+    echo "$(date) ALERT: could not measure the optimizer statistics of ${_n_bad} large table(s) that still read as one page: ${_bad}" >> "${_pthOml}"
+    echo "$(date) ALERT: $(grep -i -m 3 -E 'error|timeout' <<< "${_out}" | tr '\n\t' '  ')" >> "${_pthOml}"
+    _stats_mail ALERT "Table statistics could not be measured"
+  elif (( _n_ok > 0 )); then
+    _stats_mail INFO "Measured the statistics of ${_n_ok} large table(s) that read as one page"
+  fi
+}
+
+_heal_stale_stats
 
 exit 0
