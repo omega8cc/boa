@@ -467,6 +467,21 @@ _ltd_conf_dup_sections() {
   sed -e 's/[[:space:]]*$//' -e '/^\[/!d' "${_cnf}" | sort | uniq -d
 }
 
+# The env_path of a login's own lshell section. lshell resolves every allowed
+# command on its own PATH before it runs it, and a section's string key
+# replaces the default's, so the line repeats the template's /opt/local/bin
+# and the system paths, then names the login's gem bin and, for the main
+# login, its npm bin: where gem install and npm install -g put a tool, and
+# where websh looks for it. Nothing on lshell 0.10, which glues the value
+# onto PATH and never checks that a command exists. $1 = login, $2 = YES
+# for the main login.
+_ltd_env_path_line() {
+  local _p="/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/opt/user/gems/${1}/bin"
+  [ "${_LSHELL_010}" = "YES" ] && return 0
+  [ "${2}" = "YES" ] && _p="${_p}:/opt/user/npm/${1}/.npm-packages/bin"
+  echo "env_path : '${_p}'"
+}
+
 # Keep only the LAST stanza of every repeated section, in place. That is the
 # precedence the satellite writer already uses when it re-emits an account (it
 # strips the existing section, then appends the fresh one), and the one the
@@ -4137,6 +4152,7 @@ _ok_create_user() {
       echo >> ${_THIS_LTD_CONF}
       echo "[${_usrLtd}]" >> ${_THIS_LTD_CONF}
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
+      _ltd_env_path_line "${_usrLtd}" NO >> ${_THIS_LTD_CONF}
       [ -n "${_LTD_EXTRA_STANZA}" ] && printf '%s\n' "${_LTD_EXTRA_STANZA}" >> ${_THIS_LTD_CONF}
       chmod 700 ${_usrLtdRoot}
       # The store sits in the tenant's own home, and this runs only when the
@@ -4355,6 +4371,7 @@ _ok_update_user() {
       echo >> ${_THIS_LTD_CONF}
       echo "[${_usrLtd}]" >> ${_THIS_LTD_CONF}
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
+      _ltd_env_path_line "${_usrLtd}" NO >> ${_THIS_LTD_CONF}
       [ -n "${_LTD_EXTRA_STANZA}" ] && printf '%s\n' "${_LTD_EXTRA_STANZA}" >> ${_THIS_LTD_CONF}
       _manage_sec_user_drush_aliases
       chmod 700 ${_usrLtdRoot}
@@ -5978,6 +5995,8 @@ _switch_php() {
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   _T_CLI_ASKED=""
+  _T_FPM_VRN=""
+  _T_FPM_ASKED=""
   _ltd_hm_switches
   _ltd_pool_deny_heal
 
@@ -6143,6 +6162,8 @@ _switch_php() {
         echo "ALRT: fpm.info of ${_USER} is not one PHP version, ignored"
         _T_FPM_VRN=""
       fi
+      # the version the file asks for, before any fallback
+      _T_FPM_ASKED="${_T_FPM_VRN}"
       # An instance an earlier pass already poisoned (a joined version in its
       # octopus.cnf) is set up again on the default version below.
       if [ -z "${_T_FPM_VRN}" ] && [ -n "${_PHP_FPM_VERSION}" ] \
@@ -6185,6 +6206,20 @@ _switch_php() {
         if [ -n "${_T_FPM_VRN}" ]; then
           _NEW_FPM_SETUP=YES
         fi
+      fi
+
+      # The file names a version the server does not have and its fallback
+      # is the version already in use, so no setup runs below and the file
+      # kept the absent version. The file takes the version the pool runs
+      # on, as cli.info does; in multi-FPM mode it is the main login's own
+      # file and is left to it.
+      if [ -n "${_T_FPM_ASKED}" ] && [ -n "${_T_FPM_VRN}" ] \
+        && [ "${_T_FPM_ASKED}" != "${_T_FPM_VRN}" ] \
+        && [ "${_NEW_FPM_SETUP}" != "YES" ] \
+        && [ "${_PHP_FPM_MULTI}" = "NO" ] \
+        && [ -x "/opt/php${_T_FPM_VRN//./}/bin/php" ]; then
+        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
+        _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
       fi
 
       ### Update fpm_include_default.inc if needed
@@ -7209,6 +7244,7 @@ _manage_user() {
                         '${_dscUsr}/backups', \
                         '${_dscUsr}/clients']" \
                         | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
+          _ltd_env_path_line "${_USER}.ftp" YES >> ${_THIS_LTD_CONF}
           _manage_site_drush_alias_mirror
           _manage_sec
           _manage_sec_platform
@@ -8378,8 +8414,11 @@ else
   wait
   # lshell 0.10 (kept where python3 is older than 3.10) appends env_path to
   # PATH raw, no separator, gluing it onto the last entry; it also never
-  # checks that a command exists, which is all the line is for on 0.11
+  # checks that a command exists, which is all the line is for on 0.11; the
+  # logins' own lines (_ltd_env_path_line) are not written there either
+  _LSHELL_010=NO
   if lshell --version 2>&1 | grep -q "lshell-0\.10"; then
+    _LSHELL_010=YES
     sed -i "/^env_path[[:space:]]*:/d" ${_THIS_LTD_CONF}
     wait
   fi

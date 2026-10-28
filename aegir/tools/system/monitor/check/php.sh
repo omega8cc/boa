@@ -774,8 +774,9 @@ _fpm_apcu_reload_sentinel() {
   #
   # Why this is needed:
   #   APCu caches field definitions, plugin registries, and other Drupal
-  #   internals at the PHP-FPM worker process level. Unlike Valkey, APCu
-  #   cannot be flushed remotely — it lives inside the FPM worker processes.
+  #   internals in one shared memory segment per PHP-FPM version, used by
+  #   all workers of that version's pools. Unlike Valkey, APCu cannot be
+  #   flushed remotely: the segment belongs to the FPM master and its workers.
   #   After a config change, platform update, or Solr core rename, stale APCu
   #   entries can cause FieldException and PluginNotFoundException errors in
   #   Drupal logs. A graceful FPM reload recycles all workers and clears APCu

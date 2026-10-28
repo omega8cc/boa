@@ -6572,6 +6572,14 @@ _satellite_if_add_ftps_lshell_access() {
   [ -n "${_mntPoint}" ] && _lshPaths="${_lshPaths}, '${_MNT_STATIC_FILES}'"
   echo "path : [${_lshPaths}, '${_ROOT}/distro', '${_ROOT}/static', '${_ROOT}/backups', '${_ROOT}/clients']" \
     | fmt -su -w 2500 >> /etc/lshell.conf
+  # The login's env_path, the line the ltd worker writes for the main login
+  # (_ltd_env_path_line in manage_ltd_users.sh: its copy of the file replaces
+  # this one within minutes); nothing on lshell 0.10, which glues the value
+  # onto PATH and never checks that a command exists
+  if ! lshell --version 2>&1 | grep -q "lshell-0\.10"; then
+    echo "env_path : '/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/opt/user/gems/${_USERFTP}/bin:/opt/user/npm/${_USERFTP}/.npm-packages/bin'" \
+      >> /etc/lshell.conf
+  fi
 }
 
 _satellite_if_add_update_user_symlinks() {
