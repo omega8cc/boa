@@ -24,6 +24,39 @@
       prints its priority change and a bare 3 from the cache drop into
       the run's output.
 
+    * A wildcard certificate for a www-named site is ordered on the bare
+      name but filed under the site's own name, where its vhost, Verify
+      and the nightly renewal look. Both strips of the www prefix acted
+      on the site's name itself: Verify then looked for a vhost under the
+      bare name and ordered nothing, and the nightly renewed a directory
+      nothing read while the installed certificate ran out.
+
+    * Verify reads dehydrated's exit code: a failing order whose output
+      none of the known patterns name (a DNS hook that fails or cannot
+      run, an order aborted before its challenge) is now a task warning
+      naming the code and the output tail, where it read as a success
+      and re-wired the vhost to nothing new. The wildcard order is placed
+      only through a hook that can run, with its Python environment in
+      place; otherwise the per-name order is placed with a warning.
+
+    * The nightly renewal of an account in Let's Encrypt demo mode no
+      longer asks for the ISRG Root X1 chain, which the staging
+      authority does not offer, so its orders complete instead of ending
+      on an alternative chain not found.
+
+    * An account's own tools/le/config, where a wildcard's DNS settings
+      live, is kept when the account enters or leaves Let's Encrypt demo
+      mode. Demo mode copied the staging authority line over it, or
+      failed on the immutable file and ordered from the live authority
+      under the demo label, and removed it on the way out. The staging
+      authority now lives in tools/le/config.sh alone, which reads the
+      account's own file first; Verify, the Octopus installer and both
+      night workers point dehydrated at it with --config in demo mode,
+      and a copy an earlier demo mode left behind is removed by the
+      nightly, as root, once the account is back in live mode. The
+      account's own frontend renewal in demo mode also leaves the ISRG
+      Root X1 chain out.
+
     * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
       lock, and the lock is released as it ends. The lock's handler only
       unlocked, so the script went on running without the lock and a
