@@ -4,6 +4,24 @@
 
 @=> Important Fixes
 
+    * A Clone or a Migrate onto a name whose per-account files store was
+      still there (a deleted site's, kept by the operator's switch) checked
+      nothing: the storage tool re-linked the new site to the old store and
+      archived its private dir even under the switch. The copying tasks now
+      run the install's store check on the target name first and refuse,
+      the source untouched, when a share file names the store, the switch
+      holds it or the move failed; the Grav and Textpattern installs check
+      too, and the storage wrapper lets an account's own tasks set aside a
+      store at a name no site of the account carries (the new name has no
+      alias until the copy is made).
+
+    * A Delete of a site whose install was refused before anything was
+      built ended in warnings about undefined database keys and an unknown
+      database name, and a Grav one failed on the missing site directory;
+      it now takes no safety copy, runs no store or database step and ends
+      clean. A Grav site's Delete sets the site's store aside like the
+      other kinds.
+
     * Nginx no longer warns "could not build optimal map_hash" on every
       configtest and reload while the crawler-fleet guard holds a large
       address map. A 192-byte bucket fits only two or three fleet keys,
