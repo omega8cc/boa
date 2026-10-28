@@ -4,6 +4,19 @@
 
 @=> Important Fixes
 
+    * A platform Verify reads a module's hook_update_last_removed(). A
+      module that keeps only that hook (Open Social 13 does in
+      activity_logger, improved_theme_settings, social_advanced_queue and
+      social_follow_content) was recorded at the core floor, 10000 on
+      Drupal 10, below the schema of every site running it, so the
+      Migrate form counted it as a downgrade and greyed out every target
+      platform. Verify the target platform once after the upgrade.
+
+    * A site Verify drops the package records the site kept from a
+      platform it has left. After a Migrate the next Migrate form counted
+      every package twice, and a module the site has since disabled still
+      counted as enabled there.
+
     * _CUSTOM_CONFIG_CSF=YES now also keeps the five-minute BOA.sh.txt
       run from adding UDP 443 back to UDP_IN in csf.conf: it re-opened
       the port on every run and reloaded csf, whatever the flag said, so
