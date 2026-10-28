@@ -2265,7 +2265,12 @@ if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
         _CSF_ALLOW_CIDR_OCTET1["${_a}"]=1
       fi
     done < "${_CSF_ALLOW_FILE}"
-    if [[ "${_CSF_ALLOW_KEY}" == "v1 "[0-9]*" "[0-9]* ]]; then
+    # Kept only when the list still has the key it was read under:
+    # guest-water rebuilds it in steps (a sed -i, then one append per
+    # address), and tables parsed from one state filed under another's key
+    # would be served whenever that other state comes back.
+    if [[ "${_CSF_ALLOW_KEY}" == "v1 "[0-9]*" "[0-9]* ]] \
+      && [[ "v1 $(cksum < "${_CSF_ALLOW_FILE}" 2>/dev/null)" == "${_CSF_ALLOW_KEY}" ]]; then
       # Mode 0600, like the list it is parsed from; replaced whole by a rename.
       # One fixed temp name: the lock keeps one scorer at a time, and a run
       # stopped mid-write leaves nothing the next one does not overwrite.
