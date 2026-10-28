@@ -11,6 +11,45 @@
       minutes. Without the flag the check adds the port and reloads csf
       only when the port is missing, as before.
 
+    * mybackup and the scheduled backup read a credentials line the same
+      way: a "# comment" after a value's closing quote, or after the
+      space that ends an unquoted value, is a comment, and a # inside the
+      quotes or glued to the value stays part of it. mybackup refused the
+      shipped templates' own region lines over their trailing comment.
+
+    * A backup path pattern that ends in a backslash, or holds a doubled
+      one, is refused when the per-account paths list is built (logged by
+      line number), and the backup run reads its paths file as five plain
+      NAME="value" lines and stops, instead of selecting nothing, when a
+      value ends in a backslash.
+
+    * Tools an Octopus instance login installs with gem install or npm
+      install -g (compass, sass, gulp, grunt, bower) run by name in the
+      limited shell again: each login's lshell section carries an
+      env_path of the login's gem directory, the main login's npm package
+      home too, and the command dispatcher resolves its own check on the
+      same path. lshell 0.11 refused them as not found.
+
+    * The per-site certificate switches and their readers agree: the
+      main-name-only switch on a site that redirects to an alias orders
+      the site's name and the redirect target, so the certificate lands
+      where the vhost looks (it landed under the alias and was never
+      installed); Verify reads the wildcard switch through the DNS hook
+      the nightly installs and, short of a DNS flag, the hook or the
+      config, logs a warning and orders the per-name certificate; the
+      nightly does the same instead of a wildcard order that dehydrated
+      refuses under http-01, and the account report names the skipped
+      order. Both read the switch under the site's own name, and the
+      nightly's per-name order short of the hook or the config carries
+      every name (it kept the wildcard's shape, without www and the
+      subdomain aliases).
+
+    * A files store is held for the share control file of the site's own
+      name alone: the Delete's archive, the nightly orphan sweep and its
+      report matched share.*.<site>.info, which a subdomain site's file
+      also fits, so a parent domain's store stayed at its name for
+      another site's share and a new site there was refused.
+
     * The nightly ghost cleanup and the ltd worker's ghost alias sweep no
       longer move a live site that lost only its drushrc.php. With the
       _GHOST_* cleanups on, such a site (its directory still holding

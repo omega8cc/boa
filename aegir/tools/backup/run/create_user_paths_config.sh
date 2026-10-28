@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f60"
+export _sPid="f59"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -202,6 +202,7 @@ _validate_and_merge_paths() {
   local _if_validate=$4
   local _invalid_paths_found=false
   local _body
+  local _line_no=0
   if [ "${_if_validate}" = "YES" ]; then
     _body="$(_acct_in_real_dir "${_file%/*}" _acct_read_file_here "${_file##*/}")"
   else
@@ -219,6 +220,7 @@ _validate_and_merge_paths() {
   local _rgx_shape="^--(include|exclude)-regexp \^?/((data/disk/${_user}/static)|(home/${_user}${_bs}?[.]ftp))(/[][A-Za-z0-9_.,+=@~/\^*?-]*)?$"
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line_no=$((_line_no + 1))
     # Trim edge whitespace, including the CR of a CRLF-edited file -- a
     # cosmetic margin must not refuse an otherwise valid line
     _line="${_line#"${_line%%[![:space:]]*}"}"
@@ -231,6 +233,23 @@ _validate_and_merge_paths() {
     fi
 
     if [ "${_if_validate}" = "YES" ]; then
+      # The merged lines are written as one double-quoted value: a backslash
+      # as the last character would escape its closing quote, and a doubled
+      # backslash reads as one to the shell and as two to a literal reader.
+      # Both refused by line number alone: the log is mailed, the line is
+      # the account's.
+      case "${_line}" in
+        *\\)
+          _log_issue "${_user}" "${_file}" "Invalid pattern: ends in a backslash (line ${_line_no})"
+          _invalid_paths_found=true
+          continue
+          ;;
+        *\\\\*)
+          _log_issue "${_user}" "${_file}" "Invalid pattern: contains a doubled backslash (line ${_line_no})"
+          _invalid_paths_found=true
+          continue
+          ;;
+      esac
       # Validate directives
       if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
         if echo "${_line}" | grep -Eq "${_path_shape}" \
