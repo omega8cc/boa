@@ -36,6 +36,11 @@
       NAME="value" lines and stops, instead of selecting nothing, when a
       value ends in a backslash.
 
+    * The per-account backup paths list is built again when the account's
+      include or exclude directive files change (added, edited or removed),
+      not only when the builder itself is updated: a tenant's edit reaches
+      the next backup run instead of waiting for the next release.
+
     * Tools an Octopus instance login installs with gem install or npm
       install -g (compass, sass, gulp, grunt, bower) run by name in the
       limited shell again: each login's lshell section carries an

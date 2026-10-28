@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f59"
+export _sPid="f58"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -86,6 +86,21 @@ _acct_is_file_here() {
 _acct_read_file_here() {
   _acct_is_file_here "${1}" || return 1
   _acct_read_here "${1}"
+}
+# The account's four directive files as root sees them in the current
+# (pinned) config directory: one line a name, with the file's mtime and size
+# when it is a regular file, `-` otherwise. Nothing is read through a link,
+# and no content is read at all; the paths file is built again whenever this
+# differs from what the last build recorded.
+_acct_directives_state_here() {
+  local _n
+  for _n in include.txt exclude.txt include_regexp.txt exclude_regexp.txt; do
+    if _acct_is_file_here "${_n}"; then
+      echo "${_n} $(stat -c '%Y %s' -- "./${_n}" 2> /dev/null)"
+    else
+      echo "${_n} -"
+    fi
+  done
 }
 # True when $1 is root's and no one else can write it: owned by root, not
 # writable by others, group-writable only for group root.
@@ -288,6 +303,17 @@ _control_file_present() {
   _acct_in_real_dir "${_user_control_dir}" _acct_is_file_here "${1}"
 }
 
+# YES when the account's paths file must be built: the serial changed (the
+# caller found no marker), the file is missing, or the directive files differ
+# from what the last build recorded. Reads the caller's _regen, _state and
+# file names.
+_user_paths_regen_needed() {
+  [ "${_regen}" = "YES" ] && { echo YES; return 0; }
+  [ -f "${_user_paths_file}" ] || { echo YES; return 0; }
+  [ "${_state}" = "$(cat "${_directives_state_file}" 2> /dev/null)" ] || { echo YES; return 0; }
+  echo NO
+}
+
 # Runs inside the real paths directory, pinned by _acct_in_real_dir, and only
 # when it and remote_backups above it are root's alone: no account can put a
 # name here, so the files root keeps here are read and written as ./names,
@@ -297,7 +323,14 @@ _user_paths_config_here() {
   chown root:root .
   chmod 755 .
 
+  # The directive files as root sees them now, read before anything is
+  # written; a serial change (no marker) runs the one-time steps below and
+  # builds the file, a changed directive file builds it alone.
+  local _state _regen=NO
+  _state="$(_acct_in_real_dir "${_user_control_dir}" _acct_directives_state_here)"
+
   if [ ! -f "${_user_ctrl_file}" ]; then
+    _regen=YES
 
     ### Migrate legacy exclude/include files if present and merge unique entries
 
@@ -360,6 +393,9 @@ EOF
       rm -f ./.backboa."${_user}".*.exclude.ctrl.file
       touch "${_exclude_ctrl_file}"
     fi
+  fi
+
+  if [ "$(_user_paths_regen_needed)" = "YES" ]; then
 
     # Cleanup for empty or not used include config files
     if ! _control_file_present include_regexp.txt; then
@@ -438,6 +474,7 @@ _INCLUDE_LIST="${_user_config_dir}/${_include_list#./}"
 _EXCLUDE_LIST="${_user_config_dir}/${_exclude_list#./}"
 EOF
 
+    printf '%s\n' "${_state}" > "${_directives_state_file}"
     rm -f ./.backboa*paths.ctrl.file
     touch "${_user_ctrl_file}"
     echo "Paths configuration for '${_user}' created or updated at '${_user_config_dir}/${_user_paths_file#./}'."
@@ -463,6 +500,7 @@ _create_user_paths_config() {
   local _merged_regexp_include_file="./.backboa.${_user}.include_regexp.merged.file"
   local _merged_regexp_exclude_file="./.backboa.${_user}.exclude_regexp.merged.file"
   local _user_ctrl_file="./.backboa.${_sPid}.paths.ctrl.file"
+  local _directives_state_file="./.backboa.${_user}.directives.state"
   local _include_ctrl_file="./.backboa.${_user}.${_sPid}.include.ctrl.file"
   local _exclude_ctrl_file="./.backboa.${_user}.${_sPid}.exclude.ctrl.file"
   local _merged_all_include_file="./.backboa.${_user}.all.include.merged.file"
