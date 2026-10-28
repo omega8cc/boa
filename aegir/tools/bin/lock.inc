@@ -14,7 +14,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 ### Idempotent include guard
 ###
 [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && return 0
-_SINGLE_INSTANCE_LIB_VER="1.2"
+_SINGLE_INSTANCE_LIB_VER="1.3"
 
 ###
 ### Atomic unlock to prevent TOCTOU race
@@ -79,11 +79,7 @@ _single_instance_lock() {
       exit 0
     fi
     printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
-    # This trap is the lock's release path; a caller that installs its own
-    # EXIT trap after locking replaces it and must call
-    # _single_instance_unlock itself (flock still auto-releases when the
-    # process exits, so the worst a lost trap costs is the tidy-up).
-    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+    _LOCK_RELEASE="_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'"
   else
     # mkdir is atomic; directory presence == lock held. A holder that died
     # without its trap (SIGKILL, power loss) must not lock every future run
@@ -101,8 +97,29 @@ _single_instance_lock() {
       fi
     fi
     echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
-    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
+    _LOCK_RELEASE="rm -rf '${_LOCK_PATH}'"
   fi
+  # The EXIT trap is the lock's release path. An EXIT trap the caller set
+  # before locking runs first, so its cleanup is kept and is done before
+  # another copy can take the lock. A caller that installs its own EXIT
+  # trap after locking replaces this one and must call
+  # _single_instance_unlock itself (flock still auto-releases when the
+  # process exits, so the worst a lost trap costs is the tidy-up).
+  _LOCK_PREV="$(trap -p EXIT)"
+  if [ -n "${_LOCK_PREV}" ]; then
+    eval "set -- ${_LOCK_PREV}"
+    _LOCK_RELEASE="${3:-}"$'\n'"${_LOCK_RELEASE}"
+  fi
+  trap "${_LOCK_RELEASE}" EXIT
+  # A trap on a signal replaces its default action, so INT and TERM exit
+  # here with the usual status and the EXIT trap then releases the lock: a
+  # handler that returned would go on running beside the next copy. HUP
+  # leaves the run going and still locked, so a tool started in a remote
+  # session survives the session's end. ':', not '': the children get the
+  # default HUP back instead of inheriting an ignore.
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap ':' HUP
 }
 
 ###
