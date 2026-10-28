@@ -11,7 +11,16 @@
       config now sets map_hash_bucket_size 512 and map_hash_max_size
       262144. The sizes reach a box with its next Aegir Master upgrade
       or server Verify.
-
+    * A backup selection pattern that duplicity's regexp engine cannot
+      compile (an unbalanced bracket, a doubled repeat, an unknown escape)
+      ended the account's whole backup run with nothing saved. The paths
+      writer now compiles every -regexp line with the interpreter duplicity
+      runs under and refuses the ones that fail by line number, keeping
+      the rest; the account README names the rule.
+    * The paths writer no longer reports a missing regexp merged file for
+      an account without regexp directives, and multiback no longer prints
+      its priority change and a bare 3 from the cache drop into the run's
+      output.
     * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
       lock, and the lock is released as it ends. The lock's handler only
       unlocked, so the script went on running without the lock and a
