@@ -301,11 +301,21 @@ _jstr() { printf '%s' "$1" | grep -o "\"$2\":\"[^\"]*\"" | head -n1 | cut -d'"' 
 # Parse pool socket name: sets _pool/_user/_ver (system pool is wwwNN, no dot);
 # returns non-zero when no numeric version can be derived.
 _parse_pool() {
+  local _c
   _pool=${1##*/}; _pool=${_pool%.fpm.socket}
   if [[ "${_pool}" =~ ^www[0-9]+$ ]]; then
     _user="www"; _ver="${_pool#www}"
   else
     _user="${_pool%.*}"; _ver="${_pool##*.}"
+  fi
+  # A pool named for its role rather than its version (the account's panel
+  # pool, oN.hm) runs under whichever PHP holds its pool file.
+  if [[ ! "${_ver}" =~ ^[0-9]+$ ]]; then
+    for _c in /opt/php[0-9]*/etc/pool.d/"${_pool}".conf; do
+      [ -e "${_c}" ] || continue
+      _ver="${_c#/opt/php}"; _ver="${_ver%%/*}"
+      break
+    done
   fi
   [[ "${_ver}" =~ ^[0-9]+$ ]]
 }
