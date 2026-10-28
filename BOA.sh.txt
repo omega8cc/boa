@@ -2681,8 +2681,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f70 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f58
-    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f76
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f72
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f75
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f71
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f75
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f81
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f94

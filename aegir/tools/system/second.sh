@@ -482,9 +482,18 @@ _nginx_high_load_off() {
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
-# Fire-and-forget launcher, cron-safe and interactive-safe
+# Fire-and-forget launcher, cron-safe and interactive-safe. Each launch in a
+# pass starts 0.1 s after the one before: started in the same instant, a pass's
+# watchdogs and scanners put up to ~30 processes on the run queue at once,
+# which delays any web request arriving then and inflates the kernel's load
+# average whenever its 5-second count lands in that instant.
+_SPAWN_STEP=0
 _spawn_detached() {
-  _cmd="$1"
+  _cmd="exec $1"
+  if (( _SPAWN_STEP > 0 )); then
+    _cmd="sleep $(( _SPAWN_STEP / 10 )).$(( _SPAWN_STEP % 10 )); ${_cmd}"
+  fi
+  _SPAWN_STEP=$(( _SPAWN_STEP + 1 ))
   if command -v nohup >/dev/null 2>&1; then
     nohup bash -c "${_cmd}" >/dev/null 2>&1 &
   elif command -v setsid >/dev/null 2>&1; then
@@ -517,6 +526,43 @@ _get_load() {
   read -r _one _five _rest <<< "$(cat /proc/loadavg)"
   _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
   _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
+}
+
+# Average count of runnable plus I/O-blocked tasks over ~9 s, read from
+# /proc/stat every 100 ms without forking, as a per-CPU % in _D_LOAD. The
+# kernel's load average counts the run queue only once every ~5 s (5*HZ+1
+# ticks), and any job started on a fixed 5-second grid drifts into step with
+# those counts for half an hour at a time: the 1-minute figure then reports
+# the job's bursts while the CPUs idle. Sampling uniformly measures the same
+# quantity without that bias. _D_LOAD stays empty when /proc/stat cannot be
+# read; the wait still lasts about 9 s either way.
+_get_dealiased_load() {
+  local _fd _i _k _v _rest _run _blk _sum=0 _n=0
+  _D_LOAD=""
+  # A pipe nothing writes to: read -t on it is a sleep without a fork.
+  if ! exec {_fd}<> <(:); then
+    sleep 9
+    return 1
+  fi
+  for (( _i = 0; _i < 90; _i++ )); do
+    _run=""
+    _blk=""
+    while read -r _k _v _rest; do
+      case "${_k}" in
+        procs_running) _run="${_v}" ;;
+        procs_blocked) _blk="${_v}"; break ;;
+      esac
+    done < /proc/stat
+    if [[ "${_run}" =~ ^[0-9]+$ ]] && [[ "${_blk}" =~ ^[0-9]+$ ]]; then
+      # procs_running includes this reader
+      _sum=$(( _sum + _run - 1 + _blk ))
+      _n=$(( _n + 1 ))
+    fi
+    read -rt 0.1 -u "${_fd}"
+  done
+  exec {_fd}>&-
+  (( _n >= 45 )) || return 1
+  _D_LOAD=$(awk -v _s="${_sum}" -v _c="${_n}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_s / _c / _cpus) * 100 }')
 }
 
 # True while a scheduled/manual backup is running. A backup's high load is
@@ -770,9 +816,14 @@ _load_control() {
     fi
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
-    sleep 9
+    # The cooldown doubles as a measurement: the 1-minute figure alone can be a
+    # sampling artefact (see _get_dealiased_load), so the measured 9-second
+    # average must agree before crawlers are refused. No measurement, no veto.
+    _get_dealiased_load
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
-    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    if [ -n "${_D_LOAD}" ] && ! awk "BEGIN {exit !(${_D_LOAD} > ${_CPU_SPIDER_THRESHOLD})}"; then
+      echo "1-minute load ${_O_LOAD}% but measured ${_D_LOAD}% over 9s: spider protection not needed."
+    elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
@@ -850,7 +901,7 @@ _monitor_box_class() {
   fi
 }
 
-# Decide the heavy fan-out cadence. The 10x/5s loop is kept so load sampling and
+# Decide the heavy fan-out cadence. The 10-pass loop is kept so load sampling and
 # auto-pause stay responsive (cheap), but the expensive part — the watchdog
 # fan-out (_proc_control) and the hack/escape scanners — runs only every Nth
 # pass: every pass on NORMAL (unchanged), every 4th on SLOW, once/minute on CI.
@@ -869,10 +920,18 @@ while [ "${#_HEAVY_EVERY}" -gt 1 ] && [ "${_HEAVY_EVERY:0:1}" = "0" ]; do
 done
 (( _HEAVY_EVERY < 1 )) && _HEAVY_EVERY=1
 
-# Main execution
+# Main execution. Passes start 5.5 s apart, not 5: the kernel counts the run
+# queue for its load average every ~5 s (5*HZ+1 ticks), and passes on a
+# 5-second grid drift into step with those counts for half an hour of every
+# ~104 minutes, so the load average reported the passes' own bursts instead of
+# the box's load. No sleep after the last pass, and no pass starts after 48 s:
+# a run still going at the next cron minute holds the lock, and that minute's
+# run exits without a single pass.
 for _iteration in {1..10}; do
+  (( _iteration > 1 && SECONDS >= 48 )) && break
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
+  _SPAWN_STEP=0
   _load_control
   if (( (_iteration - 1) % _HEAVY_EVERY == 0 )); then
     if [ "${_skip_proc_control}" = false ]; then
@@ -880,11 +939,11 @@ for _iteration in {1..10}; do
     else
       echo "Limits exceeded; skipping process control."
     fi
-    nohup "${_monPath}/hackcheck.sh" > /dev/null 2>&1 &
-    nohup "${_monPath}/hackftp.sh" > /dev/null 2>&1 &
-    nohup "${_monPath}/escapecheck.sh" > /dev/null 2>&1 &
+    _spawn_detached "${_monPath}/hackcheck.sh"
+    _spawn_detached "${_monPath}/hackftp.sh"
+    _spawn_detached "${_monPath}/escapecheck.sh"
   fi
-  sleep 5
+  (( _iteration < 10 )) && sleep 5.5
 done
 
 echo "Done!"

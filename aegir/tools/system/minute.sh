@@ -92,42 +92,57 @@ _csf_flood_guard() {
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }
 
-_launch_auto_healing() {
-  nohup /var/xdrago/monitor/check/system.sh > /dev/null 2>&1 &
-  nohup /var/xdrago/monitor/check/unbound.sh > /dev/null 2>&1 &
-  if [ -e "/etc/init.d/valkey-server" ]; then
-    nohup /var/xdrago/monitor/check/valkey.sh > /dev/null 2>&1 &
+# Start one checker detached, 0.1 s after the previous one of this pass.
+# Fifteen checkers started in the same instant put them all on the run queue
+# together: any web request arriving then waits behind them, and the kernel's
+# load average reports that instant whenever its 5-second count lands on it.
+_LAUNCH_STEP=0
+_launch_checker() {
+  local _cmd="exec $1"
+  if (( _LAUNCH_STEP > 0 )); then
+    _cmd="sleep $(( _LAUNCH_STEP / 10 )).$(( _LAUNCH_STEP % 10 )); ${_cmd}"
   fi
-  nohup /var/xdrago/monitor/check/mysql.sh > /dev/null 2>&1 &
-  nohup /var/xdrago/monitor/check/php.sh > /dev/null 2>&1 &
+  _LAUNCH_STEP=$(( _LAUNCH_STEP + 1 ))
+  nohup bash -c "${_cmd}" > /dev/null 2>&1 &
+}
+
+_launch_auto_healing() {
+  _LAUNCH_STEP=0
+  _launch_checker /var/xdrago/monitor/check/system.sh
+  _launch_checker /var/xdrago/monitor/check/unbound.sh
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    _launch_checker /var/xdrago/monitor/check/valkey.sh
+  fi
+  _launch_checker /var/xdrago/monitor/check/mysql.sh
+  _launch_checker /var/xdrago/monitor/check/php.sh
   if [ -e "/var/xdrago/monitor/check/fpm_tune.sh" ]; then
-    nohup /var/xdrago/monitor/check/fpm_tune.sh > /dev/null 2>&1 &
+    _launch_checker /var/xdrago/monitor/check/fpm_tune.sh
   fi
   if [ -e "/var/xdrago/monitor/check/sqlprobe.sh" ]; then
-    nohup /var/xdrago/monitor/check/sqlprobe.sh > /dev/null 2>&1 &
+    _launch_checker /var/xdrago/monitor/check/sqlprobe.sh
   fi
   if [ -e "/var/xdrago/monitor/check/xdr9000.sh" ]; then
-    nohup /var/xdrago/monitor/check/xdr9000.sh > /dev/null 2>&1 &
+    _launch_checker /var/xdrago/monitor/check/xdr9000.sh
   fi
   if [ -e "/var/xdrago/monitor/check/batch_guard.sh" ]; then
-    nohup /var/xdrago/monitor/check/batch_guard.sh > /dev/null 2>&1 &
+    _launch_checker /var/xdrago/monitor/check/batch_guard.sh
   fi
   if [ -e "/var/xdrago/monitor/check/task_guard.sh" ]; then
-    nohup /var/xdrago/monitor/check/task_guard.sh > /dev/null 2>&1 &
+    _launch_checker /var/xdrago/monitor/check/task_guard.sh
   fi
   if [ -e "/var/xdrago/monitor/check/cron_guard.sh" ]; then
-    nohup bash /var/xdrago/monitor/check/cron_guard.sh > /dev/null 2>&1 &
+    _launch_checker "bash /var/xdrago/monitor/check/cron_guard.sh"
   fi
   # Standing-mirror file cadence: launched ONLY while an operator has armed
   # 'xmass autosync' on this box (the marker is the switch), so the rest of
   # the fleet pays one file test per pass.
   if [ -e "/var/xdrago/monitor/check/autosync.sh" ] \
     && [ -e "/root/.xmass.autosync.cnf" ]; then
-    nohup bash /var/xdrago/monitor/check/autosync.sh > /dev/null 2>&1 &
+    _launch_checker "bash /var/xdrago/monitor/check/autosync.sh"
   fi
-  nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
-  nohup /var/xdrago/monitor/check/nginx_guard.sh > /dev/null 2>&1 &
-  nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
+  _launch_checker /var/xdrago/monitor/check/nginx.sh
+  _launch_checker /var/xdrago/monitor/check/nginx_guard.sh
+  _launch_checker /var/xdrago/monitor/check/java.sh
 }
 
 ###
@@ -167,15 +182,16 @@ _monitor_box_class() {
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 [ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
 
-# Decide the fan-out cadence for this box. NORMAL keeps the historical 9 passes
-# every 5s; SLOW/CI run far fewer, wider-spaced passes (auto-healing watchdogs do
-# not need 5s granularity on a tiny or CI host). Both knobs are overridable from
-# .barracuda.cnf via _MONITOR_FANOUT_ITER / _MONITOR_FANOUT_SLEEP.
+# Decide the fan-out cadence for this box. NORMAL runs 9 passes 6 s apart;
+# SLOW/CI run far fewer, wider-spaced passes (auto-healing watchdogs do not need
+# second granularity on a tiny or CI host). Both knobs are overridable from
+# .barracuda.cnf via _MONITOR_FANOUT_ITER / _MONITOR_FANOUT_SLEEP. A gap that is
+# a multiple of 5 s gets half a second more at the sleep (see the loop below).
 _monitor_box_class
 case "${_BOX_CLASS}" in
   CI)   _ITER=1; _SLEEP=5  ;;
   SLOW) _ITER=3; _SLEEP=18 ;;
-  *)    _ITER=9; _SLEEP=5  ;;
+  *)    _ITER=9; _SLEEP=6  ;;
 esac
 [[ "${_MONITOR_FANOUT_ITER}"  =~ ^[0-9]+$ ]] && _ITER="${_MONITOR_FANOUT_ITER}"
 [[ "${_MONITOR_FANOUT_SLEEP}" =~ ^[0-9]+$ ]] && _SLEEP="${_MONITOR_FANOUT_SLEEP}"
@@ -191,12 +207,21 @@ done
 (( _ITER  < 1 )) && _ITER=1
 (( _SLEEP < 1 )) && _SLEEP=1
 
-# Main execution
+# Main execution. The kernel counts the run queue for its load average every
+# ~5 s (5*HZ+1 ticks); passes on a 5-second grid drift into step with those
+# counts for half an hour of every ~104 minutes, and the load average then
+# reports the passes' own bursts instead of the box's load. Hence a gap that is
+# never a multiple of 5 s, a first pass 2 s after the cron minute (clear of
+# every other job cron starts in that instant), and no sleep after the last
+# pass.
+_GAP="${_SLEEP}"
+(( _SLEEP % 5 == 0 )) && _GAP="${_SLEEP}.5"
+sleep 2
 for (( _iteration = 1; _iteration <= _ITER; _iteration++ )); do
   echo "----------------------------"
   echo "Iteration ${_iteration} of ${_ITER} (class ${_BOX_CLASS}):"
   _launch_auto_healing
-  sleep "${_SLEEP}"
+  (( _iteration < _ITER )) && sleep "${_GAP}"
 done
 
 echo DONE!
