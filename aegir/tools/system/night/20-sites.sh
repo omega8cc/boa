@@ -4334,6 +4334,19 @@ _chattr_plain_here() {
   perl -e "${_ACCT_CHATTR_PL}" + "${_l[@]}"
   return 0
 }
+### ./config in the current (pinned) tools/le holding only the staging
+### authority line, the copy an earlier demo mode left: its immutable bit
+### cleared and the file removed. Anything else at the name is the account's
+### own and left alone.
+_le_demo_copy_drop_here() {
+  local _c
+  [ -f ./config ] && [ ! -L ./config ] || return 0
+  _c="$(_acct_read_here config | tr -d '\n')"
+  [ "${_c}" = 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"' ] || return 0
+  perl -e "${_ACCT_CHATTR_PL}" - ./config
+  rm -f ./config && echo "LE demo-mode copy removed from ${_usEr}/tools/le/config: the account is in live mode"
+  return 0
+}
 ### A Cloudflare DNS hook for dehydrated, cloned by root as tools/le/hooks/$1
 ### from the repository $2: only inside the real hooks/ (made first if
 ### missing), which is taken back as root:root 0755 first -- the nightly
@@ -4383,13 +4396,20 @@ _le_hook_py_here() {
 }
 
 _le_ssl_check_update() {
-  ### Work on a local copy: the www strips below (wildcard mode) otherwise
-  ### rewrite the caller's per-site loop variable, so every later leg of the
-  ### iteration addresses @<stripped> -- an alias that does not exist for a
-  ### www-prefixed site -- and _if_gen_goaccess loses its www variant.
+  ### Work on a local copy of the caller's per-site loop variable: nothing
+  ### here may rewrite it (a www strip once did, and every later leg of the
+  ### iteration then addressed an alias that does not exist).
   local _Dom="${_Dom}" _vhTxt
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
+  ### Not in demo mode, tools/le/config holding only the staging authority
+  ### line: the copy an earlier demo mode left, set immutable below before a
+  ### wildcard order, so Verify, as oN, could not remove it. Every live
+  ### order through it would go to the staging authority; root clears the
+  ### bit and removes it here.
+  if [ ! -e "${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
+    _acct_in_real_dir "${_usEr}/tools/le" _le_demo_copy_drop_here
+  fi
   ### The immutable marker Provision honours on Verify must also stop this
   ### nightly leg: dehydrated decides on the leftover cert.pem, so when its
   ### names differ from the order's, or once it has less than RENEW_DAYS
@@ -4497,6 +4517,11 @@ _le_ssl_check_update() {
             echo "LE wildcard order skipped for ${_Dom}: wildcard-enable-${_Dom}.info without cloudflare-dns-ssl-py.info or cloudflare-dns-ssl-sh.info in static/control; per-name order placed"
           fi
         fi
+        ### The wildcard covers *.<bare> and <bare>; the order is filed under
+        ### the site's own name (--alias), where its vhost, Verify and this
+        ### leg's marker and log look. Stripping www from _Dom itself sent a
+        ### www-named site's renewals to certs/<bare>, which nothing reads.
+        _wildBase="${_Dom#www.}"
         _siTealiases=`printf '%s\n' "${_vhTxt}" \
           | grep "server_name" \
           | sed "s/server_name//g; s/;//g" \
@@ -4506,17 +4531,16 @@ _le_ssl_check_update() {
           | sort | uniq`
         for _aliAs in `echo "${_siTealiases}"`; do
           if [ "${_leWild}" = "YES" ]; then
-            _Dom="${_Dom#www.}"
             if [ -z "${_usEaliases}" ] \
               && [ ! -z "${_aliAs}" ] \
               && [[ ! "${_aliAs}" =~ ".nodns." ]] \
-              && [[ ! "${_aliAs}" =~ "${_Dom}" ]]; then
+              && [[ ! "${_aliAs}" =~ "${_wildBase}" ]]; then
               _usEaliases="--domain ${_aliAs}"
               echo "--domain ${_aliAs}"
             else
               if [ ! -z "${_aliAs}" ] \
                 && [[ ! "${_aliAs}" =~ ".nodns." ]] \
-                && [[ ! "${_aliAs}" =~ "${_Dom}" ]]; then
+                && [[ ! "${_aliAs}" =~ "${_wildBase}" ]]; then
                 _usEaliases="${_usEaliases} --domain ${_aliAs}"
                 echo "--domain ${_aliAs}"
               fi
@@ -4539,22 +4563,38 @@ _le_ssl_check_update() {
         _DOM=$(date +%e)
         _DOM=${_DOM//[^0-9]/}
         _RDM=$((RANDOM%25+6))
+        ### The staging authority of demo mode offers no ISRG Root X1 chain:
+        ### asked for it, every order there ended on "Alternative chain ...
+        ### not found" after its names were validated. Live orders keep it.
+        ### The staging authority lives in tools/le/config.sh, read through
+        ### --config in front of the account's own tools/le/config (a site's
+        ### Verify writes it; until it is there demo mode orders nothing).
+        _leChain="--preferred-chain 'ISRG Root X1'"
+        _leCfg=""
+        if [ -e "${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
+          _leChain=""
+          if [ -e "${_usEr}/tools/le/config.sh" ]; then
+            _leCfg=" --config ${_usEr}/tools/le/config.sh"
+          else
+            echo "LE renewal skipped for ${_Dom}: demo mode is on but tools/le/config.sh is not written yet (a site's Verify writes it)"
+            return 0
+          fi
+        fi
         if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
           if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
-            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+            _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg} --force"
             _log_ctrl_mark "site.${_Dom}.cert-x1-rebuilt.info"
           else
-            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+            _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg}"
           fi
         else
-          _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+          _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg}"
         fi
         _dhArgs="--domain ${_Dom} ${_usEaliases}"
         if [ "${_leWild}" = "YES" ]; then
-          _Dom="${_Dom#www.}"
-          echo "--domain *.${_Dom}"
+          echo "--domain *.${_wildBase}"
           _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
-          _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+          _dhArgs="--alias ${_Dom} --domain *.${_wildBase} --domain ${_wildBase} ${_usEaliases}"
           _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
         fi
         echo "_leParams is ${_leParams}"

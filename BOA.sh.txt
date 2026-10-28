@@ -2734,8 +2734,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f55
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f14
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f23
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f13
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f22
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f45
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f64
@@ -3309,17 +3309,12 @@ _update_agents() {
   fi
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
-    && [ -e "${_provLeIncFull}" ] \
-    && [ -e "${_hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     local _leHeld=NO
     [ -e "/root/.standby.cnf" ] && _leHeld=YES
-    _leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
-    _lePath="${_leBasePath}/drush/${_provLeInc}"
-    _leVhPath="${_leBasePath}/hosting_le_vhost/drush/${_hoLeInc}"
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${_pthSysUsr}/config/server_master/nginx/vhost.d" ] \
         && [ -e "${_pthSysUsr}/static/control/cli.info" ] \
@@ -3336,24 +3331,12 @@ _update_agents() {
         ### stamped every tree with the last account's group (or, with that
         ### loop's gate already closed, fell back to the login group).
         _usrGroup=$(_acct_group "${_tUsr}")
-        ### The account owns its hostmaster platform, its tools/le and the
-        ### alias naming that platform: each copy is put through a pinned
+        ### The account owns its tools/le: each copy is put through a pinned
         ### real directory of the account's own tree, owned and moded through
         ### its handle, so a link the account put at a name is replaced,
         ### never written through or handed over.
         _tUid=$(id -u -- "${_tUsr}" 2> /dev/null)
         _tGid=$(getent group "${_usrGroup}" 2> /dev/null | cut -d: -f3)
-        _hmPf=$(_acct_hm_root "${_dscUsr}")
-        if [ -n "${_hmPf}" ] && [ -e "${_provLeIncFull}" ]; then
-          _acct_in_real_dir "${_hmPf}/${_lePath%/*}" \
-            _acct_refresh_mode_here "${_lePath##*/}" \
-            "${_tUid}" "${_tGid}" 644 < "${_provLeIncFull}"
-        fi
-        if [ -n "${_hmPf}" ] && [ -e "${_hoLeIncFull}" ]; then
-          _acct_in_real_dir "${_hmPf}/${_leVhPath%/*}" \
-            _acct_refresh_mode_here "${_leVhPath##*/}" \
-            "${_tUid}" "${_tGid}" 644 < "${_hoLeIncFull}"
-        fi
         _leRoot="${_dscUsr}/tools/le"
         _exeLe="${_leRoot}/dehydrated"
         _dehydFull="${_leRoot}/${_dehydName}"
@@ -3454,12 +3437,11 @@ _update_agents() {
         fi
       fi
     done
-    ### A standby skips every account above, and the accounts' hostmaster
-    ### platforms are no sync leg: stamped there, the promoted box would
-    ### never put this serial's copies. Stamped only when the marker was
-    ### absent before the loop and after it (a promotion during the loop
-    ### leaves the accounts before it unput), so the first agents pass after
-    ### promotion puts them.
+    ### A standby skips every account above: stamped there, the promoted box
+    ### would never run this serial's account pass. Stamped only when the
+    ### standby marker was absent before the loop and after it (a promotion
+    ### during the loop leaves the accounts before it undone), so the first
+    ### agents pass after promotion runs them.
     if [ "${_leHeld}" = "NO" ] && [ ! -e "/root/.standby.cnf" ]; then
       touch ${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid
     fi
@@ -4763,15 +4745,15 @@ _fix_pure_ftpd() {
   fi
 }
 
-# The Let's Encrypt helper and the two drush includes come through
-# _fetch_versioned like every other fetched file; the leftovers of earlier
-# layouts are cleared once per release and whenever one is back. The
-# accounts get their copies from the le_renewal_days_69 block of
-# _update_agents, later in the same pass, once per release: a copy that
-# changes here drops that block's stamp, so the accounts get the new bytes
-# in this pass, not a release later.
+# The Let's Encrypt helper comes through _fetch_versioned like every other
+# fetched file; the leftovers of earlier layouts are cleared once per release
+# and whenever one is back. The accounts get their copy from the
+# le_renewal_days_69 block of _update_agents, later in the same pass, once per
+# release: a helper that changes here drops that block's stamp, so the
+# accounts get the new bytes in this pass, not a release later. The hosting_le
+# module ships its own drush files: BOA no longer keeps copies to lay over it.
 _fix_hosting_le() {
-  local _dhySum _hleSum _pleSum
+  local _dhySum
   if [ -d "/var/xdrago/conf" ]; then
     if [ ! -e "${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/var/xdrago/${_provLeInc}" ] \
@@ -4787,15 +4769,13 @@ _fix_hosting_le() {
       rm -f ${_legacyLeSh}
       touch ${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid
     fi
+    # The copies go with their fetch markers: a marker left behind would tell
+    # a later fetch of a copy that it is already in place.
+    rm -f "${_provLeIncFull}" "${_hoLeIncFull}" \
+      "${_pthLog}/${_provLeInc}".* "${_pthLog}/${_hoLeInc}".*
     _dhySum="$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)"
     _fetch_versioned "${_dehydSrcPath}" "${_urlHmr}/helpers/dehydrated" f99 --mode 644
-    _hleSum="$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned "${_hoLeIncFull}" "${_urlHmr}/patches/hosting_le_vhost.drush.inc" f99 --mode 644
-    _pleSum="$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f95 --mode 644
-    if [ "$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)" != "${_dhySum}" ] \
-      || [ "$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_hleSum}" ] \
-      || [ "$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_pleSum}" ]; then
+    if [ "$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)" != "${_dhySum}" ]; then
       rm -f "${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid"
     fi
   fi
@@ -5685,7 +5665,7 @@ CSFSTANDBY
     _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f75
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f70
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
-    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f94
+    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f95
     _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f21
   fi
   mkdir -p ${_optBin}
