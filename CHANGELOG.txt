@@ -2294,11 +2294,11 @@
 
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after
-      it changed. Since every provider is listed once per web port the
-      list is three times longer, and parsing it on every start, every
-      few seconds, took the scorer from about 1% to about 5% of a small
-      box's CPU. A pass with nothing new to score now takes a third of
-      the time.
+      it changed. The list grew about threefold when every provider came
+      to be listed on both web ports, and parsing it on every start,
+      every few seconds, took the scorer from about 1% to about 5% of a
+      small box's CPU. A pass with nothing new to score now takes a third
+      of the time.
 
     * The stale-Chrome search maps no longer drop real visitors' site
       searches. They judge only Chrome's and Edge's own browser string:

@@ -2222,8 +2222,8 @@ if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
     if [[ "${_ca_end}" == "${_ca_rows}" ]]; then
       _CSF_ALLOW_HIT=1
     else
-      # A cache cut short or altered would drop allowed addresses: parse the
-      # list afresh instead of trusting part of it.
+      # A cache cut short, or with a row that is not plain numbers, would drop
+      # allowed addresses: parse the list afresh instead of trusting part of it.
       _CSF_ALLOW_IPS=(); _CSF_ALLOW_CIDR_OCTET1=()
       _CIDR_NET=(); _CIDR_MASK=(); _CIDR_O1=()
     fi
