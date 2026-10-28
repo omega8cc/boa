@@ -4423,62 +4423,18 @@ _le_ssl_check_update() {
       if [ -e "${_usEr}/tools/le/certs/${_Dom}/fullchain.pem" ]; then
         echo "Running LE cert check directly for ${_Dom}"
         _usEaliases=""
-        _siTealiases=`printf '%s\n' "${_vhTxt}" \
-          | grep "server_name" \
-          | sed "s/server_name//g; s/;//g" \
-          | sort | uniq \
-          | tr -d "\n" \
-          | sed "s/  / /g; s/  / /g; s/  / /g" \
-          | sort | uniq`
-        for _aliAs in `echo "${_siTealiases}"`; do
-          if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
-            _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
-            if [ -z "${_usEaliases}" ] \
-              && [ ! -z "${_aliAs}" ] \
-              && [[ ! "${_aliAs}" =~ ".nodns." ]] \
-              && [[ ! "${_aliAs}" =~ "${_Dom}" ]]; then
-              _usEaliases="--domain ${_aliAs}"
-              echo "--domain ${_aliAs}"
-            else
-              if [ ! -z "${_aliAs}" ] \
-                && [[ ! "${_aliAs}" =~ ".nodns." ]] \
-                && [[ ! "${_aliAs}" =~ "${_Dom}" ]]; then
-                _usEaliases="${_usEaliases} --domain ${_aliAs}"
-                echo "--domain ${_aliAs}"
-              fi
-            fi
-          else
-            if [[ ! "${_aliAs}" =~ ".nodns." ]]; then
-              echo "--domain ${_aliAs}"
-              if [ -z "${_usEaliases}" ] && [ ! -z "${_aliAs}" ]; then
-                _usEaliases="--domain ${_aliAs}"
-              else
-                if [ ! -z "${_aliAs}" ]; then
-                  _usEaliases="${_usEaliases} --domain ${_aliAs}"
-                fi
-              fi
-            else
-              echo "ignored alias ${_aliAs}"
-            fi
-          fi
-        done
-        _DOM=$(date +%e)
-        _DOM=${_DOM//[^0-9]/}
-        _RDM=$((RANDOM%25+6))
-        if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
-          if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
-            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
-            _log_ctrl_mark "site.${_Dom}.cert-x1-rebuilt.info"
-          else
-            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
-          fi
-        else
-          _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
-        fi
-        _dhArgs="--domain ${_Dom} ${_usEaliases}"
+        ### A wildcard order needs the dns-01 challenge (dehydrated refuses a
+        ### wildcard under http-01), so the wildcard flag counts only beside
+        ### one of the two DNS flags, the hook it names (installed here when
+        ### missing) and the account's dehydrated config; short of any of them
+        ### the per-name order is placed with every name and the night log
+        ### says so (the account report carries the line). Decided once, before
+        ### the alias loop, under the site's own name: the www strip below
+        ### renames _Dom only for a wildcard, and the flag is named after the
+        ### site. Verify decides the same way (hosting_le).
+        _leWild=NO
+        _thisHook=""
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
-          _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
-          echo "--domain *.${_Dom}"
           if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
             || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
             ### static/control is owned by the tenant SHELL user and sits in a
@@ -4533,19 +4489,79 @@ _le_ssl_check_update() {
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
             fi
             if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
-              _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
-              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
+              _leWild=YES
+            else
+              echo "LE wildcard order skipped for ${_Dom}: the DNS hook or tools/le/config is not in place yet; per-name order placed"
             fi
           else
-            _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+            echo "LE wildcard order skipped for ${_Dom}: wildcard-enable-${_Dom}.info without cloudflare-dns-ssl-py.info or cloudflare-dns-ssl-sh.info in static/control; per-name order placed"
           fi
+        fi
+        _siTealiases=`printf '%s\n' "${_vhTxt}" \
+          | grep "server_name" \
+          | sed "s/server_name//g; s/;//g" \
+          | sort | uniq \
+          | tr -d "\n" \
+          | sed "s/  / /g; s/  / /g; s/  / /g" \
+          | sort | uniq`
+        for _aliAs in `echo "${_siTealiases}"`; do
+          if [ "${_leWild}" = "YES" ]; then
+            _Dom="${_Dom#www.}"
+            if [ -z "${_usEaliases}" ] \
+              && [ ! -z "${_aliAs}" ] \
+              && [[ ! "${_aliAs}" =~ ".nodns." ]] \
+              && [[ ! "${_aliAs}" =~ "${_Dom}" ]]; then
+              _usEaliases="--domain ${_aliAs}"
+              echo "--domain ${_aliAs}"
+            else
+              if [ ! -z "${_aliAs}" ] \
+                && [[ ! "${_aliAs}" =~ ".nodns." ]] \
+                && [[ ! "${_aliAs}" =~ "${_Dom}" ]]; then
+                _usEaliases="${_usEaliases} --domain ${_aliAs}"
+                echo "--domain ${_aliAs}"
+              fi
+            fi
+          else
+            if [[ ! "${_aliAs}" =~ ".nodns." ]]; then
+              echo "--domain ${_aliAs}"
+              if [ -z "${_usEaliases}" ] && [ ! -z "${_aliAs}" ]; then
+                _usEaliases="--domain ${_aliAs}"
+              else
+                if [ ! -z "${_aliAs}" ]; then
+                  _usEaliases="${_usEaliases} --domain ${_aliAs}"
+                fi
+              fi
+            else
+              echo "ignored alias ${_aliAs}"
+            fi
+          fi
+        done
+        _DOM=$(date +%e)
+        _DOM=${_DOM//[^0-9]/}
+        _RDM=$((RANDOM%25+6))
+        if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
+          if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
+            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+            _log_ctrl_mark "site.${_Dom}.cert-x1-rebuilt.info"
+          else
+            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+          fi
+        else
+          _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+        fi
+        _dhArgs="--domain ${_Dom} ${_usEaliases}"
+        if [ "${_leWild}" = "YES" ]; then
+          _Dom="${_Dom#www.}"
+          echo "--domain *.${_Dom}"
+          _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
+          _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+          _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
         fi
         echo "_leParams is ${_leParams}"
         echo "_dhArgs is ${_dhArgs}"
         su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${_leParams} ${_dhArgs}"
         wait
-        if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
+        if [ "${_leWild}" = "YES" ]; then
           sleep 30
         else
           sleep 3

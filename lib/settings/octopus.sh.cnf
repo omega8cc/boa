@@ -750,11 +750,16 @@ _SEND_UPGRADE_EMAIL=YES
 ### https://docs.boa.io/operating/control-files-ini/ini-precedence
 ###
 ### Please note that if you will change it
-### to _SQL_CONVERT=YES, the system will
-### ignore sql_conversion_mode variables set
-### in the active INI files, and instead will
-### force conversion to InnoDB format in all
-### sites hosted on this instance.
+### to _SQL_CONVERT=YES or innodb, the system
+### will ignore sql_conversion_mode variables
+### set in the active INI files, and instead
+### will force conversion to InnoDB format in
+### all sites hosted on this instance. The
+### myisam value is not forced: it is the
+### instance default, and sql_conversion_mode
+### = innodb in an active INI file still
+### switches that platform or site to InnoDB
+### (a NO line there does not opt it out).
 ###
 ### Drupal 8 and newer sites are never
 ### converted: the conversion writes to a
@@ -778,9 +783,9 @@ _SEND_UPGRADE_EMAIL=YES
 ###
 ### Accepted values:
 ###
-###  innodb (forced globally)
-###  myisam (forced globally)
+###  innodb (forced globally, INI ignored)
 ###  YES    (same as innodb, forced globally)
+###  myisam (instance default, an INI innodb wins)
 ###  NO     (nothing forced globally)
 ###
 _SQL_CONVERT=NO

@@ -17,6 +17,24 @@ _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 # to a tenant identity -- and a tenant that falls out of the gate below gets
 # an UNFILTERED dash instead of the dispatch and path policy. Test membership
 # of one named group, never the shape of the list.
+# The PATH the command test resolves a login's line on: websh's own, then
+# the login's gem bin and npm bin where the tools and the bins are there. A
+# tool gem install or npm install -g put there lives in those bins alone,
+# and a login other than the main one reaches websh through that test, so
+# on websh's PATH alone its own tools were refused as not installed.
+_gate_path() {
+  local _p="${PATH}"
+  if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ] \
+    && [ -n "${SSH_CLIENT}" ] && [ -d "/opt/user/gems/${USER}/bin" ]; then
+    _p="${_p}:/opt/user/gems/${USER}/bin"
+  fi
+  if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ] \
+    && [ -d "/opt/user/npm/${USER}/.npm-packages/bin" ]; then
+    _p="${_p}:/opt/user/npm/${USER}/.npm-packages/bin"
+  fi
+  echo "${_p}"
+}
+
 _in_grp() {
   local _g
   for _g in ${_LTD_GID}; do
@@ -2843,9 +2861,9 @@ if _grp_set_is "users www-data" \
         fi
       else
         if [ -n "${_P2_CMD}" ]; then
-          _WHICH_TEST="$(which "${_P2_CMD}")"
+          _WHICH_TEST="$(PATH="$(_gate_path)" which "${_P2_CMD}")"
         else
-          _WHICH_TEST="$(which ${2})"
+          _WHICH_TEST="$(PATH="$(_gate_path)" which ${2})"
         fi
         if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
@@ -2893,7 +2911,7 @@ if _grp_set_is "users www-data" \
         _IN_PATH=NO
       fi
     else
-      _WHICH_TEST="$(which ${1})"
+      _WHICH_TEST="$(PATH="$(_gate_path)" which ${1})"
       if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
