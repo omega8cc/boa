@@ -10,7 +10,7 @@
 # URL on almost every request. Each run reads the last few minutes of the
 # access log, declares a (vhost, user agent) fingerprint when one route class
 # passes every gate, records the addresses seen acting as members, and
-# renders three exact-match include fragments consumed by the $boa_fleet_*
+# renders four exact-match include fragments consumed by the $boa_fleet_*
 # maps in /etc/nginx/conf.d/limit-req-zones-boa.conf.
 #
 # The block is deliberately narrow. A browser-shaped (or any non-crawler)
@@ -22,6 +22,20 @@
 # human browses with it. Keys are exact strings (nginx compares them case
 # insensitively), never regexes built from a user agent.
 #
+# A residential-proxy fleet sends about one request per address, so an
+# address is almost never seen twice and the member list refuses only the
+# rare repeat. When the declared agent is a stale browser -- a plain Chrome or
+# Edge whose major reached stable more than a year ago and is not the last
+# release of any old system, or a Firefox before 100 -- the fingerprint itself
+# is refused on that vhost from any address, under the same Referer and
+# cookie conditions: a real visitor does not run that exact stale string in
+# volume, and one who does still passes by following a link. Such an agent is
+# also declared over all its routes on the vhost, not only per route class,
+# because these fleets spread one agent over every route. iOS browsers,
+# webviews, Chromebooks, TVs and Chromium-based browsers other than Chrome and
+# Edge are never stale here: their versions follow their device, not the
+# user.
+#
 # 429 because no scan_nginx scorer counts it: a fleet refusal must never feed
 # the per-address ban score, the UA-burst csf ban or the i18n shedding signal.
 #
@@ -32,30 +46,40 @@
 #                                crawler (BAN or REPORT, default BAN)
 #   _NGINX_FLEET_CRAWLER_ACTION  network scope: self-declared crawler names
 #                                (BAN or REPORT; empty inherits the above)
+#   _NGINX_FLEET_STALE_ACTION    stale scope: the fingerprint-wide refusal of
+#                                a stale browser agent (BAN or REPORT; empty
+#                                inherits the address scope). It only narrows:
+#                                with the address scope in REPORT the stale
+#                                scope refuses nothing either.
 # A scope in REPORT logs WOULD-BAN and neither stores nor renders its
 # fingerprints or members; a scope in BAN stores and renders them. Moving a
-# scope from BAN to REPORT releases it on the next run.
+# scope from BAN to REPORT releases it on the next run. A stale fingerprint
+# whose scope is in REPORT falls back to the address scope.
 #
 # Sole writer of the store and the fragments. Runs every minute from root cron.
 #
 # Store /var/xdrago/monitor/log/fleet.tempban (pruned on every run):
-#   F|<expiry>|<host>|<A or N>|<b64 lower-cased agent>   fingerprint + scope
+#   F|<expiry>|<host>|<A, N or S>|<b64 lower-cased agent>  fingerprint + scope
 #   A|<expiry>|<host>|<address>|<b64 agent>              member address
 #   N|<expiry>|<host>|<a.b or IPv6>|<b64 agent>          member network
+# A stale (S) fingerprint keeps recording address members as well, so a box
+# whose zones file predates the stale map still refuses them as before.
 # Members are rendered only while their fingerprint is live, so a fingerprint
 # expiry releases all of its members in one reload.
 #
 # Usage:
 #   nginx_fleet.sh             one detection + render pass
 #   nginx_fleet.sh --replay [--action REPORT|BAN] [--crawler-action REPORT|BAN]
-#                  [--flags FILE] [--allow CSF] [--dump DIR] LOG...
+#                  [--stale-action REPORT|BAN] [--flags FILE] [--allow CSF]
+#                  [--dump DIR] LOG...
 #       read-only chronological replay of saved logs: prints what would have
-#       been declared and refused, per fingerprint and per scope. Both scopes
-#       replay as BAN unless --action / --crawler-action say otherwise (an
-#       empty --crawler-action inherits --action); the action knobs in the cnf
-#       are not applied, so a replay on a loosened box still shows what BAN
-#       would refuse. --flags writes one 0/1 line per input line, --dump writes
-#       the peak map fragments.
+#       been declared and refused, per fingerprint and per scope. Every scope
+#       replays as BAN unless --action / --crawler-action / --stale-action say
+#       otherwise (an empty --crawler-action or --stale-action inherits
+#       --action); the action knobs in the cnf are not applied, so a replay on
+#       a loosened box still shows what BAN would refuse. Staleness is judged
+#       at each replayed minute, not today. --flags writes one 0/1 line per
+#       input line, --dump writes the peak map fragments.
 #   nginx_fleet.sh -h | --help
 
 export HOME='/root'
@@ -68,6 +92,7 @@ _CONFIG_FILE="/root/.barracuda.cnf"
 _NGINX_FLEET_DETECT="YES"
 _NGINX_FLEET_ACTION="BAN"
 _NGINX_FLEET_CRAWLER_ACTION=""
+_NGINX_FLEET_STALE_ACTION=""
 _NGINX_FLEET_WINDOW=300
 _NGINX_FLEET_MIN_SPAN=180
 _NGINX_FLEET_TAIL_MB=64
@@ -115,7 +140,7 @@ _MODE="pass"
 # cnf is sourced so it cannot be clobbered. An operator _NGINX_FLEET_UA_EXEMPT
 # ADDS to it and can never remove a shipped exemption; an invalid addition is
 # dropped and the shipped roster alone applies.
-_FLT_UA_EXEMPT_DEFAULT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake|OAI-SearchBot|Claude-SearchBot|PerplexityBot|MistralAI-Index|YouBot|Google-CloudVertexBot|Kimi-SearchBot|ExaSearchBot|Amzn-SearchBot|ChatGPT-User|Claude-User|MistralAI-User|Meta-ExternalFetcher|Google-?Agent|Kimi-User|Amzn-User|OAI-AdsBot|DuckAssistBot|Google-Read-Aloud|Google-NotebookLM|Chrome Privacy Preserving Prefetch Proxy|WhatsApp|SkypeUriPreview|kakaotalk-scrap"
+_FLT_UA_EXEMPT_DEFAULT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake|OAI-SearchBot|Claude-SearchBot|PerplexityBot|MistralAI-Index|YouBot|Google-CloudVertexBot|Kimi-SearchBot|ExaSearchBot|Amzn-SearchBot|meta-webindexer|LinkupBot|KeenableBot|ShapBot|ChatGPT-User|Claude-User|MistralAI-User|Meta-ExternalFetcher|Google-?Agent|Kimi-User|Amzn-User|OAI-AdsBot|DuckAssistBot|Google-Read-Aloud|Google-NotebookLM|Chrome Privacy Preserving Prefetch Proxy|WhatsApp|SkypeUriPreview|kakaotalk-scrap"
 if [[ -n "${_NGINX_FLEET_UA_EXEMPT}" ]]; then
   _NGINX_FLEET_UA_EXEMPT="${_FLT_UA_EXEMPT_DEFAULT}|${_NGINX_FLEET_UA_EXEMPT}"
 else
@@ -143,6 +168,7 @@ _REPLAY_ALLOW="${_CSF_ALLOW}"
 _REPLAY_DUMP=""
 _REPLAY_ACTION="BAN"
 _REPLAY_CRAWLER_ACTION=""
+_REPLAY_STALE_ACTION=""
 _REPLAY_OPTS=0
 _REPLAY_FILES=()
 while (( $# )); do
@@ -151,7 +177,7 @@ while (( $# )); do
       _MODE="replay"
       shift
       ;;
-    --flags|--allow|--dump|--action|--crawler-action)
+    --flags|--allow|--dump|--action|--crawler-action|--stale-action)
       if (( $# < 2 )); then
         echo "ERROR: $1 needs a value" >&2
         exit 1
@@ -162,6 +188,7 @@ while (( $# )); do
         --dump)           _REPLAY_DUMP="$2" ;;
         --action)         _REPLAY_ACTION="$2" ;;
         --crawler-action) _REPLAY_CRAWLER_ACTION="$2" ;;
+        --stale-action)   _REPLAY_STALE_ACTION="$2" ;;
       esac
       _REPLAY_OPTS=1
       shift 2
@@ -181,7 +208,7 @@ while (( $# )); do
   esac
 done
 if [[ "${_MODE}" = "pass" ]] && (( _REPLAY_OPTS )); then
-  echo "ERROR: --flags, --allow, --dump, --action and --crawler-action need --replay" >&2
+  echo "ERROR: --flags, --allow, --dump, --action, --crawler-action and --stale-action need --replay" >&2
   exit 1
 fi
 
@@ -233,6 +260,7 @@ _fleet_knobs() {
   # back to the shipped BAN with a CONFIG line, and an invalid crawler action
   # inherits the (already validated) address action.
   local _act="${_NGINX_FLEET_ACTION^^}" _cract="${_NGINX_FLEET_CRAWLER_ACTION^^}"
+  local _stact="${_NGINX_FLEET_STALE_ACTION^^}"
   case "${_act}" in
     REPORT|BAN) _NGINX_FLEET_ACTION="${_act}" ;;
     *)
@@ -250,6 +278,21 @@ _fleet_knobs() {
       _NGINX_FLEET_CRAWLER_ACTION="${_NGINX_FLEET_ACTION}"
       ;;
   esac
+  case "${_stact}" in
+    REPORT|BAN) _NGINX_FLEET_STALE_ACTION="${_stact}" ;;
+    "")
+      _NGINX_FLEET_STALE_ACTION="${_NGINX_FLEET_ACTION}"
+      ;;
+    *)
+      _fleet_note "CONFIG: _NGINX_FLEET_STALE_ACTION=$(_fleet_show "${_NGINX_FLEET_STALE_ACTION}") must be BAN, REPORT or empty, inheriting _NGINX_FLEET_ACTION=${_NGINX_FLEET_ACTION}"
+      _NGINX_FLEET_STALE_ACTION="${_NGINX_FLEET_ACTION}"
+      ;;
+  esac
+  # The stale scope widens the address scope's own refusal, so it is never
+  # armed while the address scope is loosened to REPORT.
+  if [[ "${_NGINX_FLEET_ACTION}" != "BAN" ]]; then
+    _NGINX_FLEET_STALE_ACTION="REPORT"
+  fi
 }
 
 # SECURITY: every byte after the first quote of a log line is attacker
@@ -277,13 +320,14 @@ my $MODE = $A{mode} // 'pass';
 my %K;
 for my $k (qw(now window min_span tail_bytes ip_min req_min share_pct noref_pct uniq_pct
               bad_pct allow_pct cand_ips net_min_ips ttl member_ttl reload_gap max_fp
-              max_entries since ban_a ban_n detect)) {
+              max_entries since ban_a ban_n ban_s detect)) {
   my $v = $A{$k} // '0';
   $K{$k} = ($v =~ /\A[0-9]{1,12}\z/) ? $v + 0 : 0;
 }
 # Internal bounds, not knobs. KEY_MAX: nginx hashes an exact map key only when
-# pointer + align8(len + 2) fits in map_hash_bucket_size minus a pointer; the
-# master render sets 192, so 174 bytes on x86_64. MEM_MAX bounds one pass.
+# pointer + align8(len + 2) fits in map_hash_bucket_size minus a pointer. An
+# older master render sets 192, so 174 bytes on x86_64, and a longer key fails
+# the box-wide configtest there. MEM_MAX bounds one pass.
 my $KEY_MAX = 174;
 my $MEM_MAX = 2000;
 my $MYIP = $A{myip} // '';
@@ -320,8 +364,12 @@ sub show {
 }
 sub b64 { return MIME::Base64::encode_base64($_[0], ''); }
 
-# A = address scope, N = network scope; each follows its own action knob.
-sub scope_ban { return (($_[0] eq 'N') ? $K{ban_n} : $K{ban_a}) ? 1 : 0; }
+# A = address scope, N = network scope, S = stale scope; each follows its own
+# action knob.
+sub scope_ban {
+  my $s = shift;
+  return ($s eq 'N' ? $K{ban_n} : $s eq 'S' ? $K{ban_s} : $K{ban_a}) ? 1 : 0;
+}
 
 sub days_from_civil {
   my ($y, $m, $d) = @_;
@@ -514,9 +562,93 @@ sub scope_of {
   return 'A';
 }
 
+# Chrome desktop stable release dates by major, from Chrome's own release
+# schedule (the day it shipped where that was later than planned). A major
+# missing here because it is newer than the last row is never stale:
+# extending the table is what moves the bound forward, so a table that falls
+# behind fails toward refusing less, never more. Majors older than the first
+# row reached stable before it and are all well over a year old.
+my $CHROME_STABLE = '
+  100:2022-03-29 101:2022-04-26 102:2022-05-24 103:2022-06-21 104:2022-08-02
+  105:2022-08-30 106:2022-09-27 107:2022-10-25 108:2022-11-29 109:2023-01-10
+  110:2023-02-07 111:2023-03-07 112:2023-04-04 113:2023-05-02 114:2023-05-30
+  115:2023-07-18 116:2023-08-15 117:2023-09-12 118:2023-10-10 119:2023-10-31
+  120:2023-12-05 121:2024-01-23 122:2024-02-20 123:2024-03-19 124:2024-04-16
+  125:2024-05-15 126:2024-06-11 127:2024-07-23 128:2024-08-21 129:2024-09-17
+  130:2024-10-15 131:2024-11-12 132:2025-01-14 133:2025-02-04 134:2025-03-04
+  135:2025-04-01 136:2025-04-29 137:2025-05-27 138:2025-06-24 139:2025-08-05
+  140:2025-09-02 141:2025-09-30 142:2025-10-28 143:2025-12-02 144:2026-01-13
+  145:2026-02-10 146:2026-03-10 147:2026-04-07 148:2026-05-05 149:2026-06-02
+  150:2026-06-30 151:2026-07-29 152:2026-08-25 153:2026-09-08 154:2026-09-22
+  155:2026-10-06 156:2026-10-20
+';
+my (%CHROME_DAY, $CHROME_FIRST);
+for my $p (split ' ', $CHROME_STABLE) {
+  my ($m, $y, $mo, $d) = $p =~ /\A([0-9]+):([0-9]{4})-([0-9]{2})-([0-9]{2})\z/ or next;
+  $CHROME_DAY{$m} = days_from_civil($y, $mo + 0, $d + 0);
+  $CHROME_FIRST = $m if !defined $CHROME_FIRST || $m < $CHROME_FIRST;
+}
+# The last major each old system can run, so a machine that cannot update
+# further is never stale: Windows XP and Vista 49, 7 and 8.1 109; macOS
+# 10.9 67, 10.10 87 or 88 (Google's notes and the build disagree), 10.11 and
+# 10.12 103, 10.13 and 10.14 116, 10.15 128, 11 138, 12 150; Android 4.1 to
+# 4.3 71, 4.4 81, 5 95, 6 106, 7 119, 8 and 9 138. Pinned by major alone:
+# since Chrome 107 every desktop reports the same Windows and macOS version,
+# so the platform token cannot tell an old system from a current one.
+my %CHROME_PIN = map { $_ => 1 } qw(49 67 71 81 87 88 95 103 106 109 116 119 128 138 150);
+# Firefox: the last extended-support releases for old Windows and macOS.
+my %FIREFOX_PIN = map { $_ => 1 } qw(52 78);
+my %STALE_C;
+# Lower-cased agent: true for a desktop or Android Chrome or Edge more than a
+# year past its major's stable release, or a desktop Firefox before 100, on a
+# platform whose browser follows the user. $now is the pass's own clock, so a
+# replay judges each minute by its own date.
+sub stale_agent {
+  my ($u, $now) = @_;
+  my $day = int($now / 86400);
+  my $ck = "$day\x1f$u";
+  return $STALE_C{$ck} if exists $STALE_C{$ck};
+  %STALE_C = () if scalar(keys %STALE_C) > 100000;
+  my $r = 0;
+  if ($u =~ m{\Amozilla/5\.0 \(([^()]+)\) (?:applewebkit/[0-9.]+ \(khtml, like gecko\)|gecko/[0-9]+ )}
+      && $u !~ /bot|crawl|spider|slurp|scrap|headless|https?:/) {
+    my $plat = $1;
+    if ($plat !~ /iphone|ipad|ipod|; wv\z|\bcros\b|smart-?tv|web0s|tizen|\btv\b/) {
+      if ($u =~ m{\) chrome/([0-9]{1,4})\.[0-9.]+ (?:mobile )?safari/537\.36(?: edg/[0-9.]+)?\z}) {
+        my $m = $1 + 0;
+        if (!$CHROME_PIN{$m} && defined $CHROME_FIRST) {
+          if ($m < $CHROME_FIRST) {
+            $r = 1;
+          } elsif (defined $CHROME_DAY{$m}) {
+            $r = ($day - $CHROME_DAY{$m} > 365) ? 1 : 0;
+          }
+        }
+      } elsif ($u =~ m{ gecko/[0-9]+ firefox/([0-9]{1,4})\.[0-9.]+\z}) {
+        my $m = $1 + 0;
+        $r = ($m < 100 && !$FIREFOX_PIN{$m}) ? 1 : 0;
+      }
+    }
+  }
+  return $STALE_C{$ck} = $r;
+}
+# The scope a declared agent is stored and enforced under. A self-declared
+# crawler keeps the network scope; any other agent takes the stale scope while
+# it is stale and that scope is armed, the address scope otherwise. A stored
+# scope is re-judged, so a fleet that outlives its agent's first year moves to
+# the stale scope without waiting for its fingerprint to expire.
+sub eff_scope {
+  my ($ual, $now, $stored) = @_;
+  my $base = $stored // scope_of($ual);
+  return 'N' if $base eq 'N';
+  return ($K{ban_s} && stale_agent($ual, $now)) ? 'S' : 'A';
+}
+# Members are recorded per address for both browser scopes.
+sub member_kind { return $_[0] eq 'N' ? 'N' : 'A'; }
+
 sub analyse {
   my ($recs, $cut, $now) = @_;
   my (%hn, %kn, %kip, %knr, %kurl, %kbad, %kwl, %gip, %gnr, %gwl, %gex, %orig);
+  my (%gn, %gnrt, %gurl, %gbad);
   for my $r (@$recs) {
     next if $r->[0] < $cut || $r->[0] > $now || !defined $r->[5];
     my $host = $r->[2];
@@ -526,39 +658,58 @@ sub analyse {
     my $ip = $r->[1];
     $gex{$g} = 1 if $r->[9];
     if (is_wl($ip)) { $gwl{$g}{$ip} = 1; $kwl{$k}{$ip} = 1; next; }
+    my $bad = ($r->[7] =~ /\A5/ || $r->[7] eq '444') ? 1 : 0;
     $kn{$k}++;
     $kip{$k}{$ip} = 1;
     $knr{$k} += $r->[6];
     $kurl{$k}{$r->[8]} = 1;
-    $kbad{$k}++ if $r->[7] =~ /\A5/ || $r->[7] eq '444';
+    $kbad{$k} += $bad;
     $gip{$g}{$ip}++;
     $gnr{$g}{$ip} += $r->[6];
+    $gn{$g}++;
+    $gnrt{$g} += $r->[6];
+    $gurl{$g}{$r->[8]} = 1;
+    $gbad{$g} += $bad;
     $orig{$g} //= $r->[4];
   }
   my %decl;
-  for my $k (keys %kn) {
-    my $n = $kn{$k};
-    next if $n < $K{req_min};
-    my $ni = scalar keys %{$kip{$k}};
-    next if $ni < $K{ip_min};
-    my ($host, $ual, $cls) = split /\x1f/, $k, 3;
-    next if 100 * $n < $K{share_pct} * $hn{$host};
-    next if 100 * $knr{$k} < $K{noref_pct} * $n;
-    my $nu = scalar keys %{$kurl{$k}};
-    next if 100 * $nu < $K{uniq_pct} * $n;
-    my $nb = $kbad{$k} // 0;
-    next if 100 * $nb > $K{bad_pct} * $n;
-    my $g = $host . "\x1f" . $ual;
-    my $stat = sprintf('class=/%s ips=%d reqs=%d share=%d%% noref=%d%% uniq=%d%% bad=%d%%',
-      show($cls), $ni, $n, int(100 * $n / $hn{$host}), int(100 * $knr{$k} / $n),
+  # Every gate but the agent key and the scope, shared by the per-class and
+  # the stale all-routes test. Returns the stat line, or undef with any log
+  # line already written.
+  my $gates = sub {
+    my ($host, $g, $label, $n, $ni, $nr, $nu, $nb, $wl) = @_;
+    return undef if $n < $K{req_min} || $ni < $K{ip_min};
+    return undef if 100 * $n < $K{share_pct} * $hn{$host};
+    return undef if 100 * $nr < $K{noref_pct} * $n;
+    return undef if 100 * $nu < $K{uniq_pct} * $n;
+    return undef if 100 * $nb > $K{bad_pct} * $n;
+    my $stat = sprintf('class=%s ips=%d reqs=%d share=%d%% noref=%d%% uniq=%d%% bad=%d%%',
+      $label, $ni, $n, int(100 * $n / $hn{$host}), int(100 * $nr / $n),
       int(100 * $nu / $n), int(100 * $nb / $n));
-    if ($gex{$g}) { push @LOG, "EXEMPT host=$host $stat ua=" . show($orig{$g}); next; }
-    my $wl = scalar keys %{$kwl{$k} // {}};
+    if ($gex{$g}) { push @LOG, "EXEMPT host=$host $stat ua=" . show($orig{$g}); return undef; }
     if (100 * $wl >= $K{allow_pct} * ($wl + $ni)) {
       push @LOG, "REALIP-SUSPECT host=$host $stat whitelisted=$wl ua=" . show($orig{$g});
-      next;
+      return undef;
     }
-    $decl{$g} = [$n, $stat] if !$decl{$g} || $n > $decl{$g}[0];
+    return $stat;
+  };
+  for my $k (keys %kn) {
+    my ($host, $ual, $cls) = split /\x1f/, $k, 3;
+    my $g = $host . "\x1f" . $ual;
+    my $stat = $gates->($host, $g, '/' . show($cls), $kn{$k}, scalar(keys %{$kip{$k}}), $knr{$k},
+      scalar(keys %{$kurl{$k}}), $kbad{$k} // 0, scalar(keys %{$kwl{$k} // {}})) // next;
+    $decl{$g} = [$kn{$k}, $stat, 0] if !$decl{$g} || $kn{$k} > $decl{$g}[0];
+  }
+  # A stale browser agent is also tested over all its routes on the vhost.
+  # Third field 1 marks a declaration only this test made: it is honoured
+  # only while the stale scope is armed (store_apply).
+  for my $g (keys %gn) {
+    next if $decl{$g};
+    my ($host, $ual) = split /\x1f/, $g, 2;
+    next unless stale_agent($ual, $now);
+    my $stat = $gates->($host, $g, '*', $gn{$g}, scalar(keys %{$gip{$g}}), $gnrt{$g},
+      scalar(keys %{$gurl{$g}}), $gbad{$g} // 0, scalar(keys %{$gwl{$g} // {}})) // next;
+    $decl{$g} = [$gn{$g}, $stat, 1];
   }
   return (\%decl, \%gip, \%gnr, \%gwl, \%orig);
 }
@@ -601,7 +752,7 @@ sub store_load {
     my ($kind, $exp, $host, $x, $b) = @f;
     next unless length($host) <= 120 && $host =~ $HOSTRE && $b =~ $B64RE;
     if ($kind eq 'F') {
-      next unless ($x eq 'A' || $x eq 'N') && scope_ban($x);
+      next unless ($x eq 'A' || $x eq 'N' || $x eq 'S') && scope_ban($x);
       my $o = $S->{F}{"$host|$b"};
       $S->{F}{"$host|$b"} = [$exp, $x] if !$o || $exp > $o->[0];
     } elsif (($kind eq 'A' && ($x =~ $V4RE || defined v6bin($x)))
@@ -625,7 +776,13 @@ sub store_apply {
   for my $g (sort keys %$decl) {
     my ($host, $ual) = split /\x1f/, $g, 2;
     my $fk = "$host|" . b64($ual);
-    my $scope = $S->{F}{$fk} ? $S->{F}{$fk}[1] : scope_of($ual);
+    my $scope = eff_scope($ual, $now, $S->{F}{$fk} ? $S->{F}{$fk}[1] : undef);
+    # A declaration only the all-routes stale test made stands for the stale
+    # scope alone; with that scope unarmed it is reported, never stored.
+    if ($decl->{$g}[2] && $scope ne 'S') {
+      push @LOG, sprintf('WOULD-BAN host=%s scope=S %s ua=%s', $host, $decl->{$g}[1], show($orig->{$g}));
+      next;
+    }
     my $ban = scope_ban($scope);
     # An agent no exact key can carry is reported, never stored: it could not
     # be refused anyway, and a stored one would take a _NGINX_FLEET_MAX_FP slot
@@ -647,8 +804,8 @@ sub store_apply {
     my $F = $S->{F}{"$host|$b"} or next;
     next unless $F->[0] > $now;
     next unless $decl->{$g} || scalar(keys %{$gip->{$g}}) >= $K{cand_ips};
-    my ($addr, $net) = members($g, $F->[1], $gip, $gnr, $gwl);
-    my $kind = $F->[1];
+    my $kind = member_kind($F->[1]);
+    my ($addr, $net) = members($g, $kind, $gip, $gnr, $gwl);
     for my $x ($kind eq 'A' ? @$addr : @$net) {
       $S->{M}{"$kind|$host|$x|$b"} = $now + $K{member_ttl};
     }
@@ -671,7 +828,7 @@ sub store_prune {
   for my $mk (keys %{$S->{M}}) {
     my ($kind, $host, $x, $b) = split /\|/, $mk, 4;
     my $F = $S->{F}{"$host|$b"};
-    delete $S->{M}{$mk} unless $S->{M}{$mk} > $now && $F && $F->[1] eq $kind;
+    delete $S->{M}{$mk} unless $S->{M}{$mk} > $now && $F && member_kind($F->[1]) eq $kind;
   }
 }
 
@@ -692,7 +849,7 @@ sub store_text {
 my %UNBANNABLE_SEEN;
 sub render {
   my $S = shift;
-  my (%live, %idua, %uaid, %addr, %net);
+  my (%live, %idua, %uaid, %addr, %net, %fp);
   for my $fk (sort keys %{$S->{F}}) {
     my ($host, $b) = split /\|/, $fk, 2;
     my $ua = MIME::Base64::decode_base64($b);
@@ -706,11 +863,15 @@ sub render {
     $idua{$id} = $ua;
     $uaid{$ua} = $id;
     $live{$fk} = [$id, $S->{F}{$fk}[1]];
+    if ($S->{F}{$fk}[1] eq 'S') {
+      my $key = "$host|$id";
+      $fp{$key} = $S->{F}{$fk}[0] if length($key) <= $KEY_MAX;
+    }
   }
   for my $mk (keys %{$S->{M}}) {
     my ($kind, $host, $x, $b) = split /\|/, $mk, 4;
     my $L = $live{"$host|$b"} or next;
-    next unless $L->[1] eq $kind;
+    next unless member_kind($L->[1]) eq $kind;
     my $key = "$host|$x|$L->[0]";
     next if length($key) > $KEY_MAX;
     ($kind eq 'A' ? \%addr : \%net)->{$key} = $S->{M}{$mk};
@@ -719,6 +880,10 @@ sub render {
   my $hdr = "# generated by /var/xdrago/nginx_fleet.sh -- DO NOT EDIT BY HAND.\n";
   $txt{ua} = $hdr . join('', map { "\"$_\" $uaid{$_};\n" } sort keys %uaid);
   my %cnt = (fp => scalar(keys %live), ua => scalar(keys %uaid));
+  # The stale fragment is bounded by _NGINX_FLEET_MAX_FP like the agents it
+  # names, so it needs no cap of its own.
+  $txt{fp} = $hdr . join('', map { "\"$_\" 1;\n" } sort keys %fp);
+  $cnt{stale} = scalar keys %fp;
   for my $spec (['addr', \%addr], ['net', \%net]) {
     my ($name, $h) = @$spec;
     my @k = sort { $h->{$b} <=> $h->{$a} || $a cmp $b } keys %$h;
@@ -780,9 +945,10 @@ if ($MODE eq 'pass') {
   $ok &&= write_file($A{tmp_ua}, $txt->{ua});
   $ok &&= write_file($A{tmp_addr}, $txt->{addr});
   $ok &&= write_file($A{tmp_net}, $txt->{net});
+  $ok &&= write_file($A{tmp_fp}, $txt->{fp});
   print "LOG $_\n" for @LOG;
   exit 2 unless $ok;
-  printf "RESULT %d %d %d\n", $cnt->{fp}, $cnt->{addr}, $cnt->{net};
+  printf "RESULT %d %d %d %d\n", $cnt->{fp}, $cnt->{addr}, $cnt->{net}, $cnt->{stale};
   exit 0;
 }
 
@@ -793,9 +959,9 @@ if ($MODE eq 'replay') {
   if (defined $A{flags} && length $A{flags}) { open $FLG, '>', $A{flags} or die "cannot write flags\n"; }
   my (@win, $lo, $next);
   my $S = { F => {}, M => {} };
-  my (%live_ua, %live_addr, %live_net, %prev, %ev);
+  my (%live_ua, %live_addr, %live_net, %live_fp, %prev, %ev);
   my ($last_reload, $reloads, $passes, $lines, $blocked) = (-1e12, 0, 0, 0, 0);
-  my %peak = (fp => 0, addr => 0, net => 0);
+  my %peak = (fp => 0, addr => 0, net => 0, stale => 0);
   my (%fp_first, %fp_passes, %fp_scope, %fp_blocked, %fp_orig);
   my $pass = sub {
     my $now = shift;
@@ -806,9 +972,12 @@ if ($MODE eq 'replay') {
       if $now - $lo >= $K{min_span};
     for my $g (keys %$decl) {
       my ($host, $ual) = split /\x1f/, $g, 2;
+      # An all-routes declaration with the stale scope unarmed stores nothing.
+      next if $decl->{$g}[2] && eff_scope($ual, $now, undef) ne 'S';
       $fp_first{$g} //= $now;
       $fp_passes{$g}++;
-      $fp_scope{$g} //= scope_of($ual);
+      # The latest scope: a fleet whose agent turns stale mid-replay moves.
+      $fp_scope{$g} = eff_scope($ual, $now, undef);
       $fp_orig{$g} //= $orig->{$g};
     }
     store_apply($S, $now, $decl, $gip, $gnr, $gwl, $orig);
@@ -818,20 +987,23 @@ if ($MODE eq 'replay') {
     # Pass mode writes no fragment and reloads nothing while nothing has ever
     # been live, so the replay must not count that first header-only render.
     return if !%prev && !$cnt->{fp};
-    my $ua_changed = $txt->{ua} ne ($prev{ua} // '');
-    my $changed = $ua_changed || $txt->{addr} ne ($prev{addr} // '') || $txt->{net} ne ($prev{net} // '');
+    # Pass mode applies a new or expired fingerprint, or a scope change, at
+    # once; a member-only change waits for the reload gap.
+    my $fp_changed = $txt->{ua} ne ($prev{ua} // '') || $txt->{fp} ne ($prev{fp} // '');
+    my $changed = $fp_changed || $txt->{addr} ne ($prev{addr} // '') || $txt->{net} ne ($prev{net} // '');
     return unless $changed;
-    return unless $ua_changed || $now - $last_reload >= $K{reload_gap};
+    return unless $fp_changed || $now - $last_reload >= $K{reload_gap};
     %prev = %$txt;
     $last_reload = $now;
     $reloads++;
-    %live_ua = (); %live_addr = (); %live_net = ();
+    %live_ua = (); %live_addr = (); %live_net = (); %live_fp = ();
     for my $l (split /\n/, $txt->{ua})   { $live_ua{lc $1} = $2 if $l =~ /\A"(.*)" (f[0-9a-f]{8});\z/; }
     for my $l (split /\n/, $txt->{addr}) { $live_addr{lc $1} = 1 if $l =~ /\A"(.*)" 1;\z/; }
     for my $l (split /\n/, $txt->{net})  { $live_net{lc $1} = 1 if $l =~ /\A"(.*)" 1;\z/; }
-    $peak{$_} = $cnt->{$_} > $peak{$_} ? $cnt->{$_} : $peak{$_} for qw(fp addr net);
+    for my $l (split /\n/, $txt->{fp})   { $live_fp{lc $1} = 1 if $l =~ /\A"(.*)" 1;\z/; }
+    $peak{$_} = $cnt->{$_} > $peak{$_} ? $cnt->{$_} : $peak{$_} for qw(fp addr net stale);
     if (defined $A{dump_dir} && length $A{dump_dir} && $cnt->{addr} >= $peak{addr}) {
-      write_file("$A{dump_dir}/nginx_fleet_$_.conf", $txt->{$_}) for qw(ua addr net);
+      write_file("$A{dump_dir}/nginx_fleet_$_.conf", $txt->{$_}) for qw(ua addr net fp);
     }
   };
   for my $file (@FILES) {
@@ -849,7 +1021,8 @@ if ($MODE eq 'replay') {
       if ($r && $r->[1] ne '' && (my $id = $live_ua{$r->[3]})) {
         my $nt = $r->[1] =~ /\A(\d+\.\d+)\./ ? $1 : $r->[1];
         # Replay has no cookies: every request is treated as anonymous.
-        if ($live_net{"$r->[2]|$nt|$id"} || ($live_addr{"$r->[2]|$r->[1]|$id"} && $r->[6])) {
+        if ($live_net{"$r->[2]|$nt|$id"}
+            || (($live_addr{"$r->[2]|$r->[1]|$id"} || $live_fp{"$r->[2]|$id"}) && $r->[6])) {
           $blk = 1;
           $blocked++;
           $fp_blocked{$r->[2] . "\x1f" . $r->[3]}++;
@@ -864,8 +1037,8 @@ if ($MODE eq 'replay') {
     close $fh;
   }
   close $FLG if $FLG;
-  printf "REPLAY lines=%d passes=%d reloads=%d blocked=%d peak_fingerprints=%d peak_addresses=%d peak_networks=%d\n",
-    $lines, $passes, $reloads, $blocked, $peak{fp}, $peak{addr}, $peak{net};
+  printf "REPLAY lines=%d passes=%d reloads=%d blocked=%d peak_fingerprints=%d peak_addresses=%d peak_networks=%d peak_stale=%d\n",
+    $lines, $passes, $reloads, $blocked, $peak{fp}, $peak{addr}, $peak{net}, $peak{stale};
   printf "EVENTS %s\n", join(' ', map { "$_=$ev{$_}" } sort keys %ev);
   my (%sc_fp, %sc_passes, %sc_blocked);
   for my $g (keys %fp_first) {
@@ -874,7 +1047,7 @@ if ($MODE eq 'replay') {
     $sc_passes{$sc} += $fp_passes{$g};
     $sc_blocked{$sc} += $fp_blocked{$g} // 0;
   }
-  for my $sc (qw(A N)) {
+  for my $sc (qw(A N S)) {
     printf "SCOPE scope=%s action=%s fingerprints=%d declaring_passes=%d blocked=%d\n", $sc,
       scope_ban($sc) ? 'BAN' : 'REPORT', $sc_fp{$sc} // 0, $sc_passes{$sc} // 0, $sc_blocked{$sc} // 0;
   }
@@ -916,6 +1089,7 @@ if [[ "${_MODE}" = "replay" ]]; then
   # an error rather than a fallback: the operator is watching this run.
   _REPLAY_ACTION="${_REPLAY_ACTION^^}"
   _REPLAY_CRAWLER_ACTION="${_REPLAY_CRAWLER_ACTION^^}"
+  _REPLAY_STALE_ACTION="${_REPLAY_STALE_ACTION^^}"
   case "${_REPLAY_ACTION}" in
     REPORT|BAN) : ;;
     *)
@@ -927,6 +1101,13 @@ if [[ "${_MODE}" = "replay" ]]; then
     ""|REPORT|BAN) : ;;
     *)
       echo "ERROR: --crawler-action must be BAN, REPORT or empty" >&2
+      exit 1
+      ;;
+  esac
+  case "${_REPLAY_STALE_ACTION}" in
+    ""|REPORT|BAN) : ;;
+    *)
+      echo "ERROR: --stale-action must be BAN, REPORT or empty" >&2
       exit 1
       ;;
   esac
@@ -946,13 +1127,16 @@ if [[ "${_MODE}" = "replay" ]]; then
   # same validation, so an empty --crawler-action inherits --action.
   _NGINX_FLEET_ACTION="${_REPLAY_ACTION}"
   _NGINX_FLEET_CRAWLER_ACTION="${_REPLAY_CRAWLER_ACTION}"
+  _NGINX_FLEET_STALE_ACTION="${_REPLAY_STALE_ACTION}"
   _fleet_knobs
   _fleet_common_args
   _BAN_A=0
   _BAN_N=0
+  _BAN_S=0
   [[ "${_NGINX_FLEET_ACTION}" = "BAN" ]] && _BAN_A=1
   [[ "${_NGINX_FLEET_CRAWLER_ACTION}" = "BAN" ]] && _BAN_N=1
-  perl -e "${_FLT_PL}" -- mode=replay "${_ARGS[@]}" "ban_a=${_BAN_A}" "ban_n=${_BAN_N}" detect=1 \
+  [[ "${_NGINX_FLEET_STALE_ACTION}" = "BAN" ]] && _BAN_S=1
+  perl -e "${_FLT_PL}" -- mode=replay "${_ARGS[@]}" "ban_a=${_BAN_A}" "ban_n=${_BAN_N}" "ban_s=${_BAN_S}" detect=1 \
     "csf_allow=${_REPLAY_ALLOW}" "web6_allow=${_WEB6_ALLOW}" \
     "flags=${_REPLAY_FLAGS}" "dump_dir=${_REPLAY_DUMP}" "${_FILE_ARGS[@]}"
   exit $?
@@ -994,10 +1178,12 @@ fi
 _DETECT=0
 _BAN_A=0
 _BAN_N=0
+_BAN_S=0
 if [[ "${_NGINX_FLEET_DETECT}" = "YES" ]]; then
   _DETECT=1
   [[ "${_NGINX_FLEET_ACTION}" = "BAN" ]] && _BAN_A=1
   [[ "${_NGINX_FLEET_CRAWLER_ACTION}" = "BAN" ]] && _BAN_N=1
+  [[ "${_NGINX_FLEET_STALE_ACTION}" = "BAN" ]] && _BAN_S=1
 fi
 _ANY_BAN=$(( _BAN_A | _BAN_N ))
 
@@ -1063,7 +1249,7 @@ trap 'rm -rf -- "${_WORK}"' EXIT
 # The analyser writes the new fragments into the work directory; the live ones
 # (_OUTN in /data/conf) are read, backed up (_BAKN) and replaced only through
 # the pinned helpers above.
-_NAMES=(ua addr net)
+_NAMES=(ua addr net fp)
 declare -A _TMP _OUT _OUTN _BAKN _LIVE
 for _F in "${_NAMES[@]}"; do
   _OUTN[${_F}]="nginx_fleet_${_F}.conf"
@@ -1075,10 +1261,10 @@ done
 _STORE_TMP="${_STORE}.tmp.$$"
 
 _fleet_cleanup() {
-  rm -f "${_TMP[ua]}" "${_TMP[addr]}" "${_TMP[net]}" "${_STORE_TMP}"
+  rm -f "${_TMP[ua]}" "${_TMP[addr]}" "${_TMP[net]}" "${_TMP[fp]}" "${_STORE_TMP}"
 }
 
-# True when none of the three fragment names holds anything; a link or a
+# True when none of the fragment names holds anything; a link or a
 # FIFO left there counts as something, so the install below replaces it.
 _fleet_no_fragments() {
   local _f
@@ -1118,16 +1304,16 @@ while IFS= read -r _LINE; do
     "RESULT "*) _RESULT="${_LINE#RESULT }" ;;
   esac
 done < <(perl -e "${_FLT_PL}" -- mode=pass "${_ARGS[@]}" "now=${_NOW}" "since=${_SINCE}" \
-  "ban_a=${_BAN_A}" "ban_n=${_BAN_N}" "detect=${_DETECT}" "log=${_ACCESS_LOG}" \
-  "store=${_STORE}" "store_tmp=${_STORE_TMP}" "csf_allow=${_CSF_ALLOW}" \
-  "web6_allow=${_WEB6_ALLOW}" "tmp_ua=${_TMP[ua]}" "tmp_addr=${_TMP[addr]}" \
-  "tmp_net=${_TMP[net]}" 2> /dev/null)
-if [[ ! "${_RESULT}" =~ ^[0-9]+\ [0-9]+\ [0-9]+$ ]]; then
+  "ban_a=${_BAN_A}" "ban_n=${_BAN_N}" "ban_s=${_BAN_S}" "detect=${_DETECT}" \
+  "log=${_ACCESS_LOG}" "store=${_STORE}" "store_tmp=${_STORE_TMP}" \
+  "csf_allow=${_CSF_ALLOW}" "web6_allow=${_WEB6_ALLOW}" "tmp_ua=${_TMP[ua]}" \
+  "tmp_addr=${_TMP[addr]}" "tmp_net=${_TMP[net]}" "tmp_fp=${_TMP[fp]}" 2> /dev/null)
+if [[ ! "${_RESULT}" =~ ^[0-9]+\ [0-9]+\ [0-9]+\ [0-9]+$ ]]; then
   _fleet_note "ALERT: fleet analyser failed or could not write its temp files; store and live maps left untouched"
   _fleet_cleanup
   exit 1
 fi
-read -r _CNT_FP _CNT_ADDR _CNT_NET <<< "${_RESULT}"
+read -r _CNT_FP _CNT_ADDR _CNT_NET _CNT_STALE <<< "${_RESULT}"
 
 # No scope in BAN (or DETECT=NO) means no store at all, so a later switch back
 # to BAN starts from fresh evidence instead of resurrecting old members.
@@ -1171,10 +1357,12 @@ if (( _CHANGED == 0 )); then
   _fleet_cleanup
   exit 0
 fi
-# A live fleet adds members on most runs. A new or expired fingerprint applies
-# at once; a member-only change waits for _NGINX_FLEET_RELOAD_GAP since the
-# last reload, so a long fleet costs one reload per gap, not one per minute.
-if _fleet_names_plain && [[ -f "${_LIVE[ua]}" ]] && cmp -s "${_TMP[ua]}" "${_LIVE[ua]}"; then
+# A live fleet adds members on most runs. A new or expired fingerprint, or
+# one moving to the stale scope, applies at once; a member-only change waits
+# for _NGINX_FLEET_RELOAD_GAP since the last reload, so a long fleet costs one
+# reload per gap, not one per minute.
+if _fleet_names_plain && [[ -f "${_LIVE[ua]}" ]] && cmp -s "${_TMP[ua]}" "${_LIVE[ua]}" \
+  && [[ -f "${_LIVE[fp]}" ]] && cmp -s "${_TMP[fp]}" "${_LIVE[fp]}"; then
   _LAST=0
   if [[ -f "${_RELOAD_STAMP}" ]]; then
     _LAST=$(tr -cd '0-9' < "${_RELOAD_STAMP}" 2> /dev/null)
@@ -1200,7 +1388,7 @@ for _F in "${_NAMES[@]}"; do
   if [[ -f "${_LIVE[${_F}]}" ]] \
     && ! _acct_in_real_dir "${_OUT_DIR}" _conf_put_file_here "${_LIVE[${_F}]}" "${_BAKN[${_F}]}"; then
     _fleet_note "ALERT: cannot back up ${_OUT[${_F}]}; live maps left untouched"
-    _acct_in_real_dir "${_OUT_DIR}" rm -f -- "./${_BAKN[ua]}" "./${_BAKN[addr]}" "./${_BAKN[net]}"
+    _acct_in_real_dir "${_OUT_DIR}" rm -f -- "./${_BAKN[ua]}" "./${_BAKN[addr]}" "./${_BAKN[net]}" "./${_BAKN[fp]}"
     _fleet_cleanup
     exit 1
   fi
@@ -1232,5 +1420,5 @@ if ! service nginx reload > /dev/null 2>&1 8>&- 9>&-; then
   exit 1
 fi
 echo "${_NOW}" > "${_RELOAD_STAMP}"
-_fleet_note "RELOAD: fleet maps live (${_CNT_FP} fingerprints, ${_CNT_ADDR} addresses, ${_CNT_NET} networks)"
+_fleet_note "RELOAD: fleet maps live (${_CNT_FP} fingerprints, ${_CNT_STALE} stale, ${_CNT_ADDR} addresses, ${_CNT_NET} networks)"
 exit 0

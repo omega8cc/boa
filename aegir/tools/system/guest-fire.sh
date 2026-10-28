@@ -17,9 +17,22 @@ _FIRE_TIMEOUT=180  # seconds — 3x the normal 5-iteration runtime (5x10s=50s);
                    # leaves room for slow CSF iptables rebuilds on short IP lists
                    # while still catching true flood-induced hangs (many minutes)
 
+# The stuck run's children inherited its lock descriptor and keep the lock
+# held once the run itself is gone, so the whole tree goes: the run is
+# stopped first, so it starts nothing new, then its descendants, then the run.
+# guest-fire starts no daemon, so every holder of its lock is in that tree.
+_fire_kill_tree() {
+  local _c
+  kill -STOP "$1" 2>/dev/null
+  for _c in $(ps -o pid= --ppid "$1" 2>/dev/null); do
+    _fire_kill_tree "${_c}"
+  done
+  kill -9 "$1" 2>/dev/null || true
+}
+
 _kill_stuck_fire() {
   if [[ -e "${_FIRE_PID_FILE}" ]]; then
-    local _OLD_PID _START_TIME _ELAPSED
+    local _OLD_PID _START_TIME _ELAPSED _i
     _OLD_PID=$(cat "${_FIRE_PID_FILE}" 2>/dev/null)
     if [[ -n "${_OLD_PID}" ]] && kill -0 "${_OLD_PID}" 2>/dev/null; then
       # Process is alive — check elapsed time via pid file mtime
@@ -28,7 +41,12 @@ _kill_stuck_fire() {
       if (( _ELAPSED > _FIRE_TIMEOUT )); then
         echo "$(date) [fire-watchdog] PID ${_OLD_PID} stuck ${_ELAPSED}s > ${_FIRE_TIMEOUT}s — killing" \
           >> /var/log/boa/fire_stuck.log
-        kill -9 "${_OLD_PID}" 2>/dev/null || true
+        _fire_kill_tree "${_OLD_PID}"
+        # the lock is free only once the processes holding it are gone
+        for _i in 1 2 3 4 5 6 7 8 9 10; do
+          kill -0 "${_OLD_PID}" 2>/dev/null || break
+          sleep 0.2
+        done
         rm -f "${_FIRE_PID_FILE}"
       else
         # Running but within timeout — a normal overlap; let _manage_single_lock handle it
@@ -39,13 +57,12 @@ _kill_stuck_fire() {
       rm -f "${_FIRE_PID_FILE}"
     fi
   fi
-  # Record our own PID; mtime becomes the start-time reference for the next invocation
-  echo "$$" > "${_FIRE_PID_FILE}"
 }
 
 _kill_stuck_fire
-# Remove PID file on exit (normal or signal)
-trap 'rm -f "${_FIRE_PID_FILE}"' EXIT
+# Remove the PID file on exit (normal or signal), but only our own: a run the
+# lock refuses must leave the running holder's record for the next check.
+trap '[ "$(cat "${_FIRE_PID_FILE}" 2>/dev/null)" = "$$" ] && rm -f "${_FIRE_PID_FILE}"' EXIT
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -70,6 +87,11 @@ _manage_single_lock() {
   fi
 }
 _manage_single_lock
+# Only the run that holds the lock records its PID; the file's mtime is the
+# start time the next run's stuck check measures. A run the lock refuses
+# must not write it: it would replace the holder's PID with its own, and a
+# stuck holder would never be seen again.
+echo "$$" > "${_FIRE_PID_FILE}"
 
 # ----------------------------
 # Configuration Section
