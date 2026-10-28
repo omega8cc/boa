@@ -493,6 +493,10 @@ _spawn_detached() {
   if (( _SPAWN_STEP > 0 )); then
     _cmd="sleep $(( _SPAWN_STEP / 10 )).$(( _SPAWN_STEP % 10 )); ${_cmd}"
   fi
+  # The child gets no copy of this run's lock: a daemon a watchdog restarts
+  # would keep it, and after a kill -9 of this run the lock would stay held
+  # until that daemon restarts, so no later run could start.
+  [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && _cmd="exec ${_LOCK_FD}>&-; ${_cmd}"
   _SPAWN_STEP=$(( _SPAWN_STEP + 1 ))
   if command -v nohup >/dev/null 2>&1; then
     nohup bash -c "${_cmd}" >/dev/null 2>&1 &
@@ -537,7 +541,7 @@ _get_load() {
 # quantity without that bias. _D_LOAD stays empty when /proc/stat cannot be
 # read; the wait still lasts about 9 s either way.
 _get_dealiased_load() {
-  local _fd _i _k _v _rest _run _blk _sum=0 _n=0
+  local _fd _i _k _v _rest _run _blk _f _l _d _rsum=0 _bsum=0 _n=0 _dsum=0 _dn=0
   _D_LOAD=""
   # A pipe nothing writes to: read -t on it is a sleep without a fork.
   if ! exec {_fd}<> <(:); then
@@ -555,14 +559,38 @@ _get_dealiased_load() {
     done < /proc/stat
     if [[ "${_run}" =~ ^[0-9]+$ ]] && [[ "${_blk}" =~ ^[0-9]+$ ]]; then
       # procs_running includes this reader
-      _sum=$(( _sum + _run - 1 + _blk ))
+      _rsum=$(( _rsum + _run - 1 ))
+      _bsum=$(( _bsum + _blk ))
       _n=$(( _n + 1 ))
+    fi
+    # procs_blocked counts only tasks waiting on I/O; the load average counts
+    # every uninterruptible task (lock and NFS waits too), so those threads are
+    # also counted directly, three times over the window.
+    if (( _i % 30 == 0 )); then
+      _d=0
+      for _f in /proc/[0-9]*/task/[0-9]*/stat; do
+        read -r _l 2>/dev/null < "${_f}" || continue
+        _l="${_l##*) }"
+        [[ "${_l:0:1}" == "D" ]] && _d=$(( _d + 1 ))
+      done
+      _dsum=$(( _dsum + _d ))
+      _dn=$(( _dn + 1 ))
     fi
     read -rt 0.1 -u "${_fd}"
   done
   exec {_fd}>&-
   (( _n >= 45 )) || return 1
-  _D_LOAD=$(awk -v _s="${_sum}" -v _c="${_n}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_s / _c / _cpus) * 100 }')
+  _D_LOAD=$(awk -v _r="${_rsum}" -v _b="${_bsum}" -v _c="${_n}" -v _d="${_dsum}" -v _dc="${_dn}" -v _cpus="${_CPU_COUNT}" \
+    'BEGIN { _u = _b / _c; if (_dc > 0 && _d / _dc > _u) _u = _d / _dc; printf "%.1f", (_r / _c + _u) / _cpus * 100 }')
+}
+
+# A crawler block the measured average declined: say so, and keep the latest
+# such case on record (overwritten, so it never grows) for whoever asks why
+# protection did not arm.
+_spider_stand_down() {
+  echo "$1 load $2% but measured ${_D_LOAD}% over 9s: spider protection not needed."
+  echo "$(date) $1 load $2% measured ${_D_LOAD}% threshold ${_CPU_SPIDER_THRESHOLD}%" \
+    > /var/log/boa/spider_standdown.last 2>/dev/null
 }
 
 # True while a scheduled/manual backup is running. A backup's high load is
@@ -822,7 +850,7 @@ _load_control() {
     _get_dealiased_load
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if [ -n "${_D_LOAD}" ] && ! awk "BEGIN {exit !(${_D_LOAD} > ${_CPU_SPIDER_THRESHOLD})}"; then
-      echo "1-minute load ${_O_LOAD}% but measured ${_D_LOAD}% over 9s: spider protection not needed."
+      _spider_stand_down "1-minute" "${_O_LOAD}"
     elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
@@ -836,9 +864,13 @@ _load_control() {
       fi
     fi
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
-    sleep 9
+    # The 5-minute figure is fed by the same counts and lags behind a reading
+    # inflated that way, so it gets the same measured confirmation.
+    _get_dealiased_load
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
-    if awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    if [ -n "${_D_LOAD}" ] && ! awk "BEGIN {exit !(${_D_LOAD} > ${_CPU_SPIDER_THRESHOLD})}"; then
+      _spider_stand_down "5-minute" "${_F_LOAD}"
+    elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
@@ -924,9 +956,11 @@ done
 # queue for its load average every ~5 s (5*HZ+1 ticks), and passes on a
 # 5-second grid drift into step with those counts for half an hour of every
 # ~104 minutes, so the load average reported the passes' own bursts instead of
-# the box's load. No sleep after the last pass, and no pass starts after 48 s:
-# a run still going at the next cron minute holds the lock, and that minute's
-# run exits without a single pass.
+# the box's load. The run never reaches the next cron minute: a run still going
+# then holds the lock, and that minute's run exits without a single pass. So
+# whether to sleep for another pass is decided before sleeping, and only while
+# a pass starting after the sleep would still end in time if it spends its
+# 9-second cooldown measuring (the 48 s test is the backstop).
 for _iteration in {1..10}; do
   (( _iteration > 1 && SECONDS >= 48 )) && break
   echo "----------------------------"
@@ -943,8 +977,12 @@ for _iteration in {1..10}; do
     _spawn_detached "${_monPath}/hackftp.sh"
     _spawn_detached "${_monPath}/escapecheck.sh"
   fi
-  (( _iteration < 10 )) && sleep 5.5
+  (( _iteration < 10 && SECONDS < 42 )) || break
+  sleep 5.5
 done
+# A short wait while the last pass's launches start, so they are still this
+# run's children when loadreport first sees them.
+(( SECONDS < 55 )) && sleep 2
 
 echo "Done!"
 exit 0

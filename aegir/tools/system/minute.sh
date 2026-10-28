@@ -102,6 +102,10 @@ _launch_checker() {
   if (( _LAUNCH_STEP > 0 )); then
     _cmd="sleep $(( _LAUNCH_STEP / 10 )).$(( _LAUNCH_STEP % 10 )); ${_cmd}"
   fi
+  # The checker gets no copy of this run's lock: a daemon it restarts would
+  # keep it, and after a kill -9 of this run the lock would stay held until
+  # that daemon restarts, so no later run could start.
+  [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && _cmd="exec ${_LOCK_FD}>&-; ${_cmd}"
   _LAUNCH_STEP=$(( _LAUNCH_STEP + 1 ))
   nohup bash -c "${_cmd}" > /dev/null 2>&1 &
 }
@@ -212,17 +216,22 @@ done
 # counts for half an hour of every ~104 minutes, and the load average then
 # reports the passes' own bursts instead of the box's load. Hence a gap that is
 # never a multiple of 5 s, a first pass 2 s after the cron minute (clear of
-# every other job cron starts in that instant), and no sleep after the last
-# pass.
+# every other job cron starts in that instant), no sleep after the last pass,
+# and no pass that would start too late in the minute: a run still going at the
+# next cron minute holds the lock, and that minute's run exits without a pass.
 _GAP="${_SLEEP}"
 (( _SLEEP % 5 == 0 )) && _GAP="${_SLEEP}.5"
-sleep 2
+(( SECONDS < 2 )) && sleep "$(( 2 - SECONDS ))"
 for (( _iteration = 1; _iteration <= _ITER; _iteration++ )); do
   echo "----------------------------"
   echo "Iteration ${_iteration} of ${_ITER} (class ${_BOX_CLASS}):"
   _launch_auto_healing
-  (( _iteration < _ITER )) && sleep "${_GAP}"
+  (( _iteration < _ITER && SECONDS + _SLEEP < 56 )) || break
+  sleep "${_GAP}"
 done
+# A short wait while the last pass's checkers start, so they are still this
+# run's children when loadreport first sees them.
+(( SECONDS < 55 )) && sleep 3
 
 echo DONE!
 exit 0
