@@ -103,6 +103,7 @@ function drush_provision_hosting_le_post_provision_verify() {
   }
 
   $is_wildcard = FALSE;
+  $wild_base = '';
   if (d()->type == 'site' && provision_file()->exists($wildcard_ctrl)->status()) {
     // A wildcard needs the dns-01 challenge: a DNS flag, its hook and the
     // account's dehydrated config. Short of any of them the per-name order
@@ -115,10 +116,19 @@ function drush_provision_hosting_le_post_provision_verify() {
             !provision_file()->exists($le_cnfx)->status()) {
       drush_log('[hosting_le] Wildcard flag for ' . $real_name . ' but the DNS hook ' . $cf_hook . ' or the config ' . $le_cnfx . ' is not in place yet (the nightly installs the hook), so the per-name order is placed.', 'warning');
     }
+    elseif (!is_executable($cf_hook) ||
+            (substr($cf_hook, -8) == '/hook.py' && !is_executable(dirname($cf_hook) . '/venv/bin/python3'))) {
+      // A hook that is there but cannot run (no exec bit, or the Python hook
+      // without the venv the nightly builds for it) fails every dns-01 order
+      drush_log('[hosting_le] Wildcard flag for ' . $real_name . ' but the DNS hook ' . $cf_hook . ' is not runnable yet (its exec bit or, for the Python hook, its venv/bin/python3 is missing; the nightly installs both), so the per-name order is placed.', 'warning');
+    }
     else {
       $is_wildcard = TRUE;
-      $main_name = preg_replace('`^www\.`', '', $main_name);
-      $real_name = preg_replace('`^www\.`', '', $real_name);
+      // The order covers *.<bare> and <bare> but is filed under the site's own
+      // name (--alias): certs/<site name> is where $cert_dir, the vhost and
+      // the nightly look. Stripping www from $main_name and $real_name here
+      // made a www-named site fail its vhost test below and order nothing.
+      $wild_base = preg_replace('`^www\.`', '', $real_name);
     }
   }
 
@@ -200,16 +210,29 @@ function drush_provision_hosting_le_post_provision_verify() {
       }
     }
 
+    // dehydrated reads one config file, tools/le/config (dehydrated 0.7.3
+    // load_config: tools/le/config.sh is never read on its own). That file is
+    // the account's own: a wildcard's DNS settings live there and the nightly
+    // sets it immutable before each wildcard order. Demo mode used to copy the
+    // staging authority line over it (or fail on the immutable file and order
+    // from the live authority under the demo label) and remove it on the way
+    // out. The staging authority now lives in tools/le/config.sh alone, which
+    // reads the account's own file first, and every order in demo mode is
+    // pointed at it with --config; tools/le/config is never written here.
+    $le_cfg = '';
+    $le_staging = 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"';
+    $le_conf_lines = "# Written by BOA for the LE demo mode (tools/le/.ctrl/ssl-demo-mode.pid)\n"
+      . "# and read through dehydrated --config: the account's own tools/le/config\n"
+      . "# first, then the staging authority. Removed when the account leaves demo mode.\n"
+      . "if [ -r \"" . $le_cnfx . "\" ]; then . \"" . $le_cnfx . "\"; fi\n"
+      . $le_staging . "\n";
     if (provision_file()->exists($demo_mode_ctrl)->status()) {
+      $le_cfg = " --config " . $le_conf;
       if (!provision_file()->exists($le_conf)->status()) {
-
-        $le_conf_lines = "CA=\"https://acme-staging-v02.api.letsencrypt.org/directory\"\n";
 
         provision_file()->file_put_contents($le_conf, $le_conf_lines)
           ->succeed('[hosting_le] Created cnf ' . $le_conf)
           ->fail('[hosting_le] Could not create cnf ' . $le_conf);
-
-        copy($le_conf, $le_cnfx);
 
         if (provision_file()->exists($le_acct)->status()) {
           drush_log('[hosting_le] Demo LE account will be created.', 'info');
@@ -219,18 +242,39 @@ function drush_provision_hosting_le_post_provision_verify() {
         drush_log('[hosting_le] New LE accounts require registration on ACMEv2.', 'info');
         drush_log('[hosting_le] Running --register --accept-terms as required by ACMEv2.', 'info');
         $le_register = " --register --accept-terms";
-        exec("/bin/bash " . $le_exec . $le_register . " 2>&1", $register_output);
+        exec("/bin/bash " . $le_exec . $le_cfg . $le_register . " 2>&1", $register_output);
         $acme_register = implode(' ', $register_output);
         drush_log("[hosting_le] ACMEv2 Demo Register Output: " . $acme_register, 'info');
         $acme_register = "";
+      }
+      elseif (file_get_contents($le_conf) !== $le_conf_lines) {
+        // The one-line file of the earlier demo mode: brought to this form,
+        // so the account's own tools/le/config is read beside the staging
+        // authority; the account registered then stays.
+        provision_file()->file_put_contents($le_conf, $le_conf_lines)
+          ->succeed('[hosting_le] Rewrote cnf ' . $le_conf . ' to read the account\'s own ' . $le_cnfx . ' first')
+          ->fail('[hosting_le] Could not rewrite cnf ' . $le_conf);
       }
       drush_log('[hosting_le] Demo LE mode active. No real LE certs will be generated.', 'info');
       $demo_mode = TRUE;
     }
     else {
+      // tools/le/config holding only the staging authority line is the copy
+      // the earlier demo mode left (immutable once the nightly set it so):
+      // every order through it would go to the staging authority, so it goes,
+      // or, as only root can clear the bit, nothing is ordered.
+      if (provision_file()->exists($le_cnfx)->status() &&
+          trim(file_get_contents($le_cnfx)) === $le_staging) {
+        if (@unlink($le_cnfx)) {
+          drush_log('[hosting_le] Removed ' . $le_cnfx . ': it held only the staging authority line of the earlier demo mode, and the account is in live mode.', 'info');
+        }
+        else {
+          drush_log('[hosting_le] ' . $le_cnfx . ' holds only the staging authority line of the earlier demo mode and could not be removed (immutable?): every order through it would go to the staging authority, so nothing is ordered. The nightly removes it as root; so does chattr -i and rm by hand.', 'warning');
+          return FALSE;
+        }
+      }
       if (provision_file()->exists($le_conf)->status()) {
         unlink($le_conf);
-        unlink($le_cnfx);
         if (provision_file()->exists($le_acct)->status()) {
           rename($le_acct, $le_acct . "-demo");
         }
@@ -297,7 +341,7 @@ function drush_provision_hosting_le_post_provision_verify() {
               if (!preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $alias) &&
                 !preg_match("/\.(?:nodns)\./", $alias) &&
                 strpos($alias, '/') === FALSE &&
-                !strpos($alias, $main_name)) {
+                !strpos($alias, $wild_base)) {
                 $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
               }
             }
@@ -381,8 +425,8 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] NOTE: On hosted Ægir service you need to contact your host support for further assistance.", 'info');
       $output = '';
       $le_rc = 0;
-      $le_options = " --cron --ipv4";
-      $le_challenge = " --domain " . $real_name . " --challenge dns-01 --hook " . $cf_hook;
+      $le_options = " --cron --ipv4" . $le_cfg;
+      $le_challenge = " --domain " . $wild_base . " --challenge dns-01 --hook " . $cf_hook;
       if ($on_remote_server) {
         $le_options .= " --hook " . $le_hook;
       }
@@ -399,7 +443,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       if ($force_renew) {
         if ($no_alt_names || empty($alt_names)) {
           if ($is_wildcard) {
-            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $le_challenge;
+            $le_options .= " --alias " . $real_name . " --domain *." . $wild_base . $le_challenge;
             exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output, $le_rc);
           }
           else {
@@ -408,7 +452,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
         else {
           if ($is_wildcard) {
-            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $alt_names . $le_challenge;
+            $le_options .= " --alias " . $real_name . " --domain *." . $wild_base . $alt_names . $le_challenge;
             exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output, $le_rc);
           }
           else {
@@ -419,7 +463,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       else {
         if ($no_alt_names || empty($alt_names)) {
           if ($is_wildcard) {
-            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $le_challenge;
+            $le_options .= " --alias " . $real_name . " --domain *." . $wild_base . $le_challenge;
             exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output, $le_rc);
           }
           else {
@@ -428,7 +472,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
         else {
           if ($is_wildcard) {
-            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $alt_names . $le_challenge;
+            $le_options .= " --alias " . $real_name . " --domain *." . $wild_base . $alt_names . $le_challenge;
             exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output, $le_rc);
           }
           else {
@@ -446,6 +490,15 @@ function drush_provision_hosting_le_post_provision_verify() {
         drush_log("[hosting_le] Another LE task holds the lock " . $le_root . "/lock so this attempt was aborted.", 'warning');
         drush_log("[hosting_le] No certificate has been issued or renewed for " . $main_name . " in this attempt.", 'warning');
         drush_log("[hosting_le] Please run Verify again for this site once the other LE task has completed.", 'warning');
+        return FALSE;
+      }
+      // dehydrated's exit code is the verdict the patterns below cannot give:
+      // a failing hook, a hook whose environment was never installed or an
+      // order aborted mid-way leaves output none of them name, which then
+      // read as success and re-wired the vhost to nothing new. A non-zero
+      // code beside "Skipping renew" is dehydrated's own no-op.
+      if ((int) $le_rc !== 0 && !preg_match("/Skipping renew/i", $acme_result)) {
+        drush_log("[hosting_le] The LE order for " . $main_name . " ended with exit code " . $le_rc . "; nothing has been issued or installed. Output tail: " . substr($acme_result, -300), 'warning');
         return FALSE;
       }
       if (!provision_file()->exists($cert_dir)->status()) {
