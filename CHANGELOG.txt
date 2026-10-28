@@ -4,6 +4,24 @@
 
 @=> Important Fixes
 
+    * A Clone or a Migrate onto a name whose per-account files store was
+      still there (a deleted site's, kept by the operator's switch) checked
+      nothing: the storage tool re-linked the new site to the old store and
+      archived its private dir even under the switch. The copying tasks now
+      run the install's store check on the target name first and refuse,
+      the source untouched, when a share file names the store, the switch
+      holds it or the move failed; the Grav and Textpattern installs check
+      too, and the storage wrapper lets an account's own tasks set aside a
+      store at a name no site of the account carries (the new name has no
+      alias until the copy is made).
+
+    * A Delete of a site whose install was refused before anything was
+      built ended in warnings about undefined database keys and an unknown
+      database name, and a Grav one failed on the missing site directory;
+      it now takes no safety copy, runs no store or database step and ends
+      clean. A Grav site's Delete sets the site's store aside like the
+      other kinds.
+
     * Nginx no longer warns "could not build optimal map_hash" on every
       configtest and reload while the crawler-fleet guard holds a large
       address map. A 192-byte bucket fits only two or three fleet keys,
@@ -23,6 +41,39 @@
       an account without regexp directives, and multiback no longer
       prints its priority change and a bare 3 from the cache drop into
       the run's output.
+
+    * A wildcard certificate for a www-named site is ordered on the bare
+      name but filed under the site's own name, where its vhost, Verify
+      and the nightly renewal look. Both strips of the www prefix acted
+      on the site's name itself: Verify then looked for a vhost under the
+      bare name and ordered nothing, and the nightly renewed a directory
+      nothing read while the installed certificate ran out.
+
+    * Verify reads dehydrated's exit code: a failing order whose output
+      none of the known patterns name (a DNS hook that fails or cannot
+      run, an order aborted before its challenge) is now a task warning
+      naming the code and the output tail, where it read as a success
+      and re-wired the vhost to nothing new. The wildcard order is placed
+      only through a hook that can run, with its Python environment in
+      place; otherwise the per-name order is placed with a warning.
+
+    * The nightly renewal of an account in Let's Encrypt demo mode no
+      longer asks for the ISRG Root X1 chain, which the staging
+      authority does not offer, so its orders complete instead of ending
+      on an alternative chain not found.
+
+    * An account's own tools/le/config, where a wildcard's DNS settings
+      live, is kept when the account enters or leaves Let's Encrypt demo
+      mode. Demo mode copied the staging authority line over it, or
+      failed on the immutable file and ordered from the live authority
+      under the demo label, and removed it on the way out. The staging
+      authority now lives in tools/le/config.sh alone, which reads the
+      account's own file first; Verify, the Octopus installer and both
+      night workers point dehydrated at it with --config in demo mode,
+      and a copy an earlier demo mode left behind is removed by the
+      nightly, as root, once the account is back in live mode. The
+      account's own frontend renewal in demo mode also leaves the ISRG
+      Root X1 chain out.
 
     * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
       lock, and the lock is released as it ends. The lock's handler only
@@ -2971,6 +3022,14 @@
       the server under its name instead of its made-up hostname.
 
 @=> Changes and Upgrades
+
+    * BOA no longer lays its own copies of the hosting_le module's two
+      drush files over each account's control panel once per release.
+      The module ships those files itself, and the copies were an early
+      hotfix route that has not been needed for years. The stale copies
+      under /var/xdrago/conf go with their fetch markers; the account pass
+      that installs the Let's Encrypt helper and keeps its registration
+      runs as before.
 
     * The documentation that used to ship in this repository's docs/
       directory is retired: https://docs.boa.io is the single

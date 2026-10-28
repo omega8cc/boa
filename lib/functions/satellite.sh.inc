@@ -11532,8 +11532,17 @@ _satellite_child_b_letsencrypt() {
         || [ "${_leSetup}" = "YES" ] \
         || [ -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
         touch ${_leRoot}/.ctrl/ssl-demo-mode.pid
-        echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${_leRoot}/config.sh
-        cp -af ${_leRoot}/config.sh ${_leRoot}/config
+        ### The staging authority in config.sh alone, read through dehydrated
+        ### --config by Verify and the night workers in demo mode; the
+        ### account's own tools/le/config (a wildcard's DNS settings) is read
+        ### first and never written or copied over. The same text, byte for
+        ### byte, as the hosting_le patch writes, so Verify leaves it as it is.
+        printf '%s\n' \
+          '# Written by BOA for the LE demo mode (tools/le/.ctrl/ssl-demo-mode.pid)' \
+          "# and read through dehydrated --config: the account's own tools/le/config" \
+          '# first, then the staging authority. Removed when the account leaves demo mode.' \
+          "if [ -r \"${_leRoot}/config\" ]; then . \"${_leRoot}/config\"; fi" \
+          'CA="https://acme-staging-v02.api.letsencrypt.org/directory"' > ${_leRoot}/config.sh
         if [ -e "${_leKeyJ}" ]; then
           mv -f ${_leKeyJ} "${_leKeyJ}-prev"
         fi
@@ -11556,7 +11565,13 @@ _satellite_child_b_letsencrypt() {
   if [ ! -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${_leRoot}/config.sh" ]; then
     rm -f ${_leRoot}/config.sh
-    rm -f ${_leRoot}/config
+    ### tools/le/config is the account's own and stays; the one-line copy of
+    ### the staging authority an earlier demo mode left there goes, bit and all.
+    if [ -f "${_leRoot}/config" ] \
+      && [ "$(head -c 200 "${_leRoot}/config" | tr -d '\n')" = 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"' ]; then
+      chattr -i ${_leRoot}/config 2> /dev/null
+      rm -f ${_leRoot}/config
+    fi
     if [ -e "${_leKeyJ}" ]; then
       mv -f ${_leKeyJ} "${_leKeyJ}-prev"
     fi
