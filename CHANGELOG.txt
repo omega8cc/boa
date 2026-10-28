@@ -4,6 +4,14 @@
 
 @=> Important Fixes
 
+    * Nginx no longer warns "could not build optimal map_hash" on every
+      configtest and reload while the crawler-fleet guard holds a large
+      address map. A 192-byte bucket fits only two or three fleet keys,
+      so no table size fit a map of a few thousand addresses; the master
+      config now sets map_hash_bucket_size 512 and map_hash_max_size
+      262144. The sizes reach a box with its next Aegir Master upgrade
+      or server Verify.
+
     * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
       lock, and the lock is released as it ends. The lock's handler only
       unlocked, so the script went on running without the lock and a
