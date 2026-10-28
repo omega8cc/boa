@@ -160,10 +160,11 @@ _manage_single_lock() {
 _manage_single_lock
 # A signal ends the run and the EXIT trap releases the queue pause and the
 # lock once: a handler that returned would go on changing links with both
-# released.
-trap '_clean_lock' EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
+# released. INT and TERM are sent again with their default action back, so
+# a calling script stops too, and a second one cannot cut the release short.
+trap 'trap "" INT TERM; _clean_lock' EXIT
+trap 'trap "" INT TERM; trap - INT; kill -INT $$' INT
+trap 'trap "" INT TERM; trap - TERM; kill -TERM $$' TERM
 
 _clean_lock() {
   # Release the task-queue stop file only if THIS process created it and still owns it

@@ -186,20 +186,24 @@ _single_instance_lock() {
   # trap after locking replaces this one and must call
   # _single_instance_unlock itself (flock still auto-releases when the
   # process exits, so the worst a lost trap costs is the tidy-up).
+  # A second INT or TERM while it runs is ignored: it would end the trap
+  # before the release.
   _LOCK_PREV="$(trap -p EXIT)"
   if [ -n "${_LOCK_PREV}" ]; then
     eval "set -- ${_LOCK_PREV}"
     _LOCK_RELEASE="${3:-}"$'\n'"${_LOCK_RELEASE}"
   fi
-  trap "${_LOCK_RELEASE}" EXIT
-  # A trap on a signal replaces its default action, so INT and TERM exit
-  # here with the usual status and the EXIT trap then releases the lock: a
-  # handler that returned would go on running beside the next copy. HUP
-  # leaves the run going and still locked, so a tool started in a remote
-  # session survives the session's end. ':', not '': the children get the
-  # default HUP back instead of inheriting an ignore.
-  trap 'exit 130' INT
-  trap 'exit 143' TERM
+  trap "trap '' INT TERM"$'\n'"${_LOCK_RELEASE}" EXIT
+  # A trap on a signal replaces its default action: a handler that returned
+  # would go on running beside the next copy. INT and TERM put the default
+  # action back and send the signal again, so the EXIT trap releases the
+  # lock and the script then dies of that signal, which a calling script
+  # sees as an interrupt and stops on too (a plain exit 130 lets it carry
+  # on). HUP leaves the run going and still locked, so a tool started in a
+  # remote session survives the session's end. ':', not '': the children
+  # get the default HUP back instead of inheriting an ignore.
+  trap 'trap "" INT TERM; trap - INT; kill -INT $$' INT
+  trap 'trap "" INT TERM; trap - TERM; kill -TERM $$' TERM
   trap ':' HUP
 }
 
