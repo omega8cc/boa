@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f60"
+export _sPid="f59"
 
 # Base directory for user configurations
 _BASE_DIR="/data/disk"
@@ -206,6 +206,13 @@ Usage Instructions:
    Example:
    --exclude-regexp ^${_user_static_dir}/trash/.*
    --exclude-regexp ^${_user_ftp_dir_regex}/temp_files/.*
+
+Rules:
+- A pattern is a Python regular expression, as the backup tool reads it. A line
+  whose pattern does not compile, ends in a backslash or holds a doubled one is
+  refused and logged by its line number; the other lines are kept.
+- A file is read up to 500 lines, and after 20 refused lines the rest of the
+  file is ignored.
 
 Security:
 - Ensure these files are restricted to the user only:

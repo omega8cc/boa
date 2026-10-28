@@ -325,8 +325,9 @@ for my $k (qw(now window min_span tail_bytes ip_min req_min share_pct noref_pct 
   $K{$k} = ($v =~ /\A[0-9]{1,12}\z/) ? $v + 0 : 0;
 }
 # Internal bounds, not knobs. KEY_MAX: nginx hashes an exact map key only when
-# pointer + align8(len + 2) fits in map_hash_bucket_size minus a pointer; the
-# master render sets 192, so 174 bytes on x86_64. MEM_MAX bounds one pass.
+# pointer + align8(len + 2) fits in map_hash_bucket_size minus a pointer. An
+# older master render sets 192, so 174 bytes on x86_64, and a longer key fails
+# the box-wide configtest there. MEM_MAX bounds one pass.
 my $KEY_MAX = 174;
 my $MEM_MAX = 2000;
 my $MYIP = $A{myip} // '';

@@ -1021,7 +1021,8 @@ _is_whitelisted_ip6() {
 # Site24x7, and local addresses. The monitor must honour that single source
 # of truth rather than maintain its own list.
 #
-# The loader (below) parses csf.allow once at startup into:
+# The loader (below) parses csf.allow once at startup, or reads the tables it
+# kept from an unchanged list, into:
 #   _CSF_ALLOW_IPS          -- exact host  -> 1  (O(1) lookup)
 #   _CSF_ALLOW_CIDR_OCTET1  -- first octet -> 1  (cheap prescreen)
 #   _CIDR_NET / _CIDR_MASK / _CIDR_O1            (parallel indexed arrays)
@@ -2180,45 +2181,112 @@ fi
 # trusted too, as guest-fire's ban step trusts it. Destination-only rules
 # (DNS/DHCP use d=<ip>, not s=) stay out: they name a server this box calls.
 declare -A _CSF_ALLOW_IPS            # exact host -> 1
+declare -A _CSF_ALLOW_SEEN           # address/bits already parsed
 declare -A _CSF_ALLOW_CIDR_OCTET1    # first octet -> 1  (cheap prescreen)
 _CIDR_NET=()                         # masked network as 32-bit int  (indexed)
 _CIDR_MASK=()                        # 32-bit subnet mask             (indexed)
 _CIDR_O1=()                          # first octet, parallel to above (indexed)
 _CSF_ALLOW_FILE="/etc/csf/csf.allow"
+_CSF_ALLOW_CACHE="/var/xdrago/monitor/log/csf.allow.parsed"
 # A plain entry is the line's first field (csf strips leading whitespace) and
 # ends at whitespace or the line's end (the comment is cut off before the match).
 _CSF_PLAIN_RE='^[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))?([[:space:]]|$)'
 if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
-  # The last line counts even without a trailing newline, as csf reads it.
-  while IFS= read -r _aline || [[ -n "${_aline}" ]]; do
-    # Skip full-line comments; an address named only in a comment is not an
-    # allow.
-    [[ "${_aline}" =~ ^[[:space:]]*# ]] && continue
-    _aline="${_aline%%#*}"
-    # Match any s=A.B.C.D or s=A.B.C.D/N (port/direction-agnostic), else a
-    # plain first-field A.B.C.D or A.B.C.D/N.
-    [[ "${_aline}" =~ s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))? ]] \
-      || [[ "${_aline}" =~ ${_CSF_PLAIN_RE} ]] || continue
-    _addr="${BASH_REMATCH[1]}"
-    _bits="${BASH_REMATCH[3]}"
-    IFS=. read -r _a _b _c _d <<< "${_addr}"
-    # Skip malformed octets
-    (( _a<=255 && _b<=255 && _c<=255 && _d<=255 )) || continue
-    if [[ -z "${_bits}" || "${_bits}" == "32" ]]; then
-      # Bare host or explicit /32 — exact lookup is sufficient
-      _CSF_ALLOW_IPS["${_addr}"]=1
+  # The parsed tables are kept as data, keyed by the list's checksum and
+  # length, so a pass re-parses the list only after it changed (a restore of
+  # an older copy included). The tag names this parser: bump it whenever the
+  # parsing below changes.
+  _CSF_ALLOW_KEY="v1 $(cksum < "${_CSF_ALLOW_FILE}" 2>/dev/null)"
+  _CSF_ALLOW_HIT=0
+  if [[ -f "${_CSF_ALLOW_CACHE}" && ! -L "${_CSF_ALLOW_CACHE}" ]] \
+    && IFS= read -r _aline < "${_CSF_ALLOW_CACHE}" \
+    && [[ "${_aline}" == "# ${_CSF_ALLOW_KEY}" ]]; then
+    _ca_rows=0
+    _ca_end=""
+    # Only digits and dots are taken: the numbers reach (( )) later, where a
+    # subscript in a value would run as a command. Fields split on the space
+    # the writer puts there, not on the script's IFS.
+    while IFS=' ' read -r _ca_t _ca_x _ca_y _ca_z; do
+      case "${_ca_t}" in
+        I) [[ -n "${_ca_x}" && "${_ca_x}" != *[!0-9.]* ]] || continue
+           _CSF_ALLOW_IPS["${_ca_x}"]=1
+           _ca_rows=$(( _ca_rows + 1 )) ;;
+        C) [[ -n "${_ca_x}" && -n "${_ca_y}" && -n "${_ca_z}" \
+              && "${_ca_x}${_ca_y}${_ca_z}" != *[!0-9]* ]] || continue
+           _CIDR_NET+=( "${_ca_x}" ); _CIDR_MASK+=( "${_ca_y}" ); _CIDR_O1+=( "${_ca_z}" )
+           _CSF_ALLOW_CIDR_OCTET1["${_ca_z}"]=1
+           _ca_rows=$(( _ca_rows + 1 )) ;;
+        "#") [[ "${_ca_x}" == "end" ]] && _ca_end="${_ca_y}" ;;
+      esac
+    done < "${_CSF_ALLOW_CACHE}"
+    if [[ "${_ca_end}" == "${_ca_rows}" ]]; then
+      _CSF_ALLOW_HIT=1
     else
-      # CIDR — precompute masked network int and mask once at load time so
-      # _is_whitelisted_ip never needs subshells or external tools at runtime
-      (( _bits < 1 || _bits > 31 )) && continue
-      _ni=$(( (_a<<24)+(_b<<16)+(_c<<8)+_d ))
-      _mk=$(( (0xFFFFFFFF << (32 - _bits)) & 0xFFFFFFFF ))
-      _CIDR_NET+=( $(( _ni & _mk )) )
-      _CIDR_MASK+=( "${_mk}" )
-      _CIDR_O1+=( "${_a}" )
-      _CSF_ALLOW_CIDR_OCTET1["${_a}"]=1
+      # A cache cut short, or with a row that is not plain numbers, would drop
+      # allowed addresses: parse the list afresh instead of trusting part of it.
+      _CSF_ALLOW_IPS=(); _CSF_ALLOW_CIDR_OCTET1=()
+      _CIDR_NET=(); _CIDR_MASK=(); _CIDR_O1=()
     fi
-  done < "${_CSF_ALLOW_FILE}"
+  fi
+  if (( ! _CSF_ALLOW_HIT )); then
+    # The last line counts even without a trailing newline, as csf reads it.
+    while IFS= read -r _aline || [[ -n "${_aline}" ]]; do
+      # Skip full-line comments; an address named only in a comment is not an
+      # allow.
+      [[ "${_aline}" =~ ^[[:space:]]*# ]] && continue
+      _aline="${_aline%%#*}"
+      # Match any s=A.B.C.D or s=A.B.C.D/N (port/direction-agnostic), else a
+      # plain first-field A.B.C.D or A.B.C.D/N.
+      [[ "${_aline}" =~ s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))? ]] \
+        || [[ "${_aline}" =~ ${_CSF_PLAIN_RE} ]] || continue
+      _addr="${BASH_REMATCH[1]}"
+      _bits="${BASH_REMATCH[3]}"
+      # A provider entry repeats once per web port: parse each address once.
+      [[ -n "${_CSF_ALLOW_SEEN["${_addr}/${_bits}"]:-}" ]] && continue
+      _CSF_ALLOW_SEEN["${_addr}/${_bits}"]=1
+      # Split by expansion, not a here-string: the regex leaves exactly four
+      # digit groups, and a here-string costs a pipe read byte by byte.
+      _a="${_addr%%.*}"; _d="${_addr##*.}"; _b="${_addr#*.}"; _c="${_b#*.}"
+      _b="${_b%%.*}"; _c="${_c%%.*}"
+      # Skip malformed octets
+      (( _a<=255 && _b<=255 && _c<=255 && _d<=255 )) || continue
+      if [[ -z "${_bits}" || "${_bits}" == "32" ]]; then
+        # Bare host or explicit /32 — exact lookup is sufficient
+        _CSF_ALLOW_IPS["${_addr}"]=1
+      else
+        # CIDR — precompute masked network int and mask once at load time so
+        # _is_whitelisted_ip never needs subshells or external tools at runtime
+        (( _bits < 1 || _bits > 31 )) && continue
+        _ni=$(( (_a<<24)+(_b<<16)+(_c<<8)+_d ))
+        _mk=$(( (0xFFFFFFFF << (32 - _bits)) & 0xFFFFFFFF ))
+        _CIDR_NET+=( $(( _ni & _mk )) )
+        _CIDR_MASK+=( "${_mk}" )
+        _CIDR_O1+=( "${_a}" )
+        _CSF_ALLOW_CIDR_OCTET1["${_a}"]=1
+      fi
+    done < "${_CSF_ALLOW_FILE}"
+    # Kept only when the list still has the key it was read under:
+    # guest-water rebuilds it in steps (a sed -i, then one append per
+    # address), and tables parsed from one state filed under another's key
+    # would be served whenever that other state comes back.
+    if [[ "${_CSF_ALLOW_KEY}" == "v1 "[0-9]*" "[0-9]* ]] \
+      && [[ "v1 $(cksum < "${_CSF_ALLOW_FILE}" 2>/dev/null)" == "${_CSF_ALLOW_KEY}" ]]; then
+      # Mode 0600, like the list it is parsed from; replaced whole by a rename.
+      # One fixed temp name: the lock keeps one scorer at a time, and a run
+      # stopped mid-write leaves nothing the next one does not overwrite.
+      ( umask 077
+        {
+          printf '# %s\n' "${_CSF_ALLOW_KEY}"
+          for _addr in "${!_CSF_ALLOW_IPS[@]}"; do printf 'I %s\n' "${_addr}"; done
+          for _ca_i in "${!_CIDR_NET[@]}"; do
+            printf 'C %s %s %s\n' "${_CIDR_NET[_ca_i]}" "${_CIDR_MASK[_ca_i]}" "${_CIDR_O1[_ca_i]}"
+          done
+          printf '# end %s\n' "$(( ${#_CSF_ALLOW_IPS[@]} + ${#_CIDR_NET[@]} ))"
+        } > "${_CSF_ALLOW_CACHE}.new" ) 2>/dev/null \
+        && mv -f "${_CSF_ALLOW_CACHE}.new" "${_CSF_ALLOW_CACHE}" 2>/dev/null \
+        || rm -f "${_CSF_ALLOW_CACHE}.new" 2>/dev/null
+    fi
+  fi
 fi
 
 # Load the nginx-native IPv6 allow store — the v6 counterpart of the csf.allow
