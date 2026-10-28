@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * Since the move to lshell 0.11 a limited shell could not answer a
+      prompt on its terminal: the first SSH connection to a new host (a
+      git clone from a code host whose key was not yet known) failed with
+      "Host key verification failed.", and a key passphrase or a git
+      password was never asked for. lshell 0.11.15 hands the terminal to
+      the command it runs; Ctrl+Z, fg and Ctrl+C work as before.
+
     * An Octopus account installed after the server's off-site backup was
       set up was in no root data backup at all: the data run's account
       list was built once, so the account's /data/disk tree and its files
