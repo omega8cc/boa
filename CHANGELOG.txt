@@ -7,11 +7,13 @@
     * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
       lock, and the lock is released as it ends. The lock's handler only
       unlocked, so the script went on running without the lock and a
-      second copy could start beside it. A hangup leaves the script
-      running and still locked, so a tool started in a remote session
-      survives its end. updatesymlinks did the same with the queue pause:
-      a TERM released the pause and the lock and it went on changing
-      links; it now ends.
+      second copy could start beside it. The script dies of the signal,
+      so an installer that runs it in the foreground stops on a Ctrl-C
+      too instead of carrying on past a step left half done. A hangup
+      leaves the script running and still locked, so a tool started in a
+      remote session survives its end. updatesymlinks did the same with
+      the queue pause: a TERM released the pause and the lock and it went
+      on changing links; it now ends.
 
     * A cleanup a BOA script sets for its exit before it takes the
       single-instance lock runs again: the lock's own exit handler
