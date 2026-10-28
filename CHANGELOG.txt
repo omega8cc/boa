@@ -4,6 +4,14 @@
 
 @=> Important Fixes
 
+    * An Octopus account installed after the server's off-site backup was
+      set up was in no root data backup at all: the data run's account
+      list was built once, so the account's /data/disk tree and its files
+      store on attached storage (/mnt/<disk>/files/<account>) were never
+      uploaded. The list is now built again whenever an account or home
+      directory comes or goes, and replaced by rename; the first data run
+      after the update backs up every account left out so far.
+
     * A Clone or a Migrate onto a name whose per-account files store was
       still there (a deleted site's, kept by the operator's switch) checked
       nothing: the storage tool re-linked the new site to the old store and
