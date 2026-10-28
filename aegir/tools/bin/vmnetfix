@@ -204,24 +204,27 @@ _single_instance_lock() {
   # trap after locking replaces this one and must call
   # _single_instance_unlock itself (flock still auto-releases when the
   # process exits, so the worst a lost trap costs is the tidy-up).
-  # A second INT or TERM while it runs is ignored: it would end the trap
-  # before the release.
+  # The trap hands the exit status on to that earlier trap, ignores a
+  # second INT or TERM (it would end the trap before the release), and last
+  # sends on the signal that ended the run, if one did.
   _LOCK_PREV="$(trap -p EXIT)"
   if [ -n "${_LOCK_PREV}" ]; then
     eval "set -- ${_LOCK_PREV}"
     _LOCK_RELEASE="${3:-}"$'\n'"${_LOCK_RELEASE}"
   fi
-  trap "trap '' INT TERM"$'\n'"${_LOCK_RELEASE}" EXIT
+  _LOCK_SIG=""
+  trap "_LOCK_RC=\$?; trap '' INT TERM; (exit \"\${_LOCK_RC}\")"$'\n'"${_LOCK_RELEASE}"$'\n''[ -z "${_LOCK_SIG:-}" ] || { trap - "${_LOCK_SIG}"; kill -"${_LOCK_SIG}" "${BASHPID:-$$}"; }' EXIT
   # A trap on a signal replaces its default action: a handler that returned
-  # would go on running beside the next copy. INT and TERM put the default
-  # action back and send the signal again, so the EXIT trap releases the
-  # lock and the script then dies of that signal, which a calling script
-  # sees as an interrupt and stops on too (a plain exit 130 lets it carry
-  # on). HUP leaves the run going and still locked, so a tool started in a
-  # remote session survives the session's end. ':', not '': the children
-  # get the default HUP back instead of inheriting an ignore.
-  trap 'trap "" INT TERM; trap - INT; kill -INT $$' INT
-  trap 'trap "" INT TERM; trap - TERM; kill -TERM $$' TERM
+  # would go on running beside the next copy. INT and TERM end the run here;
+  # once the EXIT trap has released the lock it puts the default action
+  # back and sends the signal again, so the script dies of it and a calling
+  # script sees an interrupt and stops too (a plain exit 130 lets it carry
+  # on). The process is named by BASHPID, right in a subshell as well. HUP
+  # leaves the run going and still locked, so a tool started in a remote
+  # session survives the session's end. ':', not '': the children get the
+  # default HUP back instead of inheriting an ignore.
+  trap '_LOCK_SIG=INT; exit 130' INT
+  trap '_LOCK_SIG=TERM; exit 143' TERM
   trap ':' HUP
 }
 
