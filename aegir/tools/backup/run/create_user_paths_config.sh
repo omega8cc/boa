@@ -3,10 +3,15 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f59"
+export _sPid="f57"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
+# An account's directive file is a handful of lines: read up to this many,
+# and stop after this many refusals, each cap logged once by line number
+_MAX_DIRECTIVE_LINES=500
+_MAX_INVALID_LINES=20
+_RUN_LOCK_FILE="/run/create_user_paths_config.lock"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -44,6 +49,18 @@ _normalize_incident_report() {
   esac
 }
 _normalize_incident_report
+
+# One run at a time: clear.sh starts this writer on every tick and two of its
+# cron schedules can start in the same second; a second copy would rebuild
+# and rewrite the same files under the first.
+_take_run_lock() {
+  exec 9> "${_RUN_LOCK_FILE}"
+  flock -n 9
+}
+if ! _take_run_lock; then
+  echo "Another paths configuration run is live; nothing to do."
+  exit 0
+fi
 
 # An account owns /data/disk/<oN>, so it can rename root's remote_backups
 # there and put a directory or a link of its own in its place, and through
@@ -86,6 +103,21 @@ _acct_is_file_here() {
 _acct_read_file_here() {
   _acct_is_file_here "${1}" || return 1
   _acct_read_here "${1}"
+}
+# The account's four directive files as root sees them in the current
+# (pinned) config directory: one line a name, with the file's mtime and size
+# when it is a regular file, `-` otherwise. Nothing is read through a link,
+# and no content is read at all; the paths file is built again whenever this
+# differs from what the last build recorded.
+_acct_directives_state_here() {
+  local _n
+  for _n in include.txt exclude.txt include_regexp.txt exclude_regexp.txt; do
+    if _acct_is_file_here "${_n}"; then
+      echo "${_n} $(stat -c '%Y %s' -- "./${_n}" 2> /dev/null)"
+    else
+      echo "${_n} -"
+    fi
+  done
 }
 # True when $1 is root's and no one else can write it: owned by root, not
 # writable by others, group-writable only for group root.
@@ -179,11 +211,21 @@ _log_issue() {
   local _file=$2
   local _message=$3
   echo "[$(date)] Validation issue: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
-    # Alert the admin
-    echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_VALIDATION_LOG_FILE}
-    s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_VALIDATION_LOG_FILE}
-  fi
+}
+# The log's length when this run started; _mail_validation_issues sends the
+# lines added since, once, at the end of the run (incident reporting ALL).
+_log_lines() {
+  [ -f "${_VALIDATION_LOG_FILE}" ] && wc -l < "${_VALIDATION_LOG_FILE}" || echo 0
+}
+_VLOG_LINES_AT_START="$(_log_lines)"
+_mail_validation_issues() {
+  local _now
+  [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ] || return 0
+  _now="$(_log_lines)"
+  [ "${_now}" -gt "${_VLOG_LINES_AT_START}" ] || return 0
+  echo "[$(date)] Sending Backup Validation Alert to ${_MY_EMAIL}" >> "${_VALIDATION_LOG_FILE}"
+  tail -n "+$((_VLOG_LINES_AT_START + 1))" "${_VALIDATION_LOG_FILE}" \
+    | s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" "${_MY_EMAIL}"
 }
 
 # Function to validate and merge configuration files
@@ -203,6 +245,7 @@ _validate_and_merge_paths() {
   local _invalid_paths_found=false
   local _body
   local _line_no=0
+  local _invalid=0
   if [ "${_if_validate}" = "YES" ]; then
     _body="$(_acct_in_real_dir "${_file%/*}" _acct_read_file_here "${_file##*/}")"
   else
@@ -221,6 +264,19 @@ _validate_and_merge_paths() {
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
     _line_no=$((_line_no + 1))
+    if [ "${_if_validate}" = "YES" ]; then
+      # A directive file is a handful of lines; both caps bound what one
+      # account can make a run read, log and mail
+      if [ "${_line_no}" -gt "${_MAX_DIRECTIVE_LINES}" ]; then
+        _log_issue "${_user}" "${_file}" "More than ${_MAX_DIRECTIVE_LINES} lines; the rest of the file is ignored (line ${_line_no})"
+        _invalid_paths_found=true
+        break
+      fi
+      if [ "${_invalid}" -ge "${_MAX_INVALID_LINES}" ]; then
+        _log_issue "${_user}" "${_file}" "More than ${_MAX_INVALID_LINES} invalid lines; the rest of the file is ignored (line ${_line_no})"
+        break
+      fi
+    fi
     # Trim edge whitespace, including the CR of a CRLF-edited file -- a
     # cosmetic margin must not refuse an otherwise valid line
     _line="${_line#"${_line%%[![:space:]]*}"}"
@@ -242,11 +298,13 @@ _validate_and_merge_paths() {
         *\\)
           _log_issue "${_user}" "${_file}" "Invalid pattern: ends in a backslash (line ${_line_no})"
           _invalid_paths_found=true
+          _invalid=$((_invalid + 1))
           continue
           ;;
         *\\\\*)
           _log_issue "${_user}" "${_file}" "Invalid pattern: contains a doubled backslash (line ${_line_no})"
           _invalid_paths_found=true
+          _invalid=$((_invalid + 1))
           continue
           ;;
       esac
@@ -256,12 +314,14 @@ _validate_and_merge_paths() {
           || echo "${_line}" | grep -Eq "${_rgx_shape}"; then
           echo "${_line}" >> "${_output_file}"
         else
-          _log_issue "${_user}" "${_file}" "Invalid path: ${_line}"
+          _log_issue "${_user}" "${_file}" "Invalid path (line ${_line_no})"
           _invalid_paths_found=true
+          _invalid=$((_invalid + 1))
         fi
       else
-        _log_issue "${_user}" "${_file}" "Invalid directive: ${_line}"
+        _log_issue "${_user}" "${_file}" "Invalid directive (line ${_line_no})"
         _invalid_paths_found=true
+        _invalid=$((_invalid + 1))
       fi
     elif [ "${_if_validate}" = "NO" ]; then
       echo "${_line}" >> "${_output_file}"
@@ -288,6 +348,17 @@ _control_file_present() {
   _acct_in_real_dir "${_user_control_dir}" _acct_is_file_here "${1}"
 }
 
+# YES when the account's paths file must be built: the serial changed (the
+# caller found no marker), the file is missing, or the directive files differ
+# from what the last build recorded. Reads the caller's _regen, _state and
+# file names.
+_user_paths_regen_needed() {
+  [ "${_regen}" = "YES" ] && { echo YES; return 0; }
+  [ -f "${_user_paths_file}" ] || { echo YES; return 0; }
+  [ "${_state}" = "$(cat "${_directives_state_file}" 2> /dev/null)" ] || { echo YES; return 0; }
+  echo NO
+}
+
 # Runs inside the real paths directory, pinned by _acct_in_real_dir, and only
 # when it and remote_backups above it are root's alone: no account can put a
 # name here, so the files root keeps here are read and written as ./names,
@@ -297,7 +368,14 @@ _user_paths_config_here() {
   chown root:root .
   chmod 755 .
 
+  # The directive files as root sees them now, read before anything is
+  # written; a serial change (no marker) runs the one-time steps below and
+  # builds the file, a changed directive file builds it alone.
+  local _state _regen=NO
+  _state="$(_acct_in_real_dir "${_user_control_dir}" _acct_directives_state_here)"
+
   if [ ! -f "${_user_ctrl_file}" ]; then
+    _regen=YES
 
     ### Migrate legacy exclude/include files if present and merge unique entries
 
@@ -360,6 +438,9 @@ EOF
       rm -f ./.backboa."${_user}".*.exclude.ctrl.file
       touch "${_exclude_ctrl_file}"
     fi
+  fi
+
+  if [ "$(_user_paths_regen_needed)" = "YES" ]; then
 
     # Cleanup for empty or not used include config files
     if ! _control_file_present include_regexp.txt; then
@@ -430,14 +511,16 @@ EOF
     local _MERGED_ALL_EXCLUDE=$(cat "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
     # Create the final paths configuration file
-    cat << EOF > "${_user_paths_file}"
+    cat << EOF > "${_user_paths_file}.new"
 _SOURCE=""
 _USER_INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
 _USER_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
 _INCLUDE_LIST="${_user_config_dir}/${_include_list#./}"
 _EXCLUDE_LIST="${_user_config_dir}/${_exclude_list#./}"
 EOF
+    mv -f "${_user_paths_file}.new" "${_user_paths_file}"
 
+    printf '%s\n' "${_state}" > "${_directives_state_file}"
     rm -f ./.backboa*paths.ctrl.file
     touch "${_user_ctrl_file}"
     echo "Paths configuration for '${_user}' created or updated at '${_user_config_dir}/${_user_paths_file#./}'."
@@ -463,6 +546,7 @@ _create_user_paths_config() {
   local _merged_regexp_include_file="./.backboa.${_user}.include_regexp.merged.file"
   local _merged_regexp_exclude_file="./.backboa.${_user}.exclude_regexp.merged.file"
   local _user_ctrl_file="./.backboa.${_sPid}.paths.ctrl.file"
+  local _directives_state_file="./.backboa.${_user}.directives.state"
   local _include_ctrl_file="./.backboa.${_user}.${_sPid}.include.ctrl.file"
   local _exclude_ctrl_file="./.backboa.${_user}.${_sPid}.exclude.ctrl.file"
   local _merged_all_include_file="./.backboa.${_user}.all.include.merged.file"
@@ -494,3 +578,4 @@ for _user_dir in /data/disk/*; do
     fi
   fi
 done
+_mail_validation_issues
