@@ -41,6 +41,12 @@
       not only when the builder itself is updated: a tenant's edit reaches
       the next backup run instead of waiting for the next release.
 
+    * The per-account backup paths builder reads a tenant's directive file
+      up to 500 lines and stops after 20 refused lines, each cap logged once;
+      every refusal names the file and line number alone; the validation
+      alert goes out once per run with that run's lines only; the paths file
+      is replaced by rename; and one builder runs at a time.
+
     * Tools an Octopus instance login installs with gem install or npm
       install -g (compass, sass, gulp, grunt, bower) run by name in the
       limited shell again: each login's lshell section carries an
