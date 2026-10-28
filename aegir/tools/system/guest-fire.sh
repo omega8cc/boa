@@ -39,13 +39,12 @@ _kill_stuck_fire() {
       rm -f "${_FIRE_PID_FILE}"
     fi
   fi
-  # Record our own PID; mtime becomes the start-time reference for the next invocation
-  echo "$$" > "${_FIRE_PID_FILE}"
 }
 
 _kill_stuck_fire
-# Remove PID file on exit (normal or signal)
-trap 'rm -f "${_FIRE_PID_FILE}"' EXIT
+# Remove the PID file on exit (normal or signal), but only our own: a run the
+# lock refuses must leave the running holder's record for the next check.
+trap '[ "$(cat "${_FIRE_PID_FILE}" 2>/dev/null)" = "$$" ] && rm -f "${_FIRE_PID_FILE}"' EXIT
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -70,6 +69,11 @@ _manage_single_lock() {
   fi
 }
 _manage_single_lock
+# Only the run that holds the lock records its PID; the file's mtime is the
+# start time the next run's stuck check measures. A run the lock refuses
+# must not write it: it would replace the holder's PID with its own, and a
+# stuck holder would never be seen again.
+echo "$$" > "${_FIRE_PID_FILE}"
 
 # ----------------------------
 # Configuration Section
