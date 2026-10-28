@@ -318,6 +318,18 @@ _fix_allow_tcp_forwarding
 
 #
 # Purge memory swap if bloated
+# A stuck guest-fire run's children inherited its lock descriptor and keep
+# the lock held once the run itself is gone: the same tree kill as
+# guest-fire.sh's own stuck check (the two copies are held to one text).
+_fire_kill_tree() {
+  local _c
+  kill -STOP "$1" 2>/dev/null
+  for _c in $(ps -o pid= --ppid "$1" 2>/dev/null); do
+    _fire_kill_tree "${_c}"
+  done
+  kill -9 "$1" 2>/dev/null || true
+}
+
 _kill_stuck_fire_external() {
   _FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
   _FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
@@ -340,7 +352,7 @@ _kill_stuck_fire_external() {
     if (( _ELAPSED > _FIRE_WATCHDOG_TIMEOUT )); then
       echo "$(date) [fire-watchdog-ext] PID ${_PID} (${_FIRE_SCRIPT}) stuck ${_ELAPSED}s > ${_FIRE_WATCHDOG_TIMEOUT}s — killing" \
         >> "${_FIRE_WATCHDOG_LOG}"
-      kill -9 "${_PID}" 2>/dev/null || true
+      _fire_kill_tree "${_PID}"
       rm -f "/run/fire.pid"
     fi
   done < <(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/guest-fire\.sh( |$)' 2>/dev/null)
