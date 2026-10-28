@@ -1002,7 +1002,13 @@ for (( _iteration = 1; _iteration <= 10; _iteration++ )); do
   (( _MINUTE_SEC < 42 )) || break
   sleep 5.5
   if (( _iteration == 10 )); then
-    declare -F _single_instance_unlock > /dev/null && _single_instance_unlock
+    declare -F _single_instance_unlock > /dev/null \
+      && _single_instance_unlock "${_LOCK_FD}" "${_LOCK_PATH}"
+    # The new run starts from cron's environment, not from this run's exports,
+    # so a setting since removed from .barracuda.cnf is gone there as well.
+    for _v in $(compgen -e); do
+      [[ "${_v}" == _[A-Z]* ]] && unset "${_v}"
+    done
     exec bash /var/xdrago/second.sh
   fi
 done
