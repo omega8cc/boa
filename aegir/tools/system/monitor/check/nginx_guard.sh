@@ -105,11 +105,16 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
   # Reload nginx if access log is missing or empty
   [ -s /var/log/nginx/access.log ] || service nginx reload
 
-  # Main execution
+  # Main execution. The gap between passes averages 5 s, the window the
+  # scorer's thresholds are calibrated for, but varies between 4.5 and 5.5 s:
+  # on a fixed 5-second grid the passes drift into step with the kernel's load
+  # average count (every 5*HZ+1 ticks) for half an hour at a time, and the load
+  # average then reports the scorer's bursts instead of the box's load.
   if [ -f "${_monPath}/scan_nginx.sh" ]; then
     for _iteration in {1..10}; do
       nohup ${_monPath}/scan_nginx.sh > /dev/null 2>&1 &
-      sleep 5
+      _gap=$(( 45 + RANDOM % 11 ))
+      sleep "$(( _gap / 10 )).$(( _gap % 10 ))"
     done
   fi
 
