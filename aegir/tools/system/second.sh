@@ -977,9 +977,11 @@ _minute_second() {
 # sleep would still end inside the minute if it spends its 9-second cooldown
 # measuring (the 48 s test is the backstop). A pass that ran into the next
 # minute anyway (a MAX or CRIT pass takes 17 s or more) leaves that minute to
-# this run, which goes on passing through it by the same rule; the pass cap is
-# far above what any run needs.
-for (( _iteration = 1; _iteration <= 20; _iteration++ )); do
+# this run, which goes on passing through it by the same rule. Only such a run
+# reaches a tenth pass with time left in its minute: it then starts over in
+# place, reading the configuration afresh, since stopping there would leave the
+# rest of the minute without a pass.
+for (( _iteration = 1; _iteration <= 10; _iteration++ )); do
   _minute_second
   (( _iteration > 1 && _MINUTE_SEC >= 48 )) && break
   echo "----------------------------"
@@ -997,8 +999,12 @@ for (( _iteration = 1; _iteration <= 20; _iteration++ )); do
     _spawn_detached "${_monPath}/escapecheck.sh"
   fi
   _minute_second
-  (( _iteration < 20 && _MINUTE_SEC < 42 )) || break
+  (( _MINUTE_SEC < 42 )) || break
   sleep 5.5
+  if (( _iteration == 10 )); then
+    declare -F _single_instance_unlock > /dev/null && _single_instance_unlock
+    exec bash /var/xdrago/second.sh
+  fi
 done
 # A short wait while the last pass's launches start, so they are still this
 # run's children when loadreport first sees them.
