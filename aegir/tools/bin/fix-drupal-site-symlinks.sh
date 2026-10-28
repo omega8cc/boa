@@ -20,7 +20,9 @@ global batch/live modes (which operate on every account on the box).
   --archive-store: Set the site's whole per-account store aside into
              static/files/.archived/<stamp>/<site>/ (never deleted). Used by
              the delete task, before the site's alias goes, so the live name
-             is clean at once instead of at the next nightly sweep.
+             is clean at once instead of at the next nightly sweep, and by
+             the install, clone and rename tasks for a store left at the
+             name they are about to take (with --account, the caller's own).
 Usage: (sudo) ${0##*/} --site=URL [--account=oNNN] [--force-unshare|--archive-store]
 HELP
 exit 0
@@ -142,8 +144,24 @@ if [ -n "${_caller}" ]; then
         fi
       fi
       if [ -z "${_alias_r}" ] || [ ! -f "${_alias_r}" ]; then
-        printf "Error: site '%s' is not owned by the caller account '%s'.\n" "${_site}" "${_caller_acct}" >&2
-        exit 1
+        # A store at a name no site of the account carries: a clone's or a
+        # rename's new name has no alias until the copy is made, and a Delete
+        # may run after the alias went. The caller may set such a store aside
+        # and nothing else: --archive-store alone, --account naming its own
+        # account, a real directory at the store's name; a conversion or an
+        # unshare still needs the alias. autosymlink keeps its own guards on
+        # the move (the operator's switch, a share control file, a site still
+        # reading the store), and a live site of the account always has its
+        # alias, so this opens nothing the alias path did not allow.
+        _store_d="/data/disk/${_caller_acct}/static/files/${_site}"
+        if [ "${_archive_store}" = "YES" ] && [ "${_force_unshare}" = "NO" ] \
+          && [ "${_account}" = "${_caller_acct}" ] \
+          && [ -d "${_store_d}" ] && [ ! -L "${_store_d}" ]; then
+          :
+        else
+          printf "Error: site '%s' is not owned by the caller account '%s'.\n" "${_site}" "${_caller_acct}" >&2
+          exit 1
+        fi
       fi
       ;;
     /var/aegir)
