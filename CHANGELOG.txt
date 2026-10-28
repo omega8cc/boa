@@ -4,6 +4,39 @@
 
 @=> Important Fixes
 
+    * A TERM or a Ctrl-C stops a BOA script that holds its single-instance
+      lock, and the lock is released as it ends. The lock's handler only
+      unlocked, so the script went on running without the lock and a
+      second copy could start beside it. A hangup leaves the script
+      running and still locked, so a tool started in a remote session
+      survives its end. updatesymlinks did the same with the queue pause:
+      a TERM released the pause and the lock and it went on changing
+      links; it now ends.
+
+    * A cleanup a BOA script sets for its exit before it takes the
+      single-instance lock runs again: the lock's own exit handler
+      replaced it, so autoinit's pid file, guest-fire.sh's pid file and
+      checksql.sh's work file were left behind.
+
+    * autoinit, aptcleanup and vmnetfix carry the single-instance lock
+      inline, and their copies now match the shared one: the lock file
+      stays in place when the lock is released (removing it let two runs
+      hold the lock on two inodes), and a lock directory a killed run
+      left is reclaimed once its owner is gone.
+
+    * A platform Verify reads a module's hook_update_last_removed(). A
+      module that keeps only that hook (Open Social 13 does in
+      activity_logger, improved_theme_settings, social_advanced_queue and
+      social_follow_content) was recorded at the core floor, 10000 on
+      Drupal 10, below the schema of every site running it, so the
+      Migrate form counted it as a downgrade and greyed out every target
+      platform. Verify the target platform once after the upgrade.
+
+    * A site Verify drops the package records the site kept from a
+      platform it has left. After a Migrate the next Migrate form counted
+      every package twice, and a module the site has since disabled still
+      counted as enabled there.
+
     * _CUSTOM_CONFIG_CSF=YES now also keeps the five-minute BOA.sh.txt
       run from adding UDP 443 back to UDP_IN in csf.conf: it re-opened
       the port on every run and reloaded csf, whatever the flag said, so
@@ -22,6 +55,17 @@
       line number), and the backup run reads its paths file as five plain
       NAME="value" lines and stops, instead of selecting nothing, when a
       value ends in a backslash.
+
+    * The per-account backup paths list is built again when the account's
+      include or exclude directive files change (added, edited or removed),
+      not only when the builder itself is updated: a tenant's edit reaches
+      the next backup run instead of waiting for the next release.
+
+    * The per-account backup paths builder reads a tenant's directive file
+      up to 500 lines and stops after 20 refused lines, each cap logged once;
+      every refusal names the file and line number alone; the validation
+      alert goes out once per run with that run's lines only; the paths file
+      is replaced by rename; and one builder runs at a time.
 
     * Tools an Octopus instance login installs with gem install or npm
       install -g (compass, sass, gulp, grunt, bower) run by name in the
