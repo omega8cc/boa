@@ -83,9 +83,11 @@ _manage_single_lock
 # is held the database watchdog stands down entirely, so it cannot read this
 # work as a fault and restart the server underneath it. The trap means a killed
 # run cannot leave auto-healing disabled, and the watchdog ignores the marker
-# once it is stale in any case.
+# once it is stale in any case. This trap replaces the lock's own, so it also
+# ends the way the lock's does: a TERM or Ctrl-C the lock's handler recorded
+# is sent again once the marker is gone, so a calling script stops too.
 touch /run/boa_sql_maintenance.pid
-trap 'rm -f /run/boa_sql_maintenance.pid' EXIT
+trap 'trap "" INT TERM; rm -f /run/boa_sql_maintenance.pid; [ -z "${_LOCK_SIG:-}" ] || { trap - "${_LOCK_SIG}"; kill -"${_LOCK_SIG}" "${BASHPID:-$$}"; }' EXIT
 
 dir=/var/log/boa/mysql_optimize
 mkdir -p $dir

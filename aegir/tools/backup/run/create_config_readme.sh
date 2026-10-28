@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f61"
+export _sPid="f59"
 
 # Base directory for user configurations
 _BASE_DIR="/data/disk"
@@ -207,6 +207,13 @@ Usage Instructions:
    --exclude-regexp ^${_user_static_dir}/trash/.*
    --exclude-regexp ^${_user_ftp_dir_regex}/temp_files/.*
 
+Rules:
+- A pattern is a Python regular expression, as the backup tool reads it. A line
+  whose pattern does not compile, ends in a backslash or holds a doubled one is
+  refused and logged by its line number; the other lines are kept.
+- A file is read up to 500 lines, and after 20 refused lines the rest of the
+  file is ignored.
+
 Security:
 - Ensure these files are restricted to the user only:
   - Files should have permissions set to 600 (chmod 600 <file>).
@@ -218,6 +225,7 @@ Notes:
 - Write each line as one directive, one space, and one path or pattern - nothing else on the line, and no quotes.
 - Paths may use letters, digits, and the characters _ . , + = @ ~ / -
 - Patterns in include_regexp.txt and exclude_regexp.txt may start with ^, may write the .ftp dot as \. and may additionally use the characters . * + ? [ ] \ ^
+- A backslash is never the last character of a pattern, and never doubled.
 - Paths must stay in the ${_user_static_dir} or ${_user_ftp_dir} directory trees.
 - Paths for platforms without direct access in /data/disk/${_user}/distro are included by default.
 - Lines that do not match the expected format are skipped and logged; valid lines and the default directives still apply.

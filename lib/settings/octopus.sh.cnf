@@ -564,11 +564,11 @@ _GHOST_VHOSTS_CLEANUP=NO
 ###
 ### Nightly cleanup of ghost site registrations
 ### (a site Drush alias whose site directory is
-### gone). The default NO only detects and logs
-### them (dry-run). Change to YES to move the
-### stale alias and its vhost aside into undo/.
-### A system-wide default may also be set in
-### barracuda.cnf.
+### gone, holds only empty folders, or holds
+### files no vhost serves and the panel does
+### not list). The default NO only logs them.
+### YES moves the stale alias and its vhost
+### into undo/. System-wide: barracuda.cnf.
 ###
 _GHOST_SITES_CLEANUP=NO
 
@@ -577,12 +577,12 @@ _GHOST_SITES_CLEANUP=NO
 ### GHOST SITE FILES CLEANUP                ###
 ###----------------------------------------###
 ###
-### Also move a ghost site's leftover files
-### directory (site data, not just the
-### registration) when GHOST SITES cleanup acts.
-### Kept separate and default NO because it
-### touches data. System-wide default may also
-### be set in barracuda.cnf.
+### Also move a ghost site's leftover
+### directory when GHOST SITES cleanup acts.
+### Kept separate and default NO as the one
+### move of a site directory. System-wide
+### default may also be set in
+### barracuda.cnf.
 ###
 _GHOST_SITE_FILES_CLEANUP=NO
 
@@ -597,9 +597,9 @@ _GHOST_SITE_FILES_CLEANUP=NO
 ### NO only detects and logs them (dry-run).
 ### Change to YES to move a stale alias aside:
 ### each candidate is held 48h from its first
-### sighting, and aegir/distro front-end
-### companion aliases are never touched.
-### System-wide default: barracuda.cnf.
+### sighting; aegir/distro front-end companions
+### and sites whose dir holds any file keep
+### theirs. System-wide default: barracuda.cnf.
 ###
 _GHOST_ALIASES_CLEANUP=NO
 
@@ -750,11 +750,16 @@ _SEND_UPGRADE_EMAIL=YES
 ### https://docs.boa.io/operating/control-files-ini/ini-precedence
 ###
 ### Please note that if you will change it
-### to _SQL_CONVERT=YES, the system will
-### ignore sql_conversion_mode variables set
-### in the active INI files, and instead will
-### force conversion to InnoDB format in all
-### sites hosted on this instance.
+### to _SQL_CONVERT=YES or innodb, the system
+### will ignore sql_conversion_mode variables
+### set in the active INI files, and instead
+### will force conversion to InnoDB format in
+### all sites hosted on this instance. The
+### myisam value is not forced: it is the
+### instance default, and sql_conversion_mode
+### = innodb in an active INI file still
+### switches that platform or site to InnoDB
+### (a NO line there does not opt it out).
 ###
 ### Drupal 8 and newer sites are never
 ### converted: the conversion writes to a
@@ -778,9 +783,9 @@ _SEND_UPGRADE_EMAIL=YES
 ###
 ### Accepted values:
 ###
-###  innodb (forced globally)
-###  myisam (forced globally)
+###  innodb (forced globally, INI ignored)
 ###  YES    (same as innodb, forced globally)
+###  myisam (instance default, an INI innodb wins)
 ###  NO     (nothing forced globally)
 ###
 _SQL_CONVERT=NO

@@ -984,12 +984,9 @@ _tune_web_server_config() {
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
   wait
 
-  # PHP-CLI INI
+  # PHP-CLI INI. max_execution_time and max_input_time are fixed at 0 and
+  # -1 for the CLI SAPI whatever php.ini says, so they are not set here.
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
-  wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
-  wait
-  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   wait
 
   # Valkey config should sync with PHP-CLI
@@ -3375,7 +3372,9 @@ _check_php_sqlite_loadext() {
 # exact release when it is built from sources (_install_php_multi_src). The
 # build records the ids it carries in /opt/phpNN/lib/boa-sec-patches, which
 # the prebuilt package of that build carries too. Prints the ids this tree
-# has for _PHP_VERSION, one a line.
+# has for _PHP_VERSION, one a line, in the glob's order, which is the order
+# they are applied in: a patch made on top of others needs an id that sorts
+# after theirs (xlts-N after sury-N).
 _php_sec_patches() {
   local _p
   for _p in "${_bldPth}/aegir/patches/php-sec/php-${_PHP_VERSION}-"*.patch; do

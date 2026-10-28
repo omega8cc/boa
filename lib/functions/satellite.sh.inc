@@ -6572,6 +6572,14 @@ _satellite_if_add_ftps_lshell_access() {
   [ -n "${_mntPoint}" ] && _lshPaths="${_lshPaths}, '${_MNT_STATIC_FILES}'"
   echo "path : [${_lshPaths}, '${_ROOT}/distro', '${_ROOT}/static', '${_ROOT}/backups', '${_ROOT}/clients']" \
     | fmt -su -w 2500 >> /etc/lshell.conf
+  # The login's env_path, the line the ltd worker writes for the main login
+  # (_ltd_env_path_line in manage_ltd_users.sh: its copy of the file replaces
+  # this one within minutes); nothing on lshell 0.10, which glues the value
+  # onto PATH and never checks that a command exists
+  if ! lshell --version 2>&1 | grep -q "lshell-0\.10"; then
+    echo "env_path : '/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/opt/user/gems/${_USERFTP}/bin:/opt/user/npm/${_USERFTP}/.npm-packages/bin'" \
+      >> /etc/lshell.conf
+  fi
 }
 
 _satellite_if_add_update_user_symlinks() {
@@ -10299,6 +10307,93 @@ _satellite_letsencrypt_vhost_setup() {
       fi
     fi
   fi
+  _satellite_park_stale_panel_proxies
+}
+
+#
+# A panel front of this account under a name it no longer has: the include
+# a host rename left when its renameaegirhost had no park of the old name's
+# (before 2026-09-06, or the copy of a restored box not fetched yet). It
+# keeps answering that name's HTTPS and names that name's certificate, so
+# nginx -t fails box-wide the day that certificate goes. Parked as the rename
+# parks it, and only such a file: the header names this account and the
+# first server_name is the file's own name, as xoct ssl-gen writes a panel
+# front (a relay answers "_"), and it is not the current panel name (_DOMAIN,
+# log/domain.txt) or a name a vhost of this account carries, as its file name
+# or in a server_name line (a site's alias lives in the site's own vhost). The
+# files go to root's own dated dir. When nginx -t passed before the move and
+# fails after it they are put back; when it failed already (another account's
+# stale include, any other file) they stay parked, or no pass could ever
+# clear a box where two accounts each keep one.
+_satellite_park_stale_panel_proxies() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_park_stale_panel_proxies"
+    _debug_proc
+  fi
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _p _n _x _t _stamp _bak="" _moved="" _pre=""
+  [ -d "${_preD}" ] && [ ! -L "${_preD}" ] || return 0
+  # an unreadable vhost.d would read as "no vhost of that name" for all
+  _acct_in_real_dir "${_vhd}" true || return 0
+  _stamp="$(_acct_read_in "${_ROOT}/log" domain.txt | head -n1 | tr -d ' \r\n')"
+  for _p in "${_preD}/z_${_USER}."*_ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _n="${_p##*/}"
+    _x="${_n#z_${_USER}.}"
+    _x="${_x%_ssl_proxy.conf}"
+    [[ "${_x}" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)+$ ]] || continue
+    [ "${_USER}.${_x}" != "${_DOMAIN}" ] || continue
+    [ "${_USER}.${_x}" != "${_stamp}" ] || continue
+    _t="$(_acct_read_in "${_preD}" "${_n}")"
+    [ "$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' <<< "${_t}")" = "${_USER}" ] \
+      || continue
+    [ "$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' <<< "${_t}")" = "${_USER}.${_x}" ] \
+      || continue
+    if _acct_in_real_dir "${_vhd}" test -e "./${_USER}.${_x}" \
+      || _acct_in_real_dir "${_vhd}" test -L "./${_USER}.${_x}" \
+      || _acct_in_real_dir "${_vhd}" _satellite_vhd_names_here "${_USER}.${_x}"; then
+      continue
+    fi
+    if [ -z "${_bak}" ]; then
+      if nginx -t > /dev/null 2>&1; then
+        _pre=ok
+      else
+        _pre=failed
+      fi
+      _bak="/var/backups/panel-proxy/${_USER}/$(date +%y%m%d-%H%M%S)"
+      mkdir -p "${_bak}" && chmod 700 /var/backups/panel-proxy "${_bak}" || return 0
+    fi
+    if _acct_in_real_dir "${_preD}" mv -f -T -- "./${_n}" "${_bak}/${_n}"; then
+      _moved="${_moved} ${_n}"
+      _msg "${_STATUS} A: stale panel SSL proxy include ${_n} parked in ${_bak}"
+    else
+      _msg "${_STATUS} A: NOTE: stale panel SSL proxy include ${_n} not parked"
+    fi
+  done
+  if [ -z "${_moved}" ]; then
+    [ -n "${_bak}" ] && rmdir "${_bak}" 2> /dev/null
+    return 0
+  fi
+  if nginx -t > /dev/null 2>&1; then
+    _mrun "service nginx reload"
+  elif [ "${_pre}" = "ok" ]; then
+    for _n in ${_moved}; do
+      mv -f -T -- "${_bak}/${_n}" "${_preD}/${_n}"
+    done
+    rmdir "${_bak}" 2> /dev/null
+    _msg "${_STATUS} A: NOTE: nginx -t fails without${_moved}; put back"
+  else
+    _msg "${_STATUS} A: NOTE: nginx -t failed before the park and still fails;${_moved} stay in ${_bak}"
+  fi
+}
+
+# A server_name line of a file in the current (pinned) vhost.d names $1 as one
+# of its names (links inside are not followed, FIFOs and devices skipped).
+_satellite_vhd_names_here() {
+  local _re="${1//./\\.}"
+  grep -rqsE -D skip \
+    "^[[:space:]]*server_name([[:space:]][^;]*)?[[:space:]]${_re}([[:space:];]|$)" . 2> /dev/null
 }
 
 _satellite_log_update() {
@@ -11437,8 +11532,17 @@ _satellite_child_b_letsencrypt() {
         || [ "${_leSetup}" = "YES" ] \
         || [ -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
         touch ${_leRoot}/.ctrl/ssl-demo-mode.pid
-        echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${_leRoot}/config.sh
-        cp -af ${_leRoot}/config.sh ${_leRoot}/config
+        ### The staging authority in config.sh alone, read through dehydrated
+        ### --config by Verify and the night workers in demo mode; the
+        ### account's own tools/le/config (a wildcard's DNS settings) is read
+        ### first and never written or copied over. The same text, byte for
+        ### byte, as the hosting_le patch writes, so Verify leaves it as it is.
+        printf '%s\n' \
+          '# Written by BOA for the LE demo mode (tools/le/.ctrl/ssl-demo-mode.pid)' \
+          "# and read through dehydrated --config: the account's own tools/le/config" \
+          '# first, then the staging authority. Removed when the account leaves demo mode.' \
+          "if [ -r \"${_leRoot}/config\" ]; then . \"${_leRoot}/config\"; fi" \
+          'CA="https://acme-staging-v02.api.letsencrypt.org/directory"' > ${_leRoot}/config.sh
         if [ -e "${_leKeyJ}" ]; then
           mv -f ${_leKeyJ} "${_leKeyJ}-prev"
         fi
@@ -11461,7 +11565,13 @@ _satellite_child_b_letsencrypt() {
   if [ ! -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${_leRoot}/config.sh" ]; then
     rm -f ${_leRoot}/config.sh
-    rm -f ${_leRoot}/config
+    ### tools/le/config is the account's own and stays; the one-line copy of
+    ### the staging authority an earlier demo mode left there goes, bit and all.
+    if [ -f "${_leRoot}/config" ] \
+      && [ "$(head -c 200 "${_leRoot}/config" | tr -d '\n')" = 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"' ]; then
+      chattr -i ${_leRoot}/config 2> /dev/null
+      rm -f ${_leRoot}/config
+    fi
     if [ -e "${_leKeyJ}" ]; then
       mv -f ${_leKeyJ} "${_leKeyJ}-prev"
     fi
