@@ -984,12 +984,9 @@ _tune_web_server_config() {
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
   wait
 
-  # PHP-CLI INI
+  # PHP-CLI INI. max_execution_time and max_input_time are fixed at 0 and
+  # -1 for the CLI SAPI whatever php.ini says, so they are not set here.
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
-  wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
-  wait
-  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   wait
 
   # Valkey config should sync with PHP-CLI
