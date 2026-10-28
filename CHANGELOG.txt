@@ -3023,6 +3023,14 @@
 
 @=> Changes and Upgrades
 
+    * BOA no longer lays its own copies of the hosting_le module's two
+      drush files over each account's control panel once per release.
+      The module ships those files itself, and the copies were an early
+      hotfix route that has not been needed for years. The stale copies
+      under /var/xdrago/conf go with their fetch markers; the account pass
+      that installs the Let's Encrypt helper and keeps its registration
+      runs as before.
+
     * The documentation that used to ship in this repository's docs/
       directory is retired: https://docs.boa.io is the single
       documentation site, and the README carries short Install and
