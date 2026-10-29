@@ -2482,8 +2482,9 @@
       counted as before. The summary is also emptied once per server start
       while root's rule is BOA's, and once more when a user gets its rule
       for the first time since that start, so the rows those users added
-      before go too. Percona 8.0 and 8.4 only; 5.7 runs with
-      performance_schema off.
+      before go too; it waits while a session one of them opened before
+      its rule is still running, for up to 12 hours. Percona 8.0 and 8.4
+      only; 5.7 runs with performance_schema off.
 
     * Percona 8.0 and 8.4 run performance_schema with the server's own
       instrument defaults. The my.cnf BOA wrote for them switched on and

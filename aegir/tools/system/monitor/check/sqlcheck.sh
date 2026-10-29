@@ -43,36 +43,42 @@ _check_root
 ### table, so on a server with thousands of tables the nightly dump fills
 ### the summary within days and the sites' own statements are no longer
 ### counted. The nightly dump and the migration exports connect as root; the
-### Aegir backups, clones and migrations dump and load as the backend user
-### each server alias names in its master_db (aegir_root for the master
-### instance, the instance's own user for each Octopus instance). Those users'
-### sessions are left uninstrumented and every other user is counted as before.
-### The rules live in memory only: they are set again on the first pass after a
-### server start, before the stand-down markers below, because a backup started
-### right after a restart is the session they are for. A rule keeps new rows
-### out but removes none, so while root's rule is BOA's the summary is also
-### emptied once per server start, and once more when a user gets its rule for
-### the first time since that start (a new instance, or an earlier copy of this
-### check that knew only root). The rows those users added before go too,
-### whether since the start (a minute's worth after a plain restart), inside a
-### SQL maintenance window (mysql.sh stands down for the whole window and never
-### starts this check, and a Percona upgrade walks every table as root in it) or
-### in the weeks before this check came. The start the summary was emptied for,
-### and the users it was emptied for, are kept in a state file under /run. When
-### another session keeps the summary from being emptied within 5 seconds, the
-### rules stay and the emptying is tried again 5 minutes later. An operator's
-### own row for any of these users (any other switches) is left as it is; with
-### one for root the summary is left alone too.
+### Aegir backups, clones and migrations dump and load as the backend user of
+### their database server: aegir_root for the master instance, and the
+### instance's own user for each Octopus instance whose databases are local
+### (aegir_root again when they are remote). The instances are taken from
+### root's own /root/.<name>.octopus.cnf files, never from a file an instance
+### can write. Those users' sessions are left uninstrumented and every other
+### user is counted as before. The rules live in memory only: they are set
+### again on the first pass after a server start, before the stand-down markers
+### below, because a backup started right after a restart is the session they
+### are for. A rule keeps new rows out but removes none, so while root's rule
+### is BOA's the summary is also emptied once per server start, and once more
+### when a user gets its rule for the first time since that start (a new
+### instance, or an earlier copy of this check that knew only root). The rows
+### those users added before go too, whether since the start (a minute's worth
+### after a plain restart), inside a SQL maintenance window (mysql.sh stands
+### down for the whole window and never starts this check, and a Percona
+### upgrade walks every table as root in it) or in the weeks before this check
+### came. A rule reaches new sessions only, and one of these users' sessions
+### opened before its rule keeps adding rows for as long as it runs, so the
+### emptying waits while such a session is open, for up to 12 hours. The start
+### the summary was emptied for, and the users it was emptied for, are kept in
+### a state file under /run. When another session keeps the summary from being
+### emptied within 5 seconds, the rules stay and the emptying is tried again 5
+### minutes later. An operator's own row for any of these users (any other
+### switches) is left as it is; with one for root the summary is left alone too.
 ### performance_schema is off on 5.7 (BOA's my.cnf), and nothing runs there.
 ###
 _digest_dump_users() {
-  local _f
+  local _c _u
   {
     echo root
-    for _f in /var/aegir/.drush/server_*.alias.drushrc.php \
-              /data/disk/*/.drush/server_*.alias.drushrc.php; do
-      [ -f "${_f}" ] || continue
-      sed -n "s#^ *'master_db' => '[a-z]*://\([^:@']*\):.*#\1#p" "${_f}" 2>/dev/null
+    echo aegir_root
+    for _c in /root/.*.octopus.cnf; do
+      [ -f "${_c}" ] || continue
+      _u="${_c##*/.}"
+      echo "${_u%.octopus.cnf}"
     done
   } | grep -xE '[A-Za-z0-9_]{1,32}' | sort -u
 }
@@ -80,8 +86,8 @@ _digest_dump_users() {
 _keep_dumps_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
-  local _st _ps _up _u _e _h _rows _in="" _ours="" _new="" _now _start
-  local _m_start="" _m_state="" _m_time="" _m_users=""
+  local _st _ps _up _u _e _h _rows _in="" _ours="" _qo="" _new="" _now _start
+  local _open _since _m_start="" _m_state="" _m_time="" _m_users=""
   local _state="/run/boa_digest_reset.state"
   local -a _users=()
   local -A _rule=()
@@ -105,25 +111,35 @@ _keep_dumps_out_of_digests() {
       continue
     fi
     _ours="${_ours:+${_ours},}${_u}"
+    _qo="${_qo:+${_qo}, }'${_u}'"
   done
   [[ ",${_ours}," == *",root,"* ]] || return 0
   _now=$(date +%s)
   _start=$(( _now - _up ))
   [ -s "${_state}" ] && read -r _m_start _m_state _m_time _m_users < "${_state}"
   if [[ "${_m_start}" =~ ^[0-9]+$ ]] && (( _m_start - _start <= 10 && _start - _m_start <= 10 )); then
-    # a state that names no users was written by a copy that knew only root
-    [ -n "${_m_users}" ] || _m_users="root"
     for _u in ${_ours//,/ }; do
       [[ ",${_m_users}," == *",${_u},"* ]] || _new="${_new} ${_u}"
     done
     if [ "${_m_state}" = "done" ]; then
       [ -z "${_new}" ] && return 0
-    elif [[ "${_m_time}" =~ ^[0-9]+$ ]] && (( _now - _m_time < 300 )); then
+    elif [ "${_m_state}" != "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]] && (( _now - _m_time < 300 )); then
       return 0
     fi
   else
     _m_start="${_start}"
+    _m_state=""
     _m_users="-"
+  fi
+  _open=$(timeout 10 mysql -N -B -e "SELECT COUNT(*) FROM performance_schema.threads WHERE INSTRUMENTED = 'YES' AND PROCESSLIST_USER IN (${_qo})" 2>/dev/null) || return 0
+  [[ "${_open}" =~ ^[0-9]+$ ]] || return 0
+  if (( _open > 0 )); then
+    _since="${_now}"
+    [ "${_m_state}" = "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]] && _since="${_m_time}"
+    if (( _now - _since < 43200 )); then
+      printf '%s hold %s %s\n' "${_m_start}" "${_since}" "${_m_users}" > "${_state}"
+      return 0
+    fi
   fi
   if timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
     printf '%s done %s %s\n' "${_m_start}" "${_now}" "${_ours}" > "${_state}"
