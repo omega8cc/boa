@@ -1169,9 +1169,15 @@ _sql_conf_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DBST: Enable performance_schema for Percona ${_DB_V}"
         fi
+        # The template's former performance_schema_instrument = 'wait/%=ON'
+        # enabled and timed every mutex, rwlock, sxlock and cond instrument,
+        # which the server ships off: a timer on every lock taken, no memory
+        # saved. Keep it commented here, after the uncomment, so boxes that
+        # carry it drop it too; 8.x runs with the server's own defaults.
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
+          -e "s/^(\s*)(performance_schema_instrument\s*=\s*['\"]?wait\/%=ON['\"]?\s*)$/\1#\2/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       # Reconcile the InnoDB sizing directives with the INSTALLED binary:
