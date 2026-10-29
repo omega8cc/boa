@@ -189,7 +189,7 @@ export _BACKDROP_S="${_BACKDROP}-stage"
 ### only the fallback when the stamp cannot be read, and must name a published
 ### platform.
 ###
-export _BDC_V_FALLBACK=6.19.2-1.35.2
+export _BDC_V_FALLBACK=6.19.3-1.35.2
 export _BDC_V="${_BDC_V_FALLBACK%-*}"
 export _BDC_CORE_V="${_BDC_V_FALLBACK#*-}"
 
