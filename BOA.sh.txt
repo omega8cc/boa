@@ -5816,14 +5816,17 @@ CSFSTANDBY
     ln -sfn ${_optBin}/websh       ${_usrBin}/websh
   fi
 
+  # A plain file at one of these names (a hand copy) comes first in PATH and
+  # keeps cron on its bytes while every update lands in /opt/local/bin, so
+  # anything that is not a link is replaced, as --symlink does for the rest.
   if [ -e "/data/u" ]; then
-    if [ ! -e "${_usrBin}/dcysetup" ] && [ -e "${_optBin}/dcysetup" ]; then
+    if [ ! -L "${_usrBin}/dcysetup" ] && [ -e "${_optBin}/dcysetup" ]; then
       ln -sfn ${_optBin}/dcysetup ${_usrBin}/dcysetup
     fi
-    if [ ! -e "${_usrBin}/multiback" ] && [ -e "${_optBin}/multiback" ]; then
+    if [ ! -L "${_usrBin}/multiback" ] && [ -e "${_optBin}/multiback" ]; then
       ln -sfn ${_optBin}/multiback ${_usrBin}/multiback
     fi
-    if [ ! -e "${_usrBin}/mybackup" ] && [ -e "${_optBin}/mybackup" ]; then
+    if [ ! -L "${_usrBin}/mybackup" ] && [ -e "${_optBin}/mybackup" ]; then
       ln -sfn ${_optBin}/mybackup ${_usrBin}/mybackup
     fi
   fi
