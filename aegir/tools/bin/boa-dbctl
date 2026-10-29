@@ -2538,7 +2538,7 @@ _prove() {
     _transport_args "${_t}" client
     _out=$(printf '%s\n' "SELECT /*q:proof*/ CURRENT_USER(); USE \`${_db}\`; SELECT 1;" \
       | mysql --defaults-file=/dev/fd/5 "${_TARGS[@]}" -N -B -r \
-        5< "${_CNF}" 2> /dev/null 7>&- 8>&- 9>&-) || continue
+        2> /dev/null 5< "${_CNF}" 7>&- 8>&- 9>&-) || continue
     _cu=$(printf '%s\n' "${_out}" | head -n 1)
     [[ "${_cu%%@*}" == "${_u}" ]] || continue
     _PROOF_HOST="${_cu#*@}"

@@ -1438,7 +1438,7 @@ _store_hold_here() {
   # that it is root-owned (a directory another account made at that path is
   # never written into). rc 1 otherwise.
   local _u
-  exec 9< "${1}/." 2>/dev/null || return 1
+  { exec 9< "${1}/."; } 2>/dev/null || return 1
   [ "$(readlink /proc/self/fd/9 2>/dev/null)" = "${1}" ] || return 1
   _u=$(_store_up "${2}" "${1}") || return 1
   [ "$(stat -c '%d:%i' -- "/proc/self/fd/9/${_u}" 2>/dev/null)" = "${2##*|}" ] || return 1
@@ -2805,7 +2805,7 @@ _unshare_copy() {
       if [ -n "${_sid}" ]; then
         # the caller's directory, entered for real and still the one it
         # recorded; the copy's target is this staging dir held open on fd 9
-        exec 9< . 2>/dev/null || exit 1
+        { exec 9< .; } 2>/dev/null || exit 1
         ( cd -P -- "${_src}" 2>/dev/null && [ "$(pwd -P)" = "${_src}" ] \
           && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_sid}" ] \
           && setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \

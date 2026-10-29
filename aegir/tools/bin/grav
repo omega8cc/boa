@@ -154,7 +154,7 @@ if [[ -z "${_GRAV_PHP}" ]]; then
     fi
   fi
   if [[ -n "${_GRAV_CTRL}" ]] && [[ -e "${_GRAV_CTRL}/cli.info" ]]; then
-    _v="$(tr -cd '0-9' < "${_GRAV_CTRL}/cli.info" 2>/dev/null)"
+    _v="$(tr -cd '0-9' 2>/dev/null < "${_GRAV_CTRL}/cli.info")"
     [[ -n "${_v}" ]] && [[ -x "/opt/php${_v}/bin/php" ]] && _GRAV_PHP="/opt/php${_v}/bin/php"
   fi
   if [[ -n "${_GRAV_CTRL}" ]]; then

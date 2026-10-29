@@ -11364,7 +11364,7 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
 
-    ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlc &> /dev/null < ${_bldPth}/aegir/helpers/hosting_cron.sql
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
       WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
@@ -11378,8 +11378,11 @@ _satellite_child_b_aegir_build() {
     ### A task or change saved in the panel between the migrate's dump and
     ### its switch to the new database goes into the database the migrate
     ### drops. While this marker is in the root the panel runs on, the panel
-    ### refuses tasks and its web front is offline (hosting.module); the new
-    ### root never carries it.
+    ### refuses tasks and its web front answers 503 (hosting.module and the
+    ### global include). It names the old database: the migrate copies it
+    ### into the new root once that is built (provision's
+    ### _provision_hostmaster_copy_move_marker), so a copy there that still
+    ### reads the old database is held too. Both are removed after it.
     _hmFrom=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
         | grep "root'" \
         | cut -d: -f2 \
@@ -11387,10 +11390,15 @@ _satellite_child_b_aegir_build() {
         | sed "s/[\,']//g" 2>&1)
     _hmFrom="${_hmFrom%/}"
     _hmMove=
+    _hmMoveTo="${_HM_ROOT}/sites/.panel-move.info"
     if [ -n "${_hmFrom}" ] && [ "${_hmFrom}" != "${_HM_ROOT}" ] \
       && [ -d "${_hmFrom}/sites" ]; then
+      _hmOldDb=$(grep -m1 "\['db_name'\]" "${_hmFrom}/sites/${_DOMAIN}/drushrc.php" 2> /dev/null \
+        | sed "s/.*= *'//; s/'.*//")
+      [[ "${_hmOldDb}" =~ ^[A-Za-z0-9_]+$ ]] || _hmOldDb=
       _hmMove="${_hmFrom}/sites/.panel-move.info"
-      { date +%s > "${_hmMove}"; } 2> /dev/null && chmod 644 "${_hmMove}"
+      { printf '%s %s\n' "$(date +%s)" "${_hmOldDb}" > "${_hmMove}"; } 2> /dev/null \
+        && chmod 644 "${_hmMove}"
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d 2>&1 | tee ${_hmLog}
@@ -11400,6 +11408,7 @@ _satellite_child_b_aegir_build() {
       _hmRc=$?
     fi
     [ -n "${_hmMove}" ] && rm -f "${_hmMove}"
+    rm -f "${_hmMoveTo}"
     if [ "${_hmRc}" != "0" ]; then
       ### A non-zero exit means an error was logged, not that nothing moved:
       ### a post hook (the resume's name report) can fail after the panel is

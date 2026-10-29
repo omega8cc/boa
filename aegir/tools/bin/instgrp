@@ -2431,7 +2431,7 @@ _wg_file_add() {
 # ---- workers (K) ---------------------------------------------------------
 
 _wg_fpm_master_pid() {
-  tr -cd '0-9' < "/run/php${1}-fpm.pid" 2> /dev/null
+  tr -cd '0-9' 2> /dev/null < "/run/php${1}-fpm.pid"
 }
 
 # 0 when the version's php-fpm master runs its own config (the init

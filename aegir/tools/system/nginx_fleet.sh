@@ -1068,7 +1068,7 @@ _fleet_common_args() {
   _exempt_b64=$(printf '%s' "${_NGINX_FLEET_UA_EXEMPT}" | base64 | tr -d '\n')
   _exempt_def_b64=$(printf '%s' "${_FLT_UA_EXEMPT_DEFAULT}" | base64 | tr -d '\n')
   if [[ -f "${_MYIP_FILE}" ]]; then
-    _myip=$(tr -cd '0-9.' < "${_MYIP_FILE}" 2> /dev/null)
+    _myip=$(tr -cd '0-9.' 2> /dev/null < "${_MYIP_FILE}")
   fi
   _ARGS=(
     "window=${_NGINX_FLEET_WINDOW}" "min_span=${_NGINX_FLEET_MIN_SPAN}"
@@ -1172,7 +1172,7 @@ if [[ ! "${_NOW}" =~ ^[0-9]+$ ]]; then
 fi
 _SINCE=0
 if [[ -f "${_CLEAR_STAMP}" ]]; then
-  _SINCE=$(tr -cd '0-9' < "${_CLEAR_STAMP}" 2> /dev/null)
+  _SINCE=$(tr -cd '0-9' 2> /dev/null < "${_CLEAR_STAMP}")
   [[ "${_SINCE}" =~ ^[0-9]{1,12}$ ]] || _SINCE=0
 fi
 _DETECT=0
@@ -1365,7 +1365,7 @@ if _fleet_names_plain && [[ -f "${_LIVE[ua]}" ]] && cmp -s "${_TMP[ua]}" "${_LIV
   && [[ -f "${_LIVE[fp]}" ]] && cmp -s "${_TMP[fp]}" "${_LIVE[fp]}"; then
   _LAST=0
   if [[ -f "${_RELOAD_STAMP}" ]]; then
-    _LAST=$(tr -cd '0-9' < "${_RELOAD_STAMP}" 2> /dev/null)
+    _LAST=$(tr -cd '0-9' 2> /dev/null < "${_RELOAD_STAMP}")
   fi
   [[ "${_LAST}" =~ ^[0-9]{1,12}$ ]] || _LAST=0
   if (( _NOW - _LAST < _NGINX_FLEET_RELOAD_GAP )); then

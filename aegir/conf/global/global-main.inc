@@ -258,6 +258,28 @@ error_reporting(0);
  * Hostmaster specific settings
  */
 if ($conf['install_profile'] == 'hostmaster') {
+  // While an upgrade moves this panel to a new platform, a page saved through
+  // a copy that reads the old database goes into the database the move drops.
+  // BOA's marker beside sites.php names that database (or none, which holds
+  // any copy): such a copy answers 503 to every visitor, administrators
+  // included, whatever its hosting release; a copy on the new database is
+  // not held. One older than an hour does not count.
+  if (!$is_backend) {
+    $panel_move = DRUPAL_ROOT . '/sites/.panel-move.info';
+    if (is_file($panel_move)) {
+      $panel_move_t = @filemtime($panel_move);
+      $panel_move_f = preg_split('/\s+/', trim((string) @file_get_contents($panel_move)));
+      $panel_move_db = isset($databases['default']['default']['database']) ? $databases['default']['default']['database'] : '';
+      if ($panel_move_t !== FALSE && (time() - $panel_move_t) < 3600
+        && (empty($panel_move_f[1]) || $panel_move_f[1] === $panel_move_db)) {
+        header((isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.1') . ' 503 Service Unavailable');
+        header('Retry-After: 60');
+        header('Cache-Control: no-store');
+        print 'The control panel is moving to its new version. Please try again in a few minutes.';
+        exit;
+      }
+    }
+  }
   $conf['hosting_require_disable_before_delete'] = 0;
   $conf['hosting_task_refresh_timeout'] = 5555;
   $conf['theme_link'] = FALSE;

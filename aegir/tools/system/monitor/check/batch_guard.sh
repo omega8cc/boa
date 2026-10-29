@@ -891,7 +891,7 @@ if command -v _flap_breaker_is_open >/dev/null 2>&1; then
   fi
 fi
 if [ -s "${_cd}" ]; then
-  _ts=$(tr -dc '0-9' < "${_cd}" 2>/dev/null)
+  _ts=$(tr -dc '0-9' 2>/dev/null < "${_cd}")
   if [ -n "${_ts}" ]; then
     _gap=$(( _now - _ts ))
     # A negative gap means the clock stepped backwards: treat the stamp as

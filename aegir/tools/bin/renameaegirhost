@@ -4140,7 +4140,7 @@ _verify_renamed_sites_serve() {
       _code=$(curl -s -o "${_body}" -w '%{http_code}' -A iCab --max-time 20 \
         -H "Host: ${_U}" "http://127.0.0.1/" 2>/dev/null)
       if [ "${_code}" = "200" ] && [ -n "${_base}" ]; then
-        _md5=$(md5sum < "${_body}" 2>/dev/null | cut -d' ' -f1)
+        _md5=$(md5sum 2>/dev/null < "${_body}" | cut -d' ' -f1)
         if [ -z "${_md5}" ] || [ "${_md5}" = "${_base}" ]; then
           # Either the catch-all answered, or the body could not be read at
           # all -- an unread body proves nothing, so it is not a pass either.
