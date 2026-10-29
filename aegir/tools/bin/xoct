@@ -1577,7 +1577,7 @@ _xoct_first_host_named_site() {
     | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g")
-  _pf="${_pf##*/}"
+  _pf=$(basename "${_pf}" 2> /dev/null)
   _pf=${_pf//[^a-zA-Z0-9.\-]/}
   for _v in "${_vd}"/*; do
     [ -f "${_v}" ] && [ ! -L "${_v}" ] || continue
@@ -1603,7 +1603,14 @@ _xoct_keep_renamed_redirects() {
       exit 1
     fi
   done
-  [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] && return 0
+  if [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ]; then
+    if [ "${_XOCT_TARGET_FQDN,,}" = "${_XOCT_MY_FQDN,,}" ]; then
+      echo "INFO: ${_oct}: the target's hostname is this box's own (${_XOCT_MY_FQDN}): nothing was renamed there, so its sites are relayed under their own names"
+      _XOCT_TARGET_FQDN=""
+      _XOCT_MY_FQDN=""
+    fi
+    return 0
+  fi
   [ -n "${_XOCT_DEFER_FQDN}" ] && return 0
   _mf="${_XOCT_MY_FQDN}"
   if [ -z "${_mf}" ]; then
