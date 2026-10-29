@@ -752,7 +752,7 @@ probe_apache() {
   for _f in "${_AEGIR_ROOT}/config/server_master/apache/pre.d"/* \
             "${_AEGIR_ROOT}/config/server_master/apache/post.d"/*; do
     [[ -f "${_f}" ]] || continue
-    _tsv_row custom_apache "pre_post_d" "${_f}" "$(wc -l < "${_f}" 2>/dev/null | tr -d ' ') lines"
+    _tsv_row custom_apache "pre_post_d" "${_f}" "$(wc -l 2>/dev/null < "${_f}" | tr -d ' ') lines"
     _n=$((_n + 1))
   done
 

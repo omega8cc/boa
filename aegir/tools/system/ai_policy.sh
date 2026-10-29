@@ -30,7 +30,7 @@ _emit_version="2"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
 # Re-entrancy guard for the whole global run.
-exec 9>"${_lock_file}" 2>/dev/null
+{ exec 9>"${_lock_file}"; } 2>/dev/null
 if ! flock -w 30 9; then
   echo "Could not acquire the shared nginx-config lock; skipping this run."
   exit 0
@@ -268,7 +268,7 @@ _lg_unpack() {
   local _rc _sz
   rm -rf -- "${2}" "${2}.tar"
   mkdir -m 0700 -- "${2}" || return 1
-  gzip -dc < "${1}" 2> /dev/null | head -c 33554433 > "${2}.tar"
+  gzip -dc 2> /dev/null < "${1}" | head -c 33554433 > "${2}.tar"
   _rc="${PIPESTATUS[0]}"
   [[ "${_rc}" == "0" ]] || return 1
   [[ "$(stat -c %s -- "${2}.tar" 2> /dev/null || echo 33554433)" -le 33554432 ]] || return 1
@@ -317,7 +317,7 @@ _policy_alert() {
   if [[ -z "${_mail}" ]] || ! command -v s-nail > /dev/null 2>&1; then
     return 0
   fi
-  _host="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+  _host="$(tr -d '\n' 2> /dev/null < /etc/hostname)"
   [[ -n "${_host}" ]] || _host="$(hostname -f 2> /dev/null)"
   # the mailer, and a delivery it may leave running, never holds the shared
   # nginx-config lock (fd 9)

@@ -227,7 +227,7 @@ _sql_maint_foreign() {
   # Mirrored in lib/functions/sql.sh.inc and the barracuda launcher.
   [ -e "/run/boa_sql_maintenance.pid" ] || return 1
   [ ! -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ] && return 1
-  local _mPid="$(tr -dc '0-9' < /run/boa_sql_maintenance.pid 2>/dev/null)"
+  local _mPid="$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_maintenance.pid)"
   [ -z "${_mPid}" ] && return 0
   [ "${_mPid}" = "$$" ] && return 1
   kill -0 "${_mPid}" 2>/dev/null || return 1

@@ -1466,7 +1466,7 @@ _announce_kernel_reboot() {
 [${_stAmp}] Kernel running before this reboot: $(uname -r 2>/dev/null)"
   if [ -e "/run/reboot-required.pkgs" ]; then
     _rBody="${_rBody}
-[${_stAmp}] Pending packages: $(tr '\n' ' ' < /run/reboot-required.pkgs 2>/dev/null)"
+[${_stAmp}] Pending packages: $(tr '\n' ' ' 2>/dev/null < /run/reboot-required.pkgs)"
   fi
   echo "${_rBody}" >> "${_rLog}"
   _if_hosted_sys

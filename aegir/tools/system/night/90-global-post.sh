@@ -1285,7 +1285,7 @@ _migrate_source_sweep_all() {
     wait
   fi
   if [ "${_madeStop}" = "YES" ] \
-    && [ "$(tr -dc '0-9' < "${_stop}" 2>/dev/null)" = "$$" ]; then
+    && [ "$(tr -dc '0-9' 2>/dev/null < "${_stop}")" = "$$" ]; then
     rm -f "${_stop}"
   fi
   flock -u "${_lockfd}"

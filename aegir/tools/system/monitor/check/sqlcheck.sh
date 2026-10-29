@@ -339,7 +339,7 @@ _stats_mail() {
       _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
     fi
   fi
-  _hName="$(tr -d '\n' < /etc/hostname 2>/dev/null)"
+  _hName="$(tr -d '\n' 2>/dev/null < /etc/hostname)"
   [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
   echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
   s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")

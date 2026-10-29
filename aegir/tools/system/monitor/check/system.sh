@@ -239,7 +239,7 @@ _oom_kill_top_offender() {
     fi
   fi
   if [ -s "/run/oom-monitor.cooldown" ]; then
-    _ts=$(tr -dc '0-9' < /run/oom-monitor.cooldown 2>/dev/null)
+    _ts=$(tr -dc '0-9' 2>/dev/null < /run/oom-monitor.cooldown)
     if [ -n "${_ts}" ]; then
       _gap=$(( _now - _ts ))
       # A negative gap means the clock stepped backwards: treat the stamp as
@@ -379,7 +379,7 @@ _if_fix_dhcp() {
       _cdDhcp="/run/dhcp-monitor.cooldown"
       _nowDhcp=$(date +%s)
       if [ -s "${_cdDhcp}" ]; then
-        _tsDhcp=$(tr -dc '0-9' < "${_cdDhcp}" 2>/dev/null)
+        _tsDhcp=$(tr -dc '0-9' 2>/dev/null < "${_cdDhcp}")
         if [ -n "${_tsDhcp}" ] && [ $((_nowDhcp - _tsDhcp)) -ge 0 ] && [ $((_nowDhcp - _tsDhcp)) -lt 300 ]; then
           return 0
         fi
