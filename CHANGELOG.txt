@@ -2414,9 +2414,10 @@
       with about four statements of its own, filled it within days on a
       server with a few thousand tables. The per-minute SQL check leaves
       root's own sessions uninstrumented (one setup_actors row, set again
-      after every server start): BOA's dumps and migration exports run
-      as root, every other user is counted as before. Percona 8.0 and
-      8.4 only; 5.7 runs with performance_schema off.
+      after every server start): BOA's dumps and migration exports run as
+      root, every other user is counted as before. The pass that sets the
+      rule also empties the summary, so the rows root added before it go
+      too. Percona 8.0 and 8.4 only; 5.7 runs with performance_schema off.
 
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after

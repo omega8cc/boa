@@ -45,17 +45,27 @@ _check_root
 ### sessions are left uninstrumented and every other user is counted as
 ### before. The rule lives in memory only: it is set again on the first pass
 ### after a server start, before the stand-down markers below, because a
-### backup started right after a restart is the session it is for. An
-### operator's own row for root is left as it is. performance_schema is off
-### on 5.7 (BOA's my.cnf), and nothing runs there.
+### backup started right after a restart is the session it is for. The rule
+### keeps new rows out but removes none, so the pass that sets it also empties
+### the summary: the rows root added before it go too, whether since a start
+### (a minute's worth after a plain restart), inside a SQL maintenance window
+### (mysql.sh stands down for the whole window and never starts this check, and
+### a Percona upgrade walks every table as root in it) or in the weeks before
+### this check came. When another session keeps the summary from being emptied
+### within 5 seconds, the rule is taken back out, so the next pass tries both
+### again. An operator's own row for root is left as it is. performance_schema
+### is off on 5.7 (BOA's my.cnf), and nothing runs there.
 ###
 _keep_root_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
-  local _st
-  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE HOST = '%' AND USER = 'root' AND ROLE = '%')" 2>/dev/null) || return 0
+  local _st _row="HOST = '%' AND USER = 'root' AND ROLE = '%'"
+  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE ${_row})" 2>/dev/null) || return 0
   [ "${_st}" = $'1\t0' ] || return 0
-  timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null
+  timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null || return 0
+  if ! timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
+    timeout 10 mysql -N -B -e "DELETE FROM performance_schema.setup_actors WHERE ${_row}" &> /dev/null
+  fi
   return 0
 }
 _keep_root_out_of_digests
