@@ -1549,6 +1549,12 @@
 
 @=> Security
 
+    * A Grav site no longer serves the dependency manifests its plugins
+      and themes ship under user/ (composer.json, composer.lock,
+      package.json), which list the exact package versions it runs; the
+      same files at the site's root were already refused. A .json file
+      attached to a page still serves.
+
     * multiback no longer shows the B2 key ID and application key in the
       duplicity command lines it prints, which cron mails to root after
       every backup run; the target is shown without them, as its error
@@ -2445,6 +2451,12 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * Grav's Admin2 script, style and font files (and those of any plugin
+      or theme built the same way, under _app/immutable/) are now cached
+      by the browser for a year: their names change with their content,
+      so a returning editor's browser reuses them instead of asking
+      again. A missing one is a plain 404 that no longer starts PHP.
 
     * The hourly clock sync (/etc/cron.hourly/systemtime) no longer mails
       root every hour: ntpdate's report of a good sync is dropped, while
