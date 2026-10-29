@@ -592,6 +592,16 @@ if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
   drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
 fi
 
+# --app-root is the platform Delete's leg for a Drupal or Backdrop root only:
+# a Grav, Textpattern or any other root is refused here, before the permission
+# pass of its own kind could run and end as if the holder had been opened.
+if [[ "${_APP_ROOT}" = "YES" ]] && [ -n "${drupal_root}" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  printf "Notice: %s is not a Drupal or Backdrop root; --app-root changed nothing.\n" "${drupal_root}" >&3
+  exit 1
+fi
+
 # --- Grav 2 platform (site capsules) -----------------------------------------
 # A Grav root carries no Drupal system.module; detect it positively and run
 # the capsule model instead of refusing (union seam: further foreign-CMS
@@ -734,6 +744,15 @@ _app_up_here() {
   [[ "$(stat -c %u -- . 2> /dev/null)" =~ ^[1-9][0-9]*$ ]] || return 0
   _chmod_own_here d 02775 .
 }
+# The plain holder's one act, judged by what it left: status 0 only when the
+# current (pinned) directory is the account's and carries group write now.
+_app_plain_here() {
+  local _m
+  [[ "$(stat -c %u -- . 2> /dev/null)" =~ ^[1-9][0-9]*$ ]] || return 1
+  _chmod_own_here d 02775 . || return 1
+  _m="$(stat -c %a -- . 2> /dev/null)"
+  [[ "${_m}" =~ ^[0-7]+$ ]] && (( 8#${_m} & 8#020 ))
+}
 if [[ "${_APP_ROOT}" = "YES" ]]; then
   _app="${drupal_root%/*}"
   _app_kind=""
@@ -764,9 +783,11 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
       exit 1
     fi
     printf 'Setting group write on %s for the Delete...\n' "${_app}"
-    _LEFT=""
-    _left_add _in_pinned_dir "${_app}" _app_up_here
-    _root_owners_left_note "${_LEFT}"
+    if ! _LEFT=$(_in_pinned_dir "${_app}" _app_plain_here); then
+      _root_owners_left_note "${_LEFT}"
+      printf "Notice: %s did not take group write; nothing changed.\n" "${_app}" >&3
+      exit 1
+    fi
     echo "Done setting group write on the directory holding the platform."
     exit 0
   fi
