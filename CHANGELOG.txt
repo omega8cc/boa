@@ -1549,6 +1549,12 @@
 
 @=> Security
 
+    * A Grav site no longer serves the dependency manifests its plugins
+      and themes ship under user/ (composer.json, composer.lock,
+      package.json), which list the exact package versions it runs; the
+      same files at the site's root were already refused. A .json file
+      attached to a page still serves.
+
     * multiback no longer shows the B2 key ID and application key in the
       duplicity command lines it prints, which cron mails to root after
       every backup run; the target is shown without them, as its error
@@ -2446,6 +2452,12 @@
 
 @=> Improvements
 
+    * Grav's Admin2 script, style and font files (and those of any plugin
+      or theme built the same way, under _app/immutable/) are now cached
+      by the browser for a year: their names change with their content,
+      so a returning editor's browser reuses them instead of asking
+      again. A missing one is a plain 404 that no longer starts PHP.
+
     * The hourly clock sync (/etc/cron.hourly/systemtime) no longer mails
       root every hour: ntpdate's report of a good sync is dropped, while
       a failed sync is still mailed. Servers that already have the file
@@ -2462,12 +2474,17 @@
       shapes by default, and the nightly dump, which reads each table
       with about four statements of its own, filled it within days on a
       server with a few thousand tables. The per-minute SQL check leaves
-      root's own sessions uninstrumented (one setup_actors row, set again
-      after every server start): BOA's dumps and migration exports run as
-      root, every other user is counted as before. The summary is also
-      emptied once per server start while the rule is in place, so the
-      rows root added before it go too. Percona 8.0 and 8.4 only; 5.7 runs
-      with performance_schema off.
+      the users the dumps run as uninstrumented (one setup_actors row
+      each, set again after every server start): root, which runs the
+      nightly dump and the migration exports, and the backend user of the
+      master instance and of each Octopus instance, which the Aegir
+      backups, clones and migrations dump and load as. Every other user is
+      counted as before. The summary is also emptied once per server start
+      while root's rule is BOA's, and once more when a user gets its rule
+      for the first time since that start, so the rows those users added
+      before go too; it waits while a session one of them opened before
+      its rule is still running, for up to 12 hours. Percona 8.0 and 8.4
+      only; 5.7 runs with performance_schema off.
 
     * Percona 8.0 and 8.4 run performance_schema with the server's own
       instrument defaults. The my.cnf BOA wrote for them switched on and
