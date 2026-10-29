@@ -4,21 +4,37 @@
 
 @=> Important Fixes
 
+    * A barracuda pass restarted the database server when the new my.cnf
+      differed from the previous one only in a comment line, which the
+      server never reads: a comment changed in BOA's my.cnf template meant
+      a restart of every box's database at its next pass. The pass now
+      leaves comment lines out of that check; a template edit that adds,
+      removes, changes, comments out or switches on a setting still
+      restarts the server.
+
+    * aegir2boa's whole-panel route (db-import) could not export the
+      control panel when no site had been exported before it (a panel with
+      no site listed, or an estate of the panel alone): the dump directory
+      did not exist yet, so the export reported the panel dump failed
+      before mysqldump ever ran. The export now makes that directory
+      itself.
+
     * A large site moved by a Migrate, or copied by a Clone or brought
-      back by a Restore, or moved to another server by xoct or xcopy,
-      could have its pages planned as full table scans: a freshly loaded
-      table can keep the statistics of an empty one long after the load,
-      until InnoDB measures it in the background. On one busy server a
-      site's tables still read as a single page each 45 minutes after its
-      Migrate; its pages read hundreds of thousands of rows each, the
-      database server ran out of CPU and the load guard paused the web
-      server twice. The site import now measures every table of the new
-      database (ANALYZE TABLE, a few seconds even for a large site) before
-      the site is switched to it, xoct and xcopy measure every site and
-      control panel database they load on the new server the same way,
-      and the per-minute SQL check measures any large table loaded some
-      other way whose statistics still claim a single page five minutes
-      after it was created (logged to /var/log/boa/sqlstats.incident.log).
+      back by a Restore, or moved to another server by xoct, xcopy or the
+      classic Aegir import (aegir2boa), could have its pages planned as
+      full table scans: a freshly loaded table can keep the statistics of
+      an empty one long after the load, until InnoDB measures it in the
+      background. On one busy server a site's tables still read as a
+      single page each 45 minutes after its Migrate; its pages read
+      hundreds of thousands of rows each, the database server ran out of
+      CPU and the load guard paused the web server twice. The site import
+      now measures every table of the new database (ANALYZE TABLE, a few
+      seconds even for a large site) before the site is switched to it,
+      xoct, xcopy and aegir2boa's import measure every site and control
+      panel database they load on the new server the same way, and the
+      per-minute SQL check measures any large table loaded some other way
+      whose statistics still claim a single page five minutes after it was
+      created (logged to /var/log/boa/sqlstats.incident.log).
 
     * Right after a Verify added an alias to a site, its first visitors
       could get the Drupal installer redirect, then a refusal of the name
@@ -58,11 +74,36 @@
       switch went with the old database, although the panel had answered
       that it was queued (19 of 233 tasks queued over one forced Octopus
       upgrade, all inside a three-second window). While the panel moves,
-      it now refuses a new task with a message saying to queue it again,
-      and its pages show the maintenance page to everyone, administrators
-      included; the Ægir Master's own upgrade does the same. A moving
-      panel answers with the code it is leaving, so this holds from the
-      upgrade after the one that brings it.
+      its pages answer 503 to everyone, administrators included, and it
+      refuses a new task with a message saying to queue it again; the
+      Ægir Master's own upgrade does the same. The new copy is held too
+      until the move has pointed it at the new database. The pages are
+      held from the first upgrade that brings this version; a task queued
+      from the command line is refused from the upgrade after it, since a
+      moving panel answers with the code it is leaving.
+
+    * A Grav or Textpattern site put on a name that was only the parent of
+      another site's subdirectory alias took that name's web server
+      config over, so the subdirectory site stopped answering there for as
+      long as the Grav or Textpattern site stayed (such sites carry no
+      subdirectory sites). An install, clone, copy-upgrade, rename or
+      cutover of a Grav or Textpattern site onto such a name now fails
+      before it changes anything, naming the name.
+
+    * A one-account xoct move whose firewall step was missed failed
+      halfway: the new server's ssh check banned the old one for the
+      pre-auth lines of xoct's host-key scan, and the create's remote
+      install lost its session minutes later, saying only that the
+      connection was lost. Every xoct step that reaches the new server
+      now checks first that the new server's csf.allow or csf.ignore
+      trusts each address of this one, and refuses before anything
+      travels with the exact lines to add; an address in only one of the
+      two files gets a warning naming the other. A server without csf is
+      not checked, and an xmass move, which wires its own trust, neither.
+
+    * xoct proxy with --proxy-mode= on an account with no declared mode
+      warned that it was falling back to 'temporary', then recorded the
+      mode it was given. The warning now shows only when no mode is given.
 
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
@@ -2481,6 +2522,20 @@
       directory" at the start of a run whose log file does not exist
       yet, a line cron mailed to root with every run; xdr9000's status
       no longer prints it before its first rollup either.
+
+    * The same fix across the rest of BOA: every tool that reads a pid
+      file, a stamp, a /proc entry, a key or a patch with its errors sent
+      to /dev/null now does so in the order that hides them, so a file
+      that is gone (the pid file of a finished run, a process that just
+      exited) no longer prints "No such file or directory" into cron mail
+      or an operator's terminal.
+
+    * The nginx config scripts (ip_access.sh, user_admin_access.sh,
+      ai_policy.sh, nginx_deny.sh, nginx_deny6.sh, cloudflare_realip.sh,
+      migration_proxy_realip.sh), the agent's crawler-access fix and
+      autosymlink opened their lock or held directory in a way that also
+      sent every later error of the run to /dev/null; those errors now
+      reach whoever runs them.
 
     * performance_schema's per-query summary now counts the sites' own
       statements on servers with many tables. It holds 10,000 statement

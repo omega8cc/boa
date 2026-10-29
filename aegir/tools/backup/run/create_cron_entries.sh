@@ -94,7 +94,7 @@ _pid_is_live() {
   local _pid=$1 _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
-  _cmd=$(tr '\0' ' ' < "/proc/${_pid}/cmdline" 2>/dev/null)
+  _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
@@ -118,18 +118,18 @@ _acquire_pid_file() {
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
-      _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+      _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
       if [ "${_now_pid}" = "$$" ]; then
         return 0
       fi
       continue
     fi
-    _old_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
     if _pid_is_live "${_old_pid}"; then
       echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
       return 1
     fi
-    _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
     if [ "${_now_pid}" = "${_old_pid}" ]; then
       echo "Removing stale PID file ${_pidfile} (pid ${_old_pid:-empty} not running)"
       rm -f "${_pidfile}"
@@ -150,7 +150,7 @@ _live_backup_streams() {
   for _f in /run/duplicity_*.pid; do
     [ -e "${_f}" ] || continue
     case "${_f}" in *_sequential.pid) continue ;; esac
-    _p=$(tr -dc '0-9' < "${_f}" 2>/dev/null)
+    _p=$(tr -dc '0-9' 2>/dev/null < "${_f}")
     _pid_is_live "${_p}" && _n=$((_n + 1))
   done
   echo "${_n}"
@@ -183,9 +183,9 @@ _release_current_pid_file() {
 _remove_stale_multiback_pid() {
   _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
-    _old_pid=$(tr -dc '0-9' < "${_multiback_pidfile}" 2>/dev/null)
+    _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_multiback_pidfile}")
     if ! _pid_is_live "${_old_pid}"; then
-      _now_pid=$(tr -dc '0-9' < "${_multiback_pidfile}" 2>/dev/null)
+      _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_multiback_pidfile}")
       if [ "${_now_pid}" = "${_old_pid}" ]; then
         echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
         rm -f "${_multiback_pidfile}"

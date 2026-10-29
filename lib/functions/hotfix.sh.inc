@@ -20,13 +20,13 @@ _fix_core_dgd() {
       for _Core in `find /data/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saPatch} &> /dev/null
+        patch -p1 &> /dev/null < ${_saPatch}
       done
     elif [ -d "/data/disk/all/000/core" ]; then
       for _Core in `find /data/disk/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saPatch} &> /dev/null
+        patch -p1 &> /dev/null < ${_saPatch}
       done
     fi
     touch ${_pthLog}/${_saCoreN}-fixed-d7.log
@@ -45,7 +45,7 @@ _fix_core_dgd() {
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 &> /dev/null < ${_saPatch}
         fi
       done
       touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7.log
@@ -58,7 +58,7 @@ _fix_core_dgd() {
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 &> /dev/null < ${_saPatch}
         fi
       done
       touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7eee.log
@@ -95,7 +95,7 @@ _fix_core_dgd() {
 _fix_core_dgd_here() {
   [ ! -e ./core ] || return 0
   [ ! -e "./profiles/${_saCoreS}-fix.info" ] || return 0
-  patch -p1 < "${_saPatch}" &> /dev/null
+  patch -p1 &> /dev/null < "${_saPatch}"
   _acct_in_real_dir "$(pwd -P)/profiles" _acct_put_here "${_saCoreS}-fix.info" fixed
 }
 # Fix for Postfix configuration.

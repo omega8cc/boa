@@ -1735,6 +1735,10 @@ _aegir_master_upgrade() {
     rm -f /opt/tmp/state/aegir/status-AegirUpgrade-FAIL \
       /opt/tmp/state/aegir/status-AegirUpgrade-OK \
       /opt/tmp/status-AegirUpgrade-FAIL &> /dev/null
+    ### The panel's web front is held while it moves by the global include set
+    ### (global-main.inc): deploy it before the Master's own migrate, so the
+    ### first upgrade that brings it holds the Master too. Deployed again below.
+    _global_inc_conf_update
     su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
     wait
     ###
