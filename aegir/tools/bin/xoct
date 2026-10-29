@@ -7115,7 +7115,7 @@ _xoct_require_peer_whitelist() {
   [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
   _mig_valid_ip "${_p}" || return 0
   _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_p}" \
-    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2>/dev/null)"
+    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2>/dev/null)"
   if [ "${_out}" = "XOCT-CSF-NONE" ]; then
     echo "INFO: ${_p} runs no csf; no firewall entries to check"
     return 0
