@@ -11045,7 +11045,7 @@ _webmin_key_fetch() {
     rm -f "${_d}/key.asc" "${_d}/key.gpg"
     curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_d}/key.asc"
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_d}/key.asc" 2> /dev/null \
-      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" < "${_d}/key.asc" 2> /dev/null \
+      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" 2> /dev/null < "${_d}/key.asc" \
       && _webmin_key_is_pinned "${_g}" "${_d}/key.gpg"; then
       mkdir -p /etc/apt/keyrings
       chmod 0755 /etc/apt/keyrings
@@ -13959,7 +13959,7 @@ _fix_root_locked_shadow() {
 _php_fpm_master_up() {
   local _pid
   [ -r "/run/php${1}-fpm.pid" ] || return 1
-  _pid=$(tr -d '[:space:]' < "/run/php${1}-fpm.pid" 2> /dev/null)
+  _pid=$(tr -d '[:space:]' 2> /dev/null < "/run/php${1}-fpm.pid")
   [ -n "${_pid}" ] || return 1
   case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
     *"php${1}-fpm.conf"*) return 0 ;;
@@ -13996,7 +13996,7 @@ _MQ_STOP="/run/boa_master_queue_stop.pid"
 _mq_nginx_up() {
   local _pid
   [ -r "/run/nginx.pid" ] || return 1
-  _pid=$(tr -dc '0-9' < /run/nginx.pid 2> /dev/null)
+  _pid=$(tr -dc '0-9' 2> /dev/null < /run/nginx.pid)
   [ -n "${_pid}" ] || return 1
   case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
     "nginx: master process"*) return 0 ;;
@@ -14321,7 +14321,12 @@ _initd_update() {
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
         fi
+        # diff shows a change only when one of its lines matches no -I
+        # pattern, so tuned-knob and comment lines alone never restart:
+        # mysqld never reads a comment line, so a template edit that only
+        # adds, drops or rewords one must not restart every box's server.
         _diffMyTest=$(diff -w -B \
+          -I "^[[:space:]]*[#;]" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
@@ -14343,20 +14348,6 @@ _initd_update() {
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
-          fi
-        fi
-        if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          # Suppress only when the surviving diff carries nothing but
-          # ignore-listed knob lines; a mixed hunk keeps its restart for
-          # the co-riding knob the -I list does not cover.
-          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
-            | grep -E "^[<>] " \
-            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
-          if [ -z "${_diffMyOther}" ]; then
-            _myCnfUpdate=NO
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
-            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then

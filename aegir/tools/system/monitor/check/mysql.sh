@@ -341,7 +341,7 @@ _sql_restart() {
     exit 0
   fi
   if [ -s "${_pthCdn}" ]; then
-    _ts=$(tr -dc '0-9' < "${_pthCdn}" 2>/dev/null)
+    _ts=$(tr -dc '0-9' 2>/dev/null < "${_pthCdn}")
     if [ -n "${_ts}" ]; then
       _gap=$(( _now - _ts ))
       # A negative gap means the clock stepped backwards: treat the stamp as

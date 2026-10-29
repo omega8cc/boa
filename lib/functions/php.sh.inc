@@ -2413,7 +2413,7 @@ _install_php_multi_src() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       else
-        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
+        patch -p1 &> /dev/null < ${_bldPth}/aegir/patches/${_patchFile}
       fi
     fi
   fi
@@ -2442,7 +2442,7 @@ _install_php_multi_src() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       else
-        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
+        patch -p1 &> /dev/null < ${_bldPth}/aegir/patches/${_patchFile}
       fi
     fi
     if [ "$1" -lt 81 ]; then
@@ -2450,7 +2450,7 @@ _install_php_multi_src() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       else
-        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
+        patch -p1 &> /dev/null < ${_bldPth}/aegir/patches/${_patchFile}
       fi
     fi
   fi
@@ -2810,7 +2810,7 @@ _newrelic_key_check() {
   fi
 
   if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_tmp_key_raw}" 2>/dev/null; then
-    ${_GPG} --yes --dearmor -o "${_tmp_key}" < "${_tmp_key_raw}" 2>/dev/null
+    ${_GPG} --yes --dearmor -o "${_tmp_key}" 2>/dev/null < "${_tmp_key_raw}"
   else
     cp -f "${_tmp_key_raw}" "${_tmp_key}"
   fi

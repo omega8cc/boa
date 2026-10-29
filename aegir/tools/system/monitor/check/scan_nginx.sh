@@ -2196,7 +2196,7 @@ if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
   # length, so a pass re-parses the list only after it changed (a restore of
   # an older copy included). The tag names this parser: bump it whenever the
   # parsing below changes.
-  _CSF_ALLOW_KEY="v1 $(cksum < "${_CSF_ALLOW_FILE}" 2>/dev/null)"
+  _CSF_ALLOW_KEY="v1 $(cksum 2>/dev/null < "${_CSF_ALLOW_FILE}")"
   _CSF_ALLOW_HIT=0
   if [[ -f "${_CSF_ALLOW_CACHE}" && ! -L "${_CSF_ALLOW_CACHE}" ]] \
     && IFS= read -r _aline < "${_CSF_ALLOW_CACHE}" \
@@ -2270,7 +2270,7 @@ if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
     # address), and tables parsed from one state filed under another's key
     # would be served whenever that other state comes back.
     if [[ "${_CSF_ALLOW_KEY}" == "v1 "[0-9]*" "[0-9]* ]] \
-      && [[ "v1 $(cksum < "${_CSF_ALLOW_FILE}" 2>/dev/null)" == "${_CSF_ALLOW_KEY}" ]]; then
+      && [[ "v1 $(cksum 2>/dev/null < "${_CSF_ALLOW_FILE}")" == "${_CSF_ALLOW_KEY}" ]]; then
       # Mode 0600, like the list it is parsed from; replaced whole by a rename.
       # One fixed temp name: the lock keeps one scorer at a time, and a run
       # stopped mid-write leaves nothing the next one does not overwrite.

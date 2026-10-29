@@ -353,7 +353,7 @@ _csf_kill_own() {
   for _p in $(pgrep -x sleep 2>/dev/null); do
     _pp=$(awk '/^PPid:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
     [ -n "${_pp}" ] || continue
-    _cmd=$(tr '\0' ' ' < "/proc/${_pp}/cmdline" 2>/dev/null)
+    _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pp}/cmdline")
     _csf_owned_cmdline "${_cmd}" && kill -9 "${_p}" 2>/dev/null
   done
   pkill -9 -f '^[^ ]*ConfigServer' 2>/dev/null
