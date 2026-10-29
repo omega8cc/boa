@@ -3,8 +3,8 @@
 ###
 ### sqlcheck.sh — Fast MySQL crash pre-filter
 ###
-### Runs every minute via mysql.sh. Keeps root's own sessions out of
-### performance_schema's statement summary (_keep_root_out_of_digests).
+### Runs every minute via mysql.sh. Keeps the sessions the dumps run in out
+### of performance_schema's statement summary (_keep_dumps_out_of_digests).
 ### Scans new syslog entries for MySQL table crash
 ### markers using byte-offset tracking. Invokes checksql.sh only when a problem
 ### is detected, avoiding the heavy mysqlcheck -Aa cost on clean systems.
@@ -34,62 +34,152 @@ _check_root() {
 _check_root
 
 ###
-### Keep root's own sessions out of performance_schema's statement summary.
+### Keep the sessions the dumps run in out of performance_schema's statement
+### summary.
 ###
 ### The summary holds one row per statement shape and schema in a table of
 ### fixed size (10,000 rows by default, allocated at server start). A dump
 ### reads each table with a few statements of its own, about four rows a
 ### table, so on a server with thousands of tables the nightly dump fills
 ### the summary within days and the sites' own statements are no longer
-### counted. Every BOA dump and migration export connects as root, so root's
-### sessions are left uninstrumented and every other user is counted as
-### before. The rule lives in memory only: it is set again on the first pass
-### after a server start, before the stand-down markers below, because a
-### backup started right after a restart is the session it is for. The rule
-### keeps new rows out but removes none, so the summary is also emptied once
-### per server start, while the rule is in place: the rows root added before it
-### go too, whether since the start (a minute's worth after a plain restart),
-### inside a SQL maintenance window (mysql.sh stands down for the whole window
-### and never starts this check, and a Percona upgrade walks every table as root
-### in it) or in the weeks before this check came. The start the summary was
-### emptied for is kept in a state file under /run. When another session keeps
-### the summary from being emptied within 5 seconds, the rule stays and the
-### emptying is tried again 5 minutes later. An operator's own row for root
-### (any other switches) is left as it is, and so is the summary.
+### counted. The nightly dump and the migration exports connect as root; the
+### Aegir backups, clones and migrations dump and load as the backend user of
+### their database server: aegir_root for the master instance, and the
+### instance's own user for each Octopus instance whose databases are local
+### (aegir_root again when they are remote). The instances are those with both
+### root's own /root/.<name>.octopus.cnf and their /data/disk/<name>, counted
+### under their own name when that file's _THIS_DB_HOST is one the Octopus pass
+### gives the instance's own user for; nothing is read from a file an instance
+### can write. Those users' sessions are left uninstrumented and every other
+### user is counted as before. The rules live in memory only: they are set
+### again on the first pass after a server start, before the stand-down markers
+### below, because a backup started right after a restart is the session they
+### are for. A rule keeps new rows out but removes none, so while root's rule
+### is BOA's the summary is also emptied once per server start, and once more
+### when a user gets its rule for the first time since that start (a new
+### instance, or an earlier copy of this check that knew only root). The rows
+### those users added before go too, whether since the start (a minute's worth
+### after a plain restart), inside a SQL maintenance window (mysql.sh stands
+### down for the whole window and never starts this check, and a Percona
+### upgrade walks every table as root in it) or in the weeks before this check
+### came. A rule reaches new sessions only, and one of these users' sessions
+### opened before its rule keeps adding rows for as long as it runs, so the
+### emptying waits while such a session is open, for up to 12 hours. The start
+### the summary was emptied for, and the users it was emptied for, are kept in
+### a state file under /run. When another session keeps the summary from being
+### emptied within 5 seconds, the rules stay and the emptying is tried again 5
+### minutes later. An operator's own row for any of these users (any other
+### switches) is left as it is; with one for root the summary is left alone too.
 ### performance_schema is off on 5.7 (BOA's my.cnf), and nothing runs there.
 ###
-_keep_root_out_of_digests() {
+_digest_dump_users() {
+  local _c _u _h
+  {
+    echo root
+    echo aegir_root
+    for _c in /root/.*.octopus.cnf; do
+      [ -f "${_c}" ] || continue
+      _u="${_c##*/.}"
+      _u="${_u%.octopus.cnf}"
+      [ -d "/data/disk/${_u}" ] || continue
+      # read as the Octopus pass's bash reads it after its NUL heal, which
+      # ends a line where a zero-filled run begins; a file that sets none
+      # keeps the default it sourced first, localhost
+      _h=$(tr -s '\000' '\n' 2>/dev/null < "${_c}" \
+        | grep -aE "^[[:space:]]*(export[[:space:]]+)?_THIS_DB_HOST=" | tail -n 1)
+      if [ -z "${_h}" ]; then
+        _h=localhost
+      else
+        _h="${_h#*=}"
+        case "${_h}" in
+          \"*) _h="${_h#\"}"; _h="${_h%%\"*}" ;;
+          \'*) _h="${_h#\'}"; _h="${_h%%\'*}" ;;
+          *) _h="${_h%%[[:space:];]*}" ;;
+        esac
+      fi
+      case "${_h}" in
+        localhost|127.0.0.1|PROXYSQL|FQDN) echo "${_u}" ;;
+      esac
+    done
+  } | grep -xE '[A-Za-z0-9_-]{1,32}' | sort -u
+}
+
+_keep_dumps_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
-  local _st _ps _all _ours _up _now _start _m_start="" _m_state="" _m_time=""
-  local _row="HOST = '%' AND USER = 'root' AND ROLE = '%'"
+  local _st _ps _up _u _e _h _rows _in="" _ours="" _qo="" _new="" _now _start
+  local _open _since _held="" _m_start="" _m_state="" _m_time="" _m_users="" _m_since=""
   local _state="/run/boa_digest_reset.state"
-  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE ${_row}), (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE ${_row} AND ENABLED = 'NO' AND HISTORY = 'NO'), (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime')" 2>/dev/null) || return 0
-  IFS=$'\t' read -r _ps _all _ours _up <<< "${_st}"
+  local -a _users=()
+  local -A _rule=()
+  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime')" 2>/dev/null) || return 0
+  IFS=$'\t' read -r _ps _up <<< "${_st}"
   [ "${_ps}" = "1" ] || return 0
-  [[ "${_all}" =~ ^[0-9]+$ && "${_ours}" =~ ^[0-9]+$ && "${_up}" =~ ^[0-9]+$ ]] || return 0
-  if [ "${_all}" = "0" ]; then
-    timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null || return 0
-  elif [ "${_ours}" = "0" ]; then
-    return 0
-  fi
+  [[ "${_up}" =~ ^[0-9]+$ ]] || return 0
+  mapfile -t _users < <(_digest_dump_users)
+  for _u in "${_users[@]}"; do
+    _in="${_in:+${_in}, }'${_u}'"
+  done
+  [ -n "${_in}" ] || return 0
+  _rows=$(timeout 10 mysql -N -B -e "SELECT USER, ENABLED, HISTORY FROM performance_schema.setup_actors WHERE HOST = '%' AND ROLE = '%' AND USER IN (${_in})" 2>/dev/null) || return 0
+  while IFS=$'\t' read -r _u _e _h; do
+    [ -n "${_u}" ] && _rule["${_u}"]="${_e}/${_h}"
+  done <<< "${_rows}"
+  for _u in "${_users[@]}"; do
+    if [ -z "${_rule[${_u}]+set}" ]; then
+      timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', '${_u}', '%', 'NO', 'NO')" &> /dev/null || continue
+    elif [ "${_rule[${_u}]}" != "NO/NO" ]; then
+      continue
+    fi
+    _ours="${_ours:+${_ours},}${_u}"
+    _qo="${_qo:+${_qo}, }'${_u}'"
+  done
+  [[ ",${_ours}," == *",root,"* ]] || return 0
   _now=$(date +%s)
   _start=$(( _now - _up ))
-  [ -s "${_state}" ] && read -r _m_start _m_state _m_time < "${_state}"
+  [ -s "${_state}" ] && read -r _m_start _m_state _m_time _m_users _m_since < "${_state}"
   if [[ "${_m_start}" =~ ^[0-9]+$ ]] && (( _m_start - _start <= 10 && _start - _m_start <= 10 )); then
-    [ "${_m_state}" = "done" ] && return 0
-    [[ "${_m_time}" =~ ^[0-9]+$ ]] && (( _now - _m_time < 300 )) && return 0
+    # the earlier copy wrote no users; an empty field would collapse on the
+    # next read and shift the hold's start into it
+    [ -n "${_m_users}" ] || _m_users="-"
+    for _u in ${_ours//,/ }; do
+      [[ ",${_m_users}," == *",${_u},"* ]] || _new="${_new} ${_u}"
+    done
+    if [ "${_m_state}" = "done" ]; then
+      [ -z "${_new}" ] && return 0
+    elif [ "${_m_state}" != "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]] && (( _now - _m_time < 300 )); then
+      return 0
+    fi
   else
     _m_start="${_start}"
+    _m_state=""
+    _m_users="-"
+    _m_since=""
+  fi
+  _open=$(timeout 10 mysql -N -B -e "SELECT COUNT(*) FROM performance_schema.threads WHERE INSTRUMENTED = 'YES' AND PROCESSLIST_USER IN (${_qo})" 2>/dev/null) || return 0
+  [[ "${_open}" =~ ^[0-9]+$ ]] || return 0
+  if (( _open > 0 )); then
+    # a refused emptying at the end of a hold keeps when the hold began
+    _since="${_now}"
+    if [ "${_m_state}" = "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]]; then
+      _since="${_m_time}"
+    elif [ "${_m_state}" = "wait" ] && [[ "${_m_since}" =~ ^[0-9]+$ ]]; then
+      _since="${_m_since}"
+    fi
+    if (( _now - _since < 43200 )); then
+      printf '%s hold %s %s\n' "${_m_start}" "${_since}" "${_m_users}" > "${_state}"
+      return 0
+    fi
+    _held=" ${_since}"
   fi
   if timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
-    printf '%s done %s\n' "${_m_start}" "${_now}" > "${_state}"
+    printf '%s done %s %s\n' "${_m_start}" "${_now}" "${_ours}" > "${_state}"
   else
-    printf '%s wait %s\n' "${_m_start}" "${_now}" > "${_state}"
+    printf '%s wait %s %s%s\n' "${_m_start}" "${_now}" "${_m_users}" "${_held}" > "${_state}"
   fi
   return 0
 }
-_keep_root_out_of_digests
+_keep_dumps_out_of_digests
 
 # Stand down while the database is already being worked on. A full-server
 # mysqlcheck taken while a backup holds its locks, or while the watchdog is
