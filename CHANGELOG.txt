@@ -2469,6 +2469,16 @@
       rows root added before it go too. Percona 8.0 and 8.4 only; 5.7 runs
       with performance_schema off.
 
+    * Percona 8.0 and 8.4 run performance_schema with the server's own
+      instrument defaults. The my.cnf BOA wrote for them switched on and
+      timed every mutex, rwlock and condition instrument the server ships
+      off (performance_schema_instrument = 'wait/%=ON'): some 320 more
+      instruments, a timer on every lock a query takes, and no memory
+      saved. The line is gone from the template, and a barracuda pass
+      comments it out where my.cnf carries it. The server reads it only
+      when it starts, so it takes effect at its next restart. 5.7 keeps
+      performance_schema off, as before.
+
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after
       it changed. The list grew about threefold when every provider came
