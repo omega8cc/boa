@@ -3,7 +3,9 @@
 ###
 ### sqlcheck.sh — Fast MySQL crash pre-filter
 ###
-### Runs every minute via mysql.sh. Scans new syslog entries for MySQL table crash
+### Runs every minute via mysql.sh. Keeps root's own sessions out of
+### performance_schema's statement summary (_keep_root_out_of_digests).
+### Scans new syslog entries for MySQL table crash
 ### markers using byte-offset tracking. Invokes checksql.sh only when a problem
 ### is detected, avoiding the heavy mysqlcheck -Aa cost on clean systems.
 ### Then measures the optimizer statistics of large tables that still read as
@@ -30,6 +32,33 @@ _check_root() {
   fi
 }
 _check_root
+
+###
+### Keep root's own sessions out of performance_schema's statement summary.
+###
+### The summary holds one row per statement shape and schema in a table of
+### fixed size (10,000 rows by default, allocated at server start). A dump
+### reads each table with a few statements of its own, about four rows a
+### table, so on a server with thousands of tables the nightly dump fills
+### the summary within days and the sites' own statements are no longer
+### counted. Every BOA dump and migration export connects as root, so root's
+### sessions are left uninstrumented and every other user is counted as
+### before. The rule lives in memory only: it is set again on the first pass
+### after a server start, before the stand-down markers below, because a
+### backup started right after a restart is the session it is for. An
+### operator's own row for root is left as it is. performance_schema is off
+### on 5.7 (BOA's my.cnf), and nothing runs there.
+###
+_keep_root_out_of_digests() {
+  [ -e "/root/.proxy.cnf" ] && return 0
+  command -v mysql >/dev/null 2>&1 || return 0
+  local _st
+  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE HOST = '%' AND USER = 'root' AND ROLE = '%')" 2>/dev/null) || return 0
+  [ "${_st}" = $'1\t0' ] || return 0
+  timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null
+  return 0
+}
+_keep_root_out_of_digests
 
 # Stand down while the database is already being worked on. A full-server
 # mysqlcheck taken while a backup holds its locks, or while the watchdog is
