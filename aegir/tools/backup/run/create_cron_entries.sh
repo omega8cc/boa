@@ -203,7 +203,10 @@ fi
 # Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
-    _ENV=$(env 2>&1)
+    # secret values and URL userinfo stay out of the dump
+    _ENV=$(env 2>&1 | sed -E \
+      -e 's/^(PASSPHRASE|[A-Z0-9_]*(KEY|SECRET|TOKEN|PASSWORD|CONNECTION_STRING|ACCOUNT_ID)[A-Z0-9_]*)=.*/\1=[redacted]/' \
+      -e 's|://[^@[:space:]]*@|://|g')
     echo
     echo "_ENV in $1 start"
     echo "${_ENV}"

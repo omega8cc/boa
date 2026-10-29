@@ -3466,8 +3466,8 @@ _update_agents() {
     fi
   fi
 
-  [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ ! -x "/etc/cron.hourly/systemtime" ] \
-    && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f95 --mode 755
+  [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f94 --mode 755
 
   _Dir="/data/all/000/modules"
   _REDIS_E_VERSION=8.x-1.11.4
@@ -5696,12 +5696,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f25 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f55 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f54 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f40 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f14 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f55 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f54 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
@@ -5711,7 +5711,7 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f45
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f40
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f43
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f42
       _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f41
     fi
@@ -5727,8 +5727,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f97 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f86 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f88 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f99 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f87 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f98 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f52 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f44 --guard /local/bin/renameaegirhost
@@ -5792,7 +5792,7 @@ CSFSTANDBY
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
     _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f59 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
-    _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
+    _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f98 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
   if [ -e "${_optBin}/fixmounts" ] && [ ! -e "${_usrBin}/fixmounts" ]; then

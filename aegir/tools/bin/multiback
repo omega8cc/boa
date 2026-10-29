@@ -19,7 +19,10 @@ fi
 # Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
-    _ENV=$(env 2>&1)
+    # secret values and URL userinfo stay out of the dump
+    _ENV=$(env 2>&1 | sed -E \
+      -e 's/^(PASSPHRASE|[A-Z0-9_]*(KEY|SECRET|TOKEN|PASSWORD|CONNECTION_STRING|ACCOUNT_ID)[A-Z0-9_]*)=.*/\1=[redacted]/' \
+      -e 's|://[^@[:space:]]*@|://|g')
     echo
     echo "_ENV in $1 start"
     echo "${_ENV}"
@@ -909,6 +912,22 @@ _arch_relocated_store() {
   return 0
 }
 
+# Text about a backup target, safe to print, log or mail. The b2 target embeds
+# credentials and error text can quote the URL or bare netloc, so URL userinfo
+# is stripped and the b2 values are redacted wherever they appear (URL-encoded,
+# hence glob-safe). $1 = the text.
+_scrub_creds() {
+  local _txt
+  _txt="$(echo "${1}" | sed 's|://[^@[:space:]]*@|://|g')"
+  if [[ -n "${B2_APPLICATION_KEY}" ]]; then
+    _txt="${_txt//${B2_APPLICATION_KEY}/[redacted]}"
+  fi
+  if [[ -n "${B2_ACCOUNT_ID}" ]]; then
+    _txt="${_txt//${B2_ACCOUNT_ID}/[redacted]}"
+  fi
+  echo "${_txt}"
+}
+
 # A line for the emailed report and the validation log about content this
 # run does not hold. $1 = the message.
 _store_report() {
@@ -1245,7 +1264,7 @@ _test() {
     _set_cmd
   fi
   echo "Running ${_BUCKET_NAME} connection test, please wait..."
-  echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET}"
+  echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 $(_scrub_creds "${_BACKUP_TARGET}")"
   _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET} 2>&1)
   _ConnRC=$?
   # A non-zero duplicity exit fails the test -- auth and URL errors never
@@ -1260,21 +1279,12 @@ _test() {
     echo "Sorry, I can't connect to ${_BUCKET_NAME}"
     # Raw duplicity output goes to a side log: _LOGFILE is later grepped
     # for the repair and OK/ERR sentinels, so foreign text stays out.
-    # The b2 target embeds credentials and error text can quote the URL
-    # or bare netloc, so URL userinfo is stripped and the b2 values are
-    # redacted wherever they appear (URL-encoded, hence glob-safe); the
-    # file stays root-only, and appending keeps same-day runs a report
-    # already points to.
+    # Scrubbed of credentials (_scrub_creds); the file stays root-only, and
+    # appending keeps same-day runs a report already points to.
     _ConnErrLog="${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.conn-test-err.log"
     touch "${_ConnErrLog}"
     chmod 600 "${_ConnErrLog}"
-    _ConnScrub=$(echo "${_ConnTest}" | sed 's|://[^@[:space:]]*@|://|g')
-    if [[ -n "${B2_APPLICATION_KEY}" ]]; then
-      _ConnScrub="${_ConnScrub//${B2_APPLICATION_KEY}/[redacted]}"
-    fi
-    if [[ -n "${B2_ACCOUNT_ID}" ]]; then
-      _ConnScrub="${_ConnScrub//${B2_ACCOUNT_ID}/[redacted]}"
-    fi
+    _ConnScrub="$(_scrub_creds "${_ConnTest}")"
     echo "--- $(date) exit code ${_ConnRC} ---" >> "${_ConnErrLog}"
     echo "${_ConnScrub}" >> "${_ConnErrLog}"
     echo >> ${_LOGFILE}
@@ -1292,28 +1302,28 @@ _test() {
 
 # Function to check collection-status only
 _status() {
-  echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
+  echo "Command is ${_DCY_UTL_CMD} collection-status $(_scrub_creds "${_BACKUP_TARGET}")"
   ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}
   wait
 }
 
 # Function to list-current-files only
 _list() {
-  echo "Command is ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}"
+  echo "Command is ${_DCY_UTL_CMD} list-current-files $(_scrub_creds "${_BACKUP_TARGET}")"
   ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}
   wait
 }
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
+  echo "Command is ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force $(_scrub_creds "${_BACKUP_TARGET}")"
   ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 _collection_status() {
   echo "Running collection-status for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
+  echo "Command is ${_DCY_UTL_CMD} collection-status $(_scrub_creds "${_BACKUP_TARGET}")"
   ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
@@ -1321,7 +1331,7 @@ _collection_status() {
 # Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_BACKUP_TARGET}"
+  echo "Command is ${_DCY_PRN_CMD} cleanup --force $(_scrub_creds "${_BACKUP_TARGET}")"
   ${_DCY_PRN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
@@ -1441,7 +1451,7 @@ _wipe() {
     echo "ERROR: wipe FAILED for ${_BUCKET_NAME}: no python interpreter behind /usr/local/bin/duplicity" >> ${_LOGFILE}
     return 1
   fi
-  echo "Command is ${_pyBin} (duplicity backend wipe driver) ${_BACKUP_TARGET}"
+  echo "Command is ${_pyBin} (duplicity backend wipe driver) $(_scrub_creds "${_BACKUP_TARGET}")"
   _wipeOut=$("${_pyBin}" - ${_BACKUP_TARGET} 2>&1 <<'WIPEDRV'
 import sys
 
@@ -1594,7 +1604,7 @@ _run_backup() {
   # regexp operand must not expand to the names it keeps in its own tree.
   # the length before this run's output: a run killed before its log was
   # archived leaves its lines behind, and only this run's may decide a retry
-  _bupLog0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
+  _bupLog0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
   set -f
   ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
   _BUP_RC=$?
@@ -1684,7 +1694,7 @@ _note_hostless_chain() {
 _backup() {
   # the length before this run: a run killed before its log was archived
   # leaves its lines behind, and only this run's may decide repair or OK
-  _bupRun0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
+  _bupRun0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
   _note_hostless_chain
   _backup_prepare
   _set_mode
@@ -1728,10 +1738,10 @@ _backup() {
 #
 # _restore() {
 #   if [ $# = 2 ]; then
-#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 ${_BACKUP_TARGET} $2"
+#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 $(_scrub_creds "${_BACKUP_TARGET}") $2"
 #     ${_DCY_UTL_CMD} restore --path-to-restore $1 ${_BACKUP_TARGET} $2
 #   else
-#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
+#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 $(_scrub_creds "${_BACKUP_TARGET}") $3"
 #     ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
 #   fi
 # }
@@ -1849,7 +1859,7 @@ _rst_one() {
   local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _m="not found in archive" _rc
   [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
   _c="${_c} $(printf '%q' "${2}")"
-  echo "Command is ${_c}"
+  echo "Command is $(_scrub_creds "${_c}")"
   _RST_OUT=""
   if [ -n "${_RST_LOG}" ]; then
     eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
