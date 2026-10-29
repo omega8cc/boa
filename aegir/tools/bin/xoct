@@ -1548,25 +1548,53 @@ _xoct_named_under_host() {
 ### --repair --retarget that follows a failover, a --renotify resend, or the
 ### --repair that is to convert the sites a --defer-host-named pass held --
 ### rendered those sites as plain proxies of their old names, which the
-### renamed target never serves: its catch-all for every visitor. So when
-### the caller named no hostnames and this account either answers a renamed
-### site with a 301 already or still holds sites on the per-host gate, read
-### them here: this box's own name, by the same lookup xmass uses, and the
-### target's as it answers now, so a retarget points the redirects at the
-### new box. The gate file only says that the account needs this; its
-### content is the tenant's to write and is never used as a name. Called
-### from the preflight once its own refusals have passed; a target whose
-### name cannot be read refuses the run before anything is written.
+### renamed target never serves: its catch-all for every visitor. A
+### one-account move has nobody to hand them over at all: its import renamed
+### those sites on the target before this proxy runs. So when the caller
+### named no hostnames and this account answers a renamed site with a 301
+### already, still holds sites on the per-host gate, or (no name of this box
+### handed over) has a site named under this box's hostname, read them here:
+### this box's own name, by the same lookup xmass uses, and the target's as
+### it answers now, so a retarget points the redirects at the new box. A
+### target that answers this box's own name renamed nothing, and a redirect
+### there would answer each site with itself. The gate file only says that
+### the account needs this; its content is the tenant's to write and is
+### never used as a name. Called from the preflight once its own refusals
+### have passed; a target whose name cannot be read refuses the run before
+### anything is written.
 _xoct_valid_host() {
   case "$1" in
     ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
   esac
   return 0
 }
+### The first site of this account named under hostname $1, as the
+### conversion loop finds its sites (a vhost file with a site alias), never
+### the control panel, which stays local; status 1 and nothing when none.
+_xoct_first_host_named_site() {
+  local _vd="${_USR}/config/server_master/nginx/vhost.d" _pf _v _d
+  _pf=$(_xoct_read_in "${_USR}/.drush" hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g")
+  _pf="${_pf##*/}"
+  _pf=${_pf//[^a-zA-Z0-9.\-]/}
+  for _v in "${_vd}"/*; do
+    [ -f "${_v}" ] && [ ! -L "${_v}" ] || continue
+    _d="${_v##*/}"
+    [ -n "${_pf}" ] && [ "${_d}" = "${_pf}" ] && continue
+    [ -e "${_USR}/.drush/${_d}.alias.drushrc.php" ] || continue
+    if _xoct_named_under_host "${_d}" "$1"; then
+      printf '%s' "${_d}"
+      return 0
+    fi
+  done
+  return 1
+}
 _xoct_keep_renamed_redirects() {
   local _vd="${_USR}/config/server_master/nginx/vhost.d"
   local _hg="${_USR}/static/control/http-off-host.pid"
-  local _why="" _tf _mf _n _trc=0
+  local _why="" _tf _mf _n _hs _trc=0
   ### Both names are written into nginx vhosts and sed replacements: one a
   ### caller hands over must be a hostname too, never merely non-empty.
   for _n in "${_XOCT_TARGET_FQDN}" "${_XOCT_MY_FQDN}"; do
@@ -1577,19 +1605,24 @@ _xoct_keep_renamed_redirects() {
   done
   [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] && return 0
   [ -n "${_XOCT_DEFER_FQDN}" ] && return 0
-  if [ -s "${_hg}" ] && [ ! -L "${_hg}" ]; then
-    _why="it still holds sites on the per-host gate"
-  elif grep -q -s -F "renamed site: redirect to its new name" "${_vd}"/* 2>/dev/null; then
-    _why="it answers renamed sites with a 301"
-  else
-    return 0
-  fi
   _mf="${_XOCT_MY_FQDN}"
   if [ -z "${_mf}" ]; then
     _mf=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
       | head -1 | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
     _xoct_valid_host "${_mf}" || _mf=$(hostname -f 2>/dev/null | tr -d '\n')
     _xoct_valid_host "${_mf}" || _mf=""
+  fi
+  if [ -s "${_hg}" ] && [ ! -L "${_hg}" ]; then
+    _why="it still holds sites on the per-host gate"
+  elif grep -q -s -F "renamed site: redirect to its new name" "${_vd}"/* 2>/dev/null; then
+    _why="it answers renamed sites with a 301"
+  elif [ -z "${_XOCT_MY_FQDN}" ] && _hs=$(_xoct_first_host_named_site "${_mf}"); then
+    ### xmass names this box whenever it converts after the renames, and
+    ### leaves the target out only when it could not read it: those sites
+    ### then stay plain proxies, as it says.
+    _why="its sites named under this box's hostname (${_hs} among them) are renamed on the target by the move"
+  else
+    return 0
   fi
   _tf="${_XOCT_TARGET_FQDN}"
   if [ -z "${_tf}" ]; then
@@ -1611,6 +1644,10 @@ _xoct_keep_renamed_redirects() {
     echo "ERROR: Re-run the command exactly as typed, with both set in front of it:"
     echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ...${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
     exit 1
+  fi
+  if [ "${_tf,,}" = "${_mf,,}" ]; then
+    echo "INFO: ${_oct}: ${_why}, but ${_tgt} answers this box's own hostname ${_mf}: nothing was renamed there, so its sites are relayed under their own names"
+    return 0
   fi
   _XOCT_TARGET_FQDN="${_tf}"
   _XOCT_MY_FQDN="${_mf}"

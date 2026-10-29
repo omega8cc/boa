@@ -36,6 +36,18 @@
       copy-upgrade now removes only a vhost it wrote and puts such a
       parent vhost back, as the other site kinds already did.
 
+    * After a one-account move with xoct, the old server relayed a site
+      named under its own hostname to the new server under that old name,
+      but the import there had already renamed the site to the new
+      server's hostname, so the old name reached the new server's
+      catch-all page instead of the site; a later proxy repair run left
+      it so. The proxy step now answers such an old name with a 301 to
+      the renamed site from its first run, reading both hostnames itself
+      as xmass hands them over; it stops before changing anything when
+      the new server's hostname cannot be read, and a new server
+      answering the old server's own hostname renamed nothing, so those
+      sites are relayed under their own names.
+
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
       git clone from a code host whose key was not yet known) failed with
