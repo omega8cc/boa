@@ -46,9 +46,9 @@ _check_root
 ### Aegir backups, clones and migrations dump and load as the backend user of
 ### their database server: aegir_root for the master instance, and the
 ### instance's own user for each Octopus instance whose databases are local
-### (aegir_root again when they are remote). The instances are taken from
-### root's own /root/.<name>.octopus.cnf files, never from a file an instance
-### can write. Those users' sessions are left uninstrumented and every other
+### (aegir_root again when they are remote). The instances are those with both
+### root's own /root/.<name>.octopus.cnf and their /data/disk/<name>, never
+### read from a file an instance can write. Those users' sessions are left uninstrumented and every other
 ### user is counted as before. The rules live in memory only: they are set
 ### again on the first pass after a server start, before the stand-down markers
 ### below, because a backup started right after a restart is the session they
@@ -78,7 +78,8 @@ _digest_dump_users() {
     for _c in /root/.*.octopus.cnf; do
       [ -f "${_c}" ] || continue
       _u="${_c##*/.}"
-      echo "${_u%.octopus.cnf}"
+      _u="${_u%.octopus.cnf}"
+      [ -d "/data/disk/${_u}" ] && echo "${_u}"
     done
   } | grep -xE '[A-Za-z0-9_]{1,32}' | sort -u
 }
