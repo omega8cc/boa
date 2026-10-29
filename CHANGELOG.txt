@@ -8,8 +8,9 @@
       differed from the previous one only in a comment line, which the
       server never reads: a comment changed in BOA's my.cnf template meant
       a restart of every box's database at its next pass. The pass now
-      leaves comment lines out of that check; a setting added, removed,
-      changed, commented out or switched on still restarts the server.
+      leaves comment lines out of that check; a template edit that adds,
+      removes, changes, comments out or switches on a setting still
+      restarts the server.
 
     * A large site moved by a Migrate, or copied by a Clone or brought
       back by a Restore, or moved to another server by xoct or xcopy,
