@@ -47,8 +47,10 @@ _check_root
 ### their database server: aegir_root for the master instance, and the
 ### instance's own user for each Octopus instance whose databases are local
 ### (aegir_root again when they are remote). The instances are those with both
-### root's own /root/.<name>.octopus.cnf and their /data/disk/<name>, never
-### read from a file an instance can write. Those users' sessions are left uninstrumented and every other
+### root's own /root/.<name>.octopus.cnf and their /data/disk/<name>, counted
+### under their own name when that file's _THIS_DB_HOST is one the Octopus pass
+### gives the instance's own user for; nothing is read from a file an instance
+### can write. Those users' sessions are left uninstrumented and every other
 ### user is counted as before. The rules live in memory only: they are set
 ### again on the first pass after a server start, before the stand-down markers
 ### below, because a backup started right after a restart is the session they
@@ -71,7 +73,7 @@ _check_root
 ### performance_schema is off on 5.7 (BOA's my.cnf), and nothing runs there.
 ###
 _digest_dump_users() {
-  local _c _u
+  local _c _u _h
   {
     echo root
     echo aegir_root
@@ -79,16 +81,20 @@ _digest_dump_users() {
       [ -f "${_c}" ] || continue
       _u="${_c##*/.}"
       _u="${_u%.octopus.cnf}"
-      [ -d "/data/disk/${_u}" ] && echo "${_u}"
+      [ -d "/data/disk/${_u}" ] || continue
+      _h=$(grep -s "^_THIS_DB_HOST=" "${_c}" | tail -n 1 | cut -d= -f2 | tr -d "\"' ")
+      case "${_h}" in
+        localhost|127.0.0.1|PROXYSQL|FQDN) echo "${_u}" ;;
+      esac
     done
-  } | grep -xE '[A-Za-z0-9_]{1,32}' | sort -u
+  } | grep -xE '[A-Za-z0-9_-]{1,32}' | sort -u
 }
 
 _keep_dumps_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
   local _st _ps _up _u _e _h _rows _in="" _ours="" _qo="" _new="" _now _start
-  local _open _since _m_start="" _m_state="" _m_time="" _m_users=""
+  local _open _since _held="" _m_start="" _m_state="" _m_time="" _m_users="" _m_since=""
   local _state="/run/boa_digest_reset.state"
   local -a _users=()
   local -A _rule=()
@@ -117,7 +123,7 @@ _keep_dumps_out_of_digests() {
   [[ ",${_ours}," == *",root,"* ]] || return 0
   _now=$(date +%s)
   _start=$(( _now - _up ))
-  [ -s "${_state}" ] && read -r _m_start _m_state _m_time _m_users < "${_state}"
+  [ -s "${_state}" ] && read -r _m_start _m_state _m_time _m_users _m_since < "${_state}"
   if [[ "${_m_start}" =~ ^[0-9]+$ ]] && (( _m_start - _start <= 10 && _start - _m_start <= 10 )); then
     for _u in ${_ours//,/ }; do
       [[ ",${_m_users}," == *",${_u},"* ]] || _new="${_new} ${_u}"
@@ -131,21 +137,28 @@ _keep_dumps_out_of_digests() {
     _m_start="${_start}"
     _m_state=""
     _m_users="-"
+    _m_since=""
   fi
   _open=$(timeout 10 mysql -N -B -e "SELECT COUNT(*) FROM performance_schema.threads WHERE INSTRUMENTED = 'YES' AND PROCESSLIST_USER IN (${_qo})" 2>/dev/null) || return 0
   [[ "${_open}" =~ ^[0-9]+$ ]] || return 0
   if (( _open > 0 )); then
+    # a refused emptying at the end of a hold keeps when the hold began
     _since="${_now}"
-    [ "${_m_state}" = "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]] && _since="${_m_time}"
+    if [ "${_m_state}" = "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]]; then
+      _since="${_m_time}"
+    elif [ "${_m_state}" = "wait" ] && [[ "${_m_since}" =~ ^[0-9]+$ ]]; then
+      _since="${_m_since}"
+    fi
     if (( _now - _since < 43200 )); then
       printf '%s hold %s %s\n' "${_m_start}" "${_since}" "${_m_users}" > "${_state}"
       return 0
     fi
+    _held=" ${_since}"
   fi
   if timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
     printf '%s done %s %s\n' "${_m_start}" "${_now}" "${_ours}" > "${_state}"
   else
-    printf '%s wait %s %s\n' "${_m_start}" "${_now}" "${_m_users}" > "${_state}"
+    printf '%s wait %s %s%s\n' "${_m_start}" "${_now}" "${_m_users}" "${_held}" > "${_state}"
   fi
   return 0
 }
