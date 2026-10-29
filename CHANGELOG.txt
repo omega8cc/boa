@@ -12,6 +12,13 @@
       removes, changes, comments out or switches on a setting still
       restarts the server.
 
+    * aegir2boa's whole-panel route (db-import) could not export the
+      control panel when no site had been exported before it (a panel with
+      no site listed, or an estate of the panel alone): the dump directory
+      did not exist yet, so the export reported the panel dump failed
+      before mysqldump ever ran. The export now makes that directory
+      itself.
+
     * A large site moved by a Migrate, or copied by a Clone or brought
       back by a Restore, or moved to another server by xoct, xcopy or the
       classic Aegir import (aegir2boa), could have its pages planned as

@@ -1535,6 +1535,11 @@ _export_hostmaster() {   # db-import route only
     _info "[DRY] would dump hostmaster db ${_hdb} + set maintenance_mode 1"
     return 0
   fi
+  # an export that reaches the panel before any site's (none listed, or
+  # the panel alone) finds no dump directory yet: the redirect below would
+  # fail before mysqldump ever ran
+  mkdir -p "${_AEGIR_ROOT}/src/a2b"
+  chmod 700 "${_AEGIR_ROOT}/src" "${_AEGIR_ROOT}/src/a2b" 2>/dev/null
   _myd="$(_mysql_defaults "${_hdb}" "${_hdp}")"
   # shellcheck disable=SC2046
   _login_only mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_hdb}" \
