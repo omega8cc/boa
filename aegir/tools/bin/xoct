@@ -576,8 +576,12 @@ _mig_resolve() {
   if [ -z "${_MIG_MODE}" ]; then
     _MIG_MODE=temporary
     _MIG_SOURCE=default
-    echo "ALRT: ${_root}: no proxy mode declared; falling back to '${_MIG_MODE}'."
-    echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+    ### A mode on the command line (proxy's --proxy-mode=) replaces this one
+    ### right after the lookup: no fallback to warn about.
+    if [ -z "${_XOCT_MODE_FLAG}" ]; then
+      echo "ALRT: ${_root}: no proxy mode declared; falling back to '${_MIG_MODE}'."
+      echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+    fi
   fi
 
   ### A date by which the customer must leave the switch point contradicts
@@ -7078,6 +7082,81 @@ _xoct_learn_peer_host_key() {
   return 0
 }
 
+### Whether one csf file's text covers an address the way the target's
+### hackcheck reads it: the address at the start of a line (optionally /32),
+### in a |s= or |d= rule, or inside a CIDR range outside a comment.
+_xoct_csf_text_covers_ip() {
+  local _ip="$1" _txt="$2" _rx _cidr _bits _mask _net _addr _o1 _o2 _o3 _o4
+  _rx="${_ip//./\\.}"
+  grep -qE "(^[[:space:]]*|\|s=|\|d=)${_rx}(/32)?([[:space:]#|]|\$)" <<< "${_txt}" && return 0
+  IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_ip}"
+  _addr=$(( (_o1 << 24) + (_o2 << 16) + (_o3 << 8) + _o4 ))
+  while read -r _cidr; do
+    [ -n "${_cidr}" ] || continue
+    _bits="${_cidr#*/}"
+    [ "${_bits}" -le 32 ] 2>/dev/null || continue
+    IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_cidr%/*}"
+    _net=$(( (_o1 << 24) + (_o2 << 16) + (_o3 << 8) + _o4 ))
+    _mask=$(( _bits == 0 ? 0 : (0xFFFFFFFF << (32 - _bits)) & 0xFFFFFFFF ))
+    [ $(( _addr & _mask )) -eq $(( _net & _mask )) ] && return 0
+  done <<< "$(cut -d'#' -f1 <<< "${_txt}" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}')"
+  return 1
+}
+
+### A one-account move needs every address of this box in the target's
+### csf.allow and csf.ignore before anything travels (the documented
+### firewall step). Without either, the target's hackcheck bans this box for
+### the pre-auth lines of the host-key scan, and a create's remote install
+### loses its session halfway, reporting only a lost connection. Refuses
+### while an address is in neither file, warns while it is in one; an xmass
+### run wires its own peer trust first and is not checked.
+_xoct_require_peer_whitelist() {
+  local _p="$1" _out _allow _ignore _ip _miss="" _half=""
+  [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
+  _mig_valid_ip "${_p}" || return 0
+  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_p}" \
+    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2>/dev/null)"
+  if [ "${_out}" = "XOCT-CSF-NONE" ]; then
+    echo "INFO: ${_p} runs no csf; no firewall entries to check"
+    return 0
+  fi
+  if ! grep -qx "XOCT-CSF-END" <<< "${_out}"; then
+    echo "ERROR: could not read the firewall of ${_p} over ssh before anything travels."
+    echo "ERROR: The usual cause is the firewall step not done yet: on ${_p}, add these lines"
+    for _ip in $(_mig_my_ips); do
+      echo "ERROR:   ${_ip} # Legacy Proxy   (to /etc/csf/csf.allow and to /etc/csf/csf.ignore)"
+    done
+    echo "ERROR: then run csf -ra there; if this box was just banned, lift it there with csf -tr <ip>."
+    echo "ERROR: Also check that ${_p} trusts this box's key (xoct pre-mig on both boxes)."
+    return 1
+  fi
+  _allow="$(sed -n '/^XOCT-CSF-ALLOW$/,/^XOCT-CSF-IGNORE$/p' <<< "${_out}" | sed '1d;$d')"
+  _ignore="$(sed -n '/^XOCT-CSF-IGNORE$/,/^XOCT-CSF-END$/p' <<< "${_out}" | sed '1d;$d')"
+  for _ip in $(_mig_my_ips); do
+    if _xoct_csf_text_covers_ip "${_ip}" "${_allow}"; then
+      _xoct_csf_text_covers_ip "${_ip}" "${_ignore}" || _half="${_half} ${_ip}:csf.ignore"
+    elif _xoct_csf_text_covers_ip "${_ip}" "${_ignore}"; then
+      _half="${_half} ${_ip}:csf.allow"
+    else
+      _miss="${_miss} ${_ip}"
+    fi
+  done
+  if [ -n "${_miss}" ]; then
+    echo "ERROR: ${_p} does not trust this box in its firewall: its hackcheck would ban this box"
+    echo "ERROR: for the host-key scan and cut the transfer halfway. On ${_p}, before anything travels:"
+    for _ip in ${_miss}; do
+      echo "ERROR:   echo '${_ip} # Legacy Proxy' >> /etc/csf/csf.allow"
+      echo "ERROR:   echo '${_ip} # Legacy Proxy' >> /etc/csf/csf.ignore"
+    done
+    echo "ERROR:   csf -ra"
+    return 1
+  fi
+  for _ip in ${_half}; do
+    echo "ALRT: ${_ip%%:*} is in only one of the firewall files on ${_p}; add '${_ip%%:*} # Legacy Proxy' to /etc/csf/${_ip#*:} too, then csf -ra"
+  done
+  return 0
+}
+
 ### The peer did not take the record. The branch below is fail-closed for
 ### more than one cause (a truncated write on a full disk trips it too), so
 ### enumerate rather than assert: after a promotion the USUAL cause is that
@@ -7839,10 +7918,12 @@ _migrate_init() {
   ### met the target, their non-interactive ssh and rsync calls would fail
   ### host key verification (and the hold read before them would pass it by
   ### silently). An account's export and import reach no peer; the shared
-  ### and xusage legs reach the target whatever the verb.
+  ### and xusage legs reach the target whatever the verb. The same verbs
+  ### check the target's firewall trusts this box before anything travels.
   case "${_cmd}:${_oct}" in
     create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
       _xoct_learn_peer_host_key "${_tgt}"
+      _xoct_require_peer_whitelist "${_tgt}" || exit 1
       ;;
   esac
   if [ "${_oct}" = "xusage" ]; then

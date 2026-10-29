@@ -82,6 +82,21 @@
       cutover of a Grav or Textpattern site onto such a name now fails
       before it changes anything, naming the name.
 
+    * A one-account xoct move whose firewall step was missed failed
+      halfway: the new server's ssh check banned the old one for the
+      pre-auth lines of xoct's host-key scan, and the create's remote
+      install lost its session minutes later, saying only that the
+      connection was lost. Every xoct step that reaches the new server
+      now checks first that the new server's csf.allow or csf.ignore
+      trusts each address of this one, and refuses before anything
+      travels with the exact lines to add; an address in only one of the
+      two files gets a warning naming the other. A server without csf is
+      not checked, and an xmass move, which wires its own trust, neither.
+
+    * xoct proxy with --proxy-mode= on an account with no declared mode
+      warned that it was falling back to 'temporary', then recorded the
+      mode it was given. The warning now shows only when no mode is given.
+
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
       git clone from a code host whose key was not yet known) failed with
