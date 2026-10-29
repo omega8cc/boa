@@ -16,8 +16,7 @@
       control panel when no site had been exported before it (a panel with
       no site listed, or an estate of the panel alone): the dump directory
       did not exist yet, so the export reported the panel dump failed
-      before mysqldump ever ran. The export now makes that directory
-      itself.
+      before mysqldump ever ran. The export now makes that directory itself.
 
     * A large site moved by a Migrate, or copied by a Clone or brought
       back by a Restore, or moved to another server by xoct, xcopy or the
@@ -2536,6 +2535,11 @@
       autosymlink opened their lock or held directory in a way that also
       sent every later error of the run to /dev/null; those errors now
       reach whoever runs them.
+
+    * On a hosted server, a plain file left at /usr/local/bin/multiback,
+      mybackup or dcysetup (a hand copy) is now replaced by the link to
+      /opt/local/bin: it came first in PATH, so cron kept running its old
+      bytes while every update went to /opt/local/bin.
 
     * performance_schema's per-query summary now counts the sites' own
       statements on servers with many tables. It holds 10,000 statement
