@@ -315,6 +315,27 @@ _php_pool_newrelic_fix() {
 }
 
 #
+# Every Verify, Migrate, Clone or Delete of a site rewrites its platform's
+# sites/sites.php and the site's settings.php, and PHP-FPM re-checks a
+# cached script only every opcache.revalidate_freq seconds: a request in
+# that window reads the old copies, so a new alias falls through to
+# sites/default and Drupal answers with its installer, then refuses the
+# name as an untrusted host. Those files stay out of the opcache (a compile
+# costs a fraction of a millisecond); a double star crosses directories,
+# so one line covers a platform at any depth.
+_fix_php_opcache_blacklist_file() {
+  local _f="/opt/etc/fpm/opcache-blacklist.txt" _want
+  _want="/data/disk/**/sites/sites.php"$'\n'"/data/disk/**/sites/*/settings.php"
+  _want="${_want}"$'\n'"/var/aegir/**/sites/sites.php"$'\n'"/var/aegir/**/sites/*/settings.php"
+  mkdir -p /opt/etc/fpm
+  if [ "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]; then
+    printf '%s\n' "${_want}" > "${_f}.new" \
+      && chmod 644 "${_f}.new" \
+      && mv -f "${_f}.new" "${_f}"
+  fi
+}
+
+#
 # Fix FMP php.ini file to add opcache configuration
 _fix_php_ini_opcache() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -363,6 +384,12 @@ _fix_php_ini_opcache() {
         echo ";"
       } >> "${_THIS_FILE}"
     fi
+    # Its own guard: an ini that already carries the block skips the one
+    # above. A blacklist the operator named is left as it is.
+    if grep -q "Zend OPcache" -- "${_THIS_FILE}" \
+      && ! grep -q "^opcache.blacklist_filename" -- "${_THIS_FILE}"; then
+      echo "opcache.blacklist_filename=/opt/etc/fpm/opcache-blacklist.txt" >> "${_THIS_FILE}"
+    fi
   fi
 }
 
@@ -372,6 +399,7 @@ _fix_php_ini_opcache_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_opcache_all"
   fi
+  _fix_php_opcache_blacklist_file
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
