@@ -46,25 +46,46 @@ _check_root
 ### before. The rule lives in memory only: it is set again on the first pass
 ### after a server start, before the stand-down markers below, because a
 ### backup started right after a restart is the session it is for. The rule
-### keeps new rows out but removes none, so the pass that sets it also empties
-### the summary: the rows root added before it go too, whether since a start
-### (a minute's worth after a plain restart), inside a SQL maintenance window
-### (mysql.sh stands down for the whole window and never starts this check, and
-### a Percona upgrade walks every table as root in it) or in the weeks before
-### this check came. When another session keeps the summary from being emptied
-### within 5 seconds, the rule is taken back out, so the next pass tries both
-### again. An operator's own row for root is left as it is. performance_schema
-### is off on 5.7 (BOA's my.cnf), and nothing runs there.
+### keeps new rows out but removes none, so the summary is also emptied once
+### per server start, while the rule is in place: the rows root added before it
+### go too, whether since the start (a minute's worth after a plain restart),
+### inside a SQL maintenance window (mysql.sh stands down for the whole window
+### and never starts this check, and a Percona upgrade walks every table as root
+### in it) or in the weeks before this check came. The start the summary was
+### emptied for is kept in a state file under /run. When another session keeps
+### the summary from being emptied within 5 seconds, the rule stays and the
+### emptying is tried again 5 minutes later. An operator's own row for root
+### (any other switches) is left as it is, and so is the summary.
+### performance_schema is off on 5.7 (BOA's my.cnf), and nothing runs there.
 ###
 _keep_root_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
-  local _st _row="HOST = '%' AND USER = 'root' AND ROLE = '%'"
-  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE ${_row})" 2>/dev/null) || return 0
-  [ "${_st}" = $'1\t0' ] || return 0
-  timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null || return 0
-  if ! timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
-    timeout 10 mysql -N -B -e "DELETE FROM performance_schema.setup_actors WHERE ${_row}" &> /dev/null
+  local _st _ps _all _ours _up _now _start _m_start="" _m_state="" _m_time=""
+  local _row="HOST = '%' AND USER = 'root' AND ROLE = '%'"
+  local _state="/run/boa_digest_reset.state"
+  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE ${_row}), (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE ${_row} AND ENABLED = 'NO' AND HISTORY = 'NO'), (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime')" 2>/dev/null) || return 0
+  IFS=$'\t' read -r _ps _all _ours _up <<< "${_st}"
+  [ "${_ps}" = "1" ] || return 0
+  [[ "${_all}" =~ ^[0-9]+$ && "${_ours}" =~ ^[0-9]+$ && "${_up}" =~ ^[0-9]+$ ]] || return 0
+  if [ "${_all}" = "0" ]; then
+    timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null || return 0
+  elif [ "${_ours}" = "0" ]; then
+    return 0
+  fi
+  _now=$(date +%s)
+  _start=$(( _now - _up ))
+  [ -s "${_state}" ] && read -r _m_start _m_state _m_time < "${_state}"
+  if [[ "${_m_start}" =~ ^[0-9]+$ ]] && (( _m_start - _start <= 10 && _start - _m_start <= 10 )); then
+    [ "${_m_state}" = "done" ] && return 0
+    [[ "${_m_time}" =~ ^[0-9]+$ ]] && (( _now - _m_time < 300 )) && return 0
+  else
+    _m_start="${_start}"
+  fi
+  if timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
+    printf '%s done %s\n' "${_m_start}" "${_now}" > "${_state}"
+  else
+    printf '%s wait %s\n' "${_m_start}" "${_now}" > "${_state}"
   fi
   return 0
 }
