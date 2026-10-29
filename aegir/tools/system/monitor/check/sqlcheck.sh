@@ -82,7 +82,19 @@ _digest_dump_users() {
       _u="${_c##*/.}"
       _u="${_u%.octopus.cnf}"
       [ -d "/data/disk/${_u}" ] || continue
-      _h=$(grep -s "^_THIS_DB_HOST=" "${_c}" | tail -n 1 | cut -d= -f2 | tr -d "\"' ")
+      # read as the Octopus pass's bash reads it, NUL bytes included; a file
+      # that sets none keeps the default it sourced first, localhost
+      _h=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_THIS_DB_HOST=" "${_c}" 2>/dev/null | tail -n 1)
+      if [ -z "${_h}" ]; then
+        _h=localhost
+      else
+        _h="${_h#*=}"
+        case "${_h}" in
+          \"*) _h="${_h#\"}"; _h="${_h%%\"*}" ;;
+          \'*) _h="${_h#\'}"; _h="${_h%%\'*}" ;;
+          *) _h="${_h%%[[:space:];]*}" ;;
+        esac
+      fi
       case "${_h}" in
         localhost|127.0.0.1|PROXYSQL|FQDN) echo "${_u}" ;;
       esac
@@ -125,6 +137,9 @@ _keep_dumps_out_of_digests() {
   _start=$(( _now - _up ))
   [ -s "${_state}" ] && read -r _m_start _m_state _m_time _m_users _m_since < "${_state}"
   if [[ "${_m_start}" =~ ^[0-9]+$ ]] && (( _m_start - _start <= 10 && _start - _m_start <= 10 )); then
+    # the earlier copy wrote no users; an empty field would collapse on the
+    # next read and shift the hold's start into it
+    [ -n "${_m_users}" ] || _m_users="-"
     for _u in ${_ours//,/ }; do
       [[ ",${_m_users}," == *",${_u},"* ]] || _new="${_new} ${_u}"
     done
