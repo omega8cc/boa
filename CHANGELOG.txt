@@ -25,16 +25,19 @@
       as an untrusted host, for up to a minute: PHP-FPM kept serving the
       copies of the platform's sites/sites.php and the site's settings.php
       it had cached before the Verify rewrote them. Both files now stay
-      out of the opcache on every PHP version (a compile costs a fraction
+      out of the opcache on every PHP version, with a platform-wide
+      sites/all/settings.php the sites include (a compile costs a fraction
       of a millisecond a request), so a new alias answers with its site
       from the first request; every other file keeps the one-minute check.
+      sites.php is now written as a new file renamed into place, so a
+      request never reads it half written.
 
     * A Grav Clone that failed after its deploy wrote the new name's vhost
       removed whatever vhost that name had: on a name that was only the
       parent of another site's subdirectory alias, the parent vhost went
-      and that subdirectory site answered 404. A failed Grav Clone or
-      copy-upgrade now removes only a vhost it wrote and puts such a
-      parent vhost back, as the other site kinds already did.
+      and that subdirectory site answered 404. A failed Grav Clone,
+      copy-upgrade or rename now removes only a vhost it wrote and puts
+      such a parent vhost back, as the other site kinds already did.
 
     * After a one-account move with xoct, the old server relayed a site
       named under its own hostname to the new server under that old name,
