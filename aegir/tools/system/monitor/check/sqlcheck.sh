@@ -82,9 +82,11 @@ _digest_dump_users() {
       _u="${_c##*/.}"
       _u="${_u%.octopus.cnf}"
       [ -d "/data/disk/${_u}" ] || continue
-      # read as the Octopus pass's bash reads it, NUL bytes included; a file
-      # that sets none keeps the default it sourced first, localhost
-      _h=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?_THIS_DB_HOST=" "${_c}" 2>/dev/null | tail -n 1)
+      # read as the Octopus pass's bash reads it after its NUL heal, which
+      # ends a line where a zero-filled run begins; a file that sets none
+      # keeps the default it sourced first, localhost
+      _h=$(tr -s '\000' '\n' 2>/dev/null < "${_c}" \
+        | grep -aE "^[[:space:]]*(export[[:space:]]+)?_THIS_DB_HOST=" | tail -n 1)
       if [ -z "${_h}" ]; then
         _h=localhost
       else
