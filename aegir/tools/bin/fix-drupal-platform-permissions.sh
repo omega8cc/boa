@@ -9,7 +9,8 @@ to provide the following argument:
   --root: Path to the root of your Drupal installation.
   --app-root: the platform Delete's step only: give every directory of the
               Composer project root above that docroot, below the account's
-              static/, group write (02775) so the Delete can remove it, then
+              static/, group write (02775) so the Delete can remove it, or,
+              for a plain platform, the one directory holding it; then
               stop; refused while the docroot holds a site.
 
 Usage: (sudo) ${0##*/} --root=PATH
@@ -721,6 +722,11 @@ done
 ### run then ends. A refusal ends with status 1, as an older helper's
 ### "Invalid argument" does, so the Delete never reports group write that
 ### was not set.
+### A plain platform (neither vendor/ nor composer.lock beside its docroot,
+### as one uploaded or unpacked into static/platforms/<name>) has the same
+### trap one level up: its emptied docroot is unlinked from the directory
+### holding it. That one directory, under the same rules, gets 02775 and
+### nothing else changes; a holder with only one of the two is refused.
 # The current (pinned) directory takes 02775 only when one of the account's
 # own users owns it: a root-owned directory keeps its mode (the store bases
 # autosymlink makes are trusted for being root's and closed).
@@ -730,12 +736,20 @@ _app_up_here() {
 }
 if [[ "${_APP_ROOT}" = "YES" ]]; then
   _app="${drupal_root%/*}"
-  if [[ -z "${_SCOPE_ROOT}" ]] \
-    || [[ "${_app}" != "${_SCOPE_ROOT}/static/"?* ]] \
-    || [[ "${_app}/" = "${_SCOPE_ROOT}/static/files/"* ]] \
-    || [[ -L "${_app}/vendor" || ! -d "${_app}/vendor" ]] \
-    || [[ -L "${_app}/composer.lock" || ! -f "${_app}/composer.lock" ]]; then
-    printf "Notice: %s is not a Composer project root below the account's static/; nothing changed.\n" "${_app}" >&3
+  _app_kind=""
+  if [[ -n "${_SCOPE_ROOT}" ]] \
+    && [[ "${_app}" = "${_SCOPE_ROOT}/static/"?* ]] \
+    && [[ "${_app}/" != "${_SCOPE_ROOT}/static/files/"* ]]; then
+    if [[ ! -L "${_app}/vendor" && -d "${_app}/vendor" ]] \
+      && [[ ! -L "${_app}/composer.lock" && -f "${_app}/composer.lock" ]]; then
+      _app_kind=composer
+    elif [[ ! -e "${_app}/vendor" && ! -L "${_app}/vendor" ]] \
+      && [[ ! -e "${_app}/composer.lock" && ! -L "${_app}/composer.lock" ]]; then
+      _app_kind=plain
+    fi
+  fi
+  if [[ -z "${_app_kind}" ]]; then
+    printf "Notice: %s is not a Composer project root or the plain holder of a platform below the account's static/; nothing changed.\n" "${_app}" >&3
     exit 1
   fi
   for _s in "${drupal_root}"/sites/*/settings.php; do
@@ -744,6 +758,18 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
     printf "Notice: %s still holds a site (%s); nothing changed.\n" "${drupal_root}" "${_s}" >&3
     exit 1
   done
+  if [[ "${_app_kind}" = "plain" ]]; then
+    if ! [[ "$(stat -c %u -- "${_app}" 2> /dev/null)" =~ ^[1-9][0-9]*$ ]]; then
+      printf "Notice: %s is root's; nothing changed.\n" "${_app}" >&3
+      exit 1
+    fi
+    printf 'Setting group write on %s for the Delete...\n' "${_app}"
+    _LEFT=""
+    _left_add _in_pinned_dir "${_app}" _app_up_here
+    _root_owners_left_note "${_LEFT}"
+    echo "Done setting group write on the directory holding the platform."
+    exit 0
+  fi
   printf 'Setting group write on the directories of %s for the Delete...\n' "${_app}"
   _LEFT=""
   _left_add _in_pinned_dir "${_app}" _fwalk_own_here d 02775 .
