@@ -45,17 +45,26 @@ _check_root
 ### sessions are left uninstrumented and every other user is counted as
 ### before. The rule lives in memory only: it is set again on the first pass
 ### after a server start, before the stand-down markers below, because a
-### backup started right after a restart is the session it is for. An
+### backup started right after a restart is the session it is for. The rule
+### keeps rows out but removes none: when the summary has already overflowed
+### (statements it had no room for are counted in one row without a digest),
+### the pass that sets the rule empties it once. That covers a server running
+### for weeks before this check came, and a restart inside a SQL maintenance
+### window, during which mysql.sh stands down and never starts this check. An
 ### operator's own row for root is left as it is. performance_schema is off
 ### on 5.7 (BOA's my.cnf), and nothing runs there.
 ###
 _keep_root_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
-  local _st
-  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE HOST = '%' AND USER = 'root' AND ROLE = '%')" 2>/dev/null) || return 0
-  [ "${_st}" = $'1\t0' ] || return 0
-  timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null
+  local _st _lost _re=$'^1\t0\t([0-9]+)$'
+  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT COUNT(*) FROM performance_schema.setup_actors WHERE HOST = '%' AND USER = 'root' AND ROLE = '%'), (SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST IS NULL)" 2>/dev/null) || return 0
+  [[ "${_st}" =~ ${_re} ]] || return 0
+  _lost="${BASH_REMATCH[1]}"
+  timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', 'root', '%', 'NO', 'NO')" &> /dev/null || return 0
+  if (( _lost > 0 )); then
+    timeout 10 mysql -N -B -e "TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null
+  fi
   return 0
 }
 _keep_root_out_of_digests
