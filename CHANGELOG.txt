@@ -13,20 +13,21 @@
       restarts the server.
 
     * A large site moved by a Migrate, or copied by a Clone or brought
-      back by a Restore, or moved to another server by xoct or xcopy,
-      could have its pages planned as full table scans: a freshly loaded
-      table can keep the statistics of an empty one long after the load,
-      until InnoDB measures it in the background. On one busy server a
-      site's tables still read as a single page each 45 minutes after its
-      Migrate; its pages read hundreds of thousands of rows each, the
-      database server ran out of CPU and the load guard paused the web
-      server twice. The site import now measures every table of the new
-      database (ANALYZE TABLE, a few seconds even for a large site) before
-      the site is switched to it, xoct and xcopy measure every site and
-      control panel database they load on the new server the same way,
-      and the per-minute SQL check measures any large table loaded some
-      other way whose statistics still claim a single page five minutes
-      after it was created (logged to /var/log/boa/sqlstats.incident.log).
+      back by a Restore, or moved to another server by xoct, xcopy or the
+      classic Aegir import (aegir2boa), could have its pages planned as
+      full table scans: a freshly loaded table can keep the statistics of
+      an empty one long after the load, until InnoDB measures it in the
+      background. On one busy server a site's tables still read as a
+      single page each 45 minutes after its Migrate; its pages read
+      hundreds of thousands of rows each, the database server ran out of
+      CPU and the load guard paused the web server twice. The site import
+      now measures every table of the new database (ANALYZE TABLE, a few
+      seconds even for a large site) before the site is switched to it,
+      xoct, xcopy and aegir2boa's import measure every site and control
+      panel database they load on the new server the same way, and the
+      per-minute SQL check measures any large table loaded some other way
+      whose statistics still claim a single page five minutes after it was
+      created (logged to /var/log/boa/sqlstats.incident.log).
 
     * Right after a Verify added an alias to a site, its first visitors
       could get the Drupal installer redirect, then a refusal of the name

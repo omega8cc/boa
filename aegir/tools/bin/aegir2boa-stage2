@@ -837,6 +837,69 @@ _mysqldump_gtid_opts() {
   return 0
 }
 
+### A table a load has just written can read as empty to the query optimiser
+### until InnoDB measures it in the background, and once nothing new wakes
+### that queue it takes about one table every ten seconds: a large site
+### loaded among a run of others went live with its pages planned as full
+### table scans, and the database server ran out of CPU before the queue
+### reached its tables. ANALYZE TABLE measures every InnoDB table of the
+### database right after its load, 100 at a time, waiting at most 30 seconds
+### for a table another session holds, as provision does after its own
+### imports. It goes to the binary log as the load does, so a replica of this
+### box measures the same tables; a standby takes its tables from replication
+### and is never measured here. A table left unmeasured only warns: the data
+### is in place, and InnoDB or the per-minute SQL check measures it later.
+### $1 is the database, the rest the client options the load connected with
+### (a --defaults-file first, as the client requires).
+_measure_loaded_tables() {
+  local _db="$1" _t0="${SECONDS}" _bq='`' _names _tb _list _out _i _ok=0 _skip=0 _err=""
+  local -a _tbls=()
+  shift
+  [ -e "/root/.standby.cnf" ] && return 0
+  if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: not a plain database name"
+    return 1
+  fi
+  if ! _names=$(mysql "$@" --silent -N -B -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'" 2>/dev/null); then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: its tables could not be listed"
+    return 1
+  fi
+  while IFS= read -r _tb; do
+    [ -n "${_tb}" ] || continue
+    ### -B prints a backslash, tab or newline in a name as an escape: a name
+    ### with one, or with a backtick, is never spliced into a statement.
+    case "${_tb}" in
+      *\\*|*"${_bq}"*) _skip=$(( _skip + 1 )); continue ;;
+    esac
+    _tbls+=("${_bq}${_db}${_bq}.${_bq}${_tb}${_bq}")
+  done <<< "${_names}"
+  for (( _i = 0; _i < ${#_tbls[@]}; _i += 100 )); do
+    _list=$(IFS=,; printf '%s' "${_tbls[*]:_i:100}")
+    _out=$(timeout 300 mysql "$@" --silent -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
+    ### The outcome, not the exit code: each table answers with its own OK.
+    _ok=$(( _ok + $(grep -c $'\tanalyze\tstatus\tOK$' <<< "${_out}") ))
+    [ -n "${_err}" ] || _err=$(grep -i -m 1 -E 'error|timeout|denied' <<< "${_out}" | tr '\t' ' ')
+  done
+  if [ "${_ok}" -eq "${#_tbls[@]}" ] && [ "${_skip}" -eq 0 ]; then
+    [ "${_ok}" -gt 0 ] && echo "INFO: measured the optimizer statistics of ${_ok} tables in ${_db} in $(( SECONDS - _t0 )) s"
+    return 0
+  fi
+  echo "ALRT: measured the optimizer statistics of ${_ok} of $(( ${#_tbls[@]} + _skip )) tables in ${_db}${_err:+ (${_err:0:200})}; InnoDB measures the rest later on its own"
+  return 1
+}
+
+# _measure_loaded_tables' line goes through this tool's own log; a table left
+# unmeasured only warns, so the load it follows is never failed by it.
+_measure_and_log() {
+  local _ml
+  if _ml="$(_measure_loaded_tables "$@")"; then
+    [[ -n "${_ml}" ]] && _info "${_ml#INFO: }"
+  else
+    _alrt "${_ml#ALRT: }"
+  fi
+  return 0
+}
+
 _mysqldump_flags() {
   local _fl="--single-transaction --quick --no-autocommit --skip-add-locks --hex-blob"
   mysqldump --help 2>/dev/null | grep -q 'no-tablespaces' && _fl="${_fl} --no-tablespaces"
@@ -2845,6 +2908,7 @@ EOFMYSQL6
     fi
     return 1
   fi
+  _measure_and_log "${_dbn}" -u root
   # the export carries an enabled event only from a source that runs its
   # scheduler; here it stays still, without a word, unless this box runs
   # its own (a Percona 5.7 default is off)
@@ -2950,6 +3014,7 @@ _import_db_route() {
     # 3. import with sandbox strip
     sed '1{/^\/\*M!999999/d}' "${_src}/hostmaster.sql" \
       | mysql --defaults-file=/root/.my.cnf "${_hdb}" || _die "hostmaster import failed - restore from ${_undo}/a2b-pre-import.sql"
+    _measure_and_log "${_hdb}" --defaults-file=/root/.my.cnf
     touch "${_step}.3.done"
     _info "step 3: vanilla hostmaster db imported"
   fi
@@ -3583,6 +3648,7 @@ verb_import() {
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
     mysql --defaults-file=/root/.my.cnf "${_hdb}" < "${_undo}/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import ${_undo}/a2b-pre-import.sql manually"
+    _measure_and_log "${_hdb}" --defaults-file=/root/.my.cnf
     _t_reset_site_dbs
     _t_remove_estate_vhosts
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
