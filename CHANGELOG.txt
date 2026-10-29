@@ -51,6 +51,19 @@
       answering the old server's own hostname renamed nothing, so those
       sites are relayed under their own names.
 
+    * A task queued in a control panel while an upgrade moved that panel
+      to its new platform could vanish without a trace: the move dumps
+      the panel's database, loads the dump into a new database and drops
+      the old one, so a task saved in the seconds between the dump and the
+      switch went with the old database, although the panel had answered
+      that it was queued (19 of 233 tasks queued over one forced Octopus
+      upgrade, all inside a three-second window). While the panel moves,
+      it now refuses a new task with a message saying to queue it again,
+      and its pages show the maintenance page to everyone, administrators
+      included; the Ægir Master's own upgrade does the same. A moving
+      panel answers with the code it is leaving, so this holds from the
+      upgrade after the one that brings it.
+
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
       git clone from a code host whose key was not yet known) failed with
