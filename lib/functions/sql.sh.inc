@@ -2303,7 +2303,10 @@ _db_server_install() {
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
         fi
+        # mysqld never reads a comment line, so a template edit that only
+        # adds, drops or rewords one must not restart every box's server.
         _diffMyTest=$(diff -w -B \
+          -I "^[[:space:]]*[#;]" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
