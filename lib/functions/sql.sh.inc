@@ -2303,6 +2303,8 @@ _db_server_install() {
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
         fi
+        # diff shows a change only when one of its lines matches no -I
+        # pattern, so tuned-knob and comment lines alone never restart:
         # mysqld never reads a comment line, so a template edit that only
         # adds, drops or rewords one must not restart every box's server.
         _diffMyTest=$(diff -w -B \
@@ -2328,20 +2330,6 @@ _db_server_install() {
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
-          fi
-        fi
-        if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          # Suppress only when the surviving diff carries nothing but
-          # ignore-listed knob lines; a mixed hunk keeps its restart for
-          # the co-riding knob the -I list does not cover.
-          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
-            | grep -E "^[<>] " \
-            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
-          if [ -z "${_diffMyOther}" ]; then
-            _myCnfUpdate=NO
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
-            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
