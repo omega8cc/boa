@@ -9462,7 +9462,7 @@ _take_verb_lock() {
       echo "ERROR: cannot claim ${_XOCT_LOCK_FILE} -- refusing to run unlocked"
       exit 1
     fi
-    _owner=$(tr -dc '0-9' < "${_XOCT_LOCK_FILE}" 2>/dev/null | head -c 12)
+    _owner=$(tr -dc '0-9' 2>/dev/null < "${_XOCT_LOCK_FILE}" | head -c 12)
     if [ -z "${_owner}" ] \
       && [ -n "$(find "${_XOCT_LOCK_FILE}" -newermt '-5 seconds' 2>/dev/null)" ]; then
       ### A just-created lock can be read in the instant between its O_EXCL
@@ -9471,7 +9471,7 @@ _take_verb_lock() {
       continue
     fi
     if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
-      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      _cmdline=$(tr '\0' ' ' 2>/dev/null < "/proc/${_owner}/cmdline")
       case "${_cmdline}" in
         */xoct\ *|*/xoct|*\ xoct\ *)
           echo "ERROR: another xoct run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish, or clear ${_XOCT_LOCK_FILE} if that pid is not an xoct run."

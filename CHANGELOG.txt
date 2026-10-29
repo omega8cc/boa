@@ -2523,6 +2523,20 @@
       yet, a line cron mailed to root with every run; xdr9000's status
       no longer prints it before its first rollup either.
 
+    * The same fix across the rest of BOA: every tool that reads a pid
+      file, a stamp, a /proc entry, a key or a patch with its errors sent
+      to /dev/null now does so in the order that hides them, so a file
+      that is gone (the pid file of a finished run, a process that just
+      exited) no longer prints "No such file or directory" into cron mail
+      or an operator's terminal.
+
+    * The nginx config scripts (ip_access.sh, user_admin_access.sh,
+      ai_policy.sh, nginx_deny.sh, nginx_deny6.sh, cloudflare_realip.sh,
+      migration_proxy_realip.sh), the agent's crawler-access fix and
+      autosymlink opened their lock or held directory in a way that also
+      sent every later error of the run to /dev/null; those errors now
+      reach whoever runs them.
+
     * performance_schema's per-query summary now counts the sites' own
       statements on servers with many tables. It holds 10,000 statement
       shapes by default, and the nightly dump, which reads each table

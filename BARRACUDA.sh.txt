@@ -225,7 +225,7 @@ _clean_pid_exit() {
   # leave a system-wide no-op systemctl behind. Content-checked so a real
   # systemctl binary can never match.
   if [ -e "/bin/systemctl" ] \
-    && [ "$(wc -c < /bin/systemctl 2>/dev/null)" -lt 32 ] \
+    && [ "$(wc -c 2>/dev/null < /bin/systemctl)" -lt 32 ] \
     && grep -q '^true$' /bin/systemctl 2>/dev/null; then
     rm -f /bin/systemctl
   fi

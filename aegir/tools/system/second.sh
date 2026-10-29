@@ -729,7 +729,7 @@ _clear_pause_latch() {
     return 0
   fi
   if [ -s "${_pthStreak}" ] && [ -z "$(find "${_pthStreak}" -mmin +5 2>/dev/null)" ]; then
-    _streak=$(tr -dc '0-9' < "${_pthStreak}" 2>/dev/null)
+    _streak=$(tr -dc '0-9' 2>/dev/null < "${_pthStreak}")
     [ -n "${_streak}" ] || _streak=0
   fi
   _streak=$(( _streak + 1 ))

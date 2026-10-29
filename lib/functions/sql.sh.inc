@@ -115,7 +115,7 @@ _check_mysql_version() {
 _sql_maint_foreign() {
   [ -e "/run/boa_sql_maintenance.pid" ] || return 1
   [ ! -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ] && return 1
-  local _mPid="$(tr -dc '0-9' < /run/boa_sql_maintenance.pid 2>/dev/null)"
+  local _mPid="$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_maintenance.pid)"
   [ -z "${_mPid}" ] && return 0
   [ "${_mPid}" = "$$" ] && return 1
   kill -0 "${_mPid}" 2>/dev/null || return 1
@@ -340,7 +340,7 @@ _check_sql_running() {
           _msg "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
-        _lc0=$(wc -l < /var/log/mysql/error.log 2> /dev/null)
+        _lc0=$(wc -l 2> /dev/null < /var/log/mysql/error.log)
         _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
@@ -1467,7 +1467,7 @@ _check_mysqld_running() {
           _msg "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
-        _lc0=$(wc -l < /var/log/mysql/error.log 2> /dev/null)
+        _lc0=$(wc -l 2> /dev/null < /var/log/mysql/error.log)
         _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"

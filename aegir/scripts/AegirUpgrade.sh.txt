@@ -379,7 +379,7 @@ _hostmaster_mi_up() {
   fi
   ${_DRUSHCMD} cc drush &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
-  ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+  ${_DRUSHCMD} @hostmaster sqlc &> /dev/null < ${_bldPth}/aegir/helpers/hosting_cron.sql
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
     WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null

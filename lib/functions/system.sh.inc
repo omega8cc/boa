@@ -11045,7 +11045,7 @@ _webmin_key_fetch() {
     rm -f "${_d}/key.asc" "${_d}/key.gpg"
     curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_d}/key.asc"
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_d}/key.asc" 2> /dev/null \
-      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" < "${_d}/key.asc" 2> /dev/null \
+      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" 2> /dev/null < "${_d}/key.asc" \
       && _webmin_key_is_pinned "${_g}" "${_d}/key.gpg"; then
       mkdir -p /etc/apt/keyrings
       chmod 0755 /etc/apt/keyrings
@@ -13959,7 +13959,7 @@ _fix_root_locked_shadow() {
 _php_fpm_master_up() {
   local _pid
   [ -r "/run/php${1}-fpm.pid" ] || return 1
-  _pid=$(tr -d '[:space:]' < "/run/php${1}-fpm.pid" 2> /dev/null)
+  _pid=$(tr -d '[:space:]' 2> /dev/null < "/run/php${1}-fpm.pid")
   [ -n "${_pid}" ] || return 1
   case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
     *"php${1}-fpm.conf"*) return 0 ;;
@@ -13996,7 +13996,7 @@ _MQ_STOP="/run/boa_master_queue_stop.pid"
 _mq_nginx_up() {
   local _pid
   [ -r "/run/nginx.pid" ] || return 1
-  _pid=$(tr -dc '0-9' < /run/nginx.pid 2> /dev/null)
+  _pid=$(tr -dc '0-9' 2> /dev/null < /run/nginx.pid)
   [ -n "${_pid}" ] || return 1
   case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
     "nginx: master process"*) return 0 ;;

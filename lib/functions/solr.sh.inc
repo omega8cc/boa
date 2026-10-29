@@ -289,8 +289,8 @@ _if_solr_four() {
         rm -rf apachesolr_attachments*
         _get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz"
         cd /var/opt/solr-${_SOLR_4_VRN}/example/solr/collection1/conf/
-        patch -p0 < \
-          /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
+        patch -p0 &> /dev/null < \
+          /var/opt/apachesolr_attachments/solrconfig.tika.patch
         ln -sfn /opt/jetty9/lib /opt/tika9
         ln -sfn /opt/jetty9/lib /opt/tika
         cd /opt/tika9

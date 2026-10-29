@@ -67,7 +67,7 @@ if ! command -v nginx >/dev/null 2>&1; then
 fi
 
 # Re-entrancy guard: skip this tick if a previous run is still active.
-exec 9>"${_lock_file}" 2>/dev/null
+{ exec 9>"${_lock_file}"; } 2>/dev/null
 if ! flock -w 30 9; then
   echo "Could not acquire the shared nginx-config lock; skipping this run."
   exit 0

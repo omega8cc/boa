@@ -311,7 +311,7 @@ if [ "${_NW}" -gt 0 ]; then
   # peak-x4 suggestion survives only for boxes with no demand window
   # (old sqlprobe, opted out, or redis-legacy).
   if [ -r "/var/log/boa/.valkey.demand.txt" ]; then
-    read -r _dV _dTS _dN _dH _dM _dE _dP < /var/log/boa/.valkey.demand.txt 2>/dev/null
+    read -r _dV _dTS _dN _dH _dM _dE _dP 2>/dev/null < /var/log/boa/.valkey.demand.txt
     _dN="${_dN//[^0-9]/}"; _dH="${_dH//[^0-9]/}"
     _dM="${_dM//[^0-9]/}"; _dE="${_dE//[^0-9]/}"
     _VK_HITPCT="n/a"

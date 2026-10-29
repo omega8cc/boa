@@ -476,7 +476,7 @@ _reload_idle_fpm_versions() {
   _now=$(date +%s)
   _from=$(( _now - 86400 ))
   for _mPid in $(pgrep -f '^php-fpm: master process'); do
-    _mVer=$(tr '\0' ' ' < "/proc/${_mPid}/cmdline" 2> /dev/null \
+    _mVer=$(tr '\0' ' ' 2> /dev/null < "/proc/${_mPid}/cmdline" \
       | grep -o '/opt/php[0-9]\+/' | head -n1)
     _mVer="${_mVer//[^0-9]/}"
     [ -n "${_mVer}" ] && [ -e "/etc/init.d/php${_mVer}-fpm" ] || continue
