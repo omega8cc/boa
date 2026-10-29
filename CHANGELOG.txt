@@ -4,6 +4,15 @@
 
 @=> Important Fixes
 
+    * The nightly removal of old empty platforms (_DEL_OLD_EMPTY_PLATFORMS)
+      could delete a live platform's code: when the alias of a platform the
+      control panel had already deleted still named the same tree, that
+      alias's Delete removed the tree under the live platform. The nightly
+      now deletes no platform whose tree another platform alias also names,
+      in an Octopus account and on the Aegir master alike, and logs a
+      warning that names both aliases; remove the alias of the one the
+      control panel no longer lists.
+
     * A barracuda pass restarted the database server when the new my.cnf
       differed from the previous one only in a comment line, which the
       server never reads: a comment changed in BOA's my.cnf template meant
