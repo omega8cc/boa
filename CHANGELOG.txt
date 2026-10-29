@@ -74,6 +74,14 @@
       from the command line is refused from the upgrade after it, since a
       moving panel answers with the code it is leaving.
 
+    * A Grav or Textpattern site put on a name that was only the parent of
+      another site's subdirectory alias took that name's web server
+      config over, so the subdirectory site stopped answering there for as
+      long as the Grav or Textpattern site stayed (such sites carry no
+      subdirectory sites). An install, clone, copy-upgrade, rename or
+      cutover of a Grav or Textpattern site onto such a name now fails
+      before it changes anything, naming the name.
+
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
       git clone from a code host whose key was not yet known) failed with
