@@ -11375,6 +11375,23 @@ _satellite_child_b_aegir_build() {
     ### at it when the exit status is not zero.
     _hmLog="${_ROOT}/log/hostmaster-migrate-${_NOW}.log"
     mkdir -p ${_ROOT}/log
+    ### A task or change saved in the panel between the migrate's dump and
+    ### its switch to the new database goes into the database the migrate
+    ### drops. While this marker is in the root the panel runs on, the panel
+    ### refuses tasks and its web front is offline (hosting.module); the new
+    ### root never carries it.
+    _hmFrom=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+    _hmFrom="${_hmFrom%/}"
+    _hmMove=
+    if [ -n "${_hmFrom}" ] && [ "${_hmFrom}" != "${_HM_ROOT}" ] \
+      && [ -d "${_hmFrom}/sites" ]; then
+      _hmMove="${_hmFrom}/sites/.panel-move.info"
+      { date +%s > "${_hmMove}"; } 2> /dev/null && chmod 644 "${_hmMove}"
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d 2>&1 | tee ${_hmLog}
       _hmRc=${PIPESTATUS[0]}
@@ -11382,6 +11399,7 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y > ${_hmLog} 2>&1
       _hmRc=$?
     fi
+    [ -n "${_hmMove}" ] && rm -f "${_hmMove}"
     if [ "${_hmRc}" != "0" ]; then
       ### A non-zero exit means an error was logged, not that nothing moved:
       ### a post hook (the resume's name report) can fail after the panel is
