@@ -91,7 +91,7 @@ _show_status() {
   echo "  Engine:        ${_state}, last sample ${_age}"
   echo "  Recording since: ${_first}"
   echo "  Size:          ${_size:-0} across ${_files} day-files"
-  echo "  Rollup days:   $(wc -l < "${_ROLLUP}" 2>/dev/null || echo 0)"
+  echo "  Rollup days:   $( { wc -l < "${_ROLLUP}"; } 2>/dev/null || echo 0)"
 }
 
 _show_attacks() {

@@ -1549,6 +1549,13 @@
 
 @=> Security
 
+    * multiback no longer shows the B2 key ID and application key in the
+      duplicity command lines it prints, which cron mails to root after
+      every backup run; the target is shown without them, as its error
+      log already did. On a dev server the environment dump of a backup
+      run (multiback, mybackup, the backup cron writer) masks passphrases,
+      keys, tokens and connection strings.
+
     * nginx refuses requests for an npm token file (.npmrc), Google Cloud
       service-account key files (service-account.json, gcp-credentials.json,
       gcp-key.json, google-credentials.json, firebase-adminsdk.json,
@@ -2438,6 +2445,17 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The hourly clock sync (/etc/cron.hourly/systemtime) no longer mails
+      root every hour: ntpdate's report of a good sync is dropped, while
+      a failed sync is still mailed. Servers that already have the file
+      take the new copy on their next upgrade, which before never
+      replaced it.
+
+    * multiback, backboa and duobackboa no longer print "No such file or
+      directory" at the start of a run whose log file does not exist
+      yet, a line cron mailed to root with every run; xdr9000's status
+      no longer prints it before its first rollup either.
 
     * performance_schema's per-query summary now counts the sites' own
       statements on servers with many tables. It holds 10,000 statement

@@ -1093,7 +1093,7 @@ _run_backup() {
   echo "Running ${_MODE} backup on $(date)" >> ${_LOGFILE}
   # the length before this run's output: a run killed before its log was
   # archived leaves its lines behind, and only this run's may decide a retry
-  _BUP_LOG0="$(wc -l < "${_LOGFILE}" 2> /dev/null | tr -d ' ')"
+  _BUP_LOG0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
   echo "Command is ${_DCY_UP_CMD} \
     ${_NAME} \
     ${_EXCLUDE} \
