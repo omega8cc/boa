@@ -66,11 +66,13 @@
       switch went with the old database, although the panel had answered
       that it was queued (19 of 233 tasks queued over one forced Octopus
       upgrade, all inside a three-second window). While the panel moves,
-      it now refuses a new task with a message saying to queue it again,
-      and its pages show the maintenance page to everyone, administrators
-      included; the Ægir Master's own upgrade does the same. A moving
-      panel answers with the code it is leaving, so this holds from the
-      upgrade after the one that brings it.
+      its pages answer 503 to everyone, administrators included, and it
+      refuses a new task with a message saying to queue it again; the
+      Ægir Master's own upgrade does the same. The new copy is held too
+      until the move has pointed it at the new database. The pages are
+      held from the first upgrade that brings this version; a task queued
+      from the command line is refused from the upgrade after it, since a
+      moving panel answers with the code it is leaving.
 
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
