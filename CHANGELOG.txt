@@ -1591,6 +1591,20 @@
       cannot set off a restart or an alert by printing them, and these
       logs and the pools' slow logs are rotated daily, seven kept.
 
+    * A fatal error in a Drupal or Backdrop web request is logged now.
+      BOA's global settings switch PHP's error reporting off for every
+      site (only a .dev. alias raises it), so a fatal error after
+      settings.php left a 500 and nothing else: one site's scheduled cron
+      died that way for years without a line anywhere. A shutdown
+      function in the global include now logs the fatal error that ended
+      the request, with its host and path, to the PHP-FPM error log,
+      /var/log/php/phpNN-fpm-error.log. Error reporting itself stays off,
+      so pages and the sites' own logs show nothing new (Drupal 6's
+      original error handler logs and shows every warning under any other
+      level). Drush runs are left alone, a fatal PHP logs itself (on a
+      .dev. alias) is not repeated, and before PHP 7 a parse error in
+      eval()'d code, which does not stop the request, is not logged.
+
     * PHP-FPM no longer logs "Unable to set php_admin_value" for
       newrelic.enabled and newrelic.license at each new worker of a PHP
       whose php.ini does not load New Relic (every version on a box
