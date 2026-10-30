@@ -39,9 +39,9 @@
 
     * The platform and site permission and ownership fixers print a name
       holding a line break or another control character as ?, so each
-      refusal stays on one line: a site folder named with a line break
-      could put a line in the account's own wording where a Delete's
-      notice gives its reason.
+      line they print stays whole: a folder named with a line break could
+      put a line in the account's own wording where a Delete's notice or
+      a Backup's log line gives the fixer's reason.
 
     * The Migrate form no longer counts a module that moved from an 8.x-
       release to a semantic one, such as address 8.x-1.12 to 2.0.4, as a

@@ -32,9 +32,9 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # copy of stderr taken here: several legs below discard their own output.
 exec 3>&2
 
-# A name as a Notice or Error line prints it: control characters as '?', so a
-# name an account chose (a newline in a directory name) keeps each line whole.
-# The platform Delete's notice quotes the helper's last such line.
+# A name as any line prints it: control characters as '?', so a name an
+# account chose (a newline in a directory name) keeps each line whole. The
+# platform Delete's notice quotes the helper's last Notice or Error line.
 _nm() {
   printf '%s' "${1//[[:cntrl:]]/?}"
 }
@@ -645,7 +645,7 @@ if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   # Each pass runs inside the real root or capsule (_in_pinned_dir). A
   # capsule is a site: what another user owns in it, or a capsule another
   # user owns, is left whole.
-  printf "Setting Grav permissions of %s\n" "${drupal_root}"
+  printf "Setting Grav permissions of %s\n" "$(_nm "${drupal_root}")"
   _root_place_or_leave _place_own_here \
     "Done setting proper permissions of files and directories (Grav)."
   _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
@@ -689,7 +689,7 @@ if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   # (config.php, drushrc.php) and 02775 setgid writable dirs; a platform-wide
   # chmod would widen the secrets and strip the setgid bits (the drushrc
   # lesson: never fight the writer), so sites/* is pruned outright.
-  printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
+  printf "Setting Textpattern permissions of %s\n" "$(_nm "${drupal_root}")"
   _root_place_or_leave _place_own_here \
     "Done setting proper permissions of files and directories (Textpattern platform)."
   _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
@@ -845,7 +845,7 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
       printf "Notice: %s is root's; nothing changed.\n" "$(_nm "${_app}")" >&3
       exit 1
     fi
-    printf 'Setting group write on %s for the Delete...\n' "${_app}"
+    printf 'Setting group write on %s for the Delete...\n' "$(_nm "${_app}")"
     if ! _LEFT=$(_in_pinned_dir "${_app}" _app_plain_here); then
       _root_owners_left_note "${_LEFT}"
       printf "Notice: %s did not take group write; nothing changed.\n" "$(_nm "${_app}")" >&3
@@ -854,7 +854,7 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
     echo "Done setting group write on the directory holding the platform."
     exit 0
   fi
-  printf 'Setting group write on the directories of %s for the Delete...\n' "${_app}"
+  printf 'Setting group write on the directories of %s for the Delete...\n' "$(_nm "${_app}")"
   _LEFT=""
   _left_add _in_pinned_dir "${_app}" _fwalk_own_here d 02775 .
   if [[ "${_app%/*}" != "${_SCOPE_ROOT}/static" ]]; then
@@ -910,7 +910,7 @@ if ! _in_pinned_dir "${drupal_root}" true; then
   exit 1
 fi
 
-printf 'Setting main permissions inside %s...\n' "${drupal_root}"
+printf 'Setting main permissions inside %s...\n' "$(_nm "${drupal_root}")"
 _root_place_or_leave _place_own_here \
   "Done setting proper permissions on platform files and directories."
 ### Nothing is made in a directory another user owns (_in_own_here), here
@@ -924,26 +924,26 @@ _in_pinned_dir "${drupal_root}/sites/all" \
 _in_pinned_dir "${drupal_root}/sites/all/libraries" \
   _in_own_here _perm_marker_here
 
-printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}"
+printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}")"
 _left_add _in_pinned_dir "${drupal_root}" _walk_here d "${_MODE_DIR}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
-printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}"
+printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}")"
 _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 if [ -e "${drupal_root}/vendor" ]; then
-  printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/vendor"
+  printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
     _fwalk_own_here d "${_MODE_DIR}" ./vendor
-  printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/vendor"
+  printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
-  printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/../vendor"
+  printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
     _fwalk_own_here d "${_MODE_DIR}" ./vendor
-  printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/../vendor"
+  printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
 fi
@@ -984,11 +984,11 @@ elif [ -d "${drupal_root}/html" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" html
 fi
 
-printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/sites/all"
+printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/sites/all")"
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here d "${_SA_DIR}" ./modules ./themes ./libraries
 
-printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/sites/all"
+printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/sites/all")"
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here f "${_SA_FILE}" ./modules ./themes ./libraries
 
@@ -1017,13 +1017,13 @@ fi
 ### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/vendor"
+    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/vendor")"
     _left_add _in_scoped_dir "${drupal_root}/vendor" \
       _chmod_any_own_here 0400 drush
     _left_add _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
       _chmod_any_own_here 0400 Input Style
   elif [ -e "${drupal_root}/../vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/../vendor"
+    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/../vendor")"
     _left_add _in_scoped_dir "${drupal_root%/*}/vendor" \
       _chmod_any_own_here 0400 drush
     _left_add _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \
