@@ -141,8 +141,9 @@ echo "$(date) INFO: incident snapshot (${_REASON}) saved to ${_DIR}" >> "${_pthO
 
 # Credentials never reach a file: a password a tool got on its command line
 # (an option, a database or service URL, a dump or client tool's -p, a user
-# with a password), or a password or its hash in a statement, is replaced by
-# *** as the file is written. A statement literal cut short still goes.
+# with a password, a Percona Toolkit DSN's p=, the word Drush's user:password
+# takes), or a password or its hash in a statement, is replaced by *** as the
+# file is written. A statement literal cut short still goes.
 _REDACT_SED="$(cat <<'EOF'
 s/(--[a-z_-]*pass(word|wd|phrase)?[= ])[^ ]+/\1***/g
 s#(://[^:/@ ]*:)[^@ /]+@#\1***@#g
@@ -150,6 +151,8 @@ s/(( -u ?|--user[= ])[^: ]+:)[^ ]+/\1***/g
 \%(^|[ /])(mysql|mysqldump|mydumper|myloader|mysqladmin|mysqlcheck|mysqlpump|mysql_upgrade|mysqlimport|mysqlbinlog|mysqlshow|mysqlslap)(\.bin)?( |$)% s/( -p)[^ ]+/\1***/g
 \%(^|[ /])(mydumper|myloader|sshpass)(\.bin)?( |$)% s/( -p) [^ -][^ ]*/\1 ***/
 \%(^|[ /])redis-cli( |$)% s/( -a) [^ ]+/\1 ***/g
+\%(^|[ /])pt-[a-z-]+( |$)% s/([ ,]p=)[^, ]+/\1***/g
+\%(^|[ /])(drush[0-9]*|drush\.php|vdrush)( |$)% s/( (user:password|user-password|upwd)( +-[^ ]+)* +[^ -][^ ]*( +-[^ ]+)* +)[^ -][^ ]*/\1***/
 s/(IDENTIFIED( |\\[ntr])+(WITH [^ ]+( |\\[ntr])+)?(BY|AS)( |\\[ntr])+(PASSWORD( |\\[ntr])+)?|PASSWORD *(FOR [^=]+)?=( |\\[ntr])*|PASSWORD *\( *|PASSWORD +|REPLACE )'([^'\\]|''|\\\\.|\\.)*('|$)/\1'***'/Ig
 s/(IDENTIFIED( |\\[ntr])+(WITH [^ ]+( |\\[ntr])+)?(BY|AS)( |\\[ntr])+(PASSWORD( |\\[ntr])+)?|PASSWORD *(FOR [^=]+)?=( |\\[ntr])*|PASSWORD *\( *|PASSWORD +|REPLACE )"([^"\\]|""|\\\\.|\\.)*("|$)/\1"***"/Ig
 EOF
