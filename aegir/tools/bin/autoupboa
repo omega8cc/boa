@@ -379,14 +379,27 @@ _swap_purge_if_bloated() {
   echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
 
   if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
-    echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
-    sync && echo 3 | tee /proc/sys/vm/drop_caches
-    local _mem_free
+    # graceful.sh is resizing /swapfile: a swapoff -a now would undo half of it.
+    local _rszPid
+    _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+    if [[ -n "${_rszPid}" ]] && kill -0 "${_rszPid}" 2>/dev/null; then
+      echo "SWP swap resize in progress, purge skipped"
+      return 0
+    fi
+    # No cache drop first: MemAvailable already counts reclaimable cache, and
+    # evicting the whole page cache forces cold re-reads on every site at once,
+    # even when the purge is then refused. After swapoff the box must keep a
+    # tenth of its RAM (at least 512 MB) free, well clear of the OOM guard's 5%.
+    local _mem_free _mem_total _mem_spare
     _mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
-    if [[ "${_mem_free}" -lt "${_swap_used}" ]]; then
-      echo "SWP insufficient free RAM (${_mem_free} kB) to absorb swap (${_swap_used} kB), aborting purge"
+    _mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+    _mem_spare=$(( _mem_total / 10 ))
+    [[ "${_mem_spare}" -lt 524288 ]] && _mem_spare=524288
+    if [[ $(( _mem_free - _swap_used )) -lt "${_mem_spare}" ]]; then
+      echo "SWP insufficient free RAM (${_mem_free} kB) to absorb swap (${_swap_used} kB) with ${_mem_spare} kB to spare, aborting purge"
       return 1
     fi
+    echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
     if swapoff -a; then
       echo "SWP swapoff complete"
     else
@@ -399,7 +412,6 @@ _swap_purge_if_bloated() {
       echo "SWP swapon failed after swapoff — swap may be offline"
       return 1
     fi
-    sync && echo 3 | tee /proc/sys/vm/drop_caches
   else
     echo "SWP swap usage healthy, no action taken"
   fi

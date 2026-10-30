@@ -26,6 +26,8 @@ fi
 
 # The notes on what a walk left as it was (_links_left_note) go to fd 3, a
 # copy of stderr taken here: several legs below discard their own output.
+# Every line prints a name with control characters as '?', so a name an
+# account chose keeps each line whole: provision quotes these lines.
 exec 3>&2
 
 # Reject any caller-supplied path that resolves outside the BOA-managed roots.
@@ -60,7 +62,7 @@ _validate_path_prefix() {
   # BOA-tree allowlist.
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
-    printf "Error: path does not resolve: %s\n" "$1" >&2
+    printf "Error: path does not resolve: %s\n" "${1//[[:cntrl:]]/?}" >&2
     exit 1
   }
   _caller="${SUDO_USER:-}"
@@ -68,7 +70,7 @@ _validate_path_prefix() {
     case "${_resolved}/" in
       /var/aegir/*|/data/disk/*|/home/*) return 0 ;;
       *)
-        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved//[[:cntrl:]]/?}" >&2
         exit 1
         ;;
     esac
@@ -78,14 +80,14 @@ _validate_path_prefix() {
   case "${_home}" in
     /var/aegir|/data/disk/*) ;;
     *)
-      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_home}" >&2
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller//[[:cntrl:]]/?}" "${_home//[[:cntrl:]]/?}" >&2
       exit 1
       ;;
   esac
   case "${_resolved}/" in
     "${_home}"/*) ;;
     *)
-      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved}" "${_home}" >&2
+      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved//[[:cntrl:]]/?}" "${_home//[[:cntrl:]]/?}" >&2
       exit 1
       ;;
   esac
@@ -474,7 +476,7 @@ _own_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${site_path}") || _OWN_UIDS=""
   _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
-    "${site_path}" >&2
+    "${site_path//[[:cntrl:]]/?}" >&2
   exit 0
 }
 # One line for what the walks left as another user's, each entry once by
@@ -485,7 +487,7 @@ _owners_left_note() {
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
   printf "Notice: %s entries owned by another user left as they were in the site %s and its stores\n" \
-    "${_n}" "${site_path}" >&3
+    "${_n}" "${site_path//[[:cntrl:]]/?}" >&3
   return 0
 }
 
@@ -546,7 +548,7 @@ _reown_here() {
   [[ "${1}" != *:* ]] \
     || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
   if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]]; then
-    printf "Error: invalid owner %s\n" "${1}" >&2
+    printf "Error: invalid owner %s\n" "${1//[[:cntrl:]]/?}" >&2
     return 1
   fi
   shift
@@ -607,7 +609,7 @@ _reown_own_here() {
     || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
   if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]] \
     || ! _own_uids_ok "${_OWN_UIDS}"; then
-    printf "Error: invalid owner %s\n" "${1}" >&2
+    printf "Error: invalid owner %s\n" "${1//[[:cntrl:]]/?}" >&2
     return 1
   fi
   shift
@@ -896,7 +898,7 @@ if [ -n "${site_path}" ] \
   # writable set <user>:<web group> so FPM writes via GROUP (version-flip-immune).
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
   # group stay one quoted argument.
-  printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
+  printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _grav_site_own_here)"
   _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Grav site)."
@@ -928,7 +930,7 @@ if [ -n "${site_path}" ] \
   # they are and never follows them into the shared core.
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
   # group stay one quoted argument.
-  printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
+  printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _txp_site_own_here)"
   _link_guard_tree "${site_path}"
   echo "Done setting proper ownership of files and directories (Textpattern site)."
@@ -958,7 +960,7 @@ _wg=$(_site_web_group "${site_path}")
 ### the final component. None is ever legitimately a symlink at site level.
 for _d in modules themes libraries; do
   if [ -L "${site_path}/${_d}" ]; then
-    printf "Error: %s is a symlink in %s; refusing.\n" "${_d}" "${site_path}" >&2
+    printf "Error: %s is a symlink in %s; refusing.\n" "${_d//[[:cntrl:]]/?}" "${site_path//[[:cntrl:]]/?}" >&2
     exit 1
   fi
 done
@@ -967,7 +969,7 @@ done
 ### (_in_pinned_dir) and names only ./entries there; refuse now when the
 ### site directory itself cannot be entered as resolved.
 if ! _in_pinned_dir "${site_path}" true; then
-  printf "Error: %s is not a real directory; refusing.\n" "${site_path}" >&2
+  printf "Error: %s is not a real directory; refusing.\n" "${site_path//[[:cntrl:]]/?}" >&2
   exit 1
 fi
 
@@ -995,7 +997,7 @@ if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.y
     ln -sfn "${site_path}/modules/services.yml" ./services.yml
 fi
 
-printf 'Setting ownership of key files and directories inside %s to: user => %s group => %s\n' "${site_path}" "${script_user}" "${_code_group}"
+printf 'Setting ownership of key files and directories inside %s to: user => %s group => %s\n' "${site_path//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
 if [ ! -e "${site_path}/libraries" ]; then
   _in_pinned_dir "${site_path}" _in_ours_here mkdir ./libraries
 fi
@@ -1011,7 +1013,7 @@ _files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
 _priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
 if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then
   printf "Notice: %s is not this account's own files store; skipping.\n" \
-    "${site_path}/files" >&2
+    "${site_path//[[:cntrl:]]/?}/files" >&2
 fi
 
 if [ -n "${_files_dir}" ] \
