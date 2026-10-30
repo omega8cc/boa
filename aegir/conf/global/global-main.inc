@@ -255,6 +255,41 @@ error_reporting(0);
 
 
 /**
+ * Log the fatal error that ends a web request
+ *
+ * With reporting off PHP logs nothing, so a fatal error left only a 500
+ * behind. At shutdown the request's last error, when it is one no handler
+ * can catch, goes to the error log with the host and path; the pool cannot
+ * write the ini's error_log, so PHP-FPM writes the line to its own error log
+ * (/var/log/php/phpNN-fpm-error.log). The level itself stays 0: Drupal 6's
+ * original handler logs and shows every warning under any other level. A
+ * fatal PHP logged itself (a .dev. alias raises the level) is not repeated,
+ * and Drush reports its own.
+ */
+if (!$is_backend && !function_exists('boa_log_fatal_error')) {
+  function boa_log_fatal_error() {
+    $error = error_get_last();
+    if (!is_array($error) ||
+        !($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+      return;
+    }
+    if (ini_get('log_errors') && ($error['type'] & error_reporting())) {
+      return;
+    }
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-';
+    $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-';
+    $line = ($error['type'] == E_PARSE ? 'PHP Parse error:  ' : 'PHP Fatal error:  ') .
+      substr($error['message'], 0, 500) . ' in ' . $error['file'] . ' on line ' .
+      $error['line'] . '; host ' . substr($host, 0, 100) . ', uri ' . substr($uri, 0, 150);
+    // One line, and no control character from the request reaches the log.
+    $line = preg_replace('/[\x00-\x1F\x7F]/', '?', preg_replace('/[\r\n\t]+/', ' ', $line));
+    error_log($line);
+  }
+  register_shutdown_function('boa_log_fatal_error');
+}
+
+
+/**
  * Hostmaster specific settings
  */
 if ($conf['install_profile'] == 'hostmaster') {
