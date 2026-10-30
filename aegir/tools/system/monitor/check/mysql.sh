@@ -604,9 +604,18 @@ _sql_snapshot_start() {
 }
 
 _sql_stall_snapshot() {
-  local _out _n _rc _why=""
-  # Nothing to ask while the last database snapshot is inside its cooldown.
-  _sql_snapshot_skip sql && return 0
+  local _out _n _rc _why="" _mins _alert=YES _stamp="/run/boa_sqlstall.alert.last"
+  # A stall is mailed as well as recorded: the server keeps answering its
+  # ping, so nothing else here would tell anyone. One STALL line and one mail
+  # per cooldown (the snapshot's), and never a restart or a kill: a server
+  # working through a dictionary wait must not be restarted under it.
+  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
+  _mins="${_mins:0:4}"
+  _mins=$(( 10#${_mins:-15} ))
+  (( _mins < 1 )) && _mins=1
+  [ -e "${_stamp}" ] && [ -z "$(find "${_stamp}" -mmin "+${_mins}" 2>/dev/null)" ] && _alert=NO
+  # Nothing to ask while the snapshot and the alert are both inside their cooldowns.
+  _sql_snapshot_skip sql && [ "${_alert}" = "NO" ] && return 0
   _out=$(timeout -k 2 10 mysql --connect-timeout=3 -Nse "SELECT COUNT(*) FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command NOT IN ('Sleep', 'Daemon', 'Binlog Dump', 'Binlog Dump GTID', 'Killed') AND time >= ${_SQL_STALL_SECS} AND user NOT IN ('root', 'system user', 'event_scheduler');" 2>&1)
   _rc=$?
   # The count is the last line alone: a warning line never adds digits.
@@ -622,7 +631,20 @@ _sql_stall_snapshot() {
   fi
   [ -n "${_why}" ] || return 0
   # A heal below may restart the server: the snapshot reads the box first.
-  _sql_snapshot_start "${_why}" wait
+  _sql_snapshot_skip sql || _sql_snapshot_start "${_why}" wait
+  [ "${_alert}" = "YES" ] || return 0
+  if [ "${_why}" = "sql-stall" ]; then
+    touch "${_stamp}"
+    echo "$(date) STALL incident: ${_n} site queries running ${_SQL_STALL_SECS}s or longer while MySQL answers its ping" >> ${_pthOml}
+  elif _mysql_is_answering; then
+    touch "${_stamp}"
+    echo "$(date) STALL incident: MySQL answers its ping but its process list did not come back within 10 s" >> ${_pthOml}
+  else
+    # Not answering at all: the down path heals and mails that.
+    return 0
+  fi
+  _incident_email_report "STALL: MySQL answers but its queries wait" "mysql-stall"
+  echo >> ${_pthOml}
 }
 
 _mysql_high_load() {
