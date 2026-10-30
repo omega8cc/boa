@@ -473,11 +473,12 @@ _site_status_label() {
 # and of transfer (1=transfer). A non-empty list of the records check named
 # needs its acknowledgement. pre-mig is where enabling a site still moves it
 # (the queue it pauses runs the enable task); the dump needs the panel's
-# records to be the list check named, since it carries them as they are
-# then, and records that list. transfer of a dumped panel needs the dump's
-# list to be check's (a change since then reaches neither the dump nor the
-# move, so it only warns); any other transfer needs the panel's records to
-# still be check's list.
+# records to be the list check named before the export pauses anything
+# (_export_panel_checked reads them again right before the dump and keeps
+# that read). transfer refuses an exported site check names as staying; of
+# a dumped panel it needs the dump's list to be check's (a change since then
+# reaches neither the dump nor the move, so it only warns); any other
+# transfer needs the panel's records to still be check's list.
 _left_behind_gate() {
   local _lbf="${_STATE_DIR}/state/left-behind.txt" _now _same=NO _n
   local _lbx="${_STATE_DIR}/state/left-behind.exported.txt"
@@ -494,6 +495,16 @@ _left_behind_gate() {
     [[ "$1" = "premig" ]] \
       && _die "${_n} site record(s) named by check stay on this box - enable them to move them and re-run check, or re-run check with $(_ack_flags)"
     _die "${_n} site record(s) named by check stay on this box - re-run check with $(_ack_flags)"
+  fi
+  # a site exported before its record left the enabled state (a task that
+  # outlived pre-mig's drain) would move although check names it as staying
+  if [[ "$1" = "transfer" ]]; then
+    local _lbu _lbs
+    while read -r _lbu _lbs; do
+      [[ -n "${_lbu}" ]] || continue
+      _marker_has "${_lbu}.exported.pid" \
+        && _die "site ${_lbu} is exported but check names it as staying on this box ($(_site_status_label "${_lbs}")) - revert --site ${_lbu} to keep it here"
+    done < "${_lbf}"
   fi
   if [[ "$1" = "transfer" && -f "${_lbx}" ]]; then
     cmp -s "${_lbf}" "${_lbx}" \
@@ -1289,7 +1300,7 @@ verb_check() {
   # panel dump and transfer refuse a non-empty list until check ran with
   # --accept-left-behind. An earlier run's acknowledgement is dropped first,
   # and the list replaces the recorded one only once read whole.
-  local _lbf="${_STATE_DIR}/state/left-behind.txt" _lbu _lbs _lbn
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _lbu _lbs _lbn _lbh
   _kv_set "${_STATE_DIR}/state/check.env" "LEFT_ACK" "NO"
   if ! _left_behind_read "${_lbf}.new"; then
     rm -f "${_lbf}.new"
@@ -1306,10 +1317,12 @@ verb_check() {
     [[ "${_route}" = "db-import" ]] \
       && _alrt "    the db-import route carries these records into the new panel without their databases"
     if [[ "${_ACCEPT_LEFT}" != "YES" ]]; then
-      if [[ "${_route}" = "db-import" ]]; then
-        _alrt "enable a site above to move it with the rest, or re-run check with --accept-left-behind (with --accept-scrub-list on the same run) to move on without them"
+      _lbh="re-run check with --accept-left-behind"
+      [[ "${_route}" = "db-import" ]] && _lbh="${_lbh} (with --accept-scrub-list on the same run)"
+      if _marker_has "pre-mig.pid"; then
+        _alrt "${_lbh} to move on without them (the queue is paused since pre-mig, so enabling a site now moves nothing: resume first to enable one)"
       else
-        _alrt "enable a site above to move it with the rest, or re-run check with --accept-left-behind to move on without them"
+        _alrt "enable a site above to move it with the rest, or ${_lbh} to move on without them"
       fi
     fi
   fi
@@ -1674,6 +1687,31 @@ _export_hostmaster() {   # db-import route only
   return 0
 }
 
+# the db-import panel dump of a live export. It carries the site records as
+# they are when it runs, after every site dump of the run, so they are read
+# right before it and must be the list check named; that read becomes the
+# list transfer checks. A refused dump leaves the sites as exported: re-run
+# check, then the same export. A panel already dumped is left as it is.
+_export_panel_checked() {
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _rd="${_STATE_DIR}/state/left-behind.dump.txt"
+  if _marker_has "hostmaster.exported.pid"; then
+    _export_hostmaster
+    return $?
+  fi
+  if ! _left_behind_read "${_rd}" || ! cmp -s "${_rd}" "${_lbf}"; then
+    rm -f "${_rd}"
+    _alrt "hostmaster: NOT dumped - the site records left behind changed since check, or cannot be read: re-run check, then export again"
+    return 1
+  fi
+  if ! _export_hostmaster; then
+    rm -f "${_rd}"
+    return 1
+  fi
+  mv -f "${_rd}" "${_STATE_DIR}/state/left-behind.exported.txt" \
+    || { _alrt "hostmaster: cannot record the list of the site records left behind its dump carries"; return 1; }
+  return 0
+}
+
 verb_export() {
   _require_source_box
   _marker_has "pre-mig.pid" || _die "run pre-mig first (the queue must be paused before any dump)"
@@ -1699,8 +1737,6 @@ verb_export() {
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
-  local _hm_was=NO
-  _marker_has "hostmaster.exported.pid" && _hm_was=YES
 
   _msg "LIVE export (route=${_route})"
   while read -r _name _uri; do
@@ -1708,12 +1744,7 @@ verb_export() {
     [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
     _export_one "${_name}" "${_uri}" || _fails=$(( _fails + 1 ))
   done < <(_sites_list)
-  [[ "${_route}" = "db-import" ]] && { _export_hostmaster || _fails=$(( _fails + 1 )); }
-  # the list the dump just carried, for transfer (a later export dumps nothing)
-  if [[ "${_hm_was}" = "NO" ]] && _marker_has "hostmaster.exported.pid"; then
-    cp -p "${_STATE_DIR}/state/left-behind.txt" "${_STATE_DIR}/state/left-behind.exported.txt" \
-      || _alrt "cannot record the list of the site records left behind this panel dump carries"
-  fi
+  [[ "${_route}" = "db-import" ]] && { _export_panel_checked || _fails=$(( _fails + 1 )); }
   if [[ "${_fails}" -gt 0 ]]; then
     _alrt "export finished with ${_fails} per-site failure(s) - failed sites are NOT exported; others proceed"
   else
