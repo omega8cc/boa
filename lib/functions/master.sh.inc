@@ -576,6 +576,30 @@ EOFMYSQL
 }
 
 #
+# Revoke from the panel's database user $1, at localhost and at %, every right
+# but those on its own database $2 (the name as a grant writes it, _ escaped):
+# the rights on all databases and the grant option an earlier release gave,
+# and the rights on any other database. The own grant itself is never taken
+# away, so the panel keeps its database while this runs.
+_hostmaster_frontend_dbuser_trim() {
+  local _h _d
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
+  for _h in localhost %; do
+    "${_C[@]}" "REVOKE ALL ON *.* FROM '${1}'@'${_h}'" &> /dev/null
+    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${1}'@'${_h}'" &> /dev/null
+    while IFS= read -r _d; do
+      [[ "${_d}" =~ ^[A-Za-z0-9_%\\$-]{1,64}$ ]] || continue
+      if [ "${_d}" != "${2}" ]; then
+        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+      fi
+      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
+  done
+}
+
+#
 # Sync hostmaster frontend db_passwd.
 _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -648,20 +672,28 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
+    ### The two accounts the panel logs in with are set in place, never
+    ### dropped and made again: the panel serves requests all through the
+    ### pass, and between a DROP and the ALTER that gave the password back
+    ### none of them could log in. Rights beyond the own database, as an
+    ### earlier release gave, are revoked once the own grant is in place
+    ### (not while the name is unreadable), and the accounts named after the
+    ### host go last.
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
 EOFMYSQL
+    if [ -z "${_GOPT}" ]; then
+      _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBNM//_/\\_}"
+    fi
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     _hostmaster_oldhost_dbuser_drop
     case "${_SQL_CONNECT}" in
       localhost|127.0.0.1) _dbctl_rerecord master-panel ;;
