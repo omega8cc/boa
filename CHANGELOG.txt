@@ -44,6 +44,18 @@
       version pinned in multi-fpm.info has a live pool, skips a line
       starting with #: a comment was reported as a pin with no pool.
 
+    * The database watchdog and the incident snapshot read MySQL's process
+      list with SHOW PROCESSLIST instead of the information_schema view.
+      Measured on Percona 8.4, the view takes InnoDB's dictionary mutex twice
+      on every read and SHOW PROCESSLIST not at all, so in a dictionary stall
+      (the eight-minute kind a busy server had) the watchdog's stall count
+      and long-query killer waited with the sites, each run leaving one more
+      root connection stuck, and the snapshot lost ten seconds before its
+      plain fallback. The stall count now sees the waiting site queries,
+      the snapshot keeps its 4 KB statements and order, and a refusal for
+      root's max_user_connections cap no longer reads as a server down, so
+      the watchdog never restarts MySQL because its own connections piled up.
+
     * A site renamed with Migrate Site while its aliases redirected to
       its own name answers on its new name again. The redirect stayed on
       the old name, which no site directory served any more: the old name

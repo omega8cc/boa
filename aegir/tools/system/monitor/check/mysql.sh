@@ -525,7 +525,13 @@ _mysql_proc_control() {
   # for by name: the old positional parse of formatted output shifted
   # whenever a column was blank (NULL db, empty host), so the time tested
   # could be some other field entirely -- on the path that kills.
-  _mysql_proc_list=$(mysql -Nse "SELECT id, user, time FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command != 'Daemon' AND command NOT LIKE 'Binlog Dump%' AND user != 'system user';" 2>/dev/null)
+  # Read through SHOW FULL PROCESSLIST, never information_schema.processlist:
+  # the view takes InnoDB's dictionary mutex on every read, so in a
+  # dictionary stall it would wait with the sites. Columns by position
+  # (Id, User, Host, db, Command, Time), split on tabs so a blank field keeps
+  # its place; this run's own connection is root's and skipped below.
+  _mysql_proc_list=$(mysql -BNe "SHOW FULL PROCESSLIST" 2>/dev/null \
+    | awk -F '\t' '$1 ~ /^[0-9]+$/ && $5 != "Daemon" && $5 !~ /^Binlog Dump/ && $2 != "system user" { gsub(/ /, "_", $2); print $1, $2, $6 }')
 
   # Iterate over _each process
   echo "${_mysql_proc_list}" | while read -r _each _xuser _xtime; do
@@ -616,10 +622,17 @@ _sql_stall_snapshot() {
   [ -e "${_stamp}" ] && [ -z "$(find "${_stamp}" -mmin "+${_mins}" 2>/dev/null)" ] && _alert=NO
   # Nothing to ask while the snapshot and the alert are both inside their cooldowns.
   _sql_snapshot_skip sql && [ "${_alert}" = "NO" ] && return 0
-  _out=$(timeout -k 2 10 mysql --connect-timeout=3 -Nse "SELECT COUNT(*) FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command NOT IN ('Sleep', 'Daemon', 'Binlog Dump', 'Binlog Dump GTID', 'Killed') AND time >= ${_SQL_STALL_SECS} AND user NOT IN ('root', 'system user', 'event_scheduler');" 2>&1)
+  # SHOW PROCESSLIST, not the information_schema view: the view takes InnoDB's
+  # dictionary mutex on every read, so in the very stall this looks for it
+  # would wait with the sites, and each run would leave one more root
+  # connection stuck behind it. Counted by column position (Id, User, Host, db,
+  # Command, Time); a warning line has no numeric Id and is never counted.
+  _out=$(timeout -k 2 10 mysql --connect-timeout=3 -BNe "SHOW PROCESSLIST" 2>&1)
   _rc=$?
-  # The count is the last line alone: a warning line never adds digits.
-  _n="${_out##*$'\n'}"
+  _n=""
+  if [ "${_rc}" -eq 0 ]; then
+    _n=$(awk -F '\t' -v s="${_SQL_STALL_SECS}" '$1 ~ /^[0-9]+$/ && $5 !~ /^(Sleep|Daemon|Binlog Dump|Binlog Dump GTID|Killed)$/ && $6 ~ /^[0-9]+$/ && $6 + 0 >= s && $2 !~ /^(root|system user|event_scheduler)$/ { c++ } END { print c + 0 }' <<< "${_out}")
+  fi
   if [ "${_rc}" -eq 124 ] || [ "${_rc}" -eq 137 ] \
     || { [ "${_rc}" -ne 0 ] && [[ "${_out}" =~ ERROR\ (2002|2003|2006|2013|1040|1135) ]]; }; then
     # No answer in time, no connection taken or kept (a full backlog, a
@@ -732,10 +745,13 @@ _mysql_is_answering() {
   # Authoritative liveness probe. A reply of ANY kind -- including an auth error
   # -- proves the server is up and accepting connections. `timeout` bounds a hung
   # server; --connect-timeout bounds a dead socket. Uses /root/.my.cnf implicitly.
+  # Root at its max_user_connections cap is refused the same way (ERROR 1203):
+  # the server answered, and calling it down would restart it under whatever
+  # holds those connections.
   local _out
   _out=$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)
   case "${_out}" in
-    *"is alive"*|*"denied"*|*"Too many connections"*) return 0 ;;
+    *"is alive"*|*"denied"*|*"Too many connections"*|*"max_user_connections"*) return 0 ;;
     *) return 1 ;;
   esac
 }
