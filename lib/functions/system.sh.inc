@@ -14324,9 +14324,12 @@ _initd_update() {
         # diff shows a change only when one of its lines matches no -I
         # pattern, so tuned-knob and comment lines alone never restart:
         # mysqld never reads a comment line, so a template edit that only
-        # adds, drops or rewords one must not restart every box's server.
+        # adds, drops or rewords one must not restart every box's server,
+        # and performance_schema sizing, like the knobs, waits for the
+        # next natural restart.
         _diffMyTest=$(diff -w -B \
           -I "^[[:space:]]*[#;]" \
+          -I "^[[:space:]]*performance_schema_" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
