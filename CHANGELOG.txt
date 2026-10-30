@@ -4,6 +4,23 @@
 
 @=> Important Fixes
 
+    * The web ban sets no longer reload Nginx on nearly every cron tick.
+      The 15-minute temporary bans change the IPv4 set most of the time,
+      and each change reloaded Nginx: on a box with hundreds of SSL vhosts
+      the configuration takes over a gigabyte in memory, a reload parsed
+      it three times (two tests and the master) and left a full set of
+      old workers draining, about a gigabyte more for each reload on one
+      busy box, which reloaded every two minutes all day. csf drops a
+      banned IPv4 address the moment it is banned and the Nginx set only
+      matters for a client behind Cloudflare, so new IPv4 bans now wait
+      ten minutes since the last reload (_NGINX_DENY_RELOAD_GAP in
+      /root/.barracuda.cnf, 0 to 3600 seconds, 0 applies every change at
+      once) and a change that only drops expired bans waits three times
+      that. New IPv6 bans, which only Nginx enforces, still apply at once;
+      their expiry is paced the same way. clearwebbans and edgetest apply
+      their changes at once, and an applied change now costs one reload
+      call, whose own configuration test refuses a bad set.
+
     * Deleting a platform an account uploaded or unpacked into its
       ~/static folder, with no Composer project around it, removes the
       folder holding it again when that folder is not group writable (an
@@ -2675,6 +2692,14 @@
       they are. Like the tuned memory settings, the new lines take effect
       at the server's next restart: a barracuda pass does not restart it
       for them. 5.7 keeps performance_schema off.
+
+    * Percona 8.0 and 8.4 run on the server's own thread_stack, 1M on
+      8.4, instead of the 256K the BOA my.cnf has set since 2010: the
+      stack bounds how deeply nested a statement the server accepts, and
+      256K is a quarter of what 8.4 ships with. A barracuda pass comments
+      BOA's line out on 8.x. The server reads it only when it starts, and
+      a barracuda pass does not restart it for this line, so it takes
+      effect at its next restart. 5.7 keeps 256K, as before.
 
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after

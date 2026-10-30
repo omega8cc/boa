@@ -1177,10 +1177,14 @@ _sql_conf_update() {
         # The template's sizing lines trim memory nothing reads: the four
         # long histories are allocated at start whatever their consumers
         # say, and no BOA tool or sys view reads the error summaries.
+        # The template's thread_stack = 256K dates from the servers of 2010;
+        # 8.4 ships 1M, and a smaller stack refuses deeply nested statements.
+        # Comment that line so 8.x runs on its own default; 5.7 keeps it.
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
           -e "s/^(\s*)(performance_schema_instrument\s*=\s*['\"]?wait\/%=ON['\"]?\s*)$/\1#\2/" \
+          -e "s/^(\s*)(thread_stack\s*=\s*256K\s*)$/\1#\2/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       # Reconcile the InnoDB sizing directives with the INSTALLED binary:
@@ -2310,11 +2314,12 @@ _db_server_install() {
         # pattern, so tuned-knob and comment lines alone never restart:
         # mysqld never reads a comment line, so a template edit that only
         # adds, drops or rewords one must not restart every box's server,
-        # and performance_schema sizing, like the knobs, waits for the
-        # next natural restart.
+        # and performance_schema sizing and thread_stack, like the knobs,
+        # wait for the next natural restart.
         _diffMyTest=$(diff -w -B \
           -I "^[[:space:]]*[#;]" \
           -I "^[[:space:]]*performance_schema_" \
+          -I "^[[:space:]]*thread_stack" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
