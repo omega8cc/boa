@@ -4,6 +4,306 @@
 
 @=> Important Fixes
 
+    * A site served by a PHP version its code cannot run (an old Drupal 7
+      or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
+      platform check that needs a newer PHP) is now moved to the installed
+      version nearest to it that can run the code, instead of only being
+      listed in ~/static/control/.fpm-core.info while every page answered
+      500. The ltd worker's page check writes the site's line into the
+      account's multi-fpm.info below a dated comment line that says why,
+      comments out a line the site already had, never deleting it, and the
+      site is served by the new version within the same pass; a line
+      naming another version that has not taken effect yet (that version
+      still to be installed, or its pool to start) is left alone. A
+      platform whose code cannot run on the command-line PHP chosen for it
+      (its cli-per-platform.info line, else cli.info; a phpNN.info marker
+      is temporary and moves nothing) gets a cli-per-platform.info line
+      the same way, a platform of the account's own with no site on it yet
+      included, so its tasks, drush and composer run again instead of
+      being refused. The operator gets a notice of every move. Once the
+      site or the platform folder is gone, the worker removes its own line
+      and comment line again, so a deleted platform leaves no warning
+      behind. Nothing is moved on a standby box or for an account on a
+      single PHP-FPM pool; a site no installed version can run stays
+      listed, as before.
+
+    * The control panel no longer answers a request with a server error
+      while an upgrade syncs its database user: each Octopus and Master
+      pass dropped the panel's user at every host and made it again with
+      the password set last, so a request in between could not log in. The
+      password and the grant on the panel's own database are now set in
+      place; rights beyond that database, as an earlier release gave, are
+      revoked after, and only the accounts named after the host are dropped.
+
+    * The PHP multi-install cleanup reads only the version at the end of
+      a multi-fpm.info line and skips a line starting with #, as the ltd
+      worker does: a comment naming a version, or a version inside a site
+      name, no longer keeps that PHP installed or has it built.
+
+    * The check xoct, xcopy and xmass run after a move, that every PHP
+      version pinned in multi-fpm.info has a live pool, skips a line
+      starting with #: a comment was reported as a pin with no pool.
+
+    * The database watchdog and the incident snapshot read MySQL's process
+      list with SHOW PROCESSLIST instead of the information_schema view.
+      Measured on Percona 8.4, the view takes InnoDB's dictionary mutex twice
+      on every read and SHOW PROCESSLIST not at all, so in a dictionary stall
+      (the eight-minute kind a busy server had) the watchdog's stall count
+      and long-query killer waited with the sites, each run leaving one more
+      root connection stuck, and the snapshot lost ten seconds before its
+      plain fallback. The stall count now sees the waiting site queries,
+      the snapshot keeps its 4 KB statements and order, and a refusal for
+      root's max_user_connections cap no longer reads as a server down, so
+      the watchdog never restarts MySQL because its own connections piled up.
+
+    * A site renamed with Migrate Site while its aliases redirected to
+      its own name answers on its new name again. The redirect stayed on
+      the old name, which no site directory served any more: the old name
+      offered the Drupal installer, the new one went to nginx's default
+      server, and the panel's scheduled cron got a 404 page every hour.
+      A rename now moves that redirect to the new name, and one to the
+      old name's www or bare companion to the new name's matching one. A
+      stored target that is neither the site's name nor one of its
+      aliases (a www companion whose automatic alias is missing included,
+      since settings.php trusts only those names) is set aside, so the
+      site's own name is served, the aliases redirect to it and the panel
+      names the site by it, and the next Octopus pass queues a Verify for
+      every site whose vhost still leaves its own name unanswered. A site
+      redirected to a dev, devel or nodns alias now redirects its own name
+      there too.
+
+    * aegir2boa moves enabled sites only, but its whole-panel route
+      (db-import) carried every site record into the new panel, so a
+      site disabled or still queued on the old server arrived there as a
+      record without its database, and nothing said so. Its check now
+      names every such site, and the move goes on only once that list is
+      acknowledged (--accept-left-behind); the import names each record
+      it brought without a site, and proxy never cuts over a site whose
+      record no longer reads enabled.
+
+    * aegir2boa's preflight, stage 1 and stage 2 read every site record
+      a revision at a time: a site disabled after an older revision of it
+      was saved still counted as enabled, and stage 2 moved it. They now
+      read the current revision only.
+
+    * A retry after aegir2boa's db-import revert could load an earlier
+      round's dump of a site that round no longer carried, and the revert
+      left the moved sites' Drush aliases behind. The revert now sets the
+      transferred dumps aside and removes those aliases with their vhosts.
+
+    * Emptying swap no longer takes a box into the OOM guard. The swap
+      purge autoupboa runs every five minutes once swap is half full went
+      ahead whenever free RAM could hold the pages coming back, even if
+      that left the box at the guard's 5% line; multiback's reset before
+      each backup checked no RAM at all. Both now empty swap only while a
+      tenth of the RAM (at least 512 MB) stays free after it, and stand
+      aside while graceful.sh resizes /swapfile.
+
+    * Emptying swap no longer leaves a zram device, or any other swap area
+      /etc/fstab does not list, switched off until the next reboot: the
+      purges ran swapoff -a and swapon -a, which brings back only what
+      fstab lists. autoupboa's purge and multiback's reset now switch every
+      area that was on back on by name, at its own priority.
+
+    * The swap purge no longer drops the whole page cache. It flushed the
+      cache before checking free RAM and again after, so a box whose swap
+      stayed half full re-read every site's files from disk every five
+      minutes even when the purge was then refused. Free RAM as the kernel
+      reports it already counts the cache it can reclaim.
+
+    * The database watchdog now mails a STALL when MySQL answers its ping
+      but its queries wait: ten or more site queries running 30 seconds or
+      longer, or a process list that does not come back within ten seconds
+      while the ping still answers. One line in mysql.incident.log and one
+      mail per cooldown, on its own mail key, and never a restart or a kill:
+      on one busy server the dictionary was held for eight minutes while the
+      ping passed throughout, and a restart under such a wait would only lose
+      the work. It mails even with the incident snapshot switched off; a
+      server that does not answer at all stays the restart path's.
+
+    * An incident snapshot also hides a Percona Toolkit connection string's
+      p= field and the password Drush's user:password (upwd) takes as a
+      plain word, as typed by hand on the command line.
+
+    * The web ban sets no longer reload Nginx on nearly every cron tick.
+      The 15-minute temporary bans change the IPv4 set most of the time,
+      and each change reloaded Nginx: on a box with hundreds of SSL vhosts
+      the configuration takes over a gigabyte in memory, a reload parsed
+      it three times (two tests and the master) and left a full set of
+      old workers draining, about a gigabyte more for each reload on one
+      busy box, which reloaded every two minutes all day. csf drops a
+      banned IPv4 address the moment it is banned and the Nginx set only
+      matters for a client behind Cloudflare, so new IPv4 bans now wait
+      ten minutes since the last reload (_NGINX_DENY_RELOAD_GAP in
+      /root/.barracuda.cnf, 0 to 3600 seconds, 0 applies every change at
+      once) and a change that only drops expired bans waits three times
+      that. New IPv6 bans, which only Nginx enforces, still apply at once;
+      their expiry is paced the same way. clearwebbans and edgetest apply
+      their changes at once, and an applied change now costs one reload
+      call, whose own configuration test refuses a bad set.
+
+    * Deleting a platform an account uploaded or unpacked into its
+      ~/static folder, with no Composer project around it, removes the
+      folder holding it again when that folder is not group writable (an
+      upload or an rsync -a that kept its modes): the Delete emptied the
+      platform, ended with a warning and left the folder. A Grav or
+      Textpattern platform built there is deleted whole too. A folder that
+      is root's or another user's is kept, and the task log names the
+      permissions helper's own reason for it.
+
+    * A Grav or Textpattern platform under a folder whose name holds [, ],
+      ? or a backslash no longer has its sites missed by the platform
+      Delete's check: the check read the path as a pattern, counted no
+      site, and the Delete removed the sites with the platform. The Grav
+      bundle refresh, the Grav Clone's licence secret clear and the
+      Textpattern upgrade's structure check read such a path as itself too.
+
+    * The platform and site permission and ownership fixers, and the link
+      check (linkguard) whose lines the ownership fixers pass on, print a
+      name holding a line break or another control character as ?, so each
+      line they print stays whole: a folder named with a line break could
+      put a line in the account's own wording where a Delete's notice or
+      a Backup's log line gives the fixer's reason.
+
+    * The Migrate form no longer counts a module that moved from an 8.x-
+      release to a semantic one, such as address 8.x-1.12 to 2.0.4, as a
+      downgrade: 8.x-A.B releases compare as A.B.0, as Drupal.org maps
+      them, and the panel's next upgrade recomputes the stored version codes.
+
+    * A Drupal 7 or Backdrop platform's Verify no longer raises a PHP
+      warning for a module or theme whose .info file has no version line.
+
+    * The nightly removal of old empty platforms (_DEL_OLD_EMPTY_PLATFORMS)
+      could delete a live platform's code: when the alias of a platform the
+      control panel had already deleted still named the same tree, that
+      alias's Delete removed the tree under the live platform. The nightly
+      now deletes no platform whose tree another platform alias also names,
+      by the same path or through a link, an alias written while the sweep
+      runs included, in an Octopus account and on the Aegir master alike,
+      and stops for the night while a task of the account or of the master
+      runs; it tells the server's operator which two aliases name the tree,
+      in /var/log/boa/nightly.incident.log and a daily mail (unless
+      _INCIDENT_REPORT is OFF); remove the alias of the one the control
+      panel no longer lists.
+
+    * On the Aegir master, the nightly removal of old empty platforms read
+      a platform name that itself holds "platform_" as the shorter name
+      after it, so its Delete could go to another platform. It now takes
+      the whole name, as it always did in an Octopus account.
+
+    * The ssh login monitor (hackcheck) banned an address for a single
+      connection closed before login even when that address had logged
+      in: since early August its exemption for an address with an
+      accepted login kept one number of the address instead of the
+      address, so it exempted no one, and an auth.log holding a NUL block,
+      as an unclean shutdown leaves, hid every login from it before that.
+      An address with a recent accepted login is no longer banned by it.
+
+    * A barracuda pass restarted the database server when the new my.cnf
+      differed from the previous one only in a comment line, which the
+      server never reads: a comment changed in BOA's my.cnf template meant
+      a restart of every box's database at its next pass. The pass now
+      leaves comment lines out of that check; a template edit that adds,
+      removes, changes, comments out or switches on a setting still
+      restarts the server.
+
+    * aegir2boa's whole-panel route (db-import) could not export the
+      control panel when no site had been exported before it (a panel with
+      no site listed, or an estate of the panel alone): the dump directory
+      did not exist yet, so the export reported the panel dump failed
+      before mysqldump ever ran. The export now makes that directory itself.
+
+    * A large site moved by a Migrate, or copied by a Clone or brought
+      back by a Restore, or moved to another server by xoct, xcopy or the
+      classic Aegir import (aegir2boa), could have its pages planned as
+      full table scans: a freshly loaded table can keep the statistics of
+      an empty one long after the load, until InnoDB measures it in the
+      background. On one busy server a site's tables still read as a
+      single page each 45 minutes after its Migrate; its pages read
+      hundreds of thousands of rows each, the database server ran out of
+      CPU and the load guard paused the web server twice. The site import
+      now measures every table of the new database (ANALYZE TABLE, a few
+      seconds even for a large site) before the site is switched to it,
+      xoct, xcopy and aegir2boa's import measure every site and control
+      panel database they load on the new server the same way, and the
+      per-minute SQL check measures any large table loaded some other way
+      whose statistics still claim a single page five minutes after it was
+      created (logged to /var/log/boa/sqlstats.incident.log).
+
+    * Right after a Verify added an alias to a site, its first visitors
+      could get the Drupal installer redirect, then a refusal of the name
+      as an untrusted host, for up to a minute: PHP-FPM kept serving the
+      copies of the platform's sites/sites.php and the site's settings.php
+      it had cached before the Verify rewrote them. Both files now stay
+      out of the opcache on every PHP version, with a platform-wide
+      sites/all/settings.php the sites include (a compile costs a fraction
+      of a millisecond a request), so a new alias answers with its site
+      from the first request; every other file keeps the one-minute check.
+      sites.php is now written as a new file renamed into place, so a
+      request never reads it half written.
+
+    * A Grav Clone that failed after its deploy wrote the new name's vhost
+      removed whatever vhost that name had: on a name that was only the
+      parent of another site's subdirectory alias, the parent vhost went
+      and that subdirectory site answered 404. A failed Grav Clone,
+      copy-upgrade or rename now removes only a vhost it wrote and puts
+      such a parent vhost back, as the other site kinds already did.
+
+    * After a one-account move with xoct, the old server relayed a site
+      named under its own hostname to the new server under that old name,
+      but the import there had already renamed the site to the new
+      server's hostname, so the old name reached the new server's
+      catch-all page instead of the site; a later proxy repair run left
+      it so. The proxy step now answers such an old name with a 301 to
+      the renamed site from its first run, reading both hostnames itself
+      as xmass hands them over; it stops before changing anything when
+      the new server's hostname cannot be read, and a new server
+      answering the old server's own hostname renamed nothing, so those
+      sites are relayed under their own names.
+
+    * A task queued in a control panel while an upgrade moved that panel
+      to its new platform could vanish without a trace: the move dumps
+      the panel's database, loads the dump into a new database and drops
+      the old one, so a task saved in the seconds between the dump and the
+      switch went with the old database, although the panel had answered
+      that it was queued (19 of 233 tasks queued over one forced Octopus
+      upgrade, all inside a three-second window). While the panel moves,
+      its pages answer 503 to everyone, administrators included, and it
+      refuses a new task with a message saying to queue it again; the
+      Ægir Master's own upgrade does the same. The new copy is held too
+      until the move has pointed it at the new database. The pages are
+      held from the first upgrade that brings this version; a task queued
+      from the command line is refused from the upgrade after it, since a
+      moving panel answers with the code it is leaving.
+
+    * A Grav or Textpattern site put on a name that was only the parent of
+      another site's subdirectory alias took that name's web server
+      config over, so the subdirectory site stopped answering there for as
+      long as the Grav or Textpattern site stayed (such sites carry no
+      subdirectory sites). An install, clone, copy-upgrade, rename or
+      cutover of a Grav or Textpattern site onto such a name now fails at
+      its first check, naming the name, before it touches that name's web
+      server config; a refused install leaves its site record in the panel
+      to delete, as any failed install does.
+
+    * A one-account xoct move whose firewall step was missed failed
+      halfway: the new server's ssh check banned the old one for the
+      pre-auth lines of xoct's host-key scan, and the create's remote
+      install lost its session minutes later, saying only that the
+      connection was lost. Every xoct step that reaches the new server
+      now checks first that the new server's csf.allow or csf.ignore
+      trusts each address of this one, and refuses before anything
+      travels with the exact lines to add; an address in only one of the
+      two files gets a warning naming the other. The check runs before
+      the host-key scan, over one login that accepts the new server's key
+      on first contact, so a refused step leaves no ban behind. A server
+      without csf is not checked, and an xmass move, which wires its own
+      trust, neither.
+
+    * xoct proxy with --proxy-mode= on an account with no declared mode
+      warned that it was falling back to 'temporary', then recorded the
+      mode it was given. The warning now shows only when no mode is given.
+
     * Since the move to lshell 0.11 a limited shell could not answer a
       prompt on its terminal: the first SSH connection to a new host (a
       git clone from a code host whose key was not yet known) failed with
@@ -1347,6 +1647,33 @@
       cannot set off a restart or an alert by printing them, and these
       logs and the pools' slow logs are rotated daily, seven kept.
 
+    * A fatal error in a Drupal or Backdrop web request is logged now.
+      BOA's global settings switch PHP's error reporting off for every
+      site (only a .dev. alias raises it), so a fatal error after
+      settings.php left a 500 and nothing else: one site's scheduled cron
+      died that way for years without a line anywhere. A shutdown
+      function in the global include now logs the fatal error that ended
+      the request, with its host and path, to the PHP-FPM error log,
+      /var/log/php/phpNN-fpm-error.log: the engine's own fatal errors and a
+      user or catchable fatal error no handler took. Error reporting itself
+      stays off, so pages and the sites' own logs show nothing new (Drupal
+      6's original error handler logs and shows every warning under any
+      other level). Drush and other command line runs are left alone, a
+      fatal PHP logs itself (on a .dev. alias) is not repeated, the host
+      and path are written as nginx writes its access log (every byte
+      outside printable ASCII, the quote and the backslash as \xHH), no
+      control character of the message reaches the log, and before PHP 7
+      a parse error in eval()'d code, which neither stops the request nor
+      turns it into a 500, is not logged.
+
+    * A visitor can no longer make barracuda rebuild a PHP version. Its
+      check for a broken PHP build searched the whole PHP-FPM error log
+      for "OnigEncoding", the sites' own output included, and rebuilt
+      that version from source on a match, while a site's fatal error
+      line carries the visitor's path, and PHP-FPM's own lines about a
+      slow or timed-out request quote its query string. The check now
+      reads only PHP-FPM's own lines and none that quote a request.
+
     * PHP-FPM no longer logs "Unable to set php_admin_value" for
       newrelic.enabled and newrelic.license at each new worker of a PHP
       whose php.ini does not load New Relic (every version on a box
@@ -1501,6 +1828,19 @@
       now go out as UTF-8, and a mail that fails is reported as not sent.
 
 @=> Security
+
+    * A Grav site no longer serves the dependency manifests its plugins
+      and themes ship under user/ (composer.json, composer.lock,
+      package.json), which list the exact package versions it runs; the
+      same files at the site's root were already refused. A .json file
+      attached to a page still serves.
+
+    * multiback no longer shows the B2 key ID and application key in the
+      duplicity command lines it prints, which cron mails to root after
+      every backup run; the target is shown without them, as its error
+      log already did. On a dev server the environment dump of a backup
+      run (multiback, mybackup, the backup cron writer) masks passphrases,
+      keys, tokens and connection strings.
 
     * nginx refuses requests for an npm token file (.npmrc), Google Cloud
       service-account key files (service-account.json, gcp-credentials.json,
@@ -2329,6 +2669,67 @@
 
 @=> New Features
 
+    * BOA now sizes swap to the RAM and to what the box really swaps. Most
+      servers came with whatever swap their provider set up, often 512 MB
+      whether the box had 4 GB or 96 GB of RAM, and some had none: on small
+      boxes it ran full and left the OOM guard as the only outlet, on large
+      ones cold pages filled it and set off a swap purge several times a
+      week. The daily graceful.sh pass now aims for half the RAM, at least
+      1 GB and at most 4 GB, raised to twice the highest swap use recorded
+      in the last 14 days (doubled when swap ran 90% full), never above the
+      RAM or 16 GB, and grows /swapfile when the total falls a fifth or more
+      short. A provider's swap partition counts towards the total and is
+      never touched; a /swapfile BOA did not make is only ever grown, one it
+      made is shrunk when it is twice the size it should be. The old file
+      goes off only while free RAM can take its pages back with a tenth of
+      the RAM to spare, checked again right before the swapoffs. A
+      /swapfile BOA takes over is made root-only (0600) and listed in
+      /etc/fstab; a resize cut short (the migration tools stop graceful.sh
+      with kill -9) leaves its marker behind, and autoupboa switches
+      /swapfile back on at its next five-minute tick. zram counts as RAM,
+      not as swap. Nothing is done in a container, on a filesystem
+      other than ext3, ext4 or xfs, or when the file would take / past 80%
+      as df counts it or leave under 2 GB free. Each run writes one line
+      to /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
+      /root/.barracuda.cnf leaves swap alone.
+
+    * An incident snapshot: when a load or database incident starts, BOA
+      now saves what MySQL and the box were doing, so its cause can still
+      be named afterwards. On one busy server a single thread held
+      InnoDB's dictionary for eight minutes: every site's queries waited,
+      the load stayed low while they slept, then the backlog released at
+      once drove the load past the critical tier and the web server was
+      paused; the slow log and performance_schema were off and nothing
+      recorded which thread had held it. The load guard now takes a
+      snapshot as the crawler block switches on and as the pause or kill
+      tiers are first reached, ahead of its own cooldown, so no kill
+      waits on it; the database watchdog takes one when ten or more site
+      queries have each been running 30 seconds or longer, when its
+      process list does not come back (no answer within ten seconds, a
+      connection lost before the greeting, no connection left), and
+      right before it restarts a server that stopped answering.
+      Each snapshot (every running or disk-waiting thread, mysqld's
+      threads by state and PHP-FPM children per pool, read first; then
+      the process list with each statement cut at 4 KB, InnoDB's status
+      with its semaphore waits, and when performance_schema is on the
+      metadata lock holders and waiters and the server thread of each
+      connection) goes to /var/log/boa/incident/<date>-<time>-<reason>/,
+      readable by root only, and is named in the incident log the alert
+      mail is made from. A password given on a command line (an option,
+      a database or service URL, a dump or client tool's -p, a user with
+      a password) or written into a statement, even cut short, is
+      replaced by *** as each file is written. One snapshot per kind
+      (crawler block, load, database, restart) per 15 minutes, each kind
+      with its own lock, a refusal logged once per cooldown; no database
+      snapshot while the database is in planned maintenance, none when
+      /var/log/boa has less than 256 MB free; kept 14 days, never more
+      than 200 nor 1 GB of snapshots in all, crawler-block then load
+      ones pruned first and database ones last, none younger than five
+      minutes. The restart waits, ten seconds at most, until the box's
+      threads are read. Tunable in /root/.barracuda.cnf:
+      _SQLSNAP_COOLDOWN_MINS, _SQLSNAP_KEEP_DAYS, _SQLSNAP_KEEP_MB,
+      _SQL_STALL_SECS, _SQL_STALL_COUNT; off with _INCIDENT_SNAPSHOT=NO.
+
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
       modules/, DEC is Drupal 11 with CiviCRM's Drupal packages, and the
       control panel installs CiviCRM with every site created on either,
@@ -2391,6 +2792,97 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The panel no longer sends scheduled web cron to a site whose name
+      carries a dev, devel, tmp, temp, temporary, test or testing label
+      (the redirect target's name when that is one of its aliases), nor
+      to any site while /data/conf/sites-cron-off.ctrl exists: BOA
+      answers those requests with an empty 404, so they ran nothing and
+      were stamped as run. The site's Cron line says Not run and why, and
+      the interval stays stored: it applies again once the site is
+      renamed to a live name or redirected to one. Drush-run cron and
+      subdirectory sites are unaffected.
+
+    * Grav's Admin2 script, style and font files (and those of any plugin
+      or theme built the same way, under _app/immutable/) are now cached
+      by the browser for a year: their names change with their content,
+      so a returning editor's browser reuses them instead of asking
+      again. A missing one is a plain 404 that no longer starts PHP.
+
+    * The hourly clock sync (/etc/cron.hourly/systemtime) no longer mails
+      root every hour: ntpdate's report of a good sync is dropped, while
+      a failed sync is still mailed. Servers that already have the file
+      take the new copy on their next upgrade, which before never
+      replaced it.
+
+    * multiback, backboa and duobackboa no longer print "No such file or
+      directory" at the start of a run whose log file does not exist
+      yet, a line cron mailed to root with every run; xdr9000's status
+      no longer prints it before its first rollup either.
+
+    * The same fix across the rest of BOA: every tool that reads a pid
+      file, a stamp, a /proc entry, a key or a patch with its errors sent
+      to /dev/null now does so in the order that hides them, so a file
+      that is gone (the pid file of a finished run, a process that just
+      exited) no longer prints "No such file or directory" into cron mail
+      or an operator's terminal.
+
+    * The nginx config scripts (ip_access.sh, user_admin_access.sh,
+      ai_policy.sh, nginx_deny.sh, nginx_deny6.sh, cloudflare_realip.sh,
+      migration_proxy_realip.sh), the agent's crawler-access fix and
+      autosymlink opened their lock or held directory in a way that also
+      sent every later error of the run to /dev/null; those errors now
+      reach whoever runs them.
+
+    * On a hosted server, a plain file left at /usr/local/bin/multiback,
+      mybackup or dcysetup (a hand copy) is now replaced by the link to
+      /opt/local/bin: it came first in PATH, so cron kept running its old
+      bytes while every update went to /opt/local/bin.
+
+    * performance_schema's per-query summary now counts the sites' own
+      statements on servers with many tables. It holds 10,000 statement
+      shapes by default, and the nightly dump, which reads each table
+      with about four statements of its own, filled it within days on a
+      server with a few thousand tables. The per-minute SQL check leaves
+      the users the dumps run as uninstrumented (one setup_actors row
+      each, set again after every server start): root, which runs the
+      nightly dump and the migration exports, and the backend user of the
+      master instance and of each Octopus instance, which the Aegir
+      backups, clones and migrations dump and load as. Every other user is
+      counted as before. The summary is also emptied once per server start
+      while root's rule is BOA's, and once more when a user gets its rule
+      for the first time since that start, so the rows those users added
+      before go too; it waits while a session one of them opened before
+      its rule is still running, for up to 12 hours. Percona 8.0 and 8.4
+      only; 5.7 runs with performance_schema off.
+
+    * Percona 8.0 and 8.4 run performance_schema with the server's own
+      instrument defaults. The my.cnf BOA wrote for them switched on and
+      timed every mutex, rwlock and condition instrument the server ships
+      off (performance_schema_instrument = 'wait/%=ON'): some 320 more
+      instruments, a timer on every lock a query takes, and no memory
+      saved. The line is gone from the template, and a barracuda pass
+      comments it out where my.cnf carries it. The server reads it only
+      when it starts, so it takes effect at its next restart. 5.7 keeps
+      performance_schema off, as before.
+
+    * Percona 8.0 and 8.4 keep about 100 MB less in performance_schema
+      on a box with a few hundred site users. The four long event
+      histories, allocated at start although nothing records into them,
+      hold 1,000 rows instead of 10,000, and the error summaries, which
+      no BOA tool and no sys view reads, are off. Statement digests, the
+      per-account and per-user statistics and the threads table stay as
+      they are. Like the tuned memory settings, the new lines take effect
+      at the server's next restart: a barracuda pass does not restart it
+      for them. 5.7 keeps performance_schema off.
+
+    * Percona 8.0 and 8.4 run on the server's own thread_stack, 1M on
+      8.4, instead of the 256K the BOA my.cnf has set since 2010: the
+      stack bounds how deeply nested a statement the server accepts, and
+      256K is a quarter of what 8.4 ships with. A barracuda pass comments
+      BOA's line out on 8.x. The server reads it only when it starts, and
+      a barracuda pass does not restart it for this line, so it takes
+      effect at its next restart. 5.7 keeps 256K, as before.
 
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after

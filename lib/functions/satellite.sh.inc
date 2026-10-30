@@ -5218,6 +5218,34 @@ _satellite_hm_dbuser_own() {
 }
 
 #
+# Revoke from the panel's database user $1, at localhost and at %, every right
+# but those on its own database $2 (the name as a grant writes it, _ escaped):
+# the rights on all databases and the grant option an earlier release gave,
+# and the rights on any other database. The own grant itself is never taken
+# away, so the panel keeps its database while this runs. The global rights
+# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
+# ALL on *.*, which on Percona 8.4 takes every database grant with it.
+_hostmaster_frontend_dbuser_trim() {
+  local _h _d
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  # held in a variable: on the right of =~ a bare $- would expand
+  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
+  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
+    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
+  for _h in localhost %; do
+    while IFS= read -r _d; do
+      [[ "${_d}" =~ ${_dbre} ]] || continue
+      if [ "${_d}" != "${2}" ]; then
+        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+      fi
+      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
+  done
+}
+
+#
 # Sync hostmaster frontend db_passwd.
 _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5288,20 +5316,25 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
+    ### The two accounts the panel logs in with are set in place, never
+    ### dropped and made again: the panel serves requests all through the
+    ### pass, and between a DROP and the ALTER that gave the password back
+    ### none of them could log in. Rights beyond the own database, as an
+    ### earlier release gave, are revoked once the own grant is in place,
+    ### and the accounts named after the host go last.
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%';
 EOFMYSQL
+    _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBUR//_/\\_}"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     _hostmaster_oldhost_dbuser_drop
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
@@ -5531,14 +5564,16 @@ _hostmaster_db_users_settle() {
 # Takes from the user $1, on each host row given in $2 (one per line), the
 # global privileges SHOW GRANTS lists for that row, each by name, and its
 # global grant option: a REVOKE ALL on *.* takes the database grants too
-# (measured on Percona 8.4). A database grant that goes all the same is
-# granted back as it read before. Zero when no row keeps a global right and
-# every row has the database grants it had. One text in master.sh.inc and
-# satellite.sh.inc.
+# (measured on Percona 8.4), and Percona 5.7 lists every global right as
+# ALL PRIVILEGES, so those are named too. A database grant that goes all the
+# same is granted back as it read before. Zero when no row keeps a global
+# right and every row has the database grants it had. One text in
+# master.sh.inc and satellite.sh.inc.
 _hostmaster_db_user_global_revoke() {
   local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
     -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
   while IFS= read -r _h; do
     case "${_h}" in
       ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
@@ -5549,6 +5584,7 @@ _hostmaster_db_user_global_revoke() {
     while IFS= read -r _p; do
       _p="${_p#GRANT }"
       _p="${_p%% ON \*.\* TO *}"
+      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
       [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
       "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
     done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
@@ -10011,6 +10047,61 @@ _satellite_queue_dbvars_site_verifies() {
   fi
 }
 
+### Run inside the real vhost.d: the site names ./$1 passes as MAIN_SITE_NAME
+### that none of its server_name lines answers, one per line ($2 = the
+### hostmaster's name, never judged). A site whose aliases redirected to a
+### name it was renamed away from got such a vhost from provision: the main
+### block served the old name and nothing answered the site's own, its
+### scheduled cron included. The file is read as _satellite_dbvars_old_here
+### reads it.
+_satellite_unanswered_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  case "${1}" in .*|https.*) return 0 ;; esac
+  [ "${1}" = "${2}" ] && return 0
+  case "${1}" in *[!A-Za-z0-9.-]*) return 0 ;; esac
+  _acct_read_here "${1}" | awk '
+    $1 == "server_name" { for (i = 2; i <= NF; i++) { t = $i; sub(/;$/, "", t); S[t] = 1 } }
+    $1 == "fastcgi_param" && $2 == "MAIN_SITE_NAME" {
+      t = $3; sub(/;$/, "", t); if (t ~ /^[A-Za-z0-9.-]+$/) M[t] = 1
+    }
+    END { for (m in M) if (!(m in S)) print m }'
+}
+
+### Each such site printed as "<name>", for the PHP array below.
+_satellite_unanswered_list_here() {
+  local _v _d _m
+  for _v in ./*; do
+    _d="${_v#./}"
+    while read -r _m; do
+      [ -n "${_m}" ] && printf '"%s",' "${_m}"
+    done < <(_satellite_unanswered_here "${_d}" "${1}")
+  done
+}
+
+### Provision now always answers a site's own name (served, or redirected to
+### the chosen domain), but only a Verify renders the vhost again: queue one
+### for every site whose vhost still leaves its own name to nginx's default
+### server. Self-limiting: a vhost answering the name is never queued again.
+_satellite_queue_unanswered_site_verifies() {
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _list="" _n
+  local _hmDrush="${_DRUSHCMD:-drush8}"
+  [ -d "${_vhd}" ] || return 0
+  _list="$(_acct_in_real_dir "${_vhd}" _satellite_unanswered_list_here "${_DOMAIN}")"
+  [ -n "${_list}" ] || return 0
+  _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the site-name Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
+  _n="${_n##*queued=}"
+  _n="${_n%%[^0-9]*}"
+  if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
+    _msg "INFO: queued a Verify for ${_n} site(s) whose vhost did not answer the site's own name"
+  fi
+}
+
 _satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_post_cleanup"
@@ -11364,7 +11455,7 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
 
-    ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlc &> /dev/null < ${_bldPth}/aegir/helpers/hosting_cron.sql
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
       WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
@@ -11375,6 +11466,31 @@ _satellite_child_b_aegir_build() {
     ### at it when the exit status is not zero.
     _hmLog="${_ROOT}/log/hostmaster-migrate-${_NOW}.log"
     mkdir -p ${_ROOT}/log
+    ### A task or change saved in the panel between the migrate's dump and
+    ### its switch to the new database goes into the database the migrate
+    ### drops. While this marker is in the root the panel runs on, the panel
+    ### refuses tasks and its web front answers 503 (hosting.module and the
+    ### global include). It names the old database: the migrate copies it
+    ### into the new root once that is built (provision's
+    ### _provision_hostmaster_copy_move_marker), so a copy there that still
+    ### reads the old database is held too. Both are removed after it.
+    _hmFrom=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+    _hmFrom="${_hmFrom%/}"
+    _hmMove=
+    _hmMoveTo="${_HM_ROOT}/sites/.panel-move.info"
+    if [ -n "${_hmFrom}" ] && [ "${_hmFrom}" != "${_HM_ROOT}" ] \
+      && [ -d "${_hmFrom}/sites" ]; then
+      _hmOldDb=$(grep -m1 "\['db_name'\]" "${_hmFrom}/sites/${_DOMAIN}/drushrc.php" 2> /dev/null \
+        | sed "s/.*= *'//; s/'.*//")
+      [[ "${_hmOldDb}" =~ ^[A-Za-z0-9_]+$ ]] || _hmOldDb=
+      _hmMove="${_hmFrom}/sites/.panel-move.info"
+      { printf '%s %s\n' "$(date +%s)" "${_hmOldDb}" > "${_hmMove}"; } 2> /dev/null \
+        && chmod 644 "${_hmMove}"
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d 2>&1 | tee ${_hmLog}
       _hmRc=${PIPESTATUS[0]}
@@ -11382,6 +11498,8 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y > ${_hmLog} 2>&1
       _hmRc=$?
     fi
+    [ -n "${_hmMove}" ] && rm -f "${_hmMove}"
+    rm -f "${_hmMoveTo}"
     if [ "${_hmRc}" != "0" ]; then
       ### A non-zero exit means an error was logged, not that nothing moved:
       ### a post hook (the resume's name report) can fail after the panel is

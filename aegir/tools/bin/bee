@@ -109,7 +109,7 @@ if [[ -z "${_BEE_PHP}" ]]; then
     fi
   fi
   if [[ -n "${_BEE_CTRL}" ]] && [[ -e "${_BEE_CTRL}/cli.info" ]]; then
-    _v="$(tr -cd '0-9' < "${_BEE_CTRL}/cli.info" 2>/dev/null)"
+    _v="$(tr -cd '0-9' 2>/dev/null < "${_BEE_CTRL}/cli.info")"
     [[ -n "${_v}" ]] && [[ -x "/opt/php${_v}/bin/php" ]] && _BEE_PHP="/opt/php${_v}/bin/php"
   fi
   if [[ -n "${_BEE_CTRL}" ]]; then

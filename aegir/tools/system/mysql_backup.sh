@@ -102,7 +102,7 @@ _replica_role_gate() {
     # must not outlive this exit -- but ONLY when it is OURS: at the head
     # call this process has not written it yet, and a concurrent run's
     # live marker must never be deleted from here.
-    if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+    if [ "$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_backup.pid)" = "$$" ]; then
       rm -f /run/boa_sql_backup.pid
     fi
     echo "Ooops, this box is a configured replication replica, local TRUNCATE/OPTIMIZE would break the SQL thread"
@@ -111,7 +111,7 @@ _replica_role_gate() {
   if [ "${_rplRc}" -ne "0" ]; then
     # mysqladmin ping exits 0 even on Access denied, so credential
     # failures land here, not in the ping branch. Fail closed.
-    if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+    if [ "$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_backup.pid)" = "$$" ]; then
       rm -f /run/boa_sql_backup.pid
     fi
     echo "Ooops, the replica role probe FAILED (credentials?) -- refusing local TRUNCATE/DROP; verify /root/.my.cnf"
@@ -134,7 +134,7 @@ fi
 # a root process (the real uid in /proc/<pid>/status), so a pid another user's
 # process takes after a kill cannot either.
 if [ -s "/run/boa_sql_backup.pid" ]; then
-  _RUNNING_PID="$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)"
+  _RUNNING_PID="$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_backup.pid)"
   if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null \
     && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_RUNNING_PID}/status" 2>/dev/null)" = "0" ]; then
     echo "Another SQL backup (pid ${_RUNNING_PID}) is already running"
@@ -502,7 +502,7 @@ _check_running() {
       _remove_locks _check_running_timeout
       ### The run marker is read by the watchdogs as a live backup, so it
       ### must not outlive this exit -- but only when it is ours.
-      if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+      if [ "$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_backup.pid)" = "$$" ]; then
         rm -f /run/boa_sql_backup.pid
       fi
       exit 1

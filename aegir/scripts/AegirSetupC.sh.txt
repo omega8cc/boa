@@ -1254,7 +1254,7 @@ _prepare_drupal6_core() {
     find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D6_CORE_DIR}/
     _fix_dirs_files
-    patch -p0 < ${_pthPch}/taxonomy-6.26.patch &> /dev/null
+    patch -p0 &> /dev/null < ${_pthPch}/taxonomy-6.26.patch
     rm -f ${_D6_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
     ln -sfn ${_CORE}/o_contrib modules/o_contrib
@@ -1285,7 +1285,7 @@ _prepare_drupal7_core() {
     cd ${_D7_CORE_DIR}/
     _fix_dirs_files
     _rename_drupal7_profiles
-    patch -p0 < ${_pthPch}/taxonomy-7.12.patch &> /dev/null
+    patch -p0 &> /dev/null < ${_pthPch}/taxonomy-7.12.patch
     rm -f ${_D7_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -sfn ${_CORE}/o_contrib_seven modules/o_contrib_seven
@@ -1980,7 +1980,7 @@ declare -A _distros_versions=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
-  ["DEC"]="6.19.2"
+  ["DEC"]="6.19.3"
   ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
   ["BDC"]="${_BDC_V}"
@@ -2393,10 +2393,10 @@ _ubercart6_install() {
             _get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
             cd ${_SHRD_PRPATH}/modules/${_VIRT_PRNAME}
-            patch -p1 < ${_pthPch}/${_VIRT_PRNAME}-1167276-reroll.patch &> /dev/null
+            patch -p1 &> /dev/null < ${_pthPch}/${_VIRT_PRNAME}-1167276-reroll.patch
             cd ${_SHRD_PRPATH}/modules/imagecache
             # https://drupal.org/node/1243258#comment-4850634
-            patch -p1 < ${_pthPch}/imagecache-1243258-5.patch &> /dev/null
+            patch -p1 &> /dev/null < ${_pthPch}/imagecache-1243258-5.patch
             cd ${_SHRD_PRPATH}/themes
             _get_dev_contrib "fusion-6.x-1.x-dev.tar.gz"
             _get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
@@ -2500,11 +2500,11 @@ _ubercart7_install() {
               _get_dev_contrib "views-7.x-3.30.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
-              patch -p1 < \
-                ${_pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+              patch -p1 &> /dev/null < \
+                ${_pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch
               # https://drupal.org/node/2037469
-              patch -p1 < \
-                ${_pthPch}/views-exposed-sorts-2037469-1.patch &> /dev/null
+              patch -p1 &> /dev/null < \
+                ${_pthPch}/views-exposed-sorts-2037469-1.patch
             else
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"

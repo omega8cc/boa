@@ -204,7 +204,7 @@ _fpm_duplicate_instances_detection() {
     _cd="/run/php${e}-fpm.cooldown"
     _now=$(date +%s)
     _ts=
-    [ -s "${_cd}" ] && _ts=$(tr -dc '0-9' < "${_cd}" 2> /dev/null)
+    [ -s "${_cd}" ] && _ts=$(tr -dc '0-9' 2> /dev/null < "${_cd}")
     if [ -n "${_ts}" ] && [ $(( _now - _ts )) -ge 0 ] \
       && [ $(( _now - _ts )) -lt "${_FPM_COOLDOWN_SECS}" ]; then
       echo "$(date) INFO: php${e}-fpm duplicate master but in cooldown; skipping restart" >> "${_pthOml}"
@@ -739,7 +739,7 @@ _fpm_logs_empty() {
       _cdE="/run/php${_e}-fpm.logfix.cooldown"
       _nowE=$(date +%s)
       if [ -s "${_cdE}" ]; then
-        _tsE=$(tr -dc '0-9' < "${_cdE}" 2>/dev/null)
+        _tsE=$(tr -dc '0-9' 2>/dev/null < "${_cdE}")
         if [ -n "${_tsE}" ] && [ $((_nowE - _tsE)) -ge 0 ] && [ $((_nowE - _tsE)) -lt "${_FPM_COOLDOWN_SECS}" ]; then
           continue
         fi
@@ -816,7 +816,7 @@ _fpm_apcu_reload_sentinel() {
   _now=$(date +%s)
   if [ -s "${_cd}" ]; then
     local _ts _delta
-    _ts=$(tr -d '\n' < "${_cd}" 2>/dev/null)
+    _ts=$(tr -d '\n' 2>/dev/null < "${_cd}")
     if [ -n "${_ts}" ]; then
       _delta=$(( _now - _ts ))
       if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then

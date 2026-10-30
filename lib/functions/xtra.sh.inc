@@ -584,7 +584,7 @@ _node_source_setup() {
   _tmpKey=$(mktemp /tmp/nodesource-key-XXXXXX.gpg)
   curl ${_crlGet} "${_nUrl}" -o "${_tmpRaw}"
   if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_tmpRaw}" 2>/dev/null; then
-    ${_nGpg} --yes --dearmor -o "${_tmpKey}" < "${_tmpRaw}" 2>/dev/null
+    ${_nGpg} --yes --dearmor -o "${_tmpKey}" 2>/dev/null < "${_tmpRaw}"
   fi
   _fpAvail=$(${_nGpg} --with-colons --import-options show-only \
     --import "${_tmpKey}" 2>/dev/null | awk -F: '/^fpr/{print $10}')

@@ -241,14 +241,14 @@ fi
 # $is_banned (return 444) clears immediately on Cloudflare-fronted vhosts.
 # nginx_deny.sh self-handles its own lock, configtest and reload.
 if [[ -x "${_NGINX_DENY}" ]]; then
-  "${_NGINX_DENY}" >/dev/null 2>&1
+  "${_NGINX_DENY}" now >/dev/null 2>&1
   _msg "  regenerated nginx geo-ban set via nginx_deny.sh"
 fi
 
 # Regenerate the IPv6 geo-ban set: with the store now emptied, nginx_deny6.sh
 # clears nginx_banned_ips.conf6 and reloads, releasing any IPv6 web bans.
 if [[ -x "${_NGINX_DENY6}" ]]; then
-  "${_NGINX_DENY6}" >/dev/null 2>&1
+  "${_NGINX_DENY6}" now >/dev/null 2>&1
   _msg "  regenerated nginx IPv6 geo-ban set via nginx_deny6.sh"
 fi
 
