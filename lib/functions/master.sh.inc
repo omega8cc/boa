@@ -582,7 +582,7 @@ EOFMYSQL
 # and the rights on any other database. The own grant itself is never taken
 # away, so the panel keeps its database while this runs. The global rights
 # go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
-# ALL on *.*, which takes every database grant with it.
+# ALL on *.*, which on Percona 8.4 takes every database grant with it.
 _hostmaster_frontend_dbuser_trim() {
   local _h _d
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
