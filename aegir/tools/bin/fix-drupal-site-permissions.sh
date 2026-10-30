@@ -578,7 +578,7 @@ _links_left_note() {
   _here="$(pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
-    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+    "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
   return 0
 }
 # Mode $1 on every regular file the find start points and tests after it
