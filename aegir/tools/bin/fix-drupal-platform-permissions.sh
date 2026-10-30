@@ -804,17 +804,32 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
     exit 1
   fi
   # A site the root still holds, by its kind's marks: a Drupal or Backdrop
-  # site's settings.php (default's aside), a Grav capsule's user/, a
-  # Textpattern site's config.php, and the drushrc.php provision writes for
-  # every Grav and Textpattern site.
-  if [[ -n "${_FOREIGN}" ]]; then
-    _site_marks=("${drupal_root}"/sites/*/drushrc.php "${drupal_root}"/sites/*/user "${drupal_root}"/sites/*/config.php)
-  else
-    _site_marks=("${drupal_root}"/sites/*/settings.php)
-  fi
+  # site's settings.php (default's aside); for Grav and Textpattern the marks
+  # provision's own site scans count (provision_grav_find_sites(),
+  # provision_txp_find_sites()), so the helper refuses exactly where their
+  # platform Delete does: a stricter mark would leave the folder of a Delete
+  # provision let through.
+  case "${_FOREIGN}" in
+    grav) _site_marks=("${drupal_root}"/sites/*/system/defines.php) ;;
+    txp) _site_marks=("${drupal_root}"/sites/*/private/config.php) ;;
+    *) _site_marks=("${drupal_root}"/sites/*/settings.php) ;;
+  esac
   for _s in "${_site_marks[@]}"; do
     [[ -e "${_s}" ]] || continue
     [[ -z "${_FOREIGN}" && "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
+    if [[ -n "${_FOREIGN}" ]]; then
+      # The two levels below the site dir are the mark's own.
+      _c="${_s%/*}"
+      _c="${_c%/*}"
+      # A link is never a site to either scan, nor a restore leftover: Grav
+      # skips a name holding .restore or .original, Textpattern one ending so.
+      [[ -L "${_c}" ]] && continue
+      if [[ "${_FOREIGN}" = "grav" ]]; then
+        [[ "${_c##*/}" == *.restore* || "${_c##*/}" == *.original* ]] && continue
+      else
+        [[ "${_c##*/}" == *.restore || "${_c##*/}" == *.original ]] && continue
+      fi
+    fi
     printf "Notice: %s still holds a site (%s); nothing changed.\n" "$(_nm "${drupal_root}")" "$(_nm "${_s}")" >&3
     exit 1
   done
