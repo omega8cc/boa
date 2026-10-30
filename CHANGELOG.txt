@@ -4,6 +4,20 @@
 
 @=> Important Fixes
 
+    * Emptying swap no longer takes a box into the OOM guard. The swap
+      purge autoupboa runs every five minutes once swap is half full went
+      ahead whenever free RAM could hold the pages coming back, even if
+      that left the box at the guard's 5% line; multiback's reset before
+      each backup checked no RAM at all. Both now empty swap only while a
+      tenth of the RAM (at least 512 MB) stays free after it, and stand
+      aside while graceful.sh resizes /swapfile.
+
+    * The swap purge no longer drops the whole page cache. It flushed the
+      cache before checking free RAM and again after, so a box whose swap
+      stayed half full re-read every site's files from disk every five
+      minutes even when the purge was then refused. Free RAM as the kernel
+      reports it already counts the cache it can reclaim.
+
     * The web ban sets no longer reload Nginx on nearly every cron tick.
       The 15-minute temporary bans change the IPv4 set most of the time,
       and each change reloaded Nginx: on a box with hundreds of SSL vhosts
@@ -2519,6 +2533,25 @@
       the run now fails the Composer script.
 
 @=> New Features
+
+    * BOA now sizes swap to the RAM and to what the box really swaps. Most
+      servers came with whatever swap their provider set up, often 512 MB
+      whether the box had 4 GB or 96 GB of RAM, and some had none: on small
+      boxes it ran full and left the OOM guard as the only outlet, on large
+      ones cold pages filled it and set off a swap purge several times a
+      week. The daily graceful.sh pass now aims for half the RAM, at least
+      1 GB and at most 4 GB, raised to twice the highest swap use recorded
+      in the last 14 days (doubled when swap ran 90% full), never above the
+      RAM or 16 GB, and grows /swapfile when the total falls a fifth or more
+      short. A provider's swap partition counts towards the total and is
+      never touched; a /swapfile BOA did not make is only ever grown, one it
+      made is shrunk when it is twice the size it should be. The old file
+      goes off only while free RAM can take its pages back with a tenth of
+      the RAM to spare. Nothing is done in a container, on a filesystem
+      other than ext3, ext4 or xfs, or when the file would take / past 80%
+      or leave under 2 GB free. Each run writes one line to
+      /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in /root/.barracuda.cnf
+      leaves swap alone.
 
     * An incident snapshot: when a load or database incident starts, BOA
       now saves what MySQL and the box were doing, so its cause can still
