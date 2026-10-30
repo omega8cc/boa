@@ -13,6 +13,14 @@
       warning that names both aliases; remove the alias of the one the
       control panel no longer lists.
 
+    * The ssh login monitor (hackcheck) banned an address for a single
+      connection closed before login even when that address had logged
+      in: since early August its exemption for an address with an
+      accepted login kept one number of the address instead of the
+      address, so it exempted no one, and an auth.log holding a NUL block,
+      as an unclean shutdown leaves, hid every login from it before that.
+      An address with a recent accepted login is no longer banned by it.
+
     * A barracuda pass restarted the database server when the new my.cnf
       differed from the previous one only in a comment line, which the
       server never reads: a comment changed in BOA's my.cnf template meant
