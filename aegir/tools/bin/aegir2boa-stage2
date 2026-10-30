@@ -15,6 +15,7 @@
 # Source-resident verbs (vanilla box, root):
 #   peer       --target <ip>                                  [--live]
 #   check      --target <ip> [--route per-site|db-import] [--report <env>]
+#              [--accept-scrub-list] [--accept-left-behind]
 #   pre-mig    --target <ip>                                  [--live]
 #   create     --target <ip> --account <oN> --email <e> --tree <dev|lts|pro>
 #              [--option EDGE] [--subscr M] [--cores 1]       [--live]
@@ -83,6 +84,7 @@ _REFRESH=NO
 _SOURCE_IP=""
 _PUBKEY_FILE=""
 _ACCEPT_SCRUB=NO
+_ACCEPT_LEFT=NO
 _INSTALL_CRON=NO
 _WELCOME_NODE=NO
 _REVERT_DB_IMPORT=NO
@@ -426,10 +428,106 @@ _dry_finish() {
 
 _sql() { _as_aegir "drush @hostmaster sqlq \"$1\" 2>/dev/null"; }
 
-# enabled sites as "context_name uri" pairs, hostmaster FIRST (stage-1)
+# enabled sites as "context_name uri" pairs, hostmaster FIRST (stage-1);
+# hosting_site keeps a row per node revision, so the current one is read
 _sites_list() {
-  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.nid = n.nid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
+  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.vid = n.vid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
     | tr '\t' ' '
+}
+
+# site records stage 2 does not move, one "uri status" line each into $1:
+# every site neither enabled (1) nor deleted (-2). A disabled site keeps its
+# database and files on the source, and a queued one can too (hosting-import
+# registers an installed site as queued). Fails when the panel cannot be
+# read, so an unreadable panel never passes for an empty list. drush sqlq
+# prints a bare newline for no rows: blank lines are dropped, so an empty
+# list is an empty file.
+_left_behind_read() {
+  local _w="FROM node n JOIN hosting_site s ON s.vid = n.vid WHERE n.type = 'site' AND s.status NOT IN (1, -2)"
+  local _n
+  _n="$(_int_only "$(_sql "SELECT COUNT(*) ${_w}" | tail -1)")"
+  [[ -n "${_n}" ]] || return 1
+  _sql "SELECT n.title, s.status ${_w} ORDER BY n.nid" | tr '\t' ' ' | sed '/^[[:space:]]*$/d' > "$1"
+  [[ "$(grep -c . "$1")" = "${_n}" ]]
+}
+
+# the acknowledgements check takes, named together: each check run records
+# both from its own flags
+_ack_flags() {
+  [[ "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" = "db-import" ]] \
+    && echo "--accept-left-behind (with --accept-scrub-list on the same run)" \
+    || echo "--accept-left-behind"
+}
+
+# a site record's current state on this panel; empty when unreadable
+_site_status_now() {
+  local _u
+  _u="$(_sane_domain "$1")" || return 0
+  _sql "SELECT s.status FROM node n JOIN hosting_site s ON s.vid = n.vid WHERE n.type = 'site' AND n.title = '${_u}'" \
+    | grep -E '^-?[0-9]+$' | tail -1
+}
+
+_site_status_label() {
+  case "$1" in
+    1) echo enabled ;;
+    0) echo queued ;;
+    -1) echo disabled ;;
+    -2) echo deleted ;;
+    *) echo "status $1" ;;
+  esac
+}
+
+# precondition of pre-mig (1=premig), of the db-import panel dump (1=dump)
+# and of transfer (1=transfer). A non-empty list of the records check named
+# needs its acknowledgement. pre-mig is where enabling a site still moves it
+# (the queue it pauses runs the enable task); the dump needs the panel's
+# records to be the list check named before the export pauses anything
+# (_export_panel_checked reads them again right before the dump and keeps
+# that read). transfer refuses an exported site check names as staying; of
+# a dumped panel it needs the dump's list to be check's (a change since then
+# reaches neither the dump nor the move, so it only warns); any other
+# transfer needs the panel's records to still be check's list.
+_left_behind_gate() {
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _now _same=NO _n
+  local _lbx="${_STATE_DIR}/state/left-behind.exported.txt"
+  [[ -f "${_lbf}" ]] || _die "no list of the site records left behind - re-run check"
+  _now="$(mktemp)" || _die "cannot make a temporary file"
+  if ! _left_behind_read "${_now}"; then
+    rm -f "${_now}"
+    _die "cannot read the site records of the source panel"
+  fi
+  cmp -s "${_now}" "${_lbf}" && _same=YES
+  rm -f "${_now}"
+  _n="$(grep -c . "${_lbf}")"
+  if [[ "${_n}" -gt 0 && "$(_kv_get "${_STATE_DIR}/state/check.env" LEFT_ACK)" != "YES" ]]; then
+    [[ "$1" = "premig" ]] \
+      && _die "${_n} site record(s) named by check stay on this box - enable them to move them and re-run check, or re-run check with $(_ack_flags)"
+    _die "${_n} site record(s) named by check stay on this box - re-run check with $(_ack_flags)"
+  fi
+  # a panel dump of another list can only be undone whole
+  if [[ "$1" = "transfer" && -f "${_lbx}" ]]; then
+    cmp -s "${_lbf}" "${_lbx}" \
+      || _die "the panel dump carries another list of the site records left behind than check named - revert --all, then resume, and start again from check"
+  fi
+  # a site of this transfer exported before its record left the enabled
+  # state (a task that outlived pre-mig's drain) would move although check
+  # names it as staying
+  if [[ "$1" = "transfer" ]]; then
+    local _lbu _lbs
+    while read -r _lbu _lbs; do
+      [[ -n "${_lbu}" ]] || continue
+      [[ "${_ALL}" = "YES" || "${_lbu}" = "${_SITE}" ]] || continue
+      _marker_has "${_lbu}.exported.pid" \
+        && _die "site ${_lbu} is exported but check names it as staying on this box ($(_site_status_label "${_lbs}")) - revert --site ${_lbu} to keep it here"
+    done < "${_lbf}"
+  fi
+  if [[ "$1" = "transfer" && -f "${_lbx}" ]]; then
+    [[ "${_same}" = "YES" ]] \
+      || _alrt "the site records left behind changed since the panel dump: the new panel gets them as the dump found them"
+    return 0
+  fi
+  [[ "${_same}" = "YES" ]] || _die "the site records left behind changed since check - re-run check"
+  return 0
 }
 
 _hostmaster_uri() {
@@ -1209,10 +1307,44 @@ verb_check() {
   done < <(_sites_list)
   [[ "${_fails}" -gt 0 ]] && _alrt "${_fails} site(s) flagged - they will be SKIPPED (listed per-site FAILs), not blocking the run"
 
+  # site records the move does not carry: both routes move enabled sites
+  # only, and the db-import route pours every record with the panel, these
+  # included, without their databases. Each is named here; pre-mig, the
+  # panel dump and transfer refuse a non-empty list until check ran with
+  # --accept-left-behind. An earlier run's acknowledgement is dropped first,
+  # and the list replaces the recorded one only once read whole.
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _lbu _lbs _lbn _lbh
+  _kv_set "${_STATE_DIR}/state/check.env" "LEFT_ACK" "NO"
+  if ! _left_behind_read "${_lbf}.new"; then
+    rm -f "${_lbf}.new"
+    _die "cannot read the site records of the source panel"
+  fi
+  chmod 600 "${_lbf}.new"
+  mv -f "${_lbf}.new" "${_lbf}" || _die "cannot record ${_lbf}"
+  _lbn="$(grep -c . "${_lbf}")"
+  if [[ "${_lbn}" -gt 0 ]]; then
+    _alrt "${_lbn} site record(s) the move does not carry; each site stays on this box with its database:"
+    while read -r _lbu _lbs; do
+      _alrt "    ${_lbu} ($(_site_status_label "${_lbs}"))"
+    done < "${_lbf}"
+    [[ "${_route}" = "db-import" ]] \
+      && _alrt "    the db-import route carries these records into the new panel without their databases"
+    if [[ "${_ACCEPT_LEFT}" != "YES" ]]; then
+      _lbh="re-run check with --accept-left-behind"
+      [[ "${_route}" = "db-import" ]] && _lbh="${_lbh} (with --accept-scrub-list on the same run)"
+      if _marker_has "pre-mig.pid"; then
+        _alrt "${_lbh} to move on without them (the queue is paused since pre-mig, so enabling a site now moves nothing: resume first to enable one)"
+      else
+        _alrt "enable a site above to move it with the rest, or ${_lbh} to move on without them"
+      fi
+    fi
+  fi
+
   # record the plan
   _kv_set "${_STATE_DIR}/state/check.env" "ROUTE" "${_route}"
   _kv_set "${_STATE_DIR}/state/check.env" "TARGET" "${_TARGET}"
   _kv_set "${_STATE_DIR}/state/check.env" "SCRUB_ACK" "${_ACCEPT_SCRUB}"
+  _kv_set "${_STATE_DIR}/state/check.env" "LEFT_ACK" "${_ACCEPT_LEFT}"
   _msg "CHECK COMPLETE: route=${_route} target=${_TARGET} (recorded)"
   _msg "next: pre-mig --target ${_TARGET}"
 }
@@ -1223,6 +1355,8 @@ verb_premig() {
   _require_source_box
   [[ -n "${_TARGET}" ]] || _die "pre-mig needs --target <ip>"
   _marker_has "pre-mig.pid" && _die "pre-mig already done (marker present) - use resume to undo"
+  # the records left behind are settled while enabling a site still moves it
+  _left_behind_gate premig
   local _scope="estate"
 
   if [[ "${_LIVE}" != "YES" ]]; then
@@ -1314,6 +1448,7 @@ verb_resume() {
   if _marker_has "hostmaster.exported.pid"; then
     _as_aegir "drush @hostmaster vset --always-set maintenance_mode 0" >>"${_LOG}" 2>&1
     rm -f "$(_marker "hostmaster.exported.pid")"
+    rm -f "${_STATE_DIR}/state/left-behind.exported.txt"
     _info "source panel taken out of maintenance mode (hostmaster export marker cleared)"
   fi
   rm -f "$(_marker "pre-mig.pid")"
@@ -1565,6 +1700,31 @@ _export_hostmaster() {   # db-import route only
   return 0
 }
 
+# the db-import panel dump of a live export. It carries the site records as
+# they are when it runs, after every site dump of the run, so they are read
+# right before it and must be the list check named; that read becomes the
+# list transfer checks. A refused dump leaves the sites as exported: re-run
+# check, then the same export. A panel already dumped is left as it is.
+_export_panel_checked() {
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _rd="${_STATE_DIR}/state/left-behind.dump.txt"
+  if _marker_has "hostmaster.exported.pid"; then
+    _export_hostmaster
+    return $?
+  fi
+  if ! _left_behind_read "${_rd}" || ! cmp -s "${_rd}" "${_lbf}"; then
+    rm -f "${_rd}"
+    _alrt "hostmaster: NOT dumped - the site records left behind changed since check, or cannot be read: re-run check, then export again"
+    return 1
+  fi
+  if ! _export_hostmaster; then
+    rm -f "${_rd}"
+    return 1
+  fi
+  mv -f "${_rd}" "${_STATE_DIR}/state/left-behind.exported.txt" \
+    || { _alrt "hostmaster: cannot record the list of the site records left behind its dump carries"; return 1; }
+  return 0
+}
+
 verb_export() {
   _require_source_box
   _marker_has "pre-mig.pid" || _die "run pre-mig first (the queue must be paused before any dump)"
@@ -1572,6 +1732,11 @@ verb_export() {
   local _scope="${_SITE:-all}" _route _fails=0 _name _uri
   _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
   [[ -n "${_route}" ]] || _die "no recorded route - run check first"
+  # a panel dump carries the site records as they are: they must be the list
+  # check named, settled before anything is paused or dumped
+  if [[ "${_route}" = "db-import" ]] && ! _marker_has "hostmaster.exported.pid"; then
+    _left_behind_gate dump
+  fi
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -1592,7 +1757,7 @@ verb_export() {
     [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
     _export_one "${_name}" "${_uri}" || _fails=$(( _fails + 1 ))
   done < <(_sites_list)
-  [[ "${_route}" = "db-import" ]] && { _export_hostmaster || _fails=$(( _fails + 1 )); }
+  [[ "${_route}" = "db-import" ]] && { _export_panel_checked || _fails=$(( _fails + 1 )); }
   if [[ "${_fails}" -gt 0 ]]; then
     _alrt "export finished with ${_fails} per-site failure(s) - failed sites are NOT exported; others proceed"
   else
@@ -1683,10 +1848,17 @@ verb_transfer() {
   # before anything is copied
   if [[ "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" = "db-import" ]]; then
     [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
-      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer (each check run records its own acknowledgements: add --accept-left-behind on the same run when check names site records left behind)"
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
+    # this round's panel dump: only a dump that succeeded sets the marker
+    # and resume clears it, so an earlier round's file never ships
+    _marker_has "hostmaster.exported.pid" && [[ -s "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]] \
+      || _die "db-import route: the panel is not dumped (or its dump was refused) - re-run check if the export said so, then export again"
   fi
+  # so are the site records check named as staying on this box, on both
+  # routes: still the same records, and acknowledged
+  _left_behind_gate transfer
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -1785,7 +1957,7 @@ REOWN
     # the check-time acknowledged module list must ride along: import's
     # {system} scrub refuses to remove anything the operator never saw
     [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
-      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer (each check run records its own acknowledgements: add --accept-left-behind on the same run when check names site records left behind)"
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
     rsync -aq -e ssh "${_STATE_DIR}/state/enabled-modules.txt" \
@@ -2620,6 +2792,20 @@ _t_drop_made_users() {   # 1 uri 2 dbn
 # data; then every user the record still names (_t_drop_kept_users). M1
 # fix: without this, a revert-then-retry would cut sites over to
 # first-export (stale) data.
+# after a db-import revert the dumps transferred here are stale: set them
+# aside, never removed, so the retry's transfer starts from an empty folder
+# and no earlier round's site rides it (a retry whose set of sites changed
+# loaded the earlier round's dump of a site it no longer carried). The
+# per-site --reset-sites keeps them: a later --revert-db-import of the same
+# state cleans by their manifests.
+_t_set_src_aside() {
+  local _sx
+  [[ -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]] || return 0
+  _sx="${_STATE_DIR}/src.reverted.$(date -u +%Y%m%dT%H%M%SZ)"
+  mv -T -- "${_STATE_DIR}/src" "${_sx}" \
+    && _info "the dumps transferred here set aside as ${_sx}: the retry transfers afresh (remove it once the retry is done)"
+}
+
 _t_reset_site_dbs() {
   local _mff _uri _dbn _done=""
   for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
@@ -2725,10 +2911,14 @@ _t_drop_kept_users() {   # 1 databases done already
 # them - and a later re-adoption of the same names (the documented retry
 # path) then conflicts on server_name, with the DEAD vhost winning by
 # include order. Remove exactly the manifest URIs' vhost files; the
-# account's own panel vhost is not a manifest URI and stays. vhost.d is the
-# account's: each name is removed inside the real directory only.
+# account's own panel vhost is not a manifest URI and stays. The same goes
+# for the Drush aliases those verifies wrote: a site's alias outlived the
+# revert and named a site with no database or vhost behind it. vhost.d and
+# .drush are the account's: each name is removed inside the real directory
+# only.
 _t_remove_estate_vhosts() {
   local _vhd="${_ACCT_ROOT}/config/server_master/nginx/vhost.d" _mff _uri _n=0
+  local _drd="${_ACCT_ROOT}/.drush"
   for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
     [[ -e "${_mff}" ]] || continue
     _uri="$(_sane_domain "$(_manifest_val "${_mff}" URI)")" || continue
@@ -2736,6 +2926,10 @@ _t_remove_estate_vhosts() {
       _a2b_in_real_dir "${_vhd}" rm -f -- "./${_uri}"
       _info "site ${_uri}: orphaned vhost removed"
       _n=$(( _n + 1 ))
+    fi
+    if [[ -e "${_drd}/${_uri}.alias.drushrc.php" || -L "${_drd}/${_uri}.alias.drushrc.php" ]]; then
+      _a2b_in_real_dir "${_drd}" rm -f -- "./${_uri}.alias.drushrc.php"
+      _info "site ${_uri}: orphaned drush alias removed"
     fi
   done
   if [[ "${_n}" -gt 0 ]]; then
@@ -3107,7 +3301,7 @@ _import_db_route() {
   # source dispatch never resumes). Default the whole enabled estate to
   # hourly, vanilla's own cadence.
   if [[ ! -e "${_step}.8b.done" ]]; then
-    _tsql "INSERT INTO hosting_cron (nid, cron_interval) SELECT s.nid, 3600 FROM hosting_site s WHERE s.status = 1 AND s.nid NOT IN (SELECT nid FROM hosting_cron)"
+    _tsql "INSERT INTO hosting_cron (nid, cron_interval) SELECT s.nid, 3600 FROM hosting_site s JOIN node n ON n.vid = s.vid WHERE s.status = 1 AND s.nid NOT IN (SELECT nid FROM hosting_cron)"
     touch "${_step}.8b.done"
     _info "step 8b: cron_interval=3600 seeded for enabled sites without a row"
   fi
@@ -3348,6 +3542,33 @@ PHPEOF
     touch "${_step}.11e.done"
   fi
 
+  # 11g. records the panel brought without their sites: a site row neither
+  # deleted nor carried here (no manifest) - one the source had disabled or
+  # queued, or an enabled one whose export failed - is named on every run,
+  # so no record passes for a moved site
+  local _carried="" _mfg _gw _gn _nuri _nst _nn=0 _nr=0
+  for _mfg in "${_src}/manifest/"*.info; do
+    [[ -e "${_mfg}" ]] || continue
+    _carried="${_carried}$(_manifest_val "${_mfg}" URI)
+"
+  done
+  _gw="FROM node n JOIN hosting_site s ON s.vid = n.vid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status <> -2 AND c.name <> 'hostmaster'"
+  _gn="$(_int_only "$(_tsql "SELECT COUNT(*) ${_gw}" | tail -1)")"
+  while read -r _nuri _nst; do
+    [[ -n "${_nuri}" ]] || continue
+    _nr=$(( _nr + 1 ))
+    printf '%s' "${_carried}" | grep -qxF -- "${_nuri}" && continue
+    _alrt "site ${_nuri} ($(_site_status_label "${_nst}")): the panel brought its record without its database - the site is still on the source"
+    _nn=$(( _nn + 1 ))
+  done < <(_tsql "SELECT n.title, s.status ${_gw} ORDER BY n.nid" | tr '\t' ' ')
+  if [[ -z "${_gn}" || "${_nr}" != "${_gn}" ]]; then
+    _alrt "step 11g: cannot read the site records of the new panel - compare them with the carried sites by hand"
+  elif [[ "${_nn}" -gt 0 ]]; then
+    _alrt "step 11g: ${_nn} site record(s) in the new panel have no site here - an Enable of one only marks it enabled; delete such a record here once its site is not to move"
+  else
+    _info "step 11g: every site record in the new panel was carried"
+  fi
+
   # 11f. window cleanup: restore the auto-import default
   if [[ ! -e "${_step}.11f.done" ]]; then
     _as_octo "drush8 @hostmaster vdel -y hosting_platform_automatic_site_import" >>"${_LOG}" 2>&1
@@ -3566,7 +3787,7 @@ PHPEOF
 
 verb_import() {
   _require_target_box
-  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb _sx
+  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb
   _troute="$(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null | tr -d '\n')"
   if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" && "${_DROP_MADE_USERS}" != "YES" ]]; then
     [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
@@ -3659,16 +3880,11 @@ verb_import() {
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
     rm -f -- "$(_marker revert-db.started)"
-    # on a box a failover brought the panel to (its hold stands: the
-    # dispatcher stays held), the dumps the route transferred here are
-    # stale now: set aside, never removed, so every line that names the way
-    # out names the route run again, a fresh export and transfer
-    if [[ ( -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ) \
-      && -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]]; then
-      _sx="${_STATE_DIR}/src.reverted.$(date -u +%Y%m%dT%H%M%SZ)"
-      mv -T -- "${_STATE_DIR}/src" "${_sx}" \
-        && _info "the dumps transferred here set aside as ${_sx}: run the route again toward this box"
-    fi
+    # the dumps the route transferred here are stale now (on a box a
+    # failover brought the panel to as on any other): set aside, never
+    # removed, so the way out is the route run again, a fresh export and
+    # transfer
+    _t_set_src_aside
     _t_freeze_off; trap _cleanup EXIT
     _msg "db-import reverted - hostmaster restored, a2b site DBs dropped; a retry needs fresh export+transfer (stale dumps must never cut over)"
     exit 0
@@ -4018,6 +4234,14 @@ _proxy_one() {   # 1 uri
   _marker_has "${_uri}.proxied.pid" && { _info "site ${_uri}: already proxied"; return 0; }
   _marker_has "${_uri}.exported.pid" || { _alrt "site ${_uri}: not exported - SKIP"; return 1; }
   [[ -e "${_vh}" ]] || { _alrt "site ${_uri}: vhost missing - SKIP"; return 1; }
+  # a site whose record left the enabled state after its export (a task
+  # that outlived pre-mig's drain) is never cut over: it stays on this box
+  local _st
+  _st="$(_site_status_now "${_uri}")"
+  if [[ "${_st}" != "1" ]]; then
+    _alrt "site ${_uri}: its record here reads $(_site_status_label "${_st:-unreadable}") - not cut over, SKIP (revert --site ${_uri} to keep it on this box)"
+    return 1
+  fi
 
   # The replacement must be functionally proven FIRST - the target
   # must answer for this site before its traffic is cut over
@@ -4415,6 +4639,7 @@ while [[ $# -gt 0 ]]; do
     --accept-http-diff)  _ACCEPT_HTTP_DIFF=YES ;;
     --refresh)           _REFRESH=YES ;;
     --accept-scrub-list) _ACCEPT_SCRUB=YES ;;
+    --accept-left-behind) _ACCEPT_LEFT=YES ;;
     --install-cron)      _INSTALL_CRON=YES ;;
     --welcome-node)      _WELCOME_NODE=YES ;;
     --revert-db-import)  _REVERT_DB_IMPORT=YES ;;
