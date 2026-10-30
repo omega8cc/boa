@@ -65,8 +65,9 @@
       bundle refresh, the Grav Clone's licence secret clear and the
       Textpattern upgrade's structure check read such a path as itself too.
 
-    * The platform and site permission and ownership fixers print a name
-      holding a line break or another control character as ?, so each
+    * The platform and site permission and ownership fixers, and the link
+      check (linkguard) whose lines the ownership fixers pass on, print a
+      name holding a line break or another control character as ?, so each
       line they print stays whole: a folder named with a line break could
       put a line in the account's own wording where a Delete's notice or
       a Backup's log line gives the fixer's reason.
