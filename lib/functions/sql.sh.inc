@@ -1174,6 +1174,9 @@ _sql_conf_update() {
         # which the server ships off: a timer on every lock taken, no memory
         # saved. Keep it commented here, after the uncomment, so boxes that
         # carry it drop it too; 8.x runs with the server's own defaults.
+        # The template's sizing lines trim memory nothing reads: the four
+        # long histories are allocated at start whatever their consumers
+        # say, and no BOA tool or sys view reads the error summaries.
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
@@ -2306,9 +2309,12 @@ _db_server_install() {
         # diff shows a change only when one of its lines matches no -I
         # pattern, so tuned-knob and comment lines alone never restart:
         # mysqld never reads a comment line, so a template edit that only
-        # adds, drops or rewords one must not restart every box's server.
+        # adds, drops or rewords one must not restart every box's server,
+        # and performance_schema sizing, like the knobs, waits for the
+        # next natural restart.
         _diffMyTest=$(diff -w -B \
           -I "^[[:space:]]*[#;]" \
+          -I "^[[:space:]]*performance_schema_" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \

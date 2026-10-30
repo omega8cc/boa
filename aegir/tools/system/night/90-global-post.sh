@@ -347,6 +347,18 @@ _check_old_empty_hostmaster_platforms() {
     if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
+      # Every platform alias with the root it names and the docroot served
+      # from there (the root again when there is none), for the twin test.
+      _rootLines=$(for _f in /var/aegir/.drush/platform_*.alias.drushrc.php; do
+        _r=$(cat "${_f}" \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        [ -n "${_r}" ] || continue
+        _d=$(_detect_real_docroot "${_r}")
+        printf '%s\t%s\t%s\n' "${_f}" "${_r}" "${_d:-${_r}}"
+      done)
       for _Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
         +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
         _T_PFM_NAME=$(echo "${_Platform}" \
@@ -382,7 +394,18 @@ _check_old_empty_hostmaster_platforms() {
         fi
         if [ -z "${_T_PFM_SITE}" ] \
           && [ -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/all" ]; then
-          _delete_this_empty_hostmaster_platform
+          # A tree another alias also names is never deleted here: the alias
+          # of a platform the control panel already deleted can name a live
+          # platform's tree, and its Delete removes that platform's code.
+          _twin=$(awk -F '\t' -v f="${_Platform}" -v r="${_T_PFM_ROOT}" \
+            -v d="${_T_PFM_DOC:-${_T_PFM_ROOT}}" \
+            '$1 != f && ($2 == r || $3 == d) { print $1; exit }' <<< "${_rootLines}")
+          if [ -n "${_twin}" ]; then
+            _twin="${_twin##*/}"
+            echo "WARNING: platform_${_T_PFM_NAME} names the same tree as ${_twin%.alias.drushrc.php} (${_T_PFM_DOC:-${_T_PFM_ROOT}}): neither is deleted; remove the alias of the one the control panel no longer lists"
+          else
+            _delete_this_empty_hostmaster_platform
+          fi
         fi
       done
     fi
