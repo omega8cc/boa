@@ -2575,8 +2575,8 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f86 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
-  _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f85 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f94 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
@@ -2698,8 +2698,8 @@ _update_agents() {
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f90
-    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f94
-    _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f94
+    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f93
+    _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f93
     _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f89
     # The per-minute line otherwise arrives only with the crontab template on a
     # full up-* run, so a fetched detector would sit idle until then; ensure it

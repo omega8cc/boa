@@ -4,6 +4,23 @@
 
 @=> Important Fixes
 
+    * The web ban sets no longer reload Nginx on nearly every cron tick.
+      The 15-minute temporary bans change the IPv4 set most of the time,
+      and each change reloaded Nginx: on a box with hundreds of SSL vhosts
+      the configuration takes over a gigabyte in memory, a reload parsed
+      it three times (two tests and the master) and left a full set of
+      old workers draining, about a gigabyte more for each reload on one
+      busy box, which reloaded every two minutes all day. csf drops a
+      banned IPv4 address the moment it is banned and the Nginx set only
+      matters for a client behind Cloudflare, so new IPv4 bans now wait
+      ten minutes since the last reload (_NGINX_DENY_RELOAD_GAP in
+      /root/.barracuda.cnf, 0 to 3600 seconds, 0 applies every change at
+      once) and a change that only drops expired bans waits three times
+      that. New IPv6 bans, which only Nginx enforces, still apply at once;
+      their expiry is paced the same way. clearwebbans and edgetest apply
+      their changes at once, and an applied change now costs one reload
+      call, whose own configuration test refuses a bad set.
+
     * Deleting a platform an account uploaded or unpacked into its
       ~/static folder, with no Composer project around it, removes the
       folder holding it again when that folder is not group writable (an
