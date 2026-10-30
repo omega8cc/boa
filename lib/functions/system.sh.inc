@@ -14325,11 +14325,12 @@ _initd_update() {
         # pattern, so tuned-knob and comment lines alone never restart:
         # mysqld never reads a comment line, so a template edit that only
         # adds, drops or rewords one must not restart every box's server,
-        # and performance_schema sizing, like the knobs, waits for the
-        # next natural restart.
+        # and performance_schema sizing and thread_stack, like the knobs,
+        # wait for the next natural restart.
         _diffMyTest=$(diff -w -B \
           -I "^[[:space:]]*[#;]" \
           -I "^[[:space:]]*performance_schema_" \
+          -I "^[[:space:]]*thread_stack" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \

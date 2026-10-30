@@ -15,8 +15,11 @@
 # the real client, never a spoofable direct peer.
 #
 # Store (written by scan_nginx.sh, pruned here): lines `<ip6>|<expiry-epoch>`.
-# A re-offence appends a fresh expiry; the max per IP wins; expired IPs drop out
-# on the next run (the self-expiry that csf provides for the IPv4 side).
+# A re-offence appends a fresh expiry; the max per IP wins; expired IPs leave the
+# store on the next run and the geo file on a later one (the self-expiry that csf
+# provides for the IPv4 side).
+#
+# Usage: nginx_deny6.sh [now]   ("now" skips the reload pacing below)
 
 _store="/var/xdrago/monitor/log/web6.tempban"
 _out_dir="/data/conf"
@@ -32,6 +35,15 @@ _store_tmp="${_store}.tmp.$$"
 # cloudflare_realip / nginx_deny / nginx_deny6 / ai_policy / user_admin_access)
 # never overlap their configtest+reload; wait up to 30s, then skip and retry.
 _lock_file="/run/boa_nginx_config.lock"
+_reload_stamp="/var/xdrago/monitor/log/.nginx_deny6.reload.stamp"
+# Least seconds between two reloads that add bans (0-3600, default 600); here
+# it paces only the reloads that drop expired bans, see Pacing below.
+_reload_gap=600
+_gap_cnf="$(sed -n 's/^_NGINX_DENY_RELOAD_GAP=//p' /root/.barracuda.cnf 2>/dev/null \
+  | tail -n 1 | tr -d "\"' ")"
+if [[ "${_gap_cnf}" =~ ^[0-9]{1,4}$ ]] && (( 10#${_gap_cnf} <= 3600 )); then
+  _reload_gap=$(( 10#${_gap_cnf} ))
+fi
 
 # Strict IPv6 (address-only) validator — a subset of what nginx accepts, so a
 # malformed token in the store can never fail the box-wide configtest.
@@ -158,7 +170,30 @@ if _acct_in_real_dir "${_out_dir}" _conf_get_file_here "${_out_name}" "${_work}/
   exit 0
 fi
 
-# Back up current, install new atomically, validate, reload, revert on failure.
+# Pacing. A reload re-reads the whole nginx config and leaves a full set of old
+# workers draining, which on a box with hundreds of vhosts costs gigabytes and
+# seconds of CPU. nginx is the only place an IPv6 ban bites, so a change that
+# adds bans applies at once; one that only drops expired bans waits three times
+# _NGINX_DENY_RELOAD_GAP since the last reload: an expired ban kept a little
+# longer is harmless.
+if [[ "${1:-}" != "now" ]] && [[ -f "${_work}/live" ]] \
+  && ! grep -qvxF -f "${_work}/live" "${_tmp_file}"; then
+  _last=0
+  if [[ -f "${_reload_stamp}" ]]; then
+    _last=$(tr -cd '0-9' 2> /dev/null < "${_reload_stamp}")
+  fi
+  if [[ "${_last}" =~ ^[0-9]{1,12}$ ]]; then
+    _last=$(( 10#${_last} ))
+  else
+    _last=0
+  fi
+  (( _last <= _now )) || _last=0
+  if (( _now - _last < _reload_gap * 3 )); then
+    exit 0
+  fi
+fi
+
+# Back up current, install new atomically, reload, revert on failure.
 [[ -f "${_work}/live" ]] \
   && _acct_in_real_dir "${_out_dir}" _conf_put_file_here "${_work}/live" "${_backup_name}"
 if ! _acct_in_real_dir "${_out_dir}" _conf_put_file_here "${_tmp_file}" "${_out_name}"; then
@@ -166,9 +201,11 @@ if ! _acct_in_real_dir "${_out_dir}" _conf_put_file_here "${_tmp_file}" "${_out_
   exit 1
 fi
 
-_configtest=$(service nginx configtest 2>&1)
-if [[ $? -ne 0 ]]; then
-  echo "Nginx configtest failed after IPv6 deny-set update: ${_configtest}"
+# The init script's reload runs the config test itself and sends no HUP when it
+# fails, so one call validates and applies, and a refused set never reaches the
+# running workers.
+if ! _reload=$(service nginx reload 2>&1); then
+  echo "Nginx reload refused the IPv6 deny-set update: ${_reload}"
   if _acct_in_real_dir "${_out_dir}" _conf_get_file_here "${_backup_name}" "${_work}/back"; then
     echo "Reverting to the last known good IPv6 deny set."
     _acct_in_real_dir "${_out_dir}" _conf_put_file_here "${_work}/back" "${_out_name}"
@@ -177,15 +214,7 @@ if [[ $? -ne 0 ]]; then
   fi
   exit 1
 fi
-
-if ! service nginx reload; then
-  echo "Nginx reload failed; reverting IPv6 deny set."
-  if _acct_in_real_dir "${_out_dir}" _conf_get_file_here "${_backup_name}" "${_work}/back"; then
-    _acct_in_real_dir "${_out_dir}" _conf_put_file_here "${_work}/back" "${_out_name}"
-    service nginx reload
-  fi
-  exit 1
-fi
+date +%s > "${_reload_stamp}" 2>/dev/null
 
 _count=$(grep -c ' 1;$' "${_tmp_file}" 2>/dev/null)
 echo "nginx IPv6 web deny set updated (${_count} entr$([[ "${_count}" == "1" ]] && echo y || echo ies)); Nginx reloaded."
