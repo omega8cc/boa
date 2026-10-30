@@ -132,15 +132,31 @@ _check_system_ram() {
   _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
 }
 
-# Function to check and optimize RAM and disk caches
+# Function to check and optimize RAM and disk caches. Swap is emptied before
+# the backup only while free RAM can take its pages back with a tenth of the
+# RAM (at least 512 MB) to spare: once swap is larger than the free RAM, an
+# unchecked swapoff -a pulls back more than the box has. Swap is left alone
+# while graceful.sh resizes /swapfile.
 _optimize_ram() {
-  swapoff -a
+  local _swpUsed _memAvl _memTot _memSpare _rszPid
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  if [ -z "${_rszPid}" ] || ! kill -0 "${_rszPid}" 2>/dev/null; then
+    _swpUsed=$(awk '/^SwapTotal:/ {t=$2} /^SwapFree:/ {f=$2} END {print t-f}' /proc/meminfo)
+    _memAvl=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+    _memTot=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+    _memSpare=$(( _memTot / 10 ))
+    [ "${_memSpare}" -lt 524288 ] && _memSpare=524288
+    if [ "${_swpUsed}" -gt 0 ] \
+      && [ $(( _memAvl - _swpUsed )) -ge "${_memSpare}" ]; then
+      swapoff -a
+    fi
+    swapon -a
+  fi
   _check_system_ram
   if [ "${_ram_usage_percent}" -gt 50 ]; then
     # a plain write: tee would echo the 3 into the run's output
     sync && echo 3 > /proc/sys/vm/drop_caches
   fi
-  swapon -a
 }
 
 ###
