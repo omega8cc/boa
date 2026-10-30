@@ -4,17 +4,73 @@
 
 @=> Important Fixes
 
+    * A site served by a PHP version its code cannot run (an old Drupal 7
+      or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
+      platform check that needs a newer PHP) is now moved to the installed
+      version nearest to it that can run the code, instead of only being
+      listed in ~/static/control/.fpm-core.info while every page answered
+      500. The ltd worker's page check writes the site's line into the
+      account's multi-fpm.info below a dated comment line that says why,
+      comments out a line the site already had, never deleting it, and the
+      site is served by the new version within the same pass; a line
+      naming another version that has not taken effect yet (that version
+      still to be installed, or its pool to start) is left alone. A
+      platform whose code cannot run on the command-line PHP chosen for it
+      (its cli-per-platform.info line, else cli.info; a phpNN.info marker
+      is temporary and moves nothing) gets a cli-per-platform.info line
+      the same way, a platform of the account's own with no site on it yet
+      included, so its tasks, drush and composer run again instead of
+      being refused. The operator gets a notice of every move. Once the
+      site or the platform folder is gone, the worker removes its own line
+      and comment line again, so a deleted platform leaves no warning
+      behind. Nothing is moved on a standby box or for an account on a
+      single PHP-FPM pool; a site no installed version can run stays
+      listed, as before.
+
+    * The control panel no longer answers a request with a server error
+      while an upgrade syncs its database user: each Octopus and Master
+      pass dropped the panel's user at every host and made it again with
+      the password set last, so a request in between could not log in. The
+      password and the grant on the panel's own database are now set in
+      place; rights beyond that database, as an earlier release gave, are
+      revoked after, and only the accounts named after the host are dropped.
+
+    * The PHP multi-install cleanup reads only the version at the end of
+      a multi-fpm.info line and skips a line starting with #, as the ltd
+      worker does: a comment naming a version, or a version inside a site
+      name, no longer keeps that PHP installed or has it built.
+
+    * The check xoct, xcopy and xmass run after a move, that every PHP
+      version pinned in multi-fpm.info has a live pool, skips a line
+      starting with #: a comment was reported as a pin with no pool.
+
+    * The database watchdog and the incident snapshot read MySQL's process
+      list with SHOW PROCESSLIST instead of the information_schema view.
+      Measured on Percona 8.4, the view takes InnoDB's dictionary mutex twice
+      on every read and SHOW PROCESSLIST not at all, so in a dictionary stall
+      (the eight-minute kind a busy server had) the watchdog's stall count
+      and long-query killer waited with the sites, each run leaving one more
+      root connection stuck, and the snapshot lost ten seconds before its
+      plain fallback. The stall count now sees the waiting site queries,
+      the snapshot keeps its 4 KB statements and order, and a refusal for
+      root's max_user_connections cap no longer reads as a server down, so
+      the watchdog never restarts MySQL because its own connections piled up.
+
     * A site renamed with Migrate Site while its aliases redirected to
       its own name answers on its new name again. The redirect stayed on
       the old name, which no site directory served any more: the old name
       offered the Drupal installer, the new one went to nginx's default
       server, and the panel's scheduled cron got a 404 page every hour.
-      A rename now moves that redirect to the new name. A stored target
-      that is neither the site's name nor one of its aliases is set
-      aside, so the site's own name is served and the aliases redirect to
-      it, and the next Octopus pass queues a Verify for every site whose
-      vhost still leaves its own name unanswered. A site redirected to a
-      dev, devel or nodns alias now redirects its own name there too.
+      A rename now moves that redirect to the new name, and one to the
+      old name's www or bare companion to the new name's matching one. A
+      stored target that is neither the site's name nor one of its
+      aliases (a www companion whose automatic alias is missing included,
+      since settings.php trusts only those names) is set aside, so the
+      site's own name is served, the aliases redirect to it and the panel
+      names the site by it, and the next Octopus pass queues a Verify for
+      every site whose vhost still leaves its own name unanswered. A site
+      redirected to a dev, devel or nodns alias now redirects its own name
+      there too.
 
     * aegir2boa moves enabled sites only, but its whole-panel route
       (db-import) carried every site record into the new panel, so a
@@ -1604,16 +1660,19 @@
       6's original error handler logs and shows every warning under any
       other level). Drush and other command line runs are left alone, a
       fatal PHP logs itself (on a .dev. alias) is not repeated, the host
-      and path are written with every byte outside printable ASCII as
-      \xHH, and before PHP 7 a parse error in eval()'d code, which neither
-      stops the request nor turns it into a 500, is not logged.
+      and path are written as nginx writes its access log (every byte
+      outside printable ASCII, the quote and the backslash as \xHH), no
+      control character of the message reaches the log, and before PHP 7
+      a parse error in eval()'d code, which neither stops the request nor
+      turns it into a 500, is not logged.
 
     * A visitor can no longer make barracuda rebuild a PHP version. Its
       check for a broken PHP build searched the whole PHP-FPM error log
       for "OnigEncoding", the sites' own output included, and rebuilt
       that version from source on a match, while a site's fatal error
-      line carries the visitor's path. The check now reads only PHP-FPM's
-      own lines, as the monitors already do.
+      line carries the visitor's path, and PHP-FPM's own lines about a
+      slow or timed-out request quote its query string. The check now
+      reads only PHP-FPM's own lines and none that quote a request.
 
     * PHP-FPM no longer logs "Unable to set php_admin_value" for
       newrelic.enabled and newrelic.license at each new worker of a PHP
