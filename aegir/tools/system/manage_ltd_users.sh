@@ -7865,17 +7865,116 @@ _ltd_fpm_served() {
   done < <(_ltd_in_real_dir "${_inc}" find . -maxdepth 1 -type f -name 'fpm_include_*.inc' \
     2> /dev/null | head -n 5000)
 }
+# The version of $3 (versions as NN, in BOA's order) nearest to $2, $2
+# itself first, on which every codebase in $1 (roots, one a line) can run,
+# by _ltd_fpm_why; the higher one of two at the same distance. Nothing when
+# none can. Run as the account.
+_ltd_fpm_nearest() {
+  local _v="${2}" _t=" ${3} " _i _j _d _e _r _ok
+  local -a _l=(56 70 71 72 73 74 80 81 82 83 84 85 86) _js=()
+  for (( _i = 0; _i < ${#_l[@]}; _i++ )); do
+    [ "${_l[_i]}" = "${_v}" ] && break
+  done
+  [ "${_i}" -lt "${#_l[@]}" ] || return 0
+  for (( _d = 0; _d < ${#_l[@]}; _d++ )); do
+    _js=("$(( _i + _d ))")
+    [ "${_d}" -gt 0 ] && _js+=("$(( _i - _d ))")
+    for _j in "${_js[@]}"; do
+      [ "${_j}" -ge 0 ] && [ "${_j}" -lt "${#_l[@]}" ] || continue
+      _e="${_l[_j]}"
+      [[ "${_t}" == *" ${_e} "* ]] || continue
+      _ok=YES
+      while IFS= read -r _r; do
+        [ -n "${_r}" ] || continue
+        if [ -n "$(_ltd_fpm_why "${_r}" "${_e}")" ]; then
+          _ok=NO
+          break
+        fi
+      done <<< "${1}"
+      if [ "${_ok}" = "YES" ]; then
+        echo "${_e}"
+        return 0
+      fi
+    done
+  done
+}
+# The cli-per-platform.info folder of the codebase at $2 as a tenant writes
+# it: relative to ~/static (~/static/... where the relative form would read
+# as another), ~/distro/... or a /data/all/... root, a final web, docroot or
+# html dropped. Nothing for a codebase elsewhere, which no line can name.
+# $1 = the account's home.
+# shellcheck disable=SC2088 # keys as the tenant spells them, ~ literal
+_ltd_fpm_cli_key() {
+  local _h="${1}" _r="${2%/}" _p=""
+  case "${_r}" in
+    "${_h}/static/"?*) _r="${_r#"${_h}/static/"}" ;;
+    "${_h}/distro/"?*) _r="${_r#"${_h}/distro/"}"; _p="~/distro/" ;;
+    /data/all/?*) ;;
+    *) return 1 ;;
+  esac
+  # websh drops a final web, docroot or html below the folder it names
+  case "${_r}" in
+    */web|*/docroot|*/html) _r="${_r%/*}" ;;
+  esac
+  [ -z "${_p}" ] && [[ "${_r}" == static/* ]] && _p="~/static/"
+  _r="${_p}${_r}"
+  [[ "${_r}" =~ ^(~/(static|distro)/)?[A-Za-z0-9._/-]+$ ]] && [[ "/${_r}/" != */../* ]] \
+    && [[ "/${_r}/" != */./* ]] && [[ "${_r}" != *//* ]] || return 1
+  printf '%s\n' "${_r}"
+}
 # Run as the account: every site of it whose codebase cannot run on the
 # PHP-FPM version that serves it, one line each, "<site> <x.y> <why>", and
-# "# <the site's root>" for every site judged, whose files decide it. $1 =
+# "# <the site's root>" for every site judged, whose files decide it, then
+# "> <site> <NN>" when a version of $3 can run it (_ltd_fpm_nearest). $1 =
 # the account's home, $2 = the version its sites get when no include names
-# one (NN); on stdin the versions the includes name, from _ltd_fpm_served.
+# one (NN), $3 = the versions a site can be moved to (installed, with the
+# account's pool up; empty in single-FPM mode), $4 = the versions installed;
+# on stdin the versions the includes name, from _ltd_fpm_served.
 # The version that serves a site is the one its own include names, else the
 # default include's (multi-FPM mode), else $2; the control panel is served
 # from a pool of its own and is not judged here.
+# Then the command line, once per codebase, the account's own platforms in
+# ~/static that no site is on yet included ("# <root>" for each; a Migrate
+# or a Clone onto one is judged by websh as a site task). Its Aegir tasks
+# and drush run on the PHP websh picks for it, and websh refuses them before
+# PHP starts when the codebase cannot run on it. Judged here is the account's
+# lasting choice: the longest cli-per-platform.info folder holding the
+# codebase, else cli.info, a version only when installed; a phpNN.info marker
+# is a temporary choice and never moves a codebase. Such a codebase gets "~
+# <NN|-> <CC> <folder> <why>": the version of $4 on which it can run nearest
+# to its own folder's line, else to cli.info (- for none), the PHP it gets
+# now, and its folder as _ltd_fpm_cli_key writes it. A codebase no folder can
+# name, or one on the server's default PHP, which websh never judges, gets
+# none. Codebases under one folder (web/ and html/ below it) share one line,
+# judged together. The file's lines are taken as websh takes them
+# (_ltd_cpp_key_norm and _ltd_cpp_key_path, kept in step with it) and
+# matched by their real paths, as websh matches them.
 _ltd_fpm_judge() {
-  local _h="${1}" _d="${2}" _a _c _s _r _v _w _df=""
-  local -A _sv=()
+  local _h="${1}" _d="${2}" _ft="${3:-}" _ci="${4:-}" _a _c _s _r _v _w _df="" _x
+  local _dscUsr="${1}" _USER="${1##*/}" _ac="" _ln=0 _line _k _kv _rest _p _rp _cv _cb _bp _best _i _t _ko=""
+  local -A _sv=() _cd=() _kr=() _kc=() _kb=() _kw=() _wc=() _nc=()
+  local -a _lp=() _lv=()
+  local _stp _kp
+  _stp=$(cd -P -- "${_h}/static" 2> /dev/null && printf '%s' "${PWD}")
+  _c=$(_ltd_fpm_head "${_h}/static/control/cli.info" 8 | tr -cd '0-9')
+  [ -n "${_c}" ] && [[ " ${_ci} " == *" ${_c} "* ]] && _ac="${_c}"
+  _c=""
+  [ -f "${_h}/static/control/cli-per-platform.info" ] \
+    && _c=$(_ltd_fpm_head "${_h}/static/control/cli-per-platform.info" 65536)
+  while IFS= read -r _line; do
+    _ln=$(( _ln + 1 ))
+    [ "${_ln}" -le 200 ] || break
+    _line="${_line%%#*}"
+    _k=""
+    read -r _k _kv _rest <<< "${_line}"
+    [ -n "${_k}" ] && [ -n "${_kv}" ] && [ -z "${_rest}" ] || continue
+    _kv="${_kv//[!0-9]/}"
+    [ -n "${_kv}" ] && [[ " ${_ci} " == *" ${_kv} "* ]] || continue
+    _ltd_cpp_key_norm "${_k}"
+    _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}") && [ -d "${_p}" ] || continue
+    _lp+=("${_p}")
+    _lv+=("${_kv}")
+  done <<< "${_c}"
   while read -r _s _v; do
     [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
     if [ "${_s}" = "-" ]; then
@@ -7887,33 +7986,106 @@ _ltd_fpm_judge() {
   for _a in "${_h}"/.drush/*.alias.drushrc.php; do
     [ -f "${_a}" ] && [ ! -L "${_a}" ] || continue
     _c=$(_ltd_fpm_head "${_a}")
-    [[ "${_c}" =~ \'context_type\'[[:space:]]*=\>[[:space:]]*\'site\' ]] || continue
+    [[ "${_c}" =~ \'context_type\'[[:space:]]*=\>[[:space:]]*\'(site|platform)\' ]] || continue
+    _x="${BASH_REMATCH[1]}"
     [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]] || continue
     _r="${BASH_REMATCH[1]}"
     _r="${_r%/}"
     [[ "${_r}" == /* && "${_r}" != *$'\n'* ]] || continue
-    _s="${_a##*/}"
-    _s="${_s%.alias.drushrc.php}"
-    [[ "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
-    case "${_s}" in
-      hostmaster|hm) continue ;;
-    esac
-    case "${_r}" in
-      "${_h}"/aegir/*) continue ;;
-    esac
-    _v="${_sv[${_s}]:-${_df:-${_d}}}"
-    [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
-    _w=$(_ltd_fpm_why "${_r}" "${_v}")
-    [ -n "${_w}" ] && printf '%s\n' "${_s} ${_v:0:1}.${_v:1:1} ${_w}"
-    printf '%s\n' "# ${_r}"
+    if [ "${_x}" = "site" ]; then
+      _s="${_a##*/}"
+      _s="${_s%.alias.drushrc.php}"
+      [[ "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
+      case "${_s}" in
+        hostmaster|hm) continue ;;
+      esac
+      case "${_r}" in
+        "${_h}"/aegir/*) continue ;;
+      esac
+      _v="${_sv[${_s}]:-${_df:-${_d}}}"
+      [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
+      [ -n "${_wc[${_v}|${_r}]+x}" ] || _wc["${_v}|${_r}"]=$(_ltd_fpm_why "${_r}" "${_v}")
+      _w="${_wc[${_v}|${_r}]}"
+      [ -n "${_w}" ] && printf '%s\n' "${_s} ${_v:0:1}.${_v:1:1} ${_w}"
+      printf '%s\n' "# ${_r}"
+      if [ -n "${_w}" ] && [ -n "${_ft}" ]; then
+        [ -n "${_nc[${_v}|${_r}]+x}" ] || _nc["${_v}|${_r}"]=$(_ltd_fpm_nearest "${_r}" "${_v}" "${_ft}")
+        [ -n "${_nc[${_v}|${_r}]}" ] && printf '%s\n' "> ${_s} ${_nc[${_v}|${_r}]}"
+      fi
+    else
+      case "${_r}" in
+        "${_h}/static/"?*) ;;
+        *) continue ;;
+      esac
+      [ -n "${_cd[${_r}]+x}" ] || printf '%s\n' "# ${_r}"
+    fi
+    [ -z "${_cd[${_r}]+x}" ] || continue
+    _cd["${_r}"]=1
+    _rp=$(cd -P -- "${_r}" 2> /dev/null && printf '%s' "${PWD}") || _rp="${_r}"
+    _cv=""
+    _bp=""
+    _best=0
+    for (( _i = 0; _i < ${#_lp[@]}; _i++ )); do
+      case "${_rp}/" in
+        "${_lp[_i]}/"*)
+          if [ "${#_lp[_i]}" -ge "${_best}" ]; then
+            _best="${#_lp[_i]}"
+            _cv="${_lv[_i]}"
+            _bp="${_lp[_i]}"
+          fi
+          ;;
+      esac
+    done
+    # the folder from the real path, as websh matches it (the account's
+    # static tree spelt as such when the box mounts it elsewhere)
+    _kp="${_rp}"
+    if [ -n "${_stp}" ] && [ "${_stp}" != "${_h}/static" ]; then
+      case "${_kp}/" in
+        "${_stp}/"*) _kp="${_h}/static${_kp#"${_stp}"}" ;;
+      esac
+    fi
+    _k=$(_ltd_fpm_cli_key "${_h}" "${_kp}") || continue
+    # a move starts from the codebase's own folder's line, else from
+    # cli.info: a line of a folder above it is no choice made for it
+    _cb="${_ac}"
+    if [ -n "${_cv}" ]; then
+      _ltd_cpp_key_norm "${_k}"
+      _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}") && [ "${_p}" = "${_bp}" ] && _cb="${_cv}"
+    else
+      _cv="${_ac}"
+    fi
+    [ -n "${_cv}" ] || continue
+    [ -n "${_cb}" ] || _cb="${_cv}"
+    # codebases websh takes for one folder (web/ and html/ below it) share
+    # its line: one version must run them all
+    if [ -z "${_kc[${_k}]+x}" ]; then
+      _ko+="${_k}"$'\n'
+      _kc["${_k}"]="${_cv}"
+      _kb["${_k}"]="${_cb}"
+      _kw["${_k}"]=""
+    fi
+    _kr["${_k}"]+="${_r}"$'\n'
+    if [ -z "${_kw[${_k}]}" ]; then
+      _kw["${_k}"]=$(_ltd_fpm_why "${_r}" "${_kc[${_k}]}")
+    fi
   done
+  while IFS= read -r _k; do
+    [ -n "${_k}" ] && [ -n "${_kw[${_k}]}" ] || continue
+    _t=$(_ltd_fpm_nearest "${_kr[${_k}]}" "${_kb[${_k}]}" "${_ci}")
+    printf '%s\n' "~ ${_t:--} ${_kc[${_k}]} ${_k} ${_kw[${_k}]}"
+  done <<< "${_ko}"
 }
 # The page check's inputs, as one sum: the account's site aliases, its FPM
-# includes, its default version ($1), the files that decide each site it
-# judged last time ($2 = their roots, one a line), taken through a link as
-# the judge reads them, so that a change to a site's code is seen on the
-# next pass, and the check's own code (without its comments), so that a new
-# worker judges every account again on its first pass instead of a day later.
+# includes, its default version ($1), the versions its sites can be moved to
+# ($3) and those installed ($4), its lasting command-line choices (what
+# cli.info and cli-per-platform.info hold: the worker writes cli.info again
+# on some accounts every pass, the same value; a link at either name, which
+# websh follows, by its target's stat), the files that decide each
+# site it judged last time ($2 = their roots, one a line), taken through a
+# link as the judge reads them, so that a change to a site's code is seen on
+# the next pass, and the check's own code (without its comments), so that a
+# new worker judges every account again on its first pass instead of a day
+# later.
 _ltd_fpm_sig() {
   local _f _fs=()
   while IFS= read -r _f; do
@@ -7925,10 +8097,19 @@ _ltd_fpm_sig() {
   done < <(head -n 1000 "${2}" 2> /dev/null)
   {
     stat -c '%n %i %Y %s' -- "${_dscUsr}"/.drush/*.alias.drushrc.php 2> /dev/null
+    for _f in cli.info cli-per-platform.info; do
+      if [ -L "${_dscUsr}/static/control/${_f}" ]; then
+        timeout -k 2 10 stat -L -c '%n %i %Y %s' -- "${_dscUsr}/static/control/${_f}" 2> /dev/null
+      else
+        _ltd_ctrl_read "${_f}" | head -c 65536 | md5sum
+      fi
+    done
     _ltd_ngx_fpm_fp
-    echo "${1}"
+    echo "${1} ${3} ${4}"
     [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
     declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
+      _ltd_fpm_nearest _ltd_fpm_cli_key _ltd_cpp_key_norm _ltd_cpp_key_path _ltd_fpm_usable \
+      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli \
       _ltd_fpm_core_check
   } | md5sum | cut -d' ' -f1
 }
@@ -7936,7 +8117,8 @@ _ltd_fpm_sig() {
 # versions the includes name on stdin. setpriv, not su: su starts its shell
 # in a session of its own, where the timeout cannot reach what the shell
 # started, and a child left behind holds the output open. $1 = the default
-# version (NN).
+# version (NN), $2 = the versions a site can be moved to, $3 = the versions
+# installed (_ltd_fpm_usable).
 _ltd_fpm_judge_as() {
   local _uid _gid _sv
   _uid=$(id -u -- "${_USER}" 2> /dev/null)
@@ -7945,40 +8127,323 @@ _ltd_fpm_judge_as() {
   _sv=$(_ltd_fpm_served)
   timeout -k 10 120 setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
     env -i PATH="/usr/local/bin:/usr/bin:/bin" /bin/bash \
-    -c "$(declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_judge); _ltd_fpm_judge $(printf '%q' "${_dscUsr}") ${1}" \
+    -c "$(declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_nearest _ltd_fpm_cli_key \
+      _ltd_cpp_key_norm _ltd_cpp_key_path _ltd_fpm_judge); _ltd_fpm_judge $(printf '%q' "${_dscUsr}") ${1} $(printf '%q' "${2}") $(printf '%q' "${3}")" \
     2> /dev/null <<< "${_sv}"
+}
+# The PHP versions installed, as NN in BOA's order; with $1 = fpm only those
+# a site of the account can be moved to: the account's pool for it up, and
+# only in multi-FPM mode, where a site can have a version of its own (the
+# pools' own mode test: multi-fpm.info and tools/le).
+_ltd_fpm_usable() {
+  local _e _out=""
+  if [ "${1}" = "fpm" ]; then
+    [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] || return 0
+  fi
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -x "/opt/php${_e}/bin/php" ] || continue
+    [ "${1}" = "fpm" ] && [ ! -e "/run/${_USER}.${_e}.fpm.socket" ] && continue
+    _out="${_out} ${_e}"
+  done
+  echo "${_out# }"
+}
+# The page check's own rows whose site or folder is gone: a comment row it
+# wrote ("# <date> BOA moved <name> from PHP ...") and the row right after
+# it, when that row names the same site or folder (in force or commented
+# out), go together once the site's alias or the folder is gone. A deleted
+# platform's line would otherwise be named in a warning on every drush and
+# composer command and in every task log, and every row counts towards the
+# 200 lines websh reads. A row the tenant wrote is never removed, and a
+# cli-per-platform.info left with blank lines alone is removed. $1 = fpm
+# (multi-fpm.info) or cli (cli-per-platform.info). Prints the names whose
+# rows went.
+_ltd_fpm_prune() {
+  local LC_ALL=C
+  local IFS=$' \t\n'
+  local _f _body _i _n _k _rk _p _new="" _out="" _gone
+  local -a _ls=()
+  case "${1}" in
+    fpm) _f=multi-fpm.info ;;
+    cli) _f=cli-per-platform.info ;;
+    *) return 0 ;;
+  esac
+  [ -f "${_dscUsr}/static/control/${_f}" ] && [ ! -L "${_dscUsr}/static/control/${_f}" ] || return 0
+  _body=$(_ltd_ctrl_read "${_f}")
+  grep -q '^# [0-9-]* BOA moved ' <<< "${_body}" || return 0
+  mapfile -t _ls <<< "${_body}"
+  _n="${#_ls[@]}"
+  for (( _i = 0; _i < _n; _i++ )); do
+    _gone=NO
+    if [[ "${_ls[_i]}" =~ ^#\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ BOA\ moved\ ([^ ]+)\ from\ PHP\  ]] \
+      && [ "$(( _i + 1 ))" -lt "${_n}" ]; then
+      _k="${BASH_REMATCH[1]}"
+      _rk=""
+      if [ "${1}" = "fpm" ]; then
+        read -r _rk _ <<< "${_ls[_i+1]#\#}"
+        _rk=${_rk//[^a-zA-Z0-9-.]/}
+        _rk=${_rk,,}
+        [[ "${_k}" =~ ^[a-z0-9.-]+$ ]] && [ "${_rk}" = "${_k}" ] \
+          && [ ! -e "${_dscUsr}/.drush/${_k}.alias.drushrc.php" ] && _gone=YES
+      else
+        _rk="${_ls[_i+1]#\#}"
+        read -r _rk _ <<< "${_rk%%#*}"
+        if [ "${_rk}" = "${_k}" ] \
+          && [[ "${_k}" =~ ^(~/(static|distro)/|/data/all/)?[A-Za-z0-9._-][A-Za-z0-9._/-]*$ ]] \
+          && [[ "/${_k}/" != */../* ]] && [[ "/${_k}/" != */./* ]] && [[ "${_k}" != *//* ]]; then
+          _ltd_cpp_key_norm "${_k}"
+          _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}") && [ -d "${_p}" ] || _gone=YES
+        fi
+      fi
+    fi
+    if [ "${_gone}" = "YES" ]; then
+      _out+="${_k}"$'\n'
+      _i=$(( _i + 1 ))
+      continue
+    fi
+    _new+="${_ls[_i]}"$'\n'
+  done
+  [ -n "${_out}" ] || return 0
+  # a cli-per-platform.info left with nothing but blank lines goes
+  if [ "${1}" = "cli" ] && [[ "${_new}" != *[![:space:]]* ]]; then
+    _ltd_ctrl_rm "${_f}"
+  else
+    _ltd_ctrl_put "${_f}" "${_new%$'\n'}" || return 0
+  fi
+  printf '%s' "${_out}"
+}
+# A multi-fpm.info row read as the include builder reads it
+# (_site_socket_inc_gen): the site name is the first word of the text
+# before the first space, the version the first word of the text after it
+# (the whole row when it holds no space), its digits; a name starting with
+# # is a comment. Sets _LTD_MR_S (lower case, empty for a comment or no
+# name) and _LTD_MR_V. $1 = the row.
+_ltd_fpm_mrow() {
+  local _f1="${1%% *}" _f2="${1}" _s="" _v=""
+  [[ "${1}" == *" "* ]] && _f2="${1#* }" && _f2="${_f2%% *}"
+  read -r _s _ <<< "${_f1}"
+  read -r _v _ <<< "${_f2}"
+  _LTD_MR_S=""
+  _LTD_MR_V="${_v//[^0-9]/}"
+  [[ "${_s}" == \#* ]] && return 0
+  _s=${_s//[^a-zA-Z0-9-.]/}
+  _LTD_MR_S="${_s,,}"
+}
+# The page check's moves into the main login's multi-fpm.info: each site the
+# judge found a version for ("> <site> <NN>" lines in $1, its "<site> <x.y>
+# <why>" line in $2) gets the line "<site> <n.n>" at the end, below a comment
+# row that says when and why, and its own rows are commented out, never
+# removed. A site is moved only when its last row names the version that
+# serves it, or names none BOA runs: a row naming another version has not
+# taken effect yet (its pool, that version's install, the next pass) and
+# waits, so it is left as it is, and so is the site. The file is read and
+# put back once, as the main login's; the judge's lines are the account's
+# and are taken only in the alphabet a site name and a version have. Prints
+# "<site> <x.y> <n.n> <why>" for each site moved.
+_ltd_fpm_move_fpm() {
+  local IFS=$' \t\n'
+  local _body _line _s _v _t _w _new="" _done="" _day
+  local -A _to=() _was=() _why=() _cur=()
+  while read -r _ _s _t; do
+    [[ "${_s}" =~ ^[a-z0-9.-]+$ ]] && [[ "${_t}" =~ ^(56|7[0-4]|8[0-6])$ ]] || continue
+    _to["${_s}"]="${_t}"
+  done <<< "${1}"
+  [ "${#_to[@]}" -gt 0 ] || return 0
+  while read -r _s _v _w; do
+    [[ "${_s}" =~ ^[a-z0-9.-]+$ ]] && [ -n "${_to[${_s}]+x}" ] || continue
+    _was["${_s}"]="${_v//[^0-9.]/}"
+    _w="${_w//[^A-Za-z0-9 ._\/:,()+-]/}"
+    _why["${_s}"]="${_w:0:200}"
+  done <<< "${2}"
+  _body=$(_ltd_ctrl_read multi-fpm.info)
+  # each site's last row
+  while IFS= read -r _line; do
+    _ltd_fpm_mrow "${_line}"
+    [ -n "${_LTD_MR_S}" ] && [ -n "${_to[${_LTD_MR_S}]+x}" ] || continue
+    _cur["${_LTD_MR_S}"]="${_LTD_MR_V}"
+  done <<< "${_body}"
+  for _s in "${!_to[@]}"; do
+    _v="${_cur[${_s}]:-}"
+    case "${_v}" in
+      56|70|71|72|73|74|80|81|82|83|84|85|86)
+        [ "${_v}" = "${_was[${_s}]//./}" ] || continue
+        ;;
+    esac
+    _done+="${_s}"$'\n'
+  done
+  _done=$(printf '%s' "${_done}" | LC_ALL=C sort)
+  [ -n "${_done}" ] || return 0
+  if [ -n "${_body}" ]; then
+    while IFS= read -r _line; do
+      _ltd_fpm_mrow "${_line}"
+      [ -n "${_LTD_MR_S}" ] && [[ $'\n'"${_done}"$'\n' == *$'\n'"${_LTD_MR_S}"$'\n'* ]] && _line="#${_line}"
+      _new+="${_line}"$'\n'
+    done <<< "${_body}"
+  fi
+  _day=$(date +%F)
+  while read -r _s; do
+    _t="${_to[${_s}]:0:1}.${_to[${_s}]:1:1}"
+    _new+="# ${_day} BOA moved ${_s} from PHP ${_was[${_s}]:-?} to ${_t}: ${_why[${_s}]:-}"$'\n'
+    _new+="${_s} ${_t}"$'\n'
+  done <<< "${_done}"
+  _ltd_ctrl_put multi-fpm.info "${_new%$'\n'}" || return 0
+  while read -r _s; do
+    printf '%s\n' "${_s} ${_was[${_s}]:-?} ${_to[${_s}]:0:1}.${_to[${_s}]:1:1} ${_why[${_s}]:-}"
+  done <<< "${_done}"
+}
+# The same into the main login's cli-per-platform.info: each folder the judge
+# found a version for ("~ <NN> <CC> <folder> <why>" lines in $1) gets the
+# line "<folder> <n.n>" at the end, below a comment row, and the rows of the
+# same folder, as websh spells it (_ltd_cpp_key_norm), are commented out. A
+# folder whose row in force already names that version is not written again
+# and is named: that row does not reach the codebase.
+# websh reads only the first 200 lines and 64 KiB, so a move that would put
+# the file past them is not made, nor one into a file that is not a plain
+# one (a link the tenant keeps there stays). Prints "<folder> <c.c> <n.n>
+# <why>" for each folder moved and "! <folder> <c.c> <why> (<what stopped
+# it>)" for each one not moved.
+_ltd_fpm_move_cli() {
+  local LC_ALL=C
+  local IFS=$' \t\n'
+  local _f="${_dscUsr}/static/control/cli-per-platform.info"
+  local _body="" _line _k _v _t _c _w _rest _new="" _out="" _day _n=0 _done="" _no=""
+  local -A _to=() _key=() _was=() _why=() _cur=()
+  while read -r _ _t _c _k _w; do
+    [[ "${_c}" =~ ^(56|7[0-4]|8[0-6])$ ]] || continue
+    [[ "${_t}" == "-" || "${_t}" =~ ^(56|7[0-4]|8[0-6])$ ]] || continue
+    # a folder in the forms _ltd_fpm_cli_key writes: relative to ~/static,
+    # ~/static/..., ~/distro/... or /data/all/...
+    [[ "${_k}" =~ ^(~/(static|distro)/|/data/all/)?[A-Za-z0-9._-][A-Za-z0-9._/-]*$ ]] \
+      && [[ "/${_k}/" != */../* ]] && [[ "/${_k}/" != */./* ]] && [[ "${_k}" != *//* ]] || continue
+    _w="${_w//[^A-Za-z0-9 ._\/:,()+-]/}"
+    if [ "${_t}" = "-" ]; then
+      _out+="! ${_k} ${_c:0:1}.${_c:1:1} ${_w:0:200} (no PHP installed can run it)"$'\n'
+      continue
+    fi
+    _ltd_cpp_key_norm "${_k}"
+    [[ "${_LTD_CPP_KN}" =~ ^[A-Za-z0-9._/-]+$ ]] || continue
+    _to["${_LTD_CPP_KN}"]="${_t}"
+    _key["${_LTD_CPP_KN}"]="${_k}"
+    _was["${_LTD_CPP_KN}"]="${_c:0:1}.${_c:1:1}"
+    _why["${_LTD_CPP_KN}"]="${_w:0:200}"
+  done <<< "${1}"
+  if [ "${#_to[@]}" -gt 0 ]; then
+    if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] && _body=$(_ltd_ctrl_read cli-per-platform.info) \
+        || _no="cli-per-platform.info is not a plain file"
+    fi
+  fi
+  if [ "${#_to[@]}" -gt 0 ] && [ -z "${_no}" ]; then
+    # the row in force of each folder: the last of the first 200 rows
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -le 200 ] || break
+      _line="${_line%%#*}"
+      _k=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _ltd_cpp_key_norm "${_k}"
+      [[ "${_LTD_CPP_KN}" =~ ^[A-Za-z0-9._/-]+$ ]] && [ -n "${_to[${_LTD_CPP_KN}]+x}" ] || continue
+      _cur["${_LTD_CPP_KN}"]="${_v//[^0-9]/}"
+    done <<< "${_body}"
+    for _k in "${!_to[@]}"; do
+      if [ "${_cur[${_k}]:-}" = "${_to[${_k}]}" ]; then
+        # the line is there, yet the codebase gets another PHP: it does not
+        # reach the codebase
+        _out+="! ${_key[${_k}]} ${_was[${_k}]} ${_why[${_k}]} (its line does not reach the codebase)"$'\n'
+      else
+        _done+="${_k}"$'\n'
+      fi
+    done
+    _done=$(printf '%s' "${_done}" | sort)
+  fi
+  if [ -n "${_done}" ]; then
+    if [ -n "${_body}" ]; then
+      while IFS= read -r _line; do
+        _c="${_line%%#*}"
+        _k=""
+        read -r _k _v _rest <<< "${_c}"
+        if [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ]; then
+          _ltd_cpp_key_norm "${_k}"
+          [[ "${_LTD_CPP_KN}" =~ ^[A-Za-z0-9._/-]+$ ]] \
+            && [[ $'\n'"${_done}"$'\n' == *$'\n'"${_LTD_CPP_KN}"$'\n'* ]] && _line="#${_line}"
+        fi
+        _new+="${_line}"$'\n'
+      done <<< "${_body}"
+    fi
+    _day=$(date +%F)
+    while IFS= read -r _k; do
+      _t="${_to[${_k}]:0:1}.${_to[${_k}]:1:1}"
+      _new+="# ${_day} BOA moved ${_key[${_k}]} from PHP ${_was[${_k}]} to ${_t}: ${_why[${_k}]}"$'\n'
+      _new+="${_key[${_k}]} ${_t}"$'\n'
+    done <<< "${_done}"
+    if [ "$(printf '%s' "${_new}" | wc -l)" -gt 200 ] || [ "${#_new}" -gt 65536 ]; then
+      _no="cli-per-platform.info would pass the 200 lines websh reads"
+    elif ! _ltd_ctrl_put cli-per-platform.info "${_new%$'\n'}"; then
+      _no="cli-per-platform.info could not be written"
+    fi
+    while IFS= read -r _k; do
+      if [ -n "${_no}" ]; then
+        _out+="! ${_key[${_k}]} ${_was[${_k}]} ${_why[${_k}]} (${_no})"$'\n'
+      else
+        _out+="${_key[${_k}]} ${_was[${_k}]} ${_to[${_k}]:0:1}.${_to[${_k}]:1:1} ${_why[${_k}]}"$'\n'
+      fi
+    done <<< "${_done}"
+  elif [ -n "${_no}" ]; then
+    for _k in "${!_to[@]}"; do
+      _out+="! ${_key[${_k}]} ${_was[${_k}]} ${_why[${_k}]} (${_no})"$'\n'
+    done
+  fi
+  printf '%s' "${_out}"
 }
 # The page check: nothing stops a PHP-FPM version from serving a site whose
 # code cannot run on it (fpm.info, a multi-fpm.info line, or the fallback
 # when the version asked for is not installed), and such a site then answers
-# 500 on every page with nothing logged. The account's sites are judged as
-# the account (it reads its own aliases and platforms, every read bounded)
-# whenever the inputs may have changed -- its site aliases, the FPM includes,
-# its default version, the files that decide each site -- and once a day.
-# The sum kept is the one taken before the judge ran, so a change made while
-# it ran is judged on the next pass; when the sites' roots were not the ones
-# summed, there is no sum and the next pass judges again with them.
+# 500 on every page with nothing logged; nor a command-line PHP from running
+# the tasks of a codebase that cannot run on it, which websh then refuses.
+# The account's sites are judged as the account (it reads its own aliases,
+# platforms and control files, every read bounded) whenever the inputs may
+# have changed -- its site aliases, the FPM includes, its default version,
+# the versions installed, its command-line choices, the files that decide
+# each site -- and once a day. The sum kept is the one taken before the
+# judge ran, so a change made while it ran is judged on the next pass; when
+# the sites' roots were not the ones summed, there is no sum and the next
+# pass judges again with them.
 # A run cut off after two minutes is not repeated before a change or a day:
-# a name the account planted must not hold up every pass of the box. The
-# sites found are listed, with
-# the version and the reason, in ~/static/control/.fpm-core.info for the
-# account (websh shows a site's line in its drush output and task logs), and
-# in a daily notice for the operator; the file goes when none is left.
-# Nothing is held back or switched: the fix is the codebase's, or a
-# multi-fpm.info line for a version that can run it.
+# a name the account planted must not hold up every pass of the box.
+# Such a site is moved to the installed version nearest to the one serving
+# it that can run its code, by a multi-fpm.info line, and such a codebase to
+# the one nearest to its own folder's line, else to cli.info, by a
+# cli-per-platform.info line
+# (_ltd_fpm_move_fpm, _ltd_fpm_move_cli): the tenant's own files, so the
+# move is in view and stays theirs to change, and websh, Composer and every
+# Aegir task follow it as they follow a line the tenant wrote. The includes
+# of a site moved are built in this pass; the operator gets a notice of each
+# move, and the next pass judges again. Nothing is moved on a standby box,
+# whose control files come from its primary, nor a site in single-FPM mode,
+# where one pool serves every site of the account. A site left on a PHP its
+# code cannot run is listed, with the version and the reason, in
+# ~/static/control/.fpm-core.info for the account (websh shows a site's line
+# in its drush output and task logs), and in a daily notice for the
+# operator; the file goes when none is left. A codebase left so goes into a
+# daily notice too. The check's own rows for a site or folder that is gone go
+# first (_ltd_fpm_prune).
 _ltd_fpm_core_check() {
+  local IFS=$' \t\n'
   local _st="/var/backups/ltd/fpmcore" _sig _old _age _out _rc _d _n _ro _rn
+  local _ft _ci _fl _mv="" _mc="" _ok="" _nok="" _dt="" _s _v _t _w _sub _pf=""
   mkdir -p "${_st}" && chmod 700 "${_st}"
   _d=$(_ltd_read_in "${_dscUsr}/log" fpm.txt | tr -cd '0-9')
   [[ "${_d}" =~ ^[5-9][0-9]$ ]] || _d=84
-  _sig=$(_ltd_fpm_sig "${_d}" "${_st}/${_USER}.roots")
+  _ft=$(_ltd_fpm_usable fpm)
+  _ci=$(_ltd_fpm_usable cli)
+  _sig=$(_ltd_fpm_sig "${_d}" "${_st}/${_USER}.roots" "${_ft}" "${_ci}")
   _old=$(head -c 64 "${_st}/${_USER}.sig" 2> /dev/null)
   _age=$(stat -c %Y "${_st}/${_USER}.sig" 2> /dev/null)
   if [ "${_sig}" = "${_old}" ] && [[ "${_age}" =~ ^[0-9]+$ ]] \
     && [ "$(( $(date +%s) - _age ))" -lt 86400 ]; then
     return 0
   fi
-  _out=$(_ltd_fpm_judge_as "${_d}")
+  _out=$(_ltd_fpm_judge_as "${_d}" "${_ft}" "${_ci}")
   _rc="$?"
   if [ "${_rc}" -ge 124 ]; then
     echo "${_sig}" > "${_st}/${_USER}.sig"
@@ -7996,16 +8461,66 @@ _ltd_fpm_core_check() {
     printf '%s\n' "${_rn}" > "${_st}/${_USER}.roots"
     rm -f "${_st}/${_USER}.sig"
   fi
-  _out=$(printf '%s\n' "${_out}" | grep -E '^[a-z0-9.-]+ [5-9]\.[0-9] .' | head -n 500)
-  if [ -n "${_out}" ]; then
-    _n=$(printf '%s\n' "${_out}" | wc -l)
+  _fl=$(printf '%s\n' "${_out}" | grep -E '^[a-z0-9.-]+ [5-9]\.[0-9] .' | head -n 500)
+  if [ ! -e "/root/.standby.cnf" ]; then
+    _pf=$(_ltd_fpm_prune fpm)
+    while read -r _s; do
+      [ -n "${_s}" ] && echo "INFO: multi-fpm.info row of ${_USER} for ${_s}, a site that is gone, removed"
+    done <<< "${_pf}"
+    while read -r _s; do
+      [ -n "${_s}" ] && echo "INFO: cli-per-platform.info line of ${_USER} for ${_s}, a folder that is gone, removed"
+    done <<< "$(_ltd_fpm_prune cli)"
+    _mv=$(_ltd_fpm_move_fpm "$(printf '%s\n' "${_out}" | grep -E '^> ' | head -n 500)" "${_fl}")
+    _mc=$(_ltd_fpm_move_cli "$(printf '%s\n' "${_out}" | grep -E '^~ ' | head -n 200)")
+  fi
+  if [ -n "${_mv}" ]; then
+    # the sites moved leave the list
+    _fl=$(printf '%s\n' "${_fl}" | awk 'NR == FNR { if ($1 != "") m[$1] = 1; next } $1 != "" && !($1 in m)' \
+      <(printf '%s\n' "${_mv}") -)
+  fi
+  # the includes, and the list of rows that wait, follow multi-fpm.info now
+  [ -n "${_mv}${_pf}" ] && _site_socket_inc_gen
+  _ok=$(printf '%s\n' "${_mc}" | grep -v -e '^! ' -e '^$')
+  _nok=$(printf '%s\n' "${_mc}" | grep '^! ')
+  if [ -n "${_mv}${_ok}" ]; then
+    rm -f "${_st}/${_USER}.sig"
+    while read -r _s _v _t _w; do
+      [ -n "${_s}" ] || continue
+      echo "INFO: site ${_s} of ${_USER} moved from PHP-FPM ${_v} to ${_t}: ${_w}"
+      _dt+="site ${_s}: PHP-FPM ${_v} -> ${_t} (${_w}); "
+    done <<< "${_mv}"
+    while read -r _s _v _t _w; do
+      [ -n "${_s}" ] || continue
+      echo "INFO: platform ${_s} of ${_USER} moved from command-line PHP ${_v} to ${_t}: ${_w}"
+      _dt+="platform ${_s}: command-line PHP ${_v} -> ${_t} (${_w}); "
+    done <<< "${_ok}"
+    _n=$(printf '%s\n' "${_mv}" "${_ok}" | grep -c .)
+    _ltd_notice "fpm-moved-${_USER}-$(printf '%s\n' "${_mv}" "${_ok}" | md5sum | cut -c1-12)" \
+      "${_n} site(s) or platform(s) of ${_USER} moved to a PHP their code can run" \
+      "${_dt:0:2000}"
+  fi
+  if [ -n "${_fl}" ]; then
+    _n=$(printf '%s\n' "${_fl}" | wc -l)
+    if [ -e "/root/.standby.cnf" ]; then
+      _sub="not moved on a standby box"
+    elif [ -z "${_ft}" ]; then
+      _sub="not moved: one PHP-FPM pool serves every site of the account"
+    else
+      _sub="not moved: no PHP installed with a pool of the account can run them, or the line moving them waits in .multi-fpm-skipped.info"
+    fi
     echo "ALRT: ${_n} site(s) of ${_USER} are served by a PHP their code cannot run, see ${_dscUsr}/static/control/.fpm-core.info"
-    _ltd_ctrl_put .fpm-core.info "${_out}"
+    _ltd_ctrl_put .fpm-core.info "${_fl}"
     _ltd_notice_daily "fpm-core-${_USER}" \
       "${_n} site(s) of ${_USER} are served by a PHP their code cannot run" \
-      "$(printf '%s\n' "${_out}" | head -n 5 | tr '\n' ';')"
+      "$(printf '%s\n' "${_fl}" | head -n 5 | tr '\n' ';') ${_sub}"
   else
     _ltd_ctrl_rm .fpm-core.info
+  fi
+  if [ -n "${_nok}" ]; then
+    _n=$(printf '%s\n' "${_nok}" | wc -l)
+    _ltd_notice_daily "cli-core-${_USER}" \
+      "${_n} platform(s) of ${_USER} run their tasks on a PHP their code cannot run" \
+      "$(printf '%s\n' "${_nok}" | head -n 5 | sed 's/^! //' | tr '\n' ';')"
   fi
 }
 # Requests PHP-FPM cut at its time limit (request_terminate_timeout), one

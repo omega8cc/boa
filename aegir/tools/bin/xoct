@@ -3441,7 +3441,7 @@ _xoct_heal_fpm_pins() {
   ### the ones that do not -- a silent wrong-interpreter site is the whole
   ### failure this heal exists to prevent.
   while read -r _dom _ver; do
-    case "${_dom}" in ''|place.holder*) continue ;; esac
+    case "${_dom}" in ''|place.holder*|\#*) continue ;; esac
     [ -z "${_ver}" ] && continue
     _ver="${_ver//[^0-9]/}"
     [ -z "${_ver}" ] && continue

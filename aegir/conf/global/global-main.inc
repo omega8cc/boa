@@ -293,27 +293,36 @@ if (!$is_backend && PHP_SAPI !== 'cli' && !function_exists('boa_log_fatal_error'
         $label = 'PHP Parse error:  ';
         break;
       case E_RECOVERABLE_ERROR:
-        $label = PHP_VERSION_ID < 80000 ? 'PHP Catchable fatal error:  ' :
+        // PHP's own label up to 7.0, renamed in 7.1.
+        $label = PHP_VERSION_ID < 70100 ? 'PHP Catchable fatal error:  ' :
           'PHP Recoverable fatal error:  ';
         break;
       default:
         $label = 'PHP Fatal error:  ';
     }
-    // The host and path are the visitor's: every byte outside printable ASCII
-    // is written as \xHH, the way nginx writes its access log.
+    // The host and path are the visitor's: every byte outside printable ASCII,
+    // and the quote and backslash, is written as \xHH, the way nginx writes its
+    // access log; a cut never leaves half an escape behind.
     $hex = function ($m) {
       return sprintf('\x%02X', ord($m[0]));
     };
-    $host = preg_replace_callback('/[^\x20-\x7E]/',
-      $hex, isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-');
-    $uri = preg_replace_callback('/[^\x20-\x7E]/',
-      $hex, isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-');
-    // One line: no control character, C1 included, reaches the log.
+    $cut = function ($s, $n) {
+      return preg_replace('/\\\\(?:x[0-9A-F]?)?$/', '', substr($s, 0, $n));
+    };
+    $host = $cut(preg_replace_callback('/[^\x20\x21\x23-\x5B\x5D-\x7E]/',
+      $hex, isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-'), 100);
+    $uri = $cut(preg_replace_callback('/[^\x20\x21\x23-\x5B\x5D-\x7E]/',
+      $hex, isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-'), 150);
+    // One line: no control character, C1 included, reaches the log. In text
+    // that is not UTF-8 a byte above ASCII may be a C1 control on its own.
     $line = $label . substr($error['message'], 0, 500) . ' in ' . $error['file'] .
       ' on line ' . $error['line'];
     $line = preg_replace('/[\x00-\x1F\x7F]|\xC2[\x80-\x9F]/', '?',
       preg_replace('/[\r\n\t]+/', ' ', $line));
-    error_log($line . '; host ' . substr($host, 0, 100) . ', uri ' . substr($uri, 0, 150));
+    if (!preg_match('//u', $line)) {
+      $line = preg_replace('/[\x80-\xFF]/', '?', $line);
+    }
+    error_log($line . '; host ' . $host . ', uri ' . $uri);
   }
   register_shutdown_function('boa_log_fatal_error');
 }

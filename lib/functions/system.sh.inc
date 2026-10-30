@@ -2712,8 +2712,8 @@ _php_vrn_dotted() {
 # the ltd worker reads them), or a multi-fpm.info row that pins a site to it
 # (its second field; a '#' row is a comment), the worker's own
 # place.holder.dont.remove row included, as for the other versions. 8.6
-# inside a comment, a domain or a longer value does not count, unlike the
-# substring checks of the other versions in _php_if_versions_cleanup_cnf.
+# inside a comment, a domain or a longer value does not count;
+# _php_if_versions_cleanup_cnf skips comment rows and domains too.
 _php_eight_six_asked() {
   local _c _f _v
   for _c in /data/disk/*/static/control; do
@@ -3119,8 +3119,14 @@ _php_if_versions_cleanup_cnf() {
         _msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
       fi
 
+      ### multi-fpm.info read as the ltd worker reads it: a '#' row is a
+      ### comment, and only a row's second field names a version (a comment
+      ### row the worker writes when it moves a site names others)
+      _mltPinVrns=$(_acct_read_all static/control multi-fpm.info \
+        | awk '$1 !~ /^#/ && NF >= 2 { print $2 }')
+
       ### Add PHP 5.6 if used
-      _is_PHP_multi_five_six=$(_acct_read_all static/control multi-fpm.info | grep "5\.6" 2>&1)
+      _is_PHP_multi_five_six=$(grep "5\.6" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | grep "5\.6" 2>&1)
       _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | grep "5\.6" 2>&1)
       _is_PHP_five_six=
@@ -3132,7 +3138,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.0 if used
-      _is_PHP_multi_seven_zero=$(_acct_read_all static/control multi-fpm.info | grep "7\.0" 2>&1)
+      _is_PHP_multi_seven_zero=$(grep "7\.0" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | grep "7\.0" 2>&1)
       _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | grep "7\.0" 2>&1)
       _is_PHP_seven_zero=
@@ -3144,7 +3150,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.1 if used
-      _is_PHP_multi_seven_one=$(_acct_read_all static/control multi-fpm.info | grep "7\.1" 2>&1)
+      _is_PHP_multi_seven_one=$(grep "7\.1" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | grep "7\.1" 2>&1)
       _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | grep "7\.1" 2>&1)
       _is_PHP_seven_one=
@@ -3156,7 +3162,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.2 if used
-      _is_PHP_multi_seven_two=$(_acct_read_all static/control multi-fpm.info | grep "7\.2" 2>&1)
+      _is_PHP_multi_seven_two=$(grep "7\.2" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | grep "7\.2" 2>&1)
       _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | grep "7\.2" 2>&1)
       _is_PHP_seven_two=
@@ -3168,7 +3174,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.3 if used
-      _is_PHP_multi_seven_three=$(_acct_read_all static/control multi-fpm.info | grep "7\.3" 2>&1)
+      _is_PHP_multi_seven_three=$(grep "7\.3" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | grep "7\.3" 2>&1)
       _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | grep "7\.3" 2>&1)
       _is_PHP_seven_three=
@@ -3180,7 +3186,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.4 if used
-      _is_PHP_multi_seven_four=$(_acct_read_all static/control multi-fpm.info | grep "7\.4" 2>&1)
+      _is_PHP_multi_seven_four=$(grep "7\.4" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | grep "7\.4" 2>&1)
       _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | grep "7\.4" 2>&1)
       _is_PHP_seven_four=
@@ -3192,7 +3198,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.0 if used
-      _is_PHP_multi_eight_zero=$(_acct_read_all static/control multi-fpm.info | grep "8\.0" 2>&1)
+      _is_PHP_multi_eight_zero=$(grep "8\.0" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | grep "8\.0" 2>&1)
       _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | grep "8\.0" 2>&1)
       _is_PHP_eight_zero=
@@ -3204,7 +3210,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.1 if used
-      _is_PHP_multi_eight_one=$(_acct_read_all static/control multi-fpm.info | grep "8\.1" 2>&1)
+      _is_PHP_multi_eight_one=$(grep "8\.1" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | grep "8\.1" 2>&1)
       _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | grep "8\.1" 2>&1)
       _is_PHP_eight_one=
@@ -3216,7 +3222,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.2 if used
-      _is_PHP_multi_eight_two=$(_acct_read_all static/control multi-fpm.info | grep "8\.2" 2>&1)
+      _is_PHP_multi_eight_two=$(grep "8\.2" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | grep "8\.2" 2>&1)
       _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | grep "8\.2" 2>&1)
       _is_PHP_eight_two=
@@ -3228,7 +3234,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.3 if used
-      _is_PHP_multi_eight_three=$(_acct_read_all static/control multi-fpm.info | grep "8\.3" 2>&1)
+      _is_PHP_multi_eight_three=$(grep "8\.3" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | grep "8\.3" 2>&1)
       _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | grep "8\.3" 2>&1)
       _is_PHP_eight_three=
@@ -3240,7 +3246,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.4 if used
-      _is_PHP_multi_eight_four=$(_acct_read_all static/control multi-fpm.info | grep "8\.4" 2>&1)
+      _is_PHP_multi_eight_four=$(grep "8\.4" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | grep "8\.4" 2>&1)
       _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | grep "8\.4" 2>&1)
       _is_PHP_eight_four=
@@ -3252,7 +3258,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.5 if used
-      _is_PHP_multi_eight_five=$(_acct_read_all static/control multi-fpm.info | grep "8\.5" 2>&1)
+      _is_PHP_multi_eight_five=$(grep "8\.5" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | grep "8\.5" 2>&1)
       _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | grep "8\.5" 2>&1)
       _is_PHP_eight_five=
