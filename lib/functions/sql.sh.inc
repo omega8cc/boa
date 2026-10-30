@@ -2180,14 +2180,6 @@ _sql_initd_check() {
       _want=glibc
       ;;
   esac
-  if [ "${_want}" = "jemalloc" ] && [ ! -r "${_lib}" ]; then
-    _msg "INFO: Installing libjemalloc2 for _SQL_MALLOC=jemalloc..."
-    _mrun "${_INSTAPP} libjemalloc2"
-    if [ ! -r "${_lib}" ]; then
-      _msg "NOTE: ${_lib} is still missing after the libjemalloc2 install, mysqld keeps glibc"
-      _want=glibc
-    fi
-  fi
   _srv=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
     | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
     | head -1 \
@@ -2195,6 +2187,16 @@ _sql_initd_check() {
   if grep -q "Start and stop Percona MySQL server" "${_ini}" 2> /dev/null \
     || [[ -n "${_srv}" && "${_srv}" != "5.7" ]]; then
     _own=YES
+  fi
+  # Only BOA's own script reads the setting: on a 5.7 server still started by
+  # the package's script, mysqld_safe would preload a library installed here.
+  if [ "${_own}" = "YES" ] && [ "${_want}" = "jemalloc" ] && [ ! -r "${_lib}" ]; then
+    _msg "INFO: Installing libjemalloc2 for _SQL_MALLOC=jemalloc..."
+    _mrun "${_INSTAPP} libjemalloc2"
+    if [ ! -r "${_lib}" ]; then
+      _msg "NOTE: ${_lib} is still missing after the libjemalloc2 install, mysqld keeps glibc"
+      _want=glibc
+    fi
   fi
   if [ "${_own}" = "YES" ] && ! cmp -s "${_tpl}" "${_ini}"; then
     # a restart may be reading the old script right now: replace by rename
@@ -2205,7 +2207,8 @@ _sql_initd_check() {
       _msg "INFO: MySQL init script updated, it applies at the next mysqld start"
     else
       rm -f "${_ini}.new"
-      _msg "NOTE: MySQL init script could not be updated"
+      _msg "NOTE: MySQL init script could not be updated: the old one stays, and _SQL_MALLOC does not apply"
+      _own=OLD
     fi
   fi
   _pid=$(pgrep -x mysqld | head -n 1)
@@ -2221,7 +2224,7 @@ _sql_initd_check() {
     if [ "${_run}" != "${_want}" ]; then
       _msg "NOTE: mysqld runs on ${_run}: the package's own init script starts this 5.7 server through mysqld_safe, and _SQL_MALLOC=${_want} does not apply"
     fi
-  elif [ "${_run}" != "${_want}" ]; then
+  elif [ "${_own}" = "YES" ] && [ "${_run}" != "${_want}" ]; then
     _msg "NOTE: mysqld runs on ${_run}; ${_want} (_SQL_MALLOC) applies at its next restart"
   fi
 }

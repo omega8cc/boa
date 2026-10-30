@@ -58,21 +58,26 @@ pick_malloc() {
     fi
 }
 
-# One error log line naming the allocator the started server runs on, read
-# from its own memory map, and the transparent huge pages mode it started
-# under.
+# One error log line naming the allocator the launched server runs on, read
+# from its own memory map, and the transparent huge pages mode it runs
+# under. It is written 5 seconds after the launch, before the server may be
+# ready to serve.
 log_malloc() {
     _PID=$(pgrep -x mysqld | head -n 1)
     [ -n "$_PID" ] || return 0
     _THP=$(sed -n 's/.*\[\(.*\)\].*/\1/p' /sys/kernel/mm/transparent_hugepage/enabled 2> /dev/null)
     if grep -q libjemalloc "/proc/$_PID/maps" 2> /dev/null; then
-        _ALLOC="jemalloc ($JEMALLOC_CONF)"
+        if [ -n "$_MALLOC_LIB" ]; then
+            _ALLOC="jemalloc ($JEMALLOC_CONF)"
+        else
+            _ALLOC="jemalloc (not preloaded by this script)"
+        fi
     else
         [ -n "$_MALLOC_LIB" ] && _MALLOC_WHY="$_MALLOC_LIB did not load"
         _ALLOC="glibc malloc"
         [ -n "$_MALLOC_WHY" ] && _ALLOC="$_ALLOC ($_MALLOC_WHY)"
     fi
-    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) BOA: mysqld $_PID started on $_ALLOC, transparent huge pages ${_THP:-unknown}" >> "$ERRORLOG"
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) BOA: mysqld $_PID runs on $_ALLOC, transparent huge pages ${_THP:-unknown}" >> "$ERRORLOG"
 }
 
 # Start Percona MySQL Server
