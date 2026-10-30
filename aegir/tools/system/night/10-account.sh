@@ -1941,11 +1941,20 @@ _night_site_path_lines_here() {
 }
 
 # In the current (pinned) .drush: one tab-separated line per platform alias,
-# its file name, the root it names (read as the cleanup loop reads it) and
-# the docroot served from there, or the root again when there is none.
+# its file name, the root it names (read as the cleanup loop reads it), the
+# docroot served from there (the root again when there is none) and where
+# that docroot resolves, so two spellings of one tree through a link match.
+# $1, an epoch: only the aliases written since then.
 _night_platform_root_lines_here() {
   local _f _r _d
-  for _f in ./platform_*.alias.drushrc.php; do
+  local -a _l
+  if [ -n "${1:-}" ]; then
+    mapfile -d '' -t _l < <(find . -mindepth 1 -maxdepth 1 -type f \
+      -name 'platform_*.alias.drushrc.php' -newermt "@${1}" -print0 2> /dev/null)
+  else
+    _l=( ./platform_*.alias.drushrc.php )
+  fi
+  for _f in "${_l[@]}"; do
     _r=$(_acct_read_plain_here "${_f#./}" \
       | grep "root'" \
       | cut -d: -f2 \
@@ -1953,13 +1962,23 @@ _night_platform_root_lines_here() {
       | sed "s/[\,']//g" 2>&1)
     [ -n "${_r}" ] || continue
     _d=$(_detect_real_docroot "${_r}")
-    printf '%s\t%s\t%s\n' "${_f#./}" "${_r}" "${_d:-${_r}}"
+    printf '%s\t%s\t%s\t%s\n' "${_f#./}" "${_r}" "${_d:-${_r}}" \
+      "$(realpath -e -- "${_d:-${_r}}" 2> /dev/null)"
   done
   return 0
 }
 
+# A task of user $1 in flight in any phase: its front end (hosting-task, before
+# the backend child exists), the backend's provision-<task> and its executor.
+_night_user_tasks_alive() {
+  pgrep -u "$1" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u "$1" -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
+  pgrep -u "$1" -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _check_old_empty_platforms() {
-  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _twin
+  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _rootNew _snapT _twin _twinMsg
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
@@ -1983,6 +2002,7 @@ _check_old_empty_platforms() {
       # FIFO; the site_path lines are read once for the whole loop. The
       # list comes on fd 3: the drush calls below read stdin.
       _siteLines=$(_acct_in_real_dir "${_drD}" _night_site_path_lines_here)
+      _snapT=$(date +%s)
       _rootLines=$(_acct_in_real_dir "${_drD}" _night_platform_root_lines_here)
       while IFS= read -r _pf <&3; do
         _pf="${_pf#./}"
@@ -2025,11 +2045,36 @@ _check_old_empty_platforms() {
           # A tree another alias also names is never deleted here: the alias
           # of a platform the control panel already deleted can name a live
           # platform's tree, and its Delete removes that platform's code.
+          # A runner started before the nightly, or an Octopus pass, can run
+          # the account's tasks while the loop does: none may be in flight,
+          # and an alias written since the list was read joins it (the list
+          # itself is kept, so an alias moved meanwhile still counts).
+          if _night_boa_pass_active || _night_user_tasks_alive "${_HM_U}"; then
+            echo "INFO: a task of ${_HM_U} or a BOA pass is running -- stopping empty-platform cleanup"
+            break
+          fi
+          _rootNew=$(_acct_in_real_dir "${_drD}" \
+            _night_platform_root_lines_here "$(( _snapT - 1 ))")
           _twin=$(awk -F '\t' -v f="${_pf}" -v r="${_T_PFM_ROOT}" \
             -v d="${_T_PFM_DOC:-${_T_PFM_ROOT}}" \
-            '$1 != f && ($2 == r || $3 == d) { print $1; exit }' <<< "${_rootLines}")
+            -v x="$(realpath -e -- "${_T_PFM_DOC:-${_T_PFM_ROOT}}" 2> /dev/null)" \
+            '$1 != f && ($2 == r || $3 == d || (x != "" && $4 == x)) { print $1; exit }' \
+            <<< "${_rootLines}"$'\n'"${_rootNew}")
           if [ -n "${_twin}" ]; then
-            echo "WARNING: platform_${_T_PFM_NAME} names the same tree as ${_twin%.alias.drushrc.php} (${_T_PFM_DOC:-${_T_PFM_ROOT}}): neither is deleted; remove the alias of the one the control panel no longer lists"
+            # alias names and paths are the account's: printable ASCII only
+            # into the box-wide incident log and the operator's mail
+            _twinMsg=$(printf '%s' "platform_${_T_PFM_NAME} names the same tree as ${_twin%.alias.drushrc.php} (${_T_PFM_DOC:-${_T_PFM_ROOT}}): neither is deleted; remove the alias of the one the control panel no longer lists" \
+              | LC_ALL=C tr -cd ' -~' | cut -c1-600)
+            echo "WARNING: ${_twinMsg}"
+            # a log line alone is silence: tell the operator, never the
+            # account's address, as for the web group drift
+            if declare -F _night_notice > /dev/null 2>&1; then
+              ( _MY_OCTO_EMAIL=""
+                _MY_EMAIL="${_ADMIN_EMAIL:-}"
+                _night_notice "pfm-twin-${_HM_U}" \
+                  "BOA nightly on $(hostname -f): two platforms name one tree on ${_HM_U}" \
+                  "${_HM_U}: ${_twinMsg}" )
+            fi
           else
             _delete_this_platform
           fi
