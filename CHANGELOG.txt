@@ -39,9 +39,18 @@
       control panel had already deleted still named the same tree, that
       alias's Delete removed the tree under the live platform. The nightly
       now deletes no platform whose tree another platform alias also names,
-      in an Octopus account and on the Aegir master alike, and logs a
-      warning that names both aliases; remove the alias of the one the
-      control panel no longer lists.
+      by the same path or through a link, an alias written while the sweep
+      runs included, in an Octopus account and on the Aegir master alike,
+      and stops for the night while a task of the account or of the master
+      runs; it tells the server's operator which two aliases name the tree,
+      in /var/log/boa/nightly.incident.log and a daily mail (unless
+      _INCIDENT_REPORT is OFF); remove the alias of the one the control
+      panel no longer lists.
+
+    * On the Aegir master, the nightly removal of old empty platforms read
+      a platform name that itself holds "platform_" as the shorter name
+      after it, so its Delete could go to another platform. It now takes
+      the whole name, as it always did in an Octopus account.
 
     * The ssh login monitor (hackcheck) banned an address for a single
       connection closed before login even when that address had logged
