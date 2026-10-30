@@ -516,6 +516,7 @@ _spawn_detached() {
 # waits on it; sqlsnap.sh keeps one set per cooldown.
 _incident_snapshot() {
   [ -e "${_monPath}/sqlsnap.sh" ] || return 0
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
   _spawn_detached "bash ${_monPath}/sqlsnap.sh $1 ${_pthOml}"
 }
 

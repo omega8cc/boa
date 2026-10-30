@@ -388,6 +388,12 @@ _sql_restart() {
     mkdir -p /run/mysqld
     chown -R mysql:root /run/mysqld
   fi
+  # What the server was doing goes with the restart: save the box's view of
+  # it first (sqlsnap.sh reads the threads before it asks the database).
+  if [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] && [ "${_INCIDENT_SNAPSHOT^^}" != "NO" ]; then
+    _sql_snapshot_start "sql-down"
+    sleep 3
+  fi
   if pgrep -x mysqld > /dev/null 2>&1; then
     # Present but not answering = wedged/deadlocked. A plain start would no-op on
     # the live PID, so force a db-only restart (stop the hung mysqld, start fresh).
@@ -556,23 +562,41 @@ _mysql_proc_control() {
 ### dumps among it, is not counted. Not gated on the web pause markers: a
 ### pause is when it matters.
 ###
+_sql_snapshot_start() {
+  # Without this run's lock: it would be held until the snapshot ends.
+  (
+    [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
+    exec bash /var/xdrago/monitor/check/sqlsnap.sh "$1" "${_pthOml}"
+  ) > /dev/null 2>&1 &
+}
+
 _sql_stall_snapshot() {
-  local _n _rc _why
+  local _out _n _rc _why _mins
   [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
-  _n=$(timeout 10 mysql --connect-timeout=3 -Nse "SELECT COUNT(*) FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command IN ('Query', 'Execute') AND time >= ${_SQL_STALL_SECS} AND user NOT IN ('root', 'system user', 'event_scheduler');" 2>/dev/null)
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  # Nothing to ask while the last database snapshot is inside its cooldown.
+  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
+  _mins="${_mins:0:4}"
+  _mins=$(( 10#${_mins:-15} ))
+  (( _mins < 1 )) && _mins=1
+  if [ -e "/run/boa_sqlsnap.sql.last" ] \
+    && [ -z "$(find /run/boa_sqlsnap.sql.last -mmin "+${_mins}" 2>/dev/null)" ]; then
+    return 0
+  fi
+  _out=$(timeout -k 2 10 mysql --connect-timeout=3 -Nse "SELECT COUNT(*) FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command NOT IN ('Sleep', 'Daemon', 'Binlog Dump', 'Binlog Dump GTID', 'Killed') AND time >= ${_SQL_STALL_SECS} AND user NOT IN ('root', 'system user', 'event_scheduler');" 2>&1)
   _rc=$?
-  if [ "${_rc}" -eq 124 ]; then
+  _n="${_out//[^0-9]/}"
+  if [ "${_rc}" -eq 124 ] || [ "${_rc}" -eq 137 ] \
+    || { [ "${_rc}" -ne 0 ] && [[ "${_out}" =~ ERROR\ (2013|1040) ]]; }; then
+    # No answer in time, a connection dropped before the greeting, or no
+    # connection left even for root.
     _why="sql-noanswer"
-  elif [[ "${_n}" =~ ^[0-9]+$ ]] && (( 10#${_n} >= _SQL_STALL_COUNT )); then
+  elif [ "${_rc}" -eq 0 ] && [[ "${_n}" =~ ^[0-9]+$ ]] && (( 10#${_n} >= _SQL_STALL_COUNT )); then
     _why="sql-stall"
   else
     return 0
   fi
-  # Without this run's lock: it would be held until the snapshot ends.
-  (
-    [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
-    exec bash /var/xdrago/monitor/check/sqlsnap.sh "${_why}" "${_pthOml}"
-  ) > /dev/null 2>&1 &
+  _sql_snapshot_start "${_why}"
   # A heal below may restart the server: the snapshot reads it first.
   sleep 3
 }

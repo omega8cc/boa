@@ -11,12 +11,14 @@
 # the box could say which thread had held it. second.sh calls this when a
 # load tier fires, ahead of any kill or pause; mysql.sh calls it when many
 # queries have been running long at once, the shape of such a stall while
-# it is still there.
+# it is still there, and right before it restarts a server that stopped
+# answering.
 #
-# Read-only on the database. Every client call is time-bounded, so a server
-# that does not answer costs seconds, never a hung capture. The files hold
-# queries and command lines: root only, mode 600, under /var/log/boa/incident,
-# with any password given on a command line or in a statement replaced.
+# Read-only on the database. Every call is time-bounded, so a server that
+# does not answer costs seconds, never a hung capture, and the box's own
+# state is read first. The files hold queries and command lines: root only,
+# mode 600, under /var/log/boa/incident, any password given on a command line
+# or in a statement replaced as each file is written.
 #
 # Usage: sqlsnap.sh <reason> [/var/log/boa/<name>.incident.log]
 # Off with _INCIDENT_SNAPSHOT=NO in /root/.barracuda.cnf.
@@ -25,33 +27,56 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_SNAP_ROOT="/var/log/boa/incident"
-_SNAP_LAST="/run/boa_sqlsnap.last"
-
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+# Set after the cnf, so nothing sourced or inherited can move them.
+_SNAP_ROOT="/var/log/boa/incident"
+_SNAP_MAX=200
 
 _INCIDENT_SNAPSHOT="${_INCIDENT_SNAPSHOT^^}"
 [ "${_INCIDENT_SNAPSHOT}" = "NO" ] && exit 0
 
-# Minutes between two snapshots: an incident that flaps between tiers, or
-# trips both callers, writes one set.
+# A database being upgraded, converted or moved on purpose is no incident;
+# mysql.sh stands down on the same marker and ignores it past four hours.
+if [ -e "/run/boa_sql_maintenance.pid" ] \
+  && [ -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ]; then
+  exit 0
+fi
+
+# Minutes between two snapshots of one kind: an incident that flaps between
+# tiers writes one set.
 _SQLSNAP_COOLDOWN_MINS="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
 _SQLSNAP_COOLDOWN_MINS="${_SQLSNAP_COOLDOWN_MINS:0:4}"
 : "${_SQLSNAP_COOLDOWN_MINS:=15}"
 _SQLSNAP_COOLDOWN_MINS=$(( 10#${_SQLSNAP_COOLDOWN_MINS} ))
 (( _SQLSNAP_COOLDOWN_MINS < 1 )) && _SQLSNAP_COOLDOWN_MINS=1
-# Days a snapshot is kept, and the most kept at once whatever their age.
+# Days a snapshot is kept; never more than _SNAP_MAX of them, nor more than
+# _SQLSNAP_KEEP_MB in all, crawler-block ones going first.
 _SQLSNAP_KEEP_DAYS="${_SQLSNAP_KEEP_DAYS//[^0-9]/}"
 _SQLSNAP_KEEP_DAYS="${_SQLSNAP_KEEP_DAYS:0:4}"
 : "${_SQLSNAP_KEEP_DAYS:=14}"
 _SQLSNAP_KEEP_DAYS=$(( 10#${_SQLSNAP_KEEP_DAYS} ))
 (( _SQLSNAP_KEEP_DAYS < 1 )) && _SQLSNAP_KEEP_DAYS=1
-_SQLSNAP_KEEP_MAX=200
+_SQLSNAP_KEEP_MB="${_SQLSNAP_KEEP_MB//[^0-9]/}"
+_SQLSNAP_KEEP_MB="${_SQLSNAP_KEEP_MB:0:6}"
+: "${_SQLSNAP_KEEP_MB:=1024}"
+_SQLSNAP_KEEP_MB=$(( 10#${_SQLSNAP_KEEP_MB} ))
+(( _SQLSNAP_KEEP_MB < 64 )) && _SQLSNAP_KEEP_MB=64
 
 _REASON="${1//[^a-zA-Z0-9.-]/}"
 _REASON="${_REASON:0:40}"
 [ -n "${_REASON}" ] || _REASON="manual"
+
+# One cooldown per kind, so a crawler block or a backup window at high load
+# never holds back the snapshot of a database stall that follows it.
+case "${_REASON}" in
+  spider-*) _KIND=spider ;;
+  max-*|critical-*) _KIND=load ;;
+  sql-*) _KIND=sql ;;
+  *) _KIND=other ;;
+esac
+_SNAP_LAST="/run/boa_sqlsnap.${_KIND}.last"
 
 # The incident log the caller mails from; the line naming the snapshot goes
 # there, so the mail that follows carries it.
@@ -64,10 +89,9 @@ done
 _SELF_NAME="sqlsnap.sh"
 if command -v _single_instance_lock >/dev/null 2>&1; then
   _single_instance_lock
-elif ! mkdir /run/sqlsnap.lock 2>/dev/null; then
-  exit 0
-else
-  trap 'rm -rf /run/sqlsnap.lock' EXIT
+elif command -v flock >/dev/null 2>&1; then
+  exec 9> /run/sqlsnap.lock
+  flock -n 9 || exit 0
 fi
 
 # Checked under the lock, so two callers in the same second write one set.
@@ -76,9 +100,14 @@ if [ -e "${_SNAP_LAST}" ] \
   exit 0
 fi
 
-# Only a real directory takes the files.
+# Only a real directory takes the files, and never on a full disk.
 if [ -L "${_SNAP_ROOT}" ] || { [ -e "${_SNAP_ROOT}" ] && [ ! -d "${_SNAP_ROOT}" ]; }; then
   echo "$(date) INFO: incident snapshot (${_REASON}) not saved: ${_SNAP_ROOT} is not a directory" >> "${_pthOml}"
+  exit 1
+fi
+_USED="$(df -P /var/log/boa 2>/dev/null | awk 'NR==2 {gsub("%", "", $5); print $5}')"
+if [[ "${_USED}" =~ ^[0-9]+$ ]] && (( _USED >= 90 )); then
+  echo "$(date) INFO: incident snapshot (${_REASON}) not saved: /var/log/boa is ${_USED}% full" >> "${_pthOml}"
   exit 1
 fi
 umask 077
@@ -91,36 +120,41 @@ mkdir "${_DIR}" 2>/dev/null || exit 1
 touch "${_SNAP_LAST}"
 echo "$(date) INFO: incident snapshot (${_REASON}) saved to ${_DIR}" >> "${_pthOml}"
 
-# Credentials never stay in a snapshot: a password a dump or client tool got on
-# its command line, or a password literal in a statement, is replaced by ***.
+# Credentials never reach a file: a password a tool got on its command line
+# (an option, a database URL, a dump tool's -p), or a password literal in a
+# statement, is replaced by *** as the file is written.
+_REDACT_SED="$(cat <<'EOF'
+s/(--[a-z_-]*pass(word|wd)?[= ])[^ ]+/\1***/g
+s#(://[^:/@ ]+:)[^@ ]+@#\1***@#g
+\%(^|[ /])(mysql|mysqldump|mydumper|myloader|mysqladmin|mysqlcheck|mysqlpump)(\.bin)?( |$)% s/( -p)[^ ]+/\1***/g
+\%(^|[ /])(mydumper|myloader)(\.bin)?( |$)% s/( -p) [^ -][^ ]*/\1 ***/g
+s/(IDENTIFIED( |\\n)+(WITH [^ ]+( |\\n)+)?BY( |\\n)+|PASSWORD *(FOR [^=]+)?= *|PASSWORD *\( *|REPLACE )'([^'\\]|\\.)*'/\1'***'/Ig
+s/(IDENTIFIED( |\\n)+(WITH [^ ]+( |\\n)+)?BY( |\\n)+|PASSWORD *(FOR [^=]+)?= *|PASSWORD *\( *|REPLACE )"([^"\\]|\\.)*"/\1"***"/Ig
+EOF
+)"
 _redact() {
-  sed -E -i \
-    -e 's/(--password[= ])[^ ]+/\1***/g' \
-    -e '/(^|[ /])(mysql|mysqldump|mydumper|myloader|mysqladmin|mysqlcheck|mysqlpump)( |$)/ s/( -p)[^ ]+/\1***/g' \
-    -e "s/(IDENTIFIED( WITH [^ ]+)? BY |PASSWORD *(FOR [^=]+)?= *|PASSWORD *\\( *)'[^']*'/\\1'***'/Ig" \
-    "$@" 2> /dev/null
+  sed -E -e "${_REDACT_SED}"
 }
 
-# One bounded client call; its output and exit status go to the file named.
+# Each capture is cut at this size: a stalled server's process list can hold
+# statements of many megabytes each.
+_FILE_MAX=$(( 16 * 1024 * 1024 ))
+
+# One bounded client call; its output, cut and redacted, and its exit status
+# go to the file named.
 _sql_to() {
   local _file="$1" _secs="$2" _rc
   shift 2
-  timeout "${_secs}" mysql --connect-timeout=3 "$@" > "${_DIR}/${_file}" 2>&1
-  _rc=$?
+  timeout -k 2 "${_secs}" mysql --connect-timeout=3 --quick "$@" 2>&1 \
+    | head -c "${_FILE_MAX}" | _redact > "${_DIR}/${_file}"
+  _rc="${PIPESTATUS[0]}"
   [ "${_rc}" -eq 0 ] || echo "(client exit ${_rc}; 124 means no answer within ${_secs} s)" >> "${_DIR}/${_file}"
   return "${_rc}"
 }
 
-# The database first: the queries waiting now are the evidence, and the
-# caller may stop web processes moments later.
-_sql_to processlist.txt 10 -e "SHOW FULL PROCESSLIST"
-_sql_to innodb_status.txt 15 -e "SHOW ENGINE INNODB STATUS\G"
-if [ "$(timeout 5 mysql --connect-timeout=3 -N -e "SELECT @@performance_schema" 2>/dev/null | tr -dc '0-9')" = "1" ]; then
-  # Metadata lock holders and waiters by connection id; empty when the
-  # instrument is off.
-  _sql_to metadata_locks.txt 10 -e "SELECT t.PROCESSLIST_ID, m.LOCK_STATUS, m.LOCK_TYPE, m.LOCK_DURATION, m.OBJECT_TYPE, m.OBJECT_SCHEMA, m.OBJECT_NAME FROM performance_schema.metadata_locks m LEFT JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE NOT IN ('TABLESPACE', 'BACKUP LOCK') ORDER BY m.LOCK_STATUS, t.PROCESSLIST_ID LIMIT 2000"
-fi
-
+# The box first, in under a second: when the database does not answer, the
+# SQL calls below can take half a minute, and the caller may stop web
+# processes meanwhile.
 {
   echo "reason: ${_REASON}"
   echo "date: $(date)"
@@ -134,37 +168,65 @@ fi
   done
   echo
   free -m 2>/dev/null
+  echo
+  df -P /var/log/boa /var/lib/mysql 2>/dev/null
 } > "${_DIR}/box.txt" 2>&1
 
 {
   # Every thread running or in uninterruptible wait, then mysqld's threads
   # by state and kernel wait, then PHP-FPM children per pool.
   echo "### threads in R or D state: state pid tid elapsed_s wchan comm args"
-  timeout 10 ps -eLo state=,pid=,tid=,etimes=,wchan:32=,comm=,args= 2>/dev/null \
+  timeout -k 2 10 ps -eLo state=,pid=,tid=,etimes=,wchan:32=,comm=,args= 2>/dev/null \
     | awk '$1 ~ /^[RD]/' | head -n 2000
   _MY_PID="$(pidof -s mysqld 2>/dev/null)"
   if [ -n "${_MY_PID}" ]; then
     echo
     echo "### mysqld ${_MY_PID} threads: count state wchan comm"
-    timeout 10 ps -L -o state=,wchan:32=,comm= -p "${_MY_PID}" 2>/dev/null \
+    timeout -k 2 10 ps -L -o state=,wchan:32=,comm= -p "${_MY_PID}" 2>/dev/null \
       | sort | uniq -c | sort -rn | head -n 200
   fi
   echo
   echo "### php-fpm children per pool"
-  timeout 10 ps -eo args= 2>/dev/null | awk '/^php-fpm: pool /{print $3}' \
+  timeout -k 2 10 ps -eo args= 2>/dev/null | awk '/^php-fpm: pool /{print $3}' \
     | sort | uniq -c | sort -rn
-} > "${_DIR}/processes.txt" 2>&1
+} 2>&1 | head -c "${_FILE_MAX}" | _redact > "${_DIR}/processes.txt"
 
-_redact "${_DIR}"/*.txt
+# Then the database: the connections and their statements (cut at 4 KB
+# each, the longest-running active ones first, idle ones last), InnoDB's own
+# view, and when performance_schema is on, who holds and who waits for each
+# metadata lock and which server thread each connection runs on.
+_sql_to processlist.txt 10 -e "SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, LEFT(INFO, 4096) AS INFO FROM information_schema.PROCESSLIST ORDER BY (COMMAND = 'Sleep'), TIME DESC"
+_sql_to innodb_status.txt 15 -e "SHOW ENGINE INNODB STATUS\G"
+if [ "$(timeout -k 2 5 mysql --connect-timeout=3 -N -e "SELECT @@performance_schema" 2>/dev/null | tr -dc '0-9')" = "1" ]; then
+  _sql_to metadata_locks.txt 10 -e "SELECT t.PROCESSLIST_ID, m.LOCK_STATUS, m.LOCK_TYPE, m.LOCK_DURATION, m.OBJECT_TYPE, m.OBJECT_SCHEMA, m.OBJECT_NAME FROM performance_schema.metadata_locks m LEFT JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE NOT IN ('TABLESPACE', 'BACKUP LOCK') ORDER BY (m.LOCK_STATUS = 'PENDING') DESC, t.PROCESSLIST_ID LIMIT 2000"
+  _sql_to threads.txt 10 -e "SELECT THREAD_ID, PROCESSLIST_ID, THREAD_OS_ID, NAME, PROCESSLIST_COMMAND, PROCESSLIST_STATE, PROCESSLIST_TIME FROM performance_schema.threads ORDER BY PROCESSLIST_TIME DESC LIMIT 2000"
+fi
+
 chmod 600 "${_DIR}"/* 2>/dev/null
 
-# Prune by age, then by count, oldest first; only names this script writes.
-find "${_SNAP_ROOT}" -mindepth 1 -maxdepth 1 -type d -name '20[0-9][0-9][0-1][0-9][0-3][0-9]-*' \
+# Prune: by age, then by count and by total size, oldest first, crawler-block
+# snapshots before any other; only names this script writes.
+_NAMES='20[0-9][0-9][0-1][0-9][0-3][0-9]-*'
+find "${_SNAP_ROOT}" -mindepth 1 -maxdepth 1 -type d -name "${_NAMES}" \
   -mtime "+${_SQLSNAP_KEEP_DAYS}" -exec rm -rf -- {} + 2>/dev/null
-find "${_SNAP_ROOT}" -mindepth 1 -maxdepth 1 -type d -name '20[0-9][0-9][0-1][0-9][0-3][0-9]-*' \
-  -printf '%f\n' 2>/dev/null | sort | head -n "-${_SQLSNAP_KEEP_MAX}" \
-  | while read -r _old; do
-      [ -n "${_old}" ] && rm -rf -- "${_SNAP_ROOT:?}/${_old}"
-    done
+_snap_list() {
+  {
+    find "${_SNAP_ROOT}" -mindepth 1 -maxdepth 1 -type d -name "${_NAMES}-spider-*" -printf '%f\n' | sort
+    find "${_SNAP_ROOT}" -mindepth 1 -maxdepth 1 -type d -name "${_NAMES}" ! -name "${_NAMES}-spider-*" -printf '%f\n' | sort
+  } 2>/dev/null
+}
+_snap_list | head -n "-${_SNAP_MAX}" | while read -r _old; do
+  [ -n "${_old}" ] && [ "${_SNAP_ROOT}/${_old}" != "${_DIR}" ] || continue
+  rm -rf -- "${_SNAP_ROOT:?}/${_old}"
+done
+_KB="$(du -sk "${_SNAP_ROOT}" 2>/dev/null | awk '{print $1}')"
+if [[ "${_KB}" =~ ^[0-9]+$ ]] && (( _KB > _SQLSNAP_KEEP_MB * 1024 )); then
+  _snap_list | while read -r _old; do
+    [ -n "${_old}" ] && [ "${_SNAP_ROOT}/${_old}" != "${_DIR}" ] || continue
+    _KB="$(du -sk "${_SNAP_ROOT}" 2>/dev/null | awk '{print $1}')"
+    [[ "${_KB}" =~ ^[0-9]+$ ]] && (( _KB > _SQLSNAP_KEEP_MB * 1024 )) || break
+    rm -rf -- "${_SNAP_ROOT:?}/${_old}"
+  done
+fi
 
 exit 0

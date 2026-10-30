@@ -2475,21 +2475,26 @@
       snapshot as the crawler block switches on and as the pause or kill
       tiers are first reached, ahead of its own cooldown, so no kill
       waits on it; the database watchdog takes one when ten or more site
-      queries have each been running 30 seconds or longer, or when the
-      process list does not come back within ten seconds while mysqld
-      runs.
-      Each snapshot (the full process list, InnoDB's status with its
-      semaphore waits, metadata lock holders when performance_schema is
-      on, every running or disk-waiting thread, mysqld's threads by state
-      and PHP-FPM children per pool) goes to
-      /var/log/boa/incident/<date>-<time>-<reason>/, readable by root
-      only, and is named in the incident log the alert mail is made from.
-      A password given to a dump or client tool on its command line, or
-      written into a statement, is replaced by *** in the saved files.
-      One snapshot per 15 minutes, kept 14 days and never more than 200.
-      Tunable in /root/.barracuda.cnf: _SQLSNAP_COOLDOWN_MINS,
-      _SQLSNAP_KEEP_DAYS, _SQL_STALL_SECS, _SQL_STALL_COUNT; off with
-      _INCIDENT_SNAPSHOT=NO.
+      queries have each been running 30 seconds or longer, when its
+      process list does not come back (no answer within ten seconds, a
+      connection lost before the greeting, no connection left), and
+      right before it restarts a server that stopped answering.
+      Each snapshot (every running or disk-waiting thread, mysqld's
+      threads by state and PHP-FPM children per pool, read first; then
+      the process list with each statement cut at 4 KB, InnoDB's status
+      with its semaphore waits, and when performance_schema is on the
+      metadata lock holders and waiters and the server thread of each
+      connection) goes to /var/log/boa/incident/<date>-<time>-<reason>/,
+      readable by root only, and is named in the incident log the alert
+      mail is made from. A password given on a command line (an option,
+      a database URL, a dump tool's -p) or written into a statement is
+      replaced by *** as each file is written. One snapshot per kind
+      (crawler block, load, database) per 15 minutes, none while the
+      database is in planned maintenance or /var/log/boa is 90% full;
+      kept 14 days, never more than 200 nor 1 GB in all, crawler-block
+      ones pruned first. Tunable in /root/.barracuda.cnf:
+      _SQLSNAP_COOLDOWN_MINS, _SQLSNAP_KEEP_DAYS, _SQLSNAP_KEEP_MB,
+      _SQL_STALL_SECS, _SQL_STALL_COUNT; off with _INCIDENT_SNAPSHOT=NO.
 
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
       modules/, DEC is Drupal 11 with CiviCRM's Drupal packages, and the
