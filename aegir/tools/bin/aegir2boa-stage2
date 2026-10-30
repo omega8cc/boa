@@ -469,15 +469,18 @@ _site_status_label() {
   esac
 }
 
-# precondition of export (1=export) and transfer (1=transfer): the records
-# check named are still the ones the panel holds, and a non-empty list was
-# acknowledged. export stands before any dump, while enabling a site still
-# moves it; transfer also needs the list the export ran with, since the
-# panel dump carries the records as they were then.
+# precondition of pre-mig (1=premig), of the db-import panel dump (1=dump)
+# and of transfer (1=transfer). A non-empty list of the records check named
+# needs its acknowledgement. pre-mig is where enabling a site still moves it
+# (the queue it pauses runs the enable task); the dump needs the panel's
+# records to be the list check named, since it carries them as they are
+# then, and records that list. transfer of a dumped panel needs the dump's
+# list to be check's (a change since then reaches neither the dump nor the
+# move, so it only warns); any other transfer needs the panel's records to
+# still be check's list.
 _left_behind_gate() {
   local _lbf="${_STATE_DIR}/state/left-behind.txt" _now _same=NO _n
   local _lbx="${_STATE_DIR}/state/left-behind.exported.txt"
-  local _back="revert --all, then resume, and start again from check"
   [[ -f "${_lbf}" ]] || _die "no list of the site records left behind - re-run check"
   _now="$(mktemp)" || _die "cannot make a temporary file"
   if ! _left_behind_read "${_now}"; then
@@ -486,20 +489,20 @@ _left_behind_gate() {
   fi
   cmp -s "${_now}" "${_lbf}" && _same=YES
   rm -f "${_now}"
-  if [[ "${_same}" != "YES" ]]; then
-    [[ "$1" = "export" ]] && _die "the site records left behind changed since check - re-run check"
-    _die "the site records left behind changed since check and the export - ${_back}"
-  fi
   _n="$(grep -c . "${_lbf}")"
   if [[ "${_n}" -gt 0 && "$(_kv_get "${_STATE_DIR}/state/check.env" LEFT_ACK)" != "YES" ]]; then
-    [[ "$1" = "export" ]] \
+    [[ "$1" = "premig" ]] \
       && _die "${_n} site record(s) named by check stay on this box - enable them to move them and re-run check, or re-run check with $(_ack_flags)"
     _die "${_n} site record(s) named by check stay on this box - re-run check with $(_ack_flags)"
   fi
-  if [[ "$1" = "transfer" ]]; then
-    [[ -f "${_lbx}" ]] && cmp -s "${_lbf}" "${_lbx}" \
-      || _die "the export ran with another list of the site records left behind (or recorded none) - ${_back}"
+  if [[ "$1" = "transfer" && -f "${_lbx}" ]]; then
+    cmp -s "${_lbf}" "${_lbx}" \
+      || _die "the panel dump carries another list of the site records left behind than check named - revert --all, then resume, and start again from check"
+    [[ "${_same}" = "YES" ]] \
+      || _alrt "the site records left behind changed since the panel dump: the new panel gets them as the dump found them"
+    return 0
   fi
+  [[ "${_same}" = "YES" ]] || _die "the site records left behind changed since check - re-run check"
   return 0
 }
 
@@ -1282,8 +1285,8 @@ verb_check() {
 
   # site records the move does not carry: both routes move enabled sites
   # only, and the db-import route pours every record with the panel, these
-  # included, without their databases. Each is named here; export and
-  # transfer refuse a non-empty list until check ran with
+  # included, without their databases. Each is named here; pre-mig, the
+  # panel dump and transfer refuse a non-empty list until check ran with
   # --accept-left-behind. An earlier run's acknowledgement is dropped first,
   # and the list replaces the recorded one only once read whole.
   local _lbf="${_STATE_DIR}/state/left-behind.txt" _lbu _lbs _lbn
@@ -1326,6 +1329,8 @@ verb_premig() {
   _require_source_box
   [[ -n "${_TARGET}" ]] || _die "pre-mig needs --target <ip>"
   _marker_has "pre-mig.pid" && _die "pre-mig already done (marker present) - use resume to undo"
+  # the records left behind are settled while enabling a site still moves it
+  _left_behind_gate premig
   local _scope="estate"
 
   if [[ "${_LIVE}" != "YES" ]]; then
@@ -1417,6 +1422,7 @@ verb_resume() {
   if _marker_has "hostmaster.exported.pid"; then
     _as_aegir "drush @hostmaster vset --always-set maintenance_mode 0" >>"${_LOG}" 2>&1
     rm -f "$(_marker "hostmaster.exported.pid")"
+    rm -f "${_STATE_DIR}/state/left-behind.exported.txt"
     _info "source panel taken out of maintenance mode (hostmaster export marker cleared)"
   fi
   rm -f "$(_marker "pre-mig.pid")"
@@ -1675,8 +1681,11 @@ verb_export() {
   local _scope="${_SITE:-all}" _route _fails=0 _name _uri
   _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
   [[ -n "${_route}" ]] || _die "no recorded route - run check first"
-  # the records left behind are settled before anything is paused or dumped
-  _left_behind_gate export
+  # a panel dump carries the site records as they are: they must be the list
+  # check named, settled before anything is paused or dumped
+  if [[ "${_route}" = "db-import" ]] && ! _marker_has "hostmaster.exported.pid"; then
+    _left_behind_gate dump
+  fi
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -1690,8 +1699,8 @@ verb_export() {
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
-  cp -p "${_STATE_DIR}/state/left-behind.txt" "${_STATE_DIR}/state/left-behind.exported.txt" \
-    || _die "cannot record the list of the site records left behind for this export"
+  local _hm_was=NO
+  _marker_has "hostmaster.exported.pid" && _hm_was=YES
 
   _msg "LIVE export (route=${_route})"
   while read -r _name _uri; do
@@ -1700,6 +1709,11 @@ verb_export() {
     _export_one "${_name}" "${_uri}" || _fails=$(( _fails + 1 ))
   done < <(_sites_list)
   [[ "${_route}" = "db-import" ]] && { _export_hostmaster || _fails=$(( _fails + 1 )); }
+  # the list the dump just carried, for transfer (a later export dumps nothing)
+  if [[ "${_hm_was}" = "NO" ]] && _marker_has "hostmaster.exported.pid"; then
+    cp -p "${_STATE_DIR}/state/left-behind.txt" "${_STATE_DIR}/state/left-behind.exported.txt" \
+      || _alrt "cannot record the list of the site records left behind this panel dump carries"
+  fi
   if [[ "${_fails}" -gt 0 ]]; then
     _alrt "export finished with ${_fails} per-site failure(s) - failed sites are NOT exported; others proceed"
   else
