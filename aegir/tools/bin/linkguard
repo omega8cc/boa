@@ -78,9 +78,11 @@ _LG_DEADLINE=""
 _LG_ERR_ACCT=0
 _LG_HEAL_BROKEN=""
 
-_msg() { echo "$*"; }
-_alrt() { echo "$*" >&2; }
-_die() { echo "ERROR: $*" >&2; exit 1; }
+# Every message prints control characters as '?': a path an account named
+# with a newline stays one line where the ownership fixers pass it on.
+_msg() { local _t="$*"; echo "${_t//[[:cntrl:]]/?}"; }
+_alrt() { local _t="$*"; echo "${_t//[[:cntrl:]]/?}" >&2; }
+_die() { local _t="$*"; echo "ERROR: ${_t//[[:cntrl:]]/?}" >&2; exit 1; }
 
 _usage() {
   sed -n '3,/^# Exit:/p' "$0" | sed 's/^# \{0,1\}//'
