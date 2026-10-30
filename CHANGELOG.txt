@@ -4,6 +4,29 @@
 
 @=> Important Fixes
 
+    * A site served by a PHP version its code cannot run (an old Drupal 7
+      or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
+      platform check that needs a newer PHP) is now moved to the installed
+      version nearest to it that can run the code, instead of only being
+      listed in ~/static/control/.fpm-core.info while every page answered
+      500. The ltd worker's page check writes the site's line into the
+      account's multi-fpm.info below a dated comment line that says why,
+      comments out a line the site already had, never deleting it, and the
+      site is served by the new version within the same pass; a line
+      naming another version that has not taken effect yet (that version
+      still to be installed, or its pool to start) is left alone. A
+      platform whose code cannot run on the command-line PHP chosen for it
+      (its cli-per-platform.info line, else cli.info; a phpNN.info marker
+      is temporary and moves nothing) gets a cli-per-platform.info line
+      the same way, a platform of the account's own with no site on it yet
+      included, so its tasks, drush and composer run again instead of
+      being refused. The operator gets a notice of every move. Once the
+      site or the platform folder is gone, the worker removes its own line
+      and comment line again, so a deleted platform leaves no warning
+      behind. Nothing is moved on a standby box or for an account on a
+      single PHP-FPM pool; a site no installed version can run stays
+      listed, as before.
+
     * A site renamed with Migrate Site while its aliases redirected to
       its own name answers on its new name again. The redirect stayed on
       the old name, which no site directory served any more: the old name
