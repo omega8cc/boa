@@ -1940,8 +1940,26 @@ _night_site_path_lines_here() {
   return 0
 }
 
+# In the current (pinned) .drush: one tab-separated line per platform alias,
+# its file name, the root it names (read as the cleanup loop reads it) and
+# the docroot served from there, or the root again when there is none.
+_night_platform_root_lines_here() {
+  local _f _r _d
+  for _f in ./platform_*.alias.drushrc.php; do
+    _r=$(_acct_read_plain_here "${_f#./}" \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    [ -n "${_r}" ] || continue
+    _d=$(_detect_real_docroot "${_r}")
+    printf '%s\t%s\t%s\n' "${_f#./}" "${_r}" "${_d:-${_r}}"
+  done
+  return 0
+}
+
 _check_old_empty_platforms() {
-  local _drD="${_usEr}/.drush" _pf _siteLines
+  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _twin
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
@@ -1965,6 +1983,7 @@ _check_old_empty_platforms() {
       # FIFO; the site_path lines are read once for the whole loop. The
       # list comes on fd 3: the drush calls below read stdin.
       _siteLines=$(_acct_in_real_dir "${_drD}" _night_site_path_lines_here)
+      _rootLines=$(_acct_in_real_dir "${_drD}" _night_platform_root_lines_here)
       while IFS= read -r _pf <&3; do
         _pf="${_pf#./}"
         _T_PFM_NAME="${_pf#platform_}"
@@ -2003,7 +2022,17 @@ _check_old_empty_platforms() {
         fi
         if [ -z "${_T_PFM_SITE}" ] \
           && [ -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/all" ]; then
-          _delete_this_platform
+          # A tree another alias also names is never deleted here: the alias
+          # of a platform the control panel already deleted can name a live
+          # platform's tree, and its Delete removes that platform's code.
+          _twin=$(awk -F '\t' -v f="${_pf}" -v r="${_T_PFM_ROOT}" \
+            -v d="${_T_PFM_DOC:-${_T_PFM_ROOT}}" \
+            '$1 != f && ($2 == r || $3 == d) { print $1; exit }' <<< "${_rootLines}")
+          if [ -n "${_twin}" ]; then
+            echo "WARNING: platform_${_T_PFM_NAME} names the same tree as ${_twin%.alias.drushrc.php} (${_T_PFM_DOC:-${_T_PFM_ROOT}}): neither is deleted; remove the alias of the one the control panel no longer lists"
+          else
+            _delete_this_platform
+          fi
         fi
       done 3< <(_acct_in_real_dir "${_drD}" find . -mindepth 1 -maxdepth 1 \
         -name 'platform_*' -mtime "+${_DEL_OLD_EMPTY_PLATFORMS}" -type f \
