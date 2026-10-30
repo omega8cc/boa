@@ -360,6 +360,70 @@ _kill_stuck_fire_external() {
 _kill_stuck_fire_external
 
 #
+# While graceful.sh sizes swap, /run/boa_swap_size.pid holds its PID and
+# /run/boa_swap_size.start that process's start time, which tells it from a
+# later process given the same PID. A marker whose process is gone is the
+# trace of a run that was killed.
+_swap_resize_running() {
+  local _rszPid _rszStart _rszNow _rszCmd
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [ -n "${_rszPid}" ] || return 1
+  # The start file holds "<PID> <start time>"; one left by another run is
+  # ignored.
+  _rszStart=$( { awk -v p="${_rszPid}" '$1 == p {print $2}' /run/boa_swap_size.start; } 2>/dev/null )
+  _rszStart="${_rszStart//[^0-9]/}"
+  if [ -n "${_rszStart}" ]; then
+    _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+    [ "${_rszNow}" = "${_rszStart}" ]
+    return
+  fi
+  # No start time yet (written just after the claim, or by an older
+  # graceful.sh): the process's own command line names graceful.sh.
+  _rszCmd=$( { tr '\0' ' ' < "/proc/${_rszPid}/cmdline"; } 2>/dev/null )
+  [[ "${_rszCmd}" == *"graceful.sh"* ]]
+}
+
+#
+# A marker left by a graceful.sh that is gone means a resize was cut short:
+# xmass, xoct and xcopy stop graceful.sh with kill -9 when they park it, and a
+# kill after the old /swapfile went off and before the new one came on leaves
+# the box without it until graceful.sh runs again, which a migration can hold
+# off for a day. Switch /swapfile back on, root-only, and clear the marker.
+# Only then: an operator's own swapoff leaves no marker and is left alone. A
+# file that is not a valid swap area is refused by swapon and left for
+# graceful.sh.
+_swap_heal_file() {
+  local _healPid
+  [[ -e "/run/boa_swap_size.pid" ]] || return 0
+  _healPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  # An empty marker is one being written (by graceful.sh before it was
+  # claimed by a link): leave it alone for a day.
+  if [[ -z "${_healPid}" ]]; then
+    [[ -n "$(find /run/boa_swap_size.pid -mmin -1440 2>/dev/null)" ]] && return 0
+  fi
+  _swap_resize_running && return 0
+  # The kill takes graceful.sh's bash, not a swapoff it started: that one
+  # empties its area for minutes and swapon refuses the area meanwhile. Keep
+  # the trace until it ends.
+  pgrep -x swapoff > /dev/null 2>&1 && return 0
+  if [[ -f "/swapfile" ]] && [[ ! -L "/swapfile" ]] \
+    && ! awk '$1 == "/swapfile" {f = 1} END {exit !f}' /proc/swaps; then
+    chown root:root /swapfile 2>/dev/null
+    chmod 600 /swapfile 2>/dev/null
+    if swapon /swapfile 2>/dev/null; then
+      echo "SWP /swapfile switched back on after a cut-short resize"
+      echo "$(date) /swapfile switched back on by autoupboa after a resize was cut short" >> /var/log/boa/swap-size.log
+    fi
+  fi
+  # Only the trace that was judged: a graceful.sh may have claimed a fresh
+  # marker meanwhile.
+  if [[ "$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )" = "${_healPid}" ]]; then
+    rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+  fi
+}
+_swap_heal_file
+
+#
 # Purge memory swap if bloated
 _swap_purge_if_bloated() {
   local _SWAP_THRESHOLD="${1:-50}"
@@ -380,9 +444,7 @@ _swap_purge_if_bloated() {
 
   if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
     # graceful.sh is resizing /swapfile: a swapoff -a now would undo half of it.
-    local _rszPid
-    _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
-    if [[ -n "${_rszPid}" ]] && kill -0 "${_rszPid}" 2>/dev/null; then
+    if _swap_resize_running; then
       echo "SWP swap resize in progress, purge skipped"
       return 0
     fi
@@ -400,13 +462,33 @@ _swap_purge_if_bloated() {
       return 1
     fi
     echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
-    if swapoff -a; then
-      echo "SWP swapoff complete"
-    else
-      echo "SWP swapoff failed"
+    # swapon -a brings back only what fstab lists: a zram device or any other
+    # area switched on outside fstab goes back on by name, at the priority it
+    # had when that was its own (0 or more; a negative one was the kernel's).
+    local _area _prio _areas _on_rc
+    _areas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
+    # swapoff -a goes on past an area it fails to empty; whatever it switched
+    # off goes back on either way.
+    local _off_rc
+    swapoff -a
+    _off_rc=$?
+    swapon -a
+    _on_rc=$?
+    for _area in ${_areas}; do
+      _prio="${_area##*:}"
+      _area="${_area%:*}"
+      awk -v a="${_area}" '$1 == a {f = 1} END {exit !f}' /proc/swaps && continue
+      if [[ "${_prio}" =~ ^[0-9]+$ ]]; then
+        swapon -p "${_prio}" "${_area}" 2>/dev/null
+      else
+        swapon "${_area}" 2>/dev/null
+      fi
+    done
+    if [[ "${_off_rc}" -ne 0 ]] && [[ "${_on_rc}" -eq 0 ]]; then
+      echo "SWP swapoff failed, the areas it switched off are back on"
       return 1
     fi
-    if swapon -a; then
+    if [[ "${_on_rc}" -eq 0 ]]; then
       echo "SWP swapon complete, swap purged successfully"
     else
       echo "SWP swapon failed after swapoff — swap may be offline"

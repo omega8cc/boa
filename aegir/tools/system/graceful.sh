@@ -619,6 +619,29 @@ _swap_off_fits() {
   [ $(( _availKb - $1 )) -ge "${_spare}" ]
 }
 
+# The resize marker: /run/boa_swap_size.pid holds the PID of the graceful.sh
+# sizing swap (the form earlier releases read too), /run/boa_swap_size.start
+# that process's start time. A resize runs while that very process lives: the
+# start time tells it from a later process given the same PID.
+_swap_resize_running() {
+  local _rszPid _rszStart _rszNow _rszCmd
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [ -n "${_rszPid}" ] || return 1
+  # The start file holds "<PID> <start time>"; one left by another run is
+  # ignored.
+  _rszStart=$( { awk -v p="${_rszPid}" '$1 == p {print $2}' /run/boa_swap_size.start; } 2>/dev/null )
+  _rszStart="${_rszStart//[^0-9]/}"
+  if [ -n "${_rszStart}" ]; then
+    _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+    [ "${_rszNow}" = "${_rszStart}" ]
+    return
+  fi
+  # No start time yet (written just after the claim, or by an older
+  # graceful.sh): the process's own command line names graceful.sh.
+  _rszCmd=$( { tr '\0' ' ' < "/proc/${_rszPid}/cmdline"; } 2>/dev/null )
+  [[ "${_rszCmd}" == *"graceful.sh"* ]]
+}
+
 # The swap total BOA aims for, the /swapfile size that gives it, and what to
 # do: "grow", "shrink" or "keep". Arguments in MB: RAM, other swap areas,
 # the current /swapfile, the 14-day peak use, and the size BOA recorded when
@@ -626,10 +649,11 @@ _swap_off_fits() {
 # 1 GB and at most 4 GB, raised to twice the peak, so a normal fortnight
 # stays near the half-full mark where autoupboa empties swap; a swap that ran
 # 90% full is doubled, as its samples cannot show how much more it needed.
-# Never above the RAM or 16 GB. The total grows only when it falls a fifth or
-# more short, so a peak that crept a little past half full does not resize
-# every fortnight. A file BOA built is shrunk when it is twice the size it
-# should be; any other /swapfile is only ever grown.
+# Never above the RAM (under 1 GB of RAM that wins over the floor) or 16 GB.
+# The total grows only when it falls a fifth or more short, so a peak that
+# crept a little past half full does not resize every fortnight. A file BOA
+# built is shrunk when it is twice the size it should be, never below 256 MB
+# and never removed; any other /swapfile is only ever grown.
 _swap_plan() {
   local _ram="$1" _oth="$2" _file="$3" _peak="$4" _made="$5"
   local _tot _base _want _cap _need _act="keep"
@@ -645,12 +669,8 @@ _swap_plan() {
   [ "${_want}" -lt "${_base}" ] && _want="${_base}"
   _cap="${_ram}"
   [ "${_cap}" -gt 16384 ] && _cap=16384
-  [ "${_cap}" -lt "${_base}" ] && _cap="${_base}"
-  if [ "${_want}" -ge "${_cap}" ]; then
-    _want=$(( _cap / 256 * 256 ))
-  else
-    _want=$(( (_want + 255) / 256 * 256 ))
-  fi
+  _want=$(( (_want + 255) / 256 * 256 ))
+  [ "${_want}" -gt "${_cap}" ] && _want=$(( _cap / 256 * 256 ))
   _need=$(( _want - _oth ))
   if [ "${_need}" -ge 256 ]; then
     if [ $(( _tot * 5 )) -le $(( _want * 4 )) ] \
@@ -677,7 +697,7 @@ _size_swap() {
   local _off="/var/log/boa/swap-size.backoff"
   local _fsType _curKb _curUsed _newKb _newUsed _ramMb _othMb _fileMb
   local _peakKb _smp _usedKb _peakMb _totMb _want _needMb _act
-  local _sum _rootSz _rootUsed _rootAv
+  local _sum _rootSz _rootUsed _rootAv _zramKb
 
   [ "${_SWAP_AUTOSIZE}" = "NO" ] && return 0
   if _swap_in_container; then
@@ -696,7 +716,6 @@ _size_swap() {
     echo "$(date) swap left alone: /swapfile is not a plain file" >> "${_log}"
     return 0
   fi
-  [ -n "$(find "${_off}" -mmin -10080 2> /dev/null)" ] && return 0
   if pgrep -x swapoff > /dev/null 2>&1; then
     echo "$(date) swap left alone: a swapoff is running" >> "${_log}"
     return 0
@@ -712,19 +731,40 @@ _size_swap() {
   fi
   rm -f "${_swn}"
 
+  # A /swapfile left off (an interrupted run, an operator's file) goes back on
+  # before anything else, root-only: swapon only warns about a file others
+  # can read, and swapped pages hold whatever the processes held.
   read -r _curKb _curUsed < <(_swap_area_kb /swapfile)
+  if [ -f "/swapfile" ]; then
+    chown root:root /swapfile 2> /dev/null
+    chmod 600 /swapfile 2> /dev/null
+  fi
   if [ -f "/swapfile" ] && [ "${_curKb}" -eq 0 ]; then
     swapon /swapfile 2> /dev/null
     read -r _curKb _curUsed < <(_swap_area_kb /swapfile)
   fi
+  # fstab lists an active /swapfile from here on, so autoupboa can switch it
+  # back on if a later step of this pass is cut short.
+  [ "${_curKb}" -gt 0 ] && _swap_fstab_line
+
+  if [ -n "$(find "${_off}" -mmin -10080 2> /dev/null)" ]; then
+    echo "$(date) swap left alone: a build failed on $(date -r "${_off}" '+%F %R'), next try 7 days after it" >> "${_log}"
+    return 0
+  fi
 
   _ramMb=$(( $(awk '/^MemTotal:/ {print $2}' /proc/meminfo) / 1024 ))
   # /proc/swaps leaves out each area's header page: round up to whole MB.
+  # zram is compressed RAM, not room for what RAM cannot hold: it is no swap
+  # capacity here, and what it holds now comes off the sampled use (which
+  # counts it), as the best estimate of its share of the peak.
   _othMb=$(( ($(awk 'NR > 1 && $1 != "/swapfile" && $1 != "/swapfile.boa" && $1 !~ /^\/dev\/zram/ { s += $3 } END { printf "%d", s }' /proc/swaps) + 1023) / 1024 ))
+  _zramKb=$(awk 'NR > 1 && $1 ~ /^\/dev\/zram/ { u += $4 } END { printf "%d", u }' /proc/swaps)
   _fileMb=$(( (_curKb + 1023) / 1024 ))
   read -r _peakKb _smp < <(_swap_sampled_peak)
   _usedKb=$(awk '/^SwapTotal:/ {t = $2} /^SwapFree:/ {f = $2} END {print t - f}' /proc/meminfo)
   [ "${_usedKb}" -gt "${_peakKb}" ] && _peakKb="${_usedKb}"
+  _peakKb=$(( _peakKb - _zramKb ))
+  [ "${_peakKb}" -lt 0 ] && _peakKb=0
   _peakMb=$(( _peakKb / 1024 ))
   _totMb=$(( _othMb + _fileMb ))
 
@@ -739,7 +779,8 @@ _size_swap() {
   fi
 
   read -r _rootSz _rootUsed _rootAv < <(df -Pk / | awk 'NR == 2 {print $2, $3, $4}')
-  if [ $(( (_rootUsed + _needMb * 1024) * 100 )) -gt $(( _rootSz * 80 )) ] \
+  # As df counts it: used over used plus available, the reserved blocks out.
+  if [ $(( (_rootUsed + _needMb * 1024) * 100 )) -gt $(( (_rootUsed + _rootAv) * 80 )) ] \
     || [ $(( _rootAv - _needMb * 1024 )) -lt 2097152 ]; then
     echo "$(date) ${_sum}: no room on / for a ${_needMb} MB file (it would pass 80% or leave under 2 GB free)" >> "${_log}"
     return 0
@@ -762,8 +803,9 @@ _size_swap() {
   # The kernel refuses to rename a swap file that is on, so the new file is
   # built and tried under another name, switched off again while it is still
   # empty, and takes the name once the old one is off: for those seconds only
-  # the other swap areas are on, so the old one goes only while free RAM can
-  # take its pages back with room to spare.
+  # the other swap areas are on, so the swapoffs go ahead only while free RAM
+  # can take back the pages of both files with room to spare, checked again
+  # right before them (a dd build can take minutes).
   if ! _swap_off_fits "${_curUsed}"; then
     echo "$(date) ${_sum}: ${_act} waits, ${_curUsed} kB in /swapfile and not enough free RAM to take it back" >> "${_log}"
     return 0
@@ -771,6 +813,12 @@ _size_swap() {
   if ! _swap_make_file "${_swn}" "${_needMb}"; then
     touch "${_off}"
     echo "$(date) ${_sum}: building a ${_needMb} MB file to ${_act} /swapfile FAILED, next try in 7 days" >> "${_log}"
+    return 0
+  fi
+  read -r _newKb _newUsed < <(_swap_area_kb "${_swn}")
+  read -r _curKb _curUsed < <(_swap_area_kb /swapfile)
+  if ! _swap_off_fits $(( _newUsed + _curUsed )); then
+    echo "$(date) ${_sum}: ${_act} waits, free RAM fell while the new file was built; ${_swn} left on until the next pass" >> "${_log}"
     return 0
   fi
   if ! swapoff "${_swn}" 2> /dev/null; then
@@ -782,14 +830,32 @@ _size_swap() {
     echo "$(date) ${_sum}: swapoff /swapfile FAILED, /swapfile kept at ${_fileMb} MB" >> "${_log}"
     return 0
   fi
-  if mv -f "${_swn}" /swapfile && swapon /swapfile 2> /dev/null; then
-    _swap_fstab_line
-    echo "${_needMb}" > "${_mark}"
-    echo "$(date) ${_sum}: /swapfile ${_act}: ${_fileMb} MB to ${_needMb} MB" >> "${_log}"
-  else
-    touch "${_off}"
-    echo "$(date) ${_sum}: switching the new /swapfile on FAILED, no /swapfile on, next try in 7 days" >> "${_log}"
+  if ! mv -f "${_swn}" /swapfile; then
+    # The old file keeps the name and is a valid swap area: put it back on
+    # (something may have done so already). Back off only once it is on, or
+    # nothing builds a swap file for a week.
+    rm -f "${_swn}"
+    swapon /swapfile 2> /dev/null
+    read -r _curKb _curUsed < <(_swap_area_kb /swapfile)
+    if [ "${_curKb}" -gt 0 ]; then
+      touch "${_off}"
+      echo "$(date) ${_sum}: the new file could not take the name, /swapfile back on as it was, next try in 7 days" >> "${_log}"
+    else
+      echo "$(date) ${_sum}: the new file could not take the name and /swapfile would not go back on, the next pass builds one" >> "${_log}"
+    fi
+    return 0
   fi
+  # The file holding the name is BOA's own from here on, on or not.
+  echo "${_needMb}" > "${_mark}"
+  if swapon /swapfile 2> /dev/null; then
+    _swap_fstab_line
+    echo "$(date) ${_sum}: /swapfile ${_act}: ${_fileMb} MB to ${_needMb} MB" >> "${_log}"
+    return 0
+  fi
+  # The new file has the name but would not switch on, although it did as
+  # ${_swn} a moment ago: no back-off, the next pass switches it on or
+  # rebuilds it.
+  echo "$(date) ${_sum}: the new ${_needMb} MB /swapfile would not switch on, no /swapfile on, the next pass builds one" >> "${_log}"
 }
 
 # Main action function
@@ -827,11 +893,41 @@ _graceful_action() {
     _optimize_ram
   fi
 
-  # The purges in autoupboa and multiback stand aside while this runs.
-  echo "Sizing swap..."
-  echo "$$" > /run/boa_swap_size.pid
-  _size_swap
-  rm -f /run/boa_swap_size.pid
+  # The marker: autoupboa's purge and multiback's reset stand aside while it
+  # names this run, a second run (by hand beside the cron one) leaves swap to
+  # the first, and one left by a killed run makes autoupboa switch /swapfile
+  # back on. It is claimed by link(2), so it appears whole or not at all and
+  # only when absent; a stale one is cleared here, unless a swapoff the killed
+  # run started still runs (its trace stays for autoupboa).
+  _rszOwn=NO
+  _rszTmp="/run/.boa_swap_size.$$"
+  if printf '%s\n' "$$" > "${_rszTmp}" 2> /dev/null; then
+    if ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null; then
+      _rszOwn=YES
+    else
+      _rszOld=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2> /dev/null )
+      if [ -n "${_rszOld}" ] && ! _swap_resize_running \
+        && ! pgrep -x swapoff > /dev/null 2>&1 \
+        && [ "$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2> /dev/null )" = "${_rszOld}" ]; then
+        rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+        ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null && _rszOwn=YES
+      fi
+    fi
+  fi
+  rm -f "${_rszTmp}"
+  if [ "${_rszOwn}" = "YES" ]; then
+    printf '%s %s\n' "$$" "$(sed 's/^.*) //' "/proc/$$/stat" 2> /dev/null | awk '{print $20}')" \
+      > "${_rszTmp}.start" 2> /dev/null \
+      && mv -f "${_rszTmp}.start" /run/boa_swap_size.start
+    rm -f "${_rszTmp}.start"
+    echo "Sizing swap..."
+    _size_swap
+    if [ "$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2> /dev/null )" = "$$" ]; then
+      rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+    fi
+  else
+    echo "Swap sizing skipped: another graceful.sh run is sizing swap, a swapoff it started still runs, or /run is full"
+  fi
 
   echo "Removing empty login-session cgroups..."
   _trim_session_cgroups

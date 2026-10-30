@@ -132,15 +132,36 @@ _check_system_ram() {
   _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
 }
 
+# While graceful.sh sizes swap, /run/boa_swap_size.pid holds its PID and
+# /run/boa_swap_size.start that process's start time, which tells it from a
+# later process given the same PID.
+_swap_resize_running() {
+  local _rszPid _rszStart _rszNow _rszCmd
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [ -n "${_rszPid}" ] || return 1
+  # The start file holds "<PID> <start time>"; one left by another run is
+  # ignored.
+  _rszStart=$( { awk -v p="${_rszPid}" '$1 == p {print $2}' /run/boa_swap_size.start; } 2>/dev/null )
+  _rszStart="${_rszStart//[^0-9]/}"
+  if [ -n "${_rszStart}" ]; then
+    _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+    [ "${_rszNow}" = "${_rszStart}" ]
+    return
+  fi
+  # No start time yet (written just after the claim, or by an older
+  # graceful.sh): the process's own command line names graceful.sh.
+  _rszCmd=$( { tr '\0' ' ' < "/proc/${_rszPid}/cmdline"; } 2>/dev/null )
+  [[ "${_rszCmd}" == *"graceful.sh"* ]]
+}
+
 # Function to check and optimize RAM and disk caches. Swap is emptied before
 # the backup only while free RAM can take its pages back with a tenth of the
 # RAM (at least 512 MB) to spare: once swap is larger than the free RAM, an
 # unchecked swapoff -a pulls back more than the box has. Swap is left alone
 # while graceful.sh resizes /swapfile.
 _optimize_ram() {
-  local _swpUsed _memAvl _memTot _memSpare _rszPid
-  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
-  if [ -z "${_rszPid}" ] || ! kill -0 "${_rszPid}" 2>/dev/null; then
+  local _swpUsed _memAvl _memTot _memSpare _swpAreas _swpArea _swpPrio
+  if ! _swap_resize_running; then
     _swpUsed=$(awk '/^SwapTotal:/ {t=$2} /^SwapFree:/ {f=$2} END {print t-f}' /proc/meminfo)
     _memAvl=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
     _memTot=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
@@ -148,9 +169,24 @@ _optimize_ram() {
     [ "${_memSpare}" -lt 524288 ] && _memSpare=524288
     if [ "${_swpUsed}" -gt 0 ] \
       && [ $(( _memAvl - _swpUsed )) -ge "${_memSpare}" ]; then
+      # swapon -a brings back only what fstab lists: any other area that was
+      # on (a zram device) goes back on by name, at its own priority.
+      _swpAreas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
       swapoff -a
+      swapon -a
+      for _swpArea in ${_swpAreas}; do
+        _swpPrio="${_swpArea##*:}"
+        _swpArea="${_swpArea%:*}"
+        awk -v a="${_swpArea}" '$1 == a {f = 1} END {exit !f}' /proc/swaps && continue
+        if [[ "${_swpPrio}" =~ ^[0-9]+$ ]]; then
+          swapon -p "${_swpPrio}" "${_swpArea}" 2>/dev/null
+        else
+          swapon "${_swpArea}" 2>/dev/null
+        fi
+      done
+    else
+      swapon -a
     fi
-    swapon -a
   fi
   _check_system_ram
   if [ "${_ram_usage_percent}" -gt 50 ]; then
