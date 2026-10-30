@@ -219,15 +219,26 @@ _sql_to() {
 touch "/run/boa_sqlsnap.${_KIND}.boxdone"
 
 # Then the database: the connections and their statements (cut at 4 KB
-# each, the longest-running active ones first, idle ones last; the plain
-# list when that query gets no answer), InnoDB's own view, and when
-# performance_schema is on, who waits for and who holds each metadata lock
-# (holders of a contended object first) and which server thread each
-# connection runs on.
-if ! _sql_to processlist.txt 10 -e "SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, LEFT(INFO, 4096) AS INFO FROM information_schema.PROCESSLIST ORDER BY (COMMAND = 'Sleep'), TIME DESC"; then
-  echo "### SHOW PROCESSLIST" >> "${_DIR}/processlist.txt"
-  _sql_to processlist.txt 10 -e "SHOW PROCESSLIST"
-fi
+# each so every connection fits the file, the longest-running active ones
+# first, idle ones last), InnoDB's own view, and when performance_schema is
+# on, who waits for and who holds each metadata lock (holders of a contended
+# object first) and which server thread each connection runs on.
+#
+# The connections come from SHOW FULL PROCESSLIST, never the
+# information_schema view: the view takes InnoDB's dictionary mutex on every
+# read, which the stall this snapshot is for may be holding.
+_proc_to() {
+  local _rc
+  timeout -k 2 10 mysql --connect-timeout=3 --quick -B -e "SHOW FULL PROCESSLIST" 2>&1 \
+    | awk -F '\t' -v OFS='\t' 'NR == 1 { print 0, $0; next }
+        { if (length($8) > 4096) $8 = substr($8, 1, 4096); print (($5 == "Sleep") ? 2 : 1), $0 }' \
+    | sort -s -t "$(printf '\t')" -k1,1n -k7,7nr | cut -f2- \
+    | head -c "${_FILE_MAX}" | _redact >> "${_DIR}/processlist.txt"
+  _rc="${PIPESTATUS[0]}"
+  [ "${_rc}" -eq 0 ] || echo "(client exit ${_rc}; 124 or 137 mean no answer within 10 s)" >> "${_DIR}/processlist.txt"
+  return "${_rc}"
+}
+_proc_to
 _sql_to innodb_status.txt 15 -e "SHOW ENGINE INNODB STATUS\G"
 if [ "$(timeout -k 2 5 mysql --connect-timeout=3 -N -e "SELECT @@performance_schema" 2>/dev/null | tr -dc '0-9')" = "1" ]; then
   _sql_to metadata_locks.txt 10 -e "SELECT t.PROCESSLIST_ID, m.LOCK_STATUS, m.LOCK_TYPE, m.LOCK_DURATION, m.OBJECT_TYPE, m.OBJECT_SCHEMA, m.OBJECT_NAME FROM performance_schema.metadata_locks m LEFT JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE NOT IN ('TABLESPACE', 'BACKUP LOCK') ORDER BY (m.LOCK_STATUS = 'PENDING') DESC, (m.OBJECT_SCHEMA, m.OBJECT_NAME) IN (SELECT p.OBJECT_SCHEMA, p.OBJECT_NAME FROM performance_schema.metadata_locks p WHERE p.LOCK_STATUS = 'PENDING') DESC, t.PROCESSLIST_ID LIMIT 2000"
