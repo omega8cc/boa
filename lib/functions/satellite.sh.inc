@@ -5222,14 +5222,24 @@ _satellite_hm_dbuser_own() {
 # but those on its own database $2 (the name as a grant writes it, _ escaped):
 # the rights on all databases and the grant option an earlier release gave,
 # and the rights on any other database. The own grant itself is never taken
-# away, so the panel keeps its database while this runs.
+# away, so the panel keeps its database while this runs. Global rights are
+# revoked by name, as SHOW GRANTS lists them: REVOKE ALL ON *.* takes every
+# database grant with it on Percona 8.4, and 5.7 lists the global ones as
+# ALL PRIVILEGES.
 _hostmaster_frontend_dbuser_trim() {
-  local _h _d
+  local _h _d _p
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
     -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
   [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
   for _h in localhost %; do
-    "${_C[@]}" "REVOKE ALL ON *.* FROM '${1}'@'${_h}'" &> /dev/null
+    while IFS= read -r _p; do
+      [ "${_p}" = "USAGE" ] && continue
+      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
+      [[ "${_p}" =~ ^[A-Z_][A-Z_,\ ]*$ ]] || continue
+      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${1}'@'${_h}'" &> /dev/null
+    done < <("${_C[@]}" "SHOW GRANTS FOR '${1}'@'${_h}'" 2> /dev/null \
+      | sed -n 's/^GRANT \(.*\) ON \*\.\* TO .*/\1/p')
     "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${1}'@'${_h}'" &> /dev/null
     while IFS= read -r _d; do
       [[ "${_d}" =~ ^[A-Za-z0-9_%\\$-]{1,64}$ ]] || continue
