@@ -1598,12 +1598,22 @@
       died that way for years without a line anywhere. A shutdown
       function in the global include now logs the fatal error that ended
       the request, with its host and path, to the PHP-FPM error log,
-      /var/log/php/phpNN-fpm-error.log. Error reporting itself stays off,
-      so pages and the sites' own logs show nothing new (Drupal 6's
-      original error handler logs and shows every warning under any other
-      level). Drush runs are left alone, a fatal PHP logs itself (on a
-      .dev. alias) is not repeated, and before PHP 7 a parse error in
-      eval()'d code, which does not stop the request, is not logged.
+      /var/log/php/phpNN-fpm-error.log: the engine's own fatal errors and a
+      user or catchable fatal error no handler took. Error reporting itself
+      stays off, so pages and the sites' own logs show nothing new (Drupal
+      6's original error handler logs and shows every warning under any
+      other level). Drush and other command line runs are left alone, a
+      fatal PHP logs itself (on a .dev. alias) is not repeated, the host
+      and path are written with every byte outside printable ASCII as
+      \xHH, and before PHP 7 a parse error in eval()'d code, which neither
+      stops the request nor turns it into a 500, is not logged.
+
+    * A visitor can no longer make barracuda rebuild a PHP version. Its
+      check for a broken PHP build searched the whole PHP-FPM error log
+      for "OnigEncoding", the sites' own output included, and rebuilt
+      that version from source on a match, while a site's fatal error
+      line carries the visitor's path. The check now reads only PHP-FPM's
+      own lines, as the monitors already do.
 
     * PHP-FPM no longer logs "Unable to set php_admin_value" for
       newrelic.enabled and newrelic.license at each new worker of a PHP
