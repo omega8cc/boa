@@ -258,38 +258,62 @@ error_reporting(0);
  * Log the fatal error that ends a web request
  *
  * With reporting off PHP logs nothing, so a fatal error left only a 500
- * behind. At shutdown the request's last error, when it is one no handler
- * can catch, goes to the error log with the host and path; the pool cannot
- * write the ini's error_log, so PHP-FPM writes the line to its own error log
- * (/var/log/php/phpNN-fpm-error.log). The level itself stays 0: Drupal 6's
- * original handler logs and shows every warning under any other level. A
- * fatal PHP logged itself (a .dev. alias raises the level) is not repeated,
- * and Drush reports its own.
+ * behind. At shutdown the request's last error, when it is one that ended
+ * the request (the engine's own, which no handler can catch, or a user or
+ * catchable fatal error no handler took), goes to the error log with the
+ * host and path; the pool cannot write the ini's error_log, so PHP-FPM
+ * writes the line to its own error log (/var/log/php/phpNN-fpm-error.log).
+ * The level itself stays 0: Drupal 6's original handler logs and shows every
+ * warning under any other level. A fatal PHP logged itself (a .dev. alias
+ * raises the level) is not repeated, and Drush and every other command line
+ * run report their own.
  */
-if (!$is_backend && !function_exists('boa_log_fatal_error')) {
+if (!$is_backend && PHP_SAPI !== 'cli' && !function_exists('boa_log_fatal_error')) {
   function boa_log_fatal_error() {
     $error = error_get_last();
     if (!is_array($error) ||
-        !($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+        !($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR |
+          E_USER_ERROR | E_RECOVERABLE_ERROR))) {
       return;
     }
-    if (ini_get('log_errors') && ($error['type'] & error_reporting())) {
+    // log_errors read as PHP reads it: on, yes, true or a non-zero number.
+    $log_errors = strtolower(trim((string) ini_get('log_errors')));
+    if ((in_array($log_errors, array('on', 'yes', 'true'), TRUE) || (int) $log_errors) &&
+        ($error['type'] & error_reporting())) {
       return;
     }
-    // Before PHP 7 a parse error in eval()'d or create_function() code (a PHP
-    // filter snippet, say) does not stop the request: not a fatal.
+    // Before PHP 7 a parse error in eval()'d, create_function() or assert()
+    // code (a PHP filter snippet, say) does not stop the request by itself.
     if ($error['type'] == E_PARSE && PHP_VERSION_ID < 70000 &&
-        preg_match("/(?:eval\(\)'d code|runtime-created function)$/", $error['file'])) {
+        preg_match("/(?:eval\(\)'d code|runtime-created function|assert code)$/", $error['file'])) {
       return;
     }
-    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-';
-    $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-';
-    $line = ($error['type'] == E_PARSE ? 'PHP Parse error:  ' : 'PHP Fatal error:  ') .
-      substr($error['message'], 0, 500) . ' in ' . $error['file'] . ' on line ' .
-      $error['line'] . '; host ' . substr($host, 0, 100) . ', uri ' . substr($uri, 0, 150);
-    // One line, and no control character from the request reaches the log.
-    $line = preg_replace('/[\x00-\x1F\x7F]/', '?', preg_replace('/[\r\n\t]+/', ' ', $line));
-    error_log($line);
+    switch ($error['type']) {
+      case E_PARSE:
+        $label = 'PHP Parse error:  ';
+        break;
+      case E_RECOVERABLE_ERROR:
+        $label = PHP_VERSION_ID < 80000 ? 'PHP Catchable fatal error:  ' :
+          'PHP Recoverable fatal error:  ';
+        break;
+      default:
+        $label = 'PHP Fatal error:  ';
+    }
+    // The host and path are the visitor's: every byte outside printable ASCII
+    // is written as \xHH, the way nginx writes its access log.
+    $hex = function ($m) {
+      return sprintf('\x%02X', ord($m[0]));
+    };
+    $host = preg_replace_callback('/[^\x20-\x7E]/',
+      $hex, isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-');
+    $uri = preg_replace_callback('/[^\x20-\x7E]/',
+      $hex, isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-');
+    // One line: no control character, C1 included, reaches the log.
+    $line = $label . substr($error['message'], 0, 500) . ' in ' . $error['file'] .
+      ' on line ' . $error['line'];
+    $line = preg_replace('/[\x00-\x1F\x7F]|\xC2[\x80-\x9F]/', '?',
+      preg_replace('/[\r\n\t]+/', ' ', $line));
+    error_log($line . '; host ' . substr($host, 0, 100) . ', uri ' . substr($uri, 0, 150));
   }
   register_shutdown_function('boa_log_fatal_error');
 }
