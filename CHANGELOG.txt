@@ -2484,6 +2484,8 @@
       and PHP-FPM children per pool) goes to
       /var/log/boa/incident/<date>-<time>-<reason>/, readable by root
       only, and is named in the incident log the alert mail is made from.
+      A password given to a dump or client tool on its command line, or
+      written into a statement, is replaced by *** in the saved files.
       One snapshot per 15 minutes, kept 14 days and never more than 200.
       Tunable in /root/.barracuda.cnf: _SQLSNAP_COOLDOWN_MINS,
       _SQLSNAP_KEEP_DAYS, _SQL_STALL_SECS, _SQL_STALL_COUNT; off with

@@ -15,7 +15,8 @@
 #
 # Read-only on the database. Every client call is time-bounded, so a server
 # that does not answer costs seconds, never a hung capture. The files hold
-# queries and command lines: root only, mode 600, under /var/log/boa/incident.
+# queries and command lines: root only, mode 600, under /var/log/boa/incident,
+# with any password given on a command line or in a statement replaced.
 #
 # Usage: sqlsnap.sh <reason> [/var/log/boa/<name>.incident.log]
 # Off with _INCIDENT_SNAPSHOT=NO in /root/.barracuda.cnf.
@@ -90,6 +91,16 @@ mkdir "${_DIR}" 2>/dev/null || exit 1
 touch "${_SNAP_LAST}"
 echo "$(date) INFO: incident snapshot (${_REASON}) saved to ${_DIR}" >> "${_pthOml}"
 
+# Credentials never stay in a snapshot: a password a dump or client tool got on
+# its command line, or a password literal in a statement, is replaced by ***.
+_redact() {
+  sed -E -i \
+    -e 's/(--password[= ])[^ ]+/\1***/g' \
+    -e '/(^|[ /])(mysql|mysqldump|mydumper|myloader|mysqladmin|mysqlcheck|mysqlpump)( |$)/ s/( -p)[^ ]+/\1***/g' \
+    -e "s/(IDENTIFIED( WITH [^ ]+)? BY |PASSWORD *(FOR [^=]+)?= *|PASSWORD *\\( *)'[^']*'/\\1'***'/Ig" \
+    "$@" 2> /dev/null
+}
+
 # One bounded client call; its output and exit status go to the file named.
 _sql_to() {
   local _file="$1" _secs="$2" _rc
@@ -144,6 +155,7 @@ fi
     | sort | uniq -c | sort -rn
 } > "${_DIR}/processes.txt" 2>&1
 
+_redact "${_DIR}"/*.txt
 chmod 600 "${_DIR}"/* 2>/dev/null
 
 # Prune by age, then by count, oldest first; only names this script writes.

@@ -2647,7 +2647,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f57
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f91
-    _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f91
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f99
