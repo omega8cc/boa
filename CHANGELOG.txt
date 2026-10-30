@@ -4,6 +4,16 @@
 
 @=> Important Fixes
 
+    * The MySQL init script, /etc/init.d/mysql, is now kept current by
+      every barracuda run where it is BOA's own or the server is Percona 8.
+      It was laid only at install and on a Percona series upgrade, so most
+      boxes still ran an old copy without its later fixes: a stop that
+      waits for the server to exit, so a restart never starts a second
+      server beside one still flushing its buffer pool; a start that
+      refuses while a server is still starting up without its pid file;
+      startup messages kept in the error log. The script is replaced by
+      rename and the server is not restarted for it.
+
     * A site served by a PHP version its code cannot run (an old Drupal 7
       or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
       platform check that needs a newer PHP) is now moved to the installed
@@ -2668,6 +2678,24 @@
       the run now fails the Composer script.
 
 @=> New Features
+
+    * A switch for the database server's memory allocator: _SQL_MALLOC=
+      jemalloc in /root/.barracuda.cnf starts mysqld on jemalloc instead of
+      glibc's malloc; the default, _SQL_MALLOC=glibc, changes nothing. BOA
+      installs the libjemalloc2 package for it, and the MySQL init script
+      preloads the library on mysqld's own command line only, so the mysql
+      client, the backups and every other process keep glibc. jemalloc runs
+      with thp:never: its memory is never backed by transparent huge pages,
+      while the InnoDB buffer pool keeps the system's mode. Without the
+      library the server starts on glibc. Every start writes one line to
+      /var/log/mysql/error.log naming the allocator and the transparent huge
+      pages mode. The setting applies at the next database start (a reboot,
+      an SQL upgrade, a restart for a my.cnf change, a planned service mysql
+      restart): BOA never restarts the server for it, and every barracuda
+      run says when the running server is on the other allocator. A Percona
+      5.7 server still started by the package's own init script ignores it:
+      there Percona's mysqld_safe preloads jemalloc by itself whenever the
+      library is installed, and the barracuda run says so.
 
     * BOA now sizes swap to the RAM and to what the box really swaps. Most
       servers came with whatever swap their provider set up, often 512 MB
