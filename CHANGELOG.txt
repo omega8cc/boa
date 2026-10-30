@@ -27,6 +27,11 @@
       single PHP-FPM pool; a site no installed version can run stays
       listed, as before.
 
+    * The PHP multi-install cleanup reads only the version at the end of
+      a multi-fpm.info line and skips a line starting with #, as the ltd
+      worker does: a comment naming a version, or a version inside a site
+      name, no longer keeps that PHP installed or has it built.
+
     * A site renamed with Migrate Site while its aliases redirected to
       its own name answers on its new name again. The redirect stayed on
       the old name, which no site directory served any more: the old name
