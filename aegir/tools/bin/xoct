@@ -7924,9 +7924,9 @@ _migrate_init() {
   ### and xusage legs reach the target whatever the verb. The same verbs
   ### check the target's firewall trusts this box before anything travels,
   ### and before the host key scan: the scan opens a connection per key type,
-  ### each closed before login, and the target's hackcheck bans an address
-  ### for any such line until it has logged in there once. The check's own
-  ### login accepts a new host key, so a known one leaves the scan nothing to do.
+  ### each closed before login, and a single such line can get this box banned
+  ### by the target's hackcheck. The check's own login accepts a new host key,
+  ### so a known one leaves the scan nothing to do.
   case "${_cmd}:${_oct}" in
     create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
       _xoct_require_peer_whitelist "${_tgt}" || exit 1
