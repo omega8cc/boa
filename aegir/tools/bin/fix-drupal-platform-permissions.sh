@@ -31,6 +31,13 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # copy of stderr taken here: several legs below discard their own output.
 exec 3>&2
 
+# A name as a Notice or Error line prints it: control characters as '?', so a
+# name an account chose (a newline in a directory name) keeps each line whole.
+# The platform Delete's notice quotes the helper's last such line.
+_nm() {
+  printf '%s' "${1//[[:cntrl:]]/?}"
+}
+
 # The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
 # and the account owns the names under ${drupal_root}, so any of them can be
 # a link. Defence:
@@ -63,7 +70,7 @@ _validate_path_prefix() {
   # the root lies in (/var/aegir, /data/disk/<oN> or /home/<user>).
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
-    printf "Error: path does not resolve: %s\n" "$1" >&2
+    printf "Error: path does not resolve: %s\n" "$(_nm "$1")" >&2
     exit 1
   }
   _caller="${SUDO_USER:-}"
@@ -79,7 +86,7 @@ _validate_path_prefix() {
         _SCOPE_ROOT="/home/${_SCOPE_ROOT%%/*}"
         ;;
       *)
-        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "$(_nm "${_resolved}")" >&2
         exit 1
         ;;
     esac
@@ -90,14 +97,14 @@ _validate_path_prefix() {
   case "${_home}" in
     /var/aegir|/data/disk/*) ;;
     *)
-      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_home}" >&2
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "$(_nm "${_caller}")" "$(_nm "${_home}")" >&2
       exit 1
       ;;
   esac
   case "${_resolved}/" in
     "${_home}"/*) ;;
     *)
-      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved}" "${_home}" >&2
+      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "$(_nm "${_resolved}")" "$(_nm "${_home}")" >&2
       exit 1
       ;;
   esac
@@ -128,7 +135,7 @@ _in_scoped_dir() {
   case "${_r}/" in
     "${_SCOPE_ROOT}"/*) ;;
     *)
-      printf "Error: refusing out-of-scope path %s -> %s\n" "${1}" "${_r}" >&2
+      printf "Error: refusing out-of-scope path %s -> %s\n" "$(_nm "${1}")" "$(_nm "${_r}")" >&2
       return 1
       ;;
   esac
@@ -251,12 +258,14 @@ _own_uids_ok() {
 }
 # The uids the walks act for in _OWN_UIDS (_site_walk_uids); a root in
 # neither an account's tree nor the master's is left as it is, with one
-# Notice and nothing changed.
+# Notice and nothing changed. Under --app-root that ends with status 1, as
+# its other refusals do: the platform Delete reads 0 as the folder opened.
 _root_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
   _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
-    "${drupal_root}" >&2
+    "$(_nm "${drupal_root}")" >&2
+  [[ "${_APP_ROOT}" = "YES" ]] && exit 1
   exit 0
 }
 # One line for what the walks left as another user's, each entry once by
@@ -267,7 +276,7 @@ _root_owners_left_note() {
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
   printf "Notice: %s entries owned by another user left as they were in the platform %s\n" \
-    "${_n}" "${drupal_root}" >&3
+    "${_n}" "$(_nm "${drupal_root}")" >&3
   return 0
 }
 # What "$@" prints kept in _LEFT, for that line: the walkers print the
@@ -403,7 +412,7 @@ _links_left_note() {
   _here="$(pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
-    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+    "${_n}" "$(_nm "${_here}")" "${_first//[[:cntrl:]]/?}" >&3
   return 0
 }
 # Mode $1 on every regular file the find start points and tests after it
@@ -598,7 +607,7 @@ fi
 if [[ "${_APP_ROOT}" = "YES" ]] && [ -n "${drupal_root}" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
   && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
-  printf "Notice: %s is not a Drupal or Backdrop root; --app-root changed nothing.\n" "${drupal_root}" >&3
+  printf "Notice: %s is not a Drupal or Backdrop root; --app-root changed nothing.\n" "$(_nm "${drupal_root}")" >&3
   exit 1
 fi
 
@@ -694,7 +703,7 @@ _root_uids_or_leave
 ### _chmod_own_here protects only the final component. A symlinked skeleton
 ### is never legitimate.
 if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
-  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
+  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "$(_nm "${drupal_root}")" >&2
   exit 1
 fi
 ### The four names under sites/all are plantable the same way, and the day
@@ -708,7 +717,7 @@ fi
 ### are prechecked at their own leg below.
 for _d in modules themes libraries drush; do
   if [ -L "${drupal_root}/sites/all/${_d}" ]; then
-    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "${_d}" "${drupal_root}" >&2
+    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "$(_nm "${_d}")" "$(_nm "${drupal_root}")" >&2
     exit 1
   fi
 done
@@ -768,24 +777,24 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
     fi
   fi
   if [[ -z "${_app_kind}" ]]; then
-    printf "Notice: %s is not a Composer project root or the plain holder of a platform below the account's static/; nothing changed.\n" "${_app}" >&3
+    printf "Notice: %s is not a Composer project root or the plain holder of a platform below the account's static/; nothing changed.\n" "$(_nm "${_app}")" >&3
     exit 1
   fi
   for _s in "${drupal_root}"/sites/*/settings.php; do
     [[ -e "${_s}" ]] || continue
     [[ "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
-    printf "Notice: %s still holds a site (%s); nothing changed.\n" "${drupal_root}" "${_s}" >&3
+    printf "Notice: %s still holds a site (%s); nothing changed.\n" "$(_nm "${drupal_root}")" "$(_nm "${_s}")" >&3
     exit 1
   done
   if [[ "${_app_kind}" = "plain" ]]; then
     if ! [[ "$(stat -c %u -- "${_app}" 2> /dev/null)" =~ ^[1-9][0-9]*$ ]]; then
-      printf "Notice: %s is root's; nothing changed.\n" "${_app}" >&3
+      printf "Notice: %s is root's; nothing changed.\n" "$(_nm "${_app}")" >&3
       exit 1
     fi
     printf 'Setting group write on %s for the Delete...\n' "${_app}"
     if ! _LEFT=$(_in_pinned_dir "${_app}" _app_plain_here); then
       _root_owners_left_note "${_LEFT}"
-      printf "Notice: %s did not take group write; nothing changed.\n" "${_app}" >&3
+      printf "Notice: %s did not take group write; nothing changed.\n" "$(_nm "${_app}")" >&3
       exit 1
     fi
     echo "Done setting group write on the directory holding the platform."
@@ -843,7 +852,7 @@ fi
 ### (_in_pinned_dir) and names only ./entries there; refuse now when the
 ### root itself cannot be entered as resolved.
 if ! _in_pinned_dir "${drupal_root}" true; then
-  printf "Error: %s is not a real directory; refusing.\n" "${drupal_root}" >&2
+  printf "Error: %s is not a real directory; refusing.\n" "$(_nm "${drupal_root}")" >&2
   exit 1
 fi
 
