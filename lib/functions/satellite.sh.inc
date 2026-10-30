@@ -10011,6 +10011,61 @@ _satellite_queue_dbvars_site_verifies() {
   fi
 }
 
+### Run inside the real vhost.d: the site names ./$1 passes as MAIN_SITE_NAME
+### that none of its server_name lines answers, one per line ($2 = the
+### hostmaster's name, never judged). A site whose aliases redirected to a
+### name it was renamed away from got such a vhost from provision: the main
+### block served the old name and nothing answered the site's own, its
+### scheduled cron included. The file is read as _satellite_dbvars_old_here
+### reads it.
+_satellite_unanswered_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  case "${1}" in .*|https.*) return 0 ;; esac
+  [ "${1}" = "${2}" ] && return 0
+  case "${1}" in *[!A-Za-z0-9.-]*) return 0 ;; esac
+  _acct_read_here "${1}" | awk '
+    $1 == "server_name" { for (i = 2; i <= NF; i++) { t = $i; sub(/;$/, "", t); S[t] = 1 } }
+    $1 == "fastcgi_param" && $2 == "MAIN_SITE_NAME" {
+      t = $3; sub(/;$/, "", t); if (t ~ /^[A-Za-z0-9.-]+$/) M[t] = 1
+    }
+    END { for (m in M) if (!(m in S)) print m }'
+}
+
+### Each such site printed as "<name>", for the PHP array below.
+_satellite_unanswered_list_here() {
+  local _v _d _m
+  for _v in ./*; do
+    _d="${_v#./}"
+    while read -r _m; do
+      [ -n "${_m}" ] && printf '"%s",' "${_m}"
+    done < <(_satellite_unanswered_here "${_d}" "${1}")
+  done
+}
+
+### Provision now always answers a site's own name (served, or redirected to
+### the chosen domain), but only a Verify renders the vhost again: queue one
+### for every site whose vhost still leaves its own name to nginx's default
+### server. Self-limiting: a vhost answering the name is never queued again.
+_satellite_queue_unanswered_site_verifies() {
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _list="" _n
+  local _hmDrush="${_DRUSHCMD:-drush8}"
+  [ -d "${_vhd}" ] || return 0
+  _list="$(_acct_in_real_dir "${_vhd}" _satellite_unanswered_list_here "${_DOMAIN}")"
+  [ -n "${_list}" ] || return 0
+  _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the site-name Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
+  _n="${_n##*queued=}"
+  _n="${_n%%[^0-9]*}"
+  if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
+    _msg "INFO: queued a Verify for ${_n} site(s) whose vhost did not answer the site's own name"
+  fi
+}
+
 _satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_post_cleanup"
