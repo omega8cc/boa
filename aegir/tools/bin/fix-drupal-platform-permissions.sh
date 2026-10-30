@@ -10,8 +10,9 @@ to provide the following argument:
   --app-root: the platform Delete's step only: give every directory of the
               Composer project root above that docroot, below the account's
               static/, group write (02775) so the Delete can remove it, or,
-              for a plain platform, the one directory holding it; then
-              stop; refused while the docroot holds a site.
+              for a plain platform (Drupal, Backdrop, Grav or Textpattern),
+              the one directory holding it; then stop; refused while the
+              docroot holds a site.
 
 Usage: (sudo) ${0##*/} --root=PATH
 Example: (sudo) ${0##*/} --root=/var/aegir/platforms/drupal-7.50
@@ -601,13 +602,28 @@ if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
   drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
 fi
 
-# --app-root is the platform Delete's leg for a Drupal or Backdrop root only:
-# a Grav, Textpattern or any other root is refused here, before the permission
-# pass of its own kind could run and end as if the holder had been opened.
-if [[ "${_APP_ROOT}" = "YES" ]] && [ -n "${drupal_root}" ] \
+# A Grav or a Textpattern root, by the probes the two branches below use (no
+# Drupal system.module in either).
+_FOREIGN=""
+if [ -n "${drupal_root}" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
   && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
-  printf "Notice: %s is not a Drupal or Backdrop root; --app-root changed nothing.\n" "$(_nm "${drupal_root}")" >&3
+  if [ -f "${drupal_root}/bin/grav" ] && [ -f "${drupal_root}/system/defines.php" ]; then
+    _FOREIGN=grav
+  elif [ -f "${drupal_root}/textpattern/lib/constants.php" ] && [ -f "${drupal_root}/css.php" ]; then
+    _FOREIGN=txp
+  fi
+fi
+
+# --app-root is the platform Delete's leg for a Drupal, Backdrop, Grav or
+# Textpattern root: any other root is refused here. A Grav or Textpattern root
+# never runs the permission pass of its own kind under it (that pass would end
+# as if the holder had been opened): it goes straight to the leg below, which
+# opens only the plain folder holding it.
+if [[ "${_APP_ROOT}" = "YES" ]] && [ -n "${drupal_root}" ] && [ -z "${_FOREIGN}" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  printf "Notice: %s is not a Drupal, Backdrop, Grav or Textpattern root; --app-root changed nothing.\n" "$(_nm "${drupal_root}")" >&3
   exit 1
 fi
 
@@ -615,7 +631,7 @@ fi
 # A Grav root carries no Drupal system.module; detect it positively and run
 # the capsule model instead of refusing (union seam: further foreign-CMS
 # branches join here the same way).
-if [ -n "${drupal_root}" ] \
+if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   && [ -f "${drupal_root}/bin/grav" ] \
   && [ -f "${drupal_root}/system/defines.php" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
@@ -660,7 +676,7 @@ fi
 # A TXP root carries no Drupal system.module; detect it positively (the same
 # probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
 # and run the shared-core model instead of refusing.
-if [ -n "${drupal_root}" ] \
+if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   && [ -f "${drupal_root}/textpattern/lib/constants.php" ] \
   && [ -f "${drupal_root}/css.php" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
@@ -686,11 +702,12 @@ fi
 
 # Every generation has sites/ and one of the two system.module paths; the
 # ungrouped form let a Drupal 7 tree without sites/ through (see the
-# ownership twin).
-if [ -z "${drupal_root}" ] \
+# ownership twin). A Grav or Textpattern root reaches here only under
+# --app-root (their branches above end the other runs), for the leg below.
+if [ -z "${_FOREIGN}" ] && { [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
   || { [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
-    && [ ! -f "${drupal_root}/modules/system/system.module" ]; }; then
+    && [ ! -f "${drupal_root}/modules/system/system.module" ]; }; }; then
     printf "Error: Please provide a valid Drupal root directory.\n"
     exit 1
 fi
@@ -780,9 +797,24 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
     printf "Notice: %s is not a Composer project root or the plain holder of a platform below the account's static/; nothing changed.\n" "$(_nm "${_app}")" >&3
     exit 1
   fi
-  for _s in "${drupal_root}"/sites/*/settings.php; do
+  # A Grav or Textpattern platform is never a Composer project's docroot here:
+  # only the plain folder holding it is opened.
+  if [[ -n "${_FOREIGN}" && "${_app_kind}" != "plain" ]]; then
+    printf "Notice: %s is not the plain holder of a platform below the account's static/; nothing changed.\n" "$(_nm "${_app}")" >&3
+    exit 1
+  fi
+  # A site the root still holds, by its kind's marks: a Drupal or Backdrop
+  # site's settings.php (default's aside), a Grav capsule's user/, a
+  # Textpattern site's config.php, and the drushrc.php provision writes for
+  # every Grav and Textpattern site.
+  if [[ -n "${_FOREIGN}" ]]; then
+    _site_marks=("${drupal_root}"/sites/*/drushrc.php "${drupal_root}"/sites/*/user "${drupal_root}"/sites/*/config.php)
+  else
+    _site_marks=("${drupal_root}"/sites/*/settings.php)
+  fi
+  for _s in "${_site_marks[@]}"; do
     [[ -e "${_s}" ]] || continue
-    [[ "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
+    [[ -z "${_FOREIGN}" && "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
     printf "Notice: %s still holds a site (%s); nothing changed.\n" "$(_nm "${drupal_root}")" "$(_nm "${_s}")" >&3
     exit 1
   done
