@@ -580,25 +580,17 @@ EOFMYSQL
 # but those on its own database $2 (the name as a grant writes it, _ escaped):
 # the rights on all databases and the grant option an earlier release gave,
 # and the rights on any other database. The own grant itself is never taken
-# away, so the panel keeps its database while this runs. Global rights are
-# revoked by name, as SHOW GRANTS lists them: REVOKE ALL ON *.* takes every
-# database grant with it on Percona 8.4, and 5.7 lists the global ones as
-# ALL PRIVILEGES.
+# away, so the panel keeps its database while this runs. The global rights
+# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
+# ALL on *.*, which takes every database grant with it.
 _hostmaster_frontend_dbuser_trim() {
-  local _h _d _p
+  local _h _d
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
     -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
-  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
   [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
+  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
+    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
   for _h in localhost %; do
-    while IFS= read -r _p; do
-      [ "${_p}" = "USAGE" ] && continue
-      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
-      [[ "${_p}" =~ ^[A-Z_][A-Z_,\ ]*$ ]] || continue
-      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${1}'@'${_h}'" &> /dev/null
-    done < <("${_C[@]}" "SHOW GRANTS FOR '${1}'@'${_h}'" 2> /dev/null \
-      | sed -n 's/^GRANT \(.*\) ON \*\.\* TO .*/\1/p')
-    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${1}'@'${_h}'" &> /dev/null
     while IFS= read -r _d; do
       [[ "${_d}" =~ ^[A-Za-z0-9_%\\$-]{1,64}$ ]] || continue
       if [ "${_d}" != "${2}" ]; then
@@ -1041,14 +1033,16 @@ _hostmaster_db_users_settle() {
 # Takes from the user $1, on each host row given in $2 (one per line), the
 # global privileges SHOW GRANTS lists for that row, each by name, and its
 # global grant option: a REVOKE ALL on *.* takes the database grants too
-# (measured on Percona 8.4). A database grant that goes all the same is
-# granted back as it read before. Zero when no row keeps a global right and
-# every row has the database grants it had. One text in master.sh.inc and
-# satellite.sh.inc.
+# (measured on Percona 8.4), and Percona 5.7 lists every global right as
+# ALL PRIVILEGES, so those are named too. A database grant that goes all the
+# same is granted back as it read before. Zero when no row keeps a global
+# right and every row has the database grants it had. One text in
+# master.sh.inc and satellite.sh.inc.
 _hostmaster_db_user_global_revoke() {
   local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
     -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
   while IFS= read -r _h; do
     case "${_h}" in
       ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
@@ -1059,6 +1053,7 @@ _hostmaster_db_user_global_revoke() {
     while IFS= read -r _p; do
       _p="${_p#GRANT }"
       _p="${_p%% ON \*.\* TO *}"
+      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
       [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
       "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
     done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
