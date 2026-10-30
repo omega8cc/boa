@@ -4,6 +4,36 @@
 
 @=> Important Fixes
 
+    * Deleting a platform an account uploaded or unpacked into its
+      ~/static folder, with no Composer project around it, removes the
+      folder holding it again when that folder is not group writable (an
+      upload or an rsync -a that kept its modes): the Delete emptied the
+      platform, ended with a warning and left the folder. A Grav or
+      Textpattern platform built there is deleted whole too. A folder that
+      is root's or another user's is kept, and the task log names the
+      permissions helper's own reason for it.
+
+    * A Grav or Textpattern platform under a folder whose name holds [, ],
+      ? or a backslash no longer has its sites missed by the platform
+      Delete's check: the check read the path as a pattern, counted no
+      site, and the Delete removed the sites with the platform. The Grav
+      bundle refresh, the Grav Clone's licence secret clear and the
+      Textpattern upgrade's structure check read such a path as itself too.
+
+    * The platform and site permission and ownership fixers print a name
+      holding a line break or another control character as ?, so each
+      refusal stays on one line: a site folder named with a line break
+      could put a line in the account's own wording where a Delete's
+      notice gives its reason.
+
+    * The Migrate form no longer counts a module that moved from an 8.x-
+      release to a semantic one, such as address 8.x-1.12 to 2.0.4, as a
+      downgrade: 8.x-A.B releases compare as A.B.0, as Drupal.org maps
+      them, and the panel's next upgrade recomputes the stored version codes.
+
+    * A Drupal 7 or Backdrop platform's Verify no longer raises a PHP
+      warning for a module or theme whose .info file has no version line.
+
     * The nightly removal of old empty platforms (_DEL_OLD_EMPTY_PLATFORMS)
       could delete a live platform's code: when the alias of a platform the
       control panel had already deleted still named the same tree, that
