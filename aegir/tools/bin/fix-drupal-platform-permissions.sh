@@ -9,8 +9,10 @@ to provide the following argument:
   --root: Path to the root of your Drupal installation.
   --app-root: the platform Delete's step only: give every directory of the
               Composer project root above that docroot, below the account's
-              static/, group write (02775) so the Delete can remove it, then
-              stop; refused while the docroot holds a site.
+              static/, group write (02775) so the Delete can remove it, or,
+              for a plain platform (Drupal, Backdrop, Grav or Textpattern),
+              the one directory holding it; then stop; refused while the
+              docroot holds a site.
 
 Usage: (sudo) ${0##*/} --root=PATH
 Example: (sudo) ${0##*/} --root=/var/aegir/platforms/drupal-7.50
@@ -29,6 +31,13 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # The notes on what a walk left as it was (_links_left_note) go to fd 3, a
 # copy of stderr taken here: several legs below discard their own output.
 exec 3>&2
+
+# A name as any line prints it: control characters as '?', so a name an
+# account chose (a newline in a directory name) keeps each line whole. The
+# platform Delete's notice quotes the helper's last Notice or Error line.
+_nm() {
+  printf '%s' "${1//[[:cntrl:]]/?}"
+}
 
 # The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
 # and the account owns the names under ${drupal_root}, so any of them can be
@@ -62,7 +71,7 @@ _validate_path_prefix() {
   # the root lies in (/var/aegir, /data/disk/<oN> or /home/<user>).
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
-    printf "Error: path does not resolve: %s\n" "$1" >&2
+    printf "Error: path does not resolve: %s\n" "$(_nm "$1")" >&2
     exit 1
   }
   _caller="${SUDO_USER:-}"
@@ -78,7 +87,7 @@ _validate_path_prefix() {
         _SCOPE_ROOT="/home/${_SCOPE_ROOT%%/*}"
         ;;
       *)
-        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "$(_nm "${_resolved}")" >&2
         exit 1
         ;;
     esac
@@ -89,14 +98,14 @@ _validate_path_prefix() {
   case "${_home}" in
     /var/aegir|/data/disk/*) ;;
     *)
-      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_home}" >&2
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "$(_nm "${_caller}")" "$(_nm "${_home}")" >&2
       exit 1
       ;;
   esac
   case "${_resolved}/" in
     "${_home}"/*) ;;
     *)
-      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved}" "${_home}" >&2
+      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "$(_nm "${_resolved}")" "$(_nm "${_home}")" >&2
       exit 1
       ;;
   esac
@@ -127,7 +136,7 @@ _in_scoped_dir() {
   case "${_r}/" in
     "${_SCOPE_ROOT}"/*) ;;
     *)
-      printf "Error: refusing out-of-scope path %s -> %s\n" "${1}" "${_r}" >&2
+      printf "Error: refusing out-of-scope path %s -> %s\n" "$(_nm "${1}")" "$(_nm "${_r}")" >&2
       return 1
       ;;
   esac
@@ -250,12 +259,15 @@ _own_uids_ok() {
 }
 # The uids the walks act for in _OWN_UIDS (_site_walk_uids); a root in
 # neither an account's tree nor the master's is left as it is, with one
-# Notice and nothing changed.
+# Notice and nothing changed. Under --app-root that ends with status 1, as
+# its other refusals do: the platform Delete reads 0 as the folder opened.
 _root_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
   _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
-    "${drupal_root}" >&2
+    "${drupal_root//[[:cntrl:]]/?}" >&2
+  # Under the permissions helper's --app-root a refusal must not read as done.
+  [[ "${_APP_ROOT:-}" = "YES" ]] && exit 1
   exit 0
 }
 # One line for what the walks left as another user's, each entry once by
@@ -266,7 +278,7 @@ _root_owners_left_note() {
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
   printf "Notice: %s entries owned by another user left as they were in the platform %s\n" \
-    "${_n}" "${drupal_root}" >&3
+    "${_n}" "${drupal_root//[[:cntrl:]]/?}" >&3
   return 0
 }
 # What "$@" prints kept in _LEFT, for that line: the walkers print the
@@ -402,7 +414,7 @@ _links_left_note() {
   _here="$(pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
-    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+    "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
   return 0
 }
 # Mode $1 on every regular file the find start points and tests after it
@@ -591,11 +603,36 @@ if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
   drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
 fi
 
+# A Grav or a Textpattern root, by the probes the two branches below use (no
+# Drupal system.module in either).
+_FOREIGN=""
+if [ -n "${drupal_root}" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  if [ -f "${drupal_root}/bin/grav" ] && [ -f "${drupal_root}/system/defines.php" ]; then
+    _FOREIGN=grav
+  elif [ -f "${drupal_root}/textpattern/lib/constants.php" ] && [ -f "${drupal_root}/css.php" ]; then
+    _FOREIGN=txp
+  fi
+fi
+
+# --app-root is the platform Delete's leg for a Drupal, Backdrop, Grav or
+# Textpattern root: any other root is refused here. A Grav or Textpattern root
+# never runs the permission pass of its own kind under it (that pass would end
+# as if the holder had been opened): it goes straight to the leg below, which
+# opens only the plain folder holding it.
+if [[ "${_APP_ROOT}" = "YES" ]] && [ -n "${drupal_root}" ] && [ -z "${_FOREIGN}" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  printf "Notice: %s is not a Drupal, Backdrop, Grav or Textpattern root; --app-root changed nothing.\n" "$(_nm "${drupal_root}")" >&3
+  exit 1
+fi
+
 # --- Grav 2 platform (site capsules) -----------------------------------------
 # A Grav root carries no Drupal system.module; detect it positively and run
 # the capsule model instead of refusing (union seam: further foreign-CMS
 # branches join here the same way).
-if [ -n "${drupal_root}" ] \
+if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   && [ -f "${drupal_root}/bin/grav" ] \
   && [ -f "${drupal_root}/system/defines.php" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
@@ -608,7 +645,7 @@ if [ -n "${drupal_root}" ] \
   # Each pass runs inside the real root or capsule (_in_pinned_dir). A
   # capsule is a site: what another user owns in it, or a capsule another
   # user owns, is left whole.
-  printf "Setting Grav permissions of %s\n" "${drupal_root}"
+  printf "Setting Grav permissions of %s\n" "$(_nm "${drupal_root}")"
   _root_place_or_leave _place_own_here \
     "Done setting proper permissions of files and directories (Grav)."
   _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
@@ -640,7 +677,7 @@ fi
 # A TXP root carries no Drupal system.module; detect it positively (the same
 # probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
 # and run the shared-core model instead of refusing.
-if [ -n "${drupal_root}" ] \
+if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   && [ -f "${drupal_root}/textpattern/lib/constants.php" ] \
   && [ -f "${drupal_root}/css.php" ] \
   && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
@@ -652,7 +689,7 @@ if [ -n "${drupal_root}" ] \
   # (config.php, drushrc.php) and 02775 setgid writable dirs; a platform-wide
   # chmod would widen the secrets and strip the setgid bits (the drushrc
   # lesson: never fight the writer), so sites/* is pruned outright.
-  printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
+  printf "Setting Textpattern permissions of %s\n" "$(_nm "${drupal_root}")"
   _root_place_or_leave _place_own_here \
     "Done setting proper permissions of files and directories (Textpattern platform)."
   _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
@@ -666,11 +703,12 @@ fi
 
 # Every generation has sites/ and one of the two system.module paths; the
 # ungrouped form let a Drupal 7 tree without sites/ through (see the
-# ownership twin).
-if [ -z "${drupal_root}" ] \
+# ownership twin). A Grav or Textpattern root reaches here only under
+# --app-root (their branches above end the other runs), for the leg below.
+if [ -z "${_FOREIGN}" ] && { [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
   || { [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
-    && [ ! -f "${drupal_root}/modules/system/system.module" ]; }; then
+    && [ ! -f "${drupal_root}/modules/system/system.module" ]; }; }; then
     printf "Error: Please provide a valid Drupal root directory.\n"
     exit 1
 fi
@@ -683,7 +721,7 @@ _root_uids_or_leave
 ### _chmod_own_here protects only the final component. A symlinked skeleton
 ### is never legitimate.
 if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
-  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
+  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "$(_nm "${drupal_root}")" >&2
   exit 1
 fi
 ### The four names under sites/all are plantable the same way, and the day
@@ -697,7 +735,7 @@ fi
 ### are prechecked at their own leg below.
 for _d in modules themes libraries drush; do
   if [ -L "${drupal_root}/sites/all/${_d}" ]; then
-    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "${_d}" "${drupal_root}" >&2
+    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "$(_nm "${_d}")" "$(_nm "${drupal_root}")" >&2
     exit 1
   fi
 done
@@ -721,6 +759,11 @@ done
 ### run then ends. A refusal ends with status 1, as an older helper's
 ### "Invalid argument" does, so the Delete never reports group write that
 ### was not set.
+### A plain platform (neither vendor/ nor composer.lock beside its docroot,
+### as one uploaded or unpacked into static/platforms/<name>) has the same
+### trap one level up: its emptied docroot is unlinked from the directory
+### holding it. That one directory, under the same rules, gets 02775 and
+### nothing else changes; a holder with only one of the two is refused.
 # The current (pinned) directory takes 02775 only when one of the account's
 # own users owns it: a root-owned directory keeps its mode (the store bases
 # autosymlink makes are trusted for being root's and closed).
@@ -728,23 +771,90 @@ _app_up_here() {
   [[ "$(stat -c %u -- . 2> /dev/null)" =~ ^[1-9][0-9]*$ ]] || return 0
   _chmod_own_here d 02775 .
 }
+# The plain holder's one act, judged by what it left: status 0 only when the
+# current (pinned) directory is the account's and carries group write now.
+_app_plain_here() {
+  local _m
+  [[ "$(stat -c %u -- . 2> /dev/null)" =~ ^[1-9][0-9]*$ ]] || return 1
+  _chmod_own_here d 02775 . || return 1
+  _m="$(stat -c %a -- . 2> /dev/null)"
+  [[ "${_m}" =~ ^[0-7]+$ ]] && (( 8#${_m} & 8#020 ))
+}
 if [[ "${_APP_ROOT}" = "YES" ]]; then
   _app="${drupal_root%/*}"
-  if [[ -z "${_SCOPE_ROOT}" ]] \
-    || [[ "${_app}" != "${_SCOPE_ROOT}/static/"?* ]] \
-    || [[ "${_app}/" = "${_SCOPE_ROOT}/static/files/"* ]] \
-    || [[ -L "${_app}/vendor" || ! -d "${_app}/vendor" ]] \
-    || [[ -L "${_app}/composer.lock" || ! -f "${_app}/composer.lock" ]]; then
-    printf "Notice: %s is not a Composer project root below the account's static/; nothing changed.\n" "${_app}" >&3
+  _app_kind=""
+  if [[ -n "${_SCOPE_ROOT}" ]] \
+    && [[ "${_app}" = "${_SCOPE_ROOT}/static/"?* ]] \
+    && [[ "${_app}/" != "${_SCOPE_ROOT}/static/files/"* ]]; then
+    if [[ ! -L "${_app}/vendor" && -d "${_app}/vendor" ]] \
+      && [[ ! -L "${_app}/composer.lock" && -f "${_app}/composer.lock" ]]; then
+      _app_kind=composer
+    elif [[ ! -e "${_app}/vendor" && ! -L "${_app}/vendor" ]] \
+      && [[ ! -e "${_app}/composer.lock" && ! -L "${_app}/composer.lock" ]]; then
+      _app_kind=plain
+    fi
+  fi
+  if [[ -z "${_app_kind}" ]]; then
+    printf "Notice: %s is not a Composer project root or the plain holder of a platform below the account's static/; nothing changed.\n" "$(_nm "${_app}")" >&3
     exit 1
   fi
-  for _s in "${drupal_root}"/sites/*/settings.php; do
-    [[ -e "${_s}" ]] || continue
-    [[ "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
-    printf "Notice: %s still holds a site (%s); nothing changed.\n" "${drupal_root}" "${_s}" >&3
+  # A Grav or Textpattern platform is never a Composer project's docroot here:
+  # only the plain folder holding it is opened.
+  if [[ -n "${_FOREIGN}" && "${_app_kind}" != "plain" ]]; then
+    printf "Notice: %s is not the plain holder of a platform below the account's static/; nothing changed.\n" "$(_nm "${_app}")" >&3
+    exit 1
+  fi
+  # A site the root still holds, by its kind's marks: a Drupal or Backdrop
+  # site's settings.php (default's aside); for Grav and Textpattern the marks
+  # provision's own site scans count (provision_grav_find_sites(),
+  # provision_txp_find_sites()), so the helper refuses exactly where their
+  # platform Delete does: a stricter mark would leave the folder of a Delete
+  # provision let through.
+  case "${_FOREIGN}" in
+    grav) _site_marks=("${drupal_root}"/sites/*/system/defines.php) ;;
+    txp) _site_marks=("${drupal_root}"/sites/*/private/config.php) ;;
+    *) _site_marks=("${drupal_root}"/sites/*/settings.php) ;;
+  esac
+  for _s in "${_site_marks[@]}"; do
+    if [[ -n "${_FOREIGN}" ]]; then
+      # The scans' glob() counts a mark that is a dangling link too.
+      [[ -e "${_s}" || -L "${_s}" ]] || continue
+      # The two levels below the site dir are the mark's own.
+      _c="${_s%/*}"
+      _c="${_c%/*}"
+      # A link is never a site to either scan, nor a restore leftover: Grav
+      # skips a name holding .restore or .original, Textpattern one ending so,
+      # where its regex's $ also takes one trailing newline.
+      [[ -L "${_c}" ]] && continue
+      _n="${_c##*/}"
+      if [[ "${_FOREIGN}" = "grav" ]]; then
+        [[ "${_n}" == *.restore* || "${_n}" == *.original* ]] && continue
+      else
+        _n="${_n%$'\n'}"
+        [[ "${_n}" == *.restore || "${_n}" == *.original ]] && continue
+      fi
+    else
+      [[ -e "${_s}" ]] || continue
+      [[ "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
+    fi
+    printf "Notice: %s still holds a site (%s); nothing changed.\n" "$(_nm "${drupal_root}")" "$(_nm "${_s}")" >&3
     exit 1
   done
-  printf 'Setting group write on the directories of %s for the Delete...\n' "${_app}"
+  if [[ "${_app_kind}" = "plain" ]]; then
+    if ! [[ "$(stat -c %u -- "${_app}" 2> /dev/null)" =~ ^[1-9][0-9]*$ ]]; then
+      printf "Notice: %s is root's; nothing changed.\n" "$(_nm "${_app}")" >&3
+      exit 1
+    fi
+    printf 'Setting group write on %s for the Delete...\n' "$(_nm "${_app}")"
+    if ! _LEFT=$(_in_pinned_dir "${_app}" _app_plain_here); then
+      _root_owners_left_note "${_LEFT}"
+      printf "Notice: %s did not take group write; nothing changed.\n" "$(_nm "${_app}")" >&3
+      exit 1
+    fi
+    echo "Done setting group write on the directory holding the platform."
+    exit 0
+  fi
+  printf 'Setting group write on the directories of %s for the Delete...\n' "$(_nm "${_app}")"
   _LEFT=""
   _left_add _in_pinned_dir "${_app}" _fwalk_own_here d 02775 .
   if [[ "${_app%/*}" != "${_SCOPE_ROOT}/static" ]]; then
@@ -796,11 +906,11 @@ fi
 ### (_in_pinned_dir) and names only ./entries there; refuse now when the
 ### root itself cannot be entered as resolved.
 if ! _in_pinned_dir "${drupal_root}" true; then
-  printf "Error: %s is not a real directory; refusing.\n" "${drupal_root}" >&2
+  printf "Error: %s is not a real directory; refusing.\n" "$(_nm "${drupal_root}")" >&2
   exit 1
 fi
 
-printf 'Setting main permissions inside %s...\n' "${drupal_root}"
+printf 'Setting main permissions inside %s...\n' "$(_nm "${drupal_root}")"
 _root_place_or_leave _place_own_here \
   "Done setting proper permissions on platform files and directories."
 ### Nothing is made in a directory another user owns (_in_own_here), here
@@ -814,26 +924,26 @@ _in_pinned_dir "${drupal_root}/sites/all" \
 _in_pinned_dir "${drupal_root}/sites/all/libraries" \
   _in_own_here _perm_marker_here
 
-printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}"
+printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}")"
 _left_add _in_pinned_dir "${drupal_root}" _walk_here d "${_MODE_DIR}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
-printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}"
+printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}")"
 _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 if [ -e "${drupal_root}/vendor" ]; then
-  printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/vendor"
+  printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
     _fwalk_own_here d "${_MODE_DIR}" ./vendor
-  printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/vendor"
+  printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
-  printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/../vendor"
+  printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
     _fwalk_own_here d "${_MODE_DIR}" ./vendor
-  printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/../vendor"
+  printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
 fi
@@ -874,11 +984,11 @@ elif [ -d "${drupal_root}/html" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" html
 fi
 
-printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/sites/all"
+printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/sites/all")"
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here d "${_SA_DIR}" ./modules ./themes ./libraries
 
-printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/sites/all"
+printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/sites/all")"
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here f "${_SA_FILE}" ./modules ./themes ./libraries
 
@@ -907,13 +1017,13 @@ fi
 ### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/vendor"
+    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/vendor")"
     _left_add _in_scoped_dir "${drupal_root}/vendor" \
       _chmod_any_own_here 0400 drush
     _left_add _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
       _chmod_any_own_here 0400 Input Style
   elif [ -e "${drupal_root}/../vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/../vendor"
+    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/../vendor")"
     _left_add _in_scoped_dir "${drupal_root%/*}/vendor" \
       _chmod_any_own_here 0400 drush
     _left_add _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \

@@ -1535,7 +1535,9 @@ _php_ini() {
 # static/..., a /data/all/... root); a trailing web, docroot or html is
 # dropped, so the key names the codebase composer works in and covers the
 # docroot below it. The longest matching key wins, the last of equal keys.
-# Read live on every command and never written by BOA. A line that cannot
+# Read live on every command; BOA writes a line itself only for a platform
+# whose code cannot run on the PHP its tasks get (the ltd worker's page
+# check, below a dated comment line). A line that cannot
 # apply -- not a folder, a site name, a version not installed -- is ignored
 # and named in every tenant command and task log: a bad value in a tenant
 # file never stops a task, the account-wide files decide instead, and the
@@ -2205,7 +2207,8 @@ _cpp_guard() {
 # The pages of a site can be served by a PHP-FPM version its code cannot run
 # (fpm.info, a multi-fpm.info line, or the fallback for a version that is not
 # installed): the ltd worker lists each such site in the control folder's
-# .fpm-core.info, "<site> <x.y> <why>". A drush line aimed at a listed site
+# .fpm-core.info, "<site> <x.y> <why>", when it cannot move the site to a
+# version that runs it. A drush line aimed at a listed site
 # says so with the other warnings, so its output and every Aegir task log on
 # it carry the reason, whichever PHP the command line itself uses.
 _cpp_fpm_warn() {

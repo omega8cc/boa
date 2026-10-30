@@ -354,7 +354,7 @@ _sample_pass() {
   [ -f "/etc/csf/csf.deny" ] \
     && _deny=$(grep -c '^[0-9a-fA-F]' /etc/csf/csf.deny 2>/dev/null)
   [ -f "/var/lib/csf/csf.tempban" ] \
-    && _tban=$(wc -l < /var/lib/csf/csf.tempban 2>/dev/null)
+    && _tban=$(wc -l 2>/dev/null < /var/lib/csf/csf.tempban)
   printf '{"t":%s,"c":"smp","l1":%s,"l5":%s,"l15":%s,"mem":%s,"swp":%s,"dr":%s,"dd":%s,"tier":"%s","rx":%s,"tx":%s,"rxd":%s,"txd":%s,"syn":%s,"synd":%s,"deny":%s,"tban":%s}\n' \
     "${_now}" "${_l1:-0}" "${_l5:-0}" "${_l15:-0}" "${_mem_kb:-0}" "${_swp_used}" \
     "${_dsk_root:-0}" "${_dsk_data:-0}" "${_tier}" "${_rx:-0}" "${_tx:-0}" \

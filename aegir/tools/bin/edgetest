@@ -210,7 +210,7 @@ _emergency_cleanup() {
   fi
   bash /var/xdrago/ai_policy.sh  >/dev/null 2>&1
   bash /var/xdrago/ip_access.sh  >/dev/null 2>&1
-  bash /var/xdrago/nginx_deny.sh >/dev/null 2>&1
+  bash /var/xdrago/nginx_deny.sh now >/dev/null 2>&1
   service nginx reload >/dev/null 2>&1
 }
 trap _emergency_cleanup EXIT
@@ -622,7 +622,7 @@ _phase_realip_ban_proof() {
   service nginx reload >/dev/null 2>&1
   # 2. web-ban the sentinel IP via csf, mirror into nginx
   csf -td "${_TEST_IP}" 300 -p 80 >/dev/null 2>&1
-  bash /var/xdrago/nginx_deny.sh >/dev/null 2>&1
+  bash /var/xdrago/nginx_deny.sh now >/dev/null 2>&1
   grep -q "^${_TEST_IP} 1;" /data/conf/nginx_banned_ips.conf 2>/dev/null \
     && _pass "nginx_deny mirrored the csf web ban (${_TEST_IP}) into the geo set" \
     || _fail "nginx_deny did NOT mirror the csf web ban (${_TEST_IP}) — check the csf.tempban port filter"
@@ -644,7 +644,7 @@ _phase_realip_ban_proof() {
   # 5. cleanup
   rm -f "${_trust}"
   csf -tr "${_TEST_IP}" >/dev/null 2>&1
-  bash /var/xdrago/nginx_deny.sh >/dev/null 2>&1
+  bash /var/xdrago/nginx_deny.sh now >/dev/null 2>&1
   service nginx reload >/dev/null 2>&1
 }
 

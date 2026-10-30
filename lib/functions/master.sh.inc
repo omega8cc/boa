@@ -576,6 +576,34 @@ EOFMYSQL
 }
 
 #
+# Revoke from the panel's database user $1, at localhost and at %, every right
+# but those on its own database $2 (the name as a grant writes it, _ escaped):
+# the rights on all databases and the grant option an earlier release gave,
+# and the rights on any other database. The own grant itself is never taken
+# away, so the panel keeps its database while this runs. The global rights
+# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
+# ALL on *.*, which on Percona 8.4 takes every database grant with it.
+_hostmaster_frontend_dbuser_trim() {
+  local _h _d
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  # held in a variable: on the right of =~ a bare $- would expand
+  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
+  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
+    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
+  for _h in localhost %; do
+    while IFS= read -r _d; do
+      [[ "${_d}" =~ ${_dbre} ]] || continue
+      if [ "${_d}" != "${2}" ]; then
+        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+      fi
+      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
+  done
+}
+
+#
 # Sync hostmaster frontend db_passwd.
 _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -648,20 +676,28 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
+    ### The two accounts the panel logs in with are set in place, never
+    ### dropped and made again: the panel serves requests all through the
+    ### pass, and between a DROP and the ALTER that gave the password back
+    ### none of them could log in. Rights beyond the own database, as an
+    ### earlier release gave, are revoked once the own grant is in place
+    ### (not while the name is unreadable), and the accounts named after the
+    ### host go last.
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
 EOFMYSQL
+    if [ -z "${_GOPT}" ]; then
+      _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBNM//_/\\_}"
+    fi
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     _hostmaster_oldhost_dbuser_drop
     case "${_SQL_CONNECT}" in
       localhost|127.0.0.1) _dbctl_rerecord master-panel ;;
@@ -999,14 +1035,16 @@ _hostmaster_db_users_settle() {
 # Takes from the user $1, on each host row given in $2 (one per line), the
 # global privileges SHOW GRANTS lists for that row, each by name, and its
 # global grant option: a REVOKE ALL on *.* takes the database grants too
-# (measured on Percona 8.4). A database grant that goes all the same is
-# granted back as it read before. Zero when no row keeps a global right and
-# every row has the database grants it had. One text in master.sh.inc and
-# satellite.sh.inc.
+# (measured on Percona 8.4), and Percona 5.7 lists every global right as
+# ALL PRIVILEGES, so those are named too. A database grant that goes all the
+# same is granted back as it read before. Zero when no row keeps a global
+# right and every row has the database grants it had. One text in
+# master.sh.inc and satellite.sh.inc.
 _hostmaster_db_user_global_revoke() {
   local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
     -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
   while IFS= read -r _h; do
     case "${_h}" in
       ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
@@ -1017,6 +1055,7 @@ _hostmaster_db_user_global_revoke() {
     while IFS= read -r _p; do
       _p="${_p#GRANT }"
       _p="${_p%% ON \*.\* TO *}"
+      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
       [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
       "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
     done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
@@ -1735,6 +1774,10 @@ _aegir_master_upgrade() {
     rm -f /opt/tmp/state/aegir/status-AegirUpgrade-FAIL \
       /opt/tmp/state/aegir/status-AegirUpgrade-OK \
       /opt/tmp/status-AegirUpgrade-FAIL &> /dev/null
+    ### The panel's web front is held while it moves by the global include set
+    ### (global-main.inc): deploy it before the Master's own migrate, so the
+    ### first upgrade that brings it holds the Master too. Deployed again below.
+    _global_inc_conf_update
     su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
     wait
     ###

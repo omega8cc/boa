@@ -86,7 +86,7 @@ _single_instance_lock() {
     # out: a recorded owner that is no longer alive, on a lock old enough
     # that no live run can still own it, is reclaimed once.
     if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
-      _OWNER_PID="$(tr -dc '0-9' < "${_LOCK_PATH}/pid" 2>/dev/null)"
+      _OWNER_PID="$(tr -dc '0-9' 2>/dev/null < "${_LOCK_PATH}/pid")"
       if { [ -z "${_OWNER_PID}" ] || ! kill -0 "${_OWNER_PID}" 2>/dev/null; } \
         && [ -n "$(find "${_LOCK_PATH}" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
         rm -rf "${_LOCK_PATH}" 2>/dev/null
@@ -233,7 +233,7 @@ _incident_email_ratelimit() {
   _stamp="/run/incident.${_key}.stamp"
   _now=$(date +%s)
   if [ -s "${_stamp}" ]; then
-    read -r _ts _cnt < "${_stamp}" 2>/dev/null
+    read -r _ts _cnt 2>/dev/null < "${_stamp}"
     _ts="${_ts//[^0-9]/}"
     _cnt="${_cnt//[^0-9]/}"
     [ -n "${_cnt}" ] || _cnt=0

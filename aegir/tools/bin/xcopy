@@ -990,6 +990,8 @@ EOFMYSQL
               --verbose=2; then
               _XCOPY_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
+              _measure_loaded_tables "${_DBN}" --defaults-file=/root/.my.cnf \
+                --host=localhost --port=3306
             else
               _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
@@ -1228,7 +1230,7 @@ _xcopy_heal_fpm_pins() {
   # ones that do not -- a silent wrong-interpreter site is the whole failure
   # this heal exists to prevent.
   while read -r _dom _ver; do
-    case "${_dom}" in ''|place.holder*) continue ;; esac
+    case "${_dom}" in ''|place.holder*|\#*) continue ;; esac
     [ -z "${_ver}" ] && continue
     _ver="${_ver//[^0-9]/}"
     [ -z "${_ver}" ] && continue
@@ -2470,6 +2472,8 @@ _migrate_prepare() {
     fi
     ### Both branches above pour the same-name dump (xcopy refuses any other
     ### name before it gets here), so both reach the steps below.
+    _measure_loaded_tables "${_HDB}" -u root "-h${_SQL_CONNECT}" "-P${_THIS_DB_PORT}" \
+      --protocol=tcp
     ### The panel database the dump went into is the account's in the
     ### database broker's registry once the account is switched: its next
     ### upgrade dumps it through the broker.
@@ -3535,6 +3539,56 @@ _myloader_binlog_opts() {
     _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
   fi
   return 0
+}
+### A table a load has just written can read as empty to the query optimiser
+### until InnoDB measures it in the background, and once nothing new wakes
+### that queue it takes about one table every ten seconds: a large site
+### loaded among a run of others went live with its pages planned as full
+### table scans, and the database server ran out of CPU before the queue
+### reached its tables. ANALYZE TABLE measures every InnoDB table of the
+### database right after its load, 100 at a time, waiting at most 30 seconds
+### for a table another session holds, as provision does after its own
+### imports. It goes to the binary log as the load does, so a replica of this
+### box measures the same tables; a standby takes its tables from replication
+### and is never measured here. A table left unmeasured only warns: the data
+### is in place, and InnoDB or the per-minute SQL check measures it later.
+### $1 is the database, the rest the client options the load connected with
+### (a --defaults-file first, as the client requires).
+_measure_loaded_tables() {
+  local _db="$1" _t0="${SECONDS}" _bq='`' _names _tb _list _out _i _ok=0 _skip=0 _err=""
+  local -a _tbls=()
+  shift
+  [ -e "/root/.standby.cnf" ] && return 0
+  if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: not a plain database name"
+    return 1
+  fi
+  if ! _names=$(mysql "$@" --silent -N -B -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'" 2>/dev/null); then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: its tables could not be listed"
+    return 1
+  fi
+  while IFS= read -r _tb; do
+    [ -n "${_tb}" ] || continue
+    ### -B prints a backslash, tab or newline in a name as an escape: a name
+    ### with one, or with a backtick, is never spliced into a statement.
+    case "${_tb}" in
+      *\\*|*"${_bq}"*) _skip=$(( _skip + 1 )); continue ;;
+    esac
+    _tbls+=("${_bq}${_db}${_bq}.${_bq}${_tb}${_bq}")
+  done <<< "${_names}"
+  for (( _i = 0; _i < ${#_tbls[@]}; _i += 100 )); do
+    _list=$(IFS=,; printf '%s' "${_tbls[*]:_i:100}")
+    _out=$(timeout 300 mysql "$@" --silent -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
+    ### The outcome, not the exit code: each table answers with its own OK.
+    _ok=$(( _ok + $(grep -c $'\tanalyze\tstatus\tOK$' <<< "${_out}") ))
+    [ -n "${_err}" ] || _err=$(grep -i -m 1 -E 'error|timeout|denied' <<< "${_out}" | tr '\t' ' ')
+  done
+  if [ "${_ok}" -eq "${#_tbls[@]}" ] && [ "${_skip}" -eq 0 ]; then
+    [ "${_ok}" -gt 0 ] && echo "INFO: measured the optimizer statistics of ${_ok} tables in ${_db} in $(( SECONDS - _t0 )) s"
+    return 0
+  fi
+  echo "ALRT: measured the optimizer statistics of ${_ok} of $(( ${#_tbls[@]} + _skip )) tables in ${_db}${_err:+ (${_err:0:200})}; InnoDB measures the rest later on its own"
+  return 1
 }
 ### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
 ### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK
@@ -5228,7 +5282,7 @@ _take_verb_lock() {
       echo "ERROR: cannot claim ${_XCOPY_LOCK_FILE} -- refusing to run unlocked"
       exit 1
     fi
-    _owner=$(tr -dc '0-9' < "${_XCOPY_LOCK_FILE}" 2>/dev/null | head -c 12)
+    _owner=$(tr -dc '0-9' 2>/dev/null < "${_XCOPY_LOCK_FILE}" | head -c 12)
     if [ -z "${_owner}" ] \
       && [ -n "$(find "${_XCOPY_LOCK_FILE}" -newermt '-5 seconds' 2>/dev/null)" ]; then
       ### A just-created lock can be read in the instant between its O_EXCL
@@ -5237,7 +5291,7 @@ _take_verb_lock() {
       continue
     fi
     if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
-      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      _cmdline=$(tr '\0' ' ' 2>/dev/null < "/proc/${_owner}/cmdline")
       case "${_cmdline}" in
         */xcopy\ *|*/xcopy|*\ xcopy\ *)
           echo "ERROR: another xcopy run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish, or clear ${_XCOPY_LOCK_FILE} if that pid is not an xcopy run."

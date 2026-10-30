@@ -794,7 +794,7 @@ _solr_index_alert() {
   if [[ -z "${_mail}" ]] || ! command -v s-nail > /dev/null 2>&1; then
     return 0
   fi
-  _host="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+  _host="$(tr -d '\n' 2> /dev/null < /etc/hostname)"
   [[ -n "${_host}" ]] || _host="$(hostname -f 2> /dev/null)"
   printf '%s\n' "${_sub} on ${_host}" "" "$@" "" "Logged to ${_log}" "" "--" \
     "This email has been sent by the BOA Solr config tool" \

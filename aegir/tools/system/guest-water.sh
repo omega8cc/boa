@@ -1209,7 +1209,7 @@ _cnf_value() {
 _csf_allow_rollback_alert() {
   local _diff="${1}" _brk="${2}" _pre="${3}" _host _mail _lvl _odd
   local _log="/var/log/boa/system.incident.log"
-  _host="$(tr -d '\n' < /etc/hostname 2>/dev/null)"
+  _host="$(tr -d '\n' 2>/dev/null < /etc/hostname)"
   [ -n "${_host}" ] || _host="$(hostname -f 2>/dev/null)"
   # The lines the pass does not own are what the operator needs to see; the
   # hunk diff reports carries every provider line sorted next to them, so
@@ -1281,7 +1281,7 @@ _csf_kill_own() {
   for _p in $(pgrep -x sleep 2>/dev/null); do
     _pp=$(awk '/^PPid:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
     [ -n "${_pp}" ] || continue
-    _cmd=$(tr '\0' ' ' < "/proc/${_pp}/cmdline" 2>/dev/null)
+    _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pp}/cmdline")
     _csf_owned_cmdline "${_cmd}" && kill -9 "${_p}" 2>/dev/null
   done
   pkill -9 -f '^[^ ]*ConfigServer' 2>/dev/null

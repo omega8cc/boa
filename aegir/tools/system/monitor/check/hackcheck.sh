@@ -265,14 +265,21 @@ _makeactions() {
   # its minute-top load spikes. sshd itself frames the client address as
   # " from <ip> port ", so match that directly; ::ffff: IPv4-mapped forms are
   # unwrapped exactly as the old any-IPv4-in-line extractor did.
+  # Both greps read as text (-a): a NUL block an unclean shutdown leaves in
+  # auth.log, alone or at the head of the next line, makes grep call its whole
+  # input binary and print no line, and then no login exempted anyone.
+  # The address is kept before _is_ipv4 runs: its own =~ overwrites BASH_REMATCH,
+  # which left an octet as the only key and exempted no login at all.
   local _acc_from_rx=" from (::[fF]{4}:)?((${_IPV4_OCTET_RX}\.){3}${_IPV4_OCTET_RX}) port "
+  local _acc_ip
   while IFS= read -r _acc_line; do
     if [[ "${_acc_line}" =~ ${_acc_from_rx} ]]; then
-      _is_ipv4 "${BASH_REMATCH[2]}" && _accepted["${BASH_REMATCH[2]}"]=1
+      _acc_ip="${BASH_REMATCH[2]}"
+      _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
     fi
-  done < <(grep -F "Accepted " "${_AUTH_LOG}" 2>/dev/null \
+  done < <(grep -aF "Accepted " "${_AUTH_LOG}" 2>/dev/null \
     | sed -E 's/^[^]]*\]: //' \
-    | grep -E '^Accepted ' \
+    | grep -aE '^Accepted ' \
     | tail -n "${_AUTH_LOG_BASELINE}")
 
   # -------------------------------------------------------------------------

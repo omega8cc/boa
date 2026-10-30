@@ -115,7 +115,7 @@ _check_mysql_version() {
 _sql_maint_foreign() {
   [ -e "/run/boa_sql_maintenance.pid" ] || return 1
   [ ! -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ] && return 1
-  local _mPid="$(tr -dc '0-9' < /run/boa_sql_maintenance.pid 2>/dev/null)"
+  local _mPid="$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_maintenance.pid)"
   [ -z "${_mPid}" ] && return 0
   [ "${_mPid}" = "$$" ] && return 1
   kill -0 "${_mPid}" 2>/dev/null || return 1
@@ -340,7 +340,7 @@ _check_sql_running() {
           _msg "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
-        _lc0=$(wc -l < /var/log/mysql/error.log 2> /dev/null)
+        _lc0=$(wc -l 2> /dev/null < /var/log/mysql/error.log)
         _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
@@ -1169,9 +1169,22 @@ _sql_conf_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DBST: Enable performance_schema for Percona ${_DB_V}"
         fi
+        # The template's former performance_schema_instrument = 'wait/%=ON'
+        # enabled and timed every mutex, rwlock, sxlock and cond instrument,
+        # which the server ships off: a timer on every lock taken, no memory
+        # saved. Keep it commented here, after the uncomment, so boxes that
+        # carry it drop it too; 8.x runs with the server's own defaults.
+        # The template's sizing lines trim memory nothing reads: the four
+        # long histories are allocated at start whatever their consumers
+        # say, and no BOA tool or sys view reads the error summaries.
+        # The template's thread_stack = 256K dates from the servers of 2010;
+        # 8.4 ships 1M, and a smaller stack refuses deeply nested statements.
+        # Comment that line so 8.x runs on its own default; 5.7 keeps it.
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
+          -e "s/^(\s*)(performance_schema_instrument\s*=\s*['\"]?wait\/%=ON['\"]?\s*)$/\1#\2/" \
+          -e "s/^(\s*)(thread_stack\s*=\s*256K\s*)$/\1#\2/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       # Reconcile the InnoDB sizing directives with the INSTALLED binary:
@@ -1461,7 +1474,7 @@ _check_mysqld_running() {
           _msg "INFO: MySQLD not running -- starting it..."
         fi
         _ran=NO
-        _lc0=$(wc -l < /var/log/mysql/error.log 2> /dev/null)
+        _lc0=$(wc -l 2> /dev/null < /var/log/mysql/error.log)
         _lc0=${_lc0:-0}
         if [ -e "/var/xdrago/move_sql.sh" ]; then
           _mrun "bash /var/xdrago/move_sql.sh start"
@@ -2297,7 +2310,16 @@ _db_server_install() {
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
         fi
+        # diff shows a change only when one of its lines matches no -I
+        # pattern, so tuned-knob and comment lines alone never restart:
+        # mysqld never reads a comment line, so a template edit that only
+        # adds, drops or rewords one must not restart every box's server,
+        # and performance_schema sizing and thread_stack, like the knobs,
+        # wait for the next natural restart.
         _diffMyTest=$(diff -w -B \
+          -I "^[[:space:]]*[#;]" \
+          -I "^[[:space:]]*performance_schema_" \
+          -I "^[[:space:]]*thread_stack" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
@@ -2319,20 +2341,6 @@ _db_server_install() {
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
-          fi
-        fi
-        if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          # Suppress only when the surviving diff carries nothing but
-          # ignore-listed knob lines; a mixed hunk keeps its restart for
-          # the co-riding knob the -I list does not cover.
-          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
-            | grep -E "^[<>] " \
-            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
-          if [ -z "${_diffMyOther}" ]; then
-            _myCnfUpdate=NO
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
-            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
