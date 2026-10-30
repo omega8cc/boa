@@ -2901,10 +2901,14 @@ _t_drop_kept_users() {   # 1 databases done already
 # them - and a later re-adoption of the same names (the documented retry
 # path) then conflicts on server_name, with the DEAD vhost winning by
 # include order. Remove exactly the manifest URIs' vhost files; the
-# account's own panel vhost is not a manifest URI and stays. vhost.d is the
-# account's: each name is removed inside the real directory only.
+# account's own panel vhost is not a manifest URI and stays. The same goes
+# for the Drush aliases those verifies wrote: a site's alias outlived the
+# revert and named a site with no database or vhost behind it. vhost.d and
+# .drush are the account's: each name is removed inside the real directory
+# only.
 _t_remove_estate_vhosts() {
   local _vhd="${_ACCT_ROOT}/config/server_master/nginx/vhost.d" _mff _uri _n=0
+  local _drd="${_ACCT_ROOT}/.drush"
   for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
     [[ -e "${_mff}" ]] || continue
     _uri="$(_sane_domain "$(_manifest_val "${_mff}" URI)")" || continue
@@ -2912,6 +2916,10 @@ _t_remove_estate_vhosts() {
       _a2b_in_real_dir "${_vhd}" rm -f -- "./${_uri}"
       _info "site ${_uri}: orphaned vhost removed"
       _n=$(( _n + 1 ))
+    fi
+    if [[ -e "${_drd}/${_uri}.alias.drushrc.php" || -L "${_drd}/${_uri}.alias.drushrc.php" ]]; then
+      _a2b_in_real_dir "${_drd}" rm -f -- "./${_uri}.alias.drushrc.php"
+      _info "site ${_uri}: orphaned drush alias removed"
     fi
   done
   if [[ "${_n}" -gt 0 ]]; then
