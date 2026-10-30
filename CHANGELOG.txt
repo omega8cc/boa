@@ -12,7 +12,8 @@
       server beside one still flushing its buffer pool; a start that
       refuses while a server is still starting up without its pid file;
       startup messages kept in the error log. The script is replaced by
-      rename and the server is not restarted for it.
+      rename and the server is not restarted for it; a local edit of the
+      script does not survive the next run.
 
     * A site served by a PHP version its code cannot run (an old Drupal 7
       or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
