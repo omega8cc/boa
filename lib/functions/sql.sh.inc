@@ -2215,9 +2215,13 @@ _sql_initd_check() {
   else
     _run=glibc
   fi
-  if [ "${_own}" = "NO" ] && [ "${_want}" = "jemalloc" ]; then
-    _msg "NOTE: _SQL_MALLOC=jemalloc does not apply: the package's own init script starts this 5.7 server"
-  elif [ "${_own}" = "YES" ] && [ "${_run}" != "${_want}" ]; then
+  # Percona 5.7's mysqld_safe preloads libjemalloc.so.2 by itself whenever
+  # the library is there, so such a server can run on jemalloc either way.
+  if [ "${_own}" = "NO" ]; then
+    if [ "${_run}" != "${_want}" ]; then
+      _msg "NOTE: mysqld runs on ${_run}: the package's own init script starts this 5.7 server through mysqld_safe, and _SQL_MALLOC=${_want} does not apply"
+    fi
+  elif [ "${_run}" != "${_want}" ]; then
     _msg "NOTE: mysqld runs on ${_run}; ${_want} (_SQL_MALLOC) applies at its next restart"
   fi
 }

@@ -1146,7 +1146,9 @@ _SOLR_HEAP_FORCE=""
 ### takes effect only with a database restart on the
 ### next planned maintenance; the system never restarts
 ### the server for it. Boxes whose 5.7 server is still
-### started by the package's own init script ignore it.
+### started by the package's own init script ignore it:
+### there Percona's mysqld_safe preloads jemalloc by
+### itself whenever the library is installed.
 ###
 _SQL_MALLOC=glibc
 
