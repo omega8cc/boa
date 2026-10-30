@@ -29,6 +29,8 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # The notes on what a walk left as it was (_links_left_note) go to fd 3, a
 # copy of stderr taken here: several legs below discard their own output.
+# Every line prints a name with control characters as '?', so a name an
+# account chose keeps each line whole: provision quotes these lines.
 exec 3>&2
 
 # Reject any caller-supplied path that resolves outside the BOA-managed roots.
@@ -65,7 +67,7 @@ _validate_path_prefix() {
   # BOA-tree allowlist.
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
-    printf "Error: path does not resolve: %s\n" "$1" >&2
+    printf "Error: path does not resolve: %s\n" "${1//[[:cntrl:]]/?}" >&2
     exit 1
   }
   _caller="${SUDO_USER:-}"
@@ -73,7 +75,7 @@ _validate_path_prefix() {
     case "${_resolved}/" in
       /var/aegir/*|/data/disk/*|/home/*) return 0 ;;
       *)
-        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved//[[:cntrl:]]/?}" >&2
         exit 1
         ;;
     esac
@@ -83,14 +85,14 @@ _validate_path_prefix() {
   case "${_home}" in
     /var/aegir|/data/disk/*) ;;
     *)
-      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_home}" >&2
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller//[[:cntrl:]]/?}" "${_home//[[:cntrl:]]/?}" >&2
       exit 1
       ;;
   esac
   case "${_resolved}/" in
     "${_home}"/*) ;;
     *)
-      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved}" "${_home}" >&2
+      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved//[[:cntrl:]]/?}" "${_home//[[:cntrl:]]/?}" >&2
       exit 1
       ;;
   esac
@@ -296,7 +298,7 @@ _links_left_note() {
   _here="$(pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
-    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+    "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
   return 0
 }
 
@@ -317,7 +319,7 @@ _reown_here() {
   [[ "${1}" != *:* ]] \
     || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
   if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]]; then
-    printf "Error: invalid owner %s\n" "${1}" >&2
+    printf "Error: invalid owner %s\n" "${1//[[:cntrl:]]/?}" >&2
     return 1
   fi
   shift
@@ -404,7 +406,9 @@ _root_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
   _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
-    "${drupal_root}" >&2
+    "${drupal_root//[[:cntrl:]]/?}" >&2
+  # Under the permissions helper's --app-root a refusal must not read as done.
+  [[ "${_APP_ROOT:-}" = "YES" ]] && exit 1
   exit 0
 }
 # One line for what the walks left as another user's, each entry once by
@@ -415,7 +419,7 @@ _root_owners_left_note() {
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
   printf "Notice: %s entries owned by another user left as they were in the platform %s\n" \
-    "${_n}" "${drupal_root}" >&3
+    "${_n}" "${drupal_root//[[:cntrl:]]/?}" >&3
   return 0
 }
 # What "$@" prints kept in _LEFT, for that line: the walkers print the
@@ -518,7 +522,7 @@ _reown_own_here() {
     || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
   if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]] \
     || ! _own_uids_ok "${_OWN_UIDS}"; then
-    printf "Error: invalid owner %s\n" "${1}" >&2
+    printf "Error: invalid owner %s\n" "${1//[[:cntrl:]]/?}" >&2
     return 1
   fi
   shift
@@ -698,7 +702,7 @@ if [ -n "${drupal_root}" ] \
   # Each pass runs inside the real root or capsule (_in_pinned_dir), and the
   # owner and group stay one quoted argument. A capsule is a site: what
   # another user owns in it, or a capsule another user owns, is left whole.
-  printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
+  printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${drupal_root//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
   _root_place_or_leave _place_ours_here \
     "Done setting proper ownership of files and directories (Grav)."
   _left_add _in_pinned_dir "${drupal_root}" \
@@ -735,7 +739,7 @@ if [ -n "${drupal_root}" ] \
   # outright (only the sites/ directory itself takes core ownership). Each
   # name is handed over from -execdir (_reown_own_here), one ./name in the
   # directory find holds open, so no directory on the way is resolved again.
-  printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
+  printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${drupal_root//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
   _root_place_or_leave _place_ours_here \
     "Done setting proper ownership of files and directories (Textpattern platform)."
   _left_add _in_pinned_dir "${drupal_root}" _reown_own_here -R \
@@ -774,7 +778,7 @@ _wg=$(_web_group "${drupal_root}")
 ### is group-writable) and every op below walks THROUGH them; -h protects
 ### only the final component. A symlinked skeleton is never legitimate.
 if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
-  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
+  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root//[[:cntrl:]]/?}" >&2
   exit 1
 fi
 ### The four names under sites/all are plantable the same way, and the day
@@ -786,7 +790,7 @@ fi
 ### tcpdf and its cache child are prechecked at their own leg below.
 for _d in modules themes libraries drush; do
   if [ -L "${drupal_root}/sites/all/${_d}" ]; then
-    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "${_d}" "${drupal_root}" >&2
+    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "${_d//[[:cntrl:]]/?}" "${drupal_root//[[:cntrl:]]/?}" >&2
     exit 1
   fi
 done
@@ -823,11 +827,11 @@ fi
 ### (_in_pinned_dir) and names only ./entries there; refuse now when the
 ### root itself cannot be entered as resolved.
 if ! _in_pinned_dir "${drupal_root}" true; then
-  printf "Error: %s is not a real directory; refusing.\n" "${drupal_root}" >&2
+  printf "Error: %s is not a real directory; refusing.\n" "${drupal_root//[[:cntrl:]]/?}" >&2
   exit 1
 fi
 
-printf 'Setting ownership of %s to: user => %s group => %s\n' "${drupal_root}" "${script_user}" "${_code_group}"
+printf 'Setting ownership of %s to: user => %s group => %s\n' "${drupal_root//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
 _root_place_or_leave _place_ours_here \
   "Done setting proper ownership of platform files and directories."
 _left_add _in_pinned_dir "${drupal_root}" \

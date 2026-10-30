@@ -450,6 +450,7 @@ _nginx_high_load_on() {
   local _log_message
   _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
   echo "${_log_message}" >> ${_pthOml}
+  _incident_snapshot "spider-load"
 # local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
 # _incident_email_report "${_subject}" "INFO"
 # echo >> ${_pthOml}
@@ -507,6 +508,16 @@ _spawn_detached() {
   fi
   # If interactive shell, drop it from the job table to mimic cron behavior
   if [[ "$-" == *i* ]]; then disown; fi
+}
+
+# Save MySQL and process state as an incident starts, before this script stops
+# anything: a stall that held the database leaves no record of its own, and
+# the queries waiting on it are gone once PHP is killed. Detached, so no tier
+# waits on it; sqlsnap.sh keeps one set per cooldown.
+_incident_snapshot() {
+  [ -e "${_monPath}/sqlsnap.sh" ] || return 0
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  _spawn_detached "bash ${_monPath}/sqlsnap.sh $1 ${_pthOml}"
 }
 
 # Function to control processes
@@ -729,7 +740,7 @@ _clear_pause_latch() {
     return 0
   fi
   if [ -s "${_pthStreak}" ] && [ -z "$(find "${_pthStreak}" -mmin +5 2>/dev/null)" ]; then
-    _streak=$(tr -dc '0-9' < "${_pthStreak}" 2>/dev/null)
+    _streak=$(tr -dc '0-9' 2>/dev/null < "${_pthStreak}")
     [ -n "${_streak}" ] || _streak=0
   fi
   _streak=$(( _streak + 1 ))
@@ -793,6 +804,9 @@ _load_control() {
 
   # Check for critical load to terminate processes and hold services
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
+    # Started ahead of the cooldown: by its end the state is saved, and a
+    # spike that subsides still leaves its record.
+    _incident_snapshot "critical-load"
     sleep 9
     _get_load   # re-read AFTER the cooldown — react only if the load is STILL high
     # (the old code re-checked the stale entry value, so a transient spike — e.g. a
@@ -823,6 +837,7 @@ _load_control() {
     fi
   # Check for max load to hold services
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
+    _incident_snapshot "max-load"
     sleep 9
     _get_load   # re-read AFTER the cooldown — react only if the load is STILL high
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then

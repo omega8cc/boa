@@ -30,6 +30,8 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # The notes on what a walk left as it was (_links_left_note) go to fd 3, a
 # copy of stderr taken here: several legs below discard their own output.
+# Every line prints a name with control characters as '?', so a name an
+# account chose keeps each line whole: provision quotes these lines.
 exec 3>&2
 
 # The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
@@ -56,7 +58,7 @@ _validate_path_prefix() {
   # BOA-tree allowlist.
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
-    printf "Error: path does not resolve: %s\n" "$1" >&2
+    printf "Error: path does not resolve: %s\n" "${1//[[:cntrl:]]/?}" >&2
     exit 1
   }
   _caller="${SUDO_USER:-}"
@@ -64,7 +66,7 @@ _validate_path_prefix() {
     case "${_resolved}/" in
       /var/aegir/*|/data/disk/*|/home/*) return 0 ;;
       *)
-        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved//[[:cntrl:]]/?}" >&2
         exit 1
         ;;
     esac
@@ -74,14 +76,14 @@ _validate_path_prefix() {
   case "${_home}" in
     /var/aegir|/data/disk/*) ;;
     *)
-      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_home}" >&2
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller//[[:cntrl:]]/?}" "${_home//[[:cntrl:]]/?}" >&2
       exit 1
       ;;
   esac
   case "${_resolved}/" in
     "${_home}"/*) ;;
     *)
-      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved}" "${_home}" >&2
+      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved//[[:cntrl:]]/?}" "${_home//[[:cntrl:]]/?}" >&2
       exit 1
       ;;
   esac
@@ -466,7 +468,7 @@ _own_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${site_path}") || _OWN_UIDS=""
   _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
-    "${site_path}" >&2
+    "${site_path//[[:cntrl:]]/?}" >&2
   exit 0
 }
 # One line for what the walks left as another user's, each entry once by
@@ -477,7 +479,7 @@ _owners_left_note() {
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
   printf "Notice: %s entries owned by another user left as they were in the site %s and its stores\n" \
-    "${_n}" "${site_path}" >&3
+    "${_n}" "${site_path//[[:cntrl:]]/?}" >&3
   return 0
 }
 
@@ -578,7 +580,7 @@ _links_left_note() {
   _here="$(pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
-    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+    "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
   return 0
 }
 # Mode $1 on every regular file the find start points and tests after it
@@ -884,20 +886,20 @@ _backup_read() {
       _acct="${_acct%%/*}"
       ;;
     *)
-      printf "Nothing to open: %s is not an Octopus account's site.\n" "${site_path}"
+      printf "Nothing to open: %s is not an Octopus account's site.\n" "${site_path//[[:cntrl:]]/?}"
       return 0
       ;;
   esac
   case "${_acct}" in
     ""|*[!a-z0-9-]*)
-      printf "Error: unexpected account in %s; refusing.\n" "${site_path}" >&2
+      printf "Error: unexpected account in %s; refusing.\n" "${site_path//[[:cntrl:]]/?}" >&2
       return 1
       ;;
   esac
   _wg=$(_site_web_group "${site_path}")
   _gid=$(getent group "${_wg}" 2> /dev/null | cut -d: -f3)
   if [[ ! "${_gid}" =~ ^[0-9]+$ ]]; then
-    printf "Error: no web group for %s; refusing.\n" "${site_path}" >&2
+    printf "Error: no web group for %s; refusing.\n" "${site_path//[[:cntrl:]]/?}" >&2
     return 1
   fi
   # The account's web users as BOA names its pools' users: <account>.web
@@ -913,7 +915,7 @@ _backup_read() {
     _c=$(_in_pinned_dir "${_d}" _backup_read_here "${_gid}" "${_uids}") || continue
     [[ "${_c}" =~ ^[0-9]+$ ]] && _tot=$(( _tot + _c ))
   done
-  printf "Group read given to %s entries the web server wrote closed in %s.\n" "${_tot}" "${site_path}"
+  printf "Group read given to %s entries the web server wrote closed in %s.\n" "${_tot}" "${site_path//[[:cntrl:]]/?}"
   return 0
 }
 
@@ -971,7 +973,7 @@ if [ -n "${site_path}" ] \
   # group on web-created entries); the capsule's own bin/ stays executable
   # (the enforced-PHP wrapper and the upgrade engine exec bin/grav, bin/gpm).
   # Runs inside the real site directory (_in_pinned_dir, _grav_site_perm_here).
-  printf "Setting Grav permissions of %s\n" "${site_path}"
+  printf "Setting Grav permissions of %s\n" "${site_path//[[:cntrl:]]/?}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _grav_site_perm_here)"
   echo "Done setting proper permissions of files and directories (Grav site)."
   exit 0
@@ -999,7 +1001,7 @@ if [ -n "${site_path}" ] \
   # matched by -type d/f and are not descended into -- the shared core tree is
   # never touched from here. Runs inside the real site directory
   # (_in_pinned_dir, _txp_site_perm_here).
-  printf "Setting Textpattern permissions of %s\n" "${site_path}"
+  printf "Setting Textpattern permissions of %s\n" "${site_path//[[:cntrl:]]/?}"
   _owners_left_note "$(_in_pinned_dir "${site_path}" _txp_site_perm_here)"
   echo "Done setting proper permissions of files and directories (Textpattern site)."
   exit 0
@@ -1033,7 +1035,7 @@ esac
 ### component. None is ever legitimately a symlink at site level.
 for _d in modules themes libraries; do
   if [ -L "${site_path}/${_d}" ]; then
-    printf "Error: %s is a symlink in %s; refusing.\n" "${_d}" "${site_path}" >&2
+    printf "Error: %s is a symlink in %s; refusing.\n" "${_d//[[:cntrl:]]/?}" "${site_path//[[:cntrl:]]/?}" >&2
     exit 1
   fi
 done
@@ -1042,14 +1044,14 @@ done
 ### (_in_pinned_dir) and names only ./entries there; refuse now when the
 ### site directory itself cannot be entered as resolved.
 if ! _in_pinned_dir "${site_path}" true; then
-  printf "Error: %s is not a real directory; refusing.\n" "${site_path}" >&2
+  printf "Error: %s is not a real directory; refusing.\n" "${site_path//[[:cntrl:]]/?}" >&2
   exit 1
 fi
 
 if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
   _in_pinned_dir "${site_path}/libraries" rm -f -- ./permissions-fixed.pid
 fi
-printf 'Setting correct permissions on key files and directories inside %s...\n' "${site_path}"
+printf 'Setting correct permissions on key files and directories inside %s...\n' "${site_path//[[:cntrl:]]/?}"
 ### directory and settings files - site level
 if [ -e "${site_path}/aegir.services.yml" ]; then
   _in_pinned_dir "${site_path}" rm -f -- ./aegir.services.yml
@@ -1067,7 +1069,7 @@ _files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
 _priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
 if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then
   printf "Notice: %s is not this account's own files store; skipping.\n" \
-    "${site_path}/files" >&2
+    "${site_path//[[:cntrl:]]/?}/files" >&2
 fi
 
 if [ -n "${_files_dir}" ] \

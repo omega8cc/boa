@@ -118,6 +118,19 @@ export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
 export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
 : "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
+# An incident snapshot (sqlsnap.sh) is taken when this many site queries have
+# been running for this many seconds or longer at the same time.
+export _SQL_STALL_SECS=${_SQL_STALL_SECS//[^0-9]/}
+_SQL_STALL_SECS="${_SQL_STALL_SECS:0:5}"
+: "${_SQL_STALL_SECS:=30}"
+_SQL_STALL_SECS=$(( 10#${_SQL_STALL_SECS} ))
+(( _SQL_STALL_SECS < 5 )) && _SQL_STALL_SECS=30
+export _SQL_STALL_COUNT=${_SQL_STALL_COUNT//[^0-9]/}
+_SQL_STALL_COUNT="${_SQL_STALL_COUNT:0:5}"
+: "${_SQL_STALL_COUNT:=10}"
+_SQL_STALL_COUNT=$(( 10#${_SQL_STALL_COUNT} ))
+(( _SQL_STALL_COUNT < 2 )) && _SQL_STALL_COUNT=10
+
 ###
 ### Flap control for the auto-heal. A restart that has to be repeated is evidence
 ### the restart is not the remedy, so the second one is spaced out (cooldown) and
@@ -338,10 +351,13 @@ _sql_restart() {
   if _sql_flap_breaker_is_open; then
     echo "$(date) $1 incident: CIRCUIT OPEN, auto-restart refused -- see ${_pthLch}" >> ${_pthOml}
     echo >> ${_pthOml}
+    # A server left wedged by the breaker is still worth a record, once per
+    # cooldown: no restart follows, so nothing waits for it.
+    _sql_snapshot_skip down || _sql_snapshot_start "sql-down-latched"
     exit 0
   fi
   if [ -s "${_pthCdn}" ]; then
-    _ts=$(tr -dc '0-9' < "${_pthCdn}" 2>/dev/null)
+    _ts=$(tr -dc '0-9' 2>/dev/null < "${_pthCdn}")
     if [ -n "${_ts}" ]; then
       _gap=$(( _now - _ts ))
       # A negative gap means the clock stepped backwards: treat the stamp as
@@ -362,6 +378,7 @@ _sql_restart() {
     # just enabled. Re-arming, by hand or by cool-off, starts counting at zero.
     rm -f "${_pthLdg}"
     echo "$(date) $1 incident: CIRCUIT OPEN after ${_SQL_FLAP_COUNT} auto-restarts within ${_SQL_FLAP_WINDOW_SECS}s -- refusing to restart MySQL again" >> ${_pthOml}
+    _sql_snapshot_skip down || _sql_snapshot_start "sql-down-latched"
     _incident_email_report "CIRCUIT OPEN: MySQL auto-restart disabled after ${_SQL_FLAP_COUNT} restarts" "mysql-circuit"
     echo >> ${_pthOml}
     exit 0
@@ -374,6 +391,16 @@ _sql_restart() {
   if [ ! -d "/run/mysqld" ]; then
     mkdir -p /run/mysqld
     chown -R mysql:root /run/mysqld
+  fi
+  # What the server was doing goes with the restart: save the box's view of
+  # it first (sqlsnap.sh reads the threads before it asks the database), and
+  # wait for that only while there is a mysqld whose threads a restart ends.
+  if ! _sql_snapshot_skip down; then
+    if pgrep -x mysqld > /dev/null 2>&1; then
+      _sql_snapshot_start "sql-down" wait
+    else
+      _sql_snapshot_start "sql-down"
+    fi
   fi
   if pgrep -x mysqld > /dev/null 2>&1; then
     # Present but not answering = wedged/deadlocked. A plain start would no-op on
@@ -498,7 +525,13 @@ _mysql_proc_control() {
   # for by name: the old positional parse of formatted output shifted
   # whenever a column was blank (NULL db, empty host), so the time tested
   # could be some other field entirely -- on the path that kills.
-  _mysql_proc_list=$(mysql -Nse "SELECT id, user, time FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command != 'Daemon' AND command NOT LIKE 'Binlog Dump%' AND user != 'system user';" 2>/dev/null)
+  # Read through SHOW FULL PROCESSLIST, never information_schema.processlist:
+  # the view takes InnoDB's dictionary mutex on every read, so in a
+  # dictionary stall it would wait with the sites. Columns by position
+  # (Id, User, Host, db, Command, Time), split on tabs so a blank field keeps
+  # its place; this run's own connection is root's and skipped below.
+  _mysql_proc_list=$(mysql -BNe "SHOW FULL PROCESSLIST" 2>/dev/null \
+    | awk -F '\t' '$1 ~ /^[0-9]+$/ && $5 != "Daemon" && $5 !~ /^Binlog Dump/ && $2 != "system user" { gsub(/ /, "_", $2); print $1, $2, $6 }')
 
   # Iterate over _each process
   echo "${_mysql_proc_list}" | while read -r _each _xuser _xtime; do
@@ -531,6 +564,100 @@ _mysql_proc_control() {
       _mysql_proc_kill
     fi
   done
+}
+
+###
+### A stall that holds every query keeps the load low while it lasts (the
+### waiting queries sleep) and raises it only when it ends, so second.sh's load
+### tiers see it too late. Many site queries running long at once is its own
+### shape, and so is a process list that does not come back within ten
+### seconds while mysqld runs: save the state while it is still there
+### (sqlsnap.sh keeps one set per cooldown). Root's own long work, the backup
+### dumps among it, is not counted. Not gated on the web pause markers: a
+### pause is when it matters.
+###
+# True while the last snapshot of this kind is inside its cooldown, or the
+# snapshot is off or not there: nothing to start.
+_sql_snapshot_skip() {
+  local _mins
+  [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
+  _mins="${_mins:0:4}"
+  _mins=$(( 10#${_mins:-15} ))
+  (( _mins < 1 )) && _mins=1
+  [ -e "/run/boa_sqlsnap.$1.last" ] \
+    && [ -z "$(find "/run/boa_sqlsnap.$1.last" -mmin "+${_mins}" 2>/dev/null)" ]
+}
+
+# Start a snapshot; with a second argument, wait (ten seconds at most) until
+# it has read the box, which a restart or heal right after would take away.
+_sql_snapshot_start() {
+  local _kind="sql" _ref _m _i
+  [[ "$1" == sql-down* ]] && _kind="down"
+  _ref="$(date +%s)"
+  # Without this run's lock: it would be held until the snapshot ends.
+  (
+    [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
+    exec bash /var/xdrago/monitor/check/sqlsnap.sh "$1" "${_pthOml}"
+  ) > /dev/null 2>&1 &
+  [ -n "${2:-}" ] || return 0
+  for _i in $(seq 1 20); do
+    _m="$(stat -c %Y "/run/boa_sqlsnap.${_kind}.boxdone" 2>/dev/null)"
+    [[ "${_m}" =~ ^[0-9]+$ ]] && (( _m >= _ref )) && return 0
+    sleep 0.5
+  done
+}
+
+_sql_stall_snapshot() {
+  local _out _n _rc _why="" _mins _alert=YES _stamp="/run/boa_sqlstall.alert.last"
+  # A stall is mailed as well as recorded: the server keeps answering its
+  # ping, so nothing else here would tell anyone. One STALL line and one mail
+  # per cooldown (the snapshot's), and never a restart or a kill: a server
+  # working through a dictionary wait must not be restarted under it.
+  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
+  _mins="${_mins:0:4}"
+  _mins=$(( 10#${_mins:-15} ))
+  (( _mins < 1 )) && _mins=1
+  [ -e "${_stamp}" ] && [ -z "$(find "${_stamp}" -mmin "+${_mins}" 2>/dev/null)" ] && _alert=NO
+  # Nothing to ask while the snapshot and the alert are both inside their cooldowns.
+  _sql_snapshot_skip sql && [ "${_alert}" = "NO" ] && return 0
+  # SHOW PROCESSLIST, not the information_schema view: the view takes InnoDB's
+  # dictionary mutex on every read, so in the very stall this looks for it
+  # would wait with the sites, and each run would leave one more root
+  # connection stuck behind it. Counted by column position (Id, User, Host, db,
+  # Command, Time); a warning line has no numeric Id and is never counted.
+  _out=$(timeout -k 2 10 mysql --connect-timeout=3 -BNe "SHOW PROCESSLIST" 2>&1)
+  _rc=$?
+  _n=""
+  if [ "${_rc}" -eq 0 ]; then
+    _n=$(awk -F '\t' -v s="${_SQL_STALL_SECS}" '$1 ~ /^[0-9]+$/ && $5 !~ /^(Sleep|Daemon|Binlog Dump|Binlog Dump GTID|Killed)$/ && $6 ~ /^[0-9]+$/ && $6 + 0 >= s && $2 !~ /^(root|system user|event_scheduler)$/ { c++ } END { print c + 0 }' <<< "${_out}")
+  fi
+  if [ "${_rc}" -eq 124 ] || [ "${_rc}" -eq 137 ] \
+    || { [ "${_rc}" -ne 0 ] && [[ "${_out}" =~ ERROR\ (2002|2003|2006|2013|1040|1135) ]]; }; then
+    # No answer in time, no connection taken or kept (a full backlog, a
+    # drop before the greeting, no connection or thread left even for root)
+    # while mysqld runs.
+    _why="sql-noanswer"
+  elif [ "${_rc}" -eq 0 ] && [[ "${_n}" =~ ^[0-9]+$ ]] && (( 10#${_n} >= _SQL_STALL_COUNT )); then
+    _why="sql-stall"
+  fi
+  [ -n "${_why}" ] || return 0
+  # A heal below may restart the server: the snapshot reads the box first.
+  _sql_snapshot_skip sql || _sql_snapshot_start "${_why}" wait
+  [ "${_alert}" = "YES" ] || return 0
+  if [ "${_why}" = "sql-stall" ]; then
+    touch "${_stamp}"
+    echo "$(date) STALL incident: ${_n} site queries running ${_SQL_STALL_SECS}s or longer while MySQL answers its ping" >> ${_pthOml}
+  elif _mysql_is_answering; then
+    touch "${_stamp}"
+    echo "$(date) STALL incident: MySQL answers its ping but its process list did not come back within 10 s" >> ${_pthOml}
+  else
+    # Not answering at all: the down path heals and mails that.
+    return 0
+  fi
+  _incident_email_report "STALL: MySQL answers but its queries wait" "mysql-stall"
+  echo >> ${_pthOml}
 }
 
 _mysql_high_load() {
@@ -618,10 +745,13 @@ _mysql_is_answering() {
   # Authoritative liveness probe. A reply of ANY kind -- including an auth error
   # -- proves the server is up and accepting connections. `timeout` bounds a hung
   # server; --connect-timeout bounds a dead socket. Uses /root/.my.cnf implicitly.
+  # Root at its max_user_connections cap is refused the same way (ERROR 1203):
+  # the server answered, and calling it down would restart it under whatever
+  # holds those connections.
   local _out
   _out=$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)
   case "${_out}" in
-    *"is alive"*|*"denied"*|*"Too many connections"*) return 0 ;;
+    *"is alive"*|*"denied"*|*"Too many connections"*|*"max_user_connections"*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -1076,6 +1206,7 @@ if [ -x "/etc/init.d/mysql" ] \
   && pgrep -x mysqld >/dev/null 2>&1 \
   && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _sql_stall_snapshot
   _standby_sql_hold
   _trust_creators_retrofit
   _event_scheduler_rearm

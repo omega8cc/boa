@@ -2712,8 +2712,8 @@ _php_vrn_dotted() {
 # the ltd worker reads them), or a multi-fpm.info row that pins a site to it
 # (its second field; a '#' row is a comment), the worker's own
 # place.holder.dont.remove row included, as for the other versions. 8.6
-# inside a comment, a domain or a longer value does not count, unlike the
-# substring checks of the other versions in _php_if_versions_cleanup_cnf.
+# inside a comment, a domain or a longer value does not count;
+# _php_if_versions_cleanup_cnf skips comment rows and domains too.
 _php_eight_six_asked() {
   local _c _f _v
   for _c in /data/disk/*/static/control; do
@@ -3119,8 +3119,14 @@ _php_if_versions_cleanup_cnf() {
         _msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
       fi
 
+      ### multi-fpm.info read as the ltd worker reads it: a '#' row is a
+      ### comment, and only a row's second field names a version (a comment
+      ### row the worker writes when it moves a site names others)
+      _mltPinVrns=$(_acct_read_all static/control multi-fpm.info \
+        | awk '$1 !~ /^#/ && NF >= 2 { print $2 }')
+
       ### Add PHP 5.6 if used
-      _is_PHP_multi_five_six=$(_acct_read_all static/control multi-fpm.info | grep "5\.6" 2>&1)
+      _is_PHP_multi_five_six=$(grep "5\.6" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | grep "5\.6" 2>&1)
       _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | grep "5\.6" 2>&1)
       _is_PHP_five_six=
@@ -3132,7 +3138,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.0 if used
-      _is_PHP_multi_seven_zero=$(_acct_read_all static/control multi-fpm.info | grep "7\.0" 2>&1)
+      _is_PHP_multi_seven_zero=$(grep "7\.0" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | grep "7\.0" 2>&1)
       _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | grep "7\.0" 2>&1)
       _is_PHP_seven_zero=
@@ -3144,7 +3150,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.1 if used
-      _is_PHP_multi_seven_one=$(_acct_read_all static/control multi-fpm.info | grep "7\.1" 2>&1)
+      _is_PHP_multi_seven_one=$(grep "7\.1" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | grep "7\.1" 2>&1)
       _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | grep "7\.1" 2>&1)
       _is_PHP_seven_one=
@@ -3156,7 +3162,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.2 if used
-      _is_PHP_multi_seven_two=$(_acct_read_all static/control multi-fpm.info | grep "7\.2" 2>&1)
+      _is_PHP_multi_seven_two=$(grep "7\.2" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | grep "7\.2" 2>&1)
       _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | grep "7\.2" 2>&1)
       _is_PHP_seven_two=
@@ -3168,7 +3174,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.3 if used
-      _is_PHP_multi_seven_three=$(_acct_read_all static/control multi-fpm.info | grep "7\.3" 2>&1)
+      _is_PHP_multi_seven_three=$(grep "7\.3" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | grep "7\.3" 2>&1)
       _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | grep "7\.3" 2>&1)
       _is_PHP_seven_three=
@@ -3180,7 +3186,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.4 if used
-      _is_PHP_multi_seven_four=$(_acct_read_all static/control multi-fpm.info | grep "7\.4" 2>&1)
+      _is_PHP_multi_seven_four=$(grep "7\.4" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | grep "7\.4" 2>&1)
       _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | grep "7\.4" 2>&1)
       _is_PHP_seven_four=
@@ -3192,7 +3198,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.0 if used
-      _is_PHP_multi_eight_zero=$(_acct_read_all static/control multi-fpm.info | grep "8\.0" 2>&1)
+      _is_PHP_multi_eight_zero=$(grep "8\.0" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | grep "8\.0" 2>&1)
       _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | grep "8\.0" 2>&1)
       _is_PHP_eight_zero=
@@ -3204,7 +3210,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.1 if used
-      _is_PHP_multi_eight_one=$(_acct_read_all static/control multi-fpm.info | grep "8\.1" 2>&1)
+      _is_PHP_multi_eight_one=$(grep "8\.1" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | grep "8\.1" 2>&1)
       _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | grep "8\.1" 2>&1)
       _is_PHP_eight_one=
@@ -3216,7 +3222,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.2 if used
-      _is_PHP_multi_eight_two=$(_acct_read_all static/control multi-fpm.info | grep "8\.2" 2>&1)
+      _is_PHP_multi_eight_two=$(grep "8\.2" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | grep "8\.2" 2>&1)
       _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | grep "8\.2" 2>&1)
       _is_PHP_eight_two=
@@ -3228,7 +3234,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.3 if used
-      _is_PHP_multi_eight_three=$(_acct_read_all static/control multi-fpm.info | grep "8\.3" 2>&1)
+      _is_PHP_multi_eight_three=$(grep "8\.3" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | grep "8\.3" 2>&1)
       _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | grep "8\.3" 2>&1)
       _is_PHP_eight_three=
@@ -3240,7 +3246,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.4 if used
-      _is_PHP_multi_eight_four=$(_acct_read_all static/control multi-fpm.info | grep "8\.4" 2>&1)
+      _is_PHP_multi_eight_four=$(grep "8\.4" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | grep "8\.4" 2>&1)
       _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | grep "8\.4" 2>&1)
       _is_PHP_eight_four=
@@ -3252,7 +3258,7 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.5 if used
-      _is_PHP_multi_eight_five=$(_acct_read_all static/control multi-fpm.info | grep "8\.5" 2>&1)
+      _is_PHP_multi_eight_five=$(grep "8\.5" <<< "${_mltPinVrns}" 2>&1)
       _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | grep "8\.5" 2>&1)
       _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | grep "8\.5" 2>&1)
       _is_PHP_eight_five=
@@ -3915,6 +3921,7 @@ _barracuda_cnf() {
     echo "_DENY_CLAMAV=${_DENY_CLAMAV:-NO}"               >> ${_barCnf}
     echo "_FORCE_CI_BOX=${_FORCE_CI_BOX:-NO}"             >> ${_barCnf}
     echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}"   >> ${_barCnf}
+    echo "_SWAP_AUTOSIZE=${_SWAP_AUTOSIZE:-YES}"         >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
@@ -4310,6 +4317,10 @@ _barracuda_cnf() {
     _NO_CRON_AUTOSTART_TEST=$(grep "^_NO_CRON_AUTOSTART=" ${_barCnf} 2>&1)
     if [[ ! "${_NO_CRON_AUTOSTART_TEST}" =~ "_NO_CRON_AUTOSTART=" ]]; then
       echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}" >> ${_barCnf}
+    fi
+    _SWAP_AUTOSIZE_TEST=$(grep "^_SWAP_AUTOSIZE=" ${_barCnf} 2>&1)
+    if [[ ! "${_SWAP_AUTOSIZE_TEST}" =~ "_SWAP_AUTOSIZE=" ]]; then
+      echo "_SWAP_AUTOSIZE=${_SWAP_AUTOSIZE:-YES}" >> ${_barCnf}
     fi
     _convert_etcboa_markers_to_cnf
 
@@ -11045,7 +11056,7 @@ _webmin_key_fetch() {
     rm -f "${_d}/key.asc" "${_d}/key.gpg"
     curl ${_crlGet} --retry 0 --connect-timeout 30 --max-time 30 "${_wmKeyUrl}" -o "${_d}/key.asc"
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_d}/key.asc" 2> /dev/null \
-      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" < "${_d}/key.asc" 2> /dev/null \
+      && ${_g} --homedir "${_d}/gpg" --yes --dearmor -o "${_d}/key.gpg" 2> /dev/null < "${_d}/key.asc" \
       && _webmin_key_is_pinned "${_g}" "${_d}/key.gpg"; then
       mkdir -p /etc/apt/keyrings
       chmod 0755 /etc/apt/keyrings
@@ -13959,7 +13970,7 @@ _fix_root_locked_shadow() {
 _php_fpm_master_up() {
   local _pid
   [ -r "/run/php${1}-fpm.pid" ] || return 1
-  _pid=$(tr -d '[:space:]' < "/run/php${1}-fpm.pid" 2> /dev/null)
+  _pid=$(tr -d '[:space:]' 2> /dev/null < "/run/php${1}-fpm.pid")
   [ -n "${_pid}" ] || return 1
   case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
     *"php${1}-fpm.conf"*) return 0 ;;
@@ -13996,7 +14007,7 @@ _MQ_STOP="/run/boa_master_queue_stop.pid"
 _mq_nginx_up() {
   local _pid
   [ -r "/run/nginx.pid" ] || return 1
-  _pid=$(tr -dc '0-9' < /run/nginx.pid 2> /dev/null)
+  _pid=$(tr -dc '0-9' 2> /dev/null < /run/nginx.pid)
   [ -n "${_pid}" ] || return 1
   case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
     "nginx: master process"*) return 0 ;;
@@ -14321,7 +14332,16 @@ _initd_update() {
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
         fi
+        # diff shows a change only when one of its lines matches no -I
+        # pattern, so tuned-knob and comment lines alone never restart:
+        # mysqld never reads a comment line, so a template edit that only
+        # adds, drops or rewords one must not restart every box's server,
+        # and performance_schema sizing and thread_stack, like the knobs,
+        # wait for the next natural restart.
         _diffMyTest=$(diff -w -B \
+          -I "^[[:space:]]*[#;]" \
+          -I "^[[:space:]]*performance_schema_" \
+          -I "^[[:space:]]*thread_stack" \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
@@ -14343,20 +14363,6 @@ _initd_update() {
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
-          fi
-        fi
-        if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          # Suppress only when the surviving diff carries nothing but
-          # ignore-listed knob lines; a mixed hunk keeps its restart for
-          # the co-riding knob the -I list does not cover.
-          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
-            | grep -E "^[<>] " \
-            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
-          if [ -z "${_diffMyOther}" ]; then
-            _myCnfUpdate=NO
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
-            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then

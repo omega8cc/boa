@@ -172,7 +172,7 @@ _clean_lock() {
   # (verify the recorded PID), so a concurrent maintenance op's pause is never torn
   # down. It is self-healing anyway (clear.sh purges a dead owner).
   if [ "${_stopOwned}" = "YES" ] && [ -e "${_queueStop}" ] \
-    && [ "$(tr -dc '0-9' < "${_queueStop}" 2>/dev/null)" = "$$" ]; then
+    && [ "$(tr -dc '0-9' 2>/dev/null < "${_queueStop}")" = "$$" ]; then
     rm -f "${_queueStop}"
   fi
   if command -v _single_instance_unlock >/dev/null 2>&1; then

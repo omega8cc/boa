@@ -3,9 +3,13 @@
 ###
 ### sqlcheck.sh — Fast MySQL crash pre-filter
 ###
-### Runs every minute via mysql.sh. Scans new syslog entries for MySQL table crash
+### Runs every minute via mysql.sh. Keeps the sessions the dumps run in out
+### of performance_schema's statement summary (_keep_dumps_out_of_digests).
+### Scans new syslog entries for MySQL table crash
 ### markers using byte-offset tracking. Invokes checksql.sh only when a problem
 ### is detected, avoiding the heavy mysqlcheck -Aa cost on clean systems.
+### Then measures the optimizer statistics of large tables that still read as
+### empty long after they were loaded (_heal_stale_stats).
 ###
 
 export HOME=/root
@@ -28,6 +32,154 @@ _check_root() {
   fi
 }
 _check_root
+
+###
+### Keep the sessions the dumps run in out of performance_schema's statement
+### summary.
+###
+### The summary holds one row per statement shape and schema in a table of
+### fixed size (10,000 rows by default, allocated at server start). A dump
+### reads each table with a few statements of its own, about four rows a
+### table, so on a server with thousands of tables the nightly dump fills
+### the summary within days and the sites' own statements are no longer
+### counted. The nightly dump and the migration exports connect as root; the
+### Aegir backups, clones and migrations dump and load as the backend user of
+### their database server: aegir_root for the master instance, and the
+### instance's own user for each Octopus instance whose databases are local
+### (aegir_root again when they are remote). The instances are those with both
+### root's own /root/.<name>.octopus.cnf and their /data/disk/<name>, counted
+### under their own name when that file's _THIS_DB_HOST is one the Octopus pass
+### gives the instance's own user for; nothing is read from a file an instance
+### can write. Those users' sessions are left uninstrumented and every other
+### user is counted as before. The rules live in memory only: they are set
+### again on the first pass after a server start, before the stand-down markers
+### below, because a backup started right after a restart is the session they
+### are for. A rule keeps new rows out but removes none, so while root's rule
+### is BOA's the summary is also emptied once per server start, and once more
+### when a user gets its rule for the first time since that start (a new
+### instance, or an earlier copy of this check that knew only root). The rows
+### those users added before go too, whether since the start (a minute's worth
+### after a plain restart), inside a SQL maintenance window (mysql.sh stands
+### down for the whole window and never starts this check, and a Percona
+### upgrade walks every table as root in it) or in the weeks before this check
+### came. A rule reaches new sessions only, and one of these users' sessions
+### opened before its rule keeps adding rows for as long as it runs, so the
+### emptying waits while such a session is open, for up to 12 hours. The start
+### the summary was emptied for, and the users it was emptied for, are kept in
+### a state file under /run. When another session keeps the summary from being
+### emptied within 5 seconds, the rules stay and the emptying is tried again 5
+### minutes later. An operator's own row for any of these users (any other
+### switches) is left as it is; with one for root the summary is left alone too.
+### performance_schema is off on 5.7 (BOA's my.cnf), and nothing runs there.
+###
+_digest_dump_users() {
+  local _c _u _h
+  {
+    echo root
+    echo aegir_root
+    for _c in /root/.*.octopus.cnf; do
+      [ -f "${_c}" ] || continue
+      _u="${_c##*/.}"
+      _u="${_u%.octopus.cnf}"
+      [ -d "/data/disk/${_u}" ] || continue
+      # read as the Octopus pass's bash reads it after its NUL heal, which
+      # ends a line where a zero-filled run begins; a file that sets none
+      # keeps the default it sourced first, localhost
+      _h=$(tr -s '\000' '\n' 2>/dev/null < "${_c}" \
+        | grep -aE "^[[:space:]]*(export[[:space:]]+)?_THIS_DB_HOST=" | tail -n 1)
+      if [ -z "${_h}" ]; then
+        _h=localhost
+      else
+        _h="${_h#*=}"
+        case "${_h}" in
+          \"*) _h="${_h#\"}"; _h="${_h%%\"*}" ;;
+          \'*) _h="${_h#\'}"; _h="${_h%%\'*}" ;;
+          *) _h="${_h%%[[:space:];]*}" ;;
+        esac
+      fi
+      case "${_h}" in
+        localhost|127.0.0.1|PROXYSQL|FQDN) echo "${_u}" ;;
+      esac
+    done
+  } | grep -xE '[A-Za-z0-9_-]{1,32}' | sort -u
+}
+
+_keep_dumps_out_of_digests() {
+  [ -e "/root/.proxy.cnf" ] && return 0
+  command -v mysql >/dev/null 2>&1 || return 0
+  local _st _ps _up _u _e _h _rows _in="" _ours="" _qo="" _new="" _now _start
+  local _open _since _held="" _m_start="" _m_state="" _m_time="" _m_users="" _m_since=""
+  local _state="/run/boa_digest_reset.state"
+  local -a _users=()
+  local -A _rule=()
+  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime')" 2>/dev/null) || return 0
+  IFS=$'\t' read -r _ps _up <<< "${_st}"
+  [ "${_ps}" = "1" ] || return 0
+  [[ "${_up}" =~ ^[0-9]+$ ]] || return 0
+  mapfile -t _users < <(_digest_dump_users)
+  for _u in "${_users[@]}"; do
+    _in="${_in:+${_in}, }'${_u}'"
+  done
+  [ -n "${_in}" ] || return 0
+  _rows=$(timeout 10 mysql -N -B -e "SELECT USER, ENABLED, HISTORY FROM performance_schema.setup_actors WHERE HOST = '%' AND ROLE = '%' AND USER IN (${_in})" 2>/dev/null) || return 0
+  while IFS=$'\t' read -r _u _e _h; do
+    [ -n "${_u}" ] && _rule["${_u}"]="${_e}/${_h}"
+  done <<< "${_rows}"
+  for _u in "${_users[@]}"; do
+    if [ -z "${_rule[${_u}]+set}" ]; then
+      timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', '${_u}', '%', 'NO', 'NO')" &> /dev/null || continue
+    elif [ "${_rule[${_u}]}" != "NO/NO" ]; then
+      continue
+    fi
+    _ours="${_ours:+${_ours},}${_u}"
+    _qo="${_qo:+${_qo}, }'${_u}'"
+  done
+  [[ ",${_ours}," == *",root,"* ]] || return 0
+  _now=$(date +%s)
+  _start=$(( _now - _up ))
+  [ -s "${_state}" ] && read -r _m_start _m_state _m_time _m_users _m_since < "${_state}"
+  if [[ "${_m_start}" =~ ^[0-9]+$ ]] && (( _m_start - _start <= 10 && _start - _m_start <= 10 )); then
+    # the earlier copy wrote no users; an empty field would collapse on the
+    # next read and shift the hold's start into it
+    [ -n "${_m_users}" ] || _m_users="-"
+    for _u in ${_ours//,/ }; do
+      [[ ",${_m_users}," == *",${_u},"* ]] || _new="${_new} ${_u}"
+    done
+    if [ "${_m_state}" = "done" ]; then
+      [ -z "${_new}" ] && return 0
+    elif [ "${_m_state}" != "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]] && (( _now - _m_time < 300 )); then
+      return 0
+    fi
+  else
+    _m_start="${_start}"
+    _m_state=""
+    _m_users="-"
+    _m_since=""
+  fi
+  _open=$(timeout 10 mysql -N -B -e "SELECT COUNT(*) FROM performance_schema.threads WHERE INSTRUMENTED = 'YES' AND PROCESSLIST_USER IN (${_qo})" 2>/dev/null) || return 0
+  [[ "${_open}" =~ ^[0-9]+$ ]] || return 0
+  if (( _open > 0 )); then
+    # a refused emptying at the end of a hold keeps when the hold began
+    _since="${_now}"
+    if [ "${_m_state}" = "hold" ] && [[ "${_m_time}" =~ ^[0-9]+$ ]]; then
+      _since="${_m_time}"
+    elif [ "${_m_state}" = "wait" ] && [[ "${_m_since}" =~ ^[0-9]+$ ]]; then
+      _since="${_m_since}"
+    fi
+    if (( _now - _since < 43200 )); then
+      printf '%s hold %s %s\n' "${_m_start}" "${_since}" "${_m_users}" > "${_state}"
+      return 0
+    fi
+    _held=" ${_since}"
+  fi
+  if timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
+    printf '%s done %s %s\n' "${_m_start}" "${_now}" "${_ours}" > "${_state}"
+  else
+    printf '%s wait %s %s%s\n' "${_m_start}" "${_now}" "${_m_users}" "${_held}" > "${_state}"
+  fi
+  return 0
+}
+_keep_dumps_out_of_digests
 
 # Stand down while the database is already being worked on. A full-server
 # mysqlcheck taken while a backup holds its locks, or while the watchdog is
@@ -135,5 +287,148 @@ if [ "${_STATUS}" != "CLEAN" ]; then
 else
   touch "${_CLEAN_TOUCH}"
 fi
+
+###
+### Measure the optimizer statistics of large tables that still read as empty.
+###
+### InnoDB gives a new table the statistics of an empty one, and a bulk load
+### can leave them claiming a single page while the file holds millions of
+### rows. Only a background queue measures the pages, and once nothing new
+### wakes it, it takes one table about every ten seconds: after a run of
+### migrations a large site went live while its tables still read as one page
+### each, its pages were planned as full table scans, and the database server
+### ran out of CPU. Provision measures the databases it imports; this catches
+### every other load (a migration tool, a dump loaded by hand). A table
+### qualifies when its statistics claim at most one page, its file holds more
+### than 8 MB and it was created over 5 minutes ago (a load still running is
+### left alone). A table measured here is left alone for a day: one that
+### really is that small (rows deleted, the file never shrunk) keeps
+### qualifying. Never on a replica (a local write there is an errant
+### transaction) or a proxy-only box. Needs the 8.0+ tablespace view; on 5.7
+### the read fails and nothing runs.
+###
+_pthOml="/var/log/boa/sqlstats.incident.log"
+_pthStats="/var/log/boa/sqlstats.measured"
+
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+
+# A table still unmeasured after its heal is heard at the default level
+# (MINI); a heal that worked only at ALL.
+_stats_mail() {
+  local _lvl="${1}" _subject="${2}"
+  [ -n "${_MY_EMAIL}" ] || return 0
+  _normalize_incident_report
+  case "${_INCIDENT_REPORT}" in
+    OFF|CRIT) return 0 ;;
+    MINI) [ "${_lvl}" = "ALERT" ] || return 0 ;;
+  esac
+  _sfx=""
+  if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+    _incident_email_ratelimit "sql-stats" || return 0
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
+  _hName="$(tr -d '\n' 2>/dev/null < /etc/hostname)"
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
+  s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
+}
+
+_heal_stale_stats() {
+  [ -e "/root/.proxy.cnf" ] && return 0
+  [ -e "/root/.standby.cnf" ] && return 0
+  command -v mysql >/dev/null 2>&1 || return 0
+  local _q _rows _now _key _ts _db _tb _mb _list _count _out _old _changed
+  local _ok _bad _n_ok _n_bad
+  local -A _seen=() _done=()
+  _now=$(date +%s)
+  # The tables measured here in the last day, as "db.table<TAB>epoch" lines.
+  _old=0
+  if [ -s "${_pthStats}" ]; then
+    while IFS=$'\t' read -r _key _ts; do
+      if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts < 86400 )); then
+        _seen["${_key}"]="${_ts}"
+      else
+        _old=$(( _old + 1 ))
+      fi
+    done < "${_pthStats}"
+  fi
+  _q="SELECT s.database_name, s.table_name, ROUND(ts.FILE_SIZE / 1048576)
+    FROM mysql.innodb_table_stats s
+    JOIN information_schema.INNODB_TABLESPACES ts
+      ON ts.NAME = CONCAT(s.database_name, '/', s.table_name)
+    JOIN information_schema.TABLES t
+      ON t.TABLE_SCHEMA = s.database_name AND t.TABLE_NAME = s.table_name
+    WHERE s.clustered_index_size <= 1
+      AND ts.FILE_SIZE > 8388608
+      AND t.CREATE_TIME < NOW() - INTERVAL 5 MINUTE
+    ORDER BY ts.FILE_SIZE DESC
+    LIMIT 1000"
+  _rows=$(timeout 60 mysql -N -B -e "${_q}" 2>/dev/null) || return 0
+  _list=""
+  _count=0
+  while IFS=$'\t' read -r _db _tb _mb; do
+    [ -n "${_db}" ] || continue
+    # Plain names only: anything else is never spliced into a statement.
+    if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || [[ ! "${_tb}" =~ ^[A-Za-z0-9_]+$ ]]; then
+      continue
+    fi
+    [ -n "${_seen["${_db}.${_tb}"]}" ] && continue
+    (( _count < 200 )) || break
+    _done["${_db}.${_tb}"]="${_mb}"
+    _list="${_list}${_list:+, }\`${_db}\`.\`${_tb}\`"
+    _count=$(( _count + 1 ))
+  done <<< "${_rows}"
+  _changed="${_old}"
+  _ok=""
+  _bad=""
+  _n_ok=0
+  _n_bad=0
+  if (( _count > 0 )); then
+    _out=$(timeout 300 mysql -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
+    # The outcome, not the exit code: each table answers with its own OK.
+    for _key in "${!_done[@]}"; do
+      if grep -qxF "${_key}"$'\tanalyze\tstatus\tOK' <<< "${_out}"; then
+        _seen["${_key}"]="${_now}"
+        _n_ok=$(( _n_ok + 1 ))
+        (( _n_ok <= 10 )) && _ok="${_ok}${_ok:+, }${_key} (${_done["${_key}"]} MB)"
+      else
+        _n_bad=$(( _n_bad + 1 ))
+        (( _n_bad <= 10 )) && _bad="${_bad}${_bad:+, }${_key} (${_done["${_key}"]} MB)"
+      fi
+    done
+    _changed=$(( _changed + _n_ok ))
+  fi
+  if (( _changed > 0 )); then
+    for _key in "${!_seen[@]}"; do
+      printf '%s\t%s\n' "${_key}" "${_seen["${_key}"]}"
+    done > "${_pthStats}.tmp" && mv -f "${_pthStats}.tmp" "${_pthStats}"
+  fi
+  (( _n_ok > 10 )) && _ok="${_ok} and $(( _n_ok - 10 )) more"
+  (( _n_bad > 10 )) && _bad="${_bad} and $(( _n_bad - 10 )) more"
+  if (( _n_ok > 0 )); then
+    echo "$(date) INFO: measured the optimizer statistics of ${_n_ok} large table(s) that still read as one page: ${_ok}" >> "${_pthOml}"
+  fi
+  if (( _n_bad > 0 )); then
+    echo "$(date) ALERT: could not measure the optimizer statistics of ${_n_bad} large table(s) that still read as one page: ${_bad}" >> "${_pthOml}"
+    echo "$(date) ALERT: $(grep -i -m 3 -E 'error|timeout' <<< "${_out}" | tr '\n\t' '  ')" >> "${_pthOml}"
+    _stats_mail ALERT "Table statistics could not be measured"
+  elif (( _n_ok > 0 )); then
+    _stats_mail INFO "Measured the statistics of ${_n_ok} large table(s) that read as one page"
+  fi
+}
+
+_heal_stale_stats
 
 exit 0

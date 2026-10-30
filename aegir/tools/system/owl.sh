@@ -685,7 +685,7 @@ else
   # sweep by that pid, never by age -- an unbounded pass may run for hours.
   for _amk in /run/night-account-*.pid; do
     [ -e "${_amk}" ] || continue
-    _amkPid=$(tr -dc '0-9' < "${_amk}" 2>/dev/null)
+    _amkPid=$(tr -dc '0-9' 2>/dev/null < "${_amk}")
     if [ -z "${_amkPid}" ] || ! kill -0 "${_amkPid}" 2>/dev/null; then
       rm -f "${_amk}"
     fi

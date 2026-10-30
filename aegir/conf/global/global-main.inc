@@ -255,9 +255,105 @@ error_reporting(0);
 
 
 /**
+ * Log the fatal error that ends a web request
+ *
+ * With reporting off PHP logs nothing, so a fatal error left only a 500
+ * behind. At shutdown the request's last error, when it is one that ended
+ * the request (the engine's own, which no handler can catch, or a user or
+ * catchable fatal error no handler took), goes to the error log with the
+ * host and path; the pool cannot write the ini's error_log, so PHP-FPM
+ * writes the line to its own error log (/var/log/php/phpNN-fpm-error.log).
+ * The level itself stays 0: Drupal 6's original handler logs and shows every
+ * warning under any other level. A fatal PHP logged itself (a .dev. alias
+ * raises the level) is not repeated, and Drush and every other command line
+ * run report their own.
+ */
+if (!$is_backend && PHP_SAPI !== 'cli' && !function_exists('boa_log_fatal_error')) {
+  function boa_log_fatal_error() {
+    $error = error_get_last();
+    if (!is_array($error) ||
+        !($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR |
+          E_USER_ERROR | E_RECOVERABLE_ERROR))) {
+      return;
+    }
+    // log_errors read as PHP reads it: on, yes, true or a non-zero number.
+    $log_errors = strtolower(trim((string) ini_get('log_errors')));
+    if ((in_array($log_errors, array('on', 'yes', 'true'), TRUE) || (int) $log_errors) &&
+        ($error['type'] & error_reporting())) {
+      return;
+    }
+    // Before PHP 7 a parse error in eval()'d code (a PHP filter snippet, say)
+    // neither stops the request nor turns it into a 500.
+    if ($error['type'] == E_PARSE && PHP_VERSION_ID < 70000 &&
+        preg_match("/eval\(\)'d code$/", $error['file'])) {
+      return;
+    }
+    switch ($error['type']) {
+      case E_PARSE:
+        $label = 'PHP Parse error:  ';
+        break;
+      case E_RECOVERABLE_ERROR:
+        // PHP's own label up to 7.0, renamed in 7.1.
+        $label = PHP_VERSION_ID < 70100 ? 'PHP Catchable fatal error:  ' :
+          'PHP Recoverable fatal error:  ';
+        break;
+      default:
+        $label = 'PHP Fatal error:  ';
+    }
+    // The host and path are the visitor's: every byte outside printable ASCII,
+    // and the quote and backslash, is written as \xHH, the way nginx writes its
+    // access log; a cut never leaves half an escape behind.
+    $hex = function ($m) {
+      return sprintf('\x%02X', ord($m[0]));
+    };
+    $cut = function ($s, $n) {
+      return preg_replace('/\\\\(?:x[0-9A-F]?)?$/', '', substr($s, 0, $n));
+    };
+    $host = $cut(preg_replace_callback('/[^\x20\x21\x23-\x5B\x5D-\x7E]/',
+      $hex, isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-'), 100);
+    $uri = $cut(preg_replace_callback('/[^\x20\x21\x23-\x5B\x5D-\x7E]/',
+      $hex, isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-'), 150);
+    // One line: no control character, C1 included, reaches the log. In text
+    // that is not UTF-8 a byte above ASCII may be a C1 control on its own.
+    $line = $label . substr($error['message'], 0, 500) . ' in ' . $error['file'] .
+      ' on line ' . $error['line'];
+    $line = preg_replace('/[\x00-\x1F\x7F]|\xC2[\x80-\x9F]/', '?',
+      preg_replace('/[\r\n\t]+/', ' ', $line));
+    if (!preg_match('//u', $line)) {
+      $line = preg_replace('/[\x80-\xFF]/', '?', $line);
+    }
+    error_log($line . '; host ' . $host . ', uri ' . $uri);
+  }
+  register_shutdown_function('boa_log_fatal_error');
+}
+
+
+/**
  * Hostmaster specific settings
  */
 if ($conf['install_profile'] == 'hostmaster') {
+  // While an upgrade moves this panel to a new platform, a page saved through
+  // a copy that reads the old database goes into the database the move drops.
+  // BOA's marker beside sites.php names that database (or none, which holds
+  // any copy): such a copy answers 503 to every visitor, administrators
+  // included, whatever its hosting release; a copy on the new database is
+  // not held. One older than an hour does not count.
+  if (!$is_backend) {
+    $panel_move = DRUPAL_ROOT . '/sites/.panel-move.info';
+    if (is_file($panel_move)) {
+      $panel_move_t = @filemtime($panel_move);
+      $panel_move_f = preg_split('/\s+/', trim((string) @file_get_contents($panel_move)));
+      $panel_move_db = isset($databases['default']['default']['database']) ? $databases['default']['default']['database'] : '';
+      if ($panel_move_t !== FALSE && (time() - $panel_move_t) < 3600
+        && (empty($panel_move_f[1]) || $panel_move_f[1] === $panel_move_db)) {
+        header((isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.1') . ' 503 Service Unavailable');
+        header('Retry-After: 60');
+        header('Cache-Control: no-store');
+        print 'The control panel is moving to its new version. Please try again in a few minutes.';
+        exit;
+      }
+    }
+  }
   $conf['hosting_require_disable_before_delete'] = 0;
   $conf['hosting_task_refresh_timeout'] = 5555;
   $conf['theme_link'] = FALSE;

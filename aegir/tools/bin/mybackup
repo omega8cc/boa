@@ -431,7 +431,10 @@ _win_close_stale() {
 # Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
-    _ENV=$(env 2>&1)
+    # secret values and URL userinfo stay out of the dump
+    _ENV=$(env 2>&1 | sed -E \
+      -e 's/^(PASSPHRASE|[A-Z0-9_]*(KEY|SECRET|TOKEN|PASSWORD|CONNECTION_STRING|ACCOUNT_ID)[A-Z0-9_]*)=.*/\1=[redacted]/' \
+      -e 's|://[^@[:space:]]*@|://|g')
     echo
     echo "_ENV in $1 start"
     echo "${_ENV}"
@@ -474,7 +477,7 @@ _pid_is_live() {
   local _pid=$1 _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
-  _cmd=$(tr '\0' ' ' < "/proc/${_pid}/cmdline" 2>/dev/null)
+  _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
@@ -497,18 +500,18 @@ _create_pid_file() {
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
-      _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+      _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
       if [ "${_now_pid}" = "$$" ]; then
         return 0
       fi
       continue
     fi
-    _old_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
     if _pid_is_live "${_old_pid}"; then
       echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
       exit 1
     fi
-    _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
     if [ "${_now_pid}" = "${_old_pid}" ]; then
       echo "Removing stale PID file ${_pidfile} (pid ${_old_pid:-empty} not running)"
       rm -f "${_pidfile}"

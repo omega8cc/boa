@@ -576,8 +576,12 @@ _mig_resolve() {
   if [ -z "${_MIG_MODE}" ]; then
     _MIG_MODE=temporary
     _MIG_SOURCE=default
-    echo "ALRT: ${_root}: no proxy mode declared; falling back to '${_MIG_MODE}'."
-    echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+    ### A mode on the command line (proxy's --proxy-mode=) replaces this one
+    ### right after the lookup: no fallback to warn about.
+    if [ -z "${_XOCT_MODE_FLAG}" ]; then
+      echo "ALRT: ${_root}: no proxy mode declared; falling back to '${_MIG_MODE}'."
+      echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+    fi
   fi
 
   ### A date by which the customer must leave the switch point contradicts
@@ -1548,25 +1552,53 @@ _xoct_named_under_host() {
 ### --repair --retarget that follows a failover, a --renotify resend, or the
 ### --repair that is to convert the sites a --defer-host-named pass held --
 ### rendered those sites as plain proxies of their old names, which the
-### renamed target never serves: its catch-all for every visitor. So when
-### the caller named no hostnames and this account either answers a renamed
-### site with a 301 already or still holds sites on the per-host gate, read
-### them here: this box's own name, by the same lookup xmass uses, and the
-### target's as it answers now, so a retarget points the redirects at the
-### new box. The gate file only says that the account needs this; its
-### content is the tenant's to write and is never used as a name. Called
-### from the preflight once its own refusals have passed; a target whose
-### name cannot be read refuses the run before anything is written.
+### renamed target never serves: its catch-all for every visitor. A
+### one-account move has nobody to hand them over at all: its import renamed
+### those sites on the target before this proxy runs. So when the caller
+### named no hostnames and this account answers a renamed site with a 301
+### already, still holds sites on the per-host gate, or (no name of this box
+### handed over) has a site named under this box's hostname, read them here:
+### this box's own name, by the same lookup xmass uses, and the target's as
+### it answers now, so a retarget points the redirects at the new box. A
+### target that answers this box's own name renamed nothing, and a redirect
+### there would answer each site with itself. The gate file only says that
+### the account needs this; its content is the tenant's to write and is
+### never used as a name. Called from the preflight once its own refusals
+### have passed; a target whose name cannot be read refuses the run before
+### anything is written.
 _xoct_valid_host() {
   case "$1" in
     ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
   esac
   return 0
 }
+### The first site of this account named under hostname $1, as the
+### conversion loop finds its sites (a vhost file with a site alias), never
+### the control panel, which stays local; status 1 and nothing when none.
+_xoct_first_host_named_site() {
+  local _vd="${_USR}/config/server_master/nginx/vhost.d" _pf _v _d
+  _pf=$(_xoct_read_in "${_USR}/.drush" hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g")
+  _pf=$(basename "${_pf}" 2> /dev/null)
+  _pf=${_pf//[^a-zA-Z0-9.\-]/}
+  for _v in "${_vd}"/*; do
+    [ -f "${_v}" ] && [ ! -L "${_v}" ] || continue
+    _d="${_v##*/}"
+    [ -n "${_pf}" ] && [ "${_d}" = "${_pf}" ] && continue
+    [ -e "${_USR}/.drush/${_d}.alias.drushrc.php" ] || continue
+    if _xoct_named_under_host "${_d}" "$1"; then
+      printf '%s' "${_d}"
+      return 0
+    fi
+  done
+  return 1
+}
 _xoct_keep_renamed_redirects() {
   local _vd="${_USR}/config/server_master/nginx/vhost.d"
   local _hg="${_USR}/static/control/http-off-host.pid"
-  local _why="" _tf _mf _n _trc=0
+  local _why="" _tf _mf _n _hs _trc=0
   ### Both names are written into nginx vhosts and sed replacements: one a
   ### caller hands over must be a hostname too, never merely non-empty.
   for _n in "${_XOCT_TARGET_FQDN}" "${_XOCT_MY_FQDN}"; do
@@ -1575,21 +1607,33 @@ _xoct_keep_renamed_redirects() {
       exit 1
     fi
   done
-  [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] && return 0
-  [ -n "${_XOCT_DEFER_FQDN}" ] && return 0
-  if [ -s "${_hg}" ] && [ ! -L "${_hg}" ]; then
-    _why="it still holds sites on the per-host gate"
-  elif grep -q -s -F "renamed site: redirect to its new name" "${_vd}"/* 2>/dev/null; then
-    _why="it answers renamed sites with a 301"
-  else
+  if [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ]; then
+    if [ "${_XOCT_TARGET_FQDN,,}" = "${_XOCT_MY_FQDN,,}" ]; then
+      echo "INFO: ${_oct}: the target's hostname is this box's own (${_XOCT_MY_FQDN}): nothing was renamed there, so its sites are relayed under their own names"
+      _XOCT_TARGET_FQDN=""
+      _XOCT_MY_FQDN=""
+    fi
     return 0
   fi
+  [ -n "${_XOCT_DEFER_FQDN}" ] && return 0
   _mf="${_XOCT_MY_FQDN}"
   if [ -z "${_mf}" ]; then
     _mf=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
       | head -1 | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
     _xoct_valid_host "${_mf}" || _mf=$(hostname -f 2>/dev/null | tr -d '\n')
     _xoct_valid_host "${_mf}" || _mf=""
+  fi
+  if [ -s "${_hg}" ] && [ ! -L "${_hg}" ]; then
+    _why="it still holds sites on the per-host gate"
+  elif grep -q -s -F "renamed site: redirect to its new name" "${_vd}"/* 2>/dev/null; then
+    _why="it answers renamed sites with a 301"
+  elif [ -z "${_XOCT_MY_FQDN}" ] && _hs=$(_xoct_first_host_named_site "${_mf}"); then
+    ### xmass names this box whenever it converts after the renames, and
+    ### leaves the target out only when it could not read it: those sites
+    ### then stay plain proxies, as it says.
+    _why="its sites named under this box's hostname (${_hs} among them) are renamed on the target by the move"
+  else
+    return 0
   fi
   _tf="${_XOCT_TARGET_FQDN}"
   if [ -z "${_tf}" ]; then
@@ -1611,6 +1655,10 @@ _xoct_keep_renamed_redirects() {
     echo "ERROR: Re-run the command exactly as typed, with both set in front of it:"
     echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ...${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
     exit 1
+  fi
+  if [ "${_tf,,}" = "${_mf,,}" ]; then
+    echo "INFO: ${_oct}: ${_why}, but ${_tgt} answers this box's own hostname ${_mf}: nothing was renamed there, so its sites are relayed under their own names"
+    return 0
   fi
   _XOCT_TARGET_FQDN="${_tf}"
   _XOCT_MY_FQDN="${_mf}"
@@ -1873,6 +1921,56 @@ _myloader_binlog_opts() {
     _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
   fi
   return 0
+}
+### A table a load has just written can read as empty to the query optimiser
+### until InnoDB measures it in the background, and once nothing new wakes
+### that queue it takes about one table every ten seconds: a large site
+### loaded among a run of others went live with its pages planned as full
+### table scans, and the database server ran out of CPU before the queue
+### reached its tables. ANALYZE TABLE measures every InnoDB table of the
+### database right after its load, 100 at a time, waiting at most 30 seconds
+### for a table another session holds, as provision does after its own
+### imports. It goes to the binary log as the load does, so a replica of this
+### box measures the same tables; a standby takes its tables from replication
+### and is never measured here. A table left unmeasured only warns: the data
+### is in place, and InnoDB or the per-minute SQL check measures it later.
+### $1 is the database, the rest the client options the load connected with
+### (a --defaults-file first, as the client requires).
+_measure_loaded_tables() {
+  local _db="$1" _t0="${SECONDS}" _bq='`' _names _tb _list _out _i _ok=0 _skip=0 _err=""
+  local -a _tbls=()
+  shift
+  [ -e "/root/.standby.cnf" ] && return 0
+  if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: not a plain database name"
+    return 1
+  fi
+  if ! _names=$(mysql "$@" --silent -N -B -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'" 2>/dev/null); then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: its tables could not be listed"
+    return 1
+  fi
+  while IFS= read -r _tb; do
+    [ -n "${_tb}" ] || continue
+    ### -B prints a backslash, tab or newline in a name as an escape: a name
+    ### with one, or with a backtick, is never spliced into a statement.
+    case "${_tb}" in
+      *\\*|*"${_bq}"*) _skip=$(( _skip + 1 )); continue ;;
+    esac
+    _tbls+=("${_bq}${_db}${_bq}.${_bq}${_tb}${_bq}")
+  done <<< "${_names}"
+  for (( _i = 0; _i < ${#_tbls[@]}; _i += 100 )); do
+    _list=$(IFS=,; printf '%s' "${_tbls[*]:_i:100}")
+    _out=$(timeout 300 mysql "$@" --silent -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
+    ### The outcome, not the exit code: each table answers with its own OK.
+    _ok=$(( _ok + $(grep -c $'\tanalyze\tstatus\tOK$' <<< "${_out}") ))
+    [ -n "${_err}" ] || _err=$(grep -i -m 1 -E 'error|timeout|denied' <<< "${_out}" | tr '\t' ' ')
+  done
+  if [ "${_ok}" -eq "${#_tbls[@]}" ] && [ "${_skip}" -eq 0 ]; then
+    [ "${_ok}" -gt 0 ] && echo "INFO: measured the optimizer statistics of ${_ok} tables in ${_db} in $(( SECONDS - _t0 )) s"
+    return 0
+  fi
+  echo "ALRT: measured the optimizer statistics of ${_ok} of $(( ${#_tbls[@]} + _skip )) tables in ${_db}${_err:+ (${_err:0:200})}; InnoDB measures the rest later on its own"
+  return 1
 }
 ### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
 ### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK
@@ -2907,6 +3005,8 @@ EOFMYSQL
               --verbose=2; then
               _XOCT_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
+              _measure_loaded_tables "${_DBN}" --defaults-file=/root/.my.cnf \
+                --host=localhost --port=3306
             else
               _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
               _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
@@ -3341,7 +3441,7 @@ _xoct_heal_fpm_pins() {
   ### the ones that do not -- a silent wrong-interpreter site is the whole
   ### failure this heal exists to prevent.
   while read -r _dom _ver; do
-    case "${_dom}" in ''|place.holder*) continue ;; esac
+    case "${_dom}" in ''|place.holder*|\#*) continue ;; esac
     [ -z "${_ver}" ] && continue
     _ver="${_ver//[^0-9]/}"
     [ -z "${_ver}" ] && continue
@@ -5648,6 +5748,8 @@ _migrate_prepare() {
       echo "ERROR: nothing was renamed; fix the cause, then re-run the FULL import"
       exit 1
     fi
+    _measure_loaded_tables "${_HDB}" -u root "-h${_SQL_CONNECT}" "-P${_THIS_DB_PORT}" \
+      --protocol=tcp
     ### The panel keeps the front page its dump carries, node included.
     ### The source-role latches travelled here inside the account's log/
     ### tree. Left in place they block this box from ever being a source
@@ -6980,6 +7082,84 @@ _xoct_learn_peer_host_key() {
   return 0
 }
 
+### Whether one csf file's text covers an address the way the target's
+### hackcheck reads it: the address at the start of a line (optionally /32),
+### in a |s= or |d= rule, or inside a CIDR range outside a comment.
+_xoct_csf_text_covers_ip() {
+  local _ip="$1" _txt="$2" _rx _cidr _bits _mask _net _addr _o1 _o2 _o3 _o4
+  _rx="${_ip//./\\.}"
+  grep -qE "(^[[:space:]]*|\|s=|\|d=)${_rx}(/32)?([[:space:]#|]|\$)" <<< "${_txt}" && return 0
+  IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_ip}"
+  _addr=$(( (_o1 << 24) + (_o2 << 16) + (_o3 << 8) + _o4 ))
+  while read -r _cidr; do
+    [ -n "${_cidr}" ] || continue
+    _bits="${_cidr#*/}"
+    [ "${_bits}" -le 32 ] 2>/dev/null || continue
+    IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_cidr%/*}"
+    _net=$(( (_o1 << 24) + (_o2 << 16) + (_o3 << 8) + _o4 ))
+    _mask=$(( _bits == 0 ? 0 : (0xFFFFFFFF << (32 - _bits)) & 0xFFFFFFFF ))
+    [ $(( _addr & _mask )) -eq $(( _net & _mask )) ] && return 0
+  done <<< "$(cut -d'#' -f1 <<< "${_txt}" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}')"
+  return 1
+}
+
+### A one-account move needs every address of this box in the target's
+### csf.allow and csf.ignore before anything travels (the documented
+### firewall step). Without either, the target's hackcheck bans this box for
+### the pre-auth lines of the host-key scan, and a create's remote install
+### loses its session halfway, reporting only a lost connection. Refuses
+### while an address is in neither file, warns while it is in one; an xmass
+### run wires its own peer trust first and is not checked. Its read is the
+### first contact with the target (the scan runs after it), so its login
+### accepts a host key this box has not met yet.
+_xoct_require_peer_whitelist() {
+  local _p="$1" _out _allow _ignore _ip _miss="" _half=""
+  [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
+  _mig_valid_ip "${_p}" || return 0
+  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@"${_p}" \
+    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2>/dev/null)"
+  if [ "${_out}" = "XOCT-CSF-NONE" ]; then
+    echo "INFO: ${_p} runs no csf; no firewall entries to check"
+    return 0
+  fi
+  if ! grep -qx "XOCT-CSF-END" <<< "${_out}"; then
+    echo "ERROR: could not read the firewall of ${_p} over ssh before anything travels."
+    echo "ERROR: The usual cause is the firewall step not done yet: on ${_p}, add these lines"
+    for _ip in $(_mig_my_ips); do
+      echo "ERROR:   ${_ip} # Legacy Proxy   (to /etc/csf/csf.allow and to /etc/csf/csf.ignore)"
+    done
+    echo "ERROR: then run csf -ra there; if this box was just banned, lift it there with csf -tr <ip>."
+    echo "ERROR: Also check that ${_p} trusts this box's key (xoct pre-mig on both boxes),"
+    echo "ERROR: and, if ${_p} was rebuilt, remove its old host key here: ssh-keygen -R ${_p}"
+    return 1
+  fi
+  _allow="$(sed -n '/^XOCT-CSF-ALLOW$/,/^XOCT-CSF-IGNORE$/p' <<< "${_out}" | sed '1d;$d')"
+  _ignore="$(sed -n '/^XOCT-CSF-IGNORE$/,/^XOCT-CSF-END$/p' <<< "${_out}" | sed '1d;$d')"
+  for _ip in $(_mig_my_ips); do
+    if _xoct_csf_text_covers_ip "${_ip}" "${_allow}"; then
+      _xoct_csf_text_covers_ip "${_ip}" "${_ignore}" || _half="${_half} ${_ip}:csf.ignore"
+    elif _xoct_csf_text_covers_ip "${_ip}" "${_ignore}"; then
+      _half="${_half} ${_ip}:csf.allow"
+    else
+      _miss="${_miss} ${_ip}"
+    fi
+  done
+  if [ -n "${_miss}" ]; then
+    echo "ERROR: ${_p} does not trust this box in its firewall: its hackcheck would ban this box"
+    echo "ERROR: for the host-key scan and cut the transfer halfway. On ${_p}, before anything travels:"
+    for _ip in ${_miss}; do
+      echo "ERROR:   echo '${_ip} # Legacy Proxy' >> /etc/csf/csf.allow"
+      echo "ERROR:   echo '${_ip} # Legacy Proxy' >> /etc/csf/csf.ignore"
+    done
+    echo "ERROR:   csf -ra"
+    return 1
+  fi
+  for _ip in ${_half}; do
+    echo "ALRT: ${_ip%%:*} is in only one of the firewall files on ${_p}; add '${_ip%%:*} # Legacy Proxy' to /etc/csf/${_ip#*:} too, then csf -ra"
+  done
+  return 0
+}
+
 ### The peer did not take the record. The branch below is fail-closed for
 ### more than one cause (a truncated write on a full disk trips it too), so
 ### enumerate rather than assert: after a promotion the USUAL cause is that
@@ -7741,9 +7921,15 @@ _migrate_init() {
   ### met the target, their non-interactive ssh and rsync calls would fail
   ### host key verification (and the hold read before them would pass it by
   ### silently). An account's export and import reach no peer; the shared
-  ### and xusage legs reach the target whatever the verb.
+  ### and xusage legs reach the target whatever the verb. The same verbs
+  ### check the target's firewall trusts this box before anything travels,
+  ### and before the host key scan: the scan opens a connection per key type,
+  ### each closed before login, and a single such line can get this box banned
+  ### by the target's hackcheck. The check's own login accepts a new host key,
+  ### so a known one leaves the scan nothing to do.
   case "${_cmd}:${_oct}" in
     create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
+      _xoct_require_peer_whitelist "${_tgt}" || exit 1
       _xoct_learn_peer_host_key "${_tgt}"
       ;;
   esac
@@ -9283,7 +9469,7 @@ _take_verb_lock() {
       echo "ERROR: cannot claim ${_XOCT_LOCK_FILE} -- refusing to run unlocked"
       exit 1
     fi
-    _owner=$(tr -dc '0-9' < "${_XOCT_LOCK_FILE}" 2>/dev/null | head -c 12)
+    _owner=$(tr -dc '0-9' 2>/dev/null < "${_XOCT_LOCK_FILE}" | head -c 12)
     if [ -z "${_owner}" ] \
       && [ -n "$(find "${_XOCT_LOCK_FILE}" -newermt '-5 seconds' 2>/dev/null)" ]; then
       ### A just-created lock can be read in the instant between its O_EXCL
@@ -9292,7 +9478,7 @@ _take_verb_lock() {
       continue
     fi
     if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
-      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      _cmdline=$(tr '\0' ' ' 2>/dev/null < "/proc/${_owner}/cmdline")
       case "${_cmdline}" in
         */xoct\ *|*/xoct|*\ xoct\ *)
           echo "ERROR: another xoct run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish, or clear ${_XOCT_LOCK_FILE} if that pid is not an xoct run."
