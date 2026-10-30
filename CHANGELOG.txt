@@ -32,6 +32,10 @@
       worker does: a comment naming a version, or a version inside a site
       name, no longer keeps that PHP installed or has it built.
 
+    * The check xoct, xcopy and xmass run after a move, that every PHP
+      version pinned in multi-fpm.info has a live pool, skips a line
+      starting with #: a comment was reported as a pin with no pool.
+
     * A site renamed with Migrate Site while its aliases redirected to
       its own name answers on its new name again. The redirect stayed on
       the old name, which no site directory served any more: the old name
