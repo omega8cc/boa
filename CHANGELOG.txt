@@ -2577,6 +2577,16 @@
       when it starts, so it takes effect at its next restart. 5.7 keeps
       performance_schema off, as before.
 
+    * Percona 8.0 and 8.4 keep about 100 MB less in performance_schema
+      on a box with a few hundred site users. The four long event
+      histories, allocated at start although nothing records into them,
+      hold 1,000 rows instead of 10,000, and the error summaries, which
+      no BOA tool and no sys view reads, are off. Statement digests, the
+      per-account and per-user statistics and the threads table stay as
+      they are. Like the tuned memory settings, the new lines take effect
+      at the server's next restart: a barracuda pass does not restart it
+      for them. 5.7 keeps performance_schema off.
+
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after
       it changed. The list grew about threefold when every provider came
