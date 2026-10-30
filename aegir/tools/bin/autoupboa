@@ -360,34 +360,42 @@ _kill_stuck_fire_external() {
 _kill_stuck_fire_external
 
 #
-# Is graceful.sh resizing /swapfile right now? Its marker names its PID; a
-# stale marker, or a PID the kernel has since given to another process, is no
-# resize.
+# graceful.sh writes "<PID> <start time>" to /run/boa_swap_size.pid while it
+# sizes swap and removes it after. A resize runs while that very process lives:
+# the start time tells it from a later process given the same PID. A marker
+# whose process is gone is the trace of a run that was killed.
 _swap_resize_running() {
-  local _rszPid
-  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
-  [[ -n "${_rszPid}" ]] && grep -qas 'graceful' "/proc/${_rszPid}/cmdline"
+  local _rszPid _rszStart _rszNow
+  { read -r _rszPid _rszStart < /run/boa_swap_size.pid; } 2>/dev/null
+  _rszPid="${_rszPid//[^0-9]/}"
+  _rszStart="${_rszStart//[^0-9]/}"
+  [[ -n "${_rszPid}" && -n "${_rszStart}" ]] || return 1
+  _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+  [[ "${_rszNow}" == "${_rszStart}" ]]
 }
 
 #
-# Switch /swapfile back on when fstab lists it and it is off. xmass, xoct and
-# xcopy stop graceful.sh with kill -9 when they park it; a resize killed after
-# the old file went off and before the new one came on would otherwise leave
-# the box without its swap file until graceful.sh runs again, which a
-# migration can hold off for a day. A file that is not a valid swap area is
-# refused by swapon and left for graceful.sh.
+# A marker left by a graceful.sh that is gone means a resize was cut short:
+# xmass, xoct and xcopy stop graceful.sh with kill -9 when they park it, and a
+# kill after the old /swapfile went off and before the new one came on leaves
+# the box without it until graceful.sh runs again, which a migration can hold
+# off for a day. Switch /swapfile back on, root-only, and clear the marker.
+# Only then: an operator's own swapoff leaves no marker and is left alone. A
+# file that is not a valid swap area is refused by swapon and left for
+# graceful.sh.
 _swap_heal_file() {
-  [[ "${_SWAP_AUTOSIZE}" = "NO" ]] && return 0
+  [[ -e "/run/boa_swap_size.pid" ]] || return 0
   _swap_resize_running && return 0
-  grep -qE '^[[:space:]]*/swapfile[[:space:]]' /etc/fstab 2>/dev/null || return 0
-  awk '$1 == "/swapfile" {f = 1} END {exit !f}' /proc/swaps && return 0
-  [[ -f "/swapfile" ]] && [[ ! -L "/swapfile" ]] || return 0
-  chown root:root /swapfile 2>/dev/null
-  chmod 600 /swapfile 2>/dev/null
-  if swapon /swapfile 2>/dev/null; then
-    echo "SWP /swapfile was off with its fstab line in place, switched back on"
-    echo "$(date) /swapfile was off with its fstab line in place, switched back on by autoupboa" >> /var/log/boa/swap-size.log
+  if [[ -f "/swapfile" ]] && [[ ! -L "/swapfile" ]] \
+    && ! awk '$1 == "/swapfile" {f = 1} END {exit !f}' /proc/swaps; then
+    chown root:root /swapfile 2>/dev/null
+    chmod 600 /swapfile 2>/dev/null
+    if swapon /swapfile 2>/dev/null; then
+      echo "SWP /swapfile switched back on after a cut-short resize"
+      echo "$(date) /swapfile switched back on by autoupboa after a resize was cut short" >> /var/log/boa/swap-size.log
+    fi
   fi
+  rm -f /run/boa_swap_size.pid
 }
 _swap_heal_file
 
@@ -430,13 +438,30 @@ _swap_purge_if_bloated() {
       return 1
     fi
     echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
+    # swapon -a brings back only what fstab lists: a zram device or any other
+    # area switched on outside fstab goes back on by name, at the priority it
+    # had when that was its own (0 or more; a negative one was the kernel's).
+    local _area _prio _areas _on_rc
+    _areas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
     if swapoff -a; then
       echo "SWP swapoff complete"
     else
       echo "SWP swapoff failed"
       return 1
     fi
-    if swapon -a; then
+    swapon -a
+    _on_rc=$?
+    for _area in ${_areas}; do
+      _prio="${_area##*:}"
+      _area="${_area%:*}"
+      awk -v a="${_area}" '$1 == a {f = 1} END {exit !f}' /proc/swaps && continue
+      if [[ "${_prio}" =~ ^[0-9]+$ ]]; then
+        swapon -p "${_prio}" "${_area}" 2>/dev/null
+      else
+        swapon "${_area}" 2>/dev/null
+      fi
+    done
+    if [[ "${_on_rc}" -eq 0 ]]; then
       echo "SWP swapon complete, swap purged successfully"
     else
       echo "SWP swapon failed after swapoff — swap may be offline"

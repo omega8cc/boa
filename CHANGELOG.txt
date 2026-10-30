@@ -43,6 +43,12 @@
       tenth of the RAM (at least 512 MB) stays free after it, and stand
       aside while graceful.sh resizes /swapfile.
 
+    * Emptying swap no longer leaves a zram device, or any other swap area
+      /etc/fstab does not list, switched off until the next reboot: the
+      purges ran swapoff -a and swapon -a, which brings back only what
+      fstab lists. autoupboa's purge and multiback's reset now switch every
+      area that was on back on by name, at its own priority.
+
     * The swap purge no longer drops the whole page cache. It flushed the
       cache before checking free RAM and again after, so a box whose swap
       stayed half full re-read every site's files from disk every five
@@ -2593,13 +2599,15 @@
       never touched; a /swapfile BOA did not make is only ever grown, one it
       made is shrunk when it is twice the size it should be. The old file
       goes off only while free RAM can take its pages back with a tenth of
-      the RAM to spare, checked right before each swapoff. A /swapfile BOA
-      takes over is made root-only (0600), and when a resize is cut short
-      (the migration tools stop graceful.sh with kill -9) autoupboa switches
-      /swapfile back on within five minutes. Nothing is done in a container,
-      on a filesystem other than ext3, ext4 or xfs, or when the file would
-      take / past 80% as df counts it or leave under 2 GB free. Each run
-      writes one line to /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
+      the RAM to spare, checked again right before the swapoffs. A
+      /swapfile BOA takes over is made root-only (0600) and listed in
+      /etc/fstab; a resize cut short (the migration tools stop graceful.sh
+      with kill -9) leaves its marker behind, and autoupboa switches
+      /swapfile back on at its next five-minute tick. zram counts as RAM,
+      not as swap. Nothing is done in a container, on a filesystem
+      other than ext3, ext4 or xfs, or when the file would take / past 80%
+      as df counts it or leave under 2 GB free. Each run writes one line
+      to /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
       /root/.barracuda.cnf leaves swap alone.
 
     * An incident snapshot: when a load or database incident starts, BOA
