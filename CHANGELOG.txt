@@ -4,6 +4,25 @@
 
 @=> Important Fixes
 
+    * aegir2boa moves enabled sites only, but its whole-panel route
+      (db-import) carried every site record into the new panel, so a
+      site disabled or still queued on the old server arrived there as a
+      record without its database, and nothing said so. Its check now
+      names every such site, and the move goes on only once that list is
+      acknowledged (--accept-left-behind); the import names each record
+      it brought without a site, and proxy never cuts over a site whose
+      record no longer reads enabled.
+
+    * aegir2boa's preflight, stage 1 and stage 2 read every site record
+      a revision at a time: a site disabled after an older revision of it
+      was saved still counted as enabled, and stage 2 moved it. They now
+      read the current revision only.
+
+    * A retry after aegir2boa's db-import revert could load an earlier
+      round's dump of a site that round no longer carried, and the revert
+      left the moved sites' Drush aliases behind. The revert now sets the
+      transferred dumps aside and removes those aliases with their vhosts.
+
     * Emptying swap no longer takes a box into the OOM guard. The swap
       purge autoupboa runs every five minutes once swap is half full went
       ahead whenever free RAM could hold the pages coming back, even if
