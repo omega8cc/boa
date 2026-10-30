@@ -1648,16 +1648,19 @@
       6's original error handler logs and shows every warning under any
       other level). Drush and other command line runs are left alone, a
       fatal PHP logs itself (on a .dev. alias) is not repeated, the host
-      and path are written with every byte outside printable ASCII as
-      \xHH, and before PHP 7 a parse error in eval()'d code, which neither
-      stops the request nor turns it into a 500, is not logged.
+      and path are written as nginx writes its access log (every byte
+      outside printable ASCII, the quote and the backslash as \xHH), no
+      control character of the message reaches the log, and before PHP 7
+      a parse error in eval()'d code, which neither stops the request nor
+      turns it into a 500, is not logged.
 
     * A visitor can no longer make barracuda rebuild a PHP version. Its
       check for a broken PHP build searched the whole PHP-FPM error log
       for "OnigEncoding", the sites' own output included, and rebuilt
       that version from source on a match, while a site's fatal error
-      line carries the visitor's path. The check now reads only PHP-FPM's
-      own lines, as the monitors already do.
+      line carries the visitor's path, and PHP-FPM's own lines about a
+      slow or timed-out request quote its query string. The check now
+      reads only PHP-FPM's own lines and none that quote a request.
 
     * PHP-FPM no longer logs "Unable to set php_admin_value" for
       newrelic.enabled and newrelic.license at each new worker of a PHP
