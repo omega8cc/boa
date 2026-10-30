@@ -139,7 +139,10 @@ _swap_resize_running() {
   local _rszPid _rszStart _rszNow _rszCmd
   _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
   [ -n "${_rszPid}" ] || return 1
-  _rszStart=$( { tr -dc '0-9' < /run/boa_swap_size.start; } 2>/dev/null )
+  # The start file holds "<PID> <start time>"; one left by another run is
+  # ignored.
+  _rszStart=$( { awk -v p="${_rszPid}" '$1 == p {print $2}' /run/boa_swap_size.start; } 2>/dev/null )
+  _rszStart="${_rszStart//[^0-9]/}"
   if [ -n "${_rszStart}" ]; then
     _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
     [ "${_rszNow}" = "${_rszStart}" ]

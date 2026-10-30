@@ -368,7 +368,10 @@ _swap_resize_running() {
   local _rszPid _rszStart _rszNow _rszCmd
   _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
   [ -n "${_rszPid}" ] || return 1
-  _rszStart=$( { tr -dc '0-9' < /run/boa_swap_size.start; } 2>/dev/null )
+  # The start file holds "<PID> <start time>"; one left by another run is
+  # ignored.
+  _rszStart=$( { awk -v p="${_rszPid}" '$1 == p {print $2}' /run/boa_swap_size.start; } 2>/dev/null )
+  _rszStart="${_rszStart//[^0-9]/}"
   if [ -n "${_rszStart}" ]; then
     _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
     [ "${_rszNow}" = "${_rszStart}" ]
@@ -390,7 +393,14 @@ _swap_resize_running() {
 # file that is not a valid swap area is refused by swapon and left for
 # graceful.sh.
 _swap_heal_file() {
+  local _healPid
   [[ -e "/run/boa_swap_size.pid" ]] || return 0
+  _healPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  # An empty marker is one being written (by graceful.sh before it was
+  # claimed by a link): leave it alone for a day.
+  if [[ -z "${_healPid}" ]]; then
+    [[ -n "$(find /run/boa_swap_size.pid -mmin -1440 2>/dev/null)" ]] && return 0
+  fi
   _swap_resize_running && return 0
   # The kill takes graceful.sh's bash, not a swapoff it started: that one
   # empties its area for minutes and swapon refuses the area meanwhile. Keep
@@ -405,7 +415,11 @@ _swap_heal_file() {
       echo "$(date) /swapfile switched back on by autoupboa after a resize was cut short" >> /var/log/boa/swap-size.log
     fi
   fi
-  rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+  # Only the trace that was judged: a graceful.sh may have claimed a fresh
+  # marker meanwhile.
+  if [[ "$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )" = "${_healPid}" ]]; then
+    rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+  fi
 }
 _swap_heal_file
 
@@ -470,7 +484,7 @@ _swap_purge_if_bloated() {
         swapon "${_area}" 2>/dev/null
       fi
     done
-    if [[ "${_off_rc}" -ne 0 ]]; then
+    if [[ "${_off_rc}" -ne 0 ]] && [[ "${_on_rc}" -eq 0 ]]; then
       echo "SWP swapoff failed, the areas it switched off are back on"
       return 1
     fi

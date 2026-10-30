@@ -627,7 +627,10 @@ _swap_resize_running() {
   local _rszPid _rszStart _rszNow _rszCmd
   _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
   [ -n "${_rszPid}" ] || return 1
-  _rszStart=$( { tr -dc '0-9' < /run/boa_swap_size.start; } 2>/dev/null )
+  # The start file holds "<PID> <start time>"; one left by another run is
+  # ignored.
+  _rszStart=$( { awk -v p="${_rszPid}" '$1 == p {print $2}' /run/boa_swap_size.start; } 2>/dev/null )
+  _rszStart="${_rszStart//[^0-9]/}"
   if [ -n "${_rszStart}" ]; then
     _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
     [ "${_rszNow}" = "${_rszStart}" ]
@@ -901,19 +904,27 @@ _graceful_action() {
   if printf '%s\n' "$$" > "${_rszTmp}" 2> /dev/null; then
     if ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null; then
       _rszOwn=YES
-    elif ! _swap_resize_running && ! pgrep -x swapoff > /dev/null 2>&1; then
-      rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
-      ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null && _rszOwn=YES
+    else
+      _rszOld=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2> /dev/null )
+      if [ -n "${_rszOld}" ] && ! _swap_resize_running \
+        && ! pgrep -x swapoff > /dev/null 2>&1 \
+        && [ "$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2> /dev/null )" = "${_rszOld}" ]; then
+        rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+        ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null && _rszOwn=YES
+      fi
     fi
-    rm -f "${_rszTmp}"
   fi
+  rm -f "${_rszTmp}"
   if [ "${_rszOwn}" = "YES" ]; then
-    printf '%s\n' "$(sed 's/^.*) //' "/proc/$$/stat" 2> /dev/null | awk '{print $20}')" \
+    printf '%s %s\n' "$$" "$(sed 's/^.*) //' "/proc/$$/stat" 2> /dev/null | awk '{print $20}')" \
       > "${_rszTmp}.start" 2> /dev/null \
       && mv -f "${_rszTmp}.start" /run/boa_swap_size.start
+    rm -f "${_rszTmp}.start"
     echo "Sizing swap..."
     _size_swap
-    rm -f /run/boa_swap_size.pid /run/boa_swap_size.start "${_rszTmp}.start"
+    if [ "$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2> /dev/null )" = "$$" ]; then
+      rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+    fi
   else
     echo "Swap sizing skipped: another graceful.sh run is sizing swap, a swapoff it started still runs, or /run is full"
   fi
