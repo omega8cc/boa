@@ -282,10 +282,10 @@ if (!$is_backend && PHP_SAPI !== 'cli' && !function_exists('boa_log_fatal_error'
         ($error['type'] & error_reporting())) {
       return;
     }
-    // Before PHP 7 a parse error in eval()'d, create_function() or assert()
-    // code (a PHP filter snippet, say) does not stop the request by itself.
+    // Before PHP 7 a parse error in eval()'d or create_function() code (a PHP
+    // filter snippet, say) neither stops the request nor turns it into a 500.
     if ($error['type'] == E_PARSE && PHP_VERSION_ID < 70000 &&
-        preg_match("/(?:eval\(\)'d code|runtime-created function|assert code)$/", $error['file'])) {
+        preg_match("/(?:eval\(\)'d code|runtime-created function)$/", $error['file'])) {
       return;
     }
     switch ($error['type']) {
