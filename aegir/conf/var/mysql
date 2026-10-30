@@ -23,9 +23,57 @@ MYCNF=/etc/mysql/my.cnf
 LOGFILE=/var/log/mysql/mysql.log
 ERRORLOG=/var/log/mysql/error.log
 
+# Memory allocator: _SQL_MALLOC in the barracuda config, read at every start.
+# Under transparent huge pages "always" the kernel backs jemalloc's partly
+# used extents with whole huge pages and keeps memory resident that jemalloc
+# has given back, as with Valkey, which runs on jemalloc with disable-thp.
+# thp:never takes huge pages off jemalloc's own mappings only: the buffer
+# pool chunks are mapped apart and keep the system mode.
+BARCNF=/root/.barracuda.cnf
+JEMALLOC=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+JEMALLOC_CONF="thp:never"
+
 # Ensure the Percona MySQL directory exists
 [ -d /run/mysqld ] || mkdir -p /run/mysqld
 chown mysql:mysql /run/mysqld
+
+# Sets _MALLOC_LIB to the library to preload, or empty for glibc, and
+# _MALLOC_WHY to the reason a requested jemalloc is not used. Any value other
+# than jemalloc means glibc. The config is read in a subshell the way the
+# barracuda run reads it, so both see the same value and nothing else of it
+# reaches this script.
+pick_malloc() {
+    _MALLOC_LIB=""
+    _MALLOC_WHY=""
+    _MALLOC_SET=""
+    [ -r "$BARCNF" ] && _MALLOC_SET=$(unset _SQL_MALLOC; . "$BARCNF" > /dev/null 2>&1; echo "$_SQL_MALLOC")
+    if [ "$_MALLOC_SET" = "jemalloc" ]; then
+        if [ -r "$JEMALLOC" ]; then
+            _MALLOC_LIB="$JEMALLOC"
+        else
+            _MALLOC_WHY="_SQL_MALLOC=jemalloc, but $JEMALLOC is missing"
+        fi
+    elif [ -n "$_MALLOC_SET" ] && [ "$_MALLOC_SET" != "glibc" ]; then
+        _MALLOC_WHY="_SQL_MALLOC=$_MALLOC_SET is not glibc or jemalloc"
+    fi
+}
+
+# One error log line naming the allocator the started server runs on, read
+# from its own memory map, and the transparent huge pages mode it started
+# under.
+log_malloc() {
+    _PID=$(pgrep -x mysqld | head -n 1)
+    [ -n "$_PID" ] || return 0
+    _THP=$(sed -n 's/.*\[\(.*\)\].*/\1/p' /sys/kernel/mm/transparent_hugepage/enabled 2> /dev/null)
+    if grep -q libjemalloc "/proc/$_PID/maps" 2> /dev/null; then
+        _ALLOC="jemalloc ($JEMALLOC_CONF)"
+    else
+        [ -n "$_MALLOC_LIB" ] && _MALLOC_WHY="$_MALLOC_LIB did not load"
+        _ALLOC="glibc malloc"
+        [ -n "$_MALLOC_WHY" ] && _ALLOC="$_ALLOC ($_MALLOC_WHY)"
+    fi
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) BOA: mysqld $_PID started on $_ALLOC, transparent huge pages ${_THP:-unknown}" >> "$ERRORLOG"
+}
 
 # Start Percona MySQL Server
 start_mysql() {
@@ -54,9 +102,17 @@ start_mysql() {
         chmod 0640 "$ERRORLOG"
     fi
 
-    # Start MySQL
-    $DAEMON --defaults-file=$MYCNF $MYSQL_OPTS > /dev/null 2>> "$ERRORLOG" &
+    # Start MySQL. The preload is set on the server's own command line, so
+    # it reaches no other process: the mysql client, mysql_upgrade and every
+    # script started after this one keep glibc.
+    pick_malloc
+    if [ -n "$_MALLOC_LIB" ]; then
+        LD_PRELOAD="$_MALLOC_LIB" MALLOC_CONF="$JEMALLOC_CONF" $DAEMON --defaults-file=$MYCNF $MYSQL_OPTS > /dev/null 2>> "$ERRORLOG" &
+    else
+        $DAEMON --defaults-file=$MYCNF $MYSQL_OPTS > /dev/null 2>> "$ERRORLOG" &
+    fi
     sleep 5
+    log_malloc
 
     if [ -f $PIDFILE ]; then
         echo "Percona MySQL started successfully."
