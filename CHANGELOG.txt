@@ -106,8 +106,11 @@
       now checks first that the new server's csf.allow or csf.ignore
       trusts each address of this one, and refuses before anything
       travels with the exact lines to add; an address in only one of the
-      two files gets a warning naming the other. A server without csf is
-      not checked, and an xmass move, which wires its own trust, neither.
+      two files gets a warning naming the other. The check runs before
+      the host-key scan, over one login that accepts the new server's key
+      on first contact, so a refused step leaves no ban behind. A server
+      without csf is not checked, and an xmass move, which wires its own
+      trust, neither.
 
     * xoct proxy with --proxy-mode= on an account with no declared mode
       warned that it was falling back to 'temporary', then recorded the
