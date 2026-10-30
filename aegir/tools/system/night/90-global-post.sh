@@ -29,6 +29,10 @@ if ! declare -F _provision_running > /dev/null 2>&1; then
     pgrep -f provision > /dev/null 2>&1
   }
 fi
+# The same skew, failing closed: an undefined in-flight gate returns 127, which
+# would read as "no BOA pass running".
+declare -F _night_boa_pass_active > /dev/null 2>&1 \
+  || _night_boa_pass_active() { return 0; }
 
 # oN owns its /data/disk/oN (config/, .drush/, .tmp/, distro/ and every
 # platform there), so any name below it can be a link or a FIFO, and any
@@ -331,6 +335,44 @@ _delete_this_empty_hostmaster_platform() {
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
 }
 
+# Every platform alias of the master with the root it names, the docroot
+# served from there (the root again when there is none) and where that
+# docroot resolves, so two spellings of one tree through a link match.
+# $1, an epoch: only the aliases written since then.
+_night_master_platform_root_lines() {
+  local _f _r _d
+  local -a _l
+  if [ -n "${1:-}" ]; then
+    mapfile -d '' -t _l < <(find /var/aegir/.drush -mindepth 1 -maxdepth 1 -type f \
+      -name 'platform_*.alias.drushrc.php' -newermt "@${1}" -print0 2> /dev/null)
+  else
+    _l=( /var/aegir/.drush/platform_*.alias.drushrc.php )
+  fi
+  for _f in "${_l[@]}"; do
+    [ -f "${_f}" ] || continue
+    _r=$(cat "${_f}" \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    [ -n "${_r}" ] || continue
+    _d=$(_detect_real_docroot "${_r}")
+    printf '%s\t%s\t%s\t%s\n' "${_f}" "${_r}" "${_d:-${_r}}" \
+      "$(realpath -e -- "${_d:-${_r}}" 2> /dev/null)"
+  done
+  return 0
+}
+
+# A task of the master in flight in any phase: its front end (hosting-task,
+# before the backend child exists), the backend's provision-<task> and its
+# executor.
+_night_master_tasks_alive() {
+  pgrep -u aegir -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u aegir -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
+  pgrep -u aegir -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _check_old_empty_hostmaster_platforms() {
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ -n "${_DEL_OLD_EMPTY_PLATFORMS}" ] \
@@ -347,23 +389,17 @@ _check_old_empty_hostmaster_platforms() {
     if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
-      # Every platform alias with the root it names and the docroot served
-      # from there (the root again when there is none), for the twin test.
-      _rootLines=$(for _f in /var/aegir/.drush/platform_*.alias.drushrc.php; do
-        _r=$(cat "${_f}" \
-          | grep "root'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
-        [ -n "${_r}" ] || continue
-        _d=$(_detect_real_docroot "${_r}")
-        printf '%s\t%s\t%s\n' "${_f}" "${_r}" "${_d:-${_r}}"
-      done)
+      _snapT=$(date +%s)
+      _rootLines=$(_night_master_platform_root_lines)
       for _Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
         +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
-        _T_PFM_NAME=$(echo "${_Platform}" \
-          | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
-          | awk '{ print $1}' 2>&1)
+        # the shortest prefix: a name holding "platform_" itself must not
+        # turn into another platform's name for the Delete below
+        _T_PFM_NAME="${_Platform##*/}"
+        _T_PFM_NAME="${_T_PFM_NAME#platform_}"
+        _T_PFM_NAME="${_T_PFM_NAME%.alias.drushrc.php}"
+        # the name reaches a drush command line
+        [[ "${_T_PFM_NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
         _T_PFM_ROOT=$(cat ${_Platform} \
           | grep "root'" \
           | cut -d: -f2 \
@@ -397,12 +433,32 @@ _check_old_empty_hostmaster_platforms() {
           # A tree another alias also names is never deleted here: the alias
           # of a platform the control panel already deleted can name a live
           # platform's tree, and its Delete removes that platform's code.
+          # The master's own task queue keeps running while the nightly does:
+          # none of its tasks may be in flight, and an alias written since the
+          # list was read joins it (the list itself is kept, so an alias moved
+          # to undo above still counts).
+          if _night_boa_pass_active || _night_master_tasks_alive; then
+            echo "INFO: a task of the master or a BOA pass is running -- stopping empty-platform cleanup"
+            break
+          fi
+          _rootNew=$(_night_master_platform_root_lines "$(( _snapT - 1 ))")
           _twin=$(awk -F '\t' -v f="${_Platform}" -v r="${_T_PFM_ROOT}" \
             -v d="${_T_PFM_DOC:-${_T_PFM_ROOT}}" \
-            '$1 != f && ($2 == r || $3 == d) { print $1; exit }' <<< "${_rootLines}")
+            -v x="$(realpath -e -- "${_T_PFM_DOC:-${_T_PFM_ROOT}}" 2> /dev/null)" \
+            '$1 != f && ($2 == r || $3 == d || (x != "" && $4 == x)) { print $1; exit }' \
+            <<< "${_rootLines}"$'\n'"${_rootNew}")
           if [ -n "${_twin}" ]; then
             _twin="${_twin##*/}"
-            echo "WARNING: platform_${_T_PFM_NAME} names the same tree as ${_twin%.alias.drushrc.php} (${_T_PFM_DOC:-${_T_PFM_ROOT}}): neither is deleted; remove the alias of the one the control panel no longer lists"
+            _twinMsg=$(printf '%s' "platform_${_T_PFM_NAME} names the same tree as ${_twin%.alias.drushrc.php} (${_T_PFM_DOC:-${_T_PFM_ROOT}}): neither is deleted; remove the alias of the one the control panel no longer lists" \
+              | LC_ALL=C tr -cd ' -~' | cut -c1-600)
+            echo "WARNING: ${_twinMsg}"
+            # a log line alone is silence: tell the operator
+            if declare -F _night_notice > /dev/null 2>&1; then
+              ( unset _MY_OCTO_EMAIL
+                _night_notice "pfm-twin-master" \
+                  "BOA nightly on $(hostname -f): two platforms name one tree in the master" \
+                  "master: ${_twinMsg}" )
+            fi
           else
             _delete_this_empty_hostmaster_platform
           fi
