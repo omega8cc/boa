@@ -2793,6 +2793,19 @@
 
 @=> Improvements
 
+    * Each site's server block now takes about 0.26 MB less of nginx's
+      memory, 13 % of what the shared include every site vhost loads
+      (nginx_vhost_common.conf) cost it: nginx keeps every location and
+      every if of that file again in each server block, about 6 KB
+      apiece, in every configuration it holds. Guards next to each other
+      that end in the same answer are now tested by one if, regex
+      locations next to each other with the same body are one location,
+      and three prefix locations whose only nested location repeated the
+      prefix carry its directives themselves: 42 fewer of the 255. What
+      each request is answered, logged and handed to PHP-FPM is
+      unchanged. An instance takes the new include at its next upgrade
+      or Server Verify.
+
     * The panel no longer sends scheduled web cron to a site whose name
       carries a dev, devel, tmp, temp, temporary, test or testing label
       (the redirect target's name when that is one of its aliases), nor
