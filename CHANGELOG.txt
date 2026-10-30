@@ -18,6 +18,20 @@
       minutes even when the purge was then refused. Free RAM as the kernel
       reports it already counts the cache it can reclaim.
 
+    * The database watchdog now mails a STALL when MySQL answers its ping
+      but its queries wait: ten or more site queries running 30 seconds or
+      longer, or a process list that does not come back within ten seconds
+      while the ping still answers. One line in mysql.incident.log and one
+      mail per cooldown, on its own mail key, and never a restart or a kill:
+      on one busy server the dictionary was held for eight minutes while the
+      ping passed throughout, and a restart under such a wait would only lose
+      the work. It mails even with the incident snapshot switched off; a
+      server that does not answer at all stays the restart path's.
+
+    * An incident snapshot also hides a Percona Toolkit connection string's
+      p= field and the password Drush's user:password (upwd) takes as a
+      plain word, as typed by hand on the command line.
+
     * The web ban sets no longer reload Nginx on nearly every cron tick.
       The 15-minute temporary bans change the IPv4 set most of the time,
       and each change reloaded Nginx: on a box with hundreds of SSL vhosts
