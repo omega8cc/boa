@@ -276,6 +276,12 @@ if (!$is_backend && !function_exists('boa_log_fatal_error')) {
     if (ini_get('log_errors') && ($error['type'] & error_reporting())) {
       return;
     }
+    // Before PHP 7 a parse error in eval()'d or create_function() code (a PHP
+    // filter snippet, say) does not stop the request: not a fatal.
+    if ($error['type'] == E_PARSE && PHP_VERSION_ID < 70000 &&
+        preg_match("/(?:eval\(\)'d code|runtime-created function)$/", $error['file'])) {
+      return;
+    }
     $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-';
     $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '-';
     $line = ($error['type'] == E_PARSE ? 'PHP Parse error:  ' : 'PHP Fatal error:  ') .
