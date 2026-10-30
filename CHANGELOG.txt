@@ -2676,6 +2676,14 @@
       at the server's next restart: a barracuda pass does not restart it
       for them. 5.7 keeps performance_schema off.
 
+    * Percona 8.0 and 8.4 run on the server's own thread_stack, 1M on
+      8.4, instead of the 256K the BOA my.cnf has set since 2010: the
+      stack bounds how deeply nested a statement the server accepts, and
+      256K is a quarter of what 8.4 ships with. A barracuda pass comments
+      BOA's line out on 8.x. The server reads it only when it starts, and
+      a barracuda pass does not restart it for this line, so it takes
+      effect at its next restart. 5.7 keeps 256K, as before.
+
     * The nginx abuse scorer, scan_nginx.sh, keeps what it parses from
       csf.allow between its starts and parses the list again only after
       it changed. The list grew about threefold when every provider came
