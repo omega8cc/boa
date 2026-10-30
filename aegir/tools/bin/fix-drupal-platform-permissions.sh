@@ -265,8 +265,9 @@ _root_uids_or_leave() {
   _OWN_UIDS=$(_site_walk_uids "${drupal_root}") || _OWN_UIDS=""
   _own_uids_ok "${_OWN_UIDS}" && return 0
   printf "Notice: %s is in neither an account's tree nor the master's; nothing changed.\n" \
-    "$(_nm "${drupal_root}")" >&2
-  [[ "${_APP_ROOT}" = "YES" ]] && exit 1
+    "${drupal_root//[[:cntrl:]]/?}" >&2
+  # Under the permissions helper's --app-root a refusal must not read as done.
+  [[ "${_APP_ROOT:-}" = "YES" ]] && exit 1
   exit 0
 }
 # One line for what the walks left as another user's, each entry once by
@@ -277,7 +278,7 @@ _root_owners_left_note() {
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || return 0
   printf "Notice: %s entries owned by another user left as they were in the platform %s\n" \
-    "${_n}" "$(_nm "${drupal_root}")" >&3
+    "${_n}" "${drupal_root//[[:cntrl:]]/?}" >&3
   return 0
 }
 # What "$@" prints kept in _LEFT, for that line: the walkers print the
@@ -413,7 +414,7 @@ _links_left_note() {
   _here="$(pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
-    "${_n}" "$(_nm "${_here}")" "${_first//[[:cntrl:]]/?}" >&3
+    "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
   return 0
 }
 # Mode $1 on every regular file the find start points and tests after it
