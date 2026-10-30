@@ -131,9 +131,10 @@ _hostmaster_uri() {
 # enabled sites as "context_name uri" pairs, hostmaster FIRST (control plane,
 # spec section 4). The context name drives hosting-task/@alias (for the
 # hostmaster site it is the literal 'hostmaster', NOT its domain); the uri
-# drives HTTP checks and vhost paths.
+# drives HTTP checks and vhost paths. hosting_site keeps a row per node
+# revision, so the current one is read.
 _sites_list() {
-  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.nid = n.nid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
+  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.vid = n.vid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
     | tr '\t' ' '
 }
 

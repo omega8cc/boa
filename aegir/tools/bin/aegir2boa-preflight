@@ -870,10 +870,12 @@ _D8PLUS_SEEN=NO
 probe_sites() {
   local _f _dom _root _plat _sp _dbn _files_mb _db_mb _al _redir _st _ver _dbsrv _ssl _cl
   local _client _profile _lang _svcname
-  # DB rows once, joined per-site by context name (= domain)
+  # DB rows once, joined per-site by context name (= domain); hosting_site
+  # keeps a row per node revision, so the current one is read
   if [[ -n "${_HM_DB}" ]]; then
     _sql "SELECT c.name, s.status, s.verified, COALESCE(s.db_name,'-'), COALESCE(cd.name,'-')
           FROM \`${_HM_DB}\`.hosting_site s
+          JOIN \`${_HM_DB}\`.node n ON n.vid = s.vid
           JOIN \`${_HM_DB}\`.hosting_context c ON c.nid = s.nid
           LEFT JOIN \`${_HM_DB}\`.hosting_context cd ON cd.nid = s.db_server
           WHERE s.status > -2" > "${_TMPD}/sites_db.raw"
