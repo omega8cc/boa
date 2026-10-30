@@ -360,6 +360,38 @@ _kill_stuck_fire_external() {
 _kill_stuck_fire_external
 
 #
+# Is graceful.sh resizing /swapfile right now? Its marker names its PID; a
+# stale marker, or a PID the kernel has since given to another process, is no
+# resize.
+_swap_resize_running() {
+  local _rszPid
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [[ -n "${_rszPid}" ]] && grep -qas 'graceful' "/proc/${_rszPid}/cmdline"
+}
+
+#
+# Switch /swapfile back on when fstab lists it and it is off. xmass, xoct and
+# xcopy stop graceful.sh with kill -9 when they park it; a resize killed after
+# the old file went off and before the new one came on would otherwise leave
+# the box without its swap file until graceful.sh runs again, which a
+# migration can hold off for a day. A file that is not a valid swap area is
+# refused by swapon and left for graceful.sh.
+_swap_heal_file() {
+  [[ "${_SWAP_AUTOSIZE}" = "NO" ]] && return 0
+  _swap_resize_running && return 0
+  grep -qE '^[[:space:]]*/swapfile[[:space:]]' /etc/fstab 2>/dev/null || return 0
+  awk '$1 == "/swapfile" {f = 1} END {exit !f}' /proc/swaps && return 0
+  [[ -f "/swapfile" ]] && [[ ! -L "/swapfile" ]] || return 0
+  chown root:root /swapfile 2>/dev/null
+  chmod 600 /swapfile 2>/dev/null
+  if swapon /swapfile 2>/dev/null; then
+    echo "SWP /swapfile was off with its fstab line in place, switched back on"
+    echo "$(date) /swapfile was off with its fstab line in place, switched back on by autoupboa" >> /var/log/boa/swap-size.log
+  fi
+}
+_swap_heal_file
+
+#
 # Purge memory swap if bloated
 _swap_purge_if_bloated() {
   local _SWAP_THRESHOLD="${1:-50}"
@@ -380,9 +412,7 @@ _swap_purge_if_bloated() {
 
   if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
     # graceful.sh is resizing /swapfile: a swapoff -a now would undo half of it.
-    local _rszPid
-    _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
-    if [[ -n "${_rszPid}" ]] && kill -0 "${_rszPid}" 2>/dev/null; then
+    if _swap_resize_running; then
       echo "SWP swap resize in progress, purge skipped"
       return 0
     fi

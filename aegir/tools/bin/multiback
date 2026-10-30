@@ -136,11 +136,12 @@ _check_system_ram() {
 # the backup only while free RAM can take its pages back with a tenth of the
 # RAM (at least 512 MB) to spare: once swap is larger than the free RAM, an
 # unchecked swapoff -a pulls back more than the box has. Swap is left alone
-# while graceful.sh resizes /swapfile.
+# while graceful.sh resizes /swapfile (its marker names a running graceful.sh;
+# a stale marker or a reused PID is no resize).
 _optimize_ram() {
   local _swpUsed _memAvl _memTot _memSpare _rszPid
   _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
-  if [ -z "${_rszPid}" ] || ! kill -0 "${_rszPid}" 2>/dev/null; then
+  if [ -z "${_rszPid}" ] || ! grep -qas 'graceful' "/proc/${_rszPid}/cmdline"; then
     _swpUsed=$(awk '/^SwapTotal:/ {t=$2} /^SwapFree:/ {f=$2} END {print t-f}' /proc/meminfo)
     _memAvl=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
     _memTot=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)

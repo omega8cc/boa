@@ -2593,11 +2593,14 @@
       never touched; a /swapfile BOA did not make is only ever grown, one it
       made is shrunk when it is twice the size it should be. The old file
       goes off only while free RAM can take its pages back with a tenth of
-      the RAM to spare. Nothing is done in a container, on a filesystem
-      other than ext3, ext4 or xfs, or when the file would take / past 80%
-      or leave under 2 GB free. Each run writes one line to
-      /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in /root/.barracuda.cnf
-      leaves swap alone.
+      the RAM to spare, checked right before each swapoff. A /swapfile BOA
+      takes over is made root-only (0600), and when a resize is cut short
+      (the migration tools stop graceful.sh with kill -9) autoupboa switches
+      /swapfile back on within five minutes. Nothing is done in a container,
+      on a filesystem other than ext3, ext4 or xfs, or when the file would
+      take / past 80% as df counts it or leave under 2 GB free. Each run
+      writes one line to /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
+      /root/.barracuda.cnf leaves swap alone.
 
     * An incident snapshot: when a load or database incident starts, BOA
       now saves what MySQL and the box were doing, so its cause can still
