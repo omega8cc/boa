@@ -496,19 +496,24 @@ _left_behind_gate() {
       && _die "${_n} site record(s) named by check stay on this box - enable them to move them and re-run check, or re-run check with $(_ack_flags)"
     _die "${_n} site record(s) named by check stay on this box - re-run check with $(_ack_flags)"
   fi
-  # a site exported before its record left the enabled state (a task that
-  # outlived pre-mig's drain) would move although check names it as staying
+  # a panel dump of another list can only be undone whole
+  if [[ "$1" = "transfer" && -f "${_lbx}" ]]; then
+    cmp -s "${_lbf}" "${_lbx}" \
+      || _die "the panel dump carries another list of the site records left behind than check named - revert --all, then resume, and start again from check"
+  fi
+  # a site of this transfer exported before its record left the enabled
+  # state (a task that outlived pre-mig's drain) would move although check
+  # names it as staying
   if [[ "$1" = "transfer" ]]; then
     local _lbu _lbs
     while read -r _lbu _lbs; do
       [[ -n "${_lbu}" ]] || continue
+      [[ "${_ALL}" = "YES" || "${_lbu}" = "${_SITE}" ]] || continue
       _marker_has "${_lbu}.exported.pid" \
         && _die "site ${_lbu} is exported but check names it as staying on this box ($(_site_status_label "${_lbs}")) - revert --site ${_lbu} to keep it here"
     done < "${_lbf}"
   fi
   if [[ "$1" = "transfer" && -f "${_lbx}" ]]; then
-    cmp -s "${_lbf}" "${_lbx}" \
-      || _die "the panel dump carries another list of the site records left behind than check named - revert --all, then resume, and start again from check"
     [[ "${_same}" = "YES" ]] \
       || _alrt "the site records left behind changed since the panel dump: the new panel gets them as the dump found them"
     return 0
@@ -1838,6 +1843,10 @@ verb_transfer() {
       || _die "db-import route needs 'check --accept-scrub-list' before transfer (each check run records its own acknowledgements: add --accept-left-behind on the same run when check names site records left behind)"
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
+    # this round's panel dump: only a dump that succeeded sets the marker
+    # and resume clears it, so an earlier round's file never ships
+    _marker_has "hostmaster.exported.pid" && [[ -s "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]] \
+      || _die "db-import route: the panel is not dumped (or its dump was refused) - re-run check if the export said so, then export again"
   fi
   # so are the site records check named as staying on this box, on both
   # routes: still the same records, and acknowledged
@@ -2775,6 +2784,18 @@ _t_drop_made_users() {   # 1 uri 2 dbn
 # data; then every user the record still names (_t_drop_kept_users). M1
 # fix: without this, a revert-then-retry would cut sites over to
 # first-export (stale) data.
+# after a revert or a reset the dumps transferred here are stale: set them
+# aside, never removed, so the retry's transfer starts from an empty folder
+# and no earlier round's site rides it (a retry whose set of sites changed
+# loaded the earlier round's dump of a site it no longer carried)
+_t_set_src_aside() {
+  local _sx
+  [[ -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]] || return 0
+  _sx="${_STATE_DIR}/src.reverted.$(date -u +%Y%m%dT%H%M%SZ)"
+  mv -T -- "${_STATE_DIR}/src" "${_sx}" \
+    && _info "the dumps transferred here set aside as ${_sx}: the retry transfers afresh (remove it once the retry is done)"
+}
+
 _t_reset_site_dbs() {
   local _mff _uri _dbn _done=""
   for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
@@ -3748,7 +3769,7 @@ PHPEOF
 
 verb_import() {
   _require_target_box
-  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb _sx
+  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb
   _troute="$(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null | tr -d '\n')"
   if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" && "${_DROP_MADE_USERS}" != "YES" ]]; then
     [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
@@ -3841,16 +3862,11 @@ verb_import() {
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
     rm -f -- "$(_marker revert-db.started)"
-    # on a box a failover brought the panel to (its hold stands: the
-    # dispatcher stays held), the dumps the route transferred here are
-    # stale now: set aside, never removed, so every line that names the way
-    # out names the route run again, a fresh export and transfer
-    if [[ ( -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ) \
-      && -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]]; then
-      _sx="${_STATE_DIR}/src.reverted.$(date -u +%Y%m%dT%H%M%SZ)"
-      mv -T -- "${_STATE_DIR}/src" "${_sx}" \
-        && _info "the dumps transferred here set aside as ${_sx}: run the route again toward this box"
-    fi
+    # the dumps the route transferred here are stale now (on a box a
+    # failover brought the panel to as on any other): set aside, never
+    # removed, so the way out is the route run again, a fresh export and
+    # transfer
+    _t_set_src_aside
     _t_freeze_off; trap _cleanup EXIT
     _msg "db-import reverted - hostmaster restored, a2b site DBs dropped; a retry needs fresh export+transfer (stale dumps must never cut over)"
     exit 0
@@ -3865,6 +3881,7 @@ verb_import() {
     fi
     _gate_consume "reset-sites"
     _t_reset_site_dbs
+    _t_set_src_aside
     _msg "site DBs reset - a retry needs fresh export+transfer on the source (revert there clears its markers)"
     exit 0
   fi
