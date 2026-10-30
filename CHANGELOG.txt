@@ -27,6 +27,14 @@
       single PHP-FPM pool; a site no installed version can run stays
       listed, as before.
 
+    * The control panel no longer answers a request with a server error
+      while an upgrade syncs its database user: each Octopus and Master
+      pass dropped the panel's user at every host and made it again with
+      the password set last, so a request in between could not log in. The
+      password and the grant on the panel's own database are now set in
+      place; rights beyond that database, as an earlier release gave, are
+      revoked after, and only the accounts named after the host are dropped.
+
     * The PHP multi-install cleanup reads only the version at the end of
       a multi-fpm.info line and skips a line starting with #, as the ltd
       worker does: a comment naming a version, or a version inside a site
