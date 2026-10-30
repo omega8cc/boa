@@ -559,6 +559,10 @@ _satellite_if_instance_group post
 _satellite_if_web_group post
 _satellite_if_db_broker post
 _satellite_queue_dbvars_site_verifies
+# an older lib tree has no such step
+if declare -F _satellite_queue_unanswered_site_verifies > /dev/null 2>&1; then
+  _satellite_queue_unanswered_site_verifies
+fi
 _satellite_post_cleanup
 
 
