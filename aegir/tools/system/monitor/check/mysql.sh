@@ -118,6 +118,19 @@ export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
 export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
 : "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
+# An incident snapshot (sqlsnap.sh) is taken when this many site queries have
+# been running for this many seconds or longer at the same time.
+export _SQL_STALL_SECS=${_SQL_STALL_SECS//[^0-9]/}
+_SQL_STALL_SECS="${_SQL_STALL_SECS:0:5}"
+: "${_SQL_STALL_SECS:=30}"
+_SQL_STALL_SECS=$(( 10#${_SQL_STALL_SECS} ))
+(( _SQL_STALL_SECS < 5 )) && _SQL_STALL_SECS=30
+export _SQL_STALL_COUNT=${_SQL_STALL_COUNT//[^0-9]/}
+_SQL_STALL_COUNT="${_SQL_STALL_COUNT:0:5}"
+: "${_SQL_STALL_COUNT:=10}"
+_SQL_STALL_COUNT=$(( 10#${_SQL_STALL_COUNT} ))
+(( _SQL_STALL_COUNT < 2 )) && _SQL_STALL_COUNT=10
+
 ###
 ### Flap control for the auto-heal. A restart that has to be repeated is evidence
 ### the restart is not the remedy, so the second one is spaced out (cooldown) and
@@ -531,6 +544,37 @@ _mysql_proc_control() {
       _mysql_proc_kill
     fi
   done
+}
+
+###
+### A stall that holds every query keeps the load low while it lasts (the
+### waiting queries sleep) and raises it only when it ends, so second.sh's load
+### tiers see it too late. Many site queries running long at once is its own
+### shape, and so is a process list that does not come back within ten
+### seconds while mysqld runs: save the state while it is still there
+### (sqlsnap.sh keeps one set per cooldown). Root's own long work, the backup
+### dumps among it, is not counted. Not gated on the web pause markers: a
+### pause is when it matters.
+###
+_sql_stall_snapshot() {
+  local _n _rc _why
+  [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
+  _n=$(timeout 10 mysql --connect-timeout=3 -Nse "SELECT COUNT(*) FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command IN ('Query', 'Execute') AND time >= ${_SQL_STALL_SECS} AND user NOT IN ('root', 'system user', 'event_scheduler');" 2>/dev/null)
+  _rc=$?
+  if [ "${_rc}" -eq 124 ]; then
+    _why="sql-noanswer"
+  elif [[ "${_n}" =~ ^[0-9]+$ ]] && (( 10#${_n} >= _SQL_STALL_COUNT )); then
+    _why="sql-stall"
+  else
+    return 0
+  fi
+  # Without this run's lock: it would be held until the snapshot ends.
+  (
+    [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
+    exec bash /var/xdrago/monitor/check/sqlsnap.sh "${_why}" "${_pthOml}"
+  ) > /dev/null 2>&1 &
+  # A heal below may restart the server: the snapshot reads it first.
+  sleep 3
 }
 
 _mysql_high_load() {
@@ -1076,6 +1120,7 @@ if [ -x "/etc/init.d/mysql" ] \
   && pgrep -x mysqld >/dev/null 2>&1 \
   && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _sql_stall_snapshot
   _standby_sql_hold
   _trust_creators_retrofit
   _event_scheduler_rearm

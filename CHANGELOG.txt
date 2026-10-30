@@ -2464,6 +2464,31 @@
 
 @=> New Features
 
+    * An incident snapshot: when a load or database incident starts, BOA
+      now saves what MySQL and the box were doing, so its cause can still
+      be named afterwards. On one busy server a single thread held
+      InnoDB's dictionary for eight minutes: every site's queries waited,
+      the load stayed low while they slept, then the backlog released at
+      once drove the load past the critical tier and the web server was
+      paused; the slow log and performance_schema were off and nothing
+      recorded which thread had held it. The load guard now takes a
+      snapshot as the crawler block switches on and as the pause or kill
+      tiers are first reached, ahead of its own cooldown, so no kill
+      waits on it; the database watchdog takes one when ten or more site
+      queries have each been running 30 seconds or longer, or when the
+      process list does not come back within ten seconds while mysqld
+      runs.
+      Each snapshot (the full process list, InnoDB's status with its
+      semaphore waits, metadata lock holders when performance_schema is
+      on, every running or disk-waiting thread, mysqld's threads by state
+      and PHP-FPM children per pool) goes to
+      /var/log/boa/incident/<date>-<time>-<reason>/, readable by root
+      only, and is named in the incident log the alert mail is made from.
+      One snapshot per 15 minutes, kept 14 days and never more than 200.
+      Tunable in /root/.barracuda.cnf: _SQLSNAP_COOLDOWN_MINS,
+      _SQLSNAP_KEEP_DAYS, _SQL_STALL_SECS, _SQL_STALL_COUNT; off with
+      _INCIDENT_SNAPSHOT=NO.
+
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
       modules/, DEC is Drupal 11 with CiviCRM's Drupal packages, and the
       control panel installs CiviCRM with every site created on either,
