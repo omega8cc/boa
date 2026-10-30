@@ -15,6 +15,7 @@
 # Source-resident verbs (vanilla box, root):
 #   peer       --target <ip>                                  [--live]
 #   check      --target <ip> [--route per-site|db-import] [--report <env>]
+#              [--accept-scrub-list] [--accept-left-behind]
 #   pre-mig    --target <ip>                                  [--live]
 #   create     --target <ip> --account <oN> --email <e> --tree <dev|lts|pro>
 #              [--option EDGE] [--subscr M] [--cores 1]       [--live]
@@ -83,6 +84,7 @@ _REFRESH=NO
 _SOURCE_IP=""
 _PUBKEY_FILE=""
 _ACCEPT_SCRUB=NO
+_ACCEPT_LEFT=NO
 _INSTALL_CRON=NO
 _WELCOME_NODE=NO
 _REVERT_DB_IMPORT=NO
@@ -426,10 +428,54 @@ _dry_finish() {
 
 _sql() { _as_aegir "drush @hostmaster sqlq \"$1\" 2>/dev/null"; }
 
-# enabled sites as "context_name uri" pairs, hostmaster FIRST (stage-1)
+# enabled sites as "context_name uri" pairs, hostmaster FIRST (stage-1);
+# hosting_site keeps a row per node revision, so the current one is read
 _sites_list() {
-  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.nid = n.nid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
+  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.vid = n.vid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
     | tr '\t' ' '
+}
+
+# site records stage 2 does not move, one "uri status" line each into $1:
+# every site neither enabled (1) nor deleted (-2). A disabled site keeps its
+# database and files on the source, and a queued one can too (hosting-import
+# registers an installed site as queued). Fails when the panel cannot be
+# read, so an unreadable panel never passes for an empty list.
+_left_behind_read() {
+  local _w="FROM node n JOIN hosting_site s ON s.vid = n.vid WHERE n.type = 'site' AND s.status NOT IN (1, -2)"
+  local _n
+  _n="$(_int_only "$(_sql "SELECT COUNT(*) ${_w}" | tail -1)")"
+  [[ -n "${_n}" ]] || return 1
+  _sql "SELECT n.title, s.status ${_w} ORDER BY n.nid" | tr '\t' ' ' > "$1"
+  [[ "$(grep -c . "$1")" = "${_n}" ]]
+}
+
+_site_status_label() {
+  case "$1" in
+    1) echo enabled ;;
+    0) echo queued ;;
+    -1) echo disabled ;;
+    -2) echo deleted ;;
+    *) echo "status $1" ;;
+  esac
+}
+
+# transfer's precondition: the records check named are still the ones the
+# panel holds, and a non-empty list was acknowledged
+_left_behind_gate() {
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _now _same=NO
+  [[ -f "${_lbf}" ]] || _die "no list of the site records left behind - re-run check"
+  _now="$(mktemp)" || _die "cannot make a temporary file"
+  if ! _left_behind_read "${_now}"; then
+    rm -f "${_now}"
+    _die "cannot read the site records of the source panel"
+  fi
+  cmp -s "${_now}" "${_lbf}" && _same=YES
+  rm -f "${_now}"
+  [[ "${_same}" = "YES" ]] || _die "the site records left behind changed since check - re-run check"
+  if [[ -s "${_lbf}" && "$(_kv_get "${_STATE_DIR}/state/check.env" LEFT_ACK)" != "YES" ]]; then
+    _die "$(grep -c . "${_lbf}") site record(s) named by check stay on this box - enable them to move them, or re-run check with --accept-left-behind"
+  fi
+  return 0
 }
 
 _hostmaster_uri() {
@@ -1209,10 +1255,30 @@ verb_check() {
   done < <(_sites_list)
   [[ "${_fails}" -gt 0 ]] && _alrt "${_fails} site(s) flagged - they will be SKIPPED (listed per-site FAILs), not blocking the run"
 
+  # site records the move does not carry: both routes move enabled sites
+  # only, and the db-import route pours every record with the panel, these
+  # included, without their databases. Each is named here; transfer refuses
+  # a non-empty list until check ran with --accept-left-behind.
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _lbu _lbs _lbn
+  _left_behind_read "${_lbf}" || _die "cannot read the site records of the source panel"
+  chmod 600 "${_lbf}"
+  _lbn="$(grep -c . "${_lbf}")"
+  if [[ "${_lbn}" -gt 0 ]]; then
+    _alrt "${_lbn} site record(s) the move does not carry; each keeps its database and files on this box:"
+    while read -r _lbu _lbs; do
+      _alrt "    ${_lbu} ($(_site_status_label "${_lbs}"))"
+    done < "${_lbf}"
+    [[ "${_route}" = "db-import" ]] \
+      && _alrt "    the db-import route carries these records into the new panel without their databases"
+    [[ "${_ACCEPT_LEFT}" = "YES" ]] \
+      || _alrt "enable a site above to move it with the rest, or re-run check with --accept-left-behind to move on without them"
+  fi
+
   # record the plan
   _kv_set "${_STATE_DIR}/state/check.env" "ROUTE" "${_route}"
   _kv_set "${_STATE_DIR}/state/check.env" "TARGET" "${_TARGET}"
   _kv_set "${_STATE_DIR}/state/check.env" "SCRUB_ACK" "${_ACCEPT_SCRUB}"
+  _kv_set "${_STATE_DIR}/state/check.env" "LEFT_ACK" "${_ACCEPT_LEFT}"
   _msg "CHECK COMPLETE: route=${_route} target=${_TARGET} (recorded)"
   _msg "next: pre-mig --target ${_TARGET}"
 }
@@ -1687,6 +1753,9 @@ verb_transfer() {
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
   fi
+  # so are the site records check named as staying on this box, on both
+  # routes: still the same records, and acknowledged
+  _left_behind_gate
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -3107,7 +3176,7 @@ _import_db_route() {
   # source dispatch never resumes). Default the whole enabled estate to
   # hourly, vanilla's own cadence.
   if [[ ! -e "${_step}.8b.done" ]]; then
-    _tsql "INSERT INTO hosting_cron (nid, cron_interval) SELECT s.nid, 3600 FROM hosting_site s WHERE s.status = 1 AND s.nid NOT IN (SELECT nid FROM hosting_cron)"
+    _tsql "INSERT INTO hosting_cron (nid, cron_interval) SELECT s.nid, 3600 FROM hosting_site s JOIN node n ON n.vid = s.vid WHERE s.status = 1 AND s.nid NOT IN (SELECT nid FROM hosting_cron)"
     touch "${_step}.8b.done"
     _info "step 8b: cron_interval=3600 seeded for enabled sites without a row"
   fi
@@ -3346,6 +3415,33 @@ PHPEOF
       && _alrt "step 11e: ${_sfails} site(s) failed verification - proxy will refuse them (probe gate)" \
       || _info "step 11e: all site verifies + probes done"
     touch "${_step}.11e.done"
+  fi
+
+  # 11g. records the panel brought without their sites: a site row neither
+  # deleted nor carried here (no manifest) - one the source had disabled or
+  # queued, or an enabled one whose export failed - is named on every run,
+  # so no record passes for a moved site
+  local _carried="" _mfg _gw _gn _nuri _nst _nn=0 _nr=0
+  for _mfg in "${_src}/manifest/"*.info; do
+    [[ -e "${_mfg}" ]] || continue
+    _carried="${_carried}$(_manifest_val "${_mfg}" URI)
+"
+  done
+  _gw="FROM node n JOIN hosting_site s ON s.vid = n.vid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status <> -2 AND c.name <> 'hostmaster'"
+  _gn="$(_int_only "$(_tsql "SELECT COUNT(*) ${_gw}" | tail -1)")"
+  while read -r _nuri _nst; do
+    [[ -n "${_nuri}" ]] || continue
+    _nr=$(( _nr + 1 ))
+    printf '%s' "${_carried}" | grep -qxF -- "${_nuri}" && continue
+    _alrt "site ${_nuri} ($(_site_status_label "${_nst}")): the panel brought its record, not its database or files - the site stays on the source"
+    _nn=$(( _nn + 1 ))
+  done < <(_tsql "SELECT n.title, s.status ${_gw} ORDER BY n.nid" | tr '\t' ' ')
+  if [[ -z "${_gn}" || "${_nr}" != "${_gn}" ]]; then
+    _alrt "step 11g: cannot read the site records of the new panel - compare them with the carried sites by hand"
+  elif [[ "${_nn}" -gt 0 ]]; then
+    _alrt "step 11g: ${_nn} site record(s) in the new panel have no site here"
+  else
+    _info "step 11g: every site record in the new panel was carried"
   fi
 
   # 11f. window cleanup: restore the auto-import default
@@ -4415,6 +4511,7 @@ while [[ $# -gt 0 ]]; do
     --accept-http-diff)  _ACCEPT_HTTP_DIFF=YES ;;
     --refresh)           _REFRESH=YES ;;
     --accept-scrub-list) _ACCEPT_SCRUB=YES ;;
+    --accept-left-behind) _ACCEPT_LEFT=YES ;;
     --install-cron)      _INSTALL_CRON=YES ;;
     --welcome-node)      _WELCOME_NODE=YES ;;
     --revert-db-import)  _REVERT_DB_IMPORT=YES ;;
