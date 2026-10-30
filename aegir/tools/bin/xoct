@@ -7109,12 +7109,14 @@ _xoct_csf_text_covers_ip() {
 ### the pre-auth lines of the host-key scan, and a create's remote install
 ### loses its session halfway, reporting only a lost connection. Refuses
 ### while an address is in neither file, warns while it is in one; an xmass
-### run wires its own peer trust first and is not checked.
+### run wires its own peer trust first and is not checked. Its read is the
+### first contact with the target (the scan runs after it), so its login
+### accepts a host key this box has not met yet.
 _xoct_require_peer_whitelist() {
   local _p="$1" _out _allow _ignore _ip _miss="" _half=""
   [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
   _mig_valid_ip "${_p}" || return 0
-  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_p}" \
+  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@"${_p}" \
     "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2>/dev/null)"
   if [ "${_out}" = "XOCT-CSF-NONE" ]; then
     echo "INFO: ${_p} runs no csf; no firewall entries to check"
@@ -7127,7 +7129,8 @@ _xoct_require_peer_whitelist() {
       echo "ERROR:   ${_ip} # Legacy Proxy   (to /etc/csf/csf.allow and to /etc/csf/csf.ignore)"
     done
     echo "ERROR: then run csf -ra there; if this box was just banned, lift it there with csf -tr <ip>."
-    echo "ERROR: Also check that ${_p} trusts this box's key (xoct pre-mig on both boxes)."
+    echo "ERROR: Also check that ${_p} trusts this box's key (xoct pre-mig on both boxes),"
+    echo "ERROR: and, if ${_p} was rebuilt, remove its old host key here: ssh-keygen -R ${_p}"
     return 1
   fi
   _allow="$(sed -n '/^XOCT-CSF-ALLOW$/,/^XOCT-CSF-IGNORE$/p' <<< "${_out}" | sed '1d;$d')"
@@ -7919,11 +7922,15 @@ _migrate_init() {
   ### host key verification (and the hold read before them would pass it by
   ### silently). An account's export and import reach no peer; the shared
   ### and xusage legs reach the target whatever the verb. The same verbs
-  ### check the target's firewall trusts this box before anything travels.
+  ### check the target's firewall trusts this box before anything travels,
+  ### and before the host key scan: the scan opens a connection per key type,
+  ### each closed before login, and a single such line can get this box banned
+  ### by the target's hackcheck. The check's own login accepts a new host key,
+  ### so a known one leaves the scan nothing to do.
   case "${_cmd}:${_oct}" in
     create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
-      _xoct_learn_peer_host_key "${_tgt}"
       _xoct_require_peer_whitelist "${_tgt}" || exit 1
+      _xoct_learn_peer_host_key "${_tgt}"
       ;;
   esac
   if [ "${_oct}" = "xusage" ]; then

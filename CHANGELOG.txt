@@ -4,14 +4,61 @@
 
 @=> Important Fixes
 
+    * Deleting a platform an account uploaded or unpacked into its
+      ~/static folder, with no Composer project around it, removes the
+      folder holding it again when that folder is not group writable (an
+      upload or an rsync -a that kept its modes): the Delete emptied the
+      platform, ended with a warning and left the folder. A Grav or
+      Textpattern platform built there is deleted whole too. A folder that
+      is root's or another user's is kept, and the task log names the
+      permissions helper's own reason for it.
+
+    * A Grav or Textpattern platform under a folder whose name holds [, ],
+      ? or a backslash no longer has its sites missed by the platform
+      Delete's check: the check read the path as a pattern, counted no
+      site, and the Delete removed the sites with the platform. The Grav
+      bundle refresh, the Grav Clone's licence secret clear and the
+      Textpattern upgrade's structure check read such a path as itself too.
+
+    * The platform and site permission and ownership fixers print a name
+      holding a line break or another control character as ?, so each
+      refusal stays on one line: a site folder named with a line break
+      could put a line in the account's own wording where a Delete's
+      notice gives its reason.
+
+    * The Migrate form no longer counts a module that moved from an 8.x-
+      release to a semantic one, such as address 8.x-1.12 to 2.0.4, as a
+      downgrade: 8.x-A.B releases compare as A.B.0, as Drupal.org maps
+      them, and the panel's next upgrade recomputes the stored version codes.
+
+    * A Drupal 7 or Backdrop platform's Verify no longer raises a PHP
+      warning for a module or theme whose .info file has no version line.
+
     * The nightly removal of old empty platforms (_DEL_OLD_EMPTY_PLATFORMS)
       could delete a live platform's code: when the alias of a platform the
       control panel had already deleted still named the same tree, that
       alias's Delete removed the tree under the live platform. The nightly
       now deletes no platform whose tree another platform alias also names,
-      in an Octopus account and on the Aegir master alike, and logs a
-      warning that names both aliases; remove the alias of the one the
-      control panel no longer lists.
+      by the same path or through a link, an alias written while the sweep
+      runs included, in an Octopus account and on the Aegir master alike,
+      and stops for the night while a task of the account or of the master
+      runs; it tells the server's operator which two aliases name the tree,
+      in /var/log/boa/nightly.incident.log and a daily mail (unless
+      _INCIDENT_REPORT is OFF); remove the alias of the one the control
+      panel no longer lists.
+
+    * On the Aegir master, the nightly removal of old empty platforms read
+      a platform name that itself holds "platform_" as the shorter name
+      after it, so its Delete could go to another platform. It now takes
+      the whole name, as it always did in an Octopus account.
+
+    * The ssh login monitor (hackcheck) banned an address for a single
+      connection closed before login even when that address had logged
+      in: since early August its exemption for an address with an
+      accepted login kept one number of the address instead of the
+      address, so it exempted no one, and an auth.log holding a NUL block,
+      as an unclean shutdown leaves, hid every login from it before that.
+      An address with a recent accepted login is no longer banned by it.
 
     * A barracuda pass restarted the database server when the new my.cnf
       differed from the previous one only in a comment line, which the
@@ -95,8 +142,10 @@
       config over, so the subdirectory site stopped answering there for as
       long as the Grav or Textpattern site stayed (such sites carry no
       subdirectory sites). An install, clone, copy-upgrade, rename or
-      cutover of a Grav or Textpattern site onto such a name now fails
-      before it changes anything, naming the name.
+      cutover of a Grav or Textpattern site onto such a name now fails at
+      its first check, naming the name, before it touches that name's web
+      server config; a refused install leaves its site record in the panel
+      to delete, as any failed install does.
 
     * A one-account xoct move whose firewall step was missed failed
       halfway: the new server's ssh check banned the old one for the
@@ -106,8 +155,11 @@
       now checks first that the new server's csf.allow or csf.ignore
       trusts each address of this one, and refuses before anything
       travels with the exact lines to add; an address in only one of the
-      two files gets a warning naming the other. A server without csf is
-      not checked, and an xmass move, which wires its own trust, neither.
+      two files gets a warning naming the other. The check runs before
+      the host-key scan, over one login that accepts the new server's key
+      on first contact, so a refused step leaves no ban behind. A server
+      without csf is not checked, and an xmass move, which wires its own
+      trust, neither.
 
     * xoct proxy with --proxy-mode= on an account with no declared mode
       warned that it was falling back to 'temporary', then recorded the
@@ -2450,6 +2502,43 @@
       the run now fails the Composer script.
 
 @=> New Features
+
+    * An incident snapshot: when a load or database incident starts, BOA
+      now saves what MySQL and the box were doing, so its cause can still
+      be named afterwards. On one busy server a single thread held
+      InnoDB's dictionary for eight minutes: every site's queries waited,
+      the load stayed low while they slept, then the backlog released at
+      once drove the load past the critical tier and the web server was
+      paused; the slow log and performance_schema were off and nothing
+      recorded which thread had held it. The load guard now takes a
+      snapshot as the crawler block switches on and as the pause or kill
+      tiers are first reached, ahead of its own cooldown, so no kill
+      waits on it; the database watchdog takes one when ten or more site
+      queries have each been running 30 seconds or longer, when its
+      process list does not come back (no answer within ten seconds, a
+      connection lost before the greeting, no connection left), and
+      right before it restarts a server that stopped answering.
+      Each snapshot (every running or disk-waiting thread, mysqld's
+      threads by state and PHP-FPM children per pool, read first; then
+      the process list with each statement cut at 4 KB, InnoDB's status
+      with its semaphore waits, and when performance_schema is on the
+      metadata lock holders and waiters and the server thread of each
+      connection) goes to /var/log/boa/incident/<date>-<time>-<reason>/,
+      readable by root only, and is named in the incident log the alert
+      mail is made from. A password given on a command line (an option,
+      a database or service URL, a dump or client tool's -p, a user with
+      a password) or written into a statement, even cut short, is
+      replaced by *** as each file is written. One snapshot per kind
+      (crawler block, load, database, restart) per 15 minutes, each kind
+      with its own lock, a refusal logged once per cooldown; no database
+      snapshot while the database is in planned maintenance, none when
+      /var/log/boa has less than 256 MB free; kept 14 days, never more
+      than 200 nor 1 GB of snapshots in all, crawler-block then load
+      ones pruned first and database ones last, none younger than five
+      minutes. The restart waits, ten seconds at most, until the box's
+      threads are read. Tunable in /root/.barracuda.cnf:
+      _SQLSNAP_COOLDOWN_MINS, _SQLSNAP_KEEP_DAYS, _SQLSNAP_KEEP_MB,
+      _SQL_STALL_SECS, _SQL_STALL_COUNT; off with _INCIDENT_SNAPSHOT=NO.
 
     * CiviCRM platforms: BDC is Backdrop with CiviCRM for Backdrop in its
       modules/, DEC is Drupal 11 with CiviCRM's Drupal packages, and the
