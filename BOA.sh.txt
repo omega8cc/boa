@@ -5687,9 +5687,9 @@ CSFSTANDBY
     # None of the three runs on its own and every source-side verb refuses a
     # BOA box. stage2 is dual-resident and run by name on the target, so the
     # documented /usr/local/bin path stays a symlink to the fleet copy.
-    _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f95 --guard /local/bin/aegir2boa-preflight
-    _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f96 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f66 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f94 --guard /local/bin/aegir2boa-preflight
+    _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f95 --guard /local/bin/aegir2boa-stage1
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f58 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f91 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f83 --guard /local/bin/autobeowulf
@@ -5722,7 +5722,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f04 --guard /local/bin/instgrp
-    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f89 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f88 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f99 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
     _fetch_core_coverage
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
