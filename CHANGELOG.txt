@@ -2487,12 +2487,17 @@
       connection) goes to /var/log/boa/incident/<date>-<time>-<reason>/,
       readable by root only, and is named in the incident log the alert
       mail is made from. A password given on a command line (an option,
-      a database URL, a dump tool's -p) or written into a statement is
+      a database or service URL, a dump or client tool's -p, a user with
+      a password) or written into a statement, even cut short, is
       replaced by *** as each file is written. One snapshot per kind
-      (crawler block, load, database) per 15 minutes, none while the
-      database is in planned maintenance or /var/log/boa is 90% full;
-      kept 14 days, never more than 200 nor 1 GB in all, crawler-block
-      ones pruned first. Tunable in /root/.barracuda.cnf:
+      (crawler block, load, database, restart) per 15 minutes, each kind
+      with its own lock, a refusal logged once per cooldown; no database
+      snapshot while the database is in planned maintenance, none when
+      /var/log/boa has less than 256 MB free; kept 14 days, never more
+      than 200 nor 1 GB of snapshots in all, crawler-block then load
+      ones pruned first and database ones last, none younger than five
+      minutes. The restart waits, ten seconds at most, until the box's
+      threads are read. Tunable in /root/.barracuda.cnf:
       _SQLSNAP_COOLDOWN_MINS, _SQLSNAP_KEEP_DAYS, _SQLSNAP_KEEP_MB,
       _SQL_STALL_SECS, _SQL_STALL_COUNT; off with _INCIDENT_SNAPSHOT=NO.
 

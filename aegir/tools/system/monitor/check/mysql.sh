@@ -351,6 +351,9 @@ _sql_restart() {
   if _sql_flap_breaker_is_open; then
     echo "$(date) $1 incident: CIRCUIT OPEN, auto-restart refused -- see ${_pthLch}" >> ${_pthOml}
     echo >> ${_pthOml}
+    # A server left wedged by the breaker is still worth a record, once per
+    # cooldown: no restart follows, so nothing waits for it.
+    _sql_snapshot_skip down || _sql_snapshot_start "sql-down-latched"
     exit 0
   fi
   if [ -s "${_pthCdn}" ]; then
@@ -375,6 +378,7 @@ _sql_restart() {
     # just enabled. Re-arming, by hand or by cool-off, starts counting at zero.
     rm -f "${_pthLdg}"
     echo "$(date) $1 incident: CIRCUIT OPEN after ${_SQL_FLAP_COUNT} auto-restarts within ${_SQL_FLAP_WINDOW_SECS}s -- refusing to restart MySQL again" >> ${_pthOml}
+    _sql_snapshot_skip down || _sql_snapshot_start "sql-down-latched"
     _incident_email_report "CIRCUIT OPEN: MySQL auto-restart disabled after ${_SQL_FLAP_COUNT} restarts" "mysql-circuit"
     echo >> ${_pthOml}
     exit 0
@@ -389,10 +393,14 @@ _sql_restart() {
     chown -R mysql:root /run/mysqld
   fi
   # What the server was doing goes with the restart: save the box's view of
-  # it first (sqlsnap.sh reads the threads before it asks the database).
-  if [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] && [ "${_INCIDENT_SNAPSHOT^^}" != "NO" ]; then
-    _sql_snapshot_start "sql-down"
-    sleep 3
+  # it first (sqlsnap.sh reads the threads before it asks the database), and
+  # wait for that only while there is a mysqld whose threads a restart ends.
+  if ! _sql_snapshot_skip down; then
+    if pgrep -x mysqld > /dev/null 2>&1; then
+      _sql_snapshot_start "sql-down" wait
+    else
+      _sql_snapshot_start "sql-down"
+    fi
   fi
   if pgrep -x mysqld > /dev/null 2>&1; then
     # Present but not answering = wedged/deadlocked. A plain start would no-op on
@@ -562,43 +570,59 @@ _mysql_proc_control() {
 ### dumps among it, is not counted. Not gated on the web pause markers: a
 ### pause is when it matters.
 ###
+# True while the last snapshot of this kind is inside its cooldown, or the
+# snapshot is off or not there: nothing to start.
+_sql_snapshot_skip() {
+  local _mins
+  [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
+  _mins="${_mins:0:4}"
+  _mins=$(( 10#${_mins:-15} ))
+  (( _mins < 1 )) && _mins=1
+  [ -e "/run/boa_sqlsnap.$1.last" ] \
+    && [ -z "$(find "/run/boa_sqlsnap.$1.last" -mmin "+${_mins}" 2>/dev/null)" ]
+}
+
+# Start a snapshot; with a second argument, wait (ten seconds at most) until
+# it has read the box, which a restart or heal right after would take away.
 _sql_snapshot_start() {
+  local _kind="sql" _ref _m _i
+  [[ "$1" == sql-down* ]] && _kind="down"
+  _ref="$(date +%s)"
   # Without this run's lock: it would be held until the snapshot ends.
   (
     [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
     exec bash /var/xdrago/monitor/check/sqlsnap.sh "$1" "${_pthOml}"
   ) > /dev/null 2>&1 &
+  [ -n "${2:-}" ] || return 0
+  for _i in $(seq 1 20); do
+    _m="$(stat -c %Y "/run/boa_sqlsnap.${_kind}.boxdone" 2>/dev/null)"
+    [[ "${_m}" =~ ^[0-9]+$ ]] && (( _m >= _ref )) && return 0
+    sleep 0.5
+  done
 }
 
 _sql_stall_snapshot() {
-  local _out _n _rc _why _mins
-  [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
-  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  local _out _n _rc _why=""
   # Nothing to ask while the last database snapshot is inside its cooldown.
-  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
-  _mins="${_mins:0:4}"
-  _mins=$(( 10#${_mins:-15} ))
-  (( _mins < 1 )) && _mins=1
-  if [ -e "/run/boa_sqlsnap.sql.last" ] \
-    && [ -z "$(find /run/boa_sqlsnap.sql.last -mmin "+${_mins}" 2>/dev/null)" ]; then
-    return 0
-  fi
+  _sql_snapshot_skip sql && return 0
   _out=$(timeout -k 2 10 mysql --connect-timeout=3 -Nse "SELECT COUNT(*) FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command NOT IN ('Sleep', 'Daemon', 'Binlog Dump', 'Binlog Dump GTID', 'Killed') AND time >= ${_SQL_STALL_SECS} AND user NOT IN ('root', 'system user', 'event_scheduler');" 2>&1)
   _rc=$?
-  _n="${_out//[^0-9]/}"
+  # The count is the last line alone: a warning line never adds digits.
+  _n="${_out##*$'\n'}"
   if [ "${_rc}" -eq 124 ] || [ "${_rc}" -eq 137 ] \
-    || { [ "${_rc}" -ne 0 ] && [[ "${_out}" =~ ERROR\ (2013|1040) ]]; }; then
-    # No answer in time, a connection dropped before the greeting, or no
-    # connection left even for root.
+    || { [ "${_rc}" -ne 0 ] && [[ "${_out}" =~ ERROR\ (2002|2003|2006|2013|1040|1135) ]]; }; then
+    # No answer in time, no connection taken or kept (a full backlog, a
+    # drop before the greeting, no connection or thread left even for root)
+    # while mysqld runs.
     _why="sql-noanswer"
   elif [ "${_rc}" -eq 0 ] && [[ "${_n}" =~ ^[0-9]+$ ]] && (( 10#${_n} >= _SQL_STALL_COUNT )); then
     _why="sql-stall"
-  else
-    return 0
   fi
-  _sql_snapshot_start "${_why}"
-  # A heal below may restart the server: the snapshot reads it first.
-  sleep 3
+  [ -n "${_why}" ] || return 0
+  # A heal below may restart the server: the snapshot reads the box first.
+  _sql_snapshot_start "${_why}" wait
 }
 
 _mysql_high_load() {
