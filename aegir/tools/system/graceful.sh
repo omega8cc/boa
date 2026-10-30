@@ -619,17 +619,24 @@ _swap_off_fits() {
   [ $(( _availKb - $1 )) -ge "${_spare}" ]
 }
 
-# The resize marker /run/boa_swap_size.pid holds "<PID> <start time>" of the
-# graceful.sh sizing swap. A resize runs while that very process lives: the
+# The resize marker: /run/boa_swap_size.pid holds the PID of the graceful.sh
+# sizing swap (the form earlier releases read too), /run/boa_swap_size.start
+# that process's start time. A resize runs while that very process lives: the
 # start time tells it from a later process given the same PID.
 _swap_resize_running() {
-  local _rszPid _rszStart _rszNow
-  { read -r _rszPid _rszStart < /run/boa_swap_size.pid; } 2>/dev/null
-  _rszPid="${_rszPid//[^0-9]/}"
-  _rszStart="${_rszStart//[^0-9]/}"
-  [ -n "${_rszPid}" ] && [ -n "${_rszStart}" ] || return 1
-  _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
-  [ "${_rszNow}" = "${_rszStart}" ]
+  local _rszPid _rszStart _rszNow _rszCmd
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [ -n "${_rszPid}" ] || return 1
+  _rszStart=$( { tr -dc '0-9' < /run/boa_swap_size.start; } 2>/dev/null )
+  if [ -n "${_rszStart}" ]; then
+    _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+    [ "${_rszNow}" = "${_rszStart}" ]
+    return
+  fi
+  # No start time yet (written just after the claim, or by an older
+  # graceful.sh): the process's own command line names graceful.sh.
+  _rszCmd=$( { tr '\0' ' ' < "/proc/${_rszPid}/cmdline"; } 2>/dev/null )
+  [[ "${_rszCmd}" == *"graceful.sh"* ]]
 }
 
 # The swap total BOA aims for, the /swapfile size that gives it, and what to
@@ -886,21 +893,29 @@ _graceful_action() {
   # The marker: autoupboa's purge and multiback's reset stand aside while it
   # names this run, a second run (by hand beside the cron one) leaves swap to
   # the first, and one left by a killed run makes autoupboa switch /swapfile
-  # back on. It is created only when absent; a stale one is cleared here.
-  _rszMark="$$ $(sed 's/^.*) //' "/proc/$$/stat" 2> /dev/null | awk '{print $20}')"
+  # back on. It is claimed by link(2), so it appears whole or not at all and
+  # only when absent; a stale one is cleared here, unless a swapoff the killed
+  # run started still runs (its trace stays for autoupboa).
   _rszOwn=NO
-  if ( set -o noclobber; echo "${_rszMark}" > /run/boa_swap_size.pid ) 2> /dev/null; then
-    _rszOwn=YES
-  elif ! _swap_resize_running; then
-    rm -f /run/boa_swap_size.pid
-    ( set -o noclobber; echo "${_rszMark}" > /run/boa_swap_size.pid ) 2> /dev/null && _rszOwn=YES
+  _rszTmp="/run/.boa_swap_size.$$"
+  if printf '%s\n' "$$" > "${_rszTmp}" 2> /dev/null; then
+    if ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null; then
+      _rszOwn=YES
+    elif ! _swap_resize_running && ! pgrep -x swapoff > /dev/null 2>&1; then
+      rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
+      ln "${_rszTmp}" /run/boa_swap_size.pid 2> /dev/null && _rszOwn=YES
+    fi
+    rm -f "${_rszTmp}"
   fi
   if [ "${_rszOwn}" = "YES" ]; then
+    printf '%s\n' "$(sed 's/^.*) //' "/proc/$$/stat" 2> /dev/null | awk '{print $20}')" \
+      > "${_rszTmp}.start" 2> /dev/null \
+      && mv -f "${_rszTmp}.start" /run/boa_swap_size.start
     echo "Sizing swap..."
     _size_swap
-    rm -f /run/boa_swap_size.pid
+    rm -f /run/boa_swap_size.pid /run/boa_swap_size.start "${_rszTmp}.start"
   else
-    echo "Swap sizing skipped: another graceful.sh run is sizing swap"
+    echo "Swap sizing skipped: another graceful.sh run is sizing swap, a swapoff it started still runs, or /run is full"
   fi
 
   echo "Removing empty login-session cgroups..."

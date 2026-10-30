@@ -360,18 +360,24 @@ _kill_stuck_fire_external() {
 _kill_stuck_fire_external
 
 #
-# graceful.sh writes "<PID> <start time>" to /run/boa_swap_size.pid while it
-# sizes swap and removes it after. A resize runs while that very process lives:
-# the start time tells it from a later process given the same PID. A marker
-# whose process is gone is the trace of a run that was killed.
+# While graceful.sh sizes swap, /run/boa_swap_size.pid holds its PID and
+# /run/boa_swap_size.start that process's start time, which tells it from a
+# later process given the same PID. A marker whose process is gone is the
+# trace of a run that was killed.
 _swap_resize_running() {
-  local _rszPid _rszStart _rszNow
-  { read -r _rszPid _rszStart < /run/boa_swap_size.pid; } 2>/dev/null
-  _rszPid="${_rszPid//[^0-9]/}"
-  _rszStart="${_rszStart//[^0-9]/}"
-  [[ -n "${_rszPid}" && -n "${_rszStart}" ]] || return 1
-  _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
-  [[ "${_rszNow}" == "${_rszStart}" ]]
+  local _rszPid _rszStart _rszNow _rszCmd
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [ -n "${_rszPid}" ] || return 1
+  _rszStart=$( { tr -dc '0-9' < /run/boa_swap_size.start; } 2>/dev/null )
+  if [ -n "${_rszStart}" ]; then
+    _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+    [ "${_rszNow}" = "${_rszStart}" ]
+    return
+  fi
+  # No start time yet (written just after the claim, or by an older
+  # graceful.sh): the process's own command line names graceful.sh.
+  _rszCmd=$( { tr '\0' ' ' < "/proc/${_rszPid}/cmdline"; } 2>/dev/null )
+  [[ "${_rszCmd}" == *"graceful.sh"* ]]
 }
 
 #
@@ -386,6 +392,10 @@ _swap_resize_running() {
 _swap_heal_file() {
   [[ -e "/run/boa_swap_size.pid" ]] || return 0
   _swap_resize_running && return 0
+  # The kill takes graceful.sh's bash, not a swapoff it started: that one
+  # empties its area for minutes and swapon refuses the area meanwhile. Keep
+  # the trace until it ends.
+  pgrep -x swapoff > /dev/null 2>&1 && return 0
   if [[ -f "/swapfile" ]] && [[ ! -L "/swapfile" ]] \
     && ! awk '$1 == "/swapfile" {f = 1} END {exit !f}' /proc/swaps; then
     chown root:root /swapfile 2>/dev/null
@@ -395,7 +405,7 @@ _swap_heal_file() {
       echo "$(date) /swapfile switched back on by autoupboa after a resize was cut short" >> /var/log/boa/swap-size.log
     fi
   fi
-  rm -f /run/boa_swap_size.pid
+  rm -f /run/boa_swap_size.pid /run/boa_swap_size.start
 }
 _swap_heal_file
 
@@ -443,12 +453,11 @@ _swap_purge_if_bloated() {
     # had when that was its own (0 or more; a negative one was the kernel's).
     local _area _prio _areas _on_rc
     _areas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
-    if swapoff -a; then
-      echo "SWP swapoff complete"
-    else
-      echo "SWP swapoff failed"
-      return 1
-    fi
+    # swapoff -a goes on past an area it fails to empty; whatever it switched
+    # off goes back on either way.
+    local _off_rc
+    swapoff -a
+    _off_rc=$?
     swapon -a
     _on_rc=$?
     for _area in ${_areas}; do
@@ -461,6 +470,10 @@ _swap_purge_if_bloated() {
         swapon "${_area}" 2>/dev/null
       fi
     done
+    if [[ "${_off_rc}" -ne 0 ]]; then
+      echo "SWP swapoff failed, the areas it switched off are back on"
+      return 1
+    fi
     if [[ "${_on_rc}" -eq 0 ]]; then
       echo "SWP swapon complete, swap purged successfully"
     else

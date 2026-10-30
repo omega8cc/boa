@@ -132,17 +132,23 @@ _check_system_ram() {
   _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
 }
 
-# graceful.sh writes "<PID> <start time>" to /run/boa_swap_size.pid while it
-# sizes swap; it runs while that very process lives (the start time tells it
-# from a later process given the same PID).
+# While graceful.sh sizes swap, /run/boa_swap_size.pid holds its PID and
+# /run/boa_swap_size.start that process's start time, which tells it from a
+# later process given the same PID.
 _swap_resize_running() {
-  local _rszPid _rszStart _rszNow
-  { read -r _rszPid _rszStart < /run/boa_swap_size.pid; } 2>/dev/null
-  _rszPid="${_rszPid//[^0-9]/}"
-  _rszStart="${_rszStart//[^0-9]/}"
-  [ -n "${_rszPid}" ] && [ -n "${_rszStart}" ] || return 1
-  _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
-  [ "${_rszNow}" = "${_rszStart}" ]
+  local _rszPid _rszStart _rszNow _rszCmd
+  _rszPid=$( { tr -dc '0-9' < /run/boa_swap_size.pid; } 2>/dev/null )
+  [ -n "${_rszPid}" ] || return 1
+  _rszStart=$( { tr -dc '0-9' < /run/boa_swap_size.start; } 2>/dev/null )
+  if [ -n "${_rszStart}" ]; then
+    _rszNow=$(sed 's/^.*) //' "/proc/${_rszPid}/stat" 2>/dev/null | awk '{print $20}')
+    [ "${_rszNow}" = "${_rszStart}" ]
+    return
+  fi
+  # No start time yet (written just after the claim, or by an older
+  # graceful.sh): the process's own command line names graceful.sh.
+  _rszCmd=$( { tr '\0' ' ' < "/proc/${_rszPid}/cmdline"; } 2>/dev/null )
+  [[ "${_rszCmd}" == *"graceful.sh"* ]]
 }
 
 # Function to check and optimize RAM and disk caches. Swap is emptied before
