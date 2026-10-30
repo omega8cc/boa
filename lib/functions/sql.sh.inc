@@ -2188,16 +2188,6 @@ _sql_initd_check() {
     || [[ -n "${_srv}" && "${_srv}" != "5.7" ]]; then
     _own=YES
   fi
-  # Only BOA's own script reads the setting: on a 5.7 server still started by
-  # the package's script, mysqld_safe would preload a library installed here.
-  if [ "${_own}" = "YES" ] && [ "${_want}" = "jemalloc" ] && [ ! -r "${_lib}" ]; then
-    _msg "INFO: Installing libjemalloc2 for _SQL_MALLOC=jemalloc..."
-    _mrun "${_INSTAPP} libjemalloc2"
-    if [ ! -r "${_lib}" ]; then
-      _msg "NOTE: ${_lib} is still missing after the libjemalloc2 install, mysqld keeps glibc"
-      _want=glibc
-    fi
-  fi
   if [ "${_own}" = "YES" ] && ! cmp -s "${_tpl}" "${_ini}"; then
     # a restart may be reading the old script right now: replace by rename
     cp -af "${_tpl}" "${_ini}.new" \
@@ -2207,8 +2197,22 @@ _sql_initd_check() {
       _msg "INFO: MySQL init script updated, it applies at the next mysqld start"
     else
       rm -f "${_ini}.new"
-      _msg "NOTE: MySQL init script could not be updated: the old one stays, and _SQL_MALLOC does not apply"
-      _own=OLD
+      if grep -q pick_malloc "${_ini}" 2> /dev/null; then
+        _msg "NOTE: MySQL init script could not be updated, the old one stays"
+      else
+        _msg "NOTE: MySQL init script could not be updated: the old one stays, and _SQL_MALLOC does not apply"
+        _own=OLD
+      fi
+    fi
+  fi
+  # Only BOA's own script reads the setting: on a 5.7 server still started by
+  # the package's script, mysqld_safe would preload a library installed here.
+  if [ "${_own}" = "YES" ] && [ "${_want}" = "jemalloc" ] && [ ! -r "${_lib}" ]; then
+    _msg "INFO: Installing libjemalloc2 for _SQL_MALLOC=jemalloc..."
+    _mrun "${_INSTAPP} libjemalloc2"
+    if [ ! -r "${_lib}" ]; then
+      _msg "NOTE: ${_lib} is still missing after the libjemalloc2 install, mysqld keeps glibc"
+      _want=glibc
     fi
   fi
   _pid=$(pgrep -x mysqld | head -n 1)
