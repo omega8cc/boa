@@ -4,6 +4,26 @@
 
 @=> Important Fixes
 
+    * A PHP version installed after an account's PHP-FPM pools were set up
+      now gets its pool for that account within three minutes, in
+      multi-FPM mode. The ltd worker looked only at versions from 8.1 up and
+      judged one new by its web user, which outlives the pool: a version
+      below 8.1 installed later, or one removed and installed again, as
+      barracuda does for one a multi-fpm.info line names, never got its
+      pool, so a site's line for it waited for good and the page check
+      could not move a site to it. Any installed version without its pool
+      file, or with a pool file its running master never took up, now has
+      the account's pools set up again; a version whose PHP-FPM is down is
+      left to its monitor.
+
+    * A multi-fpm.info line with two spaces or a tab between the site name
+      and the version is now applied. The ltd worker cut each line at its
+      first space, so such a line gave no version and its site stayed on
+      the account's default PHP, while another part of the worker read the
+      line by words, found the pin missing and rebuilt every include and
+      reloaded nginx on every pass. Every line is now split into words, as
+      every other reader of the file splits it.
+
     * The MySQL init script, /etc/init.d/mysql, is now kept current by
       every barracuda run where it is BOA's own or the server is Percona 8.
       It was laid only at install and on a Percona series upgrade, so most
