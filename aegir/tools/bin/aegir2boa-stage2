@@ -439,14 +439,24 @@ _sites_list() {
 # every site neither enabled (1) nor deleted (-2). A disabled site keeps its
 # database and files on the source, and a queued one can too (hosting-import
 # registers an installed site as queued). Fails when the panel cannot be
-# read, so an unreadable panel never passes for an empty list.
+# read, so an unreadable panel never passes for an empty list. drush sqlq
+# prints a bare newline for no rows: blank lines are dropped, so an empty
+# list is an empty file.
 _left_behind_read() {
   local _w="FROM node n JOIN hosting_site s ON s.vid = n.vid WHERE n.type = 'site' AND s.status NOT IN (1, -2)"
   local _n
   _n="$(_int_only "$(_sql "SELECT COUNT(*) ${_w}" | tail -1)")"
   [[ -n "${_n}" ]] || return 1
-  _sql "SELECT n.title, s.status ${_w} ORDER BY n.nid" | tr '\t' ' ' > "$1"
+  _sql "SELECT n.title, s.status ${_w} ORDER BY n.nid" | tr '\t' ' ' | sed '/^[[:space:]]*$/d' > "$1"
   [[ "$(grep -c . "$1")" = "${_n}" ]]
+}
+
+# the acknowledgements check takes, named together: each check run records
+# both from its own flags
+_ack_flags() {
+  [[ "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" = "db-import" ]] \
+    && echo "--accept-left-behind (with --accept-scrub-list on the same run)" \
+    || echo "--accept-left-behind"
 }
 
 _site_status_label() {
@@ -459,10 +469,15 @@ _site_status_label() {
   esac
 }
 
-# transfer's precondition: the records check named are still the ones the
-# panel holds, and a non-empty list was acknowledged
+# precondition of export (1=export) and transfer (1=transfer): the records
+# check named are still the ones the panel holds, and a non-empty list was
+# acknowledged. export stands before any dump, while enabling a site still
+# moves it; transfer also needs the list the export ran with, since the
+# panel dump carries the records as they were then.
 _left_behind_gate() {
-  local _lbf="${_STATE_DIR}/state/left-behind.txt" _now _same=NO
+  local _lbf="${_STATE_DIR}/state/left-behind.txt" _now _same=NO _n
+  local _lbx="${_STATE_DIR}/state/left-behind.exported.txt"
+  local _back="revert --all, then resume, and start again from check"
   [[ -f "${_lbf}" ]] || _die "no list of the site records left behind - re-run check"
   _now="$(mktemp)" || _die "cannot make a temporary file"
   if ! _left_behind_read "${_now}"; then
@@ -471,9 +486,19 @@ _left_behind_gate() {
   fi
   cmp -s "${_now}" "${_lbf}" && _same=YES
   rm -f "${_now}"
-  [[ "${_same}" = "YES" ]] || _die "the site records left behind changed since check - re-run check"
-  if [[ -s "${_lbf}" && "$(_kv_get "${_STATE_DIR}/state/check.env" LEFT_ACK)" != "YES" ]]; then
-    _die "$(grep -c . "${_lbf}") site record(s) named by check stay on this box - enable them to move them, or re-run check with --accept-left-behind"
+  if [[ "${_same}" != "YES" ]]; then
+    [[ "$1" = "export" ]] && _die "the site records left behind changed since check - re-run check"
+    _die "the site records left behind changed since check and the export - ${_back}"
+  fi
+  _n="$(grep -c . "${_lbf}")"
+  if [[ "${_n}" -gt 0 && "$(_kv_get "${_STATE_DIR}/state/check.env" LEFT_ACK)" != "YES" ]]; then
+    [[ "$1" = "export" ]] \
+      && _die "${_n} site record(s) named by check stay on this box - enable them to move them and re-run check, or re-run check with $(_ack_flags)"
+    _die "${_n} site record(s) named by check stay on this box - re-run check with $(_ack_flags)"
+  fi
+  if [[ "$1" = "transfer" ]]; then
+    [[ -f "${_lbx}" ]] && cmp -s "${_lbf}" "${_lbx}" \
+      || _die "the export ran with another list of the site records left behind (or recorded none) - ${_back}"
   fi
   return 0
 }
@@ -1257,11 +1282,18 @@ verb_check() {
 
   # site records the move does not carry: both routes move enabled sites
   # only, and the db-import route pours every record with the panel, these
-  # included, without their databases. Each is named here; transfer refuses
-  # a non-empty list until check ran with --accept-left-behind.
+  # included, without their databases. Each is named here; export and
+  # transfer refuse a non-empty list until check ran with
+  # --accept-left-behind. An earlier run's acknowledgement is dropped first,
+  # and the list replaces the recorded one only once read whole.
   local _lbf="${_STATE_DIR}/state/left-behind.txt" _lbu _lbs _lbn
-  _left_behind_read "${_lbf}" || _die "cannot read the site records of the source panel"
-  chmod 600 "${_lbf}"
+  _kv_set "${_STATE_DIR}/state/check.env" "LEFT_ACK" "NO"
+  if ! _left_behind_read "${_lbf}.new"; then
+    rm -f "${_lbf}.new"
+    _die "cannot read the site records of the source panel"
+  fi
+  chmod 600 "${_lbf}.new"
+  mv -f "${_lbf}.new" "${_lbf}" || _die "cannot record ${_lbf}"
   _lbn="$(grep -c . "${_lbf}")"
   if [[ "${_lbn}" -gt 0 ]]; then
     _alrt "${_lbn} site record(s) the move does not carry; each keeps its database and files on this box:"
@@ -1270,8 +1302,13 @@ verb_check() {
     done < "${_lbf}"
     [[ "${_route}" = "db-import" ]] \
       && _alrt "    the db-import route carries these records into the new panel without their databases"
-    [[ "${_ACCEPT_LEFT}" = "YES" ]] \
-      || _alrt "enable a site above to move it with the rest, or re-run check with --accept-left-behind to move on without them"
+    if [[ "${_ACCEPT_LEFT}" != "YES" ]]; then
+      if [[ "${_route}" = "db-import" ]]; then
+        _alrt "enable a site above to move it with the rest, or re-run check with --accept-left-behind (with --accept-scrub-list on the same run) to move on without them"
+      else
+        _alrt "enable a site above to move it with the rest, or re-run check with --accept-left-behind to move on without them"
+      fi
+    fi
   fi
 
   # record the plan
@@ -1638,6 +1675,8 @@ verb_export() {
   local _scope="${_SITE:-all}" _route _fails=0 _name _uri
   _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
   [[ -n "${_route}" ]] || _die "no recorded route - run check first"
+  # the records left behind are settled before anything is paused or dumped
+  _left_behind_gate export
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -1651,6 +1690,8 @@ verb_export() {
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
+  cp -p "${_STATE_DIR}/state/left-behind.txt" "${_STATE_DIR}/state/left-behind.exported.txt" \
+    || _die "cannot record the list of the site records left behind for this export"
 
   _msg "LIVE export (route=${_route})"
   while read -r _name _uri; do
@@ -1749,13 +1790,13 @@ verb_transfer() {
   # before anything is copied
   if [[ "$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)" = "db-import" ]]; then
     [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
-      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer (each check run records its own acknowledgements: add --accept-left-behind on the same run when check names site records left behind)"
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
   fi
   # so are the site records check named as staying on this box, on both
   # routes: still the same records, and acknowledged
-  _left_behind_gate
+  _left_behind_gate transfer
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -1854,7 +1895,7 @@ REOWN
     # the check-time acknowledged module list must ride along: import's
     # {system} scrub refuses to remove anything the operator never saw
     [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
-      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer (each check run records its own acknowledgements: add --accept-left-behind on the same run when check names site records left behind)"
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
     rsync -aq -e ssh "${_STATE_DIR}/state/enabled-modules.txt" \
