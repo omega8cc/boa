@@ -2862,6 +2862,14 @@
       unchanged. An instance takes the new include at its next upgrade
       or Server Verify.
 
+    * A subdirectory site's nginx conf now takes about 0.16 MB less of
+      nginx's memory, 8.7 % of what it cost, in the server block of its
+      parent site that loads it: the subdirectory template (subdir.tpl.php)
+      tests its guards the way the shared include now does, 25 fewer of
+      its 211 locations and ifs. What each request is answered and logged
+      is unchanged. A subdirectory site takes the new conf at its next
+      Verify after its instance's upgrade.
+
     * The panel no longer sends scheduled web cron to a site whose name
       carries a dev, devel, tmp, temp, temporary, test or testing label
       (the redirect target's name when that is one of its aliases), nor
