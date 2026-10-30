@@ -815,20 +815,26 @@ if [[ "${_APP_ROOT}" = "YES" ]]; then
     *) _site_marks=("${drupal_root}"/sites/*/settings.php) ;;
   esac
   for _s in "${_site_marks[@]}"; do
-    [[ -e "${_s}" ]] || continue
-    [[ -z "${_FOREIGN}" && "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
     if [[ -n "${_FOREIGN}" ]]; then
+      # The scans' glob() counts a mark that is a dangling link too.
+      [[ -e "${_s}" || -L "${_s}" ]] || continue
       # The two levels below the site dir are the mark's own.
       _c="${_s%/*}"
       _c="${_c%/*}"
       # A link is never a site to either scan, nor a restore leftover: Grav
-      # skips a name holding .restore or .original, Textpattern one ending so.
+      # skips a name holding .restore or .original, Textpattern one ending so,
+      # where its regex's $ also takes one trailing newline.
       [[ -L "${_c}" ]] && continue
+      _n="${_c##*/}"
       if [[ "${_FOREIGN}" = "grav" ]]; then
-        [[ "${_c##*/}" == *.restore* || "${_c##*/}" == *.original* ]] && continue
+        [[ "${_n}" == *.restore* || "${_n}" == *.original* ]] && continue
       else
-        [[ "${_c##*/}" == *.restore || "${_c##*/}" == *.original ]] && continue
+        _n="${_n%$'\n'}"
+        [[ "${_n}" == *.restore || "${_n}" == *.original ]] && continue
       fi
+    else
+      [[ -e "${_s}" ]] || continue
+      [[ "${_s}" = "${drupal_root}/sites/default/settings.php" ]] && continue
     fi
     printf "Notice: %s still holds a site (%s); nothing changed.\n" "$(_nm "${drupal_root}")" "$(_nm "${_s}")" >&3
     exit 1
