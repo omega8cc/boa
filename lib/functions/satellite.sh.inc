@@ -5229,12 +5229,14 @@ _hostmaster_frontend_dbuser_trim() {
   local _h _d
   local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
     -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  # held in a variable: on the right of =~ a bare $- would expand
+  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
   [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
   _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
     || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
   for _h in localhost %; do
     while IFS= read -r _d; do
-      [[ "${_d}" =~ ^[A-Za-z0-9_%\\$-]{1,64}$ ]] || continue
+      [[ "${_d}" =~ ${_dbre} ]] || continue
       if [ "${_d}" != "${2}" ]; then
         "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
       fi
