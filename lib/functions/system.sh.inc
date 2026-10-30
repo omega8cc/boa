@@ -3915,6 +3915,7 @@ _barracuda_cnf() {
     echo "_DENY_CLAMAV=${_DENY_CLAMAV:-NO}"               >> ${_barCnf}
     echo "_FORCE_CI_BOX=${_FORCE_CI_BOX:-NO}"             >> ${_barCnf}
     echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}"   >> ${_barCnf}
+    echo "_SWAP_AUTOSIZE=${_SWAP_AUTOSIZE:-YES}"         >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
@@ -4310,6 +4311,10 @@ _barracuda_cnf() {
     _NO_CRON_AUTOSTART_TEST=$(grep "^_NO_CRON_AUTOSTART=" ${_barCnf} 2>&1)
     if [[ ! "${_NO_CRON_AUTOSTART_TEST}" =~ "_NO_CRON_AUTOSTART=" ]]; then
       echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}" >> ${_barCnf}
+    fi
+    _SWAP_AUTOSIZE_TEST=$(grep "^_SWAP_AUTOSIZE=" ${_barCnf} 2>&1)
+    if [[ ! "${_SWAP_AUTOSIZE_TEST}" =~ "_SWAP_AUTOSIZE=" ]]; then
+      echo "_SWAP_AUTOSIZE=${_SWAP_AUTOSIZE:-YES}" >> ${_barCnf}
     fi
     _convert_etcboa_markers_to_cnf
 

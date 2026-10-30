@@ -1388,6 +1388,10 @@ _FORCE_CI_BOX=NO
 ### upgrade-finale sites that honour it.
 ### Replaces /root/.upstart.cnf
 _NO_CRON_AUTOSTART=NO
+###
+### Lets the daily graceful.sh pass size /swapfile to the RAM and to the
+### swap use of the last 14 days. Set to NO to manage swap yourself.
+_SWAP_AUTOSIZE=YES
 
 ###
 ### Set max 1 min load per CPU core before killing
