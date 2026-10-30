@@ -41,12 +41,16 @@
       the old name, which no site directory served any more: the old name
       offered the Drupal installer, the new one went to nginx's default
       server, and the panel's scheduled cron got a 404 page every hour.
-      A rename now moves that redirect to the new name. A stored target
-      that is neither the site's name nor one of its aliases is set
-      aside, so the site's own name is served and the aliases redirect to
-      it, and the next Octopus pass queues a Verify for every site whose
-      vhost still leaves its own name unanswered. A site redirected to a
-      dev, devel or nodns alias now redirects its own name there too.
+      A rename now moves that redirect to the new name, and one to the
+      old name's www or bare companion to the new name's matching one. A
+      stored target that is neither the site's name nor one of its
+      aliases (a www companion whose automatic alias is missing included,
+      since settings.php trusts only those names) is set aside, so the
+      site's own name is served, the aliases redirect to it and the panel
+      names the site by it, and the next Octopus pass queues a Verify for
+      every site whose vhost still leaves its own name unanswered. A site
+      redirected to a dev, devel or nodns alias now redirects its own name
+      there too.
 
     * aegir2boa moves enabled sites only, but its whole-panel route
       (db-import) carried every site record into the new panel, so a
