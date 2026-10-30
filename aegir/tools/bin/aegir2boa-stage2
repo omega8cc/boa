@@ -1299,7 +1299,7 @@ verb_check() {
   mv -f "${_lbf}.new" "${_lbf}" || _die "cannot record ${_lbf}"
   _lbn="$(grep -c . "${_lbf}")"
   if [[ "${_lbn}" -gt 0 ]]; then
-    _alrt "${_lbn} site record(s) the move does not carry; each keeps its database and files on this box:"
+    _alrt "${_lbn} site record(s) the move does not carry; each site stays on this box with its database:"
     while read -r _lbu _lbs; do
       _alrt "    ${_lbu} ($(_site_status_label "${_lbs}"))"
     done < "${_lbf}"
@@ -3488,13 +3488,13 @@ PHPEOF
     [[ -n "${_nuri}" ]] || continue
     _nr=$(( _nr + 1 ))
     printf '%s' "${_carried}" | grep -qxF -- "${_nuri}" && continue
-    _alrt "site ${_nuri} ($(_site_status_label "${_nst}")): the panel brought its record, not its database or files - the site stays on the source"
+    _alrt "site ${_nuri} ($(_site_status_label "${_nst}")): the panel brought its record without its database - the site is still on the source"
     _nn=$(( _nn + 1 ))
   done < <(_tsql "SELECT n.title, s.status ${_gw} ORDER BY n.nid" | tr '\t' ' ')
   if [[ -z "${_gn}" || "${_nr}" != "${_gn}" ]]; then
     _alrt "step 11g: cannot read the site records of the new panel - compare them with the carried sites by hand"
   elif [[ "${_nn}" -gt 0 ]]; then
-    _alrt "step 11g: ${_nn} site record(s) in the new panel have no site here"
+    _alrt "step 11g: ${_nn} site record(s) in the new panel have no site here - an Enable of one only marks it enabled; delete such a record here once its site is not to move"
   else
     _info "step 11g: every site record in the new panel was carried"
   fi
