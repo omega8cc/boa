@@ -4,6 +4,18 @@
 
 @=> Important Fixes
 
+    * A site renamed with Migrate Site while its aliases redirected to
+      its own name answers on its new name again. The redirect stayed on
+      the old name, which no site directory served any more: the old name
+      offered the Drupal installer, the new one went to nginx's default
+      server, and the panel's scheduled cron got a 404 page every hour.
+      A rename now moves that redirect to the new name. A stored target
+      that is neither the site's name nor one of its aliases is set
+      aside, so the site's own name is served and the aliases redirect to
+      it, and the next Octopus pass queues a Verify for every site whose
+      vhost still leaves its own name unanswered. A site redirected to a
+      dev, devel or nodns alias now redirects its own name there too.
+
     * aegir2boa moves enabled sites only, but its whole-panel route
       (db-import) carried every site record into the new panel, so a
       site disabled or still queued on the old server arrived there as a
@@ -2686,6 +2698,16 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * The panel no longer sends scheduled web cron to a site whose name
+      carries a dev, devel, tmp, temp, temporary, test or testing label
+      (the redirect target's name when that is one of its aliases), nor
+      to any site while /data/conf/sites-cron-off.ctrl exists: BOA
+      answers those requests with an empty 404, so they ran nothing and
+      were stamped as run. The site's Cron line says Not run and why, and
+      the interval stays stored: it applies again once the site is
+      renamed to a live name or redirected to one. Drush-run cron and
+      subdirectory sites are unaffected.
 
     * Grav's Admin2 script, style and font files (and those of any plugin
       or theme built the same way, under _app/immutable/) are now cached
