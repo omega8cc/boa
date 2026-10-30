@@ -1840,6 +1840,13 @@
 
 @=> Security
 
+    * The HTTPRL test path (/admin/httprl-test, and the same path under a
+      subdirectory site) is refused by nginx to visitors who are not
+      logged in (403) and to bots (444), as the configuration meant: the
+      checks sat beside a location that took every such request, so they
+      never ran and each request started Drupal instead. No HTTPRL
+      release BOA ships uses the path; logged-in requests pass as before.
+
     * A Grav site no longer serves the dependency manifests its plugins
       and themes ship under user/ (composer.json, composer.lock,
       package.json), which list the exact package versions it runs; the
