@@ -3728,9 +3728,10 @@ _check_php_broken_segfault() {
   _isSSLibs=$(/opt/php$1/bin/php -v 2>&1)
   _isOlog=
   if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
-    # The master's own lines only: a pool's output (catch_workers_output) is
-    # the sites' text, and a fatal error's line carries the visitor's path.
-    _isOlog=$(LC_ALL=C grep -a -v -E ' child [0-9]+ said into std(err|out): ' \
+    # The master's own lines only, and none that quote a request: a pool's
+    # output (catch_workers_output) is the sites' text, and the master's slow
+    # and timed-out request lines carry the visitor's query string.
+    _isOlog=$(LC_ALL=C grep -a -v -E ' child [0-9]+(, script | said into std(err|out): )' \
       "/var/log/php/php$1-fpm-error.log" 2>/dev/null | LC_ALL=C grep -a -m1 OnigEncoding)
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then

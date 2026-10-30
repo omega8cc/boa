@@ -37,9 +37,16 @@ fpm.info:
   old.com 7.4
 
 A site whose code cannot run on the version that serves it (an old
-Drupal 7 or Drupal 6 core on PHP 8, say) is listed with the reason in
-.fpm-core.info here, within a few minutes, and goes from the list a few
-minutes after its code is fixed. Nothing is switched for you.
+Drupal 7 or Drupal 6 core on PHP 8, say) is moved within a few minutes
+to the nearest installed version that can run it: a line for it goes
+into multi-fpm.info, below a dated comment line saying why, and a line
+it had there is commented out, never deleted. A platform whose code
+cannot run on the command-line PHP its tasks get gets a line in
+cli-per-platform.info the same way. Such a line goes again once its
+site or platform is gone. A site that cannot be moved (no
+installed version can run it, or one pool serves all your sites) is
+listed with the reason in .fpm-core.info here, and goes from the list
+a few minutes after its code is fixed.
 
 A script PHP-FPM keeps stopping at its time limit (180 seconds at
 most; three times or more in a day, a cron.php that never finishes,
