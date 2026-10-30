@@ -459,6 +459,14 @@ _ack_flags() {
     || echo "--accept-left-behind"
 }
 
+# a site record's current state on this panel; empty when unreadable
+_site_status_now() {
+  local _u
+  _u="$(_sane_domain "$1")" || return 0
+  _sql "SELECT s.status FROM node n JOIN hosting_site s ON s.vid = n.vid WHERE n.type = 'site' AND n.title = '${_u}'" \
+    | grep -E '^-?[0-9]+$' | tail -1
+}
+
 _site_status_label() {
   case "$1" in
     1) echo enabled ;;
@@ -2784,10 +2792,12 @@ _t_drop_made_users() {   # 1 uri 2 dbn
 # data; then every user the record still names (_t_drop_kept_users). M1
 # fix: without this, a revert-then-retry would cut sites over to
 # first-export (stale) data.
-# after a revert or a reset the dumps transferred here are stale: set them
+# after a db-import revert the dumps transferred here are stale: set them
 # aside, never removed, so the retry's transfer starts from an empty folder
 # and no earlier round's site rides it (a retry whose set of sites changed
-# loaded the earlier round's dump of a site it no longer carried)
+# loaded the earlier round's dump of a site it no longer carried). The
+# per-site --reset-sites keeps them: a later --revert-db-import of the same
+# state cleans by their manifests.
 _t_set_src_aside() {
   local _sx
   [[ -d "${_STATE_DIR}/src" && ! -L "${_STATE_DIR}/src" ]] || return 0
@@ -3889,7 +3899,6 @@ verb_import() {
     fi
     _gate_consume "reset-sites"
     _t_reset_site_dbs
-    _t_set_src_aside
     _msg "site DBs reset - a retry needs fresh export+transfer on the source (revert there clears its markers)"
     exit 0
   fi
@@ -4225,6 +4234,14 @@ _proxy_one() {   # 1 uri
   _marker_has "${_uri}.proxied.pid" && { _info "site ${_uri}: already proxied"; return 0; }
   _marker_has "${_uri}.exported.pid" || { _alrt "site ${_uri}: not exported - SKIP"; return 1; }
   [[ -e "${_vh}" ]] || { _alrt "site ${_uri}: vhost missing - SKIP"; return 1; }
+  # a site whose record left the enabled state after its export (a task
+  # that outlived pre-mig's drain) is never cut over: it stays on this box
+  local _st
+  _st="$(_site_status_now "${_uri}")"
+  if [[ "${_st}" != "1" ]]; then
+    _alrt "site ${_uri}: its record here reads $(_site_status_label "${_st:-unreadable}") - not cut over, SKIP (revert --site ${_uri} to keep it on this box)"
+    return 1
+  fi
 
   # The replacement must be functionally proven FIRST - the target
   # must answer for this site before its traffic is cut over
