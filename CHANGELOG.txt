@@ -4,6 +4,16 @@
 
 @=> Important Fixes
 
+    * BOA's Valkey sizing now grows the cache only when evictions reach 2%
+      of its lookups, and shrinks it one step when they stay under 1%,
+      whatever the hit rate. It grew the cache whenever the hit rate was
+      under 90% and any key had been evicted, but a full cache of year-long
+      entries always evicts, and on Drupal 8 and later the hit rate stays
+      low anyway, since every lookup of a cache tag never invalidated counts
+      as a miss. So busy boxes went to the largest ceiling, a third of the
+      RAM BOA budgets, and stayed there, although the evictions showed the
+      extra room won them under one point of hit rate.
+
     * A memory emergency now kills a GoAccess report holding 5% of the RAM
       or more before any larger process. BOA's OOM guard killed the largest
       process it may kill, so on a busy box where the nightly GoAccess
