@@ -685,11 +685,29 @@ _swap_plan() {
   echo "${_want} ${_need} ${_act}"
 }
 
+# The largest file / has room for beside what it holds now: not past 80% of
+# / and at least 2 GB left free, as df counts it (used over used plus
+# available, the reserved blocks out). Arguments in kB: used and available.
+# Prints whole MB, 0 when nothing fits or df gave no figures.
+_swap_room() {
+  local _used="$1" _av="$2" _byPct _byFree
+  case "${_used}" in ""|*[!0-9]*) echo 0; return 0 ;; esac
+  case "${_av}" in ""|*[!0-9]*) echo 0; return 0 ;; esac
+  _byPct=$(( ((_used + _av) * 80 / 100 - _used) / 1024 ))
+  _byFree=$(( (_av - 2097152) / 1024 ))
+  [ "${_byFree}" -lt "${_byPct}" ] && _byPct="${_byFree}"
+  [ "${_byPct}" -lt 0 ] && _byPct=0
+  echo "${_byPct}"
+}
+
 # BOA sizes /swapfile to the RAM and to what the box really swaps (see
 # _swap_plan). Other swap areas (a provider's partition) count towards the
 # total and are never touched. Not in a container, not on a filesystem other
-# than ext3, ext4 or xfs, and not past 80% of /. _SWAP_AUTOSIZE=NO in
-# /root/.barracuda.cnf leaves swap alone.
+# than ext3, ext4 or xfs. A file that would take / past 80% or leave under
+# 2 GB free is grown only as far as / has room for (_swap_room, in 256 MB
+# steps), and only when that is still a grow; a later pass grows it on once
+# room appears, while the total is still a fifth or more short.
+# _SWAP_AUTOSIZE=NO in /root/.barracuda.cnf leaves swap alone.
 _size_swap() {
   local _log="/var/log/boa/swap-size.log"
   local _swn="/swapfile.boa"
@@ -697,7 +715,7 @@ _size_swap() {
   local _off="/var/log/boa/swap-size.backoff"
   local _fsType _curKb _curUsed _newKb _newUsed _ramMb _othMb _fileMb
   local _peakKb _smp _usedKb _peakMb _totMb _want _needMb _act
-  local _sum _rootSz _rootUsed _rootAv _zramKb
+  local _sum _rootSz _rootUsed _rootAv _zramKb _roomMb
 
   [ "${_SWAP_AUTOSIZE}" = "NO" ] && return 0
   if _swap_in_container; then
@@ -779,11 +797,18 @@ _size_swap() {
   fi
 
   read -r _rootSz _rootUsed _rootAv < <(df -Pk / | awk 'NR == 2 {print $2, $3, $4}')
-  # As df counts it: used over used plus available, the reserved blocks out.
-  if [ $(( (_rootUsed + _needMb * 1024) * 100 )) -gt $(( (_rootUsed + _rootAv) * 80 )) ] \
-    || [ $(( _rootAv - _needMb * 1024 )) -lt 2097152 ]; then
-    echo "$(date) ${_sum}: no room on / for a ${_needMb} MB file (it would pass 80% or leave under 2 GB free)" >> "${_log}"
-    return 0
+  _roomMb=$(_swap_room "${_rootUsed}" "${_rootAv}")
+  if [ "${_needMb}" -gt "${_roomMb}" ]; then
+    # The new file is built beside the old one, so the room is counted with
+    # the old file still on disk. A shrink waits for room to build its file.
+    _roomMb=$(( _roomMb / 256 * 256 ))
+    if [ "${_act}" = "grow" ] && [ "${_roomMb}" -ge $(( _fileMb + 256 )) ]; then
+      _sum="${_sum}, room on / for ${_roomMb} of the ${_needMb} MB file"
+      _needMb="${_roomMb}"
+    else
+      echo "$(date) ${_sum}: no room on / for a ${_needMb} MB file (it would pass 80% or leave under 2 GB free)" >> "${_log}"
+      return 0
+    fi
   fi
 
   mkdir -p /etc/boa/control
