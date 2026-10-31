@@ -38,8 +38,7 @@
       that alias, and a redirecting Drupal 6 site on its dev, devel and
       nodns aliases. Drupal 6 picks a site's directory by the request's
       name, and the alias links in sites/ were made only for a site without
-      a redirect, so the names the vhost served answered with the default
-      site.
+      a redirect, so the names the vhost served answered with the default site.
 
     * BOA's Valkey sizing now grows the cache only when evictions reach 2%
       of its lookups, and shrinks it one step when they stay under 1%,
@@ -50,6 +49,13 @@
       as a miss. So busy boxes went to the largest ceiling, a third of the
       RAM BOA budgets, and stayed there, although the evictions showed the
       extra room won them under one point of hit rate.
+
+    * BOA's Valkey sizing no longer skips its decision at every weekly
+      upgrade on a box whose evidence window was halved within the day
+      before. The weekly halving restarts the window's clock while keeping
+      days of samples, and the sizing waited for a clock of 24 hours as
+      well, so such a box kept its ceiling week after week. A window with a
+      full day of samples now counts, whatever its clock says.
 
     * A nightly GoAccess report now reads the access logs nginx wrote in
       the last 90 days, set by the new _GOACCESS_DAYS in
