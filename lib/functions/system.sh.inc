@@ -1509,7 +1509,12 @@ _valkey_ceiling_derive() {
           _VK_NEW="${_VK_CUR}"
           _VK_ACT=""
           # Maturity: >=96 accumulated deltas over a >=24h span (96
-          # samples alone is only ~8h at the 5-min cadence). Immature or
+          # samples alone is only ~8h at the 5-min cadence), or >=288
+          # deltas, a full day at that cadence, whatever the span:
+          # sqlprobe's 7-day decay halves the counters and re-anchors the
+          # epoch to the decay sample, so a decayed window spans minutes
+          # yet holds days of evidence, and a weekly pass due within a
+          # day of the decay would otherwise hold every week. Immature or
           # freshly reset -> HOLD. A step is also HELD when the previous
           # one is younger than an hour (_tune_memory_limits runs twice
           # on SQL-upgrade runs and the window cannot change between the
@@ -1519,7 +1524,8 @@ _valkey_ceiling_derive() {
           # large drop at the next restart).
           if [ "${_dN}" -ge 96 ] && [ "${_dP}" -gt 0 ] \
             && [ -n "${_dTS}" ] && [ "${_dTS}" -gt 0 ] \
-            && [ $(( _VK_NOW - _dTS )) -ge 86400 ] \
+            && { [ $(( _VK_NOW - _dTS )) -ge 86400 ] \
+              || [ "${_dN}" -ge 288 ]; } \
             && [ $(( _VK_NOW - _VK_LAST_TS )) -ge 3600 ] \
             && { [ -z "${_VK_RUN_MB}" ] \
               || [ "${_VK_RUN_MB}" -le $(( _VK_CUR + 128 )) ]; }; then
