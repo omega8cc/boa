@@ -4,6 +4,43 @@
 
 @=> Important Fixes
 
+    * A site's own name can no longer be its alias. The new site form took
+      it, since it compared the aliases with a title the new site does not
+      have yet, and a rename onto one of the site's aliases kept that alias.
+      With a redirection set, the vhost then redirected the site's own name
+      to itself, so every request answered with a redirect. The form now
+      refuses such an alias, a save drops it, and the vhost leaves it out.
+
+    * A Migrate that keeps a subdirectory site's name, a move to another
+      platform or database server, now keeps its subdirectory alias and
+      redirection. Both were dropped, as if the site were renamed, and the
+      Verify after the move stopped serving the subdirectory address.
+
+    * A rename now moves a www or bare companion alias added by hand to the
+      new name's companion, as it already did for the automatic one. The
+      panel kept it on the old name, so the Verify after the rename gave the
+      old companion back to the vhost, and a redirect moved to the new
+      companion named no alias and was set aside. On a rename into a
+      subdirectory address the companion follows the internal name the
+      site is renamed to, and a companion another site holds stays where
+      it was.
+
+    * A site's redirect is now kept through a save that writes no alias,
+      when its automatic www alias is the only one and the name does not
+      resolve at that save, as on a rename before the new name's DNS. The
+      redirect lived only on the alias rows and was lost, so the next save
+      made the alias again unredirected and the site answered on both names.
+      It is now kept in a table of its own too, and the next save that
+      writes the target's alias gives it back; a host rename renames it
+      there as well.
+
+    * A Drupal 6 site whose aliases redirect to one of them now answers on
+      that alias, and a redirecting Drupal 6 site on its dev, devel and
+      nodns aliases. Drupal 6 picks a site's directory by the request's
+      name, and the alias links in sites/ were made only for a site without
+      a redirect, so the names the vhost served answered with the default
+      site.
+
     * BOA's Valkey sizing now grows the cache only when evictions reach 2%
       of its lookups, and shrinks it one step when they stay under 1%,
       whatever the hit rate. It grew the cache whenever the hit rate was
