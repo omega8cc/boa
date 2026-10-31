@@ -58,6 +58,14 @@ export _OOM_COOLDOWN_SECS=${_OOM_COOLDOWN_SECS//[^0-9]/}
 # Matching too much here is the SAFE direction -- an over-broad exemption skips
 # a candidate, never kills an extra one.
 _OOM_EXEMPT='mysqld|sshd|provision|drush|mydumper|duplicity|aegir.sh|backboa|multiback'
+# Killed before anything larger: a nightly report holds nothing a kill can
+# corrupt and is built again the next night, while the largest resident set on
+# a busy box is usually a service every site shares. One hosted box lost its
+# cache server, and every site its cache, on eleven nights in two months while
+# a GoAccess report over every rotated access log grew past 13 GB beside it.
+# Matched on the exact process name, and only while it holds 5% of the RAM or
+# more, so a small one never takes the kill a pass needs.
+_OOM_EXPENDABLE='goaccess'
 
 
 ###
@@ -189,6 +197,17 @@ _wkhtmltopdf_php_cli_oom_kill() {
   exit 0
 }
 
+# The largest _OOM_EXPENDABLE process holding 5% of the RAM or more, as
+# "pid rss args"; nothing when there is none or MemTotal cannot be read.
+_oom_expendable_victim() {
+  local _memKb
+  _memKb=$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null)
+  case "${_memKb}" in ''|*[!0-9]*) return 0 ;; esac
+  ps -eo pid=,rss=,comm=,args= --sort=-rss 2>/dev/null \
+    | awk -v re="^(${_OOM_EXPENDABLE})\$" -v floor="$(( _memKb / 20 ))" \
+      '$3 ~ re && $2 + 0 >= floor + 0 { $3 = ""; print; exit }'
+}
+
 _oom_kill_top_offender() {
   # A memory emergency is healed by freeing memory, not by taking the site
   # down. The previous response here killed seven services within one second
@@ -198,8 +217,9 @@ _oom_kill_top_offender() {
   # the box where that was measured, the kernel recorded zero OOM kills during
   # the entire event: the kernel was coping, and only this response was not.
   #
-  # Now: confirm the pressure is sustained (the caller), then kill the single
-  # largest resident process that is safe to kill, once per cooldown, with a
+  # Now: confirm the pressure is sustained (the caller), then kill one process,
+  # a large expendable one when it runs, else the single largest resident
+  # process that is safe to kill, once per cooldown, with a
   # circuit breaker capping the run of them. If nothing is safe to kill, say
   # so loudly and leave the rest to the kernel OOM killer, which picks its
   # victims with far better information than a shell script can.
@@ -268,11 +288,15 @@ _oom_kill_top_offender() {
     # the box) with it still leaves evidence for the breaker.
     echo "${_now}" >> /var/log/boa/oom.kill.ledger
   fi
-  # The single largest resident set that is safe to kill. The grep runs on a
-  # ps snapshot, so an over-match only ever EXCLUDES a candidate; kernel
-  # threads carry no RSS and sort last on their own.
-  _victim=$(ps -eo pid=,rss=,args= --sort=-rss 2>/dev/null \
-    | grep -vE "${_OOM_EXEMPT}" | head -n 1)
+  # A large expendable process first, else the single largest resident set
+  # that is safe to kill. The grep runs on a ps snapshot, so an over-match
+  # only ever EXCLUDES a candidate; kernel threads carry no RSS and sort last
+  # on their own.
+  _victim=$(_oom_expendable_victim)
+  if [ -z "${_victim}" ]; then
+    _victim=$(ps -eo pid=,rss=,args= --sort=-rss 2>/dev/null \
+      | grep -vE "${_OOM_EXEMPT}" | head -n 1)
+  fi
   _vpid=$(echo "${_victim}" | awk '{print $1}')
   _vpid=${_vpid//[^0-9]/}
   _vrss=$(echo "${_victim}" | awk '{print $2}')
