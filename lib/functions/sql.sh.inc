@@ -2155,6 +2155,84 @@ _db_server_apt_cleanup() {
   _apt_clean_update
 }
 
+#
+# BOA's own MySQL init script and the allocator it starts mysqld with
+# (_SQL_MALLOC). The install and an 8.x upgrade lay the script; without this
+# refresh a box keeps the copy of its last install or upgrade. It is laid
+# where it is already BOA's own or the server is 8.x, as the upgrade lays
+# it; a 5.7 server still started by the package's own script (mysqld_safe)
+# keeps that script, and _SQL_MALLOC does not apply there. Nothing here
+# restarts mysqld: the allocator applies at its next start.
+_sql_initd_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _sql_initd_check"
+  fi
+  local _tpl="${_locCnf}/var/mysql"
+  local _ini="/etc/init.d/mysql"
+  local _lib="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
+  local _want _srv _own=NO _pid _run
+  [ -e "${_tpl}" ] && [ -x "/usr/sbin/mysqld" ] && [ -e "${_ini}" ] || return 0
+  case "${_SQL_MALLOC}" in
+    jemalloc) _want=jemalloc ;;
+    glibc|"") _want=glibc ;;
+    *)
+      _msg "NOTE: Ignoring invalid _SQL_MALLOC=${_SQL_MALLOC}, glibc stays"
+      _want=glibc
+      ;;
+  esac
+  _srv=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  if grep -q "Start and stop Percona MySQL server" "${_ini}" 2> /dev/null \
+    || [[ -n "${_srv}" && "${_srv}" != "5.7" ]]; then
+    _own=YES
+  fi
+  if [ "${_own}" = "YES" ] && ! cmp -s "${_tpl}" "${_ini}"; then
+    # a restart may be reading the old script right now: replace by rename
+    cp -af "${_tpl}" "${_ini}.new" \
+      && chmod 755 "${_ini}.new" \
+      && mv -f "${_ini}.new" "${_ini}"
+    if cmp -s "${_tpl}" "${_ini}"; then
+      _msg "INFO: MySQL init script updated, it applies at the next mysqld start"
+    else
+      rm -f "${_ini}.new"
+      if grep -q pick_malloc "${_ini}" 2> /dev/null; then
+        _msg "NOTE: MySQL init script could not be updated, the old one stays"
+      else
+        _msg "NOTE: MySQL init script could not be updated: the old one stays, and _SQL_MALLOC does not apply"
+        _own=OLD
+      fi
+    fi
+  fi
+  # Only BOA's own script reads the setting: on a 5.7 server still started by
+  # the package's script, mysqld_safe would preload a library installed here.
+  if [ "${_own}" = "YES" ] && [ "${_want}" = "jemalloc" ] && [ ! -r "${_lib}" ]; then
+    _msg "INFO: Installing libjemalloc2 for _SQL_MALLOC=jemalloc..."
+    _mrun "${_INSTAPP} libjemalloc2"
+    if [ ! -r "${_lib}" ]; then
+      _msg "NOTE: ${_lib} is still missing after the libjemalloc2 install, mysqld keeps glibc"
+      _want=glibc
+    fi
+  fi
+  _pid=$(pgrep -x mysqld | head -n 1)
+  [ -n "${_pid}" ] || return 0
+  if grep -q libjemalloc "/proc/${_pid}/maps" 2> /dev/null; then
+    _run=jemalloc
+  else
+    _run=glibc
+  fi
+  # Percona 5.7's mysqld_safe preloads libjemalloc.so.2 by itself whenever
+  # the library is there, so such a server can run on jemalloc either way.
+  if [ "${_own}" = "NO" ]; then
+    if [ "${_run}" != "${_want}" ]; then
+      _msg "NOTE: mysqld runs on ${_run}: the package's own init script starts this 5.7 server through mysqld_safe, and _SQL_MALLOC=${_want} does not apply"
+    fi
+  elif [ "${_own}" = "YES" ] && [ "${_run}" != "${_want}" ]; then
+    _msg "NOTE: mysqld runs on ${_run}; ${_want} (_SQL_MALLOC) applies at its next restart"
+  fi
+}
+
 _db_server_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _db_server_install"
