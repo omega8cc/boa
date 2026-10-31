@@ -3770,6 +3770,7 @@ _barracuda_cnf() {
     echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
     echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
+    echo "_SQL_MALLOC=${_SQL_MALLOC}"                         >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
     echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}"                 >> ${_barCnf}
@@ -4446,6 +4447,11 @@ _barracuda_cnf() {
     _SOLR_HEAP_FORCE_TEST=$(grep _SOLR_HEAP_FORCE ${_barCnf} 2>&1)
     if [[ ! "${_SOLR_HEAP_FORCE_TEST}" =~ "_SOLR_HEAP_FORCE" ]]; then
       echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_MALLOC_TEST=$(grep _SQL_MALLOC ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_MALLOC_TEST}" =~ "_SQL_MALLOC" ]]; then
+      echo "_SQL_MALLOC=${_SQL_MALLOC}" >> ${_barCnf}
     fi
 
     _USE_SQLPROBE_TEST=$(grep _USE_SQLPROBE ${_barCnf} 2>&1)
