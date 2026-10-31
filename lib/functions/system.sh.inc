@@ -1452,9 +1452,10 @@ _valkey_ceiling_derive() {
     # decision and RESETS the window whenever it acts, so the next step
     # is judged on post-action evidence only. volatile-lfu makes the
     # shrink direction safe (cold volatile keys evict first); the widen
-    # direction reacts to real pain (hit rate under the floor WITH
-    # evictions). An immature-but-present window HOLDS the converged
-    # ceiling rather than falling through to the legacy peak-x4 rung —
+    # direction reacts to real pain (evictions a material share of the
+    # lookups, never a low hit rate alone). An immature-but-present
+    # window HOLDS the converged ceiling rather than falling through to
+    # the legacy peak-x4 rung —
     # falling through would re-widen and restart the ratchet this loop
     # exists to remove. Only a missing/garbled window or no usable state
     # reaches the legacy rungs below.
@@ -1540,17 +1541,24 @@ _valkey_ceiling_derive() {
               if [ "${_VK_NEW}" -gt "${_VK_CUR}" ]; then
                 _VK_NEW="${_VK_CUR}"
               fi
-            elif [ $(( _dH * 100 )) -ge $(( _VK_TRAFFIC * 90 )) ]; then
-              # Healthy hit rate (>=90%) on post-action evidence: one
-              # bounded step down. LFU shedding cold keys while the hit
-              # rate holds is the squeeze working, not pain.
+            elif [ $(( _dH * 100 )) -ge $(( _VK_TRAFFIC * 90 )) ] \
+              || [ $(( _dE * 100 )) -lt "${_VK_TRAFFIC}" ]; then
+              # Healthy hit rate (>=90%), or evictions under 1% of the
+              # window's lookups, on post-action evidence: one bounded
+              # step down. A miss more room could have saved needs an
+              # earlier eviction of that key, so evictions bound what any
+              # larger ceiling can add to the hit rate; the rest of the
+              # misses belong to the workload (on Drupal 8+ they include
+              # every lookup of a cache tag never invalidated). LFU
+              # shedding cold keys while that bound stays small is the
+              # squeeze working, not pain.
               _VK_STEP=$(( _VK_CUR / 8 ))
               if [ "${_VK_STEP}" -lt 256 ]; then
                 _VK_STEP=256
               fi
               _VK_NEW=$(( _VK_CUR - _VK_STEP ))
-            elif [ "${_dE}" -gt 0 ]; then
-              # Hit rate under the floor WITH evictions: capacity pain,
+            elif [ $(( _dE * 50 )) -ge "${_VK_TRAFFIC}" ]; then
+              # Evictions at 2% of the lookups or more: capacity pain,
               # one bounded step up (never past _RAM/3).
               _VK_STEP=$(( _VK_CUR / 4 ))
               if [ "${_VK_STEP}" -lt 512 ]; then
@@ -1558,8 +1566,8 @@ _valkey_ceiling_derive() {
               fi
               _VK_NEW=$(( _VK_CUR + _VK_STEP ))
             fi
-            # Low hit rate without evictions: the misses belong to the
-            # workload, not the ceiling — _VK_NEW stays at _VK_CUR.
+            # Evictions between 1% and 2% of the lookups: the band the
+            # loop settles in — _VK_NEW stays at _VK_CUR.
             if [ "${_VK_NEW}" -lt "${_VK_FLOOR}" ]; then
               _VK_NEW="${_VK_FLOOR}"
             fi
@@ -3900,6 +3908,7 @@ _barracuda_cnf() {
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
     echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
     echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
+    echo "_GOACCESS_DAYS=${_GOACCESS_DAYS:-90}"           >> ${_barCnf}
     echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}"  >> ${_barCnf}
     echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}"  >> ${_barCnf}
     echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}"  >> ${_barCnf}
@@ -4230,6 +4239,10 @@ _barracuda_cnf() {
     _GOACCESS_EXCLUDE_IPS_TEST=$(grep "^_GOACCESS_EXCLUDE_IPS=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_EXCLUDE_IPS_TEST}" =~ "_GOACCESS_EXCLUDE_IPS=" ]]; then
       echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\"" >> ${_barCnf}
+    fi
+    _GOACCESS_DAYS_TEST=$(grep "^_GOACCESS_DAYS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_DAYS_TEST}" =~ "_GOACCESS_DAYS=" ]]; then
+      echo "_GOACCESS_DAYS=${_GOACCESS_DAYS:-90}" >> ${_barCnf}
     fi
     _OCTOPUS_UPGRADE_RERUN_SILENT_TEST=$(grep "^_OCTOPUS_UPGRADE_RERUN_SILENT=" ${_barCnf} 2>&1)
     if [[ ! "${_OCTOPUS_UPGRADE_RERUN_SILENT_TEST}" =~ "_OCTOPUS_UPGRADE_RERUN_SILENT=" ]]; then

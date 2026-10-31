@@ -173,7 +173,7 @@ export _DRUPAL12_0_S="${_DRUPAL12_0}-stage"
 ### make time.
 ###
 export _BACKDROP_V_FALLBACK=1.35.2
-export _GRAV_V_FALLBACK=2.2.14
+export _GRAV_V_FALLBACK=2.2.17
 export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
 export _BACKDROP="backdrop-${_BACKDROP_V}"
@@ -189,7 +189,7 @@ export _BACKDROP_S="${_BACKDROP}-stage"
 ### only the fallback when the stamp cannot be read, and must name a published
 ### platform.
 ###
-export _BDC_V_FALLBACK=6.19.3-1.35.2
+export _BDC_V_FALLBACK=6.19.4-1.35.2
 export _BDC_V="${_BDC_V_FALLBACK%-*}"
 export _BDC_CORE_V="${_BDC_V_FALLBACK#*-}"
 

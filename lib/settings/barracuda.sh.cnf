@@ -1292,6 +1292,13 @@ _GOACCESS_ALL=NO
 ### the stats.
 _GOACCESS_EXCLUDE_IPS=""
 ###
+### Days of access logs a nightly GoAccess report reads: the logs nginx
+### wrote in that many days (90 unless a whole number from 1 to 999999).
+### Every report is parsed from scratch and held in memory, so a longer
+### period costs memory each night. Only the report's copy is chosen:
+### /var/log/nginx keeps every log its rotation keeps.
+_GOACCESS_DAYS=90
+###
 ### Nightly GoAccess also builds one report per standalone vhost defined
 ### in /etc/nginx/sites-enabled, plus the box-wide ALL aggregate, into
 ### /var/log/boa/xdr9000/goaccess/. Needs GoAccess itself switched on.
