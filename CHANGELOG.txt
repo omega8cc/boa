@@ -4,6 +4,13 @@
 
 @=> Important Fixes
 
+    * A memory emergency now kills a GoAccess report holding 5% of the RAM
+      or more before any larger process. BOA's OOM guard killed the largest
+      process it may kill, so on a busy box where the nightly GoAccess
+      report over every rotated access log grew past 13 GB beside a larger
+      Valkey, Valkey was killed and every site lost its cache at once,
+      night after night; the report is built again the next night.
+
     * A PHP version installed after an account's PHP-FPM pools were set up
       now gets its pool for that account within three minutes, in
       multi-FPM mode. The ltd worker looked only at versions from 8.1 up and
