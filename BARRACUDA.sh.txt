@@ -607,6 +607,7 @@ fi
 ### Install Percona server
 ###
 _db_server_install
+_sql_initd_check
 
 
 ###
