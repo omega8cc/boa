@@ -4,6 +4,37 @@
 
 @=> Important Fixes
 
+    * A PHP version installed after an account's PHP-FPM pools were set up
+      now gets its pool for that account within three minutes, in
+      multi-FPM mode. The ltd worker looked only at versions from 8.1 up and
+      judged one new by its web user, which outlives the pool: a version
+      below 8.1 installed later, or one removed and installed again, as
+      barracuda does for one a multi-fpm.info line names, never got its
+      pool, so a site's line for it waited for good and the page check
+      could not move a site to it. Any installed version without its pool
+      file, or with a pool file its running master never took up, now has
+      the account's pools set up again; a version whose PHP-FPM is down is
+      left to its monitor.
+
+    * A multi-fpm.info line with two spaces or a tab between the site name
+      and the version is now applied. The ltd worker cut each line at its
+      first space, so such a line gave no version and its site stayed on
+      the account's default PHP, while another part of the worker read the
+      line by words, found the pin missing and rebuilt every include and
+      reloaded nginx on every pass. Every line is now split into words, as
+      every other reader of the file splits it.
+
+    * The MySQL init script, /etc/init.d/mysql, is now kept current by
+      every barracuda run where it is BOA's own or the server is Percona 8.
+      It was laid only at install and on a Percona series upgrade, so most
+      boxes still ran an old copy without its later fixes: a stop that
+      waits for the server to exit, so a restart never starts a second
+      server beside one still flushing its buffer pool; a start that
+      refuses while a server is still starting up without its pid file;
+      startup messages kept in the error log. The script is replaced by
+      rename and the server is not restarted for it; a local edit of the
+      script does not survive the next run.
+
     * A site served by a PHP version its code cannot run (an old Drupal 7
       or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
       platform check that needs a newer PHP) is now moved to the installed
@@ -1829,6 +1860,13 @@
 
 @=> Security
 
+    * The HTTPRL test path (/admin/httprl-test, and the same path under a
+      subdirectory site) is refused by nginx to visitors who are not
+      logged in (403) and to bots (444), as the configuration meant: the
+      checks sat beside a location that took every such request, so they
+      never ran and each request started Drupal instead. No HTTPRL
+      release BOA ships uses the path; logged-in requests pass as before.
+
     * A Grav site no longer serves the dependency manifests its plugins
       and themes ship under user/ (composer.json, composer.lock,
       package.json), which list the exact package versions it runs; the
@@ -2669,6 +2707,24 @@
 
 @=> New Features
 
+    * A switch for the database server's memory allocator: _SQL_MALLOC=
+      jemalloc in /root/.barracuda.cnf starts mysqld on jemalloc instead of
+      glibc's malloc; the default, _SQL_MALLOC=glibc, changes nothing. BOA
+      installs the libjemalloc2 package for it, and the MySQL init script
+      preloads the library on mysqld's own command line only, so the mysql
+      client, the backups and every other process keep glibc. jemalloc runs
+      with thp:never: its memory is never backed by transparent huge pages,
+      while the InnoDB buffer pool keeps the system's mode. Without the
+      library the server starts on glibc. Every start writes one line to
+      /var/log/mysql/error.log naming the allocator and the transparent huge
+      pages mode. The setting applies at the next database start (a reboot,
+      an SQL upgrade, a restart for a my.cnf change, a planned service mysql
+      restart): BOA never restarts the server for it, and every barracuda
+      run says when the running server is on the other allocator. A Percona
+      5.7 server still started by the package's own init script ignores it:
+      there Percona's mysqld_safe preloads jemalloc by itself whenever the
+      library is installed, and the barracuda run says so.
+
     * BOA now sizes swap to the RAM and to what the box really swaps. Most
       servers came with whatever swap their provider set up, often 512 MB
       whether the box had 4 GB or 96 GB of RAM, and some had none: on small
@@ -2792,6 +2848,27 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * Each site's server block now takes about 0.26 MB less of nginx's
+      memory, 13 % of what the shared include every site vhost loads
+      (nginx_vhost_common.conf) cost it: nginx keeps every location and
+      every if of that file again in each server block, about 6 KB
+      apiece, in every configuration it holds. Guards next to each other
+      that end in the same answer are now tested by one if, regex
+      locations next to each other with the same body are one location,
+      and three prefix locations whose only nested location repeated the
+      prefix carry its directives themselves: 42 fewer of the 255. What
+      each request is answered, logged and handed to PHP-FPM is
+      unchanged. An instance takes the new include at its next upgrade
+      or Server Verify.
+
+    * A subdirectory site's nginx conf now takes about 0.16 MB less of
+      nginx's memory, 8.7 % of what it cost, in the server block of its
+      parent site that loads it: the subdirectory template (subdir.tpl.php)
+      tests its guards the way the shared include now does, 25 fewer of
+      its 211 locations and ifs. What each request is answered and logged
+      is unchanged. A subdirectory site takes the new conf at its next
+      Verify after its instance's upgrade.
 
     * The panel no longer sends scheduled web cron to a site whose name
       carries a dev, devel, tmp, temp, temporary, test or testing label

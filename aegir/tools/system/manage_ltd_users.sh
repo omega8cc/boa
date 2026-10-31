@@ -5320,15 +5320,24 @@ _ltd_ngx_fpm_fp() {
     -printf '%f %s %T@\n' 2> /dev/null | sort | md5sum | cut -d' ' -f1
 }
 #
-# Whether a PHP version from 8.1 up is installed for which the account has
-# no web user yet, i.e. one installed after its pools were set up: the pass
-# then sets the pools up again, which makes that user and its pool.
+# Whether a PHP version is installed that the account has no pool for (no
+# web user, no pool file, or a pool file its running master never took up),
+# i.e. one installed after its pools were set up: the pass then sets the
+# pools up again, which makes that user and its pool. Multi-FPM mode only.
 _ltd_fpm_new_version() {
-  local _v
-  for _v in 86 85 84 83 82 81; do
-    if [ -x "/opt/php${_v}/bin/php" ] && [ ! -e "/home/${_USER}.${_v}.web" ]; then
-      return 0
-    fi
+  local _v _p
+  for _v in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    [ -x "/opt/php${_v}/bin/php" ] || continue
+    [ -e "/home/${_USER}.${_v}.web" ] || return 0
+    # the web user outlives its pool: a version removed and installed again
+    # (barracuda installs one a multi-fpm.info row names) has the user and
+    # no pool, and a row for it would wait for that pool forever
+    [ -f "/opt/php${_v}/etc/pool.d/${_USER}.${_v}.conf" ] || return 0
+    [ -S "/run/${_USER}.${_v}.fpm.socket" ] && continue
+    # a pool file a running master never took up (a pass cut off before its
+    # reload); a master that is down is left to its own monitor
+    _p=$( { tr -dc '0-9' < "/run/php${_v}-fpm.pid"; } 2> /dev/null )
+    [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null && return 0
   done
   return 1
 }
@@ -5642,13 +5651,16 @@ _site_socket_inc_gen() {
       local IFS=$'\12'
       _mltFpmSkip=""
       for p in ${_mltFpmBody};do
-        _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+        # split into words as the check above and every other reader of
+        # the file split it (spaces and tabs): a cut at the first space
+        # gave a row with two spaces or a tab no version, so it was never
+        # applied while the check above forced a rebuild on every pass
+        IFS=$' \t' read -r _SITE_NAME _SITE_SOCKET _sR <<< "${p}"
         # a comment row (see above): no include, and not listed as skipped
         [[ "${_SITE_NAME}" == \#* ]] && continue
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
-        _SITE_SOCKET=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
         _SITE_SOCKET=${_SITE_SOCKET//[^0-9]/}
         _SITE_SOCKET=$(echo -n ${_SITE_SOCKET} | tr -d "\n" 2>&1)
         _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
@@ -8212,16 +8224,13 @@ _ltd_fpm_prune() {
   printf '%s' "${_out}"
 }
 # A multi-fpm.info row read as the include builder reads it
-# (_site_socket_inc_gen): the site name is the first word of the text
-# before the first space, the version the first word of the text after it
-# (the whole row when it holds no space), its digits; a name starting with
-# # is a comment. Sets _LTD_MR_S (lower case, empty for a comment or no
-# name) and _LTD_MR_V. $1 = the row.
+# (_site_socket_inc_gen): the site name its first word, the version the
+# digits of its second (words split on spaces and tabs); a name starting
+# with # is a comment. Sets _LTD_MR_S (lower case, empty for a comment or
+# no name) and _LTD_MR_V. $1 = the row.
 _ltd_fpm_mrow() {
-  local _f1="${1%% *}" _f2="${1}" _s="" _v=""
-  [[ "${1}" == *" "* ]] && _f2="${1#* }" && _f2="${_f2%% *}"
-  read -r _s _ <<< "${_f1}"
-  read -r _v _ <<< "${_f2}"
+  local _s="" _v="" _r=""
+  IFS=$' \t' read -r _s _v _r <<< "${1}"
   _LTD_MR_S=""
   _LTD_MR_V="${_v//[^0-9]/}"
   [[ "${_s}" == \#* ]] && return 0
