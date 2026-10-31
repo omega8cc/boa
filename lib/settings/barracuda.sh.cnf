@@ -1293,7 +1293,7 @@ _GOACCESS_ALL=NO
 _GOACCESS_EXCLUDE_IPS=""
 ###
 ### Days of access logs a nightly GoAccess report reads: the logs nginx
-### wrote in that many days (90 when unset or not a whole number from 1).
+### wrote in that many days (90 unless a whole number from 1 to 999999).
 ### Every report is parsed from scratch and held in memory, so a longer
 ### period costs memory each night. Only the report's copy is chosen:
 ### /var/log/nginx keeps every log its rotation keeps.

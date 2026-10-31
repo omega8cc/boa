@@ -179,7 +179,7 @@ _find_fast_mirror_early() {
 }
 
 _prepare_weblogx() {
-  local _wxIno _wxDays _wxLogs _wxF
+  local _wxIno _wxDays _wxLogs _wxF _wxNgx _wxArc
   _ARCHLOGS=/var/www/adminer/access/archive
   # weblogx refuses above 90% of the inodes on / (its own check, read the
   # same way), so the copies made for it would only take the last of them;
@@ -191,29 +191,42 @@ _prepare_weblogx() {
     echo "[+] NOT COPYING LOGS: ${_wxIno}% of the inodes on / in use, weblogx refuses above 90%"
     return 0
   fi
+  # The archive is weblogx's own copy and is pruned below: never where nginx
+  # keeps its logs, which a link at the archive path would make it.
+  _wxNgx="$(readlink -f /var/log/nginx)"
+  _wxArc="$(readlink -m "${_ARCHLOGS}")"
+  case "${_wxArc}/" in
+    "${_wxNgx:-/var/log/nginx}"/*)
+      echo "[-] NOT COPYING LOGS: ${_ARCHLOGS} is inside the nginx log dir"
+      return 0
+      ;;
+  esac
   mkdir -p ${_ARCHLOGS}/unzip
   # A report reads the access logs nginx wrote in the last _GOACCESS_DAYS
-  # days (90 unless a whole number from 1 is set): every report is parsed
-  # from scratch each night and GoAccess holds it all in memory, so a box
-  # keeping every log grew one report past 13 GB. Only the copy is chosen:
-  # nothing under /var/log/nginx is ever removed.
+  # days (90 unless a whole number from 1 to 999999 is set): every report is
+  # parsed from scratch each night and GoAccess holds it all in memory, so a
+  # box keeping every log grew one report past 13 GB. Only the copy is
+  # chosen: nothing under /var/log/nginx is ever removed. -L follows the log
+  # dir and any log that is a link.
   _wxDays="${_GOACCESS_DAYS:-90}"
   [[ "${_wxDays}" =~ ^[0-9]{1,6}$ ]] && [ "${_wxDays}" -gt 0 ] || _wxDays=90
-  _wxLogs="$(find /var/log/nginx -maxdepth 1 -type f -name 'access*' \
+  _wxLogs="$(find -L /var/log/nginx -maxdepth 1 -type f -name 'access*' \
     -mtime "-${_wxDays}" -printf '%f\n' 2>/dev/null | sort)"
   echo "[+] SYNCING LOGS TO: ${_ARCHLOGS} (written in the last ${_wxDays} days)"
   # -t keeps each log's own time: a rotated name holds another day's log
-  # every night, and --size-only kept the old day when the sizes matched
+  # every night, and --size-only kept the old day when the sizes matched;
+  # -L copies a linked log's content, never the link
   if [ -n "${_wxLogs}" ]; then
-    rsync -rltvz --progress --files-from=<(printf '%s\n' "${_wxLogs}") \
+    rsync -rLtvz --progress --files-from=<(printf '%s\n' "${_wxLogs}") \
       /var/log/nginx/ ${_ARCHLOGS}/
   fi
-  for _wxF in ${_ARCHLOGS}/access*; do
-    [ -f "${_wxF}" ] || continue
-    grep -qxF -- "${_wxF##*/}" <<< "${_wxLogs}" || rm -f -- "${_wxF}"
+  # Anything else named access* goes, a directory an older copy made too.
+  for _wxF in "${_ARCHLOGS}"/access*; do
+    [ -e "${_wxF}" ] || [ -L "${_wxF}" ] || continue
+    grep -qxF -- "${_wxF##*/}" <<< "${_wxLogs}" || rm -rf -- "${_wxF}"
   done
   # A night cut short leaves its copies here, old days among them.
-  rm -f -- ${_ARCHLOGS}/unzip/access*
+  rm -rf -- "${_ARCHLOGS}"/unzip/access*
   echo "[+] COPYING LOGS TO: ${_ARCHLOGS}/unzip/"
   cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
   echo "[+] DECOMPRESSING GZ FILES"
