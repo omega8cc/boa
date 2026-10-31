@@ -62,9 +62,9 @@ _OOM_EXEMPT='mysqld|sshd|provision|drush|mydumper|duplicity|aegir.sh|backboa|mul
 # corrupt and is built again the next night, while the largest resident set on
 # a busy box is usually a service every site shares. One hosted box lost its
 # cache server, and every site its cache, on eleven nights in two months while
-# a GoAccess report over a year of logs grew past 13 GB beside it. Matched on
-# the exact process name, and only while it holds 5% of the RAM or more, so a
-# small one never takes the kill a pass needs.
+# a GoAccess report over every rotated access log grew past 13 GB beside it.
+# Matched on the exact process name, and only while it holds 5% of the RAM or
+# more, so a small one never takes the kill a pass needs.
 _OOM_EXPENDABLE='goaccess'
 
 
