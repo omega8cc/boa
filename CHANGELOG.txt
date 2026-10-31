@@ -2818,10 +2818,12 @@
       /etc/fstab; a resize cut short (the migration tools stop graceful.sh
       with kill -9) leaves its marker behind, and autoupboa switches
       /swapfile back on at its next five-minute tick. zram counts as RAM,
-      not as swap. Nothing is done in a container, on a filesystem
-      other than ext3, ext4 or xfs, or when the file would take / past 80%
-      as df counts it or leave under 2 GB free. Each run writes one line
-      to /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
+      not as swap. Nothing is done in a container or on a filesystem
+      other than ext3, ext4 or xfs, and the file never takes / past 80% as
+      df counts it or leaves under 2 GB free: a box short of disk grows it
+      as far as that room goes, and on as room appears while the total is
+      still a fifth or more short. Each run writes one line to
+      /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
       /root/.barracuda.cnf leaves swap alone.
 
     * An incident snapshot: when a load or database incident starts, BOA
