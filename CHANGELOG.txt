@@ -7,7 +7,7 @@
     * A memory emergency now kills a GoAccess report holding 5% of the RAM
       or more before any larger process. BOA's OOM guard killed the largest
       process it may kill, so on a busy box where the nightly GoAccess
-      report over a year of access logs grew past 13 GB beside a larger
+      report over every rotated access log grew past 13 GB beside a larger
       Valkey, Valkey was killed and every site lost its cache at once,
       night after night; the report is built again the next night.
 
