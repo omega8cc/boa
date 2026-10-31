@@ -404,11 +404,11 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
                 _wOK=1
               elif [ "${_wTS}" -gt 0 ]; then
                 # 7-day rotation is a DECAY, never a hard reset: halve
-                # the counters and re-anchor the epoch, so the tune-side
-                # maturity gate (n>=96, span>=24h) keeps passing on a box
-                # that samples continuously — a zeroed window would send
-                # the tune pass to its legacy peak-x4 rung for ~a day
-                # after every rotation, re-widening a converged ceiling.
+                # the counters and re-anchor the epoch. The span restarts
+                # at zero, so the tune side passes a decayed window on its
+                # count alone (n>=288, a day of samples), which a box that
+                # samples continuously keeps far above — a zeroed window
+                # would hold the ceiling for a day after every rotation.
                 # The peak restarts from the CURRENT sample's live
                 # occupancy so a stale-high pre-shrink peak cannot
                 # steer the idle rung.
