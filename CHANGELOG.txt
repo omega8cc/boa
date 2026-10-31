@@ -4,6 +4,31 @@
 
 @=> Important Fixes
 
+    * BOA's Valkey sizing now grows the cache only when evictions reach 2%
+      of its lookups, and shrinks it one step when they stay under 1%,
+      whatever the hit rate. It grew the cache whenever the hit rate was
+      under 90% and any key had been evicted, but a full cache of year-long
+      entries always evicts, and on Drupal 8 and later the hit rate stays
+      low anyway, since every lookup of a cache tag never invalidated counts
+      as a miss. So busy boxes went to the largest ceiling, a third of the
+      RAM BOA budgets, and stayed there, although the evictions showed the
+      extra room won them under one point of hit rate.
+
+    * A nightly GoAccess report now reads the access logs nginx wrote in
+      the last 90 days, set by the new _GOACCESS_DAYS in
+      /root/.barracuda.cnf. It read every log the box kept, parsed from
+      scratch each night and held in memory, so on a box keeping every log
+      one report grew past 13 GB and longer each day. Only the report's copy
+      is limited: /var/log/nginx keeps every log its rotation keeps.
+
+    * A site named without www. now has its GoAccess report built once a
+      night; it was built twice in a row, each time parsing every access log.
+
+    * A GoAccess report no longer shows an older day under a rotated log's
+      name: the log copy now compares each log's time as well as its size,
+      so a day whose compressed log had the same size as the day before is
+      copied again.
+
     * A memory emergency now kills a GoAccess report holding 5% of the RAM
       or more before any larger process. BOA's OOM guard killed the largest
       process it may kill, so on a busy box where the nightly GoAccess
@@ -579,7 +604,7 @@
     * Reset login on a Grav site now signs out every API token and
       remembered login issued before it, and every signed-in browser
       session where the site runs the Login plugin 3.11 or later (BOA's
-      Grav 2.2.14 bundle). It wrote the admin account without the cutoff
+      Grav 2.2.17 bundle). It wrote the admin account without the cutoff
       the Login and API plugins check (api_tokens_valid_after, which their
       own password change stamps) and kept the account's remember-me
       logins, so an earlier Admin2 token, its refresh token or a
