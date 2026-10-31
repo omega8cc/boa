@@ -4,6 +4,24 @@
 
 @=> Important Fixes
 
+    * A subdirectory site can no longer take the domain it lives in as an
+      alias. The first subdirectory site of a domain that is not a site
+      could, since no saved record said the domain carried subdirectory
+      sites yet. The site's vhost then claimed the domain, the domain's own
+      vhost was dropped, and the subdirectory address redirected into
+      itself. The form refuses it, a save drops it, and the vhost leaves it out.
+
+    * A Backdrop Cutover onto a site at a subdirectory address now keeps
+      that address. The copy was renamed to the site's internal name and
+      saved without the subdirectory alias and redirection, so the address
+      answered 404 after the Cutover.
+
+    * A site no longer takes an automatic www or bare alias that another
+      site holds as its name or alias, and a rename no longer moves a
+      companion alias onto another site's name. A site renamed onto a name
+      whose www companion another site held took it on DNS alone, and both
+      vhosts claimed it.
+
     * A site's own name can no longer be its alias. The new site form took
       it, since it compared the aliases with a title the new site does not
       have yet, and a rename onto one of the site's aliases kept that alias.
