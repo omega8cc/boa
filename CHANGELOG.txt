@@ -4,6 +4,112 @@
 
 @=> Important Fixes
 
+    * A site's own name can no longer be its alias. The new site form took
+      it, since it compared the aliases with a title the new site does not
+      have yet, and a rename onto one of the site's aliases kept that alias.
+      With a redirection set, the vhost then redirected the site's own name
+      to itself, so every request answered with a redirect. The form now
+      refuses such an alias, a save drops it, and the vhost leaves it out.
+
+    * A Migrate that keeps a subdirectory site's name, a move to another
+      platform or database server, now keeps its subdirectory alias and
+      redirection. Both were dropped, as if the site were renamed, and the
+      Verify after the move stopped serving the subdirectory address.
+
+    * A rename now moves a www or bare companion alias added by hand to the
+      new name's companion, as it already did for the automatic one. The
+      panel kept it on the old name, so the Verify after the rename gave the
+      old companion back to the vhost, and a redirect moved to the new
+      companion named no alias and was set aside. On a rename into a
+      subdirectory address the companion follows the internal name the
+      site is renamed to, and a companion another site holds stays where
+      it was.
+
+    * A site's redirect is now kept through a save that writes no alias,
+      when its automatic www alias is the only one and the name does not
+      resolve at that save, as on a rename before the new name's DNS. The
+      redirect lived only on the alias rows and was lost, so the next save
+      made the alias again unredirected and the site answered on both names.
+      It is now kept in a table of its own too, and the next save that
+      writes the target's alias gives it back; a host rename renames it
+      there as well.
+
+    * A Drupal 6 site whose aliases redirect to one of them now answers on
+      that alias, and a redirecting Drupal 6 site on its dev, devel and
+      nodns aliases. Drupal 6 picks a site's directory by the request's
+      name, and the alias links in sites/ were made only for a site without
+      a redirect, so the names the vhost served answered with the default site.
+
+    * BOA's Valkey sizing now grows the cache only when evictions reach 2%
+      of its lookups, and shrinks it one step when they stay under 1%,
+      whatever the hit rate. It grew the cache whenever the hit rate was
+      under 90% and any key had been evicted, but a full cache of year-long
+      entries always evicts, and on Drupal 8 and later the hit rate stays
+      low anyway, since every lookup of a cache tag never invalidated counts
+      as a miss. So busy boxes went to the largest ceiling, a third of the
+      RAM BOA budgets, and stayed there, although the evictions showed the
+      extra room won them under one point of hit rate.
+
+    * BOA's Valkey sizing no longer skips its decision at every weekly
+      upgrade on a box whose evidence window was halved within the day
+      before. The weekly halving restarts the window's clock while keeping
+      days of samples, and the sizing waited for a clock of 24 hours as
+      well, so such a box kept its ceiling week after week. A window with a
+      full day of samples now counts, whatever its clock says.
+
+    * A nightly GoAccess report now reads the access logs nginx wrote in
+      the last 90 days, set by the new _GOACCESS_DAYS in
+      /root/.barracuda.cnf. It read every log the box kept, parsed from
+      scratch each night and held in memory, so on a box keeping every log
+      one report grew past 13 GB and longer each day. Only the report's copy
+      is limited: /var/log/nginx keeps every log its rotation keeps.
+
+    * A site named without www. now has its GoAccess report built once a
+      night; it was built twice in a row, each time parsing every access log.
+
+    * A GoAccess report no longer shows an older day under a rotated log's
+      name: the log copy now compares each log's time as well as its size,
+      so a day whose compressed log had the same size as the day before is
+      copied again.
+
+    * A memory emergency now kills a GoAccess report holding 5% of the RAM
+      or more before any larger process. BOA's OOM guard killed the largest
+      process it may kill, so on a busy box where the nightly GoAccess
+      report over every rotated access log grew past 13 GB beside a larger
+      Valkey, Valkey was killed and every site lost its cache at once,
+      night after night; the report is built again the next night.
+
+    * A PHP version installed after an account's PHP-FPM pools were set up
+      now gets its pool for that account within three minutes, in
+      multi-FPM mode. The ltd worker looked only at versions from 8.1 up and
+      judged one new by its web user, which outlives the pool: a version
+      below 8.1 installed later, or one removed and installed again, as
+      barracuda does for one a multi-fpm.info line names, never got its
+      pool, so a site's line for it waited for good and the page check
+      could not move a site to it. Any installed version without its pool
+      file, or with a pool file its running master never took up, now has
+      the account's pools set up again; a version whose PHP-FPM is down is
+      left to its monitor.
+
+    * A multi-fpm.info line with two spaces or a tab between the site name
+      and the version is now applied. The ltd worker cut each line at its
+      first space, so such a line gave no version and its site stayed on
+      the account's default PHP, while another part of the worker read the
+      line by words, found the pin missing and rebuilt every include and
+      reloaded nginx on every pass. Every line is now split into words, as
+      every other reader of the file splits it.
+
+    * The MySQL init script, /etc/init.d/mysql, is now kept current by
+      every barracuda run where it is BOA's own or the server is Percona 8.
+      It was laid only at install and on a Percona series upgrade, so most
+      boxes still ran an old copy without its later fixes: a stop that
+      waits for the server to exit, so a restart never starts a second
+      server beside one still flushing its buffer pool; a start that
+      refuses while a server is still starting up without its pid file;
+      startup messages kept in the error log. The script is replaced by
+      rename and the server is not restarted for it; a local edit of the
+      script does not survive the next run.
+
     * A site served by a PHP version its code cannot run (an old Drupal 7
       or Drupal 6 core on PHP 8, any Drupal 8 on PHP 8, a Composer
       platform check that needs a newer PHP) is now moved to the installed
@@ -541,7 +647,7 @@
     * Reset login on a Grav site now signs out every API token and
       remembered login issued before it, and every signed-in browser
       session where the site runs the Login plugin 3.11 or later (BOA's
-      Grav 2.2.14 bundle). It wrote the admin account without the cutoff
+      Grav 2.2.17 bundle). It wrote the admin account without the cutoff
       the Login and API plugins check (api_tokens_valid_after, which their
       own password change stamps) and kept the account's remember-me
       logins, so an earlier Admin2 token, its refresh token or a
@@ -1829,6 +1935,13 @@
 
 @=> Security
 
+    * The HTTPRL test path (/admin/httprl-test, and the same path under a
+      subdirectory site) is refused by nginx to visitors who are not
+      logged in (403) and to bots (444), as the configuration meant: the
+      checks sat beside a location that took every such request, so they
+      never ran and each request started Drupal instead. No HTTPRL
+      release BOA ships uses the path; logged-in requests pass as before.
+
     * A Grav site no longer serves the dependency manifests its plugins
       and themes ship under user/ (composer.json, composer.lock,
       package.json), which list the exact package versions it runs; the
@@ -2669,6 +2782,24 @@
 
 @=> New Features
 
+    * A switch for the database server's memory allocator: _SQL_MALLOC=
+      jemalloc in /root/.barracuda.cnf starts mysqld on jemalloc instead of
+      glibc's malloc; the default, _SQL_MALLOC=glibc, changes nothing. BOA
+      installs the libjemalloc2 package for it, and the MySQL init script
+      preloads the library on mysqld's own command line only, so the mysql
+      client, the backups and every other process keep glibc. jemalloc runs
+      with thp:never: its memory is never backed by transparent huge pages,
+      while the InnoDB buffer pool keeps the system's mode. Without the
+      library the server starts on glibc. Every start writes one line to
+      /var/log/mysql/error.log naming the allocator and the transparent huge
+      pages mode. The setting applies at the next database start (a reboot,
+      an SQL upgrade, a restart for a my.cnf change, a planned service mysql
+      restart): BOA never restarts the server for it, and every barracuda
+      run says when the running server is on the other allocator. A Percona
+      5.7 server still started by the package's own init script ignores it:
+      there Percona's mysqld_safe preloads jemalloc by itself whenever the
+      library is installed, and the barracuda run says so.
+
     * BOA now sizes swap to the RAM and to what the box really swaps. Most
       servers came with whatever swap their provider set up, often 512 MB
       whether the box had 4 GB or 96 GB of RAM, and some had none: on small
@@ -2687,10 +2818,12 @@
       /etc/fstab; a resize cut short (the migration tools stop graceful.sh
       with kill -9) leaves its marker behind, and autoupboa switches
       /swapfile back on at its next five-minute tick. zram counts as RAM,
-      not as swap. Nothing is done in a container, on a filesystem
-      other than ext3, ext4 or xfs, or when the file would take / past 80%
-      as df counts it or leave under 2 GB free. Each run writes one line
-      to /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
+      not as swap. Nothing is done in a container or on a filesystem
+      other than ext3, ext4 or xfs, and the file never takes / past 80% as
+      df counts it or leaves under 2 GB free: a box short of disk grows it
+      as far as that room goes, and on as room appears while the total is
+      still a fifth or more short. Each run writes one line to
+      /var/log/boa/swap-size.log; _SWAP_AUTOSIZE=NO in
       /root/.barracuda.cnf leaves swap alone.
 
     * An incident snapshot: when a load or database incident starts, BOA
@@ -2792,6 +2925,27 @@
       utm_source, with the pages they landed on.
 
 @=> Improvements
+
+    * Each site's server block now takes about 0.26 MB less of nginx's
+      memory, 13 % of what the shared include every site vhost loads
+      (nginx_vhost_common.conf) cost it: nginx keeps every location and
+      every if of that file again in each server block, about 6 KB
+      apiece, in every configuration it holds. Guards next to each other
+      that end in the same answer are now tested by one if, regex
+      locations next to each other with the same body are one location,
+      and three prefix locations whose only nested location repeated the
+      prefix carry its directives themselves: 42 fewer of the 255. What
+      each request is answered, logged and handed to PHP-FPM is
+      unchanged. An instance takes the new include at its next upgrade
+      or Server Verify.
+
+    * A subdirectory site's nginx conf now takes about 0.16 MB less of
+      nginx's memory, 8.7 % of what it cost, in the server block of its
+      parent site that loads it: the subdirectory template (subdir.tpl.php)
+      tests its guards the way the shared include now does, 25 fewer of
+      its 211 locations and ifs. What each request is answered and logged
+      is unchanged. A subdirectory site takes the new conf at its next
+      Verify after its instance's upgrade.
 
     * The panel no longer sends scheduled web cron to a site whose name
       carries a dev, devel, tmp, temp, temporary, test or testing label

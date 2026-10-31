@@ -1452,9 +1452,10 @@ _valkey_ceiling_derive() {
     # decision and RESETS the window whenever it acts, so the next step
     # is judged on post-action evidence only. volatile-lfu makes the
     # shrink direction safe (cold volatile keys evict first); the widen
-    # direction reacts to real pain (hit rate under the floor WITH
-    # evictions). An immature-but-present window HOLDS the converged
-    # ceiling rather than falling through to the legacy peak-x4 rung —
+    # direction reacts to real pain (evictions a material share of the
+    # lookups, never a low hit rate alone). An immature-but-present
+    # window HOLDS the converged ceiling rather than falling through to
+    # the legacy peak-x4 rung —
     # falling through would re-widen and restart the ratchet this loop
     # exists to remove. Only a missing/garbled window or no usable state
     # reaches the legacy rungs below.
@@ -1508,7 +1509,12 @@ _valkey_ceiling_derive() {
           _VK_NEW="${_VK_CUR}"
           _VK_ACT=""
           # Maturity: >=96 accumulated deltas over a >=24h span (96
-          # samples alone is only ~8h at the 5-min cadence). Immature or
+          # samples alone is only ~8h at the 5-min cadence), or >=288
+          # deltas, a full day at that cadence, whatever the span:
+          # sqlprobe's 7-day decay halves the counters and re-anchors the
+          # epoch to the decay sample, so a decayed window spans minutes
+          # yet holds days of evidence, and a weekly pass due within a
+          # day of the decay would otherwise hold every week. Immature or
           # freshly reset -> HOLD. A step is also HELD when the previous
           # one is younger than an hour (_tune_memory_limits runs twice
           # on SQL-upgrade runs and the window cannot change between the
@@ -1518,7 +1524,8 @@ _valkey_ceiling_derive() {
           # large drop at the next restart).
           if [ "${_dN}" -ge 96 ] && [ "${_dP}" -gt 0 ] \
             && [ -n "${_dTS}" ] && [ "${_dTS}" -gt 0 ] \
-            && [ $(( _VK_NOW - _dTS )) -ge 86400 ] \
+            && { [ $(( _VK_NOW - _dTS )) -ge 86400 ] \
+              || [ "${_dN}" -ge 288 ]; } \
             && [ $(( _VK_NOW - _VK_LAST_TS )) -ge 3600 ] \
             && { [ -z "${_VK_RUN_MB}" ] \
               || [ "${_VK_RUN_MB}" -le $(( _VK_CUR + 128 )) ]; }; then
@@ -1540,17 +1547,24 @@ _valkey_ceiling_derive() {
               if [ "${_VK_NEW}" -gt "${_VK_CUR}" ]; then
                 _VK_NEW="${_VK_CUR}"
               fi
-            elif [ $(( _dH * 100 )) -ge $(( _VK_TRAFFIC * 90 )) ]; then
-              # Healthy hit rate (>=90%) on post-action evidence: one
-              # bounded step down. LFU shedding cold keys while the hit
-              # rate holds is the squeeze working, not pain.
+            elif [ $(( _dH * 100 )) -ge $(( _VK_TRAFFIC * 90 )) ] \
+              || [ $(( _dE * 100 )) -lt "${_VK_TRAFFIC}" ]; then
+              # Healthy hit rate (>=90%), or evictions under 1% of the
+              # window's lookups, on post-action evidence: one bounded
+              # step down. A miss more room could have saved needs an
+              # earlier eviction of that key, so evictions bound what any
+              # larger ceiling can add to the hit rate; the rest of the
+              # misses belong to the workload (on Drupal 8+ they include
+              # every lookup of a cache tag never invalidated). LFU
+              # shedding cold keys while that bound stays small is the
+              # squeeze working, not pain.
               _VK_STEP=$(( _VK_CUR / 8 ))
               if [ "${_VK_STEP}" -lt 256 ]; then
                 _VK_STEP=256
               fi
               _VK_NEW=$(( _VK_CUR - _VK_STEP ))
-            elif [ "${_dE}" -gt 0 ]; then
-              # Hit rate under the floor WITH evictions: capacity pain,
+            elif [ $(( _dE * 50 )) -ge "${_VK_TRAFFIC}" ]; then
+              # Evictions at 2% of the lookups or more: capacity pain,
               # one bounded step up (never past _RAM/3).
               _VK_STEP=$(( _VK_CUR / 4 ))
               if [ "${_VK_STEP}" -lt 512 ]; then
@@ -1558,8 +1572,8 @@ _valkey_ceiling_derive() {
               fi
               _VK_NEW=$(( _VK_CUR + _VK_STEP ))
             fi
-            # Low hit rate without evictions: the misses belong to the
-            # workload, not the ceiling — _VK_NEW stays at _VK_CUR.
+            # Evictions between 1% and 2% of the lookups: the band the
+            # loop settles in — _VK_NEW stays at _VK_CUR.
             if [ "${_VK_NEW}" -lt "${_VK_FLOOR}" ]; then
               _VK_NEW="${_VK_FLOOR}"
             fi
@@ -3770,6 +3784,7 @@ _barracuda_cnf() {
     echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
     echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
+    echo "_SQL_MALLOC=${_SQL_MALLOC}"                         >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
     echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}"                 >> ${_barCnf}
@@ -3899,6 +3914,7 @@ _barracuda_cnf() {
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
     echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
     echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
+    echo "_GOACCESS_DAYS=${_GOACCESS_DAYS:-90}"           >> ${_barCnf}
     echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}"  >> ${_barCnf}
     echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}"  >> ${_barCnf}
     echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}"  >> ${_barCnf}
@@ -4230,6 +4246,10 @@ _barracuda_cnf() {
     if [[ ! "${_GOACCESS_EXCLUDE_IPS_TEST}" =~ "_GOACCESS_EXCLUDE_IPS=" ]]; then
       echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\"" >> ${_barCnf}
     fi
+    _GOACCESS_DAYS_TEST=$(grep "^_GOACCESS_DAYS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_DAYS_TEST}" =~ "_GOACCESS_DAYS=" ]]; then
+      echo "_GOACCESS_DAYS=${_GOACCESS_DAYS:-90}" >> ${_barCnf}
+    fi
     _OCTOPUS_UPGRADE_RERUN_SILENT_TEST=$(grep "^_OCTOPUS_UPGRADE_RERUN_SILENT=" ${_barCnf} 2>&1)
     if [[ ! "${_OCTOPUS_UPGRADE_RERUN_SILENT_TEST}" =~ "_OCTOPUS_UPGRADE_RERUN_SILENT=" ]]; then
       echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}" >> ${_barCnf}
@@ -4446,6 +4466,11 @@ _barracuda_cnf() {
     _SOLR_HEAP_FORCE_TEST=$(grep _SOLR_HEAP_FORCE ${_barCnf} 2>&1)
     if [[ ! "${_SOLR_HEAP_FORCE_TEST}" =~ "_SOLR_HEAP_FORCE" ]]; then
       echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_MALLOC_TEST=$(grep _SQL_MALLOC ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_MALLOC_TEST}" =~ "_SQL_MALLOC" ]]; then
+      echo "_SQL_MALLOC=${_SQL_MALLOC}" >> ${_barCnf}
     fi
 
     _USE_SQLPROBE_TEST=$(grep _USE_SQLPROBE ${_barCnf} 2>&1)
