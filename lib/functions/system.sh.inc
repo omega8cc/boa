@@ -3908,6 +3908,7 @@ _barracuda_cnf() {
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
     echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
     echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
+    echo "_GOACCESS_DAYS=${_GOACCESS_DAYS:-90}"           >> ${_barCnf}
     echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}"  >> ${_barCnf}
     echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}"  >> ${_barCnf}
     echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}"  >> ${_barCnf}
@@ -4238,6 +4239,10 @@ _barracuda_cnf() {
     _GOACCESS_EXCLUDE_IPS_TEST=$(grep "^_GOACCESS_EXCLUDE_IPS=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_EXCLUDE_IPS_TEST}" =~ "_GOACCESS_EXCLUDE_IPS=" ]]; then
       echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\"" >> ${_barCnf}
+    fi
+    _GOACCESS_DAYS_TEST=$(grep "^_GOACCESS_DAYS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_DAYS_TEST}" =~ "_GOACCESS_DAYS=" ]]; then
+      echo "_GOACCESS_DAYS=${_GOACCESS_DAYS:-90}" >> ${_barCnf}
     fi
     _OCTOPUS_UPGRADE_RERUN_SILENT_TEST=$(grep "^_OCTOPUS_UPGRADE_RERUN_SILENT=" ${_barCnf} 2>&1)
     if [[ ! "${_OCTOPUS_UPGRADE_RERUN_SILENT_TEST}" =~ "_OCTOPUS_UPGRADE_RERUN_SILENT=" ]]; then

@@ -671,8 +671,28 @@ else
 fi
 
 if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
-  echo "[+] SYNCING LOGS TO: ${_ARCHLOGS}"
-  rsync -rlvz --size-only --progress /var/log/nginx/access* ${_ARCHLOGS}/
+  ### A report reads the access logs nginx wrote in the last _GOACCESS_DAYS
+  ### days (90 unless a whole number from 1 is set): it is parsed from
+  ### scratch and GoAccess holds it all in memory, so a box keeping every
+  ### log grew one report past 13 GB. Only the copy is chosen: nothing
+  ### under /var/log/nginx is ever removed.
+  _wxDays="${_GOACCESS_DAYS:-90}"
+  [[ "${_wxDays}" =~ ^[0-9]{1,6}$ ]] && [ "${_wxDays}" -gt 0 ] || _wxDays=90
+  _wxLogs="$(find /var/log/nginx -maxdepth 1 -type f -name 'access*' \
+    -mtime "-${_wxDays}" -printf '%f\n' 2>/dev/null | sort)"
+  echo "[+] SYNCING LOGS TO: ${_ARCHLOGS} (written in the last ${_wxDays} days)"
+  ### -t keeps each log's own time: a rotated name holds another day's log
+  ### every night, and --size-only kept the old day when the sizes matched
+  if [ -n "${_wxLogs}" ]; then
+    rsync -rltvz --progress --files-from=<(printf '%s\n' "${_wxLogs}") \
+      /var/log/nginx/ ${_ARCHLOGS}/
+  fi
+  for _wxF in ${_ARCHLOGS}/access*; do
+    [ -f "${_wxF}" ] || continue
+    grep -qxF -- "${_wxF##*/}" <<< "${_wxLogs}" || rm -f -- "${_wxF}"
+  done
+  ### An earlier run's copies would be read too, old days among them.
+  rm -f -- ${_ARCHLOGS}/unzip/access*
   echo "[+] COPYING LOGS TO: ${_ARCHLOGS}/unzip/"
   cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
   echo "[+] DECOMPRESSING GZ FILES"
