@@ -1136,6 +1136,23 @@ _VALKEY_MAXMEM_FORCE=""
 _SOLR_HEAP_FORCE=""
 
 ###
+### Memory allocator the database server starts with:
+### glibc (the default) or jemalloc. With jemalloc the
+### system installs the libjemalloc2 package and the
+### MySQL init script preloads it into mysqld alone;
+### clients and every other process keep glibc. Without
+### the library the server starts on glibc, and the
+### error log names the allocator at every start. It
+### takes effect only with a database restart on the
+### next planned maintenance; the system never restarts
+### the server for it. Boxes whose 5.7 server is still
+### started by the package's own init script ignore it:
+### there Percona's mysqld_safe preloads jemalloc by
+### itself whenever the library is installed.
+###
+_SQL_MALLOC=glibc
+
+###
 ### Log-only SQL sensor (sqlprobe monitor): one lightweight sample
 ### every 5 minutes feeding the memorytuner advisory and keeping the
 ### datadir/valkey measurement stores fresh between upgrades. It never
@@ -1274,6 +1291,13 @@ _GOACCESS_ALL=NO
 ### of every GoAccess report, so operator/monitoring visits do not skew
 ### the stats.
 _GOACCESS_EXCLUDE_IPS=""
+###
+### Days of access logs a nightly GoAccess report reads: the logs nginx
+### wrote in that many days (90 unless a whole number from 1 to 999999).
+### Every report is parsed from scratch and held in memory, so a longer
+### period costs memory each night. Only the report's copy is chosen:
+### /var/log/nginx keeps every log its rotation keeps.
+_GOACCESS_DAYS=90
 ###
 ### Nightly GoAccess also builds one report per standalone vhost defined
 ### in /etc/nginx/sites-enabled, plus the box-wide ALL aggregate, into

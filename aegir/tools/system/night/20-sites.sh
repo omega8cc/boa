@@ -4814,7 +4814,11 @@ _daily_process() {
               if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
                 _noPrefixDom="${_Dom#www.}"
                 _if_gen_goaccess "${_noPrefixDom}"
-                _if_gen_goaccess "${_Dom}"
+                # A name without www. is the same report: built twice, it
+                # parsed every access log twice a night
+                if [ "${_noPrefixDom}" != "${_Dom}" ]; then
+                  _if_gen_goaccess "${_Dom}"
+                fi
               fi
               ;;
             esac
