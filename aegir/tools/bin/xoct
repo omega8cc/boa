@@ -587,6 +587,13 @@ _mig_is_mine() {
   _t="$(_mig_rec_text "${1}")" || return 1
   _mig_txt_mine "${_t}"
 }
+### A value read from a copy root did not write itself, as a refusal shows it:
+### at most 64 bytes, anything outside the address and name alphabet as ?, so
+### no terminal control byte and no pasteable text reaches root's screen or
+### the import stamp.
+_mig_shown() {
+  printf '%s' "${1}" | LC_ALL=C head -c 64 | LC_ALL=C tr -c 'A-Za-z0-9._:/,-' '?'
+}
 ### Every key of the record text $1 within its grammar; the first failing
 ### reason printed, status 1. Unknown keys are left to the caller.
 _mig_txt_valid() {
@@ -595,13 +602,13 @@ _mig_txt_valid() {
   _role="$(_mig_txt_get "${_t}" _MIG_ROLE)"
   case "${_role}" in
     source|target) ;;
-    *) echo "invalid _MIG_ROLE '${_role}'"; return 1 ;;
+    *) echo "invalid _MIG_ROLE '$(_mig_shown "${_role}")'"; return 1 ;;
   esac
   _v="$(_mig_txt_get "${_t}" _MIG_HOST_IP)"
-  _mig_quad "${_v}" || { echo "invalid _MIG_HOST_IP '${_v}'"; return 1; }
+  _mig_quad "${_v}" || { echo "invalid _MIG_HOST_IP '$(_mig_shown "${_v}")'"; return 1; }
   _peer="$(_mig_txt_get "${_t}" _MIG_PEER_IP)"
   if [ -n "${_peer}" ] && ! _mig_peer_ok "${_peer}"; then
-    echo "invalid _MIG_PEER_IP '${_peer}'"
+    echo "invalid _MIG_PEER_IP '$(_mig_shown "${_peer}")'"
     return 1
   fi
   if [ "${_role}" = "target" ] && [ -z "${_peer}" ]; then
@@ -611,29 +618,29 @@ _mig_txt_valid() {
   _v="$(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
   IFS=' ,' read -r -a _ips <<< "${_v}"
   for _ip in "${_ips[@]}"; do
-    _mig_peer_ok "${_ip}" || { echo "invalid _MIG_PEER_IPS address '${_ip}'"; return 1; }
+    _mig_peer_ok "${_ip}" || { echo "invalid _MIG_PEER_IPS address '$(_mig_shown "${_ip}")'"; return 1; }
   done
   _v="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
   if [ -n "${_v}" ] && ! _mig_valid_acct "${_v}"; then
-    echo "invalid _MIG_PEER_OCT '${_v}'"
+    echo "invalid _MIG_PEER_OCT '$(_mig_shown "${_v}")'"
     return 1
   fi
   _v="$(_mig_txt_get "${_t}" _MIG_MODE)"
-  _mig_valid_mode "${_v}" || { echo "invalid _MIG_MODE '${_v}'"; return 1; }
+  _mig_valid_mode "${_v}" || { echo "invalid _MIG_MODE '$(_mig_shown "${_v}")'"; return 1; }
   _v="$(_mig_txt_get "${_t}" _MIG_SCOPE)"
   case "${_v}" in
     account|box|"") ;;
-    *) echo "invalid _MIG_SCOPE '${_v}'"; return 1 ;;
+    *) echo "invalid _MIG_SCOPE '$(_mig_shown "${_v}")'"; return 1 ;;
   esac
   _v="$(_mig_txt_get "${_t}" _MIG_DEADLINE)"
   if [ -n "${_v}" ] && [ "${_v}" != "none" ] && ! _mig_valid_date "${_v}"; then
-    echo "invalid _MIG_DEADLINE '${_v}'"
+    echo "invalid _MIG_DEADLINE '$(_mig_shown "${_v}")'"
     return 1
   fi
   for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
     _v="$(_mig_txt_get "${_t}" "${_k}")"
     if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
-      echo "invalid ${_k} '${_v}'"
+      echo "invalid ${_k} '$(_mig_shown "${_v}")'"
       return 1
     fi
   done
@@ -726,6 +733,40 @@ _mig_mark_at() {
 _mig_is_proxied() {
   _mig_mark_at "${1}" > /dev/null
 }
+### log/proxied.pid of $1 reads as the marker root wrote: root's, one link,
+### at most 64 bytes, first line COMPLETE, dated no later than a day ahead.
+### A file the account put there proves nothing.
+_mig_pid_proof() {
+  local _raw _at _b
+  _raw="$(_mig_hread "/data/disk/${1}/log" proxied.pid root && printf x)" || return 1
+  _raw="${_raw%x}"
+  _at="${_raw%%$'\n'*}"
+  _b="${_raw#*$'\n'}"
+  [ "$(printf '%s' "${_b}" | LC_ALL=C wc -c | tr -d ' ')" -le 64 ] || return 1
+  [ "${_b%%$'\n'*}" = "COMPLETE" ] || return 1
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 1
+  [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ]
+}
+### Whether the account $1 relays as far as root can tell: its root marker,
+### or, while the one-time import has not run, log/proxied.pid as root wrote
+### it (the import turns every such file into a marker).
+_mig_relays() {
+  _mig_is_proxied "${1}" && return 0
+  [ -e "${_MIG_ADOPT_STAMP}" ] && return 1
+  _mig_pid_proof "${1}"
+}
+### Whether the root source record of $1 was imported from an older tool's
+### copy and names another account on the peer: that name is the copy's,
+### which an account could have planted, so nothing acts on it until root
+### restates the pair.
+_mig_rec_foreign_oct() {
+  local _t _o
+  _t="$(_mig_rec_text "${1}")" || return 1
+  [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || return 1
+  [ -n "$(_mig_txt_get "${_t}" _MIG_ADOPTED)" ] || return 1
+  _o="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
+  [ -n "${_o}" ] && [ "${_o}" != "${1}" ]
+}
 ### What log/migproxy.cnf of the account $1 is, in one word, for display,
 ### classification and refusals only: it never supplies an address or a
 ### mode. "none" absent; "account" anything the account could have put
@@ -733,8 +774,12 @@ _mig_is_proxied() {
 ### without a known header); "info" the informational copy; "legacy-mine
 ### <mtime>" a record an older tool wrote on this box; "legacy-foreign" one
 ### that travelled here.
+### "legacy-stale" an older copy the one-time import never judged (counts
+### as absent; see _mig_copy_stale).
 _mig_log_class() {
   local _t _rc _m _l1 _h
+  _MIG_LOG_CLS=none
+  _MIG_LOG_RAW=""
   if ! _mig_valid_acct "${1}"; then
     echo none
     return 1
@@ -744,24 +789,40 @@ _mig_log_class() {
   case "${_rc}" in
     0) ;;
     3) echo none; return 0 ;;
-    *) echo account; return 0 ;;
+    *) _MIG_LOG_CLS=account; echo account; return 0 ;;
   esac
+  _MIG_LOG_RAW="${_t}"
   _m="${_t%%$'\n'*}"
   _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
   _l1="${_t%%$'\n'*}"
   case "${_l1}" in
-    "${_MIG_INFO_PFX}"*) echo info; return 0 ;;
+    "${_MIG_INFO_PFX}"*) _MIG_LOG_CLS=info; echo info; return 0 ;;
   esac
   if [ "${_l1}" = "${_MIG_LEGACY_HDR}" ]; then
     _h="$(_mig_txt_get "${_t}" _MIG_HOST_IP)"
     if _mig_quad "${_h}" && _mig_own_addr "${_h}"; then
-      echo "legacy-mine ${_m}"
+      _MIG_LOG_CLS="legacy-mine ${_m}"
+      _mig_copy_stale "${1}" "${_m}" && _MIG_LOG_CLS=legacy-stale
     else
-      echo legacy-foreign
+      _MIG_LOG_CLS=legacy-foreign
     fi
+    echo "${_MIG_LOG_CLS}"
     return 0
   fi
+  _MIG_LOG_CLS=account
   echo account
+}
+### Whether the legacy copy of $1 (handle mtime $2) is one the one-time import
+### never judged: the stamp exists, the copy is not newer, and the stamp does
+### not list the account's record as refused. Such a copy was set aside while
+### the import ran and put back after; it counts as absent.
+_mig_copy_stale() {
+  local _st
+  _st="$(_mig_hread "${_MIG_ADOPT_STAMP%/*}" "${_MIG_ADOPT_STAMP##*/}" root 2> /dev/null)" || return 1
+  [[ "${_st%%$'\n'*}" =~ ^[0-9]+$ ]] && [[ "${2}" =~ ^[0-9]+$ ]] || return 1
+  [ "${2}" -le "${_st%%$'\n'*}" ] || return 1
+  ! printf '%s\n' "${_st}" | awk -F'|' -v a="${1}" \
+    '$1 == a && $2 == "record" && $3 == "refused" { f = 1 } END { exit !f }'
 }
 ### _MIG_ROLE (or the key $2) of a legacy-shaped log/migproxy.cnf of $1
 ### (either host), else empty. For refusals only: a value read here is
@@ -791,7 +852,7 @@ _mig_witnessed() {
   grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
     | grep -qE -- " # (xmass|xoct|xcopy) migration source ${_rx}[[:space:]]*\$" \
     && return 0
-  grep -qE -- "^${_rx} # xmass migration source[[:space:]]*\$" "${_MIG_CSF_ALLOW}" 2> /dev/null
+  grep -qE -- "^${_rx} # xmass migration (source|target|inbound-proxy)[[:space:]]*\$" "${_MIG_CSF_ALLOW}" 2> /dev/null
 }
 ### Records written into log/ by older tools are imported once, by
 ### migration_proxy_trust.sh adopt --once, and never read after that. The
@@ -924,8 +985,9 @@ _mig_resolve() {
     ### never read here: log/ is the account's. One that is not an inbound
     ### record may be a per-account pin, so the box default is not applied
     ### to it either: the account resolves as undeclared (_MIG_UNADOPTED).
+    ### An older copy the import never judged (legacy-stale) is absent.
     case "$(_mig_log_class "${_a}")" in
-      legacy-mine*)
+      legacy-mine\ *)
         echo "ALRT: ${_a}: log/migproxy.cnf was not adopted and is not read; see 'migration_proxy_trust.sh adopt'"
         [ "$(_mig_log_role "${_a}")" = "target" ] || _MIG_UNADOPTED=YES
       ;;
@@ -7516,8 +7578,11 @@ _mig_render_table() {
         esac
       ;;
       3)
+        ### An older copy is named only here: beside a root record it is
+        ### usually the one adopt imported.
         case "${_cls}" in
-          legacy-mine*) _flag="${_flag} [unadopted log record]" ;;
+          legacy-mine\ *) _flag="${_flag} [unadopted log record]" ;;
+          legacy-stale) _flag="${_flag} [older log copy the import never saw; ignored]" ;;
         esac
       ;;
       *)
@@ -7609,7 +7674,8 @@ _xoct_warn_proxy_cert_horizon() {
 ### the peer's root record says so or a record in log/ that only root could
 ### have written, where the peer has no root record yet or that log/ record
 ### is newer than it (an older tool on the peer chained the account onward
-### since); never one the account wrote.
+### since); never one the account wrote, nor an older copy the peer's
+### one-time import never judged.
 ### Args: 1 peer-ip 2 peer-acct 3 role 4 mode 5 scope 6 deadline in record
 ### form (a date, "none" or empty) 7 src-acct 8 retire date
 _xoct_push_peer_record() {
@@ -7667,6 +7733,20 @@ if [ -d ./log ] && [ ! -L ./log ]; then
   _old="\$(cd -P -- ./log && [ "\$(pwd -P)" = "\${_w}/log" ] && perl -e '${_MIG_HREAD_PL}' -- ./migproxy.cnf legacy)" || _old=""
   if [ "\$(printf '%s\\n' "\${_old}" | sed -n 2p | tr -d '\\r')" != '${_MIG_LEGACY_HDR}' ] \\
     || ! _own_src "\${_old}"; then
+    _old=""
+  fi
+fi
+# An older copy the one-time import here never judged counts as absent: the
+# stamp exists, the copy is not newer, and the stamp does not list the
+# account's record as refused (the test _mig_copy_stale makes).
+if [ -n "\${_old}" ] \\
+  && _st="\$(cd -P -- '${_MIG_ADOPT_STAMP%/*}' && perl -e '${_MIG_HREAD_PL}' -- './${_MIG_ADOPT_STAMP##*/}' root)"; then
+  _so="\$(printf '%s\\n' "\${_old}" | sed -n 1p)"
+  _ss="\$(printf '%s\\n' "\${_st}" | sed -n 1p)"
+  if [[ "\${_so}" =~ ^[0-9]+\$ ]] && [[ "\${_ss}" =~ ^[0-9]+\$ ]] \\
+    && [ "\${_so}" -le "\${_ss}" ] \\
+    && ! printf '%s\\n' "\${_st}" | awk -F'|' -v a='${_pacct}' \\
+      '\$1 == a && \$2 == "record" && \$3 == "refused" { f = 1 } END { exit !f }'; then
     _old=""
   fi
 fi
@@ -8241,10 +8321,12 @@ _xoct_unadopted_target_refusal() {
   echo "ERROR:   ${_MIG_TRUST_TOOL} untrust ${_pi} [<each other address it relays from>]"
 }
 
-### Whether the account $1 relays: the root marker, or its own
-### log/proxied.pid. Read only to refuse, the conservative direction.
+### Whether the account $1 relays: the root marker, or, before the one-time
+### import, log/proxied.pid as root wrote it (_mig_relays). A file the
+### account put there does not count: it would keep root's own declaration
+### of a pin away.
 _xoct_relays() {
-  _mig_is_proxied "${1}" || [ -e "/data/disk/${1}/log/proxied.pid" ]
+  _mig_relays "${1}"
 }
 
 ### The peer named by a source record an older tool on this box left in
@@ -8274,8 +8356,11 @@ _xoct_unadopted_source_refusal() {
   local _a="$1" _pi="$2" _po _pa="" _an _dlo="" _nno=""
   _an="$(_xoct_cmd_acct "${_a}" "<oN>")"
   _po="$(_mig_log_role "${_a}" _MIG_PEER_OCT)"
+  ### Older tools copied the peer account from whatever the account left in
+  ### log/: another account's name from the copy is never printed into a
+  ### command root may paste.
   if [ -n "${_po}" ] && [ "${_po}" != "${_a}" ]; then
-    _pa=" $(_xoct_cmd_acct "${_po}" "<target-oN>")"
+    _pa=" <target-oN>"
   fi
   echo "ERROR: ${_a}: log/migproxy.cnf is an unadopted source record and the account relays"
   ### A retired proxy still relays (retire leaves its vhosts and marker),
@@ -8308,7 +8393,23 @@ _xoct_unadopted_source_refusal() {
   if [ "${3}" = "proxy-retire" ]; then
     echo "ERROR: then re-run: xoct proxy-retire ${_an}${_XOCT_DEADLINE_FLAG:+ --deadline=${_XOCT_DEADLINE_FLAG}}${_nno}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
   fi
+  [ -n "${_pa}" ] && echo "ERROR: (confirm on ${_pi} which account serves ${_an}'s sites: the copy names $(_mig_shown "${_po}"), which is not taken)"
   echo "ERROR: (if it relays elsewhere now, restate it with that address and account instead)"
+}
+
+### The account $1's root source record was imported from an older tool's
+### copy and names another account on the peer $2 (_mig_rec_foreign_oct):
+### a policy verb would push to that account there, so it refuses until root
+### restates the pair. $3 = the verb refused, $4 = the mode to restate.
+_xoct_foreign_oct_refusal() {
+  local _an _nno=""
+  _an="$(_xoct_cmd_acct "${1}" "<oN>")"
+  [ "${_XOCT_NO_NOTIFY}" = "YES" ] && _nno=" --no-notify"
+  echo "ERROR: ${1}: its root policy record was imported from an older tool's copy and names"
+  echo "ERROR: another account on ${2:-<target-ip>}; that name is the copy's and is not used. Nothing changed;"
+  echo "ERROR: restate the pair first, naming the account that serves ${_an}'s sites there:"
+  echo "ERROR:   xoct proxy ${_an} ${2:-<target-ip>} <target-oN> --repair --proxy-mode=${4:-<mode>}${_nno}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+  echo "ERROR: then re-run ${3} for it."
 }
 
 ### Apply one account's policy change: freeze the new (mode, deadline) into
@@ -8333,6 +8434,10 @@ _xoct_apply_policy() {
     _peer="$(_mig_txt_get "${_t}" _MIG_PEER_IP)"
     _mig_valid_ip "${_peer}" || _peer=""
     _peer_oct="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
+    if [ -n "${_peer}" ] && _mig_rec_foreign_oct "${_a}"; then
+      _xoct_foreign_oct_refusal "${_a}" "${_peer}" proxy-mode "${_mode}"
+      return 1
+    fi
     _oldscope="$(_mig_txt_get "${_t}" _MIG_SCOPE)"
     _oldmode="$(_mig_txt_get "${_t}" _MIG_MODE)"
     _dl="$(_mig_txt_get "${_t}" _MIG_DEADLINE)"
@@ -8571,6 +8676,10 @@ _xoct_retire_one() {
   _peer="$(_mig_txt_get "${_t}" _MIG_PEER_IP)"
   _mig_valid_ip "${_peer}" || _peer=""
   _peer_oct="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
+  if [ -n "${_peer}" ] && _mig_rec_foreign_oct "${_a}"; then
+    _xoct_foreign_oct_refusal "${_a}" "${_peer}" proxy-retire "${_mode}"
+    return 1
+  fi
   _scope="$(_mig_txt_get "${_t}" _MIG_SCOPE)"
   [ "${_scope}" = "account" ] || _scope=box
   _peer_ips="$(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
@@ -8760,7 +8869,10 @@ _xoct_go_live() {
   ### an earlier move that brought the account here). A copy in log/ is the
   ### account's and names nothing: it could point this at another account
   ### on the target.
+  ### An imported record's name for another account there is the copy's
+  ### (_mig_rec_foreign_oct): it is checked like a missing one.
   if [ -z "${_dA}" ] && _t="$(_mig_rec_text "${_oct}")" && _mig_txt_mine "${_t}" \
+    && ! _mig_rec_foreign_oct "${_oct}" \
     && [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" != "target" ] \
     && [ "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" = "${_tgt}" ]; then
     _dA="$(_xoct_cmd_acct "$(_mig_txt_get "${_t}" _MIG_PEER_OCT)" "")"
@@ -9079,21 +9191,25 @@ _migrate_init() {
     elif [ -e "${_USR}/log/CANCELLED" ]; then
       echo "_USR ${_oct} is not eligible for migration: cancelled"
       exit 1
-    elif ! _mig_is_proxied "${_RUNTIME_OCT}" && _wg_free_unfinished "${_RUNTIME_OCT}"; then
-      ### A proxied account is passed by: its free waits while it stays
-      ### frozen, and the verbs it may still take (proxy --repair, go-live)
-      ### carry no account path; the others stop at "already migrated".
-      ### Only the root marker says proxied: log/proxied.pid is the
-      ### account's own to write.
-      echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
-      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid); re-run then"
-      exit 1
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ] \
       && [ "$(_xoct_read_in "${_USR}/log" proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]; then
       ### aegir2boa's freeze of an import is the same file: the account is
       ### not migrated, its import is unfinished here
       echo "_USR ${_oct} is not eligible for migration: an aegir2boa import of it is frozen here (log/proxied.pid)"
       echo "INFO: finish or revert that import first ('aegir2boa-stage2 target-status --account ${_RUNTIME_OCT}' says where it stands), then re-run"
+      exit 1
+    elif [ ! -e "${_USR}/log/proxied.pid" ] && ! _mig_is_proxied "${_RUNTIME_OCT}" \
+      && _wg_free_unfinished "${_RUNTIME_OCT}"; then
+      ### A proxied account is passed by: its free waits while it stays
+      ### frozen, and the verbs it may still take (proxy --repair, go-live)
+      ### carry no account path; the others stop at "already migrated".
+      ### Either copy passes it by: the branches below still refuse on
+      ### either ("already migrated", "already proxied" without --repair),
+      ### so a log/proxied.pid the account wrote opens nothing, and an
+      ### account frozen before its root marker existed can still take the
+      ### repair that writes it.
+      echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_RUNTIME_OCT}.free.txt)"
+      echo "INFO: the account's next Octopus pass here finishes it, or 'instgrp webconvert ${_RUNTIME_OCT}' (which also converts the account and lifts a _WEB_GROUP=NO opt-out), once no xmass, xoct or xcopy run is live, and never while the account is frozen (log/proxied.pid); re-run then"
       exit 1
     elif { [ -e "${_USR}/log/proxied.pid" ] || _mig_is_proxied "${_USR##*/}"; } \
       && [ "${_cmd}" != "proxy" ]; then

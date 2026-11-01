@@ -12,8 +12,9 @@
 ### visitors whose owners took the "no hurry" advice.
 ###
 ### Daily from cron (a quiet no-op on boxes with no proxied account): for
-### every HTTPS proxy vhost, locate the same domain's live certificate set on
-### the target over ssh and, when the target's notAfter is strictly newer,
+### every HTTPS proxy vhost, read the same domain's live certificate set over
+### ssh from the LE store of the account the root policy record pairs this
+### one with on the target and, when the target's notAfter is strictly newer,
 ### pull privkey/fullchain/cert/chain into the local LE store -- staged,
 ### verified (parse + enddate + key/cert pubkey match), ownership/mode
 ### preserved, with a .bak set kept. The real files live under
@@ -83,9 +84,13 @@ _mpc_root_text() {
   printf '%s\n' "${_t}"
 }
 ### The peer the source-role root record of this box names for the account
-### $1, a strict dotted quad; nothing when there is no such record.
+### $1, as "<ip> <oN>": a strict dotted quad and the account's name there
+### (_MIG_PEER_OCT; empty means the same name as here). Nothing when there
+### is no such record; nothing and status 2 when the peer account it names
+### is not an account name, status 3 when an imported record names another
+### account, so nothing is pulled on a guess.
 _mpc_rec_peer() {
-  local _t _h _p
+  local _t _h _p _o
   [[ "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${1#.}" = "${1}" ] || return 0
   _t="$(_mpc_root_text "${_MIG_REC_DIR}/.${1}.migproxy.cnf")" || return 0
   grep -qx "_MIG_ROLE=source" <<< "${_t}" || return 0
@@ -94,7 +99,16 @@ _mpc_rec_peer() {
   _p="$(grep -m1 '^_MIG_PEER_IP=' <<< "${_t}" | cut -d= -f2-)"
   [[ "${_p}" =~ ^(${_MPC_OCTET}\.){3}${_MPC_OCTET}$ ]] || return 0
   [ "${_p}" != "0.0.0.0" ] && [[ "${_p}" != 127.* ]] || return 0
-  printf '%s\n' "${_p}"
+  _o="$(grep -m1 '^_MIG_PEER_OCT=' <<< "${_t}" | cut -d= -f2-)"
+  [ -n "${_o}" ] || _o="${1}"
+  [[ "${_o}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${_o#.}" = "${_o}" ] || return 2
+  # A record imported from an older tool's log/ copy carries a peer account
+  # an account could have planted there: only its own name is taken from it,
+  # any other waits for a restate root writes itself.
+  if grep -q '^_MIG_ADOPTED=.' <<< "${_t}" && [ "${_o}" != "${1}" ]; then
+    return 3
+  fi
+  printf '%s %s\n' "${_p}" "${_o}"
 }
 ### The accounts this box proxies, one per line: each holds a valid root
 ### proxied marker (COMPLETE, a sane date no later than a day ahead) and a
@@ -384,11 +398,13 @@ _EARLIEST_DOM=""
 ### referenced directly by the proxy vhost (ssl_trusted_certificate).
 _CERT_SET="privkey.pem fullchain.pem cert.pem chain.pem"
 
+### $1 the account here, $2 the domain its vhost names, $3 the target and
+### $4 the account there, both from the root policy record.
 _pull_domain() {
-  local _oct="$1" _dom="$2" _tip="$3"
+  local _oct="$1" _dom="$2" _tip="$3" _poct="$4"
   local _root="/data/disk/${_oct}"
   local _dir="${_root}/tools/le/certs/${_dom}"
-  local _rdir _hits _lend _rend _f _ok _stg _rc
+  local _rdir _lend _rend _f _ok _stg _rc
 
   if [ ! -d "${_dir}" ] || [ ! -e "${_dir}/fullchain.pem" ]; then
     _msg "ALRT: ${_oct}/${_dom}: no local LE store at ${_dir}; skipping"
@@ -407,24 +423,30 @@ _pull_domain() {
     _EARLIEST_EPOCH="${_lend}"; _EARLIEST_DOM="${_dom}"
   fi
 
-  ### Exactly one hit on the target, whatever the account is called there --
-  ### this is also what keeps the mirror correct after a rename-mode move.
-  _hits=$(${_SSH} root@"${_tip}" \
-    "ls -d /data/disk/*/tools/le/certs/${_dom} 2>/dev/null" 2>/dev/null < /dev/null)
-  if [ -z "${_hits}" ]; then
-    _msg "ALRT: ${_oct}/${_dom}: no LE store for this domain on target ${_tip} (or target unreachable); keeping the local certificate"
-    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
-    return 1
-  fi
-  if [ "$(printf '%s\n' "${_hits}" | wc -l)" -ne 1 ]; then
-    _msg "ALRT: ${_oct}/${_dom}: MULTIPLE LE stores match on target ${_tip}; refusing to guess"
-    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
-    return 1
-  fi
-  _rdir="${_hits}"
+  ### Only the store of the paired account on the target, by its exact path.
+  ### The domain comes from a vhost the account writes, so a search across
+  ### every account there would hand it whichever tenant holds that domain.
+  ### A rename-mode move is covered by the record naming the account there.
+  _rdir="/data/disk/${_poct}/tools/le/certs/${_dom}"
   if [[ ! "${_rdir}" =~ ^/data/disk/[A-Za-z0-9._-]+/tools/le/certs/[a-zA-Z0-9.-]+$ ]] \
     || [ "${_rdir##*/}" != "${_dom}" ]; then
     _msg "ALRT: ${_oct}/${_dom}: unexpected LE store path on target ${_tip}; refusing to guess"
+    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
+    return 1
+  fi
+  ### A real directory at that path, judged there as the reads below judge
+  ### it: no link at the name or on the way.
+  { declare -f _mpc_in_real_dir
+    printf '_mpc_in_real_dir %q true\n' "${_rdir}"
+  } | ${_SSH} root@"${_tip}" "bash -s" > /dev/null 2>&1
+  _rc=$?
+  if [ "${_rc}" -eq 255 ]; then
+    _msg "ALRT: ${_oct}/${_dom}: target ${_tip} unreachable; keeping the local certificate"
+    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
+    return 1
+  fi
+  if [ "${_rc}" -ne 0 ]; then
+    _msg "ALRT: ${_oct}/${_dom}: no LE store at ${_rdir} on target ${_tip}; keeping the local certificate"
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
     return 1
   fi
@@ -506,15 +528,18 @@ _pull_domain() {
 }
 
 ### Walk the HTTPS proxy vhosts of every account holding a root proxied
-### marker. Root connects to the peer over ssh, so the peer is the one the
-### account's root policy record names, never an address the account wrote:
-### each vhost's own proxy_pass (what is actually serving) must agree with
-### it. A disagreement is exactly the half-repointed state --repair
-### --retarget exists to fix, so refuse rather than pull certificates from
-### either candidate; an account without that record is not mirrored at all.
+### marker. Root connects to the peer over ssh, so the peer and the account
+### there are the ones the account's root policy record names, never what
+### the account wrote: each vhost's own proxy_pass (what is actually serving)
+### must agree with that peer. A disagreement is exactly the half-repointed
+### state --repair --retarget exists to fix, so refuse rather than pull
+### certificates from either candidate; an account without a usable record is
+### not mirrored at all.
 for _OCT in $(_mpc_proxied_accts); do
   _ROOT="/data/disk/${_OCT}"
-  _REC_IP="$(_mpc_rec_peer "${_OCT}")"
+  _REC="$(_mpc_rec_peer "${_OCT}")"
+  _REC_RC=$?
+  read -r _REC_IP _REC_OCT <<< "${_REC}"
   _NOREC=""
   _VD="${_ROOT}/config/server_master/nginx/vhost.d"
   while IFS= read -r -u 9 _V; do
@@ -529,10 +554,16 @@ for _OCT in $(_mpc_proxied_accts); do
       _valid_dom "${_DOM}" && _RETIRED="${_RETIRED} ${_OCT}/${_DOM}"
       continue
     fi
-    if [ -z "${_REC_IP}" ]; then
+    if [ -z "${_REC_IP}" ] || [ -z "${_REC_OCT}" ]; then
       if [ -z "${_NOREC}" ]; then
-        _msg "ALRT: ${_OCT}: no root policy record (/root/.${_OCT}.migproxy.cnf, role source, this box's own) names the target;"
-        _msg "ALRT:   a vhost is the account's to write, so root does not connect where it points -- not mirrored;"
+        if [ "${_REC_RC}" -eq 2 ]; then
+          _msg "ALRT: ${_OCT}: the root policy record (/root/.${_OCT}.migproxy.cnf) names no valid account on the target -- not mirrored;"
+        elif [ "${_REC_RC}" -eq 3 ]; then
+          _msg "ALRT: ${_OCT}: the root policy record was imported from an older tool's copy and names another account on the target -- not mirrored until root restates it;"
+        else
+          _msg "ALRT: ${_OCT}: no root policy record (/root/.${_OCT}.migproxy.cnf, role source, this box's own) names the target;"
+          _msg "ALRT:   a vhost is the account's to write, so root does not connect where it points -- not mirrored;"
+        fi
         _msg "ALRT:   restate it: xoct proxy ${_OCT} <target-ip> [<target-oN>] --repair --proxy-mode=<mode>"
         _NOREC=YES
       fi
@@ -552,7 +583,7 @@ for _OCT in $(_mpc_proxied_accts); do
       _FAIL_REFRESH="${_FAIL_REFRESH} ${_DOM}"
       continue
     fi
-    _pull_domain "${_OCT}" "${_DOM}" "${_REC_IP}"
+    _pull_domain "${_OCT}" "${_DOM}" "${_REC_IP}" "${_REC_OCT}"
   done 9< <(_mpc_in_real_dir "${_VD}" _mpc_https_names_here)
 done
 
