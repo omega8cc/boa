@@ -48,6 +48,14 @@
       now removes only that platform's record and keeps the tree; it is
       refused while sites still name the platform being deleted.
 
+    * The Delete of a platform deployed from Git or by Composer no longer
+      removes its repository or project folder when that folder holds
+      another platform's tree: the folder stays, with a warning that names
+      the other platform.
+
+    * Saving again a platform deployed from Git whose Verify failed keeps
+      its Platform Path: the docroot was appended a second time.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
