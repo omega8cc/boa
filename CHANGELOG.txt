@@ -10,6 +10,32 @@
       2.2.19; only a file that exists is refused, so a page's Markdown
       address answers as before.
 
+    * A Grav site no longer serves script and source files that only ever
+      run elsewhere (.phtml, .phar, .pl, .py, .sh and the like) from its
+      image and asset caches or its own trees, nor a copy of a root file
+      such as composer.json.bak, as Grav's own server rules have it.
+
+    * The in-place Grav upgrade swaps each bundled plugin and theme in
+      whole, behind Grav's own maintenance page and plugin folder lock, as
+      Grav's installer does since 2.2.20: a request no longer meets a
+      plugin missing or half copied while the task runs, which for the
+      Login plugin left its pages open for that moment.
+
+@=> Important Fixes
+
+    * A Grav page at /security, /changelog, /readme, /contributing or
+      /code_of_conduct answers at its .md address too: the vhost refused
+      those five names outright for the core's Markdown files of the same
+      names, which are now refused only when they exist.
+
+    * The Ægir control panel refuses a Platform Path another platform
+      already uses (#1952), for a new platform and for one edited after
+      its Verify failed: the check never ran. Of two platforms on one path,
+      the second could not be deleted while the first had sites, and
+      deleting it removed the whole tree when it had none. Such a Delete
+      now removes only that platform's record and keeps the tree; it is
+      refused while sites still name the platform being deleted.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
