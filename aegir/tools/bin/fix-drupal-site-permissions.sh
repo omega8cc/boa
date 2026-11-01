@@ -678,10 +678,16 @@ _grav_site_perm_here() {
   _place_own_here || return 0
   # The host overlay in Grav's older shape, user/<site name>/ where there is
   # no user/env/, holds config overrides as user/config does. The site name
-  # is the capsule's dir name, a .restore or .original sibling's without it.
+  # is the capsule's dir name, a .restore or .original sibling's without it;
+  # a name of Grav's own user/ folders is never taken for one (as provision).
   _ov="${_here##*/}"
-  _ov="${_ov%.restore}"
-  _ov="${_ov%.original}"
+  case "${_ov}" in
+    *.restore) _ov="${_ov%.restore}" ;;
+    *.original) _ov="${_ov%.original}" ;;
+  esac
+  case "${_ov}" in
+    accounts|blueprints|config|data|env|images|languages|pages|plugins|themes) _ov="" ;;
+  esac
   if [ -d ./user/env ] || [ -L "./user/${_ov}" ] || [ ! -d "./user/${_ov}" ] \
     || [[ ! "${_ov}" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
     _ov=""
