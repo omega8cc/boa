@@ -21,6 +21,18 @@
       plugin missing or half copied while the task runs, which for the
       Login plugin left its pages open for that moment.
 
+    * A Verify of a Grav site or of its platform keeps the site's secrets
+      readable to its PHP and never widens them while it runs: the heal
+      handed the account files, configuration and .env to the account's
+      own group and opened them up before setting them back, so the site
+      answered errors for seconds on every Verify and its secrets were
+      readable to other users meanwhile.
+
+    * A Grav site that keeps its environment overrides in Grav's older
+      layout, user/<site>/ with no user/env/, has them protected like
+      user/config: the secret keys seeded there stayed readable to other
+      users after every Verify.
+
 @=> Important Fixes
 
     * A Grav page at /security, /changelog, /readme, /contributing or
