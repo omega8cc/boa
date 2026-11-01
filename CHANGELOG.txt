@@ -1,4 +1,16 @@
 ###
+### In development - changes since BOA-5.88.877
+###
+
+@=> Security
+
+    * A Grav site no longer serves a Markdown file kept on disk outside the
+      folders it already refused, such as a README beside its images or
+      notes left at the site root, as Grav's own server rules do since
+      2.2.19; only a file that exists is refused, so a page's Markdown
+      address answers as before.
+
+###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
 ### Enjoy the rise of the Phoenix
