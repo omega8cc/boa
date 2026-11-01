@@ -638,7 +638,7 @@ _grav_capsule_own_here() {
     _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
   done
   # The secret root .env drops its world bit, so FPM's read comes via
-  # the web group -- the code pass above homed it to the account group.
+  # the web group.
   if [ -f ./.env ]; then
     _reown_own_here "${script_user}${_wg:+:${_wg}}" ./.env
   fi
@@ -705,8 +705,17 @@ if [ -n "${drupal_root}" ] \
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${drupal_root//[[:cntrl:]]/?}" "${script_user}" "${_code_group}"
   _root_place_or_leave _place_ours_here \
     "Done setting proper ownership of files and directories (Grav)."
+  # The root pass leaves each capsule's writable set and .env out (those
+  # names one level below sites/ only), so each is re-owned once, to the
+  # web group: handed to the account group first, every capsule's secrets
+  # were unreadable to its PHP pool until the capsule pass reached it.
   _left_add _in_pinned_dir "${drupal_root}" \
-    _reown_own_here -R "${script_user}:${_code_group}" .
+    _reown_own_here -R "${script_user}:${_code_group}" . \
+    \( -path "./sites/*/user" -o -path "./sites/*/cache" -o -path "./sites/*/logs" \
+    -o -path "./sites/*/tmp" -o -path "./sites/*/backup" -o -path "./sites/*/images" \
+    -o -path "./sites/*/assets" \) ! -path "./sites/*/*/*" -type d -prune \
+    -o -path "./sites/*/.env" ! -path "./sites/*/*/*" -type f -prune \
+    -o
   _left_add _in_pinned_dir "${drupal_root}/sites" _grav_capsules_own_here
   _root_owners_left_note "${_LEFT}"
   echo "Done setting proper ownership of files and directories (Grav)."

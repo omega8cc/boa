@@ -672,9 +672,48 @@ _mark_here() {
 
 # The Grav capsule model, run inside the real site directory.
 _grav_site_perm_here() {
-  local _wd _sd _here
+  local _wd _sd _here _ov
+  local -a _keep=()
   _here="$(pwd -P)"
   _place_own_here || return 0
+  # The host overlay in Grav's older shape, user/<site name>/ where there is
+  # no user/env/, holds config overrides as user/config does. The site name
+  # is the capsule's dir name, a .restore or .original sibling's without it;
+  # a name of Grav's own user/ folders is never taken for one (as provision).
+  _ov="${_here##*/}"
+  case "${_ov}" in
+    *.restore) _ov="${_ov%.restore}" ;;
+    *.original) _ov="${_ov%.original}" ;;
+  esac
+  case "${_ov}" in
+    accounts|blueprints|config|data|env|images|languages|pages|plugins|themes) _ov="" ;;
+  esac
+  if [ -d ./user/env ] || [ -L "./user/${_ov}" ] || [ ! -d "./user/${_ov}" ] \
+    || [[ ! "${_ov}" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
+    _ov=""
+  fi
+  _keep=( \( -path ./user/accounts -o -path ./user/config -o -path ./user/env )
+  [ -z "${_ov}" ] || _keep+=( -o -path "./user/${_ov}" )
+  _keep+=( \) -type d -prune -o )
+  # Secret surfaces first, and no later walk touches them: accounts hold
+  # password hashes and live reset tokens, config holds the session salt and
+  # SMTP/API credentials, and user/data/licenses.yaml holds premium licence
+  # keys. Group-rw for FPM, owner-rw for the CLI, NO world bits, as the
+  # hosting backend sets them. The root .env keeps FPM's read via group, and
+  # drushrc.php (a site's database login) stays its writer's 0440. Widened by
+  # the generic walks and narrowed after them, they were world-readable, or
+  # a file the ownership pass had just taken from the web server unreadable
+  # to it, for as long as those walks took.
+  for _sd in accounts config env ${_ov:+"${_ov}"}; do
+    [ -d "./user/${_sd}" ] || continue
+    _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
+    _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
+  done
+  if [ -d "./user/data" ]; then
+    _in_pinned_dir "${_here}/user/data" _chmod_own_here f 0660 licenses.yaml
+  fi
+  _chmod_own_here f 0640 .env
+  _chmod_own_here f 0440 drushrc.php
   _fwalk_own_here d 0755 . -path ./user -prune \
     -o -path ./cache -prune \
     -o -path ./logs -prune \
@@ -690,30 +729,22 @@ _grav_site_perm_here() {
     -o -path ./backup -prune \
     -o -path ./images -prune \
     -o -path ./assets -prune \
+    -o -path ./.env -prune \
+    -o -path ./drushrc.php -prune \
     -o 2> /dev/null
   _chmod_own_in "${_here}/bin" d 0755 '*'
   _chmod_own_in "${_here}/bin" f 0755 '*'
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
+    if [ "${_wd}" = "user" ]; then
+      _fwalk_own_here d 02775 ./user "${_keep[@]}" 2> /dev/null
+      _fwalk_own_here f 0664 ./user "${_keep[@]}" -path ./user/data/licenses.yaml -prune \
+        -o 2> /dev/null
+      continue
+    fi
     _fwalk_own_here d 02775 "./${_wd}" 2> /dev/null
     _fwalk_own_here f 0664 "./${_wd}" 2> /dev/null
   done
-  # Secret surfaces AFTER the generic pass, which would re-widen them
-  # (same class as the TXP private/ store): accounts hold
-  # password hashes and live reset tokens, config holds the session salt and
-  # SMTP/API credentials, and user/data/licenses.yaml holds premium licence
-  # keys. Group-rw for FPM, owner-rw for the CLI, NO world bits, as the
-  # hosting backend sets them. The root .env keeps FPM's read via group.
-  for _sd in accounts config env; do
-    [ -d "./user/${_sd}" ] || continue
-    _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
-    _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
-  done
-  if [ -d "./user/data" ]; then
-    _in_pinned_dir "${_here}/user/data" _chmod_own_here f 0660 licenses.yaml
-  fi
-  _chmod_own_here f 0640 .env
-  _chmod_own_here f 0440 drushrc.php
 }
 
 # The Textpattern model, run inside the real site directory.
