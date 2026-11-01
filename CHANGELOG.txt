@@ -60,7 +60,8 @@
       or tag and its docroot: they were stored as master and empty, so the
       Git pull webhook matched the wrong branch until the next Verify, and a
       Verify that had to clone the codebase again asked for master. The
-      upgrade restores the docroot of platforms that lost it.
+      upgrade restores the docroot of platforms that lost it, and a Git
+      platform imported from its backend record keeps its docroot too.
 
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
