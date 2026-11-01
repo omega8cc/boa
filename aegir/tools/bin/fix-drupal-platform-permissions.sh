@@ -551,10 +551,13 @@ _grav_capsule_perm_here() {
   _here="$(pwd -P)"
   _place_own_here || return 0
   # The host overlay in Grav's older shape, user/<site name>/ where there is
-  # no user/env/, holds config overrides as user/config does.
+  # no user/env/, holds config overrides as user/config does. The site name
+  # is the capsule's dir name, a .restore or .original sibling's without it.
   _ov="${_here##*/}"
+  _ov="${_ov%.restore}"
+  _ov="${_ov%.original}"
   if [ -d ./user/env ] || [ -L "./user/${_ov}" ] || [ ! -d "./user/${_ov}" ] \
-    || [[ ! "${_ov}" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)+$ ]]; then
+    || [[ ! "${_ov}" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
     _ov=""
   fi
   _keep=( \( -path ./user/accounts -o -path ./user/config -o -path ./user/env )
