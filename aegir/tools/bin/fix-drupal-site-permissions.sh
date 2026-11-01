@@ -672,9 +672,20 @@ _mark_here() {
 
 # The Grav capsule model, run inside the real site directory.
 _grav_site_perm_here() {
-  local _wd _sd _here
+  local _wd _sd _here _ov
+  local -a _keep=()
   _here="$(pwd -P)"
   _place_own_here || return 0
+  # The host overlay in Grav's older shape, user/<site name>/ where there is
+  # no user/env/, holds config overrides as user/config does.
+  _ov="${_here##*/}"
+  if [ -d ./user/env ] || [ -L "./user/${_ov}" ] || [ ! -d "./user/${_ov}" ] \
+    || [[ ! "${_ov}" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)+$ ]]; then
+    _ov=""
+  fi
+  _keep=( \( -path ./user/accounts -o -path ./user/config -o -path ./user/env )
+  [ -z "${_ov}" ] || _keep+=( -o -path "./user/${_ov}" )
+  _keep+=( \) -type d -prune -o )
   # Secret surfaces first, and no later walk touches them: accounts hold
   # password hashes and live reset tokens, config holds the session salt and
   # SMTP/API credentials, and user/data/licenses.yaml holds premium licence
@@ -684,7 +695,7 @@ _grav_site_perm_here() {
   # the generic walks and narrowed after them, they were world-readable, or
   # a file the ownership pass had just taken from the web server unreadable
   # to it, for as long as those walks took.
-  for _sd in accounts config env; do
+  for _sd in accounts config env ${_ov:+"${_ov}"}; do
     [ -d "./user/${_sd}" ] || continue
     _in_pinned_dir "${_here}/user" _fwalk_own_here d 02770 "./${_sd}" 2> /dev/null
     _in_pinned_dir "${_here}/user" _fwalk_own_here f 0660 "./${_sd}" 2> /dev/null
@@ -717,10 +728,8 @@ _grav_site_perm_here() {
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
     if [ "${_wd}" = "user" ]; then
-      _fwalk_own_here d 02775 ./user \( -path ./user/accounts -o -path ./user/config \
-        -o -path ./user/env \) -type d -prune -o 2> /dev/null
-      _fwalk_own_here f 0664 ./user \( -path ./user/accounts -o -path ./user/config \
-        -o -path ./user/env \) -type d -prune -o -path ./user/data/licenses.yaml -prune \
+      _fwalk_own_here d 02775 ./user "${_keep[@]}" 2> /dev/null
+      _fwalk_own_here f 0664 ./user "${_keep[@]}" -path ./user/data/licenses.yaml -prune \
         -o 2> /dev/null
       continue
     fi
