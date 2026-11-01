@@ -56,6 +56,12 @@
     * Saving again a platform deployed from Git whose Verify failed keeps
       its Platform Path: the docroot was appended a second time.
 
+    * Saving a verified platform or site deployed from Git keeps its branch
+      or tag and its docroot: they were stored as master and empty, so the
+      Git pull webhook matched the wrong branch until the next Verify, and a
+      Verify that had to clone the codebase again asked for master. The
+      upgrade restores the docroot of platforms that lost it.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
