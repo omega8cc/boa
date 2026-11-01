@@ -6861,6 +6861,45 @@ _xmass_pinned_leg() {
     || _xmass_leg_refused "${_s}" "${_w}"
 }
 
+# The control panel of one account on each box, for its static/files leg:
+# _XMASS_PANEL_SKIP holds the names and _XMASS_PANEL_EXCL one anchored
+# --exclude per name. A panel is the box's own: named for its box, never
+# proxied, its site dir under aegir/ on no leg. autosymlink keeps a panel's
+# files and private in the account's store as static/files/<panel name>/,
+# as it does a site's, so the store leg used to delete the target panel's
+# own store on a sync pass and send the source panel's, which the cutover's
+# rename then put under the target panel's name (a target panel whose
+# source panel had no store was left with dangling links). An excluded name
+# is neither sent nor a deletion candidate, on either box. The source's
+# name is its hostmaster alias's site_path; the target's are the site dirs
+# under the account's aegir/distro/*/sites/ there, as the .drush leg copies
+# the source's hostmaster alias over the target's whenever it is newer.
+# Status 1 when the target's answer cannot be read or a name is not a plain
+# host name: the leg then copies nothing, or a sync pass would delete the
+# target panel's files.
+_xmass_panel_store_names() {   # 1 = source account dir  2 = target account dir
+  local _n _q _ans _k _all=" "
+  _XMASS_PANEL_SKIP=""
+  _XMASS_PANEL_EXCL=""
+  _n=$(_xmass_read_file "$1/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+    | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+  _n="${_n##*/}"
+  _q="$(_shq "$2")"
+  _ans=$(ssh -n -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "for _d in '${_q}'/aegir/distro/*/sites/*; do [ -d \"\${_d}\" ] && [ ! -L \"\${_d}\" ] || continue; _b=\"\${_d##*/}\"; case \"\${_b}\" in all|default) continue ;; esac; [ -f \"\${_d}/settings.php\" ] || [ -f \"\${_d}/drushrc.php\" ] || continue; echo \"XMPANEL N|\${_b}\"; done; echo 'XMPANEL E|'" 2>/dev/null \
+    | grep -a '^XMPANEL [NE]|')
+  printf '%s\n' "${_ans}" | grep -q -x 'XMPANEL E|' || return 1
+  while IFS='|' read -r _k _n; do
+    [ -n "${_n}" ] || continue
+    [[ "${_n}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 1
+    [[ "${_all}" = *" ${_n} "* ]] && continue
+    _all="${_all}${_n} "
+    _XMASS_PANEL_SKIP="${_XMASS_PANEL_SKIP:+${_XMASS_PANEL_SKIP} }${_n}"
+    _XMASS_PANEL_EXCL="${_XMASS_PANEL_EXCL:+${_XMASS_PANEL_EXCL} }--exclude=/${_n}"
+  done < <(printf 'S|%s\n' "${_n}"; printf '%s\n' "${_ans}" | grep -a '^XMPANEL N|')
+  return 0
+}
+
 _xmass_sync_static_symlink_safe() {
   # Mirrors xoct's _xoct_transfer_static_symlink_safe:
   # Preserves site-level symlinks inside static/ while relocating static/files
@@ -6959,11 +6998,24 @@ _xmass_sync_static_symlink_safe() {
   # uses the DEST account name, so a rename lands correctly. The store is
   # followed only into the account's own tree or its own part of the
   # attached store (migratefs), and copied from inside that real directory.
+  # Each box's control panel store stays its own (_xmass_panel_store_names).
+  _XMASS_PANEL_SKIP=""
+  _XMASS_PANEL_EXCL=""
+  if [ -e "${_src_usr}/static/files" ] || [ -L "${_src_usr}/static/files" ]; then
+    if ! _xmass_panel_store_names "${_src_usr}" "${_dst_usr}"; then
+      _alrt "DENY: static/files (${_dst_acct}): the control panel names of ${_dst_acct} on the target could not be read -- the store is not copied this pass"
+      _XMASS_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && _XMASS_STORE_RC=3
+      return 0
+    fi
+    [ -n "${_XMASS_PANEL_SKIP}" ] \
+      && _info "  static/files (${_dst_acct}): the control panels' own stores stay on each box (${_XMASS_PANEL_SKIP// /, })"
+  fi
   _xmass_handle_store \
     "${_src_usr}/static/files" \
     "${_dst_sf}" \
     "files/${_dst_acct}/static/files" \
-    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "" flat "${_src_usr}/backups/rename-hostname")" \
+    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "${_XMASS_PANEL_SKIP}" flat "${_src_usr}/backups/rename-hostname")${_XMASS_PANEL_EXCL:+ ${_XMASS_PANEL_EXCL}}" \
     "static/files (${_dst_acct})" "${_src_acct}" tree || _XMASS_STORE_RC=$?
 }
 
