@@ -28,6 +28,14 @@
       those five names outright for the core's Markdown files of the same
       names, which are now refused only when they exist.
 
+    * The Ægir control panel refuses a Platform Path another platform
+      already uses (#1952), for a new platform and for one edited after
+      its Verify failed: the check never ran. Of two platforms on one path,
+      the second could not be deleted while the first had sites, and
+      deleting it removed the whole tree when it had none. Such a Delete
+      now removes only that platform's record and keeps the tree; it is
+      refused while sites still name the platform being deleted.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
