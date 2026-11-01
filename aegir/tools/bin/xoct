@@ -2313,6 +2313,99 @@ _xoct_own_store_link_ready() {
   _xoct_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
   _xoct_own_link_ready "${1}" "${2}" "${3}"
 }
+### Run there: make each of the account $1's own control panel stores, the
+### names in $4 (space-separated), in the store's new canonical directory $3
+### an exact copy of the one at its old place $2, then print XOREAL with $3.
+### A store moved between the root and the attached mount is built from the
+### source alone, and the copy never sends a panel's store. Nothing at the
+### old place is nothing to carry; a link there that leads nowhere (the
+### volume not mounted) or out of the account's own tree or store is a
+### refusal. Each copy is made in .<name>.carry beside the name, read from
+### inside the real old directory and written inside the real new one, and
+### only then put in the name's place: a copy cut short leaves the name as it
+### was, and the next run starts it again. tar's own status 1 (a file changed
+### or vanished as it was read: the panel is live there) is no failure.
+_xoct_own_panel_carry() {
+  local _a="${1}" _o _n _p _t _m
+  local -a _ps _st
+  _n="$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  [ "${_n}" = "${3}" ] || return 1
+  if [ ! -e "${2}" ] && [ ! -L "${2}" ]; then
+    printf 'XOREAL %s\n' "${_n}"
+    return 0
+  fi
+  _o="$(cd -P -- "${2}" 2> /dev/null && pwd -P)" || return 1
+  if ! _xoct_own_path "${_a}" "${_o}"; then
+    # the account's part of the attached store through a /mnt that is a link
+    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    case "${_o}/" in
+      "${_m}"/?*) _xoct_own_path "${_a}" "/mnt${_o#"${_m}"}" || return 1 ;;
+      *) return 1 ;;
+    esac
+  fi
+  if [ "${_o}" != "${_n}" ]; then
+    read -r -a _ps <<< "${4}" && [ "${#_ps[@]}" -gt 0 ] || return 1
+    for _p in "${_ps[@]}"; do
+      case "${_p}" in ''|.|..|*/*) continue ;; esac
+      [ -d "${_o}/${_p}" ] && [ ! -L "${_o}/${_p}" ] || continue
+      _t=".${_p}.carry"
+      ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+        && rm -rf -- "./${_t}" && mkdir -- "./${_t}" ) || return 1
+      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(pwd -P)" = "${_o}/${_p}" ] || exit 9
+        tar -cf - --numeric-owner --acls --xattrs --one-file-system . ) \
+        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(pwd -P)" = "${_n}/${_t}" ] || exit 9
+          tar -xpf - --numeric-owner --acls --xattrs )
+      _st=("${PIPESTATUS[@]}")
+      if [ "${_st[0]:-9}" -gt 1 ] || [ "${_st[1]:-9}" -ne 0 ] \
+        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+          && rm -rf -- "./${_p}" && mv -T -- "./${_t}" "./${_p}" ); then
+        ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
+        return 1
+      fi
+    done
+  fi
+  printf 'XOREAL %s\n' "${_n}"
+}
+### Run there as _xoct_own_dir_ready does (mode dir) for the store $2 of the
+### account $1, carrying its own control panel stores (the names in $3) when
+### a link holds the name: the store moves off the attached mount onto a real
+### directory, which is made as .<name>.carry beside the name, given the
+### panel stores from the link's own place (_xoct_own_panel_carry) and only
+### then put in the link's place. A link that leads nowhere or out of the
+### account's own is refused, and a carry or a swap that fails leaves the
+### link as it was.
+_xoct_own_dir_carry() {
+  local _a="${1}" _n="${2##*/}" _lt _l _r _w _t
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xoct_own_parent_cd "${_a}" "${2}" || return 1
+  [ -L "./${_n}" ] || { _xoct_own_dir_ready dir "${_a}" "${2}"; return $?; }
+  [ -d "./${_n}" ] || return 1
+  _lt="$(readlink -- "./${_n}")" || return 1
+  _w="$(pwd -P)"
+  _l="${_lt}"
+  case "${_l}" in
+    /*) ;;
+    *) _l="${_w}/${_l}" ;;
+  esac
+  _t=".${_n}.carry"
+  rm -rf -- "./${_t}" && mkdir -- "./${_t}" || return 1
+  if ! _xoct_own_panel_carry "${_a}" "${_l}" "${_w}/${_t}" "${3}" > /dev/null \
+    || ! rm -f -- "./${_n}"; then
+    rm -rf -- "./${_t}"
+    return 1
+  fi
+  if ! mv -T -- "./${_t}" "./${_n}"; then
+    ln -s -- "${_lt}" "./${_n}" 2> /dev/null
+    rm -rf -- "./${_t}"
+    return 1
+  fi
+  cd -P -- "./${_n}" 2> /dev/null || return 1
+  _r="$(pwd -P)"
+  _xoct_own_path "${_a}" "${_r}" || return 1
+  printf 'XOREAL %s\n' "${_r}"
+}
 ### Run there: make the store copy's directory $1 under the attached mount
 ### and print XOREAL with its canonical path, only when no name below /mnt
 ### on the way is a link (checked before anything is made, and again after).
@@ -2349,7 +2442,7 @@ _xoct_tgt_place() {
   done
   _out="$( { declare -f _xoct_real_want _xoct_own_path _xoct_own_parent_cd \
       _xoct_own_dir_ready _xoct_own_link_ready _xoct_own_store_link_ready \
-      _xoct_real_mnt_dir
+      _xoct_own_panel_carry _xoct_own_dir_carry _xoct_real_mnt_dir
     printf '%s\n' '"$@"'; } \
     | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
       "bash -s --${_args}" 2> /dev/null)"
@@ -6582,9 +6675,15 @@ _shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 _xoct_put_on_root() {
   local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _acct="$5" _q _dreal
   if [ -n "${_acct}" ]; then
-    _dreal="$(_xoct_tgt_place "${_th}" _xoct_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    # a store held on the attached mount there gives way to a real directory:
+    # the target's own panel stores (_XOCT_PANEL_OWN) come across first
+    if [ -n "${_XOCT_PANEL_OWN}" ]; then
+      _dreal="$(_xoct_tgt_place "${_th}" _xoct_own_dir_carry "${_acct}" "${_dstRoot}" "${_XOCT_PANEL_OWN}")"
+    else
+      _dreal="$(_xoct_tgt_place "${_th}" _xoct_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    fi
     if [ -z "${_dreal}" ]; then
-      echo "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store -- nothing copied"
+      echo "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store${_XOCT_PANEL_OWN:+, or the target panel stores could not be carried there} -- nothing copied"
       return 3
     fi
     # the store is files/ and private/: the web group map rides it too
@@ -6628,6 +6727,14 @@ _xoct_put_on_mount() {
       ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} \
       --rsync-path="$(_xoct_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
+      return 3
+    fi
+    # the link below replaces whatever holds <dstRoot>: the target's own
+    # panel stores there (_XOCT_PANEL_OWN), which the copy above left alone,
+    # come across into the mount copy right before it
+    if [ -n "${_XOCT_PANEL_OWN}" ] \
+      && [ -z "$(_xoct_tgt_place "${_th}" _xoct_own_panel_carry "${_acct}" "${_dstRoot}" "${_mreal}" "${_XOCT_PANEL_OWN}")" ]; then
+      echo "DENY: ${_lbl}: the target panel stores in ${_dstRoot} could not be carried into ${_mntDest}; target link left untouched"
       return 3
     fi
     if [ -z "$(_xoct_tgt_place "${_th}" _xoct_own_link_ready "${_acct}" "${_dstRoot}" "${_mntDest}")" ]; then
@@ -6778,6 +6885,25 @@ _xoct_handle_store() {
   return 0
 }
 
+### Status 0 when the account-relative path $1 is a control panel's store
+### or lies in one: static/files/<name> for a name the static/files copy
+### read (_XOCT_PANEL_NAMES), each box's own.
+_xoct_panel_store_path() {
+  local _p
+  local -a _ps
+  # names the copy could not read: nothing in the store is carried
+  if [ "${_XOCT_PANEL_UNREAD}" = "YES" ]; then
+    case "${1}" in static/files/*) return 0 ;; esac
+  fi
+  read -r -a _ps <<< "${_XOCT_PANEL_NAMES}"
+  for _p in "${_ps[@]}"; do
+    case "${1}" in
+      "static/files/${_p}"|"static/files/${_p}"/*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 # Catch-all: any symlink (besides static/files, handled explicitly) whose OWN target
 # is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
 # never left dangling on the target. Sets _XOCT_STORE_RC on any DENY. On a rename a
@@ -6792,6 +6918,7 @@ _xoct_catchall_mnt_symlinks() {
   while IFS= read -r _l; do
     [ -n "${_l}" ] || continue
     [ "${_l}" = "${_root}/static/files" ] && continue
+    _xoct_panel_store_path "${_l#"${_root}"/}" && continue
     _lt="$(readlink "${_l}" 2>/dev/null)"
     case "${_lt}" in /mnt/*) : ;; *) continue ;; esac
     _rel="${_l#"${_root}"/}"
@@ -6804,9 +6931,12 @@ EOF
 }
 
 ### The control panel of the account on each box, for its static/files copy:
-### _XOCT_PANEL_NAMES holds the names and _XOCT_PANEL_EXCL one anchored
-### --exclude per name. A panel is the box's own: named for its box, never
-### proxied, its site dir under aegir/ on no leg, and the import keeps the
+### _XOCT_PANEL_NAMES holds the names, _XOCT_PANEL_EXCL one anchored
+### --exclude per name and _XOCT_PANEL_OWN the target's own names, the stores
+### a placement that moves the store there carries across (_xoct_put_on_root,
+### _xoct_put_on_mount); the account's mount link sweep skips every name. A
+### panel is the box's own: named for its box, never proxied, its site dir
+### under aegir/ on no leg, and the import keeps the
 ### target's own. autosymlink keeps a panel's files and private in the
 ### account's store as static/files/<panel name>/, as it does a site's, so
 ### the copy used to carry the source panel's store, which the import's
@@ -6820,6 +6950,7 @@ _xoct_panel_store_names() {
   local _n _q _ans _k _all=" "
   _XOCT_PANEL_NAMES=""
   _XOCT_PANEL_EXCL=""
+  _XOCT_PANEL_OWN=""
   _n=$(_xoct_read_in "${1}/.drush" hostmaster.alias.drushrc.php 2> /dev/null \
     | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
   _n="${_n##*/}"
@@ -6831,6 +6962,8 @@ _xoct_panel_store_names() {
   while IFS='|' read -r _k _n; do
     [ -n "${_n}" ] || continue
     [[ "${_n}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 1
+    [ "${_k}" = "XOPANEL N" ] && [[ " ${_XOCT_PANEL_OWN} " != *" ${_n} "* ]] \
+      && _XOCT_PANEL_OWN="${_XOCT_PANEL_OWN:+${_XOCT_PANEL_OWN} }${_n}"
     [[ "${_all}" = *" ${_n} "* ]] && continue
     _all="${_all}${_n} "
     _XOCT_PANEL_NAMES="${_XOCT_PANEL_NAMES:+${_XOCT_PANEL_NAMES} }${_n}"
@@ -6899,9 +7032,13 @@ _xoct_transfer_static_symlink_safe() {
   # Each box's control panel store stays its own (_xoct_panel_store_names).
   _XOCT_PANEL_NAMES=""
   _XOCT_PANEL_EXCL=""
+  _XOCT_PANEL_OWN=""
+  _XOCT_PANEL_UNREAD=""
   if [ -e "${_X_SRC_USR}/static/files" ] || [ -L "${_X_SRC_USR}/static/files" ]; then
     if ! _xoct_panel_store_names "${_X_SRC_USR}" "${_X_TGT_HOST}" "${_X_DST_USR}"; then
       echo "DENY: static/files (${_X_DST_ACCT}): the control panel names of ${_X_DST_ACCT} on the target could not be read -- the store is not copied"
+      _XOCT_PANEL_OWN=""
+      _XOCT_PANEL_UNREAD=YES
       _XOCT_NOT_CLEAN=YES
       [ "${_MODE}" = "LIVE" ] && _XOCT_STORE_RC=3
       return 0
@@ -6916,6 +7053,8 @@ _xoct_transfer_static_symlink_safe() {
     "files/${_X_DST_ACCT}/static/files" \
     "${_X_TGT_HOST}" "${_X_TGT_MNT}" "${_X_IENI}${_XOCT_PANEL_EXCL:+ ${_XOCT_PANEL_EXCL}}" \
     "static/files (${_X_DST_ACCT})" "${_X_SRC_USR##*/}" || _XOCT_STORE_RC=$?
+  # no other store of the account carries a panel's
+  _XOCT_PANEL_OWN=""
 }
 
 ###-------------MIGRATION PROXY VERBS----###
