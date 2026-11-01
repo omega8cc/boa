@@ -7,6 +7,7 @@
 #   migration_proxy_trust.sh untrust <ip|cidr> [<ip|cidr>...]
 #   migration_proxy_trust.sh teardown [--force]
 #   migration_proxy_trust.sh reconcile [--force]
+#   migration_proxy_trust.sh adopt [--once]
 #
 # trust: register the given peer IP(s) as trusted migration sources on this host.
 #   L4 (always): add to csf.allow on ports 80 AND 443 and to csf.ignore -- applied
@@ -31,17 +32,51 @@
 #   cleaned by the next *-water.sh tick (control file gone -> nothing re-added).
 #
 # reconcile: recompute the trust set from the per-account migration proxy policy
-#   records (/data/disk/<oN>/log/migproxy.cnf, written by xoct/xmass). Records
-#   this host owns (its own _MIG_HOST_IP) with _MIG_ROLE=target decide which
-#   peers stay trusted: any permanent or ha-switch peer keeps trust and the
+#   records, /root/.<oN>.migproxy.cnf (root:root 0600, written by xoct/xmass,
+#   parsed and never sourced, never travelling with an account). Records this
+#   host owns (its own _MIG_HOST_IP) with _MIG_ROLE=target decide which peers
+#   stay trusted: any permanent or ha-switch peer keeps trust and the
 #   permanent marker (ha-switch behaves exactly as permanent for trust and
 #   teardown; it differs only in the client notification); all-temporary,
 #   all-retired or no live peers tears everything down INCLUDING the marker,
-#   because the union proves nothing needs it. An account stamped proxied with
-#   no valid record is never guessed at: its trust and the marker are left as
-#   found and reported. With no records at all this behaves exactly as
-#   teardown always has (marker honoured; --force overrides), so an
-#   unconverted fleet sees bit-identical post-mig behaviour.
+#   because the union proves nothing needs it. Record peers must be plain
+#   dotted quads (no CIDR, not this host, not loopback). An account marked
+#   proxied (/root/.<oN>.migproxy.proxied) with no valid record is never
+#   guessed at: its trust and the marker are left as found and reported. With
+#   no records at all this behaves exactly as teardown always has (marker
+#   honoured; --force overrides), so an unconverted fleet sees bit-identical
+#   post-mig behaviour.
+#   Nothing under /data/disk/<oN> is trusted: the account can write there.
+#   A root-written log/migproxy.cnf left by older tools and never adopted
+#   makes its account undeclared (add-only, no address taken from it, the
+#   marker left as found); an account-written one is ignored and reported;
+#   log/proxied.pid is never read.
+#
+# adopt: import, once per host, what older tools left in the accounts' log/
+#   (log/migproxy.cnf and log/proxied.pid, both root-written) into the root
+#   record and marker, only where root-only state vouches for it: a target
+#   record needs every peer address in /root/.migration.peer.addrs, in a root
+#   key line tagged '# xmass|xoct|xcopy migration source <ip>', or in a
+#   csf.allow line an xmass run wrote for it ('<ip> # xmass migration
+#   source', 'target' or 'inbound-proxy'); a source record needs its
+#   peer in root's known_hosts, every live proxy vhost of the account
+#   forwarding to it, and the pair named in root's own migration state (the
+#   xoct gate file /var/log/boa/xoct.migrate.<oN>_<ip>.state, the xmass gate
+#   file /var/log/boa/xmass.migrate.<ip>.state, or _XMASS_TARGET_IP=<ip> in
+#   /data/conf/xmass_state.cnf), and is refused when that peer also migrated
+#   into this box (any of those witnesses but the 'target' csf line a move
+#   out of this box wrote: a promoted or round-trip pair, where the record
+#   may be superseded); a source record naming no peer at all (a pin set
+#   before any proxy) names no pair, so it is refused and declared again
+#   with 'xoct proxy-mode'; a marker needs a
+#   root-owned log/proxied.pid reading COMPLETE (its age is carried from that
+#   file's mtime). Anything else is refused and the report prints the remedy.
+#   The report also names each relay-list address no root record accounts
+#   for, with 'untrust <ip>' as the remedy once it is confirmed stale (report
+#   only). Without --once it only reports what it would do. --once writes
+#   /root/.migration.records.adopted, one line per account and kind with the
+#   remedy of a refusal; once it exists nothing is ever imported again, and
+#   'adopt' shows what it found. It reloads no daemon and changes no trust.
 #
 # Idempotent and safe to re-run. Mirrors the csf.allow/csf.ignore line format and
 # the cleanup-by-"migration proxy"-tag used by _whitelist_ip_migration_proxy in
@@ -55,6 +90,38 @@ _perm_flag="/data/conf/.migration_proxy_permanent.pid"
 _realip_tool="/var/xdrago/migration_proxy_realip.sh"
 _csf_allow="/etc/csf/csf.allow"
 _csf_ignore="/etc/csf/csf.ignore"
+
+# Per-account records and proxied markers live in root's own home, never in
+# the account's tree. Plain assignments, never taken from the environment.
+_MIG_REC_DIR="/root"
+_MIG_ADOPT_STAMP="/root/.migration.records.adopted"
+_MIG_ADOPT_LOCK="/run/boa_migproxy_adopt.lock"
+_MIG_PEER_ADDRS="/root/.migration.peer.addrs"
+_MIG_AUTH_KEYS="/root/.ssh/authorized_keys"
+_MIG_KNOWN_HOSTS="/root/.ssh/known_hosts"
+_MIG_CSF_ALLOW="/etc/csf/csf.allow"
+# Where the migrations of this box keep their own gate and phase state:
+# root's, so a source record's pair is vouched for there, never by the
+# account.
+_MIG_STATE_DIR="/var/log/boa"
+_MIG_XMASS_STATE="/data/conf/xmass_state.cnf"
+_MIG_INFO_NAME="migproxy.cnf"
+_MIG_REC_HDR="# BOA migration proxy policy (root record). Managed by xoct/xmass. Do not edit by hand."
+_MIG_MARK_HDR="# BOA migration proxied marker (root). Managed by xoct/xmass. Do not edit by hand."
+_MIG_INFO_PFX="# BOA migration proxy policy (informational copy"
+_MIG_LEGACY_HDR="# BOA migration proxy policy. Managed by xoct/xmass. Do not edit by hand."
+_MIG_OCTET="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+# ./$1 read through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK and only
+# when that handle is a regular file with one link, owned by root, writable by
+# no one else, at most 64 KiB; shape "legacy" also needs gid 0 and mode 0600.
+# Prints the handle's mtime on a line of its own, then the bytes. Exit 3 when
+# the name is absent, 4 for any other name or shape, 5 on a read error. No
+# single quote in the text: it also travels inside remote heredocs.
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# The file ./$1 (never there before) created with the bytes read from stdin,
+# the owner $2:$3 and the read/write bits of the mode $4, all through the one
+# handle that created it, opened O_EXCL|O_NOFOLLOW.
+_MIG_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
 
 _msg() { echo "$@"; }
 _die() { echo "migration_proxy_trust: ERROR: $*" >&2; exit 1; }
@@ -240,11 +307,17 @@ _cmd_teardown() {
   _msg "migration proxy trust torn down on this host"
 }
 
-# --- per-account policy records (mirrors xoct's _mig_* primitives) -----------
+# --- per-account policy records (the _mig_* primitives xoct and xmass carry) --
+#
+# Kept in step with the copies in xoct and xmass, not shared: each body here
+# is theirs except the directory pin (_mpt_in_real_dir), the put text
+# (_MIG_PUT_PL) and _mig_log_class, which also keeps what it read for adopt.
 
-# A record sits in the account's own log/, so its name can be a link or a
-# FIFO and log/ itself a link: it is read only inside the real directory,
-# never through a link, never blocked on a FIFO, at most 1 MiB.
+# The account owns /data/disk/<oN>, so any name there can be a link or a
+# FIFO and log/ itself a link, and /data/conf can still be in an account's
+# hands (see below): a name in either is read only inside the real
+# directory, never through a link, never blocked on a FIFO. Root's own
+# directories (/root, /var/log/boa) are entered the same way.
 _mpt_in_real_dir() {
   local _d="${1}" _a="" _want
   shift
@@ -255,7 +328,10 @@ _mpt_in_real_dir() {
   if [ -n "${_a}" ]; then
     _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    # The parent of a top-level directory (/root) is "/", never the empty
+    # name: cd "" fails on one bash and follows CDPATH on another.
+    _want="$(cd -P -- "${_d%/*}/" 2> /dev/null && pwd -P)"
+    _want="${_want%/}/${_d##*/}"
   fi
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
 }
@@ -378,18 +454,35 @@ _conf_flag_put() {
   _mpt_in_real_dir "${1%/*}" _conf_put_file_here /dev/null "${1##*/}"
 }
 
-_mig_get() {
-  local _f="$1" _k="$2"
-  [ -e "${_f}" ] || return 1
-  _mpt_in_real_dir "${_f%/*}" _mpt_read_here "${_f##*/}" \
-    | grep -m1 "^${_k}=" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
-}
-
 _mig_valid_mode() {
   case "$1" in
     temporary|permanent|ha-switch|retired) return 0 ;;
     *) return 1 ;;
   esac
+}
+_mig_valid_acct() { [[ "$1" =~ ^[a-zA-Z0-9._-]+$ ]]; }
+_mig_valid_date() { [[ "$1" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]$ ]]; }
+# Strict dotted quad: every octet 0-255, no leading zero, no prefix.
+_mig_quad() { [[ "${1}" =~ ^(${_MIG_OCTET}\.){3}${_MIG_OCTET}$ ]]; }
+# $1 is one of the addresses this box holds.
+_mig_own_addr() {
+  [ -n "${1}" ] || return 1
+  hostname -I 2> /dev/null | tr ' ' '\n' | grep -qxF -- "${1}"
+}
+# A peer address a record may name: a strict dotted quad that is neither
+# the all-zeros host, loopback, nor one of this box's own addresses.
+_mig_peer_ok() {
+  _mig_quad "${1}" || return 1
+  [ "${1}" != "0.0.0.0" ] || return 1
+  case "${1}" in
+    127.*) return 1 ;;
+  esac
+  ! _mig_own_addr "${1}"
+}
+# A trust-set peer: one host, never a range, never the all-zeros host or
+# loopback. Peers are split without pathname expansion wherever they are read.
+_is_dotted_quad() {
+  _mig_quad "${1}" && [ "${1}" != "0.0.0.0" ] && [[ "${1}" != 127.* ]]
 }
 
 _my_ipv4s() {
@@ -397,50 +490,500 @@ _my_ipv4s() {
     | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
 }
 
+# Account directories under /data/disk, system directories excluded.
+_mig_list_accounts() {
+  local _d
+  while IFS= read -r _d; do
+    _d="${_d##*/}"
+    case "${_d}" in
+      arch|all|lost+found|lostfound|backups|codebases-cleanup|legacy|xusage) continue ;;
+      .*|'') continue ;;
+    esac
+    _mig_valid_acct "${_d}" && echo "${_d}"
+  done < <(find /data/disk -maxdepth 1 -mindepth 1 -type d 2> /dev/null | sort)
+}
+
+# Each non-blank line a comment or one _MIG_ key assignment, no key twice:
+# anything else makes the whole text malformed. Reads stdin.
+_mig_grammar_ok() {
+  awk '/^[ \t]*$/ { next }
+    /^#/ { next }
+    /^_MIG_[A-Z_]+=/ { k = $0; sub(/=.*/, "", k); if (k in s) b = 1; s[k] = 1; next }
+    { b = 1 }
+    END { exit b }'
+}
+# The value of the key $2 in the record text $1; empty when missing.
+_mig_txt_get() {
+  printf '%s\n' "${1}" | grep -m1 "^${2}=" | cut -d= -f2- | tr -d '\r\n'
+}
+
+# The file $2 in the real directory $1, read with _MIG_HREAD_PL in the
+# shape $3: the handle's mtime line, then the content. Status 0 read, 3
+# absent, 4 anything else at the name (or the directory not a real one),
+# 5 a read error.
+_mig_hread() {
+  local _rc
+  case "${2}" in
+    ""|*/*) return 4 ;;
+  esac
+  if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
+    return 3
+  fi
+  _mpt_in_real_dir "${1}" perl -e "${_MIG_HREAD_PL}" -- "./${2}" "${3}"
+  _rc=$?
+  case "${_rc}" in
+    0|3|4|5) return "${_rc}" ;;
+  esac
+  return 4
+}
+# The root record and marker paths of the account $1; status 1, nothing
+# printed, for a name that is not an account's.
+_mig_rec() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.cnf"
+}
+_mig_mark() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.proxied"
+}
+# The root file $1 (a name in _MIG_REC_DIR) without its mtime line, CR
+# stripped, once it reads in the root shape and keeps the grammar. Status 3
+# absent, 4 anything else.
+_mig_root_text() {
+  local _t _rc
+  _t="$(_mig_hread "${_MIG_REC_DIR}" "${1}" root)"
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    3) return 3 ;;
+    *) return 4 ;;
+  esac
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  printf '%s\n' "${_t}" | _mig_grammar_ok || return 4
+  printf '%s\n' "${_t}"
+}
+# The root record of the account $1. Status 1 bad name, 3 none, 4
+# malformed.
+_mig_rec_text() {
+  local _n
+  _n="$(_mig_rec "${1}")" || return 1
+  _mig_root_text "${_n##*/}"
+}
+# The mtime of the handle the root record of $1 was read through.
+_mig_rec_mtime() {
+  local _n _t _rc
+  _n="$(_mig_rec "${1}")" || return 1
+  _t="$(_mig_hread "${_MIG_REC_DIR}" "${_n##*/}" root)"
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    3) return 3 ;;
+    *) return 4 ;;
+  esac
+  printf '%s\n' "${_t}" | sed 1d | tr -d '\r' | _mig_grammar_ok || return 4
+  printf '%s\n' "${_t%%$'\n'*}"
+}
+# The value of the key $2 in the root record of $1 (empty when the key is
+# missing). Parsed, never sourced.
+_mig_rec_get() {
+  local _t _rc
+  _t="$(_mig_rec_text "${1}")"
+  _rc=$?
+  [ "${_rc}" = "0" ] || return "${_rc}"
+  _mig_txt_get "${_t}" "${2}"
+  return 0
+}
+# The record text $1 authored by this box: its _MIG_HOST_IP is one of
+# this box's addresses. A record for another address (a renumbered box)
+# is reported, never acted on.
+_mig_txt_mine() {
+  local _h
+  _h="$(_mig_txt_get "${1}" _MIG_HOST_IP)"
+  _mig_quad "${_h}" && _mig_own_addr "${_h}"
+}
+_mig_is_mine() {
+  local _t
+  _t="$(_mig_rec_text "${1}")" || return 1
+  _mig_txt_mine "${_t}"
+}
+# Every key of the record text $1 within its grammar; the first failing
+# reason printed, status 1. Unknown keys are left to the caller.
+_mig_txt_valid() {
+  local _t="${1}" _v _role _peer _ip _k
+  local -a _ips
+  _role="$(_mig_txt_get "${_t}" _MIG_ROLE)"
+  case "${_role}" in
+    source|target) ;;
+    *) echo "invalid _MIG_ROLE '${_role}'"; return 1 ;;
+  esac
+  _v="$(_mig_txt_get "${_t}" _MIG_HOST_IP)"
+  _mig_quad "${_v}" || { echo "invalid _MIG_HOST_IP '${_v}'"; return 1; }
+  _peer="$(_mig_txt_get "${_t}" _MIG_PEER_IP)"
+  if [ -n "${_peer}" ] && ! _mig_peer_ok "${_peer}"; then
+    echo "invalid _MIG_PEER_IP '${_peer}'"
+    return 1
+  fi
+  if [ "${_role}" = "target" ] && [ -z "${_peer}" ]; then
+    echo "target record without _MIG_PEER_IP"
+    return 1
+  fi
+  _v="$(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
+  IFS=' ,' read -r -a _ips <<< "${_v}"
+  for _ip in "${_ips[@]}"; do
+    _mig_peer_ok "${_ip}" || { echo "invalid _MIG_PEER_IPS address '${_ip}'"; return 1; }
+  done
+  _v="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
+  if [ -n "${_v}" ] && ! _mig_valid_acct "${_v}"; then
+    echo "invalid _MIG_PEER_OCT '${_v}'"
+    return 1
+  fi
+  _v="$(_mig_txt_get "${_t}" _MIG_MODE)"
+  _mig_valid_mode "${_v}" || { echo "invalid _MIG_MODE '${_v}'"; return 1; }
+  _v="$(_mig_txt_get "${_t}" _MIG_SCOPE)"
+  case "${_v}" in
+    account|box|"") ;;
+    *) echo "invalid _MIG_SCOPE '${_v}'"; return 1 ;;
+  esac
+  _v="$(_mig_txt_get "${_t}" _MIG_DEADLINE)"
+  if [ -n "${_v}" ] && [ "${_v}" != "none" ] && ! _mig_valid_date "${_v}"; then
+    echo "invalid _MIG_DEADLINE '${_v}'"
+    return 1
+  fi
+  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
+    _v="$(_mig_txt_get "${_t}" "${_k}")"
+    if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
+      echo "invalid ${_k} '${_v}'"
+      return 1
+    fi
+  done
+  return 0
+}
+# The root record of $1 passes every rule a decision needs.
+_mig_rec_valid() {
+  local _t _rc
+  _t="$(_mig_rec_text "${1}")"
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    3) echo "no root record"; return 1 ;;
+    *) echo "malformed root record"; return 1 ;;
+  esac
+  _mig_txt_valid "${_t}"
+}
+# The accounts that hold a root record, one per line, sorted. A name that
+# is not an account's, or whose /data/disk/<name> is not a real directory,
+# is skipped and named on stderr: a record ends when its account ends.
+_mig_rec_list() {
+  local _f _a _l=""
+  for _f in "${_MIG_REC_DIR}"/.*.migproxy.cnf; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    _a="${_f#"${_MIG_REC_DIR}/."}"; _a="${_a%.migproxy.cnf}"
+    if ! _mig_rec "${_a}" > /dev/null; then
+      echo "record ${_f}: not an account name; skipped" >&2
+      continue
+    fi
+    if [ ! -d "/data/disk/${_a}" ] || [ -L "/data/disk/${_a}" ]; then
+      echo "record ${_f}: /data/disk/${_a} is not a real directory; skipped" >&2
+      continue
+    fi
+    _l="${_l}${_a}"$'\n'
+  done
+  [ -n "${_l}" ] && printf '%s' "${_l}" | sort
+  return 0
+}
+# stdin put at $1, a name in _MIG_REC_DIR: a fresh root:root 0600 file
+# created through one handle (_MIG_PUT_PL), then renamed over the name.
+_mig_root_put() {
+  case "${1}" in
+    ""|*/*|.|..) return 1 ;;
+  esac
+  ( umask 077
+    cd -P -- "${_MIG_REC_DIR}" 2> /dev/null || exit 1
+    _t="./${1}.put.$$.${RANDOM}"
+    rm -f -- "${_t}"
+    if perl -e "${_MIG_PUT_PL}" "${_t}" 0 0 600 \
+      && mv -f -T -- "${_t}" "./${1}"; then
+      exit 0
+    fi
+    rm -f -- "${_t}"
+    exit 1 )
+}
+# The root record of $1 replaced by stdin.
+_mig_rec_put() {
+  local _n
+  _n="$(_mig_rec "${1}")" || return 1
+  _mig_root_put "${_n##*/}"
+}
+# The root proxied marker of $1, written by the tool $2 and dated with the
+# epoch $3 (now when empty).
+_mig_mark_put() {
+  local _n _at="${3}"
+  _n="$(_mig_mark "${1}")" || return 1
+  case "${2}" in
+    xoct|xmass|adopt) ;;
+    *) return 1 ;;
+  esac
+  [ -n "${_at}" ] || _at="$(date +%s)"
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 1
+  printf '%s\n' "${_MIG_MARK_HDR}" "_MIG_PROXIED=COMPLETE" \
+    "_MIG_PROXIED_AT=${_at}" "_MIG_PROXIED_BY=${2}" \
+    | _mig_root_put "${_n##*/}"
+}
+# The epoch the account $1 was proxied at, printed when its root marker is
+# valid: root shape, the grammar, COMPLETE, and a sane date (no later than
+# a day ahead). Status 1 otherwise.
+_mig_mark_at() {
+  local _n _t _at
+  _n="$(_mig_mark "${1}")" || return 1
+  _t="$(_mig_root_text "${_n##*/}")" || return 1
+  [ "$(_mig_txt_get "${_t}" _MIG_PROXIED)" = "COMPLETE" ] || return 1
+  _at="$(_mig_txt_get "${_t}" _MIG_PROXIED_AT)"
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 1
+  [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ] || return 1
+  printf '%s\n' "${_at}"
+}
+_mig_is_proxied() {
+  _mig_mark_at "${1}" > /dev/null
+}
+# What log/migproxy.cnf of the account $1 is, in one word, for display,
+# classification and refusals only: it never supplies an address or a
+# mode. "none" absent; "account" anything the account could have put
+# there (a link, a FIFO, another owner or mode, a hard link, or a root file
+# without a known header); "info" the informational copy; "legacy-mine
+# <mtime>" a record an older tool wrote on this box; "legacy-foreign" one
+# that travelled here. Called without a subshell it also leaves the word in
+# _MIG_LOG_CLS and the read in _MIG_LOG_RAW, so adopt judges the very bytes
+# it classified.
+_MIG_LOG_CLS=""
+_MIG_LOG_RAW=""
+_mig_log_class() {
+  local _t _rc _m _l1 _h
+  _MIG_LOG_CLS=none
+  _MIG_LOG_RAW=""
+  if ! _mig_valid_acct "${1}"; then
+    echo none
+    return 1
+  fi
+  _t="$(_mig_hread "/data/disk/${1}/log" "${_MIG_INFO_NAME}" legacy)"
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    3) echo none; return 0 ;;
+    *) _MIG_LOG_CLS=account; echo account; return 0 ;;
+  esac
+  _MIG_LOG_RAW="${_t}"
+  _m="${_t%%$'\n'*}"
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  _l1="${_t%%$'\n'*}"
+  case "${_l1}" in
+    "${_MIG_INFO_PFX}"*) _MIG_LOG_CLS=info; echo info; return 0 ;;
+  esac
+  if [ "${_l1}" = "${_MIG_LEGACY_HDR}" ]; then
+    _h="$(_mig_txt_get "${_t}" _MIG_HOST_IP)"
+    if _mig_quad "${_h}" && _mig_own_addr "${_h}"; then
+      _MIG_LOG_CLS="legacy-mine ${_m}"
+    else
+      _MIG_LOG_CLS=legacy-foreign
+    fi
+    echo "${_MIG_LOG_CLS}"
+    return 0
+  fi
+  _MIG_LOG_CLS=account
+  echo account
+}
+# _MIG_ROLE (or the key $2) of a legacy-shaped log/migproxy.cnf of $1
+# (either host), else empty. For refusals only: a value read here is
+# compared or named in a refusal, never acted on.
+_mig_log_role() {
+  local _t _k="${2:-_MIG_ROLE}"
+  _mig_valid_acct "${1}" || return 0
+  case "${_k}" in
+    _MIG_ROLE|_MIG_PEER_IP|_MIG_PEER_OCT) ;;
+    *) return 0 ;;
+  esac
+  _t="$(_mig_hread "/data/disk/${1}/log" "${_MIG_INFO_NAME}" legacy)" || return 0
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  [ "${_t%%$'\n'*}" = "${_MIG_LEGACY_HDR}" ] || return 0
+  _mig_txt_get "${_t}" "${_k}"
+}
+# Whether root itself holds a witness of the migration peer $1: the
+# address list root keeps beside each peer record it receives, a root key
+# line tagged for that address by a pre-mig, or a firewall line an xmass
+# run wrote for that pair (its source, its target, or the inbound reach a
+# promotion carried). The relay list and the realip file are not
+# witnesses: records feed them.
+_mig_witnessed() {
+  local _rx
+  _mig_quad "${1}" || return 1
+  _rx="${1//./\\.}"
+  grep -qxF -- "${1}" "${_MIG_PEER_ADDRS}" 2> /dev/null && return 0
+  grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
+    | grep -qE -- " # (xmass|xoct|xcopy) migration source ${_rx}[[:space:]]*\$" \
+    && return 0
+  grep -qE -- "^${_rx} # xmass migration (source|target|inbound-proxy)[[:space:]]*\$" "${_MIG_CSF_ALLOW}" 2> /dev/null
+}
+
+# --- trust-only helpers ------------------------------------------------------
+
+# Which of the three witnesses vouches for $1, for the report only (the
+# decision is _mig_witnessed's): each one asked alone, a firewall line named
+# by its kind.
+_mpt_witness_kind() {
+  local _k _rx="${1//./\\.}"
+  if ( _MIG_AUTH_KEYS=/dev/null; _MIG_CSF_ALLOW=/dev/null; _mig_witnessed "${1}" ); then
+    echo peer.addrs
+  elif ( _MIG_PEER_ADDRS=/dev/null; _MIG_CSF_ALLOW=/dev/null; _mig_witnessed "${1}" ); then
+    echo key-tag
+  elif ( _MIG_PEER_ADDRS=/dev/null; _MIG_AUTH_KEYS=/dev/null; _mig_witnessed "${1}" ); then
+    for _k in source inbound-proxy target; do
+      if grep -qE -- "^${_rx} # xmass migration ${_k}[[:space:]]*\$" "${_MIG_CSF_ALLOW}" 2> /dev/null; then
+        echo "csf-${_k}"
+        return 0
+      fi
+    done
+    echo csf
+  else
+    echo none
+  fi
+}
+# Whether root holds a witness that the peer $1 migrated or relays INTO this
+# box: any witness but the firewall line a move out of this box wrote for its
+# own target, which every xmass source keeps for the peer its records name.
+_mpt_inbound_witnessed() {
+  local _rx
+  ( _MIG_CSF_ALLOW=/dev/null; _mig_witnessed "${1}" ) && return 0
+  _mig_quad "${1}" || return 1
+  _rx="${1//./\\.}"
+  grep -qE -- "^${_rx} # xmass migration (source|inbound-proxy)[[:space:]]*\$" "${_MIG_CSF_ALLOW}" 2> /dev/null
+}
+# A name an operator may be shown inside a command line: an account name
+# that starts with a letter or a digit. A leading dash reads as an option
+# (--all), a leading dot is no account's.
+_mpt_name_ok() { [[ "${1}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; }
+# The first _MIG_ key of the record text $1 the record format does not
+# define; nothing when every key is known.
+_mpt_unknown_key() {
+  printf '%s\n' "${1}" | grep -E '^_MIG_[A-Z_]+=' | cut -d= -f1 \
+    | grep -vxE '_MIG_(ROLE|HOST_IP|PEER_IP|PEER_OCT|MODE|SCOPE|DEADLINE|RETIRE_DATE|PEER_IPS|STAMPED|ADOPTED)' \
+    | head -n1
+}
+# Root-only state naming the account $1 and the peer $2 as a pair a
+# migration from this box ran: the xoct gate file of that account and
+# target (either mode), the xmass gate file of that target, or that target
+# in this box's xmass state. The account can write none of them. Prints
+# which; status 1 when none does.
+_mpt_pair_state() {
+  local _t
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] && _is_dotted_quad "${2}" || return 1
+  if _mig_hread "${_MIG_STATE_DIR}" "xoct.migrate.${1}_${2}.state" root > /dev/null; then
+    echo xoct-state
+    return 0
+  fi
+  if _mig_hread "${_MIG_STATE_DIR}" "xmass.migrate.${2}.state" root > /dev/null; then
+    echo xmass-state
+    return 0
+  fi
+  _t="$(_mig_hread "${_MIG_XMASS_STATE%/*}" "${_MIG_XMASS_STATE##*/}" root)" || return 1
+  printf '%s\n' "${_t}" | sed 1d | tr -d '\r' | grep -qxF -- "_XMASS_TARGET_IP=${2}" || return 1
+  echo xmass-target
+}
+
+# The proxy_pass target of each live proxy vhost of account $1 ("tgt <t>"),
+# then the count of rename-redirect vhosts ("redirects <n>"). Live means no
+# leading dot and no https. prefix; the local control panel and the rename
+# redirects are not proxy vhosts. Read inside the real vhost.d.
+_mig_vhost_targets() {
+  local _u="/data/disk/${1}" _vd _pd _n _vt _t _r=0
+  _vd="${_u}/config/server_master/nginx/vhost.d"
+  _pd="$(_mpt_in_real_dir "${_u}/.drush" _mpt_read_here hostmaster.alias.drushrc.php \
+    | sed -n "s/.*'uri'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)"
+  while IFS= read -r -u 8 _n; do
+    [ -n "${_n}" ] || continue
+    _vt="$(_mpt_in_real_dir "${_vd}" _mpt_read_here "${_n}")"
+    if [ -n "${_pd}" ] && { [ "${_n}" = "${_pd}" ] || [ "${_n}" = "www.${_pd}" ]; } \
+      && ! grep -q "proxy_pass" <<< "${_vt}"; then
+      continue
+    fi
+    if grep -q "renamed site: redirect to its new name" <<< "${_vt}" \
+      && ! grep -q "proxy_pass" <<< "${_vt}" \
+      && ! grep -q "fastcgi_param db_name" <<< "${_vt}" \
+      && grep -q "^[[:space:]]*return 301 " <<< "${_vt}"; then
+      _r=$(( _r + 1 ))
+      continue
+    fi
+    _t="$(grep -m1 "proxy_pass" <<< "${_vt}" \
+      | sed "s|.*proxy_pass[[:space:]]*https\{0,1\}://||; s|;.*||" | tr -d ' ')"
+    [ -n "${_t}" ] && echo "tgt ${_t}"
+  done 8< <(_mpt_in_real_dir "${_vd}" find . -maxdepth 1 -mindepth 1 -type f \
+    ! -name '.*' ! -name 'https.*' 2> /dev/null | sed 's|^\./||' | sort)
+  echo "redirects ${_r}"
+}
+
 _cmd_reconcile() {
   local _force="${1:-}"
   local _keep="" _perm=NO _undeclared="" _records=0 _record_ips="" _legacy=""
-  local _cnf _root _acct _mode _peer _peers _hip _role _pid _myips _ip _kept="" _fail=""
+  local _t _rc _why _acct _mode _peers _role _mark _myips _ip _kept="" _cls _rmt _fail=""
+  local -a _pips
+
+  # Older tools left their records in the accounts' log/; import what root
+  # can vouch for once, before the first root record is read.
+  [ -e "${_MIG_ADOPT_STAMP}" ] || _cmd_adopt --once
 
   _myips="$(_my_ipv4s)"
   if [ -z "${_myips}" ]; then
-    # Cannot verify which records are OURS (a record that arrived by the log/
-    # rsync must never be a decision input). Refusing to act beats silently
+    # Cannot verify which records are OURS. Refusing to act beats silently
     # degrading into a teardown under a live proxy.
     _msg "reconcile: cannot determine this host's IPv4 addresses; leaving trust as found"
     return 0
   fi
 
-  for _cnf in /data/disk/*/log/migproxy.cnf; do
-    [ -e "${_cnf}" ] || continue
-    _hip="$(_mig_get "${_cnf}" _MIG_HOST_IP)"
-    # A record whose host IP is not ours arrived from the peer by rsync:
-    # provenance for reporting, never a decision input here.
-    echo "${_myips}" | grep -qxF "${_hip}" || continue
-    _role="$(_mig_get "${_cnf}" _MIG_ROLE)"
+  while IFS= read -r _acct; do
+    [ -n "${_acct}" ] || continue
+    _t="$(_mig_rec_text "${_acct}")"
+    _rc=$?
+    [ "${_rc}" -eq 3 ] && continue
+    if [ "${_rc}" -ne 0 ]; then
+      # Never partially honoured: the account is undeclared (add-only).
+      _msg "reconcile: ${_acct}: root record malformed; treated as undeclared"
+      _undeclared="${_undeclared} ${_acct}"
+      continue
+    fi
+    _role="$(_mig_txt_get "${_t}" _MIG_ROLE)"
+    _peers=""
+    # Split on spaces and commas, never expanded as a pathname.
+    IFS=' ,' read -r -a _pips <<< "$(_mig_txt_get "${_t}" _MIG_PEER_IPS) $(_mig_txt_get "${_t}" _MIG_PEER_IP)"
+    for _ip in "${_pips[@]}"; do
+      _is_dotted_quad "${_ip}" && _peers="${_peers} ${_ip}"
+    done
+    if ! _why="$(_mig_txt_valid "${_t}")"; then
+      # A record failing validation is never partially honoured; the account
+      # is undeclared and a target record of this host's keeps its peers
+      # where they parse.
+      _msg "reconcile: ${_acct}: root record invalid (${_why}); treated as undeclared"
+      _undeclared="${_undeclared} ${_acct}"
+      if [ "${_role}" = "target" ] && _mig_is_mine "${_acct}"; then
+        _records=$(( _records + 1 ))
+        _record_ips="${_record_ips}${_peers}"
+        _keep="${_keep}${_peers}"
+      fi
+      continue
+    fi
+    # A record written for another address (the box renumbered) is reported,
+    # never acted on.
+    if ! _mig_is_mine "${_acct}"; then
+      _msg "reconcile: ${_acct}: root record names another host address; not acted on"
+      continue
+    fi
     # Source-authored records describe OUTBOUND proxying; only target-role
     # records say who this host must keep trusting.
     [ "${_role}" = "target" ] || continue
     _records=$(( _records + 1 ))
-    _acct="$(basename "$(dirname "$(dirname "${_cnf}")")")"
-    _mode="$(_mig_get "${_cnf}" _MIG_MODE)"
-    _peer="$(_mig_get "${_cnf}" _MIG_PEER_IP)"
     # The source may hold several routable addresses (_MIG_PEER_IPS); the
     # relay's egress interface is not always its primary one, so all of them
     # count -- both as trust candidates and as record-owned for the legacy
-    # separation below. Invalid tokens are dropped, never partially honoured.
-    _peers=""
-    for _ip in $(_mig_get "${_cnf}" _MIG_PEER_IPS) ${_peer}; do
-      _is_ipv4_or_cidr "${_ip}" && _peers="${_peers} ${_ip}"
-    done
+    # separation below.
     _record_ips="${_record_ips}${_peers}"
-    if ! _mig_valid_mode "${_mode}" || ! _is_ipv4_or_cidr "${_peer}"; then
-      # A record failing validation is never partially honoured; treat the
-      # account as undeclared and keep its peers where they parse.
-      _undeclared="${_undeclared} ${_acct}"
-      _keep="${_keep}${_peers}"
-      continue
-    fi
+    _mode="$(_mig_txt_get "${_t}" _MIG_MODE)"
     case "${_mode}" in
       permanent|ha-switch)
         # ha-switch behaves exactly as permanent for trust and teardown; it
@@ -454,7 +997,7 @@ _cmd_reconcile() {
         :
       ;;
     esac
-  done
+  done < <(_mig_rec_list)
 
   # Trust entries the records do NOT account for predate the record system
   # (an old --permanent migration from a pre-record source). The records
@@ -467,18 +1010,53 @@ _cmd_reconcile() {
     _legacy="${_legacy} ${_ip}"
   done
 
-  # Accounts stamped proxied with no valid record of their own: never guess.
+  # What older tools left in log/ is never read for an address or a mode. A
+  # root-written copy nobody adopted, or one written after the root record
+  # (older tools during a fleet roll), freezes teardown for its account.
+  for _acct in $(_mig_list_accounts); do
+    _cls="$(_mig_log_class "${_acct}")"
+    if [ -e "$(_mig_rec "${_acct}")" ]; then
+      case "${_cls}" in
+        legacy-mine\ *)
+          _rmt="$(_mig_rec_mtime "${_acct}")" || _rmt=""
+          if [[ "${_rmt}" =~ ^[0-9]+$ ]] && [ "${_cls#legacy-mine }" -gt "${_rmt}" ]; then
+            _msg "reconcile: ${_acct}: log record written by older tools after the root record; treated as undeclared"
+            case " ${_undeclared} " in
+              *" ${_acct} "*) ;;
+              *) _undeclared="${_undeclared} ${_acct}" ;;
+            esac
+          fi
+        ;;
+        account)
+          _msg "reconcile: ${_acct}: account-written log record ignored"
+        ;;
+      esac
+      continue
+    fi
+    case "${_cls}" in
+      legacy-mine\ *)
+        _msg "reconcile: ${_acct}: unadopted log record (not read); treated as undeclared"
+        _undeclared="${_undeclared} ${_acct}"
+      ;;
+      account)
+        _msg "reconcile: ${_acct}: account-written log record ignored"
+      ;;
+    esac
+  done
+
+  # Accounts marked proxied with no valid record of their own: never guess.
   # Keep whatever trust exists, leave the permanent marker as found, report.
-  for _pid in /data/disk/*/log/proxied.pid; do
-    [ -e "${_pid}" ] || continue
-    _root="$(dirname "$(dirname "${_pid}")")"
-    _acct="$(basename "${_root}")"
+  for _mark in "${_MIG_REC_DIR}"/.*.migproxy.proxied; do
+    [ -e "${_mark}" ] || continue
+    _acct="${_mark##*/}"
+    _acct="${_acct#.}"
+    _acct="${_acct%.migproxy.proxied}"
+    _mig_mark "${_acct}" > /dev/null || continue
+    [ -d "/data/disk/${_acct}" ] && [ ! -L "/data/disk/${_acct}" ] || continue
+    _mig_is_proxied "${_acct}" || continue
     case " ${_undeclared} " in *" ${_acct} "*) continue ;; esac
-    _cnf="${_root}/log/migproxy.cnf"
-    _hip="$(_mig_get "${_cnf}" _MIG_HOST_IP)"
-    _mode="$(_mig_get "${_cnf}" _MIG_MODE)"
-    if [ -n "${_hip}" ] && echo "${_myips}" | grep -qxF "${_hip}" \
-      && _mig_valid_mode "${_mode}"; then
+    if _mig_is_mine "${_acct}" \
+      && _mig_valid_mode "$(_mig_rec_get "${_acct}" _MIG_MODE)"; then
       continue   # declared (either role); its policy already spoke above
     fi
     _undeclared="${_undeclared} ${_acct}"
@@ -574,16 +1152,471 @@ _cmd_reconcile() {
   [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
 }
 
+# --- adopt: import what older tools left in log/, once ----------------------
+
+_AD_LIVE=NO
+_AD_TODAY=""
+_AD_LINES=""
+_AD_N=0
+_AD_M=0
+_AD_K=0
+_AD_FAIL=NO
+_AD_RECIPS=""
+
+# One result for the stamp: <acct>|<kind>|<result>|<detail>|<date>, plus
+# |<remedy> when there is one (no "|" inside a field). The remedy is kept so
+# a later 'adopt' can show it: the agent pass that usually runs the import
+# discards its report.
+_ad_note() {
+  local _a="$1" _k="$2" _r="$3" _d="${4//|/}" _rem="${5//|/}"
+  _AD_LINES="${_AD_LINES}${_a}|${_k}|${_r}|${_d}|${_AD_TODAY}${_rem:+|${_rem}}"$'\n'
+  case "${_r}" in
+    adopted) _AD_N=$(( _AD_N + 1 )) ;;
+    refused) _AD_M=$(( _AD_M + 1 )) ;;
+    ignored) _AD_K=$(( _AD_K + 1 )) ;;
+  esac
+}
+_ad_word() {
+  if [ "${_AD_LIVE}" = "YES" ]; then
+    echo "$1"
+  else
+    case "$1" in
+      ADOPTED) echo "would-adopt" ;;
+      REFUSED) echo "would-refuse" ;;
+      *) echo "$1" ;;
+    esac
+  fi
+}
+_ad_refuse() {
+  local _a="$1" _k="$2" _why="$3" _rem="$4"
+  _msg "adopt: ${_a}: ${_k} $(_ad_word REFUSED): ${_why}"
+  [ -n "${_rem}" ] && _msg "adopt: ${_a}:   remedy: ${_rem}"
+  _ad_note "${_a}" "${_k}" refused "${_why}" "${_rem}"
+}
+
+_ad_record() {
+  local _a="$1" _raw _cls _b _why _role _peer _poct _mode _dl _hip _ip _seen=""
+  local _wit="" _wk="" _rem _tg _n _dlopt="" _rec _st _k _ips _rmode _pacct=""
+  local _ra _rpo _rpeer _rhip _rips="" _inv=""
+  local -a _all
+  _rec="$(_mig_rec "${_a}")" || return 0
+  if [ -e "${_rec}" ] || [ -L "${_rec}" ]; then
+    _msg "adopt: ${_a}: record present"
+    _ad_note "${_a}" record present "root record"
+    return 0
+  fi
+  _mig_log_class "${_a}" > /dev/null
+  _cls="${_MIG_LOG_CLS}"
+  _raw="${_MIG_LOG_RAW}"
+  case "${_cls}" in
+    none) return 0 ;;
+    info)
+      _msg "adopt: ${_a}: record ignored: informational copy without a root record"
+      _ad_note "${_a}" record ignored "informational copy"
+      return 0
+    ;;
+    legacy-foreign)
+      _msg "adopt: ${_a}: record ignored: travelled copy"
+      _ad_note "${_a}" record ignored "travelled copy"
+      return 0
+    ;;
+    legacy-mine\ *) ;;
+    *)
+      _msg "adopt: ${_a}: record ignored: account-written log record"
+      _ad_note "${_a}" record ignored "account-written"
+      return 0
+    ;;
+  esac
+  _b="$(printf '%s\n' "${_raw}" | sed 1d | tr -d '\r')"
+  _role="$(_mig_txt_get "${_b}" _MIG_ROLE)"
+  _hip="$(_mig_txt_get "${_b}" _MIG_HOST_IP)"
+  _peer="$(_mig_txt_get "${_b}" _MIG_PEER_IP)"
+  _poct="$(_mig_txt_get "${_b}" _MIG_PEER_OCT)"
+  _mode="$(_mig_txt_get "${_b}" _MIG_MODE)"
+  _dl="$(_mig_txt_get "${_b}" _MIG_DEADLINE)"
+  _ips="$(_mig_txt_get "${_b}" _MIG_PEER_IPS)"
+  # What the operator restates to replace a refused record; the values are
+  # the refused record's own, shown only as the suggestion. A remedy is a
+  # command line the operator runs as root and the copy may carry what an
+  # account planted, so each value is checked against its own grammar
+  # first: one that fails stays a placeholder and is named as invalid. xoct
+  # takes only a mode it can set and a deadline not yet past, so anything
+  # else stays a placeholder too. The stamp drops a bar, so no placeholder
+  # carries one.
+  if [ "${_role}" = "target" ]; then
+    _rpo="<source-oN>"
+    _rpeer="<source-ip>"
+  else
+    _rpo="<target-oN>"
+    _rpeer="<target-ip>"
+  fi
+  _ra="${_a}"
+  if ! _mpt_name_ok "${_a}"; then
+    _ra="<oN>"
+    _inv="${_inv} account"
+  fi
+  if [ -z "${_poct}" ]; then
+    _rpo=""
+  elif _mpt_name_ok "${_poct}"; then
+    _rpo="${_poct}"
+  else
+    _inv="${_inv} _MIG_PEER_OCT"
+  fi
+  if [ -n "${_peer}" ]; then
+    if _mig_peer_ok "${_peer}"; then
+      _rpeer="${_peer}"
+    else
+      _inv="${_inv} _MIG_PEER_IP"
+    fi
+  fi
+  _rhip="<this box's address>"
+  _mig_quad "${_hip}" && _rhip="${_hip}"
+  IFS=' ,' read -r -a _all <<< "${_ips}"
+  for _ip in "${_all[@]}"; do
+    [ -n "${_ip}" ] && [ "${_ip}" != "${_peer}" ] || continue
+    if ! _mig_peer_ok "${_ip}"; then
+      case " ${_inv} " in
+        *" _MIG_PEER_IPS "*) ;;
+        *) _inv="${_inv} _MIG_PEER_IPS" ;;
+      esac
+      continue
+    fi
+    case " ${_rips} " in
+      *" ${_ip} "*) ;;
+      *) _rips="${_rips} ${_ip}" ;;
+    esac
+  done
+  case "${_mode}" in
+    temporary|permanent|ha-switch) _rmode="${_mode}" ;;
+    *) _rmode="<mode>" ;;
+  esac
+  case "${_dl}" in
+    none) _dlopt=" --no-deadline" ;;
+    '') ;;
+    *)
+      if _mig_valid_date "${_dl}" && [[ ! "${_dl}" < "${_AD_TODAY}" ]]; then
+        _dlopt=" --deadline=${_dl}"
+      else
+        _dlopt=" --deadline=<new date>"
+      fi
+    ;;
+  esac
+  [ "${_rmode}" = "ha-switch" ] && _dlopt=""
+  if [ "${_role}" = "target" ]; then
+    # Run on the source: its account first, this box's account when renamed.
+    [ -n "${_rpo}" ] && [ "${_rpo}" != "${_ra}" ] && _pacct=" ${_ra}"
+    if [ "${_mode}" = "retired" ]; then
+      # The source's own record already reads retired, so its retire is a
+      # no-op that pushes nothing: no re-run there replaces this copy.
+      _rem="nothing to re-push: the source retired this pair; once its proxy is gone: migration_proxy_trust.sh untrust ${_rpeer}${_rips}"
+    else
+      _rem="on the source box (${_rpeer}): xoct proxy-mode ${_rpo:-${_ra}} ${_rmode}; if the source reports no root record for the account, restate it with xoct proxy ${_rpo:-${_ra}} ${_rhip}${_pacct} --repair --proxy-mode=${_rmode}"
+    fi
+  elif [ -n "${_peer}" ] && [ "${_mode}" = "retired" ]; then
+    # Retired and mailed before the upgrade: a restatement would re-wire
+    # the peer's trust and mail the client a change, a retire after it a
+    # second notice.
+    _rem="already retired per the copy: nothing to restate (a restatement re-wires ${_rpeer}'s trust and mails the client); if ${_rpeer} still trusts this box, release it there: migration_proxy_trust.sh untrust ${_rhip} [<this box's other addresses>]"
+  elif [ -n "${_peer}" ]; then
+    # The target account is named when the pair was renamed: without it the
+    # restatement pushes to the same account name on the peer.
+    [ -n "${_rpo}" ] && [ "${_rpo}" != "${_ra}" ] && _pacct=" ${_rpo}"
+    _rem="xoct proxy ${_ra} ${_rpeer}${_pacct} --repair --proxy-mode=${_rmode}${_dlopt}"
+  else
+    _rem="xoct proxy-mode ${_ra} ${_rmode}${_dlopt}"
+  fi
+  [ -n "${_inv}" ] && _rem="${_rem} (invalid, left as a placeholder:${_inv})"
+  if ! printf '%s\n' "${_b}" | _mig_grammar_ok; then
+    _ad_refuse "${_a}" record "malformed log record" "${_rem}"
+    return 0
+  fi
+  _k="$(_mpt_unknown_key "${_b}")"
+  if [ -n "${_k}" ]; then
+    _ad_refuse "${_a}" record "unknown key ${_k}" "${_rem}"
+    return 0
+  fi
+  if ! _why="$(_mig_txt_valid "${_b}")"; then
+    _ad_refuse "${_a}" record "${_why}" "${_rem}"
+    return 0
+  fi
+  # The record grammar takes any account-shaped peer name; one that reads as
+  # an option or starts with a dot names no account, and adopted it would
+  # reach the root record xoct reads.
+  if [ -n "${_poct}" ] && ! _mpt_name_ok "${_poct}"; then
+    _ad_refuse "${_a}" record "invalid _MIG_PEER_OCT (not an account name)" "${_rem}"
+    return 0
+  fi
+  # The bytes judged here are the ones classified: written for this box.
+  if ! _mig_txt_mine "${_b}"; then
+    _ad_refuse "${_a}" record "written for another address" "${_rem}"
+    return 0
+  fi
+  if [ "${_role}" = "target" ]; then
+    # Every address must be witnessed: adopting a subset would silently
+    # tear down trust for the rest. Split without pathname expansion.
+    IFS=' ,' read -r -a _all <<< "${_peer} ${_ips}"
+    for _ip in "${_all[@]}"; do
+      [ -n "${_ip}" ] || continue
+      case " ${_seen} " in *" ${_ip} "*) continue ;; esac
+      _seen="${_seen} ${_ip}"
+      if ! _mig_witnessed "${_ip}"; then
+        _ad_refuse "${_a}" record "unwitnessed ${_ip}" "${_rem}"
+        return 0
+      fi
+      _n="$(_mpt_witness_kind "${_ip}")"
+      _wit="${_wit}${_wit:+, }${_n} ${_ip}"
+      case "+${_wk}+" in
+        *"+${_n}+"*) ;;
+        *) _wk="${_wk}${_wk:++}${_n}" ;;
+      esac
+    done
+    _AD_RECIPS="${_AD_RECIPS}${_seen}"
+  elif [ -z "${_peer}" ]; then
+    # A pin set before any proxy existed names no pair, so no root-only
+    # migration state can vouch for it: the operator declares it again.
+    if [ -n "${_ips// /}" ]; then
+      _ad_refuse "${_a}" record "source record names _MIG_PEER_IPS without _MIG_PEER_IP" "${_rem}"
+    else
+      _ad_refuse "${_a}" record "source record names no peer, so no root migration state names a pair" "${_rem}"
+    fi
+    return 0
+  else
+    if ! ssh-keygen -F "${_peer}" -f "${_MIG_KNOWN_HOSTS}" > /dev/null 2>&1; then
+      _ad_refuse "${_a}" record "peer ${_peer} not in root known_hosts" "${_rem}"
+      return 0
+    fi
+    while IFS=' ' read -r _tg _n; do
+      [ "${_tg}" = "tgt" ] || continue
+      if [ "${_n}" != "${_peer}" ]; then
+        _ad_refuse "${_a}" record "vhost target ${_n} is not the record peer ${_peer}" "${_rem}"
+        return 0
+      fi
+    done < <(_mig_vhost_targets "${_a}")
+    # known_hosts and the vhosts can both be fed from the account's side:
+    # the pair must also be named in root's own migration state.
+    if ! _st="$(_mpt_pair_state "${_a}" "${_peer}")"; then
+      _ad_refuse "${_a}" record "no root migration state names ${_a} and ${_peer} as a pair" "${_rem}"
+      return 0
+    fi
+    # A box the peer itself migrated into (a promoted failback target, or a
+    # pair that ran both ways) keeps its old source record, set aside at
+    # promotion, and the state that names it: that record may be superseded.
+    # Restating it is right only while the account still relays there. Taken
+    # over, the account has no root record: it counts as undeclared (the
+    # trust here is only added to, a live cutover refuses it) until its mode
+    # is declared.
+    if _mpt_inbound_witnessed "${_peer}"; then
+      _ad_refuse "${_a}" record "peer ${_peer} also migrated into this box ($(_mpt_witness_kind "${_peer}")); the record may be superseded" "only if ${_ra} still relays to ${_rpeer} (its vhosts proxy there): ${_rem}; if this box took it over, nothing to restate; declare its mode with xoct proxy-mode ${_ra} <mode>; until then it counts as undeclared"
+      return 0
+    fi
+    if [ -e "${_rec}.superseded-by-promotion" ] || [ -L "${_rec}.superseded-by-promotion" ]; then
+      _ad_refuse "${_a}" record "a promotion of this box superseded its source record" "nothing to restate; declare its mode with xoct proxy-mode ${_ra} <mode>; until then it counts as undeclared"
+      return 0
+    fi
+    _wit="known_hosts+vhosts+${_st} ${_peer}"
+    _wk="known_hosts+vhosts+${_st}"
+  fi
+  if [ "${_AD_LIVE}" = "YES" ]; then
+    _ips="$(printf '%s' "${_ips}" | tr ',' ' ' | tr -s ' ')"
+    _ips="${_ips# }"
+    _ips="${_ips% }"
+    if ! {
+      printf '%s\n' "${_MIG_REC_HDR}" \
+        "_MIG_ROLE=${_role}" \
+        "_MIG_HOST_IP=${_hip}" \
+        "_MIG_PEER_IP=${_peer}" \
+        "_MIG_PEER_OCT=${_poct}" \
+        "_MIG_MODE=${_mode}" \
+        "_MIG_SCOPE=$(_mig_txt_get "${_b}" _MIG_SCOPE)" \
+        "_MIG_DEADLINE=${_dl}"
+      _n="$(_mig_txt_get "${_b}" _MIG_RETIRE_DATE)"
+      [ -n "${_n}" ] && printf '%s\n' "_MIG_RETIRE_DATE=${_n}"
+      [ -n "${_ips}" ] && printf '%s\n' "_MIG_PEER_IPS=${_ips}"
+      printf '%s\n' "_MIG_STAMPED=$(_mig_txt_get "${_b}" _MIG_STAMPED)" \
+        "_MIG_ADOPTED=${_AD_TODAY}"
+    } | _mig_rec_put "${_a}"; then
+      _msg "adopt: ${_a}: record NOT written: the root record could not be put"
+      _AD_FAIL=YES
+      return 0
+    fi
+  fi
+  _msg "adopt: ${_a}: record ${_role} $(_ad_word ADOPTED) (witness: ${_wit})"
+  _ad_note "${_a}" record adopted "${_role} witness=${_wk}"
+}
+
+_ad_marker() {
+  local _a="$1" _raw _rc _b _l1 _at _rem _l _ra="$1"
+  _mpt_name_ok "${_a}" || _ra="<oN>"
+  _rem="xoct proxy ${_ra} <target-ip> [<target-oN>] --repair"
+  if _mig_is_proxied "${_a}"; then
+    _msg "adopt: ${_a}: marker present"
+    _ad_note "${_a}" marker present "root marker"
+    return 0
+  fi
+  _l="/data/disk/${_a}/log"
+  # The x keeps trailing newlines: the size is the file's own.
+  _raw="$(_mig_hread "${_l}" proxied.pid root && printf x)"
+  _rc=$?
+  [ "${_rc}" -eq 3 ] && return 0
+  if [ "${_rc}" -ne 0 ]; then
+    _ad_refuse "${_a}" marker "log/proxied.pid not root-written" "${_rem}"
+    return 0
+  fi
+  _raw="${_raw%x}"
+  _at="${_raw%%$'\n'*}"
+  _b="${_raw#*$'\n'}"
+  _l1="${_b%%$'\n'*}"
+  if [ "$(printf '%s' "${_b}" | LC_ALL=C wc -c | tr -d ' ')" -gt 64 ]; then
+    _ad_refuse "${_a}" marker "log/proxied.pid larger than a marker" "${_rem}"
+    return 0
+  fi
+  if [ "${_l1}" = "A2B-IMPORT-FREEZE" ]; then
+    _ad_refuse "${_a}" marker "not a proxy marker (import freeze)" ""
+    return 0
+  fi
+  if [ "${_l1}" != "COMPLETE" ]; then
+    _ad_refuse "${_a}" marker "log/proxied.pid does not read COMPLETE" "${_rem}"
+    return 0
+  fi
+  if ! [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || [ "${_at}" -gt "$(( $(date +%s) + 86400 ))" ]; then
+    _ad_refuse "${_a}" marker "log/proxied.pid time is not a past date" "${_rem}"
+    return 0
+  fi
+  # Root wrote that file and an account cannot set a root file's times, so
+  # its mtime carries how long the account has been proxied.
+  if [ "${_AD_LIVE}" = "YES" ] && ! _mig_mark_put "${_a}" adopt "${_at}"; then
+    _msg "adopt: ${_a}: marker NOT written: the root marker could not be put"
+    _AD_FAIL=YES
+    return 0
+  fi
+  _msg "adopt: ${_a}: marker $(_ad_word ADOPTED) (proxied since $(date -u -d "@${_at}" '+%Y-%m-%d'))"
+  _ad_note "${_a}" marker adopted "log/proxied.pid"
+}
+
+# The relay list entries no root target record of this box accounts for,
+# once each: pre-record peers, or addresses an older release took from an
+# account's log/ copy. Reconcile keeps them; this only names them.
+_ad_unaccounted() {
+  local _acct _t _ip _acc="${_AD_RECIPS}"
+  local -a _all
+  while IFS= read -r _acct; do
+    [ -n "${_acct}" ] || continue
+    _t="$(_mig_rec_text "${_acct}")" || continue
+    [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "target" ] || continue
+    _mig_txt_mine "${_t}" || continue
+    IFS=' ,' read -r -a _all <<< "$(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
+    _acc="${_acc} ${_all[*]}"
+  done < <(_mig_rec_list 2> /dev/null)
+  while IFS= read -r _ip; do
+    _is_ipv4_or_cidr "${_ip}" || continue
+    case " ${_acc} " in *" ${_ip} "*) continue ;; esac
+    _msg "adopt: trusted peer ${_ip} (${_csf_ctrl}): no root record accounts for it; reconcile keeps it"
+    _msg "adopt:   remedy, once it is confirmed stale: migration_proxy_trust.sh untrust ${_ip}"
+  done < <(sort -u "${_csf_ctrl}" 2> /dev/null)
+}
+
+# One pass over every account: the record, then the marker. $1=YES writes
+# the root files and the stamp; anything else only reports.
+_ad_run() {
+  local _acct
+  _AD_LIVE="$1"
+  _AD_LINES=""; _AD_N=0; _AD_M=0; _AD_K=0; _AD_FAIL=NO; _AD_RECIPS=""
+  _AD_TODAY="$(date -u '+%Y-%m-%d')"
+  if [ -z "$(_my_ipv4s)" ]; then
+    _msg "adopt: cannot determine this host's IPv4 addresses; nothing imported, no stamp"
+    return 1
+  fi
+  while IFS= read -r _acct; do
+    [ -n "${_acct}" ] || continue
+    _ad_record "${_acct}"
+    _ad_marker "${_acct}"
+  done < <(_mig_list_accounts)
+  _ad_unaccounted
+  if [ "${_AD_LIVE}" != "YES" ]; then
+    _msg "adopt: report only: ${_AD_N} would-adopt, ${_AD_M} would-refuse, ${_AD_K} ignored; nothing written (run 'adopt --once')"
+    return 0
+  fi
+  if [ "${_AD_FAIL}" = "YES" ]; then
+    _msg "adopt: a root write failed; no stamp, so a re-run retries (what was written reads as present)"
+    return 1
+  fi
+  # The stamp sits beside the records, written the way they are.
+  if ! {
+    printf '%s\n' "# BOA migration record adoption $(date -u '+%Y-%m-%dT%H:%M:%SZ'). Nothing is imported after this file exists."
+    printf '%s' "${_AD_LINES}"
+  } | ( _MIG_REC_DIR="${_MIG_ADOPT_STAMP%/*}"; _mig_root_put "${_MIG_ADOPT_STAMP##*/}" ); then
+    _msg "adopt: stamp ${_MIG_ADOPT_STAMP} not written; a re-run retries"
+    return 1
+  fi
+  _msg "adopt: done: ${_AD_N} adopted, ${_AD_M} refused, ${_AD_K} ignored; stamp ${_MIG_ADOPT_STAMP}"
+  return 0
+}
+
+# The stamp's date, from its first line.
+_ad_stamp_date() {
+  _mig_hread "${_MIG_ADOPT_STAMP%/*}" "${_MIG_ADOPT_STAMP##*/}" root 2> /dev/null \
+    | sed -n '2s/^# BOA migration record adoption \([0-9T:Z-]*\)\..*/\1/p'
+}
+# What the import found, one report line per stamp line, with the remedy
+# the stamp kept.
+_ad_stamp_report() {
+  local _a _k _r _d _dt _rem
+  while IFS='|' read -r _a _k _r _d _dt _rem; do
+    [ -n "${_k}" ] || continue
+    _msg "adopt: ${_a}: ${_k} ${_r}: ${_d} (${_dt})"
+    [ -n "${_rem}" ] && _msg "adopt: ${_a}:   remedy: ${_rem}"
+  done < <(_mig_hread "${_MIG_ADOPT_STAMP%/*}" "${_MIG_ADOPT_STAMP##*/}" root 2> /dev/null | sed '1,2d')
+}
+
+# The import itself, under the adoption lock. A subshell, so the lock's
+# descriptor never outlives it (a daemon reloaded later must not inherit it).
+_ad_once_locked() (
+  exec 7> "${_MIG_ADOPT_LOCK}" || exit 1
+  if ! flock -w 60 7; then
+    _msg "adopt: another adoption holds ${_MIG_ADOPT_LOCK}; nothing imported, no stamp"
+    exit 1
+  fi
+  if [ -e "${_MIG_ADOPT_STAMP}" ]; then
+    _msg "adopt: already done $(_ad_stamp_date); nothing is imported again"
+    exit 0
+  fi
+  _ad_run YES
+)
+
+_cmd_adopt() {
+  case "${1:-}" in
+    --once)
+      if [ -e "${_MIG_ADOPT_STAMP}" ]; then
+        _msg "adopt: already done $(_ad_stamp_date); nothing is imported again"
+        return 0
+      fi
+      _ad_once_locked
+      return $?
+    ;;
+    '') ;;
+    *) _die "adopt: unknown option ${1}" ;;
+  esac
+  if [ -e "${_MIG_ADOPT_STAMP}" ]; then
+    _msg "adopt: already done $(_ad_stamp_date); nothing is imported again. What it found:"
+    _ad_stamp_report
+    _ad_unaccounted
+    return 0
+  fi
+  _ad_run NO
+}
+
 case "${1:-}" in
   trust)     shift; _cmd_trust "$@" ;;
   untrust)   shift; _cmd_untrust "$@" ;;
   teardown)  shift; _cmd_teardown "$@" ;;
   reconcile) shift; _cmd_reconcile "$@" ;;
+  adopt)     shift; _cmd_adopt "$@" ;;
   *)
     echo "Usage: $0 trust <ip|cidr>... [--permanent] [--csf-only]"
     echo "       $0 untrust <ip|cidr>..."
     echo "       $0 teardown [--force]"
     echo "       $0 reconcile [--force]"
+    echo "       $0 adopt [--once]"
     exit 1
   ;;
 esac

@@ -4095,10 +4095,14 @@ _octopus_cleanup() {
         # Its database broker switch too: a later account of the name would
         # otherwise start switched, with none of its databases its own. And
         # the broker seed's note, which a later account's create, or its
-        # Octopus pass, would read as its own.
+        # Octopus pass, would read as its own. So do its migration proxy
+        # record, superseded record and proxied marker
+        # (/root/.<oN>.migproxy.*): a record ends when its account ends. The
+        # glob cannot reach another account's files: ".o1.migproxy." is not a
+        # prefix of ".o10.".
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
           /root/.${_usEr}.migration-create.txt /root/.${_usEr}.dbctl-seed.txt \
-          /data/conf/${_usEr}_db_broker.txt; do
+          /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.*; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # So does its aegir2boa import state, beside the create marker, once

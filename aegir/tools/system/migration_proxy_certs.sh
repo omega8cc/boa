@@ -53,8 +53,86 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _DRY=NO
 [ "$1" = "--dry" ] && _DRY=YES
 
+### The policy record and the proxied marker root reads:
+### /root/.<oN>.migproxy.cnf and /root/.<oN>.migproxy.proxied, root:root
+### 0600, parsed and never sourced. The account's log/ copies (migproxy.cnf,
+### proxied.pid) are never read: the account can write them. Plain
+### assignments, never taken from the environment.
+_MIG_REC_DIR="/root"
+_MIG_ADOPT_STAMP="/root/.migration.records.adopted"
+_MIG_TRUST_TOOL="/var/xdrago/migration_proxy_trust.sh"
+_MPC_OCTET="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+### ./$1 read through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, and
+### only while that handle is a regular file with one link, owned by root,
+### writable by no one else, at most 64 KiB. Prints the handle's mtime on a
+### line of its own, then the bytes.
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+### The root file $1 (a name in _MIG_REC_DIR) without its mtime line, CR
+### stripped, once it reads in the root shape and keeps the record grammar
+### (each non-blank line a comment or one _MIG_ key, no key twice); status 1
+### otherwise.
+_mpc_root_text() {
+  local _t
+  [ "${1%/*}" = "${_MIG_REC_DIR}" ] || return 1
+  _t="$( ( cd -P -- "${_MIG_REC_DIR}" 2> /dev/null && perl -e "${_MIG_HREAD_PL}" -- "./${1##*/}" root ) )" || return 1
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  printf '%s\n' "${_t}" | awk '/^[ \t]*$/ || /^#/ { next }
+    /^_MIG_[A-Z_]+=/ { k = $0; sub(/=.*/, "", k); if (k in s) b = 1; s[k] = 1; next }
+    { b = 1 }
+    END { exit b }' || return 1
+  printf '%s\n' "${_t}"
+}
+### The peer the source-role root record of this box names for the account
+### $1, a strict dotted quad; nothing when there is no such record.
+_mpc_rec_peer() {
+  local _t _h _p
+  [[ "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${1#.}" = "${1}" ] || return 0
+  _t="$(_mpc_root_text "${_MIG_REC_DIR}/.${1}.migproxy.cnf")" || return 0
+  grep -qx "_MIG_ROLE=source" <<< "${_t}" || return 0
+  _h="$(grep -m1 '^_MIG_HOST_IP=' <<< "${_t}" | cut -d= -f2-)"
+  [ -n "${_h}" ] && hostname -I 2> /dev/null | tr ' ' '\n' | grep -qxF -- "${_h}" || return 0
+  _p="$(grep -m1 '^_MIG_PEER_IP=' <<< "${_t}" | cut -d= -f2-)"
+  [[ "${_p}" =~ ^(${_MPC_OCTET}\.){3}${_MPC_OCTET}$ ]] || return 0
+  [ "${_p}" != "0.0.0.0" ] && [[ "${_p}" != 127.* ]] || return 0
+  printf '%s\n' "${_p}"
+}
+### The accounts this box proxies, one per line: each holds a valid root
+### proxied marker (COMPLETE, a sane date no later than a day ahead) and a
+### real /data/disk/<oN>. Only xoct and xmass write one, after a conversion.
+_mpc_proxied_accts() {
+  local _m _a _t _at
+  for _m in "${_MIG_REC_DIR}"/.*.migproxy.proxied; do
+    [ -e "${_m}" ] || continue
+    _a="${_m##*/}"; _a="${_a#.}"; _a="${_a%.migproxy.proxied}"
+    [[ "${_a}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${_a#.}" = "${_a}" ] || continue
+    [ -d "/data/disk/${_a}" ] && [ ! -L "/data/disk/${_a}" ] || continue
+    _t="$(_mpc_root_text "${_MIG_REC_DIR}/.${_a}.migproxy.proxied")" || continue
+    grep -qx "_MIG_PROXIED=COMPLETE" <<< "${_t}" || continue
+    _at="$(grep -m1 '^_MIG_PROXIED_AT=' <<< "${_t}" | cut -d= -f2-)"
+    [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || continue
+    [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ] || continue
+    printf '%s\n' "${_a}"
+  done
+}
+### Accounts converted by older tools carry only log/proxied.pid until the
+### trust tool's adopt --once gives them a root marker. The BOA agent pass
+### runs it; this is the fallback, a no-op once its stamp exists. A dry run
+### writes nothing, so it only says the import is still owed.
+_mpc_adopt_once() {
+  [ -e "${_MIG_ADOPT_STAMP}" ] && return 0
+  if [ "${_DRY}" = "YES" ]; then
+    echo "migration_proxy_certs: DRY: record adoption has not run on this box yet; accounts converted by older tools are listed only after it has (a real run does it first)"
+    return 0
+  fi
+  [ -x "${_MIG_TRUST_TOOL}" ] || return 0
+  bash "${_MIG_TRUST_TOOL}" adopt --once \
+    || echo "migration_proxy_certs: ALRT: record adoption did not complete; log records stay unread (no decision is taken from them)"
+  return 0
+}
+
 ### Quiet no-op unless this box actually proxies something.
-ls /data/disk/*/log/proxied.pid >/dev/null 2>&1 || exit 0
+_mpc_adopt_once
+[ -n "$(_mpc_proxied_accts)" ] || exit 0
 
 # shellcheck disable=SC1091
 [ -r /opt/local/bin/lock.inc ] && . /opt/local/bin/lock.inc
@@ -427,24 +505,17 @@ _pull_domain() {
   return 0
 }
 
-### Walk every proxied account's HTTPS proxy vhosts. The peer comes from the
-### vhost's own proxy_pass (what is actually serving) and is cross-checked
-### against the account's policy record where one exists -- a disagreement is
-### exactly the half-repointed state --repair --retarget exists to fix, so
-### refuse rather than pull certificates from either candidate.
-for _PID in /data/disk/*/log/proxied.pid; do
-  [ -e "${_PID}" ] || continue
-  _ROOT=$(dirname "$(dirname "${_PID}")")
-  _OCT=$(basename "${_ROOT}")
-  _CNF=$(_mpc_read_in "${_ROOT}/log" migproxy.cnf)
-  _REC_IP=""
-  if [ -n "${_CNF}" ] \
-    && grep -qx "_MIG_ROLE=source" <<< "${_CNF}" \
-    && hostname -I 2>/dev/null | tr ' ' '\n' \
-       | grep -qxF "$(grep -m1 '^_MIG_HOST_IP=' <<< "${_CNF}" | cut -d= -f2-)"; then
-    _REC_IP=$(grep -m1 '^_MIG_PEER_IP=' <<< "${_CNF}" | cut -d= -f2- | tr -d '\r\n')
-    _valid_ip "${_REC_IP}" || _REC_IP=""
-  fi
+### Walk the HTTPS proxy vhosts of every account holding a root proxied
+### marker. Root connects to the peer over ssh, so the peer is the one the
+### account's root policy record names, never an address the account wrote:
+### each vhost's own proxy_pass (what is actually serving) must agree with
+### it. A disagreement is exactly the half-repointed state --repair
+### --retarget exists to fix, so refuse rather than pull certificates from
+### either candidate; an account without that record is not mirrored at all.
+for _OCT in $(_mpc_proxied_accts); do
+  _ROOT="/data/disk/${_OCT}"
+  _REC_IP="$(_mpc_rec_peer "${_OCT}")"
+  _NOREC=""
   _VD="${_ROOT}/config/server_master/nginx/vhost.d"
   while IFS= read -r -u 9 _V; do
     _VHS="${_VD}/${_V}"
@@ -458,20 +529,30 @@ for _PID in /data/disk/*/log/proxied.pid; do
       _valid_dom "${_DOM}" && _RETIRED="${_RETIRED} ${_OCT}/${_DOM}"
       continue
     fi
+    if [ -z "${_REC_IP}" ]; then
+      if [ -z "${_NOREC}" ]; then
+        _msg "ALRT: ${_OCT}: no root policy record (/root/.${_OCT}.migproxy.cnf, role source, this box's own) names the target;"
+        _msg "ALRT:   a vhost is the account's to write, so root does not connect where it points -- not mirrored;"
+        _msg "ALRT:   restate it: xoct proxy ${_OCT} <target-ip> [<target-oN>] --repair --proxy-mode=<mode>"
+        _NOREC=YES
+      fi
+      _valid_dom "${_DOM}" && _FAIL_REFRESH="${_FAIL_REFRESH} ${_DOM}"
+      continue
+    fi
     _VIP=$(grep -m1 'proxy_pass' <<< "${_VHC}" \
       | sed 's/.*https:\/\///; s/;.*//' | tr -d ' ')
     if ! _valid_dom "${_DOM}" || ! _valid_ip "${_VIP}"; then
       _msg "ALRT: ${_OCT}: cannot parse domain/target from ${_VHS}; skipping"
       continue
     fi
-    if [ -n "${_REC_IP}" ] && [ "${_REC_IP}" != "${_VIP}" ]; then
-      _msg "ALRT: ${_OCT}/${_DOM}: vhost forwards to ${_VIP} but the policy record says ${_REC_IP};"
+    if [ "${_REC_IP}" != "${_VIP}" ]; then
+      _msg "ALRT: ${_OCT}/${_DOM}: vhost forwards to ${_VIP} but the root policy record says ${_REC_IP};"
       _msg "ALRT:   refusing to mirror until they agree -- repair with:"
       _msg "ALRT:   xoct proxy ${_OCT} <correct-ip> --repair --retarget"
       _FAIL_REFRESH="${_FAIL_REFRESH} ${_DOM}"
       continue
     fi
-    _pull_domain "${_OCT}" "${_DOM}" "${_VIP}"
+    _pull_domain "${_OCT}" "${_DOM}" "${_REC_IP}"
   done 9< <(_mpc_in_real_dir "${_VD}" _mpc_https_names_here)
 done
 
@@ -502,9 +583,8 @@ fi
 ### over the vhosts we track and mail when it is close AND a refresh failed.
 _EARLIEST_EPOCH=""
 _EARLIEST_DOM=""
-for _PID in /data/disk/*/log/proxied.pid; do
-  [ -e "${_PID}" ] || continue
-  _ROOT=$(dirname "$(dirname "${_PID}")")
+for _OCT in $(_mpc_proxied_accts); do
+  _ROOT="/data/disk/${_OCT}"
   _VD="${_ROOT}/config/server_master/nginx/vhost.d"
   while IFS= read -r -u 9 _V; do
     _VHC=$(_mpc_read_in "${_VD}" "${_V}")
