@@ -63,6 +63,12 @@
       upgrade restores the docroot of platforms that lost it, and a Git
       platform imported from its backend record keeps its docroot too.
 
+    * A whole-server move with xmass keeps each box's own control panel
+      files: a sync deleted the new box's panel files store and copied in
+      the old box's, which the cutover then renamed, and a panel whose old
+      counterpart had no store was left with broken files and private
+      links. xoct and xcopy no longer copy the old panel's store either.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
