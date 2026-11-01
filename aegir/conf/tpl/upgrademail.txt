@@ -2,71 +2,63 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-This is the Griffin release, the largest BOA has ever shipped, and a surprising amount of it shows up right where you work: in your control panel and in what your visitors feel. One thing you will notice first: this upgrade queues a single automatic Verify for each of your Drupal and Backdrop sites so they pick up the new server settings, and as tasks now run one after another, your own tasks wait their turn behind them. Here is the tour.
+This is the Phoenix release, named for its answer to 21 October: when PHP published a critical security release that day, the fixed versions were on your server the same day, PHP 7.4 to 8.1 among them, and PHP 5.6 to 7.3 followed the next evening, with nothing for you to do. The rest of the release follows the same idea: when something goes wrong with a site, BOA now notices, heals what it can and records the rest. Two things you may have seen already: your control panel now runs on a PHP version of its own, chosen by the server, and each of your Drupal 10 and 11 sites started once with a cold cache, as every copy of a site now has a cache of its own. Here is the tour.
 
 ----------------------------------------
-TWO MORE SYSTEMS, ONE CONTROL PANEL
+PATCHED PHP, WHATEVER YOUR SITES RUN ON
 ----------------------------------------
 
-Grav 2 and Textpattern now live in the same Ægir control panel as your Drupal and Backdrop sites, with the tasks you already know: install, verify, backup, restore, clone and upgrade. Grav is a fast flat-file system that needs no database at all, so a Grav site is as light as a website gets; Textpattern is a long-loved publishing system with a loyal following. Both can be upgraded on a copy first, so you test the new version beside the live one and switch it over only when you are happy. Where your server administrator has them switched on, their platforms are built along with the others your account's list of platforms asks for: ALL includes them, and a list of your own needs GRV and TXP added. You do not have to wait for the next scheduled upgrade: the README.txt in your account's static/control folder shows how an empty run-upgrade.pid beside platforms.info starts your instance upgrade within a few minutes.
+Every PHP version on your server carries PHP's October security fix, from the current releases down to the versions PHP itself no longer maintains, which BOA now builds with this year's security backports. A site whose code cannot run on the PHP version it was given, an old Drupal 7 site on PHP 8 for instance, no longer answers with an error page: BOA moves it to the nearest PHP version that runs it and writes why into your account's PHP assignment file, where you can read it, and the server's administrator is told. If a script of yours keeps hitting PHP's time limit, a daily note in your account's control folder now names it, with the time, the script and the path, so a slow import or report no longer fails silently; nothing is stopped or changed. And a site whose scheduled cron keeps failing is reported to the server's administrator once a day, so a silent cron no longer goes unseen.
 
 ----------------------------------------
-A SITE IN A FOLDER OF YOUR DOMAIN
+NEW IN THE CATALOGUE: CIVICRM, DRUPAL 12, SHOPS ON GRAV
 ----------------------------------------
 
-A Drupal or Backdrop site can now live under a path of one of your domains, such as example.com/blog, and it gets everything a site of its own gets: its own files and images, its own cron and database updates, even its own PHP version. Add it in the panel with the address including the path; the main domain may be a site or not, and several such sites can share one domain. The panel refuses an address that could not work and prepares the main domain for its new neighbour by itself.
+CiviCRM is a ready platform now, for Backdrop and for Drupal 11: add a site on one of them and the panel installs CiviCRM with it and carries it through Verify, Clone, Migrate and cron. Drupal 12, still in beta, joins the catalogue for instances running PHP 8.5 or 8.6, so you can try your code on the next Drupal early. And a Grav site can now be created with a MySQL database for a KahunaCart shop, with the panel looking after the database and the shop's worker. The two CiviCRM platforms and Drupal 12 are not built through ALL: add BDC, DEC or DT0 to the platforms.info file in your account's static/control folder (ALL BDC keeps everything else as well), create an empty run-upgrade.pid beside it, and your instance upgrade starts within a few minutes; a shop needs no symbol, only a Grav site. Drupal 11 with CiviCRM, Drupal 12 and a shop all need a server on Percona 8.4, and Drupal 12 your instance's command-line and web PHP at 8.5 or 8.6; on a server still on 5.7 the build skips them and its log says why, so ask your server's administrator. The README.txt in that folder explains it, and so does https://docs.boa.io/platforms. Like every ready-made Drupal 8 and newer platform, the CiviCRM and Drupal 12 ones are for demonstration and compatibility testing; a production site belongs on a platform of your own. For a site still on Drupal 8 or 9, the mirror now carries the last cores of both, so an upgrade from such a site can be rehearsed here first.
 
 ----------------------------------------
-TOMORROW'S PHP TODAY, AND PHP PER PLATFORM
+A CACHE OF ITS OWN FOR EVERY COPY OF A SITE
 ----------------------------------------
 
-PHP 8.6 is still a release candidate, but where your server has it installed you can already point a copy of a site at it and see how your code will behave on the next PHP long before it becomes the norm; keep it to copies for now, since until its final release it runs without the Valkey cache and a few extensions such as Imagick. Each platform in your account can now run its command-line tools and panel tasks on its own PHP version, so an older and a newer codebase live happily side by side. And a task that would run a site's code on a PHP version it cannot handle now stops before it starts and tells you exactly why and what to change, instead of failing half way.
+Each copy of a Drupal 10 or 11 site now has its own Valkey cache namespace, so a Migrate that keeps the site's name no longer disturbs the live site while its copy runs a newer core, and sites stay consistent through a cache outage: the first request after it clears what the cache served from before. A Drupal 10 or 11 site whose cache connection fails serves the page from the database instead of an error, and Drupal 8, 9 and 10 sites keep their queues in their own database again; work a site had queued in the cache before the upgrade is not carried over, so queue it again if it matters. Two gifts for the sites still on Drupal 6: they install and run on PHP 8.1 and later again, and their database updates run again.
 
 ----------------------------------------
-COPIES AND RESTORES THAT CHECK THE ROOM FIRST
+RENAMES, ALIASES AND SITES IN A FOLDER
 ----------------------------------------
 
-Before a Clone, Migrate or Restore takes its safety copy, it measures everything it is about to copy and checks that the disk has room for all of it with a margin to spare. If it does not, the task stops right away with the numbers in its log and nothing is written. A copy that fails half way tidies up after itself and leaves the original site as it was, the automatic backup taken before a clone carries the site's database, and database triggers, stored procedures and scheduled events now travel with a site through every backup, copy and move. If one of your sites uses them, take a fresh backup now: archives made before this upgrade may lack them.
+A site renamed while its aliases redirected to it answers on its new name right away, a www or bare alias you added by hand moves with a rename like the automatic one, and the automatic companion is never taken when another of your sites holds it. A site's own name can no longer be its alias, and the sites in a folder of a domain keep their address through a Migrate and a Backdrop Cutover, while a folder site can no longer claim the domain it lives in.
 
 ----------------------------------------
-YOUR SITES STAY UP WHILE THE SERVER WORKS
+COPIES AND RESTORES THAT FINISH FORWARD
 ----------------------------------------
 
-Maintenance moments that used to cost your visitors a burst of errors no longer do: switching the server to a single PHP version, adding a PHP version, changing how your account assigns PHP to its sites, the routine password change of the cache service during an upgrade, all of them now keep your sites online. Drush keeps working on the PHP version chosen for you while an upgrade swaps in its fresh copy, and from the next upgrade on your panel is free for your own work sooner, because it no longer re-checks platforms that hold no sites.
+A Restore whose last step fails after the site was replaced keeps the restored copy; a Migrate or rename whose last step fails after the old database was dropped finishes forward instead of rolling back onto an empty shell; a Clone or Migrate onto a name whose files were still there no longer links the new site to the old files; and a large site a Migrate, Clone or Restore loaded is measured before it serves, so its first visitors no longer wait on full table scans. Before a copy starts, the room check now covers the number of files it will make, not only their size, so a copy can no longer run the server out of files while the disk still shows free space.
 
 ----------------------------------------
-DRUPAL 10 AND 11, SMOOTHER DAY TO DAY
+A PANEL THAT FITS YOUR PHONE AND MOVES FASTER
 ----------------------------------------
 
-Every Clone, Migrate and Restore of a Drupal or Backdrop site now applies its database updates, Drupal 10 and 11 included, and the old option to skip them is retired; the Run db updates task either completes with the site's own Drush or puts the site back as it was. Sites that use modern logging modules such as Monolog, and Drupal 11 sites with Webform, now verify, back up, clone and migrate without trouble. Your sites keep their hash salt through every Verify, Backup, Restore and Migrate, so login links and open forms keep working after maintenance, a new Drupal 11 site installs in the language you choose, and Composer can update Drupal core in your own codebases without tripping over the scaffold files.
-
-----------------------------------------
-ONE CHANGE OF POLICY WORTH KNOWING
-----------------------------------------
-
-The ready-made Drupal 8 and newer platforms BOA provides, every distribution and the plain Drupal 9, 10 and 11 cores, are now meant for demonstration and compatibility testing, with security updates on a best-effort basis. Production sites belong on a platform you build in your own account: if one of yours still runs on a ready-made platform, plan its move, and the guide at https://docs.boa.io/using/deploying-code/building-a-platform shows how.
-
-----------------------------------------
-DRUSH ON DRUPAL 8 AND NEWER: USE VDRUSH
-----------------------------------------
-
-On your Drupal 8 and newer sites, run Drush commands with vdrush, the site's own Drush. The older Drush 8 still answers uli, status, sql-dump and a few other read-only commands there; anything else now points you to vdrush instead of running a tool that does not fit the site.
-
-Shell logins made for a single client now look after that client's files and themes only, while Drush, Composer and the database tools stay with your main login and the control panel. For a client's developer who needs those tools, your server administrator can now set up a platform developer login, with Drush and Composer on the platforms that hold only that client's sites.
-
-----------------------------------------
-A CONTROL PANEL THAT TAKES TURNS
-----------------------------------------
-
-Tasks in your panel now run one after another, so two tasks can never trip over the same site, and duplicate waiting tasks are folded into one. Every task shows which login started it, and a new site operator role lets a colleague run everyday site work without being able to back up, restore, delete or reset passwords. The one-time administrator login link of a new or reset site now appears on the site's own page, next to the house icon, for 24 hours, and big backup downloads from your panel now finish in the browser, however large.
+The lists you open most are quicker: the sites, the tasks and the platforms. The panel fits a phone now, with columns that stack and tables that scroll in place, pop-ups that fit every window width, long domains trimmed with the full name on hover, and every row's status readable by a screen reader. The Add site form offers every language Drupal core knows, Drupal CMS included; the Migrate form compares Drupal 8 and newer and Backdrop versions correctly, so a newer platform is no longer greyed out; a site operator login sees the Platforms page and each site's platform; and the panel spells its name Ægir throughout.
 
 ----------------------------------------
 FASTER, STEADIER PAGES FOR YOUR VISITORS
 ----------------------------------------
 
-HTTP/3 connections now ride through the routine reloads every BOA server makes, so big uploads and downloads complete, and HTTP/3 moves large files as fast as HTTP/2. Audio and video play through to the end for listeners whose players read far ahead, AVIF images reach browsers as images and are cached like WebP, and when a crowd lands on a brand-new page at once, your visitors wait a moment for its first copy instead of all hitting PHP together: in our test, two page builds instead of seventy-one. A new shield turns away crawler networks that spread one scraper over hundreds of addresses, while real visitors pass as before.
+The shield against crawler networks now also catches the fleets that send one request per address on a browser string over a year old: in a replay of two servers' logs it turned away over ten times as many of their requests, and a visitor on such a browser still gets through by following a link or logging in; brand and media monitoring crawlers are turned away like the SEO crawlers, more AI agents are told apart, and an AI ads checker can no longer use up every site's share on the server. A site whose pages carry large cookies or a long security header no longer gets a 502 through the server's HTTPS front, a plain-HTTP visitor to one of your aliases reaches the HTTPS site in one hop, old file addresses of an imported or renamed site keep answering, and a payment gateway's notifications are no longer taken for a flood.
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-866
+----------------------------------------
+IN THE SHELL
+----------------------------------------
+
+The limited shell answers prompts again, so the first connection to a new host, a key passphrase or a git password are asked as they should be; tools you install with gem or npm run again; and PHP started inside a Composer run, as a Drupal CMS project or a CiviCRM platform build does, runs for every shell account, so building such a platform in your account no longer stops. vdrush, a platform's own Drush, now also works as a one-shot command from the platform root after Unlock Local Drush, so a deployment script or a coding agent can drive it; see https://docs.boa.io/using/drush/drush-basics.
+
+----------------------------------------
+BACKDROP, GRAV AND TEXTPATTERN
+----------------------------------------
+
+Backdrop gets CiviCRM as a ready platform, and a Backdrop Cutover onto a site in a folder keeps that address. On a Grav site, Reset login now signs out every remembered browser and, on current plugins, every API token, the admin's script and style files are cached by browsers for a year, and a shop's public routes stay reachable behind the admin IP lock. A Grav or Textpattern rename, Clone or Upgrade onto a name whose earlier holder left a stale alias no longer inherits its aliases and keys.
+
+Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-877
 
 ----------------------------------------
 YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL
