@@ -10,6 +10,65 @@
       2.2.19; only a file that exists is refused, so a page's Markdown
       address answers as before.
 
+    * A Grav site no longer serves script and source files that only ever
+      run elsewhere (.phtml, .phar, .pl, .py, .sh and the like) from its
+      image and asset caches or its own trees, nor a copy of a root file
+      such as composer.json.bak, as Grav's own server rules have it.
+
+    * The in-place Grav upgrade swaps each bundled plugin and theme in
+      whole, behind Grav's own maintenance page and plugin folder lock, as
+      Grav's installer does since 2.2.20: a request no longer meets a
+      plugin missing or half copied while the task runs, which for the
+      Login plugin left its pages open for that moment.
+
+    * A Verify of a Grav site or of its platform keeps the site's secrets
+      readable to its PHP and never widens them while it runs: the heal
+      handed the account files, configuration and .env to the account's
+      own group and opened them up before setting them back, so the site
+      answered errors for seconds on every Verify and its secrets were
+      readable to other users meanwhile.
+
+    * A Grav site that keeps its environment overrides in Grav's older
+      layout, user/<site>/ with no user/env/, has them protected like
+      user/config: the secret keys seeded there stayed readable to other
+      users after every Verify.
+
+@=> Important Fixes
+
+    * A Grav page at /security, /changelog, /readme, /contributing or
+      /code_of_conduct answers at its .md address too: the vhost refused
+      those five names outright for the core's Markdown files of the same
+      names, which are now refused only when they exist.
+
+    * The Ægir control panel refuses a Platform Path another platform
+      already uses (#1952), for a new platform and for one edited after
+      its Verify failed: the check never ran. Of two platforms on one path,
+      the second could not be deleted while the first had sites, and
+      deleting it removed the whole tree when it had none. Such a Delete
+      now removes only that platform's record and keeps the tree; it is
+      refused while sites still name the platform being deleted.
+
+    * The Delete of a platform deployed from Git or by Composer no longer
+      removes its repository or project folder when that folder holds
+      another platform's tree: the folder stays, with a warning that names
+      the other platform.
+
+    * Saving again a platform deployed from Git whose Verify failed keeps
+      its Platform Path: the docroot was appended a second time.
+
+    * Saving a verified platform or site deployed from Git keeps its branch
+      or tag and its docroot: they were stored as master and empty, so the
+      Git pull webhook matched the wrong branch until the next Verify, and a
+      Verify that had to clone the codebase again asked for master. The
+      upgrade restores the docroot of platforms that lost it, and a Git
+      platform imported from its backend record keeps its docroot too.
+
+    * A whole-server move with xmass keeps each box's own control panel
+      files: a sync deleted the new box's panel files store and copied in
+      the old box's, which the cutover then renamed, and a panel whose old
+      counterpart had no store was left with broken files and private
+      links. xoct and xcopy no longer copy the old panel's store either.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw

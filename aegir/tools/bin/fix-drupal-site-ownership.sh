@@ -719,19 +719,27 @@ _copy_new_here() {
 
 # The Grav capsule model, run inside the real site directory: code
 # <user>:<account group>, the writable set and the .env <user>:<web group>.
+# The code pass leaves the writable set and the .env out, so each entry is
+# re-owned once, to its own group: handed to the account group first, the
+# secrets in user/ and the .env were unreadable to the site's PHP pool until
+# the writable pass reached them, seconds later on a capsule with vendor/.
 # Every leg below starts with the directory it runs in, handed over as its
 # walk hands it: nothing is done there when it is below a directory
 # another user owns.
 _grav_site_own_here() {
   local _wd
   _reown_own_here "${script_user}:${_code_group}" . || return 0
-  _reown_own_here -R "${script_user}:${_code_group}" .
+  _reown_own_here -R "${script_user}:${_code_group}" . \
+    \( -path ./user -o -path ./cache -o -path ./logs -o -path ./tmp \
+    -o -path ./backup -o -path ./images -o -path ./assets \) -type d -prune \
+    -o -path ./.env -type f -prune \
+    -o
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
     _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
   done
   # The secret root .env drops its world bit, so FPM's read comes via
-  # the web group -- the code pass above homed it to the account group.
+  # the web group.
   if [ -f ./.env ]; then
     _reown_own_here "${script_user}${_wg:+:${_wg}}" ./.env
   fi
