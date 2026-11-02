@@ -1549,9 +1549,10 @@ _GHOST_SITE_FILES_CLEANUP=NO
 _GHOST_ALIASES_CLEANUP=NO
 
 ###
-### Minimum age in days of a converted account's log/proxied.pid before
-### xtrim will agree to shrink it -- the proxy must prove itself quiet
-### first. Hard floor of 7 is enforced by the tool regardless.
+### Minimum age in days of a converted account's root proxied marker
+### (/root/.<oN>.migproxy.proxied, dated when the conversion completed)
+### before xtrim will agree to shrink it -- the proxy must prove itself
+### quiet first. Hard floor of 7 is enforced by the tool regardless.
 ###
 _XTRIM_MIN_DAYS=14
 
