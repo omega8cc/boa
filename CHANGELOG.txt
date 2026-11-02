@@ -67,6 +67,12 @@
       xoct proxy <oN> <ip> <target-oN> --repair. A pair moved before create
       markers existed (2026-09-29) needs that restatement once.
 
+    * New Textpattern platforms are built on 4.9.2, a security release
+      that closes a way to skip authentication through concurrent cookie
+      logins and adds CSRF and sanitising fixes; a site moves to it with
+      the Upgrade Textpattern task. The version a box falls back to when it
+      cannot read the mirror's stamp is 4.9.2 too.
+
 @=> Important Fixes
 
     * A repair of a migration proxy that names no account on the other box
@@ -125,6 +131,10 @@
     * A Verify of a Grav platform sets the modes of folders in a site's
       code named like its writable folders, such as system/assets: neither
       pass reached them, so a file left unreadable there stayed so.
+
+    * A Textpattern 4.9.2 site's install log no longer carries a PHP
+      warning from Textpattern's own clean-URL self-test, which cannot
+      succeed before the site's vhost is live.
 
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
