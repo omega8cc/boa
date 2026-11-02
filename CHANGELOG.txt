@@ -79,6 +79,11 @@
       pairs it with the account root's own record names there, as a renamed
       move needs, not with an account of the same name.
 
+    * An xoct move under a new account name no longer leaves, in the new
+      account's sub-account password store, a copy of each entry under the
+      old account's name beside the renamed one: the store travels whole
+      only when the name stays the same.
+
     * A Grav page at /security, /changelog, /readme, /contributing or
       /code_of_conduct answers at its .md address too: the vhost refused
       those five names outright for the core's Markdown files of the same

@@ -9742,9 +9742,16 @@ _migrate_init() {
           # install must never shadow the carried credentials.
           # The store is the account's: sent from inside the real directory
           # into the real directory on the target (made when missing).
-          _xoct_leg_ok "/home/${_oct}.ftp/users" \
-            && _xoct_in_real_dir "/home/${_oct}.ftp/users" _xoct_copy_mk_here \
-              "${_tgt}" "/home/${_DST_ACCT}.ftp/users" '' -aEAX ${_ieni}
+          # Its entries are keyed by the full sub-user name, so it travels
+          # whole under the account's own name only: on a rename create, and
+          # the live transfer again below, put each entry under the name it
+          # takes for the new account, and a whole copy would leave one under
+          # the source's name beside it, for a login the target never has.
+          if [ "${_DST_ACCT}" = "${_oct}" ]; then
+            _xoct_leg_ok "/home/${_oct}.ftp/users" \
+              && _xoct_in_real_dir "/home/${_oct}.ftp/users" _xoct_copy_mk_here \
+                "${_tgt}" "/home/${_DST_ACCT}.ftp/users" '' -aEAX ${_ieni}
+          fi
           ### clients/ is oN's on both boxes: pinned both ends, target made real.
           _xoct_leg_ok "${_USR}/clients" \
             && _xoct_in_real_dir "${_USR}/clients" _xoct_copy_mk_here "${_tgt}" \
