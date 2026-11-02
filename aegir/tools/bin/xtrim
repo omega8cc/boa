@@ -99,7 +99,10 @@ _in_real_dir() {
   if [ -n "${_a}" ]; then
     _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    ### The parent of a top-level directory (/root) is "/", never the empty
+    ### name: cd "" fails on one bash and follows CDPATH on another.
+    _want="$(cd -P -- "${_d%/*}/" 2> /dev/null && pwd -P)"
+    _want="${_want%/}/${_d##*/}"
   fi
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
 }
@@ -290,12 +293,233 @@ _cert_text() {
     status=none 2> /dev/null
 }
 
-### migproxy.cnf is parsed, never sourced (log/ arrives over rsync), and
-### read inside the real log/, never through a link or into a FIFO.
-_mig_get() {
-  local _f="$1" _k="$2"
-  [ -r "${_f}" ] || return 1
-  _read_file "${_f}" | grep -m1 "^${_k}=" | cut -d= -f2- | tr -d '\r\n'
+### The policy record and the proxied marker root decides from are
+### /root/.<oN>.migproxy.cnf and /root/.<oN>.migproxy.proxied, root:root
+### 0600: parsed, never sourced, and never taken from the account's tree
+### (log/migproxy.cnf and log/proxied.pid are the account's to write).
+### Plain assignments, never taken from the environment. The readers below
+### are kept in step with the copies in xoct and xmass, not shared: each
+### body is theirs except the directory pin (_in_real_dir).
+_MIG_REC_DIR="/root"
+_MIG_ADOPT_STAMP="/root/.migration.records.adopted"
+_MIG_TRUST_TOOL="/var/xdrago/migration_proxy_trust.sh"
+_MIG_OCTET="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+### ./$1 read through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, and
+### only while that handle is a regular file with one link, owned by root,
+### writable by no one else, at most 64 KiB; the shape "legacy" also wants
+### group root and mode 0600. Prints the handle's mtime on a line of its own,
+### then the bytes. Status 3 absent, 4 anything else, 5 a read error.
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+
+_mig_valid_mode() {
+  case "$1" in
+    temporary|permanent|ha-switch|retired) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+_mig_valid_acct() { [[ "$1" =~ ^[a-zA-Z0-9._-]+$ ]]; }
+_mig_valid_date() { [[ "$1" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]$ ]]; }
+### Strict dotted quad: every octet 0-255, no leading zero, no prefix.
+_mig_quad() { [[ "${1}" =~ ^(${_MIG_OCTET}\.){3}${_MIG_OCTET}$ ]]; }
+### $1 is one of the addresses this box holds.
+_mig_own_addr() {
+  [ -n "${1}" ] || return 1
+  hostname -I 2> /dev/null | tr ' ' '\n' | grep -qxF -- "${1}"
+}
+### A peer address a record may name: a strict dotted quad that is neither
+### the all-zeros host, loopback, nor one of this box's own addresses.
+_mig_peer_ok() {
+  _mig_quad "${1}" || return 1
+  [ "${1}" != "0.0.0.0" ] || return 1
+  case "${1}" in
+    127.*) return 1 ;;
+  esac
+  ! _mig_own_addr "${1}"
+}
+### Each non-blank line a comment or one _MIG_ key assignment, no key twice:
+### anything else makes the whole text malformed. Reads stdin.
+_mig_grammar_ok() {
+  awk '/^[ \t]*$/ { next }
+    /^#/ { next }
+    /^_MIG_[A-Z_]+=/ { k = $0; sub(/=.*/, "", k); if (k in s) b = 1; s[k] = 1; next }
+    { b = 1 }
+    END { exit b }'
+}
+### The value of the key $2 in the record text $1; empty when missing.
+_mig_txt_get() {
+  printf '%s\n' "${1}" | grep -m1 "^${2}=" | cut -d= -f2- | tr -d '\r\n'
+}
+### The file $2 in the real directory $1, read with _MIG_HREAD_PL in the
+### shape $3: the handle's mtime line, then the content. Status 0 read, 3
+### absent, 4 anything else at the name (or the directory not a real one),
+### 5 a read error.
+_mig_hread() {
+  local _rc
+  case "${2}" in
+    ""|*/*) return 4 ;;
+  esac
+  if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
+    return 3
+  fi
+  _in_real_dir "${1}" perl -e "${_MIG_HREAD_PL}" -- "./${2}" "${3}"
+  _rc=$?
+  case "${_rc}" in
+    0|3|4|5) return "${_rc}" ;;
+  esac
+  return 4
+}
+### The root record and marker paths of the account $1; status 1, nothing
+### printed, for a name that is not an account's.
+_mig_rec() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.cnf"
+}
+_mig_mark() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.proxied"
+}
+### The root file $1 (a name in _MIG_REC_DIR) without its mtime line, CR
+### stripped, once it reads in the root shape and keeps the grammar. Status 3
+### absent, 4 anything else.
+_mig_root_text() {
+  local _t _rc
+  _t="$(_mig_hread "${_MIG_REC_DIR}" "${1}" root)"
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    3) return 3 ;;
+    *) return 4 ;;
+  esac
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  printf '%s\n' "${_t}" | _mig_grammar_ok || return 4
+  printf '%s\n' "${_t}"
+}
+### The root record of the account $1. Status 1 bad name, 3 none, 4
+### malformed.
+_mig_rec_text() {
+  local _n
+  _n="$(_mig_rec "${1}")" || return 1
+  _mig_root_text "${_n##*/}"
+}
+### The value of the key $2 in the root record of $1 (empty when the key is
+### missing). Parsed, never sourced.
+_mig_rec_get() {
+  local _t _rc
+  _t="$(_mig_rec_text "${1}")"
+  _rc=$?
+  [ "${_rc}" = "0" ] || return "${_rc}"
+  _mig_txt_get "${_t}" "${2}"
+  return 0
+}
+### The record text $1 authored by this box: its _MIG_HOST_IP is one of
+### this box's addresses. A record for another address (a renumbered box)
+### is reported, never acted on.
+_mig_txt_mine() {
+  local _h
+  _h="$(_mig_txt_get "${1}" _MIG_HOST_IP)"
+  _mig_quad "${_h}" && _mig_own_addr "${_h}"
+}
+_mig_is_mine() {
+  local _t
+  _t="$(_mig_rec_text "${1}")" || return 1
+  _mig_txt_mine "${_t}"
+}
+### Every key of the record text $1 within its grammar; the first failing
+### reason printed, status 1. Unknown keys are left to the caller.
+_mig_txt_valid() {
+  local _t="${1}" _v _role _peer _ip _k
+  local -a _ips
+  _role="$(_mig_txt_get "${_t}" _MIG_ROLE)"
+  case "${_role}" in
+    source|target) ;;
+    *) echo "invalid _MIG_ROLE '${_role}'"; return 1 ;;
+  esac
+  _v="$(_mig_txt_get "${_t}" _MIG_HOST_IP)"
+  _mig_quad "${_v}" || { echo "invalid _MIG_HOST_IP '${_v}'"; return 1; }
+  _peer="$(_mig_txt_get "${_t}" _MIG_PEER_IP)"
+  if [ -n "${_peer}" ] && ! _mig_peer_ok "${_peer}"; then
+    echo "invalid _MIG_PEER_IP '${_peer}'"
+    return 1
+  fi
+  if [ "${_role}" = "target" ] && [ -z "${_peer}" ]; then
+    echo "target record without _MIG_PEER_IP"
+    return 1
+  fi
+  _v="$(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
+  IFS=' ,' read -r -a _ips <<< "${_v}"
+  for _ip in "${_ips[@]}"; do
+    _mig_peer_ok "${_ip}" || { echo "invalid _MIG_PEER_IPS address '${_ip}'"; return 1; }
+  done
+  _v="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
+  if [ -n "${_v}" ] && ! _mig_valid_acct "${_v}"; then
+    echo "invalid _MIG_PEER_OCT '${_v}'"
+    return 1
+  fi
+  _v="$(_mig_txt_get "${_t}" _MIG_MODE)"
+  _mig_valid_mode "${_v}" || { echo "invalid _MIG_MODE '${_v}'"; return 1; }
+  _v="$(_mig_txt_get "${_t}" _MIG_SCOPE)"
+  case "${_v}" in
+    account|box|"") ;;
+    *) echo "invalid _MIG_SCOPE '${_v}'"; return 1 ;;
+  esac
+  _v="$(_mig_txt_get "${_t}" _MIG_DEADLINE)"
+  if [ -n "${_v}" ] && [ "${_v}" != "none" ] && ! _mig_valid_date "${_v}"; then
+    echo "invalid _MIG_DEADLINE '${_v}'"
+    return 1
+  fi
+  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
+    _v="$(_mig_txt_get "${_t}" "${_k}")"
+    if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
+      echo "invalid ${_k} '${_v}'"
+      return 1
+    fi
+  done
+  return 0
+}
+### The epoch the account $1 was proxied at, printed when its root marker is
+### valid: root shape, the grammar, COMPLETE, and a sane date (no later than
+### a day ahead). Status 1 otherwise.
+_mig_mark_at() {
+  local _n _t _at
+  _n="$(_mig_mark "${1}")" || return 1
+  _t="$(_mig_root_text "${_n##*/}")" || return 1
+  [ "$(_mig_txt_get "${_t}" _MIG_PROXIED)" = "COMPLETE" ] || return 1
+  _at="$(_mig_txt_get "${_t}" _MIG_PROXIED_AT)"
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 1
+  [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ] || return 1
+  printf '%s\n' "${_at}"
+}
+_mig_is_proxied() {
+  _mig_mark_at "${1}" > /dev/null
+}
+### Records written into log/ by older tools are imported once, by
+### migration_proxy_trust.sh adopt --once, and never read after that. The
+### BOA agent pass runs it; this is the fallback for a verb that reads
+### records before that pass. A no-op once the stamp exists.
+_mig_adopt_once() {
+  [ -e "${_MIG_ADOPT_STAMP}" ] && return 0
+  [ -x "${_MIG_TRUST_TOOL}" ] || return 0
+  if ! bash "${_MIG_TRUST_TOOL}" adopt --once; then
+    echo "ALRT: record adoption did not complete; log records stay unread (no decision is taken from them)"
+  fi
+  return 0
+}
+### The target a source-role root record of this box names for account $1,
+### once the record is strictly valid; empty otherwise.
+_mig_src_peer() {
+  local _t
+  _t="$(_mig_rec_text "${1}")" || return 0
+  [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || return 0
+  _mig_txt_mine "${_t}" || return 0
+  _mig_txt_valid "${_t}" > /dev/null || return 0
+  _mig_txt_get "${_t}" _MIG_PEER_IP
+}
+### Display only, never a decision input: whether anything sits at the
+### account's own log/proxied.pid (read through the handle, so a link or a
+### FIFO there counts as seen, never as followed).
+_log_pid_seen() {
+  _mig_hread "/data/disk/${1}/log" proxied.pid root > /dev/null
+  [ "$?" -ne 3 ]
 }
 
 _sane_ident() {
@@ -537,6 +761,7 @@ _map_account() {
   _USR="/data/disk/${_oN}"
   _VHD="${_USR}/config/server_master/nginx/vhost.d"
   _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""; _MAP_REDIR=""; _MAP_TGT_FROM_REC=NO
+  _MAP_REC_TGT=""; _MAP_VHOST_TGT=""
   _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""; _MAP_UNPROVEN=""
   _MAP_HM_WHY=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
@@ -598,12 +823,23 @@ _map_account() {
     [ -e "${_VHD}/.${_d}" ] || _MAP_NOSAVED="${_MAP_NOSAVED} ${_d}"
   done
   ### An account whose sites were ALL named under the old box name carries
-  ### only redirect vhosts, so no proxy_pass names its target: the policy
-  ### record does. Derived HERE, not in the preflight, so every reader of the
-  ### map (status, restore) sees the same target.
+  ### only redirect vhosts, so no proxy_pass names its target: the root
+  ### policy record does (source role, this box's own, strictly valid).
+  ### Derived HERE, not in the preflight, so every reader of the map
+  ### (status, restore) sees the same target.
+  _MAP_REC_TGT="$(_mig_src_peer "${_oN}")"
   if [ -z "${_MAP_TGT}" ] && [ -n "${_MAP_REDIR// /}" ]; then
-    _MAP_TGT="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
+    _MAP_TGT="${_MAP_REC_TGT}"
     [ -n "${_MAP_TGT}" ] && _MAP_TGT_FROM_REC=YES
+  fi
+  ### Root connects to the mapped target (the target proofs, the probes
+  ### after a restore), so the address is the root record's: a proxy_pass
+  ### is the account's to write and only has to agree with it. Without that
+  ### record, or when the two disagree, no target is mapped; the vhost's own
+  ### address is kept apart, for the refusal alone.
+  if [ -n "${_MAP_TGT}" ] && [ "${_MAP_TGT}" != "${_MAP_REC_TGT}" ]; then
+    _MAP_VHOST_TGT="${_MAP_TGT}"
+    _MAP_TGT=""
   fi
   ### Sites + DBs from the drush aliases (authoritative), sqlclean idioms:
   ### context_type == site, anchored db_name parse, fail-closed idents.
@@ -907,7 +1143,7 @@ _cert_horizon() {
 
 _preflight() {
   ### The hard refusal battery. $1 acct. Sets the account map.
-  local _oN="$1" _age _hz _hzd _db _fail=0
+  local _oN="$1" _age _hz _hzd _db _fail=0 _vt
   _USR="/data/disk/${_oN}"
   [ -d "${_USR}" ] || _die "${_oN}: no such account"
   ### Eligibility triple + ownership markers.
@@ -921,12 +1157,16 @@ _preflight() {
     ### machineries is how customer data is lost.
     _die "${_oN}: log/CANCELLED present -- use 'boa cleanup', never xtrim"
   fi
-  [ -e "${_USR}/log/proxied.pid" ] \
-    || _die "${_oN}: log/proxied.pid absent -- this is not a proxied source"
-  ### Age floor: the proxy must have proven itself quiet first.
-  _age=$(( ( $(date +%s) - $(stat -c %Y "${_USR}/log/proxied.pid" 2>/dev/null || echo 0) ) / 86400 ))
+  ### Only the root marker proves a proxied source: log/proxied.pid is the
+  ### account's to write, and so are its times.
+  local _at
+  _at="$(_mig_mark_at "${_oN}")" \
+    || _die "${_oN}: no root proxied marker (/root/.${_oN}.migproxy.proxied) -- not a proxied source; a log/proxied.pid alone is not trusted (converted before the marker existed: the BOA agent pass adopts it, or re-run xoct proxy ${_oN} <target-ip> [<target-oN>] --repair)"
+  ### Age floor: the proxy must have proven itself quiet first. The age is
+  ### the date the marker records, never a file time.
+  _age=$(( ( $(date +%s) - _at ) / 86400 ))
   if [ "${_age}" -lt "${_MIN_DAYS}" ]; then
-    _die "${_oN}: proxied.pid is ${_age}d old; floor is ${_MIN_DAYS}d (_XTRIM_MIN_DAYS)"
+    _die "${_oN}: root proxied marker is ${_age}d old; floor is ${_MIN_DAYS}d (_XTRIM_MIN_DAYS)"
   fi
   ### Root disk sanity.
   local _dfp _dip
@@ -1003,19 +1243,22 @@ _preflight() {
   [ -n "${_MAP_REDIR// /}" ] \
     && _info "${_oN}: renamed box-named site(s) answered here with a 301 to the new name (no proxy behind them, kept in the map):${_MAP_REDIR}"
   [ "${_MAP_TGT_FROM_REC}" = "YES" ] \
-    && _info "${_oN}: every live vhost is a rename redirect -- target ${_MAP_TGT} taken from the policy record"
+    && _info "${_oN}: every live vhost is a rename redirect -- target ${_MAP_TGT} taken from the root policy record"
+  ### Record disagreement guard, same stance as the cert mirror: the target
+  ### is the root policy record's alone (see _map_account), and the vhost's
+  ### address is named here only once it is a plain one.
+  if [ -n "${_MAP_VHOST_TGT}" ]; then
+    _vt="${_MAP_VHOST_TGT}"
+    _mig_quad "${_vt}" || _vt="(not an address)"
+    [ -n "${_MAP_REC_TGT}" ] \
+      && _die "${_oN}: root policy record peer ${_MAP_REC_TGT} disagrees with vhost target ${_vt} -- run 'xoct proxy ${_oN} <ip> --repair --retarget' first"
+    _die "${_oN}: no root policy record (/root/.${_oN}.migproxy.cnf, role source, this box's own) names the vhost target ${_vt}; a proxy_pass is the account's to write, so root does not connect to it -- restate it: xoct proxy ${_oN} <target-ip> [<target-oN>] --repair --proxy-mode=<mode>"
+  fi
   [ -z "${_MAP_TGT}" ] \
-    && _die "${_oN}: could not derive the target IP: no proxy_pass names it and log/migproxy.cnf carries no _MIG_PEER_IP"
+    && _die "${_oN}: could not derive the target IP: no proxy_pass names it and no root policy record (/root/.${_oN}.migproxy.cnf, role source, this box's own) does -- restate it: xoct proxy ${_oN} <target-ip> [<target-oN>] --repair --proxy-mode=<mode>"
   if [ -n "${_MAP_NOSAVED// /}" ]; then
     _alrt "${_oN}: live vhosts without a saved .original:${_MAP_NOSAVED}"
     _alrt "${_oN}: their site/db map cannot be cross-checked from the saved vhost"
-  fi
-  ### Record disagreement guard, same stance as the cert mirror (void by
-  ### construction when the record itself named the target above).
-  local _rec
-  _rec="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
-  if [ -n "${_rec}" ] && [ "${_rec}" != "${_MAP_TGT}" ]; then
-    _die "${_oN}: migproxy.cnf peer ${_rec} disagrees with vhost target ${_MAP_TGT} -- run 'xoct proxy ${_oN} <ip> --repair --retarget' first"
   fi
   ### Cert horizon: refuse on an expired cert behind a retained vhost.
   read -r _hz _hzd <<< "$(_cert_horizon "${_oN}")"
@@ -1370,7 +1613,7 @@ _restore_stage_a() {
     ### undoes the proxy conversion (the reason xoct parks it at
     ### conversion time). Undoing the quiesce must not undo that too, so
     ### hand it to BOA's own off-run directory instead of /var/xdrago.
-    if [ -e "${_USR}/log/proxied.pid" ]; then
+    if _mig_is_proxied "${_oN}"; then
       mkdir -p /var/backups/off-run
       mv -f "${_q}/held-run-${_oN}" "/var/backups/off-run/run-${_oN}" 2>/dev/null \
         && _info "${_oN}: dispatcher kept parked (account is proxied); moved to /var/backups/off-run"
@@ -1670,7 +1913,7 @@ _finalize() {
 ### ------------------------------------------------------------- verbs ----
 
 _cmd_status() {
-  local _n _hz _hzd _sz _ph
+  local _n _hz _hzd _sz _ph _tg
   _load_cnf_defaults
   echo "xtrim status -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
@@ -1678,8 +1921,12 @@ _cmd_status() {
     _USR="/data/disk/${_n}"
     _VHD="${_USR}/config/server_master/nginx/vhost.d"
     _ph="$(_phase_get "${_n}")"
-    if [ ! -e "${_USR}/log/proxied.pid" ]; then
-      echo "${_n}: NOT proxied -- not xtrim material"
+    if ! _mig_is_proxied "${_n}"; then
+      if _log_pid_seen "${_n}"; then
+        echo "${_n}: log/proxied.pid without a root marker -- not trusted (adopt or xoct proxy --repair)"
+      else
+        echo "${_n}: NOT proxied -- not xtrim material"
+      fi
       continue
     fi
     ### A panel-only account has no proxied domain, so no vhost and no record
@@ -1692,7 +1939,9 @@ _cmd_status() {
     read -r _hz _hzd <<< "$(_cert_horizon "${_n}")"
     _sz=$(du -sk "${_USR}/backups" "${_USR}/src" "${_USR}/distro" \
       ${_MAP_PLATS} "${_USR}/static" 2>/dev/null | awk '{ s+=$1 } END { printf "%.1fG", s/1048576 }')
-    echo "${_n}: proxied -> ${_MAP_TGT:-?} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" ) | reclaimable~${_sz}"
+    _tg="${_MAP_TGT:-?}"
+    [ -n "${_MAP_VHOST_TGT}" ] && _tg="? (its vhost target is not the root policy record's)"
+    echo "${_n}: proxied -> ${_tg} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" ) | reclaimable~${_sz}"
   done
 }
 
@@ -1809,6 +2058,7 @@ case "$1" in
     [ -z "${_acct}" ] && _die "Usage: xtrim ${_verb} <oN|all> [--live]"
     _manage_single_lock
     _take_sqlclean_lock
+    _mig_adopt_once
     ### 'all' means all PROXIED accounts: a box mid-drain legitimately
     ### holds unproxied ones, and _die-ing on the first would make the
     ### fan-out unusable. The single-account form still refuses loudly.
@@ -1817,7 +2067,7 @@ case "$1" in
       && [ "${_XTRIM_MODE}" = "LIVE" ]; then
       if [ "${_acct}" = "all" ]; then
         for _n in $(_list_accounts); do
-          [ -e "/data/disk/${_n}/log/proxied.pid" ] || continue
+          _mig_is_proxied "${_n}" || continue
           ### Accounts the fan-out will skip have no token and need none;
           ### demanding one made 'all --live' permanently unusable as soon
           ### as a single account moved past the verb.
@@ -1836,7 +2086,7 @@ case "$1" in
     fi
     if [ "${_acct}" = "all" ]; then
       for _n in $(_list_accounts); do
-        if [ ! -e "/data/disk/${_n}/log/proxied.pid" ]; then
+        if ! _mig_is_proxied "${_n}"; then
           _info "${_n}: not proxied -- skipped by 'all' (name it explicitly to see the refusal)"
           continue
         fi
@@ -1881,11 +2131,18 @@ case "$1" in
     [ -z "${_acct}" ] && _die "Usage: xtrim restore <oN>"
     _manage_single_lock
     _take_sqlclean_lock
+    _mig_adopt_once
     _load_cnf_defaults
     _map_account "${_acct}"
     _rrc=0
     _restore_stage_a "${_acct}" || _rrc=1
-    _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
+    ### The probes reach the target as root: only one the root policy record
+    ### names (see _map_account).
+    if [ -n "${_MAP_TGT}" ]; then
+      _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
+    else
+      _alrt "${_acct}: no target named by a root policy record -- post-restore probes skipped; check manually"
+    fi
     [ "${_rrc}" = "0" ] || _die "${_acct}: restore incomplete (see ALRT above)"
   ;;
   *)

@@ -675,26 +675,21 @@ if [[ "${_APP_ROOT}" != "YES" ]] && [ -n "${drupal_root}" ] \
   printf "Setting Grav permissions of %s\n" "$(_nm "${drupal_root}")"
   _root_place_or_leave _place_own_here \
     "Done setting proper permissions of files and directories (Grav)."
+  # Each capsule's writable set is left to the capsule pass, and so are its
+  # .env and drushrc.php, which it sets as their writers do: those names one
+  # level below sites/ only (find's * matches "/" too, and folders of the
+  # same names inside a capsule's code, system/assets or a plugin's assets,
+  # are code, set here as the site pass sets them).
   _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here d 0755 . \
-    -path "./sites/*/user" -prune \
-    -o -path "./sites/*/cache" -prune \
-    -o -path "./sites/*/logs" -prune \
-    -o -path "./sites/*/tmp" -prune \
-    -o -path "./sites/*/backup" -prune \
-    -o -path "./sites/*/images" -prune \
-    -o -path "./sites/*/assets" -prune \
+    \( -path "./sites/*/user" -o -path "./sites/*/cache" -o -path "./sites/*/logs" \
+    -o -path "./sites/*/tmp" -o -path "./sites/*/backup" -o -path "./sites/*/images" \
+    -o -path "./sites/*/assets" \) ! -path "./sites/*/*/*" -prune \
     -o 2> /dev/null
-  # Each capsule's .env and drushrc.php (one level below sites/ only) are
-  # left to the capsule pass, which sets them as their writers do.
   _left_add _in_pinned_dir "${drupal_root}" _fwalk_own_here f 0644 . \
-    -path "./sites/*/user" -prune \
-    -o -path "./sites/*/cache" -prune \
-    -o -path "./sites/*/logs" -prune \
-    -o -path "./sites/*/tmp" -prune \
-    -o -path "./sites/*/backup" -prune \
-    -o -path "./sites/*/images" -prune \
-    -o -path "./sites/*/assets" -prune \
-    -o \( -path "./sites/*/.env" -o -path "./sites/*/drushrc.php" \) ! -path "./sites/*/*/*" -prune \
+    \( -path "./sites/*/user" -o -path "./sites/*/cache" -o -path "./sites/*/logs" \
+    -o -path "./sites/*/tmp" -o -path "./sites/*/backup" -o -path "./sites/*/images" \
+    -o -path "./sites/*/assets" -o -path "./sites/*/.env" -o -path "./sites/*/drushrc.php" \) \
+    ! -path "./sites/*/*/*" -prune \
     -o 2> /dev/null
   _left_add _in_pinned_dir "${drupal_root}/sites" _grav_capsules_perm_here
   _left_add _chmod_any_own_in "${drupal_root}/bin" 0755 '*'
