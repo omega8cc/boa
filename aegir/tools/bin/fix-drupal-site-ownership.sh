@@ -761,14 +761,20 @@ _grav_site_own_here() {
 }
 
 # The Textpattern model, run inside the real site directory; the two-level
-# writable dirs are handed over from inside their real parent. The writable
-# dirs keep the group write of what the site's PHP pool made in them
-# (_reown_own_here -W); private/ is the owner's alone (0750, 0440).
+# writable dirs are handed over from inside their real parent. The code pass
+# leaves the writable dirs and private/ out, so each entry is re-owned once,
+# to its own group: handed to the account group first, private/config.php
+# was unreadable to the site's PHP pool until the private/ pass reached it.
+# The writable dirs keep the group write of what that pool made in them
+# (_reown_own_here -W); private/ is not given it (0750, 0440).
 _txp_site_own_here() {
   local _wd _here
   _here="$(pwd -P)"
   _reown_own_here "${script_user}:${_code_group}" . || return 0
-  _reown_own_here -R "${script_user}:${_code_group}" .
+  _reown_own_here -R "${script_user}:${_code_group}" . \
+    \( -path ./private -o -path ./tmp -o -path ./admin/plugins \
+    -o -path ./public/files -o -path ./public/images -o -path ./public/themes \) \
+    -type d -prune -o
   for _wd in tmp admin/plugins public/files public/images public/themes; do
     [ -d "./${_wd}" ] || continue
     case "${_wd}" in
