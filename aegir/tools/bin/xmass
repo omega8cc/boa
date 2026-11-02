@@ -1276,6 +1276,99 @@ _xmass_own_link_ready() {
   ln -sfn -- "${3}" "./${_n}" || return 1
   printf 'XMREAL %s/%s\n' "$(pwd -P)" "${_n}"
 }
+### Run there: make each of the account $1's own control panel stores, the
+### names in $4 (space-separated), in the store's new canonical directory $3
+### an exact copy of the one at its old place $2, then print XMREAL with $3.
+### A store moved between the root and the attached mount is built from the
+### source alone, and the copy never sends a panel's store. Nothing at the
+### old place is nothing to carry; a link there that leads nowhere (the
+### volume not mounted) or out of the account's own tree or store is a
+### refusal. Each copy is made in .<name>.carry beside the name, read from
+### inside the real old directory and written inside the real new one, and
+### only then put in the name's place: a copy cut short leaves the name as it
+### was, and the next run starts it again. tar's own status 1 (a file changed
+### or vanished as it was read: the panel is live there) is no failure.
+_xmass_own_panel_carry() {
+  local _a="${1}" _o _n _p _t _m
+  local -a _ps _st
+  _n="$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  [ "${_n}" = "${3}" ] || return 1
+  if [ ! -e "${2}" ] && [ ! -L "${2}" ]; then
+    printf 'XMREAL %s\n' "${_n}"
+    return 0
+  fi
+  _o="$(cd -P -- "${2}" 2> /dev/null && pwd -P)" || return 1
+  if ! _xmass_own_path "${_a}" "${_o}"; then
+    # the account's part of the attached store through a /mnt that is a link
+    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    case "${_o}/" in
+      "${_m}"/?*) _xmass_own_path "${_a}" "/mnt${_o#"${_m}"}" || return 1 ;;
+      *) return 1 ;;
+    esac
+  fi
+  if [ "${_o}" != "${_n}" ]; then
+    read -r -a _ps <<< "${4}" && [ "${#_ps[@]}" -gt 0 ] || return 1
+    for _p in "${_ps[@]}"; do
+      case "${_p}" in ''|.|..|*/*) continue ;; esac
+      [ -d "${_o}/${_p}" ] && [ ! -L "${_o}/${_p}" ] || continue
+      _t=".${_p}.carry"
+      ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+        && rm -rf -- "./${_t}" && mkdir -- "./${_t}" ) || return 1
+      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(pwd -P)" = "${_o}/${_p}" ] || exit 9
+        tar -cf - --numeric-owner --acls --xattrs --one-file-system . ) \
+        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(pwd -P)" = "${_n}/${_t}" ] || exit 9
+          tar -xpf - --numeric-owner --acls --xattrs )
+      _st=("${PIPESTATUS[@]}")
+      if [ "${_st[0]:-9}" -gt 1 ] || [ "${_st[1]:-9}" -ne 0 ] \
+        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+          && rm -rf -- "./${_p}" && mv -T -- "./${_t}" "./${_p}" ); then
+        ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
+        return 1
+      fi
+    done
+  fi
+  printf 'XMREAL %s\n' "${_n}"
+}
+### Run there as _xmass_own_dir_ready does (mode dir) for the store $2 of the
+### account $1, carrying its own control panel stores (the names in $3) when
+### a link holds the name: the store moves off the attached mount onto a real
+### directory, which is made as .<name>.carry beside the name, given the
+### panel stores from the link's own place (_xmass_own_panel_carry) and only
+### then put in the link's place. A link that leads nowhere or out of the
+### account's own is refused, and a carry or a swap that fails leaves the
+### link as it was.
+_xmass_own_dir_carry() {
+  local _a="${1}" _n="${2##*/}" _lt _l _r _w _t
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xmass_own_parent_cd "${_a}" "${2}" || return 1
+  [ -L "./${_n}" ] || { _xmass_own_dir_ready dir "${_a}" "${2}"; return $?; }
+  [ -d "./${_n}" ] || return 1
+  _lt="$(readlink -- "./${_n}")" || return 1
+  _w="$(pwd -P)"
+  _l="${_lt}"
+  case "${_l}" in
+    /*) ;;
+    *) _l="${_w}/${_l}" ;;
+  esac
+  _t=".${_n}.carry"
+  rm -rf -- "./${_t}" && mkdir -- "./${_t}" || return 1
+  if ! _xmass_own_panel_carry "${_a}" "${_l}" "${_w}/${_t}" "${3}" > /dev/null \
+    || ! rm -f -- "./${_n}"; then
+    rm -rf -- "./${_t}"
+    return 1
+  fi
+  if ! mv -T -- "./${_t}" "./${_n}"; then
+    ln -s -- "${_lt}" "./${_n}" 2> /dev/null
+    rm -rf -- "./${_t}"
+    return 1
+  fi
+  cd -P -- "./${_n}" 2> /dev/null || return 1
+  _r="$(pwd -P)"
+  _xmass_own_path "${_a}" "${_r}" || return 1
+  printf 'XMREAL %s\n' "${_r}"
+}
 ### Run there: make the store copy's directory $1 under the attached mount
 ### and print XMREAL with its canonical path, only when no name below /mnt
 ### on the way is a link (checked before anything is made, and again after).
@@ -1312,7 +1405,7 @@ _xmass_tgt_place() {
   done
   _out="$( { declare -f _xmass_real_want _xmass_own_path _xmass_own_parent_cd \
       _xmass_own_dir_ready _xmass_own_parent_ready _xmass_own_link_ready \
-      _xmass_real_mnt_dir
+      _xmass_own_panel_carry _xmass_own_dir_carry _xmass_real_mnt_dir
     printf '%s\n' '"$@"'; } \
     | ssh ${_XMASS_SSH_SHARE} -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
       "bash -s --${_args}" 2> /dev/null)"
@@ -6031,9 +6124,15 @@ _shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 _xmass_put_on_root() {
   local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _acct="$5" _q _dreal _to _rp=()
   if [ -n "${_acct}" ]; then
-    _dreal="$(_xmass_tgt_place "${_th}" _xmass_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    # a store held on the attached mount there gives way to a real directory:
+    # the target's own panel stores (_XMASS_PANEL_OWN) come across first
+    if [ -n "${_XMASS_PANEL_OWN}" ]; then
+      _dreal="$(_xmass_tgt_place "${_th}" _xmass_own_dir_carry "${_acct}" "${_dstRoot}" "${_XMASS_PANEL_OWN}")"
+    else
+      _dreal="$(_xmass_tgt_place "${_th}" _xmass_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    fi
     if [ -z "${_dreal}" ]; then
-      _alrt "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store -- nothing copied"
+      _alrt "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store${_XMASS_PANEL_OWN:+, or the target panel stores could not be carried there} -- nothing copied"
       return 3
     fi
     _rp=(--rsync-path="$(_xmass_canon_rpath "${_dreal}")")
@@ -6136,6 +6235,14 @@ _xmass_put_on_mount() {
   fi
   if [ "${_rc}" = "24" ]; then
     _info "  ${_lbl}: some source files vanished during transfer (rc=24, benign)"
+  fi
+  # the link below replaces whatever holds <dstRoot>: the target's own panel
+  # stores there (_XMASS_PANEL_OWN), which the copy above left alone, come
+  # across into the mount copy right before it
+  if [ -n "${_acct}" ] && [ -n "${_XMASS_PANEL_OWN}" ] \
+    && [ -z "$(_xmass_tgt_place "${_th}" _xmass_own_panel_carry "${_acct}" "${_dstRoot}" "${_mreal}" "${_XMASS_PANEL_OWN}")" ]; then
+    _alrt "DENY: ${_lbl}: the target panel stores in ${_dstRoot} could not be carried into ${_mntDest}; target link left untouched"
+    return 3
   fi
   if [ -n "${_acct}" ]; then
     if [ -z "$(_xmass_tgt_place "${_th}" _xmass_own_link_ready "${_acct}" "${_dstRoot}" "${_mntDest}")" ]; then
@@ -6861,6 +6968,50 @@ _xmass_pinned_leg() {
     || _xmass_leg_refused "${_s}" "${_w}"
 }
 
+# The control panel of one account on each box, for its static/files leg:
+# _XMASS_PANEL_SKIP holds the names, _XMASS_PANEL_EXCL one anchored
+# --exclude per name and _XMASS_PANEL_OWN the target's own names, the stores
+# a placement that moves the store there carries across (_xmass_put_on_root,
+# _xmass_put_on_mount). A panel is the box's own: named for its box, never
+# proxied, its site dir under aegir/ on no leg. autosymlink keeps a panel's
+# files and private in the account's store as static/files/<panel name>/,
+# as it does a site's, so the store leg used to delete the target panel's
+# own store on a sync pass and send the source panel's, which the cutover's
+# rename then put under the target panel's name (a target panel whose
+# source panel had no store was left with dangling links). An excluded name
+# is neither sent nor a deletion candidate, on either box. The source's
+# name is its hostmaster alias's site_path; the target's are the site dirs
+# under the account's aegir/distro/*/sites/ there, as the .drush leg copies
+# the source's hostmaster alias over the target's whenever it is newer.
+# Status 1 when the target's answer cannot be read or a name is not a plain
+# host name: the leg then copies nothing, or a sync pass would delete the
+# target panel's files.
+_xmass_panel_store_names() {   # 1 = source account dir  2 = target account dir
+  local _n _q _ans _k _all=" "
+  _XMASS_PANEL_SKIP=""
+  _XMASS_PANEL_EXCL=""
+  _XMASS_PANEL_OWN=""
+  _n=$(_xmass_read_file "$1/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+    | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+  _n="${_n##*/}"
+  _q="$(_shq "$2")"
+  _ans=$(ssh -n -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "for _d in '${_q}'/aegir/distro/*/sites/*; do [ -d \"\${_d}\" ] && [ ! -L \"\${_d}\" ] || continue; _b=\"\${_d##*/}\"; case \"\${_b}\" in all|default) continue ;; esac; [ -f \"\${_d}/settings.php\" ] || [ -f \"\${_d}/drushrc.php\" ] || continue; echo \"XMPANEL N|\${_b}\"; done; echo 'XMPANEL E|'" 2>/dev/null \
+    | grep -a '^XMPANEL [NE]|')
+  printf '%s\n' "${_ans}" | grep -q -x 'XMPANEL E|' || return 1
+  while IFS='|' read -r _k _n; do
+    [ -n "${_n}" ] || continue
+    [[ "${_n}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 1
+    [ "${_k}" = "XMPANEL N" ] && [[ " ${_XMASS_PANEL_OWN} " != *" ${_n} "* ]] \
+      && _XMASS_PANEL_OWN="${_XMASS_PANEL_OWN:+${_XMASS_PANEL_OWN} }${_n}"
+    [[ "${_all}" = *" ${_n} "* ]] && continue
+    _all="${_all}${_n} "
+    _XMASS_PANEL_SKIP="${_XMASS_PANEL_SKIP:+${_XMASS_PANEL_SKIP} }${_n}"
+    _XMASS_PANEL_EXCL="${_XMASS_PANEL_EXCL:+${_XMASS_PANEL_EXCL} }--exclude=/${_n}"
+  done < <(printf 'S|%s\n' "${_n}"; printf '%s\n' "${_ans}" | grep -a '^XMPANEL N|')
+  return 0
+}
+
 _xmass_sync_static_symlink_safe() {
   # Mirrors xoct's _xoct_transfer_static_symlink_safe:
   # Preserves site-level symlinks inside static/ while relocating static/files
@@ -6959,12 +7110,29 @@ _xmass_sync_static_symlink_safe() {
   # uses the DEST account name, so a rename lands correctly. The store is
   # followed only into the account's own tree or its own part of the
   # attached store (migratefs), and copied from inside that real directory.
+  # Each box's control panel store stays its own (_xmass_panel_store_names).
+  _XMASS_PANEL_SKIP=""
+  _XMASS_PANEL_EXCL=""
+  _XMASS_PANEL_OWN=""
+  if [ -e "${_src_usr}/static/files" ] || [ -L "${_src_usr}/static/files" ]; then
+    if ! _xmass_panel_store_names "${_src_usr}" "${_dst_usr}"; then
+      _alrt "DENY: static/files (${_dst_acct}): the control panel names of ${_dst_acct} on the target could not be read -- the store is not copied this pass"
+      _XMASS_PANEL_OWN=""
+      _XMASS_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && _XMASS_STORE_RC=3
+      return 0
+    fi
+    [ -n "${_XMASS_PANEL_SKIP}" ] \
+      && _info "  static/files (${_dst_acct}): the control panels' own stores stay on each box (${_XMASS_PANEL_SKIP// /, })"
+  fi
   _xmass_handle_store \
     "${_src_usr}/static/files" \
     "${_dst_sf}" \
     "files/${_dst_acct}/static/files" \
-    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "" flat "${_src_usr}/backups/rename-hostname")" \
+    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "${_XMASS_PANEL_SKIP}" flat "${_src_usr}/backups/rename-hostname")${_XMASS_PANEL_EXCL:+ ${_XMASS_PANEL_EXCL}}" \
     "static/files (${_dst_acct})" "${_src_acct}" tree || _XMASS_STORE_RC=$?
+  # no other store of the account carries a panel's
+  _XMASS_PANEL_OWN=""
 }
 
 # Set _XMASS_GMAP, the group maps every leg of one account carries (LIVE
