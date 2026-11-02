@@ -48,6 +48,27 @@
       now removes only that platform's record and keeps the tree; it is
       refused while sites still name the platform being deleted.
 
+    * The Delete of a platform deployed from Git or by Composer no longer
+      removes its repository or project folder when that folder holds
+      another platform's tree: the folder stays, with a warning that names
+      the other platform.
+
+    * Saving again a platform deployed from Git whose Verify failed keeps
+      its Platform Path: the docroot was appended a second time.
+
+    * Saving a verified platform or site deployed from Git keeps its branch
+      or tag and its docroot: they were stored as master and empty, so the
+      Git pull webhook matched the wrong branch until the next Verify, and a
+      Verify that had to clone the codebase again asked for master. The
+      upgrade restores the docroot of platforms that lost it, and a Git
+      platform imported from its backend record keeps its docroot too.
+
+    * A whole-server move with xmass keeps each box's own control panel
+      files: a sync deleted the new box's panel files store and copied in
+      the old box's, which the cutover then renamed, and a panel whose old
+      counterpart had no store was left with broken files and private
+      links. xoct and xcopy no longer copy the old panel's store either.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
