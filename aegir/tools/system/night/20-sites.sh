@@ -627,10 +627,12 @@ for my $f (@ARGV) {
 }
 exit 0;'
 ### As _ACCT_REOWN_PL, the same way: the uids, then the uid and gid to hand
-### each name to.
+### each name to. A gid given with a + first keeps the group write of what
+### is handed over, as the ownership fixers' -W does; no caller here gives one.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
 sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
@@ -651,7 +653,9 @@ for my $f (@ARGV) {
   if (@s && !own($s[4])) {
     print "$s[0]:$s[1]\n";
   } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
-    chown($u, $g, $h);
+    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
+      chmod(($s[2] & 07777) | 020, $h);
+    }
   }
   close($h);
 }
