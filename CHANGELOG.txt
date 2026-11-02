@@ -33,7 +33,45 @@
       user/config: the secret keys seeded there stayed readable to other
       users after every Verify.
 
+    * A Verify of a Textpattern site keeps its database login file,
+      drushrc.php, at the 0440 its writer sets: the permissions pass made
+      it readable to other users for a moment on every Verify before
+      narrowing it again.
+
+    * A Grav site restored from a backup taken before it was renamed gets
+      its environment overrides in Grav's older layout, user/<site>/, back
+      under its current name: they stayed under the former name, which
+      Grav no longer reads, and the secret keys there were opened to other
+      users on every Verify.
+
+    * A Clone of a Grav site whose older-layout overrides sit under both
+      its own name and the new one no longer carries the source site's
+      secret keys into the copy.
+
+    * Migration proxy records and proxied markers are root's own files,
+      /root/.<oN>.migproxy.cnf and /root/.<oN>.migproxy.proxied; the
+      copies left in an account's log/ are only informational. An account
+      could edit those copies, and root read them for the firewall trust,
+      the real visitor address trust, the certificate mirror and xtrim.
+
+    * The first migration tool run after the upgrade imports the old log/
+      records once (migration_proxy_trust.sh adopt --once), each only where
+      root's own state backs it: the peer's host key, root's pair files,
+      the relay list. It names every record it refused with the command
+      that restates it, and imports nothing once its stamp exists.
+
+    * A record imported that way never decides by itself which account on
+      the other box is the pair's: the move's create marker there must name
+      this box and the account, and still match that account's uid and
+      home directory, or the tool refuses and prints the restatement,
+      xoct proxy <oN> <ip> <target-oN> --repair. A pair moved before create
+      markers existed (2026-09-29) needs that restatement once.
+
 @=> Important Fixes
+
+    * A repair of a migration proxy that names no account on the other box
+      pairs it with the account root's own record names there, as a renamed
+      move needs, not with an account of the same name.
 
     * A Grav page at /security, /changelog, /readme, /contributing or
       /code_of_conduct answers at its .md address too: the vhost refused
@@ -68,6 +106,25 @@
       the old box's, which the cutover then renamed, and a panel whose old
       counterpart had no store was left with broken files and private
       links. xoct and xcopy no longer copy the old panel's store either.
+
+    * The in-place Grav upgrade no longer answers a visitor's request with
+      an error as the core is swapped: Grav's maintenance page now goes up
+      a few seconds before its installer starts moving the core's files,
+      so the requests already running can end first.
+
+    * A Verify of a Grav or Textpattern site no longer takes from the
+      site's PHP the write to the cache folders, logs and uploads it made
+      itself: they were handed to the account without their group write
+      until the permissions pass, seconds later, and an upgrade's requests
+      could answer errors meanwhile.
+
+    * A Verify of a Textpattern site no longer answers errors for a
+      moment: the ownership pass took the web server's group off the
+      site's configuration before handing it back.
+
+    * A Verify of a Grav platform sets the modes of folders in a site's
+      code named like its writable folders, such as system/assets: neither
+      pass reached them, so a file left unreadable there stayed so.
 
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION

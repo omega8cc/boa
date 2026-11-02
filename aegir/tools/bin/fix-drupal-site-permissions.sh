@@ -752,6 +752,15 @@ _txp_site_perm_here() {
   local _wd _here
   _here="$(pwd -P)"
   _place_own_here || return 0
+  # Credential store first, and no later walk touches it: private/ is
+  # group-traversable (FPM reads config.php through the web group) and
+  # unreadable to everyone else; Aegir's own drushrc.php at the site root
+  # carries the database login and keeps the 0440 its writer sets. Widened
+  # by the generic 0644 walk and narrowed after it, drushrc.php was
+  # world-readable for as long as the walks took.
+  _chmod_own_here d 0750 private
+  _in_pinned_dir "${_here}/private" _fwalk_own_here f 0440 . 2> /dev/null
+  _chmod_own_here f 0440 drushrc.php
   _fwalk_own_here d 0755 . -path ./private -prune \
     -o -path ./tmp -prune \
     -o -path ./admin/plugins -prune \
@@ -765,21 +774,13 @@ _txp_site_perm_here() {
     -o -path ./public/files -prune \
     -o -path ./public/images -prune \
     -o -path ./public/themes -prune \
+    -o -path ./drushrc.php -prune \
     -o 2> /dev/null
   for _wd in tmp admin/plugins public/files public/images public/themes; do
     [ -d "./${_wd}" ] || continue
     _in_pinned_dir "${_here}/${_wd}" _fwalk_own_here d 02775 . 2> /dev/null
     _in_pinned_dir "${_here}/${_wd}" _fwalk_own_here f 0664 . 2> /dev/null
   done
-  # Credential store: group-traversable (FPM reads config.php through the
-  # web group), unreadable to everyone else.
-  _chmod_own_here d 0750 private
-  _in_pinned_dir "${_here}/private" _fwalk_own_here f 0440 . 2> /dev/null
-  # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
-  # carries the db credentials, so the generic 0644 pass above widens it to
-  # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
-  # never fight the writer. (Same class as the private/ prune.)
-  _chmod_own_here f 0440 drushrc.php
 }
 
 # The site's own PHP files made 0440, the glob expanded inside the real site
