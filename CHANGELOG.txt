@@ -48,7 +48,30 @@
       its own name and the new one no longer carries the source site's
       secret keys into the copy.
 
+    * Migration proxy records and proxied markers are root's own files,
+      /root/.<oN>.migproxy.cnf and /root/.<oN>.migproxy.proxied; the
+      copies left in an account's log/ are only informational. An account
+      could edit those copies, and root read them for the firewall trust,
+      the real visitor address trust, the certificate mirror and xtrim.
+
+    * The first migration tool run after the upgrade imports the old log/
+      records once (migration_proxy_trust.sh adopt --once), each only where
+      root's own state backs it: the peer's host key, root's pair files,
+      the relay list. It names every record it refused with the command
+      that restates it, and imports nothing once its stamp exists.
+
+    * A record imported that way never decides by itself which account on
+      the other box is the pair's: the move's create marker there must name
+      this box and the account, and still match that account's uid and
+      home directory, or the tool refuses and prints the restatement,
+      xoct proxy <oN> <ip> <target-oN> --repair. A pair moved before create
+      markers existed (2026-09-29) needs that restatement once.
+
 @=> Important Fixes
+
+    * A repair of a migration proxy that names no account on the other box
+      pairs it with the account root's own record names there, as a renamed
+      move needs, not with an account of the same name.
 
     * A Grav page at /security, /changelog, /readme, /contributing or
       /code_of_conduct answers at its .md address too: the vhost refused
