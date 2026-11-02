@@ -1016,16 +1016,15 @@ _mig_relays() {
   _mig_pid_proof "${1}"
 }
 ### Whether the root source record of $1 was imported from an older tool's
-### copy and names another account on the peer: that name is the copy's,
-### which an account could have planted, so nothing acts on it until root
-### restates the pair.
-_mig_rec_foreign_oct() {
-  local _t _o
+### copy: its peer account, whatever name it holds, is the copy's, which an
+### account could have planted (older tools took it from log/). Nothing acts
+### on that name unless the peer confirms it from its own create marker, or
+### root restates the pair.
+_mig_rec_adopted_src() {
+  local _t
   _t="$(_mig_rec_text "${1}")" || return 1
   [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || return 1
-  [ -n "$(_mig_txt_get "${_t}" _MIG_ADOPTED)" ] || return 1
-  _o="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
-  [ -n "${_o}" ] && [ "${_o}" != "${1}" ]
+  [ -n "$(_mig_txt_get "${_t}" _MIG_ADOPTED)" ]
 }
 ### What log/migproxy.cnf of the account $1 is, in one word, for display,
 ### classification and refusals only: it never supplies an address or a
@@ -1263,7 +1262,7 @@ _xmass_write_box_defaults() {
 ### is recoverable and a boxful is not. A mode pin NEVER affects migration
 ### eligibility -- it only pins what that customer is told.
 _xmass_report_account_modes() {
-  local _oct _unadopted _lt _lrole _lpq _lpid _lpeer _lpoct _restate=""
+  local _oct _unadopted _lt _lrole _lpq _lpid _lpeer _restate=""
   _XMASS_MODE_UNDECLARED=""
   _XMASS_MODE_UNADOPTED=""
   _info "Per-account proxy modes as they resolve now:"
@@ -1309,17 +1308,12 @@ _xmass_report_account_modes() {
             fi
             if [ -n "${_lpeer}" ]; then
               # Older tools copied the peer account from whatever the
-              # account left in log/: another account's name from the copy
-              # is never printed into a command root may paste.
-              _lpoct="$(_mig_txt_get "${_lt}" _MIG_PEER_OCT)"
-              if [ -z "${_lpoct}" ] || [ "${_lpoct}" = "${_oct}" ]; then
-                _lpoct=""
-              else
-                _lpoct="<target-oN>"
-              fi
+              # account left in log/: whatever name the copy holds, the
+              # account's own or none included, is never printed into a
+              # command root may paste; root names the account there.
               _alrt "  ${_oct}: log/migproxy.cnf was not adopted (not read) and the account relays (to ${_lpeer}, as that copy says);"
-              _alrt "  ${_oct}: restate the pair: xoct proxy ${_oct} ${_lpeer}${_lpoct:+ ${_lpoct}} --repair --proxy-mode=<mode>"
-              [ -n "${_lpoct}" ] && _alrt "  ${_oct}: (confirm on ${_lpeer} which account serves its sites: the copy's name for it is not taken)"
+              _alrt "  ${_oct}: restate the pair: xoct proxy ${_oct} ${_lpeer} <target-oN> --repair --proxy-mode=<mode>"
+              _alrt "  ${_oct}: (confirm on ${_lpeer} which account serves its sites: the copy's name for it is not taken)"
               _restate=YES
             else
               _alrt "  ${_oct}: log/migproxy.cnf was not adopted (not read); declare it again: xoct proxy-mode ${_oct} <mode>"
@@ -12576,7 +12570,8 @@ _xmass_create_src_host() {
 ###   - it relays to this box: its root proxied marker reads COMPLETE and its
 ###     own source-role root policy record names this box and this account
 ###     as the peer (a demoted failback box, whose migration proxied it
-###     here);
+###     here); one imported there from an older tool's copy counts only when
+###     this box's create marker of the account names the target and it;
 ###   - it is this pair's own (_xmass_pair_lineage): this box's account was
 ###     made from it, or the target's migration state names this box as its
 ###     target (a box promoted by hand, whose old active never relayed);
@@ -12593,7 +12588,7 @@ _xmass_create_src_host() {
 ### --adopt puts the marker for each. Read-only on the target.
 _xmass_target_owner_gate() {
   local _t="$1" _h _a _rmt _out _nu _ni _mh _mo _mu _mi _held _inv _vh _lnk
-  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless="" _away _moved=""
+  local _rel _rrole _rself _rpeer _roct _radp _mine _deny="" _siteless="" _away _moved=""
   _XMASS_ADOPT_ACCOUNTS=""
   if ! _h="$(_xmass_create_src_host)"; then
     _die "this box's hostname -f is not a hostname the create marker can name;" \
@@ -12670,9 +12665,10 @@ if [ -f "${_F}" ] && [ ! -L "${_F}" ] && [ "$(stat -c %u "${_F}")" = 0 ]; then
   timeout 10 dd if="${_F}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null | grep '^_MIG_CREATE_'
 fi
 # the relay proof: root's marker reads COMPLETE and root's record reads
+# (and whether that record was imported from an older tool's copy)
 if [ "${_rmark}" = "YES" ] && [ -n "${_rrec}" ]; then
   echo "RELAY=YES"
-  printf '%s\n' "${_rrec}" | grep -E '^_MIG_(ROLE|HOST_IP|PEER_IP|PEER_OCT)=' | sed 's/^/RELAY/'
+  printf '%s\n' "${_rrec}" | grep -E '^_MIG_(ROLE|HOST_IP|PEER_IP|PEER_OCT|ADOPTED)=' | sed 's/^/RELAY/'
   _mig_txt_mine "${_rrec}" && echo "RELAY_SELF=YES"
 fi
 for _r in distro static platforms aegir; do
@@ -12782,13 +12778,26 @@ OWNSH
     _rrole=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_ROLE=' | cut -d= -f2-)
     _rpeer=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_PEER_IP=' | cut -d= -f2-)
     _roct=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_PEER_OCT=' | cut -d= -f2-)
+    # A record imported there from an older tool's copy names this box's
+    # account from what the account left in log/ there, whatever name it
+    # holds (none means its own): this box's create marker of the account,
+    # naming the target and its account, must confirm it.
+    _radp=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_ADOPTED=' | cut -d= -f2-)
+    [ -n "${_radp}" ] && [ -z "${_roct}" ] && _roct="${_a}"
     if [ -n "${_rel}" ] && [ -n "${_rself}" ] && [ "${_rrole}" = "source" ] \
       && [ "${_roct}" = "${_a}" ] \
       && [[ "${_rpeer}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
       && printf '%s\n' ${_mine} | grep -qxF -- "${_rpeer}"; then
-      _info "  ${_a}: held on ${_t} and relaying to this box (a demoted failback account): adopted for this migration"
-      _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
-      continue
+      if [ -z "${_radp}" ] || _xmass_create_marker_names "$(_xmass_create_marker_read "${_a}" "")" \
+        "$(_xmass_kv "${_out}" TGT_HOST)" "${_a}"; then
+        _info "  ${_a}: held on ${_t} and relaying to this box (a demoted failback account): adopted for this migration"
+        _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
+        continue
+      fi
+      _alrt "  ${_a}: ${_t}'s root policy record of it, relaying to this box, was imported from an older tool's copy,"
+      _alrt "  ${_a}: and no create marker here confirms this box's ${_a} as its account: not taken as a relay here"
+      _alrt "  ${_a}: restate its pair on ${_t}: xoct proxy ${_a} ${_rpeer} <target-oN> --repair (it keeps its mode; a retired pair stays retired)"
+      _alrt "  ${_a}: (confirm here which account serves its sites: the copy's name for it is not taken)"
     fi
     if _xmass_pair_lineage "${_a}" "${_t}" "${_mine}" "${_out}"; then
       _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
@@ -12887,15 +12896,33 @@ _xmass_prep_mark_commit() {
 ### promotion, by that policy. --force only where the account is the relay
 ### prep-target adopts (root's proxied marker there, and root's policy
 ### record: role source, this account, a peer that is this box, the
-### record's own host that box); any other freeze keeps its refusal. A
-### revert that does not finish refuses the init here.
+### record's own host that box; one imported there from an older tool's
+### copy only when this box's create marker of the account names that box
+### and it); any other freeze keeps its refusal. A revert that does not
+### finish refuses the init here.
 _xmass_wg_revert_target() {
-  local _t="${1}" _mine _out _l _a _rc _how _bad="" _end=NO
+  local _t="${1}" _mine _out _l _a _rc _how _bad="" _end=NO _conf="" _f _m _h _pip
   _mine="$(hostname -I 2> /dev/null) ${_MY_OWNIP} ${_XMASS_SRC_IP}"
+  # This box's create markers, each as account=host of the box it came
+  # from with the same account: what confirms this box's account for a
+  # record imported there from an older tool's copy.
+  for _f in /root/.*.migration-create.txt; do
+    _a="${_f#/root/.}"
+    _a="${_a%.migration-create.txt}"
+    _m="$(_xmass_create_marker_read "${_a}" "")" || continue
+    _h="$(_xmass_kv "${_m}" _MIG_CREATE_SRC_HOST)"
+    _xmass_create_marker_names "${_m}" "${_h}" "${_a}" && _conf="${_conf} ${_a}=${_h}"
+  done
   _out=$( { _xmass_remote_guards
     _mig_remote_readers
     cat <<'WGREV'
 _MINE="${1}"
+_CONF=" ${2} "
+# this box as the peer's create markers name it
+_me=$(hostname -f 2> /dev/null | tr -d '\n')
+case "${_me}" in
+  ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) _me="" ;;
+esac
 _ready=NO
 [ -f /opt/local/bin/instgrp ] && grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null && _ready=YES
 # every account with a web group here, or a record or an intent of one: a
@@ -12922,11 +12949,21 @@ for _a in ${_names}; do
     _role=$(_mig_txt_get "${_c}" _MIG_ROLE)
     _poct=$(_mig_txt_get "${_c}" _MIG_PEER_OCT)
     _pip=$(_mig_txt_get "${_c}" _MIG_PEER_IP)
+    # A record imported from an older tool's copy names the account there
+    # from what the account left in log/ here, whatever name it holds (none
+    # means its own): only the peer's create marker of it, naming this box
+    # and this account, confirms it.
+    _adp=$(_mig_txt_get "${_c}" _MIG_ADOPTED)
+    [ -n "${_adp}" ] && [ -z "${_poct}" ] && _poct="${_a}"
     if [ "${_role}" = "source" ] && [ "${_poct}" = "${_a}" ] \
       && _mig_quad "${_pip}" \
       && printf '%s\n' ${_MINE} | grep -qxF -- "${_pip}" \
       && _mig_txt_mine "${_c}"; then
-      _f=--force
+      if [ -z "${_adp}" ] || { [ -n "${_me}" ] && [[ "${_CONF}" == *" ${_a}=${_me} "* ]]; }; then
+        _f=--force
+      else
+        echo "XMWA:${_a}:${_pip}"
+      fi
     fi
   fi
   bash /opt/local/bin/instgrp webrevert "${_a}" --keep-enabled ${_f} 2>&1 | sed 's/^/XMWO: /'
@@ -12934,11 +12971,18 @@ for _a in ${_names}; do
 done
 echo "XMWR-END"
 WGREV
-    } | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "bash -s -- '$(_shq "${_mine}")'" 2> /dev/null)
+    } | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "bash -s -- '$(_shq "${_mine}")' '$(_shq "${_conf}")'" 2> /dev/null)
   while IFS= read -r _l; do
     case "${_l}" in
       "XMWO: "*) _info "  [${_t}] ${_l#XMWO: }" ;;
       XMWR-END) _end=YES ;;
+      XMWA:*)
+        IFS=: read -r _ _a _pip <<< "${_l}"
+        _alrt "  ${_a}: its root policy record on ${_t} was imported from an older tool's copy, and no create marker"
+        _alrt "  ${_a}: here confirms this box's ${_a} as its account: its revert there runs without --force"
+        _alrt "  ${_a}: restate its pair on ${_t}: xoct proxy ${_a} ${_pip} <target-oN> --repair (it keeps its mode; a retired pair stays retired), then re-run init"
+        _alrt "  ${_a}: (confirm here which account serves its sites: the copy's name for it is not taken)"
+        ;;
       XMWR:*)
         IFS=: read -r _ _a _rc _how <<< "${_l}"
         if [ "${_how}" = "--force" ]; then _how=" --force"; else _how=""; fi
@@ -12978,6 +13022,57 @@ _xmass_create_marker_here() {
     timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null \
       | grep '^_MIG_CREATE_'
   fi
+}
+
+### The uid of account $1 and its /data/disk/$1 as they are now, in the
+### create marker's terms, for the box that runs it.
+_xmass_create_now() {   # 1 = account
+  printf '_MIG_CREATE_NOW_UID=%s\n_MIG_CREATE_NOW_INODE=%s\n' \
+    "$(id -u "${1}" 2> /dev/null)" "$(stat -c %i:%W "/data/disk/${1}" 2> /dev/null)"
+}
+
+### Root's create marker of account $1 on the box $2 (this box when empty):
+### a regular file of root's with one link, opened once without following a
+### link or blocking on a FIFO, at most 64 KiB, after the account's uid and
+### /data/disk/$1 there as they are now (_xmass_create_now, printed first, so
+### a first match can only take those). Nothing at all from a name that
+### cannot name the file or a box that does not answer; status 1 without a
+### marker.
+_xmass_create_marker_read() {   # 1 = account 2 = box ('' here)
+  local _n=".${1}.migration-create.txt"
+  _mig_valid_acct "${1}" || return 1
+  if [ -z "${2}" ]; then
+    _xmass_create_now "${1}"
+    ( cd /root 2> /dev/null && _xmass_rootread_here "${_n}" )
+    return $?
+  fi
+  _mig_valid_ip "${2}" || return 1
+  { declare -f _xmass_rootread_here _xmass_create_now
+    printf '_xmass_create_now %s\ncd /root && _xmass_rootread_here %s\n' "${1}" "${_n}"
+  } | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${2}" "bash -s" 2> /dev/null
+}
+
+### Whether the create marker text $1 (as _xmass_create_marker_read prints
+### it) names the box $2 (its hostname -f, as the create that put it named
+### it) and that box's account $3 as where the account came from, and the
+### uid and /data/disk it records are the account's now, as xoct's create
+### gate judges them: a marker an earlier account of that name left ties
+### nothing. A record imported from an older tool's copy names its peer's
+### account from what the account left in log/, whatever name it holds: the
+### peer confirms it only this way.
+_xmass_create_marker_names() {   # 1 = marker text 2 = source host 3 = source account
+  local _nu _ni
+  case "${2}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  [ -n "${3}" ] || return 1
+  _nu=$(printf '%s\n' "${1}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
+  _ni=$(printf '%s\n' "${1}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
+  [[ "${_nu}" =~ ^[0-9]+$ ]] && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  printf '%s\n' "${1}" | grep -qxF -- "_MIG_CREATE_SRC_HOST=${2}" \
+    && printf '%s\n' "${1}" | grep -qxF -- "_MIG_CREATE_SRC_OCT=${3}" \
+    && printf '%s\n' "${1}" | grep -qxF -- "_MIG_CREATE_TGT_UID=${_nu}" \
+    && printf '%s\n' "${1}" | grep -qxF -- "_MIG_CREATE_TGT_INODE=${_ni}"
 }
 
 ### Whether the target's account relays, or is moving, to a box other than
@@ -17726,8 +17821,10 @@ _xmass_go_live_standing() {
 # (admail= on prep-target and cutover) to that target is complete: the test
 # run becomes the real move. Each account the cutover moved (proxied to that
 # target, no xoct test run of its own; one it could not convert holds the
-# run until it is converted, and one proxied with no root record to read
-# until its pair is restated) goes live with 'xoct go-live': its
+# run until it is converted, and one proxied with no root record to read,
+# or with one imported from an older tool's copy that no create marker on
+# the target confirms, until its pair is restated) goes live with 'xoct
+# go-live': its
 # upgrade switch there takes this box's value again, and its client gets
 # the completion notice it never had. Then the target's mark of this run
 # goes, the target's hold when it holds the run's address and no other test
@@ -17735,7 +17832,7 @@ _xmass_go_live_standing() {
 # go live keeps the record, so every xoct verb here stays held to the token
 # until a re-run finishes. A re-run is a no-op.
 _xmass_cmd_go_live() {
-  local _rec="" _mk _oct _p _prc _lp _lpo _lt _failed="" _out _l _tf _mf _rt
+  local _rec="" _mk _oct _p _prc _lp _lt _failed="" _out _l _tf _mf _rt _sh _x _xm
   _xmass_load_state
   # The record names the target its test run went to (one written before it
   # named a target counts for any): go-live toward another ends none of it.
@@ -17767,6 +17864,8 @@ _xmass_cmd_go_live() {
   # Read once, as the cutover's final pass hands them to xoct's repair.
   _tf=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2> /dev/null)
   _mf=$(_xmass_src_fqdn)
+  # this box as the target's create markers name it
+  _sh="$(_xmass_create_src_host)" || _sh=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if [ -e "/data/conf/xoct_admail.${_oct}.txt" ]; then
       _alrt "  ${_oct}: an xoct canary in a test run of its own: 'xoct go-live ${_oct} <its target-ip>' ends it"
@@ -17794,7 +17893,6 @@ _xmass_cmd_go_live() {
       # the record is malformed): where it relays is unknown, so it holds
       # the run until its pair is restated. The copy only words the remedy.
       _lp=""
-      _lpo=""
       _mig_log_class "${_oct}" > /dev/null
       case "${_MIG_LOG_CLS}" in
         legacy-mine\ *)
@@ -17803,16 +17901,6 @@ _xmass_cmd_go_live() {
             _lp="$(_mig_txt_get "${_lt}" _MIG_PEER_IP)"
             _mig_quad "${_lp}" || _lp=""
           fi
-          # a renamed pair's account is the copy's (older tools took it from
-          # what the account left in log/): never printed, only marked
-          if [ -n "${_lp}" ]; then
-            _lpo="$(_mig_txt_get "${_lt}" _MIG_PEER_OCT)"
-            if [ "${_lpo}" = "${_oct}" ]; then
-              _lpo=""
-            elif [ -n "${_lpo}" ]; then
-              _lpo="<target-oN>"
-            fi
-          fi
         ;;
       esac
       if [ "${_prc}" = "3" ]; then
@@ -17820,7 +17908,11 @@ _xmass_cmd_go_live() {
       else
         _alrt "  ${_oct}: proxied, but its root policy record cannot be read${_lp:+; its log copy names ${_lp}}"
       fi
-      _alrt "  ${_oct}: restate its pair: xoct proxy ${_oct} ${_lp:-<target-ip>}${_lpo:+ ${_lpo}} --repair --proxy-mode=<mode>${_rec:+ admail=${_rec}}, then re-run go-live"
+      # The copy's account there, its own name or none included, came from
+      # what the account left in log/ under older tools: never printed, so
+      # root names it.
+      _alrt "  ${_oct}: restate its pair: xoct proxy ${_oct} ${_lp:-<target-ip>} <target-oN> --repair --proxy-mode=<mode>${_rec:+ admail=${_rec}}, then re-run go-live"
+      _alrt "  ${_oct}: (confirm on ${_lp:-the target} which account serves its sites: no name a copy holds is taken)"
       _failed="${_failed} ${_oct}"
       continue
     fi
@@ -17828,9 +17920,33 @@ _xmass_cmd_go_live() {
       _info "  ${_oct}: proxied to ${_p:-an unnamed peer} before this run; not part of it"
       continue
     fi
-    _info "  xoct go-live ${_oct} ${_tgt} ..."
+    # A record imported from an older tool's copy names the account there
+    # from what the account left in log/, whatever name it holds: it goes
+    # live as the account the target's create marker confirms (naming this
+    # box and this account), or holds the run until root restates the pair.
+    # xoct would stop at the unknown name on every re-run.
+    _x=""
+    if _mig_rec_adopted_src "${_oct}"; then
+      _x="$(_mig_rec_get "${_oct}" _MIG_PEER_OCT)"
+      _x="${_x:-${_oct}}"
+      _xm="$(_xmass_create_marker_read "${_x}" "${_tgt}")"
+      if ! printf '%s\n' "${_xm}" | grep -q '^_MIG_CREATE_NOW_UID='; then
+        _alrt "  ${_oct}: its root policy record was imported from an older tool's copy, and ${_tgt} did not answer,"
+        _alrt "  ${_oct}: so the account there cannot be confirmed; nothing changed for it: re-run go-live when it answers"
+        _failed="${_failed} ${_oct}"
+        continue
+      fi
+      if ! _xmass_create_marker_names "${_xm}" "${_sh}" "${_oct}"; then
+        _alrt "  ${_oct}: its root policy record was imported from an older tool's copy, and no create marker on ${_tgt} confirms the account there"
+        _alrt "  ${_oct}: restate its pair: xoct proxy ${_oct} ${_tgt} <target-oN> --repair${_rec:+ admail=${_rec}} (it keeps its mode; a retired pair stays retired), then re-run go-live"
+        _alrt "  ${_oct}: (confirm on ${_tgt} which account serves its sites: the copy's name for it is not taken)"
+        _failed="${_failed} ${_oct}"
+        continue
+      fi
+    fi
+    _info "  xoct go-live ${_oct} ${_tgt}${_x:+ ${_x}} ..."
     if ! _XOCT_XMASS_GOLIVE=YES _XOCT_TARGET_FQDN="${_tf}" _XOCT_MY_FQDN="${_mf}" \
-      xoct go-live "${_oct}" "${_tgt}"; then
+      xoct go-live "${_oct}" "${_tgt}" ${_x:+"${_x}"}; then
       _alrt "  ${_oct}: xoct go-live did not finish (above)"
       _failed="${_failed} ${_oct}"
     fi

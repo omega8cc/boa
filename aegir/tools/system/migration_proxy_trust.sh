@@ -77,7 +77,11 @@
 #   carried from that file's mtime). Anything else is refused and the report
 #   prints the remedy. An account marked proxied whose root record names no
 #   peer gets an ALRT line with the restate remedy: its certificates are not
-#   mirrored and a failback denies it until then. The report also names each
+#   mirrored and a failback denies it until then. So does every adopted
+#   source record: its peer account, whatever name it holds, is the copy's
+#   (older tools took it from log/), not used until the peer confirms it from
+#   its create marker or root restates the pair; no remedy prints the name a
+#   copy holds for an account on the other box. The report also names each
 #   relay-list address no root record accounts for, with 'untrust <ip>' as
 #   the remedy once it is confirmed stale (report only). Without --once it
 #   only reports what it would do. --once writes
@@ -762,16 +766,15 @@ _mig_is_proxied() {
   _mig_mark_at "${1}" > /dev/null
 }
 # Whether the root source record of $1 was imported from an older tool's
-# copy and names another account on the peer: that name is the copy's,
-# which an account could have planted, so nothing acts on it until root
-# restates the pair.
-_mig_rec_foreign_oct() {
-  local _t _o
+# copy: its peer account, whatever name it holds, is the copy's, which an
+# account could have planted (older tools took it from log/). Nothing acts
+# on that name unless the peer confirms it from its own create marker, or
+# root restates the pair.
+_mig_rec_adopted_src() {
+  local _t
   _t="$(_mig_rec_text "${1}")" || return 1
   [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || return 1
-  [ -n "$(_mig_txt_get "${_t}" _MIG_ADOPTED)" ] || return 1
-  _o="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
-  [ -n "${_o}" ] && [ "${_o}" != "${1}" ]
+  [ -n "$(_mig_txt_get "${_t}" _MIG_ADOPTED)" ]
 }
 # What log/migproxy.cnf of the account $1 is, in one word, for display,
 # classification and refusals only: it never supplies an address or a
@@ -1215,10 +1218,12 @@ _AD_FAIL=NO
 _AD_RECIPS=""
 # Per account, for the ALRT on a marker without a record naming its peer:
 # a source record adopted, the copy a target record, the remedy of a refused
-# record, a marker present or adopted; then the run's ALRT lines.
+# record, the restate remedy of a source record adopted with its peer
+# account unverified, a marker present or adopted; then the run's ALRT lines.
 _AD_REC_SRC=NO
 _AD_REC_TGT=NO
 _AD_REC_REM=""
+_AD_REC_UNW=""
 _AD_MARK_OK=NO
 _AD_ALRT=""
 
@@ -1234,9 +1239,9 @@ _ad_cut() {
     printf '%s' "${_v}"
     return 0
   fi
-  _v="${_v:0:480}"
+  _v="${_v:0:463}"
   _v="${_v% *}"
-  printf '%s' "${_v} [cut: run adopt for the full text]"
+  printf '%s' "${_v} [cut: the adopt --once output had the full text]"
 }
 _ad_note() {
   local _a="$1" _k="$2" _r="$3" _d _rem
@@ -1272,15 +1277,19 @@ _ad_refuse() {
   _ad_note "${_a}" "${_k}" refused "${_why}" "${_rem}"
 }
 # The root record of $1 is a valid source record of this box that names
-# its peer: what the certificate mirror and a failback's owner gate read
-# for an account this box proxies.
+# its peer, and root itself stated the account there: what the certificate
+# mirror and a failback's owner gate read for an account this box proxies.
+# Status 2 for such a record imported from an older tool's copy, whose peer
+# account is unverified (_mig_rec_adopted_src); 1 for anything else.
 _ad_rec_peer_ok() {
   local _t
   _t="$(_mig_rec_text "${1}")" || return 1
   _mig_txt_valid "${_t}" > /dev/null || return 1
   _mig_txt_mine "${_t}" || return 1
   [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] \
-    && [ -n "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" ]
+    && [ -n "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" ] || return 1
+  _mig_rec_adopted_src "${1}" && return 2
+  return 0
 }
 # The ALRT for the account $1, marked proxied with no root record naming its
 # peer, with the remedy $2: every consumer of the peer skips or denies it, so
@@ -1296,11 +1305,76 @@ _ad_alrt_rem() {
   _mpt_name_ok "${_ra}" || _ra="<oN>"
   printf '%s\n' "xoct proxy ${_ra} <target-ip> [<target-oN>] --repair --proxy-mode=<mode>"
 }
+# The ALRT for the account $1, whose root source record was imported from an
+# older tool's copy, with the restate remedy $2: whatever account it names
+# on the peer, the account's own included, came from log/.
+_ad_alrt_unw() {
+  echo "adopt: ALRT: ${1}: its root source record was imported from an older tool's copy:"
+  echo "adopt: ALRT: ${1}:   its peer account is the copy's and is not used until the peer confirms it or root restates the pair"
+  echo "adopt: ALRT: ${1}:   remedy: $(_mpt_plain "${2}")"
+}
+# The same account $1 when it is not proxied: nothing relays, and no
+# restate is printed, since it would convert sites served here.
+_ad_unw_idle() {
+  _msg "adopt: ${1}: its root source record was imported from an older tool's copy and it is not proxied:"
+  _msg "adopt: ${1}:   its peer account is used only once the peer confirms it; an 'xoct proxy' run to that peer confirms it or asks root to name it"
+}
+# The option that restates the deadline $1 for the mode $2 as of the day
+# $3: xoct takes only a deadline not yet past, so a past or malformed one
+# stays a placeholder; ha-switch takes none.
+_ad_dlopt() {
+  [ "${2}" = "ha-switch" ] && return 0
+  case "${1}" in
+    none) printf '%s' " --no-deadline" ;;
+    '') ;;
+    *)
+      if _mig_valid_date "${1}" && [[ ! "${1}" < "${3}" ]]; then
+        printf '%s' " --deadline=${1}"
+      else
+        printf '%s' " --deadline=<new date>"
+      fi
+    ;;
+  esac
+  return 0
+}
+# The restate remedy of an imported source record: the account $1 and the
+# peer $2 as shown, the record's mode $3 and the mode $4 to restate. The
+# account on the peer is always a placeholder, so no name the copy holds
+# reaches a command root may paste. A record with a mode is restated
+# keeping it, with its deadline and box scope, as a --proxy-mode= would pin
+# the account and a later box sweep skip it. A retired pair needs nothing
+# while the peer confirms it; its restatement without a mode keeps it
+# retired, as a mode would re-wire the peer's trust and mail the client.
+_ad_unw_rem() {
+  local _r
+  if [ "${3}" = "retired" ]; then
+    _r="retired per the copy: nothing to do while the create marker on ${2} confirms the account; else restate it kept retired, nothing converted or mailed: xoct proxy ${1} ${2} <target-oN> --repair (--proxy-mode=<mode> reinstates it: re-wires ${2}'s trust, mails the client)"
+  elif [ "${4}" = "${3}" ]; then
+    _r="xoct proxy ${1} ${2} <target-oN> --repair (it keeps its mode and scope)"
+  else
+    _r="xoct proxy ${1} ${2} <target-oN> --repair --proxy-mode=${4}"
+  fi
+  printf '%s\n' "${_r}; confirm on ${2} which account serves ${1}'s sites (the copy's peer account is not taken)"
+}
+# The same, from the root record of the account $1 as it is now.
+_ad_unw_rem_rec() {
+  local _t _ra="${1}" _p _m _rm
+  _mpt_name_ok "${_ra}" || _ra="<oN>"
+  _t="$(_mig_rec_text "${1}")" || _t=""
+  _p="$(_mig_txt_get "${_t}" _MIG_PEER_IP)"
+  _mig_peer_ok "${_p}" || _p="<target-ip>"
+  _m="$(_mig_txt_get "${_t}" _MIG_MODE)"
+  case "${_m}" in
+    temporary|permanent|ha-switch) _rm="${_m}" ;;
+    *) _rm="<mode>" ;;
+  esac
+  _ad_unw_rem "${_ra}" "${_p}" "${_m}" "${_rm}"
+}
 
 _ad_record() {
   local _a="$1" _raw _cls _b _why _role _peer _poct _mode _dl _hip _ip _seen=""
-  local _wit="" _wk="" _rem _tg _n _dlopt="" _rec _st _k _ips _rmode _pacct=""
-  local _ra _rpo _rpeer _rhip _rips="" _inv="" _nt=0 _live="" _unw=""
+  local _wit="" _wk="" _rem _tg _n _dlopt="" _rec _st _k _ips _rmode
+  local _ra _rpeer _rhip _rips="" _inv="" _nt=0 _live="" _unw="" _urem=""
   local -a _all
   _rec="$(_mig_rec "${_a}")" || return 0
   if [ -e "${_rec}" ] || [ -L "${_rec}" ]; then
@@ -1347,30 +1421,19 @@ _ad_record() {
   # first: one that fails stays a placeholder and is named as invalid. xoct
   # takes only a mode it can set and a deadline not yet past, so anything
   # else stays a placeholder too. The stamp drops a bar, so no placeholder
-  # carries one.
+  # carries one. The account on the other box is always a placeholder:
+  # older tools wrote _MIG_PEER_OCT, or the account's own name when it was
+  # empty, from what the account left in log/, in either role, so no name a
+  # copy holds for it is printed into a command, the account's own included.
   if [ "${_role}" = "target" ]; then
-    _rpo="<source-oN>"
     _rpeer="<source-ip>"
   else
-    _rpo="<target-oN>"
     _rpeer="<target-ip>"
   fi
   _ra="${_a}"
   if ! _mpt_name_ok "${_a}"; then
     _ra="<oN>"
     _inv="${_inv} account"
-  fi
-  if [ -z "${_poct}" ]; then
-    _rpo=""
-  elif [ "${_role}" = "source" ] && [ "${_poct}" != "${_a}" ]; then
-    # Older tools copied a source record's peer account from whatever the
-    # account left in log/: never printed into a command root may paste.
-    _rpo="<target-oN>"
-    _unw=YES
-  elif _mpt_name_ok "${_poct}"; then
-    _rpo="${_poct}"
-  else
-    _inv="${_inv} _MIG_PEER_OCT"
   fi
   if [ -n "${_peer}" ]; then
     if _mig_peer_ok "${_peer}"; then
@@ -1400,43 +1463,40 @@ _ad_record() {
     temporary|permanent|ha-switch) _rmode="${_mode}" ;;
     *) _rmode="<mode>" ;;
   esac
-  case "${_dl}" in
-    none) _dlopt=" --no-deadline" ;;
-    '') ;;
-    *)
-      if _mig_valid_date "${_dl}" && [[ ! "${_dl}" < "${_AD_TODAY}" ]]; then
-        _dlopt=" --deadline=${_dl}"
-      else
-        _dlopt=" --deadline=<new date>"
-      fi
-    ;;
-  esac
-  [ "${_rmode}" = "ha-switch" ] && _dlopt=""
+  _dlopt="$(_ad_dlopt "${_dl}" "${_rmode}" "${_AD_TODAY}")"
   if [ "${_role}" = "target" ]; then
-    # Run on the source: its account first, this box's account when renamed.
-    [ -n "${_rpo}" ] && [ "${_rpo}" != "${_ra}" ] && _pacct=" ${_ra}"
+    # Run on the source, naming this box's account: without it the
+    # restatement pushes to the same account name here.
     if [ "${_mode}" = "retired" ]; then
       # The source's own record already reads retired, so its retire is a
       # no-op that pushes nothing: no re-run there replaces this copy.
       _rem="nothing to re-push: the source retired this pair; once its proxy is gone: migration_proxy_trust.sh untrust ${_rpeer}${_rips}"
     else
-      _rem="on the source box (${_rpeer}): xoct proxy-mode ${_rpo:-${_ra}} ${_rmode}; if the source reports no root record for the account, restate it with xoct proxy ${_rpo:-${_ra}} ${_rhip}${_pacct} --repair --proxy-mode=${_rmode}"
+      _rem="on the source box (${_rpeer}): xoct proxy-mode <source-oN> ${_rmode}; if the source reports no root record for the account, restate it with xoct proxy <source-oN> ${_rhip} ${_ra} --repair --proxy-mode=${_rmode}; confirm on ${_rpeer} which of its accounts relays to ${_ra} here (the copy's peer account is not taken)"
     fi
-  elif [ -n "${_peer}" ] && [ "${_mode}" = "retired" ]; then
-    # Retired and mailed before the upgrade: a restatement would re-wire
-    # the peer's trust and mail the client a change, a retire after it a
-    # second notice.
-    _rem="already retired per the copy: nothing to restate (a restatement re-wires ${_rpeer}'s trust and mails the client); if ${_rpeer} still trusts this box, release it there: migration_proxy_trust.sh untrust ${_rhip} [<this box's other addresses>]"
   elif [ -n "${_peer}" ]; then
-    # The target account is named when the pair was renamed: without it the
-    # restatement pushes to the same account name on the peer.
-    [ -n "${_rpo}" ] && [ "${_rpo}" != "${_ra}" ] && _pacct=" ${_rpo}"
-    _rem="xoct proxy ${_ra} ${_rpeer}${_pacct} --repair --proxy-mode=${_rmode}${_dlopt}"
+    # Adopted, the record keeps the copy's peer account, unverified: every
+    # tool that needs it confirms it on the peer first, or refuses.
+    _unw=YES
+    _urem="$(_ad_unw_rem "${_ra}" "${_rpeer}" "${_mode}" "${_rmode}")"
+    if [ "${_mode}" = "retired" ]; then
+      # Retired and mailed before the upgrade: a restatement would re-wire
+      # the peer's trust and mail the client a change, a retire after it a
+      # second notice.
+      _rem="already retired per the copy: nothing to restate (a restatement re-wires ${_rpeer}'s trust and mails the client); if ${_rpeer} still trusts this box, release it there: migration_proxy_trust.sh untrust ${_rhip} [<this box's other addresses>]"
+    else
+      # A refusal leaves no root record, so its restatement declares the
+      # mode on the run (xoct refuses an unadopted copy's pair without
+      # one); only an adopted record has a mode and scope to keep.
+      _rem="xoct proxy ${_ra} ${_rpeer} <target-oN> --repair --proxy-mode=${_rmode}${_dlopt}; confirm on ${_rpeer} which account serves ${_ra}'s sites (the copy's peer account is not taken)"
+    fi
   else
     _rem="xoct proxy-mode ${_ra} ${_rmode}${_dlopt}"
   fi
-  [ -n "${_unw}" ] && _rem="${_rem}; confirm on ${_rpeer} which account serves ${_ra}'s sites (the copy's name is not taken)"
-  [ -n "${_inv}" ] && _rem="${_rem} (invalid, left as a placeholder:${_inv})"
+  if [ -n "${_inv}" ]; then
+    _rem="${_rem} (invalid, left as a placeholder:${_inv})"
+    [ -n "${_urem}" ] && _urem="${_urem} (invalid, left as a placeholder:${_inv})"
+  fi
   if ! printf '%s\n' "${_b}" | _mig_grammar_ok; then
     _ad_refuse "${_a}" record "malformed log record" "${_rem}"
     return 0
@@ -1566,11 +1626,13 @@ _ad_record() {
   fi
   _msg "adopt: ${_a}: record ${_role} $(_ad_word ADOPTED) (witness: ${_wit})"
   if [ -n "${_unw}" ]; then
-    # The mode stays declared; the account named on the peer is the copy's,
-    # so the certificate mirror waits until root restates the pair.
-    _msg "adopt: ${_a}:   its peer account is the copy's, not taken: certificates are not mirrored until it is restated: ${_rem}"
+    # The mode stays declared; the account named on the peer is the copy's.
+    # The stamp keeps the remedy and the run's tail raises the ALRT.
+    _AD_REC_UNW="$(_mpt_plain "${_urem}")"
+    _msg "adopt: ${_a}:   its peer account is the copy's and is not used until the peer confirms it or root restates the pair"
+    _msg "adopt: ${_a}:   remedy: ${_AD_REC_UNW}"
   fi
-  _ad_note "${_a}" record adopted "${_role} witness=${_wk}${_unw:+ peer-account-unverified}"
+  _ad_note "${_a}" record adopted "${_role} witness=${_wk}${_unw:+ peer-account-unverified}" "${_unw:+${_urem}}"
   [ "${_role}" = "source" ] && _AD_REC_SRC=YES
   return 0
 }
@@ -1657,7 +1719,7 @@ _ad_unaccounted() {
 # One pass over every account: the record, then the marker. $1=YES writes
 # the root files and the stamp; anything else only reports.
 _ad_run() {
-  local _acct _rem
+  local _acct _rem _pk
   _AD_LIVE="$1"
   _AD_LINES=""; _AD_N=0; _AD_M=0; _AD_K=0; _AD_FAIL=NO; _AD_RECIPS=""
   _AD_ALRT=""
@@ -1668,14 +1730,29 @@ _ad_run() {
   fi
   while IFS= read -r _acct; do
     [ -n "${_acct}" ] || continue
-    _AD_REC_SRC=NO; _AD_REC_TGT=NO; _AD_REC_REM=""; _AD_MARK_OK=NO
+    _AD_REC_SRC=NO; _AD_REC_TGT=NO; _AD_REC_REM=""; _AD_REC_UNW=""; _AD_MARK_OK=NO
     _ad_record "${_acct}"
     _ad_marker "${_acct}"
+    _ad_rec_peer_ok "${_acct}"
+    _pk=$?
+    # A source record adopted now, or by an earlier run that wrote no
+    # stamp, keeps the copy's peer account: proxied or not, every tool that
+    # needs it confirms it on the peer first or refuses. Only a proxied
+    # account gets the restate as an ALRT: on one served here it would
+    # convert the sites, and the next proxy run states the account anyway.
+    if [ -n "${_AD_REC_UNW}" ] || [ "${_pk}" -eq 2 ]; then
+      _rem="${_AD_REC_UNW}"
+      [ -n "${_rem}" ] || _rem="$(_ad_unw_rem_rec "${_acct}")"
+      if [ "${_AD_MARK_OK}" = "YES" ]; then
+        _AD_ALRT="${_AD_ALRT}$(_ad_alrt_unw "${_acct}" "${_rem}")"$'\n'
+      else
+        _ad_unw_idle "${_acct}"
+      fi
     # A marker taken while the record is not leaves the account proxied with
     # no peer anyone may read. A refused source record's remedy restates it;
     # a target record's names the other box, so the generic one is shown.
-    if [ "${_AD_MARK_OK}" = "YES" ] && [ "${_AD_REC_SRC}" != "YES" ] \
-      && ! _ad_rec_peer_ok "${_acct}"; then
+    elif [ "${_AD_MARK_OK}" = "YES" ] && [ "${_AD_REC_SRC}" != "YES" ] \
+      && [ "${_pk}" -ne 0 ]; then
       _rem="${_AD_REC_REM}"
       if [ -z "${_rem}" ] || [ "${_AD_REC_TGT}" = "YES" ]; then
         _rem="$(_ad_alrt_rem "${_acct}")"
@@ -1723,14 +1800,26 @@ _ad_stamp_report() {
     | sed '1,2d' | LC_ALL=C tr -d '\000-\011\013-\037\177-\377')
 }
 # The ALRT of the import, from root's files as they are now: every account
-# root marks proxied whose root record names no peer. The import's own report
-# is often discarded, and a record restated since clears it.
+# whose root source record is still the imported one, its peer account
+# unverified, and every account root marks proxied whose root record names
+# no peer. The import's own report is often discarded, and a record restated
+# since clears it.
 _ad_proxied_unrecorded() {
-  local _acct
+  local _acct _pk
   while IFS= read -r _acct; do
     [ -n "${_acct}" ] || continue
+    _ad_rec_peer_ok "${_acct}"
+    _pk=$?
+    if [ "${_pk}" -eq 2 ]; then
+      if _mig_is_proxied "${_acct}"; then
+        _ad_alrt_unw "${_acct}" "$(_ad_unw_rem_rec "${_acct}")"
+      else
+        _ad_unw_idle "${_acct}"
+      fi
+      continue
+    fi
+    [ "${_pk}" -eq 0 ] && continue
     _mig_is_proxied "${_acct}" || continue
-    _ad_rec_peer_ok "${_acct}" && continue
     _ad_alrt "${_acct}" "$(_ad_alrt_rem "${_acct}")"
   done < <(_mig_list_accounts)
 }
