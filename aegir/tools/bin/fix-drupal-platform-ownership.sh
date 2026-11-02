@@ -449,8 +449,10 @@ _root_place_or_leave() {
 # but the list's.
 # Given the gid with a + first (_reown_own_here -W), each directory and
 # single-link regular file handed over whose owner can write it and whose
-# group cannot first gets group write (a file with a set-ID bit excepted):
+# group cannot then gets group write (a file with a set-ID bit excepted):
 # a writer that wrote there as its owner goes on writing through the group.
+# The write is given only once the entry is in its new group, never to the
+# group it leaves.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
@@ -475,8 +477,9 @@ for my $f (@ARGV) {
   if (@s && !own($s[4])) {
     print "$s[0]:$s[1]\n";
   } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
-    chmod(($s[2] & 07777) | 020, $h) if $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000));
-    chown($u, $g, $h);
+    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
+      chmod(($s[2] & 07777) | 020, $h);
+    }
   }
   close($h);
 }
