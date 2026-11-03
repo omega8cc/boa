@@ -80,10 +80,11 @@ esac
 # Verb = the first non-option token (Symfony Console command resolution);
 # empty-string pads are skipped the same way bee's gate skips them.
 _ID="$(id -un 2>/dev/null)"
+# An account by what it holds, never by its name: not every account is o<digits>.
 _BACKEND=NO
 if [[ "${_ID}" = "root" ]] \
   || [[ "${_ID}" = "aegir" ]] \
-  || [[ "${_ID}" =~ ^o[0-9]+$ ]]; then
+  || [[ -d "/data/disk/${_ID}/.drush" ]]; then
   _BACKEND=YES
 fi
 

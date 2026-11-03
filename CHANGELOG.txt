@@ -75,6 +75,15 @@
 
 @=> Important Fixes
 
+    * xmass no longer passes over an account whose name is not o followed by
+      digits: its pre-mig panel check, its panel probe after a cutover and
+      its promotion by hand read every account on the box, as the move
+      itself always did.
+
+    * The bee and grav wrappers treat an account's backend user as the
+      backend whatever the account's name, by what the account holds; its
+      client logins stay clients.
+
     * A repair of a migration proxy that names no account on the other box
       pairs it with the account root's own record names there, as a renamed
       move needs, not with an account of the same name.

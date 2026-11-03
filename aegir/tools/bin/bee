@@ -44,10 +44,11 @@ _pick_modern() {
 # eval). We must skip the same tokens or a client smuggles a destructive verb
 # behind an empty/"0" pad. (Bypass verified on a test VM, 2026-07-11.)
 _ID="$(id -un 2>/dev/null)"
+# An account by what it holds, never by its name: not every account is o<digits>.
 _BACKEND=NO
 if [[ "${_ID}" = "root" ]] \
   || [[ "${_ID}" = "aegir" ]] \
-  || [[ "${_ID}" =~ ^o[0-9]+$ ]]; then
+  || [[ -d "/data/disk/${_ID}/.drush" ]]; then
   _BACKEND=YES
 fi
 
