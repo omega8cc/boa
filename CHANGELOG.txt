@@ -99,6 +99,11 @@
 
 @=> Important Fixes
 
+    * A database load can no longer fail on a duplicate row written by a
+      process that reached the half loaded database, which stopped a panel's
+      upgrade or a site's Clone, Migrate or Restore: the site's own login is
+      locked while the admin login loads it.
+
     * Rebuilding a pinned catalogue platform no longer reports a false `lock
       hash stale`: Composer 2.11 counts the policy setting in a lock's hash,
       and the rebuild now refreshes the hash without a resolve, which cannot
