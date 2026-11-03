@@ -1645,7 +1645,7 @@ _satellite_cnf() {
     # another account's cnf owns is never this one's; the derived name is.
     if [ "${_STATUS}" = "INIT" ] && [ -n "${_domDerived}" ] \
       && [ "${_DOMAIN}" != "${_domDerived}" ] \
-      && grep -al "^_DOMAIN=\"${_DOMAIN}\"" /root/.o*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
+      && grep -al "^_DOMAIN=\"${_DOMAIN}\"" /root/.*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
       _msg "NOTE: _DOMAIN ${_DOMAIN} in ${_octCnf} belongs to another account; using ${_domDerived}"
       _DOMAIN="${_domDerived}"
       sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
