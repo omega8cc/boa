@@ -1365,7 +1365,13 @@ _reap_stuck_sql_helpers() {
   _age=$(_exec_age "${_SQL_BACKUP_EXEC}")
   if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
     pkill -9 -f "${_SQL_BACKUP_EXEC}"
-    pkill -9 -f '^[^ ]*mydumper( |$)'
+    # Under the SQL maintenance marker a mydumper may be a migration's dump:
+    # only the backup's own goes then, told by where it writes.
+    if [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ]; then
+      pkill -9 -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/sql/'
+    else
+      pkill -9 -f '^[^ ]*mydumper( |$)'
+    fi
     pkill -9 -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
     pkill -9 -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
     rm -f /run/boa_sql_backup.pid

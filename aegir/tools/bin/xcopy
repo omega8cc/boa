@@ -2347,6 +2347,8 @@ _migrate_prepare() {
         && echo "${_s}" || echo /data/all)" \
       _xcopy_fchmod_here 644 ./cpuinfo
     _xcopy_wait_boa_quiet
+    # The job just waited out may be what held the marker (a Percona upgrade).
+    _xcopy_sql_maint_hold
     # The alias-derived _HDB can name a DB an enforced upgrade has already
     # replaced: a dest panel rebuilt between create and import (new panel DB
     # created, old one dropped) leaves the on-disk alias stale, and the dump
@@ -2540,6 +2542,7 @@ _migrate_prepare() {
       _RAH_OLD=${_RAH_OLD//[^a-zA-Z0-9.\-]/}
     fi
     if [ ! -z "${_RAH_OLD}" ]; then
+      _xcopy_sql_maint_hold
       renameaegirhost --aegir-root "${_USR}" --force-old "${_RAH_OLD}"
       _RAH_RC=$?
     else
@@ -5505,8 +5508,9 @@ _take_verb_lock() {
 # trap, and only while it still carries this PID; a kill -9 leaves it to the
 # watchdog's 240-minute staleness limit. A marker another operation holds --
 # a live PID that is not ours, or a fresh empty one -- is left to its owner.
-# Re-asserted before each site, so a marker its owner released mid-run is
-# taken over at the next site; a background beat refreshes ours every 20
+# Re-asserted after the wait for a running BOA job, before each site and before
+# the rename, so a marker its owner released mid-run is taken over at the next
+# of those; a background beat refreshes ours every 20
 # minutes, so one dump or load longer than the staleness limit stays paused.
 # The traps are armed before the marker is written and the flag is cleared
 # after it is removed, so no signal can land between the two.
@@ -5530,7 +5534,10 @@ _xcopy_sql_maint_hold() {
   fi
   if [ "${_XCOPY_SQL_MAINT}" != "YES" ]; then
     _XCOPY_SQL_MAINT=YES
-    trap '_xcopy_chattr_back; _xcopy_sql_maint_release; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+    # Signals masked first: one landing in here would run the exit below inside
+    # this trap and skip the release, pausing the watchdog for hours. The release
+    # goes before the chattr step, the one part that can block on a sick disk.
+    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
     trap 'exit 130' INT TERM HUP
     if [ -z "${_XCOPY_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null; then
       # Detached, not a child of this shell: the bare `wait` calls in this
@@ -5539,8 +5546,9 @@ _xcopy_sql_maint_hold() {
       _XCOPY_SQL_MAINT_BEAT=$(
         (
           # The sleep goes with the beat, so a stopped beat leaves no process;
-          # jobs -p also covers a TERM landing before $! is read.
-          trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM
+          # jobs -p also covers a TERM landing before $! is read, and the second
+          # kill a sleep the first reached between its fork and its exec.
+          trap 'kill $(jobs -p) 2>/dev/null; sleep 0.2; kill $(jobs -p) 2>/dev/null; exit 0' TERM
           while :; do
             sleep 1200 & _bs=$!
             wait "${_bs}"
