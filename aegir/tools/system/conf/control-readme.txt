@@ -36,6 +36,23 @@ fpm.info:
   foo.com 8.5
   old.com 7.4
 
+A platform's sites can follow the platform instead: one line per
+platform folder in fpm-per-platform.info (relative to ~/static, or the
+Publish path shown in the control panel), the web server's PHP only:
+
+  echo "d11-prod 8.4" >> ~/static/control/fpm-per-platform.info
+
+A site's line in multi-fpm.info wins over its platform's line, and that
+wins over fpm.info. A Migrate or Clone onto a listed platform moves the
+site's PHP in the same reload as its code. A Clone or Migrate whose
+target could not run on the version it would get is refused before it
+starts, with the line that would fix it. A line that cannot apply, and
+a site line that wins over a platform's, are named in
+.fpm-per-platform-skipped.info here. Grav and Textpattern sites choose
+their PHP themselves, and a subdirectory site is served under its
+parent's address by the PHP of the parent's platform: give it a line in
+multi-fpm.info.
+
 A site whose code cannot run on the version that serves it (an old
 Drupal 7 or Drupal 6 core on PHP 8, say) is moved within a few minutes
 to the nearest installed version that can run it: a line for it goes
@@ -63,8 +80,8 @@ Migrate...) from the next task on, and the platform builds you request
 below — each build reads it once, when its run starts.
 
 Drush, Composer and bee all follow cli.info (or your phpNN.info
-marker) in the shell. fpm.info and multi-fpm.info never change the
-command line.
+marker) in the shell. fpm.info, multi-fpm.info and
+fpm-per-platform.info never change the command line.
 
 Old and new Drupal cores on one account? Give a platform its own
 command-line PHP, one line per platform folder (relative to ~/static,
