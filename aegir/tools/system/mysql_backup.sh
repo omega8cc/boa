@@ -1284,6 +1284,7 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOM}" -lt 31 ] \
   && { [ "${_MY_RESTART_AFTER_OPTIMIZE}" = "YES" ] \
     || [ -e "/root/.my.restart_after_optimize.cnf" ]; } \
+  && [ -z "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ] \
   && [ ! -e "/run/boa_run.pid" ] \
   && [ ! -e "/run/boa_wait.pid" ] \
   && [ ! -e "/run/octopus_install_run.pid" ] \
@@ -1304,8 +1305,11 @@ elif [ "${_OPTIM}" = "YES" ] \
   && { [ "${_MY_RESTART_AFTER_OPTIMIZE}" = "YES" ] \
     || [ -e "/root/.my.restart_after_optimize.cnf" ]; }; then
   # This window recurs once a month: say WHY the restart was skipped, or
-  # a deferral is indistinguishable from the feature silently breaking
-  echo "INFO: db server restart after optimize SKIPPED on $(date) -- an install/upgrade pass is in flight; next window next month"
+  # a deferral is indistinguishable from the feature silently breaking.
+  # Cron discards this run's output, so the line also goes to a file.
+  mkdir -p /var/log/boa
+  echo "INFO: db server restart after optimize SKIPPED on $(date) -- an install/upgrade pass or SQL maintenance is in flight; next window next month" \
+    | tee -a /var/log/boa/mysql.backup.restart.log
 fi
 
 echo "INFO: Completing all dbs backups on $(date)"

@@ -89,6 +89,13 @@ if [ -e "/run/boa_sql_maintenance.pid" ]; then
   fi
 fi
 
+# The gate above is read once per pass and a pass lives for up to a minute, so
+# an operation that starts during it would still meet its restart or its kill.
+# Each action that can hit that operation asks again and ends the pass.
+_sql_maint_held() {
+  [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ]
+}
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
@@ -323,6 +330,9 @@ _sql_restart() {
   if _mysql_is_answering; then
     return 0
   fi
+  # Not answering because a maintenance operation stopped it after this pass
+  # passed the gate: starting it now is the race the gate exists to prevent.
+  _sql_maint_held && exit 0
   # Not answering by design: a server that has not written its pid file yet
   # is still starting -- crash recovery, the conversion of a 5.7 datadir
   # (its stage file in the datadir says which stage), or the server-side
@@ -487,6 +497,7 @@ _mysql_proc_kill() {
 }
 
 _mysql_proc_control() {
+  _sql_maint_held && exit 0
   # Control file to enable _SQLMONITOR
   if [ "${_MYSQLADMIN_MONITOR}" = "YES" ] \
     || [ -e "/etc/boa/.mysqladmin.monitor.cnf" ]; then
@@ -692,6 +703,7 @@ _mysql_high_load() {
 }
 
 _if_mydumper_is_locked() {
+  _sql_maint_held && exit 0
   _OCT_NR=$(ls /data/disk | wc -l)
   if [ -n "${_OCT_NR}" ] && [ "${_OCT_NR}" -ge 1 ]; then
     if [ "${_OCT_NR}" -ge 6 ]; then
