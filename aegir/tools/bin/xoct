@@ -6231,6 +6231,8 @@ _migrate_prepare() {
         && echo "${_s}" || echo /data/all)" \
       _xoct_fchmod_here 644 ./cpuinfo
     _xoct_wait_boa_quiet
+    # The job just waited out may be what held the marker (a Percona upgrade).
+    _xoct_sql_maint_hold
     if [ ! -z "${_dst}" ] && [ "${_oct}" != "${_dst}" ]; then
       echo "INFO: rename mode import for source ${_oct} into target account ${_dst}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5R -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
@@ -6427,6 +6429,7 @@ _migrate_prepare() {
       _RAH_ACCT=" --old-account ${_oct} --new-account ${_dst}"
     fi
     if [ ! -z "${_RAH_OLD}" ]; then
+      _xoct_sql_maint_hold
       renameaegirhost --aegir-root "${_USR}" --force-old "${_RAH_OLD}"${_RAH_ACCT}
       _RAH_RC=$?
     else
@@ -11061,8 +11064,8 @@ _take_verb_lock() {
 ###-------------SQL WATCHDOG PAUSE-------###
 
 # export runs mysqldump and mydumper against the LIVE source; import runs
-# mysql and myloader plus renameaegirhost (which dumps and reimports the Aegir
-# DB). While /run/boa_sql_maintenance.pid exists the mysql.sh watchdog stands
+# mysql and myloader plus renameaegirhost (a backup dump of the Aegir DB, then
+# updates in place). While /run/boa_sql_maintenance.pid exists the mysql.sh watchdog stands
 # down entirely, so a restart or a mydumper kill cannot land mid dump or load.
 #
 # The marker carries this run's PID, so the launchers read a killed run's
@@ -11071,8 +11074,9 @@ _take_verb_lock() {
 # for four hours -- and only while it still carries this PID; a kill -9 leaves
 # it to the watchdog's 240-minute staleness limit. A marker another operation
 # holds -- a live PID that is not ours, or a fresh empty one -- is left to its
-# owner. Re-asserted before each site, so a marker its owner released mid-run
-# is taken over at the next site; a background beat refreshes ours every 20
+# owner. Re-asserted after the wait for a running BOA job, before each site and
+# before the rename, so a marker its owner released mid-run is taken over at the
+# next of those; a background beat refreshes ours every 20
 # minutes, so one step longer than the staleness limit (a large site, or the
 # panel restore plus the host rename) stays paused. The traps are armed before
 # the marker is written and the flag is cleared after it is removed, so no
@@ -11097,7 +11101,10 @@ _xoct_sql_maint_hold() {
   fi
   if [ "${_XOCT_SQL_MAINT}" != "YES" ]; then
     _XOCT_SQL_MAINT=YES
-    trap '_xoct_chattr_back; _xoct_sql_maint_release; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+    # Signals masked first: one landing in here would run the exit below inside
+    # this trap and skip the release, pausing the watchdog for hours. The release
+    # goes before the chattr step, the one part that can block on a sick disk.
+    trap 'trap "" INT TERM HUP; _xoct_sql_maint_release; _xoct_chattr_back; rm -f "${_XOCT_LOCK_FILE}"' EXIT
     trap 'exit 130' INT TERM HUP
     if [ -z "${_XOCT_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XOCT_SQL_MAINT_BEAT}" 2>/dev/null; then
       # Detached, not a child of this shell: the bare `wait` calls in this
@@ -11106,8 +11113,9 @@ _xoct_sql_maint_hold() {
       _XOCT_SQL_MAINT_BEAT=$(
         (
           # The sleep goes with the beat, so a stopped beat leaves no process;
-          # jobs -p also covers a TERM landing before $! is read.
-          trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM
+          # jobs -p also covers a TERM landing before $! is read, and the second
+          # kill a sleep the first reached between its fork and its exec.
+          trap 'kill $(jobs -p) 2>/dev/null; sleep 0.2; kill $(jobs -p) 2>/dev/null; exit 0' TERM
           while :; do
             sleep 1200 & _bs=$!
             wait "${_bs}"

@@ -75,6 +75,27 @@
 
 @=> Important Fixes
 
+    * A MySQL watchdog pass already running when a migration or a Percona
+      upgrade starts stands down at its next action: it read the SQL
+      maintenance marker only at its start, so it could still start the
+      server the operation had just stopped, or end a dump or a long query.
+
+    * The clean-up of a stuck nightly backup leaves a migration's dump alone:
+      while the SQL maintenance marker is held it ends the backup's own
+      mydumper and no longer every one on the box.
+
+    * The optional restart after the monthly OPTIMIZE is skipped while the
+      SQL maintenance marker is held. A skipped restart is now recorded in
+      /var/log/boa/mysql.backup.restart.log: under cron the line was lost.
+
+    * xcopy and xoct take the SQL maintenance marker again once a job they
+      waited for has ended, and before the host rename, so the control panel
+      restore and the rename no longer run unmarked when that job held it.
+
+    * A signal landing as xcopy or xoct leave an export or an import no
+      longer leaves the SQL maintenance marker behind, which paused the
+      MySQL watchdog for up to four hours.
+
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and
       its promotion by hand read every account on the box, as the move
@@ -170,7 +191,7 @@
       composer audit of a private copy of the platform's lock, on Drupal 6
       and 7 the enabled projects behind their newest release or marked
       insecure. It changes nothing, says unknown when a source is out of
-      reach, and no role holds its permission until a host grants it.
+      reach, and is there for a tenant's own, client and site operator logins.
 
 @=> Changes
 
