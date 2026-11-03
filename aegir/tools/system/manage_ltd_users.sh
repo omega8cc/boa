@@ -8514,8 +8514,8 @@ _ltd_fpm_sig() {
     [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
     declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
       _ltd_fpm_nearest _ltd_fpm_cli_key _ltd_cpp_key_norm _ltd_cpp_key_path _ltd_fpm_usable \
-      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli \
-      _ltd_fpm_core_check _ltd_fpm_plat_notes
+      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli _ltd_fpm_plat_notes \
+      _ltd_fpm_core_check
   } | md5sum | cut -d' ' -f1
 }
 # The judge, run as the account and cut off after two minutes, given the
