@@ -163,6 +163,22 @@
       warning from Textpattern's own clean-URL self-test, which cannot
       succeed before the site's vhost is live.
 
+@=> New Features
+
+    * Check available updates, a new read-only site task, writes a site's
+      known security problems into its task log: on Drupal 8 and newer a
+      composer audit of a private copy of the platform's lock, on Drupal 6
+      and 7 the enabled projects behind their newest release or marked
+      insecure. It changes nothing, says unknown when a source is out of
+      reach, and no role holds its permission until a host grants it.
+
+@=> Changes
+
+    * The dormant site health check backend, provision-site_health_check,
+      and its permission are gone: its Drupal 8+ step ran a Drush command
+      that Drush 12.3 removed and whose older form reads an advisory list
+      discontinued on 20 May 2026.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw
