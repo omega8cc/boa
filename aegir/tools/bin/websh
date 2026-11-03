@@ -2240,7 +2240,7 @@ _cpp_fpm_warn() {
 # and folder as written.
 _cpp_fpm_plat_load() {
   local LC_ALL=C
-  local _txt="" _ln=0 _line _k _v _rest _hp _pp _i
+  local _txt="" _ln=0 _line _k _v _rest _hp _alp _pp _i _in _r0
   local -a _nks=() _vs=() _lns=() _kys=() _kps=() _kvs=() _kls=() _kks=()
   _CPP_PF_P=(); _CPP_PF_V=(); _CPP_PF_L=(); _CPP_PF_K=()
   _ctrl_file "${_DRUSH_CLI_CTRL}" fpm-per-platform.info
@@ -2261,23 +2261,34 @@ _cpp_fpm_plat_load() {
     [ -x "/opt/php${_v}/bin/php" ] || continue
     [ "${1:-}" = "pool" ] && [ ! -S "/run/${_Y_USR}.${_v}.fpm.socket" ] \
       && [ ! -f "/opt/php${_v}/etc/pool.d/${_Y_USR}.${_v}.conf" ] && continue
+    [ "${#_k}" -le 1000 ] || continue
     _cpp_norm "${_k}" || continue
     _cpp_safe "${_k}"
     _nks+=("${_CPP_NK}"); _vs+=("${_v}"); _lns+=("${_ln}"); _kys+=("${_CPP_S}")
   done <<< "${_txt}"
   [ "${#_nks[@]}" -gt 0 ] || return 0
   _hp="$(cd -P -- "/data/disk/${_Y_USR}" 2> /dev/null && pwd -P)"
+  _alp="$(cd -P -- /data/all 2> /dev/null && pwd -P)"
   _cpp_phys "${_nks[@]}"
-  # a folder leading out of the account's home and the shared trees: the worker
-  # leaves it out, so it is no line here
+  # a folder leading out of the account's home and the shared trees, or holding a
+  # Grav or Textpattern site, which chooses its socket itself: the worker leaves
+  # it out, so it is no line here
   for (( _i = 0; _i < ${#_nks[@]}; _i++ )); do
     _pp="${_CPP_PP[${_i}]}"
     case "${_pp}/" in
       "/data/disk/${_Y_USR}/"*|"/data/all/"*|"/data/disk/all/"*) ;;
       *)
-        [ -n "${_hp}" ] && case "${_pp}/" in "${_hp}/"*) true ;; *) false ;; esac || continue
+        _in=NO
+        for _r0 in "${_hp}" "${_alp}"; do
+          [ -n "${_r0}" ] && case "${_pp}/" in "${_r0}/"*) _in=YES ;; esac
+        done
+        [ "${_in}" = "YES" ] || continue
         ;;
     esac
+    if { [ -f "${_pp}/bin/grav" ] && [ ! -L "${_pp}/bin" ] && [ ! -L "${_pp}/bin/grav" ]; } \
+      || { [ -d "${_pp}/textpattern" ] && [ ! -L "${_pp}/textpattern" ]; }; then
+      continue
+    fi
     _kps+=("${_pp}"); _kvs+=("${_vs[${_i}]}"); _kls+=("${_lns[${_i}]}"); _kks+=("${_kys[${_i}]}")
   done
   _CPP_PF_P=("${_kps[@]}"); _CPP_PF_V=("${_kvs[@]}"); _CPP_PF_L=("${_kls[@]}"); _CPP_PF_K=("${_kks[@]}")
@@ -2395,7 +2406,8 @@ _cpp_fpm_guard() {
   _d="${_d//[!0-9]/}"
   if [ -f "${_DRUSH_CLI_CTRL}/multi-fpm.info" ] && [ -d "${_acct}/tools/le" ]; then
     _ctrl_file "${_DRUSH_CLI_CTRL}" multi-fpm.info
-    [ -n "${_CTRL_F}" ] && { IFS= read -r -N 1048576 _txt < "${_CTRL_F}"; } 2> /dev/null
+    [ -n "${_CTRL_F}" ] || return 0
+    { IFS= read -r -N 1048576 _txt < "${_CTRL_F}"; } 2> /dev/null
     while IFS=$' \t' read -r _s _x _; do
       [[ "${_s}" == \#* ]] && continue
       _s="${_s//[^a-zA-Z0-9-.]/}"
@@ -2405,6 +2417,8 @@ _cpp_fpm_guard() {
       _v="${_x}"; _kind=site; _from="the site's line in multi-fpm.info"
     done <<< "${_txt}"
     if [ -z "${_v}" ]; then
+      _ctrl_file "${_DRUSH_CLI_CTRL}" fpm-per-platform.info
+      [ -n "${_CTRL_F}" ] || [ ! -f "${_DRUSH_CLI_CTRL}/fpm-per-platform.info" ] || return 0
       _cpp_fpm_plat_load pool
       _cpp_fpm_plat_for "${_CPP_ROOT}"
       if [ -n "${_CPP_PFV}" ]; then
@@ -2440,6 +2454,18 @@ _cpp_fpm_guard() {
   case "${_key}" in
     */web|*/docroot|*/html) _key="${_key%/*}" ;;
   esac
+  # the line offered must lead back to this folder as the worker reads it: a path
+  # it takes no line for, or one cut for display, is no line to offer
+  _p="${_dr}"
+  case "${_p}" in
+    */web|*/docroot|*/html) _p="${_p%/*}" ;;
+  esac
+  if _cpp_norm "${_key}"; then
+    _cpp_phys "${_CPP_NK}"
+    [ "${_CPP_PP[0]}" = "${_p}" ] || _key=""
+  else
+    _key=""
+  fi
   if [ -z "${_sug}" ]; then
     _fix="No PHP installed with a pool of this account can run it; ask your host."
   else
@@ -2447,7 +2473,13 @@ _cpp_fpm_guard() {
     case "${_kind}" in
       site) _fix="Fix: change the site's line in ~/static/control/multi-fpm.info to ${_x}." ;;
       platform) _fix="Fix: change line ${_CPP_PFL} of ~/static/control/fpm-per-platform.info to ${_x}." ;;
-      default) _fix="Fix: add the line \"${_key} ${_x}\" to ~/static/control/fpm-per-platform.info, or a line for the site to multi-fpm.info, and run this again after a few minutes." ;;
+      default)
+        if [ -n "${_key}" ]; then
+          _fix="Fix: add the line \"${_key} ${_x}\" to ~/static/control/fpm-per-platform.info, or a line for the site to multi-fpm.info, and run this again after a few minutes."
+        else
+          _fix="Fix: add a line for the site to ~/static/control/multi-fpm.info, and run this again after a few minutes."
+        fi
+        ;;
       single) _fix="Fix: set ~/static/control/fpm.info to ${_x}, and run this again after a few minutes." ;;
     esac
   fi

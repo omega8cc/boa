@@ -5770,13 +5770,15 @@ _site_socket_inc_gen() {
 # It is only ever made in multi-FPM mode; otherwise this removes it. BOA never
 # writes the file. A line that cannot apply is left out and named, with why, in
 # .fpm-per-platform-skipped.info (_ltd_fpm_plat_skip_put).
-# nginx matches text, in order: rules run from the shortest root to the longest,
-# and a platform registered through a link gets a rule of its own on the root it
-# was registered with, when the folder holding it physically gives it another
-# version than the rules on text would. Rules that run next to each other with
-# one version share an if: nginx keeps every if of the include once per vhost. A
-# shared regex is cut below the length of one nginx token (4096 bytes). The "#
-# rule" lines are what _ltd_fpm_served reads back, in the order nginx runs them.
+# nginx matches text, in order: a folder's rule runs after the rule of every
+# listed folder holding it, and a platform registered through a link gets a rule
+# of its own on the root it was registered with, when the folder holding it
+# physically gives it another version than the rules on text would. Roots at one
+# depth of that nesting never hold each other, so they run grouped by version and
+# share an if: nginx keeps every if of the include once per vhost, and the order
+# of the lines must not decide how many there are. A shared regex is cut below the
+# length of one nginx token (4096 bytes). The "# rule" lines are what
+# _ltd_fpm_served reads back, in the order nginx runs them.
 # The key alphabet (_ltd_cpp_key_path) has no character an nginx string treats as
 # special, a dot apart, which is escaped.
 # One file must not cost the box: a root gets one rule whatever the lines
@@ -5797,6 +5799,33 @@ _ltd_fpm_plat_flush() {
   _body+="  set \$user_socket \"${_USER}.${_gv}\";"$'\n'"}"$'\n'
   _g=""
 }
+# An FPM include nginx has not read yet outlives the pass that wrote it: a pass
+# killed before its reload, or nginx refusing the box at that moment, leaves the
+# next pass nothing to compare. The stamp stands until a reload has read it.
+_ltd_ngx_owe() {
+  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
+  : > "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+}
+# Reload nginx once per pass, and only when the account's FPM includes changed
+# or a reload is owed: nginx reads them on reload alone, and a reload on every
+# pass reset every HTTP/3 transfer in flight.
+_ltd_ngx_pass_reload() {
+  local _own="/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+  if [ "${_ltdNgxReloaded}" = "YES" ]; then
+    rm -f "${_own}"
+    return 0
+  fi
+  [ -e "${_own}" ] || [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ] || return 0
+  if nginx -t &> /dev/null; then
+    service nginx reload &> /dev/null
+    rm -f "${_own}"
+  else
+    _ltd_ngx_owe
+    _ltd_notice "nginx-configtest-${_USER}" \
+      "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
+      "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+  fi
+}
 # One rule in _ltd_fpm_plat_gen's _rows, by its root: a later one takes its
 # place. $1 = the line number, $2 = NN, $3 = the root.
 _ltd_fpm_plat_row() {
@@ -5814,7 +5843,7 @@ _ltd_fpm_plat_gen() {
   local IFS=$' \t\n'
   local _inc="${_dscUsr}/config/server_master/nginx/post.d" _nm=fpm_include_platform.inc
   local _txt _ln=0 _line _k _kv _rest _ks _vd _why _p _t _r _rp _f _c _hmp _hop _alp _stp _multi=NO
-  local _list="" _body="" _rules="" _old _len _lnr _v _re _g="" _gv=""
+  local _list="" _body="" _rules="" _old _dp _lnr _v _re _g="" _gv=""
   local _sk="" _i _a _in _r0 _rb=0 _rfull="" _sum _fp0 _err _best _pv _pl _tv
   local _rf="/var/backups/ltd/fpmcore/${_USER}.refused"
   local -a _ar=() _ap=() _kp=() _kt=() _kl=() _kvs=()
@@ -5830,7 +5859,12 @@ _ltd_fpm_plat_gen() {
   fi
   _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./fpm-per-platform.info
   [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] && _multi=YES
-  _txt=$(_ltd_ctrl_read fpm-per-platform.info | head -c 65536 | tr -d '\000')
+  # the window websh reads (_cpp_fpm_plat_load): NUL bytes do not count
+  _txt=$(_ltd_ctrl_read fpm-per-platform.info | tr -d '\000' | head -c 65537)
+  if [ "${#_txt}" -gt 65536 ]; then
+    _txt="${_txt:0:65536}"
+    _sk+="past 64 KiB: not read, this file takes 64 KiB"$'\n'
+  fi
   _hop=$(cd -P -- "${_dscUsr}" 2> /dev/null && pwd -P)
   _hmp=$(cd -P -- "${_dscUsr}/aegir" 2> /dev/null && pwd -P)
   _alp=$(cd -P -- /data/all 2> /dev/null && pwd -P)
@@ -5959,17 +5993,25 @@ _ltd_fpm_plat_gen() {
     && _sk+="the whole file: it reaches too many platforms, those past 256 KiB of rules are left out"$'\n'
   _LTD_FPM_PLAT_SKIP="${_sk}"
   for _r in "${!_rows[@]}"; do
-    _list+="${#_r} ${_rows[${_r}]} ${_r}"$'\n'
+    # how many listed folders hold this one
+    _dp=0
+    _p="${_r%/*}"
+    while [ -n "${_p}" ]; do
+      [ -z "${_rows[${_p}]:-}" ] || _dp=$(( _dp + 1 ))
+      _p="${_p%/*}"
+    done
+    _list+="${_dp} ${_rows[${_r}]} ${_r}"$'\n'
   done
   if [ -z "${_list}" ]; then
     rm -f "${_rf}"
     if [ -e "${_inc}/${_nm}" ] || [ -L "${_inc}/${_nm}" ]; then
       _ltd_rm_in "${_inc}" "${_nm}"
+      _ltd_ngx_owe
       _ltdNgxReloaded=
     fi
     return 0
   fi
-  while read -r _len _lnr _v _t; do
+  while read -r _dp _lnr _v _t; do
     [ -n "${_t}" ] || continue
     _rules+="# rule ${_t} ${_v}"$'\n'
     _re="${_t//./\\.}"
@@ -5978,7 +6020,7 @@ _ltd_fpm_plat_gen() {
       _gv="${_v}"
     fi
     _g+="${_g:+|}${_re}"
-  done < <(printf '%s' "${_list}" | LC_ALL=C sort -k1,1n -k2,2n -k4,4)
+  done < <(printf '%s' "${_list}" | LC_ALL=C sort -k1,1n -k3,3n -k4,4)
   _ltd_fpm_plat_flush
   _body="# Built by BOA from ~/static/control/fpm-per-platform.info; edits here are lost."$'\n'"${_rules}${_body}"
   _body="${_body%$'\n'}"
@@ -5995,17 +6037,23 @@ _ltd_fpm_plat_gen() {
     return 0
   fi
   _fp0="$(_ltd_ngx_fpm_fp)"
-  _ltd_swap_in "${_inc}" "${_nm}" "${_body}" || return 0
-  if nginx -t &> /dev/null; then
+  if ! _ltd_swap_in "${_inc}" "${_nm}" "${_body}"; then
+    _LTD_FPM_PLAT_SKIP+="the whole file: not applied yet, tried again on every pass"$'\n'
+    return 0
+  fi
+  # asked twice: nginx reads every vhost and certificate of the box, and one being
+  # written at that moment is no fault of this body
+  if nginx -t &> /dev/null || _err="$(nginx -t 2>&1)"; then
     rm -f "${_rf}"
     # a reload the per-site rebuild sent earlier in this pass did not read this:
     # the pass's own reload must still run
+    _ltd_ngx_owe
     _ltdNgxReloaded=
     return 0
   fi
+  _err="$(printf '%s\n' "${_err}" | tail -3 | tr '\n' ' ')"
   # one tenant's file must never leave the box a config nginx refuses: the next
   # restart, of anything, would then be an outage for every account
-  _err="$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
   if [ -n "${_old}" ] && [ "${#_old}" -lt 1048576 ]; then
     _ltd_swap_in "${_inc}" "${_nm}" "${_old}"
   else
@@ -6585,7 +6633,8 @@ _switch_php() {
         && [ "${_NEW_FPM_SETUP}" != "YES" ] \
         && [ "${_PHP_FPM_MULTI}" = "NO" ] \
         && [ -x "/opt/php${_T_FPM_VRN//./}/bin/php" ]; then
-        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
+        # websh reads it as the account (_cpp_fpm_guard)
+        ( umask 022; _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}" )
         _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
       fi
 
@@ -6629,7 +6678,7 @@ _switch_php() {
       if [ -n "${_T_FPM_VRN}" ] && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
         _satellite_tune_fpm_workers
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
-        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
+        ( umask 022; _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}" )
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
           _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
         else
@@ -7553,19 +7602,7 @@ _manage_user() {
       _ltd_fpm_core_check
       _ltd_fpm_plat_skip_put
       _ltd_fpm_cut_notice
-      ### reload nginx once per pass, and only when this pass changed the
-      ### account's FPM includes: nginx reads them on reload alone, and a
-      ### reload on every pass reset every HTTP/3 transfer in flight
-      if [ "${_ltdNgxReloaded}" != "YES" ] \
-        && [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ]; then
-        if nginx -t &> /dev/null; then
-          service nginx reload &> /dev/null
-        else
-          _ltd_notice "nginx-configtest-${_USER}" \
-            "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
-            "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
-        fi
-      fi
+      _ltd_ngx_pass_reload
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance
         # clients/ is oN's: a client name there can be a link to anywhere,
