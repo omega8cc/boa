@@ -323,6 +323,15 @@ _THUNDER_DISTPKG="thunder/thunder-distribution"
 # Move the pin only after a test install AND clone of the newer template pass;
 # the distribution version in the platform name does not change.
 _VARBASE_SPEC="Vardot/varbase-project:11.0.10"
+# That lock's core 11.4.8 is below the 14 October 2026 security release, so the build
+# moves it to this core and to the release of upstream's core patch package that fits
+# it (11.4.0.8 drops the one patch of 11.4.0.7 that no longer applies from core 11.4.9).
+# Nothing else upstream locked moves except what core pins. The platform name carries
+# the core: move these once a test install AND clone pass, and _distros_drupal_cores["VBX"]
+# in AegirSetupC only after the new tarball is on the mirror. Drop both when a newer
+# template carries its own lock.
+_VARBASE_CORE="11.4.11"
+_VARBASE_CORE_PATCHES="11.4.0.8"
 # The 11 line's committed lock pins drupal/ai_provider_amazeeio 1.4.2 (via
 # drupal/drupal_cms_ai), which declares ext-pdo_pgsql; BOA's PHP builds carry no
 # PostgreSQL driver, so a lock-faithful install must ignore that one platform
@@ -366,7 +375,12 @@ _CORE_SPEC="drupal/recommended-project"
 # support: core advisories stay.
 _EZC_PINNED="ezcontent-2.2.15-10.3.6"
 _EZC_DISTPKG="srijanone/ezcontent"
-_CK2_PINNED="commerce_base-2.40-10.1.8"
+# CK2's name carries drupal/commerce, which the fix step holds, so a fixed Commerce is
+# a new name: 2.41 fixes SA-CONTRIB-2026-254. The first build of a new name starts from
+# the copy published under _CK2_FROM and takes _CK2_COMMERCE.
+_CK2_PINNED="commerce_base-2.41-10.1.8"
+_CK2_FROM="commerce_base-2.40-10.1.8"
+_CK2_COMMERCE="2.41.0"
 _CK2_DISTPKG="drupalcommerce/commerce_base"
 _PHP_PINNED="${_PHP_83}"
 
@@ -656,7 +670,10 @@ _run_as_o8() {
   # the start of every run. A GitHub token for the build goes into this home.
   # COMPOSER_PATCHES_SKIP_REPORTING: never inherited from the account's profile, as
   # the patch check reads the PATCHES.txt files composer-patches writes.
-  su -s /bin/bash - "${_O8_USER}" -c "unset COMPOSER_PATCHES_SKIP_REPORTING; export COMPOSER_NO_INTERACTION=1 COMPOSER_HOME='${_STATIC_ROOT}/${_O8_USER}/.config/staticbuild-composer' COMPOSER_CACHE_DIR='${_STATIC_ROOT}/${_O8_USER}/.cache/staticbuild-composer'; $1"
+  # TMPDIR: the build user's own, under the build's home. composer-patches 2.x fetches
+  # into a fixed <temp>/composer-patches, and in a shared /tmp that directory belongs
+  # to whichever account made it first: every other build user's install then fails.
+  su -s /bin/bash - "${_O8_USER}" -c "unset COMPOSER_PATCHES_SKIP_REPORTING; export COMPOSER_NO_INTERACTION=1 COMPOSER_HOME='${_STATIC_ROOT}/${_O8_USER}/.config/staticbuild-composer' COMPOSER_CACHE_DIR='${_STATIC_ROOT}/${_O8_USER}/.cache/staticbuild-composer' TMPDIR='${_STATIC_ROOT}/${_O8_USER}/.config/staticbuild-composer/tmp'; mkdir -p \"\${TMPDIR}\"; $1"
 }
 
 use_php() {
@@ -2503,6 +2520,29 @@ build_thunder() {
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
 }
 
+_varbase_take_core() {
+  # Move a fresh template tree's lock to _VARBASE_CORE before its first install: core,
+  # what core pins, and the core patch package. The old patches.lock.json goes with
+  # them, because it still lists a patch this core refuses, and the plugin writes it
+  # anew from the moved lock during the install. $1 workdir.
+  local _wd="$1" _p _with=""
+  for _p in core core-recommended core-composer-scaffold core-project-message \
+            core-recipe-unpack core-vendor-hardening; do
+    _with+=" --with 'drupal/${_p}:${_VARBASE_CORE}'"
+  done
+  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --no-install --no-scripts --no-plugins --with-all-dependencies ${_with} --with 'vardot/drupal-core-patches:${_VARBASE_CORE_PATCHES}' ${_VARBASE_IGNORE_EXT} 'drupal/core' 'drupal/core-*' 'vardot/drupal-core-patches'" \
+    || return 1
+  [[ "$(_lock_version "${_wd}" drupal/core)" == "${_VARBASE_CORE}" ]] || return 1
+  _run_as_o8 "rm -f '${_wd}/patches.lock.json'"
+}
+
+_varbase_patches_written() {
+  # The install took the patch set when patches.lock.json holds its core patches. Exit
+  # 0 from an install that never loaded a set would otherwise pass as all applied.
+  # $1 workdir.
+  _run_as_o8 "php -r '\$j = json_decode((string) @file_get_contents(\$argv[1]), true); exit(empty(\$j[\"patches\"][\"drupal/core\"]) ? 1 : 0);' '$1/patches.lock.json'"
+}
+
 build_varbase() {
   _begin_build "$(_target_prefix varbase)" "varbase" || return 0
   use_php "${_PHP_VARBASE}" || { _record_fail "varbase"; return 1; }
@@ -2511,20 +2551,22 @@ build_varbase() {
     || { _record_fail "varbase"; return 1; }
   # varbase installs FROM THE SHIPPED LOCK, uniquely among the distros here. The July
   # 2026 template fix IS the committed lock: upstream's tested resolve, including the
-  # composer-patches generation their ~76-patch set is written for. A re-resolve
+  # composer-patches generation their ~65-patch set is written for. A re-resolve
   # (_composer_build's composer update) discards exactly that -- measured 2026-08-11:
   # the fresh resolve pulls a newer patches stack that aborts on their own core patch,
   # and every older-core fallback pin just contradicts the profile's own core
   # requirement. Config stays PRISTINE except allow-plugins (a config-section key):
-  # that is the shape upstream tests.
+  # that is the shape upstream tests. Only core, what core pins and the patch release
+  # that fits it move (_varbase_take_core).
   #
-  # The retry loop exists because their patch set is fetched from ~76 URLs at install
+  # The retry loop exists because their patch set is fetched from ~65 URLs at install
   # time and a single flaked download aborts the whole install. CRITICAL: their pinned
   # composer-patches records the ABORTED set as applied, so a retried install in the
   # SAME tree exits 0 with patches silently missing (measured: a core patch absent
   # from an exit-0 tree). Every attempt therefore starts from a fresh create-project
-  # (_create_project rm -rf's the workdir) -- on a fresh tree, exit 0 can only mean
-  # every patch applied in that one pass, because a patch failure is fatal. The shared
+  # (_create_project rm -rf's the workdir) -- on a fresh tree, exit 0 with the patch set
+  # loaded (_varbase_patches_written) can only mean every patch applied in that one
+  # pass, because a patch failure is fatal. The shared
   # composer cache still warms across attempts, which is what lets a later attempt
   # complete. Never "optimise" this to resume a failed tree.
   local _try _vok=""
@@ -2535,7 +2577,9 @@ build_varbase() {
         || { _record_fail "varbase"; return 1; }
     fi
     if _run_as_o8 "cd '${_wd}' && composer config --no-plugins allow-plugins true" \
-      && _run_as_o8 "cd '${_wd}' && composer install --no-dev ${_VARBASE_IGNORE_EXT}"; then
+      && _varbase_take_core "${_wd}" \
+      && _run_as_o8 "cd '${_wd}' && composer install --no-dev ${_VARBASE_IGNORE_EXT}" \
+      && _varbase_patches_written "${_wd}"; then
       _vok="YES"
       break
     fi
@@ -2570,6 +2614,19 @@ _fetch_pinned() {
     _run_as_o8 "curl -fsSL -A '${_BOA_UA}' -o '${_src}' '${_BOA_DISTRO_URL}/${_pub}.tar.gz'" || return 1
   fi
   _run_as_o8 "tar -xzf '${_src}' --strip-components=1 -C '${_wd}' && rm -f '${_DAY_DIR}/.pinned.tar.gz' && test -f '${_wd}/composer.lock'"
+}
+
+_pinned_take_release() {
+  # Move a pinned tree's held package to the release its platform name says, when the
+  # tree is still on an older one, as the first build of a new name is. Only that
+  # package moves, at the fix step's settings, and the tree then installs in its own
+  # scope. $1 workdir, $2 package, $3 version. Non-zero leaves the published copy alone.
+  local _wd="$1" _pkg="$2" _ver="$3"
+  [[ "$(_lock_version "${_wd}" "${_pkg}")" != "${_ver}" ]] || return 0
+  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --no-install --no-scripts --with-dependencies --minimal-changes --with '${_pkg}:${_ver}' ${_FIX_IGNORE_EXT} '${_pkg}'" \
+    || return 1
+  [[ "$(_lock_version "${_wd}" "${_pkg}")" == "${_ver}" ]] || return 1
+  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}"
 }
 
 _ezc_asset_libraries() {
@@ -2626,16 +2683,23 @@ build_ezcontent() {
 }
 
 build_commerce_base() {
-  # Pinned: rebuilt from its published tarball; only the advisory fix step moves code.
+  # Pinned: rebuilt from its published tarball. The first build of a new name also takes
+  # _CK2_COMMERCE; after that only the advisory fix step moves code.
   local _rest="${_CK2_PINNED%-*}" _wd="${_DAY_DIR}/.build.commerce_base"
   _begin_build "$(_target_prefix commerce_base)" "commerce_base" || return 0
   use_php "${_PHP_PINNED}" || { _record_fail "commerce_base"; return 1; }
-  if ! _fetch_pinned "${_CK2_PINNED}" "${_wd}"; then
-    _alrt "commerce_base: could not fetch or unpack the published ${_CK2_PINNED}"
+  if ! _fetch_pinned "${_CK2_PINNED}" "${_wd}" && ! _fetch_pinned "${_CK2_FROM}" "${_wd}"; then
+    _alrt "commerce_base: could not fetch or unpack the published ${_CK2_PINNED} or ${_CK2_FROM}"
     _record_fail "commerce_base (pinned unpack failed)"
     return 1
   fi
   _composer_prepare "${_wd}" || { _record_fail "commerce_base"; return 1; }
+  # Before the rehash: the move writes the lock's hash, so the rehash has nothing left.
+  if ! _pinned_take_release "${_wd}" drupal/commerce "${_CK2_COMMERCE}"; then
+    _alrt "commerce_base: could not move drupal/commerce to ${_CK2_COMMERCE}"
+    _record_fail "commerce_base (Commerce ${_CK2_COMMERCE} did not install)"
+    return 1
+  fi
   _pinned_lock_rehash "${_wd}" "commerce_base"
   _fix_step "${_wd}" "commerce_base" "${_CK2_DISTPKG} drupal/commerce" || return 1
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"

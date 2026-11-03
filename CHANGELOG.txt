@@ -75,6 +75,28 @@
 
 @=> Important Fixes
 
+    * xmass no longer passes over an account whose name is not o followed by
+      digits: its pre-mig panel check, its panel probe after a cutover and
+      its promotion by hand read every account on the box, as the move
+      itself always did, and prep-target purges or refuses a target-only
+      account of any name.
+
+    * xmass pre-mig on a source stops on an account directory that holds a
+      control panel's alias with no such user, and says so: a copy of an
+      account, or an account that lost its user. On a target it reports one
+      and goes on, since prep-target needs its key to purge it or restore
+      its user. A promotion by hand leaves a copy alone and still cleans up
+      an account that lost its user.
+
+    * xmass init checks the source's TLS material before it changes anything
+      on either box, as it says: the check ran after it had dropped the
+      target's pre-pass backups, cleared queued delete tasks, marked the
+      target and, for GTID, restarted a live source's MySQL.
+
+    * The bee and grav wrappers treat an account's backend user as the
+      backend whatever the account's name, by what the account holds; its
+      client logins stay clients.
+
     * A repair of a migration proxy that names no account on the other box
       pairs it with the account root's own record names there, as a renamed
       move needs, not with an account of the same name.
@@ -140,6 +162,22 @@
     * A Textpattern 4.9.2 site's install log no longer carries a PHP
       warning from Textpattern's own clean-URL self-test, which cannot
       succeed before the site's vhost is live.
+
+@=> New Features
+
+    * Check available updates, a new read-only site task, writes a site's
+      known security problems into its task log: on Drupal 8 and newer a
+      composer audit of a private copy of the platform's lock, on Drupal 6
+      and 7 the enabled projects behind their newest release or marked
+      insecure. It changes nothing, says unknown when a source is out of
+      reach, and no role holds its permission until a host grants it.
+
+@=> Changes
+
+    * The dormant site health check backend, provision-site_health_check,
+      and its permission are gone: its Drupal 8+ step ran a Drush command
+      that Drush 12.3 removed and whose older form reads an advisory list
+      discontinued on 20 May 2026.
 
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
