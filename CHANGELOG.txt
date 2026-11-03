@@ -191,7 +191,7 @@
       composer audit of a private copy of the platform's lock, on Drupal 6
       and 7 the enabled projects behind their newest release or marked
       insecure. It changes nothing, says unknown when a source is out of
-      reach, and no role holds its permission until a host grants it.
+      reach, and is there for a tenant's own, client and site operator logins.
 
 @=> Changes
 
