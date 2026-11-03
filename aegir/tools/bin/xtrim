@@ -1386,7 +1386,7 @@ _nginx_reload_locked() {
 ### put back the same way, never through a link put at post.d.
 _park_postd_here() {
   local _p _r=0
-  for _p in ./fpm_include_default.inc ./fpm_include_panel.inc ./fpm_include_site_*; do
+  for _p in ./fpm_include_default.inc ./fpm_include_panel.inc ./fpm_include_platform.inc ./fpm_include_site_*; do
     [ -e "${_p}" ] || [ -L "${_p}" ] || continue
     # a local panel keeps its default include and its own pool's include
     [ "${2}" = "YES" ] && [ "${_p}" = "./fpm_include_default.inc" ] && continue
