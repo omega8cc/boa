@@ -227,6 +227,13 @@
       warning from Textpattern's own clean-URL self-test, which cannot
       succeed before the site's vhost is live.
 
+    * An Octopus upgrade that stops early now loads AppArmor again in the
+      chosen mode, as a complete one does. One refused at its version check,
+      aborted by an error or stopped by a signal left no profile loaded, and
+      the Octopus upgrades after it kept it so, until the next Barracuda
+      upgrade. One killed outright still cannot; the next upgrade of either
+      kind now does it.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
