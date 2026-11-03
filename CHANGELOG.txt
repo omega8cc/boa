@@ -2,6 +2,17 @@
 ### In development - changes since BOA-5.88.877
 ###
 
+@=> New Features
+
+    * A platform's sites can take their web PHP from the platform:
+      ~/static/control/fpm-per-platform.info holds one "<folder> <version>"
+      per line. A site's line in multi-fpm.info wins over its platform's,
+      and that wins over fpm.info. The version moves with the site's root,
+      so a Migrate or Clone onto a listed platform changes both in one
+      nginx reload. It never changes the command line. Lines that cannot
+      apply, and site lines that win over a platform's, are named in
+      .fpm-per-platform-skipped.info.
+
 @=> Security
 
     * A Grav site no longer serves a Markdown file kept on disk outside the
@@ -74,6 +85,25 @@
       cannot read the mirror's stamp is 4.9.2 too.
 
 @=> Important Fixes
+
+    * A Clone or Migrate whose target could not run on the PHP-FPM version
+      it would get is refused before its safety copy, with the line that
+      would fix it, as the command-line check already did. Before, the task
+      ran to the end and the site answered HTTP 500 until the next worker
+      pass moved it.
+
+    * Rebuilding an account's per-site PHP-FPM includes no longer removes
+      them first, and an include is replaced by rename: a reload from any
+      task in that moment ran every pinned site on the default PHP.
+
+    * An xoct move under a new account name now rewrites the folders of
+      cli-per-platform.info and fpm-per-platform.info lines spelt with the
+      old account's path: they stopped applying after the move.
+
+    * A cli-per-platform.info, fpm-per-platform.info or phpNN.info deleted on
+      a source no longer survives on the target of an xoct or xmass sync,
+      where it applied after the cutover, and a changed one no longer loses
+      to the target's copy.
 
     * A MySQL watchdog pass already running when a migration or a Percona
       upgrade starts stands down at its next action: it read the SQL
