@@ -92,7 +92,17 @@
       security fixes of 28 October. Their Drupal core stays 10.1.8, which is
       past security support. Existing platforms keep their sites.
 
+    * The Opigno platform carries Commerce Core 2.41 from its next build, with
+      the same fixes: Address 2 and its library arrive under aliases that
+      satisfy the profile's older constraints. The profile does not enable
+      Commerce, and a platform in use keeps its copy.
+
 @=> Important Fixes
+
+    * Rebuilding a pinned catalogue platform no longer reports a false `lock
+      hash stale`: Composer 2.11 counts the policy setting in a lock's hash,
+      and the rebuild now refreshes the hash without a resolve, which cannot
+      succeed on those older cores.
 
     * A Clone or Migrate whose target could not run on the PHP-FPM version
       it would get is refused before its safety copy, with the line that
