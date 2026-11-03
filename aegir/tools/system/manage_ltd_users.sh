@@ -853,6 +853,22 @@ _ltd_stamp_put() {
   rm -f -- "./${1}"
   printf '%s\n' "${2}" | dd of="./${1}" conv=excl status=none 2> /dev/null
 }
+# The same for an nginx include, put whole by rename: nginx reads post.d on any
+# reload (every provision task sends one), and in the gap of a removed name it
+# sent the sites of the account to another pool, or to none. The temp name is
+# outside the fpm_include* glob and the *.inc fingerprint, short whatever the
+# site's name, and a link at the name is replaced, never followed. $1 = name,
+# $2 = content.
+_ltd_stamp_swap() {
+  local _t="./.fpm-swap.$$"
+  rm -f -- "${_t}"
+  if printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${1}" 2> /dev/null; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
 # A file root puts for an account in a directory the account can write,
 # created, written, owned and moded through one handle opened
 # O_EXCL|O_NOFOLLOW (a link put at the name is never followed), so nothing
@@ -1395,6 +1411,11 @@ _ltd_put_in() {
   local _d="${1}"
   shift
   _ltd_in_real_dir "${_d}" _ltd_stamp_put "$@"
+}
+_ltd_swap_in() {
+  local _d="${1}"
+  shift
+  _ltd_in_real_dir "${_d}" _ltd_stamp_swap "$@"
 }
 _ltd_read_in() {
   _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
@@ -3340,12 +3361,13 @@ _ltd_platform_report() {
 # The account's PHP control files for a developer login. Its lshell sandbox
 # holds its own client's trees only, so websh, running inside it, cannot open
 # ~/static/control, where the account keeps cli.info, cli-per-platform.info,
-# fpm.info and multi-fpm.info (the phpNN.info markers are only tested for
-# existence, which the sandbox does not stop). Every pass keeps a copy of each
-# for the login, cut to what is its own: the version digits of cli.info and
-# fpm.info, the cli-per-platform.info lines about its granted platforms or its
-# client's sites (every other line left blank, so websh names the same line
-# numbers as for the account's file), the multi-fpm.info and .fpm-core.info
+# fpm-per-platform.info, fpm.info and multi-fpm.info (the phpNN.info markers
+# are only tested for existence, which the sandbox does not stop). Every pass
+# keeps a copy of each for the login, cut to what is its own: the version
+# digits of cli.info and fpm.info, the lines of cli-per-platform.info and
+# fpm-per-platform.info about its granted platforms or its client's sites
+# (every other line left blank, so websh names the same line numbers as for
+# the account's file), the multi-fpm.info and .fpm-core.info
 # lines of its client's sites. A copy exists exactly while the main login's websh can read the
 # account's file (read by the main login, never by root; a pass that cannot
 # tell leaves the copy as it was), one file per
@@ -3356,7 +3378,7 @@ _ltd_platform_report() {
 # removes what a gone login left. websh reads a copy only when the account's
 # own file exists and cannot be opened.
 _LTD_CLI_DIR="/var/backups/ltd/.cli"
-_LTD_CLI_FILES="cli.info cli-per-platform.info fpm.info multi-fpm.info .fpm-core.info"
+_LTD_CLI_FILES="cli.info cli-per-platform.info fpm-per-platform.info fpm.info multi-fpm.info .fpm-core.info"
 _ltd_cli_dirs() {
   local _d=""
   for _d in "" ${_LTD_CLI_FILES}; do
@@ -3503,6 +3525,7 @@ _ltd_platform_cli_copies() {
   local _ln=0
   local _sites=" "
   local _l=""
+  local _pf=""
   _ltd_cli_dirs
   _src=$(mktemp "${_LTD_CLI_DIR}/.tmp.src.XXXXXXXX") || return 0
   # the client's own sites: the links in its client directory, named as the
@@ -3529,41 +3552,45 @@ _ltd_platform_cli_copies() {
   # stands, so websh reads it exactly as it reads the account's file, and
   # every other line is left blank; a 201st line is kept as a blank one, so
   # websh also says the lines after 200 are not read.
-  _ltd_cli_src cli-per-platform.info "${_src}"
-  _has="$?"
-  _txt=""
-  [ "${_has}" = "0" ] && IFS= read -r -N 65536 _txt < "${_src}"
-  while IFS= read -r _line; do
-    _ln=$(( _ln + 1 ))
-    if [ "${_ln}" -gt 200 ]; then
-      _out+=$'\n'
-      break
-    fi
-    _line="${_line%%#*}"
-    _k=""
-    read -r _k _rest <<< "${_line}"
-    _keep=NO
-    if [ -n "${_k}" ]; then
-      _ltd_cpp_key_norm "${_k%%$'\r'*}"
-      case "${_sites}" in
-        *" ${_LTD_CPP_KN} "*) _keep=YES ;;
-      esac
-      _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}")
-      if [ -n "${_p}" ]; then
-        for _r in ${_granted}; do
-          case "${_p}/" in "${_r}/"*) _keep=YES ;; esac
-          case "${_r}/" in "${_p}/"*) _keep=YES ;; esac
-        done
+  for _pf in cli-per-platform.info fpm-per-platform.info; do
+    _ln=0
+    _out=""
+    _ltd_cli_src "${_pf}" "${_src}"
+    _has="$?"
+    _txt=""
+    [ "${_has}" = "0" ] && IFS= read -r -N 65536 _txt < "${_src}"
+    while IFS= read -r _line; do
+      _ln=$(( _ln + 1 ))
+      if [ "${_ln}" -gt 200 ]; then
+        _out+=$'\n'
+        break
       fi
-    fi
-    [ "${_keep}" = "YES" ] && _out+="${_line}"
-    _out+=$'\n'
-  done <<< "${_txt}"
-  [ "${_ln}" -gt 200 ] || _out="${_out%$'\n'}"
-  case "${_has}" in
-    0) _ltd_cli_put "${_acct}" cli-per-platform.info YES "${_out}" ;;
-    3) _ltd_cli_put "${_acct}" cli-per-platform.info NO "" ;;
-  esac
+      _line="${_line%%#*}"
+      _k=""
+      read -r _k _rest <<< "${_line}"
+      _keep=NO
+      if [ -n "${_k}" ]; then
+        _ltd_cpp_key_norm "${_k%%$'\r'*}"
+        case "${_sites}" in
+          *" ${_LTD_CPP_KN} "*) _keep=YES ;;
+        esac
+        _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}")
+        if [ -n "${_p}" ]; then
+          for _r in ${_granted}; do
+            case "${_p}/" in "${_r}/"*) _keep=YES ;; esac
+            case "${_r}/" in "${_p}/"*) _keep=YES ;; esac
+          done
+        fi
+      fi
+      [ "${_keep}" = "YES" ] && _out+="${_line}"
+      _out+=$'\n'
+    done <<< "${_txt}"
+    [ "${_ln}" -gt 200 ] || _out="${_out%$'\n'}"
+    case "${_has}" in
+      0) _ltd_cli_put "${_acct}" "${_pf}" YES "${_out}" ;;
+      3) _ltd_cli_put "${_acct}" "${_pf}" NO "" ;;
+    esac
+  done
   # "<site> <version digits>" for the client's own sites, the last line of a
   # site winning. Split as websh's read -r splits it (spaces and tabs; the
   # NUL bytes are gone already), never on awk's own idea of white space.
@@ -5491,6 +5518,17 @@ _ltd_pool_drop() {
   _ltd_fpm_reload_mark "${_v}"
 }
 #
+# Every per-site include whose name is not in $1 (each between spaces) removed
+# from the current (pinned) directory.
+_ltd_fpm_site_prune_here() {
+  local _f
+  for _f in ./fpm_include_site_*; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    [[ "${1}" == *" ${_f#./} "* ]] && continue
+    rm -f -- "${_f}"
+  done
+}
+#
 # Add site specific socket config include.
 _site_socket_inc_gen() {
   _unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
@@ -5650,11 +5688,11 @@ _site_socket_inc_gen() {
     elif [ ! -f "${_mltNgx}" ] \
       || [ "${_mltFpmUpdate}" = "YES" ] \
       || [ "${_mltFpmUpdateForce}" = "YES" ]; then
-      _ltd_rm_in "${_fpmPth}" 'fpm_include_site_*'
       # local: a bare IFS= here stayed a newline for the rest of the pass,
       # and every later "for x in ${list}" saw one word
       local IFS=$'\12'
       _mltFpmSkip=""
+      _mltFpmKeep=" "
       for p in ${_mltFpmBody};do
         # split into words as the check above and every other reader of
         # the file split it (spaces and tabs): a cut at the first space
@@ -5674,13 +5712,17 @@ _site_socket_inc_gen() {
           && [ -x "/opt/php${_SITE_SOCKET}/bin/php" ] \
           && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
           && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
-          _ltd_put_in "${_fpmPth}" "fpm_include_site_${_SITE_NAME}.inc" \
+          _ltd_swap_in "${_fpmPth}" "fpm_include_site_${_SITE_NAME}.inc" \
             "if ( \$main_site_name = ${_SITE_NAME} ) {"$'\n'"  set \$user_socket \"${_SOCKET_L_NAME}\";"$'\n'"}"
+          _mltFpmKeep="${_mltFpmKeep}fpm_include_site_${_SITE_NAME}.inc "
         elif [ -n "${_SITE_NAME}" ] && [ -n "${_SITE_SOCKET}" ] \
           && [ "${_SITE_NAME}" != "place.holder.dont.remove" ]; then
           _mltFpmSkip="${_mltFpmSkip}${_SITE_NAME} ${_SITE_SOCKET}"$'\n'
         fi
       done
+      # only now the includes no row names: removed first, a reload in between
+      # ran every pinned site on the default pool
+      _ltd_in_real_dir "${_fpmPth}" _ltd_fpm_site_prune_here "${_mltFpmKeep}"
       # the skipped lines, for the tenant to see; the check above retries them
       if [ -n "${_mltFpmSkip}" ]; then
         _ltd_ctrl_put .multi-fpm-skipped.info "${_mltFpmSkip}"
@@ -5712,6 +5754,362 @@ _site_socket_inc_gen() {
   fi
 }
 
+#
+# The PHP-FPM version of a platform's sites: ~/static/control/
+# fpm-per-platform.info, one "<folder> <version>" per line, the folder spelt
+# as in cli-per-platform.info and taken the same way (its first 64 KiB and 200
+# lines, # opening a comment; the longest folder physically holding a codebase
+# wins, the last of equal folders). The web only: nothing on the command line
+# reads it. It is built into one include, post.d/fpm_include_platform.inc.
+# nginx reads the fpm_include* glob in byte order (default, panel, platform,
+# site_*) and the last set wins, so a site's multi-fpm.info line outranks its
+# platform's line, and that outranks fpm.info. The rules key on the vhost's own
+# root, so a Migrate, a Clone or a rollback moves the root and the pool in one
+# reload. The whole include is built on every pass and compared, so nothing
+# needs arming, and one a migration carried here is put right on the next pass.
+# It is only ever made in multi-FPM mode; otherwise this removes it. BOA never
+# writes the file. A line that cannot apply is left out and named, with why, in
+# .fpm-per-platform-skipped.info (_ltd_fpm_plat_skip_put).
+# nginx matches text, in order: a folder's rule runs after the rule of every
+# listed folder holding it, and a platform registered through a link gets a rule
+# of its own on the root it was registered with, when the folder holding it
+# physically gives it another version than the rules on text would. Roots at one
+# depth of that nesting never hold each other, so they run grouped by version and
+# share an if: nginx keeps every if of the include once per vhost, and the order
+# of the lines must not decide how many there are. A shared regex is cut below the
+# length of one nginx token (4096 bytes). The "# rule" lines are what
+# _ltd_fpm_served reads back, in the order nginx runs them.
+# The key alphabet (_ltd_cpp_key_path) has no character an nginx string treats as
+# special, a dot apart, which is escaped.
+# One file must not cost the box: a root gets one rule whatever the lines
+# repeat, a root takes at most 1000 bytes and the rules 256 KiB, which keeps the
+# include under what _ltd_read_in reads back, so the compare below holds.
+# A folder is resolved as root here, so the reasons never tell a tenant what
+# exists outside its own trees: a folder that is not there and one leading out of
+# the account's home and the shared trees (where provision takes a platform,
+# _provision_drupal_platform_root_ok) get one answer, and nothing is tested
+# through a link beyond that.
+_LTD_FPM_PLAT_SKIP=""
+_LTD_FPM_PLAT_HOLD=NO
+# One if of the include from the regex parts gathered (_g) for one version
+# (_gv), both _ltd_fpm_plat_gen's, added to its _body.
+_ltd_fpm_plat_flush() {
+  [ -n "${_g}" ] || return 0
+  _body+="if (\$document_root ~ \"^(?:${_g})(?:/|\$)\") {"$'\n'
+  _body+="  set \$user_socket \"${_USER}.${_gv}\";"$'\n'"}"$'\n'
+  _g=""
+}
+# An FPM include nginx has not read yet outlives the pass that wrote it: a pass
+# killed before its reload, or nginx refusing the box at that moment, leaves the
+# next pass nothing to compare. The stamp stands until a reload has read it.
+_ltd_ngx_owe() {
+  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
+  : > "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+}
+# Reload nginx once per pass, and only when the account's FPM includes changed
+# or a reload is owed: nginx reads them on reload alone, and a reload on every
+# pass reset every HTTP/3 transfer in flight.
+_ltd_ngx_pass_reload() {
+  local _own="/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+  if [ "${_ltdNgxReloaded}" = "YES" ]; then
+    rm -f "${_own}"
+    return 0
+  fi
+  [ -e "${_own}" ] || [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ] || return 0
+  if nginx -t &> /dev/null; then
+    service nginx reload &> /dev/null
+    rm -f "${_own}"
+  else
+    _ltd_ngx_owe
+    _ltd_notice "nginx-configtest-${_USER}" \
+      "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
+      "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+  fi
+}
+# One rule in _ltd_fpm_plat_gen's _rows, by its root: a later one takes its
+# place. $1 = the line number, $2 = NN, $3 = the root.
+_ltd_fpm_plat_row() {
+  if [ -z "${_rows[${3}]:-}" ]; then
+    if [ "${_rb}" -ge 262144 ]; then
+      _rfull=YES
+      return 0
+    fi
+    _rb=$(( _rb + ${#3} + 16 ))
+  fi
+  _rows["${3}"]="${1} ${2}"
+}
+_ltd_fpm_plat_gen() {
+  local LC_ALL=C
+  local IFS=$' \t\n'
+  local _inc="${_dscUsr}/config/server_master/nginx/post.d" _nm=fpm_include_platform.inc
+  local _txt _ln=0 _line _k _kv _rest _ks _vd _why _p _t _r _rp _f _c _hmp _hop _alp _stp _multi=NO
+  local _list="" _body="" _rules="" _old _dp _lnr _v _re _g="" _gv=""
+  local _sk="" _i _a _in _r0 _rb=0 _rfull="" _sum _fp0 _err _best _pv _pl _tv
+  local _rf="/var/backups/ltd/fpmcore/${_USER}.refused"
+  local -a _ar=() _ap=() _kp=() _kt=() _kl=() _kvs=()
+  local -A _rows=()
+  _LTD_FPM_PLAT_SKIP=""
+  _LTD_FPM_PLAT_HOLD=NO
+  [ -d "${_inc}" ] || return 0
+  # a whole-server move's promotion window: as found (_site_socket_inc_gen)
+  if [ -e "/root/.standby.cnf" ] \
+    && [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+    _LTD_FPM_PLAT_HOLD=YES
+    return 0
+  fi
+  _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./fpm-per-platform.info
+  [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] && _multi=YES
+  # the window websh reads (_cpp_fpm_plat_load): NUL bytes do not count
+  _txt=$(_ltd_ctrl_read fpm-per-platform.info | tr -d '\000' | head -c 65537)
+  if [ "${#_txt}" -gt 65536 ]; then
+    _txt="${_txt:0:65536}"
+    _sk+="past 64 KiB: not read, this file takes 64 KiB"$'\n'
+  fi
+  _hop=$(cd -P -- "${_dscUsr}" 2> /dev/null && pwd -P)
+  _hmp=$(cd -P -- "${_dscUsr}/aegir" 2> /dev/null && pwd -P)
+  _alp=$(cd -P -- /data/all 2> /dev/null && pwd -P)
+  # a static tree the box mounts elsewhere is still the account's
+  _stp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
+  [[ "${_stp}" == /mnt/?* ]] || _stp=""
+  # every platform registered, for a folder that holds one through a link:
+  # $document_root is the text the platform was registered with
+  if [ -n "${_txt}" ] && [ "${_multi}" = "YES" ]; then
+    while IFS= read -r _f; do
+      _c=$(_ltd_read_in "${_dscUsr}/.drush" "${_f#./}")
+      [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]] || continue
+      _r="${BASH_REMATCH[1]%/}"
+      [ "${#_r}" -le 1000 ] && [[ "${_r}" =~ ^/[A-Za-z0-9._/-]+$ ]] && [[ "/${_r}/" != */../* ]] \
+        && [[ "/${_r}/" != */./* ]] && [[ "${_r}" != *//* ]] || continue
+      _rp=$(cd -P -- "${_r}" 2> /dev/null && pwd -P) || continue
+      [ -n "${_hmp}" ] && case "${_rp}/" in "${_hmp}/"*) continue ;; esac
+      _ar+=("${_r}")
+      _ap+=("${_rp}")
+    done < <(_ltd_in_real_dir "${_dscUsr}/.drush" find . -maxdepth 1 -type f \
+      -name 'platform_*.alias.drushrc.php' 2> /dev/null | head -n 1000)
+  fi
+  while IFS= read -r _line; do
+    _ln=$(( _ln + 1 ))
+    if [ "${_ln}" -gt 200 ]; then
+      _sk+="line 201 and on: not read, this file takes 200 lines"$'\n'
+      break
+    fi
+    _line="${_line%%#*}"
+    _k=""
+    _kv=""
+    _rest=""
+    read -r _k _kv _rest <<< "${_line}"
+    [ -n "${_k}" ] || continue
+    _ks="${_k//[^A-Za-z0-9._\/~@+-]/?}"
+    _ks="${_ks:0:120}"
+    _vd="${_kv//[^0-9]/}"
+    _why=""
+    _p=""
+    if [ -z "${_kv}" ] || [ -n "${_rest}" ]; then
+      _why="write one \"<folder> <version>\" per line"
+    elif [[ ! "${_vd}" =~ ^(56|7[0-4]|8[0-6])$ ]]; then
+      _why="its version is not one of 5.6 to 8.6"
+    elif [ "${_multi}" != "YES" ]; then
+      _why="one PHP-FPM pool serves every site of this account"
+    elif [ ! -x "/opt/php${_vd}/bin/php" ]; then
+      _why="PHP ${_vd:0:1}.${_vd:1:1} is not installed on this server"
+    # a pool that has its file and is only restarting keeps its line: dropped,
+    # the page check would judge its sites on another version and pin them
+    elif [ ! -S "/run/${_USER}.${_vd}.fpm.socket" ] \
+      && [ ! -f "/opt/php${_vd}/etc/pool.d/${_USER}.${_vd}.conf" ]; then
+      _why="this account has no PHP ${_vd:0:1}.${_vd:1:1} pool yet; tried again on every pass"
+    elif [ "${#_k}" -gt 1000 ]; then
+      _why="the folder name is too long"
+    else
+      _ltd_cpp_key_norm "${_k}"
+      _in=NO
+      if _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}"); then
+        for _r0 in "${_dscUsr}" "${_hop}" /data/all /data/disk/all "${_alp}" "${_stp}"; do
+          [ -n "${_r0}" ] || continue
+          case "${_p}/" in "${_r0}/"*) _in=YES ;; esac
+        done
+      fi
+      if [ -n "${_hmp}" ] && [ -n "${_p}" ] && case "${_p}/" in "${_hmp}/"*) true ;; *) false ;; esac; then
+        _why="it reaches the control panel, which has a pool of its own"
+      elif [ "${_in}" != "YES" ] || [ ! -d "${_p}" ]; then
+        if [[ "${_LTD_CPP_KN}" =~ ^[A-Za-z0-9.-]+$ ]] \
+          && [ -f "${_dscUsr}/.drush/${_LTD_CPP_KN}.alias.drushrc.php" ] \
+          && [ ! -L "${_dscUsr}/.drush/${_LTD_CPP_KN}.alias.drushrc.php" ]; then
+          _why="it names a site, not a folder; a site's line goes in multi-fpm.info"
+        else
+          _why="it is not a folder in ~/static, ~/distro or /data/all"
+        fi
+      elif { [ -f "${_p}/bin/grav" ] && [ ! -L "${_p}/bin" ] && [ ! -L "${_p}/bin/grav" ]; } \
+        || { [ -d "${_p}/textpattern" ] && [ ! -L "${_p}/textpattern" ]; }; then
+        _why="Grav and Textpattern sites choose their PHP-FPM socket themselves"
+      fi
+    fi
+    if [ -n "${_why}" ]; then
+      _sk+="${_ks} ${_kv//[^0-9.]/}: ${_why}"$'\n'
+      continue
+    fi
+    case "${_LTD_CPP_KN}" in
+      /*) _t="${_LTD_CPP_KN}" ;;
+      *) _t="${_dscUsr}/static/${_LTD_CPP_KN}" ;;
+    esac
+    _kp+=("${_p}")
+    _kt+=("${_t}")
+    _kl+=("${_ln}")
+    _kvs+=("${_vd}")
+    _ltd_fpm_plat_row "${_ln}" "${_vd}" "${_t}"
+  done <<< "${_txt}"
+  # a platform whose folder, read physically, gives it another version than the
+  # rules on text would: a rule on the root it was registered with
+  for (( _a = 0; _a < ${#_ar[@]}; _a++ )); do
+    _best=-1
+    _pv=""
+    _pl=0
+    for (( _i = 0; _i < ${#_kp[@]}; _i++ )); do
+      case "${_ap[_a]}/" in
+        "${_kp[_i]}/"*)
+          if [ "${#_kp[_i]}" -ge "${_best}" ]; then
+            _best="${#_kp[_i]}"
+            _pv="${_kvs[_i]}"
+            _pl="${_kl[_i]}"
+          fi
+          ;;
+      esac
+    done
+    [ -n "${_pv}" ] || continue
+    _best=-1
+    _tv=""
+    for (( _i = 0; _i < ${#_kt[@]}; _i++ )); do
+      case "${_ar[_a]}/" in
+        "${_kt[_i]}/"*)
+          if [ "${#_kt[_i]}" -ge "${_best}" ]; then
+            _best="${#_kt[_i]}"
+            _tv="${_kvs[_i]}"
+          fi
+          ;;
+      esac
+    done
+    [ "${_tv}" = "${_pv}" ] || _ltd_fpm_plat_row "${_pl}" "${_pv}" "${_ar[_a]}"
+  done
+  [ "${_rfull}" = "YES" ] \
+    && _sk+="the whole file: it reaches too many platforms, those past 256 KiB of rules are left out"$'\n'
+  _LTD_FPM_PLAT_SKIP="${_sk}"
+  for _r in "${!_rows[@]}"; do
+    # how many listed folders hold this one
+    _dp=0
+    _p="${_r%/*}"
+    while [ -n "${_p}" ]; do
+      [ -z "${_rows[${_p}]:-}" ] || _dp=$(( _dp + 1 ))
+      _p="${_p%/*}"
+    done
+    _list+="${_dp} ${_rows[${_r}]} ${_r}"$'\n'
+  done
+  if [ -z "${_list}" ]; then
+    rm -f "${_rf}"
+    if [ -e "${_inc}/${_nm}" ] || [ -L "${_inc}/${_nm}" ]; then
+      _ltd_rm_in "${_inc}" "${_nm}"
+      _ltd_ngx_owe
+      _ltdNgxReloaded=
+    fi
+    return 0
+  fi
+  while read -r _dp _lnr _v _t; do
+    [ -n "${_t}" ] || continue
+    _rules+="# rule ${_t} ${_v}"$'\n'
+    _re="${_t//./\\.}"
+    if [ "${_v}" != "${_gv}" ] || [ "$(( ${#_g} + ${#_re} ))" -gt 3000 ]; then
+      _ltd_fpm_plat_flush
+      _gv="${_v}"
+    fi
+    _g+="${_g:+|}${_re}"
+  done < <(printf '%s' "${_list}" | LC_ALL=C sort -k1,1n -k3,3n -k4,4)
+  _ltd_fpm_plat_flush
+  _body="# Built by BOA from ~/static/control/fpm-per-platform.info; edits here are lost."$'\n'"${_rules}${_body}"
+  _body="${_body%$'\n'}"
+  _old=$(_ltd_read_in "${_inc}" "${_nm}")
+  if [ "${_old}" = "${_body}" ]; then
+    rm -f "${_rf}"
+    return 0
+  fi
+  # a body nginx refused waits an hour: tried on every pass it would go live for
+  # the length of a test each time
+  _sum=$(printf '%s' "${_body}" | md5sum | cut -d' ' -f1)
+  if [ -n "$(find "${_rf}" -mmin -60 2> /dev/null)" ] && [ "$(head -c 64 "${_rf}" 2> /dev/null)" = "${_sum}" ]; then
+    _LTD_FPM_PLAT_SKIP+="the whole file: nginx refused the rules built from it, so they are not in force"$'\n'
+    return 0
+  fi
+  _fp0="$(_ltd_ngx_fpm_fp)"
+  if ! _ltd_swap_in "${_inc}" "${_nm}" "${_body}"; then
+    _LTD_FPM_PLAT_SKIP+="the whole file: not applied yet, tried again on every pass"$'\n'
+    return 0
+  fi
+  # asked twice: nginx reads every vhost and certificate of the box, and one being
+  # written at that moment is no fault of this body
+  if nginx -t &> /dev/null || _err="$(nginx -t 2>&1)"; then
+    rm -f "${_rf}"
+    # a reload the per-site rebuild sent earlier in this pass did not read this:
+    # the pass's own reload must still run
+    _ltd_ngx_owe
+    _ltdNgxReloaded=
+    return 0
+  fi
+  _err="$(printf '%s\n' "${_err}" | tail -3 | tr '\n' ' ')"
+  # one tenant's file must never leave the box a config nginx refuses: the next
+  # restart, of anything, would then be an outage for every account
+  if [ -n "${_old}" ] && [ "${#_old}" -lt 1048576 ]; then
+    _ltd_swap_in "${_inc}" "${_nm}" "${_old}"
+  else
+    _ltd_rm_in "${_inc}" "${_nm}"
+  fi
+  # the same content again gives nginx nothing to reload for
+  [ "${_fp0}" = "${_ltdNgxFpBefore:-}" ] && _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+  # still refused without this body, the fault is not its own
+  if ! nginx -t &> /dev/null; then
+    _LTD_FPM_PLAT_SKIP+="the whole file: not applied yet, tried again on every pass"$'\n'
+    return 0
+  fi
+  mkdir -p "${_rf%/*}" && chmod 700 "${_rf%/*}"
+  printf '%s\n' "${_sum}" > "${_rf}"
+  _LTD_FPM_PLAT_SKIP+="the whole file: nginx refused the rules built from it, so they are not in force"$'\n'
+  _ltd_notice "nginx-configtest-${_USER}" \
+    "nginx -t FAILED with the platform FPM include of ${_USER} -- put back, NOT reloaded" \
+    "${_err}"
+}
+# What the page check found about the platform file (the judge's "%" and "^"
+# lines in $1, the account's, so taken only in the alphabet each field has), as
+# the lines of the skipped file.
+_ltd_fpm_plat_notes() {
+  local IFS=$' \t\n'
+  local _m _s _a _b _k
+  while read -r _m _s _a _b _k; do
+    [[ "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
+    case "${_m}" in
+      %)
+        [[ "${_a}" =~ ^[5-9][0-9]$ && "${_b}" =~ ^[5-9][0-9]$ && "${_k}" =~ ^/[A-Za-z0-9._/-]+$ ]] || continue
+        echo "${_s}: its line in multi-fpm.info (${_a:0:1}.${_a:1:1}) wins over ${_k#"${_dscUsr}/static/"} ${_b:0:1}.${_b:1:1}"
+        ;;
+      ^)
+        echo "${_s}: a subdirectory site is served under its parent's address by the PHP-FPM of the parent's platform, not its own; a line in multi-fpm.info pins it"
+        ;;
+    esac
+  done <<< "${1}"
+}
+# ~/static/control/.fpm-per-platform-skipped.info, for the tenant to see: the
+# lines this pass could not apply (_ltd_fpm_plat_gen) and what the last page
+# check found. Gone when there is nothing to say.
+_ltd_fpm_plat_skip_put() {
+  local _txt
+  [ "${_LTD_FPM_PLAT_HOLD}" = "YES" ] && return 0
+  _txt="${_LTD_FPM_PLAT_SKIP}$(head -c 65536 "/var/backups/ltd/fpmcore/${_USER}.plat" 2> /dev/null)"
+  _txt="${_txt%$'\n'}"
+  if [ -z "${_txt}" ]; then
+    if [ -e "${_dscUsr}/static/control/.fpm-per-platform-skipped.info" ] \
+      || [ -L "${_dscUsr}/static/control/.fpm-per-platform-skipped.info" ]; then
+      _ltd_ctrl_rm .fpm-per-platform-skipped.info
+    fi
+    return 0
+  fi
+  [ "$(_ltd_ctrl_read .fpm-per-platform-skipped.info)" = "${_txt}" ] \
+    || _ltd_ctrl_put .fpm-per-platform-skipped.info "${_txt}"
+}
 #
 # The control panel's own PHP switches (docs/cnf/barracuda.cnf), read from
 # the box cnf as bash reads it (the last assignment wins; export, quotes
@@ -5994,7 +6392,7 @@ _ltd_hm_pool() {
   if _ltd_hm_sock_ok "${_pool}" "${_hv}"; then
     _old=$(_ltd_read_in "${_inc}" fpm_include_panel.inc 2>/dev/null)
     if [ "${_old}" != "${_incTxt}" ]; then
-      _ltd_put_in "${_inc}" fpm_include_panel.inc "${_incTxt}"
+      _ltd_swap_in "${_inc}" fpm_include_panel.inc "${_incTxt}"
       _chg=YES
     fi
   elif [ -e "${_inc}/fpm_include_panel.inc" ]; then
@@ -6235,7 +6633,8 @@ _switch_php() {
         && [ "${_NEW_FPM_SETUP}" != "YES" ] \
         && [ "${_PHP_FPM_MULTI}" = "NO" ] \
         && [ -x "/opt/php${_T_FPM_VRN//./}/bin/php" ]; then
-        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
+        # websh reads it as the account (_cpp_fpm_guard)
+        ( umask 022; _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}" )
         _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
       fi
 
@@ -6257,14 +6656,14 @@ _switch_php() {
         _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         _D_POOL="${_USER}.${_PHP_SV}"
         if [ ! -e "${_FMP_D_INC}" ]; then
-          _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+          _ltd_swap_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
           _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
           _NEW_FPM_SETUP=YES
         else
           _CHECK_FMP_D=$(_ltd_read_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" | grep "${_D_POOL}" 2>&1)
           if [[ ! "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
             echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
-            _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+            _ltd_swap_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
             _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
             _NEW_FPM_SETUP=YES
           fi
@@ -6279,7 +6678,7 @@ _switch_php() {
       if [ -n "${_T_FPM_VRN}" ] && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
         _satellite_tune_fpm_workers
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
-        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
+        ( umask 022; _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}" )
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
           _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
         else
@@ -6297,13 +6696,13 @@ _switch_php() {
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
-            _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+            _ltd_swap_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
             _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
           else
             _CHECK_FMP_D=$(_ltd_read_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" | grep "${_D_POOL}" 2>&1)
             if [[ ! "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
               echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
-              _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+              _ltd_swap_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
               _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
             fi
           fi
@@ -7199,21 +7598,11 @@ _manage_user() {
         fi
       fi
       _site_socket_inc_gen
+      _ltd_fpm_plat_gen
       _ltd_fpm_core_check
+      _ltd_fpm_plat_skip_put
       _ltd_fpm_cut_notice
-      ### reload nginx once per pass, and only when this pass changed the
-      ### account's FPM includes: nginx reads them on reload alone, and a
-      ### reload on every pass reset every HTTP/3 transfer in flight
-      if [ "${_ltdNgxReloaded}" != "YES" ] \
-        && [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ]; then
-        if nginx -t &> /dev/null; then
-          service nginx reload &> /dev/null
-        else
-          _ltd_notice "nginx-configtest-${_USER}" \
-            "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
-            "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
-        fi
-      fi
+      _ltd_ngx_pass_reload
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance
         # clients/ is oN's: a client name there can be a link to anywhere,
@@ -7873,6 +8262,12 @@ _ltd_fpm_served() {
     case "${_f}" in
       fpm_include_default.inc) _s="-" ;;
       fpm_include_site_*.inc) _s="${_f#fpm_include_site_}"; _s="${_s%.inc}" ;;
+      # its rules, "= <root> <NN>", in the order nginx runs them
+      fpm_include_platform.inc)
+        _ltd_read_in "${_inc}" "${_f}" \
+          | sed -n 's/^# rule \(\/[A-Za-z0-9._\/-]*\) \([5-9][0-9]\)$/= \1 \2/p' | head -n 1500
+        continue
+        ;;
       *) continue ;;
     esac
     [[ "${_s}" == "-" || "${_s}" =~ ^[a-z0-9.-]+$ ]] || continue
@@ -7948,8 +8343,12 @@ _ltd_fpm_cli_key() {
 # account's pool up; empty in single-FPM mode), $4 = the versions installed;
 # on stdin the versions the includes name, from _ltd_fpm_served.
 # The version that serves a site is the one its own include names, else the
+# platform rule that holds its root (fpm_include_platform.inc), else the
 # default include's (multi-FPM mode), else $2; the control panel is served
-# from a pool of its own and is not judged here.
+# from a pool of its own and is not judged here. A site whose own include
+# overrides another version a platform rule gives it also gets "% <site> <NN>
+# <rule's NN> <rule's root>", and an unpinned subdirectory site of an account
+# with rules "^ <site>" (_ltd_fpm_plat_notes).
 # Then the command line, once per codebase, the account's own platforms in
 # ~/static that no site is on yet included ("# <root>" for each; a Migrate
 # or a Clone onto one is judged by websh as a site task). Its Aegir tasks
@@ -7967,10 +8366,10 @@ _ltd_fpm_cli_key() {
 # (_ltd_cpp_key_norm and _ltd_cpp_key_path, kept in step with it) and
 # matched by their real paths, as websh matches them.
 _ltd_fpm_judge() {
-  local _h="${1}" _d="${2}" _ft="${3:-}" _ci="${4:-}" _a _c _s _r _v _w _df="" _x
+  local _h="${1}" _d="${2}" _ft="${3:-}" _ci="${4:-}" _a _c _s _r _v _w _df="" _x _fv _fk
   local _dscUsr="${1}" _USER="${1##*/}" _ac="" _ln=0 _line _k _kv _rest _p _rp _cv _cb _bp _best _i _t _ko=""
   local -A _sv=() _cd=() _kr=() _kc=() _kb=() _kw=() _wc=() _nc=()
-  local -a _lp=() _lv=()
+  local -a _lp=() _lv=() _fpr=() _fpv=()
   local _stp _kp
   _stp=$(cd -P -- "${_h}/static" 2> /dev/null && printf '%s' "${PWD}")
   _c=$(_ltd_fpm_head "${_h}/static/control/cli.info" 8 | tr -cd '0-9')
@@ -7992,7 +8391,13 @@ _ltd_fpm_judge() {
     _lp+=("${_p}")
     _lv+=("${_kv}")
   done <<< "${_c}"
-  while read -r _s _v; do
+  while read -r _s _v _x; do
+    if [ "${_s}" = "=" ]; then
+      [[ "${_v}" == /* ]] && [[ "${_x}" =~ ^[5-9][0-9]$ ]] || continue
+      _fpr+=("${_v}")
+      _fpv+=("${_x}")
+      continue
+    fi
     [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
     if [ "${_s}" = "-" ]; then
       _df="${_v}"
@@ -8019,7 +8424,27 @@ _ltd_fpm_judge() {
       case "${_r}" in
         "${_h}"/aegir/*) continue ;;
       esac
-      _v="${_sv[${_s}]:-${_df:-${_d}}}"
+      # the platform rules as nginx runs them: the last one that holds the
+      # root wins, a site's own include over any of them
+      _fv=""
+      _fk=""
+      for (( _i = 0; _i < ${#_fpr[@]}; _i++ )); do
+        case "${_r}/" in
+          "${_fpr[_i]}/"*)
+            _fv="${_fpv[_i]}"
+            _fk="${_fpr[_i]}"
+            ;;
+        esac
+      done
+      if [ -n "${_sv[${_s}]:-}" ]; then
+        [ -n "${_fv}" ] && [ "${_fv}" != "${_sv[${_s}]}" ] \
+          && printf '%% %s %s %s %s\n' "${_s}" "${_sv[${_s}]}" "${_fv}" "${_fk}"
+      elif [ "${#_fpr[@]}" -gt 0 ] \
+        && [[ "${_c}" =~ \'aliases\'[[:space:]]*=\>[[:space:]]*array[[:space:]]*\(([^\)]*)\) ]] \
+        && [[ "${BASH_REMATCH[1]}" =~ \'[^\'/]+/[^\']+\' ]]; then
+        printf '^ %s\n' "${_s}"
+      fi
+      _v="${_sv[${_s}]:-${_fv:-${_df:-${_d}}}}"
       [[ "${_v}" =~ ^[5-9][0-9]$ ]] || continue
       [ -n "${_wc[${_v}|${_r}]+x}" ] || _wc["${_v}|${_r}"]=$(_ltd_fpm_why "${_r}" "${_v}")
       _w="${_wc[${_v}|${_r}]}"
@@ -8126,7 +8551,7 @@ _ltd_fpm_sig() {
     [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
     declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
       _ltd_fpm_nearest _ltd_fpm_cli_key _ltd_cpp_key_norm _ltd_cpp_key_path _ltd_fpm_usable \
-      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli \
+      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli _ltd_fpm_plat_notes \
       _ltd_fpm_core_check
   } | md5sum | cut -d' ' -f1
 }
@@ -8467,6 +8892,8 @@ _ltd_fpm_core_check() {
       "it ran out of time or could not run as the account; it is judged again when its sites change, or in a day"
     return 0
   fi
+  _ltd_fpm_plat_notes "$(printf '%s\n' "${_out}" | grep -E '^[%^] ' | head -n 500)" \
+    > "${_st}/${_USER}.plat"
   _ro=$(head -n 1000 "${_st}/${_USER}.roots" 2> /dev/null)
   _rn=$(printf '%s\n' "${_out}" | sed -n 's/^# \(\/.*\)$/\1/p' | LC_ALL=C sort -u | head -n 1000)
   if [ "${_rn}" = "${_ro}" ]; then

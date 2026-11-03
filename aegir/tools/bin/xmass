@@ -1994,14 +1994,14 @@ _xmass_tgt_place() {
 ### Union of PHP versions one account is pinned to: the account-level
 ### static/control/{fpm,cli}.info defaults, the per-site column of
 ### static/control/multi-fpm.info (dotted and shorthand forms both count),
-### every line of static/control/cli-per-platform.info and the phpNN.info
-### marker that steers the command line. The last two are read as websh
-### reads them: the file's first 64 KiB and 200 lines, '#' opening a comment,
-### a line counting only as "<folder> <version>", the version's digits only;
-### the marker is the highest one whose PHP is installed here. A line whose
-### version the target lacks is ignored there, which leaves that platform's
-### tasks on the account-wide PHP, and websh refuses them when the platform's
-### core cannot run on it.
+### every line of static/control/cli-per-platform.info and
+### fpm-per-platform.info, and the phpNN.info marker that steers the command
+### line. The last three are read as websh reads them: the file's first 64 KiB
+### and 200 lines, '#' opening a comment, a line counting only as "<folder>
+### <version>", the version's digits only; the marker is the highest one whose
+### PHP is installed here. A line whose version the target lacks is ignored
+### there, which leaves that platform on the account-wide PHP, and websh refuses
+### its tasks when the platform's core cannot run on it.
 _mig_php_versions_needed() {
   local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
   ### read inside the account's real static/control, never through a link
@@ -2020,9 +2020,10 @@ _mig_php_versions_needed() {
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done <<< "$(_xmass_read_in "${_u}/static/control" multi-fpm.info)"
   fi
-  if [ -e "${_u}/static/control/cli-per-platform.info" ]; then
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
     _txt=""; _n=0
-    _txt="$(_xmass_read_in "${_u}/static/control" cli-per-platform.info | head -c 65536)"
+    _txt="$(_xmass_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
     while IFS= read -r _line; do
       _n=$(( _n + 1 ))
       [ "${_n}" -gt 200 ] && break
@@ -2032,7 +2033,7 @@ _mig_php_versions_needed() {
       _v="$(_mig_php_norm "${_v//[!0-9]/}")"
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done <<< "${_txt}"
-  fi
+  done
   if _xmass_in_real_dir "${_u}/static/control" true; then
     for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
@@ -7700,6 +7701,31 @@ _xmass_sync_static_symlink_safe() {
         ${_ieni} --rsync-path="${_ctl_rp}" -e ssh "./${_ctl}" "root@${_tgt}:./"
     fi
   done
+
+  # Pass 1c: the per-platform lines and the phpNN.info switches choose a PHP
+  # too, and control/ only ever adds: a line changed on the source could lose
+  # to the target's copy, and a file deleted here stayed there and applied after
+  # the cutover. They follow the source both ways, when its control directory
+  # can be read at all, by exact name, the only names control/ ever deletes; a
+  # link the tenant keeps at the name is no deletion, and pass 1a carries it.
+  if [ "${_ctl_link}" != "YES" ] \
+    && _xmass_in_real_dir "${_src_static}/control" test -f ./fpm.info; then
+    local _gone=""
+    for _ctl in cli-per-platform.info fpm-per-platform.info \
+      php56.info php70.info php71.info php72.info php73.info php74.info php80.info \
+      php81.info php82.info php83.info php84.info php85.info php86.info; do
+      if _xmass_in_real_dir "${_src_static}/control" \
+        test -f "./${_ctl}" -a ! -L "./${_ctl}"; then
+        _xmass_at_real_dir "${_src_static}/control" _xmass_rsync -aEAX --no-links \
+          ${_ieni} --rsync-path="${_ctl_rp}" -e ssh "./${_ctl}" "root@${_tgt}:./"
+      elif ! _xmass_in_real_dir "${_src_static}/control" test -e "./${_ctl}" -o -L "./${_ctl}"; then
+        _gone+=" ./${_ctl}"
+      fi
+    done
+    if [ "${_MODE}" = "LIVE" ] && [ -n "${_gone}" ]; then
+      ssh root@"${_tgt}" "_w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_dst_acct}/static/control\"; cd -P -- /data/disk/${_dst_acct}/static/control 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f --${_gone}" &> /dev/null
+    fi
+  fi
 
   # Pass 2: relocate static/files per target disk reality. Canonical mount layout
   # uses the DEST account name, so a rename lands correctly. The store is

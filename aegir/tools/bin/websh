@@ -1595,7 +1595,7 @@ _cpp_target() {
   # _CPP_CTX (site, platform or empty), _CPP_NAME (the @alias) and _CPP_CMD
   # (the command word)
   local _ws _w _next="" _root="" _rset=NO _uri="" _al="" _wd="" _cmd=NO _f _c _p="" _fromal=NO _cwd _optver=NO
-  _CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_PROBE=NO; _CPP_HM=NO
+  _CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_PROBE=NO; _CPP_HM=NO; _CPP_URI=""
   read -r -a _ws <<< "$1"
   for _w in "${_ws[@]}"; do
     if [ -n "${_next}" ]; then
@@ -1729,6 +1729,7 @@ _cpp_target() {
     esac
   fi
   [ -n "${_uri}" ] && _CPP_CTX=site
+  _CPP_URI="${_uri}"
   # the hostmaster's own tree never takes a line, nor the guard below; a
   # line that runs in it is aimed at the panel (the floor applies)
   case "${_CPP_ROOT}/" in
@@ -2230,6 +2231,262 @@ _cpp_fpm_warn() {
     return 0
   done < "${_CTRL_F}"
 }
+# ~/static/control/fpm-per-platform.info as the ltd worker builds its include
+# from it (_ltd_fpm_plat_gen): the first 64 KiB and 200 lines, a # opening a
+# comment, an installed version and a folder that exists; a line that cannot
+# apply is the worker's to name, never here. $1 = pool: also only a version
+# the account has a pool for, up or restarting. Sets _CPP_PF_P, _CPP_PF_V, _CPP_PF_L and
+# _CPP_PF_K: each line's folder as _cpp_phys reads it, version, line number
+# and folder as written.
+_cpp_fpm_plat_load() {
+  local LC_ALL=C
+  local _txt="" _ln=0 _line _k _v _rest _hp _alp _pp _i _in _r0
+  local -a _nks=() _vs=() _lns=() _kys=() _kps=() _kvs=() _kls=() _kks=()
+  _CPP_PF_P=(); _CPP_PF_V=(); _CPP_PF_L=(); _CPP_PF_K=()
+  _ctrl_file "${_DRUSH_CLI_CTRL}" fpm-per-platform.info
+  [ -n "${_CTRL_F}" ] || return 0
+  { IFS= read -r -N 65536 _txt < "${_CTRL_F}"; } 2> /dev/null
+  while IFS= read -r _line; do
+    _ln=$(( _ln + 1 ))
+    [ "${_ln}" -le 200 ] || break
+    _line="${_line%%#*}"
+    _k=""; _v=""; _rest=""
+    read -r _k _v _rest <<< "${_line}"
+    [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+    _v="${_v//[!0-9]/}"
+    case "${_v}" in
+      56|70|71|72|73|74|80|81|82|83|84|85|86) ;;
+      *) continue ;;
+    esac
+    [ -x "/opt/php${_v}/bin/php" ] || continue
+    [ "${1:-}" = "pool" ] && [ ! -S "/run/${_Y_USR}.${_v}.fpm.socket" ] \
+      && [ ! -f "/opt/php${_v}/etc/pool.d/${_Y_USR}.${_v}.conf" ] && continue
+    [ "${#_k}" -le 1000 ] || continue
+    _cpp_norm "${_k}" || continue
+    _cpp_safe "${_k}"
+    _nks+=("${_CPP_NK}"); _vs+=("${_v}"); _lns+=("${_ln}"); _kys+=("${_CPP_S}")
+  done <<< "${_txt}"
+  [ "${#_nks[@]}" -gt 0 ] || return 0
+  _hp="$(cd -P -- "/data/disk/${_Y_USR}" 2> /dev/null && pwd -P)"
+  _alp="$(cd -P -- /data/all 2> /dev/null && pwd -P)"
+  _cpp_phys "${_nks[@]}"
+  # a folder leading out of the account's home and the shared trees, or holding a
+  # Grav or Textpattern site, which chooses its socket itself: the worker leaves
+  # it out, so it is no line here
+  for (( _i = 0; _i < ${#_nks[@]}; _i++ )); do
+    _pp="${_CPP_PP[${_i}]}"
+    case "${_pp}/" in
+      "/data/disk/${_Y_USR}/"*|"/data/all/"*|"/data/disk/all/"*) ;;
+      *)
+        _in=NO
+        for _r0 in "${_hp}" "${_alp}"; do
+          [ -n "${_r0}" ] && case "${_pp}/" in "${_r0}/"*) _in=YES ;; esac
+        done
+        [ "${_in}" = "YES" ] || continue
+        ;;
+    esac
+    if { [ -f "${_pp}/bin/grav" ] && [ ! -L "${_pp}/bin" ] && [ ! -L "${_pp}/bin/grav" ]; } \
+      || { [ -d "${_pp}/textpattern" ] && [ ! -L "${_pp}/textpattern" ]; }; then
+      continue
+    fi
+    _kps+=("${_pp}"); _kvs+=("${_vs[${_i}]}"); _kls+=("${_lns[${_i}]}"); _kks+=("${_kys[${_i}]}")
+  done
+  _CPP_PF_P=("${_kps[@]}"); _CPP_PF_V=("${_kvs[@]}"); _CPP_PF_L=("${_kls[@]}"); _CPP_PF_K=("${_kks[@]}")
+}
+# $1 = a path, as _cpp_phys reads it; sets _CPP_PFV, _CPP_PFL and _CPP_PFK from
+# the longest loaded folder holding it, the last of equal folders.
+_cpp_fpm_plat_for() {
+  local _i _best=0
+  _CPP_PFV=""; _CPP_PFL=""; _CPP_PFK=""
+  for (( _i = 0; _i < ${#_CPP_PF_P[@]}; _i++ )); do
+    case "$1/" in
+      "${_CPP_PF_P[${_i}]}/"*)
+        if [ "${#_CPP_PF_P[${_i}]}" -ge "${_best}" ]; then
+          _best="${#_CPP_PF_P[${_i}]}"
+          _CPP_PFV="${_CPP_PF_V[${_i}]}"; _CPP_PFL="${_CPP_PF_L[${_i}]}"; _CPP_PFK="${_CPP_PF_K[${_i}]}"
+        fi
+        ;;
+    esac
+  done
+}
+# Why a Drupal core cannot run on a PHP-FPM version, one line, empty when it
+# can: the pairs _cpp_guard refuses on the command line, as the ltd worker's
+# page check judges them (_ltd_fpm_why; kept in step by hand, the two are
+# separate tools). $1 = the Drupal root, $2 = the version (NN).
+_cpp_fpm_why() {
+  local _r="$1" _v="$2" _app="" _c="" _fl="" _mj _mn
+  local _hd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -f "${_r}/vendor/composer/platform_check.php" ]; then
+    _app="${_r}"
+  else
+    case "${_r##*/}" in
+      web|docroot|html) [ -f "${_r%/*}/vendor/composer/platform_check.php" ] && _app="${_r%/*}" ;;
+    esac
+  fi
+  if [ -n "${_app}" ]; then
+    { IFS= read -r -N 16384 _c < "${_app}/vendor/composer/platform_check.php"; } 2> /dev/null
+    if [[ "${_c}" =~ PHP_VERSION_ID[[:space:]]*\>=[[:space:]]*([0-9]{5}) ]]; then
+      _fl=$(( 10#${BASH_REMATCH[1]} / 100 ))
+      _fl="${_fl:0:1}${_fl:2:1}"
+      if [ "${_v}" -lt "${_fl}" ]; then
+        echo "its vendor/composer/platform_check.php needs PHP ${_fl:0:1}.${_fl:1:1} or newer"
+        return 0
+      fi
+    fi
+  fi
+  _c=""
+  if [ -f "${_r}/core/lib/Drupal.php" ]; then
+    { IFS= read -r -N 16384 _c < "${_r}/core/lib/Drupal.php"; } 2> /dev/null
+    [[ "${_c}" =~ const[[:space:]]+VERSION[[:space:]]*=[[:space:]]*\'([0-9]+)\.([0-9]+) ]] || return 0
+    _mj="${BASH_REMATCH[1]}"; _mn="${BASH_REMATCH[2]}"
+    if [ -z "${_app}" ]; then
+      _fl=""
+      if [[ "${_c}" =~ const[[:space:]]+MINIMUM_PHP[[:space:]]*=[[:space:]]*\'([0-9])\.([0-9])[^0-9] ]]; then
+        _fl="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+      else
+        _c=""
+        { IFS= read -r -N 16384 _c < "${_r}/core/includes/bootstrap.inc"; } 2> /dev/null
+        [[ "${_c}" =~ DRUPAL_MINIMUM_PHP\'?[[:space:]]*[=,][[:space:]]*\'([0-9])\.([0-9])[^0-9] ]] \
+          && _fl="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+      fi
+      if [[ "${_fl}" =~ ^[5-9][0-9]$ ]] && [ "${_v}" -lt "${_fl}" ]; then
+        echo "Drupal ${_mj}.${_mn} needs PHP ${_fl:0:1}.${_fl:1:1} or newer"
+        return 0
+      fi
+    fi
+    [ "${_mj}" = "8" ] && [ "${_v}" -ge 80 ] && echo "Drupal ${_mj}.${_mn} cannot run on PHP 8.0 or newer"
+    return 0
+  fi
+  [ "${_v}" -ge 80 ] || return 0
+  { IFS= read -r -N 16384 _c < "${_r}/includes/bootstrap.inc"; } 2> /dev/null
+  if [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'7\.([0-9]+) ]]; then
+    _mn="${BASH_REMATCH[1]}"
+    if [ "$(( 10#${_mn} ))" -lt 79 ]; then
+      echo "Drupal 7.${_mn} cannot run on PHP 8.0 or newer"
+    elif [ "$(( 10#${_mn} ))" -le 92 ] \
+      && grep -qxF "${_hd}" "${_r}/includes/bootstrap.inc" 2> /dev/null; then
+      echo "Drupal 7.${_mn}: its includes/bootstrap.inc declares an error handler PHP 8.0 or newer cannot call"
+    fi
+    return 0
+  fi
+  _c=""
+  { IFS= read -r -N 16384 _c < "${_r}/modules/system/system.module"; } 2> /dev/null
+  [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'6\.([0-9]+) ]] || return 0
+  _mn="$(( 10#${BASH_REMATCH[1]} ))"
+  if [ "${_mn}" -lt 58 ]; then
+    echo "Drupal 6.${_mn} cannot run on PHP 8.0 or newer"
+  elif [ "${_mn}" -le 60 ] \
+    && grep -qxF "${_hd}" "${_r}/includes/common.inc" 2> /dev/null; then
+    echo "Drupal 6.${_mn}: its includes/common.inc declares an error handler PHP 8.0 or newer cannot call"
+  fi
+}
+# Provision's Clone and Migrate target check (_CPP_PROBE) on the web side: a
+# target whose pages could not run on the PHP-FPM version they would get is
+# refused before the safety copy, instead of answering HTTP 500 after the
+# deploy. The version is the one nginx would choose: the target site's own line
+# in multi-fpm.info, else its platform's in fpm-per-platform.info, else the
+# account's default; one pool serves everything in single-FPM mode. Only what is
+# in force counts (a version installed, with its pool up), as the worker builds
+# its includes. Drupal cores only: Backdrop has no such pair, and Grav and
+# Textpattern sites choose their socket themselves. A value that cannot be
+# read never refuses.
+_cpp_fpm_guard() {
+  local _acct="/data/disk/${_Y_USR}" _dr="" _p _v="" _from="" _kind="" _txt="" _s _x _w _d="" _why _fix _e _sug="" _key _uri _ln=0
+  [ "${_CPP_PROBE}" = "YES" ] && [ "${_CPP_CTX}" = "site" ] && [ -n "${_CPP_URI}" ] && [ -n "${_CPP_ROOT}" ] || return 0
+  [ -n "${_DRUSH_CLI_CTRL}" ] || return 0
+  for _p in "${_CPP_ROOT}" "${_CPP_ROOT}/web" "${_CPP_ROOT}/docroot" "${_CPP_ROOT}/html"; do
+    if [ -f "${_p}/core/lib/Drupal.php" ] || [ -f "${_p}/includes/bootstrap.inc" ]; then
+      _dr="${_p}"
+      break
+    fi
+  done
+  [ -n "${_dr}" ] || return 0
+  _uri="${_CPP_URI,,}"
+  { IFS= read -r -N 8 _d < "${_acct}/log/fpm.txt"; } 2> /dev/null
+  _d="${_d//[!0-9]/}"
+  if [ -f "${_DRUSH_CLI_CTRL}/multi-fpm.info" ] && [ -d "${_acct}/tools/le" ]; then
+    _ctrl_file "${_DRUSH_CLI_CTRL}" multi-fpm.info
+    [ -n "${_CTRL_F}" ] || return 0
+    { IFS= read -r -N 1048576 _txt < "${_CTRL_F}"; } 2> /dev/null
+    while IFS=$' \t' read -r _s _x _; do
+      [[ "${_s}" == \#* ]] && continue
+      _s="${_s//[^a-zA-Z0-9-.]/}"
+      [ "${_s,,}" = "${_uri}" ] || continue
+      _x="${_x//[!0-9]/}"
+      [ -n "${_x}" ] && [ -x "/opt/php${_x}/bin/php" ] && [ -S "/run/${_Y_USR}.${_x}.fpm.socket" ] || continue
+      _v="${_x}"; _kind=site; _from="the site's line in multi-fpm.info"
+    done <<< "${_txt}"
+    if [ -z "${_v}" ]; then
+      _ctrl_file "${_DRUSH_CLI_CTRL}" fpm-per-platform.info
+      [ -n "${_CTRL_F}" ] || [ ! -f "${_DRUSH_CLI_CTRL}/fpm-per-platform.info" ] || return 0
+      _cpp_fpm_plat_load pool
+      _cpp_fpm_plat_for "${_CPP_ROOT}"
+      if [ -n "${_CPP_PFV}" ]; then
+        _v="${_CPP_PFV}"; _kind=platform; _from="line ${_CPP_PFL} of fpm-per-platform.info"
+      fi
+    fi
+    if [ -z "${_v}" ]; then
+      _v="${_d}"; _kind=default; _from="the account's default, fpm.info"
+    fi
+    for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+      [ -x "/opt/php${_e}/bin/php" ] && [ -S "/run/${_Y_USR}.${_e}.fpm.socket" ] && _w+=" ${_e}"
+    done
+  else
+    _v="${_d}"; _kind=single; _from="the account's one pool, fpm.info"
+    for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+      [ -x "/opt/php${_e}/bin/php" ] && _w+=" ${_e}"
+    done
+  fi
+  [[ "${_v}" =~ ^[5-9][0-9]$ ]] && [ -x "/opt/php${_v}/bin/php" ] || return 0
+  _why="$(_cpp_fpm_why "${_dr}" "${_v}")"
+  [ -n "${_why}" ] || return 0
+  # the installed version nearest above the one it would get, else below
+  for _e in ${_w}; do
+    [ -n "$(_cpp_fpm_why "${_dr}" "${_e}")" ] && continue
+    if [ -z "${_sug}" ] || { [ "${_e}" -gt "${_v}" ] && [ "${_e}" -lt "${_sug}" ]; } \
+      || { [ "${_sug}" -lt "${_v}" ] && [ "${_e}" -gt "${_sug}" ]; }; then
+      _sug="${_e}"
+    fi
+  done
+  _cpp_rel "${_dr}"
+  _cpp_key "${_CPP_RP}"
+  _key="${_CPP_KY}"
+  case "${_key}" in
+    */web|*/docroot|*/html) _key="${_key%/*}" ;;
+  esac
+  # the line offered must lead back to this folder as the worker reads it: a path
+  # it takes no line for, or one cut for display, is no line to offer
+  _p="${_dr}"
+  case "${_p}" in
+    */web|*/docroot|*/html) _p="${_p%/*}" ;;
+  esac
+  if _cpp_norm "${_key}"; then
+    _cpp_phys "${_CPP_NK}"
+    [ "${_CPP_PP[0]}" = "${_p}" ] || _key=""
+  else
+    _key=""
+  fi
+  if [ -z "${_sug}" ]; then
+    _fix="No PHP installed with a pool of this account can run it; ask your host."
+  else
+    _x="${_sug:0:1}.${_sug:1:1}"
+    case "${_kind}" in
+      site) _fix="Fix: change the site's line in ~/static/control/multi-fpm.info to ${_x}." ;;
+      platform) _fix="Fix: change line ${_CPP_PFL} of ~/static/control/fpm-per-platform.info to ${_x}." ;;
+      default)
+        if [ -n "${_key}" ]; then
+          _fix="Fix: add the line \"${_key} ${_x}\" to ~/static/control/fpm-per-platform.info, or a line for the site to multi-fpm.info, and run this again after a few minutes."
+        else
+          _fix="Fix: add a line for the site to ~/static/control/multi-fpm.info, and run this again after a few minutes."
+        fi
+        ;;
+      single) _fix="Fix: set ~/static/control/fpm.info to ${_x}, and run this again after a few minutes." ;;
+    esac
+  fi
+  _cpp_safe "${_CPP_URI}"
+  _s="${_CPP_S}"
+  _cpp_say "The pages of ${_s} on ${_CPP_RP} would be served by PHP-FPM ${_v:0:1}.${_v:1:1}, chosen by ${_from}, and ${_why}. ${_fix}"
+}
 # Every drush line, right before its exec: what chose the PHP, the guard,
 # then the report. A tenant reads a NOTE when a line overrides the
 # account-wide choice, and every warning, on stderr (never stdout, where a
@@ -2293,6 +2550,7 @@ _cpp_before_exec() {
     _CPP_FROM="${_CLI_WHY:-the server default}"
   fi
   [ "$1" = "composer" ] || _cpp_guard
+  [ "$1" = "drush" ] && _cpp_fpm_guard
   [ "$1" = "drush" ] && _cpp_fpm_warn
   if _is_tenant; then
     if [ -n "${_CPP_V}" ] && [ "${_CPP_ACCT}" != "${DRUSH_PHP}" ]; then
@@ -2314,12 +2572,12 @@ _cpp_before_exec() {
 # PHP-FPM: a package that needs a newer PHP than a site's FPM makes
 # vendor/composer/platform_check.php answer every request of that site with
 # HTTP 500 "Composer detected issues in your platform" (measured). Warn with
-# both versions. The only place websh reads fpm.info and multi-fpm.info, and
-# never to choose. The tenant can read those two files only (the version the
-# worker resolved and the site includes it writes are not theirs), so the
-# warning names the version a site is SET to and the file that sets it, and
-# a version not installed here -- which the worker would not serve -- is
-# left out.
+# both versions. With _cpp_fpm_guard the only place websh reads fpm.info,
+# multi-fpm.info and fpm-per-platform.info, and never to choose. The tenant can
+# read those files only (the version the worker resolved and the site includes
+# it writes are not theirs), so the warning names the version a site is SET to
+# and the file that sets it, and a version not installed here -- which the
+# worker would not serve -- is left out.
 _cpp_composer_warn() {
   local _ws _w _cw="" _skip=NO _ch _c _f _nm _rt _fpm="" _mf="" _l _s _v _src _min="" _minsrc="" _site="" _i
   local -a _nms=() _rts=()
@@ -2362,6 +2620,10 @@ _cpp_composer_warn() {
     _nms+=("${_nm}"); _rts+=("${BASH_REMATCH[1]}")
   done
   [ "${#_rts[@]}" -gt 0 ] || return 0
+  # the worker takes these lines in multi-FPM mode alone
+  _CPP_PF_P=()
+  [ -f "${_DRUSH_CLI_CTRL}/multi-fpm.info" ] && [ -d "/data/disk/${_Y_USR}/tools/le" ] \
+    && _cpp_fpm_plat_load
   # the alias roots read the way the target was (links, the tenant's
   # ~/static), so a platform registered through a link still matches
   _cpp_phys "${_rts[@]}"
@@ -2369,6 +2631,8 @@ _cpp_composer_warn() {
     _nm="${_nms[${_i}]}"; _rt="${_CPP_PP[${_i}]}"
     case "${_rt}/" in "${_CPP_ROOT}/"*) ;; *) continue ;; esac
     _v="${_fpm}"; _src="fpm.info"
+    _cpp_fpm_plat_for "${_rt}"
+    [ -n "${_CPP_PFV}" ] && { _v="${_CPP_PFV}"; _src="fpm-per-platform.info"; }
     while read -r _s _l; do
       [ "${_s}" = "${_nm}" ] && { _v="${_l//[!0-9]/}"; _src="multi-fpm.info"; }
     done <<< "${_mf}"
