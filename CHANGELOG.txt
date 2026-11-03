@@ -79,12 +79,17 @@
       digits: its pre-mig panel check, its panel probe after a cutover and
       its promotion by hand read every account on the box, as the move
       itself always did, and prep-target purges or refuses a target-only
-      account of any name. A copy of an account, which has no user, is
-      reported and left alone.
+      account of any name.
 
-    * xmass init checks the source's TLS material before anything changes,
-      as it says: the check ran after the step that can restart a live
-      source's MySQL for GTID.
+    * xmass pre-mig stops on a directory that holds a control panel's alias
+      with no such user, and says so: a copy of an account, or an account
+      that lost its user. A promotion by hand leaves a copy alone and still
+      cleans up an account that lost its user.
+
+    * xmass init checks the source's TLS material before it changes anything
+      on either box, as it says: the check ran after it had dropped the
+      target's pre-pass backups, cleared queued delete tasks, marked the
+      target and, for GTID, restarted a live source's MySQL.
 
     * The bee and grav wrappers treat an account's backend user as the
       backend whatever the account's name, by what the account holds; its
