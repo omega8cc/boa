@@ -84,6 +84,14 @@
       the Upgrade Textpattern task. The version a box falls back to when it
       cannot read the mirror's stamp is 4.9.2 too.
 
+    * New Varbase platforms are built on Drupal core 11.4.11, with Drupal's
+      core security fixes of 14 October; the template's own lock stops at
+      11.4.8. Existing platforms keep their sites.
+
+    * New Commerce v.2 platforms carry Commerce Core 2.41, with the Commerce
+      security fixes of 28 October. Their Drupal core stays 10.1.8, which is
+      past security support. Existing platforms keep their sites.
+
 @=> Important Fixes
 
     * A Clone or Migrate whose target could not run on the PHP-FPM version
