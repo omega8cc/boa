@@ -4,7 +4,7 @@
 # identity-based destructive-verb policy. Standalone tool: _msg/_alrt
 # are permitted here (not a lib/functions or main installer script).
 #
-# 1. Full access ONLY for backend identities (root, aegir, o<N>). Every other
+# 1. Full access ONLY for backend identities (root, aegir, an account's own user). Every other
 #    identity (*.ftp clients, anyone else) is denied the destructive/RCE verb
 #    set -- every alias -- before exec. Restores go through the Ægir control
 #    panel, so db-import/sql-import are blocked too; db-export stays allowed.
@@ -44,10 +44,11 @@ _pick_modern() {
 # eval). We must skip the same tokens or a client smuggles a destructive verb
 # behind an empty/"0" pad. (Bypass verified on a test VM, 2026-07-11.)
 _ID="$(id -un 2>/dev/null)"
+# An account by what it holds, never by its name: not every account is o<digits>.
 _BACKEND=NO
 if [[ "${_ID}" = "root" ]] \
   || [[ "${_ID}" = "aegir" ]] \
-  || [[ "${_ID}" =~ ^o[0-9]+$ ]]; then
+  || [[ -d "/data/disk/${_ID}/.drush" ]]; then
   _BACKEND=YES
 fi
 
@@ -86,7 +87,7 @@ if [[ "${DRUSH_PHP}" =~ ^/opt/php[0-9][0-9]/bin/php$ ]] && [[ -x "${DRUSH_PHP}" 
   _BEE_PHP="${DRUSH_PHP}"
 fi
 
-# 2. No websh in the chain (root/aegir/o<N> direct calls): resolve cli.info
+# 2. No websh in the chain (root, aegir, account direct calls): resolve cli.info
 #    and the phpNN.info switch as websh does (not cli-per-platform.info). Control dir from the PWD walk (works in any
 #    account tree regardless of identity), else derived from the identity the
 #    way websh derives it; cli.info first, then the phpNN.info instant switch
