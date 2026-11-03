@@ -2810,12 +2810,13 @@ _php_eight_six_hosted_cnf() {
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
 #   worker reads 74 as 7.4); 8.6 in these files is read by
 #   _php_eight_six_asked only;
-# - of the versions installed now, every one a cli-per-platform.info line
-#   names (read as websh reads the file: its first 64 KiB and 200 lines, '#'
-#   opening a comment, a line counting only as "<folder> <version>"), and the
-#   one the phpNN.info switches steer the command line to (the highest switch
-#   whose PHP is installed). A line or switch naming a PHP that is not
-#   installed is ignored by websh, so it adds nothing here either.
+# - of the versions installed now, every one a cli-per-platform.info or
+#   fpm-per-platform.info line names (read as websh and the ltd worker read
+#   them: the first 64 KiB and 200 lines, '#' opening a comment, a line counting
+#   only as "<folder> <version>"), and the one the phpNN.info switches steer the
+#   command line to (the highest switch whose PHP is installed). A line or
+#   switch naming a PHP that is not installed is ignored by both, so it adds
+#   nothing here either.
 _php_versions_pinned_more() {
   local _c _f _v _k _rest _line _e _mk _txt _n _out=""
   for _c in /data/disk/*/static/control; do
@@ -2840,9 +2841,10 @@ _php_versions_pinned_more() {
         | tr -d '\n')"
       _out="${_out}${_v}"
     fi
-    if [ -e "${_c}/cli-per-platform.info" ]; then
+    for _f in cli-per-platform.info fpm-per-platform.info; do
+      [ -e "${_c}/${_f}" ] || continue
       _txt=""; _n=0
-      _txt="$(_acct_read_in "${_c}" cli-per-platform.info | head -c 65536)"
+      _txt="$(_acct_read_in "${_c}" "${_f}" | head -c 65536)"
       while IFS= read -r _line; do
         _n=$(( _n + 1 ))
         [ "${_n}" -gt 200 ] && break
@@ -2854,7 +2856,7 @@ _php_versions_pinned_more() {
         _v="$(_php_vrn_dotted "${_v}")"
         [ -n "${_v}" ] && _out="${_out} ${_v}"
       done <<< "${_txt}"
-    fi
+    done
     _mk=""
     for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_c}/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
@@ -3291,9 +3293,9 @@ _php_if_versions_cleanup_cnf() {
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_six}"
       fi
 
-      ### Add the versions the checks above cannot see: a two-digit pin and
-      ### the command-line pins, cli-per-platform.info and the phpNN.info
-      ### switches
+      ### Add the versions the checks above cannot see: a two-digit pin, the
+      ### per-platform lines (cli-per-platform.info, fpm-per-platform.info) and
+      ### the phpNN.info switches
       _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} $(_php_versions_pinned_more)"
 
       ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
