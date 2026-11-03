@@ -5025,6 +5025,10 @@ _xmass_source_tls_ready() {
   fi
   _cert=$(mysql --defaults-file=/root/.my.cnf -sNe "SHOW GLOBAL VARIABLES LIKE 'ssl_cert'" 2>/dev/null | awk '{print $2}')
   _dir=$(mysql --defaults-file=/root/.my.cnf -sNe "SELECT @@datadir" 2>/dev/null)
+  # An unreadable server says nothing about its TLS; the fix below would be the wrong one
+  [ -n "${_dir}" ] \
+    || _die "could not read this source's MySQL: is it up, and does /root/.my.cnf log in?" \
+            " Nothing was changed; fix that and re-run."
   case "${_cert}" in
     "") ;;
     /*) [ -s "${_cert}" ] && { _info "Source MySQL TLS material: ${_cert}"; return 0; } ;;
@@ -14251,11 +14255,19 @@ _xmass_pre_mig_panel_sanity() {
     [ -f "${_als}" ] || continue
     _usr=$(basename "${_root}")
     [ "${_root}" = "/var/aegir" ] && _usr=aegir
-    # The move would take this directory as an account, so it stops here, before
-    # anything is parked, with its real reason
-    getent passwd "${_usr}" > /dev/null \
-      || _die "${_root}: holds a hostmaster alias but no such user exists: a copy of an account, or" \
-              " an account that lost its user -- move the copy away or restore the user before migrating"
+    if [ "${_root}" != "/var/aegir" ] && ! getent passwd "${_usr}" > /dev/null; then
+      # On a source the move would take this directory as an account, so it
+      # stops here, before anything is parked, with its real reason. A tree the
+      # move skips (log/CANCELLED, an interrupted purge) is no panel to check,
+      # and on a target prep-target purges it or re-creates its user
+      # (--fix-users), for which it needs the key this pre-mig installs.
+      if [ "${_hName}" = "${_hst}" ] && [ -z "$(_xmass_account_missing "${_root}")" ]; then
+        _die "${_root}: holds a hostmaster alias but no such user exists: a copy of an account, or" \
+             " an account that lost its user -- move the copy away or restore the user before migrating"
+      fi
+      _alrt "  ${_root}: holds a hostmaster alias but no such user exists: not checked"
+      continue
+    fi
     # inside the root's real .drush, never through a link or into a FIFO
     _root_disk=$(_xmass_read_file "${_als}" | grep "root'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     _sp=$(_xmass_read_file "${_als}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")

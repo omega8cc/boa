@@ -81,10 +81,12 @@
       itself always did, and prep-target purges or refuses a target-only
       account of any name.
 
-    * xmass pre-mig stops on a directory that holds a control panel's alias
-      with no such user, and says so: a copy of an account, or an account
-      that lost its user. A promotion by hand leaves a copy alone and still
-      cleans up an account that lost its user.
+    * xmass pre-mig on a source stops on an account directory that holds a
+      control panel's alias with no such user, and says so: a copy of an
+      account, or an account that lost its user. On a target it reports one
+      and goes on, since prep-target needs its key to purge it or restore
+      its user. A promotion by hand leaves a copy alone and still cleans up
+      an account that lost its user.
 
     * xmass init checks the source's TLS material before it changes anything
       on either box, as it says: the check ran after it had dropped the
