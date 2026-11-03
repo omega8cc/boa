@@ -11655,6 +11655,8 @@ _xmass_promote_cleanup_here() {
   for _root in /data/disk/*; do
     _oct="${_root##*/}"
     _mig_valid_acct "${_oct}" || continue
+    # an account has a user: a copy such as o8.bak does not
+    getent passwd "${_oct}" > /dev/null || continue
     [ -f "${_root}/log/cores.txt" ] || continue
     _sc=$(_xmass_hand_scope "${_oct}" "${_XMASS_HAND_PEER}")
     case "${_sc}" in
@@ -11693,6 +11695,7 @@ _xmass_hold_held_dispatchers_here() {
   for _root in /data/disk/*; do
     _oct="${_root##*/}"
     _mig_valid_acct "${_oct}" || continue
+    getent passwd "${_oct}" > /dev/null || continue
     [ -f "${_root}/log/cores.txt" ] || continue
     _out=$(_xmass_a2b_hold_dispatcher "${_oct}" 2>&1) && [ -n "${_out}" ] && _info "${_out}"
   done
@@ -11707,6 +11710,7 @@ _xmass_hand_path_end() {
   for _f in /data/disk/*/static/control/run-upgrade.pid.deferred; do
     [ -e "${_f}" ] || [ -L "${_f}" ] || continue
     _f="${_f#/data/disk/}"
+    getent passwd "${_f%%/*}" > /dev/null || continue
     _held="${_held} ${_f%%/*}"
   done
   if [ "${_XMASS_HAND_CLEANED}" = "YES" ] && [ "${_XMASS_HAND_OWED}" != "YES" ] && [ -z "${_held}" ]; then
@@ -11758,6 +11762,7 @@ _xmass_promote_panels_here() {
   _info "Control panels: rewired to their live panel databases where a promotion left them dead ..."
   for _root in /var/aegir /data/disk/*; do
     [ -f "${_root}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    [ "${_root}" = "/var/aegir" ] || getent passwd "${_root##*/}" > /dev/null || continue
     # an aegir2boa import cut off on the box this one mirrored left its panel
     # database half-imported (the vanilla panel, no BOA platform path): it
     # has no live panel to rewire to, and the route run again here brings one
@@ -11801,6 +11806,7 @@ _xmass_promote_rearm_here() {
   for _root in /data/disk/*; do
     _oct="${_root##*/}"
     _mig_valid_acct "${_oct}" || continue
+    getent passwd "${_oct}" > /dev/null || continue
     [ -e "${_root}/static/control/run-upgrade.pid.deferred" ] || continue
     _sp=$(_xmass_read_file "${_root}/.drush/hostmaster.alias.drushrc.php" \
       | grep "site_path'" | head -n 1 | sed "s/.*=>//; s/[' ,;]//g")
@@ -14232,6 +14238,11 @@ _xmass_pre_mig_panel_sanity() {
     [ -f "${_als}" ] || continue
     _usr=$(basename "${_root}")
     [ "${_root}" = "/var/aegir" ] && _usr=aegir
+    # a copy of an account has its alias but no user, and is no panel to check
+    if ! getent passwd "${_usr}" > /dev/null; then
+      _alrt "  ${_root}: holds a hostmaster alias but no such user exists: not an account, not checked"
+      continue
+    fi
     # inside the root's real .drush, never through a link or into a FIFO
     _root_disk=$(_xmass_read_file "${_als}" | grep "root'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     _sp=$(_xmass_read_file "${_als}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
@@ -14860,6 +14871,11 @@ REMOTE
     _info "Target datadir space check: OK (free=${_tgt_free_kb}K need~${_need_kb}K)"
   fi
 
+  # The source's TLS material, ahead of everything below: the GTID step can
+  # restart a live source's MySQL, and a refusal after that has cost the
+  # restart. The replication account itself is rotated after the snapshot.
+  _xmass_source_tls_ready
+
   # The standby preparation mark, after every read-only gate above (the
   # server_id, patch and space gates among them: a failback refused there
   # leaves the returning box's conversions as they were), then every target
@@ -14906,9 +14922,6 @@ REMOTE
   esac
   _xmass_save_state
 
-  # The cheap half of the replication account's gate stays here; the account
-  # itself is rotated after the snapshot (below).
-  _xmass_source_tls_ready
   _xmass_prevent_solr_target
   _xmass_decide_transfer_method
   # The decisive source-side read: minutes have passed since the early check

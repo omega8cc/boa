@@ -10,7 +10,7 @@
 # system/defines.php. Tool dispatch: `grav gpm <args>` runs bin/gpm, `grav
 # plugin <args>` runs bin/plugin, anything else runs bin/grav "$@".
 #
-# 1. Full verb access ONLY for backend identities (root, aegir, o<N>). Every
+# 1. Full verb access ONLY for backend identities (root, aegir, an account's own user). Every
 #    other identity (*.ftp clients) is denied the platform-mutating set before
 #    exec: self-upgrade/direct-install move a capsule out from under the Ægir
 #    upgrade channel (mirror-fed), sandbox creates

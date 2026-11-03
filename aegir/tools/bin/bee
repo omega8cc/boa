@@ -4,7 +4,7 @@
 # identity-based destructive-verb policy. Standalone tool: _msg/_alrt
 # are permitted here (not a lib/functions or main installer script).
 #
-# 1. Full access ONLY for backend identities (root, aegir, o<N>). Every other
+# 1. Full access ONLY for backend identities (root, aegir, an account's own user). Every other
 #    identity (*.ftp clients, anyone else) is denied the destructive/RCE verb
 #    set -- every alias -- before exec. Restores go through the Ægir control
 #    panel, so db-import/sql-import are blocked too; db-export stays allowed.
@@ -87,7 +87,7 @@ if [[ "${DRUSH_PHP}" =~ ^/opt/php[0-9][0-9]/bin/php$ ]] && [[ -x "${DRUSH_PHP}" 
   _BEE_PHP="${DRUSH_PHP}"
 fi
 
-# 2. No websh in the chain (root/aegir/o<N> direct calls): resolve cli.info
+# 2. No websh in the chain (root, aegir, account direct calls): resolve cli.info
 #    and the phpNN.info switch as websh does (not cli-per-platform.info). Control dir from the PWD walk (works in any
 #    account tree regardless of identity), else derived from the identity the
 #    way websh derives it; cli.info first, then the phpNN.info instant switch

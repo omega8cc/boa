@@ -78,7 +78,13 @@
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and
       its promotion by hand read every account on the box, as the move
-      itself always did.
+      itself always did, and prep-target purges or refuses a target-only
+      account of any name. A copy of an account, which has no user, is
+      reported and left alone.
+
+    * xmass init checks the source's TLS material before anything changes,
+      as it says: the check ran after the step that can restart a live
+      source's MySQL for GTID.
 
     * The bee and grav wrappers treat an account's backend user as the
       backend whatever the account's name, by what the account holds; its
