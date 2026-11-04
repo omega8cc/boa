@@ -11621,7 +11621,7 @@ _other_sys_java_install() {
 
   # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
-    _JAVA_NEW=21.0.12
+    _JAVA_NEW=21.0.13
     _JAVA_ITD=$(java21 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
