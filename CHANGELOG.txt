@@ -26,10 +26,12 @@
       site of another account on the server.
 
     * The files storage tool no longer makes a link through a files store
-      folder a tenant swapped, under another account's identity; on a server
-      with the link check on, such a link served that account's files. A
-      tenant's call now reads back only its status, and the tool's logs are
-      root's alone: both showed what root found on paths a tenant chose.
+      folder a tenant swapped, under another account's identity, and every
+      link it makes in an account's tree is now that account's, never root's;
+      on a server with the link check on, a tenant could aim such a link at
+      another account's files and have them served. A tenant's call now reads
+      back only its status, and the tool's logs are root's alone: both showed
+      what root found on paths a tenant chose.
 
     * A Grav site no longer serves a Markdown file kept on disk outside the
       folders it already refused, such as a README beside its images or
