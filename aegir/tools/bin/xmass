@@ -13847,6 +13847,17 @@ for _o in ${_acc}; do
       _skp=$((_skp + 1))
       continue
     fi
+    # A site disabled in the panel keeps its dir and database but carries the
+    # placeholder vhost, whose body IS the catch-all page this sweep calibrates
+    # against, so probing it could only read as a false "does not serve". Read
+    # never through a link or blocked on a FIFO the account put there.
+    if timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=1048576 \
+      count=1 status=none 2>/dev/null \
+      | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default'; then
+      echo "SKIP ${_o} ${_v} - disabled in the panel: the placeholder vhost, by design"
+      _skp=$((_skp + 1))
+      continue
+    fi
     # renameaegirhost renames the vhost.d FILE itself at cutover, so a name
     # still ending in the SOURCE's FQDN is not a retired name that was
     # replaced -- it is a rename that never reached this file, and the name
