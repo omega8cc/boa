@@ -12805,7 +12805,7 @@ _xmass_purge_target_only_accounts() {
       *" ${_a} "*) continue ;;
     esac
     if [ -z "${_quiet}" ]; then
-      _xmass_wait_target_silent "${_t}" "judging the target-only account ${_a}" die full
+      _xmass_wait_target_silent "${_t}" "judging the target-only account ${_a}" die locks
       _quiet=YES
     fi
     _inv=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "${_rmt//__ACCT__/${_a}}" 2>/dev/null \
