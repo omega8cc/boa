@@ -257,6 +257,11 @@
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
 
+    * AppArmor enforce mode no longer stops Let's Encrypt. The PHP command line
+      profile refused bash and openssl, so in enforce mode a site's Verify could
+      not register, order or renew a certificate, nor make a self-signed one, and
+      still reported success.
+
     * AppArmor enforce mode now takes effect on Excalibur. BOA's dhclient profile
       and the one from the isc-dhcp-client package claim the same program, so
       aa-enforce refused the whole set and most profiles stayed in complain mode.

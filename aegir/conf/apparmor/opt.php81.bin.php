@@ -195,6 +195,19 @@
   /usr/bin/mysqldump mrix,
   /opt/php*/bin/php mrix,
 
+  # hosting_le runs its Let's Encrypt client under bash from a site's Verify, and
+  # Provision's self-signed path calls openssl
+  /{,usr/}bin/bash mrix,
+  /{,usr/}bin/ln mrix,
+  /{,usr/}bin/mktemp mrix,
+  /{,usr/}bin/sleep mrix,
+  /{,usr/}bin/tail mrix,
+  /{,usr/}bin/uname mrix,
+  /usr/bin/diff mrix,
+  /usr/bin/hexdump mrix,
+  /usr/bin/openssl mrix,
+  /usr/local/ssl3/bin/openssl mrix,
+
   # Allow PHP-CLI to access some /dev
   /dev/null rw,
   /dev/random r,
