@@ -117,6 +117,62 @@
 
 @=> Important Fixes
 
+    * AppArmor enforce mode no longer refuses a web request its file locks or
+      what it writes by group. PHP-FPM's profile allowed no lock at all, so
+      native sessions, Grav's cache and anything using LOCK_EX went without one
+      or failed, and it asked to own the files in a site's writable folders,
+      which PHP-FPM reaches by group, on files the backend user owns.
+
+    * AppArmor enforce mode now covers what a real tenant login runs. A login
+      stays in MySecureShell's profile, which lacked most of what lshell, websh
+      and the offered tools start and read: Drush, Composer, Bee, Grav, git's
+      helpers, the database clients and the shared core. passwd has a profile of
+      its own, so a login can change its password and nothing else it starts can
+      read the shadow file.
+
+    * AppArmor enforce mode no longer refuses what backend tasks and a tenant's
+      Composer scripts and Drush commands start from PHP: archivers, rsync,
+      ordinary tools such as ls and wc, the image, PDF and video tools, and
+      certificate DNS hooks.
+
+    * A Git deploy from a remote that needs a key works in AppArmor enforce mode.
+      The remote shell client runs under a profile of its own, which can start
+      no shell and write only known hosts.
+
+    * In AppArmor enforce mode a web request can run convert and magick on both
+      systems, as they are links to a versioned program the profile did not name,
+      and the rest of what BOA opens to a web account: gs, ffmpeg, clamscan, java,
+      node and wget.
+
+    * FTP works in AppArmor enforce mode. The profile refused /etc/shells and
+      pure-ftpd's own run folder, so every login failed.
+
+    * A files store moved to attached storage works in AppArmor enforce mode, for
+      a web request, a task, a login and FTP. No profile named its real path.
+
+    * Drush's first set-up of a new or moved account works in AppArmor enforce
+      mode, so its login gets its drush.yml and with it the Drush 9+ aliases.
+
+    * PHP-CLI's AppArmor profile no longer allows what only sudo needed: the
+      shadow and sudoers files, PAM's files and the commands that run through
+      sudo, nor running a codebase's own drush.php directly, which lies where
+      tenant code can write.
+
+    * The nightly no longer hands a certificate DNS hook's folder to the account.
+      A hook tree holding anything not root's now goes to undo/ and is cloned
+      again.
+
+    * A web identity's exec() no longer logs a refused tr to PHP-FPM's error log
+      on an account with a cli.info.
+
+    * sqlmagic's conversion to MyISAM works from a tenant login in AppArmor enforce
+      mode, where the perl it used is refused and it went on with the file
+      unchanged, leaving cache, sessions, users, watchdog and accesslog on MyISAM.
+
+    * A control panel task's confirm screen now shows the task's description and
+      names it by its title. The description never rendered, and the question
+      printed the machine name.
+
     * On Excalibur root no longer runs at umask 0002 under cron and sudo, so
       what it makes in an account's tree is no longer writable by that
       account. BOA's setting for logins reached every session there through a
