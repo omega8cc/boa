@@ -2043,6 +2043,54 @@ _mig_php_versions_needed() {
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
 
+### Choices that do nothing on this server because it lacks their PHP, and that a
+### target with that PHP would start to honour at the cutover: a line of multi-fpm.info,
+### cli-per-platform.info or fpm-per-platform.info, and a phpNN.info marker above the
+### highest one in force here (a lower one stays out of force wherever it runs).
+### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
+### reaches the operator's console. $1 = the account's directory.
+_mig_php_inert_choices() {
+  local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _dom="${_dom//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} the multi-fpm.info line for ${_dom:0:120}"
+    done <<< "$(_xmass_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _n=0
+    _txt="$(_xmass_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      _k=""; _v=""; _rest=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _k="${_k//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} line ${_n} of ${_f} (${_k:0:120})"
+    done <<< "${_txt}"
+  done
+  _xmass_in_real_dir "${_u}/static/control" true || return 0
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] || continue
+    if [ -x "/opt/php${_e}/bin/php" ]; then
+      _mk="${_e}"
+    fi
+  done
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] && [ ! -x "/opt/php${_e}/bin/php" ] && [ "${_e}" -gt "${_mk}" ] || continue
+    _nn="$(_mig_php_norm "${_e}")"
+    echo "${_nn} the php${_e}.info marker"
+  done
+}
+
 ### The tree the TARGET runs, for target-side barracuda verbs; fall back to
 ### this box's own tree when the query fails.
 _xmass_target_tree() {
@@ -2129,6 +2177,33 @@ _xmass_fix_target_php() {
   return 0
 }
 
+### What the target would start to honour (_mig_php_inert_choices), named before the
+### move: on a dry run it marks the run not clean, on a live one it is an alert, since an
+### account may mean it. $1 = the target, $2 = alrt or deny, $3 = versions a --fix-php run
+### installs there.
+_xmass_php_inert_report() {
+  local _t="$1" _how="$2" _fix=" ${3:-} " _oct _rows _row _v _w _have="" _got=NO
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _rows="$(_mig_php_inert_choices "/data/disk/${_oct}")"
+    [ -n "${_rows}" ] || continue
+    if [ "${_got}" = "NO" ]; then
+      _have=" $(ssh root@"${_t}" 'for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do [ -x "/opt/php${_e//./}/bin/php" ] && echo "${_e}"; done' 2>/dev/null | tr '\n' ' ') "
+      _got=YES
+    fi
+    while IFS= read -r _row; do
+      _v="${_row%% *}"
+      _w="${_row#* }"
+      case "${_have}${_fix}" in *" ${_v} "*) ;; *) continue ;; esac
+      if [ "${_how}" = "deny" ]; then
+        _alrt "DENY: ${_oct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
+        _XMASS_NOT_CLEAN=YES
+      else
+        _alrt "${_oct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover."
+      fi
+    done <<< "${_rows}"
+  done
+}
+
 ### Verify every PHP version pinned by ANY eligible account is installed on
 ### the target (the /opt/phpNN/bin/php probe BOA's own fallback ladders use).
 ### $2 selects the consequence: die | deny (DRY: DENY + NOT_CLEAN) | fix
@@ -2139,7 +2214,13 @@ _xmass_php_coverage_gate() {
     _need="${_need} $(_mig_php_versions_needed "/data/disk/${_oct}")"
   done
   _need=$(echo "${_need}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
-  [ -n "${_need// /}" ] || return 0
+  if [ -z "${_need// /}" ]; then
+    case "${_on_missing}" in
+      deny) _xmass_php_inert_report "${_t}" deny ;;
+      *) _xmass_php_inert_report "${_t}" alrt ;;
+    esac
+    return 0
+  fi
   _info "PHP versions required by the eligible accounts: ${_need}"
   for _v in ${_need}; do
     _sv=${_v//[^0-9]/}
@@ -2148,6 +2229,11 @@ _xmass_php_coverage_gate() {
     fi
   done
   _miss="${_miss## }"
+  case "${_on_missing}" in
+    fix) _xmass_php_inert_report "${_t}" alrt "${_miss}" ;;
+    deny) _xmass_php_inert_report "${_t}" deny ;;
+    *) _xmass_php_inert_report "${_t}" alrt ;;
+  esac
   [ -z "${_miss}" ] && { _info "Target PHP coverage: OK"; return 0; }
   case "${_on_missing}" in
     fix)

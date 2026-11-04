@@ -4613,6 +4613,54 @@ _mig_php_versions_needed() {
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
 
+### Choices that do nothing on this server because it lacks their PHP, and that a
+### target with that PHP would start to honour at the cutover: a line of multi-fpm.info,
+### cli-per-platform.info or fpm-per-platform.info, and a phpNN.info marker above the
+### highest one in force here (a lower one stays out of force wherever it runs).
+### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
+### reaches the operator's console. $1 = the account's directory.
+_mig_php_inert_choices() {
+  local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _dom="${_dom//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} the multi-fpm.info line for ${_dom:0:120}"
+    done <<< "$(_xoct_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _n=0
+    _txt="$(_xoct_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      _k=""; _v=""; _rest=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _k="${_k//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} line ${_n} of ${_f} (${_k:0:120})"
+    done <<< "${_txt}"
+  done
+  _xoct_in_real_dir "${_u}/static/control" true || return 0
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] || continue
+    if [ -x "/opt/php${_e}/bin/php" ]; then
+      _mk="${_e}"
+    fi
+  done
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] && [ ! -x "/opt/php${_e}/bin/php" ] && [ "${_e}" -gt "${_mk}" ] || continue
+    _nn="$(_mig_php_norm "${_e}")"
+    echo "${_nn} the php${_e}.info marker"
+  done
+}
+
 ### The tree the TARGET runs, for target-side barracuda/octopus verbs; the
 ### local _tRee belongs to THIS box and a cross-tree migration must not push
 ### the source's tree through the target's licence gate.
@@ -4629,6 +4677,29 @@ _mig_target_tree() {
   echo "${_tt}"
 }
 
+### What the target would start to honour (_mig_php_inert_choices), named before the
+### move: on a dry run it holds the --live back, on a live one it is an alert, since the
+### account may mean it. $1 = the account's directory, $2 = the target, $3 = alrt or deny,
+### $4 = versions a --fix-php run installs there.
+_xoct_php_inert_report() {
+  local _u="$1" _t="$2" _how="$3" _fix=" ${4:-} " _acct _rows _row _v _w _have
+  _acct="$(basename "${_u}")"
+  _rows="$(_mig_php_inert_choices "${_u}")"
+  [ -n "${_rows}" ] || return 0
+  _have=" $(ssh root@"${_t}" 'for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do [ -x "/opt/php${_e//./}/bin/php" ] && echo "${_e}"; done' 2>/dev/null | tr '\n' ' ') "
+  while IFS= read -r _row; do
+    _v="${_row%% *}"
+    _w="${_row#* }"
+    case "${_have}${_fix}" in *" ${_v} "*) ;; *) continue ;; esac
+    if [ "${_how}" = "deny" ]; then
+      echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
+      _XOCT_NOT_CLEAN=YES
+    else
+      echo "ALRT: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover."
+    fi
+  done <<< "${_rows}"
+}
+
 ### Verify every needed PHP version is installed on the target -- the same
 ### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
 ### is fatal by default, because served-on-the-wrong-PHP is the silent failure
@@ -4638,7 +4709,10 @@ _mig_target_tree() {
 _xoct_php_coverage_gate() {
   local _u="$1" _t="$2" _need _v _sv _miss=""
   _need="$(_mig_php_versions_needed "${_u}")"
-  [ -n "${_need// /}" ] || return 0
+  if [ -z "${_need// /}" ]; then
+    _xoct_php_inert_report "${_u}" "${_t}" alrt
+    return 0
+  fi
   echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
   for _v in ${_need}; do
     _sv=${_v//[^0-9]/}
@@ -4647,6 +4721,11 @@ _xoct_php_coverage_gate() {
     fi
   done
   _miss="${_miss## }"
+  if [ "${_XOCT_FIX_PHP}" = "YES" ]; then
+    _xoct_php_inert_report "${_u}" "${_t}" alrt "${_miss}"
+  else
+    _xoct_php_inert_report "${_u}" "${_t}" alrt
+  fi
   [ -z "${_miss}" ] && return 0
   echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
   if [ "${_XOCT_FIX_PHP}" = "YES" ]; then
@@ -9863,6 +9942,8 @@ _migrate_init() {
               exit 1
             fi
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
+          else
+            _xoct_php_inert_report "${_USR}" "${_tgt}" deny
           fi
 
           # The target keeps its own panel aliases (hostmaster, hm and
