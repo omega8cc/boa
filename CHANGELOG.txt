@@ -251,6 +251,12 @@
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
 
+    * An Octopus upgrade no longer leaves running daemons outside AppArmor. It
+      unloaded every profile, and loading them again does not take back a process
+      already running, so nginx, MySQL and the rest stayed unconfined until they
+      restarted. With a mode chosen the profiles now stay loaded in complain mode
+      while it works, and the daemons follow them back to the chosen mode.
+
     * A Barracuda upgrade that stops early now loads AppArmor again in the
       chosen mode. It left no profile loaded until the next upgrade. A major OS
       upgrade still keeps AppArmor off across its passes.

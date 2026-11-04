@@ -2484,10 +2484,15 @@ _turn_off_apparmor_in_octopus() {
     trap _apparmor_back_on_exit EXIT
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-    aa-complain /etc/apparmor.d/* &> /dev/null
-    service apparmor stop &> /dev/null
-    aa-teardown &> /dev/null
-    service auditd stop &> /dev/null
+    # Where a mode is chosen the profiles stay loaded in complain mode. Only an
+    # explicit deny rule still refuses, and the running daemons stay attached:
+    # unloading detaches them, and loading again does not take them back.
+    if ! _apparmor_mode_chosen || ! _apparmor_set_mode complain; then
+      aa-complain /etc/apparmor.d/* &> /dev/null
+      service apparmor stop &> /dev/null
+      aa-teardown &> /dev/null
+      service auditd stop &> /dev/null
+    fi
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }
