@@ -10152,12 +10152,16 @@ _xmass_setup_migration_proxy_trust() {
   [ -x "/var/xdrago/cloudflare_realip.sh" ] \
     && /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
 
-  # Make the target self-sufficient: ship both tools (its BOA may predate them),
-  # then wire the trust there.  trust.sh invokes migration_proxy_realip.sh.
-  if [ -x "${_tool}" ] && [ -x "${_realip}" ]; then
-    scp -q "${_tool}" "${_realip}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
-      && ssh root@"${_tgt}" "chmod 0755 '${_tool}' '${_realip}'" 2>/dev/null
-  fi
+  # Make the target self-sufficient, then wire the trust there (trust.sh invokes
+  # migration_proxy_realip.sh). Only what it lacks: every box fetches its own, and a copy
+  # over it would put this box's older one back.
+  local _wtf
+  for _wtf in "${_tool}" "${_realip}"; do
+    [ -x "${_wtf}" ] || continue
+    ssh root@"${_tgt}" "[ -x '${_wtf}' ]" 2>/dev/null && continue
+    scp -q "${_wtf}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+      && ssh root@"${_tgt}" "chmod 0755 '${_wtf}'" 2>/dev/null
+  done
 
   # Fail closed: the caller starts relaying right after this, and an unwired
   # target would ban the relay's address within minutes and blackhole every

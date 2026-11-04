@@ -8083,10 +8083,15 @@ _xoct_wire_target_proxy_trust() {
   [ "${_MIG_MODE}" != "temporary" ] && _perm="--permanent"
   [ -x "/var/xdrago/cloudflare_realip.sh" ] \
     && /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-  if [ -x "${_MIG_TRUST_TOOL}" ] && [ -x "${_realip}" ]; then
-    scp -q "${_MIG_TRUST_TOOL}" "${_realip}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
-      && ssh root@"${_tgt}" "chmod 0755 '${_MIG_TRUST_TOOL}' '${_realip}'" 2>/dev/null
-  fi
+  # Only what the target lacks: every box fetches its own, and a copy over it would
+  # put this box's older one back
+  local _wtf
+  for _wtf in "${_MIG_TRUST_TOOL}" "${_realip}"; do
+    [ -x "${_wtf}" ] || continue
+    ssh root@"${_tgt}" "[ -x '${_wtf}' ]" 2>/dev/null && continue
+    scp -q "${_wtf}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+      && ssh root@"${_tgt}" "chmod 0755 '${_wtf}'" 2>/dev/null
+  done
   if ssh root@"${_tgt}" "[ -x '${_MIG_TRUST_TOOL}' ]" 2>/dev/null; then
     echo "INFO: trusting migration proxy ${_src_ips// /, } on target ${_tgt} (realip + csf)"
     ssh root@"${_tgt}" "${_MIG_TRUST_TOOL} trust ${_src_ips} ${_perm}" \
