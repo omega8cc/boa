@@ -4,6 +4,12 @@
 
 @=> New Features
 
+    * A new Octopus account on a server with a standing mirror reaches the
+      mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
+      with no rebuild and no pause in replication. Until then a file sync
+      leaves that account out and keeps the others current, instead of
+      stopping for all of them, and says so.
+
     * A platform's sites can take their web PHP from the platform:
       ~/static/control/fpm-per-platform.info holds one "<folder> <version>"
       per line. A site's line in multi-fpm.info wins over its platform's,
