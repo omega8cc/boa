@@ -8284,7 +8284,20 @@ _sync_apparmor_profiles() {
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
+      # The profiles of the AppArmor packages themselves are for programs a BOA
+      # box does not run, many written to stay unconfined: aa-enforce over the
+      # whole folder would confine those programs by rules never meant to. Not
+      # unix-chkpwd: the authentication abstraction sends PAM's helper to it.
+      for _profArm in $(dpkg -L apparmor apparmor-profiles 2> /dev/null \
+        | grep -E '^/etc/apparmor\.d/[^/]+$' | grep -v '/unix-chkpwd$'); do
+        [ -f "${_profArm}" ] && mv -f "${_profArm}" ${_backArmr} &> /dev/null
+      done
       cp -af ${_locCnf}/apparmor/* /etc/apparmor.d/
+      # BOA's dhclient profile takes the name its package uses on this system:
+      # with two files for one program aa-enforce and aa-complain refuse the set.
+      if [ -e "/etc/apparmor.d/usr.sbin.dhclient" ]; then
+        mv -f /etc/apparmor.d/sbin.dhclient /etc/apparmor.d/usr.sbin.dhclient
+      fi
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi

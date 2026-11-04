@@ -251,6 +251,12 @@
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
 
+    * AppArmor enforce mode now takes effect on Excalibur. BOA's dhclient profile
+      and the one from the isc-dhcp-client package claim the same program, so
+      aa-enforce refused the whole set and most profiles stayed in complain mode.
+      The AppArmor packages' own profiles for programs a BOA box does not run are
+      also moved out, so enforce mode cannot confine those by rules never meant to.
+
     * AppArmor enforce mode no longer stops a box working. The PHP command line
       profile refused tools the backend relies on and the master panel's own code,
       so panel tasks never started; unbound could not update its key file, and the
