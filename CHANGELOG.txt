@@ -15,6 +15,10 @@
 
 @=> Security
 
+    * The files storage wrapper an account's tasks call through sudo holds a
+      tenant to its own account: with no account named, a call could reach a
+      site of another account on the server.
+
     * A Grav site no longer serves a Markdown file kept on disk outside the
       folders it already refused, such as a README beside its images or
       notes left at the site root, as Grav's own server rules do since
@@ -98,6 +102,12 @@
       Commerce, and a platform in use keeps its copy.
 
 @=> Important Fixes
+
+    * On Excalibur root no longer runs at umask 0002 under cron and sudo, so
+      what it makes in an account's tree is no longer writable by that
+      account. BOA's setting for logins reached every session there through a
+      line new in that system's session files; the next Barracuda pass sets
+      it to 0022. A login, SFTP and the limited shell keep their own 0002.
 
     * On Excalibur a site's files store directory is no longer made
       group-writable, which made the same tool refuse it: a rename left the
