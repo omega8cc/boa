@@ -360,6 +360,13 @@ _SOCIAL_CONSTRAINT="^13"
 # profile's own constraint.
 _OPIGNO_SPEC="opigno/opigno-composer"
 _OPIGNO_DISTPKG="opigno/opigno_lms"
+# The profile also requires Address and its library at their 1.x lines, and every Commerce
+# Core from 2.37 needs Address 2, which held Commerce at 2.36 with its 28 October 2026
+# advisories, one of them exploited. The profile calls neither package and does not enable
+# Commerce, so root aliases satisfy its constraints while Commerce resolves to its newest
+# 2.x. Move these with a new Address release, after a test install and clone.
+_OPIGNO_ADDRESS="2.0.4 as 1.12.0"
+_OPIGNO_ADDRESSING="2.3.2 as 1.4.2"
 # OpenFed's template requires only its three composer helpers; the distribution
 # itself (openfed/openfed) is merged in by wikimedia/composer-merge-plugin from the
 # template's composer.openfed.json, so build_openfed bootstraps vendor before the
@@ -1470,8 +1477,9 @@ _patch_gap_php() {
   #             one), or a package installed as a link (reinstalling it never makes it
   #             pristine, and its source is not the build's to remove).
   #   rehash    writes Composer's own content-hash of composer.json (Locker, loaded
-  #             from the Composer phar given as $2) into composer.lock: ignore changes
-  #             only extra, which never moves the locked set
+  #             from the Composer phar given as $2) into composer.lock and moves no
+  #             package: an ignore changes only extra, and a pinned build checks its
+  #             lock against its root after (_pinned_lock_rehash)
   #   hashcheck exits 0 when the lock's content-hash is that hash, 1 when not
   # A directory is printed only when it resolves inside the tree.
   cat <<'EOPHP'
@@ -1772,7 +1780,7 @@ _patch_gap_rehash() {
     _PENDING_NOTE="$(_patch_gap_unnote "${_PENDING_NOTE}" "lock hash stale")"
     return 0
   fi
-  _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json after a patch declaration changed"
+  _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json"
 }
 
 _patch_gap_done() {
@@ -2442,6 +2450,7 @@ build_opigno() {
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer config --unset replace" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'" \
+         && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts 'drupal/address:${_OPIGNO_ADDRESS}' 'commerceguys/addressing:${_OPIGNO_ADDRESSING}'" \
          && _with_core_fallback "${_wd}" "opigno" _composer_build \
          && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts --update-no-dev"; }; then
     _record_fail "opigno"
@@ -2644,22 +2653,29 @@ _ezc_asset_libraries() {
 }
 
 _pinned_lock_rehash() {
-  # A pinned tree is unpacked with its published lock, and the root edits made since
-  # (the held conflicts, EzContent's installer paths) leave that lock's content-hash
-  # behind composer.json: Composer warns on every run there and validate fails. Only
-  # the hash is refreshed (update --lock moves no package), before the fix step takes
-  # its snapshot of the lock. A resolve that fails (a rate-limited GitHub repository)
-  # keeps the stale hash and says so on the row: it breaks nothing. $1 workdir,
-  # $2 label.
-  # A published copy already carries the edits of the builds before it, so its hash
-  # usually matches: no resolve then. Validate exits 0 on a matching hash and needs no
-  # network; a resolve can fail where nothing is stale (packages.drupal.org now lists
-  # drupal/toolbar for admin_toolbar, which the 10.1 and 10.3 cores do not replace).
-  if _run_as_o8 "cd '$1' && composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"; then
-    return 0
+  # A pinned tree is unpacked with its published lock, and that lock's content-hash can be
+  # behind composer.json: the root edits made since (the held conflicts, EzContent's
+  # installer paths) leave it behind, and so does Composer 2.11, whose hash also covers the
+  # config.policy key every build writes. Composer warns on every run there and validate
+  # fails. Only the hash is refreshed, by Composer's own Locker with no resolve, before the
+  # fix step takes its snapshot of the lock: a resolve can fail where nothing is stale
+  # (packages.drupal.org now lists drupal/toolbar for admin_toolbar, which the 10.1 and
+  # 10.3 cores do not replace). Validate exits 0 on a matching hash and needs no network.
+  # A hash that cannot follow says so on the row: it breaks nothing.
+  # A new hash says nothing about the packages, so every build then checks the lock against
+  # its root with a dry run, in the scope of the tree's real installs. A lock that breaks it, a
+  # held conflict say, which a resolve used to refuse, would stop a tenant's install: exits 1
+  # and the build fails, so the published copy stays. $1 workdir, $2 label.
+  if ! _run_as_o8 "cd '$1' && composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"; then
+    _PATCHGAP_PHP="$(mktemp /tmp/.staticbuild-patchgap.XXXXXX)" \
+      && _patch_gap_php > "${_PATCHGAP_PHP}" && chmod 0644 "${_PATCHGAP_PHP}" \
+      && _patch_gap_rehash "$1" "$2" \
+      || _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json"
+    _patch_gap_done
   fi
-  if ! _run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --lock --no-install --no-scripts --no-plugins ${_FIX_IGNORE_EXT}"; then
-    _pending "$2" "lock hash stale" "composer update --lock failed; the lock's content-hash stays behind composer.json"
+  if ! _run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install --dry-run $(_tree_nodev "$1") --no-interaction --no-scripts --no-plugins --ignore-platform-reqs > /dev/null 2>&1"; then
+    _alrt "$2: the lock no longer fits composer.json's requirements or conflicts, so a composer install would stop"
+    return 1
   fi
   return 0
 }
@@ -2677,7 +2693,7 @@ build_ezcontent() {
   fi
   _composer_prepare "${_wd}" || { _record_fail "ezcontent"; return 1; }
   _ezc_asset_libraries "${_wd}" || { _record_fail "ezcontent (asset libraries)"; return 1; }
-  _pinned_lock_rehash "${_wd}" "ezcontent"
+  _pinned_lock_rehash "${_wd}" "ezcontent" || { _record_fail "ezcontent (lock breaks composer.json)"; return 1; }
   _fix_step "${_wd}" "ezcontent" "${_EZC_DISTPKG}" || return 1
   _finalize_distro "ezcontent" "${_wd}" "${_rest##*-}" "ezcontent"
 }
@@ -2700,7 +2716,7 @@ build_commerce_base() {
     _record_fail "commerce_base (Commerce ${_CK2_COMMERCE} did not install)"
     return 1
   fi
-  _pinned_lock_rehash "${_wd}" "commerce_base"
+  _pinned_lock_rehash "${_wd}" "commerce_base" || { _record_fail "commerce_base (lock breaks composer.json)"; return 1; }
   _fix_step "${_wd}" "commerce_base" "${_CK2_DISTPKG} drupal/commerce" || return 1
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
 }

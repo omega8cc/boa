@@ -2597,7 +2597,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f35 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f32 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f90 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -2861,7 +2861,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f84
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f68
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f67
 
   # Re-put trigger for the current lshell.conf. The sentinel MUST be a
   # literal that exists in the shipped file (here the comment that opens the
