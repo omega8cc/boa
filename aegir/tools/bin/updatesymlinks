@@ -363,6 +363,8 @@ _autosymlink_run() {
   _lastAction=NO
 
   [ -d "${_logDir}" ] || mkdir -p "${_logDir}"
+  # every account's site names go here, in a folder any identity can read
+  ( umask 027; : >> "${_actionTemporaryLog}"; : >> "${_actionVerboseArchiveLog}" )
   : > ${_actionTemporaryLog}
 
   if [ ! -x "${_autoBin}" ]; then
@@ -462,6 +464,8 @@ _orphan_report_run() {
   _subject=""
 
   [ -d "${_logDir}" ] || mkdir -p "${_logDir}"
+  # every account's site names go here, in a folder any identity can read
+  ( umask 027; : >> "${_actionTemporaryLog}"; : >> "${_actionVerboseArchiveLog}" )
   : > ${_actionTemporaryLog}
 
   if [ ! -x "${_autoBin}" ]; then

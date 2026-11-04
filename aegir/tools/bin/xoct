@@ -510,7 +510,7 @@ _mig_hread() {
   if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
     return 3
   fi
-  _xoct_in_real_dir "${1}" perl -e "${_MIG_HREAD_PL}" -- "./${2}" "${3}"
+  _xoct_in_real_dir "${1}" perl -e "${4:-${_MIG_HREAD_PL}}" -- "./${2}" "${3}"
   _rc=$?
   case "${_rc}" in
     0|3|4|5) return "${_rc}" ;;
@@ -526,6 +526,13 @@ _mig_rec() {
 _mig_mark() {
   _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
   printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.proxied"
+}
+### Root's own copy of the account's migration history: what the client was told
+### is decided from this. log/migproxy.log is in a folder the account owns, so it can
+### put any file there; that copy stays for the operator and for an older peer.
+_mig_hist() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.log"
 }
 ### The root file $1 (a name in _MIG_REC_DIR) without its mtime line, CR
 ### stripped, once it reads in the root shape and keeps the grammar. Status 3
@@ -1096,15 +1103,43 @@ _mig_log_here() {
   if printf '%s\n' "${2}" | perl -e "${_XOCT_APPEND_PL}" "./${1}" 2> /dev/null; then
     return 0
   fi
+  if [ "$#" -gt 2 ]; then
+    printf '%s\n' "${3:-${2}}" | _xoct_write_here "${1}" 077 root:root
+    return
+  fi
   { _xoct_read_here "${1}" | awk 1; printf '%s\n' "${2}"; } \
     | _xoct_write_here "${1}" 077 root:root
+}
+### The account's copy, taken only as root wrote it and only its well-formed lines: what a
+### box has before its first write under this tool. Up to what the history's readers take,
+### where a record stops at 64 KiB, or a long history is lost at its first write. Status 3
+### absent, anything else it is not root's file or is past that. $1 = the account's directory.
+_mig_hist_old() {
+  local _t _rc
+  _t="$(_mig_hread "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" root "${_MIG_HREAD_PL//65536/1048576}")"
+  _rc=$?
+  [ "${_rc}" = "0" ] || return "${_rc}"
+  printf '%s\n' "${_t}" | sed 1d \
+    | LC_ALL=C grep -aE '^20[0-9]{2}-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9](\|[^|[:cntrl:]]*){6}$'
+  return 0
+}
+### The history every decision reads. $1 = the account's directory.
+_mig_hist_text() {
+  local _n
+  _n="$(_mig_hist "${1##*/}")" || return 0
+  if [ -e "${_n}" ] || [ -L "${_n}" ]; then
+    _xoct_read_in "${_MIG_REC_DIR}" "${_n##*/}"
+  else
+    _mig_hist_old "${1}"
+  fi
+  return 0
 }
 
 ### Append-only audit. The only place the answer to "what were they actually
 ### told, and when" lives; the re-notify decision reads its last mail line.
 _mig_log() {
   local _root="$1" _tool="$2" _action="$3" _detail="$4" _mode="$5" _dl="$6" _peer="$7"
-  local _lg="${_root}/${_MIG_LOG_NAME}"
+  local _lg="${_root}/${_MIG_LOG_NAME}" _line _n _old _orc
   ### Every interpolated field is sanitised, not just the free-text one: the
   ### re-notify comparison parses this file by field position, so a stray
   ### pipe in any value would shift every later field.
@@ -1112,16 +1147,28 @@ _mig_log() {
   _mode="$(printf '%s' "${_mode}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-20)"
   _dl="$(printf '%s' "${_dl}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-10)"
   _peer="$(printf '%s' "${_peer}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-45)"
+  _line="$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}"
+  _n="$(_mig_hist "${_root##*/}")"
+  if [ -n "${_n}" ]; then
+    if [ ! -e "${_n}" ] && [ ! -L "${_n}" ]; then
+      _old="$(_mig_hist_old "${_root}")"
+      _orc=$?
+      [ "${_orc}" = "0" ] || [ "${_orc}" = "3" ] \
+        || echo "ALRT: ${_root##*/}: log/migproxy.log is not root's file, or is over 1 MiB: not imported; root's mail history starts here"
+      { [ -z "${_old}" ] || printf '%s\n' "${_old}"; } | _mig_root_put "${_n##*/}"
+    fi
+    _xoct_in_real_dir "${_MIG_REC_DIR}" _mig_log_here "${_n##*/}" "${_line}" \
+      || echo "ALRT: ${_root##*/}: root's mail history not written"
+  fi
   mkdir -p "${_root}/log" 2>/dev/null
-  _xoct_in_real_dir "${_lg%/*}" _mig_log_here "${_lg##*/}" \
-    "$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}"
+  _xoct_in_real_dir "${_lg%/*}" _mig_log_here "${_lg##*/}" "${_line}" "$(_mig_hist_text "${_root}")"
   return 0
 }
 
 ###-------------SYSTEM-----------------###
 
 ### Last promise actually mailed, as "mode|deadline" from the newest mail line
-### in the account's migproxy.log; empty output if the client was never mailed.
+### in root's history of the account; empty output if the client was never mailed.
 ### The uniform re-notify rule keys on this, which is why mail lines are only
 ### ever written after a confirmed send. With peers after $1 (the source
 ### role), only a line naming a peer of this box's moves counts
@@ -1133,7 +1180,7 @@ _mig_last_mail() {
   local _l _r="$1" _p=""
   shift
   [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
-  _l="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+  _l="$(_mig_hist_text "${_r}" \
     | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || ($4 !~ /-inbound$/ && index(p, " " $7 " "))' | tail -1)"
   [ -n "${_l}" ] || return 0
   printf '%s' "${_l}" | awk -F'|' '{ print $5 "|" $6 }'
@@ -1154,7 +1201,7 @@ _xoct_source_peers() {
   _me=" $(_mig_my_ips) $(_mig_my_ip) "
   {
     printf '%s\n' "$@"
-    _xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    _mig_hist_text "${_r}" \
       | awk -F'|' '$3 == "set" { print $7 }'
   } | awk -v me="${_me}" 'NF && $0 != "-" && !index(me, " " $0 " ") && !s[$0]++ { printf "%s ", $0 }'
 }
@@ -1167,7 +1214,7 @@ _xoct_proxied_before_log() {
   local _pt _first _ft
   _pt="$(_mig_mark_at "${1##*/}")" || return 1
   [[ "${_pt}" =~ ^[0-9]+$ ]] || return 1
-  _first="$(_xoct_read_in "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+  _first="$(_mig_hist_text "${1}" \
     | head -n 1 | cut -d'|' -f1)"
   [ -n "${_first}" ] || return 0
   _ft="$(date -u -d "${_first}" +%s 2> /dev/null)"
@@ -1184,7 +1231,7 @@ _xoct_told_complete() {
   local _n _r="$1" _p=""
   shift
   [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
-  _n="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+  _n="$(_mig_hist_text "${_r}" \
     | awk -F'|' -v n="$#" -v p="${_p}" '$3=="mail" && $4=="complete" && (n == 0 || index(p, " " $7 " ")) { c++ } END { print c+0 }')"
   [ "${_n:-0}" != "0" ] && return 0
   _xoct_proxied_before_log "${_r}"
@@ -4613,6 +4660,54 @@ _mig_php_versions_needed() {
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
 
+### Choices that do nothing on this server because it lacks their PHP, and that a
+### target with that PHP would start to honour at the cutover: a line of multi-fpm.info,
+### cli-per-platform.info or fpm-per-platform.info, and a phpNN.info marker above the
+### highest one in force here (a lower one stays out of force wherever it runs).
+### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
+### reaches the operator's console. $1 = the account's directory.
+_mig_php_inert_choices() {
+  local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _dom="${_dom//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} the multi-fpm.info line for ${_dom:0:120}"
+    done <<< "$(_xoct_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _n=0
+    _txt="$(_xoct_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      _k=""; _v=""; _rest=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _k="${_k//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} line ${_n} of ${_f} (${_k:0:120})"
+    done <<< "${_txt}"
+  done
+  _xoct_in_real_dir "${_u}/static/control" true || return 0
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] || continue
+    if [ -x "/opt/php${_e}/bin/php" ]; then
+      _mk="${_e}"
+    fi
+  done
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] && [ ! -x "/opt/php${_e}/bin/php" ] && [ "${_e}" -gt "${_mk}" ] || continue
+    _nn="$(_mig_php_norm "${_e}")"
+    echo "${_nn} the php${_e}.info marker"
+  done
+}
+
 ### The tree the TARGET runs, for target-side barracuda/octopus verbs; the
 ### local _tRee belongs to THIS box and a cross-tree migration must not push
 ### the source's tree through the target's licence gate.
@@ -4629,6 +4724,29 @@ _mig_target_tree() {
   echo "${_tt}"
 }
 
+### What the target would start to honour (_mig_php_inert_choices), named before the
+### move: on a dry run it holds the --live back, on a live one it is an alert, since the
+### account may mean it. $1 = the account's directory, $2 = the target, $3 = alrt or deny,
+### $4 = versions a --fix-php run installs there.
+_xoct_php_inert_report() {
+  local _u="$1" _t="$2" _how="$3" _fix=" ${4:-} " _acct _rows _row _v _w _have
+  _acct="$(basename "${_u}")"
+  _rows="$(_mig_php_inert_choices "${_u}")"
+  [ -n "${_rows}" ] || return 0
+  _have=" $(ssh root@"${_t}" 'for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do [ -x "/opt/php${_e//./}/bin/php" ] && echo "${_e}"; done' 2>/dev/null | tr '\n' ' ') "
+  while IFS= read -r _row; do
+    _v="${_row%% *}"
+    _w="${_row#* }"
+    case "${_have}${_fix}" in *" ${_v} "*) ;; *) continue ;; esac
+    if [ "${_how}" = "deny" ]; then
+      echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
+      _XOCT_NOT_CLEAN=YES
+    else
+      echo "ALRT: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover."
+    fi
+  done <<< "${_rows}"
+}
+
 ### Verify every needed PHP version is installed on the target -- the same
 ### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
 ### is fatal by default, because served-on-the-wrong-PHP is the silent failure
@@ -4638,7 +4756,10 @@ _mig_target_tree() {
 _xoct_php_coverage_gate() {
   local _u="$1" _t="$2" _need _v _sv _miss=""
   _need="$(_mig_php_versions_needed "${_u}")"
-  [ -n "${_need// /}" ] || return 0
+  if [ -z "${_need// /}" ]; then
+    _xoct_php_inert_report "${_u}" "${_t}" alrt
+    return 0
+  fi
   echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
   for _v in ${_need}; do
     _sv=${_v//[^0-9]/}
@@ -4647,6 +4768,11 @@ _xoct_php_coverage_gate() {
     fi
   done
   _miss="${_miss## }"
+  if [ "${_XOCT_FIX_PHP}" = "YES" ]; then
+    _xoct_php_inert_report "${_u}" "${_t}" alrt "${_miss}"
+  else
+    _xoct_php_inert_report "${_u}" "${_t}" alrt
+  fi
   [ -z "${_miss}" ] && return 0
   echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
   if [ "${_XOCT_FIX_PHP}" = "YES" ]; then
@@ -6049,7 +6175,7 @@ _migrate_prepare() {
     ### dedupe on the recorded mail line (field 7 = peer), so a later migration
     ### to a DIFFERENT target still notifies. reset-state clears nothing here
     ### by design: the log is the audit trail of what the client was told.
-    _XOCT_START_MAILED=$(_xoct_read_in "${_USR}/log" migproxy.log \
+    _XOCT_START_MAILED=$(_mig_hist_text "${_USR}" \
       | awk -F'|' -v t="${_tgt}" \
       '$3=="mail" && $4=="start" && $7==t { c++ } END { print c+0 }')
     if [ "${_XOCT_START_MAILED:-0}" != "0" ]; then
@@ -7643,7 +7769,7 @@ _mig_render_table() {
     esac
     [ "${_cls}" = "account" ] && _flag="${_flag} [account-written log record ignored]"
     _lt="(never)"
-    _lastline="$(_xoct_read_in "${_root}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    _lastline="$(_mig_hist_text "${_root}" \
       | grep '|mail|' | tail -1)"
     [ -n "${_lastline}" ] \
       && _lt="$(printf '%s' "${_lastline}" | awk -F'|' '{ print $5 "/" $6 " on " substr($1,1,10) }')"
@@ -8004,10 +8130,15 @@ _xoct_wire_target_proxy_trust() {
   [ "${_MIG_MODE}" != "temporary" ] && _perm="--permanent"
   [ -x "/var/xdrago/cloudflare_realip.sh" ] \
     && /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-  if [ -x "${_MIG_TRUST_TOOL}" ] && [ -x "${_realip}" ]; then
-    scp -q "${_MIG_TRUST_TOOL}" "${_realip}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
-      && ssh root@"${_tgt}" "chmod 0755 '${_MIG_TRUST_TOOL}' '${_realip}'" 2>/dev/null
-  fi
+  # Only what the target lacks: every box fetches its own, and a copy over it would
+  # put this box's older one back
+  local _wtf
+  for _wtf in "${_MIG_TRUST_TOOL}" "${_realip}"; do
+    [ -x "${_wtf}" ] || continue
+    ssh root@"${_tgt}" "[ -x '${_wtf}' ]" 2>/dev/null && continue
+    scp -q "${_wtf}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+      && ssh root@"${_tgt}" "chmod 0755 '${_wtf}'" 2>/dev/null
+  done
   if ssh root@"${_tgt}" "[ -x '${_MIG_TRUST_TOOL}' ]" 2>/dev/null; then
     echo "INFO: trusting migration proxy ${_src_ips// /, } on target ${_tgt} (realip + csf)"
     ssh root@"${_tgt}" "${_MIG_TRUST_TOOL} trust ${_src_ips} ${_perm}" \
@@ -9863,6 +9994,8 @@ _migrate_init() {
               exit 1
             fi
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
+          else
+            _xoct_php_inert_report "${_USR}" "${_tgt}" deny
           fi
 
           # The target keeps its own panel aliases (hostmaster, hm and
