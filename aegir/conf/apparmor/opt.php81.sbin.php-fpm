@@ -20,6 +20,9 @@
   capability setgid,
   capability setuid,
   capability sys_resource,
+  # The master reads a slow child's stack for the slow log
+  capability sys_ptrace,
+  ptrace (trace, tracedby, read, readby) peer=/opt/php*/sbin/php-fpm,
 
   # Allow PHP-FPM to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
@@ -79,6 +82,132 @@
   /usr/local/bin/git mrix,
   /usr/local/libexec/git-core/** mrix,
 
+  # The tools BOA's own list opens to a web account, by the file each really is: convert and
+  # magick are links to a versioned program, and the kernel judges the file. Everything else
+  # in /usr/bin is closed to a web account by its mode, root:users 750.
+  /usr/bin/clamdscan mrix,
+  /usr/bin/clamscan mrix,
+  /usr/bin/convert-im[67].q16* mrix,
+  /usr/bin/ffmpeg mrix,
+  /usr/bin/ffprobe mrix,
+  /usr/bin/gs mrix,
+  /usr/bin/magick-im[67].q16* mrix,
+  /usr/bin/node mrix,
+  /usr/bin/wget mrix,
+  /usr/lib/chromium/** mrix,
+
+  # What those tools read
+  /etc/chromium.d/ r,
+  /etc/chromium.d/* r,
+  /etc/chromium/ r,
+  /etc/chromium/** r,
+  /etc/clamav/ r,
+  /etc/clamav/** r,
+  /etc/fonts/ r,
+  /etc/fonts/** r,
+  /etc/ghostscript/ r,
+  /etc/ghostscript/** r,
+  /etc/java-*/ r,
+  /etc/java-*/** r,
+  /etc/ldap/ldap.conf r,
+  /etc/wgetrc r,
+  /usr/local/share/fonts/ r,
+  /usr/local/share/fonts/** r,
+  /usr/share/chromium/ r,
+  /usr/share/chromium/** r,
+  /usr/share/fonts/ r,
+  /usr/share/fonts/** r,
+  /usr/share/ghostscript/ r,
+  /usr/share/ghostscript/** r,
+  /var/cache/fontconfig/ r,
+  /var/cache/fontconfig/** r,
+  /var/lib/clamav/ r,
+  /var/lib/clamav/** r,
+  /var/lib/ghostscript/ r,
+  /var/lib/ghostscript/** r,
+
+  # A master's maps of /dev/zero name /, one line each start, and it keeps them either way
+  deny / rw,
+
+  # The data those tools read: fontconfig's own, colour profiles, PDF character maps, time zones
+  /etc/magic r,
+  /etc/paperspecs r,
+  /etc/ssl/openssl.cnf r,
+  /etc/vulkan/ r,
+  /etc/vulkan/** r,
+  /etc/papersize r,
+  /etc/udev/udev.conf r,
+  /usr/share/color/ r,
+  /usr/share/color/** r,
+  /usr/share/file/ r,
+  /usr/share/file/** r,
+  /usr/share/fontconfig/ r,
+  /usr/share/fontconfig/** r,
+  /usr/share/glib-2.0/schemas/ r,
+  /usr/share/glib-2.0/schemas/** r,
+  /usr/share/javascript/mathjax/ r,
+  /usr/share/javascript/mathjax/** r,
+  /usr/share/poppler/ r,
+  /usr/share/poppler/** r,
+  /usr/share/publicsuffix/ r,
+  /usr/share/publicsuffix/** r,
+  /usr/share/zoneinfo/ r,
+  /usr/share/zoneinfo/** r,
+
+  # A browser asks these of its own processes
+  /dev/dri/ r,
+  /var/tmp/ r,
+  deny /usr/lib/chromium/extensions/ w,
+  owner /proc/*/clear_refs w,
+  owner /proc/*/coredump_filter rw,
+  owner /proc/*/oom_score_adj rw,
+
+  /{,usr/}bin/gawk mrix,
+  /{,usr/}bin/mawk mrix,
+
+  # What a browser keeps in the web account's home
+  owner /home/*.web/.config/ rw,
+  owner /home/*.web/.config/** rwk,
+  owner /home/*.web/.local/ rw,
+  owner /home/*.web/.local/** rwk,
+
+  # The rest of that list. A shell a site starts stays in this profile, as dash does.
+  /{,usr/}bin/bash mrix,
+  /opt/jdk/ r,
+  /opt/jdk/** mr,
+  /opt/jdk/*/bin/java mrix,
+  /opt/jdk/*/lib/jspawnhelper mrix,
+  /usr/bin/gpg mrix,
+  /usr/bin/gpgv mrix,
+  /usr/bin/logger mrix,
+  /usr/bin/pdf* mrix,
+  /usr/bin/rrdtool mrix,
+  /usr/bin/wkhtmltoimage{,-0.12.4} mrix,
+  /usr/bin/wkhtmltopdf{,-0.12.4} mrix,
+  /usr/lib/jvm/*/bin/java mrix,
+  /usr/lib/jvm/*/lib/jspawnhelper mrix,
+  /usr/lib/node_modules/npm/bin/** mrix,
+  /usr/local/bin/compass mrix,
+  /usr/local/bin/gem mrix,
+  /usr/local/bin/ruby mrix,
+  /usr/local/bin/sass mrix,
+  /usr/local/bin/sass-convert mrix,
+  /usr/local/bin/scss mrix,
+
+  # More of what those tools read
+  /opt/jetty9/lib/ r,
+  /opt/jetty9/lib/** r,
+  /opt/tika*/ r,
+  /opt/tika*/** r,
+  /usr/share/java/ r,
+  /usr/share/java/** r,
+  /usr/share/pdftk/ r,
+  /usr/share/pdftk/** r,
+
+  # A files store moved to attached storage: the kernel judges the file a link resolves to
+  /mnt/**/files/*/static/files/ r,
+  /mnt/**/files/*/static/files/** rwk,
+
   # Allow PHP-FPM to access some /dev
   /dev/null rw,
   /dev/random r,
@@ -90,10 +219,10 @@
 
   # Allow PHP-FPM to use tmp files
   /home/*/.tmp/ r,
-  /home/*/.tmp/** rw,
+  /home/*/.tmp/** rwk,
   /tmp/ r,
-  /tmp/** rw,
-  /var/tmp/** rw,
+  /tmp/** rwk,
+  /var/tmp/** rwk,
 
   # Allow read access to necessary libraries
   /lib/** mr,
@@ -119,7 +248,7 @@
 
   # Allow PHP-FPM to use /dev/shm for temporary storage
   /dev/shm/ r,
-  /dev/shm/** rw,
+  /dev/shm/** rwk,
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
@@ -140,6 +269,12 @@
   /data/disk/*/static/** r,
   /data/disk/*/tools/le/** r,
 
+  # The panel's download of a backup export reads it here
+  /data/disk/*/backup-exports/ r,
+  /data/disk/*/backup-exports/* r,
+  /var/aegir/backup-exports/ r,
+  /var/aegir/backup-exports/* r,
+
   /data/all/ r,
   /data/all/* r,
   /data/all/** r,
@@ -147,21 +282,40 @@
   /data/conf/* r,
   /data/conf/** r,
 
-  owner /var/aegir/host_master/** rw,
-  owner /var/aegir/platforms/** rw,
+  owner /var/aegir/host_master/** rwk,
+  owner /var/aegir/platforms/** rwk,
 
-  owner /data/disk/*/aegir/** rw,
-  owner /data/disk/*/distro/** rw,
-  owner /data/disk/*/platforms/** rw,
-  owner /data/disk/*/static/** rw,
-  owner /var/www/** rw,
+  owner /data/disk/*/aegir/** rwk,
+  owner /data/disk/*/distro/** rwk,
+  owner /data/disk/*/platforms/** rwk,
+  owner /data/disk/*/static/** rwk,
+  owner /var/www/** rwk,
+
+  # A site's writable folders are <user>:<web group> 02775: PHP-FPM writes there by group, on
+  # files the backend user owns, never by being their owner, so these cannot be owner rules.
+  # A rule here cannot name the account: until the account that owns a folder is at web group
+  # phase A, its group is the shared www-data, and only that group keeps accounts apart.
+  /data/disk/*/static/files/*/ r,
+  /data/disk/*/static/files/*/** rwk,
+  /data/disk/*/{aegir,distro,platforms,static}/**/sites/*/{assets,backup,cache,files,images,logs,private,tmp,user}/ rw,
+  /data/disk/*/{aegir,distro,platforms,static}/**/sites/*/{assets,backup,cache,files,images,logs,private,tmp,user}/** rwk,
+  /data/disk/*/{aegir,distro,platforms,static}/**/sites/*/admin/plugins/ rw,
+  /data/disk/*/{aegir,distro,platforms,static}/**/sites/*/admin/plugins/** rwk,
+  /data/disk/*/{aegir,distro,platforms,static}/**/sites/*/public/{files,images,themes}/ rw,
+  /data/disk/*/{aegir,distro,platforms,static}/**/sites/*/public/{files,images,themes}/** rwk,
+  /var/aegir/{host_master,platforms}/**/sites/*/{files,private}/ rw,
+  /var/aegir/{host_master,platforms}/**/sites/*/{files,private}/** rwk,
+
+  # BOA's own folders at a store's root (.backups, .backup-exports, .archived) are no site's
+  deny /data/disk/*/static/files/.*/** wkl,
+  deny /mnt/**/files/*/static/files/.*/** wkl,
 
   /home/*.web/.aws/ r,
   /home/*.web/.aws/* rw,
   /home/*.web/.drush/ r,
   /home/*.web/.drush/* r,
   /home/*.web/.tmp/ r,
-  /home/*.web/.tmp/* rw,
+  /home/*.web/.tmp/* rwk,
 
   # Deny access to various sensitive directories and files
   deny /boot/** mrwklx,
