@@ -298,6 +298,14 @@
       chosen mode. aa-enforce and aa-complain refuse the whole profile set on a
       single conflict and change nothing, which went unnoticed.
 
+    * The ClamAV opt-out no longer moves the init scripts of clamav-daemon and
+      clamav-freshclam to /var/backups. An update of clamav-freshclam by
+      unattended-upgrades then failed to configure it: the deleted script is
+      not put back without --force-confmiss and the package's own configure
+      step needs it, so every later apt run on the box ended with an error.
+      The scripts stay in place with no rc links; a moved script is put back
+      and the pending configure finished on the next pass.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
