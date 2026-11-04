@@ -8321,7 +8321,7 @@ _sync_apparmor_profiles() {
           service auditd restart &> /dev/null
         fi
         apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-        aa-complain /etc/apparmor.d/* &> /dev/null
+        _apparmor_set_mode complain
       elif [ -e "/root/.enforce.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Activating AppArmor in the enforced mode"
@@ -8334,7 +8334,7 @@ _sync_apparmor_profiles() {
           service auditd restart &> /dev/null
         fi
         apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-        aa-enforce /etc/apparmor.d/* &> /dev/null
+        _apparmor_set_mode enforce
         if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
           _if_enforce_apparmor_profiles
         fi

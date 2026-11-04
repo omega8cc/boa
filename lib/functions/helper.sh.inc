@@ -2446,6 +2446,17 @@ _apparmor_mode_chosen() {
 }
 
 #
+# Put every profile in a mode. The tools refuse the whole set on any one
+# conflict and change nothing, so a refusal is said where a report reads it.
+_apparmor_set_mode() {
+  local _out
+  _out=$("aa-${1}" /etc/apparmor.d/* 2>&1) && return 0
+  _msg "ALRT: aa-${1} refused the AppArmor profile set, it stays as it was"
+  _msg "ALRT: $(grep -m1 "ERROR" <<< "${_out}" | cut -c1-120)"
+  return 1
+}
+
+#
 # Turn Off AppArmor In Octopus.
 _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2503,9 +2514,9 @@ _turn_on_apparmor_after_octopus() {
     fi
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
     if [ -e "/root/.activate.apparmor.cnf" ]; then
-      aa-complain /etc/apparmor.d/* &> /dev/null
+      _apparmor_set_mode complain
     else
-      aa-enforce /etc/apparmor.d/* &> /dev/null
+      _apparmor_set_mode enforce
     fi
     rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi

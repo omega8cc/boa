@@ -251,6 +251,10 @@
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
 
+    * An upgrade now says so in its report when AppArmor cannot be put in the
+      chosen mode. aa-enforce and aa-complain refuse the whole profile set on a
+      single conflict and change nothing, which went unnoticed.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
