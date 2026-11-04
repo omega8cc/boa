@@ -117,6 +117,20 @@
 
 @=> Important Fixes
 
+    * Chromium runs from a web request. With no writable home its crash handler
+      had no database and the browser ended on SIGTRAP, with no AppArmor line to
+      point at it. It now keeps those folders in the pool's temporary folder,
+      and in enforce mode PHP-FPM's profile lets it list /proc.
+
+    * Chromium started by root or an account's own shell works in AppArmor
+      enforce mode. Its profile refused the wrapper's own settings and helpers,
+      which ended it with status 2, and a page's network.
+
+    * nginx serves a files store moved to attached storage in AppArmor enforce
+      mode. Its profile named no such path, so CSS, JS and images answered 403
+      or 404. The virus scanner, node, Chromium, wkhtmltopdf and wkhtmltoimage
+      can read such a store too.
+
     * AppArmor enforce mode no longer refuses a web request its file locks or
       what it writes by group. PHP-FPM's profile allowed no lock at all, so
       native sessions, Grav's cache and anything using LOCK_EX went without one
