@@ -3544,6 +3544,20 @@ _display_info() {
   fi
 }
 
+# A pass in flight writes back what a purge parks: a panel proxy left in pre.d
+# names a certificate under the removed tree, and nginx -t then fails for the
+# whole box. Asked first, while nothing of the account has been touched.
+_purge_run_gate() {
+  local _m
+  for _m in /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid; do
+    if [ -e "${_m}" ]; then
+      echo "Account ${1} not purged: ${_m} exists, a BOA pass or system task is running. Nothing changed; run this again when it ends."
+      return 1
+    fi
+  done
+  return 0
+}
+
 # A purged account's two database users -- its instance user (the backend's
 # master_db, ALL ON *.* WITH GRANT OPTION) and its panel user (the hostmaster
 # site's db_user) -- outlived every purge as superusers no account owned.
@@ -4050,6 +4064,7 @@ _octopus_cleanup() {
       && [ ! -z "${_usEr}" ] \
       && [ "${_usEr}" != "batch" ] \
       && [ -e "/var/log/boa/.cleanup.detect.txt" ]; then
+      _purge_run_gate "${_usEr}" || exit 1
       _zombie_dir="/var/backups/zombie/purged/${_usEr}/home/"
       _nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
       _nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"

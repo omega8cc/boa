@@ -987,7 +987,7 @@ _explain_symlink_unknown() {
     # the account aimed this link: root measures it only inside the account
     _EXP_SU_SIZE="not measured, outside this account"
     case "$(realpath -e -- "${_EXP_SU_PROBE}" 2>/dev/null)/" in
-      "${_EXP_SU_ACCT}"/*)
+      "${_EXP_SU_ACCT}"/*|/mnt/?*/files/"${_EXP_SU_ACCT##*/}"/*)
         _EXP_SU_KB=$(_exp_du "${_EXP_SU_PROBE}")
         _EXP_SU_SIZE="${_EXP_SU_KB:-?}K"
         ;;
@@ -3008,33 +3008,70 @@ _store_owner_here() {
   [ "${_st#* }" = "directory" ] && printf '%s\n' "${_st%% *}"
 }
 
+_uid_of_account() {
+  # rc 0 when uid $1 is account $2's own login or a named identity of it, by
+  # linkguard's rule of names; root and every other account's are not.
+  local _n
+  [[ "${1}" =~ ^[1-9][0-9]*$ ]] || return 1
+  _n=$(getent passwd "${1}" 2>/dev/null | cut -d: -f1)
+  [[ "${_n}" =~ ^([a-z0-9-]+)(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || return 1
+  [ "${BASH_REMATCH[1]}" = "${2}" ]
+}
+
 _link_as_store_owner() {
   # Make the in-site files/private symlink $2 pointing at the store $1, owned
-  # by the store's owner:group, so the link does not linger root-owned when no
-  # later perms-fix re-chowns it (on clone the unshare's link is the LAST step,
-  # so a root link would stay root:root until the next verify). The link is
+  # by the store's owner:group, so nginx's link check passes it. The link is
   # made by that owner itself, never chowned by name afterwards: the site
   # directory is the account's, and a hard link renamed over the name before a
-  # chown -h would be handed to the store's owner. Where that owner is root or
-  # cannot make it there, root makes it as before and it stays root's (only the
-  # nginx link check reads a link's owner, and on a box armed for it linkguard
-  # makes a link inside one account its target owner's). Returns ln's status.
-  # -T so the name is never treated
-  # as a directory: a real dir still at $2 (a move/removal that did not complete)
-  # makes ln fail instead of creating a nested <type>/<type> link inside it.
+  # chown -h would be handed to the store's owner.
   # The owner is read inside the store the caller holds (_store_owner_here),
-  # never through the name: static/files can be swapped for a link, and a link
-  # made as another account's owner passes nginx's owner check for that account's
-  # files.
+  # never through the name.
+  # A link in an account's tree is only ever an identity of that account's. The
+  # account can swap static/files, so it can aim a link later, and nginx's check
+  # compares the link's owner with the final target's alone: a link of root's
+  # would then pass for any store folder, every account's being root's, and one
+  # of another account's for what that account owns. So an owner outside the
+  # account, root included, or none (the store could not be read), gives the link
+  # to the account. Where its owner cannot write the directory, which the account
+  # can arrange, the same one call runs again with the single capability that lets
+  # it, as in linkguard. Root makes the link only where this box cannot switch
+  # user at all, asked of nobody so that nothing in an account can bring it about,
+  # and says so.
+  # -T so the name is never treated as a directory: a real dir still at $2 (a
+  # move/removal that did not complete) makes ln fail instead of creating a nested
+  # <type>/<type> link inside it.
   # Args: 1 store target dir (the link's text), 2 in-site symlink (callers pass
   #       ./<type> from inside the site dir entered for real), 3 the store target's
-  #       "<uid>:<gid>", or nothing: root makes the link.
+  #       "<uid>:<gid>", or nothing.
   _LSO_OWNER="${3:-}"
-  if [[ "${_LSO_OWNER}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_LSO_OWNER%%:*}" != 0 ] \
-    && setpriv --reuid="${_LSO_OWNER%%:*}" --regid="${_LSO_OWNER#*:}" \
-      --clear-groups ln -s -T -- "$1" "$2" 2>/dev/null; then
-    return 0
+  if ! [[ "${_LSO_OWNER}" =~ ^[0-9]+:[0-9]+$ ]] \
+    || ! _uid_of_account "${_LSO_OWNER%%:*}" "${_ACCOUNT_DIR##*/}"; then
+    if [ -n "${_LSO_OWNER}" ]; then
+      _log "[WARN] $(_log_name "$1") belongs to uid ${_LSO_OWNER%%:*}, outside the account: the link to it stays the account's, so the nginx link check refuses it until the account owns it"
+    fi
+    _LSO_OWNER=$(_account_ids "${_ACCOUNT_DIR}") || _LSO_OWNER=""
+    _LSO_OWNER="${_LSO_OWNER/ /:}"
   fi
+  if [ -n "${_LSO_OWNER}" ]; then
+    if setpriv --reuid="${_LSO_OWNER%%:*}" --regid="${_LSO_OWNER#*:}" \
+      --clear-groups ln -s -T -- "$1" "$2" 2>/dev/null; then
+      return 0
+    fi
+    if [ -e "$2" ] || [ -L "$2" ]; then
+      return 1
+    fi
+    if setpriv --reuid="${_LSO_OWNER%%:*}" --regid="${_LSO_OWNER#*:}" --clear-groups \
+      --inh-caps=-all,+dac_override --ambient-caps=-all,+dac_override \
+      ln -s -T -- "$1" "$2" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  _LSO_NOBODY=$(id -u nobody 2>/dev/null)
+  if [ -n "${_LSO_NOBODY}" ] && setpriv --reuid="${_LSO_NOBODY}" --regid="$(id -g nobody 2>/dev/null)" \
+    --clear-groups true 2>/dev/null; then
+    return 1
+  fi
+  _log "[ALERT] setpriv cannot switch user on this box: root makes the link $(_log_name "$2") -> $(_log_name "$1")"
   ln -s -T -- "$1" "$2"
 }
 
@@ -3173,15 +3210,23 @@ _self_heal_symlink() {
   if [ -e "${_SITE_LINK}" ] || [ -L "${_SITE_LINK}" ]; then
     return 0
   fi
+  # no store yet, as on a new account: nothing to relink and nothing refused
+  if [ ! -e "${_ACCOUNT_DIR}/static/files" ] && [ ! -L "${_ACCOUNT_DIR}/static/files" ]; then
+    return 0
+  fi
   _store_files_dir_close "${_ACCOUNT_DIR}"
   if ! _h=$(_store_files_dir "${_ACCOUNT_DIR}"); then
     _log "[WARN] Not relinking $(_log_name "${_SITE_LINK}"): ${_ACCOUNT_DIR}/static/files is not the account's own store"
+    _SITE_HEAL_REFUSED="YES"
     return 0
   fi
   _o=$(_store_in_bound "${_h}" "${_h%|*}/${_b##*/}" _store_filled_owner_here "${_STORE_DIR##*/}")
   if [ -n "${_o}" ]; then
     _log "[APPLY] Self-heal: in-site path missing, recreating symlink ${_SITE_LINK} -> ${_STORE_DIR}"
-    _store_in_pinned "${_SITE_LINK%/*}" _link_as_store_owner "${_STORE_DIR}" "./${_SITE_LINK##*/}" "${_o}"
+    if ! _store_in_pinned "${_SITE_LINK%/*}" _link_as_store_owner "${_STORE_DIR}" "./${_SITE_LINK##*/}" "${_o}"; then
+      _log "[ERROR] Self-heal could not recreate symlink ${_SITE_LINK} -> ${_STORE_DIR}"
+      _SITE_HEAL_REFUSED="YES"
+    fi
   fi
 }
 
@@ -3493,6 +3538,7 @@ _process_site() {
 
   # Recover any site left without an in-site files/private link by an interrupted
   # prior conversion (store dir present, in-site link missing). No-op in DRY/REPORT.
+  _SITE_HEAL_REFUSED="NO"
   _self_heal_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files"
   _self_heal_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
 
@@ -4040,6 +4086,9 @@ _run_one_site() {
     fi
     if [ "${_SITE_CONVERT_SKIPPED}" = "YES" ]; then
       _log "[WARN] Conversion for ${_SITE} not completed; a files/private dir is left in the site as it is - manual review required"
+      _NARROW_RC=3
+    fi
+    if [ "${_SITE_HEAL_REFUSED}" = "YES" ]; then
       _NARROW_RC=3
     fi
     [ "${_NARROW_RC}" = "0" ] || return "${_NARROW_RC}"
