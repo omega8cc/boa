@@ -251,6 +251,13 @@
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
 
+    * AppArmor enforce mode no longer stops a box working. The PHP command line
+      profile refused tools the backend relies on and the master panel's own code,
+      so panel tasks never started; unbound could not update its key file, and the
+      limited shell could not make a temporary file. What the backend runs through
+      sudo now has a profile of its own, so this needed nothing wider in the PHP
+      profile a tenant's own code runs under.
+
     * An Octopus upgrade no longer leaves running daemons outside AppArmor. It
       unloaded every profile, and loading them again does not take back a process
       already running, so nginx, MySQL and the rest stayed unconfined until they
