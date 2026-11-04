@@ -8170,6 +8170,20 @@ _strict_bin_permissions() {
 }
 
 #
+# The EXIT trap of a barracuda run until its AppArmor step is done. A major OS
+# upgrade keeps AppArmor off across its passes, so it is left alone here too,
+# whether a marker file or an operator's answer started it.
+_apparmor_back_on_barracuda_exit() {
+  local _hop
+  trap '' HUP INT TERM PIPE
+  [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "YES" ] && return 0
+  for _hop in excalibur daedalus chimaera beowulf; do
+    [ -e "/root/.run-to-${_hop}.cnf" ] && return 0
+  done
+  _turn_on_apparmor_after_octopus
+}
+
+#
 # Turn Off AppArmor temporarily.
 _turn_off_apparmor_temporarily() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8183,6 +8197,10 @@ _turn_off_apparmor_temporarily() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
+    # Only the AppArmor step near the end of the run restores it, so every way
+    # out before that step owes the switch back.
+    _aaOffInThisRun=YES
+    trap _apparmor_back_on_barracuda_exit EXIT
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
     aa-complain /etc/apparmor.d/* &> /dev/null
@@ -8266,7 +8284,20 @@ _sync_apparmor_profiles() {
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
+      # The profiles of the AppArmor packages themselves are for programs a BOA
+      # box does not run, many written to stay unconfined: aa-enforce over the
+      # whole folder would confine those programs by rules never meant to. Not
+      # unix-chkpwd: the authentication abstraction sends PAM's helper to it.
+      for _profArm in $(dpkg -L apparmor apparmor-profiles 2> /dev/null \
+        | grep -E '^/etc/apparmor\.d/[^/]+$' | grep -v '/unix-chkpwd$'); do
+        [ -f "${_profArm}" ] && mv -f "${_profArm}" ${_backArmr} &> /dev/null
+      done
       cp -af ${_locCnf}/apparmor/* /etc/apparmor.d/
+      # BOA's dhclient profile takes the name its package uses on this system:
+      # with two files for one program aa-enforce and aa-complain refuse the set.
+      if [ -e "/etc/apparmor.d/usr.sbin.dhclient" ]; then
+        mv -f /etc/apparmor.d/sbin.dhclient /etc/apparmor.d/usr.sbin.dhclient
+      fi
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
@@ -8321,7 +8352,7 @@ _sync_apparmor_profiles() {
           service auditd restart &> /dev/null
         fi
         apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-        aa-complain /etc/apparmor.d/* &> /dev/null
+        _apparmor_set_mode complain
       elif [ -e "/root/.enforce.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Activating AppArmor in the enforced mode"
@@ -8334,7 +8365,7 @@ _sync_apparmor_profiles() {
           service auditd restart &> /dev/null
         fi
         apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-        aa-enforce /etc/apparmor.d/* &> /dev/null
+        _apparmor_set_mode enforce
         if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
           _if_enforce_apparmor_profiles
         fi
@@ -8410,6 +8441,7 @@ _if_install_apparmor() {
     _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
+  _aaOffInThisRun=NO
 }
 
 #
@@ -11589,7 +11621,7 @@ _other_sys_java_install() {
 
   # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
-    _JAVA_NEW=21.0.12
+    _JAVA_NEW=21.0.13
     _JAVA_ITD=$(java21 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
