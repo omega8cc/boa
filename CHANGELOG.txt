@@ -1017,6 +1017,14 @@
       and held the per-minute enforcement that long; now under half a
       minute, with the same checks and the same csf calls.
 
+    * The test of an address against the covering blocks in csf.allow,
+      which the daily sweep, the per-minute guard and the SSH log check
+      share, runs as one awk pass over the blocks instead of a shell loop
+      that forked a subshell per block: with the provider ranges in the
+      file, about 500 blocks, the sweep went at three addresses a second
+      and held the per-minute enforcement for minutes on a box with a big
+      ban archive. The verdicts are the same.
+
 @=> Changes and Upgrades
 
     * The ready-made Drupal cores move to 10.6.20, 11.3.20 and 11.4.11, with
