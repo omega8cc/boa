@@ -102,10 +102,9 @@
     * A database load through the admin login can no longer fail on a
       duplicate row written by a process that reached the half loaded
       database, which stopped a panel's upgrade or a site's Migrate: the
-      site's own login is locked while the admin login loads it.
-      A load that outlives the session still gets its unlock, and a login a
-      killed task left locked is given back by the site's next Verify or
-      Backup.
+      site's own login is locked while the admin login loads it. A load
+      that outlives the session still gets its unlock, and a login a killed
+      task left locked is given back by the site's next Verify or Backup.
 
     * Rebuilding a pinned catalogue platform no longer reports a false `lock
       hash stale`: Composer 2.11 counts the policy setting in a lock's hash,
@@ -1011,6 +1010,12 @@
     * xoct, xmass and xcopy carry an account's broker settings: xoct create
       keeps it out of the switches while installing it (_DB_BROKER_BORN=NO),
       and _DB_BROKER_ARM=NO holds on the target and a promoted standby.
+
+    * The daily sweep of the ban archives lists the addresses at or over
+      the rotation threshold in one pass before it checks them one by one:
+      with 12,600 distinct addresses in the archive it took three minutes
+      and held the per-minute enforcement that long; now under half a
+      minute, with the same checks and the same csf calls.
 
 @=> Changes and Upgrades
 
