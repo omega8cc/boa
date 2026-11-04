@@ -159,8 +159,10 @@
     * A site disabled in the panel no longer fails a move's probes: its
       placeholder page is the same page as the catch-all they refuse, so
       xmass verify called it broken and every xtrim plan, quiesce and shrink
-      of its account was refused. Both now name it and go on; a site with a
-      live vhost behind a catch-all answer still fails.
+      of its account was refused. Both now name it and go on, once its vhost
+      and its alias agree it is disabled. xtrim also asks for the catch-all
+      answer on both routes, so a site with a live vhost behind a catch-all
+      answer, a dead port or a 500 still fails.
 
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and

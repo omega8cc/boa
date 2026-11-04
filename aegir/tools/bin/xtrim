@@ -1053,16 +1053,31 @@ _probe_dom_direct() {
 }
 
 _target_vhost_disabled() {
-  ### $1 domain: does its vhost on the target hold the placeholder a Disable
-  ### writes? Under any account there, as _target_proof_vhosts reads them, and
-  ### never through a link or blocked on a FIFO the account put there. The name
-  ### comes from a vhost file on this box, so it is checked before it reaches
-  ### the remote shell.
+  ### $1 domain: is it disabled in the panel on the target? Its vhost there holds
+  ### the placeholder a Disable writes and its alias says so, as symlinkinfo reads
+  ### a disabled site: a placeholder alone is a botched state or a task's own
+  ### short one. Under any live account there, as _target_proof_vhosts reads them,
+  ### and every copy of the name must agree: a live vhost beside a stale
+  ### placeholder is not a disabled site. Read in the real vhost.d, never through
+  ### a link or blocked on a FIFO the account put there. The name comes from a
+  ### vhost file on this box, so it is checked before it reaches the remote shell.
   printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || return 1
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" \
-    "for _f in /data/disk/*/config/server_master/nginx/vhost.d/$1; do timeout 10 dd if=\"\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null; done" \
-    2>/dev/null \
-    | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default'
+  [ "$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" "
+    _n=0; _ok=0; _b=\$(cd -P -- /data/disk 2>/dev/null && pwd -P)
+    for _a in /data/disk/*; do
+      _v=\"\${_a}/config/server_master/nginx/vhost.d\"
+      [ -e \"\${_v}/$1\" ] || [ -L \"\${_v}/$1\" ] || continue
+      [ -e \"\${_a}/log/CANCELLED\" ] && continue
+      _n=\$((_n + 1))
+      [ \"\$(cd -P -- \"\${_v}\" 2>/dev/null && pwd -P)\" = \"\${_b}/\${_a##*/}/config/server_master/nginx/vhost.d\" ] || continue
+      timeout 10 dd if=\"\${_v}/$1\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
+        | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' || continue
+      timeout 10 dd if=\"\${_a}/.drush/$1.alias.drushrc.php\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
+        | grep -qiE \"'site_enabled'[[:space:]]*=>[[:space:]]*false\" || continue
+      _ok=\$((_ok + 1))
+    done
+    [ \"\${_n}\" -gt 0 ] && [ \"\${_n}\" = \"\${_ok}\" ] && echo disabled
+  " 2>/dev/null)" = "disabled" ]
 }
 
 _probe_all_doms() {
@@ -1076,15 +1091,6 @@ _probe_all_doms() {
       ### box? Only a name embedding the source FQDN can have been, and it
       ### must then prove itself under its NEW name on the target.
       _nd=$(_renamed_dom "${_d}")
-      ### A site disabled in the panel answers the placeholder page, and that
-      ### body IS the catch-all this probe refuses: its state, not a broken
-      ### name. Only the target's own vhost can say so: a site disabled there
-      ### after the move has no such trace on this box.
-      if _target_vhost_disabled "${_nd:-${_d}}"; then
-        _info "${_oN}: ${_nd:-${_d}} is disabled in the panel on the target: the placeholder vhost, by design (${_r})"
-        sleep 6
-        continue
-      fi
       if [ -n "${_nd}" ]; then
         sleep 6
         _nr=$(_probe_dom_direct "${_nd}" "${_MAP_TGT}")
@@ -1093,11 +1099,30 @@ _probe_all_doms() {
           sleep 6
           continue
         fi
+        if [ "${_nr}" = "catchall" ] && _target_vhost_disabled "${_nd}"; then
+          _info "${_oN}: ${_d} retired by the rename; ${_nd} is disabled in the panel on the target: the placeholder vhost, by design (direct=${_nr})"
+          sleep 6
+          continue
+        fi
         _alrt "${_oN}: ${_d} probe FAILED (${_r}) and its renamed form ${_nd} does not serve either (direct=${_nr})"
         _rc=1
         sleep 6
         continue
       fi
+      ### A site disabled in the panel answers the placeholder page, and that
+      ### body IS the catch-all this probe refuses: its state, not a broken
+      ### name. Only that answer on both routes can be it, a dead port or a 500
+      ### is something else wrong; and only the target can say so: a site
+      ### disabled there after the move has no trace on this box.
+      case "${_r}" in
+        "direct=catchall relay=catchall"*)
+          if _target_vhost_disabled "${_d}"; then
+            _info "${_oN}: ${_d} is disabled in the panel on the target: the placeholder vhost, by design (${_r})"
+            sleep 6
+            continue
+          fi
+          ;;
+      esac
       _alrt "${_oN}: ${_d} probe FAILED (${_r})"
       _rc=1
     else

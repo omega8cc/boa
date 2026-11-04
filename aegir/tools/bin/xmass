@@ -13833,6 +13833,10 @@ for _o in ${_acc}; do
       | sed "s/.*=>//; s/[' ,;]//g")
     [ -n "${_p}" ] && _p=$(basename "${_p}")
   fi
+  _vhr=""
+  [ "$(cd -P -- "${_d}/config/server_master/nginx/vhost.d" 2>/dev/null && pwd -P)" \
+    = "$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_o}/config/server_master/nginx/vhost.d" ] \
+    && _vhr=YES
   for _f in "${_d}/config/server_master/nginx/vhost.d"/*; do
     [ -f "${_f}" ] || continue
     _v=$(basename "${_f}")
@@ -13844,17 +13848,6 @@ for _o in ${_acc}; do
     # The account's own panel has its own sweep, by its new name.
     if [ -n "${_p}" ] && [ "${_v}" = "${_p}" ]; then
       echo "SKIP ${_o} ${_v} - the account's own control panel, probed by its new name"
-      _skp=$((_skp + 1))
-      continue
-    fi
-    # A site disabled in the panel keeps its dir and database but carries the
-    # placeholder vhost, whose body IS the catch-all page this sweep calibrates
-    # against, so probing it could only read as a false "does not serve". Read
-    # never through a link or blocked on a FIFO the account put there.
-    if timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=1048576 \
-      count=1 status=none 2>/dev/null \
-      | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default'; then
-      echo "SKIP ${_o} ${_v} - disabled in the panel: the placeholder vhost, by design"
       _skp=$((_skp + 1))
       continue
     fi
@@ -13872,6 +13865,23 @@ for _o in ${_acc}; do
           continue
         ;;
       esac
+    fi
+    # A site disabled in the panel keeps its dir and database, but its vhost is
+    # the placeholder whose body IS the catch-all page this sweep calibrates
+    # against, so probing it could only read as a false "does not serve". Its
+    # alias must say so too, as symlinkinfo reads a disabled site: a placeholder
+    # alone is a botched state or a task's own short one, and those are probed.
+    # Read in the real vhost.d, never through a link or blocked on a FIFO the
+    # account put there.
+    if [ -n "${_vhr}" ] && timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null \
+      | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' \
+      && timeout 10 dd if="${_d}/.drush/${_v}.alias.drushrc.php" iflag=nofollow,nonblock,fullblock \
+        bs=1048576 count=1 status=none 2>/dev/null \
+      | grep -qiE "'site_enabled'[[:space:]]*=>[[:space:]]*false"; then
+      echo "SKIP ${_o} ${_v} - disabled in the panel: the placeholder vhost, by design"
+      _skp=$((_skp + 1))
+      continue
     fi
     _c=$(_probe "${_v}")
     _r=$(_judge "${_c}")
@@ -13979,10 +13989,11 @@ SERVEPROBE
   fi
   if [ "${_n}" -eq 0 ]; then
     # Every name skipped is a legitimate shape (a suspended or cancelled
-    # account, an account's own panel); no name at all after a cutover is not,
-    # and neither is an account this cutover left 503-gated.
+    # account, an account's own panel, a site disabled in the panel); no name at
+    # all after a cutover is not, and neither is an account this cutover left
+    # 503-gated.
     if [ "${_skp}" -gt 0 ] && [ -z "${_gated}" ]; then
-      _info "  every vhost name on ${_t} was skipped (suspended/cancelled accounts or panels only)"
+      _info "  every vhost name on ${_t} was skipped (suspended/cancelled accounts, panels or disabled sites only)"
       return 0
     fi
     if [ -n "${_gated}" ]; then
