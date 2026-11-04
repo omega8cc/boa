@@ -2043,6 +2043,54 @@ _mig_php_versions_needed() {
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
 
+### Choices that do nothing on this server because it lacks their PHP, and that a
+### target with that PHP would start to honour at the cutover: a line of multi-fpm.info,
+### cli-per-platform.info or fpm-per-platform.info, and a phpNN.info marker above the
+### highest one in force here (a lower one stays out of force wherever it runs).
+### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
+### reaches the operator's console. $1 = the account's directory.
+_mig_php_inert_choices() {
+  local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _dom="${_dom//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} the multi-fpm.info line for ${_dom:0:120}"
+    done <<< "$(_xmass_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _n=0
+    _txt="$(_xmass_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      _k=""; _v=""; _rest=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _k="${_k//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} line ${_n} of ${_f} (${_k:0:120})"
+    done <<< "${_txt}"
+  done
+  _xmass_in_real_dir "${_u}/static/control" true || return 0
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] || continue
+    if [ -x "/opt/php${_e}/bin/php" ]; then
+      _mk="${_e}"
+    fi
+  done
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] && [ ! -x "/opt/php${_e}/bin/php" ] && [ "${_e}" -gt "${_mk}" ] || continue
+    _nn="$(_mig_php_norm "${_e}")"
+    echo "${_nn} the php${_e}.info marker"
+  done
+}
+
 ### The tree the TARGET runs, for target-side barracuda verbs; fall back to
 ### this box's own tree when the query fails.
 _xmass_target_tree() {
@@ -2129,6 +2177,33 @@ _xmass_fix_target_php() {
   return 0
 }
 
+### What the target would start to honour (_mig_php_inert_choices), named before the
+### move: on a dry run it marks the run not clean, on a live one it is an alert, since an
+### account may mean it. $1 = the target, $2 = alrt or deny, $3 = versions a --fix-php run
+### installs there.
+_xmass_php_inert_report() {
+  local _t="$1" _how="$2" _fix=" ${3:-} " _oct _rows _row _v _w _have="" _got=NO
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _rows="$(_mig_php_inert_choices "/data/disk/${_oct}")"
+    [ -n "${_rows}" ] || continue
+    if [ "${_got}" = "NO" ]; then
+      _have=" $(ssh root@"${_t}" 'for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do [ -x "/opt/php${_e//./}/bin/php" ] && echo "${_e}"; done' 2>/dev/null | tr '\n' ' ') "
+      _got=YES
+    fi
+    while IFS= read -r _row; do
+      _v="${_row%% *}"
+      _w="${_row#* }"
+      case "${_have}${_fix}" in *" ${_v} "*) ;; *) continue ;; esac
+      if [ "${_how}" = "deny" ]; then
+        _alrt "DENY: ${_oct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
+        _XMASS_NOT_CLEAN=YES
+      else
+        _alrt "${_oct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover."
+      fi
+    done <<< "${_rows}"
+  done
+}
+
 ### Verify every PHP version pinned by ANY eligible account is installed on
 ### the target (the /opt/phpNN/bin/php probe BOA's own fallback ladders use).
 ### $2 selects the consequence: die | deny (DRY: DENY + NOT_CLEAN) | fix
@@ -2139,7 +2214,13 @@ _xmass_php_coverage_gate() {
     _need="${_need} $(_mig_php_versions_needed "/data/disk/${_oct}")"
   done
   _need=$(echo "${_need}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
-  [ -n "${_need// /}" ] || return 0
+  if [ -z "${_need// /}" ]; then
+    case "${_on_missing}" in
+      deny) _xmass_php_inert_report "${_t}" deny ;;
+      *) _xmass_php_inert_report "${_t}" alrt ;;
+    esac
+    return 0
+  fi
   _info "PHP versions required by the eligible accounts: ${_need}"
   for _v in ${_need}; do
     _sv=${_v//[^0-9]/}
@@ -2148,6 +2229,11 @@ _xmass_php_coverage_gate() {
     fi
   done
   _miss="${_miss## }"
+  case "${_on_missing}" in
+    fix) _xmass_php_inert_report "${_t}" alrt "${_miss}" ;;
+    deny) _xmass_php_inert_report "${_t}" deny ;;
+    *) _xmass_php_inert_report "${_t}" alrt ;;
+  esac
   [ -z "${_miss}" ] && { _info "Target PHP coverage: OK"; return 0; }
   case "${_on_missing}" in
     fix)
@@ -2163,13 +2249,25 @@ _xmass_php_coverage_gate() {
     deny)
       _alrt "DENY: target ${_t} lacks pinned PHP version(s): ${_miss} -- every affected"
       _alrt "DENY: site would silently serve on a different PHP after cutover."
-      _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-php$(_xmass_admail_hint)', or add '${_miss}' to"
-      _alrt "DENY: _PHP_MULTI_INSTALL in /root/.barracuda.cnf on the target and run"
+      if _xmass_autosync_probe_target "${_t}"; then
+        # prep-target --fix-php refuses a standing mirror
+        _alrt "DENY: fix: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf on the target and run"
+      else
+        _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-php$(_xmass_admail_hint)', or add '${_miss}' to"
+        _alrt "DENY: _PHP_MULTI_INSTALL in /root/.barracuda.cnf on the target and run"
+      fi
       _alrt "DENY: 'barracuda up-<tree> system noscreen' there"
       _XMASS_NOT_CLEAN=YES
       return 1
     ;;
     *)
+      # prep-target --fix-php refuses a standing mirror
+      if _xmass_autosync_probe_target "${_t}"; then
+        _die "target ${_t} lacks pinned PHP version(s): ${_miss}." \
+             " Every affected site would silently serve on a different PHP after cutover." \
+             " Fix: add '${_miss}' to _PHP_MULTI_INSTALL" \
+             " in /root/.barracuda.cnf on the target and run 'barracuda up-<tree> system noscreen' there."
+      fi
       _die "target ${_t} lacks pinned PHP version(s): ${_miss}." \
            " Every affected site would silently serve on a different PHP after cutover." \
            " Fix: 'xmass prep-target ${_t} --fix-php', or add '${_miss}' to _PHP_MULTI_INSTALL" \
@@ -3000,51 +3098,111 @@ _xmass_solr_coverage_gate() {
   esac
 }
 
+### The command that brings a missing account to target $1. A target holding
+### the standby marker takes no install (its database is read-only and octopus
+### refuses there): the reduced lane does it. Any other target takes the full
+### lane.
+_xmass_acct_remedy() {
+  _xmass_autosync_probe_target "$1"
+  if [ "$?" -eq 1 ]; then
+    printf 'xmass prep-target %s' "$1"
+  else
+    printf 'xmass prep-target %s --fix-accounts' "$1"
+  fi
+  _xmass_admail_hint
+}
+
 ### Verify the eligible accounts EXIST on the target as real installs (system
-### users + install stamps), not just as rsync-created trees. $2: die | deny.
+### users + install stamps), not just as rsync-created trees. $2: die | deny |
+### skip | list. skip is a sync's: a missing account is left out of the pass,
+### every other account is carried (_XMASS_ACCT_SKIPPED, the live pass ends
+### non-zero); a cutover, init and prep-target leave no account behind. A
+### target that does not answer is no missing account: skip refuses it too.
+### list says nothing and refuses nothing, for a reader that decides itself, and
+### stops at the first account with no answer: _XMASS_ACCT_NOANS. Both set
+### _XMASS_ACCT_NOCOPY and _XMASS_ACCT_IDONLY: an account that is not there, and
+### one that is and lost a system user, which take different remedies. The lane's
+### mark counts on a standby alone: it goes with that role, and nothing but the
+### lane, which refuses any other box, could end the refusal it would make.
 _xmass_verify_target_accounts() {
-  local _t="$1" _on_missing="${2:-die}" _oct _bad="" _out
-  local _idonly=""
+  local _t="$1" _on_missing="${2:-die}" _oct _bad="" _out _fix _p="DENY: "
+  local _idonly="" _noans=""
+  _XMASS_ACCT_SKIPPED=""
+  _XMASS_ACCT_NOANS=""
+  _XMASS_ACCT_NOCOPY=""
+  _XMASS_ACCT_IDONLY=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # Two failure classes, two remedies: an account never installed there
-    # (no cnf, vhost include or octopus_log -- prep-target installs it) and
-    # an installed account that only lost a system identity (prep-target
-    # --fix-users re-creates it, in either role).
-    _out=$(ssh root@"${_t}" "_m=''; \
+    # (no cnf, vhost include or octopus_log -- prep-target installs it, with
+    # --fix-accounts on a standing mirror) and an installed account that only
+    # lost a system identity (prep-target --fix-users re-creates it, in either
+    # role).
+    _out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "_m=''; \
       getent passwd ${_oct} >/dev/null 2>&1 || _m=\"\${_m} user\"; \
       getent passwd ${_oct}.ftp >/dev/null 2>&1 || _m=\"\${_m} user.ftp\"; \
       [ -e /data/disk/${_oct}/log/octopus_log.txt ] || _m=\"\${_m} octopus_log\"; \
       [ -e /data/disk/${_oct}/config/includes/nginx_vhost_common.conf ] || _m=\"\${_m} vhost\"; \
       [ -e /root/.${_oct}.octopus.cnf ] || _m=\"\${_m} cnf\"; \
+      [ ! -e /root/.${_oct}.fix-accounts.txt ] || [ ! -e /root/.standby.cnf ] || _m=\"\${_m} laying\"; \
       if [ -z \"\${_m}\" ]; then echo XMACCT-PRESENT; else echo \"XMACCT-MISSING:\${_m}\"; fi" 2>/dev/null)
     # Exact-line match: shell login noise around the token (a .bashrc echo
     # on the target) must not read as a missing account.
     if ! printf '%s\n' "${_out}" | grep -qx "XMACCT-PRESENT"; then
       _bad="${_bad} ${_oct}"
       case "$(printf '%s\n' "${_out}" | grep -m1 '^XMACCT-MISSING:')" in
-        "") : ;;
-        *octopus_log*|*vhost*|*cnf*) : ;;
+        "") _noans="${_noans} ${_oct}" ;;
+        *octopus_log*|*vhost*|*cnf*|*laying*) : ;;
         *) _idonly="${_idonly} ${_oct}" ;;
       esac
     fi
+    # a reader that only reports never waits out a dead link account by account
+    [ "${_on_missing}" != "list" ] || [ -z "${_noans}" ] || break
   done
-  _bad="${_bad## }"; _idonly="${_idonly## }"
+  _bad="${_bad## }"; _idonly="${_idonly## }"; _noans="${_noans## }"
+  _XMASS_ACCT_IDONLY="${_idonly}"
+  for _oct in ${_bad}; do
+    _xmass_word_in "${_oct}" "${_noans}" || _xmass_word_in "${_oct}" "${_idonly}" \
+      || _XMASS_ACCT_NOCOPY="${_XMASS_ACCT_NOCOPY:+${_XMASS_ACCT_NOCOPY} }${_oct}"
+  done
+  if [ "${_on_missing}" = "list" ]; then
+    _XMASS_ACCT_NOANS="${_noans}"
+    return 0
+  fi
   [ -z "${_bad}" ] && { _info "All eligible accounts installed on ${_t}: OK"; return 0; }
+  _fix="$(_xmass_acct_remedy "${_t}")"
+  if [ "${_on_missing}" = "skip" ]; then
+    [ -z "${_noans}" ] \
+      || _die "could not read account(s) ${_noans} on target ${_t}: it did not answer; nothing was synced"
+    _XMASS_ACCT_SKIPPED="${_bad}"
+    # a dry run reads it as a dry sync reads a web group free: said, not a stop
+    [ "${_MODE}" = "LIVE" ] || _p=""
+    if [ -n "${_XMASS_ACCT_NOCOPY}" ]; then
+      _alrt "${_p}no copy on target ${_t} of account(s): ${_XMASS_ACCT_NOCOPY}"
+      _alrt "${_p}a sync leaves them out and carries every other account; a live pass then ends non-zero."
+      _alrt "${_p}Their databases replicate there and their files do not: a promotion of ${_t} now leaves"
+      _alrt "${_p}them without their sites. Fix: '${_fix}'"
+    fi
+    [ -n "${_idonly}" ] \
+      && _alrt "${_p}installed but missing a system user (${_idonly}), left out of this pass too: 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)'"
+    return 0
+  fi
   if [ "${_on_missing}" = "deny" ]; then
     _alrt "DENY: account(s) missing or incomplete on target ${_t}: ${_bad}"
     _alrt "DENY: rsync into a never-installed account creates a root-owned tree with no"
-    _alrt "DENY: system user, no FPM pool and no vhost include -- run 'xmass prep-target ${_t}$(_xmass_admail_hint)'"
+    _alrt "DENY: system user, no FPM pool and no vhost include -- run '${_fix}'"
     [ -n "${_idonly}" ] \
       && _alrt "DENY: installed but missing a system user (${_idonly}): 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)'"
     _XMASS_NOT_CLEAN=YES
     return 1
   fi
+  [ -z "${_noans}" ] \
+    || _die "could not read account(s) ${_noans} on target ${_t}: it did not answer; nothing was done"
   if [ -n "${_idonly}" ] && [ "${_idonly}" = "${_bad}" ]; then
     _die "account(s) installed on target ${_t} but missing a system user: ${_bad}." \
          " Re-create it with 'xmass prep-target ${_t} --fix-users' (no install, no re-seed)."
   fi
   _die "account(s) missing or incomplete on target ${_t}: ${_bad}." \
-       " Run 'xmass prep-target ${_t}$(_xmass_admail_hint)' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)')}."
+       " Run '${_fix}' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)')}."
 }
 
 ### Re-create a MISSING system identity (<acct>, <acct>.ftp) of an account that
@@ -3061,9 +3219,12 @@ _xmass_verify_target_accounts() {
 ### shell as satellite would. The group comes from the surviving sibling
 ### identity (satellite's per-instance verdict is baked into it), the uid
 ### from the orphaned tree. No password is minted: _xmass_sync_shell_credentials
-### carries the source's hash. Never installs an account.
+### carries the source's hash. Never installs an account. $2 = new is
+### _xmass_fix_accounts' call: the identities of an account the target does not
+### hold yet, with its own group when it has one here and the box is ready for
+### it, as an install would make them; its first legs carry the credentials.
 _xmass_repair_target_identities() {
-  local _t="$1" _oct _out _rc _srcsh _fixed="" _left="" _healthy=0
+  local _t="$1" _new="${2:-}" _oct _out _rc _srcsh _srcg _fixed="" _left="" _healthy=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     case "${_oct}" in
       *[!a-zA-Z0-9._-]*)
@@ -3077,15 +3238,31 @@ _xmass_repair_target_identities() {
       _left="${_left} ${_oct}"
       continue
     fi
+    _srcg="$(id -gn "${_oct}" 2>/dev/null)"
+    case "${_srcg}" in *[!a-zA-Z0-9._-]*) _srcg="" ;; esac
     # the helper rides ahead of the body: the account's web group is derived
     # there, by the same rules as every writer
     _out=$( { declare -f _web_group_state _web_group_conv; cat; } <<'REMOTE' \
       | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
-      "_A='${_oct}' _SRCSH='${_srcsh}' bash -s"
-[ -e "/root/.${_A}.octopus.cnf" ] \
-  && [ -e "/data/disk/${_A}/config/includes/nginx_vhost_common.conf" ] \
-  && [ -e "/data/disk/${_A}/log/octopus_log.txt" ] \
-  || { echo "XMID-NOTINSTALLED"; exit 0; }
+      "_A='${_oct}' _SRCSH='${_srcsh}' _NEW='${_new}' _SRCG='${_srcg}' bash -s"
+if [ -z "${_NEW}" ]; then
+  [ -e "/root/.${_A}.octopus.cnf" ] \
+    && [ -e "/data/disk/${_A}/config/includes/nginx_vhost_common.conf" ] \
+    && [ -e "/data/disk/${_A}/log/octopus_log.txt" ] \
+    || { echo "XMID-NOTINSTALLED"; exit 0; }
+elif [ "${_SRCG}" = "${_A}" ] && ! getent group "${_A}" > /dev/null 2>&1 \
+  && bash /opt/local/bin/instgrp check > /dev/null 2>&1; then
+  addgroup --system "${_A}" > /dev/null 2>&1
+fi
+# A group of the account's name another identity holds is not the account's:
+# an install leaves the account on the box-wide group then, and so does this.
+_GHELD=NO
+if [ -n "${_NEW}" ] && getent group "${_A}" > /dev/null 2>&1; then
+  getent group "${_A}" | cut -d: -f4 | tr ',' '\n' | grep -qvE "^(${_A}(\..*)?)?$" && _GHELD=YES
+  _GID=$(getent group "${_A}" | cut -d: -f3)
+  getent passwd | awk -F: -v g="${_GID}" -v u="${_A}" \
+    '$4 == g && $1 != u && index($1, u ".") != 1 { f=1 } END { exit !f }' && _GHELD=YES
+fi
 _STANDBY=NO
 [ -e /root/.standby.cnf ] && _STANDBY=YES
 _NOLOGIN=/usr/sbin/nologin
@@ -3104,7 +3281,7 @@ for _I in "${_A}" "${_A}.ftp"; do
   _G=$(getent passwd "${_SIB}" 2>/dev/null | cut -d: -f4)
   [ -n "${_G}" ] && _G=$(getent group "${_G}" 2>/dev/null | cut -d: -f1)
   # both identities gone: the account's own per-instance group, if it exists
-  [ -n "${_G}" ] || { getent group "${_A}" > /dev/null 2>&1 && _G="${_A}"; }
+  [ -n "${_G}" ] || { [ "${_GHELD}" = "NO" ] && getent group "${_A}" > /dev/null 2>&1 && _G="${_A}"; }
   [ -n "${_G}" ] || _G=users
   if [ "${_I}" = "${_A}" ]; then
     _H="/data/disk/${_A}"; _S="${_NOLOGIN}"
@@ -3143,6 +3320,10 @@ for _I in "${_A}" "${_A}.ftp"; do
     useradd ${_U:+-u ${_U}} -d "${_H}" -s "${_S}" -m -N -r -g "${_G}" "${_I}" \
       || { echo "XMID-FAILED: useradd ${_I}"; continue; }
   fi
+  if [ -n "${_NEW}" ] && [ "${_I}" = "${_A}" ]; then
+    chown "${_A}:${_G}" "${_H}" && chmod 0711 "${_H}" \
+      || { echo "XMID-FAILED: the owner of ${_H}"; continue; }
+  fi
   usermod -aG users "${_I}" > /dev/null 2>&1
   # the account's web group: joined once only the account's identities hold
   # it, or the account is converted onto it (_web_group_conv); www-data left
@@ -3172,7 +3353,7 @@ REMOTE
     printf '%s\n' "${_out}" | grep -v '^XMID-REPAIRED:' | grep -v '^XMID-NOTINSTALLED$' | grep -v '^$'
     case "${_out}" in
       *XMID-NOTINSTALLED*)
-        _alrt "  ${_oct}: not installed on ${_t} -- prep-target (no flags) owns that, after promotion if it is a standby"
+        _alrt "  ${_oct}: not installed on ${_t} -- '$(_xmass_acct_remedy "${_t}")' owns that"
         continue ;;
     esac
     case "${_out}" in
@@ -3184,6 +3365,8 @@ REMOTE
       *XMID-REPAIRED*)
         _fixed="${_fixed} ${_oct}"
         _info "  ${_oct}: identity re-created on ${_t}: $(printf '%s\n' "${_out}" | grep -m1 '^XMID-REPAIRED:' | cut -d: -f2-)"
+        # the account's first legs carry them for a new one
+        [ -z "${_new}" ] || continue
         # the account group's map and the user map, asked of _tgt: every
         # caller repairs that box
         if _xmass_set_gmap "${_oct}" acct && _xmass_set_umap "${_oct}"; then
@@ -3741,7 +3924,8 @@ echo DB-OK" 2> /dev/null)
 _xmass_sweep_db_broker() {
   local _t="$1" _keep=" " _oct _out _a
   [ "${_MODE}" = "LIVE" ] || return 0
-  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+  # an account this pass leaves out is still an account of this box
+  for _oct in ${_ELIGIBLE_ACCOUNTS} ${_XMASS_ACCT_SKIPPED:-}; do
     [[ "${_oct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] && _keep="${_keep}${_oct} "
   done
   _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo DB-OK; exit 0; }; _k='${_keep}'
@@ -5635,6 +5819,80 @@ _xmass_unpark_db_broker() {
 ### only be reimaged. DRY by default: prints the plan;
 ### --live does it. The replica's data directory is kept aside as
 ### /var/lib/mysql.xmass_standby_<stamp>, never deleted here.
+# The accounts --fix-accounts laid or is laying on this box: _XMASS_LANE_ALL,
+# _XMASS_LANE_HALF for those a stopped run left unfinished.
+_xmass_lane_accounts_here() {
+  local _f _a
+  _XMASS_LANE_ALL=""
+  _XMASS_LANE_HALF=""
+  for _f in /root/.*.fix-accounts.txt; do
+    [ -e "${_f}" ] || continue
+    _a="${_f#/root/.}"
+    _a="${_a%.fix-accounts.txt}"
+    _XMASS_LANE_HALF="${_XMASS_LANE_HALF} ${_a}"
+    _XMASS_LANE_ALL="${_XMASS_LANE_ALL} ${_a}"
+  done
+  for _f in /root/.*.migration-create.txt; do
+    [ -f "${_f}" ] || continue
+    grep -q '^# Put by xmass prep-target --fix-accounts' "${_f}" 2> /dev/null || continue
+    _a="${_f#/root/.}"
+    _a="${_a%.migration-create.txt}"
+    _xmass_word_in "${_a}" "${_XMASS_LANE_ALL}" || _XMASS_LANE_ALL="${_XMASS_LANE_ALL} ${_a}"
+  done
+}
+
+# Whether the data directory now serving holds the panel database of account $1,
+# read from its panel's site dir here under whichever platform it stands.
+_xmass_panel_db_here() {
+  local _d _db
+  for _d in "/data/disk/${1}"/aegir/distro/*/sites/"${1}".*; do
+    [ -f "${_d}/drushrc.php" ] || continue
+    _db="$(_xmass_read_file "${_d}/drushrc.php" | sed -n "s/^\$options\['db_name'\] = '\([^']*\)';.*/\1/p" | head -1)"
+    case "${_db}" in ''|*[!a-zA-Z0-9_]*) continue ;; esac
+    [ "$(mysql --defaults-file=/root/.my.cnf -N -B -e "SHOW DATABASES LIKE '${_db}'" 2> /dev/null)" != "${_db}" ] || return 0
+  done
+  return 1
+}
+
+# Once this mirror is a plain box again, with its older data directory back: an
+# account --fix-accounts laid or was laying and that holds no database there cannot
+# pass pre-mig or prep-target. It is marked for 'boa cleanup', with what that verb
+# reads, for a stop before the log leg leaves none of it: never through a link the
+# account put at a name, as the log and config trees are the account's. Marked, never
+# purged: with the active gone this may be the last copy of its files. The lane's
+# mark goes with the role, as the lane refuses a box with no standby marker.
+_xmass_restore_laid_accounts() {
+  local _a _m _all="" _kept=""
+  _xmass_lane_accounts_here
+  rm -f /root/.*.fix-accounts.txt
+  for _a in ${_XMASS_LANE_ALL}; do
+    if _xmass_panel_db_here "${_a}"; then
+      _xmass_word_in "${_a}" "${_XMASS_LANE_HALF}" && _kept="${_kept} ${_a}"
+      continue
+    fi
+    _all="${_all} ${_a}"
+    _m=OK
+    # shellcheck disable=SC2016
+    _xmass_in_real_dir "/data/disk/${_a}" bash -c '
+      for _d in log config config/server_master config/server_master/nginx config/server_master/nginx/vhost.d; do
+        [ ! -L "./${_d}" ] || exit 1
+        [ -d "./${_d}" ] || mkdir "./${_d}" || exit 1
+      done' || _m=NO
+    if [ "${_m}" = "OK" ]; then
+      _xmass_in_real_dir "/data/disk/${_a}/log" _xmass_touch_here cores.txt || _m=NO
+      _xmass_in_real_dir "/data/disk/${_a}/log" _xmass_touch_here CANCELLED || _m=NO
+    fi
+    [ "${_m}" = "OK" ] || _alrt "  ${_a}: could not be marked CANCELLED in /data/disk/${_a}: read it by hand"
+  done
+  [ -z "${_kept}" ] \
+    || _alrt "  account(s)${_kept}: a stopped --fix-accounts left them as they are, with their database here: read them by hand"
+  [ -n "${_all}" ] || return 0
+  _alrt "  account(s)${_all} were laid here by --fix-accounts after the init: the restored data directory holds no database"
+  _alrt "  of theirs, and they are now marked CANCELLED. If their active still holds them, retire them before a new"
+  _alrt "  prep-target installs them: 'boa cleanup detect noscreen', then, for each, 'boa cleanup purge <account> noscreen'."
+  _alrt "  If it does not, copy out what you need first: a purge removes these files"
+}
+
 _xmass_restore_target() {
   local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _sro _svc _waited
   [ -e /root/.standby.cnf ] \
@@ -5688,6 +5946,9 @@ _xmass_restore_target() {
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
   _info "  the holds of aegir2boa imports the active carried here (/var/backups/a2b/<oN>/failover-hold) removed"
+  _xmass_lane_accounts_here
+  [ -z "${_XMASS_LANE_ALL}" ] \
+    || _info "  each account --fix-accounts laid here (${_XMASS_LANE_ALL# }) marked CANCELLED unless the restored data directory holds its database"
   if [ "${_live}" != "YES" ]; then
     _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
     return 0
@@ -5769,6 +6030,7 @@ _xmass_restore_target() {
   _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
   _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
   _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
+  _xmass_restore_laid_accounts
   return 0
 }
 
@@ -6093,9 +6355,32 @@ _xmass_account_missing() {
   printf '%s' "${_miss}"
 }
 
-_xmass_enumerate_accounts() {
+# What a pass that left accounts out ends on: each kind and its command.
+_xmass_acct_left_says() {
+  local _t="$1" _o=""
+  [ -z "${_XMASS_ACCT_NOCOPY}" ] \
+    || _o="${_t} holds no copy of: ${_XMASS_ACCT_NOCOPY} -- run '$(_xmass_acct_remedy "${_t}")'"
+  [ -z "${_XMASS_ACCT_IDONLY}" ] \
+    || _o="${_o:+${_o}; }${_XMASS_ACCT_IDONLY} lost a system user on ${_t} -- run 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)'"
+  printf '%s' "${_o}"
+}
+
+# Take the accounts a sync pass leaves out (_XMASS_ACCT_SKIPPED) off the list
+# the rest of that pass works on.
+_xmass_carried_accounts() {
+  local _oct _keep=""
+  [ -n "${_XMASS_ACCT_SKIPPED}" ] || return 0
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _xmass_word_in "${_oct}" "${_XMASS_ACCT_SKIPPED}" || _keep="${_keep} ${_oct}"
+  done
+  _ELIGIBLE_ACCOUNTS="${_keep## }"
+}
+
+# _ELIGIBLE_ACCOUNTS and _XMASS_ELIGIBLE_SKIPPED off /data/disk, said nowhere.
+_xmass_eligible_scan() {
   _ELIGIBLE_ACCOUNTS=""
-  local _oct _udir _miss _skipped="" _line
+  _XMASS_ELIGIBLE_SKIPPED=""
+  local _oct _udir _miss
   for _udir in $(find /data/disk -maxdepth 1 -mindepth 1 -type d | sort); do
     _oct=$(basename "${_udir}")
     case "${_oct}" in
@@ -6111,11 +6396,17 @@ _xmass_enumerate_accounts() {
     if [ -z "${_miss}" ]; then
       _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS} ${_oct}"
     else
-      _skipped="${_skipped}${_oct}: ${_miss## }
+      _XMASS_ELIGIBLE_SKIPPED="${_XMASS_ELIGIBLE_SKIPPED}${_oct}: ${_miss## }
 "
     fi
   done
   _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS## }"
+}
+
+_xmass_enumerate_accounts() {
+  local _skipped _line
+  _xmass_eligible_scan
+  _skipped="${_XMASS_ELIGIBLE_SKIPPED}"
   _info "Eligible Octopus accounts: ${_ELIGIBLE_ACCOUNTS:-none found}"
   if [ -n "${_skipped}" ]; then
     _alrt "SKIPPED accounts under /data/disk — these will NOT be migrated:"
@@ -9861,12 +10152,16 @@ _xmass_setup_migration_proxy_trust() {
   [ -x "/var/xdrago/cloudflare_realip.sh" ] \
     && /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
 
-  # Make the target self-sufficient: ship both tools (its BOA may predate them),
-  # then wire the trust there.  trust.sh invokes migration_proxy_realip.sh.
-  if [ -x "${_tool}" ] && [ -x "${_realip}" ]; then
-    scp -q "${_tool}" "${_realip}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
-      && ssh root@"${_tgt}" "chmod 0755 '${_tool}' '${_realip}'" 2>/dev/null
-  fi
+  # Make the target self-sufficient, then wire the trust there (trust.sh invokes
+  # migration_proxy_realip.sh). Only what it lacks: every box fetches its own, and a copy
+  # over it would put this box's older one back.
+  local _wtf
+  for _wtf in "${_tool}" "${_realip}"; do
+    [ -x "${_wtf}" ] || continue
+    ssh root@"${_tgt}" "[ -x '${_wtf}' ]" 2>/dev/null && continue
+    scp -q "${_wtf}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+      && ssh root@"${_tgt}" "chmod 0755 '${_wtf}'" 2>/dev/null
+  done
 
   # Fail closed: the caller starts relaying right after this, and an unwired
   # target would ban the relay's address within minutes and blackhole every
@@ -12270,15 +12565,17 @@ _xmass_refuse_role_clash() {
     # through to the same-source walk below so only OUR OWN mirror takes
     # the reduced lane.
     if [ "${_XMASS_FIX_PHP}" != "YES" ] \
-      && { [ "${_XMASS_FIX_SOLR}" = "YES" ] || [ "${_XMASS_FIX_USERS}" = "YES" ]; }; then
+      && { [ "${_XMASS_FIX_SOLR}" = "YES" ] || [ "${_XMASS_FIX_USERS}" = "YES" ] \
+        || [ "${_XMASS_FIX_ACCOUNTS}" = "YES" ]; }; then
       _XMASS_PREP_UNDER_HOLD=YES
     else
       _die "target ${_tgt} is already a passive standby (its /root/.standby.cnf)" \
            " -- prep-target builds fresh targets only; on a standing mirror only" \
-           " '--fix-solr' (the held Solr set) and '--fix-users' (a lost system user" \
-           " of an account installed there) are accepted, alone or together;" \
-           " remove the marker deliberately only if the mirror is being retired," \
-           " with /root/.standby.prep.cnf"
+           " '--fix-solr' (the held Solr set), '--fix-accounts' (an account installed" \
+           " on this box since the mirror was built: 'xmass prep-target ${_tgt} --fix-accounts')" \
+           " and '--fix-users' (a lost system user of an account installed there) are" \
+           " accepted, alone or together; remove the marker deliberately only if the" \
+           " mirror is being retired, with /root/.standby.prep.cnf"
     fi
   fi
   _mrk=$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
@@ -12495,7 +12792,11 @@ _xmass_purge_target_only_accounts() {
   # directory; the panel's own directory set aside by name, which also
   # skips the copies left behind by earlier panel upgrades). An inventory
   # that cannot be read is never treated as empty.
-  local _t="$1" _tgt_accts _a _inv _rmt _out _nA _nR _nD
+  #
+  # The target goes quiet first: a pass in flight on the account can read as
+  # no sites, and writes the files the purge parks back behind it (a panel
+  # proxy naming a certificate under the removed tree fails nginx -t).
+  local _t="$1" _tgt_accts _a _inv _rmt _out _nA _nR _nD _quiet=""
   _tgt_accts=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "for _d in /data/disk/*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && basename \"\${_d}\"; done" 2>/dev/null)
   _rmt="$(_xmass_remote_guards)"$'\n'"$(_xmass_site_inventory_sh)"
@@ -12503,6 +12804,10 @@ _xmass_purge_target_only_accounts() {
     case " ${_ELIGIBLE_ACCOUNTS} " in
       *" ${_a} "*) continue ;;
     esac
+    if [ -z "${_quiet}" ]; then
+      _xmass_wait_target_silent "${_t}" "judging the target-only account ${_a}" die locks
+      _quiet=YES
+    fi
     _inv=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "${_rmt//__ACCT__/${_a}}" 2>/dev/null \
       | grep "^SITES=" | tail -1)
     case "${_inv}" in
@@ -13331,6 +13636,461 @@ _xmass_target_cron_refence() {
   return 0
 }
 
+###-------------A NEW ACCOUNT ON A STANDING MIRROR---###
+###
+### An account installed on the active once its mirror stands has its databases
+### on the mirror by replication and nothing else there: octopus refuses on a
+### standby, and its read-only database could not take an install. --fix-accounts
+### lays each such account the way an install and a sync would have left it, with
+### no database write and no datadir reset. What it copies from the active is
+### the install's own output, with this box's names in the host-bound lines: the
+### account's tree outside the legs, its current panel platform, and the panel's
+### site dir named for the target, as a fresh install names it (each box keeps
+### its own panel and panel store, see _xmass_panel_store_names; the cutover's
+### rewire finds the panel database live and its password good). _xmass_sync_account
+### then carries the rest. The ltd worker makes the web users and pools there on
+### its own, as for any account that came by a sync. The panel's SSL front waits
+### for the first pass after the promotion, armed here: a front laid now would
+### name certificates the box does not have and fail nginx -t for every account.
+### A file on the target marks the account being laid: the gate reads it as
+### missing, so a lane that stops half way is run again and no pass carries or
+### prunes the account until it ends.
+
+# The site dir of account $1's panel as its hostmaster alias names it, printed
+# only when it is a plain panel dir of the account's own tree. The alias is the
+# account's to write and this value reaches root's shells on both boxes, so
+# every use reads it through here. Says why on stderr; status 1 otherwise.
+_xmass_panel_site_path() {
+  local _oct="$1" _r="/data/disk/$1" _sp
+  _sp="$(_xmass_read_file "${_r}/.drush/hostmaster.alias.drushrc.php" \
+    | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)"
+  case "${_sp}" in
+    *[!A-Za-z0-9/._-]*|*/../*|*/./*|*//*|'')
+      _alrt "${_oct}: its hostmaster alias names no plain panel dir (${_sp//[^[:print:]]/?}): not laid" >&2
+      return 1
+      ;;
+    "${_r}"/aegir/distro/*/sites/*) : ;;
+    *)
+      _alrt "${_oct}: its hostmaster alias names ${_sp}, not a panel dir of ${_r}: not laid" >&2
+      return 1
+      ;;
+  esac
+  case "${_sp#"${_r}"/aegir/distro/}" in
+    */*/*/*)
+      _alrt "${_oct}: its hostmaster alias names ${_sp}, not a panel dir of ${_r}: not laid" >&2
+      return 1
+      ;;
+  esac
+  printf '%s' "${_sp}"
+}
+
+# What keeps account $1 out of the lane, said once; status 1 then. Nothing has
+# been laid yet. $2 = the target, $3 = YES when the panel database must be there
+# already (a pair replicating; a re-init replaces the datadir anyway).
+_xmass_fix_account_gate() {
+  local _oct="$1" _t="$2" _r="/data/disk/$1" _sp _db _ans _rc
+  if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+    _alrt "${_oct}: uses ProxySQL, whose logins a pass writes and a read-only mirror cannot take: not laid here; rebuild the mirror (the failover page)"
+    return 1
+  fi
+  _sp="$(_xmass_panel_site_path "${_oct}")" || return 1
+  if [ ! -f "${_sp}/settings.php" ] || [ ! -f "${_sp}/drushrc.php" ] \
+    || [ ! -e "${_sp%/sites/*}/index.php" ]; then
+    _alrt "${_oct}: its panel at ${_sp} is not complete here: not laid"
+    return 1
+  fi
+  [ "${3}" = "YES" ] || return 0
+  _db="$(_xmass_read_file "${_sp}/drushrc.php" | sed -n "s/^\$options\['db_name'\] = '\([^']*\)';.*/\1/p" | head -1)"
+  case "${_db}" in
+    ''|*[!a-zA-Z0-9_]*)
+      _alrt "${_oct}: cannot read its panel database from ${_sp}/drushrc.php: not laid"
+      return 1
+      ;;
+  esac
+  _ans="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "mysql --defaults-file=/root/.my.cnf -N -B -e \"SHOW DATABASES LIKE '${_db}'\"" 2> /dev/null)"
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    _alrt "${_oct}: ${_t}'s database did not answer about ${_db}: not laid; 'xmass status ${_t}' shows the replica"
+    return 1
+  fi
+  if [ "${_ans}" != "${_db}" ]; then
+    _alrt "${_oct}: its panel database ${_db} is not on ${_t}: replication has not brought it, or the account's database is not on this box: not laid"
+    return 1
+  fi
+  return 0
+}
+
+# The account's cnf as an install writes it: every plain line of the source's,
+# the host axis (_xmass_push_account_cnf) from the target's own settings. An
+# existing cnf stays. $1 = account, $2 = target, $3 = target FQDN.
+_xmass_lay_account_cnf() {
+  local _oct="$1" _t="$2" _tf="$3" _cnf="/root/.$1.octopus.cnf" _l _k _axis _f _rc
+  ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ ! -e ${_cnf} ]" 2> /dev/null || return 0
+  _axis="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "for _k in _MY_OWNIP _LOCAL_NETWORK_IP _THIS_DB_HOST _THIS_DB_PORT; do grep -ah \"^\${_k}=\" /root/.barracuda.cnf 2> /dev/null | tail -n 1; done" 2> /dev/null)"
+  _f="$(mktemp /var/backups/.xmass.laycnf.XXXXXX)" || return 1
+  {
+    while IFS= read -r _l; do
+      case "${_l}" in
+        '#'*) printf '%s\n' "${_l}"; continue ;;
+        _MY_OWNIP=*|_LOCAL_NETWORK_IP=*|_THIS_DB_HOST=*|_THIS_DB_PORT=*|_DOMAIN=*|_DB_BROKER_BORN=*) continue ;;
+        _*=*) _xmass_cnf_line_ok "${_l}" && printf '%s\n' "${_l}" ;;
+      esac
+    done < <(tr -d '\000' < "${_cnf}")
+    for _k in _MY_OWNIP _LOCAL_NETWORK_IP _THIS_DB_HOST _THIS_DB_PORT; do
+      _l="$(printf '%s\n' "${_axis}" | grep -a -m1 "^${_k}=")"
+      if [ -z "${_l}" ] || ! _xmass_cnf_line_ok "${_l}"; then
+        case "${_k}" in
+          _THIS_DB_HOST) _l="${_k}=localhost" ;;
+          _THIS_DB_PORT) _l="${_k}=3306" ;;
+          *) _l="${_k}=" ;;
+        esac
+      fi
+      printf '%s\n' "${_l}"
+    done
+    printf '_DOMAIN="%s.%s"\n' "${_oct}" "${_tf}"
+  } > "${_f}"
+  rsync -a --no-links -e ssh "${_f}" "root@${_t}:${_cnf}.lay.tmp" 2> /dev/null \
+    && ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "chown root:root ${_cnf}.lay.tmp && chmod 644 ${_cnf}.lay.tmp && mv -f ${_cnf}.lay.tmp ${_cnf}" 2> /dev/null
+  _rc=$?
+  rm -f "${_f}"
+  return "${_rc}"
+}
+
+# The panel of account $A as a fresh install names it, run there: the site dir
+# the leg copied under the target's name gets this box's names in its host-bound
+# lines, its files and private links name its own store, and the platform's and
+# the account's few host-bound lines follow. A file that is not there is passed
+# over: not every release writes each.
+_xmass_lay_panel_sh() {
+  _xmass_remote_guards
+  cat <<'REMOTE'
+_R="/data/disk/${_A}"
+_esc3() { printf '%s' "$1" | sed 's/\./\\\\\\./g'; }
+_esc2() { printf '%s' "$1" | sed 's/\./\\\\./g'; }
+_esc1() { printf '%s' "$1" | sed 's/\./\\./g'; }
+_SED=(-e "s|$(_esc3 "${_P}")|$(_esc2 "${_T}")|g" -e "s|$(_esc1 "${_P}")|${_T}|g"
+  -e "s|$(_esc3 "${_SF}")|$(_esc2 "${_TF}")|g" -e "s|$(_esc1 "${_SF}")|${_TF}|g")
+[ -z "${_SI}" ] || [ -z "${_TI}" ] || _SED+=(-e "s|$(_esc1 "${_SI}")|${_TI}|g")
+_edit() {
+  [ -f "${1}/${2}" ] || return 0
+  _xmass_in_real_dir "${1}" _xmass_sed_here "${2}" "${_SED[@]}" \
+    || { echo "XMLAY-FAILED: could not rewrite ${1}/${2}"; exit 0; }
+}
+_S="${_PL}/sites/${_T}"
+for _f in settings.php drushrc.php local.settings.php; do
+  _edit "${_S}" "${_f}"
+done
+_edit "${_PL}/sites" sites.php
+_edit "${_PL}/sites/all/drush" drushrc.php
+_edit "${_PL}/profiles/hostmaster/modules/aegir/hosting/cron" hosting_cron.module
+_edit "${_R}/config/includes" nginx_vhost_common.conf
+_xmass_in_real_dir "${_S}" bash -c '
+  for _k in files private; do
+    [ -L "./${_k}" ] && rm -f -- "./${_k}"
+    [ ! -e "./${_k}" ] || continue
+    ln -s -- "'"${_R}"'/static/files/'"${_T}"'/${_k}" "./${_k}" || exit 1
+    chown -h "'"${_A}"'" "./${_k}" || exit 1
+  done' || { echo "XMLAY-FAILED: could not link the panel store in ${_S}"; exit 0; }
+mkdir -p /data/u
+ln -sfn "${_PL}" "/data/u/${_T}"
+_xmass_in_real_dir "${_R}" bash -c '
+  [ ! -L ./u ] || rm -f -- ./u
+  mkdir -p ./u && [ -d ./u ] && [ ! -L ./u ] || exit 1
+  chown -h "'"${_A}"'" ./u && chmod 0700 ./u || exit 1
+  cd -P ./u || exit 1
+  ln -sfn "'"${_PL}"'" "./'"${_T}"'" && chown -h "'"${_A}"'" "./'"${_T}"'"' \
+  || { echo "XMLAY-FAILED: could not link ${_R}/u/${_T}"; exit 0; }
+echo XMLAY-OK
+REMOTE
+}
+
+# The end of the lane for account $1, run there once its tree is whole: the
+# panel's own empty store, the include that shows nginx the account (undone
+# when nginx -t refuses it, so one account never stops the box), the create
+# marker a later prep-target reads (a hand promotion has no relay to prove the
+# account's lineage), the armed first pass for after the promotion, and last the
+# mark that kept the gate closed.
+_xmass_lay_account_end() {
+  local _oct="$1" _t="$2" _tn="$3" _sh _ts _real _out
+  _real="$(_xmass_tgt_place "${_t}" _xmass_own_dir_ready keep "${_oct}" "/data/disk/${_oct}/static/files/${_tn}")"
+  if [ -z "${_real}" ]; then
+    _alrt "  ${_oct}: its panel store could not be made on ${_t}"
+    return 1
+  fi
+  _sh="$(_xmass_create_src_host)" || _sh=""
+  _ts="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  _out="$( { _xmass_remote_guards; cat <<'REMOTE'
+cd -P -- "${_REAL}" || { echo "XMLAY-FAILED: the panel store ${_REAL}"; exit 0; }
+_wg=$(id -gn "${_A}" 2> /dev/null)
+chown root:"${_wg}" . && chmod 02755 .
+for _k in files private private/files private/temp; do
+  mkdir -p "./${_k}" && chown "${_A}:www-data" "./${_k}" && chmod 02775 "./${_k}" \
+    || { echo "XMLAY-FAILED: the panel store ${_REAL}/${_k}"; exit 0; }
+done
+cd /
+_L="/var/aegir/config/server_master/nginx/platform.d/${_A}.conf"
+if [ ! -e "${_L}" ]; then
+  [ -f "/data/disk/${_A}/config/${_A}.nginx.conf" ] \
+    || { echo "XMLAY-FAILED: no /data/disk/${_A}/config/${_A}.nginx.conf"; exit 0; }
+  _was=OK
+  nginx -t > /dev/null 2>&1 || _was=NO
+  ln -sfn "/data/disk/${_A}/config/${_A}.nginx.conf" "${_L}"
+  if [ "${_was}" = "OK" ] && ! nginx -t > /dev/null 2>&1; then
+    rm -f -- "${_L}"
+    echo "XMLAY-FAILED: nginx -t refuses this account's vhosts: read 'nginx -t' with ${_L} in place"
+    exit 0
+  fi
+fi
+_u=$(id -u "${_A}" 2> /dev/null)
+_i=$(stat -c %i:%W "/data/disk/${_A}" 2> /dev/null)
+case "${_u}/${_i}" in
+  [0-9]*/[0-9]*:[0-9]*) : ;;
+  *) echo "XMLAY-FAILED: cannot read the uid and the inode of ${_A}"; exit 0 ;;
+esac
+if [ ! -e "/root/.${_A}.migration-create.txt" ]; then
+  ( umask 077
+    printf '%s\n' "# Put by xmass prep-target --fix-accounts: an account laid on a standing mirror, no install ran here." \
+      "_MIG_CREATE_SRC_HOST=${_SH}" "_MIG_CREATE_SRC_OCT=${_A}" "_MIG_CREATE_TGT_UID=${_u}" \
+      "_MIG_CREATE_TGT_INODE=${_i}" "_MIG_CREATE_STAMPED=${_TS}" > "/root/.${_A}.migration-create.put.$$" ) \
+    && mv -f -T -- "/root/.${_A}.migration-create.put.$$" "/root/.${_A}.migration-create.txt" \
+    || { echo "XMLAY-FAILED: the create marker of ${_A}"; exit 0; }
+fi
+_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_A}/static/control"
+if ! ( cd -P -- "${_w}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
+  && { _xmass_read_here platforms.info | grep -qx UP \
+    || _xmass_put_here platforms.info "$(_xmass_read_here platforms.info; echo UP)" "${_A}.ftp:${_wg}"; } \
+  && _xmass_touch_here run-upgrade.pid.deferred ); then
+  echo "XMLAY-FAILED: could not arm the first pass in ${_w}"
+  exit 0
+fi
+rm -f -- "/root/.${_A}.fix-accounts.txt"
+echo XMLAY-OK
+REMOTE
+  } | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
+    "_A='${_oct}' _REAL='$(_shq "${_real}")' _SH='${_sh}' _TS='${_ts}' bash -s" 2>&1)"
+  printf '%s\n' "${_out}" | grep -a '^XMLAY-FAILED' | sed "s/^XMLAY-FAILED: /  ${_oct}: /"
+  case "${_out}" in
+    *XMLAY-OK*) return 0 ;;
+  esac
+  [[ "${_out}" == *XMLAY-FAILED* ]] || _alrt "  ${_oct}: ${_t} gave no answer to the last step of the lane"
+  return 1
+}
+
+# One account, the order the header says. Status 1, named, when a step failed:
+# a re-run takes it up again, nothing it laid is lost. The mark says how far the
+# panel got: panel-begun before its first leg, panel-done once it names this box.
+_xmass_lay_account() {
+  local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _sp _pl _pn _tn _out
+  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt"
+  [[ "${_t}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && _tip="${_t}"
+  # read again: the shared legs before this took their time, the account can
+  # write the alias, and its panel can have moved
+  _sp="$(_xmass_panel_site_path "${_oct}")" || return 1
+  _pl="${_sp%/sites/*}"
+  _pn="${_sp##*/}"
+  _tn="${_oct}.${_tf}"
+  if [ "${_tn}" != "${_pn}" ] && [[ "${_tn}" == *"${_pn}"* ]]; then
+    _alrt "  ${_oct}: its panel name ${_pn} is part of ${_tn}: its lines could not be rewritten: not laid"
+    return 1
+  fi
+  _info "Laying account ${_oct} on ${_t} ..."
+  if ! _xmass_set_gmap "${_oct}" || ! _xmass_set_umap "${_oct}"; then
+    _alrt "  ${_oct}: its group and user maps could not be read: not laid"
+    return 1
+  fi
+  _xmass_pinned_leg "${_r}" "${_r}" "the tree of ${_oct}" -aEAXq --ignore-existing ${_ieni} \
+    '--exclude=/aegir/distro/*' --exclude=/distro --exclude=/static --exclude=/log --exclude=/clients \
+    --exclude=/backups --exclude=/backup-exports --exclude=/undo --exclude=/src --exclude=/.drush \
+    '--exclude=/.tmp/*' '--exclude=/tmp/*' --exclude=/u --exclude=/tools/le --exclude=/config/ssl.d \
+    --exclude=/config/server_master/ssl.d '--exclude=/config/server_master/nginx/*/*'
+  # A second panel dir under one name stops a cutover's rewire. A panel this lane
+  # did not begin keeps its place (an install that lost one witness), and one it
+  # finished stays as it is. One it began is finished by running its legs and its
+  # script again, which keep what is there; on a platform the active has left since
+  # it has no source to finish from.
+  _have="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "grep -sx -e panel-begun -e panel-done ${_mk}; for _d in ${_r}/aegir/distro/*/sites/${_tn}; do if [ -f \"\${_d}/settings.php\" ] && [ ! -L \"\${_d}\" ]; then echo \"XMHAVE \${_d}\"; fi; done; echo XMASKED" 2> /dev/null)"
+  case "${_have}" in
+    *XMASKED*) : ;;
+    *)
+      _alrt "  ${_oct}: ${_t} did not answer: not laid"
+      return 1
+      ;;
+  esac
+  # a mark that outlived its panel (the account retired here since) says nothing
+  if [[ "${_have}" == *panel-* ]] && [[ "${_have}" != *XMHAVE* ]]; then
+    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "date -u '+%F %T UTC' > ${_mk}" 2> /dev/null; then
+      _alrt "  ${_oct}: ${_t} did not answer: not laid"
+      return 1
+    fi
+    _have="XMASKED"
+  fi
+  if [[ "${_have}" == *panel-done* ]]; then
+    :
+  elif [[ "${_have}" == *panel-begun* ]]; then
+    while read -r _d; do
+      [ "${_d}" = "${_pl}/sites/${_tn}" ] && continue
+      _alrt "  ${_oct}: a stopped run left a half-made panel at ${_d} on ${_t}, and its panel here now stands at ${_pl}:"
+      _alrt "  ${_oct}: remove that directory there and run this again: not laid"
+      return 1
+    done < <(printf '%s\n' "${_have}" | sed -n 's/^XMHAVE //p')
+    _lay=YES
+  elif [[ "${_have}" != *XMHAVE* ]]; then
+    _lay=YES
+  fi
+  if [ "${_lay}" = "YES" ] && [[ "${_have}" != *panel-begun* ]]; then
+    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "echo panel-begun >> ${_mk}" 2> /dev/null; then
+      _alrt "  ${_oct}: ${_t} did not answer: not laid"
+      return 1
+    fi
+  fi
+  if [ "${_lay}" = "YES" ]; then
+    _xmass_pinned_leg "${_pl}" "${_pl}" "the control panel platform of ${_oct}" -aEAXq --ignore-existing ${_ieni} \
+      "--exclude=/sites/${_pn}"
+    _xmass_pinned_leg "${_sp}" "${_pl}/sites/${_tn}" "the control panel of ${_oct}" -aEAXq --ignore-existing ${_ieni} \
+      --exclude=/files --exclude=/private
+  fi
+  if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
+    _alrt "  ${_oct}: its tree or panel did not all reach ${_t}: see the lines above"
+    return 1
+  fi
+  if [ "${_lay}" = "YES" ]; then
+    _out="$(_xmass_lay_panel_sh | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
+      "_A='${_oct}' _PL='$(_shq "${_pl}")' _P='${_pn}' _T='${_tn}' _SF='${_sf}' _TF='${_tf}' _SI='${_XMASS_SRC_IP}' _TI='${_tip}' bash -s" 2>&1)"
+    printf '%s\n' "${_out}" | grep -a '^XMLAY-FAILED' | sed "s/^XMLAY-FAILED: /  ${_oct}: /"
+    case "${_out}" in
+      *XMLAY-OK*) : ;;
+      *)
+        _alrt "  ${_oct}: its panel could not be made on ${_t}"
+        return 1
+        ;;
+    esac
+  fi
+  if [[ "${_have}" != *panel-done* ]]; then
+    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "echo panel-done >> ${_mk}" 2> /dev/null; then
+      _alrt "  ${_oct}: ${_t} did not answer: not laid"
+      return 1
+    fi
+  fi
+  if ! _xmass_lay_account_cnf "${_oct}" "${_t}" "${_tf}"; then
+    _alrt "  ${_oct}: its cnf could not be laid on ${_t}"
+    return 1
+  fi
+  if [ -f "/var/xdrago/run-${_oct}" ]; then
+    ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /var/xdrago/run-${_oct} ]" 2> /dev/null \
+      || rsync -a --no-links -e ssh "/var/xdrago/run-${_oct}" "root@${_t}:/var/xdrago/run-${_oct}" \
+      || { _alrt "  ${_oct}: its dispatcher could not be laid on ${_t}"; return 1; }
+  fi
+  _xmass_sync_account "${_oct}"
+  if [ "${_XMASS_RSYNC_RC:-0}" != "0" ] || [ "${_XMASS_STORE_RC:-0}" != "0" ] \
+    || [ "${_XMASS_CNF_RC:-0}" != "0" ]; then
+    _alrt "  ${_oct}: its legs did not all land on ${_t}: see the DENY lines above"
+    return 1
+  fi
+  # one-pass marker: the first pass there mails no upgrade notice
+  _ELIGIBLE_ACCOUNTS="${_oct}" _xmass_upgrade_skip_put_target "${_t}"
+  _xmass_lay_account_end "${_oct}" "${_t}" "${_tn}" || return 1
+  _info "  ${_oct}: laid on ${_t}: ${_tn} is its panel there, its first Octopus pass is armed for after a promotion"
+  return 0
+}
+
+# The lane: the accounts the target lacks, each gated before anything is laid.
+# The verb lock holds autosync off while it runs. $1 = target.
+_xmass_fix_accounts() {
+  local _t="$1" _all _new="" _oct _sf _tf _left="" _ok="" _need_db=YES
+  _xmass_load_state
+  case "${_XMASS_PHASE}" in
+    syncing)
+      [ "${_XMASS_TARGET_IP}" = "${_t}" ] \
+        || _die "this box's standing mirror is ${_XMASS_TARGET_IP:-none}, not ${_t}: nothing laid"
+      ;;
+    init) _need_db=NO ;;
+    *) _die "phase is ${_XMASS_PHASE:-none}: --fix-accounts serves a pair replicating or about to re-init; nothing laid" ;;
+  esac
+  _xmass_boa_run_live \
+    && _die "a barracuda or octopus run is in flight here: it can move an account's panel under the copy; re-run when it ends"
+  _xmass_enumerate_accounts
+  _all="${_ELIGIBLE_ACCOUNTS}"
+  _xmass_verify_target_accounts "${_t}" list
+  [ -z "${_XMASS_ACCT_NOANS}" ] \
+    || _die "could not read account(s) ${_XMASS_ACCT_NOANS} on ${_t}: it did not answer; nothing laid"
+  _new="${_XMASS_ACCT_NOCOPY}"
+  [ -z "${_XMASS_ACCT_IDONLY}" ] \
+    || _alrt "${_XMASS_ACCT_IDONLY} lost a system user on ${_t}, its tree is there: 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)' repairs that, this lane does not"
+  if [ -z "${_new}" ]; then
+    _info "No account lacks its copy on ${_t}: nothing to lay"
+    return 0
+  fi
+  _info "Account(s) ${_t} holds no copy of: ${_new}"
+  _xmass_assert_same_release "${_t}"
+  _xmass_resolve_target_mnt "${_t}"
+  _sf="$(_xmass_src_fqdn)"
+  _tf="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "hostname -f" 2> /dev/null | tr -d '\r\n')"
+  case "${_sf}" in ''|*[!a-zA-Z0-9.-]*) _die "this box's name reads '${_sf//[^[:print:]]/?}': nothing laid" ;; esac
+  case "${_tf}" in ''|*[!a-zA-Z0-9.-]*) _die "the name of ${_t} reads '${_tf//[^[:print:]]/?}': nothing laid" ;; esac
+  # the panel's lines are rewritten by plain substitution, which a re-run repeats
+  if [[ "${_tf}" == *"${_sf}"* ]] || [[ "${_t}" == *"${_XMASS_SRC_IP:-none}"* ]]; then
+    _die "${_t}'s name or address holds this box's (${_sf}, ${_XMASS_SRC_IP}): the panel's lines could not be rewritten; nothing laid"
+  fi
+  # a pass on this box rotates root's password: ask with the pair that opens it
+  [ "${_need_db}" != "YES" ] || _xmass_carry_db_credentials
+  # only these accounts' pins and web groups are asked: they are what lands
+  _ELIGIBLE_ACCOUNTS="${_new}"
+  _xmass_php_coverage_gate "${_t}" die
+  _xmass_webgroup_gate "${_t}" die
+  for _oct in ${_new}; do
+    if _xmass_fix_account_gate "${_oct}" "${_t}" "${_need_db}"; then
+      _ok="${_ok} ${_oct}"
+    else
+      _left="${_left} ${_oct}"
+    fi
+  done
+  _ok="${_ok# }"
+  if [ -n "${_ok}" ]; then
+    # a mark already there says how far a stopped run got
+    for _oct in ${_ok}; do
+      ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+        "[ -e /root/.${_oct}.fix-accounts.txt ] || date -u '+%F %T UTC' > /root/.${_oct}.fix-accounts.txt" 2> /dev/null \
+        || _die "could not mark ${_oct} on ${_t}: nothing laid"
+    done
+    _ELIGIBLE_ACCOUNTS="${_ok}"
+    _xmass_repair_target_identities "${_t}" new \
+      || _die "the identities could not be made on ${_t} -- see the lines above; a re-run takes them up"
+    # the shared legs read the whole list: never the new accounts alone
+    _ELIGIBLE_ACCOUNTS="${_all}"
+    _XMASS_STORE_RC=0
+    _XMASS_CNF_RC=0
+    _XMASS_RSYNC_RC=0
+    _XMASS_WG_SKIPPED=""
+    _xmass_sync_shared
+    # the accounts' platforms link into the shared store: nothing is laid on one
+    # that did not land, and each mark stays for the re-run
+    if [ "${_XMASS_RSYNC_RC:-0}" != "0" ] || [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
+      _die "the shared data did not all reach ${_t} (see DENY above): nothing laid; a re-run takes it up"
+    fi
+    for _oct in ${_ok}; do
+      _XMASS_STORE_RC=0
+      _XMASS_CNF_RC=0
+      _XMASS_RSYNC_RC=0
+      _xmass_lay_account "${_oct}" "${_t}" "${_sf}" "${_tf}" || _left="${_left} ${_oct}"
+    done
+  fi
+  _ELIGIBLE_ACCOUNTS="${_all}"
+  _left="${_left# }"
+  [ -z "${_left}" ] || return 1
+  # an account that only lost a user is told above, and --fix-users runs after this
+  _xmass_verify_target_accounts "${_t}" list
+  [ -z "${_XMASS_ACCT_NOANS}" ] \
+    || _die "could not read account(s) ${_XMASS_ACCT_NOANS} on ${_t}: it did not answer"
+  [ -z "${_XMASS_ACCT_NOCOPY}" ] \
+    || _die "${_t} still holds no whole copy of: ${_XMASS_ACCT_NOCOPY}: a re-run takes them up"
+  _info "The next live sync carries what changed since; 'xmass status ${_t}' names any account still missing"
+  return 0
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -13346,6 +14106,10 @@ _xmass_cmd_prep_target() {
   _info "======================================================"
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
+  if [ "${_XMASS_FIX_ACCOUNTS}" = "YES" ] && [ "${_XMASS_PREP_UNDER_HOLD}" != "YES" ]; then
+    _die "target ${_tgt} holds no /root/.standby.cnf: --fix-accounts serves a standing mirror;" \
+         " on a target not yet a standby, 'xmass prep-target ${_tgt}' installs every account"
+  fi
   if [ "${_XMASS_FIX_USERS}" = "YES" ] && [ "${_XMASS_PREP_UNDER_HOLD}" != "YES" ]; then
     # Identity repair is role-independent: an account that IS installed on
     # the target but lost a system user has no route back in either role --
@@ -13372,13 +14136,18 @@ _xmass_cmd_prep_target() {
     # install but a lost system IDENTITY of an account already installed
     # here, and a useradd writes no replicated database. Tools go first so
     # the probe reads current field names.
-    _info "  (standing mirror: reduced lane --${_XMASS_FIX_SOLR:+ Solr reconcile}${_XMASS_FIX_USERS:+ identity repair} only)"
+    _info "  (standing mirror: reduced lane --${_XMASS_FIX_SOLR:+ Solr reconcile}${_XMASS_FIX_ACCOUNTS:+ new accounts}${_XMASS_FIX_USERS:+ identity repair} only)"
     _xmass_force_tool_update "${_tgt}"
     # each repair only when asked for: --fix-users alone must not touch the held Solr set
     if [ "${_XMASS_FIX_SOLR}" = "YES" ]; then
       _xmass_solr_coverage_gate "${_tgt}" fix \
         || _die "Solr coverage fix failed on ${_tgt}"
       _info "Solr set reconciled under the hold; the next sync pass re-probes it"
+    fi
+    # a new account can bring a Solr version: the reconcile above goes first
+    if [ "${_XMASS_FIX_ACCOUNTS}" = "YES" ]; then
+      _xmass_fix_accounts "${_tgt}" \
+        || _die "account(s) not laid on ${_tgt} -- see the lines above; a re-run takes them up"
     fi
     if [ "${_XMASS_FIX_USERS}" = "YES" ]; then
       _xmass_enumerate_accounts
@@ -14296,7 +15065,7 @@ _xmass_pre_mig_panel_sanity() {
   # legacy symlink is reported, not removed (the regular ltd-users pass
   # purges it; a panel that then misbehaves is repaired before migrating,
   # so old defects never travel to a new box).
-  local _root _usr _als _root_disk _sp _fq _dbp
+  local _root _usr _als _root_disk _sp _fq _dbp _hint
   _info "Checking control panel coherence on every Aegir root ..."
   for _root in /var/aegir /data/disk/*; do
     _als="${_root}/.drush/hostmaster.alias.drushrc.php"
@@ -14320,16 +15089,19 @@ _xmass_pre_mig_panel_sanity() {
     _root_disk=$(_xmass_read_file "${_als}" | grep "root'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     _sp=$(_xmass_read_file "${_als}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     _fq=$(basename "${_sp}" 2>/dev/null)
+    _hint=""
+    [ ! -e "${_root}/log/CANCELLED" ] \
+      || _hint=" (it is marked CANCELLED: 'boa cleanup detect noscreen', then 'boa cleanup purge ${_usr} noscreen', retires it)"
     if [ ! -e "${_root_disk}/index.php" ] || [ ! -f "${_sp}/settings.php" ]; then
       _die "${_root}: the hostmaster alias names ${_root_disk} and ${_sp}, but the code or settings.php" \
-           " is missing there -- repair this control panel before migrating"
+           " is missing there -- repair this control panel before migrating${_hint}"
     fi
     _dbp=$(su -s /bin/bash - "${_usr}" -c \
       "drush8 @hostmaster sqlq \"SELECT p.publish_path FROM hosting_context c JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid JOIN hosting_platform p ON p.nid=s.platform AND p.vid=(SELECT vid FROM node WHERE nid=s.platform) WHERE c.name='hostmaster' LIMIT 1\"" \
       2>/dev/null | tail -1)
     if [ -z "${_dbp}" ]; then
       _die "${_root}: the panel DB has no resolvable 'hostmaster' site context" \
-           " -- repair this control panel before migrating"
+           " -- repair this control panel before migrating${_hint}"
     fi
     if [ "${_dbp}" != "${_root_disk}" ]; then
       _die "${_root}: the panel's platform in the DB (${_dbp}) differs from its alias root (${_root_disk})" \
@@ -15217,13 +15989,27 @@ _xmass_cmd_sync() {
   # missing pinned PHP means silent wrong-PHP serving after cutover. In DRY
   # both report as DENY and mark the run NOT CLEAN.
   _xmass_enumerate_accounts
-  if [ "${_MODE}" = "LIVE" ]; then
+  # On this pair's own mirror an account with no copy stops only itself: it
+  # lands nothing there, so the per-account gates below do not ask after it,
+  # every other account keeps its cover, and the live pass ends non-zero at the
+  # end, naming the remedy. The Solr gate reads the whole box, as the Solr trees
+  # travel whole. Any other target is refused for it as ever: its accounts may
+  # be nobody's copy of these.
+  if [ "${_tgt}" = "${_XMASS_TARGET_IP:-}" ] && _xmass_autosync_probe_target "${_tgt}"; then
+    _xmass_verify_target_accounts "${_tgt}" skip
+    _xmass_carried_accounts
+    [ -n "${_ELIGIBLE_ACCOUNTS}" ] \
+      || _die "${_tgt} holds no eligible account of this box: is it this pair's mirror? nothing was synced"
+  elif [ "${_MODE}" = "LIVE" ]; then
     _xmass_verify_target_accounts "${_tgt}" die
+  else
+    _xmass_verify_target_accounts "${_tgt}" deny || true
+  fi
+  if [ "${_MODE}" = "LIVE" ]; then
     _xmass_php_coverage_gate "${_tgt}" die
     _xmass_solr_coverage_gate "${_tgt}" die
     _xmass_webgroup_gate "${_tgt}" die sync
   else
-    _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
     _xmass_webgroup_gate "${_tgt}" deny sync || true
@@ -15286,8 +16072,8 @@ _xmass_cmd_sync() {
     _xmass_carry_db_credentials
   fi
   # (Accounts were enumerated above, before the readiness gates. Nothing
-  # between here and there can change /data/disk, and only this function
-  # assigns _ELIGIBLE_ACCOUNTS -- so a second full find plus five file tests
+  # between here and there can change /data/disk, and only those two calls
+  # assign _ELIGIBLE_ACCOUNTS -- so a second full find plus five file tests
   # per account bought nothing except printing the eligible/skipped block to
   # the operator twice, which reads like two different passes.)
   _xmass_sync_shared
@@ -15301,15 +16087,21 @@ _xmass_cmd_sync() {
   _xmass_wg_box_tell
 
   if [ "${_MODE}" = "LIVE" ]; then
+    # the head of each final error: the mail carries only the pass log's tail
+    local _said
+    _said="$(_xmass_wg_skipped_says)"
+    [ -z "${_XMASS_ACCT_SKIPPED:-}" ] || _said="${_said}$(_xmass_acct_left_says "${_tgt}"); "
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
-      _die "$(_xmass_wg_skipped_says)a store/symlink could not be placed on the target (see DENY above); sync incomplete"
+      _die "${_said}a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_CNF_RC:-0}" != "0" ]; then
-      _die "$(_xmass_wg_skipped_says)an account's octopus.cnf values could not be merged on the target (see DENY above); sync incomplete"
+      _die "${_said}an account's octopus.cnf values could not be merged on the target (see DENY above); sync incomplete"
     fi
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
-      _die "$(_xmass_wg_skipped_says)a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
+      _die "${_said}a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
     fi
+    [ -z "${_XMASS_ACCT_SKIPPED:-}" ] \
+      || _die "$(_xmass_wg_skipped_says)every other account was carried, but $(_xmass_acct_left_says "${_tgt}"); sync incomplete"
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
     _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))
     _xmass_save_state
@@ -15409,7 +16201,7 @@ _xmass_status_transport() {
 _xmass_cmd_status() {
   _xmass_load_state
   _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
-  local _lag="N/A"
+  local _lag="N/A" _nocopy="" _lostusr=""
   if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
     _tgt="${_XMASS_TARGET_IP}"
     # A non-numeric lag is three faults wearing one face -- a refused root
@@ -15419,6 +16211,14 @@ _xmass_cmd_status() {
     # Probe once, in this shell, and let each fault speak for itself; the
     # credential hint stays on the branch that holds the client's refusal.
     _xmass_repl_probe "${_tgt}"
+    # The accounts the mirror holds no copy of: said here, as nothing else
+    # names them while the database replicates and the lag reads 0s.
+    if [ "${_XM_REPL_VERDICT}" != "UNREACHABLE" ]; then
+      _xmass_eligible_scan
+      _xmass_verify_target_accounts "${_tgt}" list
+      _nocopy="${_XMASS_ACCT_NOCOPY}"
+      _lostusr="${_XMASS_ACCT_IDONLY}"
+    fi
     case "${_XM_REPL_VERDICT}" in
       RUNNING)
         _lag="${_XM_REPL_LAG}s"
@@ -15483,6 +16283,10 @@ _xmass_cmd_status() {
   echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
   echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
   echo "  Replication lag  : ${_lag}"
+  [ -z "${_nocopy}" ] \
+    || echo "  No copy on mirror: ${_nocopy} -- no file of these travels and a promotion leaves them without their sites; run '$(_xmass_acct_remedy "${_tgt}")'"
+  [ -z "${_lostusr}" ] \
+    || echo "  Lost a system user: ${_lostusr} -- no file of these travels until it is back; run 'xmass prep-target ${_tgt} --fix-users$(_xmass_admail_hint)'"
   echo "  Transport        : $(_xmass_status_transport)"
   echo "  Proxy default    : $( [ -s "${_MIG_BOX_MODE_FILE}" ] && head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null || echo "none (per-account records or fallback)" )"
   echo "======================================================"
@@ -17272,6 +18076,7 @@ _xmass_post_mig() {
   if [ "${_XMASS_PROMOTED_HERE}" = "YES" ]; then
     _xmass_hand_lost_clear
     _xmass_promote_panels_here
+    _xmass_report_lost_accounts_here
   fi
   # Traffic now flows directly to this host. Reconcile the migration-proxy
   # trust from the per-account policy records: temporary peers are dropped,
@@ -17299,6 +18104,39 @@ _xmass_post_mig() {
   # accounts by this box's policy, gated, on an armed box; its master told.
   _xmass_wg_promoted here - quiet
   _info "post-mig complete on ${_hName}"
+}
+
+# After a promotion by hand, the accounts the replicated panel databases name
+# and this box does not hold: one installed on the old active and never laid on
+# this mirror has its databases here and no file, so its sites answer with the
+# catch-all page and nothing else says why. A lane that stopped here left a mark,
+# which goes with the role as restore-target's does, after saying so.
+_xmass_report_lost_accounts_here() {
+  local _db _p _a _m _said=" "
+  for _m in /root/.*.fix-accounts.txt; do
+    [ -e "${_m}" ] || continue
+    _a="${_m#/root/.}"
+    _a="${_a%.fix-accounts.txt}"
+    _alrt "account ${_a} was still being laid here by --fix-accounts: its tree and panel may be partial, and its"
+    _alrt "  sites may answer with the catch-all page until they come from the old active or its backups"
+    rm -f -- "${_m}"
+  done
+  while read -r _db; do
+    case "${_db}" in ''|*[!A-Za-z0-9_]*) continue ;; esac
+    while read -r _p; do
+      _a="${_p#/data/disk/}"
+      _a="${_a%%/*}"
+      case "${_a}" in ''|*[!a-zA-Z0-9._-]*) continue ;; esac
+      [ ! -d "/data/disk/${_a}" ] || continue
+      case "${_said}" in *" ${_a} "*) continue ;; esac
+      _said="${_said}${_a} "
+      _alrt "panel database ${_db} names account ${_a}, which this box does not hold: installed on the old active"
+      _alrt "  after this mirror was built and never laid here. Its databases are here, its files are not: its"
+      _alrt "  sites answer with the catch-all page until they come from the old active or its backups"
+    done < <(mysql --defaults-file=/root/.my.cnf -N -B "${_db}" \
+      -e "SELECT DISTINCT publish_path FROM hosting_platform WHERE publish_path LIKE '/data/disk/%'" 2> /dev/null)
+  done < <(mysql --defaults-file=/root/.my.cnf -N -B \
+    -e "SELECT TABLE_SCHEMA FROM information_schema.TABLES WHERE TABLE_NAME='hosting_context'" 2> /dev/null)
 }
 
 # post-mig names what holds this box's client mail and which test runs are
@@ -18236,6 +19074,7 @@ case "${_cmd}" in
     _XMASS_FIX_PHP=""
     _XMASS_FIX_SOLR=""
     _XMASS_FIX_USERS=""
+    _XMASS_FIX_ACCOUNTS=""
     _XMASS_PREP_UNDER_HOLD=""
     _XMASS_ADOPT_SITELESS=""
     while [ $# -gt 0 ]; do
@@ -18243,6 +19082,7 @@ case "${_cmd}" in
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
         --fix-solr) _XMASS_FIX_SOLR=YES; shift ;;
         --fix-users) _XMASS_FIX_USERS=YES; shift ;;
+        --fix-accounts) _XMASS_FIX_ACCOUNTS=YES; shift ;;
         --adopt-siteless=*)
           # the site-less same-name accounts on the target the operator
           # checked by hand, comma-separated account names
@@ -18253,12 +19093,14 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [admail=<address>]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [admail=<address>]"
     # --fix-users is a repair of installed accounts, never a re-seed: it does
     # not ride the full lane, so it cannot mean "run Phase 0.5" on a box that
     # is carrying traffic (a demoted failback target).
     [ "${_XMASS_FIX_USERS}" = "YES" ] && [ "${_XMASS_FIX_PHP}" = "YES" ] \
       && _die "--fix-users cannot be combined with --fix-php: the identity repair never installs"
+    [ "${_XMASS_FIX_ACCOUNTS}" = "YES" ] && [ "${_XMASS_FIX_PHP}" = "YES" ] \
+      && _die "--fix-accounts cannot be combined with --fix-php: it serves a standing mirror, which --fix-php refuses"
     _check_root
     _xmass_refuse_role_clash prep
     _xmass_xoct_admail_ok
@@ -18421,8 +19263,9 @@ case "${_cmd}" in
     echo "                     its key and prints its fingerprint)"
     echo "Usage: xmass pre-mig <source-fqdn> --key-fp=SHA256:... (then on the target, with the"
     echo "                     fingerprint the source printed)"
-    echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]  (run on source AFTER both"
-    echo "                     pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs)"
+    echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users]  (run on source"
+    echo "                     AFTER both pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs;"
+    echo "                     on a standing mirror --fix-accounts lays an account installed here since it was built)"
     echo "                     [--adopt-siteless=<oN>[,<oN>...]]  (site-less same-name accounts on the"
     echo "                     target, checked by hand, taken for this migration)"
     echo "                     [admail=<address>]  (a test run: see the notes)"

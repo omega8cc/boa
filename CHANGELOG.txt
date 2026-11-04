@@ -4,6 +4,12 @@
 
 @=> New Features
 
+    * A new Octopus account on a server with a standing mirror reaches the
+      mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
+      with no rebuild and no pause in replication. Until then a file sync
+      leaves that account out and keeps the others current, instead of
+      stopping for all of them, and says so.
+
     * A platform's sites can take their web PHP from the platform:
       ~/static/control/fpm-per-platform.info holds one "<folder> <version>"
       per line. A site's line in multi-fpm.info wins over its platform's,
@@ -20,10 +26,12 @@
       site of another account on the server.
 
     * The files storage tool no longer makes a link through a files store
-      folder a tenant swapped, under another account's identity; on a server
-      with the link check on, such a link served that account's files. A
-      tenant's call now reads back only its status, and the tool's logs are
-      root's alone: both showed what root found on paths a tenant chose.
+      folder a tenant swapped, under another account's identity, and every
+      link it makes in an account's tree is now that account's, never root's;
+      on a server with the link check on, a tenant could aim such a link at
+      another account's files and have them served. A tenant's call now reads
+      back only its status, and the tool's logs are root's alone: both showed
+      what root found on paths a tenant chose.
 
     * A Grav site no longer serves a Markdown file kept on disk outside the
       folders it already refused, such as a README beside its images or
@@ -148,6 +156,34 @@
       owed: when a worker pass was killed before its reload, or nginx refused
       the box at that moment, the next pass found nothing changed and nginx
       kept the old pool until some other task reloaded it.
+
+    * boa cleanup purge now refuses while a BOA pass or system task runs, and
+      xmass prep-target waits for the target to go quiet before it judges and
+      purges an account only the target has: a pass still running on that account
+      wrote its panel proxy back behind the purge, naming a certificate that was
+      gone, and nginx -t failed for the whole box.
+
+    * The nightly usage pass no longer takes an account off the report, or holds
+      its over-limit notices, on a CANCELLED, proxied.pid or proxy-failed.pid the
+      account made itself in its own log folder. Only root's own relay marker
+      takes it off the report; those names, as root wrote them, hold the client's
+      mail and the report's row stays, tagged Held:<name>.
+
+    * A migration proxy tool another box copied here now lasts one self-update:
+      a source on older tools could put its older trust tool back on a newer
+      target for up to a day. xoct and xmass now copy these tools only to a
+      target that lacks them.
+
+    * xoct now decides what a client has been told from root's own copy of the
+      migration history, /root/.<account>.migproxy.log: the copy in the account's
+      log folder could be replaced by the account, which sent or held back its
+      own notices.
+
+    * xoct and xmass now name a phpNN.info marker or a line of multi-fpm.info,
+      cli-per-platform.info or fpm-per-platform.info that does nothing on the
+      source because it lacks that PHP, when the target would honour it: the
+      PHP changed at the cutover with nothing said. An alert on a live run,
+      a DENY on a dry one.
 
     * An xoct move under a new account name now rewrites the folders of
       cli-per-platform.info and fpm-per-platform.info lines spelt with the

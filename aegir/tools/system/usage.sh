@@ -135,6 +135,64 @@ _usage_read_here() {
 _usage_read_in() {
   _usage_in_real_dir "${1}" _usage_read_here "${2}"
 }
+# Root's reader of a name an account may have put, one text wherever it is
+# defined: ./$1 through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, and
+# only while that handle is a regular file with one link, owned by root,
+# writable by no one else, at most 64 KiB. Prints the handle's mtime on a line
+# of its own, then the bytes. Status 3 absent, 4 anything else, 5 a read error.
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# Root's own proxied marker of the account $1 stands: root's file, one link,
+# COMPLETE, dated no later than a day ahead. Only xoct and xmass write one, the
+# one-time import takes an older tool's, a promotion, reset-state and a purge
+# remove it, and no account can write it.
+_usage_relays() {
+  local _t _at
+  [[ "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${1#.}" = "${1}" ] || return 1
+  _t="$( ( cd -P -- /root 2> /dev/null \
+    && perl -e "${_MIG_HREAD_PL}" -- "./.${1}.migproxy.proxied" root ) )" || return 1
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  grep -qx "_MIG_PROXIED=COMPLETE" <<< "${_t}" || return 1
+  _at="$(grep -m1 '^_MIG_PROXIED_AT=' <<< "${_t}" | cut -d= -f2-)"
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 1
+  [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ]
+}
+# ./$1 of the account's real log/ as root wrote it, its bytes in _uLog; status 1
+# for anything else at the name. The x keeps trailing newlines: an empty file
+# is told from one holding a newline.
+_usage_root_log() {
+  _uLog="$(_usage_in_real_dir "${_usEr}/log" perl -e "${_MIG_HREAD_PL}" \
+    -- "./${1}" root && printf x)" || return 1
+  _uLog="${_uLog%x}"
+  _uLog="${_uLog#*$'\n'}"
+}
+# What this pass holds back for the account, set once per account in _uHeld.
+# log/ is oN's: it can create, rename or remove any name there, so a name
+# there alone holds nothing, and the notices and the report row go out.
+#   relay         root's own marker says the account relays to another box: no
+#                 notice and no report row, the tree here is what a move left.
+#   CANCELLED, proxy-failed, proxied, a2b-freeze
+#                 the name is there as root wrote it, and only root's records
+#                 could say more (none exists for the first two; a source on
+#                 older tools has only the file for the third): no notice to a
+#                 client who may be gone or moved, but the row stays, tagged,
+#                 so a root file the account renamed to the name, or one it
+#                 kept from an earlier move, hides nothing from the operator.
+_usage_hold_word() {
+  _uHeld=
+  if _usage_relays "${_THIS_U}"; then
+    _uHeld=relay
+  elif _usage_root_log CANCELLED && [ -z "${_uLog}" ]; then
+    _uHeld=CANCELLED
+  elif _usage_root_log proxy-failed.pid \
+    && [[ "${_uLog%%$'\n'*}" =~ ^[0-9A-Fa-f.:]+\ [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]]; then
+    _uHeld=proxy-failed
+  elif _usage_root_log proxied.pid; then
+    case "${_uLog%%$'\n'*}" in
+      COMPLETE) _uHeld=proxied ;;
+      A2B-IMPORT-FREEZE) _uHeld=a2b-freeze ;;
+    esac
+  fi
+}
 # Run "$@" inside the site directory $1 named in an alias, as it resolves
 # now: never a link itself, and strictly below this account's own real root
 # (a link on the way that stays inside the account, such as a platform root
@@ -463,9 +521,7 @@ EOF
 _detect_deprecated_php() {
   _PHP_FPM_VERSION=
   if [ -e "${_usEr}/static/control/fpm.info" ] \
-    && [ ! -e "${_usEr}/log/proxied.pid" ] \
-    && [ ! -e "${_usEr}/log/proxy-failed.pid" ] \
-    && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+    && [ -z "${_uHeld:-}" ]; then
     # read inside the real control directory, never through a link or
     # blocked on a FIFO the tenant put there, and kept to a version's
     # characters
@@ -980,9 +1036,7 @@ _check_limits() {
   fi
 
   if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-    if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ] \
-      && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
+    if [ -z "${_uHeld:-}" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
         _send_notice_sql "LIVE"
       fi
@@ -990,9 +1044,7 @@ _check_limits() {
     echo SQL Usage for ${_THIS_U} above limits
     [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} above limits" >> "${_uLogFil}"
   elif [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-    if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ] \
-      && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
+    if [ -z "${_uHeld:-}" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
         _send_notice_sql "DEV"
       fi
@@ -1004,9 +1056,7 @@ _check_limits() {
     [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} below limits" >> "${_uLogFil}"
   fi
   if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-    if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ] \
-      && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
+    if [ -z "${_uHeld:-}" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
         _send_notice_disk
       fi
@@ -1094,6 +1144,7 @@ _usage_action() {
           _hmHeld=YES
           echo "NOTE: ${_THIS_U}: an aegir2boa db-import is unfinished; no footer or cache clear on its half-made panel"
         fi
+        _usage_hold_word
         _uLogDir="${_usEr}/static/usage"
         _uLogFil=/dev/null
         # static/ is tenant-writable (02775, no sticky), so the usage directory
@@ -1226,10 +1277,8 @@ EOF
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'"
-            if [ ! -e "${_usEr}/log/CANCELLED" ] \
-              && [ "${_DEV_EXC}" = "NO" ] \
-              && [ ! -e "${_usEr}/log/proxied.pid" ] \
-              && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
+            if [ "${_uHeld:-}" != "relay" ] \
+              && [ "${_DEV_EXC}" = "NO" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
               # the panel's host name, one per report line: nothing else the
               # account wrote into domain.txt reaches the operator's report
@@ -1256,7 +1305,7 @@ EOF
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}${_uHeld:+,Held:${_uHeld}}" >> /var/log/boa/usage/${_LOG_FILE}
             fi
             _usage_hm "cache-clear all"
           fi
@@ -1271,10 +1320,8 @@ EOF
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'"
-            if [ ! -e "${_usEr}/log/CANCELLED" ] \
-              && [ "${_DEV_EXC}" = "NO" ] \
-              && [ ! -e "${_usEr}/log/proxied.pid" ] \
-              && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
+            if [ "${_uHeld:-}" != "relay" ] \
+              && [ "${_DEV_EXC}" = "NO" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
               # the panel's host name, one per report line: nothing else the
               # account wrote into domain.txt reaches the operator's report
@@ -1301,7 +1348,7 @@ EOF
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}${_uHeld:+,Held:${_uHeld}}" >> /var/log/boa/usage/${_LOG_FILE}
             fi
             _usage_hm "variable-set --always-set site_footer ''"
             _usage_hm "cache-clear all"
