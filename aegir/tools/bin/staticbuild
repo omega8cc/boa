@@ -1479,7 +1479,7 @@ _patch_gap_php() {
   #   rehash    writes Composer's own content-hash of composer.json (Locker, loaded
   #             from the Composer phar given as $2) into composer.lock and moves no
   #             package: an ignore changes only extra, and a pinned build checks its
-  #             lock against its root after (_pinned_lock_rehash)
+  #             lock against its root after (_pinned_lock_fits)
   #   hashcheck exits 0 when the lock's content-hash is that hash, 1 when not
   # A directory is printed only when it resolves inside the tree.
   cat <<'EOPHP'
@@ -2661,23 +2661,30 @@ _pinned_lock_rehash() {
   # fix step takes its snapshot of the lock: a resolve can fail where nothing is stale
   # (packages.drupal.org now lists drupal/toolbar for admin_toolbar, which the 10.1 and
   # 10.3 cores do not replace). Validate exits 0 on a matching hash and needs no network.
-  # A hash that cannot follow says so on the row: it breaks nothing.
-  # A new hash says nothing about the packages, so every build then checks the lock against
-  # its root with a dry run, in the scope of the tree's real installs. A lock that breaks it, a
-  # held conflict say, which a resolve used to refuse, would stop a tenant's install: exits 1
-  # and the build fails, so the published copy stays. $1 workdir, $2 label.
-  if ! _run_as_o8 "cd '$1' && composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"; then
-    _PATCHGAP_PHP="$(mktemp /tmp/.staticbuild-patchgap.XXXXXX)" \
-      && _patch_gap_php > "${_PATCHGAP_PHP}" && chmod 0644 "${_PATCHGAP_PHP}" \
-      && _patch_gap_rehash "$1" "$2" \
-      || _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json"
-    _patch_gap_done
+  # A hash that cannot follow says so on the row: it breaks nothing. $1 workdir, $2 label.
+  if _run_as_o8 "cd '$1' && composer validate --no-check-all --no-check-publish --no-check-version > /dev/null 2>&1"; then
+    return 0
   fi
-  if ! _run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install --dry-run $(_tree_nodev "$1") --no-interaction --no-scripts --no-plugins --ignore-platform-reqs > /dev/null 2>&1"; then
-    _alrt "$2: the lock no longer fits composer.json's requirements or conflicts, so a composer install would stop"
-    return 1
-  fi
+  _PATCHGAP_PHP="$(mktemp /tmp/.staticbuild-patchgap.XXXXXX)" \
+    && _patch_gap_php > "${_PATCHGAP_PHP}" && chmod 0644 "${_PATCHGAP_PHP}" \
+    && _patch_gap_rehash "$1" "$2" \
+    || _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json"
+  _patch_gap_done
   return 0
+}
+
+_pinned_lock_fits() {
+  # A new hash says nothing about the packages, so a pinned build ends by checking the lock
+  # it will publish against its root, after the fix step had its chance to repair it: a dry
+  # run in the scope of the tree's real installs. A lock that breaks its root, a held conflict
+  # say, which a resolve used to refuse, would stop a tenant's install: exits 1, Composer's
+  # reason in the log, so the build fails and the published copy stays. $1 workdir, $2 label.
+  local _out
+  _out="$(_run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install --dry-run $(_tree_nodev "$1") --no-interaction --no-scripts --no-plugins --ignore-platform-reqs" 2>&1)" \
+    && return 0
+  printf '%s\n' "${_out}"
+  _alrt "$2: the lock no longer fits composer.json's requirements or conflicts, so a composer install would stop"
+  return 1
 }
 
 build_ezcontent() {
@@ -2693,8 +2700,9 @@ build_ezcontent() {
   fi
   _composer_prepare "${_wd}" || { _record_fail "ezcontent"; return 1; }
   _ezc_asset_libraries "${_wd}" || { _record_fail "ezcontent (asset libraries)"; return 1; }
-  _pinned_lock_rehash "${_wd}" "ezcontent" || { _record_fail "ezcontent (lock breaks composer.json)"; return 1; }
+  _pinned_lock_rehash "${_wd}" "ezcontent"
   _fix_step "${_wd}" "ezcontent" "${_EZC_DISTPKG}" || return 1
+  _pinned_lock_fits "${_wd}" "ezcontent" || { _record_fail "ezcontent (lock breaks composer.json)"; return 1; }
   _finalize_distro "ezcontent" "${_wd}" "${_rest##*-}" "ezcontent"
 }
 
@@ -2716,8 +2724,9 @@ build_commerce_base() {
     _record_fail "commerce_base (Commerce ${_CK2_COMMERCE} did not install)"
     return 1
   fi
-  _pinned_lock_rehash "${_wd}" "commerce_base" || { _record_fail "commerce_base (lock breaks composer.json)"; return 1; }
+  _pinned_lock_rehash "${_wd}" "commerce_base"
   _fix_step "${_wd}" "commerce_base" "${_CK2_DISTPKG} drupal/commerce" || return 1
+  _pinned_lock_fits "${_wd}" "commerce_base" || { _record_fail "commerce_base (lock breaks composer.json)"; return 1; }
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
 }
 
