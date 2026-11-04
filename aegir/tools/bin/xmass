@@ -13670,12 +13670,12 @@ _xmass_lay_panel_sh() {
   _xmass_remote_guards
   cat <<'REMOTE'
 _R="/data/disk/${_A}"
-_q() { printf '%s' "$1" | sed 's/\./\\\\\\./g'; }
-_q2() { printf '%s' "$1" | sed 's/\./\\\\./g'; }
-_d() { printf '%s' "$1" | sed 's/\./\\./g'; }
-_SED=(-e "s|$(_q "${_P}")|$(_q2 "${_T}")|g" -e "s|$(_d "${_P}")|${_T}|g"
-  -e "s|$(_q "${_SF}")|$(_q2 "${_TF}")|g" -e "s|$(_d "${_SF}")|${_TF}|g")
-[ -z "${_SI}" ] || [ -z "${_TI}" ] || _SED+=(-e "s|$(_d "${_SI}")|${_TI}|g")
+_esc3() { printf '%s' "$1" | sed 's/\./\\\\\\./g'; }
+_esc2() { printf '%s' "$1" | sed 's/\./\\\\./g'; }
+_esc1() { printf '%s' "$1" | sed 's/\./\\./g'; }
+_SED=(-e "s|$(_esc3 "${_P}")|$(_esc2 "${_T}")|g" -e "s|$(_esc1 "${_P}")|${_T}|g"
+  -e "s|$(_esc3 "${_SF}")|$(_esc2 "${_TF}")|g" -e "s|$(_esc1 "${_SF}")|${_TF}|g")
+[ -z "${_SI}" ] || [ -z "${_TI}" ] || _SED+=(-e "s|$(_esc1 "${_SI}")|${_TI}|g")
 _edit() {
   [ -f "${1}/${2}" ] || return 0
   _xmass_in_real_dir "${1}" _xmass_sed_here "${2}" "${_SED[@]}" \
@@ -15897,7 +15897,7 @@ _xmass_cmd_sync() {
   # end, naming the remedy. The Solr gate reads the whole box, as the Solr trees
   # travel whole. Any other target is refused for it as ever: its accounts may
   # be nobody's copy of these.
-  if [ "${_tgt}" = "${_XMASS_TARGET_IP}" ] && _xmass_autosync_probe_target "${_tgt}"; then
+  if [ "${_tgt}" = "${_XMASS_TARGET_IP:-}" ] && _xmass_autosync_probe_target "${_tgt}"; then
     _xmass_verify_target_accounts "${_tgt}" skip
     _xmass_carried_accounts
     [ -n "${_ELIGIBLE_ACCOUNTS}" ] \
@@ -15992,7 +15992,7 @@ _xmass_cmd_sync() {
     # the head of each final error: the mail carries only the pass log's tail
     local _said
     _said="$(_xmass_wg_skipped_says)"
-    [ -z "${_XMASS_ACCT_SKIPPED}" ] || _said="${_said}$(_xmass_acct_left_says "${_tgt}"); "
+    [ -z "${_XMASS_ACCT_SKIPPED:-}" ] || _said="${_said}$(_xmass_acct_left_says "${_tgt}"); "
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
       _die "${_said}a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
@@ -16002,7 +16002,7 @@ _xmass_cmd_sync() {
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
       _die "${_said}a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
     fi
-    [ -z "${_XMASS_ACCT_SKIPPED}" ] \
+    [ -z "${_XMASS_ACCT_SKIPPED:-}" ] \
       || _die "$(_xmass_wg_skipped_says)every other account was carried, but $(_xmass_acct_left_says "${_tgt}"); sync incomplete"
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
     _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))
