@@ -1477,8 +1477,9 @@ _patch_gap_php() {
   #             one), or a package installed as a link (reinstalling it never makes it
   #             pristine, and its source is not the build's to remove).
   #   rehash    writes Composer's own content-hash of composer.json (Locker, loaded
-  #             from the Composer phar given as $2) into composer.lock: ignore changes
-  #             only extra, which never moves the locked set
+  #             from the Composer phar given as $2) into composer.lock and moves no
+  #             package: an ignore changes only extra, and a pinned build checks its
+  #             lock against its root after (_pinned_lock_rehash)
   #   hashcheck exits 0 when the lock's content-hash is that hash, 1 when not
   # A directory is printed only when it resolves inside the tree.
   cat <<'EOPHP'
@@ -1779,7 +1780,7 @@ _patch_gap_rehash() {
     _PENDING_NOTE="$(_patch_gap_unnote "${_PENDING_NOTE}" "lock hash stale")"
     return 0
   fi
-  _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json after a patch declaration changed"
+  _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json"
 }
 
 _patch_gap_done() {
@@ -2669,6 +2670,11 @@ _pinned_lock_rehash() {
     && _patch_gap_rehash "$1" "$2" \
     || _pending "$2" "lock hash stale" "the lock's content-hash could not follow composer.json"
   _patch_gap_done
+  # The new hash says nothing about the packages: a held conflict the lock breaks, which a
+  # resolve used to refuse, would pass here with a clean row and then stop a tenant's install.
+  # A dry run reads only the lock and needs no network.
+  _run_as_o8 "cd '$1' && composer install --dry-run --no-interaction --no-scripts --no-plugins --ignore-platform-reqs > /dev/null 2>&1" \
+    || _pending "$2" "lock breaks composer.json" "the lock no longer fits composer.json's requirements or conflicts, so a composer install would stop"
   return 0
 }
 
