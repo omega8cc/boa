@@ -1948,20 +1948,66 @@ _mpt_xmass_pair() {
   _t="$(_mig_hread "${_MIG_XMASS_STATE%/*}" "${_MIG_XMASS_STATE##*/}" root)" || return 1
   printf '%s\n' "${_t}" | sed 1d | tr -d '\r' | grep -qxF -- "_XMASS_TARGET_IP=${1}"
 }
-# That, or the peer a source record of this box names.
+# $1 and every address a root record names beside it: a record's whole address
+# set is one peer, whose key is tagged with one of them.
+_mpt_peer_set() {
+  local _a _t _s=" ${1} " _ip
+  local -a _pips
+  while IFS= read -r _a; do
+    [ -n "${_a}" ] || continue
+    _t="$(_mig_rec_text "${_a}")" || continue
+    IFS=' ,' read -r -a _pips <<< "$(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
+    _mpt_in "${1}" " ${_pips[*]} " || continue
+    for _ip in "${_pips[@]}"; do
+      _is_dotted_quad "${_ip}" || continue
+      _mpt_in "${_ip}" "${_s}" || _s="${_s}${_ip} "
+    done
+  done < <(_mig_rec_list 2> /dev/null)
+  printf '%s\n' "${_s}"
+}
+# That, or the peer a source record of this box names, by any of its addresses.
 _mpt_pair_named() {
-  local _a _t
-  _mpt_xmass_pair "${1}" && return 0
+  local _a _t _ip _set
+  _set="$(_mpt_peer_set "${1}")"
+  for _ip in ${_set}; do
+    _mpt_xmass_pair "${_ip}" && return 0
+  done
   while IFS= read -r _a; do
     [ -n "${_a}" ] || continue
     _t="$(_mig_rec_text "${_a}")" || continue
     [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || continue
-    [ "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" = "${1}" ] && return 0
+    _mpt_in "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" "${_set}" && return 0
   done < <(_mig_rec_list 2> /dev/null)
+  return 1
+}
+# Root gave the peer $1 its reach on or after the day its relay ended here: a new
+# move's key or a carry for a live front, which that ended relay cannot take back.
+# Read per address, for the whole of the peer's set.
+_mpt_granted_since() {
+  local _a _t _d _over="" _ip _g
+  while IFS= read -r _a; do
+    [ -n "${_a}" ] || continue
+    _t="$(_mig_rec_text "${_a}")" || continue
+    [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "target" ] || continue
+    _mpt_in "${1}" " $(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS | tr ',' ' ') " || continue
+    _mig_txt_relay_over "${_t}" || continue
+    _d="$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)"
+    [ -n "${_d}" ] || _d="$(_mig_txt_get "${_t}" _MIG_RETIRE_DATE)"
+    [ -n "${_d}" ] || _d="$(_mig_txt_get "${_t}" _MIG_STAMPED)"
+    [[ "${_d}" > "${_over}" ]] && _over="${_d}"
+  done < <(_mig_rec_list 2> /dev/null)
+  [ -n "${_over}" ] || return 1
+  for _ip in $(_mpt_peer_set "${1}"); do
+    _g="$(sed -n "s/^${_ip//./\\.} \([0-9-]*\)\$/\1/p" "${_MPT_REACH_DAYS}" 2> /dev/null | tail -n 1)"
+    _mig_valid_date "${_g}" || continue
+    [[ "${_g}" < "${_over}" ]] || return 0
+  done
   return 1
 }
 # Cron discards what a verb prints: each removal also goes in a log.
 _MPT_TRUST_LOG="/var/log/boa/migproxy-trust.log"
+# One line per peer, "<address> <day>": when root last gave it its reach.
+_MPT_REACH_DAYS="/root/.migration.peer.reach"
 _mpt_note() {
   _msg "${1}"
   printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${1}" >> "${_MPT_TRUST_LOG}" 2> /dev/null
@@ -1999,6 +2045,10 @@ _mpt_reach_drop() {
     done
   fi
   [ "${_n}" -gt 0 ] && _mpt_note "${_ip}: reach removed (${_n} line(s))"
+  if [ -f "${_MPT_REACH_DAYS}" ]; then
+    _l="$(sed -n "/^${_rx} /p" "${_MPT_REACH_DAYS}")"
+    [ -z "${_l}" ] || _drop_line "${_MPT_REACH_DAYS}" "${_l}"
+  fi
   return 0
 }
 _mpt_relay_listed() {
@@ -2031,7 +2081,8 @@ _mpt_any_undeclared() {
 # A front that moved away or ended asks this box to stop trusting it: its serving
 # trust and witness go, a live record's address stays. Its reach goes too with
 # --over, or with --to when <ip> is no partner of this box: there the front comes
-# back at a failback and needs it.
+# back at a failback and needs it. Status 0 released, 3 kept (a live record names
+# every address), 4 refused: nothing changed and the cause is printed.
 _cmd_release() {
   local _a _to="" _over="" _ip _reach=NO
   local -a _ips=() _drop=()
@@ -2049,11 +2100,15 @@ _cmd_release() {
   [ "${#_ips[@]}" -gt 0 ] || _die "release: no address given"
   if [ ! -e "${_MIG_ADOPT_STAMP}" ]; then
     _msg "release: the one-time import has not run; nothing released"
-    return 0
+    return 4
   fi
   if ! _mpt_scan_records; then
     _msg "release: a root record cannot be read; nothing released"
-    return 0
+    return 4
+  fi
+  if _mpt_any_undeclared; then
+    _msg "release: an account here is undeclared and may need this trust; nothing released"
+    return 4
   fi
   for _ip in "${_ips[@]}"; do
     if _mpt_in "${_ip}" "${_MPT_LIVE}"; then
@@ -2062,7 +2117,7 @@ _cmd_release() {
     fi
     _drop+=("${_ip}")
   done
-  [ "${#_drop[@]}" -gt 0 ] || return 0
+  [ "${#_drop[@]}" -gt 0 ] || return 3
   _cmd_untrust "${_drop[@]}"
   for _ip in "${_drop[@]}"; do
     _drop_line "${_MIG_PEER_ADDRS}" "${_ip}"
@@ -2100,14 +2155,18 @@ _cmd_prune() {
   if [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; then
     return 0
   fi
-  [ -e /run/xmass.verb.pid ] && return 0
+  # A file a killed verb left is no verb: the holder must be alive.
+  _l="$(tr -dc '0-9' 2> /dev/null < /run/xmass.verb.pid | head -c 12)"
+  if [ -n "${_l}" ] && kill -0 "${_l}" 2> /dev/null; then
+    return 0
+  fi
   [ -n "$(_my_ipv4s)" ] || return 0
   if ! _mpt_scan_records; then
     _mpt_note "prune: a root record cannot be read; nothing pruned"
     return 0
   fi
   if _mpt_any_undeclared; then
-    _msg "prune: an account is undeclared; nothing pruned"
+    _mpt_note "prune: an account is undeclared; nothing pruned"
     return 0
   fi
   _CSF_CHANGED=NO
@@ -2116,6 +2175,10 @@ _cmd_prune() {
     _mpt_relay_listed "${_ip}" && continue
     if _mpt_pair_named "${_ip}"; then
       _msg "prune: ${_ip}: this box's own pair; its key and firewall lines stay"
+      continue
+    fi
+    if _mpt_granted_since "${_ip}"; then
+      _msg "prune: ${_ip}: its reach is newer than its ended relay; it stays"
       continue
     fi
     _mpt_reach_drop "${_ip}"

@@ -1049,7 +1049,7 @@ _mig_resolve() {
 ### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
   local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8" _rdl="$9"
-  local _a="${_root##*/}" _body
+  local _a="${_root##*/}" _body _old _ended=""
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   if ! _mig_rec "${_a}" > /dev/null; then
     echo "ALRT: refusing to write a policy record for invalid account name '${_a}'"
@@ -1058,6 +1058,13 @@ _mig_write_record() {
   if [ ! -d "/data/disk/${_a}" ] || [ -L "/data/disk/${_a}" ]; then
     echo "ALRT: refusing to write a policy record: /data/disk/${_a} is not a real directory"
     return 1
+  fi
+  ### An init on this relay's front ended it; restating the mode here does not
+  ### start it again. Only the front's own push does.
+  if [ "${_role}" = "target" ]; then
+    _old="$(_mig_rec_text "${_a}" 2> /dev/null)"
+    [ "$(_mig_txt_get "${_old}" _MIG_PEER_IP)" = "${_peer_ip}" ] \
+      && _ended="$(_mig_txt_get "${_old}" _MIG_RELAY_ENDED)"
   fi
   _body="$(
     echo "_MIG_ROLE=${_role}"
@@ -1073,6 +1080,7 @@ _mig_write_record() {
     ### on a retired record would be inherited by a later mode declaration
     ### and mailed inside the wrong arrangement block.
     [ -n "${_rdl}" ] && echo "_MIG_RETIRE_DATE=${_rdl}"
+    [ -n "${_ended}" ] && echo "_MIG_RELAY_ENDED=${_ended}"
     [ -n "${_peer_ips}" ] && echo "_MIG_PEER_IPS=${_peer_ips}"
     echo "_MIG_STAMPED=$(date -u '+%Y-%m-%d')"
   )"
@@ -8241,12 +8249,14 @@ _xoct_wire_target_proxy_trust() {
 ### peer keeps this box's reach, since no record there can date it; on a retarget
 ### the peer drops it unless the new target is its own partner. Never fatal.
 _xoct_release_old_peer() {
-  local _p="$1" _how="${2:-}" _a _t _rc _cls _rel=""
+  local _p="$1" _how="${2:-}" _a _t _rc _cls _rel="" _o
   while IFS= read -r _a; do
     [ -n "${_a}" ] || continue
     _t="$(_mig_rec_text "${_a}")"
     _rc=$?
     if [ "${_rc}" -eq 3 ]; then
+      ### A relay root has no record for can be to any peer.
+      _mig_is_proxied "${_a}" && return 0
       _cls="$(_mig_log_class "${_a}")"
       case "${_cls}" in
         legacy-mine\ *)
@@ -8257,17 +8267,28 @@ _xoct_release_old_peer() {
     fi
     [ "${_rc}" -eq 0 ] || return 0
     [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || continue
+    if [ -z "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" ]; then
+      _mig_is_proxied "${_a}" && return 0
+      continue
+    fi
     [ "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" = "${_p}" ] || continue
     [ "${_how}" = "retire" ] && [ "$(_mig_txt_get "${_t}" _MIG_MODE)" = "retired" ] && continue
     return 0
   done < <(_mig_list_accounts)
   [ "${_how}" = "retire" ] || _rel=" --to=${_tgt}"
-  if ssh -o ConnectTimeout=15 root@"${_p}" "${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}" 2> /dev/null; then
-    echo "INFO: ${_p} released this box: no account here relays there any more"
-  else
-    echo "ALRT: ${_p} did not release this box; once it is reachable and current, run there:"
-    echo "ALRT:   ${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}"
-  fi
+  _o="$(ssh -o ConnectTimeout=15 root@"${_p}" "${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}" 2> /dev/null)"
+  case "$?" in
+    0) echo "INFO: ${_p} released this box: no account here relays there any more" ;;
+    3) echo "INFO: ${_p} keeps trusting this box: a live inbound record there names it" ;;
+    4)
+      echo "ALRT: ${_p} refused to release this box: $(printf '%s' "${_o}" | tail -n 1 | tr -cd '[:print:]' | cut -c1-120)"
+      echo "ALRT:   once that is resolved, run there: ${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}"
+    ;;
+    *)
+      echo "ALRT: ${_p} did not release this box; once it is reachable and current, run there:"
+      echo "ALRT:   ${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}"
+    ;;
+  esac
 }
 
 ### How to release this box by hand on the abandoned target $1, when no
@@ -10687,6 +10708,16 @@ _xoct_key_trust_line() {
   _xoct_key_tagged_in "${_ak}" "${_kt}" "${_tag}"
 }
 
+### The day root gave the peer $1 its reach. A relay that ended before that day
+### cannot take it back: this is a new move's key, or a carry for a live front.
+_mig_reach_stamp() {
+  local _f="/root/.migration.peer.reach" _t
+  [[ "${1}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 0
+  _t="$(grep -v "^${1//./\\.} " "${_f}" 2> /dev/null)"
+  { [ -z "${_t}" ] || printf '%s\n' "${_t}"; printf '%s %s\n' "${1}" "$(date -u '+%Y-%m-%d')"; } > "${_f}.$$" \
+    && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
+}
+
 ### Only the verified line travels, TAGGED with the source's address the way
 ### xmass tags its own, so a later promotion can attribute it to a peer.
 _xoct_trust_source_key() {
@@ -10699,6 +10730,7 @@ _xoct_trust_source_key() {
     return 1
   fi
   echo "INFO: key ${_XOCT_KEY_FP} from ${_hst} is in ${_ak}"
+  _mig_reach_stamp "${_src_ip}"
   return 0
 }
 
