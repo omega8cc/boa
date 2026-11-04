@@ -1047,12 +1047,14 @@ _nginx_initd_check() {
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
     && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]]; then
+    chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else
     mv -f /etc/init.d/nginx \
       ${_vBs}/nginx-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${_locCnf}/nginx/nginx /etc/init.d/nginx
+    chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
     _mrun "service nginx start"

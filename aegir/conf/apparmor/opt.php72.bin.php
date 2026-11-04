@@ -35,6 +35,8 @@
   ptrace (read) peer=/opt/php*/sbin/php-fpm,
   ptrace (read) peer=/usr/bin/mysqld_safe,
   ptrace (read) peer=/usr/local/sbin/pure-ftpd,
+  ptrace (read) peer=/usr/bin/valkey-server,
+  ptrace (read) peer=/usr/sbin/mysqld,
   ptrace (read) peer=/usr/sbin/nginx,
   ptrace (read) peer=/usr/sbin/rsyslogd,
   ptrace (read) peer=/usr/sbin/unbound,
@@ -80,6 +82,18 @@
   /usr/share/GeoIP/GeoLite2-City.mmdb r,
   /usr/share/GeoIP/GeoLite2-Country.mmdb r,
   /opt/php72/** r,
+
+  # Allow PHP-CLI to read what the backend tools it starts ask for
+  / r,
+  /data/disk/*/.drush/ r,
+  /data/disk/*/.drush/usr/ r,
+  /data/disk/*/.drush/usr/** r,
+  /data/disk/*/log/*.txt r,
+  /etc/ImageMagick-*/ r,
+  /etc/ImageMagick-*/** r,
+  /etc/mydumper.cnf r,
+  /usr/share/ImageMagick-*/ r,
+  /usr/share/ImageMagick-*/** r,
 
   # Allow PHP-CLI to read required user/access files
   /etc/login.defs r,
@@ -131,7 +145,7 @@
   /usr/bin/magick mrix,
   /usr/bin/mysql mrix,
   /usr/bin/patch mrix,
-  /usr/bin/sudo mrix,
+  /usr/bin/sudo Px -> boa_sudo,
   /usr/bin/svn mrix,
   /usr/bin/tput mrix,
   /usr/bin/tr mrix,
@@ -158,6 +172,41 @@
   /usr/sbin/nginx mrix,
   /usr/sbin/postdrop mrix,
   /usr/sbin/sendmail mrix,
+  /{,usr/}bin/basename mrix,
+  /{,usr/}bin/cut mrix,
+  /{,usr/}bin/dd mrix,
+  /{,usr/}bin/df mrix,
+  /{,usr/}bin/dirname mrix,
+  /{,usr/}bin/du mrix,
+  /{,usr/}bin/env mrix,
+  /{,usr/}bin/getent mrix,
+  /{,usr/}bin/gzip mrix,
+  /{,usr/}bin/head mrix,
+  /{,usr/}bin/mawk mrix,
+  /{,usr/}bin/readlink mrix,
+  /{,usr/}bin/realpath mrix,
+  /{,usr/}bin/sort mrix,
+  /{,usr/}bin/stat mrix,
+  /{,usr/}bin/tee mrix,
+  /{,usr/}bin/timeout mrix,
+  /{,usr/}bin/whoami mrix,
+  /usr/bin/mydumper mrix,
+  /usr/bin/myloader mrix,
+  /usr/bin/mysqldump mrix,
+  /opt/php*/bin/php mrix,
+
+  # hosting_le runs its Let's Encrypt client under bash from a site's Verify, and
+  # Provision's self-signed path calls openssl
+  /{,usr/}bin/bash mrix,
+  /{,usr/}bin/ln mrix,
+  /{,usr/}bin/mktemp mrix,
+  /{,usr/}bin/sleep mrix,
+  /{,usr/}bin/tail mrix,
+  /{,usr/}bin/uname mrix,
+  /usr/bin/diff mrix,
+  /usr/bin/hexdump mrix,
+  /usr/bin/openssl mrix,
+  /usr/local/ssl3/bin/openssl mrix,
 
   # Allow PHP-CLI to access some /dev
   /dev/null rw,
@@ -167,7 +216,7 @@
 
   # Allow PHP-CLI to use tmp files
   /tmp/ r,
-  /tmp/** rw,
+  /tmp/** rwk,
   /var/spool/postfix/maildrop/ r,
   /var/spool/postfix/maildrop/* rw,
   /var/tmp/** rw,
@@ -228,6 +277,8 @@
 
   # Allow PHP-CLI to read/write in the Ægir Backend on Master Instance
 
+  owner /var/aegir/hostmaster-*/ r,
+  owner /var/aegir/hostmaster-*/** r,
   owner /var/aegir/.drush/ r,
   owner /var/aegir/.drush/* rw,
   owner /var/aegir/.drush/** rw,
