@@ -13146,6 +13146,20 @@ _pam_umask_check_fix() {
     sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart"
   fi
+  # A system whose stock common-session files carry pam_umask with no argument
+  # reads UMASK from these two files for every PAM session, where a login has
+  # its own argument above: 002 there gives root 0002 under cron and sudo, so
+  # what root makes in an account's tree comes out writable by that account.
+  # It must find 022, not nothing: with no value the module leaves the umask
+  # as it came, and a cron restarted from a job at 0002 hands that to every job.
+  if grep -qsE "^session.*pam_umask\.so[[:space:]]*$" \
+    /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive; then
+    if ! grep -qsx "UMASK=022" /etc/default/login; then
+      sed -i "/^UMASK/d" /etc/default/login &> /dev/null
+      echo "UMASK=022" >> /etc/default/login
+    fi
+    sed -i "s/^UMASK.*/UMASK 022/g" /etc/login.defs &> /dev/null
+  fi
 }
 
 _pam_many_check_fix() {
