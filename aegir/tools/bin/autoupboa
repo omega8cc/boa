@@ -921,16 +921,30 @@ _if_disable_not_used_services() {
     && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
     || [ -e "/root/.deny.clamav.cnf" ] \
     || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
-    if [ -e "/etc/init.d/clamav-daemon" ]; then
-      _clearSwap=YES
-      update-rc.d -f clamav-daemon remove &> /dev/null
-      mv -f /etc/init.d/clamav-daemon /var/backups/clamav-daemon.initd
+    # Earlier versions moved the init scripts to /var/backups, and the package's
+    # own configure step then failed on the missing script after an update,
+    # which left it half configured and every later apt run on the box ending
+    # with an error. The scripts stay in place with no rc links; a moved one is
+    # put back and the pending configure finished before the daemons are killed.
+    _clamRestored=NO
+    for _svc in clamav-daemon clamav-freshclam; do
+      if [ ! -e "/etc/init.d/${_svc}" ] \
+        && [ -e "/var/backups/${_svc}.initd" ]; then
+        mv -f "/var/backups/${_svc}.initd" "/etc/init.d/${_svc}"
+        _clamRestored=YES
+      fi
+    done
+    if [ "${_clamRestored}" = "YES" ]; then
+      DEBIAN_FRONTEND=noninteractive /usr/bin/dpkg --configure -a &> /dev/null
     fi
-    if [ -e "/etc/init.d/clamav-freshclam" ]; then
-      _clearSwap=YES
-      update-rc.d -f clamav-freshclam remove &> /dev/null
-      mv -f /etc/init.d/clamav-freshclam /var/backups/clamav-freshclam.initd
-    fi
+    for _svc in clamav-daemon clamav-freshclam; do
+      if ls /etc/rc?.d/S??"${_svc}" &> /dev/null; then
+        _clearSwap=YES
+      fi
+      if [ -e "/etc/init.d/${_svc}" ]; then
+        update-rc.d -f "${_svc}" remove &> /dev/null
+      fi
+    done
     pkill -9 -f '^[^ ]*clamd( |$)'
     pkill -9 -f '^[^ ]*freshclam( |$)'
     rm -f /run/clamav/*
