@@ -157,6 +157,12 @@
       the box at that moment, the next pass found nothing changed and nginx
       kept the old pool until some other task reloaded it.
 
+    * boa cleanup purge now refuses while a BOA pass or system task runs, and
+      xmass prep-target waits for the target to go quiet before it judges and
+      purges an account only the target has: a pass still running on that account
+      wrote its panel proxy back behind the purge, naming a certificate that was
+      gone, and nginx -t failed for the whole box.
+
     * The nightly usage pass no longer takes an account off the report, or holds
       its over-limit notices, on a CANCELLED, proxied.pid or proxy-failed.pid the
       account made itself in its own log folder. Only root's own relay marker
