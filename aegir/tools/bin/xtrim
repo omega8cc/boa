@@ -996,7 +996,10 @@ _probe_dom() {
     _catch=" direct=CATCH-ALL"
     _c1="catchall"
   fi
-  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}"; then
+  ### The relay carries the target's answer, so the target's catch-all is one
+  ### too: the two boxes' pages differ after a pass on one of them alone.
+  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}" \
+    || _is_catchall_body "${_br}" "${_cr}" "${_BASE_DIRECT}"; then
     _catch="${_catch} relay=CATCH-ALL"
     _cr="catchall"
   fi
