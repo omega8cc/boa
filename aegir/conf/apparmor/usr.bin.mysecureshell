@@ -45,7 +45,7 @@
 
   # Read/write access to user home
   /home/*/ r,
-  /home/*/** rw,
+  /home/*/** rwk,
 
   # Read/write access to SSH client files
   /home/*/.ssh/ r,
@@ -71,9 +71,9 @@
   /data/disk/*/static/** r,
 
   # Allow write access to Octopus user directories and files
-  owner /data/disk/*/distro/** rw,
+  /data/disk/*/distro/** rwk,
   owner /data/disk/*/static/ r,
-  owner /data/disk/*/static/** rw,
+  /data/disk/*/static/** rwk,
   owner /opt/user/npm/*/** rw,
   owner /opt/user/gems/*/** rw,
   owner /opt/user/gems/*/bin/** k,
@@ -84,6 +84,9 @@
 
   # Deny access to critical system files
   deny /etc/shadow* rwlx,
+  deny /etc/sudo.conf r,
+  # No sudoers line names a login, and what asks only wants to know
+  deny /usr/bin/sudo x,
 
   # Allow read access to user information files
   /etc/passwd r,
@@ -96,7 +99,7 @@
 
   # Temporary files and directories
   /home/*/.tmp/ r,
-  /home/*/.tmp/** rw,
+  /home/*/.tmp/** rwk,
 
   # Deny execution of any shell or command not explicitly allowed
   deny /{,usr/}bin/bash x,
@@ -107,6 +110,106 @@
   /opt/local/bin/websh mrix,
   /usr/bin/mysecureshell mrix,
   /usr/bin/python* mrix,
+
+  /usr/share/s4cmd/ r,
+  /usr/share/s4cmd/** r,
+
+  # MySecureShell starts as root by its setuid bit and writes the log its settings name
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  /var/log/sftp-server.log rwk,
+
+  # What lshell, websh and the tools a login is offered start and read. A real login stays in
+  # this profile: what it starts has no profile of its own under ix.
+  /{,usr/}bin/cut mrix,
+  /{,usr/}bin/dirname mrix,
+  /{,usr/}bin/gawk mrix,
+  /{,usr/}bin/head mrix,
+  /{,usr/}bin/mawk mrix,
+  /{,usr/}bin/readlink mrix,
+  /{,usr/}bin/sort mrix,
+  /{,usr/}bin/stat mrix,
+  /{,usr/}bin/tail mrix,
+  /{,usr/}bin/tr mrix,
+  /{,usr/}bin/whoami mrix,
+  /{,usr/}bin/xargs mrix,
+  /{,usr/}bin/xz mrix,
+  /{,usr/}sbin/ldconfig mrix,
+  /opt/local/bin/bee mrix,
+  /opt/local/bin/grav mrix,
+  /opt/tools/bee/ r,
+  /opt/tools/bee/** mr,
+  /usr/bin/cvs mrix,
+  /usr/bin/git mrix,
+  /usr/bin/mc mrix,
+  /usr/bin/mydumper mrix,
+  /usr/bin/myloader mrix,
+  /usr/bin/svn mrix,
+  /usr/lib/git-core/ r,
+  /usr/lib/git-core/** mrix,
+  /usr/local/bin/bundle mrix,
+  /usr/local/bin/bundler mrix,
+  /usr/local/bin/bzr mrix,
+  /usr/local/bin/myloader.bin mrix,
+  /usr/local/bin/ruby mrix,
+  /usr/local/bin/ssh-add mrix,
+  /usr/local/libexec/git-core/ r,
+  /usr/local/libexec/git-core/** mrix,
+  /usr/local/ssl/bin/openssl mrix,
+  /usr/local/ssl3/bin/openssl mrix,
+  /usr/share/s4cmd/s4cmd.py mrix,
+
+  /data/all/ r,
+  /data/all/** r,
+  /data/conf/ r,
+  /data/conf/** r,
+  /data/disk/*/distro/ r,
+  /data/disk/all/ r,
+  /data/disk/all/** r,
+  /etc/ImageMagick-*/ r,
+  /etc/ImageMagick-*/** r,
+  /etc/mc/ r,
+  /etc/mc/** r,
+  /etc/mydumper.cnf r,
+  /etc/subversion/ r,
+  /etc/subversion/* r,
+  /etc/vim/ r,
+  /etc/vim/** r,
+  /etc/wgetrc r,
+  /mnt/**/files/*/static/files/ r,
+  /mnt/**/files/*/static/files/** rwk,
+
+  # BOA's own folders at a store's root (.backups, .backup-exports, .archived) are no site's
+  deny /data/disk/*/static/files/.*/** wkl,
+  deny /mnt/**/files/*/static/files/.*/** wkl,
+  /tmp/ r,
+  /tmp/** rwk,
+  /usr/local/share/git-core/templates/ r,
+  /usr/local/share/git-core/templates/** r,
+  /usr/share/ImageMagick-*/ r,
+  /usr/share/ImageMagick-*/** r,
+  /usr/share/mc/ r,
+  /usr/share/mc/** r,
+  /usr/share/mysql/ r,
+  /usr/share/mysql/** r,
+  /usr/share/vim/ r,
+  /usr/share/vim/** r,
+  /var/backups/ltd/.cli/*/* r,
+  /var/tmp/fpm/ r,
+  /var/tmp/fpm/** r,
+
+  # The local database socket
+  /etc/mysql/conf.d/ r,
+  /etc/mysql/conf.d/* r,
+  /etc/mysql/my.cnf r,
+  /run/mysqld/mysqld.sock rw,
+
+  # ping is setuid root and opens a raw socket
+  capability net_raw,
+  capability setuid,
+  network inet raw,
+  network inet6 raw,
   /usr/local/bin/lshell mrix,
 
   # Additional binaries allowed in Limited Shell
@@ -146,10 +249,10 @@
   /usr/bin/mysqldump mrix,
   /usr/bin/node mrix,
   /usr/bin/openssl mrix,
-  /usr/bin/passwd mrix,
+  /usr/bin/passwd Px -> boa_passwd,
   /usr/bin/patch mrix,
   /usr/bin/rsync mrix,
-  /usr/bin/rvim mrix,
+  /usr/bin/vim.* mrix,
   /usr/bin/tput mrix,
   /usr/bin/unzip mrix,
   /usr/bin/wget mrix,
