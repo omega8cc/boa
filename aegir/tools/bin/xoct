@@ -644,7 +644,7 @@ _mig_txt_valid() {
     echo "invalid _MIG_DEADLINE '$(_mig_shown "${_v}")'"
     return 1
   fi
-  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
+  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED _MIG_RELAY_ENDED; do
     _v="$(_mig_txt_get "${_t}" "${_k}")"
     if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
       echo "invalid ${_k} '$(_mig_shown "${_v}")'"
@@ -8234,6 +8234,42 @@ _xoct_wire_target_proxy_trust() {
   fi
 }
 
+### This box stopped relaying to the peer $1 for this account: when no other
+### account here still names it, the peer stops trusting this box. A source record
+### naming it, a copy older tools left naming it, or a record that cannot be read
+### keeps it. On a retire ($2 = retire) a retired record does not count, and the
+### peer keeps this box's reach, since no record there can date it; on a retarget
+### the peer drops it unless the new target is its own partner. Never fatal.
+_xoct_release_old_peer() {
+  local _p="$1" _how="${2:-}" _a _t _rc _cls _rel=""
+  while IFS= read -r _a; do
+    [ -n "${_a}" ] || continue
+    _t="$(_mig_rec_text "${_a}")"
+    _rc=$?
+    if [ "${_rc}" -eq 3 ]; then
+      _cls="$(_mig_log_class "${_a}")"
+      case "${_cls}" in
+        legacy-mine\ *)
+          [ "$(_mig_log_role "${_a}" _MIG_PEER_IP)" = "${_p}" ] && return 0
+        ;;
+      esac
+      continue
+    fi
+    [ "${_rc}" -eq 0 ] || return 0
+    [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || continue
+    [ "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" = "${_p}" ] || continue
+    [ "${_how}" = "retire" ] && [ "$(_mig_txt_get "${_t}" _MIG_MODE)" = "retired" ] && continue
+    return 0
+  done < <(_mig_list_accounts)
+  [ "${_how}" = "retire" ] || _rel=" --to=${_tgt}"
+  if ssh -o ConnectTimeout=15 root@"${_p}" "${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}" 2> /dev/null; then
+    echo "INFO: ${_p} released this box: no account here relays there any more"
+  else
+    echo "ALRT: ${_p} did not release this box; once it is reachable and current, run there:"
+    echo "ALRT:   ${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}"
+  fi
+}
+
 ### How to release this box by hand on the abandoned target $1, when no
 ### record root holds names the account there (a log/ copy adopt did not
 ### import, or a root record imported from one that $1 did not confirm).
@@ -9239,7 +9275,7 @@ _xoct_proxy_mode() {
 }
 
 _xoct_retire_one() {
-  local _a="$1" _wdl="$2"
+  local _a="$1" _wdl="$2" _relpeer=NO
   local _root="/data/disk/${_a}" _t _rc _role _peer _peer_oct _scope _mode _peer_ips
   local _new_ip _old_ip _kind=retire _lpeer _imp=""
   ### An account in a test run is not retired without its admail=: the
@@ -9330,10 +9366,12 @@ _xoct_retire_one() {
       ;;
       6)
         echo "ALRT: ${_a}: peer ${_peer} has no account ${_peer_oct:-${_a}}; nothing to retire there"
+        _relpeer=YES
       ;;
       7)
         echo "ALRT: ${_a}: peer ${_peer} has migrated this account onward (chained); its"
         echo "ALRT: record was left untouched"
+        _relpeer=YES
       ;;
       *)
         echo "ERROR: ${_a}: peer ${_peer} unreachable -- NOT retiring (the target would keep"
@@ -9349,6 +9387,8 @@ _xoct_retire_one() {
     retired "${_scope}" "" "${_peer_ips}" "${_wdl}" || return 1
   _mig_log "${_root}" xoct retire "${_scope}" retired "${_wdl}" "${_peer}"
   echo "INFO: ${_a}: proxy policy retired"
+  ### After the write: this account's own record no longer holds the peer.
+  [ "${_relpeer}" = "YES" ] && _xoct_release_old_peer "${_peer}" retire
   if [ "${_role}" = "target" ] && [ -x "${_MIG_TRUST_TOOL}" ]; then
     "${_MIG_TRUST_TOOL}" reconcile \
       || echo "ALRT: local reconcile returned non-zero"
@@ -10456,13 +10496,17 @@ _migrate_init() {
                   echo "ALRT: could not release trust on abandoned target ${_XOCT_OLD_PEER}; when it is"
                   echo "ALRT: reachable, run there: ${_MIG_TRUST_TOOL} reconcile"
                 fi
+                _xoct_release_old_peer "${_XOCT_OLD_PEER}"
               ;;
               6|7)
-                echo "INFO: abandoned target ${_XOCT_OLD_PEER} holds no inbound record for ${_XOCT_OLD_PEER_OCT:-${_oct}}; nothing to release there"
+                echo "INFO: abandoned target ${_XOCT_OLD_PEER} holds no inbound record for ${_XOCT_OLD_PEER_OCT:-${_oct}}"
+                _xoct_release_old_peer "${_XOCT_OLD_PEER}"
               ;;
               *)
+                ### The record there is still live, so a reconcile cannot release it.
                 echo "ALRT: could not release trust on abandoned target ${_XOCT_OLD_PEER}; when it is"
-                echo "ALRT: reachable, run there: ${_MIG_TRUST_TOOL} reconcile"
+                echo "ALRT: reachable, release it by hand there:"
+                _xoct_old_peer_hand_release "${_XOCT_OLD_PEER}"
               ;;
             esac
           fi

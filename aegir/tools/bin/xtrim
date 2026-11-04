@@ -467,7 +467,7 @@ _mig_txt_valid() {
     echo "invalid _MIG_DEADLINE '${_v}'"
     return 1
   fi
-  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
+  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED _MIG_RELAY_ENDED; do
     _v="$(_mig_txt_get "${_t}" "${_k}")"
     if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
       echo "invalid ${_k} '${_v}'"

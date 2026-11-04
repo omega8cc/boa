@@ -312,6 +312,13 @@
       the box at that moment, the next pass found nothing changed and nginx
       kept the old pool until some other task reloaded it.
 
+    * Migration trust no record needs any more now ends: a retired relay's root
+      key and firewall lines go once its promised date has passed, a front that
+      moved away or a box rebuilt as its own mirror is no longer trusted where it
+      no longer relays, and the peer address list drops what nothing names.
+      Bringing back a retired front past its date needs the pre-mig key exchange
+      again; a mirror put back by restore-target needs xoct proxy --repair.
+
     * boa cleanup purge now refuses while a BOA pass or system task runs, and
       xmass prep-target waits for the target to go quiet before it judges and
       purges an account only the target has: a pass still running on that account

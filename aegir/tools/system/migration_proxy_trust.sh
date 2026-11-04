@@ -8,6 +8,8 @@
 #   migration_proxy_trust.sh teardown [--force]
 #   migration_proxy_trust.sh reconcile [--force]
 #   migration_proxy_trust.sh adopt [--once]
+#   migration_proxy_trust.sh release <ip>... [--to=<ip>|--over]
+#   migration_proxy_trust.sh prune
 #
 # trust: register the given peer IP(s) as trusted migration sources on this host.
 #   L4 (always): add to csf.allow on ports 80 AND 443 and to csf.ignore -- applied
@@ -669,7 +671,7 @@ _mig_txt_valid() {
     echo "invalid _MIG_DEADLINE '$(_mig_shown "${_v}")'"
     return 1
   fi
-  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
+  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED _MIG_RELAY_ENDED; do
     _v="$(_mig_txt_get "${_t}" "${_k}")"
     if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
       echo "invalid ${_k} '$(_mig_shown "${_v}")'"
@@ -868,6 +870,19 @@ _mig_witnessed() {
   grep -qE -- "^${_rx} # xmass migration (source|target|inbound-proxy)[[:space:]]*\$" "${_MIG_CSF_ALLOW}" 2> /dev/null
 }
 
+# Whether the relay the target record text $1 describes is over: an init on its
+# front ended it (_MIG_RELAY_ENDED), or it was retired and its promised date has
+# passed. A retired record with no readable date is never over.
+_mig_txt_relay_over() {
+  local _d
+  [ -n "$(_mig_txt_get "${1}" _MIG_RELAY_ENDED)" ] && return 0
+  [ "$(_mig_txt_get "${1}" _MIG_MODE)" = "retired" ] || return 1
+  _d="$(_mig_txt_get "${1}" _MIG_RETIRE_DATE)"
+  [ -n "${_d}" ] || _d="$(_mig_txt_get "${1}" _MIG_STAMPED)"
+  _mig_valid_date "${_d}" || return 1
+  [[ "${_d}" < "$(date -u '+%Y-%m-%d')" ]]
+}
+
 # --- trust-only helpers ------------------------------------------------------
 
 # Which of the three witnesses vouches for $1, for the report only (the
@@ -1032,6 +1047,9 @@ _cmd_reconcile() {
     # count -- both as trust candidates and as record-owned for the legacy
     # separation below.
     _record_ips="${_record_ips}${_peers}"
+    # An init on this relay's own front ended it: the mode stays for the next
+    # cutover to rewire, the trust goes.
+    [ -n "$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)" ] && continue
     _mode="$(_mig_txt_get "${_t}" _MIG_MODE)"
     case "${_mode}" in
       permanent|ha-switch)
@@ -1862,18 +1880,277 @@ _cmd_adopt() {
   _ad_run NO
 }
 
+# --- trust no record needs any more -------------------------------------------
+#
+# Serving trust is the relay list, the realip file and the csf "migration proxy"
+# lines; reach is a peer's tagged root key and its csf "xmass migration source"
+# and "inbound-proxy" lines; the witness is its line in the address list. The
+# limits hold for both verbs below: a record is never deleted, absence of a
+# record never removes reach (a mirror holds carried reach with no record, and
+# a box just promoted needs it for the retarget), the addresses of this box's
+# own pair are never touched, and "xmass migration target" and "Legacy Proxy"
+# lines are not this tool's.
+
+# Fills the address lists of the root target records: live (a relay still on,
+# or a record for another address, which nothing here may judge), held (retired
+# inside its promised date) and over. Status 1, and nothing is decided, on a
+# record that cannot be read.
+_MPT_LIVE=" "
+_MPT_HELD=" "
+_MPT_OVER=" "
+_mpt_scan_records() {
+  local _acct _t _rc _ip _b
+  local -a _pips
+  _MPT_LIVE=" "
+  _MPT_HELD=" "
+  _MPT_OVER=" "
+  while IFS= read -r _acct; do
+    [ -n "${_acct}" ] || continue
+    _t="$(_mig_rec_text "${_acct}")"
+    _rc=$?
+    [ "${_rc}" -eq 3 ] && continue
+    [ "${_rc}" -eq 0 ] || return 1
+    [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "target" ] || continue
+    if ! _mig_txt_mine "${_t}"; then
+      _b=_MPT_LIVE
+    elif _mig_txt_relay_over "${_t}"; then
+      _b=_MPT_OVER
+    elif [ "$(_mig_txt_get "${_t}" _MIG_MODE)" = "retired" ]; then
+      _b=_MPT_HELD
+    else
+      _b=_MPT_LIVE
+    fi
+    IFS=' ,' read -r -a _pips <<< "$(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS)"
+    for _ip in "${_pips[@]}"; do
+      _is_dotted_quad "${_ip}" || continue
+      printf -v "${_b}" '%s%s ' "${!_b}" "${_ip}"
+    done
+  done < <(_mig_rec_list 2> /dev/null)
+  return 0
+}
+_mpt_in() {
+  case "${2}" in
+    *" ${1} "*) return 0 ;;
+  esac
+  return 1
+}
+# The peer $1 is this box's xmass partner: the active it stands by for, a box an
+# xmass verb ran toward from here, or the target in its xmass state.
+_mpt_xmass_pair() {
+  local _t
+  _mig_quad "${1}" || return 1
+  if [ -e /root/.standby.cnf ] \
+    && sed -n 's/^xmass replication target of \([0-9.]*\) since .*/\1/p' /root/.standby.cnf \
+      | grep -qxF -- "${1}"; then
+    return 0
+  fi
+  _mig_hread "${_MIG_STATE_DIR}" "xmass.migrate.${1}.state" root > /dev/null && return 0
+  _t="$(_mig_hread "${_MIG_XMASS_STATE%/*}" "${_MIG_XMASS_STATE##*/}" root)" || return 1
+  printf '%s\n' "${_t}" | sed 1d | tr -d '\r' | grep -qxF -- "_XMASS_TARGET_IP=${1}"
+}
+# That, or the peer a source record of this box names.
+_mpt_pair_named() {
+  local _a _t
+  _mpt_xmass_pair "${1}" && return 0
+  while IFS= read -r _a; do
+    [ -n "${_a}" ] || continue
+    _t="$(_mig_rec_text "${_a}")" || continue
+    [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "source" ] || continue
+    [ "$(_mig_txt_get "${_t}" _MIG_PEER_IP)" = "${1}" ] && return 0
+  done < <(_mig_rec_list 2> /dev/null)
+  return 1
+}
+# Cron discards what a verb prints: each removal also goes in a log.
+_MPT_TRUST_LOG="/var/log/boa/migproxy-trust.log"
+_mpt_note() {
+  _msg "${1}"
+  printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${1}" >> "${_MPT_TRUST_LOG}" 2> /dev/null
+  return 0
+}
+# Removes the peer $1's reach, exact lines only. Status 1 when a file could not
+# be rewritten, which is left as found. Sets _CSF_CHANGED.
+_mpt_reach_drop() {
+  local _ip="${1}" _rx _l _f _rc _n=0
+  _rx="${_ip//./\\.}"
+  while IFS= read -r _l; do
+    [ -n "${_l}" ] || continue
+    _drop_line "${_MIG_AUTH_KEYS}" "${_l}"
+    if [ "$?" -eq 2 ]; then
+      _mpt_note "${_ip}: could not rewrite ${_MIG_AUTH_KEYS}; left as found"
+      return 1
+    fi
+    _n=$(( _n + 1 ))
+  done < <(grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
+    | grep -E -- " # (xmass|xoct|xcopy) migration source ${_rx}[[:space:]]*\$")
+  if _csf_present; then
+    for _f in "${_csf_allow}" "${_csf_ignore}"; do
+      for _l in "${_ip} # xmass migration source" "${_ip} # xmass migration inbound-proxy"; do
+        _drop_line "${_f}" "${_l}"
+        _rc=$?
+        if [ "${_rc}" -eq 2 ]; then
+          _mpt_note "${_ip}: could not rewrite ${_f}; left as found"
+          return 1
+        fi
+        if [ "${_rc}" -eq 0 ]; then
+          _CSF_CHANGED="YES"
+          _n=$(( _n + 1 ))
+        fi
+      done
+    done
+  fi
+  [ "${_n}" -gt 0 ] && _mpt_note "${_ip}: reach removed (${_n} line(s))"
+  return 0
+}
+_mpt_relay_listed() {
+  { cat "${_csf_ctrl}" 2> /dev/null; _conf_cat "${_realip_ctrl}"; } | grep -qxF -- "${1}"
+}
+# An account root cannot speak for yet: a copy older tools left that has no root
+# record or is newer than it, or a marker with no record.
+_mpt_any_undeclared() {
+  local _a _cls _rmt
+  while IFS= read -r _a; do
+    [ -n "${_a}" ] || continue
+    _cls="$(_mig_log_class "${_a}")"
+    if [ -e "$(_mig_rec "${_a}")" ]; then
+      case "${_cls}" in
+        legacy-mine\ *)
+          _rmt="$(_mig_rec_mtime "${_a}")" || return 0
+          [ "${_cls#legacy-mine }" -gt "${_rmt}" ] && return 0
+        ;;
+      esac
+    else
+      case "${_cls}" in
+        legacy-mine\ *) return 0 ;;
+      esac
+      _mig_is_proxied "${_a}" && return 0
+    fi
+  done < <(_mig_list_accounts)
+  return 1
+}
+
+# A front that moved away or ended asks this box to stop trusting it: its serving
+# trust and witness go, a live record's address stays. Its reach goes too with
+# --over, or with --to when <ip> is no partner of this box: there the front comes
+# back at a failback and needs it.
+_cmd_release() {
+  local _a _to="" _over="" _ip _reach=NO
+  local -a _ips=() _drop=()
+  for _a in "$@"; do
+    case "${_a}" in
+      --to=*) _to="${_a#--to=}" ;;
+      --over) _over=YES ;;
+      --*) _die "unknown option ${_a}" ;;
+      *)
+        _is_dotted_quad "${_a}" || _die "not a peer address: ${_a}"
+        _ips+=("${_a}")
+      ;;
+    esac
+  done
+  [ "${#_ips[@]}" -gt 0 ] || _die "release: no address given"
+  if [ ! -e "${_MIG_ADOPT_STAMP}" ]; then
+    _msg "release: the one-time import has not run; nothing released"
+    return 0
+  fi
+  if ! _mpt_scan_records; then
+    _msg "release: a root record cannot be read; nothing released"
+    return 0
+  fi
+  for _ip in "${_ips[@]}"; do
+    if _mpt_in "${_ip}" "${_MPT_LIVE}"; then
+      _msg "release: ${_ip}: a live inbound record names it; kept"
+      continue
+    fi
+    _drop+=("${_ip}")
+  done
+  [ "${#_drop[@]}" -gt 0 ] || return 0
+  _cmd_untrust "${_drop[@]}"
+  for _ip in "${_drop[@]}"; do
+    _drop_line "${_MIG_PEER_ADDRS}" "${_ip}"
+    [ "$?" -eq 2 ] && _mpt_note "release: could not rewrite ${_MIG_PEER_ADDRS}; left as found"
+  done
+  if [ -n "${_over}" ]; then
+    _reach=YES
+  elif [ -n "${_to}" ] && [ ! -e /root/.standby.cnf ] && ! _mpt_xmass_pair "${_to}"; then
+    _reach=YES
+  fi
+  if [ "${_reach}" = "YES" ]; then
+    _CSF_CHANGED=NO
+    for _ip in "${_drop[@]}"; do
+      if _mpt_pair_named "${_ip}"; then
+        _msg "release: ${_ip}: this box's own pair; its key and firewall lines stay"
+        continue
+      fi
+      _mpt_reach_drop "${_ip}"
+    done
+    [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+  fi
+  if [ ! -s "${_csf_ctrl}" ] && [ -z "$(_conf_cat "${_realip_ctrl}")" ] \
+    && [ "${_MPT_LIVE}" = " " ]; then
+    rm -f "${_perm_flag}"
+  fi
+  return 0
+}
+
+# Daily, from the certificate mirror's cron: the reach of a relay that is over,
+# and every address-list line nothing names any more. A standby prunes nothing:
+# its records and witnesses are what its promotion will need.
+_cmd_prune() {
+  local _ip _l
+  [ -e "${_MIG_ADOPT_STAMP}" ] || return 0
+  if [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; then
+    return 0
+  fi
+  [ -e /run/xmass.verb.pid ] && return 0
+  [ -n "$(_my_ipv4s)" ] || return 0
+  if ! _mpt_scan_records; then
+    _mpt_note "prune: a root record cannot be read; nothing pruned"
+    return 0
+  fi
+  if _mpt_any_undeclared; then
+    _msg "prune: an account is undeclared; nothing pruned"
+    return 0
+  fi
+  _CSF_CHANGED=NO
+  for _ip in ${_MPT_OVER}; do
+    _mpt_in "${_ip}" "${_MPT_LIVE}${_MPT_HELD}" && continue
+    _mpt_relay_listed "${_ip}" && continue
+    if _mpt_pair_named "${_ip}"; then
+      _msg "prune: ${_ip}: this box's own pair; its key and firewall lines stay"
+      continue
+    fi
+    _mpt_reach_drop "${_ip}"
+  done
+  [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+  while IFS= read -r _l; do
+    [ -n "${_l}" ] || continue
+    _mpt_in "${_l}" "${_MPT_LIVE}${_MPT_HELD}" && continue
+    _mpt_relay_listed "${_l}" && continue
+    _drop_line "${_MIG_PEER_ADDRS}" "${_l}"
+    if [ "$?" -eq 2 ]; then
+      _mpt_note "prune: could not rewrite ${_MIG_PEER_ADDRS}; left as found"
+      return 1
+    fi
+    _mpt_note "prune: ${_l}: dropped from ${_MIG_PEER_ADDRS}"
+  done < <(cat "${_MIG_PEER_ADDRS}" 2> /dev/null)
+  return 0
+}
+
 case "${1:-}" in
   trust)     shift; _cmd_trust "$@" ;;
   untrust)   shift; _cmd_untrust "$@" ;;
   teardown)  shift; _cmd_teardown "$@" ;;
   reconcile) shift; _cmd_reconcile "$@" ;;
   adopt)     shift; _cmd_adopt "$@" ;;
+  release)   shift; _cmd_release "$@" ;;
+  prune)     shift; _cmd_prune "$@" ;;
   *)
     echo "Usage: $0 trust <ip|cidr>... [--permanent] [--csf-only]"
     echo "       $0 untrust <ip|cidr>..."
     echo "       $0 teardown [--force]"
     echo "       $0 reconcile [--force]"
     echo "       $0 adopt [--once]"
+    echo "       $0 release <ip>... [--to=<ip>|--over]"
+    echo "       $0 prune"
     exit 1
   ;;
 esac

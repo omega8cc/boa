@@ -895,7 +895,7 @@ _mig_txt_valid() {
     echo "invalid _MIG_DEADLINE '$(_mig_shown "${_v}")'"
     return 1
   fi
-  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED; do
+  for _k in _MIG_RETIRE_DATE _MIG_STAMPED _MIG_ADOPTED _MIG_RELAY_ENDED; do
     _v="$(_mig_txt_get "${_t}" "${_k}")"
     if [ -n "${_v}" ] && ! _mig_valid_date "${_v}"; then
       echo "invalid ${_k} '$(_mig_shown "${_v}")'"
@@ -961,6 +961,18 @@ _mig_rec_put() {
   local _n
   _n="$(_mig_rec "${1}")" || return 1
   _mig_root_put "${_n##*/}"
+}
+### Whether the relay the target record text $1 describes is over: an init on its
+### front ended it (_MIG_RELAY_ENDED), or it was retired and its promised date has
+### passed. A retired record with no readable date is never over.
+_mig_txt_relay_over() {
+  local _d
+  [ -n "$(_mig_txt_get "${1}" _MIG_RELAY_ENDED)" ] && return 0
+  [ "$(_mig_txt_get "${1}" _MIG_MODE)" = "retired" ] || return 1
+  _d="$(_mig_txt_get "${1}" _MIG_RETIRE_DATE)"
+  [ -n "${_d}" ] || _d="$(_mig_txt_get "${1}" _MIG_STAMPED)"
+  _mig_valid_date "${_d}" || return 1
+  [[ "${_d}" < "$(date -u '+%Y-%m-%d')" ]]
 }
 ### The root proxied marker of $1, written by the tool $2 and dated with the
 ### epoch $3 (now when empty).
@@ -6021,11 +6033,12 @@ _xmass_restore_laid_accounts() {
 
 # What a live restore-target run leaves for a run that stopped after the standby
 # marker went (at MySQL's start, or its first answer): the parked directory it
-# put back, that directory's identity, and the accounts the lane laid here, so a
-# run again finishes the restore from MySQL's start. Root's, 0600, read as
-# lines, never sourced; written before anything changes and removed at the end.
+# put back, that directory's identity, the accounts the lane laid here and the
+# active it replicated from, so a run again finishes the restore from MySQL's
+# start. Root's, 0600, read as lines, never sourced; written before anything
+# changes and removed at the end.
 _XMASS_RESTORE_REC="/etc/boa/control/xmass-restore-target.rec"
-_xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going back
+_xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going back  3 = the active
   local _id _t="${_XMASS_RESTORE_REC}.put.$$"
   _id="$(stat -c '%i:%W' -- "${2}" 2> /dev/null)"
   [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
@@ -6034,7 +6047,8 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
   if ( umask 077
     printf '%s\n' "# Put by xmass restore-target --live: a run again with no standby marker finishes from MySQL's start." \
       "_XMASS_RESTORE_STAMP=${1}" "_XMASS_RESTORE_PRE=${2}" "_XMASS_RESTORE_DATADIR=${_id}" \
-      "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" > "${_t}" ) \
+      "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" \
+      "_XMASS_RESTORE_ACTIVE=${3:-}" > "${_t}" ) \
     && mv -f -T -- "${_t}" "${_XMASS_RESTORE_REC}"; then
     return 0
   fi
@@ -6055,6 +6069,8 @@ _xmass_restore_rec_read() {
   [ "$(stat -c '%i:%W' /var/lib/mysql 2> /dev/null)" = "${_id}" ] || return 1
   _XMASS_RESTORE_STAMP="${_s}"
   _XMASS_RESTORE_PRE="$(_xmass_kv "${_r}" _XMASS_RESTORE_PRE | tr -cd 'a-zA-Z0-9/._-')"
+  _XMASS_RESTORE_ACTIVE="$(_xmass_kv "${_r}" _XMASS_RESTORE_ACTIVE)"
+  _mig_quad "${_XMASS_RESTORE_ACTIVE}" || _XMASS_RESTORE_ACTIVE=""
   for _l in ALL HALF; do
     _a=""
     for _w in $(_xmass_kv "${_r}" "_XMASS_RESTORE_LANE_${_l}"); do
@@ -6129,9 +6145,9 @@ _xmass_restore_heal_panels() {
 # From MySQL's start to the end, once the standby marker is gone: a stop here
 # keeps the record, and 'xmass restore-target --live' run again finishes from
 # here. $1 = the stamp, $2 = what went back as /var/lib/mysql, $3 and $4 the
-# lane's lists the record kept.
+# lane's lists the record kept, $5 the active this box replicated from.
 _xmass_restore_target_finish() {
-  local _stamp="$1" _pre="$2" _sro _svc _waited
+  local _stamp="$1" _pre="$2" _act="${5:-}" _sro _svc _waited _a _rt
   if mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1; then
     _info "MySQL answers already (a watchdog started it)"
   else
@@ -6193,11 +6209,20 @@ _xmass_restore_target_finish() {
   _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
   _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
   _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
+  # The init ended the relay this box ran through its active: the active no longer
+  # trusts it until the account is repaired.
+  for _a in $(_mig_rec_list); do
+    _rt="$(_mig_rec_text "${_a}")" || continue
+    [ "$(_mig_txt_get "${_rt}" _MIG_ROLE)" = "source" ] || continue
+    [ -n "${_act}" ] && [ "$(_mig_txt_get "${_rt}" _MIG_PEER_IP)" = "${_act}" ] || continue
+    _mig_is_proxied "${_a}" || continue
+    _alrt "  ${_a} relays to ${_act}, which stopped trusting this box at the init: xoct proxy ${_a} ${_act} --repair"
+  done
   return 0
 }
 
 _xmass_restore_target() {
-  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _resume=NO
+  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _resume=NO _act=""
   if [ ! -e /root/.standby.cnf ]; then
     _xmass_restore_rec_read \
       || _die "this box carries no standby marker (/root/.standby.cnf): nothing to restore --" \
@@ -6243,7 +6268,7 @@ _xmass_restore_target() {
       return 0
     fi
     _xmass_restore_target_finish "${_XMASS_RESTORE_STAMP}" "${_XMASS_RESTORE_PRE}" \
-      "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}"
+      "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}" "${_XMASS_RESTORE_ACTIVE}"
     return 0
   fi
   _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
@@ -6262,6 +6287,7 @@ _xmass_restore_target() {
   fi
   _stamp=$(date +%Y%m%d%H%M%S)
   _info "restore-target on $(hostname -f): $(head -1 /root/.standby.cnf 2>/dev/null)"
+  _act="$(sed -n 's/^xmass replication target of \([0-9.]*\) since .*/\1/p' /root/.standby.cnf 2> /dev/null | head -n 1)"
   _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
   _info "  the current replica data directory is kept aside as /var/lib/mysql.xmass_standby_${_stamp}"
   _info "  the database broker switches the passes carried go; the ones parked with it come back"
@@ -6276,7 +6302,7 @@ _xmass_restore_target() {
     _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
     return 0
   fi
-  _xmass_restore_rec_put "${_stamp}" "${_pre}" \
+  _xmass_restore_rec_put "${_stamp}" "${_pre}" "${_act}" \
     || _die "could not write ${_XMASS_RESTORE_REC}, which a run stopped at MySQL's start needs: nothing changed"
   _info "Stopping and forgetting the replication ..."
   mysql --defaults-file=/root/.my.cnf -e "${_stop}; ${_reset};" 2>/dev/null \
@@ -6321,7 +6347,7 @@ _xmass_restore_target() {
   # above and the rm would have recreated the chain and re-touched the key
   # the rm then took. After the rm nothing can assert, so this one is final.
   bash -c "${_XMASS_FW_WEB_RELEASE}"
-  _xmass_restore_target_finish "${_stamp}" "${_pre}" "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }"
+  _xmass_restore_target_finish "${_stamp}" "${_pre}" "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }" "${_act}"
   return 0
 }
 
@@ -10534,8 +10560,11 @@ _xmass_setup_migration_proxy_trust() {
 # holds root there: continuity within one pair, not a new trust domain. The
 # key travels in the command environment, base64, never on stdin (stdin is
 # the remote script). Idempotent, never fatal.
+# A relay that is over (_mig_txt_relay_over) stays out of the carry, and what an
+# earlier carry took to this target for it goes from there. Inside its promised
+# date a retired relay still travels: it relays until then, and retargets.
 _xmass_carry_inbound_reach() {
-  local _acct _t _why _ip _set _seen _key _kb64 _own _sets="" _a _named=" "
+  local _acct _t _why _ip _set _seen _key _kb64 _own _sets="" _a _named=" " _over=" " _isover _rv=""
   _own="$(hostname -I 2>/dev/null | tr ' ' '\n')"
   for _acct in $(_mig_rec_list); do
     _t="$(_mig_rec_text "${_acct}")" || continue
@@ -10546,6 +10575,8 @@ _xmass_carry_inbound_reach() {
       continue
     fi
     _set=""; _seen=" "
+    _isover=NO
+    _mig_txt_relay_over "${_t}" && _isover=YES
     # a valid record names strict dotted quads only
     for _ip in $(_mig_txt_get "${_t}" _MIG_PEER_IPS | tr ',' ' ') $(_mig_txt_get "${_t}" _MIG_PEER_IP); do
       # the primary address is also in the list: one peer, named once
@@ -10554,6 +10585,10 @@ _xmass_carry_inbound_reach() {
       esac
       _seen="${_seen}${_ip} "
       _named="${_named}${_ip} "
+      if [ "${_isover}" = "YES" ]; then
+        _over="${_over}${_ip} "
+        continue
+      fi
       if ! _mig_witnessed "${_ip}"; then
         _alrt "  ${_acct}: root record names peer ${_ip}, which no root witness confirms -- its reach is NOT carried"
         _alrt "  ${_acct}:   (a re-push from that box records the witness: xoct proxy-mode <oN> <mode> there)"
@@ -10626,6 +10661,64 @@ CARRY
       _alrt "  peer${_a}: reach NOT wired on ${_tgt}; its retarget will refuse there (the refusal names the remedy)"
     fi
   done
+  for _ip in ${_over}; do
+    case " ${_sets//,/ } " in
+      *" ${_ip} "*) continue ;;
+    esac
+    [ "${_ip}" = "${_tgt}" ] && continue
+    printf '%s\n' "${_own}" | grep -qxF -- "${_ip}" && continue
+    _rv="${_rv} ${_ip}"
+  done
+  if [ -n "${_rv}" ]; then
+    ssh -o ConnectTimeout=15 root@"${_tgt}" "[ ! -x '${_MIG_TRUST_TOOL}' ] || '${_MIG_TRUST_TOOL}' release${_rv} --over" \
+      || _alrt "  ${_tgt} did not release${_rv}: their relays are over; run there: ${_MIG_TRUST_TOOL} release${_rv} --over"
+  fi
+  return 0
+}
+
+# An init on a box this one relays through (this box's front until now) ends that
+# relay here: the target goes dark at its standby marker. Each record naming it is
+# marked, its mode kept for the next cutover, and the serving trust goes; the
+# pair's own key and firewall lines stay. Idempotent, never fatal.
+_xmass_end_inbound_relay() {
+  local _ips _ip _acct _t _p _quads=" " _any="" _rel="" _today
+  _ips="$(ssh -o ConnectTimeout=15 root@"${_tgt}" "hostname -I" 2> /dev/null)"
+  for _ip in ${_ips}; do
+    _mig_quad "${_ip}" && _quads="${_quads}${_ip} "
+  done
+  if [ "${_quads}" = " " ]; then
+    _alrt "could not read ${_tgt}'s addresses: any relay through it stays trusted here until its next init"
+    return 0
+  fi
+  _today="$(date -u '+%Y-%m-%d')"
+  for _acct in $(_mig_rec_list); do
+    _t="$(_mig_rec_text "${_acct}")" || continue
+    _mig_txt_mine "${_t}" || continue
+    [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "target" ] || continue
+    for _p in $(_mig_txt_get "${_t}" _MIG_PEER_IPS | tr ',' ' ') $(_mig_txt_get "${_t}" _MIG_PEER_IP); do
+      case "${_quads}" in
+        *" ${_p} "*) ;;
+        *) continue ;;
+      esac
+      _any=YES
+      if [ -z "$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)" ]; then
+        if printf '%s\n_MIG_RELAY_ENDED=%s\n' "${_t}" "${_today}" | _mig_rec_put "${_acct}"; then
+          _info "  ${_acct}: its relay through ${_tgt} ended at this init (the next cutover wires it again)"
+        else
+          _alrt "  ${_acct}: could not mark the relay through ${_tgt} as ended"
+        fi
+      fi
+      break
+    done
+  done
+  for _ip in ${_quads}; do
+    grep -qxF -- "${_ip}" "${_MIG_PROXY_IPS}" 2> /dev/null && _any=YES
+    _rel="${_rel} ${_ip}"
+  done
+  [ -n "${_any}" ] || return 0
+  [ -x "${_MIG_TRUST_TOOL}" ] || return 0
+  "${_MIG_TRUST_TOOL}" release${_rel} \
+    || _alrt "${_MIG_TRUST_TOOL} release${_rel} failed; run it by hand"
   return 0
 }
 
@@ -16537,6 +16630,9 @@ REMOTE
   # both servers between now and cutover.
   _xmass_init_keepalive_stop
   _xmass_maint_off
+
+  # The box just made standby may have been this one's front.
+  _xmass_end_inbound_relay
 
   # A standby built for a failover must be reachable by this box's inbound
   # proxies from the day it is built ("stage it while everything is healthy"),

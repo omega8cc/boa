@@ -158,8 +158,10 @@ _mpc_adopt_once() {
   return 0
 }
 
-### Quiet no-op unless this box actually proxies something.
 _mpc_adopt_once
+### Every box's daily run, whether it proxies or not: trust no record needs.
+[ "${_DRY}" = "YES" ] || { [ -x "${_MIG_TRUST_TOOL}" ] && bash "${_MIG_TRUST_TOOL}" prune; }
+### Quiet no-op unless this box actually proxies something.
 [ -n "$(_mpc_proxied_accts)" ] || exit 0
 
 # shellcheck disable=SC1091
