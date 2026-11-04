@@ -1408,19 +1408,79 @@ _make_unique_target_here() {
   mv -f -T -- "./${1}" "./${1}-${_suf}" 2>/dev/null
 }
 
+# A store directory a umask 0002 left at 775 (or 2775) put back to 755 (or
+# 2755), the mode this tool makes it with, through a handle opened without
+# following a link or blocking on a FIFO, so whatever is at the name is judged
+# as it is and changed by the handle, never by the name. Only a real directory
+# root owns, whose group is one of the rest of the arguments. $1 = ./name in the
+# current (pinned) directory. Status 0 only when the mode changed.
+_STORE_CLOSE_PL='use Fcntl; my ($f, @g) = @ARGV; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -d _ && $s[4] == 0 && ($s[2] & 0777) == 0775 && grep { $_ == $s[5] } @g; chmod(($s[2] & 07000) | 0755, $h) or exit 1; exit 0'
+
+_store_close_here() {
+  # cwd = a directory of the store, entered for real and checked. ./$1 closed by
+  # _STORE_CLOSE_PL only when root owns cwd and neither its group nor others can
+  # write it: no other identity can make or rename a name in cwd, so ./$1 is not
+  # a directory moved in. Its group must be root's or cwd's own. A store the
+  # account owns (attached storage) proves nothing, and nothing changes there.
+  # $2 = the pinned dir, for the log. Never fails the caller: _unshare_copy
+  # judges the directory it writes into all the same.
+  local _st _m
+  _st=$(stat -c '%u %a %g' . 2>/dev/null)
+  _m="${_st#* }"
+  _m="${_m%% *}"
+  [ "${_st%% *}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
+    && (( (8#${_m} & 8#022) == 0 )) || return 0
+  if perl -e "${_STORE_CLOSE_PL}" "./${1}" 0 "${_st##* }"; then
+    _log "[APPLY] Closed ${2}/$(_log_name "${1}") to group write"
+  fi
+  return 0
+}
+
+_store_files_dir_close() {
+  # The account's own static/files (never a store on attached storage, which
+  # takes no mode rule) closed by _STORE_CLOSE_PL when it is 775 and its group is
+  # root's. static/ is group-writable, so the name alone proves nothing, and the
+  # mode rule of _store_files_dir holds for what is left: an identity can move
+  # a directory into static/ from another parent only when it can write that
+  # directory, and no account identity can write one of root's group. One of
+  # any other group could have been moved here, so it is left, refused, and said
+  # for the operator to check. Only from the runs that act, never a read-only
+  # one. Arg: 1 account dir.
+  local _acct="${1}" _a _r _st _m
+  _a=$(realpath -e -- "${_acct}" 2>/dev/null) || return 0
+  _r=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 0
+  [ "${_r}" = "${_a}/static/files" ] || return 0
+  if _store_in_pinned "${_a}/static" perl -e "${_STORE_CLOSE_PL}" ./files 0; then
+    _log "[APPLY] Closed ${_r} to group write"
+    return 0
+  fi
+  _st=$(stat -c '%u %a %G %F' -- "${_r}" 2>/dev/null)
+  _m="${_st#* }"
+  _m="${_m%% *}"
+  if [ "${_st%% *}" = "0" ] && [ "${_st#* * * }" = "directory" ] \
+    && [[ "${_m}" =~ ^[0-7]+$ ]] && (( (8#${_m} & 8#022) != 0 )); then
+    _st="${_st#* * }"
+    _log "[ALERT] ${_r} is root's, mode ${_m}, group ${_st%% *}: an account identity could have moved it here, so it is not used as the store. Check what it holds; if it is the store, chmod g-w,o-w it"
+  fi
+  return 0
+}
+
 _store_mkdir_here() {
   # ./$1 ensured a real directory in the current (pinned) dir: a real dir is
-  # kept, anything else (a file, a link, a special) is renamed aside first
-  # (_make_unique_target_here) and one mkdir made -- never mkdir -p through a
-  # tenant path. $2 = the pinned dir, for the rename log. rc 1 if it cannot be
-  # made a real directory.
+  # kept (closed when it can be, _store_close_here), anything else (a file, a
+  # link, a special) is renamed aside first (_make_unique_target_here) and one
+  # mkdir made -- never mkdir -p through a tenant path, and 0755 whatever the
+  # run's umask, as _unshare_copy refuses a base group or others can write. $2 =
+  # the pinned dir, for the rename log. rc 1 if it cannot be made a real
+  # directory.
   if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    _store_close_here "${1}" "${2}"
     return 0
   fi
   if [ -e "./${1}" ] || [ -L "./${1}" ]; then
     _make_unique_target_here "${1}" "${2}"
   fi
-  mkdir -- "./${1}" 2>/dev/null
+  mkdir -m 0755 -- "./${1}" 2>/dev/null
   [ -d "./${1}" ] && [ ! -L "./${1}" ]
 }
 
@@ -1531,6 +1591,7 @@ _store_files_dir_create() {
     # refuses a root-owned store that group or other can write
     _store_in_pinned "${_sdir}" mkdir -m 0755 -- "./files" 2>/dev/null
   fi
+  _store_files_dir_close "${_acct}" >&2
   _store_files_dir "${_acct}"
 }
 
@@ -1666,6 +1727,7 @@ _archive_site_store_now() {
   # store, checked to be the store resolved, never by a path through the
   # swappable name.
   _ASN_CANON="${_ACCOUNT_DIR}/static/files/${_SITE}"
+  _store_files_dir_close "${_ACCOUNT_DIR}"
   _ASN_H=$(_store_files_dir "${_ACCOUNT_DIR}")
   if [ -z "${_ASN_H}" ]; then
     if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
@@ -3663,6 +3725,7 @@ _process_account() {
     # the swappable name. A static/files that exists but is neither the
     # account's own store nor the migratefs layout is refused here (its entries
     # are not this account's to archive).
+    [ "${_MODE}" = "REPORT" ] || _store_files_dir_close "${_ACCOUNT_DIR}"
     _SWEEP_H=$(_store_files_dir "${_ACCOUNT_DIR}")
     _SWEEP_STORE="${_SWEEP_H%|*}"
     if [ -z "${_SWEEP_H}" ]; then

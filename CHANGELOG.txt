@@ -99,6 +99,13 @@
 
 @=> Important Fixes
 
+    * On Excalibur a site's files store directory is no longer made
+      group-writable, which made the same tool refuse it: a rename left the
+      site reading the old name's store and a rename back failed, while the
+      task read as done, and a store left that way stopped every conversion.
+      Such directories are closed again on the next run that acts on them,
+      unless another identity could have moved them there, which is reported.
+
     * A database load through the admin login can no longer fail on a
       duplicate row written by a process that reached the half loaded
       database, which stopped a panel's upgrade or a site's Migrate: the
