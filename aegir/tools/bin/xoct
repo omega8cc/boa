@@ -510,7 +510,7 @@ _mig_hread() {
   if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
     return 3
   fi
-  _xoct_in_real_dir "${1}" perl -e "${_MIG_HREAD_PL}" -- "./${2}" "${3}"
+  _xoct_in_real_dir "${1}" perl -e "${4:-${_MIG_HREAD_PL}}" -- "./${2}" "${3}"
   _rc=$?
   case "${_rc}" in
     0|3|4|5) return "${_rc}" ;;
@@ -1111,11 +1111,12 @@ _mig_log_here() {
     | _xoct_write_here "${1}" 077 root:root
 }
 ### The account's copy, taken only as root wrote it and only its well-formed lines: what a
-### box has before its first write under this tool. Status 3 absent, anything else it is
-### not root's file. $1 = the account's directory.
+### box has before its first write under this tool. Up to what the history's readers take,
+### where a record stops at 64 KiB, or a long history is lost at its first write. Status 3
+### absent, anything else it is not root's file or is past that. $1 = the account's directory.
 _mig_hist_old() {
   local _t _rc
-  _t="$(_mig_hread "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" root)"
+  _t="$(_mig_hread "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" root "${_MIG_HREAD_PL//65536/1048576}")"
   _rc=$?
   [ "${_rc}" = "0" ] || return "${_rc}"
   printf '%s\n' "${_t}" | sed 1d \
@@ -1153,7 +1154,7 @@ _mig_log() {
       _old="$(_mig_hist_old "${_root}")"
       _orc=$?
       [ "${_orc}" = "0" ] || [ "${_orc}" = "3" ] \
-        || echo "ALRT: ${_root##*/}: log/migproxy.log is not root's file: not imported; root's mail history starts here"
+        || echo "ALRT: ${_root##*/}: log/migproxy.log is not root's file, or is over 1 MiB: not imported; root's mail history starts here"
       { [ -z "${_old}" ] || printf '%s\n' "${_old}"; } | _mig_root_put "${_n##*/}"
     fi
     _xoct_in_real_dir "${_MIG_REC_DIR}" _mig_log_here "${_n##*/}" "${_line}" \
