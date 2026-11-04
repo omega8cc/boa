@@ -1439,13 +1439,13 @@ _store_close_here() {
 _store_files_dir_close() {
   # The account's own static/files (never a store on attached storage, which
   # takes no mode rule) closed by _STORE_CLOSE_PL when it is 775 and its group is
-  # root's. static/ is group-writable, so the name alone proves nothing, and the
-  # mode rule of _store_files_dir holds for what is left: an identity can move
-  # a directory into static/ from another parent only when it can write that
-  # directory, and no account identity can write one of root's group. One of
-  # any other group could have been moved here, so it is left, refused, and said
-  # for the operator to check. Only from the runs that act, never a read-only
-  # one. Arg: 1 account dir.
+  # root's. The account can rename static/ and what is in it, so the name alone
+  # proves nothing, but no account identity can write a directory of root's
+  # group: however it came to this name, what it holds is root's alone, as in the
+  # closed directory _store_files_dir accepts. One of any other group could hold
+  # what such an identity put there, or be its own moved here (the mode rule of
+  # _store_files_dir), so it is left, refused, and said for the operator to check.
+  # Only from the runs that act, never a read-only one. Arg: 1 account dir.
   local _acct="${1}" _a _r _st _m
   _a=$(realpath -e -- "${_acct}" 2>/dev/null) || return 0
   _r=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 0
@@ -1460,7 +1460,7 @@ _store_files_dir_close() {
   if [ "${_st%% *}" = "0" ] && [ "${_st#* * * }" = "directory" ] \
     && [[ "${_m}" =~ ^[0-7]+$ ]] && (( (8#${_m} & 8#022) != 0 )); then
     _st="${_st#* * }"
-    _log "[ALERT] ${_r} is root's, mode ${_m}, group ${_st%% *}: an account identity could have moved it here, so it is not used as the store. Check what it holds; if it is the store, chmod g-w,o-w it"
+    _log "[ALERT] ${_r} is root's, mode ${_m}, group ${_st%% *}: not used as the store, and this tool closes only a 775 directory of root's group, which no account identity can write. Check what it holds; if it is the store, chmod g-w,o-w it"
   fi
   return 0
 }
@@ -3893,6 +3893,11 @@ _run_one_site() {
     return 0
   fi
   if [ "${_ARCHIVE_STORE}" = "YES" ]; then
+    # a narrow run without --apply is read-only, this request included
+    if [ "${_APPLY_FLAG}" != "YES" ]; then
+      _log "[DRY] Archive-store: the store of ${_SITE} in ${_ACCOUNT_NAME} is not touched without --apply"
+      return 0
+    fi
     _archive_site_store_now
     return $?
   fi
