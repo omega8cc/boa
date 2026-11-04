@@ -41,6 +41,9 @@
   owner /data/disk/*/distro/** rwk,
   owner /data/disk/*/platforms/** rwk,
   owner /data/disk/*/static/** rwk,
+  /mnt/**/files/*/static/files/ r,
+  /mnt/**/files/*/static/files/** r,
+  owner /mnt/**/files/*/static/files/** rwk,
   owner /var/www/** rwk,
 
   /home/*.web/.aws/ r,
