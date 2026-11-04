@@ -251,6 +251,10 @@
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
 
+    * A Barracuda upgrade that stops early now loads AppArmor again in the
+      chosen mode. It left no profile loaded until the next upgrade. A major OS
+      upgrade still keeps AppArmor off across its passes.
+
     * An upgrade now says so in its report when AppArmor cannot be put in the
       chosen mode. aa-enforce and aa-complain refuse the whole profile set on a
       single conflict and change nothing, which went unnoticed.

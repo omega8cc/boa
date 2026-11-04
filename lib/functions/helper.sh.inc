@@ -2462,7 +2462,7 @@ _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_off_apparmor_in_octopus"
   fi
-  _aaOffInOctopus=NO
+  _aaOffInThisRun=NO
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
@@ -2480,7 +2480,7 @@ _turn_off_apparmor_in_octopus() {
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
     # Every way out of the run owes the switch back, not only its last line.
-    _aaOffInOctopus=YES
+    _aaOffInThisRun=YES
     trap _apparmor_back_on_exit EXIT
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
@@ -2494,14 +2494,13 @@ _turn_off_apparmor_in_octopus() {
 
 #
 # Turn AppArmor back on after octopus, in the mode barracuda keeps: the run
-# above tore it down and left every profile file in complain mode, so without
-# this the box ran unconfined until the next barracuda pass, and a reboot in
-# between loaded the profiles in complain mode only.
+# above left every profile file in complain mode, so without this the box stayed
+# there until the next barracuda pass. Barracuda's exit handler calls it too.
 _turn_on_apparmor_after_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_on_apparmor_after_octopus"
   fi
-  if [ "${_aaOffInOctopus}" = "YES" ] && _apparmor_mode_chosen; then
+  if [ "${_aaOffInThisRun}" = "YES" ] && _apparmor_mode_chosen; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning AppArmor back on..."
     fi
@@ -2521,7 +2520,7 @@ _turn_on_apparmor_after_octopus() {
     rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
   # Called at the end of the run and again by the EXIT trap: once is enough.
-  _aaOffInOctopus=NO
+  _aaOffInThisRun=NO
 }
 
 #

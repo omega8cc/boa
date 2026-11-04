@@ -8170,6 +8170,20 @@ _strict_bin_permissions() {
 }
 
 #
+# The EXIT trap of a barracuda run until its AppArmor step is done. A major OS
+# upgrade keeps AppArmor off across its passes, so it is left alone here too,
+# whether a marker file or an operator's answer started it.
+_apparmor_back_on_barracuda_exit() {
+  local _hop
+  trap '' HUP INT TERM PIPE
+  [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "YES" ] && return 0
+  for _hop in excalibur daedalus chimaera beowulf; do
+    [ -e "/root/.run-to-${_hop}.cnf" ] && return 0
+  done
+  _turn_on_apparmor_after_octopus
+}
+
+#
 # Turn Off AppArmor temporarily.
 _turn_off_apparmor_temporarily() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8183,6 +8197,10 @@ _turn_off_apparmor_temporarily() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
+    # Only the AppArmor step near the end of the run restores it, so every way
+    # out before that step owes the switch back.
+    _aaOffInThisRun=YES
+    trap _apparmor_back_on_barracuda_exit EXIT
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
     aa-complain /etc/apparmor.d/* &> /dev/null
@@ -8410,6 +8428,7 @@ _if_install_apparmor() {
     _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
+  _aaOffInThisRun=NO
 }
 
 #
