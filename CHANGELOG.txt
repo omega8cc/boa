@@ -168,6 +168,11 @@
       target for up to a day. xoct and xmass now copy these tools only to a
       target that lacks them.
 
+    * xoct now decides what a client has been told from root's own copy of the
+      migration history, /root/.<account>.migproxy.log: the copy in the account's
+      log folder could be replaced by the account, which sent or held back its
+      own notices.
+
     * xoct and xmass now name a phpNN.info marker or a line of multi-fpm.info,
       cli-per-platform.info or fpm-per-platform.info that does nothing on the
       source because it lacks that PHP, when the target would honour it: the

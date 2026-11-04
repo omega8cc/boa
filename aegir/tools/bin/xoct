@@ -527,6 +527,13 @@ _mig_mark() {
   _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
   printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.proxied"
 }
+### Root's own copy of the account's migration history: what the client was told
+### is decided from this. log/migproxy.log is in a folder the account owns, so it can
+### put any file there; that copy stays for the operator and for an older peer.
+_mig_hist() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.migproxy.log"
+}
 ### The root file $1 (a name in _MIG_REC_DIR) without its mtime line, CR
 ### stripped, once it reads in the root shape and keeps the grammar. Status 3
 ### absent, 4 anything else.
@@ -1096,15 +1103,42 @@ _mig_log_here() {
   if printf '%s\n' "${2}" | perl -e "${_XOCT_APPEND_PL}" "./${1}" 2> /dev/null; then
     return 0
   fi
+  if [ "$#" -gt 2 ]; then
+    printf '%s\n' "${3:-${2}}" | _xoct_write_here "${1}" 077 root:root
+    return
+  fi
   { _xoct_read_here "${1}" | awk 1; printf '%s\n' "${2}"; } \
     | _xoct_write_here "${1}" 077 root:root
+}
+### The account's copy, taken only as root wrote it and only its well-formed lines: what a
+### box has before its first write under this tool. Status 3 absent, anything else it is
+### not root's file. $1 = the account's directory.
+_mig_hist_old() {
+  local _t _rc
+  _t="$(_mig_hread "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" root)"
+  _rc=$?
+  [ "${_rc}" = "0" ] || return "${_rc}"
+  printf '%s\n' "${_t}" | sed 1d \
+    | LC_ALL=C grep -aE '^20[0-9]{2}-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9](\|[^|[:cntrl:]]*){6}$'
+  return 0
+}
+### The history every decision reads. $1 = the account's directory.
+_mig_hist_text() {
+  local _n
+  _n="$(_mig_hist "${1##*/}")" || return 0
+  if [ -e "${_n}" ] || [ -L "${_n}" ]; then
+    _xoct_read_in "${_MIG_REC_DIR}" "${_n##*/}"
+  else
+    _mig_hist_old "${1}"
+  fi
+  return 0
 }
 
 ### Append-only audit. The only place the answer to "what were they actually
 ### told, and when" lives; the re-notify decision reads its last mail line.
 _mig_log() {
   local _root="$1" _tool="$2" _action="$3" _detail="$4" _mode="$5" _dl="$6" _peer="$7"
-  local _lg="${_root}/${_MIG_LOG_NAME}"
+  local _lg="${_root}/${_MIG_LOG_NAME}" _line _n _old _orc
   ### Every interpolated field is sanitised, not just the free-text one: the
   ### re-notify comparison parses this file by field position, so a stray
   ### pipe in any value would shift every later field.
@@ -1112,16 +1146,28 @@ _mig_log() {
   _mode="$(printf '%s' "${_mode}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-20)"
   _dl="$(printf '%s' "${_dl}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-10)"
   _peer="$(printf '%s' "${_peer}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-45)"
+  _line="$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}"
+  _n="$(_mig_hist "${_root##*/}")"
+  if [ -n "${_n}" ]; then
+    if [ ! -e "${_n}" ] && [ ! -L "${_n}" ]; then
+      _old="$(_mig_hist_old "${_root}")"
+      _orc=$?
+      [ "${_orc}" = "0" ] || [ "${_orc}" = "3" ] \
+        || echo "ALRT: ${_root##*/}: log/migproxy.log is not root's file: not imported; root's mail history starts here"
+      { [ -z "${_old}" ] || printf '%s\n' "${_old}"; } | _mig_root_put "${_n##*/}"
+    fi
+    _xoct_in_real_dir "${_MIG_REC_DIR}" _mig_log_here "${_n##*/}" "${_line}" \
+      || echo "ALRT: ${_root##*/}: root's mail history not written"
+  fi
   mkdir -p "${_root}/log" 2>/dev/null
-  _xoct_in_real_dir "${_lg%/*}" _mig_log_here "${_lg##*/}" \
-    "$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}"
+  _xoct_in_real_dir "${_lg%/*}" _mig_log_here "${_lg##*/}" "${_line}" "$(_mig_hist_text "${_root}")"
   return 0
 }
 
 ###-------------SYSTEM-----------------###
 
 ### Last promise actually mailed, as "mode|deadline" from the newest mail line
-### in the account's migproxy.log; empty output if the client was never mailed.
+### in root's history of the account; empty output if the client was never mailed.
 ### The uniform re-notify rule keys on this, which is why mail lines are only
 ### ever written after a confirmed send. With peers after $1 (the source
 ### role), only a line naming a peer of this box's moves counts
@@ -1133,7 +1179,7 @@ _mig_last_mail() {
   local _l _r="$1" _p=""
   shift
   [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
-  _l="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+  _l="$(_mig_hist_text "${_r}" \
     | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || ($4 !~ /-inbound$/ && index(p, " " $7 " "))' | tail -1)"
   [ -n "${_l}" ] || return 0
   printf '%s' "${_l}" | awk -F'|' '{ print $5 "|" $6 }'
@@ -1154,7 +1200,7 @@ _xoct_source_peers() {
   _me=" $(_mig_my_ips) $(_mig_my_ip) "
   {
     printf '%s\n' "$@"
-    _xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    _mig_hist_text "${_r}" \
       | awk -F'|' '$3 == "set" { print $7 }'
   } | awk -v me="${_me}" 'NF && $0 != "-" && !index(me, " " $0 " ") && !s[$0]++ { printf "%s ", $0 }'
 }
@@ -1167,7 +1213,7 @@ _xoct_proxied_before_log() {
   local _pt _first _ft
   _pt="$(_mig_mark_at "${1##*/}")" || return 1
   [[ "${_pt}" =~ ^[0-9]+$ ]] || return 1
-  _first="$(_xoct_read_in "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+  _first="$(_mig_hist_text "${1}" \
     | head -n 1 | cut -d'|' -f1)"
   [ -n "${_first}" ] || return 0
   _ft="$(date -u -d "${_first}" +%s 2> /dev/null)"
@@ -1184,7 +1230,7 @@ _xoct_told_complete() {
   local _n _r="$1" _p=""
   shift
   [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
-  _n="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+  _n="$(_mig_hist_text "${_r}" \
     | awk -F'|' -v n="$#" -v p="${_p}" '$3=="mail" && $4=="complete" && (n == 0 || index(p, " " $7 " ")) { c++ } END { print c+0 }')"
   [ "${_n:-0}" != "0" ] && return 0
   _xoct_proxied_before_log "${_r}"
@@ -6128,7 +6174,7 @@ _migrate_prepare() {
     ### dedupe on the recorded mail line (field 7 = peer), so a later migration
     ### to a DIFFERENT target still notifies. reset-state clears nothing here
     ### by design: the log is the audit trail of what the client was told.
-    _XOCT_START_MAILED=$(_xoct_read_in "${_USR}/log" migproxy.log \
+    _XOCT_START_MAILED=$(_mig_hist_text "${_USR}" \
       | awk -F'|' -v t="${_tgt}" \
       '$3=="mail" && $4=="start" && $7==t { c++ } END { print c+0 }')
     if [ "${_XOCT_START_MAILED:-0}" != "0" ]; then
@@ -7722,7 +7768,7 @@ _mig_render_table() {
     esac
     [ "${_cls}" = "account" ] && _flag="${_flag} [account-written log record ignored]"
     _lt="(never)"
-    _lastline="$(_xoct_read_in "${_root}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    _lastline="$(_mig_hist_text "${_root}" \
       | grep '|mail|' | tail -1)"
     [ -n "${_lastline}" ] \
       && _lt="$(printf '%s' "${_lastline}" | awk -F'|' '{ print $5 "/" $6 " on " substr($1,1,10) }')"
