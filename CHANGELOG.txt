@@ -15,6 +15,10 @@
 
 @=> Security
 
+    * The files storage wrapper an account's tasks call through sudo holds a
+      tenant to its own account: with no account named, a call could reach a
+      site of another account on the server.
+
     * A Grav site no longer serves a Markdown file kept on disk outside the
       folders it already refused, such as a README beside its images or
       notes left at the site root, as Grav's own server rules do since
