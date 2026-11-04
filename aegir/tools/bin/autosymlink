@@ -166,6 +166,12 @@ if [ ! -d "${_LOG_DIR}" ]; then
   mkdir -p "${_LOG_DIR}"
 fi
 
+# These logs name every account's sites and what root found on paths an account
+# chose, in a folder any identity can read: root's alone, older rotations too.
+[ -e "${_LOG_FILE}" ] || ( umask 027; : >> "${_LOG_FILE}" )
+chmod -f 0640 "${_LOG_DIR}"/autosymlink.log* "${_LOG_DIR}"/autosymlink.tmp.log \
+  "${_LOG_DIR}"/autosymlink.update.log* "${_LOG_DIR}"/autosymlink.verbose.archive.log* 2> /dev/null
+
 _STATE_FILE="${_LOG_DIR}/autosymlink.state"
 
 # Flags used only during DRY mode
@@ -692,6 +698,12 @@ _exp_vhost_kind() {
   fi
 }
 
+_exp_du() {
+  # KB of $1 for an [EXPLAINED] line, or nothing: never off its filesystem and
+  # never more than a minute of root's time, wherever an account aimed it.
+  timeout 60 du -skx -- "$1" 2>/dev/null | awk 'NR==1 {print $1}'
+}
+
 _exp_store_state() {
   # Describe the per-site store, which answers the only question that matters
   # before any cleanup: is there data to lose here? A site delete never removes
@@ -700,7 +712,7 @@ _exp_store_state() {
   _EXP_ST_DIR="$1/static/files/$2"
 
   if [ -d "${_EXP_ST_DIR}" ]; then
-    _EXP_ST_KB=$(du -sk "${_EXP_ST_DIR}" 2>/dev/null | awk 'NR==1 {print $1}')
+    _EXP_ST_KB=$(_exp_du "${_EXP_ST_DIR}")
     echo "present at ${_EXP_ST_DIR} (${_EXP_ST_KB:-?}K) -- DATA PRESENT, do not remove by hand"
   else
     echo "none at ${_EXP_ST_DIR} (no files data at stake)"
@@ -972,8 +984,15 @@ _explain_symlink_unknown() {
     _EXP_SU_PROBE="${_EXP_SU_PATH%/*}/${_EXP_SU_TGT}"
   fi
   if [ -e "${_EXP_SU_PROBE}" ]; then
-    _EXP_SU_KB=$(du -sk "${_EXP_SU_PROBE}" 2>/dev/null | awk 'NR==1 {print $1}')
-    _explain_log "  Target     : exists (${_EXP_SU_KB:-?}K) -- the site's ${_EXP_SU_TYPE} are being"
+    # the account aimed this link: root measures it only inside the account
+    _EXP_SU_SIZE="not measured, outside this account"
+    case "$(realpath -e -- "${_EXP_SU_PROBE}" 2>/dev/null)/" in
+      "${_EXP_SU_ACCT}"/*)
+        _EXP_SU_KB=$(_exp_du "${_EXP_SU_PROBE}")
+        _EXP_SU_SIZE="${_EXP_SU_KB:-?}K"
+        ;;
+    esac
+    _explain_log "  Target     : exists (${_EXP_SU_SIZE}) -- the site's ${_EXP_SU_TYPE} are being"
     _explain_log "    served from there right now, so this link is live"
   else
     _explain_log "  Target     : DOES NOT EXIST -- this link is dangling, so the site's"
@@ -1053,7 +1072,7 @@ _explain_break_sharing_source() {
     fi
   done
   if [ -n "${_EXP_BS_ARCH}" ]; then
-    _EXP_BS_AKB=$(du -sk "${_EXP_BS_ARCH}" 2>/dev/null | awk 'NR==1 {print $1}')
+    _EXP_BS_AKB=$(_exp_du "${_EXP_BS_ARCH}")
     _explain_log "  Archived   : the owner's store WAS archived by an earlier sweep and is still"
     _explain_log "    on disk: $(_log_name "${_EXP_BS_ARCH}") (${_EXP_BS_AKB:-?}K)"
     _explain_log "  Diagnosis  : SHARED FROM AN ARCHIVED STORE -- ${_EXP_BS_TSITE_L} was deleted and"
@@ -1108,7 +1127,7 @@ _explain_space() {
       fi
       ;;
     SPACE_SIZE_UNKNOWN)
-      _EXP_SP_NOW=$(du -sk "${_EXP_SP_SRC}" 2>&1 | awk 'NR==1 {print $1}')
+      _EXP_SP_NOW=$(_exp_du "${_EXP_SP_SRC}")
       _explain_log "  Seen: the source size could not be measured (du returned nothing)."
       _explain_log "  Now        : du reports '${_EXP_SP_NOW:-nothing}'"
       _explain_log "  Owner/mode : $(ls -ld "${_EXP_SP_SRC}" 2>&1 | awk 'NR==1 {print $3":"$4" "$1}')"
@@ -2492,7 +2511,8 @@ _check_symlink_sharing() {
   # the site dir is the account's: the old link goes and the new one is made
   # by ./name inside it, entered for real, never through a name on its path
   _store_in_pinned "${_PATH%/*}" rm -f -- "./${_PATH##*/}"
-  if ! _store_in_pinned "${_PATH%/*}" _link_as_store_owner "${_NEW_TARGET}" "./${_PATH##*/}"; then
+  if ! _store_in_pinned "${_PATH%/*}" _link_as_store_owner "${_NEW_TARGET}" "./${_PATH##*/}" \
+    "$(_store_in_bound "${_STORE_FILES_H}" "${_BASE_REAL}" _store_owner_here "${_TYPE}")"; then
     _log "[ERROR] Failed to create symlink for site ${_SITE_NAME} (${_TYPE}: ${_PATH} -> ${_NEW_TARGET})"
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
@@ -2980,6 +3000,14 @@ _unshare_stale_here() {
   return 0
 }
 
+_store_owner_here() {
+  # "<uid>:<gid>" of the real directory ./$1 in the current directory, a store's
+  # base entered and checked by _store_in_bound; nothing for any other kind.
+  local _st
+  _st=$(stat -c '%u:%g %F' -- "./${1}" 2>/dev/null)
+  [ "${_st#* }" = "directory" ] && printf '%s\n' "${_st%% *}"
+}
+
 _link_as_store_owner() {
   # Make the in-site files/private symlink $2 pointing at the store $1, owned
   # by the store's owner:group, so the link does not linger root-owned when no
@@ -2994,9 +3022,14 @@ _link_as_store_owner() {
   # -T so the name is never treated
   # as a directory: a real dir still at $2 (a move/removal that did not complete)
   # makes ln fail instead of creating a nested <type>/<type> link inside it.
-  # Args: 1 store target dir (reference for owner:group), 2 in-site symlink
-  #       (callers pass ./<type> from inside the site dir entered for real).
-  _LSO_OWNER=$(stat -L -c '%u:%g' -- "$1" 2>/dev/null)
+  # The owner is read inside the store the caller holds (_store_owner_here),
+  # never through the name: static/files can be swapped for a link, and a link
+  # made as another account's owner passes nginx's owner check for that account's
+  # files.
+  # Args: 1 store target dir (the link's text), 2 in-site symlink (callers pass
+  #       ./<type> from inside the site dir entered for real), 3 the store target's
+  #       "<uid>:<gid>", or nothing: root makes the link.
+  _LSO_OWNER="${3:-}"
   if [[ "${_LSO_OWNER}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_LSO_OWNER%%:*}" != 0 ] \
     && setpriv --reuid="${_LSO_OWNER%%:*}" --regid="${_LSO_OWNER#*:}" \
       --clear-groups ln -s -T -- "$1" "$2" 2>/dev/null; then
@@ -3114,12 +3147,23 @@ _aside_same_here() {
   [[ $'\n'"${_out}" != *$'\n'?f* ]]
 }
 
+_store_filled_owner_here() {
+  # _store_owner_here, for a real directory ./$1 that holds something.
+  local _o
+  _o=$(_store_owner_here "${1}") && [ -n "$(ls -A -- "./${1}" 2>/dev/null)" ] \
+    && printf '%s\n' "${_o}"
+}
+
 _self_heal_symlink() {
   # Recover a site left without an in-site files/private link by an interrupted
   # prior conversion: if the in-site path is gone but the store dir still holds
   # the data, recreate the symlink. This closes the only non-atomic window in
-  # _convert_dir_to_symlink (between a successful move and the `ln -s`).
-  # Args: 1 in-site path, 2 store target dir.
+  # _convert_dir_to_symlink (between a successful move and the `ln -s`). The store
+  # is taken by its handle, as every other act takes it: a path through the name
+  # could lead to another account's store, and root would make the link as that
+  # store's owner. Args: 1 in-site path, 2 store target dir
+  # (<account>/static/files/<site>/<type>, the link's text).
+  local _h _o _b="${2%/*}"
   _SITE_LINK="$1"
   _STORE_DIR="$2"
 
@@ -3129,9 +3173,15 @@ _self_heal_symlink() {
   if [ -e "${_SITE_LINK}" ] || [ -L "${_SITE_LINK}" ]; then
     return 0
   fi
-  if [ -d "${_STORE_DIR}" ] && [ -n "$(ls -A "${_STORE_DIR}" 2>/dev/null)" ]; then
+  _store_files_dir_close "${_ACCOUNT_DIR}"
+  if ! _h=$(_store_files_dir "${_ACCOUNT_DIR}"); then
+    _log "[WARN] Not relinking $(_log_name "${_SITE_LINK}"): ${_ACCOUNT_DIR}/static/files is not the account's own store"
+    return 0
+  fi
+  _o=$(_store_in_bound "${_h}" "${_h%|*}/${_b##*/}" _store_filled_owner_here "${_STORE_DIR##*/}")
+  if [ -n "${_o}" ]; then
     _log "[APPLY] Self-heal: in-site path missing, recreating symlink ${_SITE_LINK} -> ${_STORE_DIR}"
-    _store_in_pinned "${_SITE_LINK%/*}" _link_as_store_owner "${_STORE_DIR}" "./${_SITE_LINK##*/}"
+    _store_in_pinned "${_SITE_LINK%/*}" _link_as_store_owner "${_STORE_DIR}" "./${_SITE_LINK##*/}" "${_o}"
   fi
 }
 
@@ -3279,7 +3329,8 @@ _convert_dir_to_symlink() {
       _log "[ERROR] Could not set the residue-only ${_TYPE} dir of ${_SITE} aside: ${_SRC} is no longer the directory checked, or the rename failed; nothing moved or removed"
       return 1
     fi
-    if _store_in_pinned "${_SRC%/*}" _link_as_store_owner "${_DST}" "./${_TYPE}"; then
+    if _store_in_pinned "${_SRC%/*}" _link_as_store_owner "${_DST}" "./${_TYPE}" \
+      "$(_store_in_bound "${_CONV_STORE}" "${_CONV_BASE_REAL}" _store_owner_here "${_TYPE}")"; then
       _CONV_IDS=$(_account_ids "${_ACCOUNT_DIR}")
       # the site may have written into the directory between its residue
       # check and the rename: the check runs again inside the aside, and only
@@ -3336,7 +3387,8 @@ _convert_dir_to_symlink() {
       return 1
     fi
     _log "[APPLY] Creating symlink: ${_SRC} -> ${_DST}"
-    if ! _store_in_pinned "${_SRC%/*}" _link_as_store_owner "${_DST}" "./${_TYPE}"; then
+    if ! _store_in_pinned "${_SRC%/*}" _link_as_store_owner "${_DST}" "./${_TYPE}" \
+      "$(_store_in_bound "${_CONV_STORE}" "${_CONV_BASE_REAL}" _store_owner_here "${_TYPE}")"; then
       if _store_in_pinned "${_SRC%/*}" mv -T -- "./${_CONV_ASIDE}" "./${_TYPE}"; then
         _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; the real dir is put back"
       else
@@ -3367,7 +3419,8 @@ _convert_dir_to_symlink() {
   fi
 
   _log "[APPLY] Creating symlink: ${_SRC} -> ${_DST}"
-  if ! _store_in_pinned "${_SRC%/*}" _link_as_store_owner "${_DST}" "./${_TYPE}"; then
+  if ! _store_in_pinned "${_SRC%/*}" _link_as_store_owner "${_DST}" "./${_TYPE}" \
+    "$(_store_in_bound "${_CONV_STORE}" "${_CONV_BASE_REAL}" _store_owner_here "${_TYPE}")"; then
     _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; data is safe in ${_DST}, self-heal will retry the link"
     return 1
   fi
