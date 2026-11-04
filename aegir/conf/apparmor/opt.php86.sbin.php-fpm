@@ -243,6 +243,7 @@
   /var/log/php/** rw,
 
   # Allow PHP-FPM to access /proc and /sys for necessary information
+  /proc/ r,
   /proc/** r,
   /sys/** r,
 
