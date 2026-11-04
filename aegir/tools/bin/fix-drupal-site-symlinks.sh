@@ -101,11 +101,13 @@ fi
 # trusted. Rejection here is non-fatal to Provision (it logs a warning and leaves
 # the site as plain dirs).
 _caller="${SUDO_USER:-}"
+_tenant_call="NO"
 if [ -n "${_caller}" ]; then
   _caller_home=$(getent passwd "${_caller}" 2>/dev/null | cut -d: -f6)
   _caller_home="${_caller_home%/}"
   case "${_caller_home}" in
     /data/disk/*)
+      _tenant_call="YES"
       _caller_acct="${_caller_home##*/}"
       if [ -n "${_account}" ] && [ "${_account}" != "${_caller_acct}" ]; then
         printf "Error: --account '%s' is not the caller's own account '%s'.\n" "${_account}" "${_caller_acct}" >&2
@@ -212,4 +214,10 @@ if [ "${_archive_store}" = "YES" ]; then
 fi
 set -- "$@" --apply
 
+# A tenant's call reads back its exit status and nothing else: the tool's lines
+# say what root found on paths the account chose. They stay in the tool's log and
+# the operator's mail; Provision reads only the status.
+if [ "${_tenant_call}" = "YES" ]; then
+  exec "${_AUTOSYMLINK}" "$@" > /dev/null 2>&1
+fi
 exec "${_AUTOSYMLINK}" "$@"
