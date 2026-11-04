@@ -1052,6 +1052,19 @@ _probe_dom_direct() {
   echo "${_c1}" | grep -qE '^(200|301|302|401|403)$'
 }
 
+_target_vhost_disabled() {
+  ### $1 domain: does its vhost on the target hold the placeholder a Disable
+  ### writes? Under any account there, as _target_proof_vhosts reads them, and
+  ### never through a link or blocked on a FIFO the account put there. The name
+  ### comes from a vhost file on this box, so it is checked before it reaches
+  ### the remote shell.
+  printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || return 1
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" \
+    "for _f in /data/disk/*/config/server_master/nginx/vhost.d/$1; do timeout 10 dd if=\"\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null; done" \
+    2>/dev/null \
+    | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default'
+}
+
 _probe_all_doms() {
   local _oN="$1" _d _r _rc=0 _nd _nr
   _probe_catchall_baseline "${_MAP_TGT}"
@@ -1063,6 +1076,15 @@ _probe_all_doms() {
       ### box? Only a name embedding the source FQDN can have been, and it
       ### must then prove itself under its NEW name on the target.
       _nd=$(_renamed_dom "${_d}")
+      ### A site disabled in the panel answers the placeholder page, and that
+      ### body IS the catch-all this probe refuses: its state, not a broken
+      ### name. Only the target's own vhost can say so: a site disabled there
+      ### after the move has no such trace on this box.
+      if _target_vhost_disabled "${_nd:-${_d}}"; then
+        _info "${_oN}: ${_nd:-${_d}} is disabled in the panel on the target: the placeholder vhost, by design (${_r})"
+        sleep 6
+        continue
+      fi
       if [ -n "${_nd}" ]; then
         sleep 6
         _nr=$(_probe_dom_direct "${_nd}" "${_MAP_TGT}")
