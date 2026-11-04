@@ -106,8 +106,8 @@
     * On Excalibur root no longer runs at umask 0002 under cron and sudo, so
       what it makes in an account's tree is no longer writable by that
       account. BOA's setting for logins reached every session there through a
-      line new in that system's session files; the next Barracuda pass takes
-      it out. A login, SFTP and the limited shell keep their own 0002.
+      line new in that system's session files; the next Barracuda pass sets
+      it to 0022. A login, SFTP and the limited shell keep their own 0002.
 
     * On Excalibur a site's files store directory is no longer made
       group-writable, which made the same tool refuse it: a rename left the
