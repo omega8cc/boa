@@ -22,6 +22,7 @@
 
   # Allow Pure-FTPd to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
+  signal (receive) peer=boa_sudo_cmd,
 
   # Allow execution of /bin/sh
   /{,usr/}bin/sh mrix,
