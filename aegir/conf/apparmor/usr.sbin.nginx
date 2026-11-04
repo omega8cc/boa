@@ -20,6 +20,7 @@
 
   # Allow Nginx to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
+  signal (receive) peer=boa_sudo_cmd,
 
   # Allow read access to necessary libraries
   /lib/** mr,
@@ -54,6 +55,7 @@
   /var/www/** r,
 
   # Specific directories used by Ægir (if applicable)
+  /data/disk/ r,
   /var/aegir/.drush/ r,
   /var/aegir/.drush/** r,
   /var/aegir/config/ r,

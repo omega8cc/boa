@@ -156,6 +156,14 @@
       longer leaves the SQL maintenance marker behind, which paused the
       MySQL watchdog for up to four hours.
 
+    * A site disabled in the panel no longer fails a move's probes: its
+      placeholder page is the same page as the catch-all they refuse, so
+      xmass verify called it broken and every xtrim plan, quiesce and shrink
+      of its account was refused. Both now name it and go on, once its vhost
+      and its alias agree it is disabled. xtrim also asks for the catch-all
+      answer on both routes, so a site with a live vhost behind a catch-all
+      answer, a dead port or a 500 still fails.
+
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and
       its promotion by hand read every account on the box, as the move
@@ -250,6 +258,38 @@
       the Octopus upgrades after it kept it so, until the next Barracuda
       upgrade. One killed outright still cannot; the next upgrade of either
       kind now does it.
+
+    * AppArmor enforce mode no longer stops Let's Encrypt. The PHP command line
+      profile refused bash and openssl, so in enforce mode a site's Verify could
+      not register, order or renew a certificate, nor make a self-signed one, and
+      still reported success.
+
+    * AppArmor enforce mode now takes effect on Excalibur. BOA's dhclient profile
+      and the one from the isc-dhcp-client package claim the same program, so
+      aa-enforce refused the whole set and most profiles stayed in complain mode.
+      The AppArmor packages' own profiles for programs a BOA box does not run are
+      also moved out, so enforce mode cannot confine those by rules never meant to.
+
+    * AppArmor enforce mode no longer stops a box working. The PHP command line
+      profile refused tools the backend relies on and the master panel's own code,
+      so panel tasks never started; unbound could not update its key file, and the
+      limited shell could not make a temporary file. What the backend runs through
+      sudo now has a profile of its own, so this needed nothing wider in the PHP
+      profile a tenant's own code runs under.
+
+    * An Octopus upgrade no longer leaves running daemons outside AppArmor. It
+      unloaded every profile, and loading them again does not take back a process
+      already running, so nginx, MySQL and the rest stayed unconfined until they
+      restarted. With a mode chosen the profiles now stay loaded in complain mode
+      while it works, and the daemons follow them back to the chosen mode.
+
+    * A Barracuda upgrade that stops early now loads AppArmor again in the
+      chosen mode. It left no profile loaded until the next upgrade. A major OS
+      upgrade still keeps AppArmor off across its passes.
+
+    * An upgrade now says so in its report when AppArmor cannot be put in the
+      chosen mode. aa-enforce and aa-complain refuse the whole profile set on a
+      single conflict and change nothing, which went unnoticed.
 
 @=> New Features
 
@@ -1016,6 +1056,14 @@
       with 12,600 distinct addresses in the archive it took three minutes
       and held the per-minute enforcement that long; now under half a
       minute, with the same checks and the same csf calls.
+
+    * The test of an address against the covering blocks in csf.allow,
+      which the daily sweep, the per-minute guard and the SSH log check
+      share, runs as one awk pass over the blocks instead of a shell loop
+      that forked a subshell per block: with the provider ranges in the
+      file, about 500 blocks, the sweep went at three addresses a second
+      and held the per-minute enforcement for minutes on a box with a big
+      ban archive. The verdicts are the same.
 
 @=> Changes and Upgrades
 

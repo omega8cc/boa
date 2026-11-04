@@ -5,6 +5,13 @@
 
 /usr/local/bin/lshell flags=(complain) {
 
+  # Allow the limited shell its Python start-up and temporary files
+  /etc/ImageMagick-*/ r,
+  /etc/ImageMagick-*/** r,
+  /tmp/ r,
+  /tmp/** rw,
+  /usr/local/bin/ r,
+
   # Include common AppArmor abstractions
   include <abstractions/authentication>
   include <abstractions/base>
@@ -131,6 +138,11 @@
   /{,usr/}bin/stty mrix,
   /{,usr/}bin/tar mrix,
   /{,usr/}bin/touch mrix,
+  /{,usr/}bin/head mrix,
+  /{,usr/}bin/tr mrix,
+  /{,usr/}bin/whoami mrix,
+  /{,usr/}sbin/ldconfig mrix,
+  /usr/bin/sudo mrix,
   /{,usr/}bin/true mrix,
   /data/disk/*/tools/drush/drush.php mrix,
   /opt/local/bin/checkmyperms mrix,
