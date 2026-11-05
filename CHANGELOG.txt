@@ -271,6 +271,13 @@
       takes it off the report; those names, as root wrote them, hold the client's
       mail and the report's row stays, tagged Held:<name>.
 
+    * The nightly usage pass keeps every account on the operator's report: an
+      in-house address, a control panel it cannot find or a renamed vhost.d no
+      longer takes an account off, its row is tagged instead. The plan files in
+      an account's log folder set its limits only as root wrote them, the plan
+      otherwise coming from root's octopus.cnf, and the nightly copies them into
+      that cnf under the same rule.
+
     * A migration proxy tool another box copied here now lasts one self-update:
       a source on older tools could put its older trust tool back on a newer
       target for up to a day. xoct and xmass now copy these tools only to a
