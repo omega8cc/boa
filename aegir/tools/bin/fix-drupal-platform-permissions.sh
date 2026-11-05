@@ -1100,13 +1100,14 @@ if [[ "${_SCOPE_ROOT}" = "/data/disk/${_top_acct}" ]] \
     && [[ "${_top_pgid}" = "${_top_gid}" ]] \
     && [[ "${_top_gid}" != "${_top_ugid}" ]] \
     && _top_group_ours "${_top_acct}" "${_top_gid}"; then
-    _top_n=$(_in_pinned_dir "${_top_dir}" \
+    _n=$(_in_pinned_dir "${_top_dir}" \
       _in_own_here _top_gw_here "${_top_uid}" "${_top_gid}" "${_top_dn}")
-    if [[ "${_top_n}" =~ ^[1-9][0-9]*$ ]]; then
-      _top_s="directories"
-      [[ "${_top_n}" = "1" ]] && _top_s="directory"
-      printf 'Group write set on %s %s of the codebase top %s\n' \
-        "${_top_n}" "${_top_s}" "$(_nm "${_top_dir}")"
+    if [[ "${_n}" = "1" ]]; then
+      printf 'Group write set on 1 directory of the codebase top %s\n' \
+        "$(_nm "${_top_dir}")"
+    elif [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
+      printf 'Group write set on %s directories of the codebase top %s\n' \
+        "${_n}" "$(_nm "${_top_dir}")"
     fi
   fi
 fi
