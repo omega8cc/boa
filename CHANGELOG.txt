@@ -124,6 +124,11 @@
 
 @=> Important Fixes
 
+    * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
+      proxy trust and realip tools now stay current with xoct and xmass, which
+      run them: they are fetched in the tools pass such a box still runs. Before,
+      they stayed as its last system pass left them.
+
     * Backend-mode site cron asks for elysia-cron only on a site whose module
       list shows elysia_cron enabled and whose Drush may load its command;
       every other site goes straight to plain cron, without the "could not be
