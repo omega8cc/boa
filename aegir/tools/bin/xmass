@@ -14473,7 +14473,7 @@ echo XMRET-END' 2> /dev/null)"
     return 1
   fi
   if printf '%s\n' "${_out}" | grep -qx XMRET-STANDBY; then
-    _alrt "${_t} still holds its /root/.standby.cnf: on a standing mirror 'xmass prep-target ${_t} --fix-accounts' lays an account"
+    _alrt "${_t} still holds its /root/.standby.cnf: on a standing mirror 'xmass prep-target ${_t} --fix-accounts$(_xmass_admail_hint)' lays an account"
     return 1
   fi
   if printf '%s\n' "${_out}" | grep -qx XMRET-HANDPATH; then
@@ -14707,7 +14707,7 @@ _xmass_cmd_prep_target() {
     if [ "${_XMASS_PHASE}" = "syncing" ] && [ "${_XMASS_TARGET_IP}" = "${_tgt}" ]; then
       _die "target ${_tgt} holds no /root/.standby.cnf: this box's mirror there was promoted;" \
            " an account installed here and never laid there comes back with" \
-           " 'xmass prep-target ${_tgt} --return-accounts=<oN>' once this box is fenced (the failover page)"
+           " 'xmass prep-target ${_tgt} --return-accounts=<oN>$(_xmass_admail_hint)' once this box is fenced (the failover page)"
     fi
     _die "target ${_tgt} holds no /root/.standby.cnf: --fix-accounts serves a standing mirror;" \
          " on a target not yet a standby, 'xmass prep-target ${_tgt}' installs every account"
