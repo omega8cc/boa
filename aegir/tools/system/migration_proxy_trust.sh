@@ -2196,7 +2196,8 @@ _cmd_release() {
     done
   fi
   # The addresses given are one peer's: a move from it into this box under way
-  # by any of them keeps the reach of all of them.
+  # by any of them keeps the reach of all of them. So does reach no day was kept
+  # for, as prune keeps it: older tools gave it, maybe for a move under way.
   if [ "${_reach}" = "YES" ]; then
     for _ip in "${_ips[@]}"; do
       _mpt_pending "${_ip}" || continue
@@ -2204,6 +2205,16 @@ _cmd_release() {
       _reach=NO
       break
     done
+  fi
+  if [ "${_reach}" = "YES" ]; then
+    _reach=NO
+    for _ip in "${_ips[@]}"; do
+      for _a in $(_mpt_peer_set "${_ip}"); do
+        _mpt_reach_day "${_a}" > /dev/null && _reach=YES
+      done
+    done
+    [ "${_reach}" = "NO" ] \
+      && _msg "release: ${_ips[*]}: no day was kept for this peer's reach (older tools gave it); its key and firewall lines stay"
   fi
   if [ "${_reach}" = "YES" ]; then
     _CSF_CHANGED=NO
@@ -2228,7 +2239,7 @@ _cmd_release() {
 # on takes it and one that ended before leaves it. A pre-mig's own line, written
 # meanwhile, wins: the seed never replaces a file that appeared.
 _mpt_reach_seed() {
-  local _t="${_MPT_REACH_DAYS}.seed.$$" _today
+  local _t="${_MPT_REACH_DAYS}.seed.$$" _p _today
   _today="$(date -u '+%Y-%m-%d')"
   {
     grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
@@ -2241,16 +2252,18 @@ _mpt_reach_seed() {
     _is_dotted_quad "${_ip}" || continue
     printf '%s %s seed\n' "${_ip}" "${_today}" || exit 1
   done > "${_t}" || { rm -f -- "${_t}"; return 1; }
-  chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
-  rm -f -- "${_t}"
-  [ -e "${_MPT_REACH_DAYS}" ] || return 1
-  # A move older tools began may be under way from any address seeded here.
-  _t="${_MPT_PENDING}.seed.$$"
-  if ! { { cat "${_MPT_PENDING}" 2> /dev/null; awk '$3 == "seed" { print $1, $2, "seed" }' "${_MPT_REACH_DAYS}"; } \
-    | awk '!s[$1]++' > "${_t}" && chmod 600 "${_t}" && mv -f -- "${_t}" "${_MPT_PENDING}"; }; then
-    rm -f -- "${_t}"
+  # A move older tools began may be under way from any address seeded here. Its
+  # pending line goes first: a seed that fails leaves no reach file, and the
+  # next run seeds again.
+  _p="${_MPT_PENDING}.seed.$$"
+  if ! { { cat "${_MPT_PENDING}" 2> /dev/null; awk '{ print $1, $2, "seed" }' "${_t}"; } \
+    | awk '!s[$1]++' > "${_p}" && chmod 600 "${_p}" && mv -f -- "${_p}" "${_MPT_PENDING}"; }; then
+    rm -f -- "${_p}" "${_t}"
     return 1
   fi
+  chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
+  rm -f -- "${_t}"
+  [ -e "${_MPT_REACH_DAYS}" ]
 }
 
 # Daily, from the certificate mirror's cron: the reach of a relay that is over,
