@@ -5847,6 +5847,22 @@ _xmass_lane_accounts_here() {
   done
 }
 
+# _xmass_lane_accounts_here, and the accounts a restore-target run's record kept
+# ($1 all, $2 half): a mark the marking's own rm took, in a run cut short since,
+# loses no account. One of $1 counts only while its home is a real directory.
+_xmass_restore_lane_lists() {
+  local _a
+  _xmass_lane_accounts_here
+  for _a in ${1}; do
+    _mig_valid_acct "${_a}" && [ -d "/data/disk/${_a}" ] && [ ! -L "/data/disk/${_a}" ] || continue
+    _xmass_word_in "${_a}" "${_XMASS_LANE_ALL}" || _XMASS_LANE_ALL="${_XMASS_LANE_ALL} ${_a}"
+  done
+  for _a in ${2}; do
+    _xmass_word_in "${_a}" "${_XMASS_LANE_ALL}" || continue
+    _xmass_word_in "${_a}" "${_XMASS_LANE_HALF}" || _XMASS_LANE_HALF="${_XMASS_LANE_HALF} ${_a}"
+  done
+}
+
 # Whether the data directory now serving holds the panel database of account $1,
 # read from its panel's site dir here under whichever platform it stands.
 _xmass_panel_db_here() {
@@ -5867,9 +5883,10 @@ _xmass_panel_db_here() {
 # account put at a name, as the log and config trees are the account's. Marked, never
 # purged: with the active gone this may be the last copy of its files. The lane's
 # mark goes with the role, as the lane refuses a box with no standby marker.
+# $1 and $2 are the lists a run's record kept (_xmass_restore_lane_lists).
 _xmass_restore_laid_accounts() {
   local _a _m _all="" _kept=""
-  _xmass_lane_accounts_here
+  _xmass_restore_lane_lists "${1:-}" "${2:-}"
   rm -f /root/.*.fix-accounts.txt
   for _a in ${_XMASS_LANE_ALL}; do
     if _xmass_panel_db_here "${_a}"; then
@@ -5899,11 +5916,175 @@ _xmass_restore_laid_accounts() {
   _alrt "  If it does not, copy out what you need first: a purge removes these files"
 }
 
+# What a live restore-target run leaves for a run that stopped after the standby
+# marker went (at MySQL's start, or its first answer): the parked directory it
+# put back, that directory's identity, and the accounts the lane laid here, so a
+# run again finishes the restore from MySQL's start. Root's, 0600, read as
+# lines, never sourced; written before anything changes and removed at the end.
+_XMASS_RESTORE_REC="/etc/boa/control/xmass-restore-target.rec"
+_xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going back
+  local _id _t="${_XMASS_RESTORE_REC}.put.$$"
+  _id="$(stat -c '%i:%W' -- "${2}" 2> /dev/null)"
+  [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  mkdir -p "${_XMASS_RESTORE_REC%/*}" || return 1
+  rm -f -- "${_t}"
+  if ( umask 077
+    printf '%s\n' "# Put by xmass restore-target --live: a run again with no standby marker finishes from MySQL's start." \
+      "_XMASS_RESTORE_STAMP=${1}" "_XMASS_RESTORE_PRE=${2}" "_XMASS_RESTORE_DATADIR=${_id}" \
+      "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" > "${_t}" ) \
+    && mv -f -T -- "${_t}" "${_XMASS_RESTORE_REC}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# Status 0, with _XMASS_RESTORE_* set, when the record's run is the one to
+# finish: its replica copy is aside and /var/lib/mysql is the very directory it
+# put back (a later init or promotion puts another there).
+_xmass_restore_rec_read() {
+  local _r _s _id _l _w _a
+  [ -f "${_XMASS_RESTORE_REC}" ] && [ ! -L "${_XMASS_RESTORE_REC}" ] || return 1
+  _r="$( cd -P -- "${_XMASS_RESTORE_REC%/*}" 2> /dev/null && _xmass_rootread_here "${_XMASS_RESTORE_REC##*/}" )" || return 1
+  _s="$(_xmass_kv "${_r}" _XMASS_RESTORE_STAMP)"
+  _id="$(_xmass_kv "${_r}" _XMASS_RESTORE_DATADIR)"
+  [[ "${_s}" =~ ^[0-9]{14}$ ]] && [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  [ -d "/var/lib/mysql.xmass_standby_${_s}" ] && [ -d /var/lib/mysql ] && [ ! -L /var/lib/mysql ] || return 1
+  [ "$(stat -c '%i:%W' /var/lib/mysql 2> /dev/null)" = "${_id}" ] || return 1
+  _XMASS_RESTORE_STAMP="${_s}"
+  _XMASS_RESTORE_PRE="$(_xmass_kv "${_r}" _XMASS_RESTORE_PRE | tr -cd 'a-zA-Z0-9/._-')"
+  for _l in ALL HALF; do
+    _a=""
+    for _w in $(_xmass_kv "${_r}" "_XMASS_RESTORE_LANE_${_l}"); do
+      _mig_valid_acct "${_w}" && _a="${_a} ${_w}"
+    done
+    printf -v "_XMASS_RESTORE_LANE_${_l}" '%s' "${_a# }"
+  done
+  return 0
+}
+
+# The control panels the sync left naming the active's panel, once this box is
+# plain again. The .drush leg copies the whole alias dir with -u, and no leg
+# carries the active's panel site dir, so an alias the active wrote after this
+# box's own (a panel Verify, an Octopus pass's panel move, the renames of a
+# promotion) names a panel this box does not hold: its @hostmaster then fails,
+# and pre-mig refuses the account. Put right by the promotion's panel rewire run
+# here as post-mig runs it, with this box's own name: it adopts the one panel
+# dir of that name and heals the root, the uri and the platform names in both
+# panel aliases. Only an alias pre-mig would refuse, of a real install whose own
+# panel database the restored directory holds, so the rewire's database steps
+# only read. An account the lane laid or was laying (marked above), one marked
+# CANCELLED, a copy, or an unfinished aegir2boa import is left as it is.
+# $1 = DRY lists them, LIVE heals them; _XMASS_LANE_ALL as the marking reads it.
+_xmass_restore_heal_panels() {
+  local _how="$1" _root _oct _als _rd _sp _me _out _l _bad="" _list=""
+  _me=$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')
+  for _root in /data/disk/*; do
+    [ -d "${_root}" ] && [ ! -L "${_root}" ] || continue
+    _oct="${_root##*/}"
+    _mig_valid_acct "${_oct}" || continue
+    _als="${_root}/.drush/hostmaster.alias.drushrc.php"
+    [ -f "${_als}" ] || continue
+    [ ! -e "${_root}/log/CANCELLED" ] || continue
+    _xmass_word_in "${_oct}" "${_XMASS_LANE_ALL}" && continue
+    _xmass_account_is_copy "${_oct}" && continue
+    _a2b_import_unfinished "${_oct}" && continue
+    # pre-mig's own reading and its own test (_xmass_pre_mig_panel_sanity)
+    _rd=$(_xmass_read_file "${_als}" | grep "root'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    _sp=$(_xmass_read_file "${_als}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    if [ -e "${_rd}/index.php" ] && [ -f "${_sp}/settings.php" ]; then
+      continue
+    fi
+    if [ "${_how}" != "LIVE" ]; then
+      _list="${_list} ${_oct}"
+      continue
+    fi
+    if [ -z "${_me}" ] || ! _xmass_panel_db_here "${_oct}"; then
+      _alrt "  ${_oct}: its hostmaster alias names ${_sp}, which this box does not hold, and the restored"
+      _alrt "  data directory holds no database of its own panel: left as it is"
+      _bad="${_bad} ${_oct}"
+      continue
+    fi
+    _out=$(_xmass_panel_rewire_sh | bash -s -- "${_root}" "${_me}" 2>&1)
+    [ $? -eq 0 ] || _bad="${_bad} ${_oct}"
+    while IFS= read -r _l; do
+      case "${_l}" in
+        PANEL-ERROR*) _alrt "  ${_oct}: ${_l}" ;;
+        PANEL-*) _info "  ${_oct}: ${_l}" ;;
+      esac
+    done <<< "${_out}"
+  done
+  if [ "${_how}" != "LIVE" ]; then
+    [ -z "${_list}" ] \
+      || _info "  the hostmaster alias of${_list} names a panel this box does not hold: put back on its own panel when the restored data directory holds that panel's database"
+    return 0
+  fi
+  [ -z "${_bad}" ] \
+    || _alrt "  the control panel of${_bad} is not put right (above): pre-mig refuses it until it is repaired"
+  return 0
+}
+
+# From MySQL's start to the end, once the standby marker is gone: a stop here
+# keeps the record, and 'xmass restore-target --live' run again finishes from
+# here. $1 = the stamp, $2 = what went back as /var/lib/mysql, $3 and $4 the
+# lane's lists the record kept.
+_xmass_restore_target_finish() {
+  local _stamp="$1" _pre="$2" _sro _svc _waited
+  if mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1; then
+    _info "MySQL answers already (a watchdog started it)"
+  else
+    _info "Starting MySQL via move_sql.sh ..."
+    /var/xdrago/move_sql.sh start \
+      || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log," \
+              " then run 'xmass restore-target --live' again: it finishes from here"
+  fi
+  _waited=0
+  until mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 || [ "${_waited}" -ge 60 ]; do
+    sleep 2; _waited=$(( _waited + 2 ))
+  done
+  mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 \
+    || _die "MySQL does not answer with the parked credentials after ${_waited}s --" \
+            " once it does, run 'xmass restore-target --live' again: it finishes from here"
+  mysql --defaults-file=/root/.my.cnf \
+    -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
+  _sro=$(mysql --defaults-file=/root/.my.cnf \
+    -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+  [ "${_sro}" = "OFF" ] \
+    || _alrt "  super_read_only still ${_sro:-unknown} -- clear it by hand: mysql -e \"SET GLOBAL super_read_only=OFF\""
+  # the panels, before cron gives any dispatcher a tick on a stale alias
+  _xmass_restore_lane_lists "${3:-}" "${4:-}"
+  _xmass_restore_heal_panels LIVE
+  if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
+    while read -r _svc; do
+      case "${_svc}" in solr9|solr7|solr4|jetty9) : ;; *) continue ;; esac
+      if [ -e "/etc/init.d/${_svc}" ]; then
+        chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+        update-rc.d ${_svc} defaults >/dev/null 2>&1 || true
+        update-rc.d ${_svc} enable >/dev/null 2>&1 || true
+        service ${_svc} start >/dev/null 2>&1 || true
+      fi
+    done < /var/log/boa/.xmass_solr_disarmed.list
+    rm -f /var/log/boa/.xmass_solr_disarmed.list
+  fi
+  service cron start &>/dev/null
+  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as /var/lib/mysql; replica copy kept as /var/lib/mysql.xmass_standby_${_stamp}" \
+    >> /var/log/boa/xmass-restore-target.log
+  _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
+  _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
+  _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
+  _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
+  _xmass_restore_laid_accounts "${3:-}" "${4:-}"
+  rm -f -- "${_XMASS_RESTORE_REC}"
+  return 0
+}
+
 _xmass_restore_target() {
-  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _sro _svc _waited
-  [ -e /root/.standby.cnf ] \
-    || _die "this box carries no standby marker (/root/.standby.cnf): nothing to restore --" \
-            " restore-target serves a target xmass init made a standby and that was never promoted"
+  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _resume=NO
+  if [ ! -e /root/.standby.cnf ]; then
+    _xmass_restore_rec_read \
+      || _die "this box carries no standby marker (/root/.standby.cnf): nothing to restore --" \
+              " restore-target serves a target xmass init made a standby and that was never promoted"
+    _resume=YES
+  fi
   for _mk in /run/boa_xmass_init.pid /root/.standby.init.pid; do
     [ -e "${_mk}" ] && _die "a migration window is in flight here (${_mk}); wait for it to close, or unwind the init on the source"
   done
@@ -5930,6 +6111,20 @@ _xmass_restore_target() {
       ;;
     esac
   done
+  if [ "${_resume}" = "YES" ]; then
+    _info "restore-target on $(hostname -f): the live run of ${_XMASS_RESTORE_STAMP} put ${_XMASS_RESTORE_PRE} back"
+    _info "  as /var/lib/mysql and stopped after the standby marker went: this run finishes it from MySQL's"
+    _info "  start (MySQL started unless it answers, super_read_only cleared, Solr re-armed, cron started)"
+    [ -z "${_XMASS_RESTORE_LANE_ALL}" ] \
+      || _info "  each account --fix-accounts laid here (${_XMASS_RESTORE_LANE_ALL}) marked CANCELLED unless the restored data directory holds its database"
+    if [ "${_live}" != "YES" ]; then
+      _info "DRY RUN -- nothing changed. Re-run with --live to finish it."
+      return 0
+    fi
+    _xmass_restore_target_finish "${_XMASS_RESTORE_STAMP}" "${_XMASS_RESTORE_PRE}" \
+      "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}"
+    return 0
+  fi
   _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
   [ -n "${_pre}" ] || _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box"
   _ts="${_pre#/var/lib/mysql.xmass_pre_}"
@@ -5955,10 +6150,13 @@ _xmass_restore_target() {
   _xmass_lane_accounts_here
   [ -z "${_XMASS_LANE_ALL}" ] \
     || _info "  each account --fix-accounts laid here (${_XMASS_LANE_ALL# }) marked CANCELLED unless the restored data directory holds its database"
+  _xmass_restore_heal_panels DRY
   if [ "${_live}" != "YES" ]; then
     _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
     return 0
   fi
+  _xmass_restore_rec_put "${_stamp}" "${_pre}" \
+    || _die "could not write ${_XMASS_RESTORE_REC}, which a run stopped at MySQL's start needs: nothing changed"
   _info "Stopping and forgetting the replication ..."
   mysql --defaults-file=/root/.my.cnf -e "${_stop}; ${_reset};" 2>/dev/null \
     || _alrt "  could not stop/reset the replica (mysql down or unauthable?) -- continuing with the data directory swap"
@@ -6002,41 +6200,7 @@ _xmass_restore_target() {
   # above and the rm would have recreated the chain and re-touched the key
   # the rm then took. After the rm nothing can assert, so this one is final.
   bash -c "${_XMASS_FW_WEB_RELEASE}"
-  _info "Starting MySQL via move_sql.sh ..."
-  /var/xdrago/move_sql.sh start \
-    || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log"
-  _waited=0
-  until mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 || [ "${_waited}" -ge 60 ]; do
-    sleep 2; _waited=$(( _waited + 2 ))
-  done
-  mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 \
-    || _die "MySQL does not answer with the parked credentials after ${_waited}s"
-  mysql --defaults-file=/root/.my.cnf \
-    -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
-  _sro=$(mysql --defaults-file=/root/.my.cnf \
-    -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
-  [ "${_sro}" = "OFF" ] \
-    || _alrt "  super_read_only still ${_sro:-unknown} -- clear it by hand: mysql -e \"SET GLOBAL super_read_only=OFF\""
-  if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
-    while read -r _svc; do
-      case "${_svc}" in solr9|solr7|solr4|jetty9) : ;; *) continue ;; esac
-      if [ -e "/etc/init.d/${_svc}" ]; then
-        chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
-        update-rc.d ${_svc} defaults >/dev/null 2>&1 || true
-        update-rc.d ${_svc} enable >/dev/null 2>&1 || true
-        service ${_svc} start >/dev/null 2>&1 || true
-      fi
-    done < /var/log/boa/.xmass_solr_disarmed.list
-    rm -f /var/log/boa/.xmass_solr_disarmed.list
-  fi
-  service cron start &>/dev/null
-  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as /var/lib/mysql; replica copy kept as /var/lib/mysql.xmass_standby_${_stamp}" \
-    >> /var/log/boa/xmass-restore-target.log
-  _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
-  _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
-  _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
-  _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
-  _xmass_restore_laid_accounts
+  _xmass_restore_target_finish "${_stamp}" "${_pre}" "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }"
   return 0
 }
 
