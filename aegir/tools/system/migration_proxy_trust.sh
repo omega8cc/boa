@@ -1989,30 +1989,38 @@ _mpt_reach_day() {
     "${_MPT_REACH_DAYS}" 2> /dev/null)"
   _mig_valid_date "${_d}" && printf '%s' "${_d}"
 }
-# Root gave the peer $1 its reach on or after the day its relay ended here: a new
-# move's key or a carry for a live front, which that ended relay cannot take back.
-# A retired relay ended, for this, on the day it was retired: a grant inside its
-# promised window is a new one. Read per address, for the whole of the peer's
-# set; a peer none of whose addresses has a day was given its reach by tools
-# that kept none, so nothing says how old it is and it stays.
+# Root gave the peer $1 its reach for something newer than its relays here that
+# are over: a new move's key or a carry for a live front, which no ended relay can
+# take back. A record that keeps the day its relay began (_MIG_BEGAN) counts a
+# grant after that day as newer; one from older tools counts a grant on or after
+# the day its relay ended (a retired one's: the day it was retired). Read per
+# address, for the whole of the peer's set; a peer none of whose addresses has a
+# day was given its reach by tools that kept none, so nothing says how old it is
+# and it stays.
 _mpt_granted_since() {
-  local _a _t _d _over="" _ip _g _known=""
+  local _a _t _d _began="" _over="" _ip _g _known=""
   while IFS= read -r _a; do
     [ -n "${_a}" ] || continue
     _t="$(_mig_rec_text "${_a}")" || continue
     [ "$(_mig_txt_get "${_t}" _MIG_ROLE)" = "target" ] || continue
     _mpt_in "${1}" " $(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS | tr ',' ' ') " || continue
     _mig_txt_relay_over "${_t}" || continue
+    _d="$(_mig_txt_get "${_t}" _MIG_BEGAN)"
+    if _mig_valid_date "${_d}"; then
+      [[ "${_d}" > "${_began}" ]] && _began="${_d}"
+      continue
+    fi
     _d="$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)"
     [ -n "${_d}" ] || _d="$(_mig_txt_get "${_t}" _MIG_STAMPED)"
     _mig_valid_date "${_d}" || _d="$(_mig_txt_get "${_t}" _MIG_RETIRE_DATE)"
     [[ "${_d}" > "${_over}" ]] && _over="${_d}"
   done < <(_mig_rec_list 2> /dev/null)
-  [ -n "${_over}" ] || return 1
+  [ -n "${_began}${_over}" ] || return 1
   for _ip in $(_mpt_peer_set "${1}"); do
     _g="$(_mpt_reach_day "${_ip}")" || continue
     _known=YES
-    [[ "${_g}" < "${_over}" ]] || return 0
+    [ -n "${_began}" ] && [[ "${_g}" > "${_began}" ]] && return 0
+    [ -n "${_over}" ] && ! [[ "${_g}" < "${_over}" ]] && return 0
   done
   [ -z "${_known}" ]
 }
@@ -2191,7 +2199,8 @@ _mpt_reach_seed() {
         | sed -n -E 's/^([0-9.]+) # xmass migration (source|inbound-proxy)$/\1/p'
     fi
   } | sort -u | while IFS= read -r _ip; do
-    _is_dotted_quad "${_ip}" && printf '%s %s seed\n' "${_ip}" "${_today}"
+    _is_dotted_quad "${_ip}" || continue
+    printf '%s %s seed\n' "${_ip}" "${_today}" || exit 1
   done > "${_t}" || { rm -f -- "${_t}"; return 1; }
   chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
   rm -f -- "${_t}"

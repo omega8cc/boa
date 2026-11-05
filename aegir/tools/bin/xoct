@@ -1049,7 +1049,7 @@ _mig_resolve() {
 ### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
   local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8" _rdl="$9"
-  local _a="${_root##*/}" _body _old _ended=""
+  local _a="${_root##*/}" _body _old _ended="" _began=""
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   if ! _mig_rec "${_a}" > /dev/null; then
     echo "ALRT: refusing to write a policy record for invalid account name '${_a}'"
@@ -1061,11 +1061,17 @@ _mig_write_record() {
   fi
   ### An init on this relay's front ended it; restating the mode here does not
   ### start it again. Only the front's own push does.
-  if [ "${_role}" = "target" ]; then
-    _old="$(_mig_rec_text "${_a}" 2> /dev/null)"
-    [ "$(_mig_txt_get "${_old}" _MIG_PEER_IP)" = "${_peer_ip}" ] \
-      && _ended="$(_mig_txt_get "${_old}" _MIG_RELAY_ENDED)"
+  ### The day this relay began stays across every rewrite for the same role
+  ### and peer (a record from older tools gives its own day): reach given to
+  ### the peer after it serves something newer, and is kept for it.
+  _old="$(_mig_rec_text "${_a}" 2> /dev/null)"
+  if [ -n "${_old}" ] && [ "$(_mig_txt_get "${_old}" _MIG_ROLE)" = "${_role}" ] \
+    && [ "$(_mig_txt_get "${_old}" _MIG_PEER_IP)" = "${_peer_ip}" ]; then
+    _began="$(_mig_txt_get "${_old}" _MIG_BEGAN)"
+    _mig_valid_date "${_began}" || _began="$(_mig_txt_get "${_old}" _MIG_STAMPED)"
+    [ "${_role}" = "target" ] && _ended="$(_mig_txt_get "${_old}" _MIG_RELAY_ENDED)"
   fi
+  _mig_valid_date "${_began}" || _began="$(date -u '+%Y-%m-%d')"
   _body="$(
     echo "_MIG_ROLE=${_role}"
     echo "_MIG_HOST_IP=$(_mig_my_ip)"
@@ -1082,6 +1088,7 @@ _mig_write_record() {
     [ -n "${_rdl}" ] && echo "_MIG_RETIRE_DATE=${_rdl}"
     [ -n "${_ended}" ] && echo "_MIG_RELAY_ENDED=${_ended}"
     [ -n "${_peer_ips}" ] && echo "_MIG_PEER_IPS=${_peer_ips}"
+    echo "_MIG_BEGAN=${_began}"
     echo "_MIG_STAMPED=$(date -u '+%Y-%m-%d')"
   )"
   if ! printf '%s\n%s\n' "${_MIG_REC_HDR}" "${_body}" | _mig_rec_put "${_a}"; then
@@ -8036,14 +8043,28 @@ if [ "\${_rrc}" = "0" ]; then
 elif [ "\${_rrc}" = "3" ] && [ -n "\${_old}" ]; then
   exit 7
 fi
+# The day this relay began stays across every push for the same role and
+# peer (a record from older tools gives its own day).
+_began="\$(date -u '+%Y-%m-%d')"
+if [ "\${_rrc}" = "0" ]; then
+  _rb="\$(printf '%s\\n' "\${_rec}" | sed 1d | tr -d '\\r')"
+  if printf '%s\\n' "\${_rb}" | grep -qx '_MIG_ROLE=${_prole}' \\
+    && printf '%s\\n' "\${_rb}" | grep -qx '_MIG_PEER_IP=${_my}'; then
+    _x="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_BEGAN=' | cut -d= -f2-)"
+    [ -n "\${_x}" ] || _x="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_STAMPED=' | cut -d= -f2-)"
+    [[ "\${_x}" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]\$ ]] && _began="\${_x}"
+  fi
+fi
 ( umask 077
   cd -P -- '${_MIG_REC_DIR}'
   _t="./.${_pacct}.migproxy.cnf.put.\$\$.\${RANDOM}"
   rm -f -- "\${_t}"
-  perl -e '${_XOCT_PUT_PL}' "\${_t}" 0 0 600 <<'RECEOF' || { rm -f -- "\${_t}"; exit 1; }
+  { cat <<'RECEOF'
 ${_MIG_REC_HDR}
 ${_body}
 RECEOF
+    printf '_MIG_BEGAN=%s\\n' "\${_began}"
+  } | perl -e '${_XOCT_PUT_PL}' "\${_t}" 0 0 600 || { rm -f -- "\${_t}"; exit 1; }
   mv -f -T -- "\${_t}" './.${_pacct}.migproxy.cnf'
 )
 # The addresses this box relays from, kept where only root writes: the
@@ -8208,7 +8229,8 @@ _xoct_peer_trust_remedy() {
   echo "ERROR:   3. free disk under /root there (the record is root's, /root/.<oN>.migproxy.cnf) -- the"
   echo "ERROR:      record write is fail-closed on a truncated file"
   echo "ERROR: A relay retired past its date has lost its key there: run xoct pre-mig on both boxes"
-  echo "ERROR: (this box first, then ${_p} naming this box), then re-run here."
+  echo "ERROR: (this box first, then ${_p} naming this box), re-run here, then xoct post-mig on"
+  echo "ERROR: both the same way: pre-mig parks each box's task queue until its post-mig."
 }
 
 ### Wire the migration-proxy trust on the TARGET (never on this source box:
@@ -8464,9 +8486,11 @@ _xoct_proxy_preflight() {
         fi
         _XOCT_OLD_PEER="${_old_peer}"
         _XOCT_OLD_PEER_OCT="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
-        ### The day this relay was written: reach the old peer gave this box
-        ### after it serves something newer, and the release leaves it.
-        _XOCT_OLD_PEER_SINCE="$(_mig_txt_get "${_t}" _MIG_STAMPED)"
+        ### The day this relay began (an older record's own day): reach the old
+        ### peer gave this box after it serves something newer, and the release
+        ### leaves it.
+        _XOCT_OLD_PEER_SINCE="$(_mig_txt_get "${_t}" _MIG_BEGAN)"
+        _mig_valid_date "${_XOCT_OLD_PEER_SINCE}" || _XOCT_OLD_PEER_SINCE="$(_mig_txt_get "${_t}" _MIG_STAMPED)"
         ### An imported record's name for the account there is the copy's:
         ### the abandoned target is released only for the account it
         ### confirms, else by hand (_XOCT_OLD_PEER stays for the mail
