@@ -6136,9 +6136,20 @@ _xmass_restore_target_finish() {
     _info "MySQL answers already (a watchdog started it)"
   else
     _info "Starting MySQL via move_sql.sh ..."
-    /var/xdrago/move_sql.sh start \
-      || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log," \
-              " then run 'xmass restore-target --live' again: it finishes from here"
+    if ! /var/xdrago/move_sql.sh start; then
+      # The MySQL watchdog's own start holds the restart lock on a box whose
+      # mysqld is down, and move_sql.sh refuses while it stands. That attempt
+      # ends within about a minute: then this run starts MySQL itself, or finds
+      # it running.
+      _waited=0
+      while [ -e /run/mysql_restart_running.pid ] && [ "${_waited}" -lt 150 ]; do
+        sleep 3; _waited=$(( _waited + 3 ))
+      done
+      mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1 \
+        || /var/xdrago/move_sql.sh start \
+        || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log," \
+                " then run 'xmass restore-target --live' again: it finishes from here"
+    fi
   fi
   _waited=0
   until mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 || [ "${_waited}" -ge 60 ]; do
