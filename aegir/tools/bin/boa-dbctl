@@ -372,23 +372,23 @@ _acct_read_in() {
 # for. A run stopped by SIGTERM skips what is left yet still writes its
 # metadata and exits 0 (1 after such a retry); it says so only at Message
 # level, so callers run mydumper at --verbose=3. Returns 0 when exit
-# status $1, with the run's output in file $2, is a whole run: nothing
-# says it was cancelled, and the status is 0, or 1 with at least one such
-# retry, every counted error a retry (a failed query is logged as a
-# WARNING with " - ERROR <n>: ", any other error as CRITICAL) and nothing
-# CRITICAL or ERROR. The caller still requires metadata.
+# status $1, with the run's output in file $2 (no file, no pass), is a
+# whole run: nothing says it was cancelled (0.19.3 spells it "cacelled"),
+# and the status is 0, or 1 with at least one such retry, every counted
+# error a retry (a failed query is logged as a WARNING with " - ERROR
+# <n>: ", any other error as CRITICAL) and nothing CRITICAL or ERROR. The
+# caller still requires metadata.
 _mydumper_run_ok() {
   local _rc="${1}" _log="${2}"
-  if [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] \
-    && grep -q -E 'Shutting down gracefully|Process has been cancelled' "${_log}"; then
-    return 1
-  fi
+  [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  grep -q -E '^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$' \
+    "${_log}" && return 1
   [[ "${_rc}" == "0" ]] && return 0
-  [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  [[ "${_rc}" == "1" ]] || return 1
   awk '
     /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
     /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
-      if ($0 ~ /Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      if ($0 ~ /\): WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
       else _bad = 1
     }
     END { exit (_bad || !_ok) }
@@ -2340,6 +2340,7 @@ _v_dump() {
   _MYDUMPER_BACKUP_LOCKS=()
   [[ "${_SRV_VER}" == 5.7.* ]] && _mydumper_backup_locks_opts 7>&- 8>&- 9>&-
   _thr=$(_threads)
+  _t0="${SECONDS}"
   timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" mydumper \
     --defaults-file="${_MYCNF}" \
     --database="${_db}" \
@@ -2361,12 +2362,17 @@ _v_dump() {
   # only counted error is its own retried table flush exits 1 with a whole
   # dump; one stopped by SIGTERM says so only at --verbose=3) and goes where
   # it went before, to stderr, without its Message lines but those.
-  awk '!/^\*\* Message: / || /Shutting down gracefully|Process has been cancelled/' \
+  awk '!/^\*\* Message: / || /^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$/' \
     "${_TMPD}/mydumper.log" >&2 7>&- 8>&- 9>&-
   case "${_rc}" in
     124|137)
-      _alrt "dump of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
-      _die 7 "time-limit"
+      # 137 is also an outside SIGKILL (the MySQL watchdog's), well inside
+      # the limit: only a run that reached it is reported as past it.
+      if [[ "${_rc}" == "124" ]] || (( SECONDS - _t0 >= _IO_LIMIT )); then
+        _alrt "dump of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
+        _die 7 "time-limit"
+      fi
+      _die 7 "dump-killed"
       ;;
     *)
       if ! _mydumper_run_ok "${_rc}" "${_TMPD}/mydumper.log" 7>&- 8>&- 9>&-; then

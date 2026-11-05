@@ -669,23 +669,23 @@ EOFMYSQL
 ### for. A run stopped by SIGTERM skips what is left yet still writes its
 ### metadata and exits 0 (1 after such a retry); it says so only at Message
 ### level, so callers run mydumper at --verbose=3. Returns 0 when exit
-### status $1, with the run's output in file $2, is a whole run: nothing
-### says it was cancelled, and the status is 0, or 1 with at least one such
-### retry, every counted error a retry (a failed query is logged as a
-### WARNING with " - ERROR <n>: ", any other error as CRITICAL) and nothing
-### CRITICAL or ERROR. The caller still requires metadata.
+### status $1, with the run's output in file $2 (no file, no pass), is a
+### whole run: nothing says it was cancelled (0.19.3 spells it "cacelled"),
+### and the status is 0, or 1 with at least one such retry, every counted
+### error a retry (a failed query is logged as a WARNING with " - ERROR
+### <n>: ", any other error as CRITICAL) and nothing CRITICAL or ERROR. The
+### caller still requires metadata.
 _mydumper_run_ok() {
   local _rc="${1}" _log="${2}"
-  if [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] \
-    && grep -q -E 'Shutting down gracefully|Process has been cancelled' "${_log}"; then
-    return 1
-  fi
+  [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  grep -q -E '^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$' \
+    "${_log}" && return 1
   [[ "${_rc}" == "0" ]] && return 0
-  [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  [[ "${_rc}" == "1" ]] || return 1
   awk '
     /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
     /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
-      if ($0 ~ /Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      if ($0 ~ /\): WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
       else _bad = 1
     }
     END { exit (_bad || !_ok) }
