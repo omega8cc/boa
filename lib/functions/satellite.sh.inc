@@ -10264,8 +10264,9 @@ _satellite_ssl_proxy_template_refresh() {
   ### every older one.
   local _tpl="/var/xdrago/conf/ssl_proxy.conf"
   local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
-  grep -q NumTickets "${_tpl}" 2>/dev/null && return 0
-  grep -q NumTickets "${_src}" 2>/dev/null || return 0
+  local _mrk='^[[:space:]]*ssl_conf_command[[:space:]]+NumTickets[[:space:]]+0;'
+  grep -qE "${_mrk}" "${_tpl}" 2>/dev/null && return 0
+  grep -qE "${_mrk}" "${_src}" 2>/dev/null || return 0
   mkdir -p /var/xdrago/conf
   cp -af "${_src}" "${_tpl}"
 }
@@ -10311,9 +10312,6 @@ _satellite_letsencrypt_vhost_setup() {
         _HTTP3_TEST=$(grep -E "^[[:space:]]*(listen .* quic;|http3)" ${_Ssl} 2>&1)
         _ALTSVC_TEST=$(grep "Alt-Svc clear" ${_Ssl} 2>&1)
         _KTLS_TEST=$(grep KTLS ${_Ssl} 2>&1)
-        ### TLS 1.3 session tickets went off later; a front still sending them
-        ### can lose a request whose client closes without reading.
-        _TICKETS_TEST=$(grep NumTickets ${_Ssl} 2>&1)
         _RPRT_TEST=$(grep reuseport ${_Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
         ### The /sqladmin crawler drop and css allow-list arrived together,
@@ -10356,7 +10354,6 @@ _satellite_letsencrypt_vhost_setup() {
           || [[ "${_HTTP3_TEST}" =~ (quic|http3) ]] \
           || [[ ! "${_ALTSVC_TEST}" =~ "Alt-Svc" ]] \
           || [ "${_KTLS_NEEDS_UPDATE}" = "YES" ] \
-          || [[ ! "${_TICKETS_TEST}" =~ "NumTickets" ]] \
           || [[ "${_RPRT_TEST}" =~ "reuseport" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
           || [[ ! "${_SQLADMCRWL_TEST}" =~ "is_crawler" ]] \
