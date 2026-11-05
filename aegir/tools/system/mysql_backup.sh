@@ -869,7 +869,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     return 1
   fi
   if [ "${_MYDUMPER_RC}" -ne "0" ]; then
-    echo "INFO: mydumper retried its table flush for ${_DB} behind a long query and exited ${_MYDUMPER_RC}; the dump is whole"
+    _MYDUMPER_FLUSH_RETRIED="YES"
   fi
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
   _mydumper_object_modes "${_DB}" "${_SAVELOCATION}/${_DB}" mysql -u root || _MYDUMPER_MODES_LEFT="YES"
@@ -1272,6 +1272,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _DUMP_RC=0
     _MYSQLDUMP_LEFT_OUT=""
     _MYDUMPER_MODES_LEFT=""
+    _MYDUMPER_FLUSH_RETRIED=""
     if [ "${_DB}" = "mysql" ]; then
       _backup_mysql_schema &> /dev/null || _DUMP_RC=1
     elif [ "${_MYQUICK_USE}" = "YES" ]; then
@@ -1282,6 +1283,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _remove_locks ${_DB}
     if [ "${_DUMP_RC}" = "0" ]; then
       echo "INFO: Backup completed for ${_DB}"
+      if [ -n "${_MYDUMPER_FLUSH_RETRIED}" ]; then
+        echo "INFO: mydumper retried its table flush for ${_DB} behind a long query and exited 1; the dump is whole"
+      fi
       if [ -n "${_MYSQLDUMP_LEFT_OUT}" ]; then
         echo "WARN: ${_DB} was dumped without its ${_MYSQLDUMP_LEFT_OUT}: the dumping login could not read them"
         _OBJECTS_LEFT_DBS="${_OBJECTS_LEFT_DBS} ${_DB}:${_MYSQLDUMP_LEFT_OUT// and /+}"
