@@ -14792,6 +14792,63 @@ SERVEPROBE
   return 0
 }
 
+### The sites of the proxied accounts among $1 whose HTTPS the conversion put
+### aside, one "<oN> <domain>" line each: the :80 vhost is the proxy, the
+### site's own https vhost is saved as .https.<domain> and no HTTPS proxy took
+### its place, since its certificate files were incomplete. xoct names them
+### once, mid-way through its report, which no tool keeps; read from the
+### vhosts, a site a --repair gave its HTTPS proxy drops out. A site with no
+### https vhost of its own never served HTTPS here and is not one of them.
+_xmass_https_parked() {
+  local _oct _v _n _d
+  for _oct in ${1}; do
+    _mig_is_proxied "${_oct}" || continue
+    _v="/data/disk/${_oct}/config/server_master/nginx/vhost.d"
+    while IFS= read -r _n; do
+      _d="${_n#./.https.}"
+      [[ "${_d}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || continue
+      _xmass_read_in "${_v}" "${_d}" \
+        | grep -q -F -- 'Plain HTTP proxy (START)' || continue
+      _xmass_read_in "${_v}" "https.${_d}" \
+        | grep -q -F -- 'Secure HTTPS proxy' && continue
+      printf '%s %s\n' "${_oct}" "${_d}"
+    done < <(_xmass_in_real_dir "${_v}" \
+      find . -maxdepth 1 -type f -name '.https.*' 2> /dev/null | LC_ALL=C sort)
+  done
+}
+
+### Name what _xmass_https_parked finds on the accounts $2, each account with
+### its repair against the target $1, whose hostname is $3 (read over ssh when
+### empty): the re-run carries both hostnames, as the cutover handed them to
+### xoct, or the sites named under this box's hostname would be proxied by
+### their old names. Status 1 when a site is named.
+_xmass_https_parked_report() {
+  local _t="${1}" _hp _o _ds _f _ad _px
+  _hp="$(_xmass_https_parked "${2}")"
+  [ -z "${_hp}" ] && return 0
+  _f="${3}"
+  [ -z "${_f}" ] && _f=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "hostname -f" 2>/dev/null)
+  _px="_XOCT_TARGET_FQDN=${_f:-<hostname -f of ${_t}>} _XOCT_MY_FQDN=$(_xmass_src_fqdn) "
+  _alrt "  Sites with no HTTPS proxy on this source (their certificate files were"
+  _alrt "  incomplete at the conversion):"
+  for _o in $(printf '%s\n' "${_hp}" | cut -d' ' -f1 | uniq); do
+    _ds=$(printf '%s\n' "${_hp}" | awk -v o="${_o}" '$1 == o { printf " %s", $2 }')
+    _alrt "    ${_o}:${_ds}"
+  done
+  _alrt "  HTTPS to them through this box answers on its wildcard certificate, not"
+  _alrt "  their own; once each set is complete, re-run for its account:"
+  for _o in $(printf '%s\n' "${_hp}" | cut -d' ' -f1 | uniq); do
+    _ad="$(_xmass_xoct_token "${_o}")"
+    if [ -n "${_ad}" ]; then
+      _ad=" admail=${_ad}"
+    else
+      _ad="$(_xmass_admail_hint)"
+    fi
+    _alrt "    ${_px}xoct proxy ${_o} ${_t} --repair${_ad}"
+  done
+  return 1
+}
+
 _xmass_cmd_verify() {
   # Read-only post-cutover sweep replacing the manual checklist: per account,
   # one client-domain site (its name does not change at cutover) and one site
@@ -14903,6 +14960,9 @@ _xmass_cmd_verify() {
     done
     [ -z "${_picked}" ] && _info "  ${_oct}: no site besides the control panel (probed below by its new name)"
   done
+  # The sample reads HTTPS on the target alone, where these serve right
+  _xmass_https_parked_report "${_tgt}" "${_ELIGIBLE_ACCOUNTS}" "${_tgt_fqdn}" \
+    && _info "No site of a proxied account is left without its HTTPS proxy here: OK"
   # The sample above is two sites per account; this is every name the target
   # carries. Kept separate because it runs on the target, not from here.
   _xmass_verify_serve_sweep "${_tgt}" "${_src_fqdn}" "${_ELIGIBLE_ACCOUNTS}" || true
@@ -17425,6 +17485,8 @@ REMOTE
       [ -n "${_ct}" ] && _alrt "    (${_cf} is an xoct canary still in its test run: add admail=${_ct})"
     done
   fi
+  # xoct named these once, mid-way through each account's report
+  _xmass_https_parked_report "${_tgt}" "${_ELIGIBLE_ACCOUNTS}" "" || true
   _info "  Proxy modes are per account: see 'xoct proxy-mode --all' on this box"
   _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"
   if [ -n "${_XMASS_ADMAIL}" ]; then
