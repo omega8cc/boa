@@ -166,13 +166,23 @@ _csf_reload() {
 # while csf runs it the allow rules are gone: a peer's next connection, such as
 # a migration tool pushing the next account's record, is dropped. Wait until
 # lfd has taken the restart and csf has let go of its lock, 60 seconds at most.
+# lfd removes the restart file a moment before csf takes the lock, so the lock
+# is first waited for to be taken, 3 seconds at most.
 _csf_restart_wait() {
-  local _i=0
+  local _i=0 _j=0
+  [ -e /var/lib/csf/csf.restart ] || return 0
   while [ -e /var/lib/csf/csf.restart ] && [ "${_i}" -lt 120 ]; do
     sleep 0.5
     _i=$(( _i + 1 ))
   done
-  command -v flock > /dev/null 2>&1 || return 0
+  if ! command -v flock > /dev/null 2>&1; then
+    sleep 3
+    return 0
+  fi
+  while flock -n /var/lib/csf/csf.lock true 2> /dev/null && [ "${_j}" -lt 6 ]; do
+    sleep 0.5
+    _j=$(( _j + 1 ))
+  done
   while ! flock -n /var/lib/csf/csf.lock true 2> /dev/null && [ "${_i}" -lt 120 ]; do
     sleep 0.5
     _i=$(( _i + 1 ))
