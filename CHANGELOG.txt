@@ -117,6 +117,16 @@
 
 @=> Important Fixes
 
+    * The nightly SQL backup no longer empties the page cache. It dropped the
+      whole cache before and after every database, about 620 times a night on
+      a box with 310 databases, so every site and each dump tool kept reading
+      their files from disk again for the length of the run.
+
+    * multiback, autoupboa and graceful.sh no longer empty the page cache
+      either. Each kept a drop behind a RAM test from when it stood beside a
+      swapoff; the kernel frees clean pages on demand, so a drop freed nothing
+      new and sent every site back to the disk.
+
     * Swap is no longer emptied on a schedule: autoupboa's purge at half full
       and multiback's reset before a backup ran swapoff -a, which freezes every
       process with pages in swap until they are read back. 4 GB on a slow disk
@@ -183,9 +193,9 @@
       sudo, nor running a codebase's own drush.php directly, which lies where
       tenant code can write.
 
-    * The nightly no longer hands a certificate DNS hook's folder to the account.
-      A hook tree holding anything not root's now goes to undo/ and is cloned
-      again.
+    * The nightly no longer hands a certificate DNS hook's folder to the
+      account. A hook tree holding anything not root's now goes to undo/ and
+      is cloned again.
 
     * A web identity's exec() no longer logs a refused tr to PHP-FPM's error log
       on an account with a cli.info.
