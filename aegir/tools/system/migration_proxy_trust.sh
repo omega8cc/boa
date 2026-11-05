@@ -175,19 +175,27 @@ _csf_restart_wait() {
     sleep 0.5
     _i=$(( _i + 1 ))
   done
-  if ! command -v flock > /dev/null 2>&1; then
+  if [ ! -r /proc/locks ]; then
     sleep 3
     return 0
   fi
-  while flock -n /var/lib/csf/csf.lock true 2> /dev/null && [ "${_j}" -lt 6 ]; do
+  while ! _csf_locked && [ "${_j}" -lt 6 ]; do
     sleep 0.5
     _j=$(( _j + 1 ))
   done
-  while ! flock -n /var/lib/csf/csf.lock true 2> /dev/null && [ "${_i}" -lt 120 ]; do
+  while _csf_locked && [ "${_i}" -lt 120 ]; do
     sleep 0.5
     _i=$(( _i + 1 ))
   done
   return 0
+}
+# Whether csf holds its lock, read from /proc/locks and never by taking it: csf
+# takes the lock without waiting and gives up when it is held, and lfd does not
+# start a restart it gave up again.
+_csf_locked() {
+  local _ino
+  _ino="$(stat -c %i /var/lib/csf/csf.lock 2> /dev/null)" || return 1
+  [ -n "${_ino}" ] && grep -q ":${_ino} " /proc/locks 2> /dev/null
 }
 
 # Set to YES by _csf_add_ip whenever it appends a line, so the caller only pays
