@@ -1127,6 +1127,68 @@ _night_bak_open() {
   fi
   return 0
 }
+# An export is the backup itself under a second name, readable by everyone, and
+# any account's web user can enter backup-exports, so a name that can be guessed
+# is enough to read one. Exports therefore live in a folder of a random name,
+# which no other account can list, and the panel and the backend are told its
+# path. All of it runs as the account: the folder, the moves and ~/.drush are its
+# own, and it gains nothing by changing them.
+#
+# In the current (pinned) backup-exports: the folder's name printed, made when
+# missing, with any export still at the top moved in. $1 $2: the account's ids.
+_night_export_dir_here() {
+  local _t _f _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
+  _t=$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
+    -regextype posix-extended -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
+  if [ -z "${_t}" ]; then
+    _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+    [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] || return 1
+    "${_as[@]}" mkdir -m 0711 -- "./${_t}" 2> /dev/null || return 1
+  fi
+  "${_as[@]}" chmod 0711 -- "./${_t}" 2> /dev/null
+  while IFS= read -r -d '' _f; do
+    "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
+  done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
+  printf '%s\n' "${_t}"
+}
+# The line of ~/.drush/local.drushrc.php (the current directory) that gives the
+# backend the path $ARGV[0], which Aegir's own drushrc.php includes; anything an
+# operator keeps in that file stays.
+_NIGHT_EXPORT_RC_PL='my ($p, $f, $s) = ($ARGV[0], "local.drushrc.php", "");
+my $k = "\$options[\x27provision_backup_export_path\x27]";
+if (open(my $h, "<", $f)) { local $/; $s = <$h>; close($h); }
+my $n = $s;
+$n =~ s/^\Q$k\E.*\n?//mg;
+$n =~ s/\?>\s*\z//;
+$n = "<?php\n" unless $n =~ /\S/;
+$n .= "\n" unless $n =~ /\n\z/;
+$n .= "$k = \x27$p\x27;\n";
+exit 0 if $n eq $s;
+open(my $o, ">", "$f.$$") or exit 1;
+print $o $n;
+close($o) or exit 1;
+chmod(0640, "$f.$$");
+rename("$f.$$", $f) or exit 1;'
+# The folder's path printed and the backend told it; status 1 and nothing printed
+# when it cannot be had, so the panel keeps the path it has.
+_night_export_path() {
+  local _n="${_usEr##*/}" _u _g _t _as
+  _u=$(id -u -- "${_n}" 2> /dev/null)
+  _g=$(id -g -- "${_n}" 2> /dev/null)
+  if [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ]; then
+    _as=(setpriv --reuid="${_u}" --regid="${_g}" --clear-groups)
+    if [ ! -e "${_usEr}/backup-exports" ] && [ ! -L "${_usEr}/backup-exports" ]; then
+      _acct_in_real_dir "${_usEr}" "${_as[@]}" mkdir -m 0751 -- ./backup-exports 2> /dev/null
+    fi
+    _t=$(_night_in_bak_dir backup-exports _night_export_dir_here "${_u}" "${_g}")
+  fi
+  if [[ ! "${_t}" =~ ^[0-9a-f]{32}$ ]] \
+    || ! _acct_in_real_dir "${_usEr}/.drush" "${_as[@]}" \
+      perl -e "${_NIGHT_EXPORT_RC_PL}" "${_usEr}/backup-exports/${_t}" 2> /dev/null; then
+    return 1
+  fi
+  printf '%s\n' "${_usEr}/backup-exports/${_t}"
+}
 
 _relocate_backups_to_static_fs() {
   # Move this account's backups + backup-exports onto the static/files filesystem
@@ -1463,7 +1525,11 @@ _account_process() {
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_items 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
     _relocate_backups_to_static_fs
-    _run_drush8_hmr_cmd "${_vSet} aegir_backup_export_path ${_usEr}/backup-exports"
+    if _nExpP=$(_night_export_path); then
+      _run_drush8_hmr_cmd "${_vSet} aegir_backup_export_path ${_nExpP}"
+    else
+      echo "backup exports of ${_usEr}: no private folder this run, the panel keeps its path"
+    fi
     _run_drush8_hmr_cmd "fr hosting_custom_settings -y"
     _run_drush8_hmr_cmd "cache-clear all"
     _run_drush8_hmr_cmd "cache-clear all"

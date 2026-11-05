@@ -273,6 +273,8 @@
   # The panel's download of a backup export reads it here
   /data/disk/*/backup-exports/ r,
   /data/disk/*/backup-exports/* r,
+  /data/disk/*/backup-exports/*/ r,
+  /data/disk/*/backup-exports/*/* r,
   /var/aegir/backup-exports/ r,
   /var/aegir/backup-exports/* r,
 
