@@ -122,10 +122,11 @@
       Each step sends the next request and hangs up without reading, so the
       TLS 1.3 session tickets nginx sent stayed unread, the hang-up became a
       reset, and with kernel TLS the reset could discard the request before
-      nginx read it, with nothing logged. Every HTTPS server BOA writes now
-      sends no TLS 1.3 tickets; TLS 1.2 still resumes through the session
-      cache. The wildcard and control panel fronts update on the next pass,
-      the site vhosts on their next Verify.
+      nginx read it, with nothing logged. The wildcard HTTPS front, the
+      default server whose ticket count nginx uses for every name on the
+      box, now sends no TLS 1.3 tickets, and so does every other HTTPS
+      server BOA writes; TLS 1.2 resumes as before. The front updates on the
+      next Barracuda pass, deployed HTTPS proxies in place on the same pass.
 
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
