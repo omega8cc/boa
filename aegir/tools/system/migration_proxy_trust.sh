@@ -8,7 +8,7 @@
 #   migration_proxy_trust.sh teardown [--force]
 #   migration_proxy_trust.sh reconcile [--force]
 #   migration_proxy_trust.sh adopt [--once]
-#   migration_proxy_trust.sh release <ip>... [--to=<ip>|--over]
+#   migration_proxy_trust.sh release <ip>... [--to=<ip> [--since=<day>]|--over]
 #   migration_proxy_trust.sh prune
 #
 # trust: register the given peer IP(s) as trusted migration sources on this host.
@@ -1980,11 +1980,23 @@ _mpt_pair_named() {
   done < <(_mig_rec_list 2> /dev/null)
   return 1
 }
+# The day root last gave the address $1 its reach, from its line in the reach
+# file. With $2 = grant, a line the first prune seeded is no grant and gives
+# nothing.
+_mpt_reach_day() {
+  local _d
+  _d="$(awk -v a="${1}" -v g="${2:-}" '$1 == a && (g != "grant" || NF == 2) { d = $2 } END { print d }' \
+    "${_MPT_REACH_DAYS}" 2> /dev/null)"
+  _mig_valid_date "${_d}" && printf '%s' "${_d}"
+}
 # Root gave the peer $1 its reach on or after the day its relay ended here: a new
 # move's key or a carry for a live front, which that ended relay cannot take back.
-# Read per address, for the whole of the peer's set.
+# A retired relay ended, for this, on the day it was retired: a grant inside its
+# promised window is a new one. Read per address, for the whole of the peer's
+# set; a peer none of whose addresses has a day was given its reach by tools
+# that kept none, so nothing says how old it is and it stays.
 _mpt_granted_since() {
-  local _a _t _d _over="" _ip _g
+  local _a _t _d _over="" _ip _g _known=""
   while IFS= read -r _a; do
     [ -n "${_a}" ] || continue
     _t="$(_mig_rec_text "${_a}")" || continue
@@ -1992,21 +2004,22 @@ _mpt_granted_since() {
     _mpt_in "${1}" " $(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS | tr ',' ' ') " || continue
     _mig_txt_relay_over "${_t}" || continue
     _d="$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)"
-    [ -n "${_d}" ] || _d="$(_mig_txt_get "${_t}" _MIG_RETIRE_DATE)"
     [ -n "${_d}" ] || _d="$(_mig_txt_get "${_t}" _MIG_STAMPED)"
+    _mig_valid_date "${_d}" || _d="$(_mig_txt_get "${_t}" _MIG_RETIRE_DATE)"
     [[ "${_d}" > "${_over}" ]] && _over="${_d}"
   done < <(_mig_rec_list 2> /dev/null)
   [ -n "${_over}" ] || return 1
   for _ip in $(_mpt_peer_set "${1}"); do
-    _g="$(sed -n "s/^${_ip//./\\.} \([0-9-]*\)\$/\1/p" "${_MPT_REACH_DAYS}" 2> /dev/null | tail -n 1)"
-    _mig_valid_date "${_g}" || continue
+    _g="$(_mpt_reach_day "${_ip}")" || continue
+    _known=YES
     [[ "${_g}" < "${_over}" ]] || return 0
   done
-  return 1
+  [ -z "${_known}" ]
 }
 # Cron discards what a verb prints: each removal also goes in a log.
 _MPT_TRUST_LOG="/var/log/boa/migproxy-trust.log"
-# One line per peer, "<address> <day>": when root last gave it its reach.
+# One line per peer, "<address> <day>": when root last gave it its reach. The
+# first prune on a box writes "<address> <day> seed" for the reach it finds there.
 _MPT_REACH_DAYS="/root/.migration.peer.reach"
 _mpt_note() {
   _msg "${1}"
@@ -2081,15 +2094,21 @@ _mpt_any_undeclared() {
 # A front that moved away or ended asks this box to stop trusting it: its serving
 # trust and witness go, a live record's address stays. Its reach goes too with
 # --over, or with --to when <ip> is no partner of this box: there the front comes
-# back at a failback and needs it. Status 0 released, 3 kept (a live record names
-# every address), 4 refused: nothing changed and the cause is printed.
+# back at a failback and needs it. With --since=<day>, the day the relay began, a
+# reach root gave later stays: another move from the same box needs it. Status 0
+# released, 3 kept (a live record names every address), 4 refused: nothing changed
+# and the cause is printed.
 _cmd_release() {
-  local _a _to="" _over="" _ip _reach=NO
+  local _a _to="" _over="" _since="" _ip _g _reach=NO
   local -a _ips=() _drop=()
   for _a in "$@"; do
     case "${_a}" in
       --to=*) _to="${_a#--to=}" ;;
       --over) _over=YES ;;
+      --since=*)
+        _since="${_a#--since=}"
+        _mig_valid_date "${_since}" || _die "release: not a day: ${_since}"
+      ;;
       --*) _die "unknown option ${_a}" ;;
       *)
         _is_dotted_quad "${_a}" || _die "not a peer address: ${_a}"
@@ -2128,6 +2147,17 @@ _cmd_release() {
   elif [ -n "${_to}" ] && [ ! -e /root/.standby.cnf ] && ! _mpt_xmass_pair "${_to}"; then
     _reach=YES
   fi
+  # Reach root gave after the relay began here is for something newer, another
+  # move from the same box most likely; a seeded day is no grant.
+  if [ "${_reach}" = "YES" ] && [ -n "${_since}" ] && [ -z "${_over}" ]; then
+    for _ip in "${_drop[@]}"; do
+      _g="$(_mpt_reach_day "${_ip}" grant)" || continue
+      [[ "${_g}" > "${_since}" ]] || continue
+      _msg "release: ${_ip}: root gave it reach on ${_g}, after this relay began on ${_since}; its key and firewall lines stay"
+      _reach=NO
+      break
+    done
+  fi
   if [ "${_reach}" = "YES" ]; then
     _CSF_CHANGED=NO
     for _ip in "${_drop[@]}"; do
@@ -2146,12 +2176,42 @@ _cmd_release() {
   return 0
 }
 
+# The first prune on a box: reach older tools gave kept no day. Each address
+# holding reach now gets today's, marked seeded, so a relay that ends from now
+# on takes it and one that ended before leaves it. A pre-mig's own line, written
+# meanwhile, wins: the seed never replaces a file that appeared.
+_mpt_reach_seed() {
+  local _t="${_MPT_REACH_DAYS}.seed.$$" _today
+  _today="$(date -u '+%Y-%m-%d')"
+  {
+    grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
+      | sed -n -E 's/.* # (xmass|xoct|xcopy) migration source ([0-9.]+)[[:space:]]*$/\2/p'
+    if _csf_present; then
+      cat "${_csf_allow}" "${_csf_ignore}" 2> /dev/null \
+        | sed -n -E 's/^([0-9.]+) # xmass migration (source|inbound-proxy)$/\1/p'
+    fi
+  } | sort -u | while IFS= read -r _ip; do
+    _is_dotted_quad "${_ip}" && printf '%s %s seed\n' "${_ip}" "${_today}"
+  done > "${_t}" || { rm -f -- "${_t}"; return 1; }
+  chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
+  rm -f -- "${_t}"
+  [ -e "${_MPT_REACH_DAYS}" ]
+}
+
 # Daily, from the certificate mirror's cron: the reach of a relay that is over,
 # and every address-list line nothing names any more. A standby prunes nothing:
 # its records and witnesses are what its promotion will need.
 _cmd_prune() {
   local _ip _l
   [ -e "${_MIG_ADOPT_STAMP}" ] || return 0
+  if [ ! -e "${_MPT_REACH_DAYS}" ]; then
+    if _mpt_reach_seed; then
+      _mpt_note "prune: no reach day was kept here; the reach found is dated today and nothing is pruned this run"
+    else
+      _mpt_note "prune: could not write ${_MPT_REACH_DAYS}; nothing pruned"
+    fi
+    return 0
+  fi
   if [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; then
     return 0
   fi
@@ -2212,7 +2272,7 @@ case "${1:-}" in
     echo "       $0 teardown [--force]"
     echo "       $0 reconcile [--force]"
     echo "       $0 adopt [--once]"
-    echo "       $0 release <ip>... [--to=<ip>|--over]"
+    echo "       $0 release <ip>... [--to=<ip> [--since=<day>]|--over]"
     echo "       $0 prune"
     exit 1
   ;;

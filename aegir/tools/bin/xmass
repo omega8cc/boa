@@ -10700,16 +10700,18 @@ CARRY
 # marked, its mode kept for the next cutover, and the serving trust goes; the
 # pair's own key and firewall lines stay. Idempotent, never fatal.
 _xmass_end_inbound_relay() {
-  local _ips _ip _acct _t _p _quads=" ${_tgt} " _any="" _rel="" _today
+  local _ips _ip _acct _t _p _quads=" " _any="" _rel="" _today _ended=""
   _ips="$(ssh -o ConnectTimeout=15 root@"${_tgt}" "hostname -I" 2> /dev/null)"
-  # A private address can be another box's too, so it proves nothing: the target's
-  # own address and its public ones do.
-  for _ip in ${_ips}; do
+  # A private address can be another box's too, so it proves nothing, the address
+  # this init was given included: the target's public ones do.
+  for _ip in "${_tgt}" ${_ips}; do
     _mig_quad "${_ip}" || continue
     case "${_ip}" in
       10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|169.254.*|127.*) continue ;;
       100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) continue ;;
-      "${_tgt}") continue ;;
+    esac
+    case "${_quads}" in
+      *" ${_ip} "*) continue ;;
     esac
     _quads="${_quads}${_ip} "
   done
@@ -10724,6 +10726,8 @@ _xmass_end_inbound_relay() {
         *) continue ;;
       esac
       _any=YES
+      # the record's own addresses end with it; release keeps any a live record names
+      _ended="${_ended} $(_mig_txt_get "${_t}" _MIG_PEER_IP) $(_mig_txt_get "${_t}" _MIG_PEER_IPS | tr ',' ' ')"
       if [ -z "$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)" ]; then
         if printf '%s\n_MIG_RELAY_ENDED=%s\n' "${_t}" "${_today}" | _mig_rec_put "${_acct}"; then
           _info "  ${_acct}: its relay through ${_tgt} ended at this init (the next cutover wires it again)"
@@ -10737,6 +10741,13 @@ _xmass_end_inbound_relay() {
   for _ip in ${_quads}; do
     grep -qxF -- "${_ip}" "${_MIG_PROXY_IPS}" 2> /dev/null && _any=YES
     _rel="${_rel} ${_ip}"
+  done
+  for _ip in ${_ended}; do
+    _mig_quad "${_ip}" || continue
+    case " ${_rel} " in
+      *" ${_ip} "*) ;;
+      *) _rel="${_rel} ${_ip}" ;;
+    esac
   done
   [ -n "${_any}" ] || return 0
   [ -x "${_MIG_TRUST_TOOL}" ] || return 0

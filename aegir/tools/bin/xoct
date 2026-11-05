@@ -8275,7 +8275,10 @@ _xoct_release_old_peer() {
     [ "${_how}" = "retire" ] && [ "$(_mig_txt_get "${_t}" _MIG_MODE)" = "retired" ] && continue
     return 0
   done < <(_mig_list_accounts)
-  [ "${_how}" = "retire" ] || _rel=" --to=${_tgt}"
+  if [ "${_how}" != "retire" ]; then
+    _rel=" --to=${_tgt}"
+    _mig_valid_date "${_XOCT_OLD_PEER_SINCE:-}" && _rel="${_rel} --since=${_XOCT_OLD_PEER_SINCE}"
+  fi
   _o="$(ssh -o ConnectTimeout=15 root@"${_p}" "${_MIG_TRUST_TOOL} release $(_mig_my_ips)${_rel}" 2> /dev/null)"
   case "$?" in
     0) echo "INFO: ${_p} released this box: no account here relays there any more" ;;
@@ -8444,6 +8447,7 @@ _xoct_proxy_preflight() {
   _XOCT_OLD_PEER=""
   _XOCT_OLD_PEER_OCT=""
   _XOCT_OLD_PEER_HAND=""
+  _XOCT_OLD_PEER_SINCE=""
   _t="$(_mig_rec_text "${_USR##*/}")"
   _rrc=$?
   if [ "${_rrc}" = "0" ] && _mig_txt_mine "${_t}"; then
@@ -8458,6 +8462,9 @@ _xoct_proxy_preflight() {
         fi
         _XOCT_OLD_PEER="${_old_peer}"
         _XOCT_OLD_PEER_OCT="$(_mig_txt_get "${_t}" _MIG_PEER_OCT)"
+        ### The day this relay was written: reach the old peer gave this box
+        ### after it serves something newer, and the release leaves it.
+        _XOCT_OLD_PEER_SINCE="$(_mig_txt_get "${_t}" _MIG_STAMPED)"
         ### An imported record's name for the account there is the copy's:
         ### the abandoned target is released only for the account it
         ### confirms, else by hand (_XOCT_OLD_PEER stays for the mail

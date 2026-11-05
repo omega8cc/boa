@@ -317,7 +317,9 @@
       moved away or a box rebuilt as its own mirror is no longer trusted where it
       no longer relays, and the peer address list drops what nothing names.
       Bringing back a retired front past its date needs the pre-mig key exchange
-      again; a mirror put back by restore-target needs xoct proxy --repair.
+      again; a mirror put back by restore-target needs xoct proxy --repair. A
+      key given for a newer move stays, and so does reach older tools gave: the
+      first daily run dates it, and only a relay that ends after that takes it.
 
     * boa cleanup purge now refuses while a BOA pass or system task runs, and
       xmass prep-target waits for the target to go quiet before it judges and
