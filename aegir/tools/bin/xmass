@@ -3123,7 +3123,9 @@ _xmass_acct_remedy() {
 ### _XMASS_ACCT_NOCOPY and _XMASS_ACCT_IDONLY: an account that is not there, and
 ### one that is and lost a system user, which take different remedies. The lane's
 ### mark counts on a standby alone: it goes with that role, and nothing but the
-### lane, which refuses any other box, could end the refusal it would make.
+### lane, which refuses any other box, could end the refusal it would make. A mark
+### that says returning counts on any box: --return-accounts lays the account on
+### a promoted one and ends it there.
 _xmass_verify_target_accounts() {
   local _t="$1" _on_missing="${2:-die}" _oct _bad="" _out _fix _p="DENY: "
   local _idonly="" _noans=""
@@ -3143,7 +3145,7 @@ _xmass_verify_target_accounts() {
       [ -e /data/disk/${_oct}/log/octopus_log.txt ] || _m=\"\${_m} octopus_log\"; \
       [ -e /data/disk/${_oct}/config/includes/nginx_vhost_common.conf ] || _m=\"\${_m} vhost\"; \
       [ -e /root/.${_oct}.octopus.cnf ] || _m=\"\${_m} cnf\"; \
-      [ ! -e /root/.${_oct}.fix-accounts.txt ] || [ ! -e /root/.standby.cnf ] || _m=\"\${_m} laying\"; \
+      [ ! -e /root/.${_oct}.fix-accounts.txt ] || { [ ! -e /root/.standby.cnf ] && ! grep -sqx returning /root/.${_oct}.fix-accounts.txt; } || _m=\"\${_m} laying\"; \
       if [ -z \"\${_m}\" ]; then echo XMACCT-PRESENT; else echo \"XMACCT-MISSING:\${_m}\"; fi" 2>/dev/null)
     # Exact-line match: shell login noise around the token (a .bashrc echo
     # on the target) must not read as a missing account.
@@ -3834,7 +3836,7 @@ _xmass_sync_shell_credentials() {
 ### account: the broker's sudo line (a cutover is not clean without it) and
 ### the same dump and load time limit.
 _xmass_carry_db_broker() {
-  local _acct="$1" _t="$2" _f="/data/conf/${1}_db_broker.txt" _b="-" _out _l _lim _st
+  local _acct="$1" _t="$2" _f="/data/conf/${1}_db_broker.txt" _b="-" _out _l _lim _st _rt
   [[ "${_acct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 0
   if [ -e "${_f}" ] || [ -L "${_f}" ]; then
     _st=$(stat -c '%u %a' -- "${_f}" 2> /dev/null)
@@ -3888,7 +3890,11 @@ _xmass_carry_db_broker() {
     fi
     return 0
   fi
-  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo DB-NOT-STANDBY; exit 1; }; _f=/data/conf/${_acct}_db_broker.txt; _b='${_b}'
+  # onto a promoted box only for an account --return-accounts brings back there,
+  # whose switch that box never held
+  _rt=NO
+  [ "${_XMASS_RETURNING:-}" = "YES" ] && _rt=YES
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || [ ${_rt} = YES ] || { echo DB-NOT-STANDBY; exit 1; }; _f=/data/conf/${_acct}_db_broker.txt; _b='${_b}'
 if [ \"\${_b}\" = - ]; then
   if [ -e \"\${_f}\" ] || [ -L \"\${_f}\" ]; then rm -f \"\${_f}\" || exit 1; echo DB-GONE; fi
 elif ! { [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] && [ \"\$(stat -c '%u %a' \"\${_f}\")\" = '0 644' ] && [ \"\$(head -c 4096 \"\${_f}\" | base64 -w0)\" = \"\${_b}\" ]; }; then
@@ -8947,6 +8953,9 @@ _xmass_sync_store() {
       _lim="${BASH_REMATCH[1]}"
       _la="${_la/--max-delete=${_lim}/--max-delete=$(( 10#${_lim} + 10#${_cb} ))}"
     fi
+    # --return-accounts writes to a box that serves: only what it lacks of the
+    # store, nothing it holds replaced or removed
+    [ "${_XMASS_STORE_ADDITIVE:-}" = "YES" ] && _la="${_ieni} --ignore-existing"
     _xmass_rsync -aEAXq ${_la} ${_XMASS_OUT_EXCL} -e ssh \
       "${_sp}/" "root@${_tgt}:${_tp}/"
     _xmass_materialise_out_links "${_sp}" "${_tp}"
@@ -8955,7 +8964,9 @@ _xmass_sync_store() {
     if [ "${_tp}" != "/data/disk/all" ]; then
       _xmass_scan_out_links /data/disk/all
       _info "  link sweep /data/disk/all: ${_XMASS_LNK_RPT}"
-      _xmass_rsync -aEAXqu $(_xmass_leg_args /data/disk/all) ${_XMASS_OUT_EXCL} -e ssh \
+      _la="$(_xmass_leg_args /data/disk/all)"
+      [ "${_XMASS_STORE_ADDITIVE:-}" = "YES" ] && _la="${_ieni} --ignore-existing"
+      _xmass_rsync -aEAXqu ${_la} ${_XMASS_OUT_EXCL} -e ssh \
         /data/disk/all/ "root@${_tgt}:/data/disk/all/"
       _xmass_materialise_out_links /data/disk/all /data/disk/all
     else
@@ -13814,7 +13825,8 @@ REMOTE
 # account's lineage), the armed first pass for after the promotion, and last the
 # mark that kept the gate closed.
 _xmass_lay_account_end() {
-  local _oct="$1" _t="$2" _tn="$3" _sh _ts _real _out
+  local _oct="$1" _t="$2" _tn="$3" _sh _ts _real _out _ret=NO
+  [ "${_XMASS_RETURNING:-}" = "YES" ] && _ret=YES
   _real="$(_xmass_tgt_place "${_t}" _xmass_own_dir_ready keep "${_oct}" "/data/disk/${_oct}/static/files/${_tn}")"
   if [ -z "${_real}" ]; then
     _alrt "  ${_oct}: its panel store could not be made on ${_t}"
@@ -13850,9 +13862,12 @@ case "${_u}/${_i}" in
   [0-9]*/[0-9]*:[0-9]*) : ;;
   *) echo "XMLAY-FAILED: cannot read the uid and the inode of ${_A}"; exit 0 ;;
 esac
+_hd="# Put by xmass prep-target --fix-accounts: an account laid on a standing mirror, no install ran here."
+[ "${_RET}" = "YES" ] \
+  && _hd="# Put by xmass prep-target --return-accounts: an account brought back from the box it was installed on, no install ran here."
 if [ ! -e "/root/.${_A}.migration-create.txt" ]; then
   ( umask 077
-    printf '%s\n' "# Put by xmass prep-target --fix-accounts: an account laid on a standing mirror, no install ran here." \
+    printf '%s\n' "${_hd}" \
       "_MIG_CREATE_SRC_HOST=${_SH}" "_MIG_CREATE_SRC_OCT=${_A}" "_MIG_CREATE_TGT_UID=${_u}" \
       "_MIG_CREATE_TGT_INODE=${_i}" "_MIG_CREATE_STAMPED=${_TS}" > "/root/.${_A}.migration-create.put.$$" ) \
     && mv -f -T -- "/root/.${_A}.migration-create.put.$$" "/root/.${_A}.migration-create.txt" \
@@ -13866,11 +13881,12 @@ if ! ( cd -P -- "${_w}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
   echo "XMLAY-FAILED: could not arm the first pass in ${_w}"
   exit 0
 fi
-rm -f -- "/root/.${_A}.fix-accounts.txt"
+# a returning account's mark stays for the promotion's last steps there
+[ "${_RET}" = "YES" ] || rm -f -- "/root/.${_A}.fix-accounts.txt"
 echo XMLAY-OK
 REMOTE
   } | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
-    "_A='${_oct}' _REAL='$(_shq "${_real}")' _SH='${_sh}' _TS='${_ts}' bash -s" 2>&1)"
+    "_A='${_oct}' _REAL='$(_shq "${_real}")' _SH='${_sh}' _TS='${_ts}' _RET='${_ret}' bash -s" 2>&1)"
   printf '%s\n' "${_out}" | grep -a '^XMLAY-FAILED' | sed "s/^XMLAY-FAILED: /  ${_oct}: /"
   case "${_out}" in
     *XMLAY-OK*) return 0 ;;
@@ -13884,7 +13900,7 @@ REMOTE
 # panel got: panel-begun before its first leg, panel-done once it names this box.
 _xmass_lay_account() {
   local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _sp _pl _pn _tn _out
-  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt"
+  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt" _run
   [[ "${_t}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && _tip="${_t}"
   # read again: the shared legs before this took their time, the account can
   # write the alias, and its panel can have moved
@@ -13979,7 +13995,20 @@ _xmass_lay_account() {
     _alrt "  ${_oct}: its cnf could not be laid on ${_t}"
     return 1
   fi
-  if [ -f "/var/xdrago/run-${_oct}" ]; then
+  if [ -f "/var/xdrago/run-${_oct}" ] && [ "${_XMASS_RETURNING:-}" = "YES" ]; then
+    # a box that serves runs a dispatcher at once: parked until the account's
+    # panel names that box (_xmass_return_account_end)
+    _run="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "if [ -e /var/xdrago/run-${_oct} ] || [ -e /var/backups/off-run/run-${_oct} ]; then echo XMRUN-HAVE; elif [ ! -L /var/backups/off-run ] && mkdir -p /var/backups/off-run; then echo XMRUN-PUT; fi" 2> /dev/null)"
+    case "${_run}" in
+      *XMRUN-HAVE*) : ;;
+      *XMRUN-PUT*)
+        rsync -a --no-links -e ssh "/var/xdrago/run-${_oct}" "root@${_t}:/var/backups/off-run/run-${_oct}" \
+          || { _alrt "  ${_oct}: its dispatcher could not be laid on ${_t}"; return 1; }
+        ;;
+      *) _alrt "  ${_oct}: its dispatcher could not be laid on ${_t}"; return 1 ;;
+    esac
+  elif [ -f "/var/xdrago/run-${_oct}" ]; then
     ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /var/xdrago/run-${_oct} ]" 2> /dev/null \
       || rsync -a --no-links -e ssh "/var/xdrago/run-${_oct}" "root@${_t}:/var/xdrago/run-${_oct}" \
       || { _alrt "  ${_oct}: its dispatcher could not be laid on ${_t}"; return 1; }
@@ -13993,7 +14022,11 @@ _xmass_lay_account() {
   # one-pass marker: the first pass there mails no upgrade notice
   _ELIGIBLE_ACCOUNTS="${_oct}" _xmass_upgrade_skip_put_target "${_t}"
   _xmass_lay_account_end "${_oct}" "${_t}" "${_tn}" || return 1
-  _info "  ${_oct}: laid on ${_t}: ${_tn} is its panel there, its first Octopus pass is armed for after a promotion"
+  if [ "${_XMASS_RETURNING:-}" = "YES" ]; then
+    _info "  ${_oct}: laid on ${_t}: ${_tn} is its panel there; the promotion's last steps follow"
+  else
+    _info "  ${_oct}: laid on ${_t}: ${_tn} is its panel there, its first Octopus pass is armed for after a promotion"
+  fi
   return 0
 }
 
@@ -14091,6 +14124,250 @@ _xmass_fix_accounts() {
   return 0
 }
 
+###-------------AN ACCOUNT BACK FROM THE OLD ACTIVE---###
+###
+### A promotion by hand while an account installed on the active was never laid
+### on its mirror leaves that account's databases on the promoted box and its
+### files on the old active alone. --return-accounts=<oN>, run on the old active,
+### lays it on the promoted box the way the lane lays one on a standing mirror,
+### with no database write: the promoted box's copies are the pair's recovery
+### point, the ones its other accounts carry on from. Then the account takes the
+### promotion's last steps there, as a cutover runs them on its target: its panel
+### rewired and renamed for that box, read back as naming it, its 503 gate lifted,
+### its held upgrade armed, its dispatcher back, nginx reloaded. Until they end the
+### mark stays and the account reads missing, so a stopped run is run again.
+### Writing to a box that serves takes every other door shut: this box fenced (no
+### cron, every account behind its 503 gate), that box promoted to the end (no
+### standby marker, no replica, writable, no promotion by hand half done), and
+### this box's own record naming it as its mirror.
+
+# What keeps the accounts from coming back to $1 now, said; status 1 then.
+# Nothing has been laid yet.
+_xmass_return_gate() {
+  local _t="$1" _oct _out _f=""
+  if pgrep -x cron > /dev/null 2>&1; then
+    _alrt "cron runs on this box: fence it first (the failover page), its own jobs write here and self-heal"
+    return 1
+  fi
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [ -e "/data/disk/${_oct}/static/control/http-off.pid" ] || _f="${_f} ${_oct}"
+  done
+  if [ -n "${_f}" ]; then
+    _alrt "account(s)${_f} answer visitors here (no static/control/http-off.pid): fence this box first (the failover page)"
+    return 1
+  fi
+  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" '[ -e /root/.standby.cnf ] && echo XMRET-STANDBY
+[ -e /var/log/boa/.xmass_hand_promoted.pid ] && echo XMRET-HANDPATH
+_r=$(mysql --defaults-file=/root/.my.cnf -N -B -e "SELECT @@GLOBAL.read_only + @@GLOBAL.super_read_only" 2> /dev/null)
+echo "XMRET-RO ${_r:-unread}"
+_q=$(mysql --defaults-file=/root/.my.cnf -N -B -e "SHOW REPLICA STATUS" 2> /dev/null) \
+  || _q=$(mysql --defaults-file=/root/.my.cnf -N -B -e "SHOW SLAVE STATUS" 2> /dev/null) \
+  || _q=unread
+[ -z "${_q}" ] || echo XMRET-REPLICA
+echo XMRET-END' 2> /dev/null)"
+  if ! printf '%s\n' "${_out}" | grep -qx XMRET-END; then
+    _alrt "${_t} did not answer"
+    return 1
+  fi
+  if printf '%s\n' "${_out}" | grep -qx XMRET-STANDBY; then
+    _alrt "${_t} still holds its /root/.standby.cnf: on a standing mirror 'xmass prep-target ${_t} --fix-accounts' lays an account"
+    return 1
+  fi
+  if printf '%s\n' "${_out}" | grep -qx XMRET-HANDPATH; then
+    _alrt "${_t}'s promotion by hand is not finished (its /var/log/boa/.xmass_hand_promoted.pid): end it there first"
+    return 1
+  fi
+  if ! printf '%s\n' "${_out}" | grep -qx 'XMRET-RO 0'; then
+    _alrt "${_t}'s database is read-only, or did not say: a promoted box takes writes"
+    return 1
+  fi
+  if printf '%s\n' "${_out}" | grep -qx XMRET-REPLICA; then
+    _alrt "${_t} still has a replica set up, or did not say: finish its promotion first (the failover page)"
+    return 1
+  fi
+  return 0
+}
+
+# The promotion's last steps for account $1 on the box $2 that serves, as a
+# cutover runs them on its target: the panel rewired from this box's name ($3)
+# to the panel database there, renamed, read back as naming that box ($4), its
+# 503 gate lifted, its dispatcher back, its held upgrade armed, nginx made to
+# serve it. The mark goes last. Each step converges, so a re-run repeats it.
+_xmass_return_account_end() {
+  local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _out _rc _l
+  _out="$(_xmass_panel_rewire_sh | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "bash -s -- '${_r}' '${_sf}'" 2>&1)"
+  _rc=$?
+  while IFS= read -r _l; do
+    case "${_l}" in
+      PANEL-ERROR*) _alrt "  ${_oct}: ${_l}" ;;
+      PANEL-*) _info "  ${_oct}: ${_l}" ;;
+    esac
+  done <<< "${_out}"
+  if [ "${_rc}" -ne 0 ]; then
+    _alrt "  ${_oct}: its panel rewire on ${_t} returned rc=${_rc}"
+    return 1
+  fi
+  _info "  ${_oct}: renaming ${_r} on ${_t} from ${_sf} ..."
+  if ! ssh -n -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
+    "renameaegirhost --aegir-root ${_r} --force-old ${_sf}"; then
+    _alrt "  ${_oct}: renameaegirhost ${_r} did not end well on ${_t}"
+    return 1
+  fi
+  _out="$( { _xmass_remote_guards; cat <<'REMOTE'
+_sp=$(_xmass_read_file "/data/disk/${_A}/.drush/hostmaster.alias.drushrc.php" \
+  | grep "site_path'" | head -n 1 | sed "s/.*=>//; s/[' ,;]//g")
+case "${_sp}" in
+  *[!A-Za-z0-9/._-]*|*/../*|*/./*|*//*|'') echo "XMRET-FAILED: its hostmaster alias names no plain panel dir"; exit 0 ;;
+  "/data/disk/${_A}"/aegir/distro/*/sites/?*) : ;;
+  *) echo "XMRET-FAILED: its hostmaster alias names ${_sp}, not a panel of its own"; exit 0 ;;
+esac
+_db=$(_xmass_read_file "${_sp}/drushrc.php" | grep "options\['db_name'\]" | head -n 1 \
+  | sed "s/.*=//; s/[' ,;]//g" | tr -cd 'a-zA-Z0-9_')
+_srv=""
+[ -n "${_db}" ] && _srv=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BN "${_db}" \
+  -e "SELECT n.title FROM hosting_context c JOIN node n ON n.nid = c.nid WHERE c.name = 'server_master'" \
+  2> /dev/null | head -n 1 | tr -cd 'a-zA-Z0-9.-')
+if [ "${_srv}" != "${_TF}" ]; then
+  echo "XMRET-FAILED: its panel database names ${_srv:-no readable server} as its server, not ${_TF}"
+  exit 0
+fi
+_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_A}/static/control"
+( cd -P -- "/data/disk/${_A}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
+  && rm -f -- ./http-off.pid ) \
+  || { echo "XMRET-FAILED: could not lift its 503 gate in ${_w}"; exit 0; }
+if [ ! -e "/var/xdrago/run-${_A}" ] && [ -f "/var/backups/off-run/run-${_A}" ] \
+  && [ ! -L "/var/backups/off-run/run-${_A}" ] && [ ! -L /var/backups/off-run ]; then
+  mv -f -- "/var/backups/off-run/run-${_A}" "/var/xdrago/run-${_A}" \
+    || { echo "XMRET-FAILED: could not put its dispatcher back in /var/xdrago"; exit 0; }
+fi
+if ! nginx -t > /dev/null 2>&1; then
+  echo "XMRET-FAILED: nginx -t refuses this box's configuration: read 'nginx -t' there"
+  exit 0
+fi
+service nginx reload > /dev/null 2>&1 || echo "XMRET-FAILED: nginx did not reload"
+echo XMRET-OK
+REMOTE
+  } | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "_A='${_oct}' _TF='${_tf}' bash -s" 2>&1)"
+  printf '%s\n' "${_out}" | grep -a '^XMRET-FAILED' | sed "s/^XMRET-FAILED: /  ${_oct}: /" \
+    | while IFS= read -r _l; do _alrt "${_l}"; done
+  if [[ "${_out}" == *XMRET-FAILED* ]] || [[ "${_out}" != *XMRET-OK* ]]; then
+    [[ "${_out}" == *XMRET-FAILED* ]] || _alrt "  ${_oct}: ${_t} gave no answer to the last steps"
+    return 1
+  fi
+  _ELIGIBLE_ACCOUNTS="${_oct}" _xmass_rearm_deferred_upgrades_target
+  if ! ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "rm -f -- /root/.${_oct}.fix-accounts.txt" 2> /dev/null; then
+    _alrt "  ${_oct}: its mark on ${_t} could not be removed: a re-run ends it"
+    return 1
+  fi
+  _info "  ${_oct}: back on ${_t}: its panel names it, its sites serve there"
+  return 0
+}
+
+# The lane toward this box's promoted mirror $1, for the accounts
+# --return-accounts names.
+_xmass_return_accounts() {
+  local _t="$1" _all _oct _sf _tf _left="" _ok="" _want="" _has="" _out
+  _xmass_load_state
+  if [ "${_XMASS_PHASE}" != "syncing" ] || [ "${_XMASS_TARGET_IP}" != "${_t}" ]; then
+    _die "this box's record names ${_XMASS_TARGET_IP:-no mirror} in phase ${_XMASS_PHASE:-none}, not ${_t}:" \
+         " --return-accounts brings an account back to this box's own promoted mirror; nothing laid"
+  fi
+  _xmass_boa_run_live \
+    && _die "a barracuda or octopus run is in flight here: it can move an account's panel under the copy; re-run when it ends"
+  _xmass_enumerate_accounts
+  _all="${_ELIGIBLE_ACCOUNTS}"
+  for _oct in ${_XMASS_RETURN_ACCOUNTS}; do
+    { _mig_valid_acct "${_oct}" && _xmass_word_in "${_oct}" "${_all}"; } \
+      || _die "${_oct} is no account of this box (here: ${_all:-none}): nothing laid"
+  done
+  _xmass_return_gate "${_t}" || _die "nothing laid on ${_t}"
+  _xmass_verify_target_accounts "${_t}" list
+  [ -z "${_XMASS_ACCT_NOANS}" ] \
+    || _die "could not read account(s) ${_XMASS_ACCT_NOANS} on ${_t}: it did not answer; nothing laid"
+  for _oct in ${_XMASS_RETURN_ACCOUNTS}; do
+    _xmass_word_in "${_oct}" "${_want}" && continue
+    if ! _xmass_word_in "${_oct}" "${_XMASS_ACCT_NOCOPY}"; then
+      _has="${_has} ${_oct}"
+      continue
+    fi
+    # a run that stopped there left its mark; with none, nothing of the account
+    # may be there, or the lane's copies, which keep what is there, would blend it in
+    _out="$(ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "if grep -sqx returning /root/.${_oct}.fix-accounts.txt; then echo XMRET-RESUME; else getent passwd ${_oct} > /dev/null && echo XMRET-HAS user; getent passwd ${_oct}.ftp > /dev/null && echo XMRET-HAS user.ftp; { [ -e /data/disk/${_oct} ] || [ -L /data/disk/${_oct} ]; } && echo XMRET-HAS tree; [ -e /root/.${_oct}.octopus.cnf ] && echo XMRET-HAS cnf; fi; echo XMRET-END" 2> /dev/null)"
+    printf '%s\n' "${_out}" | grep -qx XMRET-END \
+      || _die "${_t} did not answer about ${_oct}: nothing laid"
+    if printf '%s\n' "${_out}" | grep -q '^XMRET-HAS '; then
+      _die "${_t} holds a part of ${_oct} ($(printf '%s\n' "${_out}" | sed -n 's/^XMRET-HAS //p' | tr '\n' ' ')) and no mark of a run that brought it back: nothing laid; read it there"
+    fi
+    _want="${_want} ${_oct}"
+  done
+  [ -z "${_has}" ] \
+    || _die "${_t} already holds account(s)${_has}: only an account it has no copy of comes back; nothing laid"
+  _want="${_want# }"
+  _info "Account(s) coming back to ${_t}: ${_want}"
+  _xmass_assert_same_release "${_t}"
+  _xmass_resolve_target_mnt "${_t}"
+  _sf="$(_xmass_src_fqdn)"
+  _tf="$(ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "hostname -f" 2> /dev/null | tr -d '\r\n')"
+  case "${_sf}" in ''|*[!a-zA-Z0-9.-]*) _die "this box's name reads '${_sf//[^[:print:]]/?}': nothing laid" ;; esac
+  case "${_tf}" in ''|*[!a-zA-Z0-9.-]*) _die "the name of ${_t} reads '${_tf//[^[:print:]]/?}': nothing laid" ;; esac
+  if [[ "${_tf}" == *"${_sf}"* ]] || [[ "${_t}" == *"${_XMASS_SRC_IP:-none}"* ]]; then
+    _die "${_t}'s name or address holds this box's (${_sf}, ${_XMASS_SRC_IP}): the panel's lines could not be rewritten; nothing laid"
+  fi
+  _ELIGIBLE_ACCOUNTS="${_want}"
+  _xmass_php_coverage_gate "${_t}" die
+  _xmass_webgroup_gate "${_t}" die
+  for _oct in ${_want}; do
+    if _xmass_fix_account_gate "${_oct}" "${_t}" YES; then
+      _ok="${_ok} ${_oct}"
+    else
+      _left="${_left} ${_oct}"
+    fi
+  done
+  _ok="${_ok# }"
+  if [ -n "${_ok}" ]; then
+    for _oct in ${_ok}; do
+      ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+        "{ [ -e /root/.${_oct}.fix-accounts.txt ] || date -u '+%F %T UTC' > /root/.${_oct}.fix-accounts.txt; } && { grep -sqx returning /root/.${_oct}.fix-accounts.txt || echo returning >> /root/.${_oct}.fix-accounts.txt; }" 2> /dev/null \
+        || _die "could not mark ${_oct} on ${_t}: nothing laid"
+    done
+    _ELIGIBLE_ACCOUNTS="${_ok}"
+    _xmass_repair_target_identities "${_t}" new \
+      || _die "the identities could not be made on ${_t} -- see the lines above; a re-run takes them up"
+    # the accounts' platforms link into the shared store: what that box lacks of
+    # it, nothing of it replaced; no other shared leg writes a box that serves
+    _ELIGIBLE_ACCOUNTS="${_all}"
+    _XMASS_STORE_RC=0
+    _XMASS_RSYNC_RC=0
+    _XMASS_STORE_ADDITIVE=YES _xmass_sync_store
+    if [ "${_XMASS_RSYNC_RC:-0}" != "0" ] || [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
+      _die "the shared store did not all reach ${_t} (see DENY above): nothing laid; a re-run takes it up"
+    fi
+    for _oct in ${_ok}; do
+      _XMASS_STORE_RC=0
+      _XMASS_CNF_RC=0
+      _XMASS_RSYNC_RC=0
+      if ! _XMASS_RETURNING=YES _xmass_lay_account "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
+        _left="${_left} ${_oct}"
+      elif ! _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
+        _left="${_left} ${_oct}"
+      fi
+    done
+  fi
+  _ELIGIBLE_ACCOUNTS="${_all}"
+  _left="${_left# }"
+  [ -z "${_left}" ] || return 1
+  _ELIGIBLE_ACCOUNTS="${_ok}"
+  _xmass_verify_target_accounts "${_t}" list
+  _ELIGIBLE_ACCOUNTS="${_all}"
+  [ -z "${_XMASS_ACCT_NOANS}" ] \
+    || _die "could not read account(s) ${_XMASS_ACCT_NOANS} on ${_t}: it did not answer"
+  [ -z "${_XMASS_ACCT_NOCOPY}" ] \
+    || _die "${_t} still holds no whole copy of: ${_XMASS_ACCT_NOCOPY}: a re-run takes them up"
+  _info "Account(s) ${_ok} back on ${_t}. Next, on ${_t}: rebuild this box as its mirror, or fail back (the failover page)"
+  return 0
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -14106,7 +14383,19 @@ _xmass_cmd_prep_target() {
   _info "======================================================"
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
+  if [ -n "${_XMASS_RETURN_ACCOUNTS}" ]; then
+    _xmass_force_tool_update "${_tgt}"
+    _xmass_return_accounts "${_tgt}" \
+      || _die "account(s) not brought back to ${_tgt} -- see the lines above; a re-run takes them up"
+    return 0
+  fi
   if [ "${_XMASS_FIX_ACCOUNTS}" = "YES" ] && [ "${_XMASS_PREP_UNDER_HOLD}" != "YES" ]; then
+    _xmass_load_state
+    if [ "${_XMASS_PHASE}" = "syncing" ] && [ "${_XMASS_TARGET_IP}" = "${_tgt}" ]; then
+      _die "target ${_tgt} holds no /root/.standby.cnf: this box's mirror there was promoted;" \
+           " an account installed here and never laid there comes back with" \
+           " 'xmass prep-target ${_tgt} --return-accounts=<oN>' once this box is fenced (the failover page)"
+    fi
     _die "target ${_tgt} holds no /root/.standby.cnf: --fix-accounts serves a standing mirror;" \
          " on a target not yet a standby, 'xmass prep-target ${_tgt}' installs every account"
   fi
@@ -18199,6 +18488,11 @@ _xmass_report_lost_accounts_here() {
     [ -e "${_m}" ] || continue
     _a="${_m#/root/.}"
     _a="${_a%.fix-accounts.txt}"
+    if grep -sqx returning "${_m}"; then
+      # the old active's run ends it, and reads this mark to take it up again
+      _alrt "account ${_a} is still being brought back here by --return-accounts: run it again on the old active"
+      continue
+    fi
     _alrt "account ${_a} was still being laid here by --fix-accounts: its tree and panel may be partial, and its"
     _alrt "  sites may answer with the catch-all page until they come from the old active or its backups"
     rm -f -- "${_m}"
@@ -19159,12 +19453,21 @@ case "${_cmd}" in
     _XMASS_FIX_ACCOUNTS=""
     _XMASS_PREP_UNDER_HOLD=""
     _XMASS_ADOPT_SITELESS=""
+    _XMASS_RETURN_ACCOUNTS=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
         --fix-solr) _XMASS_FIX_SOLR=YES; shift ;;
         --fix-users) _XMASS_FIX_USERS=YES; shift ;;
         --fix-accounts) _XMASS_FIX_ACCOUNTS=YES; shift ;;
+        --return-accounts=*)
+          # accounts this box holds and its promoted mirror never had,
+          # comma-separated account names
+          _XMASS_RETURN_ACCOUNTS="${1#*=}"
+          [[ "${_XMASS_RETURN_ACCOUNTS}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*(,[a-zA-Z0-9][a-zA-Z0-9._-]*)*$ ]] \
+            || _die "--return-accounts needs account names separated by commas, got '${_XMASS_RETURN_ACCOUNTS//[^[:print:]]/?}'"
+          _XMASS_RETURN_ACCOUNTS="${_XMASS_RETURN_ACCOUNTS//,/ }"
+          shift ;;
         --adopt-siteless=*)
           # the site-less same-name accounts on the target the operator
           # checked by hand, comma-separated account names
@@ -19175,7 +19478,11 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [admail=<address>]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [--return-accounts=<oN>[,<oN>...]] [admail=<address>]"
+    # it lays accounts on a box that serves, and nothing else
+    [ -n "${_XMASS_RETURN_ACCOUNTS}" ] \
+      && [ -n "${_XMASS_FIX_PHP}${_XMASS_FIX_SOLR}${_XMASS_FIX_USERS}${_XMASS_FIX_ACCOUNTS}${_XMASS_ADOPT_SITELESS}" ] \
+      && _die "--return-accounts runs alone: no --fix-php, --fix-solr, --fix-users, --fix-accounts or --adopt-siteless beside it"
     # --fix-users is a repair of installed accounts, never a re-seed: it does
     # not ride the full lane, so it cannot mean "run Phase 0.5" on a box that
     # is carrying traffic (a demoted failback target).
@@ -19350,6 +19657,8 @@ case "${_cmd}" in
     echo "                     on a standing mirror --fix-accounts lays an account installed here since it was built)"
     echo "                     [--adopt-siteless=<oN>[,<oN>...]]  (site-less same-name accounts on the"
     echo "                     target, checked by hand, taken for this migration)"
+    echo "                     [--return-accounts=<oN>[,<oN>...]]  (alone, on an old active fenced after"
+    echo "                     its mirror was promoted by hand: an account the mirror never held goes there)"
     echo "                     [admail=<address>]  (a test run: see the notes)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
