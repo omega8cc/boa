@@ -11810,54 +11810,62 @@ _satellite_child_b_letsencrypt() {
   fi
 }
 
-# Where the panel and the backend keep backup exports: a folder of a random name
-# in backup-exports, which no other account can list. An export is the backup
-# itself under a second name, readable by everyone, and any account's web user can
-# enter backup-exports, so a name that can be guessed is enough to read one. The
-# path is printed; without such a folder, the plain one. Runs as the account, like
-# the nightly's _night_export_path.
+# Where the panel keeps backup exports: a folder of a random name in backup-exports,
+# which no other account can list, named by aegir_backup_export_path. An export is the
+# backup itself under a second name, readable by everyone, and any account's web user
+# can enter backup-exports, so a name that can be guessed is enough to read one.
+# hosting_tasks_extra hands the path to the backend's tasks. Runs as the account, like
+# the nightly's _night_export_path; without a folder, the panel keeps one it has, or
+# else takes the plain path as before.
 _satellite_export_path() {
-  local _d="${_ROOT}/backup-exports" _t _f
-  [ -e "${_d}" ] || [ -L "${_d}" ] || mkdir -m 0751 -- "${_d}" 2> /dev/null
-  _t=$(
-    cd -P -- "${_d}" 2> /dev/null || exit 1
-    # A folder nobody may list is no secret in a parent anybody can
-    chmod 0751 . 2> /dev/null || exit 1
-    _t=$(find . -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
-      -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
-    if [ -z "${_t}" ]; then
-      _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+  local _d="${_ROOT}/backup-exports" _c _t="" _t0="" _f _p _ok=YES
+  _c=$(${_DRUSHCMD} @hostmaster vget aegir_backup_export_path --format=string 2> /dev/null | tail -n 1)
+  [[ "${_c}" =~ /backup-exports/([0-9a-f]{32})$ ]] && _t0="${BASH_REMATCH[1]}"
+  grep -sq 'provision_backup_export_path' \
+    "${_HM_ROOT}/profiles/hostmaster/modules/aegir/hosting_tasks_extra/hosting_tasks_extra.drush.inc" || _ok=NO
+  for _f in /etc/apparmor.d/opt.php*.sbin.php-fpm; do
+    [ -e "${_f}" ] || break
+    grep -q 'backup-exports/\*/\*' "${_f}" || _ok=NO
+    break
+  done
+  if [ "${_ok}" = "YES" ]; then
+    [ -e "${_d}" ] || [ -L "${_d}" ] || mkdir -m 0751 -- "${_d}" 2> /dev/null
+    _t=$(
+      cd -P -- "${_d}" 2> /dev/null || exit 1
+      chmod 0751 . 2> /dev/null || exit 1
+      _t="${_t0}"
+      [ -n "${_t}" ] || _t=$(find . -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
+        -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
+      [ -n "${_t}" ] || _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
       [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] || exit 1
-      mkdir -m 0711 -- "./${_t}" 2> /dev/null || exit 1
-    fi
-    chmod 0711 -- "./${_t}" 2> /dev/null
+      if [ -L "./${_t}" ] || [ ! -d "./${_t}" ]; then
+        mkdir -m 0711 -- "./${_t}" 2> /dev/null || exit 1
+      fi
+      chmod 0711 -- "./${_t}" 2> /dev/null
+      printf '%s\n' "${_t}"
+    )
+  fi
+  if [[ ! "${_t}" =~ ^[0-9a-f]{32}$ ]]; then
+    [ -n "${_t0}" ] || ${_DRUSHCMD} @hostmaster ${_vSet} aegir_backup_export_path "${_d}" &> /dev/null
+    return 0
+  fi
+  _p="${_d}/${_t}"
+  ${_DRUSHCMD} @hostmaster ${_vSet} aegir_backup_export_path "${_p}" &> /dev/null
+  [ "$(${_DRUSHCMD} @hostmaster vget aegir_backup_export_path --format=string 2> /dev/null | tail -n 1)" = "${_p}" ] || return 0
+  # Once the panel looks there: what sits at the top, or in another such folder
+  (
+    cd -P -- "${_d}" 2> /dev/null || exit 0
     while IFS= read -r -d '' _f; do
       mv -n -- "${_f}" "./${_t}/" 2> /dev/null
     done < <(find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
-    printf '%s\n' "${_t}"
+    while IFS= read -r _f; do
+      [ "${_f}" != "${_t}" ] || continue
+      mv -n -- "./${_f}"/* "./${_f}"/.[!.]* "./${_t}/" 2> /dev/null
+      rmdir -- "./${_f}" 2> /dev/null
+    done < <(find . -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
+      -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null)
   )
-  if [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] && (
-    cd -P -- "${_ROOT}/.drush" 2> /dev/null && perl -e '
-      my ($p, $f, $s) = ($ARGV[0], "local.drushrc.php", "");
-      my $k = "\$options[\x27provision_backup_export_path\x27]";
-      if (open(my $h, "<", $f)) { local $/; $s = <$h>; close($h); }
-      my $n = $s;
-      $n =~ s/^\Q$k\E.*\n?//mg;
-      $n =~ s/\?>\s*\z//;
-      $n = "<?php\n" unless $n =~ /\S/;
-      $n .= "\n" unless $n =~ /\n\z/;
-      $n .= "$k = \x27$p\x27;\n";
-      exit 0 if $n eq $s;
-      open(my $o, ">", "$f.$$") or exit 1;
-      print $o $n;
-      close($o) or exit 1;
-      chmod(0640, "$f.$$");
-      rename("$f.$$", $f) or exit 1;' "${_d}/${_t}" 2> /dev/null
-  ); then
-    printf '%s\n' "${_d}/${_t}"
-  else
-    printf '%s\n' "${_d}"
-  fi
+  return 0
 }
 _satellite_child_b_aegir_ui_enhance() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -11956,8 +11964,7 @@ _satellite_child_b_aegir_ui_enhance() {
       hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
       hosting_platform_base_path "${_ROOT}/static/" &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${_vSet} \
-      aegir_backup_export_path "$(_satellite_export_path)" &> /dev/null
+    _satellite_export_path
     ${_DRUSHCMD} @hostmaster ${_vSet} \
       hosting_default_profile "standard" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \

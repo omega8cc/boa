@@ -1130,70 +1130,93 @@ _night_bak_open() {
 # An export is the backup itself under a second name, readable by everyone, and
 # any account's web user can enter backup-exports, so a name that can be guessed
 # is enough to read one. Exports therefore live in a folder of a random name,
-# which no other account can list, and the panel and the backend are told its
-# path. All of it runs as the account: the folder, the moves and ~/.drush are its
-# own, and it gains nothing by changing them.
+# which no other account can list. The panel's aegir_backup_export_path names it
+# and hosting_tasks_extra hands that to the backend's tasks. All of it runs as the
+# account: the folder and the moves are its own, and it gains nothing by changing
+# them. A parent root owns stays as it is, and so do its exports.
 #
 # In the current (pinned) backup-exports: the folder's name printed, made when
-# missing, with any export still at the top moved in. $1 $2: the account's ids.
+# missing. $1 $2: the account's ids. $3: the name the panel has, if any.
 _night_export_dir_here() {
-  local _t _f _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
-  # A folder nobody may list is no secret in a parent anybody can: this one has
-  # been seen root's and 0755. Handed back from inside itself, so no link is followed.
-  if [ "$(stat -c '%u' . 2> /dev/null)" = "0" ]; then
-    chown "${1}:${2}" . 2> /dev/null || return 1
-  fi
+  local _t="${3}" _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
   "${_as[@]}" chmod 0751 . 2> /dev/null || return 1
-  _t=$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
+  [ -n "${_t}" ] || _t=$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
     -regextype posix-extended -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
-  if [ -z "${_t}" ]; then
-    _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
-    [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] || return 1
+  [ -n "${_t}" ] || _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+  [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] || return 1
+  if [ -L "./${_t}" ] || [ ! -d "./${_t}" ]; then
     "${_as[@]}" mkdir -m 0711 -- "./${_t}" 2> /dev/null || return 1
   fi
   "${_as[@]}" chmod 0711 -- "./${_t}" 2> /dev/null
+  printf '%s\n' "${_t}"
+}
+# In the same directory, once the panel looks there: what sits at the top, or in
+# another folder of such a name (a move can leave two), moved into the folder $3.
+_night_export_gather_here() {
+  local _t="${3}" _f _d _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
   while IFS= read -r -d '' _f; do
     "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
   done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
-  printf '%s\n' "${_t}"
+  while IFS= read -r _d; do
+    [ "${_d}" != "${_t}" ] || continue
+    while IFS= read -r -d '' _f; do
+      "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
+    done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P "./${_d}" -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
+    "${_as[@]}" rmdir -- "./${_d}" 2> /dev/null
+  done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
+    -regextype posix-extended -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null)
+  return 0
 }
-# The line of ~/.drush/local.drushrc.php (the current directory) that gives the
-# backend the path $ARGV[0], which Aegir's own drushrc.php includes; anything an
-# operator keeps in that file stays.
-_NIGHT_EXPORT_RC_PL='my ($p, $f, $s) = ($ARGV[0], "local.drushrc.php", "");
-my $k = "\$options[\x27provision_backup_export_path\x27]";
-if (open(my $h, "<", $f)) { local $/; $s = <$h>; close($h); }
-my $n = $s;
-$n =~ s/^\Q$k\E.*\n?//mg;
-$n =~ s/\?>\s*\z//;
-$n = "<?php\n" unless $n =~ /\S/;
-$n .= "\n" unless $n =~ /\n\z/;
-$n .= "$k = \x27$p\x27;\n";
-exit 0 if $n eq $s;
-open(my $o, ">", "$f.$$") or exit 1;
-print $o $n;
-close($o) or exit 1;
-chmod(0640, "$f.$$");
-rename("$f.$$", $f) or exit 1;'
-# The folder's path printed and the backend told it; status 1 and nothing printed
-# when it cannot be had, so the panel keeps the path it has.
-_night_export_path() {
-  local _n="${_usEr##*/}" _u _g _t _as
-  _u=$(id -u -- "${_n}" 2> /dev/null)
-  _g=$(id -g -- "${_n}" 2> /dev/null)
-  if [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ]; then
-    _as=(setpriv --reuid="${_u}" --regid="${_g}" --clear-groups)
-    if [ ! -e "${_usEr}/backup-exports" ] && [ ! -L "${_usEr}/backup-exports" ]; then
-      _acct_in_real_dir "${_usEr}" "${_as[@]}" mkdir -m 0751 -- ./backup-exports 2> /dev/null
-    fi
-    _t=$(_night_in_bak_dir backup-exports _night_export_dir_here "${_u}" "${_g}")
+# Whether this box can use such a folder yet: the panel's module hands the path to
+# the backend, and PHP-FPM's profile, where there are any, reads one level down.
+_night_export_ready() {
+  local _f _r
+  _r=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
+    | grep -m 1 "root'" | awk '{ print $3 }' | sed "s/[\,']//g")
+  [ -n "${_r}" ] || return 1
+  _acct_read_in "${_r}/profiles/hostmaster/modules/aegir/hosting_tasks_extra" hosting_tasks_extra.drush.inc \
+    | grep -q 'provision_backup_export_path' || return 1
+  for _f in /etc/apparmor.d/opt.php*.sbin.php-fpm; do
+    [ -e "${_f}" ] || return 0
+    grep -q 'backup-exports/\*/\*' "${_f}"
+    return
+  done
+}
+# The panel's path as the account's own drush reads and sets it. Silent: a debug
+# run's log must not carry the folder's name, and _run_drush8_hmr_cmd would.
+_night_export_var() {
+  if [ "${#}" -gt 0 ]; then
+    su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster ${_vSet} aegir_backup_export_path ${1}" &> /dev/null
+  else
+    su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster vget aegir_backup_export_path --format=string" 2> /dev/null | tail -n 1
   fi
-  if [[ ! "${_t}" =~ ^[0-9a-f]{32}$ ]] \
-    || ! _acct_in_real_dir "${_usEr}/.drush" "${_as[@]}" \
-      perl -e "${_NIGHT_EXPORT_RC_PL}" "${_usEr}/backup-exports/${_t}" 2> /dev/null; then
+}
+# Keeps the panel on its folder, moved in to it when it has none yet. Status 1 when
+# there is none this run: the panel keeps a folder it has, or else the plain path.
+_night_export_path() {
+  local _n="${_usEr##*/}" _u _g _t _t0="" _c _p
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _a2b_import_unfinished "${_HM_U}"; then
     return 1
   fi
-  printf '%s\n' "${_usEr}/backup-exports/${_t}"
+  _c="$(_night_export_var)"
+  [[ "${_c}" =~ /backup-exports/([0-9a-f]{32})$ ]] && _t0="${BASH_REMATCH[1]}"
+  _u=$(id -u -- "${_n}" 2> /dev/null)
+  _g=$(id -g -- "${_n}" 2> /dev/null)
+  if _night_export_ready && [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ]; then
+    if [ ! -e "${_usEr}/backup-exports" ] && [ ! -L "${_usEr}/backup-exports" ]; then
+      _acct_in_real_dir "${_usEr}" setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+        mkdir -m 0751 -- ./backup-exports 2> /dev/null
+    fi
+    _t=$(_night_in_bak_dir backup-exports _night_export_dir_here "${_u}" "${_g}" "${_t0}")
+  fi
+  if [[ ! "${_t}" =~ ^[0-9a-f]{32}$ ]]; then
+    [ -n "${_t0}" ] || _night_export_var "${_usEr}/backup-exports"
+    return 1
+  fi
+  _p="${_usEr}/backup-exports/${_t}"
+  _night_export_var "${_p}"
+  [ "$(_night_export_var)" = "${_p}" ] || return 1
+  _night_in_bak_dir backup-exports _night_export_gather_here "${_u}" "${_g}" "${_t}"
 }
 
 _relocate_backups_to_static_fs() {
@@ -1531,11 +1554,8 @@ _account_process() {
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_items 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
     _relocate_backups_to_static_fs
-    if _nExpP=$(_night_export_path); then
-      _run_drush8_hmr_cmd "${_vSet} aegir_backup_export_path ${_nExpP}"
-    else
-      echo "backup exports of ${_usEr}: no private folder this run, the panel keeps its path"
-    fi
+    _night_export_path \
+      || echo "backup exports of ${_usEr}: no private folder this run, the panel keeps its path"
     _run_drush8_hmr_cmd "fr hosting_custom_settings -y"
     _run_drush8_hmr_cmd "cache-clear all"
     _run_drush8_hmr_cmd "cache-clear all"
