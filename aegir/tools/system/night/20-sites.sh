@@ -2870,6 +2870,64 @@ _sites_cred_modes_here() {
   return 0
 }
 
+### The codebase top above a docroot below the account's static/ (docroot/,
+### web/ or html/) takes the group write the platform script gives it after
+### each Verify (fix-drupal-platform-permissions.sh, _TOP_GW_PL, which says
+### why), under the same rules: the top and each directory directly in it,
+### the docroot and vendor/ aside, when the backend user owns them, their
+### group is the account's own (never the box-wide users group) and that
+### group may already read and enter them. Only the group write bit is
+### added; a link, another owner's entry and other users' bits stay, and
+### nothing below is walked.
+_NIGHT_TOP_GW_PL='use Fcntl;
+my ($u, $g, $skip) = @ARGV;
+$u =~ /^[1-9][0-9]*$/ && $g =~ /^[1-9][0-9]*$/ && length($skip) or exit 1;
+opendir(my $dh, ".") or exit 1;
+my @n = (".", map { "./$_" }
+  grep { $_ ne "." && $_ ne ".." && $_ ne $skip && $_ ne "vendor" } readdir($dh));
+closedir($dh);
+my $c = 0;
+for my $f (@n) {
+  sysopen(my $h, $f, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && -d _ && $s[4] == $u && $s[5] == $g
+    && ($s[2] & 050) == 050 && !($s[2] & 020)) {
+    chmod(($s[2] & 07777) | 020, $h) and $c++;
+  }
+  close($h);
+}
+print "$c\n";
+exit 0;'
+### Inside the codebase top (pinned), unless it is another user's or below
+### one: $1 = the account's own uids, then the backend user's uid, the
+### account group's gid and the docroot's name.
+_night_top_gw_here() {
+  _night_place_own_here "${1}" || return 0
+  shift
+  perl -e "${_NIGHT_TOP_GW_PL}" -- "$@"
+}
+### $1 = the resolved docroot, $2 = the resolved account home, $3 = the
+### account's own uids.
+_night_top_gw() {
+  local _top="${1%/*}" _dn="${1##*/}" _acct="${2##*/}" _u _pg _g _ug _n
+  [[ "${2}" = "/data/disk/${_acct}" ]] && [[ "${_acct}" =~ ^[a-z0-9-]+$ ]] \
+    || return 0
+  [[ "${_dn}" =~ ^(docroot|web|html)$ ]] || return 0
+  [[ "${_top}" = "${2}/static/"?* ]] \
+    && [[ "${_top}/" != "${2}/static/files/"* ]] || return 0
+  _u=$(getent passwd "${_acct}" 2> /dev/null | cut -d: -f3)
+  _pg=$(getent passwd "${_acct}" 2> /dev/null | cut -d: -f4)
+  _g=$(getent group "${_acct}" 2> /dev/null | cut -d: -f3)
+  _ug=$(getent group users 2> /dev/null | cut -d: -f3)
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && [[ "${_g}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_pg}" = "${_g}" ]] && [[ "${_g}" != "${_ug}" ]] || return 0
+  _n=$(_in_pinned_dir "${_top}" _night_top_gw_here "${3}" "${_u}" "${_g}" "${_dn}")
+  if [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Group write set on ${_n} directories of the codebase top ${_top//[[:cntrl:]]/?}"
+  fi
+  return 0
+}
+
 _fix_static_permissions() {
   ### $1 = the platform's web group, $2 = the account's own uids
   ### (_acct_walk_uids): every hand-over and mode below goes through the
@@ -2949,6 +3007,11 @@ _fix_static_permissions() {
       ### skipped (their contents are still walked), and nothing here names
       ### them on a command line, so a link planted at one is never followed.
       _in_pinned_dir "${_use_Plr}" _static_perm_here "${1}" "${_o}"
+      ### A Composer project's root was walked whole above; elsewhere the
+      ### codebase top above the docroot takes its group write here.
+      if [ "${_use_Plr}" = "${_rPlr}" ]; then
+        _night_top_gw "${_rPlr}" "${_rUsr}" "${_o}"
+      fi
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
       ### level). A site the per-site loop refuses -- a symlinked modules at

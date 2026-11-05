@@ -1009,6 +1009,70 @@ elif [ -d "${drupal_root}/html" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" html
 fi
 
+### The codebase top above a docroot below the account's static/ (a tenant's
+### git checkout with the site in docroot/, web/ or html/): the account's
+### shell logins update the files there, and git replaces a file by
+### unlinking it, which takes write on the directory holding it. Only the
+### docroot's code and vendor/ get modes above, so a directory there that the
+### backend user owns without group write refused every pull that changed a
+### file in it ("unable to unlink old"). The top and each directory directly
+### in it, the docroot and vendor/ aside, take group write when the backend
+### user owns them, their group is the account's own and that group may
+### already read and enter them. An account still on the box-wide users group
+### is skipped: group write there would reach every account. Only the group
+### write bit is added: a link, another owner's entry and other users' bits
+### stay as they are, and nothing below is walked. Mirrored in
+### night/20-sites.sh (_night_top_gw).
+_TOP_GW_PL='use Fcntl;
+my ($u, $g, $skip) = @ARGV;
+$u =~ /^[1-9][0-9]*$/ && $g =~ /^[1-9][0-9]*$/ && length($skip) or exit 1;
+opendir(my $dh, ".") or exit 1;
+my @n = (".", map { "./$_" }
+  grep { $_ ne "." && $_ ne ".." && $_ ne $skip && $_ ne "vendor" } readdir($dh));
+closedir($dh);
+my $c = 0;
+for my $f (@n) {
+  sysopen(my $h, $f, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && -d _ && $s[4] == $u && $s[5] == $g
+    && ($s[2] & 050) == 050 && !($s[2] & 020)) {
+    chmod(($s[2] & 07777) | 020, $h) and $c++;
+  }
+  close($h);
+}
+print "$c\n";
+exit 0;'
+# Inside the codebase top (pinned): $1 = the backend user's uid, $2 = the
+# account group's gid, $3 = the docroot's name. Prints how many directories
+# took group write.
+_top_gw_here() {
+  perl -e "${_TOP_GW_PL}" -- "$@"
+}
+_top_dir="${drupal_root%/*}"
+_top_dn="${drupal_root##*/}"
+_top_acct="${_SCOPE_ROOT#/data/disk/}"
+if [[ "${_SCOPE_ROOT}" = "/data/disk/${_top_acct}" ]] \
+  && [[ "${_top_acct}" =~ ^[a-z0-9-]+$ ]] \
+  && [[ "${_top_dn}" =~ ^(docroot|web|html)$ ]] \
+  && [[ "${_top_dir}" = "${_SCOPE_ROOT}/static/"?* ]] \
+  && [[ "${_top_dir}/" != "${_SCOPE_ROOT}/static/files/"* ]]; then
+  _top_uid=$(getent passwd "${_top_acct}" 2> /dev/null | cut -d: -f3)
+  _top_pgid=$(getent passwd "${_top_acct}" 2> /dev/null | cut -d: -f4)
+  _top_gid=$(getent group "${_top_acct}" 2> /dev/null | cut -d: -f3)
+  _top_ugid=$(getent group users 2> /dev/null | cut -d: -f3)
+  if [[ "${_top_uid}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_top_gid}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_top_pgid}" = "${_top_gid}" ]] \
+    && [[ "${_top_gid}" != "${_top_ugid}" ]]; then
+    _top_n=$(_in_pinned_dir "${_top_dir}" \
+      _in_own_here _top_gw_here "${_top_uid}" "${_top_gid}" "${_top_dn}")
+    if [[ "${_top_n}" =~ ^[1-9][0-9]*$ ]]; then
+      printf 'Group write set on %s directories of the codebase top %s\n' \
+        "${_top_n}" "$(_nm "${_top_dir}")"
+    fi
+  fi
+fi
+
 printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/sites/all")"
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here d "${_SA_DIR}" ./modules ./themes ./libraries
