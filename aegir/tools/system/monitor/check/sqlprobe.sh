@@ -39,8 +39,8 @@
 #     NB: _USE_SQLPROBE=NO therefore also starves that loop — after 8
 #     days the tune pass reverts to the legacy measured guard.
 #
-# Samples are SKIPPED (silent exit) while backups/cache-droppers run and for
-# 20 min after (mysql_backup.sh drops caches unconditionally), during
+# Samples are SKIPPED (silent exit) while backups run and for 20 min after
+# (a dump's reads and truncations skew the miss rates), during
 # barracuda runs (mysqld may restart mid-sample), during run-to-* system
 # transitions, and whenever mysqld is absent — downtime is mysql.sh's job.
 # Opt-out: _USE_SQLPROBE=NO in /root/.barracuda.cnf (unset means ON).
@@ -157,9 +157,8 @@ if [ "${_FORCE}" != "YES" ] && [ -e "${_STAMP}" ] \
 fi
 touch "${_STAMP}"
 
-# Backup / cache-drop exclusion: skip while any backup walker is alive and for
-# 20 min after the last sighting (mysql_backup.sh drops caches unconditionally,
-# which poisons both the miss rates and MemAvailable).
+# Backup exclusion: skip while any backup walker is alive and for 20 min after
+# the last sighting (a dump's reads and truncations skew the miss rates).
 if pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
   || pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
   || pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
