@@ -11821,6 +11821,8 @@ _satellite_export_path() {
   [ -e "${_d}" ] || [ -L "${_d}" ] || mkdir -m 0751 -- "${_d}" 2> /dev/null
   _t=$(
     cd -P -- "${_d}" 2> /dev/null || exit 1
+    # A folder nobody may list is no secret in a parent anybody can
+    chmod 0751 . 2> /dev/null || exit 1
     _t=$(find . -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
       -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
     if [ -z "${_t}" ]; then

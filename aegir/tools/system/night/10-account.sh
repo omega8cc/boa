@@ -1138,6 +1138,12 @@ _night_bak_open() {
 # missing, with any export still at the top moved in. $1 $2: the account's ids.
 _night_export_dir_here() {
   local _t _f _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
+  # A folder nobody may list is no secret in a parent anybody can: this one has
+  # been seen root's and 0755. Handed back from inside itself, so no link is followed.
+  if [ "$(stat -c '%u' . 2> /dev/null)" = "0" ]; then
+    chown "${1}:${2}" . 2> /dev/null || return 1
+  fi
+  "${_as[@]}" chmod 0751 . 2> /dev/null || return 1
   _t=$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
     -regextype posix-extended -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
   if [ -z "${_t}" ]; then
