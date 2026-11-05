@@ -589,8 +589,7 @@ _swap_make_file() {
   return 1
 }
 
-# autoupboa's and multiback's purges run swapoff -a; swapon -a, which brings
-# back only what fstab lists.
+# A reboot and multiback's swapon -a bring back only what fstab lists.
 _swap_fstab_line() {
   local _tmp
   grep -qE '^[[:space:]]*/swapfile[[:space:]]' /etc/fstab && return 0
@@ -608,10 +607,15 @@ _swap_fstab_line() {
   return 1
 }
 
-# Can free RAM take back $1 kB of swapped pages and still keep a tenth of
-# the RAM (at least 512 MB) free? The OOM guard in system.sh acts at 5%.
+# May an area holding $1 kB of swapped pages be switched off now? swapoff reads
+# them back holding each owner's address space lock, so a process with pages in
+# swap stands still, every thread, until they are in: 4 GB on a slow disk froze
+# MySQL for over 8 minutes. So 256 MB at most, about a minute at that speed, and
+# only while free RAM can take them back and still keep a tenth of the RAM (at
+# least 512 MB) free. The OOM guard in system.sh acts at 5%.
 _swap_off_fits() {
   local _availKb _ramKb _spare
+  [ "$1" -le 262144 ] || return 1
   _ramKb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
   _availKb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
   _spare=$(( _ramKb / 10 ))
@@ -647,8 +651,8 @@ _swap_resize_running() {
 # the current /swapfile, the 14-day peak use, and the size BOA recorded when
 # it last built /swapfile (empty when it never did). Half the RAM, at least
 # 1 GB and at most 4 GB, raised to twice the peak, so a normal fortnight
-# stays near the half-full mark where autoupboa empties swap; a swap that ran
-# 90% full is doubled, as its samples cannot show how much more it needed.
+# stays near half full; a swap that ran 90% full is doubled, as its samples
+# cannot show how much more it needed.
 # Never above the RAM (under 1 GB of RAM that wins over the floor) or 16 GB.
 # The total grows only when it falls a fifth or more short, so a peak that
 # crept a little past half full does not resize every fortnight. A file BOA
@@ -739,11 +743,13 @@ _size_swap() {
     return 0
   fi
 
-  # A new file an interrupted run left behind.
+  # A new file an interrupted run left behind, or a grow's extra room beside a
+  # /swapfile too full to switch off (below). It stays on until both can go.
   read -r _newKb _newUsed < <(_swap_area_kb "${_swn}")
   if [ "${_newKb}" -gt 0 ]; then
-    if ! _swap_off_fits "${_newUsed}" || ! swapoff "${_swn}" 2> /dev/null; then
-      echo "$(date) swap left alone: ${_swn} from an earlier run is on and cannot be switched off now" >> "${_log}"
+    read -r _curKb _curUsed < <(_swap_area_kb /swapfile)
+    if ! _swap_off_fits $(( _newUsed + _curUsed )) || ! swapoff "${_swn}" 2> /dev/null; then
+      echo "$(date) swap left alone: ${_swn} stays on beside /swapfile, ${_newUsed} + ${_curUsed} kB in them" >> "${_log}"
       return 0
     fi
   fi
@@ -828,11 +834,23 @@ _size_swap() {
   # The kernel refuses to rename a swap file that is on, so the new file is
   # built and tried under another name, switched off again while it is still
   # empty, and takes the name once the old one is off: for those seconds only
-  # the other swap areas are on, so the swapoffs go ahead only while free RAM
-  # can take back the pages of both files with room to spare, checked again
-  # right before them (a dd build can take minutes).
+  # the other swap areas are on, so the swapoffs go ahead only under
+  # _swap_off_fits, checked again right before them (a dd build can take
+  # minutes). Pages stay in swap until something needs them, so a /swapfile may
+  # stay too full to switch off for a long time: a grow then adds the missing
+  # room as a second area beside it, which freezes nothing, and a later pass
+  # makes one file of them once both can go. A shrink just waits.
   if ! _swap_off_fits "${_curUsed}"; then
-    echo "$(date) ${_sum}: ${_act} waits, ${_curUsed} kB in /swapfile and not enough free RAM to take it back" >> "${_log}"
+    if [ "${_act}" = "grow" ] && _swap_make_file "${_swn}" $(( _needMb - _fileMb )); then
+      echo "$(date) ${_sum}: ${_curUsed} kB in /swapfile, too much to switch off; ${_swn} of $(( _needMb - _fileMb )) MB on beside it" >> "${_log}"
+      return 0
+    fi
+    if [ "${_act}" = "grow" ]; then
+      touch "${_off}"
+      echo "$(date) ${_sum}: building a $(( _needMb - _fileMb )) MB ${_swn} beside /swapfile FAILED, next try in 7 days" >> "${_log}"
+      return 0
+    fi
+    echo "$(date) ${_sum}: ${_act} waits, ${_curUsed} kB in /swapfile, too much to switch off now" >> "${_log}"
     return 0
   fi
   if ! _swap_make_file "${_swn}" "${_needMb}"; then
@@ -843,7 +861,7 @@ _size_swap() {
   read -r _newKb _newUsed < <(_swap_area_kb "${_swn}")
   read -r _curKb _curUsed < <(_swap_area_kb /swapfile)
   if ! _swap_off_fits $(( _newUsed + _curUsed )); then
-    echo "$(date) ${_sum}: ${_act} waits, free RAM fell while the new file was built; ${_swn} left on until the next pass" >> "${_log}"
+    echo "$(date) ${_sum}: ${_act} waits, swap use grew or free RAM fell while the new file was built; ${_swn} left on until the next pass" >> "${_log}"
     return 0
   fi
   if ! swapoff "${_swn}" 2> /dev/null; then
@@ -908,20 +926,18 @@ _graceful_action() {
     service rsyslog start
   fi
 
-  # RAM and disk cache management. No swap reset here any more: autoupboa's
-  # _swap_purge_if_bloated empties swap from clear.sh's five-minute tick once
-  # it is half full, and only while free RAM can take it back. The nightly
-  # swapoff here checked no RAM at all, so with a large swap it could pull
-  # back more than the box had free.
+  # RAM and disk cache management. Nothing empties swap on a schedule: a page
+  # in swap costs nothing until it is touched, and swapoff freezes its owner
+  # (see _swap_off_fits).
   if [ -d "/dev/disk" ]; then
     echo "Optimizing RAM usage..."
     _optimize_ram
   fi
 
-  # The marker: autoupboa's purge and multiback's reset stand aside while it
-  # names this run, a second run (by hand beside the cron one) leaves swap to
-  # the first, and one left by a killed run makes autoupboa switch /swapfile
-  # back on. It is claimed by link(2), so it appears whole or not at all and
+  # The marker: multiback's swapon stands aside while it names this run, a
+  # second run (by hand beside the cron one) leaves swap to the first, and one
+  # left by a killed run makes autoupboa switch /swapfile back on. It is
+  # claimed by link(2), so it appears whole or not at all and
   # only when absent; a stale one is cleared here, unless a swapoff the killed
   # run started still runs (its trace stays for autoupboa).
   _rszOwn=NO

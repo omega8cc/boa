@@ -423,82 +423,10 @@ _swap_heal_file() {
 }
 _swap_heal_file
 
-#
-# Purge memory swap if bloated
-_swap_purge_if_bloated() {
-  local _SWAP_THRESHOLD="${1:-50}"
-  local _swap_total _swap_used _swap_pct
-
-  _swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
-  _swap_used=$(awk '/SwapFree/ {gsub(/SwapFree:[ \t]+/,""); print $1}' /proc/meminfo)
-
-  if [[ -z "${_swap_total}" || "${_swap_total}" -eq 0 ]]; then
-    echo "SWP no swap configured or swap total is zero, skipping"
-    return 0
-  fi
-
-  _swap_used=$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print t-f}' /proc/meminfo)
-  _swap_pct=$(( _swap_used * 100 / _swap_total ))
-
-  echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
-
-  if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
-    # graceful.sh is resizing /swapfile: a swapoff -a now would undo half of it.
-    if _swap_resize_running; then
-      echo "SWP swap resize in progress, purge skipped"
-      return 0
-    fi
-    # No cache drop first: MemAvailable already counts reclaimable cache, and
-    # evicting the whole page cache forces cold re-reads on every site at once,
-    # even when the purge is then refused. After swapoff the box must keep a
-    # tenth of its RAM (at least 512 MB) free, well clear of the OOM guard's 5%.
-    local _mem_free _mem_total _mem_spare
-    _mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
-    _mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-    _mem_spare=$(( _mem_total / 10 ))
-    [[ "${_mem_spare}" -lt 524288 ]] && _mem_spare=524288
-    if [[ $(( _mem_free - _swap_used )) -lt "${_mem_spare}" ]]; then
-      echo "SWP insufficient free RAM (${_mem_free} kB) to absorb swap (${_swap_used} kB) with ${_mem_spare} kB to spare, aborting purge"
-      return 1
-    fi
-    echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
-    # swapon -a brings back only what fstab lists: a zram device or any other
-    # area switched on outside fstab goes back on by name, at the priority it
-    # had when that was its own (0 or more; a negative one was the kernel's).
-    local _area _prio _areas _on_rc
-    _areas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
-    # swapoff -a goes on past an area it fails to empty; whatever it switched
-    # off goes back on either way.
-    local _off_rc
-    swapoff -a
-    _off_rc=$?
-    swapon -a
-    _on_rc=$?
-    for _area in ${_areas}; do
-      _prio="${_area##*:}"
-      _area="${_area%:*}"
-      awk -v a="${_area}" '$1 == a {f = 1} END {exit !f}' /proc/swaps && continue
-      if [[ "${_prio}" =~ ^[0-9]+$ ]]; then
-        swapon -p "${_prio}" "${_area}" 2>/dev/null
-      else
-        swapon "${_area}" 2>/dev/null
-      fi
-    done
-    if [[ "${_off_rc}" -ne 0 ]] && [[ "${_on_rc}" -eq 0 ]]; then
-      echo "SWP swapoff failed, the areas it switched off are back on"
-      return 1
-    fi
-    if [[ "${_on_rc}" -eq 0 ]]; then
-      echo "SWP swapon complete, swap purged successfully"
-    else
-      echo "SWP swapon failed after swapoff — swap may be offline"
-      return 1
-    fi
-  else
-    echo "SWP swap usage healthy, no action taken"
-  fi
-}
-_swap_purge_if_bloated
+# Swap is not emptied on a schedule. A page in swap costs nothing until it is
+# touched, while swapoff freezes every process with pages in swap until they
+# are read back: 4 GB on a slow disk froze MySQL for over 8 minutes, and the
+# cold pages went straight back out. graceful.sh sizes swap to what a box uses.
 
 #
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
