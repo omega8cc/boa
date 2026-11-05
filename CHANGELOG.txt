@@ -10,6 +10,13 @@
       leaves that account out and keeps the others current, instead of
       stopping for all of them, and says so.
 
+    * An account installed on the active and never laid on its mirror, when
+      that mirror was promoted by hand, comes across with one command on the
+      old active once it is fenced: xmass prep-target <promoted-ip>
+      --return-accounts=<oN>. Its files are laid with no database write, and
+      the account takes the promotion's last steps there; the old active can
+      then be rebuilt as the new mirror.
+
     * A platform's sites can take their web PHP from the platform:
       ~/static/control/fpm-per-platform.info holds one "<folder> <version>"
       per line. A site's line in multi-fpm.info wins over its platform's,
@@ -116,6 +123,22 @@
       Commerce, and a platform in use keeps its copy.
 
 @=> Important Fixes
+
+    * An account's off-site backup passphrase and its provider credentials
+      now reach the standing mirror with every xmass sync. Before, the
+      mirror kept a passphrase of its own and the account's credentials
+      lost to its templates, so after a promotion the account's archives
+      could not be decrypted there and it backed up nowhere.
+
+    * xmass restore-target that stopped at MySQL's start can be run again
+      and finishes the restore; before, the box refused for good and the
+      accounts laid by --fix-accounts stayed unmarked. It also puts each
+      control panel whose alias a sync carried from the active back on the
+      mirror's own panel, which pre-mig otherwise refused.
+
+    * boa cleanup purge says why when it purges nothing, and exits 1 then;
+      before, a purge of an account detect did not list printed a blank
+      line and exited 0. detect names a marked directory it skips.
 
     * A git pull in a tenant's codebase under ~/static, with the site one
       level down in docroot/, web/ or html/, no longer stops with "unable to
