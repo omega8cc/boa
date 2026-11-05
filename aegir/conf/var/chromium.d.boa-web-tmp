@@ -1,0 +1,6 @@
+# Installed by BOA. A web request has no writable home, so the crash handler gets no
+# database and the browser ends on SIGTRAP: use the PHP-FPM pool's temporary folder.
+if [ ! -w "${HOME:-/nonexistent}" ] && [ -w "${TMPDIR:-/nonexistent}" ]; then
+  export XDG_CONFIG_HOME="${TMPDIR}/.config"
+  export XDG_CACHE_HOME="${TMPDIR}/.cache"
+fi

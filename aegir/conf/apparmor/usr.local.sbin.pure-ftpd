@@ -16,6 +16,8 @@
   capability setgid,
   capability setuid,
   capability mknod,
+  capability dac_override,
+  capability dac_read_search,
 
   network inet stream,
   network inet6 stream,
@@ -71,7 +73,10 @@
   /var/tmp/** rw,
 
   # Allow write access to log files
-  /var/log/pureftpd.log rw,
+  /etc/shells r,
+  /run/pure-ftpd/ rw,
+  /run/pure-ftpd/** rwk,
+  /var/log/pureftpd.log rwk,
 
   # Allow execution of the pure-ftpd binary and configuration script
   /usr/local/sbin/pure-ftpd mrix,
@@ -84,6 +89,7 @@
   /data/disk/*/backups/** r,
   /data/disk/*/clients/ r,
   /data/disk/*/clients/** r,
+  /data/disk/*/distro/ r,
   /data/disk/*/distro/** r,
   /data/disk/*/static/ r,
   /data/disk/*/static/** r,
@@ -92,13 +98,21 @@
   /opt/tools/drush/** r,
 
   # Allow write access to Octopus user directories and files
-  owner /data/disk/*/distro/** rw,
+  /data/disk/*/distro/** rwk,
   owner /data/disk/*/static/ r,
-  owner /data/disk/*/static/** rw,
+  /data/disk/*/static/** rwk,
   owner /home/*/ r,
   owner /home/*/.drush/cache/ r,
   owner /home/*/.drush/cache/** rw,
   owner /home/*/** rw,
+
+  # A files store moved to attached storage
+  /mnt/**/files/*/static/files/ r,
+  /mnt/**/files/*/static/files/** rwk,
+
+  # BOA's own folders at a store's root (.backups, .backup-exports, .archived) are no site's
+  deny /data/disk/*/static/files/.*/** wkl,
+  deny /mnt/**/files/*/static/files/.*/** wkl,
 
   # Catchall to deny everything else
   #deny /** rwklx,

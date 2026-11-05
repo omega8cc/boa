@@ -78,6 +78,8 @@
   /data/disk/*/distro/** r,
   /data/disk/*/platforms/** r,
   /data/disk/*/static/** r,
+  /mnt/**/files/*/static/files/ r,
+  /mnt/**/files/*/static/files/** r,
   /home/*/ r,
   /home/*/** r,
 
