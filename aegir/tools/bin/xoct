@@ -8207,6 +8207,8 @@ _xoct_peer_trust_remedy() {
   echo "ERROR:   2. csf -a <each of: ${_me}>   # this box's addresses, for the control-plane ssh"
   echo "ERROR:   3. free disk under /root there (the record is root's, /root/.<oN>.migproxy.cnf) -- the"
   echo "ERROR:      record write is fail-closed on a truncated file"
+  echo "ERROR: A relay retired past its date has lost its key there: run xoct pre-mig on both boxes"
+  echo "ERROR: (this box first, then ${_p} naming this box), then re-run here."
 }
 
 ### Wire the migration-proxy trust on the TARGET (never on this source box:
@@ -9202,6 +9204,7 @@ _xoct_apply_policy() {
       *)
         echo "ERROR: ${_a}: peer ${_peer} unreachable -- policy NOT changed (a change that does"
         echo "ERROR: not reach the peer record flips its teardown decision the wrong way)"
+        _xoct_peer_trust_remedy "${_peer}"
         return 1
       ;;
     esac
