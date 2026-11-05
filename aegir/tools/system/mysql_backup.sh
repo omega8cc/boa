@@ -436,21 +436,17 @@ _sql_wait_drop
 #  from /root/.my.cnf via --defaults-file, keeping the password out of
 #  /proc/PID/cmdline.)
 
-_free_memory() {
-  echo "Freeing memory..."
-  sync && echo 3 | tee /proc/sys/vm/drop_caches
-}
-
+# NB: no cache drop around a dump. The kernel frees clean pages on demand and
+# MemAvailable already counts them, so a drop gives a dump nothing it could not
+# have; it sends every site and each dump tool back to the disk for their files.
 _create_locks() {
   echo "INFO: Creating locks for $1"
   touch /run/mysql_backup_running.pid
-  _free_memory
 }
 
 _remove_locks() {
   echo "INFO: Removing locks for $1"
   rm -f /run/mysql_backup_running.pid
-  _free_memory
 }
 
 _check_running() {
