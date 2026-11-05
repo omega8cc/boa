@@ -124,6 +124,11 @@
 
 @=> Important Fixes
 
+    * Backend-mode site cron asks for elysia-cron only on a site whose module
+      list shows elysia_cron enabled and whose Drush may load its command;
+      every other site goes straight to plain cron, without the "could not be
+      found" error each run logged before.
+
     * An account's off-site backup passphrase and its provider credentials
       now reach the standing mirror with every xmass sync. Before, the
       mirror kept a passphrase of its own and the account's credentials
