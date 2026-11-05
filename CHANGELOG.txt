@@ -216,6 +216,10 @@
       swapoff; the kernel frees clean pages on demand, so a drop gained next to
       nothing and sent every site back to the disk.
 
+    * A control panel backup export is kept in a private folder of the account,
+      which the panel's own path names. Its folder could be entered by other
+      accounts' web users, who could read an export by its name.
+
     * Swap is no longer emptied on a schedule: autoupboa's purge at half full
       and multiback's reset before a backup ran swapoff -a, which freezes every
       process with pages in swap until they are read back. 4 GB on a slow disk
