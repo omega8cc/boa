@@ -316,8 +316,6 @@ _fix_allow_tcp_forwarding() {
 }
 _fix_allow_tcp_forwarding
 
-#
-# Purge memory swap if bloated
 # A stuck guest-fire run's children inherited its lock descriptor and keep
 # the lock held once the run itself is gone: the same tree kill as
 # guest-fire.sh's own stuck check (the two copies are held to one text).
