@@ -14651,6 +14651,7 @@ _xmass_return_accounts() {
     # it, nothing of it replaced; no other shared leg writes a box that serves
     _ELIGIBLE_ACCOUNTS="${_all}"
     _XMASS_STORE_RC=0
+    _XMASS_CNF_RC=0
     _XMASS_RSYNC_RC=0
     _XMASS_STORE_ADDITIVE=YES _xmass_sync_store
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ] || [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
