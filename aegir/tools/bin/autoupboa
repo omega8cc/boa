@@ -821,12 +821,18 @@ _if_disable_not_used_services() {
     # which left it half configured and every later apt run on the box ending
     # with an error. The scripts stay in place with no rc links; a moved one is
     # put back and the pending configure finished before the daemons are killed.
+    # The copy is named <service>.initd, or just <service> where an older
+    # version made it.
     _clamRestored=NO
     for _svc in clamav-daemon clamav-freshclam; do
-      if [ ! -e "/etc/init.d/${_svc}" ] \
-        && [ -e "/var/backups/${_svc}.initd" ]; then
-        mv -f "/var/backups/${_svc}.initd" "/etc/init.d/${_svc}"
-        _clamRestored=YES
+      if [ ! -e "/etc/init.d/${_svc}" ]; then
+        for _bak in "/var/backups/${_svc}.initd" "/var/backups/${_svc}"; do
+          if [ -f "${_bak}" ] && head -n 1 "${_bak}" | grep -q '^#!'; then
+            mv -f "${_bak}" "/etc/init.d/${_svc}"
+            _clamRestored=YES
+            break
+          fi
+        done
       fi
     done
     if [ "${_clamRestored}" = "YES" ]; then
