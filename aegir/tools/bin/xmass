@@ -14188,11 +14188,11 @@ echo XMRET-END' 2> /dev/null)"
   return 0
 }
 
-# The promotion's last steps for account $1 on the box $2 that serves, as a
-# cutover runs them on its target: the panel rewired from this box's name ($3)
-# to the panel database there, renamed, read back as naming that box ($4), its
-# 503 gate lifted, its dispatcher back, its held upgrade armed, nginx made to
-# serve it. The mark goes last. Each step converges, so a re-run repeats it.
+# The promotion's last steps for account $1 on the box $2 that serves, in a
+# cutover's order on its target: the panel rewired from this box's name ($3) to
+# the panel database there, its 503 gate lifted, renamed, read back as naming
+# that box ($4), its dispatcher back, nginx made to serve it, its held upgrade
+# armed. The mark goes last. Each step converges, so a re-run repeats it.
 _xmass_return_account_end() {
   local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _out _rc _l
   _out="$(_xmass_panel_rewire_sh | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "bash -s -- '${_r}' '${_sf}'" 2>&1)"
@@ -14205,6 +14205,18 @@ _xmass_return_account_end() {
   done <<< "${_out}"
   if [ "${_rc}" -ne 0 ]; then
     _alrt "  ${_oct}: its panel rewire on ${_t} returned rc=${_rc}"
+    return 1
+  fi
+  # the 503 gate this box's fence put there goes before the rename, as a
+  # cutover clears it: the rename proves the panel serves
+  _out="$( { _xmass_remote_guards; cat <<'REMOTE'
+_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_A}/static/control"
+( cd -P -- "/data/disk/${_A}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
+  && rm -f -- ./http-off.pid ) && echo XMRET-OK
+REMOTE
+  } | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "_A='${_oct}' bash -s" 2>&1)"
+  if [[ "${_out}" != *XMRET-OK* ]]; then
+    _alrt "  ${_oct}: its 503 gate on ${_t} could not be lifted (/data/disk/${_oct}/static/control)"
     return 1
   fi
   _info "  ${_oct}: renaming ${_r} on ${_t} from ${_sf} ..."
@@ -14231,10 +14243,6 @@ if [ "${_srv}" != "${_TF}" ]; then
   echo "XMRET-FAILED: its panel database names ${_srv:-no readable server} as its server, not ${_TF}"
   exit 0
 fi
-_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_A}/static/control"
-( cd -P -- "/data/disk/${_A}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
-  && rm -f -- ./http-off.pid ) \
-  || { echo "XMRET-FAILED: could not lift its 503 gate in ${_w}"; exit 0; }
 if [ ! -e "/var/xdrago/run-${_A}" ] && [ -f "/var/backups/off-run/run-${_A}" ] \
   && [ ! -L "/var/backups/off-run/run-${_A}" ] && [ ! -L /var/backups/off-run ]; then
   mv -f -- "/var/backups/off-run/run-${_A}" "/var/xdrago/run-${_A}" \
@@ -14259,7 +14267,7 @@ REMOTE
     _alrt "  ${_oct}: its mark on ${_t} could not be removed: a re-run ends it"
     return 1
   fi
-  _info "  ${_oct}: back on ${_t}: its panel names it, its sites serve there"
+  _info "  ${_oct}: back on ${_t}: its panel database names ${_tf}, its dispatcher and its held upgrade are back"
   return 0
 }
 
@@ -14326,6 +14334,8 @@ _xmass_return_accounts() {
   done
   _ok="${_ok# }"
   if [ -n "${_ok}" ]; then
+    # the renames run that box's own tools: current ones, once nothing refused
+    _xmass_force_tool_update "${_t}"
     for _oct in ${_ok}; do
       ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
         "{ [ -e /root/.${_oct}.fix-accounts.txt ] || date -u '+%F %T UTC' > /root/.${_oct}.fix-accounts.txt; } && { grep -sqx returning /root/.${_oct}.fix-accounts.txt || echo returning >> /root/.${_oct}.fix-accounts.txt; }" 2> /dev/null \
@@ -14384,7 +14394,6 @@ _xmass_cmd_prep_target() {
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
   if [ -n "${_XMASS_RETURN_ACCOUNTS}" ]; then
-    _xmass_force_tool_update "${_tgt}"
     _xmass_return_accounts "${_tgt}" \
       || _die "account(s) not brought back to ${_tgt} -- see the lines above; a re-run takes them up"
     return 0
