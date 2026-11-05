@@ -8276,7 +8276,9 @@ _xoct_wire_target_proxy_trust() {
 ### naming it, a copy older tools left naming it, or a record that cannot be read
 ### keeps it. On a retire ($2 = retire) a retired record does not count, and the
 ### peer keeps this box's reach, since no record there can date it; on a retarget
-### the peer drops it unless the new target is its own partner. Never fatal.
+### the peer drops it unless the new target is its own partner, it gave that reach
+### after the relay began, or a move from this box into it is under way. Never
+### fatal.
 _xoct_release_old_peer() {
   local _p="$1" _how="${2:-}" _a _t _rc _cls _rel="" _o
   while IFS= read -r _a; do

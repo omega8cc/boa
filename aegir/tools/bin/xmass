@@ -10585,7 +10585,8 @@ _xmass_setup_migration_proxy_trust() {
 # key travels in the command environment, base64, never on stdin (stdin is
 # the remote script). Idempotent, never fatal.
 # A relay that is over (_mig_txt_relay_over) stays out of the carry, and what an
-# earlier carry took to this target for it goes from there. Inside its promised
+# earlier carry took to this target for it goes from there, unless a move from
+# that front into the target is under way there. Inside its promised
 # date a retired relay still travels: it relays until then, and retargets.
 _xmass_carry_inbound_reach() {
   local _acct _t _why _ip _set _seen _key _kb64 _own _sets="" _a _named=" " _over=" " _isover _rv=""

@@ -2033,12 +2033,17 @@ _MPT_REACH_DAYS="/root/.migration.peer.reach"
 # One line per address, "<address> <day>": a target's pre-mig writes it for the
 # source it lets in, and that box's post-mig removes the file. While a line names
 # a peer, a move from it into this box is under way, and its reach stays: no day
-# tells that move's key from one a relay that is over was given.
+# tells that move's key from one a relay that is over was given. The first prune
+# or release on a box writes "<address> <day> seed" for the reach older tools
+# gave, whose pre-mig wrote no line: such a move may be under way too. A seeded
+# line counts for 30 days.
 _MPT_PENDING="/root/.migration.peer.pending"
 _mpt_pending() {
-  local _ip
+  local _ip _old
+  _old="$(date -u -d '30 days ago' '+%Y-%m-%d' 2> /dev/null)"
   for _ip in $(_mpt_peer_set "${1}"); do
-    awk -v a="${_ip}" '$1 == a { f = 1 } END { exit !f }' "${_MPT_PENDING}" 2> /dev/null && return 0
+    awk -v a="${_ip}" -v o="${_old}" '$1 == a && (NF == 2 || ($3 == "seed" && $2 >= o)) { f = 1 } END { exit !f }' \
+      "${_MPT_PENDING}" 2> /dev/null && return 0
   done
   return 1
 }
@@ -2116,9 +2121,10 @@ _mpt_any_undeclared() {
 # trust and witness go, a live record's address stays. Its reach goes too with
 # --over, or with --to when <ip> is no partner of this box: there the front comes
 # back at a failback and needs it. With --since=<day>, the day the relay began, a
-# reach root gave later stays: another move from the same box needs it. Status 0
-# released, 3 kept (a live record names every address), 4 refused: nothing changed
-# and the cause is printed.
+# reach root gave later stays: another move from the same box needs it. A peer
+# a move into this box is under way from (the pending file) keeps its reach in
+# every case. Status 0 released, 3 kept (a live record names every address), 4
+# refused: nothing changed and the cause is printed.
 _cmd_release() {
   local _a _to="" _over="" _since="" _ip _g _reach=NO
   local -a _ips=() _drop=()
@@ -2150,6 +2156,16 @@ _cmd_release() {
     _msg "release: an account here is undeclared and may need this trust; nothing released"
     return 4
   fi
+  # Before the first prune, the reach older tools gave is dated and marked as
+  # maybe under way here first, as the prune does.
+  if [ ! -e "${_MPT_REACH_DAYS}" ]; then
+    if _mpt_reach_seed; then
+      _mpt_note "release: no reach day was kept here; the reach found is dated today"
+    else
+      _msg "release: could not write ${_MPT_REACH_DAYS} or ${_MPT_PENDING}; nothing released"
+      return 4
+    fi
+  fi
   for _ip in "${_ips[@]}"; do
     if _mpt_in "${_ip}" "${_MPT_LIVE}"; then
       _msg "release: ${_ip}: a live inbound record names it; kept"
@@ -2179,15 +2195,21 @@ _cmd_release() {
       break
     done
   fi
+  # The addresses given are one peer's: a move from it into this box under way
+  # by any of them keeps the reach of all of them.
+  if [ "${_reach}" = "YES" ]; then
+    for _ip in "${_ips[@]}"; do
+      _mpt_pending "${_ip}" || continue
+      _msg "release: ${_ip}: a move from this peer into this box is under way; its key and firewall lines stay"
+      _reach=NO
+      break
+    done
+  fi
   if [ "${_reach}" = "YES" ]; then
     _CSF_CHANGED=NO
     for _ip in "${_drop[@]}"; do
       if _mpt_pair_named "${_ip}"; then
         _msg "release: ${_ip}: this box's own pair; its key and firewall lines stay"
-        continue
-      fi
-      if _mpt_pending "${_ip}"; then
-        _msg "release: ${_ip}: a move from it into this box is under way; its key and firewall lines stay"
         continue
       fi
       _mpt_reach_drop "${_ip}"
@@ -2221,7 +2243,14 @@ _mpt_reach_seed() {
   done > "${_t}" || { rm -f -- "${_t}"; return 1; }
   chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
   rm -f -- "${_t}"
-  [ -e "${_MPT_REACH_DAYS}" ]
+  [ -e "${_MPT_REACH_DAYS}" ] || return 1
+  # A move older tools began may be under way from any address seeded here.
+  _t="${_MPT_PENDING}.seed.$$"
+  if ! { { cat "${_MPT_PENDING}" 2> /dev/null; awk '$3 == "seed" { print $1, $2, "seed" }' "${_MPT_REACH_DAYS}"; } \
+    | awk '!s[$1]++' > "${_t}" && chmod 600 "${_t}" && mv -f -- "${_t}" "${_MPT_PENDING}"; }; then
+    rm -f -- "${_t}"
+    return 1
+  fi
 }
 
 # Daily, from the certificate mirror's cron: the reach of a relay that is over,
