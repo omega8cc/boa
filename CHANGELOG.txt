@@ -124,8 +124,8 @@
 
     * multiback, autoupboa and graceful.sh no longer empty the page cache
       either. Each kept a drop behind a RAM test from when it stood beside a
-      swapoff; the kernel frees clean pages on demand, so a drop freed nothing
-      new and sent every site back to the disk.
+      swapoff; the kernel frees clean pages on demand, so a drop gained next to
+      nothing and sent every site back to the disk.
 
     * Swap is no longer emptied on a schedule: autoupboa's purge at half full
       and multiback's reset before a backup ran swapoff -a, which freezes every
