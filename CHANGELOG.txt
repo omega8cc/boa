@@ -117,6 +117,14 @@
 
 @=> Important Fixes
 
+    * A git pull in a tenant's codebase under ~/static, with the site one
+      level down in docroot/, web/ or html/, no longer stops with "unable to
+      unlink old '.gitignore'" when the top folder belongs to the backend
+      user without group write. Platform Verify and the nightly now add
+      group write to that top folder and to the backend user's folders
+      directly in it, on accounts with their own group, when the top holds
+      .git or composer.json. Only that bit is added, and nothing deeper.
+
     * Background jobs a Drupal site starts over HTTPS through its own server,
       such as background_batch exports and imports, no longer stop part way.
       Each step sends the next request and hangs up without reading, so the
