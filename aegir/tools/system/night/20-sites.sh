@@ -2911,19 +2911,24 @@ _night_top_gw_here() {
   perl -e "${_NIGHT_TOP_GW_PL}" -- "$@"
 }
 ### Status 0 when the group of gid $2, named after the account $1, holds only
-### the account's own identities: every member it lists and every passwd
-### entry whose primary group it is reads <acct>, <acct>.<name> or
-### <acct>.<name>-dev.
+### the account's own identities: every member any group entry of that gid
+### lists (a second entry can share the number) and every passwd entry whose
+### primary group it is reads <acct>, <acct>.<name> or <acct>.<name>-dev, and
+### none is a PHP-FPM pool user (<acct>.web), which never joins the account.
 _night_top_group_ours() {
-  local _ta="${1}" _tg="${2}" _n _p _u _pg _r
+  local _ta="${1}" _tg="${2}" _l _n _p _u _pg _r
   local -a _ms=()
-  IFS=, read -r -a _ms <<< "$(getent group "${_ta}" 2> /dev/null | cut -d: -f4)"
-  for _n in "${_ms[@]}"; do
-    [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
-  done
+  while IFS= read -r _l; do
+    IFS=, read -r -a _ms <<< "${_l}"
+    for _n in "${_ms[@]}"; do
+      [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+        || return 1
+    done
+  done < <(getent group 2> /dev/null | awk -F: -v g="${_tg}" '$3 == g { print $4 }')
   while IFS=: read -r _n _p _u _pg _r; do
     [ "${_pg}" = "${_tg}" ] || continue
-    [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
+    [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+      || return 1
   done < <(getent passwd 2> /dev/null)
   return 0
 }

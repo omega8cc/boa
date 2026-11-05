@@ -772,8 +772,7 @@ done
 ### composer.lock, any other they added) stays theirs through every Verify,
 ### which hands over only the docroot's code and vendor/ (and adds group write
 ### only to the backend user's own directories at the top of a codebase and
-### directly in it, below). A directory left
-### 0755 there (a shell session before the limited shell carried umask 002,
+### directly in it, below). A directory left 0755 there (a shell session before the limited shell carried umask 002,
 ### rsync -a, scp -p) keeps the backend user that runs the Delete from
 ### unlinking anything in it: the Delete empties web/ and vendor/ and stops.
 ### Every directory of the project root, and the one holding it unless that
@@ -1030,6 +1029,8 @@ fi
 ### one. The group must hold only the account's own identities
 ### (_top_group_ours): an account still on the box-wide users group, or a
 ### group another user joined, is skipped, since group write would reach them.
+### The layout tests keep an honest tree right; the owner, group and mode test
+### on each open handle is what bounds the act.
 ### Mirrored in night/20-sites.sh (_night_top_gw), which runs it only where its
 ### own pass did not already walk a Composer project's whole root.
 _TOP_GW_PL='use Fcntl;
@@ -1058,18 +1059,24 @@ _top_gw_here() {
   perl -e "${_TOP_GW_PL}" -- "$@"
 }
 # Status 0 when the group of gid $2, named after the account $1, holds only
-# the account's own identities: every member it lists and every passwd entry
-# whose primary group it is reads <acct>, <acct>.<name> or <acct>.<name>-dev.
+# the account's own identities: every member any group entry of that gid
+# lists (a second entry can share the number) and every passwd entry whose
+# primary group it is reads <acct>, <acct>.<name> or <acct>.<name>-dev, and
+# none is a PHP-FPM pool user (<acct>.web), which never joins the account.
 _top_group_ours() {
-  local _a="${1}" _g="${2}" _n _p _u _pg _r
+  local _a="${1}" _g="${2}" _l _n _p _u _pg _r
   local -a _ms=()
-  IFS=, read -r -a _ms <<< "$(getent group "${_a}" 2> /dev/null | cut -d: -f4)"
-  for _n in "${_ms[@]}"; do
-    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
-  done
+  while IFS= read -r _l; do
+    IFS=, read -r -a _ms <<< "${_l}"
+    for _n in "${_ms[@]}"; do
+      [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+        || return 1
+    done
+  done < <(getent group 2> /dev/null | awk -F: -v g="${_g}" '$3 == g { print $4 }')
   while IFS=: read -r _n _p _u _pg _r; do
     [ "${_pg}" = "${_g}" ] || continue
-    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+      || return 1
   done < <(getent passwd 2> /dev/null)
   return 0
 }
