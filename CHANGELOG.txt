@@ -322,6 +322,12 @@
       the box at that moment, the next pass found nothing changed and nginx
       kept the old pool until some other task reloaded it.
 
+    * A policy change applied account by account (xoct proxy-mode or
+      proxy-retire, one account after another or --all) no longer fails on an
+      account whose turn comes while the peer's csf restarts after the previous
+      account's change: the peer's reconcile waits for the restart lfd takes,
+      and the record push and reconcile try a dropped connection twice more.
+
     * Migration trust no record needs any more now ends: a retired relay's root
       key and firewall lines go once its promised date has passed, a front that
       moved away or a box rebuilt as its own mirror is no longer trusted where it

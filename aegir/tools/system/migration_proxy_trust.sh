@@ -160,6 +160,24 @@ _csf_reload() {
   else
     csf -r &>/dev/null
   fi
+  _csf_restart_wait
+}
+# With LFDSTART on, csf -r leaves the restart to lfd a few seconds later, and
+# while csf runs it the allow rules are gone: a peer's next connection, such as
+# a migration tool pushing the next account's record, is dropped. Wait until
+# lfd has taken the restart and csf has let go of its lock, 60 seconds at most.
+_csf_restart_wait() {
+  local _i=0
+  while [ -e /var/lib/csf/csf.restart ] && [ "${_i}" -lt 120 ]; do
+    sleep 0.5
+    _i=$(( _i + 1 ))
+  done
+  command -v flock > /dev/null 2>&1 || return 0
+  while ! flock -n /var/lib/csf/csf.lock true 2> /dev/null && [ "${_i}" -lt 120 ]; do
+    sleep 0.5
+    _i=$(( _i + 1 ))
+  done
+  return 0
 }
 
 # Set to YES by _csf_add_ip whenever it appends a line, so the caller only pays

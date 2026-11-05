@@ -7985,7 +7985,12 @@ _xoct_push_peer_record() {
   _XOCT_PUSH_ERR=""
   local _perr="/var/backups/.xoct.pusherr.$$"
   # The proxy's first contact: a peer that does not answer is given up after
-  # 15 s, not after the system's TCP connect timeout.
+  # 15 s, not after the system's TCP connect timeout. Status 255 is ssh's own:
+  # the peer's csf restart after the previous account's change drops new
+  # connections for a moment, so two more tries, 10 seconds apart. The record
+  # is written whole by rename, so a try cut short leaves nothing half done.
+  local _try=0 _prc
+  while :; do
   ssh -o ConnectTimeout=15 root@"${_pip}" "bash -s" 2>"${_perr}" <<PEERREC
 set -e
 _mine() {
@@ -8095,7 +8100,11 @@ INFOEOF
   echo "ALRT: informational copy not written on peer"
 fi
 PEERREC
-  local _prc=$?
+  _prc=$?
+  [ "${_prc}" = "255" ] && [ "${_try}" -lt 2 ] || break
+  _try=$(( _try + 1 ))
+  sleep 10
+  done
   ### The remote stderr is what names the cause a refusal must show (a host
   ### key, a refused connection, a full disk); keep its first line.
   _XOCT_PUSH_ERR="$(grep -vE '^(@|Warning:|WARNING)' "${_perr}" 2>/dev/null | grep -m1 . | tr -d '\r')"
@@ -8108,10 +8117,20 @@ PEERREC
 ### Run reconcile on a peer so its trust set follows the record just pushed.
 ### A missing tool on the peer is tolerated (older BOA); a reconcile that runs
 ### and fails must propagate, or the callers' failure branches can never fire.
+### Status 255 is ssh's own: the peer's csf restart, which lfd runs a few
+### seconds after the previous account's change, drops new connections for a
+### moment. Two more tries, 10 seconds apart.
 _xoct_peer_reconcile() {
-  ssh root@"$1" \
-    "if [ -x '${_MIG_TRUST_TOOL}' ]; then '${_MIG_TRUST_TOOL}' reconcile; else echo 'reconcile tool absent on peer (older BOA); trust left as found'; fi" \
-    2>/dev/null
+  local _try=0 _rc
+  while :; do
+    ssh root@"$1" \
+      "if [ -x '${_MIG_TRUST_TOOL}' ]; then '${_MIG_TRUST_TOOL}' reconcile; else echo 'reconcile tool absent on peer (older BOA); trust left as found'; fi" \
+      2>/dev/null
+    _rc=$?
+    [ "${_rc}" = "255" ] && [ "${_try}" -lt 2 ] || return "${_rc}"
+    _try=$(( _try + 1 ))
+    sleep 10
+  done
 }
 
 ### What THIS box can arrange for itself before the first ssh to a peer it has
