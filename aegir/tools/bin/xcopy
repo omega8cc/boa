@@ -5050,6 +5050,20 @@ _mig_reach_stamp() {
     && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
 }
 
+# A move from $1 into this box is under way until this box's post-mig: the
+# trust tool keeps the peer's reach while its line is in the pending file.
+_mig_pending_open() {
+  local _f="/root/.migration.peer.pending" _t
+  [[ "${1}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 0
+  _t="$(grep -v "^${1//./\\.} " "${_f}" 2> /dev/null)"
+  if ! { { [ -z "${_t}" ] || printf '%s\n' "${_t}"; printf '%s %s\n' "${1}" "$(date -u '+%Y-%m-%d')"; } > "${_f}.$$" \
+    && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"; }; then
+    rm -f -- "${_f}.$$"
+    echo "ALRT: could not write ${_f}: the daily trust prune may take the key of ${1} before post-mig"
+    return 1
+  fi
+}
+
 # Only the verified line travels, TAGGED with the source's address the way
 # xmass tags its own, so a later promotion can attribute it to a peer.
 _xcopy_trust_source_key() {
@@ -5063,6 +5077,7 @@ _xcopy_trust_source_key() {
   fi
   echo "INFO: key ${_XCOPY_KEY_FP} from ${_hst} is in ${_ak}"
   _mig_reach_stamp "${_src_ip}"
+  _mig_pending_open "${_src_ip}"
   return 0
 }
 
@@ -5103,6 +5118,9 @@ _post_mig() {
     # The park ends here: the runners are back, and the next tools refresh
     # re-checks them (their ctrl stamps were cleared while they were parked).
     rm -f /run/boa_migration_park.pid
+    # Every move into this box is over: the trust tool judges its sources'
+    # reach by their relays again.
+    rm -f /root/.migration.peer.pending
     # The move is over: a source stops serving its root key.
     rm -f /var/www/nginx-default/auth_undefined_keys.txt*
     # Cron must come back on WHICHEVER box runs post-mig: the import step

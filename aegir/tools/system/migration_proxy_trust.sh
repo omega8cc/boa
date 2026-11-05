@@ -2030,6 +2030,18 @@ _MPT_TRUST_LOG="/var/log/boa/migproxy-trust.log"
 # One line per peer, "<address> <day>": when root last gave it its reach. The
 # first prune on a box writes "<address> <day> seed" for the reach it finds there.
 _MPT_REACH_DAYS="/root/.migration.peer.reach"
+# One line per address, "<address> <day>": a target's pre-mig writes it for the
+# source it lets in, and that box's post-mig removes the file. While a line names
+# a peer, a move from it into this box is under way, and its reach stays: no day
+# tells that move's key from one a relay that is over was given.
+_MPT_PENDING="/root/.migration.peer.pending"
+_mpt_pending() {
+  local _ip
+  for _ip in $(_mpt_peer_set "${1}"); do
+    awk -v a="${_ip}" '$1 == a { f = 1 } END { exit !f }' "${_MPT_PENDING}" 2> /dev/null && return 0
+  done
+  return 1
+}
 _mpt_note() {
   _msg "${1}"
   printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${1}" >> "${_MPT_TRUST_LOG}" 2> /dev/null
@@ -2174,6 +2186,10 @@ _cmd_release() {
         _msg "release: ${_ip}: this box's own pair; its key and firewall lines stay"
         continue
       fi
+      if _mpt_pending "${_ip}"; then
+        _msg "release: ${_ip}: a move from it into this box is under way; its key and firewall lines stay"
+        continue
+      fi
       _mpt_reach_drop "${_ip}"
     done
     [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
@@ -2248,6 +2264,10 @@ _cmd_prune() {
     _mpt_relay_listed "${_ip}" && continue
     if _mpt_pair_named "${_ip}"; then
       _msg "prune: ${_ip}: this box's own pair; its key and firewall lines stay"
+      continue
+    fi
+    if _mpt_pending "${_ip}"; then
+      _msg "prune: ${_ip}: a move from it into this box is under way; its key and firewall lines stay"
       continue
     fi
     if _mpt_granted_since "${_ip}"; then

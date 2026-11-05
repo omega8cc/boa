@@ -330,6 +330,8 @@
       again; a mirror put back by restore-target needs xoct proxy --repair. A
       key given for a newer move stays, and so does reach older tools gave: the
       first daily run dates it, and only a relay that ends after that takes it.
+      A source whose move into the box is under way (its pre-mig there, and no
+      post-mig yet) keeps its key whatever its other relays there say.
 
     * boa cleanup purge now refuses while a BOA pass or system task runs, and
       xmass prep-target waits for the target to go quiet before it judges and

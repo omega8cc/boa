@@ -972,6 +972,20 @@ _mig_reach_stamp() {
     && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
 }
 
+### A move from $1 into this box is under way until this box's post-mig: the
+### trust tool keeps the peer's reach while its line is in the pending file.
+_mig_pending_open() {
+  local _f="/root/.migration.peer.pending" _t
+  [[ "${1}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 0
+  _t="$(grep -v "^${1//./\\.} " "${_f}" 2> /dev/null)"
+  if ! { { [ -z "${_t}" ] || printf '%s\n' "${_t}"; printf '%s %s\n' "${1}" "$(date -u '+%Y-%m-%d')"; } > "${_f}.$$" \
+    && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"; }; then
+    rm -f -- "${_f}.$$"
+    _alrt "could not write ${_f}: the daily trust prune may take the key of ${1} before post-mig"
+    return 1
+  fi
+}
+
 ### Whether the relay the target record text $1 describes is over: an init on its
 ### front ended it (_MIG_RELAY_ENDED), or it was retired and its promised date has
 ### passed. A retired record with no readable date is never over.
@@ -16141,6 +16155,7 @@ _xmass_pre_mig() {
       " # xmass migration source ${_src_ip:-${_hst}}" \
       || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
     _mig_reach_stamp "${_src_ip}"
+    _mig_pending_open "${_src_ip}"
     _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
 
     # Let the source IN. This is the ONE thing the source can never arrange
@@ -18861,6 +18876,9 @@ _xmass_post_mig() {
   done
   # The move is over: this box stops serving a root key it published.
   rm -f /var/www/nginx-default/auth_undefined_keys.txt*
+  # Every move into this box is over: the trust tool judges its sources'
+  # reach by their relays again.
+  rm -f /root/.migration.peer.pending
   # Belt-and-braces: a leftover standby marker on a box taking direct
   # traffic holds the task queue and every per-job gate (runner.sh, owl,
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
