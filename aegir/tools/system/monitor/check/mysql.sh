@@ -721,16 +721,19 @@ _if_mydumper_is_locked() {
   _AR_C="$(pgrep -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$')"
   _DR_C="$(pgrep -fc '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)')"
   _MD_C="$(pgrep -fc '^[^ ]*mydumper( |$)')"
+  # SIGKILL, as autoupboa's reaper sends: on SIGTERM mydumper skips the jobs
+  # left, still writes its metadata and exits 0 (or 1 after a retried
+  # flush), so a dump cut short would read as whole to every caller.
   if [ "${_MD_C}" -gt 0 ]; then
     if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -f '^[^ ]*mydumper( |$)'
+      pkill -9 -f '^[^ ]*mydumper( |$)'
       pkill -f '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$'
       echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper" "mysql-mydumper"
     fi
     if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -f '^[^ ]*mydumper( |$)'
+      pkill -9 -f '^[^ ]*mydumper( |$)'
       pkill -f '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)'
       echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
