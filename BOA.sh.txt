@@ -2722,7 +2722,7 @@ _update_agents() {
     # The migration-proxy trio previously reached boxes only inside the full
     # up-* tar, so a source box that had not upgraded since the certificate
     # mirror shipped had NO mirror at all -- the exact box that needs it.
-    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f87 --peer-written
+    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f86 --peer-written
     # Proxy records and proxied markers moved out of the accounts' log/ into
     # /root: import what older tools left there once, before any tool reads
     # the root copies. It reloads nothing and is a no-op after its stamp.

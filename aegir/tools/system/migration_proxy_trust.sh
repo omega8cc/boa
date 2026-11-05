@@ -2202,7 +2202,7 @@ _mpt_reach_seed() {
 # and every address-list line nothing names any more. A standby prunes nothing:
 # its records and witnesses are what its promotion will need.
 _cmd_prune() {
-  local _ip _l
+  local _ip _l _seen=" " _drop=""
   [ -e "${_MIG_ADOPT_STAMP}" ] || return 0
   if [ ! -e "${_MPT_REACH_DAYS}" ]; then
     if _mpt_reach_seed; then
@@ -2229,8 +2229,11 @@ _cmd_prune() {
     _mpt_note "prune: an account is undeclared; nothing pruned"
     return 0
   fi
-  _CSF_CHANGED=NO
+  # Every address is judged once, before anything goes: a drop takes the day
+  # line the judgement of a later address of the same peer reads.
   for _ip in ${_MPT_OVER}; do
+    _mpt_in "${_ip}" "${_seen}" && continue
+    _seen="${_seen}${_ip} "
     _mpt_in "${_ip}" "${_MPT_LIVE}${_MPT_HELD}" && continue
     _mpt_relay_listed "${_ip}" && continue
     if _mpt_pair_named "${_ip}"; then
@@ -2241,6 +2244,10 @@ _cmd_prune() {
       _msg "prune: ${_ip}: its reach is newer than its ended relay; it stays"
       continue
     fi
+    _drop="${_drop} ${_ip}"
+  done
+  _CSF_CHANGED=NO
+  for _ip in ${_drop}; do
     _mpt_reach_drop "${_ip}"
   done
   [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
