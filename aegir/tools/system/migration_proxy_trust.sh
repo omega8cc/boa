@@ -2127,7 +2127,7 @@ _mpt_any_undeclared() {
 # refused: nothing changed and the cause is printed.
 _cmd_release() {
   local _a _to="" _over="" _since="" _ip _g _k _reach=NO
-  local -a _ips=() _drop=()
+  local -a _ips=() _drop=() _go=()
   for _a in "$@"; do
     case "${_a}" in
       --to=*) _to="${_a#--to=}" ;;
@@ -2206,7 +2206,8 @@ _cmd_release() {
     done
   fi
   if [ "${_reach}" = "YES" ]; then
-    _CSF_CHANGED=NO
+    # Every address is judged before anything goes, as prune judges them: a drop
+    # takes the day line the judgement of another address of the same peer reads.
     for _ip in "${_drop[@]}"; do
       if _mpt_pair_named "${_ip}"; then
         _msg "release: ${_ip}: this box's own pair; its key and firewall lines stay"
@@ -2222,6 +2223,10 @@ _cmd_release() {
         _msg "release: ${_ip}: no day was kept for its reach (older tools gave it); its key and firewall lines stay"
         continue
       fi
+      _go+=("${_ip}")
+    done
+    _CSF_CHANGED=NO
+    for _ip in "${_go[@]}"; do
       _mpt_reach_drop "${_ip}"
     done
     [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
