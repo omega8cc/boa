@@ -14821,9 +14821,14 @@ _xmass_https_parked() {
 ### its repair against the target $1, whose hostname is $3 (read over ssh when
 ### empty): the re-run carries both hostnames, as the cutover handed them to
 ### xoct, or the sites named under this box's hostname would be proxied by
-### their old names. Status 1 when a site is named.
+### their old names. An account an earlier move sent to another box is no part
+### of this switch: its repair names that box and no hostnames, as its own
+### move ran, since xoct refuses this target for it and its --retarget would
+### aim the relay at the mirror's stale copy. Status 1 when a site is named.
 _xmass_https_parked_report() {
-  local _t="${1}" _hp _o _ds _f _ad _px
+  local _t="${1}" _hp _o _ds _f _ad _px _away
+  # the box _xmass_relays_elsewhere compares an account's peer with
+  local _tgt="${1}"
   _hp="$(_xmass_https_parked "${2}")"
   [ -z "${_hp}" ] && return 0
   _f="${3}"
@@ -14838,6 +14843,21 @@ _xmass_https_parked_report() {
   _alrt "  HTTPS to them through this box answers on its wildcard certificate, not"
   _alrt "  their own; once each set is complete, re-run for its account:"
   for _o in $(printf '%s\n' "${_hp}" | cut -d' ' -f1 | uniq); do
+    if _away="$(_xmass_relays_elsewhere "${_o}")"; then
+      # its own canary's token first, the move that sent it there being its
+      # own; then this run's or the recorded one, since xoct refuses every
+      # verb without one while the whole box is in a test run
+      _ad="$(_XMASS_ADMAIL=""; _xmass_xoct_token "${_o}")"
+      [ -n "${_ad}" ] || _ad="$(_xmass_xoct_token "${_o}")"
+      if [ -n "${_ad}" ]; then
+        _ad=" admail=${_ad}"
+      else
+        _ad="$(_xmass_admail_hint)"
+      fi
+      _alrt "    (${_o} relays to ${_away} since an earlier move, not to ${_t})"
+      _alrt "    xoct proxy ${_o} ${_away} --repair${_ad}"
+      continue
+    fi
     _ad="$(_xmass_xoct_token "${_o}")"
     if [ -n "${_ad}" ]; then
       _ad=" admail=${_ad}"
