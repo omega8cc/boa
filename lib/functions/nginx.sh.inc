@@ -1312,6 +1312,10 @@ _nginx_wildcard_ssl_install() {
     else
       [[ ! "${_KTLS_STATE_TEST}" =~ "KTLS" ]] && _WILD_SSL_PROXY_UP=YES
     fi
+    ### A front deployed before TLS 1.3 session tickets were turned off keeps
+    ### losing fire-and-forget requests under kernel TLS: redeploy it once.
+    grep -q "NumTickets[[:space:]]\+0;" ${_WILD_SSL_VHOST} 2> /dev/null \
+      || _WILD_SSL_PROXY_UP=YES
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
