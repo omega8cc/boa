@@ -5838,6 +5838,10 @@ _if_install_chromium() {
       fi
     done
   fi
+  # The wrapper sources /etc/chromium.d, and a web request has no writable home
+  if [ -d "/etc/chromium.d" ] && [ -e "${_bldPth}/aegir/conf/var/chromium.d.boa-web-tmp" ]; then
+    install -o root -g root -m 644 "${_bldPth}/aegir/conf/var/chromium.d.boa-web-tmp" /etc/chromium.d/boa-web-tmp
+  fi
   _CHR_ITD=$(chromium --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
