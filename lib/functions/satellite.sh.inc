@@ -10264,9 +10264,8 @@ _satellite_ssl_proxy_template_refresh() {
   ### every older one.
   local _tpl="/var/xdrago/conf/ssl_proxy.conf"
   local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
-  local _mrk='^[[:space:]]*ssl_conf_command[[:space:]]+NumTickets[[:space:]]+0;'
-  grep -qE "${_mrk}" "${_tpl}" 2>/dev/null && return 0
-  grep -qE "${_mrk}" "${_src}" 2>/dev/null || return 0
+  grep -q proxy_buffer_size "${_tpl}" 2>/dev/null && return 0
+  grep -q proxy_buffer_size "${_src}" 2>/dev/null || return 0
   mkdir -p /var/xdrago/conf
   cp -af "${_src}" "${_tpl}"
 }
