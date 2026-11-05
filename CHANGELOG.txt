@@ -159,6 +159,15 @@
       server BOA writes; TLS 1.2 resumes as before. The front updates on the
       next Barracuda pass, deployed HTTPS proxies in place on the same pass.
 
+    * A database dump that waited more than a minute behind a long query is
+      no longer called failed. mydumper 1.x gives up its table flush after
+      60 seconds, sends it again and then dumps as usual, but exits with an
+      error: the nightly SQL backup set that database aside as failed, xcopy
+      and xoct refused to move the site, the database broker refused the
+      dump, and an Aegir backup, Migrate or Clone failed. A dump whose only
+      error is that retry, with its final marker written, now counts as
+      whole; any other error still fails it.
+
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
       a box with 310 databases, so every site and each dump tool kept reading
