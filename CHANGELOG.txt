@@ -168,6 +168,13 @@
       error is that retry, with its final marker written, now counts as
       whole; any other error still fails it.
 
+    * A database dump the SQL watchdog stops is no longer kept as a good
+      backup. When Aegir tasks or Drush calls piled up during a dump, the
+      watchdog ended mydumper gently; mydumper then skipped what was left,
+      still marked the dump finished, and the nightly SQL backup, the
+      database broker or an Aegir backup kept the partial dump. It is now
+      ended at once, so the dump is set aside as failed.
+
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
       a box with 310 databases, so every site and each dump tool kept reading
