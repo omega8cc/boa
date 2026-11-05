@@ -168,12 +168,19 @@
       error is that retry, with its final marker written, now counts as
       whole; any other error still fails it.
 
-    * A database dump the SQL watchdog stops is no longer kept as a good
-      backup. When Aegir tasks or Drush calls piled up during a dump, the
-      watchdog ended mydumper gently; mydumper then skipped what was left,
-      still marked the dump finished, and the nightly SQL backup, the
-      database broker or an Aegir backup kept the partial dump. It is now
-      ended at once, so the dump is set aside as failed.
+    * The SQL watchdog no longer leaves a database dump hung or half
+      kept. When Aegir tasks or Drush calls piled up during a dump, it
+      stopped mydumper gently: a dump stopped while its table flush waited
+      could hang for good holding the global read lock, with every write
+      on the server waiting behind it, and one stopped later was kept as a
+      good backup although cut short. It now ends mydumper at once, and
+      the dump is set aside as failed.
+
+    * A database dump cut short by a plain kill of mydumper is no longer
+      kept as a good backup by the nightly SQL backup, xcopy, xoct, the
+      database broker or an Aegir backup. mydumper still marks such a dump
+      finished; BOA now reads mydumper's own log for it and fails the
+      dump.
 
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
