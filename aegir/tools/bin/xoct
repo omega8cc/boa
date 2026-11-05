@@ -1049,7 +1049,7 @@ _mig_resolve() {
 ### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
   local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8" _rdl="$9"
-  local _a="${_root##*/}" _body _old _ended="" _began="" _xd=""
+  local _a="${_root##*/}" _body _old _ended="" _began=""
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   if ! _mig_rec "${_a}" > /dev/null; then
     echo "ALRT: refusing to write a policy record for invalid account name '${_a}'"
@@ -1063,21 +1063,16 @@ _mig_write_record() {
   ### start it again. Only the front's own push does.
   ### The day this relay began stays across every rewrite for the same role
   ### and peer (a record from older tools gives its own day): reach given to
-  ### the peer after it serves something newer, and is kept for it.
+  ### the peer after it serves something newer, and is kept for it. It stays
+  ### over a relay that is over too: a key given between its end and this
+  ### rewrite may be another move's, still under way, and no day tells it
+  ### from a key given to reinstate this relay.
   _old="$(_mig_rec_text "${_a}" 2> /dev/null)"
   if [ -n "${_old}" ] && [ "$(_mig_txt_get "${_old}" _MIG_ROLE)" = "${_role}" ] \
     && [ "$(_mig_txt_get "${_old}" _MIG_PEER_IP)" = "${_peer_ip}" ]; then
     _began="$(_mig_txt_get "${_old}" _MIG_BEGAN)"
     _mig_valid_date "${_began}" || _began="$(_mig_txt_get "${_old}" _MIG_STAMPED)"
     [ "${_role}" = "target" ] && _ended="$(_mig_txt_get "${_old}" _MIG_RELAY_ENDED)"
-    ### A relay retired past its date is over: a record written over it starts
-    ### a new one. An ended one stays ended here (only the front's push restarts
-    ### it), so its day stays too.
-    if [ "$(_mig_txt_get "${_old}" _MIG_MODE)" = "retired" ]; then
-      _xd="$(_mig_txt_get "${_old}" _MIG_RETIRE_DATE)"
-      [ -n "${_xd}" ] || _xd="$(_mig_txt_get "${_old}" _MIG_STAMPED)"
-      _mig_valid_date "${_xd}" && [[ "${_xd}" < "$(date -u '+%Y-%m-%d')" ]] && _began=""
-    fi
   fi
   _mig_valid_date "${_began}" || _began="$(date -u '+%Y-%m-%d')"
   _body="$(
@@ -8052,7 +8047,8 @@ elif [ "\${_rrc}" = "3" ] && [ -n "\${_old}" ]; then
   exit 7
 fi
 # The day this relay began stays across every push for the same role and
-# peer (a record from older tools gives its own day).
+# peer (a record from older tools gives its own day), over a relay that is
+# over too: a key given since its end may be another move's, under way.
 _began="\$(date -u '+%Y-%m-%d')"
 if [ "\${_rrc}" = "0" ]; then
   _rb="\$(printf '%s\\n' "\${_rec}" | sed 1d | tr -d '\\r')"
@@ -8061,17 +8057,6 @@ if [ "\${_rrc}" = "0" ]; then
     _x="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_BEGAN=' | cut -d= -f2-)"
     [ -n "\${_x}" ] || _x="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_STAMPED=' | cut -d= -f2-)"
     [[ "\${_x}" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]\$ ]] && _began="\${_x}"
-    # A relay that is over (ended by an init, or retired past its date) does
-    # not go on: this push starts a new one.
-    if printf '%s\\n' "\${_rb}" | grep -q '^_MIG_RELAY_ENDED='; then
-      _began="\$(date -u '+%Y-%m-%d')"
-    elif printf '%s\\n' "\${_rb}" | grep -qx '_MIG_MODE=retired'; then
-      _xd="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_RETIRE_DATE=' | cut -d= -f2-)"
-      [ -n "\${_xd}" ] || _xd="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_STAMPED=' | cut -d= -f2-)"
-      if [[ "\${_xd}" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]\$ ]] && [[ "\${_xd}" < "\$(date -u '+%Y-%m-%d')" ]]; then
-        _began="\$(date -u '+%Y-%m-%d')"
-      fi
-    fi
   fi
 fi
 ( umask 077
