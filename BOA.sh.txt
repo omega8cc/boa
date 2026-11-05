@@ -2747,7 +2747,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f55
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f13
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f19
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f18
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f42
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f65
@@ -5785,7 +5785,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f96 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f97 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f90 --guard /local/bin/sqlclean
-    _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f98 --mode 755 --guard /local/bin/sqlmagic
+    _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f97 --mode 755 --guard /local/bin/sqlmagic
     _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f84 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f98 --guard /local/bin/verifyvhostsdns
@@ -5803,7 +5803,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f56 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f55 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f98 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 

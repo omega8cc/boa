@@ -2659,7 +2659,9 @@ check_php_cli_version() {
     _ctrl_file "/data/disk/${_Y_USR}/static/control" cli.info
     _CLI_INFO="${_CTRL_F}"
     if [ -n "${_CLI_INFO}" ]; then
-      _CLI_VRN=$(head -c 8 "${_CLI_INFO}" 2> /dev/null | tr -cd '0-9')
+      # A web identity may run neither tool (root:users 750): it reads no cli.info, and
+      # the group keeps bash's line about tr out of its PHP-FPM log on every exec()
+      _CLI_VRN=$({ head -c 8 "${_CLI_INFO}" | tr -cd '0-9'; } 2> /dev/null)
       case "${_CLI_VRN}" in
         56|70|71|72|73|74|80|81|82|83|84|85|86)
           [ -x "/opt/php${_CLI_VRN}/bin/php" ] && _PHP_CLI="php${_CLI_VRN}"

@@ -293,6 +293,17 @@ if ! declare -F _acct_undo_here > /dev/null 2>&1; then
     mv -f -T -- "./${1}" "/proc/self/fd/9/${2:-${1}}"
   }
 fi
+### tools/le/hooks is root's clone: root runs pip there, and PHP-CLI's AppArmor profile
+### lets a task run what is there. A tree holding anything that is not root's, or that
+### others can write, cannot be told from one the account wrote, so it goes to undo/ and
+### the site pass clones it again. A chown must never take such a tree back: it would make
+### the account's files look like root's to that pass. Run inside the real tools/le.
+_le_hooks_drop_foreign_here() {
+  [ -d ./hooks ] && [ ! -L ./hooks ] || return 0
+  [ -n "$(env PATH=/usr/local/bin:/usr/bin:/bin find ./hooks \( ! -uid 0 -o \( ! -type l -perm /002 \) \) -print -quit 2> /dev/null)" ] || return 0
+  _acct_undo_here hooks "le-hooks.$(date +%s)" \
+    && echo "LE hooks of ${_usEr}: not all root's, moved to undo/; the site pass clones them again"
+}
 : "${_GH_REFUSED:=the move into undo/ was refused (a link or a path outside this account on the way, or the rename failed)}"
 ### A tree handed over through each entry's own handle, never by name, and
 ### entries locked or unlocked the same way (the 20-sites.sh and night.inc.sh
@@ -1420,6 +1431,7 @@ _account_process() {
     _run_drush8_hmr_cmd "cache-clear all"
   fi
   _night_web_hit
+  _acct_in_real_dir "${_usEr}/tools/le" _le_hooks_drop_foreign_here
   _daily_process
   _night_web_d9
   # Stuck or stale delete tasks are the panel's own business now: the task
@@ -2459,7 +2471,9 @@ _purge_cruft_machine() {
   # directory, the walk follows no link below it, and each entry is changed
   # through its own handle, never a hard-linked file (_reown_tree_here): oN
   # can put a hard link under any name there, a stamp root put included.
-  _acct_in_real_dir "${_usEr}/tools/le" _reown_tree_here "${_HM_U}:${_acctGrp}" .
+  # hooks/ is root's clone and stays out of this: see _le_hooks_drop_foreign_here,
+  # which runs before the site pass.
+  _acct_in_real_dir "${_usEr}/tools/le" _reown_tree_here "${_HM_U}:${_acctGrp}" . -path ./hooks -prune -o
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink at any moment:
   # a link put at trash is dropped, and trash is made, handed over and
