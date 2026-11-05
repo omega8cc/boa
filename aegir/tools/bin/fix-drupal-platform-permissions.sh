@@ -770,7 +770,9 @@ done
 ### project root below the account's static/). What the account's shell
 ### logins made in that project root (the directory itself, composer.json,
 ### composer.lock, any other they added) stays theirs through every Verify,
-### which hands over only the docroot's code and vendor/. A directory left
+### which hands over only the docroot's code and vendor/ (and adds group write
+### only to the backend user's own directories at the top of a codebase and
+### directly in it, below). A directory left
 ### 0755 there (a shell session before the limited shell carried umask 002,
 ### rsync -a, scp -p) keeps the backend user that runs the Delete from
 ### unlinking anything in it: the Delete empties web/ and vendor/ and stops.
@@ -1018,11 +1020,18 @@ fi
 ### file in it ("unable to unlink old"). The top and each directory directly
 ### in it, the docroot and vendor/ aside, take group write when the backend
 ### user owns them, their group is the account's own and that group may
-### already read and enter them. An account still on the box-wide users group
-### is skipped: group write there would reach every account. Only the group
-### write bit is added: a link, another owner's entry and other users' bits
-### stay as they are, and nothing below is walked. Mirrored in
-### night/20-sites.sh (_night_top_gw).
+### already read and enter them. Only the group write bit is added: a link,
+### another owner's entry and other users' bits stay as they are. Only those
+### two levels are healed, nothing below them: a tree the backend user owns
+### all the way down is not this case.
+### A top is a codebase's when it holds .git or composer.json beside the
+### docroot, and never a Drupal root itself (sites/ and index.php: a web/ or
+### html/ folder inside a platform). The files store and control/ are never
+### one. The group must hold only the account's own identities
+### (_top_group_ours): an account still on the box-wide users group, or a
+### group another user joined, is skipped, since group write would reach them.
+### Mirrored in night/20-sites.sh (_night_top_gw), which runs it only where its
+### own pass did not already walk a Composer project's whole root.
 _TOP_GW_PL='use Fcntl;
 my ($u, $g, $skip) = @ARGV;
 $u =~ /^[1-9][0-9]*$/ && $g =~ /^[1-9][0-9]*$/ && length($skip) or exit 1;
@@ -1048,6 +1057,22 @@ exit 0;'
 _top_gw_here() {
   perl -e "${_TOP_GW_PL}" -- "$@"
 }
+# Status 0 when the group of gid $2, named after the account $1, holds only
+# the account's own identities: every member it lists and every passwd entry
+# whose primary group it is reads <acct>, <acct>.<name> or <acct>.<name>-dev.
+_top_group_ours() {
+  local _a="${1}" _g="${2}" _n _p _u _pg _r
+  local -a _ms=()
+  IFS=, read -r -a _ms <<< "$(getent group "${_a}" 2> /dev/null | cut -d: -f4)"
+  for _n in "${_ms[@]}"; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
+  done
+  while IFS=: read -r _n _p _u _pg _r; do
+    [ "${_pg}" = "${_g}" ] || continue
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
+  done < <(getent passwd 2> /dev/null)
+  return 0
+}
 _top_dir="${drupal_root%/*}"
 _top_dn="${drupal_root##*/}"
 _top_acct="${_SCOPE_ROOT#/data/disk/}"
@@ -1055,7 +1080,10 @@ if [[ "${_SCOPE_ROOT}" = "/data/disk/${_top_acct}" ]] \
   && [[ "${_top_acct}" =~ ^[a-z0-9-]+$ ]] \
   && [[ "${_top_dn}" =~ ^(docroot|web|html)$ ]] \
   && [[ "${_top_dir}" = "${_SCOPE_ROOT}/static/"?* ]] \
-  && [[ "${_top_dir}/" != "${_SCOPE_ROOT}/static/files/"* ]]; then
+  && [[ "${_top_dir}/" != "${_SCOPE_ROOT}/static/files/"* ]] \
+  && [[ "${_top_dir}/" != "${_SCOPE_ROOT}/static/control/"* ]] \
+  && { [ -e "${_top_dir}/.git" ] || [ -f "${_top_dir}/composer.json" ]; } \
+  && ! { [ -e "${_top_dir}/sites" ] && [ -e "${_top_dir}/index.php" ]; }; then
   _top_uid=$(getent passwd "${_top_acct}" 2> /dev/null | cut -d: -f3)
   _top_pgid=$(getent passwd "${_top_acct}" 2> /dev/null | cut -d: -f4)
   _top_gid=$(getent group "${_top_acct}" 2> /dev/null | cut -d: -f3)
@@ -1063,12 +1091,15 @@ if [[ "${_SCOPE_ROOT}" = "/data/disk/${_top_acct}" ]] \
   if [[ "${_top_uid}" =~ ^[1-9][0-9]*$ ]] \
     && [[ "${_top_gid}" =~ ^[1-9][0-9]*$ ]] \
     && [[ "${_top_pgid}" = "${_top_gid}" ]] \
-    && [[ "${_top_gid}" != "${_top_ugid}" ]]; then
+    && [[ "${_top_gid}" != "${_top_ugid}" ]] \
+    && _top_group_ours "${_top_acct}" "${_top_gid}"; then
     _top_n=$(_in_pinned_dir "${_top_dir}" \
       _in_own_here _top_gw_here "${_top_uid}" "${_top_gid}" "${_top_dn}")
     if [[ "${_top_n}" =~ ^[1-9][0-9]*$ ]]; then
-      printf 'Group write set on %s directories of the codebase top %s\n' \
-        "${_top_n}" "$(_nm "${_top_dir}")"
+      _top_s="directories"
+      [[ "${_top_n}" = "1" ]] && _top_s="directory"
+      printf 'Group write set on %s %s of the codebase top %s\n' \
+        "${_top_n}" "${_top_s}" "$(_nm "${_top_dir}")"
     fi
   fi
 fi

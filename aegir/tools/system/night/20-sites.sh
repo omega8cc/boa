@@ -2875,10 +2875,14 @@ _sites_cred_modes_here() {
 ### each Verify (fix-drupal-platform-permissions.sh, _TOP_GW_PL, which says
 ### why), under the same rules: the top and each directory directly in it,
 ### the docroot and vendor/ aside, when the backend user owns them, their
-### group is the account's own (never the box-wide users group) and that
-### group may already read and enter them. Only the group write bit is
-### added; a link, another owner's entry and other users' bits stay, and
-### nothing below is walked.
+### group is the account's own and that group may already read and enter
+### them. Only the group write bit is added; a link, another owner's entry
+### and other users' bits stay, and only those two levels are healed. The top
+### must hold .git or composer.json and must not be a Drupal root itself
+### (sites/ and index.php); the files store and control/ are never one. The
+### group must hold only the account's own identities (_night_top_group_ours):
+### the box-wide users group, or a group another user joined, is skipped.
+### Called only where the static pass did not walk a Composer project's root.
 _NIGHT_TOP_GW_PL='use Fcntl;
 my ($u, $g, $skip) = @ARGV;
 $u =~ /^[1-9][0-9]*$/ && $g =~ /^[1-9][0-9]*$/ && length($skip) or exit 1;
@@ -2906,24 +2910,46 @@ _night_top_gw_here() {
   shift
   perl -e "${_NIGHT_TOP_GW_PL}" -- "$@"
 }
+### Status 0 when the group of gid $2, named after the account $1, holds only
+### the account's own identities: every member it lists and every passwd
+### entry whose primary group it is reads <acct>, <acct>.<name> or
+### <acct>.<name>-dev.
+_night_top_group_ours() {
+  local _ta="${1}" _tg="${2}" _n _p _u _pg _r
+  local -a _ms=()
+  IFS=, read -r -a _ms <<< "$(getent group "${_ta}" 2> /dev/null | cut -d: -f4)"
+  for _n in "${_ms[@]}"; do
+    [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
+  done
+  while IFS=: read -r _n _p _u _pg _r; do
+    [ "${_pg}" = "${_tg}" ] || continue
+    [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] || return 1
+  done < <(getent passwd 2> /dev/null)
+  return 0
+}
 ### $1 = the resolved docroot, $2 = the resolved account home, $3 = the
 ### account's own uids.
 _night_top_gw() {
-  local _top="${1%/*}" _dn="${1##*/}" _acct="${2##*/}" _u _pg _g _ug _n
+  local _top="${1%/*}" _dn="${1##*/}" _acct="${2##*/}" _u _pg _g _ug _n _s=directories
   [[ "${2}" = "/data/disk/${_acct}" ]] && [[ "${_acct}" =~ ^[a-z0-9-]+$ ]] \
     || return 0
   [[ "${_dn}" =~ ^(docroot|web|html)$ ]] || return 0
   [[ "${_top}" = "${2}/static/"?* ]] \
-    && [[ "${_top}/" != "${2}/static/files/"* ]] || return 0
+    && [[ "${_top}/" != "${2}/static/files/"* ]] \
+    && [[ "${_top}/" != "${2}/static/control/"* ]] || return 0
+  { [ -e "${_top}/.git" ] || [ -f "${_top}/composer.json" ]; } || return 0
+  [ -e "${_top}/sites" ] && [ -e "${_top}/index.php" ] && return 0
   _u=$(getent passwd "${_acct}" 2> /dev/null | cut -d: -f3)
   _pg=$(getent passwd "${_acct}" 2> /dev/null | cut -d: -f4)
   _g=$(getent group "${_acct}" 2> /dev/null | cut -d: -f3)
   _ug=$(getent group users 2> /dev/null | cut -d: -f3)
   [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && [[ "${_g}" =~ ^[1-9][0-9]*$ ]] \
     && [[ "${_pg}" = "${_g}" ]] && [[ "${_g}" != "${_ug}" ]] || return 0
+  _night_top_group_ours "${_acct}" "${_g}" || return 0
   _n=$(_in_pinned_dir "${_top}" _night_top_gw_here "${3}" "${_u}" "${_g}" "${_dn}")
   if [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
-    echo "Group write set on ${_n} directories of the codebase top ${_top//[[:cntrl:]]/?}"
+    [[ "${_n}" = "1" ]] && _s=directory
+    echo "Group write set on ${_n} ${_s} of the codebase top ${_top//[[:cntrl:]]/?}"
   fi
   return 0
 }
