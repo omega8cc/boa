@@ -3921,6 +3921,109 @@ echo DB-OK" 2> /dev/null)
   return 1
 }
 
+### An account's off-site backup passphrase, remote_backups/.secret.txt in its
+### home (root's own, 0600 and immutable, read by multiback and mybackup), is on
+### no leg: the standby's own backup setup mints another, and after a promotion
+### the account's archives so far could not be decrypted there. Each pass
+### carries it to the standby as the setup leaves it, on stdin, never on a
+### command line or in a log. A standby holding one of its own gives it up only
+### when it never wrote a backup chain of the account (multiback's chain marker
+### or archive log), and keeps it as .secret.txt.xmass_prev; with a chain, the
+### carried one goes beside it as .secret.from-<this box>.txt and the run says
+### so. Read and written only inside a remote_backups that is root's alone, as
+### the backup tools do: the account owns the home around it. A restore window
+### (mybackup hands the file to the account for the run) skips one pass. Never
+### fatal: the folder is the account's to break.
+_XMASS_SECRET_ROOT_ONLY='_ro() { local _s _u _g _m; _s="$(stat -c "%u %g %a" -- "${1}" 2> /dev/null)" || return 1; read -r _u _g _m <<< "${_s}"; [ "${_u}" = 0 ] || return 1; (( 0${_m} & 2 )) && return 1; (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1; return 0; }'
+_XMASS_SECRET_SH='read -r _b || exit 0
+[ -e /root/.standby.cnf ] || [ "${_rt}" = YES ] || { echo XMSEC-NOT-STANDBY; exit 0; }
+[ -e "/root/.remote_backups/restore_windows/${_a}.rb" ] && { echo XMSEC-WINDOW; exit 0; }
+_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_a}"
+cd -P -- "/data/disk/${_a}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] || { echo XMSEC-NO-ACCOUNT; exit 0; }
+[ -e ./remote_backups ] || [ -L ./remote_backups ] || mkdir -m 755 ./remote_backups
+cd -P -- ./remote_backups 2> /dev/null && [ "$(pwd -P)" = "${_w}/remote_backups" ] && _ro . \
+  || { echo XMSEC-NOT-ROOTS; exit 0; }
+_n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
+_put() {
+  local _t="./.${1}.put.$$"
+  rm -f -- "${_t}"
+  ( umask 077; printf "%s" "${_b}" | base64 -d > "${_t}" ) && [ -s "${_t}" ] \
+    && chown 0:0 "${_t}" && chmod 600 "${_t}" || { rm -f -- "${_t}"; return 1; }
+  chattr -i "./${1}" 2> /dev/null
+  mv -f -T -- "${_t}" "./${1}" || { rm -f -- "${_t}"; return 1; }
+  chattr +i "./${1}" 2> /dev/null
+  [ "$(md5sum < "./${1}")" = "${_n}" ]
+}
+_o=""
+[ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] && _o="$(md5sum < ./.secret.txt)"
+if [ "${_o}" = "${_n}" ]; then
+  echo XMSEC-CURRENT
+  exit 0
+fi
+_c=NO
+for _f in /etc/boa/control/back-to-${_a}-*.chain.txt /var/log/boa/back-to-${_a}-*.archive.log; do
+  [ -e "${_f}" ] && _c=YES
+done
+if [ -n "${_o}" ] && [ "${_c}" = YES ]; then
+  _put ".secret.from-${_h}.txt" && echo XMSEC-BESIDE || echo XMSEC-FAILED
+  exit 0
+fi
+if [ -n "${_o}" ]; then
+  chattr -i ./.secret.txt.xmass_prev 2> /dev/null
+  cp -f ./.secret.txt ./.secret.txt.xmass_prev && chown 0:0 ./.secret.txt.xmass_prev \
+    && chmod 600 ./.secret.txt.xmass_prev && chattr +i ./.secret.txt.xmass_prev 2> /dev/null
+fi
+_put .secret.txt && echo XMSEC-PUT || echo XMSEC-FAILED'
+# The real remote_backups here (pinned) when root's alone, then its passphrase
+# as root's regular file with one link, base64; nothing otherwise.
+_xmass_secret_read_here() {
+  eval "${_XMASS_SECRET_ROOT_ONLY}"
+  _ro . || return 1
+  _xmass_rootread_here .secret.txt | base64 -w0
+}
+_xmass_carry_backup_secret() {   # 1 = account  2 = target
+  local _acct="$1" _t="$2" _d="/data/disk/$1/remote_backups" _b _out _hd _rt=NO
+  [[ "${_acct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 0
+  # no off-site backups set up for it here: nothing to lose
+  [ -e "${_d}/.secret.txt" ] || [ -L "${_d}/.secret.txt" ] || return 0
+  if [ -e "/root/.remote_backups/restore_windows/${_acct}.rb" ]; then
+    _info "  ${_acct}: a restore holds its backup passphrase here; the next pass carries it"
+    return 0
+  fi
+  _b="$(_xmass_in_real_dir "${_d}" _xmass_secret_read_here)"
+  if [ -z "${_b}" ]; then
+    _xmass_warn_daily "bsecret_${_acct}" \
+      "  ${_acct}: ${_d} or its .secret.txt is not root's alone: its backup passphrase is NOT carried to ${_t}"
+    return 0
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    _info "  [DRY-PLAN] ${_acct}: its off-site backup passphrase placed on ${_t} (root 0600, immutable)"
+    return 0
+  fi
+  [ "${_XMASS_RETURNING:-}" = "YES" ] && _rt=YES
+  _hd="$(printf '%s' "${_hName:-$(hostname -f 2> /dev/null)}" | tr -cd 'a-zA-Z0-9.-' | tr . -)"
+  _out="$(printf '%s\n' "${_b}" | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "_a='${_acct}' _h='${_hd}' _rt='${_rt}' bash -c '$(_shq "${_XMASS_SECRET_ROOT_ONLY}
+${_XMASS_SECRET_SH}")'" 2> /dev/null)"
+  case "${_out}" in
+    *XMSEC-CURRENT*) : ;;
+    *XMSEC-PUT*) _info "  ${_acct}: its off-site backup passphrase placed on ${_t}" ;;
+    *XMSEC-BESIDE*)
+      _alrt "  ${_acct}: ${_t} keeps a backup chain of the account under its own passphrase: this box's"
+      _alrt "  went beside it as remote_backups/.secret.from-${_hd}.txt (the archives made here need it)"
+      ;;
+    *XMSEC-WINDOW*) _info "  ${_acct}: a restore holds its backup passphrase on ${_t}; the next pass carries it" ;;
+    *XMSEC-NOT-ROOTS*)
+      _xmass_warn_daily "bsecret_t_${_acct}" \
+        "  ${_acct}: its remote_backups on ${_t} is not root's alone: its backup passphrase is NOT carried"
+      ;;
+    *XMSEC-NOT-STANDBY*) _alrt "  ${_acct}: ${_t} holds no /root/.standby.cnf: its backup passphrase is not carried" ;;
+    *XMSEC-NO-ACCOUNT*) _alrt "  ${_acct}: ${_t} holds no real /data/disk/${_acct}: its backup passphrase is not carried" ;;
+    *) _alrt "  ${_acct}: its backup passphrase carry to ${_t} ended without an answer; the next pass tries again" ;;
+  esac
+  return 0
+}
+
 ### Each live pass also removes from the standby the database broker switch
 ### of every account this run does not carry (purged or cancelled here, so
 ### not eligible): an account of that name made there later, or after a
@@ -8188,6 +8291,21 @@ _xmass_sync_static_symlink_safe() {
     fi
   fi
 
+  # Pass 1d: the account's off-site backup settings (remote_backups/credentials
+  # and config in control/) lose to the templates the target's own backup setup
+  # writes with a newer mtime, as the pins of pass 1b did: the account would
+  # back up nowhere after the move, and nothing would say so. The template
+  # writer makes only a missing file, so the source's regular files go over
+  # without -u, top level only; a link is never carried.
+  local _rbd
+  for _rbd in credentials config; do
+    [ "${_ctl_link}" = "YES" ] && break
+    _xmass_in_real_dir "${_src_static}/control/remote_backups/${_rbd}" true || continue
+    _xmass_at_real_dir "${_src_static}/control/remote_backups/${_rbd}" _xmass_rsync -aEAX --no-links \
+      ${_ieni} '--exclude=*/' \
+      --rsync-path="$(_xmass_pin_rpath "${_dst_static}/control/remote_backups/${_rbd}")" -e ssh ./ "root@${_tgt}:./"
+  done
+
   # Pass 2: relocate static/files per target disk reality. Canonical mount layout
   # uses the DEST account name, so a rename lands correctly. The store is
   # followed only into the account's own tree or its own part of the
@@ -8900,6 +9018,8 @@ _xmass_sync_account() {
   # The database broker switch travels the same way (DRY: its plan line and
   # what the target lacks to serve it).
   _xmass_carry_db_broker "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
+  # and the off-site backup passphrase (DRY: its plan line)
+  _xmass_carry_backup_secret "${_oct}" "${_tgt}"
 
   # Catch-all sweep: discover + materialise out-of-root symlinks (secondary-
   # mount content) so no link in the account tree arrives dangling. Links under
@@ -14085,7 +14205,8 @@ _xmass_lay_account() {
     '--exclude=/aegir/distro/*' --exclude=/distro --exclude=/static --exclude=/log --exclude=/clients \
     --exclude=/backups --exclude=/backup-exports --exclude=/undo --exclude=/src --exclude=/.drush \
     '--exclude=/.tmp/*' '--exclude=/tmp/*' --exclude=/u --exclude=/tools/le --exclude=/config/ssl.d \
-    --exclude=/config/server_master/ssl.d '--exclude=/config/server_master/nginx/*/*'
+    --exclude=/config/server_master/ssl.d '--exclude=/config/server_master/nginx/*/*' \
+    --exclude=/remote_backups
   # A second panel dir under one name stops a cutover's rewire. A panel this lane
   # did not begin keeps its place (an install that lost one witness), and one it
   # finished stays as it is. One it began is finished by running its legs and its
