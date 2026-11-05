@@ -50,34 +50,6 @@ if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
   rm -f /run/boa_php_idle_quiesce.pid
 fi
 
-# Function to calculate RAM usage percentage as an integer
-_calculate_ram_usage_percent() {
-  _total_ram_kb=$1
-  _available_ram_kb=$2
-  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
-
-  # Using integer division to get a whole number percentage
-  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
-}
-
-# Function to check and display system info
-_check_system_ram() {
-  # Get the total and available RAM in KB
-  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-
-  # Calculate RAM usage percentage
-  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
-}
-
-# Function to check and optimize RAM and disk caches
-_optimize_ram() {
-  _check_system_ram
-  if [ "${_ram_usage_percent}" -gt 90 ]; then
-    sync && echo 3 | tee /proc/sys/vm/drop_caches
-  fi
-}
-
 _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
@@ -926,13 +898,10 @@ _graceful_action() {
     service rsyslog start
   fi
 
-  # RAM and disk cache management. Nothing empties swap on a schedule: a page
-  # in swap costs nothing until it is touched, and swapoff freezes its owner
-  # (see _swap_off_fits).
-  if [ -d "/dev/disk" ]; then
-    echo "Optimizing RAM usage..."
-    _optimize_ram
-  fi
+  # Nothing empties swap or the page cache on a schedule: a page in swap costs
+  # nothing until it is touched and swapoff freezes its owner (see
+  # _swap_off_fits); clean cache the kernel frees on demand, and a drop sends
+  # every site back to the disk for its files.
 
   # The marker: multiback's swapon stands aside while it names this run, a
   # second run (by hand beside the cron one) leaves swap to the first, and one
