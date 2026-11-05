@@ -723,7 +723,9 @@ _if_mydumper_is_locked() {
   _MD_C="$(pgrep -fc '^[^ ]*mydumper( |$)')"
   # SIGKILL, as autoupboa's reaper sends: on SIGTERM mydumper skips the jobs
   # left, still writes its metadata and exits 0 (or 1 after a retried
-  # flush), so a dump cut short would read as whole to every caller.
+  # flush), so a dump cut short would read as whole to every caller; one
+  # stopped while its table flush waits was seen to hang for good after it
+  # took the global read lock, holding every write on the box.
   if [ "${_MD_C}" -gt 0 ]; then
     if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
       pkill -9 -f '^[^ ]*mydumper( |$)'

@@ -1112,9 +1112,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         esac
         ### The site's triggers, routines and events go with its tables.
         _mydumper_objects_opts
-        ### The tool's output goes to a root-only file, printed after the run
-        ### and read to judge it (_mydumper_run_ok): a run whose only counted
-        ### error is its own retried table flush exits 1 with a whole dump.
+        ### The tool's output goes to a root-only file, read to judge the run
+        ### (_mydumper_run_ok: a run whose only counted error is its own
+        ### retried table flush exits 1 with a whole dump; one stopped by
+        ### SIGTERM says so only at --verbose=3) and printed after it without
+        ### its Message lines but those, as at --verbose=2.
         mkdir -p /var/log/boa
         _MYDUMPER_LOG=$(mktemp /var/log/boa/xcopy.mydumper.XXXXXXXX 2> /dev/null)
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
@@ -1131,11 +1133,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --threads=4 \
           --long-query-guard=900 \
           --clear \
-          --verbose=2 > "${_MYDUMPER_LOG:-/dev/null}" 2>&1
+          --verbose=3 > "${_MYDUMPER_LOG:-/dev/null}" 2>&1
         _MYDUMPER_RC=$?
         _MYDUMPER_WHOLE="NO"
         if [ -n "${_MYDUMPER_LOG}" ]; then
-          cat -- "${_MYDUMPER_LOG}"
+          awk '!/^\*\* Message: / || /Shutting down gracefully|Process has been cancelled/' "${_MYDUMPER_LOG}"
         fi
         if _mydumper_run_ok "${_MYDUMPER_RC}" "${_MYDUMPER_LOG}" \
           && _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
@@ -3714,19 +3716,26 @@ _measure_loaded_tables() {
 ### 1317" and sends it again, then takes the read lock and dumps as usual,
 ### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
 ### no fix: a pending flush stalls every new query on the tables it waits
-### for. Returns 0 when exit status $1, with the run's output (written at
-### --verbose=2) in file $2, is a whole run: 0, or 1 when the output holds
-### at least one such retry, every counted error in it is one (a failed
-### query is logged with " - ERROR <n>: ", any other error as CRITICAL)
-### and nothing is CRITICAL or ERROR. The caller still requires metadata.
+### for. A run stopped by SIGTERM skips what is left yet still writes its
+### metadata and exits 0 (1 after such a retry); it says so only at Message
+### level, so callers run mydumper at --verbose=3. Returns 0 when exit
+### status $1, with the run's output in file $2, is a whole run: nothing
+### says it was cancelled, and the status is 0, or 1 with at least one such
+### retry, every counted error a retry (a failed query is logged as a
+### WARNING with " - ERROR <n>: ", any other error as CRITICAL) and nothing
+### CRITICAL or ERROR. The caller still requires metadata.
 _mydumper_run_ok() {
   local _rc="${1}" _log="${2}"
+  if [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] \
+    && grep -q -E 'Shutting down gracefully|Process has been cancelled' "${_log}"; then
+    return 1
+  fi
   [[ "${_rc}" == "0" ]] && return 0
   [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
   awk '
     /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
-    / - ERROR [0-9]+: / {
-      if ($0 ~ /WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
+      if ($0 ~ /Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
       else _bad = 1
     }
     END { exit (_bad || !_ok) }

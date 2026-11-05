@@ -369,19 +369,26 @@ _acct_read_in() {
 # 1317" and sends it again, then takes the read lock and dumps as usual,
 # so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
 # no fix: a pending flush stalls every new query on the tables it waits
-# for. Returns 0 when exit status $1, with the run's output (written at
-# --verbose=2) in file $2, is a whole run: 0, or 1 when the output holds
-# at least one such retry, every counted error in it is one (a failed
-# query is logged with " - ERROR <n>: ", any other error as CRITICAL)
-# and nothing is CRITICAL or ERROR. The caller still requires metadata.
+# for. A run stopped by SIGTERM skips what is left yet still writes its
+# metadata and exits 0 (1 after such a retry); it says so only at Message
+# level, so callers run mydumper at --verbose=3. Returns 0 when exit
+# status $1, with the run's output in file $2, is a whole run: nothing
+# says it was cancelled, and the status is 0, or 1 with at least one such
+# retry, every counted error a retry (a failed query is logged as a
+# WARNING with " - ERROR <n>: ", any other error as CRITICAL) and nothing
+# CRITICAL or ERROR. The caller still requires metadata.
 _mydumper_run_ok() {
   local _rc="${1}" _log="${2}"
+  if [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] \
+    && grep -q -E 'Shutting down gracefully|Process has been cancelled' "${_log}"; then
+    return 1
+  fi
   [[ "${_rc}" == "0" ]] && return 0
   [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
   awk '
     /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
-    / - ERROR [0-9]+: / {
-      if ($0 ~ /WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
+      if ($0 ~ /Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
       else _bad = 1
     }
     END { exit (_bad || !_ok) }
@@ -2348,23 +2355,28 @@ _v_dump() {
     --long-query-guard=900 \
     --clear \
     "${_trx[@]}" \
-    --verbose=2 < /dev/null > "${_TMPD}/mydumper.log" 2>&1 7>&- 8>&- 9>&-
+    --verbose=3 < /dev/null > "${_TMPD}/mydumper.log" 2>&1 7>&- 8>&- 9>&-
   _rc=$?
-  # The tool's output goes where it went before, to stderr, and is read to
-  # judge the run: a run whose only counted error is its own retried table
-  # flush exits 1 with a whole dump (_mydumper_run_ok).
-  cat -- "${_TMPD}/mydumper.log" >&2 7>&- 8>&- 9>&-
+  # The tool's output is read to judge the run (_mydumper_run_ok: a run whose
+  # only counted error is its own retried table flush exits 1 with a whole
+  # dump; one stopped by SIGTERM says so only at --verbose=3) and goes where
+  # it went before, to stderr, without its Message lines but those.
+  awk '!/^\*\* Message: / || /Shutting down gracefully|Process has been cancelled/' \
+    "${_TMPD}/mydumper.log" >&2 7>&- 8>&- 9>&-
   case "${_rc}" in
-    0) ;;
     124|137)
       _alrt "dump of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
       _die 7 "time-limit"
       ;;
     *)
-      _mydumper_run_ok "${_rc}" "${_TMPD}/mydumper.log" 7>&- 8>&- 9>&- \
-        || _die 7 "dump-failed ${_rc}"
-      _msg "INFO: mydumper retried its table flush behind a long query and exited ${_rc}; the dump of ${_db} is whole"
-      _log_note "flush-retried-exit-${_rc}"
+      if ! _mydumper_run_ok "${_rc}" "${_TMPD}/mydumper.log" 7>&- 8>&- 9>&-; then
+        [[ "${_rc}" == "0" ]] && _die 7 "dump-cancelled"
+        _die 7 "dump-failed ${_rc}"
+      fi
+      if [[ "${_rc}" != "0" ]]; then
+        _msg "INFO: mydumper retried its table flush behind a long query and exited ${_rc}; the dump of ${_db} is whole"
+        _log_note "flush-retried-exit-${_rc}"
+      fi
       ;;
   esac
   [[ -f "${_STG}/metadata" && ! -L "${_STG}/metadata" ]] || _die 7 "dump-incomplete"

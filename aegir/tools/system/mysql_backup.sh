@@ -666,19 +666,26 @@ EOFMYSQL
 ### 1317" and sends it again, then takes the read lock and dumps as usual,
 ### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
 ### no fix: a pending flush stalls every new query on the tables it waits
-### for. Returns 0 when exit status $1, with the run's output (written at
-### --verbose=2) in file $2, is a whole run: 0, or 1 when the output holds
-### at least one such retry, every counted error in it is one (a failed
-### query is logged with " - ERROR <n>: ", any other error as CRITICAL)
-### and nothing is CRITICAL or ERROR. The caller still requires metadata.
+### for. A run stopped by SIGTERM skips what is left yet still writes its
+### metadata and exits 0 (1 after such a retry); it says so only at Message
+### level, so callers run mydumper at --verbose=3. Returns 0 when exit
+### status $1, with the run's output in file $2, is a whole run: nothing
+### says it was cancelled, and the status is 0, or 1 with at least one such
+### retry, every counted error a retry (a failed query is logged as a
+### WARNING with " - ERROR <n>: ", any other error as CRITICAL) and nothing
+### CRITICAL or ERROR. The caller still requires metadata.
 _mydumper_run_ok() {
   local _rc="${1}" _log="${2}"
+  if [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] \
+    && grep -q -E 'Shutting down gracefully|Process has been cancelled' "${_log}"; then
+    return 1
+  fi
   [[ "${_rc}" == "0" ]] && return 0
   [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
   awk '
     /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
-    / - ERROR [0-9]+: / {
-      if ($0 ~ /WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
+      if ($0 ~ /Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
       else _bad = 1
     }
     END { exit (_bad || !_ok) }
@@ -850,13 +857,14 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
     "${_MYDUMPER_BACKUP_LOCKS[@]}" \
     ${_MYDUMPER_TRX_OPT} \
-    --verbose=2 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
+    --verbose=3 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
   _MYDUMPER_RC=$?
   ### mydumper renames metadata into place at the end of its run, so a
   ### missing marker means the run never got there (a crash, a kill, a
   ### failed lock) and a non-zero exit means it logged an error on the way,
   ### unless its only counted error is its own retried table flush, read
-  ### from its output at --verbose=2 (_mydumper_run_ok). Neither is a dump
+  ### from its output at --verbose=3, which also says when a SIGTERM cut the
+  ### run short (_mydumper_run_ok). Neither is a dump
   ### to archive: keep the debris and the tool's own output out of the
   ### compressor's way and in the operator's sight. The loop redirects this
   ### helper, so its output is the only trace kept.
