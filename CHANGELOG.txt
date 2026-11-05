@@ -117,6 +117,17 @@
 
 @=> Important Fixes
 
+    * Swap is no longer emptied on a schedule: autoupboa's purge at half full
+      and multiback's reset before a backup ran swapoff -a, which freezes every
+      process with pages in swap until they are read back. 4 GB on a slow disk
+      froze MySQL for over 8 minutes and every site with it, and the same cold
+      pages then went back out, so the next purge followed within days.
+
+    * The daily swap sizing switches an area off only when it holds 256 MB or
+      less. A grow that finds /swapfile fuller adds the missing room as a second
+      area beside it, which freezes nothing, until a later pass can make one
+      file of them.
+
     * Chromium runs from a web request. With no writable home its crash handler
       had no database and the browser ended on SIGTRAP, with no AppArmor line to
       point at it. It now keeps those folders in the pool's temporary folder,
