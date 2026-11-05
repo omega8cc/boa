@@ -2126,7 +2126,7 @@ _mpt_any_undeclared() {
 # every case. Status 0 released, 3 kept (a live record names every address), 4
 # refused: nothing changed and the cause is printed.
 _cmd_release() {
-  local _a _to="" _over="" _since="" _ip _g _reach=NO
+  local _a _to="" _over="" _since="" _ip _g _k _reach=NO
   local -a _ips=() _drop=()
   for _a in "$@"; do
     case "${_a}" in
@@ -2196,8 +2196,7 @@ _cmd_release() {
     done
   fi
   # The addresses given are one peer's: a move from it into this box under way
-  # by any of them keeps the reach of all of them. So does reach no day was kept
-  # for, as prune keeps it: older tools gave it, maybe for a move under way.
+  # by any of them keeps the reach of all of them.
   if [ "${_reach}" = "YES" ]; then
     for _ip in "${_ips[@]}"; do
       _mpt_pending "${_ip}" || continue
@@ -2207,20 +2206,20 @@ _cmd_release() {
     done
   fi
   if [ "${_reach}" = "YES" ]; then
-    _reach=NO
-    for _ip in "${_ips[@]}"; do
-      for _a in $(_mpt_peer_set "${_ip}"); do
-        _mpt_reach_day "${_a}" > /dev/null && _reach=YES
-      done
-    done
-    [ "${_reach}" = "NO" ] \
-      && _msg "release: ${_ips[*]}: no day was kept for this peer's reach (older tools gave it); its key and firewall lines stay"
-  fi
-  if [ "${_reach}" = "YES" ]; then
     _CSF_CHANGED=NO
     for _ip in "${_drop[@]}"; do
       if _mpt_pair_named "${_ip}"; then
         _msg "release: ${_ip}: this box's own pair; its key and firewall lines stay"
+        continue
+      fi
+      # Reach no day was kept for stays, judged on the address's own set as prune
+      # judges it: older tools gave it, maybe for a move under way.
+      _k=""
+      for _a in $(_mpt_peer_set "${_ip}"); do
+        _mpt_reach_day "${_a}" > /dev/null && _k=YES
+      done
+      if [ -z "${_k}" ]; then
+        _msg "release: ${_ip}: no day was kept for its reach (older tools gave it); its key and firewall lines stay"
         continue
       fi
       _mpt_reach_drop "${_ip}"
