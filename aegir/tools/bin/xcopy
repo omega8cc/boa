@@ -1112,8 +1112,13 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         esac
         ### The site's triggers, routines and events go with its tables.
         _mydumper_objects_opts
+        ### The tool's output goes to a root-only file, printed after the run
+        ### and read to judge it (_mydumper_run_ok): a run whose only counted
+        ### error is its own retried table flush exits 1 with a whole dump.
+        mkdir -p /var/log/boa
+        _MYDUMPER_LOG=$(mktemp /var/log/boa/xcopy.mydumper.XXXXXXXX 2> /dev/null)
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
-        if _xcopy_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
+        _xcopy_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
@@ -1126,8 +1131,23 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --threads=4 \
           --long-query-guard=900 \
           --clear \
-          --verbose=2 \
+          --verbose=2 > "${_MYDUMPER_LOG:-/dev/null}" 2>&1
+        _MYDUMPER_RC=$?
+        _MYDUMPER_WHOLE="NO"
+        if [ -n "${_MYDUMPER_LOG}" ]; then
+          cat -- "${_MYDUMPER_LOG}"
+        fi
+        if _mydumper_run_ok "${_MYDUMPER_RC}" "${_MYDUMPER_LOG}" \
           && _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
+          _MYDUMPER_WHOLE="YES"
+        fi
+        if [ -n "${_MYDUMPER_LOG}" ]; then
+          rm -f -- "${_MYDUMPER_LOG}"
+        fi
+        if [ "${_MYDUMPER_WHOLE}" = "YES" ]; then
+          if [ "${_MYDUMPER_RC}" != "0" ]; then
+            echo "INFO: site ${_Dom} db export on ${_oct}: mydumper retried its table flush behind a long query and exited ${_MYDUMPER_RC}; the dump is whole"
+          fi
           echo "INFO: site ${_Dom} db export on ${_oct} complete"
           ### Each stored object keeps the sql_mode it was made under.
           if ! _xcopy_in_real_dir "${_USR}/src/${_DBN}" _mydumper_object_modes "${_DBN}" . \
@@ -3685,6 +3705,32 @@ _measure_loaded_tables() {
   fi
   echo "ALRT: measured the optimizer statistics of ${_ok} of $(( ${#_tbls[@]} + _skip )) tables in ${_db}${_err:+ (${_err:0:200})}; InnoDB measures the rest later on its own"
   return 1
+}
+### mydumper 1.x counts every failed query it logs into its exit status,
+### its own retried table flush included. Before the global read lock it
+### sends FLUSH NO_WRITE_TO_BINLOG TABLES, which waits behind any long
+### query on the server; after --ftwrl-max-wait-time (60 s) it kills that
+### flush, logs "Flush tables failed, we are continuing anyways - ERROR
+### 1317" and sends it again, then takes the read lock and dumps as usual,
+### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
+### no fix: a pending flush stalls every new query on the tables it waits
+### for. Returns 0 when exit status $1, with the run's output (written at
+### --verbose=2) in file $2, is a whole run: 0, or 1 when the output holds
+### at least one such retry, every counted error in it is one (a failed
+### query is logged with " - ERROR <n>: ", any other error as CRITICAL)
+### and nothing is CRITICAL or ERROR. The caller still requires metadata.
+_mydumper_run_ok() {
+  local _rc="${1}" _log="${2}"
+  [[ "${_rc}" == "0" ]] && return 0
+  [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  awk '
+    /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
+    / - ERROR [0-9]+: / {
+      if ($0 ~ /WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      else _bad = 1
+    }
+    END { exit (_bad || !_ok) }
+  ' "${_log}"
 }
 ### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
 ### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK

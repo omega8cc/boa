@@ -498,6 +498,33 @@ EOFMYSQL
   done
 }
 
+### mydumper 1.x counts every failed query it logs into its exit status,
+### its own retried table flush included. Before the global read lock it
+### sends FLUSH NO_WRITE_TO_BINLOG TABLES, which waits behind any long
+### query on the server; after --ftwrl-max-wait-time (60 s) it kills that
+### flush, logs "Flush tables failed, we are continuing anyways - ERROR
+### 1317" and sends it again, then takes the read lock and dumps as usual,
+### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
+### no fix: a pending flush stalls every new query on the tables it waits
+### for. Returns 0 when exit status $1, with the run's output (written at
+### --verbose=2) in file $2, is a whole run: 0, or 1 when the output holds
+### at least one such retry, every counted error in it is one (a failed
+### query is logged with " - ERROR <n>: ", any other error as CRITICAL)
+### and nothing is CRITICAL or ERROR. The caller still requires metadata.
+_mydumper_run_ok() {
+  local _rc="${1}" _log="${2}"
+  [[ "${_rc}" == "0" ]] && return 0
+  [[ "${_rc}" == "1" && -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  awk '
+    /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
+    / - ERROR [0-9]+: / {
+      if ($0 ~ /WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      else _bad = 1
+    }
+    END { exit (_bad || !_ok) }
+  ' "${_log}"
+}
+
 ### Percona 5.7 dumps sync their threads with FLUSH TABLES WITH READ LOCK
 ### (FTWRL), and mydumper also takes Percona's backup lock there (LOCK TABLES
 ### FOR BACKUP), keeping it until the dump ends, past the FTWRL release. A
@@ -663,20 +690,26 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
     "${_MYDUMPER_BACKUP_LOCKS[@]}" \
     ${_MYDUMPER_TRX_OPT} \
-    --verbose=1 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
+    --verbose=2 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
   _MYDUMPER_RC=$?
   ### mydumper renames metadata into place at the end of its run, so a
   ### missing marker means the run never got there (a crash, a kill, a
-  ### failed lock) and a non-zero exit means it logged an error on the way.
-  ### Neither is a dump to archive: keep the debris and the tool's own
-  ### output out of the compressor's way and in the operator's sight. The
-  ### loop redirects this helper, so its output is the only trace kept.
-  if [ "${_MYDUMPER_RC}" -ne "0" ] || [ ! -e "${_SAVELOCATION}/${_DB}/metadata" ]; then
+  ### failed lock) and a non-zero exit means it logged an error on the way,
+  ### unless its only counted error is its own retried table flush, read
+  ### from its output at --verbose=2 (_mydumper_run_ok). Neither is a dump
+  ### to archive: keep the debris and the tool's own output out of the
+  ### compressor's way and in the operator's sight. The loop redirects this
+  ### helper, so its output is the only trace kept.
+  if ! _mydumper_run_ok "${_MYDUMPER_RC}" "${_SAVELOCATION}/${_DB}.mydumper.log" \
+    || [ ! -e "${_SAVELOCATION}/${_DB}/metadata" ]; then
     echo "ALRT: mydumper FAILED or left no metadata for ${_DB} -- keeping the debris and the tool's output in ${_DB}.FAILED/"
     mv -f ${_SAVELOCATION}/${_DB} ${_SAVELOCATION}/${_DB}.FAILED 2>/dev/null
     mkdir -p "${_SAVELOCATION}/${_DB}.FAILED"
     mv -f "${_SAVELOCATION}/${_DB}.mydumper.log" "${_SAVELOCATION}/${_DB}.FAILED/mydumper.log" 2>/dev/null
     return 1
+  fi
+  if [ "${_MYDUMPER_RC}" -ne "0" ]; then
+    echo "INFO: mydumper retried its table flush for ${_DB} behind a long query and exited ${_MYDUMPER_RC}; the dump is whole"
   fi
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
   _mydumper_object_modes "${_DB}" "${_SAVELOCATION}/${_DB}" mysql --defaults-extra-file=/root/.my.cluster_root.cnf || _MYDUMPER_MODES_LEFT="YES"
