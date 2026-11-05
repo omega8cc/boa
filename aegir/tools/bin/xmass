@@ -6145,6 +6145,9 @@ _xmass_restore_target_finish() {
       while [ -e /run/mysql_restart_running.pid ] && [ "${_waited}" -lt 150 ]; do
         sleep 3; _waited=$(( _waited + 3 ))
       done
+      [ ! -e /run/mysql_restart_running.pid ] \
+        || _die "MySQL is down and the restart lock /run/mysql_restart_running.pid still stands after ${_waited}s" \
+                " (a start in flight, or one left behind): read it, then run 'xmass restore-target --live' again"
       mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1 \
         || /var/xdrago/move_sql.sh start \
         || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log," \
@@ -6180,14 +6183,16 @@ _xmass_restore_target_finish() {
     rm -f /var/log/boa/.xmass_solr_disarmed.list
   fi
   service cron start &>/dev/null
+  # the marking before the record goes, the record before the log line: a run
+  # cut short here marks again on its re-run, and logs once
+  _xmass_restore_laid_accounts "${3:-}" "${4:-}"
+  rm -f -- "${_XMASS_RESTORE_REC}"
   echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as /var/lib/mysql; replica copy kept as /var/lib/mysql.xmass_standby_${_stamp}" \
     >> /var/log/boa/xmass-restore-target.log
   _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
   _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
   _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
   _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
-  _xmass_restore_laid_accounts "${3:-}" "${4:-}"
-  rm -f -- "${_XMASS_RESTORE_REC}"
   return 0
 }
 
@@ -6231,6 +6236,8 @@ _xmass_restore_target() {
     _info "  start (MySQL started unless it answers, super_read_only cleared, Solr re-armed, cron started)"
     [ -z "${_XMASS_RESTORE_LANE_ALL}" ] \
       || _info "  each account --fix-accounts laid here (${_XMASS_RESTORE_LANE_ALL}) marked CANCELLED unless the restored data directory holds its database"
+    _xmass_restore_lane_lists "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}"
+    _xmass_restore_heal_panels DRY
     if [ "${_live}" != "YES" ]; then
       _info "DRY RUN -- nothing changed. Re-run with --live to finish it."
       return 0
