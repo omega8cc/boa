@@ -1049,7 +1049,7 @@ _mig_resolve() {
 ### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
   local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8" _rdl="$9"
-  local _a="${_root##*/}" _body _old _ended="" _began=""
+  local _a="${_root##*/}" _body _old _ended="" _began="" _xd=""
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   if ! _mig_rec "${_a}" > /dev/null; then
     echo "ALRT: refusing to write a policy record for invalid account name '${_a}'"
@@ -1070,6 +1070,14 @@ _mig_write_record() {
     _began="$(_mig_txt_get "${_old}" _MIG_BEGAN)"
     _mig_valid_date "${_began}" || _began="$(_mig_txt_get "${_old}" _MIG_STAMPED)"
     [ "${_role}" = "target" ] && _ended="$(_mig_txt_get "${_old}" _MIG_RELAY_ENDED)"
+    ### A relay retired past its date is over: a record written over it starts
+    ### a new one. An ended one stays ended here (only the front's push restarts
+    ### it), so its day stays too.
+    if [ "$(_mig_txt_get "${_old}" _MIG_MODE)" = "retired" ]; then
+      _xd="$(_mig_txt_get "${_old}" _MIG_RETIRE_DATE)"
+      [ -n "${_xd}" ] || _xd="$(_mig_txt_get "${_old}" _MIG_STAMPED)"
+      _mig_valid_date "${_xd}" && [[ "${_xd}" < "$(date -u '+%Y-%m-%d')" ]] && _began=""
+    fi
   fi
   _mig_valid_date "${_began}" || _began="$(date -u '+%Y-%m-%d')"
   _body="$(
@@ -8053,6 +8061,17 @@ if [ "\${_rrc}" = "0" ]; then
     _x="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_BEGAN=' | cut -d= -f2-)"
     [ -n "\${_x}" ] || _x="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_STAMPED=' | cut -d= -f2-)"
     [[ "\${_x}" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]\$ ]] && _began="\${_x}"
+    # A relay that is over (ended by an init, or retired past its date) does
+    # not go on: this push starts a new one.
+    if printf '%s\\n' "\${_rb}" | grep -q '^_MIG_RELAY_ENDED='; then
+      _began="\$(date -u '+%Y-%m-%d')"
+    elif printf '%s\\n' "\${_rb}" | grep -qx '_MIG_MODE=retired'; then
+      _xd="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_RETIRE_DATE=' | cut -d= -f2-)"
+      [ -n "\${_xd}" ] || _xd="\$(printf '%s\\n' "\${_rb}" | grep -m1 '^_MIG_STAMPED=' | cut -d= -f2-)"
+      if [[ "\${_xd}" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]\$ ]] && [[ "\${_xd}" < "\$(date -u '+%Y-%m-%d')" ]]; then
+        _began="\$(date -u '+%Y-%m-%d')"
+      fi
+    fi
   fi
 fi
 ( umask 077
@@ -8229,8 +8248,9 @@ _xoct_peer_trust_remedy() {
   echo "ERROR:   3. free disk under /root there (the record is root's, /root/.<oN>.migproxy.cnf) -- the"
   echo "ERROR:      record write is fail-closed on a truncated file"
   echo "ERROR: A relay retired past its date has lost its key there: run xoct pre-mig on both boxes"
-  echo "ERROR: (this box first, then ${_p} naming this box), re-run here, then xoct post-mig on"
-  echo "ERROR: both the same way: pre-mig parks each box's task queue until its post-mig."
+  echo "ERROR: (this box first, then ${_p} naming this box) and re-run here. pre-mig parks a"
+  echo "ERROR: box's task queue until its post-mig: run xoct post-mig the same way on each box"
+  echo "ERROR: where no other move is under way, since post-mig ends that box's park."
 }
 
 ### Wire the migration-proxy trust on the TARGET (never on this source box:
