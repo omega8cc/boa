@@ -367,6 +367,13 @@
       knows and a count only as a plain number, so a file of root's the
       account renamed to one of these names sets nothing.
 
+    * An account can no longer pass off one of root's plan files under
+      another plan file's name: each carries a root-only stamp of its own
+      name, set as root writes or first reads it and by the limited-shell
+      worker on every pass, and every reader refuses a file stamped with
+      another name. A renamed cores.txt no longer counts as extra engines,
+      nor an extra engines file as the engine count.
+
     * A migration proxy tool another box copied here now lasts one self-update:
       a source on older tools could put its older trust tool back on a newer
       target for up to a day. xoct and xmass now copy these tools only to a

@@ -697,13 +697,17 @@ _night_mail_list() (
   done
   printf '%s' "${_o}"
 )
-### Root's reader of a name an account may have put, one text wherever it is
-### defined: ./$1 through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, and
-### only while that handle is a regular file with one link, owned by root,
-### writable by no one else, at most 64 KiB. Prints the handle's mtime on a line
-### of its own, then the bytes. Status 3 absent, 4 anything else, 5 a read error.
+### Root's reader of an account's plan file in log/, one text wherever it is
+### defined: ./$1 through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, only
+### while it is root's regular file with one link that no one else can write,
+### at most 64 KiB. On Linux the handle carries the root-only stamp
+### trusted.boa.plan with the file's own name: a file stamped with another name
+### (a file of root's the account renamed, or one copied with cp -a) is refused
+### with status 6, an unstamped one is stamped. $2 "read" prints its mtime on a
+### line, then its bytes; "stamp" only stamps. Status 3 absent, 4 anything
+### else, 5 a read error.
 # shellcheck disable=SC2016
-_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
 ### The plan names the pool sizing knows: the nightly takes an option into
 ### root's cnf only when it is one of these.
 _ACCT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
@@ -1348,10 +1352,12 @@ _account_process() {
     # forever (a migrated cnf is exactly that state). Same discipline for
     # the plan trio: the log/ stamp is the witness, replace-if-present,
     # append-if-absent.
-    # A stamp is the witness only as root wrote it (_MIG_HREAD_PL: root's
-    # file, one link, not writable by group or others): log/ is oN's, so a
-    # file the account made at one of these names, a link or a FIFO sets
-    # no plan value in root's cnf, and one NOTE line says which was left.
+    # A stamp is the witness only as root wrote it under that name
+    # (_PLAN_HREAD_PL: root's file, one link, not writable by group or
+    # others, not stamped with another plan file's name): log/ is oN's, so
+    # a file the account made at one of these names, a link, a FIFO or a
+    # file of root's it renamed there sets no plan value in root's cnf, and
+    # one NOTE line says which was left.
     # Each value only in its own form, blanks around it dropped and nothing
     # picked out of other text: the option a plan name the sizing knows,
     # the plan one word, the cores a whole number. A file of root's the
@@ -1362,8 +1368,8 @@ _account_process() {
       _idFile="${_usEr}/log/${_idPair##*:}.txt"
       [ -e "${_idFile}" ] || [ -L "${_idFile}" ] || continue
       # the x keeps the bytes whole; the reader's first line is the mtime
-      if ! _idVal="$(_acct_in_real_dir "${_usEr}/log" perl -e "${_MIG_HREAD_PL}" \
-        -- "./${_idPair##*:}.txt" root && printf x)"; then
+      if ! _idVal="$(_acct_in_real_dir "${_usEr}/log" perl -e "${_PLAN_HREAD_PL}" \
+        -- "./${_idPair##*:}.txt" read && printf x)"; then
         echo "NOTE: ${_HM_U}: log/${_idPair##*:}.txt is not as root wrote it: ${_idVar} in root's cnf left as it is"
         continue
       fi
