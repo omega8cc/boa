@@ -1421,6 +1421,32 @@ _ltd_read_in() {
   _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
+# One file read as root wrote it, a copy of usage.sh's: $1 the name in the
+# current (pinned) directory, $2 "root" (root's regular file, one link, not
+# writable by group or others, at most 64 KiB) or "legacy" (also mode 0600,
+# group root). Prints its mtime on a line, then its bytes. Status 3: no such
+# name; 4: anything else there; 5: a read error.
+# shellcheck disable=SC2016
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# The engines count the pool sizing multiplies by, for the account at $1:
+# its log/cores.txt only as root wrote it (_MIG_HREAD_PL "root") and only a
+# whole number (blanks around it dropped, leading zeros too, at most nine
+# digits); otherwise _CLIENT_CORES stays as root's cnf set it. log/ is the
+# account's: a file it made there, or a file of root's it renamed to
+# cores.txt and that holds other text, raises no pool.
+_ltd_cores_now() {
+  local _v
+  _v="$(_ltd_in_real_dir "${1}/log" perl -e "${_MIG_HREAD_PL}" \
+    -- ./cores.txt root && printf x)" || return 0
+  _v="${_v%x}"
+  _v="${_v#*$'\n'}"
+  _v="${_v#"${_v%%[![:space:]]*}"}"
+  _v="${_v%"${_v##*[![:space:]]}"}"
+  [[ "${_v}" =~ ^[0-9]+$ ]] || return 0
+  _v="${_v#"${_v%%[!0]*}"}"
+  [ -n "${_v}" ] && [ "${#_v}" -le 9 ] || return 0
+  _CLIENT_CORES="${_v}"
+}
 # Whether the site dir $1 is there and holds anything but directories: a
 # settings file, a store link, any file at all. Listed from inside the dir,
 # never through a link at its name; a dir that is not a plain directory, or
@@ -5044,10 +5070,7 @@ _satellite_tune_fpm_workers() {
   fi
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
-    if [ -e "${_dscUsr}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(_ltd_read_in "${_dscUsr}/log" cores.txt)
-      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
-    fi
+    _ltd_cores_now "${_dscUsr}"
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
       _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))

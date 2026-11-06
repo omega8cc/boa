@@ -2871,8 +2871,8 @@ _sites_cred_modes_here() {
 }
 
 ### The codebase top above a docroot below the account's static/ (docroot/,
-### web/ or html/) takes the group write the platform script gives it after
-### each Verify (fix-drupal-platform-permissions.sh, _TOP_GW_PL, which says
+### web/ or html/) takes the group write the platform script gives it at a
+### platform Verify (fix-drupal-platform-permissions.sh, _TOP_GW_PL, which says
 ### why), under the same rules: the top and each directory directly in it,
 ### the docroot and vendor/ aside, when the backend user owns them, their
 ### group is the account's own and that group may already read and enter
