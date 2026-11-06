@@ -454,8 +454,9 @@
       account's store under /data/disk/arch when that store is a link onto
       another volume, as the rest of the archive already did: a sync pass
       prunes the copy under the same delete guard, and the cutover still
-      deletes nothing. Those dumps stayed on the mirror for good, so its disk
-      grew every night.
+      deletes nothing. A copy that lands on the mirror's own volume where it
+      would hold an account's files or the archive stays additive. Those
+      dumps stayed on the mirror for good, so its disk grew every night.
 
     * xmass prep-target --return-accounts no longer replaces what the serving
       server holds where it copies the shared store's links onto another

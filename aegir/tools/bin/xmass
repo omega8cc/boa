@@ -7329,6 +7329,17 @@ _xmass_tgt_kind() {
     | grep -m1 '^XMKIND ' | awk '{print $2}'
 }
 
+### Whether a path on the target's mount ($1, relative to it) is, or holds, a
+### place this tool gives a store of its own there: an account's files store
+### (files/<account>/static/files) or the archive (files/system/arch).
+_xmass_mnt_holds_stores() {
+  local _r="${1%/}"
+  [ -z "${_r}" ] && return 0
+  [[ "${_r}" =~ ^files(/[^/]+(/static(/files)?)?)?$ ]] && return 0
+  [ "${_r}" = "files/system/arch" ] && return 0
+  return 1
+}
+
 ### Whether anything at all, a link or a file included, holds <path> ($2) on
 ### the target: Y or N, empty when the target could not be asked.
 _xmass_tgt_has() {
@@ -7514,7 +7525,7 @@ _xmass_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
   local _acct="$8" _rule="${9:-tree}" _dacct=""
   local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0 _why
-  local _kind _rp _rown="" _mown=""
+  local _kind _rp _rown="" _mown="" _mrDerived=NO
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
@@ -7556,6 +7567,7 @@ _xmass_handle_store() {
     _sz="$(du -sk "${_real}" 2>/dev/null | awk '{print $1}')"
     if [ -z "${_mntRel}" ] && [ "${_onMnt}" = "YES" ]; then
       _mntRel="${_real#/mnt/*/}"
+      _mrDerived=YES
     fi
     [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
     # The fallback placements are OPERATOR decisions: an unattended autosync
@@ -7635,6 +7647,14 @@ _xmass_handle_store() {
       return 0
       ;;
     MIRROR)
+      # A copy whose place on the mount comes from the source's own volume
+      # layout can be, or hold, a place this tool gives another store there;
+      # pruning it would delete that store. It stays additive.
+      if [ "${_mrDerived}" = "YES" ] && [[ " ${_ie} " == *" --delete-after "* ]] \
+        && _xmass_mnt_holds_stores "${_mntRel}"; then
+        _ie="$(printf '%s' "${_ie}" | sed "s/--delete-after --max-delete=[0-9][0-9]*/${_ieni}/")"
+        _info "  ${_lbl}: ${_mntDest} on the target mount is or holds a store of its own -- this copy is not pruned"
+      fi
       if [ "${_MODE}" = "LIVE" ]; then
         # Capture rc FIRST: `|| { _XMASS_NOT_CLEAN=YES; return $?; }` returned the
         # assignment's status (always 0), so a failed placement reported success
