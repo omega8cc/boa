@@ -918,7 +918,9 @@ else
   _SA_FILE=0664
 fi
 
-### Fix permissions only once daily, unless it's Drupal 8 or newer
+### Once a day only on a Drupal 8 to 9.0 core (classy, no olivero): a second
+### run that day stops here. Every other tree, Drupal 7 included (it has no
+### core/), takes the whole fix at every run.
 if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid" ]; then
   if [ -e "${drupal_root}/core/themes/olivero" ] \
     || [ ! -e "${drupal_root}/core/themes/classy" ]; then
