@@ -182,10 +182,11 @@ command -v _single_instance_lock >/dev/null 2>&1 && _single_instance_lock
 _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
 _WARN_DAYS="${_MIGRATION_PROXY_CERT_WARN_DAYS:-21}"
 case "${_WARN_DAYS}" in ''|*[!0-9]*) _WARN_DAYS=21 ;; esac
-### Read in base 10 (a leading zero is no octal) and held to five digits,
-### so the day arithmetic below never fails or overflows.
+### Leading zeros dropped, then held to five digits of the value, so the day
+### arithmetic below never reads octal, fails or overflows (000021 is 21).
+_WARN_DAYS="${_WARN_DAYS#"${_WARN_DAYS%%[!0]*}"}"
 [ "${#_WARN_DAYS}" -le 5 ] || _WARN_DAYS=99999
-_WARN_DAYS=$(( 10#${_WARN_DAYS} ))
+_WARN_DAYS="${_WARN_DAYS:-0}"
 ### A set the target holds nothing newer for counts as not renewed within
 ### that window, and never above 60 days: the target renews a set once it
 ### has fewer than 69 days left (dehydrated's RENEW_DAYS), so a wider window
