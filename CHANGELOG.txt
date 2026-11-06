@@ -435,6 +435,12 @@
       longer leaves the SQL maintenance marker behind, which paused the
       MySQL watchdog for up to four hours.
 
+    * xtrim no longer refuses an account for good over the expired
+      certificate of a site disabled in the panel on the new server, which
+      never renews a disabled site. It names that site and leaves its
+      certificate out of the check, and still refuses an expired certificate
+      of a live site.
+
     * A site disabled in the panel no longer fails a move's probes: its
       placeholder page is the same page as the catch-all they refuse, so
       xmass verify called it broken and every xtrim plan, quiesce and shrink

@@ -1162,10 +1162,11 @@ _target_proof_vhosts() {
 
 _cert_horizon() {
   ### $1 acct: earliest notAfter behind retained https vhosts; refuses on
-  ### an already-expired cert. Prints "<days> <domain>" for the earliest.
+  ### an already-expired cert. Prints "<days> <domain>" for the earliest
+  ### ("-" when none), then the names it left out as disabled on the target.
   ### The vhosts are read inside the real vhost.d, the certificate each
   ### names as _cert_text reads it.
-  local _oN="$1" _v _crt _end _now _days _min=999999 _mind=""
+  local _oN="$1" _v _crt _end _now _days _min=999999 _mind="" _dis=""
   _now=$(date +%s)
   for _v in $(_names_in "${_VHD}" -name 'https.*'); do
     ### A retired (renamed) name's certificate is outside the horizon --
@@ -1181,19 +1182,29 @@ _cert_horizon() {
     _end=$(date -d "${_end}" +%s 2>/dev/null)
     [ -z "${_end}" ] && continue
     _days=$(( (_end - _now) / 86400 ))
+    ### An expired set of a site disabled in the panel on the target is that
+    ### site's state, not a mirror to fix: the target's nightly renews no
+    ### disabled site, so it would hold the account's shrink for good. Only
+    ### an expired set asks, and the target is read strictly, so a live
+    ### site's expired set still refuses.
+    if [ "${_days}" -lt 0 ] && [ -n "${_MAP_TGT}" ] \
+      && _target_vhost_disabled "${_v#https.}"; then
+      _dis="${_dis} ${_v#https.}"
+      continue
+    fi
     if [ "${_days}" -lt "${_min}" ]; then
       _min="${_days}"
       _mind="${_v#https.}"
     fi
   done
-  echo "${_min} ${_mind}"
+  echo "${_min} ${_mind:--}${_dis}"
 }
 
 ### -------------------------------------------------------- preflight -----
 
 _preflight() {
   ### The hard refusal battery. $1 acct. Sets the account map.
-  local _oN="$1" _age _hz _hzd _db _fail=0 _vt
+  local _oN="$1" _age _hz _hzd _hzx _db _fail=0 _vt
   _USR="/data/disk/${_oN}"
   [ -d "${_USR}" ] || _die "${_oN}: no such account"
   ### Eligibility triple + ownership markers.
@@ -1311,10 +1322,12 @@ _preflight() {
     _alrt "${_oN}: their site/db map cannot be cross-checked from the saved vhost"
   fi
   ### Cert horizon: refuse on an expired cert behind a retained vhost.
-  read -r _hz _hzd <<< "$(_cert_horizon "${_oN}")"
+  read -r _hz _hzd _hzx <<< "$(_cert_horizon "${_oN}")"
   if [ "${_hz}" != "999999" ] && [ "${_hz}" -lt "0" ]; then
     _die "${_oN}: certificate for ${_hzd} already EXPIRED -- fix the mirror first"
   fi
+  [ -n "${_hzx}" ] \
+    && _info "${_oN}: expired certificate left out, its site disabled in the panel on the target (not renewed while disabled): ${_hzx}"
   ### A retired (renamed) name is outside that horizon: the target no longer
   ### issues for it and the daily certificate mirror skips a vhost with no
   ### proxy_pass, so nothing on either box can renew it and a refusal here
@@ -1963,7 +1976,7 @@ _finalize() {
 ### ------------------------------------------------------------- verbs ----
 
 _cmd_status() {
-  local _n _hz _hzd _sz _ph _tg
+  local _n _hz _hzd _hzx _sz _ph _tg
   _load_cnf_defaults
   echo "xtrim status -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
@@ -1986,12 +1999,13 @@ _cmd_status() {
       continue
     fi
     _map_account "${_n}"
-    read -r _hz _hzd <<< "$(_cert_horizon "${_n}")"
+    read -r _hz _hzd _hzx <<< "$(_cert_horizon "${_n}")"
+    [ -n "${_hzx}" ] && _hzx=" [disabled on the target, expired: ${_hzx}]"
     _sz=$(du -sk "${_USR}/backups" "${_USR}/src" "${_USR}/distro" \
       ${_MAP_PLATS} "${_USR}/static" 2>/dev/null | awk '{ s+=$1 } END { printf "%.1fG", s/1048576 }')
     _tg="${_MAP_TGT:-?}"
     [ -n "${_MAP_VHOST_TGT}" ] && _tg="? (its vhost target is not the root policy record's)"
-    echo "${_n}: proxied -> ${_tg} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" ) | reclaimable~${_sz}"
+    echo "${_n}: proxied -> ${_tg} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" )${_hzx} | reclaimable~${_sz}"
   done
 }
 
