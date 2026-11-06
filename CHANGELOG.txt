@@ -679,6 +679,13 @@
       it with its next barracuda upgrade; the PHP security floor stays at
       8.6.0RC4, so no upgrade is forced for it.
 
+    * PHP 8.6 builds igbinary and PhpRedis from their development trees, as
+      it already does APCu: igbinary 3.2.17 builds against 8.6 but fails its
+      own tests where PHP 8.6 changed its internals, and PhpRedis 6.3.0 does
+      not build, with no release of either since. Sites on PHP 8.6 now use
+      the Valkey object cache like those on every other version. A box takes
+      both with its next barracuda upgrade.
+
     * The dormant site health check backend, provision-site_health_check,
       and its permission are gone: its Drupal 8+ step ran a Drush command
       that Drush 12.3 removed and whose older form reads an advisory list
