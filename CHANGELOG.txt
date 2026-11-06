@@ -179,8 +179,7 @@
     * A database dump cut short by a plain kill of mydumper is no longer
       kept as a good backup by the nightly SQL backup, xcopy, xoct, the
       database broker or an Aegir backup. mydumper still marks such a dump
-      finished; BOA now reads mydumper's own log for it and fails the
-      dump.
+      finished; BOA now reads mydumper's own log for it and fails the dump.
 
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
@@ -331,6 +330,15 @@
       an account's log folder set its limits only as root wrote them, the plan
       otherwise coming from root's octopus.cnf, and the nightly copies them into
       that cnf under the same rule.
+
+    * An account's own option.txt or cores.txt in its log folder no longer
+      sizes its PHP-FPM pools: the limited-shell worker, the Octopus upgrade
+      and fpmreport take the plan and the engine count only from files as root
+      wrote them, and otherwise from root's octopus.cnf. xoct and xcopy
+      install a moved account on its target the same way. Every reader, the
+      usage pass and the nightly included, takes a plan only by a name BOA
+      knows and a count only as a plain number, so a file of root's the
+      account renamed to one of these names sets nothing.
 
     * A migration proxy tool another box copied here now lasts one self-update:
       a source on older tools could put its older trust tool back on a newer
