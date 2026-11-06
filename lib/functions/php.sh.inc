@@ -939,6 +939,28 @@ _php_ext_rc_skip() {
 }
 
 #
+# The configure word that gives a PHP 8.6 extension build the names PHP 8.6
+# removed (INI_STR, INI_BOOL, zval_dtor and the rest, as PHP 8.5 defined them;
+# aegir/conf/php/php86-compat.h): UploadProgress and YAML releases still call
+# them, and an 8.6 build of either without it loads only until one is called.
+# Empty for any other version, and when the header is not in the build tree.
+_php86_compat_flag() {
+  local _h="${_bldPth}/aegir/conf/php/php86-compat.h"
+  if [ "$1" = 86 ] && [ -f "${_h}" ]; then
+    echo "CPPFLAGS='-include ${_h}'"
+  fi
+}
+
+#
+# The build marker suffix of the extensions built with that header: their 8.6
+# builds made before it are built again once.
+_php86_compat_mark() {
+  if [ "$1" = 86 ]; then
+    echo "-c86"
+  fi
+}
+
+#
 # Check PHP Config.
 _php_config_check_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1381,14 +1403,14 @@ _install_php_extensions() {
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
       _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   else
@@ -1593,7 +1615,7 @@ _install_php_extensions() {
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
     fi
     _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
     _mrun "make --quiet install"
     ldconfig 2> /dev/null
@@ -1605,7 +1627,7 @@ _install_php_extensions() {
       elif [ "$1" = "70" ]; then
         touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
       else
-        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   fi
@@ -1781,21 +1803,21 @@ _php_extensions_update() {
   elif [ "$1" -gt 71 ]; then
     if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}" \
       && { [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
-      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; }; then
+      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log" ]; }; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
       _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   else
@@ -2057,21 +2079,21 @@ _php_extensions_update() {
   else
     if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}" \
       && { [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
-      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; }; then
+      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log" ]; }; then
       _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
       _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
         _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   fi
