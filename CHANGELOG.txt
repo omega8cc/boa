@@ -155,6 +155,13 @@
     * boa cleanup purge batch run again after a batch that stopped skips
       the accounts it purged already, instead of ending with an error.
 
+    * UploadProgress and YAML work on PHP 8.6: their releases still call
+      names PHP 8.6 removed from its headers (INI_STR, zval_dtor and others),
+      so their 8.6 builds failed at the first call to one, and UploadProgress
+      did not build at all on Excalibur. BOA now builds both for 8.6 with
+      those names defined as PHP 8.5 defined them. A box rebuilds them for
+      PHP 8.6 once, with its next barracuda upgrade.
+
     * After an Octopus install or upgrade on a server in AppArmor enforce
       mode, aa-status no longer counts a profile in complain mode until the
       next reboot or barracuda pass: the learning profile made for crontab
