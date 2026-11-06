@@ -4014,6 +4014,8 @@ for _f in /etc/boa/control/back-to-${_a}-*.chain.txt /var/log/boa/back-to-${_a}-
   [ -e "${_f}" ] && _c=YES
 done
 if [ -n "${_o}" ] && [ "${_c}" = YES ]; then
+  [ -f "./.secret.from-${_h}.txt" ] && [ ! -L "./.secret.from-${_h}.txt" ] \
+    && [ "$(md5sum < "./.secret.from-${_h}.txt")" = "${_n}" ] && { echo XMSEC-CURRENT; exit 0; }
   _put ".secret.from-${_h}.txt" && echo XMSEC-BESIDE || echo XMSEC-FAILED
   exit 0
 fi
