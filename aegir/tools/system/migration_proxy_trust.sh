@@ -164,30 +164,36 @@ _csf_reload() {
 }
 # With LFDSTART on, csf -r leaves the restart to lfd a few seconds later, and
 # while csf runs it the allow rules are gone: a peer's next connection, such as
-# a migration tool pushing the next account's record, is dropped. Wait until
-# lfd has taken the restart and csf has let go of its lock, 60 seconds at most.
-# lfd removes the restart file a moment before csf takes the lock, so the lock
-# is first waited for to be taken, 3 seconds at most.
+# a migration tool pushing the next account's record, is dropped. Wait while the
+# restart file waits for lfd (60 seconds at most: lfd may be busy with a restart
+# asked for before this one), then while the restart runs (60 seconds more), and
+# return once two reads half a second apart find none running. csf -ra restarts
+# in the foreground and leaves no file, so it waits for nothing here.
 _csf_restart_wait() {
-  local _i=0 _j=0
-  [ -e /var/lib/csf/csf.restart ] || return 0
+  local _i=0 _j=0 _q=0
+  [ -e /var/lib/csf/csf.restart ] || _csf_restarting || return 0
   while [ -e /var/lib/csf/csf.restart ] && [ "${_i}" -lt 120 ]; do
     sleep 0.5
     _i=$(( _i + 1 ))
   done
-  if [ ! -r /proc/locks ]; then
-    sleep 3
-    return 0
-  fi
-  while ! _csf_locked && [ "${_j}" -lt 6 ]; do
+  while [ "${_j}" -lt 120 ]; do
+    if _csf_restarting; then
+      _q=0
+    else
+      _q=$(( _q + 1 ))
+      [ "${_q}" -lt 2 ] || break
+    fi
     sleep 0.5
     _j=$(( _j + 1 ))
   done
-  while _csf_locked && [ "${_i}" -lt 120 ]; do
-    sleep 0.5
-    _i=$(( _i + 1 ))
-  done
   return 0
+}
+# Whether a csf restart runs: lfd titles itself "lfd - (re)starting csf..." from
+# before it starts csf until csf ends (csf's lock comes a moment later), or csf
+# holds its lock.
+_csf_restarting() {
+  pgrep -f '^lfd - \(re\)starting csf' > /dev/null 2>&1 && return 0
+  _csf_locked
 }
 # Whether csf holds its lock, read from /proc/locks and never by taking it: csf
 # takes the lock without waiting and gives up when it is held, and lfd does not
