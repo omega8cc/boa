@@ -9,6 +9,10 @@
   include <abstractions/base>
   include <abstractions/openssl>
   include <abstractions/fonts>
+  # Started outside PHP (root's shell or cron, su from root) it runs under this profile
+  # alone: a page by URL needs name lookups, sockets and the CA files
+  include <abstractions/nameservice>
+  include <abstractions/ssl_certs>
 
   # Deny capability sys_ptrace
   deny capability sys_ptrace,
@@ -28,7 +32,9 @@
   /usr/libexec/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
+  /usr/local/ssl/ r,
   /usr/local/ssl/** mr,
+  /usr/local/ssl3/ r,
   /usr/local/ssl3/** mr,
 
   # Allow to read and write in the web root directories
