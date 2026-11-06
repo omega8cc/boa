@@ -405,7 +405,8 @@ _set_cnf_key() {
 ### mount) or distribution (/opt/solrN -> /opt/solr-x.y.z) is resolved and
 ### both halves removed, but never a path outside the trees Solr owns. A
 ### DANGLING symlink resolves to nothing -- removing just the link is the
-### safe, correct action there, never a refusal.
+### safe, correct action there; a dangling home link is refused earlier, by
+### _refuse_kept, since a kept data tree may sit on the disk it points to.
 _remove_tree() {
   local _path="${1}" _rsv
   [ -e "${_path}" ] || [ -L "${_path}" ] || return 0
@@ -455,9 +456,20 @@ _refuse_kept() {
   local _sv="${1}" _k _r _n=0 _du _avail _room _rp _rb
   [ -n "${_V_HOME}" ] || return 0
   if [ -L "${_V_HOME}" ] && [ ! -e "${_V_HOME}" ]; then
-    _alrt "${_sv}: ${_V_HOME} is a link to $(readlink "${_V_HOME}" 2>/dev/null), which cannot be reached now --"
+    _alrt "${_sv}: ${_V_HOME} is a link to $(printf '%q' "$(readlink "${_V_HOME}" 2>/dev/null)"), which cannot be reached now --"
     _alrt "refusing to remove ${_sv}, --force or not; nothing changed: a data tree xmass restore-solr"
-    _alrt "kept there cannot be read. Mount what holds it, then re-run."
+    _alrt "kept there cannot be read. Mount what holds it, then re-run; only if it is gone for good:"
+    _alrt "  delete:  rm -f $(printf '%q' "${_V_HOME}")"
+    return 1
+  fi
+  ### 3: a home that is a mount point of its own (fstab names it) whose volume is
+  ### not mounted reads as an empty directory: refuse it as well
+  if [ -d "${_V_HOME}" ] && [ ! -L "${_V_HOME}" ] \
+    && awk -v h="${_V_HOME}" '$1 !~ /^#/ && $2 == h { f = 1 } END { exit !f }' /etc/fstab 2>/dev/null \
+    && ! mountpoint -q "${_V_HOME}" 2>/dev/null; then
+    _alrt "${_sv}: ${_V_HOME} is a mount point in /etc/fstab and its volume is not mounted --"
+    _alrt "refusing to remove ${_sv}, --force or not; nothing changed: a data tree xmass restore-solr"
+    _alrt "kept there cannot be read. Mount it, then re-run."
     return 1
   fi
   for _k in "${_V_HOME}"/data.xmass-landed-*; do
@@ -469,7 +481,7 @@ _refuse_kept() {
     fi
     _n=$((_n + 1))
     if [ ! -e "${_k}" ]; then
-      _alrt "  ${_k} (a link to $(readlink "${_k}" 2>/dev/null), which cannot be reached now)"
+      _alrt "  $(printf '%q' "${_k}") (a link to $(printf '%q' "$(readlink "${_k}" 2>/dev/null)"), which cannot be reached now)"
       _alrt "    mount what holds that tree, then re-run for its archive and delete; only if it is gone for good:"
       _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
       continue
@@ -477,10 +489,12 @@ _refuse_kept() {
     _r=$(readlink -f "${_k}" 2>/dev/null)
     _rp="${_r%/*}"
     _rb="${_r##*/}"
-    _du=$(du -sk "${_r}" 2>/dev/null | awk '{ print $1 }')
+    _du=$(du -sk "${_r}" 2>/dev/null | awk 'NR==1 { print $1 }')
     _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
+    case "${_du}" in ''|*[!0-9]*) _du="" ;; esac
+    case "${_avail}" in ''|*[!0-9]*) _avail="" ;; esac
     _room="${_du:-?}K data, ${_avail:-?}K free under ${_ARCH_DIR}"
-    _alrt "  ${_k}$( [ -L "${_k}" ] && echo " (a link to ${_r})" )"
+    _alrt "  $(printf '%q' "${_k}")$( [ -L "${_k}" ] && echo " (a link to $(printf '%q' "${_r}"))" )"
     if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -ge "$(( _du + 1048576 ))" ]; then
       _alrt "    archive: tar -czf $(printf '%q' "${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz") -C $(printf '%q %q' "${_rp:-/}" "${_rb:-.}")"
       _alrt "    room:    ${_room}"
@@ -493,7 +507,7 @@ _refuse_kept() {
       continue
     fi
     _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
-    _alrt "    the tree it reaches (${_r}) is the kept index: archive it, check it holds nothing else, and remove it by hand"
+    _alrt "    the tree it reaches ($(printf '%q' "${_r}")) is the kept index: archive it, check it holds nothing else, and remove it by hand"
   done
   [ "${_n}" -eq 0 ]
 }
@@ -582,8 +596,10 @@ _remove_one() {
   ### this can be wrong, the tarball is the undo.
   if [ "${_C_CORES}" -gt 0 ]; then
     _rsvdata=$(readlink -f "${_V_DATA}" 2>/dev/null)
-    _du=$(du -sk "${_rsvdata}" 2>/dev/null | awk '{ print $1 }')
+    _du=$(du -sk "${_rsvdata}" 2>/dev/null | awk 'NR==1 { print $1 }')
     _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
+    case "${_du}" in ''|*[!0-9]*) _du="" ;; esac
+    case "${_avail}" in ''|*[!0-9]*) _avail="" ;; esac
     if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -lt "$(( _du + 1048576 ))" ]; then
       _die "not enough space under ${_ARCH_DIR} to archive ${_rsvdata} (${_du}K data," \
            " ${_avail}K free). ${_sv} is now denied, stopped and deregistered but its" \
