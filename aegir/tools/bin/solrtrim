@@ -211,17 +211,21 @@ _collect_bindings() {
         | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
   ### An empty tally out of a broken alias parse is indistinguishable from
-  ### "no site uses Solr" — spot-verify one site alias before believing it.
-  ### Only a site alias carries site_path: a platform or server alias never
-  ### does, a link reads as nothing, and the list is not sorted by kind, so
-  ### the first alias of type site is the one checked. The type is matched
-  ### loosely, so a changed alias layout still trips the check. No site
-  ### alias at all leaves nothing to tally.
+  ### "no site uses Solr" — spot-verify one alias before believing it.
+  ### Only a site alias carries site_path, and the list is not sorted by
+  ### kind, so an alias that reads cleanly as a platform or server context
+  ### is passed over, and so are a link and anything that is not a regular
+  ### file, which the tally never reads either. The first other alias is
+  ### checked: one that reads as nothing, or in a layout this parse does not
+  ### know, warns like a site alias without site_path. Only platform and
+  ### server aliases leave nothing to tally.
   if [ -z "${_BINDRAW}" ]; then
     for _alias in "${_aliases[@]}"; do
-      _atext=$(_solr_read_file "${_alias}")
+      [ -L "${_alias}" ] && continue
+      [ -f "${_alias}" ] || continue
+      _atext=$(_solr_read_file "${_alias}" | tr -d '\000')
       printf '%s\n' "${_atext}" \
-        | grep -qE "'context_type'[[:space:]]*=>[[:space:]]*'site'" || continue
+        | grep -qE "'context_type' => '(platform|server)'" && continue
       _apath=$(printf '%s\n' "${_atext}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
       [ -z "${_apath}" ] \
         && _alrt "alias site_path parse failed on $(basename "${_alias}") -- binding tally unreliable, read as zero"

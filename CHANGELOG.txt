@@ -549,7 +549,9 @@
       warn that an alias could not be read ("alias site_path parse failed")
       when no site uses Solr and the first alias listed is a platform or
       server alias, or a link: only a site alias holds a site path. The check
-      now reads the first site alias, and stays silent where there is none.
+      now passes over platform and server aliases and links, and still warns
+      on the first other alias without a site path, so an alias that cannot
+      be read, or one in a layout it does not know, is still named.
 
     * A site disabled in the panel no longer fails a move's probes: its
       placeholder page is the same page as the catch-all they refuse, so
