@@ -888,9 +888,11 @@ _php_ini_drop_unbuilt_ext() {
   [ -x "/opt/php86/bin/php" ] || return 0
   # PHP names each module it could not load; its own words (paths, linker
   # errors) stay out of the log. A module whose dependency is left out is
-  # reported on the next try, hence the loop.
+  # reported on the next try, hence the loop. Every symbol is bound at load
+  # (LD_BIND_NOW): a module that needs a name this PHP removed loads lazily
+  # and kills the worker at its first call, so here it fails and is left out.
   for _try in 1 2 3; do
-    _out=$(/opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
+    _out=$(LD_BIND_NOW=1 /opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
       -d error_log=/dev/null -d display_errors=1 \
       -d display_startup_errors=1 -r '' 2>&1)
     _bad=$(echo "${_out}" | sed -n \
