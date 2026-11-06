@@ -261,7 +261,8 @@
       regardless, so a Drupal 6 core older than 6.45 died on ereg() every
       night: its open user registration was never switched to admin
       approval, and the account's report carried the Drush error. A site
-      whose PHP is the pinned one or newer still runs on the pinned one.
+      whose PHP is the pinned one or newer still runs on the pinned one, and
+      so does a site whose core cannot run on its PHP-FPM version.
 
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which

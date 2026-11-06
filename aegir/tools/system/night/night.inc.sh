@@ -911,7 +911,11 @@ _disable_chattr() {
 # Aegir tasks get, and when that one is older the line runs on it in the
 # pinned line's shape. Never a newer PHP than the pin; the pinned line
 # whenever websh gives no answer, or /bin/sh is not websh when it would be
-# asked (an Octopus pass switches it to dash).
+# asked (an Octopus pass switches it to dash). The probe stands for a Clone
+# or Migrate target check, so websh also judges the site's PHP-FPM version:
+# a site whose core cannot run on it (an old Drupal 6 or 7 core on PHP-FPM
+# 8.0 or newer) gets no answer and keeps the pin, while its own Verify still
+# runs on the older PHP.
 #
 # The two digits of the /opt/phpNN/bin/php that $1 resolves to; status 1,
 # and nothing, for any other binary.
