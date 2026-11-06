@@ -9444,6 +9444,11 @@ _if_proxysql_update() {
             fi
           fi
         fi
+        ### The mirror answers a missing file with a page: never run one
+        if [ -e "${_pNm}" ] && ! grep -q Vivaldi "${_pNm}"; then
+          rm -f ${_pNm}
+          _msg "WARN: ProxySQL Node Monitor not fetched from ${_urlHmr}"
+        fi
         ls -la ${_pNm}
         if [ -e "${_pNm}" ]; then
           chmod 755 ${_pNm}
@@ -9473,6 +9478,10 @@ _if_proxysql_update() {
               curl ${_crlGet} "${_tURL}" -o ${_pGc}
             fi
           fi
+        fi
+        if [ -e "${_pGc}" ] && ! grep -q Maestro "${_pGc}"; then
+          rm -f ${_pGc}
+          _msg "WARN: ProxySQL Galera Checker not fetched from ${_urlHmr}"
         fi
         ls -la ${_pGc}
 
