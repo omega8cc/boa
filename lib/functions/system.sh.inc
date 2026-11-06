@@ -8305,6 +8305,13 @@ _sync_apparmor_profiles() {
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
+      # Before the kernel has AppArmor no tool can set a mode, and the next boot
+      # loads these files as they stand: the FPM profiles alone ship with no mode,
+      # which is enforce. All go in complain mode until a pass loads the chosen one.
+      if [ "${_isAppArmOn}" != "Y" ]; then
+        sed -i 's/flags=(attach_disconnected)/flags=(attach_disconnected, complain)/' \
+          /etc/apparmor.d/opt.php*.sbin.php-fpm &> /dev/null
+      fi
     fi
     if [ ! -e "/root/.run-to-excalibur.cnf" ] \
       && [ ! -e "/root/.run-to-daedalus.cnf" ] \
@@ -8441,8 +8448,11 @@ _if_install_apparmor() {
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
+  # Also before the kernel has AppArmor: the boot that turns it on loads what the
+  # folder holds, and the packages' own profiles in enforce mode stop what BOA built
+  # differently (the unbound package's refuses BOA's unbound its OpenSSL).
+  _sync_apparmor_profiles
   if [ "${_isAppArmOn}" = "Y" ]; then
-    _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
   _aaOffInThisRun=NO
