@@ -8154,44 +8154,81 @@ _mig_render_table() {
   return 0
 }
 
-### Soonest certificate expiry across the account's proxy-served certs. The
-### proxy serves THIS box's certificates and proxied accounts stop renewing
-### (owl.sh and the fleet LE sweep both skip them). With the certificate
-### mirror present that date is only informational -- the mirror pulls each
-### renewed pair back from the target daily; without the mirror it is a real
-### service horizon, so its absence is the loud case.
+### The https.* vhost names in the current (real) vhost.d, one per line, as
+### the certificate mirror lists them: a parked .https.<site> is a dot file
+### and never listed, nor a name with a newline.
+_xoct_https_names_here() {
+  local _v
+  for _v in ./https.*; do
+    _v="${_v#./}"
+    case "${_v}" in *$'\n'*) continue ;; esac
+    [ -e "./${_v}" ] && printf '%s\n' "${_v}"
+  done
+}
+
+### Soonest certificate expiry across the certificates the account's HTTPS
+### proxy vhosts serve, the set the certificate mirror keeps: a vhost with
+### the proxy's mark and a proxy_pass. The proxy serves THIS box's
+### certificates and proxied accounts stop renewing (owl.sh and the fleet LE
+### sweep both skip them). With the mirror present that date is only
+### informational -- the mirror pulls each newer set back from the target
+### daily; without the mirror it is a real service horizon, so its absence is
+### the loud case. Nothing else in ssl.d is served through the proxy (.bak
+### folders, the default pair, sets no vhost serves, a parked site's set, a
+### retired name's 301), so none of it is read. A date already passed is
+### said so.
 _xoct_warn_proxy_cert_horizon() {
-  local _root="$1" _c _r _end _soon="" _soon_dom=""
-  for _c in "${_root}"/config/server_master/ssl.d/*/openssl.crt; do
+  local _root="$1" _vd _v _d _t _c _r _end _e _soon="" _soon_e="" _soon_dom="" _pt=""
+  _vd="${_root}/config/server_master/nginx/vhost.d"
+  while IFS= read -r _v; do
+    _d="${_v#https.}"
+    [[ "${_d}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] || continue
+    # vhost.d is the account's: read inside the real directory, never
+    # through a link.
+    _t="$(_xoct_read_in "${_vd}" "${_v}")"
+    grep -q "Secure HTTPS proxy for" <<< "${_t}" || continue
+    grep -q "proxy_pass" <<< "${_t}" || continue
+    # The file the proxy vhost serves. ssl.d is the account's too: the
+    # certificate is reached through the links the Let's Encrypt layout
+    # makes, resolved once, accepted only inside the account's own tree or
+    # store, and read inside that real directory, never into a FIFO.
+    _c="${_root}/config/server_master/ssl.d/${_d}/openssl_chain.crt"
     [ -e "${_c}" ] || continue
-    # ssl.d is the account's: the certificate is reached through the links
-    # the Let's Encrypt layout makes, resolved once, accepted only inside
-    # the account's own tree or store, and read inside that real directory,
-    # never into a FIFO.
     _r="$(readlink -f -- "${_c}" 2>/dev/null)"
     [ -n "${_r}" ] && _xoct_own_path "${_root##*/}" "${_r%/*}" || continue
     _end=$(_xoct_in_canon_dir "${_r%/*}" _xoct_read_here "${_r##*/}" \
       | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     [ -n "${_end}" ] || continue
-    _end=$(date -u -d "${_end}" '+%Y-%m-%d' 2>/dev/null)
-    [ -n "${_end}" ] || continue
-    if [ -z "${_soon}" ] || [[ "${_end}" < "${_soon}" ]]; then
-      _soon="${_end}"; _soon_dom="$(basename "$(dirname "${_c}")")"
+    _e=$(date -u -d "${_end}" '+%s' 2>/dev/null)
+    [[ "${_e}" =~ ^[0-9]+$ ]] || continue
+    if [ -z "${_soon_e}" ] || [ "${_e}" -lt "${_soon_e}" ]; then
+      _soon_e="${_e}"; _soon_dom="${_d}"
     fi
-  done
-  [ -n "${_soon}" ] || return 0
+  done < <(_xoct_in_real_dir "${_vd}" _xoct_https_names_here)
+  [ -n "${_soon_e}" ] || return 0
+  _soon=$(date -u -d "@${_soon_e}" '+%Y-%m-%d')
+  [ "${_soon_e}" -le "$(date -u '+%s')" ] && _pt=" has already PASSED"
   if [ -x "/var/xdrago/migration_proxy_certs.sh" ] \
     && grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
     echo "INFO: proxied certificates refresh daily from the target (migration_proxy_certs.sh);"
-    echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror renews it before that date"
+    if [ -n "${_pt}" ]; then
+      echo "INFO: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- the mirror replaces it only once the target holds a newer set"
+    else
+      echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror pulls each newer set from the target daily"
+    fi
   elif [ -x "/var/xdrago/migration_proxy_certs.sh" ]; then
     echo "ALRT: migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
-    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom}) -- add the daily 06:45 line"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt} -- add the daily 06:45 line"
     echo "ALRT: (a barracuda up-* run or the BOA fetch pass restores it) or the mirror never runs"
   else
-    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom}) and the certificate mirror"
-    echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- a long-lived proxy"
-    echo "ALRT: will serve expired certificates after that date. The mirror ships with the"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt} and the certificate mirror"
+    if [ -n "${_pt}" ]; then
+      echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- this proxy already"
+      echo "ALRT: serves an expired certificate. The mirror ships with the"
+    else
+      echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- a long-lived proxy"
+      echo "ALRT: will serve expired certificates after that date. The mirror ships with the"
+    fi
     echo "ALRT: current release: run 'barracuda up-<tree> system noscreen' here, or copy the"
     echo "ALRT: script from the target (it arrives there the same way)"
   fi
@@ -8972,9 +9009,6 @@ _xoct_proxy_preflight() {
   if [ "${_MIG_MODE}" = "ha-switch" ] && [ -n "${_MIG_DEADLINE}" ]; then
     echo "ALRT: ha-switch ignores the resolved deadline ${_MIG_DEADLINE}"
     _MIG_DEADLINE=""
-  fi
-  if [ "${_MIG_MODE}" != "temporary" ]; then
-    _xoct_warn_proxy_cert_horizon "${_USR}"
   fi
   if [ "${_MIG_MODE}" = "ha-switch" ]; then
     echo "ALRT: ha-switch: the client mail asserts a live mirror with automatic failover;"
@@ -10710,6 +10744,11 @@ _migrate_init() {
             echo "INFO: deferred, still local and held on 503 by the per-host gate:${_XOCT_PROXY_DEFERRED}"
             echo "INFO: once they are renamed on the new box, convert them with:"
             echo "INFO:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+          fi
+          ### The horizon reads the HTTPS proxy vhosts, so it is told once
+          ### this conversion has written them, never before.
+          if [ "${_MIG_MODE}" != "temporary" ]; then
+            _xoct_warn_proxy_cert_horizon "${_USR}"
           fi
           ###
           ### Every site on this account now answers from a proxy or redirect
