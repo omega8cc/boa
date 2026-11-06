@@ -6171,7 +6171,7 @@ _xmass_restore_heal_panels() {
 # here. $1 = the stamp, $2 = what went back as /var/lib/mysql, $3 and $4 the
 # lane's lists the record kept, $5 the active this box replicated from.
 _xmass_restore_target_finish() {
-  local _stamp="$1" _pre="$2" _act="${5:-}" _sro _svc _waited _a _rt
+  local _stamp="$1" _pre="$2" _act="${5:-}" _sro _svc _waited _a _rt _p
   if mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1; then
     _info "MySQL answers already (a watchdog started it)"
   else
@@ -6234,13 +6234,19 @@ _xmass_restore_target_finish() {
   _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
   _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
   # The init ended the relay this box ran through its active: the active no longer
-  # trusts it until the account is repaired.
+  # trusts it until the account is repaired. With no address of the active to
+  # read, each relaying account is named for a check.
   for _a in $(_mig_rec_list); do
     _rt="$(_mig_rec_text "${_a}")" || continue
     [ "$(_mig_txt_get "${_rt}" _MIG_ROLE)" = "source" ] || continue
-    [ -n "${_act}" ] && [ "$(_mig_txt_get "${_rt}" _MIG_PEER_IP)" = "${_act}" ] || continue
     _mig_is_proxied "${_a}" || continue
-    _alrt "  ${_a} relays to ${_act}, which stopped trusting this box at the init: xoct proxy ${_a} ${_act} --repair"
+    _p="$(_mig_txt_get "${_rt}" _MIG_PEER_IP)"
+    [ -n "${_p}" ] || continue
+    if [ -z "${_act}" ]; then
+      _alrt "  ${_a} relays to ${_p}; if that is this box's active, it stopped trusting this box at the init: xoct proxy ${_a} ${_p} --repair"
+    elif [ "${_p}" = "${_act}" ]; then
+      _alrt "  ${_a} relays to ${_act}, which stopped trusting this box at the init: xoct proxy ${_a} ${_act} --repair"
+    fi
   done
   return 0
 }
