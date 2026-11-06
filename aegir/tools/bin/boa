@@ -4081,6 +4081,21 @@ _octopus_cleanup() {
         IFS=$'\12'
         for p in $(cat /var/log/boa/.cleanup.detect.txt 2>&1);do
           _usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+          # one an earlier run purged to the end: its tree is gone, its stamp left;
+          # one whose purge stopped partway is said and counts as not purged
+          if [[ "${_usr_purge}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] && [ ! -e "/data/disk/${_usr_purge}" ] \
+            && [ ! -L "/data/disk/${_usr_purge}" ] && [ -d "/var/backups/zombie/purged/${_usr_purge}" ]; then
+            if [ -f "/var/backups/zombie/purged/${_usr_purge}/.purge.done" ] \
+              && [ ! -L "/var/backups/zombie/purged/${_usr_purge}/.purge.done" ]; then
+              echo "${_usr_purge} purged already, by an earlier run"
+            else
+              echo "OOPS.. ${_usr_purge}: an earlier purge stopped partway, or ran on tools from before"
+              echo "  the stamp (its tree is gone, no /var/backups/zombie/purged/${_usr_purge}/.purge.done):"
+              echo "  read what it left by hand"
+              _BRC=1
+            fi
+            continue
+          fi
           bash "$0" cleanup purge "${_usr_purge}" noscreen || _BRC=1
           wait
         done
@@ -4120,6 +4135,9 @@ _octopus_cleanup() {
         echo "Account to purge: ${_usEr}"
         echo
         mkdir -p ${_zombie_dir}
+        # the stamp a finished purge leaves (below): a batch run again reads it,
+        # and a purge of a later account of this name starts without one
+        rm -f -- "/var/backups/zombie/purged/${_usEr}/.purge.done"
         # Read while every record is in place: the root cnf is parked and
         # the alias and panel drushrc go with the tree further down.
         _purge_db_users_find "${_usEr}"
@@ -4610,6 +4628,7 @@ _octopus_cleanup() {
           echo "ALRT: config, but the next reload or restart will fail; fix this NOW:"
           nginx -t 2>&1 | head -3
         fi
+        date -u '+%F %T UTC' > "/var/backups/zombie/purged/${_usEr}/.purge.done"
         echo
         echo "Cleanup complete"
       else

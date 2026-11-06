@@ -1748,9 +1748,11 @@ _xmass_leg_refused() {
 ### Whether the resolved (canonical) path $2 belongs to the account $1: its
 ### own tree, or its own part of an attached store, <mount>/files/<oN>/, the
 ### layout migratefs relocates static/files to. Another account's tree or
-### store, and anything else a link can name, never passes.
+### store, and anything else a link can name, never passes. On a box whose
+### /mnt is a link, a path under the place it names is read as the same path
+### under /mnt (root's link, never one into / or /data).
 _xmass_own_path() {
-  local _a="${1}" _p="${2}" _t _r
+  local _a="${1}" _p="${2}" _t _r _m
   case "${_a}" in
     ''|.|..|*/*) return 1 ;;
   esac
@@ -1765,6 +1767,17 @@ _xmass_own_path() {
   if [ "${_t}" != "/${_a}" ]; then
     case "${_p}/" in
       "${_t}"/*) return 0 ;;
+    esac
+  fi
+  if [ -L /mnt ]; then
+    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    case "${_m}" in
+      ''|/|/mnt|/data|/data/*) ;;
+      *)
+        case "${_p}/" in
+          "${_m}"/?*) _p="/mnt${_p#"${_m}"}" ;;
+        esac
+        ;;
     esac
   fi
   case "${_p}" in
@@ -3966,8 +3979,11 @@ echo DB-OK" 2> /dev/null)
 ### when it never wrote a backup chain of the account (multiback's chain marker
 ### or archive log), and keeps it as .secret.txt.xmass_prev; with a chain, the
 ### carried one goes beside it as .secret.from-<this box>.txt and the run says
-### so. Read and written only inside a remote_backups that is root's alone, as
-### the backup tools do: the account owns the home around it. A restore window
+### so, a different one already there kept as .secret.from-<this box>.txt.<its
+### sum>. A copy that reads current gets its immutable flag again, as a pass cut
+### between the put and the flag leaves it. Read and written only inside a
+### remote_backups that is root's alone, as the backup tools do: the account
+### owns the home around it. A restore window
 ### (mybackup hands the file to the account for the run) skips one pass. Never
 ### fatal: the folder is the account's to break.
 _XMASS_SECRET_ROOT_ONLY='_ro() { local _s _u _g _m; _s="$(stat -c "%u %g %a" -- "${1}" 2> /dev/null)" || return 1; read -r _u _g _m <<< "${_s}"; [ "${_u}" = 0 ] || return 1; (( 0${_m} & 2 )) && return 1; (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1; return 0; }'
@@ -3993,6 +4009,7 @@ _put() {
 _o=""
 [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] && _o="$(md5sum < ./.secret.txt)"
 if [ "${_o}" = "${_n}" ]; then
+  chattr +i ./.secret.txt 2> /dev/null
   echo XMSEC-CURRENT
   exit 0
 fi
@@ -4001,7 +4018,18 @@ for _f in /etc/boa/control/back-to-${_a}-*.chain.txt /var/log/boa/back-to-${_a}-
   [ -e "${_f}" ] && _c=YES
 done
 if [ -n "${_o}" ] && [ "${_c}" = YES ]; then
-  _put ".secret.from-${_h}.txt" && echo XMSEC-BESIDE || echo XMSEC-FAILED
+  _f=".secret.from-${_h}.txt"
+  if [ -f "./${_f}" ] && [ ! -L "./${_f}" ]; then
+    if [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+      chattr +i "./${_f}" 2> /dev/null
+      echo XMSEC-CURRENT
+      exit 0
+    fi
+    # an earlier one may be the only key to archives already made: kept by its sum
+    _k="./${_f}.$(md5sum < "./${_f}" | cut -c1-8)"
+    [ -e "${_k}" ] || { cp -p -- "./${_f}" "${_k}" && chown 0:0 "${_k}" && chmod 600 "${_k}" && chattr +i "${_k}" 2> /dev/null; }
+  fi
+  _put "${_f}" && echo XMSEC-BESIDE || echo XMSEC-FAILED
   exit 0
 fi
 if [ -n "${_o}" ]; then
@@ -4056,6 +4084,80 @@ ${_XMASS_SECRET_SH}")'" 2> /dev/null)"
     *XMSEC-NOT-STANDBY*) _alrt "  ${_acct}: ${_t} holds no /root/.standby.cnf: its backup passphrase is not carried" ;;
     *XMSEC-NO-ACCOUNT*) _alrt "  ${_acct}: ${_t} holds no real /data/disk/${_acct}: its backup passphrase is not carried" ;;
     *) _alrt "  ${_acct}: its backup passphrase carry to ${_t} ended without an answer; the next pass tries again" ;;
+  esac
+  return 0
+}
+
+### This box's own off-site backup passphrase, /root/.remote_backups/.secret.txt
+### (root's, 0600 and immutable, minted once by dcysetup setup), encrypts its own
+### buckets, named for this host (back-to-global-, -data- and -custom-<host>-).
+### The standby keeps its own for buckets of its own name, so after a promotion
+### none of this box's archives could be decrypted there. Each pass puts this
+### box's beside the standby's, as .secret.from-<this host>.txt, root 0600 and
+### immutable, on stdin, never over the standby's own .secret.txt and never on a
+### command line or in a log; a different one already there (this box's name
+### re-used by a rebuild) is kept as .secret.from-<this host>.txt.<its sum>, as it
+### may be the only key to archives made before. Never fatal: the accounts
+### travel without it.
+_XMASS_ROOT_SECRET_SH='read -r _b || exit 0
+[ -e /root/.standby.cnf ] || { echo XMRSEC-NOT-STANDBY; exit 0; }
+case "${_h}" in ""|*[!a-zA-Z0-9-]*) echo XMRSEC-FAILED; exit 0 ;; esac
+[ -e /root/.remote_backups ] || [ -L /root/.remote_backups ] || mkdir -m 700 /root/.remote_backups
+cd -P -- /root/.remote_backups 2> /dev/null && [ "$(pwd -P)" = /root/.remote_backups ] \
+  && [ "$(stat -c %u -- .)" = 0 ] || { echo XMRSEC-NOT-ROOTS; exit 0; }
+_f=".secret.from-${_h}.txt"
+_n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
+if [ -f "./${_f}" ] && [ ! -L "./${_f}" ]; then
+  if [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+    chattr +i "./${_f}" 2> /dev/null
+    echo XMRSEC-CURRENT
+    exit 0
+  fi
+  # an earlier one may be the only key to archives already made: kept by its sum
+  _k="./${_f}.$(md5sum < "./${_f}" | cut -c1-8)"
+  [ -e "${_k}" ] || { cp -p -- "./${_f}" "${_k}" && chown 0:0 "${_k}" && chmod 600 "${_k}" && chattr +i "${_k}" 2> /dev/null; }
+fi
+_t="./.${_f}.put.$$"
+rm -f -- "${_t}"
+( umask 077; printf "%s" "${_b}" | base64 -d > "${_t}" ) && [ -s "${_t}" ] \
+  && chown 0:0 "${_t}" && chmod 600 "${_t}" || { rm -f -- "${_t}"; echo XMRSEC-FAILED; exit 0; }
+chattr -i "./${_f}" 2> /dev/null
+mv -f -T -- "${_t}" "./${_f}" || { rm -f -- "${_t}"; echo XMRSEC-FAILED; exit 0; }
+chattr +i "./${_f}" 2> /dev/null
+[ "$(md5sum < "./${_f}")" = "${_n}" ] && echo XMRSEC-PUT || echo XMRSEC-FAILED'
+_xmass_carry_root_backup_secret() {   # 1 = target
+  local _t="$1" _b _out _hd
+  # no off-site backups set up here: nothing to lose
+  [ -e /root/.remote_backups/.secret.txt ] || [ -L /root/.remote_backups/.secret.txt ] || return 0
+  _b="$(_xmass_in_real_dir /root/.remote_backups _xmass_rootread_here .secret.txt | base64 -w0)"
+  if [ -z "${_b}" ]; then
+    _xmass_warn_daily "rsecret" \
+      "  /root/.remote_backups/.secret.txt is not root's own regular file: this box's backup passphrase is NOT carried to ${_t}"
+    return 0
+  fi
+  # the host part of this box's bucket names, as multiback reads it
+  _hd="$(tr -d '[:space:]' 2> /dev/null < /etc/hostname)"
+  [ -n "${_hd}" ] || _hd="$(hostname -f 2> /dev/null)"
+  _hd="$(printf '%s' "${_hd}" | tr -cd 'a-zA-Z0-9.-' | tr . -)"
+  if [ -z "${_hd}" ]; then
+    _alrt "  this box's name could not be read: its own backup passphrase is not carried to ${_t}"
+    return 0
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    _info "  [DRY-PLAN] this box's own off-site backup passphrase placed on ${_t} as /root/.remote_backups/.secret.from-${_hd}.txt"
+    return 0
+  fi
+  _out="$(printf '%s\n' "${_b}" | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "_h='${_hd}' bash -c '$(_shq "${_XMASS_ROOT_SECRET_SH}")'" 2> /dev/null)"
+  case "${_out}" in
+    *XMRSEC-CURRENT*) : ;;
+    *XMRSEC-PUT*) _info "  this box's own off-site backup passphrase placed on ${_t} as /root/.remote_backups/.secret.from-${_hd}.txt" ;;
+    *XMRSEC-NOT-STANDBY*) _alrt "  ${_t} holds no /root/.standby.cnf: this box's own backup passphrase is not carried" ;;
+    *XMRSEC-NOT-ROOTS*)
+      _xmass_warn_daily "rsecret_t" \
+        "  /root/.remote_backups on ${_t} is not root's real directory: this box's own backup passphrase is NOT carried"
+      ;;
+    *) _alrt "  this box's own backup passphrase carry to ${_t} ended without an answer; the next pass tries again" ;;
   esac
   return 0
 }
@@ -5924,11 +6026,27 @@ _xmass_regen_solr_initd() {
 ### The database broker switches go back with the data directory parked at
 ### stamp $1: the ones the live passes carried leave (they name the source's
 ### accounts against a data directory that never had them), and the ones
-### init parked there return. An init by older bytes parked none.
+### init parked there return. An init by older bytes parked none. $2 names the
+### accounts whose switch was parked, as the run's record kept them before
+### anything moved: a regular file of one of them is never removed, so a run
+### cut short here and run again loses none it put back.
+_xmass_broker_parked() {   # 1 = stamp: the accounts whose switch init parked
+  local _f _a _o=""
+  for _f in "/data/conf/.xmass_pre_${1}.db_broker"/*_db_broker.txt; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _a="${_f##*/}"
+    _a="${_a%_db_broker.txt}"
+    _mig_valid_acct "${_a}" && _o="${_o} ${_a}"
+  done
+  printf '%s' "${_o# }"
+}
 _xmass_unpark_db_broker() {
-  local _ts="$1" _f _p="/data/conf/.xmass_pre_${1}.db_broker"
+  local _ts="$1" _keep="$2" _f _a _p="/data/conf/.xmass_pre_${1}.db_broker"
   for _f in /data/conf/*_db_broker.txt; do
     [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    _a="${_f##*/}"
+    _a="${_a%_db_broker.txt}"
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] && _xmass_word_in "${_a}" "${_keep}" && continue
     rm -f "${_f}" || _alrt "  could not remove ${_f}: remove it by hand"
   done
   [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
@@ -6055,12 +6173,12 @@ _xmass_restore_laid_accounts() {
   _alrt "  If it does not, copy out what you need first: a purge removes these files"
 }
 
-# What a live restore-target run leaves for a run that stopped after the standby
-# marker went (at MySQL's start, or its first answer): the parked directory it
-# put back, that directory's identity, the accounts the lane laid here and the
-# active it replicated from, so a run again finishes the restore from MySQL's
-# start. Root's, 0600, read as lines, never sourced; written before anything
-# changes and removed at the end.
+# What a live restore-target run leaves for a run that stopped before its end:
+# the parked directory it puts back, that directory's identity, the accounts
+# whose database broker switch init parked beside it, the accounts the lane laid
+# here and the active it replicated from, so a run again finishes the restore
+# from where the stopped one got to. Root's, 0600, read as lines, never sourced;
+# written before anything changes and removed at the end.
 _XMASS_RESTORE_REC="/etc/boa/control/xmass-restore-target.rec"
 _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going back  3 = the active
   local _id _t="${_XMASS_RESTORE_REC}.put.$$"
@@ -6069,8 +6187,9 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
   mkdir -p "${_XMASS_RESTORE_REC%/*}" || return 1
   rm -f -- "${_t}"
   if ( umask 077
-    printf '%s\n' "# Put by xmass restore-target --live: a run again with no standby marker finishes from MySQL's start." \
+    printf '%s\n' "# Put by xmass restore-target --live: a run again finishes from where this one stopped." \
       "_XMASS_RESTORE_STAMP=${1}" "_XMASS_RESTORE_PRE=${2}" "_XMASS_RESTORE_DATADIR=${_id}" \
+      "_XMASS_RESTORE_BROKER_KEEP=$(_xmass_broker_parked "${2#/var/lib/mysql.xmass_pre_}")" \
       "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" \
       "_XMASS_RESTORE_ACTIVE=${3:-}" > "${_t}" ) \
     && mv -f -T -- "${_t}" "${_XMASS_RESTORE_REC}"; then
@@ -6081,26 +6200,45 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
 }
 # Status 0, with _XMASS_RESTORE_* set, when the record's run is the one to
 # finish: its replica copy is aside and /var/lib/mysql is the very directory it
-# put back (a later init or promotion puts another there).
+# puts back (a later init or promotion puts another there): _XMASS_RESTORE_AT
+# is swapped. With $1 = swap (the standby marker still there) it is also the
+# one when /var/lib/mysql is gone and that directory still waits at its parked
+# name: _XMASS_RESTORE_AT is putback.
 _xmass_restore_rec_read() {
-  local _r _s _id _l _w _a
+  local _r _s _id _l _w _a _p
   [ -f "${_XMASS_RESTORE_REC}" ] && [ ! -L "${_XMASS_RESTORE_REC}" ] || return 1
   _r="$( cd -P -- "${_XMASS_RESTORE_REC%/*}" 2> /dev/null && _xmass_rootread_here "${_XMASS_RESTORE_REC##*/}" )" || return 1
   _s="$(_xmass_kv "${_r}" _XMASS_RESTORE_STAMP)"
   _id="$(_xmass_kv "${_r}" _XMASS_RESTORE_DATADIR)"
+  _p="$(_xmass_kv "${_r}" _XMASS_RESTORE_PRE)"
   [[ "${_s}" =~ ^[0-9]{14}$ ]] && [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
-  [ -d "/var/lib/mysql.xmass_standby_${_s}" ] && [ -d /var/lib/mysql ] && [ ! -L /var/lib/mysql ] || return 1
-  [ "$(stat -c '%i:%W' /var/lib/mysql 2> /dev/null)" = "${_id}" ] || return 1
+  [[ "${_p}" =~ ^/var/lib/mysql\.xmass_pre_[0-9]{14}$ ]] || return 1
+  [ -d "/var/lib/mysql.xmass_standby_${_s}" ] && [ ! -L "/var/lib/mysql.xmass_standby_${_s}" ] || return 1
+  if [ -d /var/lib/mysql ] && [ ! -L /var/lib/mysql ] \
+    && [ "$(stat -c '%i:%W' /var/lib/mysql 2> /dev/null)" = "${_id}" ]; then
+    _XMASS_RESTORE_AT=swapped
+  elif [ "${1:-}" = "swap" ] && [ ! -e /var/lib/mysql ] && [ ! -L /var/lib/mysql ] \
+    && [ -d "${_p}" ] && [ ! -L "${_p}" ] && [ "$(stat -c '%i:%W' -- "${_p}" 2> /dev/null)" = "${_id}" ]; then
+    _XMASS_RESTORE_AT=putback
+  else
+    return 1
+  fi
   _XMASS_RESTORE_STAMP="${_s}"
-  _XMASS_RESTORE_PRE="$(_xmass_kv "${_r}" _XMASS_RESTORE_PRE | tr -cd 'a-zA-Z0-9/._-')"
+  _XMASS_RESTORE_PRE="${_p}"
   _XMASS_RESTORE_ACTIVE="$(_xmass_kv "${_r}" _XMASS_RESTORE_ACTIVE)"
   _mig_quad "${_XMASS_RESTORE_ACTIVE}" || _XMASS_RESTORE_ACTIVE=""
-  for _l in ALL HALF; do
+  # a record by older bytes names no broker switches: unknown, not none
+  _XMASS_RESTORE_KEEP_KNOWN=NO
+  _XMASS_RESTORE_BROKER_KEEP=""
+  if printf '%s\n' "${_r}" | grep -q '^_XMASS_RESTORE_BROKER_KEEP='; then
+    _XMASS_RESTORE_KEEP_KNOWN=YES
+  fi
+  for _l in LANE_ALL LANE_HALF BROKER_KEEP; do
     _a=""
-    for _w in $(_xmass_kv "${_r}" "_XMASS_RESTORE_LANE_${_l}"); do
+    for _w in $(_xmass_kv "${_r}" "_XMASS_RESTORE_${_l}"); do
       _mig_valid_acct "${_w}" && _a="${_a} ${_w}"
     done
-    printf -v "_XMASS_RESTORE_LANE_${_l}" '%s' "${_a# }"
+    printf -v "_XMASS_RESTORE_${_l}" '%s' "${_a# }"
   done
   return 0
 }
@@ -6251,13 +6389,89 @@ _xmass_restore_target_finish() {
   return 0
 }
 
+# The data directory swap from the parked directory's return to the standby
+# marker's rm, then the rest. $1 = the stamp, $2 = the parked directory going
+# back, $3 = putback while it waits at its parked name or swapped once it is
+# /var/lib/mysql; $4 = the accounts whose broker switch init parked, $5 = NO
+# when a record by older bytes did not name them; $6 and $7 the lane's lists,
+# $8 the active this box replicated from.
+# Each step finds what a stopped run left and takes it from there, so a run
+# again from the record repeats none of them wrongly.
+_xmass_restore_target_swap() {
+  local _stamp="$1" _pre="$2" _at="$3" _keep="$4" _known="$5" _ts _cnf _d _inc_dir _p _f
+  _ts="${_pre#/var/lib/mysql.xmass_pre_}"
+  for _cnf in /root/.my.cnf /root/.my.pass.txt; do
+    [ -e "${_cnf}.xmass_pre_${_ts}" ] \
+      || _die "no parked credential file ${_cnf}.xmass_pre_${_ts} beside ${_pre}: the parked data directory" \
+              " cannot be opened without it -- put it back by hand, then run 'xmass restore-target --live' again"
+  done
+  if [ "${_at}" = "putback" ]; then
+    mv -f "${_pre}" /var/lib/mysql \
+      || _die "could not put ${_pre} back as /var/lib/mysql (the replica copy is at /var/lib/mysql.xmass_standby_${_stamp})"
+  fi
+  for _cnf in /root/.my.cnf /root/.my.pass.txt; do
+    cp -a "${_cnf}.xmass_pre_${_ts}" "${_cnf}" && chmod 600 "${_cnf}"
+  done
+  if [ "${_known}" = "YES" ]; then
+    _xmass_unpark_db_broker "${_ts}" "${_keep}"
+  else
+    # a record by older bytes names no list: a switch the stopped run had put back
+    # cannot be told from a carried one, so none is removed; any still parked goes
+    # back over a carried one of its name
+    _p="/data/conf/.xmass_pre_${_ts}.db_broker"
+    if [ -d "${_p}" ] && [ ! -L "${_p}" ]; then
+      for _f in "${_p}"/*_db_broker.txt; do
+        [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+        mv -f "${_f}" /data/conf/ || _alrt "  could not put ${_f} back in /data/conf: move it by hand"
+      done
+      rmdir "${_p}" 2> /dev/null
+    fi
+    _alrt "  a record by older bytes names no parked database broker switch: the switches in /data/conf"
+    _alrt "  are left as they are, any still parked put back -- read them by hand"
+  fi
+  # The standby hold: the cnf block init wrote (super_read_only at every
+  # start) goes before the restart, exactly as the init unwind strips it.
+  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+    /etc/mysql/mysql.conf.d /etc/mysql; do
+    [ -n "${_d}" ] || continue
+    _cnf="${_d}/xmass_gtid.cnf"
+    if [ -r "${_cnf}" ] && grep -q "xmass-standby-hold" "${_cnf}"; then
+      sed -i '/xmass-standby-hold/,+2d' "${_cnf}"
+    fi
+  done
+  _xmass_restore_drop_a2b_holds
+  # The web and FTPS "was held" breadcrumbs go with the marker: this box is
+  # being handed back as a normal box, and the watchdog reads them whenever
+  # the marker is absent. The DROP chain goes FIRST, in the same step: the
+  # breadcrumb and the marker are the only two keys nginx.sh's teardown reads,
+  # and removing both without flushing the chain would leave this "plain BOA
+  # box" dropping all inbound 80/443 with nothing able to open it again.
+  bash -c "${_XMASS_FW_WEB_RELEASE}"
+  rm -f /root/.standby.cnf /root/.standby.prep.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
+    /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid \
+    /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
+    /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
+  # And once more AFTER the rm: the watchdog re-asserts the chain on every
+  # pass while the marker is present, so a pass landing between the flush
+  # above and the rm would have recreated the chain and re-touched the key
+  # the rm then took. After the rm nothing can assert, so this one is final.
+  bash -c "${_XMASS_FW_WEB_RELEASE}"
+  _xmass_restore_target_finish "${_stamp}" "${_pre}" "${6:-}" "${7:-}" "${8:-}"
+}
+
 _xmass_restore_target() {
-  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _resume=NO _act=""
+  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _resume=NO _act=""
   if [ ! -e /root/.standby.cnf ]; then
     _xmass_restore_rec_read \
       || _die "this box carries no standby marker (/root/.standby.cnf): nothing to restore --" \
               " restore-target serves a target xmass init made a standby and that was never promoted"
     _resume=YES
+  elif _xmass_restore_rec_read swap; then
+    # the marker stands and the record's directory is back or on its way
+    _resume=SWAP
   fi
   for _mk in /run/boa_xmass_init.pid /root/.standby.init.pid; do
     [ -e "${_mk}" ] && _die "a migration window is in flight here (${_mk}); wait for it to close, or unwind the init on the source"
@@ -6301,7 +6515,34 @@ _xmass_restore_target() {
       "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}" "${_XMASS_RESTORE_ACTIVE}"
     return 0
   fi
+  if [ "${_resume}" = "SWAP" ]; then
+    _info "restore-target on $(hostname -f): the live run of ${_XMASS_RESTORE_STAMP} stopped during its data directory swap,"
+    if [ "${_XMASS_RESTORE_AT}" = "putback" ]; then
+      _info "  with the replica's directory aside as /var/lib/mysql.xmass_standby_${_XMASS_RESTORE_STAMP} and ${_XMASS_RESTORE_PRE}"
+      _info "  not yet back: this run puts it back as /var/lib/mysql and goes on from there"
+    else
+      _info "  after ${_XMASS_RESTORE_PRE} went back as /var/lib/mysql: this run goes on from there"
+    fi
+    _info "  (the parked credentials, the database broker switches, the standby hold and every marker, then"
+    _info "  MySQL's start, super_read_only cleared, Solr re-armed, cron started)"
+    [ -z "${_XMASS_RESTORE_LANE_ALL}" ] \
+      || _info "  each account --fix-accounts laid here (${_XMASS_RESTORE_LANE_ALL}) marked CANCELLED unless the restored data directory holds its database"
+    _xmass_restore_lane_lists "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}"
+    _xmass_restore_heal_panels DRY
+    if [ "${_live}" != "YES" ]; then
+      _info "DRY RUN -- nothing changed. Re-run with --live to finish it."
+      return 0
+    fi
+    _xmass_restore_target_swap "${_XMASS_RESTORE_STAMP}" "${_XMASS_RESTORE_PRE}" "${_XMASS_RESTORE_AT}" \
+      "${_XMASS_RESTORE_BROKER_KEEP}" "${_XMASS_RESTORE_KEEP_KNOWN}" \
+      "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}" "${_XMASS_RESTORE_ACTIVE}"
+    return 0
+  fi
   _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
+  if [ -z "${_pre}" ] && [ -e "${_XMASS_RESTORE_REC}" ]; then
+    _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box, and the record of a run" \
+         " that stopped (${_XMASS_RESTORE_REC}) names a data directory that is not at /var/lib/mysql: read both by hand"
+  fi
   [ -n "${_pre}" ] || _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box"
   _ts="${_pre#/var/lib/mysql.xmass_pre_}"
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
@@ -6341,43 +6582,8 @@ _xmass_restore_target() {
   /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
   mv -f /var/lib/mysql "/var/lib/mysql.xmass_standby_${_stamp}" \
     || _die "could not move the replica data directory aside"
-  mv -f "${_pre}" /var/lib/mysql \
-    || _die "could not put ${_pre} back as /var/lib/mysql (the replica copy is at /var/lib/mysql.xmass_standby_${_stamp})"
-  for _cnf in /root/.my.cnf /root/.my.pass.txt; do
-    cp -a "${_cnf}.xmass_pre_${_ts}" "${_cnf}" && chmod 600 "${_cnf}"
-  done
-  _xmass_unpark_db_broker "${_ts}"
-  # The standby hold: the cnf block init wrote (super_read_only at every
-  # start) goes before the restart, exactly as the init unwind strips it.
-  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
-    | head -1 \
-    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
-  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
-    /etc/mysql/mysql.conf.d /etc/mysql; do
-    [ -n "${_d}" ] || continue
-    _cnf="${_d}/xmass_gtid.cnf"
-    if [ -r "${_cnf}" ] && grep -q "xmass-standby-hold" "${_cnf}"; then
-      sed -i '/xmass-standby-hold/,+2d' "${_cnf}"
-    fi
-  done
-  _xmass_restore_drop_a2b_holds
-  # The web and FTPS "was held" breadcrumbs go with the marker: this box is
-  # being handed back as a normal box, and the watchdog reads them whenever
-  # the marker is absent. The DROP chain goes FIRST, in the same step: the
-  # breadcrumb and the marker are the only two keys nginx.sh's teardown reads,
-  # and removing both without flushing the chain would leave this "plain BOA
-  # box" dropping all inbound 80/443 with nothing able to open it again.
-  bash -c "${_XMASS_FW_WEB_RELEASE}"
-  rm -f /root/.standby.cnf /root/.standby.prep.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
-    /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid \
-    /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
-    /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
-  # And once more AFTER the rm: the watchdog re-asserts the chain on every
-  # pass while the marker is present, so a pass landing between the flush
-  # above and the rm would have recreated the chain and re-touched the key
-  # the rm then took. After the rm nothing can assert, so this one is final.
-  bash -c "${_XMASS_FW_WEB_RELEASE}"
-  _xmass_restore_target_finish "${_stamp}" "${_pre}" "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }" "${_act}"
+  _xmass_restore_target_swap "${_stamp}" "${_pre}" putback "$(_xmass_broker_parked "${_ts}")" YES \
+    "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }" "${_act}"
   return 0
 }
 
@@ -9504,6 +9710,8 @@ _xmass_sync_shared() {
   _xmass_carry_a2b_hold "${_tgt}"
   # So do the database broker switches of the accounts it does not carry.
   _xmass_sweep_db_broker "${_tgt}"
+  # And this box's own off-site backup passphrase, beside the standby's.
+  _xmass_carry_root_backup_secret "${_tgt}"
   # trust-creators for a pair built before the line: the mirror, then here.
   if [ "${_MODE}" = "LIVE" ]; then
     _xmass_auto_assert_standby
@@ -14443,7 +14651,7 @@ REMOTE
 # panel got: panel-begun before its first leg, panel-done once it names this box.
 _xmass_lay_account() {
   local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _sp _pl _pn _tn _out
-  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt" _run
+  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt" _run _rl
   [[ "${_t}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && _tip="${_t}"
   # read again: the shared legs before this took their time, the account can
   # write the alias, and its panel can have moved
@@ -14480,9 +14688,13 @@ _xmass_lay_account() {
       return 1
       ;;
   esac
-  # a mark that outlived its panel (the account retired here since) says nothing
+  # a mark that outlived its panel (the account retired here since) says nothing;
+  # the return lane's own line stays, as its re-run reads it
   if [[ "${_have}" == *panel-* ]] && [[ "${_have}" != *XMHAVE* ]]; then
-    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "date -u '+%F %T UTC' > ${_mk}" 2> /dev/null; then
+    _rl="NO"
+    [ "${_XMASS_RETURNING:-}" = "YES" ] && _rl="YES"
+    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "{ date -u '+%F %T UTC'; if [ ${_rl} = YES ]; then echo returning; fi; } > ${_mk}" 2> /dev/null; then
       _alrt "  ${_oct}: ${_t} did not answer: not laid"
       return 1
     fi
@@ -14736,9 +14948,16 @@ echo XMRET-END' 2> /dev/null)"
 # cutover's order on its target: the panel rewired from this box's name ($3) to
 # the panel database there, its 503 gate lifted, renamed, read back as naming
 # that box ($4), its dispatcher back, nginx made to serve it, its held upgrade
-# armed. The mark goes last. Each step converges, so a re-run repeats it.
+# armed. The mark goes last. Each step converges, so a re-run repeats it. The
+# mark says ending before the first of them: from then on the account serves
+# there, and a re-run runs these steps alone, never a copy from this box.
 _xmass_return_account_end() {
   local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _out _rc _l
+  if ! ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "grep -sqx ending /root/.${_oct}.fix-accounts.txt || echo ending >> /root/.${_oct}.fix-accounts.txt" 2> /dev/null; then
+    _alrt "  ${_oct}: ${_t} did not answer: its last steps did not begin"
+    return 1
+  fi
   _out="$(_xmass_panel_rewire_sh | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "bash -s -- '${_r}' '${_sf}'" 2>&1)"
   _rc=$?
   while IFS= read -r _l; do
@@ -14818,7 +15037,7 @@ REMOTE
 # The lane toward this box's promoted mirror $1, for the accounts
 # --return-accounts names.
 _xmass_return_accounts() {
-  local _t="$1" _all _oct _sf _tf _left="" _ok="" _want="" _has="" _out
+  local _t="$1" _all _oct _sf _tf _left="" _ok="" _want="" _has="" _done="" _out
   _xmass_load_state
   if [ "${_XMASS_PHASE}" != "syncing" ] || [ "${_XMASS_TARGET_IP}" != "${_t}" ]; then
     _die "this box's record names ${_XMASS_TARGET_IP:-no mirror} in phase ${_XMASS_PHASE:-none}, not ${_t}:" \
@@ -14838,7 +15057,15 @@ _xmass_return_accounts() {
     || _die "could not read account(s) ${_XMASS_ACCT_NOANS} on ${_t}: it did not answer; nothing laid"
   for _oct in ${_XMASS_RETURN_ACCOUNTS}; do
     _xmass_word_in "${_oct}" "${_want}" && continue
+    _xmass_word_in "${_oct}" "${_done}" && continue
     if ! _xmass_word_in "${_oct}" "${_XMASS_ACCT_NOCOPY}"; then
+      # one this lane brought back whole, in a run that stopped on another
+      if ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+        "[ ! -e /root/.${_oct}.fix-accounts.txt ] && head -n 1 /root/.${_oct}.migration-create.txt" 2> /dev/null \
+        | grep -q '^# Put by xmass prep-target --return-accounts:'; then
+        _done="${_done} ${_oct}"
+        continue
+      fi
       _has="${_has} ${_oct}"
       continue
     fi
@@ -14855,7 +15082,12 @@ _xmass_return_accounts() {
   done
   [ -z "${_has}" ] \
     || _die "${_t} already holds account(s)${_has}: only an account it has no copy of comes back; nothing laid"
+  [ -z "${_done}" ] || _info "Account(s) an earlier run brought back to ${_t} whole:${_done}"
   _want="${_want# }"
+  if [ -z "${_want}" ]; then
+    _info "Nothing left to bring back to ${_t}"
+    return 0
+  fi
   _info "Account(s) coming back to ${_t}: ${_want}"
   _xmass_assert_same_release "${_t}"
   _xmass_resolve_target_mnt "${_t}"
@@ -14902,11 +15134,26 @@ _xmass_return_accounts() {
       _XMASS_STORE_RC=0
       _XMASS_CNF_RC=0
       _XMASS_RSYNC_RC=0
-      if ! _XMASS_RETURNING=YES _xmass_lay_account "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
-        _left="${_left} ${_oct}"
-      elif ! _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
-        _left="${_left} ${_oct}"
-      fi
+      _out="$(ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+        "if grep -sqx ending /root/.${_oct}.fix-accounts.txt; then echo XMRET-ENDING; else echo XMRET-LAY; fi" 2> /dev/null)"
+      case "${_out}" in
+        *XMRET-ENDING*)
+          # a run that stopped had begun its last steps: the account serves there
+          _info "  ${_oct}: a stopped run began its last steps on ${_t}: they run again, nothing is copied from here"
+          _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}" || _left="${_left} ${_oct}"
+          ;;
+        *XMRET-LAY*)
+          if ! _XMASS_RETURNING=YES _xmass_lay_account "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
+            _left="${_left} ${_oct}"
+          elif ! _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
+            _left="${_left} ${_oct}"
+          fi
+          ;;
+        *)
+          _alrt "  ${_oct}: ${_t} did not answer: not laid"
+          _left="${_left} ${_oct}"
+          ;;
+      esac
     done
   fi
   _ELIGIBLE_ACCOUNTS="${_all}"

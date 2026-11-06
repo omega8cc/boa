@@ -888,9 +888,11 @@ _php_ini_drop_unbuilt_ext() {
   [ -x "/opt/php86/bin/php" ] || return 0
   # PHP names each module it could not load; its own words (paths, linker
   # errors) stay out of the log. A module whose dependency is left out is
-  # reported on the next try, hence the loop.
+  # reported on the next try, hence the loop. Every symbol is bound at load
+  # (LD_BIND_NOW): a module that needs a name this PHP removed loads lazily
+  # and kills the worker at its first call, so here it fails and is left out.
   for _try in 1 2 3; do
-    _out=$(/opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
+    _out=$(LD_BIND_NOW=1 /opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
       -d error_log=/dev/null -d display_errors=1 \
       -d display_startup_errors=1 -r '' 2>&1)
     _bad=$(echo "${_out}" | sed -n \
@@ -936,6 +938,45 @@ _php_ext_rc_skip() {
   _php86_note_once "$2" \
     "$3 is not built for PHP ${_T_PHP_VRN:-${_PHP86_VRN}}: not shown to build against it yet"
   return 0
+}
+
+#
+# The configure word that gives a PHP 8.6 extension build the names PHP 8.6
+# removed (INI_STR, INI_BOOL, zval_dtor and the rest, as PHP 8.5 defined them;
+# aegir/conf/php/php86-compat.h): UploadProgress and YAML releases still call
+# them, and an 8.6 build of either without it loads only until one is called.
+# Empty for any other version, and when the header is not in the build tree.
+_php86_compat_flag() {
+  local _h="${_bldPth}/aegir/conf/php/php86-compat.h"
+  if [ "$1" = 86 ] && [ -f "${_h}" ]; then
+    echo "CPPFLAGS='-include ${_h}'"
+  fi
+}
+
+#
+# The build marker suffix of the extensions built with that header: their 8.6
+# builds made before it are built again once.
+_php86_compat_mark() {
+  if [ "$1" = 86 ]; then
+    echo "-c86"
+  fi
+}
+
+#
+# An 8.6 build of these extensions counts only when it wrote the module: the
+# success check asks only whether the .so is there, and a module left from
+# before (one built without the header fails at the first call) would be taken
+# for the new build and marked done. _php86_compat_ref marks the build's start;
+# _php86_compat_fresh is true for any other version, and for 8.6 when the
+# module is newer than that mark. A failed build keeps the module there and
+# writes no marker, so a later pass builds it again.
+_php86_compat_ref() {
+  if [ "$1" = 86 ]; then
+    touch "${_pthLog}/.php86-compat-build.ref"
+  fi
+}
+_php86_compat_fresh() {
+  [ "$1" != 86 ] || [ "$2" -nt "${_pthLog}/.php86-compat-build.ref" ]
 }
 
 #
@@ -1253,7 +1294,9 @@ _install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_SIX}"
+  elif [ "$1" = "85" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
@@ -1291,7 +1334,10 @@ _install_php_extensions() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_EIGHT_SIX_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
+  elif [ "$1" = "85" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
@@ -1375,15 +1421,17 @@ _install_php_extensions() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _php86_compat_ref "$1"
       _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+        || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/uploadprogress.so"; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   else
@@ -1587,12 +1635,14 @@ _install_php_extensions() {
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
     fi
+    _php86_compat_ref "$1"
     _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
     _mrun "make --quiet install"
     ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/yaml.so"; then
       _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
     else
       if [ "$1" = "56" ]; then
@@ -1600,7 +1650,7 @@ _install_php_extensions() {
       elif [ "$1" = "70" ]; then
         touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
       else
-        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   fi
@@ -1642,7 +1692,9 @@ _php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_SIX}"
+  elif [ "$1" = "85" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
@@ -1683,7 +1735,10 @@ _php_extensions_update() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_EIGHT_SIX_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
+  elif [ "$1" = "85" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
@@ -1771,21 +1826,23 @@ _php_extensions_update() {
   elif [ "$1" -gt 71 ]; then
     if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}" \
       && { [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
-      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; }; then
+      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log" ]; }; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _php86_compat_ref "$1"
       _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+        || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/uploadprogress.so"; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   else
@@ -2047,21 +2104,23 @@ _php_extensions_update() {
   else
     if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}" \
       && { [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
-      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; }; then
+      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log" ]; }; then
       _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
+      _php86_compat_ref "$1"
       _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+        || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/yaml.so"; then
         _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
-        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
       fi
     fi
   fi
@@ -2293,7 +2352,14 @@ _install_php_multi_src() {
   fi
   cd /var/opt
   rm -rf php*
-  _get_dev_src "php-${_PHP_VERSION}.tar.bz2"
+  # No sources, no build: configuring in /var/opt would only fail later with
+  # errors that name another cause; the caller says the build failed and the
+  # installed one keeps serving.
+  if ! _get_dev_src "php-${_PHP_VERSION}.tar.bz2" \
+    || [ ! -d "/var/opt/php-${_PHP_VERSION}" ]; then
+    _msg "WARN: PHP ${_PHP_VERSION} sources not fetched or not unpacked, not built"
+    return 1
+  fi
   _msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   if [ "${_OS_CODE}" = "stretch" ] \
