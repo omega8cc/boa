@@ -4120,7 +4120,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               ### exist" post-check: the site has SSL material but never went
               ### through hosting_le's symlink pass, so no HTTPS proxy vhost
               ### can be written. Count and name it -- the operator must see
-              ### this in the conversion output, not discover dead 443 later.
+              ### this in the conversion output, not discover later that 443
+              ### answers on the box's wildcard certificate.
               ### Name the file(s) actually missing: with the gate widened, a
               ### present openssl.key is no longer proof of what failed.
               _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}"
@@ -4132,8 +4133,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### HTTP would reach the new box while HTTPS kept serving -- and
             ### taking writes into -- the local database that has already
             ### moved. Park it under the first-backup rule (the revert puts it
-            ### back); HTTPS then fails at the handshake, visibly, which is
-            ### what the report below tells the operator.
+            ### back). HTTPS for the name then reaches the box's wildcard SSL
+            ### front (pre.d/nginx_wild_ssl.conf, on every address, self-signed
+            ### for *.<hostname>), which hands it to the site's :80 vhost, now
+            ### the plain HTTP proxy: a browser warns, and nothing reaches the
+            ### local database. The report below names the site.
             if [ -f "${_Vhs}" ] \
               && ! _xoct_vh_has "${_Vhs%/*}" "https.${_Dom}" "Secure HTTPS proxy"; then
               ### Parked inside the real vhost.d, on ./names.
@@ -4147,7 +4151,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
                 *" ${_Dom} "*) ;;
                 *) _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}" ;;
               esac
-              echo "ALRT: site ${_Dom} on ${_oct}: its local HTTPS vhost is parked (saved as .https.${_Dom}) -- no HTTPS until the keys exist and a --repair runs"
+              echo "ALRT: site ${_Dom} on ${_oct}: its local HTTPS vhost is parked (saved as .https.${_Dom}) -- HTTPS answers on this box's wildcard certificate, not its own, until the keys exist and a --repair runs"
             fi
             ### Preserve the FIRST backup only. On a repair pass ${_Vht} is
             ### already the proxy template, and mv -f would overwrite ${_Vhd}
@@ -10737,7 +10741,8 @@ _migrate_init() {
           fi
           if [ -n "${_XOCT_PROXY_NOSSL}" ]; then
             echo "ALRT: converted WITHOUT an HTTPS proxy vhost (certificate material missing):${_XOCT_PROXY_NOSSL}"
-            echo "ALRT: HTTPS via the old address will fail for those sites; once the keys exist,"
+            echo "ALRT: HTTPS via the old address answers on this box's wildcard certificate for those"
+            echo "ALRT: sites, not their own (a browser warns); once the keys exist,"
             echo "ALRT: re-run: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
           fi
           if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then

@@ -18050,9 +18050,12 @@ FWOPEN
   # curl prints literally 000 when no HTTP transaction completed.
   # Browser UA: curl's default UA lands in BOA's own crawler map and gets
   # a bare 444 (no HTTP code = 000), parking a perfectly healthy cutover.
-  # The 443 leg runs only when the target actually has a PUBLIC 443
-  # listener -- the wildcard ssl vhost binds loopback only; public 443
-  # exists via per-site vhosts, which a bare panel-only box may not have.
+  # The 443 leg runs when something listens on 443 on every address. On a
+  # BOA target the wildcard SSL front does (the installer rewrites the
+  # template's 127.0.0.1:443 to *:443), so the leg proves the source reaches
+  # the target's 443 through its firewall; a bare IP (no SNI) with -k reads
+  # no site's certificate or vhost, and any HTTP code passes. Only a target
+  # without the front skips it.
   local _pxt _pxl _pxua
   _pxua="Mozilla/5.0 (X11; Linux x86_64) xmass-cutover-proof"
   _pxl="http://${_tgt}/"
@@ -18060,7 +18063,7 @@ FWOPEN
     "ss -tln 2>/dev/null | awk '{print \$4}' | grep -qE '(0\.0\.0\.0|\*|\[::\]):443$'" 2>/dev/null; then
     _pxl="${_pxl} https://${_tgt}/"
   else
-    _alrt "target ${_tgt}: no public 443 listener -- skipping the HTTPS half of the external proof"
+    _alrt "target ${_tgt}: nothing listens on 443 on every address -- its wildcard SSL front (pre.d/nginx_wild_ssl.conf) is missing; skipping the HTTPS half of the external proof"
   fi
   for _pxt in ${_pxl}; do
     if ! curl -sk -A "${_pxua}" -o /dev/null --max-time 15 -w '%{http_code}' \

@@ -586,6 +586,13 @@
       middle of the conversion's output, and verify read HTTPS on the new
       server alone, where these sites serve right.
 
+    * xoct now says what a site with incomplete certificate files does on
+      the old server once converted: HTTPS still answers there, on the
+      server's own wildcard certificate, so a browser warns, and nothing
+      reaches the old copy of the site. It said HTTPS would fail. xmass now
+      names the one case in which it skips the HTTPS half of its outside
+      check of the new server: no wildcard HTTPS front there.
+
     * xoct's line on the soonest certificate expiry of a proxied account
       now reads only the certificates its HTTPS proxies serve, the ones the
       certificate mirror keeps, and says plainly when that date has passed.
