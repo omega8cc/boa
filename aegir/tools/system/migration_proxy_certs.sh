@@ -17,12 +17,15 @@
 ### one with on the target (for a record imported from an older tool's copy,
 ### only once the target's create marker confirms that account was made for
 ### this one from this box) and, when the target's notAfter is strictly newer,
-### pull privkey/fullchain/cert/chain into the local LE store -- staged,
-### verified (parse + enddate + key/cert pubkey match, cert.pem the staged
-### leaf, chain.pem certificates), ownership/mode preserved, with a .bak set
-### kept. The real files live under tools/le/certs/<domain>/; the openssl.*
-### names in ssl.d are symlinks into them (provision_hosting_le), so the
-### symlink topology is never touched. One nginx -t + reload at the end
+### pull privkey/fullchain/chain into the local LE store, with cert.pem
+### written from the pulled fullchain's leaf -- staged, verified (parse +
+### enddate + key/cert pubkey match, chain.pem certificates), ownership and
+### mode preserved, with a .bak set kept. The real files live under
+### tools/le/certs/<domain>/; the openssl.* names in ssl.d are symlinks into
+### them (provision_hosting_le), so the symlink topology is never touched.
+### A custom certificate installed on the target as the SSL docs describe
+### leaves the old leaf at cert.pem there, so cert.pem is never pulled: what
+### openssl.crt names here is the leaf served. One nginx -t + reload at the end
 ### under the shared config lock; a failed configtest restores every set
 ### swapped this run, does not reload, and still reaches the warning below.
 ###
@@ -32,9 +35,11 @@
 ### behind a retained proxy vhost is within _MIGRATION_PROXY_CERT_WARN_DAYS
 ### (default 21) and could not be refreshed; this is the only warning path
 ### that exists on a proxied box. The target renews a set well before that
-### window, so one inside it that the target holds nothing newer for counts
-### as not refreshed, expired or not, unless its site is disabled in the
-### panel there (never renewed while disabled): that one is left out.
+### window, so one inside it (and inside its last 60 days) that the target
+### holds nothing newer for counts as not refreshed, expired or not, unless
+### the target never renews it nightly by design: its site disabled in the
+### panel there, a custom certificate behind its dont-overwrite marker, or a
+### name of the .dev./.test. classes. Such a set is named and left out.
 ###
 ### All proxied accounts are mirrored regardless of mode: a temporary proxy
 ### that overstays decays exactly the same way, and fresh TLS during any
@@ -177,6 +182,16 @@ command -v _single_instance_lock >/dev/null 2>&1 && _single_instance_lock
 _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
 _WARN_DAYS="${_MIGRATION_PROXY_CERT_WARN_DAYS:-21}"
 case "${_WARN_DAYS}" in ''|*[!0-9]*) _WARN_DAYS=21 ;; esac
+### Read in base 10 (a leading zero is no octal) and held to five digits,
+### so the day arithmetic below never fails or overflows.
+[ "${#_WARN_DAYS}" -le 5 ] || _WARN_DAYS=99999
+_WARN_DAYS=$(( 10#${_WARN_DAYS} ))
+### A set the target holds nothing newer for counts as not renewed within
+### that window, and never above 60 days: the target renews a set once it
+### has fewer than 69 days left (dehydrated's RENEW_DAYS), so a wider window
+### would name every healthy set for part of each cycle.
+_NR_DAYS="${_WARN_DAYS}"
+[ "${_NR_DAYS}" -le 60 ] || _NR_DAYS=60
 
 _SSH="ssh -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new"
 _LOCK_FILE="/run/boa_nginx_config.lock"
@@ -404,6 +419,7 @@ _RETIRED=""
 _SWAPPED_DIRS=""
 _NOT_RENEWED=""
 _DISABLED=""
+_BY_HAND=""
 _UNDONE=NO
 
 ### True for the cutover's redirect vhost: the HTTPS proxy header is still
@@ -418,8 +434,10 @@ _EARLIEST_EPOCH=""
 _EARLIEST_DOM=""
 
 ### The four real files behind the ssl.d symlinks; chain.pem is also
-### referenced directly by the proxy vhost (ssl_trusted_certificate).
+### referenced directly by the proxy vhost (ssl_trusted_certificate). The
+### three pulled from the target; cert.pem is written from fullchain.pem.
 _CERT_SET="privkey.pem fullchain.pem cert.pem chain.pem"
+_PULL_SET="privkey.pem fullchain.pem chain.pem"
 
 ### The domain $2 of the account $1, whose imported record names an account
 ### on the target $3 that the target did not confirm ($4 says why), is not
@@ -435,17 +453,20 @@ _mpc_unconfirmed() {
   _msg "ALRT:   confirm on ${3} which account serves the sites of ${1}, then restate it: xoct proxy ${1} ${3} <target-oN> --repair (it keeps its mode; a retired pair stays retired)"
 }
 
-### True when the site $3 is disabled in the panel on the target $1, read
-### there as xtrim reads it: its vhost holds the placeholder a Disable writes
-### and its alias says 'site_enabled' => false (a placeholder alone is a
-### botched state or a task's own short one). Every live account's copy of
-### the name must agree and the paired account $2 must hold one, so a live
-### copy anywhere, or none in the paired account, is not a disabled site.
-### Each name is read inside its real directory with the helpers
-### _mpc_remote_cert runs there; an unreachable target reads as not disabled.
-_mpc_remote_disabled() {
-  local _o
-  _o=$( { declare -f _mpc_in_real_dir _mpc_read_here
+### Why the target $1 never renews the set of the site $3 nightly, read in
+### one call there: "disabled" when the site is disabled in the panel, read
+### as xtrim reads it: its vhost holds the placeholder a Disable writes and
+### its alias says 'site_enabled' => false (a placeholder alone is a botched
+### state or a task's own short one). Every live account's copy of the name
+### must agree and the paired account $2 must hold one, so a live copy
+### anywhere, or none in the paired account, is not a disabled site. Else
+### "custom" when the paired account holds the dont-overwrite marker of the
+### name, or of the alias its site redirects to, as the nightly's own LE leg
+### tests it (20-sites.sh): a custom certificate, renewed there by hand.
+### Each file is read inside its real directory with the helpers
+### _mpc_remote_cert runs there; nothing for an unreachable target.
+_mpc_remote_left_out() {
+  { declare -f _mpc_in_real_dir _mpc_read_here
     printf '_dom=%q; _poct=%q\n' "${3}" "${2}"
     cat <<'RDIS'
 _n=0; _ok=0; _own=""
@@ -462,28 +483,56 @@ for _a in /data/disk/*; do
   _ok=$(( _ok + 1 ))
   [ "${_a##*/}" = "${_poct}" ] && _own=YES
 done
-[ "${_n}" -gt 0 ] && [ "${_n}" = "${_ok}" ] && [ "${_own}" = "YES" ] && echo disabled
+[ "${_n}" -gt 0 ] && [ "${_n}" = "${_ok}" ] && [ "${_own}" = "YES" ] && echo disabled && exit 0
+_m="/data/disk/${_poct}/tools/le/.ctrl/dont-overwrite-"
+[ -e "${_m}${_dom}.pid" ] && echo custom && exit 0
+_r=$(_mpc_in_real_dir "/data/disk/${_poct}/.drush" _mpc_read_here "${_dom}.alias.drushrc.php" \
+  | grep "'redirection' => '" | head -n 1 | sed "s/.*'redirection' => '//; s/'.*//")
+[[ "${_r}" =~ ^[A-Za-z0-9.-]+$ ]] && [ -e "${_m}${_r}.pid" ] && echo custom
+exit 0
 RDIS
-  } | ${_SSH} root@"${1}" "bash -s" 2> /dev/null )
-  [ "${_o}" = "disabled" ]
+  } | ${_SSH} root@"${1}" "bash -s" 2> /dev/null
 }
 
-### The set of $1/$2 ends at $5, inside the warning window, and the target
-### $3 (account $4 there) holds nothing newer. The target renews a set well
+### True for a name of the classes whose sets the nightly never renews
+### (20-sites.sh calls its LE leg for no such site): only a Verify with the
+### dev flag renews them there.
+_mpc_no_nightly_name() {
+  case "${1}" in
+    *.dev.*|*.devel.*|*.temp.*|*.tmp.*|*.temporary.*|*.test.*|*.testing.*) return 0 ;;
+  esac
+  return 1
+}
+
+### The set of $1/$2 ends at $5, inside the window, and the target $3
+### (account $4 there) holds nothing newer. The target renews a set well
 ### before that window, so its renewal is failing there, or the set expired
 ### before the move and travelled as it was: named here, and mailed below
-### as a set that could not be refreshed. A site disabled in the panel there
-### is never renewed while disabled, so it is named and left out.
+### as a set that could not be refreshed. A set the target never renews
+### nightly by design (a disabled site, a custom certificate, a .dev./.test.
+### name) is named and left out instead.
 _mpc_not_renewed() {
-  local _when
+  local _when _why=""
   if [ "${5}" -le "${_NOW_EPOCH}" ]; then
     _when="certificate EXPIRED on $(date -ud @"${5}" '+%Y-%m-%d')"
   else
     _when="certificate valid to $(date -ud @"${5}" '+%Y-%m-%d') ($(( (${5} - _NOW_EPOCH) / 86400 )) day(s) left)"
   fi
-  if _mpc_remote_disabled "${3}" "${4}" "${2}"; then
-    _DISABLED="${_DISABLED} ${1}/${2}"
-    _msg "${1}/${2}: ${_when}; left out, its site disabled in the panel on the target (not renewed while disabled)"
+  if _mpc_no_nightly_name "${2}"; then
+    _why="a .dev./.test.-class name, which the target's nightly never renews (only a Verify there does)"
+  else
+    case "$(_mpc_remote_left_out "${3}" "${4}" "${2}")" in
+      disabled)
+        _DISABLED="${_DISABLED} ${1}/${2}"
+        _msg "${1}/${2}: ${_when}; left out, its site disabled in the panel on the target (not renewed while disabled)"
+        return 0
+        ;;
+      custom) _why="a custom certificate on the target (its dont-overwrite marker), renewed there by hand" ;;
+    esac
+  fi
+  if [ -n "${_why}" ]; then
+    _BY_HAND="${_BY_HAND} ${1}/${2}"
+    _msg "${1}/${2}: ${_when}; left out, ${_why}"
     return 0
   fi
   _NOT_RENEWED="${_NOT_RENEWED} ${1}/${2}"
@@ -498,7 +547,7 @@ _pull_domain() {
   local _oct="$1" _dom="$2" _tip="$3" _poct="$4" _how="$5"
   local _root="/data/disk/${_oct}"
   local _dir="${_root}/tools/le/certs/${_dom}"
-  local _rdir _lend _rend _f _ok _stg _rc _src="" _lf
+  local _rdir _lend _rend _f _ok _stg _rc _src=""
 
   if [ ! -d "${_dir}" ] || [ ! -e "${_dir}/fullchain.pem" ]; then
     _msg "ALRT: ${_oct}/${_dom}: no local LE store at ${_dir}; skipping"
@@ -579,7 +628,7 @@ _pull_domain() {
 
   if [ "${_rend}" -le "${_lend}" ]; then
     [ "${_DRY}" = "YES" ] && _msg "DRY: ${_oct}/${_dom}: target is not newer ($(date -ud @"${_rend}" '+%Y-%m-%d') <= $(date -ud @"${_lend}" '+%Y-%m-%d')); nothing to do"
-    if [ "$(( _lend - _NOW_EPOCH ))" -lt "$(( _WARN_DAYS * 86400 ))" ]; then
+    if [ "$(( _lend - _NOW_EPOCH ))" -lt "$(( _NR_DAYS * 86400 ))" ]; then
       _mpc_not_renewed "${_oct}" "${_dom}" "${_tip}" "${_poct}" "${_lend}"
     fi
     return 0
@@ -599,7 +648,7 @@ _pull_domain() {
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
     return 1
   fi
-  for _f in ${_CERT_SET}; do
+  for _f in ${_PULL_SET}; do
     if ! _mpc_remote_cert "${_tip}" "${_rdir}" "${_f}" > "${_stg}/${_f}"; then
       _msg "ALRT: ${_oct}/${_dom}: staging ${_f} from target failed; aborting this domain"
       rm -rf "${_stg}"
@@ -625,19 +674,21 @@ _pull_domain() {
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
     return 1
   fi
-  ### The other two files are swapped in as well. chain.pem is loaded by the
-  ### proxy vhost itself (ssl_trusted_certificate): one nginx cannot read
-  ### fails the run's configtest and undoes every set swapped with it.
-  ### cert.pem is what openssl.crt names for the readers of the served
-  ### leaf. Either one unread is refused here, for this domain alone.
-  _lf=$(openssl x509 -noout -fingerprint -sha256 -in "${_stg}/fullchain.pem" 2>/dev/null)
-  if [ -z "${_lf}" ] || [ "$(openssl x509 -noout -fingerprint -sha256 \
-    -in "${_stg}/cert.pem" 2>/dev/null)" != "${_lf}" ]; then
-    _msg "ALRT: ${_oct}/${_dom}: staged cert.pem is not the staged certificate; discarding"
+  ### cert.pem is what openssl.crt names for the readers of the served leaf
+  ### (xoct's and xmass's expiry checks), so it is written from the staged
+  ### fullchain's first certificate. The target's own is never taken: the
+  ### SSL docs' custom certificate procedure replaces privkey, fullchain and
+  ### chain there and leaves the old leaf at that name.
+  if ! openssl x509 -in "${_stg}/fullchain.pem" -out "${_stg}/cert.pem" > /dev/null 2>&1 \
+    || [ ! -s "${_stg}/cert.pem" ]; then
+    _msg "ALRT: ${_oct}/${_dom}: cert.pem could not be written from the staged certificate; discarding"
     rm -rf "${_stg}"
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
     return 1
   fi
+  ### chain.pem is loaded by the proxy vhost itself (ssl_trusted_certificate):
+  ### one nginx cannot read fails the run's configtest and undoes every set
+  ### swapped with it, so it is refused here, for this domain alone.
   if ! openssl x509 -noout -in "${_stg}/chain.pem" > /dev/null 2>&1 \
     || ! openssl crl2pkcs7 -nocrl -certfile "${_stg}/chain.pem" > /dev/null 2>&1; then
     _msg "ALRT: ${_oct}/${_dom}: staged chain.pem does not read as certificates; discarding"
@@ -775,9 +826,11 @@ for _OCT in $(_mpc_proxied_accts); do
     _DOM=$(grep -m1 "Secure HTTPS proxy for" <<< "${_VHC}" \
       | sed 's/.*proxy for //; s/ (START).*//')
     _valid_dom "${_DOM}" || continue
-    ### Nor does a site disabled in the panel on the target, which nothing
-    ### renews while it stays disabled.
+    ### Nor does a set the target never renews nightly by design (a site
+    ### disabled in the panel there, a custom certificate, a .dev./.test.
+    ### name), left out above.
     case " ${_DISABLED} " in *" ${_OCT}/${_DOM} "*) continue ;; esac
+    case " ${_BY_HAND} " in *" ${_OCT}/${_DOM} "*) continue ;; esac
     _END=$(_mpc_cert_in "${_ROOT}/tools/le/certs/${_DOM}" fullchain.pem | _cert_end_epoch)
     [ -n "${_END}" ] || continue
     if [ -z "${_EARLIEST_EPOCH}" ] || [ "${_END}" -lt "${_EARLIEST_EPOCH}" ]; then
@@ -816,7 +869,7 @@ if [ -n "${_EARLIEST_EPOCH}" ]; then
         _RENEW_NOTE=""
         if [ -n "${_NOT_RENEWED}" ]; then
           _RENEW_NOTE=$'\n'"The target holds nothing newer for:${_NOT_RENEWED}"$'\n'
-          _RENEW_NOTE+="It renews a certificate well before its last ${_WARN_DAYS} day(s), so its"$'\n'
+          _RENEW_NOTE+="It renews a certificate well before its last ${_NR_DAYS} day(s), so its"$'\n'
           _RENEW_NOTE+="renewal is failing there, or the set expired before the move and"$'\n'
           _RENEW_NOTE+="travelled as it was. Renew it on the target, or retire that proxy"$'\n'
           _RENEW_NOTE+="(xoct proxy-retire <oN>) if it is no longer meant to serve."$'\n'
@@ -831,6 +884,10 @@ if [ -n "${_EARLIEST_EPOCH}" ]; then
         if [ -n "${_DISABLED}" ]; then
           _DISABLED_NOTE=$'\n'"Left out, the site disabled in the panel on the target (not renewed"$'\n'
           _DISABLED_NOTE+="while disabled):${_DISABLED}"$'\n'
+        fi
+        if [ -n "${_BY_HAND}" ]; then
+          _DISABLED_NOTE+=$'\n'"Left out, the target never renews them nightly (a custom certificate"$'\n'
+          _DISABLED_NOTE+="behind its dont-overwrite marker, or a .dev./.test.-class name):${_BY_HAND}"$'\n'
         fi
         cat <<EOF | s-nail -s "ALERT: migration proxy certificate horizon ${_SUBJ_HORIZON} on ${_HOST}" ${_ADM_EMAIL}
 The earliest certificate behind a retained migration proxy vhost on ${_HOST}
