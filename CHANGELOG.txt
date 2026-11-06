@@ -592,16 +592,18 @@
       reaches the old copy of the site. It said HTTPS would fail. xmass now
       says why it skips the HTTPS half of its outside check of the new
       server: no wildcard HTTPS front there, or what listens there could not
-      be read, a dropped connection being tried once more first.
+      be read, a dropped connection being tried once more first. Its closing
+      line then names port 80 alone; it named 443 as proven either way.
 
     * xoct's line on the soonest certificate expiry of a proxied account
       now reads only the certificates its HTTPS proxies serve, the ones the
       certificate mirror keeps, and warns when that date has passed, as the
-      proxy then serves that certificate expired. It read every set in the
-      account's ssl.d, so an old .bak folder, the default pair or a set no
-      site serves was named instead, always as a date the mirror would renew
-      before. A conversion now prints it once it has written those proxies,
-      no longer before.
+      proxy then serves that certificate expired until the mirror pulls a
+      newer set from the new server (daily, or when run by hand). It read
+      every set in the account's ssl.d, so an old .bak folder, the default
+      pair or a set no site serves was named instead, always as a date the
+      mirror would renew before. A conversion now prints it once it has
+      written those proxies, no longer before.
 
     * A standing mirror now drops the dumps the old server rotated out of an
       account's store under /data/disk/arch when that store is a link onto

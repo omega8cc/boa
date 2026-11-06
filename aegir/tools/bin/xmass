@@ -18083,12 +18083,14 @@ FWOPEN
   # reaches the target's 443 through its firewall; a bare IP (no SNI) with -k
   # reads no site's certificate or vhost, and any HTTP code passes. A target
   # without the front, or whose listeners cannot be read, skips it, and the
-  # warning says which.
-  local _pxt _pxl _pxua
+  # warning says which; the closing line then names port 80 alone.
+  local _pxt _pxl _pxua _pxp
   _pxua="Mozilla/5.0 (X11; Linux x86_64) xmass-cutover-proof"
   _pxl="http://${_tgt}/"
+  _pxp="80"
   if _xmass_https_leg_ok "${_tgt}"; then
     _pxl="${_pxl} https://${_tgt}/"
+    _pxp="80/443"
   fi
   for _pxt in ${_pxl}; do
     if ! curl -sk -A "${_pxua}" -o /dev/null --max-time 15 -w '%{http_code}' \
@@ -18103,7 +18105,7 @@ FWOPEN
            "'xmass cutover ${_tgt} --live' — the resume re-runs this proof."
     fi
   done
-  _info "  target nginx validated and answering (loopback + external, 80/443)"
+  _info "  target nginx validated and answering (loopback 80, external ${_pxp})"
 }
 
 _xmass_unlock_promoted_db() {

@@ -8218,7 +8218,7 @@ _xoct_warn_proxy_cert_horizon() {
     && grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
     echo "INFO: proxied certificates refresh daily from the target (migration_proxy_certs.sh);"
     if [ -n "${_pt}" ]; then
-      echo "ALRT: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- this proxy serves it expired until the target holds a newer set for the mirror to pull"
+      echo "ALRT: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- this proxy serves it expired until the mirror pulls a newer set from the target (daily at 06:45, or now: bash /var/xdrago/migration_proxy_certs.sh)"
     else
       echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror pulls each newer set from the target daily"
     fi
