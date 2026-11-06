@@ -39,13 +39,17 @@ _ieni="--ignore-errors"
 ### printed: a reset or a stall in the banner exchange, or a bare 'Connection
 ### closed by <host> port <n>', which ssh logs only before login (a close
 ### after it is 'Connection to <host> closed by remote host.', on stderr).
-### rsync and scp are read on their stderr, as their far end never prints
-### that text, and an rsync only when it received 0 bytes. Any other failure
-### returns at once with its own status and messages. Each retry adds one
-### line to the drop log: time, host, try and ssh's own words, never the
-### remote command. The functions shadow the binaries, so every call in the
-### tool goes through them; their text is the same in xmass, xoct and xcopy.
-_MIG_DROP_RE='(kex|ssh)_exchange_identification|banner exchange|^Connection closed by [^ ]+ port [0-9]+[[:space:]]*$'
+### rsync and scp are read on their stderr, which can also carry the far
+### end's own lines, so only a line that opens with ssh's words counts, and
+### an rsync only when it received 0 bytes. A host key scan that learned no
+### key is run again the same way when ssh-keyscan's own words name a close
+### or a reset before the banner. Any other failure returns at once with its
+### own status and messages. Each retry adds one line to the drop log: time,
+### host, try and the client's own words, never the remote command. The
+### functions shadow the binaries, so every call in the tool goes through
+### them; their text is the same in xmass, xoct and xcopy.
+_MIG_DROP_RE='^((kex|ssh)_exchange_identification:|banner exchange:|Connection timed out during banner exchange)|^Connection closed by [^ ]+ port [0-9]+[[:space:]]*$'
+_MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]*\): Connection reset by peer[[:space:]]*$'
 _MIG_DROP_LOG="/var/log/boa/xcopy.drop.log"
 
 ### The host of the first root@ argument, and nothing else of the call.
@@ -64,16 +68,20 @@ _mig_drop_host() {
 }
 
 ### One retry noted: $1 the try, $2 the host, $3 the file holding the
-### client's own messages. A terminal is told only when stderr is one: a
-### caller that reads ssh's stderr still finds ssh's own words there.
+### client's own messages, $4 the pattern of the lines kept from it (ssh's
+### drop and close lines when not given). A terminal is told only when
+### stderr is one: a caller that reads ssh's stderr still finds ssh's own
+### words there, and never the error of a drop log that cannot be opened.
 _mig_drop_note() {
+  local _k="${4:-}"
+  [ -n "${_k}" ] || _k="${_MIG_DROP_RE}|^Connection (reset|closed|timed out)"
   [ -t 2 ] && echo "INFO: ${2}: connection dropped before login; try ${1} of 5 in 10 s" >&2
   {
     printf '%s %s try %s: ' "$(date '+%F %T')" "${2}" "${1}"
-    grep -E "${_MIG_DROP_RE}|^Connection (reset|closed|timed out)" "${3}" 2> /dev/null \
+    grep -E "${_k}" "${3}" 2> /dev/null \
       | tr -d '\r' | head -n 3 | tr '\n' ' '
     echo
-  } >> "${_MIG_DROP_LOG}" 2> /dev/null
+  } 2> /dev/null >> "${_MIG_DROP_LOG}"
   return 0
 }
 
@@ -133,6 +141,36 @@ rsync() {
 
 scp() {
   _mig_rsh_again scp "$@"
+}
+
+### $1 the host, its keys appended to root's known_hosts. A scan whose
+### connections sshd closed or reset before the banner learned nothing and
+### runs again; a refused or silent port gets the one scan. Returns 0 once a
+### key for the host is known.
+_mig_keyscan() {
+  local _e _h _n=0
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
+  while :; do
+    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
+      ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
+      ssh-keygen -F "${1}" > /dev/null 2>&1
+      return $?
+    }
+    ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> "${_e}"
+    if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+      rm -f "${_e}"
+      return 0
+    fi
+    if [ "${_n}" -lt 5 ] && grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null; then
+      _n=$(( _n + 1 ))
+      _mig_drop_note "${_n}" "${_h}" "${_e}" "${_MIG_SCAN_RE}"
+      rm -f "${_e}"
+      sleep 10
+      continue
+    fi
+    rm -f "${_e}"
+    return 1
+  done
 }
 
 ###
@@ -4600,8 +4638,7 @@ _xcopy_learn_peer_host_key() {
   ssh-keygen -F "${_p}" > /dev/null 2>&1 && return 0
   mkdir -p /root/.ssh
   chmod 700 /root/.ssh
-  ssh-keyscan -H -T 10 "${_p}" >> /root/.ssh/known_hosts 2>/dev/null
-  if ssh-keygen -F "${_p}" > /dev/null 2>&1; then
+  if _mig_keyscan "${_p}"; then
     echo "INFO: learned the host key for target ${_p}"
   else
     echo "ALRT: could not learn the host key for ${_p} -- unreachable on 22?"
