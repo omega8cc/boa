@@ -1890,6 +1890,16 @@ _fetch_boa_file() {
   mv -f "${_fTmp}" "${_fDst}"
 }
 
+### Whether $1 is a PHP word the {extra} slot takes (the _eXtr branches of
+### the install setup): only these move from the user or email slot to
+### {extra}, so an account named php, ophp1 or myphp keeps its name.
+_boa_php_extra_word() {
+  case "${1}" in
+    php-8.[3-6]|php-8[3-6]|php-all|php-min|php-max) return 0 ;;
+  esac
+  return 1
+}
+
 _init_setup() {
 
   _check_install_args
@@ -2076,7 +2086,7 @@ _init_setup() {
           ;;
         esac
       done
-      if [[ "${_eMal}" =~ "php" ]]; then
+      if _boa_php_extra_word "${_eMal}"; then
         _eXtr="${_eMal}"
       fi
       _eMal="${_fQdn}"
@@ -2087,7 +2097,7 @@ _init_setup() {
       _usEr="o1"
     fi
     if [ "${_kiNd}" = "public" ]; then
-      if [[ "${_usEr}" =~ "php" ]]; then
+      if _boa_php_extra_word "${_usEr}"; then
         _eXtr="${_usEr}"
         _usEr="o1"
       fi

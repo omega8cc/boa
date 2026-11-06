@@ -248,6 +248,12 @@
       whose name extends it, and the master's pass leaves those of an
       account named after its label and more.
 
+    * boa in-dev, in-pro and in-lts take a word in the user slot as the PHP
+      extra only when it is one the extra slot reads (php-8.4, php-84,
+      php-all, php-min, php-max and the like). An account named php, ophp1
+      or myphp was installed as o1 instead, and the name was written as the
+      New Relic key.
+
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
       run them: they are fetched in the tools pass such a box still runs. Before,
