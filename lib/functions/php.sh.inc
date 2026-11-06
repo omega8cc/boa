@@ -961,15 +961,20 @@ _php86_compat_mark() {
 }
 
 #
-# Before an 8.6 build of an extension that takes that header, its module goes:
-# the success check only asks whether the .so is there, and an older one built
-# without the header would pass it and be marked done while it still fails at
-# the first call. A failed build leaves no module, and the ini step then
-# leaves its line out until a later pass builds it.
-_php86_compat_drop() {
-  if [ "$1" = 86 ] && [ -n "${_THIS_PHP_EXT_DIR}" ]; then
-    rm -f "${_THIS_PHP_EXT_DIR}/$2.so"
+# An 8.6 build of these extensions counts only when it wrote the module: the
+# success check asks only whether the .so is there, and a module left from
+# before (one built without the header fails at the first call) would be taken
+# for the new build and marked done. _php86_compat_ref marks the build's start;
+# _php86_compat_fresh is true for any other version, and for 8.6 when the
+# module is newer than that mark. A failed build keeps the module there and
+# writes no marker, so a later pass builds it again.
+_php86_compat_ref() {
+  if [ "$1" = 86 ]; then
+    touch "${_pthLog}/.php86-compat-build.ref"
   fi
+}
+_php86_compat_fresh() {
+  [ "$1" != 86 ] || [ "$2" -nt "${_pthLog}/.php86-compat-build.ref" ]
 }
 
 #
@@ -1414,13 +1419,14 @@ _install_php_extensions() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-      _php86_compat_drop "$1" uploadprogress
+      _php86_compat_ref "$1"
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+        || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/uploadprogress.so"; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
         touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
@@ -1627,13 +1633,14 @@ _install_php_extensions() {
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
     fi
-    _php86_compat_drop "$1" yaml
+    _php86_compat_ref "$1"
     _mrun "${_T_PHP_PTH}/phpize"
     _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
     _mrun "make --quiet install"
     ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/yaml.so"; then
       _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
     else
       if [ "$1" = "56" ]; then
@@ -1823,13 +1830,14 @@ _php_extensions_update() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-      _php86_compat_drop "$1" uploadprogress
+      _php86_compat_ref "$1"
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+        || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/uploadprogress.so"; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
         touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
@@ -2100,13 +2108,14 @@ _php_extensions_update() {
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
-      _php86_compat_drop "$1" yaml
+      _php86_compat_ref "$1"
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+        || ! _php86_compat_fresh "$1" "${_THIS_PHP_EXT_DIR}/yaml.so"; then
         _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
         touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}$(_php86_compat_mark "$1").log
