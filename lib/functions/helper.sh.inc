@@ -2460,8 +2460,8 @@ _apparmor_set_mode() {
 # A profile in complain mode makes a learning child, parent//null-<program>, for
 # a program it runs with no rule (hosting-setup runs crontab from PHP-CLI in an
 # install and in every upgrade), and reloading the parent keeps that child in
-# complain mode until a reboot, so aa-status counts a profile in complain mode
-# on a box in enforce.
+# complain mode until a reboot or a barracuda pass, whose aa-teardown unloads
+# it, so aa-status counts a profile in complain mode on a box in enforce.
 # Nothing enters it under an enforced parent; only the child goes.
 _apparmor_drop_learning_children() {
   local _aaFs=/sys/kernel/security/apparmor
