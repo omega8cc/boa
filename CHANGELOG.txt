@@ -33,9 +33,10 @@
       keeps it, since BOA's installer skips a version whose tree is
       present, and names the system pass that installs it. For solr7 and
       solr9 the kept tree stays in the version's home, and solrtrim
-      remove refuses that version until it is archived or deleted by
-      hand. The other versions keep their denies. It refuses, changing
-      nothing, while that pass could not install the version.
+      remove refuses that version until it is archived and deleted by
+      hand, printing the commands that do it. The other versions keep
+      their denies. It refuses, changing nothing, while that pass could
+      not install the version.
 
 @=> Security
 

@@ -32,7 +32,8 @@
 ###   - A version whose home still holds a data tree xmass restore-solr kept
 ###     (data.xmass-landed-<stamp>) refuses, --force or not, with nothing
 ###     changed: that tree is the only copy of an index a move landed, and
-###     the operator archives or deletes it by hand first.
+###     the operator archives it if needed and deletes it by hand first (a
+###     kept link with the tree it points to); only the delete lifts it.
 ###   - --blanket additionally writes the blanket java deny pair
 ###     (_DENY_JAVA=YES + /root/.deny.java.cnf), accepted only when NO Solr
 ###     version remains installed afterwards — the golden-master end state,
@@ -435,21 +436,49 @@ _remove_tree() {
 ### (data.xmass-landed-<stamp>) is the only copy of an index a move landed,
 ### kept there for the daily backup's include of the home: removing the
 ### home would delete it. Refuse while one is there, --force or not, naming
-### each with the commands that archive or delete it by hand.
+### each with the commands that archive it and delete it by hand: only the
+### delete lifts the refusal. A kept link is deleted with the tree it
+### points to, the index itself, unless that tree holds the home. The
+### archive is weighed as this tool's own is, the data size plus 1G free
+### under _ARCH_DIR: a linked home's index sits on another disk than
+### /var/backups, which a large one would fill.
 _refuse_kept() {
-  local _sv="${1}" _k _r _n=0
+  local _sv="${1}" _k _r _n=0 _du _avail _room _rh
   [ -n "${_V_HOME}" ] || return 0
+  _rh=$(readlink -f "${_V_HOME}" 2>/dev/null)
   for _k in "${_V_HOME}"/data.xmass-landed-*; do
     [ -e "${_k}" ] || continue
     if [ "${_n}" -eq 0 ]; then
       _alrt "${_sv}: ${_V_HOME} still holds a data tree xmass restore-solr kept -- refusing to"
-      _alrt "remove ${_sv}, --force or not; nothing changed. Archive or delete each by hand, then re-run:"
+      _alrt "remove ${_sv}, --force or not; nothing changed. Archive each if it is needed and"
+      _alrt "delete it by hand, then re-run: the refusal lifts once the kept name is gone."
     fi
     _n=$((_n + 1))
     _r=$(readlink -f "${_k}" 2>/dev/null)
+    _du=$(du -sk "${_r}" 2>/dev/null | awk '{ print $1 }')
+    _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
+    _room="${_du:-?}K data, ${_avail:-?}K free under ${_ARCH_DIR}"
     _alrt "  ${_k}$( [ -L "${_k}" ] && echo " (a link to ${_r})" )"
-    _alrt "    archive: tar -czf ${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz -C ${_r%/*} ${_r##*/}"
-    _alrt "    delete:  rm -rf ${_k}"
+    if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -ge "$(( _du + 1048576 ))" ]; then
+      _alrt "    archive: tar -czf ${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz -C ${_r%/*} ${_r##*/}"
+      _alrt "    room:    ${_room}"
+    else
+      _alrt "    room:    ${_room}; it wants the data size plus 1G there, so archive it on a disk with room:"
+      _alrt "    archive: tar -czf <a directory with room>/${_V_SVC}-${_k##*/}.tar.gz -C ${_r%/*} ${_r##*/}"
+    fi
+    if [ ! -L "${_k}" ]; then
+      _alrt "    delete:  rm -rf ${_k}"
+    else
+      case "${_rh:-/}/" in
+        "${_r%/}/"*)
+          _alrt "    delete:  rm -f ${_k}"
+          _alrt "    (it points to ${_r}, which holds the home: remove what it reaches by hand)"
+        ;;
+        *)
+          _alrt "    delete:  rm -rf ${_r} ${_k}"
+        ;;
+      esac
+    fi
   done
   [ "${_n}" -eq 0 ]
 }
@@ -715,7 +744,9 @@ case "${_cmd}" in
     echo "    archive cannot land."
     echo "  - remove refuses, --force or not, a version whose home still holds a data"
     echo "    tree xmass restore-solr kept (data.xmass-landed-<stamp>), changing"
-    echo "    nothing; it names each one and how to archive or delete it by hand."
+    echo "    nothing; it names each one with the commands that archive it, weighed"
+    echo "    against the room under ${_ARCH_DIR}, and delete it (a kept link with the"
+    echo "    tree it points to). Only the delete lifts the refusal."
     echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
     echo "    the removed version can never serve again even if a later pass on a"
     echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."

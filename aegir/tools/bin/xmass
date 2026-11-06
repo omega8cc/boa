@@ -7067,7 +7067,7 @@ _xmass_restore_solr_source() {
       [ -L "${_new}" ] \
         && _info "  ${_sv}: the kept name is a link to $(readlink -f "${_new}" 2>/dev/null), which stays where it is"
       if [ -n "${_hom}" ]; then
-        _info "  ${_sv}: solrtrim remove ${_sv} refuses while it is in ${_hom}: archive or delete it by hand once it is not needed"
+        _info "  ${_sv}: solrtrim remove ${_sv} refuses while it is in ${_hom}: once it is not needed there, archive it and delete it by hand"
       else
         _info "  ${_sv}: it is outside the daily off-site backup, which includes ${_dta} alone (the installer removes ${_dta} whole when it installs): archive it by hand if it is needed"
       fi
