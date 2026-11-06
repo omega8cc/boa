@@ -233,6 +233,14 @@
       the source, a move to a new peer stopped at host key verification. Any
       other failure is never retried and reads as before.
 
+    * xmass pre-mig on a source checks the control panels of exactly the
+      accounts the move takes. A directory the move skips, such as an
+      account marked CANCELLED or a link to an account, no longer stops
+      pre-mig, and one it takes with no such user, such as a copy under a
+      dot name or without a panel alias, now does. On a target the source's
+      key and its csf opening go in before the accounts' panels are
+      checked, so a stop there leaves prep-target the access it needs.
+
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
       run them: they are fetched in the tools pass such a box still runs. Before,

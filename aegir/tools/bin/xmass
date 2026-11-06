@@ -6292,7 +6292,7 @@ _xmass_panel_db_here() {
 
 # Once this mirror is a plain box again, with its older data directory back: an
 # account --fix-accounts laid or was laying and that holds no database there cannot
-# pass pre-mig or prep-target. It is marked for 'boa cleanup', with what that verb
+# pass a target's pre-mig or prep-target. It is marked for 'boa cleanup', with what that verb
 # reads, for a stop before the log leg leaves none of it: never through a link the
 # account put at a name, as the log and config trees are the account's. Marked, never
 # purged: with the active gone this may be the last copy of its files. The lane's
@@ -16450,24 +16450,54 @@ _xmass_pre_mig_panel_sanity() {
   # legacy symlink is reported, not removed (the regular ltd-users pass
   # purges it; a panel that then misbehaves is repaired before migrating,
   # so old defects never travel to a new box).
-  local _root _usr _als _root_disk _sp _fq _dbp _hint
-  _info "Checking control panel coherence on every Aegir root ..."
-  for _root in /var/aegir /data/disk/*; do
+  #
+  # $1 is master (/var/aegir) or accounts. On a source the accounts are the
+  # move's own list (_xmass_eligible_scan), so the gate judges exactly what
+  # init takes: a directory it takes with no such user stops here, alias or
+  # not (a copy of an account, or one that lost its user), and one it skips
+  # is only named. On a target they are every /data/disk root that holds a
+  # hostmaster alias, as prep-target's purge reads them; one with no user is
+  # named, since prep-target purges it or re-creates its user (--fix-users),
+  # and pre-mig installs the source's key before the accounts are judged, so
+  # an account's stop never holds back the ssh prep-target needs.
+  local _root _usr _als _root_disk _sp _fq _dbp _hint _next="" _src=NO _l _n=()
+  local _roots=()
+  [ "${_hName}" = "${_hst}" ] && _src=YES
+  if [ "${1}" = "master" ]; then
+    _info "Checking the master control panel's coherence ..."
+    _roots=( /var/aegir )
+  elif [ "${_src}" = "YES" ]; then
+    _info "Checking control panel coherence on every account the move takes ..."
+    _xmass_eligible_scan
+    read -r -a _n <<< "${_ELIGIBLE_ACCOUNTS}"
+    for _l in "${_n[@]}"; do
+      _roots+=( "/data/disk/${_l}" )
+    done
+    while IFS= read -r _l; do
+      [ -n "${_l}" ] || continue
+      _alrt "  /data/disk/${_l%%:*}: the move skips it (${_l#*: }): its panel is not checked"
+    done <<< "${_XMASS_ELIGIBLE_SKIPPED}"
+  else
+    _info "Checking control panel coherence on every account ..."
+    _roots=( /data/disk/* )
+    _next=" -- the key of ${_hst} is installed here: 'xmass prep-target' on ${_hst} purges an account it does not move that holds no site, so run it, or repair this panel, then run this pre-mig again"
+  fi
+  for _root in "${_roots[@]}"; do
     _als="${_root}/.drush/hostmaster.alias.drushrc.php"
-    [ -f "${_als}" ] || continue
+    [ -f "${_als}" ] || [ "${_src}" = "YES" ] || continue
     _usr=$(basename "${_root}")
     [ "${_root}" = "/var/aegir" ] && _usr=aegir
     if [ "${_root}" != "/var/aegir" ] && ! getent passwd "${_usr}" > /dev/null; then
-      # On a source the move would take this directory as an account, so it
-      # stops here, before anything is parked, with its real reason. A tree the
-      # move skips (log/CANCELLED, an interrupted purge) is no panel to check,
-      # and on a target prep-target purges it or re-creates its user
-      # (--fix-users), for which it needs the key this pre-mig installs.
-      if [ "${_hName}" = "${_hst}" ] && [ -z "$(_xmass_account_missing "${_root}")" ]; then
-        _die "${_root}: holds a hostmaster alias but no such user exists: a copy of an account, or" \
+      if [ "${_src}" = "YES" ]; then
+        _die "${_root}: the move takes it as an account, but no such user exists: a copy of an account, or" \
              " an account that lost its user -- move the copy away or restore the user before migrating"
       fi
       _alrt "  ${_root}: holds a hostmaster alias but no such user exists: not checked"
+      continue
+    fi
+    if [ ! -f "${_als}" ]; then
+      [ "${_root}" = "/var/aegir" ] \
+        || _alrt "  ${_root}: no hostmaster alias: no panel to check"
       continue
     fi
     # inside the root's real .drush, never through a link or into a FIFO
@@ -16479,18 +16509,18 @@ _xmass_pre_mig_panel_sanity() {
       || _hint=" (it is marked CANCELLED: 'boa cleanup detect noscreen', then 'boa cleanup purge ${_usr} noscreen', retires it)"
     if [ ! -e "${_root_disk}/index.php" ] || [ ! -f "${_sp}/settings.php" ]; then
       _die "${_root}: the hostmaster alias names ${_root_disk} and ${_sp}, but the code or settings.php" \
-           " is missing there -- repair this control panel before migrating${_hint}"
+           " is missing there -- repair this control panel before migrating${_hint}${_next}"
     fi
     _dbp=$(su -s /bin/bash - "${_usr}" -c \
       "drush8 @hostmaster sqlq \"SELECT p.publish_path FROM hosting_context c JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid JOIN hosting_platform p ON p.nid=s.platform AND p.vid=(SELECT vid FROM node WHERE nid=s.platform) WHERE c.name='hostmaster' LIMIT 1\"" \
       2>/dev/null | tail -1)
     if [ -z "${_dbp}" ]; then
       _die "${_root}: the panel DB has no resolvable 'hostmaster' site context" \
-           " -- repair this control panel before migrating${_hint}"
+           " -- repair this control panel before migrating${_hint}${_next}"
     fi
     if [ "${_dbp}" != "${_root_disk}" ]; then
       _die "${_root}: the panel's platform in the DB (${_dbp}) differs from its alias root (${_root_disk})" \
-           " -- repair this control panel before migrating"
+           " -- repair this control panel before migrating${_next}"
     fi
     if [ -n "${_fq}" ] && [ -L "${_root}/.drush/${_fq}.alias.drushrc.php" ]; then
       _alrt "  ${_root}: legacy ${_fq}.alias.drushrc.php symlink present -- the regular ltd-users pass"
@@ -16655,7 +16685,7 @@ _xmass_pre_mig() {
   # Run on BOTH hosts: first on source (to publish its pub key and print its
   # fingerprint), then on target (to fetch that key and install it only when
   # its fingerprint is the --key-fp given).
-  local _src_ip _kb _fp
+  local _fp
   if [ -e "/vservers" ]; then
     _die "Cannot run pre-mig on a parent/host system"
   fi
@@ -16669,7 +16699,12 @@ _xmass_pre_mig() {
   # the published ones. Done here because pre-mig runs on BOTH hosts.
   _info "Forcing a tool refresh so this migration runs on current code ..."
   _xmass_force_tool_update
-  _xmass_pre_mig_panel_sanity
+  # The master's panel is judged before a target trusts the source's key;
+  # the accounts after it, so a stop on one of them leaves the key and the
+  # csf opening prep-target needs. Both before anything is parked.
+  _xmass_pre_mig_panel_sanity master
+  [ "${_hName}" = "${_hst}" ] || _xmass_pre_mig_trust_source
+  _xmass_pre_mig_panel_sanity accounts
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
@@ -16701,35 +16736,45 @@ _xmass_pre_mig() {
     # will NOT travel) at the cheapest possible moment. No target yet, so
     # sizes only; init repeats this with the aggregate space probe.
     _xmass_report_out_links
-  else
-    _info "Target mode: installing the source SSH key checked above ..."
-    ### Only the verified line travels. It is TAGGED with the source's
-    ### address: after a later promotion this box hands its inbound proxies'
-    ### keys to the box that takes over (_xmass_carry_inbound_reach), and an
-    ### untagged line cannot be attributed to a peer. A re-run never appends
-    ### a duplicate (see _xmass_key_trust_line).
-    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
-    _kb="${_XMASS_SRC_KEY%"${_XMASS_SRC_KEY##*[![:space:]]}"}"
-    _xmass_key_trust_line /root/.ssh/authorized_keys "${_kb}" \
-      " # xmass migration source ${_src_ip:-${_hst}}" \
-      || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
-    _mig_reach_stamp "${_src_ip}"
-    _mig_pending_open "${_src_ip}"
-    _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
-
-    # Let the source IN. This is the ONE thing the source can never arrange
-    # for itself: prep-target's reachability check runs FROM the source, and
-    # the csf-allow that would fix it sits AFTER that check, so a target
-    # firewalling the source deadlocks. Here we are on the target and we know
-    # who the source is, which makes this the only place it can be done.
-    if [ -n "${_src_ip}" ]; then
-      _xmass_csf_allow_peer "${_src_ip}" source
-    else
-      _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
-    fi
   fi
   _XMASS_CSF_KEEP=YES
   _info "pre-mig complete on ${_hName}"
+}
+
+# Target side of pre-mig, once the master's panel passed: the key
+# _xmass_fetch_source_key checked goes into authorized_keys and csf lets the
+# source in. Both are kept when an account's panel then stops pre-mig, as
+# prep-target, run on the source, needs them to purge such an account.
+_xmass_pre_mig_trust_source() {
+  local _src_ip _kb
+  _info "Target mode: installing the source SSH key checked above ..."
+  ### Only the verified line travels. It is TAGGED with the source's
+  ### address: after a later promotion this box hands its inbound proxies'
+  ### keys to the box that takes over (_xmass_carry_inbound_reach), and an
+  ### untagged line cannot be attributed to a peer. A re-run never appends
+  ### a duplicate (see _xmass_key_trust_line).
+  _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+  _kb="${_XMASS_SRC_KEY%"${_XMASS_SRC_KEY##*[![:space:]]}"}"
+  _xmass_key_trust_line /root/.ssh/authorized_keys "${_kb}" \
+    " # xmass migration source ${_src_ip:-${_hst}}" \
+    || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
+  _mig_reach_stamp "${_src_ip}"
+  _mig_pending_open "${_src_ip}"
+  _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
+
+  # Let the source IN. This is the ONE thing the source can never arrange
+  # for itself: prep-target's reachability check runs FROM the source, and
+  # the csf-allow that would fix it sits AFTER that check, so a target
+  # firewalling the source deadlocks. Here we are on the target and we know
+  # who the source is, which makes this the only place it can be done. Kept
+  # on any later stop of this run: the verb's exit would otherwise take it
+  # back with the key still trusted.
+  if [ -n "${_src_ip}" ]; then
+    _xmass_csf_allow_peer "${_src_ip}" source
+  else
+    _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
+  fi
+  _XMASS_CSF_KEEP=YES
 }
 
 _xmass_drop_target_prepass_backups() {
