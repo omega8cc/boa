@@ -3979,8 +3979,11 @@ echo DB-OK" 2> /dev/null)
 ### when it never wrote a backup chain of the account (multiback's chain marker
 ### or archive log), and keeps it as .secret.txt.xmass_prev; with a chain, the
 ### carried one goes beside it as .secret.from-<this box>.txt and the run says
-### so. Read and written only inside a remote_backups that is root's alone, as
-### the backup tools do: the account owns the home around it. A restore window
+### so, a different one already there kept as .secret.from-<this box>.txt.<its
+### sum>. A copy that reads current gets its immutable flag again, as a pass cut
+### between the put and the flag leaves it. Read and written only inside a
+### remote_backups that is root's alone, as the backup tools do: the account
+### owns the home around it. A restore window
 ### (mybackup hands the file to the account for the run) skips one pass. Never
 ### fatal: the folder is the account's to break.
 _XMASS_SECRET_ROOT_ONLY='_ro() { local _s _u _g _m; _s="$(stat -c "%u %g %a" -- "${1}" 2> /dev/null)" || return 1; read -r _u _g _m <<< "${_s}"; [ "${_u}" = 0 ] || return 1; (( 0${_m} & 2 )) && return 1; (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1; return 0; }'
@@ -4006,6 +4009,7 @@ _put() {
 _o=""
 [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] && _o="$(md5sum < ./.secret.txt)"
 if [ "${_o}" = "${_n}" ]; then
+  chattr +i ./.secret.txt 2> /dev/null
   echo XMSEC-CURRENT
   exit 0
 fi
@@ -4014,9 +4018,18 @@ for _f in /etc/boa/control/back-to-${_a}-*.chain.txt /var/log/boa/back-to-${_a}-
   [ -e "${_f}" ] && _c=YES
 done
 if [ -n "${_o}" ] && [ "${_c}" = YES ]; then
-  [ -f "./.secret.from-${_h}.txt" ] && [ ! -L "./.secret.from-${_h}.txt" ] \
-    && [ "$(md5sum < "./.secret.from-${_h}.txt")" = "${_n}" ] && { echo XMSEC-CURRENT; exit 0; }
-  _put ".secret.from-${_h}.txt" && echo XMSEC-BESIDE || echo XMSEC-FAILED
+  _f=".secret.from-${_h}.txt"
+  if [ -f "./${_f}" ] && [ ! -L "./${_f}" ]; then
+    if [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+      chattr +i "./${_f}" 2> /dev/null
+      echo XMSEC-CURRENT
+      exit 0
+    fi
+    # an earlier one may be the only key to archives already made: kept by its sum
+    _k="./${_f}.$(md5sum < "./${_f}" | cut -c1-8)"
+    [ -e "${_k}" ] || { cp -p -- "./${_f}" "${_k}" && chown 0:0 "${_k}" && chmod 600 "${_k}" && chattr +i "${_k}" 2> /dev/null; }
+  fi
+  _put "${_f}" && echo XMSEC-BESIDE || echo XMSEC-FAILED
   exit 0
 fi
 if [ -n "${_o}" ]; then
@@ -4082,7 +4095,10 @@ ${_XMASS_SECRET_SH}")'" 2> /dev/null)"
 ### none of this box's archives could be decrypted there. Each pass puts this
 ### box's beside the standby's, as .secret.from-<this host>.txt, root 0600 and
 ### immutable, on stdin, never over the standby's own .secret.txt and never on a
-### command line or in a log. Never fatal: the accounts travel without it.
+### command line or in a log; a different one already there (this box's name
+### re-used by a rebuild) is kept as .secret.from-<this host>.txt.<its sum>, as it
+### may be the only key to archives made before. Never fatal: the accounts
+### travel without it.
 _XMASS_ROOT_SECRET_SH='read -r _b || exit 0
 [ -e /root/.standby.cnf ] || { echo XMRSEC-NOT-STANDBY; exit 0; }
 case "${_h}" in ""|*[!a-zA-Z0-9-]*) echo XMRSEC-FAILED; exit 0 ;; esac
@@ -4091,9 +4107,15 @@ cd -P -- /root/.remote_backups 2> /dev/null && [ "$(pwd -P)" = /root/.remote_bac
   && [ "$(stat -c %u -- .)" = 0 ] || { echo XMRSEC-NOT-ROOTS; exit 0; }
 _f=".secret.from-${_h}.txt"
 _n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
-if [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
-  echo XMRSEC-CURRENT
-  exit 0
+if [ -f "./${_f}" ] && [ ! -L "./${_f}" ]; then
+  if [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+    chattr +i "./${_f}" 2> /dev/null
+    echo XMRSEC-CURRENT
+    exit 0
+  fi
+  # an earlier one may be the only key to archives already made: kept by its sum
+  _k="./${_f}.$(md5sum < "./${_f}" | cut -c1-8)"
+  [ -e "${_k}" ] || { cp -p -- "./${_f}" "${_k}" && chown 0:0 "${_k}" && chmod 600 "${_k}" && chattr +i "${_k}" 2> /dev/null; }
 fi
 _t="./.${_f}.put.$$"
 rm -f -- "${_t}"
@@ -6376,7 +6398,7 @@ _xmass_restore_target_finish() {
 # Each step finds what a stopped run left and takes it from there, so a run
 # again from the record repeats none of them wrongly.
 _xmass_restore_target_swap() {
-  local _stamp="$1" _pre="$2" _at="$3" _keep="$4" _known="$5" _ts _cnf _d _inc_dir
+  local _stamp="$1" _pre="$2" _at="$3" _keep="$4" _known="$5" _ts _cnf _d _inc_dir _p _f
   _ts="${_pre#/var/lib/mysql.xmass_pre_}"
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
     [ -e "${_cnf}.xmass_pre_${_ts}" ] \
@@ -6392,11 +6414,20 @@ _xmass_restore_target_swap() {
   done
   if [ "${_known}" = "YES" ]; then
     _xmass_unpark_db_broker "${_ts}" "${_keep}"
-  elif [ -d "/data/conf/.xmass_pre_${_ts}.db_broker" ]; then
-    _xmass_unpark_db_broker "${_ts}" "$(_xmass_broker_parked "${_ts}")"
   else
-    _alrt "  a record by older bytes names no parked database broker switch, and none waits parked:"
-    _alrt "  the switches in /data/conf are left as they are -- read them by hand"
+    # a record by older bytes names no list: a switch the stopped run had put back
+    # cannot be told from a carried one, so none is removed; any still parked goes
+    # back over a carried one of its name
+    _p="/data/conf/.xmass_pre_${_ts}.db_broker"
+    if [ -d "${_p}" ] && [ ! -L "${_p}" ]; then
+      for _f in "${_p}"/*_db_broker.txt; do
+        [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+        mv -f "${_f}" /data/conf/ || _alrt "  could not put ${_f} back in /data/conf: move it by hand"
+      done
+      rmdir "${_p}" 2> /dev/null
+    fi
+    _alrt "  a record by older bytes names no parked database broker switch: the switches in /data/conf"
+    _alrt "  are left as they are, any still parked put back -- read them by hand"
   fi
   # The standby hold: the cnf block init wrote (super_read_only at every
   # start) goes before the restart, exactly as the init unwind strips it.

@@ -5356,7 +5356,10 @@ _xoct_subuser_ssh_ok() {
 ### when it never wrote a backup chain of that account (multiback's chain marker
 ### or archive log), and keeps it as .secret.txt.xoct_prev; with a chain, the
 ### carried one goes beside it as .secret.from-<this box>.txt and the run says
-### so. Read and written only inside a remote_backups that is root's alone, as
+### so, a different one already there kept as .secret.from-<this box>.txt.<its
+### sum>. A copy that reads current gets its immutable flag again, as a run cut
+### between the put and the flag leaves it. Read and written only inside a
+### remote_backups that is root's alone, as
 ### the backup tools do: the account owns the home around it. A restore window
 ### (mybackup hands the file to the account for the run) skips one pass. Never
 ### fatal: the folder is the account's to break.
@@ -5382,6 +5385,7 @@ _put() {
 _o=""
 [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] && _o="$(md5sum < ./.secret.txt)"
 if [ "${_o}" = "${_n}" ]; then
+  chattr +i ./.secret.txt 2> /dev/null
   echo XOSEC-CURRENT
   exit 0
 fi
@@ -5390,9 +5394,18 @@ for _f in /etc/boa/control/back-to-${_a}-*.chain.txt /var/log/boa/back-to-${_a}-
   [ -e "${_f}" ] && _c=YES
 done
 if [ -n "${_o}" ] && [ "${_c}" = YES ]; then
-  [ -f "./.secret.from-${_h}.txt" ] && [ ! -L "./.secret.from-${_h}.txt" ] \
-    && [ "$(md5sum < "./.secret.from-${_h}.txt")" = "${_n}" ] && { echo XOSEC-CURRENT; exit 0; }
-  _put ".secret.from-${_h}.txt" && echo XOSEC-BESIDE || echo XOSEC-FAILED
+  _f=".secret.from-${_h}.txt"
+  if [ -f "./${_f}" ] && [ ! -L "./${_f}" ]; then
+    if [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+      chattr +i "./${_f}" 2> /dev/null
+      echo XOSEC-CURRENT
+      exit 0
+    fi
+    # an earlier one may be the only key to archives already made: kept by its sum
+    _k="./${_f}.$(md5sum < "./${_f}" | cut -c1-8)"
+    [ -e "${_k}" ] || { cp -p -- "./${_f}" "${_k}" && chown 0:0 "${_k}" && chmod 600 "${_k}" && chattr +i "${_k}" 2> /dev/null; }
+  fi
+  _put "${_f}" && echo XOSEC-BESIDE || echo XOSEC-FAILED
   exit 0
 fi
 if [ -n "${_o}" ]; then
