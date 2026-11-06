@@ -595,11 +595,12 @@
 
     * xoct's line on the soonest certificate expiry of a proxied account
       now reads only the certificates its HTTPS proxies serve, the ones the
-      certificate mirror keeps, and says plainly when that date has passed.
-      It read every set in the account's ssl.d, so an old .bak folder, the
-      default pair or a set no site serves was named instead, always as a
-      date the mirror would renew before. A conversion now prints it once
-      it has written those proxies, no longer before.
+      certificate mirror keeps, and warns when that date has passed, as the
+      proxy then serves that certificate expired. It read every set in the
+      account's ssl.d, so an old .bak folder, the default pair or a set no
+      site serves was named instead, always as a date the mirror would renew
+      before. A conversion now prints it once it has written those proxies,
+      no longer before.
 
     * A standing mirror now drops the dumps the old server rotated out of an
       account's store under /data/disk/arch when that store is a link onto

@@ -4073,9 +4073,9 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### the key alone is inherited from the old tool (xboa-old:428-429)
             ### and has the same hole; what the rewrite added is a configtest
             ### and revert, which is recovery rather than prevention. A site
-            ### that is missing any of the three cannot serve 443 whether or
-            ### not the vhost is written, so skipping it costs nothing and is
-            ### reported by name below.
+            ### that is missing any of the three cannot serve 443 on its own
+            ### certificate whether or not the vhost is written, so skipping it
+            ### costs nothing and is reported by name below.
             _SSL_MISSING=$(_xoct_ssl_material_missing "${_USR}" "${_Dom}")
             if [ -z "${_SSL_MISSING}" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
@@ -4136,8 +4136,9 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### back). HTTPS for the name then reaches the box's wildcard SSL
             ### front (pre.d/nginx_wild_ssl.conf, on every address, self-signed
             ### for *.<hostname>), which hands it to the site's :80 vhost, now
-            ### the plain HTTP proxy: a browser warns, and nothing reaches the
-            ### local database. The report below names the site.
+            ### the plain HTTP proxy (or a renamed site's 301): a browser warns,
+            ### and nothing reaches the local database. The report below names
+            ### the site.
             if [ -f "${_Vhs}" ] \
               && ! _xoct_vh_has "${_Vhs%/*}" "https.${_Dom}" "Secure HTTPS proxy"; then
               ### Parked inside the real vhost.d, on ./names.
@@ -8174,13 +8175,14 @@ _xoct_https_names_here() {
 ### proxy vhosts serve, the set the certificate mirror keeps: a vhost with
 ### the proxy's mark and a proxy_pass. The proxy serves THIS box's
 ### certificates and proxied accounts stop renewing (owl.sh and the fleet LE
-### sweep both skip them). With the mirror present that date is only
+### sweep both skip them). With the mirror present a date ahead is only
 ### informational -- the mirror pulls each newer set back from the target
 ### daily; without the mirror it is a real service horizon, so its absence is
-### the loud case. Nothing else in ssl.d is served through the proxy (.bak
-### folders, the default pair, sets no vhost serves, a parked site's set, a
-### retired name's 301), so none of it is read. A date already passed is
-### said so.
+### the loud case. A date already passed is a warning whatever the mirror's
+### state: the proxy serves that certificate expired now. Nothing else in
+### ssl.d is served through the proxy (.bak folders, the default pair, sets no
+### vhost serves, a parked site's set, a retired name's 301), so none of it is
+### read.
 _xoct_warn_proxy_cert_horizon() {
   local _root="$1" _vd _v _d _t _c _r _end _e _soon="" _soon_e="" _soon_dom="" _pt=""
   _vd="${_root}/config/server_master/nginx/vhost.d"
@@ -8216,7 +8218,7 @@ _xoct_warn_proxy_cert_horizon() {
     && grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
     echo "INFO: proxied certificates refresh daily from the target (migration_proxy_certs.sh);"
     if [ -n "${_pt}" ]; then
-      echo "INFO: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- the mirror replaces it only once the target holds a newer set"
+      echo "ALRT: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- this proxy serves it expired until the target holds a newer set for the mirror to pull"
     else
       echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror pulls each newer set from the target daily"
     fi
