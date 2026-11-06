@@ -224,6 +224,13 @@
       back, and the run stopped before its warning, every day. After a failed
       config test the warning now still runs.
 
+    * xmass, xoct and xcopy open a connection again when the other server's
+      sshd dropped it before its banner, as MaxStartups does while a scanner
+      holds its slots: up to five more tries, 10 s apart, each noted in
+      /var/log/boa/<tool>.drop.log. Nothing ran on that server, yet the step
+      failed: a sync denied, a cutover parked or froze the source. Any other
+      failure is never retried and reads as before.
+
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
       run them: they are fetched in the tools pass such a box still runs. Before,

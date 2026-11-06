@@ -32,6 +32,109 @@ _WEBG=www-data
 _THIS_DB_PORT=3306
 _ieni="--ignore-errors"
 
+### A connection sshd drops before login (MaxStartups, or a per-source
+### penalty while a scanner holds its slots) ran nothing on the far box, so
+### it is opened again: up to 5 more times, 10 s apart, which outlasts
+### LoginGraceTime. ssh's own log (-E) decides, never what the remote command
+### printed: a reset or a stall in the banner exchange, or a bare 'Connection
+### closed by <host> port <n>', which ssh logs only before login (a close
+### after it is 'Connection to <host> closed by remote host.', on stderr).
+### rsync and scp are read on their stderr, as their far end never prints
+### that text, and an rsync only when it received 0 bytes. Any other failure
+### returns at once with its own status and messages. Each retry adds one
+### line to the drop log: time, host, try and ssh's own words, never the
+### remote command. The functions shadow the binaries, so every call in the
+### tool goes through them; their text is the same in xmass, xoct and xcopy.
+_MIG_DROP_RE='(kex|ssh)_exchange_identification|banner exchange|^Connection closed by [^ ]+ port [0-9]+[[:space:]]*$'
+_MIG_DROP_LOG="/var/log/boa/xcopy.drop.log"
+
+### The host of the first root@ argument, and nothing else of the call.
+_mig_drop_host() {
+  local _a
+  for _a in "$@"; do
+    case "${_a}" in
+      root@?*)
+        _a="${_a#root@}"
+        printf '%s' "${_a%%:*}" | tr -cd 'A-Za-z0-9._-'
+        return 0
+        ;;
+    esac
+  done
+  printf '%s' '?'
+}
+
+### One retry noted: $1 the try, $2 the host, $3 the file holding the
+### client's own messages. A terminal is told only when stderr is one: a
+### caller that reads ssh's stderr still finds ssh's own words there.
+_mig_drop_note() {
+  [ -t 2 ] && echo "INFO: ${2}: connection dropped before login; try ${1} of 5 in 10 s" >&2
+  {
+    printf '%s %s try %s: ' "$(date '+%F %T')" "${2}" "${1}"
+    grep -E "${_MIG_DROP_RE}|^Connection (reset|closed|timed out)" "${3}" 2> /dev/null \
+      | tr -d '\r' | head -n 3 | tr '\n' ' '
+    echo
+  } >> "${_MIG_DROP_LOG}" 2> /dev/null
+  return 0
+}
+
+ssh() {
+  local _l _rc _n=0
+  while :; do
+    _l="$(mktemp /tmp/mig-ssh.XXXXXX 2> /dev/null)" || { command ssh "$@"; return $?; }
+    command ssh -E "${_l}" "$@"
+    _rc=$?
+    if [ "${_rc}" = "255" ] && [ "${_n}" -lt 5 ] \
+      && grep -qE "${_MIG_DROP_RE}" "${_l}" 2> /dev/null; then
+      _n=$(( _n + 1 ))
+      _mig_drop_note "${_n}" "$(_mig_drop_host "$@")" "${_l}"
+      rm -f "${_l}"
+      sleep 10
+      continue
+    fi
+    [ -s "${_l}" ] && cat "${_l}" >&2
+    rm -f "${_l}"
+    return "${_rc}"
+  done
+}
+
+### $1 rsync or scp, then its arguments: run with its stderr held, which is
+### replayed once the call is not retried.
+_mig_rsh_again() {
+  local _e _rc _n=0
+  while :; do
+    _e="$(mktemp /tmp/mig-rsh.XXXXXX 2> /dev/null)" || { command "$@"; return $?; }
+    command "$@" 2> "${_e}"
+    _rc=$?
+    if [ "${_rc}" != "0" ] && [ "${_n}" -lt 5 ] \
+      && grep -qE "${_MIG_DROP_RE}" "${_e}" 2> /dev/null \
+      && { [ "${1}" != "rsync" ] || grep -qF '(0 bytes received so far)' "${_e}"; }; then
+      _n=$(( _n + 1 ))
+      _mig_drop_note "${_n}" "$(_mig_drop_host "$@")" "${_e}"
+      rm -f "${_e}"
+      sleep 10
+      continue
+    fi
+    [ -s "${_e}" ] && cat "${_e}" >&2
+    rm -f "${_e}"
+    return "${_rc}"
+  done
+}
+
+### A local copy (no root@host: argument) runs as it is.
+rsync() {
+  local _a
+  for _a in "$@"; do
+    case "${_a}" in
+      root@?*:*) _mig_rsh_again rsync "$@"; return $? ;;
+    esac
+  done
+  command rsync "$@"
+}
+
+scp() {
+  _mig_rsh_again scp "$@"
+}
+
 ###
 ### Avoid too many questions
 ###
