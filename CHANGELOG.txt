@@ -624,6 +624,10 @@
 
 @=> Changes
 
+    * PHP 8.6.0RC5 replaces 8.6.0RC4 where PHP 8.6 is installed. A box takes
+      it with its next barracuda upgrade; the PHP security floor stays at
+      8.6.0RC4, so no upgrade is forced for it.
+
     * The dormant site health check backend, provision-site_health_check,
       and its permission are gone: its Drupal 8+ step ran a Drush command
       that Drush 12.3 removed and whose older form reads an advisory list
