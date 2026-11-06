@@ -15,6 +15,7 @@
   capability net_bind_service,
   capability setgid,
   capability setuid,
+  capability dac_read_search,
 
   # Allow execution of the mysql binary
   /usr/bin/mysql mrix,
@@ -101,8 +102,9 @@
   /root/.my.proxysql_adm.cnf r,
 
   # The database broker's client files. It passes each as /dev/fd/5 and the client
-  # opens that path again, an open judged by the file's real path. Their folder is
-  # root's alone.
+  # opens that path again, an open judged by the file's real path and owner. Their
+  # folder is root's alone; a site's own login is in a file the account owns, which
+  # is why root's client holds dac_read_search above.
   /run/boa-dbctl.tmp.*/*.cnf r,
 
   # Allow writing to log files in user's home directory

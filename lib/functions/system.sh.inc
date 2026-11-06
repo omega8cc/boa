@@ -8306,11 +8306,19 @@ _sync_apparmor_profiles() {
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
       # Before the kernel has AppArmor no tool can set a mode, and the next boot
-      # loads these files as they stand: the FPM profiles alone ship with no mode,
-      # which is enforce. All go in complain mode until a pass loads the chosen one.
+      # loads these files as they stand, so the chosen mode is written into them:
+      # enforce takes the complain flag off, and for anything else BOA's FPM
+      # profiles, the only ones that ship with no mode, get it. The markers are read
+      # in the same order as below.
       if [ "${_isAppArmOn}" != "Y" ]; then
-        sed -i 's/flags=(attach_disconnected)/flags=(attach_disconnected, complain)/' \
-          /etc/apparmor.d/opt.php*.sbin.php-fpm &> /dev/null
+        if [ -e "/root/.enforce.apparmor.cnf" ] \
+          && [ ! -e "/root/.activate.apparmor.cnf" ]; then
+          find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f \
+            -exec sed -i 's/ flags=(complain)//' {} + &> /dev/null
+        else
+          sed -i 's/flags=(attach_disconnected)/flags=(attach_disconnected, complain)/' \
+            /etc/apparmor.d/opt.php*.sbin.php-fpm &> /dev/null
+        fi
       fi
     fi
     if [ ! -e "/root/.run-to-excalibur.cnf" ] \
