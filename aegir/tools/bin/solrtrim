@@ -29,6 +29,10 @@
 ###   - Any removal of a version with real cores archives its data tree to
 ###     /var/backups first and refuses when the archive cannot be written or
 ###     verified (--force only overrides the USED/AMBIGUOUS refusals).
+###   - A version whose home still holds a data tree xmass restore-solr kept
+###     (data.xmass-landed-<stamp>) refuses, --force or not, with nothing
+###     changed: that tree is the only copy of an index a move landed, and
+###     the operator archives or deletes it by hand first.
 ###   - --blanket additionally writes the blanket java deny pair
 ###     (_DENY_JAVA=YES + /root/.deny.java.cnf), accepted only when NO Solr
 ###     version remains installed afterwards — the golden-master end state,
@@ -427,6 +431,29 @@ _remove_tree() {
   return 0
 }
 
+### A data tree xmass restore-solr kept in a version's home
+### (data.xmass-landed-<stamp>) is the only copy of an index a move landed,
+### kept there for the daily backup's include of the home: removing the
+### home would delete it. Refuse while one is there, --force or not, naming
+### each with the commands that archive or delete it by hand.
+_refuse_kept() {
+  local _sv="${1}" _k _r _n=0
+  [ -n "${_V_HOME}" ] || return 0
+  for _k in "${_V_HOME}"/data.xmass-landed-*; do
+    [ -e "${_k}" ] || continue
+    if [ "${_n}" -eq 0 ]; then
+      _alrt "${_sv}: ${_V_HOME} still holds a data tree xmass restore-solr kept -- refusing to"
+      _alrt "remove ${_sv}, --force or not; nothing changed. Archive or delete each by hand, then re-run:"
+    fi
+    _n=$((_n + 1))
+    _r=$(readlink -f "${_k}" 2>/dev/null)
+    _alrt "  ${_k}$( [ -L "${_k}" ] && echo " (a link to ${_r})" )"
+    _alrt "    archive: tar -czf ${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz -C ${_r%/*} ${_r##*/}"
+    _alrt "    delete:  rm -rf ${_k}"
+  done
+  [ "${_n}" -eq 0 ]
+}
+
 ###-------------STATUS---------------------###
 
 _cmd_status() {
@@ -459,6 +486,7 @@ _cmd_status() {
 _remove_one() {
   local _sv="${1}" _force="${2}" _ts _du _avail _arch _rsvdata
   _solr_map "${_sv}" || return 1
+  _refuse_kept "${_sv}" || return 1
   _classify "${_sv}"
 
   if [ "${_C_VERDICT}" = "USED" ] && [ "${_force}" != "YES" ]; then
@@ -685,6 +713,9 @@ case "${_cmd}" in
     echo "    a deny candidate and removes without --force. Any removal with real"
     echo "    cores archives the data tree to ${_ARCH_DIR} first and refuses if the"
     echo "    archive cannot land."
+    echo "  - remove refuses, --force or not, a version whose home still holds a data"
+    echo "    tree xmass restore-solr kept (data.xmass-landed-<stamp>), changing"
+    echo "    nothing; it names each one and how to archive or delete it by hand."
     echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
     echo "    the removed version can never serve again even if a later pass on a"
     echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."

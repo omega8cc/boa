@@ -28,13 +28,14 @@
 
     * A server moved without Solr can take one version back: xmass
       restore-solr solr9 (or solr7, solr4) clears that version's own deny
-      and the blanket Java deny in every form the cnf holds them, moves
-      the data tree the move left there out of the version's home to a
-      dated name beside it, kept where solrtrim remove never deletes it,
-      since BOA's installer skips a version whose tree is present, and
-      names the system pass that installs it. The other versions keep
-      their denies. It refuses, changing nothing, while that pass could
-      not install the version.
+      and the blanket Java deny in every form the cnf holds them, renames
+      the data tree the move left there in place to a dated name and
+      keeps it, since BOA's installer skips a version whose tree is
+      present, and names the system pass that installs it. For solr7 and
+      solr9 the kept tree stays in the version's home, and solrtrim
+      remove refuses that version until it is archived or deleted by
+      hand. The other versions keep their denies. It refuses, changing
+      nothing, while that pass could not install the version.
 
 @=> Security
 

@@ -6839,7 +6839,7 @@ _xmass_cnf_clear_deny() {
 
 ### One version's facts on this box, set in the caller's locals: service,
 ### deny variable, distribution dir, data tree the installer tests, the
-### version's home (solrtrim remove deletes it whole; solr4 has none), and
+### version's home (what solrtrim remove deletes whole; solr4 has none), and
 ### whether it is installed (distribution dir, init script, or a parked
 ### copy -- as the target read).
 _xmass_restore_solr_map() {
@@ -6881,66 +6881,35 @@ _xmass_restore_solr_jre() {
   return 1
 }
 
-### Where the mapped version's landed data tree is kept, stamped $1: beside
-### the version's home, never inside it (solrtrim remove deletes the home
-### whole), and beside the directory the home resolves to, so a home linked
-### onto another disk keeps the rename on that disk. solr4's tree is no
-### home's child: it is kept beside itself.
-_xmass_restore_solr_kept() {
-  local _rh
-  if [ -z "${_hom}" ]; then
-    echo "${_dta}.xmass-landed-$1"
-    return 0
-  fi
-  _rh="$(readlink -f "${_hom}" 2>/dev/null)"
-  [ -n "${_rh}" ] && [ "${_rh}" != "/" ] || return 1
-  echo "${_rh}-data.xmass-landed-$1"
-}
-
-### Keep the mapped version's landed data tree, stamped $1, out of what
-### solrtrim remove deletes: a tree inside the version's home as it
-### resolves (a data link pointing in there included) moves out to the
-### kept name and the link goes; a data link pointing outside the home is
-### replaced by an absolute link of the kept name, its target untouched.
-### Prints the kept name, or why it cannot be kept (status 1). $2 check:
-### only the checks, nothing changed -- a move that would copy the tree
-### onto another mount is refused.
+### Keep the mapped version's landed data tree, stamped $1: the tree, or a
+### link standing for it, is renamed in its own directory to
+### <tree>.xmass-landed-<stamp>. It stays on its disk, a relative link
+### still resolves, and solr7's and solr9's stay in the version's home,
+### which the daily off-site backup includes and which solrtrim remove
+### refuses to delete while a kept tree is there. solr4's /opt/solr4 is
+### the tree itself, which the installer removes whole when it installs,
+### so its kept name sits beside it. Prints the kept name, or why it
+### cannot be kept (status 1). $2 check: only the checks, nothing changed.
 _xmass_restore_solr_keep() {
-  local _new _rh _rd _mpA _mpB
-  _new="$(_xmass_restore_solr_kept "$1")" || { echo "cannot resolve ${_hom}"; return 1; }
+  local _new="${_dta}.xmass-landed-$1" _mpA _mpB
   if [ -e "${_new}" ] || [ -L "${_new}" ]; then
     echo "${_new} already exists -- move it away, then re-run"
     return 1
   fi
-  if [ -z "${_hom}" ]; then
-    [ "${2:-}" = "check" ] && return 0
-    mv "${_dta}" "${_new}" \
-      || { echo "could not move ${_dta} aside to ${_new} -- move it by hand, then re-run"; return 1; }
-    echo "${_new}"
-    return 0
+  ### A tree that is a mount of its own cannot be renamed: the kernel
+  ### refuses to rename a mount point, and mv copies nothing then. A link
+  ### is renamed, never what it points to.
+  if [ ! -L "${_dta}" ]; then
+    _mpA="$(df -P "${_dta}" 2>/dev/null | awk 'NR==2 { print $NF }')"
+    _mpB="$(df -P "${_dta%/*}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
+    if [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]; then
+      echo "${_dta} is a mount of its own (${_mpA}) and cannot be renamed -- unmount it, or move its contents aside by hand, then re-run"
+      return 1
+    fi
   fi
-  _rh="$(readlink -f "${_hom}" 2>/dev/null)"
-  _rd="$(readlink -f "${_dta}" 2>/dev/null)"
-  [ -n "${_rd}" ] || { echo "cannot resolve ${_dta}"; return 1; }
-  case "${_rd}" in
-    "${_rh}"/*)
-      _mpA="$(df -P "${_rd}" 2>/dev/null | awk 'NR==2 { print $NF }')"
-      _mpB="$(df -P "${_new%/*}" 2>/dev/null | awk 'NR==2 { print $NF }')"
-      if [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]; then
-        echo "${_rd} is on the ${_mpA} mount and keeping it as ${_new} would copy it onto ${_mpB} -- move it by hand outside ${_hom}, then re-run"
-        return 1
-      fi
-      [ "${2:-}" = "check" ] && return 0
-      mv "${_rd}" "${_new}" \
-        || { echo "could not move ${_rd} aside to ${_new} -- move it by hand, then re-run"; return 1; }
-      [ -L "${_dta}" ] && rm -f "${_dta}"
-    ;;
-    *)
-      [ "${2:-}" = "check" ] && return 0
-      { ln -s "${_rd}" "${_new}" && rm -f "${_dta}"; } \
-        || { echo "could not replace the link ${_dta} with ${_new} -- move it by hand, then re-run"; return 1; }
-    ;;
-  esac
+  [ "${2:-}" = "check" ] && return 0
+  mv "${_dta}" "${_new}" \
+    || { echo "could not rename ${_dta} to ${_new} -- rename it by hand, then re-run"; return 1; }
   echo "${_new}"
 }
 
@@ -7057,8 +7026,8 @@ _xmass_restore_solr_source() {
   fi
   ### A named version with no install comes only from the next full system
   ### pass: refuse while that pass could not install it, before any change.
-  ### The same goes for a landed tree that cannot be kept beside its home
-  ### without a copy onto another disk.
+  ### The same goes for a landed tree that cannot be renamed in place (a
+  ### mount of its own) or whose kept name is taken.
   _stamp="$(date -u '+%Y%m%d-%H%M%S')"
   for _sv in ${_want}; do
     _xmass_restore_solr_map "${_sv}"
@@ -7095,6 +7064,13 @@ _xmass_restore_solr_source() {
     if [ -d "${_dta}" ]; then
       _new="$(_xmass_restore_solr_keep "${_stamp}")" || _die "${_sv}: ${_new}"
       _info "  ${_sv}: no install here; its data tree moved aside, kept: ${_new}"
+      [ -L "${_new}" ] \
+        && _info "  ${_sv}: the kept name is a link to $(readlink -f "${_new}" 2>/dev/null), which stays where it is"
+      if [ -n "${_hom}" ]; then
+        _info "  ${_sv}: solrtrim remove ${_sv} refuses while it is in ${_hom}: archive or delete it by hand once it is not needed"
+      else
+        _info "  ${_sv}: it is outside the daily off-site backup, which includes ${_dta} alone (the installer removes ${_dta} whole when it installs): archive it by hand if it is needed"
+      fi
     fi
     _owed="${_owed} ${_sv}"
   done
@@ -21140,11 +21116,13 @@ case "${_cmd}" in
     echo "    such as a target moved from a source that used no Solr. It clears that"
     echo "    version's own deny and the blanket deny, in every form the cnf holds"
     echo "    them; the other versions keep theirs. With no install of it here, the"
-    echo "    data tree the move landed is moved out of the version's home, which"
-    echo "    solrtrim remove deletes whole, and kept beside it as"
-    echo "    /var/solrN-data.xmass-landed-<UTC stamp> (solr4's /opt/solr4 as"
-    echo "    /opt/solr4.xmass-landed-<UTC stamp>), since BOA's installer skips a"
-    echo "    version whose tree is present. The run ends naming the full system"
+    echo "    data tree the move landed is renamed in place and kept, since BOA's"
+    echo "    installer skips a version whose tree is present: /var/solrN/data"
+    echo "    becomes /var/solrN/data.xmass-landed-<UTC stamp>, inside the home the"
+    echo "    daily backup includes, and solrtrim remove refuses that version while"
+    echo "    it is there; solr4's /opt/solr4 becomes"
+    echo "    /opt/solr4.xmass-landed-<UTC stamp>, outside that backup, since the"
+    echo "    installer removes /opt/solr4 whole. The run ends naming the full system"
     echo "    pass that installs it. It refuses, changing nothing, while that pass"
     echo "    could not install it."
     echo ""
