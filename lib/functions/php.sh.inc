@@ -1253,7 +1253,9 @@ _install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_SIX}"
+  elif [ "$1" = "85" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
@@ -1291,7 +1293,10 @@ _install_php_extensions() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_EIGHT_SIX_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
+  elif [ "$1" = "85" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
@@ -1642,7 +1647,9 @@ _php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_SIX}"
+  elif [ "$1" = "85" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
@@ -1683,7 +1690,10 @@ _php_extensions_update() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
+  elif [ "$1" = "86" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_EIGHT_SIX_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
+  elif [ "$1" = "85" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
