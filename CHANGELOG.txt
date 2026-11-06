@@ -162,6 +162,15 @@
       those names defined as PHP 8.5 defined them. A box rebuilds them for
       PHP 8.6 once, with its next barracuda upgrade.
 
+    * BOA no longer takes the mirror's page for a missing file as the file.
+      The mirror answers most missing files with a small web page and status
+      200, and BOA read it as a new release in the nightly mail, as a
+      Backdrop, Grav or Textpattern version, as an apt key (leaving the
+      Percona or MySQL keyring empty for good), as a package checksum, as PHP
+      sources, as its boot cleanup script, as ProxySQL helpers and as Tika
+      jars. Each of those reads now treats such a page as a missing file, and
+      an empty keyring left by an earlier pass is fetched again.
+
     * After an Octopus install or upgrade on a server in AppArmor enforce
       mode, aa-status no longer counts a profile in complain mode until the
       next reboot or barracuda pass: the learning profile made for crontab
