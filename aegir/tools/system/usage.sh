@@ -141,6 +141,10 @@ _usage_read_in() {
 # writable by no one else, at most 64 KiB. Prints the handle's mtime on a line
 # of its own, then the bytes. Status 3 absent, 4 anything else, 5 a read error.
 _MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# The plan names the limits know. An option is one of these: a file of
+# root's the account renamed to option.txt (its subscr.txt, a marker saying
+# "completed") names no plan and sets no limit.
+_USAGE_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
 # Root's own proxied marker of the account $1 stands: root's file, one link,
 # COMPLETE, dated no later than a day ahead. Only xoct and xmass write one, the
 # one-time import takes an older tool's, a promotion, reset-state and a purge
@@ -463,21 +467,22 @@ _read_account_data() {
   # the counts below go into shell arithmetic, which would evaluate
   # anything else as an expression: a whole number or nothing. The engine
   # count and the plan come from root's cnf when root's file gives none.
-  _usage_plan_file cores.txt '^[0-9]+$' && _CLIENT_CORES="${_uVal}"
+  _usage_plan_file cores.txt '^[1-9][0-9]{0,8}$' && _CLIENT_CORES="${_uVal}"
   if [ -z "${_CLIENT_CORES}" ] \
-    && _usage_cnf_value _CLIENT_CORES '^[0-9]+$'; then
+    && _usage_cnf_value _CLIENT_CORES '^[1-9][0-9]{0,8}$'; then
     _CLIENT_CORES="${_uVal}"
     _uPlan="${_uPlan:-cnf}"
   fi
-  _usage_plan_file diskspace.txt '^[0-9]+$' && _DSK_CLU_LIMIT="${_uVal}"
+  _usage_plan_file diskspace.txt '^(0|[1-9][0-9]{0,8})$' && _DSK_CLU_LIMIT="${_uVal}"
   if [ "${_CLIENT_CORES:-0}" -gt 1 ]; then
     _ENGINE_NR="Engines"
   else
     _ENGINE_NR="Engine"
   fi
-  # a plan name, one word: it goes into the report line, the panel footer
-  # and the notices, and an unknown one takes the default limits
-  _usage_plan_file option.txt '^[A-Za-z0-9_-]+$' && _CLIENT_OPTION="${_uVal}"
+  # a plan name the limits know (_USAGE_PLAN_RE) from root's file: it goes
+  # into the report line, the panel footer and the notices. Root's cnf may
+  # still give an older word, which takes the default limits.
+  _usage_plan_file option.txt "${_USAGE_PLAN_RE}" && _CLIENT_OPTION="${_uVal}"
   if [ -z "${_CLIENT_OPTION}" ] \
     && _usage_cnf_value _CLIENT_OPTION '^[A-Za-z0-9_-]+$'; then
     _CLIENT_OPTION="${_uVal}"
@@ -489,17 +494,20 @@ _read_account_data() {
   fi
   # _uXtra: the first kind of extra engine root's files give, the one whose
   # allowance _check_limits adds
-  if _usage_plan_file extra_edge.txt '^[0-9]+$'; then
+  if _usage_plan_file extra_edge.txt '^(0|[1-9][0-9]{0,8})$' \
+    && [ -n "${_uVal}" ]; then
     _EXTRA_ENGINE="${_uVal}"
     _uXtra="${_uXtra:-edge}"
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
-  if _usage_plan_file extra_aero.txt '^[0-9]+$'; then
+  if _usage_plan_file extra_aero.txt '^(0|[1-9][0-9]{0,8})$' \
+    && [ -n "${_uVal}" ]; then
     _EXTRA_ENGINE="${_uVal}"
     _uXtra="${_uXtra:-aero}"
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x AERO"
   fi
-  if _usage_plan_file extra_power.txt '^[0-9]+$'; then
+  if _usage_plan_file extra_power.txt '^(0|[1-9][0-9]{0,8})$' \
+    && [ -n "${_uVal}" ]; then
     _EXTRA_ENGINE="${_uVal}"
     _uXtra="${_uXtra:-power}"
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
