@@ -6803,9 +6803,82 @@ _xmass_restore_target() {
   return 0
 }
 
+### One version's facts on this box, set in the caller's locals: service,
+### deny variable, data tree the installer tests, and whether it is installed
+### (distribution dir, init script, or a parked copy -- as the target read).
+_xmass_restore_solr_map() {
+  case "$1" in
+    solr4) _svc=jetty9; _denyVar=_DENY_JETTY9; _dst=/opt/jetty9; _dta=/opt/solr4 ;;
+    solr7) _svc=solr7;  _denyVar=_DENY_SOLR7;  _dst=/opt/solr7;  _dta=/var/solr7/data ;;
+    solr9) _svc=solr9;  _denyVar=_DENY_SOLR9;  _dst=/opt/solr9;  _dta=/var/solr9/data ;;
+    *) return 1 ;;
+  esac
+  _inst=NO
+  if [ -d "${_dst}" ] || [ -e "/etc/init.d/${_svc}" ] \
+    || [ -e "/var/backups/${_svc}.initd" ]; then
+    _inst=YES
+  fi
+  return 0
+}
+
+### Why the next full system pass would NOT install version $1 on this box,
+### or nothing when it would: the installer's own gates, read locally as
+### _xmass_solr_drive_install_pass reads them on a target.
+_xmass_restore_solr_gate() {
+  local _sv="$1" _hosted=NO _hn _os _xtras
+  if ls /root/.run-to-*.cnf > /dev/null 2>&1 \
+    && [ ! -e /root/.force.rebuild.src.on.auto.now.cnf ]; then
+    echo "this box is staged for an OS hop (/root/.run-to-*.cnf without the force-rebuild override): heavy rebuilds are held and no Solr installs"
+    return 0
+  fi
+  _os=$(. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-unknown}")
+  if [ "${_sv}" != "solr9" ] && [ "${_os}" = "excalibur" ]; then
+    echo "${_sv} never installs on excalibur (the installer excludes solr4 and solr7 there)"
+    return 0
+  fi
+  [ -e /root/.host8.cnf ] && _hosted=YES
+  _hn="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hn}" ] || _hn="$(hostname -f 2>/dev/null)"
+  case "${_hn}" in
+    *.aegir.cc) _hosted=YES ;;
+  esac
+  [ "${_hosted}" = "YES" ] && return 0
+  _xtras="$(grep '^_XTRAS_LIST=' /root/.barracuda.cnf 2>/dev/null | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g')"
+  case "${_xtras}" in
+    *"SR${_sv#solr}"*) return 0 ;;
+  esac
+  ### solr9's bare gate is inverted: it fires wherever its log is absent,
+  ### given a JRE for it.
+  if [ "${_sv}" = "solr9" ] && [ ! -e /var/solr9/logs/solr.log ] \
+    && { [ -e /usr/bin/java17 ] || [ -e /usr/bin/java21 ]; }; then
+    return 0
+  fi
+  echo "no install gate fires here (not hosted-named, no SR${_sv#solr} in _XTRAS_LIST$( [ "${_sv}" = "solr9" ] && echo ", no java17 or java21" )): add SR${_sv#solr} to _XTRAS_LIST in /root/.barracuda.cnf"
+  return 0
+}
+
+### Bare: re-arm a rolled-back source (each version whose own deny is unset).
+### Named (solr4|solr7|solr9 ...): bring those versions back on a box that
+### denies them, such as a target moved from a source that used no Solr --
+### their own denies go too, and a version with no install here gets the
+### data tree a move landed moved aside, since BOA's installer reads a
+### present tree as installed and skips that version on every pass.
 _xmass_restore_solr_source() {
   local _svc _initd _parked _port _denyVar _waited
   local _restored=NO _skipped=NO
+  local _sv _want="" _owed="" _also="" _why _dst _dta _inst _new _tree
+  for _sv in "$@"; do
+    case "${_sv}" in
+      solr4|solr7|solr9)
+        case " ${_want} " in
+          *" ${_sv} "*) : ;;
+          *) _want="${_want} ${_sv}" ;;
+        esac
+      ;;
+      *) _die "unknown Solr version '${_sv}' -- name solr4, solr7 or solr9; nothing changed" ;;
+    esac
+  done
+  _want="${_want# }"
   ### A finalized PX0 proxy is MEANT to have Solr down -- xtrim finalize put it
   ### there deliberately. Never resurrect it on a shrunken proxy.
   if [ -e "/root/.proxy.cnf" ]; then
@@ -6820,6 +6893,38 @@ _xmass_restore_solr_source() {
          " Solr is held down for the window; finish or abort the migration" \
          " first (a refused init unwinds this automatically)"
   fi
+  ### A named version with no install comes only from the next full system
+  ### pass: refuse while that pass could not install it, before any change.
+  for _sv in ${_want}; do
+    _xmass_restore_solr_map "${_sv}"
+    [ "${_inst}" = "NO" ] || continue
+    _why="$(_xmass_restore_solr_gate "${_sv}")"
+    [ -z "${_why}" ] || _die "${_sv}: ${_why} -- refusing; nothing changed"
+  done
+  [ -n "${_want}" ] && _info "Bringing back: ${_want} ..."
+  for _sv in ${_want}; do
+    _xmass_restore_solr_map "${_sv}"
+    ### autoupboa SOURCES the cnf: every form of the line goes, exported or
+    ### quoted, and what is left is read back with the tolerant test.
+    if [ -e "/root/.barracuda.cnf" ]; then
+      sed -i -E "s/^[[:space:]]*(export[[:space:]]+)?${_denyVar}=.*/${_denyVar}=NO/" /root/.barracuda.cnf
+      if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_denyVar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+        _die "could not clear ${_denyVar} in /root/.barracuda.cnf -- fix that by hand before retrying"
+      fi
+    fi
+    rm -f "/etc/boa/.deny.${_svc}.cnf" "/root/.deny.${_svc}.cnf"
+    _info "  ${_sv}: its own deny cleared (${_denyVar}, /etc/boa/.deny.${_svc}.cnf)"
+    [ "${_inst}" = "YES" ] && continue
+    if [ -d "${_dta}" ]; then
+      _new="${_dta}.xmass-landed-$(date -u '+%Y%m%d-%H%M%S')"
+      [ -e "${_new}" ] && _die "${_new} already exists -- move it away, then re-run"
+      mv "${_dta}" "${_new}" \
+        || _die "could not move ${_dta} aside to ${_new} -- move it by hand, then re-run"
+      _info "  ${_sv}: no install here; its data tree moved aside, kept: ${_new}"
+    fi
+    _owed="${_owed} ${_sv}"
+  done
+  _owed="${_owed# }"
   _info "Clearing the source-side Java/Solr deny ..."
   ### The xmass hold is just another deny for this purpose: while it
   ### exists java.sh re-disarms and kills whatever this verb starts, so a
@@ -6857,9 +6962,9 @@ _xmass_restore_solr_source() {
     ### of its own. Clearing _DENY_JAVA must never re-enable a service the box
     ### deliberately runs without.
     case "${_svc}" in
-      solr9)  _denyVar=_DENY_SOLR9  ; _port=9099 ;;
-      solr7)  _denyVar=_DENY_SOLR7  ; _port=9077 ;;
-      jetty9) _denyVar=_DENY_JETTY9 ; _port=8099 ;;
+      solr9)  _denyVar=_DENY_SOLR9  ; _port=9099 ; _sv=solr9 ;;
+      solr7)  _denyVar=_DENY_SOLR7  ; _port=9077 ; _sv=solr7 ;;
+      jetty9) _denyVar=_DENY_JETTY9 ; _port=8099 ; _sv=solr4 ;;
     esac
     ### autoupboa SOURCES the cnf, so quoted/exported forms count -- match the
     ### classifier's own tolerant read. A hand-written variable-only deny
@@ -6870,6 +6975,12 @@ _xmass_restore_solr_source() {
       _skipped=YES
       continue
     fi
+    case " ${_owed} " in
+      *" ${_sv} "*)
+        _info "  ${_svc}: not installed -- the next full system pass installs it"
+        continue
+      ;;
+    esac
     ### Nothing to restore for a service this box never installed.
     if [ ! -e "/var/${_svc}" ] && [ ! -e "/opt/${_svc}" ] \
       && [ ! -e "/etc/init.d/${_svc}" ] && [ ! -e "/var/backups/${_svc}.initd" ]; then
@@ -6929,11 +7040,44 @@ _xmass_restore_solr_source() {
     _info "Solr restored on source: OK"
     _info "  The deny is clear, so the next autoupboa pass (clear.sh, every 5 min)"
     _info "  will no longer tear the init script down."
+  elif [ -n "${_owed}" ]; then
+    _info "Deny cleared; nothing to start until a full system pass installs: ${_owed}"
   elif [ "${_skipped}" = "YES" ]; then
     _info "Deny cleared; every Solr service on this box is held down by its own deny -- nothing to start"
   else
     _alrt "Deny cleared, but no Solr service could be started -- see the lines above"
   fi
+  [ -n "${_want}" ] || return 0
+  ### With the blanket gone, the next full pass also installs every other
+  ### version a gate fires for and no tree marks as present; its own deny
+  ### parks it within minutes, and one without a deny runs.
+  for _sv in solr4 solr7 solr9; do
+    case " ${_want} " in
+      *" ${_sv} "*) continue ;;
+    esac
+    _xmass_restore_solr_map "${_sv}"
+    [ "${_inst}" = "NO" ] && [ ! -d "${_dta}" ] || continue
+    [ -z "$(_xmass_restore_solr_gate "${_sv}")" ] || continue
+    if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_denyVar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null \
+      || [ -e "/etc/boa/.deny.${_svc}.cnf" ]; then
+      _also="${_also} ${_sv} (parked again by its own deny within ~5 minutes)"
+    else
+      _also="${_also} ${_sv} (no deny of its own: it will run)"
+    fi
+  done
+  [ -n "${_also}" ] && _info "The next full system pass here also installs:${_also}"
+  [ -n "${_owed}" ] || return 0
+  _tree=$(boa info 2>/dev/null \
+    | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+    | tail -1 \
+    | grep -oE '(dev|lts|pro)$')
+  if [ -z "${_tree}" ]; then
+    _alrt "could not read this box's BOA tree from 'boa info'; use the tree it runs in place of <tree>"
+    _tree="<tree>"
+  fi
+  _info "Install owed for: ${_owed} -- run one full system pass (~30 minutes) when the box can take it:"
+  _info "  barracuda up-${_tree} system"
+  return 0
 }
 
 _xmass_start_solr_target() {
@@ -20695,7 +20839,7 @@ case "${_cmd}" in
   ;;
   restore-solr)
     _check_root
-    _xmass_restore_solr_source
+    _xmass_restore_solr_source "$@"
   ;;
   restore-target)
     _check_root
@@ -20776,6 +20920,8 @@ case "${_cmd}" in
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
     echo "Usage: xmass restore-solr                             (run on source; recovery)"
+    echo "Usage: xmass restore-solr <solr4|solr7|solr9> [...]   (run on a box that denies that version,"
+    echo "                     such as a target moved without Solr: brings it back; see the notes)"
     echo "Usage: xmass restore-target [--live]                  (run on a standby target never promoted:"
     echo "                     the pre-init data directory and credentials back, the standby undone; recovery)"
     echo ""
@@ -20822,6 +20968,14 @@ case "${_cmd}" in
     echo "    script alone does not hold. This clears both deny forms FIRST, then"
     echo "    re-arms and starts each Solr whose own deny is not set. Refuses on a"
     echo "    finalized PX0 proxy, where Solr is down by design."
+    echo "  - restore-solr <version> brings one version back to a box that denies it,"
+    echo "    such as a target moved from a source that used no Solr. It clears that"
+    echo "    version's own deny and the blanket deny; the other versions keep theirs."
+    echo "    With no install of it here, the data tree the move landed is renamed to"
+    echo "    <data tree>.xmass-landed-<UTC stamp> and kept (BOA's installer skips a"
+    echo "    version whose tree is present), and the run ends naming the full system"
+    echo "    pass that installs it. It refuses, changing nothing, while that pass"
+    echo "    could not install it."
     echo ""
     exit 1
   ;;
