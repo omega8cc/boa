@@ -128,6 +128,11 @@
 
 @=> Important Fixes
 
+    * After an Octopus install or upgrade on a server in AppArmor enforce
+      mode, aa-status no longer counts a profile in complain mode until the
+      next reboot: the learning profile made for crontab while the profiles
+      were in complain mode is removed once enforce mode is back.
+
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
       run them: they are fetched in the tools pass such a box still runs. Before,
