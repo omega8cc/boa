@@ -457,6 +457,11 @@
       deletes nothing. Those dumps stayed on the mirror for good, so its disk
       grew every night.
 
+    * xmass prep-target --return-accounts no longer replaces what the serving
+      server holds where it copies the shared store's links onto another
+      volume: a link, file or folder already there stays as it is, only what
+      the server lacks arrives, and a server it cannot ask gets nothing.
+
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and
       its promotion by hand read every account on the box, as the move

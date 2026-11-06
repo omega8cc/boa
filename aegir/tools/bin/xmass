@@ -7329,6 +7329,15 @@ _xmass_tgt_kind() {
     | grep -m1 '^XMKIND ' | awk '{print $2}'
 }
 
+### Whether anything at all, a link or a file included, holds <path> ($2) on
+### the target: Y or N, empty when the target could not be asked.
+_xmass_tgt_has() {
+  local _qd
+  _qd="$(_shq "$2")"
+  ssh -n root@"$1" "d='${_qd}'; if [ -e \"\$d\" ] || [ -L \"\$d\" ]; then echo 'XMHAS Y'; else echo 'XMHAS N'; fi" 2>/dev/null \
+    | grep -m1 '^XMHAS ' | awk '{print $2}'
+}
+
 ### Whether an out-of-root file batch fits at <dest> ($2) on the target: its
 ### bytes ($3, in KB) and the names it makes ($4). Short of either, the
 ### batch's own files already there are credited, as a repeated pass adds
@@ -7957,7 +7966,7 @@ _xmass_materialise_out_links() {
   local _root="$1" _dstRoot="$2" _depth="${3:-1}" _acct="$4"
   local _dirs="${_XMASS_OUT_DIRS}" _files="${_XMASS_OUT_FILES}"
   local _fkb="${_XMASS_OUT_FILE_KB}"
-  local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl _la
+  local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl _la _bx
   # fd 3 keeps the loop's stdin clear of the here-doc: the store helpers run
   # ssh whose stdin would otherwise drain the list after the first entry.
   while IFS= read -r _rel <&3; do
@@ -7979,6 +7988,23 @@ _xmass_materialise_out_links() {
     # point anywhere: its copy stays additive.
     _la="${_ieni}"
     [ -z "${_acct}" ] && _la="$(_xmass_leg_args "${_real}")"
+    # A box that serves (--return-accounts) is given only what it lacks: a
+    # destination it holds in any form is its own and stays as it is.
+    if [ "${_XMASS_STORE_ADDITIVE:-}" = "YES" ]; then
+      case "$(_xmass_tgt_has "${_tgt}" "${_dstRoot}/${_rel}")" in
+        N) _la="${_ieni} --ignore-existing" ;;
+        Y)
+          _info "  ${_dstRoot}/${_rel} is on ${_tgt} already: a box that serves keeps its own"
+          continue
+          ;;
+        *)
+          _alrt "DENY: could not read whether ${_tgt} holds ${_dstRoot}/${_rel} -- not copied; re-run"
+          _XMASS_NOT_CLEAN=YES
+          _XMASS_STORE_RC=3
+          continue
+          ;;
+      esac
+    fi
     # Scan the resolved tree BEFORE its store leg runs, so nested out-of-root
     # links ride the same exclude treatment as depth 1 (a source symlink
     # re-sent over the previously materialised copy errors on a dir and
@@ -8043,7 +8069,10 @@ EOF
         _XMASS_NOT_CLEAN=YES
       else
         _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
-        _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
+        # a box that serves keeps every file it holds (see the dir links)
+        _bx=""
+        [ "${_XMASS_STORE_ADDITIVE:-}" = "YES" ] && _bx="--ignore-existing"
+        _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} ${_bx} -e ssh \
           "${_root}/" "root@${_tgt}:${_dstRoot}/"
       fi
     fi
