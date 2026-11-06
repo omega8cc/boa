@@ -255,12 +255,13 @@
 
     * The nightly's Drush on a Drupal 6 or 7 site follows the command-line
       PHP the account chose for it (cli.info, a phpNN.info switch, the
-      platform's cli-per-platform.info line) when that is older than PHP
-      7.4, as the site's own Ægir tasks do. It took 7.4 regardless, so a
-      Drupal 6 core older than 6.45 died on ereg() every night: its open
-      user registration was never switched to admin approval, and the
-      account's report carried the Drush error. A site whose PHP is 7.4 or
-      newer still runs on 7.4.
+      platform's cli-per-platform.info line) when that is older than the PHP
+      the nightly pins (7.4, or the server default where 7.4 is not
+      installed), as the site's own Ægir tasks do. It took the pinned PHP
+      regardless, so a Drupal 6 core older than 6.45 died on ereg() every
+      night: its open user registration was never switched to admin
+      approval, and the account's report carried the Drush error. A site
+      whose PHP is the pinned one or newer still runs on the pinned one.
 
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
