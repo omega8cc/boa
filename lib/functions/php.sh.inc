@@ -961,6 +961,18 @@ _php86_compat_mark() {
 }
 
 #
+# Before an 8.6 build of an extension that takes that header, its module goes:
+# the success check only asks whether the .so is there, and an older one built
+# without the header would pass it and be marked done while it still fails at
+# the first call. A failed build leaves no module, and the ini step then
+# leaves its line out until a later pass builds it.
+_php86_compat_drop() {
+  if [ "$1" = 86 ] && [ -n "${_THIS_PHP_EXT_DIR}" ]; then
+    rm -f "${_THIS_PHP_EXT_DIR}/$2.so"
+  fi
+}
+
+#
 # Check PHP Config.
 _php_config_check_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1402,6 +1414,7 @@ _install_php_extensions() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _php86_compat_drop "$1" uploadprogress
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
@@ -1614,6 +1627,7 @@ _install_php_extensions() {
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
     fi
+    _php86_compat_drop "$1" yaml
     _mrun "${_T_PHP_PTH}/phpize"
     _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
@@ -1809,6 +1823,7 @@ _php_extensions_update() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _php86_compat_drop "$1" uploadprogress
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
@@ -2085,6 +2100,7 @@ _php_extensions_update() {
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
+      _php86_compat_drop "$1" yaml
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure $(_php86_compat_flag "$1") --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
