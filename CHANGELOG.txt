@@ -579,19 +579,20 @@
       answer on both routes, so a site with a live vhost behind a catch-all
       answer, a dead port or a 500 still fails.
 
-    * A whole-server move now names each site it left without HTTPS on the
-      old server, because the site's certificate files were incomplete at
-      the conversion, at the end of xmass cutover and in xmass verify, with
-      the repair to run for its account. They were named only once, in the
-      middle of the conversion's output, and verify read HTTPS on the new
-      server alone, where these sites serve right.
+    * A whole-server move now names each site it left without its own
+      HTTPS on the old server, because the site's certificate files were
+      incomplete at the conversion, at the end of xmass cutover and in xmass
+      verify, with the repair to run for its account. They were named only
+      once, in the middle of the conversion's output, and verify read HTTPS
+      on the new server alone, where these sites serve right.
 
     * xoct now says what a site with incomplete certificate files does on
       the old server once converted: HTTPS still answers there, on the
       server's own wildcard certificate, so a browser warns, and nothing
       reaches the old copy of the site. It said HTTPS would fail. xmass now
-      names the one case in which it skips the HTTPS half of its outside
-      check of the new server: no wildcard HTTPS front there.
+      says why it skips the HTTPS half of its outside check of the new
+      server: no wildcard HTTPS front there, or what listens there could not
+      be read, a dropped connection being tried once more first.
 
     * xoct's line on the soonest certificate expiry of a proxied account
       now reads only the certificates its HTTPS proxies serve, the ones the

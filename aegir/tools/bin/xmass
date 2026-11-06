@@ -17972,6 +17972,34 @@ _xmass_autosync_run() {
   _info "autosync: pass complete in ${_dur}s"
 }
 
+# Whether the cutover's external proof also asks the target over HTTPS: 0
+# when something there listens on 443 on every address, as BOA's wildcard
+# SSL front does (the installer rewrites the template's 127.0.0.1:443 to
+# *:443). Otherwise 1, and the warning names the cause the probe saw: no such
+# listener, or listeners it could not read. Status 255 is ssh's own (a csf
+# restart there drops new connections for a moment), so it is tried once more
+# 10 seconds later; 3 is a target without ss.
+_xmass_https_leg_ok() {   # 1 = target ip
+  local _t="$1" _rc _try
+  for _try in 1 2; do
+    ssh -n -o ConnectTimeout=10 root@"${_t}" \
+      "command -v ss >/dev/null 2>&1 || exit 3; ss -tln 2>/dev/null | awk '{print \$4}' | grep -qE '(0\.0\.0\.0|\*|\[::\]):443$'" 2>/dev/null
+    _rc=$?
+    if [ "${_rc}" != "255" ] || [ "${_try}" = "2" ]; then
+      break
+    fi
+    sleep 10
+  done
+  case "${_rc}" in
+    0) return 0 ;;
+    1) _alrt "target ${_t}: nothing listens on 443 on every address -- its wildcard SSL front (pre.d/nginx_wild_ssl.conf) is missing; skipping the HTTPS half of the external proof" ;;
+    255) _alrt "target ${_t}: could not read what listens on 443 there (ssh failed twice, rc=255); skipping the HTTPS half of the external proof" ;;
+    3) _alrt "target ${_t}: could not read what listens on 443 there (no ss there); skipping the HTTPS half of the external proof" ;;
+    *) _alrt "target ${_t}: could not read what listens on 443 there (rc=${_rc}); skipping the HTTPS half of the external proof" ;;
+  esac
+  return 1
+}
+
 # Step 12: Start nginx on target so it can serve proxied traffic immediately.
 #
 # PROVE it came up. This is the last moment before the source is converted
@@ -18050,20 +18078,17 @@ FWOPEN
   # curl prints literally 000 when no HTTP transaction completed.
   # Browser UA: curl's default UA lands in BOA's own crawler map and gets
   # a bare 444 (no HTTP code = 000), parking a perfectly healthy cutover.
-  # The 443 leg runs when something listens on 443 on every address. On a
-  # BOA target the wildcard SSL front does (the installer rewrites the
-  # template's 127.0.0.1:443 to *:443), so the leg proves the source reaches
-  # the target's 443 through its firewall; a bare IP (no SNI) with -k reads
-  # no site's certificate or vhost, and any HTTP code passes. Only a target
-  # without the front skips it.
+  # The 443 leg runs when something listens on 443 on every address, which
+  # on a BOA target is the wildcard SSL front, so the leg proves the source
+  # reaches the target's 443 through its firewall; a bare IP (no SNI) with -k
+  # reads no site's certificate or vhost, and any HTTP code passes. A target
+  # without the front, or whose listeners cannot be read, skips it, and the
+  # warning says which.
   local _pxt _pxl _pxua
   _pxua="Mozilla/5.0 (X11; Linux x86_64) xmass-cutover-proof"
   _pxl="http://${_tgt}/"
-  if ssh root@"${_tgt}" \
-    "ss -tln 2>/dev/null | awk '{print \$4}' | grep -qE '(0\.0\.0\.0|\*|\[::\]):443$'" 2>/dev/null; then
+  if _xmass_https_leg_ok "${_tgt}"; then
     _pxl="${_pxl} https://${_tgt}/"
-  else
-    _alrt "target ${_tgt}: nothing listens on 443 on every address -- its wildcard SSL front (pre.d/nginx_wild_ssl.conf) is missing; skipping the HTTPS half of the external proof"
   fi
   for _pxt in ${_pxl}; do
     if ! curl -sk -A "${_pxua}" -o /dev/null --max-time 15 -w '%{http_code}' \
