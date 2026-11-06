@@ -704,6 +704,9 @@ _night_mail_list() (
 ### of its own, then the bytes. Status 3 absent, 4 anything else, 5 a read error.
 # shellcheck disable=SC2016
 _MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+### The plan names the pool sizing knows: the nightly takes an option into
+### root's cnf only when it is one of these.
+_ACCT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
 ### Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
 ### mail BOA would send an account's client goes to the one address it holds
 ### instead, its subject noting who would have been mailed; a file that anyone
@@ -1349,8 +1352,11 @@ _account_process() {
     # file, one link, not writable by group or others): log/ is oN's, so a
     # file the account made at one of these names, a link or a FIFO sets
     # no plan value in root's cnf, and one NOTE line says which was left.
-    # Text over 256 bytes is no plan value and is skipped before the
-    # filter below.
+    # Each value only in its own form, blanks around it dropped and nothing
+    # picked out of other text: the option a plan name the sizing knows,
+    # the plan one word, the cores a whole number. A file of root's the
+    # account renamed to one of these names (its fpm.txt, a marker saying
+    # "completed") holds no such value and leaves the cnf as it is.
     for _idPair in "_CLIENT_OPTION:option" "_CLIENT_SUBSCR:subscr" "_CLIENT_CORES:cores"; do
       _idVar="${_idPair%%:*}"
       _idFile="${_usEr}/log/${_idPair##*:}.txt"
@@ -1363,10 +1369,17 @@ _account_process() {
       fi
       _idVal="${_idVal%x}"
       _idVal="${_idVal#*$'\n'}"
-      _idVal=$(printf '%s' "${_idVal}" | tr -d "\n")
-      [ "${#_idVal}" -le 256 ] || continue
-      _idVal=${_idVal//[^a-zA-Z0-9]/}
-      [ -z "${_idVal}" ] && continue
+      _idVal="${_idVal#"${_idVal%%[![:space:]]*}"}"
+      _idVal="${_idVal%"${_idVal##*[![:space:]]}"}"
+      case "${_idVar}" in
+        _CLIENT_OPTION) _idRe="${_ACCT_PLAN_RE}" ;;
+        _CLIENT_CORES) _idRe='^[1-9][0-9]{0,8}$' ;;
+        *) _idRe='^[A-Za-z0-9_]{1,64}$' ;;
+      esac
+      if [[ ! "${_idVal}" =~ ${_idRe} ]]; then
+        echo "NOTE: ${_HM_U}: log/${_idPair##*:}.txt holds no ${_idVar} value: root's cnf left as it is"
+        continue
+      fi
       if grep -q "^${_idVar}=\"${_idVal}\"" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
         _DO_NOTHING=YES
       elif grep -q "^${_idVar}=" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then

@@ -838,7 +838,10 @@ _link_guard_fix() {
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
-### Fix ownership only once daily, unless it's Drupal 8 or newer
+### Once a day only on a Drupal 8 to 9.0 core (classy, no olivero): a second
+### run that day runs the link guard (when armed) and stops here. Every
+### other tree, Drupal 7 included (it has no core/), takes the whole fix at
+### every run.
 if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; then
   if [ -e "${drupal_root}/core/themes/olivero" ] \
     || [ ! -e "${drupal_root}/core/themes/classy" ]; then

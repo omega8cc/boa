@@ -761,14 +761,7 @@ _satellite_tune_fpm_config() {
   fi
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
-    ### the digits of the account's cores.txt, as before, taken by tr (a
-    ### pattern substitution over the whole file costs the square of its
-    ### length), leading zeros dropped and at most nine kept, so the
-    ### product below stays a number
-    if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt \
-        | tr -cd '0-9' | sed 's/^0*//' | head -c 9)
-    fi
+    _satellite_cores_now
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
       _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
@@ -9206,17 +9199,64 @@ _satellite_pass_read() (
   # shellcheck disable=SC2086
   echo -n ${_v}
 )
-# The account's log/$1, read bounded, blanks around it dropped, put in the
-# variable $2 when the whole of it matches the extended regular expression
-# $3; any other text leaves $2 as the root cnf set it.
-_satellite_log_value() {
-  local _v
-  _v="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" "${1}")")"
-  if [[ "${_v}" =~ ${3} ]]; then
-    printf -v "${2}" '%s' "${_v}"
-  else
-    _msg "NOTE: ${_ROOT}/log/${1} ignored, ${2} kept as set in ${_octCnf}"
+# One file read as root wrote it, a copy of usage.sh's: $1 the name in the
+# current (pinned) directory, $2 "root" (root's regular file, one link, not
+# writable by group or others, at most 64 KiB) or "legacy" (also mode 0600,
+# group root). Prints its mtime on a line, then its bytes. Status 3: no such
+# name; 4: anything else there; 5: a read error.
+# shellcheck disable=SC2016
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# The plan names the sizing knows. A plan value is one of these: a file of
+# root's renamed by the account to option.txt (its subscr.txt, a marker
+# saying "completed") names no plan and sizes nothing.
+_SAT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
+# The account's log/$1 as root wrote it (_MIG_HREAD_PL "root"): log/ is the
+# account's, so a file it made there, a link or a FIFO sizes nothing. Sets
+# _sLog to the bytes, blanks around them dropped. Status 0: root's file;
+# 1: no such name; 2: something else is there.
+_satellite_root_log() {
+  local _r _s
+  _sLog=
+  _r="$(_acct_in_real_dir "${_ROOT}/log" perl -e "${_MIG_HREAD_PL}" \
+    -- "./${1}" root && printf x)"
+  _s=$?
+  if [ "${_s}" -ne 0 ]; then
+    [ -e "${_ROOT}/log/${1}" ] || [ -L "${_ROOT}/log/${1}" ] || return 1
+    return 2
   fi
+  _r="${_r%x}"
+  _sLog="$(_satellite_trim "${_r#*$'\n'}")"
+  return 0
+}
+# The account's log/$1 as root wrote it (_satellite_root_log) put in the
+# variable $2 when the whole of it matches the extended regular expression
+# $3; anything else leaves $2 as the root cnf set it.
+_satellite_log_value() {
+  local _s
+  _satellite_root_log "${1}"
+  _s=$?
+  [ "${_s}" -eq 1 ] && return 0
+  if [ "${_s}" -eq 0 ] && [[ "${_sLog}" =~ ${3} ]]; then
+    printf -v "${2}" '%s' "${_sLog}"
+  elif [ "${_s}" -eq 0 ]; then
+    _msg "NOTE: ${_ROOT}/log/${1} ignored, ${2} kept as set in ${_octCnf}"
+  else
+    _msg "NOTE: ${_ROOT}/log/${1} is not as root wrote it, ${2} kept as set in ${_octCnf}"
+  fi
+}
+# The engines count the pool sizing multiplies by: root's log/cores.txt when
+# it holds a whole number (leading zeros dropped, at most nine digits, so
+# the product stays a number), otherwise _CLIENT_CORES as the root cnf or
+# this pass set it. Never digits picked out of other text: a file of root's
+# renamed to cores.txt (fpm.txt holds 8.4) gives no count.
+_satellite_cores_now() {
+  local _v
+  _satellite_root_log cores.txt || return 0
+  _v="${_sLog}"
+  [[ "${_v}" =~ ^[0-9]+$ ]] || return 0
+  _v="${_v#"${_v%%[!0]*}"}"
+  [ -n "${_v}" ] && [ "${#_v}" -le 9 ] || return 0
+  _CLIENT_CORES="${_v}"
 }
 # $1 made literal for the replacement of a sed s/// command: each '\', '/'
 # and '&' escaped and line breaks dropped, so no text can end the command
@@ -9513,19 +9553,15 @@ _satellite_if_init_or_upgrade() {
           _acct_put_in "${_ROOT}/log" amazing_upgrade_complete.txt completed
         fi
       fi
-      ### Each value is taken in its own form only (the option and the plan
-      ### one word, the cores digits, the e-mail plain addresses, one or
-      ### several, as the nightly takes them); other text leaves the value
-      ### the root cnf gives.
-      if [ -e "${_ROOT}/log/option.txt" ]; then
-        _satellite_log_value option.txt _CLIENT_OPTION '^[A-Za-z0-9_]+$'
-      fi
-      if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _satellite_log_value cores.txt _CLIENT_CORES '^[0-9]+$'
-      fi
-      if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _satellite_log_value subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
-      fi
+      ### Each value is taken in its own form only (the option a plan name
+      ### the sizing knows, the plan one word, the cores digits, the e-mail
+      ### plain addresses, one or several, as the nightly takes them), and
+      ### the plan values only from files as root wrote them: they size the
+      ### pools and go into root's cnf. Anything else leaves the value the
+      ### root cnf gives.
+      _satellite_log_value option.txt _CLIENT_OPTION "${_SAT_PLAN_RE}"
+      _satellite_log_value cores.txt _CLIENT_CORES '^[0-9]+$'
+      _satellite_log_value subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
       if [ -e "${_ROOT}/log/email.txt" ]; then
         _T_EML="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" email.txt \
           | tr -s '[:space:]' ' ')")"
