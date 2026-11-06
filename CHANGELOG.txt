@@ -161,7 +161,7 @@
       Excalibur neither built at all. BOA now builds both for 8.6 with
       those names defined as PHP 8.5 defined them. A box rebuilds them for
       PHP 8.6 once, with its next barracuda upgrade; if that rebuild fails,
-      the module is left out until a later pass builds it.
+      the module in place stays and a later pass builds it again.
 
     * BOA no longer takes the mirror's page for a missing file as the file.
       The mirror answers most missing files with a small web page and status
