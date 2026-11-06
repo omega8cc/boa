@@ -123,8 +123,9 @@
       Commerce, and a platform in use keeps its copy.
 
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
-      copies BOA keeps in /usr/bin: root's shell or cron found those first and
-      ran them with no profile. From PHP both still run under the PHP profile.
+      copies BOA keeps in /usr/bin, the path sites are given: started by that
+      path outside PHP, from a shell or cron, they ran with no profile. From
+      PHP both still run under the PHP profile.
 
 @=> Important Fixes
 
