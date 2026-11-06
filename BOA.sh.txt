@@ -5761,7 +5761,7 @@ CSFSTANDBY
     # accounts' log/ records unread and every move undeclared. An installed box
     # only: before the install there is no /var/xdrago to put them in.
     if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-      _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f74 --peer-written
+      _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f73 --peer-written
       # Proxy records and proxied markers moved out of the accounts' log/ into
       # /root: import what older tools left there once, before any tool reads
       # the root copies. It reloads nothing and is a no-op after its stamp.

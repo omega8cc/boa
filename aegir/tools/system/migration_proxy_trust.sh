@@ -159,10 +159,14 @@ _csf_reload() {
     csf -ra &>/dev/null || { _csf_restart_wait; csf -ra &>/dev/null; }
     command -v synproxy_reassert >/dev/null 2>&1 \
       && synproxy_reassert -p "443 80" --no-quic -q &>/dev/null
+    _csf_restart_wait
   else
     csf -r &>/dev/null || { _csf_restart_wait; csf -r &>/dev/null; }
+    # lfd's own restart gives up when another csf run holds the lock, and lfd
+    # does not ask again: a wait that saw such a run asks once more
+    _csf_restart_wait || { csf -r &>/dev/null; _csf_restart_wait; }
   fi
-  _csf_restart_wait
+  return 0
 }
 # With LFDSTART on, csf -r leaves the restart to lfd a few seconds later, and
 # while csf runs it the allow rules are gone: a peer's next connection, such as
@@ -171,16 +175,23 @@ _csf_reload() {
 # asked for before this one), then while a restart runs or the file still waits
 # for a live lfd (60 seconds more), and return once two reads half a second apart
 # find neither. csf -ra restarts in the foreground and leaves no file: after it
-# this waits only for a restart someone else asked for.
+# this waits only for a restart someone else asked for. Status 1 when csf's lock
+# was seen held while lfd was not restarting: another csf run in the foreground,
+# whose lock makes lfd's own restart give up.
 _csf_restart_wait() {
-  local _i=0 _j=0 _q=0
+  local _i=0 _j=0 _q=0 _f=0
   [ -e /var/lib/csf/csf.restart ] || _csf_restarting || return 0
   while [ -e /var/lib/csf/csf.restart ] && [ "${_i}" -lt 120 ]; do
     sleep 0.5
     _i=$(( _i + 1 ))
   done
   while [ "${_j}" -lt 120 ]; do
-    if _csf_restarting || { [ -e /var/lib/csf/csf.restart ] && _csf_lfd_alive; }; then
+    if _csf_lfd_restarting; then
+      _q=0
+    elif _csf_locked; then
+      _q=0
+      _f=1
+    elif [ -e /var/lib/csf/csf.restart ] && _csf_lfd_alive; then
       _q=0
     else
       _q=$(( _q + 1 ))
@@ -189,14 +200,16 @@ _csf_restart_wait() {
     sleep 0.5
     _j=$(( _j + 1 ))
   done
-  return 0
+  return "${_f}"
 }
 # Whether a csf restart runs: root's lfd titles itself "lfd - (re)starting
 # csf..." from before it starts csf until csf ends (csf's lock comes a moment
 # later), or csf holds its lock.
 _csf_restarting() {
-  pgrep -u root -f '^lfd - \(re\)starting csf' > /dev/null 2>&1 && return 0
-  _csf_locked
+  _csf_lfd_restarting || _csf_locked
+}
+_csf_lfd_restarting() {
+  pgrep -u root -f '^lfd - \(re\)starting csf' > /dev/null 2>&1
 }
 _csf_lfd_alive() {
   pgrep -u root -f '^lfd - ' > /dev/null 2>&1
