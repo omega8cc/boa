@@ -177,6 +177,7 @@
   /etc/mc/ r,
   /etc/mc/** r,
   /etc/mydumper.cnf r,
+  /etc/boa/mydumper-extra.cnf r,
   /etc/subversion/ r,
   /etc/subversion/* r,
   /etc/vim/ r,
