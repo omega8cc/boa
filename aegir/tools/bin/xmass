@@ -6864,6 +6864,9 @@ _xmass_finalize_dry() {   # 1 tgt
 ###     tenants build codebases anywhere under it and a removed one stayed on
 ###     the mirror for good. static/files is the store (its own leg, which
 ###     prunes already) and static/control is control state (additive).
+###   - A box tree's out-of-root links materialised on the target (arch's
+###     per-account dump stores on a volume) follow their tree; the ones
+###     under an account's tree stay additive.
 ###   - `sync` passes only, manual and automated alike. The CUTOVER legs stay
 ###     additive on purpose: that is the one window where the target is about
 ###     to become production and a wrong deletion is unrecoverable, and a
@@ -7954,7 +7957,7 @@ _xmass_materialise_out_links() {
   local _root="$1" _dstRoot="$2" _depth="${3:-1}" _acct="$4"
   local _dirs="${_XMASS_OUT_DIRS}" _files="${_XMASS_OUT_FILES}"
   local _fkb="${_XMASS_OUT_FILE_KB}"
-  local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl
+  local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl _la
   # fd 3 keeps the loop's stdin clear of the here-doc: the store helpers run
   # ssh whose stdin would otherwise drain the list after the first entry.
   while IFS= read -r _rel <&3; do
@@ -7967,6 +7970,15 @@ _xmass_materialise_out_links() {
       _alrt "    (its tree, its store under <mount>/files/${_acct}/, or its files) -- skipped, its content does NOT travel"
       continue
     fi
+    # A box tree's copy follows that tree's own leg: a sync pass prunes it
+    # under the three guards (the dump stores under /data/disk/arch are
+    # mostly such links, and kept every dump the source rotated), the
+    # cutover and every other additive pass do not. The nested excludes keep
+    # each nested link's own copy, and a dangling one's last copy, out of
+    # the deletion. Under an account's tree the link is the account's to
+    # point anywhere: its copy stays additive.
+    _la="${_ieni}"
+    [ -z "${_acct}" ] && _la="$(_xmass_leg_args "${_real}")"
     # Scan the resolved tree BEFORE its store leg runs, so nested out-of-root
     # links ride the same exclude treatment as depth 1 (a source symlink
     # re-sent over the previously materialised copy errors on a dir and
@@ -7992,7 +8004,7 @@ _xmass_materialise_out_links() {
     esac
     _rcStore=0
     _xmass_handle_store "${_root}/${_rel}" "${_dstRoot}/${_rel}" "" \
-      "${_tgt}" "${_tmArg}" "${_ieni} ${_nExcl}" "out-of-root link ${_root}/${_rel}" \
+      "${_tgt}" "${_tmArg}" "${_la} ${_nExcl}" "out-of-root link ${_root}/${_rel}" \
       "${_acct}" uid || _rcStore=$?
     if [ "${_rcStore}" != "0" ]; then
       _XMASS_STORE_RC="${_rcStore}"

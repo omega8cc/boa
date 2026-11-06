@@ -450,6 +450,13 @@
       middle of the conversion's output, and verify read HTTPS on the new
       server alone, where these sites serve right.
 
+    * A standing mirror now drops the dumps the old server rotated out of an
+      account's store under /data/disk/arch when that store is a link onto
+      another volume, as the rest of the archive already did: a sync pass
+      prunes the copy under the same delete guard, and the cutover still
+      deletes nothing. Those dumps stayed on the mirror for good, so its disk
+      grew every night.
+
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and
       its promotion by hand read every account on the box, as the move
