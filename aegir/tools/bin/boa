@@ -1890,12 +1890,13 @@ _fetch_boa_file() {
   mv -f "${_fTmp}" "${_fDst}"
 }
 
-### Whether $1 is a PHP word the {extra} slot takes (the _eXtr branches of
-### the install setup): only these move from the user or email slot to
-### {extra}, so an account named php, ophp1 or myphp keeps its name.
+### Whether $1, given in the public form's user slot, is the {extra} word:
+### that slot holds a php-* word or the account name (the install docs'
+### rule), so an account named php, ophp1 or myphp keeps its name, and a
+### mistyped php-* word still goes on to {extra}, read as a New Relic key.
 _boa_php_extra_word() {
   case "${1}" in
-    php-8.[3-6]|php-8[3-6]|php-all|php-min|php-max) return 0 ;;
+    php-*) return 0 ;;
   esac
   return 1
 }
@@ -2086,7 +2087,10 @@ _init_setup() {
           ;;
         esac
       done
-      if _boa_php_extra_word "${_eMal}"; then
+      # This slot is the local form's {extra}, never an account name, so any
+      # php word, a mistyped one included, goes on to {extra}, where a word
+      # that is no PHP choice is read as a New Relic key.
+      if [[ "${_eMal}" =~ "php" ]]; then
         _eXtr="${_eMal}"
       fi
       _eMal="${_fQdn}"
