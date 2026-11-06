@@ -1748,9 +1748,11 @@ _xmass_leg_refused() {
 ### Whether the resolved (canonical) path $2 belongs to the account $1: its
 ### own tree, or its own part of an attached store, <mount>/files/<oN>/, the
 ### layout migratefs relocates static/files to. Another account's tree or
-### store, and anything else a link can name, never passes.
+### store, and anything else a link can name, never passes. On a box whose
+### /mnt is a link, a path under the place it names is read as the same path
+### under /mnt (root's link, never one into / or /data).
 _xmass_own_path() {
-  local _a="${1}" _p="${2}" _t _r
+  local _a="${1}" _p="${2}" _t _r _m
   case "${_a}" in
     ''|.|..|*/*) return 1 ;;
   esac
@@ -1765,6 +1767,17 @@ _xmass_own_path() {
   if [ "${_t}" != "/${_a}" ]; then
     case "${_p}/" in
       "${_t}"/*) return 0 ;;
+    esac
+  fi
+  if [ -L /mnt ]; then
+    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    case "${_m}" in
+      ''|/|/mnt|/data|/data/*) ;;
+      *)
+        case "${_p}/" in
+          "${_m}"/?*) _p="/mnt${_p#"${_m}"}" ;;
+        esac
+        ;;
     esac
   fi
   case "${_p}" in
