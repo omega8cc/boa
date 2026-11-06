@@ -122,6 +122,10 @@
       satisfy the profile's older constraints. The profile does not enable
       Commerce, and a platform in use keeps its copy.
 
+    * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
+      copies BOA keeps in /usr/bin: root's shell or cron found those first and
+      ran them with no profile. From PHP both still run under the PHP profile.
+
 @=> Important Fixes
 
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
