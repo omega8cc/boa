@@ -16,6 +16,8 @@
 
   # Deny capability sys_ptrace
   deny capability sys_ptrace,
+  # nameservice brings NIS's privileged port binding, which a renderer never needs
+  deny capability net_bind_service,
 
   # System paths wkhtmltopdf needs to operate
   /proc/*/maps r,
