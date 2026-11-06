@@ -152,6 +152,7 @@ _is_ip() { _is_ipv4_or_cidr "$1" || _is_ipv6_ish "$1"; }
 _csf_present() { [ -x "/usr/sbin/csf" ] && [ -e "${_csf_allow}" ]; }
 
 _csf_reload() {
+  local _l
   _csf_present || return 0
   # a restart csf runs itself gives up at once when another holds csf's lock:
   # it waits that one out and runs again
@@ -161,12 +162,25 @@ _csf_reload() {
       && synproxy_reassert -p "443 80" --no-quic -q &>/dev/null
     _csf_restart_wait
   else
+    _l="$(stat -c %s /var/log/lfd.log 2> /dev/null)"
     csf -r &>/dev/null || { _csf_restart_wait; csf -r &>/dev/null; }
-    # lfd's own restart gives up when another csf run holds the lock, and lfd
-    # does not ask again: a wait that saw such a run asks once more
-    _csf_restart_wait || { csf -r &>/dev/null; _csf_restart_wait; }
+    _csf_restart_wait
+    # lfd's own restart gives up when another csf run holds the lock, says so
+    # in its log, and does not ask again: such a restart is asked for once more
+    if _csf_lfd_gave_up "${_l}"; then
+      csf -r &>/dev/null
+      _csf_restart_wait
+    fi
   fi
   return 0
+}
+# Whether lfd's log, past its byte $1 (all of it when the log is now shorter),
+# says a csf restart gave up on csf's lock.
+_csf_lfd_gave_up() {
+  local _s="${1:-0}" _n
+  _n="$(stat -c %s /var/log/lfd.log 2> /dev/null)" || return 1
+  [[ "${_s}" =~ ^[0-9]+$ ]] && [ "${_n}" -ge "${_s}" ] || _s=0
+  tail -c +"$(( _s + 1 ))" /var/log/lfd.log 2> /dev/null | grep -q 'csf is being restarted'
 }
 # With LFDSTART on, csf -r leaves the restart to lfd a few seconds later, and
 # while csf runs it the allow rules are gone: a peer's next connection, such as
@@ -175,23 +189,16 @@ _csf_reload() {
 # asked for before this one), then while a restart runs or the file still waits
 # for a live lfd (60 seconds more), and return once two reads half a second apart
 # find neither. csf -ra restarts in the foreground and leaves no file: after it
-# this waits only for a restart someone else asked for. Status 1 when csf's lock
-# was seen held while lfd was not restarting: another csf run in the foreground,
-# whose lock makes lfd's own restart give up.
+# this waits only for a restart someone else asked for.
 _csf_restart_wait() {
-  local _i=0 _j=0 _q=0 _f=0
+  local _i=0 _j=0 _q=0
   [ -e /var/lib/csf/csf.restart ] || _csf_restarting || return 0
   while [ -e /var/lib/csf/csf.restart ] && [ "${_i}" -lt 120 ]; do
     sleep 0.5
     _i=$(( _i + 1 ))
   done
   while [ "${_j}" -lt 120 ]; do
-    if _csf_lfd_restarting; then
-      _q=0
-    elif _csf_locked; then
-      _q=0
-      _f=1
-    elif [ -e /var/lib/csf/csf.restart ] && _csf_lfd_alive; then
+    if _csf_restarting || { [ -e /var/lib/csf/csf.restart ] && _csf_lfd_alive; }; then
       _q=0
     else
       _q=$(( _q + 1 ))
@@ -200,7 +207,7 @@ _csf_restart_wait() {
     sleep 0.5
     _j=$(( _j + 1 ))
   done
-  return "${_f}"
+  return 0
 }
 # Whether a csf restart runs: root's lfd titles itself "lfd - (re)starting
 # csf..." from before it starts csf until csf ends (csf's lock comes a moment
@@ -217,10 +224,14 @@ _csf_lfd_alive() {
 # Whether csf holds its lock, read from /proc/locks and never by taking it: csf
 # takes the lock without waiting and gives up when it is held, and lfd does not
 # start a restart it gave up again.
+# /proc/locks names a file by its device (major:minor in hex) and inode, the
+# device split from the number stat gives as the kernel does.
 _csf_locked() {
-  local _ino
-  _ino="$(stat -c %i /var/lib/csf/csf.lock 2> /dev/null)" || return 1
-  [ -n "${_ino}" ] && grep -q ":${_ino} " /proc/locks 2> /dev/null
+  local _d _ino _k
+  read -r _d _ino < <(stat -c '%d %i' /var/lib/csf/csf.lock 2> /dev/null) || return 1
+  [[ "${_d}" =~ ^[0-9]+$ ]] && [[ "${_ino}" =~ ^[0-9]+$ ]] || return 1
+  _k="$(printf '%02x:%02x:%s' "$(( (_d >> 8) & 0xfff ))" "$(( (_d & 0xff) | ((_d >> 12) & 0xfff00) ))" "${_ino}")"
+  grep -q " ${_k} " /proc/locks 2> /dev/null
 }
 
 # Set to YES by _csf_add_ip whenever it appends a line, so the caller only pays
