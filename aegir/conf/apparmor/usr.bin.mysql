@@ -93,6 +93,18 @@
   /root/.my.cnf r,
   /home/*/.my.cnf r,
 
+  # The other client files BOA's root tools name: a mirror's carried login, the
+  # cluster's and the proxy's admin logins, a check of a site's own login
+  /root/.my.cnf.xmass_carry r,
+  /root/.my.cluster_root.cnf r,
+  /root/.my.ghost-drc.* r,
+  /root/.my.proxysql_adm.cnf r,
+
+  # The database broker's client files. It passes each as /dev/fd/5 and the client
+  # opens that path again, an open judged by the file's real path. Their folder is
+  # root's alone.
+  /run/boa-dbctl.tmp.*/*.cnf r,
+
   # Allow writing to log files in user's home directory
   /home/*/.mysql_history rw,
   /root/.mysql_history rw,
