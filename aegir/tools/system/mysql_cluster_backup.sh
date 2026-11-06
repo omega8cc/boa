@@ -329,6 +329,10 @@ if ! _check_dump_fs; then
 fi
 touch /run/boa_sql_cluster_backup.pid
 _sql_wait_drop
+### A run that ends early (a Ctrl-C, INT, TERM or HUP during a dump ends it
+### with 130) takes its run marker with it, as its end does: the watchdogs
+### read it as a backup in progress, the MySQL one for a day.
+trap 'rm -f /run/boa_sql_cluster_backup.pid' EXIT
 
 _create_locks() {
   echo "Creating locks for $1"
@@ -531,6 +535,37 @@ _mydumper_run_ok() {
     END { exit (_bad || !_ok) }
   ' "${_log}"
 }
+### Runs a mydumper command line ($3 on) in a session of its own and waits
+### for it. mydumper 1.x takes SIGINT as a question: it pauses every worker
+### and asks on its output whether to cancel, which nobody sees with that
+### output in a log, and a pause that comes as it takes the global read
+### lock keeps every write on the server waiting until someone answers. In
+### its own session a Ctrl-C at the terminal never reaches it; this
+### script's own INT, TERM or HUP ends it at once by SIGKILL (a SIGTERM can
+### hang it the same way) and the script exits 130. It runs in directory
+### $1, which must resolve to exactly $2 unless $2 is "-"; stdin is
+### /dev/null, its output goes where the caller sends this function's.
+### A signal that lands between the fork and the pid's assignment finds
+### $! moved past its value before the fork and ends that child.
+### Returns mydumper's status, or 1 when the directory check fails.
+_mydumper_session() {
+  local _d="${1}" _want="${2}" _old _rc
+  shift 2
+  _old="$(trap -p INT TERM HUP)"
+  _MYDUMPER_PID=""
+  _MYDUMPER_PREV="$!"
+  trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
+  ( cd -P -- "${_d}" 2> /dev/null \
+    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && exec setsid -w "$@" ) < /dev/null &
+  _MYDUMPER_PID=$!
+  wait "${_MYDUMPER_PID}"
+  _rc=$?
+  _MYDUMPER_PID=""
+  trap - INT TERM HUP
+  [ -n "${_old}" ] && eval "${_old}"
+  return "${_rc}"
+}
 
 ### Percona 5.7 dumps sync their threads with FLUSH TABLES WITH READ LOCK
 ### (FTWRL), and mydumper also takes Percona's backup lock there (LOCK TABLES
@@ -683,7 +718,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   esac
   _mydumper_objects_opts
   ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
-  mydumper \
+  _mydumper_session . - mydumper \
     --defaults-file=/root/.my.cluster_root.cnf \
     --database=${_DB} \
     --host=localhost \

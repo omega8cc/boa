@@ -1421,23 +1421,26 @@ _ltd_read_in() {
   _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
-# One file read as root wrote it, a copy of usage.sh's: $1 the name in the
-# current (pinned) directory, $2 "root" (root's regular file, one link, not
-# writable by group or others, at most 64 KiB) or "legacy" (also mode 0600,
-# group root). Prints its mtime on a line, then its bytes. Status 3: no such
-# name; 4: anything else there; 5: a read error.
+# Root's reader of an account's plan file in log/, a copy of usage.sh's: ./$1
+# through one handle, only while it is root's regular file with one link that
+# no one else can write, at most 64 KiB. On Linux the handle carries the
+# root-only stamp trusted.boa.plan with the file's own name: a file stamped
+# with another name (a file of root's the account renamed, or one copied with
+# cp -a) is refused with status 6, an unstamped one is stamped. $2 "read"
+# prints its mtime on a line, then its bytes; "stamp" only stamps. Status 3:
+# no such name; 4: anything else there; 5: a read error.
 # shellcheck disable=SC2016
-_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
 # The engines count the pool sizing multiplies by, for the account at $1:
-# its log/cores.txt only as root wrote it (_MIG_HREAD_PL "root") and only a
-# whole number (blanks around it dropped, leading zeros too, at most nine
-# digits); otherwise _CLIENT_CORES stays as root's cnf set it. log/ is the
-# account's: a file it made there, or a file of root's it renamed to
-# cores.txt and that holds other text, raises no pool.
+# its log/cores.txt only as root wrote it under that name (_PLAN_HREAD_PL) and
+# only a whole number (blanks around it dropped, leading zeros too, at most
+# nine digits); otherwise _CLIENT_CORES stays as root's cnf set it. log/ is
+# the account's: a file it made there, or a file of root's it renamed to
+# cores.txt, raises no pool.
 _ltd_cores_now() {
   local _v
-  _v="$(_ltd_in_real_dir "${1}/log" perl -e "${_MIG_HREAD_PL}" \
-    -- ./cores.txt root && printf x)" || return 0
+  _v="$(_ltd_in_real_dir "${1}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- ./cores.txt read && printf x)" || return 0
   _v="${_v%x}"
   _v="${_v#*$'\n'}"
   _v="${_v#"${_v%%[![:space:]]*}"}"
@@ -1446,6 +1449,19 @@ _ltd_cores_now() {
   _v="${_v#"${_v%%[!0]*}"}"
   [ -n "${_v}" ] && [ "${#_v}" -le 9 ] || return 0
   _CLIENT_CORES="${_v}"
+}
+# Every plan file of root's in the account's log/ ($1 the account's root)
+# stamped with its own name each pass (_PLAN_HREAD_PL "stamp"), so a file root
+# or the operator has just written carries its name within minutes and a
+# rename by the account no longer passes it off under another plan name.
+_ltd_plan_stamp() {
+  local _n
+  for _n in option cores subscr diskspace extra extra_edge extra_aero \
+    extra_power prev_option prev_cores original_option original_cores; do
+    [ -f "${1}/log/${_n}.txt" ] || continue
+    _ltd_in_real_dir "${1}/log" perl -e "${_PLAN_HREAD_PL}" \
+      -- "./${_n}.txt" stamp > /dev/null 2>&1
+  done
 }
 # Whether the site dir $1 is there and holds anything but directories: a
 # settings file, a store link, any file at all. Listed from inside the dir,
@@ -7452,6 +7468,7 @@ _manage_user() {
       fi
       _WEB="${_USER}.web"
       _dscUsr="/data/disk/${_USER}"
+      _ltd_plan_stamp "${_dscUsr}"
       _octInc="${_dscUsr}/config/includes"
       _octTpl="${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
       if [ -e "${_dscUsr}/log/imported.pid" ] \
