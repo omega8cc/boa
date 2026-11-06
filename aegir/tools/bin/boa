@@ -4081,6 +4081,12 @@ _octopus_cleanup() {
         IFS=$'\12'
         for p in $(cat /var/log/boa/.cleanup.detect.txt 2>&1);do
           _usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+          # one an earlier batch purged: its tree is gone, its home parked
+          if [[ "${_usr_purge}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] && [ ! -e "/data/disk/${_usr_purge}" ] \
+            && [ ! -L "/data/disk/${_usr_purge}" ] && [ -d "/var/backups/zombie/purged/${_usr_purge}" ]; then
+            echo "${_usr_purge} purged already, by an earlier run"
+            continue
+          fi
           bash "$0" cleanup purge "${_usr_purge}" noscreen || _BRC=1
           wait
         done
