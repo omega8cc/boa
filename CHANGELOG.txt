@@ -10,6 +10,13 @@
       leaves that account out and keeps the others current, instead of
       stopping for all of them, and says so.
 
+    * An account installed on the active and never laid on its mirror, when
+      that mirror was promoted by hand, comes across with one command on the
+      old active once it is fenced: xmass prep-target <promoted-ip>
+      --return-accounts=<oN>. Its files are laid with no database write, and
+      the account takes the promotion's last steps there; the old active can
+      then be rebuilt as the new mirror.
+
     * A platform's sites can take their web PHP from the platform:
       ~/static/control/fpm-per-platform.info holds one "<folder> <version>"
       per line. A site's line in multi-fpm.info wins over its platform's,
@@ -116,6 +123,64 @@
       Commerce, and a platform in use keeps its copy.
 
 @=> Important Fixes
+
+    * An account's off-site backup passphrase and its provider credentials
+      now reach the standing mirror with every xmass sync. Before, the
+      mirror kept a passphrase of its own and the account's credentials
+      lost to its templates, so after a promotion the account's archives
+      could not be decrypted there and it backed up nowhere.
+
+    * xmass restore-target that stopped at MySQL's start can be run again
+      and finishes the restore; before, the box refused for good and the
+      accounts laid by --fix-accounts stayed unmarked. It also puts each
+      control panel whose alias a sync carried from the active back on the
+      mirror's own panel, which pre-mig otherwise refused.
+
+    * boa cleanup purge says why when it purges nothing, and exits 1 then;
+      before, a purge of an account detect did not list printed a blank
+      line and exited 0. detect names a marked directory it skips.
+
+    * A git pull in a tenant's codebase under ~/static, with the site one
+      level down in docroot/, web/ or html/, no longer stops with "unable to
+      unlink old '.gitignore'" when the top folder belongs to the backend
+      user without group write. Platform Verify and the nightly now add
+      group write to that top folder and to the backend user's folders
+      directly in it, on accounts with their own group, when the top holds
+      .git or composer.json. Only that bit is added, and nothing deeper.
+
+    * Background jobs a Drupal site starts over HTTPS through its own server,
+      such as background_batch exports and imports, no longer stop part way.
+      Each step sends the next request and hangs up without reading, so the
+      TLS 1.3 session tickets nginx sent stayed unread, the hang-up became a
+      reset, and with kernel TLS the reset could discard the request before
+      nginx read it, with nothing logged. The wildcard HTTPS front, the
+      default server whose ticket count nginx uses for every name on the
+      box, now sends no TLS 1.3 tickets, and so does every other HTTPS
+      server BOA writes; TLS 1.2 resumes as before. The front updates on the
+      next Barracuda pass, deployed HTTPS proxies in place on the same pass.
+
+    * A database dump that waited more than a minute behind a long query is
+      no longer called failed. mydumper 1.x gives up its table flush after
+      60 seconds, sends it again and then dumps as usual, but exits with an
+      error: the nightly SQL backup set that database aside as failed, xcopy
+      and xoct refused to move the site, the database broker refused the
+      dump, and an Aegir backup, Migrate or Clone failed. A dump whose only
+      error is that retry, with its final marker written, now counts as
+      whole; any other error still fails it.
+
+    * The SQL watchdog no longer leaves a database dump hung or half
+      kept. When Aegir tasks or Drush calls piled up during a dump, it
+      stopped mydumper gently: a dump stopped while its table flush waited
+      could hang for good holding the global read lock, with every write
+      on the server waiting behind it, and one stopped later was kept as a
+      good backup although cut short. It now ends mydumper at once, and
+      the dump is set aside as failed.
+
+    * A database dump cut short by a plain kill of mydumper is no longer
+      kept as a good backup by the nightly SQL backup, xcopy, xoct, the
+      database broker or an Aegir backup. mydumper still marks such a dump
+      finished; BOA now reads mydumper's own log for it and fails the
+      dump.
 
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
@@ -260,6 +325,13 @@
       takes it off the report; those names, as root wrote them, hold the client's
       mail and the report's row stays, tagged Held:<name>.
 
+    * The nightly usage pass keeps every account on the operator's report: an
+      in-house address, a control panel it cannot find or a renamed vhost.d no
+      longer takes an account off, its row is tagged instead. The plan files in
+      an account's log folder set its limits only as root wrote them, the plan
+      otherwise coming from root's octopus.cnf, and the nightly copies them into
+      that cnf under the same rule.
+
     * A migration proxy tool another box copied here now lasts one self-update:
       a source on older tools could put its older trust tool back on a newer
       target for up to a day. xoct and xmass now copy these tools only to a
@@ -313,6 +385,13 @@
       and its alias agree it is disabled. xtrim also asks for the catch-all
       answer on both routes, so a site with a live vhost behind a catch-all
       answer, a dead port or a 500 still fails.
+
+    * A whole-server move now names each site it left without HTTPS on the
+      old server, because the site's certificate files were incomplete at
+      the conversion, at the end of xmass cutover and in xmass verify, with
+      the repair to run for its account. They were named only once, in the
+      middle of the conversion's output, and verify read HTTPS on the new
+      server alone, where these sites serve right.
 
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and

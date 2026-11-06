@@ -394,6 +394,42 @@ _check_account_exceptions() {
   esac
 }
 
+# The plan file log/$1 as root wrote it (_usage_root_log), its words joined,
+# in _uVal when they have the form $2 (empty otherwise). Status 1 when no
+# such file of root's is there. log/ is oN's, so a name there sets no limit
+# for root: a file at the name that is not as root wrote it (the account's
+# own, a link, a FIFO, a second link) is not read, and the report row says
+# so (_uPlan=refused).
+_usage_plan_file() {
+  _uVal=
+  if _usage_root_log "${1}"; then
+    _uVal=$(_usage_words "${_uLog}")
+    [[ "${_uVal}" =~ ${2} ]] || _uVal=
+    return 0
+  fi
+  if [ -e "${_usEr}/log/${1}" ] || [ -L "${_usEr}/log/${1}" ]; then
+    _uPlan=refused
+    echo "INFO: ${_THIS_U}: log/${1} is not as root wrote it: not read"
+  fi
+  return 1
+}
+# The value root's own /root/.<oN>.octopus.cnf gives the name $1, its last
+# line for it as a source of the cnf would take it (export, quotes and a
+# trailing comment taken off), in _uVal when it has the form $2. Status 1
+# when the cnf gives none.
+_usage_cnf_value() {
+  local _c="/root/.${_THIS_U}.octopus.cnf" _l
+  _uVal=
+  [ -f "${_c}" ] && [ ! -L "${_c}" ] || return 1
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${1}=" -- "${_c}" 2> /dev/null \
+    | tail -n 1)
+  _l="${_l#*=}"
+  _l="${_l%%#*}"
+  _l=$(printf '%s' "${_l}" | tr -d "\"' \t\r")
+  [[ "${_l}" =~ ${2} ]] || return 1
+  _uVal="${_l}"
+}
+
 _read_account_data() {
   # log/ is oN's and static/control the tenant's: every name is read inside
   # the real directory, never through a link or blocked on a FIFO
@@ -408,60 +444,64 @@ _read_account_data() {
   _CLIENT_FPM=
   _DEV_EXC=NO
   _DSK_CLU_LIMIT=1
-  if [ -e "${_lg}/email.txt" ]; then
-    # only words in an address's form (_usage_mail_list); a file with none
-    # leaves the notices to the Bcc alone
-    _CLIENT_EMAIL=$(_usage_mail_list "$(_usage_read_in "${_lg}" email.txt)")
+  _uPlan=
+  _uXtra=
+  # only words in an address's form (_usage_mail_list); a file with none
+  # leaves the notices to the Bcc alone. The in-house exception, which
+  # tags the report row, is read from root's email.txt alone; an
+  # email.txt of the account's own still names the client's address.
+  if _usage_root_log email.txt; then
+    _CLIENT_EMAIL=$(_usage_mail_list "${_uLog}")
     _check_account_exceptions
+  elif [ -e "${_lg}/email.txt" ]; then
+    _CLIENT_EMAIL=$(_usage_mail_list "$(_usage_read_in "${_lg}" email.txt)")
   fi
   if [ "${_DEBUG_EMAIL}" = "YES" ] \
     || [ -e "/etc/boa/.debug.email.txt" ]; then
     _CLIENT_EMAIL="inbox@boa.io"
   fi
   # the counts below go into shell arithmetic, which would evaluate
-  # anything else as an expression: a whole number or nothing
-  if [ -e "${_lg}/cores.txt" ]; then
-    _CLIENT_CORES=$(_usage_read_in "${_lg}" cores.txt)
-    _CLIENT_CORES=$(_usage_words "${_CLIENT_CORES}")
-    [[ "${_CLIENT_CORES}" =~ ^[0-9]+$ ]] || _CLIENT_CORES=
+  # anything else as an expression: a whole number or nothing. The engine
+  # count and the plan come from root's cnf when root's file gives none.
+  _usage_plan_file cores.txt '^[0-9]+$' && _CLIENT_CORES="${_uVal}"
+  if [ -z "${_CLIENT_CORES}" ] \
+    && _usage_cnf_value _CLIENT_CORES '^[0-9]+$'; then
+    _CLIENT_CORES="${_uVal}"
+    _uPlan="${_uPlan:-cnf}"
   fi
-  if [ -e "${_lg}/diskspace.txt" ]; then
-    _DSK_CLU_LIMIT=$(_usage_read_in "${_lg}" diskspace.txt)
-    _DSK_CLU_LIMIT=$(_usage_words "${_DSK_CLU_LIMIT}")
-    [[ "${_DSK_CLU_LIMIT}" =~ ^[0-9]+$ ]] || _DSK_CLU_LIMIT=
-  fi
+  _usage_plan_file diskspace.txt '^[0-9]+$' && _DSK_CLU_LIMIT="${_uVal}"
   if [ "${_CLIENT_CORES:-0}" -gt 1 ]; then
     _ENGINE_NR="Engines"
   else
     _ENGINE_NR="Engine"
   fi
-  if [ -e "${_lg}/option.txt" ]; then
-    _CLIENT_OPTION=$(_usage_read_in "${_lg}" option.txt)
-    _CLIENT_OPTION=$(_usage_words "${_CLIENT_OPTION}")
-    # a plan name, one word: it goes into the report line, the panel footer
-    # and the notices, and an unknown one takes the default limits
-    [[ "${_CLIENT_OPTION}" =~ ^[A-Za-z0-9_-]+$ ]] || _CLIENT_OPTION=
+  # a plan name, one word: it goes into the report line, the panel footer
+  # and the notices, and an unknown one takes the default limits
+  _usage_plan_file option.txt '^[A-Za-z0-9_-]+$' && _CLIENT_OPTION="${_uVal}"
+  if [ -z "${_CLIENT_OPTION}" ] \
+    && _usage_cnf_value _CLIENT_OPTION '^[A-Za-z0-9_-]+$'; then
+    _CLIENT_OPTION="${_uVal}"
+    _uPlan="${_uPlan:-cnf}"
   fi
   if [ -e "${_lg}/extra.txt" ]; then
     # renamed, never moved into a directory or link put at the new name
     _usage_in_real_dir "${_lg}" mv -f -T -- ./extra.txt ./extra_edge.txt
   fi
-  if [ -e "${_lg}/extra_edge.txt" ]; then
-    _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_edge.txt)
-    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
-    [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
+  # _uXtra: the first kind of extra engine root's files give, the one whose
+  # allowance _check_limits adds
+  if _usage_plan_file extra_edge.txt '^[0-9]+$'; then
+    _EXTRA_ENGINE="${_uVal}"
+    _uXtra="${_uXtra:-edge}"
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
-  if [ -e "${_lg}/extra_aero.txt" ]; then
-    _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_aero.txt)
-    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
-    [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
+  if _usage_plan_file extra_aero.txt '^[0-9]+$'; then
+    _EXTRA_ENGINE="${_uVal}"
+    _uXtra="${_uXtra:-aero}"
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x AERO"
   fi
-  if [ -e "${_lg}/extra_power.txt" ]; then
-    _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_power.txt)
-    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
-    [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
+  if _usage_plan_file extra_power.txt '^[0-9]+$'; then
+    _EXTRA_ENGINE="${_uVal}"
+    _uXtra="${_uXtra:-power}"
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
   # kept to a version's characters (the first 64 bytes): these go into the
@@ -1003,16 +1043,22 @@ _check_limits() {
   _SQL_DEV_LIMIT=${_SQL_MIN_LIMIT}
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
-    if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
-      _SQL_ADD_LIMIT=2048
-      _DSK_ADD_LIMIT=61440
-    elif [ -e "/data/disk/${_THIS_U}/log/extra_aero.txt" ]; then
-      _SQL_ADD_LIMIT=5120
-      _DSK_ADD_LIMIT=102400
-    elif [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
-      _SQL_ADD_LIMIT=10240
-      _DSK_ADD_LIMIT=204800
-    fi
+    # the kind _read_account_data read from root's files (_uXtra), never
+    # a name the account put in its log/
+    case "${_uXtra:-}" in
+      edge)
+        _SQL_ADD_LIMIT=2048
+        _DSK_ADD_LIMIT=61440
+        ;;
+      aero)
+        _SQL_ADD_LIMIT=5120
+        _DSK_ADD_LIMIT=102400
+        ;;
+      power)
+        _SQL_ADD_LIMIT=10240
+        _DSK_ADD_LIMIT=204800
+        ;;
+    esac
     _SQL_ADD_LIMIT=$(( _SQL_ADD_LIMIT *= _EXTRA_ENGINE ))
     _DSK_ADD_LIMIT=$(( _DSK_ADD_LIMIT *= _EXTRA_ENGINE ))
     _SQL_MIN_LIMIT=$(( _SQL_MIN_LIMIT + _SQL_ADD_LIMIT ))
@@ -1127,7 +1173,11 @@ _usage_action() {
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
-    if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ]; then
+    # An Octopus account by its vhost.d, or by root's own cnf for it: config/
+    # is oN's, so a vhost.d renamed or swapped for a link takes no account
+    # off the count, and its report row says so (_uVhosts).
+    if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
+      || [ -f "/root/.${_usEr##*/}.octopus.cnf" ]; then
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _HomSiz=0
         _HqmSiz=0
@@ -1171,6 +1221,15 @@ _usage_action() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
+        # .drush/ and config/ are oN's: a hostmaster alias naming no site, or
+        # a vhost.d that is not a real directory, leaves the account counted
+        # and reported, its row tagged; only the panel's own writes (the
+        # footer and its cache) need the panel
+        _uPanel=YES
+        { [ -n "${_THIS_HM_SITE}" ] && [ -e "${_THIS_HM_SITE}" ]; } || _uPanel=NO
+        _uVhosts=
+        _usage_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" true \
+          || _uVhosts=missing
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo "Counting User ${_usEr}"
         if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -1266,93 +1325,63 @@ EOF
         fi
 
         _if_hosted_sys
-        if [ "${_hostedSys}" = "YES" ]; then
-          if [ -e "${_THIS_HM_SITE}" ]; then
-            _check_limits
-            _usage_hm "variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | Files <strong>${_TotSizH}</strong> MB \
-              | LiveDb <strong>${_SumDatH}</strong> MB \
-              | DevDb <strong>${_SkipDtH}</strong> MB \
-              | <strong>${_CLIENT_CORES}</strong> \
-              ${_CLIENT_OPTION} ${_ENGINE_NR} \
-              | CLI <strong>${_CLIENT_CLI}</strong> \
-              | FPM <strong>${_CLIENT_FPM}</strong>'"
-            if [ "${_uHeld:-}" != "relay" ] \
-              && [ "${_DEV_EXC}" = "NO" ]; then
-              _eMail=${_CLIENT_EMAIL//\\\@/\@}
-              # the panel's host name, one per report line: nothing else the
-              # account wrote into domain.txt reaches the operator's report
-              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
-                | tr -d '\r\t ')
-              [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
-              if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-                _Files="!x!FilesAll"
-              else
-                _Files="FilesAll"
-              fi
-              if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-                _DbsL="!x!DbsLive"
-              else
-                _DbsL="DbsLive"
-              fi
-              if [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-                _DbsD="!x!DbsDev"
-              else
-                _DbsD="DbsDev"
-              fi
-              if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
-                _LOG_FILE="usage-latest-verbose.log"
-              elif [ "${_THIS_MODE}" = "silent" ]; then
-                _LOG_FILE="usage-latest-silent.log"
-              fi
-              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}${_uHeld:+,Held:${_uHeld}}" >> /var/log/boa/usage/${_LOG_FILE}
-            fi
-            _usage_hm "cache-clear all"
+        # Every account counted is checked against its limits and has its
+        # row, unless root's own marker says it relays to another box. A
+        # self-hosted box's footer is cleared again once the row is written.
+        _check_limits
+        if [ "${_uPanel}" = "YES" ]; then
+          _usage_hm "variable-set --always-set site_footer 'Usage on ${_DATE} \
+            | Files <strong>${_TotSizH}</strong> MB \
+            | LiveDb <strong>${_SumDatH}</strong> MB \
+            | DevDb <strong>${_SkipDtH}</strong> MB \
+            | <strong>${_CLIENT_CORES}</strong> \
+            ${_CLIENT_OPTION} ${_ENGINE_NR} \
+            | CLI <strong>${_CLIENT_CLI}</strong> \
+            | FPM <strong>${_CLIENT_FPM}</strong>'"
+        fi
+        if [ "${_uHeld:-}" != "relay" ]; then
+          _eMail=${_CLIENT_EMAIL//\\\@/\@}
+          # the panel's host name, one per report line: nothing else the
+          # account wrote into domain.txt reaches the operator's report
+          _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
+            | tr -d '\r\t ')
+          [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
+          if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+            _Files="!x!FilesAll"
+          else
+            _Files="FilesAll"
           fi
-        else
-          if [ -e "${_THIS_HM_SITE}" ]; then
-            _check_limits
-            _usage_hm "variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | Files <strong>${_TotSizH}</strong> MB \
-              | LiveDb <strong>${_SumDatH}</strong> MB \
-              | DevDb <strong>${_SkipDtH}</strong> MB \
-              | <strong>${_CLIENT_CORES}</strong> \
-              ${_CLIENT_OPTION} ${_ENGINE_NR} \
-              | CLI <strong>${_CLIENT_CLI}</strong> \
-              | FPM <strong>${_CLIENT_FPM}</strong>'"
-            if [ "${_uHeld:-}" != "relay" ] \
-              && [ "${_DEV_EXC}" = "NO" ]; then
-              _eMail=${_CLIENT_EMAIL//\\\@/\@}
-              # the panel's host name, one per report line: nothing else the
-              # account wrote into domain.txt reaches the operator's report
-              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
-                | tr -d '\r\t ')
-              [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
-              if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-                _Files="!x!FilesAll"
-              else
-                _Files="FilesAll"
-              fi
-              if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-                _DbsL="!x!DbsLive"
-              else
-                _DbsL="DbsLive"
-              fi
-              if [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-                _DbsD="!x!DbsDev"
-              else
-                _DbsD="DbsDev"
-              fi
-              if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
-                _LOG_FILE="usage-latest-verbose.log"
-              elif [ "${_THIS_MODE}" = "silent" ]; then
-                _LOG_FILE="usage-latest-silent.log"
-              fi
-              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}${_uHeld:+,Held:${_uHeld}}" >> /var/log/boa/usage/${_LOG_FILE}
-            fi
+          if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+            _DbsL="!x!DbsLive"
+          else
+            _DbsL="DbsLive"
+          fi
+          if [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+            _DbsD="!x!DbsDev"
+          else
+            _DbsD="DbsDev"
+          fi
+          if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
+            _LOG_FILE="usage-latest-verbose.log"
+          elif [ "${_THIS_MODE}" = "silent" ]; then
+            _LOG_FILE="usage-latest-silent.log"
+          fi
+          # what the operator should know about the row, before any Held
+          # word: an in-house address in root's email.txt, a panel or a
+          # vhost.d the pass could not find, plan values from root's cnf or
+          # plan files that were not root's
+          _uTags=
+          [ "${_DEV_EXC}" = "YES" ] && _uTags="${_uTags},Exempt:in-house"
+          [ "${_uPanel}" = "YES" ] || _uTags="${_uTags},Panel:missing"
+          [ -n "${_uVhosts}" ] && _uTags="${_uTags},Vhosts:${_uVhosts}"
+          [ -n "${_uPlan:-}" ] && _uTags="${_uTags},Plan:${_uPlan}"
+          echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}${_uTags}${_uHeld:+,Held:${_uHeld}}" >> /var/log/boa/usage/${_LOG_FILE}
+        fi
+        if [ "${_uPanel}" = "YES" ]; then
+          if [ "${_hostedSys}" != "YES" ]; then
             _usage_hm "variable-set --always-set site_footer ''"
-            _usage_hm "cache-clear all"
           fi
+          _usage_hm "cache-clear all"
         fi
         echo "Done for ${_usEr}"
         [ "${_THIS_MODE}" = "verbose" ] && echo " " >> "${_uLogFil}"

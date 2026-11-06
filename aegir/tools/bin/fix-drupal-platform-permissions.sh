@@ -770,8 +770,9 @@ done
 ### project root below the account's static/). What the account's shell
 ### logins made in that project root (the directory itself, composer.json,
 ### composer.lock, any other they added) stays theirs through every Verify,
-### which hands over only the docroot's code and vendor/. A directory left
-### 0755 there (a shell session before the limited shell carried umask 002,
+### which hands over only the docroot's code and vendor/ (and adds group write
+### only to the backend user's own directories at the top of a codebase and
+### directly in it, below). A directory left 0755 there (a shell session before the limited shell carried umask 002,
 ### rsync -a, scp -p) keeps the backend user that runs the Delete from
 ### unlinking anything in it: the Delete empties web/ and vendor/ and stops.
 ### Every directory of the project root, and the one holding it unless that
@@ -1007,6 +1008,108 @@ elif [ -d "${drupal_root}/docroot" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" docroot
 elif [ -d "${drupal_root}/html" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" "${_MODE_DIR}" html
+fi
+
+### The codebase top above a docroot below the account's static/ (a tenant's
+### git checkout with the site in docroot/, web/ or html/): the account's
+### shell logins update the files there, and git replaces a file by
+### unlinking it, which takes write on the directory holding it. Only the
+### docroot's code and vendor/ get modes above, so a directory there that the
+### backend user owns without group write refused every pull that changed a
+### file in it ("unable to unlink old"). The top and each directory directly
+### in it, the docroot and vendor/ aside, take group write when the backend
+### user owns them, their group is the account's own and that group may
+### already read and enter them. Only the group write bit is added: a link,
+### another owner's entry and other users' bits stay as they are. Only those
+### two levels are healed, nothing below them: a tree the backend user owns
+### all the way down is not this case.
+### A top is a codebase's when it holds .git or composer.json beside the
+### docroot, and never a Drupal root itself (sites/ and index.php: a web/ or
+### html/ folder inside a platform). The files store and control/ are never
+### one. The group must hold only the account's own identities
+### (_top_group_ours): an account still on the box-wide users group, or a
+### group another user joined, is skipped, since group write would reach them.
+### The layout tests keep an honest tree right; the owner, group and mode test
+### on each open handle is what bounds the act.
+### Mirrored in night/20-sites.sh (_night_top_gw), which runs it only where its
+### own pass did not already walk a Composer project's whole root.
+_TOP_GW_PL='use Fcntl;
+my ($u, $g, $skip) = @ARGV;
+$u =~ /^[1-9][0-9]*$/ && $g =~ /^[1-9][0-9]*$/ && length($skip) or exit 1;
+opendir(my $dh, ".") or exit 1;
+my @n = (".", map { "./$_" }
+  grep { $_ ne "." && $_ ne ".." && $_ ne $skip && $_ ne "vendor" } readdir($dh));
+closedir($dh);
+my $c = 0;
+for my $f (@n) {
+  sysopen(my $h, $f, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && -d _ && $s[4] == $u && $s[5] == $g
+    && ($s[2] & 050) == 050 && !($s[2] & 020)) {
+    chmod(($s[2] & 07777) | 020, $h) and $c++;
+  }
+  close($h);
+}
+print "$c\n";
+exit 0;'
+# Inside the codebase top (pinned): $1 = the backend user's uid, $2 = the
+# account group's gid, $3 = the docroot's name. Prints how many directories
+# took group write.
+_top_gw_here() {
+  perl -e "${_TOP_GW_PL}" -- "$@"
+}
+# Status 0 when the group of gid $2, named after the account $1, holds only
+# the account's own identities: every member any group entry of that gid
+# lists (a second entry can share the number) and every passwd entry whose
+# primary group it is reads <acct>, <acct>.<name> or <acct>.<name>-dev, and
+# none is a PHP-FPM pool user (<acct>.web), which never joins the account.
+_top_group_ours() {
+  local _a="${1}" _g="${2}" _l _n _p _u _pg _r
+  local -a _ms=()
+  while IFS= read -r _l; do
+    IFS=, read -r -a _ms <<< "${_l}"
+    for _n in "${_ms[@]}"; do
+      [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+        || return 1
+    done
+  done < <(getent group 2> /dev/null | awk -F: -v g="${_g}" '$3 == g { print $4 }')
+  while IFS=: read -r _n _p _u _pg _r; do
+    [ "${_pg}" = "${_g}" ] || continue
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+      || return 1
+  done < <(getent passwd 2> /dev/null)
+  return 0
+}
+_top_dir="${drupal_root%/*}"
+_top_dn="${drupal_root##*/}"
+_top_acct="${_SCOPE_ROOT#/data/disk/}"
+if [[ "${_SCOPE_ROOT}" = "/data/disk/${_top_acct}" ]] \
+  && [[ "${_top_acct}" =~ ^[a-z0-9-]+$ ]] \
+  && [[ "${_top_dn}" =~ ^(docroot|web|html)$ ]] \
+  && [[ "${_top_dir}" = "${_SCOPE_ROOT}/static/"?* ]] \
+  && [[ "${_top_dir}/" != "${_SCOPE_ROOT}/static/files/"* ]] \
+  && [[ "${_top_dir}/" != "${_SCOPE_ROOT}/static/control/"* ]] \
+  && { [ -e "${_top_dir}/.git" ] || [ -f "${_top_dir}/composer.json" ]; } \
+  && ! { [ -e "${_top_dir}/sites" ] && [ -e "${_top_dir}/index.php" ]; }; then
+  _top_uid=$(getent passwd "${_top_acct}" 2> /dev/null | cut -d: -f3)
+  _top_pgid=$(getent passwd "${_top_acct}" 2> /dev/null | cut -d: -f4)
+  _top_gid=$(getent group "${_top_acct}" 2> /dev/null | cut -d: -f3)
+  _top_ugid=$(getent group users 2> /dev/null | cut -d: -f3)
+  if [[ "${_top_uid}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_top_gid}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_top_pgid}" = "${_top_gid}" ]] \
+    && [[ "${_top_gid}" != "${_top_ugid}" ]] \
+    && _top_group_ours "${_top_acct}" "${_top_gid}"; then
+    _n=$(_in_pinned_dir "${_top_dir}" \
+      _in_own_here _top_gw_here "${_top_uid}" "${_top_gid}" "${_top_dn}")
+    if [[ "${_n}" = "1" ]]; then
+      printf 'Group write set on 1 directory of the codebase top %s\n' \
+        "$(_nm "${_top_dir}")"
+    elif [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
+      printf 'Group write set on %s directories of the codebase top %s\n' \
+        "${_n}" "$(_nm "${_top_dir}")"
+    fi
+  fi
 fi
 
 printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/sites/all")"

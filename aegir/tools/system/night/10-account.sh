@@ -697,6 +697,13 @@ _night_mail_list() (
   done
   printf '%s' "${_o}"
 )
+### Root's reader of a name an account may have put, one text wherever it is
+### defined: ./$1 through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, and
+### only while that handle is a regular file with one link, owned by root,
+### writable by no one else, at most 64 KiB. Prints the handle's mtime on a line
+### of its own, then the bytes. Status 3 absent, 4 anything else, 5 a read error.
+# shellcheck disable=SC2016
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
 ### Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
 ### mail BOA would send an account's client goes to the one address it holds
 ### instead, its subject noting who would have been mailed; a file that anyone
@@ -1338,13 +1345,25 @@ _account_process() {
     # forever (a migrated cnf is exactly that state). Same discipline for
     # the plan trio: the log/ stamp is the witness, replace-if-present,
     # append-if-absent.
-    # Each stamp is read as email.txt is; text over 256 bytes is no plan
-    # value and is skipped before the filter below.
+    # A stamp is the witness only as root wrote it (_MIG_HREAD_PL: root's
+    # file, one link, not writable by group or others): log/ is oN's, so a
+    # file the account made at one of these names, a link or a FIFO sets
+    # no plan value in root's cnf, and one NOTE line says which was left.
+    # Text over 256 bytes is no plan value and is skipped before the
+    # filter below.
     for _idPair in "_CLIENT_OPTION:option" "_CLIENT_SUBSCR:subscr" "_CLIENT_CORES:cores"; do
       _idVar="${_idPair%%:*}"
       _idFile="${_usEr}/log/${_idPair##*:}.txt"
-      [ -s "${_idFile}" ] || continue
-      _idVal=$(_acct_read_in "${_usEr}/log" "${_idPair##*:}.txt" | tr -d "\n")
+      [ -e "${_idFile}" ] || [ -L "${_idFile}" ] || continue
+      # the x keeps the bytes whole; the reader's first line is the mtime
+      if ! _idVal="$(_acct_in_real_dir "${_usEr}/log" perl -e "${_MIG_HREAD_PL}" \
+        -- "./${_idPair##*:}.txt" root && printf x)"; then
+        echo "NOTE: ${_HM_U}: log/${_idPair##*:}.txt is not as root wrote it: ${_idVar} in root's cnf left as it is"
+        continue
+      fi
+      _idVal="${_idVal%x}"
+      _idVal="${_idVal#*$'\n'}"
+      _idVal=$(printf '%s' "${_idVal}" | tr -d "\n")
       [ "${#_idVal}" -le 256 ] || continue
       _idVal=${_idVal//[^a-zA-Z0-9]/}
       [ -z "${_idVal}" ] && continue
