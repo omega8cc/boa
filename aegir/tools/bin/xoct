@@ -3459,10 +3459,13 @@ _xoct_ssl_material_missing() {
   echo "${_out}"
 }
 
-### True when the vhost $3 in the vhost.d $2 is a control panel's: its root is
-### the panel tree of the account $1, where no site lives. The https.<dom> and
-### dot-file companions answer no. Read inside the real directory.
-_xoct_vhost_in_panel_tree() {
+### True when the vhost $3 in the vhost.d $2 is the control panel of another box:
+### its root is the panel tree of the account $1 and holds no such panel here. A
+### site is never rooted there, so anything else stays a site for the count and
+### its refusal: a root leaving the tree through "..", a panel this box holds (its
+### own, when the hostmaster alias cannot name it), a path through a link. The
+### https.<dom> and dot-file companions answer no. Read inside the real directory.
+_xoct_vhost_other_panel() {
   local _r
   case "${3}" in
     https.*|.*) return 1 ;;
@@ -3471,9 +3474,11 @@ _xoct_vhost_in_panel_tree() {
     | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
     | head -n 1)"
   case "${_r}" in
-    "${1}"/aegir/*) return 0 ;;
+    */..|*/../*) return 1 ;;
+    "${1}"/aegir/*) ;;
+    *) return 1 ;;
   esac
-  return 1
+  ! _xoct_in_real_dir "${_r}/sites/${3}" test -f ./settings.php
 }
 
 _migrate_sites() {
@@ -3528,8 +3533,8 @@ _migrate_sites() {
     ### carried. A conversion has nothing to do there, and counting it read an
     ### account holding only its panel as a failed conversion, for good.
     if [ "${_cmd}" = "proxy" ] \
-      && _xoct_vhost_in_panel_tree "${_USR}" "${_Vht%/*}" "${_Dom}"; then
-      echo "INFO: ${_Dom} on ${_oct} is a control panel's vhost, not a site -- never proxied, left as it is"
+      && _xoct_vhost_other_panel "${_USR}" "${_Vht%/*}" "${_Dom}"; then
+      echo "INFO: ${_Dom} on ${_oct} is the vhost of another box's control panel, not a site -- never proxied, left as it is"
       continue
     fi
     ### A whole-server move relays the client-domain sites BEFORE the new box
