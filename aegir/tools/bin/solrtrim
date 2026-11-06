@@ -33,7 +33,8 @@
 ###     (data.xmass-landed-<stamp>) refuses, --force or not, with nothing
 ###     changed: that tree is the only copy of an index a move landed, and
 ###     the operator archives it if needed and deletes it by hand first (a
-###     kept link with the tree it points to); only the delete lifts it.
+###     kept link alone, the tree it reaches removed by hand); only the
+###     delete lifts it.
 ###   - --blanket additionally writes the blanket java deny pair
 ###     (_DENY_JAVA=YES + /root/.deny.java.cnf), accepted only when NO Solr
 ###     version remains installed afterwards — the golden-master end state,
@@ -437,21 +438,28 @@ _remove_tree() {
 ### kept there for the daily backup's include of the home: removing the
 ### home would delete it. Refuse while one is there, --force or not, naming
 ### each with the commands that archive it and delete it by hand: only the
-### delete lifts the refusal. A kept link is deleted with the tree it
-### points to, the index itself, unless that tree holds the home as named
-### or as resolved: a linked home's parents by name (/var) are not its
-### parents on disk. A kept link whose tree cannot be reached now (its
-### disk not mounted) refuses as well, named with where it points: passing
-### it over would let the remove take the link and leave the index on its
-### disk with nothing naming it. The archive is weighed as this tool's own
-### is, the data size plus 1G free under _ARCH_DIR: a linked home's index
-### sits on another disk than /var/backups, which a large one would fill.
-### Every path in a printed command is shell-quoted, so a copied command
-### acts on the tree named and no other.
+### delete lifts the refusal. A kept link's printed delete is the link's
+### own, on every layout: what a link reaches can hold more than the index
+### (the home's parent, /var, or the disk a linked home lives on), so an
+### rm -rf of it is never printed; that tree is named for the operator to
+### archive, check and remove by hand. A kept link whose tree cannot be
+### reached now (its disk not mounted) refuses as well, named with where it
+### points, and so does a home that is such a link, whose kept names cannot
+### be read: passing either over would let the remove take the link and
+### leave the index on its disk with nothing naming it. The archive is
+### weighed as this tool's own is, the data size plus 1G free under
+### _ARCH_DIR: a linked home's index sits on another disk than /var/backups,
+### which a large one would fill. Every path in a printed command is
+### shell-quoted, so a copied command acts on the tree named and no other.
 _refuse_kept() {
-  local _sv="${1}" _k _r _n=0 _du _avail _room _rh _rp _rb _held
+  local _sv="${1}" _k _r _n=0 _du _avail _room _rp _rb
   [ -n "${_V_HOME}" ] || return 0
-  _rh=$(readlink -f "${_V_HOME}" 2>/dev/null)
+  if [ -L "${_V_HOME}" ] && [ ! -e "${_V_HOME}" ]; then
+    _alrt "${_sv}: ${_V_HOME} is a link to $(readlink "${_V_HOME}" 2>/dev/null), which cannot be reached now --"
+    _alrt "refusing to remove ${_sv}, --force or not; nothing changed: a data tree xmass restore-solr"
+    _alrt "kept there cannot be read. Mount what holds it, then re-run."
+    return 1
+  fi
   for _k in "${_V_HOME}"/data.xmass-landed-*; do
     [ -e "${_k}" ] || [ -L "${_k}" ] || continue
     if [ "${_n}" -eq 0 ]; then
@@ -484,19 +492,8 @@ _refuse_kept() {
       _alrt "    delete:  rm -rf $(printf '%q' "${_k}")"
       continue
     fi
-    _held=NO
-    case "${_V_HOME%/}/" in
-      "${_r%/}/"*) _held=YES ;;
-    esac
-    case "${_rh%/}/" in
-      "${_r%/}/"*) _held=YES ;;
-    esac
-    if [ "${_held}" = "YES" ]; then
-      _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
-      _alrt "    (it points to ${_r}, which holds the home: remove what it reaches by hand)"
-    else
-      _alrt "    delete:  rm -rf $(printf '%q %q' "${_r}" "${_k}")"
-    fi
+    _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
+    _alrt "    the tree it reaches (${_r}) is the kept index: archive it, check it holds nothing else, and remove it by hand"
   done
   [ "${_n}" -eq 0 ]
 }
@@ -763,9 +760,10 @@ case "${_cmd}" in
     echo "  - remove refuses, --force or not, a version whose home still holds a data"
     echo "    tree xmass restore-solr kept (data.xmass-landed-<stamp>), changing"
     echo "    nothing; it names each one with the commands that archive it, weighed"
-    echo "    against the room under ${_ARCH_DIR}, and delete it (a kept link with the"
-    echo "    tree it points to). Only the delete lifts the refusal. A kept link"
-    echo "    whose tree cannot be reached now is named with where it points."
+    echo "    against the room under ${_ARCH_DIR}, and delete it (a kept link alone,"
+    echo "    the tree it reaches named for removal by hand). Only the delete lifts"
+    echo "    the refusal. A kept link whose tree cannot be reached now, or a home"
+    echo "    that is such a link, is named with where it points."
     echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
     echo "    the removed version can never serve again even if a later pass on a"
     echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."
