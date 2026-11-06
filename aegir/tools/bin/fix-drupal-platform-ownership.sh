@@ -447,9 +447,16 @@ _root_place_or_leave() {
 # is refused; status 1 when it is.
 # Given a deny list ('-' first, _site_walk_uids), it acts for every uid
 # but the list's.
+# Given the gid with a + first (_reown_own_here -W), each directory and
+# single-link regular file handed over whose owner can write it and whose
+# group cannot then gets group write (a file with a set-ID bit excepted):
+# a writer that wrote there as its owner goes on writing through the group.
+# The write is given only once the entry is in its new group, never to the
+# group it leaves.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
 sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
@@ -470,7 +477,9 @@ for my $f (@ARGV) {
   if (@s && !own($s[4])) {
     print "$s[0]:$s[1]\n";
   } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
-    chown($u, $g, $h);
+    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
+      chmod(($s[2] & 07777) | 020, $h);
+    }
   }
   close($h);
 }
@@ -510,11 +519,17 @@ _not_own_tests() {
 # group's, a regular file with a set-ID bit (a change of owner clears
 # those, even one that changes nothing), or another user's entry
 # (_not_own_tests): a tree already handed over costs the walk alone.
+# With -W (after -R when both are given) what is handed over keeps its
+# group write as _SAT_REOWN_OWN_PL gives it with a + before the gid.
 _reown_own_here() {
-  local _r="" _uid _gid=-1 _rc
+  local _r="" _w="" _uid _gid=-1 _rc
   local -a _need=()
   if [ "${1}" = "-R" ]; then
     _r="-R"
+    shift
+  fi
+  if [ "${1}" = "-W" ]; then
+    _w="+"
     shift
   fi
   _uid=$(id -u -- "${1%%:*}" 2> /dev/null)
@@ -533,12 +548,12 @@ _reown_own_here() {
     env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
       \( "${_need[@]}" -o -type f \( -perm -4000 -o -perm -2000 \) \
       -o "${_NOT_OWN[@]}" \) \
-      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" {} +
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_w}${_gid}" {} +
     _rc=$?
     _links_left_note "$@"
     return "${_rc}"
   else
-    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_gid}" "$@"
+    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_OWN_UIDS}" "${_uid}" "${_w}${_gid}" "$@"
   fi
 }
 # Status 0 while the current (pinned) directory and every directory above
@@ -619,8 +634,10 @@ _copy_new_here() {
 }
 
 # Each Grav capsule in the current (pinned) sites/, entered for real: its
-# writable set and its .env handed to the web group. Nothing is done in a
-# capsule that is, or is below, a directory another user owns.
+# writable set and its .env handed to the web group, the writable set
+# keeping the group write of what the site's PHP pool made in it
+# (_reown_own_here -W). Nothing is done in a capsule that is, or is below,
+# a directory another user owns.
 _grav_capsules_own_here() {
   local _c _here
   _here="$(pwd -P)"
@@ -635,7 +652,7 @@ _grav_capsule_own_here() {
   _place_ours_here || return 0
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    _reown_own_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
+    _reown_own_here -R -W "${script_user}${_wg:+:${_wg}}" "./${_wd}"
   done
   # The secret root .env drops its world bit, so FPM's read comes via
   # the web group.
@@ -821,7 +838,10 @@ _link_guard_fix() {
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
-### Fix ownership only once daily, unless it's Drupal 8 or newer
+### Once a day only on a Drupal 8 to 9.0 core (classy, no olivero): a second
+### run that day runs the link guard (when armed) and stops here. Every
+### other tree, Drupal 7 included (it has no core/), takes the whole fix at
+### every run.
 if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; then
   if [ -e "${drupal_root}/core/themes/olivero" ] \
     || [ ! -e "${drupal_root}/core/themes/classy" ]; then

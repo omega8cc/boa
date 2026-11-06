@@ -1,0 +1,57 @@
+# AppArmor profile for the remote shell client a backend PHP process starts
+# git and rsync reach a remote through this client from PHP-CLI, as the panel's Git deploys
+# do. It needs the account's own keys and known hosts, so it runs here rather than in PHP-CLI's
+# profile, which keeps those files from tenant code: no shell can start here, and the only
+# things it may write are known hosts. The file name carries no "ssh" on purpose: the
+# installer copies every such file into /etc/apparmor.d/disable/.
+
+#include <tunables/global>
+
+profile boa_remote_client flags=(complain) {
+
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  network inet stream,
+  network inet6 stream,
+
+  # A signal PHP-CLI or a timeout sends when a task ends
+  signal (receive) peer=/opt/php*/bin/php,
+
+  /usr/bin/ssh mr,
+  /usr/local/bin/ssh mr,
+
+  /etc/ssh/ssh_config r,
+  /etc/ssh/ssh_config.d/ r,
+  /etc/ssh/ssh_config.d/* r,
+  /etc/ssh/ssh_known_hosts r,
+  /etc/ssh/ssh_known_hosts2 r,
+  /etc/ssl/openssl.cnf r,
+
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  /dev/null rw,
+  /dev/random r,
+  /dev/tty rw,
+  /dev/urandom r,
+  /proc/sys/crypto/fips_enabled r,
+
+  # The account's own keys, and known hosts to write
+  owner /data/disk/*/.ssh/ rw,
+  owner /data/disk/*/.ssh/** r,
+  owner /data/disk/*/.ssh/known_hosts* rwlk,
+  owner /home/*/.ssh/ rw,
+  owner /home/*/.ssh/** r,
+  owner /home/*/.ssh/known_hosts* rwlk,
+  owner /root/.ssh/ rw,
+  owner /root/.ssh/** r,
+  owner /root/.ssh/known_hosts* rwlk,
+  owner /var/aegir/.ssh/ rw,
+  owner /var/aegir/.ssh/** r,
+  owner /var/aegir/.ssh/known_hosts* rwlk,
+}

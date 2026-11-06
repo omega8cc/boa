@@ -415,7 +415,7 @@ _save_verify_this_platform() {
 
   # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
   # make_platform 'ezcontent-2.2.15-10.3.6' ezcontent /data/disk/o8/distro/001/ezcontent-2.2.15-10.3.6/web
-  # make_platform 'commerce_base-2.40-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.40-10.1.8/web
+  # make_platform 'commerce_base-2.41-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.41-10.1.8/web
   _make_p="${_pthDst}/$(_d_platform_name "${params[dist]}" "${params[profile_name]}" "${params[version]}" "${params[core_version]}")${params[web_dir]}"
 
   # _save_verify_this_platform 'UC7' '3.13' '7.106.3' 'ubercart-3.13-7.106.3' '/' 'minimal' ''
@@ -1953,7 +1953,7 @@ declare -A _distros_names=(
 declare -A _distros_versions=(
   ["CMS"]="2.2.7"
   ["CK1"]="2.77"
-  ["CK2"]="2.40"
+  ["CK2"]="2.41"
   ["CK3"]="5.1.0"
   ["EZC"]="2.2.15"
   ["FOS"]="4.0.9"
@@ -2004,7 +2004,7 @@ declare -A _distros_drupal_cores=(
   ["THR"]="${_SMALLCORE11_4_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VBX"]="11.4.8"
+  ["VBX"]="11.4.11"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"

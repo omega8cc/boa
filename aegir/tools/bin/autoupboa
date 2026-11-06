@@ -316,8 +316,6 @@ _fix_allow_tcp_forwarding() {
 }
 _fix_allow_tcp_forwarding
 
-#
-# Purge memory swap if bloated
 # A stuck guest-fire run's children inherited its lock descriptor and keep
 # the lock held once the run itself is gone: the same tree kill as
 # guest-fire.sh's own stuck check (the two copies are held to one text).
@@ -423,82 +421,10 @@ _swap_heal_file() {
 }
 _swap_heal_file
 
-#
-# Purge memory swap if bloated
-_swap_purge_if_bloated() {
-  local _SWAP_THRESHOLD="${1:-50}"
-  local _swap_total _swap_used _swap_pct
-
-  _swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
-  _swap_used=$(awk '/SwapFree/ {gsub(/SwapFree:[ \t]+/,""); print $1}' /proc/meminfo)
-
-  if [[ -z "${_swap_total}" || "${_swap_total}" -eq 0 ]]; then
-    echo "SWP no swap configured or swap total is zero, skipping"
-    return 0
-  fi
-
-  _swap_used=$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print t-f}' /proc/meminfo)
-  _swap_pct=$(( _swap_used * 100 / _swap_total ))
-
-  echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
-
-  if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
-    # graceful.sh is resizing /swapfile: a swapoff -a now would undo half of it.
-    if _swap_resize_running; then
-      echo "SWP swap resize in progress, purge skipped"
-      return 0
-    fi
-    # No cache drop first: MemAvailable already counts reclaimable cache, and
-    # evicting the whole page cache forces cold re-reads on every site at once,
-    # even when the purge is then refused. After swapoff the box must keep a
-    # tenth of its RAM (at least 512 MB) free, well clear of the OOM guard's 5%.
-    local _mem_free _mem_total _mem_spare
-    _mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
-    _mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-    _mem_spare=$(( _mem_total / 10 ))
-    [[ "${_mem_spare}" -lt 524288 ]] && _mem_spare=524288
-    if [[ $(( _mem_free - _swap_used )) -lt "${_mem_spare}" ]]; then
-      echo "SWP insufficient free RAM (${_mem_free} kB) to absorb swap (${_swap_used} kB) with ${_mem_spare} kB to spare, aborting purge"
-      return 1
-    fi
-    echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
-    # swapon -a brings back only what fstab lists: a zram device or any other
-    # area switched on outside fstab goes back on by name, at the priority it
-    # had when that was its own (0 or more; a negative one was the kernel's).
-    local _area _prio _areas _on_rc
-    _areas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
-    # swapoff -a goes on past an area it fails to empty; whatever it switched
-    # off goes back on either way.
-    local _off_rc
-    swapoff -a
-    _off_rc=$?
-    swapon -a
-    _on_rc=$?
-    for _area in ${_areas}; do
-      _prio="${_area##*:}"
-      _area="${_area%:*}"
-      awk -v a="${_area}" '$1 == a {f = 1} END {exit !f}' /proc/swaps && continue
-      if [[ "${_prio}" =~ ^[0-9]+$ ]]; then
-        swapon -p "${_prio}" "${_area}" 2>/dev/null
-      else
-        swapon "${_area}" 2>/dev/null
-      fi
-    done
-    if [[ "${_off_rc}" -ne 0 ]] && [[ "${_on_rc}" -eq 0 ]]; then
-      echo "SWP swapoff failed, the areas it switched off are back on"
-      return 1
-    fi
-    if [[ "${_on_rc}" -eq 0 ]]; then
-      echo "SWP swapon complete, swap purged successfully"
-    else
-      echo "SWP swapon failed after swapoff — swap may be offline"
-      return 1
-    fi
-  else
-    echo "SWP swap usage healthy, no action taken"
-  fi
-}
-_swap_purge_if_bloated
+# Swap is not emptied on a schedule. A page in swap costs nothing until it is
+# touched, while swapoff freezes every process with pages in swap until they
+# are read back: 4 GB on a slow disk froze MySQL for over 8 minutes, and the
+# cold pages went straight back out. graceful.sh sizes swap to what a box uses.
 
 #
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
@@ -639,34 +565,6 @@ EOF
   fi
 }
 _if_enable_fstrim
-
-# Function to calculate RAM usage percentage as an integer
-_calculate_ram_usage_percent() {
-  _total_ram_kb=$1
-  _available_ram_kb=$2
-  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
-
-  # Using integer division to get a whole number percentage
-  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
-}
-
-# Function to check and display system info
-_check_system_ram() {
-  # Get the total and available RAM in KB
-  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-
-  # Calculate RAM usage percentage
-  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
-}
-
-# Function to check and optimize RAM and disk caches
-_optimize_ram() {
-  _check_system_ram
-  if [ "${_ram_usage_percent}" -gt 90 ]; then
-    sync && echo 3 | tee /proc/sys/vm/drop_caches
-  fi
-}
 
 ###
 ### Return 0 if package is installed, 1 otherwise.
@@ -896,8 +794,6 @@ _bring_all_ram_cpu_online() {
 _bring_all_ram_cpu_online
 
 _if_disable_not_used_services() {
-  _clearSwap=No
-
   if [ "${_tRee}" = "dev" ] && [ -e "/etc/boa/.ice.vm.cnf" ]; then
     echo > /var/xdrago/move_sql.sh
     echo > /var/xdrago/proc_num_ctrl.pl
@@ -914,23 +810,39 @@ _if_disable_not_used_services() {
     [ -e "/run/valkey/valkey.pid" ] && service valkey-server stop
     [ -e "/root/.deny.clamav.cnf" ] && touch /root/.deny.clamav.cnf
     [ -e "/root/.deny.java.cnf" ] && touch /root/.deny.java.cnf
-    _clearSwap=YES
   fi
 
   if { [ ! -e "/root/.allow.clamav.cnf" ] \
     && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
     || [ -e "/root/.deny.clamav.cnf" ] \
     || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
-    if [ -e "/etc/init.d/clamav-daemon" ]; then
-      _clearSwap=YES
-      update-rc.d -f clamav-daemon remove &> /dev/null
-      mv -f /etc/init.d/clamav-daemon /var/backups/clamav-daemon.initd
+    # Earlier versions moved the init scripts to /var/backups, and the package's
+    # own configure step then failed on the missing script after an update,
+    # which left it half configured and every later apt run on the box ending
+    # with an error. The scripts stay in place with no rc links; a moved one is
+    # put back and the pending configure finished before the daemons are killed.
+    # The copy is named <service>.initd, or just <service> where an older
+    # version made it.
+    _clamRestored=NO
+    for _svc in clamav-daemon clamav-freshclam; do
+      if [ ! -e "/etc/init.d/${_svc}" ]; then
+        for _bak in "/var/backups/${_svc}.initd" "/var/backups/${_svc}"; do
+          if [ -f "${_bak}" ] && head -n 1 "${_bak}" | grep -q '^#!'; then
+            mv -f "${_bak}" "/etc/init.d/${_svc}"
+            _clamRestored=YES
+            break
+          fi
+        done
+      fi
+    done
+    if [ "${_clamRestored}" = "YES" ]; then
+      DEBIAN_FRONTEND=noninteractive /usr/bin/dpkg --configure -a &> /dev/null
     fi
-    if [ -e "/etc/init.d/clamav-freshclam" ]; then
-      _clearSwap=YES
-      update-rc.d -f clamav-freshclam remove &> /dev/null
-      mv -f /etc/init.d/clamav-freshclam /var/backups/clamav-freshclam.initd
-    fi
+    for _svc in clamav-daemon clamav-freshclam; do
+      if [ -e "/etc/init.d/${_svc}" ]; then
+        update-rc.d -f "${_svc}" remove &> /dev/null
+      fi
+    done
     pkill -9 -f '^[^ ]*clamd( |$)'
     pkill -9 -f '^[^ ]*freshclam( |$)'
     rm -f /run/clamav/*
@@ -939,17 +851,14 @@ _if_disable_not_used_services() {
   if [ "${_DENY_JAVA}" = "YES" ] \
     || [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
-      _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/solr9.initd
     fi
     if [ -e "/etc/init.d/solr7" ]; then
-      _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/solr7.initd
     fi
     if [ -e "/etc/init.d/jetty9" ]; then
-      _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
     fi
@@ -969,7 +878,6 @@ _if_disable_not_used_services() {
   if [ "${_DENY_JETTY9}" = "YES" ] \
     || [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
-      _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
@@ -980,7 +888,6 @@ _if_disable_not_used_services() {
   if [ "${_DENY_SOLR7}" = "YES" ] \
     || [ -e "/etc/boa/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
-      _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/solr7.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
@@ -991,16 +898,11 @@ _if_disable_not_used_services() {
   if [ "${_DENY_SOLR9}" = "YES" ] \
     || [ -e "/etc/boa/.deny.solr9.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
-      _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/solr9.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
       pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
     fi
-  fi
-
-  if [ "${_clearSwap}" = "YES" ]; then
-    _optimize_ram
   fi
 }
 _if_disable_not_used_services
@@ -1365,7 +1267,13 @@ _reap_stuck_sql_helpers() {
   _age=$(_exec_age "${_SQL_BACKUP_EXEC}")
   if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
     pkill -9 -f "${_SQL_BACKUP_EXEC}"
-    pkill -9 -f '^[^ ]*mydumper( |$)'
+    # Under the SQL maintenance marker a mydumper may be a migration's dump:
+    # only the backup's own goes then, told by where it writes.
+    if [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ]; then
+      pkill -9 -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/sql/'
+    else
+      pkill -9 -f '^[^ ]*mydumper( |$)'
+    fi
     pkill -9 -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
     pkill -9 -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
     rm -f /run/boa_sql_backup.pid

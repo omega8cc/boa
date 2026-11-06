@@ -361,6 +361,40 @@ _acct_read_in() {
   _acct_in_real_dir "${1}" _acct_read_here "${2}"
 }
 
+# mydumper 1.x counts every failed query it logs into its exit status,
+# its own retried table flush included. Before the global read lock it
+# sends FLUSH NO_WRITE_TO_BINLOG TABLES, which waits behind any long
+# query on the server; after --ftwrl-max-wait-time (60 s) it kills that
+# flush, logs "Flush tables failed, we are continuing anyways - ERROR
+# 1317" and sends it again, then takes the read lock and dumps as usual,
+# so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
+# no fix: a pending flush stalls every new query on the tables it waits
+# for. A run stopped by SIGTERM skips what is left yet still writes its
+# metadata and exits 0 (1 after such a retry); it says so only at Message
+# level, so callers run mydumper at --verbose=3. Returns 0 when exit
+# status $1, with the run's output in file $2 (no file, no pass), is a
+# whole run: nothing says it was cancelled (0.19.3 spells it "cacelled"),
+# and the status is 0, or 1 with at least one such retry, every counted
+# error a retry (a failed query is logged as a WARNING with " - ERROR
+# <n>: ", any other error as CRITICAL) and nothing CRITICAL or ERROR. The
+# caller still requires metadata.
+_mydumper_run_ok() {
+  local _rc="${1}" _log="${2}"
+  [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  grep -q -E '^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$' \
+    "${_log}" && return 1
+  [[ "${_rc}" == "0" ]] && return 0
+  [[ "${_rc}" == "1" ]] || return 1
+  awk '
+    /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
+    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
+      if ($0 ~ /\): WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      else _bad = 1
+    }
+    END { exit (_bad || !_ok) }
+  ' "${_log}"
+}
+
 # On Percona 5.7 mydumper's default lock mode takes FLUSH TABLES WITH READ
 # LOCK and also Percona's backup lock, kept until the dump ends, past the
 # release of the read lock. A write to a MyISAM table (the event scheduler
@@ -2306,6 +2340,7 @@ _v_dump() {
   _MYDUMPER_BACKUP_LOCKS=()
   [[ "${_SRV_VER}" == 5.7.* ]] && _mydumper_backup_locks_opts 7>&- 8>&- 9>&-
   _thr=$(_threads)
+  _t0="${SECONDS}"
   timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" mydumper \
     --defaults-file="${_MYCNF}" \
     --database="${_db}" \
@@ -2321,15 +2356,34 @@ _v_dump() {
     --long-query-guard=900 \
     --clear \
     "${_trx[@]}" \
-    --verbose=2 < /dev/null >&2 7>&- 8>&- 9>&-
+    --verbose=3 < /dev/null > "${_TMPD}/mydumper.log" 2>&1 7>&- 8>&- 9>&-
   _rc=$?
+  # The tool's output is read to judge the run (_mydumper_run_ok: a run whose
+  # only counted error is its own retried table flush exits 1 with a whole
+  # dump; one stopped by SIGTERM says so only at --verbose=3) and goes where
+  # it went before, to stderr, without its Message lines but those.
+  awk '!/^\*\* Message: / || /^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$/' \
+    "${_TMPD}/mydumper.log" >&2 7>&- 8>&- 9>&-
   case "${_rc}" in
-    0) ;;
     124|137)
-      _alrt "dump of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
-      _die 7 "time-limit"
+      # 137 is also an outside SIGKILL (the MySQL watchdog's), well inside
+      # the limit: only a run that reached it is reported as past it.
+      if [[ "${_rc}" == "124" ]] || (( SECONDS - _t0 >= _IO_LIMIT )); then
+        _alrt "dump of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
+        _die 7 "time-limit"
+      fi
+      _die 7 "dump-killed"
       ;;
-    *) _die 7 "dump-failed ${_rc}" ;;
+    *)
+      if ! _mydumper_run_ok "${_rc}" "${_TMPD}/mydumper.log" 7>&- 8>&- 9>&-; then
+        [[ "${_rc}" == "0" ]] && _die 7 "dump-cancelled"
+        _die 7 "dump-failed ${_rc}"
+      fi
+      if [[ "${_rc}" != "0" ]]; then
+        _msg "INFO: mydumper retried its table flush behind a long query and exited ${_rc}; the dump of ${_db} is whole"
+        _log_note "flush-retried-exit-${_rc}"
+      fi
+      ;;
   esac
   [[ -f "${_STG}/metadata" && ! -L "${_STG}/metadata" ]] || _die 7 "dump-incomplete"
   # Each stored object keeps the sql_mode it was made under, so a load as the

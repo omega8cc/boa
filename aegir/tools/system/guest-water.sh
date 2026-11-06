@@ -106,28 +106,55 @@ _is_ipv4_strict() {
   return 0
 }
 
-_ip_to_int() {
-  local _a _b _c _d
-  IFS=. read -r _a _b _c _d <<< "${1}"
-  echo $(( (_a << 24) + (_b << 16) + (_c << 8) + _d ))
-}
-
-# Return 0 if any CIDR block read from stdin covers the IP.
+# Return 0 if any CIDR block read from stdin covers the IP: one awk pass over
+# the blocks. The shell loop it replaces forked a subshell per block for the
+# address arithmetic, 500 forks per address on a box whose csf.allow carries
+# the provider ranges, which held the daily sweep at three addresses a
+# second. The rules are the loop's: a prefix of 1 to 31, a dotted-quad
+# network of up to three digits an octet, the address arithmetic wrapped at
+# 32 bits, the top prefix bits compared. Digit strings read as the shell's
+# arithmetic read them: a leading zero makes the value octal, and an 8 or 9
+# after it is an error, which skips the block (in the address: nothing
+# matches). An empty octet is 0, as in the shell; a non-digit octet, which
+# the shell read as a variable name, matches nothing here -- the blocks
+# arrive pre-filtered to digits and every caller validates the address.
 _cidr_covers_ip() {
-  local _ip="${1}"
-  local _int; _int="$(_ip_to_int "${_ip}")"
-  local _entry _net _pfx _mask
-  while IFS= read -r _entry; do
-    _net="${_entry%/*}"; _pfx="${_entry#*/}"
-    [[ "${_pfx}" =~ ^[0-9]+$ ]] || continue
-    (( _pfx >= 1 && _pfx <= 31 )) || continue
-    [[ "${_net}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || continue
-    _mask=$(( (0xFFFFFFFF << (32 - _pfx)) & 0xFFFFFFFF ))
-    if (( ( _int & _mask ) == ( $(_ip_to_int "${_net}") & _mask ) )); then
-      return 0
-    fi
-  done
-  return 1
+  awk -v ip="${1}" '
+    function sh_int(s,  v, i) {
+      if (s == "") return 0
+      if (s !~ /^[0-9]+$/) return -1
+      if (s ~ /^0[0-9]/) {
+        if (s ~ /[89]/) return -1
+        v = 0
+        for (i = 2; i <= length(s); i++) v = v * 8 + substr(s, i, 1)
+        return v
+      }
+      return s + 0
+    }
+    function to_int(q,  o, n, a, b, c, d) {
+      n = split(q, o, ".")
+      if (n > 4) return -1
+      a = sh_int(o[1]); b = sh_int(o[2]); c = sh_int(o[3]); d = sh_int(o[4])
+      if (a < 0 || b < 0 || c < 0 || d < 0) return -1
+      return (a * 16777216 + b * 65536 + c * 256 + d) % 4294967296
+    }
+    BEGIN { ipn = to_int(ip); if (ipn < 0) exit 1 }
+    {
+      n = index($0, "/")
+      if (n == 0) next
+      net = $0
+      sub(/\/[^\/]*$/, "", net)
+      pfx = substr($0, n + 1)
+      if (pfx !~ /^[0-9]+$/) next
+      pfx = sh_int(pfx)
+      if (pfx < 1 || pfx > 31) next
+      if (net !~ /^[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?$/) next
+      netn = to_int(net)
+      if (netn < 0) next
+      div = 2 ^ (32 - pfx)
+      if (int(ipn / div) == int(netn / div)) { found = 1; exit }
+    }
+    END { exit found ? 0 : 1 }'
 }
 
 # Membership test against a CSF state file, honouring every entry form CSF
@@ -951,6 +978,18 @@ _local_ip_rg() {
   fi
 }
 
+# Candidates of one ban archive for the sweep below: the IPs whose field-exact
+# line count reaches the rotation threshold (12, the same the per-IP test
+# applies), one "IP count" line each. One awk pass replaces a count per unique
+# archive IP, so the per-IP allow/deny checks run only on the IPs the sweep
+# can act on: with 12,600 unique archive IPs the walk of every IP took minutes
+# per pass, and guest-fire.sh and minute.sh hold their enforcement while the
+# sweep's /run/water.pid exists.
+_guard_candidates() {
+  awk '{ _c[$1]++ } END { for (_ip in _c) if (_c[_ip] >= 12) print _ip, _c[_ip] }' "${1}" 2>/dev/null \
+    | sort
+}
+
 _guard_stats() {
   if [ ! -e "${_HX}" ] && [ -e "${_HA}" ]; then
     mv -f ${_HA} ${_HX}
@@ -963,16 +1002,15 @@ _guard_stats() {
   fi
   if [ -e "${_HA}" ]; then
     _FW_MUTATED=
-    for _IP in `cat ${_HA} | cut -d '#' -f1 | sort | uniq`; do
+    while read -r _IP _NR_TEST; do
       _IP_RV=
-      _NR_TEST="0"
       if ! _is_ipv4_strict "${_IP}"; then
         echo "${_IP} is not a valid public IPv4 address, ignoring ${_HA}"
         continue
       fi
-      ### Field-exact count — a substring grep let 1.2.3.4 also count the
-      ### lines belonging to 91.2.3.45 and promote on inflated numbers.
-      _NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_HA} 2>/dev/null)
+      ### _NR_TEST is the field-exact line count from _guard_candidates — a
+      ### substring grep let 1.2.3.4 also count the lines belonging to
+      ### 91.2.3.45 and promote on inflated numbers.
       if [ -e "/root/.local.IP.list" ]; then
         _IP_CHECK=$(grep -E "^[[:space:]]*$(_rx "${_IP}")([[:space:]#]|$)" /root/.local.IP.list 2>/dev/null)
         if [ ! -z "${_IP_CHECK}" ]; then
@@ -1013,7 +1051,7 @@ _guard_stats() {
           _FW_MUTATED=YES
         fi
       fi
-    done
+    done < <(_guard_candidates "${_HA}")
     ### One reassert per archive pass when the rules changed — not one per IP.
     if [ "${_FW_MUTATED}" = "YES" ] && [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
@@ -1021,16 +1059,15 @@ _guard_stats() {
   fi
   if [ -e "${_WA}" ]; then
     _FW_MUTATED=
-    for _IP in `cat ${_WA} | cut -d '#' -f1 | sort | uniq`; do
+    while read -r _IP _NR_TEST; do
       _IP_RV=
-      _NR_TEST="0"
       if ! _is_ipv4_strict "${_IP}"; then
         echo "${_IP} is not a valid public IPv4 address, ignoring ${_WA}"
         continue
       fi
-      ### Field-exact count — a substring grep let 1.2.3.4 also count the
-      ### lines belonging to 91.2.3.45 and promote on inflated numbers.
-      _NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_WA} 2>/dev/null)
+      ### _NR_TEST is the field-exact line count from _guard_candidates — a
+      ### substring grep let 1.2.3.4 also count the lines belonging to
+      ### 91.2.3.45 and promote on inflated numbers.
       if [ -e "/root/.local.IP.list" ]; then
         _IP_CHECK=$(grep -E "^[[:space:]]*$(_rx "${_IP}")([[:space:]#]|$)" /root/.local.IP.list 2>/dev/null)
         if [ ! -z "${_IP_CHECK}" ]; then
@@ -1071,7 +1108,7 @@ _guard_stats() {
           _FW_MUTATED=YES
         fi
       fi
-    done
+    done < <(_guard_candidates "${_WA}")
     ### One reassert per archive pass when the rules changed — not one per IP.
     if [ "${_FW_MUTATED}" = "YES" ] && [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
@@ -1079,16 +1116,15 @@ _guard_stats() {
   fi
   if [ -e "${_FA}" ]; then
     _FW_MUTATED=
-    for _IP in `cat ${_FA} | cut -d '#' -f1 | sort | uniq`; do
+    while read -r _IP _NR_TEST; do
       _IP_RV=
-      _NR_TEST="0"
       if ! _is_ipv4_strict "${_IP}"; then
         echo "${_IP} is not a valid public IPv4 address, ignoring ${_FA}"
         continue
       fi
-      ### Field-exact count — a substring grep let 1.2.3.4 also count the
-      ### lines belonging to 91.2.3.45 and promote on inflated numbers.
-      _NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_FA} 2>/dev/null)
+      ### _NR_TEST is the field-exact line count from _guard_candidates — a
+      ### substring grep let 1.2.3.4 also count the lines belonging to
+      ### 91.2.3.45 and promote on inflated numbers.
       if [ -e "/root/.local.IP.list" ]; then
         _IP_CHECK=$(grep -E "^[[:space:]]*$(_rx "${_IP}")([[:space:]#]|$)" /root/.local.IP.list 2>/dev/null)
         if [ ! -z "${_IP_CHECK}" ]; then
@@ -1129,7 +1165,7 @@ _guard_stats() {
           _FW_MUTATED=YES
         fi
       fi
-    done
+    done < <(_guard_candidates "${_FA}")
     ### One reassert per archive pass when the rules changed — not one per IP.
     if [ "${_FW_MUTATED}" = "YES" ] && [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null

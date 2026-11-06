@@ -12,6 +12,7 @@
 
   # Allow Valkey to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
+  signal (receive) peer=boa_sudo_cmd,
 
   # Allow reading necessary kernel parameters
   /proc/sys/** r,

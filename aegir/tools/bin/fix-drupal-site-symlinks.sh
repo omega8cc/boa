@@ -11,8 +11,9 @@ trigger the conversion for ONE site WITHOUT being able to reach autosymlink's
 global batch/live modes (which operate on every account on the box).
 
   --site:    Site URL (e.g. example.com). Required.
-  --account: Owning Octopus account dir name (e.g. o1). Optional; autosymlink
-             resolves it from the vhost+alias pair when omitted.
+  --account: Owning Octopus account dir name (e.g. o1). Optional. A tenant is
+             held to its own account either way; for root and the master's
+             user autosymlink resolves it from the vhost+alias pair when omitted.
   --force-unshare: Break an inherited cross-account files symlink even if a
              share control file exists. Used by the clone task so a freshly
              cloned site gets its own separate copy (it never opted into sharing).
@@ -93,15 +94,20 @@ fi
 # victim --site (and/or --account=o2) to drive this root-run conversion/unshare
 # against another tenant. Derive the sudo identity: a per-tenant caller (home
 # /data/disk/oN) may only act on a site whose Drush alias -- the authoritative
-# "owned here" marker -- exists under its OWN account, and any explicit --account
-# must name it. aegir (master) and a direct root run are trusted. Rejection here
-# is non-fatal to Provision (it logs a warning and leaves the site as plain dirs).
+# "owned here" marker -- exists under its OWN account, any explicit --account
+# must name it, and with none it is passed its own, never the scan: the account
+# can make a file of any name in its .drush, so the alias alone proves nothing
+# about whose site the scan would find. aegir (master) and a direct root run are
+# trusted. Rejection here is non-fatal to Provision (it logs a warning and leaves
+# the site as plain dirs).
 _caller="${SUDO_USER:-}"
+_tenant_call="NO"
 if [ -n "${_caller}" ]; then
   _caller_home=$(getent passwd "${_caller}" 2>/dev/null | cut -d: -f6)
   _caller_home="${_caller_home%/}"
   case "${_caller_home}" in
     /data/disk/*)
+      _tenant_call="YES"
       _caller_acct="${_caller_home##*/}"
       if [ -n "${_account}" ] && [ "${_account}" != "${_caller_acct}" ]; then
         printf "Error: --account '%s' is not the caller's own account '%s'.\n" "${_account}" "${_caller_acct}" >&2
@@ -163,6 +169,17 @@ if [ -n "${_caller}" ]; then
           exit 1
         fi
       fi
+      # With no --account a site is one with its vhost as well as its alias, as
+      # the scan asks; an explicit --account is trusted on the alias alone (an
+      # install's hook, before the first Verify), so one the scan would have
+      # passed over stops here.
+      if [ -z "${_account}" ]; then
+        if [ ! -f "/data/disk/${_caller_acct}/config/server_master/nginx/vhost.d/${_site}" ]; then
+          printf "Site '%s' has no vhost under %s; nothing to do.\n" "${_site}" "${_caller_acct}"
+          exit 0
+        fi
+        _account="${_caller_acct}"
+      fi
       ;;
     /var/aegir)
       : # master aegir: trusted (narrow autosymlink only handles /data/disk sites)
@@ -180,8 +197,10 @@ if [ ! -x "${_AUTOSYMLINK}" ]; then
 fi
 
 # Narrow single-site apply only. autosymlink itself re-validates the tokens,
-# resolves/verifies the owning account by the vhost+alias pair, runs a per-site
-# clean dry-run before any change, and never touches the global state file.
+# resolves the owning account by the vhost+alias pair when it is given none (a
+# tenant always gives its own, above), refuses a site_path outside the account,
+# runs a per-site clean dry-run before any change, and never touches the global
+# state file.
 # Build the fixed argument list (the parser already consumed our own args).
 set -- --site "${_site}"
 if [ -n "${_account}" ]; then
@@ -195,4 +214,10 @@ if [ "${_archive_store}" = "YES" ]; then
 fi
 set -- "$@" --apply
 
+# A tenant's call reads back its exit status and nothing else: the tool's lines
+# say what root found on paths the account chose. They stay in the tool's log and
+# the operator's mail; Provision reads only the status.
+if [ "${_tenant_call}" = "YES" ]; then
+  exec "${_AUTOSYMLINK}" "$@" > /dev/null 2>&1
+fi
 exec "${_AUTOSYMLINK}" "$@"

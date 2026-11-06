@@ -4109,7 +4109,7 @@ _verify_renamed_sites_serve() {
   # xmass's own panel probe skips such an account for the same reason.
   local _susp=""
   case "${_AEGIR_ROOT}" in
-    /data/disk/o*) [ -e "/data/conf/suspended/${_AEGIR_ROOT##*/}.pid" ] && _susp=YES ;;
+    /data/disk/*) [ -e "/data/conf/suspended/${_AEGIR_ROOT##*/}.pid" ] && _susp=YES ;;
   esac
   _info "§9 Confirming each renamed site actually serves (up to ${_SERVE_WAIT}s each) ..."
   local _VH

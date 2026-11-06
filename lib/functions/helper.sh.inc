@@ -2437,64 +2437,103 @@ _unlock_sendmail_for_snail() {
 }
 
 #
+# Whether this box asks for AppArmor to stay on, in either mode.
+_apparmor_mode_chosen() {
+  [ -e "/root/.keep_apparmor_on.cnf" ] \
+    && [ ! -e "/root/.deny.apparmor.cnf" ] \
+    && { [ -e "/root/.activate.apparmor.cnf" ] \
+      || [ -e "/root/.enforce.apparmor.cnf" ]; }
+}
+
+#
+# Put every profile in a mode. The tools refuse the whole set on any one
+# conflict and change nothing, so a refusal is said where a report reads it.
+_apparmor_set_mode() {
+  local _out
+  _out=$("aa-${1}" /etc/apparmor.d/* 2>&1) && return 0
+  _msg "ALRT: aa-${1} refused the AppArmor profile set, it stays as it was"
+  _msg "ALRT: $(grep -m1 "ERROR" <<< "${_out}" | cut -c1-120)"
+  return 1
+}
+
+#
 # Turn Off AppArmor In Octopus.
 _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_off_apparmor_in_octopus"
   fi
-  _aaOffInOctopus=NO
+  _aaOffInThisRun=NO
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
-  if [ "${_isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
+  # The marker says an earlier run switched it off. Where a mode is chosen that
+  # run owed the switch back, so a marker still here means it was killed before
+  # it could: this run takes that over instead of skipping both ends. On stretch
+  # and jessie barracuda sets the marker itself, to keep this code off them.
+  if [ "${_isAppArmOn}" = "Y" ] \
+    && { [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ] \
+      || { [ "${_OS_CODE}" != "stretch" ] \
+        && [ "${_OS_CODE}" != "jessie" ] \
+        && _apparmor_mode_chosen; }; }; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
+    # Every way out of the run owes the switch back, not only its last line.
+    _aaOffInThisRun=YES
+    trap _apparmor_back_on_exit EXIT
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-    aa-complain /etc/apparmor.d/* &> /dev/null
-    service apparmor stop &> /dev/null
-    aa-teardown &> /dev/null
-    service auditd stop &> /dev/null
+    # Where a mode is chosen the profiles stay loaded in complain mode. Only an
+    # explicit deny rule still refuses, and the running daemons stay attached:
+    # unloading detaches them, and loading again does not take them back.
+    if ! _apparmor_mode_chosen || ! _apparmor_set_mode complain; then
+      aa-complain /etc/apparmor.d/* &> /dev/null
+      service apparmor stop &> /dev/null
+      aa-teardown &> /dev/null
+      service auditd stop &> /dev/null
+    fi
     touch /root/.turn_off_apparmor_in_octopus.cnf
-    _aaOffInOctopus=YES
   fi
 }
 
 #
 # Turn AppArmor back on after octopus, in the mode barracuda keeps: the run
-# above tore it down and left every profile file in complain mode, so without
-# this the box ran unconfined until the next barracuda pass, and a reboot in
-# between loaded the profiles in complain mode only.
+# above left every profile file in complain mode, so without this the box stayed
+# there until the next barracuda pass. Barracuda's exit handler calls it too.
 _turn_on_apparmor_after_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_on_apparmor_after_octopus"
   fi
-  if [ "${_aaOffInOctopus}" = "YES" ] \
-    && [ -e "/root/.keep_apparmor_on.cnf" ] \
-    && [ ! -e "/root/.deny.apparmor.cnf" ]; then
-    if [ -e "/root/.activate.apparmor.cnf" ] \
-      || [ -e "/root/.enforce.apparmor.cnf" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "ARMR: Turning AppArmor back on..."
-      fi
-      rm -rf /var/cache/apparmor/* &> /dev/null
-      if [ -x "/etc/init.d/apparmor" ]; then
-        service apparmor start &> /dev/null
-      fi
-      if [ -x "/etc/init.d/auditd" ]; then
-        service auditd start &> /dev/null
-      fi
-      apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-      if [ -e "/root/.activate.apparmor.cnf" ]; then
-        aa-complain /etc/apparmor.d/* &> /dev/null
-      else
-        aa-enforce /etc/apparmor.d/* &> /dev/null
-      fi
-      rm -f /root/.turn_off_apparmor_in_octopus.cnf
+  if [ "${_aaOffInThisRun}" = "YES" ] && _apparmor_mode_chosen; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "ARMR: Turning AppArmor back on..."
     fi
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    if [ -x "/etc/init.d/apparmor" ]; then
+      service apparmor start &> /dev/null
+    fi
+    if [ -x "/etc/init.d/auditd" ]; then
+      service auditd start &> /dev/null
+    fi
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    if [ -e "/root/.activate.apparmor.cnf" ]; then
+      _apparmor_set_mode complain
+    else
+      _apparmor_set_mode enforce
+    fi
+    rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
+  # Called at the end of the run and again by the EXIT trap: once is enough.
+  _aaOffInThisRun=NO
+}
+
+#
+# The EXIT trap of a run that switched AppArmor off. Losing its output may be
+# what stopped the run, and a debug line would then end this as well.
+_apparmor_back_on_exit() {
+  trap '' HUP INT TERM PIPE
+  _turn_on_apparmor_after_octopus
 }
 
 #

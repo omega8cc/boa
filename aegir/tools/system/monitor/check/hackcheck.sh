@@ -150,28 +150,55 @@ _is_ipv4() {
   return 0
 }
 
-_ip_to_int() {
-  local _a _b _c _d
-  IFS=. read -r _a _b _c _d <<< "${1}"
-  echo $(( (_a << 24) + (_b << 16) + (_c << 8) + _d ))
-}
-
-# Return 0 if any CIDR block read from stdin covers the IP.
+# Return 0 if any CIDR block read from stdin covers the IP: one awk pass over
+# the blocks. The shell loop it replaces forked a subshell per block for the
+# address arithmetic, 500 forks per address on a box whose csf.allow carries
+# the provider ranges, which held the daily sweep at three addresses a
+# second. The rules are the loop's: a prefix of 1 to 31, a dotted-quad
+# network of up to three digits an octet, the address arithmetic wrapped at
+# 32 bits, the top prefix bits compared. Digit strings read as the shell's
+# arithmetic read them: a leading zero makes the value octal, and an 8 or 9
+# after it is an error, which skips the block (in the address: nothing
+# matches). An empty octet is 0, as in the shell; a non-digit octet, which
+# the shell read as a variable name, matches nothing here -- the blocks
+# arrive pre-filtered to digits and every caller validates the address.
 _cidr_covers_ip() {
-  local _ip="${1}"
-  local _int; _int="$(_ip_to_int "${_ip}")"
-  local _entry _net _pfx _mask
-  while IFS= read -r _entry; do
-    _net="${_entry%/*}"; _pfx="${_entry#*/}"
-    [[ "${_pfx}" =~ ^[0-9]+$ ]] || continue
-    (( _pfx >= 1 && _pfx <= 31 )) || continue
-    [[ "${_net}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || continue
-    _mask=$(( (0xFFFFFFFF << (32 - _pfx)) & 0xFFFFFFFF ))
-    if (( ( _int & _mask ) == ( $(_ip_to_int "${_net}") & _mask ) )); then
-      return 0
-    fi
-  done
-  return 1
+  awk -v ip="${1}" '
+    function sh_int(s,  v, i) {
+      if (s == "") return 0
+      if (s !~ /^[0-9]+$/) return -1
+      if (s ~ /^0[0-9]/) {
+        if (s ~ /[89]/) return -1
+        v = 0
+        for (i = 2; i <= length(s); i++) v = v * 8 + substr(s, i, 1)
+        return v
+      }
+      return s + 0
+    }
+    function to_int(q,  o, n, a, b, c, d) {
+      n = split(q, o, ".")
+      if (n > 4) return -1
+      a = sh_int(o[1]); b = sh_int(o[2]); c = sh_int(o[3]); d = sh_int(o[4])
+      if (a < 0 || b < 0 || c < 0 || d < 0) return -1
+      return (a * 16777216 + b * 65536 + c * 256 + d) % 4294967296
+    }
+    BEGIN { ipn = to_int(ip); if (ipn < 0) exit 1 }
+    {
+      n = index($0, "/")
+      if (n == 0) next
+      net = $0
+      sub(/\/[^\/]*$/, "", net)
+      pfx = substr($0, n + 1)
+      if (pfx !~ /^[0-9]+$/) next
+      pfx = sh_int(pfx)
+      if (pfx < 1 || pfx > 31) next
+      if (net !~ /^[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?$/) next
+      netn = to_int(net)
+      if (netn < 0) next
+      div = 2 ^ (32 - pfx)
+      if (int(ipn / div) == int(netn / div)) { found = 1; exit }
+    }
+    END { exit found ? 0 : 1 }'
 }
 
 # Membership test against a CSF state file, honouring every entry form CSF

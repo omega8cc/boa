@@ -12,8 +12,11 @@
 ### visitors whose owners took the "no hurry" advice.
 ###
 ### Daily from cron (a quiet no-op on boxes with no proxied account): for
-### every HTTPS proxy vhost, locate the same domain's live certificate set on
-### the target over ssh and, when the target's notAfter is strictly newer,
+### every HTTPS proxy vhost, read the same domain's live certificate set over
+### ssh from the LE store of the account the root policy record pairs this
+### one with on the target (for a record imported from an older tool's copy,
+### only once the target's create marker confirms that account was made for
+### this one from this box) and, when the target's notAfter is strictly newer,
 ### pull privkey/fullchain/cert/chain into the local LE store -- staged,
 ### verified (parse + enddate + key/cert pubkey match), ownership/mode
 ### preserved, with a .bak set kept. The real files live under
@@ -53,8 +56,113 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _DRY=NO
 [ "$1" = "--dry" ] && _DRY=YES
 
+### The policy record and the proxied marker root reads:
+### /root/.<oN>.migproxy.cnf and /root/.<oN>.migproxy.proxied, root:root
+### 0600, parsed and never sourced. The account's log/ copies (migproxy.cnf,
+### proxied.pid) are never read: the account can write them. Plain
+### assignments, never taken from the environment.
+_MIG_REC_DIR="/root"
+_MIG_ADOPT_STAMP="/root/.migration.records.adopted"
+_MIG_TRUST_TOOL="/var/xdrago/migration_proxy_trust.sh"
+_MPC_OCTET="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+### ./$1 read through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, and
+### only while that handle is a regular file with one link, owned by root,
+### writable by no one else, at most 64 KiB. Prints the handle's mtime on a
+### line of its own, then the bytes.
+_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+### The root file $1 (a name in _MIG_REC_DIR) without its mtime line, CR
+### stripped, once it reads in the root shape and keeps the record grammar
+### (each non-blank line a comment or one _MIG_ key, no key twice); status 1
+### otherwise.
+_mpc_root_text() {
+  local _t
+  [ "${1%/*}" = "${_MIG_REC_DIR}" ] || return 1
+  _t="$( ( cd -P -- "${_MIG_REC_DIR}" 2> /dev/null && perl -e "${_MIG_HREAD_PL}" -- "./${1##*/}" root ) )" || return 1
+  _t="$(printf '%s\n' "${_t}" | sed 1d | tr -d '\r')"
+  printf '%s\n' "${_t}" | awk '/^[ \t]*$/ || /^#/ { next }
+    /^_MIG_[A-Z_]+=/ { k = $0; sub(/=.*/, "", k); if (k in s) b = 1; s[k] = 1; next }
+    { b = 1 }
+    END { exit b }' || return 1
+  printf '%s\n' "${_t}"
+}
+### The peer the source-role root record of this box names for the account
+### $1, as "<ip> <oN> <how>": a strict dotted quad, the account's name there
+### (_MIG_PEER_OCT; empty means the same name as here) and "root", or
+### "adopted" for a record imported from an older tool's copy. Nothing when
+### there is no such record; nothing and status 2 when the peer account it
+### names is not an account name (status 3 for an imported record), so
+### nothing is pulled on a guess.
+_mpc_rec_peer() {
+  local _t _h _p _o _how=root
+  [[ "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${1#.}" = "${1}" ] || return 0
+  _t="$(_mpc_root_text "${_MIG_REC_DIR}/.${1}.migproxy.cnf")" || return 0
+  grep -qx "_MIG_ROLE=source" <<< "${_t}" || return 0
+  _h="$(grep -m1 '^_MIG_HOST_IP=' <<< "${_t}" | cut -d= -f2-)"
+  [ -n "${_h}" ] && hostname -I 2> /dev/null | tr ' ' '\n' | grep -qxF -- "${_h}" || return 0
+  _p="$(grep -m1 '^_MIG_PEER_IP=' <<< "${_t}" | cut -d= -f2-)"
+  [[ "${_p}" =~ ^(${_MPC_OCTET}\.){3}${_MPC_OCTET}$ ]] || return 0
+  [ "${_p}" != "0.0.0.0" ] && [[ "${_p}" != 127.* ]] || return 0
+  # Older tools copied a source record's peer account from the account's
+  # log/ copy, so an imported one is never taken as it stands, whatever name
+  # it holds: _pull_domain confirms it on the target first.
+  grep -q '^_MIG_ADOPTED=.' <<< "${_t}" && _how=adopted
+  _o="$(grep -m1 '^_MIG_PEER_OCT=' <<< "${_t}" | cut -d= -f2-)"
+  [ -n "${_o}" ] || _o="${1}"
+  if [[ ! "${_o}" =~ ^[a-zA-Z0-9._-]+$ ]] || [ "${_o#.}" != "${_o}" ]; then
+    [ "${_how}" = "adopted" ] && return 3
+    return 2
+  fi
+  printf '%s %s %s\n' "${_p}" "${_o}" "${_how}"
+}
+### This box as a create marker names it: hostname -f, nothing and status 1
+### when that is not a hostname. Same text as xoct's _xoct_create_src_host.
+_mpc_create_src_host() {
+  local _h
+  _h="$(hostname -f 2> /dev/null | tr -d '\n')"
+  case "${_h}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  printf '%s' "${_h}"
+}
+### The accounts this box proxies, one per line: each holds a valid root
+### proxied marker (COMPLETE, a sane date no later than a day ahead) and a
+### real /data/disk/<oN>. Only xoct and xmass write one, after a conversion.
+_mpc_proxied_accts() {
+  local _m _a _t _at
+  for _m in "${_MIG_REC_DIR}"/.*.migproxy.proxied; do
+    [ -e "${_m}" ] || continue
+    _a="${_m##*/}"; _a="${_a#.}"; _a="${_a%.migproxy.proxied}"
+    [[ "${_a}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ "${_a#.}" = "${_a}" ] || continue
+    [ -d "/data/disk/${_a}" ] && [ ! -L "/data/disk/${_a}" ] || continue
+    _t="$(_mpc_root_text "${_MIG_REC_DIR}/.${_a}.migproxy.proxied")" || continue
+    grep -qx "_MIG_PROXIED=COMPLETE" <<< "${_t}" || continue
+    _at="$(grep -m1 '^_MIG_PROXIED_AT=' <<< "${_t}" | cut -d= -f2-)"
+    [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || continue
+    [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ] || continue
+    printf '%s\n' "${_a}"
+  done
+}
+### Accounts converted by older tools carry only log/proxied.pid until the
+### trust tool's adopt --once gives them a root marker. The BOA agent pass
+### runs it; this is the fallback, a no-op once its stamp exists. A dry run
+### writes nothing, so it only says the import is still owed.
+_mpc_adopt_once() {
+  [ -e "${_MIG_ADOPT_STAMP}" ] && return 0
+  if [ "${_DRY}" = "YES" ]; then
+    echo "migration_proxy_certs: DRY: record adoption has not run on this box yet; accounts converted by older tools are listed only after it has (a real run does it first)"
+    return 0
+  fi
+  [ -x "${_MIG_TRUST_TOOL}" ] || return 0
+  bash "${_MIG_TRUST_TOOL}" adopt --once \
+    || echo "migration_proxy_certs: ALRT: record adoption did not complete; log records stay unread (no decision is taken from them)"
+  return 0
+}
+
+_mpc_adopt_once
+### Every box's daily run, whether it proxies or not: trust no record needs.
+[ "${_DRY}" = "YES" ] || { [ -x "${_MIG_TRUST_TOOL}" ] && bash "${_MIG_TRUST_TOOL}" prune; }
 ### Quiet no-op unless this box actually proxies something.
-ls /data/disk/*/log/proxied.pid >/dev/null 2>&1 || exit 0
+[ -n "$(_mpc_proxied_accts)" ] || exit 0
 
 # shellcheck disable=SC1091
 [ -r /opt/local/bin/lock.inc ] && . /opt/local/bin/lock.inc
@@ -306,11 +414,28 @@ _EARLIEST_DOM=""
 ### referenced directly by the proxy vhost (ssl_trusted_certificate).
 _CERT_SET="privkey.pem fullchain.pem cert.pem chain.pem"
 
+### The domain $2 of the account $1, whose imported record names an account
+### on the target $3 that the target did not confirm ($4 says why), is not
+### mirrored. The restate is told once per account, with the target account
+### to be named by root: the copy's name is never offered as one.
+_UNCONF_TOLD=""
+_mpc_unconfirmed() {
+  _msg "ALRT: ${1}/${2}: ${4} -- not mirrored"
+  _FAIL_REFRESH="${_FAIL_REFRESH} ${2}"
+  case " ${_UNCONF_TOLD} " in *" ${1} "*) return 0 ;; esac
+  _UNCONF_TOLD="${_UNCONF_TOLD} ${1}"
+  _msg "ALRT:   the root policy record of ${1} was imported from an older tool's copy, so the account it names on ${3} is the copy's and is not taken;"
+  _msg "ALRT:   confirm on ${3} which account serves the sites of ${1}, then restate it: xoct proxy ${1} ${3} <target-oN> --repair (it keeps its mode; a retired pair stays retired)"
+}
+
+### $1 the account here, $2 the domain its vhost names, $3 the target and
+### $4 the account there, both from the root policy record, $5 "adopted"
+### when that record was imported from an older tool's copy.
 _pull_domain() {
-  local _oct="$1" _dom="$2" _tip="$3"
+  local _oct="$1" _dom="$2" _tip="$3" _poct="$4" _how="$5"
   local _root="/data/disk/${_oct}"
   local _dir="${_root}/tools/le/certs/${_dom}"
-  local _rdir _hits _lend _rend _f _ok _stg _rc
+  local _rdir _lend _rend _f _ok _stg _rc _src=""
 
   if [ ! -d "${_dir}" ] || [ ! -e "${_dir}/fullchain.pem" ]; then
     _msg "ALRT: ${_oct}/${_dom}: no local LE store at ${_dir}; skipping"
@@ -329,24 +454,55 @@ _pull_domain() {
     _EARLIEST_EPOCH="${_lend}"; _EARLIEST_DOM="${_dom}"
   fi
 
-  ### Exactly one hit on the target, whatever the account is called there --
-  ### this is also what keeps the mirror correct after a rename-mode move.
-  _hits=$(${_SSH} root@"${_tip}" \
-    "ls -d /data/disk/*/tools/le/certs/${_dom} 2>/dev/null" 2>/dev/null < /dev/null)
-  if [ -z "${_hits}" ]; then
-    _msg "ALRT: ${_oct}/${_dom}: no LE store for this domain on target ${_tip} (or target unreachable); keeping the local certificate"
-    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
-    return 1
-  fi
-  if [ "$(printf '%s\n' "${_hits}" | wc -l)" -ne 1 ]; then
-    _msg "ALRT: ${_oct}/${_dom}: MULTIPLE LE stores match on target ${_tip}; refusing to guess"
-    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
-    return 1
-  fi
-  _rdir="${_hits}"
+  ### Only the store of the paired account on the target, by its exact path.
+  ### The domain comes from a vhost the account writes, so a search across
+  ### every account there would hand it whichever tenant holds that domain.
+  ### A rename-mode move is covered by the record naming the account there.
+  _rdir="/data/disk/${_poct}/tools/le/certs/${_dom}"
   if [[ ! "${_rdir}" =~ ^/data/disk/[A-Za-z0-9._-]+/tools/le/certs/[a-zA-Z0-9.-]+$ ]] \
     || [ "${_rdir##*/}" != "${_dom}" ]; then
     _msg "ALRT: ${_oct}/${_dom}: unexpected LE store path on target ${_tip}; refusing to guess"
+    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
+    return 1
+  fi
+  if [ "${_how}" = "adopted" ] && ! _src="$(_mpc_create_src_host)"; then
+    _mpc_unconfirmed "${_oct}" "${_dom}" "${_tip}" \
+      "this box's hostname -f is not a name a create marker can hold, so the account on target ${_tip} cannot be confirmed"
+    return 1
+  fi
+  ### A real directory at that path, judged there as the reads below judge
+  ### it: no link at the name or on the way. For an imported record the
+  ### same call first confirms the account from root's create marker there:
+  ### a regular root file with one link, read through a handle that never
+  ### follows a link, naming this box and this account, and the uid and
+  ### /data/disk there it records are the account's now, as xoct's create
+  ### gate judges them (status 3 if not).
+  { declare -f _mpc_in_real_dir
+    if [ "${_how}" = "adopted" ]; then
+      printf '_m="$( ( cd -P -- /root && perl -e %q -- %q root ) 2> /dev/null )" || exit 3\n' \
+        "${_MIG_HREAD_PL}" "./.${_poct}.migration-create.txt"
+      printf 'grep -qxF -- %q <<< "${_m}" && grep -qxF -- %q <<< "${_m}" || exit 3\n' \
+        "_MIG_CREATE_SRC_HOST=${_src}" "_MIG_CREATE_SRC_OCT=${_oct}"
+      printf '_u="$(id -u %q 2> /dev/null)"; _i="$(stat -c %%i:%%W -- %q 2> /dev/null)"\n' \
+        "${_poct}" "/data/disk/${_poct}"
+      printf 'case "${_u}/${_i}" in *[!0-9:/]*) exit 3 ;; [0-9]*/[0-9]*:[0-9]*) ;; *) exit 3 ;; esac\n'
+      printf 'grep -qxF -- "_MIG_CREATE_TGT_UID=${_u}" <<< "${_m}" && grep -qxF -- "_MIG_CREATE_TGT_INODE=${_i}" <<< "${_m}" || exit 3\n'
+    fi
+    printf '_mpc_in_real_dir %q true\n' "${_rdir}"
+  } | ${_SSH} root@"${_tip}" "bash -s" > /dev/null 2>&1
+  _rc=$?
+  if [ "${_rc}" -eq 255 ]; then
+    _msg "ALRT: ${_oct}/${_dom}: target ${_tip} unreachable; keeping the local certificate"
+    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
+    return 1
+  fi
+  if [ "${_how}" = "adopted" ] && [ "${_rc}" -eq 3 ]; then
+    _mpc_unconfirmed "${_oct}" "${_dom}" "${_tip}" \
+      "target ${_tip} holds no create marker naming this box and ${_oct} for the account the imported record names there"
+    return 1
+  fi
+  if [ "${_rc}" -ne 0 ]; then
+    _msg "ALRT: ${_oct}/${_dom}: no LE store at ${_rdir} on target ${_tip}; keeping the local certificate"
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
     return 1
   fi
@@ -427,24 +583,21 @@ _pull_domain() {
   return 0
 }
 
-### Walk every proxied account's HTTPS proxy vhosts. The peer comes from the
-### vhost's own proxy_pass (what is actually serving) and is cross-checked
-### against the account's policy record where one exists -- a disagreement is
-### exactly the half-repointed state --repair --retarget exists to fix, so
-### refuse rather than pull certificates from either candidate.
-for _PID in /data/disk/*/log/proxied.pid; do
-  [ -e "${_PID}" ] || continue
-  _ROOT=$(dirname "$(dirname "${_PID}")")
-  _OCT=$(basename "${_ROOT}")
-  _CNF=$(_mpc_read_in "${_ROOT}/log" migproxy.cnf)
-  _REC_IP=""
-  if [ -n "${_CNF}" ] \
-    && grep -qx "_MIG_ROLE=source" <<< "${_CNF}" \
-    && hostname -I 2>/dev/null | tr ' ' '\n' \
-       | grep -qxF "$(grep -m1 '^_MIG_HOST_IP=' <<< "${_CNF}" | cut -d= -f2-)"; then
-    _REC_IP=$(grep -m1 '^_MIG_PEER_IP=' <<< "${_CNF}" | cut -d= -f2- | tr -d '\r\n')
-    _valid_ip "${_REC_IP}" || _REC_IP=""
-  fi
+### Walk the HTTPS proxy vhosts of every account holding a root proxied
+### marker. Root connects to the peer over ssh, so the peer and the account
+### there are the ones the account's root policy record names, never what
+### the account wrote: each vhost's own proxy_pass (what is actually serving)
+### must agree with that peer. A disagreement is exactly the half-repointed
+### state --repair --retarget exists to fix, so refuse rather than pull
+### certificates from either candidate; an account without a usable record is
+### not mirrored at all, nor one whose imported record names an account the
+### target does not confirm.
+for _OCT in $(_mpc_proxied_accts); do
+  _ROOT="/data/disk/${_OCT}"
+  _REC="$(_mpc_rec_peer "${_OCT}")"
+  _REC_RC=$?
+  read -r _REC_IP _REC_OCT _REC_HOW <<< "${_REC}"
+  _NOREC=""
   _VD="${_ROOT}/config/server_master/nginx/vhost.d"
   while IFS= read -r -u 9 _V; do
     _VHS="${_VD}/${_V}"
@@ -458,20 +611,40 @@ for _PID in /data/disk/*/log/proxied.pid; do
       _valid_dom "${_DOM}" && _RETIRED="${_RETIRED} ${_OCT}/${_DOM}"
       continue
     fi
+    if [ -z "${_REC_IP}" ] || [ -z "${_REC_OCT}" ]; then
+      if [ -z "${_NOREC}" ]; then
+        if [ "${_REC_RC}" -eq 3 ]; then
+          _msg "ALRT: ${_OCT}: the root policy record (/root/.${_OCT}.migproxy.cnf) was imported from an older tool's copy and names no valid account on the target -- not mirrored;"
+          _msg "ALRT:   confirm on the target which account serves the sites of ${_OCT}, then restate it: xoct proxy ${_OCT} <target-ip> <target-oN> --repair (it keeps its mode; a retired pair stays retired)"
+          _UNCONF_TOLD="${_UNCONF_TOLD} ${_OCT}"
+        else
+          if [ "${_REC_RC}" -eq 2 ]; then
+            _msg "ALRT: ${_OCT}: the root policy record (/root/.${_OCT}.migproxy.cnf) names no valid account on the target -- not mirrored;"
+          else
+            _msg "ALRT: ${_OCT}: no root policy record (/root/.${_OCT}.migproxy.cnf, role source, this box's own) names the target;"
+            _msg "ALRT:   a vhost is the account's to write, so root does not connect where it points -- not mirrored;"
+          fi
+          _msg "ALRT:   restate it: xoct proxy ${_OCT} <target-ip> [<target-oN>] --repair --proxy-mode=<mode>"
+        fi
+        _NOREC=YES
+      fi
+      _valid_dom "${_DOM}" && _FAIL_REFRESH="${_FAIL_REFRESH} ${_DOM}"
+      continue
+    fi
     _VIP=$(grep -m1 'proxy_pass' <<< "${_VHC}" \
       | sed 's/.*https:\/\///; s/;.*//' | tr -d ' ')
     if ! _valid_dom "${_DOM}" || ! _valid_ip "${_VIP}"; then
       _msg "ALRT: ${_OCT}: cannot parse domain/target from ${_VHS}; skipping"
       continue
     fi
-    if [ -n "${_REC_IP}" ] && [ "${_REC_IP}" != "${_VIP}" ]; then
-      _msg "ALRT: ${_OCT}/${_DOM}: vhost forwards to ${_VIP} but the policy record says ${_REC_IP};"
+    if [ "${_REC_IP}" != "${_VIP}" ]; then
+      _msg "ALRT: ${_OCT}/${_DOM}: vhost forwards to ${_VIP} but the root policy record says ${_REC_IP};"
       _msg "ALRT:   refusing to mirror until they agree -- repair with:"
       _msg "ALRT:   xoct proxy ${_OCT} <correct-ip> --repair --retarget"
       _FAIL_REFRESH="${_FAIL_REFRESH} ${_DOM}"
       continue
     fi
-    _pull_domain "${_OCT}" "${_DOM}" "${_VIP}"
+    _pull_domain "${_OCT}" "${_DOM}" "${_REC_IP}" "${_REC_OCT}" "${_REC_HOW}"
   done 9< <(_mpc_in_real_dir "${_VD}" _mpc_https_names_here)
 done
 
@@ -502,9 +675,8 @@ fi
 ### over the vhosts we track and mail when it is close AND a refresh failed.
 _EARLIEST_EPOCH=""
 _EARLIEST_DOM=""
-for _PID in /data/disk/*/log/proxied.pid; do
-  [ -e "${_PID}" ] || continue
-  _ROOT=$(dirname "$(dirname "${_PID}")")
+for _OCT in $(_mpc_proxied_accts); do
+  _ROOT="/data/disk/${_OCT}"
   _VD="${_ROOT}/config/server_master/nginx/vhost.d"
   while IFS= read -r -u 9 _V; do
     _VHC=$(_mpc_read_in "${_VD}" "${_V}")
@@ -531,11 +703,21 @@ if [ -n "${_EARLIEST_EPOCH}" ]; then
       _MAILX_TEST=$(s-nail -V 2>&1)
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
         _HOST=$(hostname -f 2>/dev/null)
+        ### The cron run's own output is discarded, so the restate an
+        ### unconfirmed imported record needs travels in the mail.
+        _UNCONF_NOTE=""
+        if [ -n "${_UNCONF_TOLD}" ]; then
+          _UNCONF_NOTE=$'\n'"Not mirrored until root restates the pair:${_UNCONF_TOLD}"$'\n'
+          _UNCONF_NOTE+="The policy record of each was imported from an older tool's copy, and"$'\n'
+          _UNCONF_NOTE+="the target does not confirm the account it names there. Confirm on the"$'\n'
+          _UNCONF_NOTE+="target which account serves its sites, then restate it:"$'\n'
+          _UNCONF_NOTE+="xoct proxy <oN> <target-ip> <target-oN> --repair   (it keeps its mode; a retired pair stays retired)"$'\n'
+        fi
         cat <<EOF | s-nail -s "ALERT: migration proxy certificate horizon ${_DAYS_LEFT} day(s) on ${_HOST}" ${_ADM_EMAIL}
 The earliest certificate behind a retained migration proxy vhost on ${_HOST}
 (${_EARLIEST_DOM}) expires in ${_DAYS_LEFT} day(s), and the daily mirror could
 not refresh:${_FAIL_REFRESH}
-
+${_UNCONF_NOTE}
 Once it expires, every HTTPS visitor still reaching those sites through the
 old address sees a browser certificate warning. Check that the target still
 holds a live store for each domain and that this box can reach it over ssh,

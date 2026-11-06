@@ -329,6 +329,10 @@ if ! _check_dump_fs; then
 fi
 touch /run/boa_sql_cluster_backup.pid
 _sql_wait_drop
+### A run that ends early (a Ctrl-C, INT, TERM or HUP during a dump ends it
+### with 130) takes its run marker with it, as its end does: the watchdogs
+### read it as a backup in progress, the MySQL one for a day.
+trap 'rm -f /run/boa_sql_cluster_backup.pid' EXIT
 
 _create_locks() {
   echo "Creating locks for $1"
@@ -498,6 +502,71 @@ EOFMYSQL
   done
 }
 
+### mydumper 1.x counts every failed query it logs into its exit status,
+### its own retried table flush included. Before the global read lock it
+### sends FLUSH NO_WRITE_TO_BINLOG TABLES, which waits behind any long
+### query on the server; after --ftwrl-max-wait-time (60 s) it kills that
+### flush, logs "Flush tables failed, we are continuing anyways - ERROR
+### 1317" and sends it again, then takes the read lock and dumps as usual,
+### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
+### no fix: a pending flush stalls every new query on the tables it waits
+### for. A run stopped by SIGTERM skips what is left yet still writes its
+### metadata and exits 0 (1 after such a retry); it says so only at Message
+### level, so callers run mydumper at --verbose=3. Returns 0 when exit
+### status $1, with the run's output in file $2 (no file, no pass), is a
+### whole run: nothing says it was cancelled (0.19.3 spells it "cacelled"),
+### and the status is 0, or 1 with at least one such retry, every counted
+### error a retry (a failed query is logged as a WARNING with " - ERROR
+### <n>: ", any other error as CRITICAL) and nothing CRITICAL or ERROR. The
+### caller still requires metadata.
+_mydumper_run_ok() {
+  local _rc="${1}" _log="${2}"
+  [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  grep -q -E '^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$' \
+    "${_log}" && return 1
+  [[ "${_rc}" == "0" ]] && return 0
+  [[ "${_rc}" == "1" ]] || return 1
+  awk '
+    /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
+    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
+      if ($0 ~ /\): WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      else _bad = 1
+    }
+    END { exit (_bad || !_ok) }
+  ' "${_log}"
+}
+### Runs a mydumper command line ($3 on) in a session of its own and waits
+### for it. mydumper 1.x takes SIGINT as a question: it pauses every worker
+### and asks on its output whether to cancel, which nobody sees with that
+### output in a log, and a pause that comes as it takes the global read
+### lock keeps every write on the server waiting until someone answers. In
+### its own session a Ctrl-C at the terminal never reaches it; this
+### script's own INT, TERM or HUP ends it at once by SIGKILL (a SIGTERM can
+### hang it the same way) and the script exits 130. It runs in directory
+### $1, which must resolve to exactly $2 unless $2 is "-"; stdin is
+### /dev/null, its output goes where the caller sends this function's.
+### A signal that lands between the fork and the pid's assignment finds
+### $! moved past its value before the fork and ends that child.
+### Returns mydumper's status, or 1 when the directory check fails.
+_mydumper_session() {
+  local _d="${1}" _want="${2}" _old _rc
+  shift 2
+  _old="$(trap -p INT TERM HUP)"
+  _MYDUMPER_PID=""
+  _MYDUMPER_PREV="$!"
+  trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
+  ( cd -P -- "${_d}" 2> /dev/null \
+    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && exec setsid -w "$@" ) < /dev/null &
+  _MYDUMPER_PID=$!
+  wait "${_MYDUMPER_PID}"
+  _rc=$?
+  _MYDUMPER_PID=""
+  trap - INT TERM HUP
+  [ -n "${_old}" ] && eval "${_old}"
+  return "${_rc}"
+}
+
 ### Percona 5.7 dumps sync their threads with FLUSH TABLES WITH READ LOCK
 ### (FTWRL), and mydumper also takes Percona's backup lock there (LOCK TABLES
 ### FOR BACKUP), keeping it until the dump ends, past the FTWRL release. A
@@ -649,7 +718,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   esac
   _mydumper_objects_opts
   ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
-  mydumper \
+  _mydumper_session . - mydumper \
     --defaults-file=/root/.my.cluster_root.cnf \
     --database=${_DB} \
     --host=localhost \
@@ -663,20 +732,27 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
     "${_MYDUMPER_BACKUP_LOCKS[@]}" \
     ${_MYDUMPER_TRX_OPT} \
-    --verbose=1 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
+    --verbose=3 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
   _MYDUMPER_RC=$?
   ### mydumper renames metadata into place at the end of its run, so a
   ### missing marker means the run never got there (a crash, a kill, a
-  ### failed lock) and a non-zero exit means it logged an error on the way.
-  ### Neither is a dump to archive: keep the debris and the tool's own
-  ### output out of the compressor's way and in the operator's sight. The
-  ### loop redirects this helper, so its output is the only trace kept.
-  if [ "${_MYDUMPER_RC}" -ne "0" ] || [ ! -e "${_SAVELOCATION}/${_DB}/metadata" ]; then
+  ### failed lock) and a non-zero exit means it logged an error on the way,
+  ### unless its only counted error is its own retried table flush, read
+  ### from its output at --verbose=3, which also says when a SIGTERM cut the
+  ### run short (_mydumper_run_ok). Neither is a dump
+  ### to archive: keep the debris and the tool's own output out of the
+  ### compressor's way and in the operator's sight. The loop redirects this
+  ### helper, so its output is the only trace kept.
+  if ! _mydumper_run_ok "${_MYDUMPER_RC}" "${_SAVELOCATION}/${_DB}.mydumper.log" \
+    || [ ! -e "${_SAVELOCATION}/${_DB}/metadata" ]; then
     echo "ALRT: mydumper FAILED or left no metadata for ${_DB} -- keeping the debris and the tool's output in ${_DB}.FAILED/"
     mv -f ${_SAVELOCATION}/${_DB} ${_SAVELOCATION}/${_DB}.FAILED 2>/dev/null
     mkdir -p "${_SAVELOCATION}/${_DB}.FAILED"
     mv -f "${_SAVELOCATION}/${_DB}.mydumper.log" "${_SAVELOCATION}/${_DB}.FAILED/mydumper.log" 2>/dev/null
     return 1
+  fi
+  if [ "${_MYDUMPER_RC}" -ne "0" ]; then
+    _MYDUMPER_FLUSH_RETRIED="YES"
   fi
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
   _mydumper_object_modes "${_DB}" "${_SAVELOCATION}/${_DB}" mysql --defaults-extra-file=/root/.my.cluster_root.cnf || _MYDUMPER_MODES_LEFT="YES"
@@ -1015,6 +1091,7 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
     _DUMP_RC=0
     _MYSQLDUMP_LEFT_OUT=""
     _MYDUMPER_MODES_LEFT=""
+    _MYDUMPER_FLUSH_RETRIED=""
     if [ "${_MYQUICK_USE}" = "YES" ]; then
       _backup_this_database_with_mydumper &> /dev/null || _DUMP_RC=1
     else
@@ -1023,6 +1100,9 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
     _remove_locks ${_DB}
     if [ "${_DUMP_RC}" = "0" ]; then
       echo "INFO: Backup completed for ${_DB}"
+      if [ -n "${_MYDUMPER_FLUSH_RETRIED}" ]; then
+        echo "INFO: mydumper retried its table flush for ${_DB} behind a long query and exited 1; the dump is whole"
+      fi
       if [ -n "${_MYSQLDUMP_LEFT_OUT}" ]; then
         echo "WARN: ${_DB} was dumped without its ${_MYSQLDUMP_LEFT_OUT}: the dumping login could not read them"
         _OBJECTS_LEFT_DBS="${_OBJECTS_LEFT_DBS} ${_DB}:${_MYSQLDUMP_LEFT_OUT// and /+}"

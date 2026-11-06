@@ -3951,6 +3951,19 @@ _php_single_point_accounts() {
     [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
     _acct_in_real_dir "${_inc%/*}" rm -f -- "./${_inc##*/}" && _did=YES
   done
+  # The platform rules name a pool each, and the worker builds them again once
+  # it runs: while any names another version's pool the include goes, and those
+  # platforms' sites fall back to the default include above.
+  for _inc in /data/disk/*/config/server_master/nginx/post.d/fpm_include_platform.inc; do
+    [ -f "${_inc}" ] && [ ! -L "${_inc}" ] || continue
+    _usr="${_inc#/data/disk/}"
+    _usr="${_usr%%/*}"
+    _pool="${_usr}.${_sv}"
+    [ -S "/run/${_pool}.fpm.socket" ] || continue
+    _acct_read_in "${_inc%/*}" "${_inc##*/}" | grep -E 'user_socket "' \
+      | grep -qvF "\"${_pool}\"" || continue
+    _acct_in_real_dir "${_inc%/*}" rm -f -- "./${_inc##*/}" && _did=YES
+  done
   if [ "${_did}" = "YES" ]; then
     # the reload signals nginx and returns at once: its old workers keep
     # sending requests to the old pools until they have finished them, so
