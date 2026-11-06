@@ -58,6 +58,33 @@ function hosting_cron_permission() {
 }
 
 /**
+ * Can this site answer the elysia-cron command?
+ *
+ * Drush finds a module's command only while the module is enabled, and every
+ * other site answered "The drush command 'elysia-cron' could not be found"
+ * on each backend run before its plain cron. The answer comes from the
+ * site's package list as its last Install, Verify, Import or Migrate
+ * recorded it. Where the Drush running the queue filters extension command
+ * files (BOA's Drush 8), the check it applies to the child call decides
+ * too: from a tenant's tree the backend loads that command only with the
+ * account's opt-in.
+ */
+function _hosting_cron_site_answers_elysia($site) {
+  $filename = db_query("SELECT i.filename FROM {hosting_package_instance} i
+    INNER JOIN {hosting_package} p ON p.nid = i.package_id
+    WHERE i.rid = :rid AND i.status = 1
+    AND p.short_name = :name AND p.package_type = :type",
+    array(':rid' => $site->nid, ':name' => 'elysia_cron', ':type' => 'module'))->fetchField();
+  if ($filename === FALSE) {
+    return FALSE;
+  }
+  if (!empty($filename) && function_exists('boa_drush_extension_allowed')) {
+    return boa_drush_extension_allowed(dirname($filename) . '/elysia_cron.drush.inc');
+  }
+  return TRUE;
+}
+
+/**
  * Queue callback (hosting_<QUEUE_NAME>_queue) for the advanced cron queue.
  *
  * This function is called by hosting_run_queue() whenever the "Advanced Cron"
@@ -83,8 +110,10 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
       provision_backend_invoke($site_name, "cron");
     }
     elseif (variable_get('hosting_cron_use_backend', TRUE)) {
-      provision_backend_invoke($site_name, "elysia-cron");
-      sleep(3);
+      if (_hosting_cron_site_answers_elysia($site)) {
+        provision_backend_invoke($site_name, "elysia-cron");
+        sleep(3);
+      }
       provision_backend_invoke($site_name, "cron");
     }
     else {

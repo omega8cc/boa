@@ -124,6 +124,16 @@
 
 @=> Important Fixes
 
+    * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
+      proxy trust and realip tools now stay current with xoct and xmass, which
+      run them: they are fetched in the tools pass such a box still runs. Before,
+      they stayed as its last system pass left them.
+
+    * Backend-mode site cron asks for elysia-cron only on a site whose module
+      list shows elysia_cron enabled and whose Drush may load its command;
+      every other site goes straight to plain cron, without the "could not be
+      found" error each run logged before.
+
     * An account's off-site backup passphrase and its provider credentials
       now reach the standing mirror with every xmass sync. Before, the
       mirror kept a passphrase of its own and the account's credentials
@@ -159,6 +169,21 @@
       server BOA writes; TLS 1.2 resumes as before. The front updates on the
       next Barracuda pass, deployed HTTPS proxies in place on the same pass.
 
+    * A Ctrl-C during a database dump no longer leaves mydumper paused. It
+      takes a Ctrl-C as a question: it stops its work and asks whether to
+      cancel, and the question never shows. Pressed while a dump waited
+      behind a long query, it left the global read lock held and every
+      write on the server waiting until mydumper was killed; pressed later,
+      it left the tool hanging. xcopy, xoct and the nightly and cluster SQL
+      backups now keep mydumper out of the terminal's reach: a Ctrl-C ends
+      the tool at once, mydumper with it, and the dump is not kept. A
+      backup run by hand with Drush stops at once and its dump finishes on
+      its own.
+
+    * A nightly SQL backup stopped during a dump, as a Ctrl-C now does, no
+      longer leaves its run marker behind. The watchdogs read the marker as
+      a backup in progress, the MySQL one for a day.
+
     * A database dump that waited more than a minute behind a long query is
       no longer called failed. mydumper 1.x gives up its table flush after
       60 seconds, sends it again and then dumps as usual, but exits with an
@@ -190,6 +215,14 @@
       either. Each kept a drop behind a RAM test from when it stood beside a
       swapoff; the kernel frees clean pages on demand, so a drop gained next to
       nothing and sent every site back to the disk.
+
+    * A control panel backup export is kept in a private folder of the account,
+      which the panel's own path names. Its folder could be entered by other
+      accounts' web users, who could read an export by its name.
+
+    * In AppArmor enforce mode wkhtmltopdf and wkhtmltoimage started from a
+      shell or cron, outside PHP, can fetch a page by URL; before, every URL
+      failed with HostNotFoundError. Where they may write is unchanged.
 
     * Swap is no longer emptied on a schedule: autoupboa's purge at half full
       and multiback's reset before a backup ran swapoff -a, which freezes every
@@ -312,6 +345,23 @@
       the box at that moment, the next pass found nothing changed and nginx
       kept the old pool until some other task reloaded it.
 
+    * A policy change applied account by account (xoct proxy-mode or
+      proxy-retire, one account after another or --all) no longer fails on an
+      account whose turn comes while the peer's csf restarts after the previous
+      account's change: the peer's reconcile waits for the restart lfd takes,
+      and the record push and reconcile try a dropped connection twice more.
+
+    * Migration trust no record needs any more now ends: a retired relay's root
+      key and firewall lines go once its promised date has passed, a front that
+      moved away or a box rebuilt as its own mirror is no longer trusted where it
+      no longer relays, and the peer address list drops what nothing names.
+      Bringing back a retired front past its date needs the pre-mig key exchange
+      again; a mirror put back by restore-target needs xoct proxy --repair. A
+      key given for a newer move stays, and so does reach older tools gave: the
+      first daily run dates it, and only a relay that ends after that takes it.
+      A source whose move into the box is under way (its pre-mig there, and no
+      post-mig yet) keeps its key whatever its other relays there say.
+
     * boa cleanup purge now refuses while a BOA pass or system task runs, and
       xmass prep-target waits for the target to go quiet before it judges and
       purges an account only the target has: a pass still running on that account
@@ -339,6 +389,13 @@
       usage pass and the nightly included, takes a plan only by a name BOA
       knows and a count only as a plain number, so a file of root's the
       account renamed to one of these names sets nothing.
+
+    * An account can no longer pass off one of root's plan files under
+      another plan file's name: each carries a root-only stamp of its own
+      name, set as root writes or first reads it and by the limited-shell
+      worker on every pass, and every reader refuses a file stamped with
+      another name. A renamed cores.txt no longer counts as extra engines,
+      nor an extra engines file as the engine count.
 
     * A migration proxy tool another box copied here now lasts one self-update:
       a source on older tools could put its older trust tool back on a newer
@@ -386,6 +443,12 @@
       longer leaves the SQL maintenance marker behind, which paused the
       MySQL watchdog for up to four hours.
 
+    * xtrim no longer refuses an account for good over the expired
+      certificate of a site disabled in the panel on the new server, which
+      never renews a disabled site. It names that site and leaves its
+      certificate out of the check, and still refuses an expired certificate
+      of a live site.
+
     * A site disabled in the panel no longer fails a move's probes: its
       placeholder page is the same page as the catch-all they refuse, so
       xmass verify called it broken and every xtrim plan, quiesce and shrink
@@ -400,6 +463,20 @@
       the repair to run for its account. They were named only once, in the
       middle of the conversion's output, and verify read HTTPS on the new
       server alone, where these sites serve right.
+
+    * A standing mirror now drops the dumps the old server rotated out of an
+      account's store under /data/disk/arch when that store is a link onto
+      another volume, as the rest of the archive already did: a sync pass
+      prunes the copy under the same delete guard, and the cutover still
+      deletes nothing. A copy that lands on the mirror's own volume where it
+      would hold an account's files or the archive, or where a copy from
+      another volume lands too, stays additive. Those dumps stayed on the
+      mirror for good, so its disk grew every night.
+
+    * xmass prep-target --return-accounts no longer replaces what the serving
+      server holds where it copies the shared store's links onto another
+      volume: a link, file or folder already there stays as it is, only what
+      the server lacks arrives, and a server it cannot ask gets nothing.
 
     * xmass no longer passes over an account whose name is not o followed by
       digits: its pre-mig panel check, its panel probe after a cutover and

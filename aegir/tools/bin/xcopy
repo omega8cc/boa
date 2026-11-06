@@ -1123,7 +1123,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           echo "ALRT: site ${_Dom} on ${_oct}: no file for mydumper's output under /var/log/boa, so its dump cannot be judged"
         fi
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
-        _xcopy_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
+        _mydumper_session "${_USR}/src/${_DBN}" "$(_xcopy_real_want "${_USR}/src/${_DBN}")" \
+          mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
@@ -1418,26 +1419,29 @@ _xcopy_client_address() {
   return 0
 }
 
-# One file read as root wrote it, a copy of usage.sh's: $1 the name in the
-# current (pinned) directory, $2 "root" (root's regular file, one link, not
-# writable by group or others, at most 64 KiB) or "legacy" (also mode 0600,
-# group root). Prints its mtime on a line, then its bytes. Status 3: no such
-# name; 4: anything else there; 5: a read error.
+# Root's reader of an account's plan file in log/, a copy of usage.sh's: ./$1
+# through one handle, only while it is root's regular file with one link that
+# no one else can write, at most 64 KiB. On Linux the handle carries the
+# root-only stamp trusted.boa.plan with the file's own name: a file stamped
+# with another name (a file of root's the account renamed, or one copied with
+# cp -a) is refused with status 6, an unstamped one is stamped. $2 "read"
+# prints its mtime on a line, then its bytes; "stamp" only stamps. Status 3:
+# no such name; 4: anything else there; 5: a read error.
 # shellcheck disable=SC2016
-_MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
 # The plan names the pool sizing knows; a plan value is one of these.
 _XCOPY_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
 # One plan value of the account the target is installed with, as its own
-# Octopus pass takes it: log/$3 only as root wrote it (_MIG_HREAD_PL
-# "root"), otherwise the $4 of root's cnf; either only when the whole of it
+# Octopus pass takes it: log/$3 only as root wrote it under that name
+# (_PLAN_HREAD_PL), otherwise the $4 of root's cnf; either only when the whole of it
 # (blanks around it dropped) matches the extended regular expression $5.
 # log/ is the account's: a file it made there would install the target with
 # a plan it never had. Sets the variable $4 (left as it is when neither
 # holds a value). $1 = the account's root, $2 = its name here.
 _xcopy_plan_value() {
   local _root="$1" _acct="$2" _f="$3" _var="$4" _re="$5" _v _s
-  _v="$(_xcopy_in_real_dir "${_root}/log" perl -e "${_MIG_HREAD_PL}" \
-    -- "./${_f}" root && printf x)"
+  _v="$(_xcopy_in_real_dir "${_root}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- "./${_f}" read && printf x)"
   _s=$?
   if [ "${_s}" -eq 0 ]; then
     _v="${_v%x}"
@@ -3779,6 +3783,37 @@ _mydumper_run_ok() {
     END { exit (_bad || !_ok) }
   ' "${_log}"
 }
+### Runs a mydumper command line ($3 on) in a session of its own and waits
+### for it. mydumper 1.x takes SIGINT as a question: it pauses every worker
+### and asks on its output whether to cancel, which nobody sees with that
+### output in a log, and a pause that comes as it takes the global read
+### lock keeps every write on the server waiting until someone answers. In
+### its own session a Ctrl-C at the terminal never reaches it; this
+### script's own INT, TERM or HUP ends it at once by SIGKILL (a SIGTERM can
+### hang it the same way) and the script exits 130. It runs in directory
+### $1, which must resolve to exactly $2 unless $2 is "-"; stdin is
+### /dev/null, its output goes where the caller sends this function's.
+### A signal that lands between the fork and the pid's assignment finds
+### $! moved past its value before the fork and ends that child.
+### Returns mydumper's status, or 1 when the directory check fails.
+_mydumper_session() {
+  local _d="${1}" _want="${2}" _old _rc
+  shift 2
+  _old="$(trap -p INT TERM HUP)"
+  _MYDUMPER_PID=""
+  _MYDUMPER_PREV="$!"
+  trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
+  ( cd -P -- "${_d}" 2> /dev/null \
+    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && exec setsid -w "$@" ) < /dev/null &
+  _MYDUMPER_PID=$!
+  wait "${_MYDUMPER_PID}"
+  _rc=$?
+  _MYDUMPER_PID=""
+  trap - INT TERM HUP
+  [ -n "${_old}" ] && eval "${_old}"
+  return "${_rc}"
+}
 ### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
 ### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK
 ### TABLES FOR BACKUP), keeping it until the dump ends, past the FTWRL
@@ -5040,6 +5075,30 @@ _xcopy_key_trust_line() {
   _xcopy_key_tagged_in "${_ak}" "${_kt}" "${_tag}"
 }
 
+# The day root gave the peer $1 its reach. A relay that ended before that day
+# cannot take it back: this is a new move's key, or a carry for a live front.
+_mig_reach_stamp() {
+  local _f="/root/.migration.peer.reach" _t
+  [[ "${1}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 0
+  _t="$(grep -v "^${1//./\\.} " "${_f}" 2> /dev/null)"
+  { [ -z "${_t}" ] || printf '%s\n' "${_t}"; printf '%s %s\n' "${1}" "$(date -u '+%Y-%m-%d')"; } > "${_f}.$$" \
+    && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
+}
+
+# A move from $1 into this box is under way until this box's post-mig: the
+# trust tool keeps the peer's reach while its line is in the pending file.
+_mig_pending_open() {
+  local _f="/root/.migration.peer.pending" _t
+  [[ "${1}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 0
+  _t="$(grep -v "^${1//./\\.} " "${_f}" 2> /dev/null)"
+  if ! { { [ -z "${_t}" ] || printf '%s\n' "${_t}"; printf '%s %s\n' "${1}" "$(date -u '+%Y-%m-%d')"; } > "${_f}.$$" \
+    && chmod 600 "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"; }; then
+    rm -f -- "${_f}.$$"
+    echo "ALRT: could not write ${_f}: the daily trust prune may take the key of ${1} before post-mig"
+    return 1
+  fi
+}
+
 # Only the verified line travels, TAGGED with the source's address the way
 # xmass tags its own, so a later promotion can attribute it to a peer.
 _xcopy_trust_source_key() {
@@ -5052,6 +5111,8 @@ _xcopy_trust_source_key() {
     return 1
   fi
   echo "INFO: key ${_XCOPY_KEY_FP} from ${_hst} is in ${_ak}"
+  _mig_reach_stamp "${_src_ip}"
+  _mig_pending_open "${_src_ip}"
   return 0
 }
 
@@ -5092,6 +5153,9 @@ _post_mig() {
     # The park ends here: the runners are back, and the next tools refresh
     # re-checks them (their ctrl stamps were cleared while they were parked).
     rm -f /run/boa_migration_park.pid
+    # Every move into this box is over: the trust tool judges its sources'
+    # reach by their relays again.
+    rm -f /root/.migration.peer.pending
     # The move is over: a source stops serving its root key.
     rm -f /var/www/nginx-default/auth_undefined_keys.txt*
     # Cron must come back on WHICHEVER box runs post-mig: the import step
