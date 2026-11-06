@@ -438,46 +438,64 @@ _remove_tree() {
 ### home would delete it. Refuse while one is there, --force or not, naming
 ### each with the commands that archive it and delete it by hand: only the
 ### delete lifts the refusal. A kept link is deleted with the tree it
-### points to, the index itself, unless that tree holds the home. The
-### archive is weighed as this tool's own is, the data size plus 1G free
-### under _ARCH_DIR: a linked home's index sits on another disk than
-### /var/backups, which a large one would fill.
+### points to, the index itself, unless that tree holds the home as named
+### or as resolved: a linked home's parents by name (/var) are not its
+### parents on disk. A kept link whose tree cannot be reached now (its
+### disk not mounted) refuses as well, named with where it points: passing
+### it over would let the remove take the link and leave the index on its
+### disk with nothing naming it. The archive is weighed as this tool's own
+### is, the data size plus 1G free under _ARCH_DIR: a linked home's index
+### sits on another disk than /var/backups, which a large one would fill.
+### Every path in a printed command is shell-quoted, so a copied command
+### acts on the tree named and no other.
 _refuse_kept() {
-  local _sv="${1}" _k _r _n=0 _du _avail _room _rh
+  local _sv="${1}" _k _r _n=0 _du _avail _room _rh _rp _rb _held
   [ -n "${_V_HOME}" ] || return 0
   _rh=$(readlink -f "${_V_HOME}" 2>/dev/null)
   for _k in "${_V_HOME}"/data.xmass-landed-*; do
-    [ -e "${_k}" ] || continue
+    [ -e "${_k}" ] || [ -L "${_k}" ] || continue
     if [ "${_n}" -eq 0 ]; then
       _alrt "${_sv}: ${_V_HOME} still holds a data tree xmass restore-solr kept -- refusing to"
       _alrt "remove ${_sv}, --force or not; nothing changed. Archive each if it is needed and"
       _alrt "delete it by hand, then re-run: the refusal lifts once the kept name is gone."
     fi
     _n=$((_n + 1))
+    if [ ! -e "${_k}" ]; then
+      _alrt "  ${_k} (a link to $(readlink "${_k}" 2>/dev/null), which cannot be reached now)"
+      _alrt "    mount what holds that tree, then re-run for its archive and delete; only if it is gone for good:"
+      _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
+      continue
+    fi
     _r=$(readlink -f "${_k}" 2>/dev/null)
+    _rp="${_r%/*}"
+    _rb="${_r##*/}"
     _du=$(du -sk "${_r}" 2>/dev/null | awk '{ print $1 }')
     _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
     _room="${_du:-?}K data, ${_avail:-?}K free under ${_ARCH_DIR}"
     _alrt "  ${_k}$( [ -L "${_k}" ] && echo " (a link to ${_r})" )"
     if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -ge "$(( _du + 1048576 ))" ]; then
-      _alrt "    archive: tar -czf ${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz -C ${_r%/*} ${_r##*/}"
+      _alrt "    archive: tar -czf $(printf '%q' "${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz") -C $(printf '%q %q' "${_rp:-/}" "${_rb:-.}")"
       _alrt "    room:    ${_room}"
     else
       _alrt "    room:    ${_room}; it wants the data size plus 1G there, so archive it on a disk with room:"
-      _alrt "    archive: tar -czf <a directory with room>/${_V_SVC}-${_k##*/}.tar.gz -C ${_r%/*} ${_r##*/}"
+      _alrt "    archive: tar -czf <a directory with room>/$(printf '%q' "${_V_SVC}-${_k##*/}.tar.gz") -C $(printf '%q %q' "${_rp:-/}" "${_rb:-.}")"
     fi
     if [ ! -L "${_k}" ]; then
-      _alrt "    delete:  rm -rf ${_k}"
+      _alrt "    delete:  rm -rf $(printf '%q' "${_k}")"
+      continue
+    fi
+    _held=NO
+    case "${_V_HOME%/}/" in
+      "${_r%/}/"*) _held=YES ;;
+    esac
+    case "${_rh%/}/" in
+      "${_r%/}/"*) _held=YES ;;
+    esac
+    if [ "${_held}" = "YES" ]; then
+      _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
+      _alrt "    (it points to ${_r}, which holds the home: remove what it reaches by hand)"
     else
-      case "${_rh:-/}/" in
-        "${_r%/}/"*)
-          _alrt "    delete:  rm -f ${_k}"
-          _alrt "    (it points to ${_r}, which holds the home: remove what it reaches by hand)"
-        ;;
-        *)
-          _alrt "    delete:  rm -rf ${_r} ${_k}"
-        ;;
-      esac
+      _alrt "    delete:  rm -rf $(printf '%q %q' "${_r}" "${_k}")"
     fi
   done
   [ "${_n}" -eq 0 ]
@@ -746,7 +764,8 @@ case "${_cmd}" in
     echo "    tree xmass restore-solr kept (data.xmass-landed-<stamp>), changing"
     echo "    nothing; it names each one with the commands that archive it, weighed"
     echo "    against the room under ${_ARCH_DIR}, and delete it (a kept link with the"
-    echo "    tree it points to). Only the delete lifts the refusal."
+    echo "    tree it points to). Only the delete lifts the refusal. A kept link"
+    echo "    whose tree cannot be reached now is named with where it points."
     echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
     echo "    the removed version can never serve again even if a later pass on a"
     echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."
