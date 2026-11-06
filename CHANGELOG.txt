@@ -129,6 +129,32 @@
 
 @=> Important Fixes
 
+    * xmass restore-target killed during its data directory swap, with the
+      standby marker still there, finishes when run again; before, the box
+      refused with "no parked data directory" and could only be reimaged.
+      Run again, it never removes a database broker switch the stopped run
+      had already put back.
+
+    * A new account can be laid on a standing mirror whose /mnt is a link
+      onto its volumes, and the stores of such a box travel: xmass, xoct
+      and xcopy now take an account's relocated store there as its own.
+
+    * The server's own off-site backup passphrase now reaches the standing
+      mirror with every xmass sync, beside the mirror's own, so the old
+      box's server archives can still be decrypted after a promotion.
+
+    * xmass prep-target --return-accounts run again after a stop resumes
+      where it got to: an account whose last steps had begun is not copied
+      over again from the old box, one brought back whole is skipped, and
+      a stop in the panel's copy no longer leaves the account refused.
+
+    * An xoct move now carries the account's off-site backup passphrase and
+      its provider credentials, so the archives made before the move can
+      be decrypted on the new server and the account goes on backing up.
+
+    * boa cleanup purge batch run again after a batch that stopped skips
+      the accounts it purged already, instead of ending with an error.
+
     * After an Octopus install or upgrade on a server in AppArmor enforce
       mode, aa-status no longer counts a profile in complain mode until the
       next reboot or barracuda pass: the learning profile made for crontab
