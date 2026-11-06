@@ -6803,14 +6803,50 @@ _xmass_restore_target() {
   return 0
 }
 
+### What a source of the cnf ($2, default /root/.barracuda.cnf) leaves in
+### variable $1. BARRACUDA (system.sh.inc) and autoupboa SOURCE the file,
+### so an exported, indented or quoted assignment counts and the last wins.
+### Status 1 when the source ends the shell (a readonly assignment does).
+_xmass_cnf_value() {
+  local _cvF="${2:-/root/.barracuda.cnf}"
+  [ -e "${_cvF}" ] || return 0
+  ( unset "$1"; . "${_cvF}" > /dev/null 2>&1 < /dev/null; printf '%s' "${!1:-}"; exit 0 )
+}
+
+### Set deny variable $1 to NO in the cnf ($2, default /root/.barracuda.cnf)
+### the way its readers see it: every assignment line, exported, indented or
+### quoted, is rewritten to the plain NO, and one is appended when none is
+### left or a source still reads YES (a later assignment of another shape
+### wins). Status 1 when the tolerant read or a source still sees YES, or
+### a source of the file cannot be judged.
+_xmass_cnf_clear_deny() {
+  local _cdV="$1" _cdF="${2:-/root/.barracuda.cnf}" _cdR
+  [ -e "${_cdF}" ] || return 0
+  sed -i -E "s/^[[:space:]]*(export[[:space:]]+)?${_cdV}=.*/${_cdV}=NO/" "${_cdF}"
+  if ! grep -q "^${_cdV}=NO$" "${_cdF}" 2>/dev/null \
+    || [ "$(_xmass_cnf_value "${_cdV}" "${_cdF}")" = "YES" ]; then
+    ### Newline-terminate before the append; an unterminated last line would
+    ### swallow the previous key.
+    [ -n "$(tail -c1 "${_cdF}" 2>/dev/null)" ] && echo >> "${_cdF}"
+    echo "${_cdV}=NO" >> "${_cdF}"
+  fi
+  if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_cdV}=[\"' ]*YES" "${_cdF}" 2>/dev/null; then
+    return 1
+  fi
+  _cdR="$(_xmass_cnf_value "${_cdV}" "${_cdF}")" || return 1
+  [ "${_cdR}" != "YES" ]
+}
+
 ### One version's facts on this box, set in the caller's locals: service,
-### deny variable, data tree the installer tests, and whether it is installed
-### (distribution dir, init script, or a parked copy -- as the target read).
+### deny variable, distribution dir, data tree the installer tests, the
+### version's home (solrtrim remove deletes it whole; solr4 has none), and
+### whether it is installed (distribution dir, init script, or a parked
+### copy -- as the target read).
 _xmass_restore_solr_map() {
   case "$1" in
-    solr4) _svc=jetty9; _denyVar=_DENY_JETTY9; _dst=/opt/jetty9; _dta=/opt/solr4 ;;
-    solr7) _svc=solr7;  _denyVar=_DENY_SOLR7;  _dst=/opt/solr7;  _dta=/var/solr7/data ;;
-    solr9) _svc=solr9;  _denyVar=_DENY_SOLR9;  _dst=/opt/solr9;  _dta=/var/solr9/data ;;
+    solr4) _svc=jetty9; _denyVar=_DENY_JETTY9; _dst=/opt/jetty9; _dta=/opt/solr4;      _hom="" ;;
+    solr7) _svc=solr7;  _denyVar=_DENY_SOLR7;  _dst=/opt/solr7;  _dta=/var/solr7/data; _hom=/var/solr7 ;;
+    solr9) _svc=solr9;  _denyVar=_DENY_SOLR9;  _dst=/opt/solr9;  _dta=/var/solr9/data; _hom=/var/solr9 ;;
     *) return 1 ;;
   esac
   _inst=NO
@@ -6821,16 +6857,108 @@ _xmass_restore_solr_map() {
   return 0
 }
 
-### Why the next full system pass would NOT install version $1 on this box,
-### or nothing when it would: the installer's own gates, read locally as
-### _xmass_solr_drive_install_pass reads them on a target.
-_xmass_restore_solr_gate() {
-  local _sv="$1" _hosted=NO _hn _os _xtras
-  if ls /root/.run-to-*.cnf > /dev/null 2>&1 \
-    && [ ! -e /root/.force.rebuild.src.on.auto.now.cnf ]; then
-    echo "this box is staged for an OS hop (/root/.run-to-*.cnf without the force-rebuild override): heavy rebuilds are held and no Solr installs"
+### Whether /usr/bin/java$1 is there when the next full system pass on
+### release $2 reaches its Solr step; $3 YES when that pass's Java step is
+### armed (an SR token in _XTRAS_LIST or a hosted name). Its link step
+### (_java_check_fix) runs right after the package step and links a JVM
+### already unpacked: 11, 17 and 21 on chimaera and later, 11 alone on the
+### others. An armed package step installs from another suite at once
+### (daedalus 11 and 21, excalibur 11 and 17, bookworm 11); the JREs it
+### leaves to the FULL package stage land after the links are made, so
+### they never count on the same pass.
+_xmass_restore_solr_jre() {
+  local _j="$1" _os="$2" _arm="$3"
+  [ -e "/usr/bin/java${_j}" ] && return 0
+  case "${_os}:${_j}" in
+    excalibur:*|daedalus:*|chimaera:*|*:11)
+      [ -e "/usr/lib/jvm/java-${_j}-openjdk-amd64/bin/java" ] && return 0
+    ;;
+  esac
+  [ "${_arm}" = "YES" ] || return 1
+  case "${_os}:${_j}" in
+    daedalus:11|daedalus:21|excalibur:11|excalibur:17|bookworm:11) return 0 ;;
+  esac
+  return 1
+}
+
+### Where the mapped version's landed data tree is kept, stamped $1: beside
+### the version's home, never inside it (solrtrim remove deletes the home
+### whole), and beside the directory the home resolves to, so a home linked
+### onto another disk keeps the rename on that disk. solr4's tree is no
+### home's child: it is kept beside itself.
+_xmass_restore_solr_kept() {
+  local _rh
+  if [ -z "${_hom}" ]; then
+    echo "${_dta}.xmass-landed-$1"
     return 0
   fi
+  _rh="$(readlink -f "${_hom}" 2>/dev/null)"
+  [ -n "${_rh}" ] && [ "${_rh}" != "/" ] || return 1
+  echo "${_rh}-data.xmass-landed-$1"
+}
+
+### Keep the mapped version's landed data tree, stamped $1, out of what
+### solrtrim remove deletes: a tree inside the version's home as it
+### resolves (a data link pointing in there included) moves out to the
+### kept name and the link goes; a data link pointing outside the home is
+### replaced by an absolute link of the kept name, its target untouched.
+### Prints the kept name, or why it cannot be kept (status 1). $2 check:
+### only the checks, nothing changed -- a move that would copy the tree
+### onto another mount is refused.
+_xmass_restore_solr_keep() {
+  local _new _rh _rd _mpA _mpB
+  _new="$(_xmass_restore_solr_kept "$1")" || { echo "cannot resolve ${_hom}"; return 1; }
+  if [ -e "${_new}" ] || [ -L "${_new}" ]; then
+    echo "${_new} already exists -- move it away, then re-run"
+    return 1
+  fi
+  if [ -z "${_hom}" ]; then
+    [ "${2:-}" = "check" ] && return 0
+    mv "${_dta}" "${_new}" \
+      || { echo "could not move ${_dta} aside to ${_new} -- move it by hand, then re-run"; return 1; }
+    echo "${_new}"
+    return 0
+  fi
+  _rh="$(readlink -f "${_hom}" 2>/dev/null)"
+  _rd="$(readlink -f "${_dta}" 2>/dev/null)"
+  [ -n "${_rd}" ] || { echo "cannot resolve ${_dta}"; return 1; }
+  case "${_rd}" in
+    "${_rh}"/*)
+      _mpA="$(df -P "${_rd}" 2>/dev/null | awk 'NR==2 { print $NF }')"
+      _mpB="$(df -P "${_new%/*}" 2>/dev/null | awk 'NR==2 { print $NF }')"
+      if [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]; then
+        echo "${_rd} is on the ${_mpA} mount and keeping it as ${_new} would copy it onto ${_mpB} -- move it by hand outside ${_hom}, then re-run"
+        return 1
+      fi
+      [ "${2:-}" = "check" ] && return 0
+      mv "${_rd}" "${_new}" \
+        || { echo "could not move ${_rd} aside to ${_new} -- move it by hand, then re-run"; return 1; }
+      [ -L "${_dta}" ] && rm -f "${_dta}"
+    ;;
+    *)
+      [ "${2:-}" = "check" ] && return 0
+      { ln -s "${_rd}" "${_new}" && rm -f "${_dta}"; } \
+        || { echo "could not replace the link ${_dta} with ${_new} -- move it by hand, then re-run"; return 1; }
+    ;;
+  esac
+  echo "${_new}"
+}
+
+### Why the next full system pass would NOT install version $1 on this box,
+### or nothing when it would: the installer's own gates as
+### _if_install_upgrade_solr (solr.sh.inc) applies them, read locally.
+_xmass_restore_solr_gate() {
+  local _sv="$1" _n="${1#solr}" _hosted=NO _hn _os _xtras _run _j _js _need _why
+  local _arm=NO _fire=NO _jre=NO _jreArmed=NO
+  ### _if_rebuild_src_on_major_os_upgrade holds heavy rebuilds, the Solr
+  ### step among them, on exactly these four.
+  for _run in excalibur daedalus chimaera beowulf; do
+    if [ -e "/root/.run-to-${_run}.cnf" ] \
+      && [ ! -e /root/.force.rebuild.src.on.auto.now.cnf ]; then
+      echo "this box is staged for an OS hop (/root/.run-to-${_run}.cnf without the force-rebuild override): heavy rebuilds are held and no Solr installs"
+      return 0
+    fi
+  done
   _os=$(. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-unknown}")
   if [ "${_sv}" != "solr9" ] && [ "${_os}" = "excalibur" ]; then
     echo "${_sv} never installs on excalibur (the installer excludes solr4 and solr7 there)"
@@ -6842,18 +6970,51 @@ _xmass_restore_solr_gate() {
   case "${_hn}" in
     *.aegir.cc) _hosted=YES ;;
   esac
-  [ "${_hosted}" = "YES" ] && return 0
-  _xtras="$(grep '^_XTRAS_LIST=' /root/.barracuda.cnf 2>/dev/null | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g')"
+  _xtras="$(_xmass_cnf_value _XTRAS_LIST)"
   case "${_xtras}" in
-    *"SR${_sv#solr}"*) return 0 ;;
+    *SR*) _arm=YES ;;
   esac
-  ### solr9's bare gate is inverted: it fires wherever its log is absent,
-  ### given a JRE for it.
-  if [ "${_sv}" = "solr9" ] && [ ! -e /var/solr9/logs/solr.log ] \
-    && { [ -e /usr/bin/java17 ] || [ -e /usr/bin/java21 ]; }; then
+  if [ "${_hosted}" = "YES" ]; then
+    _arm=YES
+    _fire=YES
+  fi
+  case "${_xtras}" in
+    *"SR${_n}"*) _fire=YES ;;
+  esac
+  ### solr7 also fires on its own log, and solr9's bare trigger is inverted:
+  ### it fires wherever its log is absent. solr4's solr.xml trigger never
+  ### starts an install, since it sits in the tree whose presence skips one.
+  case "${_sv}" in
+    solr7) [ -e /var/solr7/logs/solr.log ] && _fire=YES ;;
+    solr9) [ -e /var/solr9/logs/solr.log ] || _fire=YES ;;
+  esac
+  if [ "${_sv}" = "solr9" ]; then
+    _js="17 21"
+    _need="java17 or java21"
+  else
+    _js="11"
+    _need="java11"
+  fi
+  for _j in ${_js}; do
+    _xmass_restore_solr_jre "${_j}" "${_os}" "${_arm}" && _jre=YES
+    _xmass_restore_solr_jre "${_j}" "${_os}" YES && _jreArmed=YES
+  done
+  [ "${_fire}" = "YES" ] && [ "${_jre}" = "YES" ] && return 0
+  if [ "${_jreArmed}" = "NO" ]; then
+    echo "the installer needs ${_need} for ${_sv}, there is none here (/usr/bin/java${_js// /, /usr/bin/java}), and no system pass on ${_os} provides one before its Solr step: install one and link it there first"
     return 0
   fi
-  echo "no install gate fires here (not hosted-named, no SR${_sv#solr} in _XTRAS_LIST$( [ "${_sv}" = "solr9" ] && echo ", no java17 or java21" )): add SR${_sv#solr} to _XTRAS_LIST in /root/.barracuda.cnf"
+  if [ "${_fire}" = "NO" ]; then
+    _why="no install gate fires here (not hosted-named, no SR${_n} in _XTRAS_LIST"
+    case "${_sv}" in
+      solr7) _why="${_why}, no /var/solr7/logs/solr.log" ;;
+      solr9) _why="${_why}, and /var/solr9/logs/solr.log is present" ;;
+    esac
+    _why="${_why})"
+  else
+    _why="its install gate fires, but there is no ${_need} here, and the pass installs one only when an SR token or a hosted name arms its Java step"
+  fi
+  echo "${_why}: add SR${_n} to _XTRAS_LIST in /root/.barracuda.cnf"
   return 0
 }
 
@@ -6866,7 +7027,8 @@ _xmass_restore_solr_gate() {
 _xmass_restore_solr_source() {
   local _svc _initd _parked _port _denyVar _waited
   local _restored=NO _skipped=NO
-  local _sv _want="" _owed="" _also="" _why _dst _dta _inst _new _tree
+  local _sv _want="" _owed="" _also="" _why _dst _dta _hom _inst _new _tree
+  local _stamp _scr _cv _vars="" _bad=""
   for _sv in "$@"; do
     case "${_sv}" in
       solr4|solr7|solr9)
@@ -6895,31 +7057,43 @@ _xmass_restore_solr_source() {
   fi
   ### A named version with no install comes only from the next full system
   ### pass: refuse while that pass could not install it, before any change.
+  ### The same goes for a landed tree that cannot be kept beside its home
+  ### without a copy onto another disk.
+  _stamp="$(date -u '+%Y%m%d-%H%M%S')"
   for _sv in ${_want}; do
     _xmass_restore_solr_map "${_sv}"
+    _vars="${_vars} ${_denyVar}"
     [ "${_inst}" = "NO" ] || continue
     _why="$(_xmass_restore_solr_gate "${_sv}")"
     [ -z "${_why}" ] || _die "${_sv}: ${_why} -- refusing; nothing changed"
+    [ -d "${_dta}" ] || continue
+    _why="$(_xmass_restore_solr_keep "${_stamp}" check)" \
+      || _die "${_sv}: ${_why} -- refusing; nothing changed"
   done
+  ### Every deny this run clears must clear by rewriting its lines: tried on
+  ### a copy first, so a line no rewrite reaches refuses with nothing changed.
+  if [ -n "${_want}" ] && [ -e "/root/.barracuda.cnf" ]; then
+    _scr="$(mktemp 2>/dev/null)" \
+      || _die "cannot make a scratch copy of /root/.barracuda.cnf -- refusing; nothing changed"
+    cat /root/.barracuda.cnf > "${_scr}"
+    for _cv in ${_vars} _DENY_JAVA; do
+      _xmass_cnf_clear_deny "${_cv}" "${_scr}" || _bad="${_bad} ${_cv}"
+    done
+    rm -f "${_scr}"
+    [ -z "${_bad}" ] \
+      || _die "a source of /root/.barracuda.cnf still reads YES for${_bad} once each of its lines is rewritten --" \
+              " fix those lines by hand; nothing changed"
+  fi
   [ -n "${_want}" ] && _info "Bringing back: ${_want} ..."
   for _sv in ${_want}; do
     _xmass_restore_solr_map "${_sv}"
-    ### autoupboa SOURCES the cnf: every form of the line goes, exported or
-    ### quoted, and what is left is read back with the tolerant test.
-    if [ -e "/root/.barracuda.cnf" ]; then
-      sed -i -E "s/^[[:space:]]*(export[[:space:]]+)?${_denyVar}=.*/${_denyVar}=NO/" /root/.barracuda.cnf
-      if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_denyVar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
-        _die "could not clear ${_denyVar} in /root/.barracuda.cnf -- fix that by hand before retrying"
-      fi
-    fi
+    _xmass_cnf_clear_deny "${_denyVar}" \
+      || _die "could not clear ${_denyVar} in /root/.barracuda.cnf -- fix that by hand before retrying"
     rm -f "/etc/boa/.deny.${_svc}.cnf" "/root/.deny.${_svc}.cnf"
     _info "  ${_sv}: its own deny cleared (${_denyVar}, /etc/boa/.deny.${_svc}.cnf)"
     [ "${_inst}" = "YES" ] && continue
     if [ -d "${_dta}" ]; then
-      _new="${_dta}.xmass-landed-$(date -u '+%Y%m%d-%H%M%S')"
-      [ -e "${_new}" ] && _die "${_new} already exists -- move it away, then re-run"
-      mv "${_dta}" "${_new}" \
-        || _die "could not move ${_dta} aside to ${_new} -- move it by hand, then re-run"
+      _new="$(_xmass_restore_solr_keep "${_stamp}")" || _die "${_sv}: ${_new}"
       _info "  ${_sv}: no install here; its data tree moved aside, kept: ${_new}"
     fi
     _owed="${_owed} ${_sv}"
@@ -6941,17 +7115,11 @@ _xmass_restore_solr_source() {
   else
     _info "  ${_SOLR_DENY_FILE} already absent"
   fi
+  ### BARRACUDA and autoupboa SOURCE the cnf, so an exported or indented YES
+  ### left anywhere would still skip every Solr install. Report what a
+  ### source of the file reads, not what was attempted.
   if [ -e "/root/.barracuda.cnf" ]; then
-    if grep -q "^_DENY_JAVA=" /root/.barracuda.cnf 2>/dev/null; then
-      sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=NO/" /root/.barracuda.cnf
-    else
-      ### Newline-terminate before the append; an unterminated last line would
-      ### swallow the previous key.
-      [ -n "$(tail -c1 /root/.barracuda.cnf 2>/dev/null)" ] && echo >> /root/.barracuda.cnf
-      echo "_DENY_JAVA=NO" >> /root/.barracuda.cnf
-    fi
-    ### Report what LANDED, not what was attempted.
-    if grep -q "^_DENY_JAVA=NO" /root/.barracuda.cnf 2>/dev/null; then
+    if _xmass_cnf_clear_deny _DENY_JAVA; then
       _info "  _DENY_JAVA=NO set in /root/.barracuda.cnf"
     else
       _die "could not clear _DENY_JAVA in /root/.barracuda.cnf -- fix that by hand before retrying"
@@ -20970,10 +21138,13 @@ case "${_cmd}" in
     echo "    finalized PX0 proxy, where Solr is down by design."
     echo "  - restore-solr <version> brings one version back to a box that denies it,"
     echo "    such as a target moved from a source that used no Solr. It clears that"
-    echo "    version's own deny and the blanket deny; the other versions keep theirs."
-    echo "    With no install of it here, the data tree the move landed is renamed to"
-    echo "    <data tree>.xmass-landed-<UTC stamp> and kept (BOA's installer skips a"
-    echo "    version whose tree is present), and the run ends naming the full system"
+    echo "    version's own deny and the blanket deny, in every form the cnf holds"
+    echo "    them; the other versions keep theirs. With no install of it here, the"
+    echo "    data tree the move landed is moved out of the version's home, which"
+    echo "    solrtrim remove deletes whole, and kept beside it as"
+    echo "    /var/solrN-data.xmass-landed-<UTC stamp> (solr4's /opt/solr4 as"
+    echo "    /opt/solr4.xmass-landed-<UTC stamp>), since BOA's installer skips a"
+    echo "    version whose tree is present. The run ends naming the full system"
     echo "    pass that installs it. It refuses, changing nothing, while that pass"
     echo "    could not install it."
     echo ""
