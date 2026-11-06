@@ -4089,8 +4089,9 @@ _octopus_cleanup() {
               && [ ! -L "/var/backups/zombie/purged/${_usr_purge}/.purge.done" ]; then
               echo "${_usr_purge} purged already, by an earlier run"
             else
-              echo "OOPS.. ${_usr_purge}: an earlier purge stopped partway (its tree is gone, no"
-              echo "  /var/backups/zombie/purged/${_usr_purge}/.purge.done): read what it left by hand"
+              echo "OOPS.. ${_usr_purge}: an earlier purge stopped partway, or ran on tools from before"
+              echo "  the stamp (its tree is gone, no /var/backups/zombie/purged/${_usr_purge}/.purge.done):"
+              echo "  read what it left by hand"
               _BRC=1
             fi
             continue
