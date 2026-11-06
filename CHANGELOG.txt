@@ -221,8 +221,8 @@
       accounts' web users, who could read an export by its name.
 
     * In AppArmor enforce mode wkhtmltopdf and wkhtmltoimage started from a
-      shell or cron, outside PHP, render pages by URL again; before, only a
-      local file rendered and every URL failed with HostNotFoundError.
+      shell or cron, outside PHP, can fetch a page by URL; before, every URL
+      failed with HostNotFoundError. Where they may write is unchanged.
 
     * Swap is no longer emptied on a schedule: autoupboa's purge at half full
       and multiback's reset before a backup ran swapoff -a, which freezes every
