@@ -459,8 +459,10 @@ mysql-server
 # Write the apt keyring $2 from the dev mirror's armoured key $1, only when
 # what the mirror sends is a key that dearmors to a non-empty keyring: a mirror
 # can answer a missing file with a page, and gpg --dearmor writes an empty
-# keyring for one, which no later pass would replace. On failure an empty $2
-# goes too, so no repo line is written signed by a keyring with no key.
+# keyring for one. On failure $2 is left in place, made empty when missing:
+# the repo lines name it (signed-by), and apt reads no source list at all
+# while a signed-by file is missing, where an empty one leaves only this repo
+# unverified; the callers test -s, so the next pass fetches the key again.
 _sql_fetch_apt_key() {
   local _src="${1}" _dst="${2}" _tmp="${2}.boa-new"
   # the major OS upgrade calls this without the callers that set _GPG
@@ -479,8 +481,11 @@ _sql_fetch_apt_key() {
     return 0
   fi
   rm -f "${_tmp}" "${_tmp}.asc"
-  [ -e "${_dst}" ] && [ ! -s "${_dst}" ] && rm -f "${_dst}"
-  _msg "WARN: ${_urlDev}/${_src} is not an apt key; ${_dst} not written"
+  if [ ! -e "${_dst}" ]; then
+    : > "${_dst}"
+    chmod 644 "${_dst}"
+  fi
+  _msg "WARN: ${_urlDev}/${_src} is not an apt key; it is fetched again on the next pass"
   return 1
 }
 
