@@ -133,8 +133,11 @@ _stage_grav_releases() {
   if [ "${_GRAV_SUPPORT}" != "YES" ] || [ ! -d "/data/all/000" ]; then
     return 0
   fi
-  _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_gVrn}" ] && _gVrn="${_GRAV_V_FALLBACK}"
+  # A missing or malformed stamp (a mirror can answer a missing path with a
+  # page) takes the fallback.
+  _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_gVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _gVrn="${_GRAV_V_FALLBACK}"
   _gZip="grav-admin-v${_gVrn}.zip"
   if [ -n "$(_satellite_not_root_alone "${_gDir}")" ]; then
     _msg "ALRT: ${_gDir} was not root's alone: removed before the Grav admin bundle is staged"
@@ -7717,8 +7720,11 @@ _satellite_make() {
   # Resolve the newest Backdrop version from the mirror stamp so platforms track
   # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK);
   # the platform build fetches the matching versioned backdrop-<ver>.tar.gz.
-  _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_bdrVrn}" ] && _bdrVrn="${_BACKDROP_V_FALLBACK}"
+  # A missing or malformed stamp (a mirror can answer a missing path with a
+  # page, which tr would turn into a long run of digits) takes the fallback.
+  _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_bdrVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _bdrVrn="${_BACKDROP_V_FALLBACK}"
   echo "export _BACKDROP_V=\"${_bdrVrn}\""                   >> ${_writeTo}
   echo "export _BACKDROP=\"backdrop-${_bdrVrn}\""            >> ${_writeTo}
   echo "export _BACKDROP_D=\"backdrop-${_bdrVrn}-dev\""      >> ${_writeTo}
@@ -7746,8 +7752,10 @@ _satellite_make() {
   # the latest official admin-bundle release without a hardcoded pin
   # (fallback: _GRAV_V_FALLBACK); the platform build fetches the matching
   # versioned grav-<ver>.tar.gz.
-  _gravVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_gravVrn}" ] && _gravVrn="${_GRAV_V_FALLBACK}"
+  # A missing or malformed stamp takes the fallback, as for Backdrop above.
+  _gravVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_gravVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _gravVrn="${_GRAV_V_FALLBACK}"
   echo "export _GRAV_V=\"${_gravVrn}\""                      >> ${_writeTo}
   echo "export _GRAV=\"grav-${_gravVrn}\""                   >> ${_writeTo}
   echo "export _GRAV_D=\"grav-${_gravVrn}-dev\""             >> ${_writeTo}
@@ -7764,8 +7772,10 @@ _satellite_make() {
   # textpattern-<ver>.tar.gz. Stable releases are tags on main; the mirror's
   # textpattern.txt is published LAST by staticbuild, so a version resolved
   # here always has its artefacts already on the mirror.
-  _txpVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/textpattern.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_txpVrn}" ] && _txpVrn="${_TXP_V_FALLBACK}"
+  # A missing or malformed stamp takes the fallback, as for Backdrop above.
+  _txpVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/textpattern.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_txpVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _txpVrn="${_TXP_V_FALLBACK}"
   echo "export _TXP_V=\"${_txpVrn}\""                        >> ${_writeTo}
   echo "export _TXP=\"textpattern-${_txpVrn}\""              >> ${_writeTo}
   echo "export _TXP_D=\"textpattern-${_txpVrn}-dev\""        >> ${_writeTo}

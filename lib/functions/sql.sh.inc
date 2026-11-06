@@ -456,7 +456,37 @@ mysql-server
 }
 
 #
-# Update for keyrings/percona.gpg
+# Write the apt keyring $2 from the dev mirror's armoured key $1, only when
+# what the mirror sends is a key that dearmors to a non-empty keyring: a mirror
+# can answer a missing file with a page, and gpg --dearmor writes an empty
+# keyring for one, which no later pass would replace. On failure an empty $2
+# goes too, so no repo line is written signed by a keyring with no key.
+_sql_fetch_apt_key() {
+  local _src="${1}" _dst="${2}" _tmp="${2}.boa-new"
+  # the major OS upgrade calls this without the callers that set _GPG
+  if [ -z "${_GPG}" ]; then
+    _GPG=gpg
+    [ -x "/usr/bin/gpg2" ] && _GPG=gpg2
+  fi
+  rm -f "${_tmp}" "${_tmp}.asc"
+  if curl -fsSL "${_urlDev}/${_src}" -o "${_tmp}.asc" 2> /dev/null \
+    && grep -q -- '-----BEGIN PGP PUBLIC KEY BLOCK-----' "${_tmp}.asc" \
+    && ${_GPG} --dearmor -o "${_tmp}" 2> /dev/null < "${_tmp}.asc" \
+    && [ -s "${_tmp}" ]; then
+    mv -f "${_tmp}" "${_dst}"
+    chmod 644 "${_dst}"
+    rm -f "${_tmp}.asc"
+    return 0
+  fi
+  rm -f "${_tmp}" "${_tmp}.asc"
+  [ -e "${_dst}" ] && [ ! -s "${_dst}" ] && rm -f "${_dst}"
+  _msg "WARN: ${_urlDev}/${_src} is not an apt key; ${_dst} not written"
+  return 1
+}
+
+#
+# Update for keyrings/percona.gpg. An empty keyring counts as missing: an
+# earlier fetch that got a page instead of the key left one behind.
 _if_sql_keyring_apt_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_sql_keyring_apt_update"
@@ -465,14 +495,14 @@ _if_sql_keyring_apt_update() {
   if [ "${_DB_SERVER}" = "Percona" ]; then
     _SQL_KEYRING_UPDATE=NO
     if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ] \
-      || [ ! -e "/etc/apt/keyrings/percona.gpg" ] \
+      || [ ! -s "/etc/apt/keyrings/percona.gpg" ] \
       || [ -e "/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
       _SQL_KEYRING_UPDATE=YES
     fi
   fi
 
   if [ "${_DB_SERVER}" = "Percona" ] && [ "${_SQL_KEYRING_UPDATE}" = "YES" ]; then
-    if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+    if [ ! -s "/etc/apt/keyrings/percona.gpg" ]; then
       if [ ! -e "/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /etc/apt/keyrings
       fi
@@ -485,15 +515,9 @@ _if_sql_keyring_apt_update() {
         _msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
       fi
       apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-      if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-        # the major OS upgrade calls this without the callers that set _GPG
-        if [ -z "${_GPG}" ]; then
-          _GPG=gpg
-          [ -x "/usr/bin/gpg2" ] && _GPG=gpg2
-        fi
-        curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
+      if [ ! -s "/etc/apt/keyrings/percona.gpg" ]; then
+        _sql_fetch_apt_key percona-key.gpg /etc/apt/keyrings/percona.gpg
       fi
-      chmod 644 /etc/apt/keyrings/percona.gpg
       _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
         pkill -9 -f '^[^ ]*dirmngr( |$)'
@@ -513,14 +537,14 @@ _if_sql_keyring_apt_update() {
   if [ "${_DB_SERVER}" = "MySQL" ]; then
     _SQL_KEYRING_UPDATE=NO
     if [ -e "/etc/apt/trusted.gpg.d/mysql.gpg" ] \
-      || [ ! -e "/etc/apt/keyrings/mysql.gpg" ] \
+      || [ ! -s "/etc/apt/keyrings/mysql.gpg" ] \
       || [ -e "/etc/apt/trusted.gpg.d/mysql-keyring.gpg~" ]; then
       _SQL_KEYRING_UPDATE=YES
     fi
   fi
 
   if [ "${_DB_SERVER}" = "MySQL" ] && [ "${_SQL_KEYRING_UPDATE}" = "YES" ]; then
-    if [ ! -e "/etc/apt/keyrings/mysql.gpg" ]; then
+    if [ ! -s "/etc/apt/keyrings/mysql.gpg" ]; then
       if [ ! -e "/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /etc/apt/keyrings
       fi
@@ -533,10 +557,9 @@ _if_sql_keyring_apt_update() {
         _msg "INFO: Retrieving ${_MYSQL_KEYS_SIG} key..."
       fi
       apt-key del ${_MYSQL_KEYS_SIG} &> /dev/null
-      if [ ! -e "/etc/apt/keyrings/mysql.gpg" ]; then
-        curl -fsSL ${_urlDev}/mysql-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/mysql.gpg
+      if [ ! -s "/etc/apt/keyrings/mysql.gpg" ]; then
+        _sql_fetch_apt_key mysql-key.gpg /etc/apt/keyrings/mysql.gpg
       fi
-      chmod 644 /etc/apt/keyrings/mysql.gpg
       _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
         pkill -9 -f '^[^ ]*dirmngr( |$)'
@@ -1742,7 +1765,10 @@ _fetch_archived_sql_deb() {
   local _debSum=""
   [[ -z "${_debFile}" ]] && return 1
   rm -f "${_debFile}" "${_debFile}.gz" "${_debFile}.gz.sha256"
-  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz.sha256" -o "${_debFile}.gz.sha256"; then
+  # A sidecar that is no checksum line (a mirror answers a missing .sha256
+  # with a page and status 200) is no sidecar.
+  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz.sha256" -o "${_debFile}.gz.sha256" \
+    || ! grep -qE '^[0-9a-f]{64}([[:space:]]|$)' "${_debFile}.gz.sha256"; then
     _msg "NOTE: Fetch of archived ${_debFile}.gz.sha256 failed"
     rm -f "${_debFile}.gz.sha256"
     return 1

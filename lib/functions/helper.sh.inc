@@ -870,7 +870,10 @@ _install_boa_deb() {
   rm -f "${_pkgName}"_*.deb "${_pkgName}"_*.deb.gz "${_pkgName}"_*.deb.gz.sha256
   # Sidecar first: a cheap probe -- 404 means this (component, version,
   # codename) is not published, which is the normal per-component opt-out.
-  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz.sha256" -o "${_debFile}.gz.sha256"; then
+  # So does a sidecar that is no checksum line: a mirror answers a missing
+  # .sha256 with a page and status 200.
+  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz.sha256" -o "${_debFile}.gz.sha256" \
+    || ! grep -qE '^[0-9a-f]{64}([[:space:]]|$)' "${_debFile}.gz.sha256"; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: No prebuilt ${_debFile}.gz published for ${_OS_CODE}"
     fi
@@ -1089,7 +1092,16 @@ _get_dev_contrib() {
 }
 
 #
-# Download and extract archive from dev/src mirror.
+# TRUE when the downloaded file $1 is a web page, not the archive asked for:
+# a mirror answers some missing files (.tar.bz2 among them) with a page and
+# status 200, which curl --fail takes for success. No archive starts with "<".
+_dl_is_page() {
+  [ "$(head -c 1 "$1" 2> /dev/null)" = "<" ]
+}
+
+#
+# Download and extract archive from dev/src mirror. A page in place of the
+# archive is a failed attempt, as a 404 is.
 _get_dev_src() {
   if [ ! -z "${1}" ]; then
     _max_attempts=10
@@ -1097,7 +1109,7 @@ _get_dev_src() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1" && ! _dl_is_page "$1"; then
         _success=1
         break
       else
@@ -1123,7 +1135,8 @@ _get_dev_src() {
 }
 
 #
-# Download with wget and extract archive from dev/src mirror.
+# Download with wget and extract archive from dev/src mirror (a page in place
+# of the archive is a failed attempt, as in _get_dev_src).
 _get_dev_src_wget() {
   if [ ! -z "${1}" ]; then
     _max_attempts=10
@@ -1131,7 +1144,7 @@ _get_dev_src_wget() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if wget ${_wgetGet} "${_urlDev}/src/$1" -O "$1"; then
+      if wget ${_wgetGet} "${_urlDev}/src/$1" -O "$1" && ! _dl_is_page "$1"; then
         _success=1
         break
       else

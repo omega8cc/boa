@@ -2325,7 +2325,14 @@ _install_php_multi_src() {
   fi
   cd /var/opt
   rm -rf php*
-  _get_dev_src "php-${_PHP_VERSION}.tar.bz2"
+  # No sources, no build: configuring in /var/opt would only fail later with
+  # errors that name another cause; the caller says the build failed and the
+  # installed one keeps serving.
+  if ! _get_dev_src "php-${_PHP_VERSION}.tar.bz2" \
+    || [ ! -d "/var/opt/php-${_PHP_VERSION}" ]; then
+    _msg "WARN: PHP ${_PHP_VERSION} sources not fetched or not unpacked, not built"
+    return 1
+  fi
   _msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   if [ "${_OS_CODE}" = "stretch" ] \
