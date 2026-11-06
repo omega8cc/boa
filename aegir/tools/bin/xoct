@@ -1412,6 +1412,42 @@ _xoct_client_address() {
   fi
   return 0
 }
+### The plan names the pool sizing knows; a plan value is one of these.
+_XOCT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
+### One plan value of the account the target is installed with, as its own
+### Octopus pass takes it: log/$3 only as root wrote it (_MIG_HREAD_PL
+### "root"), otherwise the $4 of root's cnf; either only when the whole of it
+### (blanks around it dropped) matches the extended regular expression $5.
+### log/ is the account's: a file it made there would install the target
+### with a plan it never had. Sets the variable $4 (left as it is when
+### neither holds a value). $1 = the account's root, $2 = its name here.
+_xoct_plan_value() {
+  local _root="$1" _acct="$2" _f="$3" _var="$4" _re="$5" _v _s
+  _v="$(_xoct_in_real_dir "${_root}/log" perl -e "${_MIG_HREAD_PL}" \
+    -- "./${_f}" root && printf x)"
+  _s=$?
+  if [ "${_s}" -eq 0 ]; then
+    _v="${_v%x}"
+    _v="${_v#*$'\n'}"
+    _v="${_v#"${_v%%[![:space:]]*}"}"
+    _v="${_v%"${_v##*[![:space:]]}"}"
+    if [[ "${_v}" =~ ${_re} ]]; then
+      printf -v "${_var}" '%s' "${_v}"
+      return 0
+    fi
+  elif [ -e "${_root}/log/${_f}" ] || [ -L "${_root}/log/${_f}" ]; then
+    echo "INFO: log/${_f} is not as root wrote it: ${_var} comes from /root/.${_acct}.octopus.cnf"
+  fi
+  _mig_valid_acct "${_acct}" && [ -f "/root/.${_acct}.octopus.cnf" ] || return 0
+  _v="$(grep -a "^${_var}=" "/root/.${_acct}.octopus.cnf" 2> /dev/null \
+    | tail -n 1 | cut -c1-256)"
+  _v="${_v#"${_var}"=}"
+  _v="${_v//\"/}"
+  _v="${_v#"${_v%%[![:space:]]*}"}"
+  _v="${_v%"${_v##*[![:space:]]}"}"
+  [[ "${_v}" =~ ${_re} ]] && printf -v "${_var}" '%s' "${_v}"
+  return 0
+}
 ### Sets _MAIL_RCPT and _MAIL_BCC (the -b words, or none), the recipients of
 ### a client notice. With admail= that address alone, no copy to anyone: a
 ### test or canary run never mails a client. Otherwise the account's address
@@ -6189,18 +6225,9 @@ _migrate_prepare() {
     _DOMAIN=$(_xoct_read_in "${_USR}/log" domain.txt)
     _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
   fi
-  if [ -e "${_USR}/log/option.txt" ]; then
-    _CLIENT_OPTION=$(_xoct_read_in "${_USR}/log" option.txt)
-    _CLIENT_OPTION=`echo -n ${_CLIENT_OPTION} | tr -d "\n"`
-  fi
-  if [ -e "${_USR}/log/cores.txt" ]; then
-    _CLIENT_CORES=$(_xoct_read_in "${_USR}/log" cores.txt)
-    _CLIENT_CORES=`echo -n ${_CLIENT_CORES} | tr -d "\n"`
-  fi
-  if [ -e "${_USR}/log/subscr.txt" ]; then
-    _CLIENT_SUBSCR=$(_xoct_read_in "${_USR}/log" subscr.txt)
-    _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
-  fi
+  _xoct_plan_value "${_USR}" "${_THIS_HM_USER}" option.txt _CLIENT_OPTION "${_XOCT_PLAN_RE}"
+  _xoct_plan_value "${_USR}" "${_THIS_HM_USER}" cores.txt _CLIENT_CORES '^[1-9][0-9]{0,8}$'
+  _xoct_plan_value "${_USR}" "${_THIS_HM_USER}" subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
   ### No stand-in address: the eligibility gate has refused create, export
   ### and pretransfer of an account with no plain address in log/email.txt
   ### or its cnf, and a notice to one is refused by _xoct_mail_rcpt.
