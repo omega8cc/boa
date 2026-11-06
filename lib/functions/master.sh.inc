@@ -908,11 +908,12 @@ _hostmaster_db_users_named() {
   done
   return 0
 }
-# How the log names the database user $1: after the longest of this box's
-# account names, or the first label of the master's uri, that it begins
-# with and then a non-digit, else after $2 (an account's name, or master).
-# One text in master.sh.inc and satellite.sh.inc.
-_hostmaster_db_user_label() {
+# Whose the database user $1 is: the longest of this box's account names
+# (an account with .drush), or the first label of the master's uri, that it
+# begins with and then a non-digit, else $2 (an account's name, or master).
+# master stands for the master. One text in master.sh.inc and
+# satellite.sh.inc.
+_hostmaster_db_user_owner() {
   local _a _n _uri _o="${2}" _l=0
   for _a in /data/disk/*; do
     [ -d "${_a}/.drush" ] || continue
@@ -928,6 +929,14 @@ _hostmaster_db_user_label() {
     && [ "${#_n}" -gt "${_l}" ]; then
     _o=master
   fi
+  echo "${_o}"
+}
+# How the log names the database user $1: after its owner
+# (_hostmaster_db_user_owner, $2 the default). One text in master.sh.inc
+# and satellite.sh.inc.
+_hostmaster_db_user_label() {
+  local _o
+  _o=$(_hostmaster_db_user_owner "${1}" "${2}")
   if [ "${_o}" = "master" ]; then
     echo "earlier master panel database user"
   else
@@ -1083,11 +1092,13 @@ _hostmaster_db_user_global_revoke() {
 # candidate has the shape provisioning gives a panel database (16
 # characters of the uri without dots and dashes, or 14 of them and _0 to
 # _9, or 13 and _10 to _99), begins with the first label of the master's
-# uri (master, as in master.<host>) and then a non-digit, and has SUPER on
-# a host row; the master panel's own user and an account's own user (named
-# as the account) never are. _hostmaster_db_users_settle leaves alone one
-# that a server alias names as its master_db or a panel's drushrc.php
-# names; takes every global right, and nothing else, from one that another
+# uri (master, as in master.<host>) and then a non-digit, is the master's
+# by _hostmaster_db_user_owner, so an account named as that label and more
+# keeps its own, and has SUPER on a host row; the master panel's own user
+# and an account's own user (named as the account) never are.
+# _hostmaster_db_users_settle leaves alone one that a server alias names
+# as its master_db or a panel's drushrc.php names; takes every global
+# right, and nothing else, from one that another
 # site's drushrc.php names, whether or not a database of its name exists;
 # leaves alone any other with a database of its name or without SUPER on
 # every host row; and drops the rest. No box keeps a record of a former
@@ -1122,6 +1133,7 @@ _hostmaster_oldhost_dbuser_drop() {
     [[ "${_u}" =~ ^([a-z0-9]{16}|[a-z0-9]{14}_[0-9]|[a-z0-9]{13}_[1-9][0-9])$ ]] \
       || continue
     [[ "${_u}" == "${_b}"[!0-9]* ]] || continue
+    [ "$(_hostmaster_db_user_owner "${_u}" master)" = "master" ] || continue
     [ "${_u}" = "${_THIS_HM_DBUR}" ] && continue
     [ -e "/data/disk/${_u}" ] && continue
     _cand+=( "${_u}" )

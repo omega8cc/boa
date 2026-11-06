@@ -241,6 +241,13 @@
       key and its csf opening go in before the accounts' panels are
       checked, so a stop there leaves prep-target the access it needs.
 
+    * An upgrade drops an earlier panel's database user only in the pass of
+      the account it belongs to: the longest account name, or the master's
+      address label, it begins with. An account whose name ends in a letter,
+      such as abc beside abcd, no longer takes the leftovers of the account
+      whose name extends it, and the master's pass leaves those of an
+      account named after its label and more.
+
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
       run them: they are fetched in the tools pass such a box still runs. Before,
