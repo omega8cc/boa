@@ -4073,6 +4073,71 @@ ${_XMASS_SECRET_SH}")'" 2> /dev/null)"
   return 0
 }
 
+### This box's own off-site backup passphrase, /root/.remote_backups/.secret.txt
+### (root's, 0600 and immutable, minted once by dcysetup setup), encrypts its own
+### buckets, named for this host (back-to-global-, -data- and -custom-<host>-).
+### The standby keeps its own for buckets of its own name, so after a promotion
+### none of this box's archives could be decrypted there. Each pass puts this
+### box's beside the standby's, as .secret.from-<this host>.txt, root 0600 and
+### immutable, on stdin, never over the standby's own .secret.txt and never on a
+### command line or in a log. Never fatal: the accounts travel without it.
+_XMASS_ROOT_SECRET_SH='read -r _b || exit 0
+[ -e /root/.standby.cnf ] || { echo XMRSEC-NOT-STANDBY; exit 0; }
+case "${_h}" in ""|*[!a-zA-Z0-9-]*) echo XMRSEC-FAILED; exit 0 ;; esac
+[ -e /root/.remote_backups ] || [ -L /root/.remote_backups ] || mkdir -m 700 /root/.remote_backups
+cd -P -- /root/.remote_backups 2> /dev/null && [ "$(pwd -P)" = /root/.remote_backups ] \
+  && [ "$(stat -c %u -- .)" = 0 ] || { echo XMRSEC-NOT-ROOTS; exit 0; }
+_f=".secret.from-${_h}.txt"
+_n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
+if [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+  echo XMRSEC-CURRENT
+  exit 0
+fi
+_t="./.${_f}.put.$$"
+rm -f -- "${_t}"
+( umask 077; printf "%s" "${_b}" | base64 -d > "${_t}" ) && [ -s "${_t}" ] \
+  && chown 0:0 "${_t}" && chmod 600 "${_t}" || { rm -f -- "${_t}"; echo XMRSEC-FAILED; exit 0; }
+chattr -i "./${_f}" 2> /dev/null
+mv -f -T -- "${_t}" "./${_f}" || { rm -f -- "${_t}"; echo XMRSEC-FAILED; exit 0; }
+chattr +i "./${_f}" 2> /dev/null
+[ "$(md5sum < "./${_f}")" = "${_n}" ] && echo XMRSEC-PUT || echo XMRSEC-FAILED'
+_xmass_carry_root_backup_secret() {   # 1 = target
+  local _t="$1" _b _out _hd
+  # no off-site backups set up here: nothing to lose
+  [ -e /root/.remote_backups/.secret.txt ] || [ -L /root/.remote_backups/.secret.txt ] || return 0
+  _b="$(_xmass_in_real_dir /root/.remote_backups _xmass_rootread_here .secret.txt | base64 -w0)"
+  if [ -z "${_b}" ]; then
+    _xmass_warn_daily "rsecret" \
+      "  /root/.remote_backups/.secret.txt is not root's own regular file: this box's backup passphrase is NOT carried to ${_t}"
+    return 0
+  fi
+  # the host part of this box's bucket names, as multiback reads it
+  _hd="$(tr -d '[:space:]' 2> /dev/null < /etc/hostname)"
+  [ -n "${_hd}" ] || _hd="$(hostname -f 2> /dev/null)"
+  _hd="$(printf '%s' "${_hd}" | tr -cd 'a-zA-Z0-9.-' | tr . -)"
+  if [ -z "${_hd}" ]; then
+    _alrt "  this box's name could not be read: its own backup passphrase is not carried to ${_t}"
+    return 0
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    _info "  [DRY-PLAN] this box's own off-site backup passphrase placed on ${_t} as /root/.remote_backups/.secret.from-${_hd}.txt"
+    return 0
+  fi
+  _out="$(printf '%s\n' "${_b}" | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "_h='${_hd}' bash -c '$(_shq "${_XMASS_ROOT_SECRET_SH}")'" 2> /dev/null)"
+  case "${_out}" in
+    *XMRSEC-CURRENT*) : ;;
+    *XMRSEC-PUT*) _info "  this box's own off-site backup passphrase placed on ${_t} as /root/.remote_backups/.secret.from-${_hd}.txt" ;;
+    *XMRSEC-NOT-STANDBY*) _alrt "  ${_t} holds no /root/.standby.cnf: this box's own backup passphrase is not carried" ;;
+    *XMRSEC-NOT-ROOTS*)
+      _xmass_warn_daily "rsecret_t" \
+        "  /root/.remote_backups on ${_t} is not root's real directory: this box's own backup passphrase is NOT carried"
+      ;;
+    *) _alrt "  this box's own backup passphrase carry to ${_t} ended without an answer; the next pass tries again" ;;
+  esac
+  return 0
+}
+
 ### Each live pass also removes from the standby the database broker switch
 ### of every account this run does not carry (purged or cancelled here, so
 ### not eligible): an account of that name made there later, or after a
@@ -9612,6 +9677,8 @@ _xmass_sync_shared() {
   _xmass_carry_a2b_hold "${_tgt}"
   # So do the database broker switches of the accounts it does not carry.
   _xmass_sweep_db_broker "${_tgt}"
+  # And this box's own off-site backup passphrase, beside the standby's.
+  _xmass_carry_root_backup_secret "${_tgt}"
   # trust-creators for a pair built before the line: the mirror, then here.
   if [ "${_MODE}" = "LIVE" ]; then
     _xmass_auto_assert_standby
