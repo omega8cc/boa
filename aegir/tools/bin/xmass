@@ -16480,7 +16480,7 @@ _xmass_pre_mig_panel_sanity() {
   else
     _info "Checking control panel coherence on every account ..."
     _roots=( /data/disk/* )
-    _next=" -- the key of ${_hst} is installed here: 'xmass prep-target' on ${_hst} purges an account it does not move that holds no site, so run it, or repair this panel, then run this pre-mig again"
+    _next=" -- the key of ${_hst} is installed here: on ${_hst}, 'xmass prep-target <the IP of this box>' purges an account it does not move that holds no site, so run it there, or repair this panel, then run this pre-mig again"
   fi
   for _root in "${_roots[@]}"; do
     _als="${_root}/.drush/hostmaster.alias.drushrc.php"
