@@ -169,6 +169,21 @@
       server BOA writes; TLS 1.2 resumes as before. The front updates on the
       next Barracuda pass, deployed HTTPS proxies in place on the same pass.
 
+    * A Ctrl-C during a database dump no longer leaves mydumper paused. It
+      takes a Ctrl-C as a question: it stops its work and asks whether to
+      cancel, and the question never shows. Pressed while a dump waited
+      behind a long query, it left the global read lock held and every
+      write on the server waiting until mydumper was killed; pressed later,
+      it left the tool hanging. xcopy, xoct and the nightly and cluster SQL
+      backups now keep mydumper out of the terminal's reach: a Ctrl-C ends
+      the tool at once, mydumper with it, and the dump is not kept. A
+      backup run by hand with Drush stops at once and its dump finishes on
+      its own.
+
+    * A nightly SQL backup stopped during a dump, as a Ctrl-C now does, no
+      longer leaves its run marker behind. The watchdogs read the marker as
+      a backup in progress, the MySQL one for a day.
+
     * A database dump that waited more than a minute behind a long query is
       no longer called failed. mydumper 1.x gives up its table flush after
       60 seconds, sends it again and then dumps as usual, but exits with an
