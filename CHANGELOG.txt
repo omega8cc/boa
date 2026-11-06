@@ -206,6 +206,21 @@
       while the profiles were in complain mode is removed once enforce mode
       is back.
 
+    * On a box relaying moved sites, the certificate mirror now warns when a
+      relayed site's certificate has expired, or will within the warning
+      window, and its target holds nothing newer: the daily run names the
+      site and mails the admin. Before, it stayed silent until a refresh
+      failed, and visitors met the browser's warning first. A site disabled
+      in the panel on the target, which is never renewed while disabled, is
+      named and left out of the warning.
+
+    * The certificate mirror checks every file it pulls: a cert.pem that is
+      not the pulled certificate, or a chain.pem that does not read as
+      certificates, is refused for that site alone. Before, such a chain.pem
+      failed nginx's config test for the whole run, every pulled set was put
+      back, and the run stopped before its warning, every day. After a failed
+      config test the warning now still runs.
+
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
       run them: they are fetched in the tools pass such a box still runs. Before,

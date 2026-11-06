@@ -2729,7 +2729,7 @@ _update_agents() {
     # up-* tar, so a source box that had not upgraded since it shipped had NO
     # mirror at all -- the exact box that needs it. The trust and realip tools
     # ride with xoct and xmass in the tools pass.
-    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f91
+    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f90
     # A fetch-delivered mirror without its schedule is a false comfort: the
     # daily line normally arrives only with the crontab template on a full
     # up-* run, so ensure it whenever the script is present.
