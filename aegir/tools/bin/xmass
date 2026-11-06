@@ -14618,7 +14618,7 @@ REMOTE
 # panel got: panel-begun before its first leg, panel-done once it names this box.
 _xmass_lay_account() {
   local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _sp _pl _pn _tn _out
-  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt" _run
+  local _tip="" _have _d _lay=NO _mk="/root/.$1.fix-accounts.txt" _run _rl
   [[ "${_t}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && _tip="${_t}"
   # read again: the shared legs before this took their time, the account can
   # write the alias, and its panel can have moved
@@ -14655,9 +14655,13 @@ _xmass_lay_account() {
       return 1
       ;;
   esac
-  # a mark that outlived its panel (the account retired here since) says nothing
+  # a mark that outlived its panel (the account retired here since) says nothing;
+  # the return lane's own line stays, as its re-run reads it
   if [[ "${_have}" == *panel-* ]] && [[ "${_have}" != *XMHAVE* ]]; then
-    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "date -u '+%F %T UTC' > ${_mk}" 2> /dev/null; then
+    _rl="NO"
+    [ "${_XMASS_RETURNING:-}" = "YES" ] && _rl="YES"
+    if ! ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "{ date -u '+%F %T UTC'; if [ ${_rl} = YES ]; then echo returning; fi; } > ${_mk}" 2> /dev/null; then
       _alrt "  ${_oct}: ${_t} did not answer: not laid"
       return 1
     fi
@@ -14911,9 +14915,16 @@ echo XMRET-END' 2> /dev/null)"
 # cutover's order on its target: the panel rewired from this box's name ($3) to
 # the panel database there, its 503 gate lifted, renamed, read back as naming
 # that box ($4), its dispatcher back, nginx made to serve it, its held upgrade
-# armed. The mark goes last. Each step converges, so a re-run repeats it.
+# armed. The mark goes last. Each step converges, so a re-run repeats it. The
+# mark says ending before the first of them: from then on the account serves
+# there, and a re-run runs these steps alone, never a copy from this box.
 _xmass_return_account_end() {
   local _oct="$1" _t="$2" _sf="$3" _tf="$4" _r="/data/disk/$1" _out _rc _l
+  if ! ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "grep -sqx ending /root/.${_oct}.fix-accounts.txt || echo ending >> /root/.${_oct}.fix-accounts.txt" 2> /dev/null; then
+    _alrt "  ${_oct}: ${_t} did not answer: its last steps did not begin"
+    return 1
+  fi
   _out="$(_xmass_panel_rewire_sh | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "bash -s -- '${_r}' '${_sf}'" 2>&1)"
   _rc=$?
   while IFS= read -r _l; do
@@ -14993,7 +15004,7 @@ REMOTE
 # The lane toward this box's promoted mirror $1, for the accounts
 # --return-accounts names.
 _xmass_return_accounts() {
-  local _t="$1" _all _oct _sf _tf _left="" _ok="" _want="" _has="" _out
+  local _t="$1" _all _oct _sf _tf _left="" _ok="" _want="" _has="" _done="" _out
   _xmass_load_state
   if [ "${_XMASS_PHASE}" != "syncing" ] || [ "${_XMASS_TARGET_IP}" != "${_t}" ]; then
     _die "this box's record names ${_XMASS_TARGET_IP:-no mirror} in phase ${_XMASS_PHASE:-none}, not ${_t}:" \
@@ -15013,7 +15024,15 @@ _xmass_return_accounts() {
     || _die "could not read account(s) ${_XMASS_ACCT_NOANS} on ${_t}: it did not answer; nothing laid"
   for _oct in ${_XMASS_RETURN_ACCOUNTS}; do
     _xmass_word_in "${_oct}" "${_want}" && continue
+    _xmass_word_in "${_oct}" "${_done}" && continue
     if ! _xmass_word_in "${_oct}" "${_XMASS_ACCT_NOCOPY}"; then
+      # one this lane brought back whole, in a run that stopped on another
+      if ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+        "[ ! -e /root/.${_oct}.fix-accounts.txt ] && head -n 1 /root/.${_oct}.migration-create.txt" 2> /dev/null \
+        | grep -q '^# Put by xmass prep-target --return-accounts:'; then
+        _done="${_done} ${_oct}"
+        continue
+      fi
       _has="${_has} ${_oct}"
       continue
     fi
@@ -15030,7 +15049,12 @@ _xmass_return_accounts() {
   done
   [ -z "${_has}" ] \
     || _die "${_t} already holds account(s)${_has}: only an account it has no copy of comes back; nothing laid"
+  [ -z "${_done}" ] || _info "Account(s) an earlier run brought back to ${_t} whole:${_done}"
   _want="${_want# }"
+  if [ -z "${_want}" ]; then
+    _info "Nothing left to bring back to ${_t}"
+    return 0
+  fi
   _info "Account(s) coming back to ${_t}: ${_want}"
   _xmass_assert_same_release "${_t}"
   _xmass_resolve_target_mnt "${_t}"
@@ -15077,11 +15101,26 @@ _xmass_return_accounts() {
       _XMASS_STORE_RC=0
       _XMASS_CNF_RC=0
       _XMASS_RSYNC_RC=0
-      if ! _XMASS_RETURNING=YES _xmass_lay_account "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
-        _left="${_left} ${_oct}"
-      elif ! _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
-        _left="${_left} ${_oct}"
-      fi
+      _out="$(ssh -n -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+        "if grep -sqx ending /root/.${_oct}.fix-accounts.txt; then echo XMRET-ENDING; else echo XMRET-LAY; fi" 2> /dev/null)"
+      case "${_out}" in
+        *XMRET-ENDING*)
+          # a run that stopped had begun its last steps: the account serves there
+          _info "  ${_oct}: a stopped run began its last steps on ${_t}: they run again, nothing is copied from here"
+          _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}" || _left="${_left} ${_oct}"
+          ;;
+        *XMRET-LAY*)
+          if ! _XMASS_RETURNING=YES _xmass_lay_account "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
+            _left="${_left} ${_oct}"
+          elif ! _xmass_return_account_end "${_oct}" "${_t}" "${_sf}" "${_tf}"; then
+            _left="${_left} ${_oct}"
+          fi
+          ;;
+        *)
+          _alrt "  ${_oct}: ${_t} did not answer: not laid"
+          _left="${_left} ${_oct}"
+          ;;
+      esac
     done
   fi
   _ELIGIBLE_ACCOUNTS="${_all}"
