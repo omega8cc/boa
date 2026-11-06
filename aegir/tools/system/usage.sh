@@ -141,6 +141,17 @@ _usage_read_in() {
 # writable by no one else, at most 64 KiB. Prints the handle's mtime on a line
 # of its own, then the bytes. Status 3 absent, 4 anything else, 5 a read error.
 _MIG_HREAD_PL='use Fcntl; use Errno qw(ENOENT); my ($n, $s) = @ARGV; exit 4 unless defined $s && ($s eq "root" || $s eq "legacy"); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; exit 4 if $s eq "legacy" && !($t[5] == 0 && ($t[2] & 07777) == 0600); my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# Root's reader of an account's plan file in log/ (option.txt, cores.txt,
+# diskspace.txt, the extra_*.txt): ./$1 through one handle opened
+# O_RDONLY|O_NOFOLLOW|O_NONBLOCK, only while it is root's regular file with one
+# link that no one else can write, at most 64 KiB. On Linux the handle carries
+# the root-only stamp trusted.boa.plan with the file's own name: a file stamped
+# with another name (a file of root's the account renamed, or one copied with
+# cp -a) is refused with status 6, an unstamped one is stamped. $2 "read"
+# prints its mtime on a line, then its bytes; "stamp" only stamps. Status 3
+# absent, 4 anything else, 5 a read error.
+# shellcheck disable=SC2016
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
 # The plan names the limits know. An option is one of these: a file of
 # root's the account renamed to option.txt (its subscr.txt, a marker saying
 # "completed") names no plan and sets no limit.
@@ -168,6 +179,29 @@ _usage_root_log() {
     -- "./${1}" root && printf x)" || return 1
   _uLog="${_uLog%x}"
   _uLog="${_uLog#*$'\n'}"
+}
+# The plan file ./$1 of the account's real log/ as root wrote it under that
+# name (_PLAN_HREAD_PL), its bytes in _uLog; status 1 for anything else at the
+# name, a file stamped with another plan file's name included.
+_usage_plan_log() {
+  _uLog="$(_usage_in_real_dir "${_usEr}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- "./${1}" read && printf x)" || return 1
+  _uLog="${_uLog%x}"
+  _uLog="${_uLog#*$'\n'}"
+}
+# ./$1 in the current (pinned) directory with the bytes $2: a fresh file of
+# root's (0644) created exclusively, renamed over the name, then stamped with
+# that name.
+_usage_plan_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask 022; printf '%s' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" \
+    && perl -e "${_PLAN_HREAD_PL}" -- "./${1}" stamp; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 # What this pass holds back for the account, set once per account in _uHeld.
 # log/ is oN's: it can create, rename or remove any name there, so a name
@@ -398,15 +432,15 @@ _check_account_exceptions() {
   esac
 }
 
-# The plan file log/$1 as root wrote it (_usage_root_log), its words joined,
+# The plan file log/$1 as root wrote it (_usage_plan_log), its words joined,
 # in _uVal when they have the form $2 (empty otherwise). Status 1 when no
 # such file of root's is there. log/ is oN's, so a name there sets no limit
 # for root: a file at the name that is not as root wrote it (the account's
-# own, a link, a FIFO, a second link) is not read, and the report row says
-# so (_uPlan=refused).
+# own, a link, a FIFO, a second link, a file of root's stamped with another
+# plan file's name) is not read, and the report row says so (_uPlan=refused).
 _usage_plan_file() {
   _uVal=
-  if _usage_root_log "${1}"; then
+  if _usage_plan_log "${1}"; then
     _uVal=$(_usage_words "${_uLog}")
     [[ "${_uVal}" =~ ${2} ]] || _uVal=
     return 0
@@ -488,9 +522,17 @@ _read_account_data() {
     _CLIENT_OPTION="${_uVal}"
     _uPlan="${_uPlan:-cnf}"
   fi
-  if [ -e "${_lg}/extra.txt" ]; then
-    # renamed, never moved into a directory or link put at the new name
-    _usage_in_real_dir "${_lg}" mv -f -T -- ./extra.txt ./extra_edge.txt
+  if [ -e "${_lg}/extra.txt" ] || [ -L "${_lg}/extra.txt" ]; then
+    # root's legacy extra.txt becomes extra_edge.txt, written as a new file of
+    # root's stamped with its new name: a rename would keep the old file's
+    # stamp. Anything else at the name stays where it is and counts for nothing.
+    if _usage_plan_log extra.txt; then
+      _usage_in_real_dir "${_lg}" _usage_plan_put_here extra_edge.txt "${_uLog}" \
+        && _usage_in_real_dir "${_lg}" rm -f -- ./extra.txt
+    else
+      _uPlan=refused
+      echo "INFO: ${_THIS_U}: log/extra.txt is not as root wrote it: not read"
+    fi
   fi
   # _uXtra: the first kind of extra engine root's files give, the one whose
   # allowance _check_limits adds
