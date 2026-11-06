@@ -129,6 +129,11 @@
 
 @=> Important Fixes
 
+    * xoct proxy --repair on an account holding only its control panel no
+      longer stops with "0 site(s) converted" on a box that was the standing
+      mirror of another: the other box's panel vhost, which the file sync
+      carried, is not a site. xmass restore-target now keeps that vhost
+      aside as a dot-file, which nginx and a later move never read.
     * Switching AppArmor on needs a barracuda upgrade and a reboot, and the box
       now boots in the mode chosen. The upgrade before the reboot places BOA's
       profiles with that mode written into them. Before, that boot loaded the
