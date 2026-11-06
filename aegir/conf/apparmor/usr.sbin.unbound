@@ -30,6 +30,7 @@
 
   # Allow Unbound to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
+  signal (receive) peer=boa_sudo_cmd,
 
   # Allow read access to necessary libraries
   /lib/** mr,
@@ -63,6 +64,8 @@
   /usr/etc/unbound/** r,
   /var/lib/unbound/ r,
   /var/lib/unbound/** r,
+  owner /var/lib/unbound/ rw,
+  owner /var/lib/unbound/** rw,
 
   # Unbound logs
   /var/log/unbound/ r,

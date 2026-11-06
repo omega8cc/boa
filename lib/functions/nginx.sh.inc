@@ -1047,12 +1047,14 @@ _nginx_initd_check() {
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
     && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]]; then
+    chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else
     mv -f /etc/init.d/nginx \
       ${_vBs}/nginx-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${_locCnf}/nginx/nginx /etc/init.d/nginx
+    chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
     _mrun "service nginx start"
@@ -1310,6 +1312,12 @@ _nginx_wildcard_ssl_install() {
     else
       [[ ! "${_KTLS_STATE_TEST}" =~ "KTLS" ]] && _WILD_SSL_PROXY_UP=YES
     fi
+    ### A front deployed before TLS 1.3 session tickets were turned off keeps
+    ### losing fire-and-forget requests under kernel TLS for every name on
+    ### the box (it is the :443 default server, whose ticket count nginx
+    ### uses for them all): redeploy it once.
+    grep -qE '^[[:space:]]*ssl_conf_command[[:space:]]+NumTickets[[:space:]]+0;' \
+      "${_WILD_SSL_VHOST}" 2> /dev/null || _WILD_SSL_PROXY_UP=YES
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
@@ -1926,6 +1934,43 @@ _nginx_pln_proxy_ban_guard() {
   fi
   rm -rf "${_bak}"
 }
+_nginx_ssl_proxy_num_tickets() {
+  ### An HTTPS proxy in pre.d written before its template turned TLS 1.3
+  ### session tickets off gets the template's line after its KTLS line, or
+  ### after its ssl_session_timeout line where the KTLS opt-out stripped it.
+  ### The line decides only where the proxy is its address's default server
+  ### (a relay on a dedicated IP: nginx takes the ticket count from the
+  ### server a connection starts in, never from one SNI picks), but every
+  ### proxy gets it, as a fresh render does. A file without exactly one
+  ### anchor, or with a NumTickets line of its own, is left alone, and every
+  ### insert is undone when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _anchor _any=""
+  grep -qE '^[[:space:]]*ssl_conf_command[[:space:]]+NumTickets[[:space:]]+0;' "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-tickets.XXXXXX 2>/dev/null) || return 0
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -qE '^[[:space:]]*ssl_conf_command[[:space:]]+NumTickets[[:space:]]' "${_p}" && continue
+    if [ "$(grep -cE '^[[:space:]]*ssl_conf_command[[:space:]]+Options[[:space:]]+KTLS;' "${_p}")" = "1" ]; then
+      _anchor='^[ \t]*ssl_conf_command[ \t]+Options[ \t]+KTLS;'
+    elif [ "$(grep -cE '^[[:space:]]*ssl_session_timeout[[:space:]]' "${_p}")" = "1" ]; then
+      _anchor='^[ \t]*ssl_session_timeout[ \t]'
+    else
+      continue
+    fi
+    cp -af "${_p}" "${_bak}/" || continue
+    awk -v a="${_anchor}" '{ print } $0 ~ a { print "  ssl_conf_command NumTickets  0;" }' \
+      "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
 _nginx_ssl_proxy_header_buffer() {
   ### An HTTPS proxy in pre.d written before its template sized its header
   ### buffer answers 502 for a site's answer whose headers pass nginx's 4k
@@ -2248,6 +2293,7 @@ _nginx_config_update_fix() {
       _nginx_ssl_proxy_backend_drop
       _nginx_pln_proxy_ban_guard
       _nginx_ssl_proxy_header_buffer
+      _nginx_ssl_proxy_num_tickets
       _nginx_migration_proxy_client
       _nginx_migration_proxy_backend_drop
     fi

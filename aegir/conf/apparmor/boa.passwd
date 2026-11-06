@@ -1,0 +1,36 @@
+# AppArmor profile for passwd, started from a tenant login
+# A login's profile refuses the shadow file for everything that runs under it. passwd is the
+# one program there that needs it, as root by its setuid bit, so it runs here, and this profile
+# reaches nothing a login can touch.
+
+#include <tunables/global>
+
+profile boa_passwd flags=(complain) {
+
+  include <abstractions/authentication>
+  include <abstractions/base>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
+
+  capability audit_write,
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability fsetid,
+  capability setgid,
+  capability setuid,
+
+  /usr/bin/passwd mr,
+
+  /etc/.pwd.lock rwk,
+  /etc/nshadow rw,
+  /etc/shadow rw,
+  /etc/shadow+ rw,
+  /etc/shadow- rw,
+  /etc/shadow.* rwlk,
+  /etc/security/** r,
+  /proc/*/loginuid r,
+  /proc/filesystems r,
+  /run/utmp rk,
+}

@@ -2810,12 +2810,13 @@ _php_eight_six_hosted_cnf() {
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
 #   worker reads 74 as 7.4); 8.6 in these files is read by
 #   _php_eight_six_asked only;
-# - of the versions installed now, every one a cli-per-platform.info line
-#   names (read as websh reads the file: its first 64 KiB and 200 lines, '#'
-#   opening a comment, a line counting only as "<folder> <version>"), and the
-#   one the phpNN.info switches steer the command line to (the highest switch
-#   whose PHP is installed). A line or switch naming a PHP that is not
-#   installed is ignored by websh, so it adds nothing here either.
+# - of the versions installed now, every one a cli-per-platform.info or
+#   fpm-per-platform.info line names (read as websh and the ltd worker read
+#   them: the first 64 KiB and 200 lines, '#' opening a comment, a line counting
+#   only as "<folder> <version>"), and the one the phpNN.info switches steer the
+#   command line to (the highest switch whose PHP is installed). A line or
+#   switch naming a PHP that is not installed is ignored by both, so it adds
+#   nothing here either.
 _php_versions_pinned_more() {
   local _c _f _v _k _rest _line _e _mk _txt _n _out=""
   for _c in /data/disk/*/static/control; do
@@ -2840,9 +2841,10 @@ _php_versions_pinned_more() {
         | tr -d '\n')"
       _out="${_out}${_v}"
     fi
-    if [ -e "${_c}/cli-per-platform.info" ]; then
+    for _f in cli-per-platform.info fpm-per-platform.info; do
+      [ -e "${_c}/${_f}" ] || continue
       _txt=""; _n=0
-      _txt="$(_acct_read_in "${_c}" cli-per-platform.info | head -c 65536)"
+      _txt="$(_acct_read_in "${_c}" "${_f}" | head -c 65536)"
       while IFS= read -r _line; do
         _n=$(( _n + 1 ))
         [ "${_n}" -gt 200 ] && break
@@ -2854,7 +2856,7 @@ _php_versions_pinned_more() {
         _v="$(_php_vrn_dotted "${_v}")"
         [ -n "${_v}" ] && _out="${_out} ${_v}"
       done <<< "${_txt}"
-    fi
+    done
     _mk=""
     for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_c}/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
@@ -3291,9 +3293,9 @@ _php_if_versions_cleanup_cnf() {
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_six}"
       fi
 
-      ### Add the versions the checks above cannot see: a two-digit pin and
-      ### the command-line pins, cli-per-platform.info and the phpNN.info
-      ### switches
+      ### Add the versions the checks above cannot see: a two-digit pin, the
+      ### per-platform lines (cli-per-platform.info, fpm-per-platform.info) and
+      ### the phpNN.info switches
       _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} $(_php_versions_pinned_more)"
 
       ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
@@ -5836,6 +5838,10 @@ _if_install_chromium() {
       fi
     done
   fi
+  # The wrapper sources /etc/chromium.d, and a web request has no writable home
+  if [ -d "/etc/chromium.d" ] && [ -e "${_bldPth}/aegir/conf/var/chromium.d.boa-web-tmp" ]; then
+    install -o root -g root -m 644 "${_bldPth}/aegir/conf/var/chromium.d.boa-web-tmp" /etc/chromium.d/boa-web-tmp
+  fi
   _CHR_ITD=$(chromium --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
@@ -8168,6 +8174,20 @@ _strict_bin_permissions() {
 }
 
 #
+# The EXIT trap of a barracuda run until its AppArmor step is done. A major OS
+# upgrade keeps AppArmor off across its passes, so it is left alone here too,
+# whether a marker file or an operator's answer started it.
+_apparmor_back_on_barracuda_exit() {
+  local _hop
+  trap '' HUP INT TERM PIPE
+  [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "YES" ] && return 0
+  for _hop in excalibur daedalus chimaera beowulf; do
+    [ -e "/root/.run-to-${_hop}.cnf" ] && return 0
+  done
+  _turn_on_apparmor_after_octopus
+}
+
+#
 # Turn Off AppArmor temporarily.
 _turn_off_apparmor_temporarily() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8181,6 +8201,10 @@ _turn_off_apparmor_temporarily() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
+    # Only the AppArmor step near the end of the run restores it, so every way
+    # out before that step owes the switch back.
+    _aaOffInThisRun=YES
+    trap _apparmor_back_on_barracuda_exit EXIT
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
     aa-complain /etc/apparmor.d/* &> /dev/null
@@ -8264,7 +8288,20 @@ _sync_apparmor_profiles() {
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
+      # The profiles of the AppArmor packages themselves are for programs a BOA
+      # box does not run, many written to stay unconfined: aa-enforce over the
+      # whole folder would confine those programs by rules never meant to. Not
+      # unix-chkpwd: the authentication abstraction sends PAM's helper to it.
+      for _profArm in $(dpkg -L apparmor apparmor-profiles 2> /dev/null \
+        | grep -E '^/etc/apparmor\.d/[^/]+$' | grep -v '/unix-chkpwd$'); do
+        [ -f "${_profArm}" ] && mv -f "${_profArm}" ${_backArmr} &> /dev/null
+      done
       cp -af ${_locCnf}/apparmor/* /etc/apparmor.d/
+      # BOA's dhclient profile takes the name its package uses on this system:
+      # with two files for one program aa-enforce and aa-complain refuse the set.
+      if [ -e "/etc/apparmor.d/usr.sbin.dhclient" ]; then
+        mv -f /etc/apparmor.d/sbin.dhclient /etc/apparmor.d/usr.sbin.dhclient
+      fi
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
@@ -8319,7 +8356,7 @@ _sync_apparmor_profiles() {
           service auditd restart &> /dev/null
         fi
         apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-        aa-complain /etc/apparmor.d/* &> /dev/null
+        _apparmor_set_mode complain
       elif [ -e "/root/.enforce.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Activating AppArmor in the enforced mode"
@@ -8332,7 +8369,7 @@ _sync_apparmor_profiles() {
           service auditd restart &> /dev/null
         fi
         apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-        aa-enforce /etc/apparmor.d/* &> /dev/null
+        _apparmor_set_mode enforce
         if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
           _if_enforce_apparmor_profiles
         fi
@@ -8408,6 +8445,7 @@ _if_install_apparmor() {
     _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
+  _aaOffInThisRun=NO
 }
 
 #
@@ -11587,7 +11625,7 @@ _other_sys_java_install() {
 
   # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
-    _JAVA_NEW=21.0.12
+    _JAVA_NEW=21.0.13
     _JAVA_ITD=$(java21 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
@@ -13111,6 +13149,20 @@ _pam_umask_check_fix() {
     echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart"
+  fi
+  # A system whose stock common-session files carry pam_umask with no argument
+  # reads UMASK from these two files for every PAM session, where a login has
+  # its own argument above: 002 there gives root 0002 under cron and sudo, so
+  # what root makes in an account's tree comes out writable by that account.
+  # It must find 022, not nothing: with no value the module leaves the umask
+  # as it came, and a cron restarted from a job at 0002 hands that to every job.
+  if grep -qsE "^session.*pam_umask\.so[[:space:]]*$" \
+    /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive; then
+    if ! grep -qsx "UMASK=022" /etc/default/login; then
+      sed -i "/^UMASK/d" /etc/default/login &> /dev/null
+      echo "UMASK=022" >> /etc/default/login
+    fi
+    sed -i "s/^UMASK.*/UMASK 022/g" /etc/login.defs &> /dev/null
   fi
 }
 

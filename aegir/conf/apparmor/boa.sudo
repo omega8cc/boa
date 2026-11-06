@@ -1,0 +1,69 @@
+# AppArmor profile for sudo itself, as BOA's backend runs it
+# PHP-CLI moves here when it starts sudo, before sudo has checked anything, and the
+# caller still chooses sudo's options. So this profile starts nothing but the commands
+# the sudoers lines name, and only at root's uid: a program the caller names as sudo's
+# password helper or editor runs at the caller's own uid and is refused.
+
+#include <tunables/global>
+
+profile boa_sudo flags=(complain) {
+
+  include <abstractions/base>
+  include <abstractions/authentication>
+  include <abstractions/nameservice>
+
+  capability audit_write,
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability setgid,
+  capability setuid,
+  capability sys_ptrace,
+  capability sys_resource,
+
+  network netlink raw,
+
+  ptrace (read) peer=/opt/php*/bin/php,
+  ptrace (read) peer=unconfined,
+
+  /usr/bin/sudo mr,
+  /usr/libexec/sudo/* mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # What the caller's PHP has open comes along with the process
+  /data/disk/*/tools/drush/** r,
+  /opt/tools/drush/** r,
+  /usr/local/bin/composer r,
+  /var/aegir/drush/** r,
+
+  /etc/sudo.conf r,
+  /etc/sudoers r,
+  /etc/sudoers.d/ r,
+  /etc/sudoers.d/* r,
+  /etc/login.defs r,
+  /etc/default/locale r,
+  /etc/default/login r,
+  /etc/environment r,
+  /etc/security/limits.d/ r,
+  /etc/security/limits.d/* r,
+  /proc/** r,
+  /sys/** r,
+  /dev/null rw,
+  /dev/ptmx rwk,
+  /dev/pts/* rw,
+  /dev/tty rwk,
+  /run/sudo/ rw,
+  /run/sudo/** rwk,
+  /run/utmp rwk,
+
+  # A signal sudo takes, it passes on to the command
+  signal (send) peer=boa_sudo_cmd,
+
+  owner /etc/init.d/nginx Px -> boa_sudo_cmd,
+  owner /usr/local/bin/boa-dbctl Px -> boa_sudo_cmd,
+  owner /usr/local/bin/fix-drupal-*.sh Px -> boa_sudo_cmd,
+  owner /usr/local/bin/lock-local-drush-permissions.sh Px -> boa_sudo_cmd,
+}

@@ -119,7 +119,8 @@ _sqlmagic_convert() {
       wait
       # The pattern stays on one line: a backslash-newline inside the quotes
       # is part of the pattern and matches no ALTER statement.
-      perl -p -i -e 's/(ALTER TABLE (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) ENGINE=)MYISAM/\1INNODB/g' \
+      # sed, not perl: a tenant login's AppArmor profile refuses perl on purpose
+      sed -i -E 's/(ALTER TABLE (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) ENGINE=)MYISAM/\1INNODB/g' \
         ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       wait
       if [ -s "${HOME}/static/to_myisam_alter_table.sql" ]; then

@@ -24,6 +24,7 @@
 
   # Allow MySQLd to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
+  signal (receive) peer=boa_sudo_cmd,
 
   # Allow mysqld_safe to read its configuration files
   /etc/mysql/** r,

@@ -81,6 +81,9 @@
   owner /data/disk/*/distro/** rw,
   owner /data/disk/*/platforms/** rw,
   owner /data/disk/*/static/** rw,
+  /mnt/**/files/*/static/files/ r,
+  /mnt/**/files/*/static/files/** r,
+  owner /mnt/**/files/*/static/files/** rw,
 
   # Deny access to various sensitive directories and files
   deny /boot/** mrwklx,

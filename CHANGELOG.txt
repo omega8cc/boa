@@ -2,7 +2,43 @@
 ### In development - changes since BOA-5.88.877
 ###
 
+@=> New Features
+
+    * A new Octopus account on a server with a standing mirror reaches the
+      mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
+      with no rebuild and no pause in replication. Until then a file sync
+      leaves that account out and keeps the others current, instead of
+      stopping for all of them, and says so.
+
+    * An account installed on the active and never laid on its mirror, when
+      that mirror was promoted by hand, comes across with one command on the
+      old active once it is fenced: xmass prep-target <promoted-ip>
+      --return-accounts=<oN>. Its files are laid with no database write, and
+      the account takes the promotion's last steps there; the old active can
+      then be rebuilt as the new mirror.
+
+    * A platform's sites can take their web PHP from the platform:
+      ~/static/control/fpm-per-platform.info holds one "<folder> <version>"
+      per line. A site's line in multi-fpm.info wins over its platform's,
+      and that wins over fpm.info. The version moves with the site's root,
+      so a Migrate or Clone onto a listed platform changes both in one
+      nginx reload. It never changes the command line. Lines that cannot
+      apply, and site lines that win over a platform's, are named in
+      .fpm-per-platform-skipped.info.
+
 @=> Security
+
+    * The files storage wrapper an account's tasks call through sudo holds a
+      tenant to its own account: with no account named, a call could reach a
+      site of another account on the server.
+
+    * The files storage tool no longer makes a link through a files store
+      folder a tenant swapped, under another account's identity, and every
+      link it makes in an account's tree is now that account's, never root's;
+      on a server with the link check on, a tenant could aim such a link at
+      another account's files and have them served. A tenant's call now reads
+      back only its status, and the tool's logs are root's alone: both showed
+      what root found on paths a tenant chose.
 
     * A Grav site no longer serves a Markdown file kept on disk outside the
       folders it already refused, such as a README beside its images or
@@ -33,7 +69,445 @@
       user/config: the secret keys seeded there stayed readable to other
       users after every Verify.
 
+    * A Verify of a Textpattern site keeps its database login file,
+      drushrc.php, at the 0440 its writer sets: the permissions pass made
+      it readable to other users for a moment on every Verify before
+      narrowing it again.
+
+    * A Grav site restored from a backup taken before it was renamed gets
+      its environment overrides in Grav's older layout, user/<site>/, back
+      under its current name: they stayed under the former name, which
+      Grav no longer reads, and the secret keys there were opened to other
+      users on every Verify.
+
+    * A Clone of a Grav site whose older-layout overrides sit under both
+      its own name and the new one no longer carries the source site's
+      secret keys into the copy.
+
+    * Migration proxy records and proxied markers are root's own files,
+      /root/.<oN>.migproxy.cnf and /root/.<oN>.migproxy.proxied; the
+      copies left in an account's log/ are only informational. An account
+      could edit those copies, and root read them for the firewall trust,
+      the real visitor address trust, the certificate mirror and xtrim.
+
+    * The first migration tool run after the upgrade imports the old log/
+      records once (migration_proxy_trust.sh adopt --once), each only where
+      root's own state backs it: the peer's host key, root's pair files,
+      the relay list. It names every record it refused with the command
+      that restates it, and imports nothing once its stamp exists.
+
+    * A record imported that way never decides by itself which account on
+      the other box is the pair's: the move's create marker there must name
+      this box and the account, and still match that account's uid and
+      home directory, or the tool refuses and prints the restatement,
+      xoct proxy <oN> <ip> <target-oN> --repair. A pair moved before create
+      markers existed (2026-09-29) needs that restatement once.
+
+    * New Textpattern platforms are built on 4.9.2, a security release
+      that closes a way to skip authentication through concurrent cookie
+      logins and adds CSRF and sanitising fixes; a site moves to it with
+      the Upgrade Textpattern task. The version a box falls back to when it
+      cannot read the mirror's stamp is 4.9.2 too.
+
+    * New Varbase platforms are built on Drupal core 11.4.11, with Drupal's
+      core security fixes of 14 October; the template's own lock stops at
+      11.4.8. Existing platforms keep their sites.
+
+    * New Commerce v.2 platforms carry Commerce Core 2.41, with the Commerce
+      security fixes of 28 October. Their Drupal core stays 10.1.8, which is
+      past security support. Existing platforms keep their sites.
+
+    * The Opigno platform carries Commerce Core 2.41 from its next build, with
+      the same fixes: Address 2 and its library arrive under aliases that
+      satisfy the profile's older constraints. The profile does not enable
+      Commerce, and a platform in use keeps its copy.
+
 @=> Important Fixes
+
+    * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
+      proxy trust and realip tools now stay current with xoct and xmass, which
+      run them: they are fetched in the tools pass such a box still runs. Before,
+      they stayed as its last system pass left them.
+
+    * Backend-mode site cron asks for elysia-cron only on a site whose module
+      list shows elysia_cron enabled and whose Drush may load its command;
+      every other site goes straight to plain cron, without the "could not be
+      found" error each run logged before.
+
+    * An account's off-site backup passphrase and its provider credentials
+      now reach the standing mirror with every xmass sync. Before, the
+      mirror kept a passphrase of its own and the account's credentials
+      lost to its templates, so after a promotion the account's archives
+      could not be decrypted there and it backed up nowhere.
+
+    * xmass restore-target that stopped at MySQL's start can be run again
+      and finishes the restore; before, the box refused for good and the
+      accounts laid by --fix-accounts stayed unmarked. It also puts each
+      control panel whose alias a sync carried from the active back on the
+      mirror's own panel, which pre-mig otherwise refused.
+
+    * boa cleanup purge says why when it purges nothing, and exits 1 then;
+      before, a purge of an account detect did not list printed a blank
+      line and exited 0. detect names a marked directory it skips.
+
+    * A git pull in a tenant's codebase under ~/static, with the site one
+      level down in docroot/, web/ or html/, no longer stops with "unable to
+      unlink old '.gitignore'" when the top folder belongs to the backend
+      user without group write. Platform Verify and the nightly now add
+      group write to that top folder and to the backend user's folders
+      directly in it, on accounts with their own group, when the top holds
+      .git or composer.json. Only that bit is added, and nothing deeper.
+
+    * Background jobs a Drupal site starts over HTTPS through its own server,
+      such as background_batch exports and imports, no longer stop part way.
+      Each step sends the next request and hangs up without reading, so the
+      TLS 1.3 session tickets nginx sent stayed unread, the hang-up became a
+      reset, and with kernel TLS the reset could discard the request before
+      nginx read it, with nothing logged. The wildcard HTTPS front, the
+      default server whose ticket count nginx uses for every name on the
+      box, now sends no TLS 1.3 tickets, and so does every other HTTPS
+      server BOA writes; TLS 1.2 resumes as before. The front updates on the
+      next Barracuda pass, deployed HTTPS proxies in place on the same pass.
+
+    * A Ctrl-C during a database dump no longer leaves mydumper paused. It
+      takes a Ctrl-C as a question: it stops its work and asks whether to
+      cancel, and the question never shows. Pressed while a dump waited
+      behind a long query, it left the global read lock held and every
+      write on the server waiting until mydumper was killed; pressed later,
+      it left the tool hanging. xcopy, xoct and the nightly and cluster SQL
+      backups now keep mydumper out of the terminal's reach: a Ctrl-C ends
+      the tool at once, mydumper with it, and the dump is not kept. A
+      backup run by hand with Drush stops at once and its dump finishes on
+      its own.
+
+    * A nightly SQL backup stopped during a dump, as a Ctrl-C now does, no
+      longer leaves its run marker behind. The watchdogs read the marker as
+      a backup in progress, the MySQL one for a day.
+
+    * A database dump that waited more than a minute behind a long query is
+      no longer called failed. mydumper 1.x gives up its table flush after
+      60 seconds, sends it again and then dumps as usual, but exits with an
+      error: the nightly SQL backup set that database aside as failed, xcopy
+      and xoct refused to move the site, the database broker refused the
+      dump, and an Aegir backup, Migrate or Clone failed. A dump whose only
+      error is that retry, with its final marker written, now counts as
+      whole; any other error still fails it.
+
+    * The SQL watchdog no longer leaves a database dump hung or half
+      kept. When Aegir tasks or Drush calls piled up during a dump, it
+      stopped mydumper gently: a dump stopped while its table flush waited
+      could hang for good holding the global read lock, with every write
+      on the server waiting behind it, and one stopped later was kept as a
+      good backup although cut short. It now ends mydumper at once, and
+      the dump is set aside as failed.
+
+    * A database dump cut short by a plain kill of mydumper is no longer
+      kept as a good backup by the nightly SQL backup, xcopy, xoct, the
+      database broker or an Aegir backup. mydumper still marks such a dump
+      finished; BOA now reads mydumper's own log for it and fails the dump.
+
+    * The nightly SQL backup no longer empties the page cache. It dropped the
+      whole cache before and after every database, about 620 times a night on
+      a box with 310 databases, so every site and each dump tool kept reading
+      their files from disk again for the length of the run.
+
+    * multiback, autoupboa and graceful.sh no longer empty the page cache
+      either. Each kept a drop behind a RAM test from when it stood beside a
+      swapoff; the kernel frees clean pages on demand, so a drop gained next to
+      nothing and sent every site back to the disk.
+
+    * A control panel backup export is kept in a private folder of the account,
+      which the panel's own path names. Its folder could be entered by other
+      accounts' web users, who could read an export by its name.
+
+    * In AppArmor enforce mode wkhtmltopdf and wkhtmltoimage started from a
+      shell or cron, outside PHP, can fetch a page by URL; before, every URL
+      failed with HostNotFoundError. Where they may write is unchanged.
+
+    * Swap is no longer emptied on a schedule: autoupboa's purge at half full
+      and multiback's reset before a backup ran swapoff -a, which freezes every
+      process with pages in swap until they are read back. 4 GB on a slow disk
+      froze MySQL for over 8 minutes and every site with it, and the same cold
+      pages then went back out, so the next purge followed within days.
+
+    * The daily swap sizing switches an area off only when it holds 256 MB or
+      less. A grow that finds /swapfile fuller adds the missing room as a second
+      area beside it, which freezes nothing, until a later pass can make one
+      file of them.
+
+    * Chromium runs from a web request. With no writable home its crash handler
+      had no database and the browser ended on SIGTRAP, with no AppArmor line to
+      point at it. It now keeps those folders in the pool's temporary folder,
+      and in enforce mode PHP-FPM's profile lets it list /proc.
+
+    * Chromium started by root or an account's own shell works in AppArmor
+      enforce mode. Its profile refused the wrapper's own settings and helpers,
+      which ended it with status 2, and a page's network.
+
+    * nginx serves a files store moved to attached storage in AppArmor enforce
+      mode. Its profile named no such path, so CSS, JS and images answered 403
+      or 404. The virus scanner, node, Chromium, wkhtmltopdf and wkhtmltoimage
+      can read such a store too.
+
+    * AppArmor enforce mode no longer refuses a web request its file locks or
+      what it writes by group. PHP-FPM's profile allowed no lock at all, so
+      native sessions, Grav's cache and anything using LOCK_EX went without one
+      or failed, and it asked to own the files in a site's writable folders,
+      which PHP-FPM reaches by group, on files the backend user owns.
+
+    * AppArmor enforce mode now covers what a real tenant login runs. A login
+      stays in MySecureShell's profile, which lacked most of what lshell, websh
+      and the offered tools start and read: Drush, Composer, Bee, Grav, git's
+      helpers, the database clients and the shared core. passwd has a profile of
+      its own, so a login can change its password and nothing else it starts can
+      read the shadow file.
+
+    * AppArmor enforce mode no longer refuses what backend tasks and a tenant's
+      Composer scripts and Drush commands start from PHP: archivers, rsync,
+      ordinary tools such as ls and wc, the image, PDF and video tools, and
+      certificate DNS hooks.
+
+    * A Git deploy from a remote that needs a key works in AppArmor enforce mode.
+      The remote shell client runs under a profile of its own, which can start
+      no shell and write only known hosts.
+
+    * In AppArmor enforce mode a web request can run convert and magick on both
+      systems, as they are links to a versioned program the profile did not name,
+      and the rest of what BOA opens to a web account: gs, ffmpeg, clamscan, java,
+      node and wget.
+
+    * FTP works in AppArmor enforce mode. The profile refused /etc/shells and
+      pure-ftpd's own run folder, so every login failed.
+
+    * A files store moved to attached storage works in AppArmor enforce mode, for
+      a web request, a task, a login and FTP. No profile named its real path.
+
+    * Drush's first set-up of a new or moved account works in AppArmor enforce
+      mode, so its login gets its drush.yml and with it the Drush 9+ aliases.
+
+    * PHP-CLI's AppArmor profile no longer allows what only sudo needed: the
+      shadow and sudoers files, PAM's files and the commands that run through
+      sudo, nor running a codebase's own drush.php directly, which lies where
+      tenant code can write.
+
+    * The nightly no longer hands a certificate DNS hook's folder to the
+      account. A hook tree holding anything not root's now goes to undo/ and
+      is cloned again.
+
+    * A web identity's exec() no longer logs a refused tr to PHP-FPM's error log
+      on an account with a cli.info.
+
+    * sqlmagic's conversion to MyISAM works from a tenant login in AppArmor enforce
+      mode, where the perl it used is refused and it went on with the file
+      unchanged, leaving cache, sessions, users, watchdog and accesslog on MyISAM.
+
+    * A control panel task's confirm screen now shows the task's description and
+      names it by its title. The description never rendered, and the question
+      printed the machine name.
+
+    * On Excalibur root no longer runs at umask 0002 under cron and sudo, so
+      what it makes in an account's tree is no longer writable by that
+      account. BOA's setting for logins reached every session there through a
+      line new in that system's session files; the next Barracuda pass sets
+      it to 0022. A login, SFTP and the limited shell keep their own 0002.
+
+    * On Excalibur a site's files store directory is no longer made
+      group-writable, which made the same tool refuse it: a rename left the
+      site reading the old name's store and a rename back failed, while the
+      task read as done, and a store left that way stopped every conversion.
+      Such directories are closed again on the next run that acts on them,
+      unless another identity could have moved them there, which is reported.
+
+    * A database load through the admin login can no longer fail on a
+      duplicate row written by a process that reached the half loaded
+      database, which stopped a panel's upgrade or a site's Migrate: the
+      site's own login is locked while the admin login loads it. A load
+      that outlives the session still gets its unlock, and a login a killed
+      task left locked is given back by the site's next Verify or Backup.
+
+    * Rebuilding a pinned catalogue platform no longer reports a false `lock
+      hash stale`: Composer 2.11 counts the policy setting in a lock's hash,
+      and the rebuild now refreshes the hash without a resolve, which cannot
+      succeed on those older cores.
+
+    * A Clone or Migrate whose target could not run on the PHP-FPM version
+      it would get is refused before its safety copy, with the line that
+      would fix it, as the command-line check already did. Before, the task
+      ran to the end and the site answered HTTP 500 until the next worker
+      pass moved it.
+
+    * Rebuilding an account's per-site PHP-FPM includes no longer removes
+      them first, and an include is replaced by rename: a reload from any
+      task in that moment ran every pinned site on the default PHP.
+
+    * An account's PHP-FPM include that nginx has not read yet now stays
+      owed: when a worker pass was killed before its reload, or nginx refused
+      the box at that moment, the next pass found nothing changed and nginx
+      kept the old pool until some other task reloaded it.
+
+    * A policy change applied account by account (xoct proxy-mode or
+      proxy-retire, one account after another or --all) no longer fails on an
+      account whose turn comes while the peer's csf restarts after the previous
+      account's change: the peer's reconcile waits for the restart lfd takes,
+      and the record push and reconcile try a dropped connection twice more.
+
+    * Migration trust no record needs any more now ends: a retired relay's root
+      key and firewall lines go once its promised date has passed, a front that
+      moved away or a box rebuilt as its own mirror is no longer trusted where it
+      no longer relays, and the peer address list drops what nothing names.
+      Bringing back a retired front past its date needs the pre-mig key exchange
+      again; a mirror put back by restore-target needs xoct proxy --repair. A
+      key given for a newer move stays, and so does reach older tools gave: the
+      first daily run dates it, and only a relay that ends after that takes it.
+      A source whose move into the box is under way (its pre-mig there, and no
+      post-mig yet) keeps its key whatever its other relays there say.
+
+    * boa cleanup purge now refuses while a BOA pass or system task runs, and
+      xmass prep-target waits for the target to go quiet before it judges and
+      purges an account only the target has: a pass still running on that account
+      wrote its panel proxy back behind the purge, naming a certificate that was
+      gone, and nginx -t failed for the whole box.
+
+    * The nightly usage pass no longer takes an account off the report, or holds
+      its over-limit notices, on a CANCELLED, proxied.pid or proxy-failed.pid the
+      account made itself in its own log folder. Only root's own relay marker
+      takes it off the report; those names, as root wrote them, hold the client's
+      mail and the report's row stays, tagged Held:<name>.
+
+    * The nightly usage pass keeps every account on the operator's report: an
+      in-house address, a control panel it cannot find or a renamed vhost.d no
+      longer takes an account off, its row is tagged instead. The plan files in
+      an account's log folder set its limits only as root wrote them, the plan
+      otherwise coming from root's octopus.cnf, and the nightly copies them into
+      that cnf under the same rule.
+
+    * An account's own option.txt or cores.txt in its log folder no longer
+      sizes its PHP-FPM pools: the limited-shell worker, the Octopus upgrade
+      and fpmreport take the plan and the engine count only from files as root
+      wrote them, and otherwise from root's octopus.cnf. xoct and xcopy
+      install a moved account on its target the same way. Every reader, the
+      usage pass and the nightly included, takes a plan only by a name BOA
+      knows and a count only as a plain number, so a file of root's the
+      account renamed to one of these names sets nothing.
+
+    * An account can no longer pass off one of root's plan files under
+      another plan file's name: each carries a root-only stamp of its own
+      name, set as root writes or first reads it and by the limited-shell
+      worker on every pass, and every reader refuses a file stamped with
+      another name. A renamed cores.txt no longer counts as extra engines,
+      nor an extra engines file as the engine count.
+
+    * A migration proxy tool another box copied here now lasts one self-update:
+      a source on older tools could put its older trust tool back on a newer
+      target for up to a day. xoct and xmass now copy these tools only to a
+      target that lacks them.
+
+    * xoct now decides what a client has been told from root's own copy of the
+      migration history, /root/.<account>.migproxy.log: the copy in the account's
+      log folder could be replaced by the account, which sent or held back its
+      own notices.
+
+    * xoct and xmass now name a phpNN.info marker or a line of multi-fpm.info,
+      cli-per-platform.info or fpm-per-platform.info that does nothing on the
+      source because it lacks that PHP, when the target would honour it: the
+      PHP changed at the cutover with nothing said. An alert on a live run,
+      a DENY on a dry one.
+
+    * An xoct move under a new account name now rewrites the folders of
+      cli-per-platform.info and fpm-per-platform.info lines spelt with the
+      old account's path: they stopped applying after the move.
+
+    * A cli-per-platform.info, fpm-per-platform.info or phpNN.info deleted on
+      a source no longer survives on the target of an xoct or xmass sync,
+      where it applied after the cutover, and a changed one no longer loses
+      to the target's copy.
+
+    * A MySQL watchdog pass already running when a migration or a Percona
+      upgrade starts stands down at its next action: it read the SQL
+      maintenance marker only at its start, so it could still start the
+      server the operation had just stopped, or end a dump or a long query.
+
+    * The clean-up of a stuck nightly backup leaves a migration's dump alone:
+      while the SQL maintenance marker is held it ends the backup's own
+      mydumper and no longer every one on the box.
+
+    * The optional restart after the monthly OPTIMIZE is skipped while the
+      SQL maintenance marker is held. A skipped restart is now recorded in
+      /var/log/boa/mysql.backup.restart.log: under cron the line was lost.
+
+    * xcopy and xoct take the SQL maintenance marker again once a job they
+      waited for has ended, and before the host rename, so the control panel
+      restore and the rename no longer run unmarked when that job held it.
+
+    * A signal landing as xcopy or xoct leave an export or an import no
+      longer leaves the SQL maintenance marker behind, which paused the
+      MySQL watchdog for up to four hours.
+
+    * xtrim no longer refuses an account for good over the expired
+      certificate of a site disabled in the panel on the new server, which
+      never renews a disabled site. It names that site and leaves its
+      certificate out of the check, and still refuses an expired certificate
+      of a live site.
+
+    * A site disabled in the panel no longer fails a move's probes: its
+      placeholder page is the same page as the catch-all they refuse, so
+      xmass verify called it broken and every xtrim plan, quiesce and shrink
+      of its account was refused. Both now name it and go on, once its vhost
+      and its alias agree it is disabled. xtrim also asks for the catch-all
+      answer on both routes, so a site with a live vhost behind a catch-all
+      answer, a dead port or a 500 still fails.
+
+    * A whole-server move now names each site it left without HTTPS on the
+      old server, because the site's certificate files were incomplete at
+      the conversion, at the end of xmass cutover and in xmass verify, with
+      the repair to run for its account. They were named only once, in the
+      middle of the conversion's output, and verify read HTTPS on the new
+      server alone, where these sites serve right.
+
+    * A standing mirror now drops the dumps the old server rotated out of an
+      account's store under /data/disk/arch when that store is a link onto
+      another volume, as the rest of the archive already did: a sync pass
+      prunes the copy under the same delete guard, and the cutover still
+      deletes nothing. A copy that lands on the mirror's own volume where it
+      would hold an account's files or the archive, or where a copy from
+      another volume lands too, stays additive. Those dumps stayed on the
+      mirror for good, so its disk grew every night.
+
+    * xmass prep-target --return-accounts no longer replaces what the serving
+      server holds where it copies the shared store's links onto another
+      volume: a link, file or folder already there stays as it is, only what
+      the server lacks arrives, and a server it cannot ask gets nothing.
+
+    * xmass no longer passes over an account whose name is not o followed by
+      digits: its pre-mig panel check, its panel probe after a cutover and
+      its promotion by hand read every account on the box, as the move
+      itself always did, and prep-target purges or refuses a target-only
+      account of any name.
+
+    * xmass pre-mig on a source stops on an account directory that holds a
+      control panel's alias with no such user, and says so: a copy of an
+      account, or an account that lost its user. On a target it reports one
+      and goes on, since prep-target needs its key to purge it or restore
+      its user. A promotion by hand leaves a copy alone and still cleans up
+      an account that lost its user.
+
+    * xmass init checks the source's TLS material before it changes anything
+      on either box, as it says: the check ran after it had dropped the
+      target's pre-pass backups, cleared queued delete tasks, marked the
+      target and, for GTID, restarted a live source's MySQL.
+
+    * The bee and grav wrappers treat an account's backend user as the
+      backend whatever the account's name, by what the account holds; its
+      client logins stay clients.
+
+    * A repair of a migration proxy that names no account on the other box
+      pairs it with the account root's own record names there, as a renamed
+      move needs, not with an account of the same name.
+
+    * An xoct move under a new account name no longer leaves, in the new
+      account's sub-account password store, a copy of each entry under the
+      old account's name beside the renamed one: the store travels whole
+      only when the name stays the same.
 
     * A Grav page at /security, /changelog, /readme, /contributing or
       /code_of_conduct answers at its .md address too: the vhost refused
@@ -68,6 +542,96 @@
       the old box's, which the cutover then renamed, and a panel whose old
       counterpart had no store was left with broken files and private
       links. xoct and xcopy no longer copy the old panel's store either.
+
+    * The in-place Grav upgrade no longer answers a visitor's request with
+      an error as the core is swapped: Grav's maintenance page now goes up
+      a few seconds before its installer starts moving the core's files,
+      so the requests already running can end first.
+
+    * A Verify of a Grav or Textpattern site no longer takes from the
+      site's PHP the write to the cache folders, logs and uploads it made
+      itself: they were handed to the account without their group write
+      until the permissions pass, seconds later, and an upgrade's requests
+      could answer errors meanwhile.
+
+    * A Verify of a Textpattern site no longer answers errors for a
+      moment: the ownership pass took the web server's group off the
+      site's configuration before handing it back.
+
+    * A Verify of a Grav platform sets the modes of folders in a site's
+      code named like its writable folders, such as system/assets: neither
+      pass reached them, so a file left unreadable there stayed so.
+
+    * A Textpattern 4.9.2 site's install log no longer carries a PHP
+      warning from Textpattern's own clean-URL self-test, which cannot
+      succeed before the site's vhost is live.
+
+    * An Octopus upgrade that stops early now loads AppArmor again in the
+      chosen mode, as a complete one does. One refused at its version check,
+      aborted by an error or stopped by a signal left no profile loaded, and
+      the Octopus upgrades after it kept it so, until the next Barracuda
+      upgrade. One killed outright still cannot; the next upgrade of either
+      kind now does it.
+
+    * AppArmor enforce mode no longer stops Let's Encrypt. The PHP command line
+      profile refused bash and openssl, so in enforce mode a site's Verify could
+      not register, order or renew a certificate, nor make a self-signed one, and
+      still reported success.
+
+    * AppArmor enforce mode now takes effect on Excalibur. BOA's dhclient profile
+      and the one from the isc-dhcp-client package claim the same program, so
+      aa-enforce refused the whole set and most profiles stayed in complain mode.
+      The AppArmor packages' own profiles for programs a BOA box does not run are
+      also moved out, so enforce mode cannot confine those by rules never meant to.
+
+    * AppArmor enforce mode no longer stops a box working. The PHP command line
+      profile refused tools the backend relies on and the master panel's own code,
+      so panel tasks never started; unbound could not update its key file, and the
+      limited shell could not make a temporary file. What the backend runs through
+      sudo now has a profile of its own, so this needed nothing wider in the PHP
+      profile a tenant's own code runs under.
+
+    * An Octopus upgrade no longer leaves running daemons outside AppArmor. It
+      unloaded every profile, and loading them again does not take back a process
+      already running, so nginx, MySQL and the rest stayed unconfined until they
+      restarted. With a mode chosen the profiles now stay loaded in complain mode
+      while it works, and the daemons follow them back to the chosen mode.
+
+    * A Barracuda upgrade that stops early now loads AppArmor again in the
+      chosen mode. It left no profile loaded until the next upgrade. A major OS
+      upgrade still keeps AppArmor off across its passes.
+
+    * An upgrade now says so in its report when AppArmor cannot be put in the
+      chosen mode. aa-enforce and aa-complain refuse the whole profile set on a
+      single conflict and change nothing, which went unnoticed.
+
+    * The ClamAV opt-out no longer moves the init scripts of clamav-daemon and
+      clamav-freshclam to /var/backups. An update of clamav-freshclam by
+      unattended-upgrades then failed to configure it: the deleted script is
+      not put back without --force-confmiss and the package's own configure
+      step needs it, so every later apt run on the box ended with an error.
+      The scripts stay in place with no rc links; a moved script is put back
+      and the pending configure finished on the next pass.
+
+@=> New Features
+
+    * Check available updates, a new read-only site task, writes a site's
+      known security problems into its task log: on Drupal 8 and newer a
+      composer audit of a private copy of the platform's lock, on Drupal 6
+      and 7 the enabled projects behind their newest release or marked
+      insecure. It changes nothing, says unknown when a source is out of
+      reach, and is there for a tenant's own, client and site operator logins.
+
+@=> Changes
+
+    * PHP 8.6.0RC5 replaces 8.6.0RC4 where PHP 8.6 is installed. A box takes
+      it with its next barracuda upgrade; the PHP security floor stays at
+      8.6.0RC4, so no upgrade is forced for it.
+
+    * The dormant site health check backend, provision-site_health_check,
+      and its permission are gone: its Drupal 8+ step ran a Drush command
+      that Drush 12.3 removed and whose older form reads an advisory list
+      discontinued on 20 May 2026.
 
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
@@ -812,6 +1376,20 @@
     * xoct, xmass and xcopy carry an account's broker settings: xoct create
       keeps it out of the switches while installing it (_DB_BROKER_BORN=NO),
       and _DB_BROKER_ARM=NO holds on the target and a promoted standby.
+
+    * The daily sweep of the ban archives lists the addresses at or over
+      the rotation threshold in one pass before it checks them one by one:
+      with 12,600 distinct addresses in the archive it took three minutes
+      and held the per-minute enforcement that long; now under half a
+      minute, with the same checks and the same csf calls.
+
+    * The test of an address against the covering blocks in csf.allow,
+      which the daily sweep, the per-minute guard and the SSH log check
+      share, runs as one awk pass over the blocks instead of a shell loop
+      that forked a subshell per block: with the provider ranges in the
+      file, about 500 blocks, the sweep went at three addresses a second
+      and held the per-minute enforcement for minutes on a box with a big
+      ban archive. The verdicts are the same.
 
 @=> Changes and Upgrades
 

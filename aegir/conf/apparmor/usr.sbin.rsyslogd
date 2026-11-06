@@ -5,6 +5,9 @@
 
 /usr/sbin/rsyslogd flags=(complain) {
 
+  # Allow rsyslogd to list the open files of its own process
+  owner /proc/[0-9]*/fd/ r,
+
   # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/nameservice>
@@ -15,6 +18,7 @@
 
   # Allow Rsyslogd to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,
+  signal (receive) peer=boa_sudo_cmd,
 
   # Allow execution of the rsyslogd binary
   /usr/sbin/rsyslogd mrix,

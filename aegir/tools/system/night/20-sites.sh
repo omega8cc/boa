@@ -627,10 +627,12 @@ for my $f (@ARGV) {
 }
 exit 0;'
 ### As _ACCT_REOWN_PL, the same way: the uids, then the uid and gid to hand
-### each name to.
+### each name to. A gid given with a + first keeps the group write of what
+### is handed over, as the ownership fixers' -W does; no caller here gives one.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
 sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
@@ -651,7 +653,9 @@ for my $f (@ARGV) {
   if (@s && !own($s[4])) {
     print "$s[0]:$s[1]\n";
   } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
-    chown($u, $g, $h);
+    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
+      chmod(($s[2] & 07777) | 020, $h);
+    }
   }
   close($h);
 }
@@ -2866,6 +2870,95 @@ _sites_cred_modes_here() {
   return 0
 }
 
+### The codebase top above a docroot below the account's static/ (docroot/,
+### web/ or html/) takes the group write the platform script gives it at a
+### platform Verify (fix-drupal-platform-permissions.sh, _TOP_GW_PL, which says
+### why), under the same rules: the top and each directory directly in it,
+### the docroot and vendor/ aside, when the backend user owns them, their
+### group is the account's own and that group may already read and enter
+### them. Only the group write bit is added; a link, another owner's entry
+### and other users' bits stay, and only those two levels are healed. The top
+### must hold .git or composer.json and must not be a Drupal root itself
+### (sites/ and index.php); the files store and control/ are never one. The
+### group must hold only the account's own identities (_night_top_group_ours):
+### the box-wide users group, or a group another user joined, is skipped.
+### Called only where the static pass did not walk a Composer project's root.
+_NIGHT_TOP_GW_PL='use Fcntl;
+my ($u, $g, $skip) = @ARGV;
+$u =~ /^[1-9][0-9]*$/ && $g =~ /^[1-9][0-9]*$/ && length($skip) or exit 1;
+opendir(my $dh, ".") or exit 1;
+my @n = (".", map { "./$_" }
+  grep { $_ ne "." && $_ ne ".." && $_ ne $skip && $_ ne "vendor" } readdir($dh));
+closedir($dh);
+my $c = 0;
+for my $f (@n) {
+  sysopen(my $h, $f, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && -d _ && $s[4] == $u && $s[5] == $g
+    && ($s[2] & 050) == 050 && !($s[2] & 020)) {
+    chmod(($s[2] & 07777) | 020, $h) and $c++;
+  }
+  close($h);
+}
+print "$c\n";
+exit 0;'
+### Inside the codebase top (pinned), unless it is another user's or below
+### one: $1 = the account's own uids, then the backend user's uid, the
+### account group's gid and the docroot's name.
+_night_top_gw_here() {
+  _night_place_own_here "${1}" || return 0
+  shift
+  perl -e "${_NIGHT_TOP_GW_PL}" -- "$@"
+}
+### Status 0 when the group of gid $2, named after the account $1, holds only
+### the account's own identities: every member any group entry of that gid
+### lists (a second entry can share the number) and every passwd entry whose
+### primary group it is reads <acct>, <acct>.<name> or <acct>.<name>-dev, and
+### none is a PHP-FPM pool user (<acct>.web), which never joins the account.
+_night_top_group_ours() {
+  local _ta="${1}" _tg="${2}" _l _n _p _u _pg _r
+  local -a _ms=()
+  while IFS= read -r _l; do
+    IFS=, read -r -a _ms <<< "${_l}"
+    for _n in "${_ms[@]}"; do
+      [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+        || return 1
+    done
+  done < <(getent group 2> /dev/null | awk -F: -v g="${_tg}" '$3 == g { print $4 }')
+  while IFS=: read -r _n _p _u _pg _r; do
+    [ "${_pg}" = "${_tg}" ] || continue
+    [[ "${_n}" =~ ^${_ta}(\.[a-z0-9]+(-dev)?)?$ ]] && [[ "${_n}" != *.web ]] \
+      || return 1
+  done < <(getent passwd 2> /dev/null)
+  return 0
+}
+### $1 = the resolved docroot, $2 = the resolved account home, $3 = the
+### account's own uids.
+_night_top_gw() {
+  local _top="${1%/*}" _dn="${1##*/}" _acct="${2##*/}" _u _pg _g _ug _n _s=directories
+  [[ "${2}" = "/data/disk/${_acct}" ]] && [[ "${_acct}" =~ ^[a-z0-9-]+$ ]] \
+    || return 0
+  [[ "${_dn}" =~ ^(docroot|web|html)$ ]] || return 0
+  [[ "${_top}" = "${2}/static/"?* ]] \
+    && [[ "${_top}/" != "${2}/static/files/"* ]] \
+    && [[ "${_top}/" != "${2}/static/control/"* ]] || return 0
+  { [ -e "${_top}/.git" ] || [ -f "${_top}/composer.json" ]; } || return 0
+  [ -e "${_top}/sites" ] && [ -e "${_top}/index.php" ] && return 0
+  _u=$(getent passwd "${_acct}" 2> /dev/null | cut -d: -f3)
+  _pg=$(getent passwd "${_acct}" 2> /dev/null | cut -d: -f4)
+  _g=$(getent group "${_acct}" 2> /dev/null | cut -d: -f3)
+  _ug=$(getent group users 2> /dev/null | cut -d: -f3)
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && [[ "${_g}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_pg}" = "${_g}" ]] && [[ "${_g}" != "${_ug}" ]] || return 0
+  _night_top_group_ours "${_acct}" "${_g}" || return 0
+  _n=$(_in_pinned_dir "${_top}" _night_top_gw_here "${3}" "${_u}" "${_g}" "${_dn}")
+  if [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
+    [[ "${_n}" = "1" ]] && _s=directory
+    echo "Group write set on ${_n} ${_s} of the codebase top ${_top//[[:cntrl:]]/?}"
+  fi
+  return 0
+}
+
 _fix_static_permissions() {
   ### $1 = the platform's web group, $2 = the account's own uids
   ### (_acct_walk_uids): every hand-over and mode below goes through the
@@ -2945,6 +3038,11 @@ _fix_static_permissions() {
       ### skipped (their contents are still walked), and nothing here names
       ### them on a command line, so a link planted at one is never followed.
       _in_pinned_dir "${_use_Plr}" _static_perm_here "${1}" "${_o}"
+      ### A Composer project's root was walked whole above; elsewhere the
+      ### codebase top above the docroot takes its group write here.
+      if [ "${_use_Plr}" = "${_rPlr}" ]; then
+        _night_top_gw "${_rPlr}" "${_rUsr}" "${_o}"
+      fi
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
       ### level). A site the per-site loop refuses -- a symlinked modules at
