@@ -206,6 +206,20 @@
       database broker or an Aegir backup. mydumper still marks such a dump
       finished; BOA now reads mydumper's own log for it and fails the dump.
 
+    * A database dump killed while its table flush waited behind a long
+      query no longer leaves every write on the server waiting until that
+      query ends. The flush stayed on the server after mydumper was gone,
+      holding the global read lock, whatever killed it: the SQL watchdog,
+      the database broker's time limit, an operator. xcopy, xoct, the
+      nightly and cluster SQL backups, the database broker and Aegir
+      backups now give mydumper's sessions a 90-second lock wait, so such
+      a flush gives up 90 seconds after it began. mydumper itself ends a
+      flush that waits a minute and sends it again, so a running dump never
+      meets the limit; a table read that waits that long for a lock now
+      fails the dump instead of holding it open. The AppArmor profiles of
+      the PHP command line, lshell and MySecureShell let mydumper read the
+      file that carries the limit.
+
     * The nightly SQL backup no longer empties the page cache. It dropped the
       whole cache before and after every database, about 620 times a night on
       a box with 310 databases, so every site and each dump tool kept reading
