@@ -3459,6 +3459,23 @@ _xoct_ssl_material_missing() {
   echo "${_out}"
 }
 
+### True when the vhost $3 in the vhost.d $2 is a control panel's: its root is
+### the panel tree of the account $1, where no site lives. The https.<dom> and
+### dot-file companions answer no. Read inside the real directory.
+_xoct_vhost_in_panel_tree() {
+  local _r
+  case "${3}" in
+    https.*|.*) return 1 ;;
+  esac
+  _r="$(_xoct_read_in "${2}" "${3}" \
+    | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
+    | head -n 1)"
+  case "${_r}" in
+    "${1}"/aegir/*) return 0 ;;
+  esac
+  return 1
+}
+
 _migrate_sites() {
   ### Group of the tree these vhost/control files live in -- derived from the
   ### PATH, because on a rename import ${_USR} is the destination account while
@@ -3504,6 +3521,15 @@ _migrate_sites() {
         fi
         echo "INFO: control panel ${_Dom} on ${_oct} stays local in Drupal maintenance mode -- never proxied"
       fi
+      continue
+    fi
+    ### A panel vhost under any other name is not a site either: a box that was
+    ### the standby of another keeps that box's panel vhost, which the sync
+    ### carried. A conversion has nothing to do there, and counting it read an
+    ### account holding only its panel as a failed conversion, for good.
+    if [ "${_cmd}" = "proxy" ] \
+      && _xoct_vhost_in_panel_tree "${_USR}" "${_Vht%/*}" "${_Dom}"; then
+      echo "INFO: ${_Dom} on ${_oct} is a control panel's vhost, not a site -- never proxied, left as it is"
       continue
     fi
     ### A whole-server move relays the client-domain sites BEFORE the new box

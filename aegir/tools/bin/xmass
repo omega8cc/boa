@@ -6243,6 +6243,47 @@ _xmass_restore_rec_read() {
   return 0
 }
 
+# The vhost of the active's own panel, once this box is plain again: the vhost
+# leg carries every vhost, and that one names a platform and a database of the
+# active. A later relay repair read it as a site, and a later move would carry
+# it on as one. Kept as a dot-file, which nginx and the sync never read, when
+# its root is this account's panel tree and holds no such panel here. The panel
+# the alias names stays when this box holds it; once the heal has run, an alias
+# still naming a panel this box lacks leaves the account as it is.
+# $1 = DRY lists them, LIVE moves them; $2 = the account's root.
+_xmass_restore_park_panel_vhosts() {
+  local _how="$1" _root="$2" _oct="${2##*/}" _v="$2/config/server_master/nginx/vhost.d"
+  local _sp _own="" _n _rt
+  _sp=$(_xmass_read_file "${_root}/.drush/hostmaster.alias.drushrc.php" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+  [ -f "${_sp}/settings.php" ] && _own="${_sp##*/}"
+  [ -n "${_own}" ] || [ "${_how}" != "LIVE" ] || return 0
+  while IFS= read -r _n; do
+    [[ "${_n}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || continue
+    [ "${_n}" != "${_own}" ] || continue
+    _rt=$(_xmass_read_in "${_v}" "${_n}" \
+      | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
+      | head -n 1)
+    case "${_rt}" in
+      */..|*/../*) continue ;;
+      "${_root}"/aegir/*) ;;
+      *) continue ;;
+    esac
+    [ ! -f "${_rt}/sites/${_n}/settings.php" ] || continue
+    if [ "${_how}" != "LIVE" ]; then
+      _info "  ${_oct}: the vhost of another box's control panel, ${_n}: kept aside as .${_n}"
+      continue
+    fi
+    if _xmass_in_real_dir "${_v}" mv -f -T -- "./${_n}" "./.${_n}"; then
+      _xmass_in_real_dir "${_v}" mv -f -T -- "./https.${_n}" "./.https.${_n}" 2> /dev/null
+      _info "  ${_oct}: the vhost of another box's control panel, ${_n}: kept aside as .${_n}"
+    else
+      _alrt "  ${_oct}: could not move the vhost of another box's control panel, ${_n}, aside"
+    fi
+  done < <(_xmass_in_real_dir "${_v}" find . -maxdepth 1 -mindepth 1 -type f \
+    ! -name '.*' ! -name 'https.*' 2> /dev/null | sed 's|^\./||' | sort)
+  return 0
+}
+
 # The control panels the sync left naming the active's panel, once this box is
 # plain again. The .drush leg copies the whole alias dir with -u, and no leg
 # carries the active's panel site dir, so an alias the active wrote after this
@@ -6273,10 +6314,12 @@ _xmass_restore_heal_panels() {
     _rd=$(_xmass_read_file "${_als}" | grep "root'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     _sp=$(_xmass_read_file "${_als}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     if [ -e "${_rd}/index.php" ] && [ -f "${_sp}/settings.php" ]; then
+      _xmass_restore_park_panel_vhosts "${_how}" "${_root}"
       continue
     fi
     if [ "${_how}" != "LIVE" ]; then
       _list="${_list} ${_oct}"
+      _xmass_restore_park_panel_vhosts DRY "${_root}"
       continue
     fi
     if [ -z "${_me}" ] || ! _xmass_panel_db_here "${_oct}"; then
@@ -6293,6 +6336,7 @@ _xmass_restore_heal_panels() {
         PANEL-*) _info "  ${_oct}: ${_l}" ;;
       esac
     done <<< "${_out}"
+    _xmass_restore_park_panel_vhosts LIVE "${_root}"
   done
   if [ "${_how}" != "LIVE" ]; then
     [ -z "${_list}" ] \
