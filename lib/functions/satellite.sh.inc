@@ -761,14 +761,7 @@ _satellite_tune_fpm_config() {
   fi
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
-    ### the digits of the account's cores.txt, as before, taken by tr (a
-    ### pattern substitution over the whole file costs the square of its
-    ### length), leading zeros dropped and at most nine kept, so the
-    ### product below stays a number
-    if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt \
-        | tr -cd '0-9' | sed 's/^0*//' | head -c 9)
-    fi
+    _satellite_cores_now
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
       _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
@@ -1645,7 +1638,7 @@ _satellite_cnf() {
     # another account's cnf owns is never this one's; the derived name is.
     if [ "${_STATUS}" = "INIT" ] && [ -n "${_domDerived}" ] \
       && [ "${_DOMAIN}" != "${_domDerived}" ] \
-      && grep -al "^_DOMAIN=\"${_DOMAIN}\"" /root/.o*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
+      && grep -al "^_DOMAIN=\"${_DOMAIN}\"" /root/.*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
       _msg "NOTE: _DOMAIN ${_DOMAIN} in ${_octCnf} belongs to another account; using ${_domDerived}"
       _DOMAIN="${_domDerived}"
       sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
@@ -8017,13 +8010,16 @@ _satellite_make() {
     _acct_put_in "${_ROOT}/log" email.txt "${_CLIENT_EMAIL}"
   fi
   if [ ! -e "${_ROOT}/log/option.txt" ]; then
-    _acct_put_in "${_ROOT}/log" option.txt "${_CLIENT_OPTION}"
+    _acct_put_in "${_ROOT}/log" option.txt "${_CLIENT_OPTION}" \
+      && _satellite_plan_stamp option.txt
   fi
   if [ ! -e "${_ROOT}/log/cores.txt" ]; then
-    _acct_put_in "${_ROOT}/log" cores.txt "${_CLIENT_CORES}"
+    _acct_put_in "${_ROOT}/log" cores.txt "${_CLIENT_CORES}" \
+      && _satellite_plan_stamp cores.txt
   fi
   if [ ! -e "${_ROOT}/log/subscr.txt" ]; then
-    _acct_put_in "${_ROOT}/log" subscr.txt "${_CLIENT_SUBSCR}"
+    _acct_put_in "${_ROOT}/log" subscr.txt "${_CLIENT_SUBSCR}" \
+      && _satellite_plan_stamp subscr.txt
   fi
   if [ ! -e "${_ROOT}/log/fpm.txt" ]; then
     _acct_put_in "${_ROOT}/log" fpm.txt "${_PHP_FPM_VERSION}"
@@ -8391,10 +8387,13 @@ for my $f (@ARGV) {
 exit 0;'
 # As _ACCT_REOWN_PL, the same way: given first the uids it acts for, then
 # the uid and gid to hand each name to; a name another named uid owns, and
-# anything below a directory another named uid owns, keeps its owner.
+# anything below a directory another named uid owns, keeps its owner. A gid
+# given with a + first keeps the group write of what is handed over, as the
+# ownership fixers' -W does; no caller here gives one.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
 sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
@@ -8415,7 +8414,9 @@ for my $f (@ARGV) {
   if (@s && !own($s[4])) {
     print "$s[0]:$s[1]\n";
   } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
-    chown($u, $g, $h);
+    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
+      chmod(($s[2] & 07777) | 020, $h);
+    }
   }
   close($h);
 }
@@ -9201,17 +9202,83 @@ _satellite_pass_read() (
   # shellcheck disable=SC2086
   echo -n ${_v}
 )
-# The account's log/$1, read bounded, blanks around it dropped, put in the
-# variable $2 when the whole of it matches the extended regular expression
-# $3; any other text leaves $2 as the root cnf set it.
-_satellite_log_value() {
-  local _v
-  _v="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" "${1}")")"
-  if [[ "${_v}" =~ ${3} ]]; then
-    printf -v "${2}" '%s' "${_v}"
-  else
-    _msg "NOTE: ${_ROOT}/log/${1} ignored, ${2} kept as set in ${_octCnf}"
+# Root's reader of an account's plan file in log/, a copy of usage.sh's: ./$1
+# through one handle, only while it is root's regular file with one link that
+# no one else can write, at most 64 KiB. On Linux the handle carries the
+# root-only stamp trusted.boa.plan with the file's own name: a file stamped
+# with another name (a file of root's the account renamed, or one copied with
+# cp -a) is refused with status 6, an unstamped one is stamped. $2 "read"
+# prints its mtime on a line, then its bytes; "stamp" only stamps. Status 3:
+# no such name; 4: anything else there; 5: a read error.
+# shellcheck disable=SC2016
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# The plan names the sizing knows. A plan value is one of these: a file of
+# root's renamed by the account to option.txt (its subscr.txt, a marker
+# saying "completed") names no plan and sizes nothing.
+_SAT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
+# The account's log/$1 as root wrote it under that name (_PLAN_HREAD_PL):
+# log/ is the account's, so a file it made there, a link, a FIFO or a file of
+# root's it renamed there sizes nothing. Sets _sLog to the bytes, blanks
+# around them dropped. Status 0: root's file; 1: no such name; 2: something
+# else is there.
+_satellite_root_log() {
+  local _r _s
+  _sLog=
+  _r="$(_acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- "./${1}" read && printf x)"
+  _s=$?
+  if [ "${_s}" -ne 0 ]; then
+    [ -e "${_ROOT}/log/${1}" ] || [ -L "${_ROOT}/log/${1}" ] || return 1
+    return 2
   fi
+  _r="${_r%x}"
+  _sLog="$(_satellite_trim "${_r#*$'\n'}")"
+  return 0
+}
+# The account's plan file log/$1, root's, stamped with its own name
+# (_PLAN_HREAD_PL "stamp") right after root wrote it.
+_satellite_plan_stamp() {
+  _acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- "./${1}" stamp > /dev/null 2>&1
+}
+# The amazing upgrade's copy of the plan file log/$1 to log/$2: only from a
+# file of root's under its own name (_satellite_root_log), into a new file of
+# root's stamped with the name $2, so no copy takes another file's value or
+# leaves its stamp behind. Status 1 when $1 is no such file.
+_satellite_plan_copy() {
+  _satellite_root_log "${1}" || return 1
+  _acct_put_in "${_ROOT}/log" "${2}" "${_sLog}" || return 1
+  _satellite_plan_stamp "${2}"
+}
+# The account's log/$1 as root wrote it (_satellite_root_log) put in the
+# variable $2 when the whole of it matches the extended regular expression
+# $3; anything else leaves $2 as the root cnf set it.
+_satellite_log_value() {
+  local _s
+  _satellite_root_log "${1}"
+  _s=$?
+  [ "${_s}" -eq 1 ] && return 0
+  if [ "${_s}" -eq 0 ] && [[ "${_sLog}" =~ ${3} ]]; then
+    printf -v "${2}" '%s' "${_sLog}"
+  elif [ "${_s}" -eq 0 ]; then
+    _msg "NOTE: ${_ROOT}/log/${1} ignored, ${2} kept as set in ${_octCnf}"
+  else
+    _msg "NOTE: ${_ROOT}/log/${1} is not as root wrote it, ${2} kept as set in ${_octCnf}"
+  fi
+}
+# The engines count the pool sizing multiplies by: root's log/cores.txt when
+# it holds a whole number (leading zeros dropped, at most nine digits, so
+# the product stays a number), otherwise _CLIENT_CORES as the root cnf or
+# this pass set it. Never digits picked out of other text: a file of root's
+# renamed to cores.txt (fpm.txt holds 8.4) gives no count.
+_satellite_cores_now() {
+  local _v
+  _satellite_root_log cores.txt || return 0
+  _v="${_sLog}"
+  [[ "${_v}" =~ ^[0-9]+$ ]] || return 0
+  _v="${_v#"${_v%%[!0]*}"}"
+  [ -n "${_v}" ] && [ "${#_v}" -le 9 ] || return 0
+  _CLIENT_CORES="${_v}"
 }
 # $1 made literal for the replacement of a sed s/// command: each '\', '/'
 # and '&' escaped and line breaks dropped, so no text can end the command
@@ -9491,36 +9558,32 @@ _satellite_if_init_or_upgrade() {
       fi
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
-        if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
+        ### the operator's amazing_upgrade.txt and original_*.txt count only
+        ### as root wrote them: the account could make the first and rename a
+        ### file of root's to an original_*.txt name
+        if _acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
+          -- ./amazing_upgrade.txt stamp 2> /dev/null \
           && [ ! -e "${_ROOT}/log/amazing_upgrade_complete.txt" ]; then
           if [ -e "${_ROOT}/log/original_option.txt" ]; then
-            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
-              option.txt prev_option.txt
-            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
-              original_option.txt option.txt
+            _satellite_plan_copy option.txt prev_option.txt
+            _satellite_plan_copy original_option.txt option.txt
           fi
           if [ -e "${_ROOT}/log/original_cores.txt" ]; then
-            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
-              cores.txt prev_cores.txt
-            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
-              original_cores.txt cores.txt
+            _satellite_plan_copy cores.txt prev_cores.txt
+            _satellite_plan_copy original_cores.txt cores.txt
           fi
           _acct_put_in "${_ROOT}/log" amazing_upgrade_complete.txt completed
         fi
       fi
-      ### Each value is taken in its own form only (the option and the plan
-      ### one word, the cores digits, the e-mail plain addresses, one or
-      ### several, as the nightly takes them); other text leaves the value
-      ### the root cnf gives.
-      if [ -e "${_ROOT}/log/option.txt" ]; then
-        _satellite_log_value option.txt _CLIENT_OPTION '^[A-Za-z0-9_]+$'
-      fi
-      if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _satellite_log_value cores.txt _CLIENT_CORES '^[0-9]+$'
-      fi
-      if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _satellite_log_value subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
-      fi
+      ### Each value is taken in its own form only (the option a plan name
+      ### the sizing knows, the plan one word, the cores digits, the e-mail
+      ### plain addresses, one or several, as the nightly takes them), and
+      ### the plan values only from files as root wrote them: they size the
+      ### pools and go into root's cnf. Anything else leaves the value the
+      ### root cnf gives.
+      _satellite_log_value option.txt _CLIENT_OPTION "${_SAT_PLAN_RE}"
+      _satellite_log_value cores.txt _CLIENT_CORES '^[0-9]+$'
+      _satellite_log_value subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
       if [ -e "${_ROOT}/log/email.txt" ]; then
         _T_EML="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" email.txt \
           | tr -s '[:space:]' ' ')")"
@@ -11747,6 +11810,63 @@ _satellite_child_b_letsencrypt() {
   fi
 }
 
+# Where the panel keeps backup exports: a folder of a random name in backup-exports,
+# which no other account can list, named by aegir_backup_export_path. An export is the
+# backup itself under a second name, readable by everyone, and any account's web user
+# can enter backup-exports, so a name that can be guessed is enough to read one.
+# hosting_tasks_extra hands the path to the backend's tasks. Runs as the account, like
+# the nightly's _night_export_path; without a folder, the panel keeps one it has, or
+# else takes the plain path as before.
+_satellite_export_path() {
+  local _d="${_ROOT}/backup-exports" _c _t="" _t0="" _f _p _ok=YES
+  _c=$(${_DRUSHCMD} @hostmaster vget aegir_backup_export_path --format=string 2> /dev/null | tail -n 1)
+  [[ "${_c}" =~ /backup-exports/([0-9a-f]{32})$ ]] && _t0="${BASH_REMATCH[1]}"
+  grep -sq 'provision_backup_export_path' \
+    "${_HM_ROOT}/profiles/hostmaster/modules/aegir/hosting_tasks_extra/hosting_tasks_extra.drush.inc" || _ok=NO
+  for _f in /etc/apparmor.d/opt.php*.sbin.php-fpm; do
+    [ -e "${_f}" ] || break
+    grep -q 'backup-exports/\*/\*' "${_f}" || _ok=NO
+    break
+  done
+  if [ "${_ok}" = "YES" ]; then
+    [ -e "${_d}" ] || [ -L "${_d}" ] || mkdir -m 0751 -- "${_d}" 2> /dev/null
+    _t=$(
+      cd -P -- "${_d}" 2> /dev/null || exit 1
+      chmod 0751 . 2> /dev/null || exit 1
+      _t="${_t0}"
+      [ -n "${_t}" ] || _t=$(find . -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
+        -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
+      [ -n "${_t}" ] || _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+      [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] || exit 1
+      if [ -L "./${_t}" ] || [ ! -d "./${_t}" ]; then
+        mkdir -m 0711 -- "./${_t}" 2> /dev/null || exit 1
+      fi
+      chmod 0711 -- "./${_t}" 2> /dev/null
+      printf '%s\n' "${_t}"
+    )
+  fi
+  if [[ ! "${_t}" =~ ^[0-9a-f]{32}$ ]]; then
+    [ -n "${_t0}" ] || ${_DRUSHCMD} @hostmaster ${_vSet} aegir_backup_export_path "${_d}" &> /dev/null
+    return 0
+  fi
+  _p="${_d}/${_t}"
+  ${_DRUSHCMD} @hostmaster ${_vSet} aegir_backup_export_path "${_p}" &> /dev/null
+  [ "$(${_DRUSHCMD} @hostmaster vget aegir_backup_export_path --format=string 2> /dev/null | tail -n 1)" = "${_p}" ] || return 0
+  # Once the panel looks there: what sits at the top, or in another such folder
+  (
+    cd -P -- "${_d}" 2> /dev/null || exit 0
+    while IFS= read -r -d '' _f; do
+      mv -n -- "${_f}" "./${_t}/" 2> /dev/null
+    done < <(find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
+    while IFS= read -r _f; do
+      [ "${_f}" != "${_t}" ] || continue
+      mv -n -- "./${_f}"/* "./${_f}"/.[!.]* "./${_t}/" 2> /dev/null
+      rmdir -- "./${_f}" 2> /dev/null
+    done < <(find . -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
+      -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null)
+  )
+  return 0
+}
 _satellite_child_b_aegir_ui_enhance() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_child_b_aegir_ui_enhance"
@@ -11844,8 +11964,7 @@ _satellite_child_b_aegir_ui_enhance() {
       hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
       hosting_platform_base_path "${_ROOT}/static/" &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${_vSet} \
-      aegir_backup_export_path "${_ROOT}/backup-exports" &> /dev/null
+    _satellite_export_path
     ${_DRUSHCMD} @hostmaster ${_vSet} \
       hosting_default_profile "standard" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \

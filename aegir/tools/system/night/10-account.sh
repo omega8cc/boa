@@ -293,6 +293,17 @@ if ! declare -F _acct_undo_here > /dev/null 2>&1; then
     mv -f -T -- "./${1}" "/proc/self/fd/9/${2:-${1}}"
   }
 fi
+### tools/le/hooks is root's clone: root runs pip there, and PHP-CLI's AppArmor profile
+### lets a task run what is there. A tree holding anything that is not root's, or that
+### others can write, cannot be told from one the account wrote, so it goes to undo/ and
+### the site pass clones it again. A chown must never take such a tree back: it would make
+### the account's files look like root's to that pass. Run inside the real tools/le.
+_le_hooks_drop_foreign_here() {
+  [ -d ./hooks ] && [ ! -L ./hooks ] || return 0
+  [ -n "$(env PATH=/usr/local/bin:/usr/bin:/bin find ./hooks \( ! -uid 0 -o \( ! -type l -perm /002 \) \) -print -quit 2> /dev/null)" ] || return 0
+  _acct_undo_here hooks "le-hooks.$(date +%s)" \
+    && echo "LE hooks of ${_usEr}: not all root's, moved to undo/; the site pass clones them again"
+}
 : "${_GH_REFUSED:=the move into undo/ was refused (a link or a path outside this account on the way, or the rename failed)}"
 ### A tree handed over through each entry's own handle, never by name, and
 ### entries locked or unlocked the same way (the 20-sites.sh and night.inc.sh
@@ -686,6 +697,20 @@ _night_mail_list() (
   done
   printf '%s' "${_o}"
 )
+### Root's reader of an account's plan file in log/, one text wherever it is
+### defined: ./$1 through one handle opened O_RDONLY|O_NOFOLLOW|O_NONBLOCK, only
+### while it is root's regular file with one link that no one else can write,
+### at most 64 KiB. On Linux the handle carries the root-only stamp
+### trusted.boa.plan with the file's own name: a file stamped with another name
+### (a file of root's the account renamed, or one copied with cp -a) is refused
+### with status 6, an unstamped one is stamped. $2 "read" prints its mtime on a
+### line, then its bytes; "stamp" only stamps. Status 3 absent, 4 anything
+### else, 5 a read error.
+# shellcheck disable=SC2016
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+### The plan names the pool sizing knows: the nightly takes an option into
+### root's cnf only when it is one of these.
+_ACCT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
 ### Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
 ### mail BOA would send an account's client goes to the one address it holds
 ### instead, its subject noting who would have been mailed; a file that anyone
@@ -1102,6 +1127,97 @@ _night_bak_open() {
   fi
   return 0
 }
+# An export is the backup itself under a second name, readable by everyone, and
+# any account's web user can enter backup-exports, so a name that can be guessed
+# is enough to read one. Exports therefore live in a folder of a random name,
+# which no other account can list. The panel's aegir_backup_export_path names it
+# and hosting_tasks_extra hands that to the backend's tasks. All of it runs as the
+# account: the folder and the moves are its own, and it gains nothing by changing
+# them. A parent root owns stays as it is, and so do its exports.
+#
+# In the current (pinned) backup-exports: the folder's name printed, made when
+# missing. $1 $2: the account's ids. $3: the name the panel has, if any.
+_night_export_dir_here() {
+  local _t="${3}" _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
+  "${_as[@]}" chmod 0751 . 2> /dev/null || return 1
+  [ -n "${_t}" ] || _t=$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
+    -regextype posix-extended -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null | sort | head -n 1)
+  [ -n "${_t}" ] || _t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+  [[ "${_t}" =~ ^[0-9a-f]{32}$ ]] || return 1
+  if [ -L "./${_t}" ] || [ ! -d "./${_t}" ]; then
+    "${_as[@]}" mkdir -m 0711 -- "./${_t}" 2> /dev/null || return 1
+  fi
+  "${_as[@]}" chmod 0711 -- "./${_t}" 2> /dev/null
+  printf '%s\n' "${_t}"
+}
+# In the same directory, once the panel looks there: what sits at the top, or in
+# another folder of such a name (a move can leave two), moved into the folder $3.
+_night_export_gather_here() {
+  local _t="${3}" _f _d _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
+  while IFS= read -r -d '' _f; do
+    "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
+  done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
+  while IFS= read -r _d; do
+    [ "${_d}" != "${_t}" ] || continue
+    while IFS= read -r -d '' _f; do
+      "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
+    done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P "./${_d}" -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
+    "${_as[@]}" rmdir -- "./${_d}" 2> /dev/null
+  done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type d \
+    -regextype posix-extended -regex '\./[0-9a-f]{32}' -printf '%f\n' 2> /dev/null)
+  return 0
+}
+# Whether this box can use such a folder yet: the panel's module hands the path to
+# the backend, and PHP-FPM's profile, where there are any, reads one level down.
+_night_export_ready() {
+  local _f _r
+  _r=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
+    | grep -m 1 "root'" | awk '{ print $3 }' | sed "s/[\,']//g")
+  [ -n "${_r}" ] || return 1
+  _acct_read_in "${_r}/profiles/hostmaster/modules/aegir/hosting_tasks_extra" hosting_tasks_extra.drush.inc \
+    | grep -q 'provision_backup_export_path' || return 1
+  for _f in /etc/apparmor.d/opt.php*.sbin.php-fpm; do
+    [ -e "${_f}" ] || return 0
+    grep -q 'backup-exports/\*/\*' "${_f}"
+    return
+  done
+}
+# The panel's path as the account's own drush reads and sets it. Silent: a debug
+# run's log must not carry the folder's name, and _run_drush8_hmr_cmd would.
+_night_export_var() {
+  if [ "${#}" -gt 0 ]; then
+    su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster ${_vSet} aegir_backup_export_path ${1}" &> /dev/null
+  else
+    su -s /bin/bash - "${_HM_U}" -c "drush8 @hostmaster vget aegir_backup_export_path --format=string" 2> /dev/null | tail -n 1
+  fi
+}
+# Keeps the panel on its folder, moved in to it when it has none yet. Status 1 when
+# there is none this run: the panel keeps a folder it has, or else the plain path.
+_night_export_path() {
+  local _n="${_usEr##*/}" _u _g _t _t0="" _c _p
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] && _a2b_import_unfinished "${_HM_U}"; then
+    return 1
+  fi
+  _c="$(_night_export_var)"
+  [[ "${_c}" =~ /backup-exports/([0-9a-f]{32})$ ]] && _t0="${BASH_REMATCH[1]}"
+  _u=$(id -u -- "${_n}" 2> /dev/null)
+  _g=$(id -g -- "${_n}" 2> /dev/null)
+  if _night_export_ready && [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ]; then
+    if [ ! -e "${_usEr}/backup-exports" ] && [ ! -L "${_usEr}/backup-exports" ]; then
+      _acct_in_real_dir "${_usEr}" setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+        mkdir -m 0751 -- ./backup-exports 2> /dev/null
+    fi
+    _t=$(_night_in_bak_dir backup-exports _night_export_dir_here "${_u}" "${_g}" "${_t0}")
+  fi
+  if [[ ! "${_t}" =~ ^[0-9a-f]{32}$ ]]; then
+    [ -n "${_t0}" ] || _night_export_var "${_usEr}/backup-exports"
+    return 1
+  fi
+  _p="${_usEr}/backup-exports/${_t}"
+  _night_export_var "${_p}"
+  [ "$(_night_export_var)" = "${_p}" ] || return 1
+  _night_in_bak_dir backup-exports _night_export_gather_here "${_u}" "${_g}" "${_t}"
+}
 
 _relocate_backups_to_static_fs() {
   # Move this account's backups + backup-exports onto the static/files filesystem
@@ -1327,16 +1443,40 @@ _account_process() {
     # forever (a migrated cnf is exactly that state). Same discipline for
     # the plan trio: the log/ stamp is the witness, replace-if-present,
     # append-if-absent.
-    # Each stamp is read as email.txt is; text over 256 bytes is no plan
-    # value and is skipped before the filter below.
+    # A stamp is the witness only as root wrote it under that name
+    # (_PLAN_HREAD_PL: root's file, one link, not writable by group or
+    # others, not stamped with another plan file's name): log/ is oN's, so
+    # a file the account made at one of these names, a link, a FIFO or a
+    # file of root's it renamed there sets no plan value in root's cnf, and
+    # one NOTE line says which was left.
+    # Each value only in its own form, blanks around it dropped and nothing
+    # picked out of other text: the option a plan name the sizing knows,
+    # the plan one word, the cores a whole number. A file of root's the
+    # account renamed to one of these names (its fpm.txt, a marker saying
+    # "completed") holds no such value and leaves the cnf as it is.
     for _idPair in "_CLIENT_OPTION:option" "_CLIENT_SUBSCR:subscr" "_CLIENT_CORES:cores"; do
       _idVar="${_idPair%%:*}"
       _idFile="${_usEr}/log/${_idPair##*:}.txt"
-      [ -s "${_idFile}" ] || continue
-      _idVal=$(_acct_read_in "${_usEr}/log" "${_idPair##*:}.txt" | tr -d "\n")
-      [ "${#_idVal}" -le 256 ] || continue
-      _idVal=${_idVal//[^a-zA-Z0-9]/}
-      [ -z "${_idVal}" ] && continue
+      [ -e "${_idFile}" ] || [ -L "${_idFile}" ] || continue
+      # the x keeps the bytes whole; the reader's first line is the mtime
+      if ! _idVal="$(_acct_in_real_dir "${_usEr}/log" perl -e "${_PLAN_HREAD_PL}" \
+        -- "./${_idPair##*:}.txt" read && printf x)"; then
+        echo "NOTE: ${_HM_U}: log/${_idPair##*:}.txt is not as root wrote it: ${_idVar} in root's cnf left as it is"
+        continue
+      fi
+      _idVal="${_idVal%x}"
+      _idVal="${_idVal#*$'\n'}"
+      _idVal="${_idVal#"${_idVal%%[![:space:]]*}"}"
+      _idVal="${_idVal%"${_idVal##*[![:space:]]}"}"
+      case "${_idVar}" in
+        _CLIENT_OPTION) _idRe="${_ACCT_PLAN_RE}" ;;
+        _CLIENT_CORES) _idRe='^[1-9][0-9]{0,8}$' ;;
+        *) _idRe='^[A-Za-z0-9_]{1,64}$' ;;
+      esac
+      if [[ ! "${_idVal}" =~ ${_idRe} ]]; then
+        echo "NOTE: ${_HM_U}: log/${_idPair##*:}.txt holds no ${_idVar} value: root's cnf left as it is"
+        continue
+      fi
       if grep -q "^${_idVar}=\"${_idVal}\"" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
         _DO_NOTHING=YES
       elif grep -q "^${_idVar}=" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
@@ -1414,12 +1554,14 @@ _account_process() {
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_items 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
     _relocate_backups_to_static_fs
-    _run_drush8_hmr_cmd "${_vSet} aegir_backup_export_path ${_usEr}/backup-exports"
+    _night_export_path \
+      || echo "backup exports of ${_usEr}: no private folder this run, the panel keeps its path"
     _run_drush8_hmr_cmd "fr hosting_custom_settings -y"
     _run_drush8_hmr_cmd "cache-clear all"
     _run_drush8_hmr_cmd "cache-clear all"
   fi
   _night_web_hit
+  _acct_in_real_dir "${_usEr}/tools/le" _le_hooks_drop_foreign_here
   _daily_process
   _night_web_d9
   # Stuck or stale delete tasks are the panel's own business now: the task
@@ -2459,7 +2601,9 @@ _purge_cruft_machine() {
   # directory, the walk follows no link below it, and each entry is changed
   # through its own handle, never a hard-linked file (_reown_tree_here): oN
   # can put a hard link under any name there, a stamp root put included.
-  _acct_in_real_dir "${_usEr}/tools/le" _reown_tree_here "${_HM_U}:${_acctGrp}" .
+  # hooks/ is root's clone and stays out of this: see _le_hooks_drop_foreign_here,
+  # which runs before the site pass.
+  _acct_in_real_dir "${_usEr}/tools/le" _reown_tree_here "${_HM_U}:${_acctGrp}" . -path ./hooks -prune -o
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink at any moment:
   # a link put at trash is dropped, and trash is made, handed over and

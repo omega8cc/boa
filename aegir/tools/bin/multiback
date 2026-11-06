@@ -112,26 +112,6 @@ _if_hosted_sys() {
   fi
 }
 
-# Function to calculate RAM usage percentage as an integer
-_calculate_ram_usage_percent() {
-  _total_ram_kb=$1
-  _available_ram_kb=$2
-  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
-
-  # Using integer division to get a whole number percentage
-  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
-}
-
-# Function to check and display system info
-_check_system_ram() {
-  # Get the total and available RAM in KB
-  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-
-  # Calculate RAM usage percentage
-  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
-}
-
 # While graceful.sh sizes swap, /run/boa_swap_size.pid holds its PID and
 # /run/boa_swap_size.start that process's start time, which tells it from a
 # later process given the same PID.
@@ -154,44 +134,14 @@ _swap_resize_running() {
   [[ "${_rszCmd}" == *"graceful.sh"* ]]
 }
 
-# Function to check and optimize RAM and disk caches. Swap is emptied before
-# the backup only while free RAM can take its pages back with a tenth of the
-# RAM (at least 512 MB) to spare: once swap is larger than the free RAM, an
-# unchecked swapoff -a pulls back more than the box has. Swap is left alone
-# while graceful.sh resizes /swapfile.
-_optimize_ram() {
-  local _swpUsed _memAvl _memTot _memSpare _swpAreas _swpArea _swpPrio
+# Swap that is off comes back on. It is never emptied here: swapoff freezes
+# every process with pages in swap until they are read back, which on a slow
+# disk takes minutes. Swap is left alone while graceful.sh resizes /swapfile.
+# Nor is the page cache dropped: the kernel frees clean pages as the backup
+# needs them, and a drop sends every site back to the disk for its files.
+_swap_back_on() {
   if ! _swap_resize_running; then
-    _swpUsed=$(awk '/^SwapTotal:/ {t=$2} /^SwapFree:/ {f=$2} END {print t-f}' /proc/meminfo)
-    _memAvl=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
-    _memTot=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
-    _memSpare=$(( _memTot / 10 ))
-    [ "${_memSpare}" -lt 524288 ] && _memSpare=524288
-    if [ "${_swpUsed}" -gt 0 ] \
-      && [ $(( _memAvl - _swpUsed )) -ge "${_memSpare}" ]; then
-      # swapon -a brings back only what fstab lists: any other area that was
-      # on (a zram device) goes back on by name, at its own priority.
-      _swpAreas=$(awk 'NR > 1 {print $1 ":" $5}' /proc/swaps)
-      swapoff -a
-      swapon -a
-      for _swpArea in ${_swpAreas}; do
-        _swpPrio="${_swpArea##*:}"
-        _swpArea="${_swpArea%:*}"
-        awk -v a="${_swpArea}" '$1 == a {f = 1} END {exit !f}' /proc/swaps && continue
-        if [[ "${_swpPrio}" =~ ^[0-9]+$ ]]; then
-          swapon -p "${_swpPrio}" "${_swpArea}" 2>/dev/null
-        else
-          swapon "${_swpArea}" 2>/dev/null
-        fi
-      done
-    else
-      swapon -a
-    fi
-  fi
-  _check_system_ram
-  if [ "${_ram_usage_percent}" -gt 50 ]; then
-    # a plain write: tee would echo the 3 into the run's output
-    sync && echo 3 > /proc/sys/vm/drop_caches
+    swapon -a
   fi
 }
 
@@ -297,7 +247,7 @@ _check_root() {
 }
 _check_root
 _normalize_incident_report
-_optimize_ram
+_swap_back_on
 _if_hosted_sys
 _verify_boa_keys
 _print_env "multiback_init"
