@@ -220,6 +220,10 @@
       which the panel's own path names. Its folder could be entered by other
       accounts' web users, who could read an export by its name.
 
+    * In AppArmor enforce mode wkhtmltopdf and wkhtmltoimage started from a
+      shell or cron, outside PHP, render pages by URL again; before, only a
+      local file rendered and every URL failed with HostNotFoundError.
+
     * Swap is no longer emptied on a schedule: autoupboa's purge at half full
       and multiback's reset before a backup ran swapoff -a, which freezes every
       process with pages in swap until they are read back. 4 GB on a slow disk
