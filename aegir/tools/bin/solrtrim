@@ -201,7 +201,7 @@ _solr_aliases() {
 ### surfaces — mirror fixes there. The aliases and the ini files are the
 ### account's: each is read inside its real directory.
 _collect_bindings() {
-  local _alias _apath _aliases
+  local _alias _apath _aliases _atext
   mapfile -t _aliases < <(_solr_aliases)
   _BINDRAW=$(for _alias in "${_aliases[@]}"; do
     [ -f "${_alias}" ] || continue
@@ -211,14 +211,22 @@ _collect_bindings() {
         | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
   ### An empty tally out of a broken alias parse is indistinguishable from
-  ### "no site uses Solr" — spot-verify one alias before believing it.
+  ### "no site uses Solr" — spot-verify one site alias before believing it.
+  ### Only a site alias carries site_path: a platform or server alias never
+  ### does, a link reads as nothing, and the list is not sorted by kind, so
+  ### the first alias of type site is the one checked. The type is matched
+  ### loosely, so a changed alias layout still trips the check. No site
+  ### alias at all leaves nothing to tally.
   if [ -z "${_BINDRAW}" ]; then
-    _alias="${_aliases[0]:-}"
-    if [ -n "${_alias}" ]; then
-      _apath=$(_solr_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+    for _alias in "${_aliases[@]}"; do
+      _atext=$(_solr_read_file "${_alias}")
+      printf '%s\n' "${_atext}" \
+        | grep -qE "'context_type'[[:space:]]*=>[[:space:]]*'site'" || continue
+      _apath=$(printf '%s\n' "${_atext}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
       [ -z "${_apath}" ] \
         && _alrt "alias site_path parse failed on $(basename "${_alias}") -- binding tally unreliable, read as zero"
-    fi
+      break
+    done
   fi
 }
 

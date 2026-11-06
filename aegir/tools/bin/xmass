@@ -2369,6 +2369,27 @@ _xmass_solr_ts_line() {
   esac
 }
 
+### An empty binding tally out of a broken alias parse is indistinguishable
+### from "no site uses Solr" -- spot-verify one site alias before believing
+### it. Only a site alias carries site_path: a platform or server alias never
+### does and a link reads as nothing, so the first alias of type site is the
+### one checked. The type is matched loosely, so a changed alias layout
+### still trips the check. No site alias at all leaves nothing to tally.
+### Kept in step with solrtrim's _collect_bindings.
+_xmass_solr_spot_check_alias() {
+  local _alias _atext _apath
+  for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
+    _atext=$(_xmass_read_file "${_alias}")
+    printf '%s\n' "${_atext}" \
+      | grep -qE "'context_type'[[:space:]]*=>[[:space:]]*'site'" || continue
+    _apath=$(printf '%s\n' "${_atext}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+    [ -z "${_apath}" ] \
+      && _alrt "  alias site_path parse failed on $(basename "${_alias}") -- the binding tally is unreliable and read as zero"
+    break
+  done
+  return 0
+}
+
 _XMASS_SOLR_CLASSIFIED=NO   # YES once this process classified the source
 ### Classify the SOURCE's per-version Solr use from measured state: service,
 ### dotted cores, document counts via the cores STATUS endpoint, per-site
@@ -2425,16 +2446,7 @@ _xmass_solr_classify_source() {
       && _xmass_read_file "${_apath}/modules/boa_site_control.ini" \
         | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
-  ### An empty tally out of a broken alias parse is indistinguishable from
-  ### "no site uses Solr" -- spot-verify one alias before believing it.
-  if [ -z "${_bindraw}" ]; then
-    _alias=$(ls /data/disk/*/.drush/*.alias.drushrc.php 2>/dev/null | head -1)
-    if [ -n "${_alias}" ]; then
-      _apath=$(_xmass_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
-      [ -z "${_apath}" ] \
-        && _alrt "  alias site_path parse failed on $(basename "${_alias}") -- the binding tally is unreliable and read as zero"
-    fi
-  fi
+  [ -z "${_bindraw}" ] && _xmass_solr_spot_check_alias
 
   for _sv in solr4 solr7 solr9; do
     case "${_sv}" in
