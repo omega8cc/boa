@@ -26,6 +26,18 @@
       apply, and site lines that win over a platform's, are named in
       .fpm-per-platform-skipped.info.
 
+    * A server moved without Solr can take one version back: xmass
+      restore-solr solr9 (or solr7, solr4) clears that version's own deny
+      and the blanket Java deny in every form the cnf holds them, renames
+      the data tree the move left there in place to a dated name and
+      keeps it, since BOA's installer skips a version whose tree is
+      present, and names the system pass that installs it. For solr7 and
+      solr9 the kept tree stays in the version's home, and solrtrim
+      remove refuses that version until it is archived and deleted by
+      hand, printing the commands that do it. The other versions keep
+      their denies. It refuses, changing nothing, while that pass could
+      not install the version.
+
 @=> Security
 
     * The files storage wrapper an account's tasks call through sudo holds a
@@ -133,8 +145,8 @@
       longer stops with "0 site(s) converted" on a box that was the standing
       mirror of another: the other box's panel vhost, which the file sync
       carried, is not a site, for xoct or for xtrim. xmass restore-target now
-      keeps that vhost aside as a dot-file, which nginx and a later move never
-      read.
+      keeps that vhost aside as a dot-file, which nginx and a later move
+      never read.
 
     * Switching AppArmor on needs a barracuda upgrade and a reboot, and the box
       now boots in the mode chosen. The upgrade before the reboot places BOA's
@@ -205,6 +217,75 @@
       next reboot or barracuda pass: the learning profile made for crontab
       while the profiles were in complain mode is removed once enforce mode
       is back.
+
+    * On a box relaying moved sites, the certificate mirror now warns when a
+      relayed site's certificate has expired, or will within the warning
+      window, and its target holds nothing newer: the daily run names the
+      site and mails the admin. Before, it stayed silent until a refresh
+      failed, and visitors met the browser's warning first. A set the target
+      never renews nightly by design (a site disabled in the panel there, a
+      custom certificate, a .dev. or .test. name) is named and left out of
+      the warning.
+
+    * The certificate mirror checks every file it pulls: a chain.pem that
+      does not read as certificates is refused for that site alone, and
+      cert.pem is written from the pulled certificate instead of copied, so
+      it names the certificate served even where a custom one installed on
+      the target left an older file at that name. Before, such a chain.pem
+      failed nginx's config test for the whole run, every pulled set was put
+      back, and the run stopped before its warning, every day. After a failed
+      config test the warning now still runs.
+
+    * xmass, xoct and xcopy open a connection again when the other server's
+      sshd dropped it before its banner, as MaxStartups does while a scanner
+      holds its slots: up to twenty more tries, 10 s apart at first and 25 s
+      at most, about 8 minutes of waits, each told on the terminal the tool
+      runs on and noted in /var/log/boa/<tool>.drop.log. Once a chain has
+      used them all, later calls to that server in the same run get three
+      tries, so a stop already decided no longer keeps a source on 503 for
+      8 minutes a call. The host key scan before the first contact with a
+      new peer is run again the same way. Nothing ran on that server, yet
+      the step failed: a sync denied, a cutover parked or froze the source,
+      a move to a new peer stopped at host key verification. Any other
+      failure is never retried and reads as before. The waits for a replica
+      to catch up and for a target to go quiet count wall time, not their
+      sleeps; a cutover that stops before its write freeze lifts the 503
+      gate before it clears the target's SQL watchdog mute; a refused xmass
+      verb drops its lock only after undoing what it set on the other server.
+
+    * xmass pre-mig on a source checks the control panels of exactly the
+      accounts the move takes. A directory the move skips, such as an
+      account marked CANCELLED or a link to an account, no longer stops
+      pre-mig, and one it takes with no such user, such as a copy under a
+      dot name or without a panel alias, now does. On a target the source's
+      key and its csf opening go in before the accounts' panels are
+      checked, so a stop there leaves prep-target the access it needs.
+
+    * An upgrade drops an earlier panel's database user only in the pass of
+      the account it belongs to: the longest account name, or the master's
+      address label, it begins with. An account whose name ends in a letter,
+      such as abc beside abcd, no longer takes the leftovers of the account
+      whose name extends it, and the master's pass leaves those of an
+      account named after its label and more.
+
+    * boa in-dev, in-pro and in-lts on a public install take a word in the
+      user slot as the extra only when it starts with php-, as the install
+      docs say. An account named php, ophp1 or myphp was installed as o1
+      instead, and the name was written as the New Relic key.
+
+    * The nightly's Drush on a Drupal 6 or 7 site follows the command-line
+      PHP the account chose for it (cli.info, a phpNN.info switch, the
+      platform's cli-per-platform.info line) when that is older than the PHP
+      the nightly pins (7.4, or the server default where 7.4 is not
+      installed), as the site's own Ægir tasks do. It took the pinned PHP
+      regardless, so a Drupal 6 core older than 6.45 died on ereg() every
+      night: its open user registration was never switched to admin
+      approval, and the account's report carried the Drush error. A site
+      whose PHP is the pinned one or newer still runs on the pinned one. The
+      nightly asks websh which PHP a site gets by naming its alias alone, and
+      websh's PHP-FPM check needs --uri, so that check does not judge the
+      answer: a site whose core cannot run on its PHP-FPM version also runs
+      on the older PHP, as its own Verify does.
 
     * On a box with automatic updates off (_SKYNET_MODE=OFF) the migration
       proxy trust and realip tools now stay current with xoct and xmass, which
@@ -545,6 +626,14 @@
       certificate out of the check, and still refuses an expired certificate
       of a live site.
 
+    * solrtrim status, and the Solr check before an xmass move, no longer
+      warn that an alias could not be read ("alias site_path parse failed")
+      when no site uses Solr and the first alias listed is a platform or
+      server alias, or a link: only a site alias holds a site path. The check
+      now passes over platform and server aliases and links, and still warns
+      on the first other alias without a site path, so an alias that cannot
+      be read, or one in a layout it does not know, is still named.
+
     * A site disabled in the panel no longer fails a move's probes: its
       placeholder page is the same page as the catch-all they refuse, so
       xmass verify called it broken and every xtrim plan, quiesce and shrink
@@ -553,12 +642,31 @@
       answer on both routes, so a site with a live vhost behind a catch-all
       answer, a dead port or a 500 still fails.
 
-    * A whole-server move now names each site it left without HTTPS on the
-      old server, because the site's certificate files were incomplete at
-      the conversion, at the end of xmass cutover and in xmass verify, with
-      the repair to run for its account. They were named only once, in the
-      middle of the conversion's output, and verify read HTTPS on the new
-      server alone, where these sites serve right.
+    * A whole-server move now names each site it left without its own
+      HTTPS on the old server, because the site's certificate files were
+      incomplete at the conversion, at the end of xmass cutover and in xmass
+      verify, with the repair to run for its account. They were named only
+      once, in the middle of the conversion's output, and verify read HTTPS
+      on the new server alone, where these sites serve right.
+
+    * xoct now says what a site with incomplete certificate files does on
+      the old server once converted: HTTPS still answers there, on the
+      server's own wildcard certificate, so a browser warns, and nothing
+      reaches the old copy of the site. It said HTTPS would fail. xmass now
+      says why it skips the HTTPS half of its outside check of the new
+      server: no wildcard HTTPS front there, or what listens there could not
+      be read, a dropped connection being tried once more first. Its closing
+      line then names port 80 alone; it named 443 as proven either way.
+
+    * xoct's line on the soonest certificate expiry of a proxied account
+      now reads only the certificates its HTTPS proxies serve, the ones the
+      certificate mirror keeps, and warns when that date has passed, as the
+      proxy then serves that certificate expired until the mirror pulls a
+      newer set from the new server (daily, or when run by hand). It read
+      every set in the account's ssl.d, so an old .bak folder, the default
+      pair or a set no site serves was named instead, always as a date the
+      mirror would renew before. A conversion now prints it once it has
+      written those proxies, no longer before.
 
     * A standing mirror now drops the dumps the old server rotated out of an
       account's store under /data/disk/arch when that store is a link onto

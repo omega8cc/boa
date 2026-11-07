@@ -25,9 +25,11 @@
 # cannot halt a catalogue build. Instead each finished distribution gets a fix step: every
 # advisory-affected package moves to the newest release its constraints allow (never
 # drupal/core, whose newer release is a new platform name, and never a package the build
-# holds). Every distro and vanilla core is then audited (composer audit --locked, never
-# fatal); the result, with what the fix step moved and what it could not, is recorded
-# beside the tarball as <platform>.advisories and counted in the run summary.
+# holds), and a module that holds a library below its fix moves with the library, unless
+# the distribution pins the module. Every distro and vanilla core is then audited
+# (composer audit --locked, never fatal); the result, with what the fix step moved and
+# what it could not, is recorded beside the tarball as <platform>.advisories and counted
+# in the run summary.
 # distribute replaces a published distro or vanilla core tarball with a same-name one
 # whose lock differs, unless the new lock adds advisories the published one lacks or
 # either side cannot be audited or compared (both sides audited at that moment): those
@@ -1262,6 +1264,272 @@ _fix_kept() {
   return 0
 }
 
+_fix_root_name() {
+  # Prints the name `composer why` gives workdir $1's root package: its composer.json
+  # name, or __root__ when it has none.
+  local _n
+  _n="$(_run_as_o8 "cd '$1' && composer config name 2>/dev/null" 2>/dev/null | tail -n1)"
+  if [[ "${_n}" =~ ^[a-z0-9_.-]+/[a-z0-9_.-]+$ ]]; then
+    printf '%s' "${_n}"
+  else
+    printf '%s' "__root__"
+  fi
+}
+
+_fix_requirers() {
+  # Prints the lock's direct requirers of package $2 in workdir $1 (composer why
+  # --locked): name, locked version and constraint, tab-separated, one per line. A
+  # conflict or replace line is not a requirer; a requirement for development is one,
+  # since the lock resolves it. A leading v on the version goes, as _lock_version
+  # drops it, so the two compare. All three fields reach shell strings
+  # and come from the lock, so a line is printed only when each passes its character
+  # check (a constraint: digits, letters, the operators, @ ! | , spaces and dots).
+  _run_as_o8 "cd '$1' && composer why --locked '$2' 2>/dev/null" 2>/dev/null \
+    | awk -v _p="$2" '
+      { _l = $0; sub(/ requires \(for development\) /, " requires ", _l); $0 = _l }
+      $3 == "requires" && $4 == _p {
+        _c = $0
+        sub(/^.*requires[[:space:]]+[^[:space:]]+[[:space:]]+\(/, "", _c)
+        sub(/\)[[:space:]]*$/, "", _c)
+        if ($2 ~ /^v[0-9]/) $2 = substr($2, 2)
+        if ($1 !~ /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/ && $1 != "__root__") next
+        if ($2 !~ /^[0-9A-Za-z.+-]+$/) next
+        if (_c !~ /^[0-9A-Za-z.*^~<>=!][0-9A-Za-z.*^~<>=|,@!+ -]*$/) next
+        printf "%s\t%s\t%s\n", $1, $2, _c
+      }'
+}
+
+_fix_newest_php() {
+  # Reads `composer show --available --format=json` for one package and prints its
+  # newest release: the newest stable one, else the newest tagged pre-release, never
+  # a branch. Composer lists the versions newest first. PHP 5.6-safe.
+  cat <<'EOF'
+<?php
+$d = json_decode(stream_get_contents(STDIN), true);
+$v = is_array($d) && isset($d['versions']) && is_array($d['versions']) ? $d['versions'] : array();
+$t = '';
+foreach ($v as $x) {
+  $x = (string) $x;
+  if (substr($x, 0, 4) === 'dev-' || substr($x, -4) === '-dev') {
+    continue;
+  }
+  if (!preg_match('/[-+]/', $x)) {
+    echo ltrim($x, 'v'), "\n";
+    exit(0);
+  }
+  if ($t === '') {
+    $t = $x;
+  }
+}
+if ($t !== '') {
+  echo ltrim($t, 'v'), "\n";
+}
+exit(0);
+EOF
+}
+
+_fix_newest() {
+  # Prints the newest release of package $2 within constraint $3 as workdir $1's
+  # repositories offer it (see _fix_newest_php), or nothing when Composer cannot say.
+  # $2 and $3 passed _fix_requirers' character checks; the helper is in the day dir.
+  _run_as_o8 "cd '$1' && composer show --available '$2' '$3' --format=json 2>/dev/null | php '${_DAY_DIR}/.fix-newest.php'" 2>/dev/null | head -n1
+}
+
+_fix_pin_of() {
+  # $1 workdir, $2 a package, $3 its locked version, $4 the root's name. Among the
+  # requirers of $2 a fix resolve never moves - the project's composer.json, a held
+  # package, drupal/core - finds one whose constraint allows nothing newer than $3.
+  # Sets _FIX_PIN to the phrase for it, _FIX_PINNER to its name and _FIX_PIN_KIND to
+  # root, held or core (all three empty, and 1, when none pins it): variables, not
+  # output, so the caller need not run it in a subshell. Reads the caller's _hold
+  # (bash's dynamic scope).
+  local _n _nv _c
+  _FIX_PIN=""
+  _FIX_PINNER=""
+  _FIX_PIN_KIND=""
+  while IFS=$'\t' read -r _n _nv _c; do
+    [[ -n "${_n}" ]] || continue
+    case "${_n}" in
+      "$4"|__root__)             _FIX_PIN_KIND="root" ;;
+      drupal/core|drupal/core-*) _FIX_PIN_KIND="core" ;;
+      *) [[ "${_hold}" == *" ${_n} "* ]] && _FIX_PIN_KIND="held" || continue ;;
+    esac
+    [[ "$(_fix_newest "$1" "$2" "${_c}")" == "$3" ]] || { _FIX_PIN_KIND=""; continue; }
+    _FIX_PINNER="${_n}"
+    case "${_FIX_PIN_KIND}" in
+      root) _FIX_PIN="pinned by the project's composer.json (${_c})" ;;
+      core) _FIX_PIN="held by ${_n} ${_nv} (${_c}), fixed only by a newer core" ;;
+      *)    _FIX_PIN="pinned by ${_n} ${_nv} (${_c})" ;;
+    esac
+    return 0
+  done < <(_fix_requirers "$1" "$2")
+  return 1
+}
+
+_fix_note_add() {
+  # Adds $1 to _FIX_NOTE (the row's note), once.
+  case "; ${_FIX_NOTE}; " in
+    *"; $1; "*) return 0 ;;
+  esac
+  _FIX_NOTE="${_FIX_NOTE:+${_FIX_NOTE}; }$1"
+}
+
+_fix_holders() {
+  # $1 workdir, $2 a package an audit still names, $3 its locked version. Reads its
+  # direct requirers; one whose constraint allows nothing newer than $3 holds the
+  # package there. Sets _FIX_FREE to the holders a resolve may move - neither the
+  # project's composer.json, a held package or drupal/core, nor a package one of
+  # those pins - and _FIX_HELD to the phrase for the others (empty when there are
+  # none); a holder the distribution or the project pins is also a row note. The
+  # requirers a resolve never moves are read first: when one of them pins the
+  # package, nothing else needs asking. A requirer whose newest allowed release
+  # Composer cannot name does not count as holding and is listed in _FIX_UNREAD,
+  # so the record says the question went unanswered. Reads the caller's _hold.
+  local _wd="$1" _p="$2" _v="$3" _root _n _nv _c _x _l _own=() _others=()
+  _FIX_FREE=""
+  _FIX_HELD=""
+  _FIX_UNREAD=""
+  _root="$(_fix_root_name "${_wd}")"
+  while IFS=$'\t' read -r _n _nv _c; do
+    [[ -n "${_n}" ]] || continue
+    case "${_n}" in
+      "${_root}"|__root__|drupal/core|drupal/core-*) _own+=("${_n}"$'\t'"${_nv}"$'\t'"${_c}") ;;
+      *)
+        if [[ "${_hold}" == *" ${_n} "* ]]; then
+          _own+=("${_n}"$'\t'"${_nv}"$'\t'"${_c}")
+        else
+          _others+=("${_n}"$'\t'"${_nv}"$'\t'"${_c}")
+        fi
+        ;;
+    esac
+  done < <(_fix_requirers "${_wd}" "${_p}")
+  for _l in "${_own[@]}" "${_others[@]}"; do
+    IFS=$'\t' read -r _n _nv _c <<< "${_l}"
+    _x="$(_fix_newest "${_wd}" "${_p}" "${_c}")"
+    if [[ -z "${_x}" ]]; then
+      _FIX_UNREAD="${_FIX_UNREAD:+${_FIX_UNREAD}, }${_n}"
+      continue
+    fi
+    [[ "${_x}" == "${_v}" ]] || continue
+    case "${_n}" in
+      "${_root}"|__root__)
+        _FIX_HELD="pinned by the project's composer.json (${_c})"
+        _FIX_FREE=""
+        return 0
+        ;;
+      drupal/core|drupal/core-*)
+        _FIX_HELD="held by ${_n} ${_nv} (${_c}), fixed only by a newer core"
+        _FIX_FREE=""
+        return 0
+        ;;
+    esac
+    if [[ "${_hold}" == *" ${_n} "* ]]; then
+      _FIX_HELD="pinned by ${_n} ${_nv} (${_c})"
+      _FIX_FREE=""
+      return 0
+    fi
+    if _fix_pin_of "${_wd}" "${_n}" "${_nv}" "${_root}"; then
+      _FIX_HELD="${_FIX_HELD:+${_FIX_HELD}; }held by ${_n} ${_nv} (${_c}), ${_FIX_PIN}"
+      case "${_FIX_PIN_KIND}" in
+        root) _fix_note_add "${_n} pinned by the project" ;;
+        held) _fix_note_add "${_n} pinned by ${_FIX_PINNER}" ;;
+      esac
+    else
+      _FIX_FREE="${_FIX_FREE:+${_FIX_FREE} }${_n}"
+    fi
+  done
+  return 0
+}
+
+_fix_dependents() {
+  # $1 workdir, $2 label. The second half of _fix_advisories, on its locals (bash's
+  # dynamic scope: _was, _hold, _held, _why, _via, _up). Composer moves a listed
+  # package and what it requires, never a package that requires it, so a module whose
+  # constraint allows nothing newer than a library's locked release keeps the library
+  # below its fix however often the library alone is listed. For every package an
+  # audit of the resolved lock still names, the holders a resolve may move
+  # (_fix_holders) join one resolve with it, kept when the package moved and
+  # drupal/core and the held packages did not; the others are the package's reason.
+  # A freed library can meet its next holder, so this repeats after a fresh audit,
+  # three rounds at most, while a resolve moved something; a package is tried once
+  # per release it sits at.
+  local _wd="$1" _label="$2" _round _rep _left _p _v0 _v1 _d _out _rc _any _with _names _moved
+  local -A _tried=() _dv=()
+  if ! _fix_newest_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-newest.php'"; then
+    _FIX_LINES+=("# holders not checked: could not write the version helper")
+    return 0
+  fi
+  for _round in 1 2 3; do
+    _rep="$(_audit_tree "${_wd}")"
+    if [[ ! "$(sed -n '1s/^advisories: //p' <<< "${_rep}")" =~ ^[0-9]+$ ]]; then
+      _FIX_LINES+=("# holders not checked: the audit after the resolve did not run")
+      break
+    fi
+    _left=""
+    for _p in $(awk -F'\t' 'NR > 1 && !/^#/ && $2 ~ /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/ { print $2 }' <<< "${_rep}" | sort -u); do
+      [[ -n "${_was[${_p}]+x}" ]] || continue
+      case "${_why[${_p}]:-}" in *"GitHub refused"*) continue ;; esac
+      [[ "${_tried[${_p}]:-}" == "$(_lock_version "${_wd}" "${_p}")" ]] && continue
+      _left+=" ${_p}"
+    done
+    [[ -n "${_left}" ]] || break
+    _any=0
+    for _p in ${_left}; do
+      _v0="$(_lock_version "${_wd}" "${_p}")"
+      _tried[${_p}]="${_v0}"
+      _fix_holders "${_wd}" "${_p}" "${_v0}"
+      if [[ -n "${_FIX_HELD}" ]]; then
+        # A pinned holder caps the package whatever the other holders allow.
+        _why[${_p}]="${_FIX_HELD}${_FIX_FREE:+; also held by ${_FIX_FREE// /, }}"
+        continue
+      fi
+      if [[ -z "${_FIX_FREE}" ]]; then
+        [[ -n "${_FIX_UNREAD}" ]] && _why[${_p}]="${_why[${_p}]:-no fixed release within the constraints}; the releases of ${_FIX_UNREAD} were not read"
+        continue
+      fi
+      _with=""
+      _names=""
+      for _d in ${_FIX_FREE}; do
+        _dv[${_d}]="$(_lock_version "${_wd}" "${_d}")"
+        _with+=" '${_d}'"
+        _names="${_names:+${_names}, }${_d} ${_dv[${_d}]}"
+      done
+      _msg "${_label}: ${_p} ${_v0} is held by ${_names}: one resolve with them"
+      if ! _run_as_o8 "cp -f '${_wd}/composer.lock' '${_wd}/.lock.step'"; then
+        _why[${_p}]="held by ${_names}; could not keep a copy of composer.lock"
+        continue
+      fi
+      _out="$(_run_as_o8 "cd '${_wd}' && ${_up} '${_p}'${_with} 2>&1")"
+      _rc=$?
+      printf '%s\n' "${_out}"
+      _v1="$(_lock_version "${_wd}" "${_p}")"
+      if [[ "${_rc}" != "0" ]]; then
+        _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
+        _why[${_p}]="$(_fix_why "${_out}"); with ${_names} listed"
+      elif ! _fix_kept "${_wd}"; then
+        _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
+        _why[${_p}]="held by ${_names}; a release of them allowing the fix needs ${_FIX_MOVED}"
+      elif [[ "${_v1}" == "${_v0}" ]]; then
+        _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
+        _why[${_p}]="held by ${_names}; no release of them allowing a newer one resolves"
+      else
+        _any=1
+        _moved=""
+        for _d in ${_FIX_FREE}; do
+          _v1="$(_lock_version "${_wd}" "${_d}")"
+          [[ "${_v1}" != "${_dv[${_d}]}" ]] || continue
+          _moved="${_moved:+${_moved}, }${_d} ${_dv[${_d}]} -> ${_v1}"
+        done
+        _via[${_p}]="${_via[${_p}]:+${_via[${_p}]}, }${_moved:-${_names}}"
+        unset "_why[${_p}]"
+      fi
+    done
+    [[ "${_any}" == "1" ]] || break
+  done
+  _run_as_o8 "rm -f '${_DAY_DIR}/.fix-newest.php'"
+  return 0
+}
+
 _fix_advisories() {
   # Apply the fixed releases of every advisory-affected package a distro build locked
   # (see _fix_step for where it runs). $1 = the distro workdir, $2 = label, $3 = the
@@ -1273,12 +1541,15 @@ _fix_advisories() {
   # repository pays an anonymous GitHub request for it. When that resolve fails, or
   # moves drupal/core or a held package, the packages go one at a time instead, and a
   # move of either is put back: a newer core or distribution is a new platform name,
-  # which the catalogue takes with a BOA release. The result installs once. Sets
-  # _FIX_BEFORE (the count before), _FIX_LINES (the record for .advisories) and
-  # _FIX_NOTE (a word for the row). Returns 1 when the fixed lock does not install.
+  # which the catalogue takes with a BOA release. A package still at an affected
+  # release after that is held there by what requires it: its holders join a resolve
+  # with it, unless the distribution or the project pins them (_fix_dependents). The
+  # result installs once. Sets _FIX_BEFORE (the count before), _FIX_LINES (the record
+  # for .advisories) and _FIX_NOTE (the row's notes). Returns 1 when the fixed lock
+  # does not install.
   local _wd="$1" _label="$2" _hold=" ${3:-} " _rep _pkgs _p _v0 _v1 _moved=0
   local _todo="" _out _rc _keep _nodev=""
-  local -A _was=() _held=() _why=()
+  local -A _was=() _held=() _why=() _via=()
   local _env="COMPOSER_NO_SECURITY_BLOCKING=1"
   local _up="${_env} composer update --no-install --no-scripts --with-dependencies --minimal-changes ${_FIX_IGNORE_EXT}"
   _FIX_BEFORE=""
@@ -1348,13 +1619,14 @@ _fix_advisories() {
       fi
     done
   fi
+  _fix_dependents "${_wd}" "${_label}"
   # One line per package, read from the final lock: a package another fix moved as its
   # dependency counts as moved, whatever its own resolve did.
   for _p in ${_pkgs}; do
     [[ -n "${_was[${_p}]+x}" ]] || continue
     _v1="$(_lock_version "${_wd}" "${_p}")"
     if [[ "${_v1}" != "${_was[${_p}]}" ]]; then
-      _FIX_LINES+=("# updated: ${_p} ${_was[${_p}]} -> ${_v1}")
+      _FIX_LINES+=("# updated: ${_p} ${_was[${_p}]} -> ${_v1}${_via[${_p}]:+ (with ${_via[${_p}]}, which held it)}")
       _moved=1
     else
       _FIX_LINES+=("# not fixed: ${_p} ${_v1} (${_why[${_p}]:-no fixed release within the constraints})")
@@ -1380,7 +1652,7 @@ _fix_advisories() {
     # A patch that no longer applies to a fixed release is skipped, as in any build
     # here (composer-exit-on-patch-failure false), but never quietly.
     if grep -qiE 'could not apply patch|cannot apply patch' <<< "${_out}"; then
-      _FIX_NOTE="patch skipped"
+      _fix_note_add "patch skipped"
       _FIX_LINES+=("# warning: a patch did not apply to a fixed release, see the run log")
     fi
   fi
