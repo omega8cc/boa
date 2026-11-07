@@ -220,7 +220,8 @@
       next restart, usually the next reboot: it was reloaded, which brings
       back nothing. It is now restarted there, saving its data on the way
       down and loading it on start, so this restart empties no cache; the
-      saved copy is deleted once loaded.
+      saved copy is deleted after the start. The Valkey watchdog stands down
+      meanwhile, so a large cache is never killed in the middle of its save.
 
     * The task guard, which marks crashed control panel tasks failed, can no
       longer be stopped for good by a named pipe in an instance's tree. It
