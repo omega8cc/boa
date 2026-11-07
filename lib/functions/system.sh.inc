@@ -8215,6 +8215,69 @@ _turn_off_apparmor_temporarily() {
 }
 
 #
+# valkey-cli as root, over the socket when there is one.
+_valkey_root_cli() {
+  local _psw="${1}"
+  local _args=()
+  shift
+  [ -S "/run/valkey/valkey.sock" ] && _args+=(-s /run/valkey/valkey.sock)
+  [ -n "${_psw}" ] && _args+=(-a "${_psw}" --no-auth-warning)
+  timeout 60 valkey-cli "${_args[@]}" "$@" 2> /dev/null
+}
+
+#
+# The pass's AppArmor teardown leaves a running Valkey unconfined, and only a
+# new process takes its profile again: a reload does not. This Valkey is a
+# cache that saves nothing, so a plain restart would start every site's cache
+# empty: it saves on its way down, the new process loads that, and the dump
+# goes once loaded, so no later restart reads a stale one. A save it refuses
+# leaves it running as it was, unconfined until its next restart.
+_valkey_back_under_profile() {
+  local _pid _psw _save _aof _dir _dbf _i _lab
+  [ -x "/etc/init.d/valkey-server" ] || return 0
+  _pid=$(pgrep -xo valkey-server)
+  [ -n "${_pid}" ] || return 0
+  _lab=$(tr -d '\000' 2> /dev/null < "/proc/${_pid}/attr/current")
+  [ "${_lab}" = "unconfined" ] || return 0
+  grep -qxF '/usr/bin/valkey-server (enforce)' \
+    /sys/kernel/security/apparmor/profiles 2> /dev/null || return 0
+  _psw=$(grep -m1 "^user default on >" /etc/valkey/valkey.conf 2> /dev/null \
+    | sed "s/.*>//; s/ .*//")
+  _save=$(_valkey_root_cli "${_psw}" CONFIG GET save | sed -n 2p)
+  _aof=$(_valkey_root_cli "${_psw}" CONFIG GET appendonly | sed -n 2p)
+  _dir=$(_valkey_root_cli "${_psw}" CONFIG GET dir | sed -n 2p)
+  _dbf=$(_valkey_root_cli "${_psw}" CONFIG GET dbfilename | sed -n 2p)
+  [ -n "${_dir}" ] || _dir=/var/lib/valkey
+  [ -n "${_dbf}" ] || _dbf=dump.rdb
+  _valkey_root_cli "${_psw}" SHUTDOWN SAVE > /dev/null
+  for _i in $(seq 1 120); do
+    kill -0 "${_pid}" 2> /dev/null || break
+    sleep 1
+  done
+  if kill -0 "${_pid}" 2> /dev/null; then
+    _msg "ALRT: Valkey did not save and stop, it runs unconfined until its next restart"
+    return 1
+  fi
+  _mrun "service valkey-server start"
+  for _i in $(seq 1 120); do
+    [ "$(_valkey_root_cli "${_psw}" PING)" = "PONG" ] && break
+    sleep 1
+  done
+  if [ -z "${_save}" ] && [ "${_aof}" != "yes" ]; then
+    rm -f "${_dir}/${_dbf}"
+  fi
+  _pid=$(pgrep -xo valkey-server)
+  _lab=$(tr -d '\000' 2> /dev/null < "/proc/${_pid:-0}/attr/current")
+  if [ "${_lab}" = "/usr/bin/valkey-server (enforce)" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "ARMR: Valkey runs under its profile again, its cache kept"
+    fi
+  else
+    _msg "ALRT: Valkey came back as ${_lab:-nothing}, not under its profile"
+  fi
+}
+
+#
 # Enforce AppArmor profiles.
 _if_enforce_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8237,9 +8300,7 @@ _if_enforce_apparmor_profiles() {
         fi
         _mrun "bash /var/xdrago/move_sql.sh"
         wait
-        if [ -e "/etc/init.d/valkey-server" ]; then
-          _mrun "service valkey-server reload"
-        fi
+        _valkey_back_under_profile
         _mrun "pkill -u unbound -x unbound"
         _mrun "killall pure-ftpd"
         _mrun "killall rsyslogd"
@@ -8247,6 +8308,26 @@ _if_enforce_apparmor_profiles() {
       fi
     fi
   fi
+}
+
+#
+# Put AppArmor and auditd back in the boot order, only where no start link is
+# left: update-rc.d then writes the init script's own links, and a boot order
+# that still starts them stays as it is.
+_apparmor_boot_links() {
+  local _svc
+  for _svc in apparmor auditd; do
+    [ -x "/etc/init.d/${_svc}" ] || continue
+    compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null && continue
+    update-rc.d "${_svc}" defaults &> /dev/null
+    if compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "ARMR: ${_svc} starts on boot again"
+      fi
+    else
+      _msg "ALRT: ${_svc} is not in the boot order, the next boot will not start it"
+    fi
+  done
 }
 
 #
@@ -8363,6 +8444,12 @@ _sync_apparmor_profiles() {
       if [[ ! "${_AUDITD_CNF_WRT_TEST}" =~ "write_logs" ]]; then
         echo "write_logs = yes" >> /etc/audit/auditd.conf
       fi
+    fi
+    # A pass with no mode chosen takes AppArmor and auditd out of the boot
+    # order (the last arm below); a mode chosen later puts them back, or the
+    # next boot loads no profile at all and nothing says so.
+    if _apparmor_mode_chosen; then
+      _apparmor_boot_links
     fi
     if [ "${_isAppArmOn}" = "Y" ]; then
       if [ -e "/root/.activate.apparmor.cnf" ]; then

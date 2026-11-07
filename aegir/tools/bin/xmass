@@ -5049,8 +5049,7 @@ _xmass_init_unwind() {
     # so close this run's window -- both carriers: second.sh has minted the
     # twin from this run's signal by now, and restore-target, the remedy
     # for this box, refuses while either exists -- and leave the rest.
-    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
-      "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+    _xmass_promotion_window_close
     _info "init unwound: target ${_tgt} left as the standby it already was (marker, database lock and holds untouched)"
   elif [ "${_XMASS_INIT_COMMITTED}" != "YES" ]; then
     # Re-arm ONLY what our own hold disarmed (the target-side list the
@@ -10824,16 +10823,16 @@ _xmass_restore_hint() {
     # kill -- on the source AND the target, for the rest of its 240-min
     # expiry. Same reasoning as the init unwind; a park that will be
     # RESUMED keeps its mute, which is why this is the pre-promotion arm.
-    # This box's half now; the target's half after the gate lift below, since
-    # an abort under a flood of dropped connections would wait out that call
-    # with the source still on 503.
+    # This box's half now; the target's half last of all, once this box is
+    # handed back below (its gate and its Solr): under a flood of dropped
+    # connections that call waits out every try, and nothing this box serves
+    # may wait behind it.
     rm -f /run/boa_sql_maintenance.pid
     _mute_tgt=YES
   fi
   # The gate lift and the thaw go here, once cron and the runners are back:
   # the freeze paragraph below then reads a cleared include and stays silent.
   [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ] && _xmass_cutover_unwind
-  [ "${_mute_tgt}" = "YES" ] && _xmass_maint_off
   # Read the flag from the file, not from a variable: this paragraph must match
   # what is actually in the include at the moment the operator reads it (a
   # barracuda system pass on this box removes the block without a log line).
@@ -10875,6 +10874,9 @@ _xmass_restore_hint() {
   else
     _alrt "Then confirm a site returns 200 before deciding what to do next."
   fi
+  # A call that cannot get through names the command to run there.
+  [ "${_mute_tgt}" = "YES" ] && _xmass_maint_off_target
+  return 0
 }
 
 _xmass_block_web_all() {
@@ -12969,7 +12971,7 @@ _xmass_release_source_events() {
 # that leaves the target a replica; one left open stands the target's database
 # hold down for up to 48 hours, so a failure says how to close it by hand.
 _xmass_promotion_window_close() {
-  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
     "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null && return 0
   _alrt "could not remove the promotion-window signal on ${_tgt}: its database hold stands down"
   _alrt "  until it is gone (48 hours at most) -- remove it there: rm -f /run/boa_xmass_init.pid /root/.standby.init.pid"
@@ -19407,6 +19409,12 @@ _xmass_cmd_cutover() {
     # unlock the target's database and its standby marker would go.
     if [ "${_XMASS_TARGET_ARMED}" != "YES" ] \
       && ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
+      # The parked run's 503 gate is still on disk, but this run has not
+      # re-asserted it yet: the hint must name it, with its recipe.
+      local _wb
+      for _wb in ${_ELIGIBLE_ACCOUNTS}; do
+        [ -e "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
+      done
       _xmass_restore_hint
       _die "Could not re-assert the promotion-window signal on target ${_tgt}" \
            " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- the cutover stays PARKED" \
