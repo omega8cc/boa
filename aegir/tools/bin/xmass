@@ -20875,7 +20875,7 @@ _xmass_cmd_go_live() {
 ### that cannot be written or with a tail lacking --pid, and the last three
 ### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _h _t _c _rc _ws="" _wi
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _h _t _c _r _r2 _rc _ws="" _lead=NO
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -20949,23 +20949,35 @@ _mig_runlog_start() {
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
   ### The wrapper outlives every signal it gets, so it can still drain the
-  ### tail, and notes which one came. TERM and HUP are passed on to the run: a
-  ### kill of the pid the caller holds still stops it, and a hangup the
-  ### terminal sends the session leader alone still reaches it. INT and QUIT
-  ### come from the terminal to the whole group. The placeholder and the tail
-  ### ignore them all; the placeholder ends with the wrapper should the
-  ### wrapper be killed outright.
+  ### tail, and notes which one came. A signal for the run goes to its group
+  ### (Ctrl-C, a closed session, timeout) or to its own pid, the third header
+  ### line: it is never passed on, so the run never gets one twice. The one
+  ### exception is the hangup a terminal sends the session leader alone, when
+  ### the wrapper leads the session (a remote terminal with the tool as its
+  ### command): that is passed on, as the run would have had it. The
+  ### placeholder and the tail ignore them all; the placeholder ends with the
+  ### wrapper should the wrapper be killed outright.
   _c=""
-  trap '_ws=HUP; _wi=1; [ -n "${_c}" ] && kill -s HUP "${_c}" 2> /dev/null' HUP
-  trap '_ws=INT; _wi=1' INT
-  trap '_ws=QUIT; _wi=1' QUIT
-  trap '_ws=TERM; _wi=1; [ -n "${_c}" ] && kill -s TERM "${_c}" 2> /dev/null' TERM
+  [ "$(awk '{ sub(/.*\) /, ""); print $4 }' "/proc/$$/stat" 2> /dev/null)" = "$$" ] && _lead=YES
+  trap '_ws=HUP; [ "${_lead}" = YES ] && [ -n "${_c}" ] && kill -s HUP "${_c}" 2> /dev/null' HUP
+  trap '_ws=INT' INT
+  trap '_ws=QUIT' QUIT
+  trap '_ws=TERM' TERM
   ( trap '' HUP INT QUIT TERM PIPE
     exec tail -s 1 --pid="$$" -f /dev/null ) < /dev/null > /dev/null 2>&1 &
   _h=$!
   ( trap '' HUP INT QUIT TERM PIPE
     exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) 2> /dev/null < "${_file}" &
   _t=$!
+  ### A signal that came before the run exists ends the wrapper on it, as it
+  ### would have ended the tool.
+  if [ -n "${_ws}" ]; then
+    kill -9 "${_h}" 2> /dev/null
+    wait "${_h}" "${_t}" 2> /dev/null
+    trap - "${_ws}"
+    kill -s "${_ws}" "$$"
+    exit 1
+  fi
   ### The run keeps the wrapper's input: 0<&0 counts as its own input, which a
   ### job started with & would otherwise lose to /dev/null.
   if { true <&0; } 2> /dev/null; then
@@ -20976,14 +20988,24 @@ _mig_runlog_start() {
       exec "${BASH:-/bin/bash}" "${_self}" "$@" ) < /dev/null >> "${_file}" 2>&1 &
   fi
   _c=$!
-  ### A wait a trap cut short is waited again: the run's own status is the one
-  ### the wrapper keeps.
+  ### Waited for while it lives: a wait a signal cut short is waited again.
+  ### Once it is gone, a last wait gives the status bash kept when it reaped
+  ### the run during a cut-short wait; 127 there means the loop's own wait had
+  ### the status already.
   while :; do
-    _wi=""
     wait "${_c}"
-    _rc=$?
-    [ -z "${_wi}" ] && break
+    _r=$?
+    kill -0 "${_c}" 2> /dev/null && continue
+    wait "${_c}" 2> /dev/null
+    _r2=$?
+    if [ "${_r2}" -eq 127 ]; then
+      _rc="${_r}"
+    else
+      _rc="${_r2}"
+    fi
+    break
   done
+  _c=""
   kill -9 "${_h}" 2> /dev/null
   wait "${_h}" 2> /dev/null
   while kill -0 "${_t}" 2> /dev/null; do
