@@ -59,13 +59,9 @@ case "$1" in
 	;;
 
   reload)
-    echo -n "Reloading service ${NAME}..."
-    if [ ! -r ${PIDFILE} ]; then
-      echo "warning, no pid file found - ${NAME} is not running ?"
-      exit 1
-    fi
-    kill -USR2 `cat ${PIDFILE}`
-    echo " done"
+    # Valkey has no reload: SIGUSR2 only reaches its thread stack collector,
+    # which logs a warning and changes nothing. A setting takes a restart.
+    echo "${NAME} has no reload; a setting change takes a restart"
 	;;
 
   status)

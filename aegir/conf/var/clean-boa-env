@@ -140,6 +140,12 @@ case "$1" in
       pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
       pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
       pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/minute\.sh( |$)'
+      # A watchdog minute.sh started before cron stopped lives on, and would
+      # take the services stopped below for an outage and heal them while the
+      # box goes down. The ones still waiting for their turn first, as each
+      # becomes a running one when its wait ends.
+      pkill -9 -f '^bash -c (exec [0-9]+>&-; )?(sleep [0-9]+\.[0-9]; )?exec (bash )?/var/xdrago/monitor/check/'
+      pkill -9 -f '^(/bin/)?bash /var/xdrago/monitor/check/'
       echo "Cron has been stopped"
       if { [ ! -e "/root/.allow.clamav.cnf" ] \
         && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
