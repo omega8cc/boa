@@ -206,6 +206,18 @@ _nginx_master_pids() {
     | awk '{print $1}'
 }
 
+_box_going_down() {
+  # Init has left the running levels for a halt (0) or a reboot (6). Its stop
+  # scripts take Nginx away, and they run beside each other, so this watchdog
+  # can still be running while they do: a heal then only races them, and a
+  # start that fails says nothing about the box. A quic_bpf trial in that race
+  # once latched the fragment off for good on a box that had nothing wrong.
+  case "$(runlevel 2> /dev/null)" in
+    *" 0"|*" 6") return 0 ;;
+  esac
+  return 1
+}
+
 _nginx_quic_bpf_shed() {
   # A start that failed with the quic_bpf fragment in place. The eBPF init
   # behind it runs only on a real start (nginx -t skips it) and a failed init
@@ -216,16 +228,25 @@ _nginx_quic_bpf_shed() {
   # On positive evidence first: the error log was rotated just before the
   # restart, so a BPF line in it belongs to this start, and an unknown
   # directive means the binary lost the module. Failing that, by trial:
-  # start without the fragment, and keep it shed only if that is what made
-  # the difference -- a start that fails for some other reason (a busy port,
-  # a broken vhost) gets its fragment back.
+  # start without the fragment, then once more with it, and keep it shed
+  # only if it made the difference both ways -- a start that fails for some
+  # other reason (a busy port, a broken vhost) gets its fragment back, and
+  # so does one that failed for a reason that has since passed.
   local _frag="/etc/nginx/main.d/quic_bpf.conf"
   local _latch="/etc/nginx/main.d/quic_bpf.failed"
   local _tried="/run/boa_nginx_quic_bpf_trial.pid"
   local _how="" _w=0 _now _last
-  # Only a monitor killed in the middle of the trial below leaves this.
-  rm -f "${_frag}.trial"
+  # Only a monitor killed in the middle of the trial below leaves this, and a
+  # trial cut short proved nothing: the fragment goes back.
+  if [ -e "${_frag}.trial" ]; then
+    if [ -e "${_frag}" ]; then
+      rm -f "${_frag}.trial"
+    else
+      mv -f "${_frag}.trial" "${_frag}"
+    fi
+  fi
   [ -e "${_frag}" ] || return 0
+  _box_going_down && return 0
   while [ -z "$(_nginx_master_pids)" ] && [ "${_w}" -lt 4 ]; do
     sleep 0.5
     _w=$(( _w + 1 ))
@@ -257,14 +278,30 @@ _nginx_quic_bpf_shed() {
       sleep 0.5
       _w=$(( _w + 1 ))
     done
-    if [ -n "$(_nginx_master_pids)" ]; then
-      rm -f "${_frag}.trial"
-      _how="Nginx started once the fragment was taken away"
-    else
+    if [ -z "$(_nginx_master_pids)" ]; then
       # Inconclusive, not negative: something else kept Nginx down.
       mv -f "${_frag}.trial" "${_frag}"
       return 0
     fi
+    # Started without it. The cause of the failed start may have passed in
+    # the meantime, so start once more with the fragment: only a second
+    # failure with it in place is the fragment's doing.
+    mv -f "${_frag}.trial" "${_frag}"
+    _box_going_down && return 0
+    service nginx restart
+    _w=0
+    while [ -z "$(_nginx_master_pids)" ] && [ "${_w}" -lt 6 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    if [ -n "$(_nginx_master_pids)" ]; then
+      echo "$(date) INFO: NGX a start failed with quic_bpf on, but the next start with it worked; the fragment stays" >> ${_pthOml}
+      return 0
+    fi
+    _box_going_down && return 0
+    rm -f "${_frag}"
+    service nginx restart
+    _how="Nginx started without the fragment and failed again with it"
   else
     return 0
   fi
@@ -287,6 +324,13 @@ _restart_nginx() {
   fi
   if [ "$2" != "requested" ] && _nginx_start_in_flight; then
     echo "$(date) INFO: NGX $1 but an Nginx start is in flight; standing down" >> "${_pthOml}"
+    [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
+    exit 0
+  fi
+  # A box going down is taking Nginx away itself, a requested restart's
+  # included: a restart now only races its stop scripts.
+  if _box_going_down; then
+    echo "$(date) INFO: NGX $1 but the box is going down; standing down" >> "${_pthOml}"
     [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
     exit 0
   fi
@@ -437,6 +481,10 @@ _nginx_if_up_check_fix() {
       if [ -z "$(_nginx_master_pids)" ] \
         || [ ! -e "/run/nginx.pid" ]; then
         _sql_mutation_began && exit 0
+        if _box_going_down; then
+          echo "$(date) INFO: Nginx not up but the box is going down; standing down" >> "${_pthOml}"
+          return 0
+        fi
         if _nginx_start_in_flight; then
           echo "$(date) INFO: Nginx not up yet but a start is in flight; standing down" >> "${_pthOml}"
           return 0
@@ -1089,7 +1137,7 @@ if [ "${_NGX_GAP_UNKNOWN}" = "YES" ]; then
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
-  && ! _sql_mutation_in_flight; then
+  && ! _sql_mutation_in_flight && ! _box_going_down; then
   _nginx_if_up_check_fix
   _nginx_bind_check_fix
   _nginx_oom_detection

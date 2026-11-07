@@ -210,6 +210,17 @@
       an alert. A box left with /etc/nginx/main.d/quic_bpf.failed from that gets
       it back once the file is deleted and a barracuda upgrade has run.
 
+    * A reboot no longer turns off the HTTP/3 transfers that survive an Nginx
+      reload. A watchdog started before the reboot stopped cron kept running,
+      took the Nginx the shutdown stopped for an outage, and its quic_bpf trial
+      left /etc/nginx/main.d/quic_bpf.failed, which keeps it off for good. The
+      stop of /etc/init.d/clean-boa-env now ends the watchdogs before it stops
+      the services, the Nginx watchdog heals nothing while the box halts or
+      reboots, and its trial starts Nginx once more with the fragment before it
+      blames it: a start that works then keeps the fragment. The next barracuda
+      upgrade sets aside a latch the earlier trial left, as
+      quic_bpf.failed.old-trial, and probes again.
+
     * Choosing an AppArmor mode on a box whose last upgrade ran with none now
       puts AppArmor and auditd back in the boot order, from the next
       barracuda upgrade, the next Octopus run or a barracuda run that stops
