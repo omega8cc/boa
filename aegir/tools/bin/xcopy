@@ -5802,6 +5802,55 @@ _check_root() {
   [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
 }
 
+### The run log. Every verb keeps its whole output, both streams, in
+### /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<YYMMDD-HHMMSS>-<pid>.log,
+### readable by root alone, as barracuda and octopus keep theirs under
+### reports/up; not the polled ones (xmass status, xmass autosync --run, whose
+### monitor keeps each pass, and --status) nor a call with no verb. The tool
+### writes to the file and a tail shows the file on the console: a daemon a
+### verb starts inherits the file, never a pipe whose reader would then wait
+### for it, and the tool keeps its pid, exit status and signals. The tail
+### stops within 0.2 s of the tool. A tool another migration tool runs on
+### this box writes into the caller's log (_MIG_RUNLOG is exported). A log
+### that cannot be opened, or a tail with no --pid, leaves the run as it was
+### and says so once. _MIG_RUNLOG_DIR moves the tree, for tests.
+_mig_runlog_start() {
+  local _tool="${1}" _verb _now _dir _file
+  shift
+  [ -n "${_MIG_RUNLOG:-}" ] && return 0
+  case "${_tool} $*" in
+    "xmass status"|"xmass status "*|"xmass autosync"*" --run"*|"xmass autosync"*" --status"*)
+      return 0
+      ;;
+  esac
+  case "${1:-}" in
+    ''|-*) return 0 ;;
+  esac
+  _verb="$(printf '%s' "${1}" | tr -cd 'a-z0-9-' | cut -c1-32)"
+  _now="$(date +%y%m%d-%H%M%S)"
+  _dir="${_MIG_RUNLOG_DIR:-/var/backups/reports/${_tool}}/${_now%%-*}"
+  _file="${_dir}/${_tool}-${_verb:-none}-${_now}-$$.log"
+  if ! tail --pid=1 -n 0 /dev/null > /dev/null 2>&1; then
+    echo "ALRT: ${_tool}: no run log kept, this tail has no --pid" >&2
+    return 0
+  fi
+  if ! ( umask 077; mkdir -p "${_dir}" && : >> "${_file}" ) 2> /dev/null \
+    || [ -L "${_file}" ] || [ ! -f "${_file}" ]; then
+    echo "ALRT: ${_tool}: no run log kept, ${_file} cannot be written" >&2
+    return 0
+  fi
+  {
+    echo "== ${_tool} $* | $(date '+%F %T %Z') | $(hostname -f 2> /dev/null) | pid $$"
+    echo "== run log: ${_file}"
+  } >> "${_file}"
+  exec 3>&1
+  ( trap '' HUP INT QUIT TERM PIPE
+    exec tail -n +1 -s 0.2 --pid=$$ -f "${_file}" ) >&3 2> /dev/null &
+  exec >> "${_file}" 2>&1 3>&-
+  export _MIG_RUNLOG="${_file}"
+}
+_mig_runlog_start xcopy "$@"
+
 # The DRY/live gate applies ONLY to the migration transfer commands. Utility commands
 # — notably `ssl-gen` (renders proxy SSL vhosts from /root/.ssl.proxy.cnf), plus pre-mig,
 # post-mig, export, import, create and proxy — run unaffected (LIVE) and their arguments
