@@ -298,6 +298,8 @@ _if_solr_four() {
         _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
         for e in ${_TIKA_V}; do
           wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
+          ### A mirror without the jar answers with a page: keep jars only
+          [ "$(head -c 2 tika-app-${e}.jar 2> /dev/null)" = "PK" ] || rm -f tika-app-${e}.jar
         done
       fi
       for _Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
@@ -442,6 +444,7 @@ _if_solr_four() {
       _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
         wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
+        [ "$(head -c 2 tika-app-${e}.jar 2> /dev/null)" = "PK" ] || rm -f tika-app-${e}.jar
       done
       cd /var/opt
       _get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"

@@ -87,6 +87,7 @@
   /etc/ImageMagick-*/ r,
   /etc/ImageMagick-*/** r,
   /etc/mydumper.cnf r,
+  /etc/boa/mydumper-extra.cnf r,
   /usr/share/ImageMagick-*/ r,
   /usr/share/ImageMagick-*/** r,
 

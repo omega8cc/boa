@@ -3,7 +3,9 @@
 
 #include <tunables/global>
 
-/usr/local/bin/wkhtmltopdf flags=(complain) {
+# The profile keeps its name and attaches to the copies BOA keeps in /usr/bin too, the
+# path sites are told to use: started outside PHP by either name it runs here
+profile /usr/local/bin/wkhtmltopdf /usr/{local/,}bin/wkhtmltopdf{,-0.12.4} flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>
@@ -21,7 +23,7 @@
 
   # System paths wkhtmltopdf needs to operate
   /proc/*/maps r,
-  /usr/local/bin/wkhtmltopdf mrix,
+  /usr/{local/,}bin/wkhtmltopdf{,-0.12.4} mrix,
   /var/cache/fontconfig/* r,
   /tmp/** rwlk,
 

@@ -768,6 +768,38 @@ _mydumper_objects_opts() {
   done
   return 0
 }
+### mydumper's own sessions give up a lock wait after 90 s, through an option
+### file merged into its options with --defaults-extra-file (the connection
+### keeps the credentials --defaults-file gave it). A FLUSH TABLES WITH READ
+### LOCK whose mydumper is killed while it waits behind a long query stays on
+### the server and holds the global read lock, every write on the server
+### waiting, until that query ends; bounded, it ends 90 s after it began. A
+### live run never meets the bound at its flushes: its own monitor ends a
+### flush that waits 60 s (--ftwrl-max-wait-time), so the option goes only to
+### a mydumper that has that monitor. A table read that waits 90 s for a lock
+### fails the dump instead of holding it, and every query queued behind it,
+### open. Writes the file when it is missing or differs; sets
+### _MYDUMPER_LOCKWAIT to the option, or to nothing.
+_mydumper_lockwait_opts() {
+  local _f=/etc/boa/mydumper-extra.cnf _want _tmp _h _o
+  _MYDUMPER_LOCKWAIT=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --defaults-extra-file --ftwrl-max-wait-time; do
+    printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+${_o}([[:space:]]|=|$)" || return 0
+  done
+  [[ -d "${_f}" ]] && return 0
+  _want=$'[mydumper_session_variables]\nLOCK_WAIT_TIMEOUT = 90'
+  if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+    mkdir -p "${_f%/*}" 2> /dev/null
+    _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null) || return 0
+    if ! { printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; }; then
+      rm -f "${_tmp}"
+      return 0
+    fi
+  fi
+  _MYDUMPER_LOCKWAIT=(--defaults-extra-file="${_f}")
+  return 0
+}
 
 ### mydumper writes every trigger, routine and event of a database under one
 ### file-wide sql_mode, so an object made under another one (Drupal's own
@@ -877,9 +909,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
   esac
   _mydumper_objects_opts
+  _mydumper_lockwait_opts
   ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
   _mydumper_session . - mydumper \
     --defaults-file=/root/.my.cnf \
+    "${_MYDUMPER_LOCKWAIT[@]}" \
     --database=${_DB} \
     --host=localhost \
     --port=3306 \
