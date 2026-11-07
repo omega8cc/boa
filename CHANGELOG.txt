@@ -38,6 +38,12 @@
       their denies. It refuses, changing nothing, while that pass could
       not install the version.
 
+    * The Drupal CMS catalogue build prints the AI stack it ships: the
+      Canvas, AI, Drupal CMS AI and amazee.io provider versions its lock
+      resolved, read after the advisory fix step, so a move between two
+      builds shows in the run's output. The provider stays on the newest
+      release that needs no PostgreSQL driver, which BOA's PHP has none of.
+
 @=> Security
 
     * The files storage wrapper an account's tasks call through sudo holds a

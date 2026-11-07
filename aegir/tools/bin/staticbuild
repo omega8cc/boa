@@ -343,7 +343,7 @@ _VARBASE_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 _VARBASE_DISTPKG="vardot/varbase"
 # The advisory fix step moves an affected package to its fixed release. The same one
 # platform requirement is ignored there, for the same reason: amazee.io provider
-# releases 1.4.0 to 1.4.5 declare ext-pdo_pgsql (1.4.6 no longer does), so a fix that
+# releases 1.4.1 to 1.4.5 declare ext-pdo_pgsql (1.4.6 no longer does), so a fix that
 # has to land on one of them, as a lock pinned to that range does, needs it.
 _FIX_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 # Open Social ships NO create-project template for its current major: goalgorilla/social_template
@@ -2586,6 +2586,23 @@ build_farm() {
   _finalize_distro "farm" "${_wd}" "${_tag}" "farm"
 }
 
+_cms_ai_versions() {
+  # Print the AI stack the cms platform ships, read from its lock after the fix
+  # step (which can move drupal/ai): Canvas moves fast, and a regression between
+  # two mirror builds has to show in the result. The build's own resolve ignores no
+  # platform requirement, so an amazee.io provider release that declares
+  # ext-pdo_pgsql cannot land there, BOA's PHP carrying no PostgreSQL driver, and
+  # the provider stays on the newest release without it (below upstream's newest
+  # while the newest declares it); only the fix step may land on such a release,
+  # with _FIX_IGNORE_EXT. Keep that until a test server proves a newer provider
+  # works without pgsql.
+  local _dir="$1" _p _v
+  for _p in drupal/canvas drupal/ai drupal/drupal_cms_ai drupal/ai_provider_amazeeio; do
+    _v="$(_lock_version "${_dir}" "${_p}")"
+    _msg "cms: ${_p} ${_v:-not in the lock}"
+  done
+}
+
 build_cms() {
   _begin_build "$(_target_prefix cms)" "cms" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "cms"; return 1; }
@@ -2605,6 +2622,7 @@ build_cms() {
     return 1
   fi
   _fix_step "${_wd}" "cms" "" || return 1
+  _cms_ai_versions "${_wd}"
   _finalize_distro "drupal_cms_installer" "${_wd}" "${_dver}" "cms"
 }
 
