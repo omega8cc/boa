@@ -10745,6 +10745,9 @@ _xmass_cutover_unwind_solr() {
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
   local _mute_tgt=NO
+  # A stop hands the source back: the cleanup below, the target's half of
+  # the mute among it, gets the whole budget of tries, never the short one.
+  _mig_drop_window close
   # Once this box relays the migrated sites, none of the recipes below is
   # true any more: there is no gated source to re-open, and "keep THIS box as
   # production" would throw away every write the target has taken since the
@@ -12962,6 +12965,17 @@ _xmass_release_source_events() {
 # restore hint: the hint reads the phase to tell a pre-freeze abort (whose
 # gate comes down with it) from this one, whose 503 lift stays the
 # operator's.
+# The promotion window this run opened on the target, closed again on a stop
+# that leaves the target a replica; one left open stands the target's database
+# hold down for up to 48 hours, so a failure says how to close it by hand.
+_xmass_promotion_window_close() {
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null && return 0
+  _alrt "could not remove the promotion-window signal on ${_tgt}: its database hold stands down"
+  _alrt "  until it is gone (48 hours at most) -- remove it there: rm -f /run/boa_xmass_init.pid /root/.standby.init.pid"
+  return 1
+}
+
 _xmass_cutover_back_to_syncing() {
   # The scheduler this cutover stopped must be running again first: its
   # record is the only trace of the stop, and the next cutover's step 6
@@ -13740,6 +13754,7 @@ _xmass_verb_unwind() {
   # lock already gone, then lose the peer exemption and the cron this run
   # undoes under it. A signal runs this twice, the trap and then EXIT.
   local _rc="${1:-0}"
+  _mig_drop_window close
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
@@ -19388,8 +19403,15 @@ _xmass_cmd_cutover() {
     # the tail runs the renames and queue passes the signal protects. Not
     # once step 15 has armed the target: the window is closed there, and a
     # fresh signal would stand its per-job gates down again.
-    [ "${_XMASS_TARGET_ARMED}" = "YES" ] || \
-    ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
+    # One that cannot be written keeps the cutover parked: the tail would
+    # unlock the target's database and its standby marker would go.
+    if [ "${_XMASS_TARGET_ARMED}" != "YES" ] \
+      && ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
+      _xmass_restore_hint
+      _die "Could not re-assert the promotion-window signal on target ${_tgt}" \
+           " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- the cutover stays PARKED" \
+           " (phase=rename-failed); re-run 'xmass cutover ${_tgt} --live' once the target answers"
+    fi
     # Re-assert the 503 gate: it persists on disk from the parked run, but an
     # operator may have lifted it via the abandon recipe before deciding to
     # resume after all -- and the tail assumes a non-serving source. Also
@@ -19752,8 +19774,7 @@ _xmass_cmd_cutover() {
   # un-gate the target's writers, so a signal that cannot be written stops
   # the cutover here, while the target is still a replica and a thaw is safe.
   if ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
-    ssh -o ConnectTimeout=10 root@"${_tgt}" \
-      "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+    _xmass_promotion_window_close
     _xmass_thaw_writes
     _xmass_release_source_events
     _xmass_restore_hint
@@ -19781,8 +19802,7 @@ _xmass_cmd_cutover() {
       # would otherwise stand the DATABASE hold down for its full 48h ceiling
       # on a box that remains a standby (the web hold follows the promoted
       # latch and is unaffected).
-      ssh -o ConnectTimeout=10 root@"${_tgt}" \
-        "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+      _xmass_promotion_window_close
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
