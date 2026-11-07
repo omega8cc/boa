@@ -175,6 +175,14 @@
 
 @=> Important Fixes
 
+    * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
+      older than the site's database is refused before anything is copied,
+      and names the release to pick. CiviCRM upgrades a database forward
+      only: such a move ended successful, with the site on code that does
+      not know its schema. Every Verify now warns while a site's code is
+      older than its database, and a failed database upgrade says what the
+      code and the database read, and when a Verify cannot resume it.
+
     * xoct proxy --repair on an account holding only its control panel no
       longer stops with "0 site(s) converted" on a box that was the standing
       mirror of another: the other box's panel vhost, which the file sync
