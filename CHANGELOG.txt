@@ -134,6 +134,20 @@
       satisfy the profile's older constraints. The profile does not enable
       Commerce, and a platform in use keeps its copy.
 
+    * New platforms on Drupal core 10.6.21, 11.3.21 and 11.4.12 carry
+      Symfony 6.4.50 or 7.4.23, with Symfony's security fixes of
+      4 November; 11.3.21 and 11.4.12 also carry masterminds/html5 2.12.0.
+      Existing platforms keep their sites.
+
+    * New Drupal CMS (2.2.8) and Thunder platforms carry Scheduler 2.3.1,
+      and new Open Social platforms Simple OAuth 6.1.4, with those modules'
+      security fixes of 4 November. Existing platforms keep their sites.
+
+    * New OpenFed platforms are built on 13.6.9, whose pins take Bootstrap
+      3.45, Scheduler 2.2.3 and SVG Image 3.2.5 with svg-sanitize 1.1.1,
+      with the security fixes its 13.6.8 pins had held back. Existing
+      platforms keep their sites.
+
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
       copies BOA keeps in /usr/bin, the path sites are given: started by that
       path outside PHP, from a shell or cron, they ran with no profile. From
