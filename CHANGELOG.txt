@@ -38,6 +38,13 @@
       their denies. It refuses, changing nothing, while that pass could
       not install the version.
 
+    * The Drupal CMS catalogue build prints the AI stack it ships: the
+      Canvas, AI, Drupal CMS AI and amazee.io provider versions its lock
+      resolved, read after the advisory fix step, so a move between two
+      builds shows in the run's output. The build's own resolve keeps the
+      provider off releases that declare a PostgreSQL extension, which BOA's
+      PHP does not carry.
+
 @=> Security
 
     * The files storage wrapper an account's tasks call through sudo holds a
@@ -134,6 +141,24 @@
       satisfy the profile's older constraints. The profile does not enable
       Commerce, and a platform in use keeps its copy.
 
+    * New platforms on Drupal core 10.6.21 carry Symfony 6.4.50, and those
+      on 11.3.21 and 11.4.12 Symfony 7.4.23, with Symfony's security fixes
+      of 4 November; 11.3.21 and 11.4.12 also carry masterminds/html5
+      2.12.0, which Drupal 10.6 keeps at 2.10. Existing platforms keep
+      their sites.
+
+    * New Drupal CMS (2.2.8) and Thunder platforms carry Scheduler 2.3.1,
+      with its security fix of 4 November. Existing platforms keep their sites.
+
+    * New Open Social platforms carry Simple OAuth 6.1.4, with its security
+      fix of 4 November; Bootstrap and Gin, which Open Social 13.1.0 holds,
+      stay below their fixes. Existing platforms keep their sites.
+
+    * New OpenFed platforms are built on 13.6.9, whose pins take Bootstrap
+      3.45, Scheduler 2.2.3 and SVG Image 3.2.5, and so svg-sanitize 1.1.1:
+      the security fixes its 13.6.8 pins had held back. Existing platforms
+      keep their sites.
+
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
       copies BOA keeps in /usr/bin, the path sites are given: started by that
       path outside PHP, from a shell or cron, they ran with no profile. From
@@ -167,6 +192,24 @@
       files, so Nginx failed to start with it, the monitor took it out and mailed
       an alert. A box left with /etc/nginx/main.d/quic_bpf.failed from that gets
       it back once the file is deleted and a barracuda upgrade has run.
+
+    * Choosing an AppArmor mode on a box whose last upgrade ran with none now
+      puts AppArmor and auditd back in the boot order. That upgrade had taken
+      them out, and the next boot loaded no profile at all, with nothing said,
+      while the upgrades in between reported the mode chosen.
+
+    * Valkey runs under its AppArmor profile again after a barracuda upgrade
+      in enforce mode. The upgrade's teardown had left it unconfined until its
+      next restart, usually the next reboot: it was reloaded, which brings
+      back nothing. It is now restarted there, saving its data on the way
+      down and loading it on start, so this restart empties no cache; the
+      saved copy is deleted once loaded.
+
+    * The task guard, which marks crashed control panel tasks failed, can no
+      longer be stopped for good by a named pipe in an instance's tree. It
+      read the panel's alias and site drushrc.php with no time limit, so a
+      pipe in either place held its run, and the lock every later run waits
+      for, until a restart. It now reads only regular files, with a limit.
 
     * xmass restore-target killed during its data directory swap, with the
       standby marker still there, finishes when run again; before, the box
@@ -240,26 +283,27 @@
       sshd dropped it before its banner, as MaxStartups does while a scanner
       holds its slots: up to twenty more tries, 10 s apart at first and 25 s
       at most, about 8 minutes of waits, each told on the terminal the tool
-      runs on and noted in /var/log/boa/<tool>.drop.log. Between a
-      cutover's 503 gate and its write freeze, once a chain has used them
-      all, later calls to that server get three tries until one gets
-      through, so a stop already decided no longer keeps the source on 503
-      for 8 minutes a call; everywhere else every call gets all twenty. The
-      host key scan before the first contact with a new peer is run again
-      the same way, and a known_hosts it cannot write fails it at once.
-      Nothing ran on that server, yet the step failed: a sync denied, a
-      cutover parked or froze the source, a move to a new peer stopped at
-      host key verification. Any other failure is never retried and reads
-      as before. The waits for a replica to catch up and for a target to go
-      quiet count wall time, not their sleeps; a quiet answer at the end
-      still gets its confirming check, and one that never came is not
-      quiet. A cutover that cannot mark the target's promotion window stops
-      before the promotion with writes thawed, and a resumed one stays
-      parked; a mark it cannot remove again is named with the command that
-      does. One that stops before its write freeze lifts the 503 gate before
-      it clears the target's SQL watchdog mute, with every try again, and a
-      refused xmass verb drops its lock only after undoing what it set on
-      the other server.
+      runs on and noted in /var/log/boa/<tool>.drop.log. Between a cutover's
+      503 gate and its write freeze, once a chain has used them all, later
+      calls to that server get three tries until one gets through, so a stop
+      already decided no longer keeps the source on 503 for 8 minutes a
+      call; everywhere else every call gets all twenty. The host key scan
+      before the first contact with a new peer is run again the same way,
+      and a known_hosts it cannot write fails it at once. Nothing ran on
+      that server, yet the step failed: a sync denied, a cutover parked or
+      froze the source, a move to a new peer stopped at host key
+      verification. Any other failure is never retried and reads as before.
+      The waits for a replica to catch up and for a target to go quiet count
+      wall time, not their sleeps; a quiet answer at the end still gets its
+      confirming check, and one that never came is not quiet. A cutover that
+      cannot mark the target's promotion window stops before the promotion
+      with writes thawed, and a resumed one stays parked, its 503 gate named
+      with the recipe to lift it; a mark it cannot remove again is named
+      with the command that does. One that stops before its write freeze
+      hands the source back, its 503 gate and its Solr, before it clears the
+      target's SQL watchdog mute, with every try again and the command named
+      when that fails, and a refused xmass verb drops its lock only after
+      undoing what it set on the other server.
 
     * xmass pre-mig on a source checks the control panels of exactly the
       accounts the move takes. A directory the move skips, such as an
@@ -824,6 +868,23 @@
       step needs it, so every later apt run on the box ended with an error.
       The scripts stay in place with no rc links; a moved script is put back
       and the pending configure finished on the next pass.
+
+    * A platform build's fix step now moves a module whose own requirement
+      held a library below the release that closes its advisories, when a
+      newer release of the module allows it and nothing pins the module.
+      Before, the library alone was retried and stayed, recorded as having no
+      fixed release within the constraints, while a module held by the
+      platform's own composer.json, its core or its distribution still stays
+      and the step names what holds it.
+
+    * A full catalogue run no longer loses its Backdrop row to GitHub's
+      anonymous API quota: the fix step's release reads, which spent it, now
+      run in a scratch project carrying only the platform's package
+      repositories and never a GitHub one, which Composer loaded on every read
+      at a dozen or more of the sixty requests an hour. The latest Backdrop,
+      Grav and Textpattern releases are read from git tags when the API cannot
+      answer, and a release whose download then fails says so with the release
+      and the quota's reset time.
 
 @=> New Features
 
