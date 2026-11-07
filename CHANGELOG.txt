@@ -211,9 +211,11 @@
       it back once the file is deleted and a barracuda upgrade has run.
 
     * Choosing an AppArmor mode on a box whose last upgrade ran with none now
-      puts AppArmor and auditd back in the boot order. That upgrade had taken
-      them out, and the next boot loaded no profile at all, with nothing said,
-      while the upgrades in between reported the mode chosen.
+      puts AppArmor and auditd back in the boot order, from the next
+      barracuda upgrade, the next Octopus run or a barracuda run that stops
+      early. That upgrade had taken them out, and the next boot loaded no
+      profile at all, with nothing said, while the runs in between reported
+      the mode chosen.
 
     * Valkey runs under its AppArmor profile again after a barracuda upgrade
       in enforce mode. The upgrade's teardown had left it unconfined until its

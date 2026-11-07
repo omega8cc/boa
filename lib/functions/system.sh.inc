@@ -8334,26 +8334,6 @@ _if_enforce_apparmor_profiles() {
 }
 
 #
-# Put AppArmor and auditd back in the boot order, only where no start link is
-# left: update-rc.d then writes the init script's own links, and a boot order
-# that still starts them stays as it is.
-_apparmor_boot_links() {
-  local _svc
-  for _svc in apparmor auditd; do
-    [ -x "/etc/init.d/${_svc}" ] || continue
-    compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null && continue
-    update-rc.d "${_svc}" defaults &> /dev/null
-    if compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "ARMR: ${_svc} starts on boot again"
-      fi
-    else
-      _msg "ALRT: ${_svc} is not in the boot order, the next boot will not start it"
-    fi
-  done
-}
-
-#
 # Sync AppArmor profiles.
 _sync_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
