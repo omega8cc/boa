@@ -1279,15 +1279,19 @@ _fix_root_name() {
 _fix_requirers() {
   # Prints the lock's direct requirers of package $2 in workdir $1 (composer why
   # --locked): name, locked version and constraint, tab-separated, one per line. A
-  # conflict or replace line is not a requirer. All three fields reach shell strings
+  # conflict or replace line is not a requirer; a requirement for development is one,
+  # since the lock resolves it. A leading v on the version goes, as _lock_version
+  # drops it, so the two compare. All three fields reach shell strings
   # and come from the lock, so a line is printed only when each passes its character
   # check (a constraint: digits, letters, the operators, @ ! | , spaces and dots).
   _run_as_o8 "cd '$1' && composer why --locked '$2' 2>/dev/null" 2>/dev/null \
     | awk -v _p="$2" '
+      { _l = $0; sub(/ requires \(for development\) /, " requires ", _l); $0 = _l }
       $3 == "requires" && $4 == _p {
         _c = $0
         sub(/^.*requires[[:space:]]+[^[:space:]]+[[:space:]]+\(/, "", _c)
         sub(/\)[[:space:]]*$/, "", _c)
+        if ($2 ~ /^v[0-9]/) $2 = substr($2, 2)
         if ($1 !~ /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/ && $1 != "__root__") next
         if ($2 !~ /^[0-9A-Za-z.+-]+$/) next
         if (_c !~ /^[0-9A-Za-z.*^~<>=!][0-9A-Za-z.*^~<>=|,@!+ -]*$/) next
@@ -1379,10 +1383,12 @@ _fix_holders() {
   # none); a holder the distribution or the project pins is also a row note. The
   # requirers a resolve never moves are read first: when one of them pins the
   # package, nothing else needs asking. A requirer whose newest allowed release
-  # Composer cannot name does not count as holding. Reads the caller's _hold.
+  # Composer cannot name does not count as holding and is listed in _FIX_UNREAD,
+  # so the record says the question went unanswered. Reads the caller's _hold.
   local _wd="$1" _p="$2" _v="$3" _root _n _nv _c _x _l _own=() _others=()
   _FIX_FREE=""
   _FIX_HELD=""
+  _FIX_UNREAD=""
   _root="$(_fix_root_name "${_wd}")"
   while IFS=$'\t' read -r _n _nv _c; do
     [[ -n "${_n}" ]] || continue
@@ -1400,7 +1406,11 @@ _fix_holders() {
   for _l in "${_own[@]}" "${_others[@]}"; do
     IFS=$'\t' read -r _n _nv _c <<< "${_l}"
     _x="$(_fix_newest "${_wd}" "${_p}" "${_c}")"
-    [[ -n "${_x}" && "${_x}" == "${_v}" ]] || continue
+    if [[ -z "${_x}" ]]; then
+      _FIX_UNREAD="${_FIX_UNREAD:+${_FIX_UNREAD}, }${_n}"
+      continue
+    fi
+    [[ "${_x}" == "${_v}" ]] || continue
     case "${_n}" in
       "${_root}"|__root__)
         _FIX_HELD="pinned by the project's composer.json (${_c})"
@@ -1468,8 +1478,13 @@ _fix_dependents() {
       _v0="$(_lock_version "${_wd}" "${_p}")"
       _tried[${_p}]="${_v0}"
       _fix_holders "${_wd}" "${_p}" "${_v0}"
+      if [[ -n "${_FIX_HELD}" ]]; then
+        # A pinned holder caps the package whatever the other holders allow.
+        _why[${_p}]="${_FIX_HELD}${_FIX_FREE:+; also held by ${_FIX_FREE// /, }}"
+        continue
+      fi
       if [[ -z "${_FIX_FREE}" ]]; then
-        [[ -n "${_FIX_HELD}" ]] && _why[${_p}]="${_FIX_HELD}"
+        [[ -n "${_FIX_UNREAD}" ]] && _why[${_p}]="${_why[${_p}]:-no fixed release within the constraints}; the releases of ${_FIX_UNREAD} were not read"
         continue
       fi
       _with=""
@@ -1490,7 +1505,7 @@ _fix_dependents() {
       _v1="$(_lock_version "${_wd}" "${_p}")"
       if [[ "${_rc}" != "0" ]]; then
         _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
-        _why[${_p}]="held by ${_names}; with them listed, $(_fix_why "${_out}")"
+        _why[${_p}]="$(_fix_why "${_out}"); with ${_names} listed"
       elif ! _fix_kept "${_wd}"; then
         _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
         _why[${_p}]="held by ${_names}; a release of them allowing the fix needs ${_FIX_MOVED}"
