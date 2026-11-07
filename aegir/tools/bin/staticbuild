@@ -1328,11 +1328,63 @@ exit(0);
 EOF
 }
 
+_fix_show_php() {
+  # Writes the composer.json of the scratch project the release reader runs in, from
+  # the tree's composer.json named as its argument: the tree's repositories of type
+  # composer (Packagist, packages.drupal.org, asset-packagist) with their only, exclude
+  # and canonical filters, and its packagist.org switch-off when it has one. A VCS,
+  # path or package repository stays out: Composer loads every repository of the
+  # project on each `show --available`, and a GitHub VCS repository costs it one
+  # anonymous API request per branch and tag every time, out of 60 an hour for the
+  # whole address. A missing or unreadable file gives a project with no repositories
+  # (Packagist alone). PHP 5.6-safe.
+  cat <<'EOF'
+<?php
+$s = isset($argv[1]) && is_readable($argv[1]) ? file_get_contents($argv[1]) : '';
+$d = json_decode((string) $s, true);
+$r = is_array($d) && isset($d['repositories']) && is_array($d['repositories']) ? $d['repositories'] : array();
+$o = array();
+foreach ($r as $k => $x) {
+  if ($k === 'packagist.org' && $x === false) {
+    $o['packagist.org'] = false;
+  } elseif (is_array($x) && isset($x['packagist.org']) && $x['packagist.org'] === false) {
+    $o['packagist.org'] = false;
+  } elseif (is_array($x) && isset($x['type'], $x['url']) && $x['type'] === 'composer') {
+    $e = array('type' => 'composer', 'url' => $x['url']);
+    foreach (array('only', 'exclude', 'canonical') as $f) {
+      if (isset($x[$f])) {
+        $e[$f] = $x[$f];
+      }
+    }
+    $o[] = $e;
+  }
+}
+echo json_encode(array('name' => 'staticbuild/release-reader', 'repositories' => $o, 'require' => new stdClass())), "\n";
+EOF
+}
+
+_fix_show_dir() {
+  # Prints the scratch project the release reader runs in for workdir $1, written on
+  # the first call: ${_DAY_DIR}/.fix-show/<workdir name>/composer.json from the tree's
+  # composer.json through the .fix-show.php helper (_fix_show_php). Nothing, and 1,
+  # when it cannot be written.
+  local _d="${_DAY_DIR}/.fix-show/${1##*/}"
+  if ! _run_as_o8 "test -s '${_d}/composer.json'" 2>/dev/null; then
+    _run_as_o8 "mkdir -p '${_d}' && php '${_DAY_DIR}/.fix-show.php' '$1/composer.json' > '${_d}/composer.json'" 2>/dev/null || return 1
+  fi
+  printf '%s\n' "${_d}"
+}
+
 _fix_newest() {
   # Prints the newest release of package $2 within constraint $3 as workdir $1's
-  # repositories offer it (see _fix_newest_php), or nothing when Composer cannot say.
-  # $2 and $3 passed _fix_requirers' character checks; the helper is in the day dir.
-  _run_as_o8 "cd '$1' && composer show --available '$2' '$3' --format=json 2>/dev/null | php '${_DAY_DIR}/.fix-newest.php'" 2>/dev/null | head -n1
+  # Packagist-type repositories offer it (see _fix_newest_php), or nothing when
+  # Composer cannot say. The read runs in the scratch project of _fix_show_dir, never
+  # in the tree itself: Composer loads every repository of the project it runs in, and
+  # a tree's GitHub VCS repository would cost anonymous API requests on every read.
+  # $2 and $3 passed _fix_requirers' character checks; the helpers are in the day dir.
+  local _d
+  _d="$(_fix_show_dir "$1")" || return 1
+  _run_as_o8 "cd '${_d}' && composer show --available '$2' '$3' --format=json 2>/dev/null | php '${_DAY_DIR}/.fix-newest.php'" 2>/dev/null | head -n1
 }
 
 _fix_pin_of() {
@@ -1455,7 +1507,8 @@ _fix_dependents() {
   # per release it sits at.
   local _wd="$1" _label="$2" _round _rep _left _p _v0 _v1 _d _out _rc _any _with _names _moved
   local -A _tried=() _dv=()
-  if ! _fix_newest_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-newest.php'"; then
+  if ! _fix_newest_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-newest.php'" \
+    || ! _fix_show_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-show.php'"; then
     _FIX_LINES+=("# holders not checked: could not write the version helper")
     return 0
   fi
@@ -1526,7 +1579,7 @@ _fix_dependents() {
     done
     [[ "${_any}" == "1" ]] || break
   done
-  _run_as_o8 "rm -f '${_DAY_DIR}/.fix-newest.php'"
+  _run_as_o8 "rm -rf '${_DAY_DIR}/.fix-newest.php' '${_DAY_DIR}/.fix-show.php' '${_DAY_DIR}/.fix-show'"
   return 0
 }
 
@@ -2295,33 +2348,30 @@ _resolve_farm_tag() {
 }
 
 _resolve_backdrop_tag() {
-  # Latest Backdrop CMS release tag, or the pinned _BACKDROP_TAG.
+  # Latest Backdrop CMS release tag (_latest_github), or the pinned _BACKDROP_TAG.
   if [[ -n "${_BACKDROP_TAG}" ]]; then
     printf '%s\n' "${_BACKDROP_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_BACKDROP_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_github "${_BACKDROP_REPO}"
 }
 
 _resolve_grav_tag() {
-  # Latest Grav release tag, or the pinned _GRAV_TAG.
+  # Latest Grav release tag (_latest_github), or the pinned _GRAV_TAG.
   if [[ -n "${_GRAV_TAG}" ]]; then
     printf '%s\n' "${_GRAV_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_GRAV_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_github "${_GRAV_REPO}"
 }
 
 _resolve_txp_tag() {
-  # Latest Textpattern release tag, or the pinned _TXP_TAG.
+  # Latest Textpattern release tag (_latest_github), or the pinned _TXP_TAG.
   if [[ -n "${_TXP_TAG}" ]]; then
     printf '%s\n' "${_TXP_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_TXP_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_github "${_TXP_REPO}"
 }
 
 _resolve_civicrm_version() {
@@ -4333,9 +4383,17 @@ _latest_packagist() {
 }
 
 _latest_github() {
-  local _repo="$1"
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_repo}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/'
+  # The latest release tag of a GitHub repository: the Releases API's answer, else the
+  # highest plain version tag over git (_latest_git_tag), which spends no API quota.
+  # The anonymous API allows 60 requests an hour per address, shared by everything on
+  # the box: a Composer resolve that loads a GitHub VCS repository takes a dozen of
+  # them, so the API can answer nothing for the rest of the hour.
+  local _repo="$1" _tag
+  _tag="$(curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_repo}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/')"
+  [[ -n "${_tag}" ]] || _tag="$(_latest_git_tag "${_repo}")"
+  [[ -n "${_tag}" ]] && printf '%s\n' "${_tag}"
+  return 0
 }
 
 _check_row() {
