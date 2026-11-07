@@ -240,18 +240,24 @@
       sshd dropped it before its banner, as MaxStartups does while a scanner
       holds its slots: up to twenty more tries, 10 s apart at first and 25 s
       at most, about 8 minutes of waits, each told on the terminal the tool
-      runs on and noted in /var/log/boa/<tool>.drop.log. Once a chain has
-      used them all, later calls to that server in the same run get three
-      tries, so a stop already decided no longer keeps a source on 503 for
-      8 minutes a call. The host key scan before the first contact with a
-      new peer is run again the same way. Nothing ran on that server, yet
-      the step failed: a sync denied, a cutover parked or froze the source,
-      a move to a new peer stopped at host key verification. Any other
-      failure is never retried and reads as before. The waits for a replica
-      to catch up and for a target to go quiet count wall time, not their
-      sleeps; a cutover that stops before its write freeze lifts the 503
-      gate before it clears the target's SQL watchdog mute; a refused xmass
-      verb drops its lock only after undoing what it set on the other server.
+      runs on and noted in /var/log/boa/<tool>.drop.log. Between a
+      cutover's 503 gate and its write freeze, once a chain has used them
+      all, later calls to that server get three tries until one gets
+      through, so a stop already decided no longer keeps the source on 503
+      for 8 minutes a call; everywhere else every call gets all twenty. The
+      host key scan before the first contact with a new peer is run again
+      the same way, and a known_hosts it cannot write fails it at once.
+      Nothing ran on that server, yet the step failed: a sync denied, a
+      cutover parked or froze the source, a move to a new peer stopped at
+      host key verification. Any other failure is never retried and reads
+      as before. The waits for a replica to catch up and for a target to go
+      quiet count wall time, not their sleeps; a quiet answer at the end
+      still gets its confirming check, and one that never came is not
+      quiet. A cutover that cannot mark the target's promotion window stops
+      before the promotion with writes thawed, one that stops before its
+      write freeze lifts the 503 gate before it clears the target's SQL
+      watchdog mute, and a refused xmass verb drops its lock only after
+      undoing what it set on the other server.
 
     * xmass pre-mig on a source checks the control panels of exactly the
       accounts the move takes. A directory the move skips, such as an

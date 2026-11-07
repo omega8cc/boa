@@ -176,11 +176,12 @@ _die() {
 ### flood, and a stop in the middle of a move costs more than the wait. A try
 ### that stalls in the banner exchange counts as a drop and takes its own
 ### ConnectTimeout besides; a port that is silent or refuses is not tried
-### again, so a call given up after its ConnectTimeout stays given up. Once a
-### chain to a host has used the whole budget, every later call to that host
-### in the same run gets 3 more tries (45 s): by then the move stops or goes
-### on without that call, and the whole budget again on each later call only
-### kept a gated source dark longer. ssh's own log
+### again, so a call given up after its ConnectTimeout stays given up. A run
+### may open a short window where a stop costs little and a call that fails
+### decides it (xmass's cutover under its 503 gate, before the write freeze):
+### inside it, once a chain to a host has used the whole budget, later calls
+### to that host get 3 tries (45 s) until one gets through. Everywhere else
+### every call gets the whole budget. ssh's own log
 ### (-E) decides, never what the remote command
 ### printed: a reset or a stall in the banner exchange, or a bare 'Connection
 ### closed by <host> port <n>', which ssh logs only before login (a close
@@ -200,11 +201,12 @@ _MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]
 _MIG_DROP_LOG="/var/log/boa/xmass.drop.log"
 _MIG_DROP_TRIES=20
 _MIG_DROP_TRIES_SPENT=3
-### The hosts whose chain used the whole budget in this run, one a line: a
-### file, since most calls run in a subshell, named by this run's pid (a
-### file a dead run of the same pid left is no one's).
+### The hosts whose chain used the whole budget inside the short window, a
+### file each: a directory, since most calls run in a subshell, named by this
+### run's pid (one a dead run of the same pid left is no one's).
 _MIG_DROP_SPENT="/run/mig-drop-spent.$$"
-rm -f "${_MIG_DROP_SPENT}" 2> /dev/null
+rm -rf "${_MIG_DROP_SPENT}" 2> /dev/null
+_MIG_DROP_SHORT=NO
 ### The terminal this run was started on, when its stderr is one: each retry
 ### is told there whatever the call did with its own stderr, and a caller
 ### that reads a call's stderr never finds the notice in it.
@@ -234,28 +236,47 @@ _mig_drop_secs() {
   echo "${_w}"
 }
 
+### $1 open or close: the short window, which starts and ends with no host
+### marked.
+_mig_drop_window() {
+  rm -rf "${_MIG_DROP_SPENT}" 2> /dev/null
+  case "${1}" in
+    open) _MIG_DROP_SHORT=YES ;;
+    *) _MIG_DROP_SHORT=NO ;;
+  esac
+  return 0
+}
+
 ### The tries a chain of drops to host $1 gets: the whole budget, or the
-### short one once a chain to it used the whole budget in this run.
+### short one inside the short window once a chain to it used the whole one.
 _mig_drop_budget() {
-  if grep -qxF "${1}" "${_MIG_DROP_SPENT}" 2> /dev/null; then
+  if [ "${_MIG_DROP_SHORT}" = "YES" ] && [ -e "${_MIG_DROP_SPENT}/h-${1}" ]; then
     echo "${_MIG_DROP_TRIES_SPENT}"
   else
     echo "${_MIG_DROP_TRIES}"
   fi
 }
 
-### The chain to host $1 used its budget $2 and met one more drop: a whole
-### budget marks the host, and files of runs that are gone go.
+### The chain to host $1 used its budget $2 and met one more drop: inside the
+### short window a whole budget marks the host, and the marks of runs that
+### are gone go.
 _mig_drop_spent() {
   local _f
   [ -n "${_MIG_NOTE_TTY}" ] \
     && echo "INFO: ${1}: still dropped after ${2} tries; this call gives up" 2> /dev/null > "${_MIG_NOTE_TTY}"
-  [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
+  [ "${_MIG_DROP_SHORT}" = "YES" ] && [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
   for _f in /run/mig-drop-spent.*; do
     [ -e "${_f}" ] || continue
-    kill -0 "${_f##*.}" 2> /dev/null || rm -f "${_f}"
+    kill -0 "${_f##*.}" 2> /dev/null || rm -rf "${_f}"
   done
-  echo "${1}" 2> /dev/null >> "${_MIG_DROP_SPENT}"
+  mkdir -p "${_MIG_DROP_SPENT}" 2> /dev/null && : 2> /dev/null > "${_MIG_DROP_SPENT}/h-${1}"
+  return 0
+}
+
+### A call to host $1 got through: inside the short window its mark goes.
+_mig_drop_through() {
+  [ "${_MIG_DROP_SHORT}" = "YES" ] || return 0
+  rm -f "${_MIG_DROP_SPENT}/h-${1}" 2> /dev/null
   return 0
 }
 
@@ -299,6 +320,8 @@ ssh() {
         continue
       fi
       _mig_drop_spent "${_h}" "${_b}"
+    elif [ "${_rc}" != "255" ]; then
+      _mig_drop_through "$(_mig_drop_host "$@")"
     fi
     [ -s "${_l}" ] && cat "${_l}" >&2
     rm -f "${_l}"
@@ -327,6 +350,8 @@ _mig_rsh_again() {
         continue
       fi
       _mig_drop_spent "${_h}" "${_b}"
+    elif [ "${_rc}" = "0" ]; then
+      _mig_drop_through "$(_mig_drop_host "$@")"
     fi
     [ -s "${_e}" ] && cat "${_e}" >&2
     rm -f "${_e}"
@@ -359,18 +384,29 @@ _mig_port_answers() {
 ### runs again, whether ssh-keyscan named the close or, as it often does, said
 ### nothing: a port that accepts a plain connection tells that from a refused
 ### one, which says nothing too. A refused or silent port gets the one scan.
+### The keys go to a file first, so a known_hosts that cannot be written is
+### one failure, never a scan that seemed to say nothing.
 ### Returns 0 once a key for the host is known.
 _mig_keyscan() {
-  local _e _h _k _n=0 _b=""
+  local _e _o _h _k _n=0 _b=""
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
-    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
+    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" \
+      && _o="$(mktemp /tmp/mig-keys.XXXXXX 2> /dev/null)" || {
+      rm -f "${_e}"
       ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
       ssh-keygen -F "${1}" > /dev/null 2>&1
       return $?
     }
-    ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> "${_e}"
+    ssh-keyscan -H -T 10 "${1}" > "${_o}" 2> "${_e}"
+    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> /root/.ssh/known_hosts; then
+      echo "${_h}: cannot write /root/.ssh/known_hosts" >&2
+      rm -f "${_e}" "${_o}"
+      return 1
+    fi
+    rm -f "${_o}"
     if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+      _mig_drop_through "${_h}"
       rm -f "${_e}"
       return 0
     fi
@@ -19580,6 +19616,13 @@ _xmass_cmd_cutover() {
 
   # Step 1: Block all web traffic on source (serves 503 via http-off.pid)
   _xmass_block_web_all
+  # From the gate to the write freeze a stop costs little: the source is handed
+  # back. Here, once a chain of dropped connections to the target has used the
+  # whole budget, later calls to it get the short one until one gets through,
+  # so a walk whose stop a failed call has decided does not hold the gate for
+  # the whole budget once a call. Before the gate and after the freeze every
+  # call gets the whole budget.
+  _mig_drop_window open
 
   # Step 2: Stop Solr on source and disable it permanently with deny file.
   # Must happen BEFORE final sync so the Solr data rsync sees a clean,
@@ -19659,6 +19702,7 @@ _xmass_cmd_cutover() {
   # leave the state machine at "syncing" and let the operator simply re-run.
   # Persisting phase=cutover any earlier wedged the run on a pre-freeze failure and
   # made the abort messages ("source untouched") untrue.
+  _mig_drop_window close
   _XMASS_PHASE="cutover"
   _xmass_save_state
 
@@ -19704,8 +19748,20 @@ _xmass_cmd_cutover() {
   # minute and un-gate every writer mid-cutover. Step 15 clears both.
   # Both the tmpfs signal and its on-disk twin: /run does not survive a
   # target reboot inside the window, and the twin is what the per-job
-  # gates and autosync read after one.
-  ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
+  # gates and autosync read after one. Without them the promotion would
+  # un-gate the target's writers, so a signal that cannot be written stops
+  # the cutover here, while the target is still a replica and a thaw is safe.
+  if ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
+    ssh -o ConnectTimeout=10 root@"${_tgt}" \
+      "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+    _xmass_thaw_writes
+    _xmass_release_source_events
+    _xmass_restore_hint
+    _xmass_cutover_back_to_syncing
+    _die "Could not write the promotion-window signal on target ${_tgt}" \
+         " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- cutover aborted before" \
+         " the promotion; writes thawed"
+  fi
   _info "Stopping and decoupling slave on target ${_tgt} ..."
   if ! ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
