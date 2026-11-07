@@ -1890,6 +1890,17 @@ _fetch_boa_file() {
   mv -f "${_fTmp}" "${_fDst}"
 }
 
+### Whether $1, given in the public form's user slot, is the {extra} word:
+### that slot holds a php-* word or the account name (the install docs'
+### rule), so an account named php, ophp1 or myphp keeps its name, and a
+### mistyped php-* word still goes on to {extra}, read as a New Relic key.
+_boa_php_extra_word() {
+  case "${1}" in
+    php-*) return 0 ;;
+  esac
+  return 1
+}
+
 _init_setup() {
 
   _check_install_args
@@ -2076,6 +2087,9 @@ _init_setup() {
           ;;
         esac
       done
+      # This slot is the local form's {extra}, never an account name, so any
+      # php word, a mistyped one included, goes on to {extra}, where a word
+      # that is no PHP choice is read as a New Relic key.
       if [[ "${_eMal}" =~ "php" ]]; then
         _eXtr="${_eMal}"
       fi
@@ -2087,7 +2101,7 @@ _init_setup() {
       _usEr="o1"
     fi
     if [ "${_kiNd}" = "public" ]; then
-      if [[ "${_usEr}" =~ "php" ]]; then
+      if _boa_php_extra_word "${_usEr}"; then
         _eXtr="${_usEr}"
         _usEr="o1"
       fi
