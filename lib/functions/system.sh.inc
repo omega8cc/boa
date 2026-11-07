@@ -5088,10 +5088,8 @@ _run_apt_get_dist_upgrade() {
   _mrun "apt-get install lsb-release ${_dstUpArg}"
   ### Update rsyslog configuration early
   _rsyslog_config_update
-  ### Reload key services if needed early
-  if [ -e "/etc/init.d/valkey-server" ]; then
-    _mrun "service valkey-server reload"
-  fi
+  ### Reload key services if needed early (Valkey has no reload: it is left
+  ### running, as a reload never changed it)
   _mrun "service nginx reload"
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -9780,10 +9778,8 @@ _if_post_major_os_upgrade() {
 
     ### Update rsyslog configuration early
     _rsyslog_config_update
-    ### Reload key services if needed early
-    if [ -e "/etc/init.d/valkey-server" ]; then
-      _mrun "service valkey-server reload"
-    fi
+    ### Reload key services if needed early (Valkey has no reload: it is left
+    ### running, as a reload never changed it)
     _mrun "service nginx reload"
     _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -10901,10 +10897,8 @@ _if_major_os_upgrade() {
     _sysvinit_install
     ### Update rsyslog configuration early
     _rsyslog_config_update
-    ### Reload key services if needed early
-    if [ -e "/etc/init.d/valkey-server" ]; then
-      _mrun "service valkey-server reload"
-    fi
+    ### Reload key services if needed early (Valkey has no reload: it is left
+    ### running, as a reload never changed it)
     _mrun "service nginx reload"
     _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -14640,11 +14634,10 @@ _initd_update() {
       _mrun "service nginx restart"
     fi
     if [ ! -e "/root/.proxy.cnf" ]; then
-      if [ -e "/etc/init.d/valkey-server" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
-        fi
-        _mrun "service valkey-server reload"
+      # Valkey has no reload: the signal one sends only reaches its thread
+      # stack collector, which logs a warning and changes nothing.
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Reloading PHP-FPM..."
       fi
       _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do

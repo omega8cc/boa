@@ -914,6 +914,10 @@
 
 @=> Changes
 
+    * A barracuda upgrade no longer sends Valkey a reload signal. Valkey has
+      no reload: the signal only wrote a warning to its log and changed
+      nothing. The init script's reload now says so and sends nothing.
+
     * MyDumper and myloader 1.0.19 (MyQuick) replace 1.0.5 on Chimaera,
       Daedalus and Excalibur, installed by the regular agent pass within
       minutes of a publish; Beowulf keeps 0.19.3.
