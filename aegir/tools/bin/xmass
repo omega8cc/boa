@@ -172,8 +172,15 @@ _die() {
 ### A connection sshd drops before login (MaxStartups, or a per-source
 ### penalty while a scanner holds its slots) ran nothing on the far box, so
 ### it is opened again: up to 20 more times, 10 s apart at first and 25 s at
-### most, about 8 minutes in all: a chain of drops can then outlast the flood,
-### and a stop in the middle of a move costs more than the wait. ssh's own log
+### most, about 8 minutes of waits: a chain of drops can then outlast the
+### flood, and a stop in the middle of a move costs more than the wait. A try
+### that stalls in the banner exchange counts as a drop and takes its own
+### ConnectTimeout besides; a port that is silent or refuses is not tried
+### again, so a call given up after its ConnectTimeout stays given up. Once a
+### chain to a host has used the whole budget, every later call to that host
+### in the same run gets 3 more tries (45 s): by then the move stops or goes
+### on without that call, and the whole budget again on each later call only
+### kept a gated source dark longer. ssh's own log
 ### (-E) decides, never what the remote command
 ### printed: a reset or a stall in the banner exchange, or a bare 'Connection
 ### closed by <host> port <n>', which ssh logs only before login (a close
@@ -192,6 +199,17 @@ _MIG_DROP_RE='^((kex|ssh)_exchange_identification:|banner exchange:|Connection t
 _MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]*\): Connection reset by peer[[:space:]]*$'
 _MIG_DROP_LOG="/var/log/boa/xmass.drop.log"
 _MIG_DROP_TRIES=20
+_MIG_DROP_TRIES_SPENT=3
+### The hosts whose chain used the whole budget in this run, one a line: a
+### file, since most calls run in a subshell, named by this run's pid (a
+### file a dead run of the same pid left is no one's).
+_MIG_DROP_SPENT="/run/mig-drop-spent.$$"
+rm -f "${_MIG_DROP_SPENT}" 2> /dev/null
+### The terminal this run was started on, when its stderr is one: each retry
+### is told there whatever the call did with its own stderr, and a caller
+### that reads a call's stderr never finds the notice in it.
+_MIG_NOTE_TTY=""
+[ -t 2 ] && { _MIG_NOTE_TTY="$(tty <&2 2> /dev/null)" || _MIG_NOTE_TTY=""; }
 
 ### The host of the first root@ argument, and nothing else of the call.
 _mig_drop_host() {
@@ -216,15 +234,45 @@ _mig_drop_secs() {
   echo "${_w}"
 }
 
+### The tries a chain of drops to host $1 gets: the whole budget, or the
+### short one once a chain to it used the whole budget in this run.
+_mig_drop_budget() {
+  if grep -qxF "${1}" "${_MIG_DROP_SPENT}" 2> /dev/null; then
+    echo "${_MIG_DROP_TRIES_SPENT}"
+  else
+    echo "${_MIG_DROP_TRIES}"
+  fi
+}
+
+### The chain to host $1 used its budget $2 and met one more drop: a whole
+### budget marks the host, and files of runs that are gone go.
+_mig_drop_spent() {
+  local _f
+  [ -n "${_MIG_NOTE_TTY}" ] \
+    && echo "INFO: ${1}: still dropped after ${2} tries; this call gives up" 2> /dev/null > "${_MIG_NOTE_TTY}"
+  [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
+  for _f in /run/mig-drop-spent.*; do
+    [ -e "${_f}" ] || continue
+    kill -0 "${_f##*.}" 2> /dev/null || rm -f "${_f}"
+  done
+  echo "${1}" 2> /dev/null >> "${_MIG_DROP_SPENT}"
+  return 0
+}
+
 ### One retry noted: $1 the try, $2 the host, $3 the file holding the
 ### client's own messages, $4 the pattern of the lines kept from it (ssh's
-### drop and close lines when not given). A terminal is told only when
-### stderr is one: a caller that reads ssh's stderr still finds ssh's own
-### words there, and never the error of a drop log that cannot be opened.
+### drop and close lines when not given), $5 the chain's budget.
 _mig_drop_note() {
-  local _k="${4:-}"
+  local _k="${4:-}" _b="${5:-${_MIG_DROP_TRIES}}" _t=""
   [ -n "${_k}" ] || _k="${_MIG_DROP_RE}|^Connection (reset|closed|timed out)"
-  [ -t 2 ] && echo "INFO: ${2}: connection dropped before login; try ${1} of ${_MIG_DROP_TRIES} in $(_mig_drop_secs "${1}") s" >&2
+  if [ -n "${_MIG_NOTE_TTY}" ]; then
+    if [ "${1}" = "1" ]; then
+      _t=", each try logged in ${_MIG_DROP_LOG}"
+      [ "${_b}" = "${_MIG_DROP_TRIES}" ] \
+        || _t=" (an earlier chain to it used all ${_MIG_DROP_TRIES})${_t}"
+    fi
+    echo "INFO: ${2}: connection dropped before login; try ${1} of ${_b} in $(_mig_drop_secs "${1}") s${_t}" 2> /dev/null > "${_MIG_NOTE_TTY}"
+  fi
   {
     printf '%s %s try %s: ' "$(date '+%F %T')" "${2}" "${1}"
     grep -E "${_k}" "${3}" 2> /dev/null \
@@ -235,18 +283,22 @@ _mig_drop_note() {
 }
 
 ssh() {
-  local _l _rc _n=0
+  local _l _rc _n=0 _b="" _h
   while :; do
     _l="$(mktemp /tmp/mig-ssh.XXXXXX 2> /dev/null)" || { command ssh "$@"; return $?; }
     command ssh -E "${_l}" "$@"
     _rc=$?
-    if [ "${_rc}" = "255" ] && [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] \
-      && grep -qE "${_MIG_DROP_RE}" "${_l}" 2> /dev/null; then
-      _n=$(( _n + 1 ))
-      _mig_drop_note "${_n}" "$(_mig_drop_host "$@")" "${_l}"
-      rm -f "${_l}"
-      sleep "$(_mig_drop_secs "${_n}")"
-      continue
+    if [ "${_rc}" = "255" ] && grep -qE "${_MIG_DROP_RE}" "${_l}" 2> /dev/null; then
+      _h="$(_mig_drop_host "$@")"
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _mig_drop_note "${_n}" "${_h}" "${_l}" "" "${_b}"
+        rm -f "${_l}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
     fi
     [ -s "${_l}" ] && cat "${_l}" >&2
     rm -f "${_l}"
@@ -257,19 +309,24 @@ ssh() {
 ### $1 rsync or scp, then its arguments: run with its stderr held, which is
 ### replayed once the call is not retried.
 _mig_rsh_again() {
-  local _e _rc _n=0
+  local _e _rc _n=0 _b="" _h
   while :; do
     _e="$(mktemp /tmp/mig-rsh.XXXXXX 2> /dev/null)" || { command "$@"; return $?; }
     command "$@" 2> "${_e}"
     _rc=$?
-    if [ "${_rc}" != "0" ] && [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] \
+    if [ "${_rc}" != "0" ] \
       && grep -qE "${_MIG_DROP_RE}" "${_e}" 2> /dev/null \
       && { [ "${1}" != "rsync" ] || grep -qF '(0 bytes received so far)' "${_e}"; }; then
-      _n=$(( _n + 1 ))
-      _mig_drop_note "${_n}" "$(_mig_drop_host "$@")" "${_e}"
-      rm -f "${_e}"
-      sleep "$(_mig_drop_secs "${_n}")"
-      continue
+      _h="$(_mig_drop_host "$@")"
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _mig_drop_note "${_n}" "${_h}" "${_e}" "" "${_b}"
+        rm -f "${_e}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
     fi
     [ -s "${_e}" ] && cat "${_e}" >&2
     rm -f "${_e}"
@@ -304,7 +361,7 @@ _mig_port_answers() {
 ### one, which says nothing too. A refused or silent port gets the one scan.
 ### Returns 0 once a key for the host is known.
 _mig_keyscan() {
-  local _e _h _k _n=0
+  local _e _h _k _n=0 _b=""
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
     _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
@@ -317,19 +374,22 @@ _mig_keyscan() {
       rm -f "${_e}"
       return 0
     fi
-    if [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] \
-      && { grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null \
-        || { [ ! -s "${_e}" ] && _mig_port_answers "${1}"; }; }; then
-      _n=$(( _n + 1 ))
-      _k="${_MIG_SCAN_RE}"
-      if [ ! -s "${_e}" ]; then
-        echo "${_h}: the scan said nothing, port 22 answers" > "${_e}"
-        _k='.'
+    if grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null \
+      || { [ ! -s "${_e}" ] && _mig_port_answers "${1}"; }; then
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _k="${_MIG_SCAN_RE}"
+        if [ ! -s "${_e}" ]; then
+          echo "${_h}: the scan said nothing, port 22 answers" > "${_e}"
+          _k='.'
+        fi
+        _mig_drop_note "${_n}" "${_h}" "${_e}" "${_k}" "${_b}"
+        rm -f "${_e}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
       fi
-      _mig_drop_note "${_n}" "${_h}" "${_e}" "${_k}"
-      rm -f "${_e}"
-      sleep "$(_mig_drop_secs "${_n}")"
-      continue
+      _mig_drop_spent "${_h}" "${_b}"
     fi
     rm -f "${_e}"
     return 1
@@ -10521,7 +10581,12 @@ _xmass_wait_for_sync() {
     ''|*[!0-9]*) _die "_XMASS_SYNC_MAX_WAIT must be a whole number of seconds (got '${_max}')" ;;
   esac
   [ "${_max}" -lt 60 ] && _die "_XMASS_SYNC_MAX_WAIT of ${_max}s is too short to be meaningful"
-  local _elapsed=0
+  # _elapsed is WALL time since the wait began, never the sum of the sleeps:
+  # each lag read goes through the retry of a dropped connection, which can
+  # take minutes, and a ceiling counted in sleeps then ran far past the number
+  # it printed, the source on 503 all along.
+  local _elapsed=0 _t0
+  _t0=$(date +%s)
   local _lag _pass _first="" _prev="" _confirmed=NO
   _info "Waiting for replica lag to reach 0 (max ${_max}s) ..."
   # One budget for the wait AND its confirmation: a lag that comes back
@@ -10550,14 +10615,14 @@ _xmass_wait_for_sync() {
       fi
       _prev="${_lag}"
       sleep 15
-      _elapsed=$(( _elapsed + 15 ))
+      _elapsed=$(( $(date +%s) - _t0 ))
     done
 
     _info "Replica at lag=0; triple-checking (3 × 10s) ..."
     _confirmed=YES
     for _pass in 1 2 3; do
       sleep 10
-      _elapsed=$(( _elapsed + 10 ))
+      _elapsed=$(( $(date +%s) - _t0 ))
       _lag=$(_xmass_get_repl_lag)
       if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
         _xmass_restore_hint
@@ -10643,6 +10708,7 @@ _xmass_cutover_unwind_solr() {
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
+  local _mute_tgt=NO
   # Once this box relays the migrated sites, none of the recipes below is
   # true any more: there is no gated source to re-open, and "keep THIS box as
   # production" would throw away every write the target has taken since the
@@ -10719,11 +10785,16 @@ _xmass_restore_hint() {
     # kill -- on the source AND the target, for the rest of its 240-min
     # expiry. Same reasoning as the init unwind; a park that will be
     # RESUMED keeps its mute, which is why this is the pre-promotion arm.
-    _xmass_maint_off
+    # This box's half now; the target's half after the gate lift below, since
+    # an abort under a flood of dropped connections would wait out that call
+    # with the source still on 503.
+    rm -f /run/boa_sql_maintenance.pid
+    _mute_tgt=YES
   fi
   # The gate lift and the thaw go here, once cron and the runners are back:
   # the freeze paragraph below then reads a cleared include and stays silent.
   [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ] && _xmass_cutover_unwind
+  [ "${_mute_tgt}" = "YES" ] && _xmass_maint_off
   # Read the flag from the file, not from a variable: this paragraph must match
   # what is actually in the include at the moment the operator reads it (a
   # barracuda system pass on this box removes the block without a log line).
@@ -13627,12 +13698,17 @@ _xmass_verb_unwind() {
   # EXIT and signal handler of every locked verb: the lock always goes; what
   # this run added for a peer goes only when the verb did not complete and
   # nothing downstream relies on it yet (init past its commit point keeps
-  # the pair reachable; a completed verb sets _XMASS_CSF_KEEP).
+  # the pair reachable; a completed verb sets _XMASS_CSF_KEEP). The lock goes
+  # last, and only while it holds this run's pid: the undo calls can wait out
+  # a chain of dropped connections, and a verb started meanwhile would take a
+  # lock already gone, then lose the peer exemption and the cron this run
+  # undoes under it. A signal runs this twice, the trap and then EXIT.
   local _rc="${1:-0}"
-  rm -f "${_XMASS_LOCK_FILE}"
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
+  [ "$(tr -dc '0-9' 2> /dev/null < "${_XMASS_LOCK_FILE}")" = "$$" ] \
+    && rm -f "${_XMASS_LOCK_FILE}"
   return 0
 }
 
