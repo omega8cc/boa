@@ -12384,6 +12384,157 @@ EOF
       postfix reload &> /dev/null
     fi
   fi
+  _smtp_spf_check
+}
+
+###
+### True when the IPv4 address $1 is in the SPF ip4 value $2 (an address,
+### or a network with its prefix length).
+###
+_smtp_spf_ip_in() {
+  local _net _len _o1 _o2 _o3 _o4 _ipNr _netNr _mask
+  _net="${2%%/*}"
+  _len=32
+  [[ "${2}" == */* ]] && _len="${2#*/}"
+  [[ "${_len}" =~ ^[0-9]{1,2}$ ]] || return 1
+  [ "$((10#${_len}))" -le 32 ] || return 1
+  [[ "${1}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  [[ "${_net}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  IFS=. read -r _o1 _o2 _o3 _o4 <<< "${1}"
+  _ipNr=$(( (10#${_o1} << 24) | (10#${_o2} << 16) | (10#${_o3} << 8) | 10#${_o4} ))
+  IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_net}"
+  _netNr=$(( (10#${_o1} << 24) | (10#${_o2} << 16) | (10#${_o3} << 8) | 10#${_o4} ))
+  _mask=$(( (0xFFFFFFFF << (32 - 10#${_len})) & 0xFFFFFFFF ))
+  [ "$(( _ipNr & _mask ))" = "$(( _netNr & _mask ))" ]
+}
+
+###
+### One line when the mail this box sends may fail SPF at the receiver.
+### Postfix takes the envelope sender's domain from /etc/mailname (myorigin)
+### and, with no relayhost, delivers straight from this box over IPv4, so
+### that name needs an SPF record naming the box's IPv4 address; through a
+### relay the receiver sees the relay's address, so any record will do. The
+### relayhost is read from main.cf after _smtp_check applied it: a set
+### _SMTP_RELAY_HOST with local sendmail allowed for sites is direct delivery.
+### Never fails or holds the pass: each DNS read is cut at 5 seconds, and a
+### read with no usable answer says so instead of warning about SPF. Silent
+### when the record names the box, except in debug mode.
+###
+_smtp_spf_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _smtp_spf_check"
+  fi
+  local _spfName _spfIp _spfRelay _spfOut _spfRc _spfState _spfRecs _spfNr
+  local _spfTerm _spfHit _spfByA _spfOther _spfAddr
+  local -a _spfTerms
+  _spfName="$(head -n 1 /etc/mailname 2>/dev/null)"
+  _spfName="${_spfName//[^a-zA-Z0-9-.]/}"
+  if [ -z "${_spfName}" ]; then
+    _spfName="$(hostname -f 2>/dev/null)"
+    _spfName="${_spfName//[^a-zA-Z0-9-.]/}"
+  fi
+  _spfName="$(echo -n "${_spfName}" | tr 'A-Z' 'a-z')"
+  _spfName="${_spfName%.}"
+  if [[ ! "${_spfName}" =~ \. ]]; then
+    _msg "INFO: SPF not checked: this box has no public name in /etc/mailname or hostname -f"
+    return 0
+  fi
+  if ! command -v dig > /dev/null 2>&1; then
+    _msg "INFO: SPF for ${_spfName} not checked: dig is not installed"
+    return 0
+  fi
+  _spfRelay="$(sed -n 's/^relayhost[[:space:]]*=[[:space:]]*//p' \
+    /etc/postfix/main.cf 2>/dev/null | tail -n 1)"
+  _spfRelay="${_spfRelay//[[:space:]]/}"
+  _spfIp="$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '[:space:]')"
+  [ -z "${_spfIp}" ] && _spfIp="${_THISHTIP}"
+  [ -z "${_spfIp}" ] && _spfIp="${_MY_OWNIP}"
+  [[ "${_spfIp}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || _spfIp=""
+  _spfOut="$(timeout 5 dig +time=2 +tries=1 +noall +comments +answer \
+    TXT "${_spfName}" 2>/dev/null)"
+  _spfRc=$?
+  if [ "${_spfRc}" = "124" ] || [ "${_spfRc}" = "9" ]; then
+    _msg "INFO: SPF for ${_spfName} not checked: DNS gave no answer within 5 seconds"
+    return 0
+  fi
+  _spfState="$(echo "${_spfOut}" \
+    | sed -n 's/.*->>HEADER<<-.* status: \([A-Z]*\).*/\1/p' | head -n 1)"
+  if [ "${_spfState}" = "NXDOMAIN" ]; then
+    _msg "INFO: SPF for ${_spfName} not checked: the name is not in public DNS yet"
+    return 0
+  elif [ "${_spfState}" != "NOERROR" ]; then
+    _msg "INFO: SPF for ${_spfName} not checked: DNS answered ${_spfState:-nothing usable}"
+    return 0
+  fi
+  ### TXT answer lines only; the strings of one record are joined as they
+  ### are read (RFC 7208 3.3), mechanism names are case-insensitive.
+  _spfRecs="$(echo "${_spfOut}" \
+    | sed -n 's/^[^;][^[:space:]]*[[:space:]][[:space:]]*[0-9][0-9]*[[:space:]][[:space:]]*IN[[:space:]][[:space:]]*TXT[[:space:]][[:space:]]*//p' \
+    | sed 's/" "//g; s/"//g' | tr 'A-Z' 'a-z' | grep -E '^v=spf1( |$)')"
+  _spfNr=0
+  [ -n "${_spfRecs}" ] && _spfNr="$(echo "${_spfRecs}" | grep -c '^')"
+  if [ "${_spfNr}" -gt 1 ]; then
+    _msg "WARN: ${_spfName} has ${_spfNr} SPF records: receivers treat that as an error, so keep one"
+    return 0
+  elif [ "${_spfNr}" = "0" ]; then
+    if [ -n "${_spfRelay}" ]; then
+      _msg "WARN: ${_spfName} has no SPF record: publish one naming the sending addresses of the relay ${_spfRelay}"
+    elif [ -n "${_spfIp}" ]; then
+      _msg "WARN: ${_spfName} has no SPF record, so receivers such as Gmail may refuse this box's mail: publish ${_spfName} TXT \"v=spf1 ip4:${_spfIp} ~all\""
+    else
+      _msg "WARN: ${_spfName} has no SPF record, so receivers such as Gmail may refuse this box's mail: publish one naming this box's IPv4 address"
+    fi
+    return 0
+  fi
+  if [ -n "${_spfRelay}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: SPF for ${_spfName} found; mail leaves through the relay ${_spfRelay}"
+    fi
+    return 0
+  elif [ -z "${_spfIp}" ]; then
+    _msg "INFO: SPF for ${_spfName} found, not compared: this box's IPv4 address is not known"
+    return 0
+  fi
+  _spfHit=NO
+  _spfByA=NO
+  _spfOther=""
+  IFS=' ' read -r -a _spfTerms <<< "${_spfRecs#v=spf1}"
+  for _spfTerm in "${_spfTerms[@]}"; do
+    case "${_spfTerm}" in
+      ip4:*|+ip4:*)
+        _smtp_spf_ip_in "${_spfIp}" "${_spfTerm#*ip4:}" && _spfHit=YES
+        ;;
+      a|+a|a/32|+a/32)
+        _spfByA=YES
+        ;;
+      all|+all)
+        _spfHit=YES
+        ;;
+      a:*|+a:*|a/*|+a/*|mx|+mx|mx:*|+mx:*|mx/*|+mx/*|include:*|+include:*|exists:*|+exists:*|ptr|+ptr|ptr:*|+ptr:*|redirect=*)
+        _spfTerm="${_spfTerm#+}"
+        _spfOther="${_spfOther} ${_spfTerm%%[:=/]*}"
+        ;;
+    esac
+  done
+  if [ "${_spfHit}" = "NO" ] && [ "${_spfByA}" = "YES" ]; then
+    _spfAddr="$(timeout 5 dig +time=2 +tries=1 +short A "${_spfName}" 2>/dev/null)"
+    _spfRc=$?
+    if [ "${_spfRc}" = "124" ] || [ "${_spfRc}" = "9" ]; then
+      _msg "INFO: SPF for ${_spfName} not compared: its a term needs the A record, and DNS gave no answer within 5 seconds"
+      return 0
+    fi
+    echo "${_spfAddr}" | grep -qxF "${_spfIp}" && _spfHit=YES
+  fi
+  if [ "${_spfHit}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: SPF for ${_spfName} names ${_spfIp}"
+    fi
+  elif [ -n "${_spfOther}" ]; then
+    _msg "INFO: SPF for ${_spfName} names ${_spfIp} in no ip4 or a term, and its${_spfOther} terms are not followed here: ${_spfRecs}"
+  else
+    _msg "WARN: the SPF record of ${_spfName} does not name ${_spfIp}, the address this box sends from, so receivers such as Gmail may refuse its mail: ${_spfRecs}"
+  fi
+  return 0
 }
 
 _if_install_vnstat() {
