@@ -238,7 +238,8 @@
 
     * xmass, xoct and xcopy open a connection again when the other server's
       sshd dropped it before its banner, as MaxStartups does while a scanner
-      holds its slots: up to five more tries, 10 s apart, each noted in
+      holds its slots: up to twenty more tries, 10 s apart at first and 25 s
+      at most, about 8 minutes in all, each noted in
       /var/log/boa/<tool>.drop.log. The host key scan before the first
       contact with a new peer is run again the same way. Nothing ran on that
       server, yet the step failed: a sync denied, a cutover parked or froze

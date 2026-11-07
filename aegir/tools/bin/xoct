@@ -34,8 +34,10 @@ _ieni="--ignore-errors"
 
 ### A connection sshd drops before login (MaxStartups, or a per-source
 ### penalty while a scanner holds its slots) ran nothing on the far box, so
-### it is opened again: up to 5 more times, 10 s apart, which outlasts
-### LoginGraceTime. ssh's own log (-E) decides, never what the remote command
+### it is opened again: up to 20 more times, 10 s apart at first and 25 s at
+### most, about 8 minutes in all: a chain of drops can then outlast the flood,
+### and a stop in the middle of a move costs more than the wait. ssh's own log
+### (-E) decides, never what the remote command
 ### printed: a reset or a stall in the banner exchange, or a bare 'Connection
 ### closed by <host> port <n>', which ssh logs only before login (a close
 ### after it is 'Connection to <host> closed by remote host.', on stderr).
@@ -51,6 +53,7 @@ _ieni="--ignore-errors"
 _MIG_DROP_RE='^((kex|ssh)_exchange_identification:|banner exchange:|Connection timed out during banner exchange)|^Connection closed by [^ ]+ port [0-9]+[[:space:]]*$'
 _MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]*\): Connection reset by peer[[:space:]]*$'
 _MIG_DROP_LOG="/var/log/boa/xoct.drop.log"
+_MIG_DROP_TRIES=20
 
 ### The host of the first root@ argument, and nothing else of the call.
 _mig_drop_host() {
@@ -67,6 +70,14 @@ _mig_drop_host() {
   printf '%s' '?'
 }
 
+### The wait after drop $1: 10 s, then 5 s longer each time up to 25 s, so the
+### tries walk across a flood's gaps instead of meeting its windows in step.
+_mig_drop_secs() {
+  local _w=$(( 5 + ${1} * 5 ))
+  [ "${_w}" -gt 25 ] && _w=25
+  echo "${_w}"
+}
+
 ### One retry noted: $1 the try, $2 the host, $3 the file holding the
 ### client's own messages, $4 the pattern of the lines kept from it (ssh's
 ### drop and close lines when not given). A terminal is told only when
@@ -75,7 +86,7 @@ _mig_drop_host() {
 _mig_drop_note() {
   local _k="${4:-}"
   [ -n "${_k}" ] || _k="${_MIG_DROP_RE}|^Connection (reset|closed|timed out)"
-  [ -t 2 ] && echo "INFO: ${2}: connection dropped before login; try ${1} of 5 in 10 s" >&2
+  [ -t 2 ] && echo "INFO: ${2}: connection dropped before login; try ${1} of ${_MIG_DROP_TRIES} in $(_mig_drop_secs "${1}") s" >&2
   {
     printf '%s %s try %s: ' "$(date '+%F %T')" "${2}" "${1}"
     grep -E "${_k}" "${3}" 2> /dev/null \
@@ -91,12 +102,12 @@ ssh() {
     _l="$(mktemp /tmp/mig-ssh.XXXXXX 2> /dev/null)" || { command ssh "$@"; return $?; }
     command ssh -E "${_l}" "$@"
     _rc=$?
-    if [ "${_rc}" = "255" ] && [ "${_n}" -lt 5 ] \
+    if [ "${_rc}" = "255" ] && [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] \
       && grep -qE "${_MIG_DROP_RE}" "${_l}" 2> /dev/null; then
       _n=$(( _n + 1 ))
       _mig_drop_note "${_n}" "$(_mig_drop_host "$@")" "${_l}"
       rm -f "${_l}"
-      sleep 10
+      sleep "$(_mig_drop_secs "${_n}")"
       continue
     fi
     [ -s "${_l}" ] && cat "${_l}" >&2
@@ -113,13 +124,13 @@ _mig_rsh_again() {
     _e="$(mktemp /tmp/mig-rsh.XXXXXX 2> /dev/null)" || { command "$@"; return $?; }
     command "$@" 2> "${_e}"
     _rc=$?
-    if [ "${_rc}" != "0" ] && [ "${_n}" -lt 5 ] \
+    if [ "${_rc}" != "0" ] && [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] \
       && grep -qE "${_MIG_DROP_RE}" "${_e}" 2> /dev/null \
       && { [ "${1}" != "rsync" ] || grep -qF '(0 bytes received so far)' "${_e}"; }; then
       _n=$(( _n + 1 ))
       _mig_drop_note "${_n}" "$(_mig_drop_host "$@")" "${_e}"
       rm -f "${_e}"
-      sleep 10
+      sleep "$(_mig_drop_secs "${_n}")"
       continue
     fi
     [ -s "${_e}" ] && cat "${_e}" >&2
@@ -161,11 +172,11 @@ _mig_keyscan() {
       rm -f "${_e}"
       return 0
     fi
-    if [ "${_n}" -lt 5 ] && grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null; then
+    if [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] && grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null; then
       _n=$(( _n + 1 ))
       _mig_drop_note "${_n}" "${_h}" "${_e}" "${_MIG_SCAN_RE}"
       rm -f "${_e}"
-      sleep 10
+      sleep "$(_mig_drop_secs "${_n}")"
       continue
     fi
     rm -f "${_e}"
