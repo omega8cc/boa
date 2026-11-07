@@ -229,7 +229,10 @@
       longer be stopped for good by a named pipe in an instance's tree. It
       read the panel's alias and site drushrc.php with no time limit, so a
       pipe in either place held its run, and the lock every later run waits
-      for, until a restart. It now reads only regular files, with a limit.
+      for, until a restart. It now reads only plain files the instance owns,
+      inside its own home and with a time limit, so no instance can point it
+      at another instance's panel either and have that one's running tasks
+      marked failed.
 
     * xmass restore-target killed during its data directory swap, with the
       standby marker still there, finishes when run again; before, the box

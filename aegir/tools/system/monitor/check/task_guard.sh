@@ -327,17 +327,35 @@ _is_safe_ident() {
 # drush bootstrap — the whole point is to keep working when the instance's
 # drush tree is broken mid-swap. The db name survives platform migrations,
 # so even an alias caught mid-upgrade still names the right database.
-# Both files are in the instance user's tree: each is read only as a regular
-# file and never waited on, so a FIFO there cannot hold this run, and with it
-# the lock every later run needs, for good.
+# Both files are in the instance user's tree, and the instance user can put
+# anything there. Each is read only as a plain file, no link, that the
+# instance user or root owns, and the site only inside the instance's own
+# home, so no instance can make this run judge another one's panel. Each
+# read stops after ten seconds, so a FIFO swapped in after the test cannot
+# hold this run, and with it the lock every later run needs.
+_tg_own_file() { # <path> <user>: a plain file, the user's own or root's
+  local _o
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _o=$(stat -c %U "${1}" 2>/dev/null)
+  [ "${_o}" = "${2}" ] || [ "${_o}" = "root" ]
+}
 _hm_db_for_alias() {
-  local _alias="$1" _dir _dbn
-  [ -f "${_alias}" ] || return 1
+  local _alias="$1" _u="$2" _home _rh _dir _rd _dbn
+  _home="${_alias%/.drush/*}"
+  _tg_own_file "${_alias}" "${_u}" || return 1
+  _rh=$(readlink -f "${_home}" 2>/dev/null)
+  [ -n "${_rh}" ] || return 1
   _dir=$(timeout 10 grep "site_path'" "${_alias}" 2>/dev/null \
     | awk '{ print $3}' \
     | sed "s/[\,']//g")
-  [ -n "${_dir}" ] && [ -f "${_dir}/drushrc.php" ] || return 1
-  _dbn=$(timeout 10 grep "options\['db_name'\] = " "${_dir}/drushrc.php" 2>/dev/null \
+  [ -n "${_dir}" ] || return 1
+  _rd=$(readlink -f "${_dir}" 2>/dev/null)
+  case "${_rd}" in
+    "${_rh}"/*) ;;
+    *) return 1 ;;
+  esac
+  _tg_own_file "${_rd}/drushrc.php" "${_u}" || return 1
+  _dbn=$(timeout 10 grep "options\['db_name'\] = " "${_rd}/drushrc.php" 2>/dev/null \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g")
   [ -n "${_dbn}" ] || return 1
@@ -368,7 +386,7 @@ _HELD_TOTAL=0
 _reap_instance() {
   local _u="$1" _alias="$2" _dbn _n _rows _vid _nid _age _upd
   [ -e "${_alias}" ] || return 0
-  if ! _dbn=$(_hm_db_for_alias "${_alias}"); then
+  if ! _dbn=$(_hm_db_for_alias "${_alias}" "${_u}"); then
     _warn_daily "nodb_${_u}" "WARN: cannot resolve the hostmaster db for ${_u}; instance skipped (latched for a day)"
     _say "SKIP user=${_u} reason=no-db"
     return 0
