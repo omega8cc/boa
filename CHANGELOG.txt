@@ -834,6 +834,10 @@
 
 @=> Changes
 
+    * MyDumper and myloader 1.0.19 (MyQuick) replace 1.0.5 on Chimaera,
+      Daedalus and Excalibur, installed by the regular agent pass within
+      minutes of a publish; Beowulf keeps 0.19.3.
+
     * PHP 8.6.0RC5 replaces 8.6.0RC4 where PHP 8.6 is installed. A box takes
       it with its next barracuda upgrade; the PHP security floor stays at
       8.6.0RC4, so no upgrade is forced for it.

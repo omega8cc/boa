@@ -4165,7 +4165,7 @@ _myquick_busy() {
 }
 
 _if_fix_myquick() {
-  _MYQUICK_VRN_TWO=1.0.5-1
+  _MYQUICK_VRN_TWO=1.0.19-1
   local _mqCode="" _mqDeb _mqNow _mqWas _mqVer _mqRan _mqHelp _mqMark _mqLocal
   _mqMark="${_pthLog}/myquick-deb-${_MYQUICK_VRN_TWO}.log"
   _mqLocal="/usr/local/bin/myloader"
