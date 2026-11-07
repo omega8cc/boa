@@ -12973,8 +12973,8 @@ _xmass_release_source_events() {
 _xmass_promotion_window_close() {
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
     "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null && return 0
-  _alrt "could not remove the promotion-window signal on ${_tgt}: its database hold stands down"
-  _alrt "  until it is gone (48 hours at most) -- remove it there: rm -f /run/boa_xmass_init.pid /root/.standby.init.pid"
+  _alrt "could not remove the promotion-window signal on ${_tgt}: if it was written there, its database hold"
+  _alrt "  stands down until it is gone (48 hours at most) -- remove it there: rm -f /run/boa_xmass_init.pid /root/.standby.init.pid"
   return 1
 }
 
@@ -19388,6 +19388,13 @@ _xmass_cmd_cutover() {
     _xmass_declare_unadopted
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
+    # The parked run's 503 gate is still on disk, but this run re-asserts it
+    # only further down: a refusal before that (the park's, the signal's)
+    # must name it in its hint, with its recipe.
+    local _wb
+    for _wb in ${_ELIGIBLE_ACCOUNTS}; do
+      [ -e "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
+    done
     if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
       # This box already relays the client-domain sites: it is their only
       # front door, so its cron (watchdogs, IDS, certificate mirror) stays
@@ -19409,12 +19416,6 @@ _xmass_cmd_cutover() {
     # unlock the target's database and its standby marker would go.
     if [ "${_XMASS_TARGET_ARMED}" != "YES" ] \
       && ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
-      # The parked run's 503 gate is still on disk, but this run has not
-      # re-asserted it yet: the hint must name it, with its recipe.
-      local _wb
-      for _wb in ${_ELIGIBLE_ACCOUNTS}; do
-        [ -e "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
-      done
       _xmass_restore_hint
       _die "Could not re-assert the promotion-window signal on target ${_tgt}" \
            " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- the cutover stays PARKED" \
