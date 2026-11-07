@@ -129,6 +129,26 @@
 
 @=> Important Fixes
 
+    * Switching AppArmor on needs a barracuda upgrade and a reboot, and the box
+      now boots in the mode chosen. The upgrade before the reboot places BOA's
+      profiles with that mode written into them. Before, that boot loaded the
+      packages' own profiles in enforce mode: the unbound package's refused
+      BOA's unbound its OpenSSL, so the box's own resolver stayed down until
+      the next upgrade, which was also what loaded the mode chosen.
+
+    * In AppArmor enforce mode the mysql client reads the client files BOA's
+      root tools hand it: the database broker's, a check of a site's own login,
+      a mirror's carried login, and the cluster's and the proxy's admin logins.
+      Refused, each read as a login that failed: the broker's nightly witness
+      named working logins as not proven, and an account could not be switched
+      to the broker.
+
+    * HTTP/3 transfers survive an Nginx reload in AppArmor enforce mode too. The
+      profile refused the eBPF init behind quic_bpf and the start-up probe's own
+      files, so Nginx failed to start with it, the monitor took it out and mailed
+      an alert. A box left with /etc/nginx/main.d/quic_bpf.failed from that gets
+      it back once the file is deleted and a barracuda upgrade has run.
+
     * xmass restore-target killed during its data directory swap, with the
       standby marker still there, finishes when run again; before, the box
       refused with "no parked data directory" and could only be reimaged.
