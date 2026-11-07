@@ -5807,17 +5807,22 @@ _check_root() {
 ### readable by root alone, as barracuda and octopus keep theirs under
 ### reports/up; not the polled ones (xmass status, xmass autosync --run, whose
 ### monitor keeps each pass, and --status) nor a call with no verb. The tool
-### writes to the file and a tail shows the file on the console: a daemon a
-### verb starts inherits the file, never a pipe whose reader would then wait
-### for it, and the tool keeps its pid, exit status and signals. The tail
-### stops within 0.2 s of the tool. A tool another migration tool runs on
-### this box writes into the caller's log (_MIG_RUNLOG is exported). A log
-### that cannot be opened, or a tail with no --pid, leaves the run as it was
-### and says so once. _MIG_RUNLOG_DIR moves the tree, for tests.
+### writes to the file and a tail shows the file on the console, both streams
+### on stdout: a daemon a verb starts inherits the file, never a pipe whose
+### reader would then wait for it, and the tool keeps its pid, exit status and
+### signals. The tail is started from a subshell that exits at once, so it is
+### no child of the tool and a bare wait there never waits for it; it stops
+### within 0.2 s of the tool. A tool another migration tool runs on this box
+### keeps no log and leaves its streams as they were, so its output goes where
+### its caller sends it, into the caller's log when there is one (_MIG_RUNLOG,
+### exported, reads "none" when the caller keeps no log). A log that cannot be
+### opened, or a tail with no --pid, leaves the run as it was and says so once.
+### _MIG_RUNLOG_DIR moves the tree, for tests.
 _mig_runlog_start() {
   local _tool="${1}" _verb _now _dir _file
   shift
   [ -n "${_MIG_RUNLOG:-}" ] && return 0
+  export _MIG_RUNLOG=none
   case "${_tool} $*" in
     "xmass status"|"xmass status "*|"xmass autosync"*" --run"*|"xmass autosync"*" --status"*)
       return 0
@@ -5844,8 +5849,8 @@ _mig_runlog_start() {
     echo "== run log: ${_file}"
   } >> "${_file}"
   exec 3>&1
-  ( trap '' HUP INT QUIT TERM PIPE
-    exec tail -n +1 -s 0.2 --pid=$$ -f "${_file}" ) >&3 2> /dev/null &
+  ( ( trap '' HUP INT QUIT TERM PIPE
+      exec tail -n +1 -s 0.2 --pid=$$ -f "${_file}" ) >&3 2> /dev/null < /dev/null & )
   exec >> "${_file}" 2>&1 3>&-
   export _MIG_RUNLOG="${_file}"
 }
