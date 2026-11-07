@@ -5813,30 +5813,35 @@ _check_root() {
 ### /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<YYMMDD-HHMMSS>-<pid>.log,
 ### readable by root alone, as barracuda and octopus keep theirs under
 ### reports/up; not the polled ones (xmass status, xmass autosync --run, whose
-### monitor keeps each pass, and --status) nor a call with no verb. The tool
-### writes to the file and a tail shows the file on the console, both streams
-### on stdout: a daemon a verb starts inherits the file, never a pipe whose
-### reader would then wait for it, and the tool keeps its pid, exit status and
-### signals. The tail and its watcher start from a subshell that exits at
-### once, so no bare wait in the tool waits for them, and neither command line
-### names the tool. The tail follows a placeholder process the watcher ends
-### once the tool has exited, a zombie included (a caller that reads all the
-### output before it reaps the tool), so the tail stops by itself after it has
-### handed on every line, at the reader's own pace. A tool another migration
-### tool runs on this box keeps no log and leaves its streams as they were, so
-### its output goes where its caller sends it, into the caller's log when
-### there is one (_MIG_RUNLOG, exported, reads "none" when the caller keeps no
-### log); the caller's terminal is handed down in _MIG_RUNLOG_TTY for the
-### notices that go straight to it. No log is kept for a user other than root,
-### with under 1 GiB free, in a folder that cannot be written or with a tail
-### lacking --pid, and the last three say so once. _MIG_RUNLOG_DIR and
-### _MIG_RUNLOG_MIN_KB are for tests.
+### monitor keeps each pass, and --status) nor a call with no verb. As the
+### barracuda wrapper runs its worker, this process becomes a wrapper: it runs
+### the same tool with the same arguments as its child, both streams into the
+### file, shows the file on the console with a tail, and returns the child's
+### status only once the tail has handed on the last line, so a caller that
+### reads its own copy at once finds it whole. The child keeps the signal
+### dispositions the wrapper was started with; a signal for the run goes to
+### its process group, as the terminal's do, or to the child, whose pid the
+### second header line names. A daemon a verb starts inherits the file, never
+### the console. A tool another migration tool runs on this box keeps no log
+### and leaves its streams as they were, so its output goes where its caller
+### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
+### reads "none" when the caller keeps no log); the caller's terminal is
+### handed down in _MIG_RUNLOG_TTY for the notices that go straight to it. No
+### log is kept for a user other than root, with under 1 GiB free, in a folder
+### that cannot be written or with a tail lacking --pid, and the last three
+### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _verb _now _dir _file _base _free _con _term=""
+  local _tool="${1}" _verb _now _dir _file _base _free _self _term="" _h _t _c _rc
   shift
-  [ -n "${_MIG_RUNLOG:-}" ] && return 0
+  if [ -n "${_MIG_RUNLOG:-}" ]; then
+    if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
+      echo "== run pid $$"
+      unset _MIG_RUNLOG_WRAPPER
+    fi
+    return 0
+  fi
   export _MIG_RUNLOG=none
-  unset _MIG_RUNLOG_TTY
+  unset _MIG_RUNLOG_TTY _MIG_RUNLOG_WRAPPER
   case "${_tool} $*" in
     "xmass status"|"xmass status "*|"xmass autosync"*" --run"*|"xmass autosync"*" --status"*)
       return 0
@@ -5846,6 +5851,8 @@ _mig_runlog_start() {
     ''|-*) return 0 ;;
   esac
   [ -n "${_MIG_RUNLOG_DIR:-}" ] || [ "$(id -u)" = "0" ] || return 0
+  _self="$(readlink -f -- "$0" 2> /dev/null)"
+  [ -n "${_self}" ] && [ -f "${_self}" ] || return 0
   _verb="$(printf '%s' "${1}" | tr -cd 'a-z0-9-' | cut -c1-32)"
   _now="$(date +%y%m%d-%H%M%S)"
   _base="${_MIG_RUNLOG_DIR:-/var/backups/reports/${_tool}}"
@@ -5883,36 +5890,41 @@ _mig_runlog_start() {
     echo "== run log: ${_file}"
   } >> "${_file}"
   [ -t 2 ] && _term="$(tty <&2 2> /dev/null)"
-  exec {_con}>&1
-  ( ( trap '' HUP INT QUIT TERM PIPE
-      exec sh -c '
-        sleep 2147483647 8>&- 9<&- &
-        h=$!
-        tail -n +1 -s 0.2 --pid="$h" -f - <&9 >&8 8>&- 9<&- &
-        t=$!
-        exec 8>&- 9<&-
-        while kill -0 "$1" 2> /dev/null && kill -0 "$t" 2> /dev/null; do
-          s=""
-          if [ -r "/proc/$1/stat" ]; then
-            read -r s 2> /dev/null < "/proc/$1/stat"
-            s="${s##*) }"
-          else
-            s="$(ps -o stat= -p "$1" 2> /dev/null)"
-          fi
-          case "${s}" in
-            Z*|*Z*) break ;;
-          esac
-          sleep 0.2
-        done
-        kill -9 "$h" 2> /dev/null
-        wait "$h" 2> /dev/null
-        wait "$t" 2> /dev/null' mig-runlog "$$" ) \
-      8>&"${_con}" {_con}>&- 9< "${_file}" > /dev/null 2>&1 < /dev/null & )
-  exec >> "${_file}" 2>&1 {_con}>&-
   export _MIG_RUNLOG="${_file}"
+  export _MIG_RUNLOG_WRAPPER="$$"
   case "${_term}" in
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
+  ### The wrapper outlives every signal its group gets, so it can still drain
+  ### the tail; the placeholder and the tail ignore them too, and the
+  ### placeholder ends with the wrapper should the wrapper be killed outright.
+  trap ':' HUP INT QUIT TERM
+  ( trap '' HUP INT QUIT TERM PIPE
+    exec tail -s 1 --pid="$$" -f /dev/null ) < /dev/null > /dev/null 2>&1 &
+  _h=$!
+  ( trap '' HUP INT QUIT TERM PIPE
+    exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) 2> /dev/null < "${_file}" &
+  _t=$!
+  ### The run keeps the wrapper's input: 0<&0 counts as its own input, which a
+  ### job started with & would otherwise lose to /dev/null.
+  if { true <&0; } 2> /dev/null; then
+    ( trap - INT QUIT
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) 0<&0 >> "${_file}" 2>&1 &
+  else
+    ( trap - INT QUIT
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) < /dev/null >> "${_file}" 2>&1 &
+  fi
+  _c=$!
+  _rc=0
+  while :; do
+    wait "${_c}"
+    _rc=$?
+    kill -0 "${_c}" 2> /dev/null || break
+  done
+  kill -9 "${_h}" 2> /dev/null
+  wait "${_h}" 2> /dev/null
+  wait "${_t}" 2> /dev/null
+  exit "${_rc}"
 }
 _mig_runlog_start xcopy "$@"
 
