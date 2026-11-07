@@ -5088,10 +5088,8 @@ _run_apt_get_dist_upgrade() {
   _mrun "apt-get install lsb-release ${_dstUpArg}"
   ### Update rsyslog configuration early
   _rsyslog_config_update
-  ### Reload key services if needed early
-  if [ -e "/etc/init.d/valkey-server" ]; then
-    _mrun "service valkey-server reload"
-  fi
+  ### Reload key services if needed early (Valkey has no reload: it is left
+  ### running, as a reload never changed it)
   _mrun "service nginx reload"
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -8226,14 +8224,28 @@ _valkey_root_cli() {
 }
 
 #
+# One of Valkey's settings, read from the server: a reply that does not name
+# the setting asked for is none, never an empty value.
+_valkey_conf_get() {
+  local _r
+  _r=$(_valkey_root_cli "${1}" CONFIG GET "${2}")
+  [ "$(sed -n 1p <<< "${_r}")" = "${2}" ] || return 1
+  sed -n 2p <<< "${_r}"
+}
+
+#
 # The pass's AppArmor teardown leaves a running Valkey unconfined, and only a
 # new process takes its profile again: a reload does not. This Valkey is a
 # cache that saves nothing, so a plain restart would start every site's cache
-# empty: it saves on its way down, the new process loads that, and the dump
-# goes once loaded, so no later restart reads a stale one. A save it refuses
-# leaves it running as it was, unconfined until its next restart.
+# empty: it saves on its way down, the new process loads that, and the saved
+# copy goes after the start, so no later start reads a stale one. While it
+# runs, the marker below keeps the Valkey watchdog from healing: a large
+# cache's save blocks every probe for as long as it takes to write, and a
+# restart then would kill it mid-save. Settings it cannot read, or a save it
+# refuses, leave it running as it was, unconfined until its next restart.
 _valkey_back_under_profile() {
-  local _pid _psw _save _aof _dir _dbf _i _lab
+  local _pid _psw _save _aof _dir _dbf _out _i _lab
+  local _mark=/run/valkey_restart_running.pid
   [ -x "/etc/init.d/valkey-server" ] || return 0
   _pid=$(pgrep -xo valkey-server)
   [ -n "${_pid}" ] || return 0
@@ -8243,29 +8255,40 @@ _valkey_back_under_profile() {
     /sys/kernel/security/apparmor/profiles 2> /dev/null || return 0
   _psw=$(grep -m1 "^user default on >" /etc/valkey/valkey.conf 2> /dev/null \
     | sed "s/.*>//; s/ .*//")
-  _save=$(_valkey_root_cli "${_psw}" CONFIG GET save | sed -n 2p)
-  _aof=$(_valkey_root_cli "${_psw}" CONFIG GET appendonly | sed -n 2p)
-  _dir=$(_valkey_root_cli "${_psw}" CONFIG GET dir | sed -n 2p)
-  _dbf=$(_valkey_root_cli "${_psw}" CONFIG GET dbfilename | sed -n 2p)
-  [ -n "${_dir}" ] || _dir=/var/lib/valkey
-  [ -n "${_dbf}" ] || _dbf=dump.rdb
-  _valkey_root_cli "${_psw}" SHUTDOWN SAVE > /dev/null
-  for _i in $(seq 1 120); do
+  if ! _save=$(_valkey_conf_get "${_psw}" save) \
+    || ! _aof=$(_valkey_conf_get "${_psw}" appendonly) \
+    || ! _dir=$(_valkey_conf_get "${_psw}" dir) \
+    || ! _dbf=$(_valkey_conf_get "${_psw}" dbfilename) \
+    || [ -z "${_dir}" ] || [ -z "${_dbf}" ]; then
+    _msg "ALRT: Valkey's settings could not be read, it runs unconfined until its next restart"
+    return 1
+  fi
+  touch "${_mark}"
+  _out=$(_valkey_root_cli "${_psw}" SHUTDOWN SAVE)
+  if [[ "${_out}" =~ ERR ]]; then
+    rm -f "${_mark}"
+    _msg "ALRT: Valkey refused to save and stop, it runs unconfined until its next restart"
+    return 1
+  fi
+  # A large cache takes its time to write: wait for the save, not a minute.
+  for _i in $(seq 1 900); do
     kill -0 "${_pid}" 2> /dev/null || break
     sleep 1
   done
   if kill -0 "${_pid}" 2> /dev/null; then
-    _msg "ALRT: Valkey did not save and stop, it runs unconfined until its next restart"
+    rm -f "${_mark}"
+    _msg "ALRT: Valkey did not stop within 15 minutes of its save, left as it is"
     return 1
   fi
   _mrun "service valkey-server start"
-  for _i in $(seq 1 120); do
+  for _i in $(seq 1 600); do
     [ "$(_valkey_root_cli "${_psw}" PING)" = "PONG" ] && break
     sleep 1
   done
   if [ -z "${_save}" ] && [ "${_aof}" != "yes" ]; then
     rm -f "${_dir}/${_dbf}"
   fi
+  rm -f "${_mark}"
   _pid=$(pgrep -xo valkey-server)
   _lab=$(tr -d '\000' 2> /dev/null < "/proc/${_pid:-0}/attr/current")
   if [ "${_lab}" = "/usr/bin/valkey-server (enforce)" ]; then
@@ -8308,26 +8331,6 @@ _if_enforce_apparmor_profiles() {
       fi
     fi
   fi
-}
-
-#
-# Put AppArmor and auditd back in the boot order, only where no start link is
-# left: update-rc.d then writes the init script's own links, and a boot order
-# that still starts them stays as it is.
-_apparmor_boot_links() {
-  local _svc
-  for _svc in apparmor auditd; do
-    [ -x "/etc/init.d/${_svc}" ] || continue
-    compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null && continue
-    update-rc.d "${_svc}" defaults &> /dev/null
-    if compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "ARMR: ${_svc} starts on boot again"
-      fi
-    else
-      _msg "ALRT: ${_svc} is not in the boot order, the next boot will not start it"
-    fi
-  done
 }
 
 #
@@ -9780,10 +9783,8 @@ _if_post_major_os_upgrade() {
 
     ### Update rsyslog configuration early
     _rsyslog_config_update
-    ### Reload key services if needed early
-    if [ -e "/etc/init.d/valkey-server" ]; then
-      _mrun "service valkey-server reload"
-    fi
+    ### Reload key services if needed early (Valkey has no reload: it is left
+    ### running, as a reload never changed it)
     _mrun "service nginx reload"
     _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -10901,10 +10902,8 @@ _if_major_os_upgrade() {
     _sysvinit_install
     ### Update rsyslog configuration early
     _rsyslog_config_update
-    ### Reload key services if needed early
-    if [ -e "/etc/init.d/valkey-server" ]; then
-      _mrun "service valkey-server reload"
-    fi
+    ### Reload key services if needed early (Valkey has no reload: it is left
+    ### running, as a reload never changed it)
     _mrun "service nginx reload"
     _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -14640,11 +14639,10 @@ _initd_update() {
       _mrun "service nginx restart"
     fi
     if [ ! -e "/root/.proxy.cnf" ]; then
-      if [ -e "/etc/init.d/valkey-server" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
-        fi
-        _mrun "service valkey-server reload"
+      # Valkey has no reload: the signal one sends only reaches its thread
+      # stack collector, which logs a warning and changes nothing.
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Reloading PHP-FPM..."
       fi
       _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do

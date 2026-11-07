@@ -175,6 +175,14 @@
 
 @=> Important Fixes
 
+    * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
+      older than the site's database is refused before anything is copied,
+      and names the release to pick. CiviCRM upgrades a database forward
+      only: such a move ended successful, with the site on code that does
+      not know its schema. Every Verify now warns while a site's code is
+      older than its database, and a failed database upgrade says what the
+      code and the database read, and when a Verify cannot resume it.
+
     * xoct proxy --repair on an account holding only its control panel no
       longer stops with "0 site(s) converted" on a box that was the standing
       mirror of another: the other box's panel vhost, which the file sync
@@ -202,23 +210,40 @@
       an alert. A box left with /etc/nginx/main.d/quic_bpf.failed from that gets
       it back once the file is deleted and a barracuda upgrade has run.
 
+    * A reboot no longer turns off the HTTP/3 transfers that survive an Nginx
+      reload. A watchdog started before the reboot stopped cron kept running,
+      took the Nginx the shutdown stopped for an outage, and its quic_bpf trial
+      left /etc/nginx/main.d/quic_bpf.failed, which keeps it off for good. The
+      stop of /etc/init.d/clean-boa-env now ends the watchdogs before it stops
+      the services, the Nginx watchdog heals nothing while the box halts or
+      reboots, and its trial starts Nginx once more with the fragment before it
+      blames it: a start that works then keeps the fragment. The next barracuda
+      upgrade sets aside a latch the earlier trial left, as
+      quic_bpf.failed.old-trial, and probes again.
+
     * Choosing an AppArmor mode on a box whose last upgrade ran with none now
-      puts AppArmor and auditd back in the boot order. That upgrade had taken
-      them out, and the next boot loaded no profile at all, with nothing said,
-      while the upgrades in between reported the mode chosen.
+      puts AppArmor and auditd back in the boot order, from the next
+      barracuda upgrade, the next Octopus run or a barracuda run that stops
+      early. That upgrade had taken them out, and the next boot loaded no
+      profile at all, with nothing said, while the runs in between reported
+      the mode chosen.
 
     * Valkey runs under its AppArmor profile again after a barracuda upgrade
       in enforce mode. The upgrade's teardown had left it unconfined until its
       next restart, usually the next reboot: it was reloaded, which brings
       back nothing. It is now restarted there, saving its data on the way
       down and loading it on start, so this restart empties no cache; the
-      saved copy is deleted once loaded.
+      saved copy is deleted after the start. The Valkey watchdog stands down
+      meanwhile, so a large cache is never killed in the middle of its save.
 
     * The task guard, which marks crashed control panel tasks failed, can no
       longer be stopped for good by a named pipe in an instance's tree. It
       read the panel's alias and site drushrc.php with no time limit, so a
       pipe in either place held its run, and the lock every later run waits
-      for, until a restart. It now reads only regular files, with a limit.
+      for, until a restart. It now reads only plain files the instance owns,
+      inside its own home and with a time limit, so no instance can point it
+      at another instance's panel either and have that one's running tasks
+      marked failed.
 
     * xmass restore-target killed during its data directory swap, with the
       standby marker still there, finishes when run again; before, the box
@@ -905,6 +930,10 @@
       reach, and is there for a tenant's own, client and site operator logins.
 
 @=> Changes
+
+    * A barracuda upgrade no longer sends Valkey a reload signal. Valkey has
+      no reload: the signal only wrote a warning to its log and changed
+      nothing. The init script's reload now says so and sends nothing.
 
     * MyDumper and myloader 1.0.19 (MyQuick) replace 1.0.5 on Chimaera,
       Daedalus and Excalibur, installed by the regular agent pass within
