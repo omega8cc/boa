@@ -327,13 +327,17 @@ _is_safe_ident() {
 # drush bootstrap — the whole point is to keep working when the instance's
 # drush tree is broken mid-swap. The db name survives platform migrations,
 # so even an alias caught mid-upgrade still names the right database.
+# Both files are in the instance user's tree: each is read only as a regular
+# file and never waited on, so a FIFO there cannot hold this run, and with it
+# the lock every later run needs, for good.
 _hm_db_for_alias() {
   local _alias="$1" _dir _dbn
-  _dir=$(grep "site_path'" "${_alias}" 2>/dev/null \
+  [ -f "${_alias}" ] || return 1
+  _dir=$(timeout 10 grep "site_path'" "${_alias}" 2>/dev/null \
     | awk '{ print $3}' \
     | sed "s/[\,']//g")
-  [ -n "${_dir}" ] && [ -e "${_dir}/drushrc.php" ] || return 1
-  _dbn=$(grep "options\['db_name'\] = " "${_dir}/drushrc.php" 2>/dev/null \
+  [ -n "${_dir}" ] && [ -f "${_dir}/drushrc.php" ] || return 1
+  _dbn=$(timeout 10 grep "options\['db_name'\] = " "${_dir}/drushrc.php" 2>/dev/null \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g")
   [ -n "${_dbn}" ] || return 1
