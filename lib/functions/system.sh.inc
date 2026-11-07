@@ -8305,6 +8305,12 @@ _sync_apparmor_profiles() {
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
+      # The AppArmor parser of these systems does not know these two capabilities and
+      # refuses the whole profile for them. Their kernels cannot use quic_bpf anyway.
+      if [ "${_OS_CODE}" = "beowulf" ] || [ "${_OS_CODE}" = "buster" ]; then
+        sed -i -e '/^  capability bpf,$/d' -e '/^  capability perfmon,$/d' \
+          /etc/apparmor.d/usr.sbin.nginx &> /dev/null
+      fi
       # Before the kernel has AppArmor no tool can set a mode, and the next boot
       # loads these files as they stand, so the chosen mode is written into them:
       # enforce takes the complain flag off, and for anything else BOA's FPM
