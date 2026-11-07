@@ -20864,9 +20864,8 @@ _xmass_cmd_go_live() {
 ### file, shows the file on the console with a tail, and returns the child's
 ### status only once the tail has handed on the last line, so a caller that
 ### reads its own copy at once finds it whole. The child keeps the signal
-### dispositions the wrapper was started with; a signal for the run goes to
-### its process group, as the terminal's do, or to the child, whose pid the
-### second header line names. A daemon a verb starts inherits the file, never
+### dispositions and the input the wrapper was started with, and the third
+### header line names its pid. A daemon a verb starts inherits the file, never
 ### the console. A tool another migration tool runs on this box keeps no log
 ### and leaves its streams as they were, so its output goes where its caller
 ### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
@@ -20876,7 +20875,7 @@ _xmass_cmd_go_live() {
 ### that cannot be written or with a tail lacking --pid, and the last three
 ### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _verb _now _dir _file _base _free _self _term="" _h _t _c _rc
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _h _t _c _rc _ws="" _wi
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -20887,18 +20886,27 @@ _mig_runlog_start() {
   fi
   export _MIG_RUNLOG=none
   unset _MIG_RUNLOG_TTY _MIG_RUNLOG_WRAPPER
-  case "${_tool} $*" in
-    "xmass status"|"xmass status "*|"xmass autosync"*" --run"*|"xmass autosync"*" --status"*)
-      return 0
+  _verb=""
+  for _a in "$@"; do
+    case "${_a}" in
+      -*|*=*) continue ;;
+    esac
+    _verb="${_a}"
+    break
+  done
+  [ -n "${_verb}" ] || return 0
+  case "${_tool}:${_verb}" in
+    xmass:status) return 0 ;;
+    xmass:autosync)
+      case " $* " in
+        *" --run "*|*" --status "*) return 0 ;;
+      esac
       ;;
-  esac
-  case "${1:-}" in
-    ''|-*) return 0 ;;
   esac
   [ -n "${_MIG_RUNLOG_DIR:-}" ] || [ "$(id -u)" = "0" ] || return 0
   _self="$(readlink -f -- "$0" 2> /dev/null)"
   [ -n "${_self}" ] && [ -f "${_self}" ] || return 0
-  _verb="$(printf '%s' "${1}" | tr -cd 'a-z0-9-' | cut -c1-32)"
+  _verb="$(printf '%s' "${_verb}" | tr -cd 'a-z0-9-' | cut -c1-32)"
   _now="$(date +%y%m%d-%H%M%S)"
   _base="${_MIG_RUNLOG_DIR:-/var/backups/reports/${_tool}}"
   _dir="${_base}/${_now%%-*}"
@@ -20931,7 +20939,7 @@ _mig_runlog_start() {
     return 0
   fi
   {
-    echo "== ${_tool} $* | $(date '+%F %T %Z') | $(hostname -f 2> /dev/null) | pid $$"
+    echo "== ${_tool} $* | $(date '+%F %T %Z') | $(hostname -f 2> /dev/null) | wrapper pid $$"
     echo "== run log: ${_file}"
   } >> "${_file}"
   [ -t 2 ] && _term="$(tty <&2 2> /dev/null)"
@@ -20940,10 +20948,18 @@ _mig_runlog_start() {
   case "${_term}" in
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
-  ### The wrapper outlives every signal its group gets, so it can still drain
-  ### the tail; the placeholder and the tail ignore them too, and the
-  ### placeholder ends with the wrapper should the wrapper be killed outright.
-  trap ':' HUP INT QUIT TERM
+  ### The wrapper outlives every signal it gets, so it can still drain the
+  ### tail, and notes which one came. TERM and HUP are passed on to the run: a
+  ### kill of the pid the caller holds still stops it, and a hangup the
+  ### terminal sends the session leader alone still reaches it. INT and QUIT
+  ### come from the terminal to the whole group. The placeholder and the tail
+  ### ignore them all; the placeholder ends with the wrapper should the
+  ### wrapper be killed outright.
+  _c=""
+  trap '_ws=HUP; _wi=1; [ -n "${_c}" ] && kill -s HUP "${_c}" 2> /dev/null' HUP
+  trap '_ws=INT; _wi=1' INT
+  trap '_ws=QUIT; _wi=1' QUIT
+  trap '_ws=TERM; _wi=1; [ -n "${_c}" ] && kill -s TERM "${_c}" 2> /dev/null' TERM
   ( trap '' HUP INT QUIT TERM PIPE
     exec tail -s 1 --pid="$$" -f /dev/null ) < /dev/null > /dev/null 2>&1 &
   _h=$!
@@ -20960,15 +20976,28 @@ _mig_runlog_start() {
       exec "${BASH:-/bin/bash}" "${_self}" "$@" ) < /dev/null >> "${_file}" 2>&1 &
   fi
   _c=$!
-  _rc=0
+  ### A wait a trap cut short is waited again: the run's own status is the one
+  ### the wrapper keeps.
   while :; do
+    _wi=""
     wait "${_c}"
     _rc=$?
-    kill -0 "${_c}" 2> /dev/null || break
+    [ -z "${_wi}" ] && break
   done
   kill -9 "${_h}" 2> /dev/null
   wait "${_h}" 2> /dev/null
-  wait "${_t}" 2> /dev/null
+  while kill -0 "${_t}" 2> /dev/null; do
+    wait "${_t}" 2> /dev/null
+  done
+  ### A run that ended on the signal the wrapper also got ends the wrapper on
+  ### it too, so a calling script stops as it would have (lock.inc re-raises
+  ### its signal for the same reason).
+  case "${_ws}:${_rc}" in
+    HUP:129|INT:130|QUIT:131|TERM:143)
+      trap - "${_ws}"
+      kill -s "${_ws}" "$$"
+      ;;
+  esac
   exit "${_rc}"
 }
 _mig_runlog_start xmass "$@"
