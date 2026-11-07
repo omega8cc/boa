@@ -254,10 +254,12 @@
       quiet count wall time, not their sleeps; a quiet answer at the end
       still gets its confirming check, and one that never came is not
       quiet. A cutover that cannot mark the target's promotion window stops
-      before the promotion with writes thawed, one that stops before its
-      write freeze lifts the 503 gate before it clears the target's SQL
-      watchdog mute, and a refused xmass verb drops its lock only after
-      undoing what it set on the other server.
+      before the promotion with writes thawed, and a resumed one stays
+      parked; a mark it cannot remove again is named with the command that
+      does. One that stops before its write freeze lifts the 503 gate before
+      it clears the target's SQL watchdog mute, with every try again, and a
+      refused xmass verb drops its lock only after undoing what it set on
+      the other server.
 
     * xmass pre-mig on a source checks the control panels of exactly the
       accounts the move takes. A directory the move skips, such as an
