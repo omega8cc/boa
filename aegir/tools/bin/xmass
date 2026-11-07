@@ -169,6 +169,233 @@ _die() {
   exit 1
 }
 
+### A connection sshd drops before login (MaxStartups, or a per-source
+### penalty while a scanner holds its slots) ran nothing on the far box, so
+### it is opened again: up to 20 more times, 10 s apart at first and 25 s at
+### most, about 8 minutes of waits: a chain of drops can then outlast the
+### flood, and a stop in the middle of a move costs more than the wait. A try
+### that stalls in the banner exchange counts as a drop and takes its own
+### ConnectTimeout besides; a port that is silent or refuses is not tried
+### again, so a call given up after its ConnectTimeout stays given up. Once a
+### chain to a host has used the whole budget, every later call to that host
+### in the same run gets 3 more tries (45 s): by then the move stops or goes
+### on without that call, and the whole budget again on each later call only
+### kept a gated source dark longer. ssh's own log
+### (-E) decides, never what the remote command
+### printed: a reset or a stall in the banner exchange, or a bare 'Connection
+### closed by <host> port <n>', which ssh logs only before login (a close
+### after it is 'Connection to <host> closed by remote host.', on stderr).
+### rsync and scp are read on their stderr, which can also carry the far
+### end's own lines, so only a line that opens with ssh's words counts, and
+### an rsync only when it received 0 bytes. A host key scan that learned no
+### key is run again the same way when ssh-keyscan's own words name a close
+### or a reset before the banner, or it said nothing and port 22 accepts a
+### plain connection. Any other failure returns at once with its
+### own status and messages. Each retry adds one line to the drop log: time,
+### host, try and the client's own words, never the remote command. The
+### functions shadow the binaries, so every call in the tool goes through
+### them; their text is the same in xmass, xoct and xcopy.
+_MIG_DROP_RE='^((kex|ssh)_exchange_identification:|banner exchange:|Connection timed out during banner exchange)|^Connection closed by [^ ]+ port [0-9]+[[:space:]]*$'
+_MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]*\): Connection reset by peer[[:space:]]*$'
+_MIG_DROP_LOG="/var/log/boa/xmass.drop.log"
+_MIG_DROP_TRIES=20
+_MIG_DROP_TRIES_SPENT=3
+### The hosts whose chain used the whole budget in this run, one a line: a
+### file, since most calls run in a subshell, named by this run's pid (a
+### file a dead run of the same pid left is no one's).
+_MIG_DROP_SPENT="/run/mig-drop-spent.$$"
+rm -f "${_MIG_DROP_SPENT}" 2> /dev/null
+### The terminal this run was started on, when its stderr is one: each retry
+### is told there whatever the call did with its own stderr, and a caller
+### that reads a call's stderr never finds the notice in it.
+_MIG_NOTE_TTY=""
+[ -t 2 ] && { _MIG_NOTE_TTY="$(tty <&2 2> /dev/null)" || _MIG_NOTE_TTY=""; }
+
+### The host of the first root@ argument, and nothing else of the call.
+_mig_drop_host() {
+  local _a
+  for _a in "$@"; do
+    case "${_a}" in
+      root@?*)
+        _a="${_a#root@}"
+        printf '%s' "${_a%%:*}" | tr -cd 'A-Za-z0-9._-'
+        return 0
+        ;;
+    esac
+  done
+  printf '%s' '?'
+}
+
+### The wait after drop $1: 10 s, then 5 s longer each time up to 25 s, so the
+### tries walk across a flood's gaps instead of meeting its windows in step.
+_mig_drop_secs() {
+  local _w=$(( 5 + ${1} * 5 ))
+  [ "${_w}" -gt 25 ] && _w=25
+  echo "${_w}"
+}
+
+### The tries a chain of drops to host $1 gets: the whole budget, or the
+### short one once a chain to it used the whole budget in this run.
+_mig_drop_budget() {
+  if grep -qxF "${1}" "${_MIG_DROP_SPENT}" 2> /dev/null; then
+    echo "${_MIG_DROP_TRIES_SPENT}"
+  else
+    echo "${_MIG_DROP_TRIES}"
+  fi
+}
+
+### The chain to host $1 used its budget $2 and met one more drop: a whole
+### budget marks the host, and files of runs that are gone go.
+_mig_drop_spent() {
+  local _f
+  [ -n "${_MIG_NOTE_TTY}" ] \
+    && echo "INFO: ${1}: still dropped after ${2} tries; this call gives up" 2> /dev/null > "${_MIG_NOTE_TTY}"
+  [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
+  for _f in /run/mig-drop-spent.*; do
+    [ -e "${_f}" ] || continue
+    kill -0 "${_f##*.}" 2> /dev/null || rm -f "${_f}"
+  done
+  echo "${1}" 2> /dev/null >> "${_MIG_DROP_SPENT}"
+  return 0
+}
+
+### One retry noted: $1 the try, $2 the host, $3 the file holding the
+### client's own messages, $4 the pattern of the lines kept from it (ssh's
+### drop and close lines when not given), $5 the chain's budget.
+_mig_drop_note() {
+  local _k="${4:-}" _b="${5:-${_MIG_DROP_TRIES}}" _t=""
+  [ -n "${_k}" ] || _k="${_MIG_DROP_RE}|^Connection (reset|closed|timed out)"
+  if [ -n "${_MIG_NOTE_TTY}" ]; then
+    if [ "${1}" = "1" ]; then
+      _t=", each try logged in ${_MIG_DROP_LOG}"
+      [ "${_b}" = "${_MIG_DROP_TRIES}" ] \
+        || _t=" (an earlier chain to it used all ${_MIG_DROP_TRIES})${_t}"
+    fi
+    echo "INFO: ${2}: connection dropped before login; try ${1} of ${_b} in $(_mig_drop_secs "${1}") s${_t}" 2> /dev/null > "${_MIG_NOTE_TTY}"
+  fi
+  {
+    printf '%s %s try %s: ' "$(date '+%F %T')" "${2}" "${1}"
+    grep -E "${_k}" "${3}" 2> /dev/null \
+      | tr -d '\r' | head -n 3 | tr '\n' ' '
+    echo
+  } 2> /dev/null >> "${_MIG_DROP_LOG}"
+  return 0
+}
+
+ssh() {
+  local _l _rc _n=0 _b="" _h
+  while :; do
+    _l="$(mktemp /tmp/mig-ssh.XXXXXX 2> /dev/null)" || { command ssh "$@"; return $?; }
+    command ssh -E "${_l}" "$@"
+    _rc=$?
+    if [ "${_rc}" = "255" ] && grep -qE "${_MIG_DROP_RE}" "${_l}" 2> /dev/null; then
+      _h="$(_mig_drop_host "$@")"
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _mig_drop_note "${_n}" "${_h}" "${_l}" "" "${_b}"
+        rm -f "${_l}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
+    fi
+    [ -s "${_l}" ] && cat "${_l}" >&2
+    rm -f "${_l}"
+    return "${_rc}"
+  done
+}
+
+### $1 rsync or scp, then its arguments: run with its stderr held, which is
+### replayed once the call is not retried.
+_mig_rsh_again() {
+  local _e _rc _n=0 _b="" _h
+  while :; do
+    _e="$(mktemp /tmp/mig-rsh.XXXXXX 2> /dev/null)" || { command "$@"; return $?; }
+    command "$@" 2> "${_e}"
+    _rc=$?
+    if [ "${_rc}" != "0" ] \
+      && grep -qE "${_MIG_DROP_RE}" "${_e}" 2> /dev/null \
+      && { [ "${1}" != "rsync" ] || grep -qF '(0 bytes received so far)' "${_e}"; }; then
+      _h="$(_mig_drop_host "$@")"
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _mig_drop_note "${_n}" "${_h}" "${_e}" "" "${_b}"
+        rm -f "${_e}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
+    fi
+    [ -s "${_e}" ] && cat "${_e}" >&2
+    rm -f "${_e}"
+    return "${_rc}"
+  done
+}
+
+### A local copy (no root@host: argument) runs as it is.
+rsync() {
+  local _a
+  for _a in "$@"; do
+    case "${_a}" in
+      root@?*:*) _mig_rsh_again rsync "$@"; return $? ;;
+    esac
+  done
+  command rsync "$@"
+}
+
+scp() {
+  _mig_rsh_again scp "$@"
+}
+
+### 0 when something accepts a connection on the host's ssh port.
+_mig_port_answers() {
+  timeout 5 bash -c 'exec 3<> "/dev/tcp/${1}/22"' _ "${1}" 2> /dev/null
+}
+
+### $1 the host, its keys appended to root's known_hosts. A scan whose
+### connections sshd closed or reset before the banner learned nothing and
+### runs again, whether ssh-keyscan named the close or, as it often does, said
+### nothing: a port that accepts a plain connection tells that from a refused
+### one, which says nothing too. A refused or silent port gets the one scan.
+### Returns 0 once a key for the host is known.
+_mig_keyscan() {
+  local _e _h _k _n=0 _b=""
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
+  while :; do
+    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
+      ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
+      ssh-keygen -F "${1}" > /dev/null 2>&1
+      return $?
+    }
+    ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> "${_e}"
+    if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+      rm -f "${_e}"
+      return 0
+    fi
+    if grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null \
+      || { [ ! -s "${_e}" ] && _mig_port_answers "${1}"; }; then
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _k="${_MIG_SCAN_RE}"
+        if [ ! -s "${_e}" ]; then
+          echo "${_h}: the scan said nothing, port 22 answers" > "${_e}"
+          _k='.'
+        fi
+        _mig_drop_note "${_n}" "${_h}" "${_e}" "${_k}" "${_b}"
+        rm -f "${_e}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
+    fi
+    rm -f "${_e}"
+    return 1
+  done
+}
+
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
   # converted to a private primary group named after itself gets that group,
@@ -2369,6 +2596,31 @@ _xmass_solr_ts_line() {
   esac
 }
 
+### An empty binding tally out of a broken alias parse is indistinguishable
+### from "no site uses Solr" -- spot-verify one alias before believing it.
+### Only a site alias carries site_path, and the glob is not sorted by kind,
+### so an alias that reads cleanly as a platform or server context is passed
+### over, and so are a link and anything that is not a regular file, which
+### the tally never reads either. The first other alias is checked: one that
+### reads as nothing, or in a layout this parse does not know, warns like a
+### site alias without site_path. Only platform and server aliases leave
+### nothing to tally. Kept in step with solrtrim's _collect_bindings.
+_xmass_solr_spot_check_alias() {
+  local _alias _atext _apath
+  for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
+    [ -L "${_alias}" ] && continue
+    [ -f "${_alias}" ] || continue
+    _atext=$(_xmass_read_file "${_alias}" | tr -d '\000')
+    printf '%s\n' "${_atext}" \
+      | grep -qE "'context_type' => '(platform|server)'" && continue
+    _apath=$(printf '%s\n' "${_atext}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+    [ -z "${_apath}" ] \
+      && _alrt "  alias site_path parse failed on $(basename "${_alias}") -- the binding tally is unreliable and read as zero"
+    break
+  done
+  return 0
+}
+
 _XMASS_SOLR_CLASSIFIED=NO   # YES once this process classified the source
 ### Classify the SOURCE's per-version Solr use from measured state: service,
 ### dotted cores, document counts via the cores STATUS endpoint, per-site
@@ -2425,16 +2677,7 @@ _xmass_solr_classify_source() {
       && _xmass_read_file "${_apath}/modules/boa_site_control.ini" \
         | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
-  ### An empty tally out of a broken alias parse is indistinguishable from
-  ### "no site uses Solr" -- spot-verify one alias before believing it.
-  if [ -z "${_bindraw}" ]; then
-    _alias=$(ls /data/disk/*/.drush/*.alias.drushrc.php 2>/dev/null | head -1)
-    if [ -n "${_alias}" ]; then
-      _apath=$(_xmass_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
-      [ -z "${_apath}" ] \
-        && _alrt "  alias site_path parse failed on $(basename "${_alias}") -- the binding tally is unreliable and read as zero"
-    fi
-  fi
+  [ -z "${_bindraw}" ] && _xmass_solr_spot_check_alias
 
   for _sv in solr4 solr7 solr9; do
     case "${_sv}" in
@@ -6135,7 +6378,7 @@ _xmass_panel_db_here() {
 
 # Once this mirror is a plain box again, with its older data directory back: an
 # account --fix-accounts laid or was laying and that holds no database there cannot
-# pass pre-mig or prep-target. It is marked for 'boa cleanup', with what that verb
+# pass a target's pre-mig or prep-target. It is marked for 'boa cleanup', with what that verb
 # reads, for a stop before the log leg leaves none of it: never through a link the
 # account put at a name, as the log and config trees are the account's. Marked, never
 # purged: with the active gone this may be the last copy of its files. The lane's
@@ -6646,9 +6889,213 @@ _xmass_restore_target() {
   return 0
 }
 
+### What a source of the cnf ($2, default /root/.barracuda.cnf) leaves in
+### variable $1. BARRACUDA (system.sh.inc) and autoupboa SOURCE the file,
+### so an exported, indented or quoted assignment counts and the last wins.
+### Status 1 when the source ends the shell (a readonly assignment does).
+_xmass_cnf_value() {
+  local _cvF="${2:-/root/.barracuda.cnf}"
+  [ -e "${_cvF}" ] || return 0
+  ( unset "$1"; . "${_cvF}" > /dev/null 2>&1 < /dev/null; printf '%s' "${!1:-}"; exit 0 )
+}
+
+### Set deny variable $1 to NO in the cnf ($2, default /root/.barracuda.cnf)
+### the way its readers see it: every assignment line, exported, indented or
+### quoted, is rewritten to the plain NO, and one is appended when none is
+### left or a source still reads YES (a later assignment of another shape
+### wins). Status 1 when the tolerant read or a source still sees YES, or
+### a source of the file cannot be judged.
+_xmass_cnf_clear_deny() {
+  local _cdV="$1" _cdF="${2:-/root/.barracuda.cnf}" _cdR
+  [ -e "${_cdF}" ] || return 0
+  sed -i -E "s/^[[:space:]]*(export[[:space:]]+)?${_cdV}=.*/${_cdV}=NO/" "${_cdF}"
+  if ! grep -q "^${_cdV}=NO$" "${_cdF}" 2>/dev/null \
+    || [ "$(_xmass_cnf_value "${_cdV}" "${_cdF}")" = "YES" ]; then
+    ### Newline-terminate before the append; an unterminated last line would
+    ### swallow the previous key.
+    [ -n "$(tail -c1 "${_cdF}" 2>/dev/null)" ] && echo >> "${_cdF}"
+    echo "${_cdV}=NO" >> "${_cdF}"
+  fi
+  if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_cdV}=[\"' ]*YES" "${_cdF}" 2>/dev/null; then
+    return 1
+  fi
+  _cdR="$(_xmass_cnf_value "${_cdV}" "${_cdF}")" || return 1
+  [ "${_cdR}" != "YES" ]
+}
+
+### One version's facts on this box, set in the caller's locals: service,
+### deny variable, distribution dir, data tree the installer tests, the
+### version's home (what solrtrim remove deletes whole; solr4 has none), and
+### whether it is installed (distribution dir, init script, or a parked
+### copy -- as the target read).
+_xmass_restore_solr_map() {
+  case "$1" in
+    solr4) _svc=jetty9; _denyVar=_DENY_JETTY9; _dst=/opt/jetty9; _dta=/opt/solr4;      _hom="" ;;
+    solr7) _svc=solr7;  _denyVar=_DENY_SOLR7;  _dst=/opt/solr7;  _dta=/var/solr7/data; _hom=/var/solr7 ;;
+    solr9) _svc=solr9;  _denyVar=_DENY_SOLR9;  _dst=/opt/solr9;  _dta=/var/solr9/data; _hom=/var/solr9 ;;
+    *) return 1 ;;
+  esac
+  _inst=NO
+  if [ -d "${_dst}" ] || [ -e "/etc/init.d/${_svc}" ] \
+    || [ -e "/var/backups/${_svc}.initd" ]; then
+    _inst=YES
+  fi
+  return 0
+}
+
+### Whether /usr/bin/java$1 is there when the next full system pass on
+### release $2 reaches its Solr step; $3 YES when that pass's Java step is
+### armed (an SR token in _XTRAS_LIST or a hosted name). Its link step
+### (_java_check_fix) runs right after the package step and links a JVM
+### already unpacked: 11, 17 and 21 on chimaera and later, 11 alone on the
+### others. An armed package step installs from another suite at once
+### (daedalus 11 and 21, excalibur 11 and 17, bookworm 11); the JREs it
+### leaves to the FULL package stage land after the links are made, so
+### they never count on the same pass.
+_xmass_restore_solr_jre() {
+  local _j="$1" _os="$2" _arm="$3"
+  [ -e "/usr/bin/java${_j}" ] && return 0
+  case "${_os}:${_j}" in
+    excalibur:*|daedalus:*|chimaera:*|*:11)
+      [ -e "/usr/lib/jvm/java-${_j}-openjdk-amd64/bin/java" ] && return 0
+    ;;
+  esac
+  [ "${_arm}" = "YES" ] || return 1
+  case "${_os}:${_j}" in
+    daedalus:11|daedalus:21|excalibur:11|excalibur:17|bookworm:11) return 0 ;;
+  esac
+  return 1
+}
+
+### Keep the mapped version's landed data tree, stamped $1: the tree, or a
+### link standing for it, is renamed in its own directory to
+### <tree>.xmass-landed-<stamp>. It stays on its disk, a relative link
+### still resolves, and solr7's and solr9's stay in the version's home,
+### which the daily off-site backup includes and which solrtrim remove
+### refuses to delete while a kept tree is there. solr4's /opt/solr4 is
+### the tree itself, which the installer removes whole when it installs,
+### so its kept name sits beside it. Prints the kept name, or why it
+### cannot be kept (status 1). $2 check: only the checks, nothing changed.
+_xmass_restore_solr_keep() {
+  local _new="${_dta}.xmass-landed-$1" _mpA _mpB
+  if [ -e "${_new}" ] || [ -L "${_new}" ]; then
+    echo "${_new} already exists -- move it away, then re-run"
+    return 1
+  fi
+  ### A tree that is a mount of its own cannot be renamed: the kernel
+  ### refuses to rename a mount point, and mv copies nothing then. A link
+  ### is renamed, never what it points to.
+  if [ ! -L "${_dta}" ]; then
+    _mpA="$(df -P "${_dta}" 2>/dev/null | awk 'NR==2 { print $NF }')"
+    _mpB="$(df -P "${_dta%/*}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
+    if [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]; then
+      echo "${_dta} is a mount of its own (${_mpA}) and cannot be renamed -- unmount it, or move its contents aside by hand, then re-run"
+      return 1
+    fi
+  fi
+  [ "${2:-}" = "check" ] && return 0
+  mv "${_dta}" "${_new}" \
+    || { echo "could not rename ${_dta} to ${_new} -- rename it by hand, then re-run"; return 1; }
+  echo "${_new}"
+}
+
+### Why the next full system pass would NOT install version $1 on this box,
+### or nothing when it would: the installer's own gates as
+### _if_install_upgrade_solr (solr.sh.inc) applies them, read locally.
+_xmass_restore_solr_gate() {
+  local _sv="$1" _n="${1#solr}" _hosted=NO _hn _os _xtras _run _j _js _need _why
+  local _arm=NO _fire=NO _jre=NO _jreArmed=NO
+  ### _if_rebuild_src_on_major_os_upgrade holds heavy rebuilds, the Solr
+  ### step among them, on exactly these four.
+  for _run in excalibur daedalus chimaera beowulf; do
+    if [ -e "/root/.run-to-${_run}.cnf" ] \
+      && [ ! -e /root/.force.rebuild.src.on.auto.now.cnf ]; then
+      echo "this box is staged for an OS hop (/root/.run-to-${_run}.cnf without the force-rebuild override): heavy rebuilds are held and no Solr installs"
+      return 0
+    fi
+  done
+  _os=$(. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-unknown}")
+  if [ "${_sv}" != "solr9" ] && [ "${_os}" = "excalibur" ]; then
+    echo "${_sv} never installs on excalibur (the installer excludes solr4 and solr7 there)"
+    return 0
+  fi
+  [ -e /root/.host8.cnf ] && _hosted=YES
+  _hn="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  [ -n "${_hn}" ] || _hn="$(hostname -f 2>/dev/null)"
+  case "${_hn}" in
+    *.aegir.cc) _hosted=YES ;;
+  esac
+  _xtras="$(_xmass_cnf_value _XTRAS_LIST)"
+  case "${_xtras}" in
+    *SR*) _arm=YES ;;
+  esac
+  if [ "${_hosted}" = "YES" ]; then
+    _arm=YES
+    _fire=YES
+  fi
+  case "${_xtras}" in
+    *"SR${_n}"*) _fire=YES ;;
+  esac
+  ### solr7 also fires on its own log, and solr9's bare trigger is inverted:
+  ### it fires wherever its log is absent. solr4's solr.xml trigger never
+  ### starts an install, since it sits in the tree whose presence skips one.
+  case "${_sv}" in
+    solr7) [ -e /var/solr7/logs/solr.log ] && _fire=YES ;;
+    solr9) [ -e /var/solr9/logs/solr.log ] || _fire=YES ;;
+  esac
+  if [ "${_sv}" = "solr9" ]; then
+    _js="17 21"
+    _need="java17 or java21"
+  else
+    _js="11"
+    _need="java11"
+  fi
+  for _j in ${_js}; do
+    _xmass_restore_solr_jre "${_j}" "${_os}" "${_arm}" && _jre=YES
+    _xmass_restore_solr_jre "${_j}" "${_os}" YES && _jreArmed=YES
+  done
+  [ "${_fire}" = "YES" ] && [ "${_jre}" = "YES" ] && return 0
+  if [ "${_jreArmed}" = "NO" ]; then
+    echo "the installer needs ${_need} for ${_sv}, there is none here (/usr/bin/java${_js// /, /usr/bin/java}), and no system pass on ${_os} provides one before its Solr step: install one and link it there first"
+    return 0
+  fi
+  if [ "${_fire}" = "NO" ]; then
+    _why="no install gate fires here (not hosted-named, no SR${_n} in _XTRAS_LIST"
+    case "${_sv}" in
+      solr7) _why="${_why}, no /var/solr7/logs/solr.log" ;;
+      solr9) _why="${_why}, and /var/solr9/logs/solr.log is present" ;;
+    esac
+    _why="${_why})"
+  else
+    _why="its install gate fires, but there is no ${_need} here, and the pass installs one only when an SR token or a hosted name arms its Java step"
+  fi
+  echo "${_why}: add SR${_n} to _XTRAS_LIST in /root/.barracuda.cnf"
+  return 0
+}
+
+### Bare: re-arm a rolled-back source (each version whose own deny is unset).
+### Named (solr4|solr7|solr9 ...): bring those versions back on a box that
+### denies them, such as a target moved from a source that used no Solr --
+### their own denies go too, and a version with no install here gets the
+### data tree a move landed moved aside, since BOA's installer reads a
+### present tree as installed and skips that version on every pass.
 _xmass_restore_solr_source() {
   local _svc _initd _parked _port _denyVar _waited
   local _restored=NO _skipped=NO
+  local _sv _want="" _owed="" _also="" _why _dst _dta _hom _inst _new _tree
+  local _stamp _scr _cv _vars="" _bad=""
+  for _sv in "$@"; do
+    case "${_sv}" in
+      solr4|solr7|solr9)
+        case " ${_want} " in
+          *" ${_sv} "*) : ;;
+          *) _want="${_want} ${_sv}" ;;
+        esac
+      ;;
+      *) _die "unknown Solr version '${_sv}' -- name solr4, solr7 or solr9; nothing changed" ;;
+    esac
+  done
+  _want="${_want# }"
   ### A finalized PX0 proxy is MEANT to have Solr down -- xtrim finalize put it
   ### there deliberately. Never resurrect it on a shrunken proxy.
   if [ -e "/root/.proxy.cnf" ]; then
@@ -6663,6 +7110,57 @@ _xmass_restore_solr_source() {
          " Solr is held down for the window; finish or abort the migration" \
          " first (a refused init unwinds this automatically)"
   fi
+  ### A named version with no install comes only from the next full system
+  ### pass: refuse while that pass could not install it, before any change.
+  ### The same goes for a landed tree that cannot be renamed in place (a
+  ### mount of its own) or whose kept name is taken.
+  _stamp="$(date -u '+%Y%m%d-%H%M%S')"
+  for _sv in ${_want}; do
+    _xmass_restore_solr_map "${_sv}"
+    _vars="${_vars} ${_denyVar}"
+    [ "${_inst}" = "NO" ] || continue
+    _why="$(_xmass_restore_solr_gate "${_sv}")"
+    [ -z "${_why}" ] || _die "${_sv}: ${_why} -- refusing; nothing changed"
+    [ -d "${_dta}" ] || continue
+    _why="$(_xmass_restore_solr_keep "${_stamp}" check)" \
+      || _die "${_sv}: ${_why} -- refusing; nothing changed"
+  done
+  ### Every deny this run clears must clear by rewriting its lines: tried on
+  ### a copy first, so a line no rewrite reaches refuses with nothing changed.
+  if [ -n "${_want}" ] && [ -e "/root/.barracuda.cnf" ]; then
+    _scr="$(mktemp 2>/dev/null)" \
+      || _die "cannot make a scratch copy of /root/.barracuda.cnf -- refusing; nothing changed"
+    cat /root/.barracuda.cnf > "${_scr}"
+    for _cv in ${_vars} _DENY_JAVA; do
+      _xmass_cnf_clear_deny "${_cv}" "${_scr}" || _bad="${_bad} ${_cv}"
+    done
+    rm -f "${_scr}"
+    [ -z "${_bad}" ] \
+      || _die "a source of /root/.barracuda.cnf still reads YES for${_bad} once each of its lines is rewritten --" \
+              " fix those lines by hand; nothing changed"
+  fi
+  [ -n "${_want}" ] && _info "Bringing back: ${_want} ..."
+  for _sv in ${_want}; do
+    _xmass_restore_solr_map "${_sv}"
+    _xmass_cnf_clear_deny "${_denyVar}" \
+      || _die "could not clear ${_denyVar} in /root/.barracuda.cnf -- fix that by hand before retrying"
+    rm -f "/etc/boa/.deny.${_svc}.cnf" "/root/.deny.${_svc}.cnf"
+    _info "  ${_sv}: its own deny cleared (${_denyVar}, /etc/boa/.deny.${_svc}.cnf)"
+    [ "${_inst}" = "YES" ] && continue
+    if [ -d "${_dta}" ]; then
+      _new="$(_xmass_restore_solr_keep "${_stamp}")" || _die "${_sv}: ${_new}"
+      _info "  ${_sv}: no install here; its data tree moved aside, kept: ${_new}"
+      [ -L "${_new}" ] \
+        && _info "  ${_sv}: the kept name is a link to $(readlink -f "${_new}" 2>/dev/null), which stays where it is"
+      if [ -n "${_hom}" ]; then
+        _info "  ${_sv}: solrtrim remove ${_sv} refuses while it is in ${_hom}: once it is not needed there, archive it and delete it by hand"
+      else
+        _info "  ${_sv}: it is outside the daily off-site backup, which includes ${_dta} alone (the installer removes ${_dta} whole when it installs): archive it by hand if it is needed"
+      fi
+    fi
+    _owed="${_owed} ${_sv}"
+  done
+  _owed="${_owed# }"
   _info "Clearing the source-side Java/Solr deny ..."
   ### The xmass hold is just another deny for this purpose: while it
   ### exists java.sh re-disarms and kills whatever this verb starts, so a
@@ -6679,17 +7177,11 @@ _xmass_restore_solr_source() {
   else
     _info "  ${_SOLR_DENY_FILE} already absent"
   fi
+  ### BARRACUDA and autoupboa SOURCE the cnf, so an exported or indented YES
+  ### left anywhere would still skip every Solr install. Report what a
+  ### source of the file reads, not what was attempted.
   if [ -e "/root/.barracuda.cnf" ]; then
-    if grep -q "^_DENY_JAVA=" /root/.barracuda.cnf 2>/dev/null; then
-      sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=NO/" /root/.barracuda.cnf
-    else
-      ### Newline-terminate before the append; an unterminated last line would
-      ### swallow the previous key.
-      [ -n "$(tail -c1 /root/.barracuda.cnf 2>/dev/null)" ] && echo >> /root/.barracuda.cnf
-      echo "_DENY_JAVA=NO" >> /root/.barracuda.cnf
-    fi
-    ### Report what LANDED, not what was attempted.
-    if grep -q "^_DENY_JAVA=NO" /root/.barracuda.cnf 2>/dev/null; then
+    if _xmass_cnf_clear_deny _DENY_JAVA; then
       _info "  _DENY_JAVA=NO set in /root/.barracuda.cnf"
     else
       _die "could not clear _DENY_JAVA in /root/.barracuda.cnf -- fix that by hand before retrying"
@@ -6700,9 +7192,9 @@ _xmass_restore_solr_source() {
     ### of its own. Clearing _DENY_JAVA must never re-enable a service the box
     ### deliberately runs without.
     case "${_svc}" in
-      solr9)  _denyVar=_DENY_SOLR9  ; _port=9099 ;;
-      solr7)  _denyVar=_DENY_SOLR7  ; _port=9077 ;;
-      jetty9) _denyVar=_DENY_JETTY9 ; _port=8099 ;;
+      solr9)  _denyVar=_DENY_SOLR9  ; _port=9099 ; _sv=solr9 ;;
+      solr7)  _denyVar=_DENY_SOLR7  ; _port=9077 ; _sv=solr7 ;;
+      jetty9) _denyVar=_DENY_JETTY9 ; _port=8099 ; _sv=solr4 ;;
     esac
     ### autoupboa SOURCES the cnf, so quoted/exported forms count -- match the
     ### classifier's own tolerant read. A hand-written variable-only deny
@@ -6713,6 +7205,12 @@ _xmass_restore_solr_source() {
       _skipped=YES
       continue
     fi
+    case " ${_owed} " in
+      *" ${_sv} "*)
+        _info "  ${_svc}: not installed -- the next full system pass installs it"
+        continue
+      ;;
+    esac
     ### Nothing to restore for a service this box never installed.
     if [ ! -e "/var/${_svc}" ] && [ ! -e "/opt/${_svc}" ] \
       && [ ! -e "/etc/init.d/${_svc}" ] && [ ! -e "/var/backups/${_svc}.initd" ]; then
@@ -6772,11 +7270,44 @@ _xmass_restore_solr_source() {
     _info "Solr restored on source: OK"
     _info "  The deny is clear, so the next autoupboa pass (clear.sh, every 5 min)"
     _info "  will no longer tear the init script down."
+  elif [ -n "${_owed}" ]; then
+    _info "Deny cleared; nothing to start until a full system pass installs: ${_owed}"
   elif [ "${_skipped}" = "YES" ]; then
     _info "Deny cleared; every Solr service on this box is held down by its own deny -- nothing to start"
   else
     _alrt "Deny cleared, but no Solr service could be started -- see the lines above"
   fi
+  [ -n "${_want}" ] || return 0
+  ### With the blanket gone, the next full pass also installs every other
+  ### version a gate fires for and no tree marks as present; its own deny
+  ### parks it within minutes, and one without a deny runs.
+  for _sv in solr4 solr7 solr9; do
+    case " ${_want} " in
+      *" ${_sv} "*) continue ;;
+    esac
+    _xmass_restore_solr_map "${_sv}"
+    [ "${_inst}" = "NO" ] && [ ! -d "${_dta}" ] || continue
+    [ -z "$(_xmass_restore_solr_gate "${_sv}")" ] || continue
+    if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_denyVar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null \
+      || [ -e "/etc/boa/.deny.${_svc}.cnf" ]; then
+      _also="${_also} ${_sv} (parked again by its own deny within ~5 minutes)"
+    else
+      _also="${_also} ${_sv} (no deny of its own: it will run)"
+    fi
+  done
+  [ -n "${_also}" ] && _info "The next full system pass here also installs:${_also}"
+  [ -n "${_owed}" ] || return 0
+  _tree=$(boa info 2>/dev/null \
+    | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+    | tail -1 \
+    | grep -oE '(dev|lts|pro)$')
+  if [ -z "${_tree}" ]; then
+    _alrt "could not read this box's BOA tree from 'boa info'; use the tree it runs in place of <tree>"
+    _tree="<tree>"
+  fi
+  _info "Install owed for: ${_owed} -- run one full system pass (~30 minutes) when the box can take it:"
+  _info "  barracuda up-${_tree} system"
+  return 0
 }
 
 _xmass_start_solr_target() {
@@ -10050,7 +10581,12 @@ _xmass_wait_for_sync() {
     ''|*[!0-9]*) _die "_XMASS_SYNC_MAX_WAIT must be a whole number of seconds (got '${_max}')" ;;
   esac
   [ "${_max}" -lt 60 ] && _die "_XMASS_SYNC_MAX_WAIT of ${_max}s is too short to be meaningful"
-  local _elapsed=0
+  # _elapsed is WALL time since the wait began, never the sum of the sleeps:
+  # each lag read goes through the retry of a dropped connection, which can
+  # take minutes, and a ceiling counted in sleeps then ran far past the number
+  # it printed, the source on 503 all along.
+  local _elapsed=0 _t0
+  _t0=$(date +%s)
   local _lag _pass _first="" _prev="" _confirmed=NO
   _info "Waiting for replica lag to reach 0 (max ${_max}s) ..."
   # One budget for the wait AND its confirmation: a lag that comes back
@@ -10079,14 +10615,14 @@ _xmass_wait_for_sync() {
       fi
       _prev="${_lag}"
       sleep 15
-      _elapsed=$(( _elapsed + 15 ))
+      _elapsed=$(( $(date +%s) - _t0 ))
     done
 
     _info "Replica at lag=0; triple-checking (3 × 10s) ..."
     _confirmed=YES
     for _pass in 1 2 3; do
       sleep 10
-      _elapsed=$(( _elapsed + 10 ))
+      _elapsed=$(( $(date +%s) - _t0 ))
       _lag=$(_xmass_get_repl_lag)
       if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
         _xmass_restore_hint
@@ -10172,6 +10708,7 @@ _xmass_cutover_unwind_solr() {
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
+  local _mute_tgt=NO
   # Once this box relays the migrated sites, none of the recipes below is
   # true any more: there is no gated source to re-open, and "keep THIS box as
   # production" would throw away every write the target has taken since the
@@ -10248,11 +10785,16 @@ _xmass_restore_hint() {
     # kill -- on the source AND the target, for the rest of its 240-min
     # expiry. Same reasoning as the init unwind; a park that will be
     # RESUMED keeps its mute, which is why this is the pre-promotion arm.
-    _xmass_maint_off
+    # This box's half now; the target's half after the gate lift below, since
+    # an abort under a flood of dropped connections would wait out that call
+    # with the source still on 503.
+    rm -f /run/boa_sql_maintenance.pid
+    _mute_tgt=YES
   fi
   # The gate lift and the thaw go here, once cron and the runners are back:
   # the freeze paragraph below then reads a cleared include and stays silent.
   [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ] && _xmass_cutover_unwind
+  [ "${_mute_tgt}" = "YES" ] && _xmass_maint_off
   # Read the flag from the file, not from a variable: this paragraph must match
   # what is actually in the include at the moment the operator reads it (a
   # barracuda system pass on this box removes the block without a log line).
@@ -10885,7 +11427,7 @@ _xmass_setup_migration_proxy_trust() {
   for _wtf in "${_tool}" "${_realip}"; do
     [ -x "${_wtf}" ] || continue
     ssh root@"${_tgt}" "[ -x '${_wtf}' ]" 2>/dev/null && continue
-    scp -q "${_wtf}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+    scp "${_wtf}" root@"${_tgt}":/var/xdrago/ > /dev/null 2>&1 \
       && ssh root@"${_tgt}" "chmod 0755 '${_wtf}'" 2>/dev/null
   done
 
@@ -13156,12 +13698,17 @@ _xmass_verb_unwind() {
   # EXIT and signal handler of every locked verb: the lock always goes; what
   # this run added for a peer goes only when the verb did not complete and
   # nothing downstream relies on it yet (init past its commit point keeps
-  # the pair reachable; a completed verb sets _XMASS_CSF_KEEP).
+  # the pair reachable; a completed verb sets _XMASS_CSF_KEEP). The lock goes
+  # last, and only while it holds this run's pid: the undo calls can wait out
+  # a chain of dropped connections, and a verb started meanwhile would take a
+  # lock already gone, then lose the peer exemption and the cron this run
+  # undoes under it. A signal runs this twice, the trap and then EXIT.
   local _rc="${1:-0}"
-  rm -f "${_XMASS_LOCK_FILE}"
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
+  [ "$(tr -dc '0-9' 2> /dev/null < "${_XMASS_LOCK_FILE}")" = "$$" ] \
+    && rm -f "${_XMASS_LOCK_FILE}"
   return 0
 }
 
@@ -13174,8 +13721,7 @@ _xmass_prepare_target_reach() {
   if ! ssh-keygen -F "${_t}" > /dev/null 2>&1; then
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
-    ssh-keyscan -H -T 10 "${_t}" >> /root/.ssh/known_hosts 2>/dev/null
-    if ssh-keygen -F "${_t}" > /dev/null 2>&1; then
+    if _mig_keyscan "${_t}"; then
       _info "Learned host key for ${_t}"
       _XMASS_HOSTKEY_ADDED="${_t}"
     else
@@ -16294,24 +16840,54 @@ _xmass_pre_mig_panel_sanity() {
   # legacy symlink is reported, not removed (the regular ltd-users pass
   # purges it; a panel that then misbehaves is repaired before migrating,
   # so old defects never travel to a new box).
-  local _root _usr _als _root_disk _sp _fq _dbp _hint
-  _info "Checking control panel coherence on every Aegir root ..."
-  for _root in /var/aegir /data/disk/*; do
+  #
+  # $1 is master (/var/aegir) or accounts. On a source the accounts are the
+  # move's own list (_xmass_eligible_scan), so the gate judges exactly what
+  # init takes: a directory it takes with no such user stops here, alias or
+  # not (a copy of an account, or one that lost its user), and one it skips
+  # is only named. On a target they are every /data/disk root that holds a
+  # hostmaster alias, as prep-target's purge reads them; one with no user is
+  # named, since prep-target purges it or re-creates its user (--fix-users),
+  # and pre-mig installs the source's key before the accounts are judged, so
+  # an account's stop never holds back the ssh prep-target needs.
+  local _root _usr _als _root_disk _sp _fq _dbp _hint _next="" _src=NO _l _n=()
+  local _roots=()
+  [ "${_hName}" = "${_hst}" ] && _src=YES
+  if [ "${1}" = "master" ]; then
+    _info "Checking the master control panel's coherence ..."
+    _roots=( /var/aegir )
+  elif [ "${_src}" = "YES" ]; then
+    _info "Checking control panel coherence on every account the move takes ..."
+    _xmass_eligible_scan
+    read -r -a _n <<< "${_ELIGIBLE_ACCOUNTS}"
+    for _l in "${_n[@]}"; do
+      _roots+=( "/data/disk/${_l}" )
+    done
+    while IFS= read -r _l; do
+      [ -n "${_l}" ] || continue
+      _alrt "  /data/disk/${_l%%:*}: the move skips it (${_l#*: }): its panel is not checked"
+    done <<< "${_XMASS_ELIGIBLE_SKIPPED}"
+  else
+    _info "Checking control panel coherence on every account ..."
+    _roots=( /data/disk/* )
+    _next=" -- the key of ${_hst} is installed here: on ${_hst}, 'xmass prep-target <the IP of this box>' purges an account it does not move that holds no site, so run it there, or repair this panel, then run this pre-mig again"
+  fi
+  for _root in "${_roots[@]}"; do
     _als="${_root}/.drush/hostmaster.alias.drushrc.php"
-    [ -f "${_als}" ] || continue
+    [ -f "${_als}" ] || [ "${_src}" = "YES" ] || continue
     _usr=$(basename "${_root}")
     [ "${_root}" = "/var/aegir" ] && _usr=aegir
     if [ "${_root}" != "/var/aegir" ] && ! getent passwd "${_usr}" > /dev/null; then
-      # On a source the move would take this directory as an account, so it
-      # stops here, before anything is parked, with its real reason. A tree the
-      # move skips (log/CANCELLED, an interrupted purge) is no panel to check,
-      # and on a target prep-target purges it or re-creates its user
-      # (--fix-users), for which it needs the key this pre-mig installs.
-      if [ "${_hName}" = "${_hst}" ] && [ -z "$(_xmass_account_missing "${_root}")" ]; then
-        _die "${_root}: holds a hostmaster alias but no such user exists: a copy of an account, or" \
+      if [ "${_src}" = "YES" ]; then
+        _die "${_root}: the move takes it as an account, but no such user exists: a copy of an account, or" \
              " an account that lost its user -- move the copy away or restore the user before migrating"
       fi
       _alrt "  ${_root}: holds a hostmaster alias but no such user exists: not checked"
+      continue
+    fi
+    if [ ! -f "${_als}" ]; then
+      [ "${_root}" = "/var/aegir" ] \
+        || _alrt "  ${_root}: no hostmaster alias: no panel to check"
       continue
     fi
     # inside the root's real .drush, never through a link or into a FIFO
@@ -16323,18 +16899,18 @@ _xmass_pre_mig_panel_sanity() {
       || _hint=" (it is marked CANCELLED: 'boa cleanup detect noscreen', then 'boa cleanup purge ${_usr} noscreen', retires it)"
     if [ ! -e "${_root_disk}/index.php" ] || [ ! -f "${_sp}/settings.php" ]; then
       _die "${_root}: the hostmaster alias names ${_root_disk} and ${_sp}, but the code or settings.php" \
-           " is missing there -- repair this control panel before migrating${_hint}"
+           " is missing there -- repair this control panel before migrating${_hint}${_next}"
     fi
     _dbp=$(su -s /bin/bash - "${_usr}" -c \
       "drush8 @hostmaster sqlq \"SELECT p.publish_path FROM hosting_context c JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid JOIN hosting_platform p ON p.nid=s.platform AND p.vid=(SELECT vid FROM node WHERE nid=s.platform) WHERE c.name='hostmaster' LIMIT 1\"" \
       2>/dev/null | tail -1)
     if [ -z "${_dbp}" ]; then
       _die "${_root}: the panel DB has no resolvable 'hostmaster' site context" \
-           " -- repair this control panel before migrating${_hint}"
+           " -- repair this control panel before migrating${_hint}${_next}"
     fi
     if [ "${_dbp}" != "${_root_disk}" ]; then
       _die "${_root}: the panel's platform in the DB (${_dbp}) differs from its alias root (${_root_disk})" \
-           " -- repair this control panel before migrating"
+           " -- repair this control panel before migrating${_next}"
     fi
     if [ -n "${_fq}" ] && [ -L "${_root}/.drush/${_fq}.alias.drushrc.php" ]; then
       _alrt "  ${_root}: legacy ${_fq}.alias.drushrc.php symlink present -- the regular ltd-users pass"
@@ -16499,7 +17075,7 @@ _xmass_pre_mig() {
   # Run on BOTH hosts: first on source (to publish its pub key and print its
   # fingerprint), then on target (to fetch that key and install it only when
   # its fingerprint is the --key-fp given).
-  local _src_ip _kb _fp
+  local _fp
   if [ -e "/vservers" ]; then
     _die "Cannot run pre-mig on a parent/host system"
   fi
@@ -16513,7 +17089,12 @@ _xmass_pre_mig() {
   # the published ones. Done here because pre-mig runs on BOTH hosts.
   _info "Forcing a tool refresh so this migration runs on current code ..."
   _xmass_force_tool_update
-  _xmass_pre_mig_panel_sanity
+  # The master's panel is judged before a target trusts the source's key;
+  # the accounts after it, so a stop on one of them leaves the key and the
+  # csf opening prep-target needs. Both before anything is parked.
+  _xmass_pre_mig_panel_sanity master
+  [ "${_hName}" = "${_hst}" ] || _xmass_pre_mig_trust_source
+  _xmass_pre_mig_panel_sanity accounts
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
@@ -16545,35 +17126,45 @@ _xmass_pre_mig() {
     # will NOT travel) at the cheapest possible moment. No target yet, so
     # sizes only; init repeats this with the aggregate space probe.
     _xmass_report_out_links
-  else
-    _info "Target mode: installing the source SSH key checked above ..."
-    ### Only the verified line travels. It is TAGGED with the source's
-    ### address: after a later promotion this box hands its inbound proxies'
-    ### keys to the box that takes over (_xmass_carry_inbound_reach), and an
-    ### untagged line cannot be attributed to a peer. A re-run never appends
-    ### a duplicate (see _xmass_key_trust_line).
-    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
-    _kb="${_XMASS_SRC_KEY%"${_XMASS_SRC_KEY##*[![:space:]]}"}"
-    _xmass_key_trust_line /root/.ssh/authorized_keys "${_kb}" \
-      " # xmass migration source ${_src_ip:-${_hst}}" \
-      || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
-    _mig_reach_stamp "${_src_ip}"
-    _mig_pending_open "${_src_ip}"
-    _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
-
-    # Let the source IN. This is the ONE thing the source can never arrange
-    # for itself: prep-target's reachability check runs FROM the source, and
-    # the csf-allow that would fix it sits AFTER that check, so a target
-    # firewalling the source deadlocks. Here we are on the target and we know
-    # who the source is, which makes this the only place it can be done.
-    if [ -n "${_src_ip}" ]; then
-      _xmass_csf_allow_peer "${_src_ip}" source
-    else
-      _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
-    fi
   fi
   _XMASS_CSF_KEEP=YES
   _info "pre-mig complete on ${_hName}"
+}
+
+# Target side of pre-mig, once the master's panel passed: the key
+# _xmass_fetch_source_key checked goes into authorized_keys and csf lets the
+# source in. Both are kept when an account's panel then stops pre-mig, as
+# prep-target, run on the source, needs them to purge such an account.
+_xmass_pre_mig_trust_source() {
+  local _src_ip _kb
+  _info "Target mode: installing the source SSH key checked above ..."
+  ### Only the verified line travels. It is TAGGED with the source's
+  ### address: after a later promotion this box hands its inbound proxies'
+  ### keys to the box that takes over (_xmass_carry_inbound_reach), and an
+  ### untagged line cannot be attributed to a peer. A re-run never appends
+  ### a duplicate (see _xmass_key_trust_line).
+  _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+  _kb="${_XMASS_SRC_KEY%"${_XMASS_SRC_KEY##*[![:space:]]}"}"
+  _xmass_key_trust_line /root/.ssh/authorized_keys "${_kb}" \
+    " # xmass migration source ${_src_ip:-${_hst}}" \
+    || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
+  _mig_reach_stamp "${_src_ip}"
+  _mig_pending_open "${_src_ip}"
+  _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
+
+  # Let the source IN. This is the ONE thing the source can never arrange
+  # for itself: prep-target's reachability check runs FROM the source, and
+  # the csf-allow that would fix it sits AFTER that check, so a target
+  # firewalling the source deadlocks. Here we are on the target and we know
+  # who the source is, which makes this the only place it can be done. Kept
+  # on any later stop of this run: the verb's exit would otherwise take it
+  # back with the key still trusted.
+  if [ -n "${_src_ip}" ]; then
+    _xmass_csf_allow_peer "${_src_ip}" source
+  else
+    _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
+  fi
+  _XMASS_CSF_KEEP=YES
 }
 
 _xmass_drop_target_prepass_backups() {
@@ -17145,10 +17736,10 @@ _xmass_carry_db_credentials() {
       return 0
     ;;
   esac
-  if ! scp -q -o ConnectTimeout=10 -o BatchMode=yes /root/.my.cnf \
-      "root@${_tgt}:/root/.my.cnf.xmass_carry" 2>/dev/null \
-    || ! scp -q -o ConnectTimeout=10 -o BatchMode=yes /root/.my.pass.txt \
-      "root@${_tgt}:/root/.my.pass.txt.xmass_carry" 2>/dev/null; then
+  if ! scp -o ConnectTimeout=10 -o BatchMode=yes /root/.my.cnf \
+      "root@${_tgt}:/root/.my.cnf.xmass_carry" > /dev/null 2>&1 \
+    || ! scp -o ConnectTimeout=10 -o BatchMode=yes /root/.my.pass.txt \
+      "root@${_tgt}:/root/.my.pass.txt.xmass_carry" > /dev/null 2>&1; then
     _alrt "MySQL credentials NOT carried to ${_tgt}: the copy failed; the next pass retries"
     ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
       "rm -f /root/.my.cnf.xmass_carry /root/.my.pass.txt.xmass_carry" &> /dev/null
@@ -17956,6 +18547,34 @@ _xmass_autosync_run() {
   _info "autosync: pass complete in ${_dur}s"
 }
 
+# Whether the cutover's external proof also asks the target over HTTPS: 0
+# when something there listens on 443 on every address, as BOA's wildcard
+# SSL front does (the installer rewrites the template's 127.0.0.1:443 to
+# *:443). Otherwise 1, and the warning names the cause the probe saw: no such
+# listener, or listeners it could not read. Status 255 is ssh's own (a csf
+# restart there drops new connections for a moment), so it is tried once more
+# 10 seconds later; 3 is a target without ss.
+_xmass_https_leg_ok() {   # 1 = target ip
+  local _t="$1" _rc _try
+  for _try in 1 2; do
+    ssh -n -o ConnectTimeout=10 root@"${_t}" \
+      "command -v ss >/dev/null 2>&1 || exit 3; ss -tln 2>/dev/null | awk '{print \$4}' | grep -qE '(0\.0\.0\.0|\*|\[::\]):443$'" 2>/dev/null
+    _rc=$?
+    if [ "${_rc}" != "255" ] || [ "${_try}" = "2" ]; then
+      break
+    fi
+    sleep 10
+  done
+  case "${_rc}" in
+    0) return 0 ;;
+    1) _alrt "target ${_t}: nothing listens on 443 on every address -- its wildcard SSL front (pre.d/nginx_wild_ssl.conf) is missing; skipping the HTTPS half of the external proof" ;;
+    255) _alrt "target ${_t}: could not read what listens on 443 there (ssh failed twice, rc=255); skipping the HTTPS half of the external proof" ;;
+    3) _alrt "target ${_t}: could not read what listens on 443 there (no ss there); skipping the HTTPS half of the external proof" ;;
+    *) _alrt "target ${_t}: could not read what listens on 443 there (rc=${_rc}); skipping the HTTPS half of the external proof" ;;
+  esac
+  return 1
+}
+
 # Step 12: Start nginx on target so it can serve proxied traffic immediately.
 #
 # PROVE it came up. This is the last moment before the source is converted
@@ -18034,17 +18653,19 @@ FWOPEN
   # curl prints literally 000 when no HTTP transaction completed.
   # Browser UA: curl's default UA lands in BOA's own crawler map and gets
   # a bare 444 (no HTTP code = 000), parking a perfectly healthy cutover.
-  # The 443 leg runs only when the target actually has a PUBLIC 443
-  # listener -- the wildcard ssl vhost binds loopback only; public 443
-  # exists via per-site vhosts, which a bare panel-only box may not have.
-  local _pxt _pxl _pxua
+  # The 443 leg runs when something listens on 443 on every address, which
+  # on a BOA target is the wildcard SSL front, so the leg proves the source
+  # reaches the target's 443 through its firewall; a bare IP (no SNI) with -k
+  # reads no site's certificate or vhost, and any HTTP code passes. A target
+  # without the front, or whose listeners cannot be read, skips it, and the
+  # warning says which; the closing line then names port 80 alone.
+  local _pxt _pxl _pxua _pxp
   _pxua="Mozilla/5.0 (X11; Linux x86_64) xmass-cutover-proof"
   _pxl="http://${_tgt}/"
-  if ssh root@"${_tgt}" \
-    "ss -tln 2>/dev/null | awk '{print \$4}' | grep -qE '(0\.0\.0\.0|\*|\[::\]):443$'" 2>/dev/null; then
+  _pxp="80"
+  if _xmass_https_leg_ok "${_tgt}"; then
     _pxl="${_pxl} https://${_tgt}/"
-  else
-    _alrt "target ${_tgt}: no public 443 listener -- skipping the HTTPS half of the external proof"
+    _pxp="80/443"
   fi
   for _pxt in ${_pxl}; do
     if ! curl -sk -A "${_pxua}" -o /dev/null --max-time 15 -w '%{http_code}' \
@@ -18059,7 +18680,7 @@ FWOPEN
            "'xmass cutover ${_tgt} --live' — the resume re-runs this proof."
     fi
   done
-  _info "  target nginx validated and answering (loopback + external, 80/443)"
+  _info "  target nginx validated and answering (loopback 80, external ${_pxp})"
 }
 
 _xmass_unlock_promoted_db() {
@@ -20464,7 +21085,7 @@ case "${_cmd}" in
   ;;
   restore-solr)
     _check_root
-    _xmass_restore_solr_source
+    _xmass_restore_solr_source "$@"
   ;;
   restore-target)
     _check_root
@@ -20545,6 +21166,8 @@ case "${_cmd}" in
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
     echo "Usage: xmass restore-solr                             (run on source; recovery)"
+    echo "Usage: xmass restore-solr <solr4|solr7|solr9> [...]   (run on a box that denies that version,"
+    echo "                     such as a target moved without Solr: brings it back; see the notes)"
     echo "Usage: xmass restore-target [--live]                  (run on a standby target never promoted:"
     echo "                     the pre-init data directory and credentials back, the standby undone; recovery)"
     echo ""
@@ -20591,6 +21214,19 @@ case "${_cmd}" in
     echo "    script alone does not hold. This clears both deny forms FIRST, then"
     echo "    re-arms and starts each Solr whose own deny is not set. Refuses on a"
     echo "    finalized PX0 proxy, where Solr is down by design."
+    echo "  - restore-solr <version> brings one version back to a box that denies it,"
+    echo "    such as a target moved from a source that used no Solr. It clears that"
+    echo "    version's own deny and the blanket deny, in every form the cnf holds"
+    echo "    them; the other versions keep theirs. With no install of it here, the"
+    echo "    data tree the move landed is renamed in place and kept, since BOA's"
+    echo "    installer skips a version whose tree is present: /var/solrN/data"
+    echo "    becomes /var/solrN/data.xmass-landed-<UTC stamp>, inside the home the"
+    echo "    daily backup includes, and solrtrim remove refuses that version while"
+    echo "    it is there; solr4's /opt/solr4 becomes"
+    echo "    /opt/solr4.xmass-landed-<UTC stamp>, outside that backup, since the"
+    echo "    installer removes /opt/solr4 whole. The run ends naming the full system"
+    echo "    pass that installs it. It refuses, changing nothing, while that pass"
+    echo "    could not install it."
     echo ""
     exit 1
   ;;

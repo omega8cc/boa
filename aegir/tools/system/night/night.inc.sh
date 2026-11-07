@@ -901,17 +901,144 @@ _disable_chattr() {
 # so the line cannot satisfy that test -- keep those backslashes if the
 # probes are ever reworked.
 
+# Which PHP a site's Drush runs on. The two site wrappers run only on Drupal
+# 6 and 7 cores, on the pinned PHP: 7.4, or where 7.4 is not installed the
+# server default the login's drush8 finds. Some old cores need an older PHP
+# still: Drupal 6 before 6.45 calls ereg(), which PHP 7.0 removed. Where the
+# account's command-line files name a PHP older than the pin, websh is asked
+# which PHP the site's line gets (the platform's cli-per-platform.info line,
+# the phpNN.info markers, cli.info, its core guard), the one the site's own
+# Aegir tasks get, and when that one is older the line runs on it in the
+# pinned line's shape. Never a newer PHP than the pin; the pinned line
+# whenever websh gives no answer, or /bin/sh is not websh when it would be
+# asked (an Octopus pass switches it to dash). The probe names the site by
+# its alias alone, so websh's PHP-FPM check, which needs --uri, does not
+# judge it: a site whose core cannot run on its PHP-FPM version (an old
+# Drupal 6 or 7 core on PHP-FPM 8.0 or newer) runs on the older PHP here
+# too, as its own Verify does. Keep --uri out of the probe, or such a site
+# stays on the pin, where an old Drupal 6 core dies on ereg() every night.
+#
+# The two digits of the /opt/phpNN/bin/php that $1 resolves to; status 1,
+# and nothing, for any other binary.
+_night_php_nn() {
+  local _p
+  _p=$(readlink -f -- "${1}" 2> /dev/null)
+  [[ "${_p}" =~ ^/opt/php([0-9][0-9])/bin/php$ ]] || return 1
+  printf '%s' "${BASH_REMATCH[1]}"
+}
+# The PHP the pinned route runs on, as two digits.
+_night_pin_nn() {
+  if [ -x "/opt/php74/bin/php" ]; then
+    printf '%s' 74
+  else
+    _night_php_nn /usr/bin/php
+  fi
+}
+_night_sh_is_websh() {
+  [ "$(readlink -f /bin/sh 2> /dev/null)" = "/opt/local/bin/websh" ]
+}
+# $1 names a PHP websh runs (two digits), installed and older than $2.
+_night_older_nn() {
+  case "${1}" in
+    56|70|71|72|73|74|80|81|82|83|84|85|86) ;;
+    *) return 1 ;;
+  esac
+  [ "${1}" -lt "${2}" ] && [ -x "/opt/php${1}/bin/php" ]
+}
+# In the account's real static/control: a phpNN.info marker, cli.info or a
+# cli-per-platform.info line names a PHP older than $1, read as websh reads
+# them: of the platform file only the first 64 KiB and 200 lines, as
+# _cpp_match does, so a file the account fills never stretches the night. A
+# hint only: which of them applies to a site is websh's to say.
+_night_older_cli_here() {
+  local LC_ALL=C
+  local _n _t _line _k _v _r _ln=0
+  for _n in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "./php${_n}.info" ] && _night_older_nn "${_n}" "${1}" && return 0
+  done
+  _t=$(_acct_read_plain_here cli.info | head -c 8 | tr -cd '0-9')
+  _night_older_nn "${_t}" "${1}" && return 0
+  _t=$(_acct_read_plain_here cli-per-platform.info | head -c 65536 | tr -d '\000')
+  while IFS= read -r _line; do
+    _ln=$(( _ln + 1 ))
+    [ "${_ln}" -le 200 ] || break
+    _line="${_line%%#*}"
+    read -r _k _v _r <<< "${_line}"
+    [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_r}" ] || continue
+    _night_older_nn "${_v//[!0-9]/}" "${1}" && return 0
+  done <<< "${_t}"
+  return 1
+}
+# The PHP websh launches the site's drush8 line on, as two digits. Asked
+# with a line that loads no site code (Drush's version), which websh judges
+# as the site task it stands for and which then prints websh's choice. A
+# refusal prints nothing, and websh exports BOA_CLI_PHP_FROM for every line
+# it launches: without it the answer is not websh's. Status 1 for no answer.
+_night_websh_nn() {
+  local _l _o
+  _l="drush8 @${_Dom} --strict=0 --boa-cli-php-probe version > /dev/null 2>&1;"
+  _l+=" printf 'BOA_NIGHT_CLI=%s %s\\n' \"\${DRUSH_PHP}\" \"\${BOA_CLI_PHP_FROM}\""
+  printf -v _l '/bin/sh -c %q' "${_l}"
+  _o=$(su -s /bin/bash - ${_HM_U} -c "${_l}" 2> /dev/null \
+    | grep -m 1 '^BOA_NIGHT_CLI=')
+  _o="${_o#BOA_NIGHT_CLI=}"
+  [[ "${_o}" == /*" "?* ]] || return 1
+  _night_php_nn "${_o%% *}"
+}
+# websh gives the site's line an installed PHP older than $1 (two digits),
+# named in _NIGHT_CLI_NN. websh is never asked for an account whose files
+# name no older PHP, nor while /bin/sh is not websh. The answer is kept per
+# account, site and pin in the shell that asked; most wrapper calls run in a
+# command substitution or a pipeline, whose answer is lost with it, so the
+# per-site pass asks first in its own shell (_night_site_php_ask).
+_night_websh_older() {
+  local _k="${_HM_U}/${_Dom}/${1}"
+  if [ "${_NIGHT_CLI_KEY}" != "${_k}" ]; then
+    _NIGHT_CLI_NN=""
+    _night_sh_is_websh || return 1
+    if _acct_in_real_dir "${_usEr}/static/control" _night_older_cli_here "${1}"; then
+      _NIGHT_CLI_NN=$(_night_websh_nn)
+    fi
+    _NIGHT_CLI_KEY="${_k}"
+  fi
+  [ -n "${_NIGHT_CLI_NN}" ] && _night_older_nn "${_NIGHT_CLI_NN}" "${1}"
+}
+# The site's line runs on a PHP older than the pin, named in _NIGHT_CLI_NN.
+_night_site_older() {
+  local _pin
+  _pin=$(_night_pin_nn)
+  [ -n "${_pin}" ] && _night_websh_older "${_pin}"
+}
+# 20-sites.sh calls this before the site's first wrapper call, in the shell
+# that runs them, so each call finds the answer, in a command substitution
+# or not.
+_night_site_php_ask() {
+  _night_site_older || :
+}
+# The login's command line for the site's drush8 command $1 in _NIGHT_LINE,
+# and in _NIGHT_VIA the debug note for an older PHP. The older one runs in
+# the pinned line's shape, with no /bin/sh in between, so /bin/sh switched
+# to dash after websh answered never hands the line to another PHP.
+_night_site_drush_line() {
+  _NIGHT_VIA=""
+  if _night_site_older; then
+    _NIGHT_LINE="/opt/php${_NIGHT_CLI_NN}/bin/php /usr/bin/drush @${_Dom} ${1}"
+    _NIGHT_VIA=" (PHP ${_NIGHT_CLI_NN:0:1}.${_NIGHT_CLI_NN:1:1}, websh's choice)"
+  elif [ -x "/opt/php74/bin/php" ]; then
+    _NIGHT_LINE="/opt/php74/bin/php /usr/bin/drush @${_Dom} ${1}"
+  else
+    _NIGHT_LINE="drush8 @${_Dom} ${1}"
+  fi
+}
+
 _run_drush8_cmd() {
+  _night_site_drush_line "$1"
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1" >&2
+    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1${_NIGHT_VIA}" >&2
   fi
-  if [ -x "/opt/php74/bin/php" ]; then
-    su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${_Dom} $1" &> /dev/null
-  else
-    su -s /bin/bash - ${_HM_U} -c "drush8 @${_Dom} $1" &> /dev/null
-  fi
+  su -s /bin/bash - ${_HM_U} -c "${_NIGHT_LINE}" &> /dev/null
   wait
 }
 
@@ -1016,16 +1143,13 @@ _run_drush8_hmr_master_cmd() {
 }
 
 _run_drush8_nosilent_cmd() {
+  _night_site_drush_line "$1"
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1" >&2
+    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1${_NIGHT_VIA}" >&2
   fi
-  if [ -x "/opt/php74/bin/php" ]; then
-    su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${_Dom} $1"
-  else
-    su -s /bin/bash - ${_HM_U} -c "drush8 @${_Dom} $1"
-  fi
+  su -s /bin/bash - ${_HM_U} -c "${_NIGHT_LINE}"
   wait
 }
 
