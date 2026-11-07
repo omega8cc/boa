@@ -533,8 +533,26 @@ _sql_mutation_in_flight() {
   return 1
 }
 
+###
+### Stand down while a barracuda pass restarts Valkey on purpose
+###
+_valkey_planned_restart() {
+  # The enforce step of a barracuda pass in AppArmor enforce mode stops Valkey
+  # with SHUTDOWN SAVE and starts it again under its profile, its data kept.
+  # The save blocks every probe for as long as the cache takes to write, which
+  # on a large cache is longer than the five probes wait: a heal then would
+  # kill Valkey mid-save and start it empty. Honoured only while recent, as
+  # the MySQL markers are: one left by a killed pass is no restart.
+  [ -e "/run/valkey_restart_running.pid" ] || return 1
+  if [ -z "$(find /run/valkey_restart_running.pid -mmin +30 2>/dev/null)" ]; then
+    echo "$(date) INFO: Valkey restart in progress (valkey_restart_running.pid); standing down this pass" >> ${_pthOml}
+    return 0
+  fi
+  return 1
+}
+
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
-  && ! _sql_mutation_in_flight; then
+  && ! _sql_mutation_in_flight && ! _valkey_planned_restart; then
   if [ -x "/etc/init.d/valkey-server" ] \
     && [ -x "/usr/bin/valkey-server" ]; then
     _valkey_health_check_fix
