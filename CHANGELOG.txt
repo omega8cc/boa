@@ -45,6 +45,15 @@
       provider off releases that declare a PostgreSQL extension, which BOA's
       PHP does not carry.
 
+    * Every install and barracuda pass says in one line when the server's
+      own name has no SPF record naming its IPv4 address: the mail BOA
+      itself sends leaves under that name, straight from the server, and
+      receivers such as Gmail refuse it without one. The line names the
+      record to publish. With a relay host in use it warns only when the
+      name has no SPF record at all. The DNS read is cut at 5 seconds, and
+      slow DNS or a name not yet in DNS says so in the same line instead;
+      the pass never fails or waits on it.
+
 @=> Security
 
     * The files storage wrapper an account's tasks call through sudo holds a
