@@ -182,7 +182,8 @@ _die() {
 ### end's own lines, so only a line that opens with ssh's words counts, and
 ### an rsync only when it received 0 bytes. A host key scan that learned no
 ### key is run again the same way when ssh-keyscan's own words name a close
-### or a reset before the banner. Any other failure returns at once with its
+### or a reset before the banner, or it said nothing and port 22 accepts a
+### plain connection. Any other failure returns at once with its
 ### own status and messages. Each retry adds one line to the drop log: time,
 ### host, try and the client's own words, never the remote command. The
 ### functions shadow the binaries, so every call in the tool goes through
@@ -291,12 +292,19 @@ scp() {
   _mig_rsh_again scp "$@"
 }
 
+### 0 when something accepts a connection on the host's ssh port.
+_mig_port_answers() {
+  timeout 5 bash -c 'exec 3<> "/dev/tcp/${1}/22"' _ "${1}" 2> /dev/null
+}
+
 ### $1 the host, its keys appended to root's known_hosts. A scan whose
 ### connections sshd closed or reset before the banner learned nothing and
-### runs again; a refused or silent port gets the one scan. Returns 0 once a
-### key for the host is known.
+### runs again, whether ssh-keyscan named the close or, as it often does, said
+### nothing: a port that accepts a plain connection tells that from a refused
+### one, which says nothing too. A refused or silent port gets the one scan.
+### Returns 0 once a key for the host is known.
 _mig_keyscan() {
-  local _e _h _n=0
+  local _e _h _k _n=0
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
     _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
@@ -309,9 +317,16 @@ _mig_keyscan() {
       rm -f "${_e}"
       return 0
     fi
-    if [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] && grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null; then
+    if [ "${_n}" -lt "${_MIG_DROP_TRIES}" ] \
+      && { grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null \
+        || { [ ! -s "${_e}" ] && _mig_port_answers "${1}"; }; }; then
       _n=$(( _n + 1 ))
-      _mig_drop_note "${_n}" "${_h}" "${_e}" "${_MIG_SCAN_RE}"
+      _k="${_MIG_SCAN_RE}"
+      if [ ! -s "${_e}" ]; then
+        echo "${_h}: the scan said nothing, port 22 answers" > "${_e}"
+        _k='.'
+      fi
+      _mig_drop_note "${_n}" "${_h}" "${_e}" "${_k}"
       rm -f "${_e}"
       sleep "$(_mig_drop_secs "${_n}")"
       continue
