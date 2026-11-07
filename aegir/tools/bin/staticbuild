@@ -1301,8 +1301,10 @@ _fix_requirers() {
 
 _fix_newest_php() {
   # Reads `composer show --available --format=json` for one package and prints its
-  # newest release: the newest stable one, else the newest tagged pre-release, never
-  # a branch. Composer lists the versions newest first. PHP 5.6-safe.
+  # newest release: the newest stable one (a plain version, with or without a patch
+  # suffix like -p1, which Composer rates stable), else the newest tagged pre-release
+  # (a stability word with or without a hyphen: 2.0.0-beta1 and 2.0.0RC1 alike),
+  # never a branch. Composer lists the versions newest first. PHP 5.6-safe.
   cat <<'EOF'
 <?php
 $d = json_decode(stream_get_contents(STDIN), true);
@@ -1313,7 +1315,7 @@ foreach ($v as $x) {
   if (substr($x, 0, 4) === 'dev-' || substr($x, -4) === '-dev') {
     continue;
   }
-  if (!preg_match('/[-+]/', $x)) {
+  if (preg_match('/^v?\d+(?:\.\d+){0,3}(?:[._-]?(?:p|pl|patch)\.?\d*)?$/i', $x)) {
     echo ltrim($x, 'v'), "\n";
     exit(0);
   }
@@ -1332,7 +1334,8 @@ _fix_show_php() {
   # Writes the composer.json of the scratch project the release reader runs in, from
   # the tree's composer.json named as its argument: the tree's repositories of type
   # composer (Packagist, packages.drupal.org, asset-packagist) with their only, exclude
-  # and canonical filters, and its packagist.org switch-off when it has one. A VCS,
+  # and canonical filters, and its Packagist switch-off when it has one, under either
+  # name Composer accepts (packagist.org, or the older packagist). A VCS,
   # path or package repository stays out: Composer loads every repository of the
   # project on each `show --available`, and a GitHub VCS repository costs it one
   # anonymous API request per branch and tag every time, out of 60 an hour for the
@@ -1345,9 +1348,10 @@ $d = json_decode((string) $s, true);
 $r = is_array($d) && isset($d['repositories']) && is_array($d['repositories']) ? $d['repositories'] : array();
 $o = array();
 foreach ($r as $k => $x) {
-  if ($k === 'packagist.org' && $x === false) {
+  if (($k === 'packagist.org' || $k === 'packagist') && $x === false) {
     $o['packagist.org'] = false;
-  } elseif (is_array($x) && isset($x['packagist.org']) && $x['packagist.org'] === false) {
+  } elseif (is_array($x) && ((isset($x['packagist.org']) && $x['packagist.org'] === false)
+    || (isset($x['packagist']) && $x['packagist'] === false))) {
     $o['packagist.org'] = false;
   } elseif (is_array($x) && isset($x['type'], $x['url']) && $x['type'] === 'composer') {
     $e = array('type' => 'composer', 'url' => $x['url']);
@@ -1507,7 +1511,9 @@ _fix_dependents() {
   # per release it sits at.
   local _wd="$1" _label="$2" _round _rep _left _p _v0 _v1 _d _out _rc _any _with _names _moved
   local -A _tried=() _dv=()
-  if ! _fix_newest_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-newest.php'" \
+  # The scratch projects go first: one left by a run that died before its cleanup
+  # would otherwise be reused for a tree whose repositories may have changed since.
+  if ! _fix_newest_php | _run_as_o8 "rm -rf '${_DAY_DIR}/.fix-show' && cat > '${_DAY_DIR}/.fix-newest.php'" \
     || ! _fix_show_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-show.php'"; then
     _FIX_LINES+=("# holders not checked: could not write the version helper")
     return 0
@@ -3232,7 +3238,7 @@ build_backdrop() {
     && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
     && rm -f '${_zip}' && mv backdrop 'backdrop-${_tag}' \
     && printf '%s\n' '${_tag}' > backdrop.txt"; then
-    _record_fail "backdrop"
+    _record_fail "backdrop (release ${_tag}: download or unpack failed$(_gh_quota_note))"
     return 1
   fi
   # No contrib is baked into the core tree: Valkey/Redis support reaches every
@@ -3270,7 +3276,7 @@ build_grav() {
     && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
     && mv grav-admin 'grav-${_tag}' \
     && printf '%s\n' '${_tag}' > grav.txt"; then
-    _record_fail "grav"
+    _record_fail "grav (release ${_tag}: download or unpack failed$(_gh_quota_note))"
     return 1
   fi
   _rec "grav-${_tag}" BUILD ok
@@ -3303,7 +3309,7 @@ build_txp() {
     && test -d 'textpattern-${_tag}/sites' \
     && rm -f '${_tgz}' '${_sum}' \
     && printf '%s\n' '${_tag}' > textpattern.txt"; then
-    _record_fail "textpattern"
+    _record_fail "textpattern (release ${_tag}: download, checksum or unpack failed$(_gh_quota_note))"
     return 1
   fi
   _rec "textpattern-${_tag}" BUILD ok
