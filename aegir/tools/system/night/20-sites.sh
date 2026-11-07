@@ -4885,6 +4885,16 @@ _daily_process() {
             if [ "${_FOREIGN_CMS}" != "YES" ]; then
               _if_site_db_conversion
             fi
+            # Which PHP the site Drush wrappers run a Drupal 6 or 7 site on,
+            # asked once here, in this shell: most of their calls below run
+            # in a command substitution, whose answer is lost with it. A
+            # night.inc.sh older than this file asks in each call instead.
+            if [ "${_FOREIGN_CMS}" != "YES" ] && [ ! -e "${_Plr}/core" ] \
+              && { [ -e "${_Plr}/modules/o_contrib_seven" ] \
+              || [ -e "${_Plr}/modules/o_contrib" ]; } \
+              && declare -F _night_site_php_ask > /dev/null 2>&1; then
+              _night_site_php_ask
+            fi
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
