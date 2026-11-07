@@ -39,11 +39,12 @@ _ieni="--ignore-errors"
 ### flood, and a stop in the middle of a move costs more than the wait. A try
 ### that stalls in the banner exchange counts as a drop and takes its own
 ### ConnectTimeout besides; a port that is silent or refuses is not tried
-### again, so a call given up after its ConnectTimeout stays given up. Once a
-### chain to a host has used the whole budget, every later call to that host
-### in the same run gets 3 more tries (45 s): by then the move stops or goes
-### on without that call, and the whole budget again on each later call only
-### kept a gated source dark longer. ssh's own log
+### again, so a call given up after its ConnectTimeout stays given up. A run
+### may open a short window where a stop costs little and a call that fails
+### decides it (xmass's cutover under its 503 gate, before the write freeze):
+### inside it, once a chain to a host has used the whole budget, later calls
+### to that host get 3 tries (45 s) until one gets through. Everywhere else
+### every call gets the whole budget. ssh's own log
 ### (-E) decides, never what the remote command
 ### printed: a reset or a stall in the banner exchange, or a bare 'Connection
 ### closed by <host> port <n>', which ssh logs only before login (a close
@@ -63,11 +64,12 @@ _MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]
 _MIG_DROP_LOG="/var/log/boa/xcopy.drop.log"
 _MIG_DROP_TRIES=20
 _MIG_DROP_TRIES_SPENT=3
-### The hosts whose chain used the whole budget in this run, one a line: a
-### file, since most calls run in a subshell, named by this run's pid (a
-### file a dead run of the same pid left is no one's).
+### The hosts whose chain used the whole budget inside the short window, a
+### file each: a directory, since most calls run in a subshell, named by this
+### run's pid (one a dead run of the same pid left is no one's).
 _MIG_DROP_SPENT="/run/mig-drop-spent.$$"
-rm -f "${_MIG_DROP_SPENT}" 2> /dev/null
+rm -rf "${_MIG_DROP_SPENT}" 2> /dev/null
+_MIG_DROP_SHORT=NO
 ### The terminal this run was started on, when its stderr is one: each retry
 ### is told there whatever the call did with its own stderr, and a caller
 ### that reads a call's stderr never finds the notice in it.
@@ -97,28 +99,47 @@ _mig_drop_secs() {
   echo "${_w}"
 }
 
+### $1 open or close: the short window, which starts and ends with no host
+### marked.
+_mig_drop_window() {
+  rm -rf "${_MIG_DROP_SPENT}" 2> /dev/null
+  case "${1}" in
+    open) _MIG_DROP_SHORT=YES ;;
+    *) _MIG_DROP_SHORT=NO ;;
+  esac
+  return 0
+}
+
 ### The tries a chain of drops to host $1 gets: the whole budget, or the
-### short one once a chain to it used the whole budget in this run.
+### short one inside the short window once a chain to it used the whole one.
 _mig_drop_budget() {
-  if grep -qxF "${1}" "${_MIG_DROP_SPENT}" 2> /dev/null; then
+  if [ "${_MIG_DROP_SHORT}" = "YES" ] && [ -e "${_MIG_DROP_SPENT}/h-${1}" ]; then
     echo "${_MIG_DROP_TRIES_SPENT}"
   else
     echo "${_MIG_DROP_TRIES}"
   fi
 }
 
-### The chain to host $1 used its budget $2 and met one more drop: a whole
-### budget marks the host, and files of runs that are gone go.
+### The chain to host $1 used its budget $2 and met one more drop: inside the
+### short window a whole budget marks the host, and the marks of runs that
+### are gone go.
 _mig_drop_spent() {
   local _f
   [ -n "${_MIG_NOTE_TTY}" ] \
     && echo "INFO: ${1}: still dropped after ${2} tries; this call gives up" 2> /dev/null > "${_MIG_NOTE_TTY}"
-  [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
+  [ "${_MIG_DROP_SHORT}" = "YES" ] && [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
   for _f in /run/mig-drop-spent.*; do
     [ -e "${_f}" ] || continue
-    kill -0 "${_f##*.}" 2> /dev/null || rm -f "${_f}"
+    kill -0 "${_f##*.}" 2> /dev/null || rm -rf "${_f}"
   done
-  echo "${1}" 2> /dev/null >> "${_MIG_DROP_SPENT}"
+  mkdir -p "${_MIG_DROP_SPENT}" 2> /dev/null && : 2> /dev/null > "${_MIG_DROP_SPENT}/h-${1}"
+  return 0
+}
+
+### A call to host $1 got through: inside the short window its mark goes.
+_mig_drop_through() {
+  [ "${_MIG_DROP_SHORT}" = "YES" ] || return 0
+  rm -f "${_MIG_DROP_SPENT}/h-${1}" 2> /dev/null
   return 0
 }
 
@@ -162,6 +183,8 @@ ssh() {
         continue
       fi
       _mig_drop_spent "${_h}" "${_b}"
+    elif [ "${_rc}" != "255" ]; then
+      _mig_drop_through "$(_mig_drop_host "$@")"
     fi
     [ -s "${_l}" ] && cat "${_l}" >&2
     rm -f "${_l}"
@@ -190,6 +213,8 @@ _mig_rsh_again() {
         continue
       fi
       _mig_drop_spent "${_h}" "${_b}"
+    elif [ "${_rc}" = "0" ]; then
+      _mig_drop_through "$(_mig_drop_host "$@")"
     fi
     [ -s "${_e}" ] && cat "${_e}" >&2
     rm -f "${_e}"
@@ -222,18 +247,29 @@ _mig_port_answers() {
 ### runs again, whether ssh-keyscan named the close or, as it often does, said
 ### nothing: a port that accepts a plain connection tells that from a refused
 ### one, which says nothing too. A refused or silent port gets the one scan.
+### The keys go to a file first, so a known_hosts that cannot be written is
+### one failure, never a scan that seemed to say nothing.
 ### Returns 0 once a key for the host is known.
 _mig_keyscan() {
-  local _e _h _k _n=0 _b=""
+  local _e _o _h _k _n=0 _b=""
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
-    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
+    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" \
+      && _o="$(mktemp /tmp/mig-keys.XXXXXX 2> /dev/null)" || {
+      rm -f "${_e}"
       ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
       ssh-keygen -F "${1}" > /dev/null 2>&1
       return $?
     }
-    ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> "${_e}"
+    ssh-keyscan -H -T 10 "${1}" > "${_o}" 2> "${_e}"
+    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> /root/.ssh/known_hosts; then
+      echo "${_h}: cannot write /root/.ssh/known_hosts" >&2
+      rm -f "${_e}" "${_o}"
+      return 1
+    fi
+    rm -f "${_o}"
     if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+      _mig_drop_through "${_h}"
       rm -f "${_e}"
       return 0
     fi
@@ -1714,8 +1750,9 @@ _xcopy_wait_target_quiet() {
   case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
   # _w is wall time since the wait began: a poll through the retry of a
   # dropped connection can take minutes, more than the sleeps between polls.
+  # A quiet answer at the ceiling still gets its confirming poll.
   _t0=$(date +%s)
-  while [ "${_w}" -lt "${_max}" ]; do
+  while [ "${_w}" -lt "${_max}" ] || [ "${_ok}" = "1" ]; do
     # An armed run-upgrade.pid whose dispatcher is parked (a demoted
     # target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
     # is inert and not busy, as xmass's silence probe already reads it,
@@ -1729,7 +1766,12 @@ _xcopy_wait_target_quiet() {
     # the marker the next tools refresh brings the runner back, so the
     # pid still counts. One with no platforms.info beside it never does:
     # the runner takes no trigger without it.
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && { [ -e \"/var/backups/off-run/run-\${_n}\" ] || [ -e \"/var/backups/a2b/\${_n}/held-run-\${_n}\" ]; } && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && { [ -e \"/var/backups/off-run/run-\${_n}\" ] || [ -e \"/var/backups/a2b/\${_n}/held-run-\${_n}\" ]; } && continue; printf '%s:armed ' \"\${_n}\"; done; echo QUIET-READ" 2>/dev/null)
+    # a poll that never answered is not a quiet box
+    case "${_busy}" in
+      *QUIET-READ) _busy="${_busy%QUIET-READ}" ;;
+      *) _busy="no answer " ;;
+    esac
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
