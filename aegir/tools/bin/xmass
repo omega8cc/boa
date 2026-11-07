@@ -6243,6 +6243,11 @@ _xmass_restore_rec_read() {
   return 0
 }
 
+# A regular settings.php in the current (pinned) directory, never through a link.
+_xmass_settings_here() {
+  [ -f ./settings.php ] && [ ! -L ./settings.php ]
+}
+
 # The vhost of the active's own panel, once this box is plain again: the vhost
 # leg carries every vhost, and that one names a platform and a database of the
 # active. A later relay repair read it as a site, and a later move would carry
@@ -6250,13 +6255,9 @@ _xmass_restore_rec_read() {
 # its root is this account's panel tree, in the plain spelling, and holds no such
 # panel here, a path or a settings.php through a link holding none. The panel the
 # alias names stays when this box holds it; once the heal has run, an alias still
-# naming a panel this box lacks
-# leaves the account as it is. The https companion goes first, so a run stopped
-# between the two finds the name again and finishes.
+# naming a panel this box lacks leaves the account as it is. The https companion
+# goes first, so a run stopped between the two finds the name again and finishes.
 # $1 = DRY lists them, LIVE moves them; $2 = the account's root.
-_xmass_settings_here() {
-  [ -f ./settings.php ] && [ ! -L ./settings.php ]
-}
 _xmass_restore_park_panel_vhosts() {
   local _how="$1" _root="$2" _oct="${2##*/}" _v="$2/config/server_master/nginx/vhost.d"
   local _sp _own="" _n _rt _me
