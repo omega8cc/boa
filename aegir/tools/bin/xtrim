@@ -2128,21 +2128,24 @@ umask 022
 ### reader would then wait for it, and the tool keeps its pid, exit status and
 ### signals. The tail and its watcher start from a subshell that exits at
 ### once, so no bare wait in the tool waits for them, and neither command line
-### names the tool. The tail stops within 0.2 s of the tool, or a second
-### after the tool is a zombie, for a caller that reaps it only after the
-### output ends. A tool another migration tool runs on this box keeps no log
-### and leaves its streams as they were, so its output goes where its caller
-### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
-### reads "none" when the caller keeps no log); the caller's terminal is
-### handed down in _MIG_RUNLOG_TTY for the notices that go straight to it. No
-### log is kept for a user other than root, with under 1 GiB free, in a
-### folder that cannot be written or with a tail lacking --pid, and the last
-### three say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
+### names the tool. The tail follows a placeholder process the watcher ends
+### once the tool has exited, a zombie included (a caller that reads all the
+### output before it reaps the tool), so the tail stops by itself after it has
+### handed on every line, at the reader's own pace. A tool another migration
+### tool runs on this box keeps no log and leaves its streams as they were, so
+### its output goes where its caller sends it, into the caller's log when
+### there is one (_MIG_RUNLOG, exported, reads "none" when the caller keeps no
+### log); the caller's terminal is handed down in _MIG_RUNLOG_TTY for the
+### notices that go straight to it. No log is kept for a user other than root,
+### with under 1 GiB free, in a folder that cannot be written or with a tail
+### lacking --pid, and the last three say so once. _MIG_RUNLOG_DIR and
+### _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
   local _tool="${1}" _verb _now _dir _file _base _free _con _term=""
   shift
   [ -n "${_MIG_RUNLOG:-}" ] && return 0
   export _MIG_RUNLOG=none
+  unset _MIG_RUNLOG_TTY
   case "${_tool} $*" in
     "xmass status"|"xmass status "*|"xmass autosync"*" --run"*|"xmass autosync"*" --status"*)
       return 0
@@ -2161,12 +2164,22 @@ _mig_runlog_start() {
     echo "ALRT: ${_tool}: no run log kept, this tail has no --pid" >&2
     return 0
   fi
-  while [ -n "${_base}" ] && [ ! -d "${_base}" ]; do
-    _base="${_base%/*}"
+  while [ ! -d "${_base}" ]; do
+    case "${_base}" in
+      */*) _base="${_base%/*}" ;;
+      *) _base=. ;;
+    esac
+    [ -n "${_base}" ] || _base=/
   done
-  _free="$(df -Pk "${_base:-/}" 2> /dev/null | awk 'NR == 2 { print $4 }')"
-  if [ -z "${_free}" ] || [ "${_free}" -lt "${_MIG_RUNLOG_MIN_KB:-1048576}" ]; then
-    echo "ALRT: ${_tool}: no run log kept, under 1 GiB free for ${_file}" >&2
+  _free="$(df -Pk "${_base}" 2> /dev/null | awk 'NR == 2 { print $4 }')"
+  case "${_free}" in
+    ''|*[!0-9]*)
+      echo "ALRT: ${_tool}: no run log kept, the free space for ${_file} cannot be read" >&2
+      return 0
+      ;;
+  esac
+  if [ "${_free}" -lt "${_MIG_RUNLOG_MIN_KB:-1048576}" ]; then
+    echo "ALRT: ${_tool}: no run log kept, ${_free} KiB free for ${_file}" >&2
     return 0
   fi
   if ! ( umask 077; mkdir -p "${_dir}" && : >> "${_file}" ) 2> /dev/null \
@@ -2182,16 +2195,28 @@ _mig_runlog_start() {
   exec {_con}>&1
   ( ( trap '' HUP INT QUIT TERM PIPE
       exec sh -c '
-        tail -n +1 -s 0.2 --pid="$1" -f - <&9 >&8 &
+        sleep 2147483647 8>&- 9<&- &
+        h=$!
+        tail -n +1 -s 0.2 --pid="$h" -f - <&9 >&8 8>&- 9<&- &
         t=$!
         exec 8>&- 9<&-
-        while kill -0 "$t" 2> /dev/null; do
-          sleep 1
-          kill -0 "$1" 2> /dev/null || continue
-          case "$(ps -o stat= -p "$1" 2> /dev/null)" in
-            *Z*) sleep 1; kill -9 "$t" 2> /dev/null; break ;;
+        while kill -0 "$1" 2> /dev/null && kill -0 "$t" 2> /dev/null; do
+          s=""
+          if [ -r "/proc/$1/stat" ]; then
+            read -r s 2> /dev/null < "/proc/$1/stat"
+            s="${s##*) }"
+          else
+            s="$(ps -o stat= -p "$1" 2> /dev/null)"
+          fi
+          case "${s}" in
+            Z*|*Z*) break ;;
           esac
-        done' mig-runlog "$$" ) 8>&"${_con}" 9< "${_file}" > /dev/null 2>&1 < /dev/null & )
+          sleep 0.2
+        done
+        kill -9 "$h" 2> /dev/null
+        wait "$h" 2> /dev/null
+        wait "$t" 2> /dev/null' mig-runlog "$$" ) \
+      8>&"${_con}" {_con}>&- 9< "${_file}" > /dev/null 2>&1 < /dev/null & )
   exec >> "${_file}" 2>&1 {_con}>&-
   export _MIG_RUNLOG="${_file}"
   case "${_term}" in
