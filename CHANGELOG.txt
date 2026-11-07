@@ -193,6 +193,17 @@
       an alert. A box left with /etc/nginx/main.d/quic_bpf.failed from that gets
       it back once the file is deleted and a barracuda upgrade has run.
 
+    * Choosing an AppArmor mode on a box whose last upgrade ran with none now
+      puts AppArmor and auditd back in the boot order. That upgrade had taken
+      them out, and the next boot loaded no profile at all, with nothing said,
+      while the upgrades in between reported the mode chosen.
+
+    * Valkey runs under its AppArmor profile again after a barracuda upgrade
+      in enforce mode, with every site's cache kept. The upgrade's teardown
+      had left it unconfined until its next restart, usually the next reboot:
+      it was reloaded, which brings back nothing. It now saves on its way
+      down, loads that on start, and the saved copy is deleted once loaded.
+
     * xmass restore-target killed during its data directory swap, with the
       standby marker still there, finishes when run again; before, the box
       refused with "no parked data directory" and could only be reimaged.
