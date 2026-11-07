@@ -668,21 +668,24 @@ _list_accounts() {
   done
 }
 
+_settings_here() {
+  [ -f ./settings.php ] && [ ! -L ./settings.php ]
+}
 ### True when the vhost $2 of the account $1 is the control panel of another box,
-### which a sync carried here: its root is the account's panel tree and holds no
-### such panel. It is no site of this account and nothing of it was proxied. xoct
-### reads it by the same rule.
+### which a sync carried here: its root is the account's panel tree, in the plain
+### spelling, and holds no such panel. It is no site of this account and nothing of
+### it was proxied. xoct reads it by the same rule.
 _vhost_other_panel() {
   local _r
   _r="$(_read_file "/data/disk/${1}/config/server_master/nginx/vhost.d/${2}" \
     | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
     | head -n 1)"
   case "${_r}" in
-    */..|*/../*) return 1 ;;
+    */|*//*|*/./*|*/.|*/..|*/../*|*[!A-Za-z0-9_./-]*) return 1 ;;
     "/data/disk/${1}"/aegir/*) ;;
     *) return 1 ;;
   esac
-  ! _in_real_dir "${_r}/sites/${2}" test -f ./settings.php
+  ! _in_real_dir "${_r}/sites/${2}" _settings_here
 }
 
 _panel_only() {

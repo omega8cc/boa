@@ -6247,17 +6247,21 @@ _xmass_restore_rec_read() {
 # leg carries every vhost, and that one names a platform and a database of the
 # active. A later relay repair read it as a site, and a later move would carry
 # it on as one. Kept as a dot-file, which nginx and the sync never read, when
-# its root is this account's panel tree and holds no such panel here, a path
-# through a link holding none. The panel the alias names stays when this box
-# holds it; once the heal has run, an alias still naming a panel this box lacks
+# its root is this account's panel tree, in the plain spelling, and holds no such
+# panel here, a path or a settings.php through a link holding none. The panel the
+# alias names stays when this box holds it; once the heal has run, an alias still
+# naming a panel this box lacks
 # leaves the account as it is. The https companion goes first, so a run stopped
 # between the two finds the name again and finishes.
 # $1 = DRY lists them, LIVE moves them; $2 = the account's root.
+_xmass_settings_here() {
+  [ -f ./settings.php ] && [ ! -L ./settings.php ]
+}
 _xmass_restore_park_panel_vhosts() {
   local _how="$1" _root="$2" _oct="${2##*/}" _v="$2/config/server_master/nginx/vhost.d"
   local _sp _own="" _n _rt _me
   _sp=$(_xmass_read_file "${_root}/.drush/hostmaster.alias.drushrc.php" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
-  _xmass_in_real_dir "${_sp}" test -f ./settings.php && _own="${_sp##*/}"
+  _xmass_in_real_dir "${_sp}" _xmass_settings_here && _own="${_sp##*/}"
   [ -n "${_own}" ] || [ "${_how}" != "LIVE" ] || return 0
   _me=$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')
   while IFS= read -r _n; do
@@ -6267,11 +6271,11 @@ _xmass_restore_park_panel_vhosts() {
       | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
       | head -n 1)
     case "${_rt}" in
-      */..|*/../*) continue ;;
+      */|*//*|*/./*|*/.|*/..|*/../*|*[!A-Za-z0-9_./-]*) continue ;;
       "${_root}"/aegir/*) ;;
       *) continue ;;
     esac
-    _xmass_in_real_dir "${_rt}/sites/${_n}" test -f ./settings.php && continue
+    _xmass_in_real_dir "${_rt}/sites/${_n}" _xmass_settings_here && continue
     if [ "${_how}" != "LIVE" ]; then
       # the alias is still to heal when it names no panel here: this box's own
       # panel is the one named under its hostname
