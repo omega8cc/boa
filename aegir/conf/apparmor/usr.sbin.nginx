@@ -17,6 +17,16 @@
   capability dac_override,
   capability dac_read_search,
   capability mknod,
+  # The eBPF init behind quic_bpf, which refuses to start Nginx when it fails: its
+  # socket map asks for net_admin, the program's load for bpf and perfmon. Only the
+  # master, running as root, holds these; its workers do not.
+  capability bpf,
+  capability net_admin,
+  capability perfmon,
+
+  # The start-up probe of quic_bpf: a throwaway master from a folder of its own
+  /run/boa-nginx-quic-bpf-probe/ r,
+  /run/boa-nginx-quic-bpf-probe/** rwk,
 
   # Allow Nginx to accept signal from PHP-CLI processes
   signal (receive) peer=/opt/php*/bin/php,

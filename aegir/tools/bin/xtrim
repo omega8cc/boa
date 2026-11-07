@@ -668,17 +668,40 @@ _list_accounts() {
   done
 }
 
+_settings_here() {
+  [ -f ./settings.php ] && [ ! -L ./settings.php ]
+}
+### True when the vhost $2 of the account $1 is the control panel of another box,
+### which a sync carried here: its root is the account's panel tree, in the plain
+### spelling, and holds no such panel. It is no site of this account and nothing of
+### it was proxied. xoct reads it by the same rule.
+_vhost_other_panel() {
+  local _r
+  _r="$(_read_file "/data/disk/${1}/config/server_master/nginx/vhost.d/${2}" \
+    | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
+    | head -n 1)"
+  case "${_r}" in
+    */|*//*|*/./*|*/.|*/..|*/../*|*[!A-Za-z0-9_./-]*) return 1 ;;
+    "/data/disk/${1}"/aegir/*) ;;
+    *) return 1 ;;
+  esac
+  ! _in_real_dir "${_r}/sites/${2}" _settings_here
+}
+
 _panel_only() {
   ### $1 acct: true when the account's only live vhost is its own (local,
   ### non-proxy) control panel -- nothing of it was ever proxied.
   ### vhost.d is the account's: listed and read inside the real directory.
-  local _oN="$1" _vhd="/data/disk/$1/config/server_master/nginx/vhost.d" _u _n
+  local _oN="$1" _vhd="/data/disk/$1/config/server_master/nginx/vhost.d" _u _n=0 _d
   _u="$(_alias_field "/data/disk/${_oN}/.drush/hostmaster.alias.drushrc.php" "uri")"
   [ -n "${_u}" ] || return 1
   [ -e "${_vhd}/${_u}" ] || return 1
   _read_file "${_vhd}/${_u}" | grep -q "proxy_pass" && return 1
-  _n=$(_names_in "${_vhd}" ! -name '.*' ! -name 'https.*' \
-    ! -name "${_u}" ! -name "www.${_u}" | sed '/^$/d' | wc -l | tr -d ' ')
+  while IFS= read -r _d; do
+    [ -n "${_d}" ] || continue
+    _vhost_other_panel "${_oN}" "${_d}" || _n=$(( _n + 1 ))
+  done < <(_names_in "${_vhd}" ! -name '.*' ! -name 'https.*' \
+    ! -name "${_u}" ! -name "www.${_u}")
   [ "${_n}" = "0" ]
 }
 
@@ -787,6 +810,7 @@ _map_account() {
       _MAP_PANEL_LOCAL=YES
       continue
     fi
+    _vhost_other_panel "${_oN}" "${_d}" && continue
     _MAP_DOMS="${_MAP_DOMS} ${_d}"
     ### A site named under THIS box's own hostname was renamed on the target
     ### by the cutover, and its old name is answered here with a 301 to the
