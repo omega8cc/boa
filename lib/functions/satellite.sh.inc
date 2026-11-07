@@ -133,8 +133,11 @@ _stage_grav_releases() {
   if [ "${_GRAV_SUPPORT}" != "YES" ] || [ ! -d "/data/all/000" ]; then
     return 0
   fi
-  _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_gVrn}" ] && _gVrn="${_GRAV_V_FALLBACK}"
+  # A missing or malformed stamp (a mirror can answer a missing path with a
+  # page) takes the fallback.
+  _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_gVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _gVrn="${_GRAV_V_FALLBACK}"
   _gZip="grav-admin-v${_gVrn}.zip"
   if [ -n "$(_satellite_not_root_alone "${_gDir}")" ]; then
     _msg "ALRT: ${_gDir} was not root's alone: removed before the Grav admin bundle is staged"
@@ -5430,11 +5433,12 @@ _hostmaster_db_users_named() {
   done
   return 0
 }
-# How the log names the database user $1: after the longest of this box's
-# account names, or the first label of the master's uri, that it begins
-# with and then a non-digit, else after $2 (an account's name, or master).
-# One text in master.sh.inc and satellite.sh.inc.
-_hostmaster_db_user_label() {
+# Whose the database user $1 is: the longest of this box's account names
+# (an account with .drush), or the first label of the master's uri, that it
+# begins with and then a non-digit, else $2 (an account's name, or master).
+# master stands for the master. One text in master.sh.inc and
+# satellite.sh.inc.
+_hostmaster_db_user_owner() {
   local _a _n _uri _o="${2}" _l=0
   for _a in /data/disk/*; do
     [ -d "${_a}/.drush" ] || continue
@@ -5450,6 +5454,14 @@ _hostmaster_db_user_label() {
     && [ "${#_n}" -gt "${_l}" ]; then
     _o=master
   fi
+  echo "${_o}"
+}
+# How the log names the database user $1: after its owner
+# (_hostmaster_db_user_owner, $2 the default). One text in master.sh.inc
+# and satellite.sh.inc.
+_hostmaster_db_user_label() {
+  local _o
+  _o=$(_hostmaster_db_user_owner "${1}" "${2}")
   if [ "${_o}" = "master" ]; then
     echo "earlier master panel database user"
   else
@@ -5605,9 +5617,11 @@ _hostmaster_db_user_global_revoke() {
 # candidate has the shape provisioning gives a panel database (16
 # characters of the uri without dots and dashes, or 14 of them and _0 to
 # _9, or 13 and _10 to _99), begins with this account's name and then a
-# non-digit, so o1 never takes o10's, and has SUPER on a host row; this
-# panel's own user and an account's own user (named as the account) never
-# are. _hostmaster_db_users_settle leaves alone one that a server alias
+# non-digit, so o1 never takes o10's, is this account's by
+# _hostmaster_db_user_owner, so o1 never takes o1a's or the master's
+# either, and has SUPER on a host row; this panel's own user and an
+# account's own user (named as the account) never are.
+# _hostmaster_db_users_settle leaves alone one that a server alias
 # names as its master_db or a panel's drushrc.php names; takes every
 # global right, and nothing else, from one that another site's drushrc.php
 # names, whether or not a database of its name exists; leaves alone any
@@ -5641,6 +5655,7 @@ _hostmaster_oldhost_dbuser_drop() {
     [[ "${_u}" =~ ^([a-z0-9]{16}|[a-z0-9]{14}_[0-9]|[a-z0-9]{13}_[1-9][0-9])$ ]] \
       || continue
     [[ "${_u}" == "${_USER}"[!0-9]* ]] || continue
+    [ "$(_hostmaster_db_user_owner "${_u}" "${_USER}")" = "${_USER}" ] || continue
     [ "${_u}" = "${_THIS_HM_DBUR}" ] && continue
     [ -e "/data/disk/${_u}" ] && continue
     _cand+=( "${_u}" )
@@ -7717,8 +7732,11 @@ _satellite_make() {
   # Resolve the newest Backdrop version from the mirror stamp so platforms track
   # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK);
   # the platform build fetches the matching versioned backdrop-<ver>.tar.gz.
-  _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_bdrVrn}" ] && _bdrVrn="${_BACKDROP_V_FALLBACK}"
+  # A missing or malformed stamp (a mirror can answer a missing path with a
+  # page, which tr would turn into a long run of digits) takes the fallback.
+  _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_bdrVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _bdrVrn="${_BACKDROP_V_FALLBACK}"
   echo "export _BACKDROP_V=\"${_bdrVrn}\""                   >> ${_writeTo}
   echo "export _BACKDROP=\"backdrop-${_bdrVrn}\""            >> ${_writeTo}
   echo "export _BACKDROP_D=\"backdrop-${_bdrVrn}-dev\""      >> ${_writeTo}
@@ -7746,8 +7764,10 @@ _satellite_make() {
   # the latest official admin-bundle release without a hardcoded pin
   # (fallback: _GRAV_V_FALLBACK); the platform build fetches the matching
   # versioned grav-<ver>.tar.gz.
-  _gravVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_gravVrn}" ] && _gravVrn="${_GRAV_V_FALLBACK}"
+  # A missing or malformed stamp takes the fallback, as for Backdrop above.
+  _gravVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_gravVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _gravVrn="${_GRAV_V_FALLBACK}"
   echo "export _GRAV_V=\"${_gravVrn}\""                      >> ${_writeTo}
   echo "export _GRAV=\"grav-${_gravVrn}\""                   >> ${_writeTo}
   echo "export _GRAV_D=\"grav-${_gravVrn}-dev\""             >> ${_writeTo}
@@ -7764,8 +7784,10 @@ _satellite_make() {
   # textpattern-<ver>.tar.gz. Stable releases are tags on main; the mirror's
   # textpattern.txt is published LAST by staticbuild, so a version resolved
   # here always has its artefacts already on the mirror.
-  _txpVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/textpattern.txt" 2>/dev/null | tr -cd '0-9.')
-  [ -z "${_txpVrn}" ] && _txpVrn="${_TXP_V_FALLBACK}"
+  # A missing or malformed stamp takes the fallback, as for Backdrop above.
+  _txpVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/textpattern.txt" 2>/dev/null \
+    | head -n 1 | tr -cd '0-9.')
+  [[ "${_txpVrn}" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || _txpVrn="${_TXP_V_FALLBACK}"
   echo "export _TXP_V=\"${_txpVrn}\""                        >> ${_writeTo}
   echo "export _TXP=\"textpattern-${_txpVrn}\""              >> ${_writeTo}
   echo "export _TXP_D=\"textpattern-${_txpVrn}-dev\""        >> ${_writeTo}

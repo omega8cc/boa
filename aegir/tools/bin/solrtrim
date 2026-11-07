@@ -29,6 +29,12 @@
 ###   - Any removal of a version with real cores archives its data tree to
 ###     /var/backups first and refuses when the archive cannot be written or
 ###     verified (--force only overrides the USED/AMBIGUOUS refusals).
+###   - A version whose home still holds a data tree xmass restore-solr kept
+###     (data.xmass-landed-<stamp>) refuses, --force or not, with nothing
+###     changed: that tree is the only copy of an index a move landed, and
+###     the operator archives it if needed and deletes it by hand first (a
+###     kept link alone, the tree it reaches removed by hand); only the
+###     delete lifts it.
 ###   - --blanket additionally writes the blanket java deny pair
 ###     (_DENY_JAVA=YES + /root/.deny.java.cnf), accepted only when NO Solr
 ###     version remains installed afterwards — the golden-master end state,
@@ -201,7 +207,7 @@ _solr_aliases() {
 ### surfaces — mirror fixes there. The aliases and the ini files are the
 ### account's: each is read inside its real directory.
 _collect_bindings() {
-  local _alias _apath _aliases
+  local _alias _apath _aliases _atext
   mapfile -t _aliases < <(_solr_aliases)
   _BINDRAW=$(for _alias in "${_aliases[@]}"; do
     [ -f "${_alias}" ] || continue
@@ -212,13 +218,25 @@ _collect_bindings() {
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
   ### An empty tally out of a broken alias parse is indistinguishable from
   ### "no site uses Solr" — spot-verify one alias before believing it.
+  ### Only a site alias carries site_path, and the list is not sorted by
+  ### kind, so an alias that reads cleanly as a platform or server context
+  ### is passed over, and so are a link and anything that is not a regular
+  ### file, which the tally never reads either. The first other alias is
+  ### checked: one that reads as nothing, or in a layout this parse does not
+  ### know, warns like a site alias without site_path. Only platform and
+  ### server aliases leave nothing to tally.
   if [ -z "${_BINDRAW}" ]; then
-    _alias="${_aliases[0]:-}"
-    if [ -n "${_alias}" ]; then
-      _apath=$(_solr_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+    for _alias in "${_aliases[@]}"; do
+      [ -L "${_alias}" ] && continue
+      [ -f "${_alias}" ] || continue
+      _atext=$(_solr_read_file "${_alias}" | tr -d '\000')
+      printf '%s\n' "${_atext}" \
+        | grep -qE "'context_type' => '(platform|server)'" && continue
+      _apath=$(printf '%s\n' "${_atext}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
       [ -z "${_apath}" ] \
         && _alrt "alias site_path parse failed on $(basename "${_alias}") -- binding tally unreliable, read as zero"
-    fi
+      break
+    done
   fi
 }
 
@@ -387,7 +405,8 @@ _set_cnf_key() {
 ### mount) or distribution (/opt/solrN -> /opt/solr-x.y.z) is resolved and
 ### both halves removed, but never a path outside the trees Solr owns. A
 ### DANGLING symlink resolves to nothing -- removing just the link is the
-### safe, correct action there, never a refusal.
+### safe, correct action there; a dangling home link is refused earlier, by
+### _refuse_kept, since a kept data tree may sit on the disk it points to.
 _remove_tree() {
   local _path="${1}" _rsv
   [ -e "${_path}" ] || [ -L "${_path}" ] || return 0
@@ -413,6 +432,84 @@ _remove_tree() {
   [ -L "${_path}" ] && rm -f "${_path}"
   _info "  removed ${_path}$( [ "${_rsv}" != "${_path}" ] && echo " (-> ${_rsv})" )"
   return 0
+}
+
+### A data tree xmass restore-solr kept in a version's home
+### (data.xmass-landed-<stamp>) is the only copy of an index a move landed,
+### kept there for the daily backup's include of the home: removing the
+### home would delete it. Refuse while one is there, --force or not, naming
+### each with the commands that archive it and delete it by hand: only the
+### delete lifts the refusal. A kept link's printed delete is the link's
+### own, on every layout: what a link reaches can hold more than the index
+### (the home's parent, /var, or the disk a linked home lives on), so an
+### rm -rf of it is never printed; that tree is named for the operator to
+### archive, check and remove by hand. A kept link whose tree cannot be
+### reached now (its disk not mounted) refuses as well, named with where it
+### points, and so does a home that is such a link, whose kept names cannot
+### be read: passing either over would let the remove take the link and
+### leave the index on its disk with nothing naming it. The archive is
+### weighed as this tool's own is, the data size plus 1G free under
+### _ARCH_DIR: a linked home's index sits on another disk than /var/backups,
+### which a large one would fill. Every path in a printed command is
+### shell-quoted, so a copied command acts on the tree named and no other.
+_refuse_kept() {
+  local _sv="${1}" _k _r _n=0 _du _avail _room _rp _rb
+  [ -n "${_V_HOME}" ] || return 0
+  if [ -L "${_V_HOME}" ] && [ ! -e "${_V_HOME}" ]; then
+    _alrt "${_sv}: ${_V_HOME} is a link to $(printf '%q' "$(readlink "${_V_HOME}" 2>/dev/null)"), which cannot be reached now --"
+    _alrt "refusing to remove ${_sv}, --force or not; nothing changed: a data tree xmass restore-solr"
+    _alrt "kept there cannot be read. Mount what holds it, then re-run; only if it is gone for good:"
+    _alrt "  delete:  rm -f $(printf '%q' "${_V_HOME}")"
+    return 1
+  fi
+  ### 3: a home that is a mount point of its own (fstab names it) whose volume is
+  ### not mounted reads as an empty directory: refuse it as well
+  if [ -d "${_V_HOME}" ] && [ ! -L "${_V_HOME}" ] \
+    && awk -v h="${_V_HOME}" '$1 !~ /^#/ && $2 == h { f = 1 } END { exit !f }' /etc/fstab 2>/dev/null \
+    && ! mountpoint -q "${_V_HOME}" 2>/dev/null; then
+    _alrt "${_sv}: ${_V_HOME} is a mount point in /etc/fstab and its volume is not mounted --"
+    _alrt "refusing to remove ${_sv}, --force or not; nothing changed: a data tree xmass restore-solr"
+    _alrt "kept there cannot be read. Mount it, then re-run."
+    return 1
+  fi
+  for _k in "${_V_HOME}"/data.xmass-landed-*; do
+    [ -e "${_k}" ] || [ -L "${_k}" ] || continue
+    if [ "${_n}" -eq 0 ]; then
+      _alrt "${_sv}: ${_V_HOME} still holds a data tree xmass restore-solr kept -- refusing to"
+      _alrt "remove ${_sv}, --force or not; nothing changed. Archive each if it is needed and"
+      _alrt "delete it by hand, then re-run: the refusal lifts once the kept name is gone."
+    fi
+    _n=$((_n + 1))
+    if [ ! -e "${_k}" ]; then
+      _alrt "  $(printf '%q' "${_k}") (a link to $(printf '%q' "$(readlink "${_k}" 2>/dev/null)"), which cannot be reached now)"
+      _alrt "    mount what holds that tree, then re-run for its archive and delete; only if it is gone for good:"
+      _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
+      continue
+    fi
+    _r=$(readlink -f "${_k}" 2>/dev/null)
+    _rp="${_r%/*}"
+    _rb="${_r##*/}"
+    _du=$(du -sk "${_r}" 2>/dev/null | awk 'NR==1 { print $1 }')
+    _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
+    case "${_du}" in ''|*[!0-9]*) _du="" ;; esac
+    case "${_avail}" in ''|*[!0-9]*) _avail="" ;; esac
+    _room="${_du:-?}K data, ${_avail:-?}K free under ${_ARCH_DIR}"
+    _alrt "  $(printf '%q' "${_k}")$( [ -L "${_k}" ] && echo " (a link to $(printf '%q' "${_r}"))" )"
+    if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -ge "$(( _du + 1048576 ))" ]; then
+      _alrt "    archive: tar -czf $(printf '%q' "${_ARCH_DIR}/${_V_SVC}-${_k##*/}.tar.gz") -C $(printf '%q %q' "${_rp:-/}" "${_rb:-.}")"
+      _alrt "    room:    ${_room}"
+    else
+      _alrt "    room:    ${_room}; it wants the data size plus 1G there, so archive it on a disk with room:"
+      _alrt "    archive: tar -czf <a directory with room>/$(printf '%q' "${_V_SVC}-${_k##*/}.tar.gz") -C $(printf '%q %q' "${_rp:-/}" "${_rb:-.}")"
+    fi
+    if [ ! -L "${_k}" ]; then
+      _alrt "    delete:  rm -rf $(printf '%q' "${_k}")"
+      continue
+    fi
+    _alrt "    delete:  rm -f $(printf '%q' "${_k}")"
+    _alrt "    the tree it reaches ($(printf '%q' "${_r}")) is the kept index: archive it, check it holds nothing else, and remove it by hand"
+  done
+  [ "${_n}" -eq 0 ]
 }
 
 ###-------------STATUS---------------------###
@@ -447,6 +544,7 @@ _cmd_status() {
 _remove_one() {
   local _sv="${1}" _force="${2}" _ts _du _avail _arch _rsvdata
   _solr_map "${_sv}" || return 1
+  _refuse_kept "${_sv}" || return 1
   _classify "${_sv}"
 
   if [ "${_C_VERDICT}" = "USED" ] && [ "${_force}" != "YES" ]; then
@@ -498,8 +596,10 @@ _remove_one() {
   ### this can be wrong, the tarball is the undo.
   if [ "${_C_CORES}" -gt 0 ]; then
     _rsvdata=$(readlink -f "${_V_DATA}" 2>/dev/null)
-    _du=$(du -sk "${_rsvdata}" 2>/dev/null | awk '{ print $1 }')
+    _du=$(du -sk "${_rsvdata}" 2>/dev/null | awk 'NR==1 { print $1 }')
     _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
+    case "${_du}" in ''|*[!0-9]*) _du="" ;; esac
+    case "${_avail}" in ''|*[!0-9]*) _avail="" ;; esac
     if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -lt "$(( _du + 1048576 ))" ]; then
       _die "not enough space under ${_ARCH_DIR} to archive ${_rsvdata} (${_du}K data," \
            " ${_avail}K free). ${_sv} is now denied, stopped and deregistered but its" \
@@ -673,6 +773,13 @@ case "${_cmd}" in
     echo "    a deny candidate and removes without --force. Any removal with real"
     echo "    cores archives the data tree to ${_ARCH_DIR} first and refuses if the"
     echo "    archive cannot land."
+    echo "  - remove refuses, --force or not, a version whose home still holds a data"
+    echo "    tree xmass restore-solr kept (data.xmass-landed-<stamp>), changing"
+    echo "    nothing; it names each one with the commands that archive it, weighed"
+    echo "    against the room under ${_ARCH_DIR}, and delete it (a kept link alone,"
+    echo "    the tree it reaches named for removal by hand). Only the delete lifts"
+    echo "    the refusal. A kept link whose tree cannot be reached now, or a home"
+    echo "    that is such a link, is named with where it points."
     echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
     echo "    the removed version can never serve again even if a later pass on a"
     echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."

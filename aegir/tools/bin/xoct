@@ -32,6 +32,233 @@ _WEBG=www-data
 _THIS_DB_PORT=3306
 _ieni="--ignore-errors"
 
+### A connection sshd drops before login (MaxStartups, or a per-source
+### penalty while a scanner holds its slots) ran nothing on the far box, so
+### it is opened again: up to 20 more times, 10 s apart at first and 25 s at
+### most, about 8 minutes of waits: a chain of drops can then outlast the
+### flood, and a stop in the middle of a move costs more than the wait. A try
+### that stalls in the banner exchange counts as a drop and takes its own
+### ConnectTimeout besides; a port that is silent or refuses is not tried
+### again, so a call given up after its ConnectTimeout stays given up. Once a
+### chain to a host has used the whole budget, every later call to that host
+### in the same run gets 3 more tries (45 s): by then the move stops or goes
+### on without that call, and the whole budget again on each later call only
+### kept a gated source dark longer. ssh's own log
+### (-E) decides, never what the remote command
+### printed: a reset or a stall in the banner exchange, or a bare 'Connection
+### closed by <host> port <n>', which ssh logs only before login (a close
+### after it is 'Connection to <host> closed by remote host.', on stderr).
+### rsync and scp are read on their stderr, which can also carry the far
+### end's own lines, so only a line that opens with ssh's words counts, and
+### an rsync only when it received 0 bytes. A host key scan that learned no
+### key is run again the same way when ssh-keyscan's own words name a close
+### or a reset before the banner, or it said nothing and port 22 accepts a
+### plain connection. Any other failure returns at once with its
+### own status and messages. Each retry adds one line to the drop log: time,
+### host, try and the client's own words, never the remote command. The
+### functions shadow the binaries, so every call in the tool goes through
+### them; their text is the same in xmass, xoct and xcopy.
+_MIG_DROP_RE='^((kex|ssh)_exchange_identification:|banner exchange:|Connection timed out during banner exchange)|^Connection closed by [^ ]+ port [0-9]+[[:space:]]*$'
+_MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]*\): Connection reset by peer[[:space:]]*$'
+_MIG_DROP_LOG="/var/log/boa/xoct.drop.log"
+_MIG_DROP_TRIES=20
+_MIG_DROP_TRIES_SPENT=3
+### The hosts whose chain used the whole budget in this run, one a line: a
+### file, since most calls run in a subshell, named by this run's pid (a
+### file a dead run of the same pid left is no one's).
+_MIG_DROP_SPENT="/run/mig-drop-spent.$$"
+rm -f "${_MIG_DROP_SPENT}" 2> /dev/null
+### The terminal this run was started on, when its stderr is one: each retry
+### is told there whatever the call did with its own stderr, and a caller
+### that reads a call's stderr never finds the notice in it.
+_MIG_NOTE_TTY=""
+[ -t 2 ] && { _MIG_NOTE_TTY="$(tty <&2 2> /dev/null)" || _MIG_NOTE_TTY=""; }
+
+### The host of the first root@ argument, and nothing else of the call.
+_mig_drop_host() {
+  local _a
+  for _a in "$@"; do
+    case "${_a}" in
+      root@?*)
+        _a="${_a#root@}"
+        printf '%s' "${_a%%:*}" | tr -cd 'A-Za-z0-9._-'
+        return 0
+        ;;
+    esac
+  done
+  printf '%s' '?'
+}
+
+### The wait after drop $1: 10 s, then 5 s longer each time up to 25 s, so the
+### tries walk across a flood's gaps instead of meeting its windows in step.
+_mig_drop_secs() {
+  local _w=$(( 5 + ${1} * 5 ))
+  [ "${_w}" -gt 25 ] && _w=25
+  echo "${_w}"
+}
+
+### The tries a chain of drops to host $1 gets: the whole budget, or the
+### short one once a chain to it used the whole budget in this run.
+_mig_drop_budget() {
+  if grep -qxF "${1}" "${_MIG_DROP_SPENT}" 2> /dev/null; then
+    echo "${_MIG_DROP_TRIES_SPENT}"
+  else
+    echo "${_MIG_DROP_TRIES}"
+  fi
+}
+
+### The chain to host $1 used its budget $2 and met one more drop: a whole
+### budget marks the host, and files of runs that are gone go.
+_mig_drop_spent() {
+  local _f
+  [ -n "${_MIG_NOTE_TTY}" ] \
+    && echo "INFO: ${1}: still dropped after ${2} tries; this call gives up" 2> /dev/null > "${_MIG_NOTE_TTY}"
+  [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
+  for _f in /run/mig-drop-spent.*; do
+    [ -e "${_f}" ] || continue
+    kill -0 "${_f##*.}" 2> /dev/null || rm -f "${_f}"
+  done
+  echo "${1}" 2> /dev/null >> "${_MIG_DROP_SPENT}"
+  return 0
+}
+
+### One retry noted: $1 the try, $2 the host, $3 the file holding the
+### client's own messages, $4 the pattern of the lines kept from it (ssh's
+### drop and close lines when not given), $5 the chain's budget.
+_mig_drop_note() {
+  local _k="${4:-}" _b="${5:-${_MIG_DROP_TRIES}}" _t=""
+  [ -n "${_k}" ] || _k="${_MIG_DROP_RE}|^Connection (reset|closed|timed out)"
+  if [ -n "${_MIG_NOTE_TTY}" ]; then
+    if [ "${1}" = "1" ]; then
+      _t=", each try logged in ${_MIG_DROP_LOG}"
+      [ "${_b}" = "${_MIG_DROP_TRIES}" ] \
+        || _t=" (an earlier chain to it used all ${_MIG_DROP_TRIES})${_t}"
+    fi
+    echo "INFO: ${2}: connection dropped before login; try ${1} of ${_b} in $(_mig_drop_secs "${1}") s${_t}" 2> /dev/null > "${_MIG_NOTE_TTY}"
+  fi
+  {
+    printf '%s %s try %s: ' "$(date '+%F %T')" "${2}" "${1}"
+    grep -E "${_k}" "${3}" 2> /dev/null \
+      | tr -d '\r' | head -n 3 | tr '\n' ' '
+    echo
+  } 2> /dev/null >> "${_MIG_DROP_LOG}"
+  return 0
+}
+
+ssh() {
+  local _l _rc _n=0 _b="" _h
+  while :; do
+    _l="$(mktemp /tmp/mig-ssh.XXXXXX 2> /dev/null)" || { command ssh "$@"; return $?; }
+    command ssh -E "${_l}" "$@"
+    _rc=$?
+    if [ "${_rc}" = "255" ] && grep -qE "${_MIG_DROP_RE}" "${_l}" 2> /dev/null; then
+      _h="$(_mig_drop_host "$@")"
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _mig_drop_note "${_n}" "${_h}" "${_l}" "" "${_b}"
+        rm -f "${_l}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
+    fi
+    [ -s "${_l}" ] && cat "${_l}" >&2
+    rm -f "${_l}"
+    return "${_rc}"
+  done
+}
+
+### $1 rsync or scp, then its arguments: run with its stderr held, which is
+### replayed once the call is not retried.
+_mig_rsh_again() {
+  local _e _rc _n=0 _b="" _h
+  while :; do
+    _e="$(mktemp /tmp/mig-rsh.XXXXXX 2> /dev/null)" || { command "$@"; return $?; }
+    command "$@" 2> "${_e}"
+    _rc=$?
+    if [ "${_rc}" != "0" ] \
+      && grep -qE "${_MIG_DROP_RE}" "${_e}" 2> /dev/null \
+      && { [ "${1}" != "rsync" ] || grep -qF '(0 bytes received so far)' "${_e}"; }; then
+      _h="$(_mig_drop_host "$@")"
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _mig_drop_note "${_n}" "${_h}" "${_e}" "" "${_b}"
+        rm -f "${_e}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
+    fi
+    [ -s "${_e}" ] && cat "${_e}" >&2
+    rm -f "${_e}"
+    return "${_rc}"
+  done
+}
+
+### A local copy (no root@host: argument) runs as it is.
+rsync() {
+  local _a
+  for _a in "$@"; do
+    case "${_a}" in
+      root@?*:*) _mig_rsh_again rsync "$@"; return $? ;;
+    esac
+  done
+  command rsync "$@"
+}
+
+scp() {
+  _mig_rsh_again scp "$@"
+}
+
+### 0 when something accepts a connection on the host's ssh port.
+_mig_port_answers() {
+  timeout 5 bash -c 'exec 3<> "/dev/tcp/${1}/22"' _ "${1}" 2> /dev/null
+}
+
+### $1 the host, its keys appended to root's known_hosts. A scan whose
+### connections sshd closed or reset before the banner learned nothing and
+### runs again, whether ssh-keyscan named the close or, as it often does, said
+### nothing: a port that accepts a plain connection tells that from a refused
+### one, which says nothing too. A refused or silent port gets the one scan.
+### Returns 0 once a key for the host is known.
+_mig_keyscan() {
+  local _e _h _k _n=0 _b=""
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
+  while :; do
+    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
+      ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
+      ssh-keygen -F "${1}" > /dev/null 2>&1
+      return $?
+    }
+    ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> "${_e}"
+    if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+      rm -f "${_e}"
+      return 0
+    fi
+    if grep -qE "${_MIG_SCAN_RE}" "${_e}" 2> /dev/null \
+      || { [ ! -s "${_e}" ] && _mig_port_answers "${1}"; }; then
+      [ -n "${_b}" ] || _b="$(_mig_drop_budget "${_h}")"
+      if [ "${_n}" -lt "${_b}" ]; then
+        _n=$(( _n + 1 ))
+        _k="${_MIG_SCAN_RE}"
+        if [ ! -s "${_e}" ]; then
+          echo "${_h}: the scan said nothing, port 22 answers" > "${_e}"
+          _k='.'
+        fi
+        _mig_drop_note "${_n}" "${_h}" "${_e}" "${_k}" "${_b}"
+        rm -f "${_e}"
+        sleep "$(_mig_drop_secs "${_n}")"
+        continue
+      fi
+      _mig_drop_spent "${_h}" "${_b}"
+    fi
+    rm -f "${_e}"
+    return 1
+  done
+}
+
 ### Copied verbatim from the shared library: a standalone tool cannot source
 ### it, so the definition travels with every writer that needs it.
 _acct_group() {
@@ -1673,7 +1900,9 @@ _xoct_hold_put() {
 ### contact there reports it. The probe never prompts and gives up on a box
 ### that does not answer within 15 s, as xmass's own read of the hold does:
 ### a mistyped or unreachable target held the verb for the whole TCP connect
-### (about two minutes), silently.
+### (about two minutes), silently. A connection dropped before login, a stall
+### in the banner among them, is tried again as every call in the tool is,
+### each try told on the terminal.
 _xoct_hold_gate() {
   local _h="$1" _v
   [ -n "${_XOCT_ADMAIL}" ] && return 0
@@ -2643,6 +2872,38 @@ _mydumper_objects_opts() {
   done
   return 0
 }
+### mydumper's own sessions give up a lock wait after 90 s, through an option
+### file merged into its options with --defaults-extra-file (the connection
+### keeps the credentials --defaults-file gave it). A FLUSH TABLES WITH READ
+### LOCK whose mydumper is killed while it waits behind a long query stays on
+### the server and holds the global read lock, every write on the server
+### waiting, until that query ends; bounded, it ends 90 s after it began. A
+### live run never meets the bound at its flushes: its own monitor ends a
+### flush that waits 60 s (--ftwrl-max-wait-time), so the option goes only to
+### a mydumper that has that monitor. A table read that waits 90 s for a lock
+### fails the dump instead of holding it, and every query queued behind it,
+### open. Writes the file when it is missing or differs; sets
+### _MYDUMPER_LOCKWAIT to the option, or to nothing.
+_mydumper_lockwait_opts() {
+  local _f=/etc/boa/mydumper-extra.cnf _want _tmp _h _o
+  _MYDUMPER_LOCKWAIT=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --defaults-extra-file --ftwrl-max-wait-time; do
+    printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+${_o}([[:space:]]|=|$)" || return 0
+  done
+  [[ -d "${_f}" ]] && return 0
+  _want=$'[mydumper_session_variables]\nLOCK_WAIT_TIMEOUT = 90'
+  if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+    mkdir -p "${_f%/*}" 2> /dev/null
+    _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null) || return 0
+    if ! { printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; }; then
+      rm -f "${_tmp}"
+      return 0
+    fi
+  fi
+  _MYDUMPER_LOCKWAIT=(--defaults-extra-file="${_f}")
+  return 0
+}
 ### mydumper writes every trigger, routine and event of a database under one
 ### file-wide sql_mode, so an object made under another one (Drupal's own
 ### connections use ANSI_QUOTES and PIPES_AS_CONCAT) fails its load, or
@@ -2838,9 +3099,11 @@ _xoct_canon_rpath() {
 ### Whether the canonical path $2 belongs to the account $1: its own tree,
 ### or its own part of an attached store, <mount>/files/<oN>/, the layout
 ### migratefs moves static/files to. Another account's tree or store, and
-### anything else a link can name, never passes.
+### anything else a link can name, never passes. On a box whose /mnt is a
+### link, a path under the place it names is read as the same path under
+### /mnt (root's link, never one into / or /data).
 _xoct_own_path() {
-  local _a="${1}" _p="${2}" _t _r
+  local _a="${1}" _p="${2}" _t _r _m
   case "${_a}" in
     ''|.|..|*/*) return 1 ;;
   esac
@@ -2855,6 +3118,17 @@ _xoct_own_path() {
   if [ "${_t}" != "/${_a}" ]; then
     case "${_p}/" in
       "${_t}"/*) return 0 ;;
+    esac
+  fi
+  if [ -L /mnt ]; then
+    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    case "${_m}" in
+      ''|/|/mnt|/data|/data/*) ;;
+      *)
+        case "${_p}/" in
+          "${_m}"/?*) _p="/mnt${_p#"${_m}"}" ;;
+        esac
+        ;;
     esac
   fi
   case "${_p}" in
@@ -3414,6 +3688,36 @@ _xoct_ssl_material_missing() {
   echo "${_out}"
 }
 
+### A regular settings.php in the current (pinned) directory, never through a link.
+_xoct_settings_here() {
+  [ -f ./settings.php ] && [ ! -L ./settings.php ]
+}
+### What the vhost $3 in the vhost.d $2 is when its root is the panel tree of the
+### account $1, where no site lives: "other", the control panel of another box, as
+### this box holds no such panel; "held", a panel this box holds under a name the
+### hostmaster alias does not give. Nothing for any other vhost, a root in any but
+### the plain spelling included, and for the https.<dom> and dot-file companions.
+### Read inside the real directory: a path through a link holds no panel here.
+_xoct_vhost_panel_kind() {
+  local _r
+  case "${3}" in
+    https.*|.*) return 0 ;;
+  esac
+  _r="$(_xoct_read_in "${2}" "${3}" \
+    | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
+    | head -n 1)"
+  case "${_r}" in
+    */|*//*|*/./*|*/.|*/..|*/../*|*[!A-Za-z0-9_./-]*) return 0 ;;
+    "${1}"/aegir/*) ;;
+    *) return 0 ;;
+  esac
+  if _xoct_in_real_dir "${_r}/sites/${3}" _xoct_settings_here; then
+    echo held
+  else
+    echo other
+  fi
+}
+
 _migrate_sites() {
   ### Group of the tree these vhost/control files live in -- derived from the
   ### PATH, because on a rename import ${_USR} is the destination account while
@@ -3460,6 +3764,25 @@ _migrate_sites() {
         echo "INFO: control panel ${_Dom} on ${_oct} stays local in Drupal maintenance mode -- never proxied"
       fi
       continue
+    fi
+    ### A panel vhost under any other name is not a site either. A box that was
+    ### the standby of another keeps that box's panel vhost, which the sync carried:
+    ### a conversion has nothing to do there, and counting it read an account holding
+    ### only its panel as a failed conversion, for good. A panel this box holds, under
+    ### a name a wrong alias does not give, is never proxied, and it still counts: an
+    ### account holding nothing else stops here until the alias is put right.
+    if [ "${_cmd}" = "proxy" ]; then
+      case "$(_xoct_vhost_panel_kind "${_USR}" "${_Vht%/*}" "${_Dom}")" in
+        other)
+          echo "INFO: ${_Dom} on ${_oct} is the vhost of another box's control panel, not a site -- never proxied, left as it is"
+          continue
+          ;;
+        held)
+          echo "ALRT: ${_Dom} on ${_oct} is a control panel this box holds, and the hostmaster alias does not name it -- never proxied; put the alias right and run again"
+          _XOCT_PROXY_ELIGIBLE=$(( ${_XOCT_PROXY_ELIGIBLE:-0} + 1 ))
+          continue
+          ;;
+      esac
     fi
     ### A whole-server move relays the client-domain sites BEFORE the new box
     ### renames the sites named under this box's hostname. Those stay local
@@ -3885,6 +4208,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         esac
         ### The site's triggers, routines and events go with its tables.
         _mydumper_objects_opts
+        _mydumper_lockwait_opts
         ### The tool's output goes to a root-only file, read to judge the run
         ### (_mydumper_run_ok: a run whose only counted error is its own
         ### retried table flush exits 1 with a whole dump; one stopped by
@@ -3901,6 +4225,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
+          "${_MYDUMPER_LOCKWAIT[@]}" \
           --port=3306 \
           --outputdir=. \
           ${_MYDUMPER_ROWS_OPT} \
@@ -3977,9 +4302,9 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### the key alone is inherited from the old tool (xboa-old:428-429)
             ### and has the same hole; what the rewrite added is a configtest
             ### and revert, which is recovery rather than prevention. A site
-            ### that is missing any of the three cannot serve 443 whether or
-            ### not the vhost is written, so skipping it costs nothing and is
-            ### reported by name below.
+            ### that is missing any of the three cannot serve 443 on its own
+            ### certificate whether or not the vhost is written, so skipping it
+            ### costs nothing and is reported by name below.
             _SSL_MISSING=$(_xoct_ssl_material_missing "${_USR}" "${_Dom}")
             if [ -z "${_SSL_MISSING}" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
@@ -4024,7 +4349,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               ### exist" post-check: the site has SSL material but never went
               ### through hosting_le's symlink pass, so no HTTPS proxy vhost
               ### can be written. Count and name it -- the operator must see
-              ### this in the conversion output, not discover dead 443 later.
+              ### this in the conversion output, not discover later that 443
+              ### answers on the box's wildcard certificate.
               ### Name the file(s) actually missing: with the gate widened, a
               ### present openssl.key is no longer proof of what failed.
               _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}"
@@ -4036,8 +4362,12 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### HTTP would reach the new box while HTTPS kept serving -- and
             ### taking writes into -- the local database that has already
             ### moved. Park it under the first-backup rule (the revert puts it
-            ### back); HTTPS then fails at the handshake, visibly, which is
-            ### what the report below tells the operator.
+            ### back). HTTPS for the name then reaches the box's wildcard SSL
+            ### front (pre.d/nginx_wild_ssl.conf, on every address, self-signed
+            ### for *.<hostname>), which hands it to the site's :80 vhost, now
+            ### the plain HTTP proxy (or a renamed site's 301): a browser warns,
+            ### and nothing reaches the local database. The report below names
+            ### the site.
             if [ -f "${_Vhs}" ] \
               && ! _xoct_vh_has "${_Vhs%/*}" "https.${_Dom}" "Secure HTTPS proxy"; then
               ### Parked inside the real vhost.d, on ./names.
@@ -4051,7 +4381,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
                 *" ${_Dom} "*) ;;
                 *) _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}" ;;
               esac
-              echo "ALRT: site ${_Dom} on ${_oct}: its local HTTPS vhost is parked (saved as .https.${_Dom}) -- no HTTPS until the keys exist and a --repair runs"
+              echo "ALRT: site ${_Dom} on ${_oct}: its local HTTPS vhost is parked (saved as .https.${_Dom}) -- HTTPS answers on this box's wildcard certificate, not its own, until the keys exist and a --repair runs"
             fi
             ### Preserve the FIRST backup only. On a repair pass ${_Vht} is
             ### already the proxy template, and mv -f would overwrite ${_Vhd}
@@ -5300,6 +5630,115 @@ _xoct_subuser_ssh_ok() {
   echo "ALRT: /home/${1}/.ssh is not a real directory -- not followed; its keys not carried"
   return 1
 }
+### An account's off-site backup passphrase, remote_backups/.secret.txt in its
+### home (root's own, 0600 and immutable, read by multiback and mybackup), is on
+### no leg: the target's own backup setup mints another, and the archives the
+### account made here could not be decrypted there after the move. The create
+### and the live transfer carry it to the destination account, on stdin, never on
+### a command line or in a log. A target holding one of its own gives it up only
+### when it never wrote a backup chain of that account (multiback's chain marker
+### or archive log), and keeps it as .secret.txt.xoct_prev; with a chain, the
+### carried one goes beside it as .secret.from-<this box>.txt and the run says
+### so, a different one already there kept as .secret.from-<this box>.txt.<its
+### sum>. A copy that reads current gets its immutable flag again, as a run cut
+### between the put and the flag leaves it. Read and written only inside a
+### remote_backups that is root's alone, as
+### the backup tools do: the account owns the home around it. A restore window
+### (mybackup hands the file to the account for the run) skips one pass. Never
+### fatal: the folder is the account's to break.
+_XOCT_SECRET_ROOT_ONLY='_ro() { local _s _u _g _m; _s="$(stat -c "%u %g %a" -- "${1}" 2> /dev/null)" || return 1; read -r _u _g _m <<< "${_s}"; [ "${_u}" = 0 ] || return 1; (( 0${_m} & 2 )) && return 1; (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1; return 0; }'
+_XOCT_SECRET_SH='read -r _b || exit 0
+[ -e "/root/.remote_backups/restore_windows/${_a}.rb" ] && { echo XOSEC-WINDOW; exit 0; }
+_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_a}"
+cd -P -- "/data/disk/${_a}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] || { echo XOSEC-NO-ACCOUNT; exit 0; }
+[ -e ./remote_backups ] || [ -L ./remote_backups ] || mkdir -m 755 ./remote_backups
+cd -P -- ./remote_backups 2> /dev/null && [ "$(pwd -P)" = "${_w}/remote_backups" ] && _ro . \
+  || { echo XOSEC-NOT-ROOTS; exit 0; }
+_n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
+_put() {
+  local _t="./.${1}.put.$$"
+  rm -f -- "${_t}"
+  ( umask 077; printf "%s" "${_b}" | base64 -d > "${_t}" ) && [ -s "${_t}" ] \
+    && chown 0:0 "${_t}" && chmod 600 "${_t}" || { rm -f -- "${_t}"; return 1; }
+  chattr -i "./${1}" 2> /dev/null
+  mv -f -T -- "${_t}" "./${1}" || { rm -f -- "${_t}"; return 1; }
+  chattr +i "./${1}" 2> /dev/null
+  [ "$(md5sum < "./${1}")" = "${_n}" ]
+}
+_o=""
+[ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] && _o="$(md5sum < ./.secret.txt)"
+if [ "${_o}" = "${_n}" ]; then
+  chattr +i ./.secret.txt 2> /dev/null
+  echo XOSEC-CURRENT
+  exit 0
+fi
+_c=NO
+for _f in /etc/boa/control/back-to-${_a}-*.chain.txt /var/log/boa/back-to-${_a}-*.archive.log; do
+  [ -e "${_f}" ] && _c=YES
+done
+if [ -n "${_o}" ] && [ "${_c}" = YES ]; then
+  _f=".secret.from-${_h}.txt"
+  if [ -f "./${_f}" ] && [ ! -L "./${_f}" ]; then
+    if [ "$(md5sum < "./${_f}")" = "${_n}" ]; then
+      chattr +i "./${_f}" 2> /dev/null
+      echo XOSEC-CURRENT
+      exit 0
+    fi
+    # an earlier one may be the only key to archives already made: kept by its sum
+    _k="./${_f}.$(md5sum < "./${_f}" | cut -c1-8)"
+    [ -e "${_k}" ] || { cp -p -- "./${_f}" "${_k}" && chown 0:0 "${_k}" && chmod 600 "${_k}" && chattr +i "${_k}" 2> /dev/null; }
+  fi
+  _put "${_f}" && echo XOSEC-BESIDE || echo XOSEC-FAILED
+  exit 0
+fi
+if [ -n "${_o}" ]; then
+  chattr -i ./.secret.txt.xoct_prev 2> /dev/null
+  cp -f ./.secret.txt ./.secret.txt.xoct_prev && chown 0:0 ./.secret.txt.xoct_prev \
+    && chmod 600 ./.secret.txt.xoct_prev && chattr +i ./.secret.txt.xoct_prev 2> /dev/null
+fi
+_put .secret.txt && echo XOSEC-PUT || echo XOSEC-FAILED'
+# The real remote_backups here (pinned) when root's alone, then its passphrase
+# as root's regular file with one link, base64; nothing otherwise.
+_xoct_secret_read_here() {
+  eval "${_XOCT_SECRET_ROOT_ONLY}"
+  _ro . || return 1
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' ./.secret.txt \
+    | base64 -w0
+}
+_xoct_carry_backup_secret() {   # 1 = account here  2 = account there  3 = target
+  local _src="$1" _dst="$2" _t="$3" _d="/data/disk/$1/remote_backups" _b _out _hd
+  [[ "${_src}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] && [[ "${_dst}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 0
+  # no off-site backups set up for it here: nothing to lose
+  [ -e "${_d}/.secret.txt" ] || [ -L "${_d}/.secret.txt" ] || return 0
+  if [ -e "/root/.remote_backups/restore_windows/${_src}.rb" ]; then
+    echo "INFO: ${_src}: a restore holds its backup passphrase here; the next transfer carries it"
+    return 0
+  fi
+  _b="$(_xoct_in_real_dir "${_d}" _xoct_secret_read_here)"
+  if [ -z "${_b}" ]; then
+    echo "ALRT: ${_src}: ${_d} or its .secret.txt is not root's alone: its backup passphrase is NOT carried to ${_t}"
+    return 0
+  fi
+  _hd="$(tr -d '[:space:]' 2> /dev/null < /etc/hostname)"
+  [ -n "${_hd}" ] || _hd="$(hostname -f 2> /dev/null)"
+  _hd="$(printf '%s' "${_hd}" | tr -cd 'a-zA-Z0-9.-' | tr . -)"
+  _out="$(printf '%s\n' "${_b}" | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "_a='${_dst}' _h='${_hd}' bash -c '$(_shq "${_XOCT_SECRET_ROOT_ONLY}
+${_XOCT_SECRET_SH}")'" 2> /dev/null)"
+  case "${_out}" in
+    *XOSEC-CURRENT*) : ;;
+    *XOSEC-PUT*) echo "INFO: ${_src}: its off-site backup passphrase placed for ${_dst} on ${_t}" ;;
+    *XOSEC-BESIDE*)
+      echo "ALRT: ${_dst}: ${_t} keeps a backup chain of the account under its own passphrase: this box's"
+      echo "ALRT: went beside it as /data/disk/${_dst}/remote_backups/.secret.from-${_hd}.txt (the archives made here need it)"
+      ;;
+    *XOSEC-WINDOW*) echo "INFO: ${_dst}: a restore holds its backup passphrase on ${_t}; the next transfer carries it" ;;
+    *XOSEC-NOT-ROOTS*) echo "ALRT: ${_dst}: its remote_backups on ${_t} is not root's alone: its backup passphrase is NOT carried" ;;
+    *XOSEC-NO-ACCOUNT*) echo "ALRT: ${_dst}: ${_t} holds no real /data/disk/${_dst}: its backup passphrase is not carried" ;;
+    *) echo "ALRT: ${_src}: its backup passphrase carry to ${_t} ended without an answer; a transfer again tries again" ;;
+  esac
+  return 0
+}
 _xoct_sync_shell_credentials() {
   local _src="$1" _dst="$2" _t="$3"
   local _sUsr="/data/disk/${_src}" _dUsr="/data/disk/${_dst}"
@@ -5402,7 +5841,7 @@ _xoct_sync_shell_credentials() {
 ### golden-master runbook uses). On timeout proceed exactly as the fixed
 ### wait did.
 _xoct_wait_target_install_settled() {
-  local _dst="$1" _t="$2" _n _w=0
+  local _dst="$1" _t="$2" _n _w=0 _t0
   local _max="${_XOCT_CREATE_MAX_WAIT:-900}"
   case "${_max}" in ''|*[!0-9]*) _max=900 ;; esac
   # With the in-flow auto-upgrade disabled the two-line signal never comes;
@@ -5412,6 +5851,8 @@ _xoct_wait_target_install_settled() {
     return 0
   fi
   echo "INFO: waiting for the install on ${_t} to settle (octopus_log >= 2 lines, up to ${_max}s)"
+  # _w is wall time since the wait began, as in _xoct_wait_target_quiet.
+  _t0=$(date +%s)
   while [ "${_w}" -lt "${_max}" ]; do
     ### log/ is oN's there too: read inside the real directory, never
     ### through a link or into a FIFO put at the name
@@ -5423,7 +5864,7 @@ _xoct_wait_target_install_settled() {
       return 0
     fi
     sleep 30
-    _w=$(( _w + 30 ))
+    _w=$(( $(date +%s) - _t0 ))
   done
   echo "ALRT: install on ${_t} not settled after ${_max}s; proceeding anyway (legacy fixed-wait behaviour)"
   return 0
@@ -5444,9 +5885,12 @@ _xoct_wait_target_install_settled() {
 ### when the box never goes quiet. Kept in step with xcopy's
 ### _xcopy_wait_target_quiet -- mirror any fix there.
 _xoct_wait_target_quiet() {
-  local _t="$1" _w=0 _busy _ok=0
+  local _t="$1" _w=0 _busy _ok=0 _said="" _t0
   local _max="${_XOCT_TARGET_QUIET_MAX_WAIT:-1800}"
   case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
+  # _w is wall time since the wait began: a poll through the retry of a
+  # dropped connection can take minutes, more than the sleeps between polls.
+  _t0=$(date +%s)
   while [ "${_w}" -lt "${_max}" ]; do
     ### An armed run-upgrade.pid whose dispatcher is parked (a demoted
     ### target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
@@ -5469,13 +5913,14 @@ _xoct_wait_target_quiet() {
         return 0
       fi
       sleep 15
-      _w=$(( _w + 15 ))
+      _w=$(( $(date +%s) - _t0 ))
       continue
     fi
     _ok=0
-    [ "${_w}" -eq 0 ] && echo "INFO: a BOA run holds or is armed on ${_t} (${_busy}); waiting up to ${_max}s before the install"
+    [ -n "${_said}" ] || echo "INFO: a BOA run holds or is armed on ${_t} (${_busy}); waiting up to ${_max}s before the install"
+    _said=1
     sleep 30
-    _w=$(( _w + 30 ))
+    _w=$(( $(date +%s) - _t0 ))
   done
   echo "ALRT: target ${_t} still busy after ${_max}s (${_busy}); not launching the install into a refusal"
   return 1
@@ -7024,6 +7469,7 @@ _migrate_prepare() {
       _XOCT_GMAP="${_XOCT_AMAP}"
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_carry_backup_secret "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       _XOCT_GMAP=""
       _XOCT_UMAP=""
       ### Verify the pins actually took (catches the availability-fallback
@@ -7813,6 +8259,20 @@ _xoct_transfer_static_symlink_safe() {
     [ "${_MODE}" = "LIVE" ] && [ -n "${_gone}" ] \
       && _xoct_remote_in "${_X_TGT_HOST}" "${_X_DST_STATIC}/control" "rm -f --${_gone}" &> /dev/null
   fi
+  # The account's off-site backup settings (remote_backups/credentials and
+  # config in control/) lose to the templates the target's own backup setup
+  # writes with a newer mtime, as the pins above did: the account would back
+  # up nowhere after the move, and nothing would say so. The template writer
+  # makes only a missing file, so the source's regular files go over without
+  # -u, top level only, from the real directory into the real one; a link is
+  # never carried.
+  local _rbd
+  for _rbd in credentials config; do
+    _xoct_in_real_dir "${_X_SRC_USR}/static/control/remote_backups/${_rbd}" true || continue
+    _xoct_in_real_dir "${_X_SRC_USR}/static/control/remote_backups/${_rbd}" _xoct_copy_mk_here \
+      "${_X_TGT_HOST}" "${_X_DST_STATIC}/control/remote_backups/${_rbd}" '' -aEAX --no-links \
+      ${_X_IENI} '--exclude=*/'
+  done
 
   echo "INFO: Static sync pass 2/2 (materialize/mirror static/files per target disk reality)"
   # Each box's control panel store stays its own (_xoct_panel_store_names).
@@ -7934,44 +8394,82 @@ _mig_render_table() {
   return 0
 }
 
-### Soonest certificate expiry across the account's proxy-served certs. The
-### proxy serves THIS box's certificates and proxied accounts stop renewing
-### (owl.sh and the fleet LE sweep both skip them). With the certificate
-### mirror present that date is only informational -- the mirror pulls each
-### renewed pair back from the target daily; without the mirror it is a real
-### service horizon, so its absence is the loud case.
+### The https.* vhost names in the current (real) vhost.d, one per line, as
+### the certificate mirror lists them: a parked .https.<site> is a dot file
+### and never listed, nor a name with a newline.
+_xoct_https_names_here() {
+  local _v
+  for _v in ./https.*; do
+    _v="${_v#./}"
+    case "${_v}" in *$'\n'*) continue ;; esac
+    [ -e "./${_v}" ] && printf '%s\n' "${_v}"
+  done
+}
+
+### Soonest certificate expiry across the certificates the account's HTTPS
+### proxy vhosts serve, the set the certificate mirror keeps: a vhost with
+### the proxy's mark and a proxy_pass. The proxy serves THIS box's
+### certificates and proxied accounts stop renewing (owl.sh and the fleet LE
+### sweep both skip them). With the mirror present a date ahead is only
+### informational -- the mirror pulls each newer set back from the target
+### daily; without the mirror it is a real service horizon, so its absence is
+### the loud case. A date already passed is a warning whatever the mirror's
+### state: the proxy serves that certificate expired now. Nothing else in
+### ssl.d is served through the proxy (.bak folders, the default pair, sets no
+### vhost serves, a parked site's set, a retired name's 301), so none of it is
+### read.
 _xoct_warn_proxy_cert_horizon() {
-  local _root="$1" _c _r _end _soon="" _soon_dom=""
-  for _c in "${_root}"/config/server_master/ssl.d/*/openssl.crt; do
+  local _root="$1" _vd _v _d _t _c _r _end _e _soon="" _soon_e="" _soon_dom="" _pt=""
+  _vd="${_root}/config/server_master/nginx/vhost.d"
+  while IFS= read -r _v; do
+    _d="${_v#https.}"
+    [[ "${_d}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] || continue
+    # vhost.d is the account's: read inside the real directory, never
+    # through a link.
+    _t="$(_xoct_read_in "${_vd}" "${_v}")"
+    grep -q "Secure HTTPS proxy for" <<< "${_t}" || continue
+    grep -q "proxy_pass" <<< "${_t}" || continue
+    # The file the proxy vhost serves. ssl.d is the account's too: the
+    # certificate is reached through the links the Let's Encrypt layout
+    # makes, resolved once, accepted only inside the account's own tree or
+    # store, and read inside that real directory, never into a FIFO.
+    _c="${_root}/config/server_master/ssl.d/${_d}/openssl_chain.crt"
     [ -e "${_c}" ] || continue
-    # ssl.d is the account's: the certificate is reached through the links
-    # the Let's Encrypt layout makes, resolved once, accepted only inside
-    # the account's own tree or store, and read inside that real directory,
-    # never into a FIFO.
     _r="$(readlink -f -- "${_c}" 2>/dev/null)"
     [ -n "${_r}" ] && _xoct_own_path "${_root##*/}" "${_r%/*}" || continue
     _end=$(_xoct_in_canon_dir "${_r%/*}" _xoct_read_here "${_r##*/}" \
       | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     [ -n "${_end}" ] || continue
-    _end=$(date -u -d "${_end}" '+%Y-%m-%d' 2>/dev/null)
-    [ -n "${_end}" ] || continue
-    if [ -z "${_soon}" ] || [[ "${_end}" < "${_soon}" ]]; then
-      _soon="${_end}"; _soon_dom="$(basename "$(dirname "${_c}")")"
+    _e=$(date -u -d "${_end}" '+%s' 2>/dev/null)
+    [[ "${_e}" =~ ^[0-9]+$ ]] || continue
+    if [ -z "${_soon_e}" ] || [ "${_e}" -lt "${_soon_e}" ]; then
+      _soon_e="${_e}"; _soon_dom="${_d}"
     fi
-  done
-  [ -n "${_soon}" ] || return 0
+  done < <(_xoct_in_real_dir "${_vd}" _xoct_https_names_here)
+  [ -n "${_soon_e}" ] || return 0
+  _soon=$(date -u -d "@${_soon_e}" '+%Y-%m-%d')
+  [ "${_soon_e}" -le "$(date -u '+%s')" ] && _pt=" has already PASSED"
   if [ -x "/var/xdrago/migration_proxy_certs.sh" ] \
     && grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
     echo "INFO: proxied certificates refresh daily from the target (migration_proxy_certs.sh);"
-    echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror renews it before that date"
+    if [ -n "${_pt}" ]; then
+      echo "ALRT: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- this proxy serves it expired until the mirror pulls a newer set from the target (daily at 06:45, or now: bash /var/xdrago/migration_proxy_certs.sh)"
+    else
+      echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror pulls each newer set from the target daily"
+    fi
   elif [ -x "/var/xdrago/migration_proxy_certs.sh" ]; then
     echo "ALRT: migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
-    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom}) -- add the daily 06:45 line"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt} -- add the daily 06:45 line"
     echo "ALRT: (a barracuda up-* run or the BOA fetch pass restores it) or the mirror never runs"
   else
-    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom}) and the certificate mirror"
-    echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- a long-lived proxy"
-    echo "ALRT: will serve expired certificates after that date. The mirror ships with the"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt} and the certificate mirror"
+    if [ -n "${_pt}" ]; then
+      echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- this proxy already"
+      echo "ALRT: serves an expired certificate. The mirror ships with the"
+    else
+      echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- a long-lived proxy"
+      echo "ALRT: will serve expired certificates after that date. The mirror ships with the"
+    fi
     echo "ALRT: current release: run 'barracuda up-<tree> system noscreen' here, or copy the"
     echo "ALRT: script from the target (it arrives there the same way)"
   fi
@@ -8188,8 +8686,7 @@ _xoct_learn_peer_host_key() {
   ssh-keygen -F "${_p}" > /dev/null 2>&1 && return 0
   mkdir -p /root/.ssh
   chmod 700 /root/.ssh
-  ssh-keyscan -H -T 10 "${_p}" >> /root/.ssh/known_hosts 2>/dev/null
-  if ssh-keygen -F "${_p}" > /dev/null 2>&1; then
+  if _mig_keyscan "${_p}"; then
     echo "INFO: learned the host key for peer ${_p}"
   else
     echo "ALRT: could not learn the host key for ${_p} -- unreachable on 22?"
@@ -8319,7 +8816,7 @@ _xoct_wire_target_proxy_trust() {
   for _wtf in "${_MIG_TRUST_TOOL}" "${_realip}"; do
     [ -x "${_wtf}" ] || continue
     ssh root@"${_tgt}" "[ -x '${_wtf}' ]" 2>/dev/null && continue
-    scp -q "${_wtf}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+    scp "${_wtf}" root@"${_tgt}":/var/xdrago/ > /dev/null 2>&1 \
       && ssh root@"${_tgt}" "chmod 0755 '${_wtf}'" 2>/dev/null
   done
   if ssh root@"${_tgt}" "[ -x '${_MIG_TRUST_TOOL}' ]" 2>/dev/null; then
@@ -8752,9 +9249,6 @@ _xoct_proxy_preflight() {
   if [ "${_MIG_MODE}" = "ha-switch" ] && [ -n "${_MIG_DEADLINE}" ]; then
     echo "ALRT: ha-switch ignores the resolved deadline ${_MIG_DEADLINE}"
     _MIG_DEADLINE=""
-  fi
-  if [ "${_MIG_MODE}" != "temporary" ]; then
-    _xoct_warn_proxy_cert_horizon "${_USR}"
   fi
   if [ "${_MIG_MODE}" = "ha-switch" ]; then
     echo "ALRT: ha-switch: the client mail asserts a live mirror with automatic failover;"
@@ -10242,6 +10736,7 @@ _migrate_init() {
               exit 1
             fi
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
+            _xoct_carry_backup_secret "${_oct}" "${_DST_ACCT}" "${_tgt}"
           else
             _xoct_php_inert_report "${_USR}" "${_tgt}" deny
           fi
@@ -10482,13 +10977,19 @@ _migrate_init() {
           fi
           if [ -n "${_XOCT_PROXY_NOSSL}" ]; then
             echo "ALRT: converted WITHOUT an HTTPS proxy vhost (certificate material missing):${_XOCT_PROXY_NOSSL}"
-            echo "ALRT: HTTPS via the old address will fail for those sites; once the keys exist,"
+            echo "ALRT: HTTPS via the old address answers on this box's wildcard certificate for those"
+            echo "ALRT: sites, not their own (a browser warns); once the keys exist,"
             echo "ALRT: re-run: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
           fi
           if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
             echo "INFO: deferred, still local and held on 503 by the per-host gate:${_XOCT_PROXY_DEFERRED}"
             echo "INFO: once they are renamed on the new box, convert them with:"
             echo "INFO:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+          fi
+          ### The horizon reads the HTTPS proxy vhosts, so it is told once
+          ### this conversion has written them, never before.
+          if [ "${_MIG_MODE}" != "temporary" ]; then
+            _xoct_warn_proxy_cert_horizon "${_USR}"
           fi
           ###
           ### Every site on this account now answers from a proxy or redirect

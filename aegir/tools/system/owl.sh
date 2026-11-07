@@ -662,7 +662,14 @@ else
   rm -f /opt/tmp/barracuda-release.txt*
 fi
 if [ -e "/opt/tmp/barracuda-release.txt" ]; then
-  _X_VERSION=$(cat /opt/tmp/barracuda-release.txt 2>&1)
+  _X_VERSION=$(head -n 1 /opt/tmp/barracuda-release.txt 2> /dev/null | tr -d '\r')
+  ### Only a release name counts: a mirror without the file answers with an
+  ### error or a placeholder page, never something to mail or to stamp with
+  ### (90-global-post.sh names its permissions stamp after this value).
+  if [[ ! "${_X_VERSION}" =~ ^BOA-[0-9]+(\.[0-9]+)+-(dev|lts|pro)$ ]]; then
+    _X_VERSION=
+    rm -f /opt/tmp/barracuda-release.txt
+  fi
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ]; then
     _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}

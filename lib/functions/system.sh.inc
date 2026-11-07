@@ -8305,6 +8305,27 @@ _sync_apparmor_profiles() {
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
+      # The AppArmor parser of these systems does not know these two capabilities and
+      # refuses the whole profile for them. Their kernels cannot use quic_bpf anyway.
+      if [ "${_OS_CODE}" = "beowulf" ] || [ "${_OS_CODE}" = "buster" ]; then
+        sed -i -e '/^  capability bpf,$/d' -e '/^  capability perfmon,$/d' \
+          /etc/apparmor.d/usr.sbin.nginx &> /dev/null
+      fi
+      # Before the kernel has AppArmor no tool can set a mode, and the next boot
+      # loads these files as they stand, so the chosen mode is written into them:
+      # enforce takes the complain flag off, and for anything else BOA's FPM
+      # profiles, the only ones that ship with no mode, get it. The markers are read
+      # in the same order as below.
+      if [ "${_isAppArmOn}" != "Y" ]; then
+        if [ -e "/root/.enforce.apparmor.cnf" ] \
+          && [ ! -e "/root/.activate.apparmor.cnf" ]; then
+          find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f \
+            -exec sed -i 's/ flags=(complain)//' {} + &> /dev/null
+        else
+          sed -i 's/flags=(attach_disconnected)/flags=(attach_disconnected, complain)/' \
+            /etc/apparmor.d/opt.php*.sbin.php-fpm &> /dev/null
+        fi
+      fi
     fi
     if [ ! -e "/root/.run-to-excalibur.cnf" ] \
       && [ ! -e "/root/.run-to-daedalus.cnf" ] \
@@ -8441,8 +8462,11 @@ _if_install_apparmor() {
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
+  # Also before the kernel has AppArmor: the boot that turns it on loads what the
+  # folder holds, and the packages' own profiles in enforce mode stop what BOA built
+  # differently (the unbound package's refuses BOA's unbound its OpenSSL).
+  _sync_apparmor_profiles
   if [ "${_isAppArmOn}" = "Y" ]; then
-    _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
   _aaOffInThisRun=NO
@@ -9444,6 +9468,11 @@ _if_proxysql_update() {
             fi
           fi
         fi
+        ### The mirror answers a missing file with a page: never run one
+        if [ -e "${_pNm}" ] && ! grep -q Vivaldi "${_pNm}"; then
+          rm -f ${_pNm}
+          _msg "WARN: ProxySQL Node Monitor not fetched from ${_urlHmr}"
+        fi
         ls -la ${_pNm}
         if [ -e "${_pNm}" ]; then
           chmod 755 ${_pNm}
@@ -9473,6 +9502,10 @@ _if_proxysql_update() {
               curl ${_crlGet} "${_tURL}" -o ${_pGc}
             fi
           fi
+        fi
+        if [ -e "${_pGc}" ] && ! grep -q Maestro "${_pGc}"; then
+          rm -f ${_pGc}
+          _msg "WARN: ProxySQL Galera Checker not fetched from ${_urlHmr}"
         fi
         ls -la ${_pGc}
 
