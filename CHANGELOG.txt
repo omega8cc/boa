@@ -199,10 +199,11 @@
       while the upgrades in between reported the mode chosen.
 
     * Valkey runs under its AppArmor profile again after a barracuda upgrade
-      in enforce mode, with every site's cache kept. The upgrade's teardown
-      had left it unconfined until its next restart, usually the next reboot:
-      it was reloaded, which brings back nothing. It now saves on its way
-      down, loads that on start, and the saved copy is deleted once loaded.
+      in enforce mode. The upgrade's teardown had left it unconfined until its
+      next restart, usually the next reboot: it was reloaded, which brings
+      back nothing. It is now restarted there, saving its data on the way
+      down and loading it on start, so this restart empties no cache; the
+      saved copy is deleted once loaded.
 
     * The task guard, which marks crashed control panel tasks failed, can no
       longer be stopped for good by a named pipe in an instance's tree. It
