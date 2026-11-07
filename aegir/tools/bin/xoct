@@ -3459,6 +3459,36 @@ _xoct_ssl_material_missing() {
   echo "${_out}"
 }
 
+### A regular settings.php in the current (pinned) directory, never through a link.
+_xoct_settings_here() {
+  [ -f ./settings.php ] && [ ! -L ./settings.php ]
+}
+### What the vhost $3 in the vhost.d $2 is when its root is the panel tree of the
+### account $1, where no site lives: "other", the control panel of another box, as
+### this box holds no such panel; "held", a panel this box holds under a name the
+### hostmaster alias does not give. Nothing for any other vhost, a root in any but
+### the plain spelling included, and for the https.<dom> and dot-file companions.
+### Read inside the real directory: a path through a link holds no panel here.
+_xoct_vhost_panel_kind() {
+  local _r
+  case "${3}" in
+    https.*|.*) return 0 ;;
+  esac
+  _r="$(_xoct_read_in "${2}" "${3}" \
+    | sed -n 's/^[[:space:]]*root[[:space:]][[:space:]]*\([^;[:space:]]*\)[[:space:]]*;.*/\1/p' \
+    | head -n 1)"
+  case "${_r}" in
+    */|*//*|*/./*|*/.|*/..|*/../*|*[!A-Za-z0-9_./-]*) return 0 ;;
+    "${1}"/aegir/*) ;;
+    *) return 0 ;;
+  esac
+  if _xoct_in_real_dir "${_r}/sites/${3}" _xoct_settings_here; then
+    echo held
+  else
+    echo other
+  fi
+}
+
 _migrate_sites() {
   ### Group of the tree these vhost/control files live in -- derived from the
   ### PATH, because on a rename import ${_USR} is the destination account while
@@ -3505,6 +3535,25 @@ _migrate_sites() {
         echo "INFO: control panel ${_Dom} on ${_oct} stays local in Drupal maintenance mode -- never proxied"
       fi
       continue
+    fi
+    ### A panel vhost under any other name is not a site either. A box that was
+    ### the standby of another keeps that box's panel vhost, which the sync carried:
+    ### a conversion has nothing to do there, and counting it read an account holding
+    ### only its panel as a failed conversion, for good. A panel this box holds, under
+    ### a name a wrong alias does not give, is never proxied, and it still counts: an
+    ### account holding nothing else stops here until the alias is put right.
+    if [ "${_cmd}" = "proxy" ]; then
+      case "$(_xoct_vhost_panel_kind "${_USR}" "${_Vht%/*}" "${_Dom}")" in
+        other)
+          echo "INFO: ${_Dom} on ${_oct} is the vhost of another box's control panel, not a site -- never proxied, left as it is"
+          continue
+          ;;
+        held)
+          echo "ALRT: ${_Dom} on ${_oct} is a control panel this box holds, and the hostmaster alias does not name it -- never proxied; put the alias right and run again"
+          _XOCT_PROXY_ELIGIBLE=$(( ${_XOCT_PROXY_ELIGIBLE:-0} + 1 ))
+          continue
+          ;;
+      esac
     fi
     ### A whole-server move relays the client-domain sites BEFORE the new box
     ### renames the sites named under this box's hostname. Those stay local
