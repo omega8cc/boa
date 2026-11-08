@@ -928,6 +928,14 @@
       answer, and a release whose download then fails says so with the release
       and the quota's reset time.
 
+    * staticbuild builds Drupal 11.5.0-beta1 with its own Drush: that core
+      resolves Guzzle 8, which no Drush 13 release accepts, so the Drush
+      require failed and the core was built without it. A failed Drush
+      require is now tried once more letting Composer move the locked
+      packages (Guzzle steps back to 7, which the core also allows); a line
+      that needs no move is built exactly as before, and a pre-release core
+      still without Drush is a failed build, never published.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
