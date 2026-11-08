@@ -974,6 +974,12 @@
       that needs no move is built exactly as before, and a pre-release core
       still without Drush is a failed build, never published.
 
+    * eolreport names a site on a pre-release Drupal core (alpha, beta,
+      release candidate or a git checkout's dev core) as PRE-RELEASE, since
+      drupal.org's security advisories cover no pre-release, and exits 1 for
+      it as for a site outside the supported minors. It read such a site as
+      supported, and skipped a dev core altogether.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's

@@ -20,21 +20,30 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # place, so that on a security release day the operator knows which sites
 # need a platform on a supported minor and a Migrate.
 #
+# A site on a pre-release core (alpha, beta, release candidate or dev, a "-"
+# in its version) is named too, as PRE-RELEASE, whatever its minor: drupal.org
+# covers no pre-release with its security advisories, so a security release
+# brings it no fix. It is for testing, not for sites. A pre-release of a
+# minor outside the list reads OUTSIDE.
+#
 # Only Drupal 8 and newer sites are read: Drupal 6 and 7 (BOA's own long-term
 # cores), Backdrop, Grav and Textpattern sites are left out. A site is read
 # from its Drush alias; the platform's core version comes from
 # core/lib/Drupal.php under the site's root.
 #
 # Usage:
-#   eolreport          the sites outside the supported minors
+#   eolreport          the sites outside the supported minors or on a pre-release
 #   eolreport --all    every Drupal 8+ site, with its minor and its standing
 #
-# Exit code: 0 no site outside, 1 one or more sites outside, 2 no list on
-# this box yet (it arrives with the daily tools refresh).
+# Exit code: 0 no site outside and none on a pre-release, 1 one or more sites
+# outside or on a pre-release, 2 no list on this box yet (it arrives with the
+# daily tools refresh).
 #
-# Tunable (env): _EOL_LIST (/var/log/boa/drupal-supported.txt)
+# Tunable (env): _EOL_LIST (/var/log/boa/drupal-supported.txt), _EOL_DISKS
+# (/data/disk, the folder holding the accounts)
 
 _LIST="${_EOL_LIST:-/var/log/boa/drupal-supported.txt}"
+_DISKS="${_EOL_DISKS:-/data/disk}"
 _ALL=0
 
 case "${1:-}" in
@@ -75,8 +84,9 @@ _core_version() {
   # $1 = site root (the docroot): Drupal 8+ gives core/lib/Drupal.php
   local _f="${1%/}/core/lib/Drupal.php"
   [[ -f "${_f}" ]] || return 1
+  # a git checkout's core says 11.5-dev, a release 11.5.0 or 11.5.0-beta1
   awk -F"'" '/const VERSION =/ { print $2; exit }' "${_f}" 2> /dev/null \
-    | grep -m1 -oE '^[0-9]+\.[0-9]+\.[0-9A-Za-z.-]+'
+    | grep -m1 -oE '^[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?'
 }
 
 _read_list
@@ -84,14 +94,15 @@ echo "Supported Drupal core minors (list dated ${_DATED:-unknown}): ${_MINORS}"
 [[ "${_ALL}" = "1" ]] && echo
 _SITES=0
 _OUT=0
-for _a in /data/disk/*/.drush/*.alias.drushrc.php; do
+_PRE=0
+for _a in "${_DISKS}"/*/.drush/*.alias.drushrc.php; do
   [[ -f "${_a}" ]] || continue
   _n="${_a##*/}"
   _n="${_n%.alias.drushrc.php}"
   case "${_n}" in
     platform_*|server_*|hostmaster|hm|none|self) continue ;;
   esac
-  _u="${_a#/data/disk/}"
+  _u="${_a#"${_DISKS}"/}"
   _u="${_u%%/*}"
   _uri="$(_alias_value "${_a}" uri)"
   _root="$(_alias_value "${_a}" root)"
@@ -100,19 +111,27 @@ for _a in /data/disk/*/.drush/*.alias.drushrc.php; do
   [[ -n "${_v}" ]] || continue
   _m="$(echo "${_v}" | grep -oE '^[0-9]+\.[0-9]+')"
   _SITES=$(( _SITES + 1 ))
-  if _supported "${_m}"; then
-    [[ "${_ALL}" = "1" ]] && printf '%-5s %-44s %-12s %-8s %s\n' "${_u}" "${_uri}" "${_v}" "ok" "${_root}"
-  else
+  if ! _supported "${_m}"; then
     _OUT=$(( _OUT + 1 ))
-    printf '%-5s %-44s %-12s %-8s %s\n' "${_u}" "${_uri}" "${_v}" "OUTSIDE" "${_root}"
+    printf '%-5s %-44s %-14s %-11s %s\n' "${_u}" "${_uri}" "${_v}" "OUTSIDE" "${_root}"
+  elif [[ "${_v}" == *-* ]]; then
+    _PRE=$(( _PRE + 1 ))
+    printf '%-5s %-44s %-14s %-11s %s\n' "${_u}" "${_uri}" "${_v}" "PRE-RELEASE" "${_root}"
+  else
+    [[ "${_ALL}" = "1" ]] && printf '%-5s %-44s %-14s %-11s %s\n' "${_u}" "${_uri}" "${_v}" "ok" "${_root}"
   fi
 done
-[[ "${_ALL}" = "1" || "${_OUT}" -gt 0 ]] && echo
+[[ "${_ALL}" = "1" || "${_OUT}" -gt 0 || "${_PRE}" -gt 0 ]] && echo
 if [[ "${_OUT}" -gt 0 ]]; then
   echo "${_OUT} of ${_SITES} Drupal 8+ sites run on a core minor outside the supported ones."
   echo "Such a site cannot take a security release in place: build a platform on a"
   echo "supported minor and move the site there with Migrate."
-  exit 1
 fi
+if [[ "${_PRE}" -gt 0 ]]; then
+  echo "${_PRE} of ${_SITES} Drupal 8+ sites run on a pre-release core, which drupal.org's"
+  echo "security advisories do not cover: a security release brings it no fix. Keep such"
+  echo "a site for testing, and move it to a stable release with Migrate."
+fi
+[[ "${_OUT}" -gt 0 || "${_PRE}" -gt 0 ]] && exit 1
 echo "Every one of the ${_SITES} Drupal 8+ sites runs on a supported core minor."
 exit 0
