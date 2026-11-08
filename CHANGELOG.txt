@@ -195,7 +195,11 @@
       runs out until it ended, and a queued task waited for it again and
       again. An Octopus upgrade queued from the panel held it the same way
       for its whole pass, keeping that instance's own task queue stopped
-      while the upgrade needs it. The lock is now held by the run alone.
+      while the upgrade needs it. The lock is now held by the run alone. The
+      minute task runner heals a copy an older upgrade laid before it runs
+      it, so every server has the fix within minutes of the tools update,
+      without waiting for an Octopus upgrade, and keeps it through any
+      upgrade that lays the old copy again.
 
     * The control panel's queue dispatcher no longer starts a queue runner
       while the previous one of that queue is still at work (a batch of site
