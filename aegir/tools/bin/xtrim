@@ -2118,6 +2118,186 @@ _run_one() {
 _check_root
 umask 022
 
+### The run log. Every verb keeps its whole output, both streams, in
+### /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<YYMMDD-HHMMSS>-<pid>.log,
+### readable by root alone, as barracuda and octopus keep theirs under
+### reports/up; not the polled ones (xmass status, xmass autosync --run, whose
+### monitor keeps each pass, and --status) nor a call with no verb. As the
+### barracuda wrapper runs its worker, this process becomes a wrapper: it runs
+### the same tool with the same arguments as its child, both streams into the
+### file, shows the file on the console with a tail, and returns the child's
+### status only once the tail has handed on the last line, so a caller that
+### reads its own copy at once finds it whole. The child keeps the signal
+### dispositions and the input the wrapper was started with, and the third
+### header line names its pid. A daemon a verb starts inherits the file, never
+### the console. A tool another migration tool runs on this box keeps no log
+### and leaves its streams as they were, so its output goes where its caller
+### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
+### reads "none" when the caller keeps no log); the caller's terminal is
+### handed down in _MIG_RUNLOG_TTY for the notices that go straight to it. No
+### log is kept, silently, for a user other than root or a tool whose own path
+### cannot be read; nor, with one line saying so, with under 1 GiB free or free
+### space that cannot be read, in a folder that cannot be written, with a tail
+### lacking --pid or when the placeholder for the console cannot be opened.
+### _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
+_mig_runlog_start() {
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw="" _h _t _c _rc _tp _td=" " _s
+  shift
+  if [ -n "${_MIG_RUNLOG:-}" ]; then
+    if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
+      echo "== run pid $$"
+      unset _MIG_RUNLOG_WRAPPER
+    fi
+    return 0
+  fi
+  export _MIG_RUNLOG=none
+  unset _MIG_RUNLOG_TTY _MIG_RUNLOG_WRAPPER
+  _verb=""
+  for _a in "$@"; do
+    case "${_a}" in
+      -*|*=*) continue ;;
+    esac
+    _verb="${_a}"
+    break
+  done
+  [ -n "${_verb}" ] || return 0
+  case "${_tool}:${_verb}" in
+    xmass:status) return 0 ;;
+    xmass:autosync)
+      case " $* " in
+        *" --run "*|*" --status "*) return 0 ;;
+      esac
+      ;;
+  esac
+  [ -n "${_MIG_RUNLOG_DIR:-}" ] || [ "$(id -u)" = "0" ] || return 0
+  _self="$(readlink -f -- "$0" 2> /dev/null)"
+  [ -n "${_self}" ] && [ -f "${_self}" ] || return 0
+  _verb="$(printf '%s' "${_verb}" | tr -cd 'a-z0-9-' | cut -c1-32)"
+  _now="$(date +%y%m%d-%H%M%S)"
+  _base="${_MIG_RUNLOG_DIR:-/var/backups/reports/${_tool}}"
+  _dir="${_base}/${_now%%-*}"
+  _file="${_dir}/${_tool}-${_verb:-none}-${_now}-$$.log"
+  if ! tail --pid=1 -n 0 /dev/null > /dev/null 2>&1; then
+    echo "ALRT: ${_tool}: no run log kept, this tail has no --pid" >&2
+    return 0
+  fi
+  while [ ! -d "${_base}" ]; do
+    case "${_base}" in
+      */*) _base="${_base%/*}" ;;
+      *) _base=. ;;
+    esac
+    [ -n "${_base}" ] || _base=/
+  done
+  _free="$(df -Pk "${_base}" 2> /dev/null | awk 'NR == 2 { print $4 }')"
+  case "${_free}" in
+    ''|*[!0-9]*)
+      echo "ALRT: ${_tool}: no run log kept, the free space for ${_file} cannot be read" >&2
+      return 0
+      ;;
+  esac
+  if [ "${_free}" -lt "${_MIG_RUNLOG_MIN_KB:-1048576}" ]; then
+    echo "ALRT: ${_tool}: no run log kept, ${_free} KiB free for ${_file}" >&2
+    return 0
+  fi
+  if ! ( umask 077; mkdir -p "${_dir}" && : >> "${_file}" ) 2> /dev/null \
+    || [ -L "${_file}" ] || [ ! -f "${_file}" ]; then
+    echo "ALRT: ${_tool}: no run log kept, ${_file} cannot be written" >&2
+    return 0
+  fi
+  {
+    echo "== ${_tool} $* | $(date '+%F %T %Z') | $(hostname -f 2> /dev/null) | wrapper pid $$"
+    echo "== run log: ${_file}"
+  } >> "${_file}"
+  [ -t 2 ] && _term="$(tty <&2 2> /dev/null)"
+  export _MIG_RUNLOG="${_file}"
+  export _MIG_RUNLOG_WRAPPER="$$"
+  case "${_term}" in
+    /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
+  esac
+  ### The dispositions found on entry: _tp sets back those trapped or ignored,
+  ### _td names the signals at their default.
+  _tp="$(trap -p HUP INT QUIT TERM)"
+  for _s in HUP INT QUIT TERM; do
+    [ -n "$(trap -p "${_s}")" ] || _td="${_td}${_s} "
+  done
+  ### A wrapper that leads its session on a terminal (session id its own pid,
+  ### a terminal number set) is read before anything is started.
+  case "$(awk '{ sub(/.*\) /, ""); print $4 " " $5 }' "/proc/$$/stat" 2> /dev/null)" in
+    "$$ 0"|"") : ;;
+    "$$ "*) _lead=YES ;;
+  esac
+  ### The placeholder reads a pipe only the wrapper writes to: it ends when the
+  ### wrapper closes it, or when the wrapper is gone, even as a zombie its
+  ### caller has not reaped yet. It takes its ignores from the wrapper, as a
+  ### process substitution may not keep its own for INT and QUIT. The tail
+  ### follows the placeholder, and both ignore every signal the run may get.
+  ### Until the run is forked, a signal then only runs a no-op, so the wrapper
+  ### is not lost in that moment, and the run gets the dispositions the wrapper
+  ### was started with.
+  trap '' HUP INT QUIT TERM
+  exec {_hw}> >(exec cat > /dev/null)
+  _h=$!
+  trap : HUP INT QUIT TERM
+  if [ -z "${_hw}" ] || [ -z "${_h}" ] || ! kill -0 "${_h}" 2> /dev/null; then
+    [ -z "${_hw}" ] || exec {_hw}>&-
+    ### Back to the dispositions found on entry. Only a signal then at its
+    ### default is reset: a reset makes an INT ignored when bash started (a
+    ### job started with &) fatal again, and no trap ignores it after that.
+    for _s in HUP INT QUIT TERM; do
+      case "${_td}" in *" ${_s} "*) trap - "${_s}" ;; esac
+    done
+    eval "${_tp}"
+    echo "ALRT: ${_tool}: no run log kept, the placeholder for the console could not be opened" >&2
+    ### The day folder stays: another run may be making its file there.
+    rm -f "${_file}"
+    export _MIG_RUNLOG=none
+    unset _MIG_RUNLOG_WRAPPER _MIG_RUNLOG_TTY
+    return 0
+  fi
+  ( trap '' HUP INT QUIT TERM PIPE
+    exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) {_hw}>&- 2> /dev/null < "${_file}" &
+  _t=$!
+  ### The run keeps the wrapper's input: 0<&0 counts as its own input, which a
+  ### job started with & would otherwise lose to /dev/null. INT and QUIT, which
+  ### bash ignores in a job started with &, are put back.
+  if { true <&0; } 2> /dev/null; then
+    ( trap - INT QUIT
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) {_hw}>&- 0<&0 >> "${_file}" 2>&1 &
+  else
+    ( trap - INT QUIT
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) {_hw}>&- < /dev/null >> "${_file}" 2>&1 &
+  fi
+  _c=$!
+  ### A signal for the run reaches it in its group (Ctrl-C, timeout, a closed
+  ### session) or at its own pid, the third header line, and the wrapper
+  ### ignores it, so one wait gives the run's exact status. A wrapper that leads
+  ### its session (a remote terminal or a screen window with the tool as its
+  ### whole command) keeps HUP: the hangup the terminal sends it alone ends it,
+  ### and the terminal then hangs up the run's group, as it did the bare tool.
+  trap '' INT QUIT TERM
+  if [ "${_lead}" = YES ]; then
+    trap - HUP
+  else
+    trap '' HUP
+  fi
+  wait "${_c}"
+  _rc=$?
+  exec {_hw}>&-
+  wait "${_t}" 2> /dev/null
+  ### A run that ended with 129, 130 or 143, the status of a run ended by HUP,
+  ### INT or TERM (the tools' own traps exit 130 on all three), ends the wrapper
+  ### on that signal, so a calling script stops at Ctrl-C (lock.inc re-raises
+  ### its signal for the same reason).
+  case "${_rc}" in
+    129|130|143)
+      trap - HUP INT TERM
+      kill -s "$(kill -l "${_rc}")" "$$"
+      ;;
+  esac
+  exit "${_rc}"
+}
+_mig_runlog_start xtrim "$@"
+
 _XTRIM_MODE=DRY
 _XTRIM_DROP_DATADIR=NO
 _margs=()
