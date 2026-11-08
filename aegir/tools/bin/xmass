@@ -20871,12 +20871,13 @@ _xmass_cmd_go_live() {
 ### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
 ### reads "none" when the caller keeps no log); the caller's terminal is
 ### handed down in _MIG_RUNLOG_TTY for the notices that go straight to it. No
-### log is kept for a user other than root, with under 1 GiB free or free
+### log is kept, silently, for a user other than root or a tool whose own path
+### cannot be read; nor, with one line saying so, with under 1 GiB free or free
 ### space that cannot be read, in a folder that cannot be written, with a tail
-### lacking --pid or with no placeholder for the console, and all but the
-### first say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
+### lacking --pid or when the placeholder for the console cannot be opened.
+### _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw _h _t _c _rc _tp _td=" " _s
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw="" _h _t _c _rc _tp _td=" " _s
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -20982,7 +20983,7 @@ _mig_runlog_start() {
       case "${_td}" in *" ${_s} "*) trap - "${_s}" ;; esac
     done
     eval "${_tp}"
-    echo "ALRT: ${_tool}: no run log kept, the placeholder for the console did not start" >&2
+    echo "ALRT: ${_tool}: no run log kept, the placeholder for the console could not be opened" >&2
     ### The day folder stays: another run may be making its file there.
     rm -f "${_file}"
     export _MIG_RUNLOG=none
