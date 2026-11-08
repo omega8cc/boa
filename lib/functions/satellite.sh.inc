@@ -7724,6 +7724,11 @@ _satellite_make() {
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
+  echo "export _DRUPAL11_5=\"${_DRUPAL11_5}\""               >> ${_writeTo}
+  echo "export _DRUPAL11_5_D=\"${_DRUPAL11_5}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL11_5_P=\"${_DRUPAL11_5}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL11_5_S=\"${_DRUPAL11_5}-stage\""       >> ${_writeTo}
+
   echo "export _DRUPAL12_0=\"${_DRUPAL12_0}\""               >> ${_writeTo}
   echo "export _DRUPAL12_0_D=\"${_DRUPAL12_0}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL12_0_P=\"${_DRUPAL12_0}-prod\""        >> ${_writeTo}
@@ -7846,6 +7851,7 @@ _satellite_make() {
   echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_3_V=\"${_SMALLCORE11_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_4_V=\"${_SMALLCORE11_4_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE11_5_V=\"${_SMALLCORE11_5_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE12_0_V=\"${_SMALLCORE12_0_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
