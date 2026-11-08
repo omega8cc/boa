@@ -298,6 +298,50 @@ _if_accelerated_queue() {
   fi
 }
 
+# An account runner (run-<oN>, copied from the build tree by every Octopus
+# pass) takes its run lock on fd 9. A copy from a build tree before the fix
+# passed that descriptor to every process it starts: a site cron the panel's
+# dispatcher forked kept the lock for minutes after the run had ended, and
+# every later run of that instance exited at the lock while its queued tasks
+# waited. Such a copy is healed here, before it runs, whichever pass laid it:
+# fd 9 closed on its two su calls and on its queued Octopus upgrade, nothing
+# else changed. A copy that holds none of the three lines as shipped is left
+# alone. The new copy is made beside the old one under a name without
+# "run-" (the loop below runs every file whose name holds it) and renamed
+# over it, so a run that already started keeps reading the bytes it opened.
+_runner_heal_lock_fd() {
+  local _r="$1" _n _chg _fd
+  [ -f "${_r}" ] && [ ! -L "${_r}" ] || return 0
+  grep -qx '  flock -n 9 || exit 0' "${_r}" 2> /dev/null || return 0
+  grep -qxF \
+    -e '    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null' \
+    -e '    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"' \
+    -e '    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &' \
+    "${_r}" 2> /dev/null || return 0
+  _n="/var/xdrago/.xdheal.${_r##*/run-}.$$"
+  if ! sed \
+    -e 's|^\(    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null\)$|\1 9>\&-|' \
+    -e 's|^\(    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir\.sh"\)$|\1 9>\&-|' \
+    -e 's|^\(    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1\) &$|\1 9>\&- \&|' \
+    "${_r}" > "${_n}" 2> /dev/null; then
+    rm -f "${_n}"
+    return 0
+  fi
+  # Only the three lines may differ, each now closing fd 9.
+  _chg=$(diff "${_r}" "${_n}" 2> /dev/null | grep -c '^>')
+  _fd=$(diff "${_r}" "${_n}" 2> /dev/null | grep '^>' | grep -c '9>&-')
+  if [ "${_chg}" -lt 1 ] || [ "${_chg}" -gt 3 ] || [ "${_fd}" != "${_chg}" ] \
+    || ! bash -n "${_n}" 2> /dev/null \
+    || ! chown --reference="${_r}" "${_n}" 2> /dev/null \
+    || ! chmod --reference="${_r}" "${_n}" 2> /dev/null \
+    || ! mv -f "${_n}" "${_r}" 2> /dev/null; then
+    rm -f "${_n}"
+    return 0
+  fi
+  echo "$(date '+%F %T') healed the run lock in ${_r}: ${_chg} line(s) close fd 9" \
+    >> /var/log/boa/runner-lock-heal.log 2> /dev/null
+}
+
 _runner_action() {
   for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
     | grep run- \
@@ -306,6 +350,7 @@ _runner_action() {
     # Honour the dedicated queue-stop file per child too, so a pause set AFTER this
     # runner parent started still holds every per-account child dispatch.
     [ -e "/run/boa_queue_stop.pid" ] && { echo "Task queue paused: /run/boa_queue_stop.pid present -- skipping ${_Runner}"; continue; }
+    _runner_heal_lock_fd "${_Runner}"
     _count_cpu
     _load_control
     _if_accelerated_queue
