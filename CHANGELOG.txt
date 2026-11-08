@@ -4,6 +4,14 @@
 
 @=> New Features
 
+    * xmass, xoct, xcopy and xtrim keep each run's whole output on the
+      server, as barracuda and octopus do: in
+      /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<stamp>-<pid>.log,
+      readable by root alone, while the console shows the same lines. A
+      tool that another migration tool runs on the same server writes into
+      the caller's file. xmass status and the autosync passes, whose
+      monitor already keeps each pass's output, keep none.
+
     * A new Octopus account on a server with a standing mirror reaches the
       mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
       with no rebuild and no pause in replication. Until then a file sync
