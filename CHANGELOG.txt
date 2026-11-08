@@ -208,6 +208,19 @@
       error", the line a task queue run by hand printed after its prompt. The
       queue is started by the next dispatch once the earlier runner is done.
 
+    * A control panel queue runner never works its queue without the
+      queue's lock: one that loses the lock to another runner stands
+      down, and one that still finds it held after its wait fails with a
+      message naming the queue and the wait instead of "Drush command
+      terminated abnormally".
+
+    * A task that waits in the control panel's queue because another task
+      is running says so on its own page, naming the running task, once for
+      each reason. A task that runs beside a task runner held past the
+      eight-hour ceiling says so in its own log, without being marked as a
+      warning. Both used to reach only Drupal's own log, which BOA keeps
+      switched off in the control panel.
+
     * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
       older than the site's database is refused before anything is copied,
       and names the release to pick. CiviCRM upgrades a database forward
