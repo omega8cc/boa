@@ -20875,7 +20875,7 @@ _xmass_cmd_go_live() {
 ### that cannot be written or with a tail lacking --pid, and the last three
 ### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _hw _h _t _c _rc
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw _h _t _c _rc
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -20948,15 +20948,33 @@ _mig_runlog_start() {
   case "${_term}" in
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
-  ### Until the run is forked, a signal only runs a no-op, so the wrapper is
-  ### not lost in that moment, and what it starts gets the dispositions it was
-  ### started with. The placeholder reads a pipe only the wrapper writes to: it
-  ### ends when the wrapper closes it, or when the wrapper is gone, even as a
-  ### zombie its caller has not reaped yet. The tail follows the placeholder.
-  ### Both ignore every signal the run may get.
-  trap : HUP INT QUIT TERM
-  exec {_hw}> >(trap '' HUP INT QUIT TERM PIPE; exec cat > /dev/null)
+  ### A wrapper that leads its session on a terminal (session id its own pid,
+  ### a terminal number set) is read before anything is started.
+  case "$(awk '{ sub(/.*\) /, ""); print $4 " " $5 }' "/proc/$$/stat" 2> /dev/null)" in
+    "$$ 0"|"") : ;;
+    "$$ "*) _lead=YES ;;
+  esac
+  ### The placeholder reads a pipe only the wrapper writes to: it ends when the
+  ### wrapper closes it, or when the wrapper is gone, even as a zombie its
+  ### caller has not reaped yet. It takes its ignores from the wrapper, as a
+  ### process substitution may not keep its own for INT and QUIT. The tail
+  ### follows the placeholder, and both ignore every signal the run may get.
+  ### Until the run is forked, a signal then only runs a no-op, so the wrapper
+  ### is not lost in that moment, and the run gets the dispositions the wrapper
+  ### was started with.
+  trap '' HUP INT QUIT TERM
+  exec {_hw}> >(exec cat > /dev/null)
   _h=$!
+  trap : HUP INT QUIT TERM
+  if [ -z "${_h}" ] || ! kill -0 "${_h}" 2> /dev/null; then
+    exec {_hw}>&-
+    trap - HUP INT QUIT TERM
+    echo "ALRT: ${_tool}: no run log kept, this bash gives no pid for its placeholder" >&2
+    rm -f "${_file}"
+    export _MIG_RUNLOG=none
+    unset _MIG_RUNLOG_WRAPPER _MIG_RUNLOG_TTY
+    return 0
+  fi
   ( trap '' HUP INT QUIT TERM PIPE
     exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) {_hw}>&- 2> /dev/null < "${_file}" &
   _t=$!
@@ -20978,7 +20996,7 @@ _mig_runlog_start() {
   ### whole command) keeps HUP: the hangup the terminal sends it alone ends it,
   ### and the terminal then hangs up the run's group, as it did the bare tool.
   trap '' INT QUIT TERM
-  if [ "$(awk '{ sub(/.*\) /, ""); print $4 }' "/proc/$$/stat" 2> /dev/null)" = "$$" ]; then
+  if [ "${_lead}" = YES ]; then
     trap - HUP
   else
     trap '' HUP
