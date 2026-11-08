@@ -5830,7 +5830,7 @@ _check_root() {
 ### that cannot be written or with a tail lacking --pid, and the last three
 ### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw _h _t _c _rc
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw _h _t _c _rc _tp
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -5903,6 +5903,7 @@ _mig_runlog_start() {
   case "${_term}" in
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
+  _tp="$(trap -p HUP INT QUIT TERM)"
   ### A wrapper that leads its session on a terminal (session id its own pid,
   ### a terminal number set) is read before anything is started.
   case "$(awk '{ sub(/.*\) /, ""); print $4 " " $5 }' "/proc/$$/stat" 2> /dev/null)" in
@@ -5924,8 +5925,10 @@ _mig_runlog_start() {
   if [ -z "${_h}" ] || ! kill -0 "${_h}" 2> /dev/null; then
     exec {_hw}>&-
     trap - HUP INT QUIT TERM
-    echo "ALRT: ${_tool}: no run log kept, this bash gives no pid for its placeholder" >&2
+    eval "${_tp}"
+    echo "ALRT: ${_tool}: no run log kept, the placeholder for the console did not start" >&2
     rm -f "${_file}"
+    rmdir "${_dir}" 2> /dev/null
     export _MIG_RUNLOG=none
     unset _MIG_RUNLOG_WRAPPER _MIG_RUNLOG_TTY
     return 0
