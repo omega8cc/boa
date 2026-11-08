@@ -4,6 +4,14 @@
 
 @=> New Features
 
+    * xmass, xoct, xcopy and xtrim keep each run's whole output on the
+      server, as barracuda and octopus do: in
+      /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<stamp>-<pid>.log,
+      readable by root alone, while the console shows the same lines. A
+      tool that another migration tool runs on the same server writes into
+      the caller's file. xmass status and the autosync passes, whose
+      monitor already keeps each pass's output, keep none.
+
     * A new Octopus account on a server with a standing mirror reaches the
       mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
       with no rebuild and no pause in replication. Until then a file sync
@@ -37,6 +45,22 @@
       hand, printing the commands that do it. The other versions keep
       their denies. It refuses, changing nothing, while that pass could
       not install the version.
+
+    * The Drupal CMS catalogue build prints the AI stack it ships: the
+      Canvas, AI, Drupal CMS AI and amazee.io provider versions its lock
+      resolved, read after the advisory fix step, so a move between two
+      builds shows in the run's output. The build's own resolve keeps the
+      provider off releases that declare a PostgreSQL extension, which BOA's
+      PHP does not carry.
+
+    * Every install and barracuda pass says in one line when the server's
+      own name has no SPF record naming its IPv4 address: the mail BOA
+      itself sends leaves under that name, straight from the server, and
+      receivers such as Gmail refuse it without one. The line names the
+      record to publish. With a relay host in use it warns only when the
+      name has no SPF record at all. The DNS read is cut at 5 seconds, and
+      slow DNS or a name not yet in DNS says so in the same line instead;
+      the pass never fails or waits on it.
 
 @=> Security
 
@@ -134,12 +158,38 @@
       satisfy the profile's older constraints. The profile does not enable
       Commerce, and a platform in use keeps its copy.
 
+    * New platforms on Drupal core 10.6.21 carry Symfony 6.4.50, and those
+      on 11.3.21 and 11.4.12 Symfony 7.4.23, with Symfony's security fixes
+      of 4 November; 11.3.21 and 11.4.12 also carry masterminds/html5
+      2.12.0, which Drupal 10.6 keeps at 2.10. Existing platforms keep
+      their sites.
+
+    * New Drupal CMS (2.2.8) and Thunder platforms carry Scheduler 2.3.1,
+      with its security fix of 4 November. Existing platforms keep their sites.
+
+    * New Open Social platforms carry Simple OAuth 6.1.4, with its security
+      fix of 4 November; Bootstrap and Gin, which Open Social 13.1.0 holds,
+      stay below their fixes. Existing platforms keep their sites.
+
+    * New OpenFed platforms are built on 13.6.9, whose pins take Bootstrap
+      3.45, Scheduler 2.2.3 and SVG Image 3.2.5, and so svg-sanitize 1.1.1:
+      the security fixes its 13.6.8 pins had held back. Existing platforms
+      keep their sites.
+
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
       copies BOA keeps in /usr/bin, the path sites are given: started by that
       path outside PHP, from a shell or cron, they ran with no profile. From
       PHP both still run under the PHP profile.
 
 @=> Important Fixes
+
+    * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
+      older than the site's database is refused before anything is copied,
+      and names the release to pick. CiviCRM upgrades a database forward
+      only: such a move ended successful, with the site on code that does
+      not know its schema. Every Verify now warns while a site's code is
+      older than its database, and a failed database upgrade says what the
+      code and the database read, and when a Verify cannot resume it.
 
     * xoct proxy --repair on an account holding only its control panel no
       longer stops with "0 site(s) converted" on a box that was the standing
@@ -167,6 +217,41 @@
       files, so Nginx failed to start with it, the monitor took it out and mailed
       an alert. A box left with /etc/nginx/main.d/quic_bpf.failed from that gets
       it back once the file is deleted and a barracuda upgrade has run.
+
+    * A reboot no longer turns off the HTTP/3 transfers that survive an Nginx
+      reload. A watchdog started before the reboot stopped cron kept running,
+      took the Nginx the shutdown stopped for an outage, and its quic_bpf trial
+      left /etc/nginx/main.d/quic_bpf.failed, which keeps it off for good. The
+      stop of /etc/init.d/clean-boa-env now ends the watchdogs before it stops
+      the services, the Nginx watchdog heals nothing while the box halts or
+      reboots, and its trial starts Nginx once more with the fragment before it
+      blames it: a start that works then keeps the fragment. The next barracuda
+      upgrade sets aside a latch the earlier trial left, as
+      quic_bpf.failed.old-trial, and probes again.
+
+    * Choosing an AppArmor mode on a box whose last upgrade ran with none now
+      puts AppArmor and auditd back in the boot order, from the next
+      barracuda upgrade, the next Octopus run or a barracuda run that stops
+      early. That upgrade had taken them out, and the next boot loaded no
+      profile at all, with nothing said, while the runs in between reported
+      the mode chosen.
+
+    * Valkey runs under its AppArmor profile again after a barracuda upgrade
+      in enforce mode. The upgrade's teardown had left it unconfined until its
+      next restart, usually the next reboot: it was reloaded, which brings
+      back nothing. It is now restarted there, saving its data on the way
+      down and loading it on start, so this restart empties no cache; the
+      saved copy is deleted after the start. The Valkey watchdog stands down
+      meanwhile, so a large cache is never killed in the middle of its save.
+
+    * The task guard, which marks crashed control panel tasks failed, can no
+      longer be stopped for good by a named pipe in an instance's tree. It
+      read the panel's alias and site drushrc.php with no time limit, so a
+      pipe in either place held its run, and the lock every later run waits
+      for, until a restart. It now reads only plain files the instance owns,
+      inside its own home and with a time limit, so no instance can point it
+      at another instance's panel either and have that one's running tasks
+      marked failed.
 
     * xmass restore-target killed during its data directory swap, with the
       standby marker still there, finishes when run again; before, the box
@@ -240,18 +325,27 @@
       sshd dropped it before its banner, as MaxStartups does while a scanner
       holds its slots: up to twenty more tries, 10 s apart at first and 25 s
       at most, about 8 minutes of waits, each told on the terminal the tool
-      runs on and noted in /var/log/boa/<tool>.drop.log. Once a chain has
-      used them all, later calls to that server in the same run get three
-      tries, so a stop already decided no longer keeps a source on 503 for
-      8 minutes a call. The host key scan before the first contact with a
-      new peer is run again the same way. Nothing ran on that server, yet
-      the step failed: a sync denied, a cutover parked or froze the source,
-      a move to a new peer stopped at host key verification. Any other
-      failure is never retried and reads as before. The waits for a replica
-      to catch up and for a target to go quiet count wall time, not their
-      sleeps; a cutover that stops before its write freeze lifts the 503
-      gate before it clears the target's SQL watchdog mute; a refused xmass
-      verb drops its lock only after undoing what it set on the other server.
+      runs on and noted in /var/log/boa/<tool>.drop.log. Between a cutover's
+      503 gate and its write freeze, once a chain has used them all, later
+      calls to that server get three tries until one gets through, so a stop
+      already decided no longer keeps the source on 503 for 8 minutes a call;
+      everywhere else every call gets all twenty. The host key scan before the
+      first contact with a new peer is run again the same way, and a
+      known_hosts it cannot write fails it at once. Nothing ran on that
+      server, yet the step failed: a sync denied, a cutover parked or froze
+      the source, a move to a new peer stopped at host key verification. Any
+      other failure is never retried and reads as before. The waits for a
+      replica to catch up and for a target to go quiet count wall time, not
+      their sleeps; a quiet answer at the end still gets its confirming check,
+      and one that never came is not quiet. A cutover that cannot mark the
+      target's promotion window stops before the promotion with writes thawed,
+      and a resumed one stays parked, its hint naming what the source still
+      holds on 503; a mark it cannot remove again is named with the command
+      that does. One that stops before its write freeze hands the source back,
+      its 503 gate and its Solr, before it clears the target's SQL watchdog
+      mute, with every try again and the command named when that fails, and a
+      refused xmass verb drops its lock only after undoing what it set on the
+      other server.
 
     * xmass pre-mig on a source checks the control panels of exactly the
       accounts the move takes. A directory the move skips, such as an
@@ -817,6 +911,23 @@
       The scripts stay in place with no rc links; a moved script is put back
       and the pending configure finished on the next pass.
 
+    * A platform build's fix step now moves a module whose own requirement
+      held a library below the release that closes its advisories, when a
+      newer release of the module allows it and nothing pins the module.
+      Before, the library alone was retried and stayed, recorded as having no
+      fixed release within the constraints, while a module held by the
+      platform's own composer.json, its core or its distribution still stays
+      and the step names what holds it.
+
+    * A full catalogue run no longer loses its Backdrop row to GitHub's
+      anonymous API quota: the fix step's release reads, which spent it, now
+      run in a scratch project carrying only the platform's package
+      repositories and never a GitHub one, which Composer loaded on every read
+      at a dozen or more of the sixty requests an hour. The latest Backdrop,
+      Grav and Textpattern releases are read from git tags when the API cannot
+      answer, and a release whose download then fails says so with the release
+      and the quota's reset time.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
@@ -827,6 +938,14 @@
       reach, and is there for a tenant's own, client and site operator logins.
 
 @=> Changes
+
+    * A barracuda upgrade no longer sends Valkey a reload signal. Valkey has
+      no reload: the signal only wrote a warning to its log and changed
+      nothing. The init script's reload now says so and sends nothing.
+
+    * MyDumper and myloader 1.0.19 (MyQuick) replace 1.0.5 on Chimaera,
+      Daedalus and Excalibur, installed by the regular agent pass within
+      minutes of a publish; Beowulf keeps 0.19.3.
 
     * PHP 8.6.0RC5 replaces 8.6.0RC4 where PHP 8.6 is installed. A box takes
       it with its next barracuda upgrade; the PHP security floor stays at

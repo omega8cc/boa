@@ -2459,6 +2459,27 @@ _apparmor_mode_chosen() {
 }
 
 #
+# Put AppArmor and auditd back in the boot order, only where no start link is
+# left: update-rc.d then writes the init script's own links, and a boot order
+# that still starts them stays as it is. A pass with no mode chosen takes them
+# out, so every step that turns a chosen mode back on calls this.
+_apparmor_boot_links() {
+  local _svc
+  for _svc in apparmor auditd; do
+    [ -x "/etc/init.d/${_svc}" ] || continue
+    compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null && continue
+    update-rc.d "${_svc}" defaults &> /dev/null
+    if compgen -G "/etc/rc[S2-5].d/S[0-9][0-9]${_svc}" > /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "ARMR: ${_svc} starts on boot again"
+      fi
+    else
+      _msg "ALRT: ${_svc} is not in the boot order, the next boot will not start it"
+    fi
+  done
+}
+
+#
 # Put every profile in a mode. The tools refuse the whole set on any one
 # conflict and change nothing, so a refusal is said where a report reads it.
 _apparmor_set_mode() {
@@ -2540,6 +2561,7 @@ _turn_on_apparmor_after_octopus() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning AppArmor back on..."
     fi
+    _apparmor_boot_links
     rm -rf /var/cache/apparmor/* &> /dev/null
     if [ -x "/etc/init.d/apparmor" ]; then
       service apparmor start &> /dev/null

@@ -176,11 +176,12 @@ _die() {
 ### flood, and a stop in the middle of a move costs more than the wait. A try
 ### that stalls in the banner exchange counts as a drop and takes its own
 ### ConnectTimeout besides; a port that is silent or refuses is not tried
-### again, so a call given up after its ConnectTimeout stays given up. Once a
-### chain to a host has used the whole budget, every later call to that host
-### in the same run gets 3 more tries (45 s): by then the move stops or goes
-### on without that call, and the whole budget again on each later call only
-### kept a gated source dark longer. ssh's own log
+### again, so a call given up after its ConnectTimeout stays given up. A run
+### may open a short window where a stop costs little and a call that fails
+### decides it (xmass's cutover under its 503 gate, before the write freeze):
+### inside it, once a chain to a host has used the whole budget, later calls
+### to that host get 3 tries (45 s) until one gets through. Everywhere else
+### every call gets the whole budget. ssh's own log
 ### (-E) decides, never what the remote command
 ### printed: a reset or a stall in the banner exchange, or a bare 'Connection
 ### closed by <host> port <n>', which ssh logs only before login (a close
@@ -200,16 +201,24 @@ _MIG_SCAN_RE='^[^ ]+: Connection closed by remote host[[:space:]]*$|^read \([^)]
 _MIG_DROP_LOG="/var/log/boa/xmass.drop.log"
 _MIG_DROP_TRIES=20
 _MIG_DROP_TRIES_SPENT=3
-### The hosts whose chain used the whole budget in this run, one a line: a
-### file, since most calls run in a subshell, named by this run's pid (a
-### file a dead run of the same pid left is no one's).
+### The hosts whose chain used the whole budget inside the short window, a
+### file each: a directory, since most calls run in a subshell, named by this
+### run's pid (one a dead run of the same pid left is no one's).
 _MIG_DROP_SPENT="/run/mig-drop-spent.$$"
-rm -f "${_MIG_DROP_SPENT}" 2> /dev/null
+rm -rf "${_MIG_DROP_SPENT}" 2> /dev/null
+_MIG_DROP_SHORT=NO
 ### The terminal this run was started on, when its stderr is one: each retry
 ### is told there whatever the call did with its own stderr, and a caller
 ### that reads a call's stderr never finds the notice in it.
 _MIG_NOTE_TTY=""
 [ -t 2 ] && { _MIG_NOTE_TTY="$(tty <&2 2> /dev/null)" || _MIG_NOTE_TTY=""; }
+### Run by a migration tool that keeps the run log, stderr is that file: the
+### caller hands its own terminal down instead, taken only while it is still
+### this run's controlling terminal.
+[ -z "${_MIG_NOTE_TTY}" ] && [ -n "${_MIG_RUNLOG:-}" ] && [ "${_MIG_RUNLOG}" != none ] \
+  && [ -c "${_MIG_RUNLOG_TTY:-}" ] \
+  && [ "/dev/$(ps -o tty= -p "$$" 2> /dev/null | tr -d ' ')" = "${_MIG_RUNLOG_TTY}" ] \
+  && _MIG_NOTE_TTY="${_MIG_RUNLOG_TTY}"
 
 ### The host of the first root@ argument, and nothing else of the call.
 _mig_drop_host() {
@@ -234,28 +243,47 @@ _mig_drop_secs() {
   echo "${_w}"
 }
 
+### $1 open or close: the short window, which starts and ends with no host
+### marked.
+_mig_drop_window() {
+  rm -rf "${_MIG_DROP_SPENT}" 2> /dev/null
+  case "${1}" in
+    open) _MIG_DROP_SHORT=YES ;;
+    *) _MIG_DROP_SHORT=NO ;;
+  esac
+  return 0
+}
+
 ### The tries a chain of drops to host $1 gets: the whole budget, or the
-### short one once a chain to it used the whole budget in this run.
+### short one inside the short window once a chain to it used the whole one.
 _mig_drop_budget() {
-  if grep -qxF "${1}" "${_MIG_DROP_SPENT}" 2> /dev/null; then
+  if [ "${_MIG_DROP_SHORT}" = "YES" ] && [ -e "${_MIG_DROP_SPENT}/h-${1}" ]; then
     echo "${_MIG_DROP_TRIES_SPENT}"
   else
     echo "${_MIG_DROP_TRIES}"
   fi
 }
 
-### The chain to host $1 used its budget $2 and met one more drop: a whole
-### budget marks the host, and files of runs that are gone go.
+### The chain to host $1 used its budget $2 and met one more drop: inside the
+### short window a whole budget marks the host, and the marks of runs that
+### are gone go.
 _mig_drop_spent() {
   local _f
   [ -n "${_MIG_NOTE_TTY}" ] \
     && echo "INFO: ${1}: still dropped after ${2} tries; this call gives up" 2> /dev/null > "${_MIG_NOTE_TTY}"
-  [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
+  [ "${_MIG_DROP_SHORT}" = "YES" ] && [ "${2}" = "${_MIG_DROP_TRIES}" ] || return 0
   for _f in /run/mig-drop-spent.*; do
     [ -e "${_f}" ] || continue
-    kill -0 "${_f##*.}" 2> /dev/null || rm -f "${_f}"
+    kill -0 "${_f##*.}" 2> /dev/null || rm -rf "${_f}"
   done
-  echo "${1}" 2> /dev/null >> "${_MIG_DROP_SPENT}"
+  mkdir -p "${_MIG_DROP_SPENT}" 2> /dev/null && : 2> /dev/null > "${_MIG_DROP_SPENT}/h-${1}"
+  return 0
+}
+
+### A call to host $1 got through: inside the short window its mark goes.
+_mig_drop_through() {
+  [ "${_MIG_DROP_SHORT}" = "YES" ] || return 0
+  rm -f "${_MIG_DROP_SPENT}/h-${1}" 2> /dev/null
   return 0
 }
 
@@ -299,6 +327,8 @@ ssh() {
         continue
       fi
       _mig_drop_spent "${_h}" "${_b}"
+    elif [ "${_rc}" != "255" ]; then
+      _mig_drop_through "$(_mig_drop_host "$@")"
     fi
     [ -s "${_l}" ] && cat "${_l}" >&2
     rm -f "${_l}"
@@ -327,6 +357,8 @@ _mig_rsh_again() {
         continue
       fi
       _mig_drop_spent "${_h}" "${_b}"
+    elif [ "${_rc}" = "0" ]; then
+      _mig_drop_through "$(_mig_drop_host "$@")"
     fi
     [ -s "${_e}" ] && cat "${_e}" >&2
     rm -f "${_e}"
@@ -359,18 +391,29 @@ _mig_port_answers() {
 ### runs again, whether ssh-keyscan named the close or, as it often does, said
 ### nothing: a port that accepts a plain connection tells that from a refused
 ### one, which says nothing too. A refused or silent port gets the one scan.
+### The keys go to a file first, so a known_hosts that cannot be written is
+### one failure, never a scan that seemed to say nothing.
 ### Returns 0 once a key for the host is known.
 _mig_keyscan() {
-  local _e _h _k _n=0 _b=""
+  local _e _o _h _k _n=0 _b=""
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
-    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" || {
+    _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" \
+      && _o="$(mktemp /tmp/mig-keys.XXXXXX 2> /dev/null)" || {
+      rm -f "${_e}"
       ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
       ssh-keygen -F "${1}" > /dev/null 2>&1
       return $?
     }
-    ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> "${_e}"
+    ssh-keyscan -H -T 10 "${1}" > "${_o}" 2> "${_e}"
+    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> /root/.ssh/known_hosts; then
+      echo "${_h}: cannot write /root/.ssh/known_hosts" >&2
+      rm -f "${_e}" "${_o}"
+      return 1
+    fi
+    rm -f "${_o}"
     if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+      _mig_drop_through "${_h}"
       rm -f "${_e}"
       return 0
     fi
@@ -5013,8 +5056,7 @@ _xmass_init_unwind() {
     # so close this run's window -- both carriers: second.sh has minted the
     # twin from this run's signal by now, and restore-target, the remedy
     # for this box, refuses while either exists -- and leave the rest.
-    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
-      "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+    _xmass_promotion_window_close
     _info "init unwound: target ${_tgt} left as the standby it already was (marker, database lock and holds untouched)"
   elif [ "${_XMASS_INIT_COMMITTED}" != "YES" ]; then
     # Re-arm ONLY what our own hold disarmed (the target-side list the
@@ -10709,6 +10751,9 @@ _xmass_cutover_unwind_solr() {
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
   local _mute_tgt=NO
+  # A stop hands the source back: the cleanup below, the target's half of
+  # the mute among it, gets the whole budget of tries, never the short one.
+  _mig_drop_window close
   # Once this box relays the migrated sites, none of the recipes below is
   # true any more: there is no gated source to re-open, and "keep THIS box as
   # production" would throw away every write the target has taken since the
@@ -10785,16 +10830,16 @@ _xmass_restore_hint() {
     # kill -- on the source AND the target, for the rest of its 240-min
     # expiry. Same reasoning as the init unwind; a park that will be
     # RESUMED keeps its mute, which is why this is the pre-promotion arm.
-    # This box's half now; the target's half after the gate lift below, since
-    # an abort under a flood of dropped connections would wait out that call
-    # with the source still on 503.
+    # This box's half now; the target's half last of all, once this box is
+    # handed back below (its gate and its Solr): under a flood of dropped
+    # connections that call waits out every try, and nothing this box serves
+    # may wait behind it.
     rm -f /run/boa_sql_maintenance.pid
     _mute_tgt=YES
   fi
   # The gate lift and the thaw go here, once cron and the runners are back:
   # the freeze paragraph below then reads a cleared include and stays silent.
   [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ] && _xmass_cutover_unwind
-  [ "${_mute_tgt}" = "YES" ] && _xmass_maint_off
   # Read the flag from the file, not from a variable: this paragraph must match
   # what is actually in the include at the moment the operator reads it (a
   # barracuda system pass on this box removes the block without a log line).
@@ -10836,6 +10881,9 @@ _xmass_restore_hint() {
   else
     _alrt "Then confirm a site returns 200 before deciding what to do next."
   fi
+  # A call that cannot get through names the command to run there.
+  [ "${_mute_tgt}" = "YES" ] && _xmass_maint_off_target
+  return 0
 }
 
 _xmass_block_web_all() {
@@ -12926,6 +12974,17 @@ _xmass_release_source_events() {
 # restore hint: the hint reads the phase to tell a pre-freeze abort (whose
 # gate comes down with it) from this one, whose 503 lift stays the
 # operator's.
+# The promotion window this run opened on the target, closed again on a stop
+# that leaves the target a replica; one left open stands the target's database
+# hold down for up to 48 hours, so a failure says how to close it by hand.
+_xmass_promotion_window_close() {
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null && return 0
+  _alrt "could not remove the promotion-window signal on ${_tgt}: if it was written there, its database hold"
+  _alrt "  stands down until it is gone (48 hours at most) -- remove it there: rm -f /run/boa_xmass_init.pid /root/.standby.init.pid"
+  return 1
+}
+
 _xmass_cutover_back_to_syncing() {
   # The scheduler this cutover stopped must be running again first: its
   # record is the only trace of the stop, and the next cutover's step 6
@@ -13704,6 +13763,7 @@ _xmass_verb_unwind() {
   # lock already gone, then lose the peer exemption and the cron this run
   # undoes under it. A signal runs this twice, the trap and then EXIT.
   local _rc="${1:-0}"
+  _mig_drop_window close
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
@@ -19335,6 +19395,13 @@ _xmass_cmd_cutover() {
     _xmass_declare_unadopted
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
+    # The parked run's 503 gate is still on disk, but this run re-asserts it
+    # only further down: a refusal before that (the park's, the signal's)
+    # must name it in its hint, with its recipe.
+    local _wb
+    for _wb in ${_ELIGIBLE_ACCOUNTS}; do
+      [ -e "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
+    done
     if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
       # This box already relays the client-domain sites: it is their only
       # front door, so its cron (watchdogs, IDS, certificate mirror) stays
@@ -19352,8 +19419,15 @@ _xmass_cmd_cutover() {
     # the tail runs the renames and queue passes the signal protects. Not
     # once step 15 has armed the target: the window is closed there, and a
     # fresh signal would stand its per-job gates down again.
-    [ "${_XMASS_TARGET_ARMED}" = "YES" ] || \
-    ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
+    # One that cannot be written keeps the cutover parked: the tail would
+    # unlock the target's database and its standby marker would go.
+    if [ "${_XMASS_TARGET_ARMED}" != "YES" ] \
+      && ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
+      _xmass_restore_hint
+      _die "Could not re-assert the promotion-window signal on target ${_tgt}" \
+           " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- the cutover stays PARKED" \
+           " (phase=rename-failed); re-run 'xmass cutover ${_tgt} --live' once the target answers"
+    fi
     # Re-assert the 503 gate: it persists on disk from the parked run, but an
     # operator may have lifted it via the abandon recipe before deciding to
     # resume after all -- and the tail assumes a non-serving source. Also
@@ -19580,6 +19654,13 @@ _xmass_cmd_cutover() {
 
   # Step 1: Block all web traffic on source (serves 503 via http-off.pid)
   _xmass_block_web_all
+  # From the gate to the write freeze a stop costs little: the source is handed
+  # back. Here, once a chain of dropped connections to the target has used the
+  # whole budget, later calls to it get the short one until one gets through,
+  # so a walk whose stop a failed call has decided does not hold the gate for
+  # the whole budget once a call. Before the gate and after the freeze every
+  # call gets the whole budget.
+  _mig_drop_window open
 
   # Step 2: Stop Solr on source and disable it permanently with deny file.
   # Must happen BEFORE final sync so the Solr data rsync sees a clean,
@@ -19659,6 +19740,7 @@ _xmass_cmd_cutover() {
   # leave the state machine at "syncing" and let the operator simply re-run.
   # Persisting phase=cutover any earlier wedged the run on a pre-freeze failure and
   # made the abort messages ("source untouched") untrue.
+  _mig_drop_window close
   _XMASS_PHASE="cutover"
   _xmass_save_state
 
@@ -19704,8 +19786,19 @@ _xmass_cmd_cutover() {
   # minute and un-gate every writer mid-cutover. Step 15 clears both.
   # Both the tmpfs signal and its on-disk twin: /run does not survive a
   # target reboot inside the window, and the twin is what the per-job
-  # gates and autosync read after one.
-  ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
+  # gates and autosync read after one. Without them the promotion would
+  # un-gate the target's writers, so a signal that cannot be written stops
+  # the cutover here, while the target is still a replica and a thaw is safe.
+  if ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
+    _xmass_promotion_window_close
+    _xmass_thaw_writes
+    _xmass_release_source_events
+    _xmass_restore_hint
+    _xmass_cutover_back_to_syncing
+    _die "Could not write the promotion-window signal on target ${_tgt}" \
+         " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- cutover aborted before" \
+         " the promotion; writes thawed"
+  fi
   _info "Stopping and decoupling slave on target ${_tgt} ..."
   if ! ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
@@ -19725,8 +19818,7 @@ _xmass_cmd_cutover() {
       # would otherwise stand the DATABASE hold down for its full 48h ceiling
       # on a box that remains a standby (the web hold follows the promoted
       # latch and is unaffected).
-      ssh -o ConnectTimeout=10 root@"${_tgt}" \
-        "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+      _xmass_promotion_window_close
       _xmass_thaw_writes
       _xmass_release_source_events
       _xmass_restore_hint
@@ -20761,6 +20853,186 @@ _xmass_cmd_go_live() {
 }
 
 ###=============ARGUMENT PARSING==========###
+
+### The run log. Every verb keeps its whole output, both streams, in
+### /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<YYMMDD-HHMMSS>-<pid>.log,
+### readable by root alone, as barracuda and octopus keep theirs under
+### reports/up; not the polled ones (xmass status, xmass autosync --run, whose
+### monitor keeps each pass, and --status) nor a call with no verb. As the
+### barracuda wrapper runs its worker, this process becomes a wrapper: it runs
+### the same tool with the same arguments as its child, both streams into the
+### file, shows the file on the console with a tail, and returns the child's
+### status only once the tail has handed on the last line, so a caller that
+### reads its own copy at once finds it whole. The child keeps the signal
+### dispositions and the input the wrapper was started with, and the third
+### header line names its pid. A daemon a verb starts inherits the file, never
+### the console. A tool another migration tool runs on this box keeps no log
+### and leaves its streams as they were, so its output goes where its caller
+### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
+### reads "none" when the caller keeps no log); the caller's terminal is
+### handed down in _MIG_RUNLOG_TTY for the notices that go straight to it. No
+### log is kept, silently, for a user other than root or a tool whose own path
+### cannot be read; nor, with one line saying so, with under 1 GiB free or free
+### space that cannot be read, in a folder that cannot be written, with a tail
+### lacking --pid or when the placeholder for the console cannot be opened.
+### _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
+_mig_runlog_start() {
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw="" _h _t _c _rc _tp _td=" " _s
+  shift
+  if [ -n "${_MIG_RUNLOG:-}" ]; then
+    if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
+      echo "== run pid $$"
+      unset _MIG_RUNLOG_WRAPPER
+    fi
+    return 0
+  fi
+  export _MIG_RUNLOG=none
+  unset _MIG_RUNLOG_TTY _MIG_RUNLOG_WRAPPER
+  _verb=""
+  for _a in "$@"; do
+    case "${_a}" in
+      -*|*=*) continue ;;
+    esac
+    _verb="${_a}"
+    break
+  done
+  [ -n "${_verb}" ] || return 0
+  case "${_tool}:${_verb}" in
+    xmass:status) return 0 ;;
+    xmass:autosync)
+      case " $* " in
+        *" --run "*|*" --status "*) return 0 ;;
+      esac
+      ;;
+  esac
+  [ -n "${_MIG_RUNLOG_DIR:-}" ] || [ "$(id -u)" = "0" ] || return 0
+  _self="$(readlink -f -- "$0" 2> /dev/null)"
+  [ -n "${_self}" ] && [ -f "${_self}" ] || return 0
+  _verb="$(printf '%s' "${_verb}" | tr -cd 'a-z0-9-' | cut -c1-32)"
+  _now="$(date +%y%m%d-%H%M%S)"
+  _base="${_MIG_RUNLOG_DIR:-/var/backups/reports/${_tool}}"
+  _dir="${_base}/${_now%%-*}"
+  _file="${_dir}/${_tool}-${_verb:-none}-${_now}-$$.log"
+  if ! tail --pid=1 -n 0 /dev/null > /dev/null 2>&1; then
+    echo "ALRT: ${_tool}: no run log kept, this tail has no --pid" >&2
+    return 0
+  fi
+  while [ ! -d "${_base}" ]; do
+    case "${_base}" in
+      */*) _base="${_base%/*}" ;;
+      *) _base=. ;;
+    esac
+    [ -n "${_base}" ] || _base=/
+  done
+  _free="$(df -Pk "${_base}" 2> /dev/null | awk 'NR == 2 { print $4 }')"
+  case "${_free}" in
+    ''|*[!0-9]*)
+      echo "ALRT: ${_tool}: no run log kept, the free space for ${_file} cannot be read" >&2
+      return 0
+      ;;
+  esac
+  if [ "${_free}" -lt "${_MIG_RUNLOG_MIN_KB:-1048576}" ]; then
+    echo "ALRT: ${_tool}: no run log kept, ${_free} KiB free for ${_file}" >&2
+    return 0
+  fi
+  if ! ( umask 077; mkdir -p "${_dir}" && : >> "${_file}" ) 2> /dev/null \
+    || [ -L "${_file}" ] || [ ! -f "${_file}" ]; then
+    echo "ALRT: ${_tool}: no run log kept, ${_file} cannot be written" >&2
+    return 0
+  fi
+  {
+    echo "== ${_tool} $* | $(date '+%F %T %Z') | $(hostname -f 2> /dev/null) | wrapper pid $$"
+    echo "== run log: ${_file}"
+  } >> "${_file}"
+  [ -t 2 ] && _term="$(tty <&2 2> /dev/null)"
+  export _MIG_RUNLOG="${_file}"
+  export _MIG_RUNLOG_WRAPPER="$$"
+  case "${_term}" in
+    /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
+  esac
+  ### The dispositions found on entry: _tp sets back those trapped or ignored,
+  ### _td names the signals at their default.
+  _tp="$(trap -p HUP INT QUIT TERM)"
+  for _s in HUP INT QUIT TERM; do
+    [ -n "$(trap -p "${_s}")" ] || _td="${_td}${_s} "
+  done
+  ### A wrapper that leads its session on a terminal (session id its own pid,
+  ### a terminal number set) is read before anything is started.
+  case "$(awk '{ sub(/.*\) /, ""); print $4 " " $5 }' "/proc/$$/stat" 2> /dev/null)" in
+    "$$ 0"|"") : ;;
+    "$$ "*) _lead=YES ;;
+  esac
+  ### The placeholder reads a pipe only the wrapper writes to: it ends when the
+  ### wrapper closes it, or when the wrapper is gone, even as a zombie its
+  ### caller has not reaped yet. It takes its ignores from the wrapper, as a
+  ### process substitution may not keep its own for INT and QUIT. The tail
+  ### follows the placeholder, and both ignore every signal the run may get.
+  ### Until the run is forked, a signal then only runs a no-op, so the wrapper
+  ### is not lost in that moment, and the run gets the dispositions the wrapper
+  ### was started with.
+  trap '' HUP INT QUIT TERM
+  exec {_hw}> >(exec cat > /dev/null)
+  _h=$!
+  trap : HUP INT QUIT TERM
+  if [ -z "${_hw}" ] || [ -z "${_h}" ] || ! kill -0 "${_h}" 2> /dev/null; then
+    [ -z "${_hw}" ] || exec {_hw}>&-
+    ### Back to the dispositions found on entry. Only a signal then at its
+    ### default is reset: a reset makes an INT ignored when bash started (a
+    ### job started with &) fatal again, and no trap ignores it after that.
+    for _s in HUP INT QUIT TERM; do
+      case "${_td}" in *" ${_s} "*) trap - "${_s}" ;; esac
+    done
+    eval "${_tp}"
+    echo "ALRT: ${_tool}: no run log kept, the placeholder for the console could not be opened" >&2
+    ### The day folder stays: another run may be making its file there.
+    rm -f "${_file}"
+    export _MIG_RUNLOG=none
+    unset _MIG_RUNLOG_WRAPPER _MIG_RUNLOG_TTY
+    return 0
+  fi
+  ( trap '' HUP INT QUIT TERM PIPE
+    exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) {_hw}>&- 2> /dev/null < "${_file}" &
+  _t=$!
+  ### The run keeps the wrapper's input: 0<&0 counts as its own input, which a
+  ### job started with & would otherwise lose to /dev/null. INT and QUIT, which
+  ### bash ignores in a job started with &, are put back.
+  if { true <&0; } 2> /dev/null; then
+    ( trap - INT QUIT
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) {_hw}>&- 0<&0 >> "${_file}" 2>&1 &
+  else
+    ( trap - INT QUIT
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) {_hw}>&- < /dev/null >> "${_file}" 2>&1 &
+  fi
+  _c=$!
+  ### A signal for the run reaches it in its group (Ctrl-C, timeout, a closed
+  ### session) or at its own pid, the third header line, and the wrapper
+  ### ignores it, so one wait gives the run's exact status. A wrapper that leads
+  ### its session (a remote terminal or a screen window with the tool as its
+  ### whole command) keeps HUP: the hangup the terminal sends it alone ends it,
+  ### and the terminal then hangs up the run's group, as it did the bare tool.
+  trap '' INT QUIT TERM
+  if [ "${_lead}" = YES ]; then
+    trap - HUP
+  else
+    trap '' HUP
+  fi
+  wait "${_c}"
+  _rc=$?
+  exec {_hw}>&-
+  wait "${_t}" 2> /dev/null
+  ### A run that ended with 129, 130 or 143, the status of a run ended by HUP,
+  ### INT or TERM (the tools' own traps exit 130 on all three), ends the wrapper
+  ### on that signal, so a calling script stops at Ctrl-C (lock.inc re-raises
+  ### its signal for the same reason).
+  case "${_rc}" in
+    129|130|143)
+      trap - HUP INT TERM
+      kill -s "$(kill -l "${_rc}")" "$$"
+      ;;
+  esac
+  exit "${_rc}"
+}
+_mig_runlog_start xmass "$@"
 
 _cmd="$1"
 shift 2>/dev/null || true

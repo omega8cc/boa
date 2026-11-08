@@ -1520,6 +1520,16 @@ _nginx_quic_bpf_sync() {
     fi
     rm -f "${_cnf}.pre-main-d"
   fi
+  ### The Nginx monitor's trial once latched on a single start without the
+  ### fragment, which also works after a start that failed for a passing
+  ### reason, as in the race of a reboot. Its latch says so in these words;
+  ### set it aside once and let the probe below decide afresh. A later
+  ### trial asks twice and writes other words, so this never repeats.
+  if [ -e "${_latch}" ] \
+    && grep -qF "(Nginx started once the fragment was taken away)" "${_latch}" 2> /dev/null; then
+    mv -f "${_latch}" "${_latch}.old-trial"
+    _msg "INFO: quic_bpf: the latch an earlier Nginx monitor trial left is set aside, probing again"
+  fi
   _kMaj=$(uname -r | cut -d. -f1 | tr -dc '0-9')
   _kMin=$(uname -r | cut -d. -f2 | tr -dc '0-9')
   if [ "${_NGINX_QUIC_BPF}" = "NO" ]; then
