@@ -343,8 +343,9 @@ _VARBASE_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 _VARBASE_DISTPKG="vardot/varbase"
 # The advisory fix step moves an affected package to its fixed release. The same one
 # platform requirement is ignored there, for the same reason: amazee.io provider
-# releases 1.4.0 to 1.4.5 declare ext-pdo_pgsql (1.4.6 no longer does), so a fix that
-# has to land on one of them, as a lock pinned to that range does, needs it.
+# releases 1.3.6 to 1.3.9 and 1.4.1 to 1.4.5 declare ext-pdo_pgsql (1.4.0 declares
+# ext-pgsql instead, which this does not ignore; 1.3.10 and 1.4.6 declare neither), so
+# a fix that has to land on one of them, as a lock pinned to that range does, needs it.
 _FIX_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 # Open Social ships NO create-project template for its current major: goalgorilla/social_template
 # has not been touched since 2024-05-21 and its committed lock pins open_social 12.4.2 on core
@@ -1301,8 +1302,10 @@ _fix_requirers() {
 
 _fix_newest_php() {
   # Reads `composer show --available --format=json` for one package and prints its
-  # newest release: the newest stable one, else the newest tagged pre-release, never
-  # a branch. Composer lists the versions newest first. PHP 5.6-safe.
+  # newest release: the newest stable one (a plain version, with or without a patch
+  # suffix like -p1, which Composer rates stable), else the newest tagged pre-release
+  # (a stability word with or without a hyphen: 2.0.0-beta1 and 2.0.0RC1 alike),
+  # never a branch. Composer lists the versions newest first. PHP 5.6-safe.
   cat <<'EOF'
 <?php
 $d = json_decode(stream_get_contents(STDIN), true);
@@ -1313,7 +1316,7 @@ foreach ($v as $x) {
   if (substr($x, 0, 4) === 'dev-' || substr($x, -4) === '-dev') {
     continue;
   }
-  if (!preg_match('/[-+]/', $x)) {
+  if (preg_match('/^v?\d+(?:\.\d+){0,3}(?:[._-]?(?:p|pl|patch)\.?\d*)?$/i', $x)) {
     echo ltrim($x, 'v'), "\n";
     exit(0);
   }
@@ -1328,11 +1331,65 @@ exit(0);
 EOF
 }
 
+_fix_show_php() {
+  # Writes the composer.json of the scratch project the release reader runs in, from
+  # the tree's composer.json named as its argument: the tree's repositories of type
+  # composer (Packagist, packages.drupal.org, asset-packagist) with their only, exclude
+  # and canonical filters, and its Packagist switch-off when it has one, under either
+  # name Composer accepts (packagist.org, or the older packagist). A VCS,
+  # path or package repository stays out: Composer loads every repository of the
+  # project on each `show --available`, and a GitHub VCS repository costs it one
+  # anonymous API request per branch and tag every time, out of 60 an hour for the
+  # whole address. A missing or unreadable file gives a project with no repositories
+  # (Packagist alone). PHP 5.6-safe.
+  cat <<'EOF'
+<?php
+$s = isset($argv[1]) && is_readable($argv[1]) ? file_get_contents($argv[1]) : '';
+$d = json_decode((string) $s, true);
+$r = is_array($d) && isset($d['repositories']) && is_array($d['repositories']) ? $d['repositories'] : array();
+$o = array();
+foreach ($r as $k => $x) {
+  if (($k === 'packagist.org' || $k === 'packagist') && $x === false) {
+    $o['packagist.org'] = false;
+  } elseif (is_array($x) && ((isset($x['packagist.org']) && $x['packagist.org'] === false)
+    || (isset($x['packagist']) && $x['packagist'] === false))) {
+    $o['packagist.org'] = false;
+  } elseif (is_array($x) && isset($x['type'], $x['url']) && $x['type'] === 'composer') {
+    $e = array('type' => 'composer', 'url' => $x['url']);
+    foreach (array('only', 'exclude', 'canonical') as $f) {
+      if (isset($x[$f])) {
+        $e[$f] = $x[$f];
+      }
+    }
+    $o[] = $e;
+  }
+}
+echo json_encode(array('name' => 'staticbuild/release-reader', 'repositories' => $o, 'require' => new stdClass())), "\n";
+EOF
+}
+
+_fix_show_dir() {
+  # Prints the scratch project the release reader runs in for workdir $1, written on
+  # the first call: ${_DAY_DIR}/.fix-show/<workdir name>/composer.json from the tree's
+  # composer.json through the .fix-show.php helper (_fix_show_php). Nothing, and 1,
+  # when it cannot be written.
+  local _d="${_DAY_DIR}/.fix-show/${1##*/}"
+  if ! _run_as_o8 "test -s '${_d}/composer.json'" 2>/dev/null; then
+    _run_as_o8 "mkdir -p '${_d}' && php '${_DAY_DIR}/.fix-show.php' '$1/composer.json' > '${_d}/composer.json'" 2>/dev/null || return 1
+  fi
+  printf '%s\n' "${_d}"
+}
+
 _fix_newest() {
   # Prints the newest release of package $2 within constraint $3 as workdir $1's
-  # repositories offer it (see _fix_newest_php), or nothing when Composer cannot say.
-  # $2 and $3 passed _fix_requirers' character checks; the helper is in the day dir.
-  _run_as_o8 "cd '$1' && composer show --available '$2' '$3' --format=json 2>/dev/null | php '${_DAY_DIR}/.fix-newest.php'" 2>/dev/null | head -n1
+  # Packagist-type repositories offer it (see _fix_newest_php), or nothing when
+  # Composer cannot say. The read runs in the scratch project of _fix_show_dir, never
+  # in the tree itself: Composer loads every repository of the project it runs in, and
+  # a tree's GitHub VCS repository would cost anonymous API requests on every read.
+  # $2 and $3 passed _fix_requirers' character checks; the helpers are in the day dir.
+  local _d
+  _d="$(_fix_show_dir "$1")" || return 1
+  _run_as_o8 "cd '${_d}' && composer show --available '$2' '$3' --format=json 2>/dev/null | php '${_DAY_DIR}/.fix-newest.php'" 2>/dev/null | head -n1
 }
 
 _fix_pin_of() {
@@ -1455,7 +1512,10 @@ _fix_dependents() {
   # per release it sits at.
   local _wd="$1" _label="$2" _round _rep _left _p _v0 _v1 _d _out _rc _any _with _names _moved
   local -A _tried=() _dv=()
-  if ! _fix_newest_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-newest.php'"; then
+  # The scratch projects go first: one left by a run that died before its cleanup
+  # would otherwise be reused for a tree whose repositories may have changed since.
+  if ! _fix_newest_php | _run_as_o8 "rm -rf '${_DAY_DIR}/.fix-show' && cat > '${_DAY_DIR}/.fix-newest.php'" \
+    || ! _fix_show_php | _run_as_o8 "cat > '${_DAY_DIR}/.fix-show.php'"; then
     _FIX_LINES+=("# holders not checked: could not write the version helper")
     return 0
   fi
@@ -1526,7 +1586,7 @@ _fix_dependents() {
     done
     [[ "${_any}" == "1" ]] || break
   done
-  _run_as_o8 "rm -f '${_DAY_DIR}/.fix-newest.php'"
+  _run_as_o8 "rm -rf '${_DAY_DIR}/.fix-newest.php' '${_DAY_DIR}/.fix-show.php' '${_DAY_DIR}/.fix-show'"
   return 0
 }
 
@@ -2295,33 +2355,30 @@ _resolve_farm_tag() {
 }
 
 _resolve_backdrop_tag() {
-  # Latest Backdrop CMS release tag, or the pinned _BACKDROP_TAG.
+  # Latest Backdrop CMS release tag (_latest_github), or the pinned _BACKDROP_TAG.
   if [[ -n "${_BACKDROP_TAG}" ]]; then
     printf '%s\n' "${_BACKDROP_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_BACKDROP_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_github "${_BACKDROP_REPO}"
 }
 
 _resolve_grav_tag() {
-  # Latest Grav release tag, or the pinned _GRAV_TAG.
+  # Latest Grav release tag (_latest_github), or the pinned _GRAV_TAG.
   if [[ -n "${_GRAV_TAG}" ]]; then
     printf '%s\n' "${_GRAV_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_GRAV_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_github "${_GRAV_REPO}"
 }
 
 _resolve_txp_tag() {
-  # Latest Textpattern release tag, or the pinned _TXP_TAG.
+  # Latest Textpattern release tag (_latest_github), or the pinned _TXP_TAG.
   if [[ -n "${_TXP_TAG}" ]]; then
     printf '%s\n' "${_TXP_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_TXP_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_github "${_TXP_REPO}"
 }
 
 _resolve_civicrm_version() {
@@ -2530,6 +2587,23 @@ build_farm() {
   _finalize_distro "farm" "${_wd}" "${_tag}" "farm"
 }
 
+_cms_ai_versions() {
+  # Print the AI stack the cms platform ships, read from its lock after the fix
+  # step (which can move drupal/ai): Canvas moves fast, and a regression between
+  # two mirror builds has to show in the result. The build's own resolve ignores no
+  # platform requirement, so an amazee.io provider release that declares a
+  # PostgreSQL extension (ext-pdo_pgsql or ext-pgsql) cannot land there, BOA's PHP
+  # carrying neither, and the provider stays on the newest release without one
+  # (below upstream's newest while the newest declares one); only the fix step may
+  # land on an ext-pdo_pgsql release, with _FIX_IGNORE_EXT. Keep that until a test
+  # server proves a newer provider works without pgsql.
+  local _dir="$1" _p _v
+  for _p in drupal/canvas drupal/ai drupal/drupal_cms_ai drupal/ai_provider_amazeeio; do
+    _v="$(_lock_version "${_dir}" "${_p}")"
+    _msg "cms: ${_p} ${_v:-not in the lock}"
+  done
+}
+
 build_cms() {
   _begin_build "$(_target_prefix cms)" "cms" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "cms"; return 1; }
@@ -2549,6 +2623,7 @@ build_cms() {
     return 1
   fi
   _fix_step "${_wd}" "cms" "" || return 1
+  _cms_ai_versions "${_wd}"
   _finalize_distro "drupal_cms_installer" "${_wd}" "${_dver}" "cms"
 }
 
@@ -3182,7 +3257,7 @@ build_backdrop() {
     && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
     && rm -f '${_zip}' && mv backdrop 'backdrop-${_tag}' \
     && printf '%s\n' '${_tag}' > backdrop.txt"; then
-    _record_fail "backdrop"
+    _record_fail "backdrop (release ${_tag}: download or unpack failed$(_gh_quota_note))"
     return 1
   fi
   # No contrib is baked into the core tree: Valkey/Redis support reaches every
@@ -3220,7 +3295,7 @@ build_grav() {
     && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
     && mv grav-admin 'grav-${_tag}' \
     && printf '%s\n' '${_tag}' > grav.txt"; then
-    _record_fail "grav"
+    _record_fail "grav (release ${_tag}: download or unpack failed$(_gh_quota_note))"
     return 1
   fi
   _rec "grav-${_tag}" BUILD ok
@@ -3253,7 +3328,7 @@ build_txp() {
     && test -d 'textpattern-${_tag}/sites' \
     && rm -f '${_tgz}' '${_sum}' \
     && printf '%s\n' '${_tag}' > textpattern.txt"; then
-    _record_fail "textpattern"
+    _record_fail "textpattern (release ${_tag}: download, checksum or unpack failed$(_gh_quota_note))"
     return 1
   fi
   _rec "textpattern-${_tag}" BUILD ok
@@ -4333,9 +4408,17 @@ _latest_packagist() {
 }
 
 _latest_github() {
-  local _repo="$1"
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_repo}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/'
+  # The latest release tag of a GitHub repository: the Releases API's answer, else the
+  # highest plain version tag over git (_latest_git_tag), which spends no API quota.
+  # The anonymous API allows 60 requests an hour per address, shared by everything on
+  # the box: a Composer resolve that loads a GitHub VCS repository takes a dozen of
+  # them, so the API can answer nothing for the rest of the hour.
+  local _repo="$1" _tag
+  _tag="$(curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_repo}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/')"
+  [[ -n "${_tag}" ]] || _tag="$(_latest_git_tag "${_repo}")"
+  [[ -n "${_tag}" ]] && printf '%s\n' "${_tag}"
+  return 0
 }
 
 _check_row() {
