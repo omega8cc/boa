@@ -188,6 +188,22 @@
 
 @=> Important Fixes
 
+    * Control panel tasks no longer wait, silently and for minutes at a time,
+      until a site cron the panel started has finished. The lock that keeps
+      two task queue runs of one instance apart was held by every process a
+      run started, so a site cron of two minutes kept the instance's next
+      runs out until it ended, and a queued task waited for it again and
+      again. An Octopus upgrade queued from the panel held it the same way
+      for its whole pass, keeping that instance's own task queue stopped
+      while the upgrade needs it. The lock is now held by the run alone.
+
+    * The control panel's queue dispatcher no longer starts a queue runner
+      while the previous one of that queue is still at work (a batch of site
+      crons can take minutes). Each such runner waited for the queue and then
+      failed with "Drush command terminated abnormally due to an unrecoverable
+      error", the line a task queue run by hand printed after its prompt. The
+      queue is started by the next dispatch once the earlier runner is done.
+
     * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
       older than the site's database is refused before anything is copied,
       and names the release to pick. CiviCRM upgrades a database forward

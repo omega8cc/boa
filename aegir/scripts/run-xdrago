@@ -363,6 +363,8 @@ _grav_store_ticks_detached
 # non-blocking per-user lock on fd 9 (released automatically on exit, no stale
 # lockfile); a concurrent run exits cleanly. If the lockfile cannot be created
 # (e.g. /run not writable) fall through and run unlocked rather than stall.
+# Every child that can outlive this script gets 9>&-: a child holding fd 9
+# holds the lock after this script has exited.
 _runLock="${_XDRAGO_LOCKS}/run-xdrago-${_H_USER}.lock"
 if command -v flock >/dev/null 2>&1 && _xdrago_lock_dir \
   && ( umask 077; : >> "${_runLock}" ) 2>/dev/null; then
@@ -736,7 +738,9 @@ _if_octopus_upgrade() {
     _LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
     _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
     mkdir -p ${_LOG_UP_DIR}
-    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
+    # 9>&-: an upgrade holding the run lock kept its own account's queue
+    # out for the whole pass, which needs that queue.
+    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 9>&- &
     _upPid=$!
     # The guard above is not atomic with octopus's own lock: two runners
     # ticking in the same second both pass it, both delete their trigger,
@@ -783,9 +787,12 @@ _run_action() {
   if [ "${_buildTest}" = "0" ] \
     || [ -z "${_buildTest}" ] \
     || [ ! -e "${_ceDir}" ]; then
-    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+    # 9>&-: the dispatcher forks the queue runners and returns; a runner
+    # that inherited the run lock (a site cron of minutes, a long task)
+    # kept every later run of this instance out until it ended.
+    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null 9>&-
     wait
-    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
+    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh" 9>&-
     wait
     touch /var/log/boa/last-run-${_H_USER}
   else
