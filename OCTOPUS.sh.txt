@@ -79,6 +79,7 @@ export _SMALLCORE11_1_V=11.1.10
 export _SMALLCORE11_2_V=11.2.14
 export _SMALLCORE11_3_V=11.3.21
 export _SMALLCORE11_4_V=11.4.12
+export _SMALLCORE11_5_V=11.5.0-beta1
 export _SMALLCORE12_0_V=12.0.0-beta2
 export _SMALLCORE6_V=6.60.3
 export _SMALLCORE7_V=7.106.3
@@ -99,6 +100,7 @@ export _DRUPAL11_1="drupal-${_SMALLCORE11_1_V}"
 export _DRUPAL11_2="drupal-${_SMALLCORE11_2_V}"
 export _DRUPAL11_3="drupal-${_SMALLCORE11_3_V}"
 export _DRUPAL11_4="drupal-${_SMALLCORE11_4_V}"
+export _DRUPAL11_5="drupal-${_SMALLCORE11_5_V}"
 export _DRUPAL12_0="drupal-${_SMALLCORE12_0_V}"
 export _DRUPAL6="pressflow-${_SMALLCORE6_V}"
 export _DRUPAL7="drupal-${_SMALLCORE7_V}"
@@ -159,6 +161,11 @@ export _DRUPAL11_3_S="${_DRUPAL11_3}-stage"
 export _DRUPAL11_4_D="${_DRUPAL11_4}-dev"
 export _DRUPAL11_4_P="${_DRUPAL11_4}-prod"
 export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
+
+export _DRUPAL11_5_D="${_DRUPAL11_5}-dev"
+export _DRUPAL11_5_P="${_DRUPAL11_5}-prod"
+export _DRUPAL11_5_S="${_DRUPAL11_5}-stage"
+
 export _DRUPAL12_0_D="${_DRUPAL12_0}-dev"
 export _DRUPAL12_0_P="${_DRUPAL12_0}-prod"
 export _DRUPAL12_0_S="${_DRUPAL12_0}-stage"

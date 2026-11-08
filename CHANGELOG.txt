@@ -62,6 +62,11 @@
       slow DNS or a name not yet in DNS says so in the same line instead;
       the pass never fails or waits on it.
 
+    * Drupal 11.5.0-beta1 joins the platform catalogue as DE5, for testing
+      modules, themes and the move from 11.4 before 11.5.0 is out. While its
+      core is a pre-release it is built only where platforms.info names it,
+      never through ALL, and like every Drupal 11 core only on Percona 8.4.
+
 @=> Security
 
     * The files storage wrapper an account's tasks call through sudo holds a
