@@ -408,12 +408,12 @@ _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/E
 # line whose Drush require fails is a failed build, never published without it.
 # Their advisories stay, as the other legacy cores' do. Empty builds none.
 _CORE_LEGACY="8.9 9.5"
-# Pre-release cores of the next major, as exact versions: a minor resolves to stable
-# releases only. Each is built beside the minors only while they hold no stable
-# release of its minor, so the line stops by itself the day that minor ships. Name
-# only a pre-release that carries every core security fix released so far, and
-# replace it at each new one; empty builds none.
-_CORE_PRERELEASE="12.0.0-beta2"
+# Pre-release cores, of the next minor or the next major, as exact versions: a minor
+# resolves to stable releases only. Each is built beside the minors only while they
+# hold no stable release of its minor, so the line stops by itself the day that minor
+# ships. Name only a pre-release that carries every core security fix released so
+# far, and replace it at each new one; empty builds none.
+_CORE_PRERELEASE="11.5.0-beta1 12.0.0-beta2"
 # Dependency releases no distribution build may resolve, as root composer.json conflicts
 # (package:constraint, space-separated). twig/twig 3.30.0 breaks every page of the Drupal
 # 10 and 11 releases published before Drupal's own fix: compiled templates call Twig's
@@ -3190,8 +3190,16 @@ build_cores() {
       continue
     fi
     local _nodrush=""
-    if ! _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "${_m}")"; then
-      if _core_from_12 "${_m}" || _core_legacy "${_m}"; then
+    # A core may lock a dependency at a major its Drush release does not accept yet
+    # (11.5.0-beta1 resolves Guzzle 8, Drush 13.8.0 asks for Guzzle 7, which core
+    # allows too): the plain require keeps every locked package, so it is tried once
+    # more allowing the locked dependencies to move. A line that needs no move is
+    # built exactly as before. A pre-release line is built for testing on BOA, which
+    # needs its own Drush there, so one without it fails like a 12+ line.
+    if ! _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "${_m}")" \
+      && ! { _alrt "drupal-${_m}: drush require failed; retrying with -W" \
+        && _run_as_o8 "cd '${_wd}' && composer require -W $(_core_drush_spec "${_m}")"; }; then
+      if _core_from_12 "${_m}" || _core_legacy "${_m}" || [[ "${_m}" == *-* ]]; then
         _record_fail "drupal-${_m} (drush require failed)"
         _run_as_o8 "rm -rf '${_wd}'"
         continue

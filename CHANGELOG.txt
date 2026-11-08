@@ -62,6 +62,11 @@
       slow DNS or a name not yet in DNS says so in the same line instead;
       the pass never fails or waits on it.
 
+    * Drupal 11.5.0-beta1 joins the platform catalogue as DE5, for testing
+      modules, themes and the move from 11.4 before 11.5.0 is out. While its
+      core is a pre-release it is built only where platforms.info names it,
+      never through ALL, and like every Drupal 11 core only on Percona 8.4.
+
 @=> Security
 
     * The files storage wrapper an account's tasks call through sudo holds a
@@ -182,6 +187,26 @@
       PHP both still run under the PHP profile.
 
 @=> Important Fixes
+
+    * Control panel tasks no longer wait, silently and for minutes at a time,
+      until a site cron the panel started has finished. The lock that keeps
+      two task queue runs of one instance apart was held by every process a
+      run started, so a site cron of two minutes kept the instance's next
+      runs out until it ended, and a queued task waited for it again and
+      again. An Octopus upgrade queued from the panel held it the same way
+      for its whole pass, keeping that instance's own task queue stopped
+      while the upgrade needs it. The lock is now held by the run alone. The
+      minute task runner heals a copy an older upgrade laid before it runs
+      it, so every server has the fix within minutes of the tools update,
+      without waiting for an Octopus upgrade, and keeps it through any
+      upgrade that lays the old copy again.
+
+    * The control panel's queue dispatcher no longer starts a queue runner
+      while the previous one of that queue is still at work (a batch of site
+      crons can take minutes). Each such runner waited for the queue and then
+      failed with "Drush command terminated abnormally due to an unrecoverable
+      error", the line a task queue run by hand printed after its prompt. The
+      queue is started by the next dispatch once the earlier runner is done.
 
     * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
       older than the site's database is refused before anything is copied,
@@ -927,6 +952,14 @@
       Grav and Textpattern releases are read from git tags when the API cannot
       answer, and a release whose download then fails says so with the release
       and the quota's reset time.
+
+    * staticbuild builds Drupal 11.5.0-beta1 with its own Drush: that core
+      resolves Guzzle 8, which no Drush 13 release accepts, so the Drush
+      require failed and the core was built without it. A failed Drush
+      require is now tried once more letting Composer move the locked
+      packages (Guzzle steps back to 7, which the core also allows); a line
+      that needs no move is built exactly as before, and a pre-release core
+      still without Drush is a failed build, never published.
 
 @=> New Features
 

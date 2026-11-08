@@ -1892,6 +1892,9 @@ _create_drupal_core_basic() {
     "DE4")
       _create_drupal_basic_version "11_4"
       ;;
+    "DE5")
+      _create_drupal_basic_version "11_5"
+      ;;
     "DT0")
       _create_drupal_basic_version "12_0"
       ;;
@@ -1941,6 +1944,7 @@ declare -A _distros_names=(
   ["DE2"]="Drupal"
   ["DE3"]="Drupal"
   ["DE4"]="Drupal"
+  ["DE5"]="Drupal"
   ["DEC"]="CiviCRM for Drupal"
   ["DT0"]="Drupal"
   ["BDR"]="Backdrop"
@@ -1980,6 +1984,7 @@ declare -A _distros_versions=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["DE5"]="${_SMALLCORE11_5_V}"
   ["DEC"]="6.20.0"
   ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
@@ -2019,6 +2024,7 @@ declare -A _distros_drupal_cores=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["DE5"]="${_SMALLCORE11_5_V}"
   ["DEC"]="${_SMALLCORE11_4_V}"
   ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
@@ -2058,6 +2064,7 @@ declare -A _distros_profiles_names=(
   ["DE2"]="standard"
   ["DE3"]="standard"
   ["DE4"]="standard"
+  ["DE5"]="standard"
   ["DEC"]="standard"
   ["DT0"]="standard"
   ["BDR"]="standard"
@@ -2097,6 +2104,7 @@ declare -A _distros_profiles_paths=(
   ["DE2"]="/"
   ["DE3"]="/"
   ["DE4"]="/"
+  ["DE5"]="/"
   ["DEC"]="/"
   ["DT0"]="/"
   ["BDR"]="/"
@@ -2136,6 +2144,7 @@ declare -A _distros_web_dirs=(
   ["DE2"]="/web"
   ["DE3"]="/web"
   ["DE4"]="/web"
+  ["DE5"]="/web"
   ["DEC"]="/web"
   ["DT0"]="/web"
   ["BDR"]=""
@@ -2175,6 +2184,7 @@ declare -A _distros_urls=(
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
   ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
   ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
+  ["DE5"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_5_V}"
   ["DEC"]="https://docs.civicrm.org/installation/en/latest/drupal8/"
   ["DT0"]="${_urlPrt}/drupal/releases/${_SMALLCORE12_0_V}"
   ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP_V}"
@@ -2214,6 +2224,7 @@ declare -A _distros_php_versions=(
   ["DE2"]="8.4"
   ["DE3"]="8.4"
   ["DE4"]="8.4"
+  ["DE5"]="8.4"
   ["DEC"]="8.4"
   ["DT0"]="8.5"
   ["BDR"]="8.4"
@@ -2645,6 +2656,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_DRUPAL11_4_D}"
     _CORE_STG="${_DRUPAL11_4_S}"
     _CORE_PRD="${_DRUPAL11_4_P}"
+  elif [ "${1}" = "DE5" ]; then
+    _CORE_DEV="${_DRUPAL11_5_D}"
+    _CORE_STG="${_DRUPAL11_5_S}"
+    _CORE_PRD="${_DRUPAL11_5_P}"
   elif [ "${1}" = "DT0" ]; then
     _CORE_DEV="${_DRUPAL12_0_D}"
     _CORE_STG="${_DRUPAL12_0_S}"
@@ -2856,7 +2871,7 @@ _d_dist_loop() {
         continue
         ;;
     esac
-    # A core still at a pre-release (12.0.0-beta2) is built only where the
+    # A core still at a pre-release (11.5.0-beta1, 12.0.0-beta2) is built only where the
     # list names it, never through ALL: it is for testing, not for sites.
     if [[ "${_dist}" =~ ^D[LXET][0-9]$ ]] && [[ "${_d_vers}" == *-* ]] \
       && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
@@ -2941,7 +2956,7 @@ _d_dist_loop() {
     _d_phpv="${_distros_php_versions[${_dist}]}"
     _d_xurl="${_distros_urls[${_dist}]}"
     if [[ "${_dist}" =~ ^D[LXET][0-9]$ ]]; then
-      # Anchored: only the DL6/DL7/DL9, DX0..DX6, DE1..DE4, DT0 core symbols take
+      # Anchored: only the DL6/DL7/DL9, DX0..DX6, DE1..DE5, DT0 core symbols take
       # the core-triple path. The old unanchored match also caught DXP and
       # sent it here, where no _CORE_* mapping arm exists -- it then
       # registered platform aliases pointing at whatever core the previous

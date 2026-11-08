@@ -61,6 +61,11 @@ _PHP_CLI_VERSION=8.4
 #
 # DT0 — Drupal 12 pre-release prod/stage/dev
 
+### Drupal 11.5, a pre-release for testing: built only where the list
+### names it (never through ALL) until its first stable release
+#
+# DE5 — Drupal 11.5 pre-release prod/stage/dev
+
 ### Drupal 11.4
 #
 # DE4 — Drupal 11.4 prod/stage/dev
@@ -121,7 +126,7 @@ _PHP_CLI_VERSION=8.4
 
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
-### system releases, except those built only when named: DT0, BDC and DEC
+### system releases, except those built only when named: DE5, DT0, BDC and DEC
 ### (ALL BDC builds everything and BDC).
 ###
 ### Examples:
