@@ -11820,7 +11820,7 @@ _check_root() {
 ### that cannot be written or with a tail lacking --pid, and the last three
 ### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _h _t _c _rc
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _hw _h _t _c _rc
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -11893,42 +11893,52 @@ _mig_runlog_start() {
   case "${_term}" in
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
-  ### The placeholder and the tail ignore every signal the run may get; the
-  ### placeholder ends with the wrapper should the wrapper be killed outright.
-  ( trap '' HUP INT QUIT TERM PIPE
-    exec tail -s 1 --pid="$$" -f /dev/null ) < /dev/null > /dev/null 2>&1 &
+  ### Until the run is forked, a signal only runs a no-op, so the wrapper is
+  ### not lost in that moment, and what it starts gets the dispositions it was
+  ### started with. The placeholder reads a pipe only the wrapper writes to: it
+  ### ends when the wrapper closes it, or when the wrapper is gone, even as a
+  ### zombie its caller has not reaped yet. The tail follows the placeholder.
+  ### Both ignore every signal the run may get.
+  trap : HUP INT QUIT TERM
+  exec {_hw}> >(trap '' HUP INT QUIT TERM PIPE; exec cat > /dev/null)
   _h=$!
   ( trap '' HUP INT QUIT TERM PIPE
-    exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) 2> /dev/null < "${_file}" &
+    exec tail -n +1 -s 0.2 --pid="${_h}" -f - ) {_hw}>&- 2> /dev/null < "${_file}" &
   _t=$!
   ### The run keeps the wrapper's input: 0<&0 counts as its own input, which a
-  ### job started with & would otherwise lose to /dev/null. It keeps the
-  ### signal dispositions the wrapper was started with: INT and QUIT, which
+  ### job started with & would otherwise lose to /dev/null. INT and QUIT, which
   ### bash ignores in a job started with &, are put back.
   if { true <&0; } 2> /dev/null; then
     ( trap - INT QUIT
-      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) 0<&0 >> "${_file}" 2>&1 &
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) {_hw}>&- 0<&0 >> "${_file}" 2>&1 &
   else
     ( trap - INT QUIT
-      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) < /dev/null >> "${_file}" 2>&1 &
+      exec "${BASH:-/bin/bash}" "${_self}" "$@" ) {_hw}>&- < /dev/null >> "${_file}" 2>&1 &
   fi
   _c=$!
-  ### A signal for the run reaches it in its group (Ctrl-C, a closed session,
-  ### timeout) or at its own pid, the third header line; the wrapper ignores
-  ### them all, so one wait gives the run's exact status, and then shows the
-  ### rest of the file. A run that ended with 129, 130, 131 or 143, the
-  ### status of a run ended by HUP, INT, QUIT or TERM, ends the wrapper on the
-  ### same signal, so a calling script stops as it would have (lock.inc
-  ### re-raises its signal for the same reason).
-  trap '' HUP INT QUIT TERM
+  ### A signal for the run reaches it in its group (Ctrl-C, timeout, a closed
+  ### session) or at its own pid, the third header line, and the wrapper
+  ### ignores it, so one wait gives the run's exact status. A wrapper that leads
+  ### its session (a remote terminal or a screen window with the tool as its
+  ### whole command) keeps HUP: the hangup the terminal sends it alone ends it,
+  ### and the terminal then hangs up the run's group, as it did the bare tool.
+  trap '' INT QUIT TERM
+  if [ "$(awk '{ sub(/.*\) /, ""); print $4 }' "/proc/$$/stat" 2> /dev/null)" = "$$" ]; then
+    trap - HUP
+  else
+    trap '' HUP
+  fi
   wait "${_c}"
   _rc=$?
-  kill -9 "${_h}" 2> /dev/null
-  wait "${_h}" 2> /dev/null
+  exec {_hw}>&-
   wait "${_t}" 2> /dev/null
+  ### A run that ended with 129, 130 or 143, the status of a run ended by HUP,
+  ### INT or TERM (the tools' own traps exit 130 on all three), ends the wrapper
+  ### on that signal, so a calling script stops at Ctrl-C (lock.inc re-raises
+  ### its signal for the same reason).
   case "${_rc}" in
-    129|130|131|143)
-      trap - HUP INT QUIT TERM
+    129|130|143)
+      trap - HUP INT TERM
       kill -s "$(kill -l "${_rc}")" "$$"
       ;;
   esac
