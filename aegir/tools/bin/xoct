@@ -11816,11 +11816,12 @@ _check_root() {
 ### sends it, into the caller's log when there is one (_MIG_RUNLOG, exported,
 ### reads "none" when the caller keeps no log); the caller's terminal is
 ### handed down in _MIG_RUNLOG_TTY for the notices that go straight to it. No
-### log is kept for a user other than root, with under 1 GiB free, in a folder
-### that cannot be written or with a tail lacking --pid, and the last three
-### say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
+### log is kept for a user other than root, with under 1 GiB free or free
+### space that cannot be read, in a folder that cannot be written, with a tail
+### lacking --pid or with no placeholder for the console, and all but the
+### first say so once. _MIG_RUNLOG_DIR and _MIG_RUNLOG_MIN_KB are for tests.
 _mig_runlog_start() {
-  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw _h _t _c _rc _tp
+  local _tool="${1}" _a _verb _now _dir _file _base _free _self _term="" _lead=NO _hw _h _t _c _rc _tp _td=" " _s
   shift
   if [ -n "${_MIG_RUNLOG:-}" ]; then
     if [ "${_MIG_RUNLOG_WRAPPER:-}" = "${PPID}" ]; then
@@ -11893,7 +11894,12 @@ _mig_runlog_start() {
   case "${_term}" in
     /dev/*) export _MIG_RUNLOG_TTY="${_term}" ;;
   esac
+  ### The dispositions found on entry: _tp sets back those trapped or ignored,
+  ### _td names the signals at their default.
   _tp="$(trap -p HUP INT QUIT TERM)"
+  for _s in HUP INT QUIT TERM; do
+    [ -n "$(trap -p "${_s}")" ] || _td="${_td}${_s} "
+  done
   ### A wrapper that leads its session on a terminal (session id its own pid,
   ### a terminal number set) is read before anything is started.
   case "$(awk '{ sub(/.*\) /, ""); print $4 " " $5 }' "/proc/$$/stat" 2> /dev/null)" in
@@ -11912,13 +11918,18 @@ _mig_runlog_start() {
   exec {_hw}> >(exec cat > /dev/null)
   _h=$!
   trap : HUP INT QUIT TERM
-  if [ -z "${_h}" ] || ! kill -0 "${_h}" 2> /dev/null; then
-    exec {_hw}>&-
-    trap - HUP INT QUIT TERM
+  if [ -z "${_hw}" ] || [ -z "${_h}" ] || ! kill -0 "${_h}" 2> /dev/null; then
+    [ -z "${_hw}" ] || exec {_hw}>&-
+    ### Back to the dispositions found on entry. Only a signal then at its
+    ### default is reset: a reset makes an INT ignored when bash started (a
+    ### job started with &) fatal again, and no trap ignores it after that.
+    for _s in HUP INT QUIT TERM; do
+      case "${_td}" in *" ${_s} "*) trap - "${_s}" ;; esac
+    done
     eval "${_tp}"
     echo "ALRT: ${_tool}: no run log kept, the placeholder for the console did not start" >&2
+    ### The day folder stays: another run may be making its file there.
     rm -f "${_file}"
-    rmdir "${_dir}" 2> /dev/null
     export _MIG_RUNLOG=none
     unset _MIG_RUNLOG_WRAPPER _MIG_RUNLOG_TTY
     return 0
