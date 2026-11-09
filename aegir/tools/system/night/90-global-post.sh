@@ -517,9 +517,15 @@ _global_root_only_here() {
 # above allows, and each serial and codebase only as the real directory
 # found inside it, never through a link; a codebase is moved by its name in
 # its serial, into a directory of root's that no one else can write.
+# A codebase another tree in the store links into stays: a tree whose
+# profiles is a link (an account platform's tree copied into the store)
+# reaches another serial's codebase that way, and moving that codebase
+# leaves the tree's links leading nowhere. Such a tree whose profiles link
+# leads nowhere is dead, and goes the same way once no platform alias
+# names it and nothing links into it.
 _shared_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
-  local _gSt _sRc
+  local _gSt _sRc _aliasText _u
   [ -L "/data/all" ] || [ -d "/data/all" ] || return 0
   _global_store_pick
   _sRc=$?
@@ -533,60 +539,146 @@ _shared_codebases_cleanup() {
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  _acct_in_real_dir "${_gSt}" _shared_codebases_here
+  # The platform aliases, read once: without them no tree is judged dead.
+  if _aliasText=$(mktemp); then
+    for _u in /data/disk/*; do
+      [ -d "${_u}/.drush" ] || continue
+      _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"
+    done
+  else
+    _aliasText=""
+    echo "INFO: no temporary file for the platform aliases -- no shared tree judged dead"
+  fi
+  _acct_in_real_dir "${_gSt}" _shared_codebases_here "${_aliasText}"
+  [ -z "${_aliasText}" ] || rm -f -- "${_aliasText}"
 }
-# Each serial of the current (pinned) store that is a real directory.
+# Each serial of the current (pinned) store that is a real directory, once
+# every link is read that may lead into its codebases: those in the store's
+# trees (_cbIn) and those at the top of each account platform (_cbUse). $1,
+# the platform aliases' text or empty, is passed on. Nothing is judged when
+# a link could not be read: a failed find (glob unexpanded, unreadable
+# tree) is not evidence a codebase is unused.
 _shared_codebases_here() {
-  local _s
+  local _s _t _gReal _rc=0
+  local -A _cbIn=() _cbUse=()
+  _gReal="$(pwd -P)"
+  for _t in ./*/*; do
+    _t="${_t#./}"
+    [ -d "./${_t}" ] && [ ! -L "./${_t}" ] && [ ! -L "./${_t%%/*}" ] || continue
+    [ -e "./${_t}/profiles" ] || [ -L "./${_t}/profiles" ] || continue
+    _shared_codebases_note "${_gReal}" "${_t}" \
+      < <(find "./${_t}" -type l -printf '%p\0%l\0' 2> /dev/null)
+    wait "$!" || _rc=1
+  done
+  _shared_codebases_note "${_gReal}" "" \
+    < <(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
+      -type l -printf '%p\0%l\0' 2> /dev/null)
+  wait "$!" || _rc=1
+  if [ "${_rc}" != "0" ]; then
+    echo "Skipping the shared codebases cleanup: the links in the store or in the account platforms could not all be read"
+    return 0
+  fi
   for _s in ./*; do
     _s="${_s#./}"
     [ -d "./${_s}" ] && [ ! -L "./${_s}" ] || continue
-    _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}"
+    _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}" "${1}" "${_gReal}"
   done
 }
-# The codebases of the current (pinned) serial $1, when it holds o_contrib:
-# each real directory holding a real profiles/ directory.
+# Pairs on stdin, a link and its target as written, read by name and never
+# followed (a relative target from where the link sits). A target in the
+# store, $1 its real path, is noted under <serial>/<codebase>, or <serial>
+# for a link to a serial itself, with the first link found: in _cbIn for a
+# link in the store's tree $2 (unless it leads back into that tree), in
+# _cbUse for an account platform's link ($2 empty).
+_shared_codebases_note() {
+  local _p _l _r _k
+  while IFS= read -r -d '' _p && IFS= read -r -d '' _l; do
+    [[ "${_p}" == /* ]] || _p="${1}/${_p#./}"
+    [[ "${_l}" == /* ]] || _l="${_p%/*}/${_l}"
+    case "${_l}" in
+      */|*//*|*/./*|*/../*|*/.|*/..)
+        _l="$(realpath -m -s -- "${_l}" 2> /dev/null)" || continue ;;
+    esac
+    case "${_l}" in
+      /data/all/?*) _r="${_l#/data/all/}" ;;
+      "${1}"/?*) _r="${_l#"${1}"/}" ;;
+      *) continue ;;
+    esac
+    _k="${_r%%/*}"
+    [ "${_r}" = "${_k}" ] || { _r="${_r#*/}"; _k="${_k}/${_r%%/*}"; }
+    if [ -z "${2}" ]; then
+      [ -n "${_cbUse[${_k}]:-}" ] || _cbUse[${_k}]="${_p}"
+    elif [ "${_k}" != "${2}" ]; then
+      [ -n "${_cbIn[${_k}]:-}" ] || _cbIn[${_k}]="${_p}"
+    fi
+  done
+}
+# The codebases of the current (pinned) serial $1, when it holds o_contrib.
+# A real directory holding a real profiles/ directory is unused when no
+# account platform and no other tree in the store links into it; one whose
+# profiles is a link leading nowhere is dead when, as well, no platform
+# alias names it ($2, the aliases' text: without it none is judged dead).
+# $3 is the store's real path.
 _shared_codebases_serial_here() {
-  local _p _Codebase _CodebaseDir _CodebaseTest _to
+  local _p _CodebaseDir _kind
   [ -d "./o_contrib" ] || return 0
   for _p in ./*; do
     _p="${_p#./}"
-    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] \
-      && [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ] || continue
+    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] || continue
     # The names platforms link to: the store by its /data/all name.
     _CodebaseDir="/data/all/${1}/${_p}"
-    _Codebase="${_CodebaseDir}/profiles"
-    # Defensive: a tree with a detectable docroot is a real codebase of any
-    # version -- never reap it. This loop targets the legacy D6/D7 shared
-    # /data/all store (anchored on a root-level profiles/); D8+ codebases are
-    # self-contained under distro/ and are not managed here.
-    [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
-    # 2>&1 belongs to find, not to sort: bound to sort, find's own error
-    # never reached the variable and any failed enumeration read as "no
-    # references". A failed find (glob unexpanded, unreadable tree) is
-    # not evidence the codebase is unused, so it is skipped, not moved.
-    _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
-      -type l -lname "${_Codebase}" 2>&1 | sort)
-    if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
-      echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
+    if [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ]; then
+      # Defensive: a tree with a detectable docroot is a real codebase of any
+      # version -- never reap it. This loop targets the legacy D6/D7 shared
+      # /data/all store (anchored on a root-level profiles/); D8+ codebases
+      # are self-contained under distro/ and are not managed here.
+      [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
+      _kind=unused
+    elif [ -L "./${_p}/profiles" ] && [ ! -e "./${_p}/profiles" ] \
+      && [ -n "${2}" ]; then
+      # Its docroot can still answer through the shared core it links to,
+      # so a registered platform alias, not the docroot, says it is used.
+      _kind=dead
+    else
       continue
     fi
-    if [ -z "${_CodebaseTest}" ]; then
-      if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
-        _to="${_CLD}/data/all/${1}/"
-        if ( umask 022; mkdir -p "${_CLD}" ) \
-          && _acct_in_real_dir "${_CLD}" _global_root_only_here \
-          && ( umask 022; mkdir -p "${_to}" ); then
-          echo "Moving no longer used ${_CodebaseDir} to ${_to}"
-          mv -f -- "./${_p}" "${_to}"
-        else
-          echo "Unused ${_CodebaseDir} not moved: ${_CLD} is not a real directory of root's closed to others"
-        fi
-      else
-        echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
-      fi
+    [ -n "${_cbUse[${1}/${_p}]:-}${_cbUse[${1}]:-}" ] && continue
+    if [ -n "${_cbIn[${1}/${_p}]:-}${_cbIn[${1}]:-}" ]; then
+      echo "Kept ${_CodebaseDir}: ${_cbIn[${1}/${_p}]:-${_cbIn[${1}]}} links into it"
+      continue
     fi
+    if [ "${_kind}" = "dead" ] \
+      && { _platform_alias_names "${_CodebaseDir}" "${2}" \
+        || _platform_alias_names "${3}/${1}/${_p}" "${2}"; }; then
+      echo "Kept ${_CodebaseDir}: its profiles link leads nowhere, but a platform is registered on it"
+      continue
+    fi
+    _shared_codebase_move "${1}" "${_p}" "${_kind}"
   done
+}
+# The codebase $2 of the current (pinned) serial $1, unused or dead ($3),
+# moved into the cleanup directory, or only named while the flag is off.
+_shared_codebase_move() {
+  local _cd="/data/all/${1}/${2}" _to _what _how
+  _what="Unused ${_cd}"
+  _how="no longer used ${_cd}"
+  if [ "${3}" = "dead" ]; then
+    _what="Dead ${_cd} (its profiles link leads nowhere)"
+    _how="dead ${_cd} (its profiles link leads nowhere)"
+  fi
+  if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
+    _to="${_CLD}/data/all/${1}/"
+    if ( umask 022; mkdir -p "${_CLD}" ) \
+      && _acct_in_real_dir "${_CLD}" _global_root_only_here \
+      && ( umask 022; mkdir -p "${_to}" ); then
+      echo "Moving ${_how} to ${_to}"
+      mv -f -- "./${2}" "${_to}"
+    else
+      echo "${_what} not moved: ${_CLD} is not a real directory of root's closed to others"
+    fi
+  else
+    echo "${_what} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+  fi
 }
 
 # The text of every platform alias in the current (pinned) .drush, one
