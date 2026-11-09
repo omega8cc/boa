@@ -2873,7 +2873,7 @@ _php_legacy_versions_cleanup_cnf() {
     _msg "PROC: _php_legacy_versions_cleanup_cnf"
   fi
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.2" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.2" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.2" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2885,7 +2885,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.2" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.2" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.2" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2897,7 +2897,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.3" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.3" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.3" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2909,7 +2909,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.3" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.3" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.3" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2921,7 +2921,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.4" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.4" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.4" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2933,7 +2933,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.4" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.4" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.4" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2945,7 +2945,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.5" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.5" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.5" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -2957,7 +2957,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.5" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.5" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.5" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -3143,8 +3143,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 5.6 if used
       _is_PHP_multi_five_six=$(grep "5\.6" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | grep "5\.6" 2>&1)
-      _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | grep "5\.6" 2>&1)
+      _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.6" 2>&1)
+      _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.6" 2>&1)
       _is_PHP_five_six=
       if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
         || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
@@ -3155,8 +3155,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.0 if used
       _is_PHP_multi_seven_zero=$(grep "7\.0" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | grep "7\.0" 2>&1)
-      _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | grep "7\.0" 2>&1)
+      _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.0" 2>&1)
+      _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.0" 2>&1)
       _is_PHP_seven_zero=
       if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
         || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
@@ -3167,8 +3167,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.1 if used
       _is_PHP_multi_seven_one=$(grep "7\.1" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | grep "7\.1" 2>&1)
-      _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | grep "7\.1" 2>&1)
+      _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.1" 2>&1)
+      _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.1" 2>&1)
       _is_PHP_seven_one=
       if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
         || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
@@ -3179,8 +3179,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.2 if used
       _is_PHP_multi_seven_two=$(grep "7\.2" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | grep "7\.2" 2>&1)
-      _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | grep "7\.2" 2>&1)
+      _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.2" 2>&1)
+      _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.2" 2>&1)
       _is_PHP_seven_two=
       if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
         || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
@@ -3191,8 +3191,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.3 if used
       _is_PHP_multi_seven_three=$(grep "7\.3" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | grep "7\.3" 2>&1)
-      _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | grep "7\.3" 2>&1)
+      _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.3" 2>&1)
+      _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.3" 2>&1)
       _is_PHP_seven_three=
       if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
         || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
@@ -3203,8 +3203,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.4 if used
       _is_PHP_multi_seven_four=$(grep "7\.4" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | grep "7\.4" 2>&1)
-      _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | grep "7\.4" 2>&1)
+      _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.4" 2>&1)
+      _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.4" 2>&1)
       _is_PHP_seven_four=
       if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
         || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
@@ -3215,8 +3215,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.0 if used
       _is_PHP_multi_eight_zero=$(grep "8\.0" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | grep "8\.0" 2>&1)
-      _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | grep "8\.0" 2>&1)
+      _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.0" 2>&1)
+      _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.0" 2>&1)
       _is_PHP_eight_zero=
       if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
         || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
@@ -3227,8 +3227,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.1 if used
       _is_PHP_multi_eight_one=$(grep "8\.1" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | grep "8\.1" 2>&1)
-      _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | grep "8\.1" 2>&1)
+      _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.1" 2>&1)
+      _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.1" 2>&1)
       _is_PHP_eight_one=
       if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
         || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
@@ -3239,8 +3239,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.2 if used
       _is_PHP_multi_eight_two=$(grep "8\.2" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | grep "8\.2" 2>&1)
-      _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | grep "8\.2" 2>&1)
+      _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.2" 2>&1)
+      _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.2" 2>&1)
       _is_PHP_eight_two=
       if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
         || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
@@ -3251,8 +3251,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.3 if used
       _is_PHP_multi_eight_three=$(grep "8\.3" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | grep "8\.3" 2>&1)
-      _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | grep "8\.3" 2>&1)
+      _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.3" 2>&1)
+      _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.3" 2>&1)
       _is_PHP_eight_three=
       if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
         || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
@@ -3263,8 +3263,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.4 if used
       _is_PHP_multi_eight_four=$(grep "8\.4" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | grep "8\.4" 2>&1)
-      _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | grep "8\.4" 2>&1)
+      _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.4" 2>&1)
+      _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.4" 2>&1)
       _is_PHP_eight_four=
       if [[ "${_is_PHP_multi_eight_four}" =~ "8.4" ]] \
         || [[ "${_is_PHP_FPM_eight_four}" =~ "8.4" ]] \
@@ -3275,8 +3275,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.5 if used
       _is_PHP_multi_eight_five=$(grep "8\.5" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | grep "8\.5" 2>&1)
-      _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | grep "8\.5" 2>&1)
+      _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.5" 2>&1)
+      _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.5" 2>&1)
       _is_PHP_eight_five=
       if [[ "${_is_PHP_multi_eight_five}" =~ "8.5" ]] \
         || [[ "${_is_PHP_FPM_eight_five}" =~ "8.5" ]] \

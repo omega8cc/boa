@@ -197,11 +197,14 @@ _nginx_start_in_flight() {
 }
 
 _nginx_master_pids() {
-  # The box's own master(s) only. A barracuda pass probes quic_bpf with a
-  # throwaway master that lives a second or two and carries its config path
-  # in its title; counting it would read as a second master, and taking it
-  # for the real one would stand a genuine outage down.
-  pgrep -af '^nginx: master process' 2> /dev/null \
+  # The box's own master(s) only: root's. Any other user can run a process
+  # titled "nginx: master process" (a site's PHP can exec one), which would
+  # read as a second master and restart nginx for every site, or stand in
+  # for a dead one. A barracuda pass probes quic_bpf with a throwaway master
+  # that lives a second or two and carries its config path in its title;
+  # counting it would read as a second master, and taking it for the real
+  # one would stand a genuine outage down.
+  pgrep -u root -af '^nginx: master process' 2> /dev/null \
     | grep -v 'boa-nginx-quic-bpf-probe' \
     | awk '{print $1}'
 }
@@ -423,8 +426,13 @@ _nginx_bind_check_fix() {
 _nginx_health_check_fix() {
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
-  # Check if Nginx is running and capture the process details
-  _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
+  # Root's master(s) and their own children only: a process any user titles
+  # "nginx: worker process" and stops would read as a stuck worker, and no
+  # such process can be a child of the master.
+  local _mp _mpids
+  _mpids=$(_nginx_master_pids)
+  _NGINX_PROCESSES=$(for _mp in ${_mpids}; do
+    ps -o user=,pid=,ppid=,stat=,args= -p "${_mp}" --ppid "${_mp}"; done 2> /dev/null)
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
     _MASTER_COUNT=$(_nginx_master_pids | grep -c .)
@@ -441,7 +449,7 @@ _nginx_health_check_fix() {
   fi
   # Check the state of the master process
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | awk '{print $8}')
+    _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
     if [ "${_MASTER_STATE}" = "Z" ] \
       || [ "${_MASTER_STATE}" = "T" ] \
       || [ "${_MASTER_STATE}" = "D" ]; then
@@ -453,7 +461,8 @@ _nginx_health_check_fix() {
   fi
   # Check the state of the worker processes
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _WORKER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{print $8}')
+    _WORKER_STATE=$(for _mp in ${_mpids}; do ps -o stat=,args= --ppid "${_mp}"; done 2> /dev/null \
+      | awk '$2 == "nginx:" && $3 == "worker" { print $1 }')
     if [[ "${_WORKER_STATE}" =~ "Z" ]] \
       || [[ "${_WORKER_STATE}" =~ "T" ]]; then
       echo "Nginx worker process is in an abnormal state: ${_WORKER_STATE}."

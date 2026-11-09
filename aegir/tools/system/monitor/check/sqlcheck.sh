@@ -286,6 +286,10 @@ if [ "${_STATUS}" != "CLEAN" ]; then
   [ -x "${_CHECKSQL}" ] && bash "${_CHECKSQL}"
 else
   touch "${_CLEAN_TOUCH}"
+  # a pass checksql.sh deferred inside its hour runs once the hour is over
+  if [ -e "/var/log/boa/checksql-full-pass.pending" ]; then
+    [ -x "${_CHECKSQL}" ] && bash "${_CHECKSQL}"
+  fi
 fi
 
 ###

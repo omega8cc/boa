@@ -2550,7 +2550,7 @@ _check_fpm_saturation() {
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
       _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null \
-        | grep -v -E "${_wl}" | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
+        | LC_ALL=C grep -a -v -E "${_wl}" | LC_ALL=C grep -a -c -- "${_NGINX_FPM_SAT_PATTERN}")"
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))

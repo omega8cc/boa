@@ -77,6 +77,27 @@
       name, or be handed a path it never listed, and a log scanner could miss
       a line.
 
+    * The upgrade janitor repairs a missing Diffie-Hellman file only from
+      nginx's own report of one in the server's key store: a line in the
+      error log that a visitor's request could shape no longer names a path
+      root writes to.
+
+    * The nginx monitor judges only the server's own nginx: a process another
+      user titles like an nginx master or worker no longer makes it restart
+      nginx for every site.
+
+    * The full MySQL table check the crash watch starts runs at most once
+      an hour, since its trigger is a system log line any local process
+      can write; a trigger inside the hour is kept and checked once the
+      hour is over.
+
+    * The FPM saturation alert and the PHP version cleanup read their input
+      byte for byte: one account's output or control file holding a NUL no
+      longer hides every other account's lines from them.
+
+    * The OS upgrade tools add a DHCP server to the firewall allow list only
+      when the log names a plain IPv4 address, as the box monitor already did.
+
     * The files storage wrapper an account's tasks call through sudo holds a
       tenant to its own account: with no account named, a call could reach a
       site of another account on the server.
