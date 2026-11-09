@@ -704,20 +704,29 @@ _is_empty_file() {
   [[ ! -s "$file" ]]
 }
 
+# A usable DH file: a regular file holding DH parameters. A non-empty file
+# without them (cut short, overwritten) fails nginx's config load as surely
+# as an empty one, and must never be the copy the others are repaired from.
+_dhp_valid() {
+  [[ -f "$1" && ! -L "$1" ]] \
+    && LC_ALL=C grep -aqE -- '^-----BEGIN ([A-Z0-9.]+ )?DH PARAMETERS-----$' "$1" 2> /dev/null
+}
+
 # Check for empty .dhp files and attempt to replace or regenerate them
 _process_dhp_files() {
   _dhp_files=("${_SSL_DIR}"/*.dhp)
   _non_empty_dhp=""
-  # Find the first non-empty .dhp file
+  # Find the first usable .dhp file
   for _dhp_file in "${_dhp_files[@]}"; do
-    if ! _is_empty_file "${_dhp_file}"; then
+    if _dhp_valid "${_dhp_file}"; then
       _non_empty_dhp="${_dhp_file}"
       break
     fi
   done
   # Loop over all .dhp files
   for _dhp_file in "${_dhp_files[@]}"; do
-    if _is_empty_file "${_dhp_file}"; then
+    [[ -e "${_dhp_file}" && ! -L "${_dhp_file}" ]] || continue
+    if ! _dhp_valid "${_dhp_file}"; then
       if [[ -n "${_non_empty_dhp}" ]]; then
         echo "Replacing empty file ${_dhp_file} with ${_non_empty_dhp}"
         cp "${_non_empty_dhp}" "${_dhp_file}"
@@ -729,19 +738,26 @@ _process_dhp_files() {
   done
 }
 
-# Scan Nginx error log for .dhp related errors. Only nginx's own emerg line
-# for a DH file in the store counts, read from the start of the line: any
-# other line can carry a request, a URL or a path a visitor or an account
-# chose, and root writes the file the line names.
+# Repair the DH files root's own nginx config names when nginx reports a DH
+# file it cannot load (BIO_new_file for a missing one, PEM_read_bio_DHparams
+# for a bad one). The error log is a hint only, never the source of a name:
+# it holds text a request chose, and a decoded %0A in a logged path starts a
+# line of its own, so any line in it can be forged. The names come from the
+# ssl_dhparam lines root and the Aegir backend write, in the key store only.
 _scan_nginx_errors() {
   local _missing_dhp
   [[ -r "${_NGINX_ERROR_LOG}" ]] || return 0
-  LC_ALL=C grep -aoE '^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \[emerg\] [0-9]+#[0-9]+: PEM_read_bio_DHparams\("/etc/ssl/private/[A-Za-z0-9._-]+\.dhp"\)' \
-    "${_NGINX_ERROR_LOG}" | sed -E 's/.*\("([^"]+)"\)$/\1/' | sort -u \
+  LC_ALL=C grep -aqE '(BIO_new_file|PEM_read_bio_DHparams)\("[^"]*\.dhp"\)' \
+    "${_NGINX_ERROR_LOG}" || return 0
+  LC_ALL=C grep -ahoE '^[[:space:]]*ssl_dhparam[[:space:]]+/etc/ssl/private/[A-Za-z0-9._-]+\.dhp[[:space:]]*;' \
+    -r /etc/nginx /var/aegir/config/server_master/nginx 2> /dev/null \
+    | LC_ALL=C grep -aoE '/etc/ssl/private/[A-Za-z0-9._-]+\.dhp' | sort -u \
     | while LC_ALL=C IFS= read -r _missing_dhp; do
     [[ "${_missing_dhp}" =~ ^/etc/ssl/private/[A-Za-z0-9._-]+\.dhp$ ]] || continue
-    [[ -e "${_missing_dhp}" || -L "${_missing_dhp}" ]] && continue
-    echo "Missing .dhp file detected: ${_missing_dhp}"
+    [[ -L "${_missing_dhp}" ]] && continue
+    _dhp_valid "${_missing_dhp}" && continue
+    [[ "${_missing_dhp}" = "${_non_empty_dhp}" ]] && continue
+    echo "Missing or unusable .dhp file detected: ${_missing_dhp}"
     if [[ -n "${_non_empty_dhp}" ]]; then
       echo "Copying non-empty .dhp file to ${_missing_dhp}"
       cp "${_non_empty_dhp}" "${_missing_dhp}"

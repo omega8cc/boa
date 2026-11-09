@@ -118,7 +118,13 @@ _TIMEDATE=$(date +%y%m%d-%H%M)
 _FULL_STAMP="/var/log/boa/checksql-full-pass.stamp"
 _FULL_PENDING="/var/log/boa/checksql-full-pass.pending"
 _full_pass_due() {
-  if [ -n "$(find "${_FULL_STAMP}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
+  # The hour counts from the end of the last pass (the stamp is touched again
+  # there). A stamp dated ahead of the clock, left by a clock stepped back,
+  # is stale: it must not hold every pass off until the clock catches up.
+  local _now _ts
+  _now=$(date +%s)
+  _ts=$(stat -c %Y "${_FULL_STAMP}" 2> /dev/null)
+  if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
     touch "${_FULL_PENDING}"
     return 1
   fi
@@ -255,4 +261,6 @@ if [ -f "${_FIX_WORK}" ]; then
 fi
 
 rm -f "${_LOG_FILE}"
+# the next full pass counts its hour from here
+touch "${_FULL_STAMP}"
 exit 0

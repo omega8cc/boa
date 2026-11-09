@@ -77,19 +77,22 @@
       name, or be handed a path it never listed, and a log scanner could miss
       a line.
 
-    * The upgrade janitor repairs a missing Diffie-Hellman file only from
-      nginx's own report of one in the server's key store: a line in the
-      error log that a visitor's request could shape no longer names a path
-      root writes to.
+    * The upgrade janitor repairs a missing or damaged Diffie-Hellman file
+      only under the names nginx's own configuration gives it: a line in the
+      error log, which a visitor's request can shape, no longer names a path
+      root writes to. A damaged file is now repaired too, and never used as
+      the copy the others are repaired from.
 
     * The nginx monitor judges only the server's own nginx: a process another
-      user titles like an nginx master or worker no longer makes it restart
-      nginx for every site.
+      user titles like an nginx master or worker, and a memory error line in
+      the error log that nginx did not write, no longer make it restart nginx
+      for every site. A stopped, stuck or defunct master now gets the restart
+      it was meant to; the check never matched the state ps reports for it.
 
     * The full MySQL table check the crash watch starts runs at most once
-      an hour, since its trigger is a system log line any local process
-      can write; a trigger inside the hour is kept and checked once the
-      hour is over.
+      an hour, counted from the end of the last one, since its trigger is a
+      system log line any local process can write; a trigger inside the hour
+      is kept and checked once the hour is over.
 
     * The FPM saturation alert and the PHP version cleanup read their input
       byte for byte: one account's output or control file holding a NUL no

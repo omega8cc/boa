@@ -196,17 +196,31 @@ _nginx_start_in_flight() {
   return 1
 }
 
+_nginx_pid_is_nginx() {
+  # The process runs the nginx binary (or the copy an upgrade replaced while
+  # it ran). A title is whatever argv[0] its caller chose, and a setuid
+  # program run under one keeps euid 0, so neither the title nor the user
+  # tells root's nginx from a process another user named after it.
+  local _x
+  _x="$(readlink "/proc/$1/exe" 2> /dev/null)"
+  [ "${_x}" = "/usr/sbin/nginx" ] || [ "${_x}" = "/usr/sbin/nginx (deleted)" ]
+}
+
 _nginx_master_pids() {
-  # The box's own master(s) only: root's. Any other user can run a process
-  # titled "nginx: master process" (a site's PHP can exec one), which would
+  # The box's own master(s) only: run by root, both uids, from the nginx
+  # binary. Any other user can run a process titled "nginx: master process"
+  # (a site's PHP can exec one, a setuid program among them), which would
   # read as a second master and restart nginx for every site, or stand in
   # for a dead one. A barracuda pass probes quic_bpf with a throwaway master
   # that lives a second or two and carries its config path in its title;
   # counting it would read as a second master, and taking it for the real
   # one would stand a genuine outage down.
-  pgrep -u root -af '^nginx: master process' 2> /dev/null \
+  local _p
+  for _p in $(pgrep -u root -U root -af '^nginx: master process' 2> /dev/null \
     | grep -v 'boa-nginx-quic-bpf-probe' \
-    | awk '{print $1}'
+    | awk '{print $1}'); do
+    _nginx_pid_is_nginx "${_p}" && echo "${_p}"
+  done
 }
 
 _box_going_down() {
@@ -372,13 +386,25 @@ _restart_nginx() {
 }
 
 _nginx_oom_detection() {
-  if [ -e "/var/log/nginx/error.log" ]; then
-    if [ `tail --lines=500 /var/log/nginx/error.log \
-      | grep --count "Cannot allocate memory"` -gt 0 ]; then
-      _thisErrLog="$(date) Nginx OOM error"
-      echo "${_thisErrLog}" >> ${_pthOml}
-      _restart_nginx "Nginx OOM"
-    fi
+  # A memory error counts when nginx itself wrote it: the error log also
+  # carries text a request chose (a referrer, a decoded %0A in a path starts
+  # a line of its own), so a line counts only when its "<pid>#" is root's
+  # master or one of its children. Those pids are hidden from every other
+  # user (/proc hidepid, a root-only pidfile).
+  local _mp _live _p _hit=NO
+  [ -e "/var/log/nginx/error.log" ] || return 0
+  _live=" $(for _mp in $(_nginx_master_pids); do
+    echo "${_mp}"; ps -o pid= --ppid "${_mp}"; done 2> /dev/null | tr -s ' \n' '  ') "
+  for _p in $(tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+    | LC_ALL=C grep -a "Cannot allocate memory" \
+    | LC_ALL=C grep -aoE '^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:]{8} \[[a-z]+\] [0-9]+#' \
+    | grep -oE '[0-9]+#$' | tr -d '#' | sort -u); do
+    [[ "${_live}" == *" ${_p} "* ]] && _hit=YES
+  done
+  if [ "${_hit}" = "YES" ]; then
+    _thisErrLog="$(date) Nginx OOM error"
+    echo "${_thisErrLog}" >> ${_pthOml}
+    _restart_nginx "Nginx OOM"
   fi
 }
 
@@ -449,10 +475,18 @@ _nginx_health_check_fix() {
   fi
   # Check the state of the master process
   if [ "${_NGINX_RESTARTED}" = false ]; then
+    # The state's first letter: the master is a session leader, so ps prints
+    # "Ss", "Ts", "Ds", and a whole-string match never fired. A moment in
+    # uninterruptible sleep (a reload, a slow disk) is not a stuck master,
+    # so a D is read again after the same grace as the count.
     _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
-    if [ "${_MASTER_STATE}" = "Z" ] \
-      || [ "${_MASTER_STATE}" = "T" ] \
-      || [ "${_MASTER_STATE}" = "D" ]; then
+    if [ "${_MASTER_STATE:0:1}" = "D" ]; then
+      sleep 5
+      _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
+    fi
+    if [ "${_MASTER_STATE:0:1}" = "Z" ] \
+      || [ "${_MASTER_STATE:0:1}" = "T" ] \
+      || [ "${_MASTER_STATE:0:1}" = "D" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       echo "$(date) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${_pthOml}
       echo "$(date) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
