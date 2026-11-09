@@ -806,10 +806,10 @@ _mfs_recheck_here() {
   find -P . -mindepth 1 -type d -cnewer "${_wk}/start" -print0 > "${_wk}/dirs" 2> /dev/null || return 1
   find -P . -type f -cnewer "${_wk}/start" -printf '%k %p\0' > "${_wk}/sized" 2> /dev/null || return 1
   : > "${_wk}/trees" || return 1
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _chg["${_d}"]=1
   done 9< "${_wk}/dirs"
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _p="${_d%/*}"
     if [ "${_p}" = "." ]; then
       [ -n "${_topChg}" ] || continue
@@ -830,14 +830,14 @@ _mfs_recheck_here() {
   # while it is still the directory listed (one gone or re-pointed since
   # counts nothing), a file as find saw it.
   _here=$(pwd -P) || return 1
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _k=$(cd -P -- "${_d}" 2> /dev/null \
       && [ "$(pwd -P)" = "${_here}/${_d#./}" ] && du -s -k . 2> /dev/null)
     _k="${_k%%[!0-9]*}"
     _kb=$(( _kb + ${_k:-0} ))
   done 9< "${_wk}/trees"
   # A file below a tree copied again is copied with it.
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _k="${_d%% *}"
     _d="${_d#* }"
     _q="${_d%/*}"
@@ -853,7 +853,7 @@ _mfs_recheck_here() {
   _MFS_RECHECK="${_n} directory trees and ${_f} files, ${_kb}K"
   [ "${_kb}" -le $(( _RECHECK_MAX_MB * 1024 )) ] || return 2
   [ "${_how}" = "count" ] && return 0
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     rsync -a -c --no-devices --no-specials "${_d}/" "${_dst}/${_d#./}/" 2> /dev/null || return 1
   done 9< "${_wk}/trees"
   if [ -s "${_wk}/files" ]; then
