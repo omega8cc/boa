@@ -188,6 +188,26 @@
 
 @=> Important Fixes
 
+    * The nightly shared codebases cleanup no longer moves a shared codebase
+      in /data/all that something still links into: another tree there, an
+      account platform that is itself a link, or a platform registered
+      anywhere, ~/static included. It counted only the links at the top of
+      the accounts' distro platforms, so a tree whose profiles was a link
+      into an older serial lost what it linked to and stayed in the store
+      for good with links leading nowhere, which every server move then
+      reported as content that will not travel. Under the same
+      _SHARED_CODEBASES_CLEANUP flag the cleanup now also moves such a tree
+      away once its profiles link leads nowhere, no platform is registered
+      on it and nothing links into it; with the flag off it only names it,
+      as it names an unused codebase. A night it cannot read every such link
+      and every platform alias, it moves nothing.
+
+    * On a hosted server a codebase the nightly cleanup moves out of
+      /data/all now stays a week in its cleanup directory before it is
+      deleted, as intended. The prune judged each one by the age of its
+      files, which a move keeps, so an old codebase was deleted the same
+      night it was moved and could never be put back.
+
     * Control panel tasks no longer wait, silently and for minutes at a time,
       until a site cron the panel started has finished. The lock that keeps
       two task queue runs of one instance apart was held by every process a
