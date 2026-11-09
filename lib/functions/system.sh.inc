@@ -5941,7 +5941,16 @@ _tool_marker() {
 _drush_fetch_swap() {
   local _dir="${1}" _tgz="${2}" _chk="${3}" _nme="${4}"
   local _new="${1}.new" _old="${1}.old"
-  # a run killed mid-swap leaves these; nothing else uses the names
+  # A run killed between the two renames below leaves the working copy in .old
+  # and no install dir (or the empty one the caller's mkdir -p makes): put it
+  # back before the leftovers go, or a failed fetch now would leave no Drush.
+  if [ -f "${_old}/${_chk}" ] && [ ! -f "${_dir}/${_chk}" ]; then
+    rmdir -- "${_dir}" 2> /dev/null
+    if [ ! -e "${_dir}" ] && mv -- "${_old}" "${_dir}"; then
+      _msg "INFO: ${_nme} put back from ${_old}, which an interrupted swap left"
+    fi
+  fi
+  # the leftovers of a killed run; nothing else uses the names
   rm -rf -- "${_new}" "${_old}"
   if ! mkdir -m 0755 -- "${_new}" || ! cd -- "${_new}"; then
     rm -rf -- "${_new}"
