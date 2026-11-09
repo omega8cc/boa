@@ -10821,7 +10821,7 @@ _satellite_static_modules_here() {
   _s="$(pwd -P)"
   find . -maxdepth 5 \( -name '.?*' -prune \) \
     -o \( -path './*/*' -type d -name 'module*' -print0 \) \
-    | while IFS= read -r -d '' _m; do
+    | while LC_ALL=C IFS= read -r -d '' _m; do
       ( cd -P -- "${_m}" 2> /dev/null \
         && [ "$(pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
     done
@@ -11883,7 +11883,7 @@ _satellite_export_path() {
   # Once the panel looks there: what sits at the top, or in another such folder
   (
     cd -P -- "${_d}" 2> /dev/null || exit 0
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       mv -n -- "${_f}" "./${_t}/" 2> /dev/null
     done < <(find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
     while IFS= read -r _f; do

@@ -114,7 +114,7 @@ _key_for() {
   case "${_comm}" in
     bash|sh|dash|*\<defunct\>*)
       local _args=()
-      while IFS= read -r -d '' _a; do _args+=("${_a}"); done \
+      while LC_ALL=C IFS= read -r -d '' _a; do _args+=("${_a}"); done \
         2>/dev/null < "${_PROC}/${_pid}/cmdline"
       for _a in "${_args[@]}"; do
         case "${_a}" in
@@ -184,7 +184,7 @@ _sample_pass() {
     # size 0, so `[ -s ]` is useless here — it would skip EVERY process. Read the
     # first NUL-delimited token instead; kernel threads have an empty cmdline.
     _arg0=""
-    IFS= read -r -d '' _arg0 2>/dev/null < "${_d}/cmdline"
+    LC_ALL=C IFS= read -r -d '' _arg0 2>/dev/null < "${_d}/cmdline"
     [ -n "${_arg0}" ] || continue
     _cpu=$(( _utime + _stime ))
     _rssb=$(( _rss * _PAGE ))

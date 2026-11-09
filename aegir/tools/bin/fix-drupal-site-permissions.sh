@@ -572,7 +572,7 @@ _place_own_here() {
 _links_left_note() {
   local _f _n=0 _first="" _here
   [ /dev/fd/3 -ef /dev/null ] && return 0
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -n "${_first}" ] || _first="${_f}"
     _n=$(( _n + 1 ))
   done < <(find "$@" -type f -links +1 -print0 2> /dev/null)

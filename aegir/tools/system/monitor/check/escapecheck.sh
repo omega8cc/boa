@@ -152,7 +152,7 @@ _makeactions() {
 
   # grep across all lsh log files for "forbidden" entries, last 999 lines total
   # (mirrors Perl: grep -i forbidden /var/log/lsh/*.log | tail --lines=999)
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     # Sanitise — strip chars outside safe set (mirrors Perl regex, adds = for lsh)
     _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-=]/}"
 

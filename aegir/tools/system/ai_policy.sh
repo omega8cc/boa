@@ -398,7 +398,7 @@ _process_instance() {
   local _line _flag _site _body
   rm -rf -- "${_new}"
   mkdir -m 0755 -- "${_new}" || return 1
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -ra _fields <<< "${_line}"

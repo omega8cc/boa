@@ -8735,7 +8735,7 @@ _ltd_fpm_move_fpm() {
   done <<< "${2}"
   _body=$(_ltd_ctrl_read multi-fpm.info)
   # each site's last row
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _ltd_fpm_mrow "${_line}"
     [ -n "${_LTD_MR_S}" ] && [ -n "${_to[${_LTD_MR_S}]+x}" ] || continue
     _cur["${_LTD_MR_S}"]="${_LTD_MR_V}"
@@ -8752,7 +8752,7 @@ _ltd_fpm_move_fpm() {
   _done=$(printf '%s' "${_done}" | LC_ALL=C sort)
   [ -n "${_done}" ] || return 0
   if [ -n "${_body}" ]; then
-    while IFS= read -r _line; do
+    while LC_ALL=C IFS= read -r _line; do
       _ltd_fpm_mrow "${_line}"
       [ -n "${_LTD_MR_S}" ] && [[ $'\n'"${_done}"$'\n' == *$'\n'"${_LTD_MR_S}"$'\n'* ]] && _line="#${_line}"
       _new+="${_line}"$'\n'
@@ -9534,7 +9534,7 @@ else
     -exec rm -rf {} + 2>/dev/null
   if ! grep -qiE '^[[:space:]]*logfilename[[:space:]]*[:=]' /etc/lshell.conf 2>/dev/null; then
     find /var/log/lsh -mindepth 1 -maxdepth 1 -type f -name '*.log' -printf '%u\0%f\0' 2>/dev/null \
-      | while IFS= read -r -d '' _lshOwner && IFS= read -r -d '' _lshName; do
+      | while LC_ALL=C IFS= read -r -d '' _lshOwner && LC_ALL=C IFS= read -r -d '' _lshName; do
         [ -n "${_lshOwner}" ] && [ -n "${_lshName}" ] || continue
         case "${_lshOwner}" in
           *[!0-9]*) [ "${_lshName%.log}" = "${_lshOwner}" ] || rm -f "/var/log/lsh/${_lshName}" ;;

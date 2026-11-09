@@ -177,7 +177,7 @@ _makeactions() {
     exec 3< <(tail -c +$(( _last_offset + 1 )) "${_MESSAGES_LOG}" 2>/dev/null)
   fi
 
-  while IFS= read -r _line <&3; do
+  while LC_ALL=C IFS= read -r _line <&3; do
     _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
 
     if [[ "${_line}" =~ "Authentication failed for user" ]] || \

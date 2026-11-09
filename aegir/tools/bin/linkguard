@@ -451,7 +451,7 @@ _lg_read_roots() {
   _LG_ROOTS=()
   _LG_FOREIGN=()
   _out="$(nginx -T 2> /dev/null)" || return 1
-  while IFS=$'\t' read -r _k _v; do
+  while LC_ALL=C IFS=$'\t' read -r _k _v; do
     case "${_k}" in
       R) _LG_ROOTS+=("${_v}") ;;
       D) _LG_FOREIGN+=("${_v}") ;;
@@ -516,7 +516,7 @@ _lg_walk() {
   _LG_REC_TU=()
   _LG_REC_REAL=()
   _LG_SUM=""
-  while IFS= read -r -d '' _x; do
+  while LC_ALL=C IFS= read -r -d '' _x; do
     _f+=("${_x}")
     if [ "${_f[0]}" = "SUMMARY" ] && [ "${#_f[@]}" -eq 7 ]; then
       _LG_SUM="${_f[*]:1}"
@@ -586,7 +586,7 @@ _lg_fix() {
     _LG_ONE=1
   else
     _lg_read_roots || _die "nginx -T failed; nothing changed"
-    while IFS= read -r _d; do
+    while LC_ALL=C IFS= read -r _d; do
       _dirs+=("${_d}")
     done < <({ _lg_platform_dirs; for _d in "${_LG_ROOTS[@]}"; do
       _r="$(realpath -e -- "${_d}" 2> /dev/null)" && [ -d "${_r}" ] && printf '%s\n' "${_r}"

@@ -444,7 +444,7 @@ _calc_depends() {
   # Echoes the Depends value (may be empty); never fails the build.
   local _stage="$1" _work="$2"
   local _elves=() _f _out
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     if file -b "${_f}" 2>/dev/null | grep -q '^ELF'; then
       _elves+=("${_f}")
     fi

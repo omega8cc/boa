@@ -290,7 +290,7 @@ _distro_sites_all_modes() {
 _vhost_tls11_drop_here() {
   local _f _rc=""
   local -a _n=() _m=()
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     case "${_f}" in
       /rc=*) _rc="${_f#/rc=}"; continue ;;
     esac
@@ -305,7 +305,7 @@ _vhost_tls11_drop_here() {
   [ "${_rc}" = "0" ] || _rc="list"
   if [ "${_rc}" = "0" ] && [ "${#_n[@]}" -gt 0 ]; then
     _rc=""
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       case "${_f}" in
         /rc=*) _rc="${_f#/rc=}" ;;
         *) _m+=( "${_f}" ) ;;
@@ -625,7 +625,7 @@ _shared_codebases_here() {
 # it leads back into that tree), in _cbUse for any other link ($2 empty).
 _shared_codebases_note() {
   local _p _l _x _t _r _k
-  while IFS= read -r -d '' _p && IFS= read -r -d '' _l; do
+  while LC_ALL=C IFS= read -r -d '' _p && LC_ALL=C IFS= read -r -d '' _l; do
     [[ "${_p}" == /* ]] || _p="${1}/${_p#./}"
     [[ "${_l}" == /* ]] || _l="${_p%/*}/${_l}"
     case "${_l}" in
@@ -1061,7 +1061,7 @@ _pass_backups_heal_here() (
     _baks=( "${_live}"-pre-* )
     [ "${#_baks[@]}" -gt 3 ] || continue
     ls -t -- "${_baks[@]}" 2> /dev/null | tail -n +4 \
-      | while IFS= read -r _old; do
+      | while LC_ALL=C IFS= read -r _old; do
           rm -f -- "${_old}"
         done
   done
@@ -1222,7 +1222,11 @@ _global_cleanup() {
   find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/solr-archive -mindepth 1 -maxdepth 1 -type f -mtime +30 -exec rm -f {} \; &> /dev/null
-  find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
+  ### Old jetty leftovers go after a day; the init scripts autoupboa moves
+  ### aside (jetty9.initd, like solr7.initd and solr9.initd beside it) stay:
+  ### mv keeps their old mtime, so they went the night they were moved.
+  find /var/backups/jetty* -maxdepth 0 ! -name '*.initd' -mtime +0 \
+    -exec rm -rf {} \; &> /dev/null
   ### dragon/config is a low-volume, high-value config archive -- never
   ### auto-purged. Every other entry goes once it is a week old, judged by when
   ### it was made there (ctime): the copies keep the mtime of what they copy

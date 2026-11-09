@@ -1883,7 +1883,7 @@ _store_live_readers() {
   _SLR_REAL_STORE=""
   [ -L "${_SLR_STORE}" ] || _SLR_REAL_STORE=$(readlink -f "${_SLR_STORE}" 2>/dev/null)
   _store_link_index
-  while IFS="$(printf '\t')" read -r _SLR_LINK _SLR_TGT; do
+  while LC_ALL=C IFS="$(printf '\t')" read -r _SLR_LINK _SLR_TGT; do
     [ -n "${_SLR_LINK}" ] || continue
     case "${_SLR_LINK}" in "${_SLR_ACCT}"/*/sites/"${_SLR_SITE}"/*) continue ;; esac
     _SLR_HIT="NO"
@@ -2740,7 +2740,7 @@ _unshare_closed_ex() {
     _log "[ERROR] Un-share copy: the ${4} store $(_log_name "${3%/}") is closed to ${_who} as a whole; nothing copied"
     return 1
   fi
-  while IFS= read -r -d '' _p; do
+  while LC_ALL=C IFS= read -r -d '' _p; do
     _r="${_p#"${3%/}"/}"
     [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
     # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS): a

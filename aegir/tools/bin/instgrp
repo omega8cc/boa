@@ -5043,7 +5043,7 @@ _wg_private_here() {
 # shellcheck disable=SC2329
 _wg_denied_here() {
   local _d
-  while IFS= read -r -d '' _d; do
+  while LC_ALL=C IFS= read -r -d '' _d; do
     _wg_in "$(pwd -P)/${_d#./}" _wg_private_here "${1}" "${2}" "${3}" "${4}"
   done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P . -regextype posix-extended -type d \
     -iregex "${_WG_DENIED_RE}" -prune -print0 2> /dev/null)
@@ -5147,7 +5147,7 @@ _wg_gid_paths() {
     while IFS= read -r _r; do
       [ -n "${_r}" ] || continue
       _wg_in "${_r}" find -P . -gid "${1}" \( -type d -o -type f -links 1 \) -print0 2> /dev/null \
-        | head -z -n "${2}" | while IFS= read -r -d '' _l; do printf '%s\0' "${_r}${_l#.}"; done
+        | head -z -n "${2}" | while LC_ALL=C IFS= read -r -d '' _l; do printf '%s\0' "${_r}${_l#.}"; done
     done < <(_wg_parts_beyond)
   } | head -z -n "${2}" | tr '\n\0' '?\n' | LC_ALL=C tr -c '[:print:]\n' '?'
 }

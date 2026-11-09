@@ -4945,7 +4945,7 @@ _archived_list_user() {
   if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
   [ "${_rc}" -eq 0 ] || return 0
   echo "${_u}: $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') entries under ${_d}"
-  while IFS= read -r -d '' _e; do
+  while LC_ALL=C IFS= read -r -d '' _e; do
     _n=$(basename "${_e}")
     if ! _age=$(_archived_age_days "${_n}"); then
       echo "  ${_n}: not a stamp, left alone"
@@ -4965,7 +4965,7 @@ _archived_prune_user() {
   _d=$(_archived_store "${_u}"); _rc=$?
   if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
   [ "${_rc}" -eq 0 ] || return 0
-  while IFS= read -r -d '' _e; do
+  while LC_ALL=C IFS= read -r -d '' _e; do
     _n=$(basename "${_e}")
     _age=$(_archived_age_days "${_n}") || continue
     [ "${_age}" -gt "${_days}" ] || continue
@@ -5081,7 +5081,7 @@ _archived_heal() {
     _d=$(_archived_store "${_u}" 2> /dev/null) || continue
     _pct=$(_archived_fs_used_pct "${_d}")
     [[ "${_pct}" =~ ^[0-9]+$ ]] && [ "${_pct}" -gt "${_t}" ] || continue
-    while IFS= read -r -d '' _e; do
+    while LC_ALL=C IFS= read -r -d '' _e; do
       _n=$(basename -- "${_e}")
       _archived_age_secs "${_n}" > /dev/null 2>&1 || continue
       [ -L "${_e}" ] && continue

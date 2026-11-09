@@ -378,7 +378,7 @@ _nginx_names_with_here() {
   local _p="${1}" _f _rc=""
   local -a _n=() _m=()
   shift
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     case "${_f}" in
       /rc=*) _rc="${_f#/rc=}"; continue ;;
     esac
@@ -395,7 +395,7 @@ _nginx_names_with_here() {
   if [ "${_rc}" = "0" ]; then
     [ "${#_n[@]}" -gt 0 ] || return 0
     _rc=""
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       case "${_f}" in
         /rc=*) _rc="${_f#/rc=}" ;;
         *) _m+=( "${_f}" ) ;;
@@ -424,7 +424,7 @@ _nginx_sed_if_here() {
     shift
   done
   shift
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     _nginx_sed_here "${_f}" "$@"
   done < <(_nginx_names_with_here "${_p}" "${_g[@]}")
 }
@@ -444,7 +444,7 @@ _nginx_acct_sed_if() {
 # its name there, so no link on the way is followed and no FIFO blocks.
 _nginx_drop_marked() {
   local _top="${1}" _f _sub
-  while IFS= read -r -d '' -u 9 _f; do
+  while LC_ALL=C IFS= read -r -d '' -u 9 _f; do
     _f="${_f#./}"
     _sub=""
     case "${_f}" in
@@ -2108,7 +2108,7 @@ _nginx_migration_proxy_backend_drop() {
 # leaves <n>.orig and <n>.path in $1 for the rollback.
 _nginx_migration_proxy_backend_drop_here() {
   local _d="${1}" _v="${2}" _f _k
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
     _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
     _acct_read_here "${_f}" > "${_k}.orig"
@@ -2170,7 +2170,7 @@ _nginx_migration_proxy_client() {
 # $1 for the rollback.
 _nginx_migration_proxy_client_here() {
   local _d="${1}" _v="${2}" _f _k
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
     _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
     _acct_read_here "${_f}" > "${_k}.orig"

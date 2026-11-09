@@ -3323,7 +3323,7 @@ _files_store_perm_here() {
   _night_mode_own_here "${_o}" f 0664 . -mindepth 1 "${_pr[@]}"
   if [[ "${_wg}" == wg-* ]]; then
     _in_real_sub private _private_modes_here "${_wg}"
-    while IFS= read -r -d '' _dn; do
+    while LC_ALL=C IFS= read -r -d '' _dn; do
       _in_real_sub "${_dn#./}" _private_modes_here "${_wg}"
     done < <(find . -mindepth 1 -regextype posix-extended -path ./private -prune \
       -o -type d -iregex "${_NIGHT_DENIED_RE}" -prune -print0 2> /dev/null)

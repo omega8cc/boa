@@ -437,7 +437,7 @@ _ensure_owners() {
   # the index. $1 = control file, $2 = the context's vhost.d dir.
   local _line _s _need=""
   [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -r _s _ <<< "${_line}"
@@ -679,7 +679,7 @@ _front_signature() {
   local _line _s
   echo "front:${_front_on}"
   [[ -n "${_front_on}" ]] || return 0
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -r _s _ <<< "${_line}"
@@ -825,7 +825,7 @@ _process_context() {
   local -a _ip_list
   rm -rf -- "${_new}" "${_front_new}"
   mkdir -m 0755 -- "${_new}" "${_front_new}" || return 1
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -ra _fields <<< "${_line}"

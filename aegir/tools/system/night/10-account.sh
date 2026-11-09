@@ -1154,12 +1154,12 @@ _night_export_dir_here() {
 # another folder of such a name (a move can leave two), moved into the folder $3.
 _night_export_gather_here() {
   local _t="${3}" _f _d _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
   done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
   while IFS= read -r _d; do
     [ "${_d}" != "${_t}" ] || continue
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
     done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P "./${_d}" -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
     "${_as[@]}" rmdir -- "./${_d}" 2> /dev/null
@@ -2252,7 +2252,7 @@ _purge_hits_under_account() {
   # one above it (_ACCT_RM_OWN_PL): the account's identities can rename what
   # another account left group-writable into these trees, a whole directory
   # with files nested in it included
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     _r=$(realpath -e -- "${_f}" 2>/dev/null) || continue
     case "${_r}/" in
       "${_acct}"/*) ;;

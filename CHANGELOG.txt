@@ -69,6 +69,14 @@
 
 @=> Security
 
+    * Root's tools and nightly jobs read file names, link targets and log
+      lines byte for byte. Under the servers' UTF-8 locale bash 5.2's read
+      took a byte that is not UTF-8 for the start of a character and
+      swallowed the separator after it, so a name a tenant chose could join
+      the next one, or be lost: a walker over an account's files could miss a
+      name, or be handed a path it never listed, and a log scanner could miss
+      a line.
+
     * The files storage wrapper an account's tasks call through sudo holds a
       tenant to its own account: with no account named, a call could reach a
       site of another account on the server.
@@ -187,6 +195,10 @@
       PHP both still run under the PHP profile.
 
 @=> Important Fixes
+
+    * The init script BOA moves aside when it disables jetty9 is kept, as the
+      solr7 and solr9 ones beside it are; the nightly deleted it the night
+      after it was moved.
 
     * The nightly shared codebases cleanup no longer moves a shared codebase
       in /data/all that something still links into: another tree there, an
