@@ -564,8 +564,12 @@ _shared_codebases_cleanup() {
 # spelled; read as var_export writes them, escapes included). Nothing is
 # judged when a link could not be read, or a root could not (one split over
 # lines): a failed find (glob unexpanded, unreadable tree) is not evidence a
-# codebase is unused.
+# codebase is unused. Paths are bytes here, for read and for the tools it
+# runs: in a UTF-8 locale read takes a byte that is not UTF-8 for the start
+# of a character and swallows the delimiter after it, joining two links or
+# two roots into one, and grep skips a line holding such a byte.
 _shared_codebases_here() {
+  local -x LC_ALL=C
   local _s _t _r _x _gReal _rc=0 _q="'" _rxT _rxU
   local -A _cbIn=() _cbUse=() _rSeen=()
   _rxT="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*${_q}"
@@ -722,11 +726,13 @@ _shared_codebase_move() {
 # The text of every platform alias in the current (pinned) .drush, one
 # after another, each read bounded and never through a link or a FIFO.
 _platform_aliases_text_here() {
-  local _a
+  local _a _rc=0
   for _a in ./platform_*.alias.drushrc.php; do
-    _acct_read_plain_here "${_a#./}"
+    [ -e "${_a}" ] || [ -L "${_a}" ] || continue
+    _acct_read_plain_here "${_a#./}" || _rc=1
     echo
   done
+  return "${_rc}"
 }
 
 # True when a registered platform alias names the tree $1: the master's
@@ -1258,14 +1264,14 @@ _global_cleanup() {
   ### The shared codebases moved out of the store keep their group-writable
   ### sites/all trees, and /data/disk was once open to every account, so
   ### each is pruned only from inside its real directory.
+  ### Both places are pruned where both exist: the cleanup moves into
+  ### whichever the store's form picks that night.
   if [ "${_hostedSys}" = "YES" ]; then
-    if [ -d "/var/backups/codebases-cleanup" ]; then
-      _acct_in_real_dir /var/backups/codebases-cleanup \
-        _global_cld_prune_here &> /dev/null
-    elif [ -d "/data/disk/codebases-cleanup" ]; then
-      _acct_in_real_dir /data/disk/codebases-cleanup \
-        _global_cld_prune_here &> /dev/null
-    fi
+    local _cldDir
+    for _cldDir in /var/backups/codebases-cleanup /data/disk/codebases-cleanup; do
+      [ -d "${_cldDir}" ] || continue
+      _acct_in_real_dir "${_cldDir}" _global_cld_prune_here &> /dev/null
+    done
   fi
   rm -f /tmp/.cron.*.pid
   rm -f /tmp/.busy.*.pid
