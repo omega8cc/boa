@@ -987,6 +987,14 @@
       it as for a site outside the supported minors. It read such a site as
       supported, and skipped a dev core altogether.
 
+    * A barracuda pass that cannot fetch a new Drush 8, 10 or 11 keeps the
+      installed one. It emptied the Drush folder before the download, so a
+      tarball the mirror did not have yet, or a failed download, left the
+      server without that Drush, and every control panel task failed until
+      a later pass got the file. The new copy is now unpacked beside the old
+      one and swapped in only when it holds the file that runs it; a failure
+      says so in an OOPS line and the next pass tries again.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
