@@ -4470,11 +4470,12 @@ do_check() {
 # Catalogue audit.
 #
 # A catalogue entry whose tarball is not published is not a build failure -- it is
-# a silent customer-facing one: the octopus run retries the fetch ten times, nine
-# seconds apart, then carries on, so a de-published tarball costs every box a
-# minute and a half per codebase generation and shows up only as an OOPS line in
-# one customer's console. This is the guard: for every entry the PUBLISHED tree
-# still ships, prove the tarball exists.
+# a silent customer-facing one: the octopus run asks the mirror once, takes its
+# not-published answer, skips that platform and carries on, so a de-published
+# tarball shows up only as an OOPS line in one customer's console and the platform
+# is never built (a network failure, not an answer, is tried ten times, nine
+# seconds apart). This is the guard: for every entry the PUBLISHED tree still
+# ships, prove the tarball exists.
 # ---------------------------------------------------------------------------
 
 _catalogue_producers() {
