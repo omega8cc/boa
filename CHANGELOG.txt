@@ -208,6 +208,19 @@
       error", the line a task queue run by hand printed after its prompt. The
       queue is started by the next dispatch once the earlier runner is done.
 
+    * A control panel queue runner never works its queue without the
+      queue's lock: one that loses the lock to another runner stands
+      down, and one that still finds it held after its wait fails with a
+      message naming the queue and the wait instead of "Drush command
+      terminated abnormally".
+
+    * A task that waits in the control panel's queue because another task
+      is running says so on its own page, naming the running task, once for
+      each reason. A task that runs beside a task runner held past the
+      eight-hour ceiling says so in its own log, without being marked as a
+      warning. Both used to reach only Drupal's own log, which BOA keeps
+      switched off in the control panel.
+
     * A Migrate or Clone of a CiviCRM site onto a platform whose CiviCRM is
       older than the site's database is refused before anything is copied,
       and names the release to pick. CiviCRM upgrades a database forward
@@ -960,6 +973,19 @@
       packages (Guzzle steps back to 7, which the core also allows); a line
       that needs no move is built exactly as before, and a pre-release core
       still without Drush is a failed build, never published.
+
+    * Classic Drush 8.5.21 (Ægir's Drush 8): drush8 updatedb on Drupal 10.3
+      and newer skips an update that core holds as done by an equivalent
+      one, as core's own runner does, where it ran it again. On Drupal 11.5
+      and newer it also records the future updates an update marks as done
+      by it before running that update, so a site later moved to Drupal 12
+      does not run them a second time.
+
+    * eolreport names a site on a pre-release Drupal core (alpha, beta,
+      release candidate or a git checkout's dev core) as PRE-RELEASE, since
+      drupal.org's security advisories cover no pre-release, and exits 1 for
+      it as for a site outside the supported minors. It read such a site as
+      supported, and skipped a dev core altogether.
 
 @=> New Features
 
