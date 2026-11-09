@@ -539,36 +539,37 @@ _shared_codebases_cleanup() {
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  # Every platform alias, the master's and the accounts', read once: without
-  # all of them no tree is judged dead, and no platform root counts as use.
-  if _aliasText=$(mktemp); then
-    for _u in /var/aegir /data/disk/*; do
-      [ -d "${_u}/.drush" ] || continue
-      if ! _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"; then
-        echo "INFO: the platform aliases in ${_u}/.drush could not be read -- no shared tree judged dead"
-        rm -f -- "${_aliasText}"
-        _aliasText=""
-        break
-      fi
-    done
-  else
-    _aliasText=""
-    echo "INFO: no temporary file for the platform aliases -- no shared tree judged dead"
-  fi
+  # Every platform alias, the master's and the accounts', read once. Each
+  # registered platform root counts as use, so a night without all of them
+  # judges nothing.
+  _aliasText=$(mktemp) \
+    || { echo "INFO: no temporary file for the platform aliases -- skipping shared-codebases cleanup"; return; }
+  for _u in /var/aegir /data/disk/*; do
+    [ -d "${_u}/.drush" ] || continue
+    if ! _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"; then
+      echo "INFO: the platform aliases in ${_u}/.drush could not be read -- skipping shared-codebases cleanup"
+      rm -f -- "${_aliasText}"
+      return
+    fi
+  done
   _acct_in_real_dir "${_gSt}" _shared_codebases_here "${_aliasText}"
-  [ -z "${_aliasText}" ] || rm -f -- "${_aliasText}"
+  rm -f -- "${_aliasText}"
 }
 # Each serial of the current (pinned) store that is a real directory, once
 # every link is read that may lead into its codebases: those in the store's
 # trees (_cbIn), and as use (_cbUse) those of the account platforms (each
 # platform's own entry and the links at its top) and, from the platform
-# aliases' text in $1 (empty: none read), where each registered platform
-# root leads and the links at its top. Nothing is judged when a link could
-# not be read: a failed find (glob unexpanded, unreadable tree) is not
-# evidence a codebase is unused.
+# aliases' text in $1, where each registered platform root leads and the
+# links at its top (each real directory once, however its roots are
+# spelled; read as var_export writes them, escapes included). Nothing is
+# judged when a link could not be read, or a root could not (one split over
+# lines): a failed find (glob unexpanded, unreadable tree) is not evidence a
+# codebase is unused.
 _shared_codebases_here() {
-  local _s _t _r _x _gReal _rc=0
-  local -A _cbIn=() _cbUse=()
+  local _s _t _r _x _gReal _rc=0 _q="'" _rxT _rxU
+  local -A _cbIn=() _cbUse=() _rSeen=()
+  _rxT="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*${_q}"
+  _rxU="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*\$"
   _gReal="$(pwd -P)"
   for _t in ./*/*; do
     _t="${_t#./}"
@@ -587,15 +588,19 @@ _shared_codebases_here() {
       -type l -printf '%p\0%l\0' 2> /dev/null)
   wait "$!" || _rc=1
   if [ -n "${1}" ]; then
+    grep -aqE "${_rxU}" -- "${1}" && _rc=1
     while IFS= read -r _r; do
       [ -n "${_r}" ] || continue
       _x="$(realpath -e -- "${_r}" 2> /dev/null)" || continue
+      [ -z "${_rSeen[${_x}]:-}" ] || continue
+      _rSeen[${_x}]=1
       _shared_codebases_note "${_gReal}" "" < <(printf '%s\0%s\0' "${_r}" "${_x}")
       [ -d "${_x}" ] || continue
       _shared_codebases_note "${_gReal}" "" \
         < <(find "${_x}" -maxdepth 1 -mindepth 1 -type l -printf '%p\0%l\0' 2> /dev/null)
       wait "$!" || _rc=1
-    done < <(grep -oE "'root' => '[^']+'" -- "${1}" | sed -e "s/^'root' => '//" -e "s/'\$//" | sort -u)
+    done < <(grep -aoE "${_rxT}" -- "${1}" \
+      | sed -e "s/^${_q}root${_q} => ${_q}//" -e "s/${_q}\$//" -e 's/\\\(.\)/\1/g' | sort -u)
   fi
   if [ "${_rc}" != "0" ]; then
     echo "Skipping the shared codebases cleanup: the links in the store or in the account platforms could not all be read"
@@ -1121,10 +1126,17 @@ _global_store_fix_here() (
 # so a directory on the way swapped for a link is never followed.
 _global_cld_prune_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
+  local _h
+  _h="$(pwd -P)"
+  # data/all is entered once by its real path and walked from there, so a
+  # name on the way swapped for a link moves nothing outside it.
   if [ -d ./data/all ] && [ ! -L ./data ] && [ ! -L ./data/all ]; then
-    find ./data/all -mindepth 2 -maxdepth 2 -ctime +7 -prune \
-      -execdir rm -rf -- {} +
-    find ./data/all -mindepth 1 -maxdepth 1 -type d -empty -delete
+    (
+      cd -P -- ./data/all 2> /dev/null && [ "$(pwd -P)" = "${_h}/data/all" ] \
+        || exit 0
+      find . -mindepth 2 -maxdepth 2 -ctime +7 -prune -execdir rm -rf -- {} +
+      find . -mindepth 1 -maxdepth 1 -type d -empty -delete
+    )
   fi
   find ./* -path ./data -prune -o -mtime +7 -prune -execdir rm -rf -- {} +
 )

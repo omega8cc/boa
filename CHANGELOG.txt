@@ -199,7 +199,8 @@
       _SHARED_CODEBASES_CLEANUP flag the cleanup now also moves such a tree
       away once its profiles link leads nowhere, no platform is registered
       on it and nothing links into it; with the flag off it only names it,
-      as it names an unused codebase.
+      as it names an unused codebase. A night it cannot read every such link
+      and every platform alias, it moves nothing.
 
     * On a hosted server a codebase the nightly cleanup moves out of
       /data/all now stays a week in its cleanup directory before it is
