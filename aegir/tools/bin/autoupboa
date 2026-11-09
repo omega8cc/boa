@@ -704,18 +704,30 @@ _is_empty_file() {
   [[ ! -s "$file" ]]
 }
 
-# A usable DH file: a regular file holding DH parameters. A non-empty file
-# without them (cut short, overwritten) fails nginx's config load as surely
-# as an empty one, and must never be the copy the others are repaired from.
+# A usable DH file: a regular file openssl reads as DH parameters (plain or
+# X9.42). A file cut short or overwritten fails nginx's config load as surely
+# as an empty one, header or not, and must never be the copy the others are
+# repaired from.
 _dhp_valid() {
   [[ -f "$1" && ! -L "$1" ]] \
-    && LC_ALL=C grep -aqE -- '^-----BEGIN ([A-Z0-9.]+ )?DH PARAMETERS-----$' "$1" 2> /dev/null
+    && openssl dhparam -in "$1" -noout > /dev/null 2>&1
+}
+
+# One generation at a time: openssl writes its -out file only when done, so
+# a file being generated still reads as unusable on the next run.
+_dhp_generate() {
+  [[ -n "${_dhp_gen}" ]] && return 0
+  pgrep -u root -f '^openssl dhparam ' > /dev/null 2>&1 && return 0
+  _dhp_gen=1
+  echo "Generating new .dhp file for $1"
+  openssl dhparam -out "$1" 4096 > /dev/null 2>&1 &
 }
 
 # Check for empty .dhp files and attempt to replace or regenerate them
 _process_dhp_files() {
   _dhp_files=("${_SSL_DIR}"/*.dhp)
   _non_empty_dhp=""
+  _dhp_gen=""
   # Find the first usable .dhp file
   for _dhp_file in "${_dhp_files[@]}"; do
     if _dhp_valid "${_dhp_file}"; then
@@ -728,11 +740,10 @@ _process_dhp_files() {
     [[ -e "${_dhp_file}" && ! -L "${_dhp_file}" ]] || continue
     if ! _dhp_valid "${_dhp_file}"; then
       if [[ -n "${_non_empty_dhp}" ]]; then
-        echo "Replacing empty file ${_dhp_file} with ${_non_empty_dhp}"
+        echo "Replacing unusable file ${_dhp_file} with ${_non_empty_dhp}"
         cp "${_non_empty_dhp}" "${_dhp_file}"
       else
-        echo "No non-empty .dhp file found, generating new file for ${_dhp_file}"
-        openssl dhparam -out "${_dhp_file}" 4096 > /dev/null 2>&1 &
+        _dhp_generate "${_dhp_file}"
       fi
     fi
   done
@@ -761,9 +772,8 @@ _scan_nginx_errors() {
     if [[ -n "${_non_empty_dhp}" ]]; then
       echo "Copying non-empty .dhp file to ${_missing_dhp}"
       cp "${_non_empty_dhp}" "${_missing_dhp}"
-    elif ! pgrep -u root -f '^openssl dhparam ' > /dev/null 2>&1; then
-      echo "Generating new .dhp file for ${_missing_dhp}"
-      openssl dhparam -out "${_missing_dhp}" 4096 > /dev/null 2>&1 &
+    else
+      _dhp_generate "${_missing_dhp}"
     fi
   done
 }

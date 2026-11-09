@@ -197,13 +197,19 @@ _nginx_start_in_flight() {
 }
 
 _nginx_pid_is_nginx() {
-  # The process runs the nginx binary (or the copy an upgrade replaced while
-  # it ran). A title is whatever argv[0] its caller chose, and a setuid
-  # program run under one keeps euid 0, so neither the title nor the user
-  # tells root's nginx from a process another user named after it.
+  # The process runs the nginx binary, or the one an upgrade replaced while
+  # it ran: a package swaps the file (deleted), a source build's make install
+  # renames it to nginx.old first. A title is whatever argv[0] its caller
+  # chose, and a setuid program run under one keeps euid 0, so neither the
+  # title nor the user tells root's nginx from a process another user named
+  # after it; only root writes /usr/sbin.
   local _x
   _x="$(readlink "/proc/$1/exe" 2> /dev/null)"
-  [ "${_x}" = "/usr/sbin/nginx" ] || [ "${_x}" = "/usr/sbin/nginx (deleted)" ]
+  case "${_x}" in
+    /usr/sbin/nginx|/usr/sbin/nginx.old) return 0 ;;
+    "/usr/sbin/nginx (deleted)"|"/usr/sbin/nginx.old (deleted)") return 0 ;;
+  esac
+  return 1
 }
 
 _nginx_master_pids() {
@@ -386,26 +392,41 @@ _restart_nginx() {
 }
 
 _nginx_oom_detection() {
-  # A memory error counts when nginx itself wrote it: the error log also
-  # carries text a request chose (a referrer, a decoded %0A in a path starts
-  # a line of its own), so a line counts only when its "<pid>#" is root's
-  # master or one of its children. Those pids are hidden from every other
-  # user (/proc hidepid, a root-only pidfile).
-  local _mp _live _p _hit=NO
+  # A memory error counts when nginx itself reported one: the errno right
+  # after nginx's own message, before any quoted path or request field (a
+  # referrer, a host, a path carry text a request chose), on a line whose
+  # "<pid>#" is root's master or one of its children. A decoded %0A in a
+  # logged path still starts a line of its own, and pids are only hidden,
+  # not secret (they are handed out in order), so a restart for memory runs
+  # at most once an hour.
+  local _mp _live _p _hit=NO _now _ts
+  local _st="/run/nginx-monitor.oom-restart"
   [ -e "/var/log/nginx/error.log" ] || return 0
   _live=" $(for _mp in $(_nginx_master_pids); do
     echo "${_mp}"; ps -o pid= --ppid "${_mp}"; done 2> /dev/null | tr -s ' \n' '  ') "
-  for _p in $(tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
-    | LC_ALL=C grep -a "Cannot allocate memory" \
-    | LC_ALL=C grep -aoE '^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:]{8} \[[a-z]+\] [0-9]+#' \
-    | grep -oE '[0-9]+#$' | tr -d '#' | sort -u); do
+  # nginx's own message ends where a quoted path or the request context
+  # (", client: ...") begins; the one quoted name nginx writes itself with
+  # ENOMEM is the process it failed to fork.
+  local _pre='^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:]{8} \[(alert|emerg|crit)\] [0-9]+#[0-9]+: (\*[0-9]+ )?'
+  for _p in $( { tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+      | LC_ALL=C sed -E 's/("|, client: ).*$//' \
+      | LC_ALL=C grep -aE "${_pre}"'.*failed \(12: Cannot allocate memory\)'
+    tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+      | LC_ALL=C grep -aE "${_pre}"'fork\(\) failed while spawning "[a-z ]+" \(12: Cannot allocate memory\)'
+    } | LC_ALL=C grep -aoE '\] [0-9]+#' | tr -dc '0-9\n' | sort -u); do
     [[ "${_live}" == *" ${_p} "* ]] && _hit=YES
   done
-  if [ "${_hit}" = "YES" ]; then
-    _thisErrLog="$(date) Nginx OOM error"
-    echo "${_thisErrLog}" >> ${_pthOml}
-    _restart_nginx "Nginx OOM"
+  [ "${_hit}" = "YES" ] || return 0
+  _now=$(date +%s)
+  _ts=$(stat -c %Y "${_st}" 2> /dev/null)
+  if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
+    echo "$(date) INFO: NGX memory error, a restart for one ran in the last hour" >> ${_pthOml}
+    return 0
   fi
+  touch "${_st}"
+  _thisErrLog="$(date) Nginx OOM error"
+  echo "${_thisErrLog}" >> ${_pthOml}
+  _restart_nginx "Nginx OOM"
 }
 
 _nginx_bind_check_fix() {
@@ -478,14 +499,14 @@ _nginx_health_check_fix() {
     # The state's first letter: the master is a session leader, so ps prints
     # "Ss", "Ts", "Ds", and a whole-string match never fired. A moment in
     # uninterruptible sleep (a reload, a slow disk) is not a stuck master,
-    # so a D is read again after the same grace as the count.
+    # so a D is read again after the same grace as the count. A defunct
+    # master never gets here (no title, no exe link): the up check heals it.
     _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
     if [ "${_MASTER_STATE:0:1}" = "D" ]; then
       sleep 5
       _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
     fi
-    if [ "${_MASTER_STATE:0:1}" = "Z" ] \
-      || [ "${_MASTER_STATE:0:1}" = "T" ] \
+    if [ "${_MASTER_STATE:0:1}" = "T" ] \
       || [ "${_MASTER_STATE:0:1}" = "D" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       echo "$(date) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${_pthOml}
