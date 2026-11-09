@@ -5931,31 +5931,83 @@ _tool_marker() {
 }
 
 #
+# Fetch a Drush tarball into a fresh folder beside the installed copy and swap
+# it in only when it holds the file that runs it. Emptying the installed copy
+# before the fetch left a server without that Drush, and every backend task
+# failing, whenever the mirror did not have the tarball yet or the download
+# failed. $1 = install dir, $2 = tarball, $3 = the file it must unpack there,
+# $4 = the name for the messages. The working directory ends in the install
+# dir, as the extraction into it used to leave it.
+_drush_fetch_swap() {
+  local _dir="${1}" _tgz="${2}" _chk="${3}" _nme="${4}"
+  local _new="${1}.new" _old="${1}.old"
+  # A run killed between the two renames below leaves the working copy in .old
+  # and no install dir (or the empty one the caller's mkdir -p makes): put it
+  # back before the leftovers go, or a failed fetch now would leave no Drush.
+  if [ -f "${_old}/${_chk}" ] && [ ! -f "${_dir}/${_chk}" ]; then
+    rmdir -- "${_dir}" 2> /dev/null
+    if [ ! -e "${_dir}" ] && mv -- "${_old}" "${_dir}"; then
+      _msg "INFO: ${_nme} put back from ${_old}, which an interrupted swap left"
+    fi
+  fi
+  # the leftovers of a killed run; nothing else uses the names
+  rm -rf -- "${_new}" "${_old}"
+  if ! mkdir -m 0755 -- "${_new}" || ! cd -- "${_new}"; then
+    rm -rf -- "${_new}"
+    _msg "OOPS: ${_new} is not usable; ${_nme} left as it was"
+    return 1
+  fi
+  if ! _get_dev_ext "${_tgz}" || [ ! -f "${_new}/${_chk}" ]; then
+    cd -- "${_dir}" 2> /dev/null || cd /
+    rm -rf -- "${_new}"
+    _msg "OOPS: ${_tgz} did not install; ${_nme} left as it was"
+    return 1
+  fi
+  cd /
+  if [ -e "${_dir}" ] && ! mv -- "${_dir}" "${_old}"; then
+    rm -rf -- "${_new}"
+    cd -- "${_dir}" 2> /dev/null
+    _msg "OOPS: ${_dir} could not be set aside; ${_nme} left as it was"
+    return 1
+  fi
+  if ! mv -- "${_new}" "${_dir}"; then
+    [ -e "${_old}" ] && mv -- "${_old}" "${_dir}"
+    rm -rf -- "${_new}"
+    cd -- "${_dir}" 2> /dev/null
+    _msg "OOPS: ${_new} could not be moved in; ${_nme} left as it was"
+    return 1
+  fi
+  rm -rf -- "${_old}"
+  cd -- "${_dir}" || return 1
+  return 0
+}
+
+#
+# A tarball once unpacked at the filesystem root as /drush, when its target
+# folder did not exist (found 2026-09-02), where Drush 10/11 then picked it up
+# as a command-file path. Heal that leftover, only when it has the extracted
+# shape and is not the install itself. $1 = install dir.
+_drush_root_leftover_heal() {
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
+    && [ "$(readlink -f "${1}/drush" 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
+}
+
+#
 # Install or update Drush 11.
 _get_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eleven"
   fi
-  # The extraction below lands in the CURRENT directory, so the target must
-  # exist and the cd must be checked: on a box where it did not exist the
-  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
-  # where Drush 10/11 then picked it up as a command-file path. Heal that
-  # leftover here, only when it has the extracted shape and is not the
-  # install itself.
-  mkdir -p /opt/tools/drush/11
-  rm -rf /opt/tools/drush/11/*
-  if ! cd /opt/tools/drush/11/; then
-    _msg "OOPS: /opt/tools/drush/11 is not enterable; Drush 11 not installed"
-    return 1
-  fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
-    && [ "$(readlink -f /opt/tools/drush/11/drush 2> /dev/null)" != "/drush" ]; then
-    rm -rf /drush
-  fi
-  _get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
-  _tool_marker /opt/tools/drush/11
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
+  mkdir -p /opt/tools/drush
+  _drush_root_leftover_heal /opt/tools/drush/11
+  if _drush_fetch_swap /opt/tools/drush/11 "drush-${_DRUSH_ELEVEN_VRN}.tar.gz" \
+    drush/vendor/drush/drush/drush "Drush 11"; then
+    _tool_marker /opt/tools/drush/11
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
+    fi
   fi
 }
 
@@ -5965,26 +6017,14 @@ _get_drush_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_ten"
   fi
-  # The extraction below lands in the CURRENT directory, so the target must
-  # exist and the cd must be checked: on a box where it did not exist the
-  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
-  # where Drush 10/11 then picked it up as a command-file path. Heal that
-  # leftover here, only when it has the extracted shape and is not the
-  # install itself.
-  mkdir -p /opt/tools/drush/10
-  rm -rf /opt/tools/drush/10/*
-  if ! cd /opt/tools/drush/10/; then
-    _msg "OOPS: /opt/tools/drush/10 is not enterable; Drush 10 not installed"
-    return 1
-  fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
-    && [ "$(readlink -f /opt/tools/drush/10/drush 2> /dev/null)" != "/drush" ]; then
-    rm -rf /drush
-  fi
-  _get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
-  _tool_marker /opt/tools/drush/10
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
+  mkdir -p /opt/tools/drush
+  _drush_root_leftover_heal /opt/tools/drush/10
+  if _drush_fetch_swap /opt/tools/drush/10 "drush-${_DRUSH_TEN_VRN}.tar.gz" \
+    drush/vendor/drush/drush/drush "Drush 10"; then
+    _tool_marker /opt/tools/drush/10
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
+    fi
   fi
 }
 
@@ -5994,26 +6034,14 @@ _get_drush_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eight"
   fi
-  # The extraction below lands in the CURRENT directory, so the target must
-  # exist and the cd must be checked: on a box where it did not exist the
-  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
-  # where Drush 10/11 then picked it up as a command-file path. Heal that
-  # leftover here, only when it has the extracted shape and is not the
-  # install itself.
-  mkdir -p /opt/tools/drush/8
-  rm -rf /opt/tools/drush/8/*
-  if ! cd /opt/tools/drush/8/; then
-    _msg "OOPS: /opt/tools/drush/8 is not enterable; Drush 8 not installed"
-    return 1
-  fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
-    && [ "$(readlink -f /opt/tools/drush/8/drush 2> /dev/null)" != "/drush" ]; then
-    rm -rf /drush
-  fi
-  _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  _tool_marker /opt/tools/drush/8
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
+  mkdir -p /opt/tools/drush
+  _drush_root_leftover_heal /opt/tools/drush/8
+  if _drush_fetch_swap /opt/tools/drush/8 "drush-${_DRUSH_EIGHT_VRN}.tar.gz" \
+    drush/drush.php "Drush 8"; then
+    _tool_marker /opt/tools/drush/8
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
+    fi
   fi
 }
 
