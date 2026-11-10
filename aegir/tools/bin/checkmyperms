@@ -101,7 +101,7 @@ _here() {
   local _rest=""
   local _up=""
   local _farm=""
-  _cwd=$(/bin/pwd -P 2> /dev/null)
+  _cwd=$(pwd -P 2> /dev/null)
   [ -n "${_cwd}" ] || return 0
   echo
   echo "Here: ${_cwd}"

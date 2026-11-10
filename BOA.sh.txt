@@ -5894,7 +5894,7 @@ CSFSTANDBY
       ${_pthLog}/automini.ctrl.* ${_pthLog}/automini.stale.* \
       ${_pthLog}/automini.mvfail.* ${_pthLog}/automini.compared.pid &> /dev/null
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f93 --mode 755 --guard /local/bin/backchain
-    _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f98 --mode 755 --guard /local/bin/checkmyperms
+    _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f88 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f79 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow

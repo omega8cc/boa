@@ -123,7 +123,7 @@
     * Root's checks that it stands in an account's own folder, before it
       reads, writes, changes the owner or mode of, or removes anything
       there, read the folder the shell is really in. They compared bash's
-      own /bin/pwd -P, which reads back the path cd was given: an account that
+      own pwd -P, which reads back the path cd was given: an account that
       swapped one of its folders for a link at the right moment passed the
       check from inside a folder of root's, where root then acted as if it
       were the account's own.
