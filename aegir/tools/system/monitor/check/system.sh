@@ -213,15 +213,18 @@ _oom_expendable_victim() {
 # mysql, aegir or an account's backend user (home /data/disk/<name>): an
 # account's web, FTP or shell login can name its own process "drush" or
 # "mysqld", and sparing that killed the next largest, often a shared service.
+# When the users cannot be read (no root among them) the name alone spares a
+# process: over-sparing only leaves the box to the kernel.
 _oom_largest_victim() {
   local _tu=""
   _tu=$(getent passwd 2> /dev/null \
     | awk -F: '$3 == 0 || $1 == "aegir" || $1 == "mysql" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf " %s", $3 } END { printf " " }')
+  case "${_tu}" in *" 0 "*) ;; *) _tu="" ;; esac
   ps -eo pid=,rss=,ruid=,euid=,args= --sort=-rss 2>/dev/null \
     | awk -v ex="${_OOM_EXEMPT}" -v tu="${_tu}" '{
         a = $0
         sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ /, "", a)
-        if (a ~ ex && index(tu, " " $3 " ") && index(tu, " " $4 " ")) next
+        if (a ~ ex && (tu == "" || (index(tu, " " $3 " ") && index(tu, " " $4 " ")))) next
         print $1, $2, a
         exit
       }'

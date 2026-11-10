@@ -169,12 +169,13 @@ fi
 touch "${_STAMP}"
 
 # Backup exclusion: skip while any backup walker is alive and for 20 min after
-# the last sighting (a dump's reads and truncations skew the miss rates).
+# the last sighting (a dump's reads and truncations skew the miss rates). A
+# site's own dump in a backup, clone or migrate runs as its backend user.
 _bU="$(_boa_run_uids)"
 if pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
   || pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
   || pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -u root -U root -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
+  || pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
   touch "${_BKP_STAMP}"
   exit 0
 fi
