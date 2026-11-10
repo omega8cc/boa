@@ -16,7 +16,6 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
-# Function to print env for debugging
 # The real uids of BOA's own work: root, aegir and each account's backend
 # user (home /data/disk/<name>), as whom root runs the account's tasks and
 # queued restores; never a web, FTP or shell login, which can give its own
@@ -28,6 +27,7 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
     # secret values and URL userinfo stay out of the dump

@@ -26,12 +26,6 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
-# The scheduled run discards what it prints (crontabs/root), so a backup
-# refused for disk room says so where the daily report goes: the same
-# address, the same _INCIDENT_REPORT gate, the same "Daily backup:" subject
-# prefix. Only for a backup that would have run: without credentials the
-# tool is not in use, the maintenance pause mails nothing, and a run on a
-# terminal prints the refusal instead. $1 = what is short.
 # The real uids of BOA's own work: root, aegir and each account's backend
 # user (home /data/disk/<name>), as whom root runs the account's tasks and
 # queued restores; never a web, FTP or shell login, which can give its own
@@ -43,6 +37,12 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# The scheduled run discards what it prints (crontabs/root), so a backup
+# refused for disk room says so where the daily report goes: the same
+# address, the same _INCIDENT_REPORT gate, the same "Daily backup:" subject
+# prefix. Only for a backup that would have run: without credentials the
+# tool is not in use, the maintenance pause mails nothing, and a run on a
+# terminal prints the refusal instead. $1 = what is short.
 _backup_refused() {
   [ "${_BB_VERB:-}" = "backup" ] || return 0
   [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && return 0
