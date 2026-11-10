@@ -128,13 +128,13 @@ _DR_SP="'\"|;&()\`"$'\n'
 # hid the drush command after it from the refusal while dash ran it.
 # These functions start no program the locale changes (a child would
 # get LC_ALL=C where the caller exported LC_ALL). The C locale is set only
-# where bash runs in a multibyte one (_WS_E then reads as one character):
-# an LC_ALL naming a locale the box lacks leaves bash in C already, and
-# setting and restoring it there printed a setlocale warning on every
-# return.
-_WS_E=$'\xc3\xa9'
+# where bash runs in a multibyte one (a two-byte character then matches a
+# single ?): an LC_ALL naming a locale the box lacks leaves bash in C
+# already, and setting and restoring it there printed a setlocale warning
+# on every return. The test needs nothing outside the function, so a
+# function cut from this file keeps it.
 _drush_segments() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   # every simple command of the line on its own line, quotes and backslashes
   # removed the way dash removes them: '...' literal to the closing quote,
   # "..." with a backslash escaping the next character, a bare backslash
@@ -240,7 +240,7 @@ _quotes_balance() {
   return 0
 }
 _drush_launcher() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1" _tok
   _LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
@@ -291,7 +291,7 @@ _CO_REST=""; _CO_PRE=""; _CO_CD=""; _CO_PHP=""
 _RE_COLEAD='^[[:space:]]*composer[[:space:]]+(.*)$'
 _RE_COPHP="^${_RE_LAPHP}((-d[[:space:]]*[A-Za-z_.]+=('[^']*'|[^[:space:]']*)[[:space:]]+)*)('?(/usr/local/bin/composer|/usr/bin/composer)'?)[[:space:]]+(.*)\$"
 _composer_lead() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1"
   _CO_REST=""; _CO_PRE=""; _CO_CD=""; _CO_PHP=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
@@ -324,7 +324,7 @@ _composer_lead() {
 # dispatch below does not take, so their platform's PHP still applies.
 _SEG_REST=""; _SEG_CD=""
 _cpp_seg_lead() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _line="$1" _seg _w1 _rest _prev="" _v
   shift
   _SEG_REST=""; _SEG_CD=""
@@ -354,7 +354,7 @@ _cpp_seg_lead() {
 _BE_REST=""; _BE_CD=""
 _RE_BELEAD='^[[:space:]]*bee([[:space:]]+(.*))?$'
 _bee_lead() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1"
   _BE_REST=""; _BE_CD=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
@@ -375,7 +375,7 @@ _bee_lead() {
   return 1
 }
 _drush_cmd_word() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   # the drush command word of an argument string: the first word that is
   # not an @alias, an option, the value of an option that takes one (drush
   # 8's -c -i -l -r -u; the long forms drush 10/11 accept with a space) or
@@ -418,7 +418,7 @@ _d8plus_root() {
     && [ -f "$1/core/includes/common.inc" ]
 }
 _d8plus_target() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   # $1 = the drush argument string; true when the codebase is Drupal 8+
   local _ws _w _next="" _root="" _al="" _f _c _p
   read -r -a _ws <<< "$1"
@@ -528,7 +528,7 @@ _in_composer_run() {
   [ "${_IN_COMPOSER}" = "YES" ]
 }
 _drush_refused() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   # both reads of the line (_drush_segments): refused when either refuses;
   # without a newline in the line the two reads are the same
   _drush_refused_read "$1" && return 0
@@ -536,7 +536,7 @@ _drush_refused() {
   _drush_refused_read "$1" join
 }
 _drush_refused_read() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest
   _DR_WHY=""
   _GD_DOC=""
@@ -773,7 +773,7 @@ _php_word() {
 # true when a simple command of the line runs Drush: its program is a drush
 # word or a drush.php, or a PHP interpreter whose script is a drush.php
 _runs_drush() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _seg _w1 _w2 _rest
   while IFS= read -r _seg; do
     while [[ "${_seg}" =~ ${_RE_ASSIGN} ]]; do
@@ -815,7 +815,7 @@ _php_member() {
 # up, or where /proc gives no status. Pure bash: some identities cannot run
 # the system binaries.
 _under_composer() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _p="${PPID}" _n _k _a _r _uid _pp _i _skip _b
   local -a _argv
   for _n in 1 2 3 4 5 6 7 8; do
@@ -859,7 +859,7 @@ _under_composer() {
   return 1
 }
 _php_direct_refused() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   # $1 = the line as received; true when one of its simple commands names a
   # PHP interpreter as the program it runs. The line is split the way dash
   # splits it (_drush_segments, a quoted word kept whole); in each segment
@@ -982,13 +982,13 @@ _RE_DLEAD='^[[:space:]]*(drush|drush8|drush10|drush11)[[:space:]]+(.*)$'
 # read as bytes like the leads themselves: sets _CDD
 _CDD=""
 _cd_dir_of() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   _CDD=""
   [[ "$1" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\;\&\|]+) ]] || return 1
   _CDD="${BASH_REMATCH[1]}"
 }
 _drush_lead() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1"
   _DL_TOK=""; _DL_PRE=""; _DL_REST=""; _DL_CD=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
@@ -1096,7 +1096,7 @@ _forward_to_dash() {
 _SH_OPTS=()
 _SH_LEAD=0
 _sh_opts_lead() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _w _o=() _n=0
   while [ "$#" -gt 0 ]; do
     _w="$1"
@@ -1629,7 +1629,7 @@ _cpp_phys() {
   done
 }
 _cpp_target() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   # $1 = the argument string, $2 = drush, composer or bee, $3 = a leading
   # "cd DIR &&" of the line; sets _CPP_ROOT (the path the line runs on),
   # _CPP_CTX (site, platform or empty), _CPP_NAME (the @alias) and _CPP_CMD
@@ -1782,7 +1782,7 @@ _cpp_safe() {
   # _CPP_S to it with anything outside a plain path alphabet replaced by ?,
   # so it can go into a task log, a JSON packet or a terminal as it is, and
   # at most 120 characters of it
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   _CPP_S="${1//[^A-Za-z0-9._\/~@+ -]/?}"
   [ "${#_CPP_S}" -le 120 ] || _CPP_S="${_CPP_S:0:117}..."
 }
@@ -1852,7 +1852,7 @@ _cpp_match() {
   # backend drush line, where a single string over 128 KiB would stop the
   # exec itself. 64 KiB in bytes whatever the locale: the ltd worker cuts the
   # copy it keeps for a developer login the same way.
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _txt="" _ln=0 _line _k _v _rest _best=0 _i
   local -a _ks=() _vs=() _ls=() _nks=()
   _CPP_V=""; _CPP_LN=""; _CPP_KEY=""; _CPP_WARN=""; _CPP_NW=0; _CPP_MORE=0; _CPP_TAIL=""
@@ -1951,7 +1951,7 @@ _cpp_json() {
   # $1 = text; sets _CPP_J to it escaped for a JSON string (every piece a
   # tenant controls already went through _cpp_safe; control bytes are
   # dropped here too, belt and braces)
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   _CPP_J="${1//[[:cntrl:]]/ }"
   _CPP_J="${_CPP_J//\\/\\\\}"
   _CPP_J="${_CPP_J//\"/\\\"}"
@@ -2279,7 +2279,7 @@ _cpp_fpm_warn() {
 # _CPP_PF_K: each line's folder as _cpp_phys reads it, version, line number
 # and folder as written.
 _cpp_fpm_plat_load() {
-  [ "${#_WS_E}" = 1 ] && local LC_ALL=C
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _txt="" _ln=0 _line _k _v _rest _hp _alp _pp _i _in _r0
   local -a _nks=() _vs=() _lns=() _kys=() _kps=() _kvs=() _kls=() _kks=()
   _CPP_PF_P=(); _CPP_PF_V=(); _CPP_PF_L=(); _CPP_PF_K=()
