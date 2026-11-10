@@ -360,6 +360,20 @@ _csf_kill_own() {
   return 0
 }
 
+# lfd's SMTP AUTH, POP3 and IMAP login triggers read mail.log, where no BOA
+# service writes such lines (postfix takes no SMTP AUTH, no POP3 or IMAP server
+# runs), so a line of that shape there is one a local program wrote, and lfd
+# blocked the address it named on every port. Only the shipped value "10" is
+# retuned, as the other retunes do, and lfd restarts once to read it: it reads
+# csf.conf only when it starts, and a pass never restarts it otherwise.
+_csf_mail_login_triggers_off() {
+  local _c=/etc/csf/csf.conf
+  grep -qE '^(LF_SMTPAUTH|LF_POP3D|LF_IMAPD) = "10"$' "${_c}" 2> /dev/null || return 0
+  sed -i -E 's/^(LF_SMTPAUTH|LF_POP3D|LF_IMAPD) = "10"$/\1 = "0"/' "${_c}" &> /dev/null
+  wait
+  _mrun "service lfd restart"
+}
+
 _csf_lfd_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_install_upgrade"
@@ -447,6 +461,7 @@ _csf_lfd_install_upgrade() {
         wait
         sed -i "s/^DROP_OUT_LOGGING = \"1\"$/DROP_OUT_LOGGING = \"0\"/g" /etc/csf/csf.conf &> /dev/null
         wait
+        _csf_mail_login_triggers_off
       fi
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
