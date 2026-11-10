@@ -2475,7 +2475,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/escapecheck.sh" ] && rm -f ${_pthLog}/escapecheck.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackcheck.sh" ] && rm -f ${_pthLog}/hackcheck.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackftp.sh" ] && rm -f ${_pthLog}/hackftp.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/segfault_alert.sh" ] && rm -f ${_pthLog}/segfault_alert.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/sqlcheck.sh" ] && rm -f ${_pthLog}/sqlcheck.sh.ctrl.*.pid
 
     [ ! -e "/var/xdrago/monitor/check/bind9.sh" ] && rm -f ${_pthLog}/bind9.sh.ctrl.*.pid
@@ -2501,6 +2501,8 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f /var/xdrago/monitor/check/hackcheck.pl
     [ -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f /var/xdrago/monitor/check/hackftp.pl
     [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f /var/xdrago/monitor/check/sqlcheck.pl
+    [ -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f /var/xdrago/monitor/check/segfault_alert.pl
+    rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
 
     [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f /var/xdrago/monitor/check/scan_nginx.pl
     [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f /var/xdrago/monitor/check/locked_nginx.pl
@@ -2656,7 +2658,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f48
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f61
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f91
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f57
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f56
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f94
@@ -2671,7 +2673,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f96
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f87
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f93
-    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f90
+    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.sh "${_urlHmr}/tools/system/monitor/check/segfault_alert.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f84
     _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f99

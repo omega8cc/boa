@@ -69,6 +69,14 @@
 
 @=> Security
 
+    * The PHP segfault monitor is a bash script that reads only the kernel's
+      own segfault lines of PHP processes and mails the operator alone, at
+      most once an hour: it read syslog, where any program can write a line,
+      and mailed a client it picked by matching the shared access log, so
+      any account could make root mail another account's client. No client
+      is mailed any more; the archive in /var/xdrago/monitor/log keeps
+      every line. The Perl monitor is removed.
+
     * The PHP segfault monitor writes its report and sends its mail without
       a shell: the site path it read from a site's Drush alias and the client
       address in the account's log/email.txt went into a shell line root

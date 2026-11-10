@@ -957,7 +957,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   _fpm_health_check_fix
   if [ ! -e "/root/.high_traffic.cnf" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    _spawn_detached 'perl /var/xdrago/monitor/check/segfault_alert.pl'
+    _spawn_detached 'bash /var/xdrago/monitor/check/segfault_alert.sh'
   fi
 fi
 
