@@ -113,6 +113,12 @@
     * The OS upgrade tools add a DHCP server to the firewall allow list only
       when the log names a plain IPv4 address, as the box monitor already did.
 
+    * A tenant's shell reads each command line byte for byte, as the shell
+      that runs it does: under the UTF-8 locale a byte that is not UTF-8 in
+      one command of a line could hide from its checks a Drush command a
+      tenant may not run, a variable naming PHP's settings in front of
+      drush, composer or php, or a PHP run by name, while the line still ran it.
+
     * The files storage wrapper an account's tasks call through sudo holds a
       tenant to its own account: with no account named, a call could reach a
       site of another account on the server.
