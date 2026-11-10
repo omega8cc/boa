@@ -11242,7 +11242,10 @@ _satellite_child_b_drush_test() {
   if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
     && [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ]; then
     drush8 cc drush &> /dev/null
-    if ${_DRUSHCMD} help 2>/dev/null | grep -q "backdrop-site-install"; then
+    # Ask for the command itself: help's command table wraps a name this long
+    # across two lines, so the full name never appears on one line there.
+    if ${_DRUSHCMD} help backdrop-site-install 2>/dev/null \
+      | grep -q "Install Backdrop"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} B: Backdrop Drush extension test result OK"
       fi
