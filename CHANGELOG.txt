@@ -238,6 +238,11 @@
       interval ends, so the new password was refused for that long. Needs
       the Login plugin 3.9 or later.
 
+    * WebAssembly, HLS video playlists and segments and XSPF playlists are
+      served with their own types (.wasm, .m3u8, .ts, .xspf), as nginx's
+      own table has them: they went out as downloads, and a browser compiles
+      a WebAssembly file as it arrives only when it is served as one.
+
     * The init script BOA moves aside when it disables jetty9 is kept, as the
       solr7 and solr9 ones beside it are; the nightly deleted it the night
       after it was moved.
