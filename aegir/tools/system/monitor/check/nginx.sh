@@ -58,6 +58,8 @@ fi
 renice ${_B_NICE} -p $$ &> /dev/null
 
 _cd="/run/nginx-monitor.cooldown"
+# when the last restart for a memory error ran (_nginx_oom_detection)
+_ngxOomSt="/run/nginx-monitor.oom-restart"
 : "${_NGINX_COOLDOWN_SECS:=30}"
 
 ###
@@ -370,6 +372,7 @@ _restart_nginx() {
       return 0
     fi
   fi
+  [ "$1" = "Nginx OOM" ] && touch "${_ngxOomSt}"
   echo "Killing all Nginx processes and restarting Nginx..."
   _stop_nginx_processes
   _nginx_error_log_aside
@@ -395,12 +398,12 @@ _nginx_oom_detection() {
   # A memory error counts when nginx itself reported one: the errno right
   # after nginx's own message, before any quoted path or request field (a
   # referrer, a host, a path carry text a request chose), on a line whose
-  # "<pid>#" is root's master or one of its children. A decoded %0A in a
+  # own "<pid>#" is root's master or one of its children. A decoded %0A in a
   # logged path still starts a line of its own, and pids are only hidden,
   # not secret (they are handed out in order), so a restart for memory runs
-  # at most once an hour.
+  # at most once an hour: the hour starts when such a restart runs
+  # (_restart_nginx), never when one stood down.
   local _mp _live _p _hit=NO _now _ts
-  local _st="/run/nginx-monitor.oom-restart"
   [ -e "/var/log/nginx/error.log" ] || return 0
   _live=" $(for _mp in $(_nginx_master_pids); do
     echo "${_mp}"; ps -o pid= --ppid "${_mp}"; done 2> /dev/null | tr -s ' \n' '  ') "
@@ -413,17 +416,16 @@ _nginx_oom_detection() {
       | LC_ALL=C grep -aE "${_pre}"'.*failed \(12: Cannot allocate memory\)'
     tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
       | LC_ALL=C grep -aE "${_pre}"'fork\(\) failed while spawning "[a-z ]+" \(12: Cannot allocate memory\)'
-    } | LC_ALL=C grep -aoE '\] [0-9]+#' | tr -dc '0-9\n' | sort -u); do
+    } | LC_ALL=C sed -nE 's/^[0-9/]{10} [0-9:]{8} \[[a-z]+\] ([0-9]+)#.*/\1/p' | sort -u); do
     [[ "${_live}" == *" ${_p} "* ]] && _hit=YES
   done
   [ "${_hit}" = "YES" ] || return 0
   _now=$(date +%s)
-  _ts=$(stat -c %Y "${_st}" 2> /dev/null)
+  _ts=$(stat -c %Y "${_ngxOomSt}" 2> /dev/null)
   if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
     echo "$(date) INFO: NGX memory error, a restart for one ran in the last hour" >> ${_pthOml}
     return 0
   fi
-  touch "${_st}"
   _thisErrLog="$(date) Nginx OOM error"
   echo "${_thisErrLog}" >> ${_pthOml}
   _restart_nginx "Nginx OOM"

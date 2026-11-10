@@ -84,10 +84,12 @@
       the copy the others are repaired from.
 
     * The nginx monitor judges only the server's own nginx: a process another
-      user titles like an nginx master or worker, and text a request puts into
-      the error log, no longer make it restart nginx for every site, and a
-      restart for a memory error runs at most once an hour. A stopped or stuck
-      master now gets the restart it was meant to; the check never matched the
+      user titles like an nginx master or worker no longer makes it restart
+      nginx for every site. A memory error counts only in nginx's own message
+      form under the pid of one of its own processes, and a restart for one
+      runs at most once an hour, so text a request puts into the error log
+      can bring at most that one restart an hour. A stopped or stuck master
+      now gets the restart it was meant to; the check never matched the
       state ps reports for it.
 
     * The full MySQL table check the crash watch starts runs at most once

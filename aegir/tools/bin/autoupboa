@@ -714,10 +714,12 @@ _dhp_valid() {
 }
 
 # One generation at a time: openssl writes its -out file only when done, so
-# a file being generated still reads as unusable on the next run.
+# a file being generated still reads as unusable on the next run. Only a
+# generation root started counts (real uid too: a setuid program another
+# user runs under the title keeps euid 0).
 _dhp_generate() {
   [[ -n "${_dhp_gen}" ]] && return 0
-  pgrep -u root -f '^openssl dhparam ' > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^openssl dhparam ' > /dev/null 2>&1 && return 0
   _dhp_gen=1
   echo "Generating new .dhp file for $1"
   openssl dhparam -out "$1" 4096 > /dev/null 2>&1 &
@@ -735,9 +737,10 @@ _process_dhp_files() {
       break
     fi
   done
-  # Loop over all .dhp files
+  # Loop over all .dhp files: regular ones only, so an entry no copy or
+  # generation can fix never takes the run's one generation
   for _dhp_file in "${_dhp_files[@]}"; do
-    [[ -e "${_dhp_file}" && ! -L "${_dhp_file}" ]] || continue
+    [[ -f "${_dhp_file}" && ! -L "${_dhp_file}" ]] || continue
     if ! _dhp_valid "${_dhp_file}"; then
       if [[ -n "${_non_empty_dhp}" ]]; then
         echo "Replacing unusable file ${_dhp_file} with ${_non_empty_dhp}"
@@ -766,6 +769,7 @@ _scan_nginx_errors() {
     | while LC_ALL=C IFS= read -r _missing_dhp; do
     [[ "${_missing_dhp}" =~ ^/etc/ssl/private/[A-Za-z0-9._-]+\.dhp$ ]] || continue
     [[ -L "${_missing_dhp}" ]] && continue
+    [[ -e "${_missing_dhp}" && ! -f "${_missing_dhp}" ]] && continue
     _dhp_valid "${_missing_dhp}" && continue
     [[ "${_missing_dhp}" = "${_non_empty_dhp}" ]] && continue
     echo "Missing or unusable .dhp file detected: ${_missing_dhp}"
