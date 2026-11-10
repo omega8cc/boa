@@ -38,6 +38,17 @@ _vSet="variable-set --always-set"
 
 ###-------------HELPERS-----------------###
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
   # converted to a private primary group named after itself gets that group,
@@ -599,14 +610,16 @@ _provision_running() {
   # The second pattern is the old one plus an execution-shape constraint, so the
   # only processes this stops matching are the non-executions; the first keeps
   # the inner `bash -c "... provision-<task>"` link of the su chain covered.
-  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
+  local _bU=""
+  _bU="$(_boa_run_uids)"
+  pgrep -u "${_bU}" -U "${_bU}" -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
   # it this also matches hosting-tasks and hosting-dispatch, the per-minute
   # pollers, which would pin the gate ON and disable every nightly cleanup.
-  pgrep -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -624,10 +637,10 @@ _night_boa_pass_active() {
   [ -e "/run/boa_run.pid" ] && return 0
   [ -e "/run/boa_wait.pid" ] && return 0
   [ -e "/run/octopus_install_run.pid" ] && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
