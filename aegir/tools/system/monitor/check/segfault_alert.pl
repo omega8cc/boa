@@ -53,8 +53,7 @@ any affected site will be disabled again after another segfault
 immediately, to protect your web server availability.
 INTROX
 ;
-    `echo "$intro" >> $this_path`;
-    #`echo "$intrx" >> $this_path`;
+    _append($this_path, "$intro\n");
   }
   $this_archive="/var/xdrago/monitor/log/$this_filename.archive.log";
   if (!-f "$this_archive") {
@@ -99,11 +98,14 @@ sub trash_it_action
   &find_domain($CRASH);
   if ($found) {
     print "$CRASH [$COUNTER] recorded on [$now_is]\n";
-    `echo "### PHP: CRASH at $CRASH [$COUNTER] discovered on $now_is for $dx" >> $this_path`;
-    `echo "### SYS: $sysl" >> $this_path`;
-    `echo "### NGX: $ngxl" >> $this_path`;
-    `echo "### PTH: $pthl" >> $this_path`;
-    `echo "### VHT: $disl" >> $this_path`;
+    # Written by Perl, never through a shell: the site path comes from an
+    # alias file and the log lines from logs other users can write to.
+    _append($this_path,
+      "### PHP: CRASH at $CRASH [$COUNTER] discovered on $now_is for $dx\n"
+      . "### SYS: $sysl\n"
+      . "### NGX: $ngxl\n"
+      . "### PTH: $pthl\n"
+      . "### VHT: " . (defined($disl) ? $disl : "") . "\n");
     &_send_alert;
   }
 }
@@ -156,9 +158,7 @@ sub find_domain
       #`service nginx reload`;
       $disl = $dislb;
     }
-    $ngxl =~ s/([";])/\\$1/g;
     chomp ($ngxl);
-    $sysl =~ s/([";])/\\$1/g;
     chomp ($sysl);
   }
 }
@@ -260,6 +260,59 @@ sub _client_mail_hold
 }
 
 #############################################################################
+# Append text to a file, in Perl.
+sub _append
+{
+  my ($path, $text) = @_;
+  if (open(my $out, '>>', $path)) {
+    print $out $text;
+    close($out);
+  }
+}
+
+#############################################################################
+# The plain addresses in a line, as the nightly's mail list takes them: words
+# split on white space (and on commas when $2 is set, for the operator's
+# line), \@ read as @, each word kept only when it is one plain address; a
+# line over 4 KiB gives none. Returns the kept words and the count dropped.
+sub _mail_words
+{
+  my ($line, $commas) = @_;
+  return ([], 0) unless (defined($line) && length($line) <= 4096);
+  $line =~ s/\\+\@/\@/g;
+  $line =~ s/^\s*(["\x27])(.*)\1\s*$/$2/;
+  # the operator's cnf value reached s-nail through a shell, which dropped
+  # each backslash before a character
+  $line =~ s/\\(.)/$1/g if ($commas);
+  my (@kept, $dropped);
+  $dropped = 0;
+  my $sep = $commas ? qr/[\s,]+/ : qr/\s+/;
+  foreach my $w (split($sep, $line)) {
+    next if ($w eq "");
+    if ($w =~ /\A[A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\z/) {
+      push(@kept, $w);
+    }
+    else {
+      $dropped++;
+    }
+  }
+  return (\@kept, $dropped);
+}
+
+#############################################################################
+# A line for the operator: printed, and written into the report, which the
+# archive keeps whether or not a mail goes out.
+sub _notice
+{
+  my ($text) = @_;
+  print "$text\n";
+  _append($this_path, "### ALRT: $text\n");
+}
+
+#############################################################################
+# The report goes to s-nail on its standard input, every value as its own
+# argument: no shell reads the client address, which the account's log
+# directory holds, or anything else here.
 sub _send_alert
 {
   my $email;
@@ -274,7 +327,14 @@ sub _send_alert
     }
     close $fh;
   }
-  $email =~ s/\\+@/@/g;
+  my @ops = ();
+  if (defined($email)) {
+    my ($k, $n) = _mail_words($email, 1);
+    @ops = @{$k} if ($k);
+    _notice("_MY_EMAIL in /root/.barracuda.cnf holds no plain address: no copy to the operator")
+      if (!@ops);
+  }
+  my @to = ();
   $this_email="/data/disk/$rx/log/email.txt";
   if (-f "$this_email") {
     open (FILE,"<$this_email");
@@ -282,21 +342,33 @@ sub _send_alert
       $cmail = "$_";
     }
     close (FILE);
-    chomp ($cmail);
-    $cmail =~ s/\\+@/@/g;
+    chomp ($cmail) if (defined($cmail));
+    my ($k, $n) = _mail_words($cmail, 0);
+    @to = @{$k} if ($k);
+    _notice("$this_email: $n word(s) that are not plain addresses left out")
+      if ($n > 0 && @to);
+    _notice("$this_email holds no plain address: client mail not sent")
+      if (!@to && defined($cmail) && $cmail =~ /\S/);
   }
   $mailx_test=`s-nail -V 2>&1`;
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
-  if ($email && $cmail && $mailx_test =~ /(built for Linux)/i) {
-    my ($hold_to, $hold_sfx) = _client_mail_hold($cmail);
-    if ($hold_to ne "" && $hold_sfx eq "") {
-      `cat $this_path | s-nail -b $email -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
-    }
-    elsif ($hold_to ne "") {
-      # the held address in single quotes: a plain address may carry one
-      (my $q = $hold_to) =~ s/\x27/\x27\\\x27\x27/g;
-      `cat $this_path | s-nail -b $email -s "PHP Segfault Alert for [$dx] at [$s] on $t$hold_sfx" \x27$q\x27`;
+  if (defined($email) && @to && $mailx_test =~ /(built for Linux)/i) {
+    my ($hold_to, $hold_sfx) = _client_mail_hold(join(" ", @to));
+    if ($hold_to ne "") {
+      @to = ($hold_to) if ($hold_sfx ne "");
+      my $subject = "PHP Segfault Alert for [$dx] at [$s] on $t$hold_sfx";
+      # every address starts with a letter, digit or underscore, so s-nail
+      # never reads one as an option
+      my @args = ('-s', $subject);
+      unshift(@args, '-b', join(",", @ops)) if (@ops);
+      if (open(my $rep, '<', $this_path)) {
+        if (open(my $mail, '|-', 's-nail', @args, @to)) {
+          print $mail $_ while (<$rep>);
+          close($mail);
+        }
+        close($rep);
+      }
     }
   }
   `cat /var/xdrago/monitor/log/$this_filename.log >> /var/xdrago/monitor/log/$this_filename.archive.log`;

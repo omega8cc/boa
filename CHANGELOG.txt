@@ -69,6 +69,13 @@
 
 @=> Security
 
+    * The PHP segfault monitor writes its report and sends its mail without
+      a shell: the site path it read from a site's Drush alias and the client
+      address in the account's log/email.txt went into a shell line root
+      ran, so a value the account's backend user can write ran as root. The
+      mail goes to each plain address those lines hold, as before; any other
+      word is left out, and the report says so.
+
     * A Grav site served through the server's HTTPS front, as every site
       without its own certificate is, sees each visitor's own address: it
       saw the front's, so the Login plugin's lockout, the API's limits and
