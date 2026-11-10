@@ -414,12 +414,17 @@ _CORE_LEGACY="8.9 9.5"
 # ships. Name only a pre-release that carries every core security fix released so
 # far, and replace it at each new one; empty builds none.
 _CORE_PRERELEASE="11.5.0-beta1 12.0.0-beta2"
-# Dependency releases no distribution build may resolve, as root composer.json conflicts
-# (package:constraint, space-separated). twig/twig 3.30.0 breaks every page of the Drupal
-# 10 and 11 releases published before Drupal's own fix: compiled templates call Twig's
-# escaper with the argument list of Drupal's escape filter (drupal.org issue 3625969,
-# twigphp/Twig issue 4952). Lift it once every catalogue core carries that fix.
+# Dependency releases the distribution builds hold back, as root composer.json conflicts
+# (package:constraint, space-separated) that _composer_prepare writes. Every distribution
+# build takes them but Varbase's, which installs its template's own lock with upstream's
+# config and checks its Twig instead (_twig_fits_core). twig/twig 3.30.0 breaks every page
+# of a Drupal 10 or 11 core without Drupal's own fix, first released in 10.6.18, 11.3.18
+# and 11.4.8: compiled templates call Twig's escaper with the argument list of Drupal's
+# escape filter (drupal.org issue 3625969, twigphp/Twig issue 4952). Lift the hold once
+# every catalogue core carries that fix.
 _COMPOSER_CONFLICTS="twig/twig:>=3.30"
+# The first Twig release that needs that fix in core, whether held or not.
+_TWIG_NEEDS_CORE_FIX="3.30"
 # Every published tarball records root as its owner: BOA unpacks some of them as root
 # into trees every instance shares, and tar run as root restores the recorded owner.
 _TAR_OWNER="--owner=0 --group=0 --numeric-owner"
@@ -2876,6 +2881,33 @@ build_thunder() {
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
 }
 
+_twig_fits_core() {
+  # 0 when a built tree's Twig works with its core: a Twig below _TWIG_NEEDS_CORE_FIX, or
+  # a core whose TwigExtension.php defines escapeFilterIsSafe(), Drupal's fix for that. The
+  # installed file is read rather than the core's version, so a core patch carrying the
+  # fix counts too. A Twig version that does not read as numbers, and a core file that
+  # is not found, fail. A failure is recorded as the build's. $1 workdir, $2 label.
+  local _wd="$1" _label="$2" _tw _maj _min _rel _ext=""
+  _tw="$(_lock_version "${_wd}" twig/twig)"
+  if [[ "${_tw}" =~ ^([0-9]+)\.([0-9]+)(\.|$) ]]; then
+    _maj="${BASH_REMATCH[1]}"
+    _min="${BASH_REMATCH[2]}"
+    _minor_ge "${_maj}.${_min}" "${_TWIG_NEEDS_CORE_FIX}" || return 0
+  fi
+  for _rel in web docroot html .; do
+    if _run_as_o8 "test -f '${_wd}/${_rel}/core/lib/Drupal/Core/Template/TwigExtension.php'"; then
+      _ext="${_wd}/${_rel}/core/lib/Drupal/Core/Template/TwigExtension.php"
+      break
+    fi
+  done
+  if [[ -n "${_ext}" ]] && _run_as_o8 "grep -q 'function escapeFilterIsSafe' '${_ext}'"; then
+    return 0
+  fi
+  _alrt "${_label}: twig/twig ${_tw:-(not in the lock)} needs Drupal's fix for drupal.org issue 3625969, which core $(_detect_core_version "${_wd}" 2>/dev/null) lacks: every page would fail"
+  _record_fail "${_label} (Twig breaks its core)"
+  return 1
+}
+
 _varbase_take_core() {
   # Move a fresh template tree's lock to _VARBASE_CORE before its first install: core,
   # what core pins, and the core patch package. The old patches.lock.json goes with
@@ -2944,9 +2976,14 @@ build_varbase() {
     _record_fail "varbase"
     return 1
   fi
+  _fix_step "${_wd}" "varbase" "${_VARBASE_DISTPKG}" || return 1
+  # The Twig hold never reaches this build (upstream's config stays as shipped), and the
+  # template lock's Twig, or a fix step's move, can need a newer core than _VARBASE_CORE.
+  # Holding Twig here would re-resolve upstream's tested lock; the core pin is ours, so
+  # the build fails and _VARBASE_CORE moves to a release with the fix.
+  _twig_fits_core "${_wd}" "varbase" || return 1
   # varbase expects a content dir under each recipes/ in its web root (web/ from the
   # 11 line, docroot/ on the 10 line).
-  _fix_step "${_wd}" "varbase" "${_VARBASE_DISTPKG}" || return 1
   local _vroot="web"
   [[ -d "${_wd}/docroot" && ! -d "${_wd}/web" ]] && _vroot="docroot"
   local _cmd="cd \"${_wd}/${_vroot}\" && find . -type d -name recipes -exec mkdir -p {}/default/content \;"

@@ -1059,6 +1059,13 @@
       that needs no move is built exactly as before, and a pre-release core
       still without Drush is a failed build, never published.
 
+    * staticbuild's Varbase build fails, and the published copy stays, when
+      it would ship Twig 3.30 or later on a Drupal core without Drupal's own
+      fix for that release (first in 10.6.18, 11.3.18 and 11.4.8): every page
+      of such a platform would fail. The other distributions hold Twig below
+      3.30, but Varbase installs from its template's own lock and never took
+      that hold. The published Varbase, on core 11.4.11, carries the fix.
+
     * Classic Drush 8.5.21 (Ægir's Drush 8): drush8 updatedb on Drupal 10.3
       and newer skips an update that core holds as done by an equivalent
       one, as core's own runner does, where it ran it again. On Drupal 11.5
