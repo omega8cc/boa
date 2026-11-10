@@ -562,15 +562,9 @@ if [ -d "/data/u" ] && [ "${_VERSION_REPORT}" != "NO" ]; then
   wait
 fi
 
-_if_fix_locked_sshd() {
-  _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=30 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f '^(sshd: )?/usr/sbin/sshd( |$)' || true
-    service ssh start
-  fi
-}
-_if_fix_locked_sshd
+# A listener left holding sshd's port is healed by system.sh's minute pass
+# alone, judged by the pidfile and the sockets: never by auth.log text, which
+# any program can write.
 
 #setprio &> /dev/null
 

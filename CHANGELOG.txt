@@ -79,6 +79,18 @@
       of a refused command. lfd no longer watches mail.log for SMTP AUTH,
       POP3 and IMAP failures, which no BOA service logs.
 
+    * The system monitor restarts sshd when a listener holds its port while
+      the daemon its init script tracks is gone, judged by the processes and
+      their sockets. A "Bind to port 22" line, which any program could write
+      to auth.log, made it kill and restart sshd on every pass; clear.sh's
+      copy of that check is gone.
+
+    * The system monitor adds the firewall rule for dhclient's lease
+      renewals when the server a lease file names is missing from
+      csf.allow, and only then reloads the firewall. A "dhclient ... Failed"
+      line, which any program could write to the system log, made it
+      rewrite csf.allow and reload the firewall every five minutes.
+
     * The PHP segfault monitor writes its report and sends its mail without
       a shell: the site path it read from a site's Drush alias and the client
       address in the account's log/email.txt went into a shell line root
