@@ -12216,7 +12216,8 @@ _take_verb_lock() {
       sleep 1
       continue
     fi
-    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
+    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ] \
+      && [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_owner}/status" 2> /dev/null)" = "0 0" ]; then
       _cmdline=$(tr '\0' ' ' 2>/dev/null < "/proc/${_owner}/cmdline")
       case "${_cmdline}" in
         */xoct\ *|*/xoct|*\ xoct\ *)

@@ -2272,7 +2272,7 @@ _t_freeze_conns() {
 _t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
 _t_owl_drain() {
   local _waited=0
-  while pgrep -f "[o]wl\.sh" >/dev/null 2>&1; do
+  while pgrep -u root -U root -f "[o]wl\.sh" >/dev/null 2>&1; do
     [[ "${_waited}" -ge 1800 ]] && _die "owl.sh pass still active after 1800s - retry later"
     _info "owl.sh pass active - waiting before destructive steps"
     sleep 30; _waited=$(( _waited + 30 ))

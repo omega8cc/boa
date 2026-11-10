@@ -7902,10 +7902,10 @@ _xmass_prune_args() {   # 1 = source dir  [2 = target dir of a leg a hostname re
 # never park the cadence forever, because a silently parked file sync IS the
 # de-sync.
 _xmass_boa_run_live() {
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1
 }
 
 # The spare replaced trees of a catalogue refresh under an account's distro
@@ -21139,7 +21139,8 @@ _take_verb_lock() {
       sleep 1
       continue
     fi
-    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
+    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ] \
+      && [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_owner}/status" 2> /dev/null)" = "0 0" ]; then
       _cmdline=$(tr '\0' ' ' 2>/dev/null < "/proc/${_owner}/cmdline")
       case "${_cmdline}" in
         */xmass\ *|*/xmass|*\ xmass\ *)
