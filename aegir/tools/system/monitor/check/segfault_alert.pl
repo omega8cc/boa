@@ -328,10 +328,13 @@ sub _send_alert
     close $fh;
   }
   my @ops = ();
+  my @late = ();
   if (defined($email)) {
     my ($k, $n) = _mail_words($email, 1);
     @ops = @{$k} if ($k);
-    _notice("_MY_EMAIL in /root/.barracuda.cnf holds no plain address: no copy to the operator")
+    # for the operator: written after the client's mail, so only the
+    # archive carries it
+    push(@late, "_MY_EMAIL in /root/.barracuda.cnf holds no plain address: no copy to the operator")
       if (!@ops);
   }
   my @to = ();
@@ -371,6 +374,7 @@ sub _send_alert
       }
     }
   }
+  _notice($_) foreach (@late);
   `cat /var/xdrago/monitor/log/$this_filename.log >> /var/xdrago/monitor/log/$this_filename.archive.log`;
   `rm -f /var/xdrago/monitor/log/$this_filename.log`;
 }
