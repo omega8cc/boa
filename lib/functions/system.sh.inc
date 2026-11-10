@@ -8106,6 +8106,8 @@ _strict_bin_permissions() {
     done < <(_sbp_find_item "${i}" | sort -u)
   done
 
+  # pure-ftpd too: rsyslog tells the FTP server's own session lines by its
+  # running executable, so no other user may start a copy of it.
   _PROTECTED_ITEMS="backboa \
                     barracuda \
                     boa \
@@ -8116,6 +8118,7 @@ _strict_bin_permissions() {
                     fix-drupal-site-permissions.sh \
                     named \
                     octopus \
+                    pure-ftpd \
                     redis-benchmark \
                     redis-check-aof \
                     redis-check-dump \
