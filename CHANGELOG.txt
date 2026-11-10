@@ -91,6 +91,11 @@
       line, which any program could write to the system log, made it
       rewrite csf.allow and reload the firewall every five minutes.
 
+    * barracuda's pass-through for a database server that stopped halfway
+      into a series upgrade takes a system log line as its evidence only
+      under the mysqld tag, which rsyslog keeps for root and the server's
+      own user: any line naming mysqld, whoever wrote it, counted before.
+
     * The PHP segfault monitor writes its report and sends its mail without
       a shell: the site path it read from a site's Drush alias and the client
       address in the account's log/email.txt went into a shell line root
