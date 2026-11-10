@@ -208,6 +208,25 @@ _oom_expendable_victim() {
       '$3 ~ re && $2 + 0 >= floor + 0 { $3 = ""; print; exit }'
 }
 
+# The largest resident set that is safe to kill, as "pid rss args". A
+# process is spared for its name (_OOM_EXEMPT) only when it runs as root,
+# mysql, aegir or an account's backend user (home /data/disk/<name>): an
+# account's web, FTP or shell login can name its own process "drush" or
+# "mysqld", and sparing that killed the next largest, often a shared service.
+_oom_largest_victim() {
+  local _tu=""
+  _tu=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $1 == "mysql" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf " %s", $3 } END { printf " " }')
+  ps -eo pid=,rss=,ruid=,euid=,args= --sort=-rss 2>/dev/null \
+    | awk -v ex="${_OOM_EXEMPT}" -v tu="${_tu}" '{
+        a = $0
+        sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ /, "", a)
+        if (a ~ ex && index(tu, " " $3 " ") && index(tu, " " $4 " ")) next
+        print $1, $2, a
+        exit
+      }'
+}
+
 _oom_kill_top_offender() {
   # A memory emergency is healed by freeing memory, not by taking the site
   # down. The previous response here killed seven services within one second
@@ -289,13 +308,12 @@ _oom_kill_top_offender() {
     echo "${_now}" >> /var/log/boa/oom.kill.ledger
   fi
   # A large expendable process first, else the single largest resident set
-  # that is safe to kill. The grep runs on a ps snapshot, so an over-match
+  # that is safe to kill. The match runs on a ps snapshot, so an over-match
   # only ever EXCLUDES a candidate; kernel threads carry no RSS and sort last
   # on their own.
   _victim=$(_oom_expendable_victim)
   if [ -z "${_victim}" ]; then
-    _victim=$(ps -eo pid=,rss=,args= --sort=-rss 2>/dev/null \
-      | grep -vE "${_OOM_EXEMPT}" | head -n 1)
+    _victim=$(_oom_largest_victim)
   fi
   _vpid=$(echo "${_victim}" | awk '{print $1}')
   _vpid=${_vpid//[^0-9]/}
@@ -441,11 +459,11 @@ _cron_duplicate_instances_detection() {
   # Daemons only: a command line that IS /usr/sbin/cron (with or without
   # arguments), never one that mentions the path further along and never
   # cron's own job children, which carry the mixed-case /usr/sbin/CRON.
-  _CNT=$(pgrep -fc '^/usr/sbin/cron( |$)')
+  _CNT=$(pgrep -u root -U root -fc '^/usr/sbin/cron( |$)')
   if (( _CNT > 1 )); then
     # Double-check after a short grace to avoid flapping
     sleep 3
-    _CNT2=$(pgrep -fc '^/usr/sbin/cron( |$)')
+    _CNT2=$(pgrep -u root -U root -fc '^/usr/sbin/cron( |$)')
     if (( _CNT2 > 1 )); then
       _cd="/run/cron-monitor.cooldown"
       _now=$(date +%s)
@@ -460,10 +478,10 @@ _cron_duplicate_instances_detection() {
       # kill uses the pattern the count used, so a command line that merely
       # names the path is never collateral, and what was counted is logged
       # first so a trip is diagnosable.
-      echo "$(date) INFO: Cron masters counted: $(pgrep -a -f '^/usr/sbin/cron( |$)' 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
-      pkill -TERM -f '^/usr/sbin/cron( |$)' &> /dev/null
+      echo "$(date) INFO: Cron masters counted: $(pgrep -u root -U root -a -f '^/usr/sbin/cron( |$)' 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
+      pkill -TERM -u root -U root -f '^/usr/sbin/cron( |$)' &> /dev/null
       sleep 1
-      pkill -KILL -f '^/usr/sbin/cron( |$)' &> /dev/null
+      pkill -KILL -u root -U root -f '^/usr/sbin/cron( |$)' &> /dev/null
       service cron start &> /dev/null
       # Cooldown stamp
       date +%s > "${_cd}"
@@ -720,7 +738,7 @@ _postfix_health_check_fix() {
 
 _vnstat_health_check_fix() {
   if [ -x "/etc/init.d/vnstat" ] && [ ! -e "/run/vnstat.pid" ]; then
-    if ! _daemon_alive /run/vnstat/vnstat.pid vnstatd; then
+    if ! _daemon_alive /run/vnstat/vnstat.pid vnstatd vnstat; then
       service vnstat restart
       wait
       _thisErrLog="$(date) VNStat Monitor was down, restarted"
@@ -743,6 +761,8 @@ _lfd_alive() {
   _p=$(tr -dc '0-9' < /run/lfd.pid)
   [ -n "${_p}" ] || return 1
   kill -0 "${_p}" 2>/dev/null || return 1
+  # root's: a recycled pid held by an account's process titled "lfd" is not it
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0 0" ] || return 1
   grep -aq "lfd" "/proc/${_p}/cmdline" 2>/dev/null
 }
 
@@ -752,14 +772,21 @@ _lfd_alive() {
 # editor, a grep, an ssh -c -- as the live daemon and skipped the start for
 # as long as the mention lived; a stale pidfile after a kill made that
 # permanent. The pidfile and the name are what each init script maintains.
-#   $1 = pidfile, $2 = process name
+# The daemon runs as root or as its own service user: a recycled pid held by
+# an account's process named like the daemon is not the daemon.
+#   $1 = pidfile, $2 = process name, $3 = its service user (optional)
 _daemon_alive() {
-  local _p
+  local _p _u _s
   [ -s "${1}" ] || return 1
   _p=$(tr -dc '0-9' < "${1}")
   [ -n "${_p}" ] || return 1
   kill -0 "${_p}" 2>/dev/null || return 1
-  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ]
+  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ] || return 1
+  _u=$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)
+  [ "${_u}" = "0 0" ] && return 0
+  [ -n "${3}" ] || return 1
+  _s=$(id -u "${3}" 2> /dev/null) || return 1
+  [ "${_u}" = "${_s} ${_s}" ]
 }
 
 _lfd_health_check_fix() {
@@ -932,7 +959,7 @@ _clamav_health_check_fix() {
     && [ -e "${_clamd_service}" ] \
     && [ -e "${_freshclam_service}" ]; then
     if [ -x "/etc/init.d/clamav-daemon" ]; then
-      if ! _daemon_alive /run/clamav/clamd.pid clamd; then
+      if ! _daemon_alive /run/clamav/clamd.pid clamd clamav; then
         pkill -9 -x clamd || true
         service clamav-daemon start
         wait
@@ -944,7 +971,7 @@ _clamav_health_check_fix() {
       fi
     fi
     if [ -x "/etc/init.d/clamav-freshclam" ]; then
-      if ! _daemon_alive /run/clamav/freshclam.pid freshclam; then
+      if ! _daemon_alive /run/clamav/freshclam.pid freshclam clamav; then
         pkill -9 -x freshclam || true
         service clamav-freshclam start
         wait
@@ -988,9 +1015,9 @@ _rsyslog_health_check_fix() {
   # remedy is the init script, not a kill; a lone stale pidfile gets the
   # same graceful restart, which rewrites it.
   if [ -x "/etc/init.d/rsyslog" ]; then
-    if ! pgrep -x rsyslogd >/dev/null 2>&1; then
+    if ! pgrep -u root -U root -x rsyslogd >/dev/null 2>&1; then
       sleep 2
-      if ! pgrep -x rsyslogd >/dev/null 2>&1; then
+      if ! pgrep -u root -U root -x rsyslogd >/dev/null 2>&1; then
         _rsyslog_restart_verified "Rsyslog was down"
       fi
     elif [ ! -e "/run/rsyslogd.pid" ]; then

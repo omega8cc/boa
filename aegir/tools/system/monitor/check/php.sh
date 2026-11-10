@@ -178,7 +178,7 @@ _fpm_master_pids() {
   # master's title until it names its pool, a window a stalled box stretches
   # to seconds: only a match whose parent is not itself a match is a master.
   local _all _pid _ppid
-  _all=" $(pgrep -f "${1}" 2> /dev/null | tr '\n' ' ') "
+  _all=" $(pgrep -u root -U root -f "${1}" 2> /dev/null | tr '\n' ' ') "
   for _pid in ${_all}; do
     _ppid=$(ps -o ppid= -p "${_pid}" 2> /dev/null | tr -d ' ')
     [ -n "${_ppid}" ] || continue
@@ -597,7 +597,7 @@ _fpm_fastcgi_temp() {
 
 _fpm_health_ok() {
   # ${1} = version: its master, its www socket and its pid file are all there
-  pgrep -f "^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" >/dev/null 2>&1 || return 1
+  pgrep -u root -U root -f "^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" >/dev/null 2>&1 || return 1
   [ -S "/run/www${1}.fpm.socket" ] || return 1
   [ -s "/run/php${1}-fpm.pid" ] || return 1
   return 0
@@ -635,7 +635,7 @@ _fpm_health_check_fix() {
       _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
 
       _ok_master=false; _ok_socket=false; _ok_pid=false
-      pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+      pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
       [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
       [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
 
@@ -672,7 +672,7 @@ _fpm_health_check_fix() {
         while [ "${_w}" -lt 10 ]; do
           sleep 1
           _ok_master=false; _ok_socket=false; _ok_pid=false
-          pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+          pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
           [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
           [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
           if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then

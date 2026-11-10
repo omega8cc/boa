@@ -193,7 +193,7 @@ _nginx_start_in_flight() {
   # Nginx that races it for the ports. The init script stays visible for
   # the whole gap; one older than two minutes is stuck, not starting.
   local _p _age
-  for _p in $(pgrep -f '^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/nginx (start|restart|stop|force-reload)( |$)' 2> /dev/null); do
+  for _p in $(pgrep -u root -U root -f '^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/nginx (start|restart|stop|force-reload)( |$)' 2> /dev/null); do
     _age=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -d ' ')
     [[ -n "${_age}" ]] && [[ "${_age}" -lt 120 ]] && return 0
   done

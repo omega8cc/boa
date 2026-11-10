@@ -78,6 +78,17 @@ for _arg in "$@"; do
   esac
 done
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -159,10 +170,11 @@ touch "${_STAMP}"
 
 # Backup exclusion: skip while any backup walker is alive and for 20 min after
 # the last sighting (a dump's reads and truncations skew the miss rates).
-if pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
-  || pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
+_bU="$(_boa_run_uids)"
+if pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
+  || pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
+  || pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
+  || pgrep -u root -U root -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
   touch "${_BKP_STAMP}"
   exit 0
 fi
