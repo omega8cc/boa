@@ -232,6 +232,12 @@
 
 @=> Important Fixes
 
+    * Reset login of a Grav site also lifts a login lockout on the admin
+      account, as the Login plugin's own password reset does: after too many
+      failed logins the plugin refuses even the right password until its
+      interval ends, so the new password was refused for that long. Needs
+      the Login plugin 3.9 or later.
+
     * The init script BOA moves aside when it disables jetty9 is kept, as the
       solr7 and solr9 ones beside it are; the nightly deleted it the night
       after it was moved.
