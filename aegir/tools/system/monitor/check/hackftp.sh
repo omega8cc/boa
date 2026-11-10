@@ -186,26 +186,28 @@ _makeactions() {
       _line_is_recent "${_line}" || continue
 
       # Extract the peer IP from pure-ftpd's server-written prefix -- the FIRST
-      # parenthesised "(user@host)" token AFTER the "pure-ftpd:" program tag. That
-      # tag is written by pure-ftpd/syslog, never the client, so anchoring on it is
-      # injection-proof: the attacker-controlled login name (logged later inside
-      # "[...]", and which may itself contain a "(x@1.2.3.4)" token because the
-      # sanitiser keeps parentheses) can never be reached by the match. We take THAT
-      # token's host and require it to be IPv4 -- we deliberately do NOT let a free
-      # "@<ipv4>" =~ search run, because on a non-IPv4 first paren (an IPv6 or
-      # IPv4-mapped peer) it would skip the real prefix and match the attacker's
-      # "(x@8.8.8.8)" username token, banning an attacker-framed third party.
-      # Position-invariant across classic and ISO 8601 syslog (the tag precedes both
-      # message variants).
+      # parenthesised "(user@host)" token right after the "pure-ftpd:" program
+      # tag, and that tag only in the place the syslog header gives the program
+      # (classic or ISO 8601 stamp, then the host). The client never writes the
+      # tag, so the attacker-controlled login name (logged later inside "[...]",
+      # and which may itself contain a "(x@1.2.3.4)" token because the sanitiser
+      # keeps parentheses) can never be reached by the match. A local program
+      # writing to the log socket picks its own tag, and a setuid one logs words
+      # a local user chose, so "pure-ftpd:" anywhere else in a line is not the
+      # server's. We take THAT token's host and require it to be IPv4 -- we
+      # deliberately do NOT let a free "@<ipv4>" =~ search run, because on a
+      # non-IPv4 first paren (an IPv6 or IPv4-mapped peer) it would skip the real
+      # prefix and match the attacker's "(x@8.8.8.8)" username token, banning an
+      # attacker-framed third party.
       #
       # IPv4-mapped IPv6 peer (::ffff:1.2.3.4 -- the default log form for an IPv4
       # client on a dual-stack pure-ftpd): recover the embedded IPv4 so a real
       # client is still banned. A pure IPv6 peer has no IPv4 form, so _is_ipv4 skips
       # it (csf is IPv4-only) rather than mis-attributing the ban.
       local _ip=""
-      local _ftp_peer_re='pure-ftpd(\[[0-9]+\])?:[[:space:]]*\(([^()]*)@([^()]*)\)'
+      local _ftp_peer_re='^([A-Z][a-z]{2} +[0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[^ ]+) [^ ]+ pure-ftpd(\[[0-9]+\])?:[[:space:]]*\(([^()]*)@([^()]*)\)'
       if [[ "${_line}" =~ ${_ftp_peer_re} ]]; then
-        _ip="${BASH_REMATCH[3]}"
+        _ip="${BASH_REMATCH[4]}"
       fi
       [[ "${_ip}" == *:*.*.*.* ]] && _ip="${_ip##*:}"
 

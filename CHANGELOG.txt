@@ -69,6 +69,16 @@
 
 @=> Security
 
+    * A program a hosted account runs can no longer make the firewall block
+      an address, or spare one from a block. rsyslog now reads who sent each
+      line: the auth, authpriv, ftp and kernel lines of any sender but root
+      go to /var/log/auth.user.log, and /var/log/messages keeps root's lines
+      alone, so the SSH and FTP abuse scanners and lfd read only what the
+      servers themselves logged. The scanners also take a line only under
+      the server's own program name, where sudo, for one, logged the words
+      of a refused command. lfd no longer watches mail.log for SMTP AUTH,
+      POP3 and IMAP failures, which no BOA service logs.
+
     * The PHP segfault monitor writes its report and sends its mail without
       a shell: the site path it read from a site's Drush alias and the client
       address in the account's log/email.txt went into a shell line root

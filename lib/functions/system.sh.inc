@@ -14974,6 +14974,19 @@ _rsyslog_config_update() {
         /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     cp -af ${_locCnf}/var/rsyslog.conf /etc/rsyslog.conf
+    # The rules keep a line tagged mysqld from any sender but root and the
+    # server's own user out of the logs barracuda's SQL gate reads; with no
+    # mysql user yet only root's pass, as the server writes nothing then.
+    _rsyslogMyUid="$(id -u mysql 2>/dev/null)"
+    [[ "${_rsyslogMyUid}" =~ ^[0-9]+$ ]] || _rsyslogMyUid=0
+    sed -i "s/@MYSQL_UID@/${_rsyslogMyUid}/g" /etc/rsyslog.conf
+    # postfix's package adds a second socket in its chroot with the legacy
+    # $AddUnixListenSocket, which cannot carry the sender's uid; declared as
+    # an input it carries it as /dev/log does, so the rules apply there too.
+    if [ -e "/etc/rsyslog.d/postfix.conf" ]; then
+      sed -i -E 's@^\$AddUnixListenSocket[[:space:]]+(/var/spool/postfix/dev/log)[[:space:]]*$@input(type="imuxsock" Socket="\1" Annotate="on" ParseTrusted="on")@' \
+        /etc/rsyslog.d/postfix.conf
+    fi
     [ -s "${_locCnf}/var/mysql-notices.conf" ] \
       && cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
     [ -s "${_locCnf}/var/logrotate.d.rsyslog.conf" ] \
