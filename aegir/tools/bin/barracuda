@@ -431,8 +431,8 @@ _sql_error_tail() {
   fi
   # In live mode a syslog line counts only under the mysqld tag in its place
   # after the stamp and the host: any program can write the word into a line,
-  # and rsyslog.conf keeps the mysqld tag of any sender but root (mysqld_safe's
-  # logger) and the server's own user out of these files.
+  # and rsyslog.conf keeps the mysqld tag of any sender but root and the
+  # server's own user out of these files.
   if [[ -e "${_sqlLog}" ]] && [ "${1}" = "live" ]; then
     _sqlOut="${_sqlOut}
 $(tail -n 4000 "${_sqlLog}" 2>/dev/null \
