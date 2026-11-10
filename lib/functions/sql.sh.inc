@@ -523,15 +523,15 @@ _if_sql_keyring_apt_update() {
       if [ ! -s "/etc/apt/keyrings/percona.gpg" ]; then
         _sql_fetch_apt_key percona-key.gpg /etc/apt/keyrings/percona.gpg
       fi
-      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*dirmngr( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc '^[^ ]*gpg-agent( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*gpg-agent( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*gpg-agent( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*gpg-agent( |$)'
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
@@ -565,15 +565,15 @@ _if_sql_keyring_apt_update() {
       if [ ! -s "/etc/apt/keyrings/mysql.gpg" ]; then
         _sql_fetch_apt_key mysql-key.gpg /etc/apt/keyrings/mysql.gpg
       fi
-      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*dirmngr( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc '^[^ ]*gpg-agent( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*gpg-agent( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*gpg-agent( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*gpg-agent( |$)'
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi

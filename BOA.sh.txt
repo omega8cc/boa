@@ -1825,6 +1825,18 @@ _source_due() {
   [ ! -e "${3}" ] || [ "$(md5sum "${1}" 2> /dev/null | cut -d' ' -f1)" != "${2}" ]
 }
 
+# The real uids of BOA's own work: root, aegir, and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores. Never an account's web, FTP or shell login: any of them
+# can give its own process any command line, and a check that took such a
+# process for one of root's runs held off or killed the real one.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1929,10 +1941,12 @@ _fetch_versioned() {
   # never as argv[0] and never under a shell, so an sh-only class left
   # the backup family's --guard duplicity permanently inert (2026-08-30).
   if [[ -n "${_grd}" ]] && [[ -s "${_dst}" ]]; then
+    local _bU=""
+    _bU="$(_boa_run_uids)"
     _grdEsc="${_grd//./\\.}"
-    _cnt="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
+    _cnt="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
     _cnt="${_cnt:-0}"
-    _cntD="$(pgrep -fc "^[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
+    _cntD="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
     _cntD="${_cntD:-0}"
     if (( _cnt + _cntD > 0 )); then
       echo "The ${_lbl} is running!"
@@ -2549,19 +2563,21 @@ _update_agents() {
     # reaped mid-backup whenever no multiback happened to be running.
     # A wrapper that died leaves its duplicity a genuine orphan (none of
     # the five counts as alive), so orphan recovery is unchanged.
-    _dcyLive="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
-    _dcyLiveD="$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
+    local _bU=""
+    _bU="$(_boa_run_uids)"
+    _dcyLive="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
+    _dcyLiveD="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
     _dcyLive=$(( ${_dcyLive:-0} + ${_dcyLiveD:-0} ))
     _bupLive=0
     for _bupTool in dcysetup mybackup multiback backboa duobackboa; do
-      _bupCnt="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_bupTool}( |$)" 2>/dev/null)"
+      _bupCnt="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_bupTool}( |$)" 2>/dev/null)"
       _bupLive=$(( _bupLive + ${_bupCnt:-0} ))
-      _bupCnt="$(pgrep -fc "^[^ ]*${_bupTool}( |$)" 2>/dev/null)"
+      _bupCnt="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^[^ ]*${_bupTool}( |$)" 2>/dev/null)"
       _bupLive=$(( _bupLive + ${_bupCnt:-0} ))
     done
     if [ "${_dcyLive}" -gt 0 ] && [ "${_bupLive}" -lt 1 ]; then
-      pkill -9 -f "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)"
-      pkill -9 -f "^[^ ]*duplicity( |$)"
+      pkill -9 -u "${_bU}" -U "${_bU}" -f "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)"
+      pkill -9 -u "${_bU}" -U "${_bU}" -f "^[^ ]*duplicity( |$)"
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
       rm -f /root/.cache/duplicity/*/lockfile
@@ -5163,23 +5179,23 @@ _install_in_flight() {
   # Anchored, not a bare substring: a command line that merely MENTIONS the
   # wrapper -- an editor, a checksum, an operator's ssh probe -- must not read
   # as an install in flight and defer the agent indefinitely.
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (a remote install driven from this box) must not defer this box
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   # Dual-path for the staging move: match both the old /var/backups home and
   # the root-only /var/opt/boa-dist one, because tools arrive per file and a
   # box runs whatever mix it has converged on. A watcher that knows only one
   # path would read a box as idle in the middle of an install. Anchored on
   # the executor for the same reason as the wrapper arms above; left open at
   # the tail because the octopus leg runs as "OCTOPUS.sh.txt.oN".
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   # The Ægir setup children ("su - oN -c bash .../AegirSetupC.sh.txt") match
   # none of the forms above and are the phase that consumes /opt/tmp/boa the
   # longest. Anchored on the executor so a remotely driven install cannot
   # defer this box; the [ABC] class keeps it from matching its own pgrep
-  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -5709,7 +5725,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f81 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f80 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f37 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f07 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f06 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f53 --guard duplicity
@@ -5742,14 +5758,14 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f92 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
-    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f85 --guard /local/bin/lock.inc
+    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f79 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f97 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f50 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f41 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
-    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f78 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f77 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
     _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f78 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
@@ -5791,7 +5807,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f89 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f82 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
-    _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
+    _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f98 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f87 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
     # mycnfup is retired: a Debian-only tuner that only the discontinued
@@ -5809,7 +5825,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f98 --guard /local/bin/vhostcheck
     _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f94 --guard /local/bin/vmnetfix
     # weblogx: skip while owl.sh runs (preserves the old loop guard)
-    _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
+    _wlOwlCnt=$(pgrep -u root -U root -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
       _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f92 --guard /local/bin/weblogx
@@ -7030,10 +7046,11 @@ if [ "$(id -u)" -eq 0 ]; then
   # and the backup tools use: bare substrings counted any command line
   # that merely mentioned the word, so this notice could fire off an
   # operator's editor or log tail rather than a real run.
-  _DCY=$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)
-  _DCYD=$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)
+  _bU="$(_boa_run_uids)"
+  _DCY=$(pgrep -u "${_bU}" -U "${_bU}" -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)
+  _DCYD=$(pgrep -u "${_bU}" -U "${_bU}" -fc "^[^ ]*duplicity( |$)" 2>/dev/null)
   _DCY=$(( ${_DCY:-0} + ${_DCYD:-0} ))
-  _MLT=$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*multiback( |$)" 2>/dev/null)
+  _MLT=$(pgrep -u "${_bU}" -U "${_bU}" -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*multiback( |$)" 2>/dev/null)
   _MLT=${_MLT:-0}
   if (( _DCY > 0 )) && (( _MLT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
@@ -7126,6 +7143,7 @@ if [ "$(id -u)" -eq 0 ]; then
         _bupStuckAgeH="${_bupHeldH}"
       fi
     done
+    _bU="$(_boa_run_uids)"
     for _bupPat in \
       "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(sequential_backups\.sh|multiback|duplicity)( |$)" \
       "^[^ ]*(sequential_backups\.sh|multiback|duplicity)( |$)"; do
@@ -7135,7 +7153,7 @@ if [ "$(id -u)" -eq 0 ]; then
       # wrapper is briefly live between entries -- so pid-file mtimes
       # alone would leave this path with no ceiling and suppress for as
       # long as such a run hangs.
-      for _bupProcP in $(pgrep -f "${_bupPat}" 2>/dev/null); do
+      for _bupProcP in $(pgrep -u "${_bU}" -U "${_bU}" -f "${_bupPat}" 2>/dev/null); do
         _bupLiveAny=YES
         _bupProcS=$(ps -o etimes= -p "${_bupProcP}" 2>/dev/null | tr -dc '0-9')
         _bupProcH=$(( ${_bupProcS:-0} / 3600 ))

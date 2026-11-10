@@ -43,7 +43,7 @@ _SQL_CLEANUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cleanup\.sh( |$)'
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
   local _pat="$1" _p="" _e="" _max=""
-  for _p in $(pgrep -f "${_pat}" 2> /dev/null); do
+  for _p in $(pgrep -u root -U root -f "${_pat}" 2> /dev/null); do
     _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
     [ -z "${_e}" ] && continue
     if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
@@ -222,13 +222,13 @@ _weekly_install_in_flight() {
       # INSTALL may defer the weekly, or transient probes and remote legs
       # walk it into the skip-a-week terminal state
       [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
-      _CNT=$(pgrep -fc "${_cPat}")
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
       if (( _CNT > 0 )); then
         return 0
       fi
     fi
   done
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     return 0
   fi
   [ -e "/run/octopus_install_run.pid" ] && return 0
@@ -1216,7 +1216,7 @@ _is_protected_run() {
       # cleanup, suspend and unsuspend; info, version and help read only.
       _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa (in-|cleanup|suspend|unsuspend)"
-      _CNT=$(pgrep -fc "${_cPat}")
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -1225,7 +1225,7 @@ _is_protected_run() {
   done
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
@@ -1269,9 +1269,9 @@ _reap_stuck_sql_helpers() {
 
   # move_sql.sh runs from the watchdog and the backup, never from cron:
   # three executors of it is a pile-up, as before
-  _cnt=$(pgrep -fc '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)')
+  _cnt=$(pgrep -u root -U root -fc '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)')
   if (( _cnt > 2 )); then
-    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)'
     rm -f /run/mysql_restart_running.pid
     rm -f /run/boa_wait.pid
     rm -f /var/log/boa/.move_sql_ctrl*
@@ -1281,7 +1281,7 @@ _reap_stuck_sql_helpers() {
   # mysql_cleanup.sh runs hourly from cron, under the same launcher shell
   _age=$(_exec_age "${_SQL_CLEANUP_EXEC}")
   if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
-    pkill -9 -f "${_SQL_CLEANUP_EXEC}"
+    pkill -9 -u root -U root -f "${_SQL_CLEANUP_EXEC}"
     rm -f /run/mysql_backup_running.pid
     rm -f /var/log/boa/.sqlcleanup_ctrl*
     touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
@@ -1293,9 +1293,9 @@ _reap_stuck_sql_helpers() {
     touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _cnt=$(pgrep -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
+  _cnt=$(pgrep -u root -U root -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
   if (( _cnt > 1 )); then
-    pkill -9 -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
     touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
@@ -1303,16 +1303,16 @@ _reap_stuck_sql_helpers() {
 
   _age=$(_exec_age "${_SQL_BACKUP_EXEC}")
   if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
-    pkill -9 -f "${_SQL_BACKUP_EXEC}"
+    pkill -9 -u root -U root -f "${_SQL_BACKUP_EXEC}"
     # Under the SQL maintenance marker a mydumper may be a migration's dump:
     # only the backup's own goes then, told by where it writes.
     if [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ]; then
-      pkill -9 -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/sql/'
+      pkill -9 -u root -U root -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/sql/'
     else
-      pkill -9 -f '^[^ ]*mydumper( |$)'
+      pkill -9 -u root -U root -f '^[^ ]*mydumper( |$)'
     fi
-    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
-    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
     rm -f /run/boa_sql_backup.pid
     rm -f /run/mysql_backup_running.pid
     rm -f /run/boa_wait.pid
