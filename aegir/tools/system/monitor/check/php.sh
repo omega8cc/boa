@@ -751,6 +751,113 @@ _fpm_logs_empty() {
   done
 }
 
+# An account asks for a restart by leaving a file in its static/control.
+# The restart is box-wide, so each account is honoured at most once in
+# _ACCT_REQ_SECS for each service, and only for a regular file, not a link,
+# owned by one of its identities in its own real static/control. Any other
+# entry of a request's name is removed and never acted on.
+_ACCT_REQ_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+# The uids of root and of every identity of the account $1 as passwd names
+# them (BOA.sh.txt's _acct_walk_uids), comma-separated. Status 1, and
+# nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# Run "$@" with the account $1's uids last, inside its real static/control:
+# no link on the way, the directory root's or one of the account's.
+_acct_req_in_ctrl() {
+  local _a="${1}" _u _want
+  shift
+  _u=$(_acct_walk_uids "${_a}") || return 1
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static/control"
+  ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
+    && [ "$(pwd -P)" = "${_want}" ] \
+    && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
+    && "$@" "${_u}" )
+}
+# Inside the real static/control: remove ./$1, a directory only when empty.
+_acct_req_drop() {
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rmdir -- "./${1}" 2> /dev/null
+  else
+    rm -f -- "./${1}" 2> /dev/null
+  fi
+  return 0
+}
+# Inside the real static/control: status 0 when ./$1 is a request that
+# counts, a regular file and not a link, owned by one of the uids $2;
+# anything else of that name is removed.
+_acct_req_judge() {
+  local _o
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
+    _o=$(stat -c %u -- "./${1}" 2> /dev/null)
+    [ -n "${_o}" ] && [[ ",${2}," == *",${_o},"* ]] && return 0
+  fi
+  _acct_req_drop "${1}"
+  return 1
+}
+# Fills _ACCT_REQ with the accounts whose request, under any of the names
+# $2..., counts for the service $1 this pass. A request made again inside
+# the account's allowance is removed and noted once, not acted on.
+_acct_req_scan() {
+  local _svc="${1}" _p _a _n _hit _st _ts _now
+  shift
+  _ACCT_REQ=()
+  _now=$(date +%s)
+  for _p in /data/disk/*/static/control; do
+    _a="${_p#/data/disk/}"
+    _a="${_a%%/*}"
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    _hit=NO
+    for _n in "$@"; do
+      [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
+      _acct_req_in_ctrl "${_a}" _acct_req_judge "${_n}" && _hit=YES
+    done
+    [ "${_hit}" = "YES" ] || continue
+    _st="${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+    if [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_ACCT_REQ_SECS}" ]; then
+      for _n in "$@"; do
+        _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+      done
+      if [ ! -e "${_st}.noted" ]; then
+        mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+        : > "${_st}.noted"
+        echo "$(date) INFO: ${_svc} restart asked again by ${_a} within $(( _ACCT_REQ_SECS / 60 )) minutes; request removed, not acted on" >> "${_pthOml}"
+      fi
+      continue
+    fi
+    _ACCT_REQ+=("${_a}")
+  done
+}
+# Removes the counted requests, under any of the names $2..., of every
+# account in _ACCT_REQ and starts each one's allowance for the service $1.
+_acct_req_take() {
+  local _svc="${1}" _a _n
+  shift
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  for _a in "${_ACCT_REQ[@]}"; do
+    for _n in "$@"; do
+      _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+    done
+    date +%s > "${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    rm -f "${_ACCT_REQ_DIR}/${_svc}.${_a}.noted"
+  done
+}
+
 _fpm_apcu_reload_sentinel() {
   # A passive mirror (replication standby): the sentinel is the ACTIVE box's
   # self-service request, delivered here only because static/control rides the
@@ -783,7 +890,8 @@ _fpm_apcu_reload_sentinel() {
   #   without dropping active connections.
   #
   # Cooldown: respects _FPM_COOLDOWN_SECS (default 30s) to prevent reload
-  # storms if the sentinel is created repeatedly.
+  # storms if the sentinel is created repeatedly, and each account is
+  # honoured at most once in _ACCT_REQ_SECS (_acct_req_scan).
 
   # Plan-level gate — same logic as _if_valkey_restart in valkey.sh
   local _PrTestPower _PrTestPhantom _PrTestCluster _PrTestUltra _PrTestMonster
@@ -805,9 +913,8 @@ _fpm_apcu_reload_sentinel() {
     return 0  # plan does not allow self-service FPM reload
   fi
 
-  local _FpmTest
-  _FpmTest=$(ls /data/disk/*/static/control/run-php-fpm-reload.pid 2>/dev/null | wc -l)
-  [ "${_FpmTest}" -lt 1 ] && return 0
+  _acct_req_scan php-fpm run-php-fpm-reload.pid
+  [ "${#_ACCT_REQ[@]}" -lt 1 ] && return 0
 
   # Cooldown check — reuse php84-fpm cooldown as shared gate since a reload
   # affects all FPM versions simultaneously
@@ -821,14 +928,19 @@ _fpm_apcu_reload_sentinel() {
       _delta=$(( _now - _ts ))
       if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
         echo "$(date) INFO: run-php-fpm-reload.pid found but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping" >> ${_pthOml}
-        rm -f /data/disk/*/static/control/run-php-fpm-reload.pid
+        # removed with no reload, as before; the accounts' allowances
+        # start only with a reload that runs
+        local _a
+        for _a in "${_ACCT_REQ[@]}"; do
+          _acct_req_in_ctrl "${_a}" _acct_req_drop run-php-fpm-reload.pid
+        done
         return 0
       fi
     fi
   fi
 
-  echo "$(date) PHP-FPM reload requested via sentinel — reloading to clear APCu" >> ${_pthOml}
-  rm -f /data/disk/*/static/control/run-php-fpm-reload.pid
+  echo "$(date) PHP-FPM reload requested via sentinel by ${_ACCT_REQ[*]} — reloading to clear APCu" >> ${_pthOml}
+  _acct_req_take php-fpm run-php-fpm-reload.pid
   _fpm_reload "SENTINEL"
 
   # Update cooldown timestamp for all FPM versions

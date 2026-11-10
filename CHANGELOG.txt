@@ -120,6 +120,15 @@
       stays writable by the shared group, and a control folder that is not
       the account's own is left unread, with an ALERT line saying why.
 
+    * An account's request to restart Nginx or the cache server, or to
+      reload PHP-FPM, is honoured at most once in 15 minutes for that
+      account and service, and only as a plain file of the account's own in
+      its own ~/static/control; one made again inside that time is removed
+      and noted in the monitor's log, not acted on. Any account could
+      restart the service for every site on the server every 30 seconds,
+      and a folder made under a request's name was never removed, so one
+      command restarted the service on every pass.
+
     * The PHP segfault monitor writes its report and sends its mail without
       a shell: the site path it read from a site's Drush alias and the client
       address in the account's log/email.txt went into a shell line root

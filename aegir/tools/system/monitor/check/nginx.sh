@@ -617,6 +617,113 @@ _nginx_if_up_check_fix() {
   fi
 }
 
+# An account asks for a restart by leaving a file in its static/control.
+# The restart is box-wide, so each account is honoured at most once in
+# _ACCT_REQ_SECS for each service, and only for a regular file, not a link,
+# owned by one of its identities in its own real static/control. Any other
+# entry of a request's name is removed and never acted on.
+_ACCT_REQ_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+# The uids of root and of every identity of the account $1 as passwd names
+# them (BOA.sh.txt's _acct_walk_uids), comma-separated. Status 1, and
+# nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# Run "$@" with the account $1's uids last, inside its real static/control:
+# no link on the way, the directory root's or one of the account's.
+_acct_req_in_ctrl() {
+  local _a="${1}" _u _want
+  shift
+  _u=$(_acct_walk_uids "${_a}") || return 1
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static/control"
+  ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
+    && [ "$(pwd -P)" = "${_want}" ] \
+    && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
+    && "$@" "${_u}" )
+}
+# Inside the real static/control: remove ./$1, a directory only when empty.
+_acct_req_drop() {
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rmdir -- "./${1}" 2> /dev/null
+  else
+    rm -f -- "./${1}" 2> /dev/null
+  fi
+  return 0
+}
+# Inside the real static/control: status 0 when ./$1 is a request that
+# counts, a regular file and not a link, owned by one of the uids $2;
+# anything else of that name is removed.
+_acct_req_judge() {
+  local _o
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
+    _o=$(stat -c %u -- "./${1}" 2> /dev/null)
+    [ -n "${_o}" ] && [[ ",${2}," == *",${_o},"* ]] && return 0
+  fi
+  _acct_req_drop "${1}"
+  return 1
+}
+# Fills _ACCT_REQ with the accounts whose request, under any of the names
+# $2..., counts for the service $1 this pass. A request made again inside
+# the account's allowance is removed and noted once, not acted on.
+_acct_req_scan() {
+  local _svc="${1}" _p _a _n _hit _st _ts _now
+  shift
+  _ACCT_REQ=()
+  _now=$(date +%s)
+  for _p in /data/disk/*/static/control; do
+    _a="${_p#/data/disk/}"
+    _a="${_a%%/*}"
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    _hit=NO
+    for _n in "$@"; do
+      [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
+      _acct_req_in_ctrl "${_a}" _acct_req_judge "${_n}" && _hit=YES
+    done
+    [ "${_hit}" = "YES" ] || continue
+    _st="${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+    if [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_ACCT_REQ_SECS}" ]; then
+      for _n in "$@"; do
+        _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+      done
+      if [ ! -e "${_st}.noted" ]; then
+        mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+        : > "${_st}.noted"
+        echo "$(date) INFO: ${_svc} restart asked again by ${_a} within $(( _ACCT_REQ_SECS / 60 )) minutes; request removed, not acted on" >> "${_pthOml}"
+      fi
+      continue
+    fi
+    _ACCT_REQ+=("${_a}")
+  done
+}
+# Removes the counted requests, under any of the names $2..., of every
+# account in _ACCT_REQ and starts each one's allowance for the service $1.
+_acct_req_take() {
+  local _svc="${1}" _a _n
+  shift
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  for _a in "${_ACCT_REQ[@]}"; do
+    for _n in "$@"; do
+      _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+    done
+    date +%s > "${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    rm -f "${_ACCT_REQ_DIR}/${_svc}.${_a}.noted"
+  done
+}
+
 _if_nginx_restart() {
   # A passive mirror (replication standby): the sentinel is the ACTIVE box's
   # self-service request, delivered here only because static/control rides the
@@ -637,12 +744,6 @@ _if_nginx_restart() {
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
   _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-  # Counted without ls: an unmatched glob stays literal and fails the -e
-  # test, so no error text ever feeds the count.
-  ReTest=0
-  for _cp in /data/disk/*/static/control/run-nginx-restart.pid; do
-    [ -e "${_cp}" ] && ReTest=$(( ReTest + 1 ))
-  done
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
@@ -650,10 +751,11 @@ _if_nginx_restart() {
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [ -e "/etc/boa/.allow.nginx.restart.cnf" ] \
     || [ "${_ALLOW_NGINX_RESTART}" = "YES" ]; then
-    if [ "${ReTest}" -ge 1 ]; then
-      # The sentinel is consumed only when the restart can actually run:
+    _acct_req_scan nginx run-nginx-restart.pid
+    if [ "${#_ACCT_REQ[@]}" -ge 1 ]; then
+      # The requests are consumed only when the restart can actually run:
       # _restart_nginx now refuses inside the cooldown, and a request eaten
-      # by a refusal would simply vanish. Leave it for the next pass instead.
+      # by a refusal would simply vanish. Leave them for the next pass instead.
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
@@ -667,9 +769,9 @@ _if_nginx_restart() {
         echo "$(date) INFO: Nginx restart requested but a start is in flight; request kept for the next pass" >> "${_pthOml}"
         return 0
       fi
-      rm -f /data/disk/*/static/control/run-nginx-restart.pid
+      _acct_req_take nginx run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"
-      echo "${_thisErrLog}" >> ${_pthOml}
+      echo "${_thisErrLog} by ${_ACCT_REQ[*]}" >> ${_pthOml}
       _restart_nginx "Nginx Server Restart Requested" requested
     fi
   fi
