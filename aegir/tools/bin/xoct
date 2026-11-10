@@ -302,42 +302,74 @@ _mig_keyscan() {
   done
 }
 
-### $1 the host, $2 the client's own words from a call to it that failed.
-### When they say the key the host serves is not the one this box holds for
-### it, prints the key served, every entry held, the check to make and the
-### command that forgets the held entries, puts both fingerprints in
-### _MIG_HOSTKEY_SAYS for the caller's own refusal and returns 0. Any other
-### failure returns 1 with nothing printed. Nothing is forgotten here: an
-### address handed on to a new server reads the same as another server
-### answering in its place, and only the operator can tell which it is.
+### $1 the host, $2 the client's own words from a call to it that failed,
+### $3 "inuse" when this box reached the host with the held key before.
+### When the client says the key the host serves is not the one this box
+### holds for it, prints the key served, the entries held in the file the
+### client names, the check to make and the command that forgets them, puts
+### both fingerprints in _MIG_HOSTKEY_SAYS for the caller's own refusal and
+### returns 0. Any other failure returns 1 with nothing printed.
+### The words count only when they are the client's changed-key warning and
+### nothing else, from its first line to its last, and every value is read
+### from its own line of that warning. The other end can put text of its
+### choosing into the client's output before any key is checked (a disconnect
+### message, the algorithm list of a failed negotiation, each printed with its
+### line breaks), but only inside a line the client starts itself, so such
+### output never begins with the warning. A build that words the warning
+### another way is not understood, and the caller's own refusal stands.
+### Nothing is forgotten here: an address handed on to a new server reads the
+### same as another server answering in its place, and only the operator can
+### tell which it is.
 _MIG_HOSTKEY_SAYS=""
 _mig_hostkey_changed() {
-  local _h _w _t _fp _f _l _n="" _x _ht _hfp _same="" _first="" _pub
+  local _h _w _t _fp _f _l _n="" _x _ht _hfp _same="" _first="" _pub _skip=NO
   _MIG_HOSTKEY_SAYS=""
   case "${2}" in
     *"REMOTE HOST IDENTIFICATION HAS CHANGED"*) : ;;
     *) return 1 ;;
   esac
-  _w="$(printf '%s\n' "${2}" | tr -d '\r')"
+  _w="$(printf '%s\n' "${2}" | tr -d '\r' | grep -v '^[[:space:]]*$')"
+  printf '%s\n' "${_w}" | awk '
+    function no() { ok = 0; exit }
+    BEGIN { ok = 1; n = 0; end = 0 }
+    { n++ }
+    n == 1 || n == 3 { if ($0 !~ /^@+$/) no(); next }
+    n == 2 { if ($0 !~ /^@ +WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! +@$/) no(); next }
+    n == 4 { if ($0 != "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!") no(); next }
+    n == 5 { if ($0 != "Someone could be eavesdropping on you right now (man-in-the-middle attack)!") no(); next }
+    n == 6 { if ($0 != "It is also possible that a host key has just been changed.") no(); next }
+    n == 7 { if ($0 !~ /^The fingerprint for the [A-Za-z0-9-]+ key sent by the remote host is$/) no(); next }
+    n == 8 { if ($0 !~ /^SHA256:[A-Za-z0-9+\/]+\.$/ || length($0) != 51) no(); next }
+    n == 9 { if ($0 != "Please contact your system administrator.") no(); next }
+    n == 10 { if ($0 !~ /^Add correct host key in \/.+ to get rid of this message\.$/) no(); next }
+    n == 11 { if ($0 !~ /^Offending [A-Za-z0-9-]+ key in \/.+:[0-9]+$/) no(); next }
+    end == 0 && /^  / { next }
+    end == 0 { if ($0 !~ /^Host key for .+ has changed and you have requested strict checking\.$/) no(); end = 1; next }
+    end == 1 { if ($0 != "Host key verification failed.") no(); end = 2; next }
+    { no() }
+    END { exit (ok == 1 && end == 2) ? 0 : 1 }' || return 1
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-' | tr '[:upper:]' '[:lower:]')"
   _t="$(printf '%s\n' "${_w}" \
-    | sed -n 's/^The fingerprint for the \([A-Za-z0-9-]*\) key sent by the remote host is.*/\1/p' \
-    | head -n 1)"
-  _fp="$(printf '%s\n' "${_w}" | grep -oE 'SHA256:[A-Za-z0-9+/]{43}' | head -n 1)"
-  _f="$(printf '%s\n' "${_w}" \
-    | sed -n 's/^Offending [^ ]* key in \(\/[^:]*\):[0-9][0-9]*[[:space:]]*$/\1/p' \
-    | head -n 1)"
+    | sed -n '7s/^The fingerprint for the \([A-Za-z0-9-]*\) key sent by the remote host is$/\1/p')"
+  _fp="$(printf '%s\n' "${_w}" | sed -n '8s/\.$//p')"
+  _f="$(printf '%s\n' "${_w}" | sed -n '11s/^Offending [^ ]* key in \(\/.*\):[0-9][0-9]*$/\1/p')"
   [ -f "${_f}" ] || _f=/root/.ssh/known_hosts
   echo "ALRT: ${_h} serves an SSH host key that is not the one this box holds for it:"
-  [ -n "${_fp}" ] || _fp="(fingerprint not read, see the client)"
-  echo "ALRT:   served now: ${_t:-key} ${_fp}"
+  echo "ALRT:   served now: ${_t} ${_fp}"
   while IFS= read -r _l; do
     case "${_l}" in
       "# Host "*" found: line "*)
         _n="${_l##*found: line }"
+        # a certificate authority or a revoked key is no held host key, and
+        # the command below leaves both in place
+        case "${_n}" in
+          *CA*|*REVOKED*) _skip=YES ;;
+          *) _skip=NO ;;
+        esac
         _n="${_n%%[!0-9]*}"
         ;;
       *)
+        [ "${_skip}" = "NO" ] || continue
         read -r _x _ht _hfp _x <<< "${_l}"
         [ -n "${_hfp}" ] || continue
         echo "ALRT:   held here:  ${_ht} ${_hfp} (${_f} line ${_n:-?})"
@@ -351,12 +383,16 @@ _mig_hostkey_changed() {
     ED25519|ECDSA|RSA) _pub="$(printf '%s' "${_t}" | tr '[:upper:]' '[:lower:]')" ;;
     *) _pub="ed25519" ;;
   esac
-  echo "ALRT: An address handed on to a new server reads like this, and so does another server answering in its place."
+  if [ "${3:-}" = "inuse" ]; then
+    echo "ALRT: This box reached ${_h} with the key it holds before. Host keys made anew there read like this, and so does another server answering in its place: find out which before anything is removed."
+  else
+    echo "ALRT: An address handed on to a new server reads like this, and so does another server answering in its place."
+  fi
   echo "ALRT: Check on ${_h} itself, reached some other way than from this box (its console, its host):"
   echo "ALRT:   ssh-keygen -l -f /etc/ssh/ssh_host_${_pub}_key.pub"
   echo "ALRT: Only when that prints the fingerprint served now, forget the old entries here and run this command again:"
-  echo "ALRT:   ssh-keygen -R ${_h} -f ${_f}"
-  _MIG_HOSTKEY_SAYS="served ${_t:-key} ${_fp}, held ${_same:-${_first:-none listed}}"
+  printf 'ALRT:   ssh-keygen -R %s -f %q\n' "${_h}" "${_f}"
+  _MIG_HOSTKEY_SAYS="served ${_t} ${_fp}, held ${_same:-${_first:-none listed}}"
   return 0
 }
 
@@ -6726,7 +6762,7 @@ _xoct_create_adopt_hint() {   # 1 = account here 2 = account on the target 3 = t
 ### that cannot be read, a probe that answers neither way. Read-only on the
 ### target.
 _xoct_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = target
-  local _h _f _held _mark _mh _mo _mu _mi _nu _ni
+  local _h _f _held _mark _mh _mo _mu _mi _nu _ni _e _said=""
   _XOCT_CREATE_HELD=""
   if [[ ! "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ ! "${2}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
     echo "ALRT: refusing create: invalid account name '${1}'/'${2}'"
@@ -6739,11 +6775,24 @@ _xoct_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = t
   _f="$(_xoct_create_marker "${2}")"
   # The create's first contact: a target that does not answer is given up
   # after 15 s, not after the system's TCP connect timeout.
-  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
+  # Its own words are kept: a target whose key is not the one held here for
+  # its address is named as that (the firewall read reads no target given by
+  # name, so this is such a create's first login).
+  _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _e=""
+  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> "${_e:-/dev/null}")
+  if [ -n "${_e}" ]; then
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+  fi
   case "${_held}" in
     FREE) return 0 ;;
     HELD) : ;;
     *)
+      if _mig_hostkey_changed "${3}" "${_said}"; then
+        echo "ALRT: refusing create: ${3} serves a host key that is not the one this box holds for that address"
+        echo "ALRT: (${_MIG_HOSTKEY_SAYS}); make the check named above, forget the old entries here, then run this command again"
+        exit 1
+      fi
       echo "ALRT: refusing create: could not read whether ${3} holds an account named ${2}"
       exit 1
       ;;

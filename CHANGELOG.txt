@@ -303,11 +303,15 @@
       the key the target serves and every entry held, with the check to make
       on the target and the one command that forgets the old entries; the
       tool removes none itself, as another server answering in the target's
-      place reads the same. xmass pre-mig on a target prints that box's host
-      key fingerprints to compare. sync, cutover and autosync say the same,
-      and so do xoct's firewall check before a move, xcopy create and both
-      tools' pretransfer, transfer and shared legs. Any other failure of
-      xmass's first login now carries the client's own last line.
+      place reads the same. It speaks only when the SSH client's output is
+      its changed-key warning and nothing else, so text the other end can
+      send before a key is checked never raises it. xmass pre-mig on a
+      target prints that box's host key fingerprints to compare. sync,
+      autosync and the start of a cutover say the same and add that the
+      target was reached with the held key before; so do xoct's firewall
+      check before a move, both tools' create and their pretransfer,
+      transfer and shared legs. Any other failure of xmass's first login now
+      carries the client's own last line.
 
     * A Drupal 8+ site renamed by a Migrate on its own platform answered
       500 ("Class ... not found") until PHP-FPM restarted, while every task
