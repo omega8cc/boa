@@ -273,7 +273,8 @@ Also available here
       https://docs.boa.io/operating/security/per-instance-group
 
   run-php-fpm-reload.pid — graceful PHP-FPM reload, clears APCu
-      (higher plans, or ask your host)
+      (higher plans, or ask your host; once in 15 minutes: one made
+      again sooner is removed with no reload)
       https://docs.boa.io/using/caching/php-opcache-and-apcu
 
   newrelic.info — your New Relic license key (pairs with a per-site

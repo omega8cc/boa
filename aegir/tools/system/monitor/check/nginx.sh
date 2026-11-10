@@ -624,32 +624,41 @@ _nginx_if_up_check_fix() {
 # entry of a request's name is removed and never acted on.
 _ACCT_REQ_SECS=900
 _ACCT_REQ_DIR="/run/boa_acct_requests"
+# each account's uids, read once a pass (_acct_req_in_ctrl)
+declare -A _ACCT_REQ_U=()
 # The uids of root and of every identity of the account $1 as passwd names
-# them (BOA.sh.txt's _acct_walk_uids), comma-separated. Status 1, and
-# nothing, unless the account itself is in passwd.
-_acct_walk_uids() {
+# them, comma-separated, as _acct_walk_uids gives them, with passwd cut to
+# the account's own lines first. Status 1, and nothing, unless the account
+# itself is in passwd.
+_acct_req_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
-    ""|*[!a-z0-9-]*) return 1 ;;
+    ""|*[!a-z0-9_-]*) return 1 ;;
   esac
   while IFS=: read -r _n _p _u _r; do
     [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
     [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
     _x="${_x},${_u}"
     [ "${_n}" = "${_a}" ] && _self=YES
-  done < <(getent passwd 2> /dev/null)
+  done < <(getent passwd 2> /dev/null | grep -E "^${_a}[.:]")
   [ "${_self}" = "YES" ] || return 1
   echo "${_x}"
 }
 # Run "$@" with the account $1's uids last, inside its real static/control:
-# no link on the way, the directory root's or one of the account's.
+# the directory the shell is in, as the kernel names it (never bash's own
+# pwd, which reads back the path cd was given), and root's or one of the
+# account's.
 _acct_req_in_ctrl() {
   local _a="${1}" _u _want
   shift
-  _u=$(_acct_walk_uids "${_a}") || return 1
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static/control"
+  if [ -z "${_ACCT_REQ_U[${_a}]+x}" ]; then
+    _ACCT_REQ_U[${_a}]="$(_acct_req_uids "${_a}")"
+  fi
+  _u="${_ACCT_REQ_U[${_a}]}"
+  [ -n "${_u}" ] || return 1
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static/control"
   ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
-    && [ "$(pwd -P)" = "${_want}" ] \
+    && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
     && "$@" "${_u}" )
 }
@@ -685,7 +694,7 @@ _acct_req_scan() {
   for _p in /data/disk/*/static/control; do
     _a="${_p#/data/disk/}"
     _a="${_a%%/*}"
-    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    [[ "${_a}" =~ ^[a-z0-9_-]+$ ]] || continue
     _hit=NO
     for _n in "$@"; do
       [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
