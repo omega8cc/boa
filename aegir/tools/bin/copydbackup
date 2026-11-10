@@ -287,11 +287,67 @@ _dbk_read_here() {
     bs="${2:-1048576}" count=1 status=none 2>/dev/null
 }
 
-# What ./$1 of the current (pinned) directory is: "odd" for a link or
-# anything but a regular file, "set" for a non-empty regular file, "empty"
-# for an empty one, "none" when absent.
+# The account's static/control is taken only as its own: every other
+# account's .ftp login is in the box-wide group, which an account not yet on
+# its own group still has on static/, so such a login could put a control/
+# of its own there for root to act on. A name is taken only when it, the
+# directory it is in and every directory above that up to / are root's or
+# one of the account's identities' (the uids given second, _acct_walk_uids;
+# a uid no passwd entry names counts too). Status 0 taken, 2 no such name in
+# a place of the account's, 1 refused (as helper.sh.inc's copy).
+#   e  the name exists (lstat; a link of the account's only when it leads
+#      somewhere) and is the account's
+#   r  the name's bytes through one handle opened without following a
+#      link or blocking on a FIFO, only when it is a regular file of the
+#      account's no longer than the count given third
+_ACCT_OWN_READ_PL='use Fcntl;
+my ($op, $o, $c, $n) = @ARGV;
+exit 1 unless defined $n && $n =~ m{^[^/\0]+$};
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+if ($op eq "e") { my @s = lstat("./$n") or exit($!{ENOENT} ? 2 : 1); exit 1 unless own($s[4]); exit(-e "./$n" ? 0 : 2); }
+exit 1 unless $op eq "r" && $c =~ /^[0-9]+$/;
+sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit($!{ENOENT} ? 2 : 1);
+my @s = stat($h);
+exit 1 unless @s && -f _ && own($s[4]);
+my ($d, $r) = ("");
+while ($r = sysread($h, my $b, 65536)) { $d .= $b; last if length($d) > $c; }
+exit 1 unless defined $r && length($d) <= $c;
+binmode(STDOUT);
+print $d;
+exit 0;'
+
+# ./$1 of the current (pinned) directory, whole when it is at most $3 bytes,
+# only as the account $2's own (_ACCT_OWN_READ_PL); nothing otherwise.
+_dbk_own_read_here() {
+  local _o
+  _o=$(_acct_walk_uids "${2}") || { _dbk_read_here "${1}" "${3}"; return; }
+  perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" "${3}" "${1}" 2> /dev/null
+}
+
+# What ./$1 of the current (pinned) directory is: "foreign" when it or this
+# directory is not the account $2's own (_ACCT_OWN_READ_PL), "odd" for a
+# link or anything but a regular file, "set" for a non-empty regular file,
+# "empty" for an empty one, "none" when absent.
 _dbk_cycle_state_here() {
-  if [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -f "./${1}" ]; }; then
+  local _o _rc=0
+  # an account no passwd entry names has nothing to judge it by
+  if _o=$(_acct_walk_uids "${2}"); then
+    perl -e "${_ACCT_OWN_READ_PL}" e "${_o}" 0 "${1}" 2> /dev/null
+    _rc=$?
+  fi
+  if [ "${_rc}" = "1" ]; then
+    echo foreign
+  elif [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -f "./${1}" ]; }; then
     echo odd
   elif [ -s "./${1}" ]; then
     echo set
@@ -690,10 +746,18 @@ for _user in "${!_all_involved_users[@]}"; do
   # override would let the store grow against the account's own quota.
   # Only a regular file in the real static/control is read; a link or
   # device planted at that path, or a control directory that is itself a
-  # link, is ignored the same way.
+  # link, is ignored the same way, and so is a file or a control directory
+  # that is not the account's own (another account's login can put one
+  # there while the account is on the box-wide group).
   _cycle_state=$(_dbk_in_real_dir "/data/disk/${_user}/static/control" \
-    _dbk_cycle_state_here dBackupCycle.info)
-  if [ "${_cycle_state}" = "odd" ] \
+    _dbk_cycle_state_here dBackupCycle.info "${_user}")
+  if [ "${_cycle_state}" = "foreign" ]; then
+    # not the account's own setting, nor its deletion: the default could
+    # remove copies the account's own file keeps, so this run removes none
+    echo "Warning: ${_cycle_file} or its directory is not ${_user}'s own. Skipping cleanup for ${_user}."
+    _log_issue "${_user}" "${_cycle_file}" "Cycle file or its directory is not the account's own; cleanup skipped"
+    continue
+  elif [ "${_cycle_state}" = "odd" ] \
     || { [ -z "${_cycle_state}" ] \
       && { [ -e "${_cycle_file}" ] || [ -L "${_cycle_file}" ]; }; }; then
     echo "Warning: ${_cycle_file} is not a plain file. Using the default ${_days_to_keep} days for ${_user}."
@@ -702,11 +766,15 @@ for _user in "${!_all_involved_users[@]}"; do
     # Bounded read: no valid value is long, and what is read is echoed to
     # the log, so never pull an arbitrary tenant file into root's memory
     _cycle_value=$(_dbk_in_real_dir "/data/disk/${_user}/static/control" \
-      _dbk_read_here dBackupCycle.info 64)
+      _dbk_own_read_here dBackupCycle.info "${_user}" 4096)
+    _cycle_rc=$?
     _cycle_value="${_cycle_value#"${_cycle_value%%[![:space:]]*}"}"
     _cycle_value="${_cycle_value%"${_cycle_value##*[![:space:]]}"}"
     if [[ "${_cycle_value}" =~ ^[0-9]{1,4}$ ]] && [ "$((10#${_cycle_value}))" -gt 0 ]; then
       _days_to_keep="$((10#${_cycle_value}))"
+    elif [ "${_cycle_rc}" != "0" ]; then
+      echo "Warning: ${_cycle_file} could not be read as ${_user}'s own plain file. Using the default ${_days_to_keep} days for ${_user}."
+      _log_issue "${_user}" "${_cycle_file}" "Cycle file could not be read"
     elif [ -n "${_cycle_value}" ]; then
       # Report only what was really written: a file cleared in place still
       # holds its newline, and that is the documented empty case

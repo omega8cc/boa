@@ -958,6 +958,87 @@ _night_older_nn() {
   esac
   [ "${1}" -lt "${2}" ] && [ -x "/opt/php${1}/bin/php" ]
 }
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
+# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
+# The account's control/ judged once a run and account (_acct_ctrl_own):
+# _ctrl_has is 0 when the name $1 is in it and it is the account's own,
+# _ctrl_foreign is 0 when it is not the account's own. A marker in a
+# control/ another account put there reads as not there.
+_ctrl_judge() {
+  [ "${_CTRL_JUDGED_FOR:-}" = "${_usEr}" ] && return 0
+  _CTRL_JUDGED_FOR="${_usEr}"
+  _CTRL_OWN=YES
+  _CTRL_WHY=$(_acct_ctrl_own "${_usEr##*/}") || _CTRL_OWN=NO
+  return 0
+}
+_ctrl_has() {
+  _ctrl_judge
+  [ "${_CTRL_OWN}" = "YES" ] && [ -e "${_usEr}/static/control/${1}" ]
+}
+_ctrl_foreign() {
+  _ctrl_judge
+  [ "${_CTRL_OWN}" = "NO" ]
+}
 # In the account's real static/control: a phpNN.info marker, cli.info or a
 # cli-per-platform.info line names a PHP older than $1, read as websh reads
 # them: of the platform file only the first 64 KiB and 200 lines, as
@@ -1009,7 +1090,8 @@ _night_websh_older() {
   if [ "${_NIGHT_CLI_KEY}" != "${_k}" ]; then
     _NIGHT_CLI_NN=""
     _night_sh_is_websh || return 1
-    if _acct_in_real_dir "${_usEr}/static/control" _night_older_cli_here "${1}"; then
+    if ! _ctrl_foreign \
+      && _acct_in_real_dir "${_usEr}/static/control" _night_older_cli_here "${1}"; then
       _NIGHT_CLI_NN=$(_night_websh_nn)
     fi
     _NIGHT_CLI_KEY="${_k}"

@@ -182,13 +182,105 @@ _grav_site_socket() {
   return 1
 }
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd. The walks also take a uid no passwd
+# entry names as the account's own: a login removed before the limited-shell
+# worker handed its files to the account at removal left those. Nothing
+# records which account a freed number served, so such an entry is taken
+# wherever it came from. A lookup that fails, rather than finding no such
+# user, leaves the entry another user's.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
+# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 # One store's tick: $1 the capsule, $2 its domain. Runs in a subshell of its
 # own, so the environment it clears and the exports below reach nothing else.
 _grav_store_tick() {
-  local _sp="${1}" _uri="${2}" _rc _rcd _vs _n _u _p _h _o _v _k _e
+  local _sp="${1}" _uri="${2}" _rc _rcd _vs _n _u _p _h _o _v _k _e _km
+  # A copy is released only by a marker in the account's own control/
+  # (_acct_ctrl_own); a name that is never there keeps every copy held.
+  _km="/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info"
+  _acct_ctrl_own "${_H_USER}" > /dev/null || _km="/nonexistent/kahunacart-run.info"
   # As the instance user: the hold, drushrc.php, then after a separator line
   # the PHP socket line of the site's vhost.
-  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; timeout 10 dd if=./drushrc.php iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none || exit 1; echo; echo '#boa-grav-vhost'; timeout 10 dd if='/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}' iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep -m1 -o 'fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;'; exit 0" 2> /dev/null < /dev/null 6>&- 7>&-)" || return 0
+  _rc="$(timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '${_km}' -nt .boa-copy ]; then exit 3; fi; [ -f drushrc.php ] && [ ! -L drushrc.php ] || exit 1; timeout 10 dd if=./drushrc.php iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none || exit 1; echo; echo '#boa-grav-vhost'; timeout 10 dd if='/data/disk/${_H_USER}/config/server_master/nginx/vhost.d/${_uri}' iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep -m1 -o 'fastcgi_pass unix:/run/${_H_USER}[.0-9]*\.fpm\.socket;'; exit 0" 2> /dev/null < /dev/null 6>&- 7>&-)" || return 0
   _rcd="$(printf '%s\n' "${_rc}" | sed '/^#boa-grav-vhost$/,$d')"
   _vs="$(printf '%s\n' "${_rc}" | sed -n '/^#boa-grav-vhost$/,$p' | sed -n 's/^fastcgi_pass unix:\(.*\);$/\1/p' | head -1)"
   _rc=""
@@ -212,7 +304,7 @@ _grav_store_tick() {
   # A wait for the slot can outlast the hold read above: an owner may hold
   # the copy again meanwhile, so read the hold once more.
   if [[ "${_GRAV_SLOT_WAITED}" = "YES" ]]; then
-    timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '/data/disk/${_H_USER}/static/control/kahunacart-run.${_uri}.info' -nt .boa-copy ]; then exit 3; fi; exit 0" > /dev/null 2>&1 < /dev/null 6>&- 7>&- || return 0
+    timeout 20 su -s /bin/bash "${_H_USER}" -c "cd -P -- '${_sp}' 2>/dev/null || exit 1; if [ -e .boa-copy ] && ! [ '${_km}' -nt .boa-copy ]; then exit 3; fi; exit 0" > /dev/null 2>&1 < /dev/null 6>&- 7>&- || return 0
   fi
   # cgi-fcgi sends its whole environment as the request's parameters: only
   # what the entry script and the store need reaches the pool.
@@ -410,32 +502,6 @@ _run_in_own_store() {
   ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
 }
 
-# The uids root's walks over the account $1's trees act on, comma-separated:
-# root's own (0, what root wrote there for the account) and those of every
-# identity of the account as passwd names them: oN and oN.<name>, that is
-# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
-# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
-# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-# unless the account itself is in passwd. The walks also take a uid no passwd
-# entry names as the account's own: a login removed before the limited-shell
-# worker handed its files to the account at removal left those. Nothing
-# records which account a freed number served, so such an entry is taken
-# wherever it came from. A lookup that fails, rather than finding no such
-# user, leaves the entry another user's.
-_acct_walk_uids() {
-  local _a="${1}" _n _p _u _r _x="0" _self=NO
-  case "${_a}" in
-    ""|*[!a-z0-9-]*) return 1 ;;
-  esac
-  while IFS=: read -r _n _p _u _r; do
-    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    _x="${_x},${_u}"
-    [ "${_n}" = "${_a}" ] && _self=YES
-  done < <(getent passwd 2> /dev/null)
-  [ "${_self}" = "YES" ] || return 1
-  echo "${_x}"
-}
 # Root's removals in an account's trees, run inside the directory they act in:
 # only what the uids given second own (_acct_walk_uids), or a uid no passwd
 # entry names (sub own), is removed or unlocked, and nothing below a directory
@@ -596,8 +662,10 @@ _run_cleanup() {
       _buildTest="0"
     fi
   fi
-  # the trigger counts, and is removed, only in the real control directory
-  if _run_in_real_dir "${_ctDir}" test -e ./clear-drush-cache.info; then
+  # the trigger counts, and is removed, only in the real control directory,
+  # and only in the account's own (_acct_ctrl_own)
+  if _acct_ctrl_own "${_H_USER}" > /dev/null \
+    && _run_in_real_dir "${_ctDir}" test -e ./clear-drush-cache.info; then
     if [ -e "${_exCtr}" ]; then
       # only root's or the account's own (_ACCT_RM_OWN_PL): the account's
       # backups link can lead tmp_expim into a directory another account
@@ -666,8 +734,10 @@ _if_sftp_password_update() {
   local _ctl="/data/disk/${_H_USER}/static/control"
   # the trigger counts, is removed, and the password is changed and
   # delivered only in the real control directory, never one reached
-  # through a link
-  if _run_in_real_dir "${_ctl}" test -e ./run-sftp-password-update.pid; then
+  # through a link, and only in the account's own (_acct_ctrl_own): a
+  # control/ another account put there never resets the login's password
+  if _acct_ctrl_own "${_H_USER}" > /dev/null \
+    && _run_in_real_dir "${_ctl}" test -e ./run-sftp-password-update.pid; then
     _sftpUser="${_H_USER}.ftp"
     _run_in_real_dir "${_ctl}" rm -f -- ./run-sftp-password-update.pid
     _PWD_CHARS=64
@@ -717,8 +787,9 @@ _if_octopus_upgrade() {
     return 0
   fi
   # queued, consumed and put back only in the real control directory, never
-  # one reached through a link
-  if _run_in_real_dir "${_ctl}" _run_upgrade_queued_here; then
+  # one reached through a link, and only in the account's own (_acct_ctrl_own)
+  if _acct_ctrl_own "${_H_USER}" > /dev/null \
+    && _run_in_real_dir "${_ctl}" _run_upgrade_queued_here; then
     # A proxied account is served elsewhere: octopus refuses it with an ALRT
     # and exits at once, the kept-trigger branch below puts the trigger back,
     # and the next tick does it again -- a refusal, a wrapper log and an

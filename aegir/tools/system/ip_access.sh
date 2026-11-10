@@ -178,6 +178,82 @@ _acct_copy_here() {
   rm -f -- "${2}"
   printf '%s\0' "./${1}" "${2}" | perl -e "${_ACCT_COPY_PL}" 33554432
 }
+#
+# An account's static/control is taken only as its own. Every other
+# account's .ftp login is in the box-wide group, which an account not yet on
+# its own group still has on static/ and on what its login makes there, so
+# such a login could put a directory of its own at control/, or a file of
+# its own in a group-writable directory below it, for root to act on as the
+# account's. A name is taken only when it, the directory it is in and every
+# directory above that up to / are root's or one of the account's
+# identities' (the uids given second, _acct_walk_uids; a uid no passwd entry
+# names counts too); otherwise it reads as not there. Status 0 taken, 2 no
+# such name in a place of the account's, 1 refused.
+#   e  the name exists (lstat; a link of the account's only when it leads
+#      somewhere) and is the account's
+#   r  the name's bytes through one handle opened without following a
+#      link or blocking on a FIFO, only when it is a regular file of the
+#      account's no longer than the count given third
+_ACCT_OWN_READ_PL='use Fcntl;
+my ($op, $o, $c, $n) = @ARGV;
+exit 1 unless defined $n && $n =~ m{^[^/\0]+$};
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+if ($op eq "e") { my @s = lstat("./$n") or exit($!{ENOENT} ? 2 : 1); exit 1 unless own($s[4]); exit(-e "./$n" ? 0 : 2); }
+exit 1 unless $op eq "r" && $c =~ /^[0-9]+$/;
+sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit($!{ENOENT} ? 2 : 1);
+my @s = stat($h);
+exit 1 unless @s && -f _ && own($s[4]);
+my ($d, $r) = ("");
+while ($r = sysread($h, my $b, 65536)) { $d .= $b; last if length($d) > $c; }
+exit 1 unless defined $r && length($d) <= $c;
+binmode(STDOUT);
+print $d;
+exit 0;'
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# ./$1 of the current (pinned) directory copied into the root-only file $2
+# whole (at most 32 MiB), as _acct_copy_here copies it, only as the account
+# $3's own (_ACCT_OWN_READ_PL; an account no passwd entry names: as before).
+# Status 1 when it was not.
+_acct_own_copy_here() {
+  local _o
+  _o=$(_acct_walk_uids "${3}") || { _acct_copy_here "${1}" "${2}"; return; }
+  rm -f -- "${2}"
+  ( umask 077
+    perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" 33554432 "${1}" > "${2}" ) 2> /dev/null \
+    && return 0
+  rm -f -- "${2}"
+  return 1
+}
 # The names $2... of the current (pinned) directory copied under their own
 # names into the root-only directory $1 as _ACCT_COPY_PL copies, each whole
 # within 1 MiB; a name that is not copied is left out.
@@ -768,13 +844,25 @@ _process_context() {
   local _new="${_work}/new" _front_new="${_work}/front"
   local _ctrl="${_work}/ctrl" _mk="${_work}/mk"
 
-  # The control file is read only as the copy taken from its real directory.
-  # One that cannot be copied keeps its lists as a deleted one does, and its
-  # front copies still follow their sites' names.
-  local _current_mod_time
+  # The control file is read only as the copy taken from its real directory,
+  # an account's only as its own (_acct_own_copy_here). One that cannot be
+  # copied keeps its lists as a deleted one does, and its front copies still
+  # follow their sites' names.
+  local _current_mod_time _acct="" _copy=_acct_copy_here
+  case "${_input_file}" in
+    /data/disk/?*/static/control/*)
+      _acct="${_input_file#/data/disk/}"
+      _acct="${_acct%%/*}"
+      _copy=_acct_own_copy_here
+      ;;
+  esac
   _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
-  if ! _acct_in_real_dir "${_input_file%/*}" _acct_copy_here "${_input_file##*/}" "${_ctrl}"; then
-    echo "${_input_file} is not a regular file in a real directory; skipped."
+  if ! _acct_in_real_dir "${_input_file%/*}" "${_copy}" "${_input_file##*/}" "${_ctrl}" ${_acct:+"${_acct}"}; then
+    if [[ -n "${_acct}" ]]; then
+      echo "${_input_file} is not the account's own regular file in a real directory; skipped."
+    else
+      echo "${_input_file} is not a regular file in a real directory; skipped."
+    fi
     _front_keep_valid "${_front_path}" "${_vhost_dir}" "${_nginx_path}/.access_front_hash"
     return 0
   fi

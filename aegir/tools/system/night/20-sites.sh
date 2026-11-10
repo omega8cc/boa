@@ -327,6 +327,100 @@ if ! declare -F _provision_running > /dev/null 2>&1; then
   }
 fi
 
+### The control/ gate, the night.inc.sh bodies carried for the same skew,
+### defined only when the library lacks them.
+if [ -z "${_ACCT_CTRL_OWN_PL:-}" ]; then
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
+# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+fi
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+if ! declare -F _acct_ctrl_own > /dev/null 2>&1; then
+  _acct_ctrl_own() {
+    local _a="${1}" _o _r _want
+    # an account not in passwd (not made yet, or removed) has nothing to
+    # judge it by: read as before
+    _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+    [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+    _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
+    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+      && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+    case "${_r}" in
+      OK|ABSENT) return 0 ;;
+    esac
+    echo "${_r:-static/ is not a real directory}"
+    return 1
+  }
+fi
+# The account's control/ judged once a run and account (_acct_ctrl_own):
+# _ctrl_has is 0 when the name $1 is in it and it is the account's own,
+# _ctrl_foreign is 0 when it is not the account's own. A marker in a
+# control/ another account put there reads as not there.
+if ! declare -F _ctrl_judge > /dev/null 2>&1; then
+  _ctrl_judge() {
+    [ "${_CTRL_JUDGED_FOR:-}" = "${_usEr}" ] && return 0
+    _CTRL_JUDGED_FOR="${_usEr}"
+    _CTRL_OWN=YES
+    _CTRL_WHY=$(_acct_ctrl_own "${_usEr##*/}") || _CTRL_OWN=NO
+    return 0
+  }
+fi
+if ! declare -F _ctrl_has > /dev/null 2>&1; then
+  _ctrl_has() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "YES" ] && [ -e "${_usEr}/static/control/${1}" ]
+  }
+fi
+if ! declare -F _ctrl_foreign > /dev/null 2>&1; then
+  _ctrl_foreign() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "NO" ]
+  }
+fi
+
 ### An account owns its static/control, and oN owns the rest of its
 ### /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, undo/), so any name
 ### there can be a link or a FIFO, and any directory on the way can itself be
@@ -1389,6 +1483,7 @@ _sync_user_register_protection_ini_vars() {
   ### (the tenant's): mv -T never moves a file into a directory or through a
   ### link put at either name.
   ( _ctl="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/static/control"
+    _ctrl_foreign && exit 0
     cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_ctl}" ] || exit 0
     if [ -f ./enable_user_register_protection.info ] \
       && [ ! -L ./enable_user_register_protection.info ]; then
@@ -1401,7 +1496,7 @@ _sync_user_register_protection_ini_vars() {
         ./ignore_user_register_protection.info
     fi )
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "NO" ] \
-    && [ -e "${_usEr}/static/control/enable_strict_user_register_protection.info" ]; then
+    && _ctrl_has enable_strict_user_register_protection.info; then
     _desymlink_planted "${_PLR_CTRL_F}"
     _ctrl_ini_sed "${_PLR_CTRL_F}" \
       "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
@@ -1409,7 +1504,7 @@ _sync_user_register_protection_ini_vars() {
     _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
   fi
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ] \
-    && [ -e "${_usEr}/static/control/ignore_user_register_protection.info" ]; then
+    && _ctrl_has ignore_user_register_protection.info; then
     _desymlink_planted "${_PLR_CTRL_F}"
     _ctrl_ini_sed "${_PLR_CTRL_F}" \
       "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
@@ -1430,7 +1525,8 @@ _sync_user_register_protection_ini_vars() {
       _IGNORE_USER_REGISTER_PROTECTION=YES
     fi
   fi
-  if [ -e "${_usEr}/static/control/ignore_user_register_protection.info" ]; then
+  # a control/ that is not the account's own: nothing enforced from it
+  if _ctrl_has ignore_user_register_protection.info || _ctrl_foreign; then
     _IGNORE_USER_REGISTER_PROTECTION=YES
   fi
 }
@@ -3012,13 +3108,13 @@ _fix_static_permissions() {
     ### own handle, never on a hard-linked file (one left alone is logged)
     ### and never on what another user owns, with everything below it
     ### (_night_handover_own_here).
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+    if ! _ctrl_foreign && ! _ctrl_has unlock.info \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
         _in_pinned_dir "${_use_Plr}" _night_handover_own_here "${_o}" "${_HM_U}" .
         _log_ctrl_mark "plr.${_PlrID}.ctm-lock-${_NOW}.info"
       fi
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+    elif _ctrl_has unlock.info \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
         _in_pinned_dir "${_use_Plr}" \
@@ -3117,7 +3213,7 @@ _plr_perm_here() {
     ### every entry there is a tenant-plantable name, the walk never follows
     ### a link into the shared distro tree, and neither a hard-linked file
     ### nor what another user owns is ever handed over.
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+    if ! _ctrl_foreign && ! _ctrl_has unlock.info \
       && [ ! -e ./skip.info ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
         for _d in modules themes libraries; do
@@ -3126,7 +3222,7 @@ _plr_perm_here() {
         done
         _log_ctrl_mark "plr.${_PlrID}.lock-${_NOW}.info"
       fi
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+    elif _ctrl_has unlock.info \
       && [ ! -e ./skip.info ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
         ### here the planted target would be handed straight to the
@@ -3271,12 +3367,12 @@ _site_perm_here() {
       _in_real_sub "${_d}" _archive_sweep_here "${_o}"
     done
     _in_real_sub modules _rm_own_here "${_o}" ./local-allow.info
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+    if ! _ctrl_foreign && ! _ctrl_has unlock.info \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
         _in_real_sub "${_d}" _night_chown_own_all_here "${_o}" "${_HM_U}:${_grp}"
       done
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+    elif _ctrl_has unlock.info \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
         _in_real_sub "${_d}" _night_chown_own_all_here "${_o}" "${_HM_U}.ftp:${_grp}"
@@ -3565,7 +3661,7 @@ _fix_permissions() {
 
 _convert_controls_orig() {
   if [ -e "${_CTRL_DIR}/$1.info" ] \
-    || [ -e "${_usEr}/static/control/$1.info" ]; then
+    || _ctrl_has "$1.info"; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
@@ -3586,7 +3682,7 @@ _convert_controls_orig_no_global() {
 
 _convert_controls_value() {
   if [ -e "${_CTRL_DIR}/$1.info" ] \
-    || [ -e "${_usEr}/static/control/$1.info" ]; then
+    || _ctrl_has "$1.info"; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
@@ -4498,6 +4594,10 @@ _le_ssl_check_update() {
   ### here may rewrite it (a www strip once did, and every later leg of the
   ### iteration then addressed an alias that does not exist).
   local _Dom="${_Dom}" _vhTxt
+  ### The account's wildcard and DNS flags are read from its control/: one
+  ### that is not the account's own (_ctrl_foreign) orders nothing, so a
+  ### wildcard certificate is never replaced by a per-name one meanwhile.
+  _ctrl_foreign && return 0
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
   ### Not in demo mode, tools/le/config holding only the staging authority
@@ -4552,9 +4652,9 @@ _le_ssl_check_update() {
         ### site. Verify decides the same way (hosting_le).
         _leWild=NO
         _thisHook=""
-        if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
-          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
-            || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+        if _ctrl_has "wildcard-enable-${_Dom}.info"; then
+          if _ctrl_has cloudflare-dns-ssl-py.info \
+            || _ctrl_has cloudflare-dns-ssl-sh.info; then
             ### static/control is owned by the tenant SHELL user and sits in a
             ### group-writable static/, so both the flag file and the control
             ### dir are names a tenant can swap for a symlink. chattr has no -h
@@ -4601,9 +4701,9 @@ _le_ssl_check_update() {
               _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
                 _le_hook_py_here
             fi
-            if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
+            if _ctrl_has cloudflare-dns-ssl-py.info; then
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
-            elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+            elif _ctrl_has cloudflare-dns-ssl-sh.info; then
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
             fi
             if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
@@ -4678,7 +4778,7 @@ _le_ssl_check_update() {
             return 0
           fi
         fi
-        if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
+        if [ "${_DOM}" = "${_RDM}" ] || _ctrl_has force-ssl-certs-rebuild.info; then
           if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
             _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg} --force"
             _log_ctrl_mark "site.${_Dom}.cert-x1-rebuilt.info"
@@ -4919,7 +5019,7 @@ _daily_process() {
                 _fix_llms_txt
               fi
               _le_ssl_check_update
-              if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
+              if [ "${_ENABLE_GOACCESS}" = "YES" ] && _ctrl_has "goaccess/${_Dom}.info"; then
                 _noPrefixDom="${_Dom#www.}"
                 _if_gen_goaccess "${_noPrefixDom}"
                 # A name without www. is the same report: built twice, it

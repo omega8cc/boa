@@ -109,6 +109,17 @@
       or csf held off upgrades, backups, the nightly and service restarts,
       or made root kill its own jobs and flush the firewall's bans.
 
+    * Another account can no longer put its own files in an account's
+      ~/static/control, and root acts on that folder only when it is the
+      account's own. On an account not yet on its own group, ~/static was
+      writable by every other account's login, which could rename the
+      control folder aside and put its own in its place: root then read it
+      as the account's, which could lock the account's sites to another
+      address, delete its database backups or send its backups elsewhere.
+      Such a ~/static now has the sticky bit, nothing in the control folder
+      stays writable by the shared group, and a control folder that is not
+      the account's own is left unread, with an ALERT line saying why.
+
     * The PHP segfault monitor writes its report and sends its mail without
       a shell: the site path it read from a site's Drush alias and the client
       address in the account's log/email.txt went into a shell line root

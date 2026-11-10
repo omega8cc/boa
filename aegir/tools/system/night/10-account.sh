@@ -216,6 +216,100 @@ _web_group_conv() {
 }
 fi
 
+### The control/ gate, the night.inc.sh bodies carried for the same skew,
+### defined only when the library lacks them.
+if [ -z "${_ACCT_CTRL_OWN_PL:-}" ]; then
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
+# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+fi
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+if ! declare -F _acct_ctrl_own > /dev/null 2>&1; then
+  _acct_ctrl_own() {
+    local _a="${1}" _o _r _want
+    # an account not in passwd (not made yet, or removed) has nothing to
+    # judge it by: read as before
+    _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+    [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+    _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
+    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+      && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+    case "${_r}" in
+      OK|ABSENT) return 0 ;;
+    esac
+    echo "${_r:-static/ is not a real directory}"
+    return 1
+  }
+fi
+# The account's control/ judged once a run and account (_acct_ctrl_own):
+# _ctrl_has is 0 when the name $1 is in it and it is the account's own,
+# _ctrl_foreign is 0 when it is not the account's own. A marker in a
+# control/ another account put there reads as not there.
+if ! declare -F _ctrl_judge > /dev/null 2>&1; then
+  _ctrl_judge() {
+    [ "${_CTRL_JUDGED_FOR:-}" = "${_usEr}" ] && return 0
+    _CTRL_JUDGED_FOR="${_usEr}"
+    _CTRL_OWN=YES
+    _CTRL_WHY=$(_acct_ctrl_own "${_usEr##*/}") || _CTRL_OWN=NO
+    return 0
+  }
+fi
+if ! declare -F _ctrl_has > /dev/null 2>&1; then
+  _ctrl_has() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "YES" ] && [ -e "${_usEr}/static/control/${1}" ]
+  }
+fi
+if ! declare -F _ctrl_foreign > /dev/null 2>&1; then
+  _ctrl_foreign() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "NO" ]
+  }
+fi
+
 ### oN owns its /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, clients/,
 ### backups/, distro/, undo/), the main login owns /home/<oN>.ftp, and
 ### static/ is group-writable: any name there can be a link or a FIFO, and
@@ -1232,7 +1326,8 @@ _relocate_backups_to_static_fs() {
 
   # Kill-switch: box-wide or per-account.
   [ -f "/data/conf/disable_backups_on_static_fs.cnf" ] && return 0
-  [ -f "${_acct}/static/control/no_backups_on_static_fs.info" ] && return 0
+  # an opt-out in a control/ that is not the account's own: as it is
+  { _ctrl_has no_backups_on_static_fs.info || _ctrl_foreign; } && return 0
 
   # static/files must exist and resolve to a DIFFERENT device than the account root
   # (else the relocation gives no protection). static/files is a separate disk only
@@ -1799,7 +1894,7 @@ _le_hm_ssl_check_update() {
       _leChain=""
       _leCfg=" --config ${_usEr}/tools/le/config.sh"
     fi
-    if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
+    if [ "${_DOM}" = "${_RDM}" ] || _ctrl_has force-ssl-certs-rebuild.info; then
       if [ ! -e "${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info" ]; then
         _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg} --force"
         _log_ctrl_mark "site.${_hmFront}.cert-x1-rebuilt.info"
@@ -2124,7 +2219,7 @@ _check_old_empty_platforms() {
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
-      || [ -e "${_usEr}/static/control/platforms.info" ]; then
+      || _ctrl_has platforms.info || _ctrl_foreign; then
       _DO_NOTHING=YES
     else
       if [ -n "${_DEL_OLD_EMPTY_PLATFORMS}" ] \
@@ -2812,6 +2907,10 @@ if [ "${0##*/}" = "10-account.sh" ]; then
   if [ -z "${_usEr}" ] || [ ! -d "${_usEr}" ]; then
     echo "FATAL ERROR: 10-account.sh requires a valid account path argument"
     exit 1
+  fi
+  # judged once here, in this shell, for every marker test of the run
+  if _ctrl_foreign; then
+    echo "ALERT: ${_usEr}/static/control is not ${_usEr##*/}'s own (${_CTRL_WHY}); its markers are not read tonight"
   fi
   _account_process
 fi

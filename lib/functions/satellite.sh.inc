@@ -1262,7 +1262,7 @@ _satellite_cnf() {
       _msg "INFO: Grav and Textpattern support on by default on this hosted system"
     fi
 
-    if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
+    if ! _sat_ctrl_foreign && [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
       # one version, as fpm.info is read below; any other text counts as none
       _PHP_FPM_VERSION=""
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
@@ -1274,10 +1274,10 @@ _satellite_cnf() {
       _acct_put_in "${_ROOT}/static/control" fpm.info "${_PHP_FPM_VERSION}"
     fi
 
-    if [ -e "${_ROOT}/static/control/fpm.info" ]; then
+    if _sat_ctrl_has fpm.info; then
       # one version, dotted or two-digit; other text is ignored: the cnf's
       # version stays and the file is left as it is
-      _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" fpm.info)")
+      _T_VRN=$(_satellite_php_vrn "$(_acct_own_read_in "${_ROOT}/static/control" fpm.info "${_USER}")")
       if [ -n "${_T_VRN}" ]; then
         _PHP_FPM_VERSION="${_T_VRN}"
         if [ "${_PHP_FPM_VERSION}" = "8.6" ] \
@@ -1378,7 +1378,7 @@ _satellite_cnf() {
       fi
     fi
 
-    if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
+    if ! _sat_ctrl_foreign && [ ! -e "${_ROOT}/static/control/cli.info" ]; then
       # one version, as cli.info is read below; any other text counts as none
       _PHP_CLI_VERSION=""
       if [ -e "${_ROOT}/log/cli.txt" ]; then
@@ -1390,10 +1390,10 @@ _satellite_cnf() {
       _acct_put_in "${_ROOT}/static/control" cli.info "${_PHP_CLI_VERSION}"
     fi
 
-    if [ -e "${_ROOT}/static/control/cli.info" ]; then
+    if _sat_ctrl_has cli.info; then
       # one version, dotted or two-digit; other text is ignored: the cnf's
       # version stays and the file is left as it is
-      _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" cli.info)")
+      _T_VRN=$(_satellite_php_vrn "$(_acct_own_read_in "${_ROOT}/static/control" cli.info "${_USER}")")
       if [ -n "${_T_VRN}" ]; then
         _PHP_CLI_VERSION="${_T_VRN}"
         if [ "${_PHP_CLI_VERSION}" = "8.6" ] \
@@ -1647,11 +1647,11 @@ _satellite_cnf() {
       sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
-    if [ -e "${_ROOT}/static/control/platforms.info" ]; then
+    if _sat_ctrl_has platforms.info; then
       ### the symbols of the account's file: blanks and line breaks made
       ### single spaces and every other character but 0-9 and A-Z dropped,
       ### by tr, never expanded as a file name pattern
-      _PLATFORMS_LIST=$(_acct_read_in "${_ROOT}/static/control" platforms.info \
+      _PLATFORMS_LIST=$(_acct_own_read_in "${_ROOT}/static/control" platforms.info "${_USER}" \
         | tr -s '[:space:]' ' ' | tr -cd ' 0-9A-Z' | tr -s ' ')
       _PLATFORMS_LIST="${_PLATFORMS_LIST# }"
       _PLATFORMS_LIST="${_PLATFORMS_LIST% }"
@@ -7050,10 +7050,15 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   ### and EMPTY.txt is put inside the real directory, never through a link
   ### put at static or at EMPTY.txt. A directory another user owns, renamed
   ### to static, keeps its owner and mode (_satellite_own_dir_here) and is
-  ### named on a NOTE line.
+  ### named on a NOTE line. On an account still on the box-wide group every
+  ### other account's .ftp login is in that group too: the sticky bit keeps
+  ### them from renaming or removing what the account's identities and root
+  ### put there, control/ first among them.
+  _T_SM=02775
+  [ "${_ACCG:-users}" = "${_USER}" ] || _T_SM=03775
   _T_N=$(
     _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 02775 2> /dev/null
+      "${_USER}:${_ACCG:-users}" "${_T_SM}" 2> /dev/null
   )
   _satellite_left_note "${_T_N}" "in place at ${_ROOT}/static"
   # nothing is put into a static that was left as another user's
@@ -7925,7 +7930,7 @@ _satellite_make() {
     || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
     || [ ! -x "/opt/php56/bin/php" ]; then
     for _mrkV in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
-      if [ -e "${_ROOT}/static/control/php${_mrkV}.info" ] \
+      if _sat_ctrl_has "php${_mrkV}.info" \
         && [ -x "/opt/php${_mrkV}/bin/php" ]; then
         _MRK_CLI_VERSION="${_mrkV:0:1}.${_mrkV:1}"
       fi
@@ -8056,7 +8061,9 @@ _satellite_make() {
     _acct_put_in "${_ROOT}/log" cli.txt "${_PHP_CLI_VERSION}"
   fi
   _acct_in_real_dir "${_ROOT}/static" _satellite_ctrl_dir_here
-  _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
+  # judged again here: at INIT static/ is made after the first judgement
+  _SAT_CTRL_FOR=""
+  _sat_ctrl_foreign || _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
 
   ### Each stamp is put as a fresh file inside the real 000/, so a link
   ### left at either name is replaced, never written through.
@@ -8078,8 +8085,11 @@ _satellite_make() {
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
     _PHP_FPM_MULTI=NO
-    if [ -f "${_ROOT}/static/control/multi-fpm.info" ] \
-      && [ -d "${_ROOT}/tools/le" ]; then
+    # a control/ that is not the account's own tells nothing: its pools
+    # stay as they are
+    if _sat_ctrl_foreign \
+      || { [ -f "${_ROOT}/static/control/multi-fpm.info" ] \
+        && [ -d "${_ROOT}/tools/le" ]; }; then
       _PHP_FPM_MULTI=YES
     fi
     if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
@@ -8305,7 +8315,14 @@ _satellite_ctrl_make_here() {
     rm -f -- ./.ctrl.*
     _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
   fi
-  _satellite_reown_own_here "${_USER}.ftp:${_ACCG:-users}" > /dev/null
+  # an account still on the box-wide group gets group root here, as the ltd
+  # worker gives it (_ltd_ctrl_shut): what the login makes in this
+  # set-group-ID tree is then never writable by another account's login
+  if [ "${_ACCG:-users}" = "${_USER}" ]; then
+    _satellite_reown_own_here "${_USER}.ftp:${_ACCG}" > /dev/null
+  else
+    _satellite_reown_own_here "${_USER}.ftp:root" > /dev/null
+  fi
 }
 
 #
@@ -8369,6 +8386,29 @@ _acct_walk_uids() {
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
   echo "${_x}"
+}
+# The account's control/ judged once a pass (_acct_ctrl_own): _sat_ctrl_has
+# is 0 when the name $1 is in it and it is the account's own, and
+# _sat_ctrl_foreign is 0 when it is not the account's own. The pass then
+# neither reads nor writes there: the cnf's PHP versions, the platforms
+# list and the pools stay as they are, and the run says why (ALRT).
+_sat_ctrl_judge() {
+  [ "${_SAT_CTRL_FOR:-}" = "${_USER}" ] && return 0
+  _SAT_CTRL_FOR="${_USER}"
+  _SAT_CTRL_OWN=YES
+  if ! _SAT_CTRL_WHY=$(_acct_ctrl_own "${_USER}"); then
+    _SAT_CTRL_OWN=NO
+    _msg "ALRT: ${_ROOT}/static/control is not ${_USER}'s own (${_SAT_CTRL_WHY}); its control files are not read"
+  fi
+  return 0
+}
+_sat_ctrl_has() {
+  _sat_ctrl_judge
+  [ "${_SAT_CTRL_OWN}" = "YES" ] && [ -e "${_ROOT}/static/control/${1}" ]
+}
+_sat_ctrl_foreign() {
+  _sat_ctrl_judge
+  [ "${_SAT_CTRL_OWN}" = "NO" ]
 }
 # As _SAT_NOFOLLOW_CHMOD_PL, given first the comma-separated uids it acts
 # for (_acct_walk_uids; a uid no passwd entry names counts too, sub own): a
@@ -9354,8 +9394,8 @@ _satellite_check_php_compatibility() {
   # refuse: the reads below ignore what is not one version (text over 64
   # characters included, before any pattern substitution).
   _PHP_FPM_LEGACY_FREE=YES
-  if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-    _T_FPM_VRN=$(_acct_read_in "${_ROOT}/static/control" fpm.info)
+  if _sat_ctrl_has fpm.info; then
+    _T_FPM_VRN=$(_acct_own_read_in "${_ROOT}/static/control" fpm.info "${_USER}")
     [ "${#_T_FPM_VRN}" -le 64 ] || _T_FPM_VRN=""
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     case "${_T_FPM_VRN}" in
@@ -9363,8 +9403,8 @@ _satellite_check_php_compatibility() {
     esac
   fi
   _PHP_CLI_LEGACY_FREE=YES
-  if [ -e "${_ROOT}/static/control/cli.info" ]; then
-    _T_CLI_VRN=$(_acct_read_in "${_ROOT}/static/control" cli.info)
+  if _sat_ctrl_has cli.info; then
+    _T_CLI_VRN=$(_acct_own_read_in "${_ROOT}/static/control" cli.info "${_USER}")
     [ "${#_T_CLI_VRN}" -le 64 ] || _T_CLI_VRN=""
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     case "${_T_CLI_VRN}" in

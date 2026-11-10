@@ -1740,6 +1740,153 @@ _ltd_ctrl_init() (
     "the removal of old control stamps" "in place"
   _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
 )
+# The gid of the account $1's own group, or -1 when it is still on the
+# box-wide group (whose members are every other account's .ftp login too).
+_ltd_own_gid() {
+  local _g
+  if [ "$(id -gn -- "${1}" 2> /dev/null)" = "${1}" ]; then
+    _g=$(getent group "${1}" 2> /dev/null | cut -d: -f3)
+    [[ "${_g}" =~ ^[0-9]+$ ]] && { echo "${_g}"; return 0; }
+  fi
+  echo -1
+}
+# What root or the account's identities own (the uids given second, a uid
+# no passwd entry names too) in the current (pinned) directory, never through
+# a link nor on a hard-linked file, and nothing unless this directory and
+# every one above it up to / are theirs: with t, a directory writable by
+# others or by a group that is not the account's own (the gid given third,
+# -1 for none) gets the sticky bit, so no one outside the account can rename
+# or remove what is not theirs in it; with w, such write is taken off (a
+# group root holds is not another account's), a file losing it loses any
+# set-ID bit too, and, for an account with no group of its own, a directory
+# is handed to group root, so what the account makes in it later (it is
+# set-group-ID) is never the shared group's.
+_LTD_SHUT_OWN_PL='use Fcntl;
+my ($op, $o, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+$g = -1 unless defined $g && $g =~ /^[0-9]+$/;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && own($s[4]) && (-d _ || (-f _ && $s[3] == 1))) {
+    my ($m, $x) = ($s[2] & 07777, 02 | (($s[5] == $g || $s[5] == 0) ? 0 : 020));
+    if ($op eq "t") {
+      chmod($m | 01000, $h) if -d _ && ($m & $x) && !($m & 01000);
+    } elsif ($op eq "w" && -d _) {
+      chown(-1, 0, $h) if $g < 0 && $s[5] != 0;
+      chmod($m & ~$x, $h) if ($m & $x) || ($g < 0 && $s[5] != 0);
+    } elsif ($op eq "w") {
+      chmod($m & ~$x & ~06000, $h) if $m & $x;
+    }
+  }
+  close($h);
+}
+exit 0;'
+# An account still on the box-wide group shares it with every other
+# account's .ftp login, and what its own login makes in control/ is group
+# writable (sessions and uploads run with umask 002): its real static/ gets
+# the sticky bit, so no other account can rename or replace control/ or
+# anything else the account's identities and root put there, nothing in its
+# real control/ stays writable by others or by a group that is not the
+# account's own, and control/ with every folder in it is handed to group
+# root: a file or folder the login makes there later takes that group from
+# its set-group-ID parent, so no other account can write it in the minutes
+# before the next pass. On a converted account only stray other-write goes.
+# $1 = the account.
+_ltd_ctrl_shut() {
+  local _o _g
+  _o=$(_acct_walk_uids "${1}") || return 0
+  _g=$(_ltd_own_gid "${1}")
+  _ltd_in_real_dir "/data/disk/${1}/static" \
+    perl -e "${_LTD_SHUT_OWN_PL}" -- t "${_o}" "${_g}" . 2> /dev/null
+  _ltd_in_real_dir "/data/disk/${1}/static/control" \
+    perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" . 2> /dev/null
+  if [ "${_g}" = "-1" ]; then
+    _ltd_in_real_dir "/data/disk/${1}/static/control" \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( \( -type d \( -perm -0002 -o -perm -0020 -o ! -gid 0 \) \) \
+      -o \( -type f \( -perm -0002 -o -perm -0020 \) \) \) \
+      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
+  else
+    _ltd_in_real_dir "/data/disk/${1}/static/control" \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( -type d -o -type f \) \( -perm -0002 -o -perm -0020 \) \
+      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
+  fi
+  return 0
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
+# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
 # identity of the account as passwd names them: oN and oN.<name>, that is
@@ -2394,7 +2541,10 @@ _enable_chattr() {
     ###
     ### Check if Ruby Gems and NPM access should be added or removed
     ###
-    if [ -f "${_dscUsr}/static/control/compass.info" ]; then
+    if [ "${_ltdCtrlOwn}" = "NO" ]; then
+      # the logins' gems and npm stay as they are (_acct_ctrl_own)
+      :
+    elif [ -f "${_dscUsr}/static/control/compass.info" ]; then
       ###
       ### Check if Ruby Gems access needs an update
       ###
@@ -3470,6 +3620,8 @@ _ltd_cli_drop() {
 _ltd_cli_src() {
   local _sp=""
   local -a _rc=()
+  # a control/ that is not the account's own tells nothing (_acct_ctrl_own)
+  [ "${_ltdCtrlOwn}" = "NO" ] && return 1
   _sp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
   [ -n "${_sp}" ] || return 3
   timeout 10 setpriv --reuid="${_USER}.ftp" --regid="$(id -g "${_USER}.ftp")" \
@@ -7527,8 +7679,9 @@ _manage_user() {
       # .tmp is oN's to swap too: a link there always takes this block, which
       # strips it (a stamp read through the link could skip it), and every
       # remove, mode and stamp happens inside the real directory
+      # Only root's own stamp counts: a fresh .tmp is group-writable.
       if [ -L "${_dscUsr}/.tmp" ] \
-        || [ ! -e "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+        || [ "$(stat -c %u -- "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" 2> /dev/null)" != "0" ]; then
         _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_cache_drop "${_USER}"
         _desymlink_planted "${_dscUsr}/.tmp"
         mkdir -p ${_dscUsr}/.tmp
@@ -7541,19 +7694,34 @@ _manage_user() {
         fi
       fi
       _prune_psr_log_stash "${_dscUsr}"
-      # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
-      # the box can replace the `control` name. Strip a plant unconditionally:
+      # On an account still on the box-wide group ~/static is group `users`,
+      # which every co-tenant's .ftp login is in: it gets the sticky bit and
+      # control/ loses any write but the account's own (_ltd_ctrl_shut),
+      # before anything below reads it. Strip a plant unconditionally:
       # gating this on a stamp INSIDE the link lets a target that already
       # carries a matching stamp skip the guard for the whole pass. oN can
       # swap static/ itself, so the strip and the mkdir act only inside the
       # real static/.
+      _ltd_ctrl_shut "${_USER}"
       _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
         && [ -e "/home/${_USER}.ftp/clients" ]; then
         _ltd_in_real_dir "${_dscUsr}/static" mkdir -p ./control
         _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
+        # the hand-over gives the tree the account's group: closed again
+        _ltd_ctrl_shut "${_USER}"
       fi
-      if [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
+      # Nothing below acts on a control/ that is not the account's own
+      # (_acct_ctrl_own): the account's PHP, pools, per-site and per-platform
+      # pins, New Relic and its logins' tools stay as they are, never set as
+      # if its files were gone.
+      _ltdCtrlOwn=YES
+      if ! _ltdCtrlWhy=$(_acct_ctrl_own "${_USER}"); then
+        _ltdCtrlOwn=NO
+        echo "ALERT: ${_dscUsr}/static/control is not ${_USER}'s own (${_ltdCtrlWhy}); its control files are not read this pass"
+      fi
+      if [ "${_ltdCtrlOwn}" = "YES" ] \
+        && [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
         if [ -e "${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
           # tools/ is oN's: removed only inside the real directory
           _ltd_rm_in "${_dscUsr}/tools/le/.ctrl" ssl-demo-mode.pid
@@ -7602,7 +7770,7 @@ _manage_user() {
       fi
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
-        if [ -x "/opt/php56/bin/php" ]; then
+        if [ -x "/opt/php56/bin/php" ] && [ "${_ltdCtrlOwn}" = "YES" ]; then
         _ltd_ctrl_put cli.info 5.6
         fi
       fi
@@ -7611,8 +7779,8 @@ _manage_user() {
       _nrCheck=
       _ltdNgxReloaded=
       _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
-      _switch_php
-      if [ -z ${_nrCheck} ]; then
+      [ "${_ltdCtrlOwn}" = "YES" ] && _switch_php
+      if [ "${_ltdCtrlOwn}" = "YES" ] && [ -z ${_nrCheck} ]; then
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
@@ -7637,11 +7805,13 @@ _manage_user() {
           fi
         fi
       fi
-      _site_socket_inc_gen
-      _ltd_fpm_plat_gen
-      _ltd_fpm_core_check
-      _ltd_fpm_plat_skip_put
-      _ltd_fpm_cut_notice
+      if [ "${_ltdCtrlOwn}" = "YES" ]; then
+        _site_socket_inc_gen
+        _ltd_fpm_plat_gen
+        _ltd_fpm_core_check
+        _ltd_fpm_plat_skip_put
+        _ltd_fpm_cut_notice
+      fi
       _ltd_ngx_pass_reload
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance
