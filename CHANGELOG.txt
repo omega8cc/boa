@@ -69,6 +69,15 @@
 
 @=> Security
 
+    * A Grav site served through the server's HTTPS front, as every site
+      without its own certificate is, sees each visitor's own address: it
+      saw the front's, so the Login plugin's lockout, the API's limits and
+      the Form captcha's flood guard counted every visitor as one, and a few
+      wrong passwords from anyone locked every account out of the site for
+      the lockout's interval. The address comes from the front alone, as for
+      Drupal and Backdrop sites; a visitor cannot name its own. A site takes
+      it at its next Verify after the server's upgrade.
+
     * Root's tools and nightly jobs read file names, link targets and log
       lines byte for byte. Under the servers' UTF-8 locale bash 5.2's read
       took a byte that is not UTF-8 for the start of a character and
