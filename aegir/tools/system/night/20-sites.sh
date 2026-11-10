@@ -4574,6 +4574,18 @@ _le_hook_root_here() {
 _le_hook_exec_here() {
   _le_hook_root_here "${1}" && _chmod_nofollow_here f 0755 "./${1}"
 }
+### The current certificate of the set in the current (pinned) directory,
+### which is oN's: dehydrated keeps cert.pem as a link to the cert-<time>.pem
+### beside it, so a link is read by that name only, and a plain cert.pem (a
+### proxy box writes one) as it is; the file itself never through a link.
+_le_cert_here() {
+  local _t=cert.pem
+  if [ -L ./cert.pem ]; then
+    _t=$(readlink -- ./cert.pem 2> /dev/null) || return 1
+    [[ "${_t}" =~ ^cert-[0-9]+\.pem$ ]] || return 1
+  fi
+  _acct_read_here "${_t}"
+}
 ### The Python hook made executable, and its requirements installed by root
 ### only from that root-owned clone. Python is externally managed (PEP 668)
 ### from Devuan 5 on, so pip3 refuses the system site: the requirements go
@@ -4595,9 +4607,17 @@ _le_ssl_check_update() {
   ### iteration then addressed an alias that does not exist).
   local _Dom="${_Dom}" _vhTxt
   ### The account's wildcard and DNS flags are read from its control/: one
-  ### that is not the account's own (_ctrl_foreign) orders nothing, so a
-  ### wildcard certificate is never replaced by a per-name one meanwhile.
-  _ctrl_foreign && return 0
+  ### that is not the account's own (_ctrl_foreign) says nothing of them, so
+  ### a site whose certificate covers a wildcard name keeps it as it is (no
+  ### per-name order replaces it meanwhile); every other site renews per name
+  ### as before.
+  ### Both orders are filed under the site's own name (--alias, or the
+  ### first --domain), the only set its vhost and Verify read (_le_cert_here).
+  if _ctrl_foreign \
+    && _acct_in_real_dir "${_usEr}/tools/le/certs/${_Dom}" _le_cert_here \
+      | openssl x509 -noout -text 2> /dev/null | grep -q 'DNS:\*\.'; then
+    return 0
+  fi
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
   ### Not in demo mode, tools/le/config holding only the staging authority

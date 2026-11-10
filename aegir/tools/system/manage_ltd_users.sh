@@ -1757,7 +1757,9 @@ _ltd_own_gid() {
 # others or by a group that is not the account's own (the gid given third,
 # -1 for none) gets the sticky bit, so no one outside the account can rename
 # or remove what is not theirs in it; with w, such write is taken off (a
-# group root holds is not another account's), a file losing it loses any
+# directory group root holds is not another account's; a file keeps group
+# write only for the account's own group, since root hands the control
+# files to the shared group later in the pass), a file losing it loses any
 # set-ID bit too, and, for an account with no group of its own, a directory
 # is handed to group root, so what the account makes in it later (it is
 # set-group-ID) is never the shared group's.
@@ -1779,7 +1781,7 @@ for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
   if (@s && own($s[4]) && (-d _ || (-f _ && $s[3] == 1))) {
-    my ($m, $x) = ($s[2] & 07777, 02 | (($s[5] == $g || $s[5] == 0) ? 0 : 020));
+    my ($m, $x) = ($s[2] & 07777, 02 | (($s[5] == $g || (-d _ && $s[5] == 0)) ? 0 : 020));
     if ($op eq "t") {
       chmod($m | 01000, $h) if -d _ && ($m & $x) && !($m & 01000);
     } elsif ($op eq "w" && -d _) {
@@ -7812,6 +7814,10 @@ _manage_user() {
         _ltd_fpm_plat_skip_put
         _ltd_fpm_cut_notice
       fi
+      # the hand-overs above give control files the account's group, every
+      # co-tenant's on the box-wide group: one the login made during this
+      # pass would keep that group's write until the next, so closed again
+      _ltd_ctrl_shut "${_USER}"
       _ltd_ngx_pass_reload
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance

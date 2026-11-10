@@ -752,11 +752,8 @@ for _user in "${!_all_involved_users[@]}"; do
   _cycle_state=$(_dbk_in_real_dir "/data/disk/${_user}/static/control" \
     _dbk_cycle_state_here dBackupCycle.info "${_user}")
   if [ "${_cycle_state}" = "foreign" ]; then
-    # not the account's own setting, nor its deletion: the default could
-    # remove copies the account's own file keeps, so this run removes none
-    echo "Warning: ${_cycle_file} or its directory is not ${_user}'s own. Skipping cleanup for ${_user}."
-    _log_issue "${_user}" "${_cycle_file}" "Cycle file or its directory is not the account's own; cleanup skipped"
-    continue
+    echo "Warning: ${_cycle_file} or its directory is not ${_user}'s own. Using the default ${_days_to_keep} days for ${_user}."
+    _log_issue "${_user}" "${_cycle_file}" "Cycle file or its directory is not the account's own"
   elif [ "${_cycle_state}" = "odd" ] \
     || { [ -z "${_cycle_state}" ] \
       && { [ -e "${_cycle_file}" ] || [ -L "${_cycle_file}" ]; }; }; then

@@ -2835,7 +2835,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f93
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f64
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f48
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f06
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f05
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f24
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f47
     _runner_parked owl.sh \
@@ -2909,7 +2909,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f19 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f16 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -3309,7 +3309,12 @@ _update_agents() {
           ### live one the parked copy is stale: set it aside, so off-run
           ### holds only dispatchers that are parked now
           if [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
-            if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+            if [ "${_ctlOwn}" = "NO" ] \
+              && [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
+              # a control/ that is not the account's own (_acct_ctrl_own)
+              # keeps a parked dispatcher where it is
+              :
+            elif [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
               && _a2b_import_unfinished "${_tUsr}"; then
               # an unfinished aegir2boa db-import holds it: only the
               # import's success or revert hands a dispatcher back
@@ -5891,7 +5896,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f93 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f89 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f81 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f80 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f98 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f87 --guard /local/bin/memorytuner
