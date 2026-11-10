@@ -661,20 +661,13 @@ _send_notice_php() {
     -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-Our monitoring detected that you are still using deprecated
-and no longer supported PHP version: $1
+Our monitoring detected that you are still using deprecated and no longer supported PHP version: $1
 
-We have provided a few years of extended support for
-this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to newest Debian version,
-which doesn't support many deprecated PHP versions.
+We have provided a few years of extended support for this PHP version, but now we can't extend it any further, because your system has to be upgraded to newest Debian version, which doesn't support many deprecated PHP versions.
 
-The upgrade will happen in the first week of May, 2023,
-and there are no exceptions possible to avoid it.
+The upgrade will happen in the first week of May, 2023, and there are no exceptions possible to avoid it.
 
-This means that all Ægir instances still running PHP $1
-will stop working if not switched to one of currently
-supported versions: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
+This means that all Ægir instances still running PHP $1 will stop working if not switched to one of currently supported versions: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
 
 To switch PHP-FPM version on command line, please type:
 
@@ -682,10 +675,7 @@ To switch PHP-FPM version on command line, please type:
 
 You can find more details at: https://docs.boa.io/using/tuning/php-version
 
-We are working hard to provide secure and fast hosting
-for your Drupal sites, and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc
+We are working hard to provide secure and fast hosting for your Drupal sites, and we appreciate your efforts to meet the requirements, which are an integral part of the quality you can expect from Omega8.cc
 
 --
 This email has been sent by your Ægir system monitor
@@ -731,24 +721,16 @@ _send_notice_core() {
     -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-Our system detected that you are using vanilla Drupal core
-for site ${_Dom}.
+Our system detected that you are using vanilla Drupal core for site ${_Dom}.
 
 The platform root directory for this site is:
 ${_Plr}
 
-Using non-Pressflow 5.x or 6.x core is not allowed
-on our servers, unless it is a temporary result of your site
-import, but every imported site should be migrated to Pressflow
-based platform as soon as possible.
+Using non-Pressflow 5.x or 6.x core is not allowed on our servers, unless it is a temporary result of your site import, but every imported site should be migrated to Pressflow based platform as soon as possible.
 
-If the site is not migrated to Pressflow based platform
-in seven (7) days, it may cause service interruption.
+If the site is not migrated to Pressflow based platform in seven (7) days, it may cause service interruption.
 
-We are working hard to deliver top performance hosting
-for your Drupal sites and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc.
+We are working hard to deliver top performance hosting for your Drupal sites and we appreciate your efforts to meet the requirements, which are an integral part of the quality you can expect from Omega8.cc.
 
 --
 This email has been sent by your Ægir platform core monitor.
@@ -947,13 +929,9 @@ _sql_top_section() {
     _body+="${_db}:"$'\n'"${_rows}"$'\n\n'
   done < <(printf '%s\n' "${_LIVE_DBS[@]}" | sort -t: -k1,1nr | awk -F: '!seen[$2]++' | head -n 10)
   [ -n "${_body}" ] || return 0
-  printf '%s' "The largest tables of your live databases (the database server's
-estimates; \"free\" is room inside a table's file that removed rows
-left behind):
+  printf '%s' "The largest tables of your live databases (the database server's estimates; \"free\" is room inside a table's file that removed rows left behind):
 
-${_body}Rows you delete inside a site give their space back only after the
-table is rebuilt with OPTIMIZE TABLE. How to find what to remove, and how
-to rebuild a table:
+${_body}Rows you delete inside a site give their space back only after the table is rebuilt with OPTIMIZE TABLE. How to find what to remove, and how to rebuild a table:
 
   https://docs.boa.io/using/backups/database-space"
 }
@@ -982,22 +960,17 @@ _send_notice_sql() {
     -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
+You are using more resources than allocated in your subscription. You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
-but you are currently using ${_SQL_NOW} MB of databases space.
+Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB, but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites, or purchase
-enough Ægir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase enough Ægir Engines to cover your current usage.
 
 ${_TOP_SECTION}You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/pricing
 
-To qualify as DEV/TEST with separate usage limits as specified
-in your subscription, the site should have in its main name
-a special keyword with ==two dots== on ==both sides== like this:
+To qualify as DEV/TEST with separate usage limits as specified in your subscription, the site should have in its main name a special keyword with ==two dots== on ==both sides== like this:
 
   .dev.
   .devel.
@@ -1009,12 +982,9 @@ a special keyword with ==two dots== on ==both sides== like this:
   .stage.
   .staging.
 
-For example, a site with main name: abc.test.foo.com is by default
-excluded from your allocated databases limits for LIVE sites.
+For example, a site with main name: abc.test.foo.com is by default excluded from your allocated databases limits for LIVE sites.
 
-However, if we discover that anyone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
+However, if we discover that anyone is using this method to hide real usage via listed keywords in the main site name and adding live domain(s) as aliases, such account will be suspended without any warning.
 
 --
 This email has been sent by your Ægir resources usage daily monitor.
@@ -1038,28 +1008,19 @@ _send_notice_disk() {
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
+You are using more resources than allocated in your subscription. You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${_TotSizH} MB of disk space.
+Your allowed disk space is ${_DSK_MIN_LIMIT} MB. You are currently using ${_TotSizH} MB of disk space.
 
-Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Ægir Engines
-to cover your current usage.
+Please reduce your usage by deleting old backups, files, and no longer used sites, or purchase enough Ægir Engines to cover your current usage.
 
 You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that unlike with database space limits, for files related disk space
-we count all your sites, including also all DEV/TEST sites, if they exist,
-even if they are marked as disabled in your Ægir control panel.
+Note that unlike with database space limits, for files related disk space we count all your sites, including also all DEV/TEST sites, if they exist, even if they are marked as disabled in your Ægir control panel.
 
-The files of a deleted site are kept aside for safety in your account,
-under static/files/.archived, and they keep counting here until that
-archive is pruned. Ask our support team to prune it once you no longer
-need those copies.
+The files of a deleted site are kept aside for safety in your account, under static/files/.archived, and they keep counting here until that archive is pruned. Ask our support team to prune it once you no longer need those copies.
 
 --
 This email has been sent by your Ægir resources usage daily monitor.

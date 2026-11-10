@@ -1243,6 +1243,13 @@
       that Drush 12.3 removed and whose older form reads an advisory list
       discontinued on 20 May 2026.
 
+    * The notices a hosted account gets by email about its database or disk
+      usage, an unsupported PHP version, a vanilla core, a certificate that
+      cannot renew and leftover site records carry each paragraph on one
+      line, so a mail reader wraps the text to its own screen. They were
+      broken at a fixed width and read as ragged half lines on a phone. No
+      wording changed.
+
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
 ### Date: Sun 01 Nov 2026 01:13:23 CET in Warsaw

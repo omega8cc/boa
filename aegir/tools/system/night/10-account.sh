@@ -2036,10 +2036,10 @@ ${_fails}
 EOF
   [ -z "${_clList}" ] && return 0
   _clBody="Hello,"$'\n'
-  _clBody="${_clBody}"$'\n'"Automatic HTTPS (Let's Encrypt SSL) certificate renewal failed for the"$'\n'"following site(s) in your hosting account on ${_hName}:"$'\n'"${_clList}"
-  _clBody="${_clBody}"$'\n'"While a certificate cannot be renewed, this check runs and fails again every"$'\n'"night, so please take one of these actions:"$'\n'
-  _clBody="${_clBody}"$'\n'"  - If the site is still in use: point its domain's DNS A record at this"$'\n'"    server and remove any AAAA record (the server answers on IPv4 only),"$'\n'"    and the certificate will renew automatically."$'\n'
-  _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL)"$'\n'"    for it, or remove the obsolete domain alias, to stop these daily"$'\n'"    failures and notices."$'\n'
+  _clBody="${_clBody}"$'\n'"Automatic HTTPS (Let's Encrypt SSL) certificate renewal failed for the following site(s) in your hosting account on ${_hName}:"$'\n'"${_clList}"
+  _clBody="${_clBody}"$'\n'"While a certificate cannot be renewed, this check runs and fails again every night, so please take one of these actions:"$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site is still in use: point its domain's DNS A record at this server and remove any AAAA record (the server answers on IPv4 only), and the certificate will renew automatically."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL) for it, or remove the obsolete domain alias, to stop these daily failures and notices."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
   # Reply-To the account owner (else the server admin) so a client's reply
   # reaches a human, not the undeliverable root@<host> envelope sender. Only set
@@ -2135,12 +2135,12 @@ ${_ghosts}
 EOF
   [ -z "${_ghList}" ] && return 0
   _clBody="Hello,"$'\n'
-  _clBody="${_clBody}"$'\n'"The nightly maintenance on ${_hName} found broken leftover site"$'\n'"registration(s) in your hosting account:"$'\n'"${_ghList}"$'\n'
-  _clBody="${_clBody}"$'\n'"Each of these is a record of a site that has no directory on the server"$'\n'"any more -- typically an install or clone that failed or was rolled back,"$'\n'"so only its registration was left behind. The record still shows up in"$'\n'"your Aegir control panel and keeps being re-detected until it is removed"$'\n'"there; the server cannot remove it for you, because the control panel"$'\n'"re-creates the backend records on the next task run."$'\n'
+  _clBody="${_clBody}"$'\n'"The nightly maintenance on ${_hName} found broken leftover site registration(s) in your hosting account:"$'\n'"${_ghList}"$'\n'
+  _clBody="${_clBody}"$'\n'"Each of these is a record of a site that has no directory on the server any more -- typically an install or clone that failed or was rolled back, so only its registration was left behind. The record still shows up in your Aegir control panel and keeps being re-detected until it is removed there; the server cannot remove it for you, because the control panel re-creates the backend records on the next task run."$'\n'
   _clBody="${_clBody}"$'\n'"How to remove it in your Aegir control panel (takes a minute):"$'\n'
-  _clBody="${_clBody}"$'\n'"  - If you do not need the site: open the site's page in the control"$'\n'"    panel, run Disable first if the site still shows as enabled (the"$'\n'"    Delete button appears only on a disabled site), then run Delete."$'\n'"    If Delete fails or never finishes, note the number at the end of"$'\n'"    the site page's address (it looks like /node/12345), then open"$'\n'"    /node/12345/delete in your browser and confirm -- this removes the"$'\n'"    stuck record directly."$'\n'
-  _clBody="${_clBody}"$'\n'"  - If you still need the site: open the site's page and re-run the"$'\n'"    failed task (Install or Clone), or delete the broken record and"$'\n'"    create the site afresh."$'\n'
-  _clBody="${_clBody}"$'\n'"These records point at no site data on the server, so removing them"$'\n'"does not touch any of your working sites, and nothing is deleted on the"$'\n'"server side by this process."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If you do not need the site: open the site's page in the control panel, run Disable first if the site still shows as enabled (the Delete button appears only on a disabled site), then run Delete. If Delete fails or never finishes, note the number at the end of the site page's address (it looks like /node/12345), then open /node/12345/delete in your browser and confirm -- this removes the stuck record directly."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If you still need the site: open the site's page and re-run the failed task (Install or Clone), or delete the broken record and create the site afresh."$'\n'
+  _clBody="${_clBody}"$'\n'"These records point at no site data on the server, so removing them does not touch any of your working sites, and nothing is deleted on the server side by this process."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
   _reply="${_MY_OCTO_EMAIL}"
   if [ -z "${_reply}" ] || [ "${_reply}" = "root" ] \
