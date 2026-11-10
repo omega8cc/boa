@@ -1099,6 +1099,11 @@
       and newer). They keep the names on a Backdrop site only. drush8
       version prints Drush's own version again.
 
+    * Classic Drush 8.5.24 (Ægir's Drush 8): drush8 pm-enable of a theme on
+      a Drupal 11 site no longer dies with "Call to undefined method
+      ThemeHandler::install()": Drush installs Drupal 8 and newer themes
+      through Drupal's theme installer, as it already uninstalled them.
+
     * An Octopus pass no longer reports "Backdrop Drush extension not
       detected by Drush" when the extension is there: the check looked for
       the command's name in Drush's help table, which wraps a name that
