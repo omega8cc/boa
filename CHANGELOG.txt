@@ -1090,6 +1090,11 @@
       Input classes from the consoles it carries, as on a locked platform,
       and its output adapter extends the platform's stock Output.
 
+    * An Octopus pass no longer reports "Backdrop Drush extension not
+      detected by Drush" when the extension is there: the check looked for
+      the command's name in Drush's help table, which wraps a name that
+      long across two lines.
+
     * eolreport names a site on a pre-release Drupal core (alpha, beta,
       release candidate or a git checkout's dev core) as PRE-RELEASE, since
       drupal.org's security advisories cover no pre-release, and exits 1 for
