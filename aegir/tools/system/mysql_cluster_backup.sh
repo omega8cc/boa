@@ -56,7 +56,7 @@ _check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
+_IS_SQLBACKUP_RUNNING=$(pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi

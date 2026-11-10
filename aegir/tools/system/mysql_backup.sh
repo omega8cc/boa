@@ -121,7 +121,7 @@ _replica_role_gate() {
 }
 _replica_role_gate
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)')
+_IS_SQLBACKUP_RUNNING=$(pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
@@ -1398,9 +1398,9 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ ! -e "/run/boa_run.pid" ] \
   && [ ! -e "/run/boa_wait.pid" ] \
   && [ ! -e "/run/octopus_install_run.pid" ] \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
+  && ! pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
+  && ! pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 \
+  && ! pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
   _check_running
   _check_mysql_version
   echo "INFO: Running db server restart on $(date)"
