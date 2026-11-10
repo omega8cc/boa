@@ -131,9 +131,9 @@ _ci_master_cron_control() {
     _if_allow_aegir_queue
     # /local/bin matches both the /opt and the PATH-resolved /usr symlink
     # form; the .sh.txt pgreps cover the chained install's legs
-    if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
-      || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
-      || pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" >/dev/null 2>&1 \
+    if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
+      || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
+      || pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" >/dev/null 2>&1 \
       || [ -e "/run/boa_run.pid" ] \
       || [ -e "/run/boa_wait.pid" ] \
       || [ -e "/run/octopus_install_run.pid" ]; then
@@ -230,9 +230,9 @@ fi
 # design (queued backend tasks must run for INIT to complete).
 _accel_now=NO
 if [ -e "/run/octopus_install_run.pid" ]; then
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _accel_now=YES
     touch /run/octopus_install_run.pid
   elif [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
@@ -404,16 +404,16 @@ _if_allow_aegir_queue() {
 _SQLBACKUP_RUNNING=NO
 # Execution forms only (cron's nice/ionice bash launch, a shebang launch):
 # an editor or a grep naming the script must not hold the runner back
-if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
+if (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)') > 0 )); then
+elif (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )); then
+elif (( $(pgrep -u root -U root -fc '^[^ ]*mydumper( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)') > 0 )); then
+if (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)') > 0 )); then
   _DAILY_RUNNING=YES
 fi
 
@@ -443,7 +443,7 @@ fi
 # cron must stay live through exactly those windows.
 _ci_master_cron_control
 
-if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
+if [ "$(pgrep -u root -U root -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   || [ "${_SQLBACKUP_RUNNING}" = "YES" ] \
   || [ "${_DAILY_RUNNING}" = "YES" ] \
   || [ -e "/run/mysql_restart_running.pid" ] \

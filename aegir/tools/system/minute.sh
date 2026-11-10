@@ -53,27 +53,27 @@ _second_flood_guard() {
   # Execution forms only (the cron wrapper and its child), never a command
   # line that merely names the script: the count is the trigger and the kill
   # follows it (a substring guard once -9'd an operator's shell mid-command).
-  _thisCountSec=$(pgrep -fc '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)')
+  _thisCountSec=$(pgrep -u root -U root -fc '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)')
   if [ "${_thisCountSec}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/boa/sec-count.kill.log
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
+    pkill -9 -u root -U root -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
   fi
 }
 
 # Protect from high load due to csf loop/flood
 _csf_flood_guard() {
-  _thisCountCsf=$(pgrep -fc '^(/usr/bin/perl )?/usr/sbin/csf( |$)')
+  _thisCountCsf=$(pgrep -u root -U root -fc '^(/usr/bin/perl )?/usr/sbin/csf( |$)')
   if [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountCsf}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/boa/csf-count.kill.log
-    pkill -9 -f '^(/usr/bin/perl )?/usr/sbin/csf( |$)'
+    pkill -9 -u root -U root -f '^(/usr/bin/perl )?/usr/sbin/csf( |$)'
     csf -tf
     wait
     csf -df
     wait
   fi
-  _thisCountFire=$(pgrep -fc '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)')
+  _thisCountFire=$(pgrep -u root -U root -fc '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)')
   if [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountFire}" -gt 9 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/boa/fire-purge.kill.log
@@ -81,13 +81,13 @@ _csf_flood_guard() {
     wait
     csf -df
     wait
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
+    pkill -9 -u root -U root -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
   elif [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountFire}" -gt 7 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/boa/fire-count.kill.log
     csf -tf
     wait
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
+    pkill -9 -u root -U root -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
   fi
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }

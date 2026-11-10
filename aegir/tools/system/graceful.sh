@@ -6,6 +6,17 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Function to check if the script is run as root
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: This script should be run as root"
@@ -447,7 +458,7 @@ _reload_idle_fpm_versions() {
   [ -d "${_tuneDir}" ] || return 0
   _now=$(date +%s)
   _from=$(( _now - 86400 ))
-  for _mPid in $(pgrep -f '^php-fpm: master process'); do
+  for _mPid in $(pgrep -u root -U root -f '^php-fpm: master process'); do
     _mVer=$(tr '\0' ' ' 2> /dev/null < "/proc/${_mPid}/cmdline" \
       | grep -o '/opt/php[0-9]\+/' | head -n1)
     _mVer="${_mVer//[^0-9]/}"
@@ -481,7 +492,7 @@ _reload_idle_fpm_versions() {
       # What the version holds after the reload, read from its master then
       # (a fresh master starts at a baseline of some tens of MB).
       sleep 3
-      _mNew=$(pgrep -f "^php-fpm: master process \(/opt/php${_mVer}/" | head -n1)
+      _mNew=$(pgrep -u root -U root -f "^php-fpm: master process \(/opt/php${_mVer}/" | head -n1)
       _after="?"
       [ -n "${_mNew}" ] && _after=$(_fpm_shared_resident_mb "${_mNew}")
       echo "$(date) php${_mVer}-fpm reloaded: no worker for a day, opcache and APCu held ${_shm} MB before, ${_after} MB after" >> "${_relLog}"
@@ -957,7 +968,9 @@ _graceful_action() {
   _purge_weekly_backups
 
   # Speed cleanup
-  _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"
+  local _bU=""
+  _bU="$(_boa_run_uids)"
+  _IF_BCP="$(pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)')"
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid
@@ -994,10 +1007,10 @@ _boa_pass_active() {
   # maintenance mute) so a stale marker cannot park this script forever.
   [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2> /dev/null)" ] && return 0
   [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2> /dev/null)" ] && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 

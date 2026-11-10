@@ -191,6 +191,17 @@ fi
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
 # Sanitize numeric variables (allow digits and decimal point)
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
@@ -619,22 +630,24 @@ _spider_stand_down() {
 # never mistaken for a backup.
 _backup_in_progress() {
   [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
-  pgrep -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' >/dev/null 2>&1 && return 0
-  pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
-  pgrep -x mydumper >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -x mydumper >/dev/null 2>&1 && return 0
   # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
   # a box whose cron now stays armed -- its load must not trip the
   # drastic tiers any more than a duplicity run's. The packaged myloader
   # is a wrapper exec'ing myloader.bin, so match both comm names.
-  pgrep -x xtrabackup >/dev/null 2>&1 && return 0
-  pgrep -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
-  pgrep -x myloader >/dev/null 2>&1 && return 0
-  pgrep -x myloader.bin >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -x xtrabackup >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
+  pgrep -u root -U root -x myloader >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -x myloader.bin >/dev/null 2>&1 && return 0
+  local _bU=""
+  _bU="$(_boa_run_uids)"
   # duplicity runs as its pipx venv python with the console script as the
   # argument, never as a process named duplicity: the anchored pair the other
   # gates use, not a comm test that can never match.
-  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 && return 0
-  pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1
+  pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1
 }
 
 # Measured system iowait% over a short sample. Used to CONFIRM a backup's high

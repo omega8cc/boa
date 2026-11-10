@@ -9,6 +9,17 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -71,13 +82,13 @@ _installer_alive() {
   # Anchored, not a bare substring: any command line merely MENTIONING the
   # wrapper -- an editor, a checksum, an operator's ssh probe -- would
   # otherwise hold installer-lock reaping off indefinitely.
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (xoct/xcopy driving a remote install) must not hold this box's reaping
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   # Dual-path for the staging move -- see the same guard in BOA.sh.txt.
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -90,7 +101,7 @@ _SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
   local _pat="$1" _p="" _e="" _max=""
-  for _p in $(pgrep -f "${_pat}" 2> /dev/null); do
+  for _p in $(pgrep -u root -U root -f "${_pat}" 2> /dev/null); do
     _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
     [ -z "${_e}" ] && continue
     if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
@@ -579,9 +590,10 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   # console script as the script argument, and a bare substring match
   # also deferred this arm whenever any command line merely mentioned
   # the word (an editor, a tail, an operator probe).
-  _CNT="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
+  _bU="$(_boa_run_uids)"
+  _CNT="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
   _CNT="${_CNT:-0}"
-  _CNTD="$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
+  _CNTD="$(pgrep -u "${_bU}" -U "${_bU}" -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
   _CNTD="${_CNTD:-0}"
   if (( _CNT + _CNTD > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
