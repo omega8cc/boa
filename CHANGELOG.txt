@@ -296,6 +296,19 @@
 
 @=> Important Fixes
 
+    * A migration source that still holds an SSH host key for its target's
+      address, left from an earlier server there, is told so. xmass
+      prep-target and init stopped at "cannot verify the standby state of
+      target <ip> (ssh rc=255)", which named no cause. The refusal now names
+      the key the target serves and every entry held, with the check to make
+      on the target and the one command that forgets the old entries; the
+      tool removes none itself, as another server answering in the target's
+      place reads the same. xmass pre-mig on a target prints that box's host
+      key fingerprints to compare. sync, cutover and autosync say the same,
+      and so do xoct's firewall check before a move, xcopy create and both
+      tools' pretransfer, transfer and shared legs. Any other failure of
+      xmass's first login now carries the client's own last line.
+
     * A Drupal 8+ site renamed by a Migrate on its own platform answered
       500 ("Class ... not found") until PHP-FPM restarted, while every task
       passed: Drupal keeps the class loader's file paths in the web pool's

@@ -302,6 +302,64 @@ _mig_keyscan() {
   done
 }
 
+### $1 the host, $2 the client's own words from a call to it that failed.
+### When they say the key the host serves is not the one this box holds for
+### it, prints the key served, every entry held, the check to make and the
+### command that forgets the held entries, puts both fingerprints in
+### _MIG_HOSTKEY_SAYS for the caller's own refusal and returns 0. Any other
+### failure returns 1 with nothing printed. Nothing is forgotten here: an
+### address handed on to a new server reads the same as another server
+### answering in its place, and only the operator can tell which it is.
+_MIG_HOSTKEY_SAYS=""
+_mig_hostkey_changed() {
+  local _h _w _t _fp _f _l _n="" _x _ht _hfp _same="" _first="" _pub
+  _MIG_HOSTKEY_SAYS=""
+  case "${2}" in
+    *"REMOTE HOST IDENTIFICATION HAS CHANGED"*) : ;;
+    *) return 1 ;;
+  esac
+  _w="$(printf '%s\n' "${2}" | tr -d '\r')"
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-' | tr '[:upper:]' '[:lower:]')"
+  _t="$(printf '%s\n' "${_w}" \
+    | sed -n 's/^The fingerprint for the \([A-Za-z0-9-]*\) key sent by the remote host is.*/\1/p' \
+    | head -n 1)"
+  _fp="$(printf '%s\n' "${_w}" | grep -oE 'SHA256:[A-Za-z0-9+/]{43}' | head -n 1)"
+  _f="$(printf '%s\n' "${_w}" \
+    | sed -n 's/^Offending [^ ]* key in \(\/[^:]*\):[0-9][0-9]*[[:space:]]*$/\1/p' \
+    | head -n 1)"
+  [ -f "${_f}" ] || _f=/root/.ssh/known_hosts
+  echo "ALRT: ${_h} serves an SSH host key that is not the one this box holds for it:"
+  [ -n "${_fp}" ] || _fp="(fingerprint not read, see the client)"
+  echo "ALRT:   served now: ${_t:-key} ${_fp}"
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "# Host "*" found: line "*)
+        _n="${_l##*found: line }"
+        _n="${_n%%[!0-9]*}"
+        ;;
+      *)
+        read -r _x _ht _hfp _x <<< "${_l}"
+        [ -n "${_hfp}" ] || continue
+        echo "ALRT:   held here:  ${_ht} ${_hfp} (${_f} line ${_n:-?})"
+        [ -n "${_first}" ] || _first="${_ht} ${_hfp}"
+        [ -n "${_same}" ] || [ "${_ht}" != "${_t}" ] || _same="${_ht} ${_hfp}"
+        _n=""
+        ;;
+    esac
+  done < <(ssh-keygen -l -E sha256 -F "${_h}" -f "${_f}" 2> /dev/null)
+  case "${_t}" in
+    ED25519|ECDSA|RSA) _pub="$(printf '%s' "${_t}" | tr '[:upper:]' '[:lower:]')" ;;
+    *) _pub="ed25519" ;;
+  esac
+  echo "ALRT: An address handed on to a new server reads like this, and so does another server answering in its place."
+  echo "ALRT: Check on ${_h} itself, reached some other way than from this box (its console, its host):"
+  echo "ALRT:   ssh-keygen -l -f /etc/ssh/ssh_host_${_pub}_key.pub"
+  echo "ALRT: Only when that prints the fingerprint served now, forget the old entries here and run this command again:"
+  echo "ALRT:   ssh-keygen -R ${_h} -f ${_f}"
+  _MIG_HOSTKEY_SAYS="served ${_t:-key} ${_fp}, held ${_same:-${_first:-none listed}}"
+  return 0
+}
+
 ### Copied verbatim from the shared library: a standalone tool cannot source
 ### it, so the definition travels with every writer that needs it.
 _acct_group() {
@@ -7730,12 +7788,21 @@ _xoct_detect_target_mnt() {
 # Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
 # failed query, an empty target host, or more than one mount. $1 = target host.
 _xoct_resolve_target_mnt() {
-  local _raw
+  local _raw _e _said=""
   if [ -z "$1" ]; then
     echo "ERROR: empty target host — refusing"
     exit 1
   fi
-  _raw="$(_xoct_detect_target_mnt "$1")"
+  # the client's own words are kept and shown as before; a target whose key
+  # is not the one held here for its address is named as that
+  if _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)"; then
+    _raw="$(_xoct_detect_target_mnt "$1" 2> "${_e}")"
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+    [ -z "${_said}" ] || printf '%s\n' "${_said}" >&2
+  else
+    _raw="$(_xoct_detect_target_mnt "$1")"
+  fi
   case "${_raw}" in
     MULTI)
       echo "ERROR: target $1 has multiple /mnt mounts; BOA supports a single attached mount — refusing"
@@ -7743,6 +7810,12 @@ _xoct_resolve_target_mnt() {
       ;;
     NONE) _TGT_MNT="" ;;
     "")
+      if _mig_hostkey_changed "$1" "${_said}"; then
+        echo "ERROR: target $1 serves a host key that is not the one this box holds for that address"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}) — refusing. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+        exit 1
+      fi
       echo "ERROR: could not query /mnt on target $1 (ssh failed?) — refusing"
       exit 1
       ;;
@@ -8774,24 +8847,36 @@ _xoct_csf_text_covers_ip() {
 ### first contact with the target (the scan runs after it), so its login
 ### accepts a host key this box has not met yet.
 _xoct_require_peer_whitelist() {
-  local _p="$1" _out _allow _ignore _ip _miss="" _half=""
+  local _p="$1" _out _allow _ignore _ip _miss="" _half="" _e _said=""
   [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
   _mig_valid_ip "${_p}" || return 0
+  _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _e=""
   _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@"${_p}" \
-    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2>/dev/null)"
+    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XOCT-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XOCT-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XOCT-CSF-END; else echo XOCT-CSF-NONE; fi" 2> "${_e:-/dev/null}")"
+  if [ -n "${_e}" ]; then
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+  fi
   if [ "${_out}" = "XOCT-CSF-NONE" ]; then
     echo "INFO: ${_p} runs no csf; no firewall entries to check"
     return 0
   fi
   if ! grep -qx "XOCT-CSF-END" <<< "${_out}"; then
+    # the first login to the target: a key that is not the one held here
+    # for its address is named as that, never as a firewall step
+    if _mig_hostkey_changed "${_p}" "${_said}"; then
+      echo "ERROR: ${_p} serves a host key that is not the one this box holds for that address"
+      echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
+      echo "ERROR: forget the old entries here, then run this command again"
+      return 1
+    fi
     echo "ERROR: could not read the firewall of ${_p} over ssh before anything travels."
     echo "ERROR: The usual cause is the firewall step not done yet: on ${_p}, add these lines"
     for _ip in $(_mig_my_ips); do
       echo "ERROR:   ${_ip} # Legacy Proxy   (to /etc/csf/csf.allow and to /etc/csf/csf.ignore)"
     done
     echo "ERROR: then run csf -ra there; if this box was just banned, lift it there with csf -tr <ip>."
-    echo "ERROR: Also check that ${_p} trusts this box's key (xoct pre-mig on both boxes),"
-    echo "ERROR: and, if ${_p} was rebuilt, remove its old host key here: ssh-keygen -R ${_p}"
+    echo "ERROR: Also check that ${_p} trusts this box's key (xoct pre-mig on both boxes)."
     return 1
   fi
   _allow="$(sed -n '/^XOCT-CSF-ALLOW$/,/^XOCT-CSF-IGNORE$/p' <<< "${_out}" | sed '1d;$d')"

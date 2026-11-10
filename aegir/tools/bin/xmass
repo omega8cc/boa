@@ -439,6 +439,80 @@ _mig_keyscan() {
   done
 }
 
+### $1 the host, $2 the client's own words from a call to it that failed.
+### When they say the key the host serves is not the one this box holds for
+### it, prints the key served, every entry held, the check to make and the
+### command that forgets the held entries, puts both fingerprints in
+### _MIG_HOSTKEY_SAYS for the caller's own refusal and returns 0. Any other
+### failure returns 1 with nothing printed. Nothing is forgotten here: an
+### address handed on to a new server reads the same as another server
+### answering in its place, and only the operator can tell which it is.
+_MIG_HOSTKEY_SAYS=""
+_mig_hostkey_changed() {
+  local _h _w _t _fp _f _l _n="" _x _ht _hfp _same="" _first="" _pub
+  _MIG_HOSTKEY_SAYS=""
+  case "${2}" in
+    *"REMOTE HOST IDENTIFICATION HAS CHANGED"*) : ;;
+    *) return 1 ;;
+  esac
+  _w="$(printf '%s\n' "${2}" | tr -d '\r')"
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-' | tr '[:upper:]' '[:lower:]')"
+  _t="$(printf '%s\n' "${_w}" \
+    | sed -n 's/^The fingerprint for the \([A-Za-z0-9-]*\) key sent by the remote host is.*/\1/p' \
+    | head -n 1)"
+  _fp="$(printf '%s\n' "${_w}" | grep -oE 'SHA256:[A-Za-z0-9+/]{43}' | head -n 1)"
+  _f="$(printf '%s\n' "${_w}" \
+    | sed -n 's/^Offending [^ ]* key in \(\/[^:]*\):[0-9][0-9]*[[:space:]]*$/\1/p' \
+    | head -n 1)"
+  [ -f "${_f}" ] || _f=/root/.ssh/known_hosts
+  echo "ALRT: ${_h} serves an SSH host key that is not the one this box holds for it:"
+  [ -n "${_fp}" ] || _fp="(fingerprint not read, see the client)"
+  echo "ALRT:   served now: ${_t:-key} ${_fp}"
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "# Host "*" found: line "*)
+        _n="${_l##*found: line }"
+        _n="${_n%%[!0-9]*}"
+        ;;
+      *)
+        read -r _x _ht _hfp _x <<< "${_l}"
+        [ -n "${_hfp}" ] || continue
+        echo "ALRT:   held here:  ${_ht} ${_hfp} (${_f} line ${_n:-?})"
+        [ -n "${_first}" ] || _first="${_ht} ${_hfp}"
+        [ -n "${_same}" ] || [ "${_ht}" != "${_t}" ] || _same="${_ht} ${_hfp}"
+        _n=""
+        ;;
+    esac
+  done < <(ssh-keygen -l -E sha256 -F "${_h}" -f "${_f}" 2> /dev/null)
+  case "${_t}" in
+    ED25519|ECDSA|RSA) _pub="$(printf '%s' "${_t}" | tr '[:upper:]' '[:lower:]')" ;;
+    *) _pub="ed25519" ;;
+  esac
+  echo "ALRT: An address handed on to a new server reads like this, and so does another server answering in its place."
+  echo "ALRT: Check on ${_h} itself, reached some other way than from this box (its console, its host):"
+  echo "ALRT:   ssh-keygen -l -f /etc/ssh/ssh_host_${_pub}_key.pub"
+  echo "ALRT: Only when that prints the fingerprint served now, forget the old entries here and run this command again:"
+  echo "ALRT:   ssh-keygen -R ${_h} -f ${_f}"
+  _MIG_HOSTKEY_SAYS="served ${_t:-key} ${_fp}, held ${_same:-${_first:-none listed}}"
+  return 0
+}
+
+### The verb stops when the client's words $2 say target $1 serves a key
+### other than the one held here for it; any other failure returns.
+_xmass_die_hostkey_changed() {
+  _mig_hostkey_changed "${1}" "${2}" || return 0
+  _die "target ${1} serves a host key that is not the one this box holds for that address" \
+       " (${_MIG_HOSTKEY_SAYS}) -- refusing to proceed; make the check named above" \
+       " ('xmass pre-mig' on the target prints its host key fingerprints too)," \
+       " forget the old entries here, then run this command again"
+}
+
+### The last line of a failed call's own words, for a refusal's text.
+_xmass_last_words() {
+  printf '%s\n' "${1}" | tr -d '\r' | grep -v '^[[:space:]]*$' | tail -n 1 \
+    | tr -cd '[:print:]' | cut -c1-160
+}
+
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
   # converted to a private primary group named after itself gets that group,
@@ -7628,18 +7702,29 @@ _xmass_detect_target_mnt() {
 
 # Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
 # failed query, an empty target host, or more than one mount. $1 = target host.
+# It is the first login to the target of sync and cutover: the client's own words
+# are kept, shown as before, and a target whose key is not the one held here for
+# its address is named as that.
 _xmass_resolve_target_mnt() {
-  local _raw
+  local _raw _e _said=""
   if [ -z "$1" ]; then
     _die "empty target host — refusing"
   fi
-  _raw="$(_xmass_detect_target_mnt "$1")"
+  if _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)"; then
+    _raw="$(_xmass_detect_target_mnt "$1" 2> "${_e}")"
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+    [ -z "${_said}" ] || printf '%s\n' "${_said}" >&2
+  else
+    _raw="$(_xmass_detect_target_mnt "$1")"
+  fi
   case "${_raw}" in
     MULTI)
       _die "target $1 has multiple /mnt mounts; BOA supports a single attached mount — refusing"
       ;;
     NONE) _TGT_MNT="" ;;
     "")
+      _xmass_die_hostkey_changed "$1" "${_said}"
       _die "could not query /mnt on target $1 (ssh failed?) — refusing"
       ;;
     *) _TGT_MNT="${_raw}" ;;
@@ -13968,15 +14053,20 @@ _xmass_refuse_role_clash() {
   # Fail CLOSED on transport: an unreachable target is not a clean target,
   # and a refusal gate that shrugs off its own probe refuses nothing. rc 1
   # from the remote test = marker genuinely absent; anything else that is
-  # not rc 0 = could not verify.
-  local _mrk _mrk_src _one _rc
-  ssh -o ConnectTimeout=10 -o BatchMode=yes \
+  # not rc 0 = could not verify. This is the verb's first login to the
+  # target, so the client's own words are kept: a target whose key is not
+  # the one held here for its address is named as that, and any other
+  # failure carries the client's last line.
+  local _mrk _mrk_src _one _rc _said
+  _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
     -o StrictHostKeyChecking=accept-new root@"${_tgt}" \
-    "test -e /root/.standby.cnf" 2>/dev/null
+    "test -e /root/.standby.cnf" 2>&1)"
   _rc=$?
   [ "${_rc}" = "1" ] && return 0
   if [ "${_rc}" != "0" ]; then
-    _die "cannot verify the standby state of target ${_tgt} (ssh rc=${_rc})" \
+    _xmass_die_hostkey_changed "${_tgt}" "${_said}"
+    _said="$(_xmass_last_words "${_said}")"
+    _die "cannot verify the standby state of target ${_tgt} (ssh rc=${_rc}${_said:+: ${_said}})" \
          " -- refusing to proceed on an unverifiable role; fix ssh access" \
          " to the target first"
   fi
@@ -17186,9 +17276,34 @@ _xmass_pre_mig() {
     # will NOT travel) at the cheapest possible moment. No target yet, so
     # sizes only; init repeats this with the aggregate space probe.
     _xmass_report_out_links
+  else
+    # A source that holds another key for this box's address is refused at
+    # its first login here; these are the lines it compares.
+    _xmass_tell_host_keys
   fi
   _XMASS_CSF_KEEP=YES
   _info "pre-mig complete on ${_hName}"
+}
+
+### This box's SSH host key fingerprints, from the files its SSH server is
+### set to serve (the default names when its settings cannot be read).
+_xmass_tell_host_keys() {
+  local _k _l _n=0
+  _info "This box's SSH host key fingerprints, to compare when a source is served a key it does not hold for this address:"
+  while IFS= read -r _k; do
+    [ -f "${_k}.pub" ] || continue
+    _l="$(ssh-keygen -l -E sha256 -f "${_k}.pub" 2> /dev/null \
+      | awk '{ t = $NF; gsub(/[()]/, "", t); print t, $2; exit }')"
+    [ -n "${_l}" ] || continue
+    _info "  ${_l}"
+    _n=$(( _n + 1 ))
+  done < <(
+    sshd -T 2> /dev/null | awk 'tolower($1) == "hostkey" { print $2 }' | grep . \
+      || ls /etc/ssh/ssh_host_*_key 2> /dev/null
+  )
+  [ "${_n}" -gt 0 ] \
+    || _alrt "could not read this box's SSH host key files; 'ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub' prints the main one"
+  return 0
 }
 
 # Target side of pre-mig, once the master's panel passed: the key
@@ -18235,12 +18350,15 @@ _xmass_autosync_read_cnf() {
 # The ONE standby-marker probe both arm and every pass use (a second copy had
 # already drifted an ssh option before review caught it). rc 0 = marker held;
 # rc 1 = marker genuinely absent; rc 2 = transport, could not verify (fail
-# CLOSED at every caller). Same option set as _xmass_refuse_role_clash.
+# CLOSED at every caller). Same option set as _xmass_refuse_role_clash. The
+# client's own words of the last probe stay in _XMASS_PROBE_SAID, for the
+# callers that tell the operator why the target could not be read.
+_XMASS_PROBE_SAID=""
 _xmass_autosync_probe_target() {
   local _rc=0
-  ssh -o ConnectTimeout=10 -o BatchMode=yes \
+  _XMASS_PROBE_SAID="$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
     -o StrictHostKeyChecking=accept-new root@"$1" \
-    "test -e /root/.standby.cnf" 2>/dev/null || _rc=$?
+    "test -e /root/.standby.cnf" 2>&1)" || _rc=$?
   [ "${_rc}" = "0" ] && return 0
   [ "${_rc}" = "1" ] && return 1
   return 2
@@ -18324,6 +18442,7 @@ _xmass_autosync_arm() {
            " if the mirror needs rebuilding"
     ;;
     *)
+      _xmass_die_hostkey_changed "${_tgt}" "${_XMASS_PROBE_SAID}"
       _die "cannot verify the standby role of ${_tgt} (ssh transport failure)" \
            " — refusing to arm against an unverifiable target"
     ;;
@@ -18579,6 +18698,8 @@ _xmass_autosync_run() {
       _alrt "autosync: cannot verify the standby role of ${_AS_TGT}"
       _alrt "(${_fails} consecutive transport failures) — failing closed, NOT"
       _alrt "syncing blind; fix ssh/network to the mirror"
+      # a mirror whose host key is no longer the one held here is said so
+      _mig_hostkey_changed "${_AS_TGT}" "${_XMASS_PROBE_SAID}"
       exit 1
     ;;
   esac

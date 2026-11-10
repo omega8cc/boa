@@ -302,6 +302,64 @@ _mig_keyscan() {
   done
 }
 
+### $1 the host, $2 the client's own words from a call to it that failed.
+### When they say the key the host serves is not the one this box holds for
+### it, prints the key served, every entry held, the check to make and the
+### command that forgets the held entries, puts both fingerprints in
+### _MIG_HOSTKEY_SAYS for the caller's own refusal and returns 0. Any other
+### failure returns 1 with nothing printed. Nothing is forgotten here: an
+### address handed on to a new server reads the same as another server
+### answering in its place, and only the operator can tell which it is.
+_MIG_HOSTKEY_SAYS=""
+_mig_hostkey_changed() {
+  local _h _w _t _fp _f _l _n="" _x _ht _hfp _same="" _first="" _pub
+  _MIG_HOSTKEY_SAYS=""
+  case "${2}" in
+    *"REMOTE HOST IDENTIFICATION HAS CHANGED"*) : ;;
+    *) return 1 ;;
+  esac
+  _w="$(printf '%s\n' "${2}" | tr -d '\r')"
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-' | tr '[:upper:]' '[:lower:]')"
+  _t="$(printf '%s\n' "${_w}" \
+    | sed -n 's/^The fingerprint for the \([A-Za-z0-9-]*\) key sent by the remote host is.*/\1/p' \
+    | head -n 1)"
+  _fp="$(printf '%s\n' "${_w}" | grep -oE 'SHA256:[A-Za-z0-9+/]{43}' | head -n 1)"
+  _f="$(printf '%s\n' "${_w}" \
+    | sed -n 's/^Offending [^ ]* key in \(\/[^:]*\):[0-9][0-9]*[[:space:]]*$/\1/p' \
+    | head -n 1)"
+  [ -f "${_f}" ] || _f=/root/.ssh/known_hosts
+  echo "ALRT: ${_h} serves an SSH host key that is not the one this box holds for it:"
+  [ -n "${_fp}" ] || _fp="(fingerprint not read, see the client)"
+  echo "ALRT:   served now: ${_t:-key} ${_fp}"
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "# Host "*" found: line "*)
+        _n="${_l##*found: line }"
+        _n="${_n%%[!0-9]*}"
+        ;;
+      *)
+        read -r _x _ht _hfp _x <<< "${_l}"
+        [ -n "${_hfp}" ] || continue
+        echo "ALRT:   held here:  ${_ht} ${_hfp} (${_f} line ${_n:-?})"
+        [ -n "${_first}" ] || _first="${_ht} ${_hfp}"
+        [ -n "${_same}" ] || [ "${_ht}" != "${_t}" ] || _same="${_ht} ${_hfp}"
+        _n=""
+        ;;
+    esac
+  done < <(ssh-keygen -l -E sha256 -F "${_h}" -f "${_f}" 2> /dev/null)
+  case "${_t}" in
+    ED25519|ECDSA|RSA) _pub="$(printf '%s' "${_t}" | tr '[:upper:]' '[:lower:]')" ;;
+    *) _pub="ed25519" ;;
+  esac
+  echo "ALRT: An address handed on to a new server reads like this, and so does another server answering in its place."
+  echo "ALRT: Check on ${_h} itself, reached some other way than from this box (its console, its host):"
+  echo "ALRT:   ssh-keygen -l -f /etc/ssh/ssh_host_${_pub}_key.pub"
+  echo "ALRT: Only when that prints the fingerprint served now, forget the old entries here and run this command again:"
+  echo "ALRT:   ssh-keygen -R ${_h} -f ${_f}"
+  _MIG_HOSTKEY_SAYS="served ${_t:-key} ${_fp}, held ${_same:-${_first:-none listed}}"
+  return 0
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -2435,7 +2493,7 @@ _xcopy_create_adopt_hint() {   # 1 = account here 2 = account on the target 3 = 
 # account held without that marker, a marker that cannot be read, a
 # probe that answers neither way. Read-only on the target.
 _xcopy_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = target
-  local _h _f _held _mark _mh _mo _mu _mi _nu _ni
+  local _h _f _held _mark _mh _mo _mu _mi _nu _ni _e _said=""
   _XCOPY_CREATE_HELD=""
   if [[ ! "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ ! "${2}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
     echo "ALRT: refusing create: invalid account name '${1}'/'${2}'"
@@ -2448,11 +2506,23 @@ _xcopy_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = 
   _f="$(_xcopy_create_marker "${2}")"
   # The create's first contact: a target that does not answer is given up
   # after 15 s, not after the system's TCP connect timeout.
-  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
+  # Its own words are kept: a target whose key is not the one held here for
+  # its address is named as that.
+  _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _e=""
+  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> "${_e:-/dev/null}")
+  if [ -n "${_e}" ]; then
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+  fi
   case "${_held}" in
     FREE) return 0 ;;
     HELD) : ;;
     *)
+      if _mig_hostkey_changed "${3}" "${_said}"; then
+        echo "ALRT: refusing create: ${3} serves a host key that is not the one this box holds for that address"
+        echo "ALRT: (${_MIG_HOSTKEY_SAYS}); make the check named above, forget the old entries here, then run this command again"
+        exit 1
+      fi
       echo "ALRT: refusing create: could not read whether ${3} holds an account named ${2}"
       exit 1
       ;;
@@ -3176,12 +3246,21 @@ _xcopy_detect_target_mnt() {
 # Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
 # failed query, an empty target host, or more than one mount. $1 = target host.
 _xcopy_resolve_target_mnt() {
-  local _raw
+  local _raw _e _said=""
   if [ -z "$1" ]; then
     echo "ERROR: empty target host — refusing"
     exit 1
   fi
-  _raw="$(_xcopy_detect_target_mnt "$1")"
+  # the client's own words are kept and shown as before; a target whose key
+  # is not the one held here for its address is named as that
+  if _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)"; then
+    _raw="$(_xcopy_detect_target_mnt "$1" 2> "${_e}")"
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+    [ -z "${_said}" ] || printf '%s\n' "${_said}" >&2
+  else
+    _raw="$(_xcopy_detect_target_mnt "$1")"
+  fi
   case "${_raw}" in
     MULTI)
       echo "ERROR: target $1 has multiple /mnt mounts; BOA supports a single attached mount — refusing"
@@ -3189,6 +3268,12 @@ _xcopy_resolve_target_mnt() {
       ;;
     NONE) _TGT_MNT="" ;;
     "")
+      if _mig_hostkey_changed "$1" "${_said}"; then
+        echo "ERROR: target $1 serves a host key that is not the one this box holds for that address"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}) — refusing. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+        exit 1
+      fi
       echo "ERROR: could not query /mnt on target $1 (ssh failed?) — refusing"
       exit 1
       ;;
