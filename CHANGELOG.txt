@@ -1090,6 +1090,15 @@
       Input classes from the consoles it carries, as on a locked platform,
       and its output adapter extends the platform's stock Output.
 
+    * Classic Drush 8.5.23 (Ægir's Drush 8): drush8 config-get, config-set,
+      cget, cset, state-get and state-set on a Drupal site run Drush's own
+      commands again. The Backdrop Drush extension in every account gives
+      its Backdrop commands those names, and Drush let them take the names
+      over on any site, where they died with "Undefined constant
+      BACKDROP_ROOT" and logged an error on the site (Drupal 7, and Drupal 8
+      and newer). They keep the names on a Backdrop site only. drush8
+      version prints Drush's own version again.
+
     * An Octopus pass no longer reports "Backdrop Drush extension not
       detected by Drush" when the extension is there: the check looked for
       the command's name in Drush's help table, which wraps a name that
