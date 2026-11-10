@@ -72,13 +72,14 @@
     * A program a hosted account runs can no longer make the firewall block
       an address, or spare one from a block. rsyslog now reads who sent each
       line: the auth, authpriv, ftp and kernel lines of any sender but root
-      go to /var/log/auth.user.log, su's and a running FTP session's aside,
-      and /var/log/messages takes no other line of such a sender, so the SSH
-      and FTP abuse scanners and lfd read only what the servers themselves
-      logged. The scanners also take a line only under the server's own
-      program name, where sudo, for one, logged the words of a refused
-      command. lfd no longer watches mail.log for SMTP AUTH, POP3 and IMAP
-      failures, which no BOA service logs.
+      go to /var/log/auth.user.log (su's auth lines aside, for lfd's su
+      alert), and /var/log/messages takes no other line of such a sender, so
+      the SSH and FTP abuse scanners and lfd read only what the servers
+      themselves logged. The scanners also take a line only under the
+      server's own program name, where sudo, for one, logged the words of a
+      refused command. lfd no longer watches mail.log for SMTP AUTH, POP3 and
+      IMAP failures, which no BOA service logs, nor counts distributed FTP
+      logins, whose line the FTP session writes as the account it serves.
 
     * The system monitor restarts sshd when a listener holds its port while
       the daemon its init script tracks is gone, judged by the processes and
