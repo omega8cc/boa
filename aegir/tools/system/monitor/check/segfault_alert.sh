@@ -13,7 +13,9 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _LOG_DIR="/var/xdrago/monitor/log"
-_REPORT="${_LOG_DIR}/segfault_alert.log"
+# a name the Perl monitor never used: its segfault_alert.log, left behind on
+# boxes, is never read or mailed
+_REPORT="${_LOG_DIR}/segfault_alert.report"
 _ARCHIVE="${_LOG_DIR}/segfault_alert.archive.log"
 _BARRACUDA_CNF="/root/.barracuda.cnf"
 # the kernel time of the newest line reported: /run, like the ring buffer,
@@ -23,7 +25,7 @@ _MAILED="/run/segfault_alert.mailed"
 _LOCK="/run/segfault_alert.lock"
 # one mail an hour at most; lines in between wait in the report
 _MAIL_EVERY=3600
-# lines taken from one read of the ring buffer
+# kernel lines a mail carries; the archive keeps every one
 _MAX_LINES=50
 
 [ -e "/data/u/" ] || exit 0
@@ -40,7 +42,7 @@ _kernel_lines() {
     | LC_ALL=C grep -aE '^\[ *[0-9]+\.[0-9]+\] php[^[ ]*\[[0-9]+\]: segfault at '
 }
 
-# The lines newer than the last one reported, at most _MAX_LINES.
+# The lines newer than the last one reported.
 _new_lines() {
   local _seen=""
   [ -f "${_SEEN}" ] && [ ! -L "${_SEEN}" ] && _seen="$(head -c 32 "${_SEEN}" | LC_ALL=C tr -cd '0-9.')"
@@ -48,7 +50,7 @@ _new_lines() {
   _kernel_lines | LC_ALL=C awk -v s="${_seen}" '
     { t = $0; sub(/^\[ */, "", t); sub(/\].*$/, "", t) }
     t + 0 > s + 0 { print }
-  ' | tail -n "${_MAX_LINES}"
+  '
 }
 
 # The operator's addresses from _MY_EMAIL: the value without its quotes and
@@ -78,7 +80,7 @@ _mail_due() {
 }
 
 _send_report() {
-  local _ops _t
+  local _ops _t _n
   mapfile -t _ops < <(_operator_addresses)
   # the archive keeps every line either way; a report no mail can carry goes
   if [ "${#_ops[@]}" -eq 0 ]; then
@@ -95,7 +97,14 @@ _send_report() {
     return 0
   fi
   _t="$(date +%y%m%d-%H%M)"
-  s-nail -s "PHP Segfault Alert at [${_SERVER}] on ${_t}" "${_ops[@]}" < "${_REPORT}"
+  # the header and at most _MAX_LINES kernel lines; the rest are named
+  _n="$(grep -c 'segfault at' "${_REPORT}")"
+  {
+    grep -v 'segfault at' "${_REPORT}"
+    grep 'segfault at' "${_REPORT}" | head -n "${_MAX_LINES}"
+    [ "${_n}" -gt "${_MAX_LINES}" ] \
+      && echo "... and $(( _n - _MAX_LINES )) more in ${_ARCHIVE}"
+  } | s-nail -s "PHP Segfault Alert at [${_SERVER}] on ${_t}" "${_ops[@]}"
   touch "${_MAILED}"
   rm -f "${_REPORT}"
 }
