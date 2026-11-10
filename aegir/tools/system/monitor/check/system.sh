@@ -876,6 +876,17 @@ _if_fix_locked_sshd() {
     fi
   fi
   date +%s > "${_cd}"
+  # A start must be able to replace what is killed: the init script refuses
+  # one while sshd_not_to_be_run exists or sshd -t rejects the config, and
+  # the box would then be left with no listener at all.
+  if [ -e /etc/ssh/sshd_not_to_be_run ] \
+    || ! ( [ -r /etc/default/ssh ] && . /etc/default/ssh; /usr/sbin/sshd ${SSHD_OPTS} -t ) > /dev/null 2>&1; then
+    _thisErrLog="$(date) SSHD listener ${_held} holds the port with the tracked daemon gone, left running: sshd could not start again (sshd -t fails or sshd_not_to_be_run)"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "SSHD listener holds the port with the tracked daemon gone, left running: sshd could not start again" ALERT
+    echo >> ${_pthOml}
+    return 0
+  fi
   kill -9 ${_held} 2> /dev/null
   service ssh start
   wait
