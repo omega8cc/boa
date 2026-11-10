@@ -17,10 +17,6 @@ _autoBin=/opt/local/bin/autosymlink
 # pause, which was NOT self-healing (a leaked one also made clear.sh exit early).
 _queueStop=/run/boa_queue_stop.pid
 
-# --- diagnostic helpers (used by every guard below) ---------------------------
-# _dbg : progress/heartbeat, printed to stdout only under --debug.
-# _why : the reason THIS run is skipping / exiting without doing anything,
-#        printed to stdout only under --debug. No behaviour change when off.
 # The real uids of BOA's own work: root, aegir and each account's backend
 # user (home /data/disk/<name>), as whom root runs the account's tasks and
 # queued restores; never a web, FTP or shell login, which can give its own
@@ -32,6 +28,10 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# --- diagnostic helpers (used by every guard below) ---------------------------
+# _dbg : progress/heartbeat, printed to stdout only under --debug.
+# _why : the reason THIS run is skipping / exiting without doing anything,
+#        printed to stdout only under --debug. No behaviour change when off.
 _dbg() { [ "${_DEBUG:-NO}" = "YES" ] && echo "updatesymlinks[debug]: $*"; return 0; }
 _why() { [ "${_DEBUG:-NO}" = "YES" ] && echo "updatesymlinks[debug]: not acting — $*"; return 0; }
 
