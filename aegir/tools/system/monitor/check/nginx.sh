@@ -60,6 +60,8 @@ renice ${_B_NICE} -p $$ &> /dev/null
 _cd="/run/nginx-monitor.cooldown"
 # when the last restart for a memory error ran (_nginx_oom_detection)
 _ngxOomSt="/run/nginx-monitor.oom-restart"
+# when the last restart for the serving master's own bind error ran
+_ngxBindSt="/run/nginx-monitor.bind-restart"
 : "${_NGINX_COOLDOWN_SECS:=30}"
 
 ###
@@ -372,7 +374,11 @@ _restart_nginx() {
       return 0
     fi
   fi
-  [ "$1" = "Nginx OOM" ] && touch "${_ngxOomSt}"
+  # the hourly checks' hours start only with a restart that runs
+  case "$1" in
+    "Nginx OOM") touch "${_ngxOomSt}" ;;
+    "Nginx BIND PORT error, serving master") touch "${_ngxBindSt}" ;;
+  esac
   echo "Killing all Nginx processes and restarting Nginx..."
   _stop_nginx_processes
   _nginx_error_log_aside
@@ -432,9 +438,14 @@ _nginx_oom_detection() {
 }
 
 _nginx_bind_check_fix() {
-  local _bnd _mst _pid _p _own=NO
+  local _bnd _mst _pid _p _own=NO _now _ts
+  # nginx's own bind() line only, read before any quoted field or request
+  # context: the error log also carries text a request chose (a referrer, a
+  # logged path), and the master's pid is judged from each line's own
+  # "<pid>#" alone.
   _bnd=$(tail --lines=8 /var/log/nginx/error.log 2> /dev/null \
-    | grep "Address already in use")
+    | LC_ALL=C sed -E 's/("|, client: ).*$//' \
+    | LC_ALL=C grep -aE '^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:]{8} \[emerg\] [0-9]+#[0-9]+: (bind\(\) to [^ ]+|listen\(\) to [^ ]+ backlog -?[0-9]+) failed \(98: Address already in use\)')
   [ -n "${_bnd}" ] || return 0
   # A start still in flight may yet win the ports: its lines are judged on a
   # later pass, once it has a master.
@@ -450,7 +461,8 @@ _nginx_bind_check_fix() {
     && [ "${_pid}" = "${_mst}" ] \
     && command -v ss > /dev/null 2>&1 \
     && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
-    for _p in $(printf '%s\n' "${_bnd}" | grep -oE '\] [0-9]+#' | tr -dc '0-9\n'); do
+    for _p in $(printf '%s\n' "${_bnd}" \
+      | LC_ALL=C sed -nE 's/^[0-9/]{10} [0-9:]{8} \[[a-z]+\] ([0-9]+)#.*/\1/p'); do
       [ "${_p}" = "${_mst}" ] && _own=YES
     done
     if [ "${_own}" = "NO" ]; then
@@ -466,6 +478,19 @@ _nginx_bind_check_fix() {
       echo "$(date) INFO: NGX bind error left by an exited start, master ${_mst} serving; log moved aside, no restart" >> "${_pthOml}"
       return 0
     fi
+    # The serving master's own bind error (a reload that could not bind)
+    # gets one restart an hour: a decoded %0A in a logged path can start a
+    # line of this form, and pids are only hidden, not secret. The hour
+    # starts when that restart runs (_restart_nginx).
+    _now=$(date +%s)
+    _ts=$(stat -c %Y "${_ngxBindSt}" 2> /dev/null)
+    if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
+      echo "$(date) INFO: NGX bind error of the serving master, a restart for one ran in the last hour" >> "${_pthOml}"
+      return 0
+    fi
+    _thisErrLog="$(date) Nginx BIND PORT error of the serving master, service will be restarted"
+    echo "${_thisErrLog}" >> ${_pthOml}
+    _restart_nginx "Nginx BIND PORT error, serving master"
   fi
   _thisErrLog="$(date) Nginx BIND PORT error, service will be restarted"
   echo "${_thisErrLog}" >> ${_pthOml}
