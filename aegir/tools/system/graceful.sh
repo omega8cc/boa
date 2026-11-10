@@ -5,7 +5,6 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# Function to check if the script is run as root
 # The real uids of BOA's own work: root, aegir and each account's backend
 # user (home /data/disk/<name>), as whom root runs the account's tasks and
 # queued restores; never a web, FTP or shell login, which can give its own
@@ -17,6 +16,7 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# Function to check if the script is run as root
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: This script should be run as root"
