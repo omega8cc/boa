@@ -556,7 +556,7 @@ _mydumper_session() {
   _MYDUMPER_PREV="$!"
   trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
   ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
     && exec setsid -w "$@" ) < /dev/null &
   _MYDUMPER_PID=$!
   wait "${_MYDUMPER_PID}"

@@ -134,11 +134,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -207,7 +207,7 @@ _in_resolved_dir() {
     /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
@@ -278,10 +278,10 @@ _ctrl_in_stage_dir() {
 }
 _ctrl_stage_here() {
   local _h _st
-  _h="$(pwd -P)/.boa-ctrl"
+  _h="$(/bin/pwd -P)/.boa-ctrl"
   [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
   [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
-  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
   chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
   # root's, and nobody else's to enter or write
   _st=$(stat -c '%u %a' . 2> /dev/null)
@@ -343,7 +343,7 @@ _reseed_ctrl_ini() {
   esac
   _rsd=$(realpath -e -- "${_src%/*}" 2>/dev/null) || return 1
   (
-    cd -P -- "${_rpn}" 2>/dev/null && [ "$(pwd -P)" = "${_rpn}" ] || exit 1
+    cd -P -- "${_rpn}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_rpn}" ] || exit 1
     exec 9< . || exit 1
     _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
   )
@@ -354,7 +354,7 @@ _reseed_ctrl_ini() {
 _reseed_ctrl_ini_here() {
   local _new
   _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
-  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(pwd -P)" = "${1}" ] \
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
     && _acct_read_plain_here "${2}" ) > "${_new}"; then
     rm -f -- "${_new}"
     return 1
@@ -463,8 +463,8 @@ _acct_down_real_here() {
     case "${_n}" in
       ""|.|..) return 1 ;;
     esac
-    _h="$(pwd -P)/${_n}"
-    cd -P -- "./${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+    _h="$(/bin/pwd -P)/${_n}"
+    cd -P -- "./${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
   done
   "$@"
 }
@@ -516,7 +516,7 @@ _solr_in_files_here() {
   case "${_top}" in
     .*) return 1 ;;
   esac
-  cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] || return 1
+  cd -P -- "${_r}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_r}" ] || return 1
   _acct_down_real_here solr "$@"
 }
 
@@ -2131,9 +2131,9 @@ _solr_conf_path_real() {
     *) return 0 ;;
   esac
   [ ! -L "${1}" ] || return 1
-  _r="$(cd -P -- /data/conf 2> /dev/null && pwd -P)" || return 1
+  _r="$(cd -P -- /data/conf 2> /dev/null && /bin/pwd -P)" || return 1
   _rel="${1#/data/conf/}"
-  [ "$(cd -P -- "${1%/*}" 2> /dev/null && pwd -P)" = "${_r}/${_rel%/*}" ]
+  [ "$(cd -P -- "${1%/*}" 2> /dev/null && /bin/pwd -P)" = "${_r}/${_rel%/*}" ]
 }
 # /data/conf/solr replaced by a fresh copy of root's own Solr config store,
 # inside the real /data/conf (the current, pinned directory): a link left at

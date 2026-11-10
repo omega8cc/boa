@@ -96,7 +96,7 @@ _fix_core_dgd_here() {
   [ ! -e ./core ] || return 0
   [ ! -e "./profiles/${_saCoreS}-fix.info" ] || return 0
   patch -p1 &> /dev/null < "${_saPatch}"
-  _acct_in_real_dir "$(pwd -P)/profiles" _acct_put_here "${_saCoreS}-fix.info" fixed
+  _acct_in_real_dir "$(/bin/pwd -P)/profiles" _acct_put_here "${_saCoreS}-fix.info" fixed
 }
 # Fix for Postfix configuration.
 _fix_cnf_postfix() {

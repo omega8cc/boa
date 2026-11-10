@@ -186,8 +186,8 @@ _acct_ctrl_own() {
   # judge it by: read as before
   _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
   [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
   case "${_r}" in
     OK|ABSENT) return 0 ;;
@@ -204,8 +204,8 @@ _acct_ctrl_own() {
 _usage_in_real_dir() {
   local _d="${1}" _want
   shift
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never
 # blocked on a FIFO, at most 1 MiB; empty for anything else.
@@ -328,7 +328,7 @@ _usage_in_site_dir() {
     "${_ra}"/?*) ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 # The file $2 put as ./$1 in the current (pinned) directory (0644): a fresh
 # name created exclusively, then renamed over the name, so a link or a FIFO

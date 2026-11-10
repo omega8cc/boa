@@ -344,11 +344,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -789,8 +789,8 @@ _acct_ok() {
   [[ "${_n}" == "${_a}" && "${_uid}" =~ ^[0-9]+$ ]] || return 1
   [[ "${_home%/}" == "${_DISK}/${_a}" ]] || return 1
   [[ -d "${_DISK}/${_a}" && ! -L "${_DISK}/${_a}" ]] || return 1
-  _real="$(cd -P -- "${_DISK}" 2> /dev/null && pwd -P)/${_a}"
-  [[ "$(cd -P -- "${_DISK}/${_a}" 2> /dev/null && pwd -P)" == "${_real}" ]] || return 1
+  _real="$(cd -P -- "${_DISK}" 2> /dev/null && /bin/pwd -P)/${_a}"
+  [[ "$(cd -P -- "${_DISK}/${_a}" 2> /dev/null && /bin/pwd -P)" == "${_real}" ]] || return 1
   [[ "$(stat -c %u -- "${_real}" 2> /dev/null)" == "${_uid}" ]] || return 1
   [[ -f "${_RHOME}/.${_a}.octopus.cnf" ]] || return 1
   _ACCT_UID="${_uid}"
@@ -2234,7 +2234,7 @@ _in_backups() {
     return
   fi
   _r="$(readlink -f -- "${_d}" 2> /dev/null)"
-  _s="$(cd -P -- "${_DISK}" 2> /dev/null && pwd -P)/${_ACCT}/static/files/"
+  _s="$(cd -P -- "${_DISK}" 2> /dev/null && /bin/pwd -P)/${_ACCT}/static/files/"
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
     "${_s}"?*) ;;
@@ -2246,7 +2246,7 @@ _in_backups() {
       ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_r}" 2> /dev/null && [[ "$(pwd -P)" == "${_r}" ]] && "$@" )
+  ( cd -P -- "${_r}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_r}" ]] && "$@" )
 }
 
 # "<device> <mount point>" of the current (pinned) directory, or of $1.
@@ -2262,7 +2262,7 @@ _root_path() {
   local -a _parts
   [[ -n "${_p}" ]] || _p="/"
   [[ "${_p}" =~ ^/[A-Za-z0-9._/-]*$ ]] || return 1
-  [[ "$(cd -P -- "${_p}" 2> /dev/null && pwd -P)" == "${_p}" ]] || return 1
+  [[ "$(cd -P -- "${_p}" 2> /dev/null && /bin/pwd -P)" == "${_p}" ]] || return 1
   [[ -z "${_r}" || "${_p}" == "${_r}" || "${_p}" == "${_r}"/* ]] || return 1
   _c="${_r:-/}"
   _x="${_p#"${_r}"}"

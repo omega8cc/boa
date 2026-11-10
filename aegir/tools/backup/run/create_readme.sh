@@ -112,8 +112,8 @@ _acct_ctrl_own() {
   # judge it by: read as before
   _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
   [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
   case "${_r}" in
     OK|ABSENT) return 0 ;;
@@ -129,11 +129,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory with the content read from stdin,
 # born with the mode $2 and handed to $3 (owner:group) when given: a fresh

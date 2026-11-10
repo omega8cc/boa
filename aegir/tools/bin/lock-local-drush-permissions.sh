@@ -86,7 +86,7 @@ _validate_path_prefix() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # A mode set on paths below the current directory, never through a link:

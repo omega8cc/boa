@@ -370,7 +370,7 @@ _site_web_group() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # Each named directory or single-link regular file handed to uid $1 and gid
@@ -397,7 +397,7 @@ _links_left_note() {
     _n=$(( _n + 1 ))
   done < <(find "$@" -type f -links +1 -print0 2> /dev/null)
   [ "${_n}" -gt 0 ] || return 0
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
     "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
@@ -772,7 +772,7 @@ _grav_site_own_here() {
 # (_reown_own_here -W); private/ is not given it (0750, 0440).
 _txp_site_own_here() {
   local _wd _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _reown_own_here "${script_user}:${_code_group}" . || return 0
   _reown_own_here -R "${script_user}:${_code_group}" . \
     \( -path ./private -o -path ./tmp -o -path ./admin/plugins \
@@ -798,7 +798,7 @@ _txp_site_own_here() {
 # The Drupal site directory's own names, run inside it (entered for real).
 _site_own_here() {
   local _d _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   ### directory and settings files - site level
   _reown_own_here "${script_user}:${_code_group}" . || return 0
   _reown_own_here "${script_user}${_wg:+:${_wg}}" \
@@ -823,7 +823,7 @@ _site_own_here() {
 # user owns.
 _files_own_here() {
   local _o="${script_user}${_wg:+:${_wg}}" _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _reown_own_here "${_o}" . || return 0
   ### ctrl pid
   rm -f -- ./ownership-fixed*.pid
@@ -845,7 +845,7 @@ _files_own_here() {
 # The private store, run inside it (entered for real), the same way.
 _priv_own_here() {
   local _o="${script_user}${_wg:+:${_wg}}" _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _reown_own_here "${_o}" . || return 0
   _reown_own_here -R "${_o}" .
   _reown_own_here "${_o}" ./files ./temp

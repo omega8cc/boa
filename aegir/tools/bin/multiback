@@ -477,11 +477,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -2248,12 +2248,12 @@ _rst_links() {
 _rst_staged_here() {
   local _st _stid _want _rc
   if [ -e "./${2}" ] || [ -L "./${2}" ]; then
-    echo "Error: $(pwd -P)/${2} already exists. Unable to proceed."
+    echo "Error: $(/bin/pwd -P)/${2} already exists. Unable to proceed."
     return 1
   fi
   _st="$(mktemp -d ./.multiback-restore.XXXXXX 2> /dev/null)" || return 1
-  _want="$(pwd -P)/${_st#./}"
-  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(pwd -P)" != "${_want}" ] \
+  _want="$(/bin/pwd -P)/${_st#./}"
+  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(/bin/pwd -P)" != "${_want}" ] \
     || [ "$(stat -c '%u %a' .)" != "0 700" ]; then
     echo "Error: the staging directory ${_want} is not root's own. Unable to proceed."
     return 1
@@ -2287,7 +2287,7 @@ _rst_staged_here() {
 _rst_in_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 # ./$1 made in the current (pinned) directory unless the name is taken.
 _acct_mkdir_here() {
@@ -2786,7 +2786,7 @@ _acct_reclaim_restored() {
   # link, a link or a FIFO put in it is left alone, and no file outside it is
   # regrouped (nothing checks a link's own group).
   if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
         ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
         \( -type d -o -type f \) \
@@ -2876,8 +2876,8 @@ _acct_ctrl_own() {
   # judge it by: read as before
   _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
   [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
   case "${_r}" in
     OK|ABSENT) return 0 ;;

@@ -294,7 +294,7 @@ if ! declare -F _heal_foreign_cms_ctrl_ini > /dev/null 2>&1; then
     esac
     (
       cd -P -- "${_rmd}" 2>/dev/null || exit 0
-      [ "$(pwd -P)" = "${_rmd}" ] || exit 0
+      [ "$(/bin/pwd -P)" = "${_rmd}" ] || exit 0
       if [ -n "${_n}" ]; then
         for _f in "default.${_n}" "${_n}"; do
           if [ -L "./${_f}" ] || [ -f "./${_f}" ]; then
@@ -304,7 +304,7 @@ if ! declare -F _heal_foreign_cms_ctrl_ini > /dev/null 2>&1; then
         done
       fi
       cd -P .. 2>/dev/null || exit 0
-      [ "$(pwd -P)" = "${_rmd%/*}" ] || exit 0
+      [ "$(/bin/pwd -P)" = "${_rmd%/*}" ] || exit 0
       rmdir -- "${_rmd##*/}" 2>/dev/null \
         && echo "Foreign-CMS empty dir removed: ${_rmd}"
     )
@@ -385,8 +385,8 @@ if ! declare -F _acct_ctrl_own > /dev/null 2>&1; then
     # judge it by: read as before
     _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
     [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-    _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+    _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
       && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
     case "${_r}" in
       OK|ABSENT) return 0 ;;
@@ -441,11 +441,11 @@ if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
       /data/disk/?*) _a=/data/disk ;;
     esac
     if [ -n "${_a}" ]; then
-      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+      _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
     else
-      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
     fi
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
   }
 fi
 if ! declare -F _acct_read_here > /dev/null 2>&1; then
@@ -487,10 +487,10 @@ if ! declare -F _ctrl_in_stage_dir > /dev/null 2>&1; then
   }
   _ctrl_stage_here() {
     local _h _st
-    _h="$(pwd -P)/.boa-ctrl"
+    _h="$(/bin/pwd -P)/.boa-ctrl"
     [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
     [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
-    cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+    cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
     chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
     # root's, and nobody else's to enter or write
     _st=$(stat -c '%u %a' . 2> /dev/null)
@@ -959,7 +959,7 @@ _night_handover_own_here() {
   _perm_left_add "${_x}"
   _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
   if [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 0 ]; then
-    _here="$(pwd -P)"
+    _here="$(/bin/pwd -P)"
     _first=$(head -z -n 1 -- "${_tmp}" | tr -d '\0')
     _first="${_here}/${_first#./}"
     echo "SKIP: ${_n} file(s) with more than one link not handed to ${_w} in ${_here}, first: ${_first//[[:cntrl:]]/?}"
@@ -1082,7 +1082,7 @@ _in_resolved_dir() {
     /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
@@ -1197,7 +1197,7 @@ _acct_mark_here() {
 ### directory or through a link found at the new name. Reads _usEr.
 _acct_undo_here() {
   local _u
-  _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo"
+  _u="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/undo"
   _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
   exec 9< "${_u}/." || return 1
   [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || return 1
@@ -1482,9 +1482,9 @@ _sync_user_register_protection_ini_vars() {
   ### The old names renamed to the new ones inside the real static/control
   ### (the tenant's): mv -T never moves a file into a directory or through a
   ### link put at either name.
-  ( _ctl="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/static/control"
+  ( _ctl="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/static/control"
     _ctrl_foreign && exit 0
-    cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_ctl}" ] || exit 0
+    cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_ctl}" ] || exit 0
     if [ -f ./enable_user_register_protection.info ] \
       && [ ! -L ./enable_user_register_protection.info ]; then
       mv -f -T ./enable_user_register_protection.info \
@@ -1677,15 +1677,15 @@ _store_web_group() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### Run "$@" inside ./$1 of the current (pinned) directory, entered for
 ### real: no name on the way may be a link.
 _in_real_sub() {
   local _h _s="${1}"
   shift
-  _h="$(pwd -P)"
-  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${_s}" ] && "$@" )
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${_s}" ] && "$@" )
 }
 ### ./$1 removed unless it is a link; a link at the name is left alone.
 _rm_nolink_here() {
@@ -1827,7 +1827,7 @@ _store_fetch_here() {
   local _t _rc=1
   _t=$(_stage_fetch_here "${3}") || return 1
   ( exec 8< . || exit 1
-    cd -P -- "${2}" 2> /dev/null && [ "$(pwd -P)" = "${2}" ] || exit 1
+    cd -P -- "${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${2}" ] || exit 1
     _store_put_copy_here "${1}" "/proc/self/fd/8/${_t#./}" ) && _rc=0
   rm -f -- "${_t}"
   return "${_rc}"
@@ -3091,7 +3091,7 @@ _fix_static_permissions() {
       && [ -e "${_Plr}/../vendor/autoload.php" ] \
       && _in_pinned_dir "${_rPlr%/*}" _acct_read_plain_here composer.json \
         | grep -qE '"drupal/core(-recommended)?"' 2>/dev/null; then
-      _use_Plr="$(cd -P -- "${_rPlr}/.." 2> /dev/null && pwd -P)"
+      _use_Plr="$(cd -P -- "${_rPlr}/.." 2> /dev/null && /bin/pwd -P)"
       ### One level UP: a tenant who seeds ~/static/composer.json and
       ### ~/static/vendor/autoload.php beside a docroot placed directly
       ### under ~/static would aim the whole-tree chown at ~/static itself
@@ -4595,7 +4595,7 @@ _le_hook_py_here() {
   local _here
   _le_hook_exec_here hook.py || return 1
   _le_hook_root_here requirements.txt || return 1
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   python3 -m venv ./venv 2> /dev/null \
     && ./venv/bin/pip install -q -r ./requirements.txt 2> /dev/null \
     && sed -i "1s|^#!.*|#!${_here}/venv/bin/python3|" ./hook.py

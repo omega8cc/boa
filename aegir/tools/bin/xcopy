@@ -840,8 +840,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
-_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
-( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+_W="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_W}" ] \
     && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] \
@@ -3366,7 +3366,7 @@ _xcopy_in_real_dir() {
   local _d="${1}" _want
   shift
   _want="$(_xcopy_real_want "${_d}")"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never
 # blocked on a FIFO, at most 1 MiB; empty for anything else.
@@ -3431,8 +3431,8 @@ _xcopy_remote_in() {
   local _a=/data/disk
   case "${2}" in /home/?*) _a=/home ;; esac
   ssh root@"${1}" "${_XCOPY_REMOTE_CTRL_FN}
-_w=\"\$(cd -P ${_a} 2> /dev/null && pwd -P)${2#"${_a}"}\"
-cd -P -- \"${2}\" 2> /dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+_w=\"\$(cd -P ${_a} 2> /dev/null && /bin/pwd -P)${2#"${_a}"}\"
+cd -P -- \"${2}\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
 }
 # The commands $3 inside the real static/control of the account $2 there.
 _xcopy_remote_ctrl() {
@@ -3448,7 +3448,7 @@ _xcopy_rsync_path_in() {
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
   esac
-  printf '%s' "cd -P -- '${1}' && [ \"\$(pwd -P)\" = \"\$(cd -P ${_a} && pwd -P)${1#"${_a}"}\" ] && rsync"
+  printf '%s' "cd -P -- '${1}' && [ \"\$(/bin/pwd -P)\" = \"\$(cd -P ${_a} && /bin/pwd -P)${1#"${_a}"}\" ] && rsync"
 }
 # The entries of the current (pinned) directory the glob $3 names (empty:
 # the directory's contents), expanded here, copied with the rsync options
@@ -3472,7 +3472,7 @@ _xcopy_rsync_path_mk_in() {
   esac
   _p="${_d%/*}"
   _n="${_d##*/}"
-  printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  printf '%s' "_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
 }
 # The entries of the current (pinned) directory the glob $3 names copied into
 # the real directory $2 on the target $1, the target directory created when
@@ -3495,9 +3495,9 @@ _xcopy_real_want() {
     /opt/user/?*) _a=/opt/user ;;
   esac
   if [ -n "${_a}" ]; then
-    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
 }
 ### "$@" run inside the canonical directory $1, only once pwd -P lands
@@ -3509,14 +3509,14 @@ _xcopy_in_canon_dir() {
     /?*) ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### The --rsync-path that starts the receiver inside the canonical directory
 ### $1 on the target, and only once pwd -P says it is there.
 _xcopy_canon_rpath() {
   local _q
   _q="$(_shq "${1}")"
-  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(/bin/pwd -P)\" = '${_q}' ] && rsync"
 }
 ### Whether the canonical path $2 belongs to the account $1: its own tree,
 ### or its own part of an attached store, <mount>/files/<oN>/, the layout
@@ -3543,7 +3543,7 @@ _xcopy_own_path() {
     esac
   fi
   if [ -L /mnt ]; then
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_m}" in
       ''|/|/mnt|/data|/data/*) ;;
       *)
@@ -3588,11 +3588,11 @@ _xcopy_own_parent_cd() {
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  _xcopy_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+  _xcopy_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" \
     || return 1
   mkdir -p -- "${_p}" 2> /dev/null
   cd -P -- "${_p}" 2> /dev/null || return 1
-  _xcopy_own_path "${_a}" "$(pwd -P)"
+  _xcopy_own_path "${_a}" "$(/bin/pwd -P)"
 }
 ### Run there as above: make the directory $3 of the account $2 ready for a
 ### copy and print XCREAL with its canonical path. A link at the last name
@@ -3605,7 +3605,7 @@ _xcopy_own_dir_ready() {
   esac
   _xcopy_own_parent_cd "${_a}" "${3}" || return 1
   if [ -L "./${_n}" ]; then
-    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && /bin/pwd -P)"
     if [ "${_m}" != "keep" ] || ! _xcopy_own_path "${_a}" "${_r}"; then
       rm -f -- "./${_n}" || return 1
     fi
@@ -3614,7 +3614,7 @@ _xcopy_own_dir_ready() {
   fi
   [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xcopy_own_path "${_a}" "${_r}" || return 1
   printf 'XCREAL %s\n' "${_r}"
 }
@@ -3634,13 +3634,13 @@ _xcopy_own_link_ready() {
     rm -f -- "./${_n}"
   fi
   ln -sfn -- "${3}" "./${_n}" || return 1
-  printf 'XCREAL %s/%s\n' "$(pwd -P)" "${_n}"
+  printf 'XCREAL %s/%s\n' "$(/bin/pwd -P)" "${_n}"
 }
 ### Run there as above: link the account $1's name $2 to its store entry $3
 ### only once $3 is a directory in the account's own tree or store, so a
 ### directory at $2 never gives way to a link that leads nowhere.
 _xcopy_own_store_link_ready() {
-  _xcopy_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _xcopy_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   _xcopy_own_link_ready "${1}" "${2}" "${3}"
 }
 ### Run there: make each of the account $1's own control panel stores, the
@@ -3658,16 +3658,16 @@ _xcopy_own_store_link_ready() {
 _xcopy_own_panel_carry() {
   local _a="${1}" _o _n _p _t _m
   local -a _ps _st
-  _n="$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _n="$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   [ "${_n}" = "${3}" ] || return 1
   if [ ! -e "${2}" ] && [ ! -L "${2}" ]; then
     printf 'XCREAL %s\n' "${_n}"
     return 0
   fi
-  _o="$(cd -P -- "${2}" 2> /dev/null && pwd -P)" || return 1
+  _o="$(cd -P -- "${2}" 2> /dev/null && /bin/pwd -P)" || return 1
   if ! _xcopy_own_path "${_a}" "${_o}"; then
     # the account's part of the attached store through a /mnt that is a link
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_o}/" in
       "${_m}"/?*) _xcopy_own_path "${_a}" "/mnt${_o#"${_m}"}" || return 1 ;;
       *) return 1 ;;
@@ -3679,17 +3679,17 @@ _xcopy_own_panel_carry() {
       case "${_p}" in ''|.|..|*/*) continue ;; esac
       [ -d "${_o}/${_p}" ] && [ ! -L "${_o}/${_p}" ] || continue
       _t=".${_p}.carry"
-      ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+      ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
         && rm -rf -- "./${_t}" && mkdir -- "./${_t}" ) || return 1
-      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(pwd -P)" = "${_o}/${_p}" ] || exit 9
+      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_o}/${_p}" ] || exit 9
         tar -cf - --numeric-owner --acls --xattrs --one-file-system . ) \
-        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(pwd -P)" = "${_n}/${_t}" ] || exit 9
+        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}/${_t}" ] || exit 9
           tar -xpf - --numeric-owner --acls --xattrs )
       _st=("${PIPESTATUS[@]}")
       if [ "${_st[0]:-9}" -gt 1 ] || [ "${_st[1]:-9}" -ne 0 ] \
-        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
           && rm -rf -- "./${_p}" && mv -T -- "./${_t}" "./${_p}" ); then
-        ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
+        ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
         return 1
       fi
     done
@@ -3713,7 +3713,7 @@ _xcopy_own_dir_carry() {
   [ -L "./${_n}" ] || { _xcopy_own_dir_ready dir "${_a}" "${2}"; return $?; }
   [ -d "./${_n}" ] || return 1
   _lt="$(readlink -- "./${_n}")" || return 1
-  _w="$(pwd -P)"
+  _w="$(/bin/pwd -P)"
   _l="${_lt}"
   case "${_l}" in
     /*) ;;
@@ -3732,7 +3732,7 @@ _xcopy_own_dir_carry() {
     return 1
   fi
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xcopy_own_path "${_a}" "${_r}" || return 1
   printf 'XCREAL %s\n' "${_r}"
 }
@@ -3748,17 +3748,17 @@ _xcopy_real_mnt_dir() {
   case "${_d}/" in
     *//*|*/./*|*/../*) return 1 ;;
   esac
-  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  _c="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)" || return 1
   [ -n "${_c}" ] || return 1
   _e="${_d}"
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
   mkdir -p -- "${_d}" 2> /dev/null
   _c="${_c}${_d#/mnt}"
   cd -P -- "${_d}" 2> /dev/null || return 1
-  [ "$(pwd -P)" = "${_c}" ] || return 1
+  [ "$(/bin/pwd -P)" = "${_c}" ] || return 1
   printf 'XCREAL %s\n' "${_c}"
 }
 ### Run one of the placement helpers above as root on the box $1, with the
@@ -3832,7 +3832,7 @@ _xcopy_backups_leg() {
       /mnt/*) return 0 ;;
     esac
   fi
-  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && pwd -P)"
+  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && /bin/pwd -P)"
   if [ -z "${_r}" ] || ! _xcopy_own_path "${_u##*/}" "${_r}"; then
     echo "DENY: ${_u}/${_n} resolves to ${_r:-nothing}, outside the account's own tree and store -- not followed, not copied"
     _XCOPY_NOT_CLEAN=YES
@@ -4222,7 +4222,7 @@ _mydumper_session() {
   _MYDUMPER_PREV="$!"
   trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
   ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
     && exec setsid -w "$@" ) < /dev/null &
   _MYDUMPER_PID=$!
   wait "${_MYDUMPER_PID}"
@@ -4505,7 +4505,7 @@ _xcopy_tgt_kind() {
   local _qd _qm
   _qd="$(_shq "$2")"
   _qm="$(_shq "${3:-}")"
-  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XCKIND \$k\"" 2>/dev/null \
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && /bin/pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && /bin/pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XCKIND \$k\"" 2>/dev/null \
     | grep -m1 '^XCKIND ' | awk '{print $2}'
 }
 
@@ -4641,7 +4641,7 @@ _xcopy_handle_store() {
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && /bin/pwd -P)"
     if [ -z "${_real}" ]; then
       _act=DENY; _reason="${_src} cannot be entered"
     elif [ -n "${_acct}" ] && ! _xcopy_store_is_own "${_acct}" "${_real}" "${_rule}"; then

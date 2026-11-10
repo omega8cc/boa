@@ -106,7 +106,7 @@ _dbk_store_dir() {
   local _u="${1}" _own _sto _real _ok=NO
   _DBK_DIR=""
   _DBK_WHY=""
-  _own="$(cd -P /data/disk 2>/dev/null && pwd -P)/${_u}/static/files"
+  _own="$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_u}/static/files"
   _sto=$(readlink -f "/data/disk/${_u}/static/files" 2>/dev/null)
   # The account's own static/files, or its store in migratefs' layout on
   # attached storage (/mnt/<mount>/files/<oN>/static/files), as the nightly
@@ -131,7 +131,7 @@ _dbk_store_dir() {
   fi
   if [ ! -e "/data/disk/${_u}/static/files/dbackup" ] \
     && [ ! -L "/data/disk/${_u}/static/files/dbackup" ]; then
-    ( cd -P -- "${_sto}" 2>/dev/null && [ "$(pwd -P)" = "${_sto}" ] \
+    ( cd -P -- "${_sto}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_sto}" ] \
       && mkdir -p ./dbackup )
   fi
   _real=$(readlink -f "/data/disk/${_u}/static/files/dbackup" 2>/dev/null)
@@ -222,7 +222,7 @@ _dbk_here_ours() {
 _DBK_COPY_PL='use Fcntl; my ($s, $n, $u, $g) = @ARGV; sysopen(my $i, $s, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @t = stat($i); exit 1 unless @t && -f _; sysopen(my $o, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; my ($r, $w, $p); while ($r = sysread($i, my $b, 1048576)) { for ($p = 0; $p < $r; $p += $w) { $w = syswrite($o, $b, $r - $p, $p) or exit 1; } } defined $r or exit 1; chown($u, $g, $o) or exit 1; chmod($t[2] & 0666, $o) or exit 1; utime($t[8], $t[9], $o) or exit 1; close($o) or exit 1; exit 0'
 _dbk_copy_here() {
   local _here _t
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   if [ ! -d "./${1}" ] || [ -L "./${1}" ]; then
     rm -f -- "./${1}" 2>/dev/null
     # explicit mode, not the run's umask: the dated directory must be
@@ -230,7 +230,7 @@ _dbk_copy_here() {
     # tell this tool's own mkdir from a directory an account moved here
     mkdir -m 0755 "./${1}" 2>/dev/null || return 1
   fi
-  cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_here}/${1}" ] || return 1
+  cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_here}/${1}" ] || return 1
   _dbk_here_ours "${6}" || return 1
   if [ -e "./${3}" ] || [ -L "./${3}" ]; then
     return 2
@@ -276,8 +276,8 @@ _dbk_in_real_dir() {
     /data/disk/?*) ;;
     *) return 1 ;;
   esac
-  _want="$(cd -P -- /data/disk 2>/dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 # ./$1 of the current (pinned) directory: never through a link, never
@@ -668,7 +668,7 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
         # The copy goes to the account's .ftp login and group, as the dated
         # directory does below, handed over by the handle that makes it
         read -r _cp_uid _cp_gid <<< "$(_dbk_ids "${_user}.ftp" "$(_acct_group "${_user}")")"
-        ( cd -P -- "${_DBK_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_DBK_DIR}" ] \
+        ( cd -P -- "${_DBK_DIR}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_DBK_DIR}" ] \
           && _dbk_copy_here "${_datetime}" "${_backup_file}" "${_base_file}" \
             "${_cp_uid}" "${_cp_gid}" "$(_dbk_own_uids "${_user}")" )
         case $? in
@@ -701,7 +701,7 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     echo "Setting ownership for ${_target_dir} => ${_user}.ftp:${_grp}"
     # inside the real dated directory, never through a name the account put
     # there (_dbk_reown_here)
-    ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(pwd -P)" = "${_target_dir}" ] \
+    ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_target_dir}" ] \
       && _dbk_reown_here "${_user}.ftp" "${_grp}" "$(_dbk_own_uids "${_user}")" )
     if [ "$?" = "2" ]; then
       echo "Warning: ${_target_dir} is another user's. Not handed to ${_user}.ftp."
@@ -800,7 +800,7 @@ for _user in "${!_all_involved_users[@]}"; do
   # walked from inside the real directory, so a name on the way swapped for
   # a link after the check is never followed either; what another user owns
   # stays, each entry counted once
-  _left=$( ( cd -P -- "${_dbk}" 2>/dev/null && [ "$(pwd -P)" = "${_dbk}" ] \
+  _left=$( ( cd -P -- "${_dbk}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_dbk}" ] \
     && _dbk_cleanup_here "${_own_set}" "${_days_to_keep}" ) \
     | grep -cE '^[0-9]+:[0-9]+$')
   if [[ "${_left}" =~ ^[1-9][0-9]*$ ]]; then

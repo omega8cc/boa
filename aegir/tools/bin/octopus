@@ -71,8 +71,8 @@ _acct_group() {
 _oct_in_real_dir() {
   local _d="${1}" _want
   shift
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 # The last 1 MiB of ./$1 in the current (pinned) directory, where the newest
@@ -112,13 +112,13 @@ _oct_up_mark_here() {
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 _oct_drush_reset_here() {
   local _want _own _uid _gid
-  _want="$(pwd -P)/sys"
+  _want="$(/bin/pwd -P)/sys"
   _own="${_octUsr}:$(_acct_group "${_octUsr}")"
   _uid=$(id -u -- "${_octUsr}" 2> /dev/null)
   _gid=$(getent group "${_own#*:}" 2> /dev/null | cut -d: -f3)
   rm -rf -- ./sys ./xts ./usr ./provision ./drush_make
   mkdir -p -- ./sys ./xts ./usr
-  ( cd -P -- ./sys 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] || exit 0
+  ( cd -P -- ./sys 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] || exit 0
     chown "${_own}" .
     su -s /bin/bash "${_octUsr}" \
       -c "export HOME=/data/disk/${_octUsr} PATH=/usr/local/bin:/usr/bin:/bin \

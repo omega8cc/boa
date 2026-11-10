@@ -97,14 +97,14 @@ _in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
     ### The parent of a top-level directory (/root) is "/", never the empty
     ### name: cd "" fails on one bash and follows CDPATH on another.
-    _want="$(cd -P -- "${_d%/*}/" 2> /dev/null && pwd -P)"
+    _want="$(cd -P -- "${_d%/*}/" 2> /dev/null && /bin/pwd -P)"
     _want="${_want%/}/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 ### ./$1 in the current (pinned) directory: never through a link, never
@@ -1090,13 +1090,13 @@ _target_vhost_disabled() {
   ### vhost file on this box, so it is checked before it reaches the remote shell.
   printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || return 1
   [ "$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" "
-    _n=0; _ok=0; _b=\$(cd -P -- /data/disk 2>/dev/null && pwd -P)
+    _n=0; _ok=0; _b=\$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)
     for _a in /data/disk/*; do
       _v=\"\${_a}/config/server_master/nginx/vhost.d\"
       [ -e \"\${_v}/$1\" ] || [ -L \"\${_v}/$1\" ] || continue
       [ -e \"\${_a}/log/CANCELLED\" ] && continue
       _n=\$((_n + 1))
-      [ \"\$(cd -P -- \"\${_v}\" 2>/dev/null && pwd -P)\" = \"\${_b}/\${_a##*/}/config/server_master/nginx/vhost.d\" ] || continue
+      [ \"\$(cd -P -- \"\${_v}\" 2>/dev/null && /bin/pwd -P)\" = \"\${_b}/\${_a##*/}/config/server_master/nginx/vhost.d\" ] || continue
       timeout 10 dd if=\"\${_v}/$1\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
         | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' || continue
       timeout 10 dd if=\"\${_a}/.drush/$1.alias.drushrc.php\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \

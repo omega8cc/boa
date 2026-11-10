@@ -1015,8 +1015,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
-_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
-( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+_W="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_W}" ] \
     && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] \
@@ -1955,7 +1955,7 @@ _xmass_in_real_dir() {
   local _d="${1}" _want
   shift
   _want="$(_xmass_real_want "${_d}")"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 ### Where the directory $1 resolves when every name on its path below
 ### /data/disk or /home is a real directory (elsewhere: its last name).
@@ -1966,10 +1966,10 @@ _xmass_real_want() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
     # the parent of a top-level directory (/root) is /, never an empty name
-    _p="$(cd -P -- "${_d%/*}/" 2> /dev/null && pwd -P)"
+    _p="$(cd -P -- "${_d%/*}/" 2> /dev/null && /bin/pwd -P)"
     printf '%s/%s' "${_p%/}" "${_d##*/}"
   fi
 }
@@ -1980,10 +1980,10 @@ _xmass_at_real_dir() {
   local _d="${1}" _want _back _rc
   shift
   _want="$(_xmass_real_want "${_d}")"
-  _back="$(pwd -P 2> /dev/null)"
+  _back="$(/bin/pwd -P 2> /dev/null)"
   [ -n "${_back}" ] || _back=/
   cd -P -- "${_d}" 2> /dev/null || return 1
-  if [ "$(pwd -P)" != "${_want}" ]; then
+  if [ "$(/bin/pwd -P)" != "${_want}" ]; then
     cd -P -- "${_back}" 2> /dev/null || cd / || return 1
     return 1
   fi
@@ -2107,7 +2107,7 @@ _xmass_pin_rpath() {
   esac
   _p="${_d%/*}"
   _n="${_d##*/}"
-  printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  printf '%s' "_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
 }
 ### The helpers above, as shell text for a script run as root on the other
 ### box: the same rules hold on both sides of a migration.
@@ -2150,7 +2150,7 @@ _xmass_own_path() {
     esac
   fi
   if [ -L /mnt ]; then
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_m}" in
       ''|/|/mnt|/data|/data/*) ;;
       *)
@@ -2197,10 +2197,10 @@ _xmass_at_canon_dir() {
     /*) ;;
     *) return 1 ;;
   esac
-  _back="$(pwd -P 2> /dev/null)"
+  _back="$(/bin/pwd -P 2> /dev/null)"
   [ -n "${_back}" ] || _back=/
   cd -P -- "${_d}" 2> /dev/null || return 1
-  if [ "$(pwd -P)" != "${_d}" ]; then
+  if [ "$(/bin/pwd -P)" != "${_d}" ]; then
     cd -P -- "${_back}" 2> /dev/null || cd / || return 1
     return 1
   fi
@@ -2214,7 +2214,7 @@ _xmass_at_canon_dir() {
 _xmass_canon_rpath() {
   local _q
   _q="$(_shq "${1}")"
-  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(/bin/pwd -P)\" = '${_q}' ] && rsync"
 }
 ### Run on the box that receives an account's copy, with the account's name
 ### in $1: enter the real parent of $2, made as mkdir -p makes it, once the
@@ -2228,11 +2228,11 @@ _xmass_own_parent_cd() {
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  _xmass_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+  _xmass_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" \
     || return 1
   mkdir -p -- "${_p}" 2> /dev/null
   cd -P -- "${_p}" 2> /dev/null || return 1
-  _xmass_own_path "${_a}" "$(pwd -P)"
+  _xmass_own_path "${_a}" "$(/bin/pwd -P)"
 }
 ### Run there as above: make the directory $3 of the account $2 ready for a
 ### copy and print XMREAL with its canonical path. A link at the last name
@@ -2245,7 +2245,7 @@ _xmass_own_dir_ready() {
   esac
   _xmass_own_parent_cd "${_a}" "${3}" || return 1
   if [ -L "./${_n}" ]; then
-    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && /bin/pwd -P)"
     if [ "${_m}" != "keep" ] || ! _xmass_own_path "${_a}" "${_r}"; then
       rm -f -- "./${_n}" || return 1
     fi
@@ -2254,7 +2254,7 @@ _xmass_own_dir_ready() {
   fi
   [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xmass_own_path "${_a}" "${_r}" || return 1
   printf 'XMREAL %s\n' "${_r}"
 }
@@ -2262,7 +2262,7 @@ _xmass_own_dir_ready() {
 ### $2 of the account $1, made ready as _xmass_own_parent_cd makes it.
 _xmass_own_parent_ready() {
   _xmass_own_parent_cd "${1}" "${2}" || return 1
-  printf 'XMREAL %s\n' "$(pwd -P)"
+  printf 'XMREAL %s\n' "$(/bin/pwd -P)"
 }
 ### Run there as above: put the link $2 -> $3 of the account $1 in place of
 ### whatever holds the name, inside its real parent.
@@ -2280,7 +2280,7 @@ _xmass_own_link_ready() {
     rm -f -- "./${_n}"
   fi
   ln -sfn -- "${3}" "./${_n}" || return 1
-  printf 'XMREAL %s/%s\n' "$(pwd -P)" "${_n}"
+  printf 'XMREAL %s/%s\n' "$(/bin/pwd -P)" "${_n}"
 }
 ### Run there: make each of the account $1's own control panel stores, the
 ### names in $4 (space-separated), in the store's new canonical directory $3
@@ -2297,16 +2297,16 @@ _xmass_own_link_ready() {
 _xmass_own_panel_carry() {
   local _a="${1}" _o _n _p _t _m
   local -a _ps _st
-  _n="$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _n="$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   [ "${_n}" = "${3}" ] || return 1
   if [ ! -e "${2}" ] && [ ! -L "${2}" ]; then
     printf 'XMREAL %s\n' "${_n}"
     return 0
   fi
-  _o="$(cd -P -- "${2}" 2> /dev/null && pwd -P)" || return 1
+  _o="$(cd -P -- "${2}" 2> /dev/null && /bin/pwd -P)" || return 1
   if ! _xmass_own_path "${_a}" "${_o}"; then
     # the account's part of the attached store through a /mnt that is a link
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_o}/" in
       "${_m}"/?*) _xmass_own_path "${_a}" "/mnt${_o#"${_m}"}" || return 1 ;;
       *) return 1 ;;
@@ -2318,17 +2318,17 @@ _xmass_own_panel_carry() {
       case "${_p}" in ''|.|..|*/*) continue ;; esac
       [ -d "${_o}/${_p}" ] && [ ! -L "${_o}/${_p}" ] || continue
       _t=".${_p}.carry"
-      ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+      ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
         && rm -rf -- "./${_t}" && mkdir -- "./${_t}" ) || return 1
-      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(pwd -P)" = "${_o}/${_p}" ] || exit 9
+      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_o}/${_p}" ] || exit 9
         tar -cf - --numeric-owner --acls --xattrs --one-file-system . ) \
-        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(pwd -P)" = "${_n}/${_t}" ] || exit 9
+        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}/${_t}" ] || exit 9
           tar -xpf - --numeric-owner --acls --xattrs )
       _st=("${PIPESTATUS[@]}")
       if [ "${_st[0]:-9}" -gt 1 ] || [ "${_st[1]:-9}" -ne 0 ] \
-        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
           && rm -rf -- "./${_p}" && mv -T -- "./${_t}" "./${_p}" ); then
-        ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
+        ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
         return 1
       fi
     done
@@ -2352,7 +2352,7 @@ _xmass_own_dir_carry() {
   [ -L "./${_n}" ] || { _xmass_own_dir_ready dir "${_a}" "${2}"; return $?; }
   [ -d "./${_n}" ] || return 1
   _lt="$(readlink -- "./${_n}")" || return 1
-  _w="$(pwd -P)"
+  _w="$(/bin/pwd -P)"
   _l="${_lt}"
   case "${_l}" in
     /*) ;;
@@ -2371,7 +2371,7 @@ _xmass_own_dir_carry() {
     return 1
   fi
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xmass_own_path "${_a}" "${_r}" || return 1
   printf 'XMREAL %s\n' "${_r}"
 }
@@ -2387,17 +2387,17 @@ _xmass_real_mnt_dir() {
   case "${_d}/" in
     *//*|*/./*|*/../*) return 1 ;;
   esac
-  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  _c="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)" || return 1
   [ -n "${_c}" ] || return 1
   _e="${_d}"
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
   mkdir -p -- "${_d}" 2> /dev/null
   _c="${_c}${_d#/mnt}"
   cd -P -- "${_d}" 2> /dev/null || return 1
-  [ "$(pwd -P)" = "${_c}" ] || return 1
+  [ "$(/bin/pwd -P)" = "${_c}" ] || return 1
   printf 'XMREAL %s\n' "${_c}"
 }
 ### Run one of the placement helpers above as root on the box $1, with the
@@ -4386,10 +4386,10 @@ _XMASS_SECRET_ROOT_ONLY='_ro() { local _s _u _g _m; _s="$(stat -c "%u %g %a" -- 
 _XMASS_SECRET_SH='read -r _b || exit 0
 [ -e /root/.standby.cnf ] || [ "${_rt}" = YES ] || { echo XMSEC-NOT-STANDBY; exit 0; }
 [ -e "/root/.remote_backups/restore_windows/${_a}.rb" ] && { echo XMSEC-WINDOW; exit 0; }
-_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_a}"
-cd -P -- "/data/disk/${_a}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] || { echo XMSEC-NO-ACCOUNT; exit 0; }
+_w="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${_a}"
+cd -P -- "/data/disk/${_a}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_w}" ] || { echo XMSEC-NO-ACCOUNT; exit 0; }
 [ -e ./remote_backups ] || [ -L ./remote_backups ] || mkdir -m 755 ./remote_backups
-cd -P -- ./remote_backups 2> /dev/null && [ "$(pwd -P)" = "${_w}/remote_backups" ] && _ro . \
+cd -P -- ./remote_backups 2> /dev/null && [ "$(/bin/pwd -P)" = "${_w}/remote_backups" ] && _ro . \
   || { echo XMSEC-NOT-ROOTS; exit 0; }
 _n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
 _put() {
@@ -4499,7 +4499,7 @@ _XMASS_ROOT_SECRET_SH='read -r _b || exit 0
 [ -e /root/.standby.cnf ] || { echo XMRSEC-NOT-STANDBY; exit 0; }
 case "${_h}" in ""|*[!a-zA-Z0-9-]*) echo XMRSEC-FAILED; exit 0 ;; esac
 [ -e /root/.remote_backups ] || [ -L /root/.remote_backups ] || mkdir -m 700 /root/.remote_backups
-cd -P -- /root/.remote_backups 2> /dev/null && [ "$(pwd -P)" = /root/.remote_backups ] \
+cd -P -- /root/.remote_backups 2> /dev/null && [ "$(/bin/pwd -P)" = /root/.remote_backups ] \
   && [ "$(stat -c %u -- .)" = 0 ] || { echo XMRSEC-NOT-ROOTS; exit 0; }
 _f=".secret.from-${_h}.txt"
 _n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
@@ -7919,7 +7919,7 @@ _xmass_rename_churn() {   # 1 = source leg root  2 = target leg root  3 = top-le
     ''|*[!A-Za-z0-9.-]*|.*|*.|*..*) printf '0'; return 0 ;;
   esac
   [[ "${_fq}" = *.* ]] || { printf '0'; return 0; }
-  _srcP=$(cd "${_src}" 2>/dev/null && pwd -P) || { printf '0'; return 0; }
+  _srcP=$(cd "${_src}" 2>/dev/null && /bin/pwd -P) || { printf '0'; return 0; }
   while IFS= read -r _d; do
     _rel="${_d#"${_src}"/}"
     case "${_rel}" in ''|*[!A-Za-z0-9._/-]*|*..*|/*) continue ;; esac
@@ -7948,7 +7948,7 @@ _xmass_rename_churn() {   # 1 = source leg root  2 = target leg root  3 = top-le
   [ -n "${_ask}" ] || { printf '0'; return 0; }
   _q="$(_shq "${_dst}")"
   _ans=$(printf '%s' "${_ask}" | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
-    "_r='${_q}'; _o=\$(hostname -f 2>/dev/null | tr -d '[:space:]'); case \"\${_o}\" in ''|*[!A-Za-z0-9.-]*|.*|*.|*..*) exit 0 ;; esac; _rp=\$(cd \"\${_r}\" 2>/dev/null && pwd -P) || exit 0; echo \"XMCHURN O|\${_o}\"; while IFS='|' read -r _i _s _p; do [ -n \"\${_p}\" ] || continue; if [ \"\${_s}\" = . ]; then _w=\"\${_rp}\"; else _w=\"\${_rp}/\${_s}\"; fi; [ \"\$(cd \"\${_r}/\${_s}\" 2>/dev/null && pwd -P)\" = \"\${_w}\" ] || continue; _c=\"\${_r}/\${_s}/\${_p}\${_o}\"; [ -d \"\${_c}\" ] && [ ! -L \"\${_c}\" ] || continue; echo \"XMCHURN C|\${_i}|\$(find \"\${_c}\" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')\"; done" 2>/dev/null \
+    "_r='${_q}'; _o=\$(hostname -f 2>/dev/null | tr -d '[:space:]'); case \"\${_o}\" in ''|*[!A-Za-z0-9.-]*|.*|*.|*..*) exit 0 ;; esac; _rp=\$(cd \"\${_r}\" 2>/dev/null && /bin/pwd -P) || exit 0; echo \"XMCHURN O|\${_o}\"; while IFS='|' read -r _i _s _p; do [ -n \"\${_p}\" ] || continue; if [ \"\${_s}\" = . ]; then _w=\"\${_rp}\"; else _w=\"\${_rp}/\${_s}\"; fi; [ \"\$(cd \"\${_r}/\${_s}\" 2>/dev/null && /bin/pwd -P)\" = \"\${_w}\" ] || continue; _c=\"\${_r}/\${_s}/\${_p}\${_o}\"; [ -d \"\${_c}\" ] && [ ! -L \"\${_c}\" ] || continue; echo \"XMCHURN C|\${_i}|\$(find \"\${_c}\" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')\"; done" 2>/dev/null \
     | grep '^XMCHURN [OC]|' | cut -d' ' -f2-)
   _own=$(printf '%s\n' "${_ans}" | grep -m1 '^O|' | cut -d'|' -f2)
   case "${_own}" in
@@ -7971,7 +7971,7 @@ _xmass_rename_churn() {   # 1 = source leg root  2 = target leg root  3 = top-le
     if [ -e "${_src}/${_s}/${_b}" ] || [ -L "${_src}/${_s}/${_b}" ]; then continue; fi
     [ -d "${_src}/${_s}/${_t}" ] && [ ! -L "${_src}/${_s}/${_t}" ] || continue
     if [ "${_s}" = "." ]; then _sP="${_srcP}"; else _sP="${_srcP}/${_s}"; fi
-    [ "$(cd "${_src}/${_s}" 2>/dev/null && pwd -P)" = "${_sP}" ] || continue
+    [ "$(cd "${_src}/${_s}" 2>/dev/null && /bin/pwd -P)" = "${_sP}" ] || continue
     _m=$(find "${_src}/${_s}/${_t}" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')
     [[ "${_m}" =~ ^[0-9]+$ ]] || continue
     _c="${_dst}/${_s}/${_b}"
@@ -8285,7 +8285,7 @@ _xmass_tgt_kind() {
   local _qd _qm
   _qd="$(_shq "$2")"
   _qm="$(_shq "${3:-}")"
-  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XMKIND \$k\"" 2>/dev/null \
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && /bin/pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && /bin/pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XMKIND \$k\"" 2>/dev/null \
     | grep -m1 '^XMKIND ' | awk '{print $2}'
 }
 
@@ -8424,7 +8424,7 @@ _xmass_put_on_mount() {
   # placement that flipped) would lend its count to the wrong tree.
   if [ "$(_xmass_maxdelete_of "${_ie}")" != "${_XMASS_MAX_DELETE}" ]; then
     local _same
-    _same=$(ssh -n root@"${_th}" "a=\$(cd '${_qd}' 2>/dev/null && pwd -P); b=\$(cd '${_qm}' 2>/dev/null && pwd -P); [ -n \"\$a\" ] && [ \"\$a\" = \"\$b\" ] && echo XMSAME" 2>/dev/null | grep -m1 -x 'XMSAME')
+    _same=$(ssh -n root@"${_th}" "a=\$(cd '${_qd}' 2>/dev/null && /bin/pwd -P); b=\$(cd '${_qm}' 2>/dev/null && /bin/pwd -P); [ -n \"\$a\" ] && [ \"\$a\" = \"\$b\" ] && echo XMSAME" 2>/dev/null | grep -m1 -x 'XMSAME')
     if [ "${_same}" != "XMSAME" ]; then
       _info "  ${_lbl}: ${_dstRoot} on the target is not ${_mntDest} -- the delete budget measured there is dropped for this pass"
       _ie="$(printf '%s' "${_ie}" | sed "s/--max-delete=[0-9][0-9]*/--max-delete=${_XMASS_MAX_DELETE}/")"
@@ -8512,7 +8512,7 @@ _xmass_handle_store() {
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && /bin/pwd -P)"
     if [ -z "${_real}" ]; then
       _act=DENY; _reason="${_src} cannot be entered"
     elif [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_real}" "${_rule}"; then
@@ -9411,7 +9411,7 @@ _xmass_sync_static_symlink_safe() {
       fi
     done
     if [ "${_MODE}" = "LIVE" ] && [ -n "${_gone}" ]; then
-      ssh root@"${_tgt}" "_w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_dst_acct}/static/control\"; cd -P -- /data/disk/${_dst_acct}/static/control 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f --${_gone}" &> /dev/null
+      ssh root@"${_tgt}" "_w=\"\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_dst_acct}/static/control\"; cd -P -- /data/disk/${_dst_acct}/static/control 2>/dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && rm -f --${_gone}" &> /dev/null
     fi
   fi
 
@@ -9948,8 +9948,8 @@ _xmass_sync_account() {
   # holds only the pid until it does, and a pid the account put there only
   # withholds its own vhost.d.
   local _ngxW _ngx _rly=""
-  _ngxW="$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_oct}/config/server_master/nginx"
-  _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && pwd -P)"
+  _ngxW="$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)/${_oct}/config/server_master/nginx"
+  _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && /bin/pwd -P)"
   if _mig_is_proxied "${_udir##*/}"; then
     _rly="root proxied marker"
   elif _xmass_word_in "${_udir##*/}" "${_XMASS_PROXY_CONVERTED:-}"; then
@@ -10070,7 +10070,7 @@ _xmass_sync_account() {
     [ "${_MODE}" = "LIVE" ] \
       && ssh root@"${_tgt}" "[ -e '${_dst}/static/files/${_bkName}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_dst}/static/files/${_bkName}' '${_dst}/backups'" 2>/dev/null
   elif [ -e "${_udir}/backups" ] || [ -L "${_udir}/backups" ]; then
-    _bkReal="$(cd -P -- "${_udir}/backups" 2>/dev/null && pwd -P)"
+    _bkReal="$(cd -P -- "${_udir}/backups" 2>/dev/null && /bin/pwd -P)"
     if [ -z "${_bkReal}" ] || ! _xmass_own_path "${_oct}" "${_bkReal}"; then
       _xmass_leg_refused "${_udir}/backups" "the backups of ${_oct} (it resolves to ${_bkReal:-nothing}, outside its own tree and store)"
     elif _xmass_solr_check "${_bkReal}" "${_dst}/backups" "backups (${_oct})" "${_dst}/backups"; then
@@ -10262,7 +10262,7 @@ _xmass_cleanup_churn() {   # 1 = this box's store  2 = the target's store
   [ -n "${_ask}" ] || { printf '0'; return 0; }
   _q="$(_shq "${_dst}")"
   _ans=$(printf '%s' "${_ask}" | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
-    "_r='${_q}'; _rp=\$(cd \"\${_r}\" 2>/dev/null && pwd -P) || exit 0; while IFS='|' read -r _i _p; do [ -n \"\${_p}\" ] || continue; _s=\"\${_p%%/*}\"; [ \"\$(cd \"\${_r}/\${_s}\" 2>/dev/null && pwd -P)\" = \"\${_rp}/\${_s}\" ] || continue; _c=\"\${_r}/\${_p}\"; [ -d \"\${_c}\" ] && [ ! -L \"\${_c}\" ] || continue; echo \"XMCLEAN C|\${_i}|\$(find \"\${_c}\" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')\"; done" 2>/dev/null \
+    "_r='${_q}'; _rp=\$(cd \"\${_r}\" 2>/dev/null && /bin/pwd -P) || exit 0; while IFS='|' read -r _i _p; do [ -n \"\${_p}\" ] || continue; _s=\"\${_p%%/*}\"; [ \"\$(cd \"\${_r}/\${_s}\" 2>/dev/null && /bin/pwd -P)\" = \"\${_rp}/\${_s}\" ] || continue; _c=\"\${_r}/\${_p}\"; [ -d \"\${_c}\" ] && [ ! -L \"\${_c}\" ] || continue; echo \"XMCLEAN C|\${_i}|\$(find \"\${_c}\" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')\"; done" 2>/dev/null \
     | grep '^XMCLEAN C|' | cut -d' ' -f2-)
   while IFS='|' read -r _c _k _n; do
     [ "${_c}" = "C" ] || continue
@@ -11142,7 +11142,7 @@ _xmass_remove_http_off_target() {
     # rides the same sync and would hold the renamed sites on 503 here.
     # inside the account's real static/control on the target, as here
     ssh root@"${_tgt}" \
-      "_w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}/static/control\"; cd -P -- /data/disk/${_oct}/static/control 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f -- ./http-off.pid ./http-off-host.pid" 2>/dev/null \
+      "_w=\"\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_oct}/static/control\"; cd -P -- /data/disk/${_oct}/static/control 2>/dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && rm -f -- ./http-off.pid ./http-off-host.pid" 2>/dev/null \
       || _alrt "Could not remove http-off.pid for ${_oct} on target ${_tgt}"
   done
   ssh root@"${_tgt}" \
@@ -12499,9 +12499,9 @@ _xmass_rearm_deferred_upgrades_target() {
     ssh root@"${_tgt}" "bash -s" <<REARM
 # static/control is the account's: the tests and the move run on ./names
 # inside the real directory, never through a link swapped in at it
-_w="\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}/static/control"
+_w="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_oct}/static/control"
 _r="\$( cd -P -- "/data/disk/${_oct}/static/control" 2>/dev/null \
-  && [ "\$(pwd -P)" = "\${_w}" ] && [ -e ./run-upgrade.pid.deferred ] \
+  && [ "\$(/bin/pwd -P)" = "\${_w}" ] && [ -e ./run-upgrade.pid.deferred ] \
   && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid \
   && { [ -e ./platforms.info ] && echo LIST || echo BARE; } )"
 case "\${_r}" in
@@ -12627,7 +12627,7 @@ _xmass_promotion_cleanup_sh() {
 # log/, static/control and vhost.d are the account's: every test, read, mv
 # and rm below runs on ./names inside the real directory, entered once and
 # proven by pwd -P, never through a link swapped in at a directory or a name
-_w="\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}"
+_w="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_oct}"
 _rd() {
   timeout 10 dd if="./\${1}" iflag=nofollow,nonblock,fullblock bs=1048576 \
     count=1 status=none 2>/dev/null
@@ -12649,7 +12649,7 @@ if [ -e '${_MIG_REC_DIR}/.${_oct}.migproxy.proxied' ] || [ -L '${_MIG_REC_DIR}/.
   rm -f -- '${_MIG_REC_DIR}/.${_oct}.migproxy.proxied'
   echo "  ${_oct}: removed stale root proxied marker"
 fi
-( cd -P -- "/data/disk/${_oct}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_w}/log" ] \
+( cd -P -- "/data/disk/${_oct}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_w}/log" ] \
     || exit 0
   # self-authored = its host address is one of this box's; a record without
   # one never matches (the blank line tr leaves after the last address did)
@@ -12718,7 +12718,7 @@ fi
 # of defusing it; the cutover re-arms it at its end, when the box serves
 # again and a pass is exactly what the seed asked for.
 ( if ! { cd -P -- "/data/disk/${_oct}/static/control" 2>/dev/null \
-      && [ "\$(pwd -P)" = "\${_w}/static/control" ]; }; then
+      && [ "\$(/bin/pwd -P)" = "\${_w}/static/control" ]; }; then
     { [ -e "/data/disk/${_oct}/static/control" ] \
       || [ -L "/data/disk/${_oct}/static/control" ]; } \
       && echo "  ${_oct}: static/control is not a real directory -- its upgrade trigger is not touched"
@@ -12740,7 +12740,7 @@ fi
   fi )
 # The subshell's status says whether a vhost was restored.
 if ( cd -P -- "/data/disk/${_oct}/config/server_master/nginx/vhost.d" 2>/dev/null \
-    && [ "\$(pwd -P)" = "\${_w}/config/server_master/nginx/vhost.d" ] || exit 1
+    && [ "\$(/bin/pwd -P)" = "\${_w}/config/server_master/nginx/vhost.d" ] || exit 1
   _restored=0
   for _bak in ./.[a-zA-Z0-9]*; do
     [ -f "\${_bak}" ] || continue
@@ -13684,7 +13684,7 @@ _xmass_promote_panels_here() {
 _xmass_promote_rearm_here() {
   local _root _oct _me _sp _db _srv _w
   _me=$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')
-  _w="$(cd -P /data/disk 2> /dev/null && pwd -P)"
+  _w="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)"
   for _root in /data/disk/*; do
     _oct="${_root##*/}"
     _mig_valid_acct "${_oct}" || continue
@@ -13710,11 +13710,11 @@ _xmass_promote_rearm_here() {
       continue
     fi
     if ( cd -P -- "${_root}/static/control" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_w}/${_oct}/static/control" ] \
+      && [ "$(/bin/pwd -P)" = "${_w}/${_oct}/static/control" ] \
       && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid ); then
       # The runner takes a trigger only with a platforms.info beside it.
       if ( cd -P -- "${_root}/static/control" 2> /dev/null \
-        && [ "$(pwd -P)" = "${_w}/${_oct}/static/control" ] \
+        && [ "$(/bin/pwd -P)" = "${_w}/${_oct}/static/control" ] \
         && [ -e ./platforms.info ] ); then
         _info "  ${_oct}: held upgrade re-armed; the dispatcher runs it on its next quiet tick"
       else
@@ -14394,7 +14394,7 @@ _xmass_purge_target_only_accounts() {
     # CANCELLED is made a fresh file inside the account's real log/, never
     # through a link that would mark another account for the cleanup
     _out=$(ssh -o ConnectTimeout=20 -o BatchMode=yes root@"${_t}" \
-      "_w=\"\$(cd -P /data/disk && pwd -P)/${_a}/log\"; ( cd -P -- /data/disk/${_a}/log && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f -- ./.CANCELLED.put && dd if=/dev/null of=./.CANCELLED.put conv=excl status=none && mv -f -T -- ./.CANCELLED.put ./CANCELLED ) && boa cleanup detect noscreen > /dev/null 2>&1; boa cleanup purge ${_a} noscreen 2>&1 | tail -4; [ ! -d /data/disk/${_a} ] && nginx -t > /dev/null 2>&1 && echo PURGE_OK" 2>/dev/null)
+      "_w=\"\$(cd -P /data/disk && /bin/pwd -P)/${_a}/log\"; ( cd -P -- /data/disk/${_a}/log && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && rm -f -- ./.CANCELLED.put && dd if=/dev/null of=./.CANCELLED.put conv=excl status=none && mv -f -T -- ./.CANCELLED.put ./CANCELLED ) && boa cleanup detect noscreen > /dev/null 2>&1; boa cleanup purge ${_a} noscreen 2>&1 | tail -4; [ ! -d /data/disk/${_a} ] && nginx -t > /dev/null 2>&1 && echo PURGE_OK" 2>/dev/null)
     case "${_out}" in
       *PURGE_OK*)
         _info "  ${_a}: purged on ${_t} (backups, distro, src, static and undo trees removed; the rest of the home parked under /var/backups/zombie/purged/${_a}/), nginx configtest OK"
@@ -15416,8 +15416,8 @@ if [ ! -e "/root/.${_A}.migration-create.txt" ]; then
     && mv -f -T -- "/root/.${_A}.migration-create.put.$$" "/root/.${_A}.migration-create.txt" \
     || { echo "XMLAY-FAILED: the create marker of ${_A}"; exit 0; }
 fi
-_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_A}/static/control"
-if ! ( cd -P -- "${_w}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
+_w="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${_A}/static/control"
+if ! ( cd -P -- "${_w}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_w}" ] \
   && { _xmass_read_here platforms.info | grep -qx UP \
     || _xmass_put_here platforms.info "$(_xmass_read_here platforms.info; echo UP)" "${_A}.ftp:${_wg}"; } \
   && _xmass_touch_here run-upgrade.pid.deferred ); then
@@ -15765,8 +15765,8 @@ _xmass_return_account_end() {
   # the 503 gate this box's fence put there goes before the rename, as a
   # cutover clears it: the rename proves the panel serves
   _out="$( { _xmass_remote_guards; cat <<'REMOTE'
-_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_A}/static/control"
-( cd -P -- "/data/disk/${_A}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] \
+_w="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${_A}/static/control"
+( cd -P -- "/data/disk/${_A}/static/control" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_w}" ] \
   && rm -f -- ./http-off.pid ) && echo XMRET-OK
 REMOTE
   } | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" "_A='${_oct}' bash -s" 2>&1)"
@@ -16485,8 +16485,8 @@ for _o in ${_acc}; do
     [ -n "${_p}" ] && _p=$(basename "${_p}")
   fi
   _vhr=""
-  [ "$(cd -P -- "${_d}/config/server_master/nginx/vhost.d" 2>/dev/null && pwd -P)" \
-    = "$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_o}/config/server_master/nginx/vhost.d" ] \
+  [ "$(cd -P -- "${_d}/config/server_master/nginx/vhost.d" 2>/dev/null && /bin/pwd -P)" \
+    = "$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)/${_o}/config/server_master/nginx/vhost.d" ] \
     && _vhr=YES
   for _f in "${_d}/config/server_master/nginx/vhost.d"/*; do
     [ -f "${_f}" ] || continue
@@ -17390,7 +17390,7 @@ _xmass_drop_target_prepass_backups() {
 _d="/data/disk/${1}/backups/system"
 [ -d "${_d}" ] || { echo "XMPRE 0 0"; exit 0; }
 cd -P -- "${_d}" 2> /dev/null || { echo "XMPRE 0 0"; exit 0; }
-_xmass_own_path "${1}" "$(pwd -P)" || { echo "XMPRE refused $(pwd -P)"; exit 0; }
+_xmass_own_path "${1}" "$(/bin/pwd -P)" || { echo "XMPRE refused $(/bin/pwd -P)"; exit 0; }
 _n=$(find . -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' 2> /dev/null | wc -l | tr -dc '0-9')
 _rc=0
 if [ "${_n:-0}" -gt 0 ]; then

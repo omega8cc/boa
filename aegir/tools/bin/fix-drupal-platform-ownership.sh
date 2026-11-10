@@ -267,7 +267,7 @@ _web_group_conv() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # Each named directory or single-link regular file handed to uid $1 and gid
@@ -295,7 +295,7 @@ _links_left_note() {
     _n=$(( _n + 1 ))
   done < <(find "$@" -type f -links +1 -print0 2> /dev/null)
   [ "${_n}" -gt 0 ] || return 0
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
     "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
@@ -640,7 +640,7 @@ _copy_new_here() {
 # a directory another user owns.
 _grav_capsules_own_here() {
   local _c _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   for _c in ./*/; do
     _c="${_c#./}"
     _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_own_here

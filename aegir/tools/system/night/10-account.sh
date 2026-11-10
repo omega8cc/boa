@@ -274,8 +274,8 @@ if ! declare -F _acct_ctrl_own > /dev/null 2>&1; then
     # judge it by: read as before
     _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
     [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-    _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+    _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
       && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
     case "${_r}" in
       OK|ABSENT) return 0 ;;
@@ -326,11 +326,11 @@ if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
       /data/disk/?*) _a=/data/disk ;;
     esac
     if [ -n "${_a}" ]; then
-      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+      _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
     else
-      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
     fi
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
   }
 fi
 if ! declare -F _acct_read_here > /dev/null 2>&1; then
@@ -380,7 +380,7 @@ fi
 if ! declare -F _acct_undo_here > /dev/null 2>&1; then
   _acct_undo_here() {
     local _u
-    _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo"
+    _u="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/undo"
     _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
     exec 9< "${_u}/." || return 1
     [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || return 1
@@ -429,8 +429,8 @@ if ! declare -F _night_chattr_entries_here > /dev/null 2>&1; then
   _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
   _night_chattr_sub_here() {
     local _h
-    _h="$(pwd -P)"
-    ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+    _h="$(/bin/pwd -P)"
+    ( cd -P -- "./${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${2}" ] \
       && chattr "${1}i" . ) &> /dev/null
     return 0
   }
@@ -454,14 +454,14 @@ fi
 _night_in_pinned() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### Run "$@" inside ./$1 of the current (pinned) directory, entered for real.
 _night_sub() {
   local _h _s="${1}"
   shift
-  _h="$(pwd -P)"
-  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${_s}" ] && "$@" )
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${_s}" ] && "$@" )
 }
 ### The account's files store as it resolves now, printed: its own
 ### static/files, or migratefs' layout on attached storage
@@ -2359,7 +2359,7 @@ _purge_hits_under_account() {
         esac
         ;;
     esac
-    _n=$( ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(pwd -P)" = "${_r%/*}" ] \
+    _n=$( ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_r%/*}" ] \
       && perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "./${_r##*/}" ) 2> /dev/null )
     _purge_left_add "${_n}"
   done
@@ -2654,7 +2654,7 @@ _purge_cruft_machine() {
       _igSel+=(-o \( -type f -o -type p \) \( "${_igOwn[@]}" \))
     fi
     _igSel+=(\))
-    _igBak=$(_night_in_bak_dir backups pwd -P 2>/dev/null)
+    _igBak=$(_night_in_bak_dir backups /bin/pwd -P 2>/dev/null)
     # The account's own web group (the hostmaster site's files/, private/
     # and settings.php once converted) is no drift: its gid is exempt from
     # the moment the group exists, since a conversion moves those paths
@@ -2831,7 +2831,7 @@ _night_src_ghosts_here() {
 # on either path can send the move elsewhere.
 _night_undo_dist_here() {
   local _u
-  _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo/dist/${2}"
+  _u="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/undo/dist/${2}"
   _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
   _acct_in_real_dir "${_usEr}/undo" mkdir -p ./dist 2> /dev/null
   _acct_in_real_dir "${_usEr}/undo/dist" mkdir -p -- "./${2}" 2> /dev/null

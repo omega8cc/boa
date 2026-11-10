@@ -109,8 +109,8 @@ fi
 _edge_in_real_dir() {
   local _d="${1}" _want
   shift
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # The line $2 put as the file ./$1 in the real /data/conf, root's and 0644:
 # written under a fresh name through one handle created O_EXCL|O_NOFOLLOW
@@ -119,7 +119,7 @@ _edge_in_real_dir() {
 # never written through.
 _edge_conf_put() {
   ( cd -P -- /data/conf 2> /dev/null \
-      && [ "$(pwd -P)" = "$(cd -P -- /data 2> /dev/null && pwd -P)/conf" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "$(cd -P -- /data 2> /dev/null && /bin/pwd -P)/conf" ] || exit 1
     _t="./.${1}.put.$$.${RANDOM}"
     rm -f -- "${_t}"
     if printf '%s\n' "${2}" | perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 \

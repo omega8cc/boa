@@ -363,7 +363,7 @@ _ltd_d9_files_here() {
     _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
     if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
       && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}" "${_s%% *}"; then
-      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(pwd -P)" = "${_rf}" ] \
+      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rf}" ] \
         && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
       [ "$?" = "124" ] && _ok=NO
     fi
@@ -375,7 +375,7 @@ _ltd_d9_files_here() {
         *"|${_pp}|"*) continue ;;
       esac
       _done="${_done}${_pp}|"
-      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(pwd -P)" = "${_pp}" ] \
+      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_pp}" ] \
         && _ltd_d9_walk_here "${_ref}" "${_uids}" public )
       [ "$?" = "124" ] && _ok=NO
     done < <(_ltd_d9_public "${_rs}" "${_a}")
@@ -840,11 +840,11 @@ _ltd_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # A root stamp in the current (pinned) directory: the name is removed and
 # created exclusively, so a link put there in between is never followed.
@@ -961,7 +961,7 @@ _ltd_drush_strip() {
   fi
   _l=$(printf '%s\n' "${_l}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   if [ "${_l}" -gt 0 ]; then
-    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(pwd -P)"
+    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(/bin/pwd -P)"
   fi
   mkdir -p ./usr
 }
@@ -1308,7 +1308,7 @@ _ltd_left_note() {
   local _n
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [ "${_n}" -gt 0 ] 2> /dev/null || return 0
-  echo "NOTE: ${2} left ${_n} entries owned by another user ${3} in $(pwd -P)"
+  echo "NOTE: ${2} left ${_n} entries owned by another user ${3} in $(/bin/pwd -P)"
 }
 # owner:group names as uid:gid numbers, or status 1
 _ltd_num_ids() {
@@ -1880,8 +1880,8 @@ _acct_ctrl_own() {
   # judge it by: read as before
   _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
   [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
   case "${_r}" in
     OK|ABSENT) return 0 ;;
@@ -2083,8 +2083,8 @@ _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { s
 # hard link, and a name swapped for anything else is never entered.
 _ltd_chattr_sub_here() {
   local _h
-  _h="$(pwd -P)"
-  ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${2}" ] \
     && chattr "${1}i" . ) &> /dev/null
   return 0
 }
@@ -3624,7 +3624,7 @@ _ltd_cli_src() {
   local -a _rc=()
   # a control/ that is not the account's own tells nothing (_acct_ctrl_own)
   [ "${_ltdCtrlOwn}" = "NO" ] && return 1
-  _sp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
+  _sp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && /bin/pwd -P)
   [ -n "${_sp}" ] || return 3
   timeout 10 setpriv --reuid="${_USER}.ftp" --regid="$(id -g "${_USER}.ftp")" \
     --init-groups /bin/bash -c '
@@ -4311,10 +4311,10 @@ _ok_create_user() {
       # pinned by its real path (a users/ swapped for a link elsewhere is
       # refused), with one open that never follows a link, never blocks on a
       # FIFO and reads no more than a password's length.
-      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && pwd -P)
+      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && /bin/pwd -P)
       if [ -n "${_lupHome}" ]; then
         _ESC_LUPASS=$(cd -P -- "${_lupHome}/users" 2> /dev/null \
-          && [ "$(pwd -P)" = "${_lupHome}/users" ] \
+          && [ "$(/bin/pwd -P)" = "${_lupHome}/users" ] \
           && [ -f "./${_usrLtd}" ] && [ ! -L "./${_usrLtd}" ] \
           && timeout 10 dd if="./${_usrLtd}" iflag=nofollow,nonblock bs=256 count=1 \
             status=none 2> /dev/null | tr -d "\n")
@@ -4395,11 +4395,11 @@ _ok_create_user() {
       _lupStore="/home/${_ADMIN}/users/${_usrLtd}"
       # /home is root's, so /home/<admin> cannot be swapped: resolve it, and
       # write only inside a users/ whose real path is exactly that one
-      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && pwd -P)
+      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && /bin/pwd -P)
       ( umask 077
         [ -n "${_lupHome}" ] \
           && cd -P -- "${_lupHome}/users" 2> /dev/null \
-          && [ "$(pwd -P)" = "${_lupHome}/users" ] \
+          && [ "$(/bin/pwd -P)" = "${_lupHome}/users" ] \
           && rm -f -- "./${_usrLtd}" \
           && printf '%s\n' "${_ESC_LUPASS}" \
             | dd of="./${_usrLtd}" conv=excl status=none 2> /dev/null ) \
@@ -5501,7 +5501,7 @@ _satellite_remove_web_user() {
       # what deluser left: a removed user's own entries (its number no
       # longer resolves) and the account's go, another account's stays
       if [ -d "/home/${_WEB}/" ]; then
-        ( cd -P -- /home && [ "$(pwd -P)" = "/home" ] && _ltd_rm_glob_own_here \
+        ( cd -P -- /home && [ "$(/bin/pwd -P)" = "/home" ] && _ltd_rm_glob_own_here \
           "$(_acct_walk_uids "${_WEB%%.*}" || echo 0)" "${_WEB}" )
       fi
     fi
@@ -6058,11 +6058,11 @@ _ltd_fpm_plat_gen() {
     _txt="${_txt:0:65536}"
     _sk+="past 64 KiB: not read, this file takes 64 KiB"$'\n'
   fi
-  _hop=$(cd -P -- "${_dscUsr}" 2> /dev/null && pwd -P)
-  _hmp=$(cd -P -- "${_dscUsr}/aegir" 2> /dev/null && pwd -P)
-  _alp=$(cd -P -- /data/all 2> /dev/null && pwd -P)
+  _hop=$(cd -P -- "${_dscUsr}" 2> /dev/null && /bin/pwd -P)
+  _hmp=$(cd -P -- "${_dscUsr}/aegir" 2> /dev/null && /bin/pwd -P)
+  _alp=$(cd -P -- /data/all 2> /dev/null && /bin/pwd -P)
   # a static tree the box mounts elsewhere is still the account's
-  _stp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
+  _stp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && /bin/pwd -P)
   [[ "${_stp}" == /mnt/?* ]] || _stp=""
   # every platform registered, for a folder that holds one through a link:
   # $document_root is the text the platform was registered with
@@ -6073,7 +6073,7 @@ _ltd_fpm_plat_gen() {
       _r="${BASH_REMATCH[1]%/}"
       [ "${#_r}" -le 1000 ] && [[ "${_r}" =~ ^/[A-Za-z0-9._/-]+$ ]] && [[ "/${_r}/" != */../* ]] \
         && [[ "/${_r}/" != */./* ]] && [[ "${_r}" != *//* ]] || continue
-      _rp=$(cd -P -- "${_r}" 2> /dev/null && pwd -P) || continue
+      _rp=$(cd -P -- "${_r}" 2> /dev/null && /bin/pwd -P) || continue
       [ -n "${_hmp}" ] && case "${_rp}/" in "${_hmp}/"*) continue ;; esac
       _ar+=("${_r}")
       _ap+=("${_rp}")

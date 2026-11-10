@@ -1250,7 +1250,7 @@ _grp_walk() {
         # entered from its parent, only when it is the directory find met
         # there, never on the target of a link swapped in after the test.
         find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
-          -execdir sh -c 'p=$(pwd -P); for d; do ( cd -P -- "$d" 2> /dev/null && [ "$(pwd -P)" = "${p%/}/${d#./}" ] && chgrp -h "$0" . 2> /dev/null && chmod g+s . 2> /dev/null ); done' "${_to}" {} + 2> /dev/null
+          -execdir sh -c 'p=$(/bin/pwd -P); for d; do ( cd -P -- "$d" 2> /dev/null && [ "$(/bin/pwd -P)" = "${p%/}/${d#./}" ] && chgrp -h "$0" . 2> /dev/null && chmod g+s . 2> /dev/null ); done' "${_to}" {} + 2> /dev/null
       fi
       env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_from}" \
         -execdir perl -e "${_GRP_REOWN_PL}" -- "${_toGid}" "${_uids}" "${_from}" -1 -1 {} + > /dev/null 2>&1
@@ -1401,11 +1401,11 @@ _ig_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 # ./$1 in the current (pinned) directory: never through a link, never blocked
@@ -4751,7 +4751,7 @@ _WG_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migra
 _wg_in() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # ---- the walks ---------------------------------------------------------------------
@@ -5044,7 +5044,7 @@ _wg_private_here() {
 _wg_denied_here() {
   local _d
   while LC_ALL=C IFS= read -r -d '' _d; do
-    _wg_in "$(pwd -P)/${_d#./}" _wg_private_here "${1}" "${2}" "${3}" "${4}"
+    _wg_in "$(/bin/pwd -P)/${_d#./}" _wg_private_here "${1}" "${2}" "${3}" "${4}"
   done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P . -regextype posix-extended -type d \
     -iregex "${_WG_DENIED_RE}" -prune -print0 2> /dev/null)
 }

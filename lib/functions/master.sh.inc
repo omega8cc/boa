@@ -36,16 +36,16 @@ _php_cli_local_dirs_update() {
     [ -L "${_U_HD}" ] && rm -f "${_U_HD}"
     mkdir -p ${_U_TP}
     mkdir -p ${_U_HD}
-    _U_REAL="$(cd -P -- /var/aegir 2> /dev/null && pwd -P)"
+    _U_REAL="$(cd -P -- /var/aegir 2> /dev/null && /bin/pwd -P)"
     # aged out only when .tmp is aegir's own (or the empty one just made):
     # a root-owned directory of the tree renamed onto the name is left alone
-    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
       [ "$(stat -c %U .)" = "aegir" ] \
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
     # the stamp is created exclusively, never through a link at the name
-    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
+    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
       echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
     )

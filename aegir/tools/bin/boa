@@ -94,8 +94,8 @@ _clean_pid_exit() {
 _boa_in_real_dir() {
   local _d="${1}" _want
   shift
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory with the content $2 (root's, 0644):
 # a fresh file created exclusively, then renamed over the name, so a link or
@@ -3602,7 +3602,7 @@ _purge_run_gate() {
 _purge_read_in() {
   case "${1}" in
     /data/disk/?*) _boa_in_real_dir "${1}" _boa_read_here "${2}" ;;
-    *) ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] \
+    *) ( cd -P -- "${1}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
       && _boa_read_here "${2}" ) ;;
   esac
 }
@@ -4166,7 +4166,7 @@ _octopus_cleanup() {
         if [ "${_sites_nr}" != "0" ]; then
           mkdir -p ${_zombie_dir}vhost.d
           ( cd -P -- "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" 2>/dev/null \
-            && [ "$(pwd -P)" = "$(cd -P /data/disk 2>/dev/null && pwd -P)/${_usEr}/config/server_master/nginx/vhost.d" ] \
+            && [ "$(/bin/pwd -P)" = "$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_usEr}/config/server_master/nginx/vhost.d" ] \
             && mv -f -- ./* "${_zombie_dir}vhost.d/" 2>/dev/null )
           echo "parked ${_sites_nr} vhost file(s) of ${_usEr} in ${_zombie_dir}vhost.d/"
         fi
@@ -4381,12 +4381,12 @@ _octopus_cleanup() {
             done
             echo disabling chattr for ${_usr_name} in ${_usr_home}..
             ( cd -P -- "${_usr_home}" 2> /dev/null \
-              && [ "$(pwd -P)" = "$(cd -P -- "${_usr_home%/*}" 2> /dev/null && pwd -P)/${_usr_home##*/}" ] \
+              && [ "$(/bin/pwd -P)" = "$(cd -P -- "${_usr_home%/*}" 2> /dev/null && /bin/pwd -P)/${_usr_home##*/}" ] \
               && _boa_unlock_tree_here )
             # on '.' inside the real .drush only: the name is the account's,
             # and a trailing slash would clear the flag of a link's target
             ( cd -P -- "${_usr_home}/.drush" 2> /dev/null \
-              && [ "$(pwd -P)" = "$(cd -P -- "${_usr_home}" 2> /dev/null && pwd -P)/.drush" ] \
+              && [ "$(/bin/pwd -P)" = "$(cd -P -- "${_usr_home}" 2> /dev/null && /bin/pwd -P)/.drush" ] \
               && chattr -i . )
             for _rmT in "${_rmTrees[@]}"; do
               rm -rf "${_usr_home}/${_rmT}"
@@ -4891,7 +4891,7 @@ _archived_rm_in() {
   # 1 when the store is not the directory it was or a removal failed.
   local _o
   _o=$(_acct_walk_uids "${3}") || return 1
-  ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+  ( cd -P -- "${1}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${1}" ] || exit 1
     [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
     _n=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${2}" 2> /dev/null)
     _rc=$?

@@ -404,13 +404,13 @@ _read_account_file() {
   _RAF_DIR="${1%/*}"
   case "${_RAF_DIR}" in
     /data/disk/?*)
-      _RAF_WANT="$(cd -P -- /data/disk 2>/dev/null && pwd -P)${_RAF_DIR#/data/disk}"
+      _RAF_WANT="$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)${_RAF_DIR#/data/disk}"
       ;;
     *)
-      _RAF_WANT="$(cd -P -- "${_RAF_DIR%/*}" 2>/dev/null && pwd -P)/${_RAF_DIR##*/}"
+      _RAF_WANT="$(cd -P -- "${_RAF_DIR%/*}" 2>/dev/null && /bin/pwd -P)/${_RAF_DIR##*/}"
       ;;
   esac
-  ( cd -P -- "${_RAF_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_RAF_WANT}" ] \
+  ( cd -P -- "${_RAF_DIR}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_RAF_WANT}" ] \
     && timeout 10 dd if="./${1##*/}" iflag=nofollow,nonblock,fullblock \
       bs=1048576 count=1 status=none 2>/dev/null )
 }
@@ -1359,7 +1359,7 @@ _store_in_pinned() {
   # there, so a ./name stays in it whatever is swapped meanwhile.
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 _store_up() {
@@ -1405,7 +1405,7 @@ _store_in_bound() {
   # in the directory it checked.
   local _h="${1}" _d="${2}"
   shift 2
-  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] \
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
     && _store_bound_here "${_h}" "${_d}" && "$@" )
 }
 
@@ -1413,8 +1413,8 @@ _store_real_sub() {
   # Echo the resolved path of ./$1 in the current (pinned) dir, only when
   # entering it for real lands there; nothing otherwise.
   local _h
-  _h="$(pwd -P)"
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_h}/${1}" ] && pwd -P )
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_h}/${1}" ] && /bin/pwd -P )
 }
 
 _make_unique_target_here() {
@@ -1555,7 +1555,7 @@ _store_arch_dir_here() {
   # one mkdir in a directory checked to lie in the store. Internal mkdir logs
   # go to stderr so only the path is captured by the caller.
   local _p
-  _store_mkdir_here ".archived" "$(pwd -P)" >&2 || return 1
+  _store_mkdir_here ".archived" "$(/bin/pwd -P)" >&2 || return 1
   _p=$(_store_real_sub ".archived") || return 1
   _store_in_bound "${1}" "${_p}" _store_mkdir_here "${2}" "${_p}" >&2 || return 1
   _p=$(_store_in_bound "${1}" "${_p}" _store_real_sub "${2}") || return 1
@@ -1577,7 +1577,7 @@ _store_arch_stamp_here() {
   # mkdir in a directory checked to lie in the store. Internal mkdir logs go to
   # stderr so only the path is captured by the caller.
   local _p
-  _store_mkdir_here ".archived" "$(pwd -P)" >&2 || return 1
+  _store_mkdir_here ".archived" "$(/bin/pwd -P)" >&2 || return 1
   _p=$(_store_real_sub ".archived") || return 1
   _store_in_bound "${1}" "${_p}" _store_mkdir_here "${2}" "${_p}" >&2 || return 1
   _store_in_bound "${1}" "${_p}" _store_real_sub "${2}"
@@ -1786,8 +1786,8 @@ _acct_ctrl_own() {
   # judge it by: read as before
   _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
   [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
   case "${_r}" in
     OK|ABSENT) return 0 ;;
@@ -2962,7 +2962,7 @@ _unshare_copy() {
     # directory two levels below static/, so a base whose site name starts
     # with "module" can be one): any name there, a staging name included,
     # could be another identity's.
-    cd -P -- "${_real}" 2>/dev/null && [ "$(pwd -P)" = "${_real}" ] || exit 2
+    cd -P -- "${_real}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_real}" ] || exit 2
     _store_bound_here "${_h}" "${_real}" || exit 2
     _st=$(stat -c '%u %a' . 2>/dev/null)
     [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
@@ -2975,7 +2975,7 @@ _unshare_copy() {
     # all the account-side work runs inside the pinned staging dir, so the
     # final rename's .. is this base and no name in it is looked up again
     if (
-      cd -P -- "./${_w}" 2>/dev/null && [ "$(pwd -P)" = "${_real}/${_w}" ] \
+      cd -P -- "./${_w}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_real}/${_w}" ] \
         && [ -n "${_wid}" ] && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_wid}" ] || exit 1
       # root's marker, in a directory only root can write, holding the
       # staging dir's own inode: a later run tells a staging dir this tool
@@ -2989,7 +2989,7 @@ _unshare_copy() {
         # the caller's directory, entered for real and still the one it
         # recorded; the copy's target is this staging dir held open on fd 9
         { exec 9< .; } 2>/dev/null || exit 1
-        ( cd -P -- "${_src}" 2>/dev/null && [ "$(pwd -P)" = "${_src}" ] \
+        ( cd -P -- "${_src}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_src}" ] \
           && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_sid}" ] \
           && setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
             rsync "${_UNSHARE_RSYNC_ARGS[@]}" -- ./ "/proc/self/fd/9/${_type}/" >&2 ) || exit 1
@@ -3037,7 +3037,7 @@ _unshare_staging_rm_here() {
   # marker and the staging dir, each by a name checked in the staging dir
   # entered for real. rc 1 when something is left in it.
   local _n="${1}" _t="${2}" _uid="${3}" _gid="${4}" _id="${5}" _p _u _m _di _ty
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   read -r _u _m _di _ty < <(stat -c '%u %a %d:%i %F' -- "./${_n}" 2>/dev/null)
   [ "${_ty}" = "directory" ] && [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
     && (( (8#${_m} & 8#022) == 0 )) || return 2
@@ -3045,7 +3045,7 @@ _unshare_staging_rm_here() {
     [ "${_di}" = "${_id}" ] || return 2
   fi
   (
-    cd -P -- "./${_n}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${_n}" ] \
+    cd -P -- "./${_n}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}" ] \
       && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_di}" ] || exit 2
     if [ -z "${_id}" ]; then
       read -r _u _m _ty < <(stat -c '%u:%h %a %F' -- ./.autosymlink-staging 2>/dev/null)
@@ -3059,7 +3059,7 @@ _unshare_staging_rm_here() {
       if [ "${_u}" = "${_uid}" ]; then
         # emptied from inside, entered for real (only root can rename in the
         # staging dir, so the name still holds the copy's directory)
-        ( cd -P -- "./${_t}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${_n}/${_t}" ] \
+        ( cd -P -- "./${_t}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}/${_t}" ] \
           && _rm_tree_as_here "${_uid}" "${_gid}" )
       elif [ "${_u}" != "0" ]; then
         exit 1
@@ -3091,11 +3091,11 @@ _unshare_stale_here() {
     _unshare_staging_rm_here "${_st#./}" "${1}" "${2}" "${3}" ""
     _rc=$?
     if [ "${_rc}" = "0" ]; then
-      _log "[INFO] Removed the staging dir of an un-share copy whose run is gone: $(pwd -P)/$(printf '%q' "${_st#./}")"
+      _log "[INFO] Removed the staging dir of an un-share copy whose run is gone: $(/bin/pwd -P)/$(printf '%q' "${_st#./}")"
     elif [ "${_rc}" = "2" ]; then
-      _log "[WARN] Left $(pwd -P)/$(printf '%q' "${_st#./}"): not a staging dir this tool can prove it made; remove it by hand after a check"
+      _log "[WARN] Left $(/bin/pwd -P)/$(printf '%q' "${_st#./}"): not a staging dir this tool can prove it made; remove it by hand after a check"
     else
-      _log "[WARN] Left the staging dir $(pwd -P)/$(printf '%q' "${_st#./}") of an un-share copy whose run is gone: it holds an entry the account cannot remove; remove it by hand after a check"
+      _log "[WARN] Left the staging dir $(/bin/pwd -P)/$(printf '%q' "${_st#./}") of an un-share copy whose run is gone: it holds an entry the account cannot remove; remove it by hand after a check"
     fi
   done
   return 0
@@ -3198,8 +3198,8 @@ _sub_id_here() {
   # cwd = a pinned dir. Echo the dev:ino of ./$1 entered for real (cd -P, and
   # pwd -P lands there); nothing (status 1) otherwise.
   local _p
-  _p="$(pwd -P)"
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${1}" ] \
+  _p="$(/bin/pwd -P)"
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${1}" ] \
     && stat -c '%d:%i' . 2>/dev/null )
 }
 
@@ -3208,9 +3208,9 @@ _in_sub_id_here() {
   # only while it is the directory of dev:ino $2. rc 1 when it is not.
   local _p _n="${1}" _id="${2}"
   shift 2
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   [ -n "${_id}" ] || return 1
-  ( cd -P -- "./${_n}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${_n}" ] \
+  ( cd -P -- "./${_n}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}" ] \
     && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_id}" ] || exit 1
     "$@" )
 }
@@ -3234,10 +3234,10 @@ _aside_rm_here() {
   # name while the name still holds it. rc 1 when it is not removed (not that
   # directory, no account identity, or an entry the account cannot remove).
   local _p
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   [[ "${3}" =~ ^[1-9][0-9]*$ && "${4}" =~ ^[0-9]+$ ]] || return 1
   [ -n "${2}" ] && [ "$(stat -c '%d:%i' -- "./${1}" 2>/dev/null)" = "${2}" ] || return 1
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${1}" ] \
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${1}" ] \
     && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${2}" ] \
     && _rm_tree_as_here "${3}" "${4}" ) || return 1
   [ "$(stat -c '%d:%i' -- "./${1}" 2>/dev/null)" = "${2}" ] || return 1
@@ -3259,10 +3259,10 @@ _aside_catch_up_here() {
   # aside: a dry pass without it follows (_aside_same_here), and any regular
   # file it lists, or its failure, keeps the aside too (rc 3).
   local _p _uid="${6}" _gid="${7}"
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   [[ "${_uid}" =~ ^[1-9][0-9]*$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
   [ -n "${2}" ] || return 1
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${1}" ] \
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${1}" ] \
       && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${2}" ] || exit 1
     _store_hold_here "${3}" "${5}" || exit 1
     [ -d "/proc/self/fd/9/${4}" ] && [ ! -L "/proc/self/fd/9/${4}" ] \

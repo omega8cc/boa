@@ -1513,7 +1513,7 @@ verb_create() {
          _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"; }
   # tools/le is the account's: the name is removed inside the real .ctrl
   # only, never through a link put on the way
-  ssh "root@${_TARGET}" "cd -P -- /data/disk/${_ACCOUNT}/tools/le/.ctrl 2>/dev/null && test \"\$(pwd -P)\" = \"\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/tools/le/.ctrl\" && /bin/rm -f ./ssl-demo-mode.pid" 2>/dev/null
+  ssh "root@${_TARGET}" "cd -P -- /data/disk/${_ACCOUNT}/tools/le/.ctrl 2>/dev/null && test \"\$(/bin/pwd -P)\" = \"\$(cd -P /data/disk && /bin/pwd -P)/${_ACCOUNT}/tools/le/.ctrl\" && /bin/rm -f ./ssl-demo-mode.pid" 2>/dev/null
 
   # hard quiescence on PROCESSES only: /var/xdrago/run-<oN> is a standing
   # file (persistent dispatcher trigger), so its existence never means busy
@@ -1775,7 +1775,7 @@ verb_export() {
 # is the remote shell text that enters it (the rsync receiver's
 # --rsync-path runs it first, so the relative destination resolves there).
 _a2b_rcd_a2b() {
-  printf 'cd -P -- /data/disk/%s/static/a2b && test "$(pwd -P)" = "$(cd -P /data/disk && pwd -P)/%s/static/a2b" && test "$(stat -c %%u .)" = 0' \
+  printf 'cd -P -- /data/disk/%s/static/a2b && test "$(/bin/pwd -P)" = "$(cd -P /data/disk && /bin/pwd -P)/%s/static/a2b" && test "$(stat -c %%u .)" = 0' \
     "${_ACCOUNT}" "${_ACCOUNT}"
 }
 # A tree walk that hands the landed names over (find -execdir, inside the
@@ -1884,7 +1884,7 @@ verb_transfer() {
   # static/a2b made inside the real static/ (root's, as mkdir made it),
   # never through a link; one that is anyone else's is refused, and nobody
   # but root may write it
-  ssh "root@${_TARGET}" "cd -P -- ${_dst}/static && test \"\$(pwd -P)\" = \"\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static\" && { test ! -L ./a2b || rm -f ./a2b; } && { test -d ./a2b || mkdir ./a2b; } && $(_a2b_rcd_a2b) && chmod go-w ." \
+  ssh "root@${_TARGET}" "cd -P -- ${_dst}/static && test \"\$(/bin/pwd -P)\" = \"\$(cd -P /data/disk && /bin/pwd -P)/${_ACCOUNT}/static\" && { test ! -L ./a2b || rm -f ./a2b; } && { test -d ./a2b || mkdir ./a2b; } && $(_a2b_rcd_a2b) && chmod go-w ." \
     || _die "${_dst}/static/a2b on ${_TARGET} is not a real directory of root's - refusing to land platforms there"
   local _done_plat=" " _tgtGrp=""
   for _mf in ${_mfl}; do
@@ -1934,7 +1934,7 @@ _G=\$(getent group '${_tgtGrp}' 2>/dev/null | cut -d: -f3)
 case "\${_U}:\${_G}" in :*|*:|*[!0-9:]*) exit 1 ;; esac
 $(_a2b_rcd_a2b) || exit 1
 cd -P -- './${_plat}' 2>/dev/null || exit 1
-[ "\$(pwd -P)" = "\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static/a2b/${_plat}" ] || exit 1
+[ "\$(/bin/pwd -P)" = "\$(cd -P /data/disk && /bin/pwd -P)/${_ACCOUNT}/static/a2b/${_plat}" ] || exit 1
 env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) -execdir perl -e "\${_P}" "\${_U}" "\${_G}" {} +
 REOWN
         _done_plat="${_done_plat}${_plat} "
@@ -2042,8 +2042,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
-_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
-( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+_W="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_W}" ] \
     && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] \
@@ -2490,11 +2490,11 @@ _a2b_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
 _a2b_read_here() {

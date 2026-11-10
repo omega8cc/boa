@@ -1549,7 +1549,7 @@ _rst_acct_named() {
 _rst_ground_of() {
   local _d="${1}" _a="" _b _m
   for _b in /data/disk /home; do
-    _m="$(cd -P -- "${_b}" 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- "${_b}" 2> /dev/null && /bin/pwd -P)"
     [ -n "${_m}" ] && [ "${_d#"${_m}"/}" != "${_d}" ] || continue
     _a="${_d#"${_m}"/}"
     _a="${_a%%/*}"
@@ -1579,7 +1579,7 @@ _rst_ground_of() {
 _rst_in_pinned() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # duplicity writes a restore by path, so a link an account puts in its own
@@ -1789,7 +1789,7 @@ _acct_reclaim_restored() {
   # link, a link or a FIFO put in it is left alone, and no file outside it is
   # regrouped (nothing checks a link's own group).
   if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
         ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
         \( -type d -o -type f \) \

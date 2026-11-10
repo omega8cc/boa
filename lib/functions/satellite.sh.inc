@@ -423,7 +423,7 @@ _satellite_web_user_update() {
     # is the web user's (a compromised site in the pool can plant one at any
     # moment): past the link strip, root works on .lock, .drush and the stamp
     # only inside the real directories, creating files exclusively
-    _T_HR="$(cd -P -- /home 2> /dev/null && pwd -P)/${_WEB}"
+    _T_HR="$(cd -P -- /home 2> /dev/null && /bin/pwd -P)/${_WEB}"
     # held off only by a lock an update wrote: a regular root file with one
     # link at .lock younger than an hour; a name the web user planted there
     # (a hard link to a file root owns included), or a lock an interrupted
@@ -442,7 +442,7 @@ _satellite_web_user_update() {
         fi
       done
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
+      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}" ] || exit 0
         rm -f -- ./.lock
         echo | dd of=./.lock conv=excl status=none 2> /dev/null )
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -477,7 +477,7 @@ _satellite_web_user_update() {
       # created them, _satellite_put_stdin_here), and the flag on php.ini is
       # changed through a handle (_ACCT_CHATTR_PL): a hard link the web user
       # renames over either name is never handed over or locked
-      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
+      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}/.drush" ] || exit 0
         chattr -i . 2> /dev/null
         [ -f ./php.ini ] && [ ! -L ./php.ini ] \
           && perl -e "${_ACCT_CHATTR_PL}" - ./php.ini 2> /dev/null
@@ -500,12 +500,12 @@ _satellite_web_user_update() {
       # handed over as chown -R did, from inside the real home, never a
       # link or a file the web user hard-linked there (_satellite_reown_here)
       _acct_in_real_dir "/home/${_WEB}" _satellite_reown_here "${_WEB}:www-data"
-      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
+      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}/.drush" ] || exit 0
         chmod 550 .
         chattr +i . 2> /dev/null
         [ -f ./php.ini ] && [ ! -L ./php.ini ] \
           && perl -e "${_ACCT_CHATTR_PL}" + ./php.ini 2> /dev/null )
-      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
+      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}" ] || exit 0
         rm -f -- ./.lock )
       chattr +i /home/${_WEB}/
     fi
@@ -2015,21 +2015,21 @@ _satellite_update_local_dirs_cli() {
     [ -L "${_U_HD}" ] && rm -f "${_U_HD}"
     mkdir -p ${_U_TP}
     mkdir -p ${_U_HD}
-    _U_REAL="$(cd -P -- "${_ROOT}" 2> /dev/null && pwd -P)"
+    _U_REAL="$(cd -P -- "${_ROOT}" 2> /dev/null && /bin/pwd -P)"
     # aged out only when .tmp is the instance user's own (or the empty one just made):
     # a root-owned directory of the tree renamed onto the name is left alone.
     # Only what root or the account's own identities own is removed
     # (_satellite_aged_rm_own_here): the account can rename into .tmp what
     # another account left group-writable, which stays whole and is counted
     # on one NOTE line
-    _T_N=$( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+    _T_N=$( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
       [ "$(stat -c %U .)" = "${_USER}" ] \
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       _satellite_aged_rm_own_here 0 )
     _satellite_left_note "${_T_N}" "in place in ${_U_TP}"
     # the stamp is created exclusively, never through a link at the name
-    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
+    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       mkdir -p ./sys ./xts ./usr
       rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
       echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
@@ -6173,10 +6173,10 @@ for my $f (@ARGV) {
 # tree; anything else: the password files and the path to them only.
 _satellite_server_master_modes() {
   local _sm
-  _sm="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/config/server_master"
+  _sm="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/config/server_master"
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${_ROOT}/config/server_master" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_sm}" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "${_sm}" ] || exit 1
     if [ "${1}" = "all" ]; then
       find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
         -execdir perl -e "${_SAT_FCHMOD_PL}" d 0700 "${_USER}" "${_WEBG}" {} +
@@ -6186,7 +6186,7 @@ _satellite_server_master_modes() {
     perl -e "${_SAT_FCHMOD_PL}" d 0755 "${_USER}" "${_WEBG}" . ./nginx )
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${_ROOT}/config/server_master/nginx" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_sm}/nginx" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "${_sm}/nginx" ] || exit 1
     _t=p
     if [ ! -e ./passwords.d ] && [ ! -L ./passwords.d ]; then
       mkdir -m 02710 ./passwords.d && _t=q
@@ -6194,7 +6194,7 @@ _satellite_server_master_modes() {
     perl -e "${_SAT_FCHMOD_PL}" "${_t}" 02710 "${_USER}" "${_WEBG}" ./passwords.d )
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${_ROOT}/config/server_master/nginx/passwords.d" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
     shopt -s dotglob nullglob
     set -- ./*
     [ "$#" -gt 0 ] || exit 0
@@ -6715,7 +6715,7 @@ _satellite_clients_clean_here() {
   _satellite_rm_own_here nocomega8cc
   for _c in ./*; do
     [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
-    _acct_in_real_dir "$(pwd -P)/${_c#./}" _satellite_rm_own_here backups
+    _acct_in_real_dir "$(/bin/pwd -P)/${_c#./}" _satellite_rm_own_here backups
   done
   find . -xdev -mindepth 1 -xtype l -delete 2> /dev/null
   return 0
@@ -7158,11 +7158,11 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     # distro/<core>, never through a platform entry the account planted as a
     # link.
     local _qW
-    _qW="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/distro/${_THIS_CORE}"
+    _qW="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/distro/${_THIS_CORE}"
     if [ -n "${_THIS_CORE}" ]; then
       ( PATH=/usr/local/bin:/usr/bin:/bin
         cd -P -- "${_ROOT}/distro/${_THIS_CORE}" 2> /dev/null \
-          && [ "$(pwd -P)" = "${_qW}" ] || exit 0
+          && [ "$(/bin/pwd -P)" = "${_qW}" ] || exit 0
         find . -mindepth 2 -maxdepth 2 -name robots.txt ! -type d -delete ) &> /dev/null
     fi
     ### The core and the shared store are the account's during the build:
@@ -8992,7 +8992,7 @@ _satellite_in_store() {
     return
   fi
   _r="$(readlink -f -- "${_d}" 2> /dev/null)"
-  _s="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/static/files/"
+  _s="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/static/files/"
   # The store on attached storage is /mnt/<mount>/files/<oN>/static/files,
   # the mount itself possibly nested, as migratefs accepts it under /mnt,
   # as the nightly decides it.
@@ -9013,7 +9013,7 @@ _satellite_in_store() {
   case "${_k}:${_top}" in
     site:.*) return 1 ;;
   esac
-  ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
+  ( cd -P -- "${_r}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_r}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory made a directory where missing,
 # then "${@:2}" run inside it as _acct_in_real_dir runs it: a link put at
@@ -10679,7 +10679,7 @@ _satellite_normalize_scratch_owner() {
 # over, is asserted root's again the same way (_satellite_conf_root_here).
 _satellite_shared_back() {
   local _b
-  _b="$(cd -P -- "${1}" 2> /dev/null && pwd -P)"
+  _b="$(cd -P -- "${1}" 2> /dev/null && /bin/pwd -P)"
   [ -n "${_b}" ] || return 0
   if [ ! -f "${1}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
     _acct_in_real_dir "${_b}" _satellite_shared_fix_here &> /dev/null
@@ -10858,12 +10858,12 @@ _satellite_batch_cleanup() {
 # path find reported.
 _satellite_static_modules_here() {
   local _s _m
-  _s="$(pwd -P)"
+  _s="$(/bin/pwd -P)"
   find . -maxdepth 5 \( -name '.?*' -prune \) \
     -o \( -path './*/*' -type d -name 'module*' -print0 \) \
     | while LC_ALL=C IFS= read -r -d '' _m; do
       ( cd -P -- "${_m}" 2> /dev/null \
-        && [ "$(pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
+        && [ "$(/bin/pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
     done
 }
 

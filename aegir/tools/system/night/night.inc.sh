@@ -253,11 +253,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -348,10 +348,10 @@ _ctrl_in_stage_dir() {
 }
 _ctrl_stage_here() {
   local _h _st
-  _h="$(pwd -P)/.boa-ctrl"
+  _h="$(/bin/pwd -P)/.boa-ctrl"
   [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
   [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
-  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
   chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
   # root's, and nobody else's to enter or write
   _st=$(stat -c '%u %a' . 2> /dev/null)
@@ -427,7 +427,7 @@ _reseed_ctrl_ini() {
   esac
   _rsd=$(realpath -e -- "${_src%/*}" 2>/dev/null) || return 1
   (
-    cd -P -- "${_rpn}" 2>/dev/null && [ "$(pwd -P)" = "${_rpn}" ] || exit 1
+    cd -P -- "${_rpn}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_rpn}" ] || exit 1
     exec 9< . || exit 1
     _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
   )
@@ -438,7 +438,7 @@ _reseed_ctrl_ini() {
 _reseed_ctrl_ini_here() {
   local _new
   _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
-  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(pwd -P)" = "${1}" ] \
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
     && _acct_read_plain_here "${2}" ) > "${_new}"; then
     rm -f -- "${_new}"
     return 1
@@ -511,7 +511,7 @@ _heal_foreign_cms_ctrl_ini() {
   esac
   (
     cd -P -- "${_rmd}" 2>/dev/null || exit 0
-    [ "$(pwd -P)" = "${_rmd}" ] || exit 0
+    [ "$(/bin/pwd -P)" = "${_rmd}" ] || exit 0
     if [ -n "${_n}" ]; then
       for _f in "default.${_n}" "${_n}"; do
         if [ -L "./${_f}" ] || [ -f "./${_f}" ]; then
@@ -521,7 +521,7 @@ _heal_foreign_cms_ctrl_ini() {
       done
     fi
     cd -P .. 2>/dev/null || exit 0
-    [ "$(pwd -P)" = "${_rmd%/*}" ] || exit 0
+    [ "$(/bin/pwd -P)" = "${_rmd%/*}" ] || exit 0
     rmdir -- "${_rmd##*/}" 2>/dev/null \
       && echo "Foreign-CMS empty dir removed: ${_rmd}"
   )
@@ -816,8 +816,8 @@ _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { s
 # hard link, and a name swapped for anything else is never entered.
 _night_chattr_sub_here() {
   local _h
-  _h="$(pwd -P)"
-  ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${2}" ] \
     && chattr "${1}i" . ) &> /dev/null
   return 0
 }
@@ -1011,8 +1011,8 @@ _acct_ctrl_own() {
   # judge it by: read as before
   _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
   [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
     && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
   case "${_r}" in
     OK|ABSENT) return 0 ;;

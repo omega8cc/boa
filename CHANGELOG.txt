@@ -120,6 +120,14 @@
       stays writable by the shared group, and a control folder that is not
       the account's own is left unread, with an ALERT line saying why.
 
+    * Root's checks that it stands in an account's own folder, before it
+      reads, writes, changes the owner or mode of, or removes anything
+      there, read the folder the shell is really in. They compared bash's
+      own /bin/pwd -P, which reads back the path cd was given: an account that
+      swapped one of its folders for a link at the right moment passed the
+      check from inside a folder of root's, where root then acted as if it
+      were the account's own.
+
     * An account's request to restart Nginx or the cache server, or to
       reload PHP-FPM, is honoured at most once in 15 minutes for that
       account and service, and only as a plain file of the account's own in

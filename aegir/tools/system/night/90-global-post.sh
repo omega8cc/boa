@@ -54,11 +54,11 @@ if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
       /data/disk/?*) _a=/data/disk ;;
     esac
     if [ -n "${_a}" ]; then
-      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+      _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
     else
-      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
     fi
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
   }
 fi
 if ! declare -F _acct_read_here > /dev/null 2>&1; then
@@ -574,7 +574,7 @@ _shared_codebases_here() {
   local -A _cbIn=() _cbUse=() _rSeen=()
   _rxT="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*${_q}"
   _rxU="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*\$"
-  _gReal="$(pwd -P)"
+  _gReal="$(/bin/pwd -P)"
   for _t in ./*/*; do
     _t="${_t#./}"
     [ -d "./${_t}" ] && [ ! -L "./${_t}" ] && [ ! -L "./${_t%%/*}" ] || continue
@@ -1133,12 +1133,12 @@ _global_store_fix_here() (
 _global_cld_prune_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
   local _h
-  _h="$(pwd -P)"
+  _h="$(/bin/pwd -P)"
   # data/all is entered once by its real path and walked from there, so a
   # name on the way swapped for a link moves nothing outside it.
   if [ -d ./data/all ] && [ ! -L ./data ] && [ ! -L ./data/all ]; then
     (
-      cd -P -- ./data/all 2> /dev/null && [ "$(pwd -P)" = "${_h}/data/all" ] \
+      cd -P -- ./data/all 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/data/all" ] \
         || exit 0
       find . -mindepth 2 -maxdepth 2 -ctime +7 -prune -execdir rm -rf -- {} +
       find . -mindepth 1 -maxdepth 1 -type d -empty -delete

@@ -2653,7 +2653,7 @@ _xoct_in_real_dir() {
   local _d="${1}" _want
   shift
   _want="$(_xoct_real_want "${_d}")"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 ### ./$1 in the current (pinned) directory: never through a link, never
 ### blocked on a FIFO, at most 1 MiB; empty for anything else.
@@ -2960,7 +2960,7 @@ _mydumper_session() {
   _MYDUMPER_PREV="$!"
   trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
   ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
     && exec setsid -w "$@" ) < /dev/null &
   _MYDUMPER_PID=$!
   wait "${_MYDUMPER_PID}"
@@ -3153,8 +3153,8 @@ _xoct_remote_in() {
   local _a=/data/disk
   case "${2}" in /home/?*) _a=/home ;; esac
   ssh root@"${1}" "${_XOCT_REMOTE_CTRL_FN}
-_w=\"\$(cd -P ${_a} 2> /dev/null && pwd -P)${2#"${_a}"}\"
-cd -P -- \"${2}\" 2> /dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+_w=\"\$(cd -P ${_a} 2> /dev/null && /bin/pwd -P)${2#"${_a}"}\"
+cd -P -- \"${2}\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
 }
 ### The commands $3 inside the real static/control of the account $2 there.
 _xoct_remote_ctrl() {
@@ -3171,7 +3171,7 @@ _xoct_rsync_path_in() {
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
   esac
-  printf '%s' "cd -P -- '${1}' && [ \"\$(pwd -P)\" = \"\$(cd -P ${_a} && pwd -P)${1#"${_a}"}\" ] && rsync"
+  printf '%s' "cd -P -- '${1}' && [ \"\$(/bin/pwd -P)\" = \"\$(cd -P ${_a} && /bin/pwd -P)${1#"${_a}"}\" ] && rsync"
 }
 ### As _xoct_rsync_path_in, but the last name of $1 is made a real directory
 ### first (a link the account put there is removed, a missing directory
@@ -3184,7 +3184,7 @@ _xoct_rsync_path_mk_in() {
   esac
   _p="${_d%/*}"
   _n="${_d##*/}"
-  printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  printf '%s' "_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
 }
 ### The entries of the current (pinned) directory the glob $3 names copied
 ### into the real directory $2 on the target $1, as _xoct_copy_here does it,
@@ -3208,10 +3208,10 @@ _xoct_real_want() {
     /opt/user/?*) _a=/opt/user ;;
   esac
   if [ -n "${_a}" ]; then
-    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
     # the parent of a top-level directory (/root) is /, never an empty name
-    _p="$(cd -P -- "${_d%/*}/" 2> /dev/null && pwd -P)"
+    _p="$(cd -P -- "${_d%/*}/" 2> /dev/null && /bin/pwd -P)"
     printf '%s/%s' "${_p%/}" "${_d##*/}"
   fi
 }
@@ -3224,14 +3224,14 @@ _xoct_in_canon_dir() {
     /?*) ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### The --rsync-path that starts the receiver inside the canonical directory
 ### $1 on the target, and only once pwd -P says it is there.
 _xoct_canon_rpath() {
   local _q
   _q="$(_shq "${1}")"
-  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(/bin/pwd -P)\" = '${_q}' ] && rsync"
 }
 ### Whether the canonical path $2 belongs to the account $1: its own tree,
 ### or its own part of an attached store, <mount>/files/<oN>/, the layout
@@ -3258,7 +3258,7 @@ _xoct_own_path() {
     esac
   fi
   if [ -L /mnt ]; then
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_m}" in
       ''|/|/mnt|/data|/data/*) ;;
       *)
@@ -3303,11 +3303,11 @@ _xoct_own_parent_cd() {
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  _xoct_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+  _xoct_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" \
     || return 1
   mkdir -p -- "${_p}" 2> /dev/null
   cd -P -- "${_p}" 2> /dev/null || return 1
-  _xoct_own_path "${_a}" "$(pwd -P)"
+  _xoct_own_path "${_a}" "$(/bin/pwd -P)"
 }
 ### Run there as above: make the directory $3 of the account $2 ready for a
 ### copy and print XOREAL with its canonical path. A link at the last name
@@ -3320,7 +3320,7 @@ _xoct_own_dir_ready() {
   esac
   _xoct_own_parent_cd "${_a}" "${3}" || return 1
   if [ -L "./${_n}" ]; then
-    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && /bin/pwd -P)"
     if [ "${_m}" != "keep" ] || ! _xoct_own_path "${_a}" "${_r}"; then
       rm -f -- "./${_n}" || return 1
     fi
@@ -3329,7 +3329,7 @@ _xoct_own_dir_ready() {
   fi
   [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xoct_own_path "${_a}" "${_r}" || return 1
   printf 'XOREAL %s\n' "${_r}"
 }
@@ -3349,13 +3349,13 @@ _xoct_own_link_ready() {
     rm -f -- "./${_n}"
   fi
   ln -sfn -- "${3}" "./${_n}" || return 1
-  printf 'XOREAL %s/%s\n' "$(pwd -P)" "${_n}"
+  printf 'XOREAL %s/%s\n' "$(/bin/pwd -P)" "${_n}"
 }
 ### Run there as above: link the account $1's name $2 to its store entry $3
 ### only once $3 is a directory in the account's own tree or store, so a
 ### directory at $2 never gives way to a link that leads nowhere.
 _xoct_own_store_link_ready() {
-  _xoct_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _xoct_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   _xoct_own_link_ready "${1}" "${2}" "${3}"
 }
 ### Run there: make each of the account $1's own control panel stores, the
@@ -3373,16 +3373,16 @@ _xoct_own_store_link_ready() {
 _xoct_own_panel_carry() {
   local _a="${1}" _o _n _p _t _m
   local -a _ps _st
-  _n="$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _n="$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   [ "${_n}" = "${3}" ] || return 1
   if [ ! -e "${2}" ] && [ ! -L "${2}" ]; then
     printf 'XOREAL %s\n' "${_n}"
     return 0
   fi
-  _o="$(cd -P -- "${2}" 2> /dev/null && pwd -P)" || return 1
+  _o="$(cd -P -- "${2}" 2> /dev/null && /bin/pwd -P)" || return 1
   if ! _xoct_own_path "${_a}" "${_o}"; then
     # the account's part of the attached store through a /mnt that is a link
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_o}/" in
       "${_m}"/?*) _xoct_own_path "${_a}" "/mnt${_o#"${_m}"}" || return 1 ;;
       *) return 1 ;;
@@ -3394,17 +3394,17 @@ _xoct_own_panel_carry() {
       case "${_p}" in ''|.|..|*/*) continue ;; esac
       [ -d "${_o}/${_p}" ] && [ ! -L "${_o}/${_p}" ] || continue
       _t=".${_p}.carry"
-      ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+      ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
         && rm -rf -- "./${_t}" && mkdir -- "./${_t}" ) || return 1
-      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(pwd -P)" = "${_o}/${_p}" ] || exit 9
+      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_o}/${_p}" ] || exit 9
         tar -cf - --numeric-owner --acls --xattrs --one-file-system . ) \
-        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(pwd -P)" = "${_n}/${_t}" ] || exit 9
+        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}/${_t}" ] || exit 9
           tar -xpf - --numeric-owner --acls --xattrs )
       _st=("${PIPESTATUS[@]}")
       if [ "${_st[0]:-9}" -gt 1 ] || [ "${_st[1]:-9}" -ne 0 ] \
-        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
           && rm -rf -- "./${_p}" && mv -T -- "./${_t}" "./${_p}" ); then
-        ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
+        ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
         return 1
       fi
     done
@@ -3428,7 +3428,7 @@ _xoct_own_dir_carry() {
   [ -L "./${_n}" ] || { _xoct_own_dir_ready dir "${_a}" "${2}"; return $?; }
   [ -d "./${_n}" ] || return 1
   _lt="$(readlink -- "./${_n}")" || return 1
-  _w="$(pwd -P)"
+  _w="$(/bin/pwd -P)"
   _l="${_lt}"
   case "${_l}" in
     /*) ;;
@@ -3447,7 +3447,7 @@ _xoct_own_dir_carry() {
     return 1
   fi
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xoct_own_path "${_a}" "${_r}" || return 1
   printf 'XOREAL %s\n' "${_r}"
 }
@@ -3463,17 +3463,17 @@ _xoct_real_mnt_dir() {
   case "${_d}/" in
     *//*|*/./*|*/../*) return 1 ;;
   esac
-  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  _c="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)" || return 1
   [ -n "${_c}" ] || return 1
   _e="${_d}"
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
   mkdir -p -- "${_d}" 2> /dev/null
   _c="${_c}${_d#/mnt}"
   cd -P -- "${_d}" 2> /dev/null || return 1
-  [ "$(pwd -P)" = "${_c}" ] || return 1
+  [ "$(/bin/pwd -P)" = "${_c}" ] || return 1
   printf 'XOREAL %s\n' "${_c}"
 }
 ### Run one of the placement helpers above as root on the box $1, with the
@@ -3547,7 +3547,7 @@ _xoct_backups_leg() {
       /mnt/*) return 0 ;;
     esac
   fi
-  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && pwd -P)"
+  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && /bin/pwd -P)"
   if [ -z "${_r}" ] || ! _xoct_own_path "${_u##*/}" "${_r}"; then
     echo "DENY: ${_u}/${_n} resolves to ${_r:-nothing}, outside the account's own tree and store -- not followed, not copied"
     _XOCT_NOT_CLEAN=YES
@@ -4775,8 +4775,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
-_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
-( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+_W="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_W}" ] \
     && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] \
@@ -4983,7 +4983,7 @@ _xo_in() {
   local _d="/data/disk/\${_DST}/\${1}" _w
   shift
   _w="\$(_xoct_real_want "\${_d}")"
-  ( cd -P -- "\${_d}" 2>/dev/null && [ "\$(pwd -P)" = "\${_w}" ] && "\$@" )
+  ( cd -P -- "\${_d}" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_w}" ] && "\$@" )
 }
 _xo_rewrite_here() {
   local _F
@@ -5136,7 +5136,7 @@ _xo_dst_ident() {
   return 1
 }
 _xo_remap_in() {
-  ( cd -P -- "\${1}" 2>/dev/null && [ "\$(pwd -P)" = "\${2}" ] || exit 0
+  ( cd -P -- "\${1}" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${2}" ] || exit 0
     # the walker holds one directory open per level: a deep tree gets the
     # whole hard limit, never the lower soft one
     ulimit -n "\$(ulimit -Hn)" 2>/dev/null
@@ -5186,11 +5186,11 @@ if [ -n "\${_DU}" ] && [ -n "\${_DF}" ]; then
     fi
   done
 fi
-_xo_remap_in "/data/disk/\${_DST}" "\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_DST}" web
-_xo_remap_in "/home/\${_DST}.ftp" "\$(cd -P /home 2>/dev/null && pwd -P)/\${_DST}.ftp"
+_xo_remap_in "/data/disk/\${_DST}" "\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_DST}" web
+_xo_remap_in "/home/\${_DST}.ftp" "\$(cd -P /home 2>/dev/null && /bin/pwd -P)/\${_DST}.ftp"
 if [ -n "\${_TM}" ]; then
   _xo_remap_in "\${_TM}/files/\${_DST}" \
-    "\$(cd -P /mnt 2>/dev/null && pwd -P)\${_TM#/mnt}/files/\${_DST}" web
+    "\$(cd -P /mnt 2>/dev/null && /bin/pwd -P)\${_TM#/mnt}/files/\${_DST}" web
 fi
 REMOTE
 }
@@ -5786,10 +5786,10 @@ _xoct_subuser_ssh_ok() {
 _XOCT_SECRET_ROOT_ONLY='_ro() { local _s _u _g _m; _s="$(stat -c "%u %g %a" -- "${1}" 2> /dev/null)" || return 1; read -r _u _g _m <<< "${_s}"; [ "${_u}" = 0 ] || return 1; (( 0${_m} & 2 )) && return 1; (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1; return 0; }'
 _XOCT_SECRET_SH='read -r _b || exit 0
 [ -e "/root/.remote_backups/restore_windows/${_a}.rb" ] && { echo XOSEC-WINDOW; exit 0; }
-_w="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_a}"
-cd -P -- "/data/disk/${_a}" 2> /dev/null && [ "$(pwd -P)" = "${_w}" ] || { echo XOSEC-NO-ACCOUNT; exit 0; }
+_w="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${_a}"
+cd -P -- "/data/disk/${_a}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_w}" ] || { echo XOSEC-NO-ACCOUNT; exit 0; }
 [ -e ./remote_backups ] || [ -L ./remote_backups ] || mkdir -m 755 ./remote_backups
-cd -P -- ./remote_backups 2> /dev/null && [ "$(pwd -P)" = "${_w}/remote_backups" ] && _ro . \
+cd -P -- ./remote_backups 2> /dev/null && [ "$(/bin/pwd -P)" = "${_w}/remote_backups" ] && _ro . \
   || { echo XOSEC-NOT-ROOTS; exit 0; }
 _n="$(printf "%s" "${_b}" | base64 -d | md5sum)"
 _put() {
@@ -6100,7 +6100,7 @@ _xoct_seed_witness() {   # 1 = account, 2 = target host
   ### without following a link or blocking on a FIFO (static/control and
   ### log/ are the tenant's there too), in md5sum's own line shape; a name
   ### that is not a regular file there is absent.
-  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; _w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_u}\"; for _f in static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt; do ( cd -P -- \"\${_f%/*}\" 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}/\${_f%/*}\" ] && [ -f \"./\${_f##*/}\" ] && [ ! -L \"./\${_f##*/}\" ] && printf '%s  %s\n' \"\$(timeout 10 dd if=\"./\${_f##*/}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | md5sum | cut -d' ' -f1)\" \"\${_f}\" ); done; }" 2>/dev/null
+  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; _w=\"\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_u}\"; for _f in static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt; do ( cd -P -- \"\${_f%/*}\" 2>/dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}/\${_f%/*}\" ] && [ -f \"./\${_f##*/}\" ] && [ ! -L \"./\${_f##*/}\" ] && printf '%s  %s\n' \"\$(timeout 10 dd if=\"./\${_f##*/}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | md5sum | cut -d' ' -f1)\" \"\${_f}\" ); done; }" 2>/dev/null
 }
 
 _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per file)
@@ -8041,7 +8041,7 @@ _xoct_tgt_kind() {
   local _qd _qm
   _qd="$(_shq "$2")"
   _qm="$(_shq "${3:-}")"
-  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XOKIND \$k\"" 2>/dev/null \
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && /bin/pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && /bin/pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XOKIND \$k\"" 2>/dev/null \
     | grep -m1 '^XOKIND ' | awk '{print $2}'
 }
 
@@ -8177,7 +8177,7 @@ _xoct_handle_store() {
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && /bin/pwd -P)"
     if [ -z "${_real}" ]; then
       _act=DENY; _reason="${_src} cannot be entered"
     elif [ -n "${_acct}" ] && ! _xoct_store_is_own "${_acct}" "${_real}" "${_rule}"; then
@@ -8715,10 +8715,10 @@ _own_src() {
   printf '%s\\n' "\${_r}" | grep -qx '_MIG_ROLE=source' || return 1
   _mine "\$(printf '%s\\n' "\${_r}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)"
 }
-_d="\$(cd -P /data/disk 2>/dev/null && pwd -P || true)"
+_d="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P || true)"
 _w="\${_d}/${_pacct}"
 if [ -z "\${_d}" ] || ! cd -P -- "/data/disk/${_pacct}" 2>/dev/null \\
-  || [ "\$(pwd -P)" != "\${_w}" ]; then
+  || [ "\$(/bin/pwd -P)" != "\${_w}" ]; then
   exit 6
 fi
 _rrc=0
@@ -8727,7 +8727,7 @@ _rec="\$(cd -P -- '${_MIG_REC_DIR}' && perl -e '${_MIG_HREAD_PL}' -- './.${_pacc
 # that shape): kept for the refusal below, never read for anything else.
 _old=""
 if [ -d ./log ] && [ ! -L ./log ]; then
-  _old="\$(cd -P -- ./log && [ "\$(pwd -P)" = "\${_w}/log" ] && perl -e '${_MIG_HREAD_PL}' -- ./migproxy.cnf legacy)" || _old=""
+  _old="\$(cd -P -- ./log && [ "\$(/bin/pwd -P)" = "\${_w}/log" ] && perl -e '${_MIG_HREAD_PL}' -- ./migproxy.cnf legacy)" || _old=""
   if [ "\$(printf '%s\\n' "\${_old}" | sed -n 2p | tr -d '\\r')" != '${_MIG_LEGACY_HDR}' ] \\
     || ! _own_src "\${_old}"; then
     _old=""
@@ -8799,7 +8799,7 @@ done
 if ! (
   { [ -d ./log ] || mkdir ./log; } || exit 1
   cd -P -- ./log || exit 1
-  [ "\$(pwd -P)" = "\${_w}/log" ] || exit 1
+  [ "\$(/bin/pwd -P)" = "\${_w}/log" ] || exit 1
   _t="./.migproxy.cnf.put.\$\$.\${RANDOM}"
   rm -f -- "\${_t}"
   perl -e '${_XOCT_PUT_PL}' "\${_t}" 0 0 600 <<'INFOEOF' || { rm -f -- "\${_t}"; exit 1; }
