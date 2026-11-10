@@ -17,6 +17,17 @@ if [ -e "/root/.standby.cnf" ]; then
 fi
 
 # Function to print env for debugging
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
     # secret values and URL userinfo stay out of the dump
@@ -289,9 +300,10 @@ _waiting_notify() {
 # backups back whenever any concurrent command line merely mentioned
 # the literal, e.g. a probe naming /root/.cache/duplicity/ paths,
 # observed live.
-_CNT="$(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2>/dev/null)"
+_bU="$(_boa_run_uids)"
+_CNT="$(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2>/dev/null)"
 _CNT="${_CNT:-0}"
-_CNTD="$(pgrep -fc '^[^ ]*duplicity( |$)' 2>/dev/null)"
+_CNTD="$(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)' 2>/dev/null)"
 _CNTD="${_CNTD:-0}"
 if (( _CNT + _CNTD > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
@@ -335,6 +347,9 @@ _pid_is_live() {
   local _pid=$1 _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
+  # The lock is root's: a recycled pid now held by another user's process
+  # titled like a backup is not its owner.
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
   case "${_cmd}" in

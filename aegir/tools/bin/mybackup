@@ -16,6 +16,17 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
   # converted to a private primary group named after itself gets that group,
@@ -1574,7 +1585,9 @@ _main_script() {
   exec 9>> /run/mybackup_queue.lock || exit 1
   flock -n 9 || exit 0
   _win_close_stale
-  _CNT=$(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') ))
+  local _bU=""
+  _bU="$(_boa_run_uids)"
+  _CNT=$(( $(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)') ))
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1

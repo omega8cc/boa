@@ -32,6 +32,17 @@ fi
 # prefix. Only for a backup that would have run: without credentials the
 # tool is not in use, the maintenance pause mails nothing, and a run on a
 # terminal prints the refusal instead. $1 = what is short.
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _backup_refused() {
   [ "${_BB_VERB:-}" = "backup" ] || return 0
   [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && return 0
@@ -249,6 +260,9 @@ _pid_is_live() {
   local _pid=$1 _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
+  # The lock is root's: a recycled pid now held by another user's process
+  # titled like a backup is not its owner.
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
   case "${_cmd}" in
@@ -679,9 +693,11 @@ _install() {
         exit 1
       fi
     fi
+    local _bU=""
+    _bU="$(_boa_run_uids)"
     # The startup busy gate has aged by a mirror probe and a fetch by
     # now; re-assert it on the brink of the irreversible steps
-    if (( $(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') )) > 0 )); then
+    if (( $(( $(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)') )) > 0 )); then
       echo "Active duplicity process detected, aborting before any change to the installed backup tooling"
       exit 1
     fi
@@ -764,7 +780,8 @@ _check_aws() {
   fi
 }
 
-_CNT=$(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') ))
+_bU="$(_boa_run_uids)"
+_CNT=$(( $(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)') ))
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   exit 1
