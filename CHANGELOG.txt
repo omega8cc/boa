@@ -1060,6 +1060,16 @@
       by it before running that update, so a site later moved to Drupal 12
       does not run them a second time.
 
+    * Classic Drush 8.5.22 (Ægir's Drush 8): drush8 status on a Drupal 10 or
+      newer site no longer dies with "Declaration of
+      Drush\Command\DrushInputAdapter::getFirstArgument() must be
+      compatible" while its platform's Drush lock is open: for a few seconds
+      while a task on the platform (a site's install, Verify or cache flush,
+      a platform Verify) runs the codebase's own Drush, or for as long as
+      Unlock Local Drush keeps it open. Drush 8 takes Symfony Console's
+      Input classes from the consoles it carries, as on a locked platform,
+      and its output adapter extends the platform's stock Output.
+
     * eolreport names a site on a pre-release Drupal core (alpha, beta,
       release candidate or a git checkout's dev core) as PRE-RELEASE, since
       drupal.org's security advisories cover no pre-release, and exits 1 for
