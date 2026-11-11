@@ -1028,6 +1028,23 @@ _acct_reload_stamp() {
   date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
+# The SSH addresses the account $1's lists now carry, recorded by root beside
+# its stamp once a reload has applied them (never before: a run that fails
+# and reverts must leave the next one free to apply them at once).
+_acct_ssh_record() {
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  echo "${_ssh_ips_hash}" > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
+}
+# Status 0 when the logged-in SSH addresses differ from the set applied for
+# the account $1 at its last reload, by root's own record beside its stamp.
+# The account's own marker is no judge of that: config/includes is the
+# account's, so it could move the marker away and have every change it makes
+# read as a new login's, which is never held.
+_acct_ssh_changed() {
+  local _h
+  _h=$(tr -dc '0-9a-f' 2> /dev/null < "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh")
+  [[ "${_h}" != "${_ssh_ips_hash}" ]]
+}
 
 _process_instance() {
   local _root="$1"
@@ -1097,8 +1114,8 @@ _process_instance() {
     return 0
   fi
   # A login's address joining the anti-lockout lists is never held: it is how
-  # an account that locked itself out gets back in.
-  [[ "${_ssh_ips_hash}" == "${_previous_ssh_hash}" ]] \
+  # an account that locked itself out gets back in (_acct_ssh_changed).
+  ! _acct_ssh_changed "${_root##*/}" \
     && _acct_reload_held "${_root##*/}" && return 0
 
   _acct_in_real_dir "${_root}/config/includes" mkdir -p -- ./user_admin_access_map \
@@ -1339,6 +1356,7 @@ _process_instance() {
     _acct_in_real_dir "${_backup_dir}" rm -f -- "./${_last_good_name}"
   fi
   _ua_markers_put
+  _acct_ssh_record "${_root##*/}"
   echo "user_admin_access updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."
   return 0
 }
