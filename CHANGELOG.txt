@@ -388,6 +388,10 @@
 
 @=> Important Fixes
 
+    * xoct's PHP check on a live transfer no longer tells the operator to
+      re-run with --fix-php, which only create takes; it names the manual
+      steps alone.
+
     * A platform Verify no longer opens a platform's Drush lock while its
       permissions pass runs: the pass set vendor/drush and Symfony Console's
       Input and Style folders to 2775 with the rest of vendor/, and set them

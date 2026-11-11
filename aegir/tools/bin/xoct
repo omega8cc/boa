@@ -5434,7 +5434,8 @@ _xoct_php_inert_report() {
 ### is fatal by default, because served-on-the-wrong-PHP is the silent failure
 ### this whole step exists to prevent. With --fix-php the missing versions are
 ### appended to the target's _PHP_MULTI_INSTALL and one barracuda system run
-### is driven remotely to build them (that run is long; expect ~30 minutes).
+### is driven remotely to build them (a full system pass: a few minutes).
+### --fix-php is a create option, so only create offers it.
 _xoct_php_coverage_gate() {
   local _u="$1" _t="$2" _need _v _sv _miss=""
   _need="$(_mig_php_versions_needed "${_u}")"
@@ -5472,7 +5473,8 @@ _xoct_php_coverage_gate() {
   echo "ERROR: silently falls back to a different PHP after migration."
   echo "ERROR: Fix on the target: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf"
   echo "ERROR: and run: barracuda up-<tree> system noscreen"
-  echo "ERROR: Or re-run this command with --fix-php to do both automatically."
+  [ "${_cmd:-}" = "create" ] \
+    && echo "ERROR: Or re-run this command with --fix-php to do both automatically."
   return 1
 }
 
@@ -5528,7 +5530,7 @@ _mig_fix_target_php() {
     *) echo "ALRT: invalid tree token '${_tree}' -- refusing the remote barracuda run"; return 1 ;;
   esac
   echo "INFO: driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
-  echo "INFO: this is a full system pass and typically takes ~30 minutes"
+  echo "INFO: this is a full system pass and typically takes a few minutes"
   ssh root@"${_t}" "barracuda up-${_tree} system noscreen"
   _rc=$?
   # 3: the pass ran to its end WITH ERRORS (its log on the target says
