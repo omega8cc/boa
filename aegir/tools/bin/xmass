@@ -11177,6 +11177,7 @@ _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
   local _oct _held="" _away _why _bad=""
+  _XMASS_GATE_FAILED=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # One this box relays to another box (a single-account move made
     # before this cutover) holds nothing local to gate and is no part of it.
@@ -19928,8 +19929,7 @@ _xmass_cmd_cutover() {
     # must name it in its hint, with its recipe.
     local _wb
     for _wb in ${_ELIGIBLE_ACCOUNTS}; do
-      [ -f "/data/disk/${_wb}/static/control/http-off.pid" ] \
-        && [ ! -L "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
+      [ -f "/data/disk/${_wb}/static/control/http-off.pid" ] && [ ! -L "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
     done
     if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
       # This box already relays the client-domain sites: it is their only
@@ -19970,9 +19970,10 @@ _xmass_cmd_cutover() {
     # operator may have lifted it via the abandon recipe before deciding to
     # resume after all -- and the tail assumes a non-serving source. Also
     # keeps this process's hint truthful about the web state on a re-park.
-    if ! _xmass_block_web_all; then
+    _xmass_block_web_all
+    if [ -n "${_XMASS_GATE_FAILED}" ]; then
       _xmass_restore_hint
-      _die "the 503 gate does not hold the sites of:${_XMASS_GATE_FAILED} -- the cutover stays PARKED; fix their control folders, then re-run 'xmass cutover ${_tgt} --live'"
+      _die "the 503 gate does not hold the sites of:${_XMASS_GATE_FAILED} -- the cutover stays PARKED; fix their control folders, then re-run 'xmass cutover ${_tgt} --live$(_xmass_admail_hint)'"
     fi
     # Re-assert the advisory read-only flag for the same reason, and because a
     # barracuda system pass during the park rewrites the include from the
@@ -20203,7 +20204,8 @@ _xmass_cmd_cutover() {
   _xmass_prevent_solr_target
 
   # Step 1: Block all web traffic on source (serves 503 via http-off.pid)
-  if ! _xmass_block_web_all; then
+  _xmass_block_web_all
+  if [ -n "${_XMASS_GATE_FAILED}" ]; then
     _xmass_restore_hint
     _die "the 503 gate does not hold the sites of:${_XMASS_GATE_FAILED} -- the cutover stops before the write freeze"
   fi
