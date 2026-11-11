@@ -4089,7 +4089,6 @@ _xcopy_rsync_path_in() {
 _xcopy_copy_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
-  _xcopy_glob_none "${_g}" && return 0
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
@@ -4111,28 +4110,11 @@ _xcopy_rsync_path_mk_in() {
 # the real directory $2 on the target $1, the target directory created when
 # missing (a link there removed first).
 _xcopy_copy_mk_here() {
-  local _h="${1}" _d="${2}" _g="${3}" _c
+  local _h="${1}" _d="${2}" _g="${3}"
   shift 3
-  ### An empty directory: only the target directory is made.
-  if _xcopy_glob_none "${_g}"; then
-    [ "${_MODE}" = "LIVE" ] || return 0
-    _c="$(_xcopy_rsync_path_mk_in "${_d}")"
-    ssh root@"${_h}" "${_c%rsync}true"
-    return
-  fi
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
-}
-### Whether the pattern $1 names no entry of the current (pinned) directory.
-### Bash leaves a pattern that matches nothing as it is, and rsync reported
-### that text as a missing file (code 23) on every empty directory of a
-### transfer; nothing was missing.
-_xcopy_glob_none() {
-  local -a _m
-  # shellcheck disable=SC2206
-  _m=( ./${1} )
-  [ "${#_m[@]}" -eq 1 ] && [ ! -e "${_m[0]}" ] && [ ! -L "${_m[0]}" ]
 }
 ### Where the directory $1 resolves when every name on its path below
 ### /data/disk, /home or /opt/user (the client toolchain trees) is a real

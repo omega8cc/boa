@@ -492,10 +492,6 @@
       queues those verifies and they run once post-mig starts cron again,
       so their results were seen only in the control panel.
 
-    * xoct and xcopy no longer print rsync errors (code 23) for an empty
-      directory in pretransfer and transfer. Such a directory has nothing to
-      copy, and its directory on the target is still made.
-
     * xcopy checks the PHP versions an account has in force against the
       target, as xoct does: create refuses a target that lacks one before
       anything is installed there, and every live transfer and pretransfer
