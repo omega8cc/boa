@@ -274,11 +274,12 @@
 
     * ip_access.sh and user_admin_access.sh let in at once only the address
       of a logged-in SSH session, told by the SSH server's own process
-      titles. Any established connection to the SSH port counted, so anyone
-      who opened one, or a login still being refused, rebuilt every
-      account's lists and reloaded nginx past the 15-minute limit. A login
-      leaving, or one coming back, now waits like any change. Where ss
-      cannot name a connection's processes, its address still counts.
+      titles, and never a loopback address. Any established connection to
+      the SSH port counted, so anyone who opened one, or a login still
+      being refused, rebuilt every account's lists and reloaded nginx past
+      the 15-minute limit. A login leaving, or one coming back, now waits
+      like any change. Where ss or pgrep is missing or fails, every
+      established peer still counts.
 
     * The web abuse guard spares only the address of a logged-in SSH
       session from its bans, told the same way. Anyone who held a
@@ -532,6 +533,11 @@
       kept in the account's log/import_verifies.report.txt. The import
       queues those verifies and they run once post-mig starts cron again,
       so their results were seen only in the control panel.
+
+    * edgetest's regression phase checks the IP lists' SSH anti-lockout
+      source by running ip_access.sh's own reader, and says whether it
+      sees the session edgetest runs in. It asked netstat, which the lists
+      no longer read.
 
     * xcopy checks the PHP versions an account has in force against the
       target, as xoct does: create refuses a target that lacks one before
