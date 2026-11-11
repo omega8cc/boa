@@ -4337,17 +4337,30 @@ _xcopy_touch_here() {
 # directory the account can write (a hard link renamed over the name before a
 # chown by name would hand another file to that owner).
 _XCOPY_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
+# re-asserted on each existing name ./$5 ... through one handle opened
+# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
+# link whose owner is already $1 or one of the uids in the comma-separated
+# $4: a link, a FIFO, a hard link to another file, or a file of some other
+# identity (root's included: a root-only file renamed onto the name is never
+# handed over) is left as it is, never handed to the account or chmodded.
+# What root puts for the account is created with its final owner instead.
+_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
 # The same rule on the target box: the commands $3 run on the target $1
 # inside the real directory $2 (below /data/disk or /home every name on the
 # path a real directory), where _rr reads a name without following a link or
-# blocking on a FIFO and _rp puts one as a fresh file through _XCOPY_PUT_PL,
+# blocking on a FIFO, _rp puts one as a fresh file through _XCOPY_PUT_PL,
 # renamed over the name (empty when no content is given; $3 the owner:group
-# it is created with, root's when empty or when it does not resolve). The
-# target account is the tenant's once its identity has travelled. The perl
-# text is spliced in unquoted here, so it lands on the target inside single
-# quotes.
+# it is created with, root's when empty or when it does not resolve), and _ro
+# re-asserts owner:group $1 and mode $2 on names through _XCOPY_REASSERT_PL
+# ($3 the further uids the names may carry). The target account is the
+# tenant's once its identity has travelled. Both perl texts are spliced in
+# unquoted here, so each lands on the target inside single quotes: both are
+# set above this line (as in xoct).
 _XCOPY_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
-_rp() { local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1; if [ -n "${3}" ]; then _u="$(id -u -- "${3%%:*}" 2> /dev/null)"; _g="$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; fi; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_u}" "${_g}" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }'
+_rid() { local _u _g; _u="$(id -u -- "${1%%:*}" 2> /dev/null)"; _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; printf "%s %s\n" "${_u}" "${_g}"; }
+_rp() { local _t="./.${1}.put.$$.${RANDOM}" _i="-1 -1"; [ -n "${3}" ] && _i="$(_rid "${3}")"; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_i% *}" "${_i#* }" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }
+_ro() { local _i; _i="$(_rid "${1}")"; shift; perl -e '"'${_XCOPY_REASSERT_PL}'"' -- "${_i% *}" "${_i#* }" "$@" 2> /dev/null; }'
 _xcopy_remote_in() {
   local _a=/data/disk
   case "${2}" in /home/?*) _a=/home ;; esac
@@ -4912,15 +4925,6 @@ _xcopy_owner_ids() {
   [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
   printf '%s %s\n' "${_u}" "${_g}"
 }
-# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
-# re-asserted on each existing name ./$5 ... through one handle opened
-# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
-# link whose owner is already $1 or one of the uids in the comma-separated
-# $4: a link, a FIFO, a hard link to another file, or a file of some other
-# identity (root's included: a root-only file renamed onto the name is never
-# handed over) is left as it is, never handed to the account or chmodded.
-# What root puts for the account is created with its final owner instead.
-_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
 # Re-assert owner:group $1 and mode $2 on the regular file ./$3 of the current
 # (pinned) directory through _XCOPY_REASSERT_PL: only a regular file with one
 # link, owned already by $1, is changed, through the handle that checked it,

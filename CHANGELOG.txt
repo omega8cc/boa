@@ -590,10 +590,11 @@
 
     * xcopy create installs the copy the way xoct create installs an
       account: for the target's own BOA tree, not this server's, so a copy
-      from an lts or pro server to another tree no longer goes through the
-      wrong licence check; with boa in-oct and the ProxySQL marker when the
-      account uses ProxySQL here; and only after the account is proven made
-      there, not on the launcher's status alone.
+      from a dev or pro server to a server on another tree is no longer
+      installed for a tree that server does not run, nor sent through that
+      tree's licence check there; with boa in-oct and the ProxySQL marker
+      when the account uses ProxySQL here; and only after the account is
+      proven made there, not on the launcher's status alone.
 
     * xcopy's live transfer carries the client's shell logins, as xoct's
       does: the main login's password with log/pass.txt, the sub-account
