@@ -2812,8 +2812,9 @@ _xoct_gate_put_here() {
 ### while the deployed global-mode.inc predates the test, any. Run inside the
 ### real static/, $1 = the account, $2 = t to first take write for others,
 ### and group write for any other group, off a control folder that is the
-### account's own (through a no-follow handle, the folder lstat saw): OK, or
-### why not and status 1. Another account's login can make a control/ in the
+### account's own (through a no-follow handle, the folder lstat saw), or o to
+### judge only what a run's own steps cannot mend (a missing folder or a link
+### is replaced by root's, write is taken off): OK, or why not and status 1. Another account's login can make a control/ in the
 ### static/ of an account still on the box-wide group when it has none, and a
 ### gate put there holds nothing.
 _ACCT_GATE_OWN_PL='use Fcntl;
@@ -2836,9 +2837,11 @@ if (open(my $g, "<", "/data/conf/global/global-mode.inc")) {
   $old = 1 unless defined $c && index($c, "/data/conf/acct-uids/") >= 0;
 }
 sub owng { return 1 if $_[0] == 0; my $n = getgrgid($_[0]); return (defined $n && $n eq $acct) ? 1 : 0; }
-my @s = lstat("./control") or refuse("there is no control folder");
+my @s = lstat("./control") or do { ok() if $op eq "o"; refuse("there is no control folder"); };
+ok() if $op eq "o" && ($s[2] & 0170000) == 0120000;
 (($s[2] & 0170000) == 0040000) or refuse("control is not a folder");
 $ok{$s[4]} or refuse("control is owned by uid $s[4], none of the account");
+ok() if $op eq "o";
 if ($op eq "t" && sysopen(my $h, "./control", O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) {
   my @t = stat($h);
   if (@t && $t[0] == $s[0] && $t[1] == $s[1] && $ok{$t[4]}) {
@@ -7042,6 +7045,20 @@ _migrate_prepare() {
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
   echo "_CLIENT_CORES is ${_CLIENT_CORES}"
 
+  ### The export's 503 gate holds the sites while their databases are
+  ### dumped, so it has to sit in a control folder they honour: a link at the
+  ### name is replaced and a missing folder made, both root's, the account's
+  ### own is closed to other writers, and one the account does not own
+  ### refuses the export before the client is told of it or anything changes.
+  if [ "${_cmd}" = "export" ]; then
+    _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here
+    if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
+      echo "ERROR: ${_USR##*/} not exported: its sites would not honour the 503 gate in static/control (${_XOCT_GATE_WHY})"
+      echo "ERROR: a control folder another account made is named by the ltd worker's ALERT; remove it, then run the export again"
+      exit 1
+    fi
+  fi
+
   if [ "${_cmd}" = "export" ] && [ ! -z "${_CLIENT_EMAIL}" ]; then
     ### The start notice carries the resolved forwarding promise where one is
     ### already declared, and the neutral wait-for-instructions block where the
@@ -7856,18 +7873,6 @@ _migrate_prepare() {
     _XOCT_HOST_INC="${_THIS_HM_SITE%/sites/*}/profiles/hostmaster/modules/aegir/hosting"
     if _xoct_read_in "${_XOCT_HOST_INC}" hosting.drush.inc | grep -q "'runner-wait' => array"; then
       _XOCT_RUNNER_UNTIL=$(( $(date +%s) + 600 ))
-    fi
-  fi
-  ### The export's 503 gate holds the sites while their databases are
-  ### dumped, so it has to sit in a control folder they honour: the
-  ### account's own is closed to other writers first, a missing one is made
-  ### root's, and one the account does not own refuses the export.
-  if [ "${_cmd}" = "export" ]; then
-    _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here
-    if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
-      echo "ERROR: ${_USR##*/} not exported: its sites would not honour the 503 gate in static/control (${_XOCT_GATE_WHY})"
-      echo "ERROR: a control folder another account made is named by the ltd worker's ALERT; remove it, then run the export again"
-      exit 1
     fi
   fi
   if [ "${_cmd}" = "import" ] \

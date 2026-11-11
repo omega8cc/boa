@@ -1877,7 +1877,9 @@ _ltd_acct_uids_put() {
 }
 # Run inside the real static/: when control/ is a folder whose own owner no
 # passwd entry names, the gate files in it go and each name removed is
-# printed. A login removed from another account leaves its folder under such
+# printed, the folder first closed to group and other writers (another
+# login of the account that made it could put a gate back before root hands
+# it over). A login removed from another account leaves its folder under such
 # a number, and root's walks take that number as the account's own and hand
 # the folder over; a gate left in it would then hold the account's sites.
 # The worker is parked through a move, so no gate of a move is lost here.
@@ -1891,6 +1893,7 @@ exit 0 unless ($s[2] & 0170000) == 0040000;
 chdir("./control") or exit 0;
 my @d = stat(".");
 exit 0 unless @d && $d[0] == $s[0] && $d[1] == $s[1];
+chmod(($d[2] & 07777) & ~022, ".") if $d[2] & 022;
 for my $n ("http-off.pid", "http-off-host.pid") {
   print "$n\n" if lstat($n) && unlink($n);
 }
@@ -3341,6 +3344,9 @@ _ltd_reap_account() {
     echo "$(date) LTD account ${_acct}: deluser refused it, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
     return 0
   fi
+  # its freed number leaves the account's list before a later login of this
+  # pass, of any account, can be given it
+  _ltd_acct_uids_put "${_parent}" > /dev/null 2>&1
   # users/ is the main login's and can be a link by now: the store goes only
   # from the real directory
   _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
@@ -9713,6 +9719,9 @@ else
   # before the account loop, which switches the pools' PHP
   _ltd_store_core_heal >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
+  # a login the account loop retired (a platform's or a web user's) after an
+  # earlier account's turn: before another run can hand its folders over
+  _ltd_ctrl_gate_guard_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
     _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
     _DUP_SEC=$(_ltd_conf_dup_sections "${_THIS_LTD_CONF}")

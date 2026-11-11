@@ -215,6 +215,8 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
  * control panel is named under the box hostname too and is exempt: it is
  * never relayed and must stay reachable for its admins. Default TTL,
  * never read from the file. A symlink is ignored: root writes the list.
+ * Either file counts only as a regular file, never a link, a folder or a
+ * FIFO at the name.
  *
  * Either file counts only in a control folder that is the account's own:
  * a real directory (never a link) that root or one of the account's
@@ -237,7 +239,7 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
   if (preg_match('#^(/data/disk/([^/]+))/#', $_SERVER['DOCUMENT_ROOT'], $_http_off_m)) {
     $_http_off_ttl = 0;
     $_http_off_pid = $_http_off_m[1] . '/static/control/http-off.pid';
-    if (file_exists($_http_off_pid)) {
+    if (is_file($_http_off_pid) && !is_link($_http_off_pid)) {
       $_http_off_ttl = (int) @file_get_contents($_http_off_pid);
       if ($_http_off_ttl < 30 || $_http_off_ttl > 86400) {
         $_http_off_ttl = 300;

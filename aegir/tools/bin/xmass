@@ -2081,8 +2081,9 @@ _xmass_ctrl_dir_here() {
 ### while the deployed global-mode.inc predates the test, any. Run inside the
 ### real static/, $1 = the account, $2 = t to first take write for others,
 ### and group write for any other group, off a control folder that is the
-### account's own (through a no-follow handle, the folder lstat saw): OK, or
-### why not and status 1. Another account's login can make a control/ in the
+### account's own (through a no-follow handle, the folder lstat saw), or o to
+### judge only what a run's own steps cannot mend (a missing folder or a link
+### is replaced by root's, write is taken off): OK, or why not and status 1. Another account's login can make a control/ in the
 ### static/ of an account still on the box-wide group when it has none, and a
 ### gate put there holds nothing.
 _ACCT_GATE_OWN_PL='use Fcntl;
@@ -2105,9 +2106,11 @@ if (open(my $g, "<", "/data/conf/global/global-mode.inc")) {
   $old = 1 unless defined $c && index($c, "/data/conf/acct-uids/") >= 0;
 }
 sub owng { return 1 if $_[0] == 0; my $n = getgrgid($_[0]); return (defined $n && $n eq $acct) ? 1 : 0; }
-my @s = lstat("./control") or refuse("there is no control folder");
+my @s = lstat("./control") or do { ok() if $op eq "o"; refuse("there is no control folder"); };
+ok() if $op eq "o" && ($s[2] & 0170000) == 0120000;
 (($s[2] & 0170000) == 0040000) or refuse("control is not a folder");
 $ok{$s[4]} or refuse("control is owned by uid $s[4], none of the account");
+ok() if $op eq "o";
 if ($op eq "t" && sysopen(my $h, "./control", O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) {
   my @t = stat($h);
   if (@t && $t[0] == $s[0] && $t[1] == $s[1] && $ok{$t[4]}) {
@@ -11130,15 +11133,18 @@ _xmass_restore_hint() {
 }
 
 # Every source account this cutover gates has a control folder its sites
-# honour a gate in (_xmass_gate_own): its own is closed to other writers, a
-# missing one comes later as root's, and one the account does not own is
-# named, status 1.
+# honour a gate in (_xmass_gate_own): a link at the name is replaced and a
+# missing folder made, both root's (the sticky static/ keeps either), the
+# account's own is closed to other writers, and one the account does not own
+# is named, status 1. With $1 = dry nothing changes and only what the live
+# run cannot mend is named.
 _xmass_gate_ready_all() {
-  local _oct _why _away _bad=""
+  local _oct _why _away _bad="" _op=t
+  [ "${1:-}" = "dry" ] && _op=o
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _away=$(_xmass_relays_elsewhere "${_oct}") && continue
-    [ -e "/data/disk/${_oct}/static/control" ] || [ -L "/data/disk/${_oct}/static/control" ] || continue
-    if ! _why="$(_xmass_gate_own "${_oct}" t)"; then
+    [ "${_op}" = "t" ] && _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+    if ! _why="$(_xmass_gate_own "${_oct}" "${_op}")"; then
       _alrt "  ${_oct}: its sites would not honour the 503 gate in static/control (${_why})"
       _bad="${_bad} ${_oct}"
     fi
@@ -20039,6 +20045,10 @@ _xmass_cmd_cutover() {
     _xmass_declare_unadopted DRY
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
+    if ! _xmass_gate_ready_all dry; then
+      _alrt "DENY: a control folder the sites would not honour a 503 gate in (above)"
+      _XMASS_NOT_CLEAN=YES
+    fi
     # The plan names the order --live will take; nothing is saved from a DRY.
     _xmass_decide_flip_first
     _XMASS_STORE_RC=0
@@ -20117,6 +20127,11 @@ _xmass_cmd_cutover() {
   # with the state at phase=cutover.
   _xmass_decide_flip_first
 
+  # The 503 gate is the write barrier below, so each account's has to sit
+  # in a control folder its sites honour: checked before the clean-dry token
+  # is used and before anything is parked.
+  _xmass_gate_ready_all || _die "the cutover did not start: fix the control folders named above, then run it again"
+
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
@@ -20134,10 +20149,6 @@ _xmass_cmd_cutover() {
   # restores it on success and _xmass_restore_hint covers the aborts below.
   _xmass_park_runners_and_cron
   _xmass_check_no_boa_running
-
-  # The 503 gate is the write barrier below, so each account's has to sit
-  # in a control folder its sites honour: checked before anything changes.
-  _xmass_gate_ready_all || _die "the cutover did not start: fix the control folders named above, then run it again"
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: a
   # watchdog restart of MySQL between the final position read and the
