@@ -2420,24 +2420,35 @@ _xmass_tgt_place() {
   printf '%s' "${_out#XMREAL }"
 }
 
-### Union of PHP versions one account is pinned to: the account-level
-### static/control/{fpm,cli}.info defaults, the per-site column of
-### static/control/multi-fpm.info (dotted and shorthand forms both count),
-### every line of static/control/cli-per-platform.info and
-### fpm-per-platform.info, and the phpNN.info marker that steers the command
+### Union of the PHP versions in force for one account, each counted only when
+### its PHP is installed here: root's record of the PHP its pool and command
+### line run on (_PHP_FPM_VERSION and _PHP_CLI_VERSION in its octopus.cnf,
+### which the move carries), the account-level static/control/{fpm,cli}.info
+### defaults, the per-site column of static/control/multi-fpm.info (dotted and
+### shorthand forms both count), every line of static/control/cli-per-platform.info
+### and fpm-per-platform.info, and the phpNN.info marker that steers the command
 ### line. The last three are read as websh reads them: the file's first 64 KiB
 ### and 200 lines, '#' opening a comment, a line counting only as "<folder>
 ### <version>", the version's digits only; the marker is the highest one whose
-### PHP is installed here. A line whose version the target lacks is ignored
-### there, which leaves that platform on the account-wide PHP, and websh refuses
-### its tasks when the platform's core cannot run on it.
+### PHP is installed here. A choice naming a PHP this server lacks does nothing
+### here and is never required of the target: the account writes these files,
+### and one line of its own must not hold the move back or have a PHP built on
+### the target; _mig_php_inert_choices names it before the move.
+_mig_php_here() {
+  [ -n "${1}" ] && [ -x "/opt/php${1//./}/bin/php" ]
+}
 _mig_php_versions_needed() {
   local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
+  for _k in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
+    _v="$(grep -a "^${_k}=" "/root/.${_u##*/}.octopus.cnf" 2> /dev/null | tail -n 1)"
+    _v="$(_mig_php_norm "${_v#*=}")"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
+  done
   ### read inside the account's real static/control, never through a link
   ### or into a FIFO put there
   for _f in fpm.info cli.info; do
     _v="$(_mig_php_norm "$(_xmass_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
-    [ -n "${_v}" ] && _out="${_out} ${_v}"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
   done
   if [ -e "${_u}/static/control/multi-fpm.info" ]; then
     while read -r _dom _v _rest; do
@@ -2446,7 +2457,7 @@ _mig_php_versions_needed() {
       ### site actually uses.
       case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
       _v="$(_mig_php_norm "${_v}")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
     done <<< "$(_xmass_read_in "${_u}/static/control" multi-fpm.info)"
   fi
   for _f in cli-per-platform.info fpm-per-platform.info; do
@@ -2460,7 +2471,7 @@ _mig_php_versions_needed() {
       read -r _k _v _rest <<< "${_line}"
       [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
       _v="$(_mig_php_norm "${_v//[!0-9]/}")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
     done <<< "${_txt}"
   done
   if _xmass_in_real_dir "${_u}/static/control" true; then
@@ -2633,14 +2644,20 @@ _xmass_php_inert_report() {
   done
 }
 
-### Verify every PHP version pinned by ANY eligible account is installed on
+### Verify every PHP version in force for ANY eligible account is installed on
 ### the target (the /opt/phpNN/bin/php probe BOA's own fallback ladders use).
 ### $2 selects the consequence: die | deny (DRY: DENY + NOT_CLEAN) | fix
-### (extend _PHP_MULTI_INSTALL + one barracuda pass, then re-verify).
+### (extend _PHP_MULTI_INSTALL + one barracuda pass, then re-verify). A
+### missing version is named with the accounts it is in force for.
 _xmass_php_coverage_gate() {
-  local _t="$1" _on_missing="${2:-die}" _oct _need="" _v _sv _miss=""
+  local _t="$1" _on_missing="${2:-die}" _oct _need="" _v _sv _miss="" _nd
+  local -A _by=()
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    _need="${_need} $(_mig_php_versions_needed "/data/disk/${_oct}")"
+    _nd="$(_mig_php_versions_needed "/data/disk/${_oct}")"
+    _need="${_need} ${_nd}"
+    for _v in ${_nd}; do
+      _by[${_v}]="${_by[${_v}]:+${_by[${_v}]} }${_oct}"
+    done
   done
   _need=$(echo "${_need}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
   if [ -z "${_need// /}" ]; then
@@ -2658,6 +2675,9 @@ _xmass_php_coverage_gate() {
     fi
   done
   _miss="${_miss## }"
+  for _v in ${_miss}; do
+    _alrt "PHP ${_v}, missing on ${_t}, is in force here for: ${_by[${_v}]:-?}"
+  done
   case "${_on_missing}" in
     fix) _xmass_php_inert_report "${_t}" alrt "${_miss}" ;;
     deny) _xmass_php_inert_report "${_t}" deny ;;

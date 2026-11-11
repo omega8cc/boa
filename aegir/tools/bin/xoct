@@ -5228,25 +5228,35 @@ _mig_php_norm() {
   esac
 }
 
-### Union of PHP versions this account is pinned to: the account-level
-### static/control/{fpm,cli}.info defaults, the per-site column of
-### static/control/multi-fpm.info (dotted and shorthand forms both count --
-### the consumer accepts both, so the gate must too), every line of
-### static/control/cli-per-platform.info and fpm-per-platform.info, and the
-### phpNN.info marker that steers the command line. The last three are read as
-### websh reads them: the file's first 64 KiB and 200 lines, '#' opening a
-### comment, a line counting only as "<folder> <version>", the version's
-### digits only; the marker is the highest one whose PHP is installed here. A
-### line whose version the target lacks is ignored there, which leaves that
-### platform on the account-wide PHP, and websh refuses its tasks when the
-### platform's core cannot run on it.
+### Union of the PHP versions in force for this account, each counted only when
+### its PHP is installed here: root's record of the PHP its pool and command
+### line run on (_PHP_FPM_VERSION and _PHP_CLI_VERSION in its octopus.cnf,
+### which the move carries), the account-level static/control/{fpm,cli}.info
+### defaults, the per-site column of static/control/multi-fpm.info (dotted and
+### shorthand forms both count), every line of static/control/cli-per-platform.info
+### and fpm-per-platform.info, and the phpNN.info marker that steers the command
+### line. The last three are read as websh reads them: the file's first 64 KiB
+### and 200 lines, '#' opening a comment, a line counting only as "<folder>
+### <version>", the version's digits only; the marker is the highest one whose
+### PHP is installed here. A choice naming a PHP this server lacks does nothing
+### here and is never required of the target: the account writes these files,
+### and one line of its own must not hold the move back or have a PHP built on
+### the target; _mig_php_inert_choices names it before the move.
+_mig_php_here() {
+  [ -n "${1}" ] && [ -x "/opt/php${1//./}/bin/php" ]
+}
 _mig_php_versions_needed() {
   local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
+  for _k in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
+    _v="$(grep -a "^${_k}=" "/root/.${_u##*/}.octopus.cnf" 2> /dev/null | tail -n 1)"
+    _v="$(_mig_php_norm "${_v#*=}")"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
+  done
   ### read inside the account's real static/control, never through a link
   ### or into a FIFO put there
   for _f in fpm.info cli.info; do
     _v="$(_mig_php_norm "$(_xoct_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
-    [ -n "${_v}" ] && _out="${_out} ${_v}"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
   done
   if [ -e "${_u}/static/control/multi-fpm.info" ]; then
     while read -r _dom _v _rest; do
@@ -5255,7 +5265,7 @@ _mig_php_versions_needed() {
       ### site actually uses.
       case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
       _v="$(_mig_php_norm "${_v}")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
     done <<< "$(_xoct_read_in "${_u}/static/control" multi-fpm.info)"
   fi
   for _f in cli-per-platform.info fpm-per-platform.info; do
@@ -5269,7 +5279,7 @@ _mig_php_versions_needed() {
       read -r _k _v _rest <<< "${_line}"
       [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
       _v="$(_mig_php_norm "${_v//[!0-9]/}")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
     done <<< "${_txt}"
   done
   if _xoct_in_real_dir "${_u}/static/control" true; then
