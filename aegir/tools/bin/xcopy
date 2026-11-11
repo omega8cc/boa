@@ -256,26 +256,29 @@ _mig_port_answers() {
 ### one, which says nothing too. A refused or silent port gets the one scan.
 ### The keys go to a file first, so a known_hosts that cannot be written is
 ### one failure, never a scan that seemed to say nothing.
-### Returns 0 once a key for the host is known.
+### Returns 0 once a key for the host is known. With a file as $2 the keys
+### go there in place of known_hosts, for a caller that checks a key before
+### it trusts one, and 0 means the file holds what the host served.
 _mig_keyscan() {
-  local _e _o _h _k _n=0 _b=""
+  local _e _o _h _k _n=0 _b="" _f="${2:-/root/.ssh/known_hosts}"
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
     _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" \
       && _o="$(mktemp /tmp/mig-keys.XXXXXX 2> /dev/null)" || {
       rm -f "${_e}"
-      ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
-      ssh-keygen -F "${1}" > /dev/null 2>&1
+      ssh-keyscan -H -T 10 "${1}" >> "${_f}" 2> /dev/null
+      if [ -n "${2:-}" ]; then [ -s "${2}" ]; else ssh-keygen -F "${1}" > /dev/null 2>&1; fi
       return $?
     }
     ssh-keyscan -H -T 10 "${1}" > "${_o}" 2> "${_e}"
-    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> /root/.ssh/known_hosts; then
-      echo "${_h}: cannot write /root/.ssh/known_hosts" >&2
+    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> "${_f}"; then
+      echo "${_h}: cannot write ${_f}" >&2
       rm -f "${_e}" "${_o}"
       return 1
     fi
     rm -f "${_o}"
-    if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+    if { [ -n "${2:-}" ] && [ -s "${2}" ]; } \
+      || { [ -z "${2:-}" ] && ssh-keygen -F "${1}" > /dev/null 2>&1; }; then
       _mig_drop_through "${_h}"
       rm -f "${_e}"
       return 0
