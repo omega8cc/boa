@@ -26,15 +26,17 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
-# The real uids of BOA's own work: root, aegir and each account's backend
-# user (home /data/disk/<name>), as whom root runs the account's tasks and
-# queued restores; never a web, FTP or shell login, which can give its own
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
 # process any command line.
-_boa_run_uids() {
-  local _l=""
-  _l=$(getent passwd 2> /dev/null \
-    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
-  echo "${_l:-0}"
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
 }
 
 # The scheduled run discards what it prints (crontabs/root), so a backup
@@ -693,11 +695,9 @@ _install() {
         exit 1
       fi
     fi
-    local _bU=""
-    _bU="$(_boa_run_uids)"
     # The startup busy gate has aged by a mirror probe and a fetch by
     # now; re-assert it on the brink of the irreversible steps
-    if (( $(( $(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)') )) > 0 )); then
+    if (( $(_dcy_live_count) > 0 )); then
       echo "Active duplicity process detected, aborting before any change to the installed backup tooling"
       exit 1
     fi
@@ -782,9 +782,7 @@ _check_aws() {
 
 _duplicity_or_backboa_busy() {
   local _bb
-  local _bU=""
-  _bU="$(_boa_run_uids)"
-  (( $(( $(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)') )) > 0 )) && return 0
+  (( $(_dcy_live_count) > 0 )) && return 0
   # A live backboa BETWEEN its sequential duplicity invocations counts as
   # busy too -- freeing in that gap would run two backup chains at once.
   # 2>/dev/null must precede the input redirect: redirections apply left

@@ -101,10 +101,12 @@
 
     * Root's checks for a BOA run, a backup, a database job or a service in
       flight, and its counts that end in a kill, match a process by its
-      owner as well as its command line: root for BOA's own runs, cron, csf
-      and the PHP-FPM masters, the service's own user for Jenkins, Solr and
-      ClamAV, and the accounts' backend users only where a check means
-      their Aegir tasks or queued restores. A hosted account can give its
+      owner as well as its command line: root for BOA's own runs, backups,
+      cron, csf and the PHP-FPM masters, the service's own user for Jenkins,
+      Solr and ClamAV, and the accounts' backend users only where a check
+      means their Aegir tasks or a site's own dump, which must then be the
+      installed mydumper or myloader. A queued restore counts through
+      root's mybackup pass that runs it. A hosted account can give its
       own process any command line, so one titled like barracuda, a backup
       or csf held off upgrades, backups, the nightly and service restarts,
       or made root kill its own jobs and flush the firewall's bans.
