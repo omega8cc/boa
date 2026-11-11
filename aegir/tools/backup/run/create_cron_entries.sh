@@ -243,14 +243,17 @@ trap 'exit 1' INT TERM HUP
 
 # Process each line in the backup configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
-  # Skip empty lines and comments
-  if [[ "${_line}" =~ ^\s*# ]] || [[ -z "${_line}" ]]; then
+  # Skip empty lines, lines of white space and comments (POSIX classes:
+  # bash's =~ reads \s as the letter s)
+  if [[ "${_line}" =~ ^[[:space:]]*(#|$) ]]; then
     continue
   fi
 
   # Parse the service and user
   _service=$(echo "${_line}" | cut -d' ' -f1)
-  _user=$(echo "${_line}" | cut -d' ' -f2)
+  # -s: a line without a second field has no user (cut prints a whole line
+  # that carries no delimiter)
+  _user=$(echo "${_line}" | cut -s -d' ' -f2)
 
   # Ensure both service and user are defined
   if [ -z "${_service}" ] || [ -z "${_user}" ]; then
