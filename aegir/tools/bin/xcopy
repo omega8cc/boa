@@ -3510,8 +3510,8 @@ _migrate_prepare() {
         ### keeps a streaming failure from passing.
         if ! ( set -o pipefail
           _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
-            | mysql --binary-mode "${_XCOPY_POUR_UTF8MB4[@]}" --silent -u root -h${_SQL_CONNECT} \
-              -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
+            | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+              "${_XCOPY_POUR_UTF8MB4[@]}" -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
           echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
           echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
           exit 1
@@ -3530,8 +3530,8 @@ _migrate_prepare() {
       ### and fed with --binary-mode (see the rename-mode branch above).
       if ! ( set -o pipefail
         _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
-          | mysql --binary-mode "${_XCOPY_POUR_UTF8MB4[@]}" --silent -u root -h${_SQL_CONNECT} \
-            -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
+          | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+            "${_XCOPY_POUR_UTF8MB4[@]}" -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
         echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
         echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
         exit 1

@@ -7473,8 +7473,8 @@ _migrate_prepare() {
     ### streaming failure (a link) from passing as a clean load.
     if ! ( set -o pipefail
       _xoct_in_real_dir "${_USR}/src" _xoct_cat_here prev_hostmaster.sql \
-        | mysql --binary-mode "${_XOCT_POUR_UTF8MB4[@]}" --silent -u root -h${_SQL_CONNECT} \
-          -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
+        | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+          "${_XOCT_POUR_UTF8MB4[@]}" -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
       echo "ERROR: hostmaster dump import into ${_HDB} FAILED — this import is INCOMPLETE"
       echo "ERROR: nothing was renamed; fix the cause, then re-run the FULL import"
       exit 1
