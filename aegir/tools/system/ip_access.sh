@@ -837,9 +837,11 @@ _ACCT_RELOAD_SECS=900
 _ACCT_REQ_DIR="/run/boa_acct_requests"
 _RELOAD_TOOL="ip_access"
 # Status 0 while the account $1's last reload by this tool is younger than
-# the allowance; a held change is said once.
+# the allowance; a held change is said once. Root's own run that must apply at
+# once (edgetest, a run by hand) sets _ACCT_RELOAD_HOLD=NO in its environment.
 _acct_reload_held() {
   local _st="${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}" _ts _now
+  [[ "${_ACCT_RELOAD_HOLD:-}" == "NO" ]] && return 1
   _now=$(date +%s)
   _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
   [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] || return 1

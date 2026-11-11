@@ -53,6 +53,9 @@ else
   _CG=; _CR=; _CY=; _CB=; _C0=
 fi
 _PASS=0; _FAIL=0; _WARN=0; _SKIP=0
+# The policy generators hold an account's change for 15 minutes after their
+# last reload for it; each phase here changes a file and runs them at once.
+export _ACCT_RELOAD_HOLD=NO
 _pass() { echo "  ${_CG}PASS${_C0}  $*"; _PASS=$((_PASS + 1)); }
 _fail() { echo "  ${_CR}FAIL${_C0}  $*"; _FAIL=$((_FAIL + 1)); }
 _warn() { echo "  ${_CY}WARN${_C0}  $*"; _WARN=$((_WARN + 1)); }
