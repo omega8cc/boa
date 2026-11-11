@@ -1663,6 +1663,12 @@ _main_script() {
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
+  # A backup run a restore held off goes first: backboa, duobackboa and
+  # multiback mark it until they run. A mark a day old holds no longer.
+  if [ -n "$(find /run/boa_backup_held -mmin -1440 2> /dev/null)" ]; then
+    echo "[$(date)] A held backup runs first, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
   # Process queued commands for all users.
   # A passive mirror must never execute this queue: command.txt lives in
   # the synced static/control tree, so a tenant request queued on the
@@ -1759,10 +1765,26 @@ _main_script() {
         # Pass the validated args positionally via -- so each arg arrives at
         # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
         # of attacker-controlled bytes; metacharacters in any arg are inert.
-        su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}" 9>&-
+        # The restore runs as the account, which can stall its own run while
+        # this pass holds the queue and every backup gate: one restore gets
+        # at most 24 hours. su then ends only the account's shell, so what
+        # that shell started is ended with the session it led, by the pid it
+        # wrote, the account's own processes alone.
+        local _rs_t0="${SECONDS}" _rs_rc=0 _rs_sid=""
+        timeout -k 60 24h su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}" 9>&-
+        _rs_rc=$?
         wait
         # Clean up the command file
         local _command_log="$(printf '%q ' "${_queued_args[@]}")"
+        if [ "${_rs_rc}" -eq 124 ] \
+          || { [ "${_rs_rc}" -eq 137 ] && (( SECONDS - _rs_t0 >= 86400 )); }; then
+          _command_log="${_command_log}(stopped after 24 hours)"
+          _rs_sid="$(_acct_in_real_dir "/data/disk/${_user}/log" _queue_read_here \
+            "mybackup_${_queued_args[1]}_${_user}.pid" | tr -dc '0-9')"
+          if [[ "${_rs_sid}" =~ ^[1-9][0-9]{0,9}$ ]] && [ "${_rs_sid}" -gt 1 ]; then
+            pkill -KILL -u "${_user}" -U "${_user}" -s "${_rs_sid}" 2> /dev/null
+          fi
+        fi
         echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /var/log/mybackup_commands_history.log
         # log/ is the account's own: appended inside the real directory
         _acct_in_real_dir "/data/disk/${_user}/log" _acct_append_here \
