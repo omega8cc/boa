@@ -118,31 +118,43 @@ _find_fast_mirror_early() {
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
+# GoAccess's location and ASN panels read DB-IP's IP to City Lite and ASN Lite
+# (CC BY 4.0, https://db-ip.com), which the nightly graceful.sh refreshes once
+# a month. This fetches them on a box that has them not yet: this month's, or
+# the month before while DB-IP has not published it. A file is used only when
+# its metadata, at its end where a cut-short download loses it, names its
+# kind, and then takes its place by a rename.
 _fetch_geoip() {
+  local _m _f _kind _tmp _bad _new
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
-  mkdir -p /opt/tmp
-  cd /opt/tmp
-  rm -f /opt/tmp/Geo*
-
-  # For GeoIP2 ASN database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-ASN.mmdb.gz
-  gunzip GeoLite2-ASN.mmdb.gz &> /dev/null
-  cp -af GeoLite2-ASN.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 City database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-City.mmdb.gz
-  gunzip GeoLite2-City.mmdb.gz &> /dev/null
-  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 Country database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-Country.mmdb.gz
-  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
-  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
-
-  chmod 644 /usr/share/GeoIP/*
-  rm -f /opt/tmp/Geo*
-  cd
+  _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null) || return 0
+  for _m in "$(date -u +%Y-%m)" "$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)"; do
+    _bad=""
+    for _f in city asn; do
+      _kind="DBIP-City-Lite"
+      [ "${_f}" = "asn" ] && _kind="DBIP-ASN-Lite"
+      if ! curl -fsS --max-time 900 -o "${_tmp}/${_f}.mmdb.gz" \
+        "https://download.db-ip.com/free/dbip-${_f}-lite-${_m}.mmdb.gz" &> /dev/null \
+        || ! gunzip -c "${_tmp}/${_f}.mmdb.gz" > "${_tmp}/${_f}.mmdb" 2> /dev/null \
+        || ! tail -c 131072 "${_tmp}/${_f}.mmdb" | LC_ALL=C grep -a -q -F "MaxMind.com" \
+        || ! tail -c 131072 "${_tmp}/${_f}.mmdb" | LC_ALL=C grep -a -q -F "${_kind}"; then
+        _bad="${_f}"
+        break
+      fi
+    done
+    if [ -z "${_bad}" ]; then
+      for _f in city asn; do
+        _new=$(mktemp "/usr/share/GeoIP/.dbip-${_f}-lite.mmdb.XXXXXX" 2> /dev/null) || continue
+        cp -f "${_tmp}/${_f}.mmdb" "${_new}" && chmod 644 "${_new}" \
+          && mv -f "${_new}" "/usr/share/GeoIP/dbip-${_f}-lite.mmdb"
+        rm -f "${_new}"
+      done
+      echo "${_m}" > /usr/share/GeoIP/dbip-lite-mmdb.month
+      break
+    fi
+  done
+  rm -rf "${_tmp}"
 }
 
 _install_goaccess() {
@@ -192,7 +204,12 @@ _if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.021.pid" ]; then
+    ### Written again when DB-IP's files are there and the config does not name
+    ### them, so a config written while they were missing does not keep the
+    ### GeoLite2 files for good.
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.022.pid" ] \
+      || { [ -s "/usr/share/GeoIP/dbip-city-lite.mmdb" ] \
+      && ! grep -q "dbip-city-lite.mmdb" /root/.goaccessrc 2> /dev/null; }; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format "~h{, }" %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
@@ -259,21 +276,32 @@ _if_install() {
       echo 'sort-panel REFERRERS,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REFERRING_SITES,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS,BY_VISITORS,DESC' >> /root/.goaccessrc
-      if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+      if [ ! -s "/usr/share/GeoIP/dbip-city-lite.mmdb" ] \
+        || [ ! -s "/usr/share/GeoIP/dbip-asn-lite.mmdb" ]; then
         _fetch_geoip
       fi
-      if [ -e "/usr/share/GeoIP/GeoLite2-ASN.mmdb" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLite2-ASN.mmdb' >> /root/.goaccessrc
-      fi
-      if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
-      fi
-      if [ -e "/usr/share/GeoIP/GeoLite2-Country.mmdb" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLite2-Country.mmdb' >> /root/.goaccessrc
+      ### GoAccess answers country, continent and city from a City file
+      ### whatever else it is given, so DB-IP's pair stands alone; the
+      ### GeoLite2 files an earlier pass fetched serve only a box that could
+      ### not get DB-IP's.
+      if [ -s "/usr/share/GeoIP/dbip-city-lite.mmdb" ] \
+        && [ -s "/usr/share/GeoIP/dbip-asn-lite.mmdb" ]; then
+        echo 'geoip-database /usr/share/GeoIP/dbip-asn-lite.mmdb' >> /root/.goaccessrc
+        echo 'geoip-database /usr/share/GeoIP/dbip-city-lite.mmdb' >> /root/.goaccessrc
+      else
+        if [ -e "/usr/share/GeoIP/GeoLite2-ASN.mmdb" ]; then
+          echo 'geoip-database /usr/share/GeoIP/GeoLite2-ASN.mmdb' >> /root/.goaccessrc
+        fi
+        if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+          echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
+        fi
+        if [ -e "/usr/share/GeoIP/GeoLite2-Country.mmdb" ]; then
+          echo 'geoip-database /usr/share/GeoIP/GeoLite2-Country.mmdb' >> /root/.goaccessrc
+        fi
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /var/log/boa/.goaccessrc.fix*
-      touch /var/log/boa/.goaccessrc.fix.021.pid
+      touch /var/log/boa/.goaccessrc.fix.022.pid
       sleep 1
     fi
   else

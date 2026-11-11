@@ -63,71 +63,6 @@ if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
   rm -f /run/boa_php_idle_quiesce.pid
 fi
 
-_find_fast_mirror_early() {
-  _ffMirr=/opt/local/bin/ffmirror
-  if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2026-07.txt"
-    [ -d "/var/backups" ] || mkdir -p /var/backups
-    if [ ! -e "${_ffList}" ]; then
-      echo "files.boa.io"  > ${_ffList}
-      echo "files.o8.io" >> ${_ffList}
-      echo "files.host8.biz" >> ${_ffList}
-      echo "files.aegir.biz" >> ${_ffList}
-      echo "files.aoboshi.com" >> ${_ffList}
-    fi
-    if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
-      else
-        _USE_MIR="files.boa.io"
-      fi
-    else
-      _USE_MIR="files.boa.io"
-    fi
-  else
-    _USE_MIR="files.boa.io"
-  fi
-  export _urlDev="https://${_USE_MIR}/dev"
-}
-
-# Function to download GeoLite2 databases
-_fetch_geoip() {
-
-  # Prepare GeoIP directories
-  echo "Setting up GeoIP directories..."
-  mkdir -p /usr/share/GeoIP
-  chmod 755 /usr/share/GeoIP
-
-  # Download and install GeoIP databases
-  echo "Downloading GeoIP databases..."
-  mkdir -p /opt/tmp
-  cd /opt/tmp
-  rm -f /opt/tmp/Geo*
-
-  # For GeoIP2 ASN database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-ASN.mmdb.gz
-  gunzip GeoLite2-ASN.mmdb.gz &> /dev/null
-  cp -af GeoLite2-ASN.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 City database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-City.mmdb.gz
-  gunzip GeoLite2-City.mmdb.gz &> /dev/null
-  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 Country database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-Country.mmdb.gz
-  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
-  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
-
-  chmod 644 /usr/share/GeoIP/*
-  rm -f /opt/tmp/Geo*
-  cd
-}
-
 # nginx's geoip_country reads /usr/share/GeoIP/GeoIPv6.dat, or GeoIP.dat on a
 # box without it: the X-GeoIP-Country headers and the GEOIP_COUNTRY_CODE, CODE3
 # and NAME values PHP gets. The IPv6 edition answers IPv4 visitors too, by the
@@ -441,6 +376,74 @@ _check_country_db() {
     "Logged to ${_log}" "" "--" "This email has been sent by BOA graceful.sh" \
     | s-nail -s "ALERT [${_host}]: nginx country database" "${_mail}" > /dev/null 2>&1
   return 0
+}
+
+# GoAccess, when the nightly per-site reports are on (_ENABLE_GOACCESS=YES),
+# takes its visitors' country, continent and city from DB-IP's IP to City Lite
+# and their network from its ASN Lite (CC BY 4.0, https://db-ip.com), kept in
+# /usr/share/GeoIP and refreshed once a month like the country files above;
+# weblogx names them in its GoAccess config. A file is used only when its
+# metadata, at its end where a cut-short download loses it, names its kind,
+# and then replaces the old one by a rename. The GeoLite2 files earlier
+# passes fetched from the mirror stay where they are.
+_refresh_goaccess_db() {
+  local _dir="/usr/share/GeoIP" _log="/var/log/boa/country-db.log"
+  local _stamp="/usr/share/GeoIP/dbip-lite-mmdb.month"
+  local _now _prev _have _m _tmp _got _f _kind _bad _new _new_city _new_asn
+  [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -d "${_dir}" ] || return 0
+  find "${_dir}" -maxdepth 1 -type f -name '.dbip-*-lite.mmdb.??????' \
+    -mmin +720 -delete 2> /dev/null
+  _now=$(date -u +%Y-%m)
+  _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
+  _have=$( { tr -dc '0-9-' < "${_stamp}"; } 2> /dev/null)
+  [ -s "${_dir}/dbip-city-lite.mmdb" ] && [ -s "${_dir}/dbip-asn-lite.mmdb" ] || _have=""
+  [ "${_have}" = "${_now}" ] && return 0
+  if ! _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null); then
+    echo "$(date) GoAccess mmdb: no work folder in /var/backups, kept ${_have:-the files as they are}" >> "${_log}"
+    return 0
+  fi
+  _got=""
+  for _m in "${_now}" "${_prev}"; do
+    [ "${_m}" = "${_have}" ] && _got=none && break
+    _bad=""
+    for _f in city asn; do
+      curl -fsS --max-time 900 -o "${_tmp}/${_f}.mmdb.gz" \
+        "https://download.db-ip.com/free/dbip-${_f}-lite-${_m}.mmdb.gz" &> /dev/null \
+        && gzip -t "${_tmp}/${_f}.mmdb.gz" &> /dev/null || _bad="${_f}"
+      [ -n "${_bad}" ] && break
+    done
+    [ -z "${_bad}" ] && _got="${_m}" && break
+  done
+  if [ -z "${_got}" ]; then
+    echo "$(date) GoAccess mmdb: no DB-IP City and ASN files for ${_now} or ${_prev}, kept ${_have:-the files as they are}" >> "${_log}"
+  elif [ "${_got}" != "none" ]; then
+    _new_city=$(mktemp "${_dir}/.dbip-city-lite.mmdb.XXXXXX" 2> /dev/null)
+    _new_asn=$(mktemp "${_dir}/.dbip-asn-lite.mmdb.XXXXXX" 2> /dev/null)
+    _bad=""
+    for _f in city asn; do
+      _kind="DBIP-City-Lite"
+      _new="${_new_city}"
+      if [ "${_f}" = "asn" ]; then
+        _kind="DBIP-ASN-Lite"
+        _new="${_new_asn}"
+      fi
+      if [ -z "${_new}" ] || ! gunzip -c "${_tmp}/${_f}.mmdb.gz" > "${_new}" 2> /dev/null \
+        || ! tail -c 131072 "${_new}" | LC_ALL=C grep -a -q -F "MaxMind.com" \
+        || ! tail -c 131072 "${_new}" | LC_ALL=C grep -a -q -F "${_kind}"; then
+        _bad="${_bad} ${_f}"
+      fi
+    done
+    if [ -z "${_bad}" ] && chmod 644 "${_new_city}" "${_new_asn}" \
+      && mv -f "${_new_city}" "${_dir}/dbip-city-lite.mmdb" \
+      && mv -f "${_new_asn}" "${_dir}/dbip-asn-lite.mmdb"; then
+      echo "${_got}" > "${_stamp}"
+      echo "$(date) GoAccess mmdb: dbip-city-lite.mmdb and dbip-asn-lite.mmdb, DB-IP ${_got}" >> "${_log}"
+    else
+      echo "$(date) GoAccess mmdb: DB-IP ${_got} not used (failed:${_bad:- rename}), kept ${_have:-the files as they are}" >> "${_log}"
+    fi
+    rm -f "${_new_city}" "${_new_asn}" 2> /dev/null
+  fi
+  rm -rf "${_tmp}"
 }
 
 # Delete only the bounce notices (null sender, listed as MAILER-DAEMON).
@@ -1273,15 +1276,10 @@ _graceful_action() {
   echo "Checking for PHP-FPM versions idle all day..."
   _reload_idle_fpm_versions
 
-  # Setup GeoIP directories
-  if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
-    _find_fast_mirror_early
-    _fetch_geoip
-  fi
-
   echo "Checking the country database nginx reads..."
   _refresh_country_db
   _check_country_db
+  _refresh_goaccess_db
 
   # Cleanup for /opt/tmp/sess*
   rm -f /opt/tmp/sess*

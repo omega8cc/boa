@@ -452,6 +452,18 @@
       rendered without one, or a file it names gone, in
       /var/log/boa/nginx.incident.log and by mail.
 
+    * GoAccess's location and network panels read current data. Their
+      country, continent, city and network came from MaxMind's GeoLite2
+      files, which BOA's mirror handed out and a box fetched once and never
+      again, so it kept the copy it was installed with; MaxMind's licence
+      does not allow handing them out. On a box with the nightly GoAccess
+      reports on (_ENABLE_GOACCESS=YES), graceful.sh now keeps DB-IP's IP
+      to City Lite and ASN Lite (CC BY 4.0, https://db-ip.com) in
+      /usr/share/GeoIP, refreshed once a month and logged in
+      /var/log/boa/country-db.log, and weblogx names them in its GoAccess
+      config. A box that cannot get them keeps the GeoLite2 files it has;
+      BOA fetches no GeoLite2 file any more.
+
     * A platform Verify no longer opens a platform's Drush lock while its
       permissions pass runs: the pass set vendor/drush and Symfony Console's
       Input and Style folders to 2775 with the rest of vendor/, and set them
