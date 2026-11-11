@@ -960,17 +960,27 @@ printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drup
 _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
+### vendor/drush and the console Input and Style directories keep the mode
+### the site-local Drush lock gave them (0400 locked, 0775 after Unlock
+### Local Drush): only provision's lock and unlock change it, as in the
+### nightly pass. Widening them here and closing them again at the end
+### opened the lock for the length of the walk in every platform Verify, and
+### a run on a platform its owner had unlocked closed the modes over a tree
+### whose patches were off. The three directories themselves are skipped;
+### what is in them is walked.
+_LOCK_DIRS_KEPT=( ! \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
+  -o -path ./vendor/symfony/console/Style \) )
 if [ -e "${drupal_root}/vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
-    _fwalk_own_here d "${_MODE_DIR}" ./vendor
+    _fwalk_own_here d "${_MODE_DIR}" ./vendor "${_LOCK_DIRS_KEPT[@]}"
   printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
-    _fwalk_own_here d "${_MODE_DIR}" ./vendor
+    _fwalk_own_here d "${_MODE_DIR}" ./vendor "${_LOCK_DIRS_KEPT[@]}"
   printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
@@ -1142,23 +1152,6 @@ if [[ "${drupal_root}" =~ "/static/" ]] \
   && [ -e "${drupal_root}/core/lib/Drupal.php" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" 02771 sites
   _left_add _chmod_any_own_in "${drupal_root}/sites" 02775 default
-fi
-
-### Lock Local Drush and Symfony Console Input/Style
-if [ -e "${drupal_root}/core" ]; then
-  if [ -e "${drupal_root}/vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/vendor")"
-    _left_add _in_scoped_dir "${drupal_root}/vendor" \
-      _chmod_any_own_here 0400 drush
-    _left_add _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
-      _chmod_any_own_here 0400 Input Style
-  elif [ -e "${drupal_root}/../vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/../vendor")"
-    _left_add _in_scoped_dir "${drupal_root%/*}/vendor" \
-      _chmod_any_own_here 0400 drush
-    _left_add _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \
-      _chmod_any_own_here 0400 Input Style
-  fi
 fi
 
 ### Known exceptions
