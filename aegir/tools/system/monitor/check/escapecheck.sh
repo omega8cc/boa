@@ -203,7 +203,22 @@ _makeactions() {
   # root grep through a planted symlink (fs.protected_regular gates O_CREAT
   # opens only, never a plain read); -D skip keeps a FIFO swapped in under a
   # name from blocking this run (and with it every later run behind the lock).
-  done < <(find "${_LSH_LOG_DIR}" -maxdepth 1 -type f -name '*.log' -exec grep -iH -D skip forbidden {} + 2>/dev/null | tail --lines=999)
+  # Each log is its login's own and any line in it is the login's to write, so
+  # the window (this minute and the last) is applied before any cap, and the
+  # cap of 999 lines is per log: one account's long or busy log must not push
+  # another account's fresh lines out of the alert. Names are lshell's own
+  # shape (<login>.log, no colon), so grep's "<file>:" prefix ends at the
+  # first ".log:".
+  done < <(find "${_LSH_LOG_DIR}" -maxdepth 1 -type f -name '*.log' \
+      -regextype posix-extended -regex '.*/[A-Za-z0-9._-]+\.log' \
+      -exec grep -iH -D skip forbidden {} + 2>/dev/null \
+    | LC_ALL=C awk -v a="${_NOW_IS}" -v b="${_PREV_IS}" '
+      { i = index($0, ".log:"); if (!i) next
+        r = substr($0, i + 5); sub(/^[ \t]+/, "", r); t = substr(r, 1, 16)
+        if (t != a && t != b) next
+        f = substr($0, 1, i + 3)
+        if (++n[f] > 999) next
+        print }')
 
   if [[ "${_status}" != "CLEAN" ]]; then
     _send_alert
