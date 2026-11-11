@@ -293,7 +293,10 @@ for out, tree, ed in ((out4, T4, 1), (out6, T6, 12)):
     f.flush()
     os.fsync(f.fileno())
 
-# The library nginx links reads a spread of ranges from the new files.
+# The library nginx links reads a spread of ranges from the new files, where
+# its geoiplookup tools are installed (libgeoip-dev brings them). It looks a
+# Teredo address (2001:0::/32) up by the IPv4 client the address carries, not
+# by the tree, so ranges starting there are left out of the spread.
 def spot(tool, out, addrs):
   if not os.access(tool, os.X_OK):
     return
@@ -305,7 +308,7 @@ def spot(tool, out, addrs):
 k4 = [k for k in range(len(I4)) if I4[k] > 0]
 k4 = k4[::max(1, len(k4) // 64)]
 spot(look4, out4, [(socket.inet_ntoa(struct.pack("!I", S4[k])), I4[k]) for k in k4])
-k6 = [k for k in range(len(I6)) if I6[k] > 0 and not inwin(S6[k])]
+k6 = [k for k in range(len(I6)) if I6[k] > 0 and not inwin(S6[k]) and S6[k] >> 96 != 0x20010000]
 k6 = k6[::max(1, len(k6) // 64)]
 a6 = [(socket.inet_ntop(socket.AF_INET6, S6[k].to_bytes(16, "big")), I6[k]) for k in k6]
 a6 += [("::ffff:" + socket.inet_ntoa(struct.pack("!I", S4[k])), I4[k]) for k in k4[::4]]
@@ -340,22 +343,52 @@ PYCOUNTRY
 # when it is there, since nginx does not start with a geoip_country file
 # missing. So a config rendered while both were missing runs with every
 # country empty, and one rendered before its file went missing stops nginx at
-# the next restart; neither says so by itself. Once a day a dated line in
-# /var/log/boa/nginx.incident.log and a mail to _MY_EMAIL unless
-# _INCIDENT_REPORT is OFF (both read from the config _check_root sourced).
+# the next restart; neither says so by itself. Nor does a monthly update that
+# keeps failing: the data only ages, and the distribution's copy from 2019
+# names the wrong country for blocks that changed hands since. So data older
+# than the month before (DB-IP may not have published this one yet), or not
+# DB-IP's, is reported too, and GoAccess's DB-IP files the same way while its
+# reports are on. Once a day a dated line in /var/log/boa/nginx.incident.log
+# and a mail to _MY_EMAIL unless _INCIDENT_REPORT is OFF (both read from the
+# config _check_root sourced).
 _check_country_db() {
   local _cfg="/var/aegir/config/server_master/nginx.conf"
   local _log="/var/log/boa/nginx.incident.log" _stamp="/run/boa_country_db_alert.pid"
-  local _txt _lvl _mail _host _today _file
+  local _goa="/usr/share/GeoIP/dbip-lite-mmdb.month"
+  local _txt _lvl _mail _host _today _file _m _prev
   [ -s "${_cfg}" ] || return 0
+  _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
   _file=$(grep -m 1 "^[[:space:]]*geoip_country " "${_cfg}" 2> /dev/null \
     | awk '{print $2}' | tr -d ';')
-  if [ -n "${_file}" ]; then
-    [ -s "${_file}" ] && return 0
+  if [ -z "${_file}" ]; then
+    _txt="${_cfg} has no geoip_country line: every visitor's country is empty until the next Verify of the server renders it with /usr/share/GeoIP/GeoIPv6.dat or GeoIP.dat present"
+  elif [ ! -s "${_file}" ]; then
     _txt="${_file} is missing and ${_cfg} names it: nginx will not start until the file is back (apt-get install --reinstall geoip-database)"
   else
-    _txt="${_cfg} has no geoip_country line: every visitor's country is empty until the next Verify of the server renders it with /usr/share/GeoIP/GeoIPv6.dat or GeoIP.dat present"
+    _m=$(tail -c 120 "${_file}" 2> /dev/null | tr -c '[:print:]' '\n' \
+      | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
+      | grep -oE '[0-9]{4}-[0-9]{2}$')
+    if [ -z "${_m}" ]; then
+      _txt="${_file} holds no DB-IP data (the distribution's copy is from 2019): the monthly update from DB-IP keeps failing, see /var/log/boa/country-db.log"
+    elif [[ "${_m}" < "${_prev}" ]]; then
+      _txt="${_file} holds DB-IP's data of ${_m}: the monthly update from DB-IP keeps failing, see /var/log/boa/country-db.log"
+    fi
   fi
+  if [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    _m=$( { tr -dc '0-9-' < "${_goa}"; } 2> /dev/null)
+    [ -s "${_goa%/*}/dbip-city-lite.mmdb" ] && [ -s "${_goa%/*}/dbip-asn-lite.mmdb" ] || _m=""
+    if [ -z "${_m}" ]; then
+      _m="missing"
+    elif [[ "${_m}" < "${_prev}" ]]; then
+      _m="from ${_m}"
+    else
+      _m=""
+    fi
+    if [ -n "${_m}" ]; then
+      _txt="${_txt:+${_txt}; }GoAccess's DB-IP City and ASN files are ${_m}: their monthly update keeps failing, see /var/log/boa/country-db.log"
+    fi
+  fi
+  [ -n "${_txt}" ] || return 0
   # The stamp holds the day it alerted: an age test against a daily cron that
   # reaches this point a little earlier one night skips that night.
   _today=$(date +%F)
@@ -390,9 +423,12 @@ _refresh_goaccess_db() {
   local _dir="/usr/share/GeoIP" _log="/var/log/boa/country-db.log"
   local _stamp="/usr/share/GeoIP/dbip-lite-mmdb.month"
   local _now _prev _have _m _tmp _got _f _kind _bad _new _new_city _new_asn
-  [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -d "${_dir}" ] || return 0
+  [ -d "${_dir}" ] || return 0
+  # A killed run's temp copy (City Lite is over 100 MB) goes even once the
+  # reports are switched off.
   find "${_dir}" -maxdepth 1 -type f -name '.dbip-*-lite.mmdb.??????' \
     -mmin +720 -delete 2> /dev/null
+  [ "${_ENABLE_GOACCESS}" = "YES" ] || return 0
   _now=$(date -u +%Y-%m)
   _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
   _have=$( { tr -dc '0-9-' < "${_stamp}"; } 2> /dev/null)
@@ -1278,8 +1314,8 @@ _graceful_action() {
 
   echo "Checking the country database nginx reads..."
   _refresh_country_db
-  _check_country_db
   _refresh_goaccess_db
+  _check_country_db
 
   # Cleanup for /opt/tmp/sess*
   rm -f /opt/tmp/sess*

@@ -125,7 +125,7 @@ _find_fast_mirror_early() {
 # its metadata, at its end where a cut-short download loses it, names its
 # kind, and then takes its place by a rename.
 _fetch_geoip() {
-  local _m _f _kind _tmp _bad _new
+  local _m _f _kind _tmp _bad _new _ok
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null) || return 0
@@ -144,17 +144,35 @@ _fetch_geoip() {
       fi
     done
     if [ -z "${_bad}" ]; then
+      _ok=0
       for _f in city asn; do
         _new=$(mktemp "/usr/share/GeoIP/.dbip-${_f}-lite.mmdb.XXXXXX" 2> /dev/null) || continue
         cp -f "${_tmp}/${_f}.mmdb" "${_new}" && chmod 644 "${_new}" \
-          && mv -f "${_new}" "/usr/share/GeoIP/dbip-${_f}-lite.mmdb"
+          && mv -f "${_new}" "/usr/share/GeoIP/dbip-${_f}-lite.mmdb" \
+          && _ok=$(( _ok + 1 ))
         rm -f "${_new}"
       done
-      echo "${_m}" > /usr/share/GeoIP/dbip-lite-mmdb.month
+      ### The month only for a pair both in place: the nightly fetches again
+      ### a file a stamp says is current.
+      [ "${_ok}" = 2 ] && echo "${_m}" > /usr/share/GeoIP/dbip-lite-mmdb.month
       break
     fi
   done
   rm -rf "${_tmp}"
+}
+
+# DB-IP's licence (CC BY 4.0) asks each page that shows its data to link to
+# DB-IP, so a report made with a config naming DB-IP's City file gets that
+# link above its closing body tag. GoAccess writes the tag once and escapes the
+# angle brackets and slashes in the data it inlines, so no logged request can
+# hold one.
+_credit_dbip() {
+  local _html="$1"
+  shift
+  [ -s "${_html}" ] || return 0
+  grep -qs "dbip-city-lite.mmdb" "$@" || return 0
+  grep -q "IP Geolocation by DB-IP" "${_html}" && return 0
+  sed -i 's#</body>#<p style="text-align:center"><a href="https://db-ip.com">IP Geolocation by DB-IP</a></p></body>#' "${_html}"
 }
 
 _install_goaccess() {
@@ -793,6 +811,7 @@ if [[ ${_GOVER} = 1 ]]; then
 else
   goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" "${_xIps[@]}" > "${_TARGET}/index.html"
 fi
+_credit_dbip "${_TARGET}/index.html" /root/.goaccessrc ${_GACONF:+"${_GACONF}"}
 
 ### Written whole or not at all, and withdrawn when switched off, so the
 ### night never copies a stale or half-written report into the account.

@@ -487,7 +487,8 @@
       month DB-IP has not published yet keeps the month before. The
       server's nginx.conf names a file only when it is there, since nginx
       does not start with it missing, and graceful.sh reports a config
-      rendered without one, or a file it names gone, in
+      rendered without one, a file it names gone, or data older than the
+      month before because the update keeps failing, in
       /var/log/boa/nginx.incident.log and by mail.
 
     * GoAccess's location and network panels read current data. Their
@@ -499,8 +500,9 @@
       to City Lite and ASN Lite (CC BY 4.0, https://db-ip.com) in
       /usr/share/GeoIP, refreshed once a month and logged in
       /var/log/boa/country-db.log, and weblogx names them in its GoAccess
-      config. A box that cannot get them keeps the GeoLite2 files it has;
-      BOA fetches no GeoLite2 file any more.
+      config. Each report made from them links to db-ip.com at its foot,
+      as DB-IP's licence asks. A box that cannot get them keeps the
+      GeoLite2 files it has; BOA fetches no GeoLite2 file any more.
 
     * A platform Verify no longer opens a platform's Drush lock while its
       permissions pass runs: the pass set vendor/drush and Symfony Console's
