@@ -648,66 +648,6 @@ _read_account_data() {
   fi
 }
 
-_send_notice_php() {
-  if [ "${_hostedSys}" != "YES" ]; then
-    return 1  # Exit the function but continue the script
-  fi
-  _BCC_EMAIL="inbox@boa.io"
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
-  _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
-Hello,
-
-Our monitoring detected that you are still using deprecated and no longer supported PHP version: $1
-
-We have provided a few years of extended support for this PHP version, but now we can't extend it any further, because your system has to be upgraded to newest Debian version, which doesn't support many deprecated PHP versions.
-
-The upgrade will happen in the first week of May, 2023, and there are no exceptions possible to avoid it.
-
-This means that all Ægir instances still running PHP $1 will stop working if not switched to one of currently supported versions: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
-
-To switch PHP-FPM version on command line, please type:
-
-  echo 8.1 > ~/static/control/fpm.info
-
-You can find more details at: https://docs.boa.io/using/tuning/php-version
-
-We are working hard to provide secure and fast hosting for your Drupal sites, and we appreciate your efforts to meet the requirements, which are an integral part of the quality you can expect from Omega8.cc
-
---
-This email has been sent by your Ægir system monitor
-
-EOF
-  fi
-  echo "INFO: PHP notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
-}
-
-_detect_deprecated_php() {
-  _PHP_FPM_VERSION=
-  if [ -e "${_usEr}/static/control/fpm.info" ] \
-    && [ -z "${_uHeld:-}" ] \
-    && _acct_ctrl_own "${_usEr##*/}" > /dev/null; then
-    # read inside the real control directory, never through a link or
-    # blocked on a FIFO the tenant put there, and kept to a version's
-    # characters
-    _PHP_FPM_VERSION=$(_usage_read_in "${_usEr}/static/control" fpm.info \
-      | head -c 64 | tr -cd '0-9.')
-    if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.2" ]; then
-      echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
-      _read_account_data
-      if [ "${_THIS_MODE}" = "verbose" ]; then
-        _send_notice_php ${_PHP_FPM_VERSION}
-      fi
-    fi
-  fi
-}
-
 _send_notice_core() {
   if [ "${_hostedSys}" != "YES" ]; then
     return 1  # Exit the function but continue the script
@@ -1363,11 +1303,6 @@ even if they are marked as disabled in your Ægir control panel.
   The optional =skip= at the end of line identifies DEV/TEST site
 
 EOF
-        fi
-        _DOW=$(date +%u)
-        _DOW=${_DOW//[^1-7]/}
-        if [ "${_DOW}" = "2" ]; then
-          _detect_deprecated_php
         fi
         _usage_count
         if [ -d "/home/${_THIS_U}.ftp" ]; then

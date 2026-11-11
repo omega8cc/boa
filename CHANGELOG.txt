@@ -1336,11 +1336,14 @@
       discontinued on 20 May 2026.
 
     * The notices a hosted account gets by email about its database or disk
-      usage, an unsupported PHP version, a vanilla core, a certificate that
-      cannot renew and leftover site records carry each paragraph on one
-      line, so a mail reader wraps the text to its own screen. They were
-      broken at a fixed width and read as ragged half lines on a phone. No
-      wording changed.
+      usage, a vanilla core, a certificate that cannot renew and leftover
+      site records carry each paragraph on one line, so a mail reader wraps
+      the text to its own screen. They were broken at a fixed width and read
+      as ragged half lines on a phone. No wording changed.
+
+    * The weekly notice that told a hosted account on PHP 5.2 to 5.5 to
+      switch its PHP version is gone, with the check behind it. Its text
+      still announced an upgrade for the first week of May 2023.
 
 ###
 ### Stable BOA-5.88.877 PRO/LTS - PHOENIX EDITION
