@@ -143,13 +143,22 @@ _refresh_country_db() {
   local _dat="/usr/share/GeoIP/GeoIP.dat" _log="/var/log/boa/country-db.log"
   local _now _prev _have _m _tmp _new _info _got
   [ -x "/usr/bin/python3" ] && [ -d "/usr/share/GeoIP" ] || return 0
+  # A run killed between its mktemp and its cleanup leaves these behind; a
+  # run takes minutes, so half a day apart never meets a live one.
+  find /usr/share/GeoIP -maxdepth 1 -type f -name '.GeoIP.dat.??????' \
+    -mmin +720 -delete 2> /dev/null
+  find /var/backups -maxdepth 1 -type d -name '.boa-geoip.??????' \
+    -mmin +720 -exec rm -rf {} + 2> /dev/null
   _now=$(date -u +%Y-%m)
   _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
   _have=$(tail -c 120 "${_dat}" 2> /dev/null | tr -c '[:print:]' '\n' \
     | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
     | grep -oE '[0-9]{4}-[0-9]{2}$')
   [ "${_have}" = "${_now}" ] && return 0
-  _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null) || return 0
+  if ! _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null); then
+    echo "$(date) GeoIP.dat: no work folder in /var/backups, kept ${_have:-the distro data}" >> "${_log}"
+    return 0
+  fi
   _got=""
   for _m in "${_now}" "${_prev}"; do
     [ "${_m}" = "${_have}" ] && _got=none && break
@@ -291,10 +300,15 @@ print("%d rows, %d ranges, %d nodes" % (len(rows), len(ids), len(tree) // 6))
 PYCOUNTRY
     then
       chmod 644 "${_new}"
-      mv -f "${_new}" "${_dat}"
-      echo "$(date) GeoIP.dat: ${_info} ($(tail -n 1 "${_tmp}/convert.log"))" >> "${_log}"
-      if nginx -t &> /dev/null; then
-        service nginx reload &> /dev/null
+      if mv -f "${_new}" "${_dat}" 2> /dev/null; then
+        echo "$(date) GeoIP.dat: ${_info} ($(tail -n 1 "${_tmp}/convert.log"))" >> "${_log}"
+        if nginx -t &> /dev/null; then
+          service nginx reload &> /dev/null
+        else
+          echo "$(date) GeoIP.dat: nginx -t fails, so nginx was not reloaded; it reads the new data at its next reload or start" >> "${_log}"
+        fi
+      else
+        echo "$(date) GeoIP.dat: DB-IP ${_got} could not be renamed into place, kept ${_have:-the distro data}" >> "${_log}"
       fi
     else
       echo "$(date) GeoIP.dat: DB-IP ${_got} not used, kept ${_have:-the distro data}: $(tail -n 1 "${_tmp}/convert.log" 2> /dev/null)" >> "${_log}"
@@ -314,7 +328,7 @@ PYCOUNTRY
 _check_country_db() {
   local _cfg="/var/aegir/config/server_master/nginx.conf"
   local _log="/var/log/boa/nginx.incident.log" _stamp="/run/boa_country_db_alert.pid"
-  local _txt _lvl _mail _host
+  local _txt _lvl _mail _host _today
   [ -s "${_cfg}" ] || return 0
   if grep -q "^[[:space:]]*geoip_country " "${_cfg}" 2> /dev/null; then
     [ -s "/usr/share/GeoIP/GeoIP.dat" ] && return 0
@@ -322,8 +336,11 @@ _check_country_db() {
   else
     _txt="${_cfg} has no geoip_country line: every visitor's country is empty until the next Verify of the server renders it with /usr/share/GeoIP/GeoIP.dat present"
   fi
-  [ -z "$(find "${_stamp}" -mmin -1440 2> /dev/null)" ] || return 0
-  touch "${_stamp}" 2> /dev/null
+  # The stamp holds the day it alerted: an age test against a daily cron that
+  # reaches this point a little earlier one night skips that night.
+  _today=$(date +%F)
+  [ "$(cat "${_stamp}" 2> /dev/null)" = "${_today}" ] && return 0
+  echo "${_today}" > "${_stamp}" 2> /dev/null
   mkdir -p "${_log%/*}" 2> /dev/null
   echo "$(date) country database: ${_txt}" >> "${_log}"
   _lvl="${_INCIDENT_REPORT^^}"
