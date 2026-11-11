@@ -1761,8 +1761,9 @@ _ltd_own_gid() {
 # write only for the account's own group, since root hands the control
 # files to the shared group later in the pass), a file losing it loses any
 # set-ID bit too, and, for an account with no group of its own, a directory
-# is handed to group root, so what the account makes in it later (it is
-# set-group-ID) is never the shared group's.
+# is handed to group root and made set-group-ID, so what the account makes
+# in it later takes group root, never the shared group (a mode set as a
+# number, the control set-up's 0755 among them, drops that bit).
 _LTD_SHUT_OWN_PL='use Fcntl;
 my ($op, $o, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 $g = -1 unless defined $g && $g =~ /^[0-9]+$/;
@@ -1785,8 +1786,9 @@ for my $f (@ARGV) {
     if ($op eq "t") {
       chmod($m | 01000, $h) if -d _ && ($m & $x) && !($m & 01000);
     } elsif ($op eq "w" && -d _) {
+      my $n = ($m & ~$x) | ($g < 0 ? 02000 : 0);
       chown(-1, 0, $h) if $g < 0 && $s[5] != 0;
-      chmod($m & ~$x, $h) if ($m & $x) || ($g < 0 && $s[5] != 0);
+      chmod($n, $h) if $n != $m || ($g < 0 && $s[5] != 0);
     } elsif ($op eq "w") {
       chmod($m & ~$x & ~06000, $h) if $m & $x;
     }
@@ -1816,7 +1818,7 @@ _ltd_ctrl_shut() {
   if [ "${_g}" = "-1" ]; then
     _ltd_in_real_dir "/data/disk/${1}/static/control" \
       env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
-      \( \( -type d \( -perm -0002 -o -perm -0020 -o ! -gid 0 \) \) \
+      \( \( -type d \( -perm -0002 -o -perm -0020 -o ! -gid 0 -o ! -perm -2000 \) \) \
       -o \( -type f \( -perm -0002 -o -perm -0020 \) \) \) \
       -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
   else
