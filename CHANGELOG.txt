@@ -423,21 +423,23 @@
       exists; once the park ends, or expires after 24 hours, they go with
       every other .off copy, as before.
 
-    * nginx's country lookup reads current data. The X-GeoIP-Country
-      headers and the GEOIP_COUNTRY_CODE, GEOIP_COUNTRY_CODE3 and
-      GEOIP_COUNTRY_NAME values PHP gets came from the distribution's
-      GeoIP.dat, whose data stops in December 2019, so an address whose
-      block changed hands since, a VPN exit among them, could name the
-      wrong country. The nightly graceful.sh now rebuilds
-      /usr/share/GeoIP/GeoIP.dat once a month from DB-IP's IP to Country
-      Lite (CC BY 4.0, https://db-ip.com) in the same format, so the
-      variables and the form of their values stay as they were, and
-      reloads nginx; each update is logged in /var/log/boa/country-db.log.
-      The new data replaces the old only once every range reads back
-      right, and a month DB-IP has not published yet keeps the month
-      before. The server's nginx.conf names the file only when it is
-      there, since nginx does not start with it missing, and graceful.sh
-      reports a config rendered without it, or a file it names gone, in
+    * nginx's country lookup reads current data, and knows visitors on
+      IPv6 too. The X-GeoIP-Country headers and the GEOIP_COUNTRY_CODE,
+      GEOIP_COUNTRY_CODE3 and GEOIP_COUNTRY_NAME values PHP gets came from
+      the distribution's GeoIP.dat, whose data stops in December 2019, so
+      an address whose block changed hands since, a VPN exit among them,
+      could name the wrong country, and a visitor on IPv6 got none. The
+      nightly graceful.sh now rebuilds /usr/share/GeoIP/GeoIP.dat and
+      GeoIPv6.dat once a month from DB-IP's IP to Country Lite (CC BY 4.0,
+      https://db-ip.com) in the same formats, so the variables and the
+      form of their values stay as they were, and reloads nginx; each
+      update is logged in /var/log/boa/country-db.log. nginx reads the
+      IPv6 file, which answers IPv4 visitors as well. The new data
+      replaces the old only once every range reads back right, and a
+      month DB-IP has not published yet keeps the month before. The
+      server's nginx.conf names a file only when it is there, since nginx
+      does not start with it missing, and graceful.sh reports a config
+      rendered without one, or a file it names gone, in
       /var/log/boa/nginx.incident.log and by mail.
 
     * A platform Verify no longer opens a platform's Drush lock while its

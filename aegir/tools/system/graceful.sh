@@ -128,32 +128,40 @@ _fetch_geoip() {
   cd
 }
 
-# nginx's geoip_country reads /usr/share/GeoIP/GeoIP.dat: the X-GeoIP-Country
-# headers and the GEOIP_COUNTRY_CODE, CODE3 and NAME values PHP gets. The
-# distro's copy holds data from December 2019, so address blocks that changed
-# hands since name the wrong country. Once a month it is rebuilt from DB-IP's
-# IP to Country Lite (CC BY 4.0, https://db-ip.com) in the same legacy format,
-# so the variables and the form of their values stay as they were (libGeoIP
-# supplies the three-letter code and the name). The new file replaces the old
-# one by a rename, only once every range reads back right, and the old one is
-# never removed first: nginx does not start without it. A month DB-IP has not
-# published yet falls back to the month before; a failed fetch keeps the file
-# and is tried again the next night.
+# nginx's geoip_country reads /usr/share/GeoIP/GeoIPv6.dat, or GeoIP.dat on a
+# box without it: the X-GeoIP-Country headers and the GEOIP_COUNTRY_CODE, CODE3
+# and NAME values PHP gets. The IPv6 edition answers IPv4 visitors too, by the
+# IPv4-mapped address nginx looks them up by. The distro's copies hold data
+# from December 2019, so address blocks that changed hands since name the
+# wrong country. Once a month both are rebuilt from DB-IP's IP to Country Lite
+# (CC BY 4.0, https://db-ip.com) in the same legacy formats, so the variables
+# and the form of their values stay as they were (libGeoIP supplies the
+# three-letter code and the name). A new file replaces the old one by a
+# rename, only once every range reads back right, and the old one is never
+# removed first: nginx does not start without it. A month DB-IP has not
+# published yet falls back to the month before; a failed fetch keeps the
+# files and is tried again the next night.
 _refresh_country_db() {
-  local _dat="/usr/share/GeoIP/GeoIP.dat" _log="/var/log/boa/country-db.log"
-  local _now _prev _have _m _tmp _new _info _got
+  local _dat="/usr/share/GeoIP/GeoIP.dat" _dat6="/usr/share/GeoIP/GeoIPv6.dat"
+  local _log="/var/log/boa/country-db.log"
+  local _now _prev _have _m _tmp _new _new6 _info _got _done
   [ -x "/usr/bin/python3" ] && [ -d "/usr/share/GeoIP" ] || return 0
   # A run killed between its mktemp and its cleanup leaves these behind; a
   # run takes minutes, so half a day apart never meets a live one.
-  find /usr/share/GeoIP -maxdepth 1 -type f -name '.GeoIP.dat.??????' \
+  find /usr/share/GeoIP -maxdepth 1 -type f -name '.GeoIP*.dat.??????' \
     -mmin +720 -delete 2> /dev/null
   find /var/backups -maxdepth 1 -type d -name '.boa-geoip.??????' \
     -mmin +720 -exec rm -rf {} + 2> /dev/null
   _now=$(date -u +%Y-%m)
   _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
+  # The month both files were built from; none when they differ.
   _have=$(tail -c 120 "${_dat}" 2> /dev/null | tr -c '[:print:]' '\n' \
     | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
     | grep -oE '[0-9]{4}-[0-9]{2}$')
+  _m=$(tail -c 120 "${_dat6}" 2> /dev/null | tr -c '[:print:]' '\n' \
+    | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
+    | grep -oE '[0-9]{4}-[0-9]{2}$')
+  [ "${_m}" = "${_have}" ] || _have=""
   [ "${_have}" = "${_now}" ] && return 0
   if ! _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null); then
     echo "$(date) GeoIP.dat: no work folder in /var/backups, kept ${_have:-the distro data}" >> "${_log}"
@@ -167,13 +175,15 @@ _refresh_country_db() {
       && gzip -t "${_tmp}/dbip.csv.gz" &> /dev/null && _got="${_m}" && break
   done
   if [ -z "${_got}" ]; then
-    echo "$(date) GeoIP.dat: no DB-IP file for ${_now} or ${_prev}, kept ${_have:-the distro data}" >> "${_log}"
+    echo "$(date) GeoIP.dat: no DB-IP file for ${_now} or ${_prev}, kept ${_have:-the files as they are}" >> "${_log}"
   elif [ "${_got}" != "none" ]; then
     _info="DB-IP Country Lite ${_got} CC BY 4.0 db-ip.com"
     _new=$(mktemp /usr/share/GeoIP/.GeoIP.dat.XXXXXX 2> /dev/null)
-    if [ -n "${_new}" ] && /usr/bin/python3 -I - "${_tmp}/dbip.csv.gz" "${_new}" "${_info}" \
-      /usr/bin/geoiplookup >> "${_tmp}/convert.log" 2>&1 <<'PYCOUNTRY'
-import gzip, os, socket, struct, subprocess, sys
+    _new6=$(mktemp /usr/share/GeoIP/.GeoIPv6.dat.XXXXXX 2> /dev/null)
+    if [ -n "${_new}" ] && [ -n "${_new6}" ] \
+      && /usr/bin/python3 -I - "${_tmp}/dbip.csv.gz" "${_new}" "${_new6}" "${_info}" \
+      /usr/bin/geoiplookup /usr/bin/geoiplookup6 >> "${_tmp}/convert.log" 2>&1 <<'PYCOUNTRY'
+import gc, gzip, os, socket, struct, subprocess, sys
 from bisect import bisect_right
 
 # libGeoIP's country table: a legacy .dat stores the position in it.
@@ -202,139 +212,214 @@ for i, c in enumerate(CODES):
   if i > 0 and c not in index:
     index[c] = i
 
-src, out, info, lookup = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+src, out4, out6, info, look4, look6 = sys.argv[1:7]
 
-# IPv4 rows only: the file nginx reads is the IPv4 edition. A code the
-# table lacks (XK) or DB-IP's ZZ reads as unknown, an empty value.
-rows = []
+# A code the table lacks (XK) or DB-IP's ZZ reads as unknown, an empty value.
+rows4, rows6 = [], []
 with gzip.open(src, "rt", encoding="ascii", errors="replace") as f:
   for line in f:
     p = line.strip().split(",")
-    if len(p) < 3 or ":" in p[0]:
+    if len(p) < 3:
       continue
+    v6 = ":" in p[0]
     try:
-      s = struct.unpack("!I", socket.inet_aton(p[0]))[0]
-      e = struct.unpack("!I", socket.inet_aton(p[1]))[0]
-    except (OSError, socket.error):
+      if v6:
+        s = int.from_bytes(socket.inet_pton(socket.AF_INET6, p[0]), "big")
+        e = int.from_bytes(socket.inet_pton(socket.AF_INET6, p[1]), "big")
+      else:
+        s = struct.unpack("!I", socket.inet_aton(p[0]))[0]
+        e = struct.unpack("!I", socket.inet_aton(p[1]))[0]
+    except (OSError, socket.error, ValueError):
       fail("bad address in %r" % line[:80])
     c = p[2].strip()
     if len(c) != 2 or not c.isalpha() or not c.isupper() or e < s:
       fail("bad row %r" % line[:80])
-    rows.append((s, e, index.get(c, 0)))
-if len(rows) < 100000:
-  fail("only %d IPv4 rows" % len(rows))
-rows.sort()
+    (rows6 if v6 else rows4).append((s, e, index.get(c, 0)))
+n4, n6 = len(rows4), len(rows6)
+if n4 < 100000:
+  fail("only %d IPv4 rows" % n4)
+if n6 < 10000:
+  fail("only %d IPv6 rows" % n6)
 
-# Ranges that cover every address once, neighbours of one country merged:
-# a gap reads as unknown.
-starts, ends, ids = [], [], []
-def put(s, e, i):
-  if ids and ids[-1] == i and ends[-1] + 1 == s:
-    ends[-1] = e
-  else:
-    starts.append(s)
-    ends.append(e)
-    ids.append(i)
-nxt = 0
-for s, e, i in rows:
-  if s < nxt:
-    fail("overlapping rows at %d" % s)
-  if s > nxt:
-    put(nxt, s - 1, 0)
-  put(s, e, i)
-  nxt = e + 1
-if nxt <= 0xFFFFFFFF:
-  put(nxt, 0xFFFFFFFF, 0)
-if len(set(ids)) < 200:
-  fail("only %d countries" % len(set(ids)))
+def ranges(rows, top):
+  """Ranges that cover all of 0..top once, neighbours of one country merged;
+  a gap reads as unknown."""
+  rows.sort()
+  starts, ends, ids = [], [], []
+  def put(s, e, i):
+    if ids and ids[-1] == i and ends[-1] + 1 == s:
+      ends[-1] = e
+    else:
+      starts.append(s)
+      ends.append(e)
+      ids.append(i)
+  nxt = 0
+  for s, e, i in rows:
+    if s < nxt:
+      fail("overlapping rows at %x" % s)
+    if s > nxt:
+      put(nxt, s - 1, 0)
+    put(s, e, i)
+    nxt = e + 1
+  if nxt <= top:
+    put(nxt, top, 0)
+  return starts, ends, ids
+
+S4, E4, I4 = ranges(rows4, 0xFFFFFFFF)
+del rows4
+if len(set(I4)) < 200:
+  fail("only %d countries" % len(set(I4)))
+
+# The IPv6 file answers IPv4 addresses too, mapped (::ffff:a.b.c.d, the form
+# nginx looks an IPv4 client up by) and compatible (::a.b.c.d), as the
+# distro's copy does: those two blocks take the IPv4 data, whatever IPv6
+# rows cover them.
+WIN = (0, 0xFFFF << 32)
+def cut(rows):
+  out = []
+  for s, e, i in rows:
+    pieces = [(s, e)]
+    for w in WIN:
+      we = w + 0xFFFFFFFF
+      kept = []
+      for a, b in pieces:
+        if b < w or a > we:
+          kept.append((a, b))
+          continue
+        if a < w:
+          kept.append((a, w - 1))
+        if b > we:
+          kept.append((we + 1, b))
+      pieces = kept
+    out.extend((a, b, i) for a, b in pieces)
+  return out
+rows6 = cut(rows6)
+for w in WIN:
+  rows6.extend((w + s, w + e, i) for s, e, i in zip(S4, E4, I4))
+S6, E6, I6 = ranges(rows6, (1 << 128) - 1)
+del rows6
+gc.collect()
 
 # A binary tree of 6-byte nodes, two 3-byte little-endian records each: a
 # record at or above BEGIN is a leaf (BEGIN + country), any other is the
-# next node. libGeoIP starts at node 0 with bit 31.
-tree = bytearray()
-def build(lo, bits):
-  k = bisect_right(starts, lo) - 1
-  if bits < 32 and ends[k] >= lo + (1 << bits) - 1:
-    return BEGIN + ids[k]
-  node = len(tree) // 6
-  tree.extend(b"\0" * 6)
-  left = build(lo, bits - 1)
-  right = build(lo + (1 << (bits - 1)), bits - 1)
-  tree[node * 6:node * 6 + 6] = struct.pack("<I", left)[:3] + struct.pack("<I", right)[:3]
-  return node
-build(0, 32)
-if len(tree) // 6 >= BEGIN:
-  fail("tree too large")
+# next node. libGeoIP starts at node 0 with the top bit (31 or 127).
+def make(starts, ends, ids, top):
+  tree = bytearray()
+  def build(lo, bits):
+    k = bisect_right(starts, lo) - 1
+    if bits < top and ends[k] >= lo + (1 << bits) - 1:
+      return BEGIN + ids[k]
+    node = len(tree) // 6
+    tree.extend(b"\0" * 6)
+    left = build(lo, bits - 1)
+    right = build(lo + (1 << (bits - 1)), bits - 1)
+    tree[node * 6:node * 6 + 6] = struct.pack("<I", left)[:3] + struct.pack("<I", right)[:3]
+    return node
+  build(0, top)
+  if len(tree) // 6 >= BEGIN:
+    fail("tree too large")
+  return tree
 
-def seek(ip):
-  off = 0
-  for depth in range(31, -1, -1):
-    b = off * 6 + (3 if ip >> depth & 1 else 0)
+def seek(tree, ip, depth, off=0):
+  """The country for the low depth bits of ip from node off; -1 - node when
+  no leaf comes first."""
+  for d in range(depth - 1, -1, -1):
+    b = off * 6 + (3 if ip >> d & 1 else 0)
     x = tree[b] | tree[b + 1] << 8 | tree[b + 2] << 16
     if x >= BEGIN:
       return x - BEGIN
     off = x
-  return -1
+  return -1 - off
 
-for s, e, i in zip(starts, ends, ids):
-  if seek(s) != i or seek(e) != i:
-    fail("read-back differs at %d" % s)
+# Every range is read back at both ends before either file may be used; in
+# the IPv6 file each IPv4 block from the node 96 bits down.
+T4 = make(S4, E4, I4, 32)
+for s, e, i in zip(S4, E4, I4):
+  if seek(T4, s, 32) != i or seek(T4, e, 32) != i:
+    fail("IPv4 read-back differs at %d" % s)
+T6 = make(S6, E6, I6, 128)
+inwin = lambda a: any(w <= a <= w + 0xFFFFFFFF for w in WIN)
+for s, e, i in zip(S6, E6, I6):
+  if not inwin(s) and (seek(T6, s, 128) != i or seek(T6, e, 128) != i):
+    fail("IPv6 read-back differs at %x" % s)
+for w in WIN:
+  node = -1 - seek(T6, w >> 32, 96)
+  if node < 0:
+    fail("no IPv4 block at %x" % w)
+  for s, e, i in zip(S4, E4, I4):
+    if seek(T6, s, 32, node) != i or seek(T6, e, 32, node) != i:
+      fail("IPv4 read-back in the IPv6 file differs at %x" % (w + s))
 
 # The distro's layout: the tree, three zero bytes, the description
-# geoiplookup -v shows, then the country edition marker.
-with open(out, "wb") as f:
-  f.write(bytes(tree) + b"\0\0\0" + info.encode("ascii") + b"\xff\xff\xff\x01")
-  f.flush()
-  os.fsync(f.fileno())
+# geoiplookup -v shows, then the edition marker (1 country, 12 country v6).
+for out, tree, ed in ((out4, T4, 1), (out6, T6, 12)):
+  with open(out, "wb") as f:
+    f.write(bytes(tree) + b"\0\0\0" + info.encode("ascii") + b"\xff\xff\xff" + bytes([ed]))
+    f.flush()
+    os.fsync(f.fileno())
 
-# The library nginx links reads a spread of ranges from the new file.
-if os.access(lookup, os.X_OK):
-  known = [k for k in range(len(ids)) if ids[k] > 0]
-  for k in known[::max(1, len(known) // 64)]:
-    ip = socket.inet_ntoa(struct.pack("!I", starts[k]))
-    r = subprocess.run([lookup, "-f", out, ip], stdout=subprocess.PIPE,
+# The library nginx links reads a spread of ranges from the new files.
+def spot(tool, out, addrs):
+  if not os.access(tool, os.X_OK):
+    return
+  for ip, want in addrs:
+    r = subprocess.run([tool, "-f", out, ip], stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, universal_newlines=True)
-    if (": %s," % CODES[ids[k]]) not in r.stdout:
-      fail("geoiplookup gives %r for %s, the source %s" % (r.stdout.strip(), ip, CODES[ids[k]]))
-print("%d rows, %d ranges, %d nodes" % (len(rows), len(ids), len(tree) // 6))
+    if (": %s," % CODES[want]) not in r.stdout:
+      fail("%s gives %r for %s, the source %s" % (os.path.basename(tool), r.stdout.strip(), ip, CODES[want]))
+k4 = [k for k in range(len(I4)) if I4[k] > 0]
+k4 = k4[::max(1, len(k4) // 64)]
+spot(look4, out4, [(socket.inet_ntoa(struct.pack("!I", S4[k])), I4[k]) for k in k4])
+k6 = [k for k in range(len(I6)) if I6[k] > 0 and not inwin(S6[k])]
+k6 = k6[::max(1, len(k6) // 64)]
+a6 = [(socket.inet_ntop(socket.AF_INET6, S6[k].to_bytes(16, "big")), I6[k]) for k in k6]
+a6 += [("::ffff:" + socket.inet_ntoa(struct.pack("!I", S4[k])), I4[k]) for k in k4[::4]]
+spot(look6, out6, a6)
+print("%d IPv4 rows, %d IPv6 rows, %d and %d nodes" % (n4, n6, len(T4) // 6, len(T6) // 6))
 PYCOUNTRY
     then
-      chmod 644 "${_new}"
-      if mv -f "${_new}" "${_dat}" 2> /dev/null; then
-        echo "$(date) GeoIP.dat: ${_info} ($(tail -n 1 "${_tmp}/convert.log"))" >> "${_log}"
+      chmod 644 "${_new}" "${_new6}"
+      _done=""
+      mv -f "${_new}" "${_dat}" 2> /dev/null && _done="GeoIP.dat"
+      mv -f "${_new6}" "${_dat6}" 2> /dev/null && _done="${_done:+${_done} and }GeoIPv6.dat"
+      if [ -n "${_done}" ]; then
+        echo "$(date) ${_done}: ${_info} ($(tail -n 1 "${_tmp}/convert.log"))" >> "${_log}"
         if nginx -t &> /dev/null; then
           service nginx reload &> /dev/null
         else
           echo "$(date) GeoIP.dat: nginx -t fails, so nginx was not reloaded; it reads the new data at its next reload or start" >> "${_log}"
         fi
-      else
-        echo "$(date) GeoIP.dat: DB-IP ${_got} could not be renamed into place, kept ${_have:-the distro data}" >> "${_log}"
+      fi
+      if [ "${_done}" != "GeoIP.dat and GeoIPv6.dat" ]; then
+        echo "$(date) GeoIP.dat: DB-IP ${_got} could not be renamed into place for both files (done: ${_done:-none}), kept ${_have:-the files as they are} for the rest" >> "${_log}"
       fi
     else
-      echo "$(date) GeoIP.dat: DB-IP ${_got} not used, kept ${_have:-the distro data}: $(tail -n 1 "${_tmp}/convert.log" 2> /dev/null)" >> "${_log}"
+      echo "$(date) GeoIP.dat: DB-IP ${_got} not used, kept ${_have:-the files as they are}: $(tail -n 1 "${_tmp}/convert.log" 2> /dev/null)" >> "${_log}"
     fi
-    [ -n "${_new}" ] && rm -f "${_new}"
+    rm -f "${_new}" "${_new6}" 2> /dev/null
   fi
   rm -rf "${_tmp}"
 }
 
-# The server template names GeoIP.dat only when it is there, since nginx does
-# not start with a geoip_country file missing. So a config rendered while it
-# was missing runs with every country empty, and one rendered before it went
-# missing stops nginx at the next restart; neither says so by itself. Once a
-# day a dated line in /var/log/boa/nginx.incident.log and a mail to _MY_EMAIL
-# unless _INCIDENT_REPORT is OFF (both read from the config _check_root
-# sourced).
+# The server template names a country file (GeoIPv6.dat, else GeoIP.dat) only
+# when it is there, since nginx does not start with a geoip_country file
+# missing. So a config rendered while both were missing runs with every
+# country empty, and one rendered before its file went missing stops nginx at
+# the next restart; neither says so by itself. Once a day a dated line in
+# /var/log/boa/nginx.incident.log and a mail to _MY_EMAIL unless
+# _INCIDENT_REPORT is OFF (both read from the config _check_root sourced).
 _check_country_db() {
   local _cfg="/var/aegir/config/server_master/nginx.conf"
   local _log="/var/log/boa/nginx.incident.log" _stamp="/run/boa_country_db_alert.pid"
-  local _txt _lvl _mail _host _today
+  local _txt _lvl _mail _host _today _file
   [ -s "${_cfg}" ] || return 0
-  if grep -q "^[[:space:]]*geoip_country " "${_cfg}" 2> /dev/null; then
-    [ -s "/usr/share/GeoIP/GeoIP.dat" ] && return 0
-    _txt="/usr/share/GeoIP/GeoIP.dat is missing and ${_cfg} names it: nginx will not start until the file is back (apt-get install --reinstall geoip-database)"
+  _file=$(grep -m 1 "^[[:space:]]*geoip_country " "${_cfg}" 2> /dev/null \
+    | awk '{print $2}' | tr -d ';')
+  if [ -n "${_file}" ]; then
+    [ -s "${_file}" ] && return 0
+    _txt="${_file} is missing and ${_cfg} names it: nginx will not start until the file is back (apt-get install --reinstall geoip-database)"
   else
-    _txt="${_cfg} has no geoip_country line: every visitor's country is empty until the next Verify of the server renders it with /usr/share/GeoIP/GeoIP.dat present"
+    _txt="${_cfg} has no geoip_country line: every visitor's country is empty until the next Verify of the server renders it with /usr/share/GeoIP/GeoIPv6.dat or GeoIP.dat present"
   fi
   # The stamp holds the day it alerted: an age test against a daily cron that
   # reaches this point a little earlier one night skips that night.
