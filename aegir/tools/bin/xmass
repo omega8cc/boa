@@ -519,10 +519,10 @@ _mig_hostkey_changed() {
         ;;
     esac
   done < <(ssh-keygen -l -E sha256 -F "${_h}" -f "${_f}" 2> /dev/null)
-  case "${_t}" in
-    ED25519|ECDSA|RSA) _pub="$(printf '%s' "${_t}" | tr '[:upper:]' '[:lower:]')" ;;
-    *) _pub="ed25519" ;;
-  esac
+  # the file of that key type, as the server names its key files: lower
+  # case, a dash written as an underscore
+  _pub="$(printf '%s' "${_t}" | tr '[:upper:]-' '[:lower:]_' | tr -cd 'a-z0-9_')"
+  [ -n "${_pub}" ] || _pub="ed25519"
   if [ "${3:-}" = "inuse" ]; then
     echo "ALRT: This box reached ${_h} with the key it holds before. Host keys made anew there read like this, and so does another server answering in its place: find out which before anything is removed."
   else
@@ -536,16 +536,6 @@ _mig_hostkey_changed() {
   return 0
 }
 
-### $1 the host, $2 "inuse" as above. One login that runs nothing, for a verb
-### whose own first call to the host keeps no words: 0 when the client refused
-### it over a changed key, which is then named as above, 1 for anything else
-### (the verb's own calls say what). It accepts no key this box has not met.
-_mig_hostkey_probe() {
-  local _said
-  _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" true 2>&1 < /dev/null)" \
-    && return 1
-  _mig_hostkey_changed "${1}" "${_said}" "${2:-}"
-}
 
 ### This box's SSH host key fingerprints, from the files its SSH server is
 ### set to serve (the default names when its settings cannot be read), for a
@@ -13952,8 +13942,15 @@ _xmass_csf_undo_peers() {
   fi
   _XMASS_HOSTKEY_PENDING=""
   if [ -n "${_XMASS_HOSTKEY_ADDED}" ]; then
+    # judged by what the file holds after: the key tool rewrites nothing
+    # when it cannot read one of the file's lines
     ssh-keygen -R "${_XMASS_HOSTKEY_ADDED}" -f /root/.ssh/known_hosts &> /dev/null
-    _info "host key for ${_XMASS_HOSTKEY_ADDED} forgotten again -- the verb did not complete"
+    if _xmass_hostkey_held "${_XMASS_HOSTKEY_ADDED}"; then
+      _alrt "could NOT forget the host key this run stored for ${_XMASS_HOSTKEY_ADDED}; remove it by hand:" \
+            "'ssh-keygen -R ${_XMASS_HOSTKEY_ADDED} -f /root/.ssh/known_hosts' (the verb did not complete)"
+    else
+      _info "host key for ${_XMASS_HOSTKEY_ADDED} forgotten again -- the verb did not complete"
+    fi
   fi
   _XMASS_CSF_ADDED_LOCAL=()
   _XMASS_CSF_ADDED_REMOTE=()
@@ -13972,6 +13969,17 @@ _xmass_verb_unwind() {
   # undoes under it. A signal runs this twice, the trap and then EXIT.
   local _rc="${1:-0}"
   _mig_drop_window close
+  # what a key check or a resumed cutover's first login left when the run
+  # was cut short inside it
+  if [ -n "${_XMASS_PIN_DIR}" ]; then
+    rm -f "${_XMASS_PIN_DIR}/scan" "${_XMASS_PIN_DIR}/one" "${_XMASS_PIN_DIR}/pin"
+    rmdir "${_XMASS_PIN_DIR}" 2> /dev/null
+    _XMASS_PIN_DIR=""
+  fi
+  if [ -n "${_XMASS_SAID_FILE}" ]; then
+    rm -f "${_XMASS_SAID_FILE}"
+    _XMASS_SAID_FILE=""
+  fi
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
@@ -14193,6 +14201,9 @@ _xmass_refuse_role_clash() {
     _ko=(-o StrictHostKeyChecking=yes -o "HostKeyAlgorithms=${_XMASS_PIN_ALG}"
       -o "UserKnownHostsFile=${_XMASS_PIN_DIR}/pin" -o GlobalKnownHostsFile=/dev/null
       -o UpdateHostKeys=no)
+    # a client that can ask a command for more known keys is told not to
+    ! command ssh -o KnownHostsCommand=none -G "${_tgt}" > /dev/null 2>&1 \
+      || _ko+=(-o KnownHostsCommand=none)
   elif [ "${_held}" = "NO" ]; then
     _XMASS_HOSTKEY_PENDING="${_tgt}"
   fi
@@ -17468,6 +17479,7 @@ _xmass_tell_host_keys() {
 _XMASS_HOST_FP=""
 _XMASS_PIN_ALG=""
 _XMASS_PIN_DIR=""
+_XMASS_SAID_FILE=""
 _xmass_pin_host_key() {
   local _t="${1}" _held="${2}" _fp _d _l _x _ht _hfp _type="" _line="" _seen=""
   _XMASS_PIN_ALG=""
@@ -17478,6 +17490,16 @@ _xmass_pin_host_key() {
   _fp="${_XMASS_HOST_FP%=}"
   _d="$(mktemp -d /tmp/mig-pin.XXXXXX 2> /dev/null)" \
     || _die "could not make a temp folder for the key check of ${_t}; nothing was changed"
+  # the verb's exit removes it when the check is cut short
+  _XMASS_PIN_DIR="${_d}"
+  # a key this box marks revoked is never the one to take
+  if ssh-keygen -l -E sha256 -F "${_t}" -f /root/.ssh/known_hosts 2> /dev/null \
+    | awk -v fp="${_fp}" '/^# Host / { rev = ($0 ~ /found: line [0-9]+ REVOKED/) ? 1 : 0; next }
+        rev && $3 == fp { hit = 1 } END { exit hit ? 0 : 1 }'; then
+    rmdir "${_d}" 2> /dev/null
+    _XMASS_PIN_DIR=""
+    _die "--host-fp names a key that /root/.ssh/known_hosts marks revoked for ${_t}; nothing was changed"
+  fi
   if [ "${_held}" = "YES" ]; then
     # the entries held, as the file has them; a certificate authority or a
     # revoked key is none
@@ -17510,10 +17532,11 @@ _xmass_pin_host_key() {
   esac
   if [ -n "${_line}" ] && [ -n "${_XMASS_PIN_ALG}" ] \
     && printf '%s\n' "${_line}" > "${_d}/pin"; then
-    _XMASS_PIN_DIR="${_d}"
+    :
   else
     rm -f "${_d}/pin"
     rmdir "${_d}" 2> /dev/null
+    _XMASS_PIN_DIR=""
     if [ -n "${_line}" ] && [ -z "${_XMASS_PIN_ALG}" ]; then
       _die "--host-fp names a ${_type:-?} key of ${_t}; pin its ED25519, ECDSA or RSA host key." \
            "Nothing was changed"
@@ -17531,6 +17554,8 @@ _xmass_pin_host_key() {
   if [ "${_held}" = "NO" ]; then
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
+    # the run's from before it is written, so an exit in between forgets it
+    _XMASS_HOSTKEY_PENDING="${_t}"
     if ! printf '%s\n' "${_line}" >> /root/.ssh/known_hosts; then
       rm -f "${_d}/pin"
       rmdir "${_d}" 2> /dev/null
@@ -17538,6 +17563,7 @@ _xmass_pin_host_key() {
       _die "cannot write /root/.ssh/known_hosts; the key of ${_t} was not stored"
     fi
     _XMASS_HOSTKEY_ADDED="${_t}"
+    _XMASS_HOSTKEY_PENDING=""
     _info "Stored the ${_type} host key of ${_t}: its fingerprint is the one --host-fp names"
   else
     _info "This box holds the ${_type} host key --host-fp names for ${_t}"
@@ -19784,6 +19810,7 @@ _xmass_cmd_cutover() {
     # one held here is named as that.
     local _rsaid _rwords
     _rsaid="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _rsaid=/dev/null
+    [ "${_rsaid}" = /dev/null ] || _XMASS_SAID_FILE="${_rsaid}"
     if [ "${_XMASS_TARGET_ARMED}" != "YES" ] \
       && ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" > /dev/null 2> "${_rsaid}"; then
       _rwords="$(cat "${_rsaid}" 2> /dev/null)"

@@ -382,10 +382,10 @@ _mig_hostkey_changed() {
         ;;
     esac
   done < <(ssh-keygen -l -E sha256 -F "${_h}" -f "${_f}" 2> /dev/null)
-  case "${_t}" in
-    ED25519|ECDSA|RSA) _pub="$(printf '%s' "${_t}" | tr '[:upper:]' '[:lower:]')" ;;
-    *) _pub="ed25519" ;;
-  esac
+  # the file of that key type, as the server names its key files: lower
+  # case, a dash written as an underscore
+  _pub="$(printf '%s' "${_t}" | tr '[:upper:]-' '[:lower:]_' | tr -cd 'a-z0-9_')"
+  [ -n "${_pub}" ] || _pub="ed25519"
   if [ "${3:-}" = "inuse" ]; then
     echo "ALRT: This box reached ${_h} with the key it holds before. Host keys made anew there read like this, and so does another server answering in its place: find out which before anything is removed."
   else
@@ -399,16 +399,6 @@ _mig_hostkey_changed() {
   return 0
 }
 
-### $1 the host, $2 "inuse" as above. One login that runs nothing, for a verb
-### whose own first call to the host keeps no words: 0 when the client refused
-### it over a changed key, which is then named as above, 1 for anything else
-### (the verb's own calls say what). It accepts no key this box has not met.
-_mig_hostkey_probe() {
-  local _said
-  _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" true 2>&1 < /dev/null)" \
-    && return 1
-  _mig_hostkey_changed "${1}" "${_said}" "${2:-}"
-}
 
 ### This box's SSH host key fingerprints, from the files its SSH server is
 ### set to serve (the default names when its settings cannot be read), for a
@@ -5002,19 +4992,6 @@ _migrate_init() {
   case "${_cmd}:${_oct}" in
     create:*|pretransfer:*|transfer:*|*:shared|*:xusage)
       _xcopy_learn_peer_host_key "${_tgt}"
-      ;;
-  esac
-  ### The shared and xusage legs copy at once, and their copy keeps no words
-  ### of a refused login: a target whose key is not the one held here is
-  ### named before anything travels.
-  case "${_oct}" in
-    shared|xusage)
-      if _mig_hostkey_probe "${_tgt}"; then
-        echo "ERROR: ${_tgt} serves a host key that is not the one this box holds for that address"
-        echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
-        echo "ERROR: forget the old entries here, then run this command again"
-        exit 1
-      fi
       ;;
   esac
   if [ "${_oct}" = "xusage" ]; then
