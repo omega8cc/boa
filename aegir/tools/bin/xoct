@@ -10646,7 +10646,10 @@ _migrate_init() {
         echo "ERROR: ${_cmd} for ${_oct}: no login to ${_tgt} (${_xu_said:0:200}); nothing travelled"
       fi
       _XOCT_NOT_CLEAN=YES
-      [ "${_MODE}" = "DRY" ] && _xoct_finalize_dry "${_oct}" "${_tgt}"
+      if [ "${_MODE}" = "DRY" ]; then
+        echo "DENY: ${_cmd} for ${_oct}: no usable login to ${_tgt}, as the ERROR above says"
+        _xoct_finalize_dry "${_oct}" "${_tgt}"
+      fi
       exit 1
     }
     [ "${_MODE}" = "LIVE" ] && _xoct_require_clean_dry "${_oct}" "${_tgt}"
