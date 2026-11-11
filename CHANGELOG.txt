@@ -436,6 +436,10 @@
 
 @=> Important Fixes
 
+    * A barracuda pass that takes the quic_bpf fragment away reloads
+      nothing for it and says the change takes effect at Nginx's next
+      start: a reload keeps the setting the running Nginx started with.
+
     * The backup cron writer skips an indented comment and a line of
       spaces in the backup schedule, and refuses a line of one word. Its
       comment test read \s as the letter s, so an indented comment was an
