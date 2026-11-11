@@ -396,6 +396,48 @@ _mig_hostkey_changed() {
   return 0
 }
 
+### $1 the host, $2 "inuse" as above. One login that runs nothing, for a verb
+### whose own first call to the host keeps no words: 0 when the client refused
+### it over a changed key, which is then named as above, 1 for anything else
+### (the verb's own calls say what). It accepts no key this box has not met.
+_mig_hostkey_probe() {
+  local _said
+  _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" true 2>&1 < /dev/null)" \
+    && return 1
+  _mig_hostkey_changed "${1}" "${_said}" "${2:-}"
+}
+
+### This box's SSH host key fingerprints, from the files its SSH server is
+### set to serve (the default names when its settings cannot be read), for a
+### source that is served a key it does not hold for this address. The first
+### of ED25519, ECDSA and RSA among them goes to _MIG_HOSTKEY_MAIN.
+_MIG_HOSTKEY_MAIN=""
+_mig_tell_host_keys() {
+  local _k _l _t _all=""
+  _MIG_HOSTKEY_MAIN=""
+  echo "INFO: This box's SSH host key fingerprints, to compare when a source is served a key it does not hold for this address:"
+  while IFS= read -r _k; do
+    [ -f "${_k}.pub" ] || continue
+    _l="$(ssh-keygen -l -E sha256 -f "${_k}.pub" 2> /dev/null \
+      | awk '{ t = $NF; gsub(/[()]/, "", t); print t, $2; exit }')"
+    [ -n "${_l}" ] || continue
+    echo "INFO:   ${_l}"
+    _all="${_all}${_l}"$'\n'
+  done < <(
+    sshd -T 2> /dev/null | awk 'tolower($1) == "hostkey" { print $2 }' | grep . \
+      || ls /etc/ssh/ssh_host_*_key 2> /dev/null
+  )
+  if [ -z "${_all}" ]; then
+    echo "ALRT: could not read this box's SSH host key files; 'ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub' prints the main one"
+    return 0
+  fi
+  for _t in ED25519 ECDSA RSA; do
+    _MIG_HOSTKEY_MAIN="$(printf '%s' "${_all}" | grep -m 1 "^${_t} SHA256:")"
+    [ -z "${_MIG_HOSTKEY_MAIN}" ] || break
+  done
+  return 0
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -4959,6 +5001,19 @@ _migrate_init() {
       _xcopy_learn_peer_host_key "${_tgt}"
       ;;
   esac
+  ### The shared and xusage legs copy at once, and their copy keeps no words
+  ### of a refused login: a target whose key is not the one held here is
+  ### named before anything travels.
+  case "${_oct}" in
+    shared|xusage)
+      if _mig_hostkey_probe "${_tgt}"; then
+        echo "ERROR: ${_tgt} serves a host key that is not the one this box holds for that address"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+        exit 1
+      fi
+      ;;
+  esac
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     if [ -e "/var/log/boa/usage" ]; then
@@ -5683,6 +5738,9 @@ _pre_mig() {
       echo Preparing target ${_hName} for incoming migration...
       echo Add remote id_ed25519.pub to authorized_keys here...
       _xcopy_trust_source_key || exit 1
+      ### A source that holds another key for this box's address is refused
+      ### at its first login here; these are the lines it compares.
+      _mig_tell_host_keys
     fi
   fi
   echo All done!

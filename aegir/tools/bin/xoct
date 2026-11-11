@@ -396,6 +396,48 @@ _mig_hostkey_changed() {
   return 0
 }
 
+### $1 the host, $2 "inuse" as above. One login that runs nothing, for a verb
+### whose own first call to the host keeps no words: 0 when the client refused
+### it over a changed key, which is then named as above, 1 for anything else
+### (the verb's own calls say what). It accepts no key this box has not met.
+_mig_hostkey_probe() {
+  local _said
+  _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" true 2>&1 < /dev/null)" \
+    && return 1
+  _mig_hostkey_changed "${1}" "${_said}" "${2:-}"
+}
+
+### This box's SSH host key fingerprints, from the files its SSH server is
+### set to serve (the default names when its settings cannot be read), for a
+### source that is served a key it does not hold for this address. The first
+### of ED25519, ECDSA and RSA among them goes to _MIG_HOSTKEY_MAIN.
+_MIG_HOSTKEY_MAIN=""
+_mig_tell_host_keys() {
+  local _k _l _t _all=""
+  _MIG_HOSTKEY_MAIN=""
+  echo "INFO: This box's SSH host key fingerprints, to compare when a source is served a key it does not hold for this address:"
+  while IFS= read -r _k; do
+    [ -f "${_k}.pub" ] || continue
+    _l="$(ssh-keygen -l -E sha256 -f "${_k}.pub" 2> /dev/null \
+      | awk '{ t = $NF; gsub(/[()]/, "", t); print t, $2; exit }')"
+    [ -n "${_l}" ] || continue
+    echo "INFO:   ${_l}"
+    _all="${_all}${_l}"$'\n'
+  done < <(
+    sshd -T 2> /dev/null | awk 'tolower($1) == "hostkey" { print $2 }' | grep . \
+      || ls /etc/ssh/ssh_host_*_key 2> /dev/null
+  )
+  if [ -z "${_all}" ]; then
+    echo "ALRT: could not read this box's SSH host key files; 'ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub' prints the main one"
+    return 0
+  fi
+  for _t in ED25519 ECDSA RSA; do
+    _MIG_HOSTKEY_MAIN="$(printf '%s' "${_all}" | grep -m 1 "^${_t} SHA256:")"
+    [ -z "${_MIG_HOSTKEY_MAIN}" ] || break
+  done
+  return 0
+}
+
 ### Copied verbatim from the shared library: a standalone tool cannot source
 ### it, so the definition travels with every writer that needs it.
 _acct_group() {
@@ -8835,8 +8877,14 @@ PEERREC
   ### The remote stderr is what names the cause a refusal must show (a host
   ### key, a refused connection, a full disk); keep its first line.
   _XOCT_PUSH_ERR="$(grep -vE '^(@|Warning:|WARNING)' "${_perr}" 2>/dev/null | grep -m1 . | tr -d '\r')"
-  [ -s "${_perr}" ] && [ "${_prc}" != "0" ] && [ "${_prc}" != "6" ] \
-    && [ "${_prc}" != "7" ] && cat "${_perr}" >&2
+  # a peer whose key is not the one held here is named as that
+  if [ "${_prc}" = "255" ] \
+    && _mig_hostkey_changed "${_pip}" "$(cat "${_perr}" 2> /dev/null)" inuse; then
+    _XOCT_PUSH_ERR="its host key is not the one this box holds, ${_MIG_HOSTKEY_SAYS}"
+  elif [ -s "${_perr}" ] && [ "${_prc}" != "0" ] && [ "${_prc}" != "6" ] \
+    && [ "${_prc}" != "7" ]; then
+    cat "${_perr}" >&2
+  fi
   rm -f "${_perr}"
   return "${_prc}"
 }
@@ -10349,8 +10397,16 @@ _xoct_go_live() {
     exit 1
   fi
   ### go-live reaches the target below before _migrate_init runs, so it
-  ### learns the host key itself, as the verbs there do.
+  ### learns the host key itself, as the verbs there do. Its reads keep no
+  ### words of a refused login: a target whose key is not the one held here
+  ### is named before anything is read.
   _xoct_learn_peer_host_key "${_tgt}"
+  if _mig_hostkey_probe "${_tgt}" inuse; then
+    echo "ERROR: ${_tgt} serves a host key that is not the one this box holds for that address"
+    echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing was changed. Make the check named above,"
+    echo "ERROR: forget the old entries here, then run this command again"
+    exit 1
+  fi
   ### The record and the marker read below are root's; records older tools
   ### left in log/ are imported first (a no-op once done).
   _mig_adopt_once
@@ -10544,6 +10600,17 @@ _migrate_init() {
     create:*|pretransfer:*|transfer:*|proxy:*|*:shared|*:xusage)
       _xoct_require_peer_whitelist "${_tgt}" || exit 1
       _xoct_learn_peer_host_key "${_tgt}"
+      ### The firewall read is the first login to a target given as an
+      ### address. A target given by name is not read there: a key that is
+      ### not the one held here for that name is named before anything
+      ### travels. An xmass run named it at its own first login.
+      if [ "${_XOCT_XMASS_RUN}" != "YES" ] && ! _mig_valid_ip "${_tgt}" \
+        && _mig_hostkey_probe "${_tgt}"; then
+        echo "ERROR: ${_tgt} serves a host key that is not the one this box holds for that name"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+        exit 1
+      fi
       ;;
   esac
   if [ "${_oct}" = "xusage" ]; then
@@ -11691,6 +11758,9 @@ _pre_mig() {
       echo Preparing target ${_hName} for incoming migration...
       echo Add remote id_ed25519.pub to authorized_keys here...
       _xoct_trust_source_key || exit 1
+      ### A source that holds another key for this box's address is refused
+      ### at its first login here; these are the lines it compares.
+      _mig_tell_host_keys
     fi
   fi
   echo All done!

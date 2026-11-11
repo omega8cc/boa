@@ -533,6 +533,48 @@ _mig_hostkey_changed() {
   return 0
 }
 
+### $1 the host, $2 "inuse" as above. One login that runs nothing, for a verb
+### whose own first call to the host keeps no words: 0 when the client refused
+### it over a changed key, which is then named as above, 1 for anything else
+### (the verb's own calls say what). It accepts no key this box has not met.
+_mig_hostkey_probe() {
+  local _said
+  _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" true 2>&1 < /dev/null)" \
+    && return 1
+  _mig_hostkey_changed "${1}" "${_said}" "${2:-}"
+}
+
+### This box's SSH host key fingerprints, from the files its SSH server is
+### set to serve (the default names when its settings cannot be read), for a
+### source that is served a key it does not hold for this address. The first
+### of ED25519, ECDSA and RSA among them goes to _MIG_HOSTKEY_MAIN.
+_MIG_HOSTKEY_MAIN=""
+_mig_tell_host_keys() {
+  local _k _l _t _all=""
+  _MIG_HOSTKEY_MAIN=""
+  echo "INFO: This box's SSH host key fingerprints, to compare when a source is served a key it does not hold for this address:"
+  while IFS= read -r _k; do
+    [ -f "${_k}.pub" ] || continue
+    _l="$(ssh-keygen -l -E sha256 -f "${_k}.pub" 2> /dev/null \
+      | awk '{ t = $NF; gsub(/[()]/, "", t); print t, $2; exit }')"
+    [ -n "${_l}" ] || continue
+    echo "INFO:   ${_l}"
+    _all="${_all}${_l}"$'\n'
+  done < <(
+    sshd -T 2> /dev/null | awk 'tolower($1) == "hostkey" { print $2 }' | grep . \
+      || ls /etc/ssh/ssh_host_*_key 2> /dev/null
+  )
+  if [ -z "${_all}" ]; then
+    echo "ALRT: could not read this box's SSH host key files; 'ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub' prints the main one"
+    return 0
+  fi
+  for _t in ED25519 ECDSA RSA; do
+    _MIG_HOSTKEY_MAIN="$(printf '%s' "${_all}" | grep -m 1 "^${_t} SHA256:")"
+    [ -z "${_MIG_HOSTKEY_MAIN}" ] || break
+  done
+  return 0
+}
+
 ### The verb stops when the client's words $2 say target $1 serves a key
 ### other than the one held here for it; any other failure returns. $3 is
 ### "inuse" for a target this box reached before.
@@ -13892,7 +13934,7 @@ _xmass_csf_undo_peers() {
     fi
   done
   if [ -n "${_XMASS_HOSTKEY_ADDED}" ]; then
-    ssh-keygen -R "${_XMASS_HOSTKEY_ADDED}" &> /dev/null
+    ssh-keygen -R "${_XMASS_HOSTKEY_ADDED}" -f /root/.ssh/known_hosts &> /dev/null
     _info "host key for ${_XMASS_HOSTKEY_ADDED} forgotten again -- the verb did not complete"
   fi
   _XMASS_CSF_ADDED_LOCAL=()
@@ -14119,12 +14161,30 @@ _xmass_refuse_role_clash() {
   # not rc 0 = could not verify. This is the verb's first login to the
   # target, so the client's own words are kept: a target whose key is not
   # the one held here for its address is named as that, and any other
-  # failure carries the client's last line.
-  local _mrk _mrk_src _one _rc _said
+  # failure carries the client's last line. With --host-fp the key is
+  # checked before this login, which then accepts that key alone. Without
+  # it a target this box holds no key for is trusted on first use, and the
+  # key the client stores here is recorded as this run's, so a verb that
+  # does not complete forgets it again.
+  local _mrk _mrk_src _one _rc _said _held=YES _lrn
+  local -a _ko=(-o StrictHostKeyChecking=accept-new)
+  ssh-keygen -F "${_tgt}" -f /root/.ssh/known_hosts > /dev/null 2>&1 || _held=NO
+  if [ -n "${_XMASS_HOST_FP}" ]; then
+    _xmass_pin_host_key "${_tgt}" "${_held}"
+    _ko=(-o StrictHostKeyChecking=yes -o "HostKeyAlgorithms=${_XMASS_PIN_ALG}")
+  fi
   _said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
-    -o StrictHostKeyChecking=accept-new root@"${_tgt}" \
+    "${_ko[@]}" root@"${_tgt}" \
     "test -e /root/.standby.cnf" 2>&1)"
   _rc=$?
+  if [ "${_held}" = "NO" ] && [ -z "${_XMASS_HOSTKEY_ADDED}" ] \
+    && ssh-keygen -F "${_tgt}" -f /root/.ssh/known_hosts > /dev/null 2>&1; then
+    _XMASS_HOSTKEY_ADDED="${_tgt}"
+    _lrn="$(ssh-keygen -l -E sha256 -F "${_tgt}" -f /root/.ssh/known_hosts 2> /dev/null \
+      | awk '$1 != "#" && $3 ~ /^SHA256:/ { printf "%s%s %s", s, $2, $3; s = ", " }')"
+    _info "Learned host key for ${_tgt} at its first login, trusted on first use: ${_lrn:-not readable}"
+    _info "Compare it with the lines 'xmass pre-mig' printed on ${_tgt}; --host-fp=SHA256:... takes that key and no other"
+  fi
   [ "${_rc}" = "1" ] && return 0
   if [ "${_rc}" != "0" ]; then
     _xmass_die_hostkey_changed "${_tgt}" "${_said}"
@@ -17348,25 +17408,97 @@ _xmass_pre_mig() {
   _info "pre-mig complete on ${_hName}"
 }
 
-### This box's SSH host key fingerprints, from the files its SSH server is
-### set to serve (the default names when its settings cannot be read).
+### This box's SSH host key fingerprints, and the option that makes the
+### source take the main one and no other.
 _xmass_tell_host_keys() {
-  local _k _l _n=0
-  _info "This box's SSH host key fingerprints, to compare when a source is served a key it does not hold for this address:"
-  while IFS= read -r _k; do
-    [ -f "${_k}.pub" ] || continue
-    _l="$(ssh-keygen -l -E sha256 -f "${_k}.pub" 2> /dev/null \
-      | awk '{ t = $NF; gsub(/[()]/, "", t); print t, $2; exit }')"
-    [ -n "${_l}" ] || continue
-    _info "  ${_l}"
-    _n=$(( _n + 1 ))
-  done < <(
-    sshd -T 2> /dev/null | awk 'tolower($1) == "hostkey" { print $2 }' | grep . \
-      || ls /etc/ssh/ssh_host_*_key 2> /dev/null
-  )
-  [ "${_n}" -gt 0 ] \
-    || _alrt "could not read this box's SSH host key files; 'ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub' prints the main one"
+  _mig_tell_host_keys
+  [ -z "${_MIG_HOSTKEY_MAIN}" ] \
+    || _info "To have the source take this key and no other, add --host-fp=${_MIG_HOSTKEY_MAIN#* } to 'xmass prep-target' and 'xmass init' there"
   return 0
+}
+
+### prep-target and init with --host-fp: the target's host key is taken only
+### when its fingerprint is the one given, read by the operator on the target
+### itself (its pre-mig prints it). With no key held for the target its keys
+### are scanned and the one named is stored alone; any other answer stores
+### nothing. With keys held one of them must be the key named, and nothing
+### is removed here. Sets _XMASS_PIN_ALG, which makes the verb's first login
+### prove that very key.
+_XMASS_HOST_FP=""
+_XMASS_PIN_ALG=""
+_xmass_pin_host_key() {
+  local _t="${1}" _held="${2}" _fp _kf _l _x _ht _hfp _type="" _line="" _seen="" _skip=NO _n
+  _XMASS_PIN_ALG=""
+  _xmass_valid_key_fp "${_XMASS_HOST_FP}" \
+    || _die "--host-fp '${_XMASS_HOST_FP//[^[:print:]]/?}' is not a SHA256 key fingerprint" \
+            "(SHA256: and 43 base64 characters); nothing was changed"
+  _fp="${_XMASS_HOST_FP%=}"
+  if [ "${_held}" = "YES" ]; then
+    while IFS= read -r _l; do
+      case "${_l}" in
+        "# Host "*" found: line "*)
+          # a certificate authority or a revoked key is no held host key
+          case "${_l##*found: line }" in
+            *CA*|*REVOKED*) _skip=YES ;;
+            *) _skip=NO ;;
+          esac
+          ;;
+        *)
+          [ "${_skip}" = "NO" ] || continue
+          read -r _x _ht _hfp _x <<< "${_l}"
+          [ -n "${_hfp}" ] || continue
+          _seen="${_seen:+${_seen}, }${_ht} ${_hfp}"
+          [ -n "${_type}" ] || [ "${_hfp}" != "${_fp}" ] || _type="${_ht}"
+          ;;
+      esac
+    done < <(ssh-keygen -l -E sha256 -F "${_t}" -f /root/.ssh/known_hosts 2> /dev/null)
+    [ -n "${_type}" ] \
+      || _die "--host-fp names ${_fp}, and this box holds other keys for ${_t} (${_seen:-none readable});" \
+              "nothing was changed. When ${_t} itself prints that fingerprint, forget the old entries" \
+              "here with 'ssh-keygen -R ${_t} -f /root/.ssh/known_hosts' and run this command again"
+  else
+    _kf="$(mktemp /tmp/mig-pin.XXXXXX 2> /dev/null)" \
+      || _die "could not make a temp file for the key scan of ${_t}; nothing was changed"
+    for _n in 1 2 3; do
+      ssh-keyscan -H -T 10 "${_t}" > "${_kf}" 2> /dev/null
+      [ ! -s "${_kf}" ] || break
+      sleep 3
+    done
+    while IFS= read -r _l; do
+      case "${_l}" in ''|'#'*) continue ;; esac
+      printf '%s\n' "${_l}" > "${_kf}.one"
+      read -r _x _hfp _ht <<< "$(ssh-keygen -l -E sha256 -f "${_kf}.one" 2> /dev/null \
+        | awk '{ t = $NF; gsub(/[()]/, "", t); print $1, $2, t; exit }')"
+      [ -n "${_hfp}" ] || continue
+      _seen="${_seen:+${_seen}, }${_ht} ${_hfp}"
+      if [ -z "${_line}" ] && [ "${_hfp}" = "${_fp}" ]; then
+        _line="${_l}"
+        _type="${_ht}"
+      fi
+    done < "${_kf}"
+    rm -f "${_kf}" "${_kf}.one"
+    [ -n "${_line}" ] \
+      || _die "the key ${_t} serves does not match --host-fp: expected ${_fp}, served" \
+              "${_seen:-none (no key came back from port 22 there)}. Nothing was stored and nothing" \
+              "was changed on either box"
+  fi
+  case "${_type}" in
+    ED25519) _XMASS_PIN_ALG="ssh-ed25519" ;;
+    ECDSA) _XMASS_PIN_ALG="ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521" ;;
+    RSA) _XMASS_PIN_ALG="rsa-sha2-512,rsa-sha2-256" ;;
+    *) _die "--host-fp names a ${_type:-?} key of ${_t}; pin its ED25519, ECDSA or RSA host key." \
+            "Nothing was changed" ;;
+  esac
+  if [ -n "${_line}" ]; then
+    mkdir -p /root/.ssh
+    chmod 700 /root/.ssh
+    printf '%s\n' "${_line}" >> /root/.ssh/known_hosts \
+      || _die "cannot write /root/.ssh/known_hosts; the key of ${_t} was not stored"
+    _XMASS_HOSTKEY_ADDED="${_t}"
+    _info "Stored the ${_type} host key of ${_t}: its fingerprint is the one --host-fp names"
+  else
+    _info "This box holds the ${_type} host key --host-fp names for ${_t}"
+  fi
 }
 
 # Target side of pre-mig, once the master's panel passed: the key
@@ -19605,9 +19737,13 @@ _xmass_cmd_cutover() {
     # fresh signal would stand its per-job gates down again.
     # One that cannot be written keeps the cutover parked: the tail would
     # unlock the target's database and its standby marker would go.
+    # It is the resumed tail's first login: a target whose key is not the
+    # one held here is named as that.
+    local _rsaid=""
     if [ "${_XMASS_TARGET_ARMED}" != "YES" ] \
-      && ! ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" &> /dev/null; then
+      && ! _rsaid="$(ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid && : > /root/.standby.init.pid" 2>&1)"; then
       _xmass_restore_hint
+      _xmass_die_hostkey_changed "${_tgt}" "${_rsaid}" inuse
       _die "Could not re-assert the promotion-window signal on target ${_tgt}" \
            " (/run/boa_xmass_init.pid, /root/.standby.init.pid) -- the cutover stays PARKED" \
            " (phase=rename-failed); re-run 'xmass cutover ${_tgt} --live' once the target answers"
@@ -21400,8 +21536,10 @@ case "${_cmd}" in
     _XMASS_PREP_UNDER_HOLD=""
     _XMASS_ADOPT_SITELESS=""
     _XMASS_RETURN_ACCOUNTS=""
+    _XMASS_HOST_FP=""
     while [ $# -gt 0 ]; do
       case "$1" in
+        --host-fp=*) _XMASS_HOST_FP="${1#*=}"; shift ;;
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
         --fix-solr) _XMASS_FIX_SOLR=YES; shift ;;
         --fix-users) _XMASS_FIX_USERS=YES; shift ;;
@@ -21424,7 +21562,7 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [--return-accounts=<oN>[,<oN>...]] [admail=<address>]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--host-fp=SHA256:...] [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [--return-accounts=<oN>[,<oN>...]] [admail=<address>]"
     # it lays accounts on a box that serves, and nothing else
     [ -n "${_XMASS_RETURN_ACCOUNTS}" ] \
       && [ -n "${_XMASS_FIX_PHP}${_XMASS_FIX_SOLR}${_XMASS_FIX_USERS}${_XMASS_FIX_ACCOUNTS}${_XMASS_ADOPT_SITELESS}" ] \
@@ -21454,8 +21592,10 @@ case "${_cmd}" in
   init)
     _tgt="$1"
     shift 2>/dev/null || true
+    _XMASS_HOST_FP=""
     while [ $# -gt 0 ]; do
       case "$1" in
+        --host-fp=*) _XMASS_HOST_FP="${1#*=}"; shift ;;
         --proxy-mode=*)
           _proxy_mode="${1#*=}"
           case "${_proxy_mode}" in
@@ -21475,7 +21615,7 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass init <target-ip> [--proxy-mode=...] [--proxy-deadline=...]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass init <target-ip> [--host-fp=SHA256:...] [--proxy-mode=...] [--proxy-deadline=...]"
     _check_root
     _xmass_refuse_role_clash
     _xmass_cmd_init
@@ -21605,6 +21745,8 @@ case "${_cmd}" in
     echo "                     target, checked by hand, taken for this migration)"
     echo "                     [--return-accounts=<oN>[,<oN>...]]  (alone, on an old active fenced after"
     echo "                     its mirror was promoted by hand: an account the mirror never held goes there)"
+    echo "                     [--host-fp=SHA256:...]  (prep-target and init: take the target's host key only"
+    echo "                     when its fingerprint is this one, which the target's own pre-mig prints)"
     echo "                     [admail=<address>]  (a test run: see the notes)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"

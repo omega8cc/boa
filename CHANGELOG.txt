@@ -4,6 +4,16 @@
 
 @=> New Features
 
+    * xmass prep-target and init take --host-fp=SHA256:..., the fingerprint
+      of the target's SSH host key, which the target's own pre-mig prints
+      ready to paste. With it the source stores the target's key only when
+      its fingerprint is the one given, and its first login accepts that key
+      alone; any other key is refused with both sides named and nothing
+      stored. Without it a target the source holds no key for is trusted on
+      first use, as before, and the run now says so with the fingerprint it
+      stored. A key held for the target that is not the one named is never
+      removed: the refusal prints the command.
+
     * xmass, xoct, xcopy and xtrim keep each run's whole output on the
       server, as barracuda and octopus do: in
       /var/backups/reports/<tool>/<YYMMDD>/<tool>-<verb>-<stamp>-<pid>.log,
@@ -402,13 +412,20 @@
       tool removes none itself, as another server answering in the target's
       place reads the same. It speaks only when the SSH client's output is
       its changed-key warning and nothing else, so text the other end can
-      send before a key is checked never raises it. xmass pre-mig on a
-      target prints that box's host key fingerprints to compare. sync,
-      autosync and the start of a cutover say the same and add that the
-      target was reached with the held key before; so do xoct's firewall
-      check before a move, both tools' create and their pretransfer,
-      transfer and shared legs. Any other failure of xmass's first login now
-      carries the client's own last line.
+      send before a key is checked never raises it. pre-mig on a target
+      (xmass, xoct, xcopy) prints that box's host key fingerprints to
+      compare. sync, autosync, the start of a cutover and the resume of a
+      parked one say the same and add that the target was reached with the
+      held key before; so do xoct's firewall check before a move, its
+      go-live and its record push to a peer, both tools' create and their
+      pretransfer, transfer and shared legs. Any other failure of xmass's
+      first login now carries the client's own last line.
+
+    * An xmass prep-target or init that does not complete forgets the
+      target's host key it stored, as it withdraws its firewall lines. The
+      key was stored by the verb's first login, before the step that records
+      it, so a refused run left it in root's known_hosts. A key held before
+      the run is never touched.
 
     * A Drupal 8+ site renamed by a Migrate on its own platform answered
       500 ("Class ... not found") until PHP-FPM restarted, while every task
