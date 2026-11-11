@@ -436,6 +436,15 @@
 
 @=> Important Fixes
 
+    * The Shell Escape Alert reaches the operator again: since the monitor
+      moved to bash it could not read _MY_EMAIL and mailed nothing. Each
+      refused line is now mailed once, with the lshell log and owner it came
+      from, though every run of its minute reads it again; lock.inc's
+      incident ratelimit and _INCIDENT_EMAIL_COOLDOWN_SECS hold mails back,
+      a held line going out with the next mail. One plain word lshell
+      refuses in an interactive session, other than a shell or a word that
+      starts one, and a refused /dev/null stay in the lshell logs only.
+
     * A barracuda pass that takes the quic_bpf fragment away reloads
       nothing for it and says the change takes effect at Nginx's next
       start: a reload keeps the setting the running Nginx started with.
