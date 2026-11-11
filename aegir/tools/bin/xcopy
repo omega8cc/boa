@@ -1137,30 +1137,38 @@ _xcopy_le_kept_put() {
   echo "INFO: a stop marker each in ${_USR}/tools/le/.ctrl, listed in ${_USR}/log/xcopy_le_kept.txt;"
   echo "INFO: remove those markers, then verify each site, before this copy serves any of the names"
 }
-### The sites whose verify this import scheduled, and when the first was,
-### kept in log/import_verifies.txt for post-mig on this box to report (the
-### verifies run once post-mig starts cron here).
+### The verify task of each site this import scheduled one for, read from
+### the panel right after the scheduling (the panel hands back a verify of
+### the site already queued, by the rename, as that site's task), kept in
+### log/import_verifies.txt for post-mig on this box to report: the verifies
+### run once post-mig starts cron here. A site whose task cannot be read is
+### kept with none.
 _XCOPY_VERIFY_SITES=""
-_XCOPY_VERIFY_T0=""
+_XCOPY_VERIFY_DB=""
 _xcopy_verify_note() {
-  [ -n "${_XCOPY_VERIFY_T0}" ] || _XCOPY_VERIFY_T0=$(date +%s)
-  _XCOPY_VERIFY_SITES="${_XCOPY_VERIFY_SITES} ${1}"
+  local _nid=""
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 0
+  [ -n "${_XCOPY_VERIFY_DB}" ] \
+    || _XCOPY_VERIFY_DB=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -cd 'A-Za-z0-9_')
+  if [ -n "${_XCOPY_VERIFY_DB}" ]; then
+    _nid=$(mysql --silent -u root -N -B "${_XCOPY_VERIFY_DB}" -e "SELECT MAX(t.nid) FROM hosting_task t JOIN node s ON s.nid = t.rid JOIN hosting_site hs ON hs.vid = s.vid WHERE s.type = 'site' AND s.title = '${1}' AND hs.status <> -2 AND t.task_type = 'verify'" 2> /dev/null | tr -cd '0-9')
+  fi
+  _XCOPY_VERIFY_SITES="${_XCOPY_VERIFY_SITES} ${1}:${_nid:-0}"
 }
 _xcopy_verify_list_put() {
-  local _db
   [ -n "${_XCOPY_VERIFY_SITES}" ] || return 0
-  _db=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -cd 'A-Za-z0-9_')
-  { echo "t0=${_XCOPY_VERIFY_T0}"
-    echo "db=${_db}"
-    printf 'site=%s\n' ${_XCOPY_VERIFY_SITES}; } \
+  [ -n "${_XCOPY_VERIFY_DB}" ] || return 0
+  { echo "db=${_XCOPY_VERIFY_DB}"
+    printf '%s\n' ${_XCOPY_VERIFY_SITES} | sed 's/^\(.*\):\([0-9]*\)$/site=\1 \2/'; } \
     | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here import_verifies.txt
 }
 ### Run by post-mig on the target: each copied site's verify that an import
 ### scheduled, waited for up to 30 minutes once cron runs again, and its
 ### result printed and kept in log/import_verifies.report.txt. The list is
-### removed once reported, so a later post-mig says nothing again.
+### removed once reported, so a later post-mig says nothing again; it stays
+### when the panel cannot be read.
 _xcopy_verify_report() {
-  local _l _a _u _txt _t0 _db _sites _rows _s _row _st _nid _pend _end _rep
+  local _l _a _u _txt _db _pairs _ids _rows _p _s _id _st _pend _end _rep
   local _ok _warn _fail _left _n _next
   for _l in /data/disk/*/log/import_verifies.txt; do
     [ -f "${_l}" ] || continue
@@ -1168,19 +1176,22 @@ _xcopy_verify_report() {
     _a="${_u##*/}"
     [[ "${_a}" =~ ^[a-z0-9]+$ ]] || continue
     _txt=$(_xcopy_read_in "${_u}/log" import_verifies.txt)
-    _t0=$(printf '%s\n' "${_txt}" | sed -n 's/^t0=\([0-9]\{9,12\}\)$/\1/p' | head -1)
     _db=$(printf '%s\n' "${_txt}" | sed -n 's/^db=\([A-Za-z0-9_]\{1,64\}\)$/\1/p' | head -1)
-    _sites=$(printf '%s\n' "${_txt}" | sed -n 's/^site=\([A-Za-z0-9][A-Za-z0-9.-]*\)$/\1/p' | sort -u)
-    if [ -z "${_t0}" ] || [ -z "${_db}" ] || [ -z "${_sites}" ]; then
+    _pairs=$(printf '%s\n' "${_txt}" \
+      | sed -n 's/^site=\([A-Za-z0-9][A-Za-z0-9.-]*\) \([0-9]\{1,12\}\)$/\1:\2/p' | sort -u)
+    if [ -z "${_db}" ] || [ -z "${_pairs}" ]; then
       echo "ALRT: ${_a}: ${_l} cannot be read; its copied sites' verifies are not reported"
       continue
     fi
-    _n=$(printf '%s\n' "${_sites}" | wc -l | tr -d ' ')
+    _ids=$(printf '%s\n' ${_pairs} | sed 's/^.*://' | grep -v '^0$' | sort -u | tr '\n' ',')
+    _ids="${_ids%,}"
+    _n=$(printf '%s\n' ${_pairs} | wc -l | tr -d ' ')
     echo "INFO: ${_a}: waiting up to 30 minutes for the verifies of ${_n} copied site(s)"
     _end=$(( $(date +%s) + 1800 ))
     _next=$(( $(date +%s) + 120 ))
-    while :; do
-      if ! _rows=$(mysql --silent -u root -N -B "${_db}" -e "SELECT s.title, t.nid, t.task_status FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid JOIN node s ON s.nid = t.rid JOIN hosting_site hs ON hs.vid = s.vid WHERE s.type = 'site' AND hs.status <> -2 AND t.task_type = 'verify' AND tn.changed >= ${_t0} ORDER BY t.nid" 2> /dev/null); then
+    _rows=""
+    while [ -n "${_ids}" ]; do
+      if ! _rows=$(mysql --silent -u root -N -B "${_db}" -e "SELECT t.nid, t.task_status FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid WHERE t.nid IN (${_ids})" 2> /dev/null); then
         _rows=""
         if [ "$(date +%s)" -ge "${_end}" ]; then
           echo "ALRT: ${_a}: its panel database ${_db} could not be read; its copied sites' verifies are not reported"
@@ -1189,37 +1200,33 @@ _xcopy_verify_report() {
         sleep 20
         continue
       fi
-      _pend=0
-      for _s in ${_sites}; do
-        _st=$(printf '%s\n' "${_rows}" | awk -F'\t' -v s="${_s}" '$1 == s { st = $3 } END { print st }')
-        case "${_st}" in
-          0|-1) _pend=$(( _pend + 1 )) ;;
-        esac
-      done
+      _pend=$(printf '%s\n' "${_rows}" | awk -F'\t' '$2 == 0 || $2 == -1' | wc -l | tr -d ' ')
       [ "${_pend}" -eq 0 ] && break
       [ "$(date +%s)" -ge "${_end}" ] && break
       if [ "$(date +%s)" -ge "${_next}" ]; then
-        echo "INFO: ${_a}: $(( _n - _pend )) of ${_n} verifies finished"
+        echo "INFO: ${_a}: ${_pend} of ${_n} verifies still queued or running"
         _next=$(( $(date +%s) + 120 ))
       fi
       sleep 20
     done
     _ok=0; _warn=0; _fail=0; _left=0; _rep=""
-    for _s in ${_sites}; do
-      _row=$(printf '%s\n' "${_rows}" | awk -F'\t' -v s="${_s}" '$1 == s { r = $2 " " $3 } END { print r }')
-      _nid="${_row% *}"
-      _st="${_row#* }"
+    for _p in ${_pairs}; do
+      _s="${_p%:*}"
+      _id="${_p##*:}"
+      _st=""
+      [ "${_id}" != "0" ] \
+        && _st=$(printf '%s\n' "${_rows}" | awk -F'\t' -v i="${_id}" '$1 == i { print $2 }' | head -1)
       case "${_st}" in
         1) _ok=$(( _ok + 1 ))
            _rep="${_rep}INFO: ${_a}: site ${_s} verify OK"$'\n' ;;
         3) _warn=$(( _warn + 1 ))
-           _rep="${_rep}WARN: ${_a}: site ${_s} verify ended with warnings (task ${_nid})"$'\n' ;;
+           _rep="${_rep}WARN: ${_a}: site ${_s} verify ended with warnings (task ${_id})"$'\n' ;;
         2) _fail=$(( _fail + 1 ))
-           _rep="${_rep}ALRT: ${_a}: site ${_s} verify FAILED (task ${_nid}): read its log in the panel"$'\n' ;;
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify FAILED (task ${_id}): read its log in the panel"$'\n' ;;
         0|-1) _left=$(( _left + 1 ))
-           _rep="${_rep}ALRT: ${_a}: site ${_s} verify still queued or running after 30 minutes (task ${_nid})"$'\n' ;;
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify still queued or running after 30 minutes (task ${_id})"$'\n' ;;
         *) _fail=$(( _fail + 1 ))
-           _rep="${_rep}ALRT: ${_a}: site ${_s}: no verify task found since the import"$'\n' ;;
+           _rep="${_rep}ALRT: ${_a}: site ${_s}: its verify task could not be found in the panel"$'\n' ;;
       esac
     done
     _rep="${_rep}INFO: ${_a}: ${_n} copied site(s) verified: ${_ok} OK, ${_warn} with warnings, ${_fail} failed, ${_left} unfinished"$'\n'
@@ -1376,8 +1383,8 @@ _migrate_sites() {
         _XCOPY_MET_DIRS="${_XCOPY_MET_DIRS} ${_SIDN}"
         case " ${_XCOPY_LOADED_DIRS} " in
           *" ${_SIDN} "*)
-            _xcopy_verify_note "${_Dom}"
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
+            _xcopy_verify_note "${_Dom}"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           ;;
           *)
@@ -1588,8 +1595,8 @@ EOFMYSQL
               _XCOPY_LOADED_NAMES="${_XCOPY_LOADED_NAMES} ${_SIDN}=${_Dom}"
             fi
           elif [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
-            _xcopy_verify_note "${_Dom}"
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
+            _xcopy_verify_note "${_Dom}"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
