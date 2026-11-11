@@ -1572,11 +1572,11 @@ _nginx_quic_bpf_sync() {
     fi
   else
     if [ -e "${_frag}" ]; then
+      ### A reload keeps the quic_bpf setting the running master started
+      ### with, the other way as well: the fragment's removal takes effect at
+      ### Nginx's next start, so nothing is reloaded for it.
       rm -f "${_frag}"
-      if nginx -t > /dev/null 2>&1; then
-        _mrun "service nginx reload"
-      fi
-      _msg "INFO: quic_bpf disabled: ${_why}"
+      _msg "INFO: quic_bpf disabled: ${_why}; this takes effect at Nginx's next start"
     elif [ "${_NGINX_QUIC_BPF}" != "NO" ]; then
       ### Say why: a quiet decline reads exactly like a quiet success.
       _msg "INFO: quic_bpf stays off: ${_why}"
