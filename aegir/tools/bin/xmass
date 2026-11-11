@@ -2484,13 +2484,19 @@ _mig_php_versions_needed() {
 }
 
 ### Choices that do nothing on this server because it lacks their PHP, and that a
-### target with that PHP would start to honour at the cutover: a line of multi-fpm.info,
-### cli-per-platform.info or fpm-per-platform.info, and a phpNN.info marker above the
-### highest one in force here (a lower one stays out of force wherever it runs).
+### target with that PHP would start to honour at the cutover: the account-wide fpm.info
+### or cli.info, a line of multi-fpm.info, cli-per-platform.info or fpm-per-platform.info,
+### and a phpNN.info marker above the highest one in force here (a lower one stays out of
+### force wherever it runs).
 ### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
 ### reaches the operator's console. $1 = the account's directory.
 _mig_php_inert_choices() {
   local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xmass_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
+    [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+    echo "${_v} its ${_f}"
+  done
   if [ -e "${_u}/static/control/multi-fpm.info" ]; then
     while read -r _dom _v _rest; do
       case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
