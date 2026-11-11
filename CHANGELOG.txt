@@ -330,14 +330,16 @@
 
 @=> Important Fixes
 
-    * A platform Verify no longer opens a Drupal 8+ platform's Drush lock
-      while its permissions pass runs: the pass set vendor/drush and Symfony
-      Console's Input and Style folders to 2775 with the rest of vendor/ and
-      set them to 0400 again at its end, whatever the lock state. It now
-      leaves the three folders as the lock left them, as the nightly pass
-      does, so only provision's lock and unlock change them. The same
-      helper run by hand on a platform its owner unlocked no longer closes
-      them over a codebase whose patches are off.
+    * A platform Verify no longer opens a platform's Drush lock while its
+      permissions pass runs: the pass set vendor/drush and Symfony Console's
+      Input and Style folders to 2775 with the rest of vendor/, and set them
+      to 0400 again at its end on Drupal 8+, whatever the lock state, so a
+      Drupal 7 platform locked by Lock Local Drush came out unlocked. It now
+      leaves a locked folder as the lock left it, as the nightly pass does,
+      so only provision's lock and unlock change it; an open one still gets
+      the group write of the rest of vendor/. The same helper run by hand on
+      a platform its owner unlocked no longer closes it over a codebase
+      whose patches are off.
 
     * A Grav site's web requests create folders with group write, as the
       hosting model and the shell's grav command have them: Grav makes its

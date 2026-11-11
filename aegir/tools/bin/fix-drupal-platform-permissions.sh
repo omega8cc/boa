@@ -960,21 +960,17 @@ printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drup
 _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
-### vendor/drush and the console Input and Style directories keep the mode
-### the site-local Drush lock gave them (0400 locked, 0775 after Unlock
-### Local Drush): only provision's lock and unlock change it, as in the
-### nightly pass. Widening them here and closing them again at the end
-### opened the lock for the length of the walk in every platform Verify, and
-### a run on a platform its owner had unlocked closed the modes over a tree
-### whose patches were off. The three directories themselves are skipped;
-### what is in them is walked. Only on a Drupal 8+ tree (core/), the one
-### provision locks: on Drupal 7 nothing locks them, and they take the
-### walk's mode like any other vendor directory.
-_LOCK_DIRS_KEPT=()
-if [ -e "${drupal_root}/core" ]; then
-  _LOCK_DIRS_KEPT=( ! \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
-    -o -path ./vendor/symfony/console/Style \) )
-fi
+### vendor/drush and the console Input and Style directories: one the owner
+### cannot write is locked (provision's lock leaves 0400, on Drupal 7 too)
+### and keeps its mode, since only provision's lock and unlock change it, as
+### in the nightly pass. Widening them here and closing them again at the
+### end opened the lock for the length of the walk in every platform Verify,
+### and a run on a platform its owner had unlocked closed the modes over a
+### tree whose patches were off. An open one (0775 after Unlock Local Drush,
+### or never locked) takes the walk's mode like any vendor directory, which
+### leaves it open. What is in them is walked either way.
+_LOCK_DIRS_KEPT=( ! \( \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
+  -o -path ./vendor/symfony/console/Style \) ! -perm -0200 \) )
 if [ -e "${drupal_root}/vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
