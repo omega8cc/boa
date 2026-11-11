@@ -5595,6 +5595,10 @@ _satellite_remove_web_user() {
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
+      # its freed number leaves the account's list before a later login of
+      # this pass, of any account, can be given it
+      getent passwd "${_WEB}" > /dev/null 2>&1 \
+        || _ltd_acct_uids_put "${_WEB%%.*}" > /dev/null 2>&1
       # what deluser left: a removed user's own entries (its number no
       # longer resolves) and the account's go, another account's stays
       if [ -d "/home/${_WEB}/" ]; then

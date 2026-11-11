@@ -189,8 +189,10 @@
       files before root hands it to the account. xoct export and the xmass
       cutover first close the account's own control folder to other writers
       and refuse to start on one the account does not own (the xmass dry run
-      says so); a deferred site's gate there refuses the move. Grav and
-      Textpattern sites still read the gate in nginx by path.
+      says so), clear anything but a regular file at the gate's name, and
+      stop when a gate they put does not hold; a deferred site's gate there
+      refuses the move. Grav and Textpattern sites still read the gate in
+      nginx by path.
 
     * Root's checks that it stands in an account's own folder, before it
       reads, writes, changes the owner or mode of, or removes anything

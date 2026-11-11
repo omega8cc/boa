@@ -2897,6 +2897,21 @@ _xoct_ctrl_dir_here() {
   [ -L ./control ] && rm -f ./control
   [ -d ./control ] || ( umask 022; mkdir -p ./control )
 }
+### Inside the (pinned) control directory: anything at a gate's name that is
+### neither a regular file nor a link (a folder, a FIFO) is removed, so the
+### gate put next lands as a regular file, the only kind the sites count (a
+### folder at the name also blocks the rename that puts it). Status 1 when
+### such an entry is still there.
+_xoct_gate_names_here() {
+  local _n
+  for _n in http-off.pid http-off-host.pid; do
+    if [ -e "./${_n}" ] && [ ! -L "./${_n}" ] && [ ! -f "./${_n}" ]; then
+      rm -rf --one-file-system -- "./${_n}"
+      [ -e "./${_n}" ] && return 1
+    fi
+  done
+  return 0
+}
 ### ./$1 made a real directory in the current (pinned) parent: a link the
 ### account put at the name is removed, a missing directory created.
 _xoct_realdir_here() {
@@ -3894,6 +3909,7 @@ _xoct_plant_host_gate() {
   local _oct_id="$2"
   local _grp="$3"
   local _fqdn="$4"
+  _xoct_in_real_dir "${_usr}/static/control" _xoct_gate_names_here || return 1
   _xoct_in_real_dir "${_usr}/static/control" \
     _xoct_host_gate_here "${_fqdn}" "${_oct_id}:${_grp}" || return 1
   ### written is not held: the sites' PHP ignores it in a folder not the
@@ -4381,8 +4397,14 @@ EOFMYSQL
           _xoct_gate_put_here http-off.pid 3600 "${_oct}:${_OCT_GRP}"; then
           echo "INFO: account ${_oct} http-off pid created"
         fi
-        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
-          echo "ALRT: account ${_oct} 503 gate is not honoured by its sites (static/control: ${_XOCT_GATE_WHY}): they keep answering during this export"
+        ### the gate holds the sites only as a regular file in a folder they
+        ### honour: without it the dump below would race the sites' writes
+        _XOCT_GATE_WHY=""
+        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)" \
+          || ! _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid \
+          || _xoct_in_real_dir "${_USR}/static/control" test -L ./http-off.pid; then
+          echo "ERROR: account ${_oct} not exported: its 503 gate does not hold its sites (static/control: ${_XOCT_GATE_WHY:-http-off.pid is not a regular file there})"
+          exit 1
         fi
         ###
         ### Purge the fastcgi speed cache so already-cached 200 responses
@@ -7057,6 +7079,10 @@ _migrate_prepare() {
       echo "ERROR: a control folder another account made is named by the ltd worker's ALERT; remove it, then run the export again"
       exit 1
     fi
+    if ! _xoct_in_real_dir "${_USR}/static/control" _xoct_gate_names_here; then
+      echo "ERROR: ${_USR##*/} not exported: something that is not a regular file sits at static/control/http-off.pid and could not be removed"
+      exit 1
+    fi
   fi
 
   if [ "${_cmd}" = "export" ] && [ ! -z "${_CLIENT_EMAIL}" ]; then
@@ -7469,12 +7495,14 @@ _migrate_prepare() {
         ### the put refuses a gate file already there: judged by what is
         ### there after it
         _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here \
+          && _xoct_in_real_dir "${_USR}/static/control" _xoct_gate_names_here \
           && _xoct_in_real_dir "${_USR}/static/control" \
             _xoct_gate_put_here http-off.pid "${_XOCT_GATE_TTL:-3600}" \
             "${_THIS_HM_USER}:$(_acct_group "${_USR}")"
         if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
           echo "ALRT: account ${_THIS_HM_USER} 503 gate is not honoured by its sites (static/control: ${_XOCT_GATE_WHY}): its sites serve from this box"
-        elif _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid; then
+        elif _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid \
+          && ! _xoct_in_real_dir "${_USR}/static/control" test -L ./http-off.pid; then
           echo "INFO: account ${_THIS_HM_USER} 503 gate put back"
         else
           echo "ALRT: account ${_THIS_HM_USER} 503 gate could NOT be put back (static/control/http-off.pid): its sites serve from this box"

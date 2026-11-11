@@ -2126,6 +2126,21 @@ if ($op eq "t" && sysopen(my $h, "./control", O_RDONLY | O_DIRECTORY | O_NOFOLLO
 ($s[2] & 02) and refuse("others can write control");
 (($s[2] & 020) && !owng($s[5])) and refuse("group $s[5] can write control");
 ok();'
+### Inside the (pinned) control directory: anything at a gate's name that is
+### neither a regular file nor a link (a folder, a FIFO) is removed, so the
+### gate put next lands as a regular file, the only kind the sites count (a
+### folder at the name also blocks the rename that puts it). Status 1 when
+### such an entry is still there.
+_xmass_gate_names_here() {
+  local _n
+  for _n in http-off.pid http-off-host.pid; do
+    if [ -e "./${_n}" ] && [ ! -L "./${_n}" ] && [ ! -f "./${_n}" ]; then
+      rm -rf --one-file-system -- "./${_n}"
+      [ -e "./${_n}" ] && return 1
+    fi
+  done
+  return 0
+}
 ### Whether the sites' PHP honours a 503 gate in the control folder of the
 ### account $1, with $2 = t its own folder closed to other writers first:
 ### status 1 and why on stdout when not.
@@ -11147,6 +11162,10 @@ _xmass_gate_ready_all() {
     if ! _why="$(_xmass_gate_own "${_oct}" "${_op}")"; then
       _alrt "  ${_oct}: its sites would not honour the 503 gate in static/control (${_why})"
       _bad="${_bad} ${_oct}"
+    elif [ "${_op}" = "t" ] \
+      && ! _xmass_in_real_dir "/data/disk/${_oct}/static/control" _xmass_gate_names_here; then
+      _alrt "  ${_oct}: something that is not a regular file sits at static/control/http-off.pid and could not be removed"
+      _bad="${_bad} ${_oct}"
     fi
   done
   [ -z "${_bad}" ] && return 0
@@ -11157,7 +11176,7 @@ _xmass_gate_ready_all() {
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
-  local _oct _held="" _away _why
+  local _oct _held="" _away _why _bad=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # One this box relays to another box (a single-account move made
     # before this cutover) holds nothing local to gate and is no part of it.
@@ -11188,17 +11207,28 @@ _xmass_block_web_all() {
     # can be a link or a FIFO put there: the directory is made real and the
     # gate is put inside it, never through or into either.
     _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+    _xmass_in_real_dir "/data/disk/${_oct}/static/control" _xmass_gate_names_here
     _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
       _xmass_put_here http-off.pid 7200 "${_oct}:$(_acct_group "${_oct}")" \
       || _alrt "  ${_oct}: could not write the 503 gate"
-    _why="$(_xmass_gate_own "${_oct}" t)" \
-      || _alrt "  ${_oct}: its sites do not honour the 503 gate (static/control: ${_why}): they keep answering here"
+    # the gate holds the sites only as a regular file in a folder they honour
+    _why=""
+    if ! _why="$(_xmass_gate_own "${_oct}" t)" \
+      || ! _xmass_in_real_dir "/data/disk/${_oct}/static/control" test -f ./http-off.pid \
+      || _xmass_in_real_dir "/data/disk/${_oct}/static/control" test -L ./http-off.pid; then
+      _alrt "  ${_oct}: its 503 gate does not hold its sites (static/control: ${_why:-http-off.pid is not a regular file there}): they keep answering here"
+      _bad="${_bad} ${_oct}"
+    fi
   done
   # Purge the Nginx speed cache so cached 200s don't mask the 503
   if [ -d "/var/lib/nginx/speed" ]; then
     find /var/lib/nginx/speed -type f -delete &>/dev/null
   fi
   service nginx reload &>/dev/null
+  if [ -n "${_bad}" ]; then
+    _XMASS_GATE_FAILED="${_bad}"
+    return 1
+  fi
   if [ -n "${_held}" ]; then
     _info "Web blocked on the source accounts still serving locally; already relaying, per-host gate re-asserted:${_held}"
   else
@@ -11228,6 +11258,7 @@ _xmass_plant_host_gate() {
   local _fqdn="$2"
   [ -n "${_fqdn}" ] || return 1
   _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+  _xmass_in_real_dir "/data/disk/${_oct}/static/control" _xmass_gate_names_here || return 1
   _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
     _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")" || return 1
   # written is not held: the sites' PHP ignores it in a folder not the
@@ -15936,7 +15967,8 @@ _xmass_return_gate() {
     return 1
   fi
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    [ -e "/data/disk/${_oct}/static/control/http-off.pid" ] || _f="${_f} ${_oct}"
+    { [ -f "/data/disk/${_oct}/static/control/http-off.pid" ] \
+      && [ ! -L "/data/disk/${_oct}/static/control/http-off.pid" ]; } || _f="${_f} ${_oct}"
   done
   if [ -n "${_f}" ]; then
     _alrt "account(s)${_f} answer visitors here (no static/control/http-off.pid): fence this box first (the failover page)"
@@ -16715,8 +16747,8 @@ for _o in ${_acc}; do
   # clears it for every eligible account, so a survivor is that step failed
   # and the whole account is dark. Its own tag, so the local half can alert
   # on it without reporting each name broken.
-  if [ -e "${_d}/static/control/http-off.pid" ] \
-    || [ -e "${_d}/static/control/http-off-host.pid" ]; then
+  if { [ -f "${_d}/static/control/http-off.pid" ] && [ ! -L "${_d}/static/control/http-off.pid" ]; } \
+    || { [ -f "${_d}/static/control/http-off-host.pid" ] && [ ! -L "${_d}/static/control/http-off-host.pid" ]; }; then
     echo "HTTPOFF ${_o} - - http-off gate still present, every site under it answers 503"
     _skp=$((_skp + 1))
     continue
@@ -17016,7 +17048,8 @@ _xmass_cmd_verify() {
   _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
   [ -z "${_tgt_fqdn}" ] && _alrt "  cannot read the target's hostname over ssh -- renamed sites are probed by their old name"
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    if [ -e "/data/disk/${_oct}/static/control/http-off.pid" ]; then
+    if [ -f "/data/disk/${_oct}/static/control/http-off.pid" ] \
+      && [ ! -L "/data/disk/${_oct}/static/control/http-off.pid" ]; then
       _alrt "  ${_oct}: http-off.pid still present on the source -- sites 503-gated here"
     fi
     _panel="${_oct}.${_src_fqdn}"
@@ -19895,7 +19928,8 @@ _xmass_cmd_cutover() {
     # must name it in its hint, with its recipe.
     local _wb
     for _wb in ${_ELIGIBLE_ACCOUNTS}; do
-      [ -e "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
+      [ -f "/data/disk/${_wb}/static/control/http-off.pid" ] \
+        && [ ! -L "/data/disk/${_wb}/static/control/http-off.pid" ] && _XMASS_WEB_BLOCKED=YES
     done
     if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
       # This box already relays the client-domain sites: it is their only
@@ -19936,7 +19970,10 @@ _xmass_cmd_cutover() {
     # operator may have lifted it via the abandon recipe before deciding to
     # resume after all -- and the tail assumes a non-serving source. Also
     # keeps this process's hint truthful about the web state on a re-park.
-    _xmass_block_web_all
+    if ! _xmass_block_web_all; then
+      _xmass_restore_hint
+      _die "the 503 gate does not hold the sites of:${_XMASS_GATE_FAILED} -- the cutover stays PARKED; fix their control folders, then re-run 'xmass cutover ${_tgt} --live'"
+    fi
     # Re-assert the advisory read-only flag for the same reason, and because a
     # barracuda system pass during the park rewrites the include from the
     # shipped copy. Non-fatal: the 503 gate re-asserted above, not this flag,
@@ -20166,7 +20203,10 @@ _xmass_cmd_cutover() {
   _xmass_prevent_solr_target
 
   # Step 1: Block all web traffic on source (serves 503 via http-off.pid)
-  _xmass_block_web_all
+  if ! _xmass_block_web_all; then
+    _xmass_restore_hint
+    _die "the 503 gate does not hold the sites of:${_XMASS_GATE_FAILED} -- the cutover stops before the write freeze"
+  fi
   # From the gate to the write freeze a stop costs little: the source is handed
   # back. Here, once a chain of dropped connections to the target has used the
   # whole budget, later calls to it get the short one until one gets through,
