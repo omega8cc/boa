@@ -94,6 +94,14 @@
       line, which any program could write to the system log, made it
       rewrite csf.allow and reload the firewall every five minutes.
 
+    * barracuda, boa, the BOA tool refresh, autoupboa, guest-water and the
+      OS upgrade tools take the DHCP servers they let out through the
+      firewall from dhclient's lease files, as the system monitor does, and
+      add only the allow lines that are missing. They read them from
+      "DHCPREQUEST" lines in the system log, which any program could write,
+      and the OS upgrade tools rewrote the list on a "dhclient ... Failed"
+      line.
+
     * barracuda's pass-through for a database server that stopped halfway
       into a series upgrade takes a system log line as its evidence only
       under the mysqld tag, which rsyslog keeps for root and the server's
@@ -186,9 +194,6 @@
     * The FPM saturation alert and the PHP version cleanup read their input
       byte for byte: one account's output or control file holding a NUL no
       longer hides every other account's lines from them.
-
-    * The OS upgrade tools add a DHCP server to the firewall allow list only
-      when the log names a plain IPv4 address, as the box monitor already did.
 
     * A tenant's shell reads each command line byte for byte, as the shell
       that runs it does: under the UTF-8 locale a byte that is not UTF-8 in

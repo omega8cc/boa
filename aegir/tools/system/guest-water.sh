@@ -1324,6 +1324,37 @@ _csf_kill_own() {
   return 0
 }
 
+# The DHCP servers named in root dhclient's lease files, one dotted quad a
+# line. Never from log text: any local program can log a "DHCPREQUEST ... to
+# <address>" or a "dhclient ... Failed" line.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it. Adds
+# the allow line of each lease server that has none and prints that server;
+# lines already in csf.allow stay, whoever wrote them.
+_dhcp_allow_lease_servers() {
+  local _srv
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    if ! grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow; then
+      echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+      echo "${_srv}"
+    fi
+  done
+}
+
 _whitelist_ip_dns() {
   csf -tr 1.1.1.1
   csf -tr 8.8.8.8
@@ -1493,27 +1524,13 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   service lfd restart
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dhcp-${_NOW}
-  sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-  wait
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-clear-${_NOW}
   sed -i "/^$/d" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.ignore
   wait
-  if [ -e "/var/log/daemon.log" ]; then
-    _DHCP_LOG="/var/log/daemon.log"
-  else
-    _DHCP_LOG="/var/log/syslog"
-  fi
-  grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while LC_ALL=C read -r _IP; do
-    if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-      IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-      if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-        echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-      fi
-    fi
-  done
+  _dhcp_allow_lease_servers > /dev/null
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null

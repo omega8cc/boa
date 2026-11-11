@@ -2956,7 +2956,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f83
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f65
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f64
 
   # Re-put trigger for the current lshell.conf. The sentinel MUST be a
   # literal that exists in the shipped file (here the comment that opens the
@@ -5813,15 +5813,15 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f56 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f91 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
-    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f81 --guard /local/bin/autobeowulf
-    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f80 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f80 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f79 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f35 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f06 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f05 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f49 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f34 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f01 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f33 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f00 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f49 --guard duplicity
@@ -5885,8 +5885,8 @@ CSFSTANDBY
       _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f92 --peer-written
     fi
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f83 --guard /local/bin/solrtrim
-    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f82 --guard /local/bin/autochimaera
-    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f82 --guard /local/bin/autodaedalus
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f81 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f81 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f65 --guard /local/bin/autoinit
     # automini is retired: a reduced copy of autoinit made for custom
     # testing, never started by BOA. Markers go with the file.
@@ -6040,6 +6040,37 @@ _ensure_ipset_symlinks() {
   done
 }
 
+# The DHCP servers named in root dhclient's lease files, one dotted quad a
+# line. Never from log text: any local program can log a "DHCPREQUEST ... to
+# <address>" or a "dhclient ... Failed" line.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it. Adds
+# the allow line of each lease server that has none and prints that server;
+# lines already in csf.allow stay, whoever wrote them.
+_dhcp_allow_lease_servers() {
+  local _srv
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    if ! grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow; then
+      echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+      echo "${_srv}"
+    fi
+  done
+}
+
 _if_update_boa_key_tools_only() {
 
   _check_dns_settings
@@ -6116,22 +6147,8 @@ _if_update_boa_key_tools_only() {
           update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
         fi
       fi
-      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-      wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      if [ -e "/var/log/daemon.log" ]; then
-        _DHCP_LOG="/var/log/daemon.log"
-      else
-        _DHCP_LOG="/var/log/syslog"
-      fi
-      grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while LC_ALL=C read -r _IP; do
-        if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-          IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-          if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-            echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-          fi
-        fi
-      done
+      _dhcp_allow_lease_servers > /dev/null
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
