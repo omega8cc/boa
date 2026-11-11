@@ -1650,14 +1650,26 @@ export _run_as_user=$(whoami)
 
 # True while root's backups go first: root's own duplicity, a run of backboa,
 # duobackboa or multiback, or a configured backup run one of them marked held
-# when a restore held it off (each tool and multiback entry its own mark,
-# cleared when that one next gets through; a mark a day old holds no longer).
+# when a restore held it off. Each tool and multiback entry has its own mark,
+# made at the first hold and cleared when that one next gets through; a mark
+# holds for a day from that first hold, and an entry's only while the entry is
+# on the backup schedule.
 _backups_first() {
+  local _m="" _e=""
   (( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') \
     + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') > 0 )) && return 0
   pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' \
     > /dev/null 2>&1 && return 0
-  [ -n "$(find /run -maxdepth 1 -name 'boa_backup_held.*' -type f -mmin -1440 2> /dev/null)" ]
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.*' -type f -mmin -1440 2> /dev/null); do
+    case "${_m##*/}" in
+      boa_backup_held.multiback.*)
+        _e="${_m##*/boa_backup_held.multiback.}"
+        grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+          && return 0 ;;
+      *) return 0 ;;
+    esac
+  done
+  return 1
 }
 
 # Main script

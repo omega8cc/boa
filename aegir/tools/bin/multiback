@@ -308,8 +308,8 @@ _CNT=$(_dcy_live_count)
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   # a backup run waits: mybackup's queue starts no restore until this
-  # entry's next run gets through
-  [ "${1}" = "backup" ] && [ -n "${2}" ] && touch "${_HELD_MARK}"
+  # entry's next run gets through, for a day from the first hold
+  [ "${1}" = "backup" ] && [ -n "${2}" ] && { [ -e "${_HELD_MARK}" ] || touch "${_HELD_MARK}"; }
   _waiting_notify
   exit 1
 fi

@@ -784,9 +784,9 @@ _CNT=$(_dcy_live_count)
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   # a configured backup run waits: mybackup's queue starts no restore until
-  # this tool's next run gets through
+  # this tool's next run gets through, for a day from the first hold
   [ "${1}" = "backup" ] && [ -n "${_AWS_KEY}" ] && [ -n "${_AWS_SEC}" ] && [ -n "${_AWS_PWD}" ] \
-    && touch /run/boa_backup_held.backboa
+    && { [ -e /run/boa_backup_held.backboa ] || touch /run/boa_backup_held.backboa; }
   exit 1
 fi
 [ "${1}" = "backup" ] && rm -f /run/boa_backup_held.backboa

@@ -802,9 +802,9 @@ if _duplicity_or_backboa_busy; then
     # refusal: an operator restore must not silently block for hours.
     echo "[$(date)] Active duplicity/backboa run detected, waiting for it to finish..." >> /var/log/mybackup_waiting_queue.log
     # a configured backup run waits: mybackup's queue starts no restore
-    # until this tool's next run gets through
+    # until this tool's next run gets through, for a day from the first hold
     [ -n "${_AWS_KEY}" ] && [ -n "${_AWS_SEC}" ] && [ -n "${_AWS_PWD}" ] \
-      && touch /run/boa_backup_held.duobackboa
+      && { [ -e /run/boa_backup_held.duobackboa ] || touch /run/boa_backup_held.duobackboa; }
     _WAITED=0
     while _duplicity_or_backboa_busy; do
       if (( _WAITED >= 7200 )); then
