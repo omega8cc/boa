@@ -406,11 +406,12 @@
       usage.sh, graceful.sh and manage_ltd_users.sh as hidden .off copies
       in /var/xdrago until post-mig or the cutover's end, but autoupboa
       removed every such copy on its next run and the tools refresh then
-      fetched the five back: within minutes the task queue, the nightly and
-      the sub-user pass ran again in the middle of the move, on an xmass
-      source while it relayed. autoupboa now keeps those five while the park
-      marker exists; once the park ends, or expires after 24 hours, they go
-      with every other .off copy, as before.
+      fetched the five back: within minutes the task queue and the sub-user
+      pass ran again in the middle of the move, on an xmass source while it
+      relayed, and the nightly, usage and graceful were back for their next
+      scheduled run. autoupboa now keeps those five while the park marker
+      exists; once the park ends, or expires after 24 hours, they go with
+      every other .off copy, as before.
 
     * A platform Verify no longer opens a platform's Drush lock while its
       permissions pass runs: the pass set vendor/drush and Symfony Console's
