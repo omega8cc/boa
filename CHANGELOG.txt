@@ -190,6 +190,12 @@
       and root's own run with _ACCT_RELOAD_HOLD=NO (edgetest sets it)
       applies at once.
 
+    * ip_access.sh and user_admin_access.sh tell a new SSH login from root's
+      own record of the addresses each account's lists last took. They read
+      it from a marker in the account's own includes folder, so an account
+      that moved that folder away had every change it made let in at once,
+      every two minutes, as before the 15-minute limit.
+
     * The pass that writes the quic_bpf fragment no longer reads Nginx's
       error log after a reload. A reload never runs that setting's eBPF
       init, so only a line it did not cause, such as a site's own PHP
