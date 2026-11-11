@@ -1129,6 +1129,28 @@ _if_hosted_sys() {
   fi
 }
 
+# The hidden .off copies in /var/xdrago are disabled scripts, removed here.
+# A migration's runner park (xoct and xcopy pre-mig until post-mig, an xmass
+# cutover until its unpark) keeps runner.sh, owl.sh, usage.sh, graceful.sh
+# and manage_ltd_users.sh as such copies while /run/boa_migration_park.pid
+# lives, and the tools refresh fetches a runner back once its parked copy is
+# gone: removing those five ended every park within minutes. clear.sh
+# expires the marker after 24 hours; their copies then go with the rest.
+_rm_xdrago_off() {
+  local _off _nme
+  for _off in /var/xdrago/.*.off; do
+    [ -e "${_off}" ] || [ -L "${_off}" ] || continue
+    _nme="${_off#/var/xdrago/.}"
+    _nme="${_nme%.off}"
+    if [ -e "/run/boa_migration_park.pid" ]; then
+      case "${_nme}" in
+        runner.sh|owl.sh|usage.sh|graceful.sh|manage_ltd_users.sh) continue ;;
+      esac
+    fi
+    rm -f "${_off}"
+  done
+}
+
 _send_boa_system_report() {
   if [ -e "${_barCnf}" ]; then
     _RCPT_EMAIL=
@@ -1839,7 +1861,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   	fi
 
   	rm -f /var/xdrago/*.old
-  	rm -f /var/xdrago/.*.off
+  	_rm_xdrago_off
 
     if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
       sed -i "/^$/d" /etc/csf/csf.allow
