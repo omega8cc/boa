@@ -2634,6 +2634,309 @@ _xcopy_create_mark() {   # 1 = account here 2 = account on the target 3 = target
   ssh root@"${3}" "_u=\$(id -u ${2} 2> /dev/null); _i=\$(stat -c %i:%W /data/disk/${2} 2> /dev/null); case \"\${_u}/\${_i}\" in *[!0-9:/]*) exit 1 ;; [0-9]*/[0-9]*:[0-9]*) : ;; *) exit 1 ;; esac; _t=/root/.${2}.migration-create.put.\$\$; rm -f -- \"\${_t}\"; printf '%s\n' '# Put by create: the account this migration installed here.' '_MIG_CREATE_SRC_HOST=${_h}' '_MIG_CREATE_SRC_OCT=${1}' \"_MIG_CREATE_TGT_UID=\${_u}\" \"_MIG_CREATE_TGT_INODE=\${_i}\" '_MIG_CREATE_STAMPED=${_ts}' | perl -e '${_XCOPY_PUT_PL}' \"\${_t}\" 0 0 600 && mv -f -T -- \"\${_t}\" ${_f} && exit 0; rm -f -- \"\${_t}\"; exit 1"
 }
 
+###-------------TARGET PHP COVERAGE----###
+###
+### A copy is served on the target from the account's own control files,
+### which the transfer carries: a PHP version in force here that the target
+### lacks would silently serve those sites on another PHP there. create
+### refuses such a target before anything is installed, every live transfer
+### and pretransfer checks again, and a dry one names a choice the target
+### would start to honour. The same text as in xoct, prefixes aside.
+
+### Normalise a PHP version token to the dotted form BOA control files use;
+### prints nothing for a token that is not a known BOA PHP version.
+_mig_php_norm() {
+  local _t="${1//[^0-9.]/}"
+  case "${_t}" in
+    8.6|86) echo 8.6 ;;
+    8.5|85) echo 8.5 ;;
+    8.4|84) echo 8.4 ;;
+    8.3|83) echo 8.3 ;;
+    8.2|82) echo 8.2 ;;
+    8.1|81) echo 8.1 ;;
+    8.0|80) echo 8.0 ;;
+    7.4|74) echo 7.4 ;;
+    7.3|73) echo 7.3 ;;
+    7.2|72) echo 7.2 ;;
+    7.1|71) echo 7.1 ;;
+    7.0|70) echo 7.0 ;;
+    5.6|56) echo 5.6 ;;
+  esac
+}
+
+### Union of the PHP versions in force for this account, each counted only when
+### its PHP is installed here: root's record of the PHP its pool and command
+### line run on (_PHP_FPM_VERSION and _PHP_CLI_VERSION in its octopus.cnf,
+### which every Octopus pass writes into fpm.info and cli.info where they
+### are missing, and the transfer carries those), the account-level
+### static/control/{fpm,cli}.info defaults, the per-site column of
+### static/control/multi-fpm.info (dotted and shorthand forms both count),
+### every line of static/control/cli-per-platform.info and
+### fpm-per-platform.info, and the phpNN.info marker that steers the command
+### line. The last three are read as websh reads them: the file's first 64 KiB
+### and 200 lines, '#' opening a comment, a line counting only as "<folder>
+### <version>", the version's digits only; the marker is the highest one whose
+### PHP is installed here. A choice naming a PHP this server lacks does nothing
+### here and is never required of the target: the account writes these files,
+### and one line of its own must not hold the copy back or have a PHP built on
+### the target; _mig_php_inert_choices names it before the copy.
+_mig_php_here() {
+  [ -n "${1}" ] && [ -x "/opt/php${1//./}/bin/php" ]
+}
+_mig_php_versions_needed() {
+  local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
+  for _k in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
+    _v="$(grep -a "^${_k}=" "/root/.${_u##*/}.octopus.cnf" 2> /dev/null | tail -n 1)"
+    _v="$(_mig_php_norm "${_v#*=}")"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
+  done
+  ### read inside the account's real static/control, never through a link
+  ### or into a FIFO put there
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xcopy_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
+  done
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      ### place.holder.dont.remove is manage_ltd_users' filler line, not a
+      ### site pin -- counting it would refuse migrations over a version no
+      ### site actually uses.
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
+    done <<< "$(_xcopy_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _txt=""; _n=0
+    _txt="$(_xcopy_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
+    done <<< "${_txt}"
+  done
+  if _xcopy_in_real_dir "${_u}/static/control" true; then
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+      [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
+    done
+  fi
+  [ -n "${_mk}" ] && _out="${_out} $(_mig_php_norm "${_mk}")"
+  echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
+### Choices that do nothing on this server because it lacks their PHP, and that a
+### target with that PHP would start to honour at the cutover: the account-wide fpm.info
+### or cli.info, a line of multi-fpm.info, cli-per-platform.info or fpm-per-platform.info,
+### and a phpNN.info marker above the highest one in force here (a lower one stays out of
+### force wherever it runs).
+### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
+### reaches the operator's console. $1 = the account's directory.
+_mig_php_inert_choices() {
+  local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xcopy_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
+    [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+    echo "${_v} its ${_f}"
+  done
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _dom="${_dom//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} the multi-fpm.info line for ${_dom:0:120}"
+    done <<< "$(_xcopy_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _n=0
+    _txt="$(_xcopy_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      _k=""; _v=""; _rest=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _k="${_k//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} line ${_n} of ${_f} (${_k:0:120})"
+    done <<< "${_txt}"
+  done
+  _xcopy_in_real_dir "${_u}/static/control" true || return 0
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] || continue
+    if [ -x "/opt/php${_e}/bin/php" ]; then
+      _mk="${_e}"
+    fi
+  done
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] && [ ! -x "/opt/php${_e}/bin/php" ] && [ "${_e}" -gt "${_mk}" ] || continue
+    _nn="$(_mig_php_norm "${_e}")"
+    echo "${_nn} the php${_e}.info marker"
+  done
+}
+
+### The tree the TARGET runs, for target-side barracuda/octopus verbs; the
+### local _tRee belongs to THIS box and a cross-tree migration must not push
+### the source's tree through the target's licence gate.
+_mig_target_tree() {
+  local _t="$1" _tt
+  _tt=$(ssh root@"${_t}" "boa info 2>/dev/null" 2>/dev/null \
+    | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+    | tail -1 \
+    | grep -oE '(dev|lts|pro)$')
+  if [ -z "${_tt}" ]; then
+    echo "ALRT: could not detect the BOA tree on ${_t}; falling back to local '${_tRee}'" >&2
+    _tt="${_tRee}"
+  fi
+  echo "${_tt}"
+}
+
+### What the target would start to honour (_mig_php_inert_choices), named before the
+### copy: on a dry run it holds the --live back, on a live one it is an alert, since the
+### account may mean it. $1 = the account's directory, $2 = the target, $3 = alrt or deny,
+### $4 = versions a --fix-php run installs there.
+_xcopy_php_inert_report() {
+  local _u="$1" _t="$2" _how="$3" _fix=" ${4:-} " _acct _rows _row _v _w _have
+  _acct="$(basename "${_u}")"
+  _rows="$(_mig_php_inert_choices "${_u}")"
+  [ -n "${_rows}" ] || return 0
+  _have=" $(ssh root@"${_t}" 'for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do [ -x "/opt/php${_e//./}/bin/php" ] && echo "${_e}"; done' 2>/dev/null | tr '\n' ' ') "
+  while IFS= read -r _row; do
+    _v="${_row%% *}"
+    _w="${_row#* }"
+    case "${_have}${_fix}" in *" ${_v} "*) ;; *) continue ;; esac
+    if [ "${_how}" = "deny" ]; then
+      echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
+      _XCOPY_NOT_CLEAN=YES
+    else
+      echo "ALRT: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover."
+    fi
+  done <<< "${_rows}"
+}
+
+### Verify every needed PHP version is installed on the target -- the same
+### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
+### is fatal by default, because served-on-the-wrong-PHP is the silent failure
+### this whole step exists to prevent. With --fix-php the missing versions are
+### appended to the target's _PHP_MULTI_INSTALL and one barracuda system run
+### is driven remotely to build them (a full system pass: a few minutes).
+### --fix-php is a create option, so only create offers it.
+_xcopy_php_coverage_gate() {
+  local _u="$1" _t="$2" _need _v _sv _miss=""
+  _need="$(_mig_php_versions_needed "${_u}")"
+  if [ -z "${_need// /}" ]; then
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt
+    return 0
+  fi
+  echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
+  for _v in ${_need}; do
+    _sv=${_v//[^0-9]/}
+    if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+      _miss="${_miss} ${_v}"
+    fi
+  done
+  _miss="${_miss## }"
+  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt "${_miss}"
+  else
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt
+  fi
+  [ -z "${_miss}" ] && return 0
+  echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
+  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
+    _mig_fix_target_php "${_t}" "${_miss}" || return 1
+    for _v in ${_miss}; do
+      _sv=${_v//[^0-9]/}
+      if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+        echo "ERROR: PHP ${_v} still missing on ${_t} after the fix run"
+        return 1
+      fi
+    done
+    return 0
+  fi
+  echo "ERROR: a pinned PHP version missing on the target means every affected site"
+  echo "ERROR: silently falls back to a different PHP after migration."
+  echo "ERROR: Fix on the target: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf"
+  echo "ERROR: and run: barracuda up-<tree> system noscreen"
+  [ "${_cmd:-}" = "create" ] \
+    && echo "ERROR: Or re-run this command with --fix-php to do both automatically."
+  return 1
+}
+
+### Extend the target's _PHP_MULTI_INSTALL with the missing versions and run
+### one barracuda system pass there to build them. Idempotent: versions
+### already listed are not repeated, and barracuda itself is safe to re-run.
+_mig_fix_target_php() {
+  local _t="$1" _add="$2" _cur _new _v _nv _tree _rc
+  # Normalise the fetched value token by token: the raw line may carry an
+  # inline comment or quotes, and anything not a known PHP version must
+  # never reach the remote root shell that rewrites the cnf.
+  _cur=$(ssh root@"${_t}" "grep '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf 2>/dev/null" 2>/dev/null \
+    | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g' | tr -d '\n')
+  _new=""
+  for _v in ${_cur} ${_add}; do
+    _nv="$(_mig_php_norm "${_v}")"
+    [ -n "${_nv}" ] || continue
+    case " ${_new} " in
+      *" ${_nv} "*) : ;;
+      *) _new="${_new} ${_nv}" ;;
+    esac
+  done
+  _new="${_new## }"
+  if [ -z "${_new}" ]; then
+    echo "ALRT: computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
+    return 1
+  fi
+  ### Belt-and-braces before the value reaches a remote sed: it is built only
+  ### from _mig_php_norm output, so it can hold nothing but digits, dots and
+  ### spaces -- assert that rather than trust it.
+  case "${_new}" in
+    *[!0-9.\ ]*) echo "ALRT: refusing to write a non-version _PHP_MULTI_INSTALL value"; return 1 ;;
+  esac
+  echo "INFO: setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  ### Rewrite in place (keeps the line with the comment that documents it);
+  ### append only when the key is absent. The temp+size guard means a failed
+  ### write can never blank the box's barracuda.cnf.
+  ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
+    if grep -q '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf; then \
+      sed 's|^_PHP_MULTI_INSTALL=.*|_PHP_MULTI_INSTALL=\\\"${_new}\\\"|' \
+        /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew; \
+    else \
+      cp -af /root/.barracuda.cnf /root/.barracuda.cnf.phpnew \
+      && echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew; \
+    fi; \
+    [ -s /root/.barracuda.cnf.phpnew ] \
+    && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
+    && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
+    || { echo "ERROR: could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
+  _tree="$(_mig_target_tree "${_t}")"
+  case "${_tree}" in
+    dev|lts|pro) : ;;
+    *) echo "ALRT: invalid tree token '${_tree}' -- refusing the remote barracuda run"; return 1 ;;
+  esac
+  echo "INFO: driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
+  echo "INFO: this is a full system pass and typically takes a few minutes"
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen"
+  _rc=$?
+  # 3: the pass ran to its end WITH ERRORS (its log on the target says
+  # why); what this step needs is checked by the caller right after
+  if [ "${_rc}" = "3" ]; then
+    echo "WARN: barracuda system run on ${_t} completed WITH ERRORS; checking the PHP versions it was run for"
+  elif [ "${_rc}" != "0" ]; then
+    echo "ERROR: barracuda system run on ${_t} returned ${_rc}"
+    return 1
+  fi
+  return 0
+}
+
 _migrate_prepare() {
   # The watchdog stands down for the database verbs (_xcopy_sql_maint_hold);
   # released at the end of this function, or by the EXIT trap.
@@ -3083,8 +3386,13 @@ _migrate_prepare() {
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
       ### An account the target already holds is this migration's only
-      ### under its create marker: asked before anything changes there.
+      ### under its create marker: asked before --fix-php or anything else
+      ### changes the target.
       _xcopy_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### The PHP set in force here must exist on the target BEFORE anything
+      ### is installed there; a missing version means silent fallback to a
+      ### different PHP on the copied sites (as in xoct).
+      _xcopy_php_coverage_gate "${_USR}" "${_tgt}" || exit 1
       ### Skipped only when the marked account is also really installed, on
       ### what only an install produces (xoct asks the same): one whose cnf or
       ### vhost include is gone goes to the install, which refuses the name.
@@ -5300,6 +5608,20 @@ _migrate_init() {
             && _xcopy_in_real_dir "/home/${_oct}.ftp/.ssh" _xcopy_copy_mk_here \
               "${_tgt}" "/home/${_DST##*/}.ftp/.ssh" '' -aEAXqu ${_ieni}
 
+          # The PHP coverage gate re-runs on every LIVE transfer: the control
+          # files the pass above carried, changed here since create, must
+          # never name a version in force here that the target lacks. A dry
+          # run names a choice the target would start to honour (as in xoct).
+          if [ "${_MODE}" = "LIVE" ]; then
+            if ! _xcopy_php_coverage_gate "${_USR}" "${_tgt}"; then
+              echo "ERROR: ${_cmd} for ${_oct}: target PHP coverage failed AFTER the file sync;"
+              echo "ERROR: NOT marking the transfer complete -- fix the target PHP set and re-run"
+              exit 1
+            fi
+          else
+            _xcopy_php_inert_report "${_USR}" "${_tgt}" deny
+          fi
+
           ### The target keeps its own panel aliases (hostmaster, hm and
           ### server_master). Import reads the hostmaster alias to find the
           ### panel it pours into, and drives drush @hostmaster: a source
@@ -6200,6 +6522,8 @@ _XCOPY_GMAP=""
 _XCOPY_AMAP=""
 _XCOPY_UMAP=""
 _XCOPY_FORCE=""
+### Set by create's --fix-php alone (_xcopy_php_coverage_gate).
+_XCOPY_FIX_PHP=""
 ### admail=<address>, any verb, any position, as xoct takes it: a test or
 ### canary run that must never mail a client. xcopy sends no notices of its
 ### own; under admail= its create installs only with the install's welcome
@@ -6238,6 +6562,25 @@ case "$1" in
           ### An unknown --flag must never fall through to the positionals:
           ### the next free slot is the fourth argument (a destination name,
           ### which xcopy refuses unless it is the account's own).
+          echo "ERROR: unknown option '${_a}' for $1"
+          exit 1
+          ;;
+        *) _margs+=("${_a}") ;;
+      esac
+    done
+    set -- "${_margs[@]}"
+    ;;
+  create)
+    ### --fix-php lets create extend the target's _PHP_MULTI_INSTALL and
+    ### drive one barracuda system pass there when a PHP version in force
+    ### here is missing; without it the PHP coverage gate refuses with the
+    ### recipe. An unknown --flag must never fall through to the
+    ### positionals: the next free slot is the fourth argument.
+    _margs=()
+    for _a in "$@"; do
+      case "${_a}" in
+        --fix-php) _XCOPY_FIX_PHP=YES ;;
+        --*)
           echo "ERROR: unknown option '${_a}' for $1"
           exit 1
           ;;
@@ -6510,6 +6853,7 @@ case "$1" in
             echo "Usage: xcopy {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
             echo "Usage: xcopy {export|create|pretransfer|transfer|noproxy} {o1|shared} {target-ip}"
             echo "       (the account keeps its name: xoct moves an account under a new one)"
+            echo "Usage: xcopy {create} {o1} {target-ip} [--fix-php] (installs the PHP versions in force here that the target lacks)"
             echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"
             echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo
