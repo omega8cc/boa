@@ -5041,11 +5041,12 @@ _daily_process() {
               _le_ssl_check_update
               if [ "${_ENABLE_GOACCESS}" = "YES" ] && _ctrl_has "goaccess/${_Dom}.info"; then
                 _noPrefixDom="${_Dom#www.}"
-                _if_gen_goaccess "${_noPrefixDom}"
+                # each name only as one the site's own vhost serves
+                _if_gen_goaccess "${_noPrefixDom}" "${_vhTxt}"
                 # A name without www. is the same report: built twice, it
                 # parsed every access log twice a night
                 if [ "${_noPrefixDom}" != "${_Dom}" ]; then
-                  _if_gen_goaccess "${_Dom}"
+                  _if_gen_goaccess "${_Dom}" "${_vhTxt}"
                 fi
               fi
               ;;

@@ -360,7 +360,7 @@ _ai_report() {
       # served classes are paced, so an agent two maps claim is counted
       # where it was refused.
       nchk = split("training evasive user search utility", chk, " ")
-      all = (index(site, "ALL") > 0)
+      all = (site == "ALL")
       site = tolower(site)
       aisrc = "[.](chatgpt[.]com|chat[.]openai[.]com|perplexity[.]ai|claude[.]ai|copilot[.]microsoft[.]com|gemini[.]google[.]com|chat[.]mistral[.]ai)$"
       aiutm = "^(chatgpt([.]com)?|openai|perplexity([.]ai)?|claude([.]ai)?|copilot([.]microsoft[.]com)?|gemini([.]google[.]com)?|mistral([.]ai)?)$"
@@ -518,7 +518,7 @@ _ai_report() {
       lab["training"] = "Training"
       lab["utility"] = "Utility"
       split("Search / index,Assistant,Evasive assistant,Training,Utility", pl, ",")
-      all = (index(site, "ALL") > 0)
+      all = (site == "ALL")
     }
     $1 == "0hdr" {
       hdr = 1
@@ -730,16 +730,20 @@ if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
   rm -rf ${_TARGET}/mrgd_nginx.log
 fi
 
-if [[ "${_SITE}" =~ "ALL" ]]; then
-  _SITE_REGEX=" /"
-else
-  _SITE_REGEX=" ${_SITE} "
-fi
-
-### -a is load-bearing: one NUL byte anywhere in the concatenated corpus flips
-### grep into binary mode, which silently truncates the merged log and produces
-### an empty report.
-find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep -a "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
+### The box-wide report is asked for by the name ALL exactly; any other name
+### is one site's. Its lines are those whose host field (after the quoted
+### client, before " [") is that name, compared as a string: a name is never
+### a pattern, whose dots would take another site's lines and whose ALL took
+### every line on the box. awk reads every byte (a NUL would flip grep into
+### binary mode and truncate the merged log).
+_wxAll=0
+[ "${_SITE}" = "ALL" ] && _wxAll=1
+find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; \
+  | LC_ALL=C awk -v s="${_SITE}" -v all="${_wxAll}" '
+    BEGIN { s = tolower(s) " ["; n = length(s) }
+    all { if (index($0, " /")) print; next }
+    { i = index($0, "\" "); if (i && substr($0, i + 2, n) == s) print }' \
+  >> ${_TARGET}/mrgd_nginx.log
 
 echo "[+] EXPORTING GOACCESS REPORT HTML"
 _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')

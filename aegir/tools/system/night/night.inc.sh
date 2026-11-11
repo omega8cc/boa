@@ -1271,8 +1271,37 @@ _goaccess_copy_here() {
   [ -O . ] && cp -af -- "${1}" ./
 }
 
+# Status 0 when the name $1 is in a server_name of the nginx text read from
+# stdin ($2 = -), or of any file $3... not under the folder $2: each read as
+# a regular file, never through a link at its own name or into a FIFO, at
+# most 1 MiB; comments dropped, names compared without case, token by token,
+# as nginx matches exact names.
+_GOACCESS_NAMES_PL='use Fcntl; my $n = lc shift; my $skip = shift; sub hit { my $d = shift; $d =~ s/#[^\n]*//g; while ($d =~ /(?:^|[\s;{}])server_name\s+([^;]*);/g) { for my $t (split /\s+/, lc $1) { return 1 if $t eq $n } } return 0 } if ($skip eq "-") { local $/; my $d = <STDIN>; exit((defined $d && hit($d)) ? 0 : 1) } for my $f (@ARGV) { next if index($f, $skip) == 0; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); unless (@s && -f _ && $s[7] <= 1048576) { close($h); next } my ($d, $b) = (""); while (sysread($h, $b, 65536)) { $d .= $b; last if length($d) > 1048576 } close($h); exit 0 if hit($d) } exit 1'
+# A site's report copies the box's access lines for its name into the
+# account, so the name must be this account's: served by its own vhost text
+# $2 and by no other vhost on the box (another account's site or alias, the
+# Master's, a standalone one). Aegir keeps names unique per instance only.
+_goaccess_name_own() {
+  local _own="/data/disk/${_HM_U}/config/server_master/nginx/vhost.d/"
+  if ! printf '%s\n' "${2}" | perl -e "${_GOACCESS_NAMES_PL}" "${1}" -; then
+    echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: its vhost does not serve that name"
+    return 1
+  fi
+  if perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_own}" \
+    /var/aegir/config/server_master/nginx/vhost.d/* \
+    /data/disk/*/config/server_master/nginx/vhost.d/* \
+    /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*; then
+    echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: another vhost on this server also serves that name"
+    return 1
+  fi
+  return 0
+}
+
+# One GoAccess report into the account's static/goaccess: ALL (the account
+# pass's own call, one argument: the box-wide report the operator enables
+# with _GOACCESS_ALL), or one site's, $1 = its name, $2 = its vhost text.
 _if_gen_goaccess() {
-  local _gaD
+  local _gaD _gaAll=NO
   _PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.${_HM_U}.octopus.cnf 2>&1)
@@ -1284,14 +1313,26 @@ _if_gen_goaccess() {
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
     _isWblgx="$(which weblogx)"
-    # The name comes from a vhost file name the account controls: a host
-    # name (or ALL) only, never a path, a glob or an option.
-    [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 0
+    # A site's name comes from a vhost file name the account controls: a
+    # lower-case host name (Aegir's own names) only, never ALL, a path, a
+    # glob or an option.
+    if [ "$#" -eq 1 ] && [ "${1}" = "ALL" ]; then
+      _gaAll=YES
+    elif [[ ! "${1}" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+      return 0
+    fi
     # owl.sh stages the night's log corpus once and plants .global.pid; a
     # night it refused to (out of inodes) has none, and every report would
     # then stage the whole corpus again on its own
     [ -e "/var/www/adminer/access/archive/unzip/.global.pid" ] || return 0
     if [ -x "${_isWblgx}" ]; then
+      # a report built before for a name that is no longer the account's own
+      # is withdrawn
+      if [ "${_gaAll}" = "NO" ] && ! _goaccess_name_own "${1}" "${2:-}"; then
+        rm -rf -- "/var/www/adminer/access/${_HM_U}/${1}"
+        _acct_in_real_dir "/data/disk/${_HM_U}/static/goaccess" rm -rf -- "./${1}"
+        return 0
+      fi
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
       # static/ is tenant-writable (02775, no sticky), so goaccess can be a
