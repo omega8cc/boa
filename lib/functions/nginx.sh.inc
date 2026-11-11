@@ -1488,15 +1488,13 @@ _nginx_quic_bpf_sync() {
   ### fragment, written only while the live probe passes, because a box
   ### where the eBPF init fails would otherwise have an Nginx that refuses
   ### to start. _NGINX_QUIC_BPF=NO in barracuda.cnf sheds it for good; the
-  ### latch is left after an init that failed with the fragment in place
-  ### (here on the enabling reload, or by the Nginx monitor after a failed
-  ### start) and holds it off until an operator removes it.
+  ### latch is left by the Nginx monitor after a start that failed with the
+  ### fragment in place, and holds it off until an operator removes it.
   local _mDir="/etc/nginx/main.d"
   local _frag="${_mDir}/quic_bpf.conf"
   local _latch="${_mDir}/quic_bpf.failed"
   local _cnf="/etc/nginx/nginx.conf"
-  local _eLog="/var/log/nginx/error.log"
-  local _want=NO _why="" _kMaj _kMin _eOld _eNow
+  local _want=NO _why="" _kMaj _kMin
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_quic_bpf_sync"
   fi
@@ -1559,27 +1557,14 @@ _nginx_quic_bpf_sync() {
   if [ "${_want}" = "YES" ]; then
     if [ ! -e "${_frag}" ]; then
       echo "quic_bpf on;" > "${_frag}"
+      ### A reload keeps the quic_bpf setting the running master started
+      ### with (Nginx logs that it cannot change it after reload), so it
+      ### runs no eBPF init: the fragment takes effect at the next start,
+      ### which the Nginx monitor judges on a log no worker has written to.
+      ### Lines a reload's workers add to the shared error log can come
+      ### from any site's PHP, and once latched the fragment off for good.
       if nginx -t > /dev/null 2>&1; then
-        _eOld=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
-        [ -n "${_eOld}" ] || _eOld=0
-        _mrun "service nginx reload"
-        sleep 3
-        ### A reload only logs a failed eBPF init and carries on, and this is
-        ### the one init that sees the box's real listeners and the running
-        ### master's limits. Left alone, the fragment would sit here until
-        ### the next real start refused to come up.
-        _eNow=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
-        [ -n "${_eNow}" ] || _eNow=0
-        [ "${_eNow}" -ge "${_eOld}" ] || _eOld=0
-        if tail -n "+$(( _eOld + 1 ))" "${_eLog}" 2> /dev/null \
-          | grep -qE "ngx_quic_bpf_module failed|failed to create BPF"; then
-          rm -f "${_frag}"
-          echo "$(date) The eBPF init failed when quic_bpf was enabled by reload; the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
-          _mrun "service nginx reload"
-          _msg "ALERT: Nginx could not initialise quic_bpf on reload; left off, see ${_latch}"
-        else
-          _msg "INFO: HTTP/3 transfers now survive Nginx reloads (quic_bpf enabled)"
-        fi
+        _msg "INFO: quic_bpf written; HTTP/3 transfers survive Nginx reloads from its next start"
       else
         rm -f "${_frag}"
         _msg "ALERT: nginx -t rejected ${_frag}; quic_bpf left off"
