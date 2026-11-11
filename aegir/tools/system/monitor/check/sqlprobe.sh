@@ -89,6 +89,35 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# A dump or load in flight: root's own mydumper or myloader, or one an
+# account's backend user runs (provision dumps and loads a site's database as
+# the account) when it is the installed binary itself; a copy or a link that
+# only carries the name is not.
+_dump_tool_live() {
+  local _p="" _bin="" _bU=""
+  pgrep -u root -U root -x "${1}" > /dev/null 2>&1 && return 0
+  _bin=$(readlink -f "$(command -v "${1}" 2> /dev/null)" 2> /dev/null)
+  [ -n "${_bin}" ] || return 1
+  _bU="$(_boa_run_uids)"
+  for _p in $(pgrep -u "${_bU}" -U "${_bU}" -x "${1}" 2> /dev/null); do
+    [ "$(readlink -f "/proc/${_p}/exe" 2> /dev/null)" = "${_bin}" ] && return 0
+  done
+  return 1
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -171,11 +200,9 @@ touch "${_STAMP}"
 # Backup exclusion: skip while any backup walker is alive and for 20 min after
 # the last sighting (a dump's reads and truncations skew the miss rates). A
 # site's own dump in a backup, clone or migrate runs as its backend user.
-_bU="$(_boa_run_uids)"
 if pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
-  || pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
+  || [ "$(_dcy_live_count)" -gt 0 ] \
+  || _dump_tool_live mydumper; then
   touch "${_BKP_STAMP}"
   exit 0
 fi

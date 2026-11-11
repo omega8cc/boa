@@ -733,7 +733,10 @@ _if_mydumper_is_locked() {
   # never does -- the counts are the triggers of the kills below
   local _bU=""
   _bU="$(_boa_run_uids)"
-  _AR_C="$(pgrep -u "${_bU}" -U "${_bU}" -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$')"
+  # aegir.sh runs counted by root's su of each, twice (the thresholds were set
+  # on the su and its bash child): an account's own process carries any title
+  _AR_C=$(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$' 2> /dev/null)
+  _AR_C=$(( 2 * ${_AR_C:-0} ))
   _DR_C="$(pgrep -u "${_bU}" -U "${_bU}" -fc '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)')"
   _MD_C="$(pgrep -u root -U root -fc '^[^ ]*mydumper( |$)')"
   # SIGKILL, as autoupboa's reaper sends: on SIGTERM mydumper skips the jobs
