@@ -479,7 +479,11 @@
       source, so an order there could only fail, under the account
       registration both servers share, and count against the source's own
       orders. The certificates that travelled stay in place; remove the
-      listed markers before the copy serves any of the names.
+      listed markers before the copy serves any of the names. A name the
+      rename gave the target gets no marker, a site with SSL on and no
+      certificate that travelled is named (its verify can still order),
+      and xoct names the sites that still hold a marker when it moves an
+      account that was once such a copy.
 
     * xcopy post-mig on the target waits, up to 30 minutes, for the verify
       of each site the import copied, and prints how each one ended (OK,

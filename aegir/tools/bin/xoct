@@ -2972,6 +2972,20 @@ _mysqldump_gtid_opts() {
 ### the 0.19.3 line refuses the option. With the binary log off it changes
 ### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
 ### lists it, so a build without it gets its arguments as before.
+### An account that was once an xcopy copy can still hold the Let's Encrypt
+### stop markers xcopy put for its copied sites (listed in its
+### log/xcopy_le_kept.txt): they travel with tools/le, and a moved site that
+### holds one renews no certificate on the new box. Named before the move.
+_xoct_le_kept_warn() {
+  local _n _k=""
+  for _n in $(_xoct_read_in "${_USR}/log" xcopy_le_kept.txt | grep -E '^[A-Za-z0-9][A-Za-z0-9.-]*$'); do
+    [ -e "${_USR}/tools/le/.ctrl/dont-overwrite-${_n}.pid" ] && _k="${_k} ${_n}"
+  done
+  [ -n "${_k}" ] || return 0
+  echo "WARN: ${_oct} was an xcopy copy, and these sites still hold the stop marker xcopy put, so they renew no Let's Encrypt certificate after the move:${_k}"
+  echo "WARN: to let them renew, remove ${_USR}/tools/le/.ctrl/dont-overwrite-<site>.pid for each"
+  return 0
+}
 _myloader_binlog_opts() {
   _MYLOADER_BINLOG=()
   if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
@@ -2987,22 +3001,20 @@ _myloader_binlog_opts() {
 ### two collations fails (error 1267). A dump made on 8.0 or later names the
 ### collation of every utf8mb4 table, so the old default changes nothing for
 ### it. On a server that has the setting, _MYLOADER_UTF8MB4 is the option
-### file that gives every myloader session the old default (written when
-### missing or different) and _MYSQL_UTF8MB4 the same for a client load; on
-### 5.7 both stay empty. Worked out once per run, and a myloader that cannot
-### be given the file is named once.
+### file that adds the old default to myloader's own session settings (it
+### replaces none of them; written when missing or different); on 5.7 it
+### stays empty. Worked out once per run, and a myloader that cannot be given
+### the file is named once. A client load asks its own server
+### (_mig_utf8mb4_client_opt).
 _MIG_UTF8MB4_DONE=""
 _MYLOADER_UTF8MB4=()
-_MYSQL_UTF8MB4=()
 _myloader_utf8mb4_opts() {
   local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
   [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
   _MIG_UTF8MB4_DONE=YES
   _MYLOADER_UTF8MB4=()
-  _MYSQL_UTF8MB4=()
   [ -n "$(mysql --silent -u root -N -B -e 'SELECT @@SESSION.default_collation_for_utf8mb4' 2> /dev/null)" ] \
     || return 0
-  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
   _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
   if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
     && [[ ! -d "${_f}" ]]; then
@@ -3022,6 +3034,18 @@ _myloader_utf8mb4_opts() {
   if [ "${#_MYLOADER_UTF8MB4[@]}" -eq 0 ]; then
     echo "WARN: myloader here cannot be given ${_f}: a utf8mb4 table a Percona 5.7 dump names no collation for loads as utf8mb4_0900_ai_ci"
   fi
+  return 0
+}
+### The same for a client load into the server named by the client options
+### "$@": sets _MYSQL_UTF8MB4 to the --init-command that gives the session the
+### old default when that server has the setting, to nothing otherwise, so
+### the option never reaches a server that would refuse the connection.
+_MYSQL_UTF8MB4=()
+_mig_utf8mb4_client_opt() {
+  _MYSQL_UTF8MB4=()
+  [ -n "$(mysql --silent "$@" -N -B -e 'SELECT @@SESSION.default_collation_for_utf8mb4' 2> /dev/null)" ] \
+    || return 0
+  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
   return 0
 }
 ### A table a load has just written can read as empty to the query optimiser
@@ -7436,10 +7460,13 @@ _migrate_prepare() {
     printf '%s' "${_HDB}" \
       | _xoct_in_real_dir "${_USR}/log" _xoct_write_here panel_db.txt 022
     ### A 5.7 panel dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x
-    ### (_myloader_utf8mb4_opts); a pour through ProxySQL is left as it was.
-    _myloader_utf8mb4_opts
+    ### (_mig_utf8mb4_client_opt, asked of the server the dump goes to); a
+    ### pour through ProxySQL is left as it was.
     _XOCT_POUR_UTF8MB4=()
-    [ "${_THIS_DB_PORT}" = "3306" ] && _XOCT_POUR_UTF8MB4=("${_MYSQL_UTF8MB4[@]}")
+    if [ "${_THIS_DB_PORT}" = "3306" ]; then
+      _mig_utf8mb4_client_opt -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp
+      _XOCT_POUR_UTF8MB4=("${_MYSQL_UTF8MB4[@]}")
+    fi
     ### src/ is oN's on the target: the dump is streamed from inside the real
     ### directory, never through a link, and fed with --binary-mode, so the
     ### client runs no \! or system command from the dump. pipefail keeps a
@@ -10775,6 +10802,9 @@ _migrate_init() {
     echo "Bye."
     echo
     exit 1
+  fi
+  if [ "${_cmd}" = "create" ] || [ "${_cmd}" = "export" ]; then
+    _xoct_le_kept_warn
   fi
   if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
