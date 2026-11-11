@@ -198,7 +198,7 @@ _ACCT_OWN_READ_PL='use Fcntl;
 my ($op, $o, $c, $n) = @ARGV;
 exit 1 unless defined $n && $n =~ m{^[^/\0]+$};
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -238,6 +238,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # ./$1 of the current (pinned) directory copied into the root-only file $2

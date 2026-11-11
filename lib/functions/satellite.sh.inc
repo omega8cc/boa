@@ -513,6 +513,38 @@ _satellite_web_user_update() {
 }
 
 #
+# The numbers of the account's removed identities, root's alone, one a line
+# in /data/conf/acct-uids/<oN>.gone (0600). Root's readers take a file whose
+# owner no user has as the account's own only when its number is listed here
+# (_acct_walk_uids): a removed login of another account leaves files under
+# such a number too. The ltd worker and the Octopus upgrade write a number
+# before deluser frees it, and take it off every other account's list, since
+# this account holds it now.
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$"
+  rm -f -- "${_t}"
+  if ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*$' > "${_t}" ) \
+    || [ -e "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_acct_gone_add() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f
+  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
+    grep -qx -- "${_u}" "${_f}" || continue
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  done
+  _f="${_d}/${_a}.gone"
+  grep -qsx -- "${_u}" "${_f}" && return 0
+  _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)"
+}
+#
 # Remove web user.
 _satellite_remove_web_user() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -532,6 +564,9 @@ _satellite_remove_web_user() {
     # only this user's agent (none for a user that never existed): -f
     # matched every gpg-agent on the box
     id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
+    # its number stays the account's once freed (_acct_gone_add)
+    id -u "${_WEB}" &> /dev/null \
+      && _acct_gone_add "${_WEB%%.*}" "$(id -u -- "${_WEB}")"
     deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
       rm -rf /home/${_WEB}/ &> /dev/null
@@ -8319,9 +8354,9 @@ _satellite_ctrl_make_here() {
   # worker gives it (_ltd_ctrl_shut): what the login makes in this
   # set-group-ID tree is then never writable by another account's login
   if [ "${_ACCG:-users}" = "${_USER}" ]; then
-    _satellite_reown_own_here "${_USER}.ftp:${_ACCG}" > /dev/null
+    _satellite_reown_own_here = "${_USER}.ftp:${_ACCG}" > /dev/null
   else
-    _satellite_reown_own_here "${_USER}.ftp:root" > /dev/null
+    _satellite_reown_own_here = "${_USER}.ftp:root" > /dev/null
   fi
 }
 
@@ -8363,16 +8398,16 @@ _satellite_chmod_nofollow() {
 }
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
-# identity of the account as passwd names them: oN and oN.<name>, that is
-# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
-# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
-# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-# unless the account itself is in passwd. The walks also take a uid no passwd
-# entry names as the account's own: a login removed before the limited-shell
-# worker handed its files to the account at removal left those. Nothing
-# records which account a freed number served, so such an entry is taken
-# wherever it came from. A lookup that fails, rather than finding no such
-# user, leaves the entry another user's.
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's reads, hand-overs and owner checks take a uid no passwd entry names
+# only when it is listed: another account's removed login leaves files under
+# such a number too. Its removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -8385,6 +8420,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # The account's control/ judged once a pass (_acct_ctrl_own): _sat_ctrl_has
@@ -8457,13 +8499,16 @@ exit 0;'
 # the uid and gid to hand each name to; a name another named uid owns, and
 # anything below a directory another named uid owns, keeps its owner. A gid
 # given with a + first keeps the group write of what is handed over, as the
-# ownership fixers' -W does; no caller here gives one.
+# ownership fixers' -W does; no caller here gives one. A list with '=' first
+# takes a uid no passwd entry names only when it is listed: the control
+# folder's hand-over gives one (_satellite_ctrl_make_here).
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -8677,15 +8722,18 @@ _satellite_reown_here() {
 # over, and nothing below a directory another user owns. Prints dev:ino of
 # each entry left for another owner.
 _satellite_reown_own_here() {
-  local _u _g _o
+  local _u _g _o _s=""
+  # = first: only the account's identities and its recorded removed ones
+  # (_acct_walk_uids), never another number no user has (the control folder)
+  [ "${1}" = "=" ] && { _s="="; shift; }
   read -r _u _g <<< "$(_satellite_ids "${1}")"
   [ -n "${_g}" ] || return 1
   _o=$(_acct_walk_uids "${_USER}") || return 1
   shift
-  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . \
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" . \
     && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
       \( -type d -o -type f \) \
-      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} +
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" {} +
 }
 # The names given in the current (pinned) directory handed to $1
 # (owner[:group]) through _ACCT_REOWN_PL, as chown or chgrp handed them,

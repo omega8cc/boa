@@ -962,15 +962,16 @@ _night_older_nn() {
 # run inside the account's real static/, it prints OK when control/ and
 # everything in it, never followed through a link, and static/ and every
 # directory above it up to /, are root's or one of the account's identities'
-# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
-# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
 # Every other account's .ftp login is in the box-wide group, which an account
 # not yet on its own group still has on static/: such a login could put a
 # control/ of its own there, or a file of its own in a group-writable
 # directory below it, for root to act on as the account's.
 _ACCT_CTRL_OWN_PL='use Fcntl;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
 sub isd { ($_[0] & 0170000) == 0040000 }
 sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
 sub refuse { print "$_[0]\n"; exit 0; }

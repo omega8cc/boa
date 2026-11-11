@@ -423,6 +423,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # The uids the walks below act for, from the site path as resolved, never
@@ -500,7 +507,9 @@ _owners_left_note() {
 # name, a directory another uid owns above the place is printed when it
 # is refused; status 1 when it is.
 # Given a deny list ('-' first, _site_walk_uids), it acts for every uid
-# but the list's.
+# but the list's. A list with '=' first takes a uid no passwd entry names
+# only when it is listed (the control folder's hand-overs); no caller here
+# gives one.
 # Given the gid with a + first (_reown_own_here -W), each directory and
 # single-link regular file handed over whose owner can write it and whose
 # group cannot then gets group write (a file with a set-ID bit excepted):
@@ -510,9 +519,10 @@ _owners_left_note() {
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;

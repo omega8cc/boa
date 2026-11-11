@@ -211,15 +211,24 @@
       refuses the move. Grav and Textpattern sites still read the gate in
       nginx by path.
 
-    * A control folder another account's login made in an account not yet
-      on its own group no longer becomes that account's once the login is
-      removed. Root counted the files of a removed login as the account's
-      own and read them, so an IP list or backup credentials planted there
-      applied to the account. Before the ltd worker removes a client login,
-      and before boa cleanup purge removes an account's identities, what
-      they own in every other account's ~/static/control is removed while
-      their numbers still name them; what other users own there stays. A
-      login removed by hand still leaves its files there.
+    * A file another account's login left in an account not yet on its own
+      group no longer becomes that account's once the login is removed.
+      Root took any file whose owner no user has as the account's own, and
+      read it, handed it over or set its owner, so an IP list or backup
+      credentials planted in the control folder, or staged elsewhere and
+      moved in later, applied to the account. Root now takes such a number
+      only when it was one of the account's own identities: the ltd worker
+      and the Octopus upgrade record each removed identity's number in
+      /data/conf/acct-uids/<oN>.gone before deluser frees it. A control
+      folder holding any other such file is left unread with an ALERT, as
+      one another account made is.
+
+    * Before the ltd worker removes a client login, it ends every process
+      the login runs, in any root: a process in a chroot or a user
+      namespace outlived the removal and went on writing as the freed
+      number. It then removes what the login owns in every other
+      account's ~/static/control, and boa cleanup purge does the same for
+      a removed account's identities; what other users own there stays.
 
     * Root's checks that it stands in an account's own folder, before it
       reads, writes, changes the owner or mode of, or removes anything

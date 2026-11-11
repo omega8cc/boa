@@ -334,15 +334,16 @@ if [ -z "${_ACCT_CTRL_OWN_PL:-}" ]; then
 # run inside the account's real static/, it prints OK when control/ and
 # everything in it, never followed through a link, and static/ and every
 # directory above it up to /, are root's or one of the account's identities'
-# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
-# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
 # Every other account's .ftp login is in the box-wide group, which an account
 # not yet on its own group still has on static/: such a login could put a
 # control/ of its own there, or a file of its own in a group-writable
 # directory below it, for root to act on as the account's.
 _ACCT_CTRL_OWN_PL='use Fcntl;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
 sub isd { ($_[0] & 0170000) == 0040000 }
 sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
 sub refuse { print "$_[0]\n"; exit 0; }
@@ -666,7 +667,9 @@ _reown_tree_here() {
 ### .ftp login, its client sub-accounts and their -dev logins, its PHP-FPM
 ### users oN.web and oN.<ver>.web); status 1, and nothing, unless the
 ### account itself is in passwd. A uid no passwd entry names counts as the
-### account's own in the walkers below.
+### account's own only when it is one of the account's removed identities
+### root recorded (/data/conf/acct-uids/<oN>.gone): the hand-over below
+### takes no other, the mode and removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -679,6 +682,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 ### As _NIGHT_FCHMOD_PL, given first the uids it acts for (_acct_walk_uids):
@@ -723,12 +733,15 @@ exit 0;'
 ### As _ACCT_REOWN_PL, the same way: the uids, then the uid and gid to hand
 ### each name to. A gid given with a + first keeps the group write of what
 ### is handed over, as the ownership fixers' -W does; no caller here gives one.
+### A list with '=' first takes a uid no passwd entry names only when it is
+### listed (the control folder's hand-overs); no caller here gives one.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;

@@ -1084,13 +1084,16 @@ _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my 
 # left and printed (dev:ino), and nothing is changed unless the current
 # directory and every directory above it, up to /, are owned by those uids.
 # A gid given with a + first keeps the group write of what is handed over,
-# as the ownership fixers' -W does; no caller here gives one.
+# as the ownership fixers' -W does; no caller here gives one. A list with '='
+# first takes a uid no passwd entry names only when it is listed: the
+# control folder's hand-overs give one (_ltd_ctrl_init, _ltd_ctrl_info_owner).
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -1713,7 +1716,7 @@ _ltd_ctrl_info_owner() {
   _ids=$(_ltd_num_ids "${_USER}.ftp:${_ctlGroup}") || return 0
   _ltd_left_note "$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
     -maxdepth 1 -name '*.info' -type f -links 1 -execdir perl \
-    -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
+    -e "${_SAT_REOWN_OWN_PL}" -- "=${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
     2> /dev/null)" "the control files hand-over" "in place"
 }
 # The control directory on the first pass of a serial, inside the real
@@ -1737,7 +1740,7 @@ _ltd_ctrl_init() (
       cp -T --no-preserve=mode --remove-destination \
         /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
   fi
-  _ltd_tree_own_here "${_o}" "${_USER}.ftp:${_ctlGroup}" \
+  _ltd_tree_own_here "=${_o}" "${_USER}.ftp:${_ctlGroup}" \
     "the control directory hand-over" || exit 0
   _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.* 2> /dev/null)" \
     "the removal of old control stamps" "in place"
@@ -1773,8 +1776,8 @@ _ltd_ctl_group() {
     echo "${2}"
   fi
 }
-# What root or the account's identities own (the uids given second, a uid
-# no passwd entry names too) in the current (pinned) directory, never through
+# What root or the account's identities own (the uids given second, with the
+# account's recorded removed identities) in the current (pinned) directory, never through
 # a link nor on a hard-linked file, and nothing unless this directory and
 # every one above it up to / are theirs: with t, a directory writable by
 # others or by a group that is not the account's own (the gid given third,
@@ -1791,7 +1794,7 @@ _LTD_SHUT_OWN_PL='use Fcntl;
 my ($op, $o, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 $g = -1 unless defined $g && $g =~ /^[0-9]+$/;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -1875,6 +1878,60 @@ _ltd_acct_uids_put() {
   rm -f -- "${_f}.tmp"
   return 1
 }
+# The numbers of the account's removed identities, root's alone, one a line
+# in /data/conf/acct-uids/<oN>.gone (0600). Root's readers take a file whose
+# owner no user has as the account's own only when its number is listed here
+# (_acct_walk_uids): a removed login of another account leaves files under
+# such a number too. The ltd worker and the Octopus upgrade write a number
+# before deluser frees it, and take it off every other account's list, since
+# this account holds it now.
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$"
+  rm -f -- "${_t}"
+  if ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*$' > "${_t}" ) \
+    || [ -e "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_acct_gone_add() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f
+  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
+    grep -qx -- "${_u}" "${_f}" || continue
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  done
+  _f="${_d}/${_a}.gone"
+  grep -qsx -- "${_u}" "${_f}" && return 0
+  _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)"
+}
+# Every number a user has again leaves the lists (its files are that user's
+# now), and so does the list of an account no longer in passwd.
+_ltd_acct_gone_prune_all() {
+  local _f _a _u _keep
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _a="${_f##*/}"
+    _a="${_a%.gone}"
+    if ! id -u -- "${_a}" > /dev/null 2>&1; then
+      rm -f -- "${_f}"
+      continue
+    fi
+    _keep=""
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 && continue
+      _keep="${_keep}${_u}"$'\n'
+    done < "${_f}"
+    [ "$(grep -E '^[1-9][0-9]*$' "${_f}")" = "${_keep%$'\n'}" ] && continue
+    _acct_gone_write "${_f}" "${_keep%$'\n'}"
+  done
+  return 0
+}
 # Run inside the real static/: when control/ is a folder whose own owner no
 # passwd entry names, the gate files in it go and each name removed is
 # printed, the folder first closed to group and other writers (another
@@ -1925,15 +1982,16 @@ _ltd_ctrl_gate_guard_all() {
 # run inside the account's real static/, it prints OK when control/ and
 # everything in it, never followed through a link, and static/ and every
 # directory above it up to /, are root's or one of the account's identities'
-# (the uids given first, _acct_walk_uids; a uid no passwd entry names counts
-# too), ABSENT when there is no control/, and otherwise why not, on one line.
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
 # Every other account's .ftp login is in the box-wide group, which an account
 # not yet on its own group still has on static/: such a login could put a
 # control/ of its own there, or a file of its own in a group-writable
 # directory below it, for root to act on as the account's.
 _ACCT_CTRL_OWN_PL='use Fcntl;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
-sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
 sub isd { ($_[0] & 0170000) == 0040000 }
 sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
 sub refuse { print "$_[0]\n"; exit 0; }
@@ -1989,12 +2047,12 @@ _acct_ctrl_own() {
 # its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
 # and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
 # dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-# unless the account itself is in passwd. The walks also take a uid no
-# passwd entry names as the account's own: a login removed before the
-# limited-shell worker handed its files to the account at removal left
-# those. Nothing records which account a freed number served, so such an
-# entry is taken wherever it came from. A lookup that fails, rather than
-# finding no such user, leaves the entry another user's.
+# unless the account itself is in passwd. The numbers of the account's
+# removed identities that root recorded in /data/conf/acct-uids/<oN>.gone
+# (the ltd worker, before deluser frees one) are listed too while no user
+# has them. Root's reads, hand-overs and owner checks take a uid no passwd
+# entry names only when it is listed: another account's removed login
+# leaves files under such a number too. Its removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -2007,6 +2065,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # Root's removals in an account's trees, run inside the directory they act
@@ -3232,21 +3297,23 @@ _ltd_reap_hand_over() {
 #
 # What a login made in another account's control/ goes before deluser frees
 # its number. Every login keeps the box-wide group, so it can make control/
-# in the static/ of an account still on that group; once the login is gone,
-# root's walks take a number no user has as the account's own, hand the
-# folder over and read it (ip/access.txt, the backup credentials). Run inside
-# that account's real static/ with the uids given, comma-separated: what they
-# own in control/ is removed by name from inside each directory, entered only
-# as lstat saw it and left through a handle; a directory of theirs is first
-# closed to group and other writers, so no other login can swap what is in
-# it meanwhile. What another user owns stays whole, and control/ stays while
-# it holds any. Prints what was removed, nothing when nothing was.
+# in the static/ of an account still on that group, or put files in a folder
+# of it left open to that group. Run inside that account's real static/ with
+# the uids given, comma-separated: what they own anywhere in control/ is
+# removed by name from inside each directory, entered only as lstat saw it,
+# on control/'s own filesystem, and left through a handle; a directory of
+# theirs is first closed to group and other writers, so no other login can
+# swap what is in it meanwhile. What another user owns stays, and control/
+# stays while it holds any. Prints what was removed, nothing when nothing
+# was. Root's readers never take a file whose owner no user has as the
+# account's own unless that number was one of the account's identities
+# (_acct_walk_uids), so this is the clean-up, not the guard.
 _ACCT_FOREIGN_CTRL_PL='use Fcntl;
 my %g = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV // "");
 exit 0 unless %g;
 my @s = lstat("./control") or exit 0;
 exit 0 unless ($s[2] & 0170000) == 0040000;
-my ($mine, $rm, $kept) = ($g{$s[4]}, 0, 0);
+my ($mine, $rm, $left_n) = ($g{$s[4]}, 0, 0);
 sub isd { ($_[0] & 0170000) == 0040000 }
 sub sweep {
   opendir(my $h, ".") or return 1;
@@ -3254,22 +3321,23 @@ sub sweep {
   my $left = 0;
   for my $b (@e) {
     my @t = lstat($b) or next;
-    unless ($g{$t[4]}) { $left++; $kept++; next; }
+    my $ours = $g{$t[4]};
     if (isd($t[2])) {
       my $l = 1;
-      if (chdir($b)) {
+      if ($t[0] == $s[0] && chdir($b)) {
         my @c = stat(".");
         if (@c && $c[0] == $t[0] && $c[1] == $t[1]) {
-          chmod(($c[2] & 07777) & ~022, ".") if $c[2] & 022;
+          chmod(($c[2] & 07777) & ~022, ".") if $ours && ($c[2] & 022);
           $l = sweep();
         }
         chdir($h) or exit 1;
       }
-      if (!$l && rmdir($b)) { $rm++; } else { $left++; }
-    } elsif (unlink($b)) {
+      if ($ours && !$l && rmdir($b)) { $rm++; } else { $left++; $left_n++; }
+    } elsif ($ours && unlink($b)) {
       $rm++;
     } else {
       $left++;
+      $left_n++;
     }
   }
   closedir($h);
@@ -3285,7 +3353,7 @@ chdir($top) or exit 1;
 if ($mine && !$left && rmdir("./control")) {
   print "removed control/, which they made, with the $rm entries in it\n";
 } elsif ($mine) {
-  print "removed $rm entries of theirs from control/, which they made; kept the $kept of other users in it\n";
+  print "removed $rm entries of theirs from control/, which they made; $left_n entries left in it\n";
 } elsif ($rm) {
   print "removed $rm entries of theirs from control/\n";
 }
@@ -3328,46 +3396,51 @@ _ltd_account_trees() {
   return 0
 }
 #
-# A login removed before the worker handed its files over at removal left
-# them under a number no passwd entry names, and useradd -r gives that number
-# to the next login made on the server, of any account: the files would then
-# be that login's, and the nightly purge and boa's archived prune would keep
-# them as another user's. Once per account and release, before the pass makes
-# any login, each directory and single-link file there whose owner no longer
-# exists goes to the account, a hard-linked one to root, the group kept; a
-# link keeps its number. The owner is read through the handle and looked up as
-# the walks' own() does: a lookup that fails for another reason hands nothing
-# over.
-_LTD_REOWN_GONE_PL='use Fcntl; my ($t, @n) = @ARGV; my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown(($d || $s[3] == 1) ? $t : 0, -1, $h) if $g{$u}; } close($h); } exit 0'
+# A login of the account removed before the worker handed its files over at
+# removal left them under a number no passwd entry names, and useradd -r gives
+# that number to the next login made on the server, of any account: the files
+# would then be that login's, and the nightly purge and boa's archived prune
+# would keep them as another user's. Once per account and release, before the
+# pass makes any login, each directory and single-link file there whose owner
+# is one of the account's removed identities root recorded
+# (/data/conf/acct-uids/<oN>.gone) and still names nobody goes to the account,
+# a hard-linked one to root, the group kept; a link keeps its number. Any other
+# number no user has stays as it is: another account's removed login leaves
+# files under such a number too, and handing them over would make them the
+# account's. The owner is read through the handle and looked up as the walks'
+# own() does: a lookup that fails for another reason hands nothing over.
+_LTD_REOWN_GONE_PL='use Fcntl; my ($t, $ok, @n) = @ARGV; my %ok = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, $ok); my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = !$ok{$u} ? 0 : defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown(($d || $s[3] == 1) ? $t : 0, -1, $h) if $g{$u}; } close($h); } exit 0'
 _ltd_gone_hand_over() {
-  local _ou _d _u
+  local _ou _d _u _ok=""
   local -a _k=()
   local _mk="/var/backups/ltd/.gone-handed.${1}.${_xSrl}"
   [ -e "${_mk}" ] && return 0
   _ou=$(id -u -- "${1}" 2> /dev/null)
   [[ "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
-  # The numbers passwd names, read once: find compares each entry's owner
-  # with them (find -nouser parses passwd once per entry), the account's own
-  # first, as it owns most entries. Root missing from them: the read failed,
-  # and nothing is walked this pass.
-  _k=( -o -uid "${_ou}" )
+  # the account's recorded numbers that no user has now: find takes only
+  # entries they own, and the program checks each again through its handle
   while IFS= read -r _u; do
-    [[ "${_u}" =~ ^[0-9]+$ ]] && _k+=( -o -uid "${_u}" )
-  done < <(getent passwd 2> /dev/null | cut -d: -f3)
-  [[ " ${_k[*]} " == *" -uid 0 "* ]] || return 0
-  while IFS= read -r _d; do
-    _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
-      find -P . -xdev ! \( -false "${_k[@]}" \) \( -type d -o -type f \) \
-      -execdir perl -e "${_LTD_REOWN_GONE_PL}" "${_ou}" {} + &> /dev/null
-  done < <(_ltd_account_trees "${1}")
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _ok="${_ok},${_u}"
+    _k+=( -o -uid "${_u}" )
+  done 2> /dev/null < "/data/conf/acct-uids/${1}.gone"
+  if [ "${#_k[@]}" -gt 0 ]; then
+    while IFS= read -r _d; do
+      _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
+        find -P . -xdev \( -false "${_k[@]}" \) \( -type d -o -type f \) \
+        -execdir perl -e "${_LTD_REOWN_GONE_PL}" "${_ou}" "${_ok#,}" {} + &> /dev/null
+    done < <(_ltd_account_trees "${1}")
+  fi
   touch "${_mk}"
   return 0
 }
 # Every account, the nightly's per-account pass holding it or not, before
 # _manage_user makes any login: a held account left for a later pass let
 # another account's new login take its freed numbers first. The walk hands
-# over only entries no passwd entry names, which the nightly's walks take as
-# the account's own already, so the two passes do not contend.
+# over only entries of the account's recorded removed identities, which the
+# nightly's walks take as the account's own already, so the two passes do
+# not contend.
 _ltd_gone_hand_over_all() {
   local _p
   for _p in /data/disk/*; do
@@ -3389,13 +3462,18 @@ _ltd_reap_account() {
   if id -u "${_acct}" &> /dev/null; then
     usermod -L "${_acct}" &> /dev/null
     usermod -s /usr/sbin/nologin "${_acct}" &> /dev/null
-    while _user_in_use "${_acct}" && [ "${_w}" -lt 10 ]; do
+    # every process of the login goes, whatever root it runs under: userdel
+    # does not count one in another root (a chroot, a user namespace), which
+    # would go on writing as the freed number
+    pkill -KILL -u "${_acct}" &> /dev/null
+    pkill -KILL -U "${_acct}" &> /dev/null
+    while { _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; } && [ "${_w}" -lt 10 ]; do
       pkill -KILL -u "${_acct}" &> /dev/null
       pkill -KILL -U "${_acct}" &> /dev/null
       sleep 1
       _w=$(( _w + 1 ))
     done
-    if _user_in_use "${_acct}"; then
+    if _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; then
       echo "$(date) LTD account ${_acct}: still in use, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
       return 0
     fi
@@ -3407,6 +3485,9 @@ _ltd_reap_account() {
     "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" .gnupg
   _ltd_reap_hand_over "${_acct}" "${_parent}"
   _ltd_reap_foreign_ctrl "${_acct}" "${_parent}"
+  # its number stays the account's once freed (_acct_gone_add)
+  _acct_gone_add "${_parent}" "$(id -u -- "${_acct}" 2> /dev/null)" \
+    || echo "$(date) LTD account ${_acct}: its number could not be recorded for ${_parent}" >> /var/log/boa/manage_ltd.incident.log
   # its gem and npm trees carry its number too; a login made again gets
   # fresh copies of its own
   # only what root, the login or its account's identities own: any account
@@ -4679,6 +4760,32 @@ _acct_of_identity() {
 # already rewritten). The home field points at an empty root-owned staging
 # dir for that one call and is put back at once; the group on the files is
 # the alias-copy leg's business.
+# 0 while a live process (not a zombie) runs as the login $1, by its real,
+# effective or saved uid, in any root: _user_in_use counts this root's only.
+_ltd_login_procs() {
+  local _uid _p _pids=""
+  _uid=$(id -u -- "${1}" 2> /dev/null) || return 1
+  for _p in /proc/[0-9]*; do
+    _pids="${_pids} ${_p#/proc/}"
+  done
+  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
+    m = split(pids, p, " ")
+    for (i = 1; i <= m; i++) {
+      f = "/proc/" p[i] "/status"
+      st = ""
+      while ((getline l < f) > 0) {
+        if (l ~ /^State:/) { split(l, s, /[ \t]+/); st = s[2] }
+        if (l ~ /^Uid:/) {
+          split(l, u, /[ \t]+/)
+          if (st != "Z" && (u[2] == uid || u[3] == uid || u[4] == uid)) { close(f); exit 0 }
+          break
+        }
+      }
+      close(f)
+    }
+    exit 1
+  }'
+}
 _user_in_use() {
   # shadow's user_busy, the check usermod -d runs: a process in this root (a
   # chrooted pure-ftpd session is not) whose real, effective or saved uid is
@@ -5670,6 +5777,9 @@ _satellite_remove_web_user() {
       # only this user's agent (none for a user that never existed): -f
       # matched every gpg-agent on the box
       id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
+      # its number stays the account's once freed (_acct_gone_add)
+      id -u "${_WEB}" &> /dev/null \
+        && _acct_gone_add "${_WEB%%.*}" "$(id -u -- "${_WEB}")"
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
@@ -9791,6 +9901,7 @@ else
   _add_ltd_group_if_not_exists
   _add_allow_snail_if_not_exists
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  _ltd_acct_gone_prune_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   # after the reaps and before any walk hands a gone login's files over or
   # a new login takes a freed number
   _ltd_ctrl_gate_guard_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
